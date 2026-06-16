@@ -52,7 +52,7 @@ class SaaSUserRegistrationSpamProtectionTests(TransactionTestCase):
 
     def test_honeypot_field_validation_blocked(self):
         """Spam Shield: Tầng 1 - Honeypot field filled must be blocked."""
-        response = self.client.post('/api/auth/register/', {
+        response = self.client.post('/core/v1/auth/register/', {
             'username': 'spambot',
             'email': 'bot@vninvest.vn',
             'password': 'Password123!',
@@ -68,7 +68,7 @@ class SaaSUserRegistrationSpamProtectionTests(TransactionTestCase):
 
     def test_disposable_domain_validation_blocked(self):
         """Spam Shield: Tầng 2 - Disposable email domains must be blocked O(1)."""
-        response = self.client.post('/api/auth/register/', {
+        response = self.client.post('/core/v1/auth/register/', {
             'username': 'spamuser',
             'email': 'spam@mailinator.com',  # Disposable domain!
             'password': 'Password123!',
@@ -91,7 +91,7 @@ class SaaSUserRegistrationSpamProtectionTests(TransactionTestCase):
         mock_response.json.return_value = {'success': False, 'error-codes': ['invalid-input-response']}
         mock_post.return_value = mock_response
 
-        response = self.client.post('/api/auth/register/', {
+        response = self.client.post('/core/v1/auth/register/', {
             'username': 'normaluser',
             'email': 'user@vninvest.vn',
             'password': 'Password123!',
@@ -114,7 +114,7 @@ class SaaSUserRegistrationSpamProtectionTests(TransactionTestCase):
         mock_response.json.return_value = {'success': True}
         mock_post.return_value = mock_response
 
-        response = self.client.post('/api/auth/register/', {
+        response = self.client.post('/core/v1/auth/register/', {
             'username': 'vietdung',
             'email': 'vietdung@vninvest.vn',
             'password': 'Password123!',
@@ -242,7 +242,7 @@ class SaaSUserRegistrationSpamProtectionTests(TransactionTestCase):
 
         # Force a database IntegrityError during registration by mocking user create to throw
         with patch('django.contrib.auth.models.UserManager.create_user', side_effect=IntegrityError("DB lock conflict")):
-            response = self.client.post('/api/auth/register/', {
+            response = self.client.post('/core/v1/auth/register/', {
                 'username': 'failuser',
                 'email': 'fail@vninvest.vn',
                 'password': 'Password123!',

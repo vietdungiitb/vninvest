@@ -8,6 +8,7 @@ from .native_views import (
     RealtimePriceBoardView,
     RealtimeBreadthView,
     RealtimeWhaleFeedView,
+    RealtimeSymbolInvestigationView,
     RealtimeRvolView,
     RealtimeDepthChartView,
 )
@@ -25,6 +26,7 @@ urlpatterns = [
     path('realtime/price-board/<str:symbol>/', RealtimePriceBoardView.as_view(), name='realtime-price-board'),
     path('realtime/breadth/<str:symbol>/', RealtimeBreadthView.as_view(), name='realtime-breadth'),
     path('realtime/whale-feed/<str:symbol>/', RealtimeWhaleFeedView.as_view(), name='realtime-whale-feed'),
+    path('realtime/symbol-investigation/<str:symbol>/', RealtimeSymbolInvestigationView.as_view(), name='realtime-symbol-investigation'),
     path('realtime/rvol/<str:symbol>/', RealtimeRvolView.as_view(), name='realtime-rvol'),
     path('realtime/depth-chart/<str:symbol>/', RealtimeDepthChartView.as_view(), name='realtime-depth-chart'),
 ]

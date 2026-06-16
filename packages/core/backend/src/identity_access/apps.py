@@ -1,6 +1,15 @@
 from django.apps import AppConfig
 
 
+def cors_allow_api_requests(sender, request, **kwargs):
+    from django.conf import settings
+    if not getattr(settings, 'CORS_API_DYNAMIC_ALLOW', True):
+        return False
+    if request.path.startswith('/core/v1/') or request.path.startswith('/api/'):
+        return True
+    return False
+
+
 class IdentityAccessConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'identity_access'
@@ -26,4 +35,10 @@ class IdentityAccessConfig(AppConfig):
                     "Bắt buộc khai báo TURNSTILE_SECRET_KEY trong môi trường production "
                     "hoặc khi STRICT_TURNSTILE_ENFORCEMENT được kích hoạt."
                 )
+
+        # CORS dynamic signal handling for API routes
+        from corsheaders.signals import check_request_enabled
+        check_request_enabled.connect(cors_allow_api_requests)
+
+
 

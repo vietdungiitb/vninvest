@@ -202,7 +202,7 @@ export class VNStocksAdapter {
         const safeLimit = Math.max(1, params.limit);
         const days = resolveDays(params);
         const base = resolveApiBase();
-        const url = new URL(`${base}/api/stock-management/stocks/${encodeURIComponent(safeSymbol)}/chart/`);
+        const url = new URL(`${base}/core/v1/stock-management/stocks/${encodeURIComponent(safeSymbol)}/chart/`);
         url.searchParams.set("timeframe", safeInterval);
         url.searchParams.set("days", String(days));
         const response = await fetch(url.toString(), {

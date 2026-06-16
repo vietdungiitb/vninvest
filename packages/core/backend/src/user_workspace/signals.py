@@ -61,3 +61,27 @@ def sync_transaction_registry_on_save(sender, instance, **kwargs):
 @receiver(post_delete, sender=Transaction)
 def sync_transaction_registry_on_delete(sender, instance, **kwargs):
     sync_holding_demand_for_portfolio_symbol(instance.portfolio, instance.symbol)
+
+
+from .models import Portfolio, Watchlist, ScreenerRule
+
+@receiver(pre_save, sender=Portfolio)
+@receiver(pre_save, sender=Watchlist)
+@receiver(pre_save, sender=TrackedSymbol)
+@receiver(pre_save, sender=PriceAlert)
+@receiver(pre_save, sender=ScreenerRule)
+def auto_populate_tenant_from_user(sender, instance, **kwargs):
+    if not getattr(instance, 'tenant_id', None) and getattr(instance, 'user', None):
+        user = instance.user
+        tenant = getattr(user, 'core_tenant', None)
+        if tenant is None:
+            profile = getattr(user, 'core_profile', None)
+            tenant = getattr(profile, 'tenant', None)
+        if tenant is not None:
+            instance.tenant = tenant
+
+
+@receiver(pre_save, sender=Transaction)
+def auto_populate_transaction_tenant(sender, instance, **kwargs):
+    if not getattr(instance, 'tenant_id', None) and getattr(instance, 'portfolio', None):
+        instance.tenant = instance.portfolio.tenant

@@ -35,6 +35,13 @@ const DashboardPanelFallback = ({ minHeightClass = 'min-h-[220px]' }) => (
 
 const EMPTY = [];
 
+const EXCLUDED_MARKET_GROUPS = new Set([
+  'VN100',
+  'HOSE',
+  'HNX',
+  'UPCOM',
+]);
+
 export default function PackageDashboardHost() {
   const { activePortfolioId, isAuthenticated } = usePortfolio();
   const { t, formatNumber } = useI18n();
@@ -83,8 +90,40 @@ export default function PackageDashboardHost() {
     [liveHoldings, trackedSymbols, watchlistGroups, quotesBySymbol],
   );
 
+  const heatmapSymbols = useMemo(() => {
+    const symbolsSet = new Set();
+
+    // 1. Portfolio holdings
+    liveHoldings.forEach((h) => {
+      if (h?.symbol) {
+        symbolsSet.add(normalizeSymbol(h.symbol));
+      }
+    });
+
+    // 2. Tracked symbols
+    trackedSymbols.forEach((t) => {
+      if (t?.symbol) {
+        symbolsSet.add(normalizeSymbol(t.symbol));
+      }
+    });
+
+    // 3. Custom watchlists (excluding system defaults)
+    watchlistGroups.forEach((group) => {
+      const name = String(group?.name || '').trim().toUpperCase();
+      if (name && !EXCLUDED_MARKET_GROUPS.has(name)) {
+        (group.items || []).forEach((item) => {
+          if (item?.symbol) {
+            symbolsSet.add(normalizeSymbol(item.symbol));
+          }
+        });
+      }
+    });
+
+    return Array.from(symbolsSet);
+  }, [liveHoldings, trackedSymbols, watchlistGroups]);
+
   const heatmapData = useMemo(() => {
-    if (!monitoredSymbols.length) return [];
+    if (!heatmapSymbols.length) return [];
 
     const holdingsMap = new Map(liveHoldings.map((h) => [normalizeSymbol(h.symbol), h]));
     const trackedMap = new Map(trackedSymbols.map((t) => [normalizeSymbol(t.symbol), t]));
@@ -107,7 +146,7 @@ export default function PackageDashboardHost() {
         .map((v) => Number(v.toFixed(2)));
     };
 
-    return monitoredSymbols.map((symbol) => {
+    return heatmapSymbols.map((symbol) => {
       const held = holdingsMap.get(symbol);
       const quote = quotesBySymbol[symbol] || {};
       const trackedInfo = trackedMap.get(symbol);
@@ -145,7 +184,7 @@ export default function PackageDashboardHost() {
         is_holding: false,
       };
     });
-  }, [liveHoldings, monitoredSymbols, quotesBySymbol, trackedSymbols]);
+  }, [liveHoldings, heatmapSymbols, quotesBySymbol, trackedSymbols]);
 
   const trackedSymbolNames = useMemo(
     () => trackedSymbols.map((s) => s?.symbol || s?.name || s).filter(Boolean),

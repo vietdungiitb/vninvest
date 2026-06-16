@@ -95,7 +95,7 @@ class IsTenantActivePermissionTests(TestCase):
         )
 
     def _request_for_user(self, user):
-        request = self.factory.get('/api/core/v1/partner/service-accounts/')
+        request = self.factory.get('/core/v1/partner/service-accounts/')
         request.user = user
         return request
 
@@ -158,13 +158,13 @@ class IsTenantActiveRouteTests(TestCase):
         self.tenant.save(update_fields=['status', 'updated_at'])
 
         self.client.force_authenticate(user=self.user)
-        response = self.client.get('/api/core/v1/partner/service-accounts/')
+        response = self.client.get('/core/v1/partner/service-accounts/')
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_superuser_bypasses_suspended_tenant_on_partner_service_accounts_route(self):
         self.client.force_authenticate(user=self.superuser)
-        response = self.client.get('/api/core/v1/partner/service-accounts/')
+        response = self.client.get('/core/v1/partner/service-accounts/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('results', response.data)
@@ -209,7 +209,7 @@ class PartnerScopeGuardRouteTests(TestCase):
 
         client = APIClient()
         client.credentials(HTTP_AUTHORIZATION=f'Bearer {raw_secret}')
-        response = client.get('/api/core/v1/partner/pats/')
+        response = client.get('/core/v1/partner/pats/')
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(credential.public_id, credential.public_id)
@@ -225,7 +225,7 @@ class PartnerScopeGuardRouteTests(TestCase):
         self.assertEqual(login_response.status_code, status.HTTP_200_OK)
         client.credentials(HTTP_AUTHORIZATION=f"Bearer {login_response.data['token']}")
 
-        response = client.get('/api/core/v1/partner/pats/')
+        response = client.get('/core/v1/partner/pats/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -290,7 +290,7 @@ class PartnerScopeGuardRouteTests(TestCase):
 
         client = APIClient()
         client.credentials(HTTP_AUTHORIZATION=f'Bearer {raw_secret}')
-        response = client.get('/api/core/v1/partner/billing/subscription/')
+        response = client.get('/core/v1/partner/billing/subscription/')
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(credential.public_id, credential.public_id)
@@ -307,7 +307,7 @@ class PartnerScopeGuardRouteTests(TestCase):
 
         client = APIClient()
         client.credentials(HTTP_AUTHORIZATION=f'Bearer {raw_secret}')
-        response = client.get('/api/core/v1/tenant-members/')
+        response = client.get('/core/v1/tenant-members/')
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(credential.public_id, credential.public_id)
@@ -324,7 +324,7 @@ class PartnerScopeGuardRouteTests(TestCase):
 
         client = APIClient()
         client.credentials(HTTP_AUTHORIZATION=f'Bearer {raw_secret}')
-        response = client.get('/api/core/v1/dnse-credential/')
+        response = client.get('/core/v1/dnse-credential/')
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(credential.public_id, credential.public_id)
@@ -341,7 +341,7 @@ class PartnerScopeGuardRouteTests(TestCase):
 
         client = APIClient()
         client.credentials(HTTP_AUTHORIZATION=f'Bearer {raw_secret}')
-        response = client.get('/api/core/v1/partner/billing/subscription/')
+        response = client.get('/core/v1/partner/billing/subscription/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(credential.public_id, credential.public_id)
@@ -390,7 +390,7 @@ class PartnerScopeGuardRouteTests(TestCase):
 
         client = APIClient()
         client.credentials(HTTP_AUTHORIZATION=f'Bearer {raw_secret}')
-        response = client.get('/api/core/v1/partner/pats/')
+        response = client.get('/core/v1/partner/pats/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(credential.public_id, credential.public_id)
@@ -411,7 +411,7 @@ class PartnerScopeGuardRouteTests(TestCase):
         client = APIClient()
         client.credentials(HTTP_AUTHORIZATION=f'Bearer {raw_secret}')
         response = client.post(
-            '/api/core/v1/partner/pats/issue/',
+            '/core/v1/partner/pats/issue/',
             {
                 'service_account_id': self.service_account.public_id,
                 'scope_codes': ['manage_service_accounts'],
@@ -439,7 +439,7 @@ class PartnerScopeGuardRouteTests(TestCase):
         client = APIClient()
         client.credentials(HTTP_AUTHORIZATION=f'Bearer {raw_secret}')
         response = client.post(
-            '/api/core/v1/partner/pats/issue/',
+            '/core/v1/partner/pats/issue/',
             {
                 'service_account_id': self.service_account.public_id,
                 'scope_codes': ['manage_pats'],
@@ -464,7 +464,7 @@ class PartnerScopeGuardRouteTests(TestCase):
 
         client = APIClient()
         client.credentials(HTTP_AUTHORIZATION=f'Bearer {raw_secret}')
-        response = client.get('/api/core/v1/partner/pats/')
+        response = client.get('/core/v1/partner/pats/')
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(credential.public_id, credential.public_id)

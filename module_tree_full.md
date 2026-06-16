@@ -2,2560 +2,18 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-29 20:48:10`
+Generated at: `2026-06-16 06:17:13`
 
 ## Summary
 
-- Total modules: 2674
-- Python modules: 775
-- JS/TS modules: 1899
-- Total classes: 1864
-- Total functions: 7155
-- Total top-level variables: 18890
+- Total modules: 2052
+- Python modules: 446
+- JS/TS modules: 1606
+- Total classes: 1257
+- Total functions: 5903
+- Total top-level variables: 19296
 
 ## Python Modules
-
-### `backend/audit_whale_logic.py`
-
-- Top-level variables:
-  - `cutoff`, `symbol`, `whale_threshold_vnd`, `whale_ticks_qs`
-
-### `backend/benchmark_api.py`
-
-- Functions:
-  - `bench_concurrent`, `bench_sequential`, `login`, `main`, `print_table`, `timed_get`
-- Top-level variables:
-  - `BASE_URL`, `CONCURRENCY`, `PASSWORD`, `ROUNDS`, `SEP`, `SYMBOLS`, `USERNAME`
-
-### `backend/brain_check_digest.py`
-
-- Functions:
-  - `run_check`
-
-### `backend/check_dpi_plans.py`
-
-- Top-level variables:
-  - `plans`
-
-### `backend/cleanup_bad_migrations.py`
-
-- No parseable top-level symbols found
-
-### `backend/config/__init__.py`
-
-- Top-level variables:
-  - `__all__`
-
-### `backend/config/asgi.py`
-
-- Top-level variables:
-  - `application`, `django_asgi_app`
-
-### `backend/config/celery.py`
-
-- Top-level variables:
-  - `app`
-
-### `backend/config/health.py`
-
-- Functions:
-  - `build_prefetch_health_snapshot`, `healthcheck`, `market_observability_health`, `prefetch_health`, `realtime_health`, `streams_health`
-
-### `backend/config/settings.py`
-
-- Functions:
-  - `_derive_cache_redis_url`, `_env_bool`, `_env_float`, `_env_int`, `_get_throttle_rate`, `_redis_url_with_db`
-- Top-level variables:
-  - `ADVISORY_AUTO_GENERATION_BATCH_SIZE`, `ADVISORY_AUTO_GENERATION_ENABLED`, `ADVISORY_AUTO_GENERATION_INTERVAL_MINUTES`, `ALLOWED_HOSTS`, `ASGI_APPLICATION`, `AUTH_PASSWORD_VALIDATORS`, `BASE_DIR`, `CELERY_ACCEPT_CONTENT`, `CELERY_BEAT_SCHEDULE`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `CELERY_RESULT_SERIALIZER`, `CELERY_TASK_SERIALIZER`, `CELERY_TIMEZONE`, `CHANNEL_LAYER_CAPACITY`, `CHANNEL_LAYER_EXPIRY`, `CHANNEL_LAYER_GROUP_EXPIRY`, `CHANNEL_LAYER_TICKER_CAPACITY`, `CORE_BACKEND_SRC`, `CORS_ALLOWED_ORIGINS`, `CSRF_COOKIE_SECURE`, `CSRF_TRUSTED_ORIGINS`, `DEBUG`, `DEFAULT_AUTO_FIELD`, `DEFAULT_FROM_EMAIL`, `EMAIL_VERIFICATION_TOKEN_MAX_AGE_SECONDS`, `ENABLE_NEW_MARKET_VIEWS`, `ENABLE_NEW_TRADING_VIEWS`, `ENABLE_REALTIME_CONNECTION_MANAGER`, `FEATURE_FLAGS`, `FRONTEND_BASE_URL`, `GOOGLE_OAUTH_REDIRECT_URI`, `HOLISTIC_ADVISORY_V1_COHORT_MODE`, `HOLISTIC_ADVISORY_V1_COHORT_USERNAMES`, `HOLISTIC_ADVISORY_V1_ENABLED`, `HOLISTIC_GOVERNANCE_DELTA_COOLDOWN_THRESHOLD`, `HOLISTIC_GOVERNANCE_DELTA_CRITICAL_THRESHOLD`, `HOLISTIC_GOVERNANCE_DELTA_WARNING_THRESHOLD`, `INSTALLED_APPS`, `INTRADAY_STALE_MAX_SECONDS_DEFAULT`, `INTRADAY_STALE_MAX_SECONDS_VN30`, `INTRADAY_TICK_KEEP_DAYS`, `LANGUAGE_CODE`, `LOGGING`, `MARKET_OBSERVABILITY_ENABLED`, `MARKET_OBSERVABILITY_LATENCY_WINDOW`, `MARKET_VIEWS_CANARY_PERCENT`, `MIDDLEWARE`, `MISSION_CONTROL_ANOMALY_ABSOLUTE_NOTIONAL_VND`, `MISSION_CONTROL_ANOMALY_ADVISORY_SPIKE_RATIO`, `MISSION_CONTROL_ANOMALY_BASELINE_MINUTES`, `MISSION_CONTROL_ANOMALY_LOOKBACK_MINUTES`, `MISSION_CONTROL_ANOMALY_MIN_ADVISORIES`, `MISSION_CONTROL_ANOMALY_MIN_TICK_EVENTS`, `MISSION_CONTROL_ANOMALY_MONITOR_ENABLED`, `MISSION_CONTROL_ANOMALY_MONITOR_INTERVAL_SECONDS`, `MISSION_CONTROL_ANOMALY_SPIKE_RATIO`, `MISSION_CONTROL_ANOMALY_SYMBOL_SCAN_LIMIT`, `MISSION_CONTROL_SCHEDULED_ROLLOUTS_ENABLED`, `MISSION_CONTROL_SCHEDULED_ROLLOUTS_INTERVAL_SECONDS`, `OFFPEAK_VNBROKER_INGEST_CRON_HOUR`, `OFFPEAK_VNBROKER_INGEST_CRON_MINUTE`, `OFFPEAK_VNBROKER_INGEST_DAYS`, `OFFPEAK_VNBROKER_INGEST_ENABLED`, `OFFPEAK_VNBROKER_INGEST_MAX_SYMBOLS`, `ONBOARDING_TRIAL_APPLY_ON_SIGNUP`, `ONBOARDING_TRIAL_AUTO_DOWNGRADE_BATCH_SIZE`, `ONBOARDING_TRIAL_AUTO_DOWNGRADE_ENABLED`, `ONBOARDING_TRIAL_AUTO_DOWNGRADE_MINUTES`, `OPENCLAW_API_KEY`, `OPENCLAW_BASE_URL`, `OPENCLAW_MODEL`, `OPEN_CORE_QUOTA_CAPS_BY_TIER`, `OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED`, `ORDER_FLOW_DETECTION_ENABLED`, `ORDER_FLOW_DETECTION_INTERVAL_SECONDS`, `PASSWORD_RESET_TOKEN_MAX_AGE_SECONDS`, `PORTFOLIO_NEWS_DIGEST_BATCH_SIZE`, `PORTFOLIO_NEWS_DIGEST_ENABLED`, `REALTIME_BROADCAST_DEGRADE_BATCH_THRESHOLD`, `REALTIME_BROADCAST_DEGRADE_ENABLED`, `REALTIME_BROADCAST_DEGRADE_PENDING_THRESHOLD`, `REALTIME_BROADCAST_FORCE_INTERVAL_S`, `REALTIME_BROADCAST_MIN_CHANGE_PCT`, `REALTIME_CHANNEL_LAYER`, `REALTIME_DEFAULT_WHALE_THRESHOLD`, `REALTIME_ENABLED`, `REALTIME_INTRADAY_POLL_ENABLED`, `REALTIME_INTRADAY_POLL_SYMBOL_LIMIT`, `REALTIME_INTRADAY_SKIP_IF_PREFETCH_FRESH_ENABLED`, `REALTIME_INTRADAY_SKIP_IF_PREFETCH_FRESH_SECONDS`, `REALTIME_REDIS_URL`, `REALTIME_STREAM_NATIVE_TICKER_PATH_ENABLED`, `REALTIME_STREAM_PENDING_RECLAIM_ENABLED`, `REALTIME_TICKER_CACHE_ONLY`, `REALTIME_WS_AUTH_CACHE_ENABLED`, `REALTIME_WS_AUTH_CACHE_TTL_SECONDS`, `REALTIME_WS_PLAN_CACHE_ENABLED`, `REST_FRAMEWORK`, `REVERSAL_DETECTION_ENABLED`, `REVERSAL_DETECTION_INTERVAL_SECONDS`, `ROOT_URLCONF`, `SECURE_HSTS_INCLUDE_SUBDOMAINS`, `SECURE_HSTS_PRELOAD`, `SECURE_HSTS_SECONDS`, `SECURE_PROXY_SSL_HEADER`, `SECURE_SSL_REDIRECT`, `SENTIMENT_SYNC_ENABLED`, `SENTIMENT_SYNC_INTERVAL_MINUTES`, `SESSION_COOKIE_SECURE`, `SIGNAL_VERIFICATION_ENABLED`, `STARTER_PORTFOLIOS_CANARY_PERCENT`, `STARTER_PORTFOLIOS_ENABLED`, `STATIC_ROOT`, `STATIC_URL`, `STOCK_AI_ADVISORY_BENCHMARKS_ENABLED`, `STOCK_AI_ADVISORY_FORCE_SYNC_FIRST_CREATE`, `STOCK_AI_ADVISORY_SESSION_V2_ENABLED`, `STOCK_AI_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER`, `STOCK_PROFILE_SYNC_ENABLED`, `STREAM_BLOCK_MS`, `STREAM_CONSUMER_BATCH`, `STREAM_CONSUMER_INTERVAL`, `STREAM_MAX_LEN`, `STREAM_MAX_LEN_HARD_CAP`, `STREAM_PENDING_RECLAIM_BATCH`, `STREAM_PENDING_RECLAIM_IDLE_MS`, `STREAM_REDIS_URL`, `STREAM_SNAPSHOT_TTL`, `STREAM_STALE_AFTER_SECONDS`, `SYSTEM_EMAIL_FALLBACK_ENABLED`, `SYSTEM_EMAIL_FALLBACK_FROM_EMAIL`, `SYSTEM_EMAIL_FALLBACK_FROM_NAME`, `SYSTEM_EMAIL_FALLBACK_HOST`, `SYSTEM_EMAIL_FALLBACK_PASSWORD`, `SYSTEM_EMAIL_FALLBACK_PORT`, `SYSTEM_EMAIL_FALLBACK_REPLY_TO`, `SYSTEM_EMAIL_FALLBACK_TIMEOUT_SECONDS`, `SYSTEM_EMAIL_FALLBACK_USERNAME`, `SYSTEM_EMAIL_FALLBACK_USE_SSL`, `SYSTEM_EMAIL_FALLBACK_USE_TLS`, `TEMPLATES`, `TICKER_CACHE_MISS_ALLOW_DEGRADED`, `TICKER_CACHE_MISS_STATUS_CODE`, `TICKER_FRESHNESS_SECONDS`, `TICKER_PREFETCH_BATCH_SIZE_COLD`, `TICKER_PREFETCH_BATCH_SIZE_HOT`, `TICKER_PREFETCH_BATCH_SIZE_WARM`, `TICKER_PREFETCH_COLD_INTERVAL_SECONDS`, `TICKER_PREFETCH_COLD_SHARDS`, `TICKER_PREFETCH_EMERGENCY_DISABLE_COLD`, `TICKER_PREFETCH_EMERGENCY_INTERVAL_MULTIPLIER`, `TICKER_PREFETCH_EMERGENCY_OVERRIDE_ENABLED`, `TICKER_PREFETCH_HOT_INTERVAL_SECONDS`, `TICKER_PREFETCH_HOT_LIMIT`, `TICKER_PREFETCH_HOT_SHARDS`, `TICKER_PREFETCH_SHARD_SCHEDULER_ENABLED`, `TICKER_PREFETCH_WARM_INTERVAL_SECONDS`, `TICKER_PREFETCH_WARM_LIMIT`, `TICKER_PREFETCH_WARM_SHARDS`, `TICKER_STALE_SERVE_SECONDS`, `TICKER_UNIVERSE_REFRESH_SECONDS`, `TICKER_UNIVERSE_SYMBOL_LIMIT`, `TICKER_UPSTREAM_HARD_CAP_PER_MINUTE`, `TICKER_UPSTREAM_SOFT_CAP_PER_MINUTE`, `TICKER_UPSTREAM_WARNING_CAP_PER_MINUTE`, `TIME_ZONE`, `USE_I18N`, `USE_TZ`, `USE_X_FORWARDED_HOST`, `USE_X_FORWARDED_PORT`, `VNBROKER_BOOTSTRAP_LOG_SUPPRESS_ENABLED`, `VNBROKER_CLIENT_CACHE_ENABLED`, `VNBROKER_CLIENT_CACHE_MAXSIZE`, `VNBROKER_CLIENT_CACHE_TTL_SECONDS`, `VNBROKER_PROVIDER_CACHE_ENABLED`, `VNBROKER_PROVIDER_CACHE_TTL_SECONDS`, `WATCHLIST_INDICATORS_ENABLED`, `WATCHLIST_SYNC_DAYS`, `WATCHLIST_SYNC_ENABLED`, `WATCHLIST_SYNC_MINUTES`, `WHALE_ADVISORY_COOLDOWN_SECONDS`, `WHALE_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER`, `WHALE_ALERT_DETECTION_ENABLED`, `WHALE_ALERT_DETECTION_INTERVAL_SECONDS`, `WHALE_SCORE_PROFILE`, `WSGI_APPLICATION`, `X_FRAME_OPTIONS`, `_CACHE_REDIS_URL`, `_OPENCORE_ENABLED`, `_REALTIME_ENABLED_FLAG`, `_core_apps`, `_secret_key_env`
-
-### `backend/config/urls.py`
-
-- Functions:
-  - `api_root`
-- Top-level variables:
-  - `urlpatterns`
-
-### `backend/config/wsgi.py`
-
-- Top-level variables:
-  - `application`
-
-### `backend/core_pat_auth.py`
-
-- Classes:
-  - `LegacyCorePATAuthentication` -> methods: `authenticate`, `authenticate_header`
-- Functions:
-  - `_hash_pat_secret`, `_issue_pat_for_user`, `_resolve_or_create_tenant_for_user`, `_resolve_user_from_pat`
-- Top-level variables:
-  - `User`, `_PAT_PREFIX`, `_PEPPER`, `_PREFIX_LEN`
-
-### `backend/create_test_users.py`
-
-- Top-level variables:
-  - `TEST_PASSWORD`, `config_pro`, `ent_free`, `ent_pro`, `free_plan`, `license_free`, `license_pro`, `lifecycle_pro`, `pro_plan`, `user_free`, `user_pro`
-
-### `backend/debug_dark_money.py`
-
-- Top-level variables:
-  - `cutoff`, `factory`, `raw_ticks`, `request`, `response`, `user`
-
-### `backend/fix_migrations.py`
-
-- No parseable top-level symbols found
-
-### `backend/fix_migrations_all.py`
-
-- No parseable top-level symbols found
-
-### `backend/manage.py`
-
-- Functions:
-  - `main`
-
-### `backend/nuke_migrations.py`
-
-- No parseable top-level symbols found
-
-### `backend/portfolio/__init__.py`
-
-- No parseable top-level symbols found
-
-### `backend/portfolio/adapters/__init__.py`
-
-- No parseable top-level symbols found
-
-### `backend/portfolio/adapters/cache_adapter.py`
-
-- Functions:
-  - `get_cache`, `is_rate_limited_error`, `is_vnbroker_rate_limited`, `mark_vnbroker_rate_limited`, `set_cache`, `vnbroker_rate_limit_cache_key`
-
-### `backend/portfolio/adapters/vnbroker_adapter.py`
-
-- Functions:
-  - `_apply_provider_quality_order`, `_attach_common_source_columns`, `_bootstrap_log_suppress_enabled`, `_build_stock_client`, `_client_cache_enabled`, `_client_cache_maxsize`, `_client_cache_ttl_seconds`, `_coerce_fundamental_snapshot_df`, `_coerce_insider_deals_df`, `_coerce_price_board_numeric_columns`, `_empty_schema_df`, `_ensure_quote_prices_canonical_thousand_vnd`, `_evict_vnbroker_cache_locked`, `_get_cached_stock_client`, `_get_gate`, `_get_runtime_settings`, `_get_vnbroker_provider`, `_import_vnbroker`, `_invalidate_stock_client_cache`, `_is_missing_data_key_error`, `_log_upstream_payload_warning`, `_normalize_intraday_dataframe`, `_normalize_period`, `_normalize_price_board_column`, `_normalize_price_board_dataframe`, `_normalize_source`, `_normalize_symbol`, `_now_epoch`, `_price_board_dataframe_is_parseable`, `_provider_cache_enabled`, `_provider_cache_ttl_seconds`, `_read_bool_env`, `_resolve_financial_ratio_sources`, `_resolve_float_env`, `_resolve_history_sources`, `_resolve_int_env`, `_resolve_intraday_sources`, `_resolve_listing_sources`, `_resolve_price_board_sources`, `_resolve_runtime_sources`, `_resolve_timeout`, `_run_with_timeout`, `_series_from_col`, `_to_dataframe`, `fetch_financial_ratio_dataframe`, `fetch_fundamental_snapshot_dataframe`, `fetch_heatmap_snapshot`, `fetch_history_dataframe`, `fetch_industry_benchmark_dataframe`, `fetch_industry_peers_dataframe`, `fetch_industry_rank_dataframe`, `fetch_insider_deals_dataframe`, `fetch_intraday_dataframe`, `fetch_listing_symbols_dataframe`, `fetch_price_board_dataframe`, `fetch_price_depth_dataframe`, `fetch_symbols_by_exchange_dataframe`, `fetch_symbols_by_group_series`, `fetch_symbols_by_industries_dataframe`, `read_stream_intraday_ticks`
-- Top-level variables:
-  - `_FUNDAMENTAL_SNAPSHOT_SCHEMA`, `_INSIDER_DEALS_SCHEMA`, `_KBS_FLAT_MAPPING`, `_PRICE_BOARD_FIELDS_BY_SECTION`, `_VNBROKER_CACHE_LOCK`, `_VNBROKER_GATE_BY_LIMIT`, `_VNBROKER_GATE_LOCK`, `_VNBROKER_PROVIDER_CACHE`, `_VNBROKER_STOCK_CLIENT_CACHE`, `logger`
-
-### `backend/portfolio/admin.py`
-
-- Classes:
-  - `AccountSnapshotAdmin`
-  - `AICommandCenterAuditLogAdmin` -> methods: `has_add_permission`, `has_change_permission`, `has_delete_permission`
-  - `DailyPriceAdmin` -> methods: `workspace_link`
-  - `DNSECredentialAdmin` -> methods: `api_key_configured_display`, `username_configured_display`
-  - `GlobalScreenerRuleAdmin`
-  - `IntradayTickAdmin`
-  - `LegalPageAdmin` -> methods: `activate_selected_legal_page`, `has_add_permission`, `has_change_permission`, `has_delete_permission`, `save_model`
-  - `MarketGroupSyncLogAdmin` -> methods: `duration_display`, `has_add_permission`, `has_change_permission`
-  - `OnboardingPlanPolicyAdmin` -> methods: `activate_selected_policy`, `save_model`
-  - `PlanAssignmentLogAdmin` -> methods: `has_add_permission`, `has_change_permission`
-  - `RuntimeVnbrokerConfigAdmin` -> methods: `has_add_permission`
-  - `ScreenerRuleAdmin`
-  - `ScreenerScheduleConfigAdmin`
-  - `SecuritiesGroupAdmin` -> methods: `has_add_permission`, `has_change_permission`, `has_delete_permission`, `has_view_permission`, `item_count`, `sync_shared_market_groups`, `sync_shared_market_groups_clear`
-  - `SecuritiesItemAdmin` -> methods: `has_add_permission`, `has_change_permission`, `has_delete_permission`, `has_view_permission`, `workspace_link`
-  - `SecuritiesItemInline` -> methods: `has_add_permission`, `workspace_link`
-  - `StockProfileAdmin` -> methods: `change_view`, `workspace_link`
-  - `StockProfileSyncLogAdmin` -> methods: `duration_display`, `has_add_permission`, `has_change_permission`
-  - `SubAccountAdmin`
-  - `SystemAISettingsAdmin` -> methods: `_build_admin_snapshot`, `api_key_status`, `effective_model_display`, `mark_as_active`, `reset_prefetch_time_policy_to_default`, `save_model`, `test_connection_for_selected`
-  - `SystemAISettingsAdminForm` -> methods: `__init__`, `clean_prefetch_runtime_settings_json`, `clean_prefetch_time_policy_json`, `save`
-  - `SystemAISettingsAuditLogAdmin` -> methods: `has_add_permission`, `has_change_permission`, `has_delete_permission`
-  - `SystemEmailAccountAdmin` -> methods: `get_urls`, `google_callback_view`, `google_client_secret_status`, `google_connect_view`, `google_refresh_token_status`, `google_revoke_view`, `mark_as_default`, `oauth_actions`, `password_status`, `send_test_email_to_selected_accounts`
-  - `SystemEmailAccountAdminForm` -> methods: `clean`, `save`
-  - `SystemSettingAdmin` -> methods: `description_short`, `has_add_permission`, `has_change_permission`, `has_delete_permission`, `has_view_permission`, `save_model`
-  - `TrackedSymbolAdmin` -> methods: `has_add_permission`
-  - `TransactionAdmin` -> methods: `total_value_display`
-  - `TransactionInline`
-  - `UserAlertHistoryAdmin` -> methods: `has_add_permission`, `has_change_permission`, `has_delete_permission`
-  - `UserConfigAdmin` -> methods: `change_view`, `get_urls`, `resend_verification_email_to_selected_users`, `resend_verification_view`, `save_model`, `verification_status`
-  - `WhaleAdvisoryAdmin` -> methods: `has_add_permission`, `has_view_permission`
-  - `WhaleConfigApprovalAdmin` -> methods: `has_add_permission`, `has_change_permission`, `has_delete_permission`, `has_view_permission`, `save_model`
-  - `WhaleConfigAuditLogAdmin` -> methods: `has_add_permission`, `has_change_permission`, `has_delete_permission`, `has_view_permission`
-  - `WhaleConfigDraftAdmin` -> methods: `get_readonly_fields`, `has_add_permission`, `has_change_permission`, `has_delete_permission`, `has_view_permission`, `save_model`, `submit_selected_drafts`
-  - `WhaleConfigRolloutAdmin` -> methods: `ack_progress`, `anomaly_signal`, `has_add_permission`, `has_change_permission`, `has_delete_permission`, `has_view_permission`, `propagation_signal`, `save_model`
-  - `WhaleConfigVersionAdmin` -> methods: `has_add_permission`, `has_change_permission`, `has_delete_permission`, `has_view_permission`, `latest_anomaly_signal`, `latest_rollout_signal`, `mark_as_active_version`, `mark_as_rolled_back`
-  - `WhaleConfigWorkerAckAdmin` -> methods: `ack_state`, `has_add_permission`, `has_change_permission`, `has_delete_permission`, `has_view_permission`
-- Functions:
-  - `_admin_market_group_sync_view`, `_admin_resend_latest_verification_view`, `_admin_stock_profile_sync_view`, `_admin_stock_profile_workspace_view`, `_build_candlestick_items`, `_build_mock_depth_levels`, `_build_sparkline_points`, `_duration_display`, `_fetch_live_workspace_data`, `_format_number`, `_format_pct`, `_format_vnd`, `_is_analyst`, `_is_supervisor`, `_log_whale_config_audit`, `_push_market_group_sync_messages`, `_push_stock_profile_sync_messages`, `_push_whale_config_preview_messages`, `_render_signal_badge`, `_resend_verification_for_user_config`, `_resolve_google_oauth_redirect_uri`, `_technical_bias_label`, `_vninvest_admin_get_urls`, `_vninvest_each_context`, `_vninvest_get_app_list`, `_workspace_url_for_symbol`
-- Top-level variables:
-  - `GOOGLE_OAUTH_REDIRECT_URI_SETTING`, `MAIL_GOOGLE_OAUTH_STATE_MAX_AGE_SECONDS`, `_original_admin_get_urls`, `_original_each_context`, `_original_get_app_list`
-
-### `backend/portfolio/ai_advisory_helpers.py`
-
-- Functions:
-  - `_build_dark_flow_context_for_prompt`, `_build_fundamental_context_for_prompt`, `_build_market_context_for_prompt`, `_build_ownership_context_for_prompt`, `_build_sector_context_for_prompt`, `_build_technical_context_for_prompt`, `_build_whale_context_for_prompt`, `_compute_bollinger_snapshot`, `_compute_macd_series`, `_compute_rsi_series`, `_extract_prompt_sources`, `_fetch_live_price_anchor`, `_fetch_news_context_for_advisory`, `_format_billion`, `_format_dt_short`, `_format_price_level`, `_market_session_label`, `_parse_prompt_config`, `_resolve_price_scale_factor`, `_safe_float`, `_sanitize_for_prompt`, `_sprint17_build_component_templates`, `_sprint17_compute_summary_from_components`, `_sprint17_enforce_summary_narrative_policy`, `_sprint17_extract_json_block`, `_sprint17_generate_component_templates_with_ai`, `_sprint17_generate_executive_synthesis_with_ai`, `_sprint17_normalize_ai_component_payload`, `_sprint17_serialize_stock_advisory_session`, `_sprint17_suggested_action_from_status`, `_sprint29_get_enabled_indicators`, `_sprint29_pick_primary_indicator`, `_sprint29_render_chart_context_block`
-- Top-level variables:
-  - `VALID_TECHNICAL_INDICATORS`, `_PROMPT_CONFIG_DEFAULTS`, `_PROMPT_CONFIG_REGISTRY`, `_PROMPT_INJECT_PATTERNS`, `_SAFE_INDICATOR_RE`, `_SAFE_SYMBOL_RE`, `_SAFE_TIMEFRAME_RE`, `logger`
-
-### `backend/portfolio/ai_context.py`
-
-- Functions:
-  - `_build_side_stats`, `_empty_side_stats`, `_to_float`, `build_symbol_ai_context`, `render_concise_context_for_prompt`, `render_context_for_prompt`
-- Top-level variables:
-  - `_core_backend_src`
-
-### `backend/portfolio/ai_options.py`
-
-- Functions:
-  - `_entry_supports`, `build_provider_model_map`, `get_advisory_provider_failover_chain`, `get_default_model`, `get_model_entries`, `get_model_entry`, `get_models_for_capability`, `is_model_allowed_for_capability`, `is_valid_model`, `is_valid_provider`
-- Top-level variables:
-  - `ADVISORY_CAPABILITY`, `ADVISORY_PROVIDER_FAILOVER_CHAIN_DEFAULTS`, `AVAILABLE_MODELS`, `DEFAULT_MODELS`, `MODEL_CATALOG`, `PROVIDER_CHOICES`
-
-### `backend/portfolio/ai_prompt_config_ssot.py`
-
-- Functions:
-  - `_is_initialized_prompt_config`, `ensure_ai_prompt_config_ssot`, `mirror_ai_prompt_config_to_legacy`
-
-### `backend/portfolio/ai_runtime_config.py`
-
-- Functions:
-  - `_build_not_ready_payload`, `_normalize_provider`, `_resolve_api_key`, `resolve_ai_runtime_config`
-
-### `backend/portfolio/ai_service.py`
-
-- Functions:
-  - `_build_signal_prompt_intro`, `_call_provider_and_split`, `_claude_completion`, `_language_instruction`, `_openai_compatible_completion`, `_resolve_output_language`, `_resolve_provider_api_key`, `_split_digest_sections`, `generate_advisory_concise`, `generate_portfolio_digest`, `generate_whale_text`, `test_ai_connection`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/analytics.py`
-
-- Functions:
-  - `_wavg_cost_for_symbol`, `build_risk_metrics`, `build_summary`, `compute_allocation`, `compute_allocation_by_sector`, `compute_alpha_beta`, `compute_daily_returns`, `compute_holdings`, `compute_max_drawdown`, `compute_nav_series`, `compute_sharpe`, `compute_sortino`, `compute_twr`, `compute_volatility`, `load_prices_df`, `load_transactions_df`
-- Top-level variables:
-  - `BUY`, `DIVIDEND`, `FLOAT_ROUND`, `SELL`, `TRADING_DAYS_PER_YEAR`, `VNINDEX_SYMBOL`, `logger`
-
-### `backend/portfolio/apps.py`
-
-- Classes:
-  - `PortfolioConfig` -> methods: `ready`
-
-### `backend/portfolio/auth_views.py`
-
-- Classes:
-  - `CapabilitySnapshotView` -> methods: `get`
-  - `EmailDeliveryFailed`
-  - `GoogleOAuthSerializer`
-  - `GoogleOAuthView` -> methods: `_generate_username`, `post`
-  - `PasswordResetConfirmSerializer` -> methods: `validate`
-  - `PasswordResetConfirmView` -> methods: `post`
-  - `PasswordResetRequestSerializer`
-  - `PasswordResetRequestView` -> methods: `post`
-  - `PATLoginView` -> methods: `post`
-  - `PATTokenRefreshView` -> methods: `post`
-  - `RegisterSerializer` -> methods: `create`, `validate`, `validate_email`, `validate_username`
-  - `RegisterView` -> methods: `create`
-  - `ResendVerificationEmailView` -> methods: `post`
-  - `ResendVerificationSerializer`
-  - `UserMeView` -> methods: `get`
-  - `VerifyEmailSerializer`
-  - `VerifyEmailView` -> methods: `post`
-- Functions:
-  - `_build_current_capability_snapshot`, `_request_ip`, `_resolve_auth_bootstrap_state`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/authentication_partner.py`
-
-- Classes:
-  - `CorePartnerPATAuthentication` -> methods: `authenticate`, `authenticate_header`
-
-### `backend/portfolio/baseline_cache_service.py`
-
-- Classes:
-  - `BaselineCacheService` -> methods: `__init__`, `fetch_symbol_baseline`, `get_adv_relative`, `get_cached_baseline`, `get_or_refresh_baseline`, `get_session_percentile`, `redis`, `refresh_symbol_baseline`, `set_cached_baseline`
-- Functions:
-  - `_get_redis_client`, `enrich_campaign_with_baseline`, `get_baseline_cache_service`
-- Top-level variables:
-  - `_BASELINE_CACHE_TTL`, `_BASELINE_ENABLED`, `_KEY_PREFIX`, `_service`, `logger`
-
-### `backend/portfolio/baseline_service.py`
-
-- Classes:
-  - `BaselineService` -> methods: `__init__`, `calculate_abnormality_score`, `get_session_percentile`, `get_symbol_baseline`, `get_whale_symbol_summary`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/consumers.py`
-
-- Classes:
-  - `RealtimeConsumer` -> methods: `_authenticate_user`, `_build_auth_snapshot`, `_cache_get`, `_cache_set`, `_get_query_token`, `_get_user_plan`, `_resolve_pat_user`, `_resolve_user_plan_for_connection`, `_subscribe_symbols`, `_unsubscribe_symbols`, `connect`, `dark_flow_alert`, `disconnect`, `heartbeat`, `market_discovery_event`, `news_digest`, `receive_json`, `screener_matched`, `ticker_update`, `whale_advisory`, `whale_alert`
-  - `WSAuthPrincipal`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/coobservation_service.py`
-
-- Classes:
-  - `CoObservationService` -> methods: `__init__`, `_apply_sort`, `_assess_conviction`, `_build_investigation_timeline`, `_build_timeline_groups`, `_correlate_campaigns_and_signals`, `_enrich_campaigns_with_correlations`, `_enrich_signals_with_correlations`, `_filter_campaigns_by_time`, `_get_dark_signals`, `_max_corr`, `_normalize_campaigns_for_investigation`, `_normalize_signals_for_investigation`, `_reverse_correlations`, `_to_dt`, `get_symbol_investigation`
-  - `CorrelationOptimizer` -> methods: `calculate_confidence`
-  - `TimeWindowResolver` -> methods: `get_bounds`
-- Functions:
-  - `get_symbol_investigation`
-
-### `backend/portfolio/domain_constants.py`
-
-- Functions:
-  - `classify_whale_size_class`, `resolve_user_whale_threshold_vnd`
-- Top-level variables:
-  - `ORDER_FLOW_BUCKET_LT_200M_MAX_VND`, `ORDER_FLOW_BUCKET_LT_2B_MAX_VND`, `ORDER_FLOW_BUCKET_LT_500M_MAX_VND`, `ORDER_FLOW_BUCKET_LT_50M_MAX_VND`, `ORDER_FLOW_LARGE_ORDER_THRESHOLD_VND`, `ORDER_FLOW_PRICE_LOCK_THRESHOLD_PCT`, `ORDER_FLOW_SMALL_ORDER_THRESHOLD_VND`, `SHARK_THRESHOLD_VND`, `VND_PER_MILLION`, `WHALE_AGGREGATE_VNBROKER_MAX_SYMBOLS_DEFAULT`, `WHALE_ALERT_DEFAULT_THRESHOLD_MILLION`, `WHALE_ALERT_DEFAULT_THRESHOLD_VND`, `WHALE_CONFIG_VERSION`, `WHALE_SIZE_CLASS_SHARK_MIN_VND`, `WHALE_SIZE_CLASS_WHALE_MIN_VND`, `WHALE_THRESHOLD_VND`
-
-### `backend/portfolio/email_verification.py`
-
-- Functions:
-  - `_verification_expiry_label`, `build_email_verification_url`, `generate_email_verification_token`, `resolve_email_verification_token`, `send_verification_email`
-- Top-level variables:
-  - `EMAIL_VERIFICATION_SALT`
-
-### `backend/portfolio/encryption_utils.py`
-
-- Functions:
-  - `_build_fernet`, `decrypt_text`, `encrypt_text`, `hash_with_pepper`
-
-### `backend/portfolio/exceptions.py`
-
-- Classes:
-  - `BusinessLogicRuleException`
-  - `ExternalSystemException`
-  - `MarketDataValidationException`
-  - `PortfolioAppException` -> methods: `__init__`
-
-### `backend/portfolio/global_signal_policy_helpers.py`
-
-- Functions:
-  - `_coerce_bool`, `_coerce_int`, `_coerce_positive_id_list`, `_coerce_retention_severity`, `_coerce_symbol_list`, `_read_json_setting`, `_write_json_setting`, `build_global_signal_control_center_ownership`, `coerce_global_signal_retention_policy`, `coerce_global_signal_services_config`, `coerce_global_signal_universe_policy`, `default_global_signal_retention_policy`, `default_global_signal_services_config`, `default_global_signal_universe_policy`, `get_global_signal_retention_policy`, `get_global_signal_services_config`, `get_global_signal_universe_policy`, `invalidate_global_signal_universe_cache`, `set_global_signal_retention_policy`, `set_global_signal_services_config`, `set_global_signal_universe_policy`
-- Top-level variables:
-  - `GLOBAL_SIGNAL_RETENTION_POLICY_KEY`, `GLOBAL_SIGNAL_SERVICES_CONFIG_KEY`, `GLOBAL_SIGNAL_UNIVERSE_POLICY_KEY`, `logger`
-
-### `backend/portfolio/gmail_service.py`
-
-- Functions:
-  - `_build_raw_message`, `send_gmail_api_message`
-
-### `backend/portfolio/google_oauth_service.py`
-
-- Functions:
-  - `build_google_oauth_authorize_url`, `exchange_google_oauth_code`, `fetch_google_user_email`, `refresh_google_access_token`
-- Top-level variables:
-  - `GOOGLE_OAUTH_AUTHORIZE_URL`, `GOOGLE_OAUTH_TOKEN_URL`, `GOOGLE_OAUTH_USERINFO_URL`
-
-### `backend/portfolio/legal_views.py`
-
-- Classes:
-  - `LegalPagePublicView` -> methods: `get`
-- Top-level variables:
-  - `DEFAULT_LOCALE_FALLBACK`, `logger`
-
-### `backend/portfolio/mail_service.py`
-
-- Functions:
-  - `_build_env_fallback_email_account`, `_humanize_gmail_error`, `build_email_connection`, `build_sender_address`, `get_active_email_account`, `send_system_email`, `send_test_email`
-
-### `backend/portfolio/management/__init__.py`
-
-- No parseable top-level symbols found
-
-### `backend/portfolio/management/commands/__init__.py`
-
-- No parseable top-level symbols found
-
-### `backend/portfolio/management/commands/backfill_intraday_tick_side.py`
-
-- Classes:
-  - `Command` -> methods: `_get_previous_close`, `_normalize_side`, `add_arguments`, `handle`
-
-### `backend/portfolio/management/commands/backfill_starter_portfolios.py`
-
-- Classes:
-  - `Command` -> methods: `add_arguments`, `handle`
-- Top-level variables:
-  - `User`
-
-### `backend/portfolio/management/commands/create_default_subaccount.py`
-
-- Classes:
-  - `Command` -> methods: `handle`
-
-### `backend/portfolio/management/commands/finalize_price_unit_migration.py`
-
-- Classes:
-  - `Command` -> methods: `add_arguments`, `handle`
-
-### `backend/portfolio/management/commands/generate_advisory_baseline_report.py`
-
-- Classes:
-  - `Command` -> methods: `add_arguments`, `handle`
-
-### `backend/portfolio/management/commands/initialize_dpi_plans.py`
-
-- Classes:
-  - `Command` -> methods: `handle`
-
-### `backend/portfolio/management/commands/normalize_daily_prices.py`
-
-- Classes:
-  - `Command` -> methods: `add_arguments`, `handle`
-- Top-level variables:
-  - `DIVISOR`, `PRICE_THRESHOLD`
-
-### `backend/portfolio/management/commands/normalize_intraday_tick_price_unit.py`
-
-- Classes:
-  - `Command` -> methods: `add_arguments`, `handle`
-
-### `backend/portfolio/management/commands/prune_system_ai_audit_logs.py`
-
-- Classes:
-  - `Command` -> methods: `add_arguments`, `handle`
-
-### `backend/portfolio/management/commands/realtime_tick.py`
-
-- Classes:
-  - `Command` -> methods: `add_arguments`, `handle`
-
-### `backend/portfolio/management/commands/replay_advisory_trace.py`
-
-- Classes:
-  - `Command` -> methods: `add_arguments`, `handle`
-- Functions:
-  - `_matches_trace`, `_safe_int`
-
-### `backend/portfolio/management/commands/run_stream_consumers.py`
-
-- Classes:
-  - `Command` -> methods: `add_arguments`, `handle`
-- Functions:
-  - `_handle_sigterm`
-- Top-level variables:
-  - `_running`, `logger`
-
-### `backend/portfolio/management/commands/seed_comprehensive_demo.py`
-
-- Classes:
-  - `Command` -> methods: `_create_ai_advisory_components`, `_create_daily_prices`, `_create_intraday_ticks`, `_create_order_flow_signals`, `_create_price_alerts`, `_create_screener_rules`, `_create_stock_profiles`, `_create_user_portfolios`, `_create_users`, `_create_watchlists_and_trackers`, `_create_whale_advisories`, `_reset_demo_data`, `add_arguments`, `handle`
-- Top-level variables:
-  - `AI_DESCRIPTIONS`, `BASE_PRICES`, `ORDER_FLOW_SIGNALS`, `SUGGESTED_ACTIONS`, `VN30_SYMBOLS`, `logger`
-
-### `backend/portfolio/management/commands/seed_demo_data.py`
-
-- Classes:
-  - `Command` -> methods: `_resolve_demo_tick_datetimes`, `add_arguments`, `handle`
-
-### `backend/portfolio/management/commands/seed_environment.py`
-
-- Classes:
-  - `Command` -> methods: `_build_command_plan`, `_log_execution`, `_resolve_actor`, `add_arguments`, `handle`
-- Top-level variables:
-  - `User`
-
-### `backend/portfolio/management/commands/seed_securities_groups.py`
-
-- Classes:
-  - `Command` -> methods: `add_arguments`, `handle`
-
-### `backend/portfolio/management/commands/seed_user.py`
-
-- Classes:
-  - `Command` -> methods: `handle`
-
-### `backend/portfolio/management/commands/seed_watchlist.py`
-
-- Classes:
-  - `Command` -> methods: `_apply`, `_print_summary`, `_seed_manual`, `add_arguments`, `handle`
-
-### `backend/portfolio/management/commands/seed_whale_mission_control.py`
-
-- Classes:
-  - `Command` -> methods: `_ensure_stock_profiles`, `_ensure_user`, `_reset_seeded_data`, `_seed_demo_data`, `add_arguments`, `handle`
-
-### `backend/portfolio/management/commands/set_user_ai_token.py`
-
-- Classes:
-  - `Command` -> methods: `add_arguments`, `handle`
-
-### `backend/portfolio/management/commands/sync_prices.py`
-
-- Classes:
-  - `Command` -> methods: `_print_result`, `add_arguments`, `handle`
-
-### `backend/portfolio/management/commands/sync_stockprofile.py`
-
-- Classes:
-  - `Command` -> methods: `add_arguments`, `handle`
-
-### `backend/portfolio/management/commands/sync_watch_assets.py`
-
-- Classes:
-  - `Command` -> methods: `add_arguments`, `handle`
-
-### `backend/portfolio/management/commands/verify_demo_data.py`
-
-- Functions:
-  - `format_number`, `print_section`
-- Top-level variables:
-  - `active`, `advisories`, `alerts`, `buy_count`, `components`, `daily_prices`, `earliest`, `inactive`, `latest`, `portfolios`, `screeners`, `sell_count`, `signal_types`, `signals`, `stocks`, `ticks`, `top_symbols_qs`, `total_records`, `tracked`, `users`, `watchlists`
-
-### `backend/portfolio/market_calendar.py`
-
-- Functions:
-  - `is_market_closed_day`, `normalize_market_holiday_dates`, `previous_trading_day`, `resolve_default_market_holiday_dates`, `resolve_market_holiday_dates`, `resolve_market_local_date`, `resolve_market_local_now`, `resolve_market_phase`, `resolve_market_timezone`, `resolve_market_timezone_name`
-
-### `backend/portfolio/market_data_service.py`
-
-- Classes:
-  - `MarketDataService` -> methods: `_allow_vnbroker_aggregate_fallback`, `_apply_campaign_cursor`, `_build_aggregate_event_payload`, `_build_aggregate_event_payload_from_record`, `_build_aggregate_record_response`, `_build_aggregate_response`, `_build_bar_row`, `_build_campaign_next_cursor`, `_build_canonical_whale_event_records`, `_build_empty_aggregate_response`, `_build_empty_whale_feed_response`, `_build_intraday_backoff_response`, `_build_intraday_db_fallback`, `_build_intraday_stale_payload`, `_build_market_top_tier_whale_unified`, `_build_next_cursor_from_db_row`, `_build_next_cursor_from_record`, `_build_price_status`, `_build_stock_workspace_overview_base`, `_build_stream_aggregate_records`, `_build_stream_trades`, `_build_tick_timestamp`, `_build_unified_alerts_next_cursor`, `_build_vnbroker_aggregate_records`, `_build_whale_order_payload`, `_classify_signal_size`, `_compute_rsi`, `_compute_stock_workspace_technical`, `_compute_unified_priority_rank`, `_dataframe_has_threshold_hits`, `_datetime_to_unix_ms`, `_decode_campaign_cursor`, `_decode_unified_alerts_cursor`, `_decode_whale_feed_cursor`, `_decorate_intraday_response_contract`, `_encode_whale_feed_cursor`, `_fetch_bars_for_range`, `_format_time`, `_get_exchange_price_band`, `_get_market_clock_context`, `_get_user_symbol_threshold_overrides_vnd`, `_get_user_whale_threshold_vnd`, `_get_user_whale_threshold_with_source_vnd`, `_group_events_into_campaigns`, `_has_data_before`, `_intraday_last_good_cache_key`, `_intraday_vn30_cache_key`, `_is_event_timestamp_in_window`, `_is_tick_row_in_window`, `_is_vn30_symbol`, `_log_mdsu`, `_normalize_aggregate_event_records`, `_normalize_chart_timeframe`, `_normalize_chart_timestamp`, `_normalize_historical_quote_price`, `_normalize_intraday_price_vnd`, `_normalize_quote_price`, `_normalize_side`, `_parse_aggregate_window`, `_parse_boolean_flag`, `_parse_campaign_limit`, `_parse_campaign_sort`, `_parse_cursor_datetime`, `_parse_cursor_matched_value`, `_parse_intraday_event_datetime`, `_parse_limit`, `_parse_sort`, `_parse_unified_severity_min`, `_price_map_from_ticker_cache`, `_record_source_observability`, `_redis_key`, `_resolve_campaign_gap_minutes`, `_resolve_chart_lookback_days`, `_resolve_intraday_dataframe_source_event_at`, `_resolve_intraday_stale_threshold_seconds`, `_resolve_intraday_stream_source_event_at`, `_resolve_latest_session_close`, `_resolve_quote_price_scale`, `_resolve_whale_feed_symbols`, `_row_float`, `_safe_float`, `_safe_int`, `_safe_parse_unified_alert_ts`, `_safe_round`, `_sanitize_unified_alert_item`, `_select_preferred_intraday_fallback`, `_technical_bias_meta`, `_to_float`, `_to_intraday_event_iso`, `_unified_severity_rank`, `_window_start_datetime`, `get_depth_chart`, `get_financial_metrics`, `get_historical_indicators`, `get_intraday_matched`, `get_latest_snapshot`, `get_ohlcv_bars`, `get_ohlcv_batch`, `get_price_board`, `get_realtime_ticker`, `get_realtime_tickers`, `get_rvol`, `get_sector_breadth`, `get_stock_workspace_chart`, `get_stock_workspace_overview`, `get_unified_alerts`, `get_universe_symbols`, `get_whale_campaigns`, `get_whale_feed`, `get_whale_feed_aggregate`, `normalize_page_size`, `normalize_symbol`
-- Top-level variables:
-  - `ONDEMAND_TICKER_LOCK_PREFIX`, `PREFETCH_ENQUEUE_LOCK_KEY`, `_OHLCV_BAR_LIMIT_DEFAULT`, `_OHLCV_BAR_LIMIT_MAX`, `logger`, `market_data_service`
-
-### `backend/portfolio/market_views.py`
-
-- Classes:
-  - `BaseMarketDataView` -> methods: `handle_exception_response`, `validate_query`
-  - `BatchRealtimeTickerView` -> methods: `get`
-  - `DepthChartView` -> methods: `get`
-  - `FinancialMetricsView` -> methods: `get`
-  - `IntradayMatchedView` -> methods: `get`
-  - `PriceBoardView` -> methods: `get`
-  - `RealtimeTickerView` -> methods: `get`
-  - `RVOLView` -> methods: `get`
-  - `SectorBreadthView` -> methods: `get`
-  - `StockOHLCVBarsView` -> methods: `_machine_readable_error`, `get`
-  - `StockWorkspaceChartView` -> methods: `get`
-  - `StockWorkspaceOverviewView` -> methods: `get`
-  - `UnifiedAlertsView` -> methods: `get`
-  - `WhaleCampaignsView` -> methods: `get`
-  - `WhaleFeedAggregateView` -> methods: `get`
-  - `WhaleFeedView` -> methods: `get`
-
-### `backend/portfolio/middleware.py`
-
-- Classes:
-  - `MarketObservabilityMiddleware` -> methods: `__call__`, `__init__`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/models.py`
-
-- Classes:
-  - `AccountSnapshot` -> methods: `__str__`, `nav`
-  - `AdvisoryAggregateAuditLog` -> methods: `__str__`
-  - `AdvisoryAggregateSnapshot` -> methods: `__str__`
-  - `AdvisoryTokenLog` -> methods: `__str__`
-  - `AIAdvisoryComponentRecord` -> methods: `__str__`
-  - `AIAdvisoryExecutiveSummary` -> methods: `__str__`
-  - `AICommandCenterAuditLog` -> methods: `__str__`
-  - `AICommandCenterConfig` -> methods: `__str__`, `ai_api_key_configured`, `clean`, `get_ai_api_key`, `get_effective_ai_model`, `set_ai_api_key`
-  - `CorePATCredential` -> methods: `__str__`, `clean`, `effective_status`, `issue_for_service_account`, `resolve_from_raw_secret`, `revoke`, `rotate`, `save`, `tenant_id`
-  - `CoreServiceAccount` -> methods: `__str__`, `clean`, `save`, `tenant_id`
-  - `CrawlAuditLog` -> methods: `__str__`
-  - `CrawlJob` -> methods: `__str__`
-  - `CrawlRun` -> methods: `__str__`
-  - `CrawlSchedule` -> methods: `__str__`
-  - `DailyPrice` -> methods: `__str__`
-  - `DNSECredential` -> methods: `__str__`, `get_password`, `get_username`, `set_password`, `set_username`
-  - `IntradayTick` -> methods: `__str__`
-  - `LegalPage` -> methods: `__str__`
-  - `MarketGroupSyncLog` -> methods: `__str__`
-  - `MoneyFlowForensicWindow` -> methods: `__str__`
-  - `NewsSourceWeight` -> methods: `__str__`
-  - `OnboardingPlanPolicy` -> methods: `__str__`, `clean`
-  - `OrderFlowSignal` -> methods: `__str__`
-  - `PlanAssignmentLog` -> methods: `__str__`
-  - `Portfolio` -> methods: `__str__`
-  - `PortfolioNewsDigest` -> methods: `__str__`
-  - `RuntimeVnbrokerConfig` -> methods: `__str__`, `append_changelog`, `clean`, `default_fallback_sources`, `default_source_config`, `default_timeout_config`, `get_or_create_singleton`, `to_runtime_dict`
-  - `ScreenerRule` -> methods: `__str__`
-  - `SecuritiesGroup` -> methods: `__str__`
-  - `SecuritiesItem` -> methods: `__str__`
-  - `SeedExecutionLog` -> methods: `__str__`
-  - `SentimentLog` -> methods: `__str__`
-  - `SignalServiceRun` -> methods: `__str__`
-  - `SignalVerification` -> methods: `__str__`
-  - `StockProfile` -> methods: `__str__`
-  - `StockProfileSyncLog` -> methods: `__str__`
-  - `SubAccount` -> methods: `__str__`
-  - `SystemAISettings` -> methods: `__str__`, `ai_api_key_configured`, `clean`, `get_active`, `get_ai_api_key`, `get_effective_ai_model`, `save`, `set_ai_api_key`
-  - `SystemAISettingsAuditLog` -> methods: `__str__`
-  - `SystemEmailAccount` -> methods: `__str__`, `clean`, `clear_google_refresh_token`, `get_google_client_secret`, `get_google_refresh_token`, `get_smtp_password`, `has_google_refresh_token`, `save`, `set_google_client_secret`, `set_google_refresh_token`, `set_smtp_password`
-  - `SystemSetting` -> methods: `__str__`
-  - `TelegramProfile` -> methods: `__str__`, `is_muted`
-  - `TickerSessionClose` -> methods: `__str__`
-  - `TrackedSymbol` -> methods: `__str__`
-  - `Transaction` -> methods: `__str__`, `total_value`
-  - `UserConfig` -> methods: `__str__`, `ai_api_key_configured`, `get_ai_api_key`, `get_effective_ai_model`, `set_ai_api_key`
-  - `UserPlanLifecycle` -> methods: `__str__`
-  - `WhaleAdvisory` -> methods: `__str__`
-  - `WhaleAlertEvent` -> methods: `__str__`
-  - `WhaleConfigApproval` -> methods: `__str__`, `clean`, `save`
-  - `WhaleConfigAuditLog` -> methods: `__str__`
-  - `WhaleConfigDraft` -> methods: `__str__`
-  - `WhaleConfigRollout` -> methods: `__str__`
-  - `WhaleConfigVersion` -> methods: `__str__`
-  - `WhaleConfigWorkerAck` -> methods: `__str__`
-- Functions:
-  - `_build_pat_secret`, `_extract_pat_prefix`, `_generate_public_id`, `_hash_pat_secret`
-- Top-level variables:
-  - `SecuritiesGroupAlias`, `SecuritiesItemAlias`
-
-### `backend/portfolio/models_alert_history.py`
-
-- Classes:
-  - `UserAlertHistory` -> methods: `__str__`
-
-### `backend/portfolio/models_screener_admin.py`
-
-- Classes:
-  - `GlobalScreenerRule` -> methods: `__str__`
-  - `ScreenerScheduleConfig` -> methods: `__str__`
-
-### `backend/portfolio/observability.py`
-
-- Functions:
-  - `_build_intraday_freshness_summary_from_counters`, `_build_whale_pipeline_health_summary_from_counters`, `_coerce_freshness_seconds`, `_ensure_http_endpoint`, `_latency_window_size`, `_metrics_enabled`, `_percentile`, `advisory_phase_timer`, `end_advisory_phase`, `end_advisory_session`, `generate_advisory_baseline_report`, `get_market_observability_snapshot`, `get_whale_pipeline_health_summary`, `record_advisory_actionability`, `record_advisory_component`, `record_advisory_confidence`, `record_advisory_error_recovery`, `record_advisory_merge_observation`, `record_advisory_token_usage`, `record_ai_chart_context_observation`, `record_intraday_freshness_observation`, `record_market_external_timeout`, `record_market_fallback`, `record_market_http_observation`, `record_symbol_engagement_event`, `record_whale_dedup_observation`, `record_whale_event_observation`, `reset_advisory_session`, `reset_market_observability`, `start_advisory_phase`, `start_advisory_session`
-- Top-level variables:
-  - `_ADVISORY_MERGE_STATS`, `_ADVISORY_SESSION_METRICS`, `_AI_CHART_CONTEXT_STATS`, `_FALLBACK_COUNTS`, `_HTTP_STATS`, `_INTRADAY_FRESHNESS_STATS`, `_LOCK`, `_STARTED_AT_EPOCH`, `_SYMBOL_ENGAGEMENT_STATS`, `_TIMEOUT_COUNTS`, `_WHALE_PIPELINE_STATS`, `_advisory_logger`
-
-### `backend/portfolio/onboarding_trial_service.py`
-
-- Classes:
-  - `TrialApplyResult`
-- Functions:
-  - `_create_plan_assignment_log`, `apply_onboarding_trial_for_new_user`, `get_active_onboarding_policy`, `process_expired_onboarding_trials`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/openclaw_client.py`
-
-- Functions:
-  - `_call`, `_language_instruction`, `generate_whale_concise`, `generate_whale_deep`, `generate_whale_summary`
-- Top-level variables:
-  - `_API_KEY`, `_BASE_URL`, `_DISCLAIMER`, `_MODEL`, `logger`
-
-### `backend/portfolio/opencore_admin.py`
-
-- Classes:
-  - `DPIAnalyticsSnapshotAdmin`
-  - `DPIAPICallLogAdmin`
-  - `DPIAuditLogAdmin`
-  - `DPIEntitlementAdmin`
-  - `DPIFeatureUsageAdmin`
-  - `DPIInvoiceAdmin` -> methods: `status_badge`
-  - `DPILicenseAdmin` -> methods: `status_badge`
-  - `DPIPaymentAdmin` -> methods: `status_badge`
-  - `DPIPlanAdmin`
-  - `DPIQuotaTrackerAdmin` -> methods: `quota_percentage`
-  - `DPIRevenuePlanAdmin`
-  - `DPISubscriptionAdmin` -> methods: `is_active_display`
-  - `DPIUsageMetricsAdmin`
-
-### `backend/portfolio/opencore_analytics.py`
-
-- Classes:
-  - `DPIAnalyticsSnapshot` -> methods: `__str__`, `cache_hit_rate`
-  - `DPIAPICallLog` -> methods: `__str__`, `log_call`
-  - `DPIFeatureUsage` -> methods: `__str__`, `increment_usage`
-  - `DPIQuotaTracker` -> methods: `__str__`, `add_quota_usage`, `get_or_create_current`, `is_within_quota`
-- Functions:
-  - `get_monthly_usage_summary`, `track_api_call`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/opencore_api.py`
-
-- Classes:
-  - `DPIAuditLogSerializer`
-  - `DPIBillingViewSet` -> methods: `current_bill`, `invoices`, `subscription`
-  - `DPIInvoiceSerializer`
-  - `DPILicenseSerializer` -> methods: `get_available_features`, `get_days_until_expiry`
-  - `DPILicenseViewSet` -> methods: `available_plans`, `get_object`, `get_queryset`, `my_license`, `status`
-  - `DPIPlanSerializer` -> methods: `get_features`
-  - `DPIPremiumIndicatorsViewSet` -> methods: `available`, `can_use`
-  - `DPIQuotaTrackerSerializer` -> methods: `get_is_warning`, `get_quota_percentage`
-  - `DPIUsageMetricsSerializer`
-  - `DPIUsageViewSet` -> methods: `audit_log`, `quota`, `summary`, `top_features`
-- Functions:
-  - `require_feature`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/opencore_celery_tasks.py`
-
-- Functions:
-  - `check_overquota_users`, `cleanup_old_audit_logs`, `create_analytics_snapshots`, `generate_monthly_invoices`, `reset_monthly_quotas`, `send_license_warning_email`, `send_quota_exceeded_email`, `send_quota_warning_email`, `sync_all_dpi_licenses`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/opencore_dpi.py`
-
-- Classes:
-  - `DPIAuditLog` -> methods: `__str__`
-  - `DPIEntitlement` -> methods: `__str__`, `can_use`, `increment_usage`
-  - `DPILicense` -> methods: `__str__`, `can_use_feature`, `days_until_expiry`, `is_valid`
-  - `DPIPlan` -> methods: `__str__`, `get_features`, `has_feature`
-  - `DPIUsageMetrics` -> methods: `__str__`, `reset_monthly`
-- Functions:
-  - `check_feature_access`, `get_or_create_default_license`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/opencore_premium.py`
-
-- Classes:
-  - `PremiumFeatureGate` -> methods: `_get_user_plan`, `can_calculate_indicator`, `can_use_feature`, `get_api_weight`, `get_available_indicators`, `get_indicator`, `mask_symbol`
-  - `PremiumIndicator`
-- Functions:
-  - `get_plan_features`
-- Top-level variables:
-  - `ADVANCED_FEATURES_BY_PLAN`, `PREMIUM_INDICATORS`
-
-### `backend/portfolio/opencore_revenue.py`
-
-- Classes:
-  - `DPIInvoice` -> methods: `__str__`, `mark_paid`
-  - `DPIPayment` -> methods: `__str__`, `mark_completed`
-  - `DPIRevenuePlan` -> methods: `__str__`, `calculate_monthly_cost`
-  - `DPISubscription` -> methods: `__str__`, `days_until_renewal`, `is_active`
-- Functions:
-  - `calculate_monthly_bill`, `generate_monthly_invoice`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/opencore_signals.py`
-
-- Functions:
-  - `create_dpi_license_for_new_user`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/order_flow.py`
-
-- Functions:
-  - `_bucket_index`, `_build_dark_flow_anomaly_markers`, `_build_dark_flow_bucket_facts`, `_build_dark_flow_session_summary`, `_fetch_ticks`, `_now_time`, `_seconds_to_time`, `_time_to_seconds`, `_today`, `compute_cvd_series`, `compute_size_distribution`, `compute_tick_rate`, `detect_absorption`, `detect_dark_flow`, `detect_iceberg_clustering`
-- Top-level variables:
-  - `DEFAULT_BUCKET_SECONDS`, `DEFAULT_WINDOW_MINUTES`, `LARGE_ORDER_THRESHOLD`, `PRICE_LOCK_THRESHOLD_PCT`, `SMALL_ORDER_THRESHOLD`, `TICK_RATE_CACHE_TTL`
-
-### `backend/portfolio/order_flow_history.py`
-
-- Functions:
-  - `_detect_dark_flow_from_ticks`, `compute_dark_flow_for_trade_date`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/partner_tenant_context.py`
-
-- Classes:
-  - `PartnerTenantContext`
-- Functions:
-  - `_normalize_tenant_code`, `resolve_partner_tenant_context`
-
-### `backend/portfolio/password_reset.py`
-
-- Functions:
-  - `_password_reset_expiry_label`, `build_password_reset_url`, `generate_password_reset_token`, `resolve_password_reset_token`, `send_password_reset_email`
-- Top-level variables:
-  - `PASSWORD_RESET_SALT`
-
-### `backend/portfolio/permissions.py`
-
-- Classes:
-  - `IsAdminPlan` -> methods: `has_permission`
-  - `IsBasicPlan` -> methods: `has_permission`
-  - `IsPremiumPlan` -> methods: `has_permission`
-  - `IsProPlan` -> methods: `has_permission`
-- Functions:
-  - `_get_plan`, `_is_operator_user`, `_resolve_quota_caps`, `_resolve_tier`, `_resolve_trial_state`, `build_abilities`, `has_plan`, `resolve_user_entitlements`
-- Top-level variables:
-  - `ADMIN_CONSOLE_ABILITIES`, `DEFAULT_QUOTA_CAPS_BY_TIER`, `PLAN_ORDER`, `PLAN_TIER_MAP`
-
-### `backend/portfolio/price_units.py`
-
-- Classes:
-  - `MoneyValue` -> methods: `__post_init__`, `__str__`
-  - `PriceSource`
-  - `QuotePrice` -> methods: `__post_init__`, `__str__`, `to_vnd_for_calculation`
-- Functions:
-  - `detect_quote_unit_heuristic`, `get_quote_price_in_vnd`, `normalize_money_value_to_canonical`, `normalize_quote_price_to_canonical`, `validate_quote_prices_canonical`
-- Top-level variables:
-  - `MONEY_UNIT_CANONICAL`, `QUOTE_UNIT_CANONICAL`, `VALID_MONEY_UNITS`, `VALID_QUOTE_UNITS`, `logger`
-
-### `backend/portfolio/proxy_models.py`
-
-- Classes:
-  - `SecuritiesGroupProxy`
-  - `SecuritiesItemProxy`
-  - `StockProfileProxy`
-
-### `backend/portfolio/quota_service.py`
-
-- Functions:
-  - `_is_enforcement_enabled`, `_normalize_limit`, `_now_vn`, `_quota_cache_key`, `_quota_reset_at_iso`, `_resolve_limit`, `_seconds_until_vn_midnight`, `build_quota_exceeded_payload`, `consume_quota`, `get_usage`
-- Top-level variables:
-  - `VN_TZ`
-
-### `backend/portfolio/realtime/__init__.py`
-
-- No parseable top-level symbols found
-
-### `backend/portfolio/realtime/collector.py`
-
-- Functions:
-  - `collect_and_push`, `collect_intraday_frame`, `collect_symbols_for_user`
-
-### `backend/portfolio/realtime/compute.py`
-
-- Classes:
-  - `WhaleSignal`
-- Functions:
-  - `_build_explainability`, `_build_whale_event_id`, `_classify_signal_size`, `_derive_freshness_bucket`, `_derive_source_layer`, `_get_indicator_cache`, `_iso_now`, `_normalize_signal_side`, `_normalize_whale_timestamp`, `build_heartbeat_payload`, `build_ticker_payload`, `build_ticker_payload_native`, `build_whale_payload`, `compute_vwap`, `detect_whale_signals`
-
-### `backend/portfolio/realtime/publisher.py`
-
-- Classes:
-  - `RealtimePublisher` -> methods: `__init__`, `_channel_to_group`, `next_seq`, `publish`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/realtime/redis_pool.py`
-
-- Functions:
-  - `get_stream_client`, `get_stream_pool`
-- Top-level variables:
-  - `_stream_pool`
-
-### `backend/portfolio/realtime/stream_consumers.py`
-
-- Classes:
-  - `AlertEngineConsumer` -> methods: `process_batch`
-  - `DbWriterConsumer` -> methods: `_parse_stream_timestamp`, `process_batch`
-  - `TickConsumerBase` -> methods: `__init__`, `_claim_stale_pending`, `_observe_pending_depth`, `client`, `process_batch`, `run_once`, `stream_key`
-  - `WsBroadcastConsumer` -> methods: `__init__`, `_degrade_mode_enabled`, `_should_skip_broadcast`, `process_batch`
-- Functions:
-  - `_get_stream_client`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/realtime/stream_reader.py`
-
-- Classes:
-  - `StreamReader` -> methods: `__init__`, `_from_cache`, `_from_stream`, `_is_stream_payload_stale`, `_snapshot_from_stream`, `get_intraday_ticks`, `get_intraday_with_fallback`, `get_snapshot`, `health`, `producer`, `streams_health`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/realtime/tick_producer.py`
-
-- Classes:
-  - `TickProducer` -> methods: `__init__`, `client`, `ensure_consumer_groups`, `push_intraday_ticks`, `push_price_snapshot`, `read_latest_ticks`, `read_snapshot`, `snapshot_key`, `stream_key`
-- Functions:
-  - `_get_client`
-- Top-level variables:
-  - `_CONSUMER_GROUPS`, `logger`
-
-### `backend/portfolio/routing.py`
-
-- Top-level variables:
-  - `websocket_urlpatterns`
-
-### `backend/portfolio/runtime_policy_helpers.py`
-
-- Functions:
-  - `_coerce_governance_delta_thresholds`, `_coerce_prefetch_runtime_settings`, `_coerce_prefetch_time_policy`, `_default_governance_delta_thresholds`, `_default_prefetch_runtime_settings`, `_default_prefetch_time_policy`, `_get_runtime_governance_delta_thresholds`, `_get_runtime_prefetch_settings`, `_get_runtime_prefetch_time_policy`, `_prefetch_time_policy_rulebook`, `_set_runtime_governance_delta_thresholds`, `_set_runtime_prefetch_settings`, `_set_runtime_prefetch_time_policy`
-- Top-level variables:
-  - `HOLISTIC_GOVERNANCE_DELTA_CACHE_KEY`, `PREFETCH_RUNTIME_SETTINGS_CACHE_KEY`, `PREFETCH_TIME_POLICY_CACHE_KEY`, `_get_prefetch_runtime_settings`
-
-### `backend/portfolio/screener_helpers.py`
-
-- Functions:
-  - `_apply_screener_condition`, `_screener_build_technical`, `_validate_screener_rules`
-- Top-level variables:
-  - `_SCREENER_ALLOWED_FIELDS`, `_SCREENER_ALLOWED_OPS`, `_SCREENER_NEEDS_HISTORY_FIELDS`
-
-### `backend/portfolio/seed_governance.py`
-
-- Functions:
-  - `assert_demo_seed_allowed`, `is_demo_seed_allowed_by_env`, `runtime_environment_name`
-
-### `backend/portfolio/serializers.py`
-
-- Classes:
-  - `_FlexibleTimestampField` -> methods: `to_internal_value`, `to_representation`
-  - `AIAdvisoryComponentRecordSerializer`
-  - `AIAdvisoryExecutiveSummarySerializer`
-  - `AICommandCenterConfigSerializer` -> methods: `update`, `validate`, `validate_ai_prompt_config`, `validate_ai_provider`
-  - `ChartPointSerializer`
-  - `CrawlAuditLogSerializer`
-  - `CrawlJobSerializer`
-  - `CrawlRunSerializer`
-  - `CrawlScheduleSerializer`
-  - `DailyPriceSerializer`
-  - `DNSECredentialSerializer` -> methods: `get_api_key_configured`, `get_username_configured`
-  - `HoldingSerializer`
-  - `LegalPageSerializer`
-  - `MarketIntradayQuerySerializer`
-  - `MarketStockChartQuerySerializer`
-  - `OHLCVBarsQuerySerializer` -> methods: `get_fields`, `validate`
-  - `PortfolioSerializer` -> methods: `get_subaccount_count`, `get_transaction_count`
-  - `PriceAlertRuleSerializer` -> methods: `validate_price_threshold`, `validate_symbol`
-  - `RuntimeVnbrokerConfigSerializer` -> methods: `validate`, `validate_fallback_sources`, `validate_price_board_source`, `validate_source_config`, `validate_timeout_config`
-  - `ScreenerRuleSerializer`
-  - `SecuritiesGroupCreateSerializer`
-  - `SecuritiesGroupDetailSerializer`
-  - `SecuritiesItemSerializer` -> methods: `validate_symbol`
-  - `SignalServiceRunSerializer`
-  - `StockAIChartContextSerializer` -> methods: `validate`, `validate_ohlcv`, `validate_symbol`
-  - `StockAIChartDrawingMetaSerializer`
-  - `StockAIChartOHLCVPointSerializer`
-  - `StockAIChartVisibleRangeSerializer` -> methods: `validate`
-  - `StockProfileSerializer`
-  - `StockWorkspaceChartPointSerializer`
-  - `StockWorkspaceChartResponseSerializer`
-  - `StockWorkspaceGroupRefSerializer`
-  - `StockWorkspaceOverviewSerializer`
-  - `StockWorkspaceTechnicalSerializer`
-  - `StockWorkspaceWatchlistMembershipSerializer`
-  - `SubAccountSerializer`
-  - `SummarySerializer`
-  - `TrackedSymbolSerializer`
-  - `TradingSubAccountCreateRequestSerializer`
-  - `TransactionSerializer` -> methods: `create`, `validate`, `validate_symbol`
-  - `UserConfigSerializer` -> methods: `validate_advisory_max_auto_refreshes_per_day`, `validate_whale_alert_threshold`
-  - `WatchlistGroupSerializer` -> methods: `get_items`
-  - `WatchlistItemSerializer` -> methods: `validate_symbol`
-  - `WatchlistItemWithPriceSerializer`
-  - `WhaleAdvisorySerializer` -> methods: `get_symbol`
-- Top-level variables:
-  - `_OHLCV_BAR_LIMIT_DEFAULT`, `_OHLCV_BAR_LIMIT_MAX`, `_OHLCV_TIMEFRAME_CHOICES`, `_core_backend_src`
-
-### `backend/portfolio/services.py`
-
-- Classes:
-  - `WhaleSignalEngine` -> methods: `annotate_queryset_with_threshold`, `calculate_whale_intensity`, `classify_side`, `classify_size`, `get_user_threshold_map`, `is_symbol_discovery_candidate`, `resolve_discovery_bucket`, `resolve_threshold_vnd`
-- Functions:
-  - `_active_whale_config_json`, `_apply_price_scale`, `_coerce_float`, `_coerce_int`, `_extract_first`, `_fetch_exchange_lookup`, `_format_preview_value`, `_infer_price_unit_from_first_close`, `_normalise_ohlcv`, `_normalize_maxrss_to_mb`, `_normalize_symbol_list`, `_ping_redis_url`, `_resolve_price_scale_to_system_unit`, `_resolve_vnbroker_price_unit`, `_serialize_whale_config_rollout`, `_serialize_whale_config_version`, `_stable_symbol_percent`, `_to_decimal`, `_to_int`, `activate_due_scheduled_whale_config_rollouts`, `activate_whale_config_version`, `apply_market_group_payload`, `auto_revert_whale_config_rollout`, `build_market_group_payload`, `build_rollout_propagation_snapshot`, `build_stock_profile_payload`, `build_whale_config_diff_preview`, `build_whale_config_runtime_preview`, `build_whale_rollout_anomaly_snapshot`, `build_whale_runtime_score_config`, `build_whale_runtime_thresholds`, `check_whale_config_dependencies`, `ensure_rollout_worker_ack_records`, `fetch_and_save_daily_prices`, `fetch_market_sectors_and_groups`, `find_previous_stable_whale_config_version`, `get_active_runtime_rollout_for_symbol`, `get_active_whale_config_version`, `get_latest_price`, `get_latest_rollout_for_version`, `get_latest_whale_config_anomaly_overview`, `get_live_celery_worker_names`, `get_live_celery_worker_summary`, `get_manual_market_group_payload`, `get_price_changes`, `get_price_series`, `get_whale_advisory_alert_overview`, `get_whale_config_dashboard_overview`, `get_whale_config_propagation_overview`, `initialize_whale_config_rollout`, `monitor_whale_config_rollout_anomalies`, `normalize_whale_config_payload`, `notify_whale_config_auto_revert`, `record_whale_config_worker_ack`, `refresh_rollout_propagation_status`, `resolve_rollout_target_symbols`, `resolve_whale_runtime_config`, `symbol_matches_canary_scope`, `sync_market_groups`, `sync_market_groups_for_user`, `sync_market_groups_for_users`, `sync_portfolio_prices`, `sync_stock_profiles`, `sync_watchlist_prices`, `validate_whale_config_guardrails`
-- Top-level variables:
-  - `_CAP_GROUP_DEFS`, `_MANUAL_MARKET_GROUPS`, `_SECTOR_COLORS`, `_SYSTEM_MONEY_UNIT`, `_SYSTEM_PRICE_UNIT`, `_vnbroker_PRICE_UNIT_THOUSAND`, `_vnbroker_PRICE_UNIT_VND`, `logger`
-
-### `backend/portfolio/services_backfill.py`
-
-- Functions:
-  - `_build_queryset`, `_get_previous_close`, `_infer_side_for_rows`, `_normalize_side`, `intraday_side_backfill_apply`, `intraday_side_backfill_preview`
-
-### `backend/portfolio/services_global_screener.py`
-
-- Classes:
-  - `GlobalScreenerService` -> methods: `_build_flow_enrichment_map`, `_coerce_snapshot_date`, `_empty_dark_flow_summary`, `_empty_whale_summary`, `_matched_value_from_price_volume`, `_summarize_dark_flow_signals`, `_summarize_whale_ticks`, `match_active_rules`, `precompute_market_snapshot`
-
-### `backend/portfolio/services_global_signal_distribution.py`
-
-- Functions:
-  - `deliver_dark_flow_signal`, `deliver_whale_alert_event`, `resolve_signal_audience`
-- Top-level variables:
-  - `_core_backend_src`
-
-### `backend/portfolio/services_global_signal_universe.py`
-
-- Classes:
-  - `GlobalSignalUniverseResolver` -> methods: `_coerce_group_ids`, `_coerce_symbols`, `_normalize_config`, `_tier_shards`, `build_snapshot`, `from_prefetch_runtime_settings`, `load_system_policy`
-- Functions:
-  - `_build_symbol_count_map`, `_compute_heat_score`, `_normalized_symbol_set`, `_stable_shard_id`
-- Top-level variables:
-  - `_core_backend_src`
-
-### `backend/portfolio/services_global_whale_alerts.py`
-
-- Functions:
-  - `_build_intraday_db_frame`, `_build_stream_frame`, `_build_vnbroker_frame`, `_build_whale_payloads_for_symbol`, `_cache_latest_whale_alert_event`, `_coerce_occurred_at`, `_confidence_from_payload`, `_latest_whale_alert_event_cache_key`, `_normalize_candidate_frame`, `_resolve_global_whale_runtime_settings`, `_resolve_global_whale_symbols`, `build_whale_alert_event_id`, `persist_whale_alert_event`, `run_global_whale_alert_detection`
-- Top-level variables:
-  - `GLOBAL_WHALE_LATEST_EVENT_CACHE_PREFIX`, `REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY`
-
-### `backend/portfolio/services_money_flow_retention.py`
-
-- Functions:
-  - `_cached_heavy_count`, `_collect_forensic_tick_rows`, `_latest_completed_retention_preview_run`, `_normalize_forensic_timestamp`, `_normalize_retention_policy`, `_preview_run_finished_at`, `_severity_rank`, `build_money_flow_retention_preview`, `build_retention_safety_gate`, `build_selective_forensic_window_preview`, `can_run_money_flow_retention_purge`, `materialize_money_flow_forensic_window`, `materialize_money_flow_forensic_window_from_order_flow_signal`, `materialize_money_flow_forensic_window_from_whale_event`, `purge_expired_money_flow_forensic_windows`, `should_materialize_money_flow_forensic_window`
-- Top-level variables:
-  - `RETENTION_PREVIEW_FRESHNESS_SECONDS`, `SEVERITY_ORDER`
-
-### `backend/portfolio/services_realtime_adapter.py`
-
-- Functions:
-  - `dataframe_has_threshold_hits`, `fetch_financial_ratio_dataframe`, `fetch_intraday_dataframe`, `fetch_price_board_dataframe`, `normalize_symbol`, `resolve_user_whale_threshold_vnd`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/services_realtime_cache.py`
-
-- Functions:
-  - `_cache_get`, `_cache_set`, `_clear_vnbroker_rate_limit`, `_is_vnbroker_rate_limited`, `_mark_vnbroker_rate_limited`
-- Top-level variables:
-  - `logger`, `vnbroker_RATE_LIMIT_CACHE_PREFIX`, `vnbroker_TIMEOUT_COUNTER_KEY`
-
-### `backend/portfolio/services_realtime_metrics.py`
-
-- Functions:
-  - `_metric_cache_key`, `build_prometheus_metrics_text`, `build_realtime_metrics_snapshot`, `get_realtime_metric`, `get_realtime_metrics_summary`, `increment_realtime_metric`, `reset_realtime_metrics_for_test`, `set_realtime_metric`
-- Top-level variables:
-  - `REALTIME_BASE_METRICS`, `REALTIME_ENDPOINTS`, `REALTIME_ENDPOINT_METRICS`, `REALTIME_METRICS_CACHE_PREFIX`, `REALTIME_STREAM_COUNTER_METRICS`, `REALTIME_STREAM_GAUGE_METRICS`, `REALTIME_STREAM_GROUPS`, `logger`
-
-### `backend/portfolio/services_service_control.py`
-
-- Classes:
-  - `TokenSafeLock` -> methods: `__init__`, `release`
-- Functions:
-  - `_lock_key`, `acquire_job_lock`, `force_release_job_lock`, `release_job_lock`
-- Top-level variables:
-  - `_LOCK_TTL`, `_REDIS_CLIENT`
-
-### `backend/portfolio/services_signal_run_registry.py`
-
-- Functions:
-  - `create_signal_service_run`, `finish_signal_service_run`, `resolve_signal_run_status`, `resolve_signal_run_type`, `start_signal_service_run`
-
-### `backend/portfolio/services_symbol_engagement.py`
-
-- Functions:
-  - `activate_symbol_engagement`, `is_intraday_fresh`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/services_whale_analytics_snapshot.py`
-
-- Functions:
-  - `_build_bucket_fact_rows`, `_build_bucket_facts_cache_key`, `_build_bucket_facts_payload`, `_build_flow_compare_series`, `_build_flow_series`, `_build_heatmap_series`, `_build_marker_series`, `_build_percentile_baseline_cache_key`, `_build_percentile_baseline_samples`, `_build_session_summary`, `_build_whale_analytics_cache_revision_key`, `_bump_whale_analytics_cache_revision`, `_calculate_whale_event_score`, `_clamp`, `_combine_dt`, `_compute_percentile_baseline_samples`, `_confidence_label`, `_confidence_score`, `_current_vn_now`, `_effective_session_now`, `_empty_percentile_baseline_samples`, `_floor_bucket`, `_get_or_build_bucket_facts`, `_index_series_by_bucket`, `_latest_trade_date`, `_matched_value_from_price_volume`, `_normalize_tick_side`, `_parse_trade_date`, `_percentile_rank`, `_percentile_value`, `_resolve_bucket_facts_cache_timeout`, `_resolve_degraded_state`, `_resolve_quality_state`, `_resolve_reference_price`, `_resolve_session_levels`, `_resolve_whale_analytics_cache_revision`, `_resolve_window`, `_session_segments`, `_sigmoid`, `_subtract_trading_minutes`, `_to_iso`, `build_snapshot_etag`, `build_whale_analytics_snapshot`, `invalidate_whale_analytics_snapshot_cache`
-- Top-level variables:
-  - `AFTERNOON_START`, `BUCKET_MINUTES`, `KLINE_INTELLIGENCE_CONTRACT_VERSION`, `MARKET_CLOSE`, `MARKET_OPEN`, `MORNING_END`, `PERCENTILE_BASELINE_CACHE_TIMEOUT_SECONDS`, `PERCENTILE_BASELINE_LOCK_TIMEOUT_SECONDS`, `SHARED_BUCKET_FACTS_CACHE_KEY_VERSION`, `SHARED_BUCKET_FACTS_CACHE_TIMEOUT_SECONDS`, `SHARED_BUCKET_FACTS_LOCK_TIMEOUT_SECONDS`, `SNAPSHOT_CACHE_KEY_VERSION`, `VN_TZ`, `WHALE_ANALYTICS_CACHE_REVISION_KEY_PREFIX`, `WHALE_ANALYTICS_CACHE_REVISION_TTL_SECONDS`, `WINDOW_MINUTES`
-
-### `backend/portfolio/signals.py`
-
-- Functions:
-  - `invalidate_global_signal_universe_on_source_change`, `invalidate_holdings_cache_on_transaction`, `invalidate_runtime_vnbroker_cache_on_save`, `trigger_telegram_whale_alert`
-
-### `backend/portfolio/starter_portfolio_service.py`
-
-- Classes:
-  - `StarterProvisionResult` -> methods: `applied`
-- Functions:
-  - `provision_starter_portfolios_for_user`, `should_provision_starter_portfolios_for_user`
-- Top-level variables:
-  - `STARTER_PORTFOLIO_TEMPLATES`, `STARTER_SUBACCOUNT_TEMPLATES`, `STARTER_TEMPLATE_VERSION`, `_core_backend_src`
-
-### `backend/portfolio/stock_workspace_helpers.py`
-
-- Functions:
-  - `_build_stock_workspace_overview`, `_compute_ema`, `_compute_macd_hist`, `_compute_rsi`, `_compute_stock_workspace_technical`, `_get_exchange_price_band`, `_safe_round`, `_technical_bias_meta`, `_to_float`
-- Top-level variables:
-  - `_core_backend_src`
-
-### `backend/portfolio/system_settings.py`
-
-- Functions:
-  - `_cache_key`, `ensure_defaults`, `get_setting`, `get_system_timezone`, `get_zoneinfo`, `set_setting`
-- Top-level variables:
-  - `DEFAULT_TIMEZONE`, `_CACHE_PREFIX`, `_CACHE_TTL`, `logger`
-
-### `backend/portfolio/tasks.py`
-
-- Functions:
-  - `create_next_month_partition`, `warmup_realtime_ticker_cache`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/tasks_advisory_helpers.py`
-
-- Functions:
-  - `_accumulate_user_advisory_event`, `_advisory_audit_actor_for_source`, `_advisory_audit_reason_for_source`, `_advisory_event_merge_cache_key`, `_build_advisory_aggregate_state_payload`, `_classify_provider_failure`, `_compute_advisory_severity`, `_compute_dark_flow_severity`, `_compute_event_side_score`, `_detect_reversal_signal`, `_estimate_advisory_actionability`, `_estimate_advisory_confidence`, `_get_auto_generation_count_today`, `_get_remaining_advisory_budget`, `_get_remaining_auto_refreshes`, `_get_tokens_used_today`, `_increment_daily_counter`, `_infer_dark_flow_direction`, `_is_failover_eligible_failure`, `_is_language_mismatch`, `_mark_provider_ratelimit`, `_normalize_advisory_source`, `_normalize_symbol`, `_persist_advisory_aggregate_snapshot`, `_persist_advisory_metrics_audit_log`, `_record_failover_event`, `_record_provider_attempt`, `_resolve_advisory_threshold_vnd`, `_resolve_model_for_budget`, `_resolve_next_refresh_at`, `_resolve_side_by_dynamic_score`, `_safe_float`, `_should_use_concise_advisory`, `_token_log_source_for_advisory_source`
-- Top-level variables:
-  - `ADVISORY_EVENT_MERGE_CACHE_KEY_PREFIX`, `_ADVISORY_BUDGET_DOWNGRADE_DEFAULTS`, `_VI_DIACRITIC_PATTERN`, `logger`
-
-### `backend/portfolio/tasks_crawl.py`
-
-- Functions:
-  - `_get_mapped_task`, `run_crawl_job`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/tasks_dnse.py`
-
-- Functions:
-  - `reconcile_all_dnse_transactions_task`, `reconcile_dnse_transactions_task`, `sync_all_dnse_balances_task`, `sync_dnse_accounts_task`, `sync_dnse_balances_task`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/tasks_global_screener.py`
-
-- Functions:
-  - `run_global_screener_manual_task`, `run_global_screener_scheduled_task`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/tasks_lifecycle.py`
-
-- Functions:
-  - `process_expired_onboarding_trials_task`, `process_plan_lifecycle_transitions`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/tasks_maintenance.py`
-
-- Functions:
-  - `cleanup_old_intraday_ticks`, `cleanup_old_signal_service_runs`, `get_intraday_side_backfill_task_status`, `intraday_side_backfill_status_cache_key`, `run_intraday_side_backfill_apply`, `run_stream_consumer_batch`, `run_vnbroker_price_board_benchmark`, `set_intraday_side_backfill_task_status`, `trim_streams`
-- Top-level variables:
-  - `INTRADAY_SIDE_BACKFILL_STATUS_CACHE_PREFIX`, `INTRADAY_SIDE_BACKFILL_STATUS_TTL_SECONDS`, `logger`
-
-### `backend/portfolio/tasks_news_context.py`
-
-- Functions:
-  - `_fetch_google_news_rss`, `_fetch_news_context_for_advisory`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/tasks_news_digest.py`
-
-- Functions:
-  - `_generate_news_digest_for_user`, `generate_all_portfolio_news_digests_task`, `generate_stock_news_ai_summary_task`
-- Top-level variables:
-  - `_core_backend_src`, `logger`
-
-### `backend/portfolio/tasks_order_flow.py`
-
-- Functions:
-  - `_cache_latest_order_flow_signal`, `_classify_order_flow_signal_severity`, `_latest_order_flow_signal_cache_key`, `_persist_order_flow_signal`, `_resolve_dark_flow_runtime_settings`, `_resolve_order_flow_symbols`, `detect_and_store_order_flow`, `detect_whale_reversal`, `distribute_order_flow_signal`
-- Top-level variables:
-  - `DARK_FLOW_DISTRIBUTION_MIN_STRENGTH`, `ORDER_FLOW_COOLDOWN_SECONDS`, `ORDER_FLOW_LATEST_SIGNAL_CACHE_PREFIX`, `ORDER_FLOW_MAX_SYMBOLS`, `REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY`, `_core_backend_src`, `logger`
-
-### `backend/portfolio/tasks_prefetch.py`
-
-- Functions:
-  - `_acquire_lock`, `_build_scheduler_sample_symbols`, `_build_symbol_count_map`, `_cache_ticker_rows_from_dataframe`, `_cleanup_session_close_retention`, `_coerce_prefetch_time_policy`, `_collect_prefetch_symbols`, `_collect_realtime_symbol_universe`, `_compute_heat_score`, `_distinct_symbols`, `_estimate_upstream_calls_per_minute`, `_extract_row_highest`, `_extract_row_lowest`, `_extract_row_match_price`, `_extract_row_open_price`, `_extract_row_ref_price`, `_extract_row_symbol`, `_extract_row_volume`, `_f`, `_get_prefetch_time_policy`, `_get_vnbroker_runtime_settings`, `_group_tier_by_shard`, `_group_universe_by_tier`, `_i`, `_increment_prefetch_metric`, `_int_env`, `_is_rate_limited_error`, `_mark_price_board_rate_limited`, `_metric_cache_key`, `_normalized_symbol_set`, `_parse_hhmm_to_minutes`, `_prefetch_retry_countdown`, `_prefetch_retry_countdown_with_policy`, `_prefetch_runtime_defaults`, `_prefetch_time_policy_defaults`, `_publish_scheduler_prefetch_meta`, `_read_bool_env`, `_read_offpeak_ingest_history`, `_record_vnbroker_timeout`, `_resolve_effective_prefetch_settings`, `_resolve_prefetch_time_profile`, `_resolve_prefetch_topology`, `_resolve_scheduler_plan`, `_resolve_session_close_date`, `_resolve_ticker_cache_ttl_seconds`, `_row_get_value`, `_safe_cache_delete`, `_snapshot_is_stale`, `_stable_shard_id`, `_store_offpeak_ingest_meta`, `_store_prefetch_meta`, `_store_universe_snapshot`, `_tier_batch_size`, `_tier_enabled`, `_tier_interval_seconds`, `_tier_shards`, `_upsert_session_close_snapshot`, `build_realtime_symbol_universe_snapshot`, `offpeak_vnbroker_ingest`, `prefetch_realtime_ticker_shard`, `schedule_realtime_prefetch_shards`
-- Top-level variables:
-  - `OFFPEAK_INGEST_HISTORY_CACHE_KEY`, `OFFPEAK_INGEST_HISTORY_MAX_ITEMS`, `OFFPEAK_INGEST_LATEST_META_CACHE_KEY`, `PREFETCH_ENQUEUE_LOCK_KEY`, `PREFETCH_METRIC_CACHE_PREFIX`, `PREFETCH_TIME_POLICY_CACHE_KEY`, `REALTIME_PREFETCH_QUEUE`, `REALTIME_SHARD_CACHE_PREFIX`, `REALTIME_SHARD_LAST_ENQUEUE_PREFIX`, `REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY`, `REALTIME_UNIVERSE_TIER_CACHE_PREFIX`, `TICKER_PREFETCH_META_CACHE_KEY`, `VNBROKER_PRICE_BOARD_RATE_LIMIT_CACHE_KEY`, `VNBROKER_RUNTIME_SETTINGS_CACHE_KEY`, `VNBROKER_TIMEOUT_COUNTER_KEY`, `logger`
-
-### `backend/portfolio/tasks_realtime.py`
-
-- Functions:
-  - `_is_prefetch_cache_fresh`, `_whale_thresholds_for_user`, `collect_and_publish_realtime`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/tasks_rollout.py`
-
-- Functions:
-  - `ack_whale_config_rollout`, `activate_due_whale_config_rollouts`, `monitor_whale_config_anomalies`, `refresh_whale_config_rollout_status`
-
-### `backend/portfolio/tasks_sentiment.py`
-
-- Functions:
-  - `_build_sentiment_prompt`, `_call_sentiment_ai`, `_fetch_headlines_for_symbol`, `_get_default_provider_and_model`, `_get_sector_average_sentiment`, `_get_source_weight`, `_parse_ai_sentiment_response`, `sync_news_sentiment`
-- Top-level variables:
-  - `_SENTIMENT_MAX_TOKENS`, `_SENTIMENT_SYMBOLS_PER_RUN`, `logger`
-
-### `backend/portfolio/tasks_signal_verification.py`
-
-- Functions:
-  - `_get_close_price`, `_get_ipo_trading_day_count`, `_get_n_trading_days_ago`, `_validate_price`, `verify_signals_daily`
-- Top-level variables:
-  - `_IPO_MIN_TRADING_DAYS`, `_PRICE_VALIDATE_THRESHOLD`, `logger`
-
-### `backend/portfolio/tasks_stock_profile_sync.py`
-
-- Functions:
-  - `_chunked`, `heatmap_static_cache_key`, `sync_stock_profiles_from_snapshot`
-- Top-level variables:
-  - `_HEATMAP_CHUNK_SIZE`, `_HEATMAP_STATIC_TTL`, `_core_backend_src`, `logger`
-
-### `backend/portfolio/tasks_symbol_engagement.py`
-
-- Functions:
-  - `_persist_df_to_db_directly`, `warmup_symbol_intraday`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/tasks_sync.py`
-
-- Functions:
-  - `sync_all_watch_assets`, `sync_user_watch_assets`
-- Top-level variables:
-  - `_core_backend_src`
-
-### `backend/portfolio/tasks_telegram.py`
-
-- Functions:
-  - `dispatch_whale_alert`, `send_direct_message`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/tasks_watchlist_indicators.py`
-
-- Functions:
-  - `_ma20_dist_pct`, `_rsi`, `_rvol`, `compute_indicators_for_symbol`, `compute_watchlist_indicators`, `get_cached_indicators`
-- Top-level variables:
-  - `INDICATOR_CACHE_PREFIX`, `INDICATOR_CACHE_TTL`, `MA20_PERIODS`, `MIN_RSI_PERIODS`, `RVOL_LOOKBACK`, `logger`
-
-### `backend/portfolio/tasks_whale_advisory.py`
-
-- Functions:
-  - `_resolve_flush_advisory_sources`, `build_stock_ai_advisory_summary_payload`, `flush_merged_advisory_event`, `generate_stock_ai_advisory_summary_task`
-- Top-level variables:
-  - `ADVISORY_AUTO_GENERATION_JOB_LOCK_KEY`, `ADVISORY_EVENT_MERGE_CACHE_KEY_PREFIX`, `logger`
-
-### `backend/portfolio/tasks_whale_ai_call.py`
-
-- Functions:
-  - `_execute_provider_ai_call`
-
-### `backend/portfolio/tasks_whale_auto_generation.py`
-
-- Functions:
-  - `auto_generate_advisories_for_all_tracked`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/tasks_whale_bookkeeping.py`
-
-- Functions:
-  - `_collect_generation_language_metrics`, `_record_generation_token_usage`, `_resolve_generation_refresh_count`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/tasks_whale_broadcast.py`
-
-- Functions:
-  - `_broadcast_market_discovery_event`, `_broadcast_screener_matched`, `_broadcast_whale_advisory`
-
-### `backend/portfolio/tasks_whale_execution.py`
-
-- Functions:
-  - `_execute_whale_generation_postprovider`
-
-### `backend/portfolio/tasks_whale_finalize_phase.py`
-
-- Functions:
-  - `_execute_whale_generation_finalize_phase`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/tasks_whale_generation.py`
-
-- Functions:
-  - `generate_whale_advisory_task`
-
-### `backend/portfolio/tasks_whale_metrics.py`
-
-- Functions:
-  - `_build_whale_generation_result`, `_finalize_whale_generation_metrics`
-
-### `backend/portfolio/tasks_whale_persist_phase.py`
-
-- Functions:
-  - `_execute_whale_generation_persist_phase`
-
-### `backend/portfolio/tasks_whale_persistence.py`
-
-- Functions:
-  - `_create_advisory_token_log`, `_create_whale_advisory_record`
-
-### `backend/portfolio/tasks_whale_preflight.py`
-
-- Functions:
-  - `_build_whale_generation_context_dict`, `_prepare_whale_generation_context`, `_return_with_preflight_profile`, `_unwrap_or_return_skip`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/tasks_whale_preflight_ai.py`
-
-- Functions:
-  - `_check_ai_runtime_config`, `_check_provider_rate_limit`, `_extract_ai_config_values`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/tasks_whale_preflight_cache.py`
-
-- Functions:
-  - `_build_preflight_metric_rates`, `_build_preflight_metric_summary`, `_build_skip_response`, `_check_cooldown_skip`, `_check_existing_advisory_skip`, `_check_preflight_cache_skips`, `_increment_preflight_counter`, `_metric_cache_key`, `_read_preflight_metrics`, `_read_preflight_metrics_window`, `_sum_preflight_metrics_window`
-- Top-level variables:
-  - `METRIC_COOLDOWN_BYPASS_FORCE_REFRESH`, `METRIC_COOLDOWN_HIT`, `METRIC_COOLDOWN_MISS`, `METRIC_EXISTING_ADVISORY_HIT`, `METRIC_EXISTING_ADVISORY_MISS`, `WHALE_PREFLIGHT_KPI_SCHEMA_VERSION`, `WHALE_PREFLIGHT_METRIC_NAMES`, `WHALE_PREFLIGHT_METRIC_PREFIX`, `logger`
-
-### `backend/portfolio/tasks_whale_preflight_guards.py`
-
-- Functions:
-  - `_check_user_cfg_guards`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/tasks_whale_preflight_language.py`
-
-- Functions:
-  - `_resolve_advisory_output_config`, `_resolve_model_for_budget`, `_resolve_output_language`, `_should_use_concise_advisory`
-- Top-level variables:
-  - `_ADVISORY_BUDGET_DOWNGRADE_DEFAULTS`, `logger`
-
-### `backend/portfolio/tasks_whale_provider_bookkeeping_phase.py`
-
-- Functions:
-  - `_execute_whale_provider_bookkeeping_phase`
-
-### `backend/portfolio/tasks_whale_provider_generation.py`
-
-- Functions:
-  - `_run_whale_provider_generation`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/tasks_whale_provider_phase.py`
-
-- Functions:
-  - `_execute_whale_provider_phase`
-
-### `backend/portfolio/tasks_whale_quality.py`
-
-- Functions:
-  - `_normalize_generated_advisory_metadata`, `_record_generation_quality_metrics`, `_resolve_generated_advisory_severity`
-
-### `backend/portfolio/tasks_whale_service.py`
-
-- Functions:
-  - `detect_and_store_global_whale_alerts`, `distribute_whale_alert_event`
-
-### `backend/portfolio/telegram_service.py`
-
-- No parseable top-level symbols found
-
-### `backend/portfolio/tests/__init__.py`
-
-- No parseable top-level symbols found
-
-### `backend/portfolio/tests/test_adapters.py`
-
-- Classes:
-  - `CacheAdapterTests` -> methods: `test_get_cache_happy_path`, `test_get_cache_returns_none_on_exception`, `test_is_vnbroker_rate_limited_false_when_key_missing`, `test_is_vnbroker_rate_limited_true_when_key_exists`, `test_mark_vnbroker_rate_limited_sets_cache`, `test_set_cache_happy_path`, `test_set_cache_swallows_exceptions`
-  - `VnbrokerAdapterTests` -> methods: `setUp`, `test_build_stock_client_does_not_cache_when_disabled`, `test_build_stock_client_logs_missing_data_payload_warning`, `test_build_stock_client_maps_rate_limit_error`, `test_build_stock_client_raises_vnbroker_missing`, `test_build_stock_client_reuses_cached_instance_when_enabled`, `test_fetch_financial_ratio_dataframe_fallbacks_to_next_source`, `test_fetch_financial_ratio_dataframe_uses_timeout_wrapper`, `test_fetch_history_dataframe_uses_selected_source`, `test_fetch_intraday_dataframe_fallbacks_to_next_runtime_provider`, `test_fetch_listing_symbols_dataframe_uses_runtime_provider_chain`, `test_fetch_price_board_dataframe_fallbacks_on_rate_limit`, `test_fetch_price_board_dataframe_fallbacks_on_unusable_payload`, `test_fetch_price_board_dataframe_preserves_canonical_multiindex_payload`, `test_fetch_symbols_by_exchange_dataframe_returns_dataframe`, `test_fetch_symbols_by_group_series_returns_series`, `test_fetch_symbols_by_industries_dataframe_uses_adapter_runtime_chain`, `test_normalize_price_board_dataframe_keeps_raw_vnbroker_price_units`, `test_normalize_price_board_dataframe_maps_flat_rows_to_parseable_multiindex`, `test_read_stream_intraday_ticks_returns_empty_when_reader_fails`, `test_resolve_financial_ratio_sources_keeps_order_and_dedup`, `test_resolve_intraday_sources_uses_runtime_config_order`, `test_resolve_price_board_sources_keeps_order_and_dedup`, `test_resolve_price_board_sources_prefers_source_config_primary`, `test_run_with_timeout_returns_function_result`, `test_run_with_timeout_wraps_generic_exception`
-
-### `backend/portfolio/tests/test_admin_crawl_control.py`
-
-- Classes:
-  - `AdminCrawlControlTests` -> methods: `setUp`, `tearDown`, `test_run_endpoint_creates_run_and_dispatches_task`, `test_run_inactive_job_forbidden`, `test_stop_endpoint_does_not_release_lock_if_token_mismatches`, `test_stop_endpoint_revokes_task_and_releases_lock`, `test_stop_no_active_run`
-- Top-level variables:
-  - `User`
-
-### `backend/portfolio/tests/test_admin_mail_accounts.py`
-
-- Classes:
-  - `EmailVerificationRegressionTests` -> methods: `setUp`, `test_send_verification_email_propagates_oauth2_error`, `test_send_verification_email_routes_through_oauth2_account`
-  - `GoogleOAuthServiceTests` -> methods: `test_refresh_token_raises_http_status_error_on_401_response`, `test_refresh_token_raises_value_error_on_missing_credentials`, `test_refresh_token_raises_value_error_when_response_has_no_access_token`, `test_refresh_token_returns_access_token_on_success`
-  - `SystemEmailAccountAdminTests` -> methods: `setUp`, `test_admin_action_can_send_test_email`, `test_admin_changelist_is_accessible`, `test_google_callback_view_rejects_expired_state`, `test_google_callback_view_rejects_state_mismatch`, `test_google_callback_view_rejects_user_account_payload_mismatch`, `test_google_callback_view_saves_refresh_token`, `test_google_connect_view_redirects_to_google_authorize_url`
-  - `SystemEmailAccountModelTests` -> methods: `test_build_email_connection_uses_database_config`, `test_saving_new_default_account_unsets_previous_default`, `test_send_system_email_maps_google_401_error`, `test_send_system_email_maps_google_429_error`, `test_send_system_email_uses_google_oauth2_branch`, `test_send_test_email_updates_latest_status`
-- Functions:
-  - `_build_http_status_error`
-
-### `backend/portfolio/tests/test_admin_market_group_sync.py`
-
-- Classes:
-  - `AdminMarketGroupSyncTests` -> methods: `setUp`, `test_admin_sync_route_supports_global_scope`, `test_admin_sync_route_supports_username_scope`, `test_market_group_admin_blocks_manual_add_and_change`
-
-### `backend/portfolio/tests/test_admin_ops.py`
-
-- Classes:
-  - `AdminIntradaySideBackfillAsyncTests` -> methods: `_login`, `setUp`, `test_backfill_apply_returns_503_when_worker_unavailable`, `test_backfill_task_invalidates_whale_snapshot_cache_for_touched_symbols`, `test_staff_can_get_intraday_side_backfill_status`, `test_staff_can_queue_intraday_side_backfill_apply`, `test_staff_without_intraday_permission_cannot_queue_apply`
-  - `AdminOpsStatsDataTests` -> methods: `_get_stats`, `setUp`, `test_response_has_all_required_keys`, `test_surface_permissions_default_to_write_locked_for_staff`, `test_ticker_prefetch_payload_present`
-  - `AdminOpsStatsPermissionTests` -> methods: `_login`, `setUp`, `test_regular_user_returns_403`, `test_staff_user_returns_200`, `test_unauthenticated_returns_401`
-  - `AdminOpsvnbrokerBenchmarkTests` -> methods: `_login`, `setUp`, `test_latest_benchmark_fail_soft_when_loader_errors`, `test_non_staff_cannot_run_benchmark`, `test_staff_can_get_latest_benchmark_report`, `test_staff_can_run_benchmark`
-  - `AdminOpsvnbrokerRuntimeConfigTests` -> methods: `_login`, `setUp`, `test_non_staff_forbidden`, `test_staff_can_get_update_and_read_changelog`, `test_staff_can_reset_defaults`, `test_staff_without_write_permission_cannot_update_or_reset`
-  - `AdminOpsWarmPrefetchTests` -> methods: `_get_stats`, `setUp`, `test_channel_layer_type_field_is_string`, `test_last_market_group_sync_none_when_no_log`, `test_last_market_group_sync_populated_when_log_exists`, `test_last_stock_profile_sync_none_when_no_log`, `test_offpeak_ingest_history_requires_auth`, `test_offpeak_ingest_history_returns_latest_and_list`, `test_offpeak_ingest_requires_auth`, `test_portfolio_count_is_correct`, `test_redis_ok_field_present_in_response`, `test_staff_can_queue_async_offpeak_ingest`, `test_staff_can_queue_async_prefetch_warm`, `test_sync_offpeak_ingest_returns_payload`, `test_sync_warm_prefetch_returns_payload_without_http_503_on_non_ok`, `test_tracked_symbol_count_is_correct`, `test_user_count_includes_all_users`, `test_warm_prefetch_requires_auth`, `test_watchlist_item_count_is_correct`, `test_whale_dashboard_includes_rollout_postcheck_summary`
-- Functions:
-  - `_grant_portfolio_permission`
-- Top-level variables:
-  - `INTRADAY_BACKFILL_APPLY_URL`, `INTRADAY_BACKFILL_STATUS_URL`, `OFFPEAK_INGEST_HISTORY_URL`, `OFFPEAK_INGEST_URL`, `URL`, `WARM_URL`, `vnbroker_BENCHMARK_LATEST_URL`, `vnbroker_BENCHMARK_RUN_URL`, `vnbroker_CHANGELOG_URL`, `vnbroker_CURRENT_URL`, `vnbroker_RESET_URL`, `vnbroker_UPDATE_URL`
-
-### `backend/portfolio/tests/test_admin_screener_admin.py`
-
-- Classes:
-  - `AdminGlobalScreenerManualRunTests` -> methods: `setUp`, `test_manual_run_queues_background_task`
-  - `AdminGlobalScreenerRuleTests` -> methods: `_rule_payload`, `setUp`, `test_create_update_delete_rule`, `test_list_empty`
-  - `AdminScreenerConfigTests` -> methods: `setUp`, `test_get_returns_default_config`, `test_put_updates_config`
-  - `AdminScreenerPermissionTests` -> methods: `setUp`, `test_regular_user_config_returns_403`, `test_staff_user_config_returns_200`, `test_unauthenticated_config_returns_401`
-- Functions:
-  - `_login_staff`
-- Top-level variables:
-  - `CONFIG_URL`, `RULES_URL`, `RULE_DETAIL_URL`, `RUN_MANUAL_URL`
-
-### `backend/portfolio/tests/test_admin_stockprofile_sync.py`
-
-- Classes:
-  - `AdminStockProfileSyncTests` -> methods: `setUp`, `test_admin_navigation_links_to_workspace_from_related_models`, `test_admin_stockprofile_sync_route`, `test_admin_stockprofile_workspace_route`, `test_fetch_live_workspace_data_uses_adapter_price_board`
-
-### `backend/portfolio/tests/test_admin_user_verification.py`
-
-- Classes:
-  - `UserConfigAdminVerificationTests` -> methods: `setUp`, `test_admin_action_resends_only_for_unverified_accounts`, `test_admin_index_shows_verification_operations_summary`, `test_admin_route_can_resend_latest_pending_verification_email`, `test_admin_route_warns_when_no_pending_verification_accounts`, `test_userconfig_admin_changelist_is_accessible`, `test_userconfig_change_view_hides_resend_button_for_verified_user`, `test_userconfig_change_view_shows_resend_button_for_unverified_user`, `test_userconfig_detail_route_can_resend_verification_email`, `test_userconfig_detail_route_skips_verified_user`
-
-### `backend/portfolio/tests/test_admin_whale_mission_control.py`
-
-- Classes:
-  - `WhaleMissionControlModelTests` -> methods: `_attach_messages`, `_message_texts`, `setUp`, `test_activate_due_scheduled_rollout_marks_version_active`, `test_admin_approval_by_supervisor_writes_audit`, `test_admin_draft_save_creates_audit_log`, `test_admin_role_split_permissions`, `test_anomaly_snapshot_detects_whale_tick_spike`, `test_apply_active_version_blocks_when_dependencies_degraded`, `test_apply_active_version_shows_diff_preview_and_activates_target`, `test_canary_scope_matches_symbol_exchange_and_percentage`, `test_create_draft_and_version`, `test_diff_preview_detects_threshold_and_weight_changes`, `test_guardrail_validator_rejects_dangerous_thresholds`, `test_initialize_rollout_creates_pending_worker_ack_records`, `test_maker_checker_block_same_creator_as_reviewer`, `test_monitor_rollout_anomalies_auto_reverts_to_previous_version`, `test_record_worker_ack_marks_rollout_completed_when_all_workers_ack`, `test_resolve_runtime_config_prefers_canary_and_auto_acks_worker`, `test_rollout_snapshot_marks_stale_worker_version_as_amber`, `test_rollout_worker_ack_and_audit_log`, `test_scheduled_rollout_allows_warning_without_blocking`, `test_submit_selected_drafts_blocks_when_preview_has_blocking_issues`, `test_supervisor_can_approve`, `test_whale_models_are_exposed_in_custom_admin_menu_groups`
-
-### `backend/portfolio/tests/test_ai_advisory_news_integration.py`
-
-- Classes:
-  - `TestEdgeCases` -> methods: `setUp`, `test_news_context_with_maximum_headlines`, `test_news_context_with_special_characters`, `test_synthesis_with_ai_not_ready`
-  - `TestFetchNewsContextForAdvisory` -> methods: `setUp`, `test_fetch_news_context_cache_miss`, `test_fetch_news_context_empty_news`, `test_fetch_news_context_exception_handling`, `test_fetch_news_context_formatting`, `test_fetch_news_context_invalid_symbol`, `test_fetch_news_context_success`
-  - `TestGenerateExecutiveSynthesisWithNews` -> methods: `_get_mock_config`, `setUp`, `test_generate_synthesis_with_news_context`, `test_generate_synthesis_without_news_context`, `test_news_context_injected_into_prompt`, `test_prompt_includes_news_instruction`
-  - `TestIntegrationNewsIntoSynthesis` -> methods: `setUp`, `test_full_synthesis_pipeline_with_news`
-
-### `backend/portfolio/tests/test_ai_config_api.py`
-
-- Classes:
-  - `AIConfigApiTests` -> methods: `setUp`, `test_ai_command_center_audit_logs_support_filters_and_diff_summary`, `test_ai_command_center_get_hydrates_prompt_config_from_legacy_userconfig`, `test_ai_command_center_put_mirrors_prompt_config_into_legacy_userconfig`, `test_ai_config_get_and_put`, `test_ai_config_get_reports_not_ready_when_command_center_incomplete`, `test_ai_config_get_uses_env_key_for_configured_flag`, `test_ai_config_put_rejects_missing_model`, `test_ai_config_put_rejects_model_not_supported_for_advisory`, `test_ai_options_returns_providers_and_defaults`, `test_ai_prompt_config_accepts_canonical_and_legacy_layouts`, `test_ai_test_connection_endpoint`, `test_ai_test_connection_rejects_missing_api_key`, `test_ai_test_connection_rejects_missing_model`, `test_ai_test_connection_rejects_model_not_supported_for_advisory`, `test_update_user_config_ignores_ai_fields`
-
-### `backend/portfolio/tests/test_ai_context.py`
-
-- Classes:
-  - `AIContextTests` -> methods: `setUp`, `test_build_context_contains_market_and_intraday`, `test_build_context_handles_non_numeric_transaction_values`, `test_render_context_for_prompt_has_expected_sections`
-
-### `backend/portfolio/tests/test_ai_runtime_config.py`
-
-- Classes:
-  - `AIRuntimeConfigTests` -> methods: `setUp`, `test_resolver_falls_back_to_system_when_user_missing_model_and_key`, `test_resolver_ignores_legacy_user_config_when_command_center_missing`, `test_resolver_prefers_command_center_over_legacy_and_system`
-
-### `backend/portfolio/tests/test_ai_service_prompt.py`
-
-- Classes:
-  - `AIServicePromptTests` -> methods: `test_generate_whale_text_buy_side_keeps_order_intro`, `test_generate_whale_text_unknown_side_uses_neutral_intro`
-
-### `backend/portfolio/tests/test_analytics_advanced.py`
-
-- Classes:
-  - `TestBuildRiskMetrics` -> methods: `setUp`, `test_build_risk_metrics_empty_portfolio_returns_none_values`, `test_build_risk_metrics_max_drawdown_non_positive`, `test_build_risk_metrics_period_days_matches_input`, `test_build_risk_metrics_returns_expected_keys`, `test_build_risk_metrics_values_are_numeric_or_none`
-  - `TestComputeDailyReturns` -> methods: `test_basic_returns_calculated_correctly`, `test_empty_nav_returns_empty_series`, `test_single_value_returns_empty_series`
-  - `TestComputeMaxDrawdown` -> methods: `test_deep_drawdown`, `test_empty_returns_zero`, `test_known_drawdown`, `test_monotonically_increasing_has_zero_drawdown`
-  - `TestComputeSharpe` -> methods: `test_empty_returns_zero`, `test_few_returns_returns_zero`, `test_negative_sharpe_for_bad_portfolio`, `test_positive_sharpe_for_good_portfolio`, `test_zero_volatility_returns_zero`
-  - `TestComputeSortino` -> methods: `test_empty_returns_zero`, `test_no_negative_days_returns_sentinel`, `test_sortino_higher_than_sharpe_when_asymmetric`
-  - `TestComputeTwr` -> methods: `test_empty_returns_zero`, `test_flat_nav_twr_zero`, `test_known_twr`, `test_negative_trend_twr_negative`, `test_positive_trend_twr_positive`
-  - `TestComputeVolatility` -> methods: `test_empty_returns_zero`, `test_volatility_annualized_correctly`, `test_zero_returns_zero_volatility`
-- Functions:
-  - `_make_nav_df`
-- Top-level variables:
-  - `User`
-
-### `backend/portfolio/tests/test_api_routes.py`
-
-- Classes:
-  - `ApiRouteSmokeTests` -> methods: `_attach_dpi_license`, `_create_stock_workspace_advisory`, `_detach_dpi_license`, `authenticate`, `authenticate_direct`, `setUp`
-
-### `backend/portfolio/tests/test_api_routes_admin_sync_groups.py`
-
-- Classes:
-  - `ApiRouteAdminSyncGroupsTests` -> methods: `authenticate`, `setUp`, `test_admin_sync_stockprofile_endpoint`, `test_stock_management_groups_endpoint`
-
-### `backend/portfolio/tests/test_api_routes_auth_basic.py`
-
-- Classes:
-  - `ApiRouteAuthBasicTests` -> methods: `authenticate`, `setUp`, `test_jwt_token_obtain_endpoint`, `test_register_endpoint_creates_unverified_user_and_sends_verification_email`
-
-### `backend/portfolio/tests/test_api_routes_auth_email_verification.py`
-
-- Classes:
-  - `ApiRouteAuthEmailVerificationTests` -> methods: `authenticate`, `setUp`, `test_resend_verification_endpoint_uses_username_identifier`, `test_verify_email_endpoint_marks_user_as_verified`, `test_verify_email_endpoint_rejects_invalid_token`
-
-### `backend/portfolio/tests/test_api_routes_auth_oauth_google.py`
-
-- Classes:
-  - `ApiRouteAuthOauthGoogleTests` -> methods: `authenticate`, `setUp`, `test_google_oauth_endpoint_creates_user_and_applies_onboarding_policy`, `test_google_oauth_endpoint_existing_user_no_reassignment`, `test_google_oauth_endpoint_fail_soft_when_starter_provisioning_fails`
-
-### `backend/portfolio/tests/test_api_routes_auth_password_reset.py`
-
-- Classes:
-  - `ApiRouteAuthPasswordResetTests` -> methods: `authenticate`, `setUp`, `test_password_reset_confirm_logs_invalid_token`, `test_password_reset_confirm_logs_success`, `test_password_reset_confirm_rejects_invalid_token`, `test_password_reset_confirm_updates_password`, `test_password_reset_request_logs_unknown_identifier`, `test_password_reset_request_returns_generic_message_for_unknown_user`, `test_password_reset_request_sends_email_when_user_exists`, `test_password_reset_views_define_dedicated_throttle_scopes`
-
-### `backend/portfolio/tests/test_api_routes_auth_profile.py`
-
-- Classes:
-  - `ApiRouteAuthProfileTests` -> methods: `authenticate`, `setUp`, `test_access_capabilities_route_returns_operator_bootstrap_snapshot`, `test_access_capabilities_route_returns_tenant_bootstrap_snapshot`, `test_auth_me_endpoint_returns_community_tier_for_free_plan`, `test_auth_me_endpoint_returns_plan_and_abilities`, `test_auth_me_endpoint_returns_staff_flags_for_superuser`, `test_auth_me_endpoint_treats_staff_user_as_admin_capability_session`, `test_login_allows_unverified_superuser`, `test_login_is_blocked_for_unverified_user`, `test_portfolio_userconfig_endpoint`, `test_register_endpoint_rejects_password_mismatch`
-
-### `backend/portfolio/tests/test_api_routes_auth_register.py`
-
-- Classes:
-  - `ApiRouteAuthRegisterTests` -> methods: `authenticate`, `setUp`, `test_register_endpoint_applies_active_onboarding_policy`, `test_register_endpoint_fail_soft_when_starter_provisioning_fails`, `test_register_endpoint_normalizes_email_to_lowercase`, `test_register_endpoint_rejects_duplicate_email_case_insensitive`, `test_register_endpoint_rejects_duplicate_username`, `test_register_endpoint_rejects_invalid_email`, `test_register_endpoint_requires_email`, `test_register_endpoint_respects_signup_trial_feature_flag`
-
-### `backend/portfolio/tests/test_api_routes_stock_ai_advisory_components_chart_context.py`
-
-- Classes:
-  - `ApiRouteStockAiAdvisoryComponentsChartContextTests` -> methods: `_attach_dpi_license`, `_create_stock_workspace_advisory`, `authenticate`, `setUp`, `test_stock_ai_advisory_components_generate_accepts_chart_context_and_returns_usage_flags`, `test_stock_ai_advisory_components_generate_chart_context_oversize_points_sets_warning`, `test_stock_ai_advisory_components_generate_invalid_chart_context_sets_warning`, `test_stock_ai_advisory_components_generate_prefers_active_rsi_indicator_from_chart_context`, `test_stock_ai_advisory_components_generate_without_chart_context_has_no_warning`
-
-### `backend/portfolio/tests/test_api_routes_stock_ai_advisory_session.py`
-
-- Classes:
-  - `ApiRouteStockAiAdvisorySessionTests` -> methods: `_attach_dpi_license`, `authenticate`, `setUp`, `test_stock_ai_advisory_session_get_accepts_contract_v2_query_override`, `test_stock_ai_advisory_session_get_creates_sync_when_missing`, `test_stock_ai_advisory_session_get_filters_by_trade_date`, `test_stock_ai_advisory_session_get_is_not_blocked_by_api_quota`, `test_stock_ai_advisory_session_get_queues_when_benchmarks_requested_and_missing`, `test_stock_ai_advisory_session_get_returns_200_with_config_issue_when_ai_model_missing`, `test_stock_ai_advisory_session_get_returns_400_for_invalid_contract_query`, `test_stock_ai_advisory_session_get_returns_503_when_queue_unavailable`, `test_stock_ai_advisory_session_get_returns_latest_advisory`, `test_stock_ai_advisory_session_get_returns_v2_contract_when_enabled`, `test_stock_ai_advisory_session_returns_403_when_feature_locked_for_free_dpi_license`, `test_stock_ai_advisory_session_v2_contract_returns_403_when_holistic_gate_disabled`, `test_stock_ai_advisory_session_v2_contract_returns_403_when_user_not_in_holistic_allowlist`, `test_stock_ai_advisory_session_v2_includes_benchmark_enrichment`
-
-### `backend/portfolio/tests/test_api_routes_stock_ai_advisory_trace.py`
-
-- Classes:
-  - `ApiRouteStockAIAdvisoryTraceTests` -> methods: `authenticate`, `setUp`, `test_stock_ai_advisory_trace_export_returns_audit_artifact_bundle`, `test_stock_ai_advisory_trace_list_returns_400_for_invalid_reason_filter`, `test_stock_ai_advisory_trace_list_supports_cursor_pagination`, `test_stock_ai_advisory_trace_list_supports_reason_actor_time_filters`, `test_stock_ai_advisory_trace_returns_snapshot_and_matched_audit_logs`
-
-### `backend/portfolio/tests/test_api_routes_stock_technicals_bulk.py`
-
-- Classes:
-  - `ApiRouteStockTechnicalsBulkTests` -> methods: `_seed_daily_prices`, `authenticate`, `setUp`, `test_bulk_technicals_rejects_over_limit_symbols`, `test_bulk_technicals_requires_non_empty_symbols`, `test_bulk_technicals_returns_normalized_deduped_results`
-
-### `backend/portfolio/tests/test_api_routes_stock_workspace_feature_access.py`
-
-- Classes:
-  - `ApiRouteStockWorkspaceFeatureAccessTests` -> methods: `_attach_dpi_license`, `authenticate`, `setUp`, `test_check_feature_access_allows_staff_admin_without_dpi_feature`, `test_stock_ai_advisory_components_generate_allows_admin_even_without_pro_feature_license`, `test_stock_ai_advisory_components_generate_returns_403_when_feature_locked_for_free_dpi_license`, `test_stock_order_flow_returns_200_when_feature_enabled_for_pro_dpi_license`, `test_stock_order_flow_returns_403_when_feature_locked_for_free_dpi_license`, `test_stock_order_flow_returns_429_when_api_quota_exceeded`
-
-### `backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py`
-
-- Classes:
-  - `ApiRouteStockWorkspaceRealtimeBulkTests` -> methods: `_attach_dpi_license`, `_create_stock_workspace_advisory`, `_detach_dpi_license`, `authenticate`, `authenticate_direct`, `setUp`, `test_baseline_cache_service_exposes_phase1_interface`, `test_build_whale_payload_includes_trust_metadata_fields`, `test_depth_chart_endpoint_uses_refactored_market_view_when_flag_enabled`, `test_financial_metrics_endpoint_uses_refactored_market_view_when_flag_enabled`, `test_financial_metrics_refactored_returns_502_on_unexpected_exception`, `test_market_group_write_endpoints_are_read_only`, `test_price_alert_rule_crud_and_trigger_endpoint`, `test_price_board_endpoint_uses_refactored_market_view_when_flag_enabled`, `test_price_board_refactored_returns_200_fallback_on_provider_exception`, `test_realtime_intraday_endpoint_rejects_invalid_page_size`, `test_realtime_intraday_endpoint_uses_refactored_market_view_when_flag_enabled`, `test_realtime_intraday_lunch_break_suppresses_stale_warning`, `test_realtime_intraday_refactored_returns_200_fallback_on_provider_exception`, `test_realtime_intraday_stale_contract_keeps_within_threshold_for_non_vn30`, `test_realtime_intraday_stale_contract_marks_over_threshold_for_vn30`, `test_realtime_ticker_cache_miss_does_not_call_on_demand_fetch_and_can_serve_degraded`, `test_realtime_ticker_cache_miss_returns_503_by_default`, `test_realtime_ticker_endpoint_uses_refactored_market_view_when_flag_enabled`, `test_realtime_ticker_fallback_endpoint`, `test_refactored_whale_feed_aggregate_applies_window_filter`, `test_refactored_whale_feed_aggregate_defaults_to_tracked_symbols_and_returns_entitlements`, `test_refactored_whale_feed_aggregate_prefers_redis_stream_over_intraday_tick_db`, `test_refactored_whale_feed_aggregate_rejects_cursor_window_mismatch`, `test_refactored_whale_feed_aggregate_rejects_invalid_cursor`, `test_refactored_whale_feed_aggregate_rejects_invalid_window`, `test_refactored_whale_feed_deduplicates_duplicate_ticks`, `test_refactored_whale_feed_falls_back_to_intraday_tick_db_when_vnbroker_unavailable`, `test_refactored_whale_feed_response_contains_scoring_contract`, `test_rvol_endpoint_uses_refactored_market_view_when_flag_enabled`, `test_rvol_endpoint_uses_same_bucket_20_session_baseline`, `test_sector_breadth_endpoint_uses_refactored_market_view_when_flag_enabled`, `test_stock_ai_advisory_component_clear_deleted_hard_deletes_deleted_records`, `test_stock_ai_advisory_component_delete_returns_403_when_feature_locked_for_free_dpi_license`, `test_stock_ai_advisory_component_delete_returns_429_when_api_quota_exceeded`, `test_stock_ai_advisory_component_delete_soft_deletes_record`, `test_stock_ai_advisory_component_delete_usage_tracking_calls_track_api_call`, `test_stock_ai_advisory_component_refresh_returns_403_when_feature_locked_for_free_dpi_license`, `test_stock_ai_advisory_component_refresh_returns_404_when_component_missing`, `test_stock_ai_advisory_component_refresh_returns_429_when_ai_regenerate_quota_exceeded`, `test_stock_ai_advisory_component_refresh_updates_only_target_component`, `test_stock_ai_advisory_component_refresh_usage_tracking_calls_track_api_call`, `test_stock_ai_advisory_component_restore_reactivates_record`, `test_stock_ai_advisory_component_restore_returns_403_when_feature_locked_for_free_dpi_license`, `test_stock_ai_advisory_component_restore_returns_429_when_api_quota_exceeded`, `test_stock_ai_advisory_component_restore_usage_tracking_calls_track_api_call`, `test_stock_ai_advisory_component_toggle_include_flips_flag`, `test_stock_ai_advisory_component_toggle_include_returns_403_when_feature_locked_for_free_dpi_license`, `test_stock_ai_advisory_component_toggle_include_returns_429_when_api_quota_exceeded`, `test_stock_ai_advisory_component_toggle_include_usage_tracking_calls_track_api_call`, `test_stock_ai_advisory_components_generate_returns_409_when_ai_api_not_configured`, `test_stock_ai_advisory_components_generate_returns_429_when_ai_regenerate_quota_exceeded`, `test_stock_ai_advisory_observability_get_applies_governance_endpoint_reason_filters`, `test_stock_ai_advisory_observability_get_applies_retry_filters_and_sort`, `test_stock_ai_advisory_observability_get_includes_governance_delta_thresholds`, `test_stock_ai_advisory_observability_get_includes_retry_events_from_audit_logs`, `test_stock_ai_advisory_observability_get_includes_rollout_governance_trend`, `test_stock_ai_advisory_observability_get_returns_400_for_invalid_governance_bucket`, `test_stock_ai_advisory_observability_get_supports_governance_day_bucket`, `test_stock_ai_advisory_observability_post_retry_telemetry_creates_audit_log`, `test_stock_ai_advisory_observability_returns_403_when_holistic_gate_disabled`, `test_stock_ai_advisory_observability_returns_403_when_user_not_in_holistic_allowlist`, `test_stock_ai_advisory_observability_returns_summary_and_timeline`, `test_stock_ai_advisory_session_post_returns_429_when_refresh_cooldown_active`, `test_stock_ai_advisory_session_post_returns_503_when_queue_unavailable`, `test_stock_ai_advisory_session_returns_summary_history_desc_by_version`, `test_stock_ai_advisory_summary_delete_removes_selected_summary`, `test_stock_ai_advisory_summary_regenerate_creates_version`, `test_stock_ai_advisory_summary_regenerate_passes_synthesis_preference`, `test_stock_ai_advisory_summary_regenerate_prefers_ai_detailed_synthesis`, `test_stock_ai_advisory_summary_regenerate_returns_403_when_feature_locked_for_free_dpi_license`, `test_stock_ai_advisory_summary_regenerate_returns_429_when_ai_regenerate_quota_exceeded`, `test_stock_ai_advisory_summary_regenerate_returns_429_when_cooldown_active`, `test_stock_ai_advisory_summary_regenerate_usage_tracking_calls_track_api_call`, `test_stock_workspace_chart_endpoint_rejects_invalid_days`, `test_stock_workspace_chart_endpoint_uses_refactored_market_view_when_flag_enabled`, `test_stock_workspace_chart_normalizes_history_points_to_quote_unit`, `test_stock_workspace_overview_and_chart_endpoints`, `test_stock_workspace_overview_endpoint_uses_refactored_market_view_when_flag_enabled`, `test_stock_workspace_overview_fallback_when_base_builder_crashes`, `test_stock_workspace_overview_normalizes_52w_history_to_quote_unit`, `test_stock_workspace_overview_refactored_returns_502_on_unexpected_exception`, `test_stock_workspace_p0_role_matrix_allows_access_for_pro_premium_admin_trial_grace`, `test_stock_workspace_p0_role_matrix_blocks_expired_license`, `test_stock_workspace_p0_role_matrix_blocks_free_dpi_license`, `test_stock_workspace_p1_regression_matrix_matches_current_gating_policy`, `test_tracked_symbol_bulk_threshold_endpoint_updates_multiple_rows`, `test_tracked_symbol_bulk_threshold_endpoint_validates_ids`, `test_tracked_symbol_supports_per_symbol_threshold_create_and_patch`, `test_unified_alerts_endpoint_boosts_recent_whale_against_old_dark_flow`, `test_unified_alerts_endpoint_cursor_pagination_has_no_overlap`, `test_unified_alerts_endpoint_escalates_whale_to_critical_at_three_x_threshold`, `test_unified_alerts_endpoint_includes_market_wide_top_tier_whale`, `test_unified_alerts_endpoint_rejects_cursor_severity_min_mismatch`, `test_unified_alerts_endpoint_rejects_cursor_window_mismatch`, `test_unified_alerts_endpoint_rejects_invalid_cursor`, `test_unified_alerts_endpoint_rejects_invalid_severity_min`, `test_unified_alerts_endpoint_respects_severity_min_filter`, `test_unified_alerts_endpoint_returns_combined_whale_and_dark_flow`, `test_whale_campaigns_applies_baseline_enrichment_hook`, `test_whale_campaigns_groups_events_into_campaigns`, `test_whale_campaigns_rejects_invalid_campaign_limit`, `test_whale_campaigns_supports_cursor_pagination`, `test_whale_feed_aggregate_applies_per_symbol_threshold_override`, `test_whale_feed_aggregate_cursor_is_stable_for_matched_value_sort`, `test_whale_feed_aggregate_cursor_is_stable_for_ts_sort`, `test_whale_feed_aggregate_defaults_to_tracked_symbols_and_returns_entitlements`, `test_whale_feed_aggregate_empty_symbols_returns_empty_payload`, `test_whale_feed_aggregate_endpoint_uses_refactored_market_view_when_flag_enabled`, `test_whale_feed_aggregate_falls_back_to_vnbroker_after_stream_and_db_miss`, `test_whale_feed_aggregate_handles_mixed_intraday_price_units_without_1000x`, `test_whale_feed_aggregate_prefers_canonical_whale_event_store_when_available`, `test_whale_feed_aggregate_prefers_redis_stream_over_intraday_tick_db`, `test_whale_feed_aggregate_rejects_invalid_limit_sort_and_cursor_sort_mismatch`, `test_whale_feed_aggregate_returns_429_when_api_quota_exceeded`, `test_whale_feed_aggregate_sets_threshold_source_per_symbol`, `test_whale_feed_aggregate_skips_vnbroker_fallback_for_large_symbol_sets`, `test_whale_feed_aggregate_supports_scope_param_and_meta_payload`, `test_whale_feed_aggregate_supports_watchlist_filter`, `test_whale_feed_aggregate_symbols_are_deduplicated`, `test_whale_feed_cache_key_scopes_by_user_and_threshold`, `test_whale_feed_db_fallback_keeps_older_threshold_hits_beyond_latest_500_ticks`, `test_whale_feed_endpoint_uses_refactored_market_view_when_flag_enabled`, `test_whale_feed_falls_back_to_intraday_tick_db_when_stream_and_vnbroker_unavailable`, `test_whale_feed_falls_back_to_intraday_tick_db_when_stream_has_no_threshold_hits`, `test_whale_feed_response_contains_scoring_contract`
-- Functions:
-  - `_mock_stock_ai_advisory_summary_task_apply_async`
-
-### `backend/portfolio/tests/test_api_routes_stock_workspace_usage_persistence.py`
-
-- Classes:
-  - `ApiRouteStockWorkspaceUsagePersistenceTests` -> methods: `_attach_dpi_license`, `_create_stock_workspace_advisory`, `authenticate`, `setUp`, `test_stock_ai_advisory_components_generate_creates_component_records`, `test_stock_ai_advisory_components_generate_persists_component_metrics_audit_log`, `test_stock_ai_advisory_components_generate_usage_tracking_calls_track_api_call`, `test_stock_ai_advisory_session_usage_tracking_calls_track_api_call`, `test_stock_order_flow_usage_tracking_calls_track_api_call`
-
-### `backend/portfolio/tests/test_api_routes_symbol_investigation.py`
-
-- Classes:
-  - `ApiRouteSymbolInvestigationTests` -> methods: `authenticate`, `setUp`, `test_symbol_investigation_endpoint_rejects_invalid_sort`, `test_symbol_investigation_endpoint_requires_auth`, `test_symbol_investigation_endpoint_returns_payload`, `test_symbol_investigation_endpoint_supports_include_alias_params`
-
-### `backend/portfolio/tests/test_api_routes_trading_and_p1_13.py`
-
-- Classes:
-  - `ApiRouteTradingAndP113Tests` -> methods: `authenticate`, `setUp`, `test_p1_13_campaign_board_returns_valid_structure`, `test_p1_13_search_symbol_investigation_rejects_unauthenticated`, `test_p1_13_symbol_investigation_modal_has_sprint31_fields`, `test_p1_13_window_filter_backward_compat`, `test_portfolio_endpoint_uses_refactored_trading_view_when_flag_enabled`, `test_refactored_portfolio_delete_cascades_subaccounts_and_transactions`, `test_refactored_portfolio_delete_rejects_foreign_portfolio`, `test_refactored_portfolio_detail_allows_owner`, `test_refactored_portfolio_detail_rejects_foreign_portfolio`, `test_refactored_portfolio_list_returns_only_owner_portfolios`, `test_refactored_portfolio_update_allows_owner`, `test_refactored_portfolio_update_rejects_foreign_portfolio`, `test_refactored_subaccount_create_rejects_foreign_portfolio`, `test_refactored_subaccount_create_returns_400_when_user_has_no_portfolio`, `test_refactored_subaccount_create_uses_requested_owned_portfolio`, `test_refactored_subaccount_create_without_portfolio_falls_back_to_first_portfolio`, `test_refactored_subaccount_delete_rejects_foreign_subaccount`, `test_refactored_subaccount_detail_allows_owner`, `test_refactored_subaccount_detail_rejects_foreign_subaccount`, `test_refactored_subaccount_list_returns_only_owner_subaccounts`, `test_refactored_subaccount_update_rejects_foreign_subaccount`, `test_refactored_transaction_create_rejects_foreign_sub_account`, `test_refactored_transaction_delete_rejects_foreign_transaction`, `test_refactored_transaction_update_rejects_foreign_transaction`, `test_whale_advisory_severity_tag_returned_in_list`, `test_whale_advisory_watchlist_only_filter`
-
-### `backend/portfolio/tests/test_api_routes_whale_advisory_access.py`
-
-- Classes:
-  - `ApiRouteWhaleAdvisoryAccessTests` -> methods: `authenticate`, `setUp`, `test_whale_advisory_endpoint_can_filter_ready_for_refresh`, `test_whale_advisory_endpoint_masks_detail_for_pro`, `test_whale_advisory_endpoint_requires_pro`, `test_whale_advisory_endpoint_returns_detail_for_premium`
-
-### `backend/portfolio/tests/test_api_routes_whale_advisory_delete_current.py`
-
-- Classes:
-  - `ApiRouteWhaleAdvisoryDeleteCurrentTests` -> methods: `authenticate`, `setUp`, `test_delete_current_whale_advisory_endpoint_deletes_latest_for_symbol`, `test_delete_current_whale_advisory_endpoint_returns_404_when_missing`, `test_delete_current_whale_advisory_endpoint_returns_business_403_for_community`
-
-### `backend/portfolio/tests/test_api_routes_whale_advisory_manual_status.py`
-
-- Classes:
-  - `ApiRouteWhaleAdvisoryManualStatusTests` -> methods: `authenticate_direct`, `setUp`, `test_manual_refresh_status_reports_cooldown_when_locked`, `test_manual_refresh_status_reports_ready_when_not_locked`
-
-### `backend/portfolio/tests/test_api_routes_whale_advisory_refresh.py`
-
-- Classes:
-  - `ApiRouteWhaleAdvisoryRefreshTests` -> methods: `authenticate`, `setUp`, `test_whale_advisory_auto_refresh_info_returns_no_advisory_for_tracked_symbol`, `test_whale_advisory_auto_refresh_info_returns_status_and_budget`, `test_whale_advisory_refresh_endpoint_queues_task_for_pro`, `test_whale_advisory_refresh_endpoint_queues_when_existing`, `test_whale_advisory_refresh_endpoint_returns_409_when_ai_api_key_missing`, `test_whale_advisory_refresh_endpoint_returns_409_when_ai_model_missing`, `test_whale_advisory_refresh_endpoint_returns_429_when_ai_regenerate_quota_exceeded`, `test_whale_advisory_refresh_endpoint_returns_429_when_manual_cooldown_active`, `test_whale_advisory_refresh_endpoint_returns_503_when_no_worker_and_sync_fallback_disabled`, `test_whale_advisory_refresh_endpoint_returns_business_403_for_community_plan`, `test_whale_advisory_refresh_endpoint_runs_sync_fallback_when_worker_unavailable`, `test_whale_advisory_refresh_endpoint_runs_sync_when_no_existing`, `test_whale_advisory_refresh_endpoint_uses_system_fallback_when_user_ai_missing`
-
-### `backend/portfolio/tests/test_backfill_starter_portfolios_command.py`
-
-- Classes:
-  - `BackfillStarterPortfoliosCommandTests` -> methods: `setUp`, `test_backfill_username_creates_starter_data`, `test_dry_run_does_not_create_data`
-- Top-level variables:
-  - `User`
-
-### `backend/portfolio/tests/test_celery_task_names.py`
-
-- Classes:
-  - `CeleryTaskNameStabilityTests` -> methods: `test_public_task_names_remain_stable`
-
-### `backend/portfolio/tests/test_coobservation.py`
-
-- Classes:
-  - `CoObservationServiceTests` -> methods: `create_dark_signal`, `setUp`, `test_api_endpoint_validation`, `test_apply_sort_correlation_strength_desc`, `test_apply_sort_created_at_desc`, `test_conviction_assessment_high_confidence_correlations`, `test_conviction_assessment_no_correlations`, `test_conviction_assessment_one_correlation`, `test_correlation_detection_same_time`, `test_dark_signals_filtered_by_symbol`, `test_dark_signals_filtered_by_time_window`, `test_exclude_dark_flow_parameter`, `test_exclude_whale_parameter`, `test_get_symbol_investigation_no_data`, `test_symbol_investigation_returns_compatibility_keys`, `test_timeline_groups_marks_co_observation_bucket`, `test_timeline_ordering`
-  - `CorrelationOptimizerTests` -> methods: `test_high_confidence_buy_campaign_with_absorption`, `test_low_confidence_misaligned_side`, `test_medium_confidence_time_delay`, `test_strong_signals_high_confidence`, `test_weak_signals_low_confidence`
-  - `EndToEndCoObservationTests` -> methods: `setUp`, `test_scenario_aligned_buy_signals`
-  - `TimeWindowResolverTests` -> methods: `test_1h_window`, `test_5d_window`, `test_5m_window`, `test_invalid_window_raises_error`, `test_session_window_before_market_hours`, `test_session_window_during_market_hours`
-
-### `backend/portfolio/tests/test_core_pat_auth.py`
-
-- Classes:
-  - `PatAuthenticationFlowTest` -> methods: `setUp`, `test_drf_authentication_class_invalid_pat_raises_error`, `test_drf_authentication_class_with_jwt_bearer`, `test_drf_authentication_class_with_valid_pat`, `test_drf_authentication_class_without_auth_header`, `test_issue_pat_for_user_creates_credential_and_returns_secret`, `test_resolve_or_create_tenant_for_user_creates_new`, `test_resolve_or_create_tenant_for_user_idempotent`, `test_resolve_user_from_pat_inactive_user`, `test_resolve_user_from_pat_invalid_prefix`, `test_resolve_user_from_pat_not_found`, `test_resolve_user_from_pat_revoked_credential`, `test_resolve_user_from_pat_success`
-  - `PatCredentialEdgeCasesTest` -> methods: `setUp`, `test_issue_pat_without_existing_service_account_creates_default`, `test_pat_with_empty_string_returns_none`, `test_pat_with_none_returns_none`, `test_pat_with_whitespace_stripped`
-  - `PatSmokeTest` -> methods: `test_full_pat_lifecycle`
-- Top-level variables:
-  - `User`
-
-### `backend/portfolio/tests/test_dark_money_history_api.py`
-
-- Classes:
-  - `TestDarkMoneyHistoryApi` -> methods: `setUp`, `test_deduplicates_exact_intraday_ticks_before_whale_aggregation`
-
-### `backend/portfolio/tests/test_dark_money_history_multi_timeframe.py`
-
-- Classes:
-  - `TestDarkMoneyHistoryMultiTimeframe` -> methods: `_create_ohlcv_dataframe`, `setUp`, `test_all_supported_intervals_accepted`, `test_daily_timestamps_are_date_strings`, `test_fetch_1h_interval`, `test_fetch_1m_interval`, `test_fetch_4h_interval`, `test_fetch_5m_interval`, `test_intraday_period_clamped_to_max_days`, `test_intraday_timestamps_are_unix_seconds`
-  - `TestMultiTimeframeIntervalValidation` -> methods: `test_all_intervals_defined_in_vnbroker_map`, `test_intraday_max_days_coverage`, `test_valid_intervals_include_new_timeframes`
-
-### `backend/portfolio/tests/test_dashboard_aggregated_risk_api.py`
-
-- Classes:
-  - `DashboardAggregatedRiskApiTests` -> methods: `setUp`, `test_dashboard_aggregated_risk_snapshot_uses_selected_portfolio`
-
-### `backend/portfolio/tests/test_discovery_engine.py`
-
-- Classes:
-  - `DiscoveryEngineTests` -> methods: `setUp`, `test_calculate_whale_intensity`, `test_is_symbol_discovery_candidate`, `test_resolve_discovery_bucket`
-- Top-level variables:
-  - `User`
-
-### `backend/portfolio/tests/test_dnse_credential_bootstrap.py`
-
-- Classes:
-  - `DNSEAdapterBootstrapTests` -> methods: `setUp`, `test_bootstrap_fails_when_no_username`, `test_bootstrap_hides_exception_detail`, `test_bootstrap_returns_stub_when_vnbroker_unavailable`
-  - `DNSECredentialModelTests` -> methods: `setUp`, `test_api_key_round_trip`, `test_api_secret_round_trip`, `test_empty_credential_get_returns_empty_string`, `test_hash_is_deterministic_for_same_input`, `test_password_not_stored_as_plaintext`, `test_password_round_trip`, `test_username_hash_is_not_raw_sha256`, `test_username_hash_uses_hmac_pepper`, `test_username_not_stored_as_plaintext`, `test_username_round_trip`
-
-### `backend/portfolio/tests/test_dnse_slice2_sync.py`
-
-- Classes:
-  - `DNSESlice2SyncTests` -> methods: `setUp`, `test_sync_dnse_accounts_idempotency`, `test_sync_dnse_accounts_inactive_credential`, `test_sync_dnse_accounts_no_portfolio`
-
-### `backend/portfolio/tests/test_dnse_slice3_balances.py`
-
-- Classes:
-  - `DNSESlice3BalanceTests` -> methods: `setUp`, `test_sync_dnse_balances_success`, `test_sync_dnse_balances_update_existing`
-
-### `backend/portfolio/tests/test_dnse_slice4_reconcile.py`
-
-- Classes:
-  - `DNSESlice4ReconcileTests` -> methods: `setUp`, `test_reconcile_dnse_transactions_idempotency`, `test_reconcile_dnse_transactions_manual_override`
-
-### `backend/portfolio/tests/test_email_verification_templates.py`
-
-- Classes:
-  - `EmailVerificationTemplateTests` -> methods: `test_send_verification_email_uses_rendered_templates`
-
-### `backend/portfolio/tests/test_global_screener_models.py`
-
-- Classes:
-  - `GlobalScreenerModelTests` -> methods: `test_global_screener_rule_can_be_created`, `test_screener_schedule_config_defaults_to_enabled`, `test_user_alert_history_repr_and_admin_registration`
-
-### `backend/portfolio/tests/test_global_screener_service.py`
-
-- Classes:
-  - `GlobalScreenerServiceTests` -> methods: `tearDown`, `test_precompute_market_snapshot_and_match_active_rules`, `test_scheduled_task_broadcasts_each_matched_symbol`, `test_scheduled_task_can_be_disabled_by_config`
-
-### `backend/portfolio/tests/test_global_signal_distribution_service.py`
-
-- Classes:
-  - `GlobalSignalDistributionServiceTests` -> methods: `_create_user`, `test_deliver_dark_flow_signal_persists_history_and_broadcasts_symbol_and_user_groups`, `test_deliver_whale_alert_event_persists_history_and_broadcasts_symbol_and_user_groups`, `test_resolve_signal_audience_unions_tracked_and_watchlist_without_duplicates`
-
-### `backend/portfolio/tests/test_global_signal_policy_helpers.py`
-
-- Classes:
-  - `GlobalSignalPolicyHelpersTests` -> methods: `_build_transaction_dependencies`, `_seed_realtime_universe_cache`, `setUp`, `test_coerce_global_signal_services_config_rejects_invalid_strength_order`, `test_ensure_defaults_seeds_global_signal_system_settings`, `test_get_global_signal_retention_policy_returns_defaults_when_setting_missing`, `test_get_global_signal_services_config_returns_defaults_when_setting_missing`, `test_get_global_signal_universe_policy_falls_back_from_invalid_setting`, `test_invalidate_global_signal_universe_cache_returns_deleted_key_matrix`, `test_set_and_get_global_signal_services_config_normalizes_payload`, `test_set_global_signal_retention_policy_normalizes_and_persists`, `test_set_global_signal_universe_policy_invalidates_realtime_universe_cache_keys`, `test_set_global_signal_universe_policy_normalizes_symbols_and_group_ids`, `test_signal_sources_invalidate_global_signal_universe_on_delete`, `test_signal_sources_invalidate_global_signal_universe_on_save`
-
-### `backend/portfolio/tests/test_global_signal_universe.py`
-
-- Classes:
-  - `GlobalSignalUniverseResolverTests` -> methods: `setUp`, `test_build_snapshot_loads_system_setting_policy_with_safe_fallback`, `test_build_snapshot_returns_hybrid_effective_universe_contract`, `test_from_prefetch_runtime_settings_keeps_selected_group_symbols_warm`
-
-### `backend/portfolio/tests/test_global_whale_alerts_service.py`
-
-- Classes:
-  - `GlobalWhaleAlertsServiceTests` -> methods: `setUp`, `test_build_whale_alert_event_id_is_deterministic_and_symbol_scoped`, `test_detect_and_store_global_whale_alerts_enqueues_distribution_for_created_events`, `test_distribute_whale_alert_event_task_loads_event_and_returns_delivery_result`, `test_persist_whale_alert_event_is_idempotent_by_event_id`, `test_run_global_whale_alert_detection_persists_events_from_effective_universe_snapshot`, `test_run_global_whale_alert_detection_updates_existing_event_instead_of_duplicate_insert`
-
-### `backend/portfolio/tests/test_h2_replay_trace_command.py`
-
-- Classes:
-  - `H2ReplayTraceCommandTests` -> methods: `_create_user_with_config`, `test_replay_command_outputs_snapshot_and_audit_trace`
-
-### `backend/portfolio/tests/test_latency.py`
-
-- Classes:
-  - `LatencyAuditTest` -> methods: `_build_advisory`, `test_broadcast_latency`
-
-### `backend/portfolio/tests/test_legacy_purge_gate.py`
-
-- Classes:
-  - `LegacyPrefetchPurgeGateTests` -> methods: `test_no_legacy_prefetch_symbols_in_runtime_paths`
-
-### `backend/portfolio/tests/test_manual_queue_policy_surfaces.py`
-
-- Classes:
-  - `ManualQueuePolicySignalAdminTests` -> methods: `setUp`, `test_signal_admin_job_retry_queues_manual_on_demand_for_dark_flow`, `test_signal_admin_jobs_run_queues_manual_on_demand_for_whale`
-  - `ManualQueuePolicyStockNewsTests` -> methods: `setUp`, `test_stock_news_ai_summary_queues_manual_on_demand`
-
-### `backend/portfolio/tests/test_market_data_service.py`
-
-- Classes:
-  - `MarketDataServiceParityTest` -> methods: `setUp`, `test_get_historical_indicators_count`, `test_get_historical_indicators_missing_symbol_returns_empty_series`, `test_get_historical_indicators_sorted_asc`, `test_get_latest_snapshot_empty`, `test_get_latest_snapshot_missing_symbol`, `test_get_latest_snapshot_parity`, `test_get_ohlcv_batch`, `test_local_context_cache`
-
-### `backend/portfolio/tests/test_mdsu_gate.py`
-
-- Classes:
-  - `MDSUGateTest` -> methods: `test_no_direct_dailyprice_query_in_migrated_files`
-
-### `backend/portfolio/tests/test_news_enrichment_schedule.py`
-
-- Classes:
-  - `NewsEnrichmentScheduleTests` -> methods: `test_offhours_enrichment_beat_jobs_route_to_offhours_queue`
-
-### `backend/portfolio/tests/test_observability.py`
-
-- Classes:
-  - `AdminRuntimeKPITests` -> methods: `_authenticate`, `setUp`, `test_admin_runtime_kpi_advisory_merge_requires_staff`, `test_admin_runtime_kpi_advisory_merge_returns_structure`, `test_admin_runtime_kpi_anonymous_401`, `test_admin_runtime_kpi_requires_staff`, `test_admin_runtime_kpi_returns_snapshot_structure`, `test_admin_runtime_kpi_whale_pipeline_requires_staff`, `test_admin_runtime_kpi_whale_pipeline_returns_structure`, `test_admin_runtime_kpi_whale_preflight_metrics_accepts_window_days_min_max`, `test_admin_runtime_kpi_whale_preflight_metrics_compact_mode_omits_trend`, `test_admin_runtime_kpi_whale_preflight_metrics_handles_metric_reader_error`, `test_admin_runtime_kpi_whale_preflight_metrics_rejects_invalid_date_format`, `test_admin_runtime_kpi_whale_preflight_metrics_rejects_non_integer_window_days`, `test_admin_runtime_kpi_whale_preflight_metrics_rejects_window_days_out_of_range`, `test_admin_runtime_kpi_whale_preflight_metrics_requires_staff`, `test_admin_runtime_kpi_whale_preflight_metrics_returns_structure`, `test_admin_runtime_kpi_whale_preflight_metrics_supports_window_days`
-  - `MarketObservabilityTests` -> methods: `authenticate`, `setUp`, `test_market_observability_health_reports_http_p95`, `test_market_observability_snapshot_contains_intraday_freshness_counters`, `test_whale_aggregate_read_does_not_pollute_whale_pipeline_freshness`, `test_whale_feed_timeout_records_fallback_and_timeout`
-
-### `backend/portfolio/tests/test_ohlcv_bars_endpoint.py`
-
-- Classes:
-  - `TestGetOHLCVBarsService` -> methods: `_make_params_before`, `_make_params_window`, `test_bars_sorted_ascending_by_timestamp`, `test_before_mode_returns_correct_structure`, `test_cached_result_returned_immediately`, `test_no_duplicate_timestamps`, `test_snapshot_id_passed_through`, `test_symbol_not_found_raises`
-  - `TestOHLCVBarsQuerySerializer` -> methods: `test_after_mode_valid`, `test_before_mode_valid_iso8601`, `test_before_mode_valid_unix_ms`, `test_cannot_mix_modes`, `test_invalid_timeframe_rejected`, `test_limit_max_enforced`, `test_no_mode_defaults_to_before_now`, `test_snapshot_id_optional`, `test_timeframe_required`, `test_valid_timeframe_choices`, `test_window_mode_from_and_to_required_together`, `test_window_mode_from_must_be_less_than_to`, `test_window_mode_valid`
-  - `TestStockOHLCVBarsView` -> methods: `setUp`, `test_before_mode_returns_200`, `test_invalid_timeframe_returns_400_with_machine_readable_code`, `test_limit_exceeds_max_returns_400`, `test_missing_timeframe_returns_400_with_code`, `test_mixed_mode_returns_400`, `test_response_bars_have_required_fields`, `test_snapshot_id_present_in_response`, `test_unauthenticated_returns_401`, `test_window_mode_returns_200`
-- Functions:
-  - `_make_authed_client`
-- Top-level variables:
-  - `MOCK_BARS_RESULT`, `User`
-
-### `backend/portfolio/tests/test_onboarding_trial_service.py`
-
-- Classes:
-  - `OnboardingTrialServiceTests` -> methods: `setUp`, `test_apply_onboarding_trial_for_new_user_sets_plan_and_log`, `test_process_expired_onboarding_trials_downgrades_eligible_users`, `test_process_expired_onboarding_trials_is_idempotent`, `test_process_expired_onboarding_trials_respects_lock_and_auto_downgrade`, `test_process_expired_onboarding_trials_task_wraps_service_result`
-- Top-level variables:
-  - `User`
-
-### `backend/portfolio/tests/test_openclaw_client.py`
-
-- Classes:
-  - `OpenClawClientTests` -> methods: `test_call_raises_clear_error_when_httpx_missing`, `test_generate_summary_returns_placeholder_without_httpx_import`
-
-### `backend/portfolio/tests/test_opencore_lifecycle.py`
-
-- Classes:
-  - `OpenCoreLifecycleTransitionTests` -> methods: `setUp`, `test_expired_plan_returns_in_entitlements`, `test_grace_active_returns_in_entitlements`, `test_no_double_transition_grace_to_grace`, `test_task_handles_missing_user_config`, `test_task_returns_error_count`, `test_transition_grace_to_expired`, `test_transition_trial_to_grace`, `test_trial_active_returns_in_entitlements`
-- Top-level variables:
-  - `User`
-
-### `backend/portfolio/tests/test_operator_admin_runtime_api.py`
-
-- Classes:
-  - `OperatorAdminRuntimeApiTests` -> methods: `_authenticate`, `setUp`, `test_operator_health_requires_admin`, `test_operator_health_returns_snapshot_structure`, `test_operator_overview_requires_admin`, `test_operator_overview_returns_snapshot_structure`
-
-### `backend/portfolio/tests/test_operator_jobs_audit_api.py`
-
-- Classes:
-  - `OperatorJobsAuditApiTests` -> methods: `_authenticate`, `setUp`, `test_operator_audit_request_detail_returns_source_record`, `test_operator_audit_requests_returns_audit_rows`, `test_operator_audit_requests_support_kind_filter`, `test_operator_jobs_requires_admin`, `test_operator_jobs_returns_job_rows`, `test_operator_jobs_support_kind_filter`
-
-### `backend/portfolio/tests/test_operator_tenant_registry_api.py`
-
-- Classes:
-  - `OperatorTenantRegistryApiTests` -> methods: `_authenticate`, `setUp`, `test_operator_pats_returns_no_secret_and_anomaly_metadata`, `test_operator_service_accounts_returns_risk_metadata`, `test_operator_tenant_detail_returns_summary_sections`, `test_operator_tenants_requires_admin`, `test_operator_tenants_returns_filtered_registry`, `test_operator_tenants_supports_status_filter`
-
-### `backend/portfolio/tests/test_operator_write_api.py`
-
-- Classes:
-  - `OperatorWriteAPITest` -> methods: `_authenticate`, `setUp`, `test_action_logs_lifecycle_event`, `test_activate_tenant`, `test_change_plan`, `test_invalid_tenant_id_404`, `test_non_admin_forbidden`, `test_provision_tenant`, `test_suspend_tenant`
-
-### `backend/portfolio/tests/test_order_flow.py`
-
-- Classes:
-  - `TestComputeCVDSeriesDB` -> methods: `setUp`, `test_bucket_has_required_keys`, `test_cumulative_cvd_accumulates`, `test_empty_symbol_returns_empty_list`, `test_returns_list`, `test_unknown_side_split_half`
-  - `TestComputeTickRateDB` -> methods: `setUp`, `tearDown`, `test_result_is_cached`, `test_small_order_ratio_in_range`, `test_tick_rate_positive`, `test_unknown_symbol_returns_zero_rate`
-  - `TestDetectAbsorption` -> methods: `_cvd_series`, `test_detected_when_price_locked_and_cvd_surges`, `test_empty_inputs_return_not_detected`, `test_insufficient_buckets_return_not_detected`, `test_price_locked_flag_when_price_stable`, `test_price_not_locked_when_price_moves`, `test_strength_in_range_0_100`
-  - `TestDetectDarkFlow` -> methods: `_base_ticks`, `test_components_keys_present`, `test_confidence_high_when_strength_above_70`, `test_detect_dark_flow_propagates_window_minutes`, `test_no_signal_when_no_ticks`, `test_result_has_required_keys`, `test_result_includes_bucket_facts_and_session_summary_from_ticks`, `test_twap_bot_detected_when_high_tick_rate_and_small_orders`
-  - `TestDetectIceberg` -> methods: `_make_ticks_at_price`, `test_confidence_low_medium_high`, `test_detected_at_min_repeat`, `test_empty_ticks_returns_not_detected`, `test_not_detected_when_fewer_than_min_repeat`, `test_ticks_outside_window_ignored`, `test_two_price_levels_picks_dominant`
-  - `TestInternalHelpers` -> methods: `test_bucket_index`, `test_time_to_seconds`
-  - `TestOrderFlowApi` -> methods: `setUp`, `test_order_flow_endpoint_cursor_replay_consistent`, `test_order_flow_endpoint_five_page_traversal_no_duplicate_missing`, `test_order_flow_endpoint_requires_authentication`, `test_order_flow_endpoint_returns_payload`, `test_order_flow_endpoint_supports_cursor_pagination`
-  - `TestOrderFlowSignalTask` -> methods: `setUp`, `tearDown`, `test_distribution_task_fans_out_to_watchlist_only_user`, `test_distribution_task_skips_below_threshold_signal`, `test_task_deduplicates_same_event_id`, `test_task_honors_cooldown_lock`, `test_task_reads_symbols_from_effective_universe_snapshot_when_symbol_not_given`, `test_task_skips_when_disabled`, `test_task_stores_signal_when_strength_above_20`, `test_task_uses_dark_flow_severity_mapper_for_persisted_signal`
-  - `TestSizeDistribution` -> methods: `_ticks_with_values`, `test_empty_ticks_returns_safe_defaults`, `test_histogram_bucketing`, `test_p95_value`, `test_single_tick`, `test_small_ratio_correct`
-- Functions:
-  - `_make_tick`, `_t`
-
-### `backend/portfolio/tests/test_order_flow_source_parity.py`
-
-- Classes:
-  - `SourceParityTestBase` -> methods: `_compute_severity`, `_create_test_signals`, `setUp`
-  - `TestSourceParityContractVersion` -> methods: `test_response_structure`
-  - `TestSourceParityErrorHandling` -> methods: `test_invalid_cursor_graceful`, `test_limit_clamping`
-  - `TestSourceParityFields` -> methods: `test_required_fields_present`
-  - `TestSourceParityIdentity` -> methods: `test_event_id_stable`, `test_severity_valid`
-  - `TestSourceParityPrimaryStream` -> methods: `test_cursor_replay_consistent`, `test_five_page_traversal_no_duplicates`
-- Top-level variables:
-  - `User`
-
-### `backend/portfolio/tests/test_partner_admin_api.py`
-
-- Classes:
-  - `PartnerAdminApiTests` -> methods: `setUp`, `test_free_plan_cannot_access_partner_machine_access`, `test_machine_pat_requires_tenant_management_scope`, `test_partner_routes_accept_machine_pat_authentication`, `test_partner_tenant_summary_route_returns_current_tenant_snapshot`, `test_partner_usage_and_billing_read_paths`, `test_pat_issue_list_rotate_and_revoke`, `test_rotating_pat_expires_after_grace_window`, `test_service_account_list_and_create`
-
-### `backend/portfolio/tests/test_password_reset_templates.py`
-
-- Classes:
-  - `PasswordResetTemplateTests` -> methods: `test_send_password_reset_email_uses_rendered_templates`
-
-### `backend/portfolio/tests/test_pr1_dark_flow_severity_semantics.py`
-
-- Classes:
-  - `TestPR1DarkFlowSeveritySemantics` -> methods: `setUp`, `test_accumulate_dark_flow_event_stores_strength_and_confidence`, `test_flush_defaults_to_whale_signal_when_no_dark_flow_strength`, `test_flush_determines_source_as_dark_flow_when_strength_present`, `test_flush_with_mixed_sources_respects_dark_flow_if_present_and_strong`, `test_merge_dark_flow_event_updates_strength_max`
-  - `TestPR1GenerateAdvisoryServicesSeverity` -> methods: `setUp`, `test_dark_flow_severity_calculator_invoked_in_flush_path`
-
-### `backend/portfolio/tests/test_pr2_tickrate_timeframe_fixes.py`
-
-- Classes:
-  - `TestPR2TickRateEdgeCases` -> methods: `test_dark_flow_missing_tick_rate`, `test_dark_flow_missing_tick_rate_per_min`, `test_dark_flow_none_components`
-  - `TestPR2TickRateFieldMapping` -> methods: `setUp`, `test_dark_flow_returns_correct_tick_rate_structure`, `test_generate_component_templates_reads_tick_rate_per_min`
-  - `TestPR2TimeframeAPIIntegration` -> methods: `setUp`, `test_component_generate_api_passes_window_minutes_to_detector`
-  - `TestPR2TimeframeConversion` -> methods: `test_case_insensitive`, `test_convert_15m_to_15_minutes`, `test_convert_1d_to_1440_minutes`, `test_convert_1h_to_60_minutes`, `test_convert_30m_to_30_minutes`, `test_convert_4h_to_240_minutes`, `test_invalid_format_defaults_to_30`, `test_minutes_minimum_is_1`
-
-### `backend/portfolio/tests/test_pr3_first_create_threshold.py`
-
-- Classes:
-  - `TestPR3EdgeCases` -> methods: `setUp`, `test_symbol_not_found_returns_default`, `test_zero_or_negative_threshold_handled`
-  - `TestPR3FirstCreateAdvisoryIntegration` -> methods: `setUp`, `test_first_create_passes_resolved_threshold_to_task`, `test_threshold_source_included_in_payload`
-  - `TestPR3ThresholdResolution` -> methods: `setUp`, `test_case_insensitive_symbol_matching`, `test_different_users_different_symbols`, `test_fallback_to_user_default_if_tracked_but_no_override`, `test_threshold_conversion_to_vnd`, `test_use_symbol_override_if_tracked_with_threshold`, `test_use_user_default_if_no_tracked_symbol`
-
-### `backend/portfolio/tests/test_prefetch_health.py`
-
-- Classes:
-  - `PrefetchHealthSnapshotTests` -> methods: `test_fresh_ok_meta_with_sample_cache_miss_stays_healthy`, `test_prefetch_health_endpoint_returns_200_for_fresh_sample_cache_miss`, `test_stale_ok_meta_remains_unhealthy_even_when_status_is_ok`
-
-### `backend/portfolio/tests/test_price_board_normalization.py`
-
-- Classes:
-  - `PriceBoardNormalizationTests` -> methods: `test_kbs_flat_to_multiindex_mapping`, `test_numeric_coercion_handles_invalid_data`, `test_vci_multiindex_idempotent`
-
-### `backend/portfolio/tests/test_price_unit_normalization.py`
-
-- Classes:
-  - `PriceUnitNormalizationTests` -> methods: `test_normalise_ohlcv_keeps_vnd_values_for_daily_price_storage`, `test_normalise_ohlcv_scales_thousand_vnd_to_vnd`, `test_resolve_price_scale_to_system_unit_for_thousand_vnd_input`, `test_resolve_price_scale_to_system_unit_for_vnd_input`, `test_resolve_vnbroker_price_unit_from_dataframe_attrs`
-
-### `backend/portfolio/tests/test_prune_system_ai_audit_logs_command.py`
-
-- Classes:
-  - `PruneSystemAIAuditLogsCommandTests` -> methods: `_create_log_with_age_days`, `setUp`, `test_dry_run_does_not_delete_rows`, `test_prune_deletes_only_rows_older_than_cutoff`
-- Top-level variables:
-  - `User`
-
-### `backend/portfolio/tests/test_realtime_compute.py`
-
-- Classes:
-  - `RealtimeComputeTests` -> methods: `test_build_ticker_payload_computes_vwap`, `test_build_ticker_payload_native_matches_dataframe_path`, `test_build_whale_payload_includes_explainability_fields`, `test_build_whale_payload_sell_side_explainability`, `test_detect_whale_signals_emits_threshold_hits`, `test_detect_whale_signals_selects_highest_matched_threshold_only`
-
-### `backend/portfolio/tests/test_realtime_gateway.py`
-
-- Classes:
-  - `RealtimeGatewayTests` -> methods: `setUp`, `test_stream_broadcaster_degrades_payload_when_backpressure_high`, `test_stream_broadcaster_delivers_ticker_payload_shape`, `test_websocket_accepts_valid_token_and_subscribe`, `test_websocket_forwards_dark_flow_alert`, `test_websocket_forwards_screener_matched_event`, `test_websocket_masks_whale_advisory_detail_for_pro_plan`, `test_websocket_rejects_missing_token`
-
-### `backend/portfolio/tests/test_realtime_ops_metrics_api.py`
-
-- Classes:
-  - `RealtimeOpsMetricsApiTests` -> methods: `setUp`, `test_increment_realtime_metric_fallback_path_updates_value`, `test_realtime_ops_metrics_requires_staff`, `test_realtime_ops_metrics_returns_json_snapshot_for_staff`, `test_realtime_ops_metrics_returns_prometheus_text_for_staff`, `test_realtime_ops_metrics_throttle_enforced`
-
-### `backend/portfolio/tests/test_screener_api.py`
-
-- Classes:
-  - `ScreenerAuthTests` -> methods: `setUp`, `test_authenticated_empty_list`, `test_unauthenticated_list`
-  - `ScreenerCRUDTests` -> methods: `_valid_payload`, `setUp`, `test_create_empty_rules_json`, `test_create_invalid_field`, `test_create_invalid_op`, `test_create_non_numeric_value`, `test_create_valid_rule`, `test_create_whale_intensity_rule`, `test_delete_other_user_rule`, `test_delete_own_rule`, `test_get_other_user_rule`, `test_get_own_rule`, `test_update_rule`
-  - `ScreenerRunTests` -> methods: `_make_rule`, `_seed_snapshot`, `setUp`, `tearDown`, `test_run_no_data`, `test_run_with_flow_matching_data`, `test_run_with_matching_data`, `test_run_with_no_match`
-- Functions:
-  - `get_token`
-- Top-level variables:
-  - `DETAIL_URL`, `LIST_URL`, `RUN_URL`
-
-### `backend/portfolio/tests/test_screener_cache_snapshot_api.py`
-
-- Classes:
-  - `ScreenerCacheSnapshotApiTests` -> methods: `_build_rule`, `setUp`, `tearDown`, `test_run_feature_flag_disabled_returns_403`, `test_run_uses_cached_master_snapshot_without_business_db_queries`
-- Top-level variables:
-  - `RUN_URL`
-
-### `backend/portfolio/tests/test_seed_demo_data_whale_frontend.py`
-
-- Classes:
-  - `SeedDemoDataWhaleFrontendTests` -> methods: `test_seed_demo_data_populates_testuser_whale_frontend_data`
-
-### `backend/portfolio/tests/test_seed_environment_standardization.py`
-
-- Classes:
-  - `SeedEnvironmentStandardizationTests` -> methods: `test_seed_demo_data_blocked_on_production_without_override`, `test_seed_environment_demo_profile_blocked_on_production_without_override`, `test_seed_environment_demo_profile_dry_run_allowed_with_env_flag`, `test_seed_environment_reference_profile_dry_run_logs_execution`
-
-### `backend/portfolio/tests/test_seed_whale_mission_control_command.py`
-
-- Classes:
-  - `SeedWhaleMissionControlCommandTests` -> methods: `test_seed_command_populates_whale_mission_control_models`, `test_seed_command_reset_is_idempotent`
-
-### `backend/portfolio/tests/test_services_vnbroker_refactor.py`
-
-- Classes:
-  - `ServicesvnbrokerRefactorTests` -> methods: `test_fetch_exchange_lookup_uses_adapter_exchange_wrapper`, `test_fetch_market_sectors_and_groups_falls_back_when_upstream_is_empty`, `test_fetch_market_sectors_and_groups_uses_adapter_listing_wrappers`
-
-### `backend/portfolio/tests/test_signal_admin_api.py`
-
-- Classes:
-  - `SignalAdminApiTests` -> methods: `_auth_regular`, `_auth_staff`, `setUp`, `test_cached_heavy_count_reuses_redis_value`, `test_config_preview_normalizes_without_persisting`, `test_job_retry_creates_new_queued_run`, `test_job_retry_rejects_lifecycle_runs`, `test_jobs_list_supports_page_and_page_size`, `test_jobs_run_queues_manual_whale_run_and_list_returns_it`, `test_money_flow_materialization_preview_and_run_return_confirmation_metadata`, `test_recent_events_and_retention_preview_return_expected_shapes`, `test_recent_events_support_page_and_page_size_across_merged_domains`, `test_summary_requires_staff`, `test_summary_returns_whale_dark_flow_and_retention_structure`, `test_universe_apply_requires_confirm_and_persists_policy`, `test_whale_governance_bridge_apply_requires_confirm`, `test_whale_governance_bridge_preview_and_apply_create_pending_draft`
-
-### `backend/portfolio/tests/test_signal_service_run_registry.py`
-
-- Classes:
-  - `SignalServiceRunRegistryTests` -> methods: `test_cleanup_old_intraday_ticks_blocks_without_retention_preview`, `test_cleanup_old_intraday_ticks_creates_purge_run`, `test_cleanup_old_signal_service_runs_deletes_only_old_terminal_runs`, `test_detect_and_store_global_whale_alerts_creates_completed_signal_service_run`, `test_detect_and_store_order_flow_creates_completed_signal_service_run`, `test_detect_and_store_order_flow_marks_disabled_run_complete`, `test_materialize_money_flow_forensic_window_from_order_flow_signal_stores_raw_tick_snapshot`, `test_materialize_money_flow_forensic_window_from_whale_event_stores_raw_tick_snapshot`, `test_run_global_screener_scheduled_task_creates_lifecycle_materialization_run`, `test_run_intraday_side_backfill_apply_creates_recompute_run`
-
-### `backend/portfolio/tests/test_starter_portfolio_service.py`
-
-- Classes:
-  - `StarterPortfolioServiceTests` -> methods: `setUp`, `test_existing_subaccount_is_not_overwritten`, `test_provision_creates_default_portfolios_and_subaccounts`, `test_provision_is_idempotent`, `test_should_provision_disabled_flag_returns_false`, `test_should_provision_respects_global_enabled_flag_and_canary`, `test_should_provision_zero_canary_returns_false`
-- Top-level variables:
-  - `User`
-
-### `backend/portfolio/tests/test_symbol_engagement.py`
-
-- Classes:
-  - `TestSymbolEngagement` -> methods: `setUp`, `test_activate_symbol_engagement_guard`, `test_is_intraday_fresh_market_closed`, `test_is_intraday_fresh_no_ticks`, `test_is_intraday_fresh_with_recent_ticks`, `test_warmup_task_direct_db_persist`, `test_warmup_task_locking`
-
-### `backend/portfolio/tests/test_symbol_engagement_e2e.py`
-
-- Classes:
-  - `TestTrackedSymbolEngagementHook` -> methods: `setUp`, `test_duplicate_tracked_symbol_no_engagement`, `test_tracked_symbol_add_triggers_engagement`
-  - `TestTransactionEngagementHook` -> methods: `setUp`, `test_transaction_buy_triggers_engagement`, `test_transaction_other_user_subaccount_forbidden`
-  - `TestWatchlistItemEngagementHook` -> methods: `setUp`, `test_watchlist_add_triggers_engagement`, `test_watchlist_add_wrong_user_forbidden`
-- Functions:
-  - `_make_user`
-- Top-level variables:
-  - `User`
-
-### `backend/portfolio/tests/test_system_ai_admin_api.py`
-
-- Classes:
-  - `SystemAIAdminApiTests` -> methods: `setUp`, `test_admin_audit_logs_reject_invalid_datetime_filter`, `test_admin_audit_logs_reject_invalid_order`, `test_admin_can_filter_audit_logs_by_action`, `test_admin_can_filter_audit_logs_by_date_window`, `test_admin_can_get_operator_ai_runtime_snapshot`, `test_admin_can_get_system_ai_audit_logs`, `test_admin_can_order_audit_logs_ascending`, `test_admin_can_paginate_audit_logs`, `test_admin_can_test_system_ai_connection`, `test_admin_test_connection_returns_400_when_runtime_not_ready`, `test_get_returns_default_settings_for_admin`, `test_operator_ai_runtime_requires_admin_permission`, `test_put_rejects_invalid_governance_delta_thresholds`, `test_put_rejects_invalid_prefetch_runtime_settings`, `test_put_rejects_invalid_prefetch_time_policy`, `test_put_updates_governance_delta_thresholds`, `test_put_updates_prefetch_runtime_settings`, `test_put_updates_prefetch_time_policy`, `test_put_updates_system_ai_settings`, `test_requires_admin_permission`
-
-### `backend/portfolio/tests/test_tasks_realtime.py`
-
-- Classes:
-  - `TasksRealtimeTests` -> methods: `setUp`, `test_collect_and_publish_realtime_skips_when_intraday_disabled`, `test_is_prefetch_cache_fresh_false_when_payload_old`, `test_is_prefetch_cache_fresh_true_for_recent_prefetch_payload`
-
-### `backend/portfolio/tests/test_tick_producer.py`
-
-- Classes:
-  - `_FakePipeline` -> methods: `__init__`, `execute`, `xadd`
-  - `_FakeRedisClient` -> methods: `__init__`, `pipeline`
-  - `TickProducerTests` -> methods: `test_push_intraday_ticks_pushes_oldest_first_so_latest_stream_entry_is_newest_trade`, `test_stream_max_len_is_clamped_by_hard_cap`
-
-### `backend/portfolio/tests/test_ticker_prefetch_task.py`
-
-- Classes:
-  - `PrefetchPolicyGuardAndMetricTests` -> methods: `setUp`, `test_increment_prefetch_metric_increments_counter`, `test_prefetch_retry_countdown_with_policy_applies_multiplier_and_clamp`
-  - `PrefetchSchedulerCanonicalConfigTests` -> methods: `test_celery_beat_uses_canonical_shard_scheduler_only`, `test_schedule_realtime_prefetch_shards_enqueues_due_shards`
-  - `PrefetchTimePolicyResolverTests` -> methods: `test_effective_settings_follow_active_profile`, `test_resolve_profile_holiday_offhours`, `test_resolve_profile_pre_open`, `test_resolve_profile_weekend_offhours`
-  - `RealtimeUniverseAndShardSchedulerTests` -> methods: `setUp`, `test_collect_realtime_symbol_universe_assigns_tier_and_stable_shard`, `test_collect_realtime_symbol_universe_includes_admin_selected_groups`, `test_resolve_scheduler_plan_degrades_cold_before_warm`, `test_resolve_scheduler_plan_emergency_override_relaxes_cadence`
-  - `SessionCloseCalendarTests` -> methods: `setUp`, `test_cleanup_retention_uses_market_local_date`, `test_resolve_session_close_date_rolls_back_holiday_and_weekend`
-
-### `backend/portfolio/tests/test_vnbroker_adapter_standardized_methods.py`
-
-- Classes:
-  - `_FakeCompany` -> methods: `insider_deals`
-  - `_FakeFinance` -> methods: `fundamental_snapshot`, `industry_benchmark`, `industry_peers`, `industry_rank`
-  - `_FakeStockClient`
-  - `vnbrokerAdapterStandardizedMethodsTests` -> methods: `_run_inline`, `test_fundamental_snapshot_returns_canonical_schema`, `test_industry_methods_attach_source_columns`, `test_insider_deals_returns_canonical_schema`
-
-### `backend/portfolio/tests/test_vnbroker_provider_quality.py`
-
-- Classes:
-  - `VnbrokerProviderQualityTests` -> methods: `setUp`, `test_build_runtime_recommendation_uses_current_market_phase_when_not_provided`, `test_build_runtime_recommendation_uses_quality_ranked_provider`, `test_calculate_provider_quality_score_uses_weighted_formula`, `test_price_board_sources_preserve_explicit_source`, `test_price_board_sources_use_quality_order_when_no_explicit_source`, `test_resolve_provider_order_keeps_market_phase_selections_isolated`, `test_resolve_provider_order_keeps_selected_provider_within_hysteresis`, `test_resolve_provider_order_prefers_highest_scored_provider`, `test_resolve_provider_order_uses_current_market_phase_when_not_provided`
-
-### `backend/portfolio/tests/test_watch_sync.py`
-
-- Classes:
-  - `WatchAssetSyncTests` -> methods: `setUp`, `test_sync_watchlist_prices_collects_union_of_all_watch_sources_for_admin_scope`, `test_sync_watchlist_prices_defaults_to_user_symbols_only`
-  - `WatchSyncApiCooldownTests` -> methods: `setUp`, `test_watchlist_sync_endpoint_enforces_user_cooldown`
-
-### `backend/portfolio/tests/test_whale_advisory_task.py`
-
-- Classes:
-  - `WhaleAdvisoryTaskTests` -> methods: `_create_user_config`, `setUp`, `test_auto_generate_task_filters_to_matched_symbols`, `test_auto_generate_task_queues_missing_and_stale_tracked_symbols`, `test_auto_generate_task_respects_daily_auto_refresh_limit`, `test_auto_generation_skips_if_existing_advisory`, `test_collect_realtime_prefers_symbol_override_threshold`, `test_collect_realtime_uses_user_threshold_when_symbol_override_missing`, `test_compute_advisory_severity_thresholds`, `test_detect_whale_reversal_queues_reversal_advisory`, `test_detect_whale_reversal_skips_when_event_based_disabled`, `test_flush_merged_event_passes_primary_and_sources`, `test_force_refresh_generates_new_advisory_even_if_existing`, `test_generate_task_persists_merge_metadata`, `test_merge_window_180s_schedules_single_flush_for_whale_and_dark_flow`, `test_periodic_job_uses_concise_mode_and_logs_tokens`, `test_periodic_task_metrics_use_scheduler_audit_labels`, `test_resolve_advisory_threshold_prefers_tracked_symbol_override`, `test_resolve_advisory_threshold_uses_explicit_tracked_threshold_value`, `test_task_generates_provider_aware_placeholder_when_staff_key_missing`, `test_task_persists_metrics_into_aggregate_audit_log`, `test_task_persists_snapshot_with_monotonic_sequence`, `test_task_persists_threshold_and_broadcast_metadata`, `test_task_sets_severity_based_on_value_threshold_ratio`, `test_task_skips_when_daily_auto_refresh_limit_exceeded`, `test_task_skips_when_daily_budget_exceeded`, `test_task_skips_when_event_based_advisory_disabled_for_user`, `test_task_skips_when_user_has_no_ai_model`, `test_task_uses_env_api_key_when_staff_config_has_no_saved_key`
-
-### `backend/portfolio/tests/test_whale_analytics_snapshot_api.py`
-
-- Classes:
-  - `WhaleAnalyticsSnapshotApiTestCase` -> methods: `setUp`, `test_invalidate_whale_analytics_snapshot_cache_bumps_symbol_revision`, `test_shared_bucket_facts_cache_reuses_raw_tick_query_across_calls`, `test_snapshot_endpoint_falls_back_to_latest_completed_session_for_weekend_trade_date`, `test_snapshot_endpoint_falls_back_to_latest_daily_price_session_for_holiday_data_gap`, `test_snapshot_endpoint_keeps_all_threshold_ticks_even_if_whale_feed_only_contains_top_subset`, `test_snapshot_endpoint_maps_auction_events_to_bucket_start`, `test_snapshot_endpoint_marks_missing_session_levels_when_price_context_incomplete`, `test_snapshot_endpoint_returns_contract_and_headers`, `test_snapshot_endpoint_returns_percentile_fields_when_historical_baseline_exists`, `test_snapshot_endpoint_reuses_cached_payload_for_identical_request`, `test_snapshot_endpoint_reuses_payload_published_by_another_request_while_lock_held`, `test_snapshot_endpoint_sets_degraded_metadata_when_intraday_ticks_missing`, `test_snapshot_endpoint_sets_degraded_metadata_when_reference_price_missing`, `test_snapshot_endpoint_skips_live_whale_feed_for_historical_trade_date`, `test_snapshot_endpoint_skips_percentile_baseline_when_disabled`, `test_snapshot_endpoint_supports_conditional_etag`, `test_snapshot_endpoint_uses_same_day_snapshot_cache_policy_after_market_close`
-- Top-level variables:
-  - `VN_TZ`
-
-### `backend/portfolio/tests/test_whale_analytics_snapshot_flow_series.py`
-
-- Classes:
-  - `WhaleAnalyticsSnapshotFlowSeriesTestCase` -> methods: `_bucket`, `test_buy_strength_does_not_false_saturate_on_small_clean_bucket`, `test_buy_strength_rises_for_truly_abnormal_bucket`, `test_flow_compare_series_normalizes_cvd_around_neutral_baseline`, `test_heatmap_and_marker_series_follow_bucket_side_and_score_bounds`, `test_institutional_strength_uses_whale_context_not_buy_strength_clone`
-- Top-level variables:
-  - `VN_TZ`
-
-### `backend/portfolio/tests/test_whale_broadcast.py`
-
-- Classes:
-  - `WhaleBroadcastTests` -> methods: `_create_user`, `test_broadcast_screener_matched_persists_history_and_sends_alert`
-
-### `backend/portfolio/tests/test_whale_orders_ssot_parity.py`
-
-- Classes:
-  - `WhaleOrdersReferencePriceLookupTests` -> methods: `test_reference_price_fallback_uses_close_price_when_prev_close_missing`, `test_reference_price_falls_back_to_latest_session_not_newer_than_trade_date`
-  - `WhaleOrdersSsotParityTests` -> methods: `setUp`, `test_whale_orders_endpoint_uses_canonical_feed_and_returns_orders_without_ref_price`, `test_whale_orders_filters_by_timeframe`
-
-### `backend/portfolio/tests/test_whale_preflight_refactor.py`
-
-- Classes:
-  - `WhalePreflightCacheRefactorTests` -> methods: `test_build_preflight_metric_rates_returns_expected_percentages`, `test_build_preflight_metric_summary_returns_dashboard_fields`, `test_build_skip_response_returns_expected_shape`, `test_check_cooldown_skip_records_hit_metric`, `test_check_preflight_cache_skips_cooldown`, `test_check_preflight_cache_skips_existing_advisory_first`, `test_increment_preflight_counter_ignores_unknown_metric`, `test_kpi_schema_version_is_stable_string`, `test_metric_cache_key_uses_prefix_and_day`, `test_read_preflight_metrics_returns_zero_on_cache_error`, `test_read_preflight_metrics_window_builds_oldest_to_newest`, `test_sum_preflight_metrics_window_aggregates_numeric_values`
-  - `WhalePreflightContextAssemblyTests` -> methods: `test_build_whale_generation_context_dict_keeps_legacy_aliases`, `test_prepare_whale_generation_context_uses_symbol_only_lock_key`, `test_return_with_preflight_profile_logs_skip`, `test_unwrap_or_return_skip_for_payload_tuple`, `test_unwrap_or_return_skip_for_skip_dict`
-
-### `backend/portfolio/tests/test_whale_scoring.py`
-
-- Classes:
-  - `WhaleScoringTests` -> methods: `test_classify_severity_uses_band_contract`, `test_display_score_applies_time_decay_and_severity`, `test_event_score_is_deterministic_for_same_input`, `test_profile_v1_keeps_default_contract`, `test_profile_v2_reduces_near_threshold_buy_boost`, `test_profile_v2_uses_stricter_extreme_band`, `test_whale_payload_includes_scoring_contract_fields`
-
-### `backend/portfolio/tests/test_whale_signal_engine.py`
-
-- Classes:
-  - `WhaleSignalEngineTestCase` -> methods: `setUp`, `test_annotate_queryset_with_threshold`, `test_classify_side`, `test_classify_size`, `test_get_user_threshold_map`, `test_resolve_threshold_default`, `test_resolve_threshold_override`
-
-### `backend/portfolio/throttles.py`
-
-- Classes:
-  - `RealtimeOpsMetricsRateThrottle`
-
-### `backend/portfolio/trading_service.py`
-
-- Classes:
-  - `TradingService` -> methods: `create_portfolio`, `create_sub_account`, `create_transaction`, `portfolio_queryset_for_user`, `sub_account_queryset_for_user`, `transaction_queryset_for_sub_account`, `transaction_queryset_for_user`
-- Top-level variables:
-  - `_core_backend_src`
-
-### `backend/portfolio/trading_views.py`
-
-- Classes:
-  - `PortfolioDetailView` -> methods: `get_queryset`
-  - `PortfolioListCreateView` -> methods: `get_queryset`, `perform_create`
-  - `SubAccountDetailView` -> methods: `get_queryset`
-  - `SubAccountListCreateView` -> methods: `create`, `get_queryset`, `perform_create`
-  - `TransactionDetailView` -> methods: `get_queryset`
-  - `TransactionListCreateView` -> methods: `get_queryset`, `perform_create`
-
-### `backend/portfolio/urls.py`
-
-- Functions:
-  - `_toggle_trading_view`
-- Top-level variables:
-  - `opencore_router`, `urlpatterns`
-
-### `backend/portfolio/urls_admin_sync.py`
-
-- Top-level variables:
-  - `app_name`, `urlpatterns`
-
-### `backend/portfolio/urls_crawl.py`
-
-- Top-level variables:
-  - `app_name`, `router`, `urlpatterns`
-
-### `backend/portfolio/urls_realtime.py`
-
-- Top-level variables:
-  - `app_name`, `urlpatterns`
-
-### `backend/portfolio/urls_stock.py`
-
-- Top-level variables:
-  - `app_name`, `urlpatterns`
-
-### `backend/portfolio/view_helpers.py`
-
-- Functions:
-  - `_build_group_response`, `_build_price_alert_rule_row`, `_price_alert_is_triggered`
-- Top-level variables:
-  - `_core_backend_src`
-
-### `backend/portfolio/views.py`
-
-- Functions:
-  - `_resolve_first_create_threshold_vnd`
-- Top-level variables:
-  - `_core_backend_src`, `logger`
-
-### `backend/portfolio/views_admin_runtime.py`
-
-- Functions:
-  - `_build_operator_advisory_audit_row`, `_build_operator_audit_rows`, `_build_operator_crawl_audit_row`, `_build_operator_crawl_job_row`, `_build_operator_event_context`, `_build_operator_health_snapshot`, `_build_operator_jobs_snapshot`, `_build_operator_overview_snapshot`, `_build_operator_pat_list_snapshot`, `_build_operator_pat_snapshot`, `_build_operator_service_account_list_snapshot`, `_build_operator_service_account_snapshot`, `_build_operator_signal_job_row`, `_build_operator_system_ai_settings_audit_row`, `_build_operator_tenant_detail_snapshot`, `_build_operator_tenant_list_snapshot`, `_build_operator_tenant_snapshot`, `_build_operator_tenant_usage_snapshot`, `_build_operator_whale_config_audit_row`, `_build_recent_operator_actions`, `_build_tenant_action_response`, `_coerce_features`, `_forbidden_surface_response`, `_generate_unique_tenant_code`, `_has_surface_write_permission`, `_http_request`, `_is_celery_worker_available`, `_log_plan_changed_event`, `_normalize_tenant_plan`, `_normalize_tenant_status`, `_operator_actor_type`, `_operator_request_id`, `_operator_tenant_queryset`, `_paginate_operator_rows`, `_parse_bool_query_param`, `_parse_multi_query_param`, `_parse_operator_limit`, `_parse_optional_positive_int`, `_request_ip`, `_resolve_operator_audit_request_record`, `_resolve_operator_tenant`, `_resolve_or_create_owner_user`, `_resolve_service_account_rotation_risk`, `_response_payload`, `_slugify_tenant_code_seed`, `_split_operator_request_id`, `_text_contains`, `_worst_risk_state`, `admin_intraday_side_backfill_apply_api`, `admin_intraday_side_backfill_preview_api`, `admin_intraday_side_backfill_status_api`, `admin_intraday_universe_warm_now_api`, `admin_runtime_kpi_advisory_merge_api`, `admin_runtime_kpi_advisory_metrics_api`, `admin_runtime_kpi_api`, `admin_runtime_kpi_whale_pipeline_api`, `admin_runtime_kpi_whale_preflight_metrics_api`, `admin_system_ai_audit_logs_api`, `admin_system_ai_settings_api`, `admin_system_ai_test_connection_api`, `admin_vnbroker_runtime_config_changelog_api`, `admin_vnbroker_runtime_config_current_api`, `admin_vnbroker_runtime_config_reset_api`, `admin_vnbroker_runtime_config_update_api`, `offpeak_vnbroker_ingest_api`, `offpeak_vnbroker_ingest_history_api`, `operator_ai_runtime_api`, `operator_audit_request_detail_api`, `operator_audit_requests_api`, `operator_health_api`, `operator_jobs_api`, `operator_overview_api`, `operator_tenant_activate_api`, `operator_tenant_change_plan_api`, `operator_tenant_detail_api`, `operator_tenant_pats_api`, `operator_tenant_service_accounts_api`, `operator_tenant_suspend_api`, `operator_tenants_api`, `warm_ticker_prefetch_api`
-
-### `backend/portfolio/views_admin_sync.py`
-
-- Functions:
-  - `sync_market_groups_api`, `sync_stock_profiles_from_snapshot_api`, `sync_stockprofile_api`
-
-### `backend/portfolio/views_admin_vnbroker_benchmark.py`
-
-- Functions:
-  - `_count_inspect_tasks`, `_run_benchmark_background`, `admin_vnbroker_price_board_benchmark_latest_api`, `admin_vnbroker_price_board_benchmark_run_api`
-- Top-level variables:
-  - `_BENCHMARK_CELERY_MAX_QUEUE_DEPTH`, `_BENCHMARK_RUNNING_MAX_SECONDS`, `logger`
-
-### `backend/portfolio/views_ai_advisory_components_summary.py`
-
-- Functions:
-  - `_build_component_generation_key`, `_estimate_component_generation_actionability`, `_estimate_component_generation_confidence`, `_legacy_views_module`, `_persist_component_generation_metrics_audit_log`, `_timeframe_to_minutes`, `stock_ai_advisory_component_clear_deleted_api`, `stock_ai_advisory_component_delete_api`, `stock_ai_advisory_component_refresh_api`, `stock_ai_advisory_component_restore_api`, `stock_ai_advisory_component_toggle_include_api`, `stock_ai_advisory_components_generate_api`, `stock_ai_advisory_summary_delete_api`, `stock_ai_advisory_summary_regenerate_api`
-
-### `backend/portfolio/views_ai_advisory_management.py`
-
-- Classes:
-  - `WhaleAdvisoryListView` -> methods: `get_permissions`, `get_queryset`, `get_serializer_class`, `list`
-- Functions:
-  - `_build_advisory_canonical_payload`, `_extract_confidence_from_summary`, `_is_celery_worker_available`, `_legacy_views_module`, `_manual_queue_priority_for_plan`, `_submit_advisory_generation_with_fallback`, `ai_advisory_canonical_symbol_api`, `delete_current_whale_advisory_api`, `refresh_whale_advisory_api`, `whale_advisory_auto_refresh_info_api`, `whale_advisory_manual_refresh_status_api`
-- Top-level variables:
-  - `_MANUAL_QUEUE_PRIORITY_BY_TIER`
-
-### `backend/portfolio/views_ai_advisory_session.py`
-
-- Functions:
-  - `_build_session_v2_aggregate_quality_metrics`, `_build_session_v2_benchmark_enrichment`, `_build_session_v2_decision_digest`, `_build_session_v2_observability`, `_get_holistic_advisory_v1_gate_status`, `_is_holistic_advisory_v1_enabled_for_user`, `_legacy_views_module`, `_log_holistic_rollout_gate_deny`, `stock_ai_advisory_session_api`
-
-### `backend/portfolio/views_ai_advisory_trace.py`
-
-- Functions:
-  - `_build_advisory_trace_payload_for_user`, `_legacy_views_module`, `stock_ai_advisory_observability_api`, `stock_ai_advisory_trace_api`, `stock_ai_advisory_trace_export_api`, `stock_ai_advisory_trace_list_api`
-
-### `backend/portfolio/views_ai_runtime_stats.py`
-
-- Functions:
-  - `_ai_command_center_snapshot`, `_build_audit_diff_summary`, `_collect_audit_diff`, `_create_ai_command_center_audit_log`, `_format_audit_value`, `_get_ai_runtime_config_status`, `_get_or_create_ai_command_center_config`, `_parse_positive_int`, `ai_command_center_audit_logs_api`, `ai_config_api`, `ai_options_api`, `ai_test_connection_api`, `whale_advisory_symbol_stats_api`
-
-### `backend/portfolio/views_analytics_extended.py`
-
-- Classes:
-  - `BulkTechnicalBySymbolsView` -> methods: `post`
-  - `PortfolioTechnicalView` -> methods: `get`
-- Functions:
-  - `_build_symbol_technicals`, `_normalize_symbol_list`
-- Top-level variables:
-  - `_core_backend_src`
-
-### `backend/portfolio/views_backtest.py`
-
-- Functions:
-  - `_user_has_backtest_access`, `backtest_stats_api`
-- Top-level variables:
-  - `_MIN_SIGNALS_FOR_DISPLAY`, `logger`
-
-### `backend/portfolio/views_core_compat.py`
-
-- Classes:
-  - `CoreAuthMeView` -> methods: `get`
-  - `CoreCapabilitiesView` -> methods: `get`
-- Functions:
-  - `core_health`
-
-### `backend/portfolio/views_crawl.py`
-
-- Classes:
-  - `CrawlAuditLogViewSet`
-  - `CrawlJobViewSet` -> methods: `run`, `stop`
-  - `CrawlRunViewSet`
-  - `CrawlScheduleViewSet`
-
-### `backend/portfolio/views_dark_money_history.py`
-
-- Functions:
-  - `_build_reference_price_by_trade_date`, `_build_strategy_table`, `_compute_moving_averages`, `_compute_smfi`, `_deduplicate_intraday_tick_frame`, `_floor_intraday_bucket`, `_normalize_chart_quote_price`, `_normalize_interval`, `_normalize_tick_side`, `_resolve_period_days`, `_to_unix_seconds`, `dark_money_history_api`
-- Top-level variables:
-  - `INTERVAL_ALIASES`, `INTRADAY_MAX_DAYS`, `MA_WINDOWS`, `PERIOD_DAYS_MAP`, `SMFI_LOOKBACK_SESSIONS`, `TRUNC_FN_MAP`, `VALID_INTERVALS`, `logger`, `vnbroker_INTERVAL_MAP`
-
-### `backend/portfolio/views_dashboard_risk.py`
-
-- Functions:
-  - `_build_dark_flow`, `_build_stale_positions`, `_build_whale_exposure`, `_coerce_float`, `_coerce_int`, `_coerce_iso_datetime`, `_resolve_dashboard_portfolio`, `dashboard_aggregated_risk_api`
-- Top-level variables:
-  - `MAX_TOP_SYMBOLS`, `RISK_LOOKBACK_DAYS`, `_core_backend_src`, `logger`
-
-### `backend/portfolio/views_notifications.py`
-
-- Functions:
-  - `_verify_telegram_signature`, `preferred_symbols_delete`, `preferred_symbols_list`, `telegram_generate_link`, `telegram_settings_update`, `telegram_status`, `telegram_unlink`, `telegram_webhook`
-- Top-level variables:
-  - `_MAX_PREFERRED_SYMBOLS`, `logger`
-
-### `backend/portfolio/views_partner_admin.py`
-
-- Classes:
-  - `PartnerPATIssueSerializer`
-  - `PartnerPATRevokeSerializer`
-  - `PartnerPATRotateSerializer`
-  - `PartnerServiceAccountCreateSerializer`
-- Functions:
-  - `_apply_cursor`, `_build_audit_metadata`, `_build_list_payload`, `_build_plan_lifecycle_summary`, `_build_quota_snapshot_row`, `_build_subscription_summary`, `_build_usage_meter_row`, `_current_pat_scope_codes`, `_error`, `_normalize_scope_codes`, `_paginate_list`, `_request_auth_context`, `_request_id`, `_request_ip`, `_require_idempotency_key`, `_require_pat_scope`, `_require_requested_scopes_within_pat`, `_resolve_owned_pat`, `_resolve_owned_service_account`, `_resolve_period_bounds`, `_resolve_risk_state`, `_resolve_subscription_status`, `_resolve_user_config`, `_response`, `_serialize_invoice_summary`, `_serialize_pat_credential`, `_serialize_service_account`, `_serialize_tenant_summary`, `partner_billing_invoices_api`, `partner_billing_subscription_api`, `partner_pat_issue_api`, `partner_pat_list_api`, `partner_pat_revoke_api`, `partner_pat_rotate_api`, `partner_service_accounts_api`, `partner_tenant_api`, `partner_usage_meters_api`, `partner_usage_quotas_api`
-- Top-level variables:
-  - `PARTNER_AUTH_CLASSES`, `PARTNER_SCOPE_MANAGE_PATS`, `PARTNER_SCOPE_MANAGE_SERVICE_ACCOUNTS`, `PARTNER_SCOPE_MANAGE_TENANT`, `PARTNER_USAGE_METERS`, `partner_authentication_classes`
-
-### `backend/portfolio/views_portfolio_watchlist.py`
-
-- Classes:
-  - `AllocationView` -> methods: `get`
-  - `ChartDataView` -> methods: `get`
-  - `EquityCurveView` -> methods: `get`
-  - `HoldingsView` -> methods: `get`
-  - `PortfolioAnalyticsView` -> methods: `get`
-  - `PortfolioDetailView` -> methods: `get_queryset`
-  - `PortfolioListCreateView` -> methods: `get_queryset`, `perform_create`
-  - `SubAccountDetailView` -> methods: `get_queryset`
-  - `SubAccountListCreateView` -> methods: `create`, `get_queryset`, `perform_create`
-  - `SummaryView` -> methods: `get`
-  - `SyncPricesView` -> methods: `post`
-  - `TransactionDetailView` -> methods: `get_queryset`
-  - `TransactionListCreateView` -> methods: `get_queryset`, `perform_create`
-  - `UserConfigView` -> methods: `get_object`
-  - `WatchlistGroupDetailView` -> methods: `get_permissions`, `get_queryset`
-  - `WatchlistGroupListCreateView` -> methods: `get_permissions`, `get_queryset`, `perform_create`
-  - `WatchlistItemCreateView` -> methods: `perform_create`
-  - `WatchlistItemDeleteView` -> methods: `get_queryset`
-  - `WatchlistSeedView` -> methods: `post`
-  - `WatchlistSyncView` -> methods: `post`
-- Functions:
-  - `_acquire_sync_cooldown`, `_sync_cooldown_seconds_for_user`
-- Top-level variables:
-  - `_core_backend_src`
-
-### `backend/portfolio/views_realtime_aggregate_campaigns.py`
-
-- Classes:
-  - `WhaleCampaignsView` -> methods: `get`
-  - `WhaleFeedAggregateView` -> methods: `get`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/views_realtime_depth_financial.py`
-
-- Classes:
-  - `DepthChartView` -> methods: `get`
-  - `FinancialMetricsView` -> methods: `get`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/views_realtime_ops.py`
-
-- Functions:
-  - `realtime_metrics_ops_api`
-
-### `backend/portfolio/views_realtime_symbol.py`
-
-- Functions:
-  - `symbol_investigation_api`, `whale_symbol_summary_api`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/views_screener.py`
-
-- Classes:
-  - `ScreenerRuleDetailView` -> methods: `_get_rule`, `delete`, `get`, `put`
-  - `ScreenerRuleListCreateView` -> methods: `get`, `post`
-  - `ScreenerRuleRunView` -> methods: `post`
-- Functions:
-  - `_build_cached_match_payload`, `_build_response_from_cached_snapshot`, `_extract_master_snapshot_rows`
-
-### `backend/portfolio/views_screener_admin.py`
-
-- Classes:
-  - `AdminGlobalScreenerRuleDetailView` -> methods: `_get_rule`, `delete`, `put`
-  - `AdminGlobalScreenerRuleListView` -> methods: `get`, `post`
-  - `AdminGlobalScreenerRunManualView` -> methods: `post`
-  - `AdminScreenerConfigView` -> methods: `get`, `put`
-  - `GlobalScreenerRuleSerializer` -> methods: `validate_name`, `validate_rules_json`
-  - `ScreenerScheduleConfigSerializer` -> methods: `validate_cron_expression`
-- Functions:
-  - `_get_schedule_config`
-
-### `backend/portfolio/views_sentiment.py`
-
-- Functions:
-  - `_score_to_status`, `_user_has_sentiment_access`, `sentiment_detail_api`
-- Top-level variables:
-  - `_SCORE_LABELS`, `logger`
-
-### `backend/portfolio/views_signal_admin.py`
-
-- Functions:
-  - `_build_config_changes`, `_build_effective_value_preview_contract`, `_build_money_flow_freshness_snapshot`, `_build_money_flow_materialization_preview_contract`, `_build_retention_preview`, `_build_summary_domain_payload`, `_build_whale_governance_bridge_preview_contract`, `_build_whale_governance_snapshot`, `_cached_heavy_count`, `_extract_whale_governance_bridge_config`, `_latest_dark_flow_cache_payload`, `_latest_run`, `_latest_whale_cache_payload`, `_normalize_recent_events`, `_parse_bounded_positive_int`, `_parse_iso_datetime`, `_parse_money_flow_materialization_request`, `_serialize_run`, `_serialize_whale_governance_draft`, `_serialize_whale_governance_rollout`, `_serialize_whale_governance_version`, `_truthy`, `signal_admin_config_api`, `signal_admin_config_preview_api`, `signal_admin_job_retry_api`, `signal_admin_jobs_api`, `signal_admin_jobs_run_api`, `signal_admin_money_flow_materialization_preview_api`, `signal_admin_money_flow_materialization_run_api`, `signal_admin_recent_events_api`, `signal_admin_retention_preview_api`, `signal_admin_summary_api`, `signal_admin_universe_apply_api`, `signal_admin_universe_preview_api`, `signal_admin_whale_governance_bridge_apply_api`, `signal_admin_whale_governance_bridge_preview_api`
-- Top-level variables:
-  - `HEAVY_COUNT_CACHE_KEY_PREFIX`, `HEAVY_COUNT_CACHE_TTL_SECONDS`
-
-### `backend/portfolio/views_stock_catalog.py`
-
-- Classes:
-  - `SecuritiesGroupListView` -> methods: `get_queryset`
-  - `SecuritiesItemListView` -> methods: `get_queryset`
-  - `StockProfileListView` -> methods: `get_queryset`
-
-### `backend/portfolio/views_stock_management.py`
-
-- Classes:
-  - `PriceAlertRuleDetailView` -> methods: `delete`, `get_object`, `patch`
-  - `PriceAlertRuleListCreateView` -> methods: `get`, `post`
-  - `PriceAlertRuleTriggerView` -> methods: `post`
-  - `SecuritiesGroupDetailView` -> methods: `delete`, `get_object`, `patch`
-  - `SecuritiesGroupListCreateView` -> methods: `get`, `post`
-  - `SecuritiesItemCreateView` -> methods: `post`
-  - `SecuritiesItemDeleteView` -> methods: `delete`
-  - `SecuritiesSeedView` -> methods: `post`
-  - `SecuritiesSyncView` -> methods: `post`
-  - `TrackedSymbolBulkThresholdView` -> methods: `post`
-  - `TrackedSymbolDeleteView` -> methods: `_build_row`, `delete`, `patch`
-  - `TrackedSymbolListCreateView` -> methods: `_enrich`, `get`, `post`
-- Functions:
-  - `_parse_tracked_symbol_threshold_million`
-- Top-level variables:
-  - `_core_backend_src`, `logger`
-
-### `backend/portfolio/views_stock_news.py`
-
-- Functions:
-  - `portfolio_news_digest_api`, `stock_news_ai_summary_api`, `stock_news_api`
-
-### `backend/portfolio/views_stock_order_flow.py`
-
-- Functions:
-  - `_enforce_opencore_feature_for_stock_endpoint`, `_enforce_opencore_quota_for_stock_endpoint`, `_timeframe_to_minutes`, `_track_opencore_stock_endpoint_usage`, `market_discovery_hub_api`, `stock_order_flow_api`, `whale_advisory_symbol_stats_api`
-- Top-level variables:
-  - `_OPENCORE_STOCK_ENDPOINT_QUOTA_KEYS`, `_OPENCORE_STOCK_FEATURE_KEYS`, `logger`
-
-### `backend/portfolio/views_stock_workspace_admin.py`
-
-- Classes:
-  - `AdminOpsStatsView` -> methods: `get`
-  - `StockProfileDetailView`
-  - `StockWorkspaceChartView` -> methods: `get`
-  - `StockWorkspaceOverviewView` -> methods: `get`
-- Functions:
-  - `_legacy_views_module`
-- Top-level variables:
-  - `_core_backend_src`
-
-### `backend/portfolio/views_whale_analytics.py`
-
-- Functions:
-  - `_build_snapshot_cache_key`, `_build_snapshot_lock_key`, `_get_or_build_snapshot_payload`, `_resolve_cache_control`, `_resolve_snapshot_cache_timeout`, `whale_analytics_snapshot_api`
-
-### `backend/portfolio/views_whale_orders.py`
-
-- Functions:
-  - `_calculate_bubbles`, `_categorize_orders`, `_get_extreme_threshold`, `_get_reference_price`, `_get_session_start_time`, `whale_orders_by_symbol_api`
-- Top-level variables:
-  - `MARKET_CLOSE_HOUR`, `MARKET_OPEN_HOUR`, `TIMEZONE_VN`
-
-### `backend/portfolio/vnbroker_compat.py`
-
-- Functions:
-  - `disable_vnbroker_upgrade_notice`, `patch_vnbroker_finance_init`
-- Top-level variables:
-  - `logger`
-
-### `backend/portfolio/vnbroker_provider_benchmark.py`
-
-- Classes:
-  - `_Counter` -> methods: `merge`
-- Functions:
-  - `_benchmark_single_provider_concurrency`, `_build_quality_metrics_from_benchmark`, `_normalize_concurrency_levels`, `_normalize_providers`, `_normalize_runs`, `_pick_best_result`, `_run_worker_once`, `_utc_now_iso`, `build_runtime_recommendation`, `get_latest_price_board_benchmark_report`, `run_price_board_provider_benchmark`, `set_latest_price_board_benchmark_report`
-- Top-level variables:
-  - `BENCHMARK_CACHE_KEY`, `BENCHMARK_CACHE_TTL_SECONDS`, `DEFAULT_CONCURRENCY_LEVELS`, `DEFAULT_PROVIDERS`
-
-### `backend/portfolio/vnbroker_provider_quality.py`
-
-- Functions:
-  - `_clamp_percent`, `_normalize_channel`, `_normalize_component_weights`, `_normalize_market_phase`, `_normalize_provider`, `_score_snapshot_sort_key`, `_selection_cache_key`, `_snapshot_cache_key`, `build_provider_quality_snapshot`, `cache_provider_quality_selection`, `cache_provider_quality_snapshot`, `calculate_provider_quality_score`, `get_provider_quality_selection`, `get_provider_quality_snapshot`, `resolve_provider_order`
-- Top-level variables:
-  - `PROVIDER_QUALITY_CACHE_PREFIX`, `PROVIDER_QUALITY_CACHE_TTL_SECONDS`, `PROVIDER_QUALITY_HYSTERESIS_DELTA`, `PROVIDER_QUALITY_SELECTION_CACHE_PREFIX`, `PROVIDER_QUALITY_SELECTION_TTL_SECONDS`, `QUALITY_COMPONENT_WEIGHTS`
-
-### `backend/portfolio/vnbroker_runtime_config.py`
-
-- Functions:
-  - `coerce_vnbroker_runtime_settings`, `coerce_vnbroker_source_config`, `default_vnbroker_runtime_settings`, `default_vnbroker_source_config`, `get_vnbroker_runtime_settings`, `invalidate_vnbroker_runtime_cache`
-- Top-level variables:
-  - `ALLOWED_VNBROKER_SOURCES`, `SOURCE_CONFIG_DEFAULT_PRIMARY_BY_CHANNEL`, `TIMEOUT_CHANNELS`, `VNBROKER_RUNTIME_CACHE_KEY`, `VNBROKER_RUNTIME_CACHE_TTL_SECONDS`, `logger`
-
-### `backend/portfolio/warmup_cache.py`
-
-- Functions:
-  - `_set_startup_prefetch_meta`, `run_warmup_cache`, `should_run_warmup`, `trigger_warmup_async`
-- Top-level variables:
-  - `PREFETCH_META_KEY`, `WARMUP_COMPLETED_KEY`, `WARMUP_IN_PROGRESS_KEY`, `logger`
-
-### `backend/portfolio/whale_feed_helpers.py`
-
-- Functions:
-  - `_allow_vnbroker_aggregate_fallback`, `_build_aggregate_event_payload`, `_build_aggregate_event_payload_from_record`, `_build_stream_aggregate_records`, `_build_tick_timestamp`, `_build_vnbroker_aggregate_records`, `_build_whale_order_payload`, `_cache_get`, `_cache_set`, `_classify_signal_size`, `_dataframe_has_threshold_hits`, `_decode_whale_feed_cursor`, `_encode_whale_feed_cursor`, `_get_user_symbol_threshold_overrides_vnd`, `_get_user_whale_threshold_vnd`, `_is_event_timestamp_in_window`, `_is_rate_limited_error`, `_is_tick_row_in_window`, `_is_vnbroker_rate_limited`, `_mark_vnbroker_rate_limited`, `_normalize_aggregate_event_records`, `_normalize_signal_side`, `_parse_aggregate_window`, `_parse_cursor_datetime`, `_parse_cursor_matched_value`, `_resolve_user_whale_threshold_vnd`, `_resolve_whale_feed_symbols`, `_vnbroker_rate_limit_cache_key`, `_window_start_datetime`
-- Top-level variables:
-  - `WHALE_AGGREGATE_WINDOW_OPTIONS`, `_core_backend_src`, `logger`
-
-### `backend/portfolio/whale_scoring.py`
-
-- Functions:
-  - `_aggression_bonus_for_side`, `_clamp`, `_normalize_weights`, `_resolve_scoring_profile`, `_safe_cache_get`, `calculate_display_score`, `calculate_event_score`, `classify_severity`, `resolve_whale_score_config`
-- Top-level variables:
-  - `_CACHE_KEY`, `_DEFAULT_SCORE_CONFIG`, `_PROFILE_DEFAULTS`
-
-### `backend/setup_dev_auth.py`
-
-- Top-level variables:
-  - `_core_backend_src`, `status`
-
-### `backend/support/__init__.py`
-
-- No parseable top-level symbols found
-
-### `backend/support/admin.py`
-
-- Classes:
-  - `SupportTicketAdmin`
-  - `SupportTicketCounterAdmin`
-  - `TicketAttachmentAdmin`
-  - `TicketAttachmentInline`
-  - `TicketAuditLogAdmin`
-  - `TicketMessageAdmin`
-  - `TicketMessageInline`
-
-### `backend/support/apps.py`
-
-- Classes:
-  - `SupportConfig`
-
-### `backend/support/migrations/0001_initial.py`
-
-- Classes:
-  - `Migration`
-
-### `backend/support/migrations/0002_alter_supportticketcounter_options_and_more.py`
-
-- Classes:
-  - `Migration`
-
-### `backend/support/migrations/__init__.py`
-
-- No parseable top-level symbols found
-
-### `backend/support/models.py`
-
-- Classes:
-  - `SenderRole`
-  - `SupportTicket` -> methods: `__str__`, `_next_ticket_code`, `can_transition`, `save`
-  - `SupportTicketCounter`
-  - `TicketAttachment`
-  - `TicketAuditLog`
-  - `TicketCategory`
-  - `TicketMessage`
-  - `TicketPriority`
-  - `TicketStatus`
-- Functions:
-  - `ticket_attachment_upload_path`
-
-### `backend/support/permissions.py`
-
-- Classes:
-  - `IsStaffUser` -> methods: `has_permission`
-  - `IsTicketOwnerOrStaff` -> methods: `has_object_permission`
-
-### `backend/support/serializers.py`
-
-- Classes:
-  - `CreateTicketSerializer` -> methods: `validate_category`
-  - `StaffTicketUpdateSerializer` -> methods: `validate`
-  - `SupportTicketListSerializer`
-  - `TicketAttachmentSerializer`
-  - `TicketAuditLogSerializer`
-  - `TicketMessageSerializer`
-  - `TicketReplySerializer`
-
-### `backend/support/services.py`
-
-- Functions:
-  - `build_ticket_deep_link`, `get_staff_recipients`, `queue_new_ticket_email`, `queue_ticket_reply_email`
-
-### `backend/support/tasks.py`
-
-- Functions:
-  - `send_ticket_email`
-
-### `backend/support/urls.py`
-
-- Top-level variables:
-  - `urlpatterns`
-
-### `backend/support/views.py`
-
-- Classes:
-  - `StaffSupportDashboardView` -> methods: `get`
-  - `StaffTicketListView` -> methods: `get`
-  - `StaffTicketPatchView` -> methods: `patch`
-  - `StaffTicketReplyView` -> methods: `post`
-  - `StandardResultsSetPagination`
-  - `TicketDetailView` -> methods: `get`
-  - `TicketListCreateView` -> methods: `get`, `post`
-  - `TicketReopenView` -> methods: `post`
-  - `TicketReplyView` -> methods: `post`
-- Functions:
-  - `_ticket_query_for_user`, `_validate_and_create_attachments`, `_write_audit`
-- Top-level variables:
-  - `ALLOWED_ATTACHMENT_EXTENSIONS`, `ALLOWED_ATTACHMENT_MIME_PREFIXES`, `MAX_ATTACHMENTS_PER_MESSAGE`, `MAX_ATTACHMENT_SIZE_BYTES`
-
-### `backend/test_opencore.py`
-
-- Top-level variables:
-  - `available`, `can_whale`, `license`, `metrics`, `plans`
-
-### `backend/test_opencore_api.py`
-
-- Functions:
-  - `make_request`
-- Top-level variables:
-  - `access_token`, `base_url`, `client`, `refresh`, `response`, `test_endpoints`
-
-### `backend/test_opencore_visual.py`
-
-- Functions:
-  - `main`, `print_header`, `test_10_admin_access`, `test_1_dpi_plans`, `test_2_auto_license`, `test_3_feature_gating_free`, `test_4_tier_comparison`, `test_5_license_lifecycle`, `test_6_tier_upgrade`, `test_7_usage_metrics`, `test_8_api_weights`, `test_9_entitlements`
-
-### `backend/test_pr4_migration_skeleton.py`
-
-- Classes:
-  - `TestAdvisoryAggregateAuditLogModel` -> methods: `setUp`, `test_audit_log_actor_enum_choices`, `test_audit_log_actor_id_tracks_executor_identity`, `test_audit_log_instantiation_with_required_fields`, `test_audit_log_metadata_json_supports_nested_data`, `test_audit_log_multi_user_isolation`, `test_audit_log_reason_enum_choices`
-  - `TestAdvisoryAggregateSnapshotModel` -> methods: `setUp`, `test_snapshot_allows_different_seq_for_same_symbol`, `test_snapshot_expires_at_auto_set`, `test_snapshot_instantiation_with_required_fields`, `test_snapshot_json_field_stores_complex_structures`, `test_snapshot_multi_user_isolation`, `test_snapshot_unique_constraint_on_user_symbol_seq`
-  - `TestEdgeCasesAndConstraints` -> methods: `setUp`, `test_audit_log_ordering_by_created_at`, `test_audit_log_with_null_composite_state`, `test_snapshot_ordering_by_seq`, `test_snapshot_with_empty_state`
-  - `TestMigrationIntegration` -> methods: `test_migration_file_exists_and_is_valid_python`, `test_models_can_be_migrated_in_sequence`, `test_models_have_correct_meta_options`
-
-### `backend/test_pr5_baseline_metrics_instrumentation.py`
-
-- Classes:
-  - `TestAdvisorySessionManagement` -> methods: `setUp`, `test_session_end_returns_metrics`, `test_session_initialization`, `test_session_reset_clears_all_metrics`, `test_session_start_flag`
-  - `TestBaselineReportGeneration` -> methods: `setUp`, `test_baseline_component_participation`, `test_baseline_empty_samples_returns_empty_dict`, `test_baseline_latency_percentiles`, `test_baseline_token_statistics`, `test_generate_baseline_report_basic`
-  - `TestComponentTracking` -> methods: `setUp`, `test_component_failure_recording`, `test_duplicate_component_not_repeated`, `test_record_multiple_components`, `test_record_successful_component`
-  - `TestErrorRecovery` -> methods: `setUp`, `test_error_recovery_recording`, `test_multiple_error_recovery`
-  - `TestPhaseTimerDecorator` -> methods: `setUp`, `test_decorator_measures_function_execution`, `test_decorator_uses_function_name_as_default_phase`
-  - `TestPhaseTiming` -> methods: `setUp`, `test_multiple_phases_in_sequence`, `test_nested_phase_timing_overwrite`, `test_phase_start_stop`
-  - `TestQualityScoring` -> methods: `setUp`, `test_actionability_score_bounds`, `test_actionability_with_factors`, `test_confidence_score_bounds`, `test_record_actionability_score`, `test_record_confidence_score`
-  - `TestSessionIntegration` -> methods: `test_full_session_workflow`
-  - `TestTokenUsageRecording` -> methods: `setUp`, `test_record_multiple_token_increments`, `test_record_single_token_usage`, `test_token_breakdown_by_source`, `test_token_zero_for_disabled_metrics`
-
-### `backend/tests/test_adapter_canonical.py`
-
-- Classes:
-  - `TestAdapterCanonicalOutput` -> methods: `test_ensure_prices_canonical_all_price_columns`, `test_ensure_prices_canonical_empty_dataframe`, `test_ensure_prices_canonical_handles_nan_values`, `test_ensure_prices_canonical_kbs_source_detects_vnd`, `test_ensure_prices_canonical_resets_attrs`, `test_ensure_prices_canonical_vci_source_passthrough`, `test_normalize_then_canonicalize_workflow`
-  - `TestAdapterParseable` -> methods: `test_canonical_dataframe_is_parseable`
-
-### `backend/tests/test_ai_advisory_e2e_integration.py`
-
-- Classes:
-  - `AIAdvisoryPromptConfigBackendIntegrationTests` -> methods: `setUp`, `tearDown`, `test_1_regenerate_with_prompt_config_only_enabled_sources_build_context`, `test_2_regenerate_with_minimal_prompt_config_merges_with_defaults`, `test_3_regenerate_with_all_sources_disabled_uses_fallback_defaults`, `test_4_regenerate_with_invalid_indicators_filters_gracefully`, `test_5_regenerate_without_prompt_config_uses_old_behavior`, `test_6_roundtrip_frontend_sends_prompt_config_backend_processes_correctly`, `test_7_verify_lookback_clamping_in_backend`
-  - `AIAdvisoryPromptConfigParserTests` -> methods: `test_parse_prompt_config_all_invalid_indicators_fallback`, `test_parse_prompt_config_clamps_lookback`, `test_parse_prompt_config_filters_invalid_indicators`, `test_parse_prompt_config_merges_with_defaults`, `test_parse_prompt_config_none_returns_defaults`
-- Top-level variables:
-  - `_AI_STATUS`, `_CACHE_GET`, `_FEATURE_ENFORCE`, `_QUOTA_ENFORCE`, `_SYNTHESIS`
-
-### `backend/tests/test_ai_advisory_prompt_config.py`
-
-- Functions:
-  - `run_all`, `test_build_fundamental_context_empty_symbol`, `test_build_ownership_context_empty_symbol`, `test_build_sector_context_empty_symbol`, `test_parse_prompt_config_all_invalid_indicators_fallback`, `test_parse_prompt_config_clamp_lookback`, `test_parse_prompt_config_invalid_indicators`, `test_parse_prompt_config_none`, `test_parse_prompt_config_override`, `test_valid_technical_indicators_set`
-
-### `backend/tests/test_price_units_canonical.py`
-
-- Classes:
-  - `TestDetectQuoteUnitHeuristic` -> methods: `test_detect_boundary_1_million`, `test_detect_boundary_below_1_million`, `test_detect_thousand_vnd_small_number`, `test_detect_vnd_large_number`
-  - `TestGetQuotePriceInVND` -> methods: `test_convert_invalid_type_raises`, `test_convert_numeric_thousand_vnd`, `test_convert_quote_price_object`, `test_portfolio_value_calculation`
-  - `TestIntegrationRealWorldScenarios` -> methods: `test_scenario_portfolio_value_calculation`, `test_scenario_vnbroker_daily_price_ingestion`, `test_scenario_whale_transfer_threshold`
-  - `TestMoneyValueClass` -> methods: `test_create_valid_money_value`, `test_money_value_invalid_unit_raises`, `test_money_value_negative_raises`, `test_money_value_to_string`
-  - `TestNormalizeMoneyValue` -> methods: `test_normalize_invalid_money_unit_raises`, `test_normalize_negative_money_raises`, `test_normalize_vnd_money`
-  - `TestNormalizeQuotePrice` -> methods: `test_normalize_decimal_precision`, `test_normalize_invalid_unit_raises`, `test_normalize_negative_price_raises`, `test_normalize_non_numeric_raises`, `test_normalize_thousand_vnd_passthrough`, `test_normalize_vnd_to_thousand_vnd`, `test_normalize_with_timestamp`, `test_normalize_zero_price`
-  - `TestPriceSourceEnum` -> methods: `test_all_sources_defined`, `test_source_values`
-  - `TestQuotePriceClass` -> methods: `test_create_valid_quote_price`, `test_quote_price_invalid_unit_raises`, `test_quote_price_negative_raises`, `test_quote_price_non_numeric_raises`, `test_quote_price_to_string`, `test_quote_price_to_vnd_conversion`, `test_quote_price_warning_on_extreme_values`, `test_quote_price_with_all_fields`
-  - `TestValidateQuotePricesCanonical` -> methods: `test_validate_empty_dict`, `test_validate_fails_on_wrong_unit`, `test_validate_list_of_quote_prices`, `test_validate_warns_on_extreme_numeric_values`
-
-### `backend/tests/test_support_api.py`
-
-- Classes:
-  - `SupportTicketApiTests` -> methods: `setUp`, `test_create_and_list_own_ticket`, `test_staff_dashboard_requires_staff_permission`, `test_staff_dashboard_returns_queue_and_sla_metrics`, `test_staff_patch_and_reply_updates_ticket`, `test_user_cannot_view_other_users_ticket`, `test_user_reply_reopens_resolved_ticket`
 
 ### `packages/core/backend/manage.py`
 
@@ -2568,6 +26,86 @@ Generated at: `2026-05-29 20:48:10`
   - `MigrationExecutor` -> methods: `__init__`, `_get_user_tenant`, `_migrate_portfolios`, `_migrate_pricealerts`, `_migrate_watchlists`, `_print_summary`, `_validate_migration`, `run`
 - Top-level variables:
   - `backend_dir`, `src_dir`
+
+### `packages/core/backend/src/advertising/__init__.py`
+
+- No parseable top-level symbols found
+
+### `packages/core/backend/src/advertising/admin.py`
+
+- Classes:
+  - `AdCampaignAdmin`
+  - `AdClickLogAdmin` -> methods: `has_add_permission`
+  - `AdDailySummaryAdmin` -> methods: `has_add_permission`
+  - `AdImpressionLogAdmin` -> methods: `has_add_permission`
+
+### `packages/core/backend/src/advertising/api_urls.py`
+
+- Top-level variables:
+  - `urlpatterns`
+
+### `packages/core/backend/src/advertising/apps.py`
+
+- Classes:
+  - `AdvertisingConfig` -> methods: `ready`
+
+### `packages/core/backend/src/advertising/migrations/0001_initial.py`
+
+- Classes:
+  - `Migration`
+
+### `packages/core/backend/src/advertising/migrations/__init__.py`
+
+- No parseable top-level symbols found
+
+### `packages/core/backend/src/advertising/models.py`
+
+- Classes:
+  - `AdCampaign` -> methods: `__str__`, `clean`
+  - `AdClickLog`
+  - `AdDailySummary` -> methods: `__str__`
+  - `AdImpressionLog`
+
+### `packages/core/backend/src/advertising/serializers.py`
+
+- Classes:
+  - `AdCampaignSerializer`
+  - `AdDailySummarySerializer`
+
+### `packages/core/backend/src/advertising/signals.py`
+
+- Functions:
+  - `on_campaign_changed`
+- Top-level variables:
+  - `logger`
+
+### `packages/core/backend/src/advertising/tasks.py`
+
+- Functions:
+  - `_get_redis_client`, `aggregate_ad_metrics`, `rebuild_ads_cache_index`
+- Top-level variables:
+  - `CACHE_TTL`, `CONSUMER_GROUP`, `CONSUMER_NAME`, `STREAM_BATCH_LIMIT`, `logger`
+
+### `packages/core/backend/src/advertising/urls.py`
+
+- Classes:
+  - `NoFormatSuffixRouter` -> methods: `get_urls`
+- Top-level variables:
+  - `router`, `urlpatterns`
+
+### `packages/core/backend/src/advertising/views.py`
+
+- Classes:
+  - `AdvertisingAnonRateThrottle`
+  - `AdvertisingUserRateThrottle`
+  - `BaseMetricsLogView` -> methods: `queue_event`, `verify_request`
+  - `ContentDisplayView` -> methods: `get`
+  - `MetricsLogClickView` -> methods: `post`
+  - `MetricsLogViewView` -> methods: `post`
+  - `OperatorAdCampaignViewSet`
+  - `OperatorAdDailySummaryViewSet`
+- Top-level variables:
+  - `logger`
 
 ### `packages/core/backend/src/advisory/__init__.py`
 
@@ -2673,6 +211,11 @@ Generated at: `2026-05-29 20:48:10`
   - `Migration`
 
 ### `packages/core/backend/src/commercial/migrations/0002_invoice_status_past_due.py`
+
+- Classes:
+  - `Migration`
+
+### `packages/core/backend/src/commercial/migrations/0003_vnpayipnlog_paymenttransaction.py`
 
 - Classes:
   - `Migration`
@@ -2819,6 +362,8 @@ Generated at: `2026-05-29 20:48:10`
 
 ### `packages/core/backend/src/data_ingest/urls.py`
 
+- Classes:
+  - `NoFormatSuffixRouter` -> methods: `get_urls`
 - Top-level variables:
   - `router`, `urlpatterns`
 
@@ -2859,15 +404,12 @@ Generated at: `2026-05-29 20:48:10`
 - Functions:
   - `_resolve_google_oauth_redirect_uri`
 
-### `packages/core/backend/src/identity_access/api_urls.py`
-
-- Top-level variables:
-  - `urlpatterns`
-
 ### `packages/core/backend/src/identity_access/apps.py`
 
 - Classes:
   - `IdentityAccessConfig` -> methods: `ready`
+- Functions:
+  - `cors_allow_api_requests`
 
 ### `packages/core/backend/src/identity_access/authentication.py`
 
@@ -3248,6 +790,15 @@ Generated at: `2026-05-29 20:48:10`
   - `StockProfileAdmin`
   - `VnbrokerRuntimeConfigAdmin`
 
+### `packages/core/backend/src/market_data/admin_sync_views.py`
+
+- Classes:
+  - `AdminOpsMarketGroupsPreviewView` -> methods: `get`
+  - `AdminOpsMarketGroupsSyncView` -> methods: `post`
+  - `AdminOpsSystemDefaultsSeedView` -> methods: `post`
+- Top-level variables:
+  - `logger`
+
 ### `packages/core/backend/src/market_data/apps.py`
 
 - Classes:
@@ -3257,6 +808,13 @@ Generated at: `2026-05-29 20:48:10`
 
 - Top-level variables:
   - `urlpatterns`
+
+### `packages/core/backend/src/market_data/default_groups.py`
+
+- Functions:
+  - `_build_item_payload`, `build_group_payload`, `get_color_palette`, `get_default_groups`, `get_group_lookup`, `get_system_default_group_ids`
+- Top-level variables:
+  - `STOCK_MANAGEMENT_DEFAULT_GROUPS`, `_STOCK_MANAGEMENT_COLOR_PALETTE`, `_STOCK_MANAGEMENT_DEFAULT_GROUPS`, `_STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP`, `_SYSTEM_DEFAULT_SYMBOL_GROUP_IDS`
 
 ### `packages/core/backend/src/market_data/global_symbol_coverage.py`
 
@@ -3292,7 +850,7 @@ Generated at: `2026-05-29 20:48:10`
   - `TrackedSymbolDetailView` -> methods: `delete`, `patch`
   - `TrackedSymbolsView` -> methods: `get`, `post`
 - Functions:
-  - `_build_stock_management_group_payload`, `_build_stock_management_item_payload`, `_empty_list`, `_empty_paginated`
+  - `_empty_list`, `_empty_paginated`
 - Top-level variables:
   - `_STOCK_MANAGEMENT_COLOR_PALETTE`, `_STOCK_MANAGEMENT_DEFAULT_GROUPS`, `_STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP`
 
@@ -3388,7 +946,7 @@ Generated at: `2026-05-29 20:48:10`
   - `StockManagementTrackedSymbolDetailView` -> methods: `delete`, `patch`
   - `StockManagementTrackedSymbolsView` -> methods: `get`, `post`
 - Functions:
-  - `_aggregate_daily_rows`, `_aggregate_daily_to_ohlcv_bars`, `_ai_context_snapshot`, `_build_ai_session_payload`, `_build_dark_money_strategy_table`, `_build_native_observability_payload`, `_build_observability_snapshot`, `_build_price_change_map`, `_build_profile_map`, `_build_summary_from_components`, `_build_tick_distribution_payload`, `_build_watchlist_membership_payload`, `_compute_chart_technical_payload`, `_compute_rsi14`, `_compute_simple_moving_average`, `_default_chart_technical_payload`, `_default_component_templates`, `_dict_list`, `_dt_to_unix_ms`, `_ensure_advisory_record_for_symbol`, `_extract_signal_strength`, `_fetch_ohlcv_bars_after`, `_fetch_ohlcv_bars_before`, `_fetch_ohlcv_bars_window`, `_fetch_symbol_snapshot_payload`, `_find_component_context`, `_find_component_record`, `_find_symbol_advisory_record`, `_float_value`, `_floor_dark_money_bucket`, `_get_price_alert_or_404_for_user`, `_get_table_column_names`, `_get_tracked_symbol_or_404_for_user`, `_get_watchlist_item_or_404_for_user`, `_get_watchlist_or_404_for_user`, `_group_sort_key`, `_int_value`, `_interval_for_timeframe`, `_latest_ai_record`, `_normalize_ai_symbol`, `_normalize_component_collection`, `_normalize_component_item`, `_normalize_dark_money_interval`, `_normalize_dark_money_period`, `_normalize_order_flow_window`, `_normalize_timeframe`, `_ohlcv_bar_from_daily`, `_ohlcv_bar_from_intraday`, `_parse_cooldown_seconds`, `_parse_ohlcv_ts`, `_parse_price_alert_condition`, `_parse_price_alert_target`, `_parse_tracked_symbol_threshold_million`, `_price_alerts_queryset_for_user`, `_resolve_user_tenant`, `_round_or_none`, `_safe_numeric`, `_save_advisory_context`, `_serialize_price_alert_row`, `_serialize_price_point`, `_serialize_stock_management_group`, `_serialize_stock_management_item`, `_serialize_stock_order_flow_signal`, `_serialize_tracked_symbol_row`, `_symbol_exists_for_stock_chart`, `_to_float`, `_to_int`, `_to_unix_seconds`, `_tracked_symbols_queryset_for_user`, `_update_component_lists`, `_upsert_ai_components`, `_validate_stock_symbol`, `_watchlist_items_queryset_for_user`, `_watchlists_queryset_for_user`
+  - `_aggregate_daily_rows`, `_aggregate_daily_to_ohlcv_bars`, `_ai_context_snapshot`, `_build_ai_session_payload`, `_build_dark_money_strategy_table`, `_build_native_observability_payload`, `_build_observability_snapshot`, `_build_price_change_map`, `_build_profile_map`, `_build_summary_from_components`, `_build_tick_distribution_payload`, `_build_watchlist_membership_payload`, `_compute_chart_technical_payload`, `_compute_rsi14`, `_compute_simple_moving_average`, `_default_chart_technical_payload`, `_default_component_templates`, `_dict_list`, `_dt_to_unix_ms`, `_ensure_advisory_record_for_symbol`, `_extract_signal_strength`, `_fetch_ohlcv_bars_after`, `_fetch_ohlcv_bars_before`, `_fetch_ohlcv_bars_window`, `_fetch_symbol_snapshot_payload`, `_find_component_context`, `_find_component_record`, `_find_symbol_advisory_record`, `_float_value`, `_floor_dark_money_bucket`, `_get_price_alert_or_404_for_user`, `_get_table_column_names`, `_get_tracked_symbol_or_404_for_user`, `_get_watchlist_item_or_404_for_user`, `_get_watchlist_or_404_for_user`, `_group_sort_key`, `_int_value`, `_interval_for_timeframe`, `_latest_ai_record`, `_normalize_ai_symbol`, `_normalize_component_collection`, `_normalize_component_item`, `_normalize_dark_money_interval`, `_normalize_dark_money_period`, `_normalize_order_flow_window`, `_normalize_timeframe`, `_ohlcv_bar_from_daily`, `_ohlcv_bar_from_intraday`, `_parse_cooldown_seconds`, `_parse_ohlcv_ts`, `_parse_price_alert_condition`, `_parse_price_alert_target`, `_parse_tracked_symbol_threshold_million`, `_price_alerts_queryset_for_user`, `_resolve_user_tenant`, `_round_or_none`, `_safe_numeric`, `_save_advisory_context`, `_serialize_price_alert_row`, `_serialize_price_point`, `_serialize_stock_management_group`, `_serialize_stock_management_item`, `_serialize_stock_order_flow_signal`, `_serialize_tracked_symbol_row`, `_symbol_exists_for_stock_chart`, `_to_float`, `_to_int`, `_to_unix_seconds`, `_tracked_symbols_queryset_for_user`, `_update_component_lists`, `_upsert_ai_components`, `_validate_stock_symbol`, `_watchlist_items_queryset_for_user`, `_watchlists_queryset_for_user`, `clean_nan`, `seed_default_watchlist_groups`
 - Top-level variables:
   - `TENANT_PERMISSION_CLASSES`, `_DARK_MONEY_INTERVAL_ALIASES`, `_DARK_MONEY_INTRADAY_MAX_DAYS`, `_DARK_MONEY_PERIOD_DAYS`, `_OHLCV_BAR_LIMIT_DEFAULT`, `_OHLCV_BAR_LIMIT_MAX`, `_OHLCV_INTRADAY_TIMEFRAMES`, `_OHLCV_VALID_TIMEFRAMES`, `_PORTFOLIO_NEWS_DIGEST_SCHEMA`, `_STOCK_CHART_SCHEMA`, `_STOCK_DARK_MONEY_HISTORY_SCHEMA`, `_STOCK_FINANCIALS_SCHEMA`, `_STOCK_MANAGEMENT_COLOR_PALETTE`, `_STOCK_MANAGEMENT_DEFAULT_GROUPS`, `_STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP`, `_STOCK_MANAGEMENT_GROUP_LIST_SCHEMA`, `_STOCK_MANAGEMENT_GROUP_SCHEMA`, `_STOCK_MANAGEMENT_ITEM_SCHEMA`, `_STOCK_NEWS_AI_SUMMARY_SCHEMA`, `_STOCK_NEWS_STUB_SCHEMA`, `_STOCK_ORDER_FLOW_SCHEMA`, `_STOCK_OVERVIEW_SCHEMA`, `_STOCK_PROFILE_SCHEMA`, `_SYSTEM_DEFAULT_SYMBOL_GROUP_IDS`, `_TRACKED_SYMBOL_BULK_THRESHOLD_REQUEST_SCHEMA`, `_TRACKED_SYMBOL_BULK_THRESHOLD_RESPONSE_SCHEMA`, `_TRACKED_SYMBOL_CREATE_REQUEST_SCHEMA`, `_TRACKED_SYMBOL_LIST_SCHEMA`, `_TRACKED_SYMBOL_PATCH_REQUEST_SCHEMA`, `_TRACKED_SYMBOL_SCHEMA`
 
@@ -3524,7 +1082,7 @@ Generated at: `2026-05-29 20:48:10`
   - `DnseRateLimitError`
   - `VnbrokerAdapterError`
 - Functions:
-  - `_build_intraday_source_candidates`, `_build_listing_seed_rows`, `_extract_listing_records`, `_fetch_intraday_frame`, `_fetch_realtime_price_with_quote_class`, `_load_listing_adapter_class`, `_load_quote_class`, `_normalize_intraday_trade_rows`, `_normalize_listing_rows`, `_normalize_supported_source`, `_publish_intraday_stream`, `_resolve_daily_history_source`, `_resolve_realtime_source`, `_slice_listing_symbols`, `fetch_daily_history`, `fetch_intraday_ohlcv`, `fetch_intraday_tape`, `fetch_intraday_tape_history`, `fetch_listing_symbols`, `fetch_price_board_snapshot`, `fetch_realtime_price`, `fetch_symbol_group_members`, `get_active_config`, `warm_up_intraday_symbols`
+  - `_build_intraday_source_candidates`, `_build_listing_seed_rows`, `_extract_listing_records`, `_fetch_intraday_frame`, `_fetch_realtime_price_with_quote_class`, `_load_listing_adapter_class`, `_load_quote_class`, `_normalize_intraday_trade_rows`, `_normalize_listing_rows`, `_normalize_supported_source`, `_publish_intraday_stream`, `_resolve_daily_history_source`, `_resolve_realtime_source`, `_slice_listing_symbols`, `fetch_company_financials`, `fetch_company_info`, `fetch_daily_history`, `fetch_intraday_ohlcv`, `fetch_intraday_tape`, `fetch_intraday_tape_history`, `fetch_listing_symbols`, `fetch_price_board_snapshot`, `fetch_price_board_snapshots_batch`, `fetch_realtime_price`, `fetch_rss_news`, `fetch_symbol_group_members`, `get_active_config`, `warm_up_intraday_symbols`
 - Top-level variables:
   - `_DAILY_HISTORY_ALLOWED_SOURCES`, `_DAILY_HISTORY_DISABLED_WARN_CODE`, `_DAILY_HISTORY_FALLBACK_SOURCE`, `_DNSE_SIDE_BUY`, `_DNSE_SIDE_SELL`, `_EXCHANGE_BASED_GROUPS`, `_INTRADAY_FALLBACK_SOURCES`, `_LISTING_GROUP_ALIASES`, `_LISTING_SEED_DATA`, `_SUPPORTED_PROVIDER_SOURCES`, `logger`
 
@@ -3564,8 +1122,6 @@ Generated at: `2026-05-29 20:48:10`
   - `RealtimeUnifiedAlertsView` -> methods: `_apply_cursor`, `_apply_window_filter`, `_build_next_cursor`, `_compute_priority_rank`, `_decode_cursor`, `_normalize_severity`, `_normalize_symbols`, `_parse_boolean_flag`, `_parse_limit`, `_parse_severity_min`, `_parse_watchlist_group_ids`, `_parse_window`, `_resolve_scope`, `_safe_parse_ts`, `_sanitize_item`, `_serialize_alerts`, `get`
   - `RealtimeWhaleCampaignsView` -> methods: `_apply_campaign_cursor`, `_build_campaign_next_cursor`, `_build_campaign_response`, `_decode_campaign_cursor`, `_group_events_into_campaigns`, `_parse_campaign_limit`, `_parse_campaign_sort`, `_resolve_campaign_gap_minutes`, `get`
   - `RealtimeWhaleFeedAggregateView` -> methods: `_apply_whale_window_filter`, `_build_entitlements`, `_build_next_cursor`, `_build_response`, `_classify_signal_size`, `_cursor_datetime`, `_decode_cursor`, `_extract_tracked_symbols`, `_has_explicit_scope`, `_parse_sort`, `_resolve_scope`, `_resolve_tracked_symbols`, `_resolve_watchlist_symbols`, `_serialize_whale_record`, `get`
-- Functions:
-  - `_build_stock_management_group_payload`, `_build_stock_management_item_payload`, `_empty_list`, `_empty_paginated`
 - Top-level variables:
   - `_STOCK_MANAGEMENT_COLOR_PALETTE`, `_STOCK_MANAGEMENT_DEFAULT_GROUPS`, `_STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP`, `logger`
 
@@ -4161,7 +1717,7 @@ Generated at: `2026-05-29 20:48:10`
 ### `packages/core/backend/src/service_ops/tests/test_soc_tasks.py`
 
 - Classes:
-  - `ReconcileStaleRunningRunLogsTaskTestCase` -> methods: `setUpTestData`, `test_reconcile_marks_failed_for_orphan_pending_and_clears_inflight_cache`, `test_reconcile_marks_success_when_celery_state_is_success`
+  - `ReconcileStaleRunningRunLogsTaskTestCase` -> methods: `setUpTestData`, `test_reconcile_marks_failed_for_orphan_pending_and_clears_inflight_cache`, `test_reconcile_marks_failed_for_stale_queued_log`, `test_reconcile_marks_success_when_celery_state_is_success`
   - `ServiceOpsTasksTestCase` -> methods: `setUpTestData`, `test_cleanup_market_data_parity_snapshots_task_applies_retention_policy`, `test_create_signal_job_run_log_uses_primary_signals_service`, `test_health_check_all_services_updates_service_health`, `test_market_data_queue_tier_scheduler_backfills_listing_baseline_when_registry_non_empty`, `test_market_data_queue_tier_scheduler_bootstraps_system_defaults_when_registry_empty`, `test_market_data_queue_tier_scheduler_dispatches_due_tiers_with_runtime_policy`, `test_market_data_queue_tier_scheduler_enforces_max_dispatch_per_cycle_quota`, `test_market_data_queue_tier_scheduler_includes_session_facts_for_warm_tier`, `test_market_data_queue_tier_scheduler_keeps_inflight_when_child_run_exists`, `test_market_data_queue_tier_scheduler_recovers_orphaned_inflight_tier_immediately`, `test_market_data_queue_tier_scheduler_recovers_stale_child_runs_with_parent`, `test_market_data_queue_tier_scheduler_recovers_stale_inflight_tier`, `test_market_data_queue_tier_scheduler_skips_recent_inflight_tier`, `test_monitor_retention_health_task_emits_alert_when_threshold_exceeded`, `test_monitor_retention_health_task_no_alert_when_within_threshold`, `test_run_scrape_cycle_dispatches_each_group_provider_cell`, `test_scrape_cell_task_claims_fetches_and_marks_done`, `test_scrape_cell_task_skips_cell_when_row_already_done`, `test_scrape_cell_task_uses_provider_specific_snapshot_source`, `test_session_facts_materialization_task_updates_run_log`, `test_signals_detection_workflow_creates_tracked_child_runs`, `test_unified_alert_materialization_task_updates_run_log`, `test_whale_materialization_task_updates_run_log`
   - `VnbrokerAdapterTaskBridgeTestCase` -> methods: `test_fetch_daily_history_uses_requested_source_quote_class`, `test_fetch_listing_symbols_uses_requested_source_listing_adapter`, `test_fetch_price_board_snapshot_passes_explicit_source`, `test_fetch_realtime_price_uses_requested_source_quote_class`, `test_fetch_symbol_group_members_uses_requested_source_group`
 
@@ -4515,11 +2071,6 @@ Generated at: `2026-05-29 20:48:10`
   - `SignalAdminFlushView` -> methods: `post`
   - `SignalAdminStatsView` -> methods: `get`
 
-### `packages/core/backend/src/signal_intelligence/api_urls.py`
-
-- Top-level variables:
-  - `urlpatterns`
-
 ### `packages/core/backend/src/signal_intelligence/apps.py`
 
 - Classes:
@@ -4706,6 +2257,88 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `_WHALE_SIDE_MAP`
 
+### `packages/core/backend/src/support/__init__.py`
+
+- No parseable top-level symbols found
+
+### `packages/core/backend/src/support/apps.py`
+
+- Classes:
+  - `SupportConfig`
+
+### `packages/core/backend/src/support/migrations/0001_initial.py`
+
+- Classes:
+  - `Migration`
+
+### `packages/core/backend/src/support/migrations/__init__.py`
+
+- No parseable top-level symbols found
+
+### `packages/core/backend/src/support/models.py`
+
+- Classes:
+  - `SenderRole`
+  - `SupportTicket` -> methods: `__str__`, `_next_ticket_code`, `can_transition`, `save`
+  - `SupportTicketCounter`
+  - `TicketAttachment`
+  - `TicketAuditLog`
+  - `TicketCategory`
+  - `TicketMessage`
+  - `TicketPriority`
+  - `TicketStatus`
+- Functions:
+  - `ticket_attachment_upload_path`
+
+### `packages/core/backend/src/support/permissions.py`
+
+- Classes:
+  - `IsStaffUser` -> methods: `has_permission`
+  - `IsTicketOwnerOrStaff` -> methods: `has_object_permission`
+
+### `packages/core/backend/src/support/serializers.py`
+
+- Classes:
+  - `CreateTicketSerializer` -> methods: `validate_category`
+  - `StaffTicketUpdateSerializer` -> methods: `validate`
+  - `SupportTicketListSerializer`
+  - `TicketAttachmentSerializer`
+  - `TicketAuditLogSerializer`
+  - `TicketMessageSerializer`
+  - `TicketReplySerializer`
+
+### `packages/core/backend/src/support/services.py`
+
+- Functions:
+  - `build_ticket_deep_link`, `get_staff_recipients`, `queue_new_ticket_email`, `queue_ticket_reply_email`
+
+### `packages/core/backend/src/support/tasks.py`
+
+- Functions:
+  - `send_ticket_email`
+
+### `packages/core/backend/src/support/urls.py`
+
+- Top-level variables:
+  - `urlpatterns`
+
+### `packages/core/backend/src/support/views.py`
+
+- Classes:
+  - `StaffSupportDashboardView` -> methods: `get`
+  - `StaffTicketListView` -> methods: `get`
+  - `StaffTicketPatchView` -> methods: `patch`
+  - `StaffTicketReplyView` -> methods: `post`
+  - `StandardResultsSetPagination`
+  - `TicketDetailView` -> methods: `get`
+  - `TicketListCreateView` -> methods: `get`, `post`
+  - `TicketReopenView` -> methods: `post`
+  - `TicketReplyView` -> methods: `post`
+- Functions:
+  - `_ticket_query_for_user`, `_validate_and_create_attachments`, `_write_audit`
+- Top-level variables:
+  - `ALLOWED_ATTACHMENT_EXTENSIONS`, `ALLOWED_ATTACHMENT_MIME_PREFIXES`, `MAX_ATTACHMENTS_PER_MESSAGE`, `MAX_ATTACHMENT_SIZE_BYTES`
+
 ### `packages/core/backend/src/tenant_lifecycle/__init__.py`
 
 - Top-level variables:
@@ -4815,7 +2448,7 @@ Generated at: `2026-05-29 20:48:10`
   - `SecuritiesSyncView` -> methods: `post`
   - `TrackedSymbolListCreateView` -> methods: `get`
 - Functions:
-  - `_build_stock_management_group_payload`, `_build_stock_management_item_payload`, `_empty_list`, `_empty_paginated`
+  - `_empty_list`
 - Top-level variables:
   - `_STOCK_MANAGEMENT_COLOR_PALETTE`, `_STOCK_MANAGEMENT_DEFAULT_GROUPS`, `_STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP`
 
@@ -4900,6 +2533,11 @@ Generated at: `2026-05-29 20:48:10`
 - Classes:
   - `Migration`
 
+### `packages/core/backend/src/user_workspace/migrations/0013_screenerrule.py`
+
+- Classes:
+  - `Migration`
+
 ### `packages/core/backend/src/user_workspace/migrations/__init__.py`
 
 - No parseable top-level symbols found
@@ -4912,6 +2550,7 @@ Generated at: `2026-05-29 20:48:10`
   - `Portfolio` -> methods: `__str__`
   - `PriceAlert` -> methods: `__str__`
   - `QuarantinedRecord` -> methods: `__str__`
+  - `ScreenerRule` -> methods: `__str__`
   - `SubAccount` -> methods: `__str__`
   - `TrackedSymbol` -> methods: `__str__`
   - `Transaction` -> methods: `__str__`
@@ -4942,7 +2581,7 @@ Generated at: `2026-05-29 20:48:10`
   - `PortfolioEquityCurveView` -> methods: `get`
   - `PortfolioHoldingsView` -> methods: `get`
   - `PortfolioMarketDiscoveryHubView` -> methods: `get`
-  - `PortfolioScreenerRuleDetailView` -> methods: `delete`, `get`, `put`
+  - `PortfolioScreenerRuleDetailView` -> methods: `_get_rule`, `delete`, `get`, `put`
   - `PortfolioScreenerRuleRunView` -> methods: `post`
   - `PortfolioSummaryView` -> methods: `get`
   - `PortfolioSyncView` -> methods: `post`
@@ -4954,20 +2593,28 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `_WHALE_ANALYTICS_TIMEFRAMES`
 
+### `packages/core/backend/src/user_workspace/screener_helpers.py`
+
+- Functions:
+  - `_apply_screener_condition`, `_compute_macd_hist`, `_compute_rsi`, `_safe_round`, `_screener_build_technical`, `_validate_screener_rules`
+- Top-level variables:
+  - `_SCREENER_ALLOWED_FIELDS`, `_SCREENER_ALLOWED_OPS`
+
 ### `packages/core/backend/src/user_workspace/serializers.py`
 
 - Classes:
   - `DNSECredentialSerializer` -> methods: `get_is_configured`
   - `PortfolioSerializer`
+  - `ScreenerRuleSerializer`
   - `SubAccountSerializer`
-  - `TransactionSerializer`
+  - `TransactionSerializer` -> methods: `get_total_value`
   - `WatchlistItemSerializer`
   - `WatchlistSerializer`
 
 ### `packages/core/backend/src/user_workspace/signals.py`
 
 - Functions:
-  - `capture_previous_transaction_symbol`, `sync_price_alert_registry_on_delete`, `sync_price_alert_registry_on_save`, `sync_tracked_symbol_registry_on_delete`, `sync_tracked_symbol_registry_on_save`, `sync_transaction_registry_on_delete`, `sync_transaction_registry_on_save`, `sync_watchlist_item_registry_on_delete`, `sync_watchlist_item_registry_on_save`
+  - `auto_populate_tenant_from_user`, `auto_populate_transaction_tenant`, `capture_previous_transaction_symbol`, `sync_price_alert_registry_on_delete`, `sync_price_alert_registry_on_save`, `sync_tracked_symbol_registry_on_delete`, `sync_tracked_symbol_registry_on_save`, `sync_transaction_registry_on_delete`, `sync_transaction_registry_on_save`, `sync_watchlist_item_registry_on_delete`, `sync_watchlist_item_registry_on_save`
 
 ### `packages/core/backend/src/user_workspace/tasks.py`
 
@@ -5015,8 +2662,13 @@ Generated at: `2026-05-29 20:48:10`
 - Classes:
   - `PortfolioDetailView` -> methods: `delete`, `get`, `patch`
   - `PortfolioListCreateView` -> methods: `get`, `post`
+  - `ScreenerRuleListCreateAPIView` -> methods: `get`, `post`
+  - `SubAccountDetailAPIView` -> methods: `delete`, `get`, `get_object`, `patch`
+  - `SubAccountListCreateAPIView` -> methods: `get`, `post`
+  - `SubAccountTransactionsAPIView` -> methods: `get`, `get_sub_account`, `post`
   - `TransactionDetailView` -> methods: `delete`, `patch`
   - `TransactionListCreateView` -> methods: `get`, `post`
+  - `WatchlistDetailView` -> methods: `_get_watchlist`, `delete`, `get`, `patch`
   - `WatchlistItemDeleteView` -> methods: `delete`
   - `WatchlistItemListCreateView` -> methods: `get`, `post`
   - `WatchlistListCreateView` -> methods: `get`, `post`
@@ -5035,6 +2687,8 @@ Generated at: `2026-05-29 20:48:10`
 
 ### `packages/core/backend/src/vninvest_core/__init__.py`
 
+- Functions:
+  - `__getattr__`
 - Top-level variables:
   - `__all__`
 
@@ -5071,6 +2725,8 @@ Generated at: `2026-05-29 20:48:10`
 
 ### `packages/core/backend/src/vninvest_core/celery.py`
 
+- Functions:
+  - `_set_result_backend`
 - Top-level variables:
   - `app`
 
@@ -5230,7 +2886,7 @@ Generated at: `2026-05-29 20:48:10`
 ### `packages/core/backend/src/vninvest_core/settings.py`
 
 - Top-level variables:
-  - `ADVISORY_TOKEN_BUDGET`, `ALLOWED_HOSTS`, `ASGI_APPLICATION`, `BASE_DIR`, `BLOCKED_DISPOSABLE_DOMAINS`, `CACHES`, `CELERY_ACCEPT_CONTENT`, `CELERY_BEAT_SCHEDULE`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `CELERY_RESULT_SERIALIZER`, `CELERY_TASK_ROUTES`, `CELERY_TASK_SERIALIZER`, `CELERY_TIMEZONE`, `CHANNEL_LAYERS`, `CORS_ALLOWED_ORIGINS`, `CORS_ALLOW_ALL_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, `DATABASES`, `DATABASE_ROUTERS`, `DEBUG`, `DEFAULT_AUTO_FIELD`, `DEFAULT_FROM_EMAIL`, `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_HOST_PASSWORD`, `EMAIL_HOST_USER`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `EMAIL_VERIFICATION_LOCKOUT_TIMEOUT`, `EMAIL_VERIFICATION_MAX_ATTEMPTS`, `EMAIL_VERIFICATION_RESEND_COOLDOWN`, `EMAIL_VERIFICATION_TOKEN_TTL_MINUTES`, `FRONTEND_URL`, `GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS`, `GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_DEFAULT`, `GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_MAX`, `GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_MIN`, `INSTALLED_APPS`, `LANGUAGE_CODE`, `LEGACY_BACKEND_URL`, `LOGGING`, `LOGIN_IP_LIMIT_THRESHOLD`, `LOGIN_SUBNET_LIMIT_THRESHOLD`, `LOGIN_USER_LIMIT_THRESHOLD`, `MIDDLEWARE`, `OPENAI_API_KEY`, `OPENAI_DEFAULT_MODEL`, `REDIS_URL`, `REGISTER_EMAIL_LIMIT_THRESHOLD`, `REGISTER_IP_LIMIT_THRESHOLD`, `REGISTER_SUBNET_LIMIT_THRESHOLD`, `REST_FRAMEWORK`, `ROOT_URLCONF`, `SECRET_KEY`, `SECURE_PROXY_SSL_HEADER`, `SPECTACULAR_SETTINGS`, `STATIC_ROOT`, `STATIC_URL`, `STORAGES`, `STRICT_TURNSTILE_ENFORCEMENT`, `TEMPLATES`, `TIME_ZONE`, `TURNSTILE_SECRET_KEY`, `USE_I18N`, `USE_TZ`, `USE_X_FORWARDED_HOST`, `WSGI_APPLICATION`, `_allowed_hosts_raw`, `_cors_origins_default`, `_cors_origins_raw`, `_csrf_trusted_origins_default`, `_csrf_trusted_origins_raw`, `_legacy_db_url`, `_redis_url`, `_secret_key_default`, `_sentry_dsn`
+  - `ADVISORY_TOKEN_BUDGET`, `ALLOWED_HOSTS`, `ASGI_APPLICATION`, `BASE_DIR`, `BLOCKED_DISPOSABLE_DOMAINS`, `CACHES`, `CELERY_ACCEPT_CONTENT`, `CELERY_BEAT_SCHEDULE`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `CELERY_RESULT_SERIALIZER`, `CELERY_TASK_ROUTES`, `CELERY_TASK_SERIALIZER`, `CELERY_TIMEZONE`, `CHANNEL_LAYERS`, `CORS_ALLOWED_ORIGINS`, `CORS_ALLOW_ALL_ORIGINS`, `CORS_API_DYNAMIC_ALLOW`, `CSRF_TRUSTED_ORIGINS`, `DATABASES`, `DATABASE_ROUTERS`, `DEBUG`, `DEFAULT_AUTO_FIELD`, `DEFAULT_FROM_EMAIL`, `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_HOST_PASSWORD`, `EMAIL_HOST_USER`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `EMAIL_VERIFICATION_LOCKOUT_TIMEOUT`, `EMAIL_VERIFICATION_MAX_ATTEMPTS`, `EMAIL_VERIFICATION_RESEND_COOLDOWN`, `EMAIL_VERIFICATION_TOKEN_TTL_MINUTES`, `FRONTEND_URL`, `GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS`, `GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_DEFAULT`, `GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_MAX`, `GLOBAL_MARKET_DATA_DAILY_BOOTSTRAP_DAYS_MIN`, `INSTALLED_APPS`, `LANGUAGE_CODE`, `LEGACY_BACKEND_URL`, `LOGGING`, `LOGIN_IP_LIMIT_THRESHOLD`, `LOGIN_SUBNET_LIMIT_THRESHOLD`, `LOGIN_USER_LIMIT_THRESHOLD`, `MIDDLEWARE`, `OPENAI_API_KEY`, `OPENAI_DEFAULT_MODEL`, `REDIS_URL`, `REGISTER_EMAIL_LIMIT_THRESHOLD`, `REGISTER_IP_LIMIT_THRESHOLD`, `REGISTER_SUBNET_LIMIT_THRESHOLD`, `REST_FRAMEWORK`, `ROOT_URLCONF`, `SECRET_KEY`, `SECURE_PROXY_SSL_HEADER`, `SPECTACULAR_SETTINGS`, `STATIC_ROOT`, `STATIC_URL`, `STORAGES`, `STRICT_TURNSTILE_ENFORCEMENT`, `TEMPLATES`, `TIME_ZONE`, `TURNSTILE_SECRET_KEY`, `USE_I18N`, `USE_TZ`, `USE_X_FORWARDED_HOST`, `WSGI_APPLICATION`, `_allowed_hosts_raw`, `_cors_origins_default`, `_cors_origins_raw`, `_csrf_trusted_origins_default`, `_csrf_trusted_origins_raw`, `_legacy_db_url`, `_redis_url`, `_secret_key_default`, `_sentry_dsn`
 
 ### `packages/core/backend/src/vninvest_core/stub_heartbeat.py`
 
@@ -5309,7 +2965,7 @@ Generated at: `2026-05-29 20:48:10`
 ### `packages/core/backend/src/vninvest_core/tests/test_user_workspace_tenant_isolation.py`
 
 - Classes:
-  - `UserWorkspaceTenantIsolationTests` -> methods: `setUp`, `setUpTestData`, `test_T01_portfolio_isolation_user1_cannot_see_user2_portfolio`, `test_T02_portfolio_filter_by_tenant_a`, `test_T03_portfolio_filter_by_tenant_b`, `test_T04_transaction_filtered_by_portfolio_tenant`, `test_T05_transaction_cross_tenant_access_returns_404`, `test_T06_user3_sees_only_tenant_a_when_scoped`, `test_T07_watchlist_filtered_by_tenant`, `test_T08_watchlist_item_not_accessible_cross_tenant`, `test_T09_subaccount_filtered_by_tenant`, `test_T10_subaccount_cross_tenant_blocked`, `test_T11_portfolio_list_pagination_format`, `test_T12_transaction_list_pagination_with_filter`, `test_T13_401_returns_standard_envelope`, `test_T14_404_returns_standard_envelope`, `test_T15_400_field_errors_in_envelope`, `test_T16_create_portfolio_sets_tenant`, `test_T17_create_transaction_inherits_portfolio_tenant`, `test_T18_database_query_isolation`
+  - `UserWorkspaceTenantIsolationTests` -> methods: `setUp`, `setUpTestData`, `test_T01_portfolio_isolation_user1_cannot_see_user2_portfolio`, `test_T02_portfolio_filter_by_tenant_a`, `test_T03_portfolio_filter_by_tenant_b`, `test_T04_transaction_filtered_by_portfolio_tenant`, `test_T05_transaction_cross_tenant_access_returns_404`, `test_T06_user3_sees_only_tenant_a_when_scoped`, `test_T07_watchlist_filtered_by_tenant`, `test_T08_watchlist_item_not_accessible_cross_tenant`, `test_T09_subaccount_filtered_by_tenant`, `test_T10_subaccount_cross_tenant_blocked`, `test_T11_portfolio_list_pagination_format`, `test_T12_transaction_list_pagination_with_filter`, `test_T13_401_returns_standard_envelope`, `test_T14_404_returns_standard_envelope`, `test_T15_400_field_errors_in_envelope`, `test_T16_create_portfolio_sets_tenant`, `test_T17_create_transaction_inherits_portfolio_tenant`, `test_T18_database_query_isolation`, `test_T19_legacy_watchlist_group_list_isolation`, `test_T20_legacy_watchlist_group_detail_isolation`, `test_T21_legacy_watchlist_item_create_isolation`, `test_T22_legacy_watchlist_item_delete_isolation`, `test_T23_legacy_securities_group_list_isolation`, `test_T24_tenant_member_inactive_status_blocked`, `test_T25_multi_tenant_user_can_select_tenant_by_query_hint`, `test_T26_invalid_tenant_hint_is_forbidden`
 
 ### `packages/core/backend/src/vninvest_core/urls.py`
 
@@ -5343,7 +2999,7 @@ Generated at: `2026-05-29 20:48:10`
   - `GenericEmptyListView` -> methods: `get`, `post`
   - `GenericEmptyStaffView` -> methods: `get`, `post`, `put`
 - Functions:
-  - `_build_stock_management_group_payload`, `_build_stock_management_item_payload`, `_empty_list`, `_empty_paginated`
+  - `_empty_list`, `_empty_paginated`
 - Top-level variables:
   - `_STOCK_MANAGEMENT_COLOR_PALETTE`, `_STOCK_MANAGEMENT_DEFAULT_GROUPS`, `_STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP`
 
@@ -5384,6 +3040,16 @@ Generated at: `2026-05-29 20:48:10`
 
 - Classes:
   - `CoreAdminRouteTests` -> methods: `test_admin_login_page_is_servable`, `test_admin_root_redirects_to_login`
+- Top-level variables:
+  - `_src_dir`
+
+### `packages/core/backend/tests/test_advertising.py`
+
+- Classes:
+  - `AdServingAPITests` -> methods: `test_anonymous_and_free_serve_returns_ads`, `test_premium_serve_disables_ads`
+  - `AdvertisingBaseTests` -> methods: `setUp`
+  - `CachingAndCeleryTaskTests` -> methods: `test_aggregate_ad_metrics_consumes_and_updates_db`, `test_rebuild_ads_cache_index`
+  - `MetricsTrackingAPITests` -> methods: `get_valid_sig`, `test_log_view_rejects_expired_signature`, `test_log_view_verifies_signature_and_queues`
 - Top-level variables:
   - `_src_dir`
 
@@ -5707,6 +3373,13 @@ Generated at: `2026-05-29 20:48:10`
 
 - Top-level variables:
   - `PORTFOLIOS_PAGE`, `STOCK_DETAIL`, `TRANSACTIONS_PAGE`, `USER_SETTINGS_PAGE`, `files`, `root`
+
+### `scripts/seed_system_default_groups.py`
+
+- Functions:
+  - `main`, `seed_exchange_groups`, `seed_index_groups`, `seed_system_defaults`
+- Top-level variables:
+  - `backend_path`
 
 ## JS/TS Modules
 
@@ -9716,7 +7389,12 @@ Generated at: `2026-05-29 20:48:10`
 - Functions:
   - `createTranslator`, `formatCurrency`, `formatDate`, `formatDateTime`, `formatNumber`, `formatPriceVND`, `formatQuoteInteger`, `formatQuotePrice`, `formatQuoteVolume`, `formatTime`, `getLocaleTag`, `getNestedValue`, `normalizeLocale`
 - Top-level variables:
-  - `DEFAULT_LOCALE`, `QUOTE_LOCALE_TAG`, `date`, `defaultValue`, `dictionaries`, `dictionary`, `fallbackDictionary`, `hasDefaultValue`, `inThousands`, `localeTags`, `normalized`, `normalizedLocale`, `template`, `vnd`
+  - `DEFAULT_LOCALE`, `QUOTE_LOCALE_TAG`, `date`, `defaultValue`, `dictionaries`, `dictionary`, `fallbackDictionary`, `hasDefaultValue`, `inThousands`, `localeTags`, `normalized`, `normalizedLocale`, `template`, `vars`, `vnd`
+
+### `frontend/src/i18n/index.test.js`
+
+- Top-level variables:
+  - `t`
 
 ### `frontend/src/i18n/vi.js`
 
@@ -9924,16 +7602,16 @@ Generated at: `2026-05-29 20:48:10`
 ### `frontend/src/pages/modern/ModernDashboard.jsx`
 
 - Functions:
-  - `SidebarPanelFallback`, `buildFallbackSparkline`, `normalizeSymbol`, `scheduleAuxFetch`, `toArr`
+  - `SidebarPanelFallback`, `buildFallbackSparkline`, `flush`, `normalizeSymbol`, `scheduleAuxFetch`, `toArr`
 - Top-level variables:
-  - `AIAdvisorAlertPanel`, `analyticsResult`, `avgPositionSize`, `base`, `baseSymbolUniverse`, `bulkResp`, `bulkSymbols`, `changePct`, `clearDeferredAuxFetch`, `cp`, `current`, `deferredAuxIdleRef`, `deferredAuxTimerRef`, `delta`, `digestFetchInFlightRef`, `digestResp`, `fallbackResp`, `fetchData`, `fetchRequestTokenRef`, `heatmapData`, `held`, `holdingsMap`, `holdingsRequest`, `industry`, `liveHoldings`, `loadAuxiliaryDashboardData`, `monitoredSymbols`, `nextHoldings`, `nextTracked`, `nextWatchlistGroups`, `nominalSize`, `prev`, `quote`, `realtimeMarketBreadth`, `requestPortfolioDigest`, `requestToken`, `results`, `sparkline24`, `summaryRequest`, `symbol`, `symbolSet`, `symbolUniverse`, `toggleSeverityFilterFromSummary`, `totalHeldValue`, `trackedInfo`, `trackedMap`, `trackedSymbolNames`, `unreadUnifiedCount`
+  - `AIAdvisorAlertPanel`, `EXCLUDED_MARKET_GROUPS`, `analyticsResult`, `avgPositionSize`, `base`, `baseSymbolUniverse`, `bulkResp`, `bulkSymbols`, `changePct`, `clearDeferredAuxFetch`, `cp`, `current`, `deferredAuxIdleRef`, `deferredAuxTimerRef`, `delta`, `digestFetchInFlightRef`, `digestResp`, `elapsed`, `fallbackResp`, `fetchData`, `fetchRequestTokenRef`, `heatmapData`, `heatmapSymbols`, `held`, `holdingsMap`, `holdingsRequest`, `industry`, `lastUpdateRef`, `liveHoldings`, `loadAuxiliaryDashboardData`, `monitoredSymbols`, `name`, `nextHoldings`, `nextTracked`, `nextWatchlistGroups`, `nominalSize`, `now`, `pendingQuotesRef`, `prev`, `quote`, `realtimeMarketBreadth`, `requestPortfolioDigest`, `requestToken`, `results`, `sparkline24`, `summaryRequest`, `symbol`, `symbolSet`, `symbolUniverse`, `symbolsSet`, `throttleDelay`, `throttleTimeoutRef`, `toggleSeverityFilterFromSummary`, `totalHeldValue`, `trackedInfo`, `trackedMap`, `trackedSymbolNames`, `unreadUnifiedCount`
 
 ### `frontend/src/pages/PackageDashboardHost.jsx`
 
 - Functions:
   - `DashboardPanelFallback`, `buildFallbackSparkline`
 - Top-level variables:
-  - `AIAdvisorAlertPanel`, `EMPTY`, `avgPositionSize`, `base`, `baseSymbolUniverse`, `changePct`, `cp`, `current`, `delta`, `digestFetchInFlightRef`, `fallbackChangePct`, `handleDataReady`, `heatmapData`, `held`, `holdingsMap`, `industry`, `liveHoldings`, `mergedHeatmapData`, `monitoredSymbols`, `nominalSize`, `numericFallback`, `prev`, `quote`, `realtimeBreadth`, `renderAiPanel`, `renderAlertLane`, `renderDeck`, `renderHeatmap`, `renderStats`, `requestPortfolioDigest`, `response`, `sparkline24`, `symbolUniverse`, `technicalChangeBySymbol`, `totalHeldValue`, `trackedInfo`, `trackedMap`, `trackedSymbolNames`, `unreadUnifiedCount`
+  - `AIAdvisorAlertPanel`, `EMPTY`, `EXCLUDED_MARKET_GROUPS`, `avgPositionSize`, `base`, `baseSymbolUniverse`, `changePct`, `cp`, `current`, `delta`, `digestFetchInFlightRef`, `fallbackChangePct`, `handleDataReady`, `heatmapData`, `heatmapSymbols`, `held`, `holdingsMap`, `industry`, `liveHoldings`, `mergedHeatmapData`, `monitoredSymbols`, `name`, `nominalSize`, `numericFallback`, `prev`, `quote`, `realtimeBreadth`, `renderAiPanel`, `renderAlertLane`, `renderDeck`, `renderHeatmap`, `renderStats`, `requestPortfolioDigest`, `response`, `sparkline24`, `symbolUniverse`, `symbolsSet`, `technicalChangeBySymbol`, `totalHeldValue`, `trackedInfo`, `trackedMap`, `trackedSymbolNames`, `unreadUnifiedCount`
 
 ### `frontend/src/pages/packageShellHostRuntime.js`
 
@@ -10551,989 +8229,6 @@ Generated at: `2026-05-29 20:48:10`
 
 - No parseable top-level symbols found
 
-### `packages/opencore-site/.next/server/app/[locale]/blog/[slug]/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/[locale]/blog/[slug]/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/[locale]/blog/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/[locale]/blog/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/[locale]/chart/docs/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/[locale]/chart/docs/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/[locale]/chart/embed/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/[locale]/chart/embed/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/[locale]/chart/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/[locale]/chart/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/[locale]/legal/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/[locale]/legal/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/[locale]/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/[locale]/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/[locale]/pricing/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/[locale]/pricing/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/[locale]/vnstock/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/[locale]/vnstock/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/[locale]/vnstock/playground/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/[locale]/vnstock/playground/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/_not-found/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/_not-found/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/api/bars/[symbol]/route.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/api/bars/[symbol]/route_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/api/health/route.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/api/health/route_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/api/public/vnstock-data/route.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/api/public/vnstock-data/route_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/robots.txt/route.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/robots.txt/route_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/sitemap.xml/route.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/app/sitemap.xml/route_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/chunks/119.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/chunks/140.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/chunks/331.js`
-
-- Functions:
-  - `middleware`
-
-### `packages/opencore-site/.next/server/chunks/589.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/chunks/611.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/chunks/692.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/chunks/789.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/chunks/93.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/chunks/931.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/edge-runtime-webpack.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/interception-route-rewrite-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/middleware-build-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/middleware-react-loadable-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/next-font-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/pages/_app.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/pages/_document.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/pages/_error.js`
-
-- Functions:
-  - `middleware`
-
-### `packages/opencore-site/.next/server/server-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/server/src/middleware.js`
-
-- Functions:
-  - `middleware`
-
-### `packages/opencore-site/.next/server/webpack-runtime.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/blog/[slug]/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/blog/[slug]/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/blog/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/blog/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/chart/docs/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/chart/docs/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/chart/embed/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/chart/embed/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/chart/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/chart/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/legal/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/legal/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/pricing/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/pricing/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/vnstock/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/vnstock/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/vnstock/playground/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/[locale]/vnstock/playground/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/_not-found/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/_not-found/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/api/bars/[symbol]/route.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/api/bars/[symbol]/route_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/api/health/route.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/api/health/route_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/api/public/vnstock-data/route.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/api/public/vnstock-data/route_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/page.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/page_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/robots.txt/route.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/robots.txt/route_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/sitemap.xml/route.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/app/sitemap.xml/route_client-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/chunks/119.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/chunks/140.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/chunks/331.js`
-
-- Functions:
-  - `middleware`
-
-### `packages/opencore-site/.next/standalone/.next/server/chunks/589.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/chunks/611.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/chunks/692.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/chunks/789.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/chunks/93.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/chunks/931.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/edge-runtime-webpack.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/middleware-build-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/middleware-react-loadable-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/next-font-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/pages/_app.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/pages/_document.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/pages/_error.js`
-
-- Functions:
-  - `middleware`
-
-### `packages/opencore-site/.next/standalone/.next/server/server-reference-manifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/.next/server/src/middleware.js`
-
-- Functions:
-  - `middleware`
-
-### `packages/opencore-site/.next/standalone/.next/server/webpack-runtime.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/standalone/server.js`
-
-- Top-level variables:
-  - `__dirname`, `currentPort`, `dir`, `hostname`, `keepAliveTimeout`, `nextConfig`, `require`
-
-### `packages/opencore-site/.next/static/chunks/139.7a5a8e93a21948c1.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/255-4f212684648fcab9.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/280-79d7698a3ebf8cd6.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/4bd1b696-c023c6e3521b1417.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/512-c8015cef61e87835.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/646.f342b7cffc01feb0.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/[locale]/blog/[slug]/page-125f80b761df6768.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/[locale]/blog/page-928c813941c4588f.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/[locale]/chart/docs/page-125f80b761df6768.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/[locale]/chart/embed/page-125f80b761df6768.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/[locale]/chart/page-bc51fce55b031529.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/[locale]/layout-b973aec56e1ffb46.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/[locale]/legal/page-125f80b761df6768.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/[locale]/not-found-318f158d5f29695b.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/[locale]/page-935136e877a79272.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/[locale]/pricing/page-a6746d9352f3cd5d.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/[locale]/vnstock/page-928c813941c4588f.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/[locale]/vnstock/playground/page-27f1c7ade2c68249.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/_not-found/page-d2ce7adb7df5b95c.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/api/bars/[symbol]/route-11814a022068cac3.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/api/health/route-11814a022068cac3.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/api/public/vnstock-data/route-11814a022068cac3.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/layout-9835f04c13d213f4.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/page-11814a022068cac3.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/robots.txt/route-11814a022068cac3.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/app/sitemap.xml/route-11814a022068cac3.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/framework-050c1f32293f7182.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/main-981706e99aa11916.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/main-app-cfd387c45702604c.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/pages/_app-82835f42865034fa.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/pages/_error-013f4188946cdd04.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/polyfills-42372ed130431b0a.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/chunks/webpack-a20c9abace18027e.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/I5RTZmnflnvNYaQYeHHOx/_buildManifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/static/I5RTZmnflnvNYaQYeHHOx/_ssgManifest.js`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/types/app/[locale]/blog/[slug]/page.ts`
-
-- Functions:
-  - `checkFields`
-
-### `packages/opencore-site/.next/types/app/[locale]/blog/page.ts`
-
-- Functions:
-  - `checkFields`
-
-### `packages/opencore-site/.next/types/app/[locale]/chart/docs/page.ts`
-
-- Functions:
-  - `checkFields`
-
-### `packages/opencore-site/.next/types/app/[locale]/chart/embed/page.ts`
-
-- Functions:
-  - `checkFields`
-
-### `packages/opencore-site/.next/types/app/[locale]/chart/page.ts`
-
-- Functions:
-  - `checkFields`
-
-### `packages/opencore-site/.next/types/app/[locale]/legal/page.ts`
-
-- Functions:
-  - `checkFields`
-
-### `packages/opencore-site/.next/types/app/[locale]/page.ts`
-
-- Functions:
-  - `checkFields`
-
-### `packages/opencore-site/.next/types/app/[locale]/pricing/page.ts`
-
-- Functions:
-  - `checkFields`
-
-### `packages/opencore-site/.next/types/app/[locale]/vnstock/page.ts`
-
-- Functions:
-  - `checkFields`
-
-### `packages/opencore-site/.next/types/app/[locale]/vnstock/playground/page.ts`
-
-- Functions:
-  - `checkFields`
-
-### `packages/opencore-site/.next/types/app/api/bars/[symbol]/route.ts`
-
-- Functions:
-  - `checkFields`
-
-### `packages/opencore-site/.next/types/app/api/health/route.ts`
-
-- Functions:
-  - `checkFields`
-
-### `packages/opencore-site/.next/types/app/api/public/vnstock-data/route.ts`
-
-- Functions:
-  - `checkFields`
-
-### `packages/opencore-site/.next/types/app/layout.ts`
-
-- Functions:
-  - `checkFields`
-
-### `packages/opencore-site/.next/types/app/page.ts`
-
-- Functions:
-  - `checkFields`
-
-### `packages/opencore-site/.next/types/cache-life.d.ts`
-
-- Functions:
-  - `unstable_cacheLife`
-
-### `packages/opencore-site/.next/types/routes.d.ts`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/.next/types/validator.ts`
-
-- Top-level variables:
-  - `handler`
-
-### `packages/opencore-site/next-env.d.ts`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/next.config.ts`
-
-- Top-level variables:
-  - `adminCsp`, `commonHeaders`, `csp`, `isProduction`, `nextConfig`, `withMDX`, `withNextIntl`
-
-### `packages/opencore-site/src/app/[locale]/blog/[slug]/page.tsx`
-
-- Functions:
-  - `generateMetadata`, `generateStaticParams`
-- Top-level variables:
-  - `post`, `source`, `t`
-
-### `packages/opencore-site/src/app/[locale]/blog/page.tsx`
-
-- Functions:
-  - `generateMetadata`
-- Top-level variables:
-  - `t`
-
-### `packages/opencore-site/src/app/[locale]/chart/docs/page.tsx`
-
-- Functions:
-  - `generateMetadata`
-- Top-level variables:
-  - `t`
-
-### `packages/opencore-site/src/app/[locale]/chart/embed/page.tsx`
-
-- Functions:
-  - `generateMetadata`
-- Top-level variables:
-  - `t`
-
-### `packages/opencore-site/src/app/[locale]/chart/page.tsx`
-
-- Functions:
-  - `generateMetadata`
-- Top-level variables:
-  - `t`
-
-### `packages/opencore-site/src/app/[locale]/layout.tsx`
-
-- Functions:
-  - `generateStaticParams`
-- Top-level variables:
-  - `messages`, `metadata`
-
-### `packages/opencore-site/src/app/[locale]/legal/page.tsx`
-
-- Functions:
-  - `generateMetadata`
-- Top-level variables:
-  - `t`
-
-### `packages/opencore-site/src/app/[locale]/not-found.tsx`
-
-- Top-level variables:
-  - `t`
-
-### `packages/opencore-site/src/app/[locale]/page.tsx`
-
-- Functions:
-  - `generateMetadata`
-- Top-level variables:
-  - `t`
-
-### `packages/opencore-site/src/app/[locale]/pricing/page.tsx`
-
-- Functions:
-  - `generateMetadata`
-- Top-level variables:
-  - `t`
-
-### `packages/opencore-site/src/app/[locale]/vnbroker/page.tsx`
-
-- Functions:
-  - `generateMetadata`
-- Top-level variables:
-  - `t`
-
-### `packages/opencore-site/src/app/[locale]/vnbroker/playground/page.tsx`
-
-- Functions:
-  - `generateMetadata`
-- Top-level variables:
-  - `t`
-
-### `packages/opencore-site/src/app/admin/route.ts`
-
-- Functions:
-  - `GET`
-- Top-level variables:
-  - `filePath`, `html`
-
-### `packages/opencore-site/src/app/api/bars/[symbol]/route.ts`
-
-- Functions:
-  - `GET`, `requestKey`
-- Top-level variables:
-  - `RATE_LIMIT`, `WINDOW_MS`, `backendUrl`, `feed`, `ipKey`, `params`, `payload`, `requestSymbol`, `timeframe`, `upstream`
-
-### `packages/opencore-site/src/app/api/cms-auth/route.ts`
-
-- Functions:
-  - `GET`, `postMessageResponse`, `send`, `start`
-- Top-level variables:
-  - `CLIENT_ID`, `CLIENT_SECRET`, `accessToken`, `code`, `githubAuthUrl`, `githubUrl`, `html`, `message`, `msg`, `provider`, `tokenData`, `tokenRes`
-
-### `packages/opencore-site/src/app/api/health/route.ts`
-
-- Functions:
-  - `GET`
-
-### `packages/opencore-site/src/app/api/public/vnbroker-data/route.ts`
-
-- Functions:
-  - `GET`, `requestKey`
-- Top-level variables:
-  - `RATE_LIMIT`, `WINDOW_MS`, `backendUrl`, `dataType`, `feed`, `ipKey`, `params`, `payload`, `period`, `symbol`, `upstream`
-
-### `packages/opencore-site/src/app/layout.tsx`
-
-- Top-level variables:
-  - `bodyFont`, `headlineFont`, `metadata`
-
-### `packages/opencore-site/src/app/page.tsx`
-
-- No parseable top-level symbols found
-
-### `packages/opencore-site/src/app/robots.ts`
-
-- Top-level variables:
-  - `siteUrl`
-
-### `packages/opencore-site/src/app/sitemap.ts`
-
-- Top-level variables:
-  - `now`, `routes`, `siteUrl`
-
-### `packages/opencore-site/src/components/layout/Footer.tsx`
-
-- Functions:
-  - `Footer`, `localeHref`
-- Top-level variables:
-  - `currentLocale`, `pathname`, `t`
-
-### `packages/opencore-site/src/components/layout/LangToggle.tsx`
-
-- Functions:
-  - `LangToggle`, `swapLocale`
-- Top-level variables:
-  - `activeLocale`, `currentLocale`, `href`, `nextLocale`, `pathname`, `segments`, `t`
-
-### `packages/opencore-site/src/components/layout/SiteFrame.tsx`
-
-- Functions:
-  - `SiteFrame`
-
-### `packages/opencore-site/src/components/layout/TopNav.tsx`
-
-- Functions:
-  - `TopNav`, `localeHref`
-- Top-level variables:
-  - `REGISTER_URL`, `currentLocale`, `navLinks`, `pathname`, `t`
-
-### `packages/opencore-site/src/components/sections/ChartDemo.tsx`
-
-- Functions:
-  - `ChartDemo`, `loadFeed`, `toWidgetBars`
-- Top-level variables:
-  - `bars`, `cancelled`, `from`, `locale`, `nextFeed`, `noopAdapter`, `t`, `timeframes`, `timerId`, `to`, `whaleEvents`
-
-### `packages/opencore-site/src/components/sections/DashboardPreview.tsx`
-
-- Functions:
-  - `DashboardPreview`, `priceToY`
-- Top-level variables:
-  - `CANDLES`, `SPARKFILL`, `SPARKLINE`, `TICKERS`, `height`, `top`
-
-### `packages/opencore-site/src/components/sections/FeatureGrid.tsx`
-
-- Functions:
-  - `FeatureGrid`
-- Top-level variables:
-  - `ref`, `t`
-
-### `packages/opencore-site/src/components/sections/HeroSection.tsx`
-
-- Functions:
-  - `HeroSection`, `localeHref`
-- Top-level variables:
-  - `common`, `currentLocale`, `pathname`, `t`
-
-### `packages/opencore-site/src/components/sections/PlaygroundPanel.tsx`
-
-- Functions:
-  - `PlaygroundPanel`, `resetExample`, `runCode`
-- Top-level variables:
-  - `cancelled`, `exampleLabel`, `examples`, `nextExample`, `pyodide`, `result`, `t`
-
-### `packages/opencore-site/src/components/sections/PricingTable.tsx`
-
-- Functions:
-  - `PricingTable`, `localeHref`
-- Top-level variables:
-  - `common`, `currentLocale`, `pathname`, `plans`, `ref`, `t`
-
-### `packages/opencore-site/src/components/sections/ProductCards.tsx`
-
-- Functions:
-  - `ProductCards`, `localeHref`
-- Top-level variables:
-  - `PRODUCT_CARDS`, `PRODUCT_ICONS`, `currentLocale`, `pathname`, `products`, `ref`, `t`
-
-### `packages/opencore-site/src/components/sections/StatsStrip.tsx`
-
-- Functions:
-  - `StatsStrip`
-- Top-level variables:
-  - `STATS`, `t`
-
-### `packages/opencore-site/src/hooks/useReveal.ts`
-
-- Functions:
-  - `useReveal`
-- Top-level variables:
-  - `el`, `obs`, `ref`
-
-### `packages/opencore-site/src/i18n/request.ts`
-
-- Top-level variables:
-  - `locale`, `messages`, `requestedLocale`
-
-### `packages/opencore-site/src/i18n/routing.ts`
-
-- Functions:
-  - `isLocale`
-- Top-level variables:
-  - `defaultLocale`, `locales`
-
-### `packages/opencore-site/src/lib/api.ts`
-
-- Functions:
-  - `fetchChartFeed`, `fetchVnbrokerData`, `parseJsonResponse`
-- Top-level variables:
-  - `params`, `response`
-
-### `packages/opencore-site/src/lib/blog.ts`
-
-- Functions:
-  - `getBlogPostBySlug`, `getBlogPostSource`, `loadBlogPosts`
-- Top-level variables:
-  - `CONTENT_DIR`, `blogPosts`, `filePath`, `files`, `raw`, `slug`
-
-### `packages/opencore-site/src/lib/chartFeed.ts`
-
-- Functions:
-  - `buildChartFeed`, `deriveWhaleEvents`, `generateSampleBars`, `hashSymbol`
-- Top-level variables:
-  - `bars`, `buyVolume`, `changePct`, `close`, `drift`, `first`, `high`, `last`, `low`, `open`, `seed`, `sellVolume`, `start`, `threshold`, `volume`, `volumes`, `wave`, `whaleEvents`
-
-### `packages/opencore-site/src/lib/pyodide.ts`
-
-- Functions:
-  - `ensureScript`, `loadPyodideRuntime`
-- Top-level variables:
-  - `baseUrl`, `existing`, `loadPyodide`, `runtimePromise`, `script`
-
-### `packages/opencore-site/src/lib/rateLimit.ts`
-
-- Functions:
-  - `allowRequest`, `cleanupBuckets`
-- Top-level variables:
-  - `bucket`, `buckets`, `now`
-
-### `packages/opencore-site/src/lib/seo.ts`
-
-- Functions:
-  - `buildPageMetadata`, `canonicalUrl`
-- Top-level variables:
-  - `siteUrl`, `url`
-
-### `packages/opencore-site/src/lib/validation.ts`
-
-- Functions:
-  - `isAllowedSymbol`, `isAllowedTimeframe`, `normalizeSymbol`, `normalizeTimeframe`
-- Top-level variables:
-  - `ALLOWED_SYMBOLS`, `ALLOWED_TIMEFRAMES`, `SYMBOL_PATTERN`, `normalized`
-
-### `packages/opencore-site/src/mdx-components.tsx`
-
-- Functions:
-  - `useMDXComponents`
-
-### `packages/opencore-site/src/middleware.ts`
-
-- Functions:
-  - `middleware`
-- Top-level variables:
-  - `config`, `firstSegment`, `url`
-
-### `packages/opencore-site/src/types/mdx.d.ts`
-
-- Top-level variables:
-  - `MDXComponent`
-
-### `packages/opencore-site/src/types/vnbrokercharts.d.ts`
-
-- Top-level variables:
-  - `VNBrokerChart`, `WhaleBubbleOverlay`
-
 ### `packages/web/jest.config.js`
 
 - Top-level variables:
@@ -11576,14 +8271,14 @@ Generated at: `2026-05-29 20:48:10`
 - Functions:
   - `createMarketClient`
 - Top-level variables:
-  - `days`, `interval`, `params`, `period`, `q`, `query`, `timeframe`
+  - `days`, `interval`, `params`, `period`, `q`, `query`, `symbolList`, `timeframe`
 
 ### `packages/web/src/adapters/core/transport.js`
 
 - Classes:
   - `CoreApiRequestError`
 - Functions:
-  - `clearBrowserStorageToken`, `coreDelete`, `coreGet`, `corePatch`, `corePost`, `createCoreTransport`, `generateRequestId`, `getAuthorizationHeader`, `getBrowserStorageToken`, `normalizeRefreshResponsePayload`, `publicPost`, `requestTokenRefresh`, `requestWithAuth`, `resolveCoreApiBase`, `resolvePublicApiBase`, `setBrowserStorageToken`, `shouldTryRefresh`, `toCoreApiRequestError`
+  - `clearBrowserStorageToken`, `coreDelete`, `coreGet`, `corePatch`, `corePost`, `corePut`, `createCoreTransport`, `generateRequestId`, `getAuthorizationHeader`, `getBrowserStorageToken`, `normalizeRefreshResponsePayload`, `publicPost`, `requestTokenRefresh`, `requestWithAuth`, `resolveCoreApiBase`, `resolvePublicApiBase`, `setBrowserStorageToken`, `shouldTryRefresh`, `toCoreApiRequestError`
 - Top-level variables:
   - `authTokenStorage`, `base`, `code`, `detail`, `directAccess`, `directRefresh`, `fallbackText`, `fieldErrors`, `nestedData`, `nextAccessToken`, `payload`, `r`, `refreshPromise`, `refreshToken`, `requestId`, `response`, `text`, `token`, `tokenPayload`
 
@@ -11689,205 +8384,765 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `SHELL_PAGE_TEMPLATE_STYLES`
 
-### `packages/web/src/components/VNStockChartPanel.js`
-
-- Functions:
-  - `HeatmapBandOverlay`, `ViewportSharkMarkersOverlay`, `buildFlowBucketLookup`, `buildHeatmapBandColor`, `clamp`, `pad`, `resolveHeatmapMetric`, `useI18n`
-- Top-level variables:
-  - `TIMEFRAMES`, `alpha`, `barTime`, `barWidth`, `bucket`, `buyHeat`, `candlesForHook`, `chartBody`, `color`, `customPanes`, `dateStr`, `draw`, `drawY`, `dx`, `e`, `emoji`, `endIndex`, `enrichedBars`, `flowBucketLookup`, `flowTimeframe`, `flowViewModel`, `handleClick`, `handleVisibleRangeChange`, `heatmapButtons`, `idx`, `intensity`, `isBuy`, `item`, `lookup`, `magnitude`, `map`, `mappedCvdSeries`, `mappedWhaleOrders`, `metric`, `minuteKey`, `netHeat`, `normalizedMode`, `offset`, `parsedDate`, `price`, `sellHeat`, `signalsOrders`, `startIndex`, `timeframeButtons`, `timestamp`, `visibleBars`, `whaleScore`, `whaleTimes`, `x`, `y`
-
-### `packages/web/src/components/vnstockcharts/csv.d.ts`
+### `packages/web/src/components/support/StaffTicketActions.js`
 
 - Top-level variables:
-  - `content`
+  - `e`
 
-### `packages/web/src/components/vnstockcharts/d3-format.d.ts`
+### `packages/web/src/components/support/SupportOpsDashboard.js`
 
 - Functions:
-  - `format`, `timeFormat`
+  - `StatCard`, `fmtDuration`
+- Top-level variables:
+  - `e`, `hours`, `minutes`, `total`
 
-### `packages/web/src/components/vnstockcharts/demo/__tests__/chartRange.test.ts`
+### `packages/web/src/components/support/SupportQueueFilters.js`
+
+- Top-level variables:
+  - `e`
+
+### `packages/web/src/components/support/SupportTicketList.js`
+
+- Functions:
+  - `statusClass`
+- Top-level variables:
+  - `active`, `e`, `priorities`
+
+### `packages/web/src/components/support/TicketComposer.js`
+
+- Functions:
+  - `handleSubmit`
+- Top-level variables:
+  - `e`
+
+### `packages/web/src/components/support/TicketCreationForm.js`
+
+- Functions:
+  - `submit`
+- Top-level variables:
+  - `categories`, `e`
+
+### `packages/web/src/components/support/TicketMetaPanel.js`
+
+- Top-level variables:
+  - `canReopen`, `e`
+
+### `packages/web/src/components/support/TicketThread.js`
+
+- Functions:
+  - `roleStyle`
+- Top-level variables:
+  - `e`
+
+### `packages/web/src/components/vninvestcharts/index.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/bridge/paneDescriptorBridge.js`
+
+- Functions:
+  - `buildScaleSlots`, `buildSeriesSpecs`, `createPaneSpecFromDescriptor`, `createPaneSpecsFromDescriptors`, `createScaleSlotId`, `inferPaneKind`
+- Top-level variables:
+  - `PANE_KIND_BY_ID`, `activeSeries`, `fallbackScaleSlotId`, `hasLeftAxis`, `hasRightAxis`, `scaleSlots`, `slotBySide`, `slotSides`, `style`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/bridge/paneDescriptorBridge.test.js`
+
+- Top-level variables:
+  - `paneSpec`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/canvas/AxisGridRenderCache.js`
+
+- Classes:
+  - `AxisGridRenderCache`
+- Functions:
+  - `buildAxisGridCacheKey`, `cacheDimensions`, `safeDomain`
+- Top-level variables:
+  - `existing`, `leftWidth`, `offscreen`, `offscreenCtx`, `rightWidth`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/canvas/AxisGridRenderCache.test.js`
+
+- Classes:
+  - `FakeOffscreenCanvas`
+- Functions:
+  - `createContextMock`, `makeOptions`
+- Top-level variables:
+  - `cache`, `ctx`, `first`, `isMiss`, `options`, `originalOffscreenCanvas`, `renderer`, `second`, `third`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/canvas/AxisGridRenderer.js`
+
+- Classes:
+  - `AxisGridRenderer`
+- Functions:
+  - `calculateTicks`, `formatAxisLabel`, `normalizeDomain`, `renderAxisLabels`, `resolveThemePalette`, `yForValue`
+- Top-level variables:
+  - `abs`, `base`, `delta`, `domain`, `epsilon`, `firstTick`, `gridDomain`, `label`, `palette`, `plotBounds`, `power`, `range`, `ratio`, `rawInterval`, `step`, `targetTickCount`, `themeMode`, `ticks`, `x`, `y`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/canvas/AxisGridRenderer.test.js`
+
+- Functions:
+  - `createCanvasContextMock`
+- Top-level variables:
+  - `ctx`, `renderer`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/canvas/BarRenderer.js`
+
+- Classes:
+  - `BarRenderer`
+- Functions:
+  - `resolveColor`, `toRoundedPixel`
+- Top-level variables:
+  - `barWidth`, `baselineY`, `datum`, `fallback`, `halfBarWidth`, `height`, `left`, `negativeColor`, `opacity`, `positiveColor`, `rawHeight`, `roundedX`, `roundedY`, `top`, `value`, `valueAccessor`, `x`, `xAccessor`, `y`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/canvas/BarRenderer.test.js`
+
+- Functions:
+  - `createContextMock`
+- Top-level variables:
+  - `ctx`, `data`, `renderer`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/canvas/CandlestickRenderer.js`
+
+- Classes:
+  - `CandlestickRenderer`
+- Functions:
+  - `resolveColor`, `toRoundedPixel`
+- Top-level variables:
+  - `DEFAULT_DOWN_COLOR`, `DEFAULT_UP_COLOR`, `barWidth`, `bodyBottom`, `bodyHeight`, `bodyTop`, `close`, `closeAccessor`, `closeY`, `datum`, `directionColor`, `fillColor`, `halfWidth`, `high`, `highAccessor`, `highY`, `isUp`, `left`, `low`, `lowAccessor`, `lowY`, `mode`, `opacity`, `open`, `openAccessor`, `openY`, `strokeColor`, `strokeWidth`, `wickBottom`, `wickColor`, `wickTop`, `x`, `xAccessor`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/canvas/CandlestickRenderer.test.js`
+
+- Classes:
+  - `SoftwareRasterContext`
+- Functions:
+  - `createContextMock`, `createPixelContext`, `renderCanonicalBaselinePng`
+- Top-level variables:
+  - `actualPng`, `alpha`, `bars`, `baseData`, `baselinePath`, `blue`, `bottom`, `color`, `context`, `ctx`, `dx`, `dy`, `endX`, `endY`, `error`, `expectedPng`, `green`, `hex`, `left`, `normalized`, `offset`, `png`, `previous`, `red`, `renderer`, `right`, `startX`, `startY`, `sx`, `sy`, `top`, `twiceError`, `x0`, `x1`, `y0`, `y1`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/canvas/CrosshairRenderer.js`
+
+- Classes:
+  - `CrosshairRenderer`
+- Top-level variables:
+  - `strokeColor`, `x`, `y`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/canvas/CrosshairRenderer.test.js`
+
+- Functions:
+  - `createContextMock`
+- Top-level variables:
+  - `ctx`, `renderer`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/canvas/LineAreaRenderer.js`
+
+- Classes:
+  - `LineAreaRenderer`
+- Functions:
+  - `resolveColor`, `toRoundedPixel`
+- Top-level variables:
+  - `barWidth`, `baselineY`, `datum`, `existing`, `firstPoint`, `halfBarWidth`, `height`, `left`, `lineWidth`, `mode`, `next`, `opacity`, `pointCount`, `points`, `rawPoints`, `shouldUseWebGL`, `top`, `value`, `valueAccessor`, `webglRenderer`, `x`, `xAccessor`, `xyPoints`, `y`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/canvas/LineAreaRenderer.test.js`
+
+- Functions:
+  - `createContextMock`
+- Top-level variables:
+  - `badData`, `canvas`, `context`, `ctx`, `mixedData`, `renderer`, `sampleData`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/canvas/WebGLLineRenderer.js`
+
+- Classes:
+  - `WebGLLineRenderer`
+- Functions:
+  - `buildThickLineVertices`, `hexToRgba`
+- Top-level variables:
+  - `FRAGMENT_SHADER_SOURCE`, `VERTEX_SHADER_SOURCE`, `a`, `b`, `dx`, `dy`, `fragmentShader`, `g`, `half`, `length`, `normalized`, `nx`, `ny`, `ox`, `oy`, `program`, `r`, `shader`, `vertexShader`, `vertices`, `webglCanvas`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/canvas/WebGLLineRenderer.test.js`
+
+- Functions:
+  - `createCanvasWithoutWebGL`
+- Top-level variables:
+  - `canvas`, `renderer`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/coordinates/coordinateBridge.js`
+
+- Functions:
+  - `clampIndexFloat`, `clampIndexInt`, `resolvePaneDataIndexAtPixel`, `resolvePanePixelAtDataIndex`, `resolvePanePixelAtValue`, `resolvePaneValueAtPixel`, `visibleRangeFromPlotBounds`
+- Top-level variables:
+  - `clampedIndex`, `index`, `projector`, `scaleSlotState`, `y`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/coordinates/coordinateBridge.test.js`
+
+- Top-level variables:
+  - `hitTestedIndex`, `leftOffscreenPixel`, `projectedPixel`, `rangeWithNegative`, `rightOffscreenPixel`, `snapshot`, `visibleRange`, `xFromFractionalIndex`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/coordinates/legacyForkParityHarness.test.js`
+
+- Functions:
+  - `createLegacyProjectorOracle`
+- Top-level variables:
+  - `cameraFrames`, `domain`, `forkProjector`, `fractionalFrame`, `from`, `legacyProjector`, `maxValue`, `minValue`, `pixel`, `projector`, `roundTripIndex`, `roundTripValue`, `sampleIndices`, `samplePixels`, `sampleValues`, `sampleYPixels`, `snapshot`, `span`, `to`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/coordinates/paneProjector.js`
+
+- Functions:
+  - `clampSharedEnvelopeIndex`, `createPaneProjector`, `indexToPixelX`, `pixelXToIndex`, `pixelYToValue`, `resolveScaleDomain`, `resolveVisibleBounds`, `valueToPixelY`
+- Top-level variables:
+  - `SHARED_ENVELOPE_MAX_ABS_INDEX`, `SHARED_ENVELOPE_MIN_SPAN`, `domain`, `ratio`, `rawFrom`, `rawSpan`, `rawTo`, `scaleSlotState`, `span`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/coordinates/paneProjector.test.js`
+
+- Top-level variables:
+  - `leftOffscreen`, `projector`, `rightOffscreen`, `snapshot`, `visibleRange`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/coordinates/projectorInvariants.test.js`
+
+- Top-level variables:
+  - `candleX`, `centerIndex`, `centerPixel`, `drawingX`, `index`, `indicatorX`, `invalidProjector`, `offscreenIndices`, `pixel`, `projector`, `reversedProjector`, `roundTrip`, `roundTripPixel`, `snapshot`, `visibleRange`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/coordinates/timeIndexMap.js`
+
+- Functions:
+  - `createDateTimeIndexMap`, `createTimeIndexMap`, `resolveInterpolatedIndexByTime`, `resolveInterpolatedTimeByIndex`
+- Top-level variables:
+  - `firstTime`, `high`, `lastTime`, `leftIndex`, `leftTime`, `low`, `mid`, `midTime`, `penultimateTime`, `ratio`, `rightIndex`, `rightTime`, `secondTime`, `timestamps`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/coordinates/timeIndexMap.test.js`
+
+- Top-level variables:
+  - `afterLast`, `beforeFirst`, `data`, `map`, `midTime`, `resolved`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/engine/CandlestickLodWorkerLane.js`
+
+- Classes:
+  - `CandlestickLodWorkerLane`
+- Functions:
+  - `toCandlestickLodData`, `toCandlestickLodWorkerInput`
+- Top-level variables:
+  - `abortController`, `activeRequest`, `cached`, `domain`, `firstX`, `lastX`, `lodData`, `pending`, `requestKey`, `workerInput`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/engine/CandlestickLodWorkerLane.test.js`
+
+- Functions:
+  - `createCandles`
+- Top-level variables:
+  - `aggregateSpy`, `cache`, `data`, `lane`, `resolution`, `schedulePlotRender`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/engine/derivedCache.js`
+
+- Functions:
+  - `appendTailCache`, `buildBuckets`, `computeBucket`, `createDerivedCache`, `prependHeadCache`, `queryYRange`, `replaceAllCache`
+- Top-level variables:
+  - `DEFAULT_BUCKET_SIZE`, `buckets`, `end`, `found`, `headBuckets`, `lastBucketIndex`, `max`, `min`, `recomputedBuckets`, `shiftedTail`, `stableBuckets`, `v`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/engine/derivedCache.test.js`
+
+- Functions:
+  - `makeBars`
+- Top-level variables:
+  - `allBars`, `bars`, `bars2`, `bucket0Before`, `bucket1Before`, `bucketsRef`, `cache`, `cache2`, `emptyCache`, `newBars`, `prependBars`, `r1`, `r2`, `result`, `stableHeadBuckets`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/engine/dirtyMask.js`
+
+- Top-level variables:
+  - `DirtyFlag`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/engine/indicatorAccessors.js`
+
+- Functions:
+  - `buildIndicatorValuesKey`, `get`, `getAccessorFor`, `num`, `numParam`
+- Top-level variables:
+  - `INDICATOR_ACCESSORS`, `af`, `b`, `baseType`, `bear`, `bull`, `delta`, `dotIndex`, `f`, `fp`, `key`, `m1`, `m2`, `max`, `obj`, `p`, `rt`, `s`, `sd`, `sg`, `sl`, `sp`, `subField`, `t`, `v`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/engine/indicatorAccessors.test.js`
+
+- Functions:
+  - `datum`
+- Top-level variables:
+  - `acc`, `acc13`, `acc20`, `d`, `empty`, `mod`, `result`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/engine/KernelEngine.js`
+
+- Classes:
+  - `KernelEngine`
+- Functions:
+  - `clampOverlayIndex`, `clampUnit`, `cloneDrawingPrimitiveInput`, `cloneDrawingPrimitiveState`, `cloneLogicalMeasurementPoint`, `cloneLogicalMeasurementSelection`, `cloneOverlayCanvasPoint`, `cloneOverlayCanvasPrimitive`, `cloneOverlayInputs`, `cloneOverlayState`, `flush`, `normalizeHexColor`, `projectPoint`, `resolvePreferredMeasurementScaleSlotId`, `resolvePreferredPriceLabelScaleSlotId`, `resolveVisibleScaleSlotIds`, `withAlpha`
+- Top-level variables:
+  - `CAMERA_RANGE_MAX_ABS_INDEX`, `DEFAULT_HEIGHT`, `DEFAULT_LOCALE`, `DEFAULT_OVERLAY_INPUTS`, `DEFAULT_THEME`, `DEFAULT_VISIBLE_RANGE`, `DEFAULT_WIDTH`, `MAX_VISIBLE_BARS`, `SHARED_ENVELOPE_MAX_BAR_SPACE_PX`, `SHARED_ENVELOPE_MIN_BAR_SPACE_PX`, `accessors`, `aggregate`, `aggregates`, `anchorSpan`, `asArea`, `axisCacheKey`, `b`, `barStep`, `barWidth`, `baseColor`, `baseLineWidth`, `bestDistance`, `bottom`, `bottomSnapshot`, `boundedLength`, `bucketCenter`, `bucketEnd`, `bucketProjector`, `c`, `cache`, `cacheKey`, `cached`, `candleWidthRatio`, `canvas`, `center`, `centerX`, `channel`, `clampedFrom`, `clampedSpan`, `clippedPrimitives`, `close`, `color`, `combinedValues`, `configuredBarFill`, `context`, `ctx`, `current`, `currentDomain`, `currentSpan`, `customDomain`, `d`, `data`, `dataIndex`, `dataLen`, `datum`, `delta`, `diffY`, `direct`, `distance`, `domain`, `domains`, `drawingPrimitive`, `drawingPrimitives`, `effectiveDataLen`, `end`, `existing`, `expanded`, `fallbackAccessor`, `fill`, `fillMode`, `fillOpacity`, `fillStyle`, `finiteValues`, `from`, `fromIndex`, `fromWorker`, `g`, `gradient`, `halfSpan`, `hasManualScale`, `height`, `hex3`, `hex6`, `hex8`, `high`, `hit`, `hoverPoint`, `hoveredDataIndex`, `hoveredSnapshot`, `index`, `indexDelta`, `isDerivedSubSeries`, `labels`, `lastIndex`, `leftAxis`, `leftSlot`, `levels`, `lineWidth`, `listeners`, `lodBarWidth`, `lodBucketSize`, `lodData`, `lodRequestKey`, `lodResolution`, `low`, `lower`, `lowerPoints`, `lowerValues`, `mask`, `match3`, `match8`, `matchedValueCount`, `matchedValueSum`, `max`, `maxBarWidth`, `maxHigh`, `maxSpan`, `maxValue`, `maxY`, `maxZoomSpan`, `min`, `minLow`, `minSpan`, `minValue`, `minY`, `missingValueFallback`, `mode`, `modeMap`, `newDomain`, `newFrom`, `newSpan`, `newTo`, `nextArcLevels`, `nextBaseRadius`, `nextLabelPos`, `nextLabels`, `nextLevelLines`, `nextOverlayState`, `nextPaths`, `nextPoint`, `nextPointMarkers`, `nextPoints`, `nextPolygons`, `nextRadius`, `nextSegments`, `nextSemanticBadges`, `nextSpan`, `nextVerticalMarkers`, `normalizedHex`, `normalizedMax`, `normalizedMin`, `oldSpan`, `open`, `overlapSpan`, `overlayCanvas`, `overlayLodBucketSize`, `overlayState`, `overlayStateKey`, `paddedMax`, `paddedMin`, `panePrimitives`, `paneSnapshotsKey`, `paneSpec`, `paramsAwareAccessor`, `parts`, `pivotFraction`, `pivotIndex`, `pixelsPerBar`, `plotBounds`, `points`, `position`, `prevLength`, `price`, `priceShift`, `primaryPane`, `projected`, `projector`, `px`, `py`, `r`, `range`, `ratio`, `raw`, `rawDeltaBars`, `rawDomain`, `rawFillColor`, `rawMode`, `rawOpacity`, `rawVals`, `result`, `rgbaMatch`, `right`, `rightAxis`, `rightSlot`, `runtimeSeriesData`, `runtimeWindow`, `safeAlpha`, `safeCount`, `sampleValues`, `scaleSlotId`, `scaled`, `scaledSpan`, `seenIndices`, `selectedPriceLabels`, `sharesCandlestickLane`, `side`, `slice`, `sliced`, `slot`, `slotDomain`, `slotDomains`, `snapshot`, `span`, `start`, `state`, `step`, `stepPx`, `strokeWidth`, `style`, `subColor`, `subColorKey`, `subColors`, `surface`, `t`, `targetFrom`, `targetTo`, `tickCount`, `ticks`, `to`, `toIndex`, `toIndexExclusive`, `totalDeltaPx`, `type`, `unclippedPrimitives`, `upper`, `upperPoints`, `upperValues`, `value`, `values`, `visibleBarCount`, `visibleBars`, `visibleCount`, `visibleScaleSlotIds`, `wasMeasurementEnabled`, `width`, `window`, `windowLength`, `x`, `xViewport`, `y`, `yScale`, `zoomDirection`, `zoomMultiplier`, `zoomScale`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/engine/KernelEngine.test.js`
+
+- Functions:
+  - `createCanvasContextMock`, `createPointerEvent`, `createTrackingCanvasContextMock`, `renderAtRange`
+- Top-level variables:
+  - `accessorSpy`, `after`, `afterZoomOutRange`, `allBars`, `appendedBars`, `bars`, `base`, `before`, `bollingerPanes`, `cam`, `camera`, `cameraBaseline`, `candleCall`, `candleData`, `candleOptions`, `candlePanes`, `candleRenderSpy`, `candleSpy`, `canvas`, `canvases`, `clearRectMock`, `committedAfterZoom`, `committedBeforeZoom`, `container`, `context`, `contextMock`, `crosshairCallIndex`, `current`, `currentRange`, `dash`, `deepZoomRange`, `defaultWidth`, `domain`, `draftMeasurement`, `drawingPriceLabels`, `drawingPrimitives`, `dualAxisPanes`, `dualEmaPanes`, `emaPanes`, `emitted`, `engine`, `enrichedBars`, `event`, `expectedBarWidth`, `extendedBaseline`, `extendedRange`, `fillRectCalls`, `fillStyles`, `firstFillRectCall`, `getContextSpy`, `hit`, `initialTicks`, `interactionListener`, `kdjPanes`, `latestCall`, `latestLeavePayload`, `latestMovePayload`, `leftDomain`, `leftHigh`, `lineCall`, `linePane`, `lineSpy`, `lineWidths`, `macdPanes`, `mask`, `measurementAfterLeave`, `moreBars`, `moveEvent`, `origStroke`, `originalCancelRaf`, `originalRaf`, `overlay`, `overlayContext`, `overlayPoints`, `overlayStateListener`, `paneListener`, `panes`, `panesWithCandleAndVolume`, `panesWithSeries`, `pannedTicks`, `plotBounds`, `plotContext`, `plotWidth`, `prependedBars`, `priceBodies`, `priceBody`, `pricePlot`, `primitiveInputs`, `range`, `rangeAfter`, `rangeAfterAppend`, `rangeBefore`, `rangeBeforeAppend`, `rangeListener`, `renderedData`, `replayedCamera`, `replayedRange`, `restoreMock`, `rightDomain`, `rightLow`, `runtimeData`, `setLineDashMock`, `shrunkBars`, `smallZoomOutEvent`, `snapshots`, `span`, `strokeCallCount`, `strokeCalls`, `strokeStyles`, `superShrunkBars`, `transientBars`, `validBars`, `values`, `visibleBarCount`, `volumeBodies`, `volumeBody`, `volumePlot`, `wheelEvent`, `width`, `widths`, `y`, `zoomInEvent`, `zoomedTicks`, `zoomedWidth`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/engine/KernelEngine.workerLod.test.js`
+
+- Functions:
+  - `createCanvasContextMock`
+- Top-level variables:
+  - `bars`, `candlePanes`, `container`, `contextMock`, `engine`, `getContextSpy`, `resolveSpy`, `workerLodData`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/engine/LodBucketizer.js`
+
+- Functions:
+  - `aggregateOhlc`, `chooseLodBucketSize`
+- Top-level variables:
+  - `bucketSize`, `c`, `candlesPerPixel`, `end`, `first`, `high`, `i`, `last`, `low`, `minBucketSize`, `result`, `volume`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/engine/LodBucketizer.test.js`
+
+- Functions:
+  - `makeCandle`
+- Top-level variables:
+  - `bucket`, `candles`, `result`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/engine/LodBucketizer.worker.js`
+
+- Top-level variables:
+  - `response`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/engine/LodBucketizerAsync.js`
+
+- Functions:
+  - `aggregateOhlcAsync`, `cleanup`, `createAbortError`, `createLodBucketizerWorker`, `handleAbort`, `resolveWorkerError`, `runWorkerAggregation`, `settle`, `shouldUseLodWorker`
+- Top-level variables:
+  - `LOD_WORKER_THRESHOLD`, `error`, `nextLodWorkerRequestId`, `requestId`, `settled`, `useWorker`, `worker`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/engine/LodBucketizerAsync.test.js`
+
+- Classes:
+  - `MockLodWorker`
+- Functions:
+  - `createCandle`
+- Top-level variables:
+  - `candles`, `controller`, `promise`, `requestId`, `result`, `worker`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/engine/MemoryBudgetPolicy.js`
+
+- Classes:
+  - `MemoryBudgetPolicy`
+- Top-level variables:
+  - `keysToEvict`, `remaining`, `sorted`, `total`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/engine/MemoryBudgetPolicy.test.js`
+
+- Functions:
+  - `makeChunk`
+- Top-level variables:
+  - `chunks`, `chunks2`, `plan`, `planA`, `planB`, `policy`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/engine/PerfHarness.js`
+
+- Classes:
+  - `PerfHarness`
+- Functions:
+  - `computeStats`
+- Top-level variables:
+  - `OVERLAY_MASK`, `PLOT_AXIS_GRID_MASK`, `durations`, `max`, `overlayOnlyFrames`, `p50`, `p95`, `report`, `total`, `totalAxisGridCalls`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/engine/PerfHarness.test.js`
+
+- Functions:
+  - `makeFrame`
+- Top-level variables:
+  - `AXIS`, `FULL`, `OVERLAY`, `PLOT`, `harness`, `json`, `parsed`, `report`, `reports`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/index.js`
+
+- Functions:
+  - `createEngine`
+- Top-level variables:
+  - `version`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/indicator/canonicalSeriesStore.js`
+
+- Classes:
+  - `CanonicalSeriesStore`
+- Functions:
+  - `createCanonicalSeriesStore`
+- Top-level variables:
+  - `globalCanonicalSeriesStore`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/indicator/indicatorCatalog.js`
+
+- Functions:
+  - `_clearCatalogForTests`, `getDefaultIndicatorParams`, `listIndicators`, `lookupIndicator`, `registerIndicator`, `registerIndicators`, `resolveIndicatorParams`
+- Top-level variables:
+  - `_catalog`, `defaults`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/indicator/indicatorKernel.test.js`
+
+- Top-level variables:
+  - `a`, `b`, `base`, `defaults`, `diffPeriod`, `diffType`, `entry`, `ids`, `input`, `input1`, `input2`, `key`, `other`, `pane1Input`, `pane2Input`, `resolved`, `result`, `series`, `store`, `structured`, `viaInput`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/indicator/indicatorSeriesKey.js`
+
+- Functions:
+  - `buildIndicatorSeriesKey`, `buildIndicatorSeriesKeyString`, `indicatorSeriesKeyToString`, `indicatorSeriesKeysEqual`, `normalizeIndicatorParams`
+- Top-level variables:
+  - `normalizedEntries`, `normalizedParams`, `sortedKeys`, `transformKey`, `value`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/interaction/InteractionController.js`
+
+- Classes:
+  - `InteractionController`
+- Functions:
+  - `createInteractionCommand`
+- Top-level variables:
+  - `DRAG_START_THRESHOLD_PX`, `context`, `delta`, `deltaFromPress`, `deltaFromPressY`, `deltaX`, `deltaY`, `eventWithOffsets`, `midpointClientX`, `midpointClientY`, `nextDistance`, `pinchPair`, `pivotX`, `pivotY`, `rect`, `scaleRatio`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/interaction/InteractionController.test.js`
+
+- Functions:
+  - `createPointerEvent`, `expectPointerContext`, `makeCallbacks`, `makeCanvas`
+- Top-level variables:
+  - `callbacks`, `cancel`, `canvas`, `click`, `command`, `contextMenu`, `controller`, `doubleClick`, `down`, `event`, `move`, `pointer`, `up`, `wheelEvent`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/overlay/canvasGroupOps.js`
+
+- Functions:
+  - `deleteDrawingGroup`, `resolveDrawingGroupMemberIds`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/overlay/canvasGroupOps.test.js`
+
+- Top-level variables:
+  - `drawings`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/overlay/canvasMeasurement.js`
+
+- Functions:
+  - `measurementPointToPixelFromScales`, `resolveMeasurementIndex`, `resolveMeasurementPointFromValues`, `summarizeMeasurement`, `toDate`
+- Top-level variables:
+  - `bars`, `bestDistance`, `bestIndex`, `candidateDate`, `distance`, `index`, `priceDelta`, `priceDeltaPercent`, `x`, `xValue`, `y`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/overlay/canvasMeasurement.test.js`
+
+- Top-level variables:
+  - `pixelPoint`, `plotData`, `point`, `xScale`, `yScale`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/overlay/canvasOverlayGeometry.js`
+
+- Functions:
+  - `clipOverlaySegmentToBox`, `measureOverlayCalloutBox`, `measureOverlayPriceLabelTag`, `pointInOverlayTriangle`, `triangleSign`
+- Top-level variables:
+  - `d1`, `d2`, `d3`, `dx`, `dy`, `edges`, `hasNegative`, `hasPositive`, `height`, `label`, `paddingX`, `paddingY`, `r`, `t0`, `t1`, `width`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/overlay/canvasOverlayHitTest.js`
+
+- Functions:
+  - `distanceToPolyline`, `distanceToSegment`, `hitTestBarsCountLike`, `hitTestCalloutLike`, `hitTestCircleLike`, `hitTestDateRangeLike`, `hitTestEllipseLike`, `hitTestExtendedLineLike`, `hitTestFibArcLevels`, `hitTestHorizontalLevelSet`, `hitTestHorizontalLine`, `hitTestLineLike`, `hitTestOverlayPrimitive`, `hitTestPathSet`, `hitTestPolygonSet`, `hitTestPriceLabelLike`, `hitTestPriceRangeLike`, `hitTestRectangleLike`, `hitTestSegmentSet`, `hitTestTextLike`, `hitTestTriangleLike`, `hitTestVerticalLine`, `hitTestVerticalMarkerSet`, `isAngleWithinArc`, `isOverlayPrimitiveHitTestSupported`, `normalizeAngle`, `pointInPolygon`, `pointInRect`
+- Top-level variables:
+  - `SUPPORTED_PRIMITIVE_TYPES`, `angle`, `best`, `bounds`, `box`, `centerX`, `centerY`, `clipped`, `distance`, `distanceFromCenter`, `dx`, `dy`, `end`, `extensionDistance`, `fontSize`, `full`, `height`, `inside`, `intersects`, `lengthSquared`, `normalized`, `normalizedTolerance`, `point`, `prior`, `radius`, `radiusX`, `radiusY`, `start`, `t`, `tag`, `tagY`, `text`, `width`, `x`, `x1`, `x2`, `y`, `y1`, `y2`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/overlay/canvasOverlayHitTest.test.js`
+
+- Functions:
+  - `primitive`
+- Top-level variables:
+  - `abcdPattern`, `barsCount`, `callout`, `channel`, `circle`, `cyclicLines`, `dateRange`, `elliottImpulse`, `ellipse`, `extendedLine`, `fibArc`, `fibArcs`, `fibCircles`, `fibExtension`, `fibFan`, `fibSpiral`, `fibTime`, `fibTimeZone`, `fibonacci`, `gannBox`, `gannFan`, `headAndShoulders`, `hit`, `longPosition`, `options`, `parallelChannel`, `pitchfork`, `polyline`, `priceLabel`, `priceRange`, `ray`, `rect`, `regressionChannel`, `text`, `triangle`, `xabcdPattern`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/overlay/canvasOverlayRenderer.js`
+
+- Functions:
+  - `applyLineStyle`, `drawArrow`, `drawArrowhead`, `drawBarsCount`, `drawCallout`, `drawCircle`, `drawDateAndPriceRange`, `drawDateRange`, `drawEllipse`, `drawExtendedLine`, `drawFibArcLevels`, `drawHorizontalLevelSet`, `drawHorizontalLine`, `drawLine`, `drawOverlayLabels`, `drawOverlayPaths`, `drawOverlayPointMarkers`, `drawOverlayPolygons`, `drawOverlaySegments`, `drawOverlaySemanticBadges`, `drawPolyline`, `drawPolylinePrimitive`, `drawPriceLabel`, `drawPriceRange`, `drawRay`, `drawRectangle`, `drawSelectionHandles`, `drawText`, `drawTextPrimitive`, `drawTrendLine`, `drawTriangle`, `drawVerticalLine`, `drawVerticalMarkerSet`, `mergeStyle`, `renderOverlayPrimitiveToCanvas`, `resolveLineExtension`, `safeArc`, `safeEllipse`, `safeRoundRect`, `strokeDasharrayForStyle`
+- Top-level variables:
+  - `accent`, `arcLevels`, `arrowHead`, `arrowY`, `badgeHeight`, `badgeWidth`, `badgeX`, `badgeY`, `bandHeight`, `bandWidth`, `base`, `bottom`, `box`, `centerX`, `centerY`, `clipped`, `color`, `dx`, `dy`, `extensionDistance`, `fillBase`, `fontSize`, `headLength`, `headWidth`, `height`, `isFocused`, `isUp`, `label`, `labelHeight`, `labelPosition`, `labelWidth`, `labelX`, `labelY`, `left`, `length`, `levels`, `markers`, `midX`, `midY`, `padX`, `px`, `py`, `radius`, `radiusX`, `radiusY`, `right`, `ringRadius`, `tag`, `tagY`, `textWidth`, `tickHeight`, `top`, `ux`, `uy`, `width`, `x`, `x1`, `x2`, `y`, `y1`, `y2`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/overlay/canvasOverlayRenderer.test.js`
+
+- Functions:
+  - `createContextMock`, `primitive`
+- Top-level variables:
+  - `context`, `ctx`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/overlay/canvasOverlaySnap.js`
+
+- Functions:
+  - `findNearestOverlayEndpointSnap`
+- Top-level variables:
+  - `MAGNET_TOLERANCE`, `best`, `distance`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/overlay/canvasOverlaySnap.test.js`
+
+- Top-level variables:
+  - `snap`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/pane/PaneLayoutEngine.js`
+
+- Classes:
+  - `PaneLayoutEngine`
+- Functions:
+  - `cloneBounds`, `clonePaneRuntimeSnapshot`, `cloneScaleSlotRuntimeState`, `collectVisibleScaleSlots`, `createScaleSlotRuntimeState`, `normalizeVisiblePanes`
+- Top-level variables:
+  - `DEFAULT_AXIS_WIDTH`, `axisBounds`, `bounds`, `cursorTop`, `globalLeftAxisWidth`, `globalRightAxisWidth`, `hasAnyLeftAxis`, `hasAnyRightAxis`, `isLastPane`, `leftAxisWidth`, `leftBounds`, `leftSlots`, `paneHeight`, `plotBounds`, `plotWidth`, `remainingHeight`, `rightAxisWidth`, `rightBounds`, `rightSlots`, `scaleSlotBounds`, `scaleSlotStates`, `top`, `totalRatio`, `visiblePanes`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/pane/PaneLayoutEngine.test.js`
+
+- Top-level variables:
+  - `layout`, `panes`, `snapshots`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/types.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/src/upstream.js`
+
+- Top-level variables:
+  - `UPSTREAM_BASELINE`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-core/tsup.config.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-react/src/EngineHost.js`
+
+- Functions:
+  - `EngineHost`
+- Top-level variables:
+  - `hostStyle`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-react/src/EngineHost.test.js`
+
+- Functions:
+  - `createMockEngine`
+- Top-level variables:
+  - `canvas`, `container`, `host`, `mockOverlayState`, `mockPaneSnapshots`, `mockVisibleRange`, `mountedSurface`, `onClick`, `onContextMenu`, `onDoubleClick`, `onOverlayStateChange`, `onPaneHover`, `onPaneSnapshotsChange`, `onPointerCancel`, `onPointerDown`, `onPointerLeave`, `onPointerMove`, `onPointerUp`, `onVisibleRangeChange`, `panes`, `reactActEnvironment`, `root`, `subscribe`, `surface`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-react/src/index.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-react/src/types.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-react/src/useEngineHost.js`
+
+- Functions:
+  - `resolveHoveredPaneId`, `resolvePointerContext`, `useEffectEvent`, `useEngineHost`
+- Top-level variables:
+  - `DEFAULT_OVERLAY_INPUTS`, `LONG_PRESS_DELAY_MS`, `LONG_PRESS_MOVE_THRESHOLD_PX`, `PANE_HEADER_HEIGHT`, `bottom`, `clearLongPress`, `container`, `containerRef`, `context`, `deltaX`, `deltaY`, `emitContextMenu`, `engine`, `engineRef`, `headerBottom`, `headerTop`, `hoveredPaneIdRef`, `hoveredSnapshot`, `localX`, `localY`, `longPressContextRef`, `longPressPointerIdRef`, `longPressStartRef`, `longPressTimerRef`, `notifyEngineDispose`, `notifyEngineReady`, `notifyPaneHover`, `observer`, `pendingContext`, `rect`, `ref`, `resolvedOverlayInputs`, `right`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-react/src/usePaneChromeBridge.js`
+
+- Functions:
+  - `useEffectEvent`, `usePaneChromeBridge`
+- Top-level variables:
+  - `lastOverlayStateKeyRef`, `lastPaneSnapshotsKeyRef`, `lastVisibleRangeRef`, `nextOverlayState`, `nextOverlayStateKey`, `nextSnapshots`, `nextSnapshotsKey`, `nextVisibleRange`, `ref`, `serializeOverlayState`, `serializePaneSnapshots`, `syncOverlayState`, `syncPaneSnapshots`, `syncVisibleRange`, `unsubscribeOverlayState`, `unsubscribePanes`, `unsubscribeVisibleRange`
+
+### `packages/web/src/components/vninvestcharts/packages/vn-kline-engine-react/tsup.config.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/chartRange.test.js`
 
 - Functions:
   - `buildBars`
 - Top-level variables:
-  - `data`
+  - `data`, `end`, `fetchStart`, `insufficientData`, `satisfiedData`
 
-### `packages/web/src/components/vnstockcharts/demo/__tests__/demoData.test.ts`
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/demoData.test.js`
 
 - Functions:
   - `makeResponse`
 - Top-level variables:
   - `bars`, `currentBars`, `fetchMock`, `firstPage`, `merged`, `olderBars`, `secondPage`
 
-### `packages/web/src/components/vnstockcharts/demo/__tests__/heikinAshi.test.ts`
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/heikinAshi.test.js`
 
 - Functions:
   - `makeBar`
 - Top-level variables:
   - `bars`, `expectedSecondOpen`, `firstClose`, `input`, `result`, `secondClose`, `snapshot`
 
-### `packages/web/src/components/vnstockcharts/demo/__tests__/historyFetchQueue.test.ts`
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/historyFetchQueue.test.js`
 
 - Top-level variables:
   - `job`, `q`
 
-### `packages/web/src/components/vnstockcharts/demo/__tests__/historySchedulerPolicy.test.ts`
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/historySchedulerPolicy.test.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/demo/__tests__/historyWindowPlanner.test.ts`
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/historyWindowPlanner.test.js`
 
 - Top-level variables:
   - `data`, `loaded`, `next`, `previous`, `result`, `seg`, `target`, `viewport`, `window`
 
-### `packages/web/src/components/vnstockcharts/demo/__tests__/i18n.test.tsx`
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/i18n.test.js`
 
 - Functions:
   - `DemoI18nProbe`
 - Top-level variables:
   - `DemoI18nBoundary`, `act`, `container`, `createRoot`, `originalConsoleError`, `probe`, `reactActEnvironment`, `root`, `setLanguageForTest`, `useDemoI18n`
 
-### `packages/web/src/components/vnstockcharts/demo/__tests__/LibraryShowcaseDemo.statusBadge.test.ts`
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/LibraryShowcaseDemo.runtimeSelection.test.js`
+
+- Top-level variables:
+  - `persisted`, `settings`
+
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/LibraryShowcaseDemo.statusBadge.test.js`
 
 - Functions:
   - `t`
 - Top-level variables:
   - `badge`
 
-### `packages/web/src/components/vnstockcharts/demo/__tests__/PaneSettingsModal.test.tsx`
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/maxVisibleBarsIntegration.test.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/mobileToolLongPress.test.js`
+
+- Top-level variables:
+  - `vibrate`
+
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/PaneSettingsModal.test.js`
 
 - Functions:
   - `noop`
 - Top-level variables:
   - `DemoI18nBoundary`, `PaneSettingsModal`, `act`, `container`, `createRoot`, `mockPaneState`, `onShowDrawingPriceMarkersChange`, `originalConsoleError`, `reactActEnvironment`, `root`, `toggleButton`
 
-### `packages/web/src/components/vnstockcharts/demo/__tests__/PATTokenModal.test.tsx`
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/PATTokenModal.test.js`
 
 - Functions:
   - `changeInputValue`
 - Top-level variables:
   - `apiBaseInput`, `client`, `container`, `fetchMock`, `loginButton`, `onClose`, `onConfigChange`, `onSaved`, `onSourceChange`, `passwordInput`, `patInput`, `reactActEnvironment`, `root`, `saveButton`, `sourceButtons`, `usernameInput`, `valueSetter`
 
-### `packages/web/src/components/vnstockcharts/demo/__tests__/styleOverridesPersistence.test.ts`
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/replayHelpers.test.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/demo/__tests__/VNSymbolSearch.test.tsx`
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/residentWindowPolicy.test.js`
+
+- Functions:
+  - `createBars`
+- Top-level variables:
+  - `bars`, `next`, `visibleStart`
+
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/runtimeInvalidationBatch.test.js`
+
+- Functions:
+  - `cancelFrame`, `createManualFrameScheduler`, `flushAll`, `flushFrame`, `scheduleFrame`
+- Top-level variables:
+  - `batcher`, `cancelFrameSpy`, `capabilityCalls`, `capabilitySpy`, `flush`, `idSeed`, `paneCalls`, `paneSpy`, `scheduled`, `scheduledBeforeDispose`, `scheduler`
+
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/runtimePolicy.test.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/runtimeQueryParams.test.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/SettingsRangeSlider.test.js`
+
+- Top-level variables:
+  - `container`, `labels`, `onChange`, `range`, `root`, `setInputValue`
+
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/styleOverridesPersistence.test.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/useStockChartAdapter.integration.test.js`
+
+- Functions:
+  - `Harness`, `createWidgetBar`, `flushMicrotasks`, `makeSemantics`
+- Top-level variables:
+  - `adapter`, `backwardBars`, `bars`, `captureAdapter`, `container`, `dataAdapter`, `fetchBarsBefore`, `fetchBarsInRange`, `filtered`, `getBars`, `incoming`, `loaded`, `loadedRange`, `nowMs`, `offlineBars`, `rangeBars`, `reactActEnvironment`, `resident`, `root`, `semantics`, `staleFiltered`, `staleReplay`, `tooOldFiltered`, `tooOldReplay`, `weekendResident`, `weekendSegments`, `widgetBars`
+
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/useStockChartAdapter.test.js`
+
+- Functions:
+  - `Harness`, `createDataAdapter`, `createWidgetBar`
+- Top-level variables:
+  - `adapter`, `captureAdapter`, `container`, `dataAdapter`, `firstAdapter`, `initialBars`, `nextBars`, `reactActEnvironment`, `root`
+
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/VNSymbolSearch.test.js`
 
 - Top-level variables:
   - `client`, `container`, `input`, `onChange`, `reactActEnvironment`, `root`
 
-### `packages/web/src/components/vnstockcharts/demo/__tests__/WhalePanel.test.tsx`
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/WhalePanel.test.js`
 
 - Top-level variables:
-  - `DemoI18nBoundary`, `WhalePanel`, `act`, `consoleErrorSpy`, `container`, `createRoot`, `reactActEnvironment`, `root`, `sampleWhaleData`
+  - `WhalePanel`, `WidgetI18nProvider`, `act`, `consoleErrorSpy`, `container`, `createRoot`, `reactActEnvironment`, `root`, `sampleWhaleData`
 
-### `packages/web/src/components/vnstockcharts/demo/ChartPaneSplitter.js`
+### `packages/web/src/components/vninvestcharts/src/demo/__tests__/widgetVisibleDomainAuthority.test.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/demo/ChartPaneSplitter.js`
 
 - Functions:
   - `handlePointerDown`, `handlePointerMove`, `stopDragging`
 - Top-level variables:
   - `applyDragDeltaRef`, `availableRef`, `drag`, `dragRef`, `node`, `rootRef`, `totalDelta`
 
-### `packages/web/src/components/vnstockcharts/demo/ChartPaneSplitter.tsx`
+### `packages/web/src/components/vninvestcharts/src/demo/chartRange.js`
 
-- Functions:
-  - `handlePointerDown`, `handlePointerMove`, `stopDragging`
-- Top-level variables:
-  - `applyDragDeltaRef`, `availableRef`, `drag`, `dragRef`, `node`, `rootRef`, `totalDelta`
+- No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/demo/chartRange.js`
-
-- Functions:
-  - `normalizeDate`, `resolveChartRangeExtents`, `resolveChartRangeStart`, `subtractDays`, `subtractMonths`, `subtractYears`
-- Top-level variables:
-  - `CHART_RANGES`, `CHART_RANGE_LABEL_KEYS`, `DEFAULT_CHART_RANGE`, `dayOfMonth`, `first`, `last`, `lastDayOfMonth`, `next`, `rangeStart`, `single`
-
-### `packages/web/src/components/vnstockcharts/demo/chartRange.ts`
-
-- Functions:
-  - `normalizeDate`, `resolveChartRangeExtents`, `resolveChartRangeStart`, `subtractDays`, `subtractMonths`, `subtractYears`
-- Top-level variables:
-  - `CHART_RANGES`, `CHART_RANGE_LABEL_KEYS`, `DEFAULT_CHART_RANGE`, `dayOfMonth`, `first`, `last`, `lastDayOfMonth`, `next`, `rangeStart`, `single`
-
-### `packages/web/src/components/vnstockcharts/demo/components/DataSourceSwitcher.js`
+### `packages/web/src/components/vninvestcharts/src/demo/components/DataSourceSwitcher.js`
 
 - Functions:
   - `DataSourceSwitcher`
 - Top-level variables:
   - `sources`
 
-### `packages/web/src/components/vnstockcharts/demo/components/DataSourceSwitcher.tsx`
-
-- Functions:
-  - `DataSourceSwitcher`
-- Top-level variables:
-  - `sources`
-
-### `packages/web/src/components/vnstockcharts/demo/components/index.js`
+### `packages/web/src/components/vninvestcharts/src/demo/components/index.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/demo/components/index.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/demo/components/PATTokenModal.js`
+### `packages/web/src/components/vninvestcharts/src/demo/components/PATTokenModal.js`
 
 - Functions:
   - `PATTokenModal`, `applyApiBaseInput`, `handleBackdropClick`, `handleClearToken`, `handleFileChange`, `handleLogin`, `handleSaveBase`, `handleSaveToken`, `parseCSVBars`
 - Top-level variables:
   - `accessToken`, `backdropRef`, `bars`, `changed`, `cols`, `currentBase`, `data`, `dataLines`, `file`, `fileInputRef`, `firstField`, `hasHeader`, `lines`, `open`, `p`, `reader`, `res`, `text`, `token`, `trimmed`, `ts`, `u`
 
-### `packages/web/src/components/vnstockcharts/demo/components/PATTokenModal.tsx`
+### `packages/web/src/components/vninvestcharts/src/demo/config/toolGroups.js`
+
+- Top-level variables:
+  - `TOOL_GROUPS_V2`
+
+### `packages/web/src/components/vninvestcharts/src/demo/dataSources/__tests__/barsPagingPolicy.test.js`
+
+- Top-level variables:
+  - `meta`, `request`, `sampleBars`
+
+### `packages/web/src/components/vninvestcharts/src/demo/dataSources/__tests__/vninvest.test.js`
+
+- Top-level variables:
+  - `bars`, `calledUrl`, `client`, `ds`, `fetchMock`, `mockResponse`, `payload`, `report`, `response`, `responses`, `results`, `telemetryAfter`, `telemetryBefore`, `telemetryDelta`
+
+### `packages/web/src/components/vninvestcharts/src/demo/dataSources/__tests__/VNInvestDataAdapter.test.js`
 
 - Functions:
-  - `PATTokenModal`, `TurnstileWidget`, `applyApiBaseInput`, `handleBackdropClick`, `handleClearToken`, `handleFileChange`, `handleLogin`, `handleRegister`, `handleSaveBase`, `handleSaveToken`, `parseApiErrors`, `parseCSVBars`, `renderWidget`
+  - `makeMockClient`, `makeWhaleOrder`
 - Top-level variables:
-  - `accessToken`, `backdropRef`, `bars`, `changed`, `cols`, `containerRef`, `currentBase`, `data`, `dataLines`, `detail`, `e`, `file`, `fileInputRef`, `firstField`, `fn`, `hasHeader`, `lines`, `ln`, `open`, `p`, `parsed`, `pc`, `reader`, `res`, `resJson`, `response`, `script`, `siteKey`, `text`, `token`, `trimmed`, `ts`, `u`, `widgetIdRef`, `win`, `ws`
+  - `adapter`, `cutoff`, `events`, `mockClient`, `newTs`, `oldTs`, `result`, `signal`
 
-### `packages/web/src/components/vnstockcharts/demo/components/VNSymbolSearch.js`
-
-- Functions:
-  - `VNSymbolSearch`, `commitRawQuery`, `handleClick`, `handleFocus`, `handleInputChange`, `handleKeyDown`, `handleSelect`, `handleSelectSymbol`, `readRecentItems`, `saveRecentItem`
-- Top-level variables:
-  - `EXCHANGE_OPTIONS`, `MAX_RECENT`, `RECENT_SYMBOLS_KEY`, `VN30_SYMBOLS`, `debounceRef`, `deduped`, `exchange`, `item`, `mapped`, `q`, `raw`, `searchSymbols`, `selected`, `showEmptyPanel`, `showResultsPanel`, `stocks`, `symbol`, `updated`, `wrapperRef`
-
-### `packages/web/src/components/vnstockcharts/demo/components/VNSymbolSearch.tsx`
-
-- Functions:
-  - `VNSymbolSearch`, `commitRawQuery`, `handleClick`, `handleFocus`, `handleInputChange`, `handleKeyDown`, `handleSelect`, `handleSelectSymbol`, `readRecentItems`, `saveRecentItem`
-- Top-level variables:
-  - `EXCHANGE_OPTIONS`, `MAX_RECENT`, `RECENT_SYMBOLS_KEY`, `VN30_SYMBOLS`, `debounceRef`, `deduped`, `exchange`, `item`, `mapped`, `q`, `raw`, `searchSymbols`, `selected`, `showEmptyPanel`, `showResultsPanel`, `stocks`, `symbol`, `updated`, `wrapperRef`
-
-### `packages/web/src/components/vnstockcharts/demo/components/WhalePanel.js`
-
-- Functions:
-  - `WhalePanel`, `formatBillion`
-- Top-level variables:
-  - `billion`, `isNetPositive`, `netFlow`, `rows`
-
-### `packages/web/src/components/vnstockcharts/demo/components/WhalePanel.tsx`
-
-- Functions:
-  - `WhalePanel`, `formatBillion`
-- Top-level variables:
-  - `billion`, `isNetPositive`, `netFlow`, `rows`
-
-### `packages/web/src/components/vnstockcharts/demo/dataSources/__tests__/vninvest.test.ts`
-
-- Top-level variables:
-  - `bars`, `calledUrl`, `client`, `ds`, `fetchMock`, `mockResponse`, `results`
-
-### `packages/web/src/components/vnstockcharts/demo/dataSources/__tests__/VNInvestWebSocketClient.test.ts`
+### `packages/web/src/components/vninvestcharts/src/demo/dataSources/__tests__/VNInvestWebSocketClient.test.js`
 
 - Functions:
   - `connectAndFlush`, `createMockWebSocket`
 - Top-level variables:
   - `MockWS`, `client`, `instance`, `lastCreatedSocket`, `msgs`, `onTicker`, `onWhale`, `payload`, `socket`, `socket1`
 
-### `packages/web/src/components/vnstockcharts/demo/dataSources/index.js`
+### `packages/web/src/components/vninvestcharts/src/demo/dataSources/barsPagingPolicy.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/demo/dataSources/demoDataSource.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/demo/dataSources/index.js`
 
 - Classes:
   - `DemoDataSource`, `VNInvestDataSource`
@@ -11896,108 +9151,63 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `all`, `bars`, `q`, `stocks`
 
-### `packages/web/src/components/vnstockcharts/demo/dataSources/index.ts`
-
-- Classes:
-  - `DemoDataSource`, `VNInvestDataSource`
-- Functions:
-  - `vniBarToRawOHLCV`
-- Top-level variables:
-  - `all`, `bars`, `q`, `stocks`
-
-### `packages/web/src/components/vnstockcharts/demo/dataSources/types.js`
+### `packages/web/src/components/vninvestcharts/src/demo/dataSources/types.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/demo/dataSources/types.ts`
+### `packages/web/src/components/vninvestcharts/src/demo/dataSources/VNInvestClient.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/demo/dataSources/VNInvestClient.js`
+### `packages/web/src/components/vninvestcharts/src/demo/dataSources/VNInvestDataAdapter.js`
 
 - Classes:
-  - `VNInvestClient`
-- Functions:
-  - `asNumber`, `asObject`, `buildEndpoints`, `extractChartPoints`, `isWhaleFeedResponse`, `normalizeApiBase`, `normalizeChartBars`, `normalizeChartPoint`, `normalizeTimeframe`, `parseDateValue`, `resolveApiBase`, `resolveTechnical`
+  - `VNInvestDataAdapter`
 - Top-level variables:
-  - `API_BASE_STORAGE_KEY`, `DEFAULT_API_BASE`, `PAT_STORAGE_KEY`, `TIMEFRAME_MAP`, `bars`, `candidates`, `close`, `data`, `dateRaw`, `dateValue`, `endpoints`, `globalScope`, `headers`, `high`, `low`, `nestedData`, `normalized`, `numeric`, `obj`, `open`, `params`, `parsed`, `payload`, `point`, `points`, `rawBars`, `response`, `stored`, `technical`, `text`, `trimmed`, `url`, `urlParams`, `volume`
+  - `feed`, `flow`, `result`, `threshold`
 
-### `packages/web/src/components/vnstockcharts/demo/dataSources/VNInvestClient.ts`
+### `packages/web/src/components/vninvestcharts/src/demo/dataSources/vninvestDataSource.js`
 
-- Classes:
-  - `VNInvestClient`
-- Functions:
-  - `asNumber`, `asObject`, `buildEndpoints`, `extractChartPoints`, `isWhaleFeedResponse`, `normalizeApiBase`, `normalizeChartBars`, `normalizeChartPoint`, `normalizeTimeframe`, `parseDateValue`, `resolveApiBase`, `resolveTechnical`
-- Top-level variables:
-  - `API_BASE_STORAGE_KEY`, `DEFAULT_API_BASE`, `PAT_STORAGE_KEY`, `TIMEFRAME_MAP`, `bars`, `candidates`, `close`, `data`, `dateRaw`, `dateValue`, `endpoints`, `globalScope`, `headers`, `high`, `low`, `nestedData`, `normalized`, `numeric`, `obj`, `open`, `params`, `parsed`, `payload`, `point`, `points`, `rawBars`, `response`, `stored`, `technical`, `text`, `trimmed`, `url`, `urlParams`, `volume`
+- No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/demo/dataSources/VNInvestWebSocketClient.js`
+### `packages/web/src/components/vninvestcharts/src/demo/dataSources/VNInvestWebSocketClient.js`
 
-- Classes:
-  - `VNInvestWebSocketClient`
-- Top-level variables:
-  - `available`, `hostname`, `httpBase`, `normalized`, `parsed`, `resolved`, `response`, `symbols`, `url`, `wsBase`, `wsPath`
+- No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/demo/dataSources/VNInvestWebSocketClient.ts`
-
-- Classes:
-  - `VNInvestWebSocketClient`
-- Top-level variables:
-  - `available`, `hostname`, `httpBase`, `normalized`, `parsed`, `resolved`, `response`, `symbols`, `url`, `wsBase`, `wsPath`
-
-### `packages/web/src/components/vnstockcharts/demo/demoData.js`
+### `packages/web/src/components/vninvestcharts/src/demo/demoData.js`
 
 - Functions:
-  - `computeIndicators`, `fetchBinanceKlinePage`, `fetchHistoricalDemoBars`, `fetchLiveDemoBars`, `fetchLiveDemoData`, `formatBinanceKlineBars`, `formatBinanceKlines`, `getOfflineDemoBars`, `getOfflineDemoData`, `mergeBarsByDate`, `normalizeBars`, `parseCsvRow`, `parseDateTime`, `sortBars`, `toTimeValue`
+  - `fetchBinanceKlinePage`, `fetchHistoricalDemoBars`, `formatBinanceKlineBars`, `getMs`, `getOfflineDemoBars`, `isBackfillGapExcessive`, `mergeBarsByDate`, `normalizeBars`, `parseCsvRow`, `parseDateTime`, `sortBars`, `toTimeValue`
 - Top-level variables:
-  - `BINANCE_BASE`, `BINANCE_INTERVAL_MAP`, `BINANCE_MAX_LIMIT`, `BOLLINGER_BAND_OPTIONS`, `DEMO_CANONICAL_SERIES`, `DEMO_WINDOW`, `bars`, `binanceInterval`, `deduped`, `endTimeValue`, `json`, `lastBar`, `merged`, `nextEndTime`, `pageBars`, `params`, `response`, `sorted`, `startTimeValue`, `url`
+  - `BINANCE_BASE`, `BINANCE_INTERVAL_MAP`, `BINANCE_MAX_LIMIT`, `DEMO_WINDOW`, `INTERVAL_MS_MAP`, `MAX_CONTIGUOUS_GAP_MULTIPLIER`, `bars`, `binanceInterval`, `deduped`, `endTimeValue`, `gapMs`, `intervalMs`, `json`, `lastBar`, `merged`, `newestOlderTs`, `nextEndTime`, `oldestCurrentTs`, `pageBars`, `params`, `response`, `sorted`, `startTimeValue`, `url`
 
-### `packages/web/src/components/vnstockcharts/demo/demoData.ts`
-
-- Functions:
-  - `computeIndicators`, `fetchBinanceKlinePage`, `fetchHistoricalDemoBars`, `fetchLiveDemoBars`, `fetchLiveDemoData`, `formatBinanceKlineBars`, `formatBinanceKlines`, `getOfflineDemoBars`, `getOfflineDemoData`, `mergeBarsByDate`, `normalizeBars`, `parseCsvRow`, `parseDateTime`, `sortBars`, `toTimeValue`
-- Top-level variables:
-  - `BINANCE_BASE`, `BINANCE_INTERVAL_MAP`, `BINANCE_MAX_LIMIT`, `BOLLINGER_BAND_OPTIONS`, `DEMO_CANONICAL_SERIES`, `DEMO_WINDOW`, `bars`, `binanceInterval`, `deduped`, `endTimeValue`, `json`, `lastBar`, `merged`, `nextEndTime`, `pageBars`, `params`, `response`, `sorted`, `startTimeValue`, `url`
-
-### `packages/web/src/components/vnstockcharts/demo/DemoPageShell.js`
+### `packages/web/src/components/vninvestcharts/src/demo/DemoPageShell.js`
 
 - Top-level variables:
   - `frameClassNameValue`, `pageClassName`
 
-### `packages/web/src/components/vnstockcharts/demo/DemoPageShell.tsx`
-
-- Top-level variables:
-  - `frameClassNameValue`, `pageClassName`
-
-### `packages/web/src/components/vnstockcharts/demo/FullDemo.js`
+### `packages/web/src/components/vninvestcharts/src/demo/demoSettings.js`
 
 - Functions:
-  - `FullDemoContent`, `LegendRow`, `MetricTile`, `createOrigin`, `formatSigned`, `getInitialExtents`, `handleBrush`, `handleResetView`, `handleResize`, `normalizeBrushExtents`, `updateWidth`
+  - `isDemoRuntimeLane`, `isValidWidgetTimezone`, `loadDemoSettings`, `migrateRuntimeLaneToFork`, `normalizeDemoSettings`, `normalizeMaxVisibleBars`, `saveDemoSettings`
 - Top-level variables:
-  - `axisTheme`, `bearishColor`, `bollingerAppearance`, `bottomXAxisTheme`, `bullishColor`, `cancelled`, `chartData`, `chartHeight`, `chartSurfaceRef`, `controller`, `coordinateTheme`, `dateFormat`, `ema20Stroke`, `ema50Stroke`, `emaTrendUp`, `endDate`, `endIndex`, `gridWidth`, `integerFormat`, `latest`, `macdAppearance`, `macdHeight`, `macdOrigin`, `margin`, `node`, `observer`, `offlineData`, `overviewHeight`, `overviewOrigin`, `percentFormat`, `plotHeight`, `previous`, `priceChange`, `priceChangePercent`, `priceFormat`, `priceHeight`, `priceYAxisTheme`, `resolvedChartWidth`, `rsiAppearance`, `rsiOrigin`, `rsiPanelHeight`, `rsiValue`, `sign`, `sourceStatusLabel`, `sourceTone`, `startDate`, `startIndex`, `themeFontFamily`, `tooltipDisplayTexts`, `topXAxisTheme`, `volumeFormat`, `volumeHeight`, `volumeOrigin`, `volumeYAxisTheme`
+  - `DEFAULT_DEMO_SETTINGS`, `DEFAULT_MAX_VISIBLE_BARS`, `DEFAULT_MAX_VISIBLE_PANES`, `DEMO_SETTINGS_STORAGE_KEY`, `LEGACY_DEMO_SETTINGS_STORAGE_KEY`, `MAX_VISIBLE_BARS_OPTIONS`, `PREVIOUS_DEMO_SETTINGS_STORAGE_KEY`, `VALID_WIDGET_TIMEZONES`, `floored`, `legacyRaw`, `migratedSettings`, `previousRaw`, `raw`
 
-### `packages/web/src/components/vnstockcharts/demo/FullDemo.tsx`
+### `packages/web/src/components/vninvestcharts/src/demo/flyoutPosition.js`
 
 - Functions:
-  - `FullDemoContent`, `LegendRow`, `MetricTile`, `createOrigin`, `formatSigned`, `getInitialExtents`, `handleBrush`, `handleResetView`, `handleResize`, `normalizeBrushExtents`, `updateWidth`
+  - `resolveFlyoutPosition`
 - Top-level variables:
-  - `axisTheme`, `bearishColor`, `bollingerAppearance`, `bottomXAxisTheme`, `bullishColor`, `cancelled`, `chartData`, `chartHeight`, `chartSurfaceRef`, `controller`, `coordinateTheme`, `dateFormat`, `ema20Stroke`, `ema50Stroke`, `emaTrendUp`, `endDate`, `endIndex`, `gridWidth`, `integerFormat`, `latest`, `macdAppearance`, `macdHeight`, `macdOrigin`, `margin`, `node`, `observer`, `offlineData`, `overviewHeight`, `overviewOrigin`, `percentFormat`, `plotHeight`, `previous`, `priceChange`, `priceChangePercent`, `priceFormat`, `priceHeight`, `priceYAxisTheme`, `resolvedChartWidth`, `rsiAppearance`, `rsiOrigin`, `rsiPanelHeight`, `rsiValue`, `sign`, `sourceStatusLabel`, `sourceTone`, `startDate`, `startIndex`, `themeFontFamily`, `tooltipDisplayTexts`, `topXAxisTheme`, `volumeFormat`, `volumeHeight`, `volumeOrigin`, `volumeYAxisTheme`
+  - `estimatedFlyoutHeight`, `estimatedFlyoutWidth`, `maxLeft`, `maxTop`, `minLeft`, `minTop`, `nextLeft`, `nextTop`, `preferredTop`, `viewportHeight`, `viewportLeft`, `viewportTop`, `viewportWidth`
 
-### `packages/web/src/components/vnstockcharts/demo/heikinAshi.js`
+### `packages/web/src/components/vninvestcharts/src/demo/heikinAshi.js`
 
 - Functions:
   - `transformHeikinAshi`
 - Top-level variables:
   - `bar`, `close`, `high`, `low`, `open`, `result`
 
-### `packages/web/src/components/vnstockcharts/demo/heikinAshi.ts`
-
-- Functions:
-  - `transformHeikinAshi`
-- Top-level variables:
-  - `bar`, `close`, `high`, `low`, `open`, `result`
-
-### `packages/web/src/components/vnstockcharts/demo/historyFetchQueue.js`
+### `packages/web/src/components/vninvestcharts/src/demo/historyFetchQueue.js`
 
 - Classes:
   - `HistoryFetchQueue`
@@ -12006,215 +9216,199 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `candidates`, `existing`, `job`
 
-### `packages/web/src/components/vnstockcharts/demo/historyFetchQueue.ts`
-
-- Classes:
-  - `HistoryFetchQueue`
-- Functions:
-  - `makeId`
-- Top-level variables:
-  - `candidates`, `existing`, `job`
-
-### `packages/web/src/components/vnstockcharts/demo/historySchedulerPolicy.js`
+### `packages/web/src/components/vninvestcharts/src/demo/historySchedulerPolicy.js`
 
 - Functions:
   - `canRunHistoryScheduler`
 
-### `packages/web/src/components/vnstockcharts/demo/historySchedulerPolicy.ts`
-
-- Functions:
-  - `canRunHistoryScheduler`
-
-### `packages/web/src/components/vnstockcharts/demo/historyWindowPlanner.js`
+### `packages/web/src/components/vninvestcharts/src/demo/historyWindowPlanner.js`
 
 - Functions:
   - `computeLoadedWindow`, `computeMissingSegments`, `computeTargetWindow`, `shouldScheduleFetch`
 - Top-level variables:
   - `leftMissing`, `leftRatio`, `leftTrigger`, `maxMs`, `minMs`, `ms`, `rightMissing`, `rightRatio`, `rightTrigger`, `span`
 
-### `packages/web/src/components/vnstockcharts/demo/historyWindowPlanner.ts`
+### `packages/web/src/components/vninvestcharts/src/demo/i18n.js`
 
 - Functions:
-  - `computeLoadedWindow`, `computeMissingSegments`, `computeTargetWindow`, `shouldScheduleFetch`
+  - `DemoI18nBoundary`, `DemoI18nProvider`, `formatSeriesDisplayName`, `formatSeriesSuffix`, `interpolate`, `numberParam`, `readStoredLanguage`, `translate`, `useDemoI18n`
 - Top-level variables:
-  - `leftMissing`, `leftRatio`, `leftTrigger`, `maxMs`, `minMs`, `ms`, `rightMissing`, `rightRatio`, `rightTrigger`, `span`
+  - `DEMO_LANGUAGE_STORAGE_KEY`, `DemoI18nContext`, `SERIES_ABBREVIATIONS`, `abbreviation`, `baseLabel`, `context`, `defaultContextValue`, `getPaneLabel`, `key`, `paneLabelKeys`, `seriesLabelKeys`, `setLanguage`, `stored`, `suffix`, `t`, `template`, `translations`, `value`, `withSuffix`
 
-### `packages/web/src/components/vnstockcharts/demo/i18n.js`
+### `packages/web/src/components/vninvestcharts/src/demo/index.js`
+
+- Top-level variables:
+  - `container`, `isStandalone`, `params`, `root`
+
+### `packages/web/src/components/vninvestcharts/src/demo/LibraryShowcaseDemo.js`
 
 - Functions:
-  - `DemoI18nBoundary`, `DemoI18nProvider`, `interpolate`, `readStoredLanguage`, `translate`, `useDemoI18n`
+  - `ToolIcon`, `areDrawingSnapshotsEqual`, `clonePoint`, `drawingChrome`, `fetchOrderFlow`, `fetchTape`, `formatBarsHeld`, `formatSignedPrice`, `getGroupMenuKey`, `getSelectedDrawingId`, `handleApplyTemplate`, `handleClearTemplate`, `handleDrawingShortcuts`, `handleEscape`, `handleKeyDown`, `handleKeyUp`, `handleWindowBlur`, `handler`, `isEditableTarget`, `isYAxisSide`, `normalizeDate`, `paneTemplate`, `persistStyleOverrides`, `readSize`, `resolveDrawingPlacementForPane`, `sortDrawings`
 - Top-level variables:
-  - `DEMO_LANGUAGE_STORAGE_KEY`, `DemoI18nContext`, `context`, `defaultContextValue`, `getPaneLabel`, `key`, `paneLabelKeys`, `setLanguage`, `stored`, `t`, `template`, `translations`, `value`
+  - `ALL_DRAWING_TOOL_IDS`, `ALL_DRAWING_TOOL_SET`, `BACKFILL_MAX_PAGES`, `BACKFILL_PAGE_LIMIT`, `DRAWING_PANEL_WIDTH`, `DRAWING_TOOL_FLYOUT_BUTTON_SIZE`, `DRAWING_TOOL_FLYOUT_GAP`, `DRAWING_TOOL_FLYOUT_MARGIN`, `DRAWING_TOOL_FLYOUT_PADDING`, `DRAWING_TOOL_FLYOUT_WIDTH`, `INITIAL_HISTORY_MAX_PAGES`, `INITIAL_HISTORY_TARGET_BARS`, `MOBILE_DRAWING_TOOL_FLYOUT_BUTTON_SIZE`, `MORE_TOOLS_FLYOUT_ID`, `PERCENT_FORMAT`, `REPLAY_SPEEDS`, `SCHEDULER_TICK_MS`, `TOOL_GROUPS`, `TOOL_SHORTCUT_BADGE`, `abortController`, `active`, `activeEl`, `activeInGroup`, `activeSourceRef`, `adapter`, `addPane`, `adjustedViewport`, `allPrices`, `altShortcutPressedRef`, `apiBase`, `applyActiveTool`, `applyDelta`, `applyResidentWindow`, `available`, `averageBarsHeld`, `averagePnl`, `backfillDebounceRef`, `backfillInFlightRef`, `bars`, `bestTrade`, `bringSelectedToFront`, `cancelled`, `candleTypeLabel`, `candleWidth`, `canvasBg`, `chartAdapter`, `chartData`, `chartRangeRef`, `chartReady`, `chartTimeframe`, `cleanSmokeMode`, `client`, `clipboardDrawing`, `cloneSelectedDrawing`, `closeDrawingContextMenu`, `closePaperTradePosition`, `closeReplayContextMenu`, `closeSettings`, `closedTrade`, `controller`, `copySelectedDrawing`, `currentBars`, `currentItem`, `currentLiveData`, `currentPosition`, `currentState`, `currentVisibleDomain`, `customIcon`, `data`, `dataAdapter`, `deleteDrawingById`, `demoRuntimePolicy`, `desiredType`, `dirLabel`, `domain`, `drawingClipboardRef`, `drawingContextMenuDrawing`, `drawingCountRef`, `drawingDockLabels`, `drawingDockPosition`, `drawingDockState`, `drawingInspectorLabels`, `drawingInteraction`, `drawingListPanelLabels`, `drawingPanelX`, `drawingSelectionSemanticPoints`, `drawingSelectionToolbarLabels`, `drawingSelectionToolbarModel`, `drawingSelectionToolbarPosition`, `drawingSemanticPointLegendLabels`, `drawingSnapshotsRef`, `drawingStorage`, `drawingTextEditorLabels`, `drawingUiStyleVars`, `earliestBar`, `effectiveRuntimeCapabilities`, `effectiveRuntimeLane`, `enrichedData`, `ensureRangeHistory`, `entry`, `existing`, `fallbackHeight`, `fallbackSelectedId`, `fallbackTop`, `file`, `first`, `firstBar`, `flyoutStyle`, `fresh`, `from`, `generation`, `getToolTouchHandlers`, `h`, `handleAddPane`, `handleCancelTextEdit`, `handleChartRangeChange`, `handleChartTypeChange`, `handleClearDrawings`, `handleCloseDrawingDock`, `handleCommitTextEdit`, `handleDrawingContextMenu`, `handleDrawingToolUsed`, `handleDrawingWorkspaceChange`, `handleExportDrawings`, `handleFileLoaded`, `handleImportButtonClick`, `handleImportFileChange`, `handleLoadDrawings`, `handleLoadVNIChart`, `handlePATSaved`, `handlePaneAddSeriesRequest`, `handlePaperTradeClick`, `handlePaperTradeClose`, `handlePaperTradeReset`, `handleReplayContextMenu`, `handleReplayFromHere`, `handleReplayJumpLatest`, `handleReplayRewind`, `handleReplaySpeedChange`, `handleReplayStepBack`, `handleReplayStepForward`, `handleReplayToggle`, `handleResetSettings`, `handleSelectionToolbarAction`, `handleSemanticPointFocusChange`, `handleSourceSwitch`, `handleStartTextEdit`, `handleTickerUpdate`, `handleTimeframeChange`, `handleToggleDrawingDock`, `handleToolbarToolPressEnd`, `handleToolbarToolPressStart`, `handleToolbarToolTap`, `handleVisibleDomainChange`, `handleVniConfigChange`, `handleVniSymbolChange`, `handleWidgetBarsChange`, `handleWidgetDrawingsChange`, `handleWidgetError`, `handleWidgetSelectedDrawingChange`, `hasAltModifier`, `hasDrawingSelection`, `hasTemplate`, `hasWidgetData`, `iconId`, `importInputRef`, `inFlyout`, `inToolbar`, `indicatorLegendLabels`, `indicatorSeries`, `initialDemoSettings`, `initialWarmupRequestedRef`, `innerHeight`, `innerWidth`, `intervalId`, `isAltRightClick`, `isCoarsePointerContext`, `isCompactDrawingToolbarViewport`, `isContextTrigger`, `isDrawingDockOpen`, `isEditingText`, `isInput`, `isMultiSelect`, `isNearOldestEdge`, `isObjectsDockActive`, `isOpen`, `isTouchLongPress`, `isTouchPointerContext`, `job`, `known`, `labels`, `last`, `lastBar`, `lastClick`, `lastPaperTradeClickRef`, `lastPaperTradeSignatureRef`, `lastViewportMissingRef`, `lastVisibleBar`, `latestBar`, `latestBars`, `layout`, `leftBufferMs`, `leftDrawing`, `leftZ`, `liveDataRef`, `liveMeasurementLabels`, `loaded`, `localCacheAdapter`, `localizePane`, `localizedMessage`, `localizedPane`, `losses`, `maxPrice`, `maxZ`, `message`, `minPrice`, `minZ`, `missing`, `mountedRef`, `msg`, `multiAllHidden`, `multiAllLocked`, `multiSelectedDrawings`, `nativeEvent`, `neededStart`, `newHigh`, `newLow`, `newPrice`, `nextBars`, `nextClone`, `nextDrawings`, `nextLabel`, `nextPaste`, `nextPosition`, `nextStartIndex`, `nextToast`, `nextWhaleData`, `node`, `normalizeDomain`, `normalizedBars`, `normalizedDomain`, `now`, `observer`, `offlineBars`, `ohlcStatusLabel`, `olderBars`, `oldestBar`, `openPATModal`, `openSettings`, `page`, `pagesLoaded`, `paneHeaderLabels`, `paneHeights`, `paneLabel`, `paneOverlayLayout`, `paneState`, `panesMenuRef`, `paperTradeJournal`, `paperTradePanelVisible`, `paperTradePositionRef`, `paperTradeRealizedPnl`, `paperTradeReportVisible`, `paperTradeSummary`, `paperTradeUnrealizedPnl`, `pasteCopiedDrawing`, `pat`, `patch`, `pendingChartRangeSyncRef`, `plotData`, `preferredSide`, `previousCount`, `previousSelectedDrawingIdRef`, `previousVisibleDomain`, `priceIsUp`, `priceOffset`, `pricePane`, `prices`, `primary`, `profileMenuRef`, `queueRef`, `railFavoriteTools`, `ratio`, `rawSegs`, `rawStyle`, `realizedPnl`, `rect`, `releaseWidgetVisibleDomainControlRef`, `renderWidgetPaneSplitter`, `renderWidgetPaneToolbar`, `replayController`, `replayControllerRef`, `replayFinished`, `replayProgressLabel`, `replayToggleTitle`, `replayVisibleData`, `requestId`, `requestOlderHistoryPage`, `resetToDefault`, `resolveToolFlyoutPosition`, `resolvedActiveTool`, `resolvedRuntimeForBadge`, `resolvedSelectedDrawing`, `resp`, `rightDrawing`, `rightZ`, `runtimeSelectedDrawingType`, `runtimeStatusBadge`, `scheduleForViewport`, `schedulerGenerationRef`, `second`, `segData`, `selectDrawingById`, `selectedDrawing`, `selectedDrawingId`, `selectedIds`, `selectedPane`, `selectedSymbol`, `sendSelectedToBack`, `shellNode`, `shellRef`, `shortcut`, `shouldControlWidgetSelection`, `shouldEvaluateViewportBackfill`, `showOhlcMetrics`, `signature`, `snapshot`, `snapshotMap`, `sortedDrawings`, `sourceEvent`, `stepPx`, `storageToolbarPosition`, `stored`, `styleData`, `supportsDrawingOverlays`, `supportsInteractiveChartOverlays`, `supportsMeasurementOverlay`, `suppressToolTapRef`, `sym`, `symbol`, `tagName`, `target`, `targetDrawing`, `targetId`, `targetReplayDate`, `targetSides`, `targetStart`, `templatesContent`, `timeOffset`, `timeframeMs`, `timer`, `to`, `toggleDrawingLockedById`, `toggleDrawingVisibleById`, `toggleSelectedLock`, `toggleSelectedVisible`, `toolLabel`, `toolLongPressTimerRef`, `toolTooltipAutoHideTimerRef`, `toolType`, `toolbarRef`, `topbarStatusBadge`, `totalTrades`, `transformed`, `triggerBackfillDebounced`, `unsubscribe`, `unsubscribeDrawings`, `unsubscribeSeries`, `updateSelectedDrawing`, `updateVisibleDomain`, `useWidgetOwnedHistory`, `viewport`, `viewportMetrics`, `viewportStart`, `visibleDomainRef`, `visiblePanes`, `vniClientRef`, `vniRequestIdRef`, `vniSnapshotIdRef`, `vniSymbolRef`, `vniTimeframeRef`, `vniWsRef`, `w`, `warmupInFlightRef`, `warmupInitialBinanceHistory`, `widgetData`, `widgetDrawingDockOpen`, `widgetDrawingUiEnabled`, `widgetMessages`, `widgetSelectedDrawing`, `wins`, `workspaceSelectedIds`, `worstTrade`, `ws`, `x`, `xExtents`, `y`
 
-### `packages/web/src/components/vnstockcharts/demo/i18n.tsx`
+### `packages/web/src/components/vninvestcharts/src/demo/libraryShowcaseDomain.js`
 
 - Functions:
-  - `DemoI18nBoundary`, `DemoI18nProvider`, `interpolate`, `readStoredLanguage`, `translate`, `useDemoI18n`
+  - `klineBarToRawOHLCV`, `loadChartType`, `normalizeVNITimeframe`, `readStoredString`, `resolveTimeframeMs`, `writeStoredValue`
 - Top-level variables:
-  - `DEMO_LANGUAGE_STORAGE_KEY`, `DemoI18nContext`, `context`, `defaultContextValue`, `getPaneLabel`, `key`, `paneLabelKeys`, `setLanguage`, `stored`, `t`, `template`, `translations`, `value`
+  - `BINANCE_TIMEFRAMES`, `CANDLE_TYPE_STORAGE_KEY`, `CHART_TYPES`, `CHART_TYPE_TO_SERIES`, `DAY_MS`, `MAIN_PRICE_SERIES_TYPES`, `VNI_SYMBOL_STORAGE_KEY`, `VNI_TIMEFRAMES`, `VNI_TIMEFRAME_STORAGE_KEY`, `dateFormat`, `priceFormat`, `saved`, `volumeFormat`
 
-### `packages/web/src/components/vnstockcharts/demo/index.js`
-
-- Top-level variables:
-  - `container`, `root`
-
-### `packages/web/src/components/vnstockcharts/demo/index.tsx`
-
-- Top-level variables:
-  - `container`, `root`
-
-### `packages/web/src/components/vnstockcharts/demo/LibraryShowcaseDemo.js`
+### `packages/web/src/components/vninvestcharts/src/demo/MaxVisibleBarsSlider.js`
 
 - Functions:
-  - `ToolIcon`, `clonePoint`, `fetchOrderFlow`, `formatBarsHeld`, `formatSignedPrice`, `getSelectedDrawingId`, `handleDrawingShortcuts`, `handleEscape`, `handler`, `isEditableTarget`, `isYAxisSide`, `klineBarToRawOHLCV`, `loadChartType`, `loadDemoSettings`, `normalizeDate`, `normalizeVNITimeframe`, `paneTemplate`, `persistStyleOverrides`, `readSize`, `readStoredString`, `resolveDrawingPlacementForPane`, `resolveTimeframeMs`, `saveDemoSettings`, `sortDrawings`, `writeStoredValue`
+  - `MaxVisibleBarsSlider`, `formatMaxVisibleBarsLabel`
 - Top-level variables:
-  - `BACKFILL_MAX_PAGES`, `BACKFILL_PAGE_LIMIT`, `BINANCE_TIMEFRAMES`, `CANDLE_TYPE_STORAGE_KEY`, `CHART_TYPES`, `CHART_TYPE_TO_SERIES`, `DAY_MS`, `DEFAULT_DEMO_SETTINGS`, `DEFAULT_MAX_VISIBLE_BARS`, `DEFAULT_MAX_VISIBLE_PANES`, `DEMO_SETTINGS_STORAGE_KEY`, `DRAWING_PANEL_WIDTH`, `DRAWING_TOOL_FLYOUT_BUTTON_SIZE`, `DRAWING_TOOL_FLYOUT_GAP`, `DRAWING_TOOL_FLYOUT_MARGIN`, `DRAWING_TOOL_FLYOUT_PADDING`, `DRAWING_TOOL_FLYOUT_WIDTH`, `INITIAL_HISTORY_MAX_PAGES`, `INITIAL_HISTORY_TARGET_BARS`, `MAIN_PRICE_SERIES_TYPES`, `MOBILE_DRAWING_TOOL_BREAKPOINT`, `MOBILE_DRAWING_TOOL_FLYOUT_BUTTON_SIZE`, `PERCENT_FORMAT`, `REPLAY_SPEEDS`, `SCHEDULER_TICK_MS`, `TOOL_GROUPS`, `TOOL_ICON_ALIASES`, `VNI_SYMBOL_STORAGE_KEY`, `VNI_TIMEFRAMES`, `VNI_TIMEFRAME_STORAGE_KEY`, `abortController`, `activeInGroup`, `activeSourceRef`, `adapter`, `addPane`, `allPrices`, `applyDelta`, `available`, `averageBarsHeld`, `averagePnl`, `backfillDebounceRef`, `backfillInFlightRef`, `bars`, `bestTrade`, `bringSelectedToFront`, `cancelled`, `candleTypeLabel`, `candleWidth`, `canvasBg`, `chartAdapter`, `chartData`, `chartRangeRef`, `chartReady`, `chartTimeframe`, `client`, `clipboardDrawing`, `cloneSelectedDrawing`, `closeDrawingContextMenu`, `closePaperTradePosition`, `closeReplayContextMenu`, `closeSettings`, `closedTrade`, `compactFlyoutButtonSize`, `controller`, `copySelectedDrawing`, `currentBars`, `currentItem`, `currentPosition`, `currentVisibleDomain`, `data`, `dataAdapter`, `dateFormat`, `deleteDrawingById`, `desiredType`, `domain`, `drawingClipboardRef`, `drawingContextMenuDrawing`, `drawingInspectorLabels`, `drawingInspectorPosition`, `drawingInteraction`, `drawingListPanelLabels`, `drawingListPosition`, `drawingPanelX`, `drawingStorage`, `drawingTextEditorLabels`, `earliestBar`, `enrichedData`, `ensureRangeHistory`, `estimatedFlyoutHeight`, `estimatedFlyoutWidth`, `existing`, `fallbackHeight`, `fallbackTop`, `file`, `first`, `firstBar`, `flyoutStyle`, `from`, `generation`, `h`, `handleAddPane`, `handleCancelTextEdit`, `handleChartRangeChange`, `handleChartTypeChange`, `handleClearDrawings`, `handleCloseDrawingInspector`, `handleCommitTextEdit`, `handleDrawingContextMenu`, `handleDrawingToolUsed`, `handleExportDrawings`, `handleFileLoaded`, `handleImportButtonClick`, `handleImportFileChange`, `handleLoadDrawings`, `handleLoadVNIChart`, `handlePATSaved`, `handlePaneAddSeriesRequest`, `handlePaperTradeClick`, `handlePaperTradeReset`, `handleReplayContextMenu`, `handleReplayFromHere`, `handleReplayJumpLatest`, `handleReplayRewind`, `handleReplaySpeedChange`, `handleReplayStepBack`, `handleReplayStepForward`, `handleReplayToggle`, `handleResetSettings`, `handleSourceSwitch`, `handleStartTextEdit`, `handleTickerUpdate`, `handleTimeframeChange`, `handleVisibleDomainChange`, `handleVniConfigChange`, `handleVniSymbolChange`, `hasWidgetData`, `iconId`, `importInputRef`, `inFlyout`, `inToolbar`, `indicatorLegendLabels`, `indicatorSeries`, `initialDemoSettings`, `initialWarmupRequestedRef`, `innerHeight`, `innerWidth`, `intervalId`, `isCompactDrawingToolbarViewport`, `isEditingText`, `isNearOldestEdge`, `isOpen`, `job`, `last`, `lastBar`, `lastClick`, `lastPaperTradeClickRef`, `lastPaperTradeSignatureRef`, `lastViewportMissingRef`, `lastVisibleBar`, `latestBar`, `latestBars`, `layout`, `leftBufferMs`, `leftZ`, `liveDataRef`, `liveMeasurementLabels`, `loaded`, `localCacheAdapter`, `localizePane`, `localizedMessage`, `localizedPane`, `losses`, `maxPrice`, `maxZ`, `message`, `minPrice`, `minZ`, `missing`, `mountedRef`, `msg`, `nativeEvent`, `neededStart`, `newHigh`, `newLow`, `newPrice`, `nextClone`, `nextDrawings`, `nextLabel`, `nextLeft`, `nextPaste`, `nextPosition`, `nextTop`, `nextWhaleData`, `node`, `normalizeDomain`, `normalizedDomain`, `now`, `observer`, `offlineBars`, `ohlcStatusLabel`, `olderBars`, `oldestBar`, `openPATModal`, `openSettings`, `page`, `pagesLoaded`, `paneHeaderLabels`, `paneHeights`, `paneLabel`, `paneOverlayLayout`, `paneState`, `panesMenuRef`, `paperTradeJournal`, `paperTradePanelVisible`, `paperTradePositionRef`, `paperTradeRealizedPnl`, `paperTradeReportVisible`, `paperTradeSummary`, `paperTradeUnrealizedPnl`, `parsed`, `pasteCopiedDrawing`, `pat`, `plotData`, `preferredSide`, `priceFormat`, `priceIsUp`, `priceOffset`, `pricePane`, `primary`, `profileMenuRef`, `queueRef`, `ratio`, `raw`, `realizedPnl`, `rect`, `renderWidgetPaneSplitter`, `renderWidgetPaneToolbar`, `replayController`, `replayControllerRef`, `replayFinished`, `replayProgressLabel`, `replayToggleTitle`, `replayVisibleData`, `requestId`, `requestOlderHistoryPage`, `resetToDefault`, `rightZ`, `saved`, `scheduleForViewport`, `schedulerGenerationRef`, `second`, `selectDrawingById`, `selectedDrawing`, `selectedDrawingId`, `selectedPane`, `selectedSymbol`, `sendSelectedToBack`, `shellNode`, `shellRef`, `shortcut`, `shouldEvaluateViewportBackfill`, `showOhlcMetrics`, `signature`, `snapshot`, `snapshotMap`, `sortedDrawings`, `stepPx`, `storageToolbarPosition`, `stored`, `supportsDrawingOverlays`, `supportsInteractiveChartOverlays`, `supportsMeasurementOverlay`, `sym`, `symbol`, `tagName`, `target`, `targetDrawing`, `targetSides`, `targetStart`, `timeOffset`, `timeframeMs`, `timer`, `to`, `toggleDrawingLockedById`, `toggleDrawingVisibleById`, `toggleSelectedLock`, `toggleSelectedVisible`, `toolLabel`, `toolbarRef`, `topbarStatusBadge`, `totalTrades`, `transformed`, `triggerBackfillDebounced`, `unsubscribeDrawings`, `unsubscribeSeries`, `updateSelectedDrawing`, `viewport`, `viewportStart`, `visibleDomainRef`, `visiblePanes`, `vniClientRef`, `vniRequestIdRef`, `vniSnapshotIdRef`, `vniSymbolRef`, `vniTimeframeRef`, `vniWsRef`, `volumeFormat`, `w`, `warmupInFlightRef`, `warmupInitialBinanceHistory`, `widgetData`, `widgetMessages`, `wins`, `worstTrade`, `ws`, `x`, `xExtents`, `y`
+  - `selectedIndex`, `selectedValue`
 
-### `packages/web/src/components/vnstockcharts/demo/LibraryShowcaseDemo.tsx`
+### `packages/web/src/components/vninvestcharts/src/demo/mobileToolLongPress.js`
 
 - Functions:
-  - `ToolIcon`, `clonePoint`, `fetchOrderFlow`, `formatBarsHeld`, `formatSignedPrice`, `getSelectedDrawingId`, `handleDrawingShortcuts`, `handleEscape`, `handler`, `isEditableTarget`, `isYAxisSide`, `klineBarToRawOHLCV`, `loadChartType`, `loadDemoSettings`, `normalizeDate`, `normalizeVNITimeframe`, `paneTemplate`, `persistStyleOverrides`, `readSize`, `readStoredString`, `resolveDrawingPlacementForPane`, `resolveTimeframeMs`, `saveDemoSettings`, `sortDrawings`, `writeStoredValue`
+  - `triggerTooltipHapticFeedback`
 - Top-level variables:
-  - `BACKFILL_MAX_PAGES`, `BACKFILL_PAGE_LIMIT`, `BINANCE_TIMEFRAMES`, `CANDLE_TYPE_STORAGE_KEY`, `CHART_TYPES`, `CHART_TYPE_TO_SERIES`, `DAY_MS`, `DEFAULT_DEMO_SETTINGS`, `DEFAULT_MAX_VISIBLE_BARS`, `DEFAULT_MAX_VISIBLE_PANES`, `DEMO_SETTINGS_STORAGE_KEY`, `DRAWING_PANEL_WIDTH`, `DRAWING_TOOL_FLYOUT_BUTTON_SIZE`, `DRAWING_TOOL_FLYOUT_GAP`, `DRAWING_TOOL_FLYOUT_MARGIN`, `DRAWING_TOOL_FLYOUT_PADDING`, `DRAWING_TOOL_FLYOUT_WIDTH`, `INITIAL_HISTORY_MAX_PAGES`, `INITIAL_HISTORY_TARGET_BARS`, `MAIN_PRICE_SERIES_TYPES`, `MOBILE_DRAWING_TOOL_BREAKPOINT`, `MOBILE_DRAWING_TOOL_FLYOUT_BUTTON_SIZE`, `PERCENT_FORMAT`, `REPLAY_SPEEDS`, `SCHEDULER_TICK_MS`, `TOOL_GROUPS`, `TOOL_ICON_ALIASES`, `VNI_SYMBOL_STORAGE_KEY`, `VNI_TIMEFRAMES`, `VNI_TIMEFRAME_STORAGE_KEY`, `abortController`, `activeInGroup`, `activeSourceRef`, `adapter`, `addPane`, `allPrices`, `applyDelta`, `available`, `averageBarsHeld`, `averagePnl`, `backfillDebounceRef`, `backfillInFlightRef`, `bars`, `bestTrade`, `bringSelectedToFront`, `cancelled`, `candleTypeLabel`, `candleWidth`, `canvasBg`, `chartAdapter`, `chartData`, `chartRangeRef`, `chartReady`, `chartTimeframe`, `client`, `clipboardDrawing`, `cloneSelectedDrawing`, `closeDrawingContextMenu`, `closePaperTradePosition`, `closeReplayContextMenu`, `closeSettings`, `closedTrade`, `compactFlyoutButtonSize`, `controller`, `copySelectedDrawing`, `currentBars`, `currentItem`, `currentPosition`, `currentVisibleDomain`, `data`, `dataAdapter`, `dateFormat`, `deleteDrawingById`, `desiredType`, `domain`, `drawingClipboardRef`, `drawingContextMenuDrawing`, `drawingInspectorLabels`, `drawingInspectorPosition`, `drawingInteraction`, `drawingListPanelLabels`, `drawingListPosition`, `drawingPanelX`, `drawingStorage`, `drawingTextEditorLabels`, `earliestBar`, `enrichedData`, `ensureRangeHistory`, `estimatedFlyoutHeight`, `estimatedFlyoutWidth`, `existing`, `fallbackHeight`, `fallbackTop`, `file`, `first`, `firstBar`, `flyoutStyle`, `from`, `generation`, `h`, `handleAddPane`, `handleCancelTextEdit`, `handleChartRangeChange`, `handleChartTypeChange`, `handleClearDrawings`, `handleCloseDrawingInspector`, `handleCommitTextEdit`, `handleDrawingContextMenu`, `handleDrawingToolUsed`, `handleExportDrawings`, `handleFileLoaded`, `handleImportButtonClick`, `handleImportFileChange`, `handleLoadDrawings`, `handleLoadVNIChart`, `handlePATSaved`, `handlePaneAddSeriesRequest`, `handlePaperTradeClick`, `handlePaperTradeReset`, `handleReplayContextMenu`, `handleReplayFromHere`, `handleReplayJumpLatest`, `handleReplayRewind`, `handleReplaySpeedChange`, `handleReplayStepBack`, `handleReplayStepForward`, `handleReplayToggle`, `handleResetSettings`, `handleSourceSwitch`, `handleStartTextEdit`, `handleTickerUpdate`, `handleTimeframeChange`, `handleVisibleDomainChange`, `handleVniConfigChange`, `handleVniSymbolChange`, `hasWidgetData`, `iconId`, `importInputRef`, `inFlyout`, `inToolbar`, `indicatorLegendLabels`, `indicatorSeries`, `initialDemoSettings`, `initialWarmupRequestedRef`, `innerHeight`, `innerWidth`, `intervalId`, `isCompactDrawingToolbarViewport`, `isEditingText`, `isNearOldestEdge`, `isOpen`, `job`, `last`, `lastBar`, `lastClick`, `lastPaperTradeClickRef`, `lastPaperTradeSignatureRef`, `lastViewportMissingRef`, `lastVisibleBar`, `latestBar`, `latestBars`, `layout`, `leftBufferMs`, `leftZ`, `liveDataRef`, `liveMeasurementLabels`, `loaded`, `localCacheAdapter`, `localizePane`, `localizedMessage`, `localizedPane`, `losses`, `maxPrice`, `maxZ`, `message`, `minPrice`, `minZ`, `missing`, `mountedRef`, `msg`, `nativeEvent`, `neededStart`, `newHigh`, `newLow`, `newPrice`, `nextClone`, `nextDrawings`, `nextLabel`, `nextLeft`, `nextPaste`, `nextPosition`, `nextTop`, `nextWhaleData`, `node`, `normalizeDomain`, `normalizedDomain`, `now`, `observer`, `offlineBars`, `ohlcStatusLabel`, `olderBars`, `oldestBar`, `openPATModal`, `openSettings`, `page`, `pagesLoaded`, `paneHeaderLabels`, `paneHeights`, `paneLabel`, `paneOverlayLayout`, `paneState`, `panesMenuRef`, `paperTradeJournal`, `paperTradePanelVisible`, `paperTradePositionRef`, `paperTradeRealizedPnl`, `paperTradeReportVisible`, `paperTradeSummary`, `paperTradeUnrealizedPnl`, `parsed`, `pasteCopiedDrawing`, `pat`, `plotData`, `preferredSide`, `priceFormat`, `priceIsUp`, `priceOffset`, `pricePane`, `primary`, `profileMenuRef`, `queueRef`, `ratio`, `raw`, `realizedPnl`, `rect`, `renderWidgetPaneSplitter`, `renderWidgetPaneToolbar`, `replayController`, `replayControllerRef`, `replayFinished`, `replayProgressLabel`, `replayToggleTitle`, `replayVisibleData`, `requestId`, `requestOlderHistoryPage`, `resetToDefault`, `rightZ`, `saved`, `scheduleForViewport`, `schedulerGenerationRef`, `second`, `selectDrawingById`, `selectedDrawing`, `selectedDrawingId`, `selectedPane`, `selectedSymbol`, `sendSelectedToBack`, `shellNode`, `shellRef`, `shortcut`, `shouldEvaluateViewportBackfill`, `showOhlcMetrics`, `signature`, `snapshot`, `snapshotMap`, `sortedDrawings`, `stepPx`, `storageToolbarPosition`, `stored`, `supportsDrawingOverlays`, `supportsInteractiveChartOverlays`, `supportsMeasurementOverlay`, `sym`, `symbol`, `tagName`, `target`, `targetDrawing`, `targetSides`, `targetStart`, `timeOffset`, `timeframeMs`, `timer`, `to`, `toggleDrawingLockedById`, `toggleDrawingVisibleById`, `toggleSelectedLock`, `toggleSelectedVisible`, `toolLabel`, `toolbarRef`, `topbarStatusBadge`, `totalTrades`, `transformed`, `triggerBackfillDebounced`, `unsubscribeDrawings`, `unsubscribeSeries`, `updateSelectedDrawing`, `viewport`, `viewportStart`, `visibleDomainRef`, `visiblePanes`, `vniClientRef`, `vniRequestIdRef`, `vniSnapshotIdRef`, `vniSymbolRef`, `vniTimeframeRef`, `vniWsRef`, `volumeFormat`, `w`, `warmupInFlightRef`, `warmupInitialBinanceHistory`, `widgetData`, `widgetMessages`, `wins`, `worstTrade`, `ws`, `x`, `xExtents`, `y`
+  - `TOOL_LONG_PRESS_DELAY_MS`, `TOOL_TOOLTIP_AUTO_HIDE_MS`
 
-### `packages/web/src/components/vnstockcharts/demo/LiveDemo.js`
+### `packages/web/src/components/vninvestcharts/src/demo/PaneSettingsModal.js`
 
 - Functions:
-  - `LiveDemoContent`
+  - `PaneSettingsModal`, `colorPicker`, `describeSeries`, `getIndicatorSetLabel`, `handleAddSeries`, `handleApplyIndicatorSet`, `handleBackdropMouseDown`, `handleDeleteIndicatorSet`, `handleDeletePane`, `handleImportIndicatorSetChange`, `handleImportIndicatorSetClick`, `handleKeyDown`, `handleSaveCurrentIndicatorSet`, `handleSeriesParamChange`, `paneLabel`, `parseNumber`, `renderField`, `renderIndicatorSetsSection`, `renderIndicatorsSection`, `renderLayoutSection`, `renderResetSection`, `renderSeriesParams`, `renderSetCard`, `renderThemeSection`, `supportsSeriesLineWidth`
 - Top-level variables:
-  - `cancelled`, `height`, `margin`, `sourceLabel`, `width`
+  - `LINE_WIDTH_SERIES_TYPES`, `TECHNICAL_INDICATORS`, `availableSeriesTypes`, `builtinSets`, `canAddPane`, `canMoveDown`, `canMoveUp`, `composerEntry`, `currentValue`, `dialogRef`, `entry`, `fields`, `file`, `gridClassName`, `hidden`, `importInputRef`, `imported`, `indicatorSets`, `isDefaultPane`, `isSelected`, `lineWidthControl`, `next`, `nextSelectedPaneId`, `numeric`, `overLimit`, `rawValue`, `resolvedComposerType`, `revealEnabled`, `saved`, `sectionLabels`, `selectedPane`, `set`, `subColorSection`, `subComponents`, `userSets`, `visibleCount`, `visibleIndex`
 
-### `packages/web/src/components/vnstockcharts/demo/LiveDemo.tsx`
+### `packages/web/src/components/vninvestcharts/src/demo/replayHelpers.js`
 
 - Functions:
-  - `LiveDemoContent`
-- Top-level variables:
-  - `cancelled`, `height`, `margin`, `sourceLabel`, `width`
+  - `resolveReplayStartIndexOnDataSync`, `shouldOpenReplayContextMenu`
 
-### `packages/web/src/components/vnstockcharts/demo/OriginalLikeDemo.js`
+### `packages/web/src/components/vninvestcharts/src/demo/residentWindowPolicy.js`
 
 - Functions:
-  - `OriginalLikeDemoContent`, `createOrigin`, `ema12Accessor`, `ema26Accessor`, `handleBrush`, `handleResetView`, `handleResize`, `handleVisibleDomainChange`, `macdAccessor`, `updateWidth`, `xAxisTickFormat`
+  - `applyResidentWindowPolicy`, `resolveDateMs`, `resolveTrimStartIndex`
 - Top-level variables:
-  - `BRUSH_TYPE`, `EMA12_SERIES`, `EMA26_SERIES`, `MACD_SERIES`, `axisTheme`, `bearishColor`, `bullishColor`, `calculatedData`, `chartHeight`, `chartSurfaceRef`, `coordinateTheme`, `ema12Stroke`, `ema26Stroke`, `endIndex`, `initialXExtents`, `isZoomedIn`, `left`, `macdAppearance`, `macdDateFormat`, `macdFormat`, `macdFormat3`, `macdHeight`, `macdOrigin`, `macdYAxisTheme`, `macdYAxisTickFormat`, `macdYAxisTicks`, `margin`, `node`, `observer`, `priceFormat`, `priceFormat1`, `priceFormat3`, `priceHeight`, `priceYAxisTheme`, `priceYAxisTickFormat`, `priceYAxisTicks`, `rawData`, `resolvedChartWidth`, `right`, `smaVolume10`, `startIndex`, `themeFontFamily`, `tickDatum`, `tickIndex`, `tooltipDateFormat`, `tooltipDisplayTexts`, `visibleBars`, `visibleDomainLabel`, `volumeAxisFormat`, `volumeFormat`, `volumeHeight`, `volumeMouseFormat`, `volumeOrigin`, `volumeYAxisTheme`, `xScaleProvider`
+  - `DEFAULT_RESIDENT_WINDOW_POLICY`, `firstVisibleIndex`, `maxTrimPreservingContext`, `targetTrimCount`, `trimStartIndex`, `visibleStartMs`
 
-### `packages/web/src/components/vnstockcharts/demo/OriginalLikeDemo.tsx`
+### `packages/web/src/components/vninvestcharts/src/demo/runtimeInvalidationBatch.js`
 
 - Functions:
-  - `OriginalLikeDemoContent`, `createOrigin`, `ema12Accessor`, `ema26Accessor`, `handleBrush`, `handleResetView`, `handleResize`, `handleVisibleDomainChange`, `macdAccessor`, `updateWidth`, `xAxisTickFormat`
+  - `createRuntimeInvalidationBatcher`, `defaultCancelFrame`, `defaultScheduleFrame`, `ensureFrame`, `flush`
 - Top-level variables:
-  - `BRUSH_TYPE`, `EMA12_SERIES`, `EMA26_SERIES`, `MACD_SERIES`, `axisTheme`, `bearishColor`, `bullishColor`, `calculatedData`, `chartHeight`, `chartSurfaceRef`, `coordinateTheme`, `ema12Stroke`, `ema26Stroke`, `endIndex`, `initialXExtents`, `isZoomedIn`, `left`, `macdAppearance`, `macdDateFormat`, `macdFormat`, `macdFormat3`, `macdHeight`, `macdOrigin`, `macdYAxisTheme`, `macdYAxisTickFormat`, `macdYAxisTicks`, `margin`, `node`, `observer`, `priceFormat`, `priceFormat1`, `priceFormat3`, `priceHeight`, `priceYAxisTheme`, `priceYAxisTickFormat`, `priceYAxisTicks`, `rawData`, `resolvedChartWidth`, `right`, `smaVolume10`, `startIndex`, `themeFontFamily`, `tickDatum`, `tickIndex`, `tooltipDateFormat`, `tooltipDisplayTexts`, `visibleBars`, `visibleDomainLabel`, `volumeAxisFormat`, `volumeFormat`, `volumeHeight`, `volumeMouseFormat`, `volumeOrigin`, `volumeYAxisTheme`, `xScaleProvider`
+  - `LAYER_PANE_SNAPSHOTS`, `LAYER_RUNTIME_CAPABILITIES`, `cancelFrame`, `dirtyMask`, `disposed`, `frameHandle`, `latestPaneSnapshots`, `latestRuntimeCapabilities`, `mask`, `scheduleFrame`
 
-### `packages/web/src/components/vnstockcharts/demo/PaneSettingsModal.js`
+### `packages/web/src/components/vninvestcharts/src/demo/runtimePolicy.js`
 
 - Functions:
-  - `PaneSettingsModal`, `colorPicker`, `describeSeries`, `getIndicatorSetLabel`, `handleAddSeries`, `handleApplyIndicatorSet`, `handleBackdropMouseDown`, `handleDeleteIndicatorSet`, `handleDeletePane`, `handleImportIndicatorSetChange`, `handleImportIndicatorSetClick`, `handleKeyDown`, `handleSaveCurrentIndicatorSet`, `handleSeriesParamChange`, `paneLabel`, `parseNumber`, `renderField`, `renderIndicatorSetsSection`, `renderIndicatorsSection`, `renderLayoutSection`, `renderResetSection`, `renderSeriesParams`, `renderSetCard`, `renderThemeSection`
+  - `isDrawingIntentActive`, `resolveDemoRuntimePolicy`
 - Top-level variables:
-  - `availableSeriesTypes`, `builtinSets`, `canAddPane`, `canMoveDown`, `canMoveUp`, `composerEntry`, `currentValue`, `dialogRef`, `entry`, `fast`, `fields`, `file`, `gridClassName`, `hidden`, `importInputRef`, `imported`, `indicatorSets`, `isDefaultPane`, `isSelected`, `label`, `next`, `nextSelectedPaneId`, `numeric`, `overLimit`, `rawValue`, `resolvedComposerType`, `revealEnabled`, `saved`, `sectionLabels`, `selectedPane`, `set`, `slow`, `subColorSection`, `subComponents`, `userSets`, `visibleCount`, `visibleIndex`
+  - `drawingRuntimeRequested`, `drawingUiEnabled`
 
-### `packages/web/src/components/vnstockcharts/demo/PaneSettingsModal.tsx`
+### `packages/web/src/components/vninvestcharts/src/demo/runtimeQueryParams.js`
 
 - Functions:
-  - `PaneSettingsModal`, `describeSeries`, `getIndicatorSetLabel`, `handleAddSeries`, `handleApplyIndicatorSet`, `handleBackdropMouseDown`, `handleDeleteIndicatorSet`, `handleDeletePane`, `handleImportIndicatorSetChange`, `handleImportIndicatorSetClick`, `handleKeyDown`, `handleSaveCurrentIndicatorSet`, `handleSeriesParamChange`, `paneLabel`, `parseNumber`, `renderField`, `renderIndicatorSetsSection`, `renderIndicatorsSection`, `renderLayoutSection`, `renderResetSection`, `renderSeriesParams`, `renderSetCard`, `renderThemeSection`
+  - `isCleanSmokeModeEnabled`
 - Top-level variables:
-  - `availableSeriesTypes`, `builtinSets`, `canAddPane`, `canMoveDown`, `canMoveUp`, `colorPicker`, `composerEntry`, `currentValue`, `dialogRef`, `entry`, `fast`, `fields`, `file`, `gridClassName`, `hidden`, `importInputRef`, `imported`, `indicatorSets`, `isDefaultPane`, `isSelected`, `label`, `next`, `nextSelectedPaneId`, `numeric`, `overLimit`, `rawValue`, `resolvedComposerType`, `revealEnabled`, `saved`, `sectionLabels`, `selectedPane`, `set`, `slow`, `subColorSection`, `subComponents`, `userSets`, `visibleCount`, `visibleIndex`
+  - `params`
 
-### `packages/web/src/components/vnstockcharts/demo/styleOverridesPersistence.js`
+### `packages/web/src/components/vninvestcharts/src/demo/SettingsRangeSlider.js`
 
 - Functions:
-  - `getStorage`, `isEmptyOverrides`, `isPlainRecord`, `loadPersistedStyleOverrides`, `normalizeStyleMap`, `restorePersistedStyleOverrides`, `saveCurrentStyleOverrides`, `snapshotStyleOverrides`
+  - `SettingsRangeSlider`, `areValuesClose`, `clamp`
 - Top-level variables:
-  - `STYLE_OVERRIDES_STORAGE_KEY`, `overrides`, `parsed`, `raw`, `resolvedStorage`
+  - `activeTolerance`, `clampedValue`, `hasActiveMark`, `hasMarks`, `nextValue`, `percent`
 
-### `packages/web/src/components/vnstockcharts/demo/styleOverridesPersistence.ts`
+### `packages/web/src/components/vninvestcharts/src/demo/StandaloneEmbedDemo.js`
+
+- Top-level variables:
+  - `chartAdapter`, `isDark`, `panes`
+
+### `packages/web/src/components/vninvestcharts/src/demo/styleOverridesPersistence.js`
 
 - Functions:
   - `getStorage`, `isEmptyOverrides`, `isPlainRecord`, `loadPersistedStyleOverrides`, `normalizeStyleMap`, `restorePersistedStyleOverrides`, `saveCurrentStyleOverrides`, `snapshotStyleOverrides`
 - Top-level variables:
   - `STYLE_OVERRIDES_STORAGE_KEY`, `overrides`, `parsed`, `raw`, `resolvedStorage`
 
-### `packages/web/src/components/vnstockcharts/demo/topbarStatusBadge.js`
+### `packages/web/src/components/vninvestcharts/src/demo/topbarStatusBadge.js`
 
 - Functions:
-  - `resolveDemoTopbarStatusBadge`
+  - `resolveDemoRuntimeStatusBadge`, `resolveDemoTopbarStatusBadge`
 - Top-level variables:
-  - `message`
+  - `message`, `title`
 
-### `packages/web/src/components/vnstockcharts/demo/topbarStatusBadge.ts`
-
-- Functions:
-  - `resolveDemoTopbarStatusBadge`
-- Top-level variables:
-  - `message`
-
-### `packages/web/src/components/vnstockcharts/demo/usePaneLayout.js`
+### `packages/web/src/components/vninvestcharts/src/demo/usePaneLayout.js`
 
 - Functions:
   - `applyDelta`, `loadRatio`, `pxToRatio`, `ratioToPx`, `sanitize`, `saveRatio`, `usePaneLayout`
 - Top-level variables:
   - `DEFAULT_RATIO`, `LS_KEY`, `MIN_PX`, `PANE_MARGIN_V`, `applyDragDelta`, `available`, `k`, `momentumH`, `newA`, `newB`, `newMomentumH`, `newPriceH`, `newVolumeH`, `overflow`, `priceH`, `px`, `r`, `resetLayout`, `stored`, `sum`, `total`, `volumeH`
 
-### `packages/web/src/components/vnstockcharts/demo/usePaneLayout.ts`
+### `packages/web/src/components/vninvestcharts/src/demo/useStockChartAdapter.js`
 
 - Functions:
-  - `applyDelta`, `loadRatio`, `pxToRatio`, `ratioToPx`, `sanitize`, `saveRatio`, `usePaneLayout`
+  - `buildExactRangeBackwardCoverage`, `buildExactRangeWindowCoverage`, `callGetBars`, `cloneWidgetBar`, `createFallbackSemantics`, `mapKLineBarToWidgetBar`, `resolveEffectiveMaxBarsPerRequest`, `useStockChartAdapter`
 - Top-level variables:
-  - `DEFAULT_RATIO`, `LS_KEY`, `MIN_PX`, `PANE_MARGIN_V`, `applyDragDelta`, `available`, `k`, `momentumH`, `newA`, `newB`, `newMomentumH`, `newPriceH`, `newVolumeH`, `overflow`, `priceH`, `px`, `r`, `resetLayout`, `stored`, `sum`, `total`, `volumeH`
+  - `DEFAULT_PAGE_LIMIT`, `anchorTs`, `bars`, `firstTs`, `fromTs`, `lastBackfillCoverageRef`, `lastRangeCoverageRef`, `lastTs`, `mappedBars`, `newestTs`, `oldestTs`, `requested`, `result`, `sourceLimit`, `sourceSemantics`, `toTs`, `widgetDataRef`
 
-### `packages/web/src/components/vnstockcharts/demo/vninvest/__tests__/adapters.test.ts`
+### `packages/web/src/components/vninvestcharts/src/demo/useViewportMetrics.js`
+
+- Functions:
+  - `readViewportMetrics`, `update`, `useViewportMetrics`
+- Top-level variables:
+  - `keyboardInsetBottom`, `viewport`
+
+### `packages/web/src/components/vninvestcharts/src/demo/useWidgetRuntimeInvalidationBatch.js`
+
+- Functions:
+  - `useWidgetRuntimeInvalidationBatch`
+- Top-level variables:
+  - `batchingEnabled`, `handleWidgetPaneSnapshotsChange`, `handleWidgetRuntimeCapabilitiesChange`, `hasMountedRuntimeLaneRef`, `params`, `runtimeInvalidationBatcher`
+
+### `packages/web/src/components/vninvestcharts/src/demo/vninvest/__tests__/adapters.test.js`
 
 - Top-level variables:
   - `points`, `result`
 
-### `packages/web/src/components/vnstockcharts/demo/vninvest/adapters.js`
+### `packages/web/src/components/vninvestcharts/src/demo/vninvest/__tests__/VNInvestClient.test.js`
+
+- Top-level variables:
+  - `bars`, `client`, `setItem`
+
+### `packages/web/src/components/vninvestcharts/src/demo/vninvest/adapters.js`
 
 - Functions:
   - `chartPointsToRawOHLCV`
 - Top-level variables:
   - `date`, `result`
 
-### `packages/web/src/components/vnstockcharts/demo/vninvest/adapters.ts`
+### `packages/web/src/components/vninvestcharts/src/demo/vninvest/index.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/demo/vninvest/types.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/demo/vninvest/VNInvestClient.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/demo/widgetVisibleDomainAuthority.js`
 
 - Functions:
-  - `chartPointsToRawOHLCV`
-- Top-level variables:
-  - `date`, `result`
+  - `resolvePendingChartRangeSync`, `shouldReleaseDemoVisibleDomainControl`, `shouldRetainDemoVisibleDomainControl`, `shouldUseWidgetOwnedHistory`
 
-### `packages/web/src/components/vnstockcharts/demo/vninvest/index.js`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/demo/vninvest/index.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/demo/vninvest/types.js`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/demo/vninvest/types.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/demo/vninvest/VNInvestClient.js`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/demo/vninvest/VNInvestClient.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/index.js`
+### `packages/web/src/components/vninvestcharts/src/index.js`
 
 - Top-level variables:
   - `version`
 
-### `packages/web/src/components/vnstockcharts/index.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/adapters/__tests__/getBarsCanonical.test.js`
 
+- Functions:
+  - `makeBar`
 - Top-level variables:
-  - `version`
+  - `BASE_PARAMS`, `adapter`, `bars`, `initParams`, `params`, `result`
 
-### `packages/web/src/components/vnstockcharts/lib/adapters/adapters.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/adapters/adapters.test.js`
 
 - Classes:
   - `MockSocket`
@@ -12223,50 +9417,32 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `adapter`, `bars`, `fetchMock`, `from`, `moreBars`, `onBar`, `onOrderbook`, `onTrade`, `sampleBars`, `sampleSymbols`, `symbols`, `to`, `unsubscribeBar`, `unsubscribeOrderbook`, `unsubscribeTrades`, `url`
 
-### `packages/web/src/components/vnstockcharts/lib/adapters/BaseAdapter.js`
+### `packages/web/src/components/vninvestcharts/src/lib/adapters/BaseAdapter.js`
 
 - Classes:
   - `BaseAdapter`
 - Top-level variables:
   - `cached`, `fallbackOrigin`, `now`, `rawDate`, `response`, `url`, `value`
 
-### `packages/web/src/components/vnstockcharts/lib/adapters/BaseAdapter.ts`
-
-- Top-level variables:
-  - `cached`, `fallbackOrigin`, `now`, `rawDate`, `response`, `url`, `value`
-
-### `packages/web/src/components/vnstockcharts/lib/adapters/BinanceAdapter.js`
+### `packages/web/src/components/vninvestcharts/src/lib/adapters/BinanceAdapter.js`
 
 - Classes:
   - `BinanceAdapter`
 - Functions:
-  - `parseKlines`, `resolveInterval`, `validateSymbol`
+  - `buildBinanceCoverage`, `fetchBinancePage`, `parseKlines`, `resolveInterval`, `validateSymbol`
 - Top-level variables:
-  - `BINANCE_BASE`, `BINANCE_INTERVALS`, `INTERVAL_MAP`, `MAX_LIMIT`, `SYMBOL_RE`, `bars`, `binanceAdapter`, `json`, `mapped`, `response`, `safeInterval`, `safeLimit`, `safeSymbol`, `upper`, `urlParams`
+  - `BINANCE_BASE`, `BINANCE_INTERVALS`, `INTERVAL_MAP`, `MAX_LIMIT`, `SYMBOL_RE`, `_BINANCE_ORIGIN`, `bars`, `binanceAdapter`, `collectedBars`, `coverage`, `covered`, `endTime`, `json`, `lastBarTimestamp`, `mapped`, `newestTs`, `nextStartTime`, `oldestTs`, `pageBars`, `response`, `result`, `safeInterval`, `safeLimit`, `safeSymbol`, `startTime`, `upper`, `urlParams`
 
-### `packages/web/src/components/vnstockcharts/lib/adapters/BinanceAdapter.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/adapters/BinanceAdapter.test.js`
 
 - Top-level variables:
-  - `adapter`, `capturedUrl`, `mockKlines`, `result`
+  - `adapter`, `capturedUrl`, `fetchSpy`, `firstPage`, `mockKlines`, `result`, `secondPage`
 
-### `packages/web/src/components/vnstockcharts/lib/adapters/BinanceAdapter.ts`
-
-- Classes:
-  - `BinanceAdapter`
-- Functions:
-  - `parseKlines`, `resolveInterval`, `validateSymbol`
-- Top-level variables:
-  - `BINANCE_BASE`, `BINANCE_INTERVALS`, `INTERVAL_MAP`, `MAX_LIMIT`, `SYMBOL_RE`, `bars`, `binanceAdapter`, `json`, `mapped`, `response`, `safeInterval`, `safeLimit`, `safeSymbol`, `upper`, `urlParams`
-
-### `packages/web/src/components/vnstockcharts/lib/adapters/DataAdapter.js`
+### `packages/web/src/components/vninvestcharts/src/lib/adapters/DataAdapter.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/adapters/DataAdapter.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/adapters/DjangoVnstockAdapter.js`
+### `packages/web/src/components/vninvestcharts/src/lib/adapters/DjangoVnstockAdapter.js`
 
 - Classes:
   - `DjangoVnstockAdapter`
@@ -12275,47 +9451,27 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `cacheKey`, `params`, `rawBar`, `rawBars`, `rawSnapshot`, `rawTrade`, `socket`
 
-### `packages/web/src/components/vnstockcharts/lib/adapters/DjangoVnstockAdapter.ts`
-
-- Classes:
-  - `DjangoVnstockAdapter`
-- Functions:
-  - `createRestAdapter`, `normalizeOrderbook`, `normalizeTrade`
-- Top-level variables:
-  - `cacheKey`, `params`, `rawBar`, `rawBars`, `rawSnapshot`, `rawTrade`, `socket`
-
-### `packages/web/src/components/vnstockcharts/lib/adapters/index.js`
+### `packages/web/src/components/vninvestcharts/src/lib/adapters/index.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/adapters/index.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/adapters/LocalCacheAdapter.js`
+### `packages/web/src/components/vninvestcharts/src/lib/adapters/LocalCacheAdapter.js`
 
 - Classes:
   - `LocalCacheAdapter`
 - Functions:
-  - `cacheKey`, `isValidBar`
+  - `buildLocalCacheCoverage`, `cacheKey`, `isValidBar`
 - Top-level variables:
-  - `bars`, `before`, `key`, `slice`, `sorted`
+  - `anchorTs`, `bars`, `before`, `coverage`, `key`, `newestTs`, `oldestTs`, `slice`, `sorted`
 
-### `packages/web/src/components/vnstockcharts/lib/adapters/LocalCacheAdapter.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/adapters/LocalCacheAdapter.test.js`
 
-- Top-level variables:
-  - `adapter`, `bars`, `btcResult`, `cutoff`, `ethResult`, `makeBars`, `result`
-
-### `packages/web/src/components/vnstockcharts/lib/adapters/LocalCacheAdapter.ts`
-
-- Classes:
-  - `LocalCacheAdapter`
 - Functions:
-  - `cacheKey`, `isValidBar`
+  - `makeBars`
 - Top-level variables:
-  - `bars`, `before`, `key`, `slice`, `sorted`
+  - `adapter`, `bars`, `btcResult`, `cutoff`, `ethResult`, `result`
 
-### `packages/web/src/components/vnstockcharts/lib/adapters/MockAdapter.js`
+### `packages/web/src/components/vninvestcharts/src/lib/adapters/MockAdapter.js`
 
 - Classes:
   - `MockAdapter`
@@ -12324,61 +9480,57 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `bar`, `bars`, `close`, `cursor`, `drift`, `high`, `low`, `normalizedQuery`, `open`, `snapshotIndex`, `timerId`, `tradeIndex`
 
-### `packages/web/src/components/vnstockcharts/lib/adapters/MockAdapter.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/adapters/StockDataAdapter.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/lib/adapters/UDFDataAdapter.js`
 
 - Classes:
-  - `MockAdapter`
-- Functions:
-  - `cloneBar`, `createMockBars`, `createSampleBars`, `emitNext`, `emitSnapshot`, `emitTrade`
+  - `UDFDataAdapter`
 - Top-level variables:
-  - `bar`, `bars`, `close`, `cursor`, `drift`, `high`, `low`, `normalizedQuery`, `open`, `snapshotIndex`, `timerId`, `tradeIndex`
+  - `bar`, `bars`, `beforeSec`, `data`, `from`, `fromSec`, `item`, `key`, `len`, `now`, `resolution`, `response`, `searchUrl`, `socket`, `sub`, `subscription`, `symbolsUrl`, `toSec`, `url`
 
-### `packages/web/src/components/vnstockcharts/lib/adapters/StockDataAdapter.js`
+### `packages/web/src/components/vninvestcharts/src/lib/adapters/UDFDataAdapter.test.js`
 
-- No parseable top-level symbols found
+- Top-level variables:
+  - `adapter`, `bars`, `before`, `from`, `mockBaseUrl`, `mockResponse`, `mockSearchResponse`, `results`, `to`
 
-### `packages/web/src/components/vnstockcharts/lib/adapters/StockDataAdapter.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/adapters/VNStocksAdapter.js`
+### `packages/web/src/components/vninvestcharts/src/lib/adapters/VNStocksAdapter.js`
 
 - Classes:
   - `VNStocksAdapter`
 - Functions:
-  - `buildHeaders`, `clampDays`, `extractRawPoints`, `normalizeApiBase`, `normalizeInterval`, `normalizePoint`, `parseNumber`, `parseTimestamp`, `readStorageValue`, `resolveApiBase`, `resolveDays`, `resolveIntervalMs`, `resolvePatToken`, `validateSymbol`
+  - `buildHeaders`, `buildVNStocksCoverage`, `clampDays`, `extractRawPoints`, `normalizeApiBase`, `normalizeInterval`, `normalizePoint`, `parseNumber`, `parseTimestamp`, `readStorageValue`, `resolveApiBase`, `resolveDays`, `resolveIntervalMs`, `resolvePatToken`, `validateSymbol`
 - Top-level variables:
-  - `API_BASE_STORAGE_KEY`, `DAY_MS`, `DEFAULT_API_BASE`, `MAX_DAYS`, `PAT_STORAGE_KEY`, `SYMBOL_RE`, `allBars`, `anchorWindowMs`, `backwardAnchor`, `bars`, `base`, `close`, `data`, `days`, `globalScope`, `high`, `intervalMs`, `low`, `normalized`, `numeric`, `open`, `parsed`, `patToken`, `payload`, `point`, `rawDate`, `requestedWindowMs`, `response`, `safeInterval`, `safeLimit`, `safeSymbol`, `stored`, `timestamp`, `trimmed`, `url`, `volume`
+  - `API_BASE_STORAGE_KEY`, `DAY_LOOKBACK_MS`, `DAY_MS`, `DEFAULT_API_BASE`, `MAX_DAYS`, `PAT_STORAGE_KEY`, `SYMBOL_RE`, `allBars`, `anchorWindowMs`, `backwardAnchor`, `bars`, `base`, `close`, `coverage`, `covered`, `data`, `days`, `globalScope`, `high`, `intervalMs`, `low`, `newestTs`, `normalized`, `numeric`, `oldestTs`, `open`, `parsed`, `patToken`, `payload`, `point`, `rawDate`, `requestedWindowMs`, `response`, `safeInterval`, `safeLimit`, `safeSymbol`, `stored`, `timestamp`, `trimmed`, `url`, `volume`
 
-### `packages/web/src/components/vnstockcharts/lib/adapters/VNStocksAdapter.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/adapters/VNStocksAdapter.test.js`
 
 - Functions:
   - `createResponse`, `createStorageMock`
 - Top-level variables:
   - `adapter`, `fetchMock`, `result`, `store`, `url`
 
-### `packages/web/src/components/vnstockcharts/lib/adapters/VNStocksAdapter.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/advisory/__tests__/AdvisoryPanel.test.js`
 
-- Classes:
-  - `VNStocksAdapter`
 - Functions:
-  - `buildHeaders`, `clampDays`, `extractRawPoints`, `normalizeApiBase`, `normalizeInterval`, `normalizePoint`, `parseNumber`, `parseTimestamp`, `readStorageValue`, `resolveApiBase`, `resolveDays`, `resolveIntervalMs`, `resolvePatToken`, `validateSymbol`
+  - `renderPanel`
 - Top-level variables:
-  - `API_BASE_STORAGE_KEY`, `DAY_MS`, `DEFAULT_API_BASE`, `MAX_DAYS`, `PAT_STORAGE_KEY`, `SYMBOL_RE`, `allBars`, `anchorWindowMs`, `backwardAnchor`, `bars`, `base`, `close`, `data`, `days`, `globalScope`, `high`, `intervalMs`, `low`, `normalized`, `numeric`, `open`, `parsed`, `patToken`, `payload`, `point`, `rawDate`, `requestedWindowMs`, `response`, `safeInterval`, `safeLimit`, `safeSymbol`, `stored`, `timestamp`, `trimmed`, `url`, `volume`
+  - `MOCK_AGENTS`, `MOCK_RESULT`, `badge`, `bg`, `btn`, `container`, `empty`, `onRefresh`, `panel`, `reactActEnv`, `root`, `sellResult`
 
-### `packages/web/src/components/vnstockcharts/lib/algorithm/index.js`
+### `packages/web/src/components/vninvestcharts/src/lib/advisory/AdvisoryPanel.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/lib/algorithm/index.js`
 
 - Functions:
   - `algorithm`
 - Top-level variables:
   - `calculator`, `defaultAlgorithm`, `newData`, `windowSize`
 
-### `packages/web/src/components/vnstockcharts/lib/algorithm/index.ts`
-
-- Top-level variables:
-  - `algorithm`, `calculator`, `defaultAlgorithm`, `newData`, `windowSize`
-
-### `packages/web/src/components/vnstockcharts/lib/annotation/Annotate.js`
+### `packages/web/src/components/vninvestcharts/src/lib/annotation/Annotate.js`
 
 - Classes:
   - `Annotate`
@@ -12387,16 +9539,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `data`
 
-### `packages/web/src/components/vnstockcharts/lib/annotation/Annotate.tsx`
-
-- Classes:
-  - `Annotate`
-- Functions:
-  - `helper`
-- Top-level variables:
-  - `data`
-
-### `packages/web/src/components/vnstockcharts/lib/annotation/BarAnnotation.js`
+### `packages/web/src/components/vninvestcharts/src/lib/annotation/BarAnnotation.js`
 
 - Classes:
   - `BarAnnotation`
@@ -12405,30 +9548,14 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `arrows`, `xFunc`, `yFunc`
 
-### `packages/web/src/components/vnstockcharts/lib/annotation/BarAnnotation.tsx`
-
-- Classes:
-  - `BarAnnotation`
-- Functions:
-  - `getArrowForTextIcon`, `helper`
-- Top-level variables:
-  - `arrows`, `xFunc`, `yFunc`
-
-### `packages/web/src/components/vnstockcharts/lib/annotation/index.js`
+### `packages/web/src/components/vninvestcharts/src/lib/annotation/index.js`
 
 - Functions:
   - `buyPath`, `sellPath`
 - Top-level variables:
   - `bottomWidth`, `halfWidth`, `height`
 
-### `packages/web/src/components/vnstockcharts/lib/annotation/index.ts`
-
-- Functions:
-  - `buyPath`, `sellPath`
-- Top-level variables:
-  - `bottomWidth`, `halfWidth`, `height`
-
-### `packages/web/src/components/vnstockcharts/lib/annotation/Label.js`
+### `packages/web/src/components/vninvestcharts/src/lib/annotation/Label.js`
 
 - Classes:
   - `Label`
@@ -12437,16 +9564,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `radians`
 
-### `packages/web/src/components/vnstockcharts/lib/annotation/Label.tsx`
-
-- Classes:
-  - `Label`
-- Functions:
-  - `drawOnCanvas`, `drawOnCanvas2`, `getText`, `getYScale`
-- Top-level variables:
-  - `radians`
-
-### `packages/web/src/components/vnstockcharts/lib/annotation/LabelAnnotation.js`
+### `packages/web/src/components/vninvestcharts/src/lib/annotation/LabelAnnotation.js`
 
 - Classes:
   - `LabelAnnotation`
@@ -12455,16 +9573,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `defaultProps`, `xFunc`, `yFunc`
 
-### `packages/web/src/components/vnstockcharts/lib/annotation/LabelAnnotation.tsx`
-
-- Classes:
-  - `LabelAnnotation`
-- Functions:
-  - `helper`
-- Top-level variables:
-  - `defaultProps`, `xFunc`, `yFunc`
-
-### `packages/web/src/components/vnstockcharts/lib/annotation/SvgPathAnnotation.js`
+### `packages/web/src/components/vninvestcharts/src/lib/annotation/SvgPathAnnotation.js`
 
 - Classes:
   - `SvgPathAnnotation`
@@ -12473,16 +9582,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `xFunc`, `yFunc`
 
-### `packages/web/src/components/vnstockcharts/lib/annotation/SvgPathAnnotation.tsx`
-
-- Classes:
-  - `SvgPathAnnotation`
-- Functions:
-  - `helper`
-- Top-level variables:
-  - `xFunc`, `yFunc`
-
-### `packages/web/src/components/vnstockcharts/lib/axes/Axis.js`
+### `packages/web/src/components/vninvestcharts/src/lib/axes/Axis.js`
 
 - Classes:
   - `Axis`
@@ -12491,16 +9591,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `GenericChartComponentAny`, `baseFormat`, `baseTickValues`, `d`, `domain`, `format`, `nodes`, `result`, `sign`, `simulation`, `tickProps`, `tickSpacing`, `tickValues`, `ticks`, `x`, `xAxis`, `y`, `zip`, `zoomCapture`
 
-### `packages/web/src/components/vnstockcharts/lib/axes/Axis.tsx`
-
-- Classes:
-  - `Axis`
-- Functions:
-  - `Tick`, `axisLineSVG`, `axisTicksSVG`, `drawAxisLine`, `drawEachTick`, `drawEachTickLabel`, `drawTicks`, `tickHelper`
-- Top-level variables:
-  - `GenericChartComponentAny`, `baseFormat`, `baseTickValues`, `d`, `domain`, `format`, `nodes`, `result`, `sign`, `simulation`, `tickProps`, `tickSpacing`, `tickValues`, `ticks`, `x`, `xAxis`, `y`, `zip`, `zoomCapture`
-
-### `packages/web/src/components/vnstockcharts/lib/axes/AxisLine.js`
+### `packages/web/src/components/vninvestcharts/src/lib/axes/AxisLine.js`
 
 - Classes:
   - `AxisLine`
@@ -12509,16 +9600,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `d`, `sign`, `start`, `xAxis`
 
-### `packages/web/src/components/vnstockcharts/lib/axes/AxisLine.tsx`
-
-- Classes:
-  - `AxisLine`
-- Functions:
-  - `d3_scaleExtent`, `d3_scaleRange`
-- Top-level variables:
-  - `d`, `sign`, `start`, `xAxis`
-
-### `packages/web/src/components/vnstockcharts/lib/axes/AxisTicks.js`
+### `packages/web/src/components/vninvestcharts/src/lib/axes/AxisTicks.js`
 
 - Classes:
   - `AxisTicks`, `Tick`
@@ -12527,38 +9609,18 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `baseFormat`, `format`, `origin`, `result`, `sign`, `tickSpacing`, `tickTransform`, `ticks`, `xAxis`
 
-### `packages/web/src/components/vnstockcharts/lib/axes/AxisTicks.tsx`
-
-- Classes:
-  - `AxisTicks`, `Tick`
-- Functions:
-  - `tickTransform_svg_axisX`, `tickTransform_svg_axisY`
-- Top-level variables:
-  - `baseFormat`, `format`, `origin`, `result`, `sign`, `tickSpacing`, `tickTransform`, `ticks`, `xAxis`
-
-### `packages/web/src/components/vnstockcharts/lib/axes/AxisZoomCapture.js`
+### `packages/web/src/components/vninvestcharts/src/lib/axes/AxisZoomCapture.js`
 
 - Classes:
   - `AxisZoomCapture`
 - Top-level variables:
   - `center`, `cursor`, `diff`, `mouseXY`, `newDomain`, `startScale`, `startXY`, `tempRange`
 
-### `packages/web/src/components/vnstockcharts/lib/axes/AxisZoomCapture.tsx`
-
-- Classes:
-  - `AxisZoomCapture`
-- Top-level variables:
-  - `center`, `cursor`, `diff`, `mouseXY`, `newDomain`, `startScale`, `startXY`, `tempRange`
-
-### `packages/web/src/components/vnstockcharts/lib/axes/index.js`
+### `packages/web/src/components/vninvestcharts/src/lib/axes/index.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/axes/index.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/axes/XAxis.js`
+### `packages/web/src/components/vninvestcharts/src/lib/axes/XAxis.js`
 
 - Classes:
   - `XAxis`
@@ -12567,16 +9629,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `axisLocation`, `moreProps`, `trueDomain`, `trueRange`, `x`, `y`
 
-### `packages/web/src/components/vnstockcharts/lib/axes/XAxis.tsx`
-
-- Classes:
-  - `XAxis`
-- Functions:
-  - `getXScale`, `helper`
-- Top-level variables:
-  - `axisLocation`, `moreProps`, `trueDomain`, `trueRange`, `x`, `y`
-
-### `packages/web/src/components/vnstockcharts/lib/axes/YAxis.js`
+### `packages/web/src/components/vninvestcharts/src/lib/axes/YAxis.js`
 
 - Classes:
   - `YAxis`
@@ -12585,374 +9638,204 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `axisLocation`, `trueDomain`, `trueRange`, `x`, `y`
 
-### `packages/web/src/components/vnstockcharts/lib/axes/YAxis.tsx`
-
-- Classes:
-  - `YAxis`
-- Functions:
-  - `getYScale`, `helper`
-- Top-level variables:
-  - `axisLocation`, `trueDomain`, `trueRange`, `x`, `y`
-
-### `packages/web/src/components/vnstockcharts/lib/BackgroundText.js`
+### `packages/web/src/components/vninvestcharts/src/lib/BackgroundText.js`
 
 - Classes:
   - `BackgroundText`
 - Top-level variables:
   - `contexts`, `interval`, `props`, `text`
 
-### `packages/web/src/components/vnstockcharts/lib/BackgroundText.tsx`
-
-- Classes:
-  - `BackgroundText`
-- Top-level variables:
-  - `contexts`, `interval`, `props`, `text`
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/atr.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/atr.js`
 
 - Functions:
   - `calculator`, `source`
 - Top-level variables:
   - `atrAlgorithm`, `atrValue`, `d`, `newData`, `options`, `prev`, `prevATR`, `tr`, `trueRangeAlgorithm`
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/atr.ts`
-
-- Functions:
-  - `calculator`
-- Top-level variables:
-  - `atrAlgorithm`, `atrValue`, `d`, `newData`, `options`, `prev`, `prevATR`, `source`, `tr`, `trueRangeAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/bollingerband.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/bollingerband.js`
 
 - Functions:
   - `calculator`
 - Top-level variables:
   - `avg`, `bollingerBandAlgorithm`, `meanAlgorithm`, `options`, `source`, `stdDev`, `tuples`, `zip`
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/bollingerband.ts`
-
-- Functions:
-  - `calculator`
-- Top-level variables:
-  - `avg`, `bollingerBandAlgorithm`, `meanAlgorithm`, `options`, `source`, `stdDev`, `tuples`, `zip`
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/change.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/change.js`
 
 - Functions:
   - `calculator`
 - Top-level variables:
   - `absoluteChange`, `algo`, `newData`, `options`, `percentChange`
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/change.ts`
-
-- Functions:
-  - `calculator`
-- Top-level variables:
-  - `absoluteChange`, `algo`, `newData`, `options`, `percentChange`
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/compare.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/compare.js`
 
 - Functions:
   - `calculator`
 - Top-level variables:
   - `b`, `base`, `compareData`, `first`, `firsts`, `options`, `result`
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/compare.ts`
-
-- Functions:
-  - `calculator`
-- Top-level variables:
-  - `b`, `base`, `compareData`, `first`, `firsts`, `options`, `result`
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/defaultOptionsForComputation.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/defaultOptionsForComputation.js`
 
 - Top-level variables:
   - `ATR`, `BollingerBand`, `Change`, `Compare`, `EMA`, `ElderImpulse`, `ElderRay`, `ForceIndex`, `FullStochasticOscillator`, `Kagi`, `MACD`, `PointAndFigure`, `RSI`, `Renko`, `SAR`, `SMA`, `SmoothedForceIndex`, `TMA`, `WMA`
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/defaultOptionsForComputation.ts`
-
-- Top-level variables:
-  - `ATR`, `BollingerBand`, `Change`, `Compare`, `EMA`, `ElderImpulse`, `ElderRay`, `ForceIndex`, `FullStochasticOscillator`, `Kagi`, `MACD`, `PointAndFigure`, `RSI`, `Renko`, `SAR`, `SMA`, `SmoothedForceIndex`, `TMA`, `WMA`
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/elderRay.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/elderRay.js`
 
 - Functions:
   - `calculator`, `ohlc`
 - Top-level variables:
   - `bearPower`, `bullPower`, `meanAlgorithm`, `newData`, `options`, `zip`
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/elderRay.ts`
-
-- Functions:
-  - `calculator`
-- Top-level variables:
-  - `bearPower`, `bullPower`, `meanAlgorithm`, `newData`, `ohlc`, `options`, `zip`
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/ema.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/ema.js`
 
 - Functions:
   - `calculator`
 - Top-level variables:
   - `alpha`, `initialAccumulator`, `initialValue`, `nextValue`, `options`, `previous`, `skip`, `source`, `v`
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/ema.ts`
-
-- Functions:
-  - `calculator`
-- Top-level variables:
-  - `alpha`, `initialAccumulator`, `initialValue`, `nextValue`, `options`, `previous`, `skip`, `source`, `v`
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/forceIndex.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/forceIndex.js`
 
 - Functions:
   - `calculator`
 - Top-level variables:
   - `forceIndex`, `forceIndexCalulator`, `options`, `source`, `volume`
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/forceIndex.ts`
-
-- Functions:
-  - `calculator`
-- Top-level variables:
-  - `forceIndex`, `forceIndexCalulator`, `options`, `source`, `volume`
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/heikinAshi.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/heikinAshi.js`
 
 - Functions:
   - `calculator`
 - Top-level variables:
   - `algorithm`, `close`, `high`, `low`, `open`, `source`
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/heikinAshi.ts`
-
-- Functions:
-  - `calculator`
-- Top-level variables:
-  - `algorithm`, `close`, `high`, `low`, `open`, `source`
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/index.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/index.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/index.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/kagi.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/kagi.js`
 
 - Functions:
   - `calculator`, `dateAccessor`, `dateMutator`
 - Top-level variables:
   - `atrAlgorithm`, `atrCalculator`, `dir`, `kagiData`, `line`, `nextChangePoint`, `nextLineOpen`, `options`, `prevPeak`, `priceMovement`, `reversalThreshold`, `source`, `startAs`
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/kagi.ts`
-
-- Functions:
-  - `calculator`
-- Top-level variables:
-  - `atrAlgorithm`, `atrCalculator`, `dateAccessor`, `dateMutator`, `dir`, `kagiData`, `line`, `nextChangePoint`, `nextLineOpen`, `options`, `prevPeak`, `priceMovement`, `reversalThreshold`, `source`, `startAs`
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/macd.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/macd.js`
 
 - Functions:
   - `calculator`
 - Top-level variables:
   - `fastEMA`, `macdArray`, `macdCalculator`, `macdResult`, `options`, `signalArray`, `signalEMA`, `slowEMA`, `undefinedArray`, `zip`
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/macd.ts`
-
-- Functions:
-  - `calculator`
-- Top-level variables:
-  - `fastEMA`, `macdArray`, `macdCalculator`, `macdResult`, `options`, `signalArray`, `signalEMA`, `slowEMA`, `undefinedArray`, `zip`
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/pointAndFigure.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/pointAndFigure.js`
 
 - Functions:
   - `calculator`, `createBox`, `dateAccessor`, `dateMutator`, `updateColumns`
 - Top-level variables:
   - `box`, `column`, `columnData`, `downwardMovement`, `noOfBoxes`, `options`, `prevBoxClose`, `pricingMethod`, `source`, `upwardMovement`
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/pointAndFigure.ts`
-
-- Functions:
-  - `calculator`, `createBox`, `updateColumns`
-- Top-level variables:
-  - `box`, `column`, `columnData`, `dateAccessor`, `dateMutator`, `downwardMovement`, `noOfBoxes`, `options`, `prevBoxClose`, `pricingMethod`, `source`, `upwardMovement`
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/renko.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/renko.js`
 
 - Functions:
   - `calculator`, `dateAccessor`, `dateMutator`
 - Top-level variables:
   - `atrAlgorithm`, `atrCalculator`, `brick`, `brickSize`, `index`, `j`, `newBrick`, `noOfBricks`, `options`, `prevCloseToHigh`, `pricingMethod`, `renkoData`, `source`
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/renko.ts`
-
-- Functions:
-  - `calculator`
-- Top-level variables:
-  - `atrAlgorithm`, `atrCalculator`, `brick`, `brickSize`, `dateAccessor`, `dateMutator`, `index`, `j`, `newBrick`, `noOfBricks`, `options`, `prevCloseToHigh`, `pricingMethod`, `renkoData`, `source`
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/rsi.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/rsi.js`
 
 - Functions:
   - `calculator`
 - Top-level variables:
   - `avgGain`, `avgLoss`, `change`, `gainsAndLosses`, `gainsAndLossesCalculator`, `now`, `options`, `prev`, `prevAvgGain`, `relativeStrength`, `rsiAlgorithm`, `rsiData`, `rsiValue`, `source`
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/rsi.ts`
-
-- Functions:
-  - `calculator`
-- Top-level variables:
-  - `avgGain`, `avgLoss`, `change`, `gainsAndLosses`, `gainsAndLossesCalculator`, `now`, `options`, `prev`, `prevAvgGain`, `relativeStrength`, `rsiAlgorithm`, `rsiData`, `rsiValue`, `source`
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/sar.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/sar.js`
 
 - Functions:
   - `calc`, `calculator`
 - Top-level variables:
   - `algorithm`, `calculatedData`, `current`, `fallingEp`, `fallingSar`, `options`, `risingEp`, `risingSar`, `use`
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/sar.ts`
-
-- Functions:
-  - `calc`, `calculator`
-- Top-level variables:
-  - `algorithm`, `calculatedData`, `current`, `fallingEp`, `fallingSar`, `options`, `risingEp`, `risingSar`, `use`
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/sma.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/sma.js`
 
 - Functions:
   - `calculator`
 - Top-level variables:
   - `average`, `options`
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/sma.ts`
-
-- Functions:
-  - `calculator`
-- Top-level variables:
-  - `average`, `options`
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/smoothedForceIndex.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/smoothedForceIndex.js`
 
 - Functions:
   - `calculator`
 - Top-level variables:
   - `algo`, `force`, `forceMA`, `ma`, `merge`, `options`, `smoothed`, `underlyingAlgorithm`
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/smoothedForceIndex.ts`
-
-- Functions:
-  - `calculator`
-- Top-level variables:
-  - `algo`, `force`, `forceMA`, `ma`, `merge`, `options`, `smoothed`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/sto.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/sto.js`
 
 - Functions:
   - `calculator`, `high`, `source`
 - Top-level variables:
   - `currentClose`, `dData`, `dWindow`, `highestHigh`, `indicatorData`, `k`, `kData`, `kSmoothed`, `kWindow`, `lowestLow`, `options`, `stoAlgorithm`
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/sto.ts`
-
-- Functions:
-  - `calculator`, `high`
-- Top-level variables:
-  - `currentClose`, `dData`, `dWindow`, `highestHigh`, `indicatorData`, `k`, `kData`, `kSmoothed`, `kWindow`, `lowestLow`, `options`, `source`, `stoAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/tma.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/tma.js`
 
 - Functions:
   - `calculator`
 - Top-level variables:
   - `n`, `options`, `total`, `triaverage`, `weight`
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/tma.ts`
-
-- Functions:
-  - `calculator`
-- Top-level variables:
-  - `n`, `options`, `total`, `triaverage`, `weight`
-
-### `packages/web/src/components/vnstockcharts/lib/calculator/wma.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calculator/wma.js`
 
 - Functions:
   - `calculator`
 - Top-level variables:
   - `options`, `total`, `waverage`, `weight`
 
-### `packages/web/src/components/vnstockcharts/lib/calculator/wma.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/calendars/calendarRegistry.js`
 
 - Functions:
-  - `calculator`
+  - `getCalendar`
 - Top-level variables:
-  - `options`, `total`, `waverage`, `weight`
+  - `REGISTRY`
 
-### `packages/web/src/components/vnstockcharts/lib/CanvasContainer.js`
+### `packages/web/src/components/vninvestcharts/src/lib/calendars/ExchangeCalendar.js`
+
+- Functions:
+  - `dayOfWeekICT`, `isTradingDayICT`, `isVNTradingTime`, `midnightICT`, `secondsOfDayICT`, `vnHasAnyTradingTime`
+- Top-level variables:
+  - `DAY_MS`, `ICT_OFFSET_MS`, `SESSION_WINDOWS`, `dayEnd`, `dayStart`, `dow`, `ictMs`, `midnightMs`, `sessionFromMs`, `sessionToMs`, `sod`, `vnExchangeCalendar`
+
+### `packages/web/src/components/vninvestcharts/src/lib/calendars/index.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/lib/CanvasContainer.js`
 
 - Classes:
   - `CanvasContainer`
 - Top-level variables:
   - `log`
 
-### `packages/web/src/components/vnstockcharts/lib/CanvasContainer.tsx`
-
-- Classes:
-  - `CanvasContainer`
-- Top-level variables:
-  - `log`
-
-### `packages/web/src/components/vnstockcharts/lib/Chart.js`
+### `packages/web/src/components/vninvestcharts/src/lib/Chart.js`
 
 - Functions:
   - `Chart`, `listener`
 - Top-level variables:
   - `chartConfig`
 
-### `packages/web/src/components/vnstockcharts/lib/Chart.tsx`
-
-- Functions:
-  - `Chart`, `listener`
-- Top-level variables:
-  - `chartConfig`
-
-### `packages/web/src/components/vnstockcharts/lib/ChartCanvas.js`
+### `packages/web/src/components/vninvestcharts/src/lib/ChartCanvas.js`
 
 - Classes:
   - `ChartCanvas`
 - Functions:
-  - `calculateFullData`, `calculateState`, `getCursorStyle`, `getDimensions`, `getXScaleDirection`, `resetChart`, `setXRange`, `shouldResetChart`, `updateChart`
+  - `calculateFullData`, `calculateState`, `getCursorStyle`, `getDimensions`, `getXScaleDirection`, `isValidDomainValue`, `resetChart`, `setXRange`, `shouldResetChart`, `updateChart`
 - Top-level variables:
-  - `CANDIDATES_FOR_RESET`, `c`, `candleWidth`, `canvases`, `chartConfig`, `contextValue`, `currentCharts`, `currentItem`, `cursor`, `cursorStyle`, `cx`, `dimensions`, `direction`, `dragableComponents`, `dx`, `endIndex`, `endValue`, `extent`, `firstItem`, `initialPlotData`, `interaction`, `item`, `lastItem`, `lastItemX`, `log`, `newDomain`, `newDomainExtent`, `newStart`, `nextVisibleRange`, `plotData`, `previousVisibleRange`, `renderContextValue`, `reset`, `response`, `result`, `s`, `sizeChanged`, `startIndex`, `startValue`, `state`, `tooltipStyle`, `updatedScale`, `updatedXScale`, `useWholeData`, `visibleRange`
+  - `CANDIDATES_FOR_RESET`, `MIN_VISIBLE_BARS`, `c`, `candleWidth`, `canvases`, `chartConfig`, `clickState`, `contextValue`, `currentCharts`, `currentItem`, `cursor`, `cursorStyle`, `cx`, `dataEnd`, `dataStart`, `dimensions`, `direction`, `dragableComponents`, `dx`, `endIndex`, `endValue`, `extent`, `fallback`, `firstItem`, `firstNewItem`, `firstOldItem`, `indexOffset`, `initialPlotData`, `interaction`, `isSpuriousReset`, `item`, `lastItem`, `lastItemWasVisible`, `lastItemX`, `lastOldItem`, `log`, `newCalc`, `newData`, `newDomEnd`, `newDomStart`, `newDomain`, `newDomainExtent`, `newEndBar`, `newFirstDate`, `newStart`, `newStartBar`, `nextLength`, `nextVisibleRange`, `oldData`, `oldEndDate`, `oldEndIdx`, `oldFirstDate`, `oldFirstInNew`, `oldStartDate`, `oldStartIdx`, `plotData`, `prevLength`, `previousVisibleRange`, `recovered`, `renderContextValue`, `reset`, `response`, `result`, `s`, `sizeChanged`, `startIndex`, `startValue`, `state`, `tooltipStyle`, `updatedScale`, `updatedXScale`, `useWholeData`, `visibleRange`, `xScaleForUpdate`
 
-### `packages/web/src/components/vnstockcharts/lib/ChartCanvas.tsx`
-
-- Classes:
-  - `ChartCanvas`
-- Functions:
-  - `calculateFullData`, `calculateState`, `getCursorStyle`, `getDimensions`, `getXScaleDirection`, `resetChart`, `setXRange`, `shouldResetChart`, `updateChart`
-- Top-level variables:
-  - `CANDIDATES_FOR_RESET`, `c`, `candleWidth`, `canvases`, `chartConfig`, `contextValue`, `currentCharts`, `currentItem`, `cursor`, `cursorStyle`, `cx`, `dimensions`, `direction`, `dragableComponents`, `dx`, `endIndex`, `endValue`, `extent`, `firstItem`, `initialPlotData`, `interaction`, `item`, `lastItem`, `lastItemX`, `log`, `newDomain`, `newDomainExtent`, `newStart`, `nextVisibleRange`, `plotData`, `previousVisibleRange`, `renderContextValue`, `reset`, `response`, `result`, `s`, `sizeChanged`, `startIndex`, `startValue`, `state`, `tooltipStyle`, `updatedScale`, `updatedXScale`, `useWholeData`, `visibleRange`
-
-### `packages/web/src/components/vnstockcharts/lib/ChartContext.js`
+### `packages/web/src/components/vninvestcharts/src/lib/ChartContext.js`
 
 - Functions:
   - `useChart`
 - Top-level variables:
   - `ChartContext`, `ChartProvider`, `context`
 
-### `packages/web/src/components/vnstockcharts/lib/ChartContext.tsx`
-
-- Functions:
-  - `useChart`
-- Top-level variables:
-  - `ChartContext`, `ChartProvider`, `context`
-
-### `packages/web/src/components/vnstockcharts/lib/coordinates/CrossHairCursor.js`
+### `packages/web/src/components/vninvestcharts/src/lib/coordinates/CrossHairCursor.js`
 
 - Classes:
   - `CrossHairCursor`
@@ -12961,16 +9844,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `dashArray`, `line1`, `line2`, `lines`, `originX`, `originY`, `safeLines`, `x`
 
-### `packages/web/src/components/vnstockcharts/lib/coordinates/CrossHairCursor.tsx`
-
-- Classes:
-  - `CrossHairCursor`
-- Functions:
-  - `customX`, `helper`
-- Top-level variables:
-  - `dashArray`, `line1`, `line2`, `lines`, `originX`, `originY`, `safeLines`, `x`
-
-### `packages/web/src/components/vnstockcharts/lib/coordinates/CurrentCoordinate.js`
+### `packages/web/src/components/vninvestcharts/src/lib/coordinates/CurrentCoordinate.js`
 
 - Classes:
   - `CurrentCoordinate`
@@ -12979,16 +9853,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `circle`, `fillColor`, `x`, `xValue`, `y`, `yValue`
 
-### `packages/web/src/components/vnstockcharts/lib/coordinates/CurrentCoordinate.tsx`
-
-- Classes:
-  - `CurrentCoordinate`
-- Functions:
-  - `helper`
-- Top-level variables:
-  - `circle`, `fillColor`, `x`, `xValue`, `y`, `yValue`
-
-### `packages/web/src/components/vnstockcharts/lib/coordinates/Cursor.js`
+### `packages/web/src/components/vninvestcharts/src/lib/coordinates/Cursor.js`
 
 - Classes:
   - `Cursor`
@@ -12997,16 +9862,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `centerX`, `cursors`, `dashArray`, `originX`, `originY`, `safeCursors`, `shapeWidth`, `x`, `xCursor`, `xPos`, `xShape`, `xShapeFill`, `xShapeStroke`, `xValue`, `yCursor`
 
-### `packages/web/src/components/vnstockcharts/lib/coordinates/Cursor.tsx`
-
-- Classes:
-  - `Cursor`
-- Functions:
-  - `customSnapX`
-- Top-level variables:
-  - `centerX`, `cursors`, `dashArray`, `originX`, `originY`, `safeCursors`, `shapeWidth`, `x`, `xCursor`, `xPos`, `xShape`, `xShapeFill`, `xShapeStroke`, `xValue`, `yCursor`
-
-### `packages/web/src/components/vnstockcharts/lib/coordinates/EdgeCoordinate.js`
+### `packages/web/src/components/vninvestcharts/src/lib/coordinates/EdgeCoordinate.js`
 
 - Classes:
   - `EdgeCoordinate`
@@ -13015,44 +9871,21 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `coordinateBase`, `edge`, `edgeCoordinate`, `edgeCoordinateBase`, `edgeLine`, `edgeXRect`, `line`, `path`, `textAnchor`, `x`, `y`
 
-### `packages/web/src/components/vnstockcharts/lib/coordinates/EdgeCoordinate.tsx`
-
-- Classes:
-  - `EdgeCoordinate`
-- Functions:
-  - `helper`
-- Top-level variables:
-  - `coordinateBase`, `edge`, `edgeCoordinate`, `edgeCoordinateBase`, `edgeLine`, `edgeXRect`, `line`, `path`, `textAnchor`, `x`, `y`
-
-### `packages/web/src/components/vnstockcharts/lib/coordinates/EdgeCoordinateV2.js`
+### `packages/web/src/components/vninvestcharts/src/lib/coordinates/EdgeCoordinateV2.js`
 
 - Functions:
   - `drawOnCanvas`, `helper`, `renderSVG`
 - Top-level variables:
   - `coordinateBase`, `edge`, `edgeCoordinate`, `edgeCoordinateBase`, `edgeLine`, `edgeXRect`, `line`, `path`, `textAnchor`, `x`, `y`
 
-### `packages/web/src/components/vnstockcharts/lib/coordinates/EdgeCoordinateV2.tsx`
-
-- Functions:
-  - `drawOnCanvas`, `helper`, `renderSVG`
-- Top-level variables:
-  - `coordinateBase`, `edge`, `edgeCoordinate`, `edgeCoordinateBase`, `edgeLine`, `edgeXRect`, `line`, `path`, `textAnchor`, `x`, `y`
-
-### `packages/web/src/components/vnstockcharts/lib/coordinates/EdgeCoordinateV3.js`
+### `packages/web/src/components/vninvestcharts/src/lib/coordinates/EdgeCoordinateV3.js`
 
 - Functions:
   - `drawOnCanvas`, `helper`, `renderSVG`, `roundRect`
 - Top-level variables:
   - `coordinate`, `coordinateBase`, `dashArray`, `dy`, `edge`, `edgeCoordinate`, `edgeCoordinateBase`, `edgeLine`, `edgeXRect`, `halfHeight`, `line`, `path`, `textAnchor`, `width`, `x`, `y`
 
-### `packages/web/src/components/vnstockcharts/lib/coordinates/EdgeCoordinateV3.tsx`
-
-- Functions:
-  - `drawOnCanvas`, `helper`, `renderSVG`, `roundRect`
-- Top-level variables:
-  - `coordinate`, `coordinateBase`, `dashArray`, `dy`, `edge`, `edgeCoordinate`, `edgeCoordinateBase`, `edgeLine`, `edgeXRect`, `halfHeight`, `line`, `path`, `textAnchor`, `width`, `x`, `y`
-
-### `packages/web/src/components/vnstockcharts/lib/coordinates/EdgeIndicator.js`
+### `packages/web/src/components/vninvestcharts/src/lib/coordinates/EdgeIndicator.js`
 
 - Classes:
   - `EdgeIndicator`
@@ -13061,24 +9894,11 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `edge`, `edgeX`, `item`, `props`, `x1`, `yValue`
 
-### `packages/web/src/components/vnstockcharts/lib/coordinates/EdgeIndicator.tsx`
-
-- Classes:
-  - `EdgeIndicator`
-- Functions:
-  - `getEdge`, `helper`
-- Top-level variables:
-  - `edge`, `edgeX`, `item`, `props`, `x1`, `yValue`
-
-### `packages/web/src/components/vnstockcharts/lib/coordinates/index.js`
+### `packages/web/src/components/vninvestcharts/src/lib/coordinates/index.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/coordinates/index.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/coordinates/MouseCoordinateX.js`
+### `packages/web/src/components/vninvestcharts/src/lib/coordinates/MouseCoordinateX.js`
 
 - Classes:
   - `MouseCoordinateX`
@@ -13087,16 +9907,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `coordinate`, `coordinateProps`, `edgeAt`, `hideLine`, `props`, `type`, `x`, `y1`
 
-### `packages/web/src/components/vnstockcharts/lib/coordinates/MouseCoordinateX.tsx`
-
-- Classes:
-  - `MouseCoordinateX`
-- Functions:
-  - `customX`, `helper`
-- Top-level variables:
-  - `coordinate`, `coordinateProps`, `edgeAt`, `hideLine`, `props`, `type`, `x`, `y1`
-
-### `packages/web/src/components/vnstockcharts/lib/coordinates/MouseCoordinateXV2.js`
+### `packages/web/src/components/vninvestcharts/src/lib/coordinates/MouseCoordinateXV2.js`
 
 - Classes:
   - `MouseCoordinateXV2`
@@ -13105,16 +9916,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `defaultProps`, `halfWidth`, `height`, `pad`, `propTypes`, `shape`, `sign`, `t`, `textWidth`, `x`, `xValue`, `y`
 
-### `packages/web/src/components/vnstockcharts/lib/coordinates/MouseCoordinateXV2.tsx`
-
-- Classes:
-  - `MouseCoordinateXV2`
-- Functions:
-  - `drawCoordinate`, `getXCoordinateInfo`, `xPosition`
-- Top-level variables:
-  - `defaultProps`, `halfWidth`, `height`, `pad`, `propTypes`, `shape`, `sign`, `t`, `textWidth`, `x`, `xValue`, `y`
-
-### `packages/web/src/components/vnstockcharts/lib/coordinates/MouseCoordinateY.js`
+### `packages/web/src/components/vninvestcharts/src/lib/coordinates/MouseCoordinateY.js`
 
 - Classes:
   - `MouseCoordinateY`
@@ -13123,16 +9925,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `coordinate`, `coordinateProps`, `edgeAt`, `hideLine`, `props`, `type`, `x1`, `y`
 
-### `packages/web/src/components/vnstockcharts/lib/coordinates/MouseCoordinateY.tsx`
-
-- Classes:
-  - `MouseCoordinateY`
-- Functions:
-  - `getYCoordinate`, `helper`
-- Top-level variables:
-  - `coordinate`, `coordinateProps`, `edgeAt`, `hideLine`, `props`, `type`, `x1`, `y`
-
-### `packages/web/src/components/vnstockcharts/lib/coordinates/PriceCoordinate.js`
+### `packages/web/src/components/vninvestcharts/src/lib/coordinates/PriceCoordinate.js`
 
 - Classes:
   - `PriceCoordinate`
@@ -13141,37 +9934,28 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `coordinate`, `coordinateProps`, `edgeAt`, `hideLine`, `props`, `show`, `type`, `width`, `x1`, `y`, `yScale`
 
-### `packages/web/src/components/vnstockcharts/lib/coordinates/PriceCoordinate.tsx`
-
-- Classes:
-  - `PriceCoordinate`
-- Functions:
-  - `helper`
-- Top-level variables:
-  - `coordinate`, `coordinateProps`, `edgeAt`, `hideLine`, `props`, `show`, `type`, `width`, `x1`, `y`, `yScale`
-
-### `packages/web/src/components/vnstockcharts/lib/core/__tests__/DynamicChart.seriesWiring.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/core/__tests__/DynamicChart.seriesWiring.test.js`
 
 - Functions:
   - `makeDatum`
 - Top-level variables:
   - `datum`, `indicatorValues`, `leftKey`, `ma21Key`, `pane`, `rightKey`, `slot`, `slots`
 
-### `packages/web/src/components/vnstockcharts/lib/core/__tests__/DynamicChart.xAxisFormatter.test.tsx`
+### `packages/web/src/components/vninvestcharts/src/lib/core/__tests__/DynamicChart.xAxisFormatter.test.js`
 
 - Functions:
   - `createBars`, `createDynamicChartProps`, `resetCapturedCalls`, `xAccessor`
 - Top-level variables:
   - `DynamicChart`, `React`, `act`, `close`, `consoleErrorSpy`, `container`, `createRoot`, `data`, `date`, `firstDate`, `lastDate`, `mouseCoordinateProps`, `mouseCoordinateXCalls`, `open`, `pane`, `paneTooltipCalls`, `reactActEnvironment`, `root`, `tooltipProps`, `xAxisCalls`, `xAxisProps`, `yAxisCalls`
 
-### `packages/web/src/components/vnstockcharts/lib/core/__tests__/gap1-viewport-event.test.tsx`
+### `packages/web/src/components/vninvestcharts/src/lib/core/__tests__/gap1-viewport-event.test.js`
 
 - Functions:
   - `alterBarValues`, `createBars`, `createCanvasContextMock`, `createChartCanvasProps`, `createChartChildren`, `createDynamicChartProps`, `xAccessor`
 - Top-level variables:
   - `Chart`, `ChartCanvas`, `DynamicChart`, `act`, `bars`, `canvasContext`, `close`, `consoleErrorSpy`, `container`, `createRoot`, `date`, `getContextSpy`, `onVisibleDomainChange`, `onVisibleRangeChange`, `open`, `pane`, `reactActEnvironment`, `root`, `xExtents`
 
-### `packages/web/src/components/vnstockcharts/lib/core/__tests__/gap2-canvas-overlay.test.tsx`
+### `packages/web/src/components/vninvestcharts/src/lib/core/__tests__/gap2-canvas-overlay.test.js`
 
 - Classes:
   - `Boundary`
@@ -13180,502 +9964,293 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `act`, `bars`, `canvas`, `canvasContext`, `caughtError`, `close`, `consoleErrorSpy`, `container`, `contextValue`, `createRoot`, `date`, `draw`, `events`, `getContextSpy`, `open`, `reactActEnvironment`, `root`
 
-### `packages/web/src/components/vnstockcharts/lib/core/__tests__/gap3-scroll-zoom-api.test.tsx`
+### `packages/web/src/components/vninvestcharts/src/lib/core/__tests__/gap3-scroll-zoom-api.test.js`
 
 - Functions:
   - `createBars`, `createCanvasContextMock`, `createDynamicChartProps`, `xAccessor`
 - Top-level variables:
   - `ChartCanvas`, `DynamicChart`, `act`, `bars`, `canvasContext`, `chartRef`, `close`, `consoleErrorSpy`, `container`, `createRoot`, `date`, `getContextSpy`, `open`, `pane`, `reactActEnvironment`, `root`, `setXExtentsSpy`
 
-### `packages/web/src/components/vnstockcharts/lib/core/__tests__/IndicatorLegend.test.tsx`
+### `packages/web/src/components/vninvestcharts/src/lib/core/__tests__/IndicatorLegend.test.js`
 
 - Functions:
   - `createPane`
 - Top-level variables:
   - `IndicatorLegend`, `act`, `chips`, `container`, `createRoot`, `eyeButtons`, `onRemoveSeries`, `onToggleSeries`, `originalConsoleError`, `reactActEnvironment`, `removeButtons`, `root`
 
-### `packages/web/src/components/vnstockcharts/lib/core/__tests__/seriesValueResolver.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/core/__tests__/seriesValueResolver.test.js`
 
 - Functions:
   - `makeDatum`
 - Top-level variables:
-  - `accessors`, `datum`, `ema21`, `ema34`, `ema50`, `ma21`, `series`, `value`
+  - `accessors`, `datum`, `ema21`, `ema34`, `ema50`, `ma21`, `missingBb`, `missingEma`, `missingMacd`, `series`, `value`
 
-### `packages/web/src/components/vnstockcharts/lib/core/calculators/__tests__/enrichData.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/core/__tests__/timezoneIntegration.test.js`
+
+- Functions:
+  - `fallbackDateFormat`, `makeIntradayData`
+- Top-level variables:
+  - `baseTime`, `data`, `firstTick`, `formatted`, `formatter`, `tooltipFormatter`
+
+### `packages/web/src/components/vninvestcharts/src/lib/core/calculators/__tests__/enrichData.test.js`
 
 - Top-level variables:
-  - `bar`, `bar13`, `bar20`, `bigData`, `cumulative`, `ema13Only`, `ema20Only`, `enriched`, `result`, `series`, `singleBar`, `startedAt`
+  - `bar`, `bar13`, `bar20`, `bigData`, `buyVol`, `cumulative`, `cvdApproxConfig`, `delta`, `ema13`, `ema13Config`, `ema13Only`, `ema20Config`, `ema20Only`, `enriched`, `enrichedBar`, `range`, `result`, `sellVol`, `series`, `singleBar`, `startedAt`, `strength`, `strengthConfig`, `val`, `whale`
 
-### `packages/web/src/components/vnstockcharts/lib/core/calculators/calcCVDApprox.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/calculators/calcCVDApprox.js`
 
 - Functions:
   - `calcCVDApprox`
 - Top-level variables:
   - `buyVol`, `cumulative`, `delta`, `range`, `sellVol`
 
-### `packages/web/src/components/vnstockcharts/lib/core/calculators/calcCVDApprox.ts`
-
-- Functions:
-  - `calcCVDApprox`
-- Top-level variables:
-  - `buyVol`, `cumulative`, `delta`, `range`, `sellVol`
-
-### `packages/web/src/components/vnstockcharts/lib/core/calculators/calcStrengthElder.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/calculators/calcStrengthElder.js`
 
 - Functions:
   - `blankUntil`, `calcStrengthElder`
 - Top-level variables:
   - `closes`, `ema`, `ema13`
 
-### `packages/web/src/components/vnstockcharts/lib/core/calculators/calcStrengthElder.ts`
-
-- Functions:
-  - `blankUntil`, `calcStrengthElder`
-- Top-level variables:
-  - `closes`, `ema`, `ema13`
-
-### `packages/web/src/components/vnstockcharts/lib/core/calculators/calcWhaleApprox.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/calculators/calcWhaleApprox.js`
 
 - Functions:
   - `calcWhaleApprox`
 - Top-level variables:
   - `buyDollar`, `buyShare`, `dollarVolume`, `next`, `range`, `sellDollar`, `sellShare`
 
-### `packages/web/src/components/vnstockcharts/lib/core/calculators/calcWhaleApprox.ts`
-
-- Functions:
-  - `calcWhaleApprox`
-- Top-level variables:
-  - `buyDollar`, `buyShare`, `dollarVolume`, `next`, `range`, `sellDollar`, `sellShare`
-
-### `packages/web/src/components/vnstockcharts/lib/core/calculators/enrichData.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/calculators/enrichData.js`
 
 - Functions:
   - `enrichData`, `normalizeOptions`
 - Top-level variables:
   - `aoColors`, `firstBias`, `firstBrar`, `firstCci`, `firstCr`, `firstDma`, `firstDmi`, `firstEmv`, `firstKdj`, `firstMtm`, `firstPsy`, `firstRoc`, `firstTrix`, `indicatorValues`, `options`, `plan`, `result`
 
-### `packages/web/src/components/vnstockcharts/lib/core/calculators/enrichData.ts`
-
-- Functions:
-  - `enrichData`, `normalizeOptions`
-- Top-level variables:
-  - `aoColors`, `firstBias`, `firstBrar`, `firstCci`, `firstCr`, `firstDma`, `firstDmi`, `firstEmv`, `firstKdj`, `firstMtm`, `firstPsy`, `firstRoc`, `firstTrix`, `indicatorValues`, `options`, `plan`, `result`
-
-### `packages/web/src/components/vnstockcharts/lib/core/calculators/enrichDataWithCanonicalStore.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/calculators/enrichDataWithCanonicalStore.js`
 
 - Functions:
   - `enrichDataWithCanonicalStore`, `seriesConfigHash`
 - Top-level variables:
   - `aParamsStr`, `aoColors`, `bParamsStr`, `cachedEntry`, `dataSignature`, `firstBias`, `firstBrar`, `firstCci`, `firstCr`, `firstDma`, `firstDmi`, `firstEmv`, `firstKdj`, `firstMtm`, `firstPsy`, `firstRoc`, `firstTrix`, `indicatorValues`, `plan`, `result`, `sorted`, `storeKeyInput`, `typeOrder`
 
-### `packages/web/src/components/vnstockcharts/lib/core/calculators/enrichDataWithCanonicalStore.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/core/calculators/enrichDataWithCanonicalStore.test.js`
 
 - Top-level variables:
   - `baseline`, `canonicalStore`, `initialSize`, `pane1Result`, `pane2Result`, `result`, `result1`, `result2`, `sampleData`, `seriesConfig`, `store`, `withStoreParam`, `withoutStore`
 
-### `packages/web/src/components/vnstockcharts/lib/core/calculators/enrichDataWithCanonicalStore.ts`
-
-- Functions:
-  - `enrichDataWithCanonicalStore`, `seriesConfigHash`
-- Top-level variables:
-  - `aParamsStr`, `aoColors`, `bParamsStr`, `cachedEntry`, `dataSignature`, `firstBias`, `firstBrar`, `firstCci`, `firstCr`, `firstDma`, `firstDmi`, `firstEmv`, `firstKdj`, `firstMtm`, `firstPsy`, `firstRoc`, `firstTrix`, `indicatorValues`, `plan`, `result`, `sorted`, `storeKeyInput`, `typeOrder`
-
-### `packages/web/src/components/vnstockcharts/lib/core/calculators/fixtures/mockData.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/calculators/fixtures/mockData.js`
 
 - Top-level variables:
   - `base`, `close`, `drift`, `high`, `low`, `mockOHLCV300`, `open`, `volume`
 
-### `packages/web/src/components/vnstockcharts/lib/core/calculators/fixtures/mockData.ts`
-
-- Top-level variables:
-  - `base`, `close`, `drift`, `high`, `low`, `mockOHLCV300`, `open`, `volume`
-
-### `packages/web/src/components/vnstockcharts/lib/core/calculators/indicatorComputation.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/calculators/indicatorComputation.js`
 
 - Functions:
-  - `blankUntil`, `buildIndicatorComputationPlan`, `computeIndicatorComputationResult`, `defaultSeries`, `indicatorKey`, `materializeIndicatorValues`, `mergeBand`, `numberParam`
+  - `blankUntil`, `buildIndicatorComputationPlan`, `computeIndicatorComputationResult`, `defaultSeries`, `indicatorKey`, `mapKeys`, `mapPeriods`, `materializeIndicatorValues`, `mergeBand`, `numberParam`
 - Top-level variables:
-  - `adx`, `ama`, `amaValues`, `ao`, `aoEnabled`, `aoKey`, `ar`, `bbi`, `bbiEnabled`, `biasByPeriod`, `biasPeriods`, `bollingerByKey`, `bollingerConfigs`, `br`, `brarByPeriod`, `brarPeriods`, `cciByPeriod`, `cciPeriods`, `closes`, `cr`, `crByKey`, `crConfigs`, `cvd`, `d`, `ddd`, `dddValues`, `defaultBollingerKey`, `defaultBollingerSeries`, `defaultMacdKey`, `defaultMacdSeries`, `defaultWhaleKey`, `defaultWhaleSeries`, `dmaByKey`, `dmaConfigs`, `dmiByPeriod`, `dmiPeriods`, `emaByPeriod`, `emaPeriods`, `emv`, `emvByPeriod`, `emvPeriods`, `histogramLine`, `histogramValue`, `indicatorValues`, `j`, `k`, `kdjByKey`, `kdjConfigs`, `key`, `ma1`, `ma2`, `ma3`, `ma4`, `macd`, `macdByKey`, `macdConfigs`, `macdLine`, `macdValue`, `minusDI`, `mtm`, `mtmByKey`, `mtmConfigs`, `obv`, `obvEnabled`, `plusDI`, `psy`, `psyByKey`, `psyConfigs`, `pvt`, `pvtEnabled`, `pvtKey`, `rocByPeriod`, `rocPeriods`, `rsiByPeriod`, `rsiPeriods`, `sarByKey`, `series`, `signal`, `signalLine`, `signalValue`, `signalValues`, `smaByPeriod`, `smaPeriods`, `strength`, `trix`, `trixByKey`, `trixConfigs`, `trixValues`, `value`, `vrByPeriod`, `vrPeriods`, `warmup`, `whaleByKey`, `whaleThresholds`, `wrByPeriod`, `wrPeriods`
+  - `adx`, `ama`, `amaValues`, `ao`, `aoEnabled`, `aoKey`, `ar`, `bbi`, `bbiEnabled`, `bbiKey`, `biasByPeriod`, `biasPeriods`, `bollingerByKey`, `bollingerConfigs`, `br`, `brarByPeriod`, `brarPeriods`, `cciByPeriod`, `cciPeriods`, `closes`, `cr`, `crByKey`, `crConfigs`, `cvd`, `cvdApproxKey`, `cvdRealtime`, `cvdRealtimeKey`, `d`, `ddd`, `dddValues`, `defaultBollingerKey`, `defaultBollingerSeries`, `defaultMacdKey`, `defaultMacdSeries`, `defaultWhaleKey`, `defaultWhaleSeries`, `dmaByKey`, `dmaConfigs`, `dmiByPeriod`, `dmiPeriods`, `emaByPeriod`, `emaPeriods`, `emv`, `emvByPeriod`, `emvPeriods`, `histogramLine`, `histogramValue`, `indicatorValues`, `j`, `k`, `kdjByKey`, `kdjConfigs`, `key`, `ma1`, `ma2`, `ma3`, `ma4`, `macd`, `macdByKey`, `macdConfigs`, `macdLine`, `macdValue`, `minusDI`, `mtm`, `mtmByKey`, `mtmConfigs`, `obv`, `obvEnabled`, `obvKey`, `plusDI`, `psy`, `psyByKey`, `psyConfigs`, `pvt`, `pvtEnabled`, `pvtKey`, `rawBar`, `rocByPeriod`, `rocPeriods`, `rsiByPeriod`, `rsiPeriods`, `s`, `sarByKey`, `series`, `signal`, `signalLine`, `signalValue`, `signalValues`, `smaByPeriod`, `smaPeriods`, `strength`, `strengthKey`, `trix`, `trixByKey`, `trixConfigs`, `trixValues`, `val`, `value`, `vrByPeriod`, `vrPeriods`, `warmup`, `whaleByKey`, `whaleThresholds`, `wrByPeriod`, `wrPeriods`
 
-### `packages/web/src/components/vnstockcharts/lib/core/calculators/indicatorComputation.ts`
-
-- Functions:
-  - `blankUntil`, `buildIndicatorComputationPlan`, `computeIndicatorComputationResult`, `defaultSeries`, `indicatorKey`, `materializeIndicatorValues`, `mergeBand`, `numberParam`
-- Top-level variables:
-  - `adx`, `ama`, `amaValues`, `ao`, `aoEnabled`, `aoKey`, `ar`, `bbi`, `bbiEnabled`, `biasByPeriod`, `biasPeriods`, `bollingerByKey`, `bollingerConfigs`, `br`, `brarByPeriod`, `brarPeriods`, `cciByPeriod`, `cciPeriods`, `closes`, `cr`, `crByKey`, `crConfigs`, `cvd`, `d`, `ddd`, `dddValues`, `defaultBollingerKey`, `defaultBollingerSeries`, `defaultMacdKey`, `defaultMacdSeries`, `defaultWhaleKey`, `defaultWhaleSeries`, `dmaByKey`, `dmaConfigs`, `dmiByPeriod`, `dmiPeriods`, `emaByPeriod`, `emaPeriods`, `emv`, `emvByPeriod`, `emvPeriods`, `histogramLine`, `histogramValue`, `indicatorValues`, `j`, `k`, `kdjByKey`, `kdjConfigs`, `key`, `ma1`, `ma2`, `ma3`, `ma4`, `macd`, `macdByKey`, `macdConfigs`, `macdLine`, `macdValue`, `minusDI`, `mtm`, `mtmByKey`, `mtmConfigs`, `obv`, `obvEnabled`, `plusDI`, `psy`, `psyByKey`, `psyConfigs`, `pvt`, `pvtEnabled`, `pvtKey`, `rocByPeriod`, `rocPeriods`, `rsiByPeriod`, `rsiPeriods`, `sarByKey`, `series`, `signal`, `signalLine`, `signalValue`, `signalValues`, `smaByPeriod`, `smaPeriods`, `strength`, `trix`, `trixByKey`, `trixConfigs`, `trixValues`, `value`, `vrByPeriod`, `vrPeriods`, `warmup`, `whaleByKey`, `whaleThresholds`, `wrByPeriod`, `wrPeriods`
-
-### `packages/web/src/components/vnstockcharts/lib/core/calculators/types.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/calculators/types.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/core/calculators/types.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/core/canonicalSeriesStore.js`
-
-- Functions:
-  - `createCanonicalSeriesStore`, `stableStringify`
-- Top-level variables:
-  - `entries`, `store`
-
-### `packages/web/src/components/vnstockcharts/lib/core/canonicalSeriesStore.ts`
-
-- Functions:
-  - `createCanonicalSeriesStore`, `stableStringify`
-- Top-level variables:
-  - `entries`, `store`
-
-### `packages/web/src/components/vnstockcharts/lib/core/canvas/ChartRenderContext.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/canvas/ChartRenderContext.js`
 
 - Functions:
   - `useChartRenderContext`
 - Top-level variables:
   - `ChartRenderContext`, `context`
 
-### `packages/web/src/components/vnstockcharts/lib/core/canvas/ChartRenderContext.ts`
-
-- Functions:
-  - `useChartRenderContext`
-- Top-level variables:
-  - `ChartRenderContext`, `context`
-
-### `packages/web/src/components/vnstockcharts/lib/core/canvas/OverlayCanvas.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/canvas/OverlayCanvas.js`
 
 - Functions:
   - `OverlayCanvas`
 - Top-level variables:
   - `canvas`, `canvasRef`, `context`, `physicalHeight`, `physicalWidth`, `renderContext`
 
-### `packages/web/src/components/vnstockcharts/lib/core/canvas/OverlayCanvas.tsx`
-
-- Functions:
-  - `OverlayCanvas`
-- Top-level variables:
-  - `canvas`, `canvasRef`, `context`, `physicalHeight`, `physicalWidth`, `renderContext`
-
-### `packages/web/src/components/vnstockcharts/lib/core/ChartPane.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/ChartPane.js`
 
 - Functions:
   - `ChartPane`
 - Top-level variables:
   - `chartScales`, `mainCanvasRef`, `mergedStyle`, `overlayCanvasRef`, `resolvedHeight`, `resolvedWidth`, `syncValue`
 
-### `packages/web/src/components/vnstockcharts/lib/core/ChartPane.tsx`
-
-- Functions:
-  - `ChartPane`
-- Top-level variables:
-  - `chartScales`, `mainCanvasRef`, `mergedStyle`, `overlayCanvasRef`, `resolvedHeight`, `resolvedWidth`, `syncValue`
-
-### `packages/web/src/components/vnstockcharts/lib/core/ChartSplitter.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/ChartSplitter.js`
 
 - Functions:
   - `ChartSplitter`, `handlePointerDown`, `handlePointerMove`, `stopDragging`
 - Top-level variables:
   - `availableRef`, `cls`, `commitRef`, `drag`, `dragRef`, `node`, `rootRef`, `totalDelta`
 
-### `packages/web/src/components/vnstockcharts/lib/core/ChartSplitter.tsx`
-
-- Functions:
-  - `ChartSplitter`, `handlePointerDown`, `handlePointerMove`, `stopDragging`
-- Top-level variables:
-  - `availableRef`, `cls`, `commitRef`, `drag`, `dragRef`, `node`, `rootRef`, `totalDelta`
-
-### `packages/web/src/components/vnstockcharts/lib/core/ChartTerminal.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/ChartTerminal.js`
 
 - Functions:
   - `ChartTerminal`
 - Top-level variables:
   - `mergedStyle`, `paneState`
 
-### `packages/web/src/components/vnstockcharts/lib/core/ChartTerminal.tsx`
-
-- Functions:
-  - `ChartTerminal`
-- Top-level variables:
-  - `mergedStyle`, `paneState`
-
-### `packages/web/src/components/vnstockcharts/lib/core/context/ChartSyncContext.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/context/ChartSyncContext.js`
 
 - Functions:
   - `ChartSyncProvider`, `useChartSync`
 - Top-level variables:
   - `ChartSyncContext`, `context`
 
-### `packages/web/src/components/vnstockcharts/lib/core/context/ChartSyncContext.ts`
-
-- Functions:
-  - `ChartSyncProvider`, `useChartSync`
-- Top-level variables:
-  - `ChartSyncContext`, `context`
-
-### `packages/web/src/components/vnstockcharts/lib/core/context/DataContext.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/context/DataContext.js`
 
 - Functions:
   - `DataProvider`, `useDataContext`
 - Top-level variables:
   - `DataContext`, `context`
 
-### `packages/web/src/components/vnstockcharts/lib/core/context/DataContext.ts`
-
-- Functions:
-  - `DataProvider`, `useDataContext`
-- Top-level variables:
-  - `DataContext`, `context`
-
-### `packages/web/src/components/vnstockcharts/lib/core/context/PaneManagerContext.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/context/PaneManagerContext.js`
 
 - Functions:
   - `PaneManagerProvider`, `usePaneManagerContext`
 - Top-level variables:
   - `PaneManagerContext`, `context`
 
-### `packages/web/src/components/vnstockcharts/lib/core/context/PaneManagerContext.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/core/DynamicChart.js`
 
 - Functions:
-  - `PaneManagerProvider`, `usePaneManagerContext`
+  - `accessor`, `axisFormatForSeriesTypes`, `buildChartSlots`, `buildPriceTooltipEntries`, `buildTooltipEntriesForSeries`, `buildYExtents`, `candleBodyWidth`, `computeExtentsForIndex`, `createChartSlot`, `createKlineXAxisFormatter`, `createSmartDateFormatter`, `dashPatternToSeriesDasharray`, `fieldAccessor`, `finiteExtent`, `formatParts`, `getSeriesStyleOverrideForSeries`, `inferMinimumPositiveDateDiffMs`, `origin`, `pad`, `renderDynamicChartChildren`, `renderSeries`, `resolveScaleSlotIdForSeries`, `resolveSeriesDisplayColor`, `sc`, `structured`, `withAlpha`
 - Top-level variables:
-  - `PaneManagerContext`, `context`
+  - `BAR_SERIES_TYPES`, `DynamicChartComponent`, `INNER_PANE_GAP`, `ONE_DAY_MS`, `OSCILLATOR_SERIES`, `PRICE_SERIES`, `VOLUME_SERIES`, `accessors`, `activeSeries`, `adaptiveDateFormat`, `adxColor`, `arColor`, `barCount`, `bbBotRaw`, `bbFillColor`, `bbFillMode`, `bbFillModeRaw`, `bbFillOpacity`, `bbMidColor`, `bbTopRaw`, `brColor`, `canvas`, `chartCanvasRef`, `chartChildren`, `chartId`, `chartSlots`, `clampedIndex`, `currentBar`, `currentMs`, `d`, `dColor`, `dashArray`, `date`, `dateMap`, `diff`, `divergeColor`, `downColor`, `end`, `endDate`, `entry`, `extents`, `fillColor`, `fillOpacity`, `finiteValues`, `first`, `formatter`, `fullData`, `gap`, `groupingMode`, `half`, `handleVisibleRangeChange`, `hasBottomAxis`, `hasExplicitScaleSlotIds`, `hour`, `index`, `isDiscontinuousScale`, `isInnerPane`, `isIntraday`, `isLastSlot`, `jColor`, `kColor`, `lineColor`, `lineWidth`, `macdColor`, `maxSafeWidth`, `maxValue`, `min`, `minDiff`, `minValue`, `minimumDateDiffMs`, `minusColor`, `orderedScaleSlotIds`, `paneHeight`, `paneIndex`, `paneSlotCounter`, `paramColor`, `params`, `parts`, `plusColor`, `previousBar`, `previousMs`, `ratio`, `rsiLine`, `rsiMid`, `rsiOB`, `rsiOS`, `sampleXValue`, `scaleSlotId`, `second`, `seriesKey`, `seriesTypes`, `signalColor`, `slotInPane`, `slotSeries`, `slotsByScaleSlotId`, `start`, `startDate`, `stepPx`, `strokeOpacity`, `styleOverride`, `targetWidth`, `tooltip`, `tooltipY`, `type`, `tz`, `upColor`, `visibleBarCount`, `whale`, `xAxisDateFormat`, `yAxisFormat`, `yExtents`, `yScaleId`
 
-### `packages/web/src/components/vnstockcharts/lib/core/DynamicChart.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/ErrorBoundary.js`
 
-- Functions:
-  - `accessor`, `axisFormatForSeriesTypes`, `buildChartSlots`, `buildPriceTooltipEntries`, `buildTooltipEntriesForSeries`, `buildYExtents`, `candleBodyWidth`, `computeExtentsForIndex`, `createChartSlot`, `createKlineXAxisFormatter`, `createSmartDateFormatter`, `dashPatternToSeriesDasharray`, `fieldAccessor`, `finiteExtent`, `getSeriesStyleOverrideForSeries`, `inferMinimumPositiveDateDiffMs`, `origin`, `renderDynamicChartChildren`, `renderSeries`, `resolveScaleSlotIdForSeries`, `resolveSeriesDisplayColor`, `sc`, `structured`, `withAlpha`
-- Top-level variables:
-  - `BAR_SERIES_TYPES`, `DynamicChartComponent`, `INNER_PANE_GAP`, `ONE_DAY_MS`, `OSCILLATOR_SERIES`, `PRICE_SERIES`, `VOLUME_SERIES`, `accessors`, `activeSeries`, `adaptiveDateFormat`, `adxColor`, `arColor`, `barCount`, `bbBotRaw`, `bbMidColor`, `bbTopRaw`, `brColor`, `canvas`, `chartCanvasRef`, `chartChildren`, `chartId`, `chartSlots`, `clampedIndex`, `currentBar`, `currentMs`, `d`, `dColor`, `dashArray`, `date`, `dayMonthFmt`, `diff`, `divergeColor`, `downColor`, `end`, `endDate`, `entry`, `extents`, `fillColor`, `fillOpacity`, `finiteValues`, `first`, `fullData`, `gap`, `groupingMode`, `half`, `handleVisibleRangeChange`, `hasBottomAxis`, `hasExplicitScaleSlotIds`, `hour`, `hourMinFmt`, `index`, `isDiscontinuousScale`, `isInnerPane`, `isIntraday`, `isLastSlot`, `jColor`, `kColor`, `lineColor`, `lineWidth`, `macdColor`, `maxValue`, `min`, `minDiff`, `minValue`, `minimumDateDiffMs`, `minusColor`, `monthYearFmt`, `orderedScaleSlotIds`, `paneHeight`, `paneIndex`, `paneSlotCounter`, `paramColor`, `params`, `plusColor`, `previousBar`, `previousMs`, `ratio`, `rsiLine`, `rsiMid`, `rsiOB`, `rsiOS`, `sampleXValue`, `scaleSlotId`, `second`, `seriesKey`, `seriesTypes`, `signalColor`, `slotInPane`, `slotSeries`, `slotsByScaleSlotId`, `start`, `startDate`, `stepPx`, `strokeOpacity`, `styleOverride`, `tooltip`, `tooltipY`, `type`, `upColor`, `visibleBarCount`, `whale`, `xAxisDateFormat`, `yAxisFormat`, `yExtents`, `yScaleId`
+- Classes:
+  - `PaneErrorBoundary`
 
-### `packages/web/src/components/vnstockcharts/lib/core/DynamicChart.tsx`
-
-- Functions:
-  - `accessor`, `axisFormatForSeriesTypes`, `buildChartSlots`, `buildPriceTooltipEntries`, `buildTooltipEntriesForSeries`, `buildYExtents`, `candleBodyWidth`, `computeExtentsForIndex`, `createChartSlot`, `createKlineXAxisFormatter`, `createSmartDateFormatter`, `dashPatternToSeriesDasharray`, `fieldAccessor`, `finiteExtent`, `getSeriesStyleOverrideForSeries`, `inferMinimumPositiveDateDiffMs`, `origin`, `renderDynamicChartChildren`, `renderSeries`, `resolveScaleSlotIdForSeries`, `resolveSeriesDisplayColor`, `sc`, `structured`, `withAlpha`
-- Top-level variables:
-  - `BAR_SERIES_TYPES`, `DynamicChartComponent`, `INNER_PANE_GAP`, `ONE_DAY_MS`, `OSCILLATOR_SERIES`, `PRICE_SERIES`, `VOLUME_SERIES`, `accessors`, `activeSeries`, `adaptiveDateFormat`, `adxColor`, `arColor`, `barCount`, `bbBotRaw`, `bbMidColor`, `bbTopRaw`, `brColor`, `canvas`, `chartCanvasRef`, `chartChildren`, `chartId`, `chartSlots`, `clampedIndex`, `currentBar`, `currentMs`, `d`, `dColor`, `dashArray`, `date`, `dayMonthFmt`, `diff`, `divergeColor`, `downColor`, `end`, `endDate`, `entry`, `extents`, `fillColor`, `fillOpacity`, `finiteValues`, `first`, `fullData`, `gap`, `groupingMode`, `half`, `handleVisibleRangeChange`, `hasBottomAxis`, `hasExplicitScaleSlotIds`, `hour`, `hourMinFmt`, `index`, `isDiscontinuousScale`, `isInnerPane`, `isIntraday`, `isLastSlot`, `jColor`, `kColor`, `lineColor`, `lineWidth`, `macdColor`, `maxValue`, `min`, `minDiff`, `minValue`, `minimumDateDiffMs`, `minusColor`, `monthYearFmt`, `orderedScaleSlotIds`, `paneHeight`, `paneIndex`, `paneSlotCounter`, `paramColor`, `params`, `plusColor`, `previousBar`, `previousMs`, `ratio`, `rsiLine`, `rsiMid`, `rsiOB`, `rsiOS`, `sampleXValue`, `scaleSlotId`, `second`, `seriesKey`, `seriesTypes`, `signalColor`, `slotInPane`, `slotSeries`, `slotsByScaleSlotId`, `start`, `startDate`, `stepPx`, `strokeOpacity`, `styleOverride`, `tooltip`, `tooltipY`, `type`, `upColor`, `visibleBarCount`, `whale`, `xAxisDateFormat`, `yAxisFormat`, `yExtents`, `yScaleId`
-
-### `packages/web/src/components/vnstockcharts/lib/core/hooks/__tests__/useDynamicPanes.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/core/hooks/__tests__/useDynamicPanes.test.js`
 
 - Functions:
   - `createMockStorage`
 - Top-level variables:
   - `blocked`, `blockedPane`, `customPane`, `customPaneId`, `defaultState`, `hiddenPane`, `next`, `panes`, `payload`, `restoredPane`, `rsi`, `state`, `storage`, `sum`, `value`
 
-### `packages/web/src/components/vnstockcharts/lib/core/hooks/useCanvasResize.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/hooks/useCanvasResize.js`
 
 - Functions:
   - `updateSize`, `useCanvasResize`
 - Top-level variables:
   - `element`, `observer`, `ref`
 
-### `packages/web/src/components/vnstockcharts/lib/core/hooks/useCanvasResize.ts`
-
-- Functions:
-  - `updateSize`, `useCanvasResize`
-- Top-level variables:
-  - `element`, `observer`, `ref`
-
-### `packages/web/src/components/vnstockcharts/lib/core/hooks/useChartTheme.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/hooks/useChartTheme.js`
 
 - Functions:
   - `useChartTheme`
 - Top-level variables:
   - `STORAGE_KEY`, `setTheme`, `stored`, `toggleTheme`
 
-### `packages/web/src/components/vnstockcharts/lib/core/hooks/useChartTheme.ts`
-
-- Functions:
-  - `useChartTheme`
-- Top-level variables:
-  - `STORAGE_KEY`, `setTheme`, `stored`, `toggleTheme`
-
-### `packages/web/src/components/vnstockcharts/lib/core/hooks/useDynamicPanes.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/hooks/useDynamicPanes.js`
 
 - Functions:
   - `clonePane`, `clonePaneList`, `cloneSeries`, `createDefaultPaneLayout`, `createId`, `createScaleSlotId`, `createSeriesId`, `dynamicPanesReducer`, `getVisiblePanes`, `heightsToRatios`, `loadPaneLayout`, `makeDefaultLayout`, `mutateVisibleRatio`, `normalizeDefaultPane`, `normalizeLoadedPaneLayout`, `normalizeVisibleRatios`, `ratiosToHeights`, `readStoredPaneLayout`, `reorderVisiblePanes`, `replacePaneLayout`, `resolveSeriesIndex`, `sanitizeLayout`, `savePaneLayout`, `syncSplitScale`, `useDynamicPanes`, `validatePane`, `visibleCount`, `visibleIndices`, `writeStoredPaneLayout`
 - Top-level variables:
-  - `FRAME_VERTICAL_MARGIN`, `MIN_PANE_HEIGHT`, `activeSeries`, `addPane`, `addSeries`, `allocated`, `anyVisible`, `applyDelta`, `available`, `bottomHeight`, `bottomPane`, `byId`, `cloned`, `cursor`, `customPanes`, `defaultPanes`, `deletePane`, `height`, `heights`, `indices`, `layout`, `maxVisiblePanes`, `minBottom`, `minTop`, `next`, `nextBottom`, `nextLabel`, `nextTop`, `orderedVisible`, `pairTotal`, `pane`, `parsed`, `ratio`, `raw`, `removePane`, `removeSeries`, `renamePane`, `reorderPanes`, `replaceLayout`, `replacement`, `resetToDefault`, `restorePane`, `series`, `seriesIndex`, `stored`, `toggleSeriesVisible`, `toggleVisible`, `topHeight`, `topPane`, `total`, `updateSeriesColor`, `updateSeriesParams`, `updateSeriesSubColor`, `updateSeriesYAxis`, `updated`, `visible`, `visibleCursor`, `visiblePanes`, `visibleSlots`
+  - `FRAME_VERTICAL_MARGIN`, `MIN_PANE_HEIGHT`, `activeSeries`, `addPane`, `addSeries`, `allocated`, `anyVisible`, `applyDelta`, `available`, `bottomHeight`, `bottomPane`, `byId`, `cloned`, `cursor`, `customPanes`, `defaultPanes`, `deletePane`, `dispatch`, `height`, `heights`, `indices`, `isTestEnv`, `layout`, `maxVisiblePanes`, `minBottom`, `minTop`, `next`, `nextBottom`, `nextLabel`, `nextTop`, `orderedVisible`, `pairTotal`, `pane`, `panes`, `parsed`, `ratio`, `raw`, `removePane`, `removeSeries`, `renamePane`, `reorderPanes`, `replaceLayout`, `replacement`, `resetToDefault`, `restorePane`, `series`, `seriesIndex`, `stored`, `toggleSeriesVisible`, `toggleVisible`, `topHeight`, `topPane`, `total`, `updateSeriesColor`, `updateSeriesLineWidth`, `updateSeriesParams`, `updateSeriesSubColor`, `updateSeriesYAxis`, `updated`, `visible`, `visibleCursor`, `visiblePanes`, `visibleSlots`
 
-### `packages/web/src/components/vnstockcharts/lib/core/hooks/useDynamicPanes.ts`
-
-- Functions:
-  - `clonePane`, `clonePaneList`, `cloneSeries`, `createDefaultPaneLayout`, `createId`, `createScaleSlotId`, `createSeriesId`, `dynamicPanesReducer`, `getVisiblePanes`, `heightsToRatios`, `loadPaneLayout`, `makeDefaultLayout`, `mutateVisibleRatio`, `normalizeDefaultPane`, `normalizeLoadedPaneLayout`, `normalizeVisibleRatios`, `ratiosToHeights`, `readStoredPaneLayout`, `reorderVisiblePanes`, `replacePaneLayout`, `resolveSeriesIndex`, `sanitizeLayout`, `savePaneLayout`, `syncSplitScale`, `useDynamicPanes`, `validatePane`, `visibleCount`, `visibleIndices`, `writeStoredPaneLayout`
-- Top-level variables:
-  - `FRAME_VERTICAL_MARGIN`, `MIN_PANE_HEIGHT`, `activeSeries`, `addPane`, `addSeries`, `allocated`, `anyVisible`, `applyDelta`, `available`, `bottomHeight`, `bottomPane`, `byId`, `cloned`, `cursor`, `customPanes`, `defaultPanes`, `deletePane`, `height`, `heights`, `indices`, `layout`, `maxVisiblePanes`, `minBottom`, `minTop`, `next`, `nextBottom`, `nextLabel`, `nextTop`, `orderedVisible`, `pairTotal`, `pane`, `parsed`, `ratio`, `raw`, `removePane`, `removeSeries`, `renamePane`, `reorderPanes`, `replaceLayout`, `replacement`, `resetToDefault`, `restorePane`, `series`, `seriesIndex`, `stored`, `toggleSeriesVisible`, `toggleVisible`, `topHeight`, `topPane`, `total`, `updateSeriesColor`, `updateSeriesParams`, `updateSeriesSubColor`, `updateSeriesYAxis`, `updated`, `visible`, `visibleCursor`, `visiblePanes`, `visibleSlots`
-
-### `packages/web/src/components/vnstockcharts/lib/core/hooks/useIndicatorSets.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/hooks/useIndicatorSets.js`
 
 - Functions:
   - `mergeSets`, `pickStorage`, `readFileAsText`, `useIndicatorSets`
 - Top-level variables:
   - `allowedSeriesTypes`, `applySet`, `blob`, `builtinSets`, `deleteSet`, `exportSet`, `getSetById`, `importSet`, `imported`, `link`, `loaded`, `merged`, `nextSet`, `parsed`, `reader`, `removed`, `renameSet`, `renamed`, `saveCurrentAsSet`, `set`, `sets`, `storage`, `text`, `trimmed`, `url`
 
-### `packages/web/src/components/vnstockcharts/lib/core/hooks/useIndicatorSets.ts`
-
-- Functions:
-  - `mergeSets`, `pickStorage`, `readFileAsText`, `useIndicatorSets`
-- Top-level variables:
-  - `allowedSeriesTypes`, `applySet`, `blob`, `builtinSets`, `deleteSet`, `exportSet`, `getSetById`, `importSet`, `imported`, `link`, `loaded`, `merged`, `nextSet`, `parsed`, `reader`, `removed`, `renameSet`, `renamed`, `saveCurrentAsSet`, `set`, `sets`, `storage`, `text`, `trimmed`, `url`
-
-### `packages/web/src/components/vnstockcharts/lib/core/hooks/usePaneManager.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/hooks/usePaneManager.js`
 
 - Functions:
   - `clampHeight`, `createPaneId`, `normalizePane`, `paneManagerReducer`, `usePaneManager`
 - Top-level variables:
   - `addIndicator`, `addPane`, `normalizedPane`, `paneIdSeed`, `removeIndicator`, `removePane`, `resizePane`, `updateIndicator`
 
-### `packages/web/src/components/vnstockcharts/lib/core/hooks/usePaneManager.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/core/hooks/usePaneManager.test.js`
 
 - Top-level variables:
   - `nextState`, `pricePane`, `volumePane`
 
-### `packages/web/src/components/vnstockcharts/lib/core/hooks/usePaneManager.ts`
-
-- Functions:
-  - `clampHeight`, `createPaneId`, `normalizePane`, `paneManagerReducer`, `usePaneManager`
-- Top-level variables:
-  - `addIndicator`, `addPane`, `normalizedPane`, `paneIdSeed`, `removeIndicator`, `removePane`, `resizePane`, `updateIndicator`
-
-### `packages/web/src/components/vnstockcharts/lib/core/hooks/usePaneSizes.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/hooks/usePaneSizes.js`
 
 - Functions:
   - `applyDeltaBetween`, `loadRatios`, `normalise`, `pxToRatios`, `ratiosToPx`, `sanitize`, `saveRatios`, `usePaneSizes`
 - Top-level variables:
   - `a`, `applyDelta`, `available`, `b`, `consumed`, `count`, `defaultRatios`, `defaultRatiosRef`, `heights`, `minA`, `minB`, `minH`, `minHRef`, `minTotal`, `n`, `newA`, `newB`, `px`, `reset`, `result`, `stored`, `sum`, `total`, `updated`
 
-### `packages/web/src/components/vnstockcharts/lib/core/hooks/usePaneSizes.ts`
-
-- Functions:
-  - `applyDeltaBetween`, `loadRatios`, `normalise`, `pxToRatios`, `ratiosToPx`, `sanitize`, `saveRatios`, `sum`, `usePaneSizes`
-- Top-level variables:
-  - `a`, `applyDelta`, `available`, `b`, `consumed`, `count`, `defaultRatios`, `defaultRatiosRef`, `heights`, `minA`, `minB`, `minH`, `minHRef`, `minTotal`, `n`, `newA`, `newB`, `px`, `reset`, `result`, `stored`, `sum`, `total`, `updated`
-
-### `packages/web/src/components/vnstockcharts/lib/core/index.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/index.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/core/index.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/core/IndicatorLegend.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/IndicatorLegend.js`
 
 - Functions:
   - `IndicatorLegend`, `paramNumber`, `seriesLabel`
 - Top-level variables:
-  - `PRIMARY_CHART_TYPES`, `SERIES_LABELS`, `base`, `chipStyle`, `chips`, `fast`, `hidden`, `seriesIndex`, `shortLabel`, `slow`, `value`
+  - `PRIMARY_CHART_TYPES`, `SERIES_LABELS`, `base`, `chipStyle`, `chips`, `hidden`, `seriesIndex`, `shortLabel`, `value`
 
-### `packages/web/src/components/vnstockcharts/lib/core/IndicatorLegend.tsx`
-
-- Functions:
-  - `IndicatorLegend`, `paramNumber`, `seriesLabel`
-- Top-level variables:
-  - `PRIMARY_CHART_TYPES`, `SERIES_LABELS`, `base`, `chipStyle`, `chips`, `fast`, `hidden`, `seriesIndex`, `shortLabel`, `slow`, `value`
-
-### `packages/web/src/components/vnstockcharts/lib/core/PaneHeader.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/PaneHeader.js`
 
 - Functions:
   - `PaneHeader`
 - Top-level variables:
   - `style`
 
-### `packages/web/src/components/vnstockcharts/lib/core/PaneHeader.tsx`
-
-- Functions:
-  - `PaneHeader`
-- Top-level variables:
-  - `style`
-
-### `packages/web/src/components/vnstockcharts/lib/core/PaneLabel.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/PaneLabel.js`
 
 - Functions:
   - `PaneLabel`
 - Top-level variables:
   - `style`
 
-### `packages/web/src/components/vnstockcharts/lib/core/PaneLabel.tsx`
-
-- Functions:
-  - `PaneLabel`
-- Top-level variables:
-  - `style`
-
-### `packages/web/src/components/vnstockcharts/lib/core/paneScaleSlotDomains.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/paneScaleSlotDomains.js`
 
 - Functions:
   - `buildAxisAccessors`, `computeAxisDomain`, `computePaneScaleSlotDomains`, `finiteExtent`, `isSeriesVisible`
 - Top-level variables:
-  - `BAR_SERIES_TYPES`, `accessors`, `axisSeries`, `domains`, `finiteValues`, `leftDomain`, `maxValue`, `minValue`, `rightDomain`, `styleOverride`, `values`
+  - `BAR_SERIES_TYPES`, `accessors`, `axisSeries`, `domains`, `leftDomain`, `maxValue`, `minValue`, `rightDomain`, `styleOverride`, `values`
 
-### `packages/web/src/components/vnstockcharts/lib/core/paneScaleSlotDomains.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/core/paneScaleSlotDomains.test.js`
 
 - Functions:
-  - `buildAxisAccessors`, `computeAxisDomain`, `computePaneScaleSlotDomains`, `finiteExtent`, `isSeriesVisible`
+  - `createDatum`
 - Top-level variables:
-  - `BAR_SERIES_TYPES`, `accessors`, `axisSeries`, `domains`, `finiteValues`, `leftDomain`, `maxValue`, `minValue`, `rightDomain`, `styleOverride`, `values`
+  - `data`, `panes`
 
-### `packages/web/src/components/vnstockcharts/lib/core/PaneSplitter.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/PaneSplitter.js`
 
 - Functions:
   - `PaneSplitter`, `clamp`, `handleMove`, `handlePointerDown`, `handleUp`
 - Top-level variables:
   - `availableHeight`, `bottomPaneElement`, `deltaY`, `dragState`, `dragStateRef`, `mergedStyle`, `nextHeight`, `splitterElement`, `startTopHeight`, `topPaneElement`
 
-### `packages/web/src/components/vnstockcharts/lib/core/PaneSplitter.tsx`
-
-- Functions:
-  - `PaneSplitter`, `clamp`, `handleMove`, `handlePointerDown`, `handleUp`
-- Top-level variables:
-  - `availableHeight`, `bottomPaneElement`, `deltaY`, `dragState`, `dragStateRef`, `mergedStyle`, `nextHeight`, `splitterElement`, `startTopHeight`, `topPaneElement`
-
-### `packages/web/src/components/vnstockcharts/lib/core/PaneTooltip.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/PaneTooltip.js`
 
 - Functions:
   - `PaneTooltip`, `defaultDateValue`, `toDisplayValue`
 - Top-level variables:
   - `chartConfigList`, `config`, `currentItem`, `lines`, `rawValue`, `renderSVG`, `resolvedOrigin`
 
-### `packages/web/src/components/vnstockcharts/lib/core/PaneTooltip.tsx`
-
-- Functions:
-  - `PaneTooltip`, `defaultDateValue`, `toDisplayValue`
-- Top-level variables:
-  - `chartConfigList`, `config`, `currentItem`, `lines`, `rawValue`, `renderSVG`, `resolvedOrigin`
-
-### `packages/web/src/components/vnstockcharts/lib/core/registry/__tests__/SeriesRegistry.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/core/registry/__tests__/SeriesRegistry.test.js`
 
 - Top-level variables:
-  - `entry`, `phaseOneTypes`, `registered`
+  - `accessors`, `entry`, `phaseOneTypes`, `registered`
 
-### `packages/web/src/components/vnstockcharts/lib/core/registry/registerAll.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/registry/registerAll.js`
 
 - Functions:
   - `initRegistry`
 
-### `packages/web/src/components/vnstockcharts/lib/core/registry/registerAll.ts`
-
-- Functions:
-  - `initRegistry`
-
-### `packages/web/src/components/vnstockcharts/lib/core/registry/SeriesRegistry.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/registry/SeriesRegistry.js`
 
 - Functions:
   - `clearRegistry`, `clearSeriesStyleOverride`, `clearSeriesStyleOverrides`, `cloneSeriesStyleOverride`, `colorFromConfig`, `dashPatternToStrokeDasharray`, `getSeries`, `getSeriesStyleOverride`, `listRegistered`, `listSeriesStyleOverrides`, `normalizeSeriesStyleOverride`, `notifyAllSeriesStyleChanges`, `notifySeriesStyleChange`, `overrideSeriesStyle`, `periodFromConfig`, `registerLineSeries`, `registerPhaseOneSeries`, `registerSeries`, `subscribeSeriesStyle`, `subscribeSeriesStyleChanges`
 - Top-level variables:
   - `current`, `dashPattern`, `entry`, `listeners`, `next`, `normalized`, `period`, `registry`, `seriesStyleChangeListeners`, `seriesStyleListeners`, `seriesStyleOverrides`
 
-### `packages/web/src/components/vnstockcharts/lib/core/registry/SeriesRegistry.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/core/registry/SeriesRegistry.test.js`
 
 - Top-level variables:
   - `global`, `perInstance`, `unsubscribeGlobal`, `unsubscribeInstance`
 
-### `packages/web/src/components/vnstockcharts/lib/core/registry/SeriesRegistry.ts`
-
-- Functions:
-  - `clearRegistry`, `clearSeriesStyleOverride`, `clearSeriesStyleOverrides`, `cloneSeriesStyleOverride`, `colorFromConfig`, `dashPatternToStrokeDasharray`, `getSeries`, `getSeriesStyleOverride`, `listRegistered`, `listSeriesStyleOverrides`, `normalizeSeriesStyleOverride`, `notifyAllSeriesStyleChanges`, `notifySeriesStyleChange`, `overrideSeriesStyle`, `periodFromConfig`, `registerLineSeries`, `registerPhaseOneSeries`, `registerSeries`, `subscribeSeriesStyle`, `subscribeSeriesStyleChanges`
-- Top-level variables:
-  - `current`, `dashPattern`, `entry`, `listeners`, `next`, `normalized`, `period`, `registry`, `seriesStyleChangeListeners`, `seriesStyleListeners`, `seriesStyleOverrides`
-
-### `packages/web/src/components/vnstockcharts/lib/core/replay/BarReplayController.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/replay/BarReplayController.js`
 
 - Classes:
   - `BarReplayController`
@@ -13684,1168 +10259,917 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `foundIndex`, `nextStartIndex`, `state`, `targetTime`
 
-### `packages/web/src/components/vnstockcharts/lib/core/replay/BarReplayController.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/core/replay/BarReplayController.test.js`
 
 - Functions:
   - `createBar`
 - Top-level variables:
   - `controller`, `states`, `unsubscribe`
 
-### `packages/web/src/components/vnstockcharts/lib/core/replay/BarReplayController.ts`
-
-- Classes:
-  - `BarReplayController`
-- Functions:
-  - `clampIndex`, `intervalForSpeed`, `toTimeValue`
-- Top-level variables:
-  - `foundIndex`, `nextStartIndex`, `state`, `targetTime`
-
-### `packages/web/src/components/vnstockcharts/lib/core/scales/computeScales.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/scales/computeScales.js`
 
 - Functions:
   - `collectAxisExtents`, `computeScales`, `finiteExtent`, `mergeExtents`
 - Top-level variables:
   - `computed`, `definition`, `extents`, `finiteValues`, `flattened`, `hasRightAxis`, `leftScale`, `leftSeriesExtents`, `leftValues`, `maxValue`, `minValue`, `rightScale`, `rightSeriesExtents`, `rightValues`
 
-### `packages/web/src/components/vnstockcharts/lib/core/scales/computeScales.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/core/SeriesPicker.js`
 
 - Functions:
-  - `collectAxisExtents`, `computeScales`, `finiteExtent`, `mergeExtents`
+  - `SeriesPicker`, `buildDefaultSeries`, `formatSeriesLabel`, `handleKeyDown`, `handleMouseDown`, `paramNumber`, `updatePosition`
 - Top-level variables:
-  - `computed`, `definition`, `extents`, `finiteValues`, `flattened`, `hasRightAxis`, `leftScale`, `leftSeriesExtents`, `leftValues`, `maxValue`, `minValue`, `rightScale`, `rightSeriesExtents`, `rightValues`
+  - `SERIES_LABELS`, `active`, `anchor`, `anchorRect`, `base`, `clickInsideAnchor`, `clickInsidePicker`, `container`, `containerRect`, `entry`, `picker`, `pickerRef`, `seriesTypes`, `target`, `value`
 
-### `packages/web/src/components/vnstockcharts/lib/core/SeriesPicker.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/seriesValueResolver.js`
 
 - Functions:
-  - `SeriesPicker`, `buildDefaultSeries`, `handleKeyDown`, `handleMouseDown`, `updatePosition`
+  - `asNumber`, `buildIndicatorSeriesKey`, `numberParam`, `resolveSeriesDatumValue`, `resolveSeriesStructuredValue`, `resolveSeriesValue`, `resolveSeriesValueAccessors`
 - Top-level variables:
-  - `active`, `anchor`, `anchorRect`, `clickInsideAnchor`, `clickInsidePicker`, `container`, `containerRect`, `entry`, `picker`, `pickerRef`, `seriesTypes`, `target`
+  - `key`, `value`, `whale`
 
-### `packages/web/src/components/vnstockcharts/lib/core/SeriesPicker.tsx`
-
-- Functions:
-  - `SeriesPicker`, `buildDefaultSeries`, `handleKeyDown`, `handleMouseDown`, `updatePosition`
-- Top-level variables:
-  - `active`, `anchor`, `anchorRect`, `clickInsideAnchor`, `clickInsidePicker`, `container`, `containerRect`, `entry`, `picker`, `pickerRef`, `seriesTypes`, `target`
-
-### `packages/web/src/components/vnstockcharts/lib/core/seriesValueResolver.js`
-
-- Functions:
-  - `asNumber`, `buildIndicatorSeriesKey`, `exactLegacyValue`, `numberParam`, `resolveSeriesDatumValue`, `resolveSeriesStructuredValue`, `resolveSeriesValue`, `resolveSeriesValueAccessors`
-- Top-level variables:
-  - `fast`, `fastPeriod`, `key`, `m1`, `m2`, `m3`, `m4`, `period`, `signal`, `signalPeriod`, `slow`, `slowPeriod`, `stdDev`, `threshold`, `value`, `whale`
-
-### `packages/web/src/components/vnstockcharts/lib/core/seriesValueResolver.ts`
-
-- Functions:
-  - `asNumber`, `buildIndicatorSeriesKey`, `exactLegacyValue`, `numberParam`, `resolveSeriesDatumValue`, `resolveSeriesStructuredValue`, `resolveSeriesValue`, `resolveSeriesValueAccessors`
-- Top-level variables:
-  - `fast`, `fastPeriod`, `key`, `m1`, `m2`, `m3`, `m4`, `period`, `signal`, `signalPeriod`, `slow`, `slowPeriod`, `stdDev`, `threshold`, `value`, `whale`
-
-### `packages/web/src/components/vnstockcharts/lib/core/sets/__tests__/indicatorSetCodec.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/core/sets/__tests__/indicatorSetCodec.test.js`
 
 - Functions:
   - `createMockStorage`
 - Top-level variables:
   - `exported`, `imported`, `layout`, `loaded`, `next`, `original`, `payload`, `samplePane`, `savedSet`, `set`, `storage`, `value`
 
-### `packages/web/src/components/vnstockcharts/lib/core/sets/builtins.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/sets/builtins.js`
 
 - Top-level variables:
   - `BUILTIN_INDICATOR_SETS`
 
-### `packages/web/src/components/vnstockcharts/lib/core/sets/builtins.ts`
-
-- Top-level variables:
-  - `BUILTIN_INDICATOR_SETS`
-
-### `packages/web/src/components/vnstockcharts/lib/core/sets/indicatorSetCodec.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/sets/indicatorSetCodec.js`
 
 - Functions:
   - `buildIndicatorSetFileName`, `cloneIndicatorSet`, `clonePane`, `cloneSeries`, `createId`, `createIndicatorSet`, `createSeriesId`, `indicatorSetToPaneLayout`, `isPaneDescriptor`, `isPlainObject`, `isSeriesConfig`, `isSeriesTypeId`, `isTooltipMode`, `isYAxisSide`, `loadIndicatorSets`, `sanitizeIndicatorSet`, `sanitizeIndicatorSetsStorage`, `saveIndicatorSets`, `stringifyIndicatorSet`
 - Top-level variables:
   - `allowed`, `byId`, `parsed`, `payload`, `raw`, `sanitized`, `slug`, `stamp`
 
-### `packages/web/src/components/vnstockcharts/lib/core/sets/indicatorSetCodec.ts`
-
-- Functions:
-  - `buildIndicatorSetFileName`, `cloneIndicatorSet`, `clonePane`, `cloneSeries`, `createId`, `createIndicatorSet`, `createSeriesId`, `indicatorSetToPaneLayout`, `isPaneDescriptor`, `isPlainObject`, `isSeriesConfig`, `isSeriesTypeId`, `isTooltipMode`, `isYAxisSide`, `loadIndicatorSets`, `sanitizeIndicatorSet`, `sanitizeIndicatorSetsStorage`, `saveIndicatorSets`, `stringifyIndicatorSet`
-- Top-level variables:
-  - `allowed`, `byId`, `parsed`, `payload`, `raw`, `sanitized`, `slug`, `stamp`
-
-### `packages/web/src/components/vnstockcharts/lib/core/types/__tests__/pane-descriptor.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/core/types/__tests__/pane-descriptor.test.js`
 
 - Top-level variables:
   - `ids`, `sum`, `visible`
 
-### `packages/web/src/components/vnstockcharts/lib/core/types/chart.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/types/chart.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/core/types/chart.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/core/types/index.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/core/types/index.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/types/indicator-catalog.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/core/types/index.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/core/types/indicator-catalog.js`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/core/types/indicator-catalog.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/core/types/indicator-set.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/types/indicator-set.js`
 
 - Top-level variables:
   - `INDICATOR_SETS_STORAGE_KEY`
 
-### `packages/web/src/components/vnstockcharts/lib/core/types/indicator-set.ts`
-
-- Top-level variables:
-  - `INDICATOR_SETS_STORAGE_KEY`
-
-### `packages/web/src/components/vnstockcharts/lib/core/types/pane-descriptor.alias.test.js`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/core/types/pane-descriptor.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/types/pane-descriptor.js`
 
 - Functions:
-  - `isDefaultPaneId`, `normalizeSeriesTypeId`
+  - `isDefaultPaneId`
 - Top-level variables:
-  - `DEFAULT_PANES`, `DEFAULT_PANE_ID_SET`, `LEGACY_SERIES_TYPE_ALIASES`, `PANE_LAYOUT_STORAGE_KEY`, `PANE_MAX_VISIBLE`
+  - `DEFAULT_PANES`, `DEFAULT_PANE_ID_SET`, `PANE_LAYOUT_STORAGE_KEY`, `PANE_MAX_VISIBLE`
 
-### `packages/web/src/components/vnstockcharts/lib/core/types/pane-descriptor.ts`
-
-- Functions:
-  - `isDefaultPaneId`, `normalizeSeriesTypeId`
-- Top-level variables:
-  - `DEFAULT_PANES`, `DEFAULT_PANE_ID_SET`, `LEGACY_SERIES_TYPE_ALIASES`, `PANE_LAYOUT_STORAGE_KEY`, `PANE_MAX_VISIBLE`
-
-### `packages/web/src/components/vnstockcharts/lib/core/types/seriesComponents.js`
+### `packages/web/src/components/vninvestcharts/src/lib/core/types/seriesComponents.js`
 
 - Top-level variables:
   - `SERIES_SUB_COMPONENTS`
 
-### `packages/web/src/components/vnstockcharts/lib/core/types/seriesComponents.ts`
-
-- Top-level variables:
-  - `SERIES_SUB_COMPONENTS`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/actionHandles.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/actionHandles.test.js`
 
 - Functions:
-  - `makeHLine`, `makeScales`, `makeTrendLine`, `makeVLine`
+  - `makeCircle`, `makeHLine`, `makeScales`, `makeTrendLine`, `makeVLine`
 - Top-level variables:
   - `bbox`, `ctx`, `deleteX`, `deleteY`, `drawing`, `hitRadius`, `now`, `result`, `scales`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/abcdPattern.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/AlertNotificationToast.js`
+
+- Functions:
+  - `AlertNotificationToast`, `playAlertChime`
+- Top-level variables:
+  - `AudioContextClass`, `borderLeftColor`, `containerStyle`, `ctx`, `elapsed`, `gain`, `isCrossAbove`, `latest`, `osc`, `remaining`, `timer`, `toastStyle`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/abcdPattern.js`
 
 - Functions:
   - `calculateAbcdPatternMetrics`
 - Top-level variables:
-  - `AbcdPattern`, `ab`, `bc`, `cd`, `points`
+  - `AbcdPattern`, `ab`, `bc`, `cd`, `points`, `priceAB`, `priceBC`, `priceCD`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/abcdPattern.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/abcdPattern.test.js`
 
 - Functions:
-  - `calculateAbcdPatternMetrics`
+  - `flatScale`, `makeAbcd`, `mockScales`
 - Top-level variables:
-  - `AbcdPattern`, `ab`, `bc`, `cd`, `points`
+  - `drawing`, `metrics`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/arrow.js`
-
-- Top-level variables:
-  - `Arrow`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/arrow.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/arrow.js`
 
 - Top-level variables:
   - `Arrow`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/channel.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/barsCount.js`
+
+- Functions:
+  - `arrowhead`, `hitTestBarsCount`, `renderBarsCount`
+- Top-level variables:
+  - `BarsCount`, `ah`, `color`, `fontSize`, `label`, `labelH`, `labelW`, `labelY`, `midX`, `padX`, `tickH`, `x1`, `x2`, `y`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/calloutShape.js`
+
+- Functions:
+  - `dashForStyle`, `distanceToSegment`, `hitTestCallout`, `measureCalloutBox`, `pointInRect`, `renderCallout`
+- Top-level variables:
+  - `CalloutShape`, `box`, `dx`, `dy`, `fontSize`, `height`, `label`, `lengthSquared`, `paddingX`, `paddingY`, `t`, `width`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/channel.js`
 
 - Top-level variables:
   - `Channel`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/channel.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/circleShape.js`
 
+- Functions:
+  - `dashForStyle`, `hitTestCircle`, `renderCircle`
 - Top-level variables:
-  - `Channel`
+  - `CircleShape`, `distance`, `radius`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/cycles.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/cycles.js`
 
 - Functions:
   - `calculateCycleGeometry`
 - Top-level variables:
   - `CyclicLines`, `SineLine`, `TimeCycles`, `amplitude`, `count`, `p1`, `p2`, `pts`, `rawAmp`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/cycles.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/cycles.test.js`
 
 - Functions:
   - `makeDrawing`
 - Top-level variables:
   - `d`, `geo`, `points`, `scales`, `updated`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/cycles.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/dateAndPriceRange.js`
+
+- Top-level variables:
+  - `DateAndPriceRange`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/dateRange.js`
 
 - Functions:
-  - `calculateCycleGeometry`
+  - `hitTestDateRange`, `renderDateRange`
 - Top-level variables:
-  - `CyclicLines`, `SineLine`, `TimeCycles`, `amplitude`, `count`, `p1`, `p2`, `pts`, `rawAmp`
+  - `DateRange`, `ah`, `arrowY`, `bandW`, `fillBase`, `fontSize`, `label`, `labelH`, `labelW`, `lx`, `ly`, `midX`, `padX`, `x1`, `x2`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/dateAndPriceRange.js`
-
-- Top-level variables:
-  - `DateAndPriceRange`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/dateAndPriceRange.ts`
-
-- Top-level variables:
-  - `DateAndPriceRange`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/elliottWaves.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/elliottWaves.js`
 
 - Functions:
   - `calculateElliottWaveGeometry`, `makeElliottTool`
 - Top-level variables:
   - `ELLIOTT_LABELS`, `ELLIOTT_POINT_COUNT`, `ElliottCorrection`, `ElliottDoubleCombo`, `ElliottImpulse`, `ElliottTriangle`, `ElliottTripleCombo`, `labels`, `pixels`, `pointCount`, `waveType`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/elliottWaves.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/elliottWaves.test.js`
 
 - Functions:
   - `makeDrawing`, `makePoint`
 - Top-level variables:
   - `draft`, `drawing`, `geo`, `next`, `points`, `scales`, `start`, `updated`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/elliottWaves.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/ellipseShape.js`
 
 - Functions:
-  - `calculateElliottWaveGeometry`, `makeElliottTool`
+  - `dashForStyle`, `hitTestEllipse`, `renderEllipse`
 - Top-level variables:
-  - `ELLIOTT_LABELS`, `ELLIOTT_POINT_COUNT`, `ElliottCorrection`, `ElliottDoubleCombo`, `ElliottImpulse`, `ElliottTriangle`, `ElliottTripleCombo`, `labels`, `pixels`, `pointCount`, `waveType`
+  - `EllipseShape`, `centerX`, `centerY`, `distance`, `dx`, `dy`, `normalizedTolerance`, `radiusX`, `radiusY`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/extendedLine.js`
-
-- Top-level variables:
-  - `ExtendedLine`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/extendedLine.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/extendedLine.js`
 
 - Top-level variables:
   - `ExtendedLine`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibArc.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/fibArc.js`
 
 - Functions:
   - `calculateFibArcGeometry`
 - Top-level variables:
   - `DEFAULT_FIB_ARC_LEVELS`, `FibArc`, `baseRadius`, `center`, `levels`, `reference`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibArc.ts`
-
-- Functions:
-  - `calculateFibArcGeometry`
-- Top-level variables:
-  - `DEFAULT_FIB_ARC_LEVELS`, `FibArc`, `baseRadius`, `center`, `levels`, `reference`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibExtended.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/fibExtended.js`
 
 - Functions:
   - `calculateFibExtendedGeometry`, `createTool`
 - Top-level variables:
   - `FIB_EXTENDED_LEVELS`, `FIB_FAN_RATIOS`, `FibChannel`, `FibCircles`, `FibSpeedResistanceArcs`, `FibSpeedResistanceFan`, `FibSpiral`, `FibWedge`, `Pitchfan`, `THREE_POINT`, `TWO_POINT`, `TrendBasedFibTime`, `p1`, `p2`, `p3`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibExtended.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/fibExtended.test.js`
 
 - Functions:
   - `makeDrawing`
 - Top-level variables:
   - `d`, `draft`, `geo`, `points`, `scales`, `start`, `updated`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibExtended.ts`
-
-- Functions:
-  - `calculateFibExtendedGeometry`, `createTool`
-- Top-level variables:
-  - `FIB_EXTENDED_LEVELS`, `FIB_FAN_RATIOS`, `FibChannel`, `FibCircles`, `FibSpeedResistanceArcs`, `FibSpeedResistanceFan`, `FibSpiral`, `FibWedge`, `Pitchfan`, `THREE_POINT`, `TWO_POINT`, `TrendBasedFibTime`, `p1`, `p2`, `p3`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibExtension.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/fibExtension.js`
 
 - Top-level variables:
   - `DEFAULT_FIB_EXTENSION_CONFIGS`, `FibExtension`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibExtension.ts`
-
-- Top-level variables:
-  - `DEFAULT_FIB_EXTENSION_CONFIGS`, `FibExtension`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibonacci.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/fibonacci.js`
 
 - Top-level variables:
   - `DEFAULT_FIB_LEVEL_CONFIGS`, `Fibonacci`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibonacci.ts`
-
-- Top-level variables:
-  - `DEFAULT_FIB_LEVEL_CONFIGS`, `Fibonacci`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibTimeZone.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/fibTimeZone.js`
 
 - Functions:
   - `calculateFibTimeZoneGeometry`
 - Top-level variables:
   - `DEFAULT_FIB_TIME_ZONE_LEVELS`, `FibTimeZone`, `end`, `levels`, `start`, `stepX`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/fibTimeZone.ts`
-
-- Functions:
-  - `calculateFibTimeZoneGeometry`
-- Top-level variables:
-  - `DEFAULT_FIB_TIME_ZONE_LEVELS`, `FibTimeZone`, `end`, `levels`, `start`, `stepX`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/gannAdvanced.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/gannAdvanced.js`
 
 - Functions:
   - `calculateGannAdvancedGeometry`
 - Top-level variables:
   - `GANN_FRACTIONS`, `GannBox`, `GannSquare`, `GannSquareFixed`, `p1`, `p2`, `side`, `size`, `sizeInPx`, `x2`, `y2`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/gannAdvanced.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/gannAdvanced.test.js`
 
 - Functions:
   - `makeDrawing`
 - Top-level variables:
   - `d`, `draft`, `geo`, `h`, `points`, `scales`, `updated`, `w`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/gannAdvanced.ts`
-
-- Functions:
-  - `calculateGannAdvancedGeometry`
-- Top-level variables:
-  - `GANN_FRACTIONS`, `GannBox`, `GannSquare`, `GannSquareFixed`, `p1`, `p2`, `side`, `size`, `sizeInPx`, `x2`, `y2`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/gannFan.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/gannFan.js`
 
 - Functions:
   - `calculateGannFanGeometry`, `clampToBoundary`
 - Top-level variables:
   - `GANN_RATIOS`, `GannFan`, `dx`, `dy`, `lines`, `t`, `tMax`, `tx`, `ty`, `unitBarX`, `unitPriceY`, `vx`, `vy`, `x2`, `y2`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/gannFan.ts`
-
-- Functions:
-  - `calculateGannFanGeometry`, `clampToBoundary`
-- Top-level variables:
-  - `GANN_RATIOS`, `GannFan`, `dx`, `dy`, `lines`, `t`, `tMax`, `tx`, `ty`, `unitBarX`, `unitPriceY`, `vx`, `vy`, `x2`, `y2`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/harmonicPatterns.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/harmonicPatterns.js`
 
 - Functions:
   - `calculateHarmonicPatternGeometry`, `makeHarmonicTool`
 - Top-level variables:
   - `CypherPattern`, `HeadAndShoulders`, `PATTERN_HAS_CLOSING_LINE`, `PATTERN_POINT_COUNT`, `PATTERN_POINT_LABELS`, `ThreeDrivesPattern`, `TrianglePattern`, `XabcdPattern`, `hasClosingLine`, `labels`, `patternType`, `pixels`, `pointCount`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/harmonicPatterns.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/harmonicPatterns.test.js`
 
 - Functions:
   - `makeDrawing`, `makePoint`
 - Top-level variables:
   - `draft`, `drawing`, `geo`, `next`, `points`, `scales`, `start`, `updated`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/harmonicPatterns.ts`
-
-- Functions:
-  - `calculateHarmonicPatternGeometry`, `makeHarmonicTool`
-- Top-level variables:
-  - `CypherPattern`, `HeadAndShoulders`, `PATTERN_HAS_CLOSING_LINE`, `PATTERN_POINT_COUNT`, `PATTERN_POINT_LABELS`, `ThreeDrivesPattern`, `TrianglePattern`, `XabcdPattern`, `hasClosingLine`, `labels`, `patternType`, `pixels`, `pointCount`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/hLine.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/hLine.js`
 
 - Top-level variables:
   - `HLine`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/hLine.ts`
-
-- Top-level variables:
-  - `HLine`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/longPosition.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/longPosition.js`
 
 - Functions:
   - `calculateRiskReward`
 - Top-level variables:
   - `LongPosition`, `updated`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/longPosition.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/measurement.test.js`
 
-- Functions:
-  - `calculateRiskReward`
 - Top-level variables:
-  - `LongPosition`, `updated`
+  - `draft`, `p0`, `p1`, `updated`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/parallelChannel.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/parallelChannel.js`
 
 - Functions:
   - `calculateParallelChannelGeometry`
 - Top-level variables:
   - `ParallelChannel`, `dx`, `dy`, `end`, `length`, `normal`, `offsetAnchor`, `offsetDistance`, `start`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/parallelChannel.ts`
-
-- Functions:
-  - `calculateParallelChannelGeometry`
-- Top-level variables:
-  - `ParallelChannel`, `dx`, `dy`, `end`, `length`, `normal`, `offsetAnchor`, `offsetDistance`, `start`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/pitchfork.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/pitchfork.js`
 
 - Functions:
   - `calculatePitchforkGeometry`
 - Top-level variables:
   - `Pitchfork`, `leftSwing`, `midpoint`, `pivot`, `rightSwing`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/pitchfork.ts`
-
-- Functions:
-  - `calculatePitchforkGeometry`
-- Top-level variables:
-  - `Pitchfork`, `leftSwing`, `midpoint`, `pivot`, `rightSwing`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/polyline.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/polyline.js`
 
 - Top-level variables:
   - `Polyline`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/polyline.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/priceLabelShape.js`
 
+- Functions:
+  - `distanceToSegment`, `hitTestPriceLabel`, `measurePriceLabelTag`, `pointInRect`, `renderPriceLabel`
 - Top-level variables:
-  - `Polyline`
+  - `PriceLabelShape`, `dx`, `dy`, `fontSize`, `height`, `label`, `lengthSquared`, `paddingX`, `paddingY`, `t`, `tag`, `tagY`, `width`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/ray.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/priceRange.js`
+
+- Functions:
+  - `hitTestPriceRange`, `renderPriceRange`
+- Top-level variables:
+  - `PriceRange`, `bandH`, `fillBase`, `fontSize`, `isUp`, `label`, `labelH`, `labelW`, `lx`, `ly`, `midY`, `padX`, `rx`, `ry`, `y1`, `y2`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/ray.js`
 
 - Top-level variables:
   - `Ray`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/ray.ts`
-
-- Top-level variables:
-  - `Ray`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/rectangle.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/rectangle.js`
 
 - Top-level variables:
   - `Rectangle`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/rectangle.ts`
-
-- Top-level variables:
-  - `Rectangle`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/regressionChannel.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/regressionChannel.js`
 
 - Functions:
-  - `calculateRegressionChannelMetrics`, `toTimeValue`
+  - `calculateRegressionChannelMetrics`, `projectIndexX`, `toTimeValue`
 - Top-level variables:
   - `RegressionChannel`, `barTime`, `bars`, `closes`, `denominator`, `end`, `endPrice`, `endTime`, `endX`, `intercept`, `leftBar`, `meanY`, `n`, `rSquared`, `residuals`, `rightBar`, `slope`, `ssRes`, `ssTot`, `start`, `startPrice`, `startTime`, `startX`, `stdDev`, `sumX`, `sumXX`, `sumXY`, `sumY`, `xs`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/regressionChannel.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/shapes.test.js`
 
-- Functions:
-  - `calculateRegressionChannelMetrics`, `toTimeValue`
 - Top-level variables:
-  - `RegressionChannel`, `barTime`, `bars`, `closes`, `denominator`, `end`, `endPrice`, `endTime`, `endX`, `intercept`, `leftBar`, `meanY`, `n`, `rSquared`, `residuals`, `rightBar`, `slope`, `ssRes`, `ssTot`, `start`, `startPrice`, `startTime`, `startX`, `stdDev`, `sumX`, `sumXX`, `sumXY`, `sumY`, `xs`
+  - `box`, `draft`, `tag`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/shortPosition.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/shortPosition.js`
 
 - Functions:
   - `calculateRiskReward`
 - Top-level variables:
   - `ShortPosition`, `updated`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/shortPosition.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/text.js`
+
+- Top-level variables:
+  - `Text`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/trendLine.js`
+
+- Top-level variables:
+  - `TrendLine`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/triangleShape.js`
 
 - Functions:
-  - `calculateRiskReward`
+  - `dashForStyle`, `distanceToSegment`, `hitTestTriangle`, `pointInTriangle`, `renderTriangle`, `sign`
 - Top-level variables:
-  - `ShortPosition`, `updated`
+  - `TriangleShape`, `d1`, `d2`, `d3`, `dx`, `dy`, `hasNegative`, `hasPositive`, `lengthSquared`, `t`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/text.js`
-
-- Top-level variables:
-  - `Text`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/text.ts`
-
-- Top-level variables:
-  - `Text`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/trendLine.js`
-
-- Top-level variables:
-  - `TrendLine`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/trendLine.ts`
-
-- Top-level variables:
-  - `TrendLine`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/vLine.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/builtin/vLine.js`
 
 - Top-level variables:
   - `VLine`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/builtin/vLine.ts`
-
-- Top-level variables:
-  - `VLine`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/clipboard.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/clipboard.js`
 
 - Functions:
   - `cloneDrawingSnapshot`, `offsetDrawingByPixels`
 - Top-level variables:
   - `now`, `snapshot`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/clipboard.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/clipboard.test.js`
 
 - Top-level variables:
   - `drawing`, `offset`, `snapshot`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/clipboard.ts`
-
-- Functions:
-  - `cloneDrawingSnapshot`, `offsetDrawingByPixels`
-- Top-level variables:
-  - `now`, `snapshot`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/contextMenu.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/contextMenu.js`
 
 - Functions:
   - `DrawingContextMenu`, `handleKeyDown`, `resolvePalette`
 - Top-level variables:
-  - `backdropStyle`, `itemListStyle`, `overlayStyle`, `palette`, `panelStyle`, `titleStyle`
+  - `backdropStyle`, `isCompactViewport`, `itemListStyle`, `overlayStyle`, `palette`, `panelStyle`, `titleStyle`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/contextMenu.test.tsx`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/contextMenu.test.js`
 
 - Top-level variables:
-  - `button`, `container`, `onClose`, `onSelect`, `reactActEnvironment`, `root`
+  - `button`, `container`, `menu`, `onClose`, `onSelect`, `originalInnerWidth`, `reactActEnvironment`, `root`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/contextMenu.tsx`
-
-- Functions:
-  - `DrawingContextMenu`, `handleKeyDown`, `resolvePalette`
-- Top-level variables:
-  - `backdropStyle`, `itemListStyle`, `overlayStyle`, `palette`, `panelStyle`, `titleStyle`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/coordinateBridge.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/coordinateBridge.js`
 
 - Functions:
   - `buildRenderScalesFromBridge`, `chartPointToPixelWithBridge`, `fromBridgePixel`, `isFiniteNumber`, `measurementPointToPixelWithBridge`, `resolveChartPointWithBridge`, `resolveMeasurementPointWithBridge`, `resolveReferenceDate`, `resolveReferencePrice`, `toBridgePixel`, `toDate`
 - Top-level variables:
-  - `bridgeReferencePixel`, `candidates`, `pixel`, `pixelOffset`, `referenceDate`, `referencePixel`, `referencePoint`, `referencePrice`, `resolved`
+  - `bridgeReferencePixel`, `candidates`, `pixel`, `pixelOffset`, `referenceDate`, `referencePixel`, `referencePoint`, `referencePrice`, `referenceTimeMs`, `resolved`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/coordinateBridge.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/coordinateBridge.test.js`
 
-- Functions:
-  - `buildRenderScalesFromBridge`, `chartPointToPixelWithBridge`, `isFiniteNumber`, `measurementPointToPixelWithBridge`, `resolveChartPointWithBridge`, `resolveMeasurementPointWithBridge`, `resolveReferenceDate`, `resolveReferencePrice`, `toBridgePixel`, `toDate`
 - Top-level variables:
-  - `bridgeReferencePixel`, `candidates`, `fromBridgePixel`, `pixel`, `pixelOffset`, `referenceDate`, `referencePixel`, `referencePoint`, `referencePrice`, `resolved`
+  - `bridge`, `pixel`, `scales`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/coordinateUtils.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/coordinateUtils.js`
 
 - Functions:
   - `chartPointToPixel`, `pixelToChartPoint`
 - Top-level variables:
-  - `localX`, `localY`
+  - `anchor`, `localX`, `localY`, `x`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/coordinateUtils.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/coordinateUtils.test.js`
 
 - Top-level variables:
   - `containerRect`, `pixel`, `point`, `scales`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/coordinateUtils.ts`
-
-- Functions:
-  - `chartPointToPixel`, `pixelToChartPoint`
-- Top-level variables:
-  - `localX`, `localY`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/drawing.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/drawing.test.js`
 
 - Functions:
   - `createTextObject`, `createTrendLineObject`
 - Top-level variables:
-  - `arrow`, `completeState`, `draft`, `drawing`, `drawingState`, `editingState`, `first`, `history`, `initialHistory`, `movingState`, `nextPoint`, `pushedHistory`, `rectangle`, `redoneHistory`, `resizingState`, `second`, `selectedState`, `serializedDrawing`, `serializedDrawings`, `serializedHistory`, `startPoint`, `text`, `tool`, `toolNames`, `trendLine`, `undoneHistory`, `updatedDraft`, `updatedState`
+  - `arrow`, `completeState`, `draft`, `drawing`, `drawingState`, `editingState`, `first`, `history`, `imported`, `initialHistory`, `movingState`, `nextPoint`, `pushedHistory`, `rectangle`, `redoneHistory`, `resizingState`, `second`, `selectedState`, `serializedDrawing`, `serializedDrawings`, `serializedHistory`, `startPoint`, `text`, `tool`, `toolNames`, `trendLine`, `undoneHistory`, `updatedDraft`, `updatedState`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/drawingAlerts.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/drawingActionSurface.js`
+
+- Functions:
+  - `createDrawingContextMenuItems`
+- Top-level variables:
+  - `items`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/drawingActionSurface.test.js`
+
+- Top-level variables:
+  - `callbacks`, `drawing`, `items`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/drawingAlerts.test.js`
 
 - Functions:
   - `makeHLine`
 - Top-level variables:
-  - `drawing`, `events`, `now`
+  - `drawing`, `events`, `events1`, `events2`, `now`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/DrawingInspector.js`
-
-- Functions:
-  - `DrawingAlertPanel`, `addNewFibLevel`, `dashPatternFromStyle`, `isColorString`, `setCondition`, `toggleEnabled`, `updateStyle`
-- Top-level variables:
-  - `condition`, `configs`, `cooldownSec`, `direction`, `effectiveDrawing`, `enabled`, `labelText`, `left`, `locked`, `newLevelInputRef`, `next`, `parsed`, `strokeDasharray`, `style`, `top`, `updated`, `visible`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/DrawingInspector.test.tsx`
-
-- Top-level variables:
-  - `buttons`, `cancelButton`, `checkedRadio`, `container`, `drawing`, `editButton`, `extendedRadio`, `flags`, `labels`, `lineTypeLabels`, `onCancel`, `onChange`, `onCommit`, `onStartEdit`, `onUpdate`, `radios`, `reactActEnvironment`, `root`, `saveButton`, `strokeInput`, `textLabels`, `textarea`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/DrawingInspector.tsx`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/drawingInteractionBridge.js`
 
 - Functions:
-  - `DrawingAlertPanel`, `addNewFibLevel`, `dashPatternFromStyle`, `isColorString`, `setCondition`, `toggleEnabled`, `updateStyle`
+  - `createDrawingFrameSnapshot`, `createDrawingInteractionCommand`, `findHitDrawingWithContext`, `findSnapPointWithContext`, `hitTestDrawingWithContext`, `normalizePointerDeviceType`, `resolveDrawingInteractionContext`, `resolveDrawingManipulationIntentWithContext`, `resolveDrawingPointWithContext`, `sortVisibleDrawings`
 - Top-level variables:
-  - `condition`, `configs`, `cooldownSec`, `direction`, `effectiveDrawing`, `enabled`, `labelText`, `left`, `locked`, `newLevelInputRef`, `next`, `parsed`, `strokeDasharray`, `style`, `top`, `updated`, `visible`
+  - `chartPoint`, `command`, `offsetX`, `offsetY`, `orderedDrawings`, `renderScales`, `resizeHandleIndex`, `snap`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/drawingInteractionBridge.js`
-
-- Functions:
-  - `findHitDrawingWithContext`, `findSnapPointWithContext`, `hitTestDrawingWithContext`, `resolveDrawingInteractionContext`, `resolveDrawingPointWithContext`, `sortVisibleDrawings`
-- Top-level variables:
-  - `chartPoint`, `offsetX`, `offsetY`, `orderedDrawings`, `renderScales`, `snap`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/drawingInteractionBridge.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/drawingInteractionBridge.test.js`
 
 - Functions:
   - `createBridge`
 - Top-level variables:
-  - `bridge`, `context`, `hoverContext`, `line`, `plotData`, `resolved`, `snap`, `snapContext`, `trend`, `xScale`, `yScale`
+  - `bridge`, `command`, `context`, `frame`, `hoverContext`, `line`, `missContext`, `moveContext`, `plotData`, `pointer`, `resizeContext`, `resolved`, `snap`, `snapContext`, `trend`, `xScale`, `yScale`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/drawingInteractionBridge.ts`
-
-- Functions:
-  - `findHitDrawingWithContext`, `findSnapPointWithContext`, `hitTestDrawingWithContext`, `resolveDrawingInteractionContext`, `resolveDrawingPointWithContext`, `sortVisibleDrawings`
-- Top-level variables:
-  - `chartPoint`, `offsetX`, `offsetY`, `orderedDrawings`, `renderScales`, `snap`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/DrawingLayer.hover.test.tsx`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/DrawingLayer.hover.test.js`
 
 - Top-level variables:
   - `actual`, `baseChartConfig`, `baseMoreProps`, `capturedProps`, `container`, `drawing`, `interaction`, `momentumChartConfig`, `onToolUsed`, `reactActEnvironment`, `root`, `xScale`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/DrawingLayer.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/DrawingLayer.js`
 
 - Functions:
-  - `calculatePositionRiskReward`, `constrainResizePoint`, `currentDrawing`, `findHitDrawing`, `getSelectedDrawingId`, `getVisibleDrawings`, `handleKeyDown`, `handleModifierKeyChange`, `handlePointerUp`, `handleSelect`, `hasRemainingPlaceholder`, `isMultiStepTool`, `resetSelectionModifier`, `resizeDrawing`, `resizeDrawingsByIds`, `resolveDrawingInteractionContextForDrawing`, `resolveDrawingInteractionContextFromMoreProps`, `sortVisibleDrawings`, `syncSelectionModifierPressed`, `toDrawingPoint`, `translateDrawing`, `translateDrawingsByIds`, `withChartTranslation`
+  - `calculatePositionRiskReward`, `constrainResizePoint`, `currentDrawing`, `findHitDrawing`, `getSelectedDrawingId`, `getVisibleDrawings`, `handleKeyDown`, `handleModifierKeyChange`, `handlePointerUp`, `handleSelect`, `isMultiStepTool`, `resetSelectionModifier`, `resizeDrawing`, `resizeDrawingsByIds`, `resolveDrawingInteractionContextForDrawing`, `resolveDrawingInteractionContextFromMoreProps`, `sortVisibleDrawings`, `syncSelectionModifierPressed`, `toDrawingPoint`, `translateDrawing`, `translateDrawingsByIds`, `withChartTranslation`
 - Top-level variables:
-  - `MEASURE_TOOLS`, `actionHandle`, `allIds`, `anchorIndex`, `anchorPoint`, `barsText`, `base`, `baseChartConfig`, `baseDrawings`, `bridge`, `canDragSelectedDrawing`, `canGroupDrag`, `canvasOptions`, `chartConfig`, `chartCursorClass`, `cloned`, `completed`, `constrainedPoint`, `context`, `currentChartPoint`, `deltaX`, `deltaY`, `draft`, `draftChartConfig`, `draftObj`, `dragPreviewRef`, `dragSessionRef`, `draggableIds`, `drawToCanvas`, `drawings`, `dx`, `dy`, `handleClick`, `handleContextMenu`, `handleDoubleClick`, `handleDrag`, `handleDragComplete`, `handleDragStart`, `handleHover`, `handleMouseDown`, `handleMouseMove`, `handleUnHover`, `hit`, `interactionRef`, `isHover`, `lastMovePropsRef`, `matchingIds`, `measurement`, `midX`, `midY`, `modifierEvent`, `moreProps`, `nativeDown`, `nativeEvent`, `nextSelectedIds`, `p0`, `p1`, `pctText`, `pendingResizeHandleRef`, `pointerDeviceRef`, `previewDrawings`, `priceDeltaText`, `pt`, `rect`, `renderScales`, `resizeHandleIndex`, `resized`, `resolved`, `rubberBandJustCommittedRef`, `rubberBandRef`, `selectedCursorClass`, `selectedDrawing`, `selectedDrawingId`, `selectedObjectIdSet`, `selectedObjectIds`, `session`, `shouldDisablePan`, `shouldDisablePanOnMouseDown`, `sign`, `snap`, `snapRef`, `startChartPoint`, `startPoint`, `targetIndex`, `tool`, `toolName`, `updated`, `xy`
+  - `MEASURE_TOOLS`, `actionHandle`, `allIds`, `anchorIndex`, `anchorPoint`, `anchorTimeMsHint`, `anchorX`, `anchorY`, `anchorYPrice`, `barsText`, `base`, `baseChartConfig`, `baseDrawings`, `bridge`, `canDragSelectedDrawing`, `canGroupDrag`, `canvasOptions`, `chartConfig`, `chartCursorClass`, `chartWidth`, `clampChartConfig`, `clampedPoint`, `cloned`, `completed`, `constrainedPoint`, `context`, `ctx`, `ctx2`, `currentChartPoint`, `currentDrawingState`, `currentPoint`, `deltaX`, `deltaY`, `draft`, `draftChartConfig`, `draftObj`, `dragPreviewRef`, `dragSessionRef`, `draggableIds`, `drawToCanvas`, `drawingStateRef`, `drawings`, `dx`, `dy`, `finalUpdated`, `handleClick`, `handleContextMenu`, `handleDoubleClick`, `handleDrag`, `handleDragComplete`, `handleDragStart`, `handleHover`, `handleIndex`, `handleMouseDown`, `handleMouseMove`, `handleUnHover`, `hasInvalidPoints`, `hit`, `hoveredSemanticHandleIdxRef`, `interactionRef`, `isHover`, `lastIndex`, `lastMovePropsRef`, `leftHeadroom`, `matchingIds`, `measurement`, `midX`, `midY`, `modifierEvent`, `moreProps`, `nativeClick`, `nativeDown`, `nativeEvent`, `newIdx`, `nextInteriorIdx`, `nextSelectedIds`, `normalizedPoint`, `p0`, `p1`, `pctText`, `pendingResizeHandleRef`, `pointerDeviceRef`, `previewDrawings`, `priceDeltaText`, `pt`, `px`, `py`, `rect`, `renderScales`, `resizeCtx`, `resizeHandleIndex`, `resized`, `resolved`, `rightHeadroom`, `rubberBandJustCommittedRef`, `rubberBandRef`, `selectedCursorClass`, `selectedDrawing`, `selectedDrawingId`, `selectedObjectIdSet`, `selectedObjectIds`, `session`, `shouldDisablePan`, `shouldDisablePanOnMouseDown`, `sign`, `snap`, `snapRef`, `startChartPoint`, `startPoint`, `targetIndex`, `tool`, `toolName`, `updated`, `xMax`, `xMaxR`, `xMin`, `xMinR`, `xy`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/DrawingLayer.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/DrawingLayer.test.js`
 
 - Top-level variables:
-  - `line`, `moved`, `nextDrawings`, `position`, `untouched`
+  - `hLine`, `line`, `moved`, `nextDrawings`, `position`, `trendLine`, `untouched`, `vLine`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/DrawingLayer.tsx`
-
-- Functions:
-  - `calculatePositionRiskReward`, `constrainResizePoint`, `currentDrawing`, `findHitDrawing`, `getSelectedDrawingId`, `getVisibleDrawings`, `handleKeyDown`, `handleModifierKeyChange`, `handlePointerUp`, `handleSelect`, `hasRemainingPlaceholder`, `isMultiStepTool`, `resetSelectionModifier`, `resizeDrawing`, `resizeDrawingsByIds`, `resolveDrawingInteractionContextForDrawing`, `resolveDrawingInteractionContextFromMoreProps`, `sortVisibleDrawings`, `syncSelectionModifierPressed`, `toDrawingPoint`, `translateDrawing`, `translateDrawingsByIds`, `withChartTranslation`
-- Top-level variables:
-  - `MEASURE_TOOLS`, `actionHandle`, `allIds`, `anchorIndex`, `anchorPoint`, `barsText`, `base`, `baseChartConfig`, `baseDrawings`, `bridge`, `canDragSelectedDrawing`, `canGroupDrag`, `canvasOptions`, `chartConfig`, `chartCursorClass`, `cloned`, `completed`, `constrainedPoint`, `context`, `currentChartPoint`, `deltaX`, `deltaY`, `draft`, `draftChartConfig`, `draftObj`, `dragPreviewRef`, `dragSessionRef`, `draggableIds`, `drawToCanvas`, `drawings`, `dx`, `dy`, `handleClick`, `handleContextMenu`, `handleDoubleClick`, `handleDrag`, `handleDragComplete`, `handleDragStart`, `handleHover`, `handleMouseDown`, `handleMouseMove`, `handleUnHover`, `hit`, `interactionRef`, `isHover`, `lastMovePropsRef`, `matchingIds`, `measurement`, `midX`, `midY`, `modifierEvent`, `moreProps`, `nativeDown`, `nativeEvent`, `nextSelectedIds`, `p0`, `p1`, `pctText`, `pendingResizeHandleRef`, `pointerDeviceRef`, `previewDrawings`, `priceDeltaText`, `pt`, `rect`, `renderScales`, `resizeHandleIndex`, `resized`, `resolved`, `rubberBandJustCommittedRef`, `rubberBandRef`, `selectedCursorClass`, `selectedDrawing`, `selectedDrawingId`, `selectedObjectIdSet`, `selectedObjectIds`, `session`, `shouldDisablePan`, `shouldDisablePanOnMouseDown`, `sign`, `snap`, `snapRef`, `startChartPoint`, `startPoint`, `targetIndex`, `tool`, `toolName`, `updated`, `xy`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/DrawingListPanel.js`
-
-- Functions:
-  - `formatTimestamp`, `generateDrawingLabel`, `loadCollapsedGroups`, `saveCollapsedGroups`
-- Top-level variables:
-  - `STORAGE_KEY`, `TOOL_LABELS`, `existing`, `groupLabel`, `grouped`, `isCollapsed`, `isHidden`, `isLocked`, `isSelected`, `left`, `map`, `next`, `parsed`, `raw`, `toggleGroup`, `top`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/drawingListPanel.test.ts`
-
-- Functions:
-  - `makeDrawing`
-- Top-level variables:
-  - `d`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/DrawingListPanel.tsx`
-
-- Functions:
-  - `formatTimestamp`, `generateDrawingLabel`, `loadCollapsedGroups`, `saveCollapsedGroups`
-- Top-level variables:
-  - `STORAGE_KEY`, `TOOL_LABELS`, `existing`, `groupLabel`, `grouped`, `isCollapsed`, `isHidden`, `isLocked`, `isSelected`, `left`, `map`, `next`, `parsed`, `raw`, `toggleGroup`, `top`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/DrawingStorage.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/DrawingStorage.js`
 
 - Classes:
   - `DrawingImportError`
 - Functions:
-  - `createLocalStorageAdapter`, `getStorage`, `getStorageKey`, `isCycleParams`, `isDrawingType`, `isFibLevelConfig`, `isHarmonicRatioConfig`, `isPoint`, `isRecord`, `isRiskReward`, `isStyle`, `migrateFibLevelConfigs`, `normalizeDasharray`, `normalizeDrawingObject`, `normalizeDrawings`, `parseAlertCondition`
+  - `cloneNormalizedPoint`, `createLocalStorageAdapter`, `createRESTStorageAdapter`, `getStorage`, `getStorageKey`, `isCycleParams`, `isDrawingType`, `isFibLevelConfig`, `isHarmonicRatioConfig`, `isPoint`, `isRecord`, `isRiskReward`, `isStyle`, `migrateFibLevelConfigs`, `normalizeDasharray`, `normalizeDrawingObject`, `normalizeDrawings`, `parseAlertCondition`
 - Top-level variables:
-  - `DRAWING_TOOL_TYPES`, `converted`, `cooldownMs`, `createdAt`, `direction`, `enabled`, `normalized`, `parsed`, `raw`, `style`, `triggeredAt`, `updatedAt`, `validDirections`
+  - `DEFAULT_DRAWING_STORAGE_KEY_PREFIX`, `DRAWING_TOOL_TYPES`, `converted`, `cooldownMs`, `createdAt`, `data`, `direction`, `enabled`, `headers`, `normalized`, `parsed`, `raw`, `response`, `style`, `triggeredAt`, `updatedAt`, `validDirections`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/DrawingStorage.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/DrawingStorage.test.js`
 
 - Functions:
   - `createStorageMock`
 - Top-level variables:
-  - `adapter`, `drawing`, `payload`, `store`
+  - `adapter`, `drawing`, `drawings`, `loaded`, `mockResponse`, `payload`, `restAdapter`, `store`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/DrawingStorage.ts`
-
-- Classes:
-  - `DrawingImportError`
-- Functions:
-  - `createLocalStorageAdapter`, `getStorage`, `getStorageKey`, `isCycleParams`, `isDrawingType`, `isFibLevelConfig`, `isHarmonicRatioConfig`, `isPoint`, `isRecord`, `isRiskReward`, `isStyle`, `migrateFibLevelConfigs`, `normalizeDasharray`, `normalizeDrawingObject`, `normalizeDrawings`, `parseAlertCondition`
-- Top-level variables:
-  - `DRAWING_TOOL_TYPES`, `converted`, `cooldownMs`, `createdAt`, `direction`, `enabled`, `normalized`, `parsed`, `raw`, `style`, `triggeredAt`, `updatedAt`, `validDirections`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/drawingStyleRegistry.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/drawingStyleRegistry.js`
 
 - Functions:
-  - `applyDrawingTemplate`, `clearDrawingStyleOverride`, `clearDrawingStyleOverrides`, `clearDrawingTemplate`, `cloneDrawingStyleOverride`, `dashPatternToStrokeDasharray`, `getDrawingStyleOverride`, `listDrawingStyleOverrides`, `loadDrawingTemplate`, `normalizeDrawingStyleOverride`, `notifyAllDrawingStyleChanges`, `notifyDrawingStyleChange`, `overrideDrawingStyle`, `resolveDrawingStyle`, `saveDrawingTemplate`, `subscribeDrawingStyle`, `subscribeDrawingStyleChanges`, `validateDrawingStyleTemplate`
+  - `applyDrawingTemplate`, `applyDrawingTemplateToDrawing`, `clearDrawingStyleOverride`, `clearDrawingStyleOverrides`, `clearDrawingTemplate`, `cloneDrawingSegmentStylesTemplate`, `cloneDrawingSegmentVisibleTemplate`, `cloneDrawingStyleOverride`, `cloneDrawingTemplateData`, `dashPatternToStrokeDasharray`, `getDrawingStyleOverride`, `listDrawingStyleOverrides`, `loadDrawingTemplate`, `loadDrawingTemplateData`, `mergeDrawingSegmentStyles`, `normalizeDrawingStyleOverride`, `notifyAllDrawingStyleChanges`, `notifyDrawingStyleChange`, `overrideDrawingStyle`, `resolveDrawingStyle`, `saveDrawingTemplate`, `subscribeDrawingStyle`, `subscribeDrawingStyleChanges`, `validateDrawingSegmentStylesTemplate`, `validateDrawingSegmentVisibleTemplate`, `validateDrawingStyleTemplate`, `validateDrawingTemplateData`
 - Top-level variables:
-  - `HEX_COLOR_RE`, `TEMPLATE_STORAGE_KEY_PREFIX`, `current`, `dashPattern`, `drawingStyleChangeListeners`, `drawingStyleListeners`, `drawingStyleOverrides`, `listeners`, `normalized`, `obj`, `override`, `parsed`, `raw`, `result`, `template`, `valid`, `validated`
+  - `HEX_COLOR_RE`, `TEMPLATE_STORAGE_KEY_PREFIX`, `current`, `dashPattern`, `directStyle`, `drawingStyleChangeListeners`, `drawingStyleListeners`, `drawingStyleOverrides`, `keys`, `listeners`, `merged`, `normalized`, `obj`, `override`, `parsed`, `payload`, `raw`, `result`, `segmentStyles`, `segmentVisible`, `style`, `template`, `valid`, `validated`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/drawingStyleRegistry.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/drawingStyleRegistry.test.js`
 
 - Top-level variables:
   - `drawing`, `global`, `perDrawing`, `unsubscribeGlobal`, `unsubscribeInstance`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/drawingStyleRegistry.ts`
-
-- Functions:
-  - `applyDrawingTemplate`, `clearDrawingStyleOverride`, `clearDrawingStyleOverrides`, `clearDrawingTemplate`, `cloneDrawingStyleOverride`, `dashPatternToStrokeDasharray`, `getDrawingStyleOverride`, `listDrawingStyleOverrides`, `loadDrawingTemplate`, `normalizeDrawingStyleOverride`, `notifyAllDrawingStyleChanges`, `notifyDrawingStyleChange`, `overrideDrawingStyle`, `resolveDrawingStyle`, `saveDrawingTemplate`, `subscribeDrawingStyle`, `subscribeDrawingStyleChanges`, `validateDrawingStyleTemplate`
-- Top-level variables:
-  - `HEX_COLOR_RE`, `TEMPLATE_STORAGE_KEY_PREFIX`, `current`, `dashPattern`, `drawingStyleChangeListeners`, `drawingStyleListeners`, `drawingStyleOverrides`, `listeners`, `normalized`, `obj`, `override`, `parsed`, `raw`, `result`, `template`, `valid`, `validated`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/drawingTemplate.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/drawingTemplate.test.js`
 
 - Functions:
   - `localStorageMock`
 - Top-level variables:
-  - `base`, `loaded`, `result`, `saved`, `store`, `style`
+  - `applied`, `base`, `data`, `draft`, `exported`, `loaded`, `result`, `saved`, `store`, `storeKeys`, `style`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/engineCompat.js`
-
-- Functions:
-  - `applyCanvasStyle`, `deleteDrawingGroup`, `distanceSquared`, `drawArrowHead`, `drawLine`, `drawRectangle`, `drawText`, `findNearestOverlayEndpointSnap`, `isFiniteNumber`, `measurementPointToPixelFromScales`, `renderOverlayPrimitiveToCanvas`, `resolveDasharray`, `resolveDrawingGroupMemberIds`, `resolveMeasurementPointFromValues`, `summarizeMeasurement`, `toDate`
-- Top-level variables:
-  - `MAGNET_TOLERANCE`, `angle`, `bestDate`, `bestDistance`, `bestIndex`, `bestMatch`, `candidateDate`, `candidateTime`, `chartHeight`, `chartWidth`, `distance`, `dx`, `dy`, `height`, `left`, `priceDelta`, `size`, `targetTime`, `toleranceSquared`, `top`, `width`, `x`, `y`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/engineCompat.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/drawingTemplateStorage.js`
 
 - Functions:
-  - `applyCanvasStyle`, `deleteDrawingGroup`, `distanceSquared`, `drawArrowHead`, `drawLine`, `drawRectangle`, `drawText`, `findNearestOverlayEndpointSnap`, `isFiniteNumber`, `measurementPointToPixelFromScales`, `renderOverlayPrimitiveToCanvas`, `resolveDasharray`, `resolveDrawingGroupMemberIds`, `resolveMeasurementPointFromValues`, `summarizeMeasurement`, `toDate`
+  - `deleteTemplate`, `exportAllTemplates`, `importAllTemplates`, `listTemplates`, `loadTemplate`, `loadTemplateData`, `saveTemplate`, `validateNamedTemplateData`
 - Top-level variables:
-  - `MAGNET_TOLERANCE`, `angle`, `bestDate`, `bestDistance`, `bestIndex`, `bestMatch`, `candidateDate`, `candidateTime`, `chartHeight`, `chartWidth`, `distance`, `dx`, `dy`, `height`, `left`, `priceDelta`, `size`, `targetTime`, `toleranceSquared`, `top`, `width`, `x`, `y`
+  - `all`, `directStyle`, `filtered`, `indices`, `key`, `list`, `obj`, `parsed`, `parts`, `payload`, `raw`, `segmentStyles`, `segmentVisible`, `style`, `templateName`, `toolType`, `validated`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/evaluateDrawingAlerts.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/drawingToolIcons.js`
+
+- Top-level variables:
+  - `drawingToolIcons`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/evaluateDrawingAlerts.js`
 
 - Functions:
   - `detectPriceCross`, `evaluateDrawingAlerts`, `isCooldownElapsed`, `resolveReferencePriceForAlert`
 - Top-level variables:
-  - `DEFAULT_COOLDOWN_MS`, `actualDirection`, `condition`, `cooldown`, `crossedAbove`, `crossedBelow`, `fired`, `refPrice`, `triggered`
+  - `DEFAULT_COOLDOWN_MS`, `activeConditions`, `actualDirection`, `cooldown`, `crossedAbove`, `crossedBelow`, `dx`, `fired`, `p1`, `p2`, `refPrice`, `triggered`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/evaluateDrawingAlerts.ts`
-
-- Functions:
-  - `detectPriceCross`, `evaluateDrawingAlerts`, `isCooldownElapsed`, `resolveReferencePriceForAlert`
-- Top-level variables:
-  - `DEFAULT_COOLDOWN_MS`, `actualDirection`, `condition`, `cooldown`, `crossedAbove`, `crossedBelow`, `fired`, `refPrice`, `triggered`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/fibLevelManager.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/fibLevelManager.test.js`
 
 - Functions:
   - `makeFibLevelConfigs`, `makeLegacyFibDrawing`
 - Top-level variables:
   - `configs`, `corrupted`, `isDuplicate`, `legacyLevels`, `newCfg`, `newRatio`, `original`, `parsed`, `updated`, `value`, `visibleLevels`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/gannFan.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/FloatingSelectionToolbar.js`
+
+- Functions:
+  - `FloatingSelectionToolbar`, `btnStyle`, `handleMultiColorSelect`, `onEnd`, `onMove`, `onUp`, `renderActionButton`, `renderActionIcon`, `renderSemanticPointButtons`, `resolvePalette`
+- Top-level variables:
+  - `activePrice`, `barStyle`, `base`, `baseStyle`, `btnStyle`, `containerStyle`, `countBadgeStyle`, `divStyle`, `dividerStyle`, `dragHandleStyle`, `dragStartRef`, `effectiveMultiPos`, `effectivePos`, `groupStyle`, `handleDragEnd`, `handleDragMouseDown`, `handleDragMove`, `handleDragStart`, `handleDragTouchStart`, `isActive`, `isCompactViewport`, `isDanger`, `lastDrawingIdRef`, `multiBarStyle`, `palette`, `t`, `touch`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/FloatingSelectionToolbar.test.js`
+
+- Top-level variables:
+  - `container`, `dragHandle`, `drawing`, `mockModel`, `originalInnerWidth`, `reactActEnvironment`, `root`, `toolbar`, `touchEndEvent`, `touchMoveEvent`, `touchStartEvent`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/gannFan.test.js`
 
 - Top-level variables:
   - `chartHeight`, `chartWidth`, `dx`, `dy`, `geometry`, `labels`, `nonPrincipal`, `principal`, `ratio`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/history.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/harmonicRatioValidation.js`
+
+- Functions:
+  - `classifyHarmonicDeviation`, `computeHarmonicRatioLabels`, `formatHarmonicRatioLabel`
+- Top-level variables:
+  - `COLOR_ACCEPTABLE`, `COLOR_NEUTRAL`, `COLOR_OUTSIDE`, `COLOR_WITHIN`, `actual`, `color`, `denominator`, `deviation`, `deviationPct`, `hr`, `label`, `labels`, `legs`, `max`, `min`, `numerator`, `p0`, `p1`, `pts`, `range`, `result`, `sign`, `target`, `targetRatios`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/harmonicRatioValidation.test.js`
+
+- Functions:
+  - `makeHarmonicDrawing`
+- Top-level variables:
+  - `drawing`, `label`, `labels`, `text`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/history.js`
 
 - Functions:
   - `cloneDrawings`, `createDrawingHistory`, `historyReducer`
 - Top-level variables:
   - `nextPast`, `previousPresent`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/history.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/hitTest.js`
 
 - Functions:
-  - `cloneDrawings`, `createDrawingHistory`, `historyReducer`
+  - `distanceToPolyline`, `distanceToSegment`, `getDrawingBoundingBox`, `getResizeHandleIndex`, `getTextBounds`, `hitTestAbcdPattern`, `hitTestActionHandles`, `hitTestChannelLike`, `hitTestDrawing`, `hitTestFibArc`, `hitTestFibTimeZone`, `hitTestFibonacciLike`, `hitTestLineLike`, `hitTestParallelChannel`, `hitTestPitchfork`, `hitTestPositionZones`, `hitTestRayLike`, `hitTestRectangleLike`, `hitTestRegressionChannel`, `isDrawingInRect`, `pathBounds`, `pointInRect`, `toPixel`
 - Top-level variables:
-  - `nextPast`, `previousPresent`
+  - `AABB_SAFE_TYPES`, `ACTION_HANDLE_RADIUS`, `HIT_TOLERANCE`, `bbox`, `best`, `center`, `clipped`, `distance`, `distanceFromCenter`, `dx`, `dy`, `edge`, `effectiveDrawing`, `end`, `fontSize`, `geo`, `geometry`, `handles`, `height`, `hitRadius`, `leftFork`, `length`, `lengthSquared`, `lower`, `maxX`, `maxY`, `median`, `metrics`, `middle`, `minX`, `minY`, `normal`, `offsetAnchor`, `offsetEnd`, `offsetStart`, `offsetVector`, `overlayPrimitive`, `p`, `pixel`, `pixelDelta`, `pixels`, `point`, `priceDelta`, `radius`, `rightFork`, `start`, `t`, `text`, `tolerance`, `upper`, `width`, `x`, `x1`, `x2`, `xs`, `y`, `y1`, `y2`, `ys`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/hitTest.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/hitTestTolerance.test.js`
 
 - Functions:
-  - `distanceToPolyline`, `distanceToSegment`, `getDrawingBoundingBox`, `getResizeHandleIndex`, `getTextBounds`, `hitTestAbcdPattern`, `hitTestActionHandles`, `hitTestChannelLike`, `hitTestDrawing`, `hitTestFibArc`, `hitTestFibTimeZone`, `hitTestFibonacciLike`, `hitTestLineLike`, `hitTestOverlayPrimitive`, `hitTestParallelChannel`, `hitTestPitchfork`, `hitTestPositionZones`, `hitTestRayLike`, `hitTestRectangleLike`, `hitTestRegressionChannel`, `isDrawingInRect`, `pathBounds`, `pointInRect`, `toOverlayPrimitive`, `toPixel`
+  - `makeAbcdPattern`, `makeBarsCount`, `makeCallout`, `makeChannel`, `makeCircle`, `makeCyclicLines`, `makeDateAndPriceRange`, `makeDateRange`, `makeElliottCorrection`, `makeElliottImpulse`, `makeEllipse`, `makeExtendedLine`, `makeFibArc`, `makeFibChannel`, `makeFibCircles`, `makeFibExtension`, `makeFibSpeedResistanceArcs`, `makeFibSpeedResistanceFan`, `makeFibSpiral`, `makeFibTimeZone`, `makeFibWedge`, `makeFibonacci`, `makeGannFan`, `makeGannSquareFixed`, `makeHLine`, `makeHeadAndShoulders`, `makeLongPosition`, `makeParallelChannel`, `makePitchfan`, `makePitchfork`, `makePolyline`, `makePriceLabel`, `makePriceRange`, `makeRay`, `makeRectangle`, `makeRegressionChannel`, `makeScales`, `makeText`, `makeTrendBasedFibTime`, `makeTrendLine`, `makeTriangle`, `makeVLine`, `makeXabcdPattern`
 - Top-level variables:
-  - `ACTION_HANDLE_RADIUS`, `HIT_TOLERANCE`, `bbox`, `best`, `clipped`, `distance`, `distanceFromCenter`, `dx`, `dy`, `effectiveDrawing`, `end`, `fontSize`, `geometry`, `h`, `handles`, `height`, `hitRadius`, `leftFork`, `len`, `length`, `lengthSquared`, `lower`, `maxX`, `maxY`, `median`, `metrics`, `middle`, `minX`, `minY`, `normal`, `offsetAnchor`, `offsetEnd`, `offsetStart`, `offsetVector`, `origin`, `overlayPrimitive`, `p`, `pixel`, `pixelDelta`, `pixels`, `point`, `priceDelta`, `primitiveStyle`, `pts`, `pts2`, `px1`, `px2`, `radius`, `rightFork`, `start`, `style`, `t`, `text`, `tolerance`, `upper`, `w`, `width`, `x`, `x1`, `x2`, `xs`, `y`, `y1`, `y2`, `ys`
+  - `STATIC_NOW`, `abcdPattern`, `allTypes`, `barsCount`, `callout`, `channel`, `circle`, `cyclicLines`, `dateRange`, `drawing`, `elliottCorrection`, `elliottImpulse`, `ellipse`, `extendedLine`, `fibArc`, `fibChannel`, `fibCircles`, `fibExtension`, `fibSpeedResistanceArcs`, `fibSpeedResistanceFan`, `fibSpiral`, `fibTimeZone`, `fibWedge`, `fibonacci`, `gannFan`, `gannSquareFixed`, `hLine`, `headAndShoulders`, `invisible`, `longPosition`, `mouseX`, `mouseY`, `now`, `options`, `parallelChannel`, `pitchfan`, `pitchfork`, `polyline`, `priceLabel`, `priceRange`, `range`, `ray`, `rectangle`, `regressionChannel`, `regressionPlotData`, `scales`, `text`, `trendBasedFibTime`, `triangle`, `vLine`, `xScale`, `xabcdPattern`, `yScale`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/hitTest.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/hooks/recentFavorites.test.js`
 
 - Functions:
-  - `distanceToPolyline`, `distanceToSegment`, `getDrawingBoundingBox`, `getResizeHandleIndex`, `getTextBounds`, `hitTestAbcdPattern`, `hitTestActionHandles`, `hitTestChannelLike`, `hitTestDrawing`, `hitTestFibArc`, `hitTestFibTimeZone`, `hitTestFibonacciLike`, `hitTestLineLike`, `hitTestOverlayPrimitive`, `hitTestParallelChannel`, `hitTestPitchfork`, `hitTestPositionZones`, `hitTestRayLike`, `hitTestRectangleLike`, `hitTestRegressionChannel`, `isDrawingInRect`, `pathBounds`, `pointInRect`, `toOverlayPrimitive`, `toPixel`
+  - `loadStored`, `localStorageMock`, `saveStored`, `simulatePushRecent`, `simulateToggle`
 - Top-level variables:
-  - `ACTION_HANDLE_RADIUS`, `HIT_TOLERANCE`, `bbox`, `best`, `clipped`, `distance`, `distanceFromCenter`, `dx`, `dy`, `effectiveDrawing`, `end`, `fontSize`, `geometry`, `h`, `handles`, `height`, `hitRadius`, `leftFork`, `len`, `length`, `lengthSquared`, `lower`, `maxX`, `maxY`, `median`, `metrics`, `middle`, `minX`, `minY`, `normal`, `offsetAnchor`, `offsetEnd`, `offsetStart`, `offsetVector`, `origin`, `overlayPrimitive`, `p`, `pixel`, `pixelDelta`, `pixels`, `point`, `priceDelta`, `primitiveStyle`, `pts`, `pts2`, `px1`, `px2`, `radius`, `rightFork`, `start`, `style`, `t`, `text`, `tolerance`, `upper`, `w`, `width`, `x`, `x1`, `x2`, `xs`, `y`, `y1`, `y2`, `ys`
+  - `FAV_KEY`, `MAX_RECENT`, `RECENT_KEY`, `favs`, `list`, `raw`, `store`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/hitTestTolerance.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/hooks/useFavoriteTools.js`
 
 - Functions:
-  - `makeHLine`, `makeRectangle`, `makeScales`, `makeText`, `makeTrendLine`, `makeVLine`
+  - `loadFavorites`, `saveFavorites`, `useFavoriteTools`
 - Top-level variables:
-  - `allTypes`, `drawing`, `hLine`, `invisible`, `mouseX`, `mouseY`, `now`, `options`, `rectangle`, `scales`, `text`, `vLine`, `xScale`, `yScale`
+  - `STORAGE_KEY`, `isFavorite`, `next`, `parsed`, `raw`, `toggleFavorite`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/index.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/hooks/useRecentTools.js`
+
+- Functions:
+  - `loadRecent`, `saveRecent`, `useRecentTools`
+- Top-level variables:
+  - `MAX_RECENT`, `STORAGE_KEY`, `clearRecent`, `next`, `parsed`, `pushRecent`, `raw`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/index.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/index.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/liveMeasurement.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/liveMeasurement.test.js`
 
 - Functions:
   - `makeScales`
 - Top-level variables:
   - `T0`, `T1`, `T2`, `T3`, `T4`, `T5`, `badScales`, `dates`, `p0`, `p1`, `plotData`, `result`, `scales`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/m3.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/m3.test.js`
 
 - Functions:
   - `createSimpleDrawing`
 - Top-level variables:
   - `completed`, `dateAndPriceRange`, `deleted`, `draft`, `endPoint`, `extendedLine`, `extendedLineElements`, `fibExtension`, `first`, `flatPoint`, `initial`, `longPosition`, `names`, `options`, `polyline`, `preview`, `ray`, `scales`, `second`, `selected`, `shortPosition`, `startPoint`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/m4.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/m4.test.js`
 
 - Functions:
   - `createSimpleDrawing`
 - Top-level variables:
   - `abcd`, `drawing`, `endPoint`, `fibArc`, `fibTimeZone`, `metrics`, `midPoint`, `names`, `options`, `parallel`, `pitchfork`, `plotData`, `regression`, `regressionElements`, `scales`, `startPoint`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/measuring.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/measuring.js`
 
 - Functions:
   - `computeLiveMeasurement`, `measurementPointToPixel`, `resolveChartConfig`, `resolveMeasurementPoint`, `summarizeMeasurement`
 - Top-level variables:
-  - `avgBarMs`, `barCount`, `chartConfig`, `chartConfigList`, `currentItem`, `dateValue`, `dates`, `first`, `last`, `priceDelta`, `pricePct`, `priceValue`, `px0`, `px1`, `t0`, `t1`, `tMax`, `tMin`, `timeDeltaMs`, `totalMs`, `xValue`
+  - `avgBarMs`, `barCount`, `chartConfig`, `chartConfigList`, `currentItem`, `dateValue`, `dates`, `first`, `last`, `priceDelta`, `pricePct`, `priceValue`, `px0`, `px1`, `t0`, `t1`, `tMax`, `tMin`, `timeDeltaMs`, `totalMs`, `v`, `xValue`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/measuring.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/measuring.test.js`
 
 - Top-level variables:
   - `moreProps`, `pixelPoint`, `plotData`, `point`, `summary`, `xScale`, `yScale`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/measuring.ts`
-
-- Functions:
-  - `computeLiveMeasurement`, `measurementPointToPixel`, `resolveChartConfig`, `resolveMeasurementPoint`, `summarizeMeasurement`
-- Top-level variables:
-  - `avgBarMs`, `barCount`, `chartConfig`, `chartConfigList`, `currentItem`, `dateValue`, `dates`, `first`, `last`, `priceDelta`, `pricePct`, `priceValue`, `px0`, `px1`, `t0`, `t1`, `tMax`, `tMin`, `timeDeltaMs`, `totalMs`, `xValue`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/morePropsCoordinateBridge.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/morePropsCoordinateBridge.js`
 
 - Functions:
   - `buildRenderScalesFromMoreProps`, `createDrawingCoordinateBridgeFromMoreProps`, `getAdjustedMousePosition`, `getChartConfigList`, `resolveActiveChartConfig`, `resolveBaseChartConfig`, `resolveBridgePixelOffset`, `resolveChartPaneId`, `resolveChartPointDirect`, `resolveChartPointFromMoreProps`, `resolveChartScaleDomain`, `resolveDrawingChartConfig`
 - Top-level variables:
-  - `adjustedMousePosition`, `baseChartConfig`, `bridge`, `chartConfigList`, `currentCharts`, `currentMatch`, `dateValue`, `domain`, `exactMatch`, `match`, `offset`, `paneChartConfigs`, `pixel`, `plotData`, `renderScales`, `targetChartConfig`, `xValue`, `yValue`
+  - `adjustedMousePosition`, `barIndex`, `baseChartConfig`, `bridge`, `chartConfigList`, `currentCharts`, `currentMatch`, `dateValue`, `datum`, `domain`, `effectivePoint`, `exactMatch`, `match`, `offset`, `pData`, `paneChartConfigs`, `pixel`, `plotData`, `rawDate`, `renderScales`, `sampleX`, `targetChartConfig`, `xAcc`, `xValue`, `yValue`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/morePropsCoordinateBridge.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/morePropsCoordinateBridge.test.js`
 
 - Functions:
   - `createMoreProps`
 - Top-level variables:
-  - `adjusted`, `drawing`, `moreProps`, `plotData`, `point`, `priceYScale`, `renderScales`, `volumeYScale`, `xScale`
+  - `adjusted`, `bridge`, `discontinuousLikeScale`, `drawing`, `fullPlotData`, `moreProps`, `pixel`, `plotData`, `point`, `priceYScale`, `renderScales`, `volumeYScale`, `xScale`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/morePropsCoordinateBridge.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/multiSelectBatch.js`
 
 - Functions:
-  - `buildRenderScalesFromMoreProps`, `createDrawingCoordinateBridgeFromMoreProps`, `getAdjustedMousePosition`, `getChartConfigList`, `resolveActiveChartConfig`, `resolveBaseChartConfig`, `resolveBridgePixelOffset`, `resolveChartPaneId`, `resolveChartPointDirect`, `resolveChartPointFromMoreProps`, `resolveChartScaleDomain`, `resolveDrawingChartConfig`
+  - `applyBatchColor`, `applyBatchDelete`, `applyBatchLock`, `applyBatchVisible`, `resolveNextLockState`, `resolveNextVisibleState`
 - Top-level variables:
-  - `adjustedMousePosition`, `baseChartConfig`, `bridge`, `chartConfigList`, `currentCharts`, `currentMatch`, `dateValue`, `domain`, `exactMatch`, `match`, `offset`, `paneChartConfigs`, `pixel`, `plotData`, `renderScales`, `targetChartConfig`, `xValue`, `yValue`
+  - `idSet`, `selected`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/priceLabel.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/multiSelectBatch.test.js`
+
+- Functions:
+  - `makeDrawing`
+- Top-level variables:
+  - `a`, `allHidden`, `allLocked`, `drawingA`, `drawingB`, `drawingC`, `drawings`, `ids`, `result`, `unlocked`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/overlayPrimitiveAdapter.js`
+
+- Functions:
+  - `buildAbcdPatternPrimitive`, `buildChannelPrimitive`, `buildCyclePrimitive`, `buildDateAndPriceRangeBadge`, `buildElliottWavePrimitive`, `buildFibArcLevels`, `buildFibExtendedPrimitive`, `buildFibTimeZoneMarkers`, `buildFibonacciLevelLines`, `buildGannAdvancedPrimitive`, `buildGannFanPrimitive`, `buildHarmonicPatternPrimitive`, `buildParallelChannelPrimitive`, `buildPitchforkPrimitive`, `buildPositionPrimitive`, `buildRegressionChannelPrimitive`, `clipSegmentToBox`, `enrichPoint`, `extendLineThroughBox`, `formatOverlayNumber`, `toOverlayPrimitive`, `toOverlayPrimitiveRaw`, `toPixel`, `toPrimitiveSegment`, `toPrimitiveStyle`
+- Top-level variables:
+  - `DEFAULT_FIB_EXTENSION_LEVELS`, `DEFAULT_FIB_LEVELS`, `TREND_BASED_FIB_TIME_LEVELS`, `anchorSegment`, `angle0`, `apex`, `badge`, `bars`, `baseOpacity`, `baseRadius`, `bottom`, `centerX`, `closingKey`, `count`, `distance`, `dx`, `dy`, `edges`, `end`, `endIndex`, `entryY`, `extX`, `extY`, `extension`, `fallbackLevels`, `fanSegments`, `fill`, `fillAlpha`, `first`, `fontSize`, `geometry`, `halfPeriod`, `height`, `idx`, `key`, `labels`, `last`, `left`, `leftFork`, `leftNeckline`, `length`, `line`, `lineY1`, `lineY2`, `lower`, `median`, `metrics`, `middle`, `normal`, `offsetAnchor`, `offsetEnd`, `offsetStart`, `offsetVector`, `offsetY`, `origin`, `paths`, `percent`, `period`, `phi`, `pixelDelta`, `pointLabels`, `points`, `price`, `priceDelta`, `priceDiff`, `primitive`, `primitiveStyle`, `px`, `r`, `radius`, `ratio`, `ratioLabels`, `retracementLevels`, `reward`, `right`, `rightFork`, `rightNeckline`, `risk`, `riskReward`, `segmentKeys`, `segmentStyle`, `segments`, `seqKeys`, `start`, `startIndex`, `stepIndex`, `steps`, `stopY`, `style`, `t0`, `t1`, `targetY`, `theta`, `top`, `totalWidth`, `turns`, `tx`, `ty`, `upper`, `valueLabels`, `width`, `x`, `xIndexFloat`, `y`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/priceLabel.js`
 
 - Functions:
   - `DrawingPriceLabels`, `addPriceMarker`, `collectPointPriceMarkers`, `isFinitePrice`, `resolveDrawingPriceMarkers`, `resolveFibExtensionMarkers`, `resolveFibonacciMarkers`
 - Top-level variables:
   - `effectiveDrawing`, `firstPoint`, `highlightFill`, `labelFill`, `labelStroke`, `labelStrokeWidth`, `labelTextFill`, `lastPoint`, `levels`, `markers`, `normalized`, `priceDelta`, `riskReward`, `seen`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/priceLabel.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/priceLabel.test.js`
 
 - Top-level variables:
   - `coordinate`, `drawing`, `labels`, `markerElements`, `renderedCoordinate`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/priceLabel.tsx`
-
-- Functions:
-  - `DrawingPriceLabels`, `addPriceMarker`, `collectPointPriceMarkers`, `isFinitePrice`, `resolveDrawingPriceMarkers`, `resolveFibExtensionMarkers`, `resolveFibonacciMarkers`
-- Top-level variables:
-  - `effectiveDrawing`, `firstPoint`, `highlightFill`, `labelFill`, `labelStroke`, `labelStrokeWidth`, `labelTextFill`, `lastPoint`, `levels`, `markers`, `normalized`, `priceDelta`, `riskReward`, `seen`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/registry.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/registry.js`
 
 - Functions:
   - `createDraftFromTool`, `createTool`, `getDrawingPlugin`, `isDrawingToolName`, `listDrawingPlugins`, `listDrawingTools`, `registerDrawingPlugin`, `registerDrawingTool`
 - Top-level variables:
   - `_pluginTools`, `draft`, `drawingToolRegistry`, `tool`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/registry.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/registry.test.js`
 
 - Functions:
   - `makePlugin`
 - Top-level variables:
   - `first`, `plugin`, `second`, `warn`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/registry.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/renderCanvas.js`
 
 - Functions:
-  - `createDraftFromTool`, `createTool`, `getDrawingPlugin`, `isDrawingToolName`, `listDrawingPlugins`, `listDrawingTools`, `registerDrawingPlugin`, `registerDrawingTool`
+  - `applyLineStyle`, `clipSegmentToBox`, `computeBoundingBox`, `drawAbcdPattern`, `drawArrow`, `drawChannel`, `drawCycleTools`, `drawDateAndPriceRange`, `drawElliottWave`, `drawExtendedLine`, `drawFibArc`, `drawFibExtended`, `drawFibTimeZone`, `drawFibonacci`, `drawFilledRect`, `drawGannAdvanced`, `drawGannFan`, `drawHLine`, `drawHarmonicPattern`, `drawLine`, `drawLongPosition`, `drawParallelChannel`, `drawPitchfork`, `drawPolygonFill`, `drawPolyline`, `drawPolylineTool`, `drawPositionZones`, `drawRay`, `drawRectangle`, `drawRegressionChannel`, `drawSelectionHandles`, `drawSemanticPointAffordance`, `drawShortPosition`, `drawStrokedRect`, `drawText`, `drawTextLabel`, `drawTrendLine`, `drawVLine`, `drawYAxisPriceTag`, `extendLineThroughBox`, `numberFormatter`, `renderDrawingActionHandles`, `renderDrawingAlertIcon`, `renderDrawingShape`, `renderDrawingToCanvas`, `renderMeasurementLabel`, `renderRubberBand`, `resolveSemanticPointLabels`, `strokeDasharrayForStyle`, `toPixel`
 - Top-level variables:
-  - `_pluginTools`, `draft`, `drawingToolRegistry`, `tool`
+  - `DEFAULT_FIB_EXTENSION_LEVELS`, `DEFAULT_FIB_LEVELS`, `FIBS`, `FONT`, `LINE_HEIGHT`, `PADDING`, `PHI`, `abcdPts`, `abcdSegKeys`, `angle0`, `apex`, `badge`, `badgeHeight`, `badgeStyle`, `badgeWidth`, `badgeX`, `badgeY`, `bars`, `base`, `baseRadius`, `bbox`, `bottom`, `boxH`, `boxW`, `bx`, `by`, `canvasH`, `canvasHeight`, `center`, `channelDy`, `clipped`, `closingKey`, `closingStyle`, `cx`, `distance`, `dx`, `dy`, `edge`, `edges`, `effectiveDrawing`, `elliottSegKeys`, `end`, `entryY`, `ext`, `extX`, `extY`, `fill`, `fillAlpha`, `fillColor`, `first`, `fontSize`, `gannSegKeys`, `geo`, `geometry`, `gx`, `gy`, `h`, `halfPeriod`, `handles`, `harmonicLabels`, `headLength`, `headWidth`, `height`, `hrLabels`, `isArcs`, `key`, `label`, `labelX`, `labelY`, `labels`, `last`, `left`, `leftFork`, `length`, `levelStyle`, `levels`, `lineY1`, `lineY2`, `lines`, `lower`, `lx`, `ly`, `maxWidth`, `median`, `metrics`, `midX`, `midY`, `middle`, `nl`, `normal`, `nr`, `offsetAnchor`, `offsetEnd`, `offsetStart`, `offsetVector`, `offsetY`, `opacity`, `origin`, `overlayPrimitive`, `p`, `p0`, `p1`, `padX`, `padY`, `percent`, `period`, `pixel`, `pixelDelta`, `pixels`, `point`, `posBC`, `posCD`, `price`, `priceAtRight`, `priceDelta`, `priceDiff`, `px`, `py`, `r`, `r0`, `radius`, `ratio`, `ratioAB`, `ratioBC`, `ratioLabelStyle`, `ratioStyle`, `reward`, `right`, `rightFork`, `ringRadius`, `risk`, `riskReward`, `segKey`, `segKeys`, `segStyle`, `seqKeys`, `slBounds`, `slFill`, `start`, `steps`, `stopY`, `stroke`, `strokeWidth`, `t`, `t0`, `t1`, `tagH`, `tagW`, `tagX`, `tagY`, `targetY`, `text`, `textWidth`, `theta`, `top`, `totalWidth`, `tpBounds`, `tpFill`, `turns`, `tx`, `ty`, `upper`, `ux`, `uy`, `vector`, `vx`, `w`, `width`, `x`, `xs`, `y`, `yAtRight`, `ys`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/renderCanvas.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/renderCanvasPrimitiveBridge.test.js`
 
 - Functions:
-  - `applyLineStyle`, `clipSegmentToBox`, `computeBoundingBox`, `drawAbcdPattern`, `drawArrow`, `drawChannel`, `drawCycleTools`, `drawDateAndPriceRange`, `drawElliottWave`, `drawExtendedLine`, `drawFibArc`, `drawFibExtended`, `drawFibTimeZone`, `drawFibonacci`, `drawFilledRect`, `drawGannAdvanced`, `drawGannFan`, `drawHLine`, `drawHarmonicPattern`, `drawLine`, `drawLongPosition`, `drawParallelChannel`, `drawPitchfork`, `drawPolygonFill`, `drawPolyline`, `drawPolylineTool`, `drawPositionZones`, `drawRay`, `drawRectangle`, `drawRegressionChannel`, `drawSelectionHandles`, `drawShortPosition`, `drawStrokedRect`, `drawText`, `drawTextLabel`, `drawTrendLine`, `drawVLine`, `extendLineThroughBox`, `numberFormatter`, `renderDrawingActionHandles`, `renderDrawingAlertIcon`, `renderDrawingShape`, `renderDrawingToCanvas`, `renderMeasurementLabel`, `renderRubberBand`, `strokeDasharrayForStyle`, `toPixel`, `toPrimitiveStyle`
+  - `makeContext`
 - Top-level variables:
-  - `DEFAULT_FIB_EXTENSION_LEVELS`, `DEFAULT_FIB_LEVELS`, `FIBS`, `FONT`, `LINE_HEIGHT`, `PADDING`, `PHI`, `angle0`, `apex`, `badge`, `badgeStyle`, `bars`, `base`, `baseRadius`, `bbox`, `bottom`, `boxH`, `boxW`, `bx`, `by`, `canvasH`, `canvasHeight`, `channelDy`, `clipped`, `cx`, `dashedStyle`, `distance`, `dx`, `dy`, `edges`, `effectiveDrawing`, `end`, `entryY`, `ext`, `extX`, `extY`, `extensionPrice`, `fill`, `fillAlpha`, `fillColor`, `first`, `geo`, `geometry`, `gx`, `gy`, `h`, `halfPeriod`, `handles`, `headLength`, `headWidth`, `height`, `isArcs`, `label`, `labelX`, `labelY`, `last`, `left`, `leftFork`, `length`, `levelStyle`, `levels`, `lineY1`, `lineY2`, `lines`, `lower`, `lx`, `ly`, `maxWidth`, `median`, `metrics`, `midX`, `midY`, `middle`, `nl`, `normal`, `nr`, `offsetAnchor`, `offsetEnd`, `offsetStart`, `offsetVector`, `offsetY`, `opacity`, `origin`, `p`, `percent`, `period`, `pixel`, `pixelDelta`, `pixels`, `point`, `price`, `priceDelta`, `px`, `py`, `r`, `r0`, `radius`, `ratio`, `ratioAB`, `ratioBC`, `reward`, `right`, `rightFork`, `risk`, `riskReward`, `slBounds`, `slFill`, `start`, `steps`, `stopY`, `stroke`, `strokeWidth`, `t0`, `t1`, `targetY`, `text`, `theta`, `top`, `totalWidth`, `tpBounds`, `tpFill`, `turns`, `tx`, `ty`, `upper`, `ux`, `uy`, `vector`, `vx`, `w`, `width`, `x`, `xs`, `y`, `ys`
+  - `ctx`, `drawing`, `plotData`, `scales`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/renderCanvas.ts`
-
-- Functions:
-  - `applyLineStyle`, `clipSegmentToBox`, `computeBoundingBox`, `drawAbcdPattern`, `drawArrow`, `drawChannel`, `drawCycleTools`, `drawDateAndPriceRange`, `drawElliottWave`, `drawExtendedLine`, `drawFibArc`, `drawFibExtended`, `drawFibTimeZone`, `drawFibonacci`, `drawFilledRect`, `drawGannAdvanced`, `drawGannFan`, `drawHLine`, `drawHarmonicPattern`, `drawLine`, `drawLongPosition`, `drawParallelChannel`, `drawPitchfork`, `drawPolygonFill`, `drawPolyline`, `drawPolylineTool`, `drawPositionZones`, `drawRay`, `drawRectangle`, `drawRegressionChannel`, `drawSelectionHandles`, `drawShortPosition`, `drawStrokedRect`, `drawText`, `drawTextLabel`, `drawTrendLine`, `drawVLine`, `extendLineThroughBox`, `numberFormatter`, `renderDrawingActionHandles`, `renderDrawingAlertIcon`, `renderDrawingShape`, `renderDrawingToCanvas`, `renderMeasurementLabel`, `renderRubberBand`, `strokeDasharrayForStyle`, `toPixel`, `toPrimitiveStyle`
-- Top-level variables:
-  - `DEFAULT_FIB_EXTENSION_LEVELS`, `DEFAULT_FIB_LEVELS`, `FIBS`, `FONT`, `LINE_HEIGHT`, `PADDING`, `PHI`, `angle0`, `apex`, `badge`, `badgeStyle`, `bars`, `base`, `baseRadius`, `bbox`, `bottom`, `boxH`, `boxW`, `bx`, `by`, `canvasH`, `canvasHeight`, `channelDy`, `clipped`, `cx`, `dashedStyle`, `distance`, `dx`, `dy`, `edges`, `effectiveDrawing`, `end`, `entryY`, `ext`, `extX`, `extY`, `extensionPrice`, `fill`, `fillAlpha`, `fillColor`, `first`, `geo`, `geometry`, `gx`, `gy`, `h`, `halfPeriod`, `handles`, `headLength`, `headWidth`, `height`, `isArcs`, `label`, `labelX`, `labelY`, `last`, `left`, `leftFork`, `length`, `levelStyle`, `levels`, `lineY1`, `lineY2`, `lines`, `lower`, `lx`, `ly`, `maxWidth`, `median`, `metrics`, `midX`, `midY`, `middle`, `nl`, `normal`, `nr`, `offsetAnchor`, `offsetEnd`, `offsetStart`, `offsetVector`, `offsetY`, `opacity`, `origin`, `p`, `percent`, `period`, `pixel`, `pixelDelta`, `pixels`, `point`, `price`, `priceDelta`, `px`, `py`, `r`, `r0`, `radius`, `ratio`, `ratioAB`, `ratioBC`, `reward`, `right`, `rightFork`, `risk`, `riskReward`, `slBounds`, `slFill`, `start`, `steps`, `stopY`, `stroke`, `strokeWidth`, `t0`, `t1`, `targetY`, `text`, `theta`, `top`, `totalWidth`, `tpBounds`, `tpFill`, `turns`, `tx`, `ty`, `upper`, `ux`, `uy`, `vector`, `vx`, `w`, `width`, `x`, `xs`, `y`, `ys`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/renderSvg.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/renderSvg.js`
 
 - Functions:
   - `circleElement`, `clipSegmentToBox`, `extendLineThroughBox`, `interactiveProps`, `lineElement`, `numberFormatter`, `pathElement`, `polygonElement`, `polylineElement`, `rectElement`, `renderAbcdPattern`, `renderArrow`, `renderChannel`, `renderDateAndPriceRange`, `renderDrawingToSvg`, `renderExtendedLine`, `renderFibArc`, `renderFibExtension`, `renderFibTimeZone`, `renderFibonacci`, `renderHLine`, `renderLineWithHandles`, `renderLongPosition`, `renderParallelChannel`, `renderPitchfork`, `renderPolyline`, `renderPositionZones`, `renderRay`, `renderRectangle`, `renderRegressionChannel`, `renderShortPosition`, `renderText`, `renderTrendLine`, `renderVLine`, `selectionHandles`, `strokeDasharrayForStyle`, `textElement`, `toPixel`
 - Top-level variables:
-  - `DEFAULT_FIB_EXTENSION_LEVELS`, `DEFAULT_FIB_LEVELS`, `arcs`, `badge`, `badgeProps`, `badgeText`, `bars`, `base`, `bottom`, `clipped`, `dashedStroke`, `distance`, `dx`, `dy`, `edges`, `effectiveDrawing`, `element`, `elements`, `end`, `entryLine`, `entryY`, `extensionPrice`, `fill`, `geometry`, `headLength`, `headWidth`, `height`, `labels`, `left`, `leftFork`, `leftX`, `length`, `levels`, `line`, `lineProps`, `median`, `metrics`, `middle`, `negativeBoundary`, `normal`, `offsetAnchor`, `offsetEnd`, `offsetStart`, `offsetVector`, `path`, `percent`, `pixel`, `pixelDelta`, `pixels`, `point`, `polygon`, `positiveBoundary`, `price`, `priceDelta`, `px`, `py`, `r`, `ratio`, `ratioAB`, `ratioBC`, `rect`, `reward`, `right`, `rightFork`, `rightX`, `risk`, `riskReward`, `slZone`, `slZoneClass`, `start`, `stopLine`, `stopY`, `stroke`, `t0`, `t1`, `targetLine`, `targetY`, `text`, `top`, `tpZone`, `tpZoneClass`, `ux`, `uy`, `vector`, `width`, `x`, `y`
+  - `DEFAULT_FIB_EXTENSION_LEVELS`, `DEFAULT_FIB_LEVELS`, `abStyle`, `arcs`, `badge`, `badgeProps`, `badgeText`, `bars`, `base`, `baseLineProps`, `bcStyle`, `bottom`, `cdStyle`, `centerStyle`, `clipped`, `dashedStroke`, `distance`, `dx`, `dy`, `edges`, `effectiveDrawing`, `element`, `elements`, `end`, `entryLine`, `entryY`, `extensionPrice`, `fibConfig`, `fill`, `geometry`, `headLength`, `headWidth`, `height`, `labels`, `left`, `leftFork`, `leftForkStyle`, `leftX`, `length`, `levelStroke`, `levels`, `line`, `lineProps`, `lowerStyle`, `median`, `medianStyle`, `metrics`, `middle`, `middleStyle`, `negativeBoundary`, `normal`, `offsetAnchor`, `offsetEnd`, `offsetStart`, `offsetVector`, `path`, `percent`, `pixel`, `pixelDelta`, `pixels`, `point`, `polygon`, `positiveBoundary`, `price`, `priceDelta`, `primaryStyle`, `primaryVisible`, `px`, `py`, `r`, `ratio`, `ratioAB`, `ratioBC`, `rect`, `regressionElements`, `reward`, `right`, `rightFork`, `rightForkStyle`, `rightX`, `risk`, `riskReward`, `secondaryStyle`, `secondaryVisible`, `slZone`, `slZoneClass`, `start`, `stopLine`, `stopY`, `stroke`, `t0`, `t1`, `targetLine`, `targetY`, `text`, `top`, `tpZone`, `tpZoneClass`, `upperStyle`, `ux`, `uy`, `vector`, `width`, `x`, `y`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/renderSvg.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/renderSvg.test.js`
 
 - Functions:
   - `createExtendedDrawing`
 - Top-level variables:
   - `arrow`, `circleElements`, `drawing`, `elements`, `lineElements`, `options`, `rectangle`, `scales`, `textElements`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/renderSvg.ts`
-
-- Functions:
-  - `circleElement`, `clipSegmentToBox`, `extendLineThroughBox`, `interactiveProps`, `lineElement`, `numberFormatter`, `pathElement`, `polygonElement`, `polylineElement`, `rectElement`, `renderAbcdPattern`, `renderArrow`, `renderChannel`, `renderDateAndPriceRange`, `renderDrawingToSvg`, `renderExtendedLine`, `renderFibArc`, `renderFibExtension`, `renderFibTimeZone`, `renderFibonacci`, `renderHLine`, `renderLineWithHandles`, `renderLongPosition`, `renderParallelChannel`, `renderPitchfork`, `renderPolyline`, `renderPositionZones`, `renderRay`, `renderRectangle`, `renderRegressionChannel`, `renderShortPosition`, `renderText`, `renderTrendLine`, `renderVLine`, `selectionHandles`, `strokeDasharrayForStyle`, `textElement`, `toPixel`
-- Top-level variables:
-  - `DEFAULT_FIB_EXTENSION_LEVELS`, `DEFAULT_FIB_LEVELS`, `arcs`, `badge`, `badgeProps`, `badgeText`, `bars`, `base`, `bottom`, `clipped`, `dashedStroke`, `distance`, `dx`, `dy`, `edges`, `effectiveDrawing`, `element`, `elements`, `end`, `entryLine`, `entryY`, `extensionPrice`, `fill`, `geometry`, `headLength`, `headWidth`, `height`, `labels`, `left`, `leftFork`, `leftX`, `length`, `levels`, `line`, `lineProps`, `median`, `metrics`, `middle`, `negativeBoundary`, `normal`, `offsetAnchor`, `offsetEnd`, `offsetStart`, `offsetVector`, `path`, `percent`, `pixel`, `pixelDelta`, `pixels`, `point`, `polygon`, `positiveBoundary`, `price`, `priceDelta`, `px`, `py`, `r`, `ratio`, `ratioAB`, `ratioBC`, `rect`, `reward`, `right`, `rightFork`, `rightX`, `risk`, `riskReward`, `slZone`, `slZoneClass`, `start`, `stopLine`, `stopY`, `stroke`, `t0`, `t1`, `targetLine`, `targetY`, `text`, `top`, `tpZone`, `tpZoneClass`, `ux`, `uy`, `vector`, `width`, `x`, `y`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/rubberBand.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/rubberBand.test.js`
 
 - Functions:
   - `makeScales`, `makeTrendLine`
 - Top-level variables:
   - `action`, `drawing`, `idle`, `next`, `rect`, `rubberBandState`, `scales`, `selectedMultiple`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/serialization.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/segmentRegistry.js`
 
 - Functions:
-  - `deserializeDrawingHistory`, `deserializeDrawingObject`, `deserializeDrawings`, `serializeDrawingHistory`, `serializeDrawingObject`, `serializeDrawings`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/serialization.ts`
-
-- Functions:
-  - `deserializeDrawingHistory`, `deserializeDrawingObject`, `deserializeDrawings`, `serializeDrawingHistory`, `serializeDrawingObject`, `serializeDrawings`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/shared.js`
-
-- Functions:
-  - `appendPoint`, `clonePoint`, `createDrawingId`, `createDrawingObject`, `replaceNextPoint`, `replacePoint`
+  - `getSegmentKeys`, `hasSubSegments`, `isSegmentVisible`, `resolveSegmentStyle`
 - Top-level variables:
-  - `defaultDrawingStyle`, `drawingIdSeed`, `now`, `placeholderIndex`, `startPoint`, `targetIndex`
+  - `SEGMENT_KEYS_BY_TYPE`, `keys`, `override`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/shared.ts`
-
-- Functions:
-  - `appendPoint`, `clonePoint`, `createDrawingId`, `createDrawingObject`, `replaceNextPoint`, `replacePoint`
-- Top-level variables:
-  - `defaultDrawingStyle`, `drawingIdSeed`, `now`, `placeholderIndex`, `startPoint`, `targetIndex`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/shortcutMap.js`
-
-- Functions:
-  - `normalizeShortcutKey`, `resolveDrawingShortcut`
-- Top-level variables:
-  - `DRAWING_SHORTCUTS`, `hasModifier`, `key`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/shortcutMap.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/segmentRegistry.test.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/shortcutMap.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/semanticPointAffordance.test.js`
+
+- Functions:
+  - `makeContext`
+- Top-level variables:
+  - `ctx`, `drawing`, `scales`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/serialization.js`
+
+- Functions:
+  - `deserializeDrawingHistory`, `deserializeDrawingObject`, `deserializeDrawings`, `exportDrawingsJSON`, `importDrawingsJSON`, `migrateDrawings`, `serializeDrawingHistory`, `serializeDrawingObject`, `serializeDrawings`
+- Top-level variables:
+  - `DRAWING_SCHEMA_VERSION`, `parsed`, `payload`, `result`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/serialization.test.js`
+
+- Top-level variables:
+  - `imported`, `json`, `legacy`, `legacyDrawing`, `legacyPayload`, `mockDrawing`, `parsed`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/shared.js`
+
+- Functions:
+  - `appendPoint`, `clonePoint`, `createDrawingId`, `createDrawingObject`, `replaceLastPoint`, `replaceNextPoint`, `replacePoint`, `resolvePointAnchor`
+- Top-level variables:
+  - `defaultDrawingStyle`, `drawingIdSeed`, `now`, `placeholderIndex`, `startPoint`, `targetIndex`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/shortcutMap.js`
 
 - Functions:
   - `normalizeShortcutKey`, `resolveDrawingShortcut`
 - Top-level variables:
   - `DRAWING_SHORTCUTS`, `hasModifier`, `key`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/snap.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/shortcutMap.test.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/snap.js`
 
 - Functions:
-  - `findNearestBar`, `findSnapPoint`, `getDatumDate`, `pickEndpointSnap`, `toDate`
+  - `collectFibLevelSnapCandidates`, `findFibLevelSnap`, `findNearestBar`, `findSnapPoint`, `getDatumDate`, `pickEndpointSnap`, `toDate`
 - Top-level variables:
-  - `MAGNET_TOLERANCE`, `best`, `bestDistance`, `bestOhlc`, `candidates`, `date`, `distance`, `nearestBar`, `pixelPoint`, `pixelX`, `snap`, `value`, `xAccessor`
+  - `MAGNET_TOLERANCE`, `best`, `bestDist`, `bestDistance`, `bestOhlc`, `candidates`, `date`, `dist`, `distance`, `fibSnap`, `isStrong`, `nearestBar`, `p0y`, `p1y`, `pixelPoint`, `pixelX`, `pixelY`, `price`, `snap`, `value`, `xAccessor`, `xTolerance`, `yTolerance`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/snap.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/snap.test.js`
 
 - Functions:
-  - `makeScales`, `makeTrendLine`
+  - `makeFibDrawing`, `makeFibScales`, `makeScales`, `makeTrendLine`
 - Top-level variables:
-  - `drawing`, `scales`, `snap`, `xScale`, `yScale`
+  - `candidates`, `drawing`, `price75`, `scales`, `snap`, `xScale`, `yScale`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/snap.ts`
-
-- Functions:
-  - `findNearestBar`, `findSnapPoint`, `getDatumDate`, `pickEndpointSnap`, `toDate`
-- Top-level variables:
-  - `MAGNET_TOLERANCE`, `best`, `bestDistance`, `bestOhlc`, `candidates`, `date`, `distance`, `nearestBar`, `pixelPoint`, `pixelX`, `snap`, `value`, `xAccessor`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/stateMachine.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/stateMachine.js`
 
 - Functions:
   - `drawingReducer`, `getSelectedObjectIds`, `isLineFamilyType`, `lineTypeFlagsFor`, `normalizeSelectedObjectIds`, `selectionStateFor`
 - Top-level variables:
   - `LINE_FAMILY_TYPES`, `normalized`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/stateMachine.ts`
-
-- Functions:
-  - `drawingReducer`, `getSelectedObjectIds`, `isLineFamilyType`, `lineTypeFlagsFor`, `normalizeSelectedObjectIds`, `selectionStateFor`
-- Top-level variables:
-  - `LINE_FAMILY_TYPES`, `normalized`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/touchStylus.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/touchStylus.test.js`
 
 - Functions:
   - `hasPinchGesture`, `resolvePointerDeviceType`
 - Top-level variables:
   - `pt`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/types.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/types.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/types.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/uiTokens.js`
 
-- No parseable top-level symbols found
+- Functions:
+  - `createDrawingUiStyleVars`
+- Top-level variables:
+  - `DRAWING_UI_TOKENS`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/useDrawingAlertEvaluator.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/uiTokens.test.js`
+
+- Top-level variables:
+  - `vars`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/useCompactViewport.js`
+
+- Functions:
+  - `resolveViewportMatch`, `updateViewportMatch`, `useCompactViewport`
+- Top-level variables:
+  - `DEFAULT_MAX_WIDTH`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/useDrawingAlertEvaluator.js`
 
 - Functions:
   - `useDrawingAlertEvaluator`
 - Top-level variables:
-  - `currentPrice`, `fired`, `lastBar`, `prevBar`, `prevPriceRef`, `previousPrice`
+  - `currentPrice`, `fired`, `lastBar`, `now`, `prevBar`, `prevPriceRef`, `previousPrice`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/useDrawingAlertEvaluator.ts`
-
-- Functions:
-  - `useDrawingAlertEvaluator`
-- Top-level variables:
-  - `currentPrice`, `fired`, `lastBar`, `prevBar`, `prevPriceRef`, `previousPrice`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/useDrawingInteraction.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/useDrawingInteraction.js`
 
 - Functions:
-  - `cloneDrawingPoints`, `createDrawingInteractionState`, `deleteSelectedInteractionState`, `drawingInteractionReducer`, `getSelectedObjectIds`, `isHistoryAction`, `patchDrawing`, `replaceDrawingById`, `useDrawingInteraction`
+  - `cloneDrawingPoints`, `cloneSegmentStyles`, `createDrawingInteractionState`, `deleteSelectedInteractionState`, `drawingInteractionReducer`, `getSelectedObjectIds`, `isHistoryAction`, `patchDrawing`, `replaceDrawingById`, `useDrawingInteraction`
 - Top-level variables:
   - `cancelDrawing`, `deleteGroup`, `deleteSelected`, `didChange`, `nextDrawings`, `nextHistory`, `redo`, `replaceDrawings`, `selectGroup`, `selectObject`, `selectedDrawings`, `selectedObjectIds`, `setSelectedObjects`, `startEditing`, `startMoving`, `startResizing`, `undo`, `updateDrawing`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/useDrawingInteraction.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/useDrawingInteraction.test.js`
 
 - Functions:
   - `DrawingGroupProbe`, `DrawingInteractionProbe`, `createTrendLineDrawing`, `makeDrawings`, `renderGroupProbe`, `renderInteractionProbe`
 - Top-level variables:
   - `completeState`, `container`, `currentInteraction`, `currentRoot`, `d1`, `d2`, `d3`, `deletedSnapshot`, `drawing`, `drawingState`, `nextPoint`, `pushedState`, `reactActEnvironment`, `root`, `selectedSnapshot`, `selectedState`, `snapshot`, `snapshotPoints`, `startPoint`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/useDrawingInteraction.ts`
-
-- Functions:
-  - `cloneDrawingPoints`, `createDrawingInteractionState`, `deleteSelectedInteractionState`, `drawingInteractionReducer`, `getSelectedObjectIds`, `isHistoryAction`, `patchDrawing`, `replaceDrawingById`, `useDrawingInteraction`
-- Top-level variables:
-  - `cancelDrawing`, `deleteGroup`, `deleteSelected`, `didChange`, `nextDrawings`, `nextHistory`, `redo`, `replaceDrawings`, `selectGroup`, `selectObject`, `selectedDrawings`, `selectedObjectIds`, `setSelectedObjects`, `startEditing`, `startMoving`, `startResizing`, `undo`, `updateDrawing`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/useDrawingStorage.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/useDrawingStorage.js`
 
 - Functions:
   - `useDrawingStorage`
 - Top-level variables:
-  - `anchor`, `blob`, `clearAll`, `exportJSON`, `hydratedRef`, `importJSON`, `imported`, `loaded`, `payload`, `storage`, `timeoutId`, `url`
+  - `anchor`, `blob`, `clearAll`, `exportJSON`, `hydratedRef`, `importJSON`, `imported`, `isEnabled`, `loaded`, `p`, `payload`, `resolved`, `storage`, `timeoutId`, `url`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/useDrawingStorage.ts`
-
-- Functions:
-  - `useDrawingStorage`
-- Top-level variables:
-  - `anchor`, `blob`, `clearAll`, `exportJSON`, `hydratedRef`, `importJSON`, `imported`, `loaded`, `payload`, `storage`, `timeoutId`, `url`
-
-### `packages/web/src/components/vnstockcharts/lib/drawing/useLongPress.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/useLongPress.js`
 
 - Functions:
   - `clearTimer`, `onPointerCancel`, `onPointerDown`, `onPointerMove`, `onPointerUp`, `useLongPress`
 - Top-level variables:
   - `callbackRef`, `captured`, `dx`, `dy`, `startPosRef`, `timerRef`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/useLongPress.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/useLongPress.test.js`
 
 - Functions:
   - `Probe`, `makePointerEvent`, `renderHook`
 - Top-level variables:
   - `act`, `cb`, `container`, `createElement`, `createRoot`, `reactActEnvironment`, `root`, `store`, `useLongPress`
 
-### `packages/web/src/components/vnstockcharts/lib/drawing/useLongPress.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/workspace/__tests__/selectionToolbar.test.js`
+
+- Top-level variables:
+  - `drawing`, `model`, `position`
+
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/workspace/selectionToolbar.js`
 
 - Functions:
-  - `clearTimer`, `onPointerCancel`, `onPointerDown`, `onPointerMove`, `onPointerUp`, `useLongPress`
+  - `clamp`, `createDrawingSelectionToolbarModel`, `resolveDrawingSelectionToolbarPosition`, `resolveNearestVisibleIndex`, `resolvePaneSnapshot`, `resolveScaleDomain`, `resolveVisiblePlotData`, `resolveVisibleTimeBounds`
 - Top-level variables:
-  - `callbackRef`, `captured`, `dx`, `dy`, `startPosRef`, `timerRef`
+  - `DEFAULT_TOOLBAR_SIZE`, `EDGE_PADDING`, `VERTICAL_OFFSET`, `bottomY`, `boundedX`, `boundedY`, `centerX`, `distance`, `domain`, `domainEnd`, `domainStart`, `fallbackY`, `filtered`, `indexRatio`, `indexSpan`, `matchedSnapshot`, `nearestDistance`, `nearestIndex`, `nearestVisibleIndex`, `paneBottom`, `paneId`, `paneTop`, `pointPixels`, `preferredPaneId`, `preferredScaleIds`, `preferredY`, `primaryActions`, `scaleDomain`, `secondaryActions`, `snapshot`, `timeBounds`, `timeRatio`, `timeSpan`, `topY`, `value`, `valueSpan`, `visiblePlotData`, `yRatio`
 
-### `packages/web/src/components/vnstockcharts/lib/EventCapture.js`
+### `packages/web/src/components/vninvestcharts/src/lib/drawing/workspace/useDrawingWorkspaceController.js`
 
-- Classes:
-  - `EventCapture`
-- Top-level variables:
-  - `className`, `currentCharts`, `dx`, `dxdy`, `dy`, `eSnapshot`, `interactionProps`, `mouseXY`, `newPos`, `normalizedPanConditions`, `pan`, `panConditions`, `rect`, `touchXY`, `win`, `yZoom`, `zoomDir`
-
-### `packages/web/src/components/vnstockcharts/lib/EventCapture.test.tsx`
-
-- Top-level variables:
-  - `EventCapture`, `actual`, `capture`, `event`, `nextState`, `node`, `onClick`, `onDoubleClick`, `onMouseDown`, `pointerMock`
-
-### `packages/web/src/components/vnstockcharts/lib/EventCapture.tsx`
-
-- Classes:
-  - `EventCapture`
-- Top-level variables:
-  - `className`, `currentCharts`, `dx`, `dxdy`, `dy`, `eSnapshot`, `interactionProps`, `mouseXY`, `newPos`, `normalizedPanConditions`, `pan`, `panConditions`, `rect`, `touchXY`, `win`, `yZoom`, `zoomDir`
-
-### `packages/web/src/components/vnstockcharts/lib/GenericChartComponent.js`
-
-- Classes:
-  - `GenericChartComponent`
 - Functions:
-  - `GenericChartComponentWrapper`
+  - `areDrawingsEqual`, `cloneDrawings`, `getSelectedDrawing`, `useDrawingWorkspaceController`
 - Top-level variables:
-  - `ALWAYS_TRUE_TYPES`, `canvasOriginX`, `canvasOriginY`, `chartConfig`, `chartContext`, `chartId`
+  - `allDrawings`, `clearClipboard`, `cloneClipboard`, `closeDock`, `controllerRef`, `copySelected`, `handleStorageLoad`, `initialDrawingsRef`, `interaction`, `isControlled`, `lastControlledDrawingsRef`, `lastEmittedDrawingsRef`, `leftDrawing`, `nextDrawings`, `openDock`, `previousControlledDrawings`, `replaceDrawings`, `rightDrawing`, `selectDrawing`, `selectedDrawing`, `selectedIds`, `setDockTab`, `state`, `storage`, `storageAdapter`, `syncingFromExternalRef`
 
-### `packages/web/src/components/vnstockcharts/lib/GenericChartComponent.tsx`
+### `packages/web/src/components/vninvestcharts/src/lib/EventCapture.js`
+
+- Functions:
+  - `canPan`, `handleClick`, `handleDrag`, `handleDragEnd`, `handleEnter`, `handleLeave`, `handleMouseDown`, `handleMouseMove`, `handlePan`, `handlePanEnd`, `handlePinchZoom`, `handlePinchZoomEnd`, `handlePointerDown`, `handlePointerMoveLongPress`, `handlePointerUpLongPress`, `handleRightClick`, `handleTouchMove`, `handleTouchStart`, `handleWheel`, `queuePanEnd`, `shouldPan`
+- Top-level variables:
+  - `EventCapture`, `className`, `clickedRef`, `clickedTimeoutRef`, `currentCharts`, `dragHappenedRef`, `dragInProgressRef`, `dragStartPositionRef`, `dx`, `dxRef`, `dxdy`, `dy`, `dyRef`, `eSnapshot`, `element`, `focusRef`, `interactionProps`, `lastNewPosRef`, `longPressStartPosRef`, `longPressTimerRef`, `mouseInsideRef`, `mouseInteractionRef`, `mouseXY`, `newPos`, `nodeRef`, `normalizedPanConditions`, `pan`, `panConditions`, `panEndTimeoutRef`, `panHappenedRef`, `panStartRef`, `pinchZoomStartRef`, `rect`, `touchXY`, `win`, `yZoom`, `zoomDir`
+
+### `packages/web/src/components/vninvestcharts/src/lib/EventCapture.test.js`
+
+- Top-level variables:
+  - `EventCapture`, `actual`, `container`, `event`, `onClick`, `onDoubleClick`, `onMouseDown`, `pointerMock`, `rect`, `root`
+
+### `packages/web/src/components/vninvestcharts/src/lib/GenericChartComponent.js`
 
 - Classes:
   - `GenericChartComponent`
@@ -14854,25 +11178,16 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `ALWAYS_TRUE_TYPES`, `canvasOriginX`, `canvasOriginY`, `chartConfig`, `chartContext`, `chartId`
 
-### `packages/web/src/components/vnstockcharts/lib/GenericComponent.js`
+### `packages/web/src/components/vninvestcharts/src/lib/GenericComponent.js`
 
 - Classes:
   - `GenericComponent`
 - Functions:
   - `getAxisCanvas`, `getMouseCanvas`
 - Top-level variables:
-  - `aliases`, `ctx`, `draggable`, `moreProps`, `newType`, `prevHover`, `proceed`, `style`, `suffix`, `type`
+  - `aliases`, `contextXScale`, `ctx`, `draggable`, `moreProps`, `newType`, `prevHover`, `proceed`, `style`, `suffix`, `type`
 
-### `packages/web/src/components/vnstockcharts/lib/GenericComponent.tsx`
-
-- Classes:
-  - `GenericComponent`
-- Functions:
-  - `getAxisCanvas`, `getMouseCanvas`
-- Top-level variables:
-  - `aliases`, `ctx`, `draggable`, `moreProps`, `newType`, `prevHover`, `proceed`, `style`, `suffix`, `type`
-
-### `packages/web/src/components/vnstockcharts/lib/helper/fitDimensions.js`
+### `packages/web/src/components/vninvestcharts/src/lib/helper/fitDimensions.js`
 
 - Classes:
   - `ResponsiveComponent`
@@ -14881,16 +11196,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `backingStoreRatio`, `context`, `devicePixelRatio`, `dimensions`, `h`, `name`, `node`, `ratio`, `ref`, `w`
 
-### `packages/web/src/components/vnstockcharts/lib/helper/fitDimensions.tsx`
-
-- Classes:
-  - `ResponsiveComponent`
-- Functions:
-  - `getDimensions`, `getDisplayName`
-- Top-level variables:
-  - `backingStoreRatio`, `context`, `devicePixelRatio`, `dimensions`, `h`, `name`, `node`, `ratio`, `ref`, `w`
-
-### `packages/web/src/components/vnstockcharts/lib/helper/fitWidth.js`
+### `packages/web/src/components/vninvestcharts/src/lib/helper/fitWidth.js`
 
 - Classes:
   - `ResponsiveComponent`
@@ -14899,756 +11205,275 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `backingStoreRatio`, `context`, `devicePixelRatio`, `el`, `name`, `ratio`, `ref`, `w`
 
-### `packages/web/src/components/vnstockcharts/lib/helper/fitWidth.tsx`
+### `packages/web/src/components/vninvestcharts/src/lib/helper/index.js`
 
-- Classes:
-  - `ResponsiveComponent`
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/lib/helper/SaveChartAsImage.js`
+
 - Functions:
-  - `getDisplayName`
+  - `drawImageOnCanvas`
 - Top-level variables:
-  - `backingStoreRatio`, `context`, `devicePixelRatio`, `el`, `name`, `ratio`, `ref`, `w`
+  - `SaveChartAsImage`, `a`, `bg`, `canvas`, `canvasList`, `containerRect`, `context`, `each`, `img`, `ohlcEl`, `ohlcRect`, `pendingSvgs`, `rect`, `relativeX`, `relativeY`, `rx`, `ry`, `startX`, `svg`, `svgBlob`, `svgElementsToDraw`, `svgList`, `svgString`, `symbolText`, `timeframeText`, `url`, `valuesText`, `watermarkHeight`
 
-### `packages/web/src/components/vnstockcharts/lib/helper/index.js`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/helper/index.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/helper/SaveChartAsImage.js`
-
-- Top-level variables:
-  - `SaveChartAsImage`, `a`, `canvas`, `canvasList`, `context`, `dx`, `dy`, `each`, `image`, `parent`, `rect`
-
-### `packages/web/src/components/vnstockcharts/lib/helper/SaveChartAsImage.ts`
-
-- Top-level variables:
-  - `SaveChartAsImage`, `a`, `canvas`, `canvasList`, `context`, `dx`, `dy`, `each`, `image`, `parent`, `rect`
-
-### `packages/web/src/components/vnstockcharts/lib/helper/TypeChooser.js`
+### `packages/web/src/components/vninvestcharts/src/lib/helper/TypeChooser.js`
 
 - Classes:
   - `TypeChooser`
 
-### `packages/web/src/components/vnstockcharts/lib/helper/TypeChooser.tsx`
-
-- Classes:
-  - `TypeChooser`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/atr.js`
-
-- Functions:
-  - `indicator`
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/atr.ts`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/baseIndicator.js`
-
-- Functions:
-  - `baseIndicator`
-- Top-level variables:
-  - `accessor`, `echo`, `fill`, `i`, `id`, `stroke`, `type`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/baseIndicator.ts`
-
-- Functions:
-  - `baseIndicator`
-- Top-level variables:
-  - `accessor`, `echo`, `fill`, `i`, `id`, `stroke`, `type`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/bollingerBand.js`
-
-- Functions:
-  - `indicator`
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/bollingerBand.ts`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/change.js`
-
-- Functions:
-  - `indicator`
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/change.ts`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/compare.js`
-
-- Functions:
-  - `indicator`
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/compare.ts`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/defaultOptionsForAppearance.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicator/defaultOptionsForAppearance.js`
 
 - Top-level variables:
   - `BollingerBand`, `ElderImpulse`, `FullStochasticOscillator`, `MACD`, `themes`
 
-### `packages/web/src/components/vnstockcharts/lib/indicator/defaultOptionsForAppearance.ts`
-
-- Top-level variables:
-  - `BollingerBand`, `ElderImpulse`, `FullStochasticOscillator`, `MACD`, `themes`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/elderImpulse.js`
-
-- Functions:
-  - `indicator`
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `currEMA`, `currMACDDivergence`, `macdSource`, `mergedAlgorithm`, `newData`, `prevEMA`, `prevMACDDivergence`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/elderImpulse.ts`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `currEMA`, `currMACDDivergence`, `indicator`, `macdSource`, `mergedAlgorithm`, `newData`, `prevEMA`, `prevMACDDivergence`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/elderRay.js`
-
-- Functions:
-  - `indicator`
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/elderRay.ts`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/ema.js`
-
-- Functions:
-  - `indicator`
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/ema.ts`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/forceIndex.js`
-
-- Functions:
-  - `indicator`
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/forceIndex.ts`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/heikinAshi.js`
-
-- Functions:
-  - `indicator`
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/heikinAshi.ts`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/index.js`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/index.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/kagi.js`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/kagi.ts`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/macd.js`
-
-- Functions:
-  - `indicator`
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/macd.ts`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/pointAndFigure.js`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/pointAndFigure.ts`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/renko.js`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/renko.ts`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/rsi.js`
-
-- Functions:
-  - `indicator`
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/rsi.ts`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/sar.js`
-
-- Functions:
-  - `indicator`
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/sar.ts`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/sma.js`
-
-- Functions:
-  - `indicator`
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/sma.ts`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/stochasticOscillator.js`
-
-- Functions:
-  - `indicator`
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/stochasticOscillator.ts`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/tma.js`
-
-- Functions:
-  - `indicator`
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/tma.ts`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/wma.js`
-
-- Functions:
-  - `indicator`
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicator/wma.ts`
-
-- Top-level variables:
-  - `ALGORITHM_TYPE`, `base`, `indicator`, `mergedAlgorithm`, `underlyingAlgorithm`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/__tests__/ce15.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/__tests__/ce15.test.js`
 
 - Functions:
   - `makeBar`
 - Top-level variables:
   - `bars`, `result`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/__tests__/ce16.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/__tests__/ce16.test.js`
 
 - Functions:
   - `constantBars`, `makeBar`
 - Top-level variables:
   - `bars`, `result`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/ao.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/ao.js`
 
 - Top-level variables:
   - `AO`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/ao.ts`
-
-- Top-level variables:
-  - `AO`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/bbi.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/bbi.js`
 
 - Top-level variables:
   - `BBI`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/bbi.ts`
-
-- Top-level variables:
-  - `BBI`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/bias.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/bias.js`
 
 - Top-level variables:
   - `BIAS`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/bias.ts`
-
-- Top-level variables:
-  - `BIAS`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/bollinger.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/bollinger.js`
 
 - Top-level variables:
   - `BOLLINGER`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/bollinger.ts`
-
-- Top-level variables:
-  - `BOLLINGER`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/brar.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/brar.js`
 
 - Top-level variables:
   - `BRAR`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/brar.ts`
-
-- Top-level variables:
-  - `BRAR`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/cci.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/cci.js`
 
 - Top-level variables:
   - `CCI`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/cci.ts`
-
-- Top-level variables:
-  - `CCI`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/cr.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/cr.js`
 
 - Top-level variables:
   - `CR`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/cr.ts`
-
-- Top-level variables:
-  - `CR`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/cvd.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/cvd.js`
 
 - Top-level variables:
   - `CVD`, `cumulative`, `delta`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/cvd.ts`
-
-- Top-level variables:
-  - `CVD`, `cumulative`, `delta`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/dma.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/dma.js`
 
 - Top-level variables:
   - `DMA`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/dma.ts`
-
-- Top-level variables:
-  - `DMA`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/dmi.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/dmi.js`
 
 - Top-level variables:
   - `DMI`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/dmi.ts`
-
-- Top-level variables:
-  - `DMI`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/ema.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/ema.js`
 
 - Top-level variables:
   - `EMA`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/ema.ts`
-
-- Top-level variables:
-  - `EMA`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/emv.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/emv.js`
 
 - Top-level variables:
   - `EMV`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/emv.ts`
-
-- Top-level variables:
-  - `EMV`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/kdj.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/kdj.js`
 
 - Top-level variables:
   - `KDJ`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/kdj.ts`
-
-- Top-level variables:
-  - `KDJ`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/ma.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/ma.js`
 
 - Top-level variables:
   - `MA`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/ma.ts`
-
-- Top-level variables:
-  - `MA`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/macd.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/macd.js`
 
 - Top-level variables:
   - `MACD`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/macd.ts`
-
-- Top-level variables:
-  - `MACD`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/mtm.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/mtm.js`
 
 - Top-level variables:
   - `MTM`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/mtm.ts`
-
-- Top-level variables:
-  - `MTM`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/obv.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/obv.js`
 
 - Top-level variables:
   - `OBV`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/obv.ts`
-
-- Top-level variables:
-  - `OBV`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/psy.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/psy.js`
 
 - Top-level variables:
   - `PSY`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/psy.ts`
-
-- Top-level variables:
-  - `PSY`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/pvt.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/pvt.js`
 
 - Top-level variables:
   - `PVT`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/pvt.ts`
-
-- Top-level variables:
-  - `PVT`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/roc.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/roc.js`
 
 - Top-level variables:
   - `ROC`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/roc.ts`
-
-- Top-level variables:
-  - `ROC`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/rsi.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/rsi.js`
 
 - Top-level variables:
   - `RSI`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/rsi.ts`
-
-- Top-level variables:
-  - `RSI`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/sar.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/sar.js`
 
 - Top-level variables:
   - `SAR`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/sar.ts`
-
-- Top-level variables:
-  - `SAR`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/sma.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/sma.js`
 
 - Top-level variables:
   - `SMA`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/sma.ts`
-
-- Top-level variables:
-  - `SMA`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/trix.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/trix.js`
 
 - Top-level variables:
   - `TRIX`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/trix.ts`
-
-- Top-level variables:
-  - `TRIX`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/volume.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/volume.js`
 
 - Top-level variables:
   - `VOLUME`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/volume.ts`
-
-- Top-level variables:
-  - `VOLUME`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/vr.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/vr.js`
 
 - Top-level variables:
   - `VR`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/vr.ts`
-
-- Top-level variables:
-  - `VR`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/wr.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/builtin/wr.js`
 
 - Top-level variables:
   - `WR`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/builtin/wr.ts`
-
-- Top-level variables:
-  - `WR`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/index.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/index.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/index.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/__tests__/CVDIndicator.test.tsx`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/overlays/__tests__/CVDIndicator.test.js`
 
 - Top-level variables:
   - `data`, `elem`, `props`, `visibleRange`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/__tests__/whaleDetector.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/overlays/__tests__/whaleDetector.test.js`
 
 - Top-level variables:
   - `data`, `event`, `events`, `threshold`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/__tests__/WhaleMarketBubbleOverlay.test.tsx`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/overlays/__tests__/WhaleMarketBubbleOverlay.test.js`
 
 - Functions:
   - `createMockContextValue`
 - Top-level variables:
   - `act`, `contextValue`, `createRoot`, `elem`, `events`, `props`, `visibleRange`, `whaleEvent`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/CVDIndicator.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/overlays/CVDIndicator.js`
 
 - Functions:
   - `CVDIndicator`, `cvdYScale`
 - Top-level variables:
-  - `barHeight`, `barIndex`, `barStartY`, `barWidth`, `barX`, `cvdApprox`, `drawCVD`, `isPositive`, `maxCVD`, `minCVD`, `normalized`, `paddedMax`, `paddedMin`, `rangeCV`, `visibleData`, `zeroY`
+  - `barDate`, `barHeight`, `barIndex`, `barStartY`, `barWidth`, `barX`, `cvdApprox`, `drawCVD`, `isPositive`, `maxCVD`, `minCVD`, `normalized`, `paddedMax`, `paddedMin`, `rangeCV`, `visibleData`, `zeroY`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/CVDIndicator.tsx`
-
-- Functions:
-  - `CVDIndicator`
-- Top-level variables:
-  - `barHeight`, `barIndex`, `barStartY`, `barWidth`, `barX`, `cvdApprox`, `cvdYScale`, `drawCVD`, `isPositive`, `maxCVD`, `minCVD`, `normalized`, `paddedMax`, `paddedMin`, `rangeCV`, `visibleData`, `zeroY`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/DarkFlowBadge.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/overlays/DarkFlowBadge.js`
 
 - Functions:
   - `DarkFlowBadge`, `strengthTier`
 - Top-level variables:
   - `SIGNAL_LABELS`, `sigLabel`, `tier`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/DarkFlowBadge.tsx`
-
-- Functions:
-  - `DarkFlowBadge`, `strengthTier`
-- Top-level variables:
-  - `SIGNAL_LABELS`, `sigLabel`, `tier`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/ExternalCVDOverlay.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/overlays/ExternalCVDOverlay.js`
 
 - Functions:
   - `ExternalCVDOverlay`, `cvdY`, `drawOverlay`
 - Top-level variables:
   - `draw`, `fillColor`, `grad`, `hi`, `isPositive`, `lastPt`, `lineColor`, `lo`, `maxCvd`, `minCvd`, `padded`, `pts`, `span`, `ySpan`, `zeroY`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/ExternalCVDOverlay.tsx`
-
-- Functions:
-  - `ExternalCVDOverlay`, `drawOverlay`
-- Top-level variables:
-  - `cvdY`, `draw`, `fillColor`, `grad`, `hi`, `isPositive`, `lastPt`, `lineColor`, `lo`, `maxCvd`, `minCvd`, `padded`, `pts`, `span`, `ySpan`, `zeroY`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/WhaleBubbleOverlay.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/overlays/WhaleBubbleOverlay.js`
 
 - Functions:
   - `WhaleBubbleOverlay`
 - Top-level variables:
   - `alpha`, `bar`, `barDate`, `barsByTimestamp`, `dateValue`, `draw`, `fillColor`, `radius`, `rawRadius`, `strokeColor`, `x`, `y`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/WhaleBubbleOverlay.tsx`
-
-- Functions:
-  - `WhaleBubbleOverlay`
-- Top-level variables:
-  - `alpha`, `bar`, `barDate`, `barsByTimestamp`, `dateValue`, `draw`, `fillColor`, `radius`, `rawRadius`, `strokeColor`, `x`, `y`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/whaleDetector.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/overlays/whaleDetector.js`
 
 - Functions:
   - `detectWhaleEvents`, `formatVolume`, `formatWhaleEvent`, `getBubbleColor`, `getBubbleRadius`, `getBubbleStrokeColor`
 - Top-level variables:
   - `abs`, `buyVol`, `netDelta`, `radiusMap`, `sellVol`, `side`, `sizeCategory`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/whaleDetector.ts`
-
-- Functions:
-  - `detectWhaleEvents`, `formatVolume`, `formatWhaleEvent`, `getBubbleColor`, `getBubbleRadius`, `getBubbleStrokeColor`
-- Top-level variables:
-  - `abs`, `buyVol`, `netDelta`, `radiusMap`, `sellVol`, `side`, `sizeCategory`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/WhaleMarketBubbleOverlay.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/overlays/WhaleMarketBubbleOverlay.js`
 
 - Functions:
   - `WhaleMarketBubbleOverlay`, `formatBubbleLabel`
 - Top-level variables:
-  - `abs`, `bar`, `bubbleY`, `candleX`, `candleY`, `close`, `drawBubbles`, `radius`, `visibleEvents`, `volumeLabel`
+  - `abs`, `bar`, `barDate`, `bubbleY`, `candleX`, `candleY`, `close`, `drawBubbles`, `radius`, `visibleEvents`, `volumeLabel`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/overlays/WhaleMarketBubbleOverlay.tsx`
-
-- Functions:
-  - `WhaleMarketBubbleOverlay`, `formatBubbleLabel`
-- Top-level variables:
-  - `abs`, `bar`, `bubbleY`, `candleX`, `candleY`, `close`, `drawBubbles`, `radius`, `visibleEvents`, `volumeLabel`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/registry.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/registry.js`
 
 - Functions:
   - `getIndicator`, `listIndicators`, `normalizeIndicatorName`, `registerIndicator`
 - Top-level variables:
   - `indicatorRegistry`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/registry.test.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/registry.test.js`
 
 - Top-level variables:
   - `bollingerIndicator`, `customIndicator`, `emaIndicator`, `macdIndicator`, `names`, `sampleBars`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/registry.ts`
-
-- Functions:
-  - `getIndicator`, `listIndicators`, `normalizeIndicatorName`, `registerIndicator`
-- Top-level variables:
-  - `indicatorRegistry`
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/types.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/types.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/types.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/indicators/utils.js`
+### `packages/web/src/components/vninvestcharts/src/lib/indicators/utils.js`
 
 - Functions:
   - `aoColorSeries`, `aoSeries`, `bbiSeries`, `biasSeries`, `bollingerSeries`, `brarSeries`, `cciSeries`, `collectNumbers`, `crSeries`, `dmaSeries`, `dmiSeries`, `emaSeries`, `emaSeriesSkipNaN`, `emvSeries`, `isFiniteNumber`, `kdjSeries`, `macdSeries`, `meanAbsoluteDeviationSeries`, `midpointSeries`, `mtmSeries`, `numericExtent`, `obvSeries`, `psySeries`, `pvtSeries`, `risingVolumeColor`, `rocSeries`, `rollingStandardDeviation`, `rsiSeries`, `sarSeries`, `smaSeries`, `smaSeriesSkipNaN`, `trixSeries`, `typicalPriceSeries`, `vrSeries`, `wilderSeries`, `wilderSeriesSkipNaN`, `wrSeries`
 - Top-level variables:
   - `adx`, `af`, `ar`, `arDenominator`, `arNumerator`, `average`, `averageGain`, `averageLoss`, `bar`, `boxRatio`, `br`, `brDenominator`, `brNumerator`, `change`, `close`, `closes`, `cr`, `cumulative`, `current`, `currentIndex`, `currentMid`, `d`, `dValue`, `ddd`, `delta`, `denom`, `denominator`, `deviation`, `divisor`, `downMove`, `dx`, `ema1`, `ema2`, `ema3`, `emv`, `ep`, `fast`, `fastEma`, `finiteCount`, `finiteValues`, `gain`, `gainAverage`, `hh`, `highestHigh`, `histogram`, `hm`, `isUpTrend`, `j`, `k`, `ll`, `loss`, `lossAverage`, `lower`, `lowestLow`, `ma12`, `ma24`, `ma3`, `ma6`, `macd`, `mad`, `maxValue`, `mean`, `meanDeviation`, `middle`, `midpoints`, `minValue`, `minus`, `minusDI`, `minusDm`, `movingAverage`, `mtm`, `numerator`, `open`, `plusDI`, `plusDm`, `prevSar`, `previous`, `previousEma`, `previousMid`, `psy`, `queue`, `range`, `relativeStrength`, `removed`, `result`, `rollingSum`, `rsv`, `sar`, `series`, `signal`, `slice`, `slow`, `slowEma`, `sma`, `sma34`, `sma5`, `smoothMinus`, `smoothPlus`, `smoothTr`, `smoothing`, `startIndex`, `tp`, `tr`, `trix`, `up`, `upCount`, `upMove`, `upper`, `variance`, `window`
 
-### `packages/web/src/components/vnstockcharts/lib/indicators/utils.ts`
-
-- Functions:
-  - `aoColorSeries`, `aoSeries`, `bbiSeries`, `biasSeries`, `bollingerSeries`, `brarSeries`, `cciSeries`, `collectNumbers`, `crSeries`, `dmaSeries`, `dmiSeries`, `emaSeries`, `emaSeriesSkipNaN`, `emvSeries`, `isFiniteNumber`, `kdjSeries`, `macdSeries`, `meanAbsoluteDeviationSeries`, `midpointSeries`, `mtmSeries`, `numericExtent`, `obvSeries`, `psySeries`, `pvtSeries`, `risingVolumeColor`, `rocSeries`, `rollingStandardDeviation`, `rsiSeries`, `sarSeries`, `smaSeries`, `smaSeriesSkipNaN`, `trixSeries`, `typicalPriceSeries`, `vrSeries`, `wilderSeries`, `wilderSeriesSkipNaN`, `wrSeries`
-- Top-level variables:
-  - `adx`, `af`, `ar`, `arDenominator`, `arNumerator`, `average`, `averageGain`, `averageLoss`, `bar`, `boxRatio`, `br`, `brDenominator`, `brNumerator`, `change`, `close`, `closes`, `cr`, `cumulative`, `current`, `currentIndex`, `currentMid`, `d`, `dValue`, `ddd`, `delta`, `denom`, `denominator`, `deviation`, `divisor`, `downMove`, `dx`, `ema1`, `ema2`, `ema3`, `emv`, `ep`, `fast`, `fastEma`, `finiteCount`, `finiteValues`, `gain`, `gainAverage`, `hh`, `highestHigh`, `histogram`, `hm`, `isUpTrend`, `j`, `k`, `ll`, `loss`, `lossAverage`, `lower`, `lowestLow`, `ma12`, `ma24`, `ma3`, `ma6`, `macd`, `mad`, `maxValue`, `mean`, `meanDeviation`, `middle`, `midpoints`, `minValue`, `minus`, `minusDI`, `minusDm`, `movingAverage`, `mtm`, `numerator`, `open`, `plusDI`, `plusDm`, `prevSar`, `previous`, `previousEma`, `previousMid`, `psy`, `queue`, `range`, `relativeStrength`, `removed`, `result`, `rollingSum`, `rsv`, `sar`, `series`, `signal`, `slice`, `slow`, `slowEma`, `sma`, `sma34`, `sma5`, `smoothMinus`, `smoothPlus`, `smoothTr`, `smoothing`, `startIndex`, `tp`, `tr`, `trix`, `up`, `upCount`, `upMove`, `upper`, `variance`, `window`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/Brush.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/Brush.js`
 
 - Classes:
   - `Brush`
 - Top-level variables:
   - `dashArray`, `height`, `shouldBrush`, `width`, `x`, `x1y1`, `xValue`, `y`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/Brush.tsx`
-
-- Classes:
-  - `Brush`
-- Top-level variables:
-  - `dashArray`, `height`, `shouldBrush`, `width`, `x`, `x1y1`, `xValue`, `y`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/ClickCallback.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/ClickCallback.js`
 
 - Classes:
   - `ClickCallback`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/ClickCallback.tsx`
-
-- Classes:
-  - `ClickCallback`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/ChannelWithArea.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/components/ChannelWithArea.js`
 
 - Classes:
   - `ChannelWithArea`
@@ -15657,16 +11482,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `area`, `ctx`, `line`, `line1`, `line1Hovering`, `line2`, `line2Hovering`, `lines`, `x1`, `x2`, `y1`, `y2`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/ChannelWithArea.tsx`
-
-- Classes:
-  - `ChannelWithArea`
-- Functions:
-  - `getLines`, `getPath`, `helper`
-- Top-level variables:
-  - `area`, `ctx`, `line`, `line1`, `line1Hovering`, `line2`, `line2Hovering`, `lines`, `x1`, `x2`, `y1`, `y2`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/ClickableCircle.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/components/ClickableCircle.js`
 
 - Classes:
   - `ClickableCircle`
@@ -15675,16 +11491,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `hover`, `r`, `x`, `y`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/ClickableCircle.tsx`
-
-- Classes:
-  - `ClickableCircle`
-- Functions:
-  - `helper`
-- Top-level variables:
-  - `hover`, `r`, `x`, `y`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/ClickableShape.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/components/ClickableShape.js`
 
 - Classes:
   - `ClickableShape`
@@ -15693,16 +11500,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `end1`, `end2`, `halfWidth`, `start1`, `start2`, `x`, `y`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/ClickableShape.tsx`
-
-- Classes:
-  - `ClickableShape`
-- Functions:
-  - `helper`
-- Top-level variables:
-  - `end1`, `end2`, `halfWidth`, `start1`, `start2`, `x`, `y`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/GannFan.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/components/GannFan.js`
 
 - Classes:
   - `GannFan`
@@ -15711,16 +11509,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `bottom`, `ctx`, `dx`, `dy`, `end`, `halfX`, `halfY`, `hovering`, `isWithinLineBounds`, `left`, `line1`, `lineCoods`, `lines`, `oneEighthX`, `oneEighthY`, `oneFourthX`, `oneFourthY`, `oneThirdX`, `oneThirdY`, `pairsOfLines`, `right`, `top`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/GannFan.tsx`
-
-- Classes:
-  - `GannFan`
-- Functions:
-  - `getLineCoordinates`, `helper`
-- Top-level variables:
-  - `bottom`, `ctx`, `dx`, `dy`, `end`, `halfX`, `halfY`, `hovering`, `isWithinLineBounds`, `left`, `line1`, `lineCoods`, `lines`, `oneEighthX`, `oneEighthY`, `oneFourthX`, `oneFourthY`, `oneThirdX`, `oneThirdY`, `pairsOfLines`, `right`, `top`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/HoverTextNearMouse.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/components/HoverTextNearMouse.js`
 
 - Classes:
   - `HoverTextNearMouse`
@@ -15729,16 +11518,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `MIN_WIDTH`, `PADDING`, `cx`, `cy`, `numberOrString`, `rect`, `text`, `textMetaData`, `textNode`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/HoverTextNearMouse.tsx`
-
-- Classes:
-  - `HoverTextNearMouse`
-- Functions:
-  - `helper`
-- Top-level variables:
-  - `MIN_WIDTH`, `PADDING`, `cx`, `cy`, `numberOrString`, `rect`, `text`, `textMetaData`, `textNode`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/InteractiveText.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/components/InteractiveText.js`
 
 - Classes:
   - `InteractiveText`
@@ -15747,16 +11527,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `rect`, `x`, `y`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/InteractiveText.tsx`
-
-- Classes:
-  - `InteractiveText`
-- Functions:
-  - `helper`
-- Top-level variables:
-  - `rect`, `x`, `y`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/InteractiveYCoordinate.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/components/InteractiveYCoordinate.js`
 
 - Classes:
   - `InteractiveYCoordinate`
@@ -15765,16 +11536,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `newEdge`, `rect`, `values`, `y`, `yCoord`, `yValue`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/InteractiveYCoordinate.tsx`
-
-- Classes:
-  - `InteractiveYCoordinate`
-- Functions:
-  - `helper`
-- Top-level variables:
-  - `newEdge`, `rect`, `values`, `y`, `yCoord`, `yValue`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/LinearRegressionChannelWithArea.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/components/LinearRegressionChannelWithArea.js`
 
 - Classes:
   - `LinearRegressionChannelWithArea`
@@ -15783,30 +11545,14 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `a`, `array`, `b`, `combine`, `ctx`, `dy`, `endIndex`, `hovering`, `line`, `n`, `newy1`, `newy2`, `startIndex`, `stdDev`, `x1`, `x2`, `xSquareds`, `xs`, `xys`, `y1`, `y2`, `yDiffs`, `ys`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/LinearRegressionChannelWithArea.tsx`
-
-- Classes:
-  - `LinearRegressionChannelWithArea`
-- Functions:
-  - `edge1Provider`, `edge2Provider`, `helper`
-- Top-level variables:
-  - `a`, `array`, `b`, `combine`, `ctx`, `dy`, `endIndex`, `hovering`, `line`, `n`, `newy1`, `newy2`, `startIndex`, `stdDev`, `x1`, `x2`, `xSquareds`, `xs`, `xys`, `y1`, `y2`, `yDiffs`, `ys`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/MouseLocationIndicator.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/components/MouseLocationIndicator.js`
 
 - Classes:
   - `MouseLocationIndicator`
 - Top-level variables:
   - `pos`, `x`, `xValue`, `y`, `yValue`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/MouseLocationIndicator.tsx`
-
-- Classes:
-  - `MouseLocationIndicator`
-- Top-level variables:
-  - `pos`, `x`, `xValue`, `y`, `yValue`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/StraightLine.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/components/StraightLine.js`
 
 - Classes:
   - `StraightLine`
@@ -15815,174 +11561,86 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `b`, `end`, `hovering`, `line`, `lineWidth`, `m`, `modLine`, `start`, `x1`, `x2`, `y`, `y1`, `y2`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/StraightLine.tsx`
-
-- Classes:
-  - `StraightLine`
-- Functions:
-  - `generateLine`, `getLineCoordinates`, `getRayCoordinates`, `getSlope`, `getXLineCoordinates`, `getYIntercept`, `helper`, `isHovering`, `isHovering2`
-- Top-level variables:
-  - `b`, `end`, `hovering`, `line`, `lineWidth`, `m`, `modLine`, `start`, `x1`, `x2`, `y`, `y1`, `y2`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/Text.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/components/Text.js`
 
 - Classes:
   - `Text`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/components/Text.tsx`
-
-- Classes:
-  - `Text`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/DrawingObjectSelector.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/DrawingObjectSelector.js`
 
 - Classes:
   - `DrawingObjectSelector`
 - Top-level variables:
   - `allSelected`, `interactiveNodes`, `interactives`, `item`, `key`, `morePropsForChart`, `objects`, `selected`, `valueArray`, `valuePresent`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/DrawingObjectSelector.tsx`
-
-- Classes:
-  - `DrawingObjectSelector`
-- Top-level variables:
-  - `allSelected`, `interactiveNodes`, `interactives`, `item`, `key`, `morePropsForChart`, `objects`, `selected`, `valueArray`, `valuePresent`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/EquidistantChannel.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/EquidistantChannel.js`
 
 - Classes:
   - `EquidistantChannel`
 - Top-level variables:
   - `b`, `dy`, `eachAppearance`, `m`, `newChannels`, `overrideIndex`, `tempChannel`, `y`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/EquidistantChannel.tsx`
-
-- Classes:
-  - `EquidistantChannel`
-- Top-level variables:
-  - `b`, `dy`, `eachAppearance`, `m`, `newChannels`, `overrideIndex`, `tempChannel`, `y`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/FibonacciRetracement.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/FibonacciRetracement.js`
 
 - Classes:
   - `FibonacciRetracement`
 - Top-level variables:
   - `currentRetracement`, `dx`, `eachAppearance`, `eachHoverText`, `hoverTextWidthDefault`, `newRetracements`, `overrideIndex`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/FibonacciRetracement.tsx`
-
-- Classes:
-  - `FibonacciRetracement`
-- Top-level variables:
-  - `currentRetracement`, `dx`, `eachAppearance`, `eachHoverText`, `hoverTextWidthDefault`, `newRetracements`, `overrideIndex`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/GannFan.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/GannFan.js`
 
 - Classes:
   - `GannFan`
 - Top-level variables:
   - `eachAppearance`, `newfans`, `overrideIndex`, `tempChannel`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/GannFan.tsx`
-
-- Classes:
-  - `GannFan`
-- Top-level variables:
-  - `eachAppearance`, `newfans`, `overrideIndex`, `tempChannel`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/index.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/index.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/index.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/InteractiveText.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/InteractiveText.js`
 
 - Classes:
   - `InteractiveText`
 - Top-level variables:
   - `defaultHoverText`, `newText`, `newTextList`, `props`, `selected`, `xyValue`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/InteractiveText.tsx`
-
-- Classes:
-  - `InteractiveText`
-- Top-level variables:
-  - `defaultHoverText`, `newText`, `newTextList`, `props`, `selected`, `xyValue`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/InteractiveYCoordinate.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/InteractiveYCoordinate.js`
 
 - Classes:
   - `InteractiveYCoordinate`
 - Top-level variables:
   - `draggedAlert`, `newAlertList`, `props`, `selected`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/InteractiveYCoordinate.tsx`
-
-- Classes:
-  - `InteractiveYCoordinate`
-- Top-level variables:
-  - `draggedAlert`, `newAlertList`, `props`, `selected`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/StandardDeviationChannel.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/StandardDeviationChannel.js`
 
 - Classes:
   - `StandardDeviationChannel`
 - Top-level variables:
   - `eachAppearance`, `eachDefaultAppearance`, `eachHoverText`, `hoverTextDefault`, `newChannels`, `tempLine`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/StandardDeviationChannel.tsx`
-
-- Classes:
-  - `StandardDeviationChannel`
-- Top-level variables:
-  - `eachAppearance`, `eachDefaultAppearance`, `eachHoverText`, `hoverTextDefault`, `newChannels`, `tempLine`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/TrendLine.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/TrendLine.js`
 
 - Classes:
   - `TrendLine`
 - Top-level variables:
   - `eachAppearance`, `hoverTextWithDefault`, `newTrends`, `tempLine`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/TrendLine.tsx`
-
-- Classes:
-  - `TrendLine`
-- Top-level variables:
-  - `eachAppearance`, `hoverTextWithDefault`, `newTrends`, `tempLine`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/utils.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/utils.js`
 
 - Functions:
   - `getMorePropsForChart`, `getMouseXY`, `getSelected`, `getValueFromOverride`, `isHover`, `isHoverForInteractiveType`, `saveNodeType`, `terminate`
 - Top-level variables:
   - `chartConfig`, `hovering`, `interactive`, `mouseXY`, `objects`, `selecedNodes`, `selected`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/utils.ts`
-
-- Functions:
-  - `getMorePropsForChart`, `getMouseXY`, `getSelected`, `getValueFromOverride`, `isHover`, `isHoverForInteractiveType`, `saveNodeType`, `terminate`
-- Top-level variables:
-  - `chartConfig`, `hovering`, `interactive`, `mouseXY`, `objects`, `selecedNodes`, `selected`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachEquidistantChannel.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/wrapper/EachEquidistantChannel.js`
 
 - Classes:
   - `EachEquidistantChannel`
 - Top-level variables:
   - `dx`, `dy`, `hoverHandler`, `line1Edge`, `line2Edge`, `newDy`, `newX1Value`, `newX2Value`, `newY1Value`, `newY2Value`, `x1`, `x2`, `y1`, `y2`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachEquidistantChannel.tsx`
-
-- Classes:
-  - `EachEquidistantChannel`
-- Top-level variables:
-  - `dx`, `dy`, `hoverHandler`, `line1Edge`, `line2Edge`, `newDy`, `newX1Value`, `newX2Value`, `newY1Value`, `newY2Value`, `x1`, `x2`, `y1`, `y2`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachFibRetracement.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/wrapper/EachFibRetracement.js`
 
 - Classes:
   - `EachFibRetracement`
@@ -15991,44 +11649,21 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `dir`, `dragHandler`, `dx`, `dy`, `edge1DragHandler`, `edge2DragHandler`, `firstOrLast`, `hoverHandler`, `interactiveCursorClass`, `interactiveEdgeCursorClass`, `lineType`, `lines`, `newX1Value`, `newX2Value`, `newY1Value`, `newY2Value`, `retracements`, `text`, `x`, `x1`, `x2`, `y`, `y1`, `y2`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachFibRetracement.tsx`
-
-- Classes:
-  - `EachFibRetracement`
-- Functions:
-  - `helper`, `xyProvider`
-- Top-level variables:
-  - `dir`, `dragHandler`, `dx`, `dy`, `edge1DragHandler`, `edge2DragHandler`, `firstOrLast`, `hoverHandler`, `interactiveCursorClass`, `interactiveEdgeCursorClass`, `lineType`, `lines`, `newX1Value`, `newX2Value`, `newY1Value`, `newY2Value`, `retracements`, `text`, `x`, `x1`, `x2`, `y`, `y1`, `y2`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachGannFan.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/wrapper/EachGannFan.js`
 
 - Classes:
   - `EachGannFan`
 - Top-level variables:
   - `dx`, `dy`, `hoverHandler`, `line1Edge`, `newDy`, `newX1Value`, `newX2Value`, `newY1Value`, `newY2Value`, `x1`, `x2`, `y1`, `y2`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachGannFan.tsx`
-
-- Classes:
-  - `EachGannFan`
-- Top-level variables:
-  - `dx`, `dy`, `hoverHandler`, `line1Edge`, `newDy`, `newX1Value`, `newX2Value`, `newY1Value`, `newY2Value`, `x1`, `x2`, `y1`, `y2`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachInteractiveYCoordinate.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/wrapper/EachInteractiveYCoordinate.js`
 
 - Classes:
   - `EachInteractiveYCoordinate`
 - Top-level variables:
   - `dragProps`, `dy`, `hoverHandler`, `newYValue`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachInteractiveYCoordinate.tsx`
-
-- Classes:
-  - `EachInteractiveYCoordinate`
-- Top-level variables:
-  - `dragProps`, `dy`, `hoverHandler`, `newYValue`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachLinearRegressionChannel.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/wrapper/EachLinearRegressionChannel.js`
 
 - Classes:
   - `EachLinearRegressionChannel`
@@ -16037,30 +11672,14 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `currentItem`, `hoverHandler`, `x`, `y`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachLinearRegressionChannel.tsx`
-
-- Classes:
-  - `EachLinearRegressionChannel`
-- Functions:
-  - `getNewXY`
-- Top-level variables:
-  - `currentItem`, `hoverHandler`, `x`, `y`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachText.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/wrapper/EachText.js`
 
 - Classes:
   - `EachText`
 - Top-level variables:
   - `dx`, `dy`, `hoverHandler`, `xValue`, `xyValue`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachText.tsx`
-
-- Classes:
-  - `EachText`
-- Top-level variables:
-  - `dx`, `dy`, `hoverHandler`, `xValue`, `xyValue`
-
-### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachTrendLine.js`
+### `packages/web/src/components/vninvestcharts/src/lib/interactive/wrapper/EachTrendLine.js`
 
 - Classes:
   - `EachTrendLine`
@@ -16069,114 +11688,56 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `dx`, `dy`, `mouseY`, `newX1Value`, `newX2Value`, `newY`, `newY1Value`, `newY2Value`, `x`, `x1`, `x2`, `y`, `y1`, `y2`
 
-### `packages/web/src/components/vnstockcharts/lib/interactive/wrapper/EachTrendLine.tsx`
-
-- Classes:
-  - `EachTrendLine`
-- Functions:
-  - `getNewXY`
-- Top-level variables:
-  - `dx`, `dy`, `mouseY`, `newX1Value`, `newX2Value`, `newY`, `newY1Value`, `newY2Value`, `x`, `x1`, `x2`, `y`, `y1`, `y2`
-
-### `packages/web/src/components/vnstockcharts/lib/scale/discontinuousTimeScaleProvider.js`
+### `packages/web/src/components/vninvestcharts/src/lib/scale/discontinuousTimeScaleProvider.js`
 
 - Functions:
   - `discontinuousTimeScaleProvider`, `discontinuousTimeScaleProviderBuilder`, `doStuff`, `evaluateLevel`, `inputDateAccessor`
 - Top-level variables:
   - `calculate`, `currentFormatters`, `date`, `dateAccessor`, `discontinuousIndexCalculator`, `discontinuousIndexCalculatorLocalTime`, `finalData`, `i`, `index`, `initialIndex`, `inputIndex`, `level`, `mergedData`, `offsetInMillis`, `response`, `row`, `startOf15Minutes`, `startOf30Minutes`, `startOf30Seconds`, `startOf5Minutes`, `startOfDay`, `startOfEighthOfADay`, `startOfHalfDay`, `startOfHour`, `startOfMinute`, `startOfMonth`, `startOfQuarter`, `startOfQuarterDay`, `startOfWeek`, `startOfYear`, `xScale`
 
-### `packages/web/src/components/vnstockcharts/lib/scale/discontinuousTimeScaleProvider.ts`
-
-- Functions:
-  - `discontinuousTimeScaleProviderBuilder`, `doStuff`, `evaluateLevel`
-- Top-level variables:
-  - `calculate`, `currentFormatters`, `date`, `dateAccessor`, `discontinuousIndexCalculator`, `discontinuousIndexCalculatorLocalTime`, `discontinuousTimeScaleProvider`, `finalData`, `i`, `index`, `initialIndex`, `inputDateAccessor`, `inputIndex`, `level`, `mergedData`, `offsetInMillis`, `response`, `row`, `startOf15Minutes`, `startOf30Minutes`, `startOf30Seconds`, `startOf5Minutes`, `startOfDay`, `startOfEighthOfADay`, `startOfHalfDay`, `startOfHour`, `startOfMinute`, `startOfMonth`, `startOfQuarter`, `startOfQuarterDay`, `startOfWeek`, `startOfYear`, `xScale`
-
-### `packages/web/src/components/vnstockcharts/lib/scale/evaluator.js`
+### `packages/web/src/components/vninvestcharts/src/lib/scale/evaluator.js`
 
 - Functions:
   - `canShowTheseManyPeriods`, `extentsWrapper`, `filterData`, `getFilteredResponse`, `getNewEnd`, `showMax`, `showMaxThreshold`, `showMinThreshold`
 - Top-level variables:
   - `chartWidth`, `clampedDomain`, `filteredData`, `firstItem`, `lastItem`, `lastItemXValue`, `left`, `log`, `newEnd`, `newLeftIndex`, `newRightIndex`, `newWidth`, `newXScale`, `plotData`, `realInputDomain`, `right`, `width`, `xScale`
 
-### `packages/web/src/components/vnstockcharts/lib/scale/evaluator.ts`
-
-- Functions:
-  - `canShowTheseManyPeriods`, `extentsWrapper`, `filterData`, `getFilteredResponse`, `getNewEnd`, `showMax`, `showMaxThreshold`, `showMinThreshold`
-- Top-level variables:
-  - `chartWidth`, `clampedDomain`, `filteredData`, `firstItem`, `lastItem`, `lastItemXValue`, `left`, `log`, `newEnd`, `newLeftIndex`, `newRightIndex`, `newWidth`, `newXScale`, `plotData`, `realInputDomain`, `right`, `width`, `xScale`
-
-### `packages/web/src/components/vnstockcharts/lib/scale/financeDiscontinuousScale.js`
+### `packages/web/src/components/vninvestcharts/src/lib/scale/financeDiscontinuousScale.js`
 
 - Functions:
   - `scale`
 - Top-level variables:
-  - `MAX_LEVEL`, `backingTicks`, `d`, `desiredTickCount`, `distance`, `end`, `inverted`, `start`, `temp`, `tickValues`, `ticks`, `ticksAtLevel`, `ticksMap`, `ticksSet`, `unsortedTicks`
+  - `MAX_LEVEL`, `backingTicks`, `d`, `desiredTickCount`, `distance`, `end`, `inverted`, `leftPoint`, `levelPoint`, `point`, `rightPoint`, `start`, `temp`, `tickValues`, `ticks`, `ticksAtLevel`, `ticksMap`, `ticksSet`, `unsortedTicks`
 
-### `packages/web/src/components/vnstockcharts/lib/scale/financeDiscontinuousScale.ts`
-
-- Functions:
-  - `scale`
-- Top-level variables:
-  - `MAX_LEVEL`, `backingTicks`, `d`, `desiredTickCount`, `distance`, `end`, `inverted`, `start`, `temp`, `tickValues`, `ticks`, `ticksAtLevel`, `ticksMap`, `ticksSet`, `unsortedTicks`
-
-### `packages/web/src/components/vnstockcharts/lib/scale/index.js`
+### `packages/web/src/components/vninvestcharts/src/lib/scale/index.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/scale/index.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/scale/levels.js`
+### `packages/web/src/components/vninvestcharts/src/lib/scale/levels.js`
 
 - Top-level variables:
   - `defaultFormatters`, `levelDefinition`
 
-### `packages/web/src/components/vnstockcharts/lib/scale/levels.ts`
-
-- Top-level variables:
-  - `defaultFormatters`, `levelDefinition`
-
-### `packages/web/src/components/vnstockcharts/lib/series/AlternatingFillAreaSeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/AlternatingFillAreaSeries.js`
 
 - Classes:
   - `AlternatingFillAreaSeries`
 - Top-level variables:
   - `id1`, `id2`, `style1`, `style2`
 
-### `packages/web/src/components/vnstockcharts/lib/series/AlternatingFillAreaSeries.tsx`
-
-- Classes:
-  - `AlternatingFillAreaSeries`
-- Top-level variables:
-  - `id1`, `id2`, `style1`, `style2`
-
-### `packages/web/src/components/vnstockcharts/lib/series/AreaOnlySeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/AreaOnlySeries.js`
 
 - Classes:
   - `AreaOnlySeries`
 - Top-level variables:
   - `areaSeries`, `d`, `newBase`, `newClassName`
 
-### `packages/web/src/components/vnstockcharts/lib/series/AreaOnlySeries.tsx`
-
-- Classes:
-  - `AreaOnlySeries`
-- Top-level variables:
-  - `areaSeries`, `d`, `newBase`, `newClassName`
-
-### `packages/web/src/components/vnstockcharts/lib/series/AreaSeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/AreaSeries.js`
 
 - Functions:
   - `AreaSeries`
 
-### `packages/web/src/components/vnstockcharts/lib/series/AreaSeries.tsx`
-
-- Functions:
-  - `AreaSeries`
-
-### `packages/web/src/components/vnstockcharts/lib/series/BarSeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/BarSeries.js`
 
 - Classes:
   - `BarSeries`
@@ -16185,26 +11746,12 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `bars`, `getBase`, `getFill`, `h`, `offset`, `width`, `widthFunctor`, `x`, `y`, `yValue`
 
-### `packages/web/src/components/vnstockcharts/lib/series/BarSeries.tsx`
-
-- Classes:
-  - `BarSeries`
-- Functions:
-  - `getBars`
-- Top-level variables:
-  - `bars`, `getBase`, `getFill`, `h`, `offset`, `width`, `widthFunctor`, `x`, `y`, `yValue`
-
-### `packages/web/src/components/vnstockcharts/lib/series/BollingerSeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/BollingerSeries.js`
 
 - Classes:
   - `BollingerSeries`
 
-### `packages/web/src/components/vnstockcharts/lib/series/BollingerSeries.tsx`
-
-- Classes:
-  - `BollingerSeries`
-
-### `packages/web/src/components/vnstockcharts/lib/series/CandlestickSeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/CandlestickSeries.js`
 
 - Classes:
   - `CandlestickSeries`
@@ -16213,66 +11760,32 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `candleData`, `d`, `fill`, `height`, `offset`, `ohlc`, `stroke`, `wickStroke`, `width`, `widthFunctor`, `x`, `y`
 
-### `packages/web/src/components/vnstockcharts/lib/series/CandlestickSeries.tsx`
-
-- Classes:
-  - `CandlestickSeries`
-- Functions:
-  - `drawOnCanvas`, `getCandleData`, `getCandlesSVG`, `getWicksSVG`
-- Top-level variables:
-  - `candleData`, `d`, `fill`, `height`, `offset`, `ohlc`, `stroke`, `wickStroke`, `width`, `widthFunctor`, `x`, `y`
-
-### `packages/web/src/components/vnstockcharts/lib/series/CircleMarker.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/CircleMarker.js`
 
 - Functions:
   - `Circle`
 - Top-level variables:
   - `radius`
 
-### `packages/web/src/components/vnstockcharts/lib/series/CircleMarker.tsx`
-
-- Functions:
-  - `Circle`
-- Top-level variables:
-  - `radius`
-
-### `packages/web/src/components/vnstockcharts/lib/series/ElderRaySeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/ElderRaySeries.js`
 
 - Classes:
   - `ElderRaySeries`
 - Top-level variables:
   - `y`
 
-### `packages/web/src/components/vnstockcharts/lib/series/ElderRaySeries.tsx`
-
-- Classes:
-  - `ElderRaySeries`
-- Top-level variables:
-  - `y`
-
-### `packages/web/src/components/vnstockcharts/lib/series/GroupedBarSeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/GroupedBarSeries.js`
 
 - Classes:
   - `GroupedBarSeries`
 - Functions:
   - `postProcessor`
 
-### `packages/web/src/components/vnstockcharts/lib/series/GroupedBarSeries.tsx`
-
-- Classes:
-  - `GroupedBarSeries`
-- Functions:
-  - `postProcessor`
-
-### `packages/web/src/components/vnstockcharts/lib/series/index.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/index.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/series/index.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/series/KagiSeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/KagiSeries.js`
 
 - Classes:
   - `KagiSeries`
@@ -16281,44 +11794,21 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `begin`, `d`, `dataSeries`, `idx`, `kagi`, `kagiLine`, `last`, `lastPlot`, `pathD`, `paths`, `prevX`
 
-### `packages/web/src/components/vnstockcharts/lib/series/KagiSeries.tsx`
-
-- Classes:
-  - `KagiSeries`
-- Functions:
-  - `drawOnCanvas`, `helper`
-- Top-level variables:
-  - `begin`, `d`, `dataSeries`, `idx`, `kagi`, `kagiLine`, `last`, `lastPlot`, `pathD`, `paths`, `prevX`
-
-### `packages/web/src/components/vnstockcharts/lib/series/LineSeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/LineSeries.js`
 
 - Classes:
   - `LineSeries`
 - Top-level variables:
   - `d`, `dataSeries`, `hoverProps`
 
-### `packages/web/src/components/vnstockcharts/lib/series/LineSeries.tsx`
-
-- Classes:
-  - `LineSeries`
-- Top-level variables:
-  - `d`, `dataSeries`, `hoverProps`
-
-### `packages/web/src/components/vnstockcharts/lib/series/MACDSeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/MACDSeries.js`
 
 - Functions:
   - `MACDSeries`, `yAccessorForDivergence`, `yAccessorForDivergenceBase`, `yAccessorForMACD`, `yAccessorForSignal`
 - Top-level variables:
   - `fillConfig`, `strokeConfig`
 
-### `packages/web/src/components/vnstockcharts/lib/series/MACDSeries.tsx`
-
-- Functions:
-  - `MACDSeries`, `yAccessorForDivergence`, `yAccessorForDivergenceBase`, `yAccessorForMACD`, `yAccessorForSignal`
-- Top-level variables:
-  - `fillConfig`, `strokeConfig`
-
-### `packages/web/src/components/vnstockcharts/lib/series/OHLCSeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/OHLCSeries.js`
 
 - Classes:
   - `OHLCSeries`
@@ -16327,16 +11817,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `barData`, `barWidth`, `bars`, `classNameFunc`, `ohlc`, `strokeFunc`, `strokeWidth`, `wickNest`, `width`, `x`, `y1`
 
-### `packages/web/src/components/vnstockcharts/lib/series/OHLCSeries.tsx`
-
-- Classes:
-  - `OHLCSeries`
-- Functions:
-  - `drawOnCanvas`, `getOHLCBars`
-- Top-level variables:
-  - `barData`, `barWidth`, `bars`, `classNameFunc`, `ohlc`, `strokeFunc`, `strokeWidth`, `wickNest`, `width`, `x`, `y1`
-
-### `packages/web/src/components/vnstockcharts/lib/series/OverlayBarSeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/OverlayBarSeries.js`
 
 - Classes:
   - `OverlayBarSeries`
@@ -16345,16 +11826,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `b`, `bars`, `getBase`, `getClassName`, `getFill`, `h`, `innerBars`, `offset`, `width`, `widthFunctor`, `x`, `xValue`, `y`, `yValue`
 
-### `packages/web/src/components/vnstockcharts/lib/series/OverlayBarSeries.tsx`
-
-- Classes:
-  - `OverlayBarSeries`
-- Functions:
-  - `getBars`
-- Top-level variables:
-  - `b`, `bars`, `getBase`, `getClassName`, `getFill`, `h`, `innerBars`, `offset`, `width`, `widthFunctor`, `x`, `xValue`, `y`, `yValue`
-
-### `packages/web/src/components/vnstockcharts/lib/series/PointAndFigureSeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/PointAndFigureSeries.js`
 
 - Classes:
   - `PointAndFigureSeries`
@@ -16363,16 +11835,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `anyBox`, `boxHeight`, `boxes`, `columnWidth`, `columns`, `width`, `xOffset`
 
-### `packages/web/src/components/vnstockcharts/lib/series/PointAndFigureSeries.tsx`
-
-- Classes:
-  - `PointAndFigureSeries`
-- Functions:
-  - `drawOnCanvas`, `getColumns`
-- Top-level variables:
-  - `anyBox`, `boxHeight`, `boxes`, `columnWidth`, `columns`, `width`, `xOffset`
-
-### `packages/web/src/components/vnstockcharts/lib/series/RenkoSeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/RenkoSeries.js`
 
 - Classes:
   - `RenkoSeries`
@@ -16381,44 +11844,21 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `candleWidth`, `candles`, `ohlc`, `svgfill`, `width`, `x`
 
-### `packages/web/src/components/vnstockcharts/lib/series/RenkoSeries.tsx`
-
-- Classes:
-  - `RenkoSeries`
-- Functions:
-  - `drawOnCanvas`, `getRenko`
-- Top-level variables:
-  - `candleWidth`, `candles`, `ohlc`, `svgfill`, `width`, `x`
-
-### `packages/web/src/components/vnstockcharts/lib/series/RSISeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/RSISeries.js`
 
 - Functions:
   - `RSISeries`, `renderClip`
 - Top-level variables:
   - `clipId1`, `clipId2`, `defaultOpacity`, `defaultStroke`, `defaultStrokeDasharray`, `defaultStrokeWidth`, `opacityConfig`, `strokeConfig`, `strokeDasharrayConfig`, `strokeWidthConfig`
 
-### `packages/web/src/components/vnstockcharts/lib/series/RSISeries.tsx`
-
-- Functions:
-  - `RSISeries`, `renderClip`
-- Top-level variables:
-  - `clipId1`, `clipId2`, `defaultOpacity`, `defaultStroke`, `defaultStrokeDasharray`, `defaultStrokeWidth`, `opacityConfig`, `strokeConfig`, `strokeDasharrayConfig`, `strokeWidthConfig`
-
-### `packages/web/src/components/vnstockcharts/lib/series/SARSeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/SARSeries.js`
 
 - Classes:
   - `SARSeries`
 - Top-level variables:
   - `centerX`, `centerY`, `color`, `currentY`, `d`, `hoverProps`, `radius`, `width`, `y`
 
-### `packages/web/src/components/vnstockcharts/lib/series/SARSeries.tsx`
-
-- Classes:
-  - `SARSeries`
-- Top-level variables:
-  - `centerX`, `centerY`, `color`, `currentY`, `d`, `hoverProps`, `radius`, `width`, `y`
-
-### `packages/web/src/components/vnstockcharts/lib/series/ScatterSeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/ScatterSeries.js`
 
 - Classes:
   - `ScatterSeries`
@@ -16427,30 +11867,14 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `fill`, `groupedByFill`, `mProps`, `points`, `stroke`
 
-### `packages/web/src/components/vnstockcharts/lib/series/ScatterSeries.tsx`
-
-- Classes:
-  - `ScatterSeries`
-- Functions:
-  - `drawOnCanvas`, `helper`
-- Top-level variables:
-  - `fill`, `groupedByFill`, `mProps`, `points`, `stroke`
-
-### `packages/web/src/components/vnstockcharts/lib/series/SquareMarker.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/SquareMarker.js`
 
 - Functions:
   - `Square`
 - Top-level variables:
   - `w`, `x`, `y`
 
-### `packages/web/src/components/vnstockcharts/lib/series/SquareMarker.tsx`
-
-- Functions:
-  - `Square`
-- Top-level variables:
-  - `w`, `x`, `y`
-
-### `packages/web/src/components/vnstockcharts/lib/series/StackedBarSeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/StackedBarSeries.js`
 
 - Classes:
   - `StackedBarSeries`
@@ -16459,26 +11883,12 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `appearance`, `array`, `arrays`, `barWidth`, `bars`, `d`, `data`, `ds`, `eachBarWidth`, `fillStyle`, `getBase`, `getClassName`, `getFill`, `groupedByFill`, `h`, `key`, `keys`, `modifiedXAccessor`, `modifiedXScale`, `modifiedYAccessor`, `modifiedYScale`, `newData`, `offset`, `postProcessor`, `response`, `stackFn`, `width`, `widthFunctor`, `y`
 
-### `packages/web/src/components/vnstockcharts/lib/series/StackedBarSeries.tsx`
-
-- Classes:
-  - `StackedBarSeries`
-- Functions:
-  - `convertToArray`, `doStuff`, `drawOnCanvas2`, `drawOnCanvasHelper`, `getBars`, `getBarsSVG2`, `identityStack`, `rotateXY`, `stack`, `svgHelper`
-- Top-level variables:
-  - `appearance`, `array`, `arrays`, `barWidth`, `bars`, `d`, `data`, `ds`, `eachBarWidth`, `fillStyle`, `getBase`, `getClassName`, `getFill`, `groupedByFill`, `h`, `key`, `keys`, `modifiedXAccessor`, `modifiedXScale`, `modifiedYAccessor`, `modifiedYScale`, `newData`, `offset`, `postProcessor`, `response`, `stackFn`, `width`, `widthFunctor`, `y`
-
-### `packages/web/src/components/vnstockcharts/lib/series/StochasticSeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/StochasticSeries.js`
 
 - Classes:
   - `StochasticSeries`
 
-### `packages/web/src/components/vnstockcharts/lib/series/StochasticSeries.tsx`
-
-- Classes:
-  - `StochasticSeries`
-
-### `packages/web/src/components/vnstockcharts/lib/series/StraightLine.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/StraightLine.js`
 
 - Classes:
   - `StraightLine`
@@ -16487,40 +11897,19 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `lineCoordinates`
 
-### `packages/web/src/components/vnstockcharts/lib/series/StraightLine.tsx`
-
-- Classes:
-  - `StraightLine`
-- Functions:
-  - `getLineCoordinates`
-- Top-level variables:
-  - `lineCoordinates`
-
-### `packages/web/src/components/vnstockcharts/lib/series/SVGComponent.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/SVGComponent.js`
 
 - Classes:
   - `SVGComponent`
 
-### `packages/web/src/components/vnstockcharts/lib/series/SVGComponent.tsx`
-
-- Classes:
-  - `SVGComponent`
-
-### `packages/web/src/components/vnstockcharts/lib/series/TriangleMarker.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/TriangleMarker.js`
 
 - Functions:
   - `Triangle`, `getFillColor`, `getRotationInDegrees`, `getStrokeColor`, `getTrianglePoints`
 - Top-level variables:
   - `directionVal`, `fillColor`, `innerHypotenuse`, `innerOpposite`, `points`, `rotate`, `rotation`, `rotationDeg`, `strokeColor`, `w`
 
-### `packages/web/src/components/vnstockcharts/lib/series/TriangleMarker.tsx`
-
-- Functions:
-  - `Triangle`, `getFillColor`, `getRotationInDegrees`, `getStrokeColor`, `getTrianglePoints`
-- Top-level variables:
-  - `directionVal`, `fillColor`, `innerHypotenuse`, `innerOpposite`, `points`, `rotate`, `rotation`, `rotationDeg`, `strokeColor`, `w`
-
-### `packages/web/src/components/vnstockcharts/lib/series/VolumeProfileSeries.js`
+### `packages/web/src/components/vninvestcharts/src/lib/series/VolumeProfileSeries.js`
 
 - Classes:
   - `VolumeProfileSeries`
@@ -16529,52 +11918,36 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `allRects`, `begin`, `d`, `directionComparator`, `dx`, `finish`, `histogram2`, `rects`, `sessionBg`, `sessionBgSvg`, `sessionBuilder`, `sessionWidth`, `sessions`, `totalVolume`, `totalVolumeX`, `totalVolumes`, `totalsByDirection`, `values`, `volumeInBins`, `volumeValues`, `w1`, `w2`, `widthValue`, `ws`, `x`, `xScale`
 
-### `packages/web/src/components/vnstockcharts/lib/series/VolumeProfileSeries.tsx`
-
-- Classes:
-  - `VolumeProfileSeries`
-- Functions:
-  - `base`, `drawOnCanvas`, `helper`
-- Top-level variables:
-  - `allRects`, `begin`, `d`, `directionComparator`, `dx`, `finish`, `histogram2`, `rects`, `sessionBg`, `sessionBgSvg`, `sessionBuilder`, `sessionWidth`, `sessions`, `totalVolume`, `totalVolumeX`, `totalVolumes`, `totalsByDirection`, `values`, `volumeInBins`, `volumeValues`, `w1`, `w2`, `widthValue`, `ws`, `x`, `xScale`
-
-### `packages/web/src/components/vnstockcharts/lib/StockChartContext.js`
+### `packages/web/src/components/vninvestcharts/src/lib/StockChartContext.js`
 
 - Functions:
   - `useStockChart`
 - Top-level variables:
   - `StockChartContext`, `StockChartProvider`, `context`
 
-### `packages/web/src/components/vnstockcharts/lib/StockChartContext.tsx`
+### `packages/web/src/components/vninvestcharts/src/lib/tape/__tests__/TapePanel.test.js`
 
 - Functions:
-  - `useStockChart`
+  - `makeEntry`, `render`
 - Top-level variables:
-  - `StockChartContext`, `StockChartProvider`, `context`
+  - `badge`, `bg`, `container`, `empty`, `entry`, `loading`, `panel`, `root`, `row`, `rows`, `whale`
 
-### `packages/web/src/components/vnstockcharts/lib/tooltip/BollingerBandTooltip.js`
+### `packages/web/src/components/vninvestcharts/src/lib/tape/TapePanel.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/lib/tooltip/BollingerBandTooltip.js`
 
 - Classes:
   - `BollingerBandTooltip`
 - Top-level variables:
   - `currentItem`, `item`, `origin`, `tooltipLabel`, `tooltipValue`, `top`
 
-### `packages/web/src/components/vnstockcharts/lib/tooltip/BollingerBandTooltip.tsx`
-
-- Classes:
-  - `BollingerBandTooltip`
-- Top-level variables:
-  - `currentItem`, `item`, `origin`, `tooltipLabel`, `tooltipValue`, `top`
-
-### `packages/web/src/components/vnstockcharts/lib/tooltip/displayValuesFor.js`
+### `packages/web/src/components/vninvestcharts/src/lib/tooltip/displayValuesFor.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/tooltip/displayValuesFor.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/tooltip/GroupTooltip.js`
+### `packages/web/src/components/vninvestcharts/src/lib/tooltip/GroupTooltip.js`
 
 - Classes:
   - `GroupTooltip`, `SingleTooltip`
@@ -16583,16 +11956,7 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `VALID_LAYOUTS`, `comp`, `currentItem`, `dx`, `dy`, `groupTextAnchor`, `singleTooltip`, `textAnchor`, `xPos`, `xyPos`, `yDisplayValue`, `yPos`, `yValue`
 
-### `packages/web/src/components/vnstockcharts/lib/tooltip/GroupTooltip.tsx`
-
-- Classes:
-  - `GroupTooltip`, `SingleTooltip`
-- Functions:
-  - `orig`
-- Top-level variables:
-  - `VALID_LAYOUTS`, `comp`, `currentItem`, `dx`, `dy`, `groupTextAnchor`, `singleTooltip`, `textAnchor`, `xPos`, `xyPos`, `yDisplayValue`, `yPos`, `yValue`
-
-### `packages/web/src/components/vnstockcharts/lib/tooltip/HoverTooltip.js`
+### `packages/web/src/components/vninvestcharts/src/lib/tooltip/HoverTooltip.js`
 
 - Classes:
   - `HoverTooltip`
@@ -16601,52 +11965,25 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `PADDING`, `X`, `Y`, `bgShape`, `bgSize`, `canvas`, `centerX`, `chartIndex`, `content`, `originX`, `originY`, `pointWidth`, `pointer`, `safePointer`, `startY`, `textY`, `tspans`, `x`, `xValue`, `y`, `yValue`
 
-### `packages/web/src/components/vnstockcharts/lib/tooltip/HoverTooltip.tsx`
-
-- Classes:
-  - `HoverTooltip`
-- Functions:
-  - `backgroundShapeCanvas`, `backgroundShapeSVG`, `calculateTooltipSize`, `drawOnCanvas`, `helper`, `measureText`, `normalizeX`, `normalizeY`, `origin`, `sumSizes`, `tooltipCanvas`, `tooltipSVG`
-- Top-level variables:
-  - `PADDING`, `X`, `Y`, `bgShape`, `bgSize`, `canvas`, `centerX`, `chartIndex`, `content`, `originX`, `originY`, `pointWidth`, `pointer`, `safePointer`, `startY`, `textY`, `tspans`, `x`, `xValue`, `y`, `yValue`
-
-### `packages/web/src/components/vnstockcharts/lib/tooltip/index.js`
+### `packages/web/src/components/vninvestcharts/src/lib/tooltip/index.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/tooltip/index.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/tooltip/MACDTooltip.js`
+### `packages/web/src/components/vninvestcharts/src/lib/tooltip/MACDTooltip.js`
 
 - Classes:
   - `MACDTooltip`
 - Top-level variables:
   - `chartConfigList`, `config`, `currentItem`, `divergence`, `macd`, `macdValue`, `origin`, `signal`
 
-### `packages/web/src/components/vnstockcharts/lib/tooltip/MACDTooltip.tsx`
-
-- Classes:
-  - `MACDTooltip`
-- Top-level variables:
-  - `chartConfigList`, `config`, `currentItem`, `divergence`, `macd`, `macdValue`, `origin`, `signal`
-
-### `packages/web/src/components/vnstockcharts/lib/tooltip/MovingAverageTooltip.js`
+### `packages/web/src/components/vninvestcharts/src/lib/tooltip/MovingAverageTooltip.js`
 
 - Classes:
   - `MovingAverageTooltip`, `SingleMAToolTip`
 - Top-level variables:
   - `chartConfigList`, `config`, `currentItem`, `origin`, `tooltipLabel`, `translate`, `yDisplayValue`, `yValue`
 
-### `packages/web/src/components/vnstockcharts/lib/tooltip/MovingAverageTooltip.tsx`
-
-- Classes:
-  - `MovingAverageTooltip`, `SingleMAToolTip`
-- Top-level variables:
-  - `chartConfigList`, `config`, `currentItem`, `origin`, `tooltipLabel`, `translate`, `yDisplayValue`, `yValue`
-
-### `packages/web/src/components/vnstockcharts/lib/tooltip/OHLCTooltip.js`
+### `packages/web/src/components/vninvestcharts/src/lib/tooltip/OHLCTooltip.js`
 
 - Classes:
   - `OHLCTooltip`
@@ -16655,497 +11992,1207 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `chartConfigList`, `config`, `currentItem`, `displayDate`, `displayTextsDefault`, `item`, `itemsToDisplay`, `origin`
 
-### `packages/web/src/components/vnstockcharts/lib/tooltip/OHLCTooltip.tsx`
-
-- Classes:
-  - `OHLCTooltip`
-- Functions:
-  - `defaultDisplay`
-- Top-level variables:
-  - `chartConfigList`, `config`, `currentItem`, `displayDate`, `displayTextsDefault`, `item`, `itemsToDisplay`, `origin`
-
-### `packages/web/src/components/vnstockcharts/lib/tooltip/RSITooltip.js`
+### `packages/web/src/components/vninvestcharts/src/lib/tooltip/RSITooltip.js`
 
 - Classes:
   - `RSITooltip`
 - Top-level variables:
   - `currentItem`, `origin`, `rsi`, `tooltipLabel`, `value`
 
-### `packages/web/src/components/vnstockcharts/lib/tooltip/RSITooltip.tsx`
-
-- Classes:
-  - `RSITooltip`
-- Top-level variables:
-  - `currentItem`, `origin`, `rsi`, `tooltipLabel`, `value`
-
-### `packages/web/src/components/vnstockcharts/lib/tooltip/SingleValueTooltip.js`
+### `packages/web/src/components/vninvestcharts/src/lib/tooltip/SingleValueTooltip.js`
 
 - Classes:
   - `SingleValueTooltip`
 - Top-level variables:
   - `currentItem`, `origin`, `xDisplayValue`, `yDisplayValue`
 
-### `packages/web/src/components/vnstockcharts/lib/tooltip/SingleValueTooltip.tsx`
-
-- Classes:
-  - `SingleValueTooltip`
-- Top-level variables:
-  - `currentItem`, `origin`, `xDisplayValue`, `yDisplayValue`
-
-### `packages/web/src/components/vnstockcharts/lib/tooltip/StochasticTooltip.js`
+### `packages/web/src/components/vninvestcharts/src/lib/tooltip/StochasticTooltip.js`
 
 - Classes:
   - `StochasticTooltip`
 - Top-level variables:
   - `D`, `K`, `currentItem`, `origin`, `stochastic`
 
-### `packages/web/src/components/vnstockcharts/lib/tooltip/StochasticTooltip.tsx`
+### `packages/web/src/components/vninvestcharts/src/lib/tooltip/ToolTipText.js`
 
 - Classes:
-  - `StochasticTooltip`
+  - `ToolTipText`
+
+### `packages/web/src/components/vninvestcharts/src/lib/tooltip/ToolTipTSpanLabel.js`
+
+- Functions:
+  - `ToolTipTSpanLabel`
+
+### `packages/web/src/components/vninvestcharts/src/lib/types.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/lib/types/adapter.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/lib/types/index.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/lib/types/indicator.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/lib/types/ohlcv.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/lib/types/pane.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/lib/types/vninvest.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/lib/utils/__tests__/hexToRGBA.test.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/lib/utils/__tests__/timezoneFormatter.test.js`
+
 - Top-level variables:
-  - `D`, `K`, `currentItem`, `origin`, `stochastic`
+  - `elapsed`, `endTime`, `formatted`, `startTime`, `testEpoch`
 
-### `packages/web/src/components/vnstockcharts/lib/tooltip/ToolTipText.js`
-
-- Classes:
-  - `ToolTipText`
-
-### `packages/web/src/components/vnstockcharts/lib/tooltip/ToolTipText.tsx`
-
-- Classes:
-  - `ToolTipText`
-
-### `packages/web/src/components/vnstockcharts/lib/tooltip/ToolTipTSpanLabel.js`
-
-- Functions:
-  - `ToolTipTSpanLabel`
-
-### `packages/web/src/components/vnstockcharts/lib/tooltip/ToolTipTSpanLabel.tsx`
-
-- Functions:
-  - `ToolTipTSpanLabel`
-
-### `packages/web/src/components/vnstockcharts/lib/types.js`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/types.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/types/adapter.js`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/types/adapter.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/types/index.js`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/types/index.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/types/indicator.js`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/types/indicator.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/types/ohlcv.js`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/types/ohlcv.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/types/pane.js`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/types/pane.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/utils/accumulatingWindow.js`
+### `packages/web/src/components/vninvestcharts/src/lib/utils/accumulatingWindow.js`
 
 - Functions:
   - `accumulatingWindowFn`
 - Top-level variables:
   - `accumulateTill`, `accumulatedWindow`, `accumulatorIdx`, `d`, `i`, `response`
 
-### `packages/web/src/components/vnstockcharts/lib/utils/accumulatingWindow.ts`
-
-- Top-level variables:
-  - `accumulateTill`, `accumulatedWindow`, `accumulatingWindowFn`, `accumulatorIdx`, `d`, `i`, `response`
-
-### `packages/web/src/components/vnstockcharts/lib/utils/barWidth.js`
+### `packages/web/src/components/vninvestcharts/src/lib/utils/barWidth.js`
 
 - Functions:
   - `plotDataLengthBarWidth`, `timeIntervalBarWidth`
 - Top-level variables:
   - `first`, `totalWidth`, `width`
 
-### `packages/web/src/components/vnstockcharts/lib/utils/barWidth.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/utils/ChartDataUtil.js`
 
 - Functions:
-  - `plotDataLengthBarWidth`, `timeIntervalBarWidth`
+  - `findAllCharts`, `getChartConfigWithUpdatedYScales`, `getChartOrigin`, `getCurrentCharts`, `getCurrentItem`, `getDimensions`, `getNewChartConfig`, `getXValue`, `isArraySize2AndNumber`, `setRange`, `values`, `yDomainFromYExtents`
 - Top-level variables:
-  - `first`, `totalWidth`, `width`
+  - `allYValues`, `another`, `bottom`, `chartElements`, `chartHeight`, `chartProps`, `charts`, `combine`, `currentCharts`, `d`, `domain`, `isChart`, `newYScale`, `obj`, `originCoordinates`, `prevChartConfig`, `realYDomain`, `top`, `updatedChartConfig`, `xValue`, `yDomainDY`, `yDomains`, `yExtents`, `yScale`, `yValues`
 
-### `packages/web/src/components/vnstockcharts/lib/utils/ChartDataUtil.js`
-
-- Functions:
-  - `getChartConfigWithUpdatedYScales`, `getChartOrigin`, `getCurrentCharts`, `getCurrentItem`, `getDimensions`, `getNewChartConfig`, `getXValue`, `isArraySize2AndNumber`, `setRange`, `values`, `yDomainFromYExtents`
-- Top-level variables:
-  - `allYValues`, `another`, `bottom`, `chartHeight`, `chartProps`, `combine`, `currentCharts`, `d`, `domain`, `newYScale`, `obj`, `originCoordinates`, `prevChartConfig`, `realYDomain`, `top`, `updatedChartConfig`, `xValue`, `yDomainDY`, `yDomains`, `yExtents`, `yScale`, `yValues`
-
-### `packages/web/src/components/vnstockcharts/lib/utils/ChartDataUtil.ts`
-
-- Functions:
-  - `getChartConfigWithUpdatedYScales`, `getChartOrigin`, `getCurrentCharts`, `getCurrentItem`, `getDimensions`, `getNewChartConfig`, `getXValue`, `isArraySize2AndNumber`, `setRange`, `values`, `yDomainFromYExtents`
-- Top-level variables:
-  - `allYValues`, `another`, `bottom`, `chartHeight`, `chartProps`, `combine`, `currentCharts`, `d`, `domain`, `newYScale`, `obj`, `originCoordinates`, `prevChartConfig`, `realYDomain`, `top`, `updatedChartConfig`, `xValue`, `yDomainDY`, `yDomains`, `yExtents`, `yScale`, `yValues`
-
-### `packages/web/src/components/vnstockcharts/lib/utils/identity.js`
+### `packages/web/src/components/vninvestcharts/src/lib/utils/identity.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/utils/identity.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/utils/index.js`
+### `packages/web/src/components/vninvestcharts/src/lib/utils/index.js`
 
 - Functions:
   - `capitalizeFirst`, `clearCanvas`, `createVerticalLinearGradient`, `d3Window`, `degrees`, `find`, `forOwn`, `functor`, `getClosestItem`, `getClosestItemIndexes`, `getClosestItemIndexes2`, `getClosestValue`, `getLogger`, `getTouchProps`, `head`, `hexToRGBA`, `isDefined`, `isNotDefined`, `isObject`, `last`, `mapObject`, `mapValue`, `mousePosition`, `path`, `radians`, `replaceAtIndex`, `sign`, `tail`, `toObject`, `touchPosition`, `yes`
 - Top-level variables:
-  - `MOUSEENTER`, `MOUSELEAVE`, `MOUSEMOVE`, `MOUSEUP`, `TOUCHEND`, `TOUCHMOVE`, `b`, `closest`, `container`, `d3win`, `diff`, `first`, `g`, `grd`, `hex`, `index`, `isArray`, `item`, `key`, `left`, `length`, `lo`, `mappedValue`, `mid`, `multiplier`, `object`, `overlayColors`, `props`, `r`, `rect`, `result`, `right`, `value`, `values`
+  - `MOUSEENTER`, `MOUSELEAVE`, `MOUSEMOVE`, `MOUSEUP`, `TOUCHEND`, `TOUCHMOVE`, `b`, `closest`, `container`, `d3win`, `diff`, `first`, `g`, `grd`, `hex`, `index`, `isArray`, `isProduction`, `item`, `key`, `left`, `length`, `lo`, `logger`, `mappedValue`, `mid`, `object`, `overlayColors`, `parts`, `props`, `r`, `rect`, `result`, `rgbaMatch`, `right`, `value`, `values`
 
-### `packages/web/src/components/vnstockcharts/lib/utils/index.ts`
-
-- Functions:
-  - `capitalizeFirst`, `clearCanvas`, `createVerticalLinearGradient`, `d3Window`, `degrees`, `find`, `forOwn`, `functor`, `getClosestItem`, `getClosestItemIndexes`, `getClosestItemIndexes2`, `getClosestValue`, `getLogger`, `getTouchProps`, `head`, `hexToRGBA`, `isDefined`, `isNotDefined`, `isObject`, `last`, `mapObject`, `mapValue`, `mousePosition`, `path`, `radians`, `replaceAtIndex`, `sign`, `tail`, `toObject`, `touchPosition`, `yes`
-- Top-level variables:
-  - `MOUSEENTER`, `MOUSELEAVE`, `MOUSEMOVE`, `MOUSEUP`, `TOUCHEND`, `TOUCHMOVE`, `b`, `closest`, `container`, `d3win`, `diff`, `first`, `g`, `grd`, `hex`, `index`, `isArray`, `item`, `key`, `left`, `length`, `lo`, `mappedValue`, `mid`, `multiplier`, `object`, `overlayColors`, `props`, `r`, `rect`, `result`, `right`, `value`, `values`
-
-### `packages/web/src/components/vnstockcharts/lib/utils/mappedSlidingWindow.js`
+### `packages/web/src/components/vninvestcharts/src/lib/utils/mappedSlidingWindow.js`
 
 - Functions:
   - `mappedSlidingWindowFn`
 - Top-level variables:
   - `accumulatorIdx`, `mapped`, `result`, `size`, `undef`, `undefinedValue`, `windowData`
 
-### `packages/web/src/components/vnstockcharts/lib/utils/mappedSlidingWindow.ts`
-
-- Top-level variables:
-  - `accumulatorIdx`, `mapped`, `mappedSlidingWindowFn`, `result`, `size`, `undef`, `undefinedValue`, `windowData`
-
-### `packages/web/src/components/vnstockcharts/lib/utils/merge.js`
+### `packages/web/src/components/vninvestcharts/src/lib/utils/merge.js`
 
 - Functions:
   - `mergeCompute`
 - Top-level variables:
   - `algorithm`, `result`, `zip`
 
-### `packages/web/src/components/vnstockcharts/lib/utils/merge.ts`
-
-- Functions:
-  - `mergeCompute`
-- Top-level variables:
-  - `algorithm`, `result`, `zip`
-
-### `packages/web/src/components/vnstockcharts/lib/utils/noop.js`
+### `packages/web/src/components/vninvestcharts/src/lib/utils/noop.js`
 
 - No parseable top-level symbols found
 
-### `packages/web/src/components/vnstockcharts/lib/utils/noop.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/lib/utils/PureComponent.js`
+### `packages/web/src/components/vninvestcharts/src/lib/utils/PureComponent.js`
 
 - Classes:
   - `PureComponent`
 
-### `packages/web/src/components/vnstockcharts/lib/utils/PureComponent.ts`
-
-- Classes:
-  - `PureComponent`
-
-### `packages/web/src/components/vnstockcharts/lib/utils/rebind.js`
+### `packages/web/src/components/vninvestcharts/src/lib/utils/rebind.js`
 
 - Functions:
   - `createReboundMethod`
 - Top-level variables:
   - `method`, `value`
 
-### `packages/web/src/components/vnstockcharts/lib/utils/rebind.ts`
-
-- Functions:
-  - `createReboundMethod`
-- Top-level variables:
-  - `method`, `value`
-
-### `packages/web/src/components/vnstockcharts/lib/utils/shallowEqual.js`
+### `packages/web/src/components/vninvestcharts/src/lib/utils/shallowEqual.js`
 
 - Functions:
   - `isDate`, `isEqual`
 - Top-level variables:
   - `numKeysA`
 
-### `packages/web/src/components/vnstockcharts/lib/utils/shallowEqual.ts`
-
-- Functions:
-  - `isDate`, `isEqual`
-- Top-level variables:
-  - `numKeysA`
-
-### `packages/web/src/components/vnstockcharts/lib/utils/slidingWindow.js`
+### `packages/web/src/components/vninvestcharts/src/lib/utils/slidingWindow.js`
 
 - Functions:
   - `slidingWindowFn`
 - Top-level variables:
   - `accumulatorIdx`, `size`, `sourceFunction`, `undef`, `undefinedValue`, `windowData`
 
-### `packages/web/src/components/vnstockcharts/lib/utils/slidingWindow.ts`
-
-- Top-level variables:
-  - `accumulatorIdx`, `size`, `slidingWindowFn`, `sourceFunction`, `undef`, `undefinedValue`, `windowData`
-
-### `packages/web/src/components/vnstockcharts/lib/utils/strokeDasharray.js`
+### `packages/web/src/components/vninvestcharts/src/lib/utils/strokeDasharray.js`
 
 - Functions:
   - `getStrokeDasharray`, `getStrokeDasharrayCanvas`
 - Top-level variables:
   - `a`, `strokeDashTypes`
 
-### `packages/web/src/components/vnstockcharts/lib/utils/strokeDasharray.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/utils/timezoneFormatter.js`
 
 - Functions:
-  - `getStrokeDasharray`, `getStrokeDasharrayCanvas`
+  - `formatWithTimezone`, `getCachedFormatter`, `getGlobalTimezone`, `setGlobalTimezone`
 - Top-level variables:
-  - `a`, `strokeDashTypes`
+  - `cacheKey`, `d`, `extendedOptions`, `fallbackOptions`, `formatter`, `formatterCache`, `globalTimezone`, `tz`
 
-### `packages/web/src/components/vnstockcharts/lib/utils/zipper.js`
-
-- Functions:
-  - `d3_zipLength`, `zip`
-- Top-level variables:
-  - `combine`, `i`, `m`, `n`
-
-### `packages/web/src/components/vnstockcharts/lib/utils/zipper.ts`
+### `packages/web/src/components/vninvestcharts/src/lib/utils/zipper.js`
 
 - Functions:
   - `d3_zipLength`, `zip`
 - Top-level variables:
   - `combine`, `i`, `m`, `n`
 
-### `packages/web/src/components/vnstockcharts/lib/utils/zoomBehavior.js`
+### `packages/web/src/components/vninvestcharts/src/lib/utils/zoomBehavior.js`
 
 - Functions:
   - `lastVisibleItemBasedZoomAnchor`, `mouseBasedZoomAnchor`, `rightDomainBasedZoomAnchor`
 - Top-level variables:
   - `currentItem`, `lastItem`
 
-### `packages/web/src/components/vnstockcharts/lib/utils/zoomBehavior.ts`
-
-- Functions:
-  - `lastVisibleItemBasedZoomAnchor`, `mouseBasedZoomAnchor`, `rightDomainBasedZoomAnchor`
-- Top-level variables:
-  - `currentItem`, `lastItem`
-
-### `packages/web/src/components/vnstockcharts/lib/withContext.js`
+### `packages/web/src/components/vninvestcharts/src/lib/withContext.js`
 
 - Functions:
   - `withChart`, `withChartAndStockChart`, `withStockChart`
 - Top-level variables:
   - `chartContext`, `context`, `stockChartContext`
 
-### `packages/web/src/components/vnstockcharts/lib/withContext.tsx`
-
-- Functions:
-  - `withChart`, `withChartAndStockChart`, `withStockChart`
-- Top-level variables:
-  - `chartContext`, `context`, `stockChartContext`
-
-### `packages/web/src/components/vnstockcharts/lib/ZoomButtons.js`
+### `packages/web/src/components/vninvestcharts/src/lib/ZoomButtons.js`
 
 - Classes:
   - `ZoomButtons`
 - Top-level variables:
   - `c`, `centerX`, `cx`, `foo`, `hLength`, `left`, `resetX`, `right`, `textY`, `wLength`, `y`, `zoomIn`, `zoomInX`, `zoomOut`, `zoomOutX`
 
-### `packages/web/src/components/vnstockcharts/lib/ZoomButtons.tsx`
-
-- Classes:
-  - `ZoomButtons`
-- Top-level variables:
-  - `c`, `centerX`, `cx`, `foo`, `hLength`, `left`, `resetX`, `right`, `textY`, `wLength`, `y`, `zoomIn`, `zoomInX`, `zoomOut`, `zoomOutX`
-
-### `packages/web/src/components/vnstockcharts/vendor.d.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/widget/__tests__/VNStockChart.contract.test.tsx`
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/canaryBarFiltering.test.js`
 
 - Functions:
-  - `ThrowingChild`, `createAdapter`, `createDeferred`, `emitPaneHover`, `flushMicrotasks`, `resolveMockForkHoveredPaneId`, `waitForTruthyValue`
+  - `createMockBars`
 - Top-level variables:
-  - `PointerEventCtor`, `React`, `VNStockChart`, `WidgetErrorBoundary`, `WidgetI18nProvider`, `abortSpy`, `act`, `adapter`, `bottom`, `bridge`, `capabilities`, `chartPixel`, `chartPoint`, `chartPointToPixelWithBridge`, `clientX`, `clientY`, `close`, `container`, `createDrawingObject`, `createRoot`, `darkFlowBadge`, `data`, `ema13`, `ema20`, `emaDefault`, `engineHostPropsHistory`, `enginePanes`, `engineSurface`, `fetchDeferred`, `firstAdapter`, `firstFetch`, `forkEngineSnapshots`, `forkRuntimeData`, `getContextSpy`, `handleClick`, `handleContextMenu`, `handleCoordinateBridgeChange`, `handlePaneAddSeriesRequest`, `handlePaneHover`, `handlePaneSnapshotsChange`, `handlePaneToggleSeriesRequest`, `handlePaneToggleVisibleRequest`, `handleRuntimeCapabilitiesChange`, `handleVisibleDomainChange`, `handleVisibleRangeChange`, `host`, `hoveredSnapshot`, `latestHostProps`, `legacyCapabilities`, `legacyChild`, `localX`, `localY`, `measurementOverlay`, `measurementPointToPixelWithBridge`, `mockVisibleRange`, `mountedContainer`, `open`, `originalConsoleError`, `overlay`, `paneSnapshots`, `panes`, `pixel`, `point`, `pricePane`, `priceSnapshot`, `promise`, `reactActEnvironment`, `rect`, `ref`, `reject`, `resolve`, `resolveChartPointWithBridge`, `resolveMeasurementPointWithBridge`, `right`, `root`, `secondAdapter`, `secondFetch`, `selectedDrawing`, `seriesData`, `snapshots`, `splitters`, `surface`, `toolbar`, `value`, `widgetRoot`
+  - `bars`, `bars10`, `bars3`, `empty`, `info`, `info1`, `info2`, `original`, `result`
 
-### `packages/web/src/components/vnstockcharts/widget/__tests__/VNStockChart.scaleSlotContract.test.tsx`
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/CanaryRollbackHelper.test.js`
+
+- Functions:
+  - `createSnapshot`
+- Top-level variables:
+  - `after`, `before`, `event`, `formatted`, `rec`, `result`, `validation`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/CanaryRolloutConfig.test.js`
+
+- Top-level variables:
+  - `baseMetrics`, `formatted`, `invalidParams`, `metrics`, `params10`, `params100`, `params30`, `result`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/DrawingRegistryContract.test.js`
+
+- Functions:
+  - `buildToolEvidenceRegex`, `escapeRegex`, `hasRegex`
+- Top-level variables:
+  - `authoringChecked`, `contractTestContent`, `contractTestPaths`, `coverageMatrix`, `enabledTools`, `escapedTool`, `evidence`, `hasAuthoringTest`, `hasManipulationTest`, `hasTextEditContext`, `hasTextEditSignal`, `hasTextEditTest`, `isReferenced`, `manipulationChecked`, `missingCaps`, `textEditChecked`, `uncoveredTools`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/forkDrawingSupport.test.js`
+
+- Top-level variables:
+  - `desc`, `matrix`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.autoForkAuthoring.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `createMockForkOverlayState`, `emitPaneHover`, `flushMicrotasks`, `mergeTestPaneSnapshotDomains`, `resolveMockForkHoveredDataIndex`, `resolveMockForkHoveredPaneId`, `resolvePointerContext`, `resolveTrendLinePointPixel`, `waitForTruthyValue`
+- Top-level variables:
+  - `PointerEventCtor`, `React`, `adapter`, `authoringData`, `bottom`, `container`, `createdDrawings`, `currentInputsKey`, `dataIndex`, `endPoint`, `engineHostPropsHistory`, `fetchBarsBefore`, `fetchBarsInRange`, `forkEngineSnapshots`, `forkRuntimeData`, `handleDrawingWorkspaceChange`, `handleDrawingsChange`, `host`, `hoveredDataIndex`, `hoveredPaneId`, `hoveredSnapshot`, `lastInputsRef`, `localX`, `localY`, `mockEngineInstance`, `mockVisibleRange`, `originalConsoleError`, `pointerContext`, `priceSnapshot`, `ratio`, `reactActEnvironment`, `rect`, `ref`, `right`, `root`, `scaleSlotDomains`, `scaleSlotStates`, `startPoint`, `value`, `workspace`, `x`, `y`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.canaryRollback.test.js`
+
+- Functions:
+  - `createBar`, `flushMicrotasks`, `renderChart`
+- Top-level variables:
+  - `React`, `VNInvestCharts`, `actual`, `adapter`, `container`, `data`, `getContextSpy`, `handleRollback`, `latestRenderedBars`, `reactActEnvironment`, `ref`, `restoreGetContext`, `root`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.contract.test.js`
+
+- Functions:
+  - `ThrowingChild`, `clickAt`, `createAdapter`, `createDeferred`, `createMockDrawingPriceLabelsState`, `createMockForkOverlayState`, `createMockMeasurementState`, `emitPaneHover`, `flushMicrotasks`, `getLatestPrimitiveSnapshot`, `mergeTestPaneSnapshotDomains`, `readActionHandles`, `readPrimitive`, `renderChart`, `resolveDrawingPointIndex`, `resolveMockForkHoveredDataIndex`, `resolveMockForkHoveredPaneId`, `resolvePointerContext`, `resolveTrendLineBodyPoint`, `resolveTrendLineLockHandlePoint`, `resolveTrendLinePointPixel`, `waitForTruthyValue`
+- Top-level variables:
+  - `PointerEventCtor`, `React`, `VNInvestCharts`, `WidgetErrorBoundary`, `WidgetI18nProvider`, `abortSpy`, `act`, `actionData`, `actionHandlePoint`, `adapter`, `authoringData`, `baseDrawing`, `bodyPoint`, `bottom`, `capabilities`, `chartPointToPixelWithBridge`, `container`, `contextData`, `contextHitPoint`, `createDrawingObject`, `createRoot`, `createdDrawing`, `createdDrawings`, `currentInputsKey`, `dataIndex`, `drawing`, `drawingPrimitive`, `drawingPrimitives`, `drawings`, `drawingsAfterAuthoring`, `drawingsAfterSecond`, `endPoint`, `endX`, `endY`, `engineHostPropsHistory`, `engineSurface`, `existingDrawing`, `expectedAbsoluteLockPoint`, `expectedLocalLockPoint`, `expectedSecondY`, `fetchBarsBefore`, `fetchBarsInRange`, `fetchDeferred`, `firstAdapter`, `firstBodyPoint`, `firstDrawing`, `firstEnd`, `firstFetch`, `firstHitPoint`, `firstIndex`, `firstPoint`, `firstStart`, `firstX`, `firstY`, `forkEngineSnapshots`, `forkRuntimeData`, `handleDrawingWorkspaceChange`, `handleDrawingsChange`, `handleRuntimeCapabilitiesChange`, `handleRuntimeResolved`, `handleSelectedDrawingChange`, `hit`, `host`, `hoveredDataIndex`, `hoveredPaneId`, `hoveredSnapshot`, `initialDrawingPrimitives`, `initialNonNullWorkspaceCalls`, `initialPrimitive`, `label`, `lastInputsRef`, `latestHostProps`, `localX`, `localY`, `lockCenter`, `lockPrimitive`, `lockToggleUpdate`, `manipulationData`, `measurementPointToPixelWithBridge`, `menuItem`, `mockEngineInstance`, `mockEngineSetHistorySnapshot`, `mockVisibleRange`, `movedDrawing`, `movedDrawings`, `movedFirstDrawing`, `movedSecondDrawing`, `openDock`, `originalConsoleError`, `overlay`, `overlayInputs`, `overlayInputsAfterMultiSelect`, `patternPoints`, `point`, `pointerContext`, `priceDomain`, `priceSnapshot`, `primaryMarker`, `primitive`, `primitiveAfterBlur`, `primitiveAfterRuntimeRoundTrip`, `primitiveBeforeMove`, `primitiveDuringDrag`, `primitiveDuringMove`, `promise`, `ratio`, `reactActEnvironment`, `rect`, `ref`, `reject`, `renderedDrawing`, `resizeEndPoint`, `resizeStartPoint`, `resizedDrawings`, `resolve`, `resolveChartPointWithBridge`, `resolveMeasurementPointWithBridge`, `restoredPrimitive`, `right`, `root`, `scaleSlotDomains`, `scaleSlotStates`, `secondAdapter`, `secondBodyPoint`, `secondDrawing`, `secondEnd`, `secondFetch`, `secondHitPoint`, `secondIndex`, `secondPoint`, `secondStart`, `secondX`, `secondY`, `selectedDrawing`, `selectedPriceLabels`, `selectionData`, `selectionHitPoint`, `snapshot`, `staleSelectedDrawing`, `startPoint`, `updatedDrawingPrimitives`, `value`, `volumeSnapshot`, `workspace`, `x`, `y`, `zIndexUpdate`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.cursorSemantics.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `createMockForkOverlayState`, `emitPaneHover`, `flushMicrotasks`, `mergeTestPaneSnapshotDomains`, `resolveMockForkHoveredDataIndex`, `resolveMockForkHoveredPaneId`, `resolvePointerContext`, `resolveTrendLinePointPixel`, `waitForTruthyValue`
+- Top-level variables:
+  - `PointerEventCtor`, `React`, `adapter`, `bottom`, `container`, `currentInputsKey`, `dataIndex`, `engineHostPropsHistory`, `engineSurface`, `fetchBarsBefore`, `fetchBarsInRange`, `forkEngineSnapshots`, `forkRuntimeData`, `handleDrawingWorkspaceChange`, `host`, `hoveredDataIndex`, `hoveredPaneId`, `hoveredSnapshot`, `lastInputsRef`, `localX`, `localY`, `mockEngineInstance`, `mockVisibleRange`, `originalConsoleError`, `pointerContext`, `priceSnapshot`, `ratio`, `reactActEnvironment`, `rect`, `ref`, `right`, `root`, `scaleSlotDomains`, `scaleSlotStates`, `value`, `workspace`, `x`, `y`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.engineHost.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `flushMicrotasks`
+- Top-level variables:
+  - `React`, `adapter`, `container`, `ema13`, `ema20`, `emaDefault`, `engineHostPropsHistory`, `enginePanes`, `fetchBarsBefore`, `fetchBarsInRange`, `forkEngineSnapshots`, `forkRuntimeData`, `latestHostProps`, `mockEngineInstance`, `mockVisibleRange`, `originalConsoleError`, `panes`, `pricePane`, `reactActEnvironment`, `ref`, `root`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.extendedRangeReplay.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `createMockForkOverlayState`, `emitPaneHover`, `flushMicrotasks`, `mergeTestPaneSnapshotDomains`, `readPrimitive`, `resolveMockForkHoveredDataIndex`, `resolveMockForkHoveredPaneId`, `resolvePointerContext`, `resolveTrendLinePointPixel`, `waitForTruthyValue`
+- Top-level variables:
+  - `React`, `adapter`, `baseDrawing`, `bottom`, `container`, `currentInputsKey`, `dataIndex`, `drawingData`, `engineHostPropsHistory`, `fetchBarsBefore`, `fetchBarsInRange`, `forkEngineSnapshots`, `forkRuntimeData`, `hoveredDataIndex`, `hoveredPaneId`, `hoveredSnapshot`, `initialPrimitive`, `lastInputsRef`, `latestHostProps`, `localX`, `localY`, `mockEngineInstance`, `mockVisibleRange`, `originalConsoleError`, `overlayInputs`, `pointerContext`, `priceSnapshot`, `primitive`, `ratio`, `reactActEnvironment`, `rect`, `ref`, `restoredPrimitive`, `right`, `root`, `scaleSlotDomains`, `scaleSlotStates`, `sharedPrimitive`, `value`, `x`, `y`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.forkPaneOverlay.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `createMockForkOverlayState`, `emitPaneHover`, `flushMicrotasks`, `resolveMockForkHoveredDataIndex`, `resolveMockForkHoveredPaneId`, `resolvePointerContext`, `waitForTruthyValue`
+- Top-level variables:
+  - `PointerEventCtor`, `React`, `adapter`, `bottom`, `clientX`, `clientY`, `container`, `currentInputsKey`, `dataIndex`, `drawingPrimitives`, `engineHostPropsHistory`, `fetchBarsBefore`, `fetchBarsInRange`, `forkEngineSnapshots`, `forkRuntimeData`, `handlePaneHover`, `handlePaneSnapshotsChange`, `hit`, `host`, `hoverLabel`, `hoveredDataIndex`, `hoveredPaneId`, `hoveredSnapshot`, `labelTexts`, `labels`, `lastInputsRef`, `localX`, `localY`, `mockEngineInstance`, `mockVisibleRange`, `nodes`, `originalConsoleError`, `overlayInputs`, `pointerContext`, `priceTooltip`, `primitive`, `ratio`, `reactActEnvironment`, `rect`, `ref`, `right`, `root`, `snapshot`, `snapshots`, `value`, `volumeTooltip`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.fractionalZoomRestore.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `createMockForkOverlayState`, `emitPaneHover`, `flushMicrotasks`, `mergeTestPaneSnapshotDomains`, `readPrimitive`, `resolveMockForkHoveredDataIndex`, `resolveMockForkHoveredPaneId`, `resolvePointerContext`, `resolveTrendLinePointPixel`, `waitForTruthyValue`
+- Top-level variables:
+  - `React`, `adapter`, `baseDrawing`, `bottom`, `container`, `currentInputsKey`, `dataIndex`, `drawingData`, `engineHostPropsHistory`, `fetchBarsBefore`, `fetchBarsInRange`, `forkEngineSnapshots`, `forkRuntimeData`, `hoveredDataIndex`, `hoveredPaneId`, `hoveredSnapshot`, `initialPrimitive`, `lastInputsRef`, `latestHostProps`, `localX`, `localY`, `mockEngineInstance`, `mockVisibleRange`, `originalConsoleError`, `overlayInputs`, `pointerContext`, `priceSnapshot`, `primitive`, `ratio`, `reactActEnvironment`, `rect`, `ref`, `restoredPrimitive`, `right`, `root`, `scaleSlotDomains`, `scaleSlotStates`, `value`, `x`, `y`, `zoomedPrimitive`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.historyBackfill.test.js`
+
+- Functions:
+  - `createBar`, `emitVisibleDomain`, `flushMicrotasks`, `waitForBarsEmission`, `waitForForkVisibleRangeHandler`, `waitForPredicate`, `waitForVisibleDomainHandler`
+- Top-level variables:
+  - `React`, `VNInvestCharts`, `actual`, `adapter`, `autoEmitForkVisibleRange`, `backwardCoverage`, `bars`, `barsAfterStaleResolve`, `barsBeforeStaleResolve`, `boundaryBar`, `callCountAfterFirstSession`, `calls`, `container`, `controlledBars`, `emittedBars`, `engineHostPropsHistory`, `fetchBarsBeforeCallCountBeforePan`, `firstBar`, `firstBefore`, `firstOlderBars`, `firstOlderBarsPromise`, `forkEngineSnapshots`, `getContextSpy`, `handleBarsChange`, `handleVisibleDomainChange`, `initialBars`, `initialBars1h`, `initialBars4h`, `initialFetchCount`, `lastBars`, `latestHostProps`, `latestRenderedBars`, `latestVisibleDomainHandler`, `liveBar`, `liveCallback`, `mockEngineInstance`, `mockVisibleRange`, `newerBars`, `olderBars`, `originalTrimToWindow`, `rangeCoverage`, `reactActEnvironment`, `ref`, `requestedBefore`, `resolveFirstOlderBars`, `resolveStaleBackfill`, `restoreGetContext`, `root`, `secondBar`, `secondOlderBars`, `staleBackfillPromise`, `staleOlderBars`, `store`, `thirdOlderBars`, `trimToWindowCalls`, `visibleDomainEmitted`, `visibleDomainHandler`, `visibleRangeHandler`, `warmedBars`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.historySnapshot.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `flushMicrotasks`
+- Top-level variables:
+  - `React`, `adapter`, `bars`, `bars1`, `bars2`, `callsBefore`, `container`, `fetchBarsBefore`, `fetchBarsInRange`, `forkEngineSnapshots`, `lastCall`, `mockEngineInstance`, `mockEngineSetHistorySnapshot`, `mockVisibleRange`, `originalConsoleError`, `reactActEnvironment`, `ref`, `root`, `snapshot`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.historySyncQueue.test.js`
+
+- Functions:
+  - `createBar`, `emitVisibleDomain`, `flushMicrotasks`, `waitForPredicate`, `waitForVisibleDomainHandler`
+- Top-level variables:
+  - `React`, `VNInvestCharts`, `actual`, `adapter`, `container`, `firstOlderBars`, `firstOlderBarsPromise`, `getContextSpy`, `initialBars`, `latestVisibleDomainHandler`, `reactActEnvironment`, `ref`, `resolveFirstOlderBars`, `restoreGetContext`, `root`, `secondOlderBars`, `visibleDomainHandler`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.legacyPaneSnapshots.contract.test.js`
+
+- Functions:
+  - `Harness`, `createAdapter`, `flushMicrotasks`, `waitForTruthyValue`
+- Top-level variables:
+  - `PointerEventCtor`, `adapter`, `clientX`, `clientY`, `container`, `fetchBarsBefore`, `fetchBarsInRange`, `forkRuntimeData`, `handlePaneHover`, `handlePaneSnapshotsChange`, `hoveredSnapshot`, `originalConsoleError`, `paneSnapshots`, `priceSnapshot`, `reactActEnvironment`, `ref`, `renderCount`, `root`, `snapshots`, `stateHost`, `value`, `widgetRoot`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.measurement.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `createMockForkOverlayState`, `createMockMeasurementState`, `emitPaneHover`, `flushMicrotasks`, `resolveMockForkHoveredDataIndex`, `resolveMockForkHoveredPaneId`, `resolvePointerContext`, `waitForTruthyValue`
+- Top-level variables:
+  - `PointerEventCtor`, `React`, `adapter`, `bottom`, `bridge`, `chartPixel`, `chartPoint`, `container`, `currentInputsKey`, `dataIndex`, `drawingPrimitives`, `engineHostPropsHistory`, `fetchBarsBefore`, `fetchBarsInRange`, `firstBarPixel`, `firstBarPixelFromIndexAnchor`, `forkEngineSnapshots`, `forkRuntimeData`, `fractionalBridge`, `handleCoordinateBridgeChange`, `handlePaneHover`, `hit`, `host`, `hoveredDataIndex`, `hoveredPaneId`, `hoveredSnapshot`, `lastBarPixel`, `lastInputsRef`, `latestHostProps`, `localX`, `localY`, `mockEngineInstance`, `mockVisibleRange`, `originalConsoleError`, `overlay`, `overlayInputs`, `pixel`, `point`, `pointerContext`, `primitive`, `ratio`, `reactActEnvironment`, `rect`, `ref`, `right`, `root`, `snapshot`, `value`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.menu.test.js`
+
+- Functions:
+  - `createBar`, `flushMicrotasks`
+- Top-level variables:
+  - `React`, `VNInvestCharts`, `actual`, `adapter`, `cancelBtn`, `container`, `createElementSpy`, `data`, `fullscreenBtn`, `getContextSpy`, `img`, `mockDataUrl`, `previewModal`, `reactActEnvironment`, `ref`, `restoreGetContext`, `root`, `saveBtn`, `saveSpy`, `searchBtn`, `settingsBtn`, `snapshotBtn`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.noButtonMove.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `createMockForkOverlayState`, `emitPaneHover`, `flushMicrotasks`, `mergeTestPaneSnapshotDomains`, `readPrimitive`, `resolveDrawingPointIndex`, `resolveMockForkHoveredDataIndex`, `resolveMockForkHoveredPaneId`, `resolvePointerContext`, `resolveTrendLineBodyPoint`, `resolveTrendLinePointPixel`, `waitForTruthyValue`
+- Top-level variables:
+  - `PointerEventCtor`, `React`, `adapter`, `afterNoButtonMovePrimitive`, `baseDrawing`, `bodyPoint`, `bottom`, `container`, `currentInputsKey`, `dataIndex`, `engineHostPropsHistory`, `fetchBarsBefore`, `fetchBarsInRange`, `firstIndex`, `firstPoint`, `firstX`, `firstY`, `forkEngineSnapshots`, `forkRuntimeData`, `host`, `hoveredDataIndex`, `hoveredPaneId`, `hoveredSnapshot`, `initialPrimitive`, `lastInputsRef`, `localX`, `localY`, `manipulationData`, `mockEngineInstance`, `mockVisibleRange`, `originalConsoleError`, `overlayInputs`, `pointerContext`, `priceSnapshot`, `primitive`, `ratio`, `reactActEnvironment`, `rect`, `ref`, `right`, `root`, `scaleSlotDomains`, `scaleSlotStates`, `secondIndex`, `secondPoint`, `secondX`, `secondY`, `value`, `x`, `y`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.nonPrimaryPointer.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `createMockForkOverlayState`, `emitPaneHover`, `flushMicrotasks`, `mergeTestPaneSnapshotDomains`, `resolveDrawingPointIndex`, `resolveMockForkHoveredDataIndex`, `resolveMockForkHoveredPaneId`, `resolvePointerContext`, `resolveTrendLineBodyPoint`, `resolveTrendLinePointPixel`, `waitForTruthyValue`
+- Top-level variables:
+  - `PointerEventCtor`, `React`, `adapter`, `baseDrawing`, `bodyPoint`, `bottom`, `callsBeforeDrag`, `container`, `currentInputsKey`, `dataIndex`, `engineHostPropsHistory`, `fetchBarsBefore`, `fetchBarsInRange`, `firstIndex`, `firstPoint`, `firstX`, `firstY`, `forkEngineSnapshots`, `forkRuntimeData`, `handleDrawingsChange`, `host`, `hoveredDataIndex`, `hoveredPaneId`, `hoveredSnapshot`, `lastInputsRef`, `localX`, `localY`, `manipulationData`, `mockEngineInstance`, `mockVisibleRange`, `originalConsoleError`, `pointerContext`, `priceSnapshot`, `ratio`, `reactActEnvironment`, `rect`, `ref`, `right`, `root`, `scaleSlotDomains`, `scaleSlotStates`, `secondIndex`, `secondPoint`, `secondX`, `secondY`, `value`, `x`, `y`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.paneConsumers.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `flushMicrotasks`, `waitForTruthyValue`
+- Top-level variables:
+  - `React`, `adapter`, `capabilities`, `container`, `fetchBarsBefore`, `fetchBarsInRange`, `forkEngineSnapshots`, `forkRuntimeData`, `handlePaneAddSeriesRequest`, `handlePaneToggleSeriesRequest`, `handlePaneToggleVisibleRequest`, `handleRuntimeCapabilitiesChange`, `mockEngineInstance`, `mockVisibleRange`, `mountedContainer`, `originalConsoleError`, `reactActEnvironment`, `ref`, `root`, `splitters`, `toolbar`, `value`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.pointer.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `createMockForkOverlayState`, `emitPaneHover`, `flushMicrotasks`, `mergeTestPaneSnapshotDomains`, `resolveDrawingPointIndex`, `resolveMockForkHoveredDataIndex`, `resolveMockForkHoveredPaneId`, `resolvePointerContext`, `resolveTrendLineBodyPoint`, `waitForTruthyValue`
+- Top-level variables:
+  - `React`, `adapter`, `bottom`, `container`, `contextHitPoint`, `currentInputsKey`, `dataIndex`, `drawing`, `drawingPrimitives`, `engineHostPropsHistory`, `engineSurface`, `fetchBarsBefore`, `fetchBarsInRange`, `firstIndex`, `firstPoint`, `firstX`, `firstY`, `forkEngineSnapshots`, `forkRuntimeData`, `handleClick`, `handleContextMenu`, `hit`, `hoveredDataIndex`, `hoveredPaneId`, `hoveredSnapshot`, `lastInputsRef`, `latestEngineHostProps`, `localX`, `localY`, `mockEngineInstance`, `mockVisibleRange`, `originalConsoleError`, `overlayInputs`, `pointerContext`, `priceSnapshot`, `primitive`, `ratio`, `reactActEnvironment`, `rect`, `ref`, `right`, `root`, `scaleSlotDomains`, `scaleSlotStates`, `secondIndex`, `secondPoint`, `secondX`, `secondY`, `snapshot`, `value`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.regressions.contract.test.js`
+
+- Functions:
+  - `ThrowingChild`, `createAdapter`, `createDeferred`, `flushMicrotasks`, `resolveHoveredPaneId`
+- Top-level variables:
+  - `React`, `abortSpy`, `adapter`, `addSpy`, `alertDiv`, `bottom`, `container`, `currentAbortCalls`, `fetchBarsBefore`, `fetchBarsInRange`, `fetchDeferred`, `firstAdapter`, `firstFetch`, `forkEngineSnapshots`, `hoveredSnapshot`, `localX`, `localY`, `mockEngineInstance`, `mockOnError`, `mockVisibleRange`, `originalConsoleError`, `promise`, `reactActEnvironment`, `rect`, `ref`, `reject`, `removeSpy`, `resolve`, `right`, `root`, `secondAdapter`, `secondFetch`, `testError`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.runtimeMounts.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `flushMicrotasks`, `waitForTruthyValue`
+- Top-level variables:
+  - `React`, `adapter`, `capabilities`, `child`, `childSurface`, `container`, `cvdOverlay`, `externalCvdOverlay`, `externalCvdSeries`, `fetchBarsBefore`, `fetchBarsInRange`, `forkEngineSnapshots`, `forkRuntimeData`, `handleRuntimeCapabilitiesChange`, `host`, `mockEngineInstance`, `mockVisibleRange`, `originalConsoleError`, `reactActEnvironment`, `ref`, `root`, `value`, `whaleOrders`, `whaleOverlay`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.runtimeParity.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `flushMicrotasks`, `waitForTruthyValue`
+- Top-level variables:
+  - `React`, `adapter`, `capabilities`, `container`, `fetchBarsBefore`, `fetchBarsInRange`, `forkEngineSnapshots`, `forkRuntimeData`, `handleRuntimeCapabilitiesChange`, `handleRuntimeResolved`, `mockEngineInstance`, `mockVisibleRange`, `originalConsoleError`, `reactActEnvironment`, `ref`, `root`, `value`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.runtimeSelection.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `flushMicrotasks`, `waitForTruthyValue`
+- Top-level variables:
+  - `React`, `adapter`, `capabilities`, `close`, `container`, `data`, `engineHostPropsHistory`, `fetchBarsBefore`, `fetchBarsInRange`, `forkCapabilities`, `forkEngineSnapshots`, `forkRuntimeData`, `getContextSpy`, `handleRuntimeCapabilitiesChange`, `host`, `latestHostProps`, `legacyCapabilities`, `mockEngineInstance`, `mockVisibleRange`, `open`, `originalConsoleError`, `panes`, `reactActEnvironment`, `ref`, `root`, `seriesData`, `surface`, `value`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.scaleContext.contract.test.js`
+
+- Functions:
+  - `ContextCapturer`, `createAdapter`, `flushMicrotasks`
+- Top-level variables:
+  - `React`, `adapter`, `capturedContext`, `container`, `fetchBarsBefore`, `fetchBarsInRange`, `firstDatumDate`, `forkEngineSnapshots`, `forkRuntimeData`, `mockEngineInstance`, `mockVisibleRange`, `originalConsoleError`, `reactActEnvironment`, `ref`, `root`, `x10`, `x10_5`, `x11`, `xByDate`, `xByIndexZero`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.scaleSlotContract.test.js`
 
 - Top-level variables:
   - `normalizedPanes`, `rawFirstSeries`, `rawPanes`
 
-### `packages/web/src/components/vnstockcharts/widget/context/__tests__/WidgetI18nContext.test.tsx`
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.selectionClear.contract.test.js`
 
 - Functions:
-  - `WidgetI18nProbe`
+  - `createAdapter`, `createMockForkOverlayState`, `emitPaneHover`, `flushMicrotasks`, `mergeTestPaneSnapshotDomains`, `resolveMockForkHoveredDataIndex`, `resolveMockForkHoveredPaneId`, `resolvePointerContext`, `resolveTrendLinePointPixel`, `waitForTruthyValue`
 - Top-level variables:
-  - `WidgetI18nProvider`, `act`, `container`, `createRoot`, `originalConsoleError`, `probe`, `reactActEnvironment`, `root`, `setLocaleForTest`, `useWidgetI18n`
+  - `React`, `adapter`, `baseDrawing`, `bottom`, `container`, `currentInputsKey`, `dataIndex`, `drawingData`, `engineHostPropsHistory`, `engineSurface`, `fetchBarsBefore`, `fetchBarsInRange`, `forkEngineSnapshots`, `forkRuntimeData`, `handleSelectedDrawingChange`, `hoveredDataIndex`, `hoveredPaneId`, `hoveredSnapshot`, `lastInputsRef`, `localX`, `localY`, `mockEngineInstance`, `mockVisibleRange`, `originalConsoleError`, `pointerContext`, `priceSnapshot`, `ratio`, `reactActEnvironment`, `rect`, `ref`, `right`, `root`, `scaleSlotDomains`, `scaleSlotStates`, `value`, `x`, `y`
 
-### `packages/web/src/components/vnstockcharts/widget/context/WidgetI18nContext.js`
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.splitterPointer.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `createMockForkOverlayState`, `emitPaneHover`, `flushMicrotasks`, `mergeTestPaneSnapshotDomains`, `resolveMockForkHoveredDataIndex`, `resolveMockForkHoveredPaneId`, `resolvePointerContext`, `resolveTrendLinePointPixel`, `waitForTruthyValue`
+- Top-level variables:
+  - `PointerEventCtor`, `React`, `adapter`, `authoringData`, `bottom`, `container`, `createdDrawings`, `currentInputsKey`, `dataIndex`, `drawings`, `endPoint`, `engineHostPropsHistory`, `fetchBarsBefore`, `fetchBarsInRange`, `forkEngineSnapshots`, `forkRuntimeData`, `handleDrawingWorkspaceChange`, `handleDrawingsChange`, `host`, `hoveredDataIndex`, `hoveredPaneId`, `hoveredSnapshot`, `lastInputsRef`, `localX`, `localY`, `mockEngineInstance`, `mockVisibleRange`, `originalConsoleError`, `pointerContext`, `priceSnapshot`, `ratio`, `reactActEnvironment`, `rect`, `ref`, `right`, `root`, `scaleSlotDomains`, `scaleSlotStates`, `splitterOwner`, `startPoint`, `value`, `workspace`, `x`, `y`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.tail.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `flushMicrotasks`, `waitForTruthyValue`
+- Top-level variables:
+  - `React`, `adapter`, `container`, `darkFlowBadge`, `exported`, `exportedAfterImport`, `fetchBarsBefore`, `fetchBarsInRange`, `forkEngineSnapshots`, `forkRuntimeData`, `initialDrawing`, `legacyChild`, `measurementOverlay`, `mockEngineInstance`, `mockVisibleRange`, `newDrawings`, `onDrawingsChange`, `originalConsoleError`, `reactActEnvironment`, `ref`, `root`, `storage`, `value`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.visibleRange.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `createDenseData`, `flushMicrotasks`, `renderForkChart`
+- Top-level variables:
+  - `React`, `adapter`, `base`, `container`, `denseData`, `engineHostPropsHistory`, `fetchBarsBefore`, `fetchBarsInRange`, `forkEngineSnapshots`, `forkRuntimeData`, `handleVisibleDomainChange`, `handleVisibleRangeChange`, `mockEngineInstance`, `mockVisibleRange`, `originalConsoleError`, `reactActEnvironment`, `ref`, `root`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.visibleRangeAnchor.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `createMockForkOverlayState`, `emitPaneHover`, `flushMicrotasks`, `mergeTestPaneSnapshotDomains`, `readPrimitive`, `resolveMockForkHoveredDataIndex`, `resolveMockForkHoveredPaneId`, `resolvePointerContext`, `resolveTrendLinePointPixel`, `waitForTruthyValue`
+- Top-level variables:
+  - `React`, `adapter`, `baseDrawing`, `bottom`, `container`, `currentInputsKey`, `dataIndex`, `drawingData`, `engineHostPropsHistory`, `fetchBarsBefore`, `fetchBarsInRange`, `forkEngineSnapshots`, `forkRuntimeData`, `hoveredDataIndex`, `hoveredPaneId`, `hoveredSnapshot`, `initialPrimitive`, `lastInputsRef`, `latestHostProps`, `localX`, `localY`, `mockEngineInstance`, `mockVisibleRange`, `originalConsoleError`, `overlayInputs`, `pannedPrimitive`, `pointerContext`, `priceSnapshot`, `primitive`, `ratio`, `reactActEnvironment`, `rect`, `ref`, `restoredPrimitive`, `right`, `root`, `scaleSlotDomains`, `scaleSlotStates`, `value`, `x`, `y`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.visibleRangeOffGrid.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `createMockForkOverlayState`, `emitPaneHover`, `flushMicrotasks`, `mergeTestPaneSnapshotDomains`, `readPrimitive`, `resolveMockForkHoveredDataIndex`, `resolveMockForkHoveredPaneId`, `resolvePointerContext`, `resolveTrendLinePointPixel`, `waitForTruthyValue`
+- Top-level variables:
+  - `React`, `adapter`, `baseDrawing`, `bottom`, `container`, `currentInputsKey`, `dataIndex`, `drawingData`, `engineHostPropsHistory`, `fetchBarsBefore`, `fetchBarsInRange`, `forkEngineSnapshots`, `forkRuntimeData`, `hoveredDataIndex`, `hoveredPaneId`, `hoveredSnapshot`, `initialPrimitive`, `lastInputsRef`, `latestHostProps`, `localX`, `localY`, `mockEngineInstance`, `mockVisibleRange`, `offGridEnd`, `offGridStart`, `originalConsoleError`, `overlayInputs`, `pannedPrimitive`, `pointerContext`, `priceSnapshot`, `primitive`, `ratio`, `reactActEnvironment`, `rect`, `ref`, `restoredPrimitive`, `right`, `root`, `scaleSlotDomains`, `scaleSlotStates`, `value`, `x`, `y`
+
+### `packages/web/src/components/vninvestcharts/src/widget/__tests__/VNInvestCharts.xExtents.contract.test.js`
+
+- Functions:
+  - `createAdapter`, `flushMicrotasks`
+- Top-level variables:
+  - `React`, `adapter`, `container`, `extendedForkRuntimeData`, `fetchBarsBefore`, `fetchBarsInRange`, `forkEngineSnapshots`, `forkRuntimeData`, `mockEngineInstance`, `mockVisibleRange`, `originalConsoleError`, `prependedData`, `reactActEnvironment`, `ref`, `root`
+
+### `packages/web/src/components/vninvestcharts/src/widget/adapters/barsPagingPolicy.js`
+
+- Functions:
+  - `asFiniteNumber`, `buildBackwardPageRequest`, `normalizeBarsPagingMeta`, `resolveOldestBarTimestamp`
+- Top-level variables:
+  - `before`, `explicitHasMoreAfter`, `explicitHasMoreBefore`, `explicitNextBefore`, `hasMoreAfter`, `hasMoreBefore`, `nextBefore`, `oldest`, `oldestBarTs`, `parsed`, `snapshotId`, `ts`
+
+### `packages/web/src/components/vninvestcharts/src/widget/adapters/index.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/widget/adapters/VNInvestClient.js`
+
+- Classes:
+  - `VNInvestClient`
+- Functions:
+  - `asNumber`, `asObject`, `buildEndpoints`, `cloneBarsHotWindowTelemetry`, `cloneBarsPageResponse`, `createBarsHotWindowKey`, `diffBarsHotWindowTelemetry`, `evaluateBarsHotWindowLoadGate`, `extractChartPoints`, `isWhaleFeedResponse`, `markBarsHotWindowTelemetry`, `normalizeApiBase`, `normalizeChartBars`, `normalizeChartPoint`, `normalizeTimeframe`, `parseDateValue`, `pruneExpiredBarsHotWindowEntries`, `requestPromise`, `resolveApiBase`, `resolveBrowserOrigin`, `resolveTechnical`
+- Top-level variables:
+  - `API_BASE_STORAGE_KEY`, `BARS_HOT_WINDOW_TTL_MS`, `DEFAULT_API_BASE`, `DEFAULT_BARS_HOT_WINDOW_LOAD_GATE_THRESHOLDS`, `PAT_STORAGE_KEY`, `TIMEFRAME_MAP`, `bars`, `barsHotWindowCache`, `barsHotWindowInFlight`, `barsHotWindowTelemetry`, `browserOrigin`, `cacheHitRatio`, `cacheKey`, `cachedEntry`, `candidates`, `close`, `collapseRatio`, `data`, `dateRaw`, `dateValue`, `endpoints`, `globalScope`, `headers`, `high`, `inFlight`, `low`, `nestedData`, `networkRequestRatio`, `normalized`, `normalizedOrigin`, `now`, `numeric`, `obj`, `open`, `pagingMeta`, `params`, `parsed`, `payload`, `point`, `points`, `rawBars`, `reasons`, `response`, `savedRequestRatio`, `scope`, `sharedResponse`, `stored`, `technical`, `text`, `totalRequests`, `trimmed`, `url`, `urlParams`, `volume`
+
+### `packages/web/src/components/vninvestcharts/src/widget/adapters/VNInvestDataAdapter.js`
+
+- Classes:
+  - `VNInvestDataAdapter`
+- Functions:
+  - `pageToOHLCV`, `sortBarsByDate`
+- Top-level variables:
+  - `PAGE_LIMIT`, `allBars`, `bar`, `bars`, `covered`, `initParams`, `items`, `key`, `newestTs`, `oldestTs`, `page`, `params`, `snapshotId`, `subs`, `symbolUpper`
+
+### `packages/web/src/components/vninvestcharts/src/widget/adapters/VNInvestWebSocketClient.js`
+
+- Classes:
+  - `VNInvestWebSocketClient`
+- Top-level variables:
+  - `available`, `hostname`, `httpBase`, `normalized`, `parsed`, `resolved`, `response`, `symbols`, `url`, `wsBase`, `wsPath`
+
+### `packages/web/src/components/vninvestcharts/src/widget/BackfillWorkerFlags.js`
+
+- Functions:
+  - `resolveBackfillWorkerFlags`
+- Top-level variables:
+  - `DEFAULT_BACKFILL_WORKER_FLAGS`, `externalWorkerParam`, `flags`, `lodWorkerParam`
+
+### `packages/web/src/components/vninvestcharts/src/widget/BackfillWorkerFlags.test.js`
+
+- Top-level variables:
+  - `flags`, `params`
+
+### `packages/web/src/components/vninvestcharts/src/widget/canaryBarFiltering.js`
+
+- Functions:
+  - `applyCanaryFilter`, `getCanarySliceInfo`
+- Top-level variables:
+  - `keepCount`
+
+### `packages/web/src/components/vninvestcharts/src/widget/CanaryRollbackHelper.js`
+
+- Functions:
+  - `createEmergencyRollbackTrigger`, `formatRollbackEvent`, `validateRollbackSafety`
+- Top-level variables:
+  - `_exhaustive`, `barCountDiff`, `barDiff`, `barDiffStr`, `hasUnexpectedBarLoss`, `isRollingBack`, `severity`, `status`, `workerStateChanged`
+
+### `packages/web/src/components/vninvestcharts/src/widget/CanaryRolloutConfig.js`
+
+- Functions:
+  - `formatCanaryMetrics`, `makeCanaryGateRecommendation`, `parseCanaryLevel`, `resolveCanaryLevel`
+- Top-level variables:
+  - `DEFAULT_CANARY_LEVEL`, `VALID_CANARY_LEVELS`, `level`, `parsed`, `parts`, `thresholds`, `urlLevel`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/drawing/__tests__/DrawingDock.test.js`
+
+- Top-level variables:
+  - `container`, `labels`, `objectsButton`, `onTabChange`, `reactActEnvironment`, `root`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/drawing/__tests__/DrawingInspector.test.js`
+
+- Top-level variables:
+  - `buttons`, `cancelButton`, `checkedRadio`, `container`, `drawing`, `editButton`, `extendedRadio`, `flags`, `inputs`, `labels`, `lineStyleSelect`, `lineTypeLabels`, `onCancel`, `onChange`, `onCommit`, `onStartEdit`, `onUpdate`, `opacityInput`, `radios`, `reactActEnvironment`, `root`, `saveButton`, `setInputValue`, `setSelectValue`, `strokeInput`, `strokeWidthInput`, `textLabels`, `textarea`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/drawing/__tests__/DrawingListPanel.test.js`
+
+- Functions:
+  - `makeDrawing`
+- Top-level variables:
+  - `a`, `b`, `c`, `d`, `drawings`, `result`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/drawing/__tests__/DrawingSemanticPointLegend.test.js`
+
+- Top-level variables:
+  - `container`, `drawing`, `firstPointButton`, `labels`, `onPointFocusChange`, `pointButtons`, `reactActEnvironment`, `root`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/drawing/DrawingDock.js`
+
+- Functions:
+  - `handleHeaderPointerDown`, `handlePointerMove`, `handlePointerUp`
+- Top-level variables:
+  - `baseLeft`, `baseTop`, `dragStartRef`, `height`, `left`, `maxOffsetX`, `maxOffsetY`, `minOffsetX`, `minOffsetY`, `nextX`, `nextY`, `node`, `resolvedContent`, `rootRef`, `top`, `width`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/drawing/DrawingInspector.js`
+
+- Functions:
+  - `DrawingAlertPanel`, `addNewFibLevel`, `handleDeleteTemplate`, `handleLoadTemplate`, `handleSaveTemplate`, `isColorString`, `setCondition`, `toggleEnabled`, `updateStyle`, `validateAndMapXCoordinate`
+- Top-level variables:
+  - `FIB_TOOLS_WITH_LEVEL_CONFIGS`, `T`, `barTime`, `condition`, `configs`, `cooldownSec`, `currentColor`, `currentValue`, `dateVal`, `diff`, `direction`, `effectiveDrawing`, `enabled`, `fieldLabel`, `labelText`, `left`, `locked`, `mappedX`, `minDiff`, `name`, `nearestBar`, `newLevelInputRef`, `next`, `nextPoints`, `parsed`, `pointLabel`, `ratio`, `reward`, `risk`, `rr`, `segStyle`, `segVisible`, `strokeDasharray`, `style`, `template`, `timeString`, `top`, `updated`, `updatedList`, `val`, `visible`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/drawing/DrawingListPanel.js`
+
+- Functions:
+  - `filterDrawings`, `formatTimestamp`, `generateDrawingLabel`, `loadCollapsedGroups`, `renderDrawingItem`, `reorderDrawings`, `saveCollapsedGroups`
+- Top-level variables:
+  - `STORAGE_KEY`, `TOOL_LABELS`, `customLabel`, `displayedCount`, `existing`, `filteredDrawings`, `fromIdx`, `groupLabel`, `grouped`, `isCollapsed`, `isDragOver`, `isHidden`, `isLocked`, `isSearching`, `isSelected`, `left`, `map`, `next`, `parsed`, `q`, `raw`, `rawType`, `result`, `toIdx`, `toggleGroup`, `toolLabel`, `top`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/drawing/DrawingSemanticPointLegend.js`
+
+- Top-level variables:
+  - `isActive`, `pointLabels`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/footer/TimeframeFooter.js`
+
+- Functions:
+  - `TimeframeFooter`
+- Top-level variables:
+  - `RANGES`, `TIMEFRAMES`, `handleRangeClick`, `handleTimeframeClick`, `isActive`, `isDisabled`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/ForkPaneTooltips.js`
+
+- Functions:
+  - `ForkPaneTooltips`
+- Top-level variables:
+  - `labelColor`, `snapshot`, `snapshotMap`, `textColor`, `tokens`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/ForkXAxisOverlay.js`
+
+- Functions:
+  - `ForkXAxisOverlay`
+- Top-level variables:
+  - `backgroundColor`, `textColor`, `tickColor`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/header/OHLCHeader.js`
+
+- Functions:
+  - `OHLCHeader`, `formatChange`, `formatPrice`, `formatVolume`
+- Top-level variables:
+  - `change`, `changeRef`, `diff`, `ohlcRef`, `pct`, `sign`, `volRef`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/index.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/overlays/AdvisoryPanel.js`
+
+- Functions:
+  - `AdvisoryPanel`, `AgentRow`, `SkeletonRow`, `formatConfidence`, `formatTimestamp`, `formatWeight`, `scoreBarColor`, `scoreToPercent`
+- Top-level variables:
+  - `DECISION_STYLES`, `agentKey`, `barColor`, `decisionKey`, `decisionLabel`, `decisionStyle`, `label`, `pct`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/overlays/TapePanel.js`
+
+- Functions:
+  - `TapePanel`, `formatPrice`, `formatTime`, `formatValue`, `formatVolume`
+- Top-level variables:
+  - `ROW_HEIGHT`, `SIDE_COLORS`, `WHALE_BG`, `WHALE_BORDER`, `atBottom`, `billions`, `d`, `el`, `filtered`, `h`, `m`, `millions`, `prevLengthRef`, `s`, `scrollRef`, `sideStyle`, `threshold`, `userScrolledRef`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/overlays/WhalePanel.js`
+
+- Functions:
+  - `WhalePanel`, `formatBillion`
+- Top-level variables:
+  - `billion`, `net`, `rows`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/replay/ReplayControlBar.js`
+
+- Functions:
+  - `ReplayControlBar`
+- Top-level variables:
+  - `SPEEDS`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/search/VNSymbolSearch.js`
+
+- Functions:
+  - `VNSymbolSearch`, `commitRawQuery`, `handleClick`, `handleFocus`, `handleInputChange`, `handleKeyDown`, `handleSelect`, `readRecentItems`, `saveRecentItem`
+- Top-level variables:
+  - `EXCHANGE_OPTIONS`, `MAX_RECENT`, `RECENT_SYMBOLS_KEY`, `VN30_SYMBOLS`, `debounceRef`, `deduped`, `effectiveAdapter`, `effectiveClient`, `exchange`, `mapped`, `q`, `raw`, `searchSymbols`, `selected`, `showEmptyPanel`, `showResultsPanel`, `stocks`, `symbol`, `symbols`, `updated`, `wrapperRef`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/settings/SettingsModal.js`
+
+- Functions:
+  - `SettingsModal`, `formatSeriesDisplayName`, `formatSeriesSuffix`, `getIndicatorSetLabel`, `getPaneLabel`, `handleAddSeries`, `handleApplyIndicatorSet`, `handleDeleteIndicatorSet`, `handleImportIndicatorSetChange`, `handleImportIndicatorSetClick`, `handleParamChange`, `handleSaveCurrentIndicatorSet`, `handler`, `numberParam`, `renderIndicatorSetsSection`, `renderIndicatorsSection`, `renderLayoutSection`, `renderResetSection`, `renderSeriesParams`, `renderSetCard`, `renderThemeSection`, `supportsSeriesLineWidth`, `updateTarget`
+- Top-level variables:
+  - `LINE_WIDTH_SERIES_TYPES`, `SECTIONS`, `SERIES_ABBREVIATIONS`, `SERIES_LABEL_KEYS`, `TECHNICAL_INDICATORS`, `abbreviation`, `activeAlertAudioEnabled`, `activeCvdMode`, `activeEnableCVD`, `activeEnableWhale`, `activeIsDark`, `activeMaxVisibleBars`, `activeMaxVisiblePanes`, `activeOnAlertAudioEnabledChange`, `activeOnCVDModeChange`, `activeOnEnableCVDChange`, `activeOnEnableWhaleChange`, `activeOnMaxVisibleBarsChange`, `activeOnMaxVisiblePanesChange`, `activeOnReset`, `activeOnSelectedPaneIdChange`, `activeOnShowDrawingPriceMarkersChange`, `activeOnShowNonTradingDaysChange`, `activeOnTimezoneChange`, `activeOnWhaleThresholdChange`, `activeSelectedPaneId`, `activeShowDrawingPriceMarkers`, `activeShowNonTradingDays`, `activeTimezone`, `activeToggleTheme`, `activeWhaleThreshold`, `availableSeriesTypes`, `backdropRef`, `baseLabel`, `builtinSets`, `canMoveDown`, `canMoveUp`, `composerEntry`, `currentTheme`, `currentVal`, `entry`, `fields`, `file`, `importInputRef`, `imported`, `indicatorSets`, `isSelected`, `labelKey`, `name`, `nextSelectedPaneId`, `nextTheme`, `root`, `safeT`, `saved`, `selectedPane`, `set`, `suffix`, `userSets`, `val`, `visibleCount`, `visibleIndex`, `visiblePanes`, `withSuffix`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/settings/SettingsRangeSlider.js`
+
+- Functions:
+  - `SettingsRangeSlider`, `areValuesClose`, `clamp`
+- Top-level variables:
+  - `activeTolerance`, `clampedValue`, `hasActiveMark`, `hasMarks`, `nextValue`, `percent`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/settings/SnapshotPreviewModal.js`
+
+- Functions:
+  - `SnapshotPreviewModal`, `handler`, `safeT`, `updateTarget`
+- Top-level variables:
+  - `backdropRef`, `val`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/toolbar/DrawingToolbar.js`
+
+- Functions:
+  - `DrawingToolbar`, `ToolIcon`, `handler`
+- Top-level variables:
+  - `MAGNET_LABELS`, `TOOL_LONG_PRESS_DELAY_MS`, `TOOL_SHORTCUT_BADGE`, `TOOL_TOOLTIP_AUTO_HIDE_MS`, `active`, `activeInGroup`, `customIcon`, `fav`, `getToolTouchHandlers`, `handleMagnetClick`, `handleToolClick`, `handleToolbarToolPressEnd`, `handleToolbarToolPressStart`, `iconId`, `isOpen`, `rect`, `resolvedActiveTool`, `suppressToolTapRef`, `target`, `toolLongPressTimerRef`, `toolTooltipAutoHideTimerRef`, `triggerTooltipHapticFeedback`
+
+### `packages/web/src/components/vninvestcharts/src/widget/components/trading/PaperTradePanel.js`
+
+- Functions:
+  - `PaperTradePanel`, `Stat`, `formatPnl`
+- Top-level variables:
+  - `avgPnl`, `currentPosition`, `losses`, `sign`, `totalPnl`, `totalTrades`, `unrealizedPnl`, `winRate`, `wins`
+
+### `packages/web/src/components/vninvestcharts/src/widget/config/toolGroups.js`
+
+- Top-level variables:
+  - `TOOL_GROUPS_V2`
+
+### `packages/web/src/components/vninvestcharts/src/widget/context/__tests__/WidgetI18nContext.test.js`
+
+- Functions:
+  - `Probe`, `WidgetI18nProbe`
+- Top-level variables:
+  - `WidgetI18nProvider`, `act`, `container`, `createRoot`, `originalConsoleError`, `probe`, `reactActEnvironment`, `root`, `setLocaleForTest`, `tFn`, `useWidgetI18n`, `val`
+
+### `packages/web/src/components/vninvestcharts/src/widget/context/HoverEmitter.js`
+
+- Functions:
+  - `clearHover`, `createHoverEmitter`, `emitHover`, `handler`, `useHoverState`, `useHoverSubscription`
+- Top-level variables:
+  - `emitter`, `payload`
+
+### `packages/web/src/components/vninvestcharts/src/widget/context/VNInvestChartsConfigContext.js`
+
+- Functions:
+  - `VNInvestChartsConfigProvider`, `useVNInvestChartsConfig`
+- Top-level variables:
+  - `VNInvestChartsConfigContext`, `defaultValue`
+
+### `packages/web/src/components/vninvestcharts/src/widget/context/VNInvestChartsContext.js`
+
+- Functions:
+  - `VNInvestChartsProvider`, `useHoverEmitterRef`
+- Top-level variables:
+  - `hoverEmitterRef`, `resolvedLocale`, `resolvedTheme`
+
+### `packages/web/src/components/vninvestcharts/src/widget/context/VNInvestChartsStateContext.js`
+
+- Functions:
+  - `VNInvestChartsStateProvider`, `useVNInvestChartsState`
+- Top-level variables:
+  - `VNInvestChartsStateContext`, `activeToolState`, `addPane`, `addSeries`, `ctx`, `defaultValue`, `deletePane`, `drawingInteraction`, `isTestEnv`, `paneState`, `removePane`, `removeSeries`, `renamePane`, `reorderPanes`, `restorePane`, `setActiveTool`, `toggleSeriesVisible`, `toggleVisible`, `value`
+
+### `packages/web/src/components/vninvestcharts/src/widget/context/WidgetI18nContext.js`
 
 - Functions:
   - `WidgetI18nProvider`, `interpolate`, `isWidgetLocale`, `resolveInitialLocale`, `useWidgetI18n`
 - Top-level variables:
   - `WidgetI18nContext`, `defaultValue`, `documentLocale`, `primaryDictionary`, `resolvedLocale`, `secondaryDictionary`, `setLocale`, `t`, `template`, `value`
 
-### `packages/web/src/components/vnstockcharts/widget/context/WidgetI18nContext.tsx`
+### `packages/web/src/components/vninvestcharts/src/widget/drawingPriceLabelInputs.js`
 
 - Functions:
-  - `WidgetI18nProvider`, `interpolate`, `isWidgetLocale`, `resolveInitialLocale`, `useWidgetI18n`
+  - `createSelectedPriceLabelsInput`
 - Top-level variables:
-  - `WidgetI18nContext`, `defaultValue`, `documentLocale`, `primaryDictionary`, `resolvedLocale`, `secondaryDictionary`, `setLocale`, `t`, `template`, `value`
+  - `anchor`, `anchorPoint`, `highlightFill`, `markers`, `paneId`
 
-### `packages/web/src/components/vnstockcharts/widget/DrawingPriceLabelsOverlay.js`
+### `packages/web/src/components/vninvestcharts/src/widget/drawingPriceLabelInputs.test.js`
 
-- Functions:
-  - `clamp`, `resolveDrawingSnapshot`, `resolvePreferredScaleSlotId`
 - Top-level variables:
-  - `anchorPoint`, `effectiveDrawing`, `fillColor`, `highlightFill`, `labelFill`, `markers`, `pixel`, `scaleSlotId`, `side`, `snapshot`, `strokeColor`, `targetedSnapshot`, `textColor`, `top`, `visibleScaleSlotIds`
+  - `drawing`, `hiddenDrawing`
 
-### `packages/web/src/components/vnstockcharts/widget/DrawingPriceLabelsOverlay.tsx`
+### `packages/web/src/components/vninvestcharts/src/widget/DrawingPriceLabelsOverlay.js`
 
 - Functions:
   - `clamp`, `resolveDrawingSnapshot`, `resolvePreferredScaleSlotId`
 - Top-level variables:
   - `anchorPoint`, `effectiveDrawing`, `fillColor`, `highlightFill`, `labelFill`, `markers`, `pixel`, `scaleSlotId`, `side`, `snapshot`, `strokeColor`, `targetedSnapshot`, `textColor`, `top`, `visibleScaleSlotIds`
 
-### `packages/web/src/components/vnstockcharts/widget/forkRuntimeCompat.js`
+### `packages/web/src/components/vninvestcharts/src/widget/DrawingPriceLabelsOverlay.test.js`
+
+- Top-level variables:
+  - `coordinateBridge`, `drawing`, `markup`, `paneSnapshots`
+
+### `packages/web/src/components/vninvestcharts/src/widget/fork-geometry/abcdPattern.js`
 
 - Functions:
-  - `clamp`, `resolvePaneDataIndexAtPixel`, `resolvePanePixelAtDataIndex`, `resolvePanePixelAtValue`, `resolvePaneValueAtPixel`, `resolvePlotSpan`, `resolveScaleDomain`
+  - `calculateAbcdPatternMetrics`
 - Top-level variables:
-  - `domain`, `from`, `height`, `left`, `maxIndex`, `ratio`, `span`, `to`, `top`, `width`
+  - `AbcdPattern`, `ab`, `bc`, `cd`, `points`, `priceAB`, `priceBC`, `priceCD`
 
-### `packages/web/src/components/vnstockcharts/widget/forkRuntimeCompat.ts`
+### `packages/web/src/components/vninvestcharts/src/widget/fork-geometry/cycles.js`
 
 - Functions:
-  - `clamp`, `resolvePaneDataIndexAtPixel`, `resolvePanePixelAtDataIndex`, `resolvePanePixelAtValue`, `resolvePaneValueAtPixel`, `resolvePlotSpan`, `resolveScaleDomain`
+  - `calculateCycleGeometry`
 - Top-level variables:
-  - `domain`, `from`, `height`, `left`, `maxIndex`, `ratio`, `span`, `to`, `top`, `width`
+  - `CyclicLines`, `SineLine`, `TimeCycles`, `amplitude`, `count`, `p1`, `p2`, `pts`, `rawAmp`
 
-### `packages/web/src/components/vnstockcharts/widget/i18n/messages.en.js`
+### `packages/web/src/components/vninvestcharts/src/widget/fork-geometry/elliottWaves.js`
+
+- Functions:
+  - `calculateElliottWaveGeometry`, `makeElliottTool`
+- Top-level variables:
+  - `ELLIOTT_LABELS`, `ELLIOTT_POINT_COUNT`, `ElliottCorrection`, `ElliottDoubleCombo`, `ElliottImpulse`, `ElliottTriangle`, `ElliottTripleCombo`, `labels`, `pixels`, `pointCount`, `waveType`
+
+### `packages/web/src/components/vninvestcharts/src/widget/fork-geometry/fibArc.js`
+
+- Functions:
+  - `calculateFibArcGeometry`
+- Top-level variables:
+  - `DEFAULT_FIB_ARC_LEVELS`, `FibArc`, `baseRadius`, `center`, `levels`, `reference`
+
+### `packages/web/src/components/vninvestcharts/src/widget/fork-geometry/fibExtended.js`
+
+- Functions:
+  - `calculateFibExtendedGeometry`, `createTool`
+- Top-level variables:
+  - `FIB_EXTENDED_LEVELS`, `FIB_FAN_RATIOS`, `FibChannel`, `FibCircles`, `FibSpeedResistanceArcs`, `FibSpeedResistanceFan`, `FibSpiral`, `FibWedge`, `Pitchfan`, `THREE_POINT`, `TWO_POINT`, `TrendBasedFibTime`, `p1`, `p2`, `p3`
+
+### `packages/web/src/components/vninvestcharts/src/widget/fork-geometry/fibTimeZone.js`
+
+- Functions:
+  - `calculateFibTimeZoneGeometry`
+- Top-level variables:
+  - `DEFAULT_FIB_TIME_ZONE_LEVELS`, `FibTimeZone`, `end`, `levels`, `start`, `stepX`
+
+### `packages/web/src/components/vninvestcharts/src/widget/fork-geometry/gannAdvanced.js`
+
+- Functions:
+  - `calculateGannAdvancedGeometry`
+- Top-level variables:
+  - `GANN_FRACTIONS`, `GannBox`, `GannSquare`, `GannSquareFixed`, `p1`, `p2`, `side`, `size`, `sizeInPx`, `x2`, `y2`
+
+### `packages/web/src/components/vninvestcharts/src/widget/fork-geometry/gannFan.js`
+
+- Functions:
+  - `calculateGannFanGeometry`, `clampToBoundary`
+- Top-level variables:
+  - `GANN_RATIOS`, `GannFan`, `dx`, `dy`, `lines`, `t`, `tMax`, `tx`, `ty`, `unitBarX`, `unitPriceY`, `vx`, `vy`, `x2`, `y2`
+
+### `packages/web/src/components/vninvestcharts/src/widget/fork-geometry/harmonicPatterns.js`
+
+- Functions:
+  - `calculateHarmonicPatternGeometry`, `makeHarmonicTool`
+- Top-level variables:
+  - `CypherPattern`, `HeadAndShoulders`, `PATTERN_HAS_CLOSING_LINE`, `PATTERN_POINT_COUNT`, `PATTERN_POINT_LABELS`, `ThreeDrivesPattern`, `TrianglePattern`, `XabcdPattern`, `hasClosingLine`, `labels`, `patternType`, `pixels`, `pointCount`
+
+### `packages/web/src/components/vninvestcharts/src/widget/fork-geometry/parallelChannel.js`
+
+- Functions:
+  - `calculateParallelChannelGeometry`
+- Top-level variables:
+  - `ParallelChannel`, `dx`, `dy`, `end`, `length`, `normal`, `offsetAnchor`, `offsetDistance`, `start`
+
+### `packages/web/src/components/vninvestcharts/src/widget/fork-geometry/pitchfork.js`
+
+- Functions:
+  - `calculatePitchforkGeometry`
+- Top-level variables:
+  - `Pitchfork`, `leftSwing`, `midpoint`, `pivot`, `rightSwing`
+
+### `packages/web/src/components/vninvestcharts/src/widget/fork-geometry/regressionChannel.js`
+
+- Functions:
+  - `calculateRegressionChannelMetrics`, `projectIndexX`, `toTimeValue`
+- Top-level variables:
+  - `RegressionChannel`, `barTime`, `bars`, `closes`, `denominator`, `end`, `endPrice`, `endTime`, `endX`, `intercept`, `leftBar`, `meanY`, `n`, `rSquared`, `residuals`, `rightBar`, `slope`, `ssRes`, `ssTot`, `start`, `startPrice`, `startTime`, `startX`, `stdDev`, `sumX`, `sumXX`, `sumXY`, `sumY`, `xs`
+
+### `packages/web/src/components/vninvestcharts/src/widget/fork-geometry/regressionChannel.test.js`
+
+- Functions:
+  - `createDrawing`
+- Top-level variables:
+  - `metrics`
+
+### `packages/web/src/components/vninvestcharts/src/widget/forkAnchorReconciliation.js`
+
+- Functions:
+  - `reconcileForkDrawingIndexAnchors`, `reconcilePoint`, `resolveAnchorTimestamp`
+- Top-level variables:
+  - `INDEX_EPSILON`, `UNIX_TIMESTAMP_MIN`, `VALUE_EPSILON`, `changed`, `drawingChanged`, `nextDrawings`, `nextPoint`, `nextPoints`, `reconciled`, `resolvedIndex`, `timestamp`
+
+### `packages/web/src/components/vninvestcharts/src/widget/forkAnchorReconciliation.test.js`
+
+- Top-level variables:
+  - `drawing`, `plotData`, `reconciled`, `timeIndexMap`
+
+### `packages/web/src/components/vninvestcharts/src/widget/ForkDrawingsOverlay.js`
+
+- Functions:
+  - `createActionHandlePrimitiveInput`, `createForkDrawingActionHandlePrimitiveInputs`, `createForkDrawingPrimitiveInputs`, `createForkDrawingScales`, `getLogicCenter`, `mapAbsoluteXToDataIndex`, `mapAbsoluteYToValue`, `mapDataIndexToAbsoluteX`, `mapValueToAbsoluteY`, `resolveDrawingSnapshot`, `resolvePreferredScaleSlotId`, `resolveRenderableForkDrawings`, `sortDrawingsForHitTest`
+- Top-level variables:
+  - `absoluteX`, `absoluteY`, `boundingBox`, `dataIndex`, `date`, `fillByHandle`, `fractionalDataIndex`, `from`, `hasFiniteDomain`, `iconByHandle`, `index`, `leftZIndex`, `primitive`, `primitiveInput`, `projected`, `projector`, `ratio`, `rightZIndex`, `scaleSlotDomain`, `scaleSlotId`, `scales`, `selectedDrawingId`, `selectedIdSet`, `snapshot`, `span`, `targetIndex`, `targetedSnapshot`, `timeIndexMap`, `timestamp`, `to`, `value`, `visibleDrawings`, `visibleScaleSlotIds`, `x`, `xIndexFloat`, `y`, `yPrice`
+
+### `packages/web/src/components/vninvestcharts/src/widget/ForkDrawingsOverlay.test.js`
+
+- Functions:
+  - `createPaneSnapshot`
+- Top-level variables:
+  - `basePrimitive`, `farPriceLine`, `first`, `inputs`, `leftAnchoredDrawing`, `linePrimitive`, `plotData`, `second`
+
+### `packages/web/src/components/vninvestcharts/src/widget/forkDrawingSupport.js`
+
+- Functions:
+  - `buildToolCoverageMatrix`, `getToolCapabilityDescriptor`, `isForkMultiStepTool`, `isForkSinglePointTool`, `isForkSupportedDrawingAuthoringTool`, `isForkSupportedDrawingManipulationType`
+- Top-level variables:
+  - `TOOL_CAPABILITY_REGISTRY`, `byPhase`, `byStatus`, `desc`, `rows`
+
+### `packages/web/src/components/vninvestcharts/src/widget/forkInteractionHelpers.js`
+
+- Functions:
+  - `hasForkDraftProgress`, `isForkMultiStepTool`, `isForkSinglePointTool`, `isPrimaryPointerPressed`, `resolveForkMultiStepDraftOnClick`
+- Top-level variables:
+  - `FORK_DRAWING_TOOL_CURSOR_MAP`, `lastIndex`, `nextInteriorIdx`, `startPoint`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/__tests__/historyFinality.test.js`
+
+- Functions:
+  - `bar`
+- Top-level variables:
+  - `NOW`, `ONE_HOUR`, `correctionLookbackMs`, `existing`, `incoming`, `kept`, `oldTs`, `opts`, `provisionalWindowMs`, `recentTs`, `resident`, `result`, `ts`, `updated`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/__tests__/sourceClassGolden.test.js`
+
+- Functions:
+  - `bar`, `makeSemantics`
+- Top-level variables:
+  - `D1`, `LOADED_FULL`, `LOADED_LEFT_ONLY`, `LOADED_MIDDLE`, `LOADED_RIGHT_ONLY`, `MON_TRADING_ICT_MS`, `NOW`, `RESIDENT`, `SAT_ICT_MS`, `SUN_ICT_MS`, `all`, `allReasons`, `continuousSemantics`, `fetchable`, `filtered`, `incoming`, `leftSeg`, `loadedEndFriday`, `oldTs`, `opts`, `recentTs`, `resident`, `residentSpanning`, `residentSpanningWeekend`, `rightSeg`, `segments`, `semantics`, `ts`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/backfillBenchmarkHarness.js`
+
+- Functions:
+  - `barsForWindow`, `computePercentile`, `createBenchmarkMetricsState`, `createBenchmarkWindow`, `createDefaultSemantics`, `createInitialControllerState`, `createLoadedWindow`, `createSyntheticBars`, `runBackfillBenchmarkSuite`
+- Top-level variables:
+  - `BACKFILL_BENCHMARK_PROFILE_BARS`, `bars`, `close`, `controllerState`, `drift`, `elapsedMs`, `endMs`, `fetchSize`, `fetchableSegments`, `finalControllerState`, `high`, `index`, `inflightKeys`, `insetMs`, `iterationsPerProfile`, `label`, `loadedBars`, `loadedWindow`, `low`, `maxBars`, `mergeBars`, `metrics`, `missingBarCount`, `missingSegments`, `open`, `pageBars`, `pageStartMs`, `pages`, `prioritizedSegments`, `profileBars`, `profiles`, `residentTarget`, `retentionFactor`, `sampleBarCount`, `sampleBars`, `sampledAt`, `segmentFrom`, `segmentTo`, `snapshot`, `sorted`, `sourceSemantics`, `spanMs`, `startedAt`, `store`, `timeframeMs`, `timings`, `trimPatch`, `visible`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/cache/__tests__/LocalCacheMatrix.contract.test.js`
+
+- Functions:
+  - `createMockBar`, `createSemanticScope`
+- Top-level variables:
+  - `badWrite`, `bars`, `cache`, `cacheHit`, `cacheKey`, `changedScope`, `coverage`, `coverageAfterInvalidation`, `coverageAfterPurge`, `factory`, `fullHit`, `indexAfterBadWrite`, `initialIndex`, `inputBars`, `key`, `oldCacheKey`, `originalScope`, `partialHit`, `readResult`, `staleRead`, `writeResult`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/cache/index.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/cache/IndexedDBCacheMatrix.js`
+
+- Classes:
+  - `IndexedDBCacheMatrix`, `LocalCacheMatrixFactoryImpl`
+- Functions:
+  - `computeMissingTimeRanges`, `createManifestChecksum`, `createSegmentChecksum`, `fnv1a32`, `manifestToSemanticScope`, `normalizeOptionalNumber`, `normalizeOptionalString`, `normalizeRanges`, `semanticScopesEqual`
+- Top-level variables:
+  - `allMissingRanges`, `barsMap`, `coverage`, `coverageStore`, `current`, `currentCoverage`, `currentRevision`, `currentSegments`, `currentTs`, `cursor`, `data`, `date`, `db`, `deduplicated`, `end`, `existingManifest`, `fromTs`, `hash`, `idb`, `index`, `intersections`, `isBrowser`, `keyParts`, `manifest`, `manifestScope`, `manifestStore`, `manifestWithoutChecksum`, `memIndex`, `memoryDB`, `merged`, `missing`, `missingForTarget`, `neededSegments`, `next`, `nextCoverage`, `nextManifest`, `nextRevision`, `normalized`, `overlapEnd`, `overlapStart`, `payload`, `pending`, `req`, `request`, `resolvedDb`, `result`, `revision`, `segmentData`, `segmentKey`, `segmentMeta`, `segmentStore`, `semanticScope`, `sorted`, `sortedBars`, `start`, `store`, `t`, `toTs`, `tx`, `updatedRanges`, `updatedSegments`, `validated`, `value`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/cache/LocalCacheMatrix.js`
+
+- Functions:
+  - `toCacheKey`, `toCacheSemanticScope`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/chunkStore.js`
+
+- Functions:
+  - `createHistoryChunkStore`, `currentSnapshot`, `makePatch`, `sortAndDedup`
+- Top-level variables:
+  - `additionalTrimFromHead`, `bar`, `barMs`, `bars`, `existingIdx`, `headCount`, `headMs`, `newBars`, `next`, `nextBars`, `out`, `revision`, `sorted`, `tailCount`, `tailIdx`, `tailMs`, `totalTrimmedFromHead`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/chunkStore.test.js`
+
+- Functions:
+  - `makeBar`, `makeBars`, `tsOf`
+- Top-level variables:
+  - `anchorTimestamps`, `bars`, `barsBefore`, `existingInAfter`, `headBar`, `initialBars`, `liveBar`, `mixed`, `newBars`, `olderBars`, `overlappingBars`, `patch`, `r0`, `r1`, `r2`, `r3`, `r4`, `result`, `seen`, `snap`, `snap1`, `snapshotAfter`, `snapshotBefore`, `store`, `timestamps`, `ts`, `unsorted`, `updatedBar`, `updatedTail`, `window`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/externalBarsNormalization.js`
+
+- Functions:
+  - `buildExternalDataValidationError`, `normalizeExternalBar`, `normalizeExternalBars`
+- Top-level variables:
+  - `bar`, `barTime`, `bars`, `close`, `closeVal`, `date`, `dedupedBars`, `detail`, `firstError`, `high`, `highVal`, `invalidCount`, `lastBar`, `low`, `lowVal`, `normalizedBars`, `open`, `openVal`, `rawDate`, `record`, `sortedBars`, `suffix`, `volume`, `volumeVal`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/externalBarsNormalization.worker.js`
+
+- Top-level variables:
+  - `response`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/externalBarsNormalizationAsync.js`
+
+- Functions:
+  - `cleanup`, `createAbortError`, `createExternalBarsNormalizationWorker`, `handleAbort`, `normalizeExternalBarsAsync`, `resolveWorkerError`, `runWorkerNormalization`, `settle`, `shouldUseExternalBarsWorker`
+- Top-level variables:
+  - `EMPTY_EXTERNAL_BARS_NORMALIZATION_RESULT`, `EXTERNAL_BARS_WORKER_THRESHOLD`, `error`, `nextNormalizationWorkerRequestId`, `requestId`, `settled`, `useWorker`, `worker`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/externalBarsNormalizationAsync.test.js`
+
+- Classes:
+  - `MockNormalizationWorker`
+- Functions:
+  - `createRawBar`
+- Top-level variables:
+  - `controller`, `data`, `promise`, `requestId`, `result`, `worker`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/historyDataUtils.js`
+
+- Functions:
+  - `computeLoadedHistoryWindow`, `filterBarsForFinalityMerge`, `isMutableBar`, `lookbackDays`, `mergeBarPagesByDate`, `mergeBarPagesByDateWithFinality`, `mergeBarsByDate`, `mergeBarsByDateWithFinality`, `resolveFetchWindow`, `resolveRetentionWindow`, `resolveTimeframeMs`, `trimBarsToRetentionWindow`
+- Top-level variables:
+  - `barMs`, `cutoffMs`, `existingIndex`, `incomingEndMs`, `incomingStartMs`, `lastBar`, `lookbackMs`, `nowMs`, `oneDay`, `residentEndMs`, `residentStartMs`, `residentTs`, `retentionWindow`, `spanMs`, `timestamp`, `to`, `trimmedBars`, `visibleEndMs`, `visibleStartMs`, `windowMs`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/historyWindowPlanner.calendar.test.js`
+
+- Functions:
+  - `utcMs`
+- Top-level variables:
+  - `CRYPTO_SEMANTICS`, `MON_JAN15_UTC_MS`, `VN_EXCHANGE_SEMANTICS`, `cal`, `from`, `loaded`, `resident`, `segments`, `to`, `ts`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/historyWindowPlanner.js`
+
+- Functions:
+  - `clampRetentionFactor`, `classifyGapReason`, `computeMissingSegments`, `computeResidentTarget`, `computeTrimWindow`, `prioritizeMissingSegments`, `reasonFor`, `resolveDensityRetentionFactor`, `resolveResidentRetentionFactor`
+- Top-level variables:
+  - `RETENTION_FACTOR_MAX`, `RETENTION_FACTOR_MIN`, `baseFactor`, `factor`, `hysteresisPadMs`, `paddingMs`, `rawSpan`, `segments`, `span`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/historyWindowPlanner.test.js`
+
+- Functions:
+  - `makeSemantics`, `res`, `win`
+- Top-level variables:
+  - `DAY_MS`, `afterFactor`, `beforeFactor`, `continuousFactor`, `end`, `factor`, `fetchableCases`, `left`, `loaded`, `loadedEndFriday`, `loadedMiddle`, `maxPad`, `minSpanMs`, `point`, `priorityQueue`, `resMid`, `resident`, `residentSpan`, `residentWeekend`, `right`, `saturdayIctStartMs`, `segments`, `sessionFactor`, `span`, `start`, `sundayIctStartMs`, `target`, `trim`, `visMid`, `visibleSpan`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/inflightController.js`
+
+- Functions:
+  - `computeAdaptiveInflightControllerState`
+- Top-level variables:
+  - `CHUNK_BARS_MAX`, `CHUNK_BARS_MIN`, `DEBOUNCE_MAX_MS`, `DEBOUNCE_MIN_MS`, `MAX_INFLIGHT_MAX`, `MAX_INFLIGHT_MIN`, `OVERFETCH_INFLIGHT_CAP`, `RETENTION_FACTOR_MIN`, `chunkBars`, `debounceMs`, `highFrameTimeCount`, `highOverfetchCount`, `lowFrameTimeCount`, `maxInflight`, `retentionFactor`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/inflightController.test.js`
+
+- Functions:
+  - `makeState`
+- Top-level variables:
+  - `degraded`, `first`, `next`, `second`, `state`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/requestCoalescing.js`
+
+- Functions:
+  - `coalesceAndAdjustSegment`, `isSegmentCoalescedByInflight`, `normalizeSegmentRange`, `parseInflightRequestKey`, `toInflightRequestKey`
+- Top-level variables:
+  - `adjustedFrom`, `adjustedTo`, `from`, `inflight`, `segmentRange`, `to`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/requestCoalescing.test.js`
+
+- Top-level variables:
+  - `inflightKeys`, `key`, `segment`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/sessionGuards.js`
+
+- Functions:
+  - `buildHistorySessionRequestKey`, `buildSourceRevisionKey`, `normalizeField`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/sessionGuards.test.js`
+
+- Functions:
+  - `makeSemantics`
+- Top-level variables:
+  - `current`, `first`, `next`, `second`, `semantics`, `sourceRevisionKey`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/singleWriterLane.js`
+
+- Functions:
+  - `createSingleWriterLane`, `drainQueue`
+- Top-level variables:
+  - `next`, `output`, `queue`, `running`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/singleWriterLane.test.js`
+
+- Functions:
+  - `runWriter`
+- Top-level variables:
+  - `activeWriters`, `events`, `failing`, `first`, `following`, `lane`, `maxConcurrent`, `second`
+
+### `packages/web/src/components/vninvestcharts/src/widget/history/useExternalBarsNormalization.js`
+
+- Functions:
+  - `isExternalBarsNormalizationTestEnv`, `resolveInitialExternalBarsNormalization`, `useExternalBarsNormalization`
+- Top-level variables:
+  - `controller`, `disposed`, `initialState`
+
+### `packages/web/src/components/vninvestcharts/src/widget/hooks/useWidgetData.js`
+
+- Functions:
+  - `commitPendingRange`, `resetHistorySessionControllerRefs`, `schedule`, `startInitialLoad`, `trackFPS`, `useWidgetData`
+- Top-level variables:
+  - `EMPTY_BACKFILL_LOCK_THRESHOLD`, `abortControllersRef`, `activeCacheKey`, `activeCacheSemanticScope`, `activeEngine`, `activeHistoryRequestKey`, `activeHistoryRequestKeyRef`, `activeHistorySessionRevisionRef`, `activeRange`, `activeRequestsRef`, `activeSourceRevisionKey`, `activeSourceSemantics`, `activeSymbol`, `activeTimeframe`, `adapterLabel`, `afterMetrics`, `backfill`, `backfillBusy`, `beforeMetrics`, `cacheMatrixRef`, `cacheRead`, `cameraState`, `canaryFilteredBars`, `candidate`, `canonicalStore`, `chunkBarsRef`, `consecutiveEmptyBackfillRef`, `controller`, `currentBars`, `currentHistorySessionRequestKey`, `currentHistorySessionRevision`, `currentRange`, `dataLength`, `debounceMsRef`, `delta`, `diff`, `disposed`, `emitHistorySyncBusy`, `engine`, `enginePatch`, `enrichedData`, `firstBarMs`, `firstLoadedBar`, `frameTimesRef`, `handleForkVisibleRangeChange`, `hasExternalData`, `historyBackfillBeforeRef`, `historyChunkStoreRef`, `historyForwardAfterRef`, `historyMergeLaneRef`, `historySession`, `historySessionMode`, `historySessionRef`, `historySyncBusyRef`, `historyWindowSyncInFlightRef`, `inflightControllerStateRef`, `initialVisibleDomain`, `intervalId`, `isControlledHistorySession`, `isHistorySessionRequestCurrent`, `isKeyChanged`, `isRollingBack`, `isTest`, `isTestEnv`, `key`, `lastAppliedForkControlledExtentsKeyRef`, `lastFrameTimeRef`, `lastLoadedBar`, `lastQueuedOverflowHistoryKeyRef`, `lastQueuedVisibleDomainRef`, `lastStableForkSpanRef`, `leftBoundaryReached`, `liveEdgeMsRef`, `liveMinimumResidentSpanMs`, `liveResidentTarget`, `liveTimeframeMs`, `liveVisibleBarCount`, `liveVisibleSpanMs`, `lockedMs`, `mapped`, `matchedValue`, `maxInflightRef`, `metrics`, `minDiff`, `nearestIdx`, `newRange`, `nextBars`, `nextControllerState`, `nextData`, `nextDomain`, `nextEnvelopeMode`, `nextIndex`, `nextRange`, `nextSession`, `normalized`, `normalizedEngineRange`, `normalizedRange`, `normalizedRangeFrom`, `now`, `onVisibleDomainChangeRef`, `onVisibleRangeChangeRef`, `overfetchRatio`, `overfetchRatioRef`, `overflowQueueState`, `p95`, `patch`, `pendingForkVisibleRangeRafRef`, `pendingForkVisibleRangeRef`, `pendingHistoryPatchRef`, `pendingRange`, `pendingVisibleDomainRef`, `plotData`, `plotDataLengthRef`, `plotDataRef`, `prependedCount`, `prevBars`, `prevBarsRef`, `prevCanaryLevelRef`, `prevCanaryMetricsRef`, `prevEnrichedDataRef`, `prevFirstTime`, `prevVisibleSpanMsRef`, `prevVisibleStartMsRef`, `previousLevel`, `previousVisibleDomain`, `previousVisibleRange`, `queueDepthRef`, `queuedVisibleHistorySync`, `rafId`, `rawSnapshot`, `replaced`, `requestKey`, `residentMaxBars`, `resolvedBackfillWorkerFlags`, `resolvedCanaryLevel`, `retentionFactorRef`, `rightBoundaryReached`, `rollbackEvent`, `runHistoryMergeLane`, `samples`, `sessionRevision`, `severity`, `snapshot`, `sorted`, `stabilizedMax`, `stabilizedMin`, `stabilizedRange`, `syncHistoryBusyState`, `targetRange`, `timeframeMsEst`, `ts`, `unsubscribe`, `validation`, `viewportLeftMs`, `visibleBarCount`, `visibleDomain`, `visibleDomainChanged`, `visibleDomainRef`, `visiblePanes`, `visibleRangeChanged`, `whaleEvents`
+
+### `packages/web/src/components/vninvestcharts/src/widget/hooks/useWidgetDataBackfill.js`
+
+- Functions:
+  - `runSync`, `useWidgetDataBackfill`
+- Top-level variables:
+  - `HISTORY_MIN_RESIDENT_BARS`, `adjustedVisibleEndMs`, `adjustedVisibleStartMs`, `afterTimestamp`, `appendPatch`, `backwardBoundaryStopTs`, `backwardCoverage`, `barsToMerge`, `beforeTimestamp`, `boundaryExhaustedByCoverage`, `cacheRead`, `calendar`, `controller`, `controllerKey`, `currentForkRange`, `currentVisibleSpanMs`, `fetchableMissingSegments`, `finalityMergeOpts`, `hasNewerBars`, `hasOlderBars`, `isMovingLeft`, `isPast`, `isSameAsLastQueued`, `isZoomIn`, `latestDomain`, `liveEdgeCap`, `loadedWindow`, `maxRange`, `minRange`, `minimumResidentSpanMs`, `newerBars`, `newerBarsToMerge`, `nextVisibleDomain`, `olderBars`, `prependPatch`, `priorityQueue`, `promises`, `queueVisibleHistoryWindowSync`, `queuedVisibleDomain`, `rangeBoundaryStopTs`, `rangeCoverage`, `rawEndMs`, `rawMissingSegments`, `reconcileVisibleHistoryWindow`, `requestKey`, `requestPromise`, `requestVisibleHistoryWindowSync`, `residentMaxBars`, `resolvedResidentTarget`, `segment`, `sessionRevision`, `shouldLock`, `sourceSemantics`, `targetRange`, `targetWindow`, `timeframeMs`, `totalBarsFetchedRef`, `trimPatch`, `visibleBarCount`, `visibleSpanMs`, `visibleStartMs`, `workingBars`
+
+### `packages/web/src/components/vninvestcharts/src/widget/hooks/useWidgetDrawings.js`
+
+- Functions:
+  - `handleKeyDown`, `useWidgetDrawings`
+- Top-level variables:
+  - `activeElement`, `callback`, `callbackChanged`, `clipboardRaw`, `currentSelectedId`, `drawingStateType`, `drawingWorkspace`, `forkDrawingStateRef`, `hasMultipleDrawingsSelected`, `isCtrlOrCmd`, `isSelectedDrawingControlled`, `lastDrawingWorkspaceSubscriberRef`, `lastEmittedDrawingWorkspaceRef`, `lastEmittedDrawingWorkspaceStateRef`, `lastNotifiedSelectedDrawingIdRef`, `nextDrawings`, `nextSelectedDrawingId`, `nextSelectedId`, `nextWorkspace`, `nextWorkspaceState`, `offset`, `reconciled`, `resolvedDrawings`, `resolvedForkSingleSelection`, `resolvedSelectedDrawing`, `sel`, `selectedDrawing`, `selectedIds`, `snapshot`, `timeIndexMap`, `workspaceChanged`, `workspaceStateChanged`
+
+### `packages/web/src/components/vninvestcharts/src/widget/hooks/useWidgetForkInteraction.js`
+
+- Functions:
+  - `currentPaneSnapshots`, `useWidgetForkInteraction`, `visibleRange`
+- Top-level variables:
+  - `absoluteRect`, `activeTool`, `bottom`, `bridge`, `cancelForkInteraction`, `claimForkPointerOwner`, `clearForkPointerOwner`, `command`, `completedDrawing`, `context`, `currentCharts`, `currentDrawingState`, `currentPaneSnapshots`, `currentSelectedIds`, `dataIndex`, `deltaIndex`, `deltaX`, `deltaY`, `didChange`, `draft`, `draftDrawing`, `dx`, `dy`, `engine`, `forkDrawingStateRef`, `forkManipulationPreviewRef`, `forkManipulationSessionRef`, `forkPointerOwnerRef`, `forkRenderableDrawingMap`, `forkRenderableDrawings`, `forkRubberBandJustCommittedRef`, `forkRubberBandSelection`, `forkRubberBandSelectionRef`, `handleForkClick`, `handleForkContextMenu`, `handleForkDrawingClick`, `handleForkDrawingPointerDown`, `handleForkDrawingPointerMove`, `handleForkHostContextMenu`, `handleForkManipulationPointerDown`, `handleForkManipulationPointerMove`, `handleForkManipulationPointerUp`, `handleForkPointerDown`, `handleForkPointerLeave`, `handleForkPointerMove`, `handleForkPointerUp`, `hitDrawing`, `hitDrawingId`, `hitDrawingState`, `ignoreNextForkDrawingClickRef`, `interactionContext`, `isMultiSelectModifier`, `isReplayShortcut`, `isSelectionModifierPressed`, `lastPointerContextRef`, `localX`, `localY`, `manipulationIntent`, `manipulationSession`, `matchingIds`, `moveTargetIds`, `nextDraft`, `nextDrawing`, `nextSelectedIds`, `normalizedIds`, `normalizedX`, `normalizedY`, `openForkContextMenuAtPosition`, `overSlot`, `paneRect`, `previewDrawings`, `previousForkAuthoringToolRef`, `previousTool`, `range`, `rect`, `releaseForkPointerOwner`, `releaseOnVisibilityChange`, `releasePointerOwner`, `releaseWhenNoButtonsPressed`, `renderScales`, `resolveForkDrawingCommand`, `resolveForkDrawingContext`, `resolveForkEventPayloadAtPosition`, `resolveForkSurfaceCursor`, `resolvedPoint`, `right`, `rubberBand`, `scaleSlotDomain`, `scaleSlotId`, `session`, `sn`, `snapshot`, `suppressNextForkSurfaceClickRef`, `targetDrawing`, `toolCursor`, `yDomain`
+
+### `packages/web/src/components/vninvestcharts/src/widget/hooks/useWidgetInteractionActions.js`
+
+- Functions:
+  - `handleModifierChange`, `resetModifierState`, `resetSelectionModifier`, `syncSelectionModifier`, `useWidgetInteractionActions`
+- Top-level variables:
+  - `bringSelectedToFront`, `clipboardDrawing`, `cloneSelectedDrawing`, `closeForkDrawingContextMenu`, `copySelectedDrawing`, `forkAltShortcutPressedRef`, `maxZIndex`, `minZIndex`, `nextClone`, `nextDrawing`, `normalizedIds`, `onSelectedDrawingChangeRef`, `pasteCopiedDrawing`, `sendSelectedToBack`, `toggleSelectedLock`, `updateForkReadonlySelection`, `updateForkReadonlySelectionByIds`
+
+### `packages/web/src/components/vninvestcharts/src/widget/i18n/messages.en.js`
 
 - Top-level variables:
   - `widgetMessagesEn`
 
-### `packages/web/src/components/vnstockcharts/widget/i18n/messages.en.ts`
-
-- Top-level variables:
-  - `widgetMessagesEn`
-
-### `packages/web/src/components/vnstockcharts/widget/i18n/messages.vi.js`
+### `packages/web/src/components/vninvestcharts/src/widget/i18n/messages.vi.js`
 
 - Top-level variables:
   - `widgetMessagesVi`
 
-### `packages/web/src/components/vnstockcharts/widget/i18n/messages.vi.ts`
+### `packages/web/src/components/vninvestcharts/src/widget/i18n/types.js`
 
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/widget/iife-entry.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/widget/index.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/widget/injectStyles.js`
+
+- Functions:
+  - `injectVNInvestChartsCSS`
 - Top-level variables:
-  - `widgetMessagesVi`
+  - `VNSC_CSS`, `style`
 
-### `packages/web/src/components/vnstockcharts/widget/i18n/types.js`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/widget/i18n/types.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/widget/index.js`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/widget/index.ts`
-
-- No parseable top-level symbols found
-
-### `packages/web/src/components/vnstockcharts/widget/MeasurementOverlay.js`
+### `packages/web/src/components/vninvestcharts/src/widget/MeasurementOverlay.js`
 
 - Classes:
   - `MeasurementOverlayImpl`
 - Functions:
-  - `BridgeMeasurementOverlay`, `MeasurementOverlayWithI18n`, `drawMeasurementLabel`, `drawPoint`, `drawRoundedRect`, `formatSignedPrice`, `resolveBridgeMeasurementPoint`, `resolvePaneSnapshotAtPixel`, `resolvePreferredScaleSlotId`
+  - `BridgeMeasurementOverlay`, `EngineMeasurementOverlay`, `MeasurementOverlayWithI18n`, `drawMeasurementLabel`, `drawPoint`, `drawRoundedRect`, `formatSignedPrice`, `resolveBridgeMeasurementPoint`, `resolvePaneSnapshotAtPixel`, `resolvePreferredScaleSlotId`, `toSummarySelection`
 - Top-level variables:
   - `accentColor`, `bottom`, `boxHeight`, `boxWidth`, `boxX`, `boxY`, `canvas`, `canvasRef`, `chartConfig`, `ctx`, `drawOn`, `endPixel`, `handleCommit`, `handlePointerDown`, `handlePointerLeave`, `handlePointerMove`, `hoverPixel`, `hoverPoint`, `labels`, `lineHeight`, `lines`, `nextPoint`, `paddingX`, `paddingY`, `pixelRatio`, `point`, `rect`, `resolveLocalPosition`, `right`, `scaleSlotId`, `selection`, `snapshot`, `startPixel`, `summary`, `visibleScaleSlotIds`
 
-### `packages/web/src/components/vnstockcharts/widget/MeasurementOverlay.tsx`
-
-- Classes:
-  - `MeasurementOverlayImpl`
-- Functions:
-  - `BridgeMeasurementOverlay`, `MeasurementOverlayWithI18n`, `drawMeasurementLabel`, `drawPoint`, `drawRoundedRect`, `formatSignedPrice`, `resolveBridgeMeasurementPoint`, `resolvePaneSnapshotAtPixel`, `resolvePreferredScaleSlotId`
-- Top-level variables:
-  - `accentColor`, `bottom`, `boxHeight`, `boxWidth`, `boxX`, `boxY`, `canvas`, `canvasRef`, `chartConfig`, `ctx`, `drawOn`, `endPixel`, `handleCommit`, `handlePointerDown`, `handlePointerLeave`, `handlePointerMove`, `hoverPixel`, `hoverPoint`, `labels`, `lineHeight`, `lines`, `nextPoint`, `paddingX`, `paddingY`, `pixelRatio`, `point`, `rect`, `resolveLocalPosition`, `right`, `scaleSlotId`, `selection`, `snapshot`, `startPixel`, `summary`, `visibleScaleSlotIds`
-
-### `packages/web/src/components/vnstockcharts/widget/VNStockChart.js`
+### `packages/web/src/components/vninvestcharts/src/widget/paneInteractionUtils.js`
 
 - Functions:
-  - `VNStockChart`, `VNStockChartContent`, `arePaneSnapshotsEqual`, `buildLegacyPaneSnapshots`, `clampIndex`, `createWidgetCoordinateBridge`, `findPaneSnapshotAtPosition`, `findPlotDataIndex`, `findPlotDataIndexByTime`, `inferAxisSideFromScaleSlotId`, `lookbackDays`, `mergeBarsByDate`, `mergePaneSnapshotDomains`, `normalizeForkVisibleRange`, `normalizePaneDescriptorsForExplicitScaleSlots`, `resolveEngineSeriesValueForRuntime`, `resolveFetchWindow`, `resolveHoveredPaneId`, `resolvePreferredScaleSlotId`, `resolveVisiblePanes`, `resolveWidgetChartPoint`, `resolveWidgetPointPixel`, `safeXAccessor`
+  - `findPaneSnapshotAtPosition`, `resolveHoveredPaneId`
 - Top-level variables:
-  - `CHART_MARGIN`, `NORMALIZED_DEFAULT_PANES`, `PANE_HEADER_HEIGHT`, `activeLocale`, `activeSeries`, `activeSnapshots`, `activeSymbol`, `activeTimeframe`, `adapterLabel`, `axisStroke`, `axisTickFill`, `bottom`, `buy`, `candidate`, `candidatePanes`, `canonicalStore`, `canvas`, `chartInnerHeight`, `chartPoint`, `chartSurfaceReady`, `columns`, `computedXExtents`, `context`, `controller`, `currentCharts`, `currentState`, `cvdData`, `dataIndex`, `dateFormat`, `datum`, `defaultLegacyVisibleRange`, `diff`, `disposed`, `effectiveRuntime`, `emitCoordinateBridge`, `emitHoveredPaneId`, `emitPaneSnapshots`, `endBar`, `engine`, `engineDataSource`, `engineInstanceRef`, `engineOptions`, `enginePanes`, `engineSeriesData`, `engineTheme`, `enrichedData`, `existingIndex`, `firstBar`, `forkCoordinateBridge`, `forkDegradeNotifiedRef`, `forkPaneSnapshotsRef`, `forkVisibleRangeRef`, `handleBoundaryError`, `handleEngineReady`, `handleForkClick`, `handleForkContextMenu`, `handleForkVisibleRangeChange`, `handleLegacyVisibleRangeChange`, `handleRuntimeDegraded`, `handleWidgetPointerLeave`, `handleWidgetPointerMove`, `hasExternalData`, `hasLeftAxis`, `hasRenderedPixels`, `hasRightAxis`, `headerBottom`, `headerTop`, `height`, `hoveredPaneIdRef`, `hoveredSnapshot`, `index`, `isDark`, `lastBar`, `lastIndex`, `leftBounds`, `legacyCoordinateBridge`, `legacyPaneSnapshots`, `localX`, `localY`, `mapped`, `matchedValue`, `mergedSnapshots`, `minDiff`, `nearestIdx`, `nextPanes`, `normalizedRange`, `normalizedSeries`, `normalizedType`, `normalizedVisibleRange`, `oneDay`, `paneHeights`, `paneSnapshotMap`, `paneSplitterNodes`, `paneToolbarNodes`, `pixel`, `plotData`, `plotWidth`, `previousTheme`, `priceFormat`, `rawEndIndex`, `rawStartIndex`, `ready`, `rect`, `requestedRuntime`, `resolveForkEventPayload`, `resolvedLegacyVisibleRange`, `resolvedScaleSlotId`, `resolvedTheme`, `resolvedXExtents`, `right`, `rightBounds`, `root`, `rows`, `runtimeCapabilities`, `scaleSlotBounds`, `scaleSlotDomains`, `scaleSlotIds`, `scaleSlotStates`, `sell`, `series`, `seriesId`, `seriesValuesById`, `snapshot`, `snapshotTop`, `startBar`, `themeState`, `timer`, `to`, `top`, `ts`, `unsubscribe`, `useForkRuntime`, `value`, `values`, `visiblePanes`, `visibleScaleSlotIds`, `volumeFormat`, `whaleEvents`, `x`, `y`
+  - `PANE_HEADER_HEIGHT`, `bottom`, `headerBottom`, `headerTop`, `hoveredSnapshot`, `localX`, `localY`, `rect`, `right`
 
-### `packages/web/src/components/vnstockcharts/widget/VNStockChart.tsx`
+### `packages/web/src/components/vninvestcharts/src/widget/runtimePolicy.js`
 
 - Functions:
-  - `VNStockChart`, `VNStockChartContent`, `arePaneSnapshotsEqual`, `buildLegacyPaneSnapshots`, `clampIndex`, `createWidgetCoordinateBridge`, `findPaneSnapshotAtPosition`, `findPlotDataIndex`, `findPlotDataIndexByTime`, `inferAxisSideFromScaleSlotId`, `lookbackDays`, `mergeBarsByDate`, `mergePaneSnapshotDomains`, `normalizeForkVisibleRange`, `normalizePaneDescriptorsForExplicitScaleSlots`, `resolveEngineSeriesValueForRuntime`, `resolveFetchWindow`, `resolveHoveredPaneId`, `resolvePreferredScaleSlotId`, `resolveVisiblePanes`, `safeXAccessor`
+  - `evaluateRuntimePolicy`, `resolveRequestedRuntime`, `shouldForceLegacyRuntime`
 - Top-level variables:
-  - `CHART_MARGIN`, `NORMALIZED_DEFAULT_PANES`, `PANE_HEADER_HEIGHT`, `activeLocale`, `activeSeries`, `activeSnapshots`, `activeSymbol`, `activeTimeframe`, `adapterLabel`, `axisStroke`, `axisTickFill`, `bottom`, `buy`, `candidate`, `candidatePanes`, `canonicalStore`, `canvas`, `chartInnerHeight`, `chartPoint`, `chartSurfaceReady`, `columns`, `computedXExtents`, `context`, `controller`, `currentCharts`, `currentState`, `cvdData`, `dataIndex`, `dateFormat`, `datum`, `defaultLegacyVisibleRange`, `diff`, `disposed`, `effectiveRuntime`, `emitCoordinateBridge`, `emitHoveredPaneId`, `emitPaneSnapshots`, `endBar`, `engine`, `engineDataSource`, `engineInstanceRef`, `engineOptions`, `enginePanes`, `engineSeriesData`, `engineTheme`, `enrichedData`, `existingIndex`, `firstBar`, `forkCoordinateBridge`, `forkDegradeNotifiedRef`, `forkPaneSnapshotsRef`, `forkVisibleRangeRef`, `handleBoundaryError`, `handleEngineReady`, `handleForkClick`, `handleForkContextMenu`, `handleForkVisibleRangeChange`, `handleLegacyVisibleRangeChange`, `handleRuntimeDegraded`, `handleWidgetPointerLeave`, `handleWidgetPointerMove`, `hasExternalData`, `hasLeftAxis`, `hasRenderedPixels`, `hasRightAxis`, `headerBottom`, `headerTop`, `height`, `hoveredPaneIdRef`, `hoveredSnapshot`, `index`, `isDark`, `lastBar`, `lastIndex`, `leftBounds`, `legacyCoordinateBridge`, `legacyPaneSnapshots`, `localX`, `localY`, `mapped`, `matchedValue`, `mergedSnapshots`, `minDiff`, `nearestIdx`, `nextPanes`, `normalizedRange`, `normalizedSeries`, `normalizedType`, `normalizedVisibleRange`, `oneDay`, `paneHeights`, `paneSnapshotMap`, `paneSplitterNodes`, `paneToolbarNodes`, `pixel`, `plotData`, `plotWidth`, `previousTheme`, `priceFormat`, `rawEndIndex`, `rawStartIndex`, `ready`, `rect`, `requestedRuntime`, `resolveForkEventPayload`, `resolveWidgetChartPoint`, `resolveWidgetPointPixel`, `resolvedLegacyVisibleRange`, `resolvedScaleSlotId`, `resolvedTheme`, `resolvedXExtents`, `right`, `rightBounds`, `root`, `rows`, `runtimeCapabilities`, `scaleSlotBounds`, `scaleSlotDomains`, `scaleSlotIds`, `scaleSlotStates`, `sell`, `series`, `seriesId`, `seriesValuesById`, `snapshot`, `snapshotTop`, `startBar`, `themeState`, `timer`, `to`, `top`, `ts`, `unsubscribe`, `useForkRuntime`, `value`, `values`, `visiblePanes`, `visibleScaleSlotIds`, `volumeFormat`, `whaleEvents`, `x`, `y`
+  - `desc`, `output`, `reasonCode`, `requestedRuntime`
 
-### `packages/web/src/components/vnstockcharts/widget/WidgetEmptyState.js`
+### `packages/web/src/components/vninvestcharts/src/widget/runtimePolicy.test.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/components/vninvestcharts/src/widget/utils/chartRange.js`
 
 - Functions:
-  - `WidgetEmptyState`
+  - `isChartRangeSatisfied`, `normalizeDate`, `resolveChartRangeExtents`, `resolveChartRangeFetchStart`, `resolveChartRangeStart`, `subtractDays`, `subtractMonths`, `subtractYears`
 - Top-level variables:
-  - `copy`
+  - `CHART_RANGES`, `CHART_RANGE_LABEL_KEYS`, `DEFAULT_CHART_RANGE`, `FETCH_PREFETCH_MULTIPLIER`, `dayOfMonth`, `fetchSpanMs`, `first`, `last`, `lastDayOfMonth`, `multiplier`, `next`, `rangeStart`, `single`, `targetStart`, `viewportSpanMs`, `viewportStart`
 
-### `packages/web/src/components/vnstockcharts/widget/WidgetEmptyState.tsx`
+### `packages/web/src/components/vninvestcharts/src/widget/utils/coordinateBridge.js`
 
 - Functions:
-  - `WidgetEmptyState`
+  - `createForkChartRenderContextValue`, `createForkStockChartContextValue`, `createWidgetCoordinateBridge`, `fractionalIndex`, `resolvePaneProjector`, `resolveWidgetChartPoint`, `resolveWidgetPointPixel`, `value`
 - Top-level variables:
-  - `copy`
+  - `anchor`, `cacheKey`, `cached`, `candleWidth`, `chartConfig`, `chartPoint`, `dataIndex`, `datum`, `domain`, `endDatum`, `fractionalDataIndex`, `from`, `hasFiniteDomain`, `index`, `normalizedVisibleRange`, `paneSnapshotMap`, `primaryPaneSnapshot`, `primaryScaleSlotId`, `projected`, `projector`, `projectorCache`, `ratio`, `resolvedIndex`, `resolvedScaleSlotId`, `scaleSlotDomain`, `scaleSlotId`, `snapshot`, `span`, `startDatum`, `targetIndex`, `timeIndexMap`, `timestamp`, `to`, `ts`, `useCenteredIndexProjection`, `visibleBarCount`, `x`, `y`, `yScale`
 
-### `packages/web/src/components/vnstockcharts/widget/WidgetErrorBoundary.js`
+### `packages/web/src/components/vninvestcharts/src/widget/utils/widgetEquality.js`
+
+- Functions:
+  - `areAxisBoundsEqual`, `areBoundsEqual`, `areBoundsMapEqual`, `areDomainTupleEqual`, `areHeaderAnchorEqual`, `areLabelAnchorEqual`, `arePaneSnapshotsEqual`, `areRuntimeCapabilitiesEqual`, `areScaleSlotStatesEqual`
+- Top-level variables:
+  - `leftBounds`, `leftKeys`, `leftSnapshot`, `leftState`, `rightBounds`, `rightKeys`, `rightSnapshot`, `rightState`
+
+### `packages/web/src/components/vninvestcharts/src/widget/utils/widgetHelpers.js`
+
+- Functions:
+  - `buildForkTooltipTokens`, `buildLegacyPaneSnapshots`, `findPlotDataIndex`, `findPlotDataIndexByTime`, `formatForkXAxisLabel`, `formatTooltipValue`, `inferAxisSideFromScaleSlotId`, `isPrimaryPriceSeries`, `isWidgetTestEnvironment`, `mergePaneSnapshotDomains`, `normalizePaneDescriptorsForExplicitScaleSlots`, `resolveDate`, `resolveDateDomainFromDiscontinuous`, `resolveDiscontinuousXExtents`, `resolveEngineSeriesValueForRuntime`, `resolveForkChartConfigScaleSlotId`, `resolvePreferredScaleSlotId`, `resolveTooltipSeriesColor`, `resolveVisiblePanes`
+- Top-level variables:
+  - `CHART_MARGIN`, `FALLBACK_ADAPTER`, `FORK_DEGRADE_PIXEL_CHECK_DELAY_MS`, `FORK_DEGRADE_PIXEL_RECHECK_DELAY_MS`, `FORK_DEGRADE_REQUIRED_BLANK_CHECKS`, `HISTORY_BACKFILL_PAGE_LIMIT`, `HISTORY_MIN_RESIDENT_BARS`, `HISTORY_RECONCILE_MAX_PAGES`, `NORMALIZED_DEFAULT_PANES`, `activeSeries`, `buy`, `candidatePanes`, `currentState`, `dailyAxisFormat`, `dataIndex`, `dateFormat`, `defaultEnd`, `defaultStart`, `endIndex`, `epoch`, `firstIndexValue`, `globalScope`, `hasLeftAxis`, `hasRightAxis`, `height`, `intradayAxisFormat`, `lastDataIndex`, `lastIndex`, `leftBounds`, `mixedAxisFormat`, `nextPanes`, `normalizedSeries`, `paramColor`, `plotWidth`, `preferSnapshotPriceDomains`, `priceFormat`, `rightBounds`, `scaleSlotBounds`, `scaleSlotIds`, `scaleSlotStates`, `sell`, `series`, `shouldPreferComputedDomain`, `snapshotTop`, `startIndex`, `tokens`, `tooltipEntry`, `top`, `value`, `visibleRightScaleSlotId`, `visibleScaleSlotId`, `visibleScaleSlotIds`, `volumeFormat`
+
+### `packages/web/src/components/vninvestcharts/src/widget/visibleRangeBridge.js`
+
+- Functions:
+  - `asTimeValue`, `clampIndex`, `clampToRange`, `findNearestDateIndex`, `normalizeEngineVisibleRange`, `normalizeForkVisibleRange`, `normalizeVisibleRangeForEngine`, `resolveForkVisibleRangeFromDateExtents`
+- Top-level variables:
+  - `endBar`, `endIndex`, `endTime`, `from`, `fromIndex`, `high`, `lastIndex`, `left`, `low`, `lowerTime`, `mid`, `midTime`, `rawEndExclusive`, `rawEndIndex`, `rawStartIndex`, `right`, `startBar`, `startIndex`, `startTime`, `to`, `toExclusive`, `toIndex`, `upperTime`
+
+### `packages/web/src/components/vninvestcharts/src/widget/visibleRangeBridge.test.js`
+
+- Top-level variables:
+  - `data`, `normalized`, `range`
+
+### `packages/web/src/components/vninvestcharts/src/widget/visibleRangeDiagnostics.js`
+
+- Functions:
+  - `areEngineVisibleRangesEqual`, `areVisibleDomainsEqual`, `isForkRangeTraceEnabled`, `traceForkRange`
+
+### `packages/web/src/components/vninvestcharts/src/widget/visibleRangePolicies.js`
+
+- Functions:
+  - `resolveOverflowHistoryQueueState`
+- Top-level variables:
+  - `maxRange`, `minRange`, `normalizedDataLength`, `overflowKey`
+
+### `packages/web/src/components/vninvestcharts/src/widget/visibleRangePolicies.test.js`
+
+- Top-level variables:
+  - `queueState`
+
+### `packages/web/src/components/vninvestcharts/src/widget/VNInvestCharts.js`
+
+- Functions:
+  - `activePaneSnapshots`, `activeVisibleRange`, `formatSeriesDisplayName`, `formatSeriesSuffix`, `handleAction`, `handleFullscreenChange`, `handleKeyDown`, `handlePointerMove`, `handlePointerUp`, `numberParam`, `runPixelCheck`, `vr`
+- Top-level variables:
+  - `VNInvestCharts`, `VNInvestChartsContent`, `a`, `abbreviation`, `action`, `activeAlertAudioEnabled`, `activeCvdMode`, `activeEnableCVD`, `activeEnableWhale`, `activeForkDrawingTool`, `activeForkManipulationDrawing`, `activeHeights`, `activeLocale`, `activeMaxVisibleBars`, `activeMaxVisiblePanes`, `activeOnSettingsClose`, `activePanes`, `activeSettingsOpen`, `activeShowDrawingPriceMarkers`, `activeShowNonTradingDays`, `activeSnapshots`, `activeTimezone`, `activeTool`, `activeWhaleThreshold`, `activeXExtents`, `adapterLabel`, `axisStroke`, `axisTickFill`, `baseLabel`, `bg`, `buffer`, `candidate`, `canvas`, `chartInnerHeight`, `chartSurfaceReady`, `cloned`, `computedXExtents`, `contentRuntimeKey`, `context`, `currentForkSnapshots`, `currentVisibleDomain`, `cvdData`, `d`, `datum`, `defaultLegacyVisibleRange`, `defaultRange`, `deltaX`, `drawingChromeContent`, `drawingChromeNode`, `drawingDockLabels`, `drawingDockNode`, `effectiveForkVisibleRange`, `effectiveRuntime`, `effectiveRuntimeReason`, `emitCoordinateBridge`, `emitHoveredPaneId`, `emitPaneSnapshots`, `engine`, `engineDataSource`, `engineInstanceRef`, `engineOptions`, `enginePanes`, `engineSeriesData`, `engineTheme`, `exists`, `firstBar`, `firstSnapshot`, `forkChartRenderContextValue`, `forkDegradeNotifiedRef`, `forkDrawingContextMenuDrawing`, `forkDrawingContextMenuItems`, `forkDrawingPrimitiveInputs`, `forkHoveredDatum`, `forkMovableSelectionIds`, `forkOverlayInputs`, `forkPaneSnapshotsRef`, `forkStockChartContextValue`, `forkSubscriptionIdRef`, `forkVisibleRangeRef`, `forkXAxisHoverLabel`, `forkXAxisTicks`, `fromIndex`, `getPaneLabel`, `handleBoundaryError`, `handleCancelTextEdit`, `handleCommitTextEdit`, `handleEngineReady`, `handleForkOverlayStateChange`, `handleFullscreenToggle`, `handleLegacyVisibleDomainChange`, `handleLegacyVisibleRangeChange`, `handlePaneAddSeries`, `handlePaneRemove`, `handlePaneRemoveSeries`, `handlePaneToggleSeries`, `handlePaneToggleVisible`, `handleRangeChange`, `handleRuntimeDegraded`, `handleSidebarPointerDown`, `handleSnapshot`, `handleStartTextEdit`, `handleTimeframeChange`, `handleWidgetPointerLeave`, `handleWidgetPointerMove`, `hasExternalData`, `hasRenderedPixels`, `hasRightSidebar`, `hoveredDataIndex`, `hoveredIndex`, `hoveredPaneIdRef`, `incrementSnapshotRevision`, `indicatorLegendLabels`, `initialRangeSpan`, `initialVisibleRange`, `isDark`, `isSelectedDrawingControlled`, `labels`, `lastBar`, `lastEmittedPaneSnapshotsRef`, `lastNotifiedRuntimeResolutionRef`, `lastPaneSnapshotsSubscriberRef`, `lastRuntimeCapabilitiesRef`, `lastRuntimeCapabilitiesSubscriberRef`, `lastStableForkSpanRef`, `legacyChartScale`, `legacyCoordinateBridge`, `legacyPaneSnapshots`, `localizePane`, `localizedPane`, `maxZ`, `mergedSnapshots`, `minZ`, `newWidth`, `nextBlankChecks`, `nextDrawings`, `nextLabel`, `objectsContent`, `onVisibleDomainChangeRef`, `onVisibleRangeChangeRef`, `paneHeaderLabels`, `paneLeft`, `paneRight`, `paneSnapshotMap`, `paneSplitterNodes`, `paneToolbarNodes`, `paneToolbarRight`, `pendingForkVisibleRangeRafRef`, `pendingForkVisibleRangeRef`, `pendingRange`, `position`, `preferSnapshotPriceDomains`, `previous`, `previousTheme`, `propertiesContent`, `range`, `ready`, `reconciled`, `resolvedDomain`, `resolvedForkPriceMarkerSelection`, `resolvedForkPrimitiveSelection`, `resolvedId`, `resolvedLegacyVisibleRange`, `resolvedLegacyVisibleRangeRef`, `resolvedRequestedReason`, `resolvedRequestedRuntime`, `resolvedTheme`, `resolvedXExtents`, `root`, `runtimeCapabilities`, `runtimePolicy`, `safeXAccessor`, `sampleSlotId`, `scaleProvider`, `scaleSlotDomains`, `scaled`, `scaledData`, `scaledXAccessor`, `selectedDrawingFromWorkspace`, `selectedId`, `selectedIdSet`, `series`, `seriesAbbreviations`, `seriesId`, `seriesLabelKeys`, `seriesValuesById`, `settingsModalNode`, `sharedPlotDataRef`, `shouldLockForkPan`, `shouldUseInitialVisibleRange`, `sn`, `snapshot`, `snapshotPreviewModalNode`, `snapshotsChanged`, `startWidth`, `startX`, `subscriberChanged`, `suffix`, `target`, `targetTz`, `themeState`, `timeIndexMap`, `timers`, `toIndexExclusive`, `toolbarModel`, `useForkRuntime`, `val`, `value`, `values`, `visibleBarCount`, `visiblePanes`, `withSuffix`
+
+### `packages/web/src/components/vninvestcharts/src/widget/WidgetEmptyState.js`
+
+- Top-level variables:
+  - `WidgetEmptyState`, `copy`
+
+### `packages/web/src/components/vninvestcharts/src/widget/WidgetErrorBoundary.js`
 
 - Classes:
   - `WidgetErrorBoundary`
 
-### `packages/web/src/components/vnstockcharts/widget/WidgetErrorBoundary.tsx`
+### `packages/web/src/components/VNStockChartPanel.js`
 
 - Classes:
-  - `WidgetErrorBoundary`
+  - `CoreApiChartAdapter`
+- Functions:
+  - `ViewportSharkMarkersOverlay`, `pad`, `useI18n`
+- Top-level variables:
+  - `allBars`, `anchorWindowMs`, `backwardAnchor`, `barDate`, `barTime`, `bars`, `beforeTs`, `buildBarFromQuote`, `candlesForHook`, `chartAdapter`, `chartBody`, `coreAdapter`, `coverage`, `covered`, `customPanes`, `dateStr`, `days`, `draw`, `drawY`, `e`, `emoji`, `endIndex`, `enrichedBars`, `fromTs`, `handleBarsChange`, `handleClick`, `handleVisibleRangeChange`, `hrs`, `idx`, `intervalId`, `intervalLower`, `intervalMs`, `isBuy`, `isDaily`, `item`, `map`, `mapped`, `mappedCvdSeries`, `mappedWhaleOrders`, `mins`, `newestTs`, `nextBar`, `now`, `offset`, `oldestTs`, `parsedDate`, `payload`, `pendingQuoteRef`, `points`, `price`, `quote`, `rawTf`, `realtimeFeed`, `requestedWindowMs`, `safeInterval`, `signalsOrders`, `startIndex`, `tf`, `toTs`, `visibleBars`, `whaleTimes`, `x`, `y`
 
 ### `packages/web/src/config/buildTarget.js`
 
@@ -17153,6 +13200,13 @@ Generated at: `2026-05-29 20:48:10`
   - `getBuildTarget`, `isBuildTarget`, `normalizeBuildTarget`
 - Top-level variables:
   - `BUILD_TARGETS`, `BUILD_TARGET_SET`, `DEFAULT_BUILD_TARGET`, `candidate`
+
+### `packages/web/src/context/AbilityContext.js`
+
+- Functions:
+  - `createAbilityFromRules`, `useAbility`
+- Top-level variables:
+  - `AbilityContext`
 
 ### `packages/web/src/context/authReact.js`
 
@@ -17174,6 +13228,27 @@ Generated at: `2026-05-29 20:48:10`
   - `createBootstrapClient`, `deriveLegacyAuthState`, `loadShellBootstrap`, `requestJson`, `resolveFetchImpl`, `resolveShellAdapter`
 - Top-level variables:
   - `ADAPTER_REGISTRY`, `adapter`, `capabilities`, `client`, `isStaff`, `isSuperuser`, `principalIdentity`, `request`, `response`, `session`
+
+### `packages/web/src/context/LangContext.js`
+
+- Functions:
+  - `LangProvider`, `getInitialLocale`, `useI18n`
+- Top-level variables:
+  - `LANG_STORAGE_KEY`, `LangContext`, `context`, `localeTag`, `nextLocale`, `setLanguage`, `t`, `value`
+
+### `packages/web/src/context/PortfolioContext.js`
+
+- Functions:
+  - `PortfolioProvider`, `bootstrap`, `usePortfolio`
+- Top-level variables:
+  - `PortfolioContext`, `activeRefreshToken`, `cancelled`, `contextValue`, `createPortfolio`, `createSubAccount`, `ctx`, `deletePortfolio`, `deleteSubAccount`, `fetchPortfolios`, `hasInitialTokens`, `initialAccessToken`, `initialRefreshToken`, `login`, `logout`, `mappedConfig`, `next`, `nextPortfolios`, `nextRefresh`, `ok`, `payload`, `profilePayload`, `refreshAccessToken`, `register`, `res`, `resendVerification`, `response`, `rules`, `saveTokens`, `syncAuthState`, `tokenPayload`, `updatePortfolio`, `updateSubAccount`, `updateUserConfig`, `updatedConfig`
+
+### `packages/web/src/context/RealtimeContext.js`
+
+- Functions:
+  - `RealtimeProvider`, `alerts`, `createConsumerId`, `darkFlowAlerts`, `register`, `toSymbolsKey`, `toUniqueSymbols`, `unregister`, `update`, `useRealtimeFeedFromManager`
+- Top-level variables:
+  - `React`, `RealtimeContext`, `aggregatedSymbols`, `baseFeed`, `consumerCount`, `consumerIdRef`, `contextValue`, `dedupSavedSymbols`, `feed`, `maxAlerts`, `next`, `normalizedSymbols`, `pollInterval`, `quotesBySymbol`, `requestedSymbolCount`, `symbolsKey`, `union`, `value`, `values`
 
 ### `packages/web/src/features/community/components/index.js`
 
@@ -17217,7 +13292,7 @@ Generated at: `2026-05-29 20:48:10`
 - Functions:
   - `addSymbol`, `collectDashboardSymbols`, `extractTechnicalsResponse`, `load`, `normalizeSymbol`, `safeResults`, `useCoreDashboardData`, `wrapWithErrorCode`
 - Top-level variables:
-  - `EMPTY_ARRAY`, `abortRef`, `cancelled`, `controller`, `holdings`, `normalized`, `refresh`, `symbol`, `symbolSet`, `symbols`, `techRes`, `technicals`, `technicalsStatus`, `trackedSymbols`, `watchlistGroups`, `watchlists`
+  - `EMPTY_ARRAY`, `EXCLUDED_MARKET_GROUPS`, `abortRef`, `cancelled`, `controller`, `holdings`, `name`, `normalized`, `rawWatchlistGroups`, `rawWatchlists`, `refresh`, `symbol`, `symbolSet`, `symbols`, `techRes`, `technicals`, `technicalsStatus`, `trackedSymbols`, `watchlistGroups`, `watchlists`
 
 ### `packages/web/src/features/saas/components/index.js`
 
@@ -17258,9 +13333,16 @@ Generated at: `2026-05-29 20:48:10`
 ### `packages/web/src/features/stock-detail/components/StockDetailHeader.js`
 
 - Functions:
-  - `StockDetailHeader`, `fmtCompact`, `fmtPrice`
+  - `StockDetailHeader`, `fmtPrice`, `getPriceColorClass`
 - Top-level variables:
-  - `change`, `changePct`, `e`, `isUp`, `marketCap`, `n`, `price`
+  - `average`, `ceil`, `change`, `changePct`, `companyName`, `e`, `exchange`, `floor`, `high`, `industry`, `isUp`, `low`, `n`, `open`, `p`, `price`, `priceColorClass`, `ref`, `volume`
+
+### `packages/web/src/features/stock-detail/components/StockDetailTabs.js`
+
+- Functions:
+  - `StockDetailTabs`, `fmtCompact`, `fmtPrice`, `getPeriods`, `getRatioValue`, `renderActivePanel`, `renderCoDong`, `renderGiaoDich`, `renderHoSo`, `renderSuKien`, `renderTaiChinh`, `renderThongKe`, `renderTinTuc`, `renderVonCoTuc`, `signalColorClass`, `signalLabel`
+- Top-level variables:
+  - `balList`, `balPeriods`, `divYield`, `divYieldVal`, `e`, `events`, `firstPeriodKey`, `incList`, `incPeriods`, `keys`, `map`, `n`, `officers`, `overview`, `ratioList`, `row`, `s`, `sessionLabel`, `shareholders`, `tabsList`, `val`
 
 ### `packages/web/src/features/stock-detail/components/StockInsightDeck.js`
 
@@ -17279,9 +13361,9 @@ Generated at: `2026-05-29 20:48:10`
 ### `packages/web/src/features/stock-detail/hooks/useStockDetailPageModel.js`
 
 - Functions:
-  - `loadBlocking`, `loadDeferred`, `loadInsights`, `normalizeChartBarsPayload`, `useStockDetailPageModel`
+  - `getLookbackDays`, `loadBlocking`, `loadDeferred`, `normalizeChartBarsPayload`, `useStockDetailPageModel`
 - Top-level variables:
-  - `DEFAULT_ENV`, `DEFAULT_ORDER_FLOW_WINDOW`, `adapter`, `candidates`, `handleRealtimeSnapshot`, `mountedRef`, `pendingSnapshotRef`, `realtimeTimeoutRef`, `sessionDate`
+  - `DEFAULT_ENV`, `DEFAULT_ORDER_FLOW_WINDOW`, `adapter`, `candidates`, `handleRealtimeSnapshot`, `mountedRef`, `pendingSnapshotRef`, `quote`, `realtimeFeed`, `realtimeTimeoutRef`, `sessionDate`, `setChartBars`, `tf`
 
 ### `packages/web/src/features/stock-detail/hooks/useViewportWhaleMarkers.js`
 
@@ -17323,10 +13405,41 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `adapter`, `mountedRef`, `query`
 
+### `packages/web/src/hooks/useRealtimeFeedCore.js`
+
+- Functions:
+  - `cleanup`, `computeNextBackoffMs`, `computeReconnectDelayMs`, `connect`, `decodeJwtPayload`, `getHttpStatus`, `getQuoteBySymbol`, `getRealtimeTicker`, `getRealtimeTickers`, `getRealtimeWebSocketUrl`, `hydrateQuotes`, `isRequestCanceled`, `isTokenExpiringSoon`, `isValidQuotePrice`, `mergeQuote`, `normalizeAlert`, `normalizeChangePct`, `normalizeDarkFlowAlert`, `normalizeEventTimestamp`, `normalizePollSymbolCandidates`, `normalizeSymbol`, `nowIso`, `pickPollBatch`, `poll`, `readEventField`, `refreshAccessToken`, `resolveImpliedChangePct`, `resolveRealtimePollIntervalMs`, `scheduleReconnect`, `sendAction`, `shouldSuppressPollingError`, `start`, `toFiniteNumber`
+- Top-level variables:
+  - `MAX_WS_SUB_SYMBOLS`, `POLL_BATCH_SIZE`, `React`, `STALE_RESYNC_RETRY_MS`, `WS_HEALTHY_MIN_POLL_INTERVAL_MS`, `WS_HEALTHY_POLL_BATCH_SIZE`, `WS_HEALTHY_RECOVERY_BATCH_SIZE`, `WS_HEALTHY_RECOVERY_MIN_CANDIDATES`, `WS_HEALTHY_RECOVERY_POLL_INTERVAL_MS`, `ageSeconds`, `applyAlert`, `applyDarkFlowAlert`, `applyMarketDiscoveryEvent`, `applyTickerUpdate`, `applyTickerUpdateThrottled`, `asFraction`, `asPercent`, `base`, `base64`, `batch`, `bootstrapBatchSize`, `cache`, `cancelled`, `candidateResult`, `circuitOpenUntilRef`, `consecutiveFailuresRef`, `currentAccessToken`, `customBase`, `decoded`, `dedupKey`, `dedupWindowMs`, `delayMs`, `destroyed`, `devPort`, `disableWs`, `distanceFraction`, `distancePercent`, `effectiveIntervalMs`, `eventAgeSeconds`, `eventId`, `eventTimestamp`, `existing`, `expSeconds`, `fallbackRatioPct`, `filtered`, `flushTickerUpdates`, `fresh`, `freshToken`, `freshnessSeconds`, `hasOverThreshold`, `hasOverThresholdCandidates`, `hasRecoveryCandidates`, `idx`, `impliedPct`, `inferredFreshness`, `initTimer`, `intervalId`, `isDevFrontendPort`, `isMissing`, `isOffhoursSessionClose`, `isStale`, `jitter`, `lastPollAtRef`, `lastProcessedEventIdsRef`, `latency`, `message`, `next`, `nextAgeSeconds`, `nextAlert`, `nextBackoffMs`, `nextChangePct`, `nextChangePctUnit`, `nextChangeValue`, `nextCurrentPrice`, `nextEvent`, `nextKey`, `nextPrevPrice`, `nextWs`, `normalized`, `normalizedAttempt`, `normalizedChange`, `normalizedCurrent`, `normalizedPayload`, `normalizedPrev`, `normalizedPreviousPct`, `normalizedQuotes`, `normalizedRaw`, `normalizedSymbol`, `normalizedSymbols`, `normalizedToken`, `normalizedTs`, `now`, `numeric`, `ok`, `openUntilTs`, `padded`, `parts`, `payload`, `pendingTickerUpdatesRef`, `pollBackoffMsRef`, `pollBackoffUntilRef`, `pollCandidates`, `pollCursorRef`, `pollIntervalRef`, `pollingTotal`, `protocol`, `quote`, `quotes`, `quotesBySymbolRef`, `realtimeStatusRef`, `reconnectAttemptRef`, `reconnectTimer`, `refreshedToken`, `remaining`, `res`, `shouldSkipDuplicateEvent`, `shouldTryAuthRefresh`, `side`, `size`, `sorted`, `staleCount`, `staleOrMissing`, `staleOverThreshold`, `staleRatioPct`, `start`, `startTimer`, `status`, `symbol`, `symbols`, `symbolsForWs`, `symbolsKey`, `symbolsRef`, `syms`, `targetIntervalMs`, `tickerRafIdRef`, `tickersMap`, `token`, `ts`, `uiRefreshP95Ms`, `update`, `updates`, `ws`, `wsHealthy`, `wsHealthyRef`, `wsUrl`
+
+### `packages/web/src/i18n/en.js`
+
+- Top-level variables:
+  - `en`
+
+### `packages/web/src/i18n/index.js`
+
+- Functions:
+  - `createTranslator`, `formatCurrency`, `formatDate`, `formatDateTime`, `formatNumber`, `formatPriceVND`, `formatQuoteInteger`, `formatQuotePrice`, `formatQuoteVolume`, `formatTime`, `getLocaleTag`, `getNestedValue`, `normalizeLocale`
+- Top-level variables:
+  - `DEFAULT_LOCALE`, `QUOTE_LOCALE_TAG`, `date`, `defaultValue`, `dictionaries`, `dictionary`, `fallbackDictionary`, `hasDefaultValue`, `inThousands`, `localeTags`, `normalized`, `normalizedLocale`, `template`, `vars`, `vnd`
+
+### `packages/web/src/i18n/vi.js`
+
+- Top-level variables:
+  - `vi`
+
 ### `packages/web/src/index.js`
 
 - Top-level variables:
   - `shellAdapters`
+
+### `packages/web/src/main.js`
+
+- Functions:
+  - `App`, `Layout`, `ProtectedRoute`, `handleLogout`, `resolvePageComponent`
+- Top-level variables:
+  - `component`, `container`, `hasStoredTokens`, `isActive`, `layoutStyles`, `location`, `navigate`, `registryId`, `root`, `sidebarItems`
 
 ### `packages/web/src/pages/admin/ShellMailConfigPage.js`
 
@@ -17341,6 +13454,13 @@ Generated at: `2026-05-29 20:48:10`
   - `ShellOperationsCenterPage`
 - Top-level variables:
   - `groupFlags`, `metrics`, `operatorAbilities`, `operatorFlags`, `operatorRoutes`, `routeFlags`, `summaryCards`
+
+### `packages/web/src/pages/AICommandCenterPage.js`
+
+- Functions:
+  - `AICommandCenterPage`, `handleModelChange`, `handleProviderChange`, `handleSaveSettings`, `loadSettings`, `testConnection`
+- Top-level variables:
+  - `PROVIDER_MODELS`, `currentModel`, `data`, `defaultModel`, `e`, `finalModel`, `isKnownModel`, `models`, `modelsForProvider`, `modelsForSelectedProvider`, `nextData`, `payload`, `provider`, `providerOptions`, `val`
 
 ### `packages/web/src/pages/AlertCenterPage.js`
 
@@ -17419,7 +13539,7 @@ Generated at: `2026-05-29 20:48:10`
 - Functions:
   - `DashboardPage`, `ErrorBanner`, `LoadingSkeleton`, `NOOP`, `collectUniqueSortedSymbols`
 - Top-level variables:
-  - `e`, `prevReadyTokenRef`, `rawList`, `resolvedRenderAlertLane`, `showSkeleton`, `token`, `uniqueSorted`
+  - `React`, `allAlerts`, `allDark`, `calculatedBreadth`, `change`, `down`, `e`, `feedAlerts`, `feedDark`, `flat`, `hasRealtimeBreadth`, `key`, `mergedAlerts`, `mergedDarkFlowAlerts`, `mergedQuotes`, `prevReadyTokenRef`, `rawList`, `realtimeFeed`, `resolvedBreadth`, `resolvedRenderAlertLane`, `seen`, `showSkeleton`, `symbolString`, `symbols`, `token`, `unique`, `uniqueSorted`, `up`
 
 ### `packages/web/src/pages/market/ShellStockDetailPage.js`
 
@@ -17463,6 +13583,13 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `DEFAULT_ENV`, `e`, `handleAlertTrigger`, `handleSessionChange`, `handleTradeTrigger`, `handleVisibleRangeChange`, `handleWatch`, `map`, `n`, `s`, `showToast`, `timer`
 
+### `packages/web/src/pages/SupportPage.js`
+
+- Functions:
+  - `SupportPage`, `handleCreateTicket`, `handleReopen`, `handleReply`, `handleSelectTicket`, `handleStaffFilterChange`, `handleStaffPatch`, `loadStaffOpsDashboard`, `loadTicketDetail`, `loadTickets`
+- Top-level variables:
+  - `e`, `isStaffUser`, `leftPane`, `matched`, `messages`, `response`, `rightPane`, `rows`, `selectedTicketId`, `ticket`
+
 ### `packages/web/src/pages/system/ShellAiCommandCenterPage.js`
 
 - Functions:
@@ -17505,6 +13632,13 @@ Generated at: `2026-05-29 20:48:10`
 - Top-level variables:
   - `ROLE_OPTIONS`, `abilityCount`, `active`, `auditList`, `bootstrapLoaderRef`, `clientRef`, `controlPlaneClient`, `currentSessionId`, `currentSessionUsername`, `envRef`, `fetchImplRef`, `metrics`, `nextPayload`, `nextValue`, `notice`, `payload`, `result`, `roleEntry`, `roleKeys`, `roleText`, `sessionCards`, `snapshot`, `timestamp`, `userList`, `username`, `visibleRouteCount`
 
+### `packages/web/src/pages/WatchlistPage.js`
+
+- Functions:
+  - `TrackedThresholdCell`, `WatchlistPage`, `fetchItems`, `fetchPriceAlertsList`, `fetchTechnicals`, `formatTime`, `getActiveDescription`, `getActiveTitle`, `getGroupCounters`, `getMergedData`, `handleAddSymbol`, `handleAddTrackedSymbol`, `handleCreateAlert`, `handleCreateWatchlist`, `handleDeleteAlert`, `handleDeleteWatchlist`, `handlePromoteToTracked`, `handlePromoteToWatchlist`, `handleRemoveSymbol`, `handleRemoveTrackedSymbol`, `handleRenameWatchlist`, `handleSave`, `handleSyncPrices`, `handleSyncStockProfile`, `handleUpdateTrackedThreshold`, `loadAllLists`, `renderSparkline`, `renderTableBody`, `renderTableHeader`
+- Top-level variables:
+  - `EXCLUDED_MARKET_GROUPS`, `active`, `activeAfterDelete`, `activeGroup`, `activeItems`, `activeList`, `allSymbols`, `avgCost`, `change`, `changePct`, `color`, `companyName`, `counters`, `currentPrice`, `data`, `dir`, `down`, `e`, `flashClass`, `flashState`, `flashTimeoutRefs`, `groupsList`, `history`, `holdingsList`, `holdingsRes`, `industry`, `isActive`, `isAlreadyTracked`, `isDown`, `isEditing`, `isUp`, `lastPrice`, `list`, `ma20Dist`, `marketValue`, `max`, `merged`, `min`, `newMap`, `newWl`, `numVal`, `oldWl`, `path`, `pnl`, `pnlPct`, `points`, `portfolios`, `portfoliosRes`, `prevPrice`, `prevPricesRef`, `price`, `priceHistoryRef`, `qty`, `range`, `realtimeFeed`, `res`, `rsiValue`, `rvolValue`, `showUpDown`, `staticData`, `streamingData`, `symbol`, `symbolUpper`, `symbolsList`, `symbolsSet`, `targetWl`, `trackedList`, `trackedRes`, `typeLabel`, `up`, `updated`, `val`, `volume`, `wl`, `wlList`, `x`, `y`
+
 ### `packages/web/src/pages/WhaleAlertsPage.js`
 
 - Functions:
@@ -17538,7 +13672,7 @@ Generated at: `2026-05-29 20:48:10`
 - Functions:
   - `ShellWatchlistPage`
 - Top-level variables:
-  - `WORKSPACE_ROUTE_IDS`, `enabledSurfaces`, `groupFlags`, `metrics`, `routeFlags`, `summaryCards`, `watchlistAbilities`, `workspaceRoutes`
+  - `WORKSPACE_ROUTE_IDS`, `enabledSurfaces`, `groupFlags`, `hasSaasNative`, `metrics`, `routeFlags`, `summaryCards`, `watchlistAbilities`, `workspaceRoutes`
 
 ### `packages/web/src/utils/VNInvestSignalAdapter.js`
 
@@ -17553,6 +13687,11 @@ Generated at: `2026-05-29 20:48:10`
   - `buildClockDate`, `cloneAtMinute`, `formatMinuteLabel`, `getEffectiveMarketNow`, `getMarketSessionSegments`, `isWithinMarketSession`, `resolveWhaleTimeframeWindow`, `subtractTradingMinutes`, `toCanonicalMinute`
 - Top-level variables:
   - `AFTERNOON_START`, `MORNING_END`, `MORNING_START`, `ROLLING_WINDOW_MINUTES`, `SESSION_END`, `activeSegment`, `afternoonStart`, `anchor`, `canonical`, `cloned`, `cursor`, `d`, `date`, `effectiveNow`, `endDate`, `minutesAvailable`, `morningEnd`, `morningStart`, `normalizedTimeframe`, `now`, `numericTs`, `remainingMinutes`, `safeEnd`, `safeStart`, `secondsInDay`, `segments`, `sessionEnd`, `startDate`, `trimmed`, `vnOffsetSeconds`, `vnTimeMinutes`
+
+### `packages/web/vite.config.js`
+
+- Top-level variables:
+  - `__dirname`, `__filename`, `proxyTarget`
 
 ## Update Workflow
 

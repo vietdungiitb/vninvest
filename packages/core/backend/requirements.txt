@@ -13,6 +13,8 @@ whitenoise>=6.6,<7.0
 sentry-sdk[django]>=1.40,<2.0
 django-prometheus>=2.3,<3.0
 httpx>=0.27,<1.0
+h2>=4.1.0
+
 # Pandas vectorized processing cho order flow / CVD engine
 pandas>=2.0
 # SFI-B7: WebSocket support
@@ -23,5 +25,4 @@ daphne>=4.0,<5.0
 google-auth>=2.0,<3.0
 google-api-python-client>=2.0,<3.0
 # DNSE LightSpeed broker connector (private git source via env-driven token)
-# # vnbroker @ git...
-# vnstockcharts @ git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/vietdungiitb/vninvestcharts.git
+vnbroker @ git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/vietdungiitb/vnbroker.git@v1.1.0

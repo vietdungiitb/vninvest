@@ -600,6 +600,35 @@ def _execute_scheduler_action(
                         f'Bị abort bởi operator {actor} lúc {executed_at.isoformat()}.'
                     )
                     run_log.save(update_fields=['status', 'finished_at', 'error_detail'])
+
+                    # also abort associated BackfillExecutionRun
+                    try:
+                        from service_ops.models import BackfillExecutionRun
+                        BackfillExecutionRun.objects.filter(
+                            service_run_log=run_log,
+                            status__in=['queued', 'running'],
+                        ).update(
+                            status='aborted',
+                            finished_at=executed_at,
+                            error_summary=f'Bị abort bởi operator {actor} lúc {executed_at.isoformat()}.'
+                        )
+                    except Exception:
+                        pass
+
+            # Fallback direct job_key update for any orphaned BackfillExecutionRuns
+            try:
+                from service_ops.models import BackfillExecutionRun
+                BackfillExecutionRun.objects.filter(
+                    job_key=job_key,
+                    status__in=['queued', 'running'],
+                ).update(
+                    status='aborted',
+                    finished_at=executed_at,
+                    error_summary=f'Bị abort bởi operator {actor} lúc {executed_at.isoformat()}.'
+                )
+            except Exception:
+                pass
+
             message_parts.append(
                 f"Đã gửi revoke signal cho {revoked_count} celery task(s) của job '{job_key}' (service_key='{service_key}')."
             )

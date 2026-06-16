@@ -180,17 +180,21 @@ class DataIngestBackfillTaskTests(TestCase):
             'failed_count': 0,
         }
 
-        result = backfill_pre5y_to_market_inception.run(
-            market_inception_date='2000-07-28',
-            recent_years=5,
-            _scheduler_job_key='pre5y-history-backfill-weekly',
-        )
+        from unittest.mock import PropertyMock
+        with patch('celery.app.task.Task.request', new_callable=PropertyMock) as mock_request:
+            mock_request.return_value.id = 'test-pre5y-task-id'
+            result = backfill_pre5y_to_market_inception.run(
+                market_inception_date='2000-07-28',
+                recent_years=5,
+                _scheduler_job_key='pre5y-history-backfill-weekly',
+            )
 
         called_kwargs = backfill_daily_prices_run_mock.call_args.kwargs
         self.assertEqual(called_kwargs['mode'], 'historical_inception_backfill')
         self.assertEqual(called_kwargs['trigger'], 'beat_schedule')
         self.assertEqual(called_kwargs['_scheduler_job_key'], 'pre5y-history-backfill-weekly')
         self.assertEqual(called_kwargs['symbols'], ['ACB', 'FPT'])
+        self.assertEqual(called_kwargs['celery_task_id'], 'test-pre5y-task-id')
         self.assertEqual(len(called_kwargs['plan_items']), 2)
         self.assertEqual(
             called_kwargs['plan_items'][0]['requested_window'],

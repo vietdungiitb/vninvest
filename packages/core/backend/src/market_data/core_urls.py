@@ -34,10 +34,17 @@ from .stock_mgmt_native_views import (
     StockManagementTrackedSymbolsView,
 )
 from .urls import urlpatterns as shared_urlpatterns
-
+from .admin_sync_views import (
+    AdminOpsMarketGroupsSyncView,
+    AdminOpsMarketGroupsPreviewView,
+    AdminOpsSystemDefaultsSeedView,
+)
 
 urlpatterns = [
     *shared_urlpatterns,
+    path('market-data/admin-groups/sync/', AdminOpsMarketGroupsSyncView.as_view(), name='api-admin-market-groups-sync'),
+    path('market-data/admin-groups/preview/', AdminOpsMarketGroupsPreviewView.as_view(), name='api-admin-market-groups-preview'),
+    path('market-data/system-defaults/seed/', AdminOpsSystemDefaultsSeedView.as_view(), name='api-admin-system-defaults-seed'),
     path('stock-management/groups/', StockManagementGroupsView.as_view(), name='market-data-groups'),
     path('stock-management/groups/<int:group_id>/', StockManagementGroupDetailView.as_view(), name='market-data-group-detail'),
     path('stock-management/groups/<int:group_id>/items/', StockManagementGroupItemsView.as_view(), name='market-data-group-items'),

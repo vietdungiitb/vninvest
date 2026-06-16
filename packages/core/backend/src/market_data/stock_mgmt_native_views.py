@@ -33,69 +33,45 @@ from .global_symbol_registry import sync_admin_group_symbol_set, sync_system_def
 from .models import DailyPrice, IntradayBar, IntradayTick, StockProfile
 from .vnbroker_adapter import fetch_symbol_group_members
 from user_workspace.models import PriceAlert, TrackedSymbol, Watchlist, WatchlistItem
+import math
 
+def clean_nan(obj):
+    if isinstance(obj, dict):
+        return {k: clean_nan(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [clean_nan(x) for x in obj]
+    
+    try:
+        import numpy as np
+        is_float = isinstance(obj, (float, np.floating))
+        is_int = isinstance(obj, (int, np.integer))
+    except ImportError:
+        is_float = isinstance(obj, float)
+        is_int = isinstance(obj, int)
 
-_STOCK_MANAGEMENT_DEFAULT_GROUPS = [
-    {
-        'name': 'Ngân hàng',
-        'group_type': 'SECTOR',
-        'description': 'Nhóm ngân hàng',
-        'color': '#3b82f6',
-        'order': 1,
-        'symbols': ['ACB', 'BID', 'CTG', 'EIB', 'HDB', 'LPB', 'MBB', 'MSB', 'OCB', 'SHB', 'SSB', 'STB', 'TCB', 'TPB', 'VCB', 'VIB', 'VPB'],
-    },
-    {
-        'name': 'Bất động sản',
-        'group_type': 'SECTOR',
-        'description': 'Nhóm bất động sản',
-        'color': '#f59e0b',
-        'order': 2,
-        'symbols': ['BCM', 'CEO', 'DIG', 'DXG', 'KBC', 'KDH', 'NLG', 'NVL', 'PDR', 'SJS', 'TDH', 'VHM', 'VIC', 'VRE'],
-    },
-    {
-        'name': 'Thép & Vật liệu',
-        'group_type': 'SECTOR',
-        'description': 'Nhóm thép và vật liệu xây dựng',
-        'color': '#ef4444',
-        'order': 3,
-        'symbols': ['BMP', 'HPG', 'HSG', 'NKG', 'TLH', 'VGC', 'VIS'],
-    },
-    {
-        'name': 'Dầu khí',
-        'group_type': 'SECTOR',
-        'description': 'Nhóm dầu khí và năng lượng',
-        'color': '#8b5cf6',
-        'order': 4,
-        'symbols': ['GAS', 'OIL', 'PLX', 'PVD', 'PVS', 'PVT'],
-    },
-    {
-        'name': 'Công nghệ',
-        'group_type': 'SECTOR',
-        'description': 'Nhóm công nghệ và viễn thông',
-        'color': '#22c55e',
-        'order': 5,
-        'symbols': ['CMG', 'ELC', 'FPT', 'SAM', 'VGI'],
-    },
-    {
-        'name': 'Bán lẻ & Tiêu dùng',
-        'group_type': 'SECTOR',
-        'description': 'Nhóm bán lẻ và hàng tiêu dùng',
-        'color': '#ec4899',
-        'order': 6,
-        'symbols': ['MSN', 'MWG', 'PNJ', 'SAB', 'VNM'],
-    },
-    {
-        'name': 'VN30',
-        'group_type': 'MARKET_CAP',
-        'description': 'Top 30 cổ phiếu vốn hóa lớn nhất HOSE',
-        'color': '#6366f1',
-        'order': 7,
-        'symbols': ['ACB', 'BID', 'CTG', 'DGC', 'FPT', 'GAS', 'GVR', 'HDB', 'HPG', 'LPB', 'MBB', 'MSN', 'MWG', 'PLX', 'SAB', 'SHB', 'SSB', 'SSI', 'STB', 'TCB', 'TPB', 'VCB', 'VHM', 'VIB', 'VIC', 'VJC', 'VNM', 'VPB', 'VPL', 'VRE'],
-    },
-]
-_STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP = {group['name']: group for group in _STOCK_MANAGEMENT_DEFAULT_GROUPS}
-_STOCK_MANAGEMENT_COLOR_PALETTE = ['#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#22c55e', '#ec4899', '#6366f1']
-_SYSTEM_DEFAULT_SYMBOL_GROUP_IDS = ('vn30', 'vn100')
+    if is_float:
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return float(obj)
+    elif is_int:
+        return int(obj)
+        
+    return obj
+
+from .default_groups import (
+    get_default_groups,
+    get_group_lookup,
+    get_color_palette,
+    get_system_default_group_ids,
+    build_group_payload,
+)
+
+# Backwards compatibility - these are re-exported from default_groups
+_STOCK_MANAGEMENT_DEFAULT_GROUPS = get_default_groups()
+_STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP = get_group_lookup()
+_STOCK_MANAGEMENT_COLOR_PALETTE = get_color_palette()
+_SYSTEM_DEFAULT_SYMBOL_GROUP_IDS = get_system_default_group_ids()
+
 
 _PORTFOLIO_NEWS_DIGEST_SCHEMA = {
     'type': 'object',
@@ -1488,7 +1464,7 @@ class StockManagementDetailView(APIView):
         summary='Lấy hồ sơ mã cổ phiếu native',
         description='Endpoint native `/core/v1/stock-management/stocks/{symbol}/` trả về hồ sơ cơ bản của mã chứng khoán.',
         responses={
-            200: _STOCK_PROFILE_SCHEMA,
+            200: OpenApiTypes.OBJECT,
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
             404: OpenApiTypes.OBJECT,
@@ -1501,14 +1477,44 @@ class StockManagementDetailView(APIView):
             profile = StockProfile.objects.get(symbol=symbol)
         except StockProfile.DoesNotExist:
             raise NotFound(f'Stock not found: {symbol}')
+
+        metadata = profile.metadata or {}
+        cache_valid = False
+        if 'updated_at' in metadata:
+            try:
+                updated_at = timezone.datetime.fromisoformat(metadata['updated_at'])
+                if timezone.now() - updated_at < timezone.timedelta(days=1):
+                    cache_valid = True
+            except (ValueError, TypeError):
+                pass
+
+        if not cache_valid:
+            from market_data.vnbroker_adapter import fetch_company_info
+            info = fetch_company_info(symbol, source='KBS')
+            metadata.update({
+                'overview': info.get('overview', {}),
+                'officers': info.get('officers', []),
+                'shareholders': info.get('shareholders', []),
+                'events': info.get('events', []),
+                'updated_at': timezone.now().isoformat(),
+            })
+            profile.metadata = metadata
+            profile.save(update_fields=['metadata'])
+
         return Response({
             'symbol': profile.symbol,
-            'company_name': profile.company_name,
+            'company_name': profile.company_name or metadata.get('overview', {}).get('company_name', ''),
             'exchange': profile.exchange,
-            'industry': profile.industry,
+            'industry': profile.industry or metadata.get('overview', {}).get('company_type', ''),
             'status': profile.status,
-            'outstanding_shares': profile.outstanding_shares,
+            'outstanding_shares': profile.outstanding_shares or metadata.get('overview', {}).get('outstanding_shares'),
+            'overview': metadata.get('overview', {}),
+            'officers': metadata.get('officers', []),
+            'shareholders': metadata.get('shareholders', []),
+            'events': metadata.get('events', []),
+            'note': 'native_profile_loaded',
         })
+
 
 
 class StockManagementOverviewView(APIView):
@@ -2008,14 +2014,14 @@ class StockManagementNewsView(APIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
     @extend_schema(
-        summary='Lấy news stub native cho stock workspace',
-        description='Endpoint native `/core/v1/stock-management/stocks/{symbol}/news/` hiện trả về empty-state stub thống nhất.',
+        summary='Lấy tin tức mã cổ phiếu native',
+        description='Endpoint native `/core/v1/stock-management/stocks/{symbol}/news/` trả về tin tức doanh nghiệp từ vnbroker (KBS) hoặc Google News RSS fallback, cache 30 phút.',
         parameters=[
             OpenApiParameter(
                 name='force',
                 type=OpenApiTypes.BOOL,
                 location=OpenApiParameter.QUERY,
-                description='Giữ tương thích với caller cũ; hiện không đổi hành vi native stub.',
+                description='Bỏ qua cache và fetch mới dữ liệu.',
                 required=False,
             ),
         ],
@@ -2027,11 +2033,69 @@ class StockManagementNewsView(APIView):
     )
 
     def get(self, request, symbol):
-        return Response({
-            'symbol': symbol.upper(),
-            'news': [],
-            'note': 'news_not_available_in_native',
-        })
+        import pandas as pd
+        from django.core.cache import cache
+        
+        symbol = symbol.upper()
+        force = str(request.query_params.get('force', '')).lower() == 'true'
+        cache_key = f"stock_news:{symbol}"
+        
+        if not force:
+            cached_data = cache.get(cache_key)
+            if cached_data is not None:
+                return Response(cached_data)
+
+        news_list = []
+        try:
+            from vnbroker import News
+            kbs_news = News(source='KBS').by_symbol(symbol)
+            if kbs_news is not None and isinstance(kbs_news, pd.DataFrame) and not kbs_news.empty:
+                kbs_news = kbs_news.where(pd.notnull(kbs_news), None)
+                raw_news_list = kbs_news.to_dict(orient='records')
+                
+                for item in raw_news_list:
+                    pub_date = item.get('published_at')
+                    if pd.isnull(pub_date):
+                        pub_date_str = None
+                    elif hasattr(pub_date, 'isoformat'):
+                        pub_date_str = pub_date.isoformat()
+                    else:
+                        pub_date_str = str(pub_date) if pub_date else None
+
+                    # Only append if title and url are present to keep it high quality
+                    if item.get('title') and item.get('url'):
+                        news_list.append({
+                            'news_id': item.get('news_id') or f"kbs:{item.get('raw_hash')}",
+                            'title': item.get('title') or '',
+                            'summary': item.get('summary') or '',
+                            'url': item.get('url') or '',
+                            'published_at': pub_date_str,
+                            'source': item.get('source') or 'KBS',
+                        })
+        except Exception as e:
+            # Logger should be imported or used if available
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error('Error in StockManagementNewsView vnbroker news retrieval for %s: %s', symbol, e)
+
+        # Fallback to Google News RSS if no valid news items
+        if not news_list:
+            try:
+                from market_data.vnbroker_adapter import fetch_rss_news
+                news_list = fetch_rss_news(symbol)
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error('Error fetching fallback RSS news for %s: %s', symbol, e)
+
+        response_data = {
+            'symbol': symbol,
+            'news': news_list,
+            'note': 'news_loaded_successfully',
+        }
+        
+        cache.set(cache_key, response_data, timeout=1800)  # 30 minutes
+        return Response(response_data)
 
 
 class StockManagementNewsAISummaryView(APIView):
@@ -2907,8 +2971,17 @@ class StockManagementFinancialsView(APIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
     @extend_schema(
-        summary='Lấy financials stub native cho stock workspace',
-        description='Endpoint native `/core/v1/stock-management/stocks/{symbol}/financials/` trả về stub thống nhất khi financials native chưa materialized.',
+        summary='Lấy báo cáo tài chính native cho stock workspace',
+        description='Endpoint native `/core/v1/stock-management/stocks/{symbol}/financials/` trả về báo cáo tài chính (ratio, income_statement, balance_sheet) lấy từ vnbroker, cache 12 giờ.',
+        parameters=[
+            OpenApiParameter(
+                name='force',
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                description='Bỏ qua cache và fetch mới dữ liệu.',
+                required=False,
+            ),
+        ],
         responses={
             200: _STOCK_FINANCIALS_SCHEMA,
             401: OpenApiTypes.OBJECT,
@@ -2917,7 +2990,42 @@ class StockManagementFinancialsView(APIView):
     )
 
     def get(self, request, symbol):
-        return Response({'symbol': symbol.upper(), 'financials': None, 'note': 'financials_not_available_in_native'})
+        from django.core.cache import cache
+        from market_data.vnbroker_adapter import fetch_company_financials
+        
+        symbol = symbol.upper()
+        force = str(request.query_params.get('force', '')).lower() == 'true'
+        cache_key = f"stock_financials:{symbol}"
+        
+        if not force:
+            cached_data = cache.get(cache_key)
+            if cached_data is not None:
+                return Response(cached_data)
+
+        try:
+            financials_data = fetch_company_financials(symbol, source='KBS')
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error('Error fetching company financials in StockManagementFinancialsView for %s: %s', symbol, e)
+            financials_data = {
+                'ratio': [],
+                'income_statement': [],
+                'balance_sheet': [],
+            }
+
+        response_data = clean_nan({
+            'symbol': symbol,
+            'financials': {
+                'ratio': financials_data.get('ratio', []),
+                'income_statement': financials_data.get('income_statement', []),
+                'balance_sheet': financials_data.get('balance_sheet', []),
+            },
+            'note': 'financials_loaded_successfully',
+        })
+        
+        cache.set(cache_key, response_data, timeout=43200)  # 12 hours
+        return Response(response_data)
 
 
 # ---------------------------------------------------------------------------
@@ -3127,85 +3235,243 @@ class StockManagementGroupsView(APIView):
         ])
 
 
+def seed_default_watchlist_groups(user, force_recreate=False):
+    tenant = _resolve_user_tenant(user)
+    created_groups = []
+    updated_groups = []
+    added_symbols = 0
+
+    from .vnbroker_adapter import fetch_listing_symbols
+    from market_data.models import StockProfile
+    from user_workspace.models import Watchlist, WatchlistItem
+    from market_data.default_groups import get_default_groups, get_system_default_group_ids
+    import logging
+    logger = logging.getLogger(__name__)
+
+    # First, make sure StockProfiles are populated
+    try:
+        symbols_data = fetch_listing_symbols()
+        if symbols_data:
+            for item in symbols_data:
+                StockProfile.objects.update_or_create(
+                    symbol=item['symbol'],
+                    defaults={
+                        'exchange': item.get('exchange', 'HOSE') or 'HOSE',
+                        'company_name': item.get('company_name', ''),
+                        'industry': item.get('industry', '') or '',
+                        'status': StockProfile.StatusChoices.ACTIVE,
+                    }
+                )
+    except Exception as e:
+        logger.warning(f"Failed to sync stock profiles from listing source during seeding: {e}")
+
+    # Build symbols map for classification
+    group_symbols_map = {
+        "Ngân hàng": [],
+        "Bất động sản": [],
+        "Thép & Vật liệu": [],
+        "Dầu khí": [],
+        "Công nghệ": [],
+        "Bán lẻ & Tiêu dùng": [],
+        "VN30": [],
+        "VN100": [],
+        "HNX30": [],
+        "HOSE": [],
+        "HNX": [],
+        "UPCOM": [],
+    }
+
+    default_groups = get_default_groups()
+    sector_by_symbol = {}
+    for group_data in default_groups:
+        if group_data.get('group_type') == 'SECTOR':
+            for sym in group_data['symbols']:
+                sector_by_symbol[sym] = group_data['name']
+
+    # Heuristic classification function
+    def classify_profile(p):
+        # 1. Try mapping from profile.industry
+        ind_lower = str(p.industry or '').strip().lower()
+        if ind_lower:
+            if any(k in ind_lower for k in ['ngân hàng', 'bank', 'chứng khoán', 'securities', 'bảo hiểm', 'insurance', 'tài chính', 'finance']):
+                return "Ngân hàng"
+            if any(k in ind_lower for k in ['bất động sản', 'real estate', 'property']):
+                return "Bất động sản"
+            if any(k in ind_lower for k in ['vật liệu', 'xây dựng', 'thép', 'steel', 'cement', 'xi măng', 'thiết bị điện', 'máy móc', 'phụ trợ', 'sắt', 'nhôm', 'kim loại', 'metal']):
+                return "Thép & Vật liệu"
+            if any(k in ind_lower for k in ['dầu khí', 'khai khoáng', 'coal', 'gas', 'tiện ích', 'petro', 'oil', 'năng lượng', 'energy', 'khoáng sản', 'mineral', 'mining', 'utility', 'utilities']):
+                return "Dầu khí"
+            if any(k in ind_lower for k in ['công nghệ', 'technology', 'viễn thông', 'telecom', 'phần mềm', 'software', 'tin học', 'communication']):
+                return "Công nghệ"
+            if any(k in ind_lower for k in ['bán lẻ', 'retail', 'tiêu dùng', 'consumer', 'thực phẩm', 'food', 'đồ uống', 'beverage', 'thủy sản', 'seafood', 'nông sản', 'nông - lâm - ngư', 'bán buôn', 'nhựa', 'hóa chất', 'chăm sóc sức khỏe', 'pharma', 'dược', 'gia dụng', 'household', 'vận tải', 'transport', 'logistic', 'logistics', 'cảng', 'port', 'hàng không', 'aviation', 'du lịch', 'tourism', 'dịch vụ', 'service', 'dệt', 'may', 'garment', 'y tế', 'medical', 'nông nghiệp', 'agriculture', 'chăn nuôi', 'cao su', 'rubber', 'nhựa', 'plastic', 'hóa chất', 'chemical', 'giấy', 'paper', 'sản xuất', 'chế biến']):
+                return "Bán lẻ & Tiêu dùng"
+
+        # 2. Try mapping from company_name
+        name_lower = str(p.company_name or '').lower()
+        if any(k in name_lower for k in ['ngân hàng', 'bank', 'chứng khoán', 'securities', 'bảo hiểm', 'insurance', 'tài chính', 'finance', 'commercial bank']):
+            return "Ngân hàng"
+        if any(k in name_lower for k in ['bất động sản', 'địa ốc', 'land', 'real estate', 'house', 'đô thị', 'phát triển nhà', 'khu công nghiệp', 'property', 'properties']):
+            return "Bất động sản"
+        if any(k in name_lower for k in ['thép', 'steel', 'xi măng', 'cement', 'vật liệu', 'material', 'sắt', 'nhôm', 'gạch', 'bê tông', 'concrete', 'kính', 'glass', 'xây dựng', 'construction', 'mechanical', 'chế tạo', 'phụ tùng', 'kim loại', 'metal']):
+            return "Thép & Vật liệu"
+        if any(k in name_lower for k in ['dầu khí', 'xăng dầu', 'khí', 'petrol', 'petro', 'gas', 'oil', 'coal', 'than', 'năng lượng', 'energy', 'power', 'điện', 'nhiệt điện', 'thủy điện', 'khoáng sản', 'mineral', 'mining', 'khai thác']):
+            return "Dầu khí"
+        if any(k in name_lower for k in ['công nghệ', 'technology', 'viễn thông', 'telecom', 'phần mềm', 'software', 'tin học', 'communication', 'media', 'truyền thông']):
+            return "Công nghệ"
+        if any(k in name_lower for k in ['bán lẻ', 'retail', 'tiêu dùng', 'consumer', 'thực phẩm', 'food', 'đồ uống', 'beverage', 'thủy sản', 'seafood', 'nông sản', 'agriculture', 'sữa', 'milk', 'dược', 'pharmaceutical', 'pharma', 'y tế', 'medical', 'mỹ phẩm', 'cosmetics', 'may', 'garment', 'dệt', 'nhựa', 'bao bì', 'bánh', 'kẹo', 'hóa chất', 'chemical', 'cao su', 'rubber', 'giấy', 'paper', 'vận tải', 'transport', 'logistic', 'logistics', 'port', 'cảng', 'hàng không', 'aviation', 'airline', 'hàng hải', 'shipping', 'dịch vụ', 'service', 'du lịch', 'tourism', 'khách sạn', 'hotel', 'siêu thị', 'supermarket', 'nông nghiệp', 'chăn nuôi', 'thủy điện', 'nước', 'water', 'môi trường', 'environment', 'sách', 'book', 'in ấn', 'printing', 'chế biến', 'sản xuất', 'ingredient', 'ingredients', 'bagging', 'packaging', 'beer']):
+            return "Bán lẻ & Tiêu dùng"
+
+        # 3. Fall back to hardcoded default group sector mapping
+        return sector_by_symbol.get(p.symbol)
+
+    # Classify from StockProfile
+    profiles = list(StockProfile.objects.filter(status=StockProfile.StatusChoices.ACTIVE))
+    for p in profiles:
+        group_name = classify_profile(p)
+        if group_name in group_symbols_map:
+            group_symbols_map[group_name].append(p.symbol)
+        
+        # Populate exchange groups dynamically
+        exch = str(p.exchange or '').upper().strip()
+        if exch in group_symbols_map:
+            group_symbols_map[exch].append(p.symbol)
+
+    # Fetch VN30, VN100 & HNX30
+    vn30_symbols = []
+    vn100_symbols = []
+    hnx30_symbols = []
+    try:
+        vn30_symbols = fetch_symbol_group_members("vn30")
+        if vn30_symbols:
+            group_symbols_map["VN30"] = vn30_symbols
+    except Exception as e:
+        logger.warning(f"Failed to fetch VN30 symbols during seeding: {e}")
+
+    try:
+        vn100_symbols = fetch_symbol_group_members("vn100")
+        if vn100_symbols:
+            group_symbols_map["VN100"] = vn100_symbols
+    except Exception as e:
+        logger.warning(f"Failed to fetch VN100 symbols during seeding: {e}")
+
+    try:
+        hnx30_symbols = fetch_symbol_group_members("hnx30")
+        if hnx30_symbols:
+            group_symbols_map["HNX30"] = hnx30_symbols
+    except Exception as e:
+        logger.warning(f"Failed to fetch HNX30 symbols during seeding: {e}")
+
+    default_groups = get_default_groups()
+
+    # Fallback to hardcoded list if empty
+    for group_data in default_groups:
+        name = group_data['name']
+        if not group_symbols_map.get(name):
+            group_symbols_map[name] = group_data['symbols']
+
+    # Update or create Watchlists
+    for group_data in default_groups:
+        watchlist, created = Watchlist.objects.get_or_create(
+            user=user,
+            tenant=tenant,
+            name=group_data['name'],
+            defaults={
+                'description': group_data['description'],
+                'is_default': False,
+            },
+        )
+
+        updated_fields = []
+        if watchlist.description != group_data['description']:
+            watchlist.description = group_data['description']
+            updated_fields.append('description')
+        if watchlist.is_default:
+            watchlist.is_default = False
+            updated_fields.append('is_default')
+        if updated_fields:
+            watchlist.save(update_fields=updated_fields)
+
+        # Sync items
+        group_symbols = group_symbols_map.get(group_data['name'], [])
+        
+        # If force_recreate or a fresh list is requested, clear existing items first
+        if force_recreate:
+            WatchlistItem.objects.filter(watchlist=watchlist).delete()
+            
+        group_added_symbols = 0
+        for symbol in group_symbols:
+            _, item_created = WatchlistItem.objects.get_or_create(
+                watchlist=watchlist,
+                symbol=symbol,
+                defaults={'note': ''},
+            )
+            if item_created:
+                group_added_symbols += 1
+
+        # Sync to GlobalSymbolRegistry
+        from market_data.global_symbol_registry import sync_admin_group_symbol_set
+        res_sync = sync_admin_group_symbol_set(
+            group_data['name'],
+            group_symbols,
+            group_type=group_data.get('group_type'),
+            description=group_data.get('description'),
+        )
+        print(f"DEBUG SYNC: group='{group_data['name']}', symbols={group_symbols}, res_len={len(res_sync)}")
+
+        added_symbols += group_added_symbols
+        if created:
+            created_groups.append({'group': watchlist.name, 'symbols': len(group_symbols)})
+        elif updated_fields or group_added_symbols:
+            updated_groups.append({'group': watchlist.name, 'new_symbols': group_added_symbols})
+
+    # System default groups seeding
+    from market_data.global_symbol_registry import sync_system_default_symbol_group
+    system_default_group_ids = get_system_default_group_ids()
+    synced_system_groups = []
+    for group_id in system_default_group_ids:
+        system_symbols = []
+        if group_id.lower() == 'vn30':
+            system_symbols = vn30_symbols
+        elif group_id.lower() == 'vn100':
+            system_symbols = vn100_symbols
+        elif group_id.lower() == 'hnx30':
+            system_symbols = hnx30_symbols
+        else:
+            system_symbols = fetch_symbol_group_members(group_id)
+            
+        if system_symbols:
+            sync_system_default_symbol_group(group_id, system_symbols)
+            synced_system_groups.append({'group_id': group_id, 'symbols': len(system_symbols)})
+
+    return {
+        'created': created_groups,
+        'updated': updated_groups,
+        'added_symbols': added_symbols,
+        'system_groups': synced_system_groups,
+    }
+
+
 class StockManagementSeedView(APIView):
     """POST /api/stock-management/seed/ — create/update default market groups."""
     permission_classes = TENANT_PERMISSION_CLASSES
 
     def post(self, request):
-        tenant = _resolve_user_tenant(request.user)
-        created_groups = []
-        updated_groups = []
-        added_symbols = 0
-
-        for group_data in _STOCK_MANAGEMENT_DEFAULT_GROUPS:
-            group_symbols = []
-            watchlist, created = Watchlist.objects.get_or_create(
-                user=request.user,
-                tenant=tenant,
-                name=group_data['name'],
-                defaults={
-                    'description': group_data['description'],
-                    'is_default': False,
-                },
-            )
-
-            updated_fields = []
-            if watchlist.description != group_data['description']:
-                watchlist.description = group_data['description']
-                updated_fields.append('description')
-            if watchlist.is_default:
-                watchlist.is_default = False
-                updated_fields.append('is_default')
-            if updated_fields:
-                watchlist.save(update_fields=updated_fields)
-
-            group_added_symbols = 0
-            for raw_symbol in group_data['symbols']:
-                symbol = str(raw_symbol or '').upper().strip()
-                if symbol:
-                    group_symbols.append(symbol)
-                _, item_created = WatchlistItem.objects.get_or_create(
-                    watchlist=watchlist,
-                    symbol=symbol,
-                    defaults={'note': ''},
-                )
-                if item_created:
-                    group_added_symbols += 1
-
-            sync_admin_group_symbol_set(
-                group_data['name'],
-                group_symbols,
-                group_type=group_data.get('group_type'),
-                description=group_data.get('description'),
-            )
-
-            added_symbols += group_added_symbols
-            if created:
-                created_groups.append({'group': watchlist.name, 'symbols': len(group_data['symbols'])})
-            elif updated_fields or group_added_symbols:
-                updated_groups.append({'group': watchlist.name, 'new_symbols': group_added_symbols})
-
-        synced_system_groups = []
-        for group_id in _SYSTEM_DEFAULT_SYMBOL_GROUP_IDS:
-            system_symbols = fetch_symbol_group_members(group_id)
-            sync_system_default_symbol_group(group_id, system_symbols)
-            synced_system_groups.append({'group_id': group_id, 'symbols': len(system_symbols)})
-
+        result = seed_default_watchlist_groups(request.user, force_recreate=True)
         message_parts = []
-        if created_groups:
-            message_parts.append(f'đã tạo {len(created_groups)} nhóm mặc định')
-        if updated_groups:
-            message_parts.append(f'cập nhật {len(updated_groups)} nhóm')
-        if added_symbols:
-            message_parts.append(f'thêm {added_symbols} mã')
+        if result['created']:
+            message_parts.append(f"đã tạo {len(result['created'])} nhóm mặc định")
+        if result['updated']:
+            message_parts.append(f"cập nhật {len(result['updated'])} nhóm")
+        if result['added_symbols']:
+            message_parts.append(f"thêm {result['added_symbols']} mã")
         if not message_parts:
             message_parts.append('không có thay đổi')
 
         return Response({
-            'created': created_groups,
-            'updated': updated_groups,
-            'added_symbols': added_symbols,
-            'system_default_groups': synced_system_groups,
+            'created': result['created'],
+            'updated': result['updated'],
+            'added_symbols': result['added_symbols'],
+            'system_default_groups': result['system_groups'],
             'message': ', '.join(message_parts).capitalize() + '.',
         })
 

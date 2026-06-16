@@ -75,7 +75,7 @@ describe("coreApiAdapter", () => {
 
   test("getSymbolSnapshot throws on HTTP error", async () => {
     mockErrorResponse(404, "Not Found");
-    await expect(coreApiAdapter.getSymbolSnapshot("VCI")).rejects.toThrow("Core API error 404");
+    await expect(coreApiAdapter.getSymbolSnapshot("VCI")).rejects.toThrow("Core API request error 404");
   });
 
   // ---------------------------------------------------------------------------
@@ -200,7 +200,7 @@ describe("coreApiAdapter", () => {
       clearTokens,
     });
 
-    await expect(adapter.getSymbolSnapshot("VCI")).rejects.toThrow("Core API error 401");
+    await expect(adapter.getSymbolSnapshot("VCI")).rejects.toThrow("Core API request error 401");
     expect(clearTokens).toHaveBeenCalledTimes(1);
   });
 
@@ -453,7 +453,7 @@ describe("coreApiAdapter", () => {
   // ---------------------------------------------------------------------------
   // public auth endpoints for registration hardening
   // ---------------------------------------------------------------------------
-  test("registerUser posts anti-spam payload to /api/auth/register/", async () => {
+  test("registerUser posts anti-spam payload to /core/v1/auth/register/", async () => {
     mockOkResponse({ status: "success", data: { message: "ok" } });
 
     await coreApiAdapter.registerUser({
@@ -465,7 +465,7 @@ describe("coreApiAdapter", () => {
     });
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toContain("/api/auth/register/");
+    expect(url).toContain("/core/v1/auth/register/");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body)).toEqual({
       username: "newuser",
@@ -503,30 +503,30 @@ describe("coreApiAdapter", () => {
     }
   });
 
-  test("resendVerificationEmail posts to /api/auth/resend-verification/", async () => {
+  test("resendVerificationEmail posts to /core/v1/auth/resend-verification/", async () => {
     mockOkResponse({ status: "success", data: { message: "resent" } });
     await coreApiAdapter.resendVerificationEmail("A@Example.com");
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toContain("/api/auth/resend-verification/");
+    expect(url).toContain("/core/v1/auth/resend-verification/");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body)).toEqual({ email: "a@example.com" });
   });
 
-  test("verifyEmailToken posts to /api/auth/verify-email/", async () => {
+  test("verifyEmailToken posts to /core/v1/auth/verify-email/", async () => {
     mockOkResponse({ status: "success", data: { message: "verified" } });
     await coreApiAdapter.verifyEmailToken("token_abc");
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toContain("/api/auth/verify-email/");
+    expect(url).toContain("/core/v1/auth/verify-email/");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body)).toEqual({ token: "token_abc" });
   });
 
-  test("loginUser posts credentials to /api/auth/token/", async () => {
+  test("loginUser posts credentials to /core/v1/auth/token/", async () => {
     const setTokens = jest.fn();
     const adapter = createCoreApiAdapter({
-      env: { API_BASE_URL: "/api" },
+      env: { CORE_API_BASE_URL: "/core/v1" },
       getToken: () => null,
       getRefreshToken: () => null,
       setTokens,
@@ -537,28 +537,28 @@ describe("coreApiAdapter", () => {
     await adapter.loginUser({ username: "demo", password: "secret" });
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toContain("/api/auth/token/");
+    expect(url).toContain("/core/v1/auth/token/");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body)).toEqual({ username: "demo", password: "secret" });
     expect(setTokens).toHaveBeenCalledWith({ access: "acc_1", refresh: "ref_1" });
   });
 
-  test("requestPasswordReset posts to /api/auth/password-reset/", async () => {
+  test("requestPasswordReset posts to /core/v1/auth/password-reset/", async () => {
     mockOkResponse({ detail: "ok" });
     await coreApiAdapter.requestPasswordReset("USER@Example.com");
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toContain("/api/auth/password-reset/");
+    expect(url).toContain("/core/v1/auth/password-reset/");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body)).toEqual({ email: "user@example.com" });
   });
 
-  test("confirmPasswordReset posts to /api/auth/password-reset/confirm/", async () => {
+  test("confirmPasswordReset posts to /core/v1/auth/password-reset/confirm/", async () => {
     mockOkResponse({ detail: "ok" });
     await coreApiAdapter.confirmPasswordReset("token_1", "NewPass123!", "NewPass123!");
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toContain("/api/auth/password-reset/confirm/");
+    expect(url).toContain("/core/v1/auth/password-reset/confirm/");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body)).toEqual({
       token: "token_1",
@@ -567,10 +567,10 @@ describe("coreApiAdapter", () => {
     });
   });
 
-  test("refreshAuthToken posts to /api/auth/token/refresh/ and stores tokens", async () => {
+  test("refreshAuthToken posts to /core/v1/auth/token/refresh/ and stores tokens", async () => {
     const setTokens = jest.fn();
     const adapter = createCoreApiAdapter({
-      env: { API_BASE_URL: "/api" },
+      env: { CORE_API_BASE_URL: "/core/v1" },
       getToken: () => null,
       getRefreshToken: () => "refresh_old",
       setTokens,
@@ -581,7 +581,7 @@ describe("coreApiAdapter", () => {
     await adapter.refreshAuthToken();
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toContain("/api/auth/token/refresh/");
+    expect(url).toContain("/core/v1/auth/token/refresh/");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body)).toEqual({ refresh: "refresh_old" });
     expect(setTokens).toHaveBeenCalledWith({ access: "acc_new", refresh: "ref_new" });

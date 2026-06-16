@@ -127,7 +127,7 @@ POSTGRES_PASSWORD=ThaoLinh@2007
 #### **Django Security:**
 ```
 DJANGO_SECRET_KEY=django-insecure-b9v@m#_!z$3xp&9kq2r=t^u%w8c$d_6e@f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a8b9c0d1e2f3g4h5i
-DJANGO_ALLOWED_HOSTS=vninvest.edusuccess.vn,localhost,127.0.0.1,*.edusuccess.vn
+DJANGO_ALLOWED_HOSTS=saas.edusuccess.vn,localhost,127.0.0.1,*.edusuccess.vn
 ```
 
 #### **Domain & URLs:**

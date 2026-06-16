@@ -64,7 +64,7 @@ class SaaSUserLoginUpgradeTests(TransactionTestCase):
 
     def test_login_success_username(self):
         """Happy Path: Login successfully using username, verify success envelope."""
-        response = self.client.post('/api/auth/login/', {
+        response = self.client.post('/core/v1/auth/login/', {
             'username': 'active_user',
             'password': 'SecurePassword123!'
         }, format='json')
@@ -83,7 +83,7 @@ class SaaSUserLoginUpgradeTests(TransactionTestCase):
 
     def test_login_success_email(self):
         """Happy Path: Login successfully using email, verifying email-to-username resolution."""
-        response = self.client.post('/api/auth/login/', {
+        response = self.client.post('/core/v1/auth/login/', {
             'username': 'user@vninvest.vn',  # Email input
             'password': 'SecurePassword123!'
         }, format='json')
@@ -95,7 +95,7 @@ class SaaSUserLoginUpgradeTests(TransactionTestCase):
 
     def test_login_validation_missing_fields(self):
         """Validation: Missing username or password returns ValidationErrorException."""
-        response = self.client.post('/api/auth/login/', {
+        response = self.client.post('/core/v1/auth/login/', {
             'username': 'active_user',
             'password': ''
         }, format='json')
@@ -114,7 +114,7 @@ class SaaSUserLoginUpgradeTests(TransactionTestCase):
             is_active=False
         )
         
-        response = self.client.post('/api/auth/login/', {
+        response = self.client.post('/core/v1/auth/login/', {
             'username': 'inactive_user',
             'password': 'SecurePassword123!'
         }, format='json')
@@ -126,7 +126,7 @@ class SaaSUserLoginUpgradeTests(TransactionTestCase):
 
     def test_login_invalid_credentials(self):
         """Security: Wrong password throws AuthenticationErrorException (invalid_credentials)."""
-        response = self.client.post('/api/auth/login/', {
+        response = self.client.post('/core/v1/auth/login/', {
             'username': 'active_user',
             'password': 'WrongPassword123!'
         }, format='json')
@@ -145,7 +145,7 @@ class SaaSUserLoginUpgradeTests(TransactionTestCase):
             is_active=True
         )
         
-        response = self.client.post('/api/auth/login/', {
+        response = self.client.post('/core/v1/auth/login/', {
             'username': 'orphan_user',
             'password': 'SecurePassword123!'
         }, format='json')
@@ -160,7 +160,7 @@ class SaaSUserLoginUpgradeTests(TransactionTestCase):
         self.service_account.status = CoreServiceAccount.StatusChoices.DISABLED
         self.service_account.save()
         
-        response = self.client.post('/api/auth/login/', {
+        response = self.client.post('/core/v1/auth/login/', {
             'username': 'active_user',
             'password': 'SecurePassword123!'
         }, format='json')
@@ -201,14 +201,14 @@ class SaaSUserLoginUpgradeTests(TransactionTestCase):
                 scopes=['market:read', 'signals:read']
             )
 
-            response = self.client.post('/api/auth/login/', {
+            response = self.client.post('/core/v1/auth/login/', {
                 'username': f'active_user_{i}',
                 'password': 'SecurePassword123!'
             }, format='json')
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             
         # The 6th call from the same IP (for active_user) must be blocked by IP rate limit
-        response = self.client.post('/api/auth/login/', {
+        response = self.client.post('/core/v1/auth/login/', {
             'username': 'active_user',
             'password': 'SecurePassword123!'
         }, format='json')
@@ -222,14 +222,14 @@ class SaaSUserLoginUpgradeTests(TransactionTestCase):
         """Anti-Abuse: User Rate Limiting blocks requests exceeding user threshold (3/min)."""
         # Trigger rate limits from different simulated IPs using REMOTE_ADDR
         for i in range(3):
-            response = self.client.post('/api/auth/login/', {
+            response = self.client.post('/core/v1/auth/login/', {
                 'username': 'active_user',
                 'password': 'SecurePassword123!'
             }, HTTP_X_FORWARDED_FOR=f'1.2.3.{i}', format='json')
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         # 4th login attempt for 'active_user' must be blocked even from a fresh IP
-        response = self.client.post('/api/auth/login/', {
+        response = self.client.post('/core/v1/auth/login/', {
             'username': 'active_user',
             'password': 'SecurePassword123!'
         }, HTTP_X_FORWARDED_FOR='9.9.9.9', format='json')
@@ -250,7 +250,7 @@ class SaaSUserLoginUpgradeTests(TransactionTestCase):
             is_human_session=True
         )
         
-        response = self.client.post('/api/auth/token/refresh/', {
+        response = self.client.post('/core/v1/auth/token/refresh/', {
             'refresh': raw_secret
         }, format='json')
         
@@ -266,7 +266,7 @@ class SaaSUserLoginUpgradeTests(TransactionTestCase):
 
     def test_refresh_token_missing(self):
         """Validation: Missing refresh token parameter returns ValidationErrorException."""
-        response = self.client.post('/api/auth/token/refresh/', {
+        response = self.client.post('/core/v1/auth/token/refresh/', {
             'refresh': ''
         }, format='json')
         
@@ -277,7 +277,7 @@ class SaaSUserLoginUpgradeTests(TransactionTestCase):
 
     def test_refresh_token_invalid(self):
         """Security: Invalid/revoked refresh token throws AuthenticationErrorException."""
-        response = self.client.post('/api/auth/token/refresh/', {
+        response = self.client.post('/core/v1/auth/token/refresh/', {
             'refresh': 'invalid_secret_token_signature'
         }, format='json')
         

@@ -496,3 +496,39 @@ class QuarantinedRecord(models.Model):
     def __str__(self) -> str:
         return f"{self.model_name} #{self.original_id} - {self.reason}"
 
+
+class ScreenerRule(models.Model):
+    """
+    Bộ lọc động (screener) do user tự định nghĩa, lưu dưới dạng JSON.
+    TENANT ISOLATION: explicit FK to CoreTenant.
+    """
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='screener_rules',
+        verbose_name='Người dùng',
+    )
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant',
+        on_delete=models.CASCADE,
+        related_name='screener_rules',
+        null=False,
+        blank=True,
+        verbose_name='Người dùng SaaS (Tenant)',
+        help_text='Tenant owner of this screener rule.',
+    )
+    name = models.CharField(max_length=100, verbose_name='Tên bộ lọc')
+    rules_json = models.JSONField(verbose_name='Luật lọc (JSON)')
+    is_active = models.BooleanField(default=True, verbose_name='Kích hoạt')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Bộ lọc động'
+        verbose_name_plural = 'Bộ lọc động'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.name} ({self.user.username})'
+
+

@@ -21,11 +21,24 @@ User = get_user_model()
 class StockManagementNativeApiTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
+        cls.tenant_owner = User.objects.create_user(
+            username='stock-native-api-tenant-owner',
+            email='stock-native-api-owner@test.local',
+            password='pass123',
+        )
+        cls.tenant = CoreTenant.objects.create(
+            tenant_code='stock-native-api-default-tenant',
+            display_name='Default Test Tenant',
+            plan=CoreTenant.PlanChoices.PRO,
+            status=CoreTenant.StatusChoices.ACTIVE,
+            owner_user=cls.tenant_owner,
+        )
         cls.user = User.objects.create_user(
             username='stock-native-api',
             email='stock-native-api@test.local',
             password='pass123',
         )
+        UserProfile.objects.create(user=cls.user, tenant=cls.tenant)
         StockProfile.objects.create(
             symbol='TPB',
             company_name='Tien Phong Bank',
@@ -476,7 +489,7 @@ class StockManagementNativeApiTestCase(TestCase):
         self.assertEqual(native_response.status_code, status.HTTP_200_OK)
         self.assertEqual(public_response.status_code, status.HTTP_200_OK)
         self.assertEqual(native_response.json(), public_response.json())
-        self.assertEqual(native_response.json()['note'], 'news_not_available_in_native')
+        self.assertEqual(native_response.json()['note'], 'news_loaded_successfully')
 
     def test_core_v1_stock_news_ai_summary_route_matches_public_contract(self):
         native_response = self.client.post('/core/v1/stock-management/stocks/TPB/news/ai-summary/', {}, format='json')
@@ -494,7 +507,7 @@ class StockManagementNativeApiTestCase(TestCase):
         self.assertEqual(native_response.status_code, status.HTTP_200_OK)
         self.assertEqual(public_response.status_code, status.HTTP_200_OK)
         self.assertEqual(native_response.json(), public_response.json())
-        self.assertEqual(native_response.json()['note'], 'financials_not_available_in_native')
+        self.assertEqual(native_response.json()['note'], 'financials_loaded_successfully')
 
     def test_stock_management_technicals_bulk_returns_compatible_technical_payload(self):
         start_date = timezone.localdate() - timedelta(days=70)
@@ -1106,8 +1119,8 @@ class StockManagementNativeApiTestCase(TestCase):
 
         self.assertEqual(seed_response.status_code, status.HTTP_200_OK)
         self.assertIn('message', seed_response.json())
-        self.assertEqual(fetch_symbol_group_members_mock.call_count, 2)
-        self.assertEqual({call.args[0] for call in fetch_symbol_group_members_mock.call_args_list}, {'vn30', 'vn100'})
+        self.assertEqual(fetch_symbol_group_members_mock.call_count, 3)
+        self.assertEqual({call.args[0] for call in fetch_symbol_group_members_mock.call_args_list}, {'vn30', 'vn100', 'hnx30'})
 
         admin_group_registry = GlobalSymbolRegistry.objects.get(symbol='HPG')
         admin_group_edge = GlobalSymbolDemandSource.objects.filter(
@@ -1417,7 +1430,7 @@ class StockManagementNativeApiTestCase(TestCase):
 
         self.assertEqual(seed_response.status_code, status.HTTP_200_OK)
         self.assertIn('message', seed_response.json())
-        self.assertEqual(fetch_symbol_group_members_mock.call_count, 2)
+        self.assertEqual(fetch_symbol_group_members_mock.call_count, 3)
 
         list_response = self.client.get('/core/v1/stock-management/groups/')
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)

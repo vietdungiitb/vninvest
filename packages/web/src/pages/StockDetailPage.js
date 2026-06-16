@@ -19,8 +19,7 @@ import { StockDetailHeader } from "../features/stock-detail/components/StockDeta
 import { StockSessionWitness } from "../features/stock-detail/components/StockSessionWitness.js";
 import VNStockChartPanel from "../components/VNStockChartPanel.js";
 import { OrderFlowRadarPanel } from "../components/OrderFlowRadarPanel.js";
-import { StockContextDeck } from "../features/stock-detail/components/StockContextDeck.js";
-import { StockInsightDeck } from "../features/stock-detail/components/StockInsightDeck.js";
+import { StockDetailTabs } from "../features/stock-detail/components/StockDetailTabs.js";
 
 const DEFAULT_ENV = {};
 const e = createElement;
@@ -104,7 +103,10 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }) {
     news,
     financials,
     loadingNews,
-    loadingFinancials
+    loadingFinancials,
+    activeTab,
+    setActiveTab,
+    loadingProfile
   } = useStockDetailPageModel({ env, initialSymbol: symbol });
 
   const handleSessionChange = useCallback((session) => {
@@ -225,24 +227,22 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }) {
       })
     ),
 
-    // ── StockContextDeck (CVD, depth, strength) ──
-    e(StockContextDeck, {
+    // ── StockDetailTabs (Unified 8-tab panel structure) ──
+    e(StockDetailTabs, {
       symbol,
-      selectedSession,
+      activeTab,
+      setActiveTab,
+      profile,
+      loadingProfile,
       snapshot,
       orderFlowData,
       whaleFeed,
-      loading: loadingDeferred
-    }),
-
-    // ── StockInsightDeck (Advisory, news, financials) ──
-    e(StockInsightDeck, {
       advisory,
       selectedSession,
       loadingDeferred,
       news,
-      financials,
       loadingNews,
+      financials,
       loadingFinancials
     }),
 

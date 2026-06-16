@@ -50,7 +50,7 @@ class TenantMemberInviteTest(TestCase):
             'role': 'editor',
         }
         
-        response = self.client.post('/api/core/v1/tenant-members/invites/', payload, format='json')
+        response = self.client.post('/core/v1/tenant-members/invites/', payload, format='json')
         
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn('token', response.data)
@@ -77,7 +77,7 @@ class TenantMemberInviteTest(TestCase):
         
         self.client.force_authenticate(user=self.invitee)
         response = self.client.post(
-            f'/api/core/v1/tenant-members/invites/{invite.token}/accept/',
+            f'/core/v1/tenant-members/invites/{invite.token}/accept/',
             {},
             format='json',
         )
@@ -110,7 +110,7 @@ class TenantMemberInviteTest(TestCase):
         
         self.client.force_authenticate(user=self.invitee)
         response = self.client.post(
-            f'/api/core/v1/tenant-members/invites/{invite.token}/accept/',
+            f'/core/v1/tenant-members/invites/{invite.token}/accept/',
             {},
             format='json',
         )
@@ -130,7 +130,7 @@ class TenantMemberInviteTest(TestCase):
         
         self.client.force_authenticate(user=self.invitee)
         response = self.client.post(
-            f'/api/core/v1/tenant-members/invites/{invite.token}/accept/',
+            f'/core/v1/tenant-members/invites/{invite.token}/accept/',
             {},
             format='json',
         )
@@ -159,7 +159,7 @@ class TenantMemberInviteTest(TestCase):
             'role': 'editor',
         }
         
-        response = self.client.post('/api/core/v1/tenant-members/invites/', payload, format='json')
+        response = self.client.post('/core/v1/tenant-members/invites/', payload, format='json')
         
         # Non-admin cannot invite, should get 403
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -175,7 +175,7 @@ class TenantMemberInviteTest(TestCase):
         
         self.client.force_authenticate(user=self.owner)
         response = self.client.delete(
-            f'/api/core/v1/tenant-members/{member.public_id}/',
+            f'/core/v1/tenant-members/{member.public_id}/',
             format='json',
         )
         
@@ -205,7 +205,7 @@ class TenantMemberInviteTest(TestCase):
         )
         
         response = self.client.delete(
-            f'/api/core/v1/tenant-members/{owner_member.public_id}/',
+            f'/core/v1/tenant-members/{owner_member.public_id}/',
             format='json',
         )
         
@@ -221,7 +221,7 @@ class TenantMemberInviteTest(TestCase):
         
         self.client.force_authenticate(user=self.owner)
         response = self.client.delete(
-            f'/api/core/v1/tenant-members/{member.public_id}/',
+            f'/core/v1/tenant-members/{member.public_id}/',
             format='json',
         )
         
@@ -251,11 +251,11 @@ class TenantMemberInviteTest(TestCase):
         payload = {'invited_email': 'newmember@example.com', 'role': 'editor'}
         
         # First invite
-        response1 = self.client.post('/api/core/v1/tenant-members/invites/', payload, format='json')
+        response1 = self.client.post('/core/v1/tenant-members/invites/', payload, format='json')
         self.assertEqual(response1.status_code, status.HTTP_201_CREATED)
         
         # Second invite (duplicate)
-        response2 = self.client.post('/api/core/v1/tenant-members/invites/', payload, format='json')
+        response2 = self.client.post('/core/v1/tenant-members/invites/', payload, format='json')
         self.assertEqual(response2.status_code, status.HTTP_409_CONFLICT)
 
     def test_list_members(self):
@@ -267,7 +267,7 @@ class TenantMemberInviteTest(TestCase):
         )
         
         self.client.force_authenticate(user=self.owner)
-        response = self.client.get('/api/core/v1/tenant-members/', format='json')
+        response = self.client.get('/core/v1/tenant-members/', format='json')
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('members', response.data)
@@ -286,7 +286,7 @@ class TenantMemberInviteTest(TestCase):
         )
         
         self.client.force_authenticate(user=self.owner)
-        response = self.client.get('/api/core/v1/tenant-members/invites/', format='json')
+        response = self.client.get('/core/v1/tenant-members/invites/', format='json')
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('invites', response.data)
@@ -298,7 +298,7 @@ class TenantMemberInviteTest(TestCase):
         self.client.force_authenticate(user=self.owner)
         payload = {'invited_email': 'newmember@example.com', 'role': 'editor'}
         
-        response = self.client.post('/api/core/v1/tenant-members/invites/', payload, format='json')
+        response = self.client.post('/core/v1/tenant-members/invites/', payload, format='json')
         
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         
@@ -322,7 +322,7 @@ class TenantMemberInviteTest(TestCase):
         # Try to accept with different email
         self.client.force_authenticate(user=self.invitee)
         response = self.client.post(
-            f'/api/core/v1/tenant-members/invites/{invite.token}/accept/',
+            f'/core/v1/tenant-members/invites/{invite.token}/accept/',
             {},
             format='json',
         )

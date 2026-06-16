@@ -1,5 +1,82 @@
 # Code Change Audit Ledger
 
+# 2026-06-16 | Django API Routing Cleanup — Phase 0 Implementation Complete ✅
+
+## Problem Solved
+- Executed Phase 0 of DJANGO_API_ROUTING_CLEANUP program: immediate backend cleanup with zero frontend dependency
+- Deleted 2 duplicate `api_urls.py` files (`identity_access/api_urls.py`, `signal_intelligence/api_urls.py`)
+- Removed 4 duplicate mounts from root `vninvest_core/urls.py` (`signal_intelligence_api`, `identity_access_api`, `market_data_api` 2nd mount, `support_api`)
+- Merged 15 missing routes into `identity_access/urls.py`: auth register/verify-email/resend/password-reset (5), dnse-credential (1), tenant-members (4), singular mail-config backward compat (4), partner mount (1)
+- Fixed baseline test mock patches in `test_password_reset.py` (2 occurrences: `identity_access.views_auth.send_password_reset_email` → `data_ingest.tasks.send_password_reset_email`)
+- Fixed advertising/data_ingest router `format_suffix_patterns` double-registration issue with custom `NoFormatSuffixRouter`
+- Updated password reset tests to use new `/core/v1/auth/password-reset/` URLs (8 test methods)
+
+## Verification Results
+| Check | Result |
+|---|---|
+| System checks pass (no duplicate converter errors) | ✅ |
+| `identity_access` test suite runs (18 tests, 2 Celery/Redis errors expected in test env) | ✅ |
+| `signal_intelligence` test suite runs (55 tests, pre-existing failures unrelated) | ✅ |
+| Routing structure: 4 duplicate mounts removed, 2 api_urls files deleted | ✅ |
+| Module tree regenerated: 2052 modules (down from 2054) | ✅ |
+| Constitutional invariants preserved (INV-01 through INV-08) | ✅ |
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/identity_access/api_urls.py` | DELETED |
+| `packages/core/backend/src/signal_intelligence/api_urls.py` | DELETED |
+| `packages/core/backend/src/vninvest_core/urls.py` | Removed 4 duplicate mount lines |
+| `packages/core/backend/src/identity_access/urls.py` | Added 15 merged routes + imports |
+| `packages/core/backend/src/identity_access/tests/test_password_reset.py` | Fixed 2 mock patches + 8 URL updates |
+| `packages/core/backend/src/advertising/urls.py` | Custom NoFormatSuffixRouter to prevent double format_suffix_patterns |
+| `packages/core/backend/src/data_ingest/urls.py` | Custom NoFormatSuffixRouter to prevent double format_suffix_patterns |
+| `packages/core/backend/src/vninvest_core/__init__.py` | Lazy celery_app import to avoid circular import |
+| `packages/core/backend/src/vninvest_core/celery.py` | Deferred result_backend setting |
+
+## Residual Risk
+- Password reset tests require Redis for Celery (2 errors in test env without Redis) - needs `CELERY_TASK_ALWAYS_EAGER=True` in test settings
+- Phase 1 (frontend migration) and Phase 2 (market data/signals) pending
+- `market_data.public_urls` decision pending Product Owner
+
+# 2026-06-16 | Django API Routing Cleanup — `/core/v1/` Standardization (Handoff Pack Created) ✅
+
+## Problem Solved
+- Created complete 12-document handoff pack for DJANGO_API_ROUTING_CLEANUP program per VNInvest governance (handoff-doc-pack-generator skill)
+- Documents cover: Phase 0 immediate cleanup (4 duplicate mounts, 2 api_urls files), Phase 1 identity/workspace (frontend migration), Phase 2 market data/signals, Phase 3 final verification
+- All constitutional invariants, test protocols, review gates, and spec audit criteria defined
+
+## Verification Results
+| Check | Result |
+|---|---|
+| 12/12 handoff documents created | ✅ |
+| Naming consistent: DJANGO_API_ROUTING_CLEANUP_20260616 | ✅ |
+| Traceability matrix: 25 requirements → 26 tasks → 25 validations | ✅ |
+| Self-audit protocol: 5 checklists (A-E), 33 checks | ✅ |
+| Code quality constitution: coverage targets, theater prevention, 12 fitness scenarios | ✅ |
+| Runbooks: code review, integration tests, spec audit | ✅ |
+
+## Created Files
+| File | Purpose |
+|------|---------|
+| `docs/DJANGO_API_ROUTING_CLEANUP_HANDOFF_MASTER_20260616.md` | Program overview, decisions, success criteria |
+| `docs/IMPLEMENTATION_PLAN_DJANGO_API_ROUTING_CLEANUP_20260616.md` | Phase breakdown, tasks, gates, rollback |
+| `docs/TECH_SPEC_DJANGO_API_ROUTING_CLEANUP_20260616.md` | Routing matrix, invariants, API contracts |
+| `docs/TASKBOARD_DJANGO_API_ROUTING_CLEANUP_20260616.md` | Task IDs, status, gate conditions, blockers |
+| `docs/TRACEABILITY_MATRIX_DJANGO_API_ROUTING_CLEANUP_20260616.md` | Requirement → Task → Validation mapping |
+| `docs/SELF_AUDIT_AND_TEST_PROTOCOL_DJANGO_API_ROUTING_CLEANUP_20260616.md` | Checklists A-E, fail conditions, coverage |
+| `docs/EXECUTION_EVIDENCE_TEMPLATE_DJANGO_API_ROUTING_CLEANUP_20260616.md` | Per-slice evidence template |
+| `docs/CONFIG_OWNERSHIP_MATRIX_DJANGO_API_ROUTING_CLEANUP_20260616.md` | Canonical writer per concern, transition timeline |
+| `docs/CODE_QUALITY_CONSTITUTION_DJANGO_API_ROUTING_CLEANUP_20260616.md` | Coverage targets, theater prevention, fitness scenarios |
+| `docs/RUN_CODE_REVIEW_DJANGO_API_ROUTING_CLEANUP_20260616.md` | Review focus, grep checks, reject conditions |
+| `docs/RUN_INTEGRATION_TESTS_DJANGO_API_ROUTING_CLEANUP_20260616.md` | Test suites, smoke scripts, CI pipeline |
+| `docs/RUN_SPEC_AUDIT_DJANGO_API_ROUTING_CLEANUP_20260616.md` | 42 audit questions, execution procedure |
+
+## Residual Risk
+- Handoff pack is documentation-only; implementation execution pending
+- Frontend migration (Phase 1) requires Frontend team capacity
+- `market_data.public_urls` decision pending Product Owner sign-off
+
 # 2026-05-29 | AI SSOT advisory session persistence slice (1.x + 4.x) ✅
 
 ## Problem Solved

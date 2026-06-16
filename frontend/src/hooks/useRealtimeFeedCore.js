@@ -987,11 +987,11 @@ export default function useRealtimeFeedCore({
           } else if (payload.event_type === 'ticker_update') {
             applyTickerUpdateThrottled({
               symbol: payload.symbol,
-              current_price: readEventField(payload, 'price') ?? readEventField(payload, 'current_price'),
+              current_price: readEventField(payload, 'current_price') ?? readEventField(payload, 'price'),
               price: readEventField(payload, 'price'),
-              prev_price: readEventField(payload, 'prev_price'),
+              prev_price: readEventField(payload, 'prev_price') ?? readEventField(payload, 'price'),
               change_value: readEventField(payload, 'change_value'),
-              change_pct: readEventField(payload, 'change_pct'),
+              change_pct: readEventField(payload, 'change_pct') ?? readEventField(payload, 'pct_change'),
               open_price: readEventField(payload, 'open_price'),
               high_price: readEventField(payload, 'high_price'),
               low_price: readEventField(payload, 'low_price'),

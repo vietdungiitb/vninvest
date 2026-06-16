@@ -59,6 +59,10 @@ export {
 	useShellAuth,
 	useShellAuthRuntime,
 } from "./context/authReact.js";
+export { AbilityContext, useAbility, createAbilityFromRules } from "./context/AbilityContext.js";
+export { LangProvider, useI18n } from "./context/LangContext.js";
+export { PortfolioProvider, usePortfolio } from "./context/PortfolioContext.js";
+export { RealtimeProvider, useRealtimeFeedFromManager } from "./context/RealtimeContext.js";
 export {
 	communityFeatureComponents,
 	communityFeatureHooks,

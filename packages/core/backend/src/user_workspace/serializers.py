@@ -2,8 +2,7 @@
 User Workspace domain serializers.
 """
 from rest_framework import serializers
-
-from .models import Portfolio, Transaction, Watchlist, WatchlistItem, SubAccount, DNSECredential
+from .models import Portfolio, Transaction, Watchlist, WatchlistItem, SubAccount, DNSECredential, ScreenerRule
 
 
 class WatchlistItemSerializer(serializers.ModelSerializer):
@@ -21,13 +20,20 @@ class WatchlistSerializer(serializers.ModelSerializer):
 
 
 class TransactionSerializer(serializers.ModelSerializer):
+    notes = serializers.CharField(source='note', required=False, allow_blank=True)
+    transaction_type_display = serializers.CharField(source='get_transaction_type_display', read_only=True)
+    total_value = serializers.SerializerMethodField()
+
     class Meta:
         model = Transaction
         fields = [
-            'id', 'symbol', 'transaction_type', 'date',
-            'price', 'quantity', 'fee', 'tax', 'external_id', 'note', 'created_at',
+            'id', 'symbol', 'transaction_type', 'transaction_type_display', 'date',
+            'price', 'quantity', 'fee', 'tax', 'external_id', 'note', 'notes', 'total_value', 'created_at',
         ]
         read_only_fields = ['id', 'created_at']
+
+    def get_total_value(self, obj):
+        return obj.price * obj.quantity
 
 
 class PortfolioSerializer(serializers.ModelSerializer):
@@ -38,12 +44,15 @@ class PortfolioSerializer(serializers.ModelSerializer):
 
 
 class SubAccountSerializer(serializers.ModelSerializer):
+    portfolio_name = serializers.CharField(source='portfolio.name', read_only=True)
+    type_display = serializers.CharField(source='get_type_display', read_only=True)
+
     class Meta:
         model = SubAccount
         fields = [
             'id', 'broker', 'account_number', 'name', 'display_name',
-            'type', 'is_active', 'external_id', 'broker_source',
-            'sync_status', 'created_at'
+            'type', 'type_display', 'portfolio', 'portfolio_name', 'is_active', 
+            'external_id', 'broker_source', 'sync_status', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
 
@@ -62,3 +71,11 @@ class DNSECredentialSerializer(serializers.ModelSerializer):
 
     def get_is_configured(self, obj) -> bool:
         return obj.has_credentials()
+
+
+class ScreenerRuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ScreenerRule
+        fields = ['id', 'name', 'rules_json', 'is_active', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+

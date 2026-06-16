@@ -1,9 +1,9 @@
-# Deploy VNInvest to vninvest.edusuccess.vn
+# Deploy VNInvest to saas.edusuccess.vn
 
 ## 1) Prepare server
 
 ```bash
-ssh root@vninvest.edusuccess.vn
+ssh root@saas.edusuccess.vn
 apt update
 apt install -y docker.io docker-compose-plugin git
 systemctl enable docker
@@ -43,7 +43,7 @@ Paste this whole block into `backend/.env.production`:
 ```env
 DJANGO_SECRET_KEY=change-me-very-long-random-string
 DJANGO_DEBUG=False
-DJANGO_ALLOWED_HOSTS=vninvest.edusuccess.vn,localhost,127.0.0.1
+DJANGO_ALLOWED_HOSTS=saas.edusuccess.vn,localhost,127.0.0.1
 DJANGO_SECURE_SSL_REDIRECT=True
 DJANGO_SESSION_COOKIE_SECURE=True
 DJANGO_CSRF_COOKIE_SECURE=True
@@ -64,10 +64,10 @@ POSTGRES_PASSWORD=change_me_db_password
 POSTGRES_HOST=db
 POSTGRES_PORT=5432
 
-CORS_ALLOWED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn
-CSRF_TRUSTED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn
-FRONTEND_BASE_URL=https://vninvest.edusuccess.vn
-DEFAULT_FROM_EMAIL=noreply@vninvest.edusuccess.vn
+CORS_ALLOWED_ORIGINS=https://saas.edusuccess.vn,http://saas.edusuccess.vn
+CSRF_TRUSTED_ORIGINS=https://saas.edusuccess.vn,http://saas.edusuccess.vn
+FRONTEND_BASE_URL=https://saas.edusuccess.vn
+DEFAULT_FROM_EMAIL=noreply@saas.edusuccess.vn
 
 SYSTEM_EMAIL_FALLBACK_ENABLED=False
 SYSTEM_EMAIL_FALLBACK_HOST=
@@ -75,7 +75,7 @@ SYSTEM_EMAIL_FALLBACK_PORT=1025
 SYSTEM_EMAIL_FALLBACK_USE_TLS=False
 SYSTEM_EMAIL_FALLBACK_USE_SSL=False
 SYSTEM_EMAIL_FALLBACK_TIMEOUT_SECONDS=20
-SYSTEM_EMAIL_FALLBACK_FROM_EMAIL=noreply@vninvest.edusuccess.vn
+SYSTEM_EMAIL_FALLBACK_FROM_EMAIL=noreply@saas.edusuccess.vn
 SYSTEM_EMAIL_FALLBACK_FROM_NAME=VNInvest
 
 CELERY_BROKER_URL=redis://redis:6379/0
@@ -100,7 +100,7 @@ OPEN_CORE_PRO_INDIVIDUAL_AI_REGENERATE_PER_DAY=30
 OPEN_CORE_PRO_TEAM_API_CALLS_PER_DAY=10000
 OPEN_CORE_PRO_TEAM_AI_REGENERATE_PER_DAY=120
 
-GOOGLE_OAUTH_REDIRECT_URI=https://vninvest.edusuccess.vn/admin/portfolio/systememailaccount/google/callback/
+GOOGLE_OAUTH_REDIRECT_URI=https://saas.edusuccess.vn/admin/portfolio/systememailaccount/google/callback/
 WHALE_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER=True
 STOCK_AI_ADVISORY_FORCE_SYNC_FIRST_CREATE=True
 STOCK_AI_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER=True
@@ -143,7 +143,7 @@ docker compose logs -f frontend
 ```
 
 Open in browser:
-- `http://vninvest.edusuccess.vn`
+- `http://saas.edusuccess.vn`
 
 ## 6) SSL (recommended)
 
@@ -174,7 +174,7 @@ docker compose --env-file .env.production -f portainer-stack-nginx-proxy.yml -f 
 
 ### 7.1 Huong dan sau cung cho server dang deploy bang local build
 
-Day la flow uu tien sau cung cho server `vninvest.edusuccess.vn` khi gap ca 2 van de sau:
+Day la flow uu tien sau cung cho server `saas.edusuccess.vn` khi gap ca 2 van de sau:
 - `git pull` bi chan vi working tree tren server dang ban (`scripts/ops/deploy_build_on_server.sh` bi sua tay, `compose.local-build.override.yml` dang la untracked file)
 - `docker compose up` bi `pull access denied` do stack production dang de `pull_policy: always`
 
@@ -262,7 +262,7 @@ In Portainer, check the exact network name used by `nginx_proxy`, then use that 
 Paste this full block into Portainer `Environment variables` (copy one time):
 
 ```env
-DOMAIN=vninvest.edusuccess.vn
+DOMAIN=saas.edusuccess.vn
 LETSENCRYPT_EMAIL=vietdung@edusuccess.vn
 PROXY_NETWORK=nginx-proxy_default
 
@@ -272,7 +272,7 @@ POSTGRES_PASSWORD=change_me_db_password
 
 DJANGO_SECRET_KEY=change-me-very-long-random-string
 DJANGO_DEBUG=False
-DJANGO_ALLOWED_HOSTS=vninvest.edusuccess.vn,localhost,127.0.0.1
+DJANGO_ALLOWED_HOSTS=saas.edusuccess.vn,localhost,127.0.0.1
 DJANGO_SECURE_SSL_REDIRECT=True
 DJANGO_SESSION_COOKIE_SECURE=True
 DJANGO_CSRF_COOKIE_SECURE=True
@@ -280,10 +280,10 @@ DJANGO_SECURE_HSTS_SECONDS=31536000
 DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS=True
 DJANGO_SECURE_HSTS_PRELOAD=False
 
-CORS_ALLOWED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn
-CSRF_TRUSTED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn
-FRONTEND_BASE_URL=https://vninvest.edusuccess.vn
-GOOGLE_OAUTH_REDIRECT_URI=https://vninvest.edusuccess.vn/admin/portfolio/systememailaccount/google/callback/
+CORS_ALLOWED_ORIGINS=https://saas.edusuccess.vn,http://saas.edusuccess.vn
+CSRF_TRUSTED_ORIGINS=https://saas.edusuccess.vn,http://saas.edusuccess.vn
+FRONTEND_BASE_URL=https://saas.edusuccess.vn
+GOOGLE_OAUTH_REDIRECT_URI=https://saas.edusuccess.vn/admin/portfolio/systememailaccount/google/callback/
 
 REALTIME_ENABLED=True
 WATCHLIST_SYNC_ENABLED=True

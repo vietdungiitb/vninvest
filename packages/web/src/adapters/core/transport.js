@@ -248,9 +248,13 @@ export function createCoreTransport(env = {}, options = {}) {
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
-      throw new Error(
-        `Core API error ${response.status} ${response.statusText} — ${path}: ${text}`
-      );
+      let payload = null;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = null;
+      }
+      throw toCoreApiRequestError(path, response, payload, text);
     }
 
     return response.json();
@@ -264,14 +268,39 @@ export function createCoreTransport(env = {}, options = {}) {
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
-      throw new Error(
-        `Core API POST error ${response.status} ${response.statusText} — ${path}: ${text}`
-      );
+      let payload = null;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = null;
+      }
+      throw toCoreApiRequestError(path, response, payload, text);
     }
 
     if (response.status === 204) return null;
     return response.json();
   }
+
+  async function corePut(path, body = undefined) {
+    const response = await requestWithAuth(path, {
+      method: "PUT",
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    }, true);
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      let payload = null;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = null;
+      }
+      throw toCoreApiRequestError(path, response, payload, text);
+    }
+
+    return response.json();
+  }
+
 
   async function corePatch(path, body = undefined) {
     const response = await requestWithAuth(path, {
@@ -281,9 +310,13 @@ export function createCoreTransport(env = {}, options = {}) {
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
-      throw new Error(
-        `Core API PATCH error ${response.status} ${response.statusText} — ${path}: ${text}`
-      );
+      let payload = null;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = null;
+      }
+      throw toCoreApiRequestError(path, response, payload, text);
     }
 
     return response.json();
@@ -296,9 +329,13 @@ export function createCoreTransport(env = {}, options = {}) {
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
-      throw new Error(
-        `Core API DELETE error ${response.status} ${response.statusText} — ${path}: ${text}`
-      );
+      let payload = null;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = null;
+      }
+      throw toCoreApiRequestError(path, response, payload, text);
     }
 
     return null;
@@ -326,5 +363,5 @@ export function createCoreTransport(env = {}, options = {}) {
     return payload;
   }
 
-  return { coreGet, corePost, corePatch, coreDelete, publicPost };
+  return { coreGet, corePost, corePut, corePatch, coreDelete, publicPost };
 }

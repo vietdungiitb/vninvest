@@ -31,8 +31,8 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
   // Build individual clients with shared transport helpers
   const authClient = createAuthClient({
     coreGet: transport.coreGet,
+    corePost: transport.corePost,
     corePatch: transport.corePatch,
-    publicPost: transport.publicPost,
     persistTokens,
     getRefreshToken,
   });
@@ -45,6 +45,7 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
   const workspaceClient = createWorkspaceClient({
     coreGet: transport.coreGet,
     corePost: transport.corePost,
+    corePut: transport.corePut,
     corePatch: transport.corePatch,
     coreDelete: transport.coreDelete,
   });

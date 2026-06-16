@@ -14,7 +14,7 @@
 ### Bước 1: SSH vào Server
 
 ```bash
-ssh root@vninvest.edusuccess.vn
+ssh root@saas.edusuccess.vn
 cd /opt/vninvest
 ```
 
@@ -209,7 +209,7 @@ DJANGO_SECURE_SSL_REDIRECT=False  # ⚠️ TEMPORARILY - Enable after reverse pr
 docker compose restart backend
 
 # 3. Test:
-curl -i https://vninvest.edusuccess.vn/admin/
+curl -i https://saas.edusuccess.vn/admin/
 ```
 
 ---
@@ -246,7 +246,7 @@ vninvest-celery-beat      Up
 ## Next Steps (Sau Khi Stack Chạy OK)
 
 1. **Setup Reverse Proxy** (Nginx/Caddy) với SSL certificate (Let's Encrypt)
-   - Point domain `vninvest.edusuccess.vn` → Docker frontend (port 80)
+   - Point domain `saas.edusuccess.vn` → Docker frontend (port 80)
    - Enable HTTPS forwading
 
 2. **Enable SSL Redirect** lại trong backend/.env.production
@@ -254,8 +254,8 @@ vninvest-celery-beat      Up
    - Restart backend container
 
 3. **Verify Everything Works**
-   - Test https://vninvest.edusuccess.vn/admin/
-   - Test https://vninvest.edusuccess.vn/api/health/
+   - Test https://saas.edusuccess.vn/admin/
+   - Test https://saas.edusuccess.vn/api/health/
 
 ---
 

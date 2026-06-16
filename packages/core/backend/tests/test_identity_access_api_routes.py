@@ -23,7 +23,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from identity_access.models import CorePATCredential, CoreServiceAccount, CoreTenant
-from identity_access.views import (
+from identity_access.views_tenant import (
     PATListView,
     ServiceAccountListView,
     partner_issue_pat,
@@ -58,73 +58,79 @@ class IdentityAccessApiRouteTests(TestCase):
 
     def _login_and_authenticate(self):
         login_response = self.client.post(
-            '/api/auth/login/',
+            '/core/v1/auth/login/',
             {'username': self.user.username, 'password': 'Test@123456'},
             format='json',
         )
         self.assertEqual(login_response.status_code, status.HTTP_200_OK)
-        self.assertIn('token', login_response.data)
-        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login_response.data['token']}")
+        login_data = login_response.data['data']
+        self.assertIn('token', login_data)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login_data['token']}")
         return login_response
 
     def test_login_me_capabilities_and_userconfig_routes_are_native(self):
-        resolver_login = resolve('/api/auth/login/')
+        resolver_login = resolve('/core/v1/auth/login/')
         self.assertIs(resolver_login.func, login_view)
 
         login_response = self._login_and_authenticate()
-        self.assertEqual(login_response.data['user']['username'], self.user.username)
-        self.assertEqual(login_response.data['tenant']['tenant_code'], self.tenant.tenant_code)
+        login_data = login_response.data['data']
+        self.assertEqual(login_data['user']['username'], self.user.username)
+        self.assertEqual(login_data['tenant']['tenant_code'], self.tenant.tenant_code)
 
-        resolver_me = resolve('/api/auth/me/')
+        resolver_me = resolve('/core/v1/auth/me/')
         self.assertIs(resolver_me.func, profile_view)
 
-        me_response = self.client.get('/api/auth/me/')
+        me_response = self.client.get('/core/v1/auth/me/')
         self.assertEqual(me_response.status_code, status.HTTP_200_OK)
         self.assertEqual(me_response.data['username'], self.user.username)
         self.assertIn('abilities', me_response.data)
         self.assertIn('entitlements', me_response.data)
 
-        resolver_capabilities = resolve('/api/core/v1/access/capabilities/')
+        resolver_capabilities = resolve('/core/v1/access/capabilities/')
         self.assertIs(resolver_capabilities.func, capabilities_view)
 
-        capabilities_response = self.client.get('/api/core/v1/access/capabilities/')
+        capabilities_response = self.client.get('/core/v1/access/capabilities/')
         self.assertEqual(capabilities_response.status_code, status.HTTP_200_OK)
         self.assertEqual(capabilities_response.data['principal']['identity']['username'], self.user.username)
         self.assertEqual(capabilities_response.data['build']['target'], 'saas')
         self.assertIn('abilities', capabilities_response.data)
 
-        userconfig_response = self.client.get('/api/portfolio/userconfig/')
+        resolver_profile = resolve('/core/v1/identity/profile/')
+        from identity_access.views_tenant import UserProfileView
+        self.assertIs(resolver_profile.func.view_class, UserProfileView)
+
+        userconfig_response = self.client.get('/core/v1/identity/profile/')
         self.assertEqual(userconfig_response.status_code, status.HTTP_200_OK)
         self.assertIn('whale_alert_threshold', userconfig_response.data)
 
     def test_partner_service_accounts_route_is_native(self):
-        resolver_service_accounts = resolve('/api/core/v1/partner/service-accounts/')
+        resolver_service_accounts = resolve('/core/v1/partner/service-accounts/')
         self.assertIs(resolver_service_accounts.func.view_class, ServiceAccountListView)
 
         login_response = self._login_and_authenticate()
-        self.assertTrue(login_response.data['access'])
+        self.assertTrue(login_response.data['data']['access'])
 
-        list_response = self.client.get('/api/core/v1/partner/service-accounts/')
+        list_response = self.client.get('/core/v1/partner/service-accounts/')
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
         self.assertIn('results', list_response.data)
         self.assertEqual(list_response.data['results'][0]['name'], self.service_account.name)
 
     def test_partner_pat_routes_are_native_and_list_never_leaks_secret(self):
-        resolver_pat_list = resolve('/api/core/v1/partner/pats/')
+        resolver_pat_list = resolve('/core/v1/partner/pats/')
         self.assertIs(resolver_pat_list.func.view_class, PATListView)
 
-        resolver_pat_issue = resolve('/api/core/v1/partner/pats/issue/')
+        resolver_pat_issue = resolve('/core/v1/partner/pats/issue/')
         self.assertIs(resolver_pat_issue.func, partner_issue_pat)
 
-        resolver_pat_rotate = resolve(f'/api/core/v1/partner/pats/{self.credential.public_id}/rotate/')
+        resolver_pat_rotate = resolve(f'/core/v1/partner/pats/{self.credential.public_id}/rotate/')
         self.assertIs(resolver_pat_rotate.func, partner_rotate_pat)
 
-        resolver_pat_revoke = resolve(f'/api/core/v1/partner/pats/{self.credential.public_id}/revoke/')
+        resolver_pat_revoke = resolve(f'/core/v1/partner/pats/{self.credential.public_id}/revoke/')
         self.assertIs(resolver_pat_revoke.func, partner_revoke_pat)
 
         self._login_and_authenticate()
 
-        list_response = self.client.get('/api/core/v1/partner/pats/')
+        list_response = self.client.get('/core/v1/partner/pats/')
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
         self.assertIn('results', list_response.data)
 
@@ -140,13 +146,14 @@ class IdentityAccessApiRouteTests(TestCase):
 
     def test_login_session_pat_has_expiry_and_refresh_rotates_secret(self):
         login_response = self.client.post(
-            '/api/auth/login/',
+            '/core/v1/auth/login/',
             {'username': self.user.username, 'password': 'Test@123456'},
             format='json',
         )
 
         self.assertEqual(login_response.status_code, status.HTTP_200_OK)
-        original_token = login_response.data['token']
+        login_data = login_response.data['data']
+        original_token = login_data['token']
 
         credential = CorePATCredential.resolve_from_raw_secret(original_token)
         self.assertIsNotNone(credential)
@@ -154,18 +161,19 @@ class IdentityAccessApiRouteTests(TestCase):
         self.assertIsNotNone(credential.expires_at)
 
         refresh_response = self.client.post(
-            '/api/auth/token/refresh/',
+            '/core/v1/auth/token/refresh/',
             {'refresh': original_token},
             format='json',
         )
 
         self.assertEqual(refresh_response.status_code, status.HTTP_200_OK)
-        self.assertNotEqual(refresh_response.data['token'], original_token)
+        refresh_data = refresh_response.data['data']
+        self.assertNotEqual(refresh_data['token'], original_token)
 
         credential.refresh_from_db()
         self.assertEqual(credential.status, CorePATCredential.StatusChoices.REVOKED)
 
         old_token_client = APIClient()
         old_token_client.credentials(HTTP_AUTHORIZATION=f'Bearer {original_token}')
-        old_profile_response = old_token_client.get('/api/auth/me/')
+        old_profile_response = old_token_client.get('/core/v1/auth/me/')
         self.assertEqual(old_profile_response.status_code, status.HTTP_401_UNAUTHORIZED)

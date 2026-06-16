@@ -36,6 +36,17 @@ jest.unstable_mockModule("react", () => {
       return mockRefCurrent[refKey];
     },
     useCallback: (fn) => fn,
+    useMemo: (fn) => fn(),
+    createContext: (initialVal) => {
+      return {
+        Provider: ({ value, children }) => children,
+        Consumer: ({ children }) => children(initialVal),
+        _currentValue: initialVal,
+      };
+    },
+    useContext: (context) => {
+      return context?._currentValue;
+    },
     createElement: () => ({}),
   };
 });

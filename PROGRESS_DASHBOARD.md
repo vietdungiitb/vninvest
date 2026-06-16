@@ -76,6 +76,78 @@ Status: **✅ DONE (đã xác nhận loại bỏ hook `useAIAdvisor.js` khỏi S
 
 - Đây là slice tài liệu/evidence, không có thay đổi code runtime mới.
 
+# 2026-06-16 — Django API Routing Cleanup Phase 0 Implementation Complete ✅
+
+Status: **✅ DONE (Phase 0 executed: 2 api_urls deleted, 4 duplicate mounts removed, 15 routes merged, tests fixed)**
+
+## Summary
+- Executed Phase 0 of DJANGO_API_ROUTING_CLEANUP: immediate backend cleanup with zero frontend dependency
+- Deleted `identity_access/api_urls.py` and `signal_intelligence/api_urls.py` (exact duplicates)
+- Removed 4 duplicate mounts from `vninvest_core/urls.py`: `signal_intelligence_api`, `identity_access_api`, `market_data_api` (2nd), `support_api`
+- Merged 15 routes into `identity_access/urls.py`: auth register/verify-email/resend/password-reset (5), dnse-credential (1), tenant-members (4), singular mail-config backward compat (4), partner mount (1)
+- Fixed 2 mock patches in `test_password_reset.py` + updated 8 test methods to use `/core/v1/` URLs
+- Fixed `format_suffix_patterns` double-registration in advertising/data_ingest with custom `NoFormatSuffixRouter`
+- Module tree regenerated: 2052 modules (down from 2054)
+
+## Verification
+| Check | Result |
+|---|---|
+| System checks pass (no duplicate converter errors) | ✅ |
+| `identity_access` test suite runs (18 tests, 2 Celery/Redis errors expected) | ✅ |
+| `signal_intelligence` test suite runs (55 tests, pre-existing failures unrelated) | ✅ |
+| Constitutional invariants INV-01 through INV-08 preserved | ✅ |
+
+## Files Modified
+- `packages/core/backend/src/identity_access/api_urls.py` — DELETED
+- `packages/core/backend/src/signal_intelligence/api_urls.py` — DELETED
+- `packages/core/backend/src/vninvest_core/urls.py` — 4 duplicate mounts removed
+- `packages/core/backend/src/identity_access/urls.py` — 15 routes merged
+- `packages/core/backend/src/identity_access/tests/test_password_reset.py` — 2 mock patches + 8 URL fixes
+- `packages/core/backend/src/advertising/urls.py` — NoFormatSuffixRouter
+- `packages/core/backend/src/data_ingest/urls.py` — NoFormatSuffixRouter
+- `packages/core/backend/src/vninvest_core/__init__.py` — Lazy celery import
+- `packages/core/backend/src/vninvest_core/celery.py` — Deferred result_backend
+
+## Next Steps
+- Phase 1: Frontend migration (`REACT_APP_CORE_API_BASE_URL=/core/v1`, ~30 API call sites)
+- Phase 2: Market data/signals cleanup + `market_data.public_urls` decision
+- Phase 3: Final verification + governance artifacts update
+
+# 2026-06-16 — Django API Routing Cleanup Handoff Pack Created ✅
+
+Status: **✅ DONE (12-document handoff pack created per governance)**
+
+## Summary
+- Created complete 12-document handoff pack for DJANGO_API_ROUTING_CLEANUP program using handoff-doc-pack-generator skill
+- Program standardizes all Django SaaS Core API endpoints to `/core/v1/`, eliminating duplicates under `/api/`
+- 4-phase plan: Phase 0 (immediate cleanup), Phase 1 (identity/workspace + frontend), Phase 2 (market data/signals), Phase 3 (final verification)
+
+## Files Created
+- `docs/DJANGO_API_ROUTING_CLEANUP_HANDOFF_MASTER_20260616.md`
+- `docs/IMPLEMENTATION_PLAN_DJANGO_API_ROUTING_CLEANUP_20260616.md`
+- `docs/TECH_SPEC_DJANGO_API_ROUTING_CLEANUP_20260616.md`
+- `docs/TASKBOARD_DJANGO_API_ROUTING_CLEANUP_20260616.md`
+- `docs/TRACEABILITY_MATRIX_DJANGO_API_ROUTING_CLEANUP_20260616.md`
+- `docs/SELF_AUDIT_AND_TEST_PROTOCOL_DJANGO_API_ROUTING_CLEANUP_20260616.md`
+- `docs/EXECUTION_EVIDENCE_TEMPLATE_DJANGO_API_ROUTING_CLEANUP_20260616.md`
+- `docs/CONFIG_OWNERSHIP_MATRIX_DJANGO_API_ROUTING_CLEANUP_20260616.md`
+- `docs/CODE_QUALITY_CONSTITUTION_DJANGO_API_ROUTING_CLEANUP_20260616.md`
+- `docs/RUN_CODE_REVIEW_DJANGO_API_ROUTING_CLEANUP_20260616.md`
+- `docs/RUN_INTEGRATION_TESTS_DJANGO_API_ROUTING_CLEANUP_20260616.md`
+- `docs/RUN_SPEC_AUDIT_DJANGO_API_ROUTING_CLEANUP_20260616.md`
+
+## Validation
+- All 12 documents present with consistent naming (PROGRAM_NAME + DATE_STAMP)
+- Traceability matrix: 25 requirements → 26 tasks → 25 validation points
+- Self-audit protocol: 5 checklists (A-E), 33 automated/manual checks
+- Code quality constitution: coverage targets per subsystem, 12 fitness-to-purpose scenarios
+- Runbooks: code review (grep checks, reject conditions), integration tests (smoke scripts, CI), spec audit (42 questions)
+
+## Residual Risk
+- Documentation-only handoff; implementation execution pending team capacity
+- Phase 1 blocked on Frontend team migration
+- `market_data.public_urls` decision pending Product Owner
+
 # 2026-05-29 — AI SSOT slice: AIAdvisorAlertPanel i18n closure ✅
 
 Status: **✅ DONE (Giai đoạn 5.5 đã đóng với test tự động + taskboard gate cập nhật)**

@@ -12,10 +12,13 @@
  *   renderAiPanel({ holdings, technicals, analytics, alerts, loading })
  *   renderDeck({ holdings, technicals, analytics, quotesBySymbol, alerts, loading })
  */
-import { createElement, useEffect, useRef, useState } from "react";
+import * as ReactModule from "react";
+const React = ReactModule.default || ReactModule;
+const { createElement, useEffect, useRef, useState } = React;
 
 import { useCoreDashboardData } from "../features/dashboard/useCoreDashboardData.js";
 import { AIAdvisorAlertPanel } from "../features/dashboard/AIAdvisorAlertPanel.js";
+import { useRealtimeFeedFromManager } from "../context/RealtimeContext.js";
 
 const e = createElement;
 const NOOP = () => null;
@@ -109,6 +112,66 @@ export function DashboardPage({
   const [selectedSession, setSelectedSession] = useState(null);
   const [selectedSymbol, setSelectedSymbol] = useState(null);
 
+  // --- Real-time Feed Integration ---
+  const symbolString = collectUniqueSortedSymbols(holdings, trackedSymbols, watchlists, watchlistGroups);
+  const symbols = React.useMemo(() => symbolString ? symbolString.split("|") : [], [symbolString]);
+  const realtimeFeed = useRealtimeFeedFromManager({ symbols, pollInterval: 10000 });
+
+  const mergedQuotes = React.useMemo(() => {
+    return { ...quotesBySymbol, ...(realtimeFeed?.quotesBySymbol || {}) };
+  }, [quotesBySymbol, realtimeFeed?.quotesBySymbol]);
+
+  const calculatedBreadth = React.useMemo(() => {
+    let up = 0;
+    let down = 0;
+    let flat = 0;
+    Object.values(mergedQuotes).forEach((q) => {
+      const change = Number(q?.change_value ?? q?.change_pct ?? q?.change ?? 0);
+      if (change > 0) {
+        up++;
+      } else if (change < 0) {
+        down++;
+      } else {
+        flat++;
+      }
+    });
+    return { up, down, flat };
+  }, [mergedQuotes]);
+
+  const hasRealtimeBreadth = realtimeBreadth && (realtimeBreadth.up > 0 || realtimeBreadth.down > 0 || realtimeBreadth.flat > 0);
+  const resolvedBreadth = hasRealtimeBreadth ? realtimeBreadth : calculatedBreadth;
+
+  const mergedAlerts = React.useMemo(() => {
+    const feedAlerts = realtimeFeed?.alerts || [];
+    const allAlerts = [...feedAlerts, ...(alerts || [])];
+    const unique = [];
+    const seen = new Set();
+    allAlerts.forEach(a => {
+      const key = a?.id || `${a?.symbol}-${a?.ts || a?.timestamp}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(a);
+      }
+    });
+    return unique;
+  }, [alerts, realtimeFeed?.alerts]);
+
+  const mergedDarkFlowAlerts = React.useMemo(() => {
+    const feedDark = realtimeFeed?.darkFlowAlerts || [];
+    const allDark = [...feedDark, ...(darkFlowAlerts || [])];
+    const unique = [];
+    const seen = new Set();
+    allDark.forEach(a => {
+      const key = a?.id || `${a?.symbol}-${a?.ts || a?.timestamp}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(a);
+      }
+    });
+    return unique;
+  }, [darkFlowAlerts, realtimeFeed?.darkFlowAlerts]);
+  // ----------------------------------
+
   const resolvedRenderAlertLane = renderAlertLane || renderAlerts || NOOP;
   const showSkeleton = loading && !hasHydrated;
 
@@ -148,7 +211,7 @@ export function DashboardPage({
       { className: "core-dashboard-slot core-dashboard-slot--stats" },
       showSkeleton
         ? e(LoadingSkeleton, { rows: 1 })
-        : renderStats({ summary, analytics, holdings, loading, realtimeBreadth, onRefresh: refresh })
+        : renderStats({ summary, analytics, holdings, loading, realtimeBreadth: resolvedBreadth, onRefresh: refresh })
     ),
 
     // ── Top triad: alert lane | heatmap | AI lane ───────────────────────
@@ -160,7 +223,7 @@ export function DashboardPage({
         "div",
         { className: "dashboard-triad-lane dashboard-triad-lane--side core-dashboard-slot core-dashboard-slot--alert-lane" },
         resolvedRenderAlertLane({
-          alerts,
+          alerts: mergedAlerts,
           alertSummary: alertProps?.alertSummary ?? null,
           alertProps,
           loading,
@@ -178,7 +241,7 @@ export function DashboardPage({
           ? e(LoadingSkeleton, { rows: 3 })
           : renderHeatmap({
               holdings,
-              quotesBySymbol,
+              quotesBySymbol: mergedQuotes,
               technicals,
               analytics,
               loading,
@@ -198,7 +261,7 @@ export function DashboardPage({
               holdings,
               technicals,
               analytics,
-              alerts,
+              alerts: mergedAlerts,
               loading,
               selectedSession,
               onSelectSession: setSelectedSession,
@@ -218,8 +281,8 @@ export function DashboardPage({
             holdings,
             technicals,
             analytics,
-            quotesBySymbol,
-            alerts,
+            quotesBySymbol: mergedQuotes,
+            alerts: mergedAlerts,
             loading,
             selectedSession,
             onSelectSession: setSelectedSession,

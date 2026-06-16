@@ -180,11 +180,12 @@ def materialize_symbol_snapshot_from_vnbroker(symbols: list[str] | None = None):
         }
 
         # Pre-fetch live prices via SSOT adapter (không gọi VciQuote trực tiếp)
-        # Delay 0.35s giữa các symbol để tránh 429 Too Many Requests từ VCI.
-        from market_data.vnbroker_adapter import fetch_realtime_price
+        # Sử dụng batch fetch để tối ưu hóa hiệu năng và tránh 429 Too Many Requests.
+        from market_data.vnbroker_adapter import fetch_price_board_snapshots_batch
+        live_snapshots = fetch_price_board_snapshots_batch(target_symbols)
         live_prices: dict[str, dict] = {}
         for sym in target_symbols:
-            live = fetch_realtime_price(sym)
+            live = live_snapshots.get(sym)
             if live is not None:
                 live_prices[sym] = {
                     'close': Decimal(str(live['close'])),
@@ -193,8 +194,8 @@ def materialize_symbol_snapshot_from_vnbroker(symbols: list[str] | None = None):
                     'high': Decimal(str(live.get('high') or live['close'])),
                     'low': Decimal(str(live.get('low') or live['close'])),
                 }
-            _time.sleep(0.35)
         logger.info('live_prices fetched via adapter: %d/%d', len(live_prices), len(target_symbols))
+
 
         for symbol in target_symbols:
             try:

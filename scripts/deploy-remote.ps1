@@ -1,9 +1,9 @@
 # SSH DEPLOYMENT SCRIPT (PowerShell)
-# Deploy VNInvest to docker.edusuccess.vn
-# Usage: .\scripts\deploy-remote.ps1 -Host docker.edusuccess.vn -User pham -Password "ThanhLam@2010" -Branch enterprise
+# Deploy VNInvest to saas.edusuccess.vn
+# Usage: .\scripts\deploy-remote.ps1 -Host saas.edusuccess.vn -User pham -Password "ThanhLam@2010" -Branch enterprise
 
 param(
-    [string]$Host = "docker.edusuccess.vn",
+    [string]$Host = "saas.edusuccess.vn",
     [string]$User = "pham",
     [string]$Password = "",
     [string]$Branch = "enterprise",

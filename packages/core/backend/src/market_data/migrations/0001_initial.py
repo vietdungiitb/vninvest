@@ -90,6 +90,7 @@ class Migration(migrations.Migration):
             options={
                 'verbose_name': 'Cấu hình vnbroker runtime',
                 'verbose_name_plural': 'Cấu hình vnbroker runtime',
+                'db_table': 'market_data_vnstockruntimeconfig',
             },
         ),
     ]

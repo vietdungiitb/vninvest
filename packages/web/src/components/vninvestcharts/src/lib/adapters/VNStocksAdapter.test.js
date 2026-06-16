@@ -60,7 +60,7 @@ describe("VNStocksAdapter", () => {
         const fetchMock = vi.fn(async (input, init) => {
             const url = new URL(input.toString());
             expect(url.origin).toBe("https://api.example.com");
-            expect(url.pathname).toBe("/api/stock-management/stocks/TCB/chart/");
+            expect(url.pathname).toBe("/core/v1/stock-management/stocks/TCB/chart/");
             expect(url.searchParams.get("timeframe")).toBe("1H");
             expect(url.searchParams.get("days")).toBe("1");
             expect(init?.headers?.Authorization).toBe("Bearer demo-token");

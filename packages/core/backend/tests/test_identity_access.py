@@ -173,7 +173,7 @@ class CorePartnerServiceAccountApiTests(TestCase):
             metadata={'environment': 'prod'},
         )
 
-        list_response = self.client.get('/api/core/v1/partner/service-accounts/')
+        list_response = self.client.get('/core/v1/partner/service-accounts/')
 
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
         self.assertIn('results', list_response.data)
@@ -182,7 +182,7 @@ class CorePartnerServiceAccountApiTests(TestCase):
         self.assertEqual(list_response.data['results'][0]['policy_ids'], ['pol_market_read'])
 
         create_response = self.client.post(
-            '/api/core/v1/partner/service-accounts/',
+            '/core/v1/partner/service-accounts/',
             {
                 'name': 'New Bot',
                 'environment': 'staging',
@@ -204,7 +204,7 @@ class CorePartnerServiceAccountApiTests(TestCase):
         self.assertEqual(created_service_account.metadata.get('policy_ids'), ['pol_market_read', 'pol_signals_read'])
 
         issue_response = self.client.post(
-            '/api/core/v1/partner/pats/issue/',
+            '/core/v1/partner/pats/issue/',
             {
                 'service_account_id': created_service_account.public_id,
                 'scope_codes': ['market:read'],
@@ -250,7 +250,7 @@ class CorePartnerPATApiTests(TestCase):
 
     def test_issue_pat_returns_frontend_contract_and_secret_authenticates(self):
         issue_response = self.client.post(
-            '/api/core/v1/partner/pats/issue/',
+            '/core/v1/partner/pats/issue/',
             {
                 'service_account_id': self.service_account.public_id,
                 'scope_codes': ['market:read', 'signals:read'],
@@ -272,7 +272,7 @@ class CorePartnerPATApiTests(TestCase):
 
         auth_client = APIClient()
         auth_client.credentials(HTTP_AUTHORIZATION=f"Bearer {issue_response.data['secret']}")
-        profile_response = auth_client.get('/api/auth/me/')
+        profile_response = auth_client.get('/core/v1/auth/me/')
 
         self.assertEqual(profile_response.status_code, status.HTTP_200_OK)
         self.assertEqual(profile_response.data['username'], self.user.username)
@@ -287,7 +287,7 @@ class CorePartnerPATApiTests(TestCase):
         )
 
         rotate_response = self.client.post(
-            f'/api/core/v1/partner/pats/{credential.public_id}/rotate/',
+            f'/core/v1/partner/pats/{credential.public_id}/rotate/',
             {
                 'grace_period_seconds': 1800,
                 'audit_reason': 'tenant_admin_rotate_pat',
@@ -311,12 +311,12 @@ class CorePartnerPATApiTests(TestCase):
 
         old_pat_client = APIClient()
         old_pat_client.credentials(HTTP_AUTHORIZATION=f'Bearer {old_secret}')
-        old_profile_response = old_pat_client.get('/api/auth/me/')
+        old_profile_response = old_pat_client.get('/core/v1/auth/me/')
         self.assertEqual(old_profile_response.status_code, status.HTTP_200_OK)
 
         new_pat_client = APIClient()
         new_pat_client.credentials(HTTP_AUTHORIZATION=f"Bearer {rotate_response.data['new_token']['secret']}")
-        new_profile_response = new_pat_client.get('/api/auth/me/')
+        new_profile_response = new_pat_client.get('/core/v1/auth/me/')
         self.assertEqual(new_profile_response.status_code, status.HTTP_200_OK)
 
     def test_partner_pat_list_excludes_human_session_credentials(self):
@@ -334,7 +334,7 @@ class CorePartnerPATApiTests(TestCase):
             is_human_session=True,
         )
 
-        list_response = self.client.get('/api/core/v1/partner/pats/')
+        list_response = self.client.get('/core/v1/partner/pats/')
 
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
         listed_pat_ids = {item['pat_id'] for item in list_response.data['results']}
@@ -351,7 +351,7 @@ class CorePartnerPATApiTests(TestCase):
         )
 
         rotate_response = self.client.post(
-            f'/api/core/v1/partner/pats/{human_credential.public_id}/rotate/',
+            f'/core/v1/partner/pats/{human_credential.public_id}/rotate/',
             {
                 'grace_period_seconds': 1800,
                 'audit_reason': 'tenant_admin_rotate_pat',
@@ -371,7 +371,7 @@ class CorePartnerPATApiTests(TestCase):
         )
 
         revoke_response = self.client.post(
-            f'/api/core/v1/partner/pats/{human_credential.public_id}/revoke/',
+            f'/core/v1/partner/pats/{human_credential.public_id}/revoke/',
             {'reason': 'tenant_admin_manual_revoke'},
             format='json',
         )
@@ -387,7 +387,7 @@ class CorePartnerPATApiTests(TestCase):
         )
 
         revoke_response = self.client.post(
-            f'/api/core/v1/partner/pats/{credential.public_id}/revoke/',
+            f'/core/v1/partner/pats/{credential.public_id}/revoke/',
             {'reason': 'tenant_admin_manual_revoke'},
             format='json',
         )
@@ -399,12 +399,12 @@ class CorePartnerPATApiTests(TestCase):
 
         revoked_pat_client = APIClient()
         revoked_pat_client.credentials(HTTP_AUTHORIZATION=f'Bearer {raw_secret}')
-        revoked_profile_response = revoked_pat_client.get('/api/auth/me/')
+        revoked_profile_response = revoked_pat_client.get('/core/v1/auth/me/')
         self.assertEqual(revoked_profile_response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_cross_tenant_pat_issue_is_blocked(self):
         issue_response = self.client.post(
-            '/api/core/v1/partner/pats/issue/',
+            '/core/v1/partner/pats/issue/',
             {
                 'service_account_id': self.other_service_account.public_id,
                 'scope_codes': ['market:read'],
@@ -417,7 +417,7 @@ class CorePartnerPATApiTests(TestCase):
 
     def test_issue_pat_rejects_scopes_outside_service_account_policy(self):
         issue_response = self.client.post(
-            '/api/core/v1/partner/pats/issue/',
+            '/core/v1/partner/pats/issue/',
             {
                 'service_account_id': self.service_account.public_id,
                 'scope_codes': ['manage_service_accounts'],
@@ -437,7 +437,7 @@ class CorePartnerPATApiTests(TestCase):
         )
 
         issue_response = self.client.post(
-            '/api/core/v1/partner/pats/issue/',
+            '/core/v1/partner/pats/issue/',
             {
                 'service_account_id': disabled_service_account.public_id,
                 'scope_codes': ['manage_pats'],
@@ -458,7 +458,7 @@ class CorePartnerPATApiTests(TestCase):
         staff_client.force_authenticate(user=admin_user)
 
         issue_response = staff_client.post(
-            '/api/core/v1/partner/pats/issue/',
+            '/core/v1/partner/pats/issue/',
             {
                 'service_account_id': self.service_account.public_id,
                 'scope_codes': ['market:read'],
@@ -478,7 +478,7 @@ class CorePartnerPATApiTests(TestCase):
         no_tenant_client.force_authenticate(user=no_tenant_user)
 
         issue_response = no_tenant_client.post(
-            '/api/core/v1/partner/pats/issue/',
+            '/core/v1/partner/pats/issue/',
             {
                 'service_account_id': self.service_account.public_id,
                 'scope_codes': ['market:read'],

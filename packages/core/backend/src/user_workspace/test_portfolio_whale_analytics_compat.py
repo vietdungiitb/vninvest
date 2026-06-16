@@ -136,7 +136,7 @@ class PortfolioWhaleAnalyticsCompatApiTestCase(TestCase):
             executed_at=market_open + timedelta(minutes=31),
         )
 
-        response = self.client.get('/api/portfolio/whale/analytics/TPB/?timeframe=session&compact=0')
+        response = self.client.get('/core/v1/workspace/whale-analytics/TPB/?timeframe=session&compact=0')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         payload = response.json()
