@@ -28,6 +28,9 @@ class TenantResolutionMiddleware:
         '/api/public/',
         '/admin/',
         '/static/',
+        '/core/v1/schema/',
+        '/core/v1/schema/swagger-ui/',
+        '/core/v1/schema/redoc/',
     )
 
     def __init__(self, get_response):
@@ -197,6 +200,9 @@ class TenantQuotaMiddleware:
         '/api/public/',
         '/admin/',
         '/static/',
+        '/core/v1/schema/',
+        '/core/v1/schema/swagger-ui/',
+        '/core/v1/schema/redoc/',
     )
     REDIS_KEY_TTL_SECONDS = 86400 * 2
 

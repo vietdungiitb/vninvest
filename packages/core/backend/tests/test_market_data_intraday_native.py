@@ -102,7 +102,7 @@ class IntradayNativeViewTests(APITestCase):
         self.assertIn('points', data)
         self.assertIn('source', data)
         self.assertEqual(data['symbol'], 'VCB')
-        self.assertEqual(data['source'], 'native')
+        self.assertEqual(data['source'], 'intraday_bar_db')
         
         # Verify data was populated from DB
         self.assertGreater(len(data['points']), 0)
@@ -142,6 +142,7 @@ class IntradayNativeViewTests(APITestCase):
 
     def test_intraday_tape_success(self):
         """Test successful intraday tape query with native DB."""
+        self.client.force_authenticate(user=self.user)
         url = f'{self.base_url}/intraday-tape/VCB/'
         response = self.client.get(url)
         
@@ -154,7 +155,7 @@ class IntradayNativeViewTests(APITestCase):
         self.assertIn('source', data)
         self.assertIn('stale', data)
         self.assertEqual(data['symbol'], 'VCB')
-        self.assertEqual(data['source'], 'native')
+        self.assertEqual(data['source'], 'intraday_tick_db')
         
         # Verify trades were populated from DB
         self.assertIsInstance(data['trades'], list)
@@ -436,8 +437,21 @@ class VnbrokerAdapterPhase2Tests(TestCase):
         # Should have bars from last 1 day
         self.assertIn('bars', result)
 
-    def test_fetch_intraday_tape_returns_dict(self):
+    @patch('market_data.vnbroker_adapter._fetch_intraday_frame')
+    def test_fetch_intraday_tape_returns_dict(self, mock_fetch_frame):
         """Test fetch_intraday_tape returns correct structure."""
+        import pandas as pd
+        mock_fetch_frame.return_value = (
+            pd.DataFrame([{
+                'time': self.now,
+                'price': 100.0,
+                'volume': 1000,
+                'side': 'BUY',
+                'match_type': 'NormalMatch',
+            }]),
+            'vnbroker',
+        )
+
         # Create test ticks
         for i in range(3):
             IntradayTick.objects.create(

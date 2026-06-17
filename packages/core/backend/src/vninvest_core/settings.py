@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'drf_spectacular',
+    'drf_spectacular_sidecar',
     'corsheaders',
     'django_celery_beat',
     # SFI-B7: WebSocket support
@@ -237,6 +238,9 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
     'SORT_OPERATIONS': False,
+    'SWAGGER_UI_DIST': 'SIDECAR',
+    'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
+    'REDOC_DIST': 'SIDECAR',
 }
 
 CORS_ALLOW_ALL_ORIGINS = False
@@ -313,8 +317,16 @@ CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
-CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TIMEZONE = TIME_ZONE
+
+import sys
+if 'test' in sys.argv or any('test' in arg for arg in sys.argv):
+    CELERY_TASK_ALWAYS_EAGER = True
+    try:
+        import celery
+        celery.current_app.conf.task_always_eager = True
+    except Exception:
+        pass
 
 # SM-P2.2: Beat schedule for materializer tasks + realtime data collection.
 from celery.schedules import crontab  # noqa: E402

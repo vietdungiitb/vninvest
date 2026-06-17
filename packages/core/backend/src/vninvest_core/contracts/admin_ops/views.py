@@ -16,6 +16,7 @@ import httpx
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from vninvest_core.exceptions import ValidationErrorException
 import time
 
 from advisory.models import SystemAISettings
@@ -36,6 +37,20 @@ _BENCHMARK_RUNNING_MAX_SECONDS = 15 * 60
 
 def _now_iso() -> str:
     return timezone.now().isoformat()
+
+
+def _channel_layer_type() -> str:
+    try:
+        from channels.layers import get_channel_layer
+        channel_layer = get_channel_layer()
+        if channel_layer:
+            backend_class = channel_layer.__class__.__name__
+            if 'Redis' in backend_class:
+                return 'redis'
+            return 'inmemory'
+        return 'unconfigured'
+    except Exception:
+        return 'unconfigured'
 
 
 DEFAULT_GOVERNANCE_DELTA_THRESHOLDS = {
@@ -1681,7 +1696,6 @@ class AdminOpsSystemAiSettingsView(APIView):
     def put(self, request):
         payload = request.data if isinstance(request.data, dict) else {}
         
-        # SFI-B6: Nếu chứa prefetch settings, thực hiện bridge sang legacy thay vì chặn đứng.
         prefetch_fields = [field for field in ('prefetch_runtime_settings', 'prefetch_time_policy') if field in payload]
         if prefetch_fields:
             logger.info("Bridging prefetch settings write to legacy admin for fields: %s", prefetch_fields)
@@ -1690,8 +1704,15 @@ class AdminOpsSystemAiSettingsView(APIView):
                 '/api/admin-ops/system-ai-settings/',
                 unavailable_message='Không cập nhật được prefetch settings qua legacy bridge.',
             )
-            if bridged_response:
+            if bridged_response is not None:
                 return bridged_response
+            return Response(
+                {
+                    'status': 'guarded-write',
+                    'message': 'Ghi cấu hình prefetch bị chặn vì legacy bridge chưa được cấu hình.',
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
 
         config = _get_or_create_active_ai_settings()
         metadata = deepcopy(config.metadata or {})
@@ -1700,7 +1721,7 @@ class AdminOpsSystemAiSettingsView(APIView):
         if 'governance_delta_thresholds' in payload:
             governance_thresholds, error_message = _validate_governance_thresholds(payload.get('governance_delta_thresholds'))
             if error_message is not None:
-                return Response({'ok': False, 'message': error_message}, status=status.HTTP_400_BAD_REQUEST)
+                raise ValidationErrorException(detail=error_message, code='validation_error')
             metadata['governance_delta_thresholds'] = governance_thresholds
             changed_fields.append('governance_delta_thresholds')
 
@@ -1728,14 +1749,14 @@ class AdminOpsSystemAiSettingsView(APIView):
             try:
                 config.max_tokens = int(payload.get('max_tokens'))
             except (TypeError, ValueError):
-                return Response({'ok': False, 'message': 'max_tokens phải là số nguyên hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+                raise ValidationErrorException(detail='max_tokens phải là số nguyên hợp lệ.', code='validation_error')
             changed_fields.append('max_tokens')
 
         if 'temperature' in payload:
             try:
                 config.temperature = float(payload.get('temperature'))
             except (TypeError, ValueError):
-                return Response({'ok': False, 'message': 'temperature phải là số hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+                raise ValidationErrorException(detail='temperature phải là số hợp lệ.', code='validation_error')
             changed_fields.append('temperature')
 
         if 'prompt_template' in payload:
@@ -1758,7 +1779,6 @@ class AdminOpsSystemAiSettingsView(APIView):
         )
         return Response(
             {
-                'ok': True,
                 'message': 'Đã cập nhật cấu hình AI runtime core-native.',
                 'settings': _serialize_system_ai_settings(config),
             },
@@ -1773,7 +1793,6 @@ class AdminOpsVnbrokerConfigCurrentView(APIView):
         config = _get_or_create_active_vnbroker_config()
         return Response(
             {
-                'ok': True,
                 'settings': _serialize_vnbroker_settings(config),
                 'rulebook': _serialize_vnbroker_rulebook(),
             },
@@ -1783,13 +1802,10 @@ class AdminOpsVnbrokerConfigCurrentView(APIView):
     def patch(self, request):
         payload, errors = _validate_vnbroker_payload(request.data)
         if errors:
-            return Response(
-                {
-                    'ok': False,
-                    'message': 'Dữ liệu cấu hình không hợp lệ.',
-                    'field_errors': errors,
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+            raise ValidationErrorException(
+                detail='Dữ liệu cấu hình không hợp lệ.',
+                code='validation_error',
+                field_errors=errors
             )
 
         config = _get_or_create_active_vnbroker_config()
@@ -1844,7 +1860,6 @@ class AdminOpsVnbrokerConfigCurrentView(APIView):
         )
         return Response(
             {
-                'ok': True,
                 'message': 'Đã cập nhật Runtime Vnbroker Config trên core-api.',
                 'settings': _serialize_vnbroker_settings(config),
             },
@@ -2242,6 +2257,14 @@ class AdminOpsMarketGroupsSyncView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def post(self, request):
+        bridged_response = _legacy_admin_bridge_response(
+            request,
+            '/api/admin-ops/market-groups/sync/',
+            unavailable_message='Không sync được market groups qua legacy admin bridge.',
+        )
+        if bridged_response is not None:
+            return bridged_response
+
         from data_ingest.tasks import sync_market_groups
         
         # SM-P4 Native: Trigger native market group sync.
@@ -2303,6 +2326,14 @@ class AdminOpsIntradayUniverseWarmNowView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def post(self, request):
+        bridged_response = _legacy_admin_bridge_response(
+            request,
+            '/api/admin-ops/intraday-universe/warm-now/',
+            unavailable_message='Không warm được intraday universe qua legacy admin bridge.',
+        )
+        if bridged_response is not None:
+            return bridged_response
+
         from data_ingest.tasks import warm_intraday_universe
         
         # SM-P4 Native: Trigger native intraday cache warm-up.

@@ -411,32 +411,34 @@ class AdvisoryRefreshView(APIView):
         return Response(response_data, status=status.HTTP_201_CREATED)
 
 
+from vninvest_core.pagination import CoreCursorPagination
+
+class AdvisoryRecordCursorPagination(CoreCursorPagination):
+    ordering = ('-generated_at', '-id')
+    page_size = 20
+
+
 class AdvisoryHistoryView(APIView):
     """Paginated list of advisory records for a symbol (newest first)."""
     permission_classes = [permissions.IsAuthenticated]
-    _PAGE_SIZE = 20
+    pagination_class = AdvisoryRecordCursorPagination
 
     def get(self, request, symbol):
         symbol = _validate_symbol(symbol)
         qs = (
             AdvisoryRecord.objects
             .filter(symbol=symbol, status='generated')
-            .order_by('-generated_at', '-pk')
+            .order_by('-generated_at', '-id')
         )
         session_date = request.query_params.get('session_date')
         if session_date:
             qs = qs.filter(session_date=session_date)
 
-        # Simple page-based pagination
-        try:
-            page = max(1, int(request.query_params.get('page', 1)))
-        except ValueError:
-            page = 1
-        offset = (page - 1) * self._PAGE_SIZE
-        results = qs[offset: offset + self._PAGE_SIZE]
-        serializer = AdvisoryRecordSerializer(results, many=True)
-        return Response({
-            'results': serializer.data,
-            'page': page,
-            'page_size': self._PAGE_SIZE,
-        })
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(qs, request)
+        if page is not None:
+            serializer = AdvisoryRecordSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
+        serializer = AdvisoryRecordSerializer(qs, many=True)
+        return Response({'results': serializer.data})

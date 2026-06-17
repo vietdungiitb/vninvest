@@ -55,6 +55,11 @@ class _QuotaCacheStub:
         self.added.add(key)
         return True
 
+    def delete(self, key):
+        if key in self.values:
+            del self.values[key]
+        return True
+
 
 class CommercialTaskScheduleTests(SimpleTestCase):
     def test_commercial_tasks_route_to_default_queue(self):
@@ -101,6 +106,7 @@ class CommercialTasksTests(TestCase):
         cache_stub = _QuotaCacheStub({f'quota:api_calls:{self.tenant_one.public_id}:{today.isoformat()}': 50})
         with patch('commercial.tasks.cache', cache_stub):
             first = flush_quota_counters.run(target_date=today.isoformat())
+            cache_stub.delete('commercial:flush_quota_counters:throttle')
             second = flush_quota_counters.run(target_date=today.isoformat())
 
         quota = QuotaRecord.objects.get(tenant=self.tenant_one, period_start=period_start, period_end=period_end)

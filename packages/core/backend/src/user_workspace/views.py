@@ -18,7 +18,16 @@ from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from vninvest_core.pagination import StandardPageNumberPagination
+from vninvest_core.pagination import CoreCursorPagination
+
+class TransactionCursorPagination(CoreCursorPagination):
+    ordering = ('-date', '-id')
+
+class WatchlistCursorPagination(CoreCursorPagination):
+    ordering = 'name'
+
+class WatchlistItemCursorPagination(CoreCursorPagination):
+    ordering = '-added_at'
 from .models import Portfolio, Transaction, Watchlist, WatchlistItem, PriceAlert, SubAccount, ScreenerRule
 from .permissions import TenantScopePermission
 from .serializers import (
@@ -83,7 +92,7 @@ def _get_transaction_or_404(user, transaction_id, tenant=None):
 
 class PortfolioListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
-    pagination_class = StandardPageNumberPagination
+    pagination_class = CoreCursorPagination
 
     def get(self, request):
         # Apply double-filter: user + tenant
@@ -137,7 +146,7 @@ class PortfolioDetailView(APIView):
 
 class TransactionListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
-    pagination_class = StandardPageNumberPagination
+    pagination_class = TransactionCursorPagination
 
     def get(self, request, portfolio_id):
         tenant = getattr(request, 'tenant', None)
@@ -190,7 +199,7 @@ class TransactionDetailView(APIView):
 
 class WatchlistListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
-    pagination_class = StandardPageNumberPagination
+    pagination_class = WatchlistCursorPagination
 
     def get(self, request):
         tenant = getattr(request, 'tenant', None)
@@ -256,7 +265,7 @@ class WatchlistDetailView(APIView):
 
 class WatchlistItemListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
-    pagination_class = StandardPageNumberPagination
+    pagination_class = WatchlistItemCursorPagination
 
     def get(self, request, watchlist_id):
         tenant = getattr(request, 'tenant', None)
@@ -380,7 +389,7 @@ class SubAccountDetailAPIView(APIView):
 
 class SubAccountTransactionsAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
-    pagination_class = StandardPageNumberPagination
+    pagination_class = TransactionCursorPagination
 
     def get_sub_account(self, pk, user, tenant):
         try:

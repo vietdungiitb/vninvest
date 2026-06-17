@@ -20,29 +20,65 @@ from typing import List, Tuple, Dict
 # Mỗi pattern: (regex_pattern, replacement, description)
 # Sử dụng named groups để giữ nguyên phần path sau prefix
 MIGRATION_PATTERNS: List[Tuple[str, str, str]] = [
-    # 1. Standard API mounts: /api/market/... -> /core/v1/market/...
+    # 1. Standard API mounts: /api/market/... -> /core/v1/... (no module prefix)
+    #    /api/signals/... -> /core/v1/...
+    #    /api/workspace/... -> /core/v1/...
+    #    etc.
+    # NOTE: market-data and stock-management are NOT stripped - they are part of the actual URL path
     (
-        r'(["\'])/?api/(market|signals|workspace|commercial|advertising|ops-audit|support|identity|auth|tenant|billing|subscription|invoice|sso)/?',
-        r'\1/core/v1/\2/',
-        "Standard API module mounts"
+        r'([\'"])\/?api\/(market|signals|workspace|commercial|advertising|ops-audit|support|identity|auth|tenant|billing|subscription|invoice|sso)\/',
+        r'\1/core/v1/',
+        "Standard API module mounts (strip module prefix)"
     ),
     # 2. Versioned API: /api/v1/... -> /core/v1/... (giữ nguyên path sau v1)
     (
-        r'(["\'])/?api/v1/(market|signals|workspace|commercial|advertising|ops-audit|support|identity|auth|tenant|billing|subscription|invoice|sso)/?',
-        r'\1/core/v1/\2/',
-        "Versioned API v1 mounts"
+        r'([\'"])\/?api\/v1\/(market|signals|workspace|commercial|advertising|ops-audit|support|identity|auth|tenant|billing|subscription|invoice|sso)\/',
+        r'\1/core/v1/',
+        "Versioned API v1 mounts (strip module prefix)"
     ),
-    # 3. DRF reverse() calls: reverse('api:market:...') -> reverse('core:v1:market:...')
+    # 3. DRF reverse() calls: reverse('api:market:...') -> reverse('core:v1:...')
     # Lưu ý: namespace thường là 'api' hoặc 'api:v1'
     (
         r"reverse\((['\"])api(:v1)?(:)",
         r"reverse(\1core:v1\3",
         "DRF reverse() namespace migration"
     ),
-    # 4. Hardcoded URL trong f-string / format: f"/api/market/{id}/" -> f"/core/v1/market/{id}/"
-    # Pattern này đã được cover bởi pattern 1 nhờ quote group.
-    # 5. Client.get/post/put/delete calls với URL string: client.get("/api/market/...")
-    # Pattern 1 đã cover.
+    # 4. Handle /api/market/... (without trailing slash) -> /core/v1/...
+    (
+        r'([\'"])\/?api\/(market|signals|workspace|commercial|advertising|ops-audit|support|identity|auth|tenant|billing|subscription|invoice|sso)([\'"])',
+        r'\1/core/v1/\3',
+        "Standard API module mounts (no trailing slash)"
+    ),
+    # 5. Handle /api/v1/market/... (without trailing slash) -> /core/v1/...
+    (
+        r'([\'"])\/?api\/v1\/(market|signals|workspace|commercial|advertising|ops-audit|support|identity|auth|tenant|billing|subscription|invoice|sso)([\'"])',
+        r'\1/core/v1/\3',
+        "Versioned API v1 mounts (no trailing slash)"
+    ),
+    # 6. Handle /api/market-data/... -> /core/v1/market-data/... (keep prefix)
+    (
+        r'([\'"])\/?api\/(market-data|stock-management)\/',
+        r'\1/core/v1/\2/',
+        "Market-data or Stock-management API mounts (keep prefix)"
+    ),
+    # 7. Handle /api/v1/market-data/... -> /core/v1/market-data/... (keep prefix)
+    (
+        r'([\'"])\/?api\/v1\/(market-data|stock-management)\/',
+        r'\1/core/v1/\2/',
+        "Versioned market-data or Stock-management API v1 mounts (keep prefix)"
+    ),
+    # 8. Handle /api/market-data/... (without trailing slash) -> /core/v1/market-data/...
+    (
+        r'([\'"])\/?api\/(market-data|stock-management)([\'"])',
+        r'\1/core/v1/\2\3',
+        "Market-data or Stock-management API mounts (no trailing slash, keep prefix)"
+    ),
+    # 9. Handle /api/v1/market-data/... (without trailing slash) -> /core/v1/market-data/...
+    (
+        r'([\'"])\/?api\/v1\/(market-data|stock-management)([\'"])',
+        r'\1/core/v1/\2\3',
+        "Versioned market-data or Stock-management API v1 mounts (no trailing slash, keep prefix)"
+    ),
 ]
 
 # File extensions to process
@@ -125,12 +161,12 @@ def main():
     if not args.dry_run and not args.apply:
         parser.error('Must specify either --dry-run or --apply')
     
-    print(f"🔍 Scanning for test files in: {args.root.resolve()}")
+    print(f"[SCAN] Scanning for test files in: {args.root.resolve()}")
     test_files = find_test_files(args.root)
-    print(f"📁 Found {len(test_files)} test files")
+    print(f"[FOUND] Found {len(test_files)} test files")
     
     if not test_files:
-        print("⚠️  No test files found. Check --root path.")
+        print("[WARN] No test files found. Check --root path.")
         return 0
     
     results = []
@@ -144,21 +180,21 @@ def main():
         if result['status'] in ('CHANGED', 'WOULD_CHANGE'):
             files_changed += 1
             if args.verbose or args.dry_run:
-                print(f"  📝 {result['file']}: {result['changes']} changes {result['details']}")
+                print(f"  [CHANGE] {result['file']}: {result['changes']} changes {result['details']}")
         elif args.verbose and result['status'] == 'OK':
-            print(f"  ✅ {result['file']}: No changes needed")
+            print(f"  [OK] {result['file']}: No changes needed")
         elif result['status'] == 'ERROR':
-            print(f"  ❌ {result['file']}: {result['reason']}")
+            print(f"  [ERROR] {result['file']}: {result['reason']}")
     
     # Summary
     action = "WOULD BE" if args.dry_run else "APPLIED"
-    print(f"\n📊 SUMMARY ({action}):")
+    print(f"\n[SUMMARY] ({action}):")
     print(f"   Files processed: {len(test_files)}")
     print(f"   Files with changes: {files_changed}")
     print(f"   Total pattern replacements: {total_changes}")
     
     if args.dry_run:
-        print("\n💡 Run with --apply to execute changes. Add --backup to create .bak files.")
+        print("\n[TIP] Run with --apply to execute changes. Add --backup to create .bak files.")
     
     return 0 if all(r['status'] != 'ERROR' for r in results) else 1
 

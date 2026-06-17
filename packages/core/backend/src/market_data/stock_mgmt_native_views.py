@@ -24,6 +24,13 @@ from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from vninvest_core.exceptions import (
+    ValidationErrorException,
+    NotFoundErrorException,
+    PermissionErrorException,
+    ConflictErrorException,
+)
+
 from advisory.models import AdvisoryRecord
 from advisory.serializers import AdvisoryRecordSerializer
 
@@ -1187,13 +1194,17 @@ def _serialize_stock_order_flow_signal(alert, tick_rate_per_min, small_order_rat
 # ---------------------------------------------------------------------------
 
 
+from vninvest_core.pagination import CoreCursorPagination
+
+class StockManagementStockListCursorPagination(CoreCursorPagination):
+    ordering = 'symbol'
+    page_size = 100
+
 class StockManagementStockListView(APIView):
     """GET /api/stock-management/stocks/ — native stock catalog search."""
 
     permission_classes = [permissions.IsAuthenticated]
-
-    _DEFAULT_PAGE_SIZE = 100
-    _MAX_PAGE_SIZE = 200
+    pagination_class = StockManagementStockListCursorPagination
 
     def get(self, request):
         qs = StockProfile.objects.filter(status=StockProfile.StatusChoices.ACTIVE).order_by('symbol')
@@ -1214,21 +1225,24 @@ class StockManagementStockListView(APIView):
         if industry:
             qs = qs.filter(industry__icontains=industry)
 
-        try:
-            page_size = int(request.query_params.get('page_size', self._DEFAULT_PAGE_SIZE))
-        except (TypeError, ValueError):
-            page_size = self._DEFAULT_PAGE_SIZE
-        page_size = max(1, min(page_size, self._MAX_PAGE_SIZE))
-
-        try:
-            page = int(request.query_params.get('page', 1))
-        except (TypeError, ValueError):
-            page = 1
-        page = max(page, 1)
-
-        total = qs.count()
-        offset = (page - 1) * page_size
-        rows = qs[offset: offset + page_size]
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(qs, request)
+        if page is not None:
+            results = [
+                {
+                    'symbol': profile.symbol,
+                    'company_name': profile.company_name,
+                    'industry': profile.industry,
+                    'exchange': profile.exchange,
+                    'listed_date': None,
+                    'is_active': profile.status == StockProfile.StatusChoices.ACTIVE,
+                    'updated_at': profile.updated_at.isoformat() if profile.updated_at else None,
+                    'status': profile.status,
+                    'outstanding_shares': profile.outstanding_shares,
+                }
+                for profile in page
+            ]
+            return paginator.get_paginated_response(results)
 
         results = [
             {
@@ -1242,16 +1256,9 @@ class StockManagementStockListView(APIView):
                 'status': profile.status,
                 'outstanding_shares': profile.outstanding_shares,
             }
-            for profile in rows
+            for profile in qs
         ]
-        return Response(
-            {
-                'count': total,
-                'page': page,
-                'page_size': page_size,
-                'results': results,
-            }
-        )
+        return Response({'results': results})
 
 
 class StockManagementTechnicalsView(APIView):
@@ -2560,11 +2567,11 @@ class StockManagementAIAdvisorySessionView(APIView):
     def get(self, request, symbol):
         normalized_symbol = _normalize_ai_symbol(symbol)
         if not normalized_symbol:
-            return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException(detail='Symbol không hợp lệ.', code='validation_error')
 
         contract_raw = str(request.query_params.get('contract') or 'v1').strip().lower()
         if contract_raw and contract_raw not in {'v1', 'v2'}:
-            return Response({'ok': False, 'message': 'contract khong hop le. Ho tro: v1, v2.'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException(detail='Contract không hợp lệ. Hỗ trợ: v1, v2.', code='validation_error')
 
         include_benchmarks = str(request.query_params.get('include_benchmarks') or '').strip().lower() in {'1', 'true', 'yes', 'on'}
         trade_date_raw = str(request.query_params.get('trade_date') or request.query_params.get('date') or '').strip()
@@ -2577,9 +2584,9 @@ class StockManagementAIAdvisorySessionView(APIView):
 
         record = _latest_ai_record(request.user, normalized_symbol, selected_trade_date=selected_trade_date)
         if record is None:
+            # Return 200 with empty payload (legacy compat) - not an error
             return Response(
                 {
-                    'ok': False,
                     'queued': False,
                     'symbol': normalized_symbol,
                     'contract': contract_raw or 'v1',
@@ -2616,7 +2623,7 @@ class StockManagementAIAdvisorySessionView(APIView):
 
         normalized_symbol = _normalize_ai_symbol(symbol)
         if not normalized_symbol:
-            return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException(detail='Symbol không hợp lệ.', code='validation_error')
 
         django_request = getattr(request, '_request', request)
         refresh_response = AdvisoryRefreshView.as_view()(django_request, symbol=normalized_symbol)
@@ -2645,7 +2652,7 @@ class StockManagementAIAdvisoryObservabilityView(APIView):
     def get(self, request, symbol):
         normalized_symbol = _normalize_ai_symbol(symbol)
         if not normalized_symbol:
-            return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException(detail='Symbol không hợp lệ.', code='validation_error')
 
         limit_raw = request.query_params.get('limit')
         window_hours_raw = request.query_params.get('window_hours')
@@ -2658,18 +2665,18 @@ class StockManagementAIAdvisoryObservabilityView(APIView):
             limit = max(int(limit_raw or 20), 1)
             limit = min(limit, 100)
         except (TypeError, ValueError):
-            return Response({'ok': False, 'message': 'limit khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException(detail='limit không hợp lệ.', code='validation_error')
 
         try:
             window_hours = max(int(window_hours_raw or 24), 1)
             window_hours = min(window_hours, 168)
         except (TypeError, ValueError):
-            return Response({'ok': False, 'message': 'window_hours khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException(detail='window_hours không hợp lệ.', code='validation_error')
 
         if retry_sort not in {'newest', 'oldest', 'most_failed'}:
-            return Response({'ok': False, 'message': 'retry_sort khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException(detail='retry_sort không hợp lệ.', code='validation_error')
         if governance_bucket not in {'hour', 'day'}:
-            return Response({'ok': False, 'message': 'governance_bucket khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException(detail='governance_bucket không hợp lệ.', code='validation_error')
 
         record = _latest_ai_record(request.user, normalized_symbol)
         if record is None:
@@ -2756,7 +2763,7 @@ class StockManagementAIAdvisoryComponentsGenerateView(APIView):
     def post(self, request, symbol):
         normalized_symbol = _normalize_ai_symbol(symbol)
         if not normalized_symbol:
-            return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException(detail='Symbol không hợp lệ.', code='validation_error')
 
         record = _latest_ai_record(request.user, normalized_symbol)
         if record is None:
@@ -2772,7 +2779,7 @@ class StockManagementAIAdvisoryComponentsGenerateView(APIView):
                 record = _latest_ai_record(request.user, normalized_symbol)
 
         if record is None:
-            return Response({'ok': False, 'symbol': normalized_symbol, 'message': 'Chưa có advisory gốc để tạo components.'}, status=status.HTTP_404_NOT_FOUND)
+            raise NotFoundErrorException(detail=f'Chưa có advisory gốc để tạo components cho {normalized_symbol}.', code='not_found')
 
         payload_data = request.data if isinstance(request.data, dict) else {}
         timeframe = str(payload_data.get('timeframe') or '30m').strip() or '30m'
@@ -2794,7 +2801,6 @@ class StockManagementAIAdvisoryComponentsGenerateView(APIView):
 
         return Response(
             {
-                'ok': True,
                 'symbol': normalized_symbol,
                 'status': record.status,
                 'advisory': AdvisoryRecordSerializer(record).data,
@@ -2817,29 +2823,29 @@ class StockManagementAIAdvisoryComponentsDeletedView(APIView):
     def get(self, request, symbol):
         normalized_symbol = _normalize_ai_symbol(symbol)
         if not normalized_symbol:
-            return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException(detail='Symbol không hợp lệ.', code='validation_error')
 
         advisory_id = str(request.query_params.get('advisory_id') or '').strip() or None
         record, error_response = _find_symbol_advisory_record(request.user, normalized_symbol, advisory_id=advisory_id)
         if error_response is not None:
             if error_response.status_code == status.HTTP_404_NOT_FOUND:
-                return Response({'ok': True, 'symbol': normalized_symbol, 'deleted': []}, status=status.HTTP_200_OK)
+                return Response({'symbol': normalized_symbol, 'deleted': []}, status=status.HTTP_200_OK)
             return error_response
 
         context = _ai_context_snapshot(record)
         deleted_components = _normalize_component_collection(context.get('deleted_components'))[0]
-        return Response({'ok': True, 'symbol': normalized_symbol, 'deleted': deleted_components}, status=status.HTTP_200_OK)
+        return Response({'symbol': normalized_symbol, 'deleted': deleted_components}, status=status.HTTP_200_OK)
 
     def delete(self, request, symbol):
         normalized_symbol = _normalize_ai_symbol(symbol)
         if not normalized_symbol:
-            return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException(detail='Symbol không hợp lệ.', code='validation_error')
 
         advisory_id = str(request.query_params.get('advisory_id') or '').strip() or None
         record, error_response = _find_symbol_advisory_record(request.user, normalized_symbol, advisory_id=advisory_id)
         if error_response is not None:
             if error_response.status_code == status.HTTP_404_NOT_FOUND:
-                return Response({'ok': True, 'symbol': normalized_symbol, 'deleted_count': 0, 'message': 'Da xoa toan bo deleted tabs.'}, status=status.HTTP_200_OK)
+                return Response({'symbol': normalized_symbol, 'deleted_count': 0, 'message': 'Đã xóa toàn bộ deleted tabs.'}, status=status.HTTP_200_OK)
             return error_response
 
         context = _ai_context_snapshot(record)
@@ -2847,7 +2853,7 @@ class StockManagementAIAdvisoryComponentsDeletedView(APIView):
         deleted_count = len(deleted_components)
         context['deleted_components'] = []
         _save_advisory_context(record, context)
-        return Response({'ok': True, 'symbol': normalized_symbol, 'deleted_count': deleted_count, 'message': 'Da xoa toan bo deleted tabs.'}, status=status.HTTP_200_OK)
+        return Response({'symbol': normalized_symbol, 'deleted_count': deleted_count, 'message': 'Đã xóa toàn bộ deleted tabs.'}, status=status.HTTP_200_OK)
 
 
 class StockManagementAIAdvisorySummaryRegenerateView(APIView):
@@ -2857,13 +2863,13 @@ class StockManagementAIAdvisorySummaryRegenerateView(APIView):
     def post(self, request, symbol):
         normalized_symbol = _normalize_ai_symbol(symbol)
         if not normalized_symbol:
-            return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException(detail='Symbol không hợp lệ.', code='validation_error')
 
         advisory_id = str(request.query_params.get('advisory_id') or '').strip() or None
         record, error_response = _find_symbol_advisory_record(request.user, normalized_symbol, advisory_id=advisory_id)
         if error_response is not None:
             if error_response.status_code == status.HTTP_404_NOT_FOUND:
-                return Response({'ok': False, 'symbol': normalized_symbol, 'message': 'Chưa có advisory gốc để tổng hợp.'}, status=status.HTTP_404_NOT_FOUND)
+                raise NotFoundErrorException(detail=f'Chưa có advisory gốc để tổng hợp cho {normalized_symbol}.', code='not_found')
             return error_response
 
         payload_data = request.data if isinstance(request.data, dict) else {}
@@ -2886,7 +2892,7 @@ class StockManagementAIAdvisorySummaryRegenerateView(APIView):
             active_components = [item for item in active_components if item['id'] in requested_ids]
 
         if not active_components:
-            return Response({'ok': False, 'symbol': normalized_symbol, 'message': 'Khong co component active de tong hop.'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException(detail='Không có component active để tổng hợp.', code='validation_error')
 
         summary_sequence = _int_value(context.get('summary_sequence'), 0) + 1
         summary = _build_summary_from_components(record, active_components, deleted_components, summary_sequence)
@@ -2943,20 +2949,20 @@ class StockManagementAIAdvisorySummaryDetailView(APIView):
     def delete(self, request, symbol, summary_id):
         normalized_symbol = _normalize_ai_symbol(symbol)
         if not normalized_symbol:
-            return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException(detail='Symbol không hợp lệ.', code='validation_error')
 
         advisory_id = str(request.query_params.get('advisory_id') or '').strip() or None
         record, error_response = _find_symbol_advisory_record(request.user, normalized_symbol, advisory_id=advisory_id)
         if error_response is not None:
             if error_response.status_code == status.HTTP_404_NOT_FOUND:
-                return Response({'ok': False, 'symbol': normalized_symbol, 'message': 'Thong tin tong hop khong ton tai.'}, status=status.HTTP_404_NOT_FOUND)
+                raise NotFoundErrorException(detail=f'Thông tin tổng hợp không tồn tại cho {normalized_symbol}.', code='not_found')
             return error_response
 
         context = _ai_context_snapshot(record)
         executive_summaries = _dict_list(context.get('executive_summaries'))
         remaining_summaries = [item for item in executive_summaries if _int_value(item.get('summary_version'), 0) != _int_value(summary_id, 0)]
         if len(remaining_summaries) == len(executive_summaries):
-            return Response({'ok': False, 'symbol': normalized_symbol, 'message': 'Thong tin tong hop khong ton tai.'}, status=status.HTTP_404_NOT_FOUND)
+            raise NotFoundErrorException(detail=f'Thông tin tổng hợp không tồn tại cho {normalized_symbol}.', code='not_found')
 
         context['executive_summaries'] = remaining_summaries
         if _int_value(context.get('summary_sequence'), 0) == _int_value(summary_id, 0):
@@ -3042,7 +3048,7 @@ class StockManagementAdvisoryCompToggleView(APIView):
         if error_response is not None:
             return error_response
         if record is None or component is None:
-            return Response({'ok': False, 'message': 'Component khong ton tai.'}, status=status.HTTP_404_NOT_FOUND)
+            raise NotFoundErrorException(detail='Component không tồn tại.', code='not_found')
 
         if component_bucket == 'components':
             components[component_index]['include_in_summary'] = not bool(components[component_index].get('include_in_summary', True))
@@ -3052,7 +3058,7 @@ class StockManagementAdvisoryCompToggleView(APIView):
             deleted_components[component_index]['updated_at'] = timezone.now().isoformat()
         _update_component_lists(record, components, deleted_components)
         updated_component = components[component_index] if component_bucket == 'components' else deleted_components[component_index]
-        return Response({'ok': True, 'component': updated_component}, status=status.HTTP_200_OK)
+        return Response({'component': updated_component}, status=status.HTTP_200_OK)
 
 
 class StockManagementAdvisoryCompRefreshView(APIView):
@@ -3065,7 +3071,7 @@ class StockManagementAdvisoryCompRefreshView(APIView):
         if error_response is not None:
             return error_response
         if record is None or component is None:
-            return Response({'ok': False, 'message': 'Chưa có advisory gốc để làm mới tab.'}, status=status.HTTP_404_NOT_FOUND)
+            raise NotFoundErrorException(detail='Chưa có advisory gốc để làm mới tab.', code='not_found')
 
         refreshed_component = dict(component)
         refreshed_component['confidence_score'] = min(10, _int_value(refreshed_component.get('confidence_score'), 5) + 1)
@@ -3077,7 +3083,7 @@ class StockManagementAdvisoryCompRefreshView(APIView):
         else:
             deleted_components[component_index] = refreshed_component
         _update_component_lists(record, components, deleted_components)
-        return Response({'ok': True, 'generated_by_ai': False, 'component': refreshed_component, 'message': 'Đã làm mới tab AI đang chọn.'}, status=status.HTTP_200_OK)
+        return Response({'generated_by_ai': False, 'component': refreshed_component, 'message': 'Đã làm mới tab AI đang chọn.'}, status=status.HTTP_200_OK)
 
 
 class StockManagementAdvisoryCompRestoreView(APIView):
@@ -3090,10 +3096,10 @@ class StockManagementAdvisoryCompRestoreView(APIView):
         if error_response is not None:
             return error_response
         if record is None or component is None:
-            return Response({'ok': False, 'message': 'Component khong ton tai hoac chua bi xoa.'}, status=status.HTTP_404_NOT_FOUND)
+            raise NotFoundErrorException(detail='Component không tồn tại hoặc chưa bị xóa.', code='not_found')
 
         if component_bucket != 'deleted_components':
-            return Response({'ok': False, 'message': 'Component khong ton tai hoac chua bi xoa.'}, status=status.HTTP_404_NOT_FOUND)
+            raise NotFoundErrorException(detail='Component không tồn tại hoặc chưa bị xóa.', code='not_found')
 
         restored_component = dict(component)
         restored_component['is_deleted'] = False
@@ -3103,7 +3109,7 @@ class StockManagementAdvisoryCompRestoreView(APIView):
         components.append(restored_component)
         components.sort(key=lambda item: _int_value(item.get('id'), 0))
         _update_component_lists(record, components, deleted_components)
-        return Response({'ok': True, 'component': restored_component}, status=status.HTTP_200_OK)
+        return Response({'component': restored_component}, status=status.HTTP_200_OK)
 
 
 class StockManagementAdvisoryCompDetailView(APIView):
@@ -3116,8 +3122,8 @@ class StockManagementAdvisoryCompDetailView(APIView):
         if error_response is not None:
             return error_response
         if record is None or component is None:
-            return Response({'ok': False, 'message': 'Component khong ton tai.'}, status=status.HTTP_404_NOT_FOUND)
-        return Response({'ok': True, 'id': component['id'], 'component': component, 'deleted_components': deleted_components}, status=status.HTTP_200_OK)
+            raise NotFoundErrorException(detail='Component không tồn tại.', code='not_found')
+        return Response({'id': component['id'], 'component': component, 'deleted_components': deleted_components}, status=status.HTTP_200_OK)
 
     def delete(self, request, pk):
         advisory_id = str(request.query_params.get('advisory_id') or '').strip() or None
@@ -3125,7 +3131,7 @@ class StockManagementAdvisoryCompDetailView(APIView):
         if error_response is not None:
             return error_response
         if record is None or component is None:
-            return Response({'ok': False, 'message': 'Component khong ton tai.'}, status=status.HTTP_404_NOT_FOUND)
+            raise NotFoundErrorException(detail='Component không tồn tại.', code='not_found')
 
         if component_bucket == 'deleted_components':
             return Response(status=status.HTTP_204_NO_CONTENT)
@@ -3416,7 +3422,7 @@ def seed_default_watchlist_groups(user, force_recreate=False):
             group_type=group_data.get('group_type'),
             description=group_data.get('description'),
         )
-        print(f"DEBUG SYNC: group='{group_data['name']}', symbols={group_symbols}, res_len={len(res_sync)}")
+        logger.debug("DEBUG SYNC: group='%s', symbols=%s, res_len=%d", group_data['name'], group_symbols, len(res_sync))
 
         added_symbols += group_added_symbols
         if created:

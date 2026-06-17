@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
-from rest_framework.pagination import PageNumberPagination
+from vninvest_core.pagination import CoreCursorPagination
 
 from .models import SenderRole, SupportTicket, TicketAttachment, TicketAuditLog, TicketMessage, TicketStatus
 from .permissions import IsStaffUser, IsTicketOwnerOrStaff
@@ -33,10 +33,13 @@ MAX_ATTACHMENT_SIZE_BYTES = 5 * 1024 * 1024
 MAX_ATTACHMENTS_PER_MESSAGE = 3
 
 
-class StandardResultsSetPagination(PageNumberPagination):
+class StandardResultsSetPagination(CoreCursorPagination):
+    ordering = '-updated_at'
     page_size = 20
-    page_size_query_param = 'page_size'
-    max_page_size = 100
+
+class TicketMessageCursorPagination(CoreCursorPagination):
+    ordering = 'created_at'
+    page_size = 20
 
 
 def _validate_and_create_attachments(message, files):
@@ -111,6 +114,7 @@ class TicketListCreateView(APIView):
         queryset = queryset.order_by(ordering)
 
         paginator = StandardResultsSetPagination()
+        paginator.ordering = ordering
         page = paginator.paginate_queryset(queryset, request)
         serializer = SupportTicketListSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
@@ -167,7 +171,7 @@ class TicketDetailView(APIView):
         self.check_object_permissions(request, ticket)
 
         message_queryset = ticket.messages.select_related('sender').prefetch_related('attachments').order_by('created_at')
-        message_paginator = StandardResultsSetPagination()
+        message_paginator = TicketMessageCursorPagination()
         message_page = message_paginator.paginate_queryset(message_queryset, request)
         message_payload = message_paginator.get_paginated_response(TicketMessageSerializer(message_page, many=True).data).data
 

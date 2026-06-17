@@ -14,11 +14,11 @@ from .native_views import (
 )
 
 urlpatterns = [
-    path('symbol-snapshot', views.SymbolSnapshotListView.as_view(), name='symbol-snapshot-list'),
-    path('symbol-snapshot/<str:symbol>', views.SymbolSnapshotDetailView.as_view(), name='symbol-snapshot-detail'),
-    path('session-facts', views.SessionFactsListView.as_view(), name='session-facts-list'),
-    path('session-facts/<str:symbol>/cvd', views.SessionFactsCvdView.as_view(), name='session-facts-cvd'),
-    path('session-facts/<str:symbol>', views.SessionFactsDetailView.as_view(), name='session-facts-detail'),
+    path('symbol-snapshot/', views.SymbolSnapshotListView.as_view(), name='symbol-snapshot-list'),
+    path('symbol-snapshot/<str:symbol>/', views.SymbolSnapshotDetailView.as_view(), name='symbol-snapshot-detail'),
+    path('session-facts/', views.SessionFactsListView.as_view(), name='session-facts-list'),
+    path('session-facts/<str:symbol>/cvd/', views.SessionFactsCvdView.as_view(), name='session-facts-cvd'),
+    path('session-facts/<str:symbol>/', views.SessionFactsDetailView.as_view(), name='session-facts-detail'),
     # Native realtime paths under core/v1/
     path('realtime/ticker/<str:symbol>/', RealtimeTickerView.as_view(), name='realtime-ticker'),
     path('realtime/tickers/', RealtimeTickerListView.as_view(), name='realtime-tickers'),

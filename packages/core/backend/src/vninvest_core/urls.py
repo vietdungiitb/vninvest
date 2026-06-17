@@ -47,6 +47,7 @@ urlpatterns = [
     path('core/v1/', include(('advertising.urls', 'advertising'), namespace='advertising')),
     # Native public bootstrap routes owned by core-api domain apps.
     path('api/', include(('commercial.public_urls', 'commercial_public'), namespace='commercial_public')),
+    path('api/', include(('advertising.api_urls', 'advertising_api'), namespace='advertising_api')),
     # D2: admin-ops decommissioned — all sub-paths return 410 GONE
     re_path(r'^api/admin-ops/.*$', admin_ops_gone),
     path('api/soc/', include(('service_ops.urls', 'service_ops'), namespace='service_ops')),

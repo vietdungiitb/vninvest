@@ -15,6 +15,7 @@ from identity_access.authentication import CorePATAuthentication
 from advertising.models import AdCampaign, AdDailySummary
 from advertising.serializers import AdCampaignSerializer, AdDailySummarySerializer
 from advertising.tasks import _get_redis_client
+from vninvest_core.exceptions import ValidationErrorException, PermissionErrorException
 
 logger = logging.getLogger(__name__)
 
@@ -178,14 +179,14 @@ class BaseMetricsLogView(APIView):
         symbol = request.data.get('symbol') or request.query_params.get('symbol') or "ALL"
 
         if not all([sig, expires_at, camp_id]):
-            return None, Response({"detail": "Missing signature parameters."}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException("Missing signature parameters.")
 
         # 1. Verify expiration window
         try:
             if int(expires_at) < time.time():
-                return None, Response({"detail": "Signature expired."}, status=status.HTTP_403_FORBIDDEN)
+                raise PermissionErrorException("Signature expired.")
         except (ValueError, TypeError):
-            return None, Response({"detail": "Invalid expiration time."}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException("Invalid expiration time.")
 
         # 2. Check client IP match
         client_ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '')).split(',')[0].strip()
@@ -196,7 +197,7 @@ class BaseMetricsLogView(APIView):
         expected_sig = hmac.new(ad_signing_secret.encode('utf-8'), msg.encode('utf-8'), hashlib.sha256).hexdigest()
 
         if not hmac.compare_digest(str(sig), expected_sig):
-            return None, Response({"detail": "Invalid signature verification failed."}, status=status.HTTP_403_FORBIDDEN)
+            raise PermissionErrorException("Invalid signature verification failed.")
 
         payload = {
             'campaign_id': camp_id,
@@ -205,7 +206,7 @@ class BaseMetricsLogView(APIView):
             'ip_address': client_ip,
             'user_agent': request.META.get('HTTP_USER_AGENT', '')
         }
-        return payload, None
+        return payload
 
     def queue_event(self, stream_key, payload):
         try:
@@ -223,9 +224,7 @@ class MetricsLogViewView(BaseMetricsLogView):
     Ghi nhận Impression từ Widget.
     """
     def post(self, request):
-        payload, error_response = self.verify_request(request)
-        if error_response:
-            return error_response
+        payload = self.verify_request(request)
 
         queued = self.queue_event('ads:impressions:stream', payload)
         if not queued:
@@ -240,9 +239,7 @@ class MetricsLogClickView(BaseMetricsLogView):
     Ghi nhận Click từ Widget.
     """
     def post(self, request, campaign_id):
-        payload, error_response = self.verify_request(request, campaign_id)
-        if error_response:
-            return error_response
+        payload = self.verify_request(request, campaign_id)
 
         queued = self.queue_event('ads:clicks:stream', payload)
         if not queued:

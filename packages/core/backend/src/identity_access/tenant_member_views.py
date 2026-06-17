@@ -19,6 +19,13 @@ from tenant_lifecycle.models import TenantLifecycleEvent
 from .models import CoreTenant, TenantMember, TenantInvite
 from .serializers import TenantMemberSerializer, TenantInviteSerializer, TenantInviteCreateSerializer
 from .permissions import IsTenantActive, require_human_session, require_pat_scopes_or_human_session
+from vninvest_core.exceptions import (
+    ValidationErrorException,
+    NotFoundErrorException,
+    ConflictErrorException,
+    PermissionErrorException,
+    CoreAPIException,
+)
 
 
 def _get_request_tenant(request) -> CoreTenant:
@@ -64,6 +71,11 @@ def _get_request_tenant_role(request) -> str:
     if role is None:
         # Hot-fix for test suite: resolve role from tenant membership
         tenant = getattr(request, 'tenant', None)
+        if tenant is None:
+            try:
+                tenant = _get_request_tenant(request)
+            except Exception:
+                pass
         user = getattr(request, 'user', None)
         if tenant and user and user.is_authenticated:
             if tenant.owner_user == user:
@@ -119,8 +131,7 @@ class TenantInvitesCombinedView(APIView):
 
         # Validate input
         serializer = TenantInviteCreateSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
 
         invited_email = serializer.validated_data['invited_email'].lower().strip()
         role = serializer.validated_data['role']
@@ -131,10 +142,7 @@ class TenantInvitesCombinedView(APIView):
             user__email__iexact=invited_email,
         ).first()
         if existing_member:
-            return Response(
-                {'error': 'User is already a member'},
-                status=status.HTTP_409_CONFLICT,
-            )
+            raise ConflictErrorException('User is already a member')
 
         # Check for pending invite
         pending_invite = TenantInvite.objects.filter(
@@ -143,10 +151,7 @@ class TenantInvitesCombinedView(APIView):
             status=TenantInvite.StatusChoices.PENDING,
         ).first()
         if pending_invite:
-            return Response(
-                {'error': 'Invite already pending for this email'},
-                status=status.HTTP_409_CONFLICT,
-            )
+            raise ConflictErrorException('Invite already pending for this email')
 
         # Create invite
         token = TenantInvite.generate_token()
@@ -197,38 +202,27 @@ class TenantInviteAcceptView(APIView):
         # Find invite
         invite = TenantInvite.objects.filter(token=token).first()
         if not invite:
-            return Response(
-                {'error': 'Invalid or expired token'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            raise NotFoundErrorException('Invalid or expired token')
 
         # Check status
         if invite.status != TenantInvite.StatusChoices.PENDING:
             if invite.status == TenantInvite.StatusChoices.ACCEPTED:
-                return Response(
-                    {'error': 'Invite already accepted'},
-                    status=status.HTTP_409_CONFLICT,
-                )
-            return Response(
-                {'error': 'Invite is not pending'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+                raise ConflictErrorException('Invite already accepted')
+            raise ValidationErrorException('Invite is not pending')
 
         # Check expiry
         if invite.is_expired:
             invite.status = TenantInvite.StatusChoices.EXPIRED
             invite.save()
-            return Response(
-                {'error': 'Invite has expired'},
-                status=status.HTTP_410_GONE,
+            raise CoreAPIException(
+                detail='Invite has expired',
+                code='expired',
+                status_code=status.HTTP_410_GONE,
             )
 
         # Check email match
         if user.email.lower().strip() != invite.invited_email.lower().strip():
-            return Response(
-                {'error': 'Email does not match invited email'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            raise PermissionErrorException('Email does not match invited email')
 
         # Accept invite: create member
         member, created = TenantMember.objects.get_or_create(
@@ -241,10 +235,7 @@ class TenantInviteAcceptView(APIView):
         )
 
         if not created:
-            return Response(
-                {'error': 'User is already a member'},
-                status=status.HTTP_409_CONFLICT,
-            )
+            raise ConflictErrorException('User is already a member')
 
         # Update invite
         invite.status = TenantInvite.StatusChoices.ACCEPTED
@@ -277,24 +268,15 @@ class TenantMemberRemoveView(APIView):
         # Find member
         member = TenantMember.objects.filter(public_id=member_id, tenant=tenant).first()
         if not member:
-            return Response(
-                {'error': 'Member not found'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            raise NotFoundErrorException('Member not found')
 
         # Cannot remove owner
         if tenant.owner_user == member.user:
-            return Response(
-                {'error': 'Cannot remove tenant owner'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            raise PermissionErrorException('Cannot remove tenant owner')
 
         # Cannot remove self
         if member.user == request.user:
-            return Response(
-                {'error': 'Cannot remove yourself'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            raise PermissionErrorException('Cannot remove yourself')
 
         removed_user = member.user
 

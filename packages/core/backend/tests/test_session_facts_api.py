@@ -140,16 +140,16 @@ class SessionFactsDetailHappyPathTests(TestCase):
         self.facts = _make_facts('HPG')
 
     def test_detail_returns_200(self):
-        resp = self.client.get('/api/market/session-facts/HPG/')
+        resp = self.client.get('/core/v1/session-facts/HPG/')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
 
     def test_detail_symbol_uppercased(self):
-        resp = self.client.get('/api/market/session-facts/hpg/')
+        resp = self.client.get('/core/v1/session-facts/hpg/')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(resp.data['symbol'], 'HPG')
 
     def test_detail_has_required_fields(self):
-        resp = self.client.get('/api/market/session-facts/HPG/')
+        resp = self.client.get('/core/v1/session-facts/HPG/')
         data = resp.data
         for field in ('symbol', 'session_date', 'cvd_normalized',
                       'delta_strength_pct', 'buy_strength', 'institutional_strength',
@@ -158,23 +158,23 @@ class SessionFactsDetailHappyPathTests(TestCase):
             self.assertIn(field, data, msg=f'Missing field: {field}')
 
     def test_delta_strength_pct_computed_correctly(self):
-        resp = self.client.get('/api/market/session-facts/HPG/')
+        resp = self.client.get('/core/v1/session-facts/HPG/')
         # whale_net_flow=3e9, total=10e9+7e9=17e9 → 3/17*100 ≈ 17.6471
         expected = round(3_000_000_000 / (10_000_000_000 + 7_000_000_000) * 100, 4)
         self.assertAlmostEqual(float(resp.data['delta_strength_pct']), expected, places=2)
 
     def test_delta_strength_pct_zero_when_no_volume(self):
         _make_facts('MWG', total_buy_volume=0, total_sell_volume=0, whale_net_flow=0)
-        resp = self.client.get('/api/market/session-facts/MWG/')
+        resp = self.client.get('/core/v1/session-facts/MWG/')
         self.assertEqual(resp.data['delta_strength_pct'], 0.0)
 
     def test_detail_source_header_present(self):
-        resp = self.client.get('/api/market/session-facts/HPG/')
+        resp = self.client.get('/core/v1/session-facts/HPG/')
         self.assertIn('_source', resp.data)
 
     def test_detail_returns_exact_requested_trade_date(self):
         _make_facts('HPG', session_date=datetime.date(2026, 5, 14), whale_net_flow=1_000_000_000)
-        resp = self.client.get('/api/market/session-facts/HPG/?trade_date=2026-05-13')
+        resp = self.client.get('/core/v1/session-facts/HPG/?trade_date=2026-05-13')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(resp.data['session_date'], '2026-05-13')
         self.assertEqual(resp.data['whale_net_flow'], 3_000_000_000)
@@ -191,17 +191,17 @@ class SessionFactsListHappyPathTests(TestCase):
         _make_facts('TCB')
 
     def test_list_returns_200(self):
-        resp = self.client.get('/api/market/session-facts/')
+        resp = self.client.get('/core/v1/session-facts/')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
 
     def test_list_filter_by_symbol(self):
-        resp = self.client.get('/api/market/session-facts/?symbol=VCB')
+        resp = self.client.get('/core/v1/session-facts/?symbol=VCB')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         for item in resp.data['results']:
             self.assertEqual(item['symbol'], 'VCB')
 
     def test_list_filter_symbol_uppercased(self):
-        resp = self.client.get('/api/market/session-facts/?symbol=vcb')
+        resp = self.client.get('/core/v1/session-facts/?symbol=vcb')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         for item in resp.data['results']:
             self.assertEqual(item['symbol'], 'VCB')
@@ -217,11 +217,11 @@ class SessionFactsUnauthorizedTests(TestCase):
         _make_facts('BID')
 
     def test_detail_401_when_unauthenticated(self):
-        resp = self.client.get('/api/market/session-facts/BID/')
+        resp = self.client.get('/core/v1/session-facts/BID/')
         self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_list_401_when_unauthenticated(self):
-        resp = self.client.get('/api/market/session-facts/')
+        resp = self.client.get('/core/v1/session-facts/')
         self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
@@ -242,7 +242,7 @@ class SessionFactsNotFoundTests(TestCase):
             'market_serving.session_facts_engine.compute_session_facts',
             side_effect=AssertionError('detail view must not compute on read path'),
         ):
-            resp = self.client.get('/api/market/session-facts/XXXX/')
+            resp = self.client.get('/core/v1/session-facts/XXXX/')
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_detail_404_error_envelope_has_standard_fields(self):
@@ -250,7 +250,7 @@ class SessionFactsNotFoundTests(TestCase):
             'market_serving.session_facts_engine.compute_session_facts',
             side_effect=AssertionError('detail view must not compute on read path'),
         ):
-            resp = self.client.get('/api/market/session-facts/ZZZZ/')
+            resp = self.client.get('/core/v1/session-facts/ZZZZ/')
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
         # Envelope từ core_api_exception_handler phải có code + timestamp
         self.assertIn('code', resp.data)
@@ -259,7 +259,7 @@ class SessionFactsNotFoundTests(TestCase):
 
     def test_detail_404_when_requested_trade_date_is_missing(self):
         _make_facts('HPG', session_date=datetime.date(2026, 5, 13))
-        resp = self.client.get('/api/market/session-facts/HPG/?trade_date=2026-05-12')
+        resp = self.client.get('/core/v1/session-facts/HPG/?trade_date=2026-05-12')
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(resp.data['code'], 'not_found')
         self.assertIn('timestamp', resp.data)
@@ -275,7 +275,7 @@ class SessionFactsValidationTests(TestCase):
         _make_facts('HPG')
 
     def test_detail_400_when_trade_date_is_invalid(self):
-        resp = self.client.get('/api/market/session-facts/HPG/?trade_date=2026-99-99')
+        resp = self.client.get('/core/v1/session-facts/HPG/?trade_date=2026-99-99')
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(resp.data.get('code'), 'validation_error')
         self.assertIn('field_errors', resp.data)
@@ -327,7 +327,7 @@ class SessionFactsCvdApiTests(TestCase):
         })
 
     def test_cvd_returns_materialized_series(self):
-        resp = self.client.get('/api/market/session-facts/HPG/cvd/?window=15m')
+        resp = self.client.get('/core/v1/session-facts/HPG/cvd/?window=15m')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(resp.data['symbol'], 'HPG')
         self.assertEqual(resp.data['session_date'], '2026-05-14')
@@ -339,7 +339,7 @@ class SessionFactsCvdApiTests(TestCase):
         self.assertEqual(resp.data['_source'], 'db-read')
 
     def test_cvd_404_when_requested_window_is_not_materialized(self):
-        resp = self.client.get('/api/market/session-facts/HPG/cvd/?window=30m')
+        resp = self.client.get('/core/v1/session-facts/HPG/cvd/?window=30m')
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(resp.data['code'], 'not_found')
         self.assertIn('timestamp', resp.data)
@@ -350,12 +350,12 @@ class SessionFactsCvdApiTests(TestCase):
             'market_serving.session_facts_engine.compute_session_facts',
             side_effect=AssertionError('cvd view must not compute on read path'),
         ):
-            resp = self.client.get('/api/market/session-facts/HPG/cvd/?window=15m')
+            resp = self.client.get('/core/v1/session-facts/HPG/cvd/?window=15m')
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(resp.data['code'], 'not_found')
 
     def test_cvd_returns_exact_requested_trade_date(self):
-        resp = self.client.get('/api/market/session-facts/HPG/cvd/?window=15m&trade_date=2026-05-13')
+        resp = self.client.get('/core/v1/session-facts/HPG/cvd/?window=15m&trade_date=2026-05-13')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(resp.data['session_date'], '2026-05-13')
         self.assertEqual(resp.data['whale_net_flow'], 3_000_000_000)
@@ -364,13 +364,13 @@ class SessionFactsCvdApiTests(TestCase):
         self.assertEqual(resp.data['cvd_series'][0]['institutional_strength'], 44.3)
 
     def test_cvd_404_when_requested_trade_date_is_missing(self):
-        resp = self.client.get('/api/market/session-facts/HPG/cvd/?window=15m&trade_date=2026-05-12')
+        resp = self.client.get('/core/v1/session-facts/HPG/cvd/?window=15m&trade_date=2026-05-12')
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(resp.data['code'], 'not_found')
         self.assertIn('timestamp', resp.data)
 
     def test_cvd_400_when_trade_date_is_invalid(self):
-        resp = self.client.get('/api/market/session-facts/HPG/cvd/?window=15m&trade_date=bad-date')
+        resp = self.client.get('/core/v1/session-facts/HPG/cvd/?window=15m&trade_date=bad-date')
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(resp.data.get('code'), 'validation_error')
         self.assertIn('field_errors', resp.data)

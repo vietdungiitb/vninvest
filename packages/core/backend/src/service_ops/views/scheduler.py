@@ -19,6 +19,11 @@ from ..scheduler_catalog import build_scheduler_catalog, build_scheduler_health_
 from ..ownership import build_ownership_matrix_from_db
 from ..models import ConfigChangeAudit, ServiceRunLog
 from .base import SOCBaseView
+from vninvest_core.pagination import CoreCursorPagination
+
+class SchedulerJobHistoryCursorPagination(CoreCursorPagination):
+    ordering = '-started_at'
+    page_size = 20
 
 
 # ── Serializers ────────────────────────────────────────────────────────────────
@@ -207,6 +212,7 @@ class SchedulerHealthView(SOCBaseView):
 )
 class SchedulerJobHistoryView(SOCBaseView):
     """GET /core/v1/operator/scraping/dataops/scheduler/jobs/{job_key}/history/"""
+    pagination_class = SchedulerJobHistoryCursorPagination
 
     def get(self, request, job_key: str):
         from django.conf import settings
@@ -226,19 +232,18 @@ class SchedulerJobHistoryView(SOCBaseView):
         meta = CATALOG_JOB_METADATA.get(job_key, {})
         service_key = meta.get('service_key', '')
 
-        page_size = min(int(request.query_params.get('page_size', 20)), 100)
-        page = max(int(request.query_params.get('page', 1)), 1)
-        offset = (page - 1) * page_size
-
-        results = []
-        count = 0
-
         if service_key:
             qs = ServiceRunLog.objects.filter(
                 service__service_key=service_key,
             ).order_by('-started_at')
-            count = qs.count()
-            for log in qs[offset:offset + page_size]:
+        else:
+            qs = ServiceRunLog.objects.none()
+
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(qs, request)
+        if page is not None:
+            results = []
+            for log in page:
                 results.append({
                     'id': log.pk,
                     'celery_task_id': log.celery_task_id,
@@ -250,17 +255,25 @@ class SchedulerJobHistoryView(SOCBaseView):
                     'output_summary': log.output_summary,
                     'error_detail': log.error_detail or None,
                 })
+            response = paginator.get_paginated_response(results)
+            response.data['job_key'] = job_key
+            return response
 
-        total_pages = max((count + page_size - 1) // page_size, 1)
-
+        results = []
+        for log in qs:
+            results.append({
+                'id': log.pk,
+                'celery_task_id': log.celery_task_id,
+                'status': log.status,
+                'started_at': log.started_at.isoformat() if log.started_at else None,
+                'finished_at': log.finished_at.isoformat() if log.finished_at else None,
+                'duration_seconds': log.duration_seconds,
+                'input_summary': log.input_summary,
+                'output_summary': log.output_summary,
+                'error_detail': log.error_detail or None,
+            })
         return Response({
             'job_key': job_key,
-            'count': count,
-            'page': page,
-            'page_size': page_size,
-            'total_pages': total_pages,
-            'next': f'?page={page + 1}&page_size={page_size}' if page < total_pages else None,
-            'previous': f'?page={page - 1}&page_size={page_size}' if page > 1 else None,
             'results': results,
         })
 

@@ -34,7 +34,7 @@ class GlobalSymbolRegistryWorkspaceIntegrationTests(TestCase):
         watchlist = Watchlist.objects.create(user=self.user, name='Theo dõi nền tảng', description='')
 
         create_response = self.client.post(
-            f'/api/workspace/watchlists/{watchlist.pk}/items/',
+            f'/core/v1/workspace/watchlists/{watchlist.pk}/items/',
             {'symbol': 'fpt'},
             format='json',
         )
@@ -49,7 +49,7 @@ class GlobalSymbolRegistryWorkspaceIntegrationTests(TestCase):
         self.assertTrue(edge.is_active)
         self.assertEqual(registry.demand_source_count, 1)
 
-        delete_response = self.client.delete(f'/api/workspace/watchlists/{watchlist.pk}/items/FPT/')
+        delete_response = self.client.delete(f'/core/v1/workspace/watchlists/{watchlist.pk}/items/FPT/')
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
 
         registry.refresh_from_db()
@@ -61,7 +61,7 @@ class GlobalSymbolRegistryWorkspaceIntegrationTests(TestCase):
         portfolio = Portfolio.objects.create(user=self.user, name='Danh mục giao dịch')
 
         create_response = self.client.post(
-            f'/api/workspace/portfolios/{portfolio.pk}/transactions/',
+            f'/core/v1/workspace/portfolios/{portfolio.pk}/transactions/',
             {
                 'symbol': 'VCB',
                 'transaction_type': 'BUY',
@@ -85,7 +85,7 @@ class GlobalSymbolRegistryWorkspaceIntegrationTests(TestCase):
         self.assertTrue(vcb_edge.is_active)
 
         patch_response = self.client.patch(
-            f'/api/workspace/transactions/{transaction_id}/',
+            f'/core/v1/workspace/transactions/{transaction_id}/',
             {'symbol': 'FPT'},
             format='json',
         )
@@ -103,36 +103,11 @@ class GlobalSymbolRegistryWorkspaceIntegrationTests(TestCase):
         )
         self.assertTrue(fpt_edge.is_active)
 
-        delete_response = self.client.delete(f'/api/workspace/transactions/{transaction_id}/')
+        delete_response = self.client.delete(f'/core/v1/workspace/transactions/{transaction_id}/')
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
 
         fpt_registry.refresh_from_db()
         fpt_edge.refresh_from_db()
         self.assertFalse(fpt_edge.is_active)
         self.assertEqual(fpt_registry.current_priority_tier, GlobalSymbolRegistry.PriorityTierChoices.RECOVERY)
-
-    def test_legacy_watchlist_item_paths_sync_registry(self):
-        watchlist = Watchlist.objects.create(user=self.user, name='Legacy list', description='')
-
-        create_response = self.client.post(
-            f'/api/portfolio/watchlist/groups/{watchlist.pk}/items/',
-            {'symbol': 'HPG'},
-            format='json',
-        )
-        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
-        item_id = create_response.data['id']
-
-        registry = GlobalSymbolRegistry.objects.get(symbol='HPG')
-        edge = GlobalSymbolDemandSource.objects.get(
-            registry=registry,
-            source_type=GlobalSymbolDemandSource.SourceTypeChoices.WATCHLIST,
-            source_ref=f'watchlist:{watchlist.pk}',
-        )
-        self.assertTrue(edge.is_active)
-
-        delete_response = self.client.delete(f'/api/portfolio/watchlist/items/{item_id}/')
-        self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
-
-        registry.refresh_from_db()
-        edge.refresh_from_db()
-        self.assertFalse(edge.is_active)
+

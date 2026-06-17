@@ -18,9 +18,15 @@ from .models import DailyPrice, IntradayBar, IntradayTick, StockProfile
 from .serializers import DailyPriceSerializer, StockProfileSerializer
 
 
+from vninvest_core.pagination import CoreCursorPagination
+
+class StockProfileCursorPagination(CoreCursorPagination):
+    ordering = 'symbol'
+    page_size = 100
+
 class StockProfileListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    _PAGE_SIZE = 100
+    pagination_class = StockProfileCursorPagination
 
     def get(self, request):
         qs = StockProfile.objects.filter(status='active').order_by('symbol')
@@ -37,17 +43,15 @@ class StockProfileListView(APIView):
         industry = request.query_params.get('industry')
         if industry:
             qs = qs.filter(industry__icontains=industry)
-        try:
-            page = max(1, int(request.query_params.get('page', 1)))
-        except ValueError:
-            page = 1
-        offset = (page - 1) * self._PAGE_SIZE
-        results = qs[offset: offset + self._PAGE_SIZE]
-        return Response({
-            'results': StockProfileSerializer(results, many=True).data,
-            'page': page,
-            'page_size': self._PAGE_SIZE,
-        })
+
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(qs, request)
+        if page is not None:
+            serializer = StockProfileSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
+        serializer = StockProfileSerializer(qs, many=True)
+        return Response({'results': serializer.data})
 
 
 class StockProfileDetailView(APIView):
@@ -62,13 +66,17 @@ class StockProfileDetailView(APIView):
         return Response(StockProfileSerializer(profile).data)
 
 
+class DailyPriceCursorPagination(CoreCursorPagination):
+    ordering = ('-date', '-id')
+    page_size = 250
+
 class DailyPriceListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    _PAGE_SIZE = 250
+    pagination_class = DailyPriceCursorPagination
 
     def get(self, request, symbol):
         symbol = symbol.upper()
-        qs = DailyPrice.objects.filter(symbol=symbol).order_by('-date')
+        qs = DailyPrice.objects.filter(symbol=symbol).order_by('-date', '-id')
         date_from = request.query_params.get('date_from')
         date_to = request.query_params.get('date_to')
         if date_from:
@@ -76,17 +84,18 @@ class DailyPriceListView(APIView):
         if date_to:
             qs = qs.filter(date__lte=date_to)
 
-        try:
-            page = max(1, int(request.query_params.get('page', 1)))
-        except ValueError:
-            page = 1
-        offset = (page - 1) * self._PAGE_SIZE
-        results = qs[offset: offset + self._PAGE_SIZE]
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(qs, request)
+        if page is not None:
+            serializer = DailyPriceSerializer(page, many=True)
+            response = paginator.get_paginated_response(serializer.data)
+            response.data['symbol'] = symbol
+            return response
+
+        serializer = DailyPriceSerializer(qs, many=True)
         return Response({
             'symbol': symbol,
-            'results': DailyPriceSerializer(results, many=True).data,
-            'page': page,
-            'page_size': self._PAGE_SIZE,
+            'results': serializer.data,
         })
 
 

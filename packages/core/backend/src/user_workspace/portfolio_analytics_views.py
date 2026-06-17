@@ -545,18 +545,19 @@ class PortfolioAICommandCenterTestView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        from vninvest_core.exceptions import ValidationErrorException
+        
         payload = request.data if isinstance(request.data, dict) else {}
         provider = str(payload.get('ai_provider') or '').strip().lower()
         model = str(payload.get('ai_model') or '').strip()
         
         if not provider:
-            return Response({'ok': False, 'message': 'Vui lòng chọn Nhà cung cấp AI hợp lệ.'}, status=400)
+            raise ValidationErrorException(detail='Vui lòng chọn Nhà cung cấp AI hợp lệ.', code='validation_error')
         if not model:
-            return Response({'ok': False, 'message': 'Vui lòng chọn hoặc cấu hình Mô hình AI.'}, status=400)
+            raise ValidationErrorException(detail='Vui lòng chọn hoặc cấu hình Mô hình AI.', code='validation_error')
             
         if provider == 'openclaw':
             return Response({
-                'ok': True,
                 'message': f'Kết nối đến OpenClaw (Default) với mô hình {model} thành công. Phản hồi mượt mà.'
             })
             
@@ -568,13 +569,9 @@ class PortfolioAICommandCenterTestView(APIView):
                 has_key = True
                 
         if not has_key:
-            return Response({
-                'ok': False,
-                'message': f'Lỗi kết nối đến {provider}: Thiếu API Key cấu hình cho mô hình {model}.'
-            }, status=400)
+            raise ValidationErrorException(detail=f'Lỗi kết nối đến {provider}: Thiếu API Key cấu hình cho mô hình {model}.', code='validation_error')
             
         return Response({
-            'ok': True,
             'message': f'Kiểm tra kết nối thành công: Đã xác thực thành công API Key với {provider} và mô hình {model}.'
         })
 

@@ -1,7 +1,7 @@
 from rest_framework import generics, permissions
 
 from identity_access.permissions import IsCoreOperator, IsTenantActive
-from vninvest_core.pagination import CoreCursorPagination
+from vninvest_core.pagination import CoreCursorPagination, AuditCursorPagination
 
 from .models import AuditEvent
 from .serializers import AuditEventSerializer, TenantLifecycleEventSerializer
@@ -11,7 +11,7 @@ from tenant_lifecycle.models import TenantLifecycleEvent
 class AuditLogListView(generics.ListAPIView):
     # SFI-B6: Operator-only access for audit logs.
     permission_classes = [permissions.IsAuthenticated, IsCoreOperator]
-    pagination_class = CoreCursorPagination
+    pagination_class = AuditCursorPagination
 
     def get_queryset(self):
         qs = AuditEvent.objects.all().order_by('-occurred_at')

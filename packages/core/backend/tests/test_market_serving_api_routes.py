@@ -45,17 +45,17 @@ class MarketServingApiRouteTests(TestCase):
             source='live',
         )
 
-        resolver = resolve('/api/market/symbol-snapshot/')
+        resolver = resolve('/core/v1/symbol-snapshot/')
         self.assertIs(resolver.func.cls, SymbolSnapshotListView)
 
-        list_response = self.client.get('/api/market/symbol-snapshot/?symbol=VCB')
+        list_response = self.client.get('/core/v1/symbol-snapshot/?symbol=VCB')
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
         self.assertEqual(list_response.data['results'][0]['symbol'], 'VCB')
 
-        resolver_detail = resolve('/api/market/symbol-snapshot/VCB/')
+        resolver_detail = resolve('/core/v1/symbol-snapshot/VCB/')
         self.assertIs(resolver_detail.func.cls, SymbolSnapshotDetailView)
 
-        detail_response = self.client.get('/api/market/symbol-snapshot/VCB/')
+        detail_response = self.client.get('/core/v1/symbol-snapshot/VCB/')
         self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
         self.assertEqual(detail_response.data['symbol'], 'VCB')
         self.assertEqual(detail_response.data['_source'], 'db-read')
@@ -87,25 +87,25 @@ class MarketServingApiRouteTests(TestCase):
             sell_volume=700_000,
         )
 
-        resolver = resolve('/api/market/session-facts/')
+        resolver = resolve('/core/v1/session-facts/')
         self.assertIs(resolver.func.cls, SessionFactsListView)
 
-        list_response = self.client.get('/api/market/session-facts/?symbol=FPT')
+        list_response = self.client.get('/core/v1/session-facts/?symbol=FPT')
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
         self.assertEqual(list_response.data['results'][0]['symbol'], 'FPT')
 
-        resolver_detail = resolve('/api/market/session-facts/FPT/')
+        resolver_detail = resolve('/core/v1/session-facts/FPT/')
         self.assertIs(resolver_detail.func.cls, SessionFactsDetailView)
 
-        resolver_cvd = resolve('/api/market/session-facts/FPT/cvd/')
+        resolver_cvd = resolve('/core/v1/session-facts/FPT/cvd/')
         self.assertIs(resolver_cvd.func.cls, SessionFactsCvdView)
 
-        detail_response = self.client.get('/api/market/session-facts/FPT/')
+        detail_response = self.client.get('/core/v1/session-facts/FPT/')
         self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
         self.assertEqual(detail_response.data['symbol'], 'FPT')
         self.assertEqual(detail_response.data['_source'], 'db-read')
 
-        cvd_response = self.client.get('/api/market/session-facts/FPT/cvd/?window=15m')
+        cvd_response = self.client.get('/core/v1/session-facts/FPT/cvd/?window=15m')
         self.assertEqual(cvd_response.status_code, status.HTTP_200_OK)
         self.assertEqual(cvd_response.data['symbol'], 'FPT')
         self.assertEqual(cvd_response.data['cvd_series'][0]['buy_strength'], 66.5)

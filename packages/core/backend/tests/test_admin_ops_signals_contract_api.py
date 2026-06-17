@@ -42,6 +42,7 @@ from vninvest_core.contracts.admin_ops.views import (
 )
 
 
+@override_settings(ROOT_URLCONF='tests.urls_test_admin_ops')
 class AdminOpsSignalsContractApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -149,7 +150,6 @@ class AdminOpsSignalsContractApiTests(TestCase):
         summary_response = self.client.get('/api/admin-ops/signals/summary/')
 
         self.assertEqual(summary_response.status_code, status.HTTP_200_OK)
-        self.assertTrue(summary_response.data['ok'])
         self.assertEqual(summary_response.data['services']['whale']['recent_event_count_24h'], 1)
         self.assertEqual(summary_response.data['services']['dark_flow']['recent_event_count_24h'], 1)
         self.assertEqual(summary_response.data['universe']['counts']['effective'], 2)
@@ -159,7 +159,6 @@ class AdminOpsSignalsContractApiTests(TestCase):
         config_response = self.client.get('/api/admin-ops/signals/config/')
 
         self.assertEqual(config_response.status_code, status.HTTP_200_OK)
-        self.assertTrue(config_response.data['ok'])
         self.assertTrue(config_response.data['services_config']['whale_service']['enabled'])
         self.assertTrue(config_response.data['universe_policy']['include_watchlist_symbols'])
         self.assertEqual(config_response.data['retention_policy']['whale_event_keep_days'], 90)

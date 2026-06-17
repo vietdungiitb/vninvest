@@ -68,10 +68,10 @@ class SignalIntelligenceApiRouteTests(TestCase):
             source_ref='signal-test-1',
         )
 
-        resolver = resolve('/api/signals/alert-center/feed/')
+        resolver = resolve('/core/v1/signals/alert-center/feed')
         self.assertIs(resolver.func.cls, AlertCenterFeedView)
 
-        response = self.client.get('/api/signals/alert-center/feed/?symbol=FPT')
+        response = self.client.get('/core/v1/signals/alert-center/feed?symbol=FPT')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('results', response.data)
@@ -103,10 +103,10 @@ class SignalIntelligenceApiRouteTests(TestCase):
             executed_at=timezone.now(),
         )
 
-        resolver = resolve('/api/signals/whale-feed/')
+        resolver = resolve('/core/v1/whale-feed')
         self.assertIs(resolver.func.cls, WhaleFeedAggregateView)
 
-        response = self.client.get('/api/signals/whale-feed/?symbol=HPG')
+        response = self.client.get('/core/v1/whale-feed?symbol=HPG')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsInstance(response.data, dict)
@@ -141,10 +141,10 @@ class SignalIntelligenceApiRouteTests(TestCase):
             triggered_at=timezone.now(),
         )
 
-        resolver = resolve('/api/signals/order-flow/VCB/')
+        resolver = resolve('/core/v1/signals/order-flow/VCB/')
         self.assertIs(resolver.func.cls, OrderFlowEventListView)
 
-        response = self.client.get('/api/signals/order-flow/VCB/?signal_type=whale_sell')
+        response = self.client.get('/core/v1/signals/order-flow/VCB/?signal_type=whale_sell')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('results', response.data)

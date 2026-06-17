@@ -217,13 +217,13 @@ class PartnerScopeGuardRouteTests(TestCase):
     def test_human_login_pat_bypasses_partner_scope_guard(self):
         client = APIClient()
         login_response = client.post(
-            '/api/auth/login/',
+            '/core/v1/auth/login/',
             {'username': self.user.username, 'password': 'testpass123'},
             format='json',
         )
 
         self.assertEqual(login_response.status_code, status.HTTP_200_OK)
-        client.credentials(HTTP_AUTHORIZATION=f"Bearer {login_response.data['token']}")
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {login_response.data['data']['token']}")
 
         response = client.get('/core/v1/partner/pats/')
 
@@ -240,7 +240,7 @@ class PartnerScopeGuardRouteTests(TestCase):
         )
 
         client = APIClient()
-        response = client.post('/api/auth/token/refresh/', {'refresh': raw_secret}, format='json')
+        response = client.post('/core/v1/auth/token/refresh/', {'refresh': raw_secret}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertEqual(credential.public_id, credential.public_id)
@@ -366,13 +366,13 @@ class PartnerScopeGuardRouteTests(TestCase):
 
         client = APIClient()
         login_response = client.post(
-            '/api/auth/login/',
+            '/core/v1/auth/login/',
             {'username': staff_user.username, 'password': 'testpass123'},
             format='json',
         )
 
         self.assertEqual(login_response.status_code, status.HTTP_200_OK)
-        client.credentials(HTTP_AUTHORIZATION=f"Bearer {login_response.data['token']}")
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {login_response.data['data']['token']}")
 
         response = client.get('/core/v1/audit-log')
 
@@ -500,7 +500,7 @@ class PartnerScopeGuardRouteTests(TestCase):
 
         client = APIClient()
         client.credentials(HTTP_AUTHORIZATION=f'Bearer {raw_secret}')
-        response = client.get('/api/auth/me/')
+        response = client.get('/core/v1/auth/me/')
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertEqual(credential.public_id, credential.public_id)
@@ -518,7 +518,7 @@ class PartnerScopeGuardRouteTests(TestCase):
         self.service_account.save(update_fields=['status', 'updated_at'])
 
         client = APIClient()
-        response = client.post('/api/auth/token/refresh/', {'refresh': raw_secret}, format='json')
+        response = client.post('/core/v1/auth/token/refresh/', {'refresh': raw_secret}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertEqual(credential.public_id, credential.public_id)

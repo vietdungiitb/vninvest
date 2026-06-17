@@ -43,10 +43,10 @@ class NativePublicBootstrapRouteTests(TestCase):
     def test_tracked_symbols_route_resolves_and_returns_empty_list(self):
         self.client.force_authenticate(user=self.user)
 
-        resolver = resolve('/api/stock-management/tracked-symbols/')
+        resolver = resolve('/core/v1/stock-management/tracked-symbols/')
         self.assertIs(resolver.func.view_class, StockManagementTrackedSymbolsView)
 
-        response = self.client.get('/api/stock-management/tracked-symbols/')
+        response = self.client.get('/core/v1/stock-management/tracked-symbols/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, [])
@@ -55,6 +55,6 @@ class NativePublicBootstrapRouteTests(TestCase):
     def test_tracked_symbols_route_remains_native_when_legacy_url_configured(self):
         self.client.force_authenticate(user=self.user)
 
-        get_response = self.client.get('/api/stock-management/tracked-symbols/?page=1')
+        get_response = self.client.get('/core/v1/stock-management/tracked-symbols/?page=1')
         self.assertEqual(get_response.status_code, status.HTTP_200_OK)
         self.assertEqual(get_response.data, [])

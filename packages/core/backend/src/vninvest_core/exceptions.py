@@ -178,7 +178,13 @@ def core_api_exception_handler(exc: Exception, context: dict) -> Optional[Respon
         Response with standardized error envelope, or None to use default handler
     """
     request = context.get('request')
-    request_id = getattr(request, 'request_id', None) or f'req_{uuid.uuid4().hex[:16]}'
+    meta = getattr(request, 'META', None) or getattr(getattr(request, '_request', None), 'META', {})
+    request_id = (
+        getattr(request, 'request_id', None) or
+        meta.get('X_REQUEST_ID') or
+        meta.get('HTTP_X_REQUEST_ID') or
+        f'req_{uuid.uuid4().hex[:16]}'
+    )
     
     # Handle Core API exceptions
     if isinstance(exc, CoreAPIException):
