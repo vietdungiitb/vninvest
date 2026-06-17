@@ -470,5 +470,5 @@ networks:
     driver: bridge
 
 secrets:
-  vnbroker_github_token:
-    environment: VNBROKER_GITHUB_TOKEN
+  vnbroker_github_token: !override
+    file: ./scratch/token.txt

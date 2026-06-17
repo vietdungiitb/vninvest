@@ -73,3 +73,7 @@ opennews-main/
 htmlcov/
 .pytest_cache/
 .mypy_cache/
+
+# ── Local developer scratch files ─────────────────────────────────────────────
+scratch/
+.agents/
