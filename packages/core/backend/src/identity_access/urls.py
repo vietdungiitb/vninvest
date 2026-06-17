@@ -12,6 +12,8 @@ urlpatterns = [
     # Auth endpoints (Gate A2, A3)
     path('auth/login', views_auth.login_view, name='auth-login'),
     path('auth/login/', views_auth.login_view, name='auth-login-slash'),
+    path('auth/token', views_auth.login_view, name='auth-token-no-slash'),
+    path('auth/token/', views_auth.login_view, name='auth-token'),
     path('auth/profile', views_auth.profile_view, name='auth-profile'),
     # alias /core/v1/auth/me → profile (used by packages/web coreAdapter)
     path('auth/me', views_auth.profile_view, name='auth-me'),
