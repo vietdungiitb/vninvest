@@ -1,5 +1,15 @@
 import React from "react";
-import styles from "./DetailDrawer.module.css";
+const styles = {
+  detailDrawer: "core-detail-drawer",
+  titleRow: "core-detail-title-row",
+  closeBtn: "core-detail-close-btn",
+  detailGrid: "core-detail-grid",
+  detailSection: "core-detail-section",
+  detailItem: "core-detail-item",
+  flexColGap8: "flex-col-gap-8",
+  marginTop8: "margin-top-8",
+  fontSize85remColorMuted: "font-size-85rem-color-muted"
+};
 
 const { createElement } = React;
 const e = createElement;

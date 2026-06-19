@@ -13,9 +13,11 @@ class WatchlistItemSerializer(serializers.ModelSerializer):
 
 
 class WatchlistSerializer(serializers.ModelSerializer):
+    items = WatchlistItemSerializer(many=True, read_only=True)
+
     class Meta:
         model = Watchlist
-        fields = ['id', 'name', 'description', 'is_default', 'created_at']
+        fields = ['id', 'name', 'description', 'is_default', 'items', 'created_at']
         read_only_fields = ['id', 'created_at']
 
 

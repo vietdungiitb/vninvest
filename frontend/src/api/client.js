@@ -425,28 +425,37 @@ export const revokeTenantPAT = (tokenId, payload = {}) =>
   });
 
 // --- Portfolio APIs (migrated to /core/v1/workspace/) ---
-export const getPortfolios = () => coreApiAdapter.getPortfolios();
-export const createPortfolio = (data) => coreApiAdapter.createPortfolio(data);
-export const getPortfolio = (id) => coreApiAdapter.getPortfolio(id);
-export const updatePortfolio = (id, data) => coreApiAdapter.updatePortfolio(id, data);
-export const deletePortfolio = (id) => coreApiAdapter.deletePortfolio(id);
+export const getPortfolios = () =>
+  Promise.resolve(coreApiAdapter.getPortfolios()).then((data) => ({ data }));
+export const createPortfolio = (data) =>
+  Promise.resolve(coreApiAdapter.createPortfolio(data)).then((data) => ({ data }));
+export const getPortfolio = (id) =>
+  Promise.resolve(coreApiAdapter.getPortfolio(id)).then((data) => ({ data }));
+export const updatePortfolio = (id, data) =>
+  Promise.resolve(coreApiAdapter.updatePortfolio(id, data)).then((data) => ({ data }));
+export const deletePortfolio = (id) =>
+  Promise.resolve(coreApiAdapter.deletePortfolio(id)).then((data) => ({ data }));
 
 // --- SubAccount APIs ---
-export const getSubAccounts = () => coreApiAdapter.getSubAccounts();
-export const createSubAccount = (data) => coreApiAdapter.createSubAccount(data);
-export const updateSubAccount = (id, data) => coreApiAdapter.updateSubAccount(id, data);
-export const deleteSubAccount = (id) => coreApiAdapter.deleteSubAccount(id);
+export const getSubAccounts = () =>
+  Promise.resolve(coreApiAdapter.getSubAccounts()).then((data) => ({ data }));
+export const createSubAccount = (data) =>
+  Promise.resolve(coreApiAdapter.createSubAccount(data)).then((data) => ({ data }));
+export const updateSubAccount = (id, data) =>
+  Promise.resolve(coreApiAdapter.updateSubAccount(id, data)).then((data) => ({ data }));
+export const deleteSubAccount = (id) =>
+  Promise.resolve(coreApiAdapter.deleteSubAccount(id)).then((data) => ({ data }));
 
 // --- Transaction APIs ---
 export const getTransactions = (subAccountId) =>
-  coreApiAdapter.getSubAccountTransactions(subAccountId);
+  Promise.resolve(coreApiAdapter.getSubAccountTransactions(subAccountId)).then((data) => ({ data }));
 export const createTransaction = (subAccountId, data) =>
-  coreApiAdapter.createSubAccountTransaction(subAccountId, data);
+  Promise.resolve(coreApiAdapter.createSubAccountTransaction(subAccountId, data)).then((data) => ({ data }));
 
 export const updateTransaction = (id, data) =>
-  coreApiAdapter.updateTransaction(id, data);
+  Promise.resolve(coreApiAdapter.updateTransaction(id, data)).then((data) => ({ data }));
 export const deleteTransaction = (id) =>
-  coreApiAdapter.deleteTransaction(id);
+  Promise.resolve(coreApiAdapter.deleteTransaction(id)).then((data) => ({ data }));
 
 // --- Analytics APIs ---
 export const getHoldings = (portfolioId) =>

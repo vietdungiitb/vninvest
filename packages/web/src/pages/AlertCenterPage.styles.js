@@ -1021,4 +1021,33 @@ export const CORE_STYLES = `
         color: var(--text-muted);
         padding: 0 10px;
       }
+
+      /* Additional helper/utility classes for DetailDrawer and SymbolStatsTable components */
+      .count-cell {
+        font-weight: 800;
+        font-family: var(--font-mono, monospace);
+        font-size: 0.9rem;
+      }
+
+      .value-cell {
+        font-family: var(--font-mono, monospace);
+        color: var(--neon-blue);
+        font-weight: 600;
+      }
+
+      .flex-col-gap-8 {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        font-size: 0.85rem;
+      }
+
+      .margin-top-8 {
+        margin-top: 8px;
+      }
+
+      .font-size-85rem-color-muted {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+      }
 `;

@@ -9,8 +9,14 @@ import { SummaryMetrics } from "../components/alert-center/SummaryMetrics.js";
 import { AlertCard } from "../components/alert-center/AlertCard.js";
 import { SymbolStatsTable } from "../components/alert-center/SymbolStatsTable.js";
 import { DetailDrawer } from "../components/alert-center/DetailDrawer.js";
-import styles from "./AlertCenterPage.module.css";
+import { CORE_STYLES } from "./AlertCenterPage.styles.js";
 import { useAlertCenterData } from "../hooks/useAlertCenterData.js";
+
+// Bypassing host webpack CSS module limitations by using a Proxy that returns class names directly,
+// and injecting global styles via a dynamically rendered <style> tag.
+const styles = new Proxy({}, {
+  get: (target, prop) => prop
+});
 
 const { createElement, useEffect, useRef, useState, useCallback } = React;
 const e = createElement;
@@ -287,6 +293,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }) {
   }
 
   return e("div", { className: `${styles["core-alert-center-page"]} ${className}`.trim() }, [
+    e("style", { key: "global-styles", dangerouslySetInnerHTML: { __html: CORE_STYLES } }),
     // ── Header Section ────────────────────────────────────────────────────────
     e("header", { key: "header", className: styles["core-alert-center-header"] }, [
       e("div", { key: "title-container" }, [

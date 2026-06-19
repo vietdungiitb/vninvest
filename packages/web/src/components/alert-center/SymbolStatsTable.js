@@ -1,5 +1,30 @@
 import React from "react";
-import styles from "./SymbolStatsTable.module.css";
+const styles = {
+  dashboardPanel: "core-dashboard-panel",
+  sectionTitle: "core-section-title",
+  symbolStatsSearch: "core-symbol-stats-search",
+  searchInput: "searchInput",
+  scrollableContainer: "core-scrollable-container",
+  emptyState: "core-empty",
+  symbolStatsTable: "core-symbol-stats-table",
+  symbolStatsRow: "core-symbol-stats-row",
+  statsSymbolBadge: "core-stats-symbol-badge",
+  countCell: "count-cell",
+  strengthContainer: "core-stats-strength-container",
+  strengthBar: "core-stats-strength-bar",
+  strengthBuy: "core-stats-strength-buy",
+  strengthSell: "core-stats-strength-sell",
+  strengthNeutral: "core-stats-strength-neutral",
+  strengthText: "core-stats-strength-text",
+  directionBuy: "direction-buy",
+  directionSell: "direction-sell",
+  frequencyBadge: "core-stats-frequency-badge",
+  freqExplosive: "freq-explosive",
+  freqHigh: "freq-high",
+  freqMedium: "freq-medium",
+  freqLow: "freq-low",
+  valueCell: "value-cell"
+};
 
 const { createElement } = React;
 const e = createElement;

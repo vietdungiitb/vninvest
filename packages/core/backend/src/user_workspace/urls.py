@@ -23,6 +23,8 @@ from .portfolio_analytics_views import (
     PortfolioWhaleBacktestStatsView,
     PortfolioScreenerRuleDetailView,
     PortfolioScreenerRuleRunView,
+    PortfolioAIAdvisoryListView,
+    PortfolioAIAdvisorySymbolStatsView,
 )
 
 urlpatterns = [
@@ -41,6 +43,15 @@ urlpatterns = [
     path('workspace/watchlists/<int:watchlist_id>/items/<str:symbol>/', views.WatchlistItemDeleteView.as_view(), name='watchlist-item-delete'),
     path('workspace/whale-analytics/<str:symbol>/', PortfolioWhaleAnalyticsView.as_view(), name='workspace-whale-analytics'),
     path('workspace/ai-command-center/', PortfolioAICommandCenterView.as_view(), name='workspace-ai-cc-direct'),
+
+    # Legacy compat: portfolio ai-advisory routes (proxy for legacy frontend client.js calls)
+    path('portfolio/ai-advisory/', PortfolioAIAdvisoryListView.as_view(), name='portfolio-ai-advisory-list'),
+    path('portfolio/ai-advisory-symbol-stats/', PortfolioAIAdvisorySymbolStatsView.as_view(), name='portfolio-ai-advisory-symbol-stats'),
+
+    # Sub-accounts native routes (migrated to native workspace core/v1/)
+    path('portfolio/subaccounts/', views.SubAccountListCreateAPIView.as_view(), name='subaccount-list-create'),
+    path('portfolio/subaccounts/<int:pk>/', views.SubAccountDetailAPIView.as_view(), name='subaccount-detail'),
+    path('portfolio/subaccounts/<int:pk>/transactions/', views.SubAccountTransactionsAPIView.as_view(), name='subaccount-transactions'),
 
     # Broker Integration (DNSE) — Native Core Implementation
     path('broker/dnse/config/', views_dnse.dnse_config_api, name='dnse-broker-config'),

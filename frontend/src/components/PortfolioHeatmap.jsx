@@ -20,7 +20,7 @@ const FINTECH_HEAT_COLORS = {
   upSoft: '#00CC99',
   downStrong: '#FF3344', // Electric Red
   downSoft: '#FF6677',
-  neutral: '#2A2E39',
+  neutral: '#FFD200',    // Standard Yellow for unchanged (0.00%)
 };
 
 const HEAT_SCALE_COLORS = [

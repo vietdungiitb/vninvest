@@ -10,7 +10,7 @@ export const InterfaceProvider = ({ children }) => {
   });
   const [modernLeftSidebarOpen, setModernLeftSidebarOpen] = useState(() => {
     const saved = localStorage.getItem('vninvest_modern_left_sidebar_open');
-    return saved === '1';
+    return saved !== '0';
   });
 
   useEffect(() => {

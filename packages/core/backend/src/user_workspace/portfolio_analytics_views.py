@@ -1023,6 +1023,24 @@ class PortfolioScreenerRuleDetailView(APIView):
         return Response(status=http_status.HTTP_204_NO_CONTENT)
 
 
+class PortfolioAIAdvisoryListView(APIView):
+    """GET /portfolio/ai-advisory/ — batch advisory listing (legacy compat stub).
+    Returns empty items so frontend falls through to per-symbol canonical advisory queries."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response({'items': []})
+
+
+class PortfolioAIAdvisorySymbolStatsView(APIView):
+    """GET /portfolio/ai-advisory-symbol-stats/ — advisory symbol stats (legacy compat stub).
+    Returns empty stats so frontend falls through to symbol universe fallback."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response({'stats': []})
+
+
 class PortfolioScreenerRuleRunView(APIView):
     """POST /api/portfolio/screener/rules/<pk>/run/"""
     permission_classes = [permissions.IsAuthenticated]
