@@ -12,7 +12,7 @@ import { DetailDrawer } from "../components/alert-center/DetailDrawer.js";
 import styles from "./AlertCenterPage.module.css";
 import { useAlertCenterData } from "../hooks/useAlertCenterData.js";
 
-const { createElement, useRef, useState, useCallback } = React;
+const { createElement, useEffect, useRef, useState, useCallback } = React;
 const e = createElement;
 const DEFAULT_ENV = {};
 
