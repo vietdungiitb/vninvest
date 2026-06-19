@@ -35,13 +35,6 @@ const DashboardPanelFallback = ({ minHeightClass = 'min-h-[220px]' }) => (
 
 const EMPTY = [];
 
-const EXCLUDED_MARKET_GROUPS = new Set([
-  'VN100',
-  'HOSE',
-  'HNX',
-  'UPCOM',
-]);
-
 export default function PackageDashboardHost() {
   const { activePortfolioId, isAuthenticated } = usePortfolio();
   const { t, formatNumber } = useI18n();
@@ -56,6 +49,7 @@ export default function PackageDashboardHost() {
   // once holdings are ready and the realtime feed will update.
   const [holdings, setHoldings] = React.useState(EMPTY);
   const [trackedSymbols, setTrackedSymbols] = React.useState(EMPTY);
+  const [watchlists, setWatchlists] = React.useState(EMPTY);
   const [watchlistGroups, setWatchlistGroups] = React.useState(EMPTY);
   const [digest, setDigest] = React.useState(null);
   const digestFetchInFlightRef = React.useRef(false);
@@ -107,20 +101,17 @@ export default function PackageDashboardHost() {
       }
     });
 
-    // 3. Custom watchlists (excluding system defaults)
-    watchlistGroups.forEach((group) => {
-      const name = String(group?.name || '').trim().toUpperCase();
-      if (name && !EXCLUDED_MARKET_GROUPS.has(name)) {
-        (group.items || []).forEach((item) => {
-          if (item?.symbol) {
-            symbolsSet.add(normalizeSymbol(item.symbol));
-          }
-        });
-      }
+    // 3. Personal watchlists (user-created, not system market groups)
+    watchlists.forEach((group) => {
+      (group.items || []).forEach((item) => {
+        if (item?.symbol) {
+          symbolsSet.add(normalizeSymbol(item.symbol));
+        }
+      });
     });
 
     return Array.from(symbolsSet);
-  }, [liveHoldings, trackedSymbols, watchlistGroups]);
+  }, [liveHoldings, trackedSymbols, watchlists]);
 
   const heatmapData = useMemo(() => {
     if (!heatmapSymbols.length) return [];
@@ -414,9 +405,10 @@ export default function PackageDashboardHost() {
   // We pass a side-channel callback so PackageDashboardHost can update local
   // state for realtime feed once core data is loaded.
   const handleDataReady = React.useCallback(
-    ({ holdings: h, trackedSymbols: ts, watchlistGroups: wg }) => {
+    ({ holdings: h, trackedSymbols: ts, watchlistGroups: wg, watchlists: wl }) => {
       setHoldings(h || EMPTY);
       setTrackedSymbols(ts || EMPTY);
+      setWatchlists(wl || EMPTY);
       setWatchlistGroups(wg || EMPTY);
     },
     [],

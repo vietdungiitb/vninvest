@@ -181,7 +181,7 @@ export function DashboardPage({
     const token = collectUniqueSortedSymbols(holdings, trackedSymbols, watchlists, watchlistGroups);
     if (!loading && !error && onDataReady && token !== prevReadyTokenRef.current) {
       prevReadyTokenRef.current = token;
-      onDataReady({ holdings, trackedSymbols, watchlistGroups });
+      onDataReady({ holdings, trackedSymbols, watchlistGroups, watchlists });
     }
   }, [loading, error, holdings, trackedSymbols, watchlists, watchlistGroups, onDataReady]);
 
