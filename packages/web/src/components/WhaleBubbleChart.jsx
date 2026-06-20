@@ -1352,7 +1352,7 @@ export default function WhaleBubbleChart({
           {/* Symbol Selector - Hidden when embedded with a specific symbol */}
           {(!isEmbedded || !selectedSymbol) && (
             <div className="flex items-center gap-2">
-              <label className="text-xs font-bold text-slate-400 uppercase">{t('whaleChart.symbol') || 'Mã CK'}</label>
+              <label className="text-xs font-bold text-slate-400 uppercase">{t('whaleChart.symbol', { defaultValue: 'Mã CK' })}</label>
               <select
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value)}
@@ -1370,7 +1370,7 @@ export default function WhaleBubbleChart({
 
           {/* Timeframe Selector */}
           <div className="flex items-center gap-2">
-            <label className="text-xs font-bold text-slate-400 uppercase">{t('whaleChart.timeframe') || 'Khoảng thời gian'}</label>
+            <label className="text-xs font-bold text-slate-400 uppercase">{t('whaleChart.timeframe', { defaultValue: 'Khoảng thời gian' })}</label>
             <select
               value={timeframe}
               onChange={(e) => setTimeframe(e.target.value)}
@@ -1386,7 +1386,7 @@ export default function WhaleBubbleChart({
 
           {/* Unit Toggle */}
           <div className="ml-auto flex items-center gap-2">
-            <label className="text-xs font-bold text-slate-400 uppercase">{t('whaleChart.unit') || 'Đơn vị'}</label>
+            <label className="text-xs font-bold text-slate-400 uppercase">{t('whaleChart.unit', { defaultValue: 'Đơn vị' })}</label>
             <div className="flex gap-1 bg-slate-800 p-1 rounded">
               <button
                 onClick={() => setShowUnit('value')}
@@ -1424,23 +1424,23 @@ export default function WhaleBubbleChart({
       <div className="bg-slate-900/40 border border-slate-800 rounded-lg overflow-hidden">
         {!WHALE_BUBBLE_UPGRADE_ENABLED ? (
           <div className="flex h-full items-center justify-center text-slate-500">
-            <p className="text-sm italic">{t('whaleChart.upgradeDisabled') || 'Chế độ nâng cấp Whale đang tắt'}</p>
+            <p className="text-sm italic">{t('whaleChart.upgradeDisabled', { defaultValue: 'Chế độ nâng cấp Whale đang tắt' })}</p>
           </div>
         ) : loading ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-500">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-700 border-t-emerald-500" />
-            <p className="text-sm">{t('common.loading') || 'Đang tải...'}</p>
+            <p className="text-sm">{t('common.loading', { defaultValue: 'Đang tải...' })}</p>
           </div>
         ) : error ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-12 text-center">
             <div className="text-3xl text-rose-500">⚠️</div>
-            <p className="text-sm font-semibold text-slate-300">{t('whaleChart.errorLoadingData') || 'Không thể tải dữ liệu'}</p>
+            <p className="text-sm font-semibold text-slate-300">{t('whaleChart.errorLoadingData', { defaultValue: 'Không thể tải dữ liệu' })}</p>
             <p className="max-w-xs text-xs text-slate-500">{error}</p>
           </div>
         ) : !symbol ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-500">
             <div className="text-4xl opacity-30">🐋</div>
-            <p className="text-sm italic">{t('whaleChart.selectSymbolToStart') || 'Chọn mã để bắt đầu'}</p>
+            <p className="text-sm italic">{t('whaleChart.selectSymbolToStart', { defaultValue: 'Chọn mã để bắt đầu' })}</p>
           </div>
         ) : !hasAnyChartData ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-500">
@@ -1762,12 +1762,12 @@ export default function WhaleBubbleChart({
         <div className="flex flex-col gap-2">
           <div className="grid grid-cols-4 gap-2 text-xs">
             <div className="bg-slate-900/60 border border-slate-800 rounded p-2">
-              <div className="text-slate-400 mb-1">{t('whaleChart.totalOrders') || 'Tổng lệnh'}</div>
+              <div className="text-slate-400 mb-1">{t('whaleChart.totalOrders', { defaultValue: 'Tổng lệnh' })}</div>
               <div className="text-lg font-bold text-slate-200">{orderData.summary?.total_orders || 0}</div>
             </div>
             <div className="bg-emerald-900/20 border border-emerald-500/30 rounded p-2 flex justify-between items-end">
               <div>
-                <div className="text-emerald-400 mb-1">{t('whaleChart.buyOrders') || 'Mua chủ động'}</div>
+                <div className="text-emerald-400 mb-1">{t('whaleChart.buyOrders', { defaultValue: 'Mua chủ động' })}</div>
                 <div className="text-lg font-bold text-emerald-400">{orderData.summary?.buy_orders || 0}</div>
               </div>
               <div className="text-[10px] text-emerald-500 font-mono mb-1">
@@ -1776,7 +1776,7 @@ export default function WhaleBubbleChart({
             </div>
             <div className="bg-rose-900/20 border border-rose-500/30 rounded p-2 flex justify-between items-end">
               <div>
-                <div className="text-rose-400 mb-1">{t('whaleChart.sellOrders') || 'Bán chủ động'}</div>
+                <div className="text-rose-400 mb-1">{t('whaleChart.sellOrders', { defaultValue: 'Bán chủ động' })}</div>
                 <div className="text-lg font-bold text-rose-400">{orderData.summary?.sell_orders || 0}</div>
               </div>
               <div className="text-[10px] text-rose-500 font-mono mb-1">
@@ -1784,9 +1784,9 @@ export default function WhaleBubbleChart({
               </div>
             </div>
             <div className="bg-slate-900/60 border border-slate-800 rounded p-2">
-              <div className="text-slate-400 mb-1">{t('whaleChart.refPrice') || 'Giá tham chiếu'}</div>
+              <div className="text-slate-400 mb-1">{t('whaleChart.refPrice', { defaultValue: 'Giá tham chiếu' })}</div>
               <div className="text-lg font-bold text-slate-200">
-                {orderData.ref_price != null ? `${orderData.ref_price?.toLocaleString('vi-VN')} đ` : (t('whaleChart.missingRefPrice') || 'Không có')}
+                {orderData.ref_price != null ? `${orderData.ref_price?.toLocaleString('vi-VN')} đ` : t('whaleChart.missingRefPrice', { defaultValue: 'Không có' })}
               </div>
             </div>
           </div>
