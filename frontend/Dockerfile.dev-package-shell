@@ -36,6 +36,7 @@ RUN npm ci --legacy-peer-deps
 COPY frontend/ ./
 COPY packages/web/ ../packages/web/
 COPY packages/web/ ./packages/web/
+RUN node patch-webpack.js
 RUN rm -rf node_modules/@vnstockcharts node_modules/@vninvestcharts \
 	&& mkdir -p node_modules/@vnstockcharts node_modules/@vninvestcharts \
 	&& cp -r /stockchart/packages/vn-kline-engine-core node_modules/@vnstockcharts/vn-kline-engine-core \
