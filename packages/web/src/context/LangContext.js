@@ -92,7 +92,25 @@ export function LangProvider({ children }) {
 export function useI18n() {
   const context = useContext(LangContext);
   if (!context) {
-    throw new Error('useI18n must be used inside LangProvider');
+    return {
+      locale: 'vi',
+      localeTag: 'vi-VN',
+      t: (key, options) => {
+        if (options && typeof options === 'object' && 'defaultValue' in options) {
+          return options.defaultValue;
+        }
+        return key;
+      },
+      formatNumber: (n) => n?.toLocaleString('vi-VN') ?? '',
+      formatCurrency: (n) => n?.toLocaleString('vi-VN') ?? '',
+      formatPriceVND: (n) => n?.toLocaleString('vi-VN') ?? '',
+      formatQuotePrice: (p) => p ?? '',
+      formatQuoteVolume: (v) => v ?? '',
+      formatQuoteInteger: (v) => v ?? '',
+      formatDate: (d) => d ?? '',
+      formatTime: (t) => t ?? '',
+      formatDateTime: (dt) => dt ?? '',
+    };
   }
   return context;
 }
