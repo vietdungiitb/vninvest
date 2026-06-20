@@ -1538,23 +1538,25 @@ export default function WhaleBubbleChart({
                 </div>
               </div>
               {isInfoPanelVisible ? (
-              <aside className="border-t border-slate-800 bg-slate-950/70 p-3 lg:w-[300px] lg:border-l lg:border-t-0">
+              <aside className="border-t border-slate-800 bg-slate-950/70 p-3 lg:w-[300px] lg:border-l lg:border-t-0 flex flex-col">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">{t('whaleAnalytics.infoPanelTitle', { defaultValue: 'Bảng thông tin' })}</div>
-                    <div className="mt-1 text-sm font-semibold text-slate-100">{symbol || '--'} · {timeframe}</div>
-                  </div>
                   {hoveredPanel ? (
-                    <div className="rounded-full border border-slate-700 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-400">
-                      {t('whaleAnalytics.infoPanelHoverActive', { defaultValue: 'Đang hover' })}
-                    </div>
+                    <>
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">{t('whaleAnalytics.infoPanelTitle', { defaultValue: 'Bảng thông tin' })}</div>
+                        <div className="mt-1 text-sm font-semibold text-slate-100">{symbol || '--'} · {timeframe}</div>
+                      </div>
+                      <div className="rounded-full border border-slate-700 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-400">
+                        {t('whaleAnalytics.infoPanelHoverActive', { defaultValue: 'Đang hover' })}
+                      </div>
+                    </>
                   ) : (
-                    <div className="flex rounded-lg border border-slate-800 bg-slate-900/60 p-0.5 text-[10px] font-medium uppercase tracking-wider">
+                    <div className="flex w-full rounded-lg border border-slate-700 bg-slate-950/60 p-0.5 text-[11px] font-medium uppercase tracking-wider">
                       <button
                         onClick={() => setActiveTab('overview')}
-                        className={`rounded px-2 py-1 transition-all ${
+                        className={`flex-1 rounded py-1.5 px-3 transition-all text-center ${
                           activeTab === 'overview'
-                            ? 'bg-slate-800 text-slate-100 shadow-sm'
+                            ? 'bg-slate-800 text-slate-100 shadow-sm font-semibold'
                             : 'text-slate-400 hover:text-slate-200'
                         }`}
                       >
@@ -1562,9 +1564,9 @@ export default function WhaleBubbleChart({
                       </button>
                       <button
                         onClick={() => setActiveTab('signals')}
-                        className={`rounded px-2 py-1 transition-all ${
+                        className={`flex-1 rounded py-1.5 px-3 transition-all text-center ${
                           activeTab === 'signals'
-                            ? 'bg-slate-800 text-slate-100 shadow-sm'
+                            ? 'bg-slate-800 text-slate-100 shadow-sm font-semibold'
                             : 'text-slate-400 hover:text-slate-200'
                         }`}
                       >
@@ -1646,7 +1648,7 @@ export default function WhaleBubbleChart({
                     )}
                   </div>
                 ) : activeTab === 'overview' ? (
-                  <div className="mt-4 space-y-4 text-xs text-slate-300">
+                  <div className="mt-4 space-y-4 text-xs text-slate-300 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-800 flex-1">
                     <div className="space-y-2 rounded border border-slate-800 bg-slate-900/70 px-3 py-3">
                       <div className="flex items-center justify-between"><span className="text-slate-500">{t('whaleAnalytics.totalLargeOrders', { defaultValue: 'Tổng lệnh lớn' })}</span><span className="font-semibold text-slate-100">{orderData.summary?.total_orders || 0}</span></div>
                       <div className="flex items-center justify-between"><span className="text-slate-500">Lệnh mua</span><span className="font-semibold text-emerald-300">{orderData.summary?.buy_orders || 0}</span></div>
@@ -1686,7 +1688,7 @@ export default function WhaleBubbleChart({
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-4 space-y-3 overflow-y-auto text-xs text-slate-300 scrollbar-thin scrollbar-thumb-slate-800 pr-1" style={{ maxHeight: '460px' }}>
+                  <div className="mt-4 space-y-3 overflow-y-auto text-xs text-slate-300 scrollbar-thin scrollbar-thumb-slate-800 pr-1 flex-1">
                     {loadingSignals ? (
                       <div className="flex flex-col items-center justify-center py-10 text-slate-500">
                         <svg className="animate-spin h-5 w-5 mb-2 text-slate-400" fill="none" viewBox="0 0 24 24">
