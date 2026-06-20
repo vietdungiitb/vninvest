@@ -1171,6 +1171,16 @@ def _build_tick_distribution_payload(symbol, window_minutes):
 def _serialize_stock_order_flow_signal(alert, tick_rate_per_min, small_order_ratio):
     metadata = alert.metadata if isinstance(alert.metadata, dict) else {}
     signal_type = str(metadata.get('signal_type') or alert.alert_type or 'signal').lower()
+    
+    # Standardize signal types for frontend taxonomy parity
+    if signal_type == 'system' and str(alert.source_ref or '').startswith('stale_quote:'):
+        signal_type = 'stale_quote'
+    elif signal_type == 'signal':
+        if str(alert.source_ref or '').startswith('market_anomaly:'):
+            signal_type = 'price_shock'
+        elif isinstance(alert.evidence, dict) and alert.evidence.get('price_change_pct') is not None:
+            signal_type = 'price_shock'
+
     confidence = _safe_numeric(metadata.get('confidence'))
     if confidence is None:
         confidence = _safe_numeric(alert.confidence)
@@ -1584,6 +1594,10 @@ class StockManagementOverviewView(APIView):
         week52_high = max((_to_float(row.high) for row in week52_rows), default=None)
         week52_low = min((_to_float(row.low) for row in week52_rows), default=None)
 
+        # Fetch latest SessionFacts for session-level aggregates
+        from market_serving.models import SessionFacts
+        session_facts = SessionFacts.objects.filter(symbol=symbol).order_by('-session_date').first()
+
         membership_payload = _build_watchlist_membership_payload(request.user, symbol)
 
         payload = {
@@ -1617,6 +1631,16 @@ class StockManagementOverviewView(APIView):
             'watchlist_groups': membership_payload['watchlist_groups'],
             'market_group_refs': membership_payload['market_group_refs'],
             'watchlist_memberships': membership_payload['watchlist_memberships'],
+            # SessionFacts aggregates
+            'total_buy_qty': _to_int(getattr(session_facts, 'total_buy_volume', None)),
+            'total_sell_qty': _to_int(getattr(session_facts, 'total_sell_volume', None)),
+            'institutional_buy': _round_or_none(getattr(session_facts, 'institutional_strength', None)),
+            'retail_buy': _round_or_none(getattr(session_facts, 'buy_strength', None)),
+            'cvd_normalized': _round_or_none(getattr(session_facts, 'cvd_normalized', None)),
+            'whale_net_flow': _to_int(getattr(session_facts, 'whale_net_flow', None)),
+            'dark_flow_score': _round_or_none(getattr(session_facts, 'dark_flow_score', None)),
+            'session_facts_date': session_facts.session_date.isoformat() if session_facts else None,
+            'session_facts_source': getattr(session_facts, 'source', None),
         }
         return Response(payload)
 
@@ -1955,6 +1979,7 @@ class StockManagementOrderFlowView(APIView):
                     UnifiedAlert.AlertTypeChoices.WHALE,
                     UnifiedAlert.AlertTypeChoices.DARK_FLOW,
                     UnifiedAlert.AlertTypeChoices.SIGNAL,
+                    UnifiedAlert.AlertTypeChoices.SYSTEM,
                 ),
             )
             .order_by('-triggered_at', '-pk')[:limit]
@@ -1972,7 +1997,7 @@ class StockManagementOrderFlowView(APIView):
 
         dark_alert = next(
             (alert for alert in alerts if alert.alert_type == UnifiedAlert.AlertTypeChoices.DARK_FLOW),
-            alerts[0] if alerts else None,
+            next((alert for alert in alerts if alert.alert_type != UnifiedAlert.AlertTypeChoices.SYSTEM), alerts[0] if alerts else None),
         )
         dark_flow = {
             'signal_type': str(

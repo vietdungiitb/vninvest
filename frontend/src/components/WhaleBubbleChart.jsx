@@ -27,7 +27,7 @@ import {
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import { useI18n } from '../context/LangContext';
-import { getWhaleAnalyticsSnapshot } from '../api/client';
+import { getWhaleAnalyticsSnapshot, getStockOrderFlow } from '../api/client';
 import { useOrderBubbleCoordinates } from '../hooks/useOrderBubbleCoordinates';
 import { useCallback } from 'react';
 import { normalizeWhaleAnalyticsSnapshot } from '../utils/whaleAnalyticsSnapshotAdapter';
@@ -106,6 +106,38 @@ function formatTooltipPriceDelta(value) {
 function formatAxisTime(value) {
   const date = new Date(value);
   return `${String(date.getHours()).padStart(2, '0')}h${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function formatPercentDelta(value) {
+  if (value == null || Number.isNaN(Number(value))) return '—';
+  const val = Number(value);
+  return `${val > 0 ? '+' : ''}${val.toFixed(2)}%`;
+}
+
+function formatSignalTime(dateStr) {
+  if (!dateStr) return '—';
+  try {
+    const d = new Date(dateStr);
+    const pad = (n) => String(n).padStart(2, '0');
+    const hh = pad(d.getHours());
+    const mm = pad(d.getMinutes());
+    const ss = pad(d.getSeconds());
+    const date = d.getDate();
+    const month = d.getMonth() + 1;
+    const year = d.getFullYear();
+    return `${hh}:${mm}:${ss} ${date}/${month}/${year}`;
+  } catch (e) {
+    return '—';
+  }
+}
+
+function getSignalTypeLabelAndClass(type) {
+  const t = String(type || '').toUpperCase();
+  if (t === 'WHALE') return { label: 'WHALE', badgeClass: 'text-cyan-400 font-bold' };
+  if (t === 'DARK_FLOW') return { label: 'DARK FLOW', badgeClass: 'text-violet-400 font-bold' };
+  if (t === 'PRICE_SHOCK') return { label: 'BIẾN ĐỘNG GIÁ', badgeClass: 'text-amber-400 font-bold' };
+  if (t === 'STALE_QUOTE') return { label: 'BẢNG GIÁ CHẬM', badgeClass: 'text-rose-400 font-bold' };
+  return { label: t, badgeClass: 'text-slate-400 font-bold' };
 }
 
 function formatCompactSignedValue(value) {
@@ -546,6 +578,28 @@ export default function WhaleBubbleChart({
   const [hoveredPanel, setHoveredPanel] = useState(null);
   const [bubbleThreshold, setBubbleThreshold] = useState(0);
   const [isInfoPanelVisible, setIsInfoPanelVisible] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' or 'signals'
+  const [orderFlowSignals, setOrderFlowSignals] = useState([]);
+  const [loadingSignals, setLoadingSignals] = useState(false);
+
+  const fetchSignals = useCallback(async (targetSymbol) => {
+    if (!targetSymbol) return;
+    setLoadingSignals(true);
+    try {
+      const response = await getStockOrderFlow(targetSymbol, '30m');
+      setOrderFlowSignals(response?.data?.signals || []);
+    } catch (err) {
+      console.error('[WhaleBubbleChart] Failed to fetch signals:', err);
+    } finally {
+      setLoadingSignals(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (symbol) {
+      fetchSignals(symbol);
+    }
+  }, [symbol, fetchSignals]);
 
   // Available symbols
   const availableSymbols = useMemo(() => {
@@ -1490,11 +1544,34 @@ export default function WhaleBubbleChart({
                     <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">{t('whaleAnalytics.infoPanelTitle', { defaultValue: 'Bảng thông tin' })}</div>
                     <div className="mt-1 text-sm font-semibold text-slate-100">{symbol || '--'} · {timeframe}</div>
                   </div>
-                  <div className="rounded-full border border-slate-700 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-400">
-                    {hoveredPanel
-                      ? t('whaleAnalytics.infoPanelHoverActive', { defaultValue: 'Đang hover' })
-                      : t('whaleAnalytics.infoPanelSnapshot', { defaultValue: 'Tổng quan' })}
-                  </div>
+                  {hoveredPanel ? (
+                    <div className="rounded-full border border-slate-700 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-400">
+                      {t('whaleAnalytics.infoPanelHoverActive', { defaultValue: 'Đang hover' })}
+                    </div>
+                  ) : (
+                    <div className="flex rounded-lg border border-slate-800 bg-slate-900/60 p-0.5 text-[10px] font-medium uppercase tracking-wider">
+                      <button
+                        onClick={() => setActiveTab('overview')}
+                        className={`rounded px-2 py-1 transition-all ${
+                          activeTab === 'overview'
+                            ? 'bg-slate-800 text-slate-100 shadow-sm'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {t('whaleAnalytics.infoPanelSnapshot', { defaultValue: 'Tổng quan' })}
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('signals')}
+                        className={`rounded px-2 py-1 transition-all ${
+                          activeTab === 'signals'
+                            ? 'bg-slate-800 text-slate-100 shadow-sm'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        Tín hiệu
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {hoveredPanel ? (
@@ -1568,7 +1645,7 @@ export default function WhaleBubbleChart({
                       </div>
                     )}
                   </div>
-                ) : (
+                ) : activeTab === 'overview' ? (
                   <div className="mt-4 space-y-4 text-xs text-slate-300">
                     <div className="space-y-2 rounded border border-slate-800 bg-slate-900/70 px-3 py-3">
                       <div className="flex items-center justify-between"><span className="text-slate-500">{t('whaleAnalytics.totalLargeOrders', { defaultValue: 'Tổng lệnh lớn' })}</span><span className="font-semibold text-slate-100">{orderData.summary?.total_orders || 0}</span></div>
@@ -1607,6 +1684,61 @@ export default function WhaleBubbleChart({
                     <div className="rounded border border-slate-800 bg-slate-900/70 px-3 py-3 text-slate-400">
                       {t('whaleAnalytics.infoPanelHoverHint', { defaultValue: 'Cách đọc nhanh: bubble càng lớn thì quy mô lệnh càng đáng chú ý; cụm xanh hoặc đỏ cho biết bên mua hoặc bán đang chủ động. Ưu tiên các điểm mà bubble lớn đi cùng giá bứt phá, CVD cải thiện và sức mạnh tổ chức tăng để nhận diện dòng tiền xác nhận; nếu bubble lớn xuất hiện nhưng giá suy yếu và CVD đi xuống thì nên cảnh giác nhịp phân phối.' })}
                     </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 space-y-3 overflow-y-auto text-xs text-slate-300 scrollbar-thin scrollbar-thumb-slate-800 pr-1" style={{ maxHeight: '460px' }}>
+                    {loadingSignals ? (
+                      <div className="flex flex-col items-center justify-center py-10 text-slate-500">
+                        <svg className="animate-spin h-5 w-5 mb-2 text-slate-400" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        <span>Đang tải tín hiệu...</span>
+                      </div>
+                    ) : orderFlowSignals.length === 0 ? (
+                      <div className="text-center py-10 text-slate-500">
+                        Không có tín hiệu cảnh báo nào trong phiên
+                      </div>
+                    ) : (
+                      orderFlowSignals.map((item) => {
+                        const { label, badgeClass } = getSignalTypeLabelAndClass(item.signal_type);
+                        return (
+                          <div
+                            key={item.id || `${item.symbol}-${item.created_at}`}
+                            className="rounded-xl border border-slate-800/80 bg-[#0f172a]/60 p-3 hover:border-slate-700 transition-all space-y-2"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className={`text-[10px] uppercase tracking-wider ${badgeClass}`}>
+                                {label}
+                              </span>
+                              <span className="text-[10px] text-slate-500 font-mono">
+                                {formatSignalTime(item.created_at)}
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-center justify-between text-slate-300 font-medium pt-1">
+                              <span>Sức mạnh:</span>
+                              <span className="text-slate-100 font-semibold">
+                                {Number(item.strength || 0).toFixed(1)} • {Number(item.confidence || 0).toFixed(2)}
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-center justify-between text-slate-400 text-[11px]">
+                              <span>Tick rate:</span>
+                              <span>
+                                {Number(item.tick_rate || 0).toFixed(1)} • Lệnh nhỏ: {formatPercentDelta(Number(item.small_order_ratio || 0) * 100)}
+                              </span>
+                            </div>
+
+                            {item.description && (
+                              <p className="text-[11px] text-slate-400 border-t border-slate-800/40 pt-1.5 mt-1.5 leading-normal">
+                                {item.description}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 )}
               </aside>
