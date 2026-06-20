@@ -54,18 +54,18 @@ class OperatorMailConfigAPITests(TransactionTestCase):
         """Operator Mail Config: Only staff/admin users are allowed to access endpoints."""
         # Regular user must be blocked with 403
         self.client.force_authenticate(user=self.regular_user)
-        response = self.client.get('/api/core/v1/operator/mail-config/')
+        response = self.client.get('/core/v1/operator/mail-config/')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         # Admin user must be allowed
         self.client.force_authenticate(user=self.admin)
-        response = self.client.get('/api/core/v1/operator/mail-config/')
+        response = self.client.get('/core/v1/operator/mail-config/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_create_smtp_configuration(self):
         """Operator Mail Config: Create valid dynamic SMTP mail configuration."""
         self.client.force_authenticate(user=self.admin)
-        response = self.client.post('/api/core/v1/operator/mail-config/', {
+        response = self.client.post('/core/v1/operator/mail-config/', {
             'provider': 'smtp',
             'from_email': 'dynamic-smtp@vninvest.vn',
             'smtp_host': 'smtp.mailtrap.io',
@@ -102,7 +102,7 @@ class OperatorMailConfigAPITests(TransactionTestCase):
             "client_email": "sa@vninvest.iam.gserviceaccount.com"
         })
         
-        response = self.client.post('/api/core/v1/operator/mail-config/', {
+        response = self.client.post('/core/v1/operator/mail-config/', {
             'provider': 'gmail_api',
             'from_email': 'notifications@vninvest.vn',
             'google_delegated_user_email': 'admin@vninvest.vn',
@@ -122,7 +122,7 @@ class OperatorMailConfigAPITests(TransactionTestCase):
         self.client.force_authenticate(user=self.admin)
         
         # Missing provider
-        response = self.client.post('/api/core/v1/operator/mail-config/', {
+        response = self.client.post('/core/v1/operator/mail-config/', {
             'from_email': 'notifications@vninvest.vn'
         }, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -144,7 +144,7 @@ class OperatorMailConfigAPITests(TransactionTestCase):
         config.save()
 
         # GET detail
-        response = self.client.get(f'/api/core/v1/operator/mail-config/{config.id}/')
+        response = self.client.get(f'/core/v1/operator/mail-config/{config.id}/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         res_data = response.json()
         self.assertEqual(res_data['status'], 'success')
@@ -153,7 +153,7 @@ class OperatorMailConfigAPITests(TransactionTestCase):
         self.assertFalse(res_data['data']['google_service_account_json_configured'])
 
         # PATCH update
-        response = self.client.patch(f'/api/core/v1/operator/mail-config/{config.id}/', {
+        response = self.client.patch(f'/core/v1/operator/mail-config/{config.id}/', {
             'from_email': 'updated-smtp@vninvest.vn',
             'smtp_username': 'updateduser'
         }, format='json')
@@ -175,7 +175,7 @@ class OperatorMailConfigAPITests(TransactionTestCase):
         )
 
         # Attempt to delete
-        response = self.client.delete(f'/api/core/v1/operator/mail-config/{config.id}/')
+        response = self.client.delete(f'/core/v1/operator/mail-config/{config.id}/')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertTrue(SystemMailConfig.objects.filter(id=config.id).exists())
 
@@ -184,7 +184,7 @@ class OperatorMailConfigAPITests(TransactionTestCase):
         config.save()
 
         # Delete again
-        response = self.client.delete(f'/api/core/v1/operator/mail-config/{config.id}/')
+        response = self.client.delete(f'/core/v1/operator/mail-config/{config.id}/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(SystemMailConfig.objects.filter(id=config.id).exists())
 
@@ -207,7 +207,7 @@ class OperatorMailConfigAPITests(TransactionTestCase):
         self.assertFalse(config2.is_active)
 
         # Activate config2
-        response = self.client.post(f'/api/core/v1/operator/mail-config/{config2.id}/activate/')
+        response = self.client.post(f'/core/v1/operator/mail-config/{config2.id}/activate/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         config1.refresh_from_db()
@@ -222,7 +222,7 @@ class OperatorMailConfigAPITests(TransactionTestCase):
         """Operator Mail Config: Test mail transport verification (dry run sending)."""
         self.client.force_authenticate(user=self.admin)
         
-        response = self.client.post('/api/core/v1/operator/mail-config/test/', {
+        response = self.client.post('/core/v1/operator/mail-config/test/', {
             'provider': 'smtp',
             'from_email': 'test-sender@vninvest.vn',
             'test_email': 'recipient@vninvest.vn',

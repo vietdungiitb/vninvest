@@ -109,7 +109,7 @@ describe("PATTokenModal", () => {
             changeInputValue(passwordInput, "secret");
             loginButton?.click();
         });
-        expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:9000/api/auth/token/", expect.objectContaining({ method: "POST" }));
+        expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:9000/core/v1/auth/token/", expect.objectContaining({ method: "POST" }));
         expect(client.getBase()).toBe("http://127.0.0.1:9000");
         expect(client.getPAT()).toBe("vni_login_token");
         expect(onConfigChange).toHaveBeenCalledOnce();

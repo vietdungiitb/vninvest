@@ -73,7 +73,7 @@ export const pageRegistry = Object.freeze([
   makePageEntry("operations-center-mail-config", "baseline", () =>
     import("./admin/ShellMailConfigPage.js").then((module) => module.ShellMailConfigPage)),
   makePageEntry("ai-command-center", "baseline", () =>
-    import("./system/ShellAiCommandCenterPage.js").then((module) => module.ShellAiCommandCenterPage)),
+    import("./AICommandCenterPage.js").then((module) => module.AICommandCenterPage)),
   makePageEntry("ai-advisory", "baseline", () =>
     import("./signals/ShellAiAdvisoryPage.js").then((module) => module.ShellAiAdvisoryPage)),
   makePageEntry("whale-alerts", "baseline", () =>
@@ -87,7 +87,7 @@ export const pageRegistry = Object.freeze([
   makePageEntry("portfolios", "baseline", () =>
     import("./workspace/ShellPortfoliosPage.js").then((module) => module.ShellPortfoliosPage)),
   makePageEntry("support", "baseline", () =>
-    import("./system/ShellSupportPage.js").then((module) => module.ShellSupportPage)),
+    import("./SupportPage.js").then((module) => module.SupportPage)),
   makePageEntry("settings", "baseline", () =>
     import("./system/ShellSettingsPage.js").then((module) => module.ShellSettingsPage)),
   makePageEntry("vip-local-control", "baseline", () =>
@@ -121,6 +121,23 @@ export const pageRegistry = Object.freeze([
     import("./commercial/BillingCenterPage.js").then((module) => module.BillingCenterPage)),
   makePageEntry("commercial-payment-return", "core", () =>
     import("./commercial/PaymentReturnPage.js").then((module) => module.PaymentReturnPage)),
+  // Tenant Admin Pages
+  makePageEntry("tenant-admin-home", "core", () =>
+    import("./tenant-admin/TenantAdminHomePage.js").then((module) => module.TenantAdminHomePage)),
+  makePageEntry("tenant-admin-members", "core", () =>
+    import("./tenant-admin/TenantAdminMembersPage.js").then((module) => module.TenantAdminMembersPage)),
+  makePageEntry("tenant-admin-service-accounts", "core", () =>
+    import("./tenant-admin/TenantAdminServiceAccountsPage.js").then((module) => module.TenantAdminServiceAccountsPage)),
+  makePageEntry("tenant-admin-pats", "core", () =>
+    import("./tenant-admin/TenantAdminPATsPage.js").then((module) => module.TenantAdminPATsPage)),
+  makePageEntry("tenant-admin-usage", "core", () =>
+    import("./tenant-admin/TenantAdminUsagePage.js").then((module) => module.TenantAdminUsagePage)),
+  makePageEntry("tenant-admin-billing", "core", () =>
+    import("./tenant-admin/TenantAdminBillingPage.js").then((module) => module.TenantAdminBillingPage)),
+  makePageEntry("tenant-admin-capabilities", "core", () =>
+    import("./tenant-admin/TenantAdminCapabilitiesPage.js").then((module) => module.TenantAdminCapabilitiesPage)),
+  makePageEntry("tenant-admin-audit-logs", "core", () =>
+    import("./tenant-admin/TenantAdminAuditLogsPage.js").then((module) => module.TenantAdminAuditLogsPage)),
 ]);
 
 export function getPageRegistryRouteIds() {

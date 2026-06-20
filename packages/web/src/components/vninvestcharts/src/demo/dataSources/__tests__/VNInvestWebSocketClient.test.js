@@ -60,8 +60,8 @@ describe("VNInvestWebSocketClient", () => {
         await Promise.resolve();
     }
     it("buildWsUrl: https becomes wss with PAT in query-string", () => {
-        const client = new VNInvestWebSocketClient("vni_abc123", "https://vninvest.edusuccess.vn");
-        expect(client.buildWsUrl()).toBe("wss://vninvest.edusuccess.vn/ws/realtime/?token=vni_abc123");
+        const client = new VNInvestWebSocketClient("vni_abc123", "https://saas.edusuccess.vn");
+        expect(client.buildWsUrl()).toBe("wss://saas.edusuccess.vn/ws/realtime/?token=vni_abc123");
     });
     it("buildWsUrl: http becomes ws", () => {
         const client = new VNInvestWebSocketClient("vni_tok", "http://localhost:8000");

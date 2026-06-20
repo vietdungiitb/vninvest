@@ -370,6 +370,30 @@ export const getTenantBillingSubscription = () =>
 export const getTenantBillingInvoices = (params = {}) =>
   apiClient.get('/core/v1/partner/billing/invoices/', { params });
 
+// --- Stripe Billing APIs ---
+export const createStripeCheckoutSession = (data) =>
+  apiClient.post('/core/v1/partner/billing/stripe/session/', data);
+
+export const createStripePortalSession = (data) =>
+  apiClient.post('/core/v1/partner/billing/stripe/portal/', data);
+
+// --- Usage History API ---
+export const getTenantUsageHistory = (params = {}) =>
+  apiClient.get('/core/v1/partner/usage/history/', { params });
+
+// --- SSO APIs ---
+export const getTenantSSOConfig = () =>
+  apiClient.get('/core/v1/partner/sso/');
+
+export const updateTenantSSOConfig = (data) =>
+  apiClient.post('/core/v1/partner/sso/', data);
+
+export const initiateSSOLogin = (params = {}) =>
+  apiClient.get('/core/v1/auth/sso/login/', { params });
+
+export const handleSSOCallback = (data) =>
+  apiClient.post('/core/v1/auth/sso/callback/', data);
+
 export const getCoreOperatorJobs = (params = {}) =>
   apiClient.get('/core/v1/operator/jobs/', { params });
 
@@ -400,29 +424,38 @@ export const revokeTenantPAT = (tokenId, payload = {}) =>
     },
   });
 
-// --- Portfolio APIs (prefix portfolio/ theo urls.py) ---
-export const getPortfolios = () => apiClient.get('/portfolio/portfolios/');
-export const createPortfolio = (data) => apiClient.post('/portfolio/portfolios/', data);
-export const getPortfolio = (id) => apiClient.get(`/portfolio/portfolios/${id}/`);
-export const updatePortfolio = (id, data) => apiClient.put(`/portfolio/portfolios/${id}/`, data);
-export const deletePortfolio = (id) => apiClient.delete(`/portfolio/portfolios/${id}/`);
+// --- Portfolio APIs (migrated to /core/v1/workspace/) ---
+export const getPortfolios = () =>
+  Promise.resolve(coreApiAdapter.getPortfolios()).then((data) => ({ data }));
+export const createPortfolio = (data) =>
+  Promise.resolve(coreApiAdapter.createPortfolio(data)).then((data) => ({ data }));
+export const getPortfolio = (id) =>
+  Promise.resolve(coreApiAdapter.getPortfolio(id)).then((data) => ({ data }));
+export const updatePortfolio = (id, data) =>
+  Promise.resolve(coreApiAdapter.updatePortfolio(id, data)).then((data) => ({ data }));
+export const deletePortfolio = (id) =>
+  Promise.resolve(coreApiAdapter.deletePortfolio(id)).then((data) => ({ data }));
 
 // --- SubAccount APIs ---
-export const getSubAccounts = () => apiClient.get('/portfolio/subaccounts/');
-export const createSubAccount = (data) => apiClient.post('/portfolio/subaccounts/', data);
-export const updateSubAccount = (id, data) => apiClient.patch(`/portfolio/subaccounts/${id}/`, data);
-export const deleteSubAccount = (id) => apiClient.delete(`/portfolio/subaccounts/${id}/`);
+export const getSubAccounts = () =>
+  Promise.resolve(coreApiAdapter.getSubAccounts()).then((data) => ({ data }));
+export const createSubAccount = (data) =>
+  Promise.resolve(coreApiAdapter.createSubAccount(data)).then((data) => ({ data }));
+export const updateSubAccount = (id, data) =>
+  Promise.resolve(coreApiAdapter.updateSubAccount(id, data)).then((data) => ({ data }));
+export const deleteSubAccount = (id) =>
+  Promise.resolve(coreApiAdapter.deleteSubAccount(id)).then((data) => ({ data }));
 
 // --- Transaction APIs ---
 export const getTransactions = (subAccountId) =>
-  apiClient.get(`/portfolio/subaccounts/${subAccountId}/transactions/`);
+  Promise.resolve(coreApiAdapter.getSubAccountTransactions(subAccountId)).then((data) => ({ data }));
 export const createTransaction = (subAccountId, data) =>
-  apiClient.post(`/portfolio/subaccounts/${subAccountId}/transactions/`, data);
+  Promise.resolve(coreApiAdapter.createSubAccountTransaction(subAccountId, data)).then((data) => ({ data }));
 
 export const updateTransaction = (id, data) =>
-  apiClient.patch(`/portfolio/transactions/${id}/`, data);
+  Promise.resolve(coreApiAdapter.updateTransaction(id, data)).then((data) => ({ data }));
 export const deleteTransaction = (id) =>
-  apiClient.delete(`/portfolio/transactions/${id}/`);
+  Promise.resolve(coreApiAdapter.deleteTransaction(id)).then((data) => ({ data }));
 
 // --- Analytics APIs ---
 export const getHoldings = (portfolioId) =>
@@ -430,14 +463,14 @@ export const getHoldings = (portfolioId) =>
 export const getSummary = (portfolioId) =>
   Promise.resolve(coreApiAdapter.getPortfolioSummary(portfolioId)).then((data) => ({ data }));
 export const getChartData = (portfolioId, days = 90) =>
-  apiClient.get(`/portfolio/portfolios/${portfolioId}/chart/?days=${days}`);
+  coreApiAdapter.getPortfolioChart(portfolioId, days);
 
 export const getEquityCurve = (portfolioId, days = 180) =>
-  apiClient.get(`/portfolio/portfolios/${portfolioId}/equity-curve/?days=${days}`);
+  coreApiAdapter.getPortfolioEquityCurve(portfolioId, days);
 export const getAllocation = (portfolioId) =>
-  apiClient.get(`/portfolio/portfolios/${portfolioId}/allocation/`);
+  coreApiAdapter.getPortfolioAllocation(portfolioId);
 export const getAllocationBySector = (portfolioId) =>
-  apiClient.get(`/portfolio/portfolios/${portfolioId}/allocation/?by=sector`);
+  coreApiAdapter.getPortfolioAllocationBySector(portfolioId);
 export const getAnalytics = (portfolioId, days = 365) =>
   Promise.resolve(coreApiAdapter.getPortfolioAnalytics(portfolioId, days)).then((data) => ({ data }));
 export const getPortfolioTechnicals = (portfolioId) =>
@@ -459,7 +492,7 @@ export const getBulkTechnicalsBySymbols = (symbols = []) =>
 
 // --- Sync ---
 export const syncPrices = (portfolioId, days = 30) =>
-  apiClient.post(`/portfolio/portfolios/${portfolioId}/sync/`, { days });
+  coreApiAdapter.syncPortfolioPrices(portfolioId, days);
 
 // --- Sync StockProfile (trigger backend sync) ---
 export const syncStockProfile = () => apiClient.post('/admin-sync/stockprofile/');
@@ -490,15 +523,15 @@ export const getWatchlistGroups = () => {
       return { data: [] };
     });
 };
-export const createWatchlistGroup = (data) => apiClient.post('/portfolio/watchlist/groups/', data);
-export const updateWatchlistGroup = (id, data) => apiClient.patch(`/portfolio/watchlist/groups/${id}/`, data);
-export const deleteWatchlistGroup = (id) => apiClient.delete(`/portfolio/watchlist/groups/${id}/`);
+export const createWatchlistGroup = (data) => coreApiAdapter.createWatchlist(data);
+export const updateWatchlistGroup = (id, data) => coreApiAdapter.updateWatchlist(id, data);
+export const deleteWatchlistGroup = (id) => coreApiAdapter.deleteWatchlist(id);
 export const addWatchlistItem = (groupId, symbol) =>
-  apiClient.post(`/workspace/watchlists/${groupId}/items/`, { symbol }, withCoreBase());
+  coreApiAdapter.addWatchlistItem(groupId, symbol);
 export const deleteWatchlistItem = (watchlistId, symbol) =>
-  apiClient.delete(`/workspace/watchlists/${watchlistId}/items/${symbol}/`, withCoreBase());
-export const seedWatchlist = () => apiClient.post('/portfolio/watchlist/seed/');
-export const syncWatchlistPrices = (days = 5) => apiClient.post('/portfolio/watchlist/sync/', { days });
+  coreApiAdapter.removeWatchlistItem(watchlistId, symbol);
+export const seedWatchlist = () => coreApiAdapter.seedWatchlist();
+export const syncWatchlistPrices = (days = 5) => coreApiAdapter.syncWatchlistPrices(days);
 
 // --- Securities Groups APIs ---
 export const getSecuritiesGroups = () => apiClient.get('/stock-management/groups/', withCoreBase());

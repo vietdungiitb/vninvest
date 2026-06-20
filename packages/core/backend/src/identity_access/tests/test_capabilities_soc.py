@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase
 
 from ..models import CoreTenant
-from ..views_auth import _build_abilities, _build_navigation
+from ..views.helpers import _build_abilities, _build_navigation
 from vninvest_core.views_health import capability_bootstrap
 
 

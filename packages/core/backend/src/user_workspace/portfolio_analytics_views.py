@@ -545,18 +545,19 @@ class PortfolioAICommandCenterTestView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        from vninvest_core.exceptions import ValidationErrorException
+        
         payload = request.data if isinstance(request.data, dict) else {}
         provider = str(payload.get('ai_provider') or '').strip().lower()
         model = str(payload.get('ai_model') or '').strip()
         
         if not provider:
-            return Response({'ok': False, 'message': 'Vui lòng chọn Nhà cung cấp AI hợp lệ.'}, status=400)
+            raise ValidationErrorException(detail='Vui lòng chọn Nhà cung cấp AI hợp lệ.', code='validation_error')
         if not model:
-            return Response({'ok': False, 'message': 'Vui lòng chọn hoặc cấu hình Mô hình AI.'}, status=400)
+            raise ValidationErrorException(detail='Vui lòng chọn hoặc cấu hình Mô hình AI.', code='validation_error')
             
         if provider == 'openclaw':
             return Response({
-                'ok': True,
                 'message': f'Kết nối đến OpenClaw (Default) với mô hình {model} thành công. Phản hồi mượt mà.'
             })
             
@@ -568,13 +569,9 @@ class PortfolioAICommandCenterTestView(APIView):
                 has_key = True
                 
         if not has_key:
-            return Response({
-                'ok': False,
-                'message': f'Lỗi kết nối đến {provider}: Thiếu API Key cấu hình cho mô hình {model}.'
-            }, status=400)
+            raise ValidationErrorException(detail=f'Lỗi kết nối đến {provider}: Thiếu API Key cấu hình cho mô hình {model}.', code='validation_error')
             
         return Response({
-            'ok': True,
             'message': f'Kiểm tra kết nối thành công: Đã xác thực thành công API Key với {provider} và mô hình {model}.'
         })
 
@@ -987,15 +984,61 @@ class PortfolioScreenerRuleDetailView(APIView):
     """GET/PUT/DELETE /api/portfolio/screener/rules/<pk>/"""
     permission_classes = [permissions.IsAuthenticated]
 
+    def _get_rule(self, request, pk):
+        from user_workspace.models import ScreenerRule
+        tenant = getattr(request, 'tenant', None)
+        try:
+            if tenant:
+                return ScreenerRule.objects.get(pk=pk, user=request.user, tenant=tenant)
+            else:
+                return ScreenerRule.objects.get(pk=pk, user=request.user)
+        except ScreenerRule.DoesNotExist:
+            raise NotFound('Bộ lọc không tồn tại.')
+
     def get(self, request, pk):
-        return Response({'id': pk, 'data': None, 'note': 'screener_rule_not_available_in_native'})
+        rule = self._get_rule(request, pk)
+        from user_workspace.serializers import ScreenerRuleSerializer
+        return Response(ScreenerRuleSerializer(rule).data)
 
     def put(self, request, pk):
-        return Response({'id': pk, 'status': 'not_available_in_native'})
+        rule = self._get_rule(request, pk)
+        from user_workspace.serializers import ScreenerRuleSerializer
+        serializer = ScreenerRuleSerializer(rule, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        if 'rules_json' in serializer.validated_data:
+            from user_workspace.screener_helpers import _validate_screener_rules
+            ok, err = _validate_screener_rules(serializer.validated_data['rules_json'])
+            if not ok:
+                return Response({'detail': err}, status=status.HTTP_400_BAD_REQUEST)
+        
+        rule = serializer.save()
+        return Response(ScreenerRuleSerializer(rule).data)
 
     def delete(self, request, pk):
+        rule = self._get_rule(request, pk)
+        rule.delete()
         from rest_framework import status as http_status
         return Response(status=http_status.HTTP_204_NO_CONTENT)
+
+
+class PortfolioAIAdvisoryListView(APIView):
+    """GET /portfolio/ai-advisory/ — batch advisory listing (legacy compat stub).
+    Returns empty items so frontend falls through to per-symbol canonical advisory queries."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response({'items': []})
+
+
+class PortfolioAIAdvisorySymbolStatsView(APIView):
+    """GET /portfolio/ai-advisory-symbol-stats/ — advisory symbol stats (legacy compat stub).
+    Returns empty stats so frontend falls through to symbol universe fallback."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response({'stats': []})
 
 
 class PortfolioScreenerRuleRunView(APIView):
@@ -1003,4 +1046,101 @@ class PortfolioScreenerRuleRunView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
-        return Response({'id': pk, 'status': 'run_not_available_in_native'})
+        from user_workspace.models import ScreenerRule
+        tenant = getattr(request, 'tenant', None)
+        try:
+            if tenant:
+                rule = ScreenerRule.objects.get(pk=pk, user=request.user, tenant=tenant)
+            else:
+                rule = ScreenerRule.objects.get(pk=pk, user=request.user)
+        except ScreenerRule.DoesNotExist:
+            raise NotFound('Bộ lọc không tồn tại.')
+
+        conditions = rule.rules_json
+        
+        from market_serving.models import SymbolSnapshot, SessionFacts
+        from market_data.models import DailyPrice
+        from user_workspace.screener_helpers import _screener_build_technical, _apply_screener_condition
+        from datetime import date, timedelta
+        from collections import defaultdict
+        
+        latest_snap = SymbolSnapshot.objects.order_by('-session_date').first()
+        if not latest_snap:
+            return Response({
+                'rule_id': rule.id,
+                'rule_name': rule.name,
+                'total_scanned': 0,
+                'matched_count': 0,
+                'matched': [],
+            })
+        
+        session_date = latest_snap.session_date
+        
+        snapshots = SymbolSnapshot.objects.filter(session_date=session_date)
+        symbols = [s.symbol for s in snapshots]
+        
+        facts_list = SessionFacts.objects.filter(session_date=session_date)
+        facts_map = {f.symbol: f for f in facts_list}
+        
+        lookback_date = session_date - timedelta(days=90)
+        prices = DailyPrice.objects.filter(symbol__in=symbols, date__gte=lookback_date).order_by('symbol', 'date')
+        
+        history_map = defaultdict(list)
+        for p in prices:
+            history_map[p.symbol].append(p)
+            
+        matched = []
+        for snap in snapshots:
+            sym = snap.symbol
+            hist = history_map[sym]
+            tech = _screener_build_technical(sym, snap.price, snap.volume, hist)
+            
+            facts = facts_map.get(sym)
+            flow_facts = {}
+            if facts:
+                flow_facts = {
+                    'dark_flow_strength': facts.dark_flow_score,
+                    'dark_flow_avg_strength': facts.dark_flow_score,
+                    'dark_flow_max_strength': facts.dark_flow_score,
+                    'dark_flow_signal_count': 1 if facts.dark_flow_score > 0 else 0,
+                    'dark_flow_cvd': facts.cvd_normalized,
+                    
+                    'whale_buy_value': facts.total_buy_volume * float(snap.price),
+                    'whale_sell_value': facts.total_sell_volume * float(snap.price),
+                    'whale_net_value': facts.whale_net_flow,
+                    'whale_total_value': (facts.total_buy_volume + facts.total_sell_volume) * float(snap.price),
+                    'whale_buy_pct': facts.buy_strength * 100,
+                    'whale_sell_pct': (1 - facts.buy_strength) * 100,
+                    'whale_intensity': facts.institutional_strength,
+                }
+            else:
+                flow_facts = {
+                    'dark_flow_strength': 0.0,
+                    'dark_flow_avg_strength': 0.0,
+                    'dark_flow_max_strength': 0.0,
+                    'dark_flow_signal_count': 0,
+                    'dark_flow_cvd': 0.0,
+                    'whale_net_value': 0.0,
+                    'whale_intensity': 0.0,
+                }
+                
+            row = {
+                'symbol': sym,
+                'date': session_date.isoformat(),
+                **tech,
+                **flow_facts,
+            }
+            
+            if all(_apply_screener_condition(row.get(cond['field']), cond['op'], cond['value']) for cond in conditions):
+                matched.append(row)
+                
+        matched.sort(key=lambda item: item.get('close') or 0, reverse=True)
+        
+        return Response({
+            'rule_id': rule.id,
+            'rule_name': rule.name,
+            'total_scanned': len(symbols),
+            'matched_count': len(matched),
+            'matched': matched,
+        })
+

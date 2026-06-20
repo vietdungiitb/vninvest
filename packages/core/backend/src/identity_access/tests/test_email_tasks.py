@@ -9,7 +9,7 @@ Tests for async email sending tasks:
 from unittest.mock import MagicMock, patch
 
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from data_ingest.tasks import send_email_verification_token, send_password_reset_email
 
@@ -94,7 +94,7 @@ class PasswordResetEmailTaskTests(TestCase):
         self.token = 'reset_token_abc'
         self.frontend_url = 'http://localhost:3000'
 
-    @patch('data_ingest.tasks.send_mail')
+    @patch('identity_access.mail_service.send_system_email')
     def test_send_password_reset_email_success(self, mock_send):
         """Test: send_password_reset_email sends email successfully."""
         mock_send.return_value = 1
@@ -119,10 +119,12 @@ class PasswordResetEmailTaskTests(TestCase):
         self.assertIn('1 giờ', call_args[1]['message'])  # Vietnamese "1 hour"
         self.assertEqual(call_args[1]['recipient_list'], [self.email])
 
+    @patch('identity_access.mail_service.send_system_email')
     @patch('data_ingest.tasks.send_mail')
-    def test_send_password_reset_email_failure(self, mock_send):
+    def test_send_password_reset_email_failure(self, mock_send_mail, mock_send_system):
         """Test: send_password_reset_email handles send failure."""
-        mock_send.side_effect = Exception('SMTP timeout')
+        mock_send_system.side_effect = Exception('SMTP timeout')
+        mock_send_mail.side_effect = Exception('SMTP timeout')
 
         result = send_password_reset_email(
             email=self.email,
@@ -135,7 +137,7 @@ class PasswordResetEmailTaskTests(TestCase):
         self.assertEqual(result['email'], self.email)
         self.assertIn('error', result)
 
-    @patch('data_ingest.tasks.send_mail')
+    @patch('identity_access.mail_service.send_system_email')
     def test_send_password_reset_email_default_frontend_url(self, mock_send):
         """Test: send_password_reset_email uses default frontend_url if not provided."""
         mock_send.return_value = 1
@@ -156,17 +158,25 @@ class PasswordResetEmailTaskTests(TestCase):
         self.assertIn(self.token, message)
 
 
+@override_settings(CELERY_TASK_ALWAYS_EAGER=True)
 class EmailTaskIntegrationTests(TestCase):
     """Integration tests for email tasks in views."""
 
     def setUp(self):
         """Set up test data."""
+        from vninvest_core.celery import app as celery_app
+        celery_app.conf.task_always_eager = True
+        
         self.email = 'integration@example.com'
         self.user = User.objects.create_user(
             username='testuser',
             email=self.email,
             password='password123',
         )
+
+    def tearDown(self):
+        from vninvest_core.celery import app as celery_app
+        celery_app.conf.task_always_eager = False
 
     @patch('data_ingest.tasks.send_mail')
     def test_password_reset_view_calls_async_task(self, mock_send):
@@ -184,7 +194,7 @@ class EmailTaskIntegrationTests(TestCase):
         client.force_authenticate(user=admin)
 
         response = client.post(
-            '/api/auth/password-reset/',
+            '/core/v1/auth/password-reset/',
             {'email': self.email},
             format='json',
         )
@@ -206,7 +216,7 @@ class EmailTaskIntegrationTests(TestCase):
         client = APIClient()
 
         response = client.post(
-            '/api/auth/register/',
+            '/core/v1/auth/register/',
             {
                 'username': 'newuser',
                 'email': 'newuser@example.com',

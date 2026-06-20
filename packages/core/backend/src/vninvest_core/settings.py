@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'drf_spectacular',
+    'drf_spectacular_sidecar',
     'corsheaders',
     'django_celery_beat',
     # SFI-B7: WebSocket support
@@ -66,6 +67,8 @@ INSTALLED_APPS = [
     'user_workspace',
     'market_data',
     'service_ops',
+    'support',
+    'advertising',
 ]
 
 MIDDLEWARE = [
@@ -76,6 +79,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'identity_access.middleware.TenantResolutionMiddleware',
     'identity_access.middleware.TenantQuotaMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
 ]
@@ -162,6 +166,18 @@ OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 OPENAI_DEFAULT_MODEL = os.environ.get('OPENAI_DEFAULT_MODEL', 'gpt-4o-mini')
 ADVISORY_TOKEN_BUDGET = int(os.environ.get('ADVISORY_TOKEN_BUDGET', '2000'))
 
+# Stripe Billing Integration
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
+
+# Stripe Price IDs mapping (plan_code -> Stripe Price ID)
+STRIPE_PRICE_IDS = {
+    'starter': os.environ.get('STRIPE_PRICE_ID_STARTER', ''),
+    'pro': os.environ.get('STRIPE_PRICE_ID_PRO', ''),
+    'enterprise': os.environ.get('STRIPE_PRICE_ID_ENTERPRISE', ''),
+}
+
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Asia/Ho_Chi_Minh'
 USE_I18N = False
@@ -181,6 +197,7 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 50,
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'identity_access.authentication.CorePATAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -221,6 +238,9 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
     'SORT_OPERATIONS': False,
+    'SWAGGER_UI_DIST': 'SIDECAR',
+    'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
+    'REDOC_DIST': 'SIDECAR',
 }
 
 CORS_ALLOW_ALL_ORIGINS = False
@@ -297,8 +317,16 @@ CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
-CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TIMEZONE = TIME_ZONE
+
+import sys
+if 'test' in sys.argv or any('test' in arg for arg in sys.argv):
+    CELERY_TASK_ALWAYS_EAGER = True
+    try:
+        import celery
+        celery.current_app.conf.task_always_eager = True
+    except Exception:
+        pass
 
 # SM-P2.2: Beat schedule for materializer tasks + realtime data collection.
 from celery.schedules import crontab  # noqa: E402
@@ -418,6 +446,17 @@ CELERY_BEAT_SCHEDULE = {
         'options': {
             'queue': SCHEDULER_QUEUE_MAP.get(
                 'reconcile-stale-running-service-run-logs-5m',
+                'manual_on_demand',
+            )
+        },
+    },
+    # === Task thăm dò sức khỏe hệ thống dịch vụ SOC ===
+    'service-ops-health-check-60s': {
+        'task': 'service_ops.health_check_all_services',
+        'schedule': 60.0,
+        'options': {
+            'queue': SCHEDULER_QUEUE_MAP.get(
+                'service-ops-health-check-60s',
                 'manual_on_demand',
             )
         },

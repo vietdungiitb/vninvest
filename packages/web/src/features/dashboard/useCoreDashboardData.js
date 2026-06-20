@@ -140,9 +140,24 @@ export function useCoreDashboardData({ portfolioId, enabled = true } = {}) {
         if (cancelled) return;
 
         const holdings = safeResults(holdingsRes);
-        const watchlists = safeResults(watchlistsRes);
+        const rawWatchlists = safeResults(watchlistsRes);
         const trackedSymbols = safeResults(trackedRes);
-        const watchlistGroups = safeResults(groupsRes);
+        const rawWatchlistGroups = safeResults(groupsRes);
+
+        const EXCLUDED_MARKET_GROUPS = [
+          "NGÂN HÀNG", "BẤT ĐỘNG SẢN", "THÉP & VẬT LIỆU", "DẦU KHÍ", "CÔNG NGHỆ", 
+          "BÁN LẺ & TIÊU DÙNG", "VN30", "VN100", "HNX30", "HOSE", "HNX", "UPCOM"
+        ];
+
+        const watchlists = rawWatchlists.filter(wl => {
+          const name = String(wl?.name || "").trim().toUpperCase();
+          return !EXCLUDED_MARKET_GROUPS.includes(name);
+        });
+
+        const watchlistGroups = rawWatchlistGroups.filter(g => {
+          const name = String(g?.name || "").trim().toUpperCase();
+          return !EXCLUDED_MARKET_GROUPS.includes(name);
+        });
 
         // Phase 2 — bulk technicals once the monitored symbol universe is known
         const symbols = collectDashboardSymbols({

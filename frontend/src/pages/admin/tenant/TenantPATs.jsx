@@ -111,6 +111,7 @@ export default function TenantPATs() {
     scopeCodes: 'market:read, signals:read',
     expiresAt: '',
     displayName: '',
+    allowedCidrBlocks: '',
   });
 
   async function loadData() {
@@ -216,6 +217,7 @@ export default function TenantPATs() {
         scope_codes: normalizeCommaList(issueForm.scopeCodes),
         expires_at: issueForm.expiresAt ? new Date(issueForm.expiresAt).toISOString() : null,
         display_name: issueForm.displayName.trim(),
+        allowed_cidr_blocks: normalizeCommaList(issueForm.allowedCidrBlocks),
       });
       const nextSecretReveal = normalizeSecretReveal(response.data);
       if (!nextSecretReveal) {
@@ -226,6 +228,7 @@ export default function TenantPATs() {
         ...current,
         displayName: '',
         expiresAt: '',
+        allowedCidrBlocks: '',
       }));
       await loadData();
     } catch (nextError) {
@@ -240,10 +243,17 @@ export default function TenantPATs() {
       return;
     }
 
+    // Find the token to get its current CIDR blocks
+    const token = tokens.find(t => t.id === tokenId);
+    const currentCidrBlocks = token?.allowed_cidr_blocks || [];
+
     setActiveTokenId(tokenId);
     setError('');
     try {
-      const response = await rotateTenantPAT(tokenId, { grace_period_seconds: 3600 });
+      const response = await rotateTenantPAT(tokenId, { 
+        grace_period_seconds: 3600,
+        allowed_cidr_blocks: currentCidrBlocks,
+      });
       const nextSecretReveal = normalizeSecretReveal(response.data?.new_token || response.data);
       if (!nextSecretReveal) {
         throw new Error('Backend không trả về secret PAT hợp lệ');
@@ -468,6 +478,17 @@ export default function TenantPATs() {
                     className="rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition-colors focus:border-emerald-400"
                   />
                 </label>
+                <label className="grid gap-1.5 text-sm text-slate-200">
+                  <span>{t('tenantPats.allowedCidrBlocksLabel')}</span>
+                  <textarea
+                    value={issueForm.allowedCidrBlocks}
+                    onChange={(event) => setIssueForm((current) => ({ ...current, allowedCidrBlocks: event.target.value }))}
+                    placeholder={t('tenantPats.allowedCidrBlocksPlaceholder')}
+                    rows={2}
+                    className="rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition-colors focus:border-emerald-400 resize-none"
+                  />
+                  <p className="text-xs text-slate-500">{t('tenantPats.allowedCidrBlocksHelp')}</p>
+                </label>
                 <button
                   type="submit"
                   disabled={submitting || !canIssue}
@@ -599,6 +620,12 @@ export default function TenantPATs() {
                         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">{t('tenantPats.lastUsedAtLabel')}</p>
                         <p className="mt-1 text-sm text-slate-100">{formatDateTime(item.last_used_at, locale)}</p>
                       </div>
+                      {item.allowed_cidr_blocks && item.allowed_cidr_blocks.length > 0 ? (
+                        <div className="sm:col-span-2">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">{t('tenantPats.allowedCidrBlocksLabel')}</p>
+                          <p className="mt-1 text-sm text-slate-100 font-mono">{item.allowed_cidr_blocks.join(', ')}</p>
+                        </div>
+                      ) : null}
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
                       {canRotate && item.status !== 'revoked' ? (

@@ -30,6 +30,7 @@ _CORE_APPS = frozenset({
     'admin',
     'token_blacklist',
     'django_celery_beat',
+    'advertising',
 })
 
 

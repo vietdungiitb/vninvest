@@ -8,7 +8,7 @@
 ## 🎯 Những Gì Đã Sửa
 
 1. ✅ **X-Frame-Options Header** - Cho phép nhúng admin page trong iframe (fix lỗi `Unsafe attempt to load URL`)
-2. ✅ **Environment Configuration** - Cập nhật đầy đủ domain `vninvest.edusuccess.vn` 
+2. ✅ **Environment Configuration** - Cập nhật đầy đủ domain `saas.edusuccess.vn` 
 3. ✅ **Database Password** - Đồng bộ giữa `.env.production` và `backend/.env.production`
 4. ✅ **Production Override** - Tạo `docker-compose.prod.yml` để tắt mailpit ports
 5. ✅ **Security Headers** - SSL redirect, HSTS, session/csrf cookie secure
@@ -57,11 +57,11 @@ FRONTEND_PORT=80
 
 DJANGO_SECRET_KEY=<your-very-long-random-string>
 DJANGO_DEBUG=False
-DJANGO_ALLOWED_HOSTS=vninvest.edusuccess.vn,localhost,127.0.0.1,*.edusuccess.vn
+DJANGO_ALLOWED_HOSTS=saas.edusuccess.vn,localhost,127.0.0.1,*.edusuccess.vn
 
-CORS_ALLOWED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn
-CSRF_TRUSTED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn
-FRONTEND_BASE_URL=https://vninvest.edusuccess.vn
+CORS_ALLOWED_ORIGINS=https://saas.edusuccess.vn,http://saas.edusuccess.vn
+CSRF_TRUSTED_ORIGINS=https://saas.edusuccess.vn,http://saas.edusuccess.vn
+FRONTEND_BASE_URL=https://saas.edusuccess.vn
 
 DJANGO_SECURE_SSL_REDIRECT=True
 DJANGO_SESSION_COOKIE_SECURE=True
@@ -101,7 +101,7 @@ Deploy Stack → Xem logs trong Tab "Logs" → Để verify tất cả services 
 ### Bước 1: SSH Vào Server
 
 ```bash
-ssh root@vninvest.edusuccess.vn
+ssh root@saas.edusuccess.vn
 cd /opt/vninvest
 ```
 
@@ -124,11 +124,11 @@ FRONTEND_PORT=80
 
 DJANGO_SECRET_KEY=<your-very-long-random-string>
 DJANGO_DEBUG=False
-DJANGO_ALLOWED_HOSTS=vninvest.edusuccess.vn,localhost,127.0.0.1,*.edusuccess.vn
+DJANGO_ALLOWED_HOSTS=saas.edusuccess.vn,localhost,127.0.0.1,*.edusuccess.vn
 
-CORS_ALLOWED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn
-CSRF_TRUSTED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn
-FRONTEND_BASE_URL=https://vninvest.edusuccess.vn
+CORS_ALLOWED_ORIGINS=https://saas.edusuccess.vn,http://saas.edusuccess.vn
+CSRF_TRUSTED_ORIGINS=https://saas.edusuccess.vn,http://saas.edusuccess.vn
+FRONTEND_BASE_URL=https://saas.edusuccess.vn
 
 DJANGO_SECURE_SSL_REDIRECT=True
 DJANGO_SESSION_COOKIE_SECURE=True
@@ -146,7 +146,7 @@ EOF
 cat > backend/.env.production << 'EOF'
 DJANGO_SECRET_KEY=<same-as-above>
 DJANGO_DEBUG=False
-DJANGO_ALLOWED_HOSTS=vninvest.edusuccess.vn,localhost,127.0.0.1,*.edusuccess.vn
+DJANGO_ALLOWED_HOSTS=saas.edusuccess.vn,localhost,127.0.0.1,*.edusuccess.vn
 
 DB_ENGINE=postgres
 POSTGRES_DB=vninvest
@@ -155,9 +155,9 @@ POSTGRES_PASSWORD=<your-secure-password>
 POSTGRES_HOST=db
 POSTGRES_PORT=5432
 
-CORS_ALLOWED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn
-CSRF_TRUSTED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn
-FRONTEND_BASE_URL=https://vninvest.edusuccess.vn
+CORS_ALLOWED_ORIGINS=https://saas.edusuccess.vn,http://saas.edusuccess.vn
+CSRF_TRUSTED_ORIGINS=https://saas.edusuccess.vn,http://saas.edusuccess.vn
+FRONTEND_BASE_URL=https://saas.edusuccess.vn
 
 CELERY_BROKER_URL=redis://redis:6379/0
 CELERY_RESULT_BACKEND=redis://redis:6379/0
@@ -218,7 +218,7 @@ Nếu server có Nginx/Caddy/nginx-proxy, cấu hình domain pointing:
 ```nginx
 server {
     listen 80;
-    server_name vninvest.edusuccess.vn;
+    server_name saas.edusuccess.vn;
 
     # Redirect HTTP → HTTPS
     return 301 https://$server_name$request_uri;
@@ -226,11 +226,11 @@ server {
 
 server {
     listen 443 ssl http2;
-    server_name vninvest.edusuccess.vn;
+    server_name saas.edusuccess.vn;
 
     # SSL certificates (Let's Encrypt hoặc self-signed)
-    ssl_certificate /etc/letsencrypt/live/vninvest.edusuccess.vn/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/vninvest.edusuccess.vn/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/saas.edusuccess.vn/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/saas.edusuccess.vn/privkey.pem;
 
     location / {
         proxy_pass http://localhost:80;  # Docker frontend port
@@ -324,10 +324,10 @@ docker compose logs redis -f --tail=50
 ## 📱 Truy Cập Ứng Dụng
 
 ```
-Frontend:     https://vninvest.edusuccess.vn
-Admin Panel:  https://vninvest.edusuccess.vn/admin/
-API:          https://vninvest.edusuccess.vn/api/
-WebSocket:    wss://vninvest.edusuccess.vn/ws/
+Frontend:     https://saas.edusuccess.vn
+Admin Panel:  https://saas.edusuccess.vn/admin/
+API:          https://saas.edusuccess.vn/api/
+WebSocket:    wss://saas.edusuccess.vn/ws/
 ```
 
 ---

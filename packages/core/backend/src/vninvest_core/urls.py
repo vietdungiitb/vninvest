@@ -43,18 +43,14 @@ urlpatterns = [
     path('core/v1/', include(('user_workspace.urls', 'user_workspace'), namespace='user_workspace')),
     path('core/v1/', include(('market_data.core_urls', 'market_data'), namespace='market_data')),
     path('core/v1/', include(('data_ingest.urls', 'data_ingest'), namespace='data_ingest')),
+    path('core/v1/', include(('support.urls', 'support'), namespace='support')),
+    path('core/v1/', include(('advertising.urls', 'advertising'), namespace='advertising')),
     # Native public bootstrap routes owned by core-api domain apps.
     path('api/', include(('commercial.public_urls', 'commercial_public'), namespace='commercial_public')),
-    path('api/', include(('market_data.public_urls', 'market_data_public'), namespace='market_data_public')),
-    path('api/', include(('market_serving.api_urls', 'market_serving_api'), namespace='market_serving_api')),
-    path('api/', include(('signal_intelligence.api_urls', 'signal_intelligence_api'), namespace='signal_intelligence_api')),
-    path('api/', include(('user_workspace.urls', 'user_workspace_api'), namespace='user_workspace_api')),
-    path('api/', include(('identity_access.api_urls', 'identity_access_api'), namespace='identity_access_api')),
-    path('api/', include(('market_data.urls', 'market_data_api'), namespace='market_data_api')),
+    path('api/', include(('advertising.api_urls', 'advertising_api'), namespace='advertising_api')),
     # D2: admin-ops decommissioned — all sub-paths return 410 GONE
     re_path(r'^api/admin-ops/.*$', admin_ops_gone),
     path('api/soc/', include(('service_ops.urls', 'service_ops'), namespace='service_ops')),
-
 ]
 
 if settings.DEBUG:

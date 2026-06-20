@@ -36,6 +36,7 @@ RUN npm ci --legacy-peer-deps
 COPY frontend/ ./
 COPY packages/web/ ../packages/web/
 COPY packages/web/ ./packages/web/
+RUN node patch-webpack.js
 RUN rm -rf node_modules/@vnstockcharts node_modules/@vninvestcharts \
 	&& mkdir -p node_modules/@vnstockcharts node_modules/@vninvestcharts \
 	&& cp -r /stockchart/packages/vn-kline-engine-core node_modules/@vnstockcharts/vn-kline-engine-core \
@@ -50,11 +51,13 @@ RUN rm -rf node_modules/@vnstockcharts node_modules/@vninvestcharts \
 
 ARG REACT_APP_API_BASE_URL=/api
 ARG REACT_APP_ENABLE_PACKAGE_SHELL_HOST=1
+ARG REACT_APP_ENABLE_DEBUG_PAGES=1
 ARG REACT_APP_PACKAGE_SHELL_CORE_BASE_URL=/core/v1
 ARG REACT_APP_DISABLE_REALTIME_WEBSOCKET=true
 ARG APP_RELEASE=dev
 ENV REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL}
 ENV REACT_APP_ENABLE_PACKAGE_SHELL_HOST=${REACT_APP_ENABLE_PACKAGE_SHELL_HOST}
+ENV REACT_APP_ENABLE_DEBUG_PAGES=${REACT_APP_ENABLE_DEBUG_PAGES}
 ENV REACT_APP_PACKAGE_SHELL_CORE_BASE_URL=${REACT_APP_PACKAGE_SHELL_CORE_BASE_URL}
 ENV REACT_APP_DISABLE_REALTIME_WEBSOCKET=${REACT_APP_DISABLE_REALTIME_WEBSOCKET}
 ENV APP_RELEASE=${APP_RELEASE}

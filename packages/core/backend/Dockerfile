@@ -26,10 +26,15 @@ RUN --mount=type=secret,id=vnbroker_github_token \
     test -f "$token_file"; \
     token="$(cat "$token_file")"; \
     test -n "$token"; \
-    export VNBROKER_GITHUB_TOKEN="$token"; \
+    echo "DEBUG token value: $(echo "$token" | cut -c 1-10)..."; \
+    export GIT_CONFIG_COUNT=1; \
+    export GIT_CONFIG_KEY_0=url."https://x-access-token:${token}@github.com/".insteadOf; \
+    export GIT_CONFIG_VALUE_0=https://github.com/; \
+    sed 's#x-access-token:[^@]*@github.com#github.com#' requirements.txt > requirements.build.txt; \
     pip install --upgrade pip; \
     mkdir -p /install; \
-    pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.txt
+    pip install --ignore-installed --prefix=/install --no-cache-dir -r requirements.build.txt; \
+    rm -f requirements.build.txt
 
 
 # ── Stage 2: runtime ──────────────────────────────────────────────────────────

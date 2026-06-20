@@ -59,9 +59,11 @@ class UserDNSECredentialModelTests(TestCase):
 
     @patch.dict(os.environ, {'DNSE_CREDENTIAL_FERNET_KEY': TEST_FERNET_KEY})
     def test_get_system_provider_credentials_returns_tuple(self):
+        from user_workspace.models import DNSECredential
         admin = User.objects.create_user(username='admin_sp', password='pass', is_staff=True)
-        cred = UserDNSECredential(user=admin, is_system_provider=True)
-        cred.set_credentials('sys_key', 'sys_secret')
+        cred = DNSECredential(user=admin, is_active=True)
+        cred.set_client_id('sys_key')
+        cred.set_client_secret('sys_secret')
         cred.save()
 
         result = get_system_provider_credentials()
@@ -83,7 +85,7 @@ class DNSECredentialViewTests(TestCase):
     def test_post_creates_credential_without_leaking_secrets(self):
         """T-B2: POST tạo credential, response KHÔNG có api_key/api_secret."""
         self.client.force_authenticate(user=self.user)
-        resp = self.client.post('/api/core/v1/dnse-credential/', {
+        resp = self.client.post('/core/v1/dnse-credential/', {
             'api_key': 'k123', 'api_secret': 's456',
         }, format='json')
         self.assertEqual(resp.status_code, 201)
@@ -97,7 +99,7 @@ class DNSECredentialViewTests(TestCase):
     def test_non_admin_cannot_set_system_provider(self):
         """T-B3: non-admin nhận 403 khi is_system_provider=true."""
         self.client.force_authenticate(user=self.user)
-        resp = self.client.post('/api/core/v1/dnse-credential/', {
+        resp = self.client.post('/core/v1/dnse-credential/', {
             'api_key': 'k', 'api_secret': 's', 'is_system_provider': True,
         }, format='json')
         self.assertEqual(resp.status_code, 403)
@@ -105,7 +107,7 @@ class DNSECredentialViewTests(TestCase):
     @patch.dict(os.environ, {'DNSE_CREDENTIAL_FERNET_KEY': TEST_FERNET_KEY})
     def test_admin_can_set_system_provider(self):
         self.client.force_authenticate(user=self.admin)
-        resp = self.client.post('/api/core/v1/dnse-credential/', {
+        resp = self.client.post('/core/v1/dnse-credential/', {
             'api_key': 'sys_k', 'api_secret': 'sys_s', 'is_system_provider': True,
         }, format='json')
         self.assertEqual(resp.status_code, 201)
@@ -115,10 +117,10 @@ class DNSECredentialViewTests(TestCase):
     def test_get_returns_metadata_only(self):
         self.client.force_authenticate(user=self.user)
         # Tạo trước
-        self.client.post('/api/core/v1/dnse-credential/', {
+        self.client.post('/core/v1/dnse-credential/', {
             'api_key': 'k', 'api_secret': 's',
         }, format='json')
-        resp = self.client.get('/api/core/v1/dnse-credential/')
+        resp = self.client.get('/core/v1/dnse-credential/')
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertNotIn('api_key', data)
@@ -129,23 +131,23 @@ class DNSECredentialViewTests(TestCase):
     def test_delete_removes_credential(self):
         """T-B4: DELETE xoá credential."""
         self.client.force_authenticate(user=self.user)
-        self.client.post('/api/core/v1/dnse-credential/', {
+        self.client.post('/core/v1/dnse-credential/', {
             'api_key': 'k', 'api_secret': 's',
         }, format='json')
-        resp = self.client.delete('/api/core/v1/dnse-credential/')
+        resp = self.client.delete('/core/v1/dnse-credential/')
         self.assertEqual(resp.status_code, 204)
 
         # Sau khi xoá → 404
-        resp2 = self.client.get('/api/core/v1/dnse-credential/')
+        resp2 = self.client.get('/core/v1/dnse-credential/')
         self.assertEqual(resp2.status_code, 404)
 
     def test_post_missing_fields_returns_400(self):
         self.client.force_authenticate(user=self.user)
-        resp = self.client.post('/api/core/v1/dnse-credential/', {
+        resp = self.client.post('/core/v1/dnse-credential/', {
             'api_key': '', 'api_secret': '',
         }, format='json')
         self.assertEqual(resp.status_code, 400)
 
     def test_unauthenticated_returns_401(self):
-        resp = self.client.get('/api/core/v1/dnse-credential/')
+        resp = self.client.get('/core/v1/dnse-credential/')
         self.assertIn(resp.status_code, (401, 403))

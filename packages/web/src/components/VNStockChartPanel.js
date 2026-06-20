@@ -1,9 +1,10 @@
-import React, { createElement, useState, useCallback, useMemo, useEffect } from 'react';
+import React, { createElement, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { toCanonicalMinute } from '../utils/whaleTimeAdapter.js';
 import { mapToOHLCVBars, mapToWhaleOrders, mapToCvdSeries } from '../utils/VNInvestSignalAdapter.js';
 import { VNInvestCharts, MockAdapter, OverlayCanvas, widgetMessagesVi } from './vninvestcharts/index.js';
 import { useViewportWhaleMarkers } from '../features/stock-detail/hooks/useViewportWhaleMarkers.js';
 import { createCoreApiAdapter } from '../adapters/coreApiAdapter.js';
+import { useRealtimeFeedFromManager } from '../context/RealtimeContext.js';
 
 const e = createElement;
 
@@ -48,13 +49,18 @@ class CoreApiChartAdapter {
   }
 
   resolveDays(params) {
-    const tf = String(params.interval || "").toLowerCase();
+    const rawTf = String(params.interval || "");
+    const tf = rawTf.toLowerCase();
     let intervalMs = 60 * 60 * 1000; // default 1H
-    if (tf.includes("m")) {
+    if (rawTf.includes("M")) {
+      intervalMs = 30 * 24 * 60 * 60 * 1000;
+    } else if (rawTf.includes("m")) {
       const mins = parseInt(tf) || 15;
       intervalMs = mins * 60 * 1000;
-    } else if (tf.includes("d") || tf.includes("1d")) {
+    } else if (tf.includes("d")) {
       intervalMs = 24 * 60 * 60 * 1000;
+    } else if (tf.includes("w")) {
+      intervalMs = 7 * 24 * 60 * 60 * 1000;
     } else if (tf.includes("h")) {
       const hrs = parseInt(tf) || 1;
       intervalMs = hrs * 60 * 60 * 1000;
@@ -196,7 +202,10 @@ class CoreApiChartAdapter {
   }
 
   subscribeToBar(symbol, timeframe, onBar) {
-    return () => {};
+    this.onBarCallback = onBar;
+    return () => {
+      this.onBarCallback = null;
+    };
   }
   subscribeToTrades(symbol, onTrade) {
     return () => {};
@@ -289,6 +298,8 @@ export default function VNStockChartPanel({
   flowData = null,
   whaleSignals = [],
   orderFlowData = null,
+  enableCVD = false,
+  enableInstitutionalStrength = false,
 }) {
   const { t } = useI18n();
   const [internalBars, setInternalBars] = useState([]);
@@ -309,6 +320,67 @@ export default function VNStockChartPanel({
     clearTokens: env?.clearTokens,
   }), [env]);
   const chartAdapter = useMemo(() => new CoreApiChartAdapter(symbol, activeTimeframe, coreAdapter), [symbol, activeTimeframe, coreAdapter]);
+
+  // --- Real-time WebSocket Feed to Chart Adapter ---
+  const realtimeFeed = useRealtimeFeedFromManager({
+    symbols: symbol ? [symbol] : [],
+    pollInterval: 5000,
+  });
+
+  const quote = realtimeFeed?.quotesBySymbol?.[symbol] ?? null;
+  const pendingQuoteRef = useRef(null);
+
+  // Build a bar object from the WebSocket quote
+  const buildBarFromQuote = useCallback((q) => {
+    if (!q || !q.current_price) return null;
+    // For daily timeframe, use today's date at midnight; for intraday, use last_date
+    const tf = (activeTimeframe || '').toLowerCase();
+    const isDaily = tf === 'd' || tf === '1d';
+    let barDate;
+    if (isDaily) {
+      // Use today's date so daily candle shows on today's slot
+      const now = new Date();
+      barDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else {
+      barDate = new Date(q.last_date || Date.now());
+    }
+    return {
+      date: barDate,
+      open: Number(q.open_price ?? q.current_price),
+      high: Number(q.high_price ?? q.current_price),
+      low: Number(q.low_price ?? q.current_price),
+      close: Number(q.current_price),
+      volume: Number(q.volume ?? 0),
+    };
+  }, [activeTimeframe]);
+
+  // Push bar to chart when both quote and callback are ready
+  useEffect(() => {
+    const nextBar = buildBarFromQuote(quote);
+    if (!nextBar) return;
+
+    // If callback is already registered, push immediately
+    if (chartAdapter.onBarCallback) {
+      chartAdapter.onBarCallback(nextBar);
+      pendingQuoteRef.current = null;
+      return;
+    }
+
+    // Otherwise, store as pending and retry via interval
+    pendingQuoteRef.current = nextBar;
+  }, [quote, chartAdapter, buildBarFromQuote]);
+
+  // Retry interval: push pending bar when subscribeToBar callback becomes available
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (pendingQuoteRef.current && chartAdapter.onBarCallback) {
+        chartAdapter.onBarCallback(pendingQuoteRef.current);
+        pendingQuoteRef.current = null;
+      }
+    }, 500);
+    return () => clearInterval(intervalId);
+  }, [chartAdapter]);
+  // -------------------------------------------------
 
   // Enriched bars mapped from local internalBars state
   const enrichedBars = useMemo(() => mapToOHLCVBars(internalBars), [internalBars]);
@@ -388,9 +460,6 @@ export default function VNStockChartPanel({
   // Handle visible range updates to sync viewport indicators
   const handleVisibleRangeChange = useCallback((range) => {
     setVisibleRange(range);
-    if (range?.startDate && range?.endDate) {
-      setXExtents([range.startDate, range.endDate]);
-    }
     onVisibleRangeChange?.(range);
   }, [onVisibleRangeChange]);
 
@@ -446,10 +515,11 @@ export default function VNStockChartPanel({
           theme: 'dark',
           enableWhale: true,
           whaleOrders: mappedWhaleOrders,
-          enableCVD: false,
+          enableCVD: enableCVD,
           externalCvdSeries: undefined,
           darkFlowStrength: null,
           darkFlowSignalType: undefined,
+          enableInstitutionalStrength: enableInstitutionalStrength,
           onClick: handleClick,
           onVisibleRangeChange: handleVisibleRangeChange,
           onBarsChange: handleBarsChange,
@@ -468,6 +538,6 @@ export default function VNStockChartPanel({
   return e(
     'div',
     { className: 'flex flex-col h-full bg-[#0a0f1d] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl relative' },
-    e('div', { className: 'flex-1 min-h-[460px] relative' }, chartBody),
+    e('div', { className: 'flex-1 h-full relative' }, chartBody),
   );
 }

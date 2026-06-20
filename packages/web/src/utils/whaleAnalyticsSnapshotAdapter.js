@@ -1,0 +1,379 @@
+import { resolveWhaleTimeframeWindow, toCanonicalMinute } from './whaleTimeAdapter.js';
+import { buildWhaleFlowViewModel } from './whaleFlowViewModel.js';
+
+function buildWindowFromSnapshot(snapshot, timeframe) {
+  const startValue = snapshot?.axis?.window_start;
+  const endValue = snapshot?.axis?.window_end;
+  const fallback = resolveWhaleTimeframeWindow(timeframe);
+  const startDate = startValue ? new Date(startValue) : new Date(fallback.startMs);
+  const endDate = endValue ? new Date(endValue) : new Date(fallback.endMs);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return fallback;
+  }
+  return {
+    ...fallback,
+    startEpochSec: Math.floor(startDate.getTime() / 1000),
+    endEpochSec: Math.floor(endDate.getTime() / 1000),
+    startMs: startDate.getTime(),
+    endMs: endDate.getTime(),
+  };
+}
+
+function sortSeriesByTime(series) {
+  return [...series].sort((left, right) => {
+    const leftTs = toCanonicalMinute(left?.ts ?? left?.bucket_ts ?? left?.time ?? left?.date) ?? 0;
+    const rightTs = toCanonicalMinute(right?.ts ?? right?.bucket_ts ?? right?.time ?? right?.date) ?? 0;
+    return leftTs - rightTs;
+  });
+}
+
+function mergeSeriesByKey(seriesList, keyResolver) {
+  const lookup = new Map();
+  (Array.isArray(seriesList) ? seriesList : []).flat().forEach((item) => {
+    const key = keyResolver(item);
+    if (!key) {
+      return;
+    }
+    lookup.set(key, item);
+  });
+  return sortSeriesByTime(Array.from(lookup.values()));
+}
+
+function mergeBubbleOrders(ordersList) {
+  const resolveOrderKey = (item) => [
+    item?.ts ?? item?.bucket_ts ?? '',
+    item?.side ?? '',
+    item?.price ?? '',
+    item?.volume ?? '',
+    item?.matched_value ?? '',
+  ].join('|');
+
+  return {
+    buy: mergeSeriesByKey((ordersList || []).map((orders) => orders?.buy || []), resolveOrderKey),
+    sell: mergeSeriesByKey((ordersList || []).map((orders) => orders?.sell || []), resolveOrderKey),
+    internal: mergeSeriesByKey((ordersList || []).map((orders) => orders?.internal || []), resolveOrderKey),
+  };
+}
+
+function mergeTimeframeWindows(windows, timeframe) {
+  const validWindows = (Array.isArray(windows) ? windows : []).filter(Boolean);
+  if (!validWindows.length) {
+    return resolveWhaleTimeframeWindow(timeframe);
+  }
+
+  const startEpochSec = Math.min(...validWindows.map((window) => Number(window?.startEpochSec)).filter(Number.isFinite));
+  const endEpochSec = Math.max(...validWindows.map((window) => Number(window?.endEpochSec)).filter(Number.isFinite));
+  const startMs = Math.min(...validWindows.map((window) => Number(window?.startMs)).filter(Number.isFinite));
+  const endMs = Math.max(...validWindows.map((window) => Number(window?.endMs)).filter(Number.isFinite));
+  const latestWindow = validWindows[validWindows.length - 1];
+
+  return {
+    ...latestWindow,
+    timeframe: latestWindow?.timeframe || timeframe,
+    startEpochSec: Number.isFinite(startEpochSec) ? startEpochSec : latestWindow?.startEpochSec,
+    endEpochSec: Number.isFinite(endEpochSec) ? endEpochSec : latestWindow?.endEpochSec,
+    startMs: Number.isFinite(startMs) ? startMs : latestWindow?.startMs,
+    endMs: Number.isFinite(endMs) ? endMs : latestWindow?.endMs,
+    isLive: validWindows.some((window) => Boolean(window?.isLive)),
+  };
+}
+
+export function mergeWhaleAnalyticsSnapshots(normalizedSnapshots, timeframe, selectedTradeDate = null) {
+  const snapshots = (Array.isArray(normalizedSnapshots) ? normalizedSnapshots : [])
+    .filter(Boolean)
+    .sort((left, right) => {
+      const leftTradeDate = left?.flow?.view_model?.sessionContext?.selectedTradeDate || left?.flow?.view_model?.sessionContext?.defaultTradeDate || '';
+      const rightTradeDate = right?.flow?.view_model?.sessionContext?.selectedTradeDate || right?.flow?.view_model?.sessionContext?.defaultTradeDate || '';
+      return String(leftTradeDate).localeCompare(String(rightTradeDate));
+    });
+
+  if (!snapshots.length) {
+    return {
+      bubbles: null,
+      flow: null,
+      meta: null,
+    };
+  }
+
+  const latestSnapshot = snapshots[snapshots.length - 1];
+  const latestTradeDate = latestSnapshot?.flow?.view_model?.sessionContext?.selectedTradeDate
+    || latestSnapshot?.flow?.view_model?.sessionContext?.defaultTradeDate
+    || null;
+  const mergedOrders = mergeBubbleOrders(snapshots.map((snapshot) => snapshot?.bubbles?.orders || {}));
+  const flattenedBubbleOrders = [
+    ...mergedOrders.buy,
+    ...mergedOrders.sell,
+    ...mergedOrders.internal,
+  ];
+  const mergedPriceSeries = mergeSeriesByKey(snapshots.map((snapshot) => snapshot?.bubbles?.price_series || []), (item) => item?.bucket_ts ?? item?.ts);
+  const mergedCvdSeries = mergeSeriesByKey(snapshots.map((snapshot) => snapshot?.flow?.cvd_series || []), (item) => item?.bucket_ts ?? item?.ts);
+  const mergedStrengthSeries = mergeSeriesByKey(snapshots.map((snapshot) => snapshot?.flow?.strength_series || []), (item) => item?.bucket_ts ?? item?.ts);
+  const mergedInstitutionalStrengthSeries = mergeSeriesByKey(snapshots.map((snapshot) => snapshot?.flow?.institutional_strength_series || []), (item) => item?.bucket_ts ?? item?.ts);
+  const mergedSpeedSeries = mergeSeriesByKey(snapshots.map((snapshot) => snapshot?.flow?.speed_series || []), (item) => item?.bucket_ts ?? item?.ts);
+  const mergedFlowCompareSeries = mergeSeriesByKey(snapshots.map((snapshot) => snapshot?.flow?.flow_compare_series || []), (item) => item?.bucket_ts ?? item?.ts);
+  const mergedHeatmapSeries = mergeSeriesByKey(snapshots.map((snapshot) => snapshot?.flow?.heatmap_series || []), (item) => item?.bucket_ts ?? item?.ts);
+  const mergedMarkerSeries = mergeSeriesByKey(snapshots.map((snapshot) => snapshot?.flow?.marker_series || []), (item) => item?.bucket_ts ?? item?.ts);
+  const aggregatedQualityFlags = {
+    has_flow_data: snapshots.some((snapshot) => Boolean(snapshot?.flow?.quality_flags?.has_flow_data) || (snapshot?.flow?.flow_compare_series || []).length > 0),
+    has_heatmap_data: snapshots.some((snapshot) => Boolean(snapshot?.flow?.quality_flags?.has_heatmap_data) || (snapshot?.flow?.heatmap_series || []).length > 0),
+    degraded_reason: latestSnapshot?.flow?.quality_flags?.degraded_reason || null,
+    contract_version: latestSnapshot?.flow?.quality_flags?.contract_version || latestSnapshot?.bubbles?.quality_flags?.contract_version || null,
+    cache_key_version: latestSnapshot?.flow?.quality_flags?.cache_key_version || latestSnapshot?.bubbles?.quality_flags?.cache_key_version || null,
+  };
+  const mergedSessionContext = {
+    default_trade_date: latestTradeDate,
+    selected_trade_date: selectedTradeDate || latestTradeDate,
+    latest_valid_trade_date: latestTradeDate,
+    quality_state: aggregatedQualityFlags.has_flow_data ? 'READY' : 'DEGRADED_FLOW_MISSING',
+  };
+  const mergedFlowViewModel = buildWhaleFlowViewModel({
+    flowCompareSeries: mergedFlowCompareSeries,
+    heatmapSeries: mergedHeatmapSeries,
+    markerSeries: mergedMarkerSeries,
+    cvdSeries: mergedCvdSeries,
+    strengthSeries: mergedStrengthSeries,
+    institutionalStrengthSeries: mergedInstitutionalStrengthSeries,
+    bubbleOrders: flattenedBubbleOrders,
+    sessionContext: mergedSessionContext,
+    qualityFlags: aggregatedQualityFlags,
+    tradeDate: latestTradeDate,
+  });
+  const bubbleWindow = mergeTimeframeWindows(snapshots.map((snapshot) => snapshot?.bubbles?.timeframe_window), timeframe);
+  const flowWindow = mergeTimeframeWindows(snapshots.map((snapshot) => snapshot?.flow?.timeframe_window), timeframe);
+
+  return {
+    bubbles: {
+      ...(latestSnapshot?.bubbles || {}),
+      orders: mergedOrders,
+      price_series: mergedPriceSeries,
+      summary: {
+        ...(latestSnapshot?.bubbles?.summary || {}),
+        total_orders: flattenedBubbleOrders.length,
+        buy_orders: mergedOrders.buy.length,
+        sell_orders: mergedOrders.sell.length,
+        internal_orders: mergedOrders.internal.length,
+      },
+      timeframe_window: bubbleWindow,
+    },
+    flow: {
+      ...(latestSnapshot?.flow || {}),
+      cvd_series: mergedCvdSeries,
+      strength_series: mergedStrengthSeries,
+      institutional_strength_series: mergedInstitutionalStrengthSeries,
+      speed_series: mergedSpeedSeries,
+      flow_compare_series: mergedFlowCompareSeries,
+      heatmap_series: mergedHeatmapSeries,
+      marker_series: mergedMarkerSeries,
+      session_context: mergedSessionContext,
+      quality_flags: aggregatedQualityFlags,
+      view_model: mergedFlowViewModel,
+      timeframe_window: flowWindow,
+    },
+    materialization: latestSnapshot?.materialization || null,
+    session_summary: latestSnapshot?.session_summary || null,
+    meta: {
+      ...(latestSnapshot?.meta || {}),
+      merged_trade_dates: snapshots
+        .map((snapshot) => snapshot?.flow?.view_model?.sessionContext?.defaultTradeDate || null)
+        .filter(Boolean),
+    },
+  };
+}
+
+export function normalizeWhaleAnalyticsSnapshot(snapshot, timeframe) {
+  const timeframeWindow = buildWindowFromSnapshot(snapshot, timeframe);
+  const bubbleSeries = Array.isArray(snapshot?.bubble_series) ? snapshot.bubble_series : [];
+  const priceSeries = Array.isArray(snapshot?.price_series) ? snapshot.price_series : [];
+  const sessionLevels = snapshot?.session_levels || {};
+  const cvdSeries = Array.isArray(snapshot?.flow_series?.cvd) ? snapshot.flow_series.cvd : [];
+  const buyStrengthSeries = Array.isArray(snapshot?.flow_series?.buy_strength) ? snapshot.flow_series.buy_strength : [];
+  const institutionalStrengthSeries = Array.isArray(snapshot?.flow_series?.institutional_strength)
+    ? snapshot.flow_series.institutional_strength
+    : [];
+  const speedSeries = Array.isArray(snapshot?.flow_series?.speed) ? snapshot.flow_series.speed : [];
+  const flowCompareSeries = Array.isArray(snapshot?.flow_compare_series) ? snapshot.flow_compare_series : [];
+  const heatmapSeries = Array.isArray(snapshot?.heatmap_series) ? snapshot.heatmap_series : [];
+  const markerSeries = Array.isArray(snapshot?.marker_series) ? snapshot.marker_series : [];
+  const sessionContext = snapshot?.session_context || null;
+  const snapshotQualityFlags = snapshot?.quality_flags || {};
+
+  const bubbleOrders = {
+    buy: [],
+    sell: [],
+    internal: [],
+  };
+
+  bubbleSeries.forEach((item) => {
+    const order = {
+      ts: item?.ts,
+      price: Number(item?.price ?? 0),
+      volume: Number(item?.volume ?? 0),
+      matched_value: Number(item?.matched_value ?? 0),
+      side: item?.side || 'NEUTRAL',
+      is_extreme: Boolean(item?.is_extreme),
+      is_whale: Boolean(item?.is_whale),
+      bucket_ts: item?.bucket_ts,
+      event_score: Number(item?.event_score ?? 0),
+      matched_value_percentile_10d: item?.matched_value_percentile_10d == null ? null : Number(item?.matched_value_percentile_10d),
+      event_score_percentile_10d: item?.event_score_percentile_10d == null ? null : Number(item?.event_score_percentile_10d),
+      baseline_sample_size: item?.baseline_sample_size == null ? null : Number(item?.baseline_sample_size),
+      delta_pct: Number(item?.delta_pct ?? 0),
+    };
+    const normalizedSide = String(order.side || '').trim().toLowerCase();
+    if (normalizedSide === 'buy') {
+      bubbleOrders.buy.push(order);
+    } else if (normalizedSide === 'sell') {
+      bubbleOrders.sell.push(order);
+    } else {
+      bubbleOrders.internal.push(order);
+    }
+  });
+
+  const latestInstitutional = institutionalStrengthSeries[institutionalStrengthSeries.length - 1] || null;
+  const staleReason = snapshot?.meta?.stale_reason || null;
+  const normalizedPriceSeries = priceSeries.map((item) => ({
+    ts: toCanonicalMinute(item?.bucket_ts),
+    bucket_ts: item?.bucket_ts,
+    price: Number(item?.price ?? 0),
+    reference_price: Number(item?.reference_price ?? 0),
+    delta_pct: Number(item?.delta_pct ?? 0),
+  })).filter((item) => item.ts != null);
+  const normalizedCvdSeries = cvdSeries.map((item) => ({
+    ts: toCanonicalMinute(item?.bucket_ts),
+    bucket_ts: item?.bucket_ts,
+    cvd: Number(item?.value ?? 0),
+    cumulative_cvd: Number(item?.value ?? 0),
+  })).filter((item) => item.ts != null);
+  const normalizedStrengthSeries = buyStrengthSeries.map((item) => ({
+    ts: toCanonicalMinute(item?.bucket_ts),
+    bucket_ts: item?.bucket_ts,
+    strength: Number(item?.value ?? 0),
+    confidence: item?.confidence || 'low',
+  })).filter((item) => item.ts != null);
+  const normalizedInstitutionalStrengthSeries = institutionalStrengthSeries.map((item) => ({
+    ts: toCanonicalMinute(item?.bucket_ts),
+    bucket_ts: item?.bucket_ts,
+    strength: Number(item?.value ?? 0),
+    confidence: item?.confidence || 'low',
+  })).filter((item) => item.ts != null);
+  const normalizedSpeedSeries = speedSeries.map((item) => ({
+    ts: toCanonicalMinute(item?.bucket_ts),
+    bucket_ts: item?.bucket_ts,
+    speed: item?.value == null ? null : Number(item?.value),
+    unit: item?.unit || 'events_per_second',
+    confidence: item?.confidence || 'low',
+  })).filter((item) => item.ts != null);
+  const normalizedFlowCompareSeries = flowCompareSeries.map((item) => ({
+    ts: toCanonicalMinute(item?.ts ?? item?.bucket_ts),
+    bucket_ts: item?.bucket_ts ?? item?.ts,
+    cvd_raw: Number(item?.cvd_raw ?? item?.cvd ?? 0),
+    cvd_normalized_0_100: Number(item?.cvd_normalized_0_100 ?? item?.cvd_normalized ?? 0),
+    buy_strength: Number(item?.buy_strength ?? 0),
+    institutional_strength: Number(item?.institutional_strength ?? 0),
+    baseline: Number(item?.baseline ?? 50),
+  })).filter((item) => item.ts != null);
+  const normalizedHeatmapSeries = heatmapSeries.map((item) => ({
+    ts: toCanonicalMinute(item?.ts ?? item?.bucket_ts),
+    bucket_ts: item?.bucket_ts ?? item?.ts,
+    buy_heat: Number(item?.buy_heat ?? 0),
+    sell_heat: Number(item?.sell_heat ?? 0),
+    net_heat: Number(item?.net_heat ?? 0),
+    whale_score: Number(item?.whale_score ?? 0),
+    confidence: item?.confidence == null ? null : Number(item?.confidence),
+    confidence_label: item?.confidence_label || null,
+  })).filter((item) => item.ts != null);
+  const normalizedMarkerSeries = markerSeries.map((item) => ({
+    ts: toCanonicalMinute(item?.ts ?? item?.bucket_ts),
+    bucket_ts: item?.bucket_ts ?? item?.ts,
+    side: item?.side || null,
+    score: Number(item?.score ?? 0),
+    matched_value: Number(item?.matched_value ?? 0),
+    event_score: Number(item?.event_score ?? 0),
+    confidence: item?.confidence == null ? null : Number(item?.confidence),
+  })).filter((item) => item.ts != null);
+  const allBubbleOrders = [...bubbleOrders.buy, ...bubbleOrders.sell, ...bubbleOrders.internal];
+  const flowViewModel = buildWhaleFlowViewModel({
+    flowCompareSeries: normalizedFlowCompareSeries,
+    heatmapSeries: normalizedHeatmapSeries,
+    markerSeries: normalizedMarkerSeries,
+    cvdSeries: normalizedCvdSeries,
+    strengthSeries: normalizedStrengthSeries,
+    institutionalStrengthSeries: normalizedInstitutionalStrengthSeries,
+    bubbleOrders: allBubbleOrders,
+    sessionContext,
+    qualityFlags: snapshotQualityFlags,
+    tradeDate: snapshot?.trade_date || null,
+  });
+
+  return {
+    bubbles: {
+      ok: true,
+      symbol: snapshot?.symbol,
+      ref_price: Number(priceSeries[priceSeries.length - 1]?.reference_price ?? priceSeries[0]?.reference_price ?? 0) || null,
+      session_start: snapshot?.axis?.window_start,
+      session_end: snapshot?.axis?.window_end,
+      timeframe: snapshot?.timeframe || timeframe,
+      price_series: normalizedPriceSeries,
+      orders: bubbleOrders,
+      summary: {
+        total_orders: Number(snapshot?.summary?.whale_order_count ?? 0),
+        buy_orders: bubbleOrders.buy.length,
+        sell_orders: bubbleOrders.sell.length,
+        internal_orders: bubbleOrders.internal.length,
+        avg_matched_value: (() => {
+          const allValues = [...bubbleOrders.buy, ...bubbleOrders.sell, ...bubbleOrders.internal]
+            .map((item) => Number(item.matched_value || 0))
+            .filter((value) => Number.isFinite(value));
+          if (!allValues.length) return 0;
+          return allValues.reduce((sum, value) => sum + value, 0) / allValues.length;
+        })(),
+        extreme_order_count: Number(snapshot?.summary?.extreme_order_count ?? 0),
+        data_state: snapshot?.meta?.data_state || 'snapshot',
+      },
+      degraded_mode: Boolean(snapshot?.meta?.degraded_mode),
+      quality_flags: {
+        missing_reference_price: staleReason === 'missing_reference_price',
+        missing_intraday_ticks: staleReason === 'missing_intraday_ticks',
+        missing_session_levels: staleReason === 'missing_session_levels',
+        has_flow_data: Boolean(snapshotQualityFlags?.has_flow_data),
+        has_heatmap_data: Boolean(snapshotQualityFlags?.has_heatmap_data),
+        contract_version: snapshotQualityFlags?.contract_version || null,
+        cache_key_version: snapshotQualityFlags?.cache_key_version || null,
+      },
+      stale_reason: staleReason,
+      session_levels: {
+        reference_price: Number(sessionLevels?.reference_price ?? priceSeries[priceSeries.length - 1]?.reference_price ?? priceSeries[0]?.reference_price ?? 0) || null,
+        high_price: Number(sessionLevels?.high_price ?? 0) || null,
+        low_price: Number(sessionLevels?.low_price ?? 0) || null,
+        ceiling_price: Number(sessionLevels?.ceiling_price ?? 0) || null,
+        floor_price: Number(sessionLevels?.floor_price ?? 0) || null,
+      },
+      timeframe_window: timeframeWindow,
+      meta: snapshot?.meta || null,
+    },
+    materialization: snapshot?.materialization || null,
+    session_summary: snapshot?.session_summary || null,
+    flow: {
+      cvd_series: normalizedCvdSeries,
+      strength_series: normalizedStrengthSeries,
+      institutional_strength_series: normalizedInstitutionalStrengthSeries,
+      speed_series: normalizedSpeedSeries,
+      flow_compare_series: normalizedFlowCompareSeries,
+      heatmap_series: normalizedHeatmapSeries,
+      marker_series: normalizedMarkerSeries,
+      session_context: sessionContext,
+      quality_flags: snapshotQualityFlags,
+      view_model: flowViewModel,
+      dark_flow: {
+        strength: Number(latestInstitutional?.value ?? 0),
+        confidence: latestInstitutional?.confidence || 'low',
+        signal_type: 'institutional_strength',
+      },
+      stale_reason: staleReason,
+      timeframe_window: timeframeWindow,
+      meta: snapshot?.meta || null,
+      smfi: null,
+    },
+    meta: snapshot?.meta || null,
+  };
+}

@@ -79,7 +79,7 @@ Write-Host ""
 
 $envBlock = @"
 # Domain and SSL
-DOMAIN=vninvest.edusuccess.vn
+DOMAIN=saas.edusuccess.vn
 LETSENCRYPT_EMAIL=vietdung@edusuccess.vn
 PROXY_NETWORK=nginx-proxy_default
 
@@ -91,12 +91,12 @@ POSTGRES_PASSWORD=$newDBPassword
 # Django
 DJANGO_SECRET_KEY=$newDjangoSecret
 DJANGO_DEBUG=False
-DJANGO_ALLOWED_HOSTS=vninvest.edusuccess.vn,localhost,127.0.0.1
+DJANGO_ALLOWED_HOSTS=saas.edusuccess.vn,localhost,127.0.0.1
 
 # Frontend/API origins
-CORS_ALLOWED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn
-CSRF_TRUSTED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn
-FRONTEND_BASE_URL=https://vninvest.edusuccess.vn
+CORS_ALLOWED_ORIGINS=https://saas.edusuccess.vn,http://saas.edusuccess.vn
+CSRF_TRUSTED_ORIGINS=https://saas.edusuccess.vn,http://saas.edusuccess.vn
+FRONTEND_BASE_URL=https://saas.edusuccess.vn
 
 # P2 Advisory Features
 ADVISORY_BUDGET_DOWNGRADE_THRESHOLD_PCT=20
@@ -159,10 +159,10 @@ Write-Host ""
 
 Write-Host "Step 4: Health Check" -ForegroundColor Yellow
 Write-Host "  Test these URLs after deploy:" -ForegroundColor Cyan
-Write-Host "  * https://vninvest.edusuccess.vn/ (load frontend)" -ForegroundColor Green
-Write-Host "  * https://vninvest.edusuccess.vn/api/health/ (return JSON)" -ForegroundColor Green
-Write-Host "  * https://vninvest.edusuccess.vn/admin/ (load Django admin)" -ForegroundColor Green
-Write-Host "  * https://vninvest.edusuccess.vn/api/admin-ops/runtime-kpi/advisory-metrics/ (P2 endpoint)" -ForegroundColor Green
+Write-Host "  * https://saas.edusuccess.vn/ (load frontend)" -ForegroundColor Green
+Write-Host "  * https://saas.edusuccess.vn/api/health/ (return JSON)" -ForegroundColor Green
+Write-Host "  * https://saas.edusuccess.vn/admin/ (load Django admin)" -ForegroundColor Green
+Write-Host "  * https://saas.edusuccess.vn/api/admin-ops/runtime-kpi/advisory-metrics/ (P2 endpoint)" -ForegroundColor Green
 Write-Host ""
 
 Write-Host "Step 5: Troubleshoot if 502 persists" -ForegroundColor Yellow

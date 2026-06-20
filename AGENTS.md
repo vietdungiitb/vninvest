@@ -514,3 +514,11 @@ Trước mọi thay đổi liên quan `DNSE backfill`, `UserDNSECredential`, `Fe
 8. **`days_back` user clamp max 180** tại view layer trước khi đưa vào task.
 9. **Rate limit `UserBackfillThrottle`** phải được đăng ký trong `settings.py` và enforce tại endpoint — không bypass.
 10. Mọi exception khỏi hard rule phải có ticket, owner, expiry; quá hạn thì block merge.
+
+## Tool Usage Notes
+
+### File Writing Strategy
+- **For new files**: Use `write_file` tool (not `edit`) — `edit` requires both `old_string` and `new_string` parameters and cannot create new files
+- **For existing files**: Use `edit` tool with both `old_string` and `new_string` parameters
+- **For reading files**: Use `read_file` tool
+- **For data files (CSV, JSON, XLSX, etc.)**: Use `read_data_file` tool

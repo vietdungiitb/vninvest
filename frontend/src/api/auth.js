@@ -40,6 +40,6 @@ export const refreshToken = (refresh) => wrapAdapterPayload(
 
 export const getCapabilitySnapshot = () => apiClient.get('/core/v1/access/capabilities/');
 
-export const getUserConfig = () => apiClient.get('/portfolio/userconfig/');
+export const getUserConfig = () => wrapAdapterPayload(coreApiAdapter.getUserProfile());
 
-export const updateUserConfig = (data) => apiClient.put('/portfolio/userconfig/', data);
+export const updateUserConfig = (data) => wrapAdapterPayload(coreApiAdapter.updateUserProfile(data));

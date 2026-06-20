@@ -104,6 +104,38 @@ def generate_advisory_task(record_id: str, effective_context: dict, symbol: str)
                 'metadata': {'source': 'generate_advisory_task', 'kind': 'advisory_summary'},
             },
         )
+        
+        # Save detailed Multi-Agent analysis components if present
+        if 'technical_analysis' in orch_res:
+            AdvisoryComponent.objects.update_or_create(
+                session=session,
+                component_type=AdvisoryComponent.ComponentType.TECHNICAL,
+                order=2,
+                defaults={
+                    'content': orch_res['technical_analysis'],
+                    'metadata': {'source': 'generate_advisory_task', 'kind': 'technical_analysis'},
+                },
+            )
+        if 'whale_analysis' in orch_res:
+            AdvisoryComponent.objects.update_or_create(
+                session=session,
+                component_type=AdvisoryComponent.ComponentType.WHALE,
+                order=3,
+                defaults={
+                    'content': orch_res['whale_analysis'],
+                    'metadata': {'source': 'generate_advisory_task', 'kind': 'whale_analysis'},
+                },
+            )
+        if 'recommendation' in orch_res:
+            AdvisoryComponent.objects.update_or_create(
+                session=session,
+                component_type=AdvisoryComponent.ComponentType.RECOMMENDATION,
+                order=4,
+                defaults={
+                    'content': orch_res['recommendation'],
+                    'metadata': {'source': 'generate_advisory_task', 'kind': 'recommendation'},
+                },
+            )
     except Exception as e:
         logger.error(f"Advisory generation failed for record {record_id}: {e}")
         try:

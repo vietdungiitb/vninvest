@@ -18,15 +18,27 @@ from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from vninvest_core.pagination import StandardPageNumberPagination
-from .models import Portfolio, Transaction, Watchlist, WatchlistItem, PriceAlert, SubAccount
+from vninvest_core.pagination import CoreCursorPagination
+
+class TransactionCursorPagination(CoreCursorPagination):
+    ordering = ('-date', '-id')
+
+class WatchlistCursorPagination(CoreCursorPagination):
+    ordering = 'name'
+
+class WatchlistItemCursorPagination(CoreCursorPagination):
+    ordering = '-added_at'
+from .models import Portfolio, Transaction, Watchlist, WatchlistItem, PriceAlert, SubAccount, ScreenerRule
 from .permissions import TenantScopePermission
 from .serializers import (
     PortfolioSerializer,
     TransactionSerializer,
     WatchlistItemSerializer,
     WatchlistSerializer,
+    SubAccountSerializer,
+    ScreenerRuleSerializer,
 )
+from .screener_helpers import _validate_screener_rules
 
 
 def _get_portfolio_or_404(user, portfolio_id, tenant=None):
@@ -80,7 +92,7 @@ def _get_transaction_or_404(user, transaction_id, tenant=None):
 
 class PortfolioListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
-    pagination_class = StandardPageNumberPagination
+    pagination_class = CoreCursorPagination
 
     def get(self, request):
         # Apply double-filter: user + tenant
@@ -134,7 +146,7 @@ class PortfolioDetailView(APIView):
 
 class TransactionListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
-    pagination_class = StandardPageNumberPagination
+    pagination_class = TransactionCursorPagination
 
     def get(self, request, portfolio_id):
         tenant = getattr(request, 'tenant', None)
@@ -187,7 +199,7 @@ class TransactionDetailView(APIView):
 
 class WatchlistListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
-    pagination_class = StandardPageNumberPagination
+    pagination_class = WatchlistCursorPagination
 
     def get(self, request):
         tenant = getattr(request, 'tenant', None)
@@ -215,9 +227,45 @@ class WatchlistListCreateView(APIView):
         return Response(WatchlistSerializer(watchlist).data, status=status.HTTP_201_CREATED)
 
 
+class WatchlistDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
+
+    def _get_watchlist(self, request, watchlist_id):
+        tenant = getattr(request, 'tenant', None)
+        try:
+            if tenant:
+                return Watchlist.objects.get(pk=watchlist_id, user=request.user, tenant=tenant)
+            else:
+                return Watchlist.objects.get(pk=watchlist_id, user=request.user)
+        except Watchlist.DoesNotExist:
+            return None
+
+    def get(self, request, watchlist_id):
+        watchlist = self._get_watchlist(request, watchlist_id)
+        if watchlist is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(WatchlistSerializer(watchlist).data)
+
+    def patch(self, request, watchlist_id):
+        watchlist = self._get_watchlist(request, watchlist_id)
+        if watchlist is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        serializer = WatchlistSerializer(watchlist, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request, watchlist_id):
+        watchlist = self._get_watchlist(request, watchlist_id)
+        if watchlist is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        watchlist.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class WatchlistItemListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
-    pagination_class = StandardPageNumberPagination
+    pagination_class = WatchlistItemCursorPagination
 
     def get(self, request, watchlist_id):
         tenant = getattr(request, 'tenant', None)
@@ -261,3 +309,155 @@ class WatchlistItemDeleteView(APIView):
         if not deleted:
             raise NotFound(f'{symbol} không tồn tại trong watchlist {watchlist_id}.')
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SubAccountListCreateAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
+
+    def get(self, request):
+        tenant = getattr(request, 'tenant', None)
+        if tenant:
+            qs = SubAccount.objects.filter(user=request.user, tenant=tenant).order_by('-created_at')
+        else:
+            qs = SubAccount.objects.filter(user=request.user).order_by('-created_at')
+        serializer = SubAccountSerializer(qs, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        tenant = getattr(request, 'tenant', None)
+        serializer = SubAccountSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        portfolio_id = request.data.get('portfolio')
+        if portfolio_id:
+            try:
+                if tenant:
+                    portfolio = Portfolio.objects.get(pk=portfolio_id, user=request.user, tenant=tenant)
+                else:
+                    portfolio = Portfolio.objects.get(pk=portfolio_id, user=request.user)
+            except Portfolio.DoesNotExist:
+                return Response({'portfolio': ['Portfolio không tồn tại hoặc không thuộc người dùng.']}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            if tenant:
+                portfolio = Portfolio.objects.filter(user=request.user, tenant=tenant).first()
+            else:
+                portfolio = Portfolio.objects.filter(user=request.user).first()
+
+            if not portfolio:
+                portfolio = Portfolio.objects.create(
+                    user=request.user,
+                    tenant=tenant,
+                    name="Default Portfolio",
+                    is_default=True
+                )
+
+        sub_account = serializer.save(user=request.user, tenant=tenant, portfolio=portfolio)
+        return Response(SubAccountSerializer(sub_account).data, status=status.HTTP_201_CREATED)
+
+
+class SubAccountDetailAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
+
+    def get_object(self, pk, user, tenant):
+        try:
+            if tenant:
+                return SubAccount.objects.get(pk=pk, user=user, tenant=tenant)
+            else:
+                return SubAccount.objects.get(pk=pk, user=user)
+        except SubAccount.DoesNotExist:
+            raise NotFound('Tiểu khoản không tồn tại.')
+
+    def get(self, request, pk):
+        tenant = getattr(request, 'tenant', None)
+        sub_account = self.get_object(pk, request.user, tenant)
+        return Response(SubAccountSerializer(sub_account).data)
+
+    def patch(self, request, pk):
+        tenant = getattr(request, 'tenant', None)
+        sub_account = self.get_object(pk, request.user, tenant)
+        serializer = SubAccountSerializer(sub_account, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request, pk):
+        tenant = getattr(request, 'tenant', None)
+        sub_account = self.get_object(pk, request.user, tenant)
+        sub_account.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SubAccountTransactionsAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
+    pagination_class = TransactionCursorPagination
+
+    def get_sub_account(self, pk, user, tenant):
+        try:
+            if tenant:
+                return SubAccount.objects.get(pk=pk, user=user, tenant=tenant)
+            else:
+                return SubAccount.objects.get(pk=pk, user=user)
+        except SubAccount.DoesNotExist:
+            raise NotFound('Tiểu khoản không tồn tại.')
+
+    def get(self, request, pk):
+        tenant = getattr(request, 'tenant', None)
+        sub_account = self.get_sub_account(pk, request.user, tenant)
+        portfolio = sub_account.portfolio
+        if not portfolio:
+            return Response({'count': 0, 'results': []})
+
+        qs = Transaction.objects.filter(portfolio=portfolio, tenant=portfolio.tenant).order_by('-date', '-pk')
+
+        symbol = request.query_params.get('symbol')
+        if symbol:
+            qs = qs.filter(symbol=symbol.upper())
+
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(qs, request)
+        if page is not None:
+            serializer = TransactionSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
+        serializer = TransactionSerializer(qs, many=True)
+        return Response({'count': qs.count(), 'results': serializer.data})
+
+    def post(self, request, pk):
+        tenant = getattr(request, 'tenant', None)
+        sub_account = self.get_sub_account(pk, request.user, tenant)
+        portfolio = sub_account.portfolio
+        if not portfolio:
+            return Response({'detail': 'Tiểu khoản này chưa liên kết với danh mục.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = TransactionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        txn = serializer.save(portfolio=portfolio, tenant=portfolio.tenant)
+        return Response(TransactionSerializer(txn).data, status=status.HTTP_201_CREATED)
+
+
+class ScreenerRuleListCreateAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
+
+    def get(self, request):
+        tenant = getattr(request, 'tenant', None)
+        if tenant:
+            rules = ScreenerRule.objects.filter(user=request.user, tenant=tenant)
+        else:
+            rules = ScreenerRule.objects.filter(user=request.user)
+        return Response(ScreenerRuleSerializer(rules, many=True).data)
+
+    def post(self, request):
+        tenant = getattr(request, 'tenant', None)
+        serializer = ScreenerRuleSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        rules_json = serializer.validated_data.get('rules_json', [])
+        ok, err = _validate_screener_rules(rules_json)
+        if not ok:
+            return Response({'detail': err}, status=status.HTTP_400_BAD_REQUEST)
+
+        rule = serializer.save(user=request.user, tenant=tenant)
+        return Response(ScreenerRuleSerializer(rule).data, status=status.HTTP_201_CREATED)
+

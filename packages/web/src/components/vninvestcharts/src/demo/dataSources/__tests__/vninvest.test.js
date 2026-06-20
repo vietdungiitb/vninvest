@@ -49,11 +49,11 @@ describe("VNInvestClient", () => {
             port: "3000",
         });
         vi.stubGlobal("localStorage", {
-            getItem: vi.fn().mockReturnValue("https://vninvest.edusuccess.vn"),
+            getItem: vi.fn().mockReturnValue("https://saas.edusuccess.vn"),
             setItem: vi.fn(),
             removeItem: vi.fn(),
         });
-        expect(resolveApiBase()).toBe("https://vninvest.edusuccess.vn");
+        expect(resolveApiBase()).toBe("https://saas.edusuccess.vn");
     });
     it("hasPAT trả false khi chưa set", () => {
         expect(client.hasPAT()).toBe(false);

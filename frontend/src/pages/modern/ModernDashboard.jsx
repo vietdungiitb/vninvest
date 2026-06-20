@@ -27,6 +27,13 @@ function SidebarPanelFallback({ minHeightClass = 'min-h-[220px]', label = 'Đang
   );
 }
 
+const EXCLUDED_MARKET_GROUPS = new Set([
+  'VN100',
+  'HOSE',
+  'HNX',
+  'UPCOM',
+]);
+
 export default function ModernDashboard() {
   const { activePortfolioId, isAuthenticated } = usePortfolio();
   const { t } = useI18n();
@@ -66,6 +73,49 @@ export default function ModernDashboard() {
     realtimeStatus
   } = useRealtimeFeed({ symbols: monitoredSymbols, maxAlerts: 20 });
 
+  // Throttled state for quotes to avoid heavy re-rendering bottlenecks (500ms throttle)
+  const [throttledQuotes, setThrottledQuotes] = useState({});
+  const lastUpdateRef = useRef(0);
+  const pendingQuotesRef = useRef({});
+  const throttleTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    pendingQuotesRef.current = { ...pendingQuotesRef.current, ...quotesBySymbol };
+    const now = Date.now();
+    const elapsed = now - lastUpdateRef.current;
+    const throttleDelay = 500;
+
+    const flush = () => {
+      setThrottledQuotes((prev) => ({
+        ...prev,
+        ...pendingQuotesRef.current,
+      }));
+      pendingQuotesRef.current = {};
+      lastUpdateRef.current = Date.now();
+      throttleTimeoutRef.current = null;
+    };
+
+    if (elapsed >= throttleDelay) {
+      if (throttleTimeoutRef.current) {
+        clearTimeout(throttleTimeoutRef.current);
+        throttleTimeoutRef.current = null;
+      }
+      flush();
+    } else {
+      if (!throttleTimeoutRef.current) {
+        throttleTimeoutRef.current = setTimeout(flush, throttleDelay - elapsed);
+      }
+    }
+  }, [quotesBySymbol]);
+
+  useEffect(() => {
+    return () => {
+      if (throttleTimeoutRef.current) {
+        clearTimeout(throttleTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const {
     readAlertIds,
     criticalSoundEnabled,
@@ -75,7 +125,7 @@ export default function ModernDashboard() {
     toggleCriticalSound,
   } = usePersistentAlertState();
 
-  const liveHoldings = buildLiveHoldingsOverlay(holdings, quotesBySymbol);
+  const liveHoldings = buildLiveHoldingsOverlay(holdings, throttledQuotes);
 
   const trackedSymbolNames = useMemo(
     () => trackedSymbols.map((item) => normalizeSymbol(item.symbol)).filter(Boolean),
@@ -87,13 +137,45 @@ export default function ModernDashboard() {
       holdings: liveHoldings,
       trackedSymbols,
       watchlistGroups,
-      quotesBySymbol,
+      quotesBySymbol: throttledQuotes,
     }),
-    [liveHoldings, trackedSymbols, watchlistGroups, quotesBySymbol],
+    [liveHoldings, trackedSymbols, watchlistGroups, throttledQuotes],
   );
 
+  const heatmapSymbols = useMemo(() => {
+    const symbolsSet = new Set();
+
+    // 1. Portfolio holdings
+    liveHoldings.forEach((h) => {
+      if (h?.symbol) {
+        symbolsSet.add(normalizeSymbol(h.symbol));
+      }
+    });
+
+    // 2. Tracked symbols
+    trackedSymbols.forEach((t) => {
+      if (t?.symbol) {
+        symbolsSet.add(normalizeSymbol(t.symbol));
+      }
+    });
+
+    // 3. Custom watchlist groups
+    watchlistGroups.forEach((group) => {
+      const name = String(group?.name || '').trim().toUpperCase();
+      if (name && !EXCLUDED_MARKET_GROUPS.has(name)) {
+        (group.items || []).forEach((item) => {
+          if (item?.symbol) {
+            symbolsSet.add(normalizeSymbol(item.symbol));
+          }
+        });
+      }
+    });
+
+    return Array.from(symbolsSet);
+  }, [liveHoldings, trackedSymbols, watchlistGroups]);
+
   const heatmapData = useMemo(() => {
-    if (!monitoredSymbols.length) return [];
+    if (!heatmapSymbols.length) return [];
 
     const holdingsMap = new Map(liveHoldings.map((h) => [normalizeSymbol(h.symbol), h]));
     const trackedMap = new Map(trackedSymbols.map((t) => [normalizeSymbol(t.symbol), t]));
@@ -116,9 +198,9 @@ export default function ModernDashboard() {
         .map((v) => Number(v.toFixed(2)));
     };
 
-    return monitoredSymbols.map((symbol) => {
+    return heatmapSymbols.map((symbol) => {
       const held = holdingsMap.get(symbol);
-      const quote = quotesBySymbol[symbol] || {};
+      const quote = throttledQuotes[symbol] || {};
       const trackedInfo = trackedMap.get(symbol);
       // Fallback chain: WS quote → live holding → tracked API response → 0
       const changePct = quote.change_pct ?? held?.live_change_pct ?? trackedInfo?.change_pct ?? 0;
@@ -155,11 +237,11 @@ export default function ModernDashboard() {
         is_holding: false,
       };
     });
-  }, [liveHoldings, monitoredSymbols, quotesBySymbol, trackedSymbols]);
+  }, [liveHoldings, heatmapSymbols, throttledQuotes, trackedSymbols]);
 
   const realtimeMarketBreadth = useMemo(() => {
     return monitoredSymbols.reduce((acc, symbol) => {
-      const quote = quotesBySymbol[symbol];
+      const quote = throttledQuotes[symbol];
       if (!quote) return acc;
       const cp = quote.change_pct ?? 0;
       if (cp > 0) acc.up++;
@@ -167,7 +249,7 @@ export default function ModernDashboard() {
       else acc.flat++;
       return acc;
     }, { up: 0, down: 0, flat: 0 });
-  }, [monitoredSymbols, quotesBySymbol]);
+  }, [monitoredSymbols, throttledQuotes]);
 
   const {
     filteredUnifiedAlerts,
@@ -185,7 +267,7 @@ export default function ModernDashboard() {
     alerts,
     darkFlowAlerts,
     monitoredSymbols,
-    quotesBySymbol,
+    quotesBySymbol: throttledQuotes,
     holdings,
     trackedSymbolNames,
     enableSnapshot: isAuthenticated,
@@ -470,7 +552,7 @@ export default function ModernDashboard() {
                 holdings={heatmapData.filter((h) => h.is_holding)}
                 symbolUniverse={symbolUniverse}
                 loading={loading}
-                quotesBySymbol={quotesBySymbol}
+                quotesBySymbol={throttledQuotes}
                 technicals={technicals}
                 alerts={alerts}
                 analytics={analytics}

@@ -196,14 +196,14 @@ function isWhaleFeedResponse(data) {
 }
 function buildEndpoints(base) {
     return {
-        CHART: (symbol) => `${base}/api/stock-management/stocks/${encodeURIComponent(symbol)}/chart/`,
-        BARS: (symbol) => `${base}/api/stock-management/stocks/${encodeURIComponent(symbol)}/bars/`,
-        ORDER_FLOW: (symbol) => `${base}/api/stock-management/stocks/${encodeURIComponent(symbol)}/order-flow/`,
-        STOCKS_LIST: `${base}/api/stock-management/stocks/`,
-        AUTH_TOKEN: `${base}/api/auth/token/`,
-        TICKER: (symbol) => `${base}/api/realtime/ticker/${encodeURIComponent(symbol)}/`,
-        WHALE_FEED: (symbol) => `${base}/api/realtime/whale-feed/${encodeURIComponent(symbol)}/`,
-        AI_ADVISORY: `${base}/api/stock_ai_advisory_session/`,
+        CHART: (symbol) => `${base}/core/v1/stock-management/stocks/${encodeURIComponent(symbol)}/chart/`,
+        BARS: (symbol) => `${base}/core/v1/stock-management/stocks/${encodeURIComponent(symbol)}/bars/`,
+        ORDER_FLOW: (symbol) => `${base}/core/v1/stock-management/stocks/${encodeURIComponent(symbol)}/order-flow/`,
+        STOCKS_LIST: `${base}/core/v1/stock-management/stocks/`,
+        AUTH_TOKEN: `${base}/core/v1/auth/token/`,
+        TICKER: (symbol) => `${base}/core/v1/realtime/ticker/${encodeURIComponent(symbol)}/`,
+        WHALE_FEED: (symbol) => `${base}/core/v1/realtime/whale-feed/${encodeURIComponent(symbol)}/`,
+        AI_ADVISORY: `${base}/core/v1/stock-management/stocks/ai-advisory-session/`,
         INTRADAY_TAPE: (symbol) => `${base}/core/v1/market-data/intraday-tape/?symbol=${encodeURIComponent(symbol)}`,
     };
 }

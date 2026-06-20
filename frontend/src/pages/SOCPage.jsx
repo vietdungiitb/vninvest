@@ -12,6 +12,7 @@ import ScreenerPanel from '../components/soc/ScreenerPanel';
 import VnbrokerPanel from '../components/soc/VnbrokerPanel';
 import RuntimeKPIPanel from '../components/soc/RuntimeKPIPanel';
 import DNSEBackfillPanel from '../components/soc/DNSEBackfillPanel';
+import OperationsCenterShellHost from './OperationsCenterShellHost';
 
 // 'matrix' redirect → 'dataops' (Matrix hợp nhất vào DataOps tab kể từ 20260516)
 const VALID_DOMAINS = ['overview', 'signals', 'dataops', 'prefetch', 'screener', 'vnbroker', 'runtime-kpi', 'dnse-backfill'];
@@ -51,7 +52,7 @@ const SOCPage = ({ t }) => {
   };
 
   const panels = {
-    overview: <OverviewPanel t={pageT} services={serviceList} />,
+    overview: <OperationsCenterShellHost />,
     signals: <SignalsPanel t={pageT} />,
     dataops: <DataOpsPanel t={pageT} />,
     prefetch: <PrefetchPanel t={pageT} />,

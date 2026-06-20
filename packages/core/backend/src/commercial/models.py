@@ -125,3 +125,35 @@ class VNPayIPNLog(models.Model):
 
     def __str__(self):
         return f'IPN Log {self.txn_ref} at {self.created_at}'
+
+
+class QuotaHistory(models.Model):
+    """Daily snapshot of quota usage for historical tracking and charts."""
+    tenant = models.ForeignKey(CoreTenant, on_delete=models.CASCADE, related_name='quota_history')
+    date = models.DateField(db_index=True)
+    meter_code = models.CharField(max_length=64, db_index=True)
+    meter_name = models.CharField(max_length=128)
+    unit = models.CharField(max_length=32)
+    consumed_amount = models.BigIntegerField(default=0)
+    entitled_amount = models.BigIntegerField(default=-1)  # -1 = unlimited
+    remaining_amount = models.BigIntegerField(default=0)
+    risk_state = models.CharField(max_length=16, choices=[
+        ('normal', 'Normal'),
+        ('warning', 'Warning'),
+        ('critical', 'Critical'),
+    ], default='normal')
+    hard_stop = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Quota History'
+        verbose_name_plural = 'Quota History'
+        unique_together = [('tenant', 'date', 'meter_code')]
+        ordering = ['-date', 'meter_code']
+        indexes = [
+            models.Index(fields=['tenant', 'date']),
+            models.Index(fields=['tenant', 'meter_code', 'date']),
+        ]
+
+    def __str__(self):
+        return f'{self.tenant} — {self.meter_code} on {self.date}: {self.consumed_amount}/{self.entitled_amount}'

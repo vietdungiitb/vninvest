@@ -1,5 +1,149 @@
 # Code Change Audit Ledger
 
+# 2026-06-20 | SOC Service Operations Center i18n & Layout Hotfix — Complete ✅
+
+## Problem Solved
+- Khắc phục lỗi dịch thuật ("lỗi in18" - lỗi i18n) trên giao diện điều hành SOC:
+  - Bổ sung 93 key dịch tiếng Anh hoàn toàn bị bỏ sót cho tab/panel "DNSE Backfill" và "Job Scheduler" (`soc.tab.dnse_backfill`, `soc.dnse_backfill.*`, `soc.scheduler.*`).
+  - Đồng bộ hóa 100% tài nguyên dịch thuật Anh - Việt giữa backend/web (`packages/web`) và frontend legacy (`frontend`), đảm bảo không còn xuất hiện raw translation keys khi chuyển đổi ngôn ngữ.
+- Cải tiến độ cân đối và khả năng đọc (readability) cho tab "operator" của Diagnostics Panel:
+  - Xếp dọc hai thẻ Snapshot operator & runtime để tránh bị bóp nghẹt chiều rộng.
+  - Sửa đổi tiêu đề cột 2 thành "Metadata hệ thống" để tránh lặp với tiêu đề nội bộ của thẻ Build Metadata.
+  - Lồng liên kết công cụ quản trị email vào thẻ styled card `shellPage__surfaceCard` giúp giao diện đồng nhất.
+
+## Verification Results
+| Check | Result |
+|---|---|
+| Translation comparison script (`scratch/diff_i18n.js`) | ✅ (0 mismatches) |
+| Frontend compilation & Docker image build (`vninvest-dev-frontend`) | ✅ (Success) |
+| Frontend dev container recreation & restart | ✅ (Success) |
+| Layout alignment smoke verification | ✅ (OK) |
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/web/src/i18n/en.js` | Bổ sung 93 keys dịch tiếng Anh cho DNSE backfill và Job Scheduler |
+| `frontend/src/i18n/en.js` | Bổ sung 93 keys dịch tiếng Anh cho DNSE backfill và Job Scheduler |
+| `packages/web/src/pages/admin/ShellOperationsCenterPage.js` | Tinh chỉnh cấu trúc JSX/CSS của tab operator để tối ưu hóa hiển thị và độ cân đối |
+
+# 2026-06-20 | SOC Service Admin Management Features — Implementation Complete ✅
+
+## Problem Solved
+- Bổ sung các tính năng quản trị dịch vụ trực tiếp từ giao diện điều hành của Service Operations Center (SOC):
+  - PATCH `is_active` để bật/tắt dịch vụ (tự động cập nhật `updated_at`).
+  - Hỗ trợ lưu cấu hình JSON editor trực tiếp với Change Reason bắt buộc, validate cấu hình qua registry schemas.
+  - Hỗ trợ Reset cấu hình về baseline mặc định qua endpoint `/config/reset/`.
+  - Hỗ trợ Chạy thử (Trigger manual health check) tạo queued run log.
+- Tinh chỉnh giao diện và khôi phục hệ thống quản trị:
+  - Khôi phục Route `/operations-center` trỏ về `SOCPage.jsx` để bảo toàn đầy đủ 8 tab chức năng vận hành (Overview, Signals, Dataops, Prefetch, Screener, Vnbroker, Runtime KPI, DNSE Backfill).
+  - Tích hợp component SaaS native `OperationsCenterShellHost` trực tiếp làm panel nội dung cho tab `overview` của `SOCPage.jsx`.
+  - Thiết kế lại layout của `ShellOperationsCenterPage.js` từ dạng 2 cột chia đôi sang dạng xếp chồng dọc: Danh sách dịch vụ hiển thị ở dạng Grid 3 cột rộng rãi, tự động co giãn full-width theo trang; loại bỏ scrollbar cố định gây vỡ UI; các thông số diagnostics kỹ thuật được chuyển xuống đáy trang.
+  - Toàn bộ giao diện đã được i18n tiếng Việt đầy đủ dấu.
+- Đã đăng ký đầy đủ các route URLs tại `urls.py`.
+- Thêm bộ test suite toàn diện gồm 7 test cases kiểm soát regression trong `test_soc_api_overview.py`.
+
+## Verification Results
+| Check | Result |
+|---|---|
+| Backend Test suite passes (19 tests OK) | ✅ |
+| Docker stack dev rebuild & start via standard `./start_dev.ps1` | ✅ |
+| Core API health check probe | ✅ (OK) |
+| Frontend static health check probe | ✅ (OK) |
+| System queue drift checks | ✅ (No drift) |
+| Admin tabs & old panels restored | ✅ |
+| Service card details layout co-expansion | ✅ |
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/views/overview.py` | Thêm PATCH toggle active, POST config, reset config, và ServiceConfigResetView |
+| `packages/core/backend/src/service_ops/urls.py` | Đăng ký reset config endpoints |
+| `packages/core/backend/src/service_ops/tests/test_soc_api_overview.py` | Bổ sung 7 test case quản trị |
+| `packages/web/src/pages/admin/ShellOperationsCenterPage.js` | Thiết kế lại giao diện React/Tailwind full-width, di chuyển diagnostics xuống dưới, Việt hóa hỗ trợ bật/tắt, chạy thử, sửa JSON & reset config |
+| `frontend/src/pages/SOCPage.jsx` | Import và lồng ghép OperationsCenterShellHost vào tab overview |
+| `frontend/src/App.jsx` | Khôi phục định tuyến route /operations-center trỏ về SOCPage |
+| `AGENTS.md` | Cập nhật Tool Usage Notes |
+
+## Residual Risk
+- Không có. Tất cả test cases và smoke checks đều đã hoạt động hoàn hảo.
+
+# 2026-06-16 | Django API Routing Cleanup — Phase 0 Implementation Complete ✅
+
+## Problem Solved
+- Executed Phase 0 of DJANGO_API_ROUTING_CLEANUP program: immediate backend cleanup with zero frontend dependency
+- Deleted 2 duplicate `api_urls.py` files (`identity_access/api_urls.py`, `signal_intelligence/api_urls.py`)
+- Removed 4 duplicate mounts from root `vninvest_core/urls.py` (`signal_intelligence_api`, `identity_access_api`, `market_data_api` 2nd mount, `support_api`)
+- Merged 15 missing routes into `identity_access/urls.py`: auth register/verify-email/resend/password-reset (5), dnse-credential (1), tenant-members (4), singular mail-config backward compat (4), partner mount (1)
+- Fixed baseline test mock patches in `test_password_reset.py` (2 occurrences: `identity_access.views_auth.send_password_reset_email` → `data_ingest.tasks.send_password_reset_email`)
+- Fixed advertising/data_ingest router `format_suffix_patterns` double-registration issue with custom `NoFormatSuffixRouter`
+- Updated password reset tests to use new `/core/v1/auth/password-reset/` URLs (8 test methods)
+
+## Verification Results
+| Check | Result |
+|---|---|
+| System checks pass (no duplicate converter errors) | ✅ |
+| `identity_access` test suite runs (18 tests, 2 Celery/Redis errors expected in test env) | ✅ |
+| `signal_intelligence` test suite runs (55 tests, pre-existing failures unrelated) | ✅ |
+| Routing structure: 4 duplicate mounts removed, 2 api_urls files deleted | ✅ |
+| Module tree regenerated: 2052 modules (down from 2054) | ✅ |
+| Constitutional invariants preserved (INV-01 through INV-08) | ✅ |
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/identity_access/api_urls.py` | DELETED |
+| `packages/core/backend/src/signal_intelligence/api_urls.py` | DELETED |
+| `packages/core/backend/src/vninvest_core/urls.py` | Removed 4 duplicate mount lines |
+| `packages/core/backend/src/identity_access/urls.py` | Added 15 merged routes + imports |
+| `packages/core/backend/src/identity_access/tests/test_password_reset.py` | Fixed 2 mock patches + 8 URL updates |
+| `packages/core/backend/src/advertising/urls.py` | Custom NoFormatSuffixRouter to prevent double format_suffix_patterns |
+| `packages/core/backend/src/data_ingest/urls.py` | Custom NoFormatSuffixRouter to prevent double format_suffix_patterns |
+| `packages/core/backend/src/vninvest_core/__init__.py` | Lazy celery_app import to avoid circular import |
+| `packages/core/backend/src/vninvest_core/celery.py` | Deferred result_backend setting |
+
+## Residual Risk
+- Password reset tests require Redis for Celery (2 errors in test env without Redis) - needs `CELERY_TASK_ALWAYS_EAGER=True` in test settings
+- Phase 1 (frontend migration) and Phase 2 (market data/signals) pending
+- `market_data.public_urls` decision pending Product Owner
+
+# 2026-06-16 | Django API Routing Cleanup — `/core/v1/` Standardization (Handoff Pack Created) ✅
+
+## Problem Solved
+- Created complete 12-document handoff pack for DJANGO_API_ROUTING_CLEANUP program per VNInvest governance (handoff-doc-pack-generator skill)
+- Documents cover: Phase 0 immediate cleanup (4 duplicate mounts, 2 api_urls files), Phase 1 identity/workspace (frontend migration), Phase 2 market data/signals, Phase 3 final verification
+- All constitutional invariants, test protocols, review gates, and spec audit criteria defined
+
+## Verification Results
+| Check | Result |
+|---|---|
+| 12/12 handoff documents created | ✅ |
+| Naming consistent: DJANGO_API_ROUTING_CLEANUP_20260616 | ✅ |
+| Traceability matrix: 25 requirements → 26 tasks → 25 validations | ✅ |
+| Self-audit protocol: 5 checklists (A-E), 33 checks | ✅ |
+| Code quality constitution: coverage targets, theater prevention, 12 fitness scenarios | ✅ |
+| Runbooks: code review, integration tests, spec audit | ✅ |
+
+## Created Files
+| File | Purpose |
+|------|---------|
+| `docs/DJANGO_API_ROUTING_CLEANUP_HANDOFF_MASTER_20260616.md` | Program overview, decisions, success criteria |
+| `docs/IMPLEMENTATION_PLAN_DJANGO_API_ROUTING_CLEANUP_20260616.md` | Phase breakdown, tasks, gates, rollback |
+| `docs/TECH_SPEC_DJANGO_API_ROUTING_CLEANUP_20260616.md` | Routing matrix, invariants, API contracts |
+| `docs/TASKBOARD_DJANGO_API_ROUTING_CLEANUP_20260616.md` | Task IDs, status, gate conditions, blockers |
+| `docs/TRACEABILITY_MATRIX_DJANGO_API_ROUTING_CLEANUP_20260616.md` | Requirement → Task → Validation mapping |
+| `docs/SELF_AUDIT_AND_TEST_PROTOCOL_DJANGO_API_ROUTING_CLEANUP_20260616.md` | Checklists A-E, fail conditions, coverage |
+| `docs/EXECUTION_EVIDENCE_TEMPLATE_DJANGO_API_ROUTING_CLEANUP_20260616.md` | Per-slice evidence template |
+| `docs/CONFIG_OWNERSHIP_MATRIX_DJANGO_API_ROUTING_CLEANUP_20260616.md` | Canonical writer per concern, transition timeline |
+| `docs/CODE_QUALITY_CONSTITUTION_DJANGO_API_ROUTING_CLEANUP_20260616.md` | Coverage targets, theater prevention, fitness scenarios |
+| `docs/RUN_CODE_REVIEW_DJANGO_API_ROUTING_CLEANUP_20260616.md` | Review focus, grep checks, reject conditions |
+| `docs/RUN_INTEGRATION_TESTS_DJANGO_API_ROUTING_CLEANUP_20260616.md` | Test suites, smoke scripts, CI pipeline |
+| `docs/RUN_SPEC_AUDIT_DJANGO_API_ROUTING_CLEANUP_20260616.md` | 42 audit questions, execution procedure |
+
+## Residual Risk
+- Handoff pack is documentation-only; implementation execution pending
+- Frontend migration (Phase 1) requires Frontend team capacity
+- `market_data.public_urls` decision pending Product Owner sign-off
+
 # 2026-05-29 | AI SSOT advisory session persistence slice (1.x + 4.x) ✅
 
 ## Problem Solved

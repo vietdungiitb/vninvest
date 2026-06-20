@@ -63,6 +63,7 @@ def _tenant_payload(tenant: CoreTenant) -> dict:
         'display_name': tenant.display_name,
         'plan': tenant.plan,
         'status': tenant.status,
+        'features': list(tenant.features or []),
     }
 
 

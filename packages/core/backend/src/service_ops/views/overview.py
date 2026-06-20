@@ -58,6 +58,7 @@ class ServiceSummaryRowSerializer(serializers.Serializer):
     name = serializers.CharField()
     domain = serializers.CharField()
     status = serializers.CharField()
+    is_active = serializers.BooleanField()
     last_check_at = serializers.DateTimeField(allow_null=True)
     avg_response_ms = serializers.FloatField(allow_null=True)
 
@@ -218,7 +219,7 @@ def _serialize_service_detail(service: ServiceDefinition) -> dict:
 
 @extend_schema(
     summary='Lấy tổng quan sức khỏe SOC',
-    description='Trả về snapshot tổng hợp theo domain cho toàn bộ service đang active trong Service Operations Center.',
+    description='Trả về snapshot tổng hợp theo domain cho toàn bộ service trong Service Operations Center (bao gồm cả inactive).',
     responses={
         200: OverviewSummaryResponseSerializer,
         401: OpenApiTypes.OBJECT,
@@ -253,6 +254,7 @@ def _serialize_service_detail(service: ServiceDefinition) -> dict:
                         'name': 'VNBroker Runtime',
                         'domain': 'vnbroker',
                         'status': 'healthy',
+                        'is_active': True,
                         'last_check_at': '2026-05-15T13:59:00Z',
                         'avg_response_ms': 25.0,
                     }
@@ -265,7 +267,7 @@ class OverviewSummaryView(SOCBaseView):
     """GET SOC health summary grouped by domain."""
 
     def get(self, request):
-        services = list(ServiceDefinition.objects.filter(is_active=True).order_by('domain', 'service_key'))
+        services = list(ServiceDefinition.objects.all().order_by('domain', 'service_key'))
         health_by_service_id = {
             health.service_id: health
             for health in ServiceHealth.objects.filter(service__in=services).select_related('service')
@@ -305,6 +307,7 @@ class OverviewSummaryView(SOCBaseView):
                 'name': service.name,
                 'domain': service.domain,
                 'status': status_name,
+                'is_active': service.is_active,
                 'last_check_at': health.last_check_at.isoformat() if health and health.last_check_at else None,
                 'avg_response_ms': health.avg_response_ms if health else None,
             })
@@ -319,7 +322,7 @@ class OverviewSummaryView(SOCBaseView):
 
 @extend_schema(
     summary='Liệt kê danh mục service SOC',
-    description='Trả về danh sách paginated các service active đang được quản lý trong SOC.',
+    description='Trả về danh sách paginated tất cả service đang được quản lý trong SOC (bao gồm cả inactive).',
     parameters=STANDARD_PAGINATION_PARAMETERS,
     responses={
         200: PaginatedServiceDefinitionResponseSerializer,
@@ -331,7 +334,7 @@ class ServiceListView(SOCBaseView):
     """GET paginated SOC service catalog."""
 
     def get(self, request):
-        queryset = ServiceDefinition.objects.filter(is_active=True).order_by('domain', 'service_key')
+        queryset = ServiceDefinition.objects.all().order_by('domain', 'service_key')
         page = self.paginate_queryset(queryset, request)
         if page is not None:
             return self.get_paginated_response(ServiceDefinitionSerializer(page, many=True).data)
@@ -348,13 +351,80 @@ class ServiceListView(SOCBaseView):
         404: OpenApiTypes.OBJECT,
     },
 )
+@extend_schema(
+    summary='Cập nhật trạng thái active/inactive của service SOC',
+    description='Cho phép operator bật/tắt service thông qua PATCH is_active.',
+    request=serializers.Serializer,
+    responses={
+        200: ServiceDetailResponseSerializer,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+    examples=[
+        OpenApiExample(
+            'Toggle service active',
+            value={'is_active': False},
+            request_only=True,
+        ),
+        OpenApiExample(
+            'Toggle service active response',
+            value={
+                'id': 1,
+                'service_key': 'vnbroker_quote',
+                'name': 'VNBroker Quote Fetcher',
+                'domain': 'vnbroker',
+                'description': 'Fetches realtime quote data through the canonical vnbroker adapter.',
+                'owner_team': 'core',
+                'tags': ['market-data', 'realtime', 'ssot'],
+                'is_active': False,
+                'is_deprecated': False,
+                'deprecation_note': '',
+                'created_at': '2026-05-15T14:00:00Z',
+                'updated_at': '2026-06-20T10:00:00Z',
+                'current_config': None,
+                'health': {'status': 'unknown', 'last_check_at': None, 'last_success_at': None, 'consecutive_failures': 0, 'avg_response_ms': None, 'detail': {}},
+                'ownership': {'domain': 'vnbroker', 'mode': 'native-write', 'writer': 'service_ops', 'owner_team': 'core', 'write_surface': 'service_ops', 'can_apply': True, 'locked_fields': [], 'compatibility_domains': []},
+            },
+            response_only=True,
+        ),
+    ],
+)
 class ServiceDetailView(SOCBaseView):
-    """GET detail for one SOC service."""
+    """GET/PATCH detail for one SOC service."""
 
     def get(self, request, service_key: str):
         service, error = _get_service_or_error(self, request, service_key)
         if error is not None:
             return error
+        return Response(_serialize_service_detail(service))
+
+    def patch(self, request, service_key: str):
+        service, error = _get_service_or_error(self, request, service_key)
+        if error is not None:
+            return error
+
+        is_active = request.data.get('is_active')
+        if is_active is None:
+            return self.error_response(
+                request,
+                code='INVALID_PAYLOAD',
+                detail='Thiếu trường is_active trong request body.',
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not isinstance(is_active, bool):
+            return self.error_response(
+                request,
+                code='INVALID_PAYLOAD',
+                detail='Trường is_active phải là boolean (true/false).',
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        service.is_active = is_active
+        service.save(update_fields=['is_active', 'updated_at'])
+
         return Response(_serialize_service_detail(service))
 
 
@@ -416,8 +486,100 @@ class ServiceHealthCheckTriggerView(SOCBaseView):
         404: OpenApiTypes.OBJECT,
     },
 )
+@extend_schema(
+    summary='Áp dụng cấu hình mới cho service SOC',
+    description='Validate và lưu cấu hình mới cho service. Tự động tạo audit trail và de-activate config cũ.',
+    request=serializers.Serializer,
+    responses={
+        201: ServiceCurrentConfigSnapshotSerializer,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+    examples=[
+        OpenApiExample(
+            'Apply config request',
+            value={
+                'config_payload': {
+                    'timeout': {'connect': 10.0, 'read': 30.0},
+                    'max_retries': 3,
+                    'retry_delay_seconds': 2.0,
+                },
+                'change_reason': 'Tăng timeout do mạng chập chờn',
+            },
+            request_only=True,
+        ),
+        OpenApiExample(
+            'Apply config response',
+            value={
+                'id': 1,
+                'service': 1,
+                'service_key': 'vnbroker_quote',
+                'config_schema_version': '1.0',
+                'config_payload': {
+                    'timeout': {'connect': 10.0, 'read': 30.0},
+                    'max_retries': 3,
+                    'retry_delay_seconds': 2.0,
+                },
+                'applied_by': 'admin',
+                'applied_at': '2026-06-20T10:00:00Z',
+                'change_reason': 'Tăng timeout do mạng chập chờn',
+                'is_current': True,
+            },
+            response_only=True,
+        ),
+    ],
+)
+@extend_schema(
+    summary='Khôi phục cấu hình mặc định cho service SOC',
+    description='Reset cấu hình service về baseline mặc định trong registry. Tự động tạo audit trail.',
+    request=serializers.Serializer,
+    responses={
+        201: ServiceCurrentConfigSnapshotSerializer,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+    examples=[
+        OpenApiExample(
+            'Reset config request',
+            value={'change_reason': 'Khôi phục cấu hình mặc định hệ thống'},
+            request_only=True,
+        ),
+        OpenApiExample(
+            'Reset config response',
+            value={
+                'id': 2,
+                'service': 1,
+                'service_key': 'vnbroker_quote',
+                'config_schema_version': '1.0',
+                'config_payload': {
+                    'timeout': {'connect': 10.0, 'read': 30.0, 'write': 10.0, 'pool': 5.0},
+                    'max_retries': 3,
+                    'retry_delay_seconds': 2.0,
+                    'preferred_provider': 'vci',
+                    'fallback_providers': ['kbs', 'dnse'],
+                    'enabled': True,
+                    'circuit_breaker_threshold': 5,
+                    'circuit_breaker_window_seconds': 60,
+                    'circuit_breaker_cooldown_seconds': 300,
+                    'requests_per_minute': 60,
+                    'burst_limit': 10,
+                    'per_provider_config': {},
+                },
+                'applied_by': 'admin',
+                'applied_at': '2026-06-20T10:05:00Z',
+                'change_reason': 'Khôi phục cấu hình mặc định hệ thống',
+                'is_current': True,
+            },
+            response_only=True,
+        ),
+    ],
+)
 class ServiceCurrentConfigView(SOCBaseView):
-    """GET current config snapshot for one SOC service."""
+    """GET/POST current config snapshot for one SOC service."""
 
     def get(self, request, service_key: str):
         service, error = _get_service_or_error(self, request, service_key)
@@ -438,6 +600,125 @@ class ServiceCurrentConfigView(SOCBaseView):
             'change_reason': '',
             'is_current': False,
         })
+
+    def post(self, request, service_key: str):
+        """Apply new config or reset to default based on endpoint."""
+        service, error = _get_service_or_error(self, request, service_key)
+        if error is not None:
+            return error
+
+        # Check if this is a reset request (empty config_payload or explicit reset flag)
+        config_payload = request.data.get('config_payload')
+        change_reason = request.data.get('change_reason', '')
+        is_reset = config_payload is None or config_payload == {}
+
+        # Get the appropriate config class for this service's domain
+        config_class = self._get_config_class_for_domain(service.domain)
+        if config_class is None:
+            return self.error_response(
+                request,
+                code='CONFIG_CLASS_NOT_FOUND',
+                detail=f'Không tìm thấy config class cho domain "{service.domain}".',
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check ownership
+        from ..ownership import build_ownership_matrix_from_db
+        matrix = build_ownership_matrix_from_db()
+        if not matrix.is_domain_writable(service.domain):
+            block_reason = matrix.get_write_block_reason(service.domain)
+            return self.error_response(
+                request,
+                code='OWNERSHIP_WRITE_DENIED',
+                detail=block_reason or f'Domain \'{service.domain}\' không có quyền ghi.',
+                http_status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if is_reset:
+            # Reset to default config
+            default_config = config_class()
+            config_dict = default_config.to_dict()
+            change_reason = change_reason or 'Khôi phục cấu hình mặc định hệ thống'
+        else:
+            # Validate and use provided config
+            try:
+                config_obj = config_class.from_dict(config_payload)
+            except Exception as e:
+                return self.error_response(
+                    request,
+                    code='CONFIG_PARSE_FAILED',
+                    detail=f'Không thể parse config payload: {str(e)}',
+                    http_status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            errors = config_obj.validate()
+            if errors:
+                return self.error_response(
+                    request,
+                    code='CONFIG_VALIDATION_FAILED',
+                    detail='; '.join(errors),
+                    http_status=status.HTTP_400_BAD_REQUEST,
+                    field_errors={'payload': errors},
+                )
+            config_dict = config_obj.to_dict()
+
+        # Save config transactionally
+        from django.db import transaction
+        from ..models import ServiceConfig, ConfigChangeAudit
+
+        try:
+            with transaction.atomic():
+                previous_config = ServiceConfig.objects.filter(service=service, is_current=True).first()
+                previous_payload = previous_config.config_payload if previous_config is not None else None
+
+                svc_config = ServiceConfig.objects.create(
+                    service=service,
+                    config_schema_version='1.0',
+                    config_payload=config_dict,
+                    applied_by=getattr(request.user, 'username', 'api'),
+                    change_reason=change_reason,
+                )
+
+                # Audit trail
+                ConfigChangeAudit.objects.create(
+                    service=service,
+                    action='apply' if not is_reset else 'reset',
+                    actor=getattr(request.user, 'username', 'api'),
+                    actor_ip=request.META.get('REMOTE_ADDR', ''),
+                    before_snapshot=previous_payload,
+                    after_snapshot=config_dict,
+                    change_summary=change_reason,
+                    request_id=self.get_request_id(request),
+                )
+        except Exception as e:
+            return self.error_response(
+                request,
+                code='CONFIG_SAVE_FAILED',
+                detail=f'Lỗi lưu config: {str(e)}',
+                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return Response(ServiceConfigSerializer(svc_config).data, status=status.HTTP_201_CREATED)
+
+    def _get_config_class_for_domain(self, domain: str):
+        """Map domain to its config class."""
+        from ..domain_configs import (
+            VnbrokerDomainConfig,
+            PrefetchTimePolicyConfig,
+            SignalServicesDomainConfig,
+            ScreenerDomainConfig,
+        )
+        domain_config_map = {
+            'vnbroker': VnbrokerDomainConfig,
+            'prefetch': PrefetchTimePolicyConfig,
+            'signals': SignalServicesDomainConfig,
+            'screener': ScreenerDomainConfig,
+            'matrix': None,  # Matrix uses dataops runtime config
+            'platform': None,
+            'dataops': None,
+            'data_ingest': None,
+        }
+        return domain_config_map.get(domain)
 
 
 @extend_schema(

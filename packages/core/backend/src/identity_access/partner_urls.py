@@ -12,9 +12,13 @@ from . import views_tenant as views
 from .commercial_partner_views import (
     PartnerBillingInvoicesView,
     PartnerBillingSubscriptionView,
+    PartnerUsageHistoryView,
     PartnerUsageMetersView,
     PartnerUsageQuotasView,
+    PartnerStripeCheckoutSessionView,
+    PartnerStripePortalSessionView,
 )
+from .views.sso import PartnerSSOConfigView
 
 urlpatterns = [
     # Tenant summary
@@ -33,15 +37,27 @@ urlpatterns = [
     path('partner/pats/<str:pat_id>/rotate/', views.partner_rotate_pat, name='partner-pat-rotate'),
     path('partner/pats/<str:pat_id>/revoke/', views.partner_revoke_pat, name='partner-pat-revoke'),
 
+    # SSO Configuration
+    path('partner/sso/', PartnerSSOConfigView.as_view(), name='partner-sso-config'),
+    path('partner/sso', PartnerSSOConfigView.as_view(), name='partner-sso-config-noslash'),
+
     # Usage
     path('partner/usage/meters/', PartnerUsageMetersView.as_view(), name='partner-usage-meters'),
     path('partner/usage/meters', PartnerUsageMetersView.as_view(), name='partner-usage-meters-noslash'),
     path('partner/usage/quotas/', PartnerUsageQuotasView.as_view(), name='partner-usage-quotas'),
     path('partner/usage/quotas', PartnerUsageQuotasView.as_view(), name='partner-usage-quotas-noslash'),
+    path('partner/usage/history/', PartnerUsageHistoryView.as_view(), name='partner-usage-history'),
+    path('partner/usage/history', PartnerUsageHistoryView.as_view(), name='partner-usage-history-noslash'),
 
     # Billing (delegates to commercial app)
     path('partner/billing/subscription/', PartnerBillingSubscriptionView.as_view(), name='partner-billing-sub'),
     path('partner/billing/subscription', PartnerBillingSubscriptionView.as_view(), name='partner-billing-sub-noslash'),
     path('partner/billing/invoices/', PartnerBillingInvoicesView.as_view(), name='partner-billing-invoices'),
     path('partner/billing/invoices', PartnerBillingInvoicesView.as_view(), name='partner-billing-invoices-noslash'),
+
+    # Stripe Billing
+    path('partner/billing/stripe/session/', PartnerStripeCheckoutSessionView.as_view(), name='partner-stripe-checkout-session'),
+    path('partner/billing/stripe/session', PartnerStripeCheckoutSessionView.as_view(), name='partner-stripe-checkout-session-noslash'),
+    path('partner/billing/stripe/portal/', PartnerStripePortalSessionView.as_view(), name='partner-stripe-portal-session'),
+    path('partner/billing/stripe/portal', PartnerStripePortalSessionView.as_view(), name='partner-stripe-portal-session-noslash'),
 ]

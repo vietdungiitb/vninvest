@@ -446,6 +446,7 @@ services:
         REACT_APP_API_BASE_URL: /api
         REACT_APP_AI_ADVISORY_PATH: /ai-advisory
         REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "1"
+        REACT_APP_ENABLE_DEBUG_PAGES: "1"
         REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1
         STOCKCHART_REF: ${STOCKCHART_REF:-dev}
     depends_on: !override
@@ -469,5 +470,5 @@ networks:
     driver: bridge
 
 secrets:
-  vnbroker_github_token:
-    environment: VNBROKER_GITHUB_TOKEN
+  vnbroker_github_token: !override
+    file: ./scratch/token.txt

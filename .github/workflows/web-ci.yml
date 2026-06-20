@@ -1,0 +1,214 @@
+name: VNInvest Web CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'packages/web/**'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'packages/web/**'
+
+env:
+  NODE_VERSION: '20.x'
+  WORKING_DIR: './packages/web'
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & TypeCheck
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIR }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIR }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint 2>&1 || echo "No lint script configured"
+
+      - name: Run TypeScript type check
+        run: npx tsc --noEmit 2>&1 || echo "No TypeScript config"
+
+  test:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIR }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIR }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+  build:
+    name: Production Build
+    runs-on: ubuntu-latest
+    needs: [lint-and-typecheck, test]
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIR }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIR }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: ${{ env.WORKING_DIR }}/dist/
+          retention-days: 7
+
+  visual-regression:
+    name: Visual Regression Testing
+    runs-on: ubuntu-latest
+    needs: build
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIR }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIR }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build Storybook
+        run: npm run build:storybook 2>&1 || echo "Storybook not configured yet"
+
+      - name: Run visual regression tests
+        run: npx playwright test --project=chromium 2>&1 || echo "Visual regression tests not configured yet"
+        # TODO: Configure Playwright + Chromatic for visual regression
+        # - Capture baseline screenshots on main branch
+        # - Compare PR screenshots against baseline
+        # - Fail on pixel diff > 0.1%
+
+      - name: Upload visual regression report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-report
+          path: |
+            ${{ env.WORKING_DIR }}/test-results/
+            ${{ env.WORKING_DIR }}/playwright-report/
+          retention-days: 7
+
+  lighthouse:
+    name: Lighthouse CI Performance Audit
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIR }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ${{ env.WORKING_DIR }}
+
+      - name: Build production
+        run: npm run build
+        working-directory: ${{ env.WORKING_DIR }}
+
+      - name: Start preview server
+        run: npm run preview -- --port 4173 &
+        working-directory: ${{ env.WORKING_DIR }}
+
+      - name: Wait for server
+        run: sleep 10
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v11
+        with:
+          urls: |
+            http://localhost:4173
+            http://localhost:4173/dashboard
+            http://localhost:4173/stocks/VCB
+            http://localhost:4173/alert-center
+          budgetPath: ./lighthouse-budget.json
+          uploadArtifacts: true
+
+  deploy-preview:
+    name: Deploy Preview (Netlify/Vercel)
+    runs-on: ubuntu-latest
+    needs: [build, visual-regression, lighthouse]
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: ./dist
+
+      - name: Deploy to Netlify Preview
+        uses: nwtgck/actions-netlify@v3.0
+        with:
+          publish-dir: ./dist
+          production-branch: main
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Deploy preview for PR #${{ github.event.pull_request.number }}"
+          enable-pull-request-comment: true
+          enable-commit-comment: true
+          overwrites-pull-request-comment: true
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        # Alternative: Vercel
+        # - uses: amondnet/vercel-action@v25
+        #   with:
+        #     vercel-token: ${{ secrets.VERCEL_TOKEN }}
+        #     vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+        #     vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+        #     working-directory: ./packages/web

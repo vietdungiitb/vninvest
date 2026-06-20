@@ -12,6 +12,12 @@ import { DetailDrawer } from "../components/alert-center/DetailDrawer.js";
 import { CORE_STYLES } from "./AlertCenterPage.styles.js";
 import { useAlertCenterData } from "../hooks/useAlertCenterData.js";
 
+// Bypassing host webpack CSS module limitations by using a Proxy that returns class names directly,
+// and injecting global styles via a dynamically rendered <style> tag.
+const styles = new Proxy({}, {
+  get: (target, prop) => prop
+});
+
 const { createElement, useEffect, useRef, useState, useCallback } = React;
 const e = createElement;
 const DEFAULT_ENV = {};
@@ -59,6 +65,7 @@ function normalizeSymbol(value) {
 
 
 export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }) {
+  const cn = (cls) => `${styles[cls]} ${className}`.trim();
   const [lane, setLane] = useState("main");
   const [symbolDraft, setSymbolDraft] = useState("");
   const [appliedSymbol, setAppliedSymbol] = useState("");
@@ -77,24 +84,6 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }) {
   const [searchTermModule2, setSearchTermModule2] = useState("");
   const [pageFeed, setPageFeed] = useState(1);
   const [pageStats, setPageStats] = useState(1);
-
-  // Inject style block on mount and clean up on unmount to prevent browser style-reflow flashes
-  useEffect(() => {
-    const styleId = "core-alert-center-page-styles";
-    let styleEl = document.getElementById(styleId);
-    if (!styleEl) {
-      styleEl = document.createElement("style");
-      styleEl.id = styleId;
-      styleEl.textContent = CORE_STYLES;
-      document.head.appendChild(styleEl);
-    }
-    return () => {
-      const el = document.getElementById(styleId);
-      if (el) {
-        el.remove();
-      }
-    };
-  }, []);
 
   const { loading, error, payload, summary, symbolStats } = useAlertCenterData({
     env,
@@ -303,14 +292,15 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }) {
     ]);
   }
 
-  return e("div", { className: `core-alert-center-page ${className}`.trim() }, [
+  return e("div", { className: `${styles["core-alert-center-page"]} ${className}`.trim() }, [
+    e("style", { key: "global-styles", dangerouslySetInnerHTML: { __html: CORE_STYLES } }),
     // ── Header Section ────────────────────────────────────────────────────────
-    e("header", { key: "header", className: "core-alert-center-header" }, [
+    e("header", { key: "header", className: styles["core-alert-center-header"] }, [
       e("div", { key: "title-container" }, [
         e("h1", { key: "title" }, "Whale Alerts Workspace"),
         e(
           "p",
-          { key: "subtitle", className: "core-alert-center-subtitle" },
+          { key: "subtitle", className: styles["core-alert-center-subtitle"] },
           "Đại bản doanh whale, dark-flow & Price Shock theo chuẩn OpenAPI."
         ),
       ]),
@@ -320,19 +310,19 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }) {
           "div",
           {
             key: "live-badge",
-            className: `core-alert-live-badge ${!autoRefresh ? "is-paused" : ""}`.trim(),
+            className: `${styles["core-alert-live-badge"]} ${!autoRefresh ? styles["is-paused"] : ""}`.trim(),
             style: { cursor: "pointer" },
             onClick: () => setAutoRefresh(!autoRefresh),
             title: autoRefresh ? "Bấm để dừng tự động cập nhật" : "Bấm để bật tự động cập nhật"
           },
           [
-            e("div", { key: "dot", className: "core-alert-live-dot" }),
+            e("div", { key: "dot", className: styles["core-alert-live-dot"] }),
             autoRefresh ? "LIVE (5s)" : "PAUSED",
           ]
         ),
         // Filter Form
-        e("form", { key: "filters", className: "core-alert-center-filter-bar", onSubmit: handleApply }, [
-          e("label", { key: "symbol-label", className: "core-alert-center-filter-field" }, [
+        e("form", { key: "filters", className: styles["core-alert-center-filter-bar"], onSubmit: handleApply }, [
+          e("label", { key: "symbol-label", className: styles["core-alert-center-filter-field"] }, [
             e("span", { key: "symbol-text" }, "Lọc Mã"),
             e("input", {
               key: "symbol-input",
@@ -395,39 +385,39 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }) {
       appliedSymbol,
     }),
 
-    loading && !isRefreshing ? e("p", { key: "loading", className: "core-loading" }, "Đang tải dữ liệu cảnh báo từ Core API...") : null,
-    error ? e("p", { key: "error", className: "core-error" }, error) : null,
-    actionError ? e("p", { key: "action-error", className: "core-error" }, actionError) : null,
+    loading && !isRefreshing ? e("p", { key: "loading", className: styles["core-loading"] }, "Đang tải dữ liệu cảnh báo từ Core API...") : null,
+    error ? e("p", { key: "error", className: styles["core-error"] }, error) : null,
+    actionError ? e("p", { key: "action-error", className: styles["core-error"] }, actionError) : null,
 
     // ── MAIN DUAL-COLUMN CONTAINER ──────────────────────────────────────────
-    !loading || isRefreshing ? e("div", { key: "dashboard-container", className: "core-alert-dashboard-container" }, [
+    !loading || isRefreshing ? e("div", { key: "dashboard-container", className: styles["core-alert-dashboard-container"] }, [
 
       // ════ COLUMN 1: LIVE ALERTS FEED (Module 1) ════
-      e("div", { key: "feed-column", className: "core-alert-feed-column" }, [
-        e("div", { className: "core-dashboard-panel" }, [
-          e("h2", { className: "core-section-title" }, [
+      e("div", { key: "feed-column", className: styles["core-alert-feed-column"] }, [
+        e("div", { className: styles["core-dashboard-panel"] }, [
+          e("h2", { className: styles["core-section-title"] }, [
             "BẢNG TIN THỜI GIAN THỰC",
             e("span", { key: "sub", style: { fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: "normal" } }, `Hiện thị ${alerts.length} sự kiện gần nhất`)
           ]),
 
           // Control Bar inside feed
-          e("div", { className: "core-feed-control-bar" }, [
-            e("div", { className: "core-feed-control-left" }, [
+          e("div", { className: styles["core-feed-control-bar"] }, [
+            e("div", { className: styles["core-feed-control-left"] }, [
               ...SORT_OPTIONS.map((s) =>
                 e(
                   "button",
                   {
                     key: s.value,
                     type: "button",
-                    className: `core-feed-sort-btn ${sorting === s.value ? "is-active" : ""}`.trim(),
+                    className: `${styles["core-feed-sort-btn"]} ${sorting === s.value ? styles["is-active"] : ""}`.trim(),
                     onClick: () => setSorting(s.value),
                   },
                   s.label
                 )
               ),
             ]),
-            e("div", { className: "core-feed-refresh-group" }, [
-              e("label", { className: "core-feed-auto-toggle" }, [
+            e("div", { className: styles["core-feed-refresh-group"] }, [
+              e("label", { className: styles["core-feed-auto-toggle"] }, [
                 e("input", {
                   type: "checkbox",
                   checked: autoRefresh,
@@ -439,13 +429,13 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }) {
                 "button",
                 {
                   type: "button",
-                  className: "core-feed-refresh-btn",
+                  className: styles["core-feed-refresh-btn"],
                   onClick: triggerManualRefresh,
                 },
                 [
                   e("svg", {
                     key: "refresh-svg",
-                    className: isRefreshing ? "is-spinning" : "",
+                    className: isRefreshing ? styles["is-spinning"] : "",
                     width: "12",
                     height: "12",
                     viewBox: "0 0 24 24",
@@ -465,10 +455,10 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }) {
           ]),
 
           // Alerts Scrollable List Wrapper
-          e("div", { className: "core-scrollable-container" }, [
+          e("div", { className: styles["core-scrollable-container"] }, [
             paginatedAlerts.length === 0
-              ? e("p", { className: "core-empty" }, "Chưa có sự kiện cảnh báo nào phù hợp với bộ lọc hiện tại.")
-              : e("div", { className: "core-alert-center-list" },
+              ? e("p", { className: styles["core-empty"] }, "Chưa có sự kiện cảnh báo nào phù hợp với bộ lọc hiện tại.")
+              : e("div", { className: styles["core-alert-center-list"] },
                   paginatedAlerts.map((alert) =>
                     e(AlertCard, {
                       key: alert.alert_id,
@@ -491,7 +481,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }) {
       ]),
 
       // ════ COLUMN 2: STATISTICS BY SYMBOL (Module 2) ════
-      e("div", { key: "stats-column", className: "core-alert-stats-column" }, [
+      e("div", { key: "stats-column", className: styles["core-alert-stats-column"] }, [
         e(SymbolStatsTable, {
           paginatedSymbols,
           searchTermModule2,

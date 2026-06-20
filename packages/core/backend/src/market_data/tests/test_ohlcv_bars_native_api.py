@@ -15,7 +15,7 @@ from market_data.models import DailyPrice, IntradayBar, StockProfile
 
 User = get_user_model()
 
-_URL = '/api/stock-management/stocks/{symbol}/bars/'
+_URL = '/core/v1/stock-management/stocks/{symbol}/bars/'
 
 
 def _make_intraday_bar(symbol, tf, dt, o=10.0, h=10.5, lo=9.9, c=10.2, vol=1000):

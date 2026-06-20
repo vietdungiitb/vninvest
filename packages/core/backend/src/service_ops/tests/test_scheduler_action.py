@@ -214,7 +214,7 @@ class SchedulerJobActionS03ExecutionTests(TestCase):
 
     def test_abort_backfill_job_uses_catalog_service_key_mapping(self):
         """abort must resolve backfill service via CATALOG service_key, not job_key literal."""
-        from service_ops.models import ServiceRunLog
+        from service_ops.models import ServiceRunLog, BackfillExecutionRun
         from service_ops.registry import get_registered_service
 
         service = get_registered_service('backfill_daily_prices')
@@ -224,6 +224,12 @@ class SchedulerJobActionS03ExecutionTests(TestCase):
             celery_task_id='abort-backfill-task-id',
             input_summary={'trigger': 'test'},
             output_summary={},
+        )
+        exec_run = BackfillExecutionRun.objects.create(
+            run_id='backfill-test-abort-id',
+            job_key='daily-backfill-prices-1700',
+            service_run_log=run_log,
+            status='running',
         )
 
         url = _ACTION_URL.format(job_key='daily-backfill-prices-1700')
@@ -235,3 +241,7 @@ class SchedulerJobActionS03ExecutionTests(TestCase):
         self.assertEqual(run_log.status, 'failed')
         self.assertIn('Bị abort bởi operator', run_log.error_detail)
         revoke_mock.assert_called_once_with('abort-backfill-task-id', terminate=True, signal='SIGTERM')
+
+        exec_run.refresh_from_db()
+        self.assertEqual(exec_run.status, 'aborted')
+        self.assertIn('Bị abort bởi operator', exec_run.error_summary)

@@ -229,9 +229,9 @@ class PasswordResetViewTests(APITestCase):
 
     def test_password_reset_request_creates_db_token(self):
         """Test: password_reset_request_view creates PasswordResetToken in DB."""
-        with patch('identity_access.views_auth.send_password_reset_email') as mock_send:
+        with patch('identity_access.views.password_reset.send_password_reset_email') as mock_send:
             response = self.client.post(
-                '/api/auth/password-reset/',
+                '/core/v1/auth/password-reset/',
                 {'email': self.user_email},
                 format='json',
             )
@@ -249,7 +249,7 @@ class PasswordResetViewTests(APITestCase):
     def test_password_reset_request_no_user_enumeration(self):
         """Test: password_reset_request returns 200 for nonexistent email (OWASP A01)."""
         response = self.client.post(
-            '/api/auth/password-reset/',
+            '/core/v1/auth/password-reset/',
             {'email': 'nonexistent@example.com'},
             format='json',
         )
@@ -272,7 +272,7 @@ class PasswordResetViewTests(APITestCase):
 
         new_password = 'NewPassword123!'
         response = self.client.post(
-            '/api/auth/password-reset/confirm/',
+            '/core/v1/auth/password-reset/confirm/',
             {
                 'token': raw_token,
                 'password': new_password,
@@ -293,7 +293,7 @@ class PasswordResetViewTests(APITestCase):
     def test_password_reset_confirm_invalid_token(self):
         """Test: password_reset_confirm rejects invalid token."""
         response = self.client.post(
-            '/api/auth/password-reset/confirm/',
+            '/core/v1/auth/password-reset/confirm/',
             {
                 'token': 'invalid_token_xyz',
                 'password': 'NewPassword123!',
@@ -314,7 +314,7 @@ class PasswordResetViewTests(APITestCase):
         token_obj.save()
 
         response = self.client.post(
-            '/api/auth/password-reset/confirm/',
+            '/core/v1/auth/password-reset/confirm/',
             {
                 'token': raw_token,
                 'password': 'NewPassword123!',
@@ -334,7 +334,7 @@ class PasswordResetViewTests(APITestCase):
 
         # First use
         response = self.client.post(
-            '/api/auth/password-reset/confirm/',
+            '/core/v1/auth/password-reset/confirm/',
             {
                 'token': raw_token,
                 'password': 'NewPassword123!',
@@ -345,7 +345,7 @@ class PasswordResetViewTests(APITestCase):
 
         # Second use (same token)
         response = self.client.post(
-            '/api/auth/password-reset/confirm/',
+            '/core/v1/auth/password-reset/confirm/',
             {
                 'token': raw_token,
                 'password': 'AnotherPassword123!',
@@ -364,7 +364,7 @@ class PasswordResetViewTests(APITestCase):
         )
 
         response = self.client.post(
-            '/api/auth/password-reset/confirm/',
+            '/core/v1/auth/password-reset/confirm/',
             {
                 'token': raw_token,
                 'password': 'Short1!',  # < 8 chars
@@ -378,9 +378,9 @@ class PasswordResetViewTests(APITestCase):
     def test_password_reset_flow_end_to_end(self):
         """Test: Complete password reset flow (request → confirm)."""
         # Step 1: Request reset
-        with patch('identity_access.views_auth.send_password_reset_email') as mock_send:
+        with patch('identity_access.views.password_reset.send_password_reset_email') as mock_send:
             response = self.client.post(
-                '/api/auth/password-reset/',
+                '/core/v1/auth/password-reset/',
                 {'email': self.user_email},
                 format='json',
             )
@@ -396,7 +396,7 @@ class PasswordResetViewTests(APITestCase):
         # Step 2: Confirm reset
         new_password = 'CompleteFlow123!'
         response = self.client.post(
-            '/api/auth/password-reset/confirm/',
+            '/core/v1/auth/password-reset/confirm/',
             {
                 'token': raw_token,
                 'password': new_password,
@@ -412,7 +412,7 @@ class PasswordResetViewTests(APITestCase):
 
         # Verify can't reuse token
         response = self.client.post(
-            '/api/auth/password-reset/confirm/',
+            '/core/v1/auth/password-reset/confirm/',
             {
                 'token': raw_token,
                 'password': 'ReuseAttempt123!',

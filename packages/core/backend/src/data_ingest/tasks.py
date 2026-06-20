@@ -27,7 +27,12 @@ logger = logging.getLogger(__name__)
 def _b02_mark_run_failed_on_crash(task_id, exc, traceback, *args, **kwargs):
     """Celery task_failure signal handler — B02 crash-safety for backfill_daily_prices."""
     sender = kwargs.get('sender')
-    if sender is None or getattr(sender, 'name', '') != 'data_ingest.tasks.backfill_daily_prices':
+    sender_name = getattr(sender, 'name', '') or ''
+    if sender_name not in (
+        'data_ingest.tasks.backfill_daily_prices',
+        'data_ingest.tasks.backfill_pre5y_to_market_inception',
+        'data_ingest.tasks.ingest_daily_prices',
+    ):
         return
     try:
         exec_run_id = kwargs.get('einfo') or getattr(traceback, '_b02_exec_run_id', None)
@@ -1206,6 +1211,7 @@ def backfill_daily_prices(
     # B07 — explicit mode and trigger
     mode: str = 'daily_delta',
     trigger: str = 'beat_schedule',
+    celery_task_id: str | None = None,
 ):
     """
     Backfill DailyPrice cho tất cả active symbols (hoặc danh sách truyền vào).
@@ -1224,7 +1230,7 @@ def backfill_daily_prices(
     """
     # B01: Run log lifecycle management
     service_run_log = None
-    _task_id = getattr(self.request, 'id', '') or ''
+    _task_id = celery_task_id or getattr(self.request, 'id', '') or ''
     _b08_cleanup_result = _b08_finalize_stale_running_runs(_scheduler_job_key)
     if _b08_cleanup_result.get('stale_run_logs') or _b08_cleanup_result.get('stale_backfill_runs'):
         logger.warning(
@@ -1318,6 +1324,12 @@ def backfill_daily_prices(
     # Store exec_run ref on request so on_failure handler can access it
     if _exec_run is not None:
         self.request.update({'_b02_exec_run_id': _exec_run.pk})
+        try:
+            from celery import current_task
+            if current_task and current_task is not self and hasattr(current_task, 'request'):
+                current_task.request.update({'_b02_exec_run_id': _exec_run.pk})
+        except Exception:
+            pass
 
     providers = _HISTORY_PROVIDERS
     n = len(providers)
@@ -1463,7 +1475,7 @@ def backfill_daily_prices(
                             from django.utils import timezone as _tz
                             _failed_syms = result.get('failed') or []
                             _batch_obj.state = 'failed' if _failed_syms and not int(result.get('inserted') or 0) and not int(result.get('updated') or 0) else ('done' if not _failed_syms else 'done')
-                            _batch_obj.completed_symbols_count = len(result.get('failed') or []) + int(result.get('inserted') or 0) + int(result.get('updated') or 0) + int(result.get('skipped_existing') or 0)
+                            _batch_obj.completed_symbols_count = len(buckets.get(provider) or [])
                             _batch_obj.inserted_rows = int(result.get('inserted') or 0)
                             _batch_obj.updated_rows = int(result.get('updated') or 0)
                             _batch_obj.skipped_existing_rows = int(result.get('skipped_existing') or 0)
@@ -1626,6 +1638,7 @@ def backfill_pre5y_to_market_inception(
         _scheduler_job_key=_scheduler_job_key,
         mode='historical_inception_backfill',
         trigger=trigger_mode,
+        celery_task_id=getattr(self.request, 'id', ''),
     )
     result['market_inception_date'] = parsed_inception_date.isoformat()
     result['pre5y_end_date'] = pre5y_end_date.isoformat()

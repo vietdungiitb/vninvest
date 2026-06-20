@@ -6,6 +6,7 @@ ISOLATION RULE: No imports from backend.portfolio or backend.* allowed.
 import os
 import sys
 from calendar import monthrange
+from unittest.mock import patch
 
 _src_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
 if _src_dir not in sys.path:
@@ -70,7 +71,8 @@ class AdvisoryManualTriggerApiTests(TestCase):
             storage_mb_limit=-1,
         )
 
-    def test_advisory_refresh_route_triggers_pending_job_and_records_audit(self):
+    @patch('advisory.tasks.generate_advisory_task.delay')
+    def test_advisory_refresh_route_triggers_pending_job_and_records_audit(self, mock_delay):
         resolver = resolve('/core/v1/advisory/refresh/FPT/')
         self.assertIs(resolver.func.view_class, AdvisoryRefreshView)
         self._create_quota_record(used=0, limit=1)
@@ -106,7 +108,8 @@ class AdvisoryManualTriggerApiTests(TestCase):
         self.assertEqual(AuditEvent.objects.get(resource_type='manual_trigger').metadata['reason'], 'quota_exhausted')
 
     @override_settings(ADVISORY_MANUAL_TRIGGER_COOLDOWN_SECONDS=300)
-    def test_advisory_refresh_enforces_cooldown_between_manual_triggers(self):
+    @patch('advisory.tasks.generate_advisory_task.delay')
+    def test_advisory_refresh_enforces_cooldown_between_manual_triggers(self, mock_delay):
         self._create_quota_record(used=0, limit=5)
 
         first_response = self.client.post('/core/v1/advisory/refresh/FPT/', {}, format='json')

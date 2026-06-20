@@ -609,8 +609,8 @@ class VnbrokerBenchmarkView(SOCBaseView):
     def get(self, request):
         report = get_latest_price_board_benchmark_report()
         if not isinstance(report, dict):
-            return Response({'ok': True, 'has_report': False, 'report': None})
-        return Response({'ok': True, 'has_report': True, 'report': report})
+            return Response({'has_report': False, 'report': None})
+        return Response({'has_report': True, 'report': report})
 
     def post(self, request):
         payload = request.data if isinstance(request.data, dict) else {}
@@ -657,4 +657,4 @@ class VnbrokerBenchmarkView(SOCBaseView):
                 http_status=status.HTTP_400_BAD_REQUEST,
             )
 
-        return Response({'ok': True, 'has_report': True, 'report': report})
+        return Response({'has_report': True, 'report': report})

@@ -2,6 +2,7 @@
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
+import ipaddress
 
 from .models import CorePATCredential
 
@@ -34,6 +35,21 @@ class CorePATAuthentication(BaseAuthentication):
 
         if credential.service_account.status != credential.service_account.StatusChoices.ACTIVE:
             raise AuthenticationFailed('Service account is disabled.')
+
+        # Check CIDR whitelist if configured
+        if credential.allowed_cidr_blocks:
+            client_ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', '127.0.0.1')
+            ip_allowed = False
+            try:
+                ip_obj = ipaddress.ip_address(client_ip)
+                for cidr in credential.allowed_cidr_blocks:
+                    if ip_obj in ipaddress.ip_network(cidr, strict=False):
+                        ip_allowed = True
+                        break
+            except ValueError:
+                pass
+            if not ip_allowed:
+                raise AuthenticationFailed('Địa chỉ IP không được phép truy cập bằng Token này.')
 
         # Return (user, auth) — user is the service account's tenant owner surrogate
         owner = credential.service_account.tenant.owner_user

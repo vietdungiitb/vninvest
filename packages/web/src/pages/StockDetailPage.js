@@ -1,10 +1,11 @@
 /**
- * SM-P4.5 — StockDetailPage (SaaS Native Rebuild)
- * ===================================================
- * Trang chi tiết cổ phiếu cao cấp:
- *   - VNStockChartPanel: biểu đồ D3 hybrid (giá + CVD + Sức mạnh)
- *   - OrderFlowRadarPanel: radar dòng tiền đặt bên dưới biểu đồ
- *   - Advisory Card: đồng bộ theo session được chọn trên biểu đồ
+ * SM-P4.5 — StockDetailPage (SaaS Native Rebuild) — Workstation Upgrade
+ * ======================================================================
+ * Trang chi tiết cổ phiếu cao cấp với layout Workstation 2 cột (SSI iBoard Style):
+ *   - Left (65%): VNStockChartPanel + OrderFlowRadarPanel
+ *   - Right (35%): StockOrderBookWidget + StockExecutionLogWidget
+ *   - Mobile (<768px): Tab switcher [Biểu đồ | Sổ lệnh | Khớp lệnh]
+ *   - Feature flag: WORKSTATION_LAYOUT_V2
  *
  * Quy định: KHÔNG dùng JSX trong file này — tuân theo convention
  * packages/web (createElement). Mọi component con có thể dùng JSX.
@@ -12,15 +13,16 @@
  * Kiến trúc: SaaS Native OpenAPI — packages/core + packages/web ONLY.
  */
 import "./StockDetailPage.css";
-import { createElement, useCallback, useState } from "react";
+import { createElement, useCallback, useState, useEffect, useMemo } from "react";
 
 import { useStockDetailPageModel } from "../features/stock-detail/hooks/useStockDetailPageModel.js";
 import { StockDetailHeader } from "../features/stock-detail/components/StockDetailHeader.js";
 import { StockSessionWitness } from "../features/stock-detail/components/StockSessionWitness.js";
 import VNStockChartPanel from "../components/VNStockChartPanel.js";
-import { OrderFlowRadarPanel } from "../components/OrderFlowRadarPanel.js";
-import { StockContextDeck } from "../features/stock-detail/components/StockContextDeck.js";
-import { StockInsightDeck } from "../features/stock-detail/components/StockInsightDeck.js";
+import WhaleBubbleChart from "../components/WhaleBubbleChart.jsx";
+import { StockDetailTabs } from "../features/stock-detail/components/StockDetailTabs.js";
+import { WorkstationLayout, StockOrderBookWidget, StockExecutionLogWidget } from "../components/workstation/index.js";
+import { useOrderBook, useTradeLog } from "../components/workstation/hooks/index.js";
 
 const DEFAULT_ENV = {};
 const e = createElement;
@@ -64,10 +66,6 @@ function signalLabel(signal) {
   return map[String(signal || "").toLowerCase()] || signal || "—";
 }
 
-// ─── Sub-components (createElement) ──────────────────────────────────────────
-
-// ─── Helper definitions ───────────────────────────────────────────────────────
-
 // ─── Main Page Export ─────────────────────────────────────────────────────────
 
 export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }) {
@@ -104,7 +102,10 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }) {
     news,
     financials,
     loadingNews,
-    loadingFinancials
+    loadingFinancials,
+    activeTab,
+    setActiveTab,
+    loadingProfile
   } = useStockDetailPageModel({ env, initialSymbol: symbol });
 
   const handleSessionChange = useCallback((session) => {
@@ -126,6 +127,37 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }) {
   const handleTradeTrigger = useCallback(() => {
     showToast(`Chức năng giao dịch cho mã ${symbol} đang kết nối qua cổng bảo mật.`);
   }, [symbol, showToast]);
+
+  const isFeatureEnabled = useMemo(() => {
+    if (typeof window !== "undefined") {
+      return window.__ENV__?.WORKSTATION_LAYOUT_V2 === true ||
+             localStorage.getItem("workstation_v2") === "true";
+    }
+    return false;
+  }, []);
+
+  // ── Workstation Data Hooks ──────────────────────────────────────────────────
+  const { orderBook, loading: loadingOrderBook, error: errorOrderBook, refresh: refreshOrderBook } = useOrderBook({
+    symbol,
+    env,
+    getToken: env.getToken,
+    intervalMs: 5000,
+    enabled: isFeatureEnabled && !!symbol,
+  });
+
+  const { trades, loading: loadingTradeLog, error: errorTradeLog, refresh: refreshTradeLog } = useTradeLog({
+    symbol,
+    env,
+    getToken: env.getToken,
+    intervalMs: 5000,
+    maxItems: 100,
+    enabled: isFeatureEnabled && !!symbol,
+  });
+
+  // Get previous close for trade log change calculation
+  const prevClose = useMemo(() => {
+    return snapshot?.prev_price ?? snapshot?.reference_price ?? null;
+  }, [snapshot]);
 
   // ── Empty state ────────────────────────────────────────────────────────────
   if (!symbol) {
@@ -164,35 +196,11 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }) {
     );
   }
 
-  // ── Main layout ────────────────────────────────────────────────────────────
-  return e(
+  // ── Left Column: Chart + Radar ─────────────────────────────────────────────
+  const leftColumn = e(
     "div",
-    { className: `sdp-page ${className}` },
-
-    // ── Ambient glow background decorations ──
-    e("div", { className: "sdp-bg-glow sdp-bg-glow-1", "aria-hidden": "true" }),
-    e("div", { className: "sdp-bg-glow sdp-bg-glow-2", "aria-hidden": "true" }),
-
-    // ── Header ────────────────────────────────
-    e(StockDetailHeader, {
-      symbol,
-      profile,
-      snapshot: loadingBlocking ? null : snapshot,
-      loading: loadingBlocking,
-      isWatched,
-      onWatch: handleWatch,
-      onAlertTrigger: handleAlertTrigger,
-      onTradeTrigger: handleTradeTrigger
-    }),
-
-    // ── Session Witness Strip ──────────────────
-    e(StockSessionWitness, {
-      selectedSession,
-      onClearSession: () => setSelectedSession(null),
-      loading: loadingDeferred
-    }),
-
-    // ── Hero Workstation Chart Wrapper ─────────
+    { className: "sdp-left-workspace" },
+    // Chart Wrapper
     e(
       "div",
       { className: "sdp-chart-wrapper" },
@@ -212,41 +220,96 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }) {
         whaleSignals: whaleFeed,
       })
     ),
-
-    // ── OrderFlowRadarPanel (strictly full-width underneath) ──
+    // Whale Bubble Chart Panel
     e(
       "div",
       { className: "sdp-radar-wrapper" },
-      e(OrderFlowRadarPanel, {
-        symbol,
-        loading: loadingBlocking,
-        orderFlowData,
-        latestRealtimeAlert: null,
+      e(WhaleBubbleChart, {
+        selectedSymbol: symbol,
+        env,
+        isEmbedded: false,
       })
-    ),
+    )
+  );
 
-    // ── StockContextDeck (CVD, depth, strength) ──
-    e(StockContextDeck, {
+  // ── Right Column: Order Book + Trade Log ───────────────────────────────────
+  const rightColumn = e(
+    "div",
+    { className: "sdp-right-workspace" },
+    e(StockOrderBookWidget, {
+      orderBook,
+      loading: loadingOrderBook,
+      error: errorOrderBook,
+      onRefresh: refreshOrderBook,
+    }),
+    e(StockExecutionLogWidget, {
+      trades,
+      loading: loadingTradeLog,
+      error: errorTradeLog,
+      onRefresh: refreshTradeLog,
+      prevClose,
+    })
+  );
+
+  // ── Main layout with WorkstationLayout ─────────────────────────────────────
+  return e(
+    "div",
+    { className: `sdp-page ${className}` },
+
+    // Ambient glow background decorations
+    e("div", { className: "sdp-bg-glow sdp-bg-glow-1", "aria-hidden": "true" }),
+    e("div", { className: "sdp-bg-glow sdp-bg-glow-2", "aria-hidden": "true" }),
+
+    // Header
+    e(StockDetailHeader, {
       symbol,
+      profile,
+      snapshot: loadingBlocking ? null : snapshot,
+      loading: loadingBlocking,
+      isWatched,
+      onWatch: handleWatch,
+      onAlertTrigger: handleAlertTrigger,
+      onTradeTrigger: handleTradeTrigger
+    }),
+
+    // Session Witness Strip
+    e(StockSessionWitness, {
       selectedSession,
-      snapshot,
-      orderFlowData,
-      whaleFeed,
+      onClearSession: () => setSelectedSession(null),
       loading: loadingDeferred
     }),
 
-    // ── StockInsightDeck (Advisory, news, financials) ──
-    e(StockInsightDeck, {
+    // Workstation Layout (Split-screen or Mobile tabs)
+    isFeatureEnabled
+      ? e(WorkstationLayout, {
+          enabled: true,
+          children: {
+            left: leftColumn,
+            right: rightColumn,
+          },
+        })
+      : leftColumn,
+
+    // StockDetailTabs (Unified 8-tab panel structure)
+    e(StockDetailTabs, {
+      symbol,
+      activeTab,
+      setActiveTab,
+      profile,
+      loadingProfile,
+      snapshot,
+      orderFlowData,
+      whaleFeed,
       advisory,
       selectedSession,
       loadingDeferred,
       news,
-      financials,
       loadingNews,
+      financials,
       loadingFinancials
     }),
 
-    // ── Toast Notification (Truthful UX) ──
+    // Toast Notification
     toast && e(
       "div",
       { className: "sdp-toast-container" },

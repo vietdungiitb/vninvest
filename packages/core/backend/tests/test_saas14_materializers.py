@@ -32,13 +32,13 @@ from market_serving.materializers import (
 from vninvest_core.pagination import AlertCursorPagination, AuditCursorPagination, CoreCursorPagination
 
 
-class TestMaterializeSymbolSnapshotNoLegacyUrl(TestCase):
-    """When LEGACY_DATABASE_URL is absent, materializer returns skipped."""
+class TestMaterializeSymbolSnapshotNative(TestCase):
+    """SaaS Native symbol snapshot materialization test."""
 
-    def test_no_legacy_url_returns_skipped(self):
+    @patch('market_serving.vnbroker_materializer.materialize_symbol_snapshot_from_vnbroker', return_value={'status': 'ok', 'upserted': 0})
+    def test_materialize_symbol_snapshot_runs(self, mock_materialize):
         result = materialize_symbol_snapshot.run()
-        self.assertEqual(result["status"], "skipped")
-        self.assertEqual(result["reason"], "no_legacy_db_url")
+        self.assertEqual(result['status'], 'ok')
 
 
 class TestMaterializeSessionFactsNative(TestCase):
@@ -188,63 +188,14 @@ class TestMaterializePreOpenSnapshots(TestCase):
         self.assertAlmostEqual(float(snapshot.price_change_pct), 1.1364, places=4)
 
 
-class TestMaterializeUnifiedAlertsDedup(TestCase):
-    def test_duplicate_event_rows_are_deduped_before_upsert(self):
-        from django.utils import timezone
+class TestMaterializeUnifiedAlertsPlaceholder(TestCase):
+    """Placeholder test for materialize_unified_alerts."""
+
+    def test_materialize_unified_alerts_returns_skipped(self):
         from market_serving.materializers import materialize_unified_alerts
-        from signal_intelligence.models import UnifiedAlert, WhaleAlertCanonical
-
-        event_id = uuid.uuid4()
-        occurred_at = timezone.now()
-        legacy_rows = [
-            (
-                event_id,
-                'FPT',
-                'BUY',
-                5_000_000_000,
-                'high',
-                'whale_flow',
-                occurred_at.date(),
-                occurred_at,
-                {'price': 123000, 'volume': 1000},
-            ),
-            (
-                event_id,
-                'FPT',
-                'BUY',
-                5_000_000_000,
-                'high',
-                'whale_flow',
-                occurred_at.date(),
-                occurred_at,
-                {'price': 123000, 'volume': 1000},
-            ),
-        ]
-
-        with patch('market_serving.materializers._get_legacy_db_url', return_value='postgres://legacy-sync'), \
-                patch('market_serving.materializers._fetch_from_legacy', return_value=legacy_rows):
-            result = materialize_unified_alerts.run()
-
-        self.assertEqual(result['status'], 'ok')
-        self.assertEqual(result['upserted'], 1)
-        self.assertEqual(result['duplicates_skipped'], 1)
-
-        self.assertEqual(UnifiedAlert.objects.filter(source_ref=str(event_id)).count(), 1)
-        self.assertEqual(WhaleAlertCanonical.objects.filter(alert__source_ref=str(event_id)).count(), 1)
-
-        with self.assertRaises(IntegrityError):
-            UnifiedAlert.objects.create(
-                alert_type=UnifiedAlert.AlertTypeChoices.WHALE,
-                symbol='FPT',
-                severity=UnifiedAlert.SeverityChoices.HIGH,
-                title='Duplicate whale event',
-                body='Duplicate source_ref should be rejected.',
-                value=5_000_000_000,
-                direction=UnifiedAlert.DirectionChoices.BUY,
-                session_date=occurred_at.date(),
-                triggered_at=occurred_at,
-                source_ref=str(event_id),
-            )
+        result = materialize_unified_alerts.run()
+        self.assertEqual(result['status'], 'skipped')
+        self.assertEqual(result['reason'], 'legacy_db_removed')
 
 
 class TestCursorPaginationClasses(TestCase):

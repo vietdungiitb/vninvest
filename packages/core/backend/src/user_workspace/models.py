@@ -496,3 +496,108 @@ class QuarantinedRecord(models.Model):
     def __str__(self) -> str:
         return f"{self.model_name} #{self.original_id} - {self.reason}"
 
+
+class ScreenerRule(models.Model):
+    """
+    Bộ lọc động (screener) do user tự định nghĩa, lưu dưới dạng JSON.
+    TENANT ISOLATION: explicit FK to CoreTenant.
+    """
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='screener_rules',
+        verbose_name='Người dùng',
+    )
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant',
+        on_delete=models.CASCADE,
+        related_name='screener_rules',
+        null=False,
+        blank=True,
+        verbose_name='Người dùng SaaS (Tenant)',
+        help_text='Tenant owner of this screener rule.',
+    )
+    name = models.CharField(max_length=100, verbose_name='Tên bộ lọc')
+    rules_json = models.JSONField(verbose_name='Luật lọc (JSON)')
+    is_active = models.BooleanField(default=True, verbose_name='Kích hoạt')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Bộ lọc động'
+        verbose_name_plural = 'Bộ lọc động'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.name} ({self.user.username})'
+
+
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+
+@receiver(pre_save, sender=Portfolio)
+@receiver(pre_save, sender=Transaction)
+@receiver(pre_save, sender=Watchlist)
+@receiver(pre_save, sender=TrackedSymbol)
+@receiver(pre_save, sender=PriceAlert)
+@receiver(pre_save, sender=SubAccount)
+@receiver(pre_save, sender=ScreenerRule)
+def resolve_tenant_for_user_workspace_models(sender, instance, **kwargs):
+    if getattr(instance, 'tenant_id', None):
+        return
+
+    # Try resolving from owner/associated user
+    user = getattr(instance, 'user', None)
+    if not user:
+        portfolio = getattr(instance, 'portfolio', None)
+        if portfolio:
+            if getattr(portfolio, 'tenant_id', None):
+                instance.tenant_id = portfolio.tenant_id
+                return
+            user = getattr(portfolio, 'user', None)
+            
+        watchlist = getattr(instance, 'watchlist', None)
+        if watchlist:
+            if getattr(watchlist, 'tenant_id', None):
+                instance.tenant_id = watchlist.tenant_id
+                return
+            user = getattr(watchlist, 'user', None)
+
+    if user:
+        # Try core_profile first
+        profile = getattr(user, 'core_profile', None)
+        if profile and getattr(profile, 'tenant_id', None):
+            instance.tenant = profile.tenant
+            return
+        # Look up UserProfile directly
+        from identity_access.models import UserProfile, CoreTenant
+        profile = UserProfile.objects.filter(user=user).first()
+        if profile and getattr(profile, 'tenant_id', None):
+            instance.tenant = profile.tenant
+            return
+        
+        # Find any tenant owned by user
+        tenant = CoreTenant.objects.filter(owner_user=user).first()
+        if tenant:
+            instance.tenant = tenant
+            return
+            
+        # Find any active tenant the user belongs to
+        from identity_access.models import TenantMember
+        member = TenantMember.objects.filter(user=user).first()
+        if member and getattr(member, 'tenant_id', None):
+            instance.tenant_id = member.tenant_id
+            return
+
+        # Fallback: create a tenant for the user
+        tenant = CoreTenant.objects.create(
+            tenant_code=f"auto-{user.username}",
+            display_name=f"Auto Tenant for {user.username}",
+            owner_user=user
+        )
+        instance.tenant = tenant
+        # Create UserProfile if not exists
+        UserProfile.objects.get_or_create(user=user, defaults={'tenant': tenant})
+
+
+

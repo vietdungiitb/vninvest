@@ -46,10 +46,12 @@ class DNSECredentialEncryptionTest(TestCase):
 
     def test_get_system_provider_credentials_found(self):
         """T-F3: get_system_provider_credentials() trả về tuple khi tồn tại."""
-        from identity_access.models import UserDNSECredential, get_system_provider_credentials
+        from user_workspace.models import DNSECredential
+        from identity_access.models import get_system_provider_credentials
         admin = self.User.objects.create_superuser('sysadmin_f3', 'f3@test.com', 'pass')
-        cred = UserDNSECredential(user=admin, is_system_provider=True)
-        cred.set_credentials('SYS_KEY', 'SYS_SECRET')
+        cred = DNSECredential(user=admin, is_active=True)
+        cred.set_client_id('SYS_KEY')
+        cred.set_client_secret('SYS_SECRET')
         cred.save()
 
         result = get_system_provider_credentials()

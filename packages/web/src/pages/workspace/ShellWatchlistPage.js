@@ -57,7 +57,9 @@ export function ShellWatchlistPage({
   // LOGIC GATE FOR SAAS NATIVE MIGRATION
   const hasSaasNative = capabilities?.tenant?.features?.includes("watchlist_saas_native") ||
                        session?.tenant?.features?.includes("watchlist_saas_native") ||
-                       identity?.tenant?.features?.includes("watchlist_saas_native");
+                       identity?.tenant?.features?.includes("watchlist_saas_native") ||
+                       capabilities?.entitlements?.features?.includes("watchlist_saas_native") ||
+                       session?.entitlements?.features?.includes("watchlist_saas_native");
 
   if (hasSaasNative) {
     return createElement(WatchlistPage, { env, autoLoad });
