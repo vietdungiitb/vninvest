@@ -72,6 +72,7 @@ export function isWithinMarketSession(epochSeconds, referenceDate = new Date()) 
     return false;
   }
   // Date-agnostic: check time-of-day in VN timezone (UTC+7) only.
+  // This ensures historical data from previous sessions is not filtered out.
   const vnOffsetSeconds = 7 * 3600;
   const secondsInDay = Number(epochSeconds) + vnOffsetSeconds;
   const vnTimeMinutes = Math.floor((secondsInDay % 86400) / 60);
@@ -174,6 +175,13 @@ export function resolveWhaleTimeframeWindow(timeframe, referenceDate = new Date(
   };
 }
 
+/**
+ * Normalizes any timestamp/date string into a canonical minute bucket (epoch seconds).
+ * Useful for mapping data points to a shared grid.
+ * 
+ * @param {string|number|Date} ts - The timestamp to normalize
+ * @returns {number|null} - Epoch seconds at the start of the minute, or null if invalid
+ */
 export function toCanonicalMinute(ts) {
   if (!ts) return null;
   
@@ -181,12 +189,14 @@ export function toCanonicalMinute(ts) {
   if (ts instanceof Date) {
     date = ts;
   } else if (typeof ts === 'number') {
+    // Assume seconds if < 1e11, else milliseconds
     date = new Date(ts < 1e11 ? ts * 1000 : ts);
   } else if (typeof ts === 'string') {
     const trimmed = ts.trim();
     const numericTs = Number(trimmed);
 
     if (trimmed !== '' && Number.isFinite(numericTs)) {
+      // Accept both epoch seconds and epoch milliseconds represented as strings.
       date = new Date(numericTs < 1e11 ? numericTs * 1000 : numericTs);
     } else {
       date = new Date(trimmed);
@@ -197,6 +207,7 @@ export function toCanonicalMinute(ts) {
   
   if (isNaN(date.getTime())) return null;
   
+  // Strip seconds and milliseconds
   const canonical = new Date(date);
   canonical.setSeconds(0);
   canonical.setMilliseconds(0);
@@ -204,6 +215,9 @@ export function toCanonicalMinute(ts) {
   return Math.floor(canonical.getTime() / 1000);
 }
 
+/**
+ * Formats canonical minute for display (HH:mm)
+ */
 export function formatMinuteLabel(epochSeconds) {
   if (!epochSeconds) return '';
   const d = new Date(epochSeconds * 1000);

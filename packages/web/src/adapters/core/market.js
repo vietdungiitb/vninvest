@@ -356,6 +356,47 @@ ext`/`previous` links.
     },
 
     /**
+     * Get realtime order book depth (Market Depth) for a symbol.
+     * Calls the native core route /core/v1/realtime/depth-chart/{symbol}/.
+     * @param {string} symbol
+     * @returns {Promise<object>}
+     */
+    getRealtimeDepthChart(symbol) {
+      if (!symbol) throw new Error("symbol is required for getRealtimeDepthChart");
+      return coreGet(`/realtime/depth-chart/${encodeURIComponent(String(symbol).toUpperCase())}/`);
+    },
+
+    /**
+     * Get realtime intraday trades (Trade Log) for a symbol.
+     * Calls the native core route /core/v1/realtime/intraday/{symbol}/.
+     * @param {string} symbol
+     * @param {object} [params] - page_size, etc.
+     * @returns {Promise<object>}
+     */
+    getRealtimeIntraday(symbol, params = {}) {
+      if (!symbol) throw new Error("symbol is required for getRealtimeIntraday");
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+      ).toString();
+      return coreGet(`/realtime/intraday/${encodeURIComponent(String(symbol).toUpperCase())}/${query ? `?${query}` : ""}`);
+    },
+
+    /**
+     * Get whale feed aggregate for a symbol.
+     * Calls the native core route /core/v1/realtime/whale-feed-aggregate/{symbol}/.
+     * @param {string} symbol
+     * @param {object} [params] - session_date, limit, sort, window
+     * @returns {Promise<object>}
+     */
+    getWhaleFeedAggregate(symbol, params = {}) {
+      if (!symbol) throw new Error("symbol is required for getWhaleFeedAggregate");
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+      ).toString();
+      return coreGet(`/realtime/whale-feed-aggregate/${encodeURIComponent(String(symbol).toUpperCase())}/${query ? `?${query}` : ""}`);
+    },
+
+    /**
      * Get watchlist-backed market groups used for symbol universe construction.
      * Keeps the legacy method name so existing callers can migrate without churn.
      * @returns {Promise<{results: object[]}>}

@@ -72,3 +72,48 @@ Tôi đã chạy bộ test suites của gói `@vninvest/web` để xác định 
 
 * **Taskboard:** Đã cập nhật trạng thái Slice 1 và Slice 2 thành `[x]` (Hoàn thành) trong [TASKBOARD.md](file:///docs/watchlist_audit/TASKBOARD.md).
 * **Shadow Run:** Hệ thống đã sẵn sàng cho giai đoạn Shadow Run trên môi trường staging. Sau khi xác nhận sự ổn định của luồng dữ liệu, chúng ta có thể tiến hành Canary Rollout cho 10% tenants trước khi chuyển đổi hoàn toàn và dọn dẹp các shim layers legacy.
+
+---
+
+## 4. Critical Fixes - Stock Detail Workstation (2026-06-19)
+
+### Lỗi 1: Stale Closure trong `useRealtimePolling.js`
+**Vấn đề:** Hook `useRealtimePolling` khai báo `executePoll` bằng `useCallback` với dependency array rỗng `[]`. Khi `symbol` thay đổi, `dedupeKey` trong closure vẫn giữ giá trị cũ (ví dụ: `'ACB'`), trong khi `dedupeKeyRef.current` đã cập nhật sang mã mới (ví dụ: `'GVR'`). Điều này khiến kiểm tra `dedupeKeyRef.current !== dedupeKey` luôn trả về `true`, dẫn đến việc dữ liệu mới của mã cổ phiếu mới bị hủy bỏ âm thầm.
+
+**Giải pháp:** Chụp giá trị key lúc bắt đầu chu kỳ poll: `const activeDedupeKey = dedupeKeyRef.current` và so sánh trực tiếp với `dedupeKeyRef.current` sau khi nhận dữ liệu.
+
+**File:** `packages/web/src/components/workstation/hooks/useRealtimePolling.js` (lines 85-110)
+
+### Lỗi 2: Trộn lẫn nhật ký giao dịch trên `useTradeLog.js` khi chuyển mã
+**Vấn đề:** Hook `useTradeLog` lưu trữ danh sách giao dịch trong state `trades`. Tuy nhiên, khi thay đổi `symbol`, component không thực hiện xóa danh sách cũ. Kết quả là các giao dịch mới của mã cổ phiếu mới được `prepend` đè lên giao dịch của mã cổ phiếu cũ.
+
+**Giải pháp:** Thêm `setTrades([]); seenKeysRef.current.clear()` vào `useEffect` lắng nghe sự thay đổi của `symbol`.
+
+**File:** `packages/web/src/components/workstation/hooks/useTradeLog.js` (lines 93-101)
+
+### Lỗi 3: Lệch cấu trúc CSS Selector trên `StockOrderBookWidget.jsx`
+**Vấn đề:** CSS `StockDetailPage.css` thiết kế bố cục Sổ lệnh theo cấu trúc hai cột song song (Grid) với các class `.ob-grid`, `.ob-side`, `.ob-levels`, `.ob-level.bid`, `.ob-level.ask`. Component trước đó lại hiển thị dạng bảng xếp chồng và dùng các class không tồn tại (`.ob-row`, `.ob-column-headers`), khiến giao diện mất định dạng.
+
+**Giải pháp:** Tái cấu trúc hoàn toàn HTML trong `StockOrderBookWidget.jsx` để khớp 100% với đặc tả CSS.
+
+**File:** `packages/web/src/components/workstation/StockOrderBookWidget.jsx`
+
+### Lỗi 4: Lệch cột lưới Grid trên `StockExecutionLogWidget.jsx`
+**Vấn đề:** CSS định nghĩa `.tl-row` dạng lưới 4 cột (`grid-template-columns: auto 1fr auto auto`) chứa trực tiếp 4 phần tử `.tl-time`, `.tl-price`, `.tl-qty`, `.tl-side`. Component cũ sinh ra 5 cột bọc trong `.tl-col` không có style, khiến tỷ lệ chia lưới bị méo và pseudo-element `.tl-side.buy::before` bị vô hiệu hóa.
+
+**Giải pháp:** Cập nhật cấu trúc HTML loại bỏ các thẹ bao thừa, ánh xạ đúng 4 class con.
+
+**File:** `packages/web/src/components/workstation/StockExecutionLogWidget.jsx`
+
+### Kết quả kiểm thử
+- **Backend Unit Tests:** `python src/manage.py test market_data.tests.test_stock_management_native_api --keepdb` → **OK (50/50 passed)**
+- **Frontend Production Build:** `npm run build` → **Thành công trong 9.19s**, CSS gzip 6.44 kB
+- **Dev Stack Smoke Test:** Core API health OK, Frontend health OK
+
+### CI Guardrails Added
+- **ESLint `react-hooks/exhaustive-deps`**: Set to `error` - catches stale closures in hooks
+- **ESLint `react-hooks/rules-of-hooks`**: Set to `error` - enforces hook rules
+- **Unit Tests**: Added `useRealtimePolling.test.js` covering stale closure fix, `useTradeLog.test.js` covering symbol-change cleanup logic
+- **Visual Regression**: Playwright tests in `tests/visual/stock-detail-workstation.spec.ts` cover desktop/mobile layouts, symbol switching, accessibility
+
+### Verdict: GO for Deployment

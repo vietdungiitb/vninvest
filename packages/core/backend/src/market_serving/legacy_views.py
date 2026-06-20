@@ -428,7 +428,16 @@ class RealtimeWhaleFeedAggregateView(RealtimeUnifiedAlertsView):
             return Response({'detail': 'cursor không hợp lệ cho window hiện tại.'}, status=status.HTTP_400_BAD_REQUEST)
 
         now = timezone.now()
-        symbols, scope, watchlist_group_ids, scope_source = self._resolve_scope(request)
+        
+        # Support symbol from URL path (kwargs) for direct symbol access
+        symbol_kwarg = kwargs.get('symbol')
+        if symbol_kwarg:
+            symbols = [symbol_kwarg.upper()]
+            scope = 'custom'
+            watchlist_group_ids = []
+            scope_source = 'kwarg'
+        else:
+            symbols, scope, watchlist_group_ids, scope_source = self._resolve_scope(request)
         explicit_scope = self._has_explicit_scope(request)
         entitlements = self._build_entitlements(request)
 

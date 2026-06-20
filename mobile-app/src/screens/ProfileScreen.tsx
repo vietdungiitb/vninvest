@@ -1,1 +1,0 @@
-export { ProfileScreen } from '../../../packages/mobile/src/screens/ProfileScreen';
