@@ -91,12 +91,12 @@ export default function TopNav() {
   const signalItems = [
     { to: '/ai-advisory', label: t('layout.nav.aiAdvisory') },
     { to: '/whale-alerts', label: t('layout.nav.whaleAlerts') },
+    { to: '/watchlist', label: t('layout.nav.watchlist') },
   ].filter((item) => item.to !== '/ai-advisory' || ability.can('read', 'WhaleAdvisory'));
 
   const portfolioItems = [
     { to: '/transactions', label: t('layout.nav.transactions') },
     { to: '/portfolios', label: t('layout.nav.portfolioManagement') },
-    { to: '/watchlist', label: t('layout.nav.watchlist') },
   ];
 
   const systemItems = [
