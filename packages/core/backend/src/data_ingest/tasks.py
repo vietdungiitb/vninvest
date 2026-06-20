@@ -977,30 +977,209 @@ def warm_intraday_universe(
 
 
 @shared_task(bind=True, max_retries=2)
-def sync_market_groups(self):
+def sync_market_groups(self, user_id=None, mode='active'):
     """
-    Native: Đồng bộ danh sách symbol niêm yết từ vnbroker.
-    Cập nhật hoặc tạo mới registry-backed market data profiles.
+    Native: Đồng bộ danh sách symbol niêm yết từ vnbroker và seed default watchlist.
     """
-    from market_data.vnbroker_adapter import fetch_listing_symbols
+    import logging
+    from django.conf import settings
+    from market_data.vnbroker_adapter import fetch_listing_symbols, fetch_symbol_group_members
     from market_data.models import StockProfile
-    
-    symbols_data = fetch_listing_symbols()
-    upserted = 0
-    
-    for item in symbols_data:
-        StockProfile.objects.update_or_create(
-            symbol=item['symbol'],
-            defaults={
-                'exchange': item.get('exchange', 'HOSE'),
-                'company_name': item.get('company_name', ''),
-                'industry': item.get('industry', ''),
-                'status': StockProfile.StatusChoices.ACTIVE,
-            }
-        )
-        upserted += 1
-        
-    return {'status': 'ok', 'upserted': upserted}
+    from market_data.global_symbol_registry import sync_admin_group_symbol_set, sync_system_default_symbol_group
+    from market_data.global_symbol_planner import create_global_planner_run
+
+    logger = logging.getLogger(__name__)
+
+    # 0. Sync StockProfile metadata
+    try:
+        logger.info("Syncing StockProfile metadata from upstream listing client...")
+        symbols_data = fetch_listing_symbols()
+        if symbols_data:
+            if mode == 'active':
+                # Filter for standard 3-character stock symbols
+                symbols_data = [
+                    item for item in symbols_data
+                    if item.get('symbol') and len(item['symbol']) == 3 and item['symbol'].isalpha()
+                ]
+            existing_profiles = {p.symbol: p for p in StockProfile.objects.all()}
+            to_create = []
+            to_update = []
+            for item in symbols_data:
+                sym = item.get('symbol')
+                if not sym:
+                    continue
+                exchange = item.get('exchange', 'HOSE') or 'HOSE'
+                company_name = item.get('company_name', '')
+                industry = item.get('industry', '') or ''
+                if sym in existing_profiles:
+                    profile = existing_profiles[sym]
+                    changed = False
+                    if profile.exchange != exchange:
+                        profile.exchange = exchange
+                        changed = True
+                    if profile.company_name != company_name:
+                        profile.company_name = company_name
+                        changed = True
+                    if profile.industry != industry:
+                        profile.industry = industry
+                        changed = True
+                    if profile.status != StockProfile.StatusChoices.ACTIVE:
+                        profile.status = StockProfile.StatusChoices.ACTIVE
+                        changed = True
+                    if changed:
+                        to_update.append(profile)
+                else:
+                    to_create.append(StockProfile(
+                        symbol=sym,
+                        exchange=exchange,
+                        company_name=company_name,
+                        industry=industry,
+                        status=StockProfile.StatusChoices.ACTIVE
+                    ))
+            if to_create:
+                StockProfile.objects.bulk_create(to_create, batch_size=500)
+            if to_update:
+                StockProfile.objects.bulk_update(to_update, ['exchange', 'company_name', 'industry', 'status'], batch_size=500)
+            logger.info(f"Bulk synced StockProfile metadata: created {len(to_create)}, updated {len(to_update)}")
+    except Exception as e:
+        logger.error(f"Failed to sync StockProfile metadata during admin sync task: {e}")
+
+    # Seed default watchlist groups if user_id is provided
+    if user_id is not None:
+        try:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            user = User.objects.get(pk=user_id)
+            from market_data.stock_mgmt_native_views import seed_default_watchlist_groups
+            logger.info(f"Re-seeding default watchlist groups for user {user.username}...")
+            seed_default_watchlist_groups(user, force_recreate=True, mode=mode)
+        except Exception as e:
+            logger.error(f"Failed to re-seed default watchlist groups during admin sync task: {e}")
+
+    exchange_groups = getattr(settings, 'MARKET_DATA_SYNC_EXCHANGE_GROUPS', ['HOSE', 'HNX', 'UPCOM'])
+    sector_groups = getattr(settings, 'MARKET_DATA_SYNC_SECTOR_GROUPS', [])
+    index_groups = getattr(settings, 'MARKET_DATA_SYNC_INDEX_GROUPS', ['VN30', 'VN100'])
+
+    all_synced_symbols = set()
+    sync_results = {}
+    errors = []
+
+    # 1. Sync exchange-based groups (HOSE, HNX, UPCOM)
+    for exchange in exchange_groups:
+        try:
+            logger.info(f"Fetching symbols for exchange: {exchange}")
+            symbols = fetch_symbol_group_members(exchange)
+            if symbols:
+                if mode == 'active':
+                    symbols = [s for s in symbols if len(s) == 3 and s.isalpha()]
+                synced = sync_admin_group_symbol_set(
+                    group_name=exchange.lower(),
+                    symbols=symbols,
+                    group_type="EXCHANGE",
+                    description=f"All symbols on {exchange}",
+                )
+                count = len(synced)
+                all_synced_symbols.update(symbols)
+                sync_results[exchange] = {"synced": count, "symbols": symbols}
+                logger.info(f"Synced {count} symbols for {exchange}")
+            else:
+                sync_results[exchange] = {"synced": 0, "symbols": [], "warning": "No symbols returned"}
+        except Exception as e:
+            error_msg = f"Failed to sync {exchange}: {str(e)}"
+            logger.error(error_msg)
+            errors.append(error_msg)
+            sync_results[exchange] = {"synced": 0, "error": str(e)}
+
+    # 2. Sync sector groups (if configured)
+    for sector in sector_groups:
+        try:
+            logger.info(f"Fetching symbols for sector: {sector}")
+            symbols = fetch_symbol_group_members(sector)
+            if symbols:
+                if mode == 'active':
+                    symbols = [s for s in symbols if len(s) == 3 and s.isalpha()]
+                synced = sync_admin_group_symbol_set(
+                    group_name=sector.lower().replace(' ', '_'),
+                    symbols=symbols,
+                    group_type="SECTOR",
+                    description=f"Sector: {sector}",
+                )
+                count = len(synced)
+                all_synced_symbols.update(symbols)
+                sync_results[sector] = {"synced": count, "symbols": symbols}
+                logger.info(f"Synced {count} symbols for sector {sector}")
+        except Exception as e:
+            error_msg = f"Failed to sync sector {sector}: {str(e)}"
+            logger.error(error_msg)
+            errors.append(error_msg)
+            sync_results[sector] = {"synced": 0, "error": str(e)}
+
+    # 3. Sync index groups (VN30, VN100)
+    for index_name in index_groups:
+        try:
+            logger.info(f"Fetching symbols for index: {index_name}")
+            symbols = fetch_symbol_group_members(index_name)
+            if symbols:
+                if mode == 'active':
+                    symbols = [s for s in symbols if len(s) == 3 and s.isalpha()]
+                synced = sync_admin_group_symbol_set(
+                    group_name=index_name.lower(),
+                    symbols=symbols,
+                    group_type="INDEX",
+                    description=f"Index: {index_name}",
+                )
+                count = len(synced)
+                all_synced_symbols.update(symbols)
+                sync_results[index_name] = {"synced": count, "symbols": symbols}
+                logger.info(f"Synced {count} symbols for index {index_name}")
+        except Exception as e:
+            error_msg = f"Failed to sync index {index_name}: {str(e)}"
+            logger.error(error_msg)
+            errors.append(error_msg)
+            sync_results[index_name] = {"synced": 0, "error": str(e)}
+
+    # 4. Sync system default groups (VN30, VN100)
+    try:
+        for group_id in ('vn30', 'vn100'):
+            symbols = fetch_symbol_group_members(group_id.upper())
+            if symbols:
+                if mode == 'active':
+                    symbols = [s for s in symbols if len(s) == 3 and s.isalpha()]
+                sync_system_default_symbol_group(group_id, symbols)
+    except Exception as e:
+        logger.warning(f"Failed to sync system default groups: {e}")
+
+    # 5. Trigger GlobalSymbolPlanner for data ingestion
+    planner_result = None
+    if all_synced_symbols:
+        try:
+            logger.info(f"Triggering GlobalSymbolPlanner for {len(all_synced_symbols)} symbols")
+            planner_result = create_global_planner_run(
+                symbols=list(all_synced_symbols),
+                datasets=['daily_prices', 'price_board_snapshot'],
+                mode='missing_only',
+                force_refresh=False,
+                reason='admin_market_groups_sync',
+                execution_mode='async',
+            )
+            logger.info(f"Planner triggered: {planner_result.get('run_id')}")
+        except Exception as e:
+            error_msg = f"Failed to trigger planner: {str(e)}"
+            logger.error(error_msg)
+            errors.append(error_msg)
+
+    total_synced = sum(r.get('synced', 0) for r in sync_results.values())
+
+    return {
+        "ok": len(errors) == 0,
+        "total_symbols_synced": total_synced,
+        "unique_symbols": len(all_synced_symbols),
+        "groups": {k: {"synced": v.get("synced", 0)} for k, v in sync_results.items()},
+        "planner": planner_result,
+        "errors": errors,
+        "message": f"Synced {total_synced} symbols across {len(sync_results)} groups" + 
+                   (f" ({len(errors)} errors)" if errors else ""),
+    }
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)

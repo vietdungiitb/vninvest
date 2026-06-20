@@ -3266,7 +3266,7 @@ class StockManagementGroupsView(APIView):
         ])
 
 
-def seed_default_watchlist_groups(user, force_recreate=False):
+def seed_default_watchlist_groups(user, force_recreate=False, mode='active'):
     tenant = _resolve_user_tenant(user)
     created_groups = []
     updated_groups = []
@@ -3283,6 +3283,11 @@ def seed_default_watchlist_groups(user, force_recreate=False):
     try:
         symbols_data = fetch_listing_symbols()
         if symbols_data:
+            if mode == 'active':
+                symbols_data = [
+                    item for item in symbols_data
+                    if item.get('symbol') and len(item['symbol']) == 3 and item['symbol'].isalpha()
+                ]
             for item in symbols_data:
                 StockProfile.objects.update_or_create(
                     symbol=item['symbol'],
@@ -3357,6 +3362,8 @@ def seed_default_watchlist_groups(user, force_recreate=False):
 
     # Classify from StockProfile
     profiles = list(StockProfile.objects.filter(status=StockProfile.StatusChoices.ACTIVE))
+    if mode == 'active':
+        profiles = [p for p in profiles if len(p.symbol) == 3 and p.symbol.isalpha()]
     for p in profiles:
         group_name = classify_profile(p)
         if group_name in group_symbols_map:
