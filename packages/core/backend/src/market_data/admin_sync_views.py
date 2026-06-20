@@ -44,16 +44,47 @@ class AdminOpsMarketGroupsSyncView(APIView):
         try:
             logger.info("Syncing StockProfile metadata from upstream listing client...")
             symbols_data = fetch_listing_symbols()
-            for item in symbols_data:
-                StockProfile.objects.update_or_create(
-                    symbol=item['symbol'],
-                    defaults={
-                        'exchange': item.get('exchange', 'HOSE') or 'HOSE',
-                        'company_name': item.get('company_name', ''),
-                        'industry': item.get('industry', '') or '',
-                        'status': StockProfile.StatusChoices.ACTIVE,
-                    }
-                )
+            if symbols_data:
+                existing_profiles = {p.symbol: p for p in StockProfile.objects.all()}
+                to_create = []
+                to_update = []
+                for item in symbols_data:
+                    sym = item.get('symbol')
+                    if not sym:
+                        continue
+                    exchange = item.get('exchange', 'HOSE') or 'HOSE'
+                    company_name = item.get('company_name', '')
+                    industry = item.get('industry', '') or ''
+                    if sym in existing_profiles:
+                        profile = existing_profiles[sym]
+                        changed = False
+                        if profile.exchange != exchange:
+                            profile.exchange = exchange
+                            changed = True
+                        if profile.company_name != company_name:
+                            profile.company_name = company_name
+                            changed = True
+                        if profile.industry != industry:
+                            profile.industry = industry
+                            changed = True
+                        if profile.status != StockProfile.StatusChoices.ACTIVE:
+                            profile.status = StockProfile.StatusChoices.ACTIVE
+                            changed = True
+                        if changed:
+                            to_update.append(profile)
+                    else:
+                        to_create.append(StockProfile(
+                            symbol=sym,
+                            exchange=exchange,
+                            company_name=company_name,
+                            industry=industry,
+                            status=StockProfile.StatusChoices.ACTIVE
+                        ))
+                if to_create:
+                    StockProfile.objects.bulk_create(to_create, batch_size=500)
+                if to_update:
+                    StockProfile.objects.bulk_update(to_update, ['exchange', 'company_name', 'industry', 'status'], batch_size=500)
+                logger.info(f"Bulk synced StockProfile metadata: created {len(to_create)}, updated {len(to_update)}")
         except Exception as e:
             logger.error(f"Failed to sync StockProfile metadata during admin sync: {e}")
 

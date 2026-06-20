@@ -577,7 +577,32 @@ def sync_global_source_symbol_set(
     }
     default_metadata = _coerce_metadata(default_metadata)
     refreshed_registries: list[GlobalSymbolRegistry] = []
+    refreshed_registry_ids = set()
+    now = timezone.now()
 
+    # 1. Fetch all existing registries for these symbols
+    existing_registries = {
+        r.symbol: r 
+        for r in GlobalSymbolRegistry.objects.filter(symbol__in=normalized_symbols)
+    }
+
+    # 2. Bulk create missing registries
+    missing_symbols = [sym for sym in normalized_symbols if sym not in existing_registries]
+    if missing_symbols:
+        registries_to_create = [
+            GlobalSymbolRegistry(
+                symbol=sym,
+                is_active=True,
+                current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.COLD,
+                last_demand_at=now,
+            ) for sym in missing_symbols
+        ]
+        GlobalSymbolRegistry.objects.bulk_create(registries_to_create, batch_size=500)
+        # Add the created registries back to our lookup
+        for r in GlobalSymbolRegistry.objects.filter(symbol__in=missing_symbols):
+            existing_registries[r.symbol] = r
+
+    # 3. Fetch existing edges/demands for this source
     existing_edges = list(
         GlobalSymbolDemandSource.objects.select_related('registry')
         .filter(source_type=normalized_source_type, source_ref=normalized_source_ref)
@@ -587,30 +612,79 @@ def sync_global_source_symbol_set(
         for edge in existing_edges
     }
 
+    resolved_weight = _resolve_weight(normalized_source_type, weight)
+    edges_to_create = []
+    edges_to_update = []
+
+    # 4. Determine which edges to create or update
     for symbol in normalized_symbols:
-        metadata = {**default_metadata, **metadata_lookup.get(symbol, {})}
-        registry, _ = upsert_global_symbol_demand(
-            symbol=symbol,
-            source_type=normalized_source_type,
-            source_ref=normalized_source_ref,
-            user=None,
-            tenant=None,
-            metadata=metadata,
-            weight=weight,
-        )
+        registry = existing_registries[symbol]
         refreshed_registries.append(registry)
+        
+        metadata = {**default_metadata, **metadata_lookup.get(symbol, {})}
+        resolved_metadata = _coerce_metadata(metadata)
 
-    for symbol, edge in existing_edge_by_symbol.items():
-        if symbol in seen_symbols:
-            continue
-        registry, _ = deactivate_global_symbol_demand(
-            symbol=symbol,
+        if symbol in existing_edge_by_symbol:
+            edge = existing_edge_by_symbol[symbol]
+            changed = False
+            if not edge.is_active:
+                edge.is_active = True
+                edge.activated_at = now
+                edge.deactivated_at = None
+                changed = True
+            if float(edge.weight or 0.0) != resolved_weight:
+                edge.weight = resolved_weight
+                changed = True
+            if edge.metadata != resolved_metadata:
+                edge.metadata = resolved_metadata
+                changed = True
+            if changed:
+                edges_to_update.append(edge)
+                refreshed_registry_ids.add(registry.id)
+        else:
+            edges_to_create.append(
+                GlobalSymbolDemandSource(
+                    registry=registry,
+                    source_type=normalized_source_type,
+                    source_ref=normalized_source_ref,
+                    is_active=True,
+                    activated_at=now,
+                    deactivated_at=None,
+                    weight=resolved_weight,
+                    metadata=resolved_metadata,
+                )
+            )
+            refreshed_registry_ids.add(registry.id)
+
+    # 5. Bulk create & update edges
+    if edges_to_create:
+        GlobalSymbolDemandSource.objects.bulk_create(edges_to_create, batch_size=500)
+    if edges_to_update:
+        GlobalSymbolDemandSource.objects.bulk_update(
+            edges_to_update,
+            ['is_active', 'activated_at', 'deactivated_at', 'weight', 'metadata'],
+            batch_size=500
+        )
+
+    # 6. Deactivate active edges that are no longer in the new set
+    deactivate_symbols = set(existing_edge_by_symbol.keys()) - set(normalized_symbols)
+    if deactivate_symbols:
+        deactivated_edges = GlobalSymbolDemandSource.objects.filter(
             source_type=normalized_source_type,
             source_ref=normalized_source_ref,
+            registry__symbol__in=deactivate_symbols,
+            is_active=True,
         )
-        if registry is not None:
-            refreshed_registries.append(registry)
+        deactivated_registry_ids = list(deactivated_edges.values_list('registry_id', flat=True))
+        deactivated_edges.update(is_active=False, deactivated_at=now)
+        refreshed_registry_ids.update(deactivated_registry_ids)
+        
+        # Keep de-activated registries in refreshed_registries for output
+        for sym in deactivate_symbols:
+            if sym in existing_edge_by_symbol:
+                refreshed_registries.append(existing_edge_by_symbol[sym].registry)
 
+    # 7. Deduplicate and return refreshed registries
     deduped_registries = []
     seen_registry_symbols = set()
     for registry in refreshed_registries:
@@ -618,6 +692,18 @@ def sync_global_source_symbol_set(
             continue
         seen_registry_symbols.add(registry.symbol)
         deduped_registries.append(registry)
+
+    # Add missing/created registry IDs to refresh queue
+    if missing_symbols:
+        for sym in missing_symbols:
+            r = existing_registries[sym]
+            refreshed_registry_ids.add(r.id)
+
+    # Only refresh projection on registries that actually had changes
+    for registry in deduped_registries:
+        if registry.id in refreshed_registry_ids:
+            refresh_global_symbol_registry(registry)
+
     return deduped_registries
 
 
