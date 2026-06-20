@@ -1,3 +1,30 @@
+# 2026-06-20 — SOC Service Admin Management Features — Implementation Complete ✅
+
+Status: **✅ DONE (bàn giao toàn bộ tính năng quản trị bật/tắt, reset, edit config, trigger manual check)**
+
+## Summary
+- Bổ sung panel "Giám sát & Quản trị Dịch vụ SOC" trên giao diện React/Tailwind (`ShellOperationsCenterPage.js`).
+- Cấu hình 6 trạng thái dịch vụ (Tổng số, Hoạt động tốt, Suy giảm, Nguy cấp, Chưa rõ, Đang tắt) và các card điều khiển trực quan.
+- Triển khai endpoints tại `views/overview.py` hỗ trợ PATCH toggle active, POST update configuration payload (validate theo domain schemas), POST reset baseline configuration.
+- Cập nhật định tuyến `urls.py` và hoàn tất test coverage gồm 7 kịch bản kiểm thử trong `test_soc_api_overview.py`.
+- Tách biệt hoàn toàn code legacy và SaaS-native theo đúng quy định bắt buộc.
+
+## Files Updated
+- `packages/web/src/pages/admin/ShellOperationsCenterPage.js`
+- `packages/core/backend/src/service_ops/views/overview.py`
+- `packages/core/backend/src/service_ops/urls.py`
+- `packages/core/backend/src/service_ops/tests/test_soc_api_overview.py`
+- `AGENTS.md`
+- `CODE_CHANGE_AUDIT_LEDGER.md`
+- `PROGRESS_DASHBOARD.md`
+
+## Validation
+- `docker exec vninvest-dev-core-api python /app/src/manage.py test service_ops.tests.test_soc_api_overview --keepdb` ✅ PASS (19 tests OK).
+- `./start_dev.ps1` chạy đầy đủ và healthy ✅ (Core API + Frontend smoke checks pass).
+
+## Residual Risk
+- Không có.
+
 # 2026-05-29 — AI SSOT slice: backend checklist alignment (2.x + 3.x) ✅
 
 Status: **✅ DONE (taskboard đã đồng bộ với implementation backend thực tế)**

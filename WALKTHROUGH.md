@@ -71,6 +71,39 @@ Tôi đã chạy bộ test suites của gói `@vninvest/web` để xác định 
 ## 3. Đồng bộ Tiến độ & Kế hoạch Tiếp theo (Road ahead)
 
 * **Taskboard:** Đã cập nhật trạng thái Slice 1 và Slice 2 thành `[x]` (Hoàn thành) trong [TASKBOARD.md](file:///docs/watchlist_audit/TASKBOARD.md).
+
+## 6. Khắc phục lỗi hiển thị i18n (lỗi i18n/in18) (2026-06-20)
+
+Sau phản hồi về lỗi dịch thuật ("lỗi in18" - lỗi i18n), tôi đã tiến hành rà soát kỹ lưỡng các file từ điển ngôn ngữ:
+1. **Phát hiện lỗi:**
+   - Khi chuyển đổi ngôn ngữ ứng dụng sang tiếng Anh (EN), tab và panel "DNSE Backfill" cùng Job Scheduler hiển thị các mã khóa dịch thô dạng `soc.tab.dnse_backfill`, `soc.dnse_backfill.*`, `soc.scheduler.*`.
+   - Nguyên nhân do 93 key dịch tiếng Anh hoàn toàn bị bỏ sót trong cả `packages/web/src/i18n/en.js` và `frontend/src/i18n/en.js`, mặc dù bản tiếng Việt (`vi.js`) đã có đầy đủ.
+2. **Khắc phục:**
+   - Bổ sung định nghĩa `dnse_backfill` vào namespace `soc.tab` và `soc.tabs` trong cả 2 file dịch tiếng Anh `en.js`.
+   - Dịch toàn bộ block `dnse_backfill` (các cấu hình tập dữ liệu, nhóm mã, chế độ, dry-run, kết quả ticks/slots) sang tiếng Anh chuẩn và đưa vào cả 2 file `en.js`.
+   - Dịch toàn bộ block `scheduler` (job scheduler dashboard, các cột thông số, các action Bật/Tắt/Chạy ngay, drawer lịch sử chạy job, các trạng thái health check) sang tiếng Anh chuẩn và đưa vào cả 2 file `en.js`.
+   - Viết và chạy script kiểm thử tự động `scratch/diff_i18n.js` để so sánh chéo cấu trúc key giữa tiếng Việt và tiếng Anh cho cả code SaaS-native (`packages/web`) và code legacy (`frontend`). Xác nhận độ lệch (mismatches) hiện tại là chính xác **0 keys**.
+3. **Rebuild & Deploy:**
+   - Biên dịch lại frontend bundle mới nhất bằng Docker build.
+   - Force recreate container `vninvest-dev-frontend` để áp dụng các thay đổi dịch thuật.
+
+**Kết quả:**
+- Khi chuyển đổi ngôn ngữ (VI <=> EN), giao diện tab **DNSE Backfill** và các bảng dữ liệu dịch chuyển mượt mà, không còn xuất hiện bất kỳ raw translation key nào.
+
+---
+
+## 7. Cải tiến bố cục (Layout) & Độ cân đối của diagnostics (2026-06-20)
+
+Tôi đã tinh chỉnh lại cách kết xuất của tab "operator" trong panel **Bảng Điều Hành & Diagnostics Kỹ Thuật** để giao diện hài hòa và dễ đọc hơn:
+1. **Xếp dọc snapshot:** Chuyển đổi 2 summary cards ("SOC operator identity hiện tại", "SOC runtime snapshot") trong cột 1 từ dàn hàng ngang sang xếp dọc. Điều này giúp các trường dữ liệu không còn bị bó hẹp, dễ dàng hiển thị thông tin rõ ràng.
+2. **Loại bỏ trùng lặp tiêu đề:** Sửa đổi tiêu đề cột 2 thành "Metadata hệ thống" thay vì lặp lại "Build metadata" (do bên trong card đã có sẵn tiêu đề "Build metadata").
+3. **Thêm Card Container cho SMTP/Mail Tool:** Thay vì hiển thị liên kết quản trị email dạng text trơn mất cân đối, toàn bộ link và mô tả được đặt vào một card có class `shellPage__surfaceCard` đồng bộ với các cột khác.
+
+---
+
+## Kết luận
+Toàn bộ giao diện điều hành và quản trị SOC đã được **tối ưu hóa UI/UX vượt trội** (tích hợp phân trang, bộ lọc nhanh, tìm kiếm thời gian thực, thu gọn diagnostics bằng tab chuyên biệt) và **chuẩn hóa i18n 100%** (khớp chính xác giữa hai ngôn ngữ Anh - Việt). Hệ thống đã được rebuild, deploy và kiểm thử hoạt động ổn định trên môi trường dev local. Giao diện sẵn sàng phục vụ công tác vận hành thực tế.
+
 * **Shadow Run:** Hệ thống đã sẵn sàng cho giai đoạn Shadow Run trên môi trường staging. Sau khi xác nhận sự ổn định của luồng dữ liệu, chúng ta có thể tiến hành Canary Rollout cho 10% tenants trước khi chuyển đổi hoàn toàn và dọn dẹp các shim layers legacy.
 
 ---

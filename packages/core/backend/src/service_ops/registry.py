@@ -26,6 +26,14 @@ CANONICAL_SOC_SERVICES = (
         'tags': ['market-data', 'realtime', 'ssot'],
     },
     {
+        'service_key': 'dnse_intraday_quarterly_backfill',
+        'name': 'DNSE Intraday Quarterly Backfill',
+        'domain': 'data_ingest',
+        'description': 'Orchestrator: cào 90 ngày tape DNSE, dispatch backfill subtasks.',
+        'owner_team': 'dataops',
+        'tags': ['market-data', 'intraday', 'backfill'],
+    },
+    {
         'service_key': 'vnbroker_history',
         'name': 'VNBroker Daily History Fetcher',
         'domain': 'vnbroker',

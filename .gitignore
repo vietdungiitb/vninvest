@@ -77,3 +77,5 @@ htmlcov/
 # ── Local developer scratch files ─────────────────────────────────────────────
 scratch/
 .agents/
+.blackbox/
+

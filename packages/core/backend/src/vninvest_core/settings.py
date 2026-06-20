@@ -450,6 +450,17 @@ CELERY_BEAT_SCHEDULE = {
             )
         },
     },
+    # === Task thăm dò sức khỏe hệ thống dịch vụ SOC ===
+    'service-ops-health-check-60s': {
+        'task': 'service_ops.health_check_all_services',
+        'schedule': 60.0,
+        'options': {
+            'queue': SCHEDULER_QUEUE_MAP.get(
+                'service-ops-health-check-60s',
+                'manual_on_demand',
+            )
+        },
+    },
 
     # === C1: Native ingest — price board every 60s ===
     # Replaces legacy-worker as sole SymbolSnapshot update source.

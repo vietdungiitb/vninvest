@@ -1,5 +1,72 @@
 # Code Change Audit Ledger
 
+# 2026-06-20 | SOC Service Operations Center i18n & Layout Hotfix — Complete ✅
+
+## Problem Solved
+- Khắc phục lỗi dịch thuật ("lỗi in18" - lỗi i18n) trên giao diện điều hành SOC:
+  - Bổ sung 93 key dịch tiếng Anh hoàn toàn bị bỏ sót cho tab/panel "DNSE Backfill" và "Job Scheduler" (`soc.tab.dnse_backfill`, `soc.dnse_backfill.*`, `soc.scheduler.*`).
+  - Đồng bộ hóa 100% tài nguyên dịch thuật Anh - Việt giữa backend/web (`packages/web`) và frontend legacy (`frontend`), đảm bảo không còn xuất hiện raw translation keys khi chuyển đổi ngôn ngữ.
+- Cải tiến độ cân đối và khả năng đọc (readability) cho tab "operator" của Diagnostics Panel:
+  - Xếp dọc hai thẻ Snapshot operator & runtime để tránh bị bóp nghẹt chiều rộng.
+  - Sửa đổi tiêu đề cột 2 thành "Metadata hệ thống" để tránh lặp với tiêu đề nội bộ của thẻ Build Metadata.
+  - Lồng liên kết công cụ quản trị email vào thẻ styled card `shellPage__surfaceCard` giúp giao diện đồng nhất.
+
+## Verification Results
+| Check | Result |
+|---|---|
+| Translation comparison script (`scratch/diff_i18n.js`) | ✅ (0 mismatches) |
+| Frontend compilation & Docker image build (`vninvest-dev-frontend`) | ✅ (Success) |
+| Frontend dev container recreation & restart | ✅ (Success) |
+| Layout alignment smoke verification | ✅ (OK) |
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/web/src/i18n/en.js` | Bổ sung 93 keys dịch tiếng Anh cho DNSE backfill và Job Scheduler |
+| `frontend/src/i18n/en.js` | Bổ sung 93 keys dịch tiếng Anh cho DNSE backfill và Job Scheduler |
+| `packages/web/src/pages/admin/ShellOperationsCenterPage.js` | Tinh chỉnh cấu trúc JSX/CSS của tab operator để tối ưu hóa hiển thị và độ cân đối |
+
+# 2026-06-20 | SOC Service Admin Management Features — Implementation Complete ✅
+
+## Problem Solved
+- Bổ sung các tính năng quản trị dịch vụ trực tiếp từ giao diện điều hành của Service Operations Center (SOC):
+  - PATCH `is_active` để bật/tắt dịch vụ (tự động cập nhật `updated_at`).
+  - Hỗ trợ lưu cấu hình JSON editor trực tiếp với Change Reason bắt buộc, validate cấu hình qua registry schemas.
+  - Hỗ trợ Reset cấu hình về baseline mặc định qua endpoint `/config/reset/`.
+  - Hỗ trợ Chạy thử (Trigger manual health check) tạo queued run log.
+- Tinh chỉnh giao diện và khôi phục hệ thống quản trị:
+  - Khôi phục Route `/operations-center` trỏ về `SOCPage.jsx` để bảo toàn đầy đủ 8 tab chức năng vận hành (Overview, Signals, Dataops, Prefetch, Screener, Vnbroker, Runtime KPI, DNSE Backfill).
+  - Tích hợp component SaaS native `OperationsCenterShellHost` trực tiếp làm panel nội dung cho tab `overview` của `SOCPage.jsx`.
+  - Thiết kế lại layout của `ShellOperationsCenterPage.js` từ dạng 2 cột chia đôi sang dạng xếp chồng dọc: Danh sách dịch vụ hiển thị ở dạng Grid 3 cột rộng rãi, tự động co giãn full-width theo trang; loại bỏ scrollbar cố định gây vỡ UI; các thông số diagnostics kỹ thuật được chuyển xuống đáy trang.
+  - Toàn bộ giao diện đã được i18n tiếng Việt đầy đủ dấu.
+- Đã đăng ký đầy đủ các route URLs tại `urls.py`.
+- Thêm bộ test suite toàn diện gồm 7 test cases kiểm soát regression trong `test_soc_api_overview.py`.
+
+## Verification Results
+| Check | Result |
+|---|---|
+| Backend Test suite passes (19 tests OK) | ✅ |
+| Docker stack dev rebuild & start via standard `./start_dev.ps1` | ✅ |
+| Core API health check probe | ✅ (OK) |
+| Frontend static health check probe | ✅ (OK) |
+| System queue drift checks | ✅ (No drift) |
+| Admin tabs & old panels restored | ✅ |
+| Service card details layout co-expansion | ✅ |
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/service_ops/views/overview.py` | Thêm PATCH toggle active, POST config, reset config, và ServiceConfigResetView |
+| `packages/core/backend/src/service_ops/urls.py` | Đăng ký reset config endpoints |
+| `packages/core/backend/src/service_ops/tests/test_soc_api_overview.py` | Bổ sung 7 test case quản trị |
+| `packages/web/src/pages/admin/ShellOperationsCenterPage.js` | Thiết kế lại giao diện React/Tailwind full-width, di chuyển diagnostics xuống dưới, Việt hóa hỗ trợ bật/tắt, chạy thử, sửa JSON & reset config |
+| `frontend/src/pages/SOCPage.jsx` | Import và lồng ghép OperationsCenterShellHost vào tab overview |
+| `frontend/src/App.jsx` | Khôi phục định tuyến route /operations-center trỏ về SOCPage |
+| `AGENTS.md` | Cập nhật Tool Usage Notes |
+
+## Residual Risk
+- Không có. Tất cả test cases và smoke checks đều đã hoạt động hoàn hảo.
+
 # 2026-06-16 | Django API Routing Cleanup — Phase 0 Implementation Complete ✅
 
 ## Problem Solved
