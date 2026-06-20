@@ -472,10 +472,22 @@ ext`/`previous` links.
     /**
      * Trigger admin market groups sync.
      * POST /core/v1/market-data/admin-groups/sync/
+     * @param {string} [mode] - 'active' (default) or 'all'
      * @returns {Promise<object>}
      */
-    syncAdminMarketGroups() {
-      return corePost(`/market-data/admin-groups/sync/`);
+    syncAdminMarketGroups(mode = "active") {
+      return corePost(`/market-data/admin-groups/sync/`, { mode });
+    },
+
+    /**
+     * Get market groups sync task status.
+     * GET /core/v1/data-ingest/task-status/{taskId}/
+     * @param {string} taskId
+     * @returns {Promise<object>}
+     */
+    getMarketGroupsSyncStatus(taskId) {
+      if (!taskId) throw new Error("taskId is required for getMarketGroupsSyncStatus");
+      return coreGet(`/data-ingest/task-status/${encodeURIComponent(taskId)}/`);
     },
 
     /**

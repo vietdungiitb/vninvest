@@ -62,7 +62,12 @@ export function ShellWatchlistPage({
                        session?.entitlements?.features?.includes("watchlist_saas_native");
 
   if (hasSaasNative) {
-    return createElement(WatchlistPage, { env, autoLoad });
+    return createElement(WatchlistPage, { 
+      env, 
+      autoLoad,
+      identity,
+      session
+    });
   }
 
   const workspaceRoutes = filterVisibleRoutes(visibleRoutes, WORKSPACE_ROUTE_IDS);

@@ -54,7 +54,18 @@ export function WatchlistPage({
   env = {},
   autoLoad = true,
   t = (key, defaultVal) => defaultVal,
+  identity = {},
+  session = {},
 }) {
+  const isAdmin = Boolean(
+    identity?.is_staff || 
+    identity?.is_superuser || 
+    session?.is_staff || 
+    session?.is_superuser || 
+    session?.principal?.identity?.is_staff ||
+    session?.principal?.identity?.is_superuser
+  );
+
   // ────────────────────────────────────────────────────────────────────────────
   // State variables
   // ────────────────────────────────────────────────────────────────────────────
@@ -575,25 +586,73 @@ export function WatchlistPage({
   };
 
   const handleSyncStockProfile = async () => {
+    const inputMode = prompt(
+      "ĐỒNG BỘ MÃ CHỨNG KHOÁN (Chỉ dành cho Quản trị viên)\n\n" +
+      "- Nhấn OK (hoặc Enter) để chỉ đồng bộ ~1300 mã đang hoạt động (Khuyến nghị).\n" +
+      "- Nhập 'ALL' để đồng bộ toàn bộ ~3200 mã (bao gồm cả mã không giao dịch/chứng quyền/bonds).\n\n" +
+      "Chế độ chọn:", 
+      "active"
+    );
+    if (inputMode === null) return; // User cancelled
+    
+    const mode = inputMode.trim().toLowerCase() === "all" ? "all" : "active";
     setSyncingStockProfile(true);
     setErrorMsg("");
-    setSuccessMsg("");
+    setSuccessMsg("Đang gửi yêu cầu đồng bộ...");
+
     try {
-      const res = await coreApiAdapter.syncAdminMarketGroups();
-      if (res?.ok || res?.total_symbols_synced !== undefined) {
+      const res = await coreApiAdapter.syncAdminMarketGroups(mode);
+      if (res && res.task_id) {
+        const taskId = res.task_id;
+        let attempts = 0;
+        const maxAttempts = 40; // 120s max
+        
+        const poll = async () => {
+          try {
+            const statusRes = await coreApiAdapter.getMarketGroupsSyncStatus(taskId);
+            if (statusRes.status === "SUCCESS") {
+              const total = statusRes.result?.total_symbols_synced || 0;
+              setSuccessMsg(`Đồng bộ thành công! Đã cập nhật ${total} mã.`);
+              loadAllLists(false);
+              setSyncingStockProfile(false);
+              setTimeout(() => setSuccessMsg(""), 5000);
+            } else if (statusRes.status === "FAILURE") {
+              setErrorMsg(statusRes.error || "Đồng bộ thất bại trên máy chủ.");
+              setSyncingStockProfile(false);
+              setTimeout(() => setErrorMsg(""), 5000);
+            } else {
+              attempts++;
+              if (attempts >= maxAttempts) {
+                setErrorMsg("Quá thời gian đồng bộ. Vui lòng kiểm tra lại sau.");
+                setSyncingStockProfile(false);
+                setTimeout(() => setErrorMsg(""), 5000);
+              } else {
+                setSuccessMsg(`Đang đồng bộ danh sách mã chứng khoán... (${attempts * 3}s)`);
+                setTimeout(poll, 3000);
+              }
+            }
+          } catch (pollErr) {
+            setErrorMsg(pollErr.message || "Lỗi khi kiểm tra trạng thái đồng bộ.");
+            setSyncingStockProfile(false);
+            setTimeout(() => setErrorMsg(""), 5000);
+          }
+        };
+        
+        setTimeout(poll, 2000);
+      } else if (res?.ok || res?.total_symbols_synced !== undefined) {
         setSuccessMsg(`Đồng bộ thành công! Đã cập nhật ${res.total_symbols_synced || 0} mã.`);
         loadAllLists(false);
+        setSyncingStockProfile(false);
+        setTimeout(() => setSuccessMsg(""), 5000);
       } else {
         setErrorMsg("Đồng bộ thất bại từ máy chủ.");
+        setSyncingStockProfile(false);
+        setTimeout(() => setErrorMsg(""), 5000);
       }
     } catch (err) {
       setErrorMsg(err.message || "Lỗi khi đồng bộ mã chứng khoán.");
-    } finally {
       setSyncingStockProfile(false);
-      setTimeout(() => {
-        setSuccessMsg("");
-        setErrorMsg("");
-      }, 5000);
+      setTimeout(() => setErrorMsg(""), 5000);
     }
   };
 
@@ -1091,7 +1150,7 @@ export function WatchlistPage({
               }),
               `Realtime: ${realtimeFeed?.realtimeStatus === "live" ? "Live" : "Sync"} | Sync: ${formatTime(lastSyncTime)}`
             ),
-            e(
+            isAdmin && e(
               "button",
               {
                 className: "watchlistPage__btn watchlistPage__btn--secondary",
@@ -1101,7 +1160,7 @@ export function WatchlistPage({
               },
               syncingStockProfile ? "Đang đồng bộ..." : "Tự động lấy mã"
             ),
-            e(
+            isAdmin && e(
               "button",
               {
                 className: "watchlistPage__btn watchlistPage__btn--secondary",
