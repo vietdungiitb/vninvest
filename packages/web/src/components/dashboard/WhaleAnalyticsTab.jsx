@@ -3,6 +3,7 @@ import { useI18n } from '../../context/LangContext.js';
 import useWhaleAnalyticsData from '../../hooks/useWhaleAnalyticsData.js';
 import FactsFirstWhaleBubbleChart from '../FactsFirstWhaleBubbleChart.jsx';
 import WhaleAnalyticsAdvisoryModal from './WhaleAnalyticsAdvisoryModal.jsx';
+import { RotateCw, TrendingUp, TrendingDown, Activity, AlertTriangle } from 'lucide-react';
 
 const TIMEFRAME_OPTIONS = [
   { value: '15m', label: '15 phút' },
@@ -57,9 +58,10 @@ export default function WhaleAnalyticsTab({
     : t('whaleAnalytics.degradedMode', { defaultValue: 'Thiếu dữ liệu tham chiếu' });
 
   return (
-    <div className="flex flex-col h-full bg-slate-950/20 overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-900/60 border-b border-slate-800 backdrop-blur-md">
-        <div className="flex items-center gap-6">
+    <div className="dashboard-full-width-deck flex flex-col">
+      {/* Header with controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-slate-900/60 border-b border-slate-800/50">
+        <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
               {t('modernDeck.symbolLabel') || 'Mã CK'}
@@ -67,7 +69,7 @@ export default function WhaleAnalyticsTab({
             <select
               value={symbol}
               onChange={(event) => setSymbol(event.target.value)}
-              className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs font-bold text-emerald-400 outline-none focus:border-emerald-500 transition-all"
+              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-bold text-emerald-400 outline-none focus:border-emerald-500 transition-all"
             >
               {availableSymbols.map((availableSymbol) => (
                 <option key={availableSymbol} value={availableSymbol}>{availableSymbol}</option>
@@ -82,7 +84,7 @@ export default function WhaleAnalyticsTab({
             <select
               value={timeframe}
               onChange={(event) => setTimeframe(event.target.value)}
-              className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs font-bold text-emerald-400 outline-none focus:border-emerald-500 transition-all"
+              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-bold text-emerald-400 outline-none focus:border-emerald-500 transition-all"
             >
               {TIMEFRAME_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -91,7 +93,7 @@ export default function WhaleAnalyticsTab({
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex flex-wrap items-center gap-4">
           {smfi !== null && (
             <div className="flex flex-col items-end">
               <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">
@@ -119,58 +121,59 @@ export default function WhaleAnalyticsTab({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar bg-gradient-to-b from-slate-950 to-slate-900/50 min-h-[300px]">
-        <div className="flex flex-col gap-3 p-4 max-w-[1600px] mx-auto h-full">
-          <div className="relative group flex-1 min-h-[300px]">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-1000" />
-            <div className="relative bg-slate-900/40 rounded-2xl border border-slate-800/60 shadow-2xl overflow-hidden h-full">
-              <FactsFirstWhaleBubbleChart
-                symbol={symbol}
-                timeframe={timeframe}
-                onTimeframeChange={setTimeframe}
-                onSymbolChange={setSymbol}
-                holdings={holdings}
-                quotesBySymbol={quotesBySymbol}
-                symbolOptions={availableSymbols}
-                isEmbedded={true}
-                selectedSymbol={symbol}
-                analyticsData={data}
-                analyticsLoading={loading}
-                analyticsError={error}
-              />
-            </div>
+      {/* Chart area */}
+      <div className="flex-1 overflow-hidden min-h-[300px]">
+        <div className="relative group flex-1 min-h-[300px]">
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-1000" />
+          <div className="relative bg-slate-900/40 rounded-2xl border border-slate-800/60 shadow-2xl overflow-hidden h-full">
+            <FactsFirstWhaleBubbleChart
+              symbol={symbol}
+              timeframe={timeframe}
+              onTimeframeChange={setTimeframe}
+              onSymbolChange={setSymbol}
+              holdings={holdings}
+              quotesBySymbol={quotesBySymbol}
+              symbolOptions={availableSymbols}
+              isEmbedded={true}
+              selectedSymbol={symbol}
+              analyticsData={data}
+              analyticsLoading={loading}
+              analyticsError={error}
+            />
           </div>
+        </div>
+      </div>
 
-          <div className="flex justify-between items-center px-2 py-2">
-            <p className="text-[10px] text-slate-500 italic max-w-md">
-              {t('whaleAnalytics.disclaimer', { defaultValue: '* Dữ liệu dòng tiền và bubble được chuẩn hóa theo bucket thời gian tương ứng với timeframe đang chọn. Sức mạnh tổ chức (0-100) phản ánh mức độ tập trung của dòng tiền thông minh trong phiên.' })}
-            </p>
-            <div className="flex gap-2">
-              {isStale && (
-                <span className="px-2 py-1 rounded bg-amber-950/30 border border-amber-800/50 text-[9px] text-amber-300 font-bold uppercase">
-                  {t('whaleAnalytics.staleData', { defaultValue: 'Dữ liệu chậm' })}
-                </span>
-              )}
-              {isDegraded && (
-                <span className="px-2 py-1 rounded bg-rose-950/30 border border-rose-800/50 text-[9px] text-rose-300 font-bold uppercase">
-                  {degradedBadgeLabel}
-                </span>
-              )}
-              <span className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[9px] text-slate-400 font-bold uppercase">
-                {t('whaleAnalytics.ssotVerified', { defaultValue: 'Xác thực SSOT' })}
-              </span>
-              <span className="px-2 py-1 rounded bg-emerald-950/30 border border-emerald-800/50 text-[9px] text-emerald-400 font-bold uppercase">
-                {t('whaleAnalytics.realtimeFeed', { defaultValue: 'Dữ liệu Realtime' })}
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsAdvisoryModalOpen(true)}
-                className="px-2 py-1 rounded bg-cyan-950/30 border border-cyan-800/50 text-[9px] text-cyan-300 font-bold uppercase transition-colors hover:bg-cyan-900/30"
-              >
-                {t('whaleAnalytics.aiAdvisoryCta', { defaultValue: 'Tư vấn AI' })}
-              </button>
-            </div>
-          </div>
+      {/* Footer with status badges and AI advisory button */}
+      <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-slate-900/60 border-t border-slate-800/50">
+        <p className="text-[10px] text-slate-500 italic max-w-md">
+          {t('whaleAnalytics.disclaimer', { defaultValue: '* Dữ liệu dòng tiền và bubble được chuẩn hóa theo bucket thời gian tương ứng với timeframe đang chọn. Sức mạnh tổ chức (0-100) phản ánh mức độ tập trung của dòng tiền thông minh trong phiên.' })}
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          {isStale && (
+            <span className="px-2 py-1 rounded bg-amber-950/30 border border-amber-800/50 text-[9px] text-amber-300 font-bold uppercase">
+              {t('whaleAnalytics.staleData', { defaultValue: 'Dữ liệu chậm' })}
+            </span>
+          )}
+          {isDegraded && (
+            <span className="px-2 py-1 rounded bg-rose-950/30 border border-rose-800/50 text-[9px] text-rose-300 font-bold uppercase">
+              {degradedBadgeLabel}
+            </span>
+          )}
+          <span className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[9px] text-slate-400 font-bold uppercase">
+            {t('whaleAnalytics.ssotVerified', { defaultValue: 'Xác thực SSOT' })}
+          </span>
+          <span className="px-2 py-1 rounded bg-emerald-950/30 border border-emerald-800/50 text-[9px] text-emerald-400 font-bold uppercase">
+            {t('whaleAnalytics.realtimeFeed', { defaultValue: 'Dữ liệu Realtime' })}
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsAdvisoryModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-950/30 border border-cyan-800/50 text-[9px] text-cyan-300 font-bold uppercase transition-colors hover:bg-cyan-900/30 hover:border-cyan-700/50"
+          >
+            <Activity className="h-3 w-3" />
+            {t('whaleAnalytics.aiAdvisoryCta', { defaultValue: 'Tư vấn AI' })}
+          </button>
         </div>
       </div>
 

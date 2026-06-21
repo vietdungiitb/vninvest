@@ -1,5 +1,6 @@
 import { createElement, useState } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { RotateCw } from "lucide-react";
 import "./SmartStatsHeader.css";
 
 const e = createElement;
@@ -159,8 +160,9 @@ export function SmartStatsHeader({
                 onClick: () => onRefresh?.(),
                 className: "rounded-lg p-1.5 text-slate-400 transition-all hover:bg-slate-800 hover:text-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950",
                 title: t("smartStats.refreshBtn"),
+                "aria-label": t("smartStats.refreshBtn"),
               },
-              "🔄"
+              e(RotateCw, { className: "h-5 w-5" })
             )
           )
         )

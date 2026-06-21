@@ -18,6 +18,7 @@ import { UnifiedAlertCenter } from "../components/dashboard/UnifiedAlertCenter.j
 import { FactsFirstModularPositionDeck } from "../components/dashboard/FactsFirstModularPositionDeck.js";
 import { usePortfolio } from "../context/PortfolioContext.js";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
+import { RotateCw } from "lucide-react";
 
 const e = createElement;
 const NOOP = () => null;

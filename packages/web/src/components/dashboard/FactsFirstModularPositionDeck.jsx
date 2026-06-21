@@ -4,6 +4,7 @@ import PaginationBar from '../shared/PaginationBar.jsx';
 import { buildModernDashboardSymbolUniverse, filterUniverseByScope } from '../../utils/modernDashboardSymbolUniverse.js';
 import WhaleAnalyticsTab from './WhaleAnalyticsTab.jsx';
 import AIAdvisorDeckPanel from './AIAdvisorDeckPanel.jsx';
+import { ClipboardList, BarChart3, Fish, Bot, LayoutDashboard } from 'lucide-react';
 
 export default function FactsFirstModularPositionDeck({
   holdings = [],
@@ -52,10 +53,10 @@ export default function FactsFirstModularPositionDeck({
   const needsTechnicalsView = isTechnicalTab || isAITab;
 
   const tabs = [
-    { id: 'overview', label: 'Tổng quan', icon: '📋' },
-    { id: 'technical', label: 'Kỹ thuật', icon: '📊' },
-    { id: 'whale', label: 'Cá mập', icon: '🐋' },
-    { id: 'ai', label: 'AI Bot', icon: '🤖' },
+    { id: 'overview', label: 'Tổng quan', icon: ClipboardList },
+    { id: 'technical', label: 'Kỹ thuật', icon: BarChart3 },
+    { id: 'whale', label: 'Cá mập', icon: Fish },
+    { id: 'ai', label: 'AI Bot', icon: Bot },
   ];
 
   // Build symbol universe
@@ -167,7 +168,7 @@ export default function FactsFirstModularPositionDeck({
   };
 
   return (
-    <div className={`bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-full ${className}`}>
+    <div className={`dashboard-full-width-deck flex flex-col ${className}`}>
       {selectedSession && (
         <div className="flex items-center justify-between bg-emerald-950/40 border-b border-emerald-800/30 px-4 py-2 text-[11px] text-emerald-300">
           <span>Phiên đang chọn: <strong>{typeof selectedSession === 'object' ? (selectedSession.tradeDate || selectedSession.sessionDate || JSON.stringify(selectedSession)) : selectedSession}</strong></span>
@@ -177,20 +178,23 @@ export default function FactsFirstModularPositionDeck({
 
       {/* Tabs list */}
       <div className="flex items-center gap-1 bg-slate-900/80 p-1 border-b border-slate-800">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => handleTabChange(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-              activeTab === tab.id
-                ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
-                : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 border border-transparent'
-            } focus-visible:outline-none`}
-          >
-            <span>{tab.icon}</span>
-            {tab.label}
-          </button>
-        ))}
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => handleTabChange(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                activeTab === tab.id
+                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 border border-transparent'
+              } focus-visible:outline-none`}
+            >
+              <Icon className="h-4 w-4" />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Filters toolbar */}

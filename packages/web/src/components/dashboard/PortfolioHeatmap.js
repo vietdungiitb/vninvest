@@ -9,6 +9,7 @@ import * as echarts from "echarts/core";
 import { TreemapChart, SunburstChart } from "echarts/charts";
 import { CanvasRenderer } from "echarts/renderers";
 import { useEChartsResize } from "../../hooks/useChartResize.js";
+import { RotateCw, Maximize2, Minimize2 } from "lucide-react";
 
 echarts.use([TreemapChart, SunburstChart, CanvasRenderer]);
 
@@ -22,6 +23,9 @@ const I18N = {
     "heatmap.sizeCap": "Vốn hóa",
     "heatmap.sizeWeight": "Tỷ trọng",
     "heatmap.empty": "Chưa có dữ liệu để hiển thị heatmap.",
+    "heatmap.refresh": "Làm mới",
+    "heatmap.expand": "Mở rộng",
+    "heatmap.collapse": "Thu gọn",
   },
   en: {
     "heatmap.title": "Portfolio Heatmap",
@@ -30,6 +34,9 @@ const I18N = {
     "heatmap.sizeCap": "Market Cap",
     "heatmap.sizeWeight": "Weight",
     "heatmap.empty": "No data available for heatmap.",
+    "heatmap.refresh": "Refresh",
+    "heatmap.expand": "Expand",
+    "heatmap.collapse": "Collapse",
   },
 };
 
@@ -45,12 +52,13 @@ function createTranslator(locale = "vi") {
   return (key) => dict[key] || I18N.vi[key] || key;
 }
 
+// Muted Professional Color Palette for Treemap
 const HEAT_COLORS = {
-  upStrong: "#00FFBB",
-  upSoft: "#00CC99",
-  downStrong: "#FF3344",
-  downSoft: "#FF6677",
-  neutral: "#FFD200",
+  upStrong: "#10b981",   // emerald-500
+  upSoft: "#34d399",     // emerald-400
+  downStrong: "#ef4444", // red-500
+  downSoft: "#f87171",   // red-400
+  neutral: "#f59e0b",    // amber-500
 };
 
 function getHeatColor(changePct) {
@@ -106,12 +114,25 @@ export function PortfolioHeatmap({
   const option = useMemo(() => {
     if (chartData.length === 0) return {};
 
+    const darkTooltip = {
+      backgroundColor: "rgba(15, 23, 42, 0.95)",
+      borderColor: "rgba(51, 65, 85, 0.8)",
+      borderWidth: 1,
+      borderRadius: 12,
+      textStyle: {
+        color: "#f1f5f9",
+        fontSize: 12,
+      },
+      extraCssText: "box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4); padding: 12px 16px;",
+    };
+
     if (viewMode === "treemap") {
       return {
         tooltip: {
+          ...darkTooltip,
           formatter: (info) => {
             const { name, value, data } = info;
-            return `<b>${name}</b><br/>Giá trị: ${Number(value).toLocaleString("vi-VN")}<br/>Biến động: ${Number(data?.changePct || 0).toFixed(2)}%`;
+            return `<strong style="color: #06b6d4;">${name}</strong><br/>Giá trị: ${Number(value).toLocaleString("vi-VN")}<br/>Biến động: <span style="color: ${data?.changePct > 0 ? '#34d399' : data?.changePct < 0 ? '#f87171' : '#f59e0b'};">${Number(data?.changePct || 0).toFixed(2)}%</span>`;
           },
         },
         series: [
@@ -143,9 +164,10 @@ export function PortfolioHeatmap({
 
     return {
       tooltip: {
+        ...darkTooltip,
         formatter: (info) => {
           const { name, value, data } = info;
-          return `<b>${name}</b><br/>Giá trị: ${Number(value).toLocaleString("vi-VN")}<br/>Biến động: ${Number(data?.changePct || 0).toFixed(2)}%`;
+          return `<strong style="color: #06b6d4;">${name}</strong><br/>Giá trị: ${Number(value).toLocaleString("vi-VN")}<br/>Biến động: <span style="color: ${data?.changePct > 0 ? '#34d399' : data?.changePct < 0 ? '#f87171' : '#f59e0b'};">${Number(data?.changePct || 0).toFixed(2)}%</span>`;
         },
       },
       series: [
@@ -184,42 +206,50 @@ export function PortfolioHeatmap({
 
   return e(
     "div",
-    { ref: containerRef, className: "core-heatmap " + className },
+    { ref: containerRef, className: "core-heatmap h-full flex flex-col " + className },
     e(
       "div",
-      { className: "core-heatmap-header flex items-center justify-between mb-2" },
+      { className: "core-heatmap-header flex items-center justify-between mb-3" },
       e("h3", { className: "text-sm font-bold text-slate-100" }, t("heatmap.title")),
       e(
         "div",
-        { className: "flex gap-1" },
+        { className: "flex items-center gap-2" },
         e(
           "button",
           {
             onClick: () => setViewMode("treemap"),
-            className: `px-2 py-1 rounded text-xs font-medium transition-all ${
-              viewMode === "treemap" ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" : "text-slate-400 hover:text-slate-200"
+            className: `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              viewMode === "treemap" ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
             }`,
+            "aria-label": t("heatmap.treemap"),
           },
-          t("heatmap.treemap")
+          e(Maximize2, { className: "h-3.5 w-3.5" }),
+          e("span", { className: "hidden sm:inline" }, t("heatmap.treemap"))
         ),
         e(
           "button",
           {
             onClick: () => setViewMode("sunburst"),
-            className: `px-2 py-1 rounded text-xs font-medium transition-all ${
-              viewMode === "sunburst" ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" : "text-slate-400 hover:text-slate-200"
+            className: `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              viewMode === "sunburst" ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
             }`,
+            "aria-label": t("heatmap.sunburst"),
           },
-          t("heatmap.sunburst")
+          e(Minimize2, { className: "h-3.5 w-3.5" }),
+          e("span", { className: "hidden sm:inline" }, t("heatmap.sunburst"))
         )
       )
     ),
-    e(ReactEChartsCore, {
-      echarts,
-      option,
-      style: { height: "400px", width: "100%" },
-      onEvents: { click: handleClick },
-      ref: chartRef,
-    })
+    e(
+      "div",
+      { className: "flex-1 min-h-0" },
+      e(ReactEChartsCore, {
+        echarts,
+        option,
+        style: { height: "100%", width: "100%" },
+        onEvents: { click: handleClick },
+        ref: chartRef,
+      })
+    )
   );
 }

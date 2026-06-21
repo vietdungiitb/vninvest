@@ -15,6 +15,7 @@ Nhằm đồng bộ hóa toàn diện thiết kế giao diện theo tiêu chuẩ
 1. **TypeScript (TSX/TS)**: Đảm bảo Type Safety chặt chẽ cho toàn bộ ứng dụng, đặc biệt là các mô hình dữ liệu (Data models) và API adapters.
 2. **Tailwind CSS v4**: Sử dụng các tính năng mới nhất (như `@tailwindcss/vite` plugin biên dịch trực tiếp, `@theme` directive khai báo trong file CSS, tối ưu hóa kích thước build).
 3. **Đồng bộ hóa Giao diện theo Template mới**: Áp dụng thiết kế hiện đại, cao cấp từ template `tailwind-admin-reactjs-free` (Layout Sidebar trượt nổi linh hoạt, Header đồng bộ, các component UI đồng bộ dựa trên Radix UI).
+4. **Tối ưu hóa UI/UX Bento Box & Visual Hierarchy**: Thiết lập khung viền và nền riêng biệt cho các phần tư chính để phân tách ranh giới rõ ràng, làm dịu Treemap, sửa tooltip ECharts tối màu.
 
 ---
 
@@ -26,6 +27,7 @@ Nhằm đồng bộ hóa toàn diện thiết kế giao diện theo tiêu chuẩ
 | **Styling Engine** | Tailwind CSS v3.4.3 | **Tailwind CSS v4.0.0** | Tốc độ biên dịch cực nhanh, loại bỏ các file cấu hình js cồng kềnh, cấu hình trực tiếp qua CSS variables. |
 | **Vite Compiler** | `@vitejs/plugin-react` | `@tailwindcss/vite` + `@vitejs/plugin-react` | Tích hợp sâu Tailwind v4 vào luồng build của Vite mà không cần qua PostCSS. |
 | **Layouts & UI** | AppShell cũ (static sidebar) | **FullLayout + Floating Sidebar** (Radix Sheet) | Sidebar đóng/mở linh hoạt, mở rộng 100% viewport trên Desktop, thiết kế sang trọng. |
+| **Visual Structure** | Flat Layout (không viền phân cách) | **Bento Cards Layout** (Có viền, nền, shadow) | Tạo ranh giới cấu trúc rõ ràng giữa Trung tâm cảnh báo, Heatmap, và AI Advisor. |
 
 ---
 
@@ -43,7 +45,7 @@ Nhằm đồng bộ hóa toàn diện thiết kế giao diện theo tiêu chuẩ
 *   [MODIFY] `packages/web/index.html` (Đổi import từ `src/main.js` sang `src/main.tsx`)
 *   [DELETE] `packages/web/src/main.js`
 *   [NEW] `packages/web/src/main.tsx` (Khởi chạy bằng TSX)
-*   [MODIFY] `packages/web/src/index.css` (Import Tailwind v4 và khai báo `@theme` custom variables)
+*   [MODIFY] `packages/web/src/index.css` (Import Tailwind v4, khai báo `@theme` custom variables, thiết lập Bento Card styles)
 
 ### 3.3. New Layout & Components (Migrated from Template)
 *   [NEW] `packages/web/src/components/ui/`
@@ -57,9 +59,7 @@ Nhằm đồng bộ hóa toàn diện thiết kế giao diện theo tiêu chuẩ
     *   `vertical/sidebar/Sidebar.tsx` (Sidebar trượt nổi linh hoạt)
     *   `vertical/sidebar/sidebaritems.ts` (Danh sách menu định tuyến của VNInvest)
     *   `vertical/header/Header.tsx` (Thanh điều hướng đầu trang tích hợp Tìm kiếm, Đổi ngôn ngữ, Avatar)
-    *   `vertical/header/Profile.tsx` (Dropdown profile kết nối logout)
-    *   `vertical/header/Messages.tsx` (Dropdown notification)
-    *   `shared/logo/FullLogo.tsx` (Thành phần hiển thị Logo VNInvest)
+*   [MODIFY] `packages/web/src/components/dashboard/PortfolioHeatmap.js` (Sửa tooltip ECharts Dark Mode, làm dịu màu Treemap)
 
 ---
 
@@ -74,7 +74,7 @@ Nhằm đồng bộ hóa toàn diện thiết kế giao diện theo tiêu chuẩ
 2. Tạo mới `tsconfig.json`, `tsconfig.node.json` và cấu hình `vite.config.ts`.
 3. Xóa các tệp cấu hình cũ: `tailwind.config.js` và `postcss.config.js`.
 
-### Phase 2: Đồng bộ Hóa Global Styles & Entry Point
+### Phase 2: Đồng bộ Hóa Global Styles & Bento Cards Layout
 1. Cập nhật `index.css`:
    ```css
    @import "tailwindcss";
@@ -87,40 +87,40 @@ Nhằm đồng bộ hóa toàn diện thiết kế giao diện theo tiêu chuẩ
      --color-dark: #1c2536;
      --shadow-md: 0 1px 4px rgba(133, 146, 173, 0.2);
      --radius-lg: 10px;
-     /* Các custom variables khác từ template... */
+   }
+   
+   /* Cấu hình khung viền Bento Box để phân tách rõ ràng các panel */
+   .dashboard-triad-lane {
+     background-color: rgba(30, 41, 59, 0.2); /* bg-slate-900/20 */
+     border: 1px solid rgba(51, 65, 85, 0.4); /* border-slate-700/40 */
+     border-radius: 1rem; /* rounded-2xl */
+     padding: 1.25rem; /* p-5 */
+     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); /* shadow-lg */
+     height: 580px;
+     min-width: 0;
+     overflow: auto;
    }
    ```
-2. Đổi tên `main.js` sang `main.tsx`. Cập nhật `main.tsx` để bọc ứng dụng trong `PortfolioProvider`, `LangProvider`, và `RealtimeProvider`.
-3. Thay đổi script source trong `index.html`.
+2. Đổi tên `main.js` sang `main.tsx`. Cập nhật script source trong `index.html`.
 
 ### Phase 3: Tích hợp Layout & UI Components mới
 1. Sao chép và biên dịch các UI components của template vào thư mục `src/components/ui/`.
 2. Sao chép thư mục layout `src/layouts/full/` từ template.
-3. Sửa đổi `Sidebar.tsx` và `Header.tsx` để:
-   * **sidebaritems.ts**: Khai báo đúng các router path của VNInvest (Dashboard, Screener, Whale Alerts, AI Advisory, v.v.).
-   * **Header/Sidebar Context Integration**:
-     * Thay đổi ngôn ngữ bằng cách gọi `setLanguage(val)` and `locale` từ `useI18n()`.
-     * Hiển thị thông tin tenant/workspace hiện tại bằng cách gọi `userTenants`, `activeTenantId`, `switchTenant` từ `usePortfolio()`.
-     * Hàm đăng xuất sử dụng `logout()` từ `usePortfolio()`.
+3. Cấu hình lại tooltip ECharts trong `PortfolioHeatmap.js` sử dụng nền tối mờ ảo, border mảnh, chữ xám/trắng sáng.
+4. Thay các Emoji làm mới `🔄` trên header bằng Lucide React vector icon (`RotateCw`).
 
 ### Phase 4: Chuyển dịch và Kiểm thử
 1. Đảm bảo chạy lệnh `npm run build --prefix packages/web` biên dịch thành công 100% không cảnh báo.
 2. Khởi chạy Docker dev container stack (`.\start_dev.ps1`).
-3. Kiểm thử UAT trên trình duyệt:
-   * Kiểm tra khả năng thu gọn / trượt mở sidebar.
-   * Đổi workspace, đổi ngôn ngữ, logout.
-   * Kiểm tra sự đồng bộ và độ tương phản màu sắc của Dark Mode mới.
+3. Kiểm UAT hiển thị các panel phân tách rõ ràng bởi khung viền, tooltip tối mịn màng.
 
 ---
 
 ## 5. Kế hoạch xác thực & Rollback (Verification & Rollback Plan)
 
 ### Kế hoạch Xác thực
-*   **Compile Gate**: Build bundle tĩnh của Web package bằng lệnh `npm run build` không gặp bất kỳ lỗi biên dịch hay type checking nào.
-*   **Smoke Test**: Chạy docker stack và truy cập tất cả các route chính (`/dashboard`, `/screener`, `/watchlist`, `/whale-alerts`) để đảm bảo không bị lỗi trắng trang (Blank Page) hoặc crash React.
+*   **Compile Gate**: Build bundle tĩnh của Web package bằng lệnh `npm run build` không lỗi.
+*   **Smoke Test**: Chạy docker stack và xác thực giao diện Bento đẹp mắt, cấu trúc rõ ràng.
 
 ### Kế hoạch Rollback
-*   Trong trường hợp nâng cấp gặp lỗi lớn không thể giải quyết ngay lập tức:
-    1. Sử dụng Git để hoàn tác toàn bộ thay đổi trong thư mục `packages/web/`.
-    2. Chạy `npm install` để khôi phục các node_modules cũ.
-    3. Build lại image cũ để khôi phục dịch vụ ổn định.
+*   Sử dụng Git để hoàn tác toàn bộ thay đổi trong thư mục `packages/web/` nếu có sự cố nghiêm trọng xảy ra.
