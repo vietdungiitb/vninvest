@@ -1,4 +1,5 @@
 import React from "react";
+import "jest-location-mock";
 import { describe, test, expect, jest, beforeEach, afterEach } from "@jest/globals";
 import { act, create } from "react-test-renderer";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -35,19 +36,14 @@ describe("packages/web auth pages", () => {
   });
 
   afterEach(() => {
-    delete global.window;
+    localStorage.clear();
   });
 
   test("AuthLoginPage submits credentials and redirects on success", async () => {
+    const assignSpy = jest.spyOn(window.location, "assign").mockImplementation(() => {});
     const loginSpy = jest.spyOn(coreApiAdapter, "loginUser").mockResolvedValue({
       data: { access: "access-token", refresh: "refresh-token" },
     });
-    const storage = {
-      getItem: jest.fn(() => null),
-      setItem: jest.fn(),
-      removeItem: jest.fn(),
-    };
-    global.window = { location: { assign: jest.fn() }, localStorage: storage };
 
     const renderer = renderAtRoute("/login", React.createElement(AuthLoginPage));
     const usernameInput = renderer.root.findByProps({ id: "auth-login-username" });
@@ -64,7 +60,8 @@ describe("packages/web auth pages", () => {
     });
 
     expect(loginSpy).toHaveBeenCalledWith({ username: "user1", password: "pass123456" });
-    expect(global.window.location.assign).toHaveBeenCalledWith("/dashboard");
+    expect(assignSpy).toHaveBeenCalledWith("/dashboard");
+    assignSpy.mockRestore();
   });
 
   test("AuthRegisterPage shows validation message when password confirmation mismatches", async () => {

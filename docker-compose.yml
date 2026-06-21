@@ -154,30 +154,19 @@ services:
     cpus: ${CORE_BEAT_CPUS:-0.25}
 
   # ── Frontend (nginx + React + packages/web shell) ──────────
-  # Dùng Dockerfile.dev-package-shell: nhúng packages/web vào build.
-  # REACT_APP_ENABLE_PACKAGE_SHELL_HOST=1 bật ShellHost routes (DashboardShellHost, v.v.)
-  # ModernDashboard là default (InterfaceContext default = 'modern').
+  # Dùng packages/web/Dockerfile: Vite build standalone, không còn phụ thuộc legacy.
   frontend:
     build:
-      context: .
-      dockerfile: frontend/Dockerfile.dev-package-shell
-      secrets:
-        - vnbroker_github_token
+      context: packages/web/
+      dockerfile: Dockerfile
       args:
-        REACT_APP_API_BASE_URL: /api
+        VITE_API_URL: /api
         APP_RELEASE: ${APP_RELEASE:-saas-prod}
-        REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "1"
-        REACT_APP_ENABLE_DEBUG_PAGES: "1"
-        REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1
     image: vninvest-frontend:${APP_RELEASE:-saas-prod}
     container_name: vninvest-frontend
     restart: unless-stopped
     environment:
       APP_RELEASE: ${APP_RELEASE:-saas-prod}
-      REACT_APP_API_BASE_URL: /api
-      REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "1"
-      REACT_APP_ENABLE_DEBUG_PAGES: "1"
-      REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1
       VIRTUAL_HOST: ${DOMAIN:-saas.edusuccess.vn}
       VIRTUAL_PORT: "80"
       LETSENCRYPT_HOST: ${DOMAIN:-saas.edusuccess.vn}

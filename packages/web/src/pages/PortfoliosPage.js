@@ -9,10 +9,9 @@ import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import DNSEConnectionPanel from "../components/DNSEConnectionPanel.js";
 import "./PortfoliosPage.css";
 
-const DEFAULT_ENV = {};
 const e = createElement;
 
-function usePortfolios({ env = DEFAULT_ENV } = {}) {
+function usePortfolios() {
   const [portfolios, setPortfolios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -42,8 +41,8 @@ function usePortfolios({ env = DEFAULT_ENV } = {}) {
   return { portfolios, loading, error, reload };
 }
 
-export function PortfoliosPage({ env = DEFAULT_ENV, className = "" }) {
-  const { portfolios, loading, error, reload } = usePortfolios({ env });
+export function PortfoliosPage({ className = "" }) {
+  const { portfolios, loading, error, reload } = usePortfolios();
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [newCurrency, setNewCurrency] = useState("VND");
@@ -69,8 +68,8 @@ export function PortfoliosPage({ env = DEFAULT_ENV, className = "" }) {
   async function handleDelete(id) {
     if (!window.confirm("Xoa danh muc nay?")) return;
     try {
-      const adapter = coreApiAdapter({ env });
-      await coreApiAeload();
+      await coreApiAdapter.deletePortfolio(id);
+      await reload();
     } catch (err) {
       window.alert(err?.message || "Khong the xoa danh muc.");
     }

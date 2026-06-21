@@ -1,24 +1,23 @@
 /**
- * DashboardPage — DM-03
+ * DashboardPage — DM-03 (SaaS Native)
  *
- * Trang tổng quan SaaS native. Không dùng JSX.
- * Nhận 5 render-prop slot từ PackageDashboardHost (frontend/src) để hiển thị
- * các component legacy mà không import trực tiếp.
- *
- * Slots:
- *   renderStats({ summary, analytics, holdings, loading, realtimeBreadth, onRefresh })
- *   renderAlertLane({ alerts, alertSummary, alertProps, loading })
- *   renderHeatmap({ holdings, quotesBySymbol, technicals, analytics, loading })
- *   renderAiPanel({ holdings, technicals, analytics, alerts, loading })
- *   renderDeck({ holdings, technicals, analytics, quotesBySymbol, alerts, loading })
+ * Trang tổng quan SaaS native sử dụng trực tiếp các component dashboard nội bộ.
+ * Không còn phụ thuộc vào render-prop slots từ legacy PackageDashboardHost.
+ * Không dùng JSX — tuân theo convention packages/web (createElement).
  */
 import * as ReactModule from "react";
 const React = ReactModule.default || ReactModule;
-const { createElement, useEffect, useRef, useState } = React;
+const { createElement, useEffect, useRef, useState, useMemo, useCallback } = React;
 
 import { useCoreDashboardData } from "../features/dashboard/useCoreDashboardData.js";
 import { AIAdvisorAlertPanel } from "../features/dashboard/AIAdvisorAlertPanel.js";
 import { useRealtimeFeedFromManager } from "../context/RealtimeContext.js";
+import { SmartStatsHeader } from "../components/dashboard/SmartStatsHeader.js";
+import { PortfolioHeatmap } from "../components/dashboard/PortfolioHeatmap.js";
+import { UnifiedAlertCenter } from "../components/dashboard/UnifiedAlertCenter.js";
+import { FactsFirstModularPositionDeck } from "../components/dashboard/FactsFirstModularPositionDeck.js";
+import { usePortfolio } from "../context/PortfolioContext.js";
+import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 
 const e = createElement;
 const NOOP = () => null;
@@ -30,12 +29,11 @@ export const collectUniqueSortedSymbols = (holdings, trackedSymbols, watchlists,
     ...(watchlists || []).flatMap(w => (w?.items || []).map(i => i?.symbol)),
     ...(watchlistGroups || []).flatMap(g => (g?.items || []).map(i => i?.symbol))
   ];
-  
-  // Normalization, Deduplication và Alphabetical Sorting
+
   const uniqueSorted = Array.from(
     new Set(rawList.map(s => String(s || "").trim().toUpperCase()).filter(Boolean))
   ).sort();
-  
+
   return uniqueSorted.join("|");
 };
 
@@ -67,11 +65,6 @@ function ErrorBanner({ message, t = (key, defaultText) => defaultText }) {
  *   darkFlowAlerts?: object[],
  *   realtimeBreadth?: { up: number, down: number, flat: number },
  *   alertProps?: object,
- *   renderStats?: function,
- *   renderAlertLane?: function,
- *   renderDeck?: function,
- *   renderHeatmap?: function,
- *   renderAiPanel?: function,
  *   onDataReady?: function,
  *   t?: function,
  *   className?: string,
@@ -85,16 +78,13 @@ export function DashboardPage({
   darkFlowAlerts = [],
   realtimeBreadth = { up: 0, down: 0, flat: 0 },
   alertProps = {},
-  renderStats = NOOP,
-  renderAlertLane = null,
-  renderAlerts = null,
-  renderDeck = NOOP,
-  renderHeatmap = NOOP,
-  renderAiPanel = NOOP,
   onDataReady = null,
   t = (key, defaultText) => defaultText,
   className = "",
 }) {
+  const portfolioContext = usePortfolio();
+  const resolvedPortfolioId = portfolioId !== undefined && portfolioId !== null ? portfolioId : portfolioContext.activePortfolioId;
+
   const {
     loading,
     error,
@@ -107,10 +97,25 @@ export function DashboardPage({
     watchlists,
     hasHydrated,
     refresh,
-  } = useCoreDashboardData({ portfolioId, enabled });
+  } = useCoreDashboardData({ portfolioId: resolvedPortfolioId, enabled });
 
   const [selectedSession, setSelectedSession] = useState(null);
   const [selectedSymbol, setSelectedSymbol] = useState(null);
+  const [digest, setDigest] = useState(null);
+
+  const fetchDigest = useCallback(async () => {
+    if (!resolvedPortfolioId) return;
+    try {
+      const res = await coreApiAdapter.getPortfolioNewsDigest();
+      setDigest(res);
+    } catch (e) {
+      console.warn("Failed to fetch news digest", e);
+    }
+  }, [resolvedPortfolioId]);
+
+  useEffect(() => {
+    fetchDigest();
+  }, [fetchDigest]);
 
   // --- Real-time Feed Integration ---
   const symbolString = collectUniqueSortedSymbols(holdings, trackedSymbols, watchlists, watchlistGroups);
@@ -172,10 +177,9 @@ export function DashboardPage({
   }, [darkFlowAlerts, realtimeFeed?.darkFlowAlerts]);
   // ----------------------------------
 
-  const resolvedRenderAlertLane = renderAlertLane || renderAlerts || NOOP;
   const showSkeleton = loading && !hasHydrated;
 
-  // Notify parent (PackageDashboardHost) when core data is ready using stable readyToken
+  // Notify parent when core data is ready using stable readyToken
   const prevReadyTokenRef = useRef("");
   useEffect(() => {
     const token = collectUniqueSortedSymbols(holdings, trackedSymbols, watchlists, watchlistGroups);
@@ -185,7 +189,7 @@ export function DashboardPage({
     }
   }, [loading, error, holdings, trackedSymbols, watchlists, watchlistGroups, onDataReady]);
 
-  if (!enabled || !portfolioId) {
+  if (!enabled || !resolvedPortfolioId) {
     return e(
       "div",
       { className: "core-dashboard-page core-dashboard-page--empty " + className },
@@ -211,7 +215,14 @@ export function DashboardPage({
       { className: "core-dashboard-slot core-dashboard-slot--stats" },
       showSkeleton
         ? e(LoadingSkeleton, { rows: 1 })
-        : renderStats({ summary, analytics, holdings, loading, realtimeBreadth: resolvedBreadth, onRefresh: refresh })
+        : e(SmartStatsHeader, {
+            summary,
+            analytics,
+            holdings,
+            loading,
+            realtimeBreadth: resolvedBreadth,
+            onRefresh: refresh,
+          })
     ),
 
     // ── Top triad: alert lane | heatmap | AI lane ───────────────────────
@@ -222,16 +233,17 @@ export function DashboardPage({
       e(
         "div",
         { className: "dashboard-triad-lane dashboard-triad-lane--side core-dashboard-slot core-dashboard-slot--alert-lane" },
-        resolvedRenderAlertLane({
-          alerts: mergedAlerts,
-          alertSummary: alertProps?.alertSummary ?? null,
-          alertProps,
-          loading,
-          selectedSession,
-          onSelectSession: setSelectedSession,
-          selectedSymbol,
-          onSelectSymbol: setSelectedSymbol,
-        })
+        showSkeleton
+          ? e(LoadingSkeleton, { rows: 3 })
+          : e(UnifiedAlertCenter, {
+              alerts: mergedAlerts,
+              alertSummary: alertProps?.alertSummary ?? null,
+              loading,
+              selectedSession,
+              onSelectSession: setSelectedSession,
+              selectedSymbol,
+              onSelectSymbol: setSelectedSymbol,
+            })
       ),
 
       e(
@@ -239,7 +251,7 @@ export function DashboardPage({
         { className: "dashboard-triad-lane dashboard-triad-lane--center core-dashboard-slot core-dashboard-slot--heatmap" },
         showSkeleton
           ? e(LoadingSkeleton, { rows: 3 })
-          : renderHeatmap({
+          : e(PortfolioHeatmap, {
               holdings,
               quotesBySymbol: mergedQuotes,
               technicals,
@@ -277,8 +289,10 @@ export function DashboardPage({
       { className: "dashboard-full-width-deck core-dashboard-slot core-dashboard-slot--deck" },
       showSkeleton
         ? e(LoadingSkeleton, { rows: 4 })
-        : renderDeck({
+        : e(FactsFirstModularPositionDeck, {
             holdings,
+            trackedSymbols,
+            watchlistGroups,
             technicals,
             analytics,
             quotesBySymbol: mergedQuotes,
@@ -288,8 +302,9 @@ export function DashboardPage({
             onSelectSession: setSelectedSession,
             selectedSymbol,
             onSelectSymbol: setSelectedSymbol,
+            digest,
+            onRequestDigest: fetchDigest,
           })
     )
   );
 }
-

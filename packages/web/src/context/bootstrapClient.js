@@ -19,13 +19,22 @@ function resolveFetchImpl(fetchImpl) {
 }
 
 async function requestJson(fetchImpl, url, init = {}) {
+  const headers = {
+    Accept: "application/json",
+    ...(init.headers || {}),
+  };
+
+  if (typeof window !== "undefined") {
+    const token = window.localStorage?.getItem("access_token");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  }
+
   const response = await fetchImpl(url, {
     method: "GET",
-    headers: {
-      Accept: "application/json",
-      ...(init.headers || {}),
-    },
     ...init,
+    headers,
   });
 
   if (!response.ok) {

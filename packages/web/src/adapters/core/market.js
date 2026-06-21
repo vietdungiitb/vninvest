@@ -511,5 +511,39 @@ ext`/`previous` links.
     seedSystemDefaults() {
       return corePost(`/market-data/system-defaults/seed/`);
     },
+
+    /**
+     * Get whale campaigns aggregate feed.
+     * @param {object} [params] - symbols, watchlistGroupIds, window, campaignLimit, campaignSort, campaignGapMinutes, cursor
+     * @returns {Promise<{results: object[], next: string|null}>}
+     */
+    getWhaleCampaigns(params = {}) {
+      const query = new URLSearchParams();
+      if (Array.isArray(params.symbols) && params.symbols.length > 0) {
+        query.set("symbols", params.symbols.join(","));
+      }
+      if (Array.isArray(params.watchlistGroupIds) && params.watchlistGroupIds.length > 0) {
+        query.set("watchlist_group_ids", params.watchlistGroupIds.join(","));
+      }
+      if (params.window) query.set("window", params.window);
+      if (params.campaignLimit) query.set("campaign_limit", String(params.campaignLimit));
+      if (params.campaignSort) query.set("campaign_sort", params.campaignSort);
+      if (Number.isFinite(Number(params.campaignGapMinutes))) {
+        query.set("campaign_gap_minutes", String(params.campaignGapMinutes));
+      }
+      if (params.cursor) query.set("cursor", params.cursor);
+      const qs = query.toString();
+      return coreGet(`/realtime/whale-campaigns/${qs ? `?${qs}` : ""}`);
+    },
+
+    /**
+     * Get raw whale feed for a symbol (non-aggregate).
+     * @param {string} symbol
+     * @returns {Promise<object>}
+     */
+    getWhaleFeed(symbol) {
+      if (!symbol) throw new Error("symbol is required for getWhaleFeed");
+      return coreGet(`/realtime/whale-feed/${encodeURIComponent(symbol.toUpperCase())}/`);
+    },
   };
 }

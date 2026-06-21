@@ -7,10 +7,9 @@ import { createElement, useEffect, useRef, useState } from "react";
 
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 
-const DEFAULT_ENV = {};
 const e = createElement;
 
-function useWhaleAlerts({ env = DEFAULT_ENV, symbol = "", sessionDate = "" } = {}) {
+function useWhaleAlerts({ symbol = "", sessionDate = "" } = {}) {
   const [state, setState] = useState({ loading: true, error: null, alerts: [] });
   const mountedRef = useRef(true);
 
@@ -18,8 +17,7 @@ function useWhaleAlerts({ env = DEFAULT_ENV, symbol = "", sessionDate = "" } = {
     mountedRef.current = true;
     async function load() {
       try {
-        const adapter = coreApiAdapter({ env });
-        const res = await adapter.getAlertCenterFeed({ symbol, alert_family: 'whale', session_date: sessionDate });
+        const res = await coreApiAdapter.getAlertCenterFeed({ symbol, alert_family: 'whale', session_date: sessionDate });
         if (!mountedRef.current) return;
         setState({ loading: false, error: null, alerts: res?.results ?? res ?? [] });
       } catch (err) {
@@ -29,7 +27,7 @@ function useWhaleAlerts({ env = DEFAULT_ENV, symbol = "", sessionDate = "" } = {
     }
     load();
     return () => { mountedRef.current = false; };
-  }, [env, symbol, sessionDate]);
+  }, [symbol, sessionDate]);
 
   return state;
 }
@@ -37,13 +35,12 @@ function useWhaleAlerts({ env = DEFAULT_ENV, symbol = "", sessionDate = "" } = {
 /**
  * @param {{ env?: object, symbol?: string, sessionDate?: string, className?: string }} props
  */
-export function WhaleAlertsPage({ env = DEFAULT_ENV, symbol = "", sessionDate = "", className = "" }) {
+export function WhaleAlertsPage({ symbol = "", sessionDate = "", className = "" }) {
   const [filterSymbol, setFilterSymbol] = useState(symbol);
   const [filterDate, setFilterDate] = useState(sessionDate);
   const [applied, setApplied] = useState({ symbol, sessionDate });
 
   const { loading, error, alerts } = useWhaleAlerts({
-    env,
     symbol: applied.symbol,
     sessionDate: applied.sessionDate,
   });

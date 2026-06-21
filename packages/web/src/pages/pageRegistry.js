@@ -90,6 +90,8 @@ export const pageRegistry = Object.freeze([
     import("./SupportPage.js").then((module) => module.SupportPage)),
   makePageEntry("settings", "baseline", () =>
     import("./system/ShellSettingsPage.js").then((module) => module.ShellSettingsPage)),
+  makePageEntry("shell-ai-command-center", "baseline", () =>
+    import("./system/ShellAiCommandCenterPage.js").then((module) => module.ShellAiCommandCenterPage)),
   makePageEntry("vip-local-control", "baseline", () =>
     import("./vip/VipLocalControlPage.js").then((module) => module.VipLocalControlPage)),
   // SM-P4 core user-facing pages
@@ -121,7 +123,15 @@ export const pageRegistry = Object.freeze([
     import("./commercial/BillingCenterPage.js").then((module) => module.BillingCenterPage)),
   makePageEntry("commercial-payment-return", "core", () =>
     import("./commercial/PaymentReturnPage.js").then((module) => module.PaymentReturnPage)),
+  makePageEntry("screener", "core", () =>
+    import("./ScreenerPage.jsx").then((module) => module.ScreenerPage)),
   // Tenant Admin Pages
+  makePageEntry("upgrade", "core", () =>
+    import("./UpgradePage.jsx").then((module) => module.default)),
+  makePageEntry("admin-crawl-control", "core", () =>
+    import("./AdminCrawlControlPage.jsx").then((module) => module.default)),
+  makePageEntry("whale-advisory", "core", () =>
+    import("./signals/WhaleAdvisoryPage.js").then((module) => module.WhaleAdvisoryPage)),
   makePageEntry("tenant-admin-home", "core", () =>
     import("./tenant-admin/TenantAdminHomePage.js").then((module) => module.TenantAdminHomePage)),
   makePageEntry("tenant-admin-members", "core", () =>

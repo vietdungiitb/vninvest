@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { createCoreApiAdapter } from "../../../adapters/coreApiAdapter.js";
 
 /**
@@ -16,10 +16,10 @@ import { createCoreApiAdapter } from "../../../adapters/coreApiAdapter.js";
  */
 export function useSessionFacts({ symbol, env, getToken, enabled = true } = {}) {
   const [sessionFacts, setSessionFacts] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled && !!symbol);
   const [error, setError] = useState(null);
 
-  const adapter = createCoreApiAdapter({ env, getToken });
+  const adapter = useMemo(() => createCoreApiAdapter({ env, getToken }), [env, getToken]);
 
   const fetchSessionFacts = useCallback(async () => {
     if (!symbol) throw new Error("Symbol is required");

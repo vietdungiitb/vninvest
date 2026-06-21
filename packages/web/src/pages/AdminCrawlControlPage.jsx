@@ -1,11 +1,5 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import {
-  getAdminCrawlJobs,
-  runAdminCrawlJob,
-  stopAdminCrawlJob,
-  getAdminCrawlRuns,
-} from '../api/client';
-import { useI18n } from '../context/LangContext';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { defaultCoreApiAdapter } from '../adapters/coreApiAdapter.js';
 
 function StatusPill({ status }) {
   const map = {
@@ -23,8 +17,8 @@ function StatusPill({ status }) {
   );
 }
 
-export default function AdminCrawlControl() {
-  const { t } = useI18n();
+export default function AdminCrawlControlPage() {
+  const api = defaultCoreApiAdapter;
   const [jobs, setJobs] = useState([]);
   const [runs, setRuns] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,9 +27,7 @@ export default function AdminCrawlControl() {
     const activeStatuses = new Set(['queued', 'running']);
     return runs.reduce((acc, run) => {
       const normalizedStatus = String(run?.status || '').toLowerCase();
-      if (!activeStatuses.has(normalizedStatus)) {
-        return acc;
-      }
+      if (!activeStatuses.has(normalizedStatus)) return acc;
       const existing = acc[run.job];
       if (!existing || new Date(run.created_at) > new Date(existing.created_at)) {
         acc[run.job] = run;
@@ -47,11 +39,11 @@ export default function AdminCrawlControl() {
   const fetchAll = useCallback(async () => {
     try {
       const [jobsRes, runsRes] = await Promise.all([
-        getAdminCrawlJobs(),
-        getAdminCrawlRuns({ limit: 50, ordering: '-created_at' }),
+        api.getAdminCrawlJobs(),
+        api.getAdminCrawlRuns({ limit: 50, ordering: '-created_at' }),
       ]);
-      const jobsData = jobsRes.data?.results || jobsRes.data || [];
-      const runsData = runsRes.data?.results || runsRes.data || [];
+      const jobsData = jobsRes?.results || jobsRes || [];
+      const runsData = runsRes?.results || runsRes || [];
       if (jobsData.length === 0) {
         setJobs([
           { id: 1, service_code: 'SYNC_MARKET_GROUPS', description: 'Đồng bộ danh mục VNBroker', is_active: true },
@@ -67,34 +59,34 @@ export default function AdminCrawlControl() {
         setRuns(runsData);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Failed to fetch crawl data:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [api]);
 
   useEffect(() => {
     fetchAll();
-    const interval = setInterval(fetchAll, 5000); // Poll every 5s for realtime UX
+    const interval = setInterval(fetchAll, 5000);
     return () => clearInterval(interval);
   }, [fetchAll]);
 
   const handleRun = async (id) => {
     try {
-      await runAdminCrawlJob(id);
+      await api.runAdminCrawlJob(id);
       fetchAll();
     } catch (e) {
-      alert(e?.response?.data?.error || 'Lỗi: Không thể khởi chạy job');
+      alert(e?.detail || e?.message || 'Lỗi: Không thể khởi chạy job');
     }
   };
 
   const handleStop = async (id) => {
     if (!window.confirm('Bạn có chắc chắn muốn ép dừng (hard stop) job này?')) return;
     try {
-      await stopAdminCrawlJob(id);
+      await api.stopAdminCrawlJob(id);
       fetchAll();
     } catch (e) {
-      alert(e?.response?.data?.error || 'Lỗi: Không thể dừng job. Có thể job không hoạt động?');
+      alert(e?.detail || e?.message || 'Lỗi: Không thể dừng job. Có thể job không hoạt động?');
     }
   };
 
@@ -114,9 +106,8 @@ export default function AdminCrawlControl() {
           <p className="mt-1 text-sm text-slate-400">Quản lý tập trung các tiến trình nền tự động</p>
         </div>
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Jobs Table */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col h-[500px]">
           <div className="flex justify-between items-center mb-4 border-b border-gray-100 dark:border-gray-700 pb-2">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Danh sách Dịch vụ Nền</h2>
@@ -194,7 +185,6 @@ export default function AdminCrawlControl() {
           </div>
         </div>
 
-        {/* Runs History */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col h-[500px]">
           <div className="flex justify-between items-center mb-4 border-b border-gray-100 dark:border-gray-700 pb-2">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Lịch sử Lần Chạy</h2>
@@ -214,10 +204,9 @@ export default function AdminCrawlControl() {
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {runs.map((run) => {
                   const started = run.started_at ? new Date(run.started_at).toLocaleTimeString('vi-VN') : 'Đang đợi...';
-                  // Get service code from jobs list
                   const job = jobs.find((j) => j.id === run.job);
                   const sCode = job ? job.service_code.replace(/_/g, '-') : `Job #${run.job}`;
-                  
+
                   return (
                     <tr key={run.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
                       <td className="px-4 py-3">

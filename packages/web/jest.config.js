@@ -11,6 +11,7 @@ const config = {
   ],
   moduleNameMapper: {
     '\\.(css|less|scss)$': '<rootDir>/test/styleMock.cjs',
+    '^(\\.\\./)+adapters/coreApiAdapter\\.js$': '<rootDir>/src/adapters/coreApiAdapter.js',
   },
   setupFilesAfterEnv: ['<rootDir>/test/setupTests.js'],
   testMatch: [

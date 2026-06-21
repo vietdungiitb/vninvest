@@ -30,29 +30,6 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-function Get-GitHubCliToken {
-    $ghCommand = Get-Command gh -ErrorAction SilentlyContinue
-    if (-not $ghCommand) {
-        return $null
-    }
-
-    try {
-        $tokenOutput = & $ghCommand.Source auth token 2>$null
-        if ($LASTEXITCODE -ne 0) {
-            return $null
-        }
-
-        $token = [string]::Join("`n", @($tokenOutput)).Trim()
-        if ([string]::IsNullOrWhiteSpace($token)) {
-            return $null
-        }
-
-        return $token
-    } catch {
-        return $null
-    }
-}
-$SkipBuild = $false
 
 $ComposeFiles = @("-f", "docker-compose.yml", "-f", "docker-compose.dev.yml")
 $ComposeEnvFile = "compose.dev.env"

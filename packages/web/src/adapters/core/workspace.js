@@ -449,6 +449,63 @@ export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, c
       return corePost(`/support/staff/tickets/${encodeURIComponent(ticketId)}/reply/`, data);
     },
 
+    // ─── Portfolio Chart / Analytics ─────────────────────────────────────────
+
+    getPortfolioChart(portfolioId, days = 90) {
+      if (!portfolioId) throw new Error("portfolioId is required for getPortfolioChart");
+      return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/chart/?days=${days}`);
+    },
+
+    getPortfolioEquityCurve(portfolioId, days = 180) {
+      if (!portfolioId) throw new Error("portfolioId is required for getPortfolioEquityCurve");
+      return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/equity-curve/?days=${days}`);
+    },
+
+    getPortfolioAllocation(portfolioId) {
+      if (!portfolioId) throw new Error("portfolioId is required for getPortfolioAllocation");
+      return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/allocation/`);
+    },
+
+    getPortfolioAllocationBySector(portfolioId) {
+      if (!portfolioId) throw new Error("portfolioId is required for getPortfolioAllocationBySector");
+      return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/allocation/sector/`);
+    },
+
+    syncPortfolioPrices(portfolioId, days = 30) {
+      if (!portfolioId) throw new Error("portfolioId is required for syncPortfolioPrices");
+      return corePost(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/sync-prices/`, { days });
+    },
+
+    // ─── Tracked Symbol Bulk Operations ─────────────────────────────────────
+
+    bulkUpdateTrackedSymbolThreshold(trackedSymbolIds, whaleAlertThresholdMillion) {
+      if (!trackedSymbolIds || trackedSymbolIds.length === 0) {
+        throw new Error("trackedSymbolIds is required for bulkUpdateTrackedSymbolThreshold");
+      }
+      return corePost("/stock-management/tracked-symbols/bulk-threshold/", {
+        tracked_symbol_ids: trackedSymbolIds,
+        whale_alert_threshold_million: whaleAlertThresholdMillion,
+      });
+    },
+
+    deleteTrackedSymbol(id) {
+      if (!id) throw new Error("id is required for deleteTrackedSymbol");
+      return coreDelete(`/stock-management/tracked-symbols/${encodeURIComponent(id)}/`);
+    },
+
+    markPriceAlertTriggered(id) {
+      if (!id) throw new Error("id is required for markPriceAlertTriggered");
+      return corePost(`/stock-management/price-alerts/${encodeURIComponent(id)}/mark-triggered/`);
+    },
+
+    seedWatchlist() {
+      return corePost("/stock-management/watchlist/seed/");
+    },
+
+    syncWatchlistPrices(days = 5) {
+      return corePost("/stock-management/watchlist/sync-prices/", { days });
+    },
+
     // ─── SubAccounts API ─────────────────────────────────────────────────────
 
     getSubAccounts() {

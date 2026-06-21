@@ -15,7 +15,7 @@ jest.unstable_mockModule('../../../adapters/coreApiAdapter.js', () => ({
   createCoreApiAdapter: jest.fn(() => mockAdapter),
 }));
 
-import { useSessionFacts } from './useSessionFacts.js';
+const { useSessionFacts } = await import('./useSessionFacts.js');
 
 describe('useSessionFacts', () => {
   beforeEach(() => {

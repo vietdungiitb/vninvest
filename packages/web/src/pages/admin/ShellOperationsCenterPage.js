@@ -20,6 +20,7 @@ import {
   renderSummaryCard,
   useCoreShellPageSnapshot,
 } from "../coreShellPageHelpers.js";
+import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 
 export function ShellOperationsCenterPage({
   env = {},
@@ -78,16 +79,12 @@ export function ShellOperationsCenterPage({
     setCurrentPage(1);
   };
 
-  const baseUrl = `${env.VNINVEST_API_BASE_URL || "/api"}/soc`;
+  const soc = defaultCoreApiAdapter;
 
   const fetchServices = async () => {
     setServicesLoading(true);
     try {
-      const response = await fetchImpl(`${baseUrl}/overview/`);
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status} ${response.statusText}`);
-      }
-      const data = await response.json();
+      const data = await soc.getSocOverviewSummary();
       const servicesList = data.services || [];
       setServices(servicesList);
 
@@ -109,7 +106,7 @@ export function ShellOperationsCenterPage({
       setServicesError("");
     } catch (err) {
       console.error("Failed to fetch SOC services:", err);
-      setServicesError("Không thể tải thông tin danh sách dịch vụ SOC.");
+      setServicesError(err.detail || err.message || "Không thể tải thông tin danh sách dịch vụ SOC.");
     } finally {
       setServicesLoading(false);
     }
@@ -123,18 +120,10 @@ export function ShellOperationsCenterPage({
     setActionLoading((prev) => ({ ...prev, [serviceKey]: true }));
     try {
       const nextActive = !currentActive;
-      const response = await fetchImpl(`${baseUrl}/services/${serviceKey}/`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_active: nextActive }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Không thể cập nhật trạng thái.");
-      }
+      await soc.updateSocService(serviceKey, { is_active: nextActive });
       await fetchServices();
     } catch (err) {
-      alert(`Lỗi: ${err.message}`);
+      alert(`Lỗi: ${err.detail || err.message || "Không thể cập nhật trạng thái."}`);
     } finally {
       setActionLoading((prev) => ({ ...prev, [serviceKey]: false }));
     }
@@ -143,16 +132,11 @@ export function ShellOperationsCenterPage({
   const handleTriggerHealthCheck = async (serviceKey) => {
     setActionLoading((prev) => ({ ...prev, [serviceKey]: true }));
     try {
-      const response = await fetchImpl(`${baseUrl}/services/${serviceKey}/health-check/`, {
-        method: "POST",
-      });
-      if (!response.ok) {
-        throw new Error("Không thể trigger health check.");
-      }
+      await soc.triggerSocServiceHealthCheck(serviceKey);
       alert("Đã kích hoạt yêu cầu thăm dò sức khỏe dịch vụ thủ công.");
       await fetchServices();
     } catch (err) {
-      alert(`Lỗi: ${err.message}`);
+      alert(`Lỗi: ${err.detail || err.message || "Không thể trigger health check."}`);
     } finally {
       setActionLoading((prev) => ({ ...prev, [serviceKey]: false }));
     }
@@ -165,16 +149,12 @@ export function ShellOperationsCenterPage({
     }
     setActionLoading((prev) => ({ ...prev, [serviceKey]: true }));
     try {
-      const response = await fetchImpl(`${baseUrl}/services/${serviceKey}/config/`);
-      if (!response.ok) {
-        throw new Error("Không thể tải cấu hình.");
-      }
-      const data = await response.json();
+      const data = await soc.getSocServiceConfig(serviceKey);
       setEditingConfig(JSON.stringify(data.config_payload || {}, null, 2));
       setEditingReason("");
       setExpandedServiceKey(serviceKey);
     } catch (err) {
-      alert(`Lỗi: ${err.message}`);
+      alert(`Lỗi: ${err.detail || err.message || "Không thể tải cấu hình."}`);
     } finally {
       setActionLoading((prev) => ({ ...prev, [serviceKey]: false }));
     }
@@ -194,23 +174,12 @@ export function ShellOperationsCenterPage({
     }
     setConfigSaving(true);
     try {
-      const response = await fetchImpl(`${baseUrl}/services/${serviceKey}/config/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          config_payload: parsedPayload,
-          change_reason: editingReason,
-        }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Không thể lưu cấu hình.");
-      }
+      await soc.applySocServiceConfig(serviceKey, parsedPayload, editingReason);
       alert("Đã cập nhật cấu hình thành công.");
       setExpandedServiceKey(null);
       await fetchServices();
     } catch (err) {
-      alert(`Lỗi: ${err.message}`);
+      alert(`Lỗi: ${err.detail || err.message || "Không thể lưu cấu hình."}`);
     } finally {
       setConfigSaving(false);
     }
@@ -222,22 +191,12 @@ export function ShellOperationsCenterPage({
     }
     setConfigSaving(true);
     try {
-      const response = await fetchImpl(`${baseUrl}/services/${serviceKey}/config/reset/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          change_reason: "Khôi phục cấu hình mặc định hệ thống từ giao diện SOC",
-        }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Khôi phục cấu hình mặc định thất bại.");
-      }
+      await soc.resetSocServiceConfig(serviceKey, "Khôi phục cấu hình mặc định hệ thống từ giao diện SOC");
       alert("Đã khôi phục cấu hình mặc định thành công.");
       setExpandedServiceKey(null);
       await fetchServices();
     } catch (err) {
-      alert(`Lỗi: ${err.message}`);
+      alert(`Lỗi: ${err.detail || err.message || "Khôi phục cấu hình mặc định thất bại."}`);
     } finally {
       setConfigSaving(false);
     }

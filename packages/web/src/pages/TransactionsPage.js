@@ -7,10 +7,9 @@ import { createElement, useCallback, useEffect, useRef, useState } from "react";
 
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 
-const DEFAULT_ENV = {};
 const e = createElement;
 
-function useTransactions({ env = DEFAULT_ENV, portfolioId } = {}) {
+function useTransactions({ portfolioId } = {}) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -21,8 +20,7 @@ function useTransactions({ env = DEFAULT_ENV, portfolioId } = {}) {
     setLoading(true);
     setError(null);
     try {
-      const adapter = coreApiAdapter({ env });
-      const res = await adapter.getTransactions(portfolioId);
+      const res = await coreApiAdapter.getTransactions(portfolioId);
       if (!mountedRef.current) return;
       setTransactions(res?.results ?? res ?? []);
     } catch (err) {
@@ -31,7 +29,7 @@ function useTransactions({ env = DEFAULT_ENV, portfolioId } = {}) {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [env, portfolioId]);
+  }, [portfolioId]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -42,8 +40,8 @@ function useTransactions({ env = DEFAULT_ENV, portfolioId } = {}) {
   return { transactions, loading, error, reload };
 }
 
-export function TransactionsPage({ env = DEFAULT_ENV, portfolioId, className = "" }) {
-  const { transactions, loading, error, reload } = useTransactions({ env, portfolioId });
+export function TransactionsPage({ portfolioId, className = "" }) {
+  const { transactions, loading, error, reload } = useTransactions({ portfolioId });
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState(null);
   const [form, setForm] = useState({
@@ -62,8 +60,7 @@ export function TransactionsPage({ env = DEFAULT_ENV, portfolioId, className = "
     setCreating(true);
     setCreateError(null);
     try {
-      const adapter = coreApiAdapter({ env });
-      await adapter.createTransaction(portfolioId, {
+      await coreApiAdapter.createTransaction(portfolioId, {
         ...form, symbol: form.symbol.trim().toUpperCase(),
         quantity: Number(form.quantity), price: Number(form.price), fee: Number(form.fee),
       });

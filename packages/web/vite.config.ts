@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -9,9 +10,10 @@ const __dirname = path.dirname(__filename);
 const proxyTarget = process.env.VITE_API_URL || 'http://127.0.0.1:8001';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [tailwindcss(), react()],
   resolve: {
     alias: {
+      'src': path.resolve(__dirname, 'src'),
       '@vninvestcharts/vn-kline-engine-core': path.resolve(__dirname, 'src/components/vninvestcharts/packages/vn-kline-engine-core/src/index.js'),
       '@vninvestcharts/vn-kline-engine-react': path.resolve(__dirname, 'src/components/vninvestcharts/packages/vn-kline-engine-react/src/index.js'),
     },

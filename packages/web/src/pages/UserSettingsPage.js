@@ -7,10 +7,9 @@ import { createElement, useCallback, useEffect, useRef, useState } from "react";
 
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 
-const DEFAULT_ENV = {};
 const e = createElement;
 
-function useUserProfile({ env = DEFAULT_ENV } = {}) {
+function useUserProfile() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,8 +19,7 @@ function useUserProfile({ env = DEFAULT_ENV } = {}) {
     setLoading(true);
     setError(null);
     try {
-      const adapter = coreApiAdapter({ env });
-      const res = await adapter.getUserProfile();
+      const res = await coreApiAdapter.getUserProfile();
       if (!mountedRef.current) return;
       setProfile(res);
     } catch (err) {
@@ -30,7 +28,7 @@ function useUserProfile({ env = DEFAULT_ENV } = {}) {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [env]);
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -41,8 +39,8 @@ function useUserProfile({ env = DEFAULT_ENV } = {}) {
   return { profile, loading, error, reload };
 }
 
-export function UserSettingsPage({ env = DEFAULT_ENV, className = "" }) {
-  const { profile, loading, error, reload } = useUserProfile({ env });
+export function UserSettingsPage({ className = "" }) {
+  const { profile, loading, error, reload } = useUserProfile();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -70,8 +68,7 @@ export function UserSettingsPage({ env = DEFAULT_ENV, className = "" }) {
     setSaveError(null);
     setSaveSuccess(false);
     try {
-      const adapter = coreApiAdapter({ env });
-      await adapter.updateUserProfile(form);
+      await coreApiAdapter.updateUserProfile(form);
       setSaveSuccess(true);
       await reload();
     } catch (err) {

@@ -1,99 +1,18 @@
-import { createElement, useState, useEffect } from 'react';
+import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, Outlet, Link } from 'react-router-dom';
-import { PortfolioProvider, usePortfolio } from './context/PortfolioContext.js';
-import { LangProvider, useI18n } from './context/LangContext.js';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { PortfolioProvider } from './context/PortfolioContext.js';
+import { LangProvider } from './context/LangContext.js';
 import { RealtimeProvider } from './context/RealtimeContext.js';
-import { routeCatalog } from './app/routeCatalog.js';
 import { getPageComponent } from './pages/pageRegistry.js';
-import { authTokenStorage } from './adapters/coreApiAdapter.js';
+import { AppShell } from './layouts/AppShell.jsx';
 import './index.css';
-
-const layoutStyles = {
-  container: {
-    display: 'flex',
-    minHeight: '100vh',
-    backgroundColor: 'var(--bg-app)',
-    color: 'var(--text-primary)',
-    fontFamily: '"IBM Plex Sans", sans-serif',
-  },
-  sidebar: {
-    width: '260px',
-    backgroundColor: 'var(--bg-panel)',
-    borderRight: '1px solid var(--border-default)',
-    display: 'flex',
-    flexDirection: 'column',
-    flexShrink: 0,
-  },
-  logoContainer: {
-    padding: '24px',
-    borderBottom: '1px solid var(--border-default)',
-  },
-  logo: {
-    margin: 0,
-    fontSize: '24px',
-    fontWeight: 'bold',
-    color: 'var(--accent-cyan)',
-    letterSpacing: '-0.5px',
-  },
-  nav: {
-    flex: 1,
-    padding: '16px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-  },
-  navLink: (isActive) => ({
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '12px 16px',
-    borderRadius: '12px',
-    textDecoration: 'none',
-    color: isActive ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-    backgroundColor: isActive ? 'rgba(18, 199, 232, 0.08)' : 'transparent',
-    border: isActive ? '1px solid rgba(18, 199, 232, 0.2)' : '1px solid transparent',
-    transition: 'all 0.2s ease',
-    fontWeight: '600',
-  }),
-  profileSection: {
-    padding: '16px',
-    borderTop: '1px solid var(--border-default)',
-    backgroundColor: 'rgba(8, 23, 52, 0.3)',
-  },
-  username: {
-    fontSize: '14px',
-    fontWeight: '600',
-    color: 'var(--text-primary)',
-    marginBottom: '2px',
-  },
-  email: {
-    fontSize: '12px',
-    color: 'var(--text-muted)',
-    marginBottom: '12px',
-  },
-  logoutBtn: {
-    width: '100%',
-    padding: '10px',
-    borderRadius: '10px',
-    border: '1px solid rgba(255, 94, 126, 0.3)',
-    backgroundColor: 'rgba(255, 94, 126, 0.08)',
-    color: '#ff5e7e',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-  },
-  main: {
-    flex: 1,
-    padding: '32px',
-    overflowY: 'auto',
-  }
-};
 
 function resolvePageComponent(routeId) {
   let registryId = routeId;
   if (routeId === 'dashboard') registryId = 'core-dashboard';
-  else if (routeId === 'whale-alerts') registryId = 'alert-center';
+  else if (routeId === 'whale-alerts') registryId = 'core-whale-alerts';
+  else if (routeId === 'ai-advisory') registryId = 'whale-advisory';
   else if (routeId === 'watchlist') registryId = 'core-watchlist';
   else if (routeId === 'transactions') registryId = 'core-transactions';
   else if (routeId === 'portfolios') registryId = 'core-portfolios';
@@ -107,107 +26,6 @@ function resolvePageComponent(routeId) {
   return component;
 }
 
-export function Layout() {
-  const { userIdentity, logout, userTenants = [], switchTenant, activeTenantId } = usePortfolio();
-  const { t } = useI18n();
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
-  const sidebarItems = [
-    { label: 'Dashboard', path: '/dashboard', icon: '📊' },
-    { label: 'Watchlist', path: '/watchlist', icon: '⭐️' },
-    { label: 'Giao dịch', path: '/transactions', icon: '💸' },
-    { label: 'Danh mục', path: '/portfolios', icon: '💼' },
-    { label: 'Whale Alerts', path: '/whale-alerts', icon: '🐋' },
-    { label: 'Support', path: '/support', icon: '💬' },
-    { label: 'Cài đặt', path: '/settings', icon: '⚙️' },
-    { label: 'AI Control', path: '/settings/ai', icon: '🧠' },
-    { label: 'SOC Operator', path: '/operations-center', icon: '🛠️' },
-    { label: 'Tenant Admin', path: '/tenant-admin', icon: '🏢' },
-  ];
-
-  return createElement(
-    'div',
-    { style: layoutStyles.container },
-    createElement(
-      'aside',
-      { style: layoutStyles.sidebar },
-      createElement(
-        'div',
-        { style: layoutStyles.logoContainer },
-        createElement('h1', { style: layoutStyles.logo }, 'VNInvest'),
-        userTenants.length > 0 && createElement(
-          "div",
-          { style: { marginTop: "14px" } },
-          createElement("label", { style: { display: "block", fontSize: "10px", fontWeight: "bold", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6px" } }, "Không gian làm việc"),
-          createElement(
-            "select",
-            {
-              value: activeTenantId || "",
-              onChange: (e) => switchTenant(e.target.value),
-              style: {
-                width: "100%",
-                padding: "8px 10px",
-                background: "rgba(15,23,42,0.6)",
-                border: "1px solid var(--border-default)",
-                borderRadius: "8px",
-                color: "var(--text-primary)",
-                fontSize: "13px",
-                outline: "none",
-                cursor: "pointer",
-              },
-            },
-            userTenants.map(t =>
-              createElement("option", { key: t.tenant_id || t.public_id || t.id, value: t.tenant_id || t.public_id || t.id }, `${t.display_name} (${(t.plan || "free").toUpperCase()})`)
-            )
-          )
-        )
-      ),
-      createElement(
-        'nav',
-        { style: layoutStyles.nav },
-        sidebarItems.map((item) => {
-          const isActive = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
-          return createElement(
-            Link,
-            {
-              key: item.path,
-              to: item.path,
-              style: layoutStyles.navLink(isActive),
-            },
-            createElement('span', null, item.icon),
-            createElement('span', null, item.label)
-          );
-        })
-      ),
-      createElement(
-        'div',
-        { style: layoutStyles.profileSection },
-        createElement('div', { style: layoutStyles.username }, userIdentity.username || 'User'),
-        createElement('div', { style: layoutStyles.email }, userIdentity.email || ''),
-        createElement(
-          'button',
-          {
-            onClick: handleLogout,
-            style: layoutStyles.logoutBtn,
-          },
-          'Đăng xuất'
-        )
-      )
-    ),
-    createElement(
-      'main',
-      { style: layoutStyles.main },
-      createElement(Outlet)
-    )
-  );
-}
-
 function ProtectedRoute({ children }) {
   const { isAuthenticated, authStateReady } = usePortfolio();
   const location = useLocation();
@@ -216,15 +34,7 @@ function ProtectedRoute({ children }) {
     return createElement(
       'div',
       {
-        style: {
-          display: 'flex',
-          height: '100vh',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: 'var(--bg-app)',
-          color: 'var(--text-primary)',
-          fontFamily: '"IBM Plex Sans", sans-serif',
-        },
+        className: 'min-h-screen flex items-center justify-center bg-slate-950 text-slate-100 font-sans',
       },
       createElement('p', null, 'Đang xác thực tài khoản...')
     );
@@ -237,6 +47,11 @@ function ProtectedRoute({ children }) {
 
   return children;
 }
+
+// Need to import usePortfolio and useLocation for ProtectedRoute
+import { usePortfolio } from './context/PortfolioContext.js';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { authTokenStorage } from './adapters/coreApiAdapter.js';
 
 function App() {
   return createElement(
@@ -252,16 +67,21 @@ function App() {
 
       createElement(
         Route,
-        { path: '/', element: createElement(ProtectedRoute, null, createElement(Layout)) },
+        { path: '/', element: createElement(ProtectedRoute, null, createElement(AppShell)) },
         createElement(Route, { index: true, element: createElement(Navigate, { to: '/dashboard', replace: true }) }),
         createElement(Route, { path: 'dashboard', element: createElement(resolvePageComponent('dashboard')) }),
         createElement(Route, { path: 'watchlist', element: createElement(resolvePageComponent('watchlist')) }),
+        createElement(Route, { path: 'screener', element: createElement(resolvePageComponent('screener')) }),
         createElement(Route, { path: 'transactions', element: createElement(resolvePageComponent('transactions')) }),
         createElement(Route, { path: 'portfolios', element: createElement(resolvePageComponent('portfolios')) }),
         createElement(Route, { path: 'whale-alerts', element: createElement(resolvePageComponent('whale-alerts')) }),
+        createElement(Route, { path: 'ai-advisory', element: createElement(resolvePageComponent('ai-advisory')) }),
+        createElement(Route, { path: 'upgrade', element: createElement(resolvePageComponent('upgrade')) }),
+        createElement(Route, { path: 'admin-crawl-control', element: createElement(resolvePageComponent('admin-crawl-control')) }),
         createElement(Route, { path: 'support', element: createElement(resolvePageComponent('support')) }),
         createElement(Route, { path: 'settings', element: createElement(resolvePageComponent('settings')) }),
         createElement(Route, { path: 'settings/ai', element: createElement(resolvePageComponent('ai-command-center')) }),
+        createElement(Route, { path: 'ai-command-center', element: createElement(resolvePageComponent('shell-ai-command-center')) }),
         createElement(Route, { path: 'operations-center', element: createElement(resolvePageComponent('operations-center')) }),
         createElement(Route, { path: 'operations-center/mail-config', element: createElement(resolvePageComponent('operations-center-mail-config')) }),
         createElement(Route, { path: 'stocks/:symbol', element: createElement(resolvePageComponent('core-stock-detail')) }),
@@ -274,6 +94,9 @@ function App() {
         createElement(Route, { path: 'tenant-admin/capabilities', element: createElement(resolvePageComponent('tenant-admin-capabilities')) }),
         createElement(Route, { path: 'tenant-admin/audit-logs', element: createElement(resolvePageComponent('tenant-admin-audit-logs')) }),
         createElement(Route, { path: 'tenant-admin', element: createElement(Navigate, { to: '/tenant-admin/home', replace: true }) }),
+        createElement(Route, { path: 'alert-center', element: createElement(resolvePageComponent('alert-center')) }),
+        createElement(Route, { path: 'commercial/billing', element: createElement(resolvePageComponent('commercial-billing-center')) }),
+        createElement(Route, { path: 'commercial/payment-return', element: createElement(resolvePageComponent('commercial-payment-return')) }),
       ),
       createElement(Route, { path: '*', element: createElement(Navigate, { to: '/dashboard', replace: true }) })
     )

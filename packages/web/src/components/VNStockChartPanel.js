@@ -5,6 +5,7 @@ import { VNInvestCharts, MockAdapter, OverlayCanvas, widgetMessagesVi } from './
 import { useViewportWhaleMarkers } from '../features/stock-detail/hooks/useViewportWhaleMarkers.js';
 import { createCoreApiAdapter } from '../adapters/coreApiAdapter.js';
 import { useRealtimeFeedFromManager } from '../context/RealtimeContext.js';
+import { useEChartsResize } from '../hooks/useChartResize.js';
 
 const e = createElement;
 
@@ -482,6 +483,12 @@ export default function VNStockChartPanel({
     onBarsChange?.(bars);
   }, [onBarsChange]);
 
+  const chartContainerRef = useRef(null);
+  const chartRef = useRef(null);
+
+  // Use ResizeObserver to handle sidebar collapse/expand
+  useEChartsResize(chartRef, chartContainerRef, [activeTimeframe, activePeriod]);
+
   const chartBody = loading
     ? e(
         'div',
@@ -531,13 +538,14 @@ export default function VNStockChartPanel({
             window.location.href = '/stocks/' + sym;
           },
           className: 'w-full h-full',
+          ref: chartRef,
         },
         e(ViewportSharkMarkersOverlay, { visibleRange, whaleTimes }),
       );
 
   return e(
     'div',
-    { className: 'flex flex-col h-full bg-[#0a0f1d] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl relative' },
+    { ref: chartContainerRef, className: 'flex flex-col h-full bg-[#0a0f1d] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl relative' },
     e('div', { className: 'flex-1 h-full relative' }, chartBody),
   );
 }

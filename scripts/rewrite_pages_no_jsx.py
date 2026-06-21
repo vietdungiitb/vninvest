@@ -27,12 +27,11 @@ function useStockDetail({ env = DEFAULT_ENV, symbol } = {}) {
     mountedRef.current = true;
     async function load() {
       try {
-        const adapter = coreApiAdapter({ env });
         const [profileRes, pricesRes, orderFlowRes, advisoryRes] = await Promise.allSettled([
-          adapter.getStockProfile(symbol),
-          adapter.getDailyPrices(symbol),
-          adapter.getOrderFlowEvents(symbol),
-          adapter.getAdvisoryLatest(symbol),
+          coreApiAdapter.getStockProfile(symbol),
+          coreApiAdapter.getDailyPrices(symbol),
+          coreApiAdapter.getOrderFlowEvents(symbol),
+          coreApiAdapter.getAdvisoryLatest(symbol),
         ]);
         if (!mountedRef.current) return;
         setState({
@@ -157,8 +156,7 @@ function usePortfolios({ env = DEFAULT_ENV } = {}) {
     setLoading(true);
     setError(null);
     try {
-      const adapter = coreApiAdapter({ env });
-      const res = await adapter.getPortfolios();
+      const res = await coreApiAdapter.getPortfolios();
       if (!mountedRef.current) return;
       setPortfolios(res?.results ?? res ?? []);
     } catch (err) {
@@ -192,8 +190,7 @@ export function PortfoliosPage({ env = DEFAULT_ENV, className = "" }) {
     setCreating(true);
     setCreateError(null);
     try {
-      const adapter = coreApiAdapter({ env });
-      await adapter.createPortfolio({ name, currency: newCurrency });
+      await coreApiAdapter.createPortfolio({ name, currency: newCurrency });
       setNewName("");
       await reload();
     } catch (err) {
@@ -206,8 +203,7 @@ export function PortfoliosPage({ env = DEFAULT_ENV, className = "" }) {
   async function handleDelete(id) {
     if (!window.confirm("Xoa danh muc nay?")) return;
     try {
-      const adapter = coreApiAdapter({ env });
-      await adapter.deletePortfolio(id);
+      await coreApiAdapter.deletePortfolio(id);
       await reload();
     } catch (err) {
       window.alert(err?.message || "Khong the xoa danh muc.");
@@ -278,8 +274,7 @@ function useTransactions({ env = DEFAULT_ENV, portfolioId } = {}) {
     setLoading(true);
     setError(null);
     try {
-      const adapter = coreApiAdapter({ env });
-      const res = await adapter.getTransactions(portfolioId);
+      const res = await coreApiAdapter.getTransactions(portfolioId);
       if (!mountedRef.current) return;
       setTransactions(res?.results ?? res ?? []);
     } catch (err) {
@@ -319,8 +314,7 @@ export function TransactionsPage({ env = DEFAULT_ENV, portfolioId, className = "
     setCreating(true);
     setCreateError(null);
     try {
-      const adapter = coreApiAdapter({ env });
-      await adapter.createTransaction(portfolioId, {
+      await coreApiAdapter.createTransaction(portfolioId, {
         ...form, symbol: form.symbol.trim().toUpperCase(),
         quantity: Number(form.quantity), price: Number(form.price), fee: Number(form.fee),
       });
@@ -402,8 +396,7 @@ function useUserProfile({ env = DEFAULT_ENV } = {}) {
     setLoading(true);
     setError(null);
     try {
-      const adapter = coreApiAdapter({ env });
-      const res = await adapter.getUserProfile();
+      const res = await coreApiAdapter.getUserProfile();
       if (!mountedRef.current) return;
       setProfile(res);
     } catch (err) {
@@ -452,8 +445,7 @@ export function UserSettingsPage({ env = DEFAULT_ENV, className = "" }) {
     setSaveError(null);
     setSaveSuccess(false);
     try {
-      const adapter = coreApiAdapter({ env });
-      await adapter.updateUserProfile(form);
+      await coreApiAdapter.updateUserProfile(form);
       setSaveSuccess(true);
       await reload();
     } catch (err) {

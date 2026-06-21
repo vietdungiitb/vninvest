@@ -32,9 +32,18 @@ export function StockOrderBookWidget({ orderBook, loading, error, onRefresh }) {
     if (v == null) return "—";
     const n = Number(v);
     if (!Number.isFinite(n)) return "—";
-    if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}T`;
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}Tr`;
-    if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+    if (n >= 1_000_000_000) {
+      const val = (n / 1_000_000_000).toFixed(1);
+      return `${val.endsWith(".0") ? val.slice(0, -2) : val.replace(".", ",")}T`;
+    }
+    if (n >= 1_000_000) {
+      const val = (n / 1_000_000).toFixed(1);
+      return `${val.endsWith(".0") ? val.slice(0, -2) : val.replace(".", ",")}Tr`;
+    }
+    if (n >= 1_000) {
+      const val = (n / 1_000).toFixed(1);
+      return `${val.endsWith(".0") ? val.slice(0, -2) : val}K`;
+    }
     return n.toLocaleString("vi-VN");
   };
 
@@ -93,6 +102,10 @@ export function StockOrderBookWidget({ orderBook, loading, error, onRefresh }) {
           { className: "ob-progress-bg" },
           e("div", {
             className: "ob-progress-bar",
+            role: "progressbar",
+            "aria-valuenow": isSkeleton ? 0 : Math.round(Math.min(pct, 100)),
+            "aria-valuemin": 0,
+            "aria-valuemax": 100,
             style: { width: isSkeleton ? "0%" : `${Math.min(pct, 100)}%` },
           })
         )
@@ -126,6 +139,12 @@ export function StockOrderBookWidget({ orderBook, loading, error, onRefresh }) {
       "div",
       { className: "ob-header" },
       e("h3", { className: "ob-title" }, "Độ sâu thị trường (Market Depth)"),
+      orderBook && spread !== undefined && e(
+        "div",
+        { className: "ob-spread" },
+        "Spread: ",
+        e("span", null, spread.toFixed(2))
+      ),
       orderBook?.timestamp && e(
         "div",
         { className: "ob-last-update" },

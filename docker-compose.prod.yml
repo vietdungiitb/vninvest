@@ -619,22 +619,15 @@ services:
 
   frontend:
     build:
-      context: .
-      dockerfile: frontend/Dockerfile.dev-package-shell
-      secrets:
-        - vnbroker_github_token
+      context: packages/web/
+      dockerfile: Dockerfile
       args:
-        REACT_APP_API_BASE_URL: /api
+        VITE_API_URL: /api
         APP_RELEASE: ${APP_RELEASE:-main-local}
-        REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "1"
-        REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1
     container_name: vninvest-frontend
     restart: unless-stopped
     environment:
       APP_RELEASE: ${APP_RELEASE:-main-local}
-      REACT_APP_API_BASE_URL: /api
-      REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "1"
-      REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1
       VIRTUAL_HOST: ${DOMAIN:-saas.edusuccess.vn}
       VIRTUAL_PORT: "80"
       LETSENCRYPT_HOST: ${DOMAIN:-saas.edusuccess.vn}

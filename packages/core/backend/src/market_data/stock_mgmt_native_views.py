@@ -2795,6 +2795,11 @@ class StockManagementAIAdvisoryComponentsGenerateView(APIView):
             from advisory.views import AdvisoryRefreshView
 
             django_request = getattr(request, '_request', request)
+            import io
+            # Force read raw body and reset stream to prevent RawPostDataException in nested views
+            body_bytes = django_request.body
+            django_request._stream = io.BytesIO(body_bytes)
+
             refresh_response = AdvisoryRefreshView.as_view()(django_request, symbol=normalized_symbol)
             if refresh_response.status_code not in {status.HTTP_200_OK, status.HTTP_201_CREATED}:
                 return refresh_response
