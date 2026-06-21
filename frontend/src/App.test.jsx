@@ -99,9 +99,6 @@ jest.mock('./pages/SettingsShellHost', () => function MockSettingsShellHost() {
   return <div data-testid="settings-shell-page" />;
 });
 
-jest.mock('./pages/AICommandCenterShellHost', () => function MockAICommandCenterShellHost() {
-  return <div data-testid="ai-command-center-shell-page" />;
-});
 
 jest.mock('./pages/PortfoliosShellHost', () => function MockPortfoliosShellHost() {
   return <div data-testid="portfolios-shell-page" />;

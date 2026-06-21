@@ -11,7 +11,6 @@ import TransactionsShellHost from './pages/TransactionsShellHost';
 import Support from './pages/Support';
 import SupportShellHost from './pages/SupportShellHost';
 import SettingsShellHost from './pages/SettingsShellHost';
-import AICommandCenterShellHost from './pages/AICommandCenterShellHost';
 import PortfoliosShellHost from './pages/PortfoliosShellHost';
 import Watchlist from './pages/Watchlist';
 import WatchlistShellHost from './pages/WatchlistShellHost';
@@ -349,9 +348,7 @@ export default function App() {
                   />
                   <Route
                     path="settings/ai"
-                    element={(
-                      packageShellHostEnabled ? <AICommandCenterShellHost /> : <AICommandCenter />
-                    )}
+                    element={<AICommandCenter />}
                   />
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />
