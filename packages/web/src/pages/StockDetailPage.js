@@ -23,6 +23,7 @@ import WhaleBubbleChart from "../components/WhaleBubbleChart.jsx";
 import { StockDetailTabs } from "../features/stock-detail/components/StockDetailTabs.js";
 import { WorkstationLayout, StockOrderBookWidget, StockExecutionLogWidget } from "../components/workstation/index.js";
 import { useOrderBook, useTradeLog } from "../components/workstation/hooks/index.js";
+import { AIAdvisoryPromptConfigDrawer } from "../components/AIAdvisoryPromptConfigDrawer.js";
 
 const DEFAULT_ENV = {};
 const e = createElement;
@@ -71,6 +72,28 @@ function signalLabel(signal) {
 export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }) {
   const [isWatched, setIsWatched] = useState(false);
   const [toast, setToast] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [promptConfig, setPromptConfig] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`ai_advisory_prompt_config:${symbol}`);
+      if (stored) return JSON.parse(stored);
+    } catch (e) {
+      console.error("Failed to parse prompt config", e);
+    }
+    return {
+      version: 2,
+      sources: {
+        whale: { enabled: true, lookback: 30 },
+        dark_flow: { enabled: true, lookback: 30 },
+        technical: { enabled: true, lookback: 20, indicators: ["rsi", "bollinger", "vols", "prices", "ma20", "ma50", "snapshot", "cdms"] },
+        news: { enabled: true, lookback: 14 },
+        market: { enabled: true, lookback: 7 },
+        fundamental: { enabled: true, lookback: 90 },
+        ownership: { enabled: true, lookback: 365 },
+        sector: { enabled: true, lookback: 20 }
+      }
+    };
+  });
 
   const showToast = useCallback((message) => {
     setToast(message);
@@ -98,6 +121,7 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }) {
     setChartBars,
     orderFlowData,
     advisory,
+    advisoryFallbackFlags,
     whaleFeed,
     news,
     financials,
@@ -105,7 +129,8 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }) {
     loadingFinancials,
     activeTab,
     setActiveTab,
-    loadingProfile
+    loadingProfile,
+    refreshAdvisoryData
   } = useStockDetailPageModel({ env, initialSymbol: symbol });
 
   const handleSessionChange = useCallback((session) => {
@@ -120,9 +145,22 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }) {
     setIsWatched((w) => !w);
   }, []);
 
+  const handleConfigChange = useCallback((nextConfig) => {
+    setPromptConfig(nextConfig);
+    try {
+      localStorage.setItem(`ai_advisory_prompt_config:${symbol}`, JSON.stringify(nextConfig));
+    } catch (e) {
+      console.error("Failed to save prompt config", e);
+    }
+  }, [symbol]);
+
+  const handleRefreshAdvisory = useCallback(() => {
+    refreshAdvisoryData(promptConfig);
+  }, [refreshAdvisoryData, promptConfig]);
+
   const handleAlertTrigger = useCallback(() => {
-    showToast(`Cảnh báo cho mã ${symbol} sẽ được tích hợp với Unified Alert Center.`);
-  }, [symbol, showToast]);
+    setDrawerOpen(true);
+  }, []);
 
   const handleTradeTrigger = useCallback(() => {
     showToast(`Chức năng giao dịch cho mã ${symbol} đang kết nối qua cổng bảo mật.`);
@@ -300,13 +338,26 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }) {
       snapshot,
       orderFlowData,
       whaleFeed,
-      advisory,
+      advisory: {
+        ...(advisory || {}),
+        ...(advisoryFallbackFlags || {}),
+      },
       selectedSession,
       loadingDeferred,
       news,
       loadingNews,
       financials,
-      loadingFinancials
+      loadingFinancials,
+      onRefreshAdvisory: handleRefreshAdvisory,
+      onOpenConfigDrawer: () => setDrawerOpen(true)
+    }),
+
+    // AI Advisory Prompt Config Drawer
+    drawerOpen && e(AIAdvisoryPromptConfigDrawer, {
+      isOpen: drawerOpen,
+      onClose: () => setDrawerOpen(false),
+      config: promptConfig,
+      onConfigChange: handleConfigChange
     }),
 
     // Toast Notification

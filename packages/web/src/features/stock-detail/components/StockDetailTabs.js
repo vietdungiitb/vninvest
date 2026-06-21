@@ -1,5 +1,6 @@
 import { createElement } from "react";
 import { StockContextDeck } from "./StockContextDeck.js";
+import { AIAdvisoryWarningBanner } from "./AIAdvisoryWarningBanner.js";
 
 const e = createElement;
 
@@ -55,7 +56,9 @@ export function StockDetailTabs({
   news,
   loadingNews,
   financials,
-  loadingFinancials
+  loadingFinancials,
+  onRefreshAdvisory,
+  onOpenConfigDrawer
 }) {
   const tabsList = [
     { id: "giao-dich", label: "Giao dịch" },
@@ -77,15 +80,51 @@ export function StockDetailTabs({
     return e(
       "div",
       { className: "sdp-tab-panel sdp-panel-giao-dich" },
+      // AI Advisory Warning Banner (fallback / key failure status)
+      e(AIAdvisoryWarningBanner, {
+        personalKeyFailed: advisory?.personal_key_failed,
+        personalKeyError: advisory?.personal_key_error,
+        usingSystemFallback: advisory?.using_system_fallback,
+        fallbackRemaining: advisory?.fallback_quota_remaining,
+        fallbackQuotaMax: 5,
+        onConfigure: onOpenConfigDrawer,
+      }),
       // AI Advisory Card at top of Transactions tab
       e(
         "div",
         { className: `sdp-deck-card sdp-glass-card sdp-advisory-insight ${advisory ? signalColorClass(advisory.signal) : ""}`, style: { marginBottom: "20px" } },
         e(
           "div",
-          { className: "sdp-card-header" },
+          { className: "sdp-card-header", style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
           e("h3", null, "🤖 Khuyến Nghị Trí Tuệ Nhân Tạo AI"),
-          e("span", { className: "sdp-card-badge" }, "Cố Vấn Phân Tích")
+          e(
+            "div",
+            { style: { display: "flex", gap: "8px", alignItems: "center" } },
+            e(
+              "button",
+              {
+                className: "sdp-advisory-header-btn",
+                type: "button",
+                onClick: onOpenConfigDrawer,
+                title: "Cấu hình nguồn và chỉ báo AI",
+                style: { background: "rgba(99, 102, 241, 0.15)", border: "1px solid rgba(99, 102, 241, 0.4)", color: "#a5b4fc", borderRadius: "8px", padding: "4px 10px", fontSize: "0.75rem", cursor: "pointer", fontWeight: "600" }
+              },
+              "⚙️ Cài đặt"
+            ),
+            e(
+              "button",
+              {
+                className: "sdp-advisory-header-btn",
+                type: "button",
+                onClick: onRefreshAdvisory,
+                title: "Làm mới thông minh với cấu hình đã chọn",
+                disabled: loadingDeferred,
+                style: { background: "rgba(16, 185, 129, 0.15)", border: "1px solid rgba(16, 185, 129, 0.4)", color: "#6ee7b7", borderRadius: "8px", padding: "4px 10px", fontSize: "0.75rem", cursor: "pointer", fontWeight: "600", opacity: loadingDeferred ? 0.6 : 1 }
+              },
+              loadingDeferred ? "Đang phân tích..." : "↻ Làm mới"
+            ),
+            e("span", { className: "sdp-card-badge" }, "Cố Vấn Phân Tích")
+          )
         ),
         e(
           "div",

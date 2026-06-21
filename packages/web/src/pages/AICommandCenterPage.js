@@ -26,6 +26,14 @@ const PROVIDER_MODELS = {
     { key: "gpt-4o-mini", label: "gpt-4o-mini" },
     { key: "custom", label: "Mô hình tùy chỉnh..." }
   ],
+  local: [
+    { key: "llama3.2", label: "llama3.2" },
+    { key: "llama3.1", label: "llama3.1" },
+    { key: "mistral", label: "mistral" },
+    { key: "phi4", label: "phi-4" },
+    { key: "qwen2.5", label: "qwen2.5" },
+    { key: "custom", label: "Mô hình tùy chỉnh..." }
+  ],
   copilot: [
     { key: "custom", label: "Mô hình tùy chỉnh..." }
   ]
@@ -47,8 +55,11 @@ export function AICommandCenterPage({ className = "" }) {
   const [customModel, setCustomModel] = useState("");
   const [showCustomModel, setShowCustomModel] = useState(false);
   const [aiApiKey, setAiApiKey] = useState("");
+  const [customEndpoint, setCustomEndpoint] = useState("");
+  const [showCustomEndpoint, setShowCustomEndpoint] = useState(false);
   const [maxTokens, setMaxTokens] = useState(5000);
   const [refreshInterval, setRefreshInterval] = useState(24);
+  const [testLatency, setTestLatency] = useState(null);
 
   const loadSettings = async (showNotice = false) => {
     setLoading(true);
@@ -73,9 +84,12 @@ export function AICommandCenterPage({ className = "" }) {
         setCustomModel(currentModel);
       }
 
+      setCustomEndpoint(data.custom_endpoint || "");
+      setShowCustomEndpoint(data.ai_provider === "local");
       setMaxTokens(data.advisory_max_tokens_per_day || 5000);
       setRefreshInterval(data.advisory_refresh_interval_hours || 24);
       setAiApiKey(""); // always clear raw input key
+      setTestLatency(null);
 
       if (showNotice) {
         setNotice("Đã làm mới cấu hình AI.");
@@ -95,6 +109,7 @@ export function AICommandCenterPage({ className = "" }) {
   const handleProviderChange = (e) => {
     const provider = e.target.value;
     setAiProvider(provider);
+    setShowCustomEndpoint(provider === "local");
 
     const models = PROVIDER_MODELS[provider] || [];
     if (models.length > 0) {
@@ -145,6 +160,10 @@ export function AICommandCenterPage({ className = "" }) {
       advisory_refresh_interval_hours: parseInt(refreshInterval),
     };
 
+    if (aiProvider === "local" && customEndpoint.trim()) {
+      payload.custom_endpoint = customEndpoint.trim();
+    }
+
     if (aiApiKey.trim()) {
       payload.ai_api_key = aiApiKey.trim();
     }
@@ -165,6 +184,7 @@ export function AICommandCenterPage({ className = "" }) {
   const testConnection = async () => {
     setTestStatus("testing");
     setTestResult("");
+    setTestLatency(null);
 
     const finalModel = aiModel === "custom" ? customModel.trim() : aiModel;
     const payload = {
@@ -176,11 +196,18 @@ export function AICommandCenterPage({ className = "" }) {
       payload.ai_api_key = aiApiKey.trim();
     }
 
+    if (aiProvider === "local" && customEndpoint.trim()) {
+      payload.custom_endpoint = customEndpoint.trim();
+    }
+
     try {
       const data = await coreApiAdapter.testAICommandCenterConnection(payload);
       if (data?.ok ?? true) {
         setTestStatus("success");
         setTestResult(data?.message || "Kết nối thành công!");
+        if (data?.latency_ms != null) {
+          setTestLatency(data.latency_ms);
+        }
       } else {
         setTestStatus("error");
         setTestResult(data?.message || "Kết nối thất bại.");
@@ -202,6 +229,7 @@ export function AICommandCenterPage({ className = "" }) {
     { key: "openai", label: "OpenAI (ChatGPT)" },
     { key: "gemini", label: "Google Gemini" },
     { key: "claude", label: "Anthropic (Claude)" },
+    { key: "local", label: "Local Model (Ollama/vLLM)" },
     { key: "copilot", label: "GitHub Copilot" }
   ];
 
@@ -259,6 +287,20 @@ export function AICommandCenterPage({ className = "" }) {
           placeholder: "Ví dụ: o1-preview, gemini-2.5-pro",
           required: true
         })
+      ]) : null,
+
+      // Custom Endpoint (for local provider)
+      showCustomEndpoint ? e("div", { key: "custom-endpoint-row" }, [
+        e("label", { className: "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400" }, "Custom Endpoint (API gốc)"),
+        e("input", {
+          type: "text",
+          value: customEndpoint,
+          onChange: (ev) => setCustomEndpoint(ev.target.value),
+          className: "w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500",
+          placeholder: "http://localhost:11434/v1",
+          required: false
+        }),
+        e("p", { className: "mt-1 text-xs text-slate-500" }, "Để trống nếu dùng Ollama mặc định (http://localhost:11434/v1). Điền endpoint nếu dùng vLLM hoặc remote.")
       ]) : null,
 
       e("div", { key: "row-2", className: "grid grid-cols-1 gap-4 md:grid-cols-2" }, [
@@ -338,8 +380,51 @@ export function AICommandCenterPage({ className = "" }) {
                 ? "border-emerald-700/65 bg-emerald-950/40 text-emerald-300"
                 : "border-rose-700/65 bg-rose-950/40 text-rose-300"
             }`
-          }, testResult)
+          }, [
+            e("p", { key: "msg" }, testResult),
+            testLatency != null
+              ? e("p", { key: "latency", className: "mt-1 text-xs opacity-70" }, `Độ trễ: ${testLatency}ms`)
+              : null
+          ])
         : null
-    ])
+    ]),
+
+    // Fallback Quota status (only visible when provider is not openclaw/local and personal key is configured)
+    settings && settings.fallback_quota_max > 0 && aiProvider !== "openclaw" && aiProvider !== "local"
+      ? e("div", { key: "quota-card", className: "rounded-xl border border-slate-800 bg-slate-900/30 p-4" }, [
+          e("h3", { className: "mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400" }, "Sao lưu hệ thống AI (Fallback)"),
+          e("div", { className: "flex items-center gap-3" }, [
+            e("div", {
+              key: "quota-bar",
+              className: "h-2 flex-1 overflow-hidden rounded-full bg-slate-800"
+            }, [
+              e("div", {
+                style: {
+                  width: `${settings.fallback_quota_max > 0
+                    ? (settings.fallback_quota_remaining / settings.fallback_quota_max) * 100
+                    : 0}%`
+                },
+                className: `h-full rounded-full transition-all ${
+                  settings.fallback_quota_remaining > 0
+                    ? "bg-amber-500"
+                    : "bg-rose-500"
+                }`
+              })
+            ]),
+            e("span", { className: "text-xs text-slate-400" },
+              `${settings.fallback_quota_remaining} / ${settings.fallback_quota_max} lượt`
+            )
+          ]),
+          settings.fallback_quota_reset
+            ? e("p", { className: "mt-1 text-xs text-slate-500" },
+                `Đặt lại: ${new Date(settings.fallback_quota_reset).toLocaleDateString("vi-VN")}`)
+            : null,
+          settings.fallback_quota_remaining === 0
+            ? e("p", { className: "mt-2 text-xs text-rose-400" },
+                "Đã hết lượt fallback hôm nay. Vui lòng cấu hình API Key cá nhân để tiếp tục sử dụng AI Advisor.")
+            : e("p", { className: "mt-2 text-xs text-slate-500" },
+                "Nếu API Key cá nhân gặp lỗi, hệ thống sẽ tự động dùng key sao lưu.")
+        ])
+      : null
   ]);
 }

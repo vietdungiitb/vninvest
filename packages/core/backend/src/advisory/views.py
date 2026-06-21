@@ -158,6 +158,7 @@ class AdvisoryRefreshView(APIView):
 
     def post(self, request, symbol):
         symbol = _validate_symbol(symbol)
+        prompt_config = request.data.get('prompt_config') if isinstance(request.data, dict) else None
         session_date = str(_date.today())
         session_date_obj = _date.today()
         tenant = _get_tenant(request.user)
@@ -263,21 +264,77 @@ class AdvisoryRefreshView(APIView):
         from identity_access.models import UserProfile
         profile, _ = UserProfile.objects.get_or_create(user=request.user)
 
+        from advisory.models import UserAICredential
         from identity_access.security import decrypt_user_api_key
-        encrypted_key = ""
-        if profile.preferences and isinstance(profile.preferences, dict):
-            encrypted_key = profile.preferences.get('api_key') or ""
+
+        # Try to resolve API key: 1) UserAICredential BYOK → 2) legacy preferences → 3) system key
+        decrypted_key = ""
+        personal_key_failed = False
+        using_system_fallback = False
+        personal_key_error = ""
+        fallback_remaining = 0
+        provider = 'openai'
+        custom_endpoint = ''
 
         try:
-            decrypted_key = decrypt_user_api_key(encrypted_key) if encrypted_key else ""
-            if not decrypted_key and ai_settings.metadata:
-                sys_encrypted_key = ai_settings.metadata.get('encrypted_api_key') or ""
-                if sys_encrypted_key:
-                    decrypted_key = decrypt_user_api_key(sys_encrypted_key)
-        except Exception as e:
-            logger.error(f"BYOK key decryption failed: {e}")
-            from rest_framework.exceptions import ValidationError
-            raise ValidationError({'preferences': [f"Giải mã khóa API thất bại: {str(e)}"]})
+            user_cred = UserAICredential.objects.get(user=request.user)
+            provider = user_cred.ai_provider or 'openai'
+            custom_endpoint = user_cred.custom_endpoint or ''
+
+            if user_cred.encrypted_api_key:
+                try:
+                    decrypted_key = decrypt_user_api_key(user_cred.encrypted_api_key)
+                except Exception as e:
+                    personal_key_failed = True
+                    personal_key_error = str(e)
+                    logger.warning(f"BYOK decryption failed for user {request.user.id}: {e}")
+
+            if not decrypted_key and user_cred.ai_provider not in ('local', 'openclaw'):
+                personal_key_failed = True
+                personal_key_error = personal_key_error or "API Key không được cấu hình."
+
+            # Fallback: user key failed or missing → use system key
+            if personal_key_failed or not decrypted_key:
+                if user_cred.ai_provider in ('local', 'openclaw') and not decrypted_key:
+                    pass  # local/openclaw don't need a key
+                elif user_cred.consume_fallback_quota():
+                    using_system_fallback = True
+                    fallback_remaining = user_cred.fallback_quota_remaining
+                    if ai_settings.metadata:
+                        sys_encrypted_key = ai_settings.metadata.get('encrypted_api_key') or ""
+                        if sys_encrypted_key:
+                            try:
+                                decrypted_key = decrypt_user_api_key(sys_encrypted_key)
+                            except Exception as e:
+                                logger.error(f"System key decryption failed: {e}")
+                                decrypted_key = ""
+                else:
+                    # Fallback quota exhausted — block
+                    from rest_framework.exceptions import ValidationError
+                    raise ValidationError({
+                        'detail': 'Hết lượt fallback sao lưu AI trong ngày hôm nay. Vui lòng cấu hình lại API Key cá nhân tại AI Command Center.',
+                        'fallback_quota_remaining': 0,
+                        'personal_key_error': personal_key_error,
+                    })
+            else:
+                fallback_remaining = user_cred.fallback_quota_remaining
+
+        except UserAICredential.DoesNotExist:
+            # Legacy path: read from UserProfile.preferences
+            encrypted_key = ""
+            if profile.preferences and isinstance(profile.preferences, dict):
+                encrypted_key = profile.preferences.get('api_key') or ""
+
+            try:
+                decrypted_key = decrypt_user_api_key(encrypted_key) if encrypted_key else ""
+                if not decrypted_key and ai_settings.metadata:
+                    sys_encrypted_key = ai_settings.metadata.get('encrypted_api_key') or ""
+                    if sys_encrypted_key:
+                        decrypted_key = decrypt_user_api_key(sys_encrypted_key)
+            except Exception as e:
+                logger.error(f"BYOK key decryption failed (legacy): {e}")
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({'preferences': [f"Giải mã khóa API thất bại: {str(e)}"]})
 
         effective_context = {
             'ai_model': ai_settings.ai_model,
@@ -286,6 +343,13 @@ class AdvisoryRefreshView(APIView):
             'prompt_template': ai_settings.prompt_template,
             'language': profile.language,
             'api_key': decrypted_key,
+            'prompt_config': prompt_config,
+            'metadata': ai_settings.metadata,
+            'ai_provider': provider,
+            'custom_endpoint': custom_endpoint,
+            'personal_key_failed': personal_key_failed,
+            'using_system_fallback': using_system_fallback,
+            'personal_key_error': personal_key_error,
         }
 
         quota_start, quota_end = _manual_trigger_period(tenant, session_date_obj)
@@ -408,6 +472,12 @@ class AdvisoryRefreshView(APIView):
             'tenant_plan': tenant.plan,
             'tenant_status': tenant.status,
         }
+        # Fallback flags
+        if personal_key_failed:
+            response_data['personal_key_failed'] = True
+            response_data['using_system_fallback'] = using_system_fallback
+            response_data['personal_key_error'] = personal_key_error
+            response_data['fallback_quota_remaining'] = fallback_remaining
         return Response(response_data, status=status.HTTP_201_CREATED)
 
 

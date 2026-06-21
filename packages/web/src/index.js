@@ -20,6 +20,7 @@ export { ShellAiAdvisoryPage } from "./pages/signals/ShellAiAdvisoryPage.js";
 export { ShellWhaleAlertsPage } from "./pages/signals/ShellWhaleAlertsPage.js";
 export { ShellStockDetailPage } from "./pages/market/ShellStockDetailPage.js";
 export { ShellAiCommandCenterPage } from "./pages/system/ShellAiCommandCenterPage.js";
+export { AICommandCenterPage } from "./pages/AICommandCenterPage.js";
 export { ShellDashboardPage } from "./pages/workspace/ShellDashboardPage.js";
 export { ShellPortfoliosPage } from "./pages/workspace/ShellPortfoliosPage.js";
 export { ShellTransactionsPage } from "./pages/workspace/ShellTransactionsPage.js";

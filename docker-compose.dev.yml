@@ -464,6 +464,10 @@ services:
     cpus: ${FRONTEND_CPUS:-0.5}
 
 
+volumes:
+  core_pgdata:
+    name: vninvest-dev_core_pgdata
+
 networks:
   vninvest_network:
     name: vninvest-dev_vninvest_network

@@ -420,11 +420,15 @@ ext`/`previous` links.
     /**
      * Request an advisory refresh/generation for a symbol.
      * @param {string} symbol
+     * @param {object} [promptConfig] - Optional client prompt config configuration.
      * @returns {Promise<object>}
      */
-    refreshAdvisory(symbol) {
+    refreshAdvisory(symbol, promptConfig) {
       if (!symbol) throw new Error("symbol is required for refreshAdvisory");
-      return corePost(`/advisory/refresh/${encodeURIComponent(symbol.toUpperCase())}/`);
+      return corePost(
+        `/advisory/refresh/${encodeURIComponent(symbol.toUpperCase())}/`,
+        promptConfig ? { prompt_config: promptConfig } : {}
+      );
     },
 
     /**
