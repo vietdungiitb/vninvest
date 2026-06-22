@@ -1,10 +1,3 @@
-/**
- * DashboardPage — DM-03 (SaaS Native)
- *
- * Trang tổng quan SaaS native sử dụng trực tiếp các component dashboard nội bộ.
- * Không còn phụ thuộc vào render-prop slots từ legacy PackageDashboardHost.
- * Chuyển đổi sang TypeScript/TSX với type safety đầy đủ.
- */
 import React, { createElement, useEffect, useRef, useState, useCallback } from "react";
 
 import { useCoreDashboardData } from "../features/dashboard/useCoreDashboardData.js";
@@ -13,13 +6,13 @@ import { useRealtimeFeedFromManager } from "../context/RealtimeContext.js";
 import { SmartStatsHeader } from "../components/dashboard/SmartStatsHeader.js";
 import { PortfolioHeatmap } from "../components/dashboard/PortfolioHeatmap.js";
 import { UnifiedAlertCenter } from "../components/dashboard/UnifiedAlertCenter.js";
-import { FactsFirstModularPositionDeck } from "../components/dashboard/FactsFirstModularPositionDeck.js";
+import { CoreDashboardPositionDeck } from "../components/dashboard/CoreDashboardPositionDeck.js";
 import { usePortfolio } from "../context/PortfolioContext.js";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
+import { useAlertCenterSnapshot } from "../hooks/useAlertCenterSnapshot.js";
 
 const e = createElement;
 
-// Type definitions
 interface Holding {
   symbol: string;
   quantity?: number;
@@ -74,9 +67,7 @@ interface DashboardPageProps {
   enabled?: boolean;
   quotesBySymbol?: Record<string, QuoteData>;
   alerts?: AlertItem[];
-  darkFlowAlerts?: AlertItem[];
   realtimeBreadth?: BreadthData;
-  alertProps?: Record<string, unknown>;
   onDataReady?: (data: {
     holdings: Holding[];
     trackedSymbols: TrackedSymbol[];
@@ -141,7 +132,6 @@ export function DashboardPage({
   quotesBySymbol = {},
   alerts = [],
   realtimeBreadth = { up: 0, down: 0, flat: 0 },
-  alertProps = {},
   onDataReady = undefined,
   t = (_key: string, defaultText: string) => defaultText,
   className = "",
@@ -181,6 +171,24 @@ export function DashboardPage({
     fetchDigest();
   }, [fetchDigest]);
 
+  // --- Historical Alert Snapshot ---
+  const {
+    alerts: snapshotAlerts,
+    loading: snapshotLoading,
+    error: snapshotError,
+    hasNextPage,
+    hasPrevPage,
+    goToNextPage,
+    goToPrevPage,
+    loadInitial,
+  } = useAlertCenterSnapshot({ page_size: 20 });
+
+  useEffect(() => {
+    if (resolvedPortfolioId && enabled) {
+      loadInitial();
+    }
+  }, [resolvedPortfolioId, enabled, loadInitial]);
+
   // --- Real-time Feed Integration ---
   const symbolString = collectUniqueSortedSymbols(holdings, trackedSymbols, watchlists, watchlistGroups);
   const symbols = React.useMemo(() => (symbolString ? symbolString.split("|") : []), [symbolString]);
@@ -210,9 +218,39 @@ export function DashboardPage({
   const hasRealtimeBreadth = realtimeBreadth && (realtimeBreadth.up > 0 || realtimeBreadth.down > 0 || realtimeBreadth.flat > 0);
   const resolvedBreadth = hasRealtimeBreadth ? realtimeBreadth : calculatedBreadth;
 
+  // Build merged heatmap data: holdings + trackedSymbols + watchlistGroups + watchlists
+  const EXCLUDED_MARKET_GROUPS_HM = new Set(['VN100', 'HOSE', 'HNX', 'UPCOM']);
+  const heatmapSymbols = React.useMemo(() => {
+    const s = new Set<string>();
+    const add = (sym?: string) => { if (sym) s.add(sym.toUpperCase().trim()); };
+    (holdings || []).forEach((h: Holding) => add(h.symbol));
+    (trackedSymbols || []).forEach((t: TrackedSymbol) => add(t.symbol));
+    (watchlistGroups || []).forEach((g: WatchlistGroup) => {
+      const name = String(g?.name || '').toUpperCase().trim();
+      if (name && !EXCLUDED_MARKET_GROUPS_HM.has(name)) {
+        (g.items || []).forEach((i: WatchlistItem) => add(i.symbol));
+      }
+    });
+    (watchlists || []).forEach((w: Watchlist) => {
+      (w.items || []).forEach((i: WatchlistItem) => add(i.symbol));
+    });
+    return Array.from(s);
+  }, [holdings, trackedSymbols, watchlistGroups, watchlists]);
+
+  const heatmapData = React.useMemo(() => {
+    const hMap = new Map((holdings || []).map((h: Holding) => [(h.symbol || '').toUpperCase().trim(), h]));
+    return heatmapSymbols.map((sym) => {
+      const held = hMap.get(sym);
+      if (held) return held;
+      const quote = mergedQuotes[sym] || {};
+      return { symbol: sym, quantity: 1, current_price: Number(quote.current_price || 0) };
+    });
+  }, [heatmapSymbols, holdings, mergedQuotes]);
+
+  // Merge realtime alerts + prop alerts + historical snapshot alerts
   const mergedAlerts = React.useMemo(() => {
     const feedAlerts = realtimeFeed?.alerts || [];
-    const allAlerts = [...feedAlerts, ...(alerts || [])];
+    const allAlerts: AlertItem[] = [...feedAlerts, ...(alerts || []), ...snapshotAlerts];
     const unique: AlertItem[] = [];
     const seen = new Set<string>();
     allAlerts.forEach((a) => {
@@ -223,13 +261,31 @@ export function DashboardPage({
       }
     });
     return unique;
-  }, [alerts, realtimeFeed?.alerts]);
+  }, [alerts, realtimeFeed?.alerts, snapshotAlerts]);
+
+  // Alert pagination state for UnifiedAlertCenter
+  const [severityFilter, setSeverityFilter] = useState<string>("all");
+
+  // Filter alerts by severity/source for the alert center component
+  const filteredUnifiedAlerts = React.useMemo(() => {
+    let result = mergedAlerts;
+    if (severityFilter !== "all") {
+      result = result.filter((a) => a?.severity === severityFilter);
+    }
+    return result;
+  }, [mergedAlerts, severityFilter]);
+
+  const alertSummary = React.useMemo(() => {
+    const critical = mergedAlerts.filter((a) => a?.severity === "critical" || a?.severity === "high").length;
+    const warning = mergedAlerts.filter((a) => a?.severity === "medium" || a?.severity === "warning").length;
+    const info = mergedAlerts.filter((a) => a?.severity === "low" || a?.severity === "info").length;
+    return { critical, warning, info, total: mergedAlerts.length };
+  }, [mergedAlerts]);
 
   // ----------------------------------
 
   const showSkeleton = loading && !hasHydrated;
 
-  // Notify parent when core data is ready using stable readyToken
   const prevReadyTokenRef = useRef("");
   useEffect(() => {
     const token = collectUniqueSortedSymbols(holdings, trackedSymbols, watchlists, watchlistGroups);
@@ -278,13 +334,20 @@ export function DashboardPage({
           {showSkeleton
             ? <LoadingSkeleton rows={3} />
             : <UnifiedAlertCenter {...{
-                alerts: mergedAlerts as any,
-                alertSummary: (alertProps as any)?.alertSummary ?? null,
-                loading,
+                alerts: filteredUnifiedAlerts as any,
+                alertSummary: alertSummary ?? null,
+                loading: loading || snapshotLoading,
+                error: snapshotError,
                 selectedSession,
                 onSelectSession: setSelectedSession,
                 selectedSymbol,
                 onSelectSymbol: setSelectedSymbol,
+                severityFilter,
+                onSeverityFilterChange: setSeverityFilter,
+                backendUnifiedHasMore: hasNextPage,
+                hasPreviousUnifiedPage: hasPrevPage,
+                goToNextUnifiedPage: goToNextPage,
+                goToPreviousUnifiedPage: goToPrevPage,
               } as any} />
           }
         </div>
@@ -293,7 +356,7 @@ export function DashboardPage({
           {showSkeleton
             ? <LoadingSkeleton rows={3} />
             : <PortfolioHeatmap
-                holdings={holdings}
+                holdings={heatmapData}
                 quotesBySymbol={mergedQuotes}
                 technicals={technicals}
                 analytics={analytics}
@@ -327,7 +390,7 @@ export function DashboardPage({
       <div className="dashboard-full-width-deck core-dashboard-slot core-dashboard-slot--deck">
         {showSkeleton
           ? <LoadingSkeleton rows={4} />
-          : <FactsFirstModularPositionDeck
+          : <CoreDashboardPositionDeck
               holdings={holdings}
               trackedSymbols={trackedSymbols}
               watchlistGroups={watchlistGroups}

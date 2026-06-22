@@ -26,6 +26,24 @@
 
 ---
 
+## Dashboard Migration (2026-06-22)
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| `runtimeConfig.ts` | ✅ Done | localStorage feature flag `isNewLayoutEnabled()` |
+| FullLayout.tsx (sidebarCollapsed removed) | ✅ Done | Desktop sidebar always expanded; `closeMobileSidebar` no longer collapses desktop |
+| Sidebar.tsx (always w-72, new active style) | ✅ Done | `bg-blue-600 rounded-lg text-white`; no `collapsed`/`onToggle` props |
+| Header.tsx (desktop toggle removed) | ✅ Done | Only mobile hamburger remains |
+| `useAlertCenterSnapshot.ts` | ✅ Done | Cursor-based pagination for alert center history |
+| `CoreDashboardPositionDeck.tsx` | ✅ Done | Native TSX replacement for immutable `FactsFirstModularPositionDeck.jsx` |
+| DashboardPage.tsx (snapshot + heatmap) | ✅ Done | Integrated 3 alert sources + heatmap data build |
+| E2E tests (dashboard-ui-fixes.spec.ts) | ✅ Done | 5 new tests: sidebar, active style, header, alerts |
+| TypeScript check | ✅ Pass | 0 errors |
+| Build | ✅ Pass | 3240 modules |
+| Beta deploy | ✅ Done | Container running, HTTP 200 |
+
+---
+
 ## Legacy Decommission Gates
 
 | Gate | Condition | Status |

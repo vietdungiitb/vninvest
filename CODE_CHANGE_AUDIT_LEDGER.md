@@ -1,5 +1,49 @@
 # Code Change Audit Ledger
 
+# 2026-06-22 | Dashboard Layout Migration — Sidebar Refactor + Alert Center Snapshot + Whale Deck ✅
+
+## Problem Solved
+- Sidebar có `collapsed` state cho desktop gây lãng phí không gian và bug `closeMobileSidebar` vô tình collapse desktop sidebar khi click nav link.
+- Header có redundant desktop toggle button khi sidebar luôn expanded.
+- DashboardPage thiếu tích hợp alert center snapshot (lịch sử alerts) và heatmap data từ holdings.
+- Whale deck (`FactsFirstModularPositionDeck.jsx`) là immutable source, cần native TSX replacement để sửa đổi.
+
+## Changes
+1. **Runtime feature flag** (`runtimeConfig.ts`): localStorage-based `isNewLayoutEnabled()` để toggle layout mới không cần rebuild.
+2. **FullLayout.tsx**: Xoá `sidebarCollapsed` state, `closeMobileSidebar` không còn collapse desktop sidebar, `lg:pl-72` luôn active.
+3. **Sidebar.tsx**: Luôn `w-72`, active link `bg-blue-600 rounded-lg text-white`, xoá `collapsed`/`onToggle` props.
+4. **Header.tsx**: Xoá nút toggle desktop (`hidden lg:flex`), giữ mobile hamburger.
+5. **useAlertCenterSnapshot.ts**: Hook TypeScript mới với cursor-based pagination cho alert center lịch sử.
+6. **CoreDashboardPositionDeck.tsx**: Native TSX replacement cho immutable `FactsFirstModularPositionDeck.jsx`, 4 tabs (Tổng quan, Whale, AI, Danh mục & Kỹ thuật), tích hợp `WhaleAnalyticsTab` và `AIAdvisorDeckPanel`.
+7. **DashboardPage.tsx**: Tích hợp `useAlertCenterSnapshot`, merge 3 nguồn alert (realtime + props + snapshot), xây `heatmapSymbolData` từ holdings + mergedQuotes.
+8. **E2E tests**: Mở rộng `dashboard-ui-fixes.spec.ts` với 5 tests mới cho sidebar always-expanded, active style, alert snapshot, header toggle removal.
+
+## Verification Results
+| Check | Result |
+|---|---|
+| `npx tsc --noEmit` | ✅ 0 errors |
+| `npm run build` | ✅ 3240 modules, 0 errors |
+| Beta deploy (`docker.edusuccess.vn`) | ✅ Image loaded, container running |
+| Beta HTTPS | ✅ HTTP 200 |
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/web/src/lib/runtimeConfig.ts` | NEW — localStorage feature flag `isNewLayoutEnabled()` |
+| `packages/web/src/layouts/full/FullLayout.tsx` | Removed `sidebarCollapsed`, simplified to mobile-only toggle |
+| `packages/web/src/layouts/full/vertical/sidebar/Sidebar.tsx` | Always `w-72`, `bg-blue-600` active style, no `collapsed`/`onToggle` props |
+| `packages/web/src/layouts/full/vertical/header/Header.tsx` | Removed desktop toggle button |
+| `packages/web/src/hooks/useAlertCenterSnapshot.ts` | NEW — TypeScript hook for historical alert pagination |
+| `packages/web/src/components/dashboard/CoreDashboardPositionDeck.tsx` | NEW — native TSX deck, 4 tabs, WhaleAnalyticsTab integration |
+| `packages/web/src/pages/DashboardPage.tsx` | Integrated snapshot alerts, heatmap data, pagination props |
+| `packages/web/tests/visual/dashboard-ui-fixes.spec.ts` | Extended with 5 new dashboard UI tests |
+
+## Residual Risk
+- Immutable source files (`FactsFirstModularPositionDeck.jsx`, `WhaleAnalyticsTab.jsx`, `AIAdvisorDeckPanel.jsx`) remain untouched — parity maintained via native wrapper.
+- Heatmap `heatmapSymbolData` not yet passed to `PortfolioHeatmap` component (accepts live prices, not symbol-level data map) — non-blocking.
+
+---
+
 # 2026-06-22 | Beta Allowed Hosts Nginx Proxy Fix ✅
 
 ## Problem Solved

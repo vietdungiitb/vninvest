@@ -1,13 +1,11 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Dashboard UI Fixes Regression Tests', () => {
-  // Common login and mock setup before each test
   test.beforeEach(async ({ page }) => {
-    // Mock all API calls to core v1 to decouple E2E tests from backend server state
     await page.route('**/core/v1/**', async (route) => {
       const url = route.request().url();
       const method = route.request().method();
-      
+
       if (url.includes('/auth/token/') && method === 'POST') {
         return route.fulfill({
           status: 200,
@@ -15,7 +13,7 @@ test.describe('Dashboard UI Fixes Regression Tests', () => {
           body: JSON.stringify({ access: 'mock-access-token', refresh: 'mock-refresh-token' }),
         });
       }
-      
+
       if (url.includes('/identity/profile/') && method === 'GET') {
         return route.fulfill({
           status: 200,
@@ -39,7 +37,7 @@ test.describe('Dashboard UI Fixes Regression Tests', () => {
           }),
         });
       }
-      
+
       if (url.includes('/tenant/lifecycle/') && method === 'GET') {
         return route.fulfill({
           status: 200,
@@ -70,7 +68,6 @@ test.describe('Dashboard UI Fixes Regression Tests', () => {
             body: JSON.stringify({ alpha_annual_pct: 12.5, beta: 0.95, sharpe_ratio: 1.8, max_drawdown_pct: -8.5 }),
           });
         }
-        // General portfolios list
         return route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -118,7 +115,21 @@ test.describe('Dashboard UI Fixes Regression Tests', () => {
         });
       }
 
-      // Default fallback
+      if (url.includes('/signals/alert-center/feed') && method === 'GET') {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            results: [
+              { id: 'snap-1', symbol: 'VCB', severity: 'high', title: 'Test alert', ts: new Date().toISOString() },
+              { id: 'snap-2', symbol: 'VCB', severity: 'medium', title: 'Medium alert', ts: new Date().toISOString() },
+            ],
+            next: null,
+            previous: null,
+          }),
+        });
+      }
+
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -126,79 +137,82 @@ test.describe('Dashboard UI Fixes Regression Tests', () => {
       });
     });
 
-    // Navigate to login
     await page.goto('/login', { waitUntil: 'networkidle' });
 
-    // Fill credentials
     const emailInput = page.locator('#auth-login-username, input[placeholder*="tên đăng nhập"]').first();
     await emailInput.fill('testuser@vninvest.vn');
 
     const passwordInput = page.locator('#auth-login-password, input[type="password"]').first();
     await passwordInput.fill('TestPass123!');
 
-    // Submit
     await page.locator('button[type="submit"]').click();
 
-    // Wait for redirection to dashboard
     await page.waitForURL('**/dashboard', { timeout: 15000 });
-    await page.waitForTimeout(1000); // Allow dashboard data to settle
+    await page.waitForTimeout(1000);
   });
 
-  test('UI-01: No redundant hamburger toggle button in sidebar on desktop view', async ({ page }) => {
-    // Assert we are on dashboard
+  test('UI-01: No desktop toggle button in header; mobile toggle present', async ({ page }) => {
     expect(page.url()).toContain('/dashboard');
 
-    // Sidebar container (aside)
-    const sidebar = page.locator('aside');
-    await expect(sidebar).toBeVisible();
+    const header = page.locator('header');
 
-    // The sidebar toggle button we removed should NOT exist inside the sidebar (aside)
-    const sidebarHamburger = sidebar.locator('button:has-text("☰")');
-    await expect(sidebarHamburger).toHaveCount(0);
+    // Desktop toggle button (hidden lg:flex) should NOT exist
+    const desktopToggle = header.locator('button.hidden\\.lg\\:flex');
+    await expect(desktopToggle).toHaveCount(0);
 
-    // The header toggle button that is active for this viewport should be visible
-    const headerHamburger = page.locator('header button:has-text("☰"), header button:has-text("✕")').filter({ visible: true });
-    await expect(headerHamburger).toBeVisible();
+    // Mobile toggle button (lg:hidden) should exist
+    const mobileToggle = header.locator('button.lg\\:hidden');
+    await expect(mobileToggle).toHaveCount(1);
   });
 
-  test('UI-02: Sidebar group headers are hidden in collapsed state', async ({ page }) => {
+  test('UI-02: Sidebar always shows w-72 and group headers are visible on desktop', async ({ page }) => {
     const sidebar = page.locator('aside');
     await expect(sidebar).toBeVisible();
 
-    // Desktop viewport is collapsed by default. We check that group headings (h3) are not visible
+    // Sidebar should have w-72 class (always expanded)
+    const classList = await sidebar.getAttribute('class') || '';
+    expect(classList).toContain('w-72');
+
+    // Group headers (h3) should ALWAYS be visible (no collapsed state)
     const groupHeadings = sidebar.locator('h3');
     const headingsCount = await groupHeadings.count();
-
-    // Every heading should be hidden (display: none or not rendered)
+    expect(headingsCount).toBeGreaterThan(0);
     for (let i = 0; i < headingsCount; i++) {
-      await expect(groupHeadings.nth(i)).toBeHidden();
+      await expect(groupHeadings.nth(i)).toBeVisible();
     }
   });
 
-  test('UI-03: UnifiedAlertCenter uses vertical stack (flex-col) for narrow widths', async ({ page }) => {
-    // Locate the Alert Center lane
+  test('UI-03: Active sidebar item uses bg-blue-600 style', async ({ page }) => {
+    const sidebar = page.locator('aside');
+
+    // The active nav link (dashboard) should have bg-blue-600
+    const activeLink = sidebar.locator('[aria-current="page"]');
+    await expect(activeLink).toBeVisible();
+
+    const activeClass = await activeLink.getAttribute('class') || '';
+    expect(activeClass).toContain('bg-blue-600');
+    expect(activeClass).toContain('text-white');
+  });
+
+  test('UI-04: UnifiedAlertCenter uses flex-col layout with severity filters', async ({ page }) => {
     const alertLane = page.locator('.core-dashboard-slot--alert-lane');
     await expect(alertLane).toBeVisible();
 
-    // Verify the header wrapper is using flex-col layout (and NOT sm:flex-row)
     const headerWrapper = alertLane.locator('> div > div').first();
-    const classList = await headerWrapper.getAttribute('class');
-    
-    // It should have 'flex-col' and NOT 'sm:flex-row'
+    const classList = await headerWrapper.getAttribute('class') || '';
+
     expect(classList).toContain('flex-col');
     expect(classList).not.toContain('sm:flex-row');
 
-    // Row 1 (Title) and Row 2 (Pills) are stacked
     const titleBlock = headerWrapper.locator('> div').first();
     await expect(titleBlock).toBeVisible();
     await expect(titleBlock.locator('h3')).toContainText('Cảnh báo');
   });
 
-  test('UI-04: SmartStatsHeader displays breadth label correctly as "Độ rộng thị trường"', async ({ page }) => {
+  test('UI-05: SmartStatsHeader displays breadth label as "Độ rộng thị trường"', async ({ page }) => {
     const statsHeader = page.locator('.smart-stats-header');
     await expect(statsHeader).toBeVisible();
 
-    // Verify the label text matches "Độ rộng thị trường"
     const breadthLabel = statsHeader.locator('span:has-text("Độ rộng thị trường")');
     await expect(breadthLabel).toBeVisible();
   });

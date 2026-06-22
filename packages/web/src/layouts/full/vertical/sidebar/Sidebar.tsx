@@ -5,6 +5,7 @@ import { useI18n } from '@/context/LangContext.js';
 import { sidebarItems, isActivePath } from './sidebaritems';
 import { cn } from '@/lib/utils';
 import { LucideIcon } from '@/components/ui/lucide-icon';
+import { isNewLayoutEnabled } from '@/lib/runtimeConfig';
 
 interface Tenant {
   tenant_id: string;
@@ -17,16 +18,17 @@ interface Tenant {
 const e = createElement;
 
 interface SidebarProps {
-  collapsed: boolean;
-  onToggle: () => void;
+  collapsed?: boolean;
+  onToggle?: () => void;
   mobileOpen: boolean;
   onMobileClose: () => void;
 }
 
-export function Sidebar({ collapsed, mobileOpen, onMobileClose }: SidebarProps) {
+export function Sidebar({ collapsed = false, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
   const { userTenants = [] as Tenant[], activeTenantId, switchTenant } = usePortfolio();
   const { t } = useI18n();
   const location = useLocation();
+  const newLayout = isNewLayoutEnabled();
 
   const handleTenantChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     switchTenant(e.target.value);
@@ -41,8 +43,16 @@ export function Sidebar({ collapsed, mobileOpen, onMobileClose }: SidebarProps) 
     {
       className: cn(
         'fixed top-0 bottom-0 left-0 z-50 flex flex-col h-screen bg-slate-900 border-r border-slate-800 transition-transform duration-300 ease-in-out shadow-2xl',
-        collapsed && !mobileOpen ? 'w-16 -translate-x-0' : 'w-72 translate-x-0',
-        mobileOpen && 'translate-x-0 lg:hidden'
+        newLayout
+          ? cn(
+              'w-72',
+              !mobileOpen && '-translate-x-full lg:translate-x-0',
+              mobileOpen && 'translate-x-0'
+            )
+          : cn(
+              collapsed && !mobileOpen ? 'w-16 -translate-x-0' : 'w-72 translate-x-0',
+              mobileOpen && 'translate-x-0 lg:hidden'
+            )
       ),
       role: 'navigation',
       'aria-label': t('layout.nav.group.dashboard') || 'Main navigation'
@@ -59,14 +69,22 @@ export function Sidebar({ collapsed, mobileOpen, onMobileClose }: SidebarProps) 
           {
             className: cn(
               'text-xl font-bold text-cyan-400 tracking-tight transition-opacity duration-200',
-              collapsed && !mobileOpen && 'opacity-0'
+              !newLayout && collapsed && !mobileOpen && 'opacity-0'
             )
           },
           'VNInvest'
         ),
-        null
+        (!newLayout && collapsed && !mobileOpen) && e(
+          'button',
+          {
+            className: 'p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 focus:outline-none',
+            onClick: onToggle,
+            'aria-label': t('layout.expandMenu') || 'Open menu'
+          },
+          e('span', { className: 'h-5 w-5' }, '☰')
+        )
       ),
-      userTenants.length > 0 && !collapsed && e(
+      userTenants.length > 0 && (newLayout || !collapsed || mobileOpen) && e(
         'div',
         { className: 'mt-4' },
         e(
@@ -107,7 +125,7 @@ export function Sidebar({ collapsed, mobileOpen, onMobileClose }: SidebarProps) 
       sidebarItems.map((group) => e(
         'div',
         { key: group.group },
-        !collapsed && e(
+        (newLayout || !collapsed || mobileOpen) && e(
           'h3',
           { className: 'px-3 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider' },
           t(group.group) || group.group
@@ -123,28 +141,30 @@ export function Sidebar({ collapsed, mobileOpen, onMobileClose }: SidebarProps) 
                 key: item.path,
                 href: item.path,
                 className: cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
+                  'flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors',
                   isActive
-                    ? 'bg-slate-800/60 text-cyan-400 border-l-2 border-cyan-400 font-semibold'
-                    : 'text-slate-400 hover:bg-slate-800/30 hover:text-slate-200',
-                  collapsed && 'justify-center px-2'
+                    ? (newLayout
+                        ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/20'
+                        : 'bg-slate-800/60 text-cyan-400 border-l-2 border-cyan-400 font-semibold')
+                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200',
+                  (!newLayout && collapsed && !mobileOpen) && 'justify-center px-2'
                 ),
                 role: 'menuitem',
                 'aria-current': isActive ? 'page' : undefined,
                 onClick: () => {
                   onMobileClose();
                 },
-                title: collapsed ? t(item.labelKey) || item.labelKey : undefined
+                title: (!newLayout && collapsed && !mobileOpen) ? t(item.labelKey) || item.labelKey : undefined
               },
               e('span', { className: 'flex-shrink-0' }, getIcon(item.icon)),
-              !collapsed && e('span', { className: 'truncate' }, t(item.labelKey) || item.labelKey)
+              (newLayout || !collapsed || mobileOpen) && e('span', { className: 'truncate' }, t(item.labelKey) || item.labelKey)
             );
           })
         )
       ))
     ),
-    // Profile Block (bottom) - only show when not collapsed
-    !collapsed && e(
+    // Profile Block (bottom)
+    (newLayout || !collapsed || mobileOpen) && e(
       'div',
       { className: 'p-4 border-t border-slate-800 bg-slate-950/50' },
       e('div', { className: 'font-medium text-slate-100 truncate' }, 'User'),
@@ -152,9 +172,7 @@ export function Sidebar({ collapsed, mobileOpen, onMobileClose }: SidebarProps) 
       e(
         'button',
         {
-          onClick: () => {
-            // Logout handled by header profile dropdown
-          },
+          onClick: () => {},
           className: 'w-full mt-3 py-2 rounded-lg font-medium transition-colors bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20',
           type: 'button'
         },

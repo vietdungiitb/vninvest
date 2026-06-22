@@ -8,6 +8,7 @@ import { usePortfolio } from '@/context/PortfolioContext.js';
 import { useI18n } from '@/context/LangContext.js';
 import { cn } from '@/lib/utils';
 import { Search, Bell, LogOut, User, Settings } from 'lucide-react';
+import { isNewLayoutEnabled } from '@/lib/runtimeConfig';
 
 interface UserIdentity {
   id: string | null;
@@ -22,15 +23,16 @@ const e = createElement;
 
 interface HeaderProps {
   onMenuClick: () => void;
-  sidebarCollapsed: boolean;
-  mobileSidebarOpen: boolean;
+  sidebarCollapsed?: boolean;
+  mobileSidebarOpen?: boolean;
 }
 
-export function Header({ onMenuClick, sidebarCollapsed, mobileSidebarOpen }: HeaderProps) {
+export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpen }: HeaderProps) {
   const { userIdentity = {} as UserIdentity, logout } = usePortfolio();
   const { t, locale, setLanguage } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
+  const newLayout = isNewLayoutEnabled();
 
   const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
 
@@ -61,11 +63,11 @@ export function Header({ onMenuClick, sidebarCollapsed, mobileSidebarOpen }: Hea
     {
       className: cn(
         'sticky top-0 z-30 h-18 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-6',
-        sidebarCollapsed && 'lg:pl-16'
+        (!newLayout && sidebarCollapsed) && 'lg:pl-16'
       ),
       role: 'banner'
     },
-    // Left: Hamburger + Breadcrumbs
+    // Left: Hamburger (mobile only) + Breadcrumbs
     e(
       'div',
       { className: 'flex items-center gap-4' },
@@ -81,7 +83,7 @@ export function Header({ onMenuClick, sidebarCollapsed, mobileSidebarOpen }: Hea
         },
         e('span', { className: 'h-5 w-5' }, '☰')
       ),
-      e(
+      !newLayout && e(
         Button,
         {
           variant: 'ghost',
@@ -125,10 +127,7 @@ export function Header({ onMenuClick, sidebarCollapsed, mobileSidebarOpen }: Hea
         'div',
         { className: 'flex items-center gap-2 text-xs text-slate-400' },
         e('span', {
-          className: cn(
-            'w-2 h-2 rounded-full',
-            wsStatus === 'connected' ? 'bg-emerald-400 live-dot-pulse' : 'bg-rose-400'
-          ),
+          className: `w-2 h-2 rounded-full ${wsStatus === 'connected' ? 'bg-emerald-400 live-dot-pulse' : 'bg-rose-400'}`,
           'aria-hidden': 'true'
         }),
         e('span', { className: 'hidden sm:inline' }, wsStatus === 'connected' ? 'Online' : 'Offline')

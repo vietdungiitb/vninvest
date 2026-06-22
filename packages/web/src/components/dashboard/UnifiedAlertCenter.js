@@ -5,7 +5,7 @@
  * Updated with Bento Card styling and commercial-grade spacing.
  */
 import { createElement, useMemo, useState } from "react";
-import { Bell, Filter, X } from "lucide-react";
+import { Bell, Filter, X, ChevronLeft, ChevronRight } from "lucide-react";
 
 const e = createElement;
 
@@ -26,6 +26,8 @@ const I18N = {
     "alert.severity.all": "Tất cả",
     "alert.markRead": "Đánh dấu đã đọc",
     "alert.clearFilters": "Xóa bộ lọc",
+    "alert.prevPage": "Trang trước",
+    "alert.nextPage": "Trang sau",
   },
   en: {
     "alert.title": "Alerts",
@@ -43,6 +45,8 @@ const I18N = {
     "alert.severity.all": "All",
     "alert.markRead": "Mark as read",
     "alert.clearFilters": "Clear filters",
+    "alert.prevPage": "Previous page",
+    "alert.nextPage": "Next page",
   },
 };
 
@@ -254,6 +258,49 @@ export function UnifiedAlertCenter({
                 e("span", { className: `text-xs inline-block px-2 py-0.5 rounded ${severityColor(alert.severity)}` }, t(`alert.severity.${alert.severity}`))
             )
           )
+    ),
+    // Pagination controls
+    e(
+      "div",
+      { className: "flex items-center justify-between pt-3 mt-2 border-t border-slate-800/50" },
+      e(
+        "div",
+        { className: "flex items-center gap-1" },
+        e(
+          "button",
+          {
+            onClick: () => goToPreviousUnifiedPage?.(),
+            disabled: !hasPreviousUnifiedPage,
+            className: `flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              hasPreviousUnifiedPage
+                ? "text-slate-300 hover:text-cyan-400 hover:bg-slate-800/50 border border-slate-700/50"
+                : "text-slate-600 cursor-not-allowed border border-slate-800/30"
+            }`,
+            "aria-label": t("alert.prevPage"),
+          },
+          e(ChevronLeft, { className: "h-3.5 w-3.5" }),
+          t("alert.prevPage")
+        )
+      ),
+      e(
+        "div",
+        { className: "flex items-center gap-1" },
+        e(
+          "button",
+          {
+            onClick: () => goToNextUnifiedPage?.(),
+            disabled: !backendUnifiedHasMore,
+            className: `flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              backendUnifiedHasMore
+                ? "text-slate-300 hover:text-cyan-400 hover:bg-slate-800/50 border border-slate-700/50"
+                : "text-slate-600 cursor-not-allowed border border-slate-800/30"
+            }`,
+            "aria-label": t("alert.nextPage"),
+          },
+          t("alert.nextPage"),
+          e(ChevronRight, { className: "h-3.5 w-3.5" })
+        )
+      )
     )
   );
 }
