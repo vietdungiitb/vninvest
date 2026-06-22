@@ -71,3 +71,22 @@
   - `curl -v https://beta.edusuccess.vn/api/health` -> Trả về `HTTP 200 OK` và response JSON hợp lệ.
   - Playwright E2E tests (`$env:PLAYWRIGHT_BASE_URL="https://beta.edusuccess.vn"; npx playwright test`) -> 38 passed, 2 skipped, 0 failed.
 - **Residual risk**: None.
+
+---
+
+## Entry 5: E2E Regression Test Hardening — Infinite Loop Fix & Login Selectors Validation
+
+- **PR / branch**: `dev`
+- **Date**: 2026-06-22
+- **Files touched**:
+  - `packages/web/src/hooks/useAlertCenterSnapshot.ts` (fixed reference dependencies)
+  - `packages/web/src/pages/DashboardPage.tsx` (cast holdings prop type)
+  - `packages/web/tests/visual/dashboard-ui-fixes.spec.ts` (cleared browser storage in beforeEach, added console logging)
+  - `packages/web/tests/visual/login.spec.ts` (cleared browser storage in beforeEach, fixed input selectors)
+  - `docs/CODE_CHANGE_AUDIT_LEDGER.md` (this entry)
+- **Summary**: Khắc phục lỗi timeout khi chạy Playwright E2E tests cục bộ. Fix lỗi vòng lặp request vô tận đến endpoint `/core/v1/signals/alert-center/feed` do hook `useAlertCenterSnapshot` nhận reference dependencies là object literal `{ page_size: 20 }` được khởi tạo lại trên mỗi render của DashboardPage. Đồng thời sửa đổi selector input email trong `login.spec.ts` để hỗ trợ thẻ input không có thuộc tính `type="text"` hoặc `name="username"`, và bổ sung clear localStorage/sessionStorage trước mỗi test để cô lập hoàn toàn trạng thái và tránh tự động chuyển hướng.
+- **Validation**:
+  - `npx tsc --noEmit` -> ✅ Pass (0 errors).
+  - Playwright tests `dashboard-ui-fixes.spec.ts` -> ✅ 5 passed.
+  - Playwright tests `login.spec.ts` -> ✅ 3 passed, 1 skipped.
+- **Residual risk**: None.

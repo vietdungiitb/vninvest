@@ -34,6 +34,9 @@ export function useAlertCenterSnapshot(initialParams: AlertFeedParams = {}) {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [cursorHistory, setCursorHistory] = useState<string[]>([]);
 
+  // Deconstruct primitive values from initialParams to avoid callback dependency invalidation
+  const { symbol, severity, alert_family, session_date, page_size } = initialParams;
+
   const fetchFeed = useCallback(async (params: AlertFeedParams) => {
     setLoading(true);
     setError(null);
@@ -54,15 +57,15 @@ export function useAlertCenterSnapshot(initialParams: AlertFeedParams = {}) {
 
   const loadInitial = useCallback(() => {
     setCursorHistory([]);
-    fetchFeed(initialParams);
-  }, [fetchFeed, initialParams]);
+    fetchFeed({ symbol, severity, alert_family, session_date, page_size });
+  }, [fetchFeed, symbol, severity, alert_family, session_date, page_size]);
 
   const goToNextPage = useCallback(() => {
     if (nextCursor) {
       setCursorHistory(prev => [...prev, nextCursor]);
-      fetchFeed({ ...initialParams, cursor: nextCursor, page_size: initialParams.page_size || 20 });
+      fetchFeed({ symbol, severity, alert_family, session_date, page_size, cursor: nextCursor });
     }
-  }, [nextCursor, fetchFeed, initialParams]);
+  }, [nextCursor, fetchFeed, symbol, severity, alert_family, session_date, page_size]);
 
   const goToPrevPage = useCallback(() => {
     if (cursorHistory.length === 0) return;
@@ -70,8 +73,8 @@ export function useAlertCenterSnapshot(initialParams: AlertFeedParams = {}) {
     prevCursors.pop();
     setCursorHistory(prevCursors);
     const prevCursor = prevCursors.length > 0 ? prevCursors[prevCursors.length - 1] : undefined;
-    fetchFeed(prevCursor ? { ...initialParams, cursor: prevCursor } : initialParams);
-  }, [cursorHistory, fetchFeed, initialParams]);
+    fetchFeed({ symbol, severity, alert_family, session_date, page_size, cursor: prevCursor });
+  }, [cursorHistory, fetchFeed, symbol, severity, alert_family, session_date, page_size]);
 
   return {
     alerts,

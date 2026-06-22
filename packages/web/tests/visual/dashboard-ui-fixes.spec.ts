@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Dashboard UI Fixes Regression Tests', () => {
   test.beforeEach(async ({ page }) => {
+    page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+    page.on('pageerror', err => console.log('PAGE ERROR:', err.message));
+
     await page.route('**/core/v1/**', async (route) => {
       const url = route.request().url();
       const method = route.request().method();
@@ -137,6 +140,11 @@ test.describe('Dashboard UI Fixes Regression Tests', () => {
       });
     });
 
+    await page.goto('/login');
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
     await page.goto('/login', { waitUntil: 'networkidle' });
 
     const emailInput = page.locator('#auth-login-username, input[placeholder*="tên đăng nhập"]').first();

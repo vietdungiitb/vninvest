@@ -41,6 +41,10 @@
 | TypeScript check | ✅ Pass | 0 errors |
 | Build | ✅ Pass | 3240 modules |
 | Beta deploy | ✅ Done | Container running, HTTP 200 |
+| Audit #1: Code committed (was not pushed) | ✅ Done | FullLayout/Header/Sidebar/DashboardPage committed |
+| Audit #2: Heatmap missing tracked+watchlist | ✅ Done | Added `heatmapSymbols` + `heatmapData` memo merging holdings, trackedSymbols, watchlistGroups, watchlists |
+| Audit #3: Pagination UI missing | ✅ Done | Added prev/next buttons in UnifiedAlertCenter, fixed prop name mapping in DashboardPage |
+| Audit #4: E2E test timeout / loop | ✅ Done | Resolved infinite loop in `useAlertCenterSnapshot` and fixed selectors/isolation in Playwright tests |
 
 ---
 

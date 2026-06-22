@@ -219,15 +219,15 @@ export function DashboardPage({
   const resolvedBreadth = hasRealtimeBreadth ? realtimeBreadth : calculatedBreadth;
 
   // Build merged heatmap data: holdings + trackedSymbols + watchlistGroups + watchlists
-  const EXCLUDED_MARKET_GROUPS_HM = new Set(['VN100', 'HOSE', 'HNX', 'UPCOM']);
   const heatmapSymbols = React.useMemo(() => {
+    const EXCLUDED = new Set(['VN100', 'HOSE', 'HNX', 'UPCOM']);
     const s = new Set<string>();
     const add = (sym?: string) => { if (sym) s.add(sym.toUpperCase().trim()); };
     (holdings || []).forEach((h: Holding) => add(h.symbol));
     (trackedSymbols || []).forEach((t: TrackedSymbol) => add(t.symbol));
     (watchlistGroups || []).forEach((g: WatchlistGroup) => {
       const name = String(g?.name || '').toUpperCase().trim();
-      if (name && !EXCLUDED_MARKET_GROUPS_HM.has(name)) {
+      if (name && !EXCLUDED.has(name)) {
         (g.items || []).forEach((i: WatchlistItem) => add(i.symbol));
       }
     });
@@ -356,7 +356,7 @@ export function DashboardPage({
           {showSkeleton
             ? <LoadingSkeleton rows={3} />
             : <PortfolioHeatmap
-                holdings={heatmapData}
+                holdings={heatmapData as any}
                 quotesBySymbol={mergedQuotes}
                 technicals={technicals}
                 analytics={analytics}
