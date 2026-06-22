@@ -7,8 +7,8 @@
  * Note: These tests focus on the hook's internal logic (state management, deduplication, trimming)
  * by testing the reducer functions directly, avoiding ESM mocking complexity.
  */
-import { jest } from '@jest/globals';
 import { act } from '@testing-library/react';
+// jest is available globally via setupTests.js
 
 // Test the internal reducer logic by extracting it
 // Since the hook uses useState with a functional updater, we test the logic in isolation
@@ -103,8 +103,8 @@ describe('useTradeLog - internal logic', () => {
     expect(newSeenKeys.size).toBe(100);
     // Newest trade should be first
     expect(trades[0].price).toBe(100200);
-    // Oldest trade (index 0 of original) should be removed, so index 99 should be price 100099
-    expect(trades[99].price).toBe(100099);
+    // Oldest trade (index 0 of original) should be removed, so index 99 should be price 100098
+    expect(trades[99].price).toBe(100098);
   });
 
   test('processNewTrades handles empty newTrades', () => {

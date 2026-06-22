@@ -24,11 +24,16 @@ export function WorkstationLayout({ children, enabled = true, className = "" }) 
   const [isMobile, setIsMobile] = useState(false);
   const [activeTab, setActiveTab] = useState("chart"); // chart | orderbook | tradelog
 
-  // Check feature flag from window.__ENV__ or localStorage
+  // Check feature flag from window.__ENV__ or localStorage, fallback to enabled prop
   const isFeatureEnabled = useMemo(() => {
     if (typeof window !== "undefined") {
-      return window.__ENV__?.WORKSTATION_LAYOUT_V2 === true ||
-             localStorage.getItem("workstation_v2") === "true";
+      const localVal = localStorage.getItem("workstation_v2");
+      if (localVal !== null) {
+        return localVal === "true";
+      }
+      if (window.__ENV__?.WORKSTATION_LAYOUT_V2 !== undefined) {
+        return window.__ENV__.WORKSTATION_LAYOUT_V2 === true;
+      }
     }
     return enabled;
   }, [enabled]);

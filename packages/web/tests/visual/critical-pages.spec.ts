@@ -1,18 +1,5 @@
 import { test, expect } from '@playwright/test';
 
-/**
- * Visual Regression Tests for Critical Pages
- * 
- * Baseline images should be in ./visual-baselines/
- * Run baseline capture: node scripts/capture-baseline.mjs
- * 
- * Test pages:
- * - Dashboard (home)
- * - Stock Detail (VCB)
- * - Alert Center
- * - AI Command Center
- */
-
 const PAGES = [
   { path: '/', name: 'dashboard' },
   { path: '/stocks/VCB', name: 'stock-detail-vcb' },
@@ -33,11 +20,9 @@ for (const viewport of VIEWPORTS) {
     for (const pageConfig of PAGES) {
       test(`${pageConfig.name} - visual match`, async ({ page }) => {
         await page.goto(pageConfig.path, { waitUntil: 'networkidle' });
-        
-        // Wait for animations to settle
+
         await page.waitForTimeout(1000);
-        
-        // Disable animations for consistent screenshots
+
         await page.addStyleTag({
           content: `
             *, *::before, *::after {
@@ -49,7 +34,6 @@ for (const viewport of VIEWPORTS) {
           `
         });
 
-        // Take screenshot and compare with baseline
         await expect(page).toHaveScreenshot(`${pageConfig.name}-${viewport.name}.png`, {
           fullPage: true,
           animations: 'disabled',

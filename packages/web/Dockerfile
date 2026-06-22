@@ -5,12 +5,17 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --legacy-peer-deps
 
+
 # Copy the rest of the application source code
 COPY . .
 
 # Build the Vite static bundle
 ARG VITE_API_URL=/api
+ARG VITE_WS_BASE_URL=
+ARG VITE_DISABLE_REALTIME_WEBSOCKET=false
 ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_WS_BASE_URL=${VITE_WS_BASE_URL}
+ENV VITE_DISABLE_REALTIME_WEBSOCKET=${VITE_DISABLE_REALTIME_WEBSOCKET}
 RUN npm run build
 
 # Serve stage using Nginx

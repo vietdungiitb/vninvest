@@ -10,12 +10,11 @@ const mockAdapter = {
   getRealtimeDepthChart: jest.fn(),
 };
 
-// Mock the coreApiAdapter module
 jest.unstable_mockModule('../../../adapters/coreApiAdapter.js', () => ({
   createCoreApiAdapter: jest.fn(() => mockAdapter),
 }));
 
-import { useOrderBook } from './useOrderBook.js';
+const { useOrderBook } = await import('./useOrderBook.js');
 
 describe('useOrderBook', () => {
   beforeEach(() => {

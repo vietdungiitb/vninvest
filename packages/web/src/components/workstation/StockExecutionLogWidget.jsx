@@ -32,8 +32,14 @@ export function StockExecutionLogWidget({ trades, loading, error, onRefresh, pre
     if (v == null) return "—";
     const n = Number(v);
     if (!Number.isFinite(n)) return "—";
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}Tr`;
-    if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+    if (n >= 1_000_000) {
+      const val = (n / 1_000_000).toFixed(1);
+      return `${val.endsWith(".0") ? val.slice(0, -2) : val.replace(".", ",")}Tr`;
+    }
+    if (n >= 1_000) {
+      const val = (n / 1_000).toFixed(1);
+      return `${val.endsWith(".0") ? val.slice(0, -2) : val}K`;
+    }
     return n.toLocaleString("vi-VN");
   };
 

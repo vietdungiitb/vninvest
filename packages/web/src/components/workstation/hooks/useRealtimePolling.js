@@ -32,6 +32,7 @@ export function useRealtimePolling({
   const intervalRef = useRef(null);
   const abortControllerRef = useRef(null);
   const dedupeKeyRef = useRef(dedupeKey);
+  const prevDedupeKeyRef = useRef(dedupeKey);
   const retryCountRef = useRef(0);
   const mountedRef = useRef(true);
   const fetchFnRef = useRef(fetchFn);
@@ -59,6 +60,8 @@ export function useRealtimePolling({
   useEffect(() => {
     dedupeKeyRef.current = dedupeKey;
   }, [dedupeKey]);
+
+
 
   // Cleanup on unmount
   useEffect(() => {
@@ -149,12 +152,14 @@ export function useRealtimePolling({
     return () => stop();
   }, [enabled, start, stop]);
 
-  // Restart when dedupeKey changes (e.g., symbol switch)
+  // Restart when dedupeKey actually changes (e.g., symbol switch)
+  // Use prevDedupeKeyRef to avoid double-fetch on mount when isPolling changes
   useEffect(() => {
-    if (enabled && isPolling) {
+    if (enabled && isPolling && dedupeKey !== prevDedupeKeyRef.current) {
       stop();
       start();
     }
+    prevDedupeKeyRef.current = dedupeKey;
   }, [dedupeKey, enabled, isPolling, start, stop]);
 
   return { stop, start, isPolling };

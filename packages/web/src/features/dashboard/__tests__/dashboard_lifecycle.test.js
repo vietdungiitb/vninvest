@@ -53,7 +53,7 @@ jest.unstable_mockModule("react", () => {
 
 // Import modules
 const { useCoreDashboardData } = await import("../useCoreDashboardData.js");
-const { collectUniqueSortedSymbols } = await import("../../../pages/DashboardPage.js");
+const { collectUniqueSortedSymbols } = await import("../../../pages/DashboardPage.tsx");
 const { coreApiAdapter } = await import("../../../adapters/coreApiAdapter.js");
 
 describe("SaaS Native Dashboard Lifecycle Tests", () => {

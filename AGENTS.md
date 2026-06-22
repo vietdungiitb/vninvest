@@ -317,7 +317,7 @@ Trước mọi thay đổi liên quan `/dashboard`, `Dashboard Information Archi
 
 ## 4. Current anchor files
 
-### Frontend
+### Frontend (legacy — reference only)
 
 - `frontend/src/pages/WhaleAlertsDashboard.jsx`
 - `frontend/src/pages/StockDetail.jsx`
@@ -327,7 +327,15 @@ Trước mọi thay đổi liên quan `/dashboard`, `Dashboard Information Archi
 - `frontend/src/components/WhaleAnalyticsTab.jsx` (immutable source)
 - `frontend/src/components/modern/ModularPositionDeck.jsx` (immutable source)
 
-### Backend
+### Frontend (SaaS native — packages/web)
+
+- `packages/web/src/pages/pageRegistry.js` (route config)
+- `packages/web/src/pages/admin/AdminCore*Page.tsx` (8 Admin Core pages — all converted)
+- `packages/web/src/adapters/coreApiAdapter.js` (single API adapter)
+- `packages/web/tests/visual/login.spec.ts` (Playwright E2E)
+- `packages/web/tests/visual/watchlist.spec.ts` (Playwright E2E)
+
+### Backend (legacy — reference only)
 
 - `frontend/src/api/client.js` for current route contracts
 - `backend/portfolio/tests/test_whale_analytics_snapshot_api.py`
@@ -335,6 +343,11 @@ Trước mọi thay đổi liên quan `/dashboard`, `Dashboard Information Archi
 - `backend/portfolio/tests/test_whale_orders_ssot_parity.py`
 - `backend/portfolio/tests/test_order_flow.py`
 - `backend/portfolio/tests/test_order_flow_source_parity.py`
+
+### Infrastructure
+
+- `docker-compose.yml` (production stack — do not modify)
+- `docker-compose.beta.yml` (beta overlay — VIRTUAL_HOST: beta.edusuccess.vn)
 
 ## 5. Build and test commands
 
@@ -354,6 +367,51 @@ Push-Location ./backend
 ../.venv/Scripts/python.exe manage.py test portfolio.tests.test_whale_orders_ssot_parity --keepdb
 ../.venv/Scripts/python.exe manage.py test portfolio.tests.test_order_flow --keepdb
 Pop-Location
+```
+
+### packages/web frontend build (SaaS native)
+
+```powershell
+Push-Location ./packages/web
+npm run build
+Pop-Location
+```
+
+### TypeScript check (packages/web)
+
+```powershell
+Push-Location ./packages/web
+npx tsc --noEmit
+Pop-Location
+```
+
+### Beta deployment (on docker.edusuccess.vn)
+
+```bash
+# Build beta image (standalone — no production compose needed)
+docker compose -f docker-compose.beta.yml build frontend-beta
+
+# Deploy beta (production unaffected)
+docker compose -f docker-compose.beta.yml up -d
+
+# View beta logs
+docker logs -f vninvest-frontend-beta
+
+# Check beta health
+curl https://beta.edusuccess.vn
+
+# Stop beta (does NOT stop production)
+docker compose -f docker-compose.beta.yml down
+```
+
+### Playwright E2E tests (packages/web)
+
+```bash
+# Local (dev server)
+npx playwright test
+
+# Against beta
+PLAYWRIGHT_BASE_URL=https://beta.edusuccess.vn npx playwright test
 ```
 
 ### Runtime refresh for UI/runtime slices

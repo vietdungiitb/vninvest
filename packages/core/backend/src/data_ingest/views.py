@@ -421,13 +421,33 @@ class SystemBackfillTriggerView(APIView):
 
         if mode == 'missing_only':
             # §14.5 one bulk query → pandas anti-join to get only missing slots
-            existing_qs = (
-                IntradayTick.objects
-                .filter(symbol__in=symbols, timestamp__date__in=trade_dates)
-                .values_list('symbol', 'timestamp__date')
-                .distinct()
-            )
-            existing_df = pd.DataFrame(list(existing_qs), columns=['symbol', 'trade_date'])
+            # Use IntradayBar (1H timeframe) for presence check as it is ~1000x smaller
+            # and composite indexed on (symbol, timeframe, datetime)
+            from datetime import datetime, time
+            import pytz
+            from django.db.models.functions import TruncDate
+            from django.utils.timezone import make_aware
+            from market_data.models import IntradayBar
+
+            tz = pytz.timezone('Asia/Ho_Chi_Minh')
+            sorted_dates = sorted(trade_dates)
+            existing_pairs = []
+            if sorted_dates:
+                min_date = datetime.strptime(sorted_dates[0], '%Y-%m-%d').date()
+                max_date = datetime.strptime(sorted_dates[-1], '%Y-%m-%d').date()
+                start_dt = make_aware(datetime.combine(min_date, time.min), tz)
+                end_dt = make_aware(datetime.combine(max_date, time.max), tz)
+
+                existing_qs = (
+                    IntradayBar.objects
+                    .filter(symbol__in=symbols, timeframe='1H', datetime__gte=start_dt, datetime__lte=end_dt)
+                    .annotate(trade_date=TruncDate('datetime'))
+                    .values_list('symbol', 'trade_date')
+                    .distinct()
+                )
+                existing_pairs = [(sym, dt.isoformat() if hasattr(dt, 'isoformat') else str(dt)) for sym, dt in existing_qs if dt]
+
+            existing_df = pd.DataFrame(existing_pairs, columns=['symbol', 'trade_date'])
             if not existing_df.empty:
                 existing_df['trade_date'] = existing_df['trade_date'].astype(str)
                 merged = all_slots.merge(existing_df, on=['symbol', 'trade_date'], how='left', indicator=True)

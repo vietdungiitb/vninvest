@@ -4,12 +4,10 @@ on:
   push:
     branches: [main, dev, enterprise]
     paths:
-      - "frontend/**"
       - "packages/web/**"
   pull_request:
     branches: [main, enterprise]
     paths:
-      - "frontend/**"
       - "packages/web/**"
   workflow_dispatch:
     inputs:
@@ -35,31 +33,25 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: packages/web/package-lock.json
 
       - name: Install packages/web deps
         working-directory: packages/web
         run: npm ci
 
-      - name: Install frontend deps
-        working-directory: frontend
-        run: npm ci
-
-      - name: Build frontend
-        working-directory: frontend
+      - name: Build packages/web
+        working-directory: packages/web
         env:
           CI: "true"
-          REACT_APP_API_BASE_URL: /api
-          REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "0"
-          REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1
+          VITE_API_URL: /api
         run: npm run build
 
       - name: Upload build artifact
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/enterprise'
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-build-${{ github.sha }}
-          path: frontend/build
+          name: web-build-${{ github.sha }}
+          path: packages/web/dist
           retention-days: 7
 
   build-docker:
@@ -102,15 +94,13 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: frontend/Dockerfile.dev-package-shell
+          context: packages/web/
+          file: packages/web/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            REACT_APP_API_BASE_URL=/api
-            REACT_APP_ENABLE_PACKAGE_SHELL_HOST=0
-            REACT_APP_PACKAGE_SHELL_CORE_BASE_URL=/core/v1
+            VITE_API_URL=/api
             APP_RELEASE=${{ github.sha }}

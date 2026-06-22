@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { useRealtimePolling } from "./useRealtimePolling.js";
 import { createCoreApiAdapter } from "../../../adapters/coreApiAdapter.js";
 
@@ -18,10 +18,10 @@ import { createCoreApiAdapter } from "../../../adapters/coreApiAdapter.js";
  */
 export function useOrderBook({ symbol, env, getToken, intervalMs = 5000, enabled = true } = {}) {
   const [orderBook, setOrderBook] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled && !!symbol);
   const [error, setError] = useState(null);
 
-  const adapter = createCoreApiAdapter({ env, getToken });
+  const adapter = useMemo(() => createCoreApiAdapter({ env, getToken }), [env, getToken]);
 
   const fetchOrderBook = useCallback(async (signal) => {
     if (!symbol) throw new Error("Symbol is required");

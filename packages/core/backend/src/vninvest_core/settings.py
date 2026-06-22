@@ -165,6 +165,7 @@ STRICT_TURNSTILE_ENFORCEMENT = os.environ.get('STRICT_TURNSTILE_ENFORCEMENT', st
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 OPENAI_DEFAULT_MODEL = os.environ.get('OPENAI_DEFAULT_MODEL', 'gpt-4o-mini')
 ADVISORY_TOKEN_BUDGET = int(os.environ.get('ADVISORY_TOKEN_BUDGET', '2000'))
+AI_FALLBACK_DAILY_QUOTA = int(os.environ.get('AI_FALLBACK_DAILY_QUOTA', '5'))
 
 # Stripe Billing Integration
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
@@ -327,6 +328,13 @@ if 'test' in sys.argv or any('test' in arg for arg in sys.argv):
         celery.current_app.conf.task_always_eager = True
     except Exception:
         pass
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
+
 
 # SM-P2.2: Beat schedule for materializer tasks + realtime data collection.
 from celery.schedules import crontab  # noqa: E402

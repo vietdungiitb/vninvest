@@ -1,0 +1,415 @@
+import React, { createElement, useEffect, useRef, useState, useCallback } from "react";
+
+import { useCoreDashboardData } from "../features/dashboard/useCoreDashboardData.js";
+import { AIAdvisorAlertPanel } from "../features/dashboard/AIAdvisorAlertPanel.js";
+import { useRealtimeFeedFromManager } from "../context/RealtimeContext.js";
+import { SmartStatsHeader } from "../components/dashboard/SmartStatsHeader.js";
+import { PortfolioHeatmap } from "../components/dashboard/PortfolioHeatmap.js";
+import { UnifiedAlertCenter } from "../components/dashboard/UnifiedAlertCenter.js";
+import { CoreDashboardPositionDeck } from "../components/dashboard/CoreDashboardPositionDeck.js";
+import { usePortfolio } from "../context/PortfolioContext.js";
+import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
+import { useAlertCenterSnapshot } from "../hooks/useAlertCenterSnapshot.js";
+
+const e = createElement;
+
+interface Holding {
+  symbol: string;
+  quantity?: number;
+  current_price?: number;
+  [key: string]: unknown;
+}
+
+interface TrackedSymbol {
+  symbol: string;
+  [key: string]: unknown;
+}
+
+interface WatchlistItem {
+  symbol: string;
+  [key: string]: unknown;
+}
+
+interface Watchlist {
+  items?: WatchlistItem[];
+  [key: string]: unknown;
+}
+
+interface WatchlistGroup {
+  items?: WatchlistItem[];
+  [key: string]: unknown;
+}
+
+interface QuoteData {
+  change_value?: number;
+  change_pct?: number;
+  change?: number;
+  current_price?: number;
+  [key: string]: unknown;
+}
+
+interface AlertItem {
+  id?: string;
+  symbol?: string;
+  ts?: string;
+  timestamp?: string;
+  [key: string]: unknown;
+}
+
+interface BreadthData {
+  up: number;
+  down: number;
+  flat: number;
+}
+
+interface DashboardPageProps {
+  portfolioId?: string | number | null;
+  enabled?: boolean;
+  quotesBySymbol?: Record<string, QuoteData>;
+  alerts?: AlertItem[];
+  realtimeBreadth?: BreadthData;
+  onDataReady?: (data: {
+    holdings: Holding[];
+    trackedSymbols: TrackedSymbol[];
+    watchlistGroups: WatchlistGroup[];
+    watchlists: Watchlist[];
+  }) => void;
+  t?: (key: string, defaultText: string) => string;
+  className?: string;
+}
+
+export function collectUniqueSortedSymbols(
+  holdings: Holding[],
+  trackedSymbols: TrackedSymbol[],
+  watchlists: Watchlist[],
+  watchlistGroups: WatchlistGroup[]
+): string {
+  const rawList = [
+    ...(holdings || []).map((h) => h?.symbol),
+    ...(trackedSymbols || []).map((s) => s?.symbol),
+    ...(watchlists || []).flatMap((w) => (w?.items || []).map((i) => i?.symbol)),
+    ...(watchlistGroups || []).flatMap((g) => (g?.items || []).map((i) => i?.symbol)),
+  ];
+
+  const uniqueSorted = Array.from(
+    new Set(rawList.map((s) => String(s || "").trim().toUpperCase()).filter(Boolean))
+  ).sort();
+
+  return uniqueSorted.join("|");
+}
+
+interface LoadingSkeletonProps {
+  rows?: number;
+}
+
+function LoadingSkeleton({ rows = 3 }: LoadingSkeletonProps) {
+  return e(
+    "div",
+    { className: "core-dashboard-skeleton" },
+    ...Array.from({ length: rows }, (_, i) =>
+      e("div", { key: i, className: "core-dashboard-skeleton-row" })
+    )
+  );
+}
+
+interface ErrorBannerProps {
+  message?: string;
+  t?: (key: string, defaultText: string) => string;
+}
+
+function ErrorBanner({ message, t = (_key: string, defaultText: string) => defaultText }: ErrorBannerProps) {
+  return e(
+    "div",
+    { className: "core-dashboard-error" },
+    e("span", { className: "core-dashboard-error-icon" }, "⚠"),
+    e("span", null, message || t("dashboard.errorLoad", "Không thể tải dữ liệu tổng quan."))
+  );
+}
+
+export function DashboardPage({
+  portfolioId,
+  enabled = true,
+  quotesBySymbol = {},
+  alerts = [],
+  realtimeBreadth = { up: 0, down: 0, flat: 0 },
+  onDataReady = undefined,
+  t = (_key: string, defaultText: string) => defaultText,
+  className = "",
+}: DashboardPageProps) {
+  const portfolioContext = usePortfolio();
+  const resolvedPortfolioId = portfolioId !== undefined && portfolioId !== null ? portfolioId : portfolioContext.activePortfolioId;
+
+  const {
+    loading,
+    error,
+    holdings,
+    summary,
+    analytics,
+    technicals,
+    trackedSymbols,
+    watchlistGroups,
+    watchlists,
+    hasHydrated,
+    refresh,
+  } = useCoreDashboardData({ portfolioId: resolvedPortfolioId, enabled }) as any;
+
+  const [selectedSession, setSelectedSession] = useState<string | null>(null);
+  const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
+  const [digest, setDigest] = useState<unknown>(null);
+
+  const fetchDigest = useCallback(async () => {
+    if (!resolvedPortfolioId) return;
+    try {
+      const res = await (coreApiAdapter as any).getPortfolioNewsDigest();
+      setDigest(res);
+    } catch (e) {
+      console.warn("Failed to fetch news digest", e);
+    }
+  }, [resolvedPortfolioId]);
+
+  useEffect(() => {
+    fetchDigest();
+  }, [fetchDigest]);
+
+  // --- Historical Alert Snapshot ---
+  const {
+    alerts: snapshotAlerts,
+    loading: snapshotLoading,
+    error: snapshotError,
+    hasNextPage,
+    hasPrevPage,
+    goToNextPage,
+    goToPrevPage,
+    loadInitial,
+  } = useAlertCenterSnapshot({ page_size: 20 });
+
+  useEffect(() => {
+    if (resolvedPortfolioId && enabled) {
+      loadInitial();
+    }
+  }, [resolvedPortfolioId, enabled, loadInitial]);
+
+  // --- Real-time Feed Integration ---
+  const symbolString = collectUniqueSortedSymbols(holdings, trackedSymbols, watchlists, watchlistGroups);
+  const symbols = React.useMemo(() => (symbolString ? symbolString.split("|") : []), [symbolString]);
+  const realtimeFeed = useRealtimeFeedFromManager({ symbols, pollInterval: 10000 });
+
+  const mergedQuotes = React.useMemo(() => {
+    return { ...quotesBySymbol, ...(realtimeFeed?.quotesBySymbol || {}) };
+  }, [quotesBySymbol, realtimeFeed?.quotesBySymbol]);
+
+  const calculatedBreadth = React.useMemo(() => {
+    let up = 0;
+    let down = 0;
+    let flat = 0;
+    Object.values(mergedQuotes).forEach((q) => {
+      const change = Number(q?.change_value ?? q?.change_pct ?? q?.change ?? 0);
+      if (change > 0) {
+        up++;
+      } else if (change < 0) {
+        down++;
+      } else {
+        flat++;
+      }
+    });
+    return { up, down, flat };
+  }, [mergedQuotes]);
+
+  const hasRealtimeBreadth = realtimeBreadth && (realtimeBreadth.up > 0 || realtimeBreadth.down > 0 || realtimeBreadth.flat > 0);
+  const resolvedBreadth = hasRealtimeBreadth ? realtimeBreadth : calculatedBreadth;
+
+  // Build merged heatmap data: holdings + trackedSymbols + watchlistGroups + watchlists
+  const heatmapSymbols = React.useMemo(() => {
+    const EXCLUDED = new Set(['VN100', 'HOSE', 'HNX', 'UPCOM']);
+    const s = new Set<string>();
+    const add = (sym?: string) => { if (sym) s.add(sym.toUpperCase().trim()); };
+    (holdings || []).forEach((h: Holding) => add(h.symbol));
+    (trackedSymbols || []).forEach((t: TrackedSymbol) => add(t.symbol));
+    (watchlistGroups || []).forEach((g: WatchlistGroup) => {
+      const name = String(g?.name || '').toUpperCase().trim();
+      if (name && !EXCLUDED.has(name)) {
+        (g.items || []).forEach((i: WatchlistItem) => add(i.symbol));
+      }
+    });
+    (watchlists || []).forEach((w: Watchlist) => {
+      (w.items || []).forEach((i: WatchlistItem) => add(i.symbol));
+    });
+    return Array.from(s);
+  }, [holdings, trackedSymbols, watchlistGroups, watchlists]);
+
+  const heatmapData = React.useMemo(() => {
+    const hMap = new Map((holdings || []).map((h: Holding) => [(h.symbol || '').toUpperCase().trim(), h]));
+    return heatmapSymbols.map((sym) => {
+      const held = hMap.get(sym);
+      if (held) return held;
+      const quote = mergedQuotes[sym] || {};
+      return { symbol: sym, quantity: 1, current_price: Number(quote.current_price || 0) };
+    });
+  }, [heatmapSymbols, holdings, mergedQuotes]);
+
+  // Merge realtime alerts + prop alerts + historical snapshot alerts
+  const mergedAlerts = React.useMemo(() => {
+    const feedAlerts = realtimeFeed?.alerts || [];
+    const allAlerts: AlertItem[] = [...feedAlerts, ...(alerts || []), ...snapshotAlerts];
+    const unique: AlertItem[] = [];
+    const seen = new Set<string>();
+    allAlerts.forEach((a) => {
+      const key = a?.id || `${a?.symbol}-${a?.ts || a?.timestamp}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(a);
+      }
+    });
+    return unique;
+  }, [alerts, realtimeFeed?.alerts, snapshotAlerts]);
+
+  // Alert pagination state for UnifiedAlertCenter
+  const [severityFilter, setSeverityFilter] = useState<string>("all");
+
+  // Filter alerts by severity/source for the alert center component
+  const filteredUnifiedAlerts = React.useMemo(() => {
+    let result = mergedAlerts;
+    if (severityFilter !== "all") {
+      result = result.filter((a) => a?.severity === severityFilter);
+    }
+    return result;
+  }, [mergedAlerts, severityFilter]);
+
+  const alertSummary = React.useMemo(() => {
+    const critical = mergedAlerts.filter((a) => a?.severity === "critical" || a?.severity === "high").length;
+    const warning = mergedAlerts.filter((a) => a?.severity === "medium" || a?.severity === "warning").length;
+    const info = mergedAlerts.filter((a) => a?.severity === "low" || a?.severity === "info").length;
+    return { critical, warning, info, total: mergedAlerts.length };
+  }, [mergedAlerts]);
+
+  // ----------------------------------
+
+  const showSkeleton = loading && !hasHydrated;
+
+  const prevReadyTokenRef = useRef("");
+  useEffect(() => {
+    const token = collectUniqueSortedSymbols(holdings, trackedSymbols, watchlists, watchlistGroups);
+    if (!loading && !error && onDataReady && token !== prevReadyTokenRef.current) {
+      prevReadyTokenRef.current = token;
+      onDataReady({ holdings, trackedSymbols, watchlistGroups, watchlists });
+    }
+  }, [loading, error, holdings, trackedSymbols, watchlists, watchlistGroups, onDataReady]);
+
+  if (!enabled || !resolvedPortfolioId) {
+    return (
+      <div className={"core-dashboard-page core-dashboard-page--empty " + className}>
+        <p className="core-dashboard-empty-hint">{t("dashboard.empty", "Chọn danh mục để xem tổng quan.")}</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={"core-dashboard-page " + className}>
+        <ErrorBanner message={error} t={t} />
+      </div>
+    );
+  }
+
+  return (
+    <div className={"core-dashboard-page " + className}>
+
+      <div className="core-dashboard-slot core-dashboard-slot--stats">
+        {showSkeleton
+          ? <LoadingSkeleton rows={1} />
+          : <SmartStatsHeader
+              summary={summary}
+              analytics={analytics}
+              holdings={holdings}
+              loading={loading}
+              realtimeBreadth={resolvedBreadth}
+              onRefresh={refresh}
+            />
+        }
+      </div>
+
+      <div className="dashboard-triad-grid core-dashboard-slot core-dashboard-slot--triad">
+
+        <div className="dashboard-triad-lane dashboard-triad-lane--side core-dashboard-slot core-dashboard-slot--alert-lane">
+          {showSkeleton
+            ? <LoadingSkeleton rows={3} />
+            : <UnifiedAlertCenter {...{
+                alerts: filteredUnifiedAlerts as any,
+                alertSummary: alertSummary ?? null,
+                loading: loading || snapshotLoading,
+                error: snapshotError,
+                selectedSession,
+                onSelectSession: setSelectedSession,
+                selectedSymbol,
+                onSelectSymbol: setSelectedSymbol,
+                severityFilter,
+                onSeverityFilterChange: setSeverityFilter,
+                backendUnifiedHasMore: hasNextPage,
+                hasPreviousUnifiedPage: hasPrevPage,
+                goToNextUnifiedPage: goToNextPage,
+                goToPreviousUnifiedPage: goToPrevPage,
+              } as any} />
+          }
+        </div>
+
+        <div className="dashboard-triad-lane dashboard-triad-lane--center core-dashboard-slot core-dashboard-slot--heatmap">
+          {showSkeleton
+            ? <LoadingSkeleton rows={3} />
+            : <PortfolioHeatmap
+                holdings={heatmapData as any}
+                quotesBySymbol={mergedQuotes}
+                technicals={technicals}
+                analytics={analytics}
+                loading={loading}
+                selectedSession={selectedSession}
+                onSelectSession={setSelectedSession}
+                selectedSymbol={selectedSymbol}
+                onSelectSymbol={setSelectedSymbol}
+              />
+          }
+        </div>
+
+        <div className="dashboard-triad-lane dashboard-triad-lane--side core-dashboard-slot core-dashboard-slot--ai">
+          {showSkeleton
+            ? <LoadingSkeleton rows={3} />
+            : <AIAdvisorAlertPanel {...{
+                holdings,
+                technicals,
+                analytics,
+                alerts: mergedAlerts,
+                loading,
+                selectedSession,
+                onSelectSession: setSelectedSession,
+                selectedSymbol,
+                onSelectSymbol: setSelectedSymbol,
+              } as any} />
+          }
+        </div>
+      </div>
+
+      <div className="dashboard-full-width-deck core-dashboard-slot core-dashboard-slot--deck">
+        {showSkeleton
+          ? <LoadingSkeleton rows={4} />
+          : <CoreDashboardPositionDeck
+              holdings={holdings}
+              trackedSymbols={trackedSymbols}
+              watchlistGroups={watchlistGroups}
+              technicals={technicals}
+              analytics={analytics}
+              quotesBySymbol={mergedQuotes}
+              alerts={mergedAlerts as any}
+              loading={loading}
+              selectedSession={selectedSession as any}
+              onSelectSession={setSelectedSession as any}
+              selectedSymbol={selectedSymbol as any}
+              onSelectSymbol={setSelectedSymbol as any}
+              digest={digest as any}
+              onRequestDigest={fetchDigest as any}
+            />
+        }
+      </div>
+    </div>
+  );
+}
+
+export default DashboardPage;

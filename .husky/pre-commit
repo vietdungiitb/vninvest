@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+cd packages/web
+npx lint-staged

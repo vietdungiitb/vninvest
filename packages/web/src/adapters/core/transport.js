@@ -2,7 +2,47 @@
  * transport.js
  *
  * Core network transport layer for coreApiAdapter domain modules.
+ *
+ * AuthProvider mini-spec features:
+ * - Pre-emptive silent refresh when JWT expires within 60s
+ * - Automatic 401 retry with refresh (existing)
+ * - Multi-tab session sync via storage event
  */
+
+export function decodeJwtPayload(token) {
+  if (!token || typeof token !== "string") return null;
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const decoded = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
+export function getTokenExpiry(token) {
+  const payload = decodeJwtPayload(token);
+  return payload?.exp || null;
+}
+
+export function isTokenExpiringSoon(token, thresholdSeconds = 60) {
+  const exp = getTokenExpiry(token);
+  if (!exp) return false;
+  const now = Math.floor(Date.now() / 1000);
+  return exp - now <= thresholdSeconds;
+}
+
+export function listenTokenStorage(callback) {
+  if (typeof window === "undefined" || typeof window.addEventListener !== "function") return () => {};
+  function handleStorage(e) {
+    if (e.key === "access_token" || e.key === "refresh_token") {
+      callback(e);
+    }
+  }
+  window.addEventListener("storage", handleStorage);
+  return () => window.removeEventListener("storage", handleStorage);
+}
 
 export function resolveCoreApiBase(env = {}) {
   if (env && typeof env.CORE_API_BASE_URL === "string" && env.CORE_API_BASE_URL.trim()) {
@@ -63,6 +103,25 @@ export function setBrowserStorageToken(key, value) {
 export function clearBrowserStorageToken(key) {
   if (typeof window === "undefined") return;
   window.localStorage?.removeItem(key);
+}
+
+let storageUnsubscribe = null;
+
+export function initTokenStorageSync() {
+  if (storageUnsubscribe) return;
+  storageUnsubscribe = listenTokenStorage((e) => {
+    if (e.key === "access_token" && !e.newValue) {
+      // Another tab cleared tokens → trigger logout
+      window?.location?.reload();
+    }
+  });
+}
+
+export function destroyTokenStorageSync() {
+  if (storageUnsubscribe) {
+    storageUnsubscribe();
+    storageUnsubscribe = null;
+  }
 }
 
 export const authTokenStorage = Object.freeze({
@@ -222,6 +281,15 @@ export function createCoreTransport(env = {}, options = {}) {
   async function requestWithAuth(path, init = {}, attemptRefresh = true) {
     const base = resolveCoreApiBase(env);
     const requestId = generateRequestId();
+
+    // Pre-emptive silent refresh: if token expires within 60s, refresh proactively
+    if (attemptRefresh) {
+      const currentToken = getToken();
+      if (currentToken && isTokenExpiringSoon(currentToken, 60)) {
+        await requestTokenRefresh();
+      }
+    }
+
     const headers = {
       "Content-Type": "application/json",
       "X-Request-ID": requestId,
@@ -242,6 +310,7 @@ export function createCoreTransport(env = {}, options = {}) {
       credentials: "include",
     });
 
+    // 401 retry: try a token refresh and retry once
     if (attemptRefresh && shouldTryRefresh(path, response.status)) {
       const nextAccessToken = await requestTokenRefresh();
       if (nextAccessToken) {

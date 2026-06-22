@@ -83,14 +83,13 @@ class BackfillUserIntegrationTest(TestCase):
     """T-E2."""
 
     def setUp(self):
-        import os
-        os.environ.setdefault('DNSE_CREDENTIAL_FERNET_KEY', 'QFqvwJDGxrXhGm7K8PKXjLZXWBzz1Jlh5GRxeYz9gns=')
-        from identity_access.models import UserDNSECredential
+        from user_workspace.models import DNSECredential
         from django.contrib.auth import get_user_model
         User = get_user_model()
-        self.user = User.objects.create_user('user_d06', 'u@test.com', 'pass1234')
-        cred = UserDNSECredential(user=self.user)
-        cred.set_credentials('api_key_test', 'api_secret_test')
+        self.user = User.objects.create_user(username='user_d06', email='u@test.com', password='pass1234')
+        cred = DNSECredential(user=self.user)
+        cred.set_client_id('api_key_test')
+        cred.set_client_secret('api_secret_test')
         cred.save()
 
     @patch('market_data.vnbroker_adapter.fetch_intraday_tape_history')

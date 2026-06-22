@@ -43,7 +43,9 @@ describe('useRealtimePolling', () => {
     expect(fetchFn).toHaveBeenCalledTimes(2); // Initial + 1 interval
 
     // Stop polling
-    result.current.stop();
+    act(() => {
+      result.current.stop();
+    });
     expect(result.current.isPolling).toBe(false);
 
     // Advance timer again - should not poll
@@ -55,12 +57,19 @@ describe('useRealtimePolling', () => {
   });
 
   test('ignores stale response when dedupeKey changes during fetch', async () => {
-    let resolveFetch;
-    const fetchPromise = new Promise((resolve) => {
-      resolveFetch = resolve;
+    let resolveFirstFetch;
+    const firstPromise = new Promise((resolve) => {
+      resolveFirstFetch = resolve;
+    });
+
+    let resolveSecondFetch;
+    const secondPromise = new Promise((resolve) => {
+      resolveSecondFetch = resolve;
     });
     
-    const fetchFn = jest.fn().mockReturnValue(fetchPromise);
+    const fetchFn = jest.fn()
+      .mockReturnValueOnce(firstPromise)
+      .mockReturnValueOnce(secondPromise);
     const onData = jest.fn();
     const onError = jest.fn();
 
@@ -81,24 +90,30 @@ describe('useRealtimePolling', () => {
     expect(fetchFn).toHaveBeenCalledTimes(1);
 
     // Change dedupeKey (simulate symbol switch) WHILE fetch is in flight
-    rerender({ dedupeKey: 'GVR' });
+    act(() => {
+      rerender({ dedupeKey: 'GVR' });
+    });
+
+    // Fetch count should be 2 now because change of dedupeKey immediately starts a new poll
+    expect(fetchFn).toHaveBeenCalledTimes(2);
 
     // Resolve the OLD fetch (for ACB)
     await act(async () => {
-      resolveFetch({ data: 'stale-data-for-ACB' });
+      resolveFirstFetch({ data: 'stale-data-for-ACB' });
       await Promise.resolve(); // Let microtasks run
     });
 
-    // onData should NOT be called because dedupeKey changed
+    // onData should NOT be called because dedupeKey changed and old fetch is stale
     expect(onData).not.toHaveBeenCalled();
 
-    // Now trigger a new poll for GVR
+    // Resolve the NEW fetch (for GVR)
     await act(async () => {
-      jest.advanceTimersByTime(5000);
+      resolveSecondFetch({ data: 'fresh-data-for-GVR' });
+      await Promise.resolve();
     });
 
-    // New fetch for GVR should be in flight
-    expect(fetchFn).toHaveBeenCalledTimes(2);
+    // onData SHOULD be called with the fresh data
+    expect(onData).toHaveBeenCalledWith({ data: 'fresh-data-for-GVR' });
   });
 
   test('calls onData when dedupeKey matches after fetch completes', async () => {
@@ -192,7 +207,9 @@ describe('useRealtimePolling', () => {
     );
 
     // Stop polling - should abort in-flight fetch
-    result.current.stop();
+    act(() => {
+      result.current.stop();
+    });
 
     expect(abortSignal.aborted).toBe(true);
     expect(result.current.isPolling).toBe(false);

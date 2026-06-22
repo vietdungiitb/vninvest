@@ -9,14 +9,32 @@ import {
   createCoreTransport,
   authTokenStorage,
   CoreApiRequestError,
+  initTokenStorageSync,
+  destroyTokenStorageSync,
+  decodeJwtPayload,
+  isTokenExpiringSoon,
 } from "./core/transport.js";
 
 import { createAuthClient } from "./core/auth.js";
 import { createMarketClient } from "./core/market.js";
 import { createWorkspaceClient } from "./core/workspace.js";
 import { createCommercialClient } from "./core/commercial.js";
+import { createScreenerClient } from "./core/screener.js";
+import { createAdvisoryClient } from "./core/advisory.js";
+import { createCrawlClient } from "./core/crawl.js";
+import { createDnseClient } from "./core/dnse.js";
+import { createOperatorClient } from "./core/operator.js";
+import { createMiscClient } from "./core/misc.js";
+import { createSocClient } from "./core/soc.js";
 
-export { authTokenStorage, CoreApiRequestError };
+export {
+  authTokenStorage,
+  CoreApiRequestError,
+  initTokenStorageSync,
+  destroyTokenStorageSync,
+  decodeJwtPayload,
+  isTokenExpiringSoon,
+};
 
 export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setTokens, clearTokens } = {}) {
   const transport = createCoreTransport(env, {
@@ -25,6 +43,9 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     setTokens,
     clearTokens,
   });
+
+  // Start multi-tab token sync listener
+  initTokenStorageSync();
 
   const persistTokens = typeof setTokens === "function" ? setTokens : () => {};
 
@@ -55,12 +76,61 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     corePost: transport.corePost,
   });
 
+  const screenerClient = createScreenerClient({
+    coreGet: transport.coreGet,
+    corePost: transport.corePost,
+    corePut: transport.corePut,
+    coreDelete: transport.coreDelete,
+  });
+
+  const advisoryClient = createAdvisoryClient({
+    coreGet: transport.coreGet,
+    corePost: transport.corePost,
+    coreDelete: transport.coreDelete,
+  });
+
+  const crawlClient = createCrawlClient({
+    coreGet: transport.coreGet,
+    corePost: transport.corePost,
+  });
+
+  const dnseClient = createDnseClient({
+    coreGet: transport.coreGet,
+    corePost: transport.corePost,
+    coreDelete: transport.coreDelete,
+  });
+
+  const operatorClient = createOperatorClient({
+    coreGet: transport.coreGet,
+    corePost: transport.corePost,
+  });
+
+  const miscClient = createMiscClient({
+    coreGet: transport.coreGet,
+    corePost: transport.corePost,
+  });
+
+  const socClient = createSocClient({
+    coreGet: transport.coreGet,
+    corePost: transport.corePost,
+    corePut: transport.corePut,
+    corePatch: transport.corePatch,
+    coreDelete: transport.coreDelete,
+  });
+
   // Combine into a single unified API client object (Facade)
   return {
     ...authClient,
     ...marketClient,
     ...workspaceClient,
     ...commercialClient,
+    ...screenerClient,
+    ...advisoryClient,
+    ...crawlClient,
+    ...dnseClient,
+    ...operatorClient,
+    ...miscClient,
+    ...socClient,
   };
 }
 

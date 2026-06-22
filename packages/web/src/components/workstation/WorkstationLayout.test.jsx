@@ -2,8 +2,8 @@
  * WorkstationLayout.test.jsx
  * Unit tests for the Workstation layout component
  */
-import { jest } from '@jest/globals';
 import { render, screen, fireEvent, act } from '@testing-library/react';
+// jest is available globally via setupTests.js
 import { WorkstationLayout } from './WorkstationLayout.jsx';
 
 // Mock window.matchMedia for responsive tests
@@ -100,20 +100,20 @@ describe('WorkstationLayout', () => {
 
     // Default tab is chart
     expect(screen.getByRole('tab', { name: /biểu đồ/i })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('tabpanel', { name: /biểu đồ/i })).not.toHaveAttribute('hidden');
+    expect(document.getElementById('panel-chart')).not.toHaveAttribute('hidden');
 
     // Click orderbook tab
     fireEvent.click(screen.getByRole('tab', { name: /sổ lệnh/i }));
 
     expect(screen.getByRole('tab', { name: /sổ lệnh/i })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('tabpanel', { name: /sổ lệnh/i })).not.toHaveAttribute('hidden');
-    expect(screen.getByRole('tabpanel', { name: /biểu đồ/i })).toHaveAttribute('hidden', '');
+    expect(document.getElementById('panel-orderbook')).not.toHaveAttribute('hidden');
+    expect(document.getElementById('panel-chart')).toHaveAttribute('hidden');
 
     // Click tradelog tab
     fireEvent.click(screen.getByRole('tab', { name: /khớp lệnh/i }));
 
     expect(screen.getByRole('tab', { name: /khớp lệnh/i })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('tabpanel', { name: /khớp lệnh/i })).not.toHaveAttribute('hidden');
+    expect(document.getElementById('panel-tradelog')).not.toHaveAttribute('hidden');
   });
 
   test('reads feature flag from window.__ENV__', () => {
@@ -122,7 +122,7 @@ describe('WorkstationLayout', () => {
     window.dispatchEvent(new Event('resize'));
 
     render(
-      <WorkstationLayout enabled={false}> // enabled prop is false but ENV overrides
+      <WorkstationLayout enabled={false}>
         {{ left: mockLeftContent, right: mockRightContent }}
       </WorkstationLayout>
     );
@@ -182,7 +182,7 @@ describe('WorkstationLayout', () => {
       expect(tab).toHaveAttribute('id');
     });
 
-    const panels = screen.getAllByRole('tabpanel');
+    const panels = screen.getAllByRole('tabpanel', { hidden: true });
     panels.forEach((panel) => {
       expect(panel).toHaveAttribute('aria-labelledby');
       expect(panel).toHaveAttribute('id');

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import AdvisoryComponent, AdvisoryRecord, AdvisorySession, SystemAISettings
+from .models import AdvisoryComponent, AdvisoryRecord, AdvisorySession, SystemAISettings, UserAICredential
 
 
 class AdvisoryComponentInline(admin.TabularInline):
@@ -37,3 +37,12 @@ class AdvisorySessionAdmin(admin.ModelAdmin):
     readonly_fields = ('public_id', 'created_at', 'updated_at')
     ordering = ('-created_at',)
     inlines = [AdvisoryComponentInline]
+
+
+@admin.register(UserAICredential)
+class UserAICredentialAdmin(admin.ModelAdmin):
+    list_display = ('user', 'ai_provider', 'ai_model', 'is_active', 'fallback_quota_used_today', 'fallback_quota_date', 'updated_at')
+    list_filter = ('ai_provider', 'is_active')
+    search_fields = ('user__username', 'user__email')
+    readonly_fields = ('created_at', 'updated_at', 'fallback_quota_date')
+    ordering = ('-updated_at',)

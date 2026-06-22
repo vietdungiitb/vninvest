@@ -389,8 +389,16 @@ class PortfolioAICommandCenterView(APIView):
     """GET/PUT /api/portfolio/ai-command-center/"""
     permission_classes = [permissions.IsAuthenticated]
 
+    def _get_or_create_user_credential(self, user):
+        """Get or create UserAICredential for the user."""
+        from advisory.models import UserAICredential
+        try:
+            return UserAICredential.objects.get(user=user)
+        except UserAICredential.DoesNotExist:
+            return UserAICredential.objects.create(user=user)
+
     def get(self, request):
-        from advisory.models import SystemAISettings
+        from advisory.models import SystemAISettings, UserAICredential
         # Fetch active or create default settings singleton
         config = SystemAISettings.objects.filter(is_active=True).order_by('-updated_at').first()
         if not config:
@@ -407,9 +415,9 @@ class PortfolioAICommandCenterView(APIView):
                     temperature=0.3,
                     prompt_template='Default template for {symbol}',
                 )
-        
+
         metadata = config.metadata or {}
-        
+
         # Build prompt config if missing
         prompt_config = metadata.get('ai_prompt_config')
         if not prompt_config:
@@ -417,8 +425,8 @@ class PortfolioAICommandCenterView(APIView):
                 'whale': {'enabled': True, 'lookback': 180, 'lookback_unit': 'ngày'},
                 'dark_flow': {'enabled': True, 'lookback': 90, 'lookback_unit': 'ngày'},
                 'technical': {
-                    'enabled': True, 
-                    'lookback': 30, 
+                    'enabled': True,
+                    'lookback': 30,
                     'lookback_unit': 'phiên',
                     'indicators': ['vols', 'prices', 'cdms', 'ma20', 'ma50', 'rsi', 'bollinger', 'snapshot']
                 },
@@ -429,28 +437,62 @@ class PortfolioAICommandCenterView(APIView):
                 'sector': {'enabled': False, 'lookback': 60, 'lookback_unit': 'phiên'}
             }
 
-        provider = metadata.get('ai_provider') or 'openclaw'
-        api_key_configured = bool(metadata.get('ai_api_key_configured', False))
-        
+        # Read user credential (BYOK SSOT)
+        try:
+            user_cred = UserAICredential.objects.get(user=request.user)
+        except UserAICredential.DoesNotExist:
+            user_cred = None
+
+        if user_cred:
+            provider = user_cred.ai_provider or 'openai'
+            model = user_cred.ai_model or config.ai_model
+            api_key_configured = bool(user_cred.encrypted_api_key)
+            custom_endpoint = user_cred.custom_endpoint or ''
+            fallback_remaining = user_cred.fallback_quota_remaining
+            fallback_date = user_cred.fallback_quota_date
+        else:
+            # Fallback to legacy preferences
+            from identity_access.models import UserProfile
+            try:
+                profile = UserProfile.objects.get(user=request.user)
+                prefs = profile.preferences or {}
+                provider = str(prefs.get('ai_provider', '') or 'openclaw').strip().lower()
+                api_key_configured = bool(prefs.get('api_key', ''))
+            except UserProfile.DoesNotExist:
+                provider = 'openclaw'
+                api_key_configured = False
+            model = config.ai_model
+            custom_endpoint = ''
+            fallback_remaining = 0
+            fallback_date = None
+
+        ai_ready = api_key_configured or (provider == 'openclaw') or (provider == 'local')
+        from django.conf import settings as django_settings
+        fallback_quota_max = getattr(django_settings, 'AI_FALLBACK_DAILY_QUOTA', 5)
+
         response_data = {
             'ai_provider': provider,
-            'ai_model': config.ai_model,
+            'ai_model': model,
             'ai_api_key': '',
             'ai_api_key_configured': api_key_configured,
+            'custom_endpoint': custom_endpoint,
             'effective_ai_source': metadata.get('effective_ai_source') or 'command_center',
             'effective_ai_provider': provider,
-            'effective_ai_model': config.ai_model or 'Chưa cấu hình',
-            'ai_ready': api_key_configured or (provider == 'openclaw'),
+            'effective_ai_model': model or 'Chưa cấu hình',
+            'ai_ready': ai_ready,
             'ai_config_message': metadata.get('ai_config_message') or 'AI Command Center đang phản ánh cấu hình hiệu lực của hệ thống.',
             'ai_prompt_config': prompt_config,
             'advisory_refresh_interval_hours': int(metadata.get('advisory_refresh_interval_hours', 24)),
             'advisory_max_auto_refreshes_per_day': int(metadata.get('advisory_max_auto_refreshes_per_day', 24)),
             'advisory_max_tokens_per_day': config.max_tokens,
+            'fallback_quota_remaining': fallback_remaining,
+            'fallback_quota_max': fallback_quota_max,
+            'fallback_quota_reset': fallback_date,
         }
         return Response(response_data)
 
     def put(self, request):
-        from advisory.models import SystemAISettings
+        from advisory.models import SystemAISettings, UserAICredential
         config = SystemAISettings.objects.filter(is_active=True).order_by('-updated_at').first()
         if not config:
             config = SystemAISettings.objects.order_by('-updated_at').first()
@@ -466,114 +508,234 @@ class PortfolioAICommandCenterView(APIView):
                     temperature=0.3,
                     prompt_template='Default template for {symbol}',
                 )
-                
+
         payload = request.data if isinstance(request.data, dict) else {}
         metadata = dict(config.metadata or {})
-        
-        changed_fields = []
-        
+
+        # Save to UserAICredential (BYOK SSOT)
+        user_cred = self._get_or_create_user_credential(request.user)
+
         if 'ai_provider' in payload:
-            metadata['ai_provider'] = str(payload.get('ai_provider') or '').strip().lower()
-            changed_fields.append('ai_provider')
-            
+            user_cred.ai_provider = str(payload.get('ai_provider') or 'openai').strip().lower()
+            metadata['ai_provider'] = user_cred.ai_provider
+
         if 'ai_api_key' in payload:
             api_key = str(payload.get('ai_api_key') or '').strip()
             if api_key:
                 from identity_access.security import encrypt_user_api_key
-                metadata['encrypted_api_key'] = encrypt_user_api_key(api_key)
+                user_cred.encrypted_api_key = encrypt_user_api_key(api_key)
                 metadata['ai_api_key_configured'] = True
             else:
-                metadata['encrypted_api_key'] = ''
-                metadata['ai_api_key_configured'] = False
-            changed_fields.append('ai_api_key_configured')
-            
+                # Only clear if provider is not local/openclaw
+                if user_cred.ai_provider not in ('local', 'openclaw'):
+                    user_cred.encrypted_api_key = ''
+                    metadata['ai_api_key_configured'] = False
+
         if 'ai_model' in payload:
-            config.ai_model = str(payload.get('ai_model') or '').strip()
-            changed_fields.append('ai_model')
-            
+            model_val = str(payload.get('ai_model') or '').strip()
+            user_cred.ai_model = model_val
+            config.ai_model = model_val
+
+        if 'custom_endpoint' in payload:
+            user_cred.custom_endpoint = str(payload.get('custom_endpoint') or '').strip()
+
+        user_cred.save()
+
+        # Also save prompt config and other metadata to SystemAISettings
         if 'ai_prompt_config' in payload:
             metadata['ai_prompt_config'] = payload.get('ai_prompt_config')
-            changed_fields.append('ai_prompt_config')
-            
+
         if 'advisory_refresh_interval_hours' in payload:
             try:
                 metadata['advisory_refresh_interval_hours'] = int(payload.get('advisory_refresh_interval_hours'))
             except (TypeError, ValueError):
                 pass
-            changed_fields.append('advisory_refresh_interval_hours')
-            
+
         if 'advisory_max_auto_refreshes_per_day' in payload:
             try:
                 metadata['advisory_max_auto_refreshes_per_day'] = int(payload.get('advisory_max_auto_refreshes_per_day'))
             except (TypeError, ValueError):
                 pass
-            changed_fields.append('advisory_max_auto_refreshes_per_day')
-            
+
         if 'advisory_max_tokens_per_day' in payload:
             try:
                 config.max_tokens = int(payload.get('advisory_max_tokens_per_day'))
             except (TypeError, ValueError):
                 pass
-            changed_fields.append('max_tokens')
-            
+
         config.metadata = metadata
         config.save()
-        
-        provider = metadata.get('ai_provider') or 'openclaw'
-        api_key_configured = bool(metadata.get('ai_api_key_configured', False))
-        
+
+        provider = user_cred.ai_provider or 'openai'
+        api_key_configured = bool(user_cred.encrypted_api_key)
+        ai_ready = api_key_configured or (provider in ('openclaw', 'local'))
+        from django.conf import settings as django_settings
+        fallback_quota_max = getattr(django_settings, 'AI_FALLBACK_DAILY_QUOTA', 5)
+
         response_data = {
             'ai_provider': provider,
             'ai_model': config.ai_model,
             'ai_api_key': '',
             'ai_api_key_configured': api_key_configured,
+            'custom_endpoint': user_cred.custom_endpoint or '',
             'effective_ai_source': metadata.get('effective_ai_source') or 'command_center',
             'effective_ai_provider': provider,
             'effective_ai_model': config.ai_model or 'Chưa cấu hình',
-            'ai_ready': api_key_configured or (provider == 'openclaw'),
+            'ai_ready': ai_ready,
             'ai_config_message': metadata.get('ai_config_message') or 'Cấu hình AI Command Center đã được cập nhật thành công.',
             'ai_prompt_config': metadata.get('ai_prompt_config'),
             'advisory_refresh_interval_hours': int(metadata.get('advisory_refresh_interval_hours', 24)),
             'advisory_max_auto_refreshes_per_day': int(metadata.get('advisory_max_auto_refreshes_per_day', 24)),
             'advisory_max_tokens_per_day': config.max_tokens,
+            'fallback_quota_remaining': user_cred.fallback_quota_remaining,
+            'fallback_quota_max': fallback_quota_max,
+            'fallback_quota_reset': user_cred.fallback_quota_date,
         }
         return Response(response_data)
 
 
 class PortfolioAICommandCenterTestView(APIView):
-    """POST /api/portfolio/ai-command-center/test-connection/"""
+    """POST /api/portfolio/ai-command-center/test-connection/
+    
+    Active Probe: gọi API thực tế đến provider để kiểm tra kết nối.
+    - openclaw: system default, không cần key
+    - local: gọi GET /models đến custom_endpoint hoặc localhost
+    - openai/gemini/claude: gửi 1 tin nhắn test tối thiểu
+    """
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
         from vninvest_core.exceptions import ValidationErrorException
-        
+        import httpx
+
         payload = request.data if isinstance(request.data, dict) else {}
         provider = str(payload.get('ai_provider') or '').strip().lower()
         model = str(payload.get('ai_model') or '').strip()
-        
+        api_key = str(payload.get('ai_api_key') or '').strip()
+        custom_endpoint = str(payload.get('custom_endpoint') or '').strip()
+
         if not provider:
             raise ValidationErrorException(detail='Vui lòng chọn Nhà cung cấp AI hợp lệ.', code='validation_error')
         if not model:
             raise ValidationErrorException(detail='Vui lòng chọn hoặc cấu hình Mô hình AI.', code='validation_error')
-            
+
+        # openclaw: system default, luôn ready
         if provider == 'openclaw':
             return Response({
-                'message': f'Kết nối đến OpenClaw (Default) với mô hình {model} thành công. Phản hồi mượt mà.'
+                'message': f'Kết nối đến OpenClaw (Default) với mô hình {model} thành công. Phản hồi mượt mà.',
+                'latency_ms': 0,
             })
-            
-        has_key = bool(payload.get('ai_api_key'))
-        if not has_key:
+
+        # local: active probe đến endpoint Ollama/vLLM
+        if provider == 'local':
+            endpoint = custom_endpoint.rstrip('/') if custom_endpoint else 'http://localhost:11434/v1'
+            models_url = f'{endpoint}/models'
+            try:
+                with httpx.Client(timeout=5.0) as client:
+                    resp = client.get(models_url)
+                    resp.raise_for_status()
+                    data = resp.json()
+                    models_list = [m.get('name', m.get('id', '')) for m in (data.get('data') or data.get('models') or [])]
+                    return Response({
+                        'message': f'Kết nối đến Local Model ({endpoint}) thành công. Mô hình khả dụng: {", ".join(models_list[:5]) or "N/A"}.',
+                        'endpoint': endpoint,
+                        'models_available': models_list,
+                        'latency_ms': int(resp.elapsed.total_seconds() * 1000),
+                    })
+            except httpx.TimeoutException:
+                raise ValidationErrorException(
+                    detail=f'Không thể kết nối đến Local Model tại {endpoint} — timeout 5s. Kiểm tra endpoint hoặc khởi động Ollama/vLLM.',
+                    code='validation_error',
+                )
+            except httpx.HTTPStatusError as e:
+                raise ValidationErrorException(
+                    detail=f'Local Model tại {endpoint} trả về lỗi HTTP {e.response.status_code}.',
+                    code='validation_error',
+                )
+            except Exception as e:
+                raise ValidationErrorException(
+                    detail=f'Không thể kết nối Local Model: {str(e)}.',
+                    code='validation_error',
+                )
+
+        # OpenAI/Gemini/Claude: active probe thực tế
+        # Resolve key: ưu tiên payload, fallback UserAICredential, fallback SystemAISettings
+        resolved_key = api_key
+        if not resolved_key:
+            from advisory.models import UserAICredential, SystemAISettings
+            try:
+                user_cred = UserAICredential.objects.get(user=request.user)
+                if user_cred.encrypted_api_key:
+                    from identity_access.security import decrypt_user_api_key
+                    resolved_key = decrypt_user_api_key(user_cred.encrypted_api_key)
+            except UserAICredential.DoesNotExist:
+                pass
+
+        if not resolved_key:
             from advisory.models import SystemAISettings
             config = SystemAISettings.objects.filter(is_active=True).order_by('-updated_at').first()
-            if config and config.metadata and config.metadata.get('ai_api_key_configured'):
-                has_key = True
-                
-        if not has_key:
-            raise ValidationErrorException(detail=f'Lỗi kết nối đến {provider}: Thiếu API Key cấu hình cho mô hình {model}.', code='validation_error')
-            
-        return Response({
-            'message': f'Kiểm tra kết nối thành công: Đã xác thực thành công API Key với {provider} và mô hình {model}.'
-        })
+            if config and config.metadata:
+                sys_encrypted = config.metadata.get('encrypted_api_key', '')
+                if sys_encrypted:
+                    from identity_access.security import decrypt_user_api_key
+                    resolved_key = decrypt_user_api_key(sys_encrypted)
+
+        if not resolved_key:
+            raise ValidationErrorException(
+                detail=f'Lỗi kết nối đến {provider}: Thiếu API Key cho mô hình {model}. Vui lòng cấu hình API Key trong AI Command Center.',
+                code='validation_error',
+            )
+
+        # Determine endpoint
+        if provider == 'gemini':
+            endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+        else:
+            endpoint = "https://api.openai.com/v1/chat/completions"
+
+        test_payload = {
+            "model": model,
+            "messages": [
+                {"role": "user", "content": "Hello, respond with just 'OK'."}
+            ],
+            "max_tokens": 10,
+            "temperature": 0.0,
+        }
+        headers = {
+            "Authorization": f"Bearer {resolved_key}",
+            "Content-Type": "application/json",
+        }
+
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                start = __import__('time').time()
+                resp = client.post(endpoint, headers=headers, json=test_payload)
+                resp.raise_for_status()
+                latency_ms = int((__import__('time').time() - start) * 1000)
+                return Response({
+                    'message': f'Kiểm tra kết nối thành công: Đã xác thực API Key với {provider} / {model}. Phản hồi trong {latency_ms}ms.',
+                    'latency_ms': latency_ms,
+                })
+        except httpx.TimeoutException:
+            raise ValidationErrorException(
+                detail=f'Kết nối đến {provider} timeout sau 10s. Kiểm tra API Key hoặc mạng.',
+                code='validation_error',
+            )
+        except httpx.HTTPStatusError as e:
+            status_code = e.response.status_code
+            if status_code == 401:
+                raise ValidationErrorException(
+                    detail=f'{provider} từ chối API Key (HTTP 401). Kiểm tra lại API Key cho mô hình {model}.',
+                    code='validation_error',
+                )
+            raise ValidationErrorException(
+                detail=f'{provider} trả về lỗi HTTP {status_code} cho mô hình {model}.',
+                code='validation_error',
+            )
+        except Exception as e:
+            raise ValidationErrorException(
+                detail=f'Lỗi kết nối đến {provider}: {str(e)}.',
+                code='validation_error',
+            )
 
 
 class PortfolioMarketDiscoveryHubView(APIView):

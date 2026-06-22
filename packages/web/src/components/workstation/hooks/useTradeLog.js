@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { useRealtimePolling } from "./useRealtimePolling.js";
 import { createCoreApiAdapter } from "../../../adapters/coreApiAdapter.js";
 
@@ -20,11 +20,11 @@ import { createCoreApiAdapter } from "../../../adapters/coreApiAdapter.js";
  */
 export function useTradeLog({ symbol, env, getToken, intervalMs = 5000, maxItems = 100, enabled = true } = {}) {
   const [trades, setTrades] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled && !!symbol);
   const [error, setError] = useState(null);
   const seenKeysRef = useRef(new Set());
 
-  const adapter = createCoreApiAdapter({ env, getToken });
+  const adapter = useMemo(() => createCoreApiAdapter({ env, getToken }), [env, getToken]);
 
   const fetchTrades = useCallback(async (signal) => {
     if (!symbol) throw new Error("Symbol is required");

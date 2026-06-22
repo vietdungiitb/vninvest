@@ -63,6 +63,7 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
     chartBars: [],
     orderFlowData: null,
     advisory: null,
+    advisoryFallbackFlags: null,
     whaleFeed: [],
   });
 
@@ -312,6 +313,103 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
   }, [realtimeFeed?.quotesBySymbol?.[symbol], symbol, handleRealtimeSnapshot]);
   // ------------------------------------------------
 
+  const refreshAdvisoryData = useCallback(async (promptConfig) => {
+    if (!symbol) return;
+    const adapter = createCoreApiAdapter({ env, getToken: env.getToken });
+    const startTime = Date.now();
+
+    setModelState((s) => ({
+      ...s,
+      loadingDeferred: true,
+      error: null,
+    }));
+
+    try {
+      // Trigger the refresh request and capture response for fallback flags
+      const refreshResponse = await adapter.refreshAdvisory(symbol, promptConfig);
+      if (refreshResponse && mountedRef.current) {
+        setModelState((s) => ({
+          ...s,
+          advisoryFallbackFlags: {
+            personal_key_failed: refreshResponse.personal_key_failed,
+            personal_key_error: refreshResponse.personal_key_error,
+            using_system_fallback: refreshResponse.using_system_fallback,
+            fallback_quota_remaining: refreshResponse.fallback_quota_remaining,
+          },
+        }));
+      }
+
+      // Now poll for the new advisory
+      let attempts = 0;
+      const maxAttempts = 15;
+      const pollInterval = 2000; // 2 seconds
+
+      const checkAdvisory = async () => {
+        try {
+          const latest = await adapter.getAdvisoryLatest(symbol);
+          if (latest && latest.generated_at) {
+            const genTime = new Date(latest.generated_at).getTime();
+            if (genTime >= startTime) {
+              if (mountedRef.current) {
+                setModelState((s) => ({
+                  ...s,
+                  loadingDeferred: false,
+                  advisory: latest,
+                }));
+              }
+              return true;
+            }
+          }
+        } catch (e) {
+          // If 404 or other error, just continue polling
+        }
+        return false;
+      };
+
+      const runPolling = () => {
+        setTimeout(async () => {
+          if (!mountedRef.current) return;
+          const success = await checkAdvisory();
+          if (success) return;
+
+          attempts++;
+          if (attempts < maxAttempts) {
+            runPolling();
+          } else {
+            // Timeout, stop loading and try to load whatever is latest
+            if (mountedRef.current) {
+              try {
+                const latest = await adapter.getAdvisoryLatest(symbol);
+                setModelState((s) => ({
+                  ...s,
+                  loadingDeferred: false,
+                  advisory: latest,
+                }));
+              } catch (err) {
+                setModelState((s) => ({
+                  ...s,
+                  loadingDeferred: false,
+                }));
+              }
+            }
+          }
+        }, pollInterval);
+      };
+
+      // Start polling
+      runPolling();
+
+    } catch (err) {
+      if (mountedRef.current) {
+        setModelState((s) => ({
+          ...s,
+          loadingDeferred: false,
+          error: err?.message || "Không thể yêu cầu làm mới AI Advisory.",
+        }));
+      }
+    }
+  }, [env, symbol]);
+
   const setChartBars = useCallback((bars) => {
     setModelState((s) => ({
       ...s,
@@ -339,7 +437,7 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
     activeTab,
     setActiveTab,
     loadingProfile,
+    refreshAdvisoryData,
     ...modelState,
   };
-
 }

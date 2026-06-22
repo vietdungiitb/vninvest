@@ -33,6 +33,7 @@ import { useCallback } from 'react';
 import { normalizeWhaleAnalyticsSnapshot } from '../utils/whaleAnalyticsSnapshotAdapter.js';
 import { createWhaleTooltipFormatter } from '../utils/whaleTooltipFormatter.js';
 import { Link } from 'react-router-dom';
+import { Fish, AlertTriangle, Inbox, RotateCw } from 'lucide-react';
 
 echarts.use([
   LineChart,
@@ -1433,13 +1434,13 @@ export default function WhaleBubbleChart({
           </div>
         ) : error ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-12 text-center">
-            <div className="text-3xl text-rose-500">⚠️</div>
+            <AlertTriangle className="h-12 w-12 text-rose-500" />
             <p className="text-sm font-semibold text-slate-300">{t('whaleChart.errorLoadingData', { defaultValue: 'Không thể tải dữ liệu' })}</p>
             <p className="max-w-xs text-xs text-slate-500">{error}</p>
           </div>
         ) : !symbol ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-500">
-            <div className="text-4xl opacity-30">🐋</div>
+            <Fish className="h-16 w-16 opacity-30 text-slate-500" />
             <p className="text-sm italic">{t('whaleChart.selectSymbolToStart', { defaultValue: 'Chọn mã để bắt đầu' })}</p>
           </div>
         ) : !hasAnyChartData ? (
@@ -1450,7 +1451,7 @@ export default function WhaleBubbleChart({
                 <div className="mt-0.5 text-amber-100/80">{degradedModeCopy.description}</div>
               </div>
             )}
-            <div className="text-4xl opacity-30">📭</div>
+            <Inbox className="h-16 w-16 opacity-30 text-slate-500" />
             <p className="text-sm font-semibold text-slate-300">{t('whaleChart.noOrdersInTimeframe', { defaultValue: 'Không có dữ liệu' })}</p>
             <p className="text-xs">{isDegradedMode ? t('whaleChart.awaitingValidIntradayData', { defaultValue: 'Dữ liệu chi tiết của phiên này chưa đủ ổn định để hiển thị đầy đủ.' }) : t('whaleChart.tryDifferentTimeframe', { defaultValue: 'Thử khoảng thời gian khác' })}</p>
           </div>

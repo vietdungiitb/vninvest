@@ -275,7 +275,8 @@ function normalizeDarkFlowAlert(payload) {
 function computeReconnectDelayMs(attempt) {
   const normalizedAttempt = Math.max(1, Number(attempt) || 1);
   const base = Math.min(1000 * (2 ** (normalizedAttempt - 1)), 30000);
-  const jitter = Math.floor(base * Math.random() * 0.4);
+  // Jitter ±10%: random between -0.1 and +0.1
+  const jitter = Math.floor(base * (Math.random() * 0.2 - 0.1));
   return base + jitter;
 }
 
@@ -477,6 +478,9 @@ export default function useRealtimeFeedCore({
   const lastProcessedEventIdsRef = useRef(new Map());
   const pendingTickerUpdatesRef = useRef({});
   const tickerRafIdRef = useRef(null);
+  const lastMessageAtRef = useRef(0);
+  const heartbeatPingTimerRef = useRef(null);
+  const heartbeatTimeoutTimerRef = useRef(null);
 
   useEffect(() => { symbolsRef.current = normalizedSymbols; }, [normalizedSymbols]);
   useEffect(() => { quotesBySymbolRef.current = quotesBySymbol; }, [quotesBySymbol]);
@@ -880,8 +884,20 @@ export default function useRealtimeFeedCore({
       socket.send(JSON.stringify({ action, symbols: nextSymbols }));
     };
 
+    const clearHeartbeatTimers = () => {
+      if (heartbeatPingTimerRef.current) {
+        clearInterval(heartbeatPingTimerRef.current);
+        heartbeatPingTimerRef.current = null;
+      }
+      if (heartbeatTimeoutTimerRef.current) {
+        clearTimeout(heartbeatTimeoutTimerRef.current);
+        heartbeatTimeoutTimerRef.current = null;
+      }
+    };
+
     const cleanup = () => {
       destroyed = true;
+      clearHeartbeatTimers();
       if (reconnectTimer) window.clearTimeout(reconnectTimer);
       if (ws) {
         if (ws.readyState === WebSocket.OPEN && symbolsRef.current.length) {
@@ -980,9 +996,11 @@ export default function useRealtimeFeedCore({
           nextWs.close(1000);
           return;
         }
+        clearHeartbeatTimers();
         wsHealthyRef.current = false;
         reconnectAttemptRef.current = 0;
         consecutiveFailuresRef.current = 0;
+        lastMessageAtRef.current = Date.now();
         setRealtimeStatus('live');
         setConnectionState((prev) => ({
           ...prev,
@@ -991,12 +1009,34 @@ export default function useRealtimeFeedCore({
           circuitOpenUntil: null,
         }));
         const symbolsForWs = symbolsRef.current.slice(0, MAX_WS_SUB_SYMBOLS);
-        // Phase 4: Always subscribe to market_discovery in this feed
         sendAction(nextWs, 'subscribe', [...symbolsForWs, 'market_discovery']);
+        // Heartbeat ping every 25s
+        heartbeatPingTimerRef.current = setInterval(() => {
+          if (nextWs?.readyState === WebSocket.OPEN) {
+            nextWs.send(JSON.stringify({ event_type: 'ping' }));
+          }
+        }, 25000);
+        // Start heartbeat timeout check (10s without message → reconnect)
+        startHeartbeatTimeoutCheck();
+      };
+
+      const startHeartbeatTimeoutCheck = () => {
+        if (heartbeatTimeoutTimerRef.current) {
+          clearTimeout(heartbeatTimeoutTimerRef.current);
+        }
+        heartbeatTimeoutTimerRef.current = setTimeout(() => {
+          if (destroyed || nextWs !== ws) return;
+          // No message received within 10s timeout → force reconnect
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.close(4000, 'heartbeat_timeout');
+          }
+        }, 10000);
       };
 
       nextWs.onmessage = (event) => {
         if (destroyed || nextWs !== ws) return;
+        lastMessageAtRef.current = Date.now();
+        startHeartbeatTimeoutCheck();
         try {
           const payload = JSON.parse(event.data);
           if (payload.event_type === 'subscribed') {
