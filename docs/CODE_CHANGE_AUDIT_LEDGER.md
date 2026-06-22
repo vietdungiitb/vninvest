@@ -107,3 +107,23 @@
   - Playwright tests `dashboard-ui-fixes.spec.ts` -> ✅ 5 passed.
 - **Residual risk**: None.
 
+---
+
+## Entry 7: Responsive Overlap Sidebar Menu Drawer Layout
+
+- **PR / branch**: `dev`
+- **Date**: 2026-06-22
+- **Files touched**:
+  - `packages/web/src/layouts/full/FullLayout.tsx` (removed persist desktop padding, backdrop visible on all viewports when sidebar open)
+  - `packages/web/src/layouts/full/vertical/header/Header.tsx` (hamburger menu button visible on all viewports, added class menu-toggle-btn)
+  - `packages/web/src/layouts/full/vertical/sidebar/Sidebar.tsx` (sidebar slides off-screen on all viewports when closed)
+  - `packages/web/tests/visual/dashboard-ui-fixes.spec.ts` (updated E2E tests to trigger sidebar toggle and verify overlay)
+  - `docs/CODE_CHANGE_AUDIT_LEDGER.md` (this entry)
+- **Summary**: Thực hiện cấu hình panel menu ở chế độ overlap (drawer) trên toàn bộ thiết bị (kể cả desktop và mobile). Loại bỏ khoảng đệm padding-left 288px (lg:pl-72) cố định trên giao diện desktop để phần nội dung Dashboard chính hiển thị full-width tối đa, tránh bị co rúm giao diện. Sidebar mặc định ẩn hoàn toàn trên mọi màn hình và sẽ slide-in chồng lên nội dung khi bấm nút hamburger ở Header, hiển thị kèm lớp backdrop mờ và tối phía dưới để tối ưu trải nghiệm và diện tích hiển thị.
+- **Validation**:
+  - `npx tsc --noEmit` -> ✅ Pass (0 errors).
+  - `npm run build` -> ✅ Pass (3241 modules).
+  - Playwright tests `dashboard-ui-fixes.spec.ts` -> ✅ 5 passed.
+- **Residual risk**: None.
+
+

@@ -46,8 +46,7 @@ export function Sidebar({ collapsed = false, onToggle, mobileOpen, onMobileClose
         newLayout
           ? cn(
               'w-72',
-              !mobileOpen && '-translate-x-full lg:translate-x-0',
-              mobileOpen && 'translate-x-0'
+              !mobileOpen ? '-translate-x-full' : 'translate-x-0'
             )
           : cn(
               collapsed && !mobileOpen ? 'w-16 -translate-x-0' : 'w-72 translate-x-0',

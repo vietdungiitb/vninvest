@@ -168,20 +168,27 @@ test.describe('Dashboard UI Fixes Regression Tests', () => {
     const desktopToggle = header.locator('button.hidden\\.lg\\:flex');
     await expect(desktopToggle).toHaveCount(0);
 
-    // Mobile toggle button (lg:hidden) should exist
-    const mobileToggle = header.locator('button.lg\\:hidden');
+    // Mobile/main toggle button (menu-toggle-btn) should exist
+    const mobileToggle = header.locator('button.menu-toggle-btn');
     await expect(mobileToggle).toHaveCount(1);
   });
 
   test('UI-02: Sidebar always shows w-72 and group headers are visible on desktop', async ({ page }) => {
     const sidebar = page.locator('aside');
-    await expect(sidebar).toBeVisible();
-
-    // Sidebar should have w-72 class (always expanded)
+    
+    // Sidebar should have w-72 class
     const classList = await sidebar.getAttribute('class') || '';
     expect(classList).toContain('w-72');
+    expect(classList).toContain('-translate-x-full');
 
-    // Group headers (h3) should ALWAYS be visible (no collapsed state)
+    // Open the sidebar by clicking the toggle
+    await page.locator('header button.menu-toggle-btn').click();
+    await expect(sidebar).toBeVisible();
+
+    const openedClassList = await sidebar.getAttribute('class') || '';
+    expect(openedClassList).toContain('translate-x-0');
+
+    // Group headers (h3) should ALWAYS be visible when opened
     const groupHeadings = sidebar.locator('h3');
     const headingsCount = await groupHeadings.count();
     expect(headingsCount).toBeGreaterThan(0);
@@ -191,6 +198,9 @@ test.describe('Dashboard UI Fixes Regression Tests', () => {
   });
 
   test('UI-03: Active sidebar item uses bg-blue-600 style', async ({ page }) => {
+    // Open the sidebar by clicking the toggle
+    await page.locator('header button.menu-toggle-btn').click();
+
     const sidebar = page.locator('aside');
 
     // The active nav link (dashboard) should have bg-blue-600

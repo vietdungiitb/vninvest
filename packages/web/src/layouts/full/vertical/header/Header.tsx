@@ -76,7 +76,7 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
         {
           variant: 'ghost',
           size: 'icon',
-          className: 'lg:hidden',
+          className: cn(newLayout ? 'flex' : 'lg:hidden', 'menu-toggle-btn'),
           onClick: onMenuClick,
           'aria-label': mobileSidebarOpen ? t('layout.collapseMenu') : t('layout.expandMenu'),
           'aria-expanded': mobileSidebarOpen

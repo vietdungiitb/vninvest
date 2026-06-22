@@ -44,11 +44,14 @@ export function FullLayout() {
   return e(
     'div',
     { className: 'min-h-screen bg-slate-950 text-slate-100 font-sans flex relative overflow-hidden' },
-    // Sidebar backdrop overlay (mobile only)
+    // Sidebar backdrop overlay
     mobileSidebarOpen && e(
       'div',
       {
-        className: 'fixed inset-0 bg-black/60 z-40 backdrop-blur-sm transition-opacity duration-300 lg:hidden',
+        className: cn(
+          'fixed inset-0 bg-black/60 z-40 backdrop-blur-sm transition-opacity duration-300',
+          !newLayout && 'lg:hidden'
+        ),
         onClick: closeMobileSidebar,
         'aria-hidden': 'true'
       }
@@ -66,7 +69,7 @@ export function FullLayout() {
       {
         className: cn(
           'flex-1 flex flex-col min-w-0 w-full transition-all duration-300',
-          newLayout ? 'lg:pl-72' : (sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-72')
+          newLayout ? 'lg:pl-0' : (sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-72')
         )
       },
       // Header
