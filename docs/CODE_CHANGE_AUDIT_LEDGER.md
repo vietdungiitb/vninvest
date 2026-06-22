@@ -126,4 +126,21 @@
   - Playwright tests `dashboard-ui-fixes.spec.ts` -> ✅ 5 passed.
 - **Residual risk**: None.
 
+---
 
+## Entry 8: Heatmap & Alert Center Visual Audit & Parity Upgrades
+
+- **PR / branch**: `dev`
+- **Date**: 2026-06-22
+- **Files touched**:
+  - `packages/web/src/components/dashboard/PortfolioHeatmap.js` (ECharts treemap colors, compact cell spacing, Symbol + Change% labels)
+  - `packages/web/src/components/dashboard/UnifiedAlertCenter.js` (redesigned top filter pills with counts and Lucide icons, added left-border severity card borders, metadata chips strip, inline action buttons)
+  - `packages/web/playwright.config.ts` (added PLAYWRIGHT_BASE_URL override capability)
+  - `docs/CODE_CHANGE_AUDIT_LEDGER.md` (this entry)
+- **Summary**: Khắc phục các lỗi visual và nâng cấp tính năng hiển thị cho cấu phần bản đồ nhiệt và trung tâm cảnh báo. Đồng bộ màu sắc treemap heatmap về chuẩn màu xanh/đỏ/vàng thị trường chứng khoán Việt Nam, thu hẹp khoảng cách và viền mã cổ phiếu còn 0.5px. Bổ sung nhãn phần trăm biến động hiển thị trực tiếp trên nến heatmap. Đồng thời, cấu trúc lại bộ lọc cấp độ cảnh báo với biểu tượng ngọn lửa/chuông và hiển thị số lượng tương ứng theo gradient đỏ-xanh; bổ sung thông tin chi tiết trên card cảnh báo (chiều giao dịch MUA/BÁN, giá trị giao dịch, độ tin cậy AI, phiên giao dịch) và hai nút thao tác nhanh inline (Đánh dấu đã đọc, Tắt 30p).
+- **Validation**:
+  - `npx tsc --noEmit` -> ✅ Pass (0 errors).
+  - `npm run build` -> ✅ Pass (3241 modules).
+  - Local tests: `npx playwright test tests/visual/dashboard-ui-fixes.spec.ts --project=chromium` -> ✅ Pass (5/5).
+  - Remote beta server tests: `PLAYWRIGHT_BASE_URL="https://beta.edusuccess.vn" npx playwright test tests/visual/dashboard-ui-fixes.spec.ts --project=chromium` -> ✅ Pass (5/5).
+- **Residual risk**: None.
