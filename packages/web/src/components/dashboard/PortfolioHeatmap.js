@@ -140,8 +140,10 @@ export function PortfolioHeatmap({
         series: [
           {
             type: "treemap",
-            width: "100%",
-            height: "100%",
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
             data: chartData,
             itemStyle: {
               borderColor: "#0f172a",
@@ -180,7 +182,7 @@ export function PortfolioHeatmap({
         {
           type: "sunburst",
           data: chartData,
-          radius: [0, "90%"],
+          radius: [0, "95%"],
           itemStyle: {
             borderColor: "#0f172a",
             borderWidth: 1,

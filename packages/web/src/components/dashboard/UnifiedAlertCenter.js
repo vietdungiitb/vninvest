@@ -260,13 +260,14 @@ export function UnifiedAlertCenter({
                 setSeverityFilter?.(f.value);
                 onSeverityFilterChange?.(f.value);
               },
-              className: `flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap ${
+              className: `flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap ${
                 isActive ? f.activeClass : f.inactiveClass
               }`,
               "aria-pressed": isActive,
+              title: f.label,
             },
             e(f.icon, { className: `h-3.5 w-3.5 ${f.iconClass}` }),
-            `${f.label} (${count})`
+            count > 0 ? `(${count})` : ""
           );
         })
       )

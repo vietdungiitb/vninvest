@@ -8,7 +8,7 @@ All views require IsAuthenticated; symbol param is always uppercased.
 """
 from datetime import date
 
-from django.db.models import Avg, Max
+from django.db.models import Avg, Max, Q
 from django.utils import timezone
 from rest_framework import permissions
 from rest_framework.response import Response
@@ -75,7 +75,17 @@ class RealtimeTickerListView(APIView):
         symbols_raw = request.query_params.get('symbols', '')
         if symbols_raw:
             symbols = [s.strip().upper() for s in symbols_raw.split(',') if s.strip()][:self._MAX_SYMBOLS]
-            qs = SymbolSnapshot.objects.filter(symbol__in=symbols, session_date=target_date)
+            # Fetch latest session_date per symbol so symbols missing on the
+            # global target_date still return their most recent snapshot.
+            latest_dates = (
+                SymbolSnapshot.objects.filter(symbol__in=symbols)
+                .values('symbol')
+                .annotate(latest_date=Max('session_date'))
+            )
+            q_filter = Q()
+            for entry in latest_dates:
+                q_filter |= Q(symbol=entry['symbol'], session_date=entry['latest_date'])
+            qs = SymbolSnapshot.objects.filter(q_filter) if q_filter else SymbolSnapshot.objects.none()
         else:
             qs = SymbolSnapshot.objects.filter(session_date=target_date).order_by('symbol')[:self._MAX_SYMBOLS]
         # Return as dict keyed by symbol so frontend can do Object.values(tickersMap)

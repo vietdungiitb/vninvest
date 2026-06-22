@@ -272,6 +272,11 @@
     /* Full width deck */
   }
 
+  /* Heatmap slot — tighter padding (top stays 1.25rem for header alignment) */
+  div.core-dashboard-slot--heatmap {
+    padding: 1.25rem 0.5rem 0.5rem 0.5rem;
+  }
+
   /* ECharts Tooltip Dark Mode Override */
   .echarts-tooltip-dark {
     background-color: rgba(15, 23, 42, 0.95) !important; /* bg-slate-900/95 */
