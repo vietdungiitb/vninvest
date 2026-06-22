@@ -25,7 +25,7 @@ function createDeferredPageComponent(loadComponent, routeId) {
       return () => {
         mountedRef.current = false;
       };
-    }, [loadComponent]);
+    }, [loadComponent]); // eslint-disable-line react-hooks/exhaustive-deps
 
     if (resolvedComponent) {
       return createElement(resolvedComponent, props);
@@ -50,8 +50,112 @@ function createDeferredPageComponent(loadComponent, routeId) {
         role: "status",
         "aria-live": "polite",
       },
-      createElement("h2", { className: "shellPage__panelTitle" }, "Đang tải trang"),
-      createElement("p", { className: "shellPage__panelSubtitle" }, `Route ${routeId} đang được nạp động.`),
+      createElement(
+        "div",
+        { className: "clock-container" },
+        createElement(
+          "style",
+          null,
+          `
+            @keyframes spin-hour {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+            @keyframes spin-minute {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+            .clock-hour {
+              transform-origin: 32px 32px;
+              animation: spin-hour 12s linear infinite;
+            }
+            .clock-minute {
+              transform-origin: 32px 32px;
+              animation: spin-minute 1s linear infinite;
+            }
+            .clock-container {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              padding: 40px 20px;
+              text-align: center;
+            }
+            .clock-glow {
+              filter: drop-shadow(0 0 10px rgba(0, 180, 216, 0.55));
+            }
+            .loading-text {
+              font-size: 18px;
+              font-weight: 600;
+              color: var(--shell-ink, #f1f5f9);
+              margin-top: 20px;
+              letter-spacing: 0.05em;
+            }
+            .loading-subtext {
+              font-size: 13px;
+              color: var(--shell-muted, #94a3b8);
+              margin-top: 6px;
+            }
+          `
+        ),
+        createElement(
+          "svg",
+          {
+            className: "clock-glow",
+            xmlns: "http://www.w3.org/2000/svg",
+            viewBox: "0 0 64 64",
+            width: "64",
+            height: "64",
+            style: { display: "block" }
+          },
+          createElement("circle", {
+            cx: "32",
+            cy: "32",
+            r: "28",
+            fill: "none",
+            stroke: "url(#clock-grad)",
+            strokeWidth: "3.5",
+            strokeLinecap: "round"
+          }),
+          createElement("line", { x1: "32", y1: "8", x2: "32", y2: "11", stroke: "#00b4d8", strokeWidth: "2", strokeLinecap: "round" }),
+          createElement("line", { x1: "56", y1: "32", x2: "53", y2: "32", stroke: "#00b4d8", strokeWidth: "2", strokeLinecap: "round" }),
+          createElement("line", { x1: "32", y1: "56", x2: "32", y2: "53", stroke: "#00b4d8", strokeWidth: "2", strokeLinecap: "round" }),
+          createElement("line", { x1: "8", y1: "32", x2: "11", y2: "32", stroke: "#00b4d8", strokeWidth: "2", strokeLinecap: "round" }),
+          createElement("circle", { cx: "32", cy: "32", r: "3", fill: "#ffffff" }),
+          createElement("line", {
+            className: "clock-hand clock-hour",
+            x1: "32",
+            y1: "32",
+            x2: "32",
+            y2: "18",
+            stroke: "#ffffff",
+            strokeWidth: "2.5",
+            strokeLinecap: "round"
+          }),
+          createElement("line", {
+            className: "clock-hand clock-minute",
+            x1: "32",
+            y1: "32",
+            x2: "32",
+            y2: "12",
+            stroke: "#00b4d8",
+            strokeWidth: "2",
+            strokeLinecap: "round"
+          }),
+          createElement(
+            "defs",
+            null,
+            createElement(
+              "linearGradient",
+              { id: "clock-grad", x1: "0%", y1: "0%", x2: "100%", y2: "100%" },
+              createElement("stop", { offset: "0%", stopColor: "#00b4d8" }),
+              createElement("stop", { offset: "100%", stopColor: "#ff7f50" })
+            )
+          )
+        ),
+        createElement("div", { className: "loading-text" }, "Đang tải trang"),
+        createElement("div", { className: "loading-subtext" }, `Route ${routeId} đang được nạp động.`)
+      )
     );
   }
 

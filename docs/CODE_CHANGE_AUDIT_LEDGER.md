@@ -90,3 +90,20 @@
   - Playwright tests `dashboard-ui-fixes.spec.ts` -> ✅ 5 passed.
   - Playwright tests `login.spec.ts` -> ✅ 3 passed, 1 skipped.
 - **Residual risk**: None.
+
+---
+
+## Entry 6: Animated Clock Loader UI Upgrade
+
+- **PR / branch**: `dev`
+- **Date**: 2026-06-22
+- **Files touched**:
+  - `packages/web/src/pages/pageRegistry.js` (replaced plain text status fallback with premium animated clock SVG loader)
+  - `docs/CODE_CHANGE_AUDIT_LEDGER.md` (this entry)
+- **Summary**: Nâng cấp giao diện tải trang tạm thời (fallback loading state) khi nạp động các routes trong pageRegistry. Thay thế đoạn text tĩnh nhàm chán bằng một đồ họa SVG động hình đồng hồ quả lắc/kim xoay mượt mà, sử dụng gradient chuyển màu cao cấp từ xanh lục lam (`--shell-accent`) đến cam coral (`--shell-signal`) và đổ bóng phát sáng (glow filter) đồng nhất với ngôn ngữ thiết kế của VNInvest SaaS.
+- **Validation**:
+  - `npx tsc --noEmit` -> ✅ Pass (0 errors).
+  - `npm run build` -> ✅ Pass (3241 modules).
+  - Playwright tests `dashboard-ui-fixes.spec.ts` -> ✅ 5 passed.
+- **Residual risk**: None.
+
