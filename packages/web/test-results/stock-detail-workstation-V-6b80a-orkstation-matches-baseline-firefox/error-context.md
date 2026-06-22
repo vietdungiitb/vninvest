@@ -1,0 +1,24 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: stock-detail-workstation.spec.ts >> Visual Regression >> desktop workstation matches baseline
+- Location: tests\visual\stock-detail-workstation.spec.ts:324:3
+
+# Error details
+
+```
+Error: browserType.launch: Executable doesn't exist at C:\Users\Pham Viet Dung\AppData\Local\ms-playwright\firefox-1532\firefox\firefox.exe
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     npx playwright install                                 ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+```

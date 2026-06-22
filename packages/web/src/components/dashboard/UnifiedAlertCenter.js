@@ -157,45 +157,21 @@ export function UnifiedAlertCenter({
     // Header with title, unread count, and filter controls
     e(
       "div",
-      { className: "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 pb-3 border-b border-slate-800/50" },
+      { className: "flex flex-col gap-3 mb-4 pb-3 border-b border-slate-800/50" },
+      // Row 1: Title & Clear Filters button
       e(
         "div",
-        { className: "flex items-center gap-3" },
-        e("h3", { className: "text-base font-bold text-slate-100 flex items-center gap-2" },
-          e(Bell, { className: "h-5 w-5 text-cyan-400" }),
-          t("alert.title")
-        ),
-        unreadAlertCount > 0 &&
-          e("span", { className: "inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30" }, unreadAlertCount)
-      ),
-      e(
-        "div",
-        { className: "flex flex-wrap items-center gap-2" },
-        // Severity filter pills
+        { className: "flex items-center justify-between w-full" },
         e(
           "div",
-          { className: "flex flex-wrap gap-1.5" },
-          severityFilters.map((f) =>
-            e(
-              "button",
-              {
-                key: f.value,
-                onClick: () => {
-                  setSeverityFilter?.(f.value);
-                  onSeverityFilterChange?.(f.value);
-                },
-                className: `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
-                  severityFilter === f.value
-                    ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-sm shadow-cyan-500/10"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-slate-800/50"
-                }`,
-                "aria-pressed": severityFilter === f.value,
-              },
-              f.label
-            )
-          )
+          { className: "flex items-center gap-3" },
+          e("h3", { className: "text-base font-bold text-slate-100 flex items-center gap-2" },
+            e(Bell, { className: "h-5 w-5 text-cyan-400" }),
+            t("alert.title")
+          ),
+          unreadAlertCount > 0 &&
+            e("span", { className: "inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30" }, unreadAlertCount)
         ),
-        // Clear filters button
         hasActiveFilters && e(
           "button",
           {
@@ -204,11 +180,35 @@ export function UnifiedAlertCenter({
               onSeverityFilterChange?.("all");
               setSourceFilter?.("all");
             },
-            className: "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-slate-800/50 transition-all whitespace-nowrap",
+            className: "flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-slate-800/50 transition-all",
             "aria-label": t("alert.clearFilters"),
           },
-          e(X, { className: "h-3.5 w-3.5" }),
-          e("span", { className: "hidden sm:inline" }, t("alert.clearFilters"))
+          e(X, { className: "h-3 w-3" }),
+          t("alert.clearFilters")
+        )
+      ),
+      // Row 2: Severity pills
+      e(
+        "div",
+        { className: "flex flex-wrap items-center gap-1.5 w-full" },
+        severityFilters.map((f) =>
+          e(
+            "button",
+            {
+              key: f.value,
+              onClick: () => {
+                setSeverityFilter?.(f.value);
+                onSeverityFilterChange?.(f.value);
+              },
+              className: `flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap ${
+                severityFilter === f.value
+                  ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-sm shadow-cyan-500/10"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-slate-800/50"
+              }`,
+              "aria-pressed": severityFilter === f.value,
+            },
+            f.label
+          )
         )
       )
     ),

@@ -9,7 +9,7 @@ const I18N = {
   vi: {
     "smartStats.marketValue": "Giá trị danh mục",
     "smartStats.unrealizedPL": "Lãi/Lỗ chưa thực hiện",
-    "smartStats.breadthLabel": "Rộng thị trường",
+    "smartStats.breadthLabel": "Độ rộng thị trường",
     "smartStats.refreshBtn": "Làm mới dữ liệu",
     "smartStats.alpha": "Alpha",
     "smartStats.beta": "Beta",

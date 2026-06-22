@@ -2066,9 +2066,22 @@ def backfill_intraday_tick_system(self, *, symbol: str, trade_date: str) -> dict
 
     api_key, api_secret = creds  # không log
 
-    # §14.5: Presence check trước bulk_create
+    # §14.5: Presence check trước bulk_create using fast range query
     try:
-        existing = IntradayTick.objects.filter(symbol=symbol_upper, timestamp__date=trade_date).exists()
+        from datetime import datetime, time
+        import pytz
+        from django.utils.timezone import make_aware
+
+        tz = pytz.timezone('Asia/Ho_Chi_Minh')
+        dt_parsed = datetime.strptime(trade_date, '%Y-%m-%d')
+        start_dt = make_aware(datetime.combine(dt_parsed, time.min), tz)
+        end_dt = make_aware(datetime.combine(dt_parsed, time.max), tz)
+
+        existing = IntradayTick.objects.filter(
+            symbol=symbol_upper,
+            timestamp__gte=start_dt,
+            timestamp__lte=end_dt
+        ).exists()
     except Exception as exc:
         logger.error('backfill_intraday_tick_system: DB check error: %s', exc)
         return {'status': 'error', 'reason': str(exc), 'symbol': symbol_upper, 'date': trade_date}
@@ -2175,8 +2188,27 @@ def backfill_intraday_tick_user(self, *, user_id: int, symbol: str, trade_date: 
         logger.error('backfill_intraday_tick_user: credential error user_id=%s: %s', user_id, exc)
         return {'status': 'error', 'reason': 'credential_error', 'user_id': user_id}
 
-    # §14.5: Presence check
-    if IntradayTick.objects.filter(symbol=symbol_upper, timestamp__date=trade_date).exists():
+    # §14.5: Presence check using fast range query
+    try:
+        from datetime import datetime, time
+        import pytz
+        from django.utils.timezone import make_aware
+
+        tz = pytz.timezone('Asia/Ho_Chi_Minh')
+        dt_parsed = datetime.strptime(trade_date, '%Y-%m-%d')
+        start_dt = make_aware(datetime.combine(dt_parsed, time.min), tz)
+        end_dt = make_aware(datetime.combine(dt_parsed, time.max), tz)
+
+        user_ticks_exist = IntradayTick.objects.filter(
+            symbol=symbol_upper,
+            timestamp__gte=start_dt,
+            timestamp__lte=end_dt
+        ).exists()
+    except Exception as exc:
+        logger.error('backfill_intraday_tick_user: DB check error: %s', exc)
+        return {'status': 'error', 'reason': str(exc), 'symbol': symbol_upper, 'date': trade_date}
+
+    if user_ticks_exist:
         return {'status': 'skipped', 'reason': 'already_exists', 'symbol': symbol_upper, 'date': trade_date}
 
     ticks = fetch_intraday_tape_history(
@@ -2328,16 +2360,34 @@ def enqueue_dnse_quarterly_backfill(
         cur += timedelta(days=1)
 
     # 3. Presence check — lấy tập (symbol, date) đã có data
+    # Use IntradayBar (1H timeframe) for presence check as it is ~1000x smaller
+    # and composite indexed on (symbol, timeframe, datetime)
     existing_pairs: set[tuple[str, str]] = set()
     try:
-        qs = (
-            IntradayTick.objects
-            .filter(symbol__in=symbols, timestamp__date__in=trade_dates)
-            .values_list('symbol', 'timestamp__date')
-            .distinct()
-        )
-        for sym, dt in qs:
-            existing_pairs.add((sym, str(dt)))
+        from datetime import datetime, time
+        import pytz
+        from django.db.models.functions import TruncDate
+        from django.utils.timezone import make_aware
+        from market_data.models import IntradayBar
+
+        tz = pytz.timezone('Asia/Ho_Chi_Minh')
+        sorted_dates = sorted(trade_dates)
+        if sorted_dates:
+            min_date = datetime.strptime(sorted_dates[0], '%Y-%m-%d').date()
+            max_date = datetime.strptime(sorted_dates[-1], '%Y-%m-%d').date()
+            start_dt = make_aware(datetime.combine(min_date, time.min), tz)
+            end_dt = make_aware(datetime.combine(max_date, time.max), tz)
+
+            qs = (
+                IntradayBar.objects
+                .filter(symbol__in=symbols, timeframe='1H', datetime__gte=start_dt, datetime__lte=end_dt)
+                .annotate(trade_date=TruncDate('datetime'))
+                .values_list('symbol', 'trade_date')
+                .distinct()
+            )
+            for sym, dt in qs:
+                if dt:
+                    existing_pairs.add((sym, dt.isoformat() if hasattr(dt, 'isoformat') else str(dt)))
     except Exception as exc:
         logger.warning('enqueue_dnse_quarterly_backfill: presence query failed: %s', exc)
         # Nếu lỗi presence check — abort để tránh over-queue

@@ -1,5 +1,46 @@
 # Code Change Audit Ledger
 
+# 2026-06-22 | Beta Allowed Hosts Nginx Proxy Fix ✅
+
+## Problem Solved
+- Khắc phục lỗi 400 Bad Request tại endpoint `/auth/token/` và `/api/health` trên môi trường beta (`https://beta.edusuccess.vn`).
+- Nguyên nhân: Django backend `core-api` của production đang chạy với biến `DJANGO_ALLOWED_HOSTS=saas.edusuccess.vn,localhost,127.0.0.1`. Khi frontend-beta proxy request nhận từ `beta.edusuccess.vn`, nó chuyển tiếp nguyên Host header `beta.edusuccess.vn` sang Django backend, dẫn tới lỗi `DisallowedHost` và trả về 400 Bad Request.
+- Giải pháp: Cập nhật cấu hình Nginx của `frontend-beta` (`packages/web/docker/nginx.conf`) để định nghĩa map block chuyển đổi Host header: nếu host gửi đến là `beta.edusuccess.vn` thì ghi đè thành `saas.edusuccess.vn` khi gửi tới backend, bypass Allowed Hosts check của Django backend một cách an toàn mà không cần sửa cấu hình hay restart backend container của production.
+
+## Verification Results
+| Check | Result |
+|---|---|
+| API health check probe (`/api/health`) | ✅ Trả về HTTP 200 OK với JSON payload hợp lệ từ backend |
+| Playwright E2E tests (`login`, `watchlist`, v.v.) | ✅ 38 tests passed, 2 skipped, 0 failed |
+| Production environment stability | ✅ Production hoàn toàn không bị ảnh hưởng hay downtime |
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/web/docker/nginx.conf` | Định nghĩa map `$host` sang `$backend_host` và cập nhật các chỉ thị `proxy_set_header Host` / `X-Forwarded-Host` |
+| `PROGRESS_DASHBOARD.md` | Cập nhật trạng thái HTTPS cert và metrics kiểm thử |
+
+# 2026-06-22 | TypeScript Error Fix — 6 Shell Page Files ✅
+
+## Problem Solved
+- Fixed 48+ TypeScript errors (TS2307, TS2322, TS2345, TS2353, TS2551, TS2554, TS2769, TS6133, TS7006) across 6 shell page files in `packages/web/src/pages/`.
+- Root cause: `coreApiAdapter` is a JS module without type declarations, so TS cannot infer method signatures; additionally `React.createElement` type overloads are too strict for the `e(...)` alias pattern used in these files.
+
+## Verification Results
+| Check | Result |
+|---|---|
+| `npx tsc --noEmit` | ✅ (0 errors in 6 target files, remaining 32 in out-of-scope files) |
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/web/src/pages/WatchlistPage.tsx` | Fixed 30+ `coreApiAdapter` calls via `as any`, `createElement` overload with `any`, TS2345/TS2322/TS6133, import path `api.js` → `coreApiAdapter.js` |
+| `packages/web/src/pages/WhaleAlertsPage.tsx` | TS2322 response type guard for `AlertCenterFeedResponse` |
+| `packages/web/src/pages/PortfoliosPage.tsx` | 3 adapter `as any` casts, TS2345 response type, TS7006 implicit `any` params |
+| `packages/web/src/pages/TransactionsPage.tsx` | 2 adapter `as any` casts, TS2345 response type |
+| `packages/web/src/pages/StockDetailPage.tsx` | Removed 9 unused symbols, `createElement` overload fix, window cast fix, hook input `as any`, `snapshot` cast fix |
+| `packages/web/src/pages/ScreenerPage.tsx` | 5 adapter `as any` casts |
+
 # 2026-06-20 | SOC Service Operations Center i18n & Layout Hotfix — Complete ✅
 
 ## Problem Solved

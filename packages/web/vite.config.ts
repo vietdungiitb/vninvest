@@ -14,6 +14,14 @@ export default defineConfig({
   resolve: {
     alias: {
       'src': path.resolve(__dirname, 'src'),
+      '@': path.resolve(__dirname, 'src'),
+      '@lib': path.resolve(__dirname, 'src/lib'),
+      '@components': path.resolve(__dirname, 'src/components'),
+      '@layouts': path.resolve(__dirname, 'src/layouts'),
+      '@context': path.resolve(__dirname, 'src/context'),
+      '@hooks': path.resolve(__dirname, 'src/hooks'),
+      '@pages': path.resolve(__dirname, 'src/pages'),
+      '@types': path.resolve(__dirname, 'src/types'),
       '@vninvestcharts/vn-kline-engine-core': path.resolve(__dirname, 'src/components/vninvestcharts/packages/vn-kline-engine-core/src/index.js'),
       '@vninvestcharts/vn-kline-engine-react': path.resolve(__dirname, 'src/components/vninvestcharts/packages/vn-kline-engine-react/src/index.js'),
     },
@@ -39,5 +47,6 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
+    chunkSizeWarningLimit: 1000,
   },
 });

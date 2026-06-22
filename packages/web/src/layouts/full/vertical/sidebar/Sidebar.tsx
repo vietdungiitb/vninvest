@@ -23,7 +23,7 @@ interface SidebarProps {
   onMobileClose: () => void;
 }
 
-export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
+export function Sidebar({ collapsed, mobileOpen, onMobileClose }: SidebarProps) {
   const { userTenants = [] as Tenant[], activeTenantId, switchTenant } = usePortfolio();
   const { t } = useI18n();
   const location = useLocation();
@@ -64,15 +64,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           },
           'VNInvest'
         ),
-        !collapsed || mobileOpen ? null : e(
-          'button',
-          {
-            className: 'p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 focus:outline-none',
-            onClick: onToggle,
-            'aria-label': t('layout.expandMenu') || 'Open menu'
-          },
-          e('span', { className: 'h-5 w-5' }, '☰')
-        )
+        null
       ),
       userTenants.length > 0 && !collapsed && e(
         'div',
@@ -115,7 +107,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       sidebarItems.map((group) => e(
         'div',
         { key: group.group },
-        e(
+        !collapsed && e(
           'h3',
           { className: 'px-3 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider' },
           t(group.group) || group.group

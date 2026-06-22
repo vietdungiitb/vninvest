@@ -9,6 +9,10 @@ import {
   createCoreTransport,
   authTokenStorage,
   CoreApiRequestError,
+  initTokenStorageSync,
+  destroyTokenStorageSync,
+  decodeJwtPayload,
+  isTokenExpiringSoon,
 } from "./core/transport.js";
 
 import { createAuthClient } from "./core/auth.js";
@@ -23,7 +27,14 @@ import { createOperatorClient } from "./core/operator.js";
 import { createMiscClient } from "./core/misc.js";
 import { createSocClient } from "./core/soc.js";
 
-export { authTokenStorage, CoreApiRequestError };
+export {
+  authTokenStorage,
+  CoreApiRequestError,
+  initTokenStorageSync,
+  destroyTokenStorageSync,
+  decodeJwtPayload,
+  isTokenExpiringSoon,
+};
 
 export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setTokens, clearTokens } = {}) {
   const transport = createCoreTransport(env, {
@@ -32,6 +43,9 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     setTokens,
     clearTokens,
   });
+
+  // Start multi-tab token sync listener
+  initTokenStorageSync();
 
   const persistTokens = typeof setTokens === "function" ? setTokens : () => {};
 
