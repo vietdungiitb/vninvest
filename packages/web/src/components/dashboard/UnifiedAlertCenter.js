@@ -103,6 +103,17 @@ function timeAgo(ts) {
   return `${days} ngày trước`;
 }
 
+function formatExecutionTime(isoString) {
+  if (!isoString) return null;
+  const d = new Date(isoString);
+  const today = new Date();
+  const isToday = d.toDateString() === today.toDateString();
+  if (isToday) {
+    return d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  }
+  return d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" }) + " " + d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+}
+
 export function UnifiedAlertCenter({
   alerts = [],
   alertSummary,
@@ -418,7 +429,11 @@ export function UnifiedAlertCenter({
                     'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                   } whitespace-nowrap flex-shrink-0` }, sourceLabel(alert.alert_family || alert.alert_type || alert.source, t))
                 ),
-                e("span", { className: "text-xs text-slate-500 whitespace-nowrap flex-shrink-0" }, timeAgo(alert.triggered_at || alert.ts || alert.timestamp))
+                e("span", { className: "text-xs text-slate-500 whitespace-nowrap flex-shrink-0" },
+                  alert.executed_at
+                    ? formatExecutionTime(alert.executed_at) + " • " + timeAgo(alert.triggered_at || alert.ts || alert.timestamp)
+                    : timeAgo(alert.triggered_at || alert.ts || alert.timestamp)
+                )
               ),
               (alert.body || alert.message || alert.summary) && e("p", { className: "text-xs text-slate-300 leading-relaxed mb-2" }, alert.body || alert.message || alert.summary),
               // Metadata chips strip

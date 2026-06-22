@@ -315,7 +315,7 @@ class AlertFeedBaseListView(generics.ListAPIView):
     pagination_class = AlertCursorPagination
 
     def get_queryset(self):
-        qs = UnifiedAlert.objects.all().order_by('-triggered_at')
+        qs = UnifiedAlert.objects.all().select_related('whale_detail').order_by('-triggered_at')
         lane = (self.request.query_params.get('lane') or 'main').strip().lower()
         return _apply_common_alert_filters(qs, self.request.query_params, lane=lane)
 
@@ -359,6 +359,7 @@ class AlertCenterFeedView(UserScopedAlertFeedBaseView):
     def get_queryset(self):
         qs = (
             UnifiedAlert.objects
+            .select_related('whale_detail')
             .annotate(type_priority=_type_priority_annotation())
             .order_by('type_priority', '-triggered_at', '-pk')
         )
@@ -388,7 +389,7 @@ class AlertCenterFeedView(UserScopedAlertFeedBaseView):
 )
 class AIAlertsFeedView(UserScopedAlertFeedBaseView):
     def get_queryset(self):
-        qs = UnifiedAlert.objects.all().order_by('-triggered_at')
+        qs = UnifiedAlert.objects.all().select_related('whale_detail').order_by('-triggered_at')
         qs = _apply_common_alert_filters(qs, self.request.query_params, lane='ai')
         return delivery_service.apply_user_delivery_policy(user=self.request.user, queryset=qs)
 
@@ -529,7 +530,7 @@ class AlertCenterEventDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, alert_id):
-        qs = UnifiedAlert.objects.all().order_by('-triggered_at')
+        qs = UnifiedAlert.objects.all().select_related('whale_detail').order_by('-triggered_at')
         qs = _apply_common_alert_filters(qs, request.query_params, lane='main')
         qs = delivery_service.apply_user_delivery_policy(user=request.user, queryset=qs)
         alert = qs.filter(alert_id=alert_id).first()
@@ -554,7 +555,7 @@ class AlertCenterSymbolContextView(APIView):
 
     def get(self, request, symbol):
         symbol = (symbol or '').upper()
-        qs = UnifiedAlert.objects.all().order_by('-triggered_at')
+        qs = UnifiedAlert.objects.all().select_related('whale_detail').order_by('-triggered_at')
         qs = _apply_common_alert_filters(qs, request.query_params, lane='main')
         qs = qs.filter(symbol=symbol)
         scoped_qs = delivery_service.apply_user_delivery_policy(user=request.user, queryset=qs)

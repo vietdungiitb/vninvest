@@ -77,8 +77,8 @@ export function AlertCard({
         e("strong", null, alert.session_date || "—")
       ]),
       e("span", { key: "time" }, [
-        "Thời điểm: ", 
-        e("strong", null, formatAlertTimestamp(alert.triggered_at))
+        alert.executed_at ? "Khớp lệnh: " : "Thời điểm: ", 
+        e("strong", null, alert.executed_at ? formatAlertTimestamp(alert.executed_at) : formatAlertTimestamp(alert.triggered_at))
       ]),
     ]),
 

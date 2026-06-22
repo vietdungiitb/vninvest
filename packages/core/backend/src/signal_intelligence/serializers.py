@@ -7,13 +7,14 @@ class UnifiedAlertSerializer(serializers.ModelSerializer):
     lane = serializers.SerializerMethodField()
     alert_family = serializers.SerializerMethodField()
     summary = serializers.SerializerMethodField()
+    executed_at = serializers.SerializerMethodField()
 
     class Meta:
         model = UnifiedAlert
         fields = [
             'alert_id', 'alert_type', 'alert_family', 'lane', 'symbol', 'severity', 'confidence', 'freshness_state',
             'title', 'body', 'value', 'direction', 'session_date', 'triggered_at',
-            'source_ref', 'metadata', 'evidence', 'summary',
+            'source_ref', 'metadata', 'evidence', 'summary', 'executed_at',
         ]
 
     def get_lane(self, obj):
@@ -42,6 +43,12 @@ class UnifiedAlertSerializer(serializers.ModelSerializer):
         if body:
             return body
         return str(obj.title or '').strip()
+
+    def get_executed_at(self, obj):
+        try:
+            return obj.whale_detail.executed_at.isoformat()
+        except WhaleAlertCanonical.DoesNotExist:
+            return None
 
 
 class WhaleAlertCanonicalSerializer(serializers.ModelSerializer):
