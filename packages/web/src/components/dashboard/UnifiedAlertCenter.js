@@ -5,7 +5,7 @@
  * Updated with Bento Card styling and commercial-grade spacing.
  */
 import { createElement, useMemo, useState } from "react";
-import { Bell, Filter, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Bell, Filter, X, ChevronLeft, ChevronRight, Flame } from "lucide-react";
 
 const e = createElement;
 
@@ -73,13 +73,21 @@ function sourceLabel(source, t) {
   return t(map[source] || source || "alert.source.system");
 }
 
-function severityColor(severity) {
+function severityCardStyles(severity, isRead) {
+  if (isRead) {
+    return "border-slate-800/80 bg-slate-900/30 border-l-2 border-l-slate-700 opacity-60 hover:opacity-100";
+  }
   switch (severity) {
-    case "critical": return "bg-red-500/20 text-red-400 border-red-500/30";
-    case "high": return "bg-orange-500/20 text-orange-400 border-orange-500/30";
-    case "medium": return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
-    case "low": return "bg-blue-500/20 text-blue-400 border-blue-500/30";
-    default: return "bg-slate-500/20 text-slate-400 border-slate-500/30";
+    case "critical":
+      return "border-slate-700/60 bg-red-950/10 border-l-4 border-l-red-500 hover:bg-red-950/20";
+    case "high":
+      return "border-slate-700/60 bg-orange-950/10 border-l-4 border-l-orange-500 hover:bg-orange-950/20";
+    case "medium":
+      return "border-slate-700/60 bg-yellow-950/10 border-l-4 border-l-yellow-600 hover:bg-yellow-950/20";
+    case "low":
+      return "border-slate-700/60 bg-emerald-950/10 border-l-4 border-l-emerald-600 hover:bg-emerald-950/20";
+    default:
+      return "border-slate-700/60 bg-slate-800/30 border-l-4 border-l-slate-500 hover:bg-slate-800/40";
   }
 }
 
@@ -132,7 +140,7 @@ export function UnifiedAlertCenter({
   const [activeTab, setActiveTab] = useState("alerts");
 
   const safeAlerts = useMemo(() => (Array.isArray(alerts) ? alerts : []), [alerts]);
-  const unreadAlertCount = unreadCount ?? safeAlerts.filter((item) => !readAlertIds.has(item.id)).length;
+  const unreadAlertCount = unreadCount ?? safeAlerts.filter((item) => !readAlertIds.has(item.alert_id || item.id)).length;
 
   const filteredAlerts = useMemo(() => {
     let result = safeAlerts;
@@ -145,12 +153,58 @@ export function UnifiedAlertCenter({
     return result;
   }, [safeAlerts, severityFilter, sourceFilter]);
 
+  const severityCounts = useMemo(() => {
+    const counts = { all: safeAlerts.length, critical: 0, high: 0, medium: 0, low: 0 };
+    safeAlerts.forEach((a) => {
+      const sev = a?.severity;
+      if (sev && counts[sev] !== undefined) {
+        counts[sev]++;
+      }
+    });
+    return counts;
+  }, [safeAlerts]);
+
   const severityFilters = [
-    { value: "all", label: t("alert.severity.all") },
-    { value: "critical", label: t("alert.severity.critical") },
-    { value: "high", label: t("alert.severity.high") },
-    { value: "medium", label: t("alert.severity.medium") },
-    { value: "low", label: t("alert.severity.low") },
+    {
+      value: "all",
+      label: t("alert.severity.all"),
+      icon: Bell,
+      activeClass: "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-sm shadow-cyan-500/10",
+      inactiveClass: "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-slate-800/50",
+      iconClass: "text-cyan-400"
+    },
+    {
+      value: "critical",
+      label: t("alert.severity.critical"),
+      icon: Flame,
+      activeClass: "bg-red-500/20 text-red-400 border border-red-500/30 shadow-sm shadow-red-500/10",
+      inactiveClass: "text-red-400/80 hover:text-red-300 hover:bg-red-950/30 border border-red-900/30",
+      iconClass: "text-red-400"
+    },
+    {
+      value: "high",
+      label: t("alert.severity.high"),
+      icon: Flame,
+      activeClass: "bg-orange-500/20 text-orange-400 border border-orange-500/30 shadow-sm shadow-orange-500/10",
+      inactiveClass: "text-orange-400/80 hover:text-orange-300 hover:bg-orange-950/30 border border-orange-900/30",
+      iconClass: "text-orange-400"
+    },
+    {
+      value: "medium",
+      label: t("alert.severity.medium"),
+      icon: Bell,
+      activeClass: "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 shadow-sm shadow-yellow-500/10",
+      inactiveClass: "text-yellow-400/80 hover:text-yellow-300 hover:bg-yellow-950/30 border border-yellow-900/30",
+      iconClass: "text-yellow-400"
+    },
+    {
+      value: "low",
+      label: t("alert.severity.low"),
+      icon: Bell,
+      activeClass: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-sm shadow-emerald-500/10",
+      inactiveClass: "text-emerald-400/80 hover:text-emerald-300 hover:bg-emerald-950/30 border border-emerald-900/30",
+      iconClass: "text-emerald-400"
+    },
   ];
 
   const hasActiveFilters = severityFilter !== "all" || sourceFilter !== "all";
@@ -195,8 +249,10 @@ export function UnifiedAlertCenter({
       e(
         "div",
         { className: "flex flex-wrap items-center gap-1.5 w-full" },
-        severityFilters.map((f) =>
-          e(
+        severityFilters.map((f) => {
+          const isActive = severityFilter === f.value;
+          const count = severityCounts[f.value] || 0;
+          return e(
             "button",
             {
               key: f.value,
@@ -204,16 +260,15 @@ export function UnifiedAlertCenter({
                 setSeverityFilter?.(f.value);
                 onSeverityFilterChange?.(f.value);
               },
-              className: `flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap ${
-                severityFilter === f.value
-                  ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-sm shadow-cyan-500/10"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-slate-800/50"
+              className: `flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap ${
+                isActive ? f.activeClass : f.inactiveClass
               }`,
-              "aria-pressed": severityFilter === f.value,
+              "aria-pressed": isActive,
             },
-            f.label
-          )
-        )
+            e(f.icon, { className: `h-3.5 w-3.5 ${f.iconClass}` }),
+            `${f.label} (${count})`
+          );
+        })
       )
     ),
     // Alert list
@@ -227,19 +282,125 @@ export function UnifiedAlertCenter({
             e(Bell, { className: "h-12 w-12 text-slate-700/50 mb-3" }),
             e("p", { className: "text-slate-500 text-sm" }, t("alert.empty"))
           )
-        : filteredAlerts.map((alert) =>
-            e(
+        : filteredAlerts.map((alert) => {
+            const alertId = alert.alert_id || alert.id;
+            const isUnread = !readAlertIds.has(alertId);
+
+            // Construct metadata chips
+            const metadataChips = [];
+            if (alert.direction) {
+              const isUp = ["buy", "long", "up"].includes(alert.direction.toLowerCase());
+              metadataChips.push(
+                e(
+                  "span",
+                  {
+                    key: "dir",
+                    className: `inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                      isUp
+                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                        : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                    }`,
+                  },
+                  isUp ? "↑ MUA" : "↓ BÁN"
+                )
+              );
+            }
+
+            if (alert.value != null && Number(alert.value) > 0) {
+              const val = Number(alert.value);
+              const formattedVal = val >= 1e9
+                ? `${(val / 1e9).toFixed(1)} tỷ`
+                : val >= 1e6
+                ? `${(val / 1e6).toFixed(1)} triệu`
+                : val.toLocaleString("vi-VN");
+              metadataChips.push(
+                e(
+                  "span",
+                  {
+                    key: "val",
+                    className: "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700/50",
+                  },
+                  `Giá trị: ${formattedVal}`
+                )
+              );
+            }
+
+            if (alert.confidence != null) {
+              const confVal = Number(alert.confidence);
+              const confPct = confVal <= 1 ? Math.round(confVal * 100) : Math.round(confVal);
+              metadataChips.push(
+                e(
+                  "span",
+                  {
+                    key: "conf",
+                    className: "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-cyan-950/20 text-cyan-400 border border-cyan-500/10",
+                  },
+                  `Tin cậy: ${confPct}%`
+                )
+              );
+            }
+
+            if (alert.session_date) {
+              metadataChips.push(
+                e(
+                  "span",
+                  {
+                    key: "session",
+                    className: "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-400 border border-slate-700/30",
+                  },
+                  `Phiên: ${alert.session_date}`
+                )
+              );
+            }
+
+            // Construct action buttons
+            const actionButtons = [];
+            if (isUnread && markAlertAsRead) {
+              actionButtons.push(
+                e(
+                  "button",
+                  {
+                    key: "read",
+                    onClick: (evt) => {
+                      evt.stopPropagation();
+                      markAlertAsRead(alertId);
+                    },
+                    className: "px-2 py-0.5 text-[10px] font-semibold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/20 rounded transition-all",
+                  },
+                  t("alert.markRead")
+                )
+              );
+            }
+
+            if (alert.symbol && muteSymbolFor30m) {
+              actionButtons.push(
+                e(
+                  "button",
+                  {
+                    key: "mute",
+                    onClick: (evt) => {
+                      evt.stopPropagation();
+                      muteSymbolFor30m(alert.symbol);
+                    },
+                    className: "px-2 py-0.5 text-[10px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700/50 rounded transition-all",
+                  },
+                  `Tắt 30p`
+                )
+              );
+            }
+
+            const actionsRow = actionButtons.length > 0 && e("div", { className: "flex items-center gap-2 mt-3 pt-2 border-t border-slate-800/40" }, actionButtons);
+
+            return e(
               "div",
               {
-                key: alert.id || `${alert.symbol}-${alert.ts}`,
+                key: alertId || `${alert.symbol}-${alert.ts || alert.triggered_at}`,
                 onClick: () => {
                   if (alert.symbol) onSelectSymbol?.(alert.symbol);
-                  if (alert.id && markAlertAsRead) markAlertAsRead(alert.id);
+                  if (alertId && markAlertAsRead) markAlertAsRead(alertId);
                 },
-                className: `p-4 rounded-xl border cursor-pointer transition-all hover:bg-slate-800/50 hover:border-slate-700/50 ${
-                  readAlertIds.has(alert.id)
-                    ? "border-slate-700/30 bg-slate-900/30"
-                    : `border-slate-700/50 bg-slate-800/40 ${severityColor(alert.severity)}`
+                className: `p-4 rounded-xl border cursor-pointer transition-all ${
+                  severityCardStyles(alert.severity, !isUnread)
                 }`,
               },
               e(
@@ -249,15 +410,22 @@ export function UnifiedAlertCenter({
                   "div",
                   { className: "flex items-center gap-2.5 flex-1 min-w-0" },
                   e("span", { className: "font-semibold text-slate-100 text-sm truncate" }, alert.symbol || "—"),
-                  e("span", { className: `text-xs px-2 py-0.5 rounded border ${severityColor(alert.severity)} whitespace-nowrap flex-shrink-0` }, sourceLabel(alert.source, t))
+                  e("span", { className: `text-[10px] px-2 py-0.5 rounded border ${
+                    alert.severity === 'critical' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                    alert.severity === 'high' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
+                    alert.severity === 'medium' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
+                    'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                  } whitespace-nowrap flex-shrink-0` }, sourceLabel(alert.alert_family || alert.alert_type || alert.source, t))
                 ),
-                e("span", { className: "text-xs text-slate-500 whitespace-nowrap flex-shrink-0" }, timeAgo(alert.ts || alert.timestamp))
+                e("span", { className: "text-xs text-slate-500 whitespace-nowrap flex-shrink-0" }, timeAgo(alert.triggered_at || alert.ts || alert.timestamp))
               ),
-              alert.message && e("p", { className: "text-xs text-slate-300 line-clamp-2 mb-2" }, alert.message),
-              alert.severity &&
-                e("span", { className: `text-xs inline-block px-2 py-0.5 rounded ${severityColor(alert.severity)}` }, t(`alert.severity.${alert.severity}`))
-            )
-          )
+              (alert.body || alert.message || alert.summary) && e("p", { className: "text-xs text-slate-300 leading-relaxed mb-2" }, alert.body || alert.message || alert.summary),
+              // Metadata chips strip
+              metadataChips.length > 0 && e("div", { className: "flex flex-wrap gap-1.5 mt-2" }, metadataChips),
+              // Actions strip
+              actionsRow
+            );
+          })
     ),
     // Pagination controls
     e(

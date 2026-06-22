@@ -54,11 +54,11 @@ function createTranslator(locale = "vi") {
 
 // Muted Professional Color Palette for Treemap
 const HEAT_COLORS = {
-  upStrong: "#10b981",   // emerald-500
-  upSoft: "#34d399",     // emerald-400
+  upStrong: "#22c55e",   // green-500
+  upSoft: "#4ade80",     // green-400
   downStrong: "#ef4444", // red-500
   downSoft: "#f87171",   // red-400
-  neutral: "#f59e0b",    // amber-500
+  neutral: "#eab308",    // yellow-500
 };
 
 function getHeatColor(changePct) {
@@ -104,7 +104,9 @@ export function PortfolioHeatmap({
         name: symbol,
         value: Math.max(marketValue, 1),
         changePct,
-        color: getHeatColor(changePct),
+        itemStyle: {
+          color: getHeatColor(changePct),
+        },
         currentPrice,
         quantity,
       };
@@ -132,7 +134,7 @@ export function PortfolioHeatmap({
           ...darkTooltip,
           formatter: (info) => {
             const { name, value, data } = info;
-            return `<strong style="color: #06b6d4;">${name}</strong><br/>Giá trị: ${Number(value).toLocaleString("vi-VN")}<br/>Biến động: <span style="color: ${data?.changePct > 0 ? '#34d399' : data?.changePct < 0 ? '#f87171' : '#f59e0b'};">${Number(data?.changePct || 0).toFixed(2)}%</span>`;
+            return `<strong style="color: #06b6d4;">${name}</strong><br/>Giá trị: ${Number(value).toLocaleString("vi-VN")}<br/>Biến động: <span style="color: ${data?.changePct > 0 ? '#22c55e' : data?.changePct < 0 ? '#ef4444' : '#eab308'};">${Number(data?.changePct || 0).toFixed(2)}%</span>`;
           },
         },
         series: [
@@ -143,17 +145,21 @@ export function PortfolioHeatmap({
             data: chartData,
             itemStyle: {
               borderColor: "#0f172a",
-              borderWidth: 2,
-              gapWidth: 2,
+              borderWidth: 0.5,
+              gapWidth: 0.5,
             },
             levels: [
-              { itemStyle: { borderWidth: 0, gapWidth: 4 } },
-              { itemStyle: { borderColor: "rgba(15, 23, 42, 0.55)", borderWidth: 1.5, gapWidth: 1.5 } },
+              { itemStyle: { borderWidth: 0, gapWidth: 0.5 } },
+              { itemStyle: { borderColor: "#0f172a", borderWidth: 0.5, gapWidth: 0.5 } },
             ],
             label: {
               show: true,
-              formatter: (params) => params.name,
-              fontSize: 12,
+              formatter: (params) => {
+                const changePct = params.data?.changePct;
+                const sign = changePct > 0 ? "+" : "";
+                return `${params.name}\n${sign}${Number(changePct || 0).toFixed(2)}%`;
+              },
+              fontSize: 11,
               color: "#fff",
             },
             breadcrumb: { show: false },
@@ -167,7 +173,7 @@ export function PortfolioHeatmap({
         ...darkTooltip,
         formatter: (info) => {
           const { name, value, data } = info;
-          return `<strong style="color: #06b6d4;">${name}</strong><br/>Giá trị: ${Number(value).toLocaleString("vi-VN")}<br/>Biến động: <span style="color: ${data?.changePct > 0 ? '#34d399' : data?.changePct < 0 ? '#f87171' : '#f59e0b'};">${Number(data?.changePct || 0).toFixed(2)}%</span>`;
+          return `<strong style="color: #06b6d4;">${name}</strong><br/>Giá trị: ${Number(value).toLocaleString("vi-VN")}<br/>Biến động: <span style="color: ${data?.changePct > 0 ? '#22c55e' : data?.changePct < 0 ? '#ef4444' : '#eab308'};">${Number(data?.changePct || 0).toFixed(2)}%</span>`;
         },
       },
       series: [
@@ -177,12 +183,16 @@ export function PortfolioHeatmap({
           radius: [0, "90%"],
           itemStyle: {
             borderColor: "#0f172a",
-            borderWidth: 2,
+            borderWidth: 1,
           },
           label: {
             show: true,
-            formatter: (params) => params.name,
-            fontSize: 11,
+            formatter: (params) => {
+              const changePct = params.data?.changePct;
+              const sign = changePct > 0 ? "+" : "";
+              return `${params.name}\n${sign}${Number(changePct || 0).toFixed(2)}%`;
+            },
+            fontSize: 10,
             color: "#fff",
           },
         },
