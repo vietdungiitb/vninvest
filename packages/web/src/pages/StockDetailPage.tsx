@@ -1,5 +1,6 @@
 import "./StockDetailPage.css";
 import { createElement, useCallback, useState, useMemo } from "react";
+import { useParams } from "react-router-dom";
 
 import { useStockDetailPageModel } from "../features/stock-detail/hooks/useStockDetailPageModel.js";
 import { StockDetailHeader } from "../features/stock-detail/components/StockDetailHeader.js";
@@ -36,7 +37,9 @@ interface StockDetailPageProps {
   className?: string;
 }
 
-export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }: StockDetailPageProps) {
+export function StockDetailPage({ env = DEFAULT_ENV, symbol: propSymbol, className = "" }: StockDetailPageProps) {
+  const { symbol: routeSymbol } = useParams<{ symbol: string }>();
+  const symbol = propSymbol || routeSymbol || "";
   const [isWatched, setIsWatched] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);

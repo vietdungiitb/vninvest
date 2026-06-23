@@ -1,5 +1,44 @@
 # Code Change Audit Ledger
 
+
+# 2026-06-23 | Stock Details Page Normal Mode Cutover & Heatmap Drill-down Fix ✅
+
+## Problem Solved
+- Trang Stock Details `/stocks/:symbol` trước đây ở chế độ debug (sử dụng `ShellStockDetailPage.tsx` bọc ngoài làm hiện các panel metadata runtime, metadata build, form nhập mã). Cần đưa trang về chế độ normal (sử dụng `StockDetailPage.tsx` trực tiếp full width).
+- Sự kiện click chuột vào một mã chứng khoán trên PortfolioHeatmap bị leaf node canvas crash do ECharts drill-down mặc định kích hoạt. Đồng thời, khi click vào mã cổ phiếu cần hiện tooltip/dialog thông tin chi tiết (premium glassmorphism card với SVG sparkline 24H price trend) và click vào tên mã để tự động chuyển sang trang `/stocks/:symbol`.
+
+## Changes
+1. **pageRegistry.js**:
+   - Sửa route registry `"core-stock-detail"` để lazy import `StockDetailPage.tsx` trực tiếp thay vì `ShellStockDetailPage.tsx`.
+2. **StockDetailPage.tsx**:
+   - Thêm import `useParams` từ `react-router-dom`.
+   - Cập nhật hàm `StockDetailPage` để tự động resolve `symbol` từ route params (`useParams<{ symbol: string }>()`) nếu không được truyền vào qua prop `symbol`.
+3. **PortfolioHeatmap.js**:
+   - Thiết lập `nodeClick: false` cho series `Treemap` và `Sunburst` để chặn drill-down crash.
+   - Thêm state `selectedDetail`, `trendPoints`, `loadingTrend`.
+   - Tích hợp custom Glassmorphism card dialog hiển thị thông tin metadata cổ phiếu (Mã, Tên công ty, Ngành, Giá hiện tại, Thay đổi %, Khối lượng, Vốn hóa, Volatility) và SVG `<path>` sparkline của 24H price trend.
+   - Gọi `coreApiAdapter.getStockChartHistory(symbol, { timeframe: '1H', days: 1 })` để lấy dữ liệu vẽ sparkline khi click.
+   - Thêm i18n Vietnamese cho các nhãn trong dialog.
+   - Chuyển hướng đến `/stocks/:symbol` khi người dùng click vào tên mã cổ phiếu.
+
+## Verification Results
+- **TypeScript Compiler Check**: `npx tsc --noEmit` => ✅ Pass (0 errors).
+- **Vite Build Check**: `npm run build` => ✅ Pass (3243 modules compiled successfully).
+- **Manual Verification via Browser**:
+  - Click mã cổ phiếu trên Heatmap hiện thông tin dialog glassmorphism với sparkline chính xác.
+  - Click tên mã chuyển trang `/stocks/:symbol` thành công.
+  - Trang `/stocks/:symbol` hiển thị trực tiếp workstation full-width ở chế độ normal, hoàn toàn sạch bóng các panel debug.
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/web/src/pages/pageRegistry.js` | Sửa `"core-stock-detail"` import từ Shell sang Normal Page |
+| `packages/web/src/pages/StockDetailPage.tsx` | Nhận `symbol` từ `useParams()` |
+| `packages/web/src/components/dashboard/PortfolioHeatmap.js` | Tắt ECharts drill-down, vẽ custom dialog + sparkline, xử lý navigate |
+| `PROGRESS_DASHBOARD.md` | Cập nhật tiến độ dự án |
+
+---
+
 # 2026-06-22 | E2E Regression Test Hardening — Infinite Loop Fix & Login Selectors Validation ✅
 
 ## Problem Solved

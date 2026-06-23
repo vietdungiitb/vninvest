@@ -88,6 +88,31 @@
 | TypeScript check | ✅ Pass | `npx tsc --noEmit` — 0 errors |
 | Dev build | ✅ Done | `./start_dev.ps1` — all core images rebuilt, frontend building |
 | Audit ledger | ✅ Done | Entry 10 added to `CODE_CHANGE_AUDIT_LEDGER.md` |
+---
+
+## Heatmap Drill-down Fix & Symbol Dialog (2026-06-23)
+
+| Fix / Feature | Status | Details |
+|---|---|---|
+| `nodeClick: false` on Treemap/Sunburst | ✅ Done | Disables ECharts native drill-down to prevent leaf node canvas crashes |
+| Custom Info Dialog Overlay | ✅ Done | Premium glass-strong card showing stock metadata (Symbol, Company, Industry, Price, Change %, Vol, Market Cap, Volatility) |
+| SVG Sparkline Trend | ✅ Done | Lightweight SVG `<path>` plotting 24H price trend data |
+| `coreApiAdapter` API Integrations | ✅ Done | `getStockChartHistory(symbol, { timeframe: '1H', days: 1 })` |
+| i18n support | ✅ Done | Fully localized Vietnamese/English text keys mapped to `I18N` |
+| Navigation on Click | ✅ Done | Clicking symbol name in dialog navigates to `/stocks/SYMBOL` |
+| TypeScript verification | ✅ Pass | `tsc --noEmit` on web packages has 0 errors |
+| Build verification | ✅ Pass | `npm run build` compiled 3244 modules successfully in ~12s |
+
+---
+
+## Stock Details Page Normal Mode Cutover (2026-06-23)
+
+| Fix / Feature | Status | Details |
+|---|---|---|
+| Route Redirection | ✅ Done | Swapped route mapping in `pageRegistry.js` for `"core-stock-detail"` to import `./StockDetailPage.tsx` directly instead of `./market/ShellStockDetailPage.tsx` |
+| URL Parameter Resolution | ✅ Done | Updated `StockDetailPage.tsx` to resolve `symbol` using useParams() from react-router-dom when mounted directly as a route component without symbol props |
+| TypeScript check | ✅ Pass | `npx tsc --noEmit` — 0 errors |
+| Build verification | ✅ Pass | `npm run build` compiled 3243 modules successfully |
 
 ---
 
