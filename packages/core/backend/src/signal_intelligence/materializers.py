@@ -5,6 +5,8 @@ from decimal import Decimal
 from celery import shared_task
 from django.utils.timezone import now
 
+from .broadcasting import broadcast_unified_alert
+
 logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------
@@ -230,6 +232,7 @@ def materialize_unified_alerts(self):
             if dirty:
                 alert.save(update_fields=['source_ref', 'title', 'session_date', 'confidence', 'freshness_state', 'evidence'])
                 synced += 1
+                broadcast_unified_alert(alert)
 
         dark_synced = 0
         dark_events = OrderFlowEvent.objects.filter(
@@ -358,6 +361,7 @@ def materialize_unified_alerts(self):
 
             if alert_created or dirty_fields:
                 dark_synced += 1
+                broadcast_unified_alert(alert)
 
         logger.info(
             "materialize_unified_alerts (native): synced %d whale alerts and %d dark-flow alerts.",
@@ -603,6 +607,7 @@ def materialize_market_anomaly_alerts(self, symbol: str | None = None):
 
         if alert_created or dirty_fields:
             created += 1
+            broadcast_unified_alert(alert)
 
     return {
         'status': 'ok',
@@ -721,6 +726,7 @@ def materialize_ai_signal_alerts(self, symbol: str | None = None):
 
         if alert_created or dirty_fields:
             created += 1
+            broadcast_unified_alert(alert)
 
     return {
         'status': 'ok',

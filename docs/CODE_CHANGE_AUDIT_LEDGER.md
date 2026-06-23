@@ -285,5 +285,40 @@
 - **Validation**:
   - `npx tsc --noEmit` -> ✅ Pass (0 errors).
   - Curl test of assets -> ✅ Pass (200 OK).
-  - Playwright visual tests -> ✅ 54/54 passed.
+   - Playwright visual tests -> ✅ 54/54 passed.
 - **Residual risk**: None.
+
+---
+
+## Entry 10: Fix Tenant Lifecycle 404 and Order Flow 401 Errors
+
+- **PR / branch**: `dev`
+- **Date**: 2026-06-23
+- **Files touched**:
+  - `packages/core/backend/src/identity_access/views_tenant.py` (added `TenantLifecycleView`)
+  - `packages/core/backend/src/identity_access/urls.py` (added `tenant/lifecycle/` route)
+  - `packages/web/src/adapters/coreApiAdapter.js` (added `authTokenStorage` fallback in `createCoreApiAdapter`)
+- **Summary**: Khắc phục lỗi 404 khi truy cập `/core/v1/tenant/lifecycle/` do endpoint chưa được đăng ký ở Django router sau SaaS Native migration. Thêm `TenantLifecycleView` trả về `plan`/`status`/`tenant_id`/`tenant_code`/`display_name` dùng `_get_request_tenant()`. Khắc phục lỗi 401 trên `/core/v1/stock-management/stocks/HPG/order-flow/` do `WhaleBubbleChart` tạo adapter riêng không có `getToken` — thêm fallback `getToken: getToken ?? (() => authTokenStorage.getAccessToken())` trong `createCoreApiAdapter`.
+- **Validation**:
+  - `python -c "ast.parse(...)"` -> ✅ views_tenant.py pass.
+  - `python -c "ast.parse(...)"` -> ✅ urls.py pass.
+  - `npx tsc --noEmit` -> ✅ Pass (0 errors).
+  - `./start_dev.ps1` -> ✅ Build thành công, containers đã restart.
+- **Residual risk**: None.
+
+---
+
+## Entry 11: Fix Heatmap Drill-down Crash & Add Symbol Detail Dialog
+
+- **PR / branch**: `dev`
+- **Date**: 2026-06-23
+- **Files touched**:
+  - `docs/IMPLEMENTATION_PLAN_PORTFOLIO_HEATMAP_SYMBOL_DIALOG_20260623.md` (fixed plan — added doc packs, i18n, SVG path, missing code, AGENTS.md obligations)
+  - `packages/web/src/components/dashboard/PortfolioHeatmap.js` (added `nodeClick: false`, dialog state, SVG sparkline, i18n text, `coreApiAdapter` call for trend data)
+- **Summary**: Khắc phục lỗi ECharts Treemap drill-down gây vỡ canvas khi click mã cổ phiếu. Thêm `nodeClick: false` cho cả Treemap và Sunburst. Tích hợp Dialog Glassmorphism hiển thị thông tin mã (tên, công ty, ngành, giá, % thay đổi, xu hướng 24h dạng SVG Sparkline dùng `<path>`, khối lượng, vốn hóa, mức biến động). Click tên mã → navigate `/stocks/SYMBOL`. Tất cả text mới qua i18n (vi/en). Dữ liệu xu hướng gọi qua `coreApiAdapter.getStockChartHistory`.
+- **Validation**:
+  - `npx tsc --noEmit` -> ✅ Pass (0 errors).
+  - `npm run build` -> ✅ 3244 modules, 0 errors, 13.6s build.
+  - `./start_dev.ps1` -> ✅ All services built and healthy.
+- **Residual risk**: None.
+

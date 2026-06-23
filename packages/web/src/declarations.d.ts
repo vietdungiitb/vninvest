@@ -48,17 +48,21 @@ declare module "./adapters/coreApiAdapter" {
     reopenSupportTicket: (id: string) => Promise<any>;
 
     // Legacy Watchlist
+    getPortfolioHoldings: (portfolioId: string | number) => Promise<any>;
     getLegacyWatchlistGroups: () => Promise<any>;
+    getWatchlistItems: (watchlistId: string | number) => Promise<any>;
     getTrackedSymbols: () => Promise<any>;
-    addTrackedSymbol: (symbol: string) => Promise<any>;
-    removeTrackedSymbol: (id: string) => Promise<any>;
-    updateTrackedSymbol: (id: string, data: any) => Promise<any>;
+    addTrackedSymbol: (symbol: string, sourceGroupId?: number | string | null, whaleAlertThresholdMillion?: number) => Promise<any>;
+    removeTrackedSymbol: (id: string | number) => Promise<any>;
+    updateTrackedSymbol: (id: string | number, whaleAlertThresholdMillion: number) => Promise<any>;
     getPriceAlerts: () => Promise<any>;
+    createPriceAlert: (payload: any) => Promise<any>;
+    deletePriceAlert: (id: string | number) => Promise<any>;
     getBulkTechnicalsBySymbols: (symbols: string[]) => Promise<any>;
-    addWatchlistItem: (data: any) => Promise<any>;
-    removeWatchlistItem: (id: string) => Promise<any>;
-    syncAdminMarketGroups: () => Promise<any>;
-    getMarketGroupsSyncStatus: () => Promise<any>;
+    addWatchlistItem: (watchlistId: string | number, symbol: string) => Promise<any>;
+    removeWatchlistItem: (watchlistId: string | number, symbol: string) => Promise<any>;
+    syncAdminMarketGroups: (mode: string) => Promise<any>;
+    getMarketGroupsSyncStatus: (taskId: string) => Promise<any>;
 
     // Core REST methods
     coreGet: (path: string, params?: any) => Promise<Response>;

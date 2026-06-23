@@ -17,6 +17,7 @@ from django.db.models import Case, IntegerField, Value, When
 from django.utils import timezone
 
 from market_data.models import GlobalSymbolRegistry
+from signal_intelligence.broadcasting import broadcast_ticker_update
 
 logger = logging.getLogger(__name__)
 
@@ -385,17 +386,67 @@ def prefetch_realtime_ticker_shard(self, tier: str, shard_id: int) -> dict:
             'fetched': 0,
         }
     
+    # Pre-fetch reference prices from SymbolSnapshot for change calculation
+    from django.utils.timezone import localdate
+    from market_serving.models import SymbolSnapshot as SnapshotModel
+    today = localdate()
+    ref_map: dict[str, float] = {}
+    try:
+        snapshots = SnapshotModel.objects.filter(
+            symbol__in=shard_symbols,
+            session_date=today,
+        ).values('symbol', 'reference_price')
+        for s in snapshots:
+            rp = s.get('reference_price')
+            if rp is not None:
+                ref_map[s['symbol']] = float(rp)
+    except Exception as ex:
+        logger.warning(f"Failed to load reference prices for shard {tier}/{shard_id}: {ex}")
+    
     fetched = 0
     errors = 0
+    broadcast_count = 0
     
     for symbol in shard_symbols:
         try:
             ticker = fetch_realtime_price(symbol)
             if ticker:
+                symbol_upper = ticker.get('symbol', symbol)
+                close = ticker.get('close')
+                open_price = ticker.get('open')
+                high = ticker.get('high')
+                low = ticker.get('low')
+                volume = ticker.get('volume')
+                
                 # Cache individual ticker snapshot
                 cache_key = f'realtime:ticker:{symbol}'
                 cache.set(cache_key, ticker, timeout=300)  # 5-min TTL
                 fetched += 1
+                
+                # Compute change values and broadcast to WebSocket
+                if close is not None:
+                    ref_price = ref_map.get(symbol)
+                    change_value = None
+                    change_pct = None
+                    if ref_price is not None and ref_price > 0:
+                        change_value = float(close) - ref_price
+                        change_pct = round((change_value / ref_price) * 100, 2)
+                    
+                    try:
+                        broadcast_ticker_update(symbol_upper, {
+                            'price': float(close),
+                            'current_price': float(close),
+                            'prev_price': ref_price,
+                            'change_value': change_value,
+                            'change_pct': change_pct,
+                            'open_price': float(open_price) if open_price is not None else None,
+                            'high_price': float(high) if high is not None else None,
+                            'low_price': float(low) if low is not None else None,
+                            'volume': int(volume) if volume is not None else None,
+                        })
+                        broadcast_count += 1
+                    except Exception as broadcast_ex:
+                        logger.warning(f"Broadcast failed for {symbol}: {broadcast_ex}")
         except Exception as ex:
             logger.warning(f"Failed to fetch {symbol}: {ex}")
             errors += 1
@@ -408,6 +459,7 @@ def prefetch_realtime_ticker_shard(self, tier: str, shard_id: int) -> dict:
         'tier': tier,
         'shard_id': shard_id,
         'fetched': fetched,
+        'broadcast': broadcast_count,
         'errors': errors,
         'total': len(shard_symbols),
     }

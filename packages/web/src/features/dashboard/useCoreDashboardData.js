@@ -141,6 +141,7 @@ export function useCoreDashboardData({ portfolioId, enabled = true } = {}) {
 
         const holdings = safeResults(holdingsRes);
         const rawWatchlists = safeResults(watchlistsRes);
+        console.log("RAW WATCHLISTS NAMES:", rawWatchlists.map(w => w?.name));
         const trackedSymbols = safeResults(trackedRes);
         const rawWatchlistGroups = safeResults(groupsRes);
 
@@ -153,18 +154,18 @@ export function useCoreDashboardData({ portfolioId, enabled = true } = {}) {
           const name = String(wl?.name || "").trim().toUpperCase();
           return !EXCLUDED_MARKET_GROUPS.includes(name);
         });
+        console.log("FILTERED WATCHLISTS NAMES:", watchlists.map(w => w?.name));
 
-        const watchlistGroups = rawWatchlistGroups.filter(g => {
-          const name = String(g?.name || "").trim().toUpperCase();
-          return !EXCLUDED_MARKET_GROUPS.includes(name);
-        });
+        // Keep ALL watchlistGroups (market groups) unfiltered
+        // so the heatmap can include symbols from all sectors/groups the user follows
+        const watchlistGroups = rawWatchlistGroups;
 
         // Phase 2 — bulk technicals once the monitored symbol universe is known
         const symbols = collectDashboardSymbols({
           holdings,
           trackedSymbols,
           watchlists,
-          watchlistGroups,
+          watchlistGroups: [],
         });
 
         let technicals = EMPTY_ARRAY;

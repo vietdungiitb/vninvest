@@ -1275,7 +1275,7 @@ class StockManagementTechnicalsView(APIView):
     """GET /api/stock-management/technicals/bulk/?symbols=VCB,HPG"""
     permission_classes = [permissions.IsAuthenticated]
 
-    _MAX_SYMBOLS = 50
+    _MAX_SYMBOLS = 200
 
     def _parse_symbols(self, request):
         query_symbols = str(request.query_params.get('symbols', '') or '').strip()

@@ -1,10 +1,18 @@
-import React, { createElement, useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useRealtimeFeedFromManager } from "../context/RealtimeContext.js";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import "./WatchlistPage.css";
 
-const e: (...args: any[]) => any = createElement as any;
-const api = coreApiAdapter as any;
+const api = coreApiAdapter;
 
 interface WatchlistItem {
   id?: string | number;
@@ -18,7 +26,6 @@ interface WatchlistItem {
   market_value?: number;
   unrealized_pnl?: number;
   unrealized_pnl_pct?: number;
-  [key: string]: unknown;
 }
 
 interface Watchlist {
@@ -26,14 +33,13 @@ interface Watchlist {
   name: string;
   description?: string;
   items?: WatchlistItem[];
-  [key: string]: unknown;
 }
 
 interface LegacyGroup {
   id: string | number;
   name: string;
+  description?: string;
   items?: WatchlistItem[];
-  [key: string]: unknown;
 }
 
 interface Holding {
@@ -43,7 +49,6 @@ interface Holding {
   market_value?: number;
   unrealized_pnl?: number;
   unrealized_pnl_pct?: number;
-  [key: string]: unknown;
 }
 
 interface TrackedSymbol {
@@ -52,7 +57,6 @@ interface TrackedSymbol {
   whale_alert_threshold_million?: number;
   industry?: string;
   company_name?: string;
-  [key: string]: unknown;
 }
 
 interface PriceAlert {
@@ -65,7 +69,6 @@ interface PriceAlert {
   cooldown_seconds?: number;
   alert_type?: string;
   price_threshold?: number;
-  [key: string]: unknown;
 }
 
 interface TechnicalData {
@@ -83,7 +86,6 @@ interface TechnicalData {
   price_change?: number;
   price_change_pct?: number;
   volume?: number;
-  [key: string]: unknown;
 }
 
 interface QuoteData {
@@ -95,13 +97,18 @@ interface QuoteData {
   price_change?: number;
   price_change_pct?: number;
   volume?: number;
-  [key: string]: unknown;
+}
+
+interface MergedData extends TechnicalData {
+  price?: number;
+  price_change?: number;
+  price_change_pct?: number;
+  volume?: number;
 }
 
 interface Identity {
   is_staff?: boolean;
   is_superuser?: boolean;
-  [key: string]: unknown;
 }
 
 interface Session {
@@ -110,7 +117,6 @@ interface Session {
   principal?: {
     identity?: Identity;
   };
-  [key: string]: unknown;
 }
 
 interface WatchlistPageProps {
@@ -140,6 +146,11 @@ interface RealtimeFeedData {
   [key: string]: unknown;
 }
 
+const EXCLUDED_MARKET_GROUPS = [
+  "Ngân hàng", "Bất động sản", "Thép & Vật liệu", "Dầu khí", "Công nghệ", 
+  "Bán lẻ & Tiêu dùng", "VN30", "VN100", "HNX30", "HOSE", "HNX", "UPCOM"
+];
+
 // Helper component for tracked threshold editing inline
 function TrackedThresholdCell({ item, onUpdate }: { item: TrackedSymbol; onUpdate: (id: string | number, threshold: number) => Promise<void> }) {
   const [val, setVal] = useState(item.whale_alert_threshold_million);
@@ -166,21 +177,22 @@ function TrackedThresholdCell({ item, onUpdate }: { item: TrackedSymbol; onUpdat
     }
   };
 
-  return e("div", { style: { display: "flex", alignItems: "center", gap: "8px", justifyContent: "flex-end" } },
-    e("input", {
-      type: "number",
-      className: "watchlistPage__input",
-      style: { width: "80px", padding: "4px 8px", margin: 0, textAlign: "right" },
-      value: val,
-      onChange: (ev: React.ChangeEvent<HTMLInputElement>) => setVal(Number(ev.target.value)),
-      onKeyDown: (ev: React.KeyboardEvent) => {
-        if (ev.key === "Enter") handleSave();
-      },
-      onBlur: handleSave,
-    }),
-    e("span", { style: { fontSize: "0.825rem", color: "var(--text-muted)" } }, "Tr.đ"),
-    saving && e("span", { style: { fontSize: "0.825rem", color: "var(--text-warning)" } }, "⏳"),
-    saved && e("span", { style: { fontSize: "0.825rem", color: "var(--text-success)" } }, "✓")
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <input
+        type="number"
+        className="watchlistPage__input w-20 px-2 py-1 m-0 text-right bg-slate-950/60 border border-slate-800 rounded text-slate-100 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500"
+        value={val}
+        onChange={(ev: React.ChangeEvent<HTMLInputElement>) => setVal(Number(ev.target.value))}
+        onKeyDown={(ev: React.KeyboardEvent) => {
+          if (ev.key === "Enter") handleSave();
+        }}
+        onBlur={handleSave}
+      />
+      <span className="text-xs text-slate-400">Tr.đ</span>
+      {saving && <span className="text-xs text-amber-500">⏳</span>}
+      {saved && <span className="text-xs text-emerald-500">✓</span>}
+    </div>
   );
 }
 
@@ -237,14 +249,25 @@ export function WatchlistPage({
   const [newAlertCondition, setNewAlertCondition] = useState<"ABOVE" | "BELOW" | "EQUAL">("ABOVE");
   const [newAlertCooldown, setNewAlertCooldown] = useState("300");
 
+  // Dialog States
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void | Promise<void>;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
+
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+  const [syncMode, setSyncMode] = useState<"active" | "all">("active");
+
   const priceHistoryRef = useRef<Record<string, number[]>>({});
   const prevPricesRef = useRef<Record<string, number>>({});
   const flashTimeoutRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-
-  const EXCLUDED_MARKET_GROUPS = useMemo(() => [
-    "Ngân hàng", "Bất động sản", "Thép & Vật liệu", "Dầu khí", "Công nghệ", 
-    "Bán lẻ & Tiêu dùng", "VN30", "VN100", "HNX30", "HOSE", "HNX", "UPCOM"
-  ], []);
 
   // ────────────────────────────────────────────────────────────────────────────
   // Data Fetching Methods
@@ -511,7 +534,7 @@ export function WatchlistPage({
     setErrorMsg("");
     setSuccessMsg("");
     try {
-      await api.updateWatchlist(id, { name: editingWlName.trim() });
+      await api.updateWatchlist(id.toString(), { name: editingWlName.trim() });
       setSuccessMsg("Đã đổi tên danh sách thành công.");
       setEditingWlId(null);
       await loadAllLists(false);
@@ -520,59 +543,73 @@ export function WatchlistPage({
     }
   };
 
-  const handleDeleteWatchlist = async (id: string | number, name: string) => {
-    if (!confirm(`Bạn có chắc chắn muốn xóa danh sách theo dõi "${name}"? Thao tác này sẽ xóa toàn bộ mã bên trong.`)) return;
-    setErrorMsg("");
-    setSuccessMsg("");
-    try {
-      await api.deleteWatchlist(id);
-      setSuccessMsg(`Đã xóa danh sách "${name}" thành công.`);
-      const activeAfterDelete = watchlists.filter(w => w.id !== id);
-      await loadAllLists(false);
+  const handleDeleteWatchlist = (id: string | number, name: string) => {
+    setConfirmState({
+      isOpen: true,
+      title: "Xóa danh sách theo dõi",
+      message: `Bạn có chắc chắn muốn xóa danh sách theo dõi "${name}"? Thao tác này sẽ xóa toàn bộ mã bên trong và không thể hoàn tác.`,
+      onConfirm: async () => {
+        setErrorMsg("");
+        setSuccessMsg("");
+        try {
+          await api.deleteWatchlist(id.toString());
+          setSuccessMsg(`Đã xóa danh sách "${name}" thành công.`);
+          const activeAfterDelete = watchlists.filter(w => w.id !== id);
+          await loadAllLists(false);
 
-      if (selectedType === "watchlist" && selectedId === id) {
-        if (activeAfterDelete.length > 0) {
-          setSelectedType("watchlist");
-          setSelectedId(activeAfterDelete[0].id);
-        } else {
-          setSelectedType("holds");
-          setSelectedId(null);
+          if (selectedType === "watchlist" && selectedId === id) {
+            if (activeAfterDelete.length > 0) {
+              setSelectedType("watchlist");
+              setSelectedId(activeAfterDelete[0].id);
+            } else {
+              setSelectedType("holds");
+              setSelectedId(null);
+            }
+          }
+        } catch (err) {
+          setErrorMsg((err as Error).message || "Lỗi khi xóa danh sách.");
         }
       }
-    } catch (err) {
-      setErrorMsg((err as Error).message || "Lỗi khi xóa danh sách.");
-    }
+    });
   };
 
   const handleAddSymbol = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSymbol.trim() || selectedType !== "watchlist" || !selectedId) return;
+    if (!newSymbol.trim() || selectedType !== "watchlist" || selectedId === null) return;
+    const currentId = selectedId;
     setErrorMsg("");
     setSuccessMsg("");
     const symbolUpper = newSymbol.trim().toUpperCase();
     try {
-      await api.addWatchlistItem(selectedId, symbolUpper);
+      await api.addWatchlistItem(currentId, symbolUpper);
       setNewSymbol("");
       setNewSymbolNote("");
       setSuccessMsg(`Đã thêm mã ${symbolUpper} vào danh sách.`);
-      await fetchItems(selectedId);
+      await fetchItems(currentId);
     } catch (err) {
       setErrorMsg((err as Error).message || `Lỗi thêm mã ${symbolUpper}.`);
     }
   };
 
-  const handleRemoveSymbol = async (symbol: string) => {
-    if (selectedType !== "watchlist" || !selectedId) return;
-    if (!confirm(`Bạn có chắc chắn muốn xóa mã ${symbol} khỏi danh sách theo dõi?`)) return;
-    setErrorMsg("");
-    setSuccessMsg("");
-    try {
-      await api.removeWatchlistItem(selectedId, symbol);
-      setSuccessMsg(`Đã xóa mã ${symbol} thành công.`);
-      await fetchItems(selectedId);
-    } catch (err) {
-      setErrorMsg((err as Error).message || `Lỗi khi xóa mã ${symbol}.`);
-    }
+  const handleRemoveSymbol = (symbol: string) => {
+    if (selectedType !== "watchlist" || selectedId === null) return;
+    const currentId = selectedId;
+    setConfirmState({
+      isOpen: true,
+      title: "Xóa mã khỏi danh sách",
+      message: `Bạn có chắc chắn muốn xóa mã ${symbol} khỏi danh sách theo dõi?`,
+      onConfirm: async () => {
+        setErrorMsg("");
+        setSuccessMsg("");
+        try {
+          await api.removeWatchlistItem(currentId, symbol);
+          setSuccessMsg(`Đã xóa mã ${symbol} thành công.`);
+          await fetchItems(currentId);
+        } catch (err) {
+          setErrorMsg((err as Error).message || `Lỗi khi xóa mã ${symbol}.`);
+        }
+      }
+    });
   };
 
   const handleAddTrackedSymbol = async (e: React.FormEvent) => {
@@ -592,18 +629,24 @@ export function WatchlistPage({
     }
   };
 
-  const handleRemoveTrackedSymbol = async (id: string | number, symbol: string) => {
-    if (!confirm(`Bạn có chắc chắn muốn ngừng giám sát cá mập đối với mã ${symbol}?`)) return;
-    setErrorMsg("");
-    setSuccessMsg("");
-    try {
-      await api.removeTrackedSymbol(id);
-      setSuccessMsg(`Đã dừng giám sát mã ${symbol} thành công.`);
-      const trackedRes = await api.getTrackedSymbols();
-      setTrackedSymbols(Array.isArray(trackedRes) ? trackedRes : (trackedRes?.results ?? []));
-    } catch (err) {
-      setErrorMsg((err as Error).message || `Lỗi khi xóa mã ${symbol}.`);
-    }
+  const handleRemoveTrackedSymbol = (id: string | number, symbol: string) => {
+    setConfirmState({
+      isOpen: true,
+      title: "Ngừng giám sát",
+      message: `Bạn có chắc chắn muốn ngừng giám sát cá mập đối với mã ${symbol}?`,
+      onConfirm: async () => {
+        setErrorMsg("");
+        setSuccessMsg("");
+        try {
+          await api.removeTrackedSymbol(id);
+          setSuccessMsg(`Đã dừng giám sát mã ${symbol} thành công.`);
+          const trackedRes = await api.getTrackedSymbols();
+          setTrackedSymbols(Array.isArray(trackedRes) ? trackedRes : (trackedRes?.results ?? []));
+        } catch (err) {
+          setErrorMsg((err as Error).message || `Lỗi khi xóa mã ${symbol}.`);
+        }
+      }
+    });
   };
 
   const handleUpdateTrackedThreshold = async (id: string | number, threshold: number) => {
@@ -673,30 +716,27 @@ export function WatchlistPage({
     }
   };
 
-  const handleDeleteAlert = async (id: string | number) => {
-    if (!confirm("Bạn muốn xóa cảnh báo giá này?")) return;
-    setErrorMsg("");
-    setSuccessMsg("");
-    try {
-      await api.deletePriceAlert(id);
-      setSuccessMsg("Đã xóa cảnh báo giá thành công.");
-      fetchPriceAlertsList();
-    } catch (err) {
-      setErrorMsg((err as Error).message || "Lỗi xóa cảnh báo giá.");
-    }
+  const handleDeleteAlert = (id: string | number) => {
+    setConfirmState({
+      isOpen: true,
+      title: "Xóa cảnh báo giá",
+      message: "Bạn muốn xóa cảnh báo giá này?",
+      onConfirm: async () => {
+        setErrorMsg("");
+        setSuccessMsg("");
+        try {
+          await api.deletePriceAlert(id);
+          setSuccessMsg("Đã xóa cảnh báo giá thành công.");
+          fetchPriceAlertsList();
+        } catch (err) {
+          setErrorMsg((err as Error).message || "Lỗi xóa cảnh báo giá.");
+        }
+      }
+    });
   };
 
-  const handleSyncStockProfile = async () => {
-    const inputMode = prompt(
-      "ĐỒNG BỘ MÃ CHỨNG KHOÁN (Chỉ dành cho Quản trị viên)\n\n" +
-      "- Nhấn OK (hoặc Enter) để chỉ đồng bộ ~1300 mã đang hoạt động (Khuyến nghị).\n" +
-      "- Nhập 'ALL' để đồng bộ toàn bộ ~3200 mã (bao gồm cả mã không giao dịch/chứng quyền/bonds).\n\n" +
-      "Chế độ chọn:", 
-      "active"
-    );
-    if (inputMode === null) return;
-
-    const mode = inputMode.trim().toLowerCase() === "all" ? "all" : "active";
+  const executeSyncStockProfile = async (mode: "active" | "all") => {
+    setSyncDialogOpen(false);
     setSyncingStockProfile(true);
     setErrorMsg("");
     setSuccessMsg("Đang gửi yêu cầu đồng bộ...");
@@ -713,7 +753,7 @@ export function WatchlistPage({
             const statusRes = await api.getMarketGroupsSyncStatus(taskId);
             if (statusRes.status === "SUCCESS") {
               const total = statusRes.result?.total_symbols_synced || 0;
-              setSuccessMsg(`Đồng bộ thành công! Đã cập nhật ${total} mã.`);
+               setSuccessMsg(`Đồng bộ thành công! Đã cập nhật ${total} mã.`);
               loadAllLists(false);
               setSyncingStockProfile(false);
               setTimeout(() => setSuccessMsg(""), 5000);
@@ -803,7 +843,7 @@ export function WatchlistPage({
     }
   };
 
-  const getMergedData = (symbol: string): Record<string, unknown> => {
+  const getMergedData = (symbol: string): MergedData => {
     const staticData = technicalsMap[symbol] || {};
     const streamingData = (realtimeFeed?.quotesBySymbol?.[symbol] || {}) as QuoteData;
 
@@ -843,8 +883,10 @@ export function WatchlistPage({
       const change = Number(merged.price_change_pct || 0);
       const color = change >= 0 ? "#00FFBB" : "#FF3344";
       const path = change >= 0 ? "M 5,20 Q 25,12 45,18 T 85,5" : "M 5,5 Q 25,18 45,12 T 85,20";
-      return e("svg", { className: "watchlistPage__sparklineSvg", width: "90", height: "25", viewBox: "0 0 90 25" },
-        e("path", { className: "watchlistPage__sparklinePath", d: path, stroke: color, strokeWidth: "1.5", fill: "none" })
+      return (
+        <svg className="watchlistPage__sparklineSvg block" width="90" height="25" viewBox="0 0 90 25">
+          <path className="watchlistPage__sparklinePath fill-none stroke-[1.5]" d={path} stroke={color} />
+        </svg>
       );
     }
 
@@ -862,8 +904,10 @@ export function WatchlistPage({
     const prevPrice = history[0];
     const color = lastPrice >= prevPrice ? "#00FFBB" : "#FF3344";
 
-    return e("svg", { className: "watchlistPage__sparklineSvg", width: "90", height: "25", viewBox: "0 0 90 25" },
-      e("polyline", { stroke: color, strokeWidth: "1.5", fill: "none", points: points })
+    return (
+      <svg className="watchlistPage__sparklineSvg block" width="90" height="25" viewBox="0 0 90 25">
+        <polyline stroke={color} strokeWidth="1.5" fill="none" points={points} strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
     );
   };
 
@@ -873,49 +917,57 @@ export function WatchlistPage({
 
   const renderTableHeader = () => {
     if (selectedType === "holds") {
-      return e("tr", null,
-        e("th", null, "Mã"),
-        e("th", null, "Giá hiện tại"),
-        e("th", null, "% Thay đổi"),
-        e("th", { className: "text-right" }, "Số lượng"),
-        e("th", { className: "text-right" }, "Giá vốn TB"),
-        e("th", { className: "text-right" }, "Giá trị TT"),
-        e("th", { className: "text-right" }, "Lại / Lỗ"),
-        e("th", { className: "text-right" }, "% Lãi / Lỗ"),
-        e("th", { style: { textAlign: "center" } }, "Xu hướng")
+      return (
+        <tr>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider">Mã</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider">Giá hiện tại</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider">% Thay đổi</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider text-right">Số lượng</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider text-right">Giá vốn TB</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider text-right">Giá trị TT</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider text-right">Lãi / Lỗ</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider text-right">% Lãi / Lỗ</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider text-center">Xu hướng</th>
+        </tr>
       );
     } else if (selectedType === "tracked") {
-      return e("tr", null,
-        e("th", null, "Mã"),
-        e("th", null, "Tên doanh nghiệp"),
-        e("th", null, "Giá hiện tại"),
-        e("th", null, "% Thay đổi"),
-        e("th", { className: "text-right", style: { paddingRight: "30px" } }, "Ngưỡng giám sát dòng tiền"),
-        e("th", { style: { textAlign: "center" } }, "Hành động"),
-        e("th", { style: { textAlign: "center" } }, "Xu hướng")
+      return (
+        <tr>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider">Mã</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider">Tên doanh nghiệp</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider">Giá hiện tại</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider">% Thay đổi</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider text-right pr-8">Ngưỡng giám sát dòng tiền</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider text-center">Hành động</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider text-center">Xu hướng</th>
+        </tr>
       );
     } else if (selectedType === "watchlist") {
-      return e("tr", null,
-        e("th", null, "Mã"),
-        e("th", null, "Giá hiện tại"),
-        e("th", null, "% Thay đổi"),
-        e("th", null, "RSI(14)"),
-        e("th", null, "RVOL"),
-        e("th", null, "% Cách MA20"),
-        e("th", null, "Định hướng"),
-        e("th", { style: { textAlign: "center" } }, "Hành động"),
-        e("th", { style: { textAlign: "center" } }, "Xu hướng")
+      return (
+        <tr>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider">Mã</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider">Giá hiện tại</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider">% Thay đổi</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider">RSI(14)</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider">RVOL</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider">% Cách MA20</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider">Định hướng</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider text-center">Hành động</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider text-center">Xu hướng</th>
+        </tr>
       );
     } else {
-      return e("tr", null,
-        e("th", null, "Mã"),
-        e("th", null, "Tên doanh nghiệp"),
-        e("th", null, "Giá hiện tại"),
-        e("th", null, "% Thay đổi"),
-        e("th", null, "RSI(14)"),
-        e("th", null, "RVOL"),
-        e("th", { style: { textAlign: "center" } }, "Hành động nhanh"),
-        e("th", { style: { textAlign: "center" } }, "Xu hướng")
+      return (
+        <tr>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider">Mã</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider">Tên doanh nghiệp</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider">Giá hiện tại</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider">% Thay đổi</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider">RSI(14)</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider">RVOL</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider text-center">Hành động nhanh</th>
+          <th className="p-3 text-slate-400 font-bold uppercase text-xs tracking-wider text-center">Xu hướng</th>
+        </tr>
       );
     }
   };
@@ -939,24 +991,30 @@ export function WatchlistPage({
         const pnl = Number(h.unrealized_pnl || 0);
         const pnlPct = Number(h.unrealized_pnl_pct || 0);
 
-        return e("tr", { key: symbol },
-          e("td", null, e("a", { className: "watchlistPage__symbolLink", href: `/stocks/${symbol}` }, symbol)),
-          e("td", { className: `watchlistPage__priceCell ${flashClass} text-mono ${isUp ? "text-green" : isDown ? "text-red" : "text-white"}` },
-            merged.price !== undefined ? Number(merged.price).toLocaleString() : "—"
-          ),
-          e("td", { className: `text-mono ${isUp ? "text-green" : isDown ? "text-red" : "text-gray"}` },
-            changePct !== 0 ? `${isUp ? "+" : ""}${changePct.toFixed(2)}%` : "0.00%"
-          ),
-          e("td", { className: "text-mono text-white text-right" }, qty.toLocaleString()),
-          e("td", { className: "text-mono text-white text-right" }, Math.round(avgCost).toLocaleString()),
-          e("td", { className: "text-mono text-white text-right" }, Math.round(marketValue).toLocaleString()),
-          e("td", { className: `text-mono text-right ${pnl > 0 ? "text-green" : pnl < 0 ? "text-red" : "text-gray"}` },
-            pnl !== 0 ? `${pnl > 0 ? "+" : ""}${Math.round(pnl).toLocaleString()}` : "0"
-          ),
-          e("td", { className: `text-mono text-right ${pnlPct > 0 ? "text-green" : pnlPct < 0 ? "text-red" : "text-gray"}` },
-            pnlPct !== 0 ? `${pnlPct > 0 ? "+" : ""}${pnlPct.toFixed(2)}%` : "0.00%"
-          ),
-          e("td", { className: "watchlistPage__sparklineCell" }, renderSparkline(symbol))
+        return (
+          <tr key={symbol} className="border-b border-slate-800 hover:bg-slate-800/10">
+            <td className="p-3">
+              <a className="watchlistPage__symbolLink font-mono font-bold text-cyan-400 hover:underline" href={`/stocks/${symbol}`}>
+                {symbol}
+              </a>
+            </td>
+            <td className={`watchlistPage__priceCell p-3 ${flashClass} font-mono font-semibold ${isUp ? "text-emerald-400" : isDown ? "text-rose-400" : "text-slate-100"}`}>
+              {merged.price !== undefined ? Number(merged.price).toLocaleString() : "—"}
+            </td>
+            <td className={`p-3 font-mono ${isUp ? "text-emerald-400" : isDown ? "text-rose-400" : "text-slate-500"}`}>
+              {changePct !== 0 ? `${isUp ? "+" : ""}${changePct.toFixed(2)}%` : "0.00%"}
+            </td>
+            <td className="p-3 font-mono text-slate-100 text-right">{qty.toLocaleString()}</td>
+            <td className="p-3 font-mono text-slate-100 text-right">{Math.round(avgCost).toLocaleString()}</td>
+            <td className="p-3 font-mono text-slate-100 text-right">{Math.round(marketValue).toLocaleString()}</td>
+            <td className={`p-3 font-mono text-right ${pnl > 0 ? "text-emerald-400" : pnl < 0 ? "text-rose-400" : "text-slate-500"}`}>
+              {pnl !== 0 ? `${pnl > 0 ? "+" : ""}${Math.round(pnl).toLocaleString()}` : "0"}
+            </td>
+            <td className={`p-3 font-mono text-right ${pnlPct > 0 ? "text-emerald-400" : pnlPct < 0 ? "text-rose-400" : "text-slate-500"}`}>
+              {pnlPct !== 0 ? `${pnlPct > 0 ? "+" : ""}${pnlPct.toFixed(2)}%` : "0.00%"}
+            </td>
+            <td className="watchlistPage__sparklineCell p-3 text-center">{renderSparkline(symbol)}</td>
+          </tr>
         );
 
       } else if (selectedType === "tracked") {
@@ -964,29 +1022,40 @@ export function WatchlistPage({
         const industry = t.industry || "—";
         const companyName = t.company_name || "—";
 
-        return e("tr", { key: symbol },
-          e("td", null, e("a", { className: "watchlistPage__symbolLink", href: `/stocks/${symbol}` }, symbol)),
-          e("td", null, e("div", { style: { display: "flex", flexDirection: "column" } },
-            e("span", { style: { fontWeight: "bold" } }, companyName),
-            e("span", { style: { fontSize: "0.8rem", color: "var(--text-muted)" } }, industry)
-          )),
-          e("td", { className: `watchlistPage__priceCell ${flashClass} text-mono ${isUp ? "text-green" : isDown ? "text-red" : "text-white"}` },
-            merged.price !== undefined ? Number(merged.price).toLocaleString() : "—"
-          ),
-          e("td", { className: `text-mono ${isUp ? "text-green" : isDown ? "text-red" : "text-gray"}` },
-            changePct !== 0 ? `${isUp ? "+" : ""}${changePct.toFixed(2)}%` : "0.00%"
-          ),
-          e("td", { style: { textAlign: "right", paddingRight: "30px" } },
-            e(TrackedThresholdCell, { item: t, onUpdate: handleUpdateTrackedThreshold })
-          ),
-          e("td", { style: { textAlign: "center" } },
-            e("button", {
-              className: "watchlistPage__btn watchlistPage__btn--danger",
-              style: { padding: "4px 8px", fontSize: "0.75rem" },
-              onClick: () => handleRemoveTrackedSymbol(t.id!, symbol)
-            }, "Ngừng giám sát")
-          ),
-          e("td", { className: "watchlistPage__sparklineCell" }, renderSparkline(symbol))
+        return (
+          <tr key={symbol} className="border-b border-slate-800 hover:bg-slate-800/10">
+            <td className="p-3">
+              <a className="watchlistPage__symbolLink font-mono font-bold text-cyan-400 hover:underline" href={`/stocks/${symbol}`}>
+                {symbol}
+              </a>
+            </td>
+            <td className="p-3">
+              <div className="flex flex-col">
+                <span className="font-bold text-slate-100">{companyName}</span>
+                <span className="text-xs text-slate-400">{industry}</span>
+              </div>
+            </td>
+            <td className={`watchlistPage__priceCell p-3 ${flashClass} font-mono font-semibold ${isUp ? "text-emerald-400" : isDown ? "text-rose-400" : "text-slate-100"}`}>
+              {merged.price !== undefined ? Number(merged.price).toLocaleString() : "—"}
+            </td>
+            <td className={`p-3 font-mono ${isUp ? "text-emerald-400" : isDown ? "text-rose-400" : "text-slate-500"}`}>
+              {changePct !== 0 ? `${isUp ? "+" : ""}${changePct.toFixed(2)}%` : "0.00%"}
+            </td>
+            <td className="p-3 text-right pr-8">
+              <TrackedThresholdCell item={t} onUpdate={handleUpdateTrackedThreshold} />
+            </td>
+            <td className="p-3 text-center">
+              <Button
+                variant="destructive"
+                size="sm"
+                className="h-8 px-2 py-1 text-xs"
+                onClick={() => handleRemoveTrackedSymbol(t.id!, symbol)}
+              >
+                Ngừng giám sát
+              </Button>
+            </td>
+            <td className="watchlistPage__sparklineCell p-3 text-center">{renderSparkline(symbol)}</td>
+          </tr>
         );
 
       } else if (selectedType === "watchlist") {
@@ -994,26 +1063,35 @@ export function WatchlistPage({
         const rvolValue = merged.rvol !== undefined && merged.rvol !== null ? Number(merged.rvol).toFixed(2) : "—";
         const ma20Dist = merged.ma20_distance_pct !== undefined && merged.ma20_distance_pct !== null ? `${Number(merged.ma20_distance_pct).toFixed(1)}%` : "—";
 
-        return e("tr", { key: symbol },
-          e("td", null, e("a", { className: "watchlistPage__symbolLink", href: `/stocks/${symbol}` }, symbol)),
-          e("td", { className: `watchlistPage__priceCell ${flashClass} text-mono ${isUp ? "text-green" : isDown ? "text-red" : "text-white"}` },
-            merged.price !== undefined ? Number(merged.price).toLocaleString() : "—"
-          ),
-          e("td", { className: `text-mono ${isUp ? "text-green" : isDown ? "text-red" : "text-gray"}` },
-            changePct !== 0 ? `${isUp ? "+" : ""}${changePct.toFixed(2)}%` : "0.00%"
-          ),
-          e("td", { className: "text-mono text-white" }, rsiValue),
-          e("td", { className: "text-mono text-white" }, rvolValue),
-          e("td", { className: `text-mono ${Number(merged.ma20_distance_pct) >= 0 ? "text-green" : "text-red"}` }, ma20Dist),
-          e("td", { className: "text-gray" }, merged.bias_label || "Trung tính"),
-          e("td", { style: { textAlign: "center" } },
-            e("button", {
-              className: "watchlistPage__btn watchlistPage__btn--danger",
-              style: { padding: "4px 8px", fontSize: "0.75rem" },
-              onClick: () => handleRemoveSymbol(symbol)
-            }, "Xóa")
-          ),
-          e("td", { className: "watchlistPage__sparklineCell" }, renderSparkline(symbol))
+        return (
+          <tr key={symbol} className="border-b border-slate-800 hover:bg-slate-800/10">
+            <td className="p-3">
+              <a className="watchlistPage__symbolLink font-mono font-bold text-cyan-400 hover:underline" href={`/stocks/${symbol}`}>
+                {symbol}
+              </a>
+            </td>
+            <td className={`watchlistPage__priceCell p-3 ${flashClass} font-mono font-semibold ${isUp ? "text-emerald-400" : isDown ? "text-rose-400" : "text-slate-100"}`}>
+              {merged.price !== undefined ? Number(merged.price).toLocaleString() : "—"}
+            </td>
+            <td className={`p-3 font-mono ${isUp ? "text-emerald-400" : isDown ? "text-rose-400" : "text-slate-500"}`}>
+              {changePct !== 0 ? `${isUp ? "+" : ""}${changePct.toFixed(2)}%` : "0.00%"}
+            </td>
+            <td className="p-3 font-mono text-slate-100">{rsiValue}</td>
+            <td className="p-3 font-mono text-slate-100">{rvolValue}</td>
+            <td className={`p-3 font-mono ${Number(merged.ma20_distance_pct) >= 0 ? "text-emerald-400" : "text-rose-400"}`}>{ma20Dist}</td>
+            <td className="p-3 text-slate-400">{merged.bias_label || "Trung tính"}</td>
+            <td className="p-3 text-center">
+              <Button
+                variant="destructive"
+                size="sm"
+                className="h-8 px-2 py-1 text-xs"
+                onClick={() => handleRemoveSymbol(symbol)}
+              >
+                Xóa
+              </Button>
+            </td>
+            <td className="watchlistPage__sparklineCell p-3 text-center">{renderSparkline(symbol)}</td>
+          </tr>
         );
 
       } else {
@@ -1025,480 +1103,595 @@ export function WatchlistPage({
 
         const isAlreadyTracked = trackedSymbols.some(t => t.symbol.toUpperCase() === symbol.toUpperCase());
 
-        return e("tr", { key: symbol },
-          e("td", null, e("a", { className: "watchlistPage__symbolLink", href: `/stocks/${symbol}` }, symbol)),
-          e("td", null, e("div", { style: { display: "flex", flexDirection: "column" } },
-            e("span", { style: { fontWeight: "bold" } }, companyName),
-            e("span", { style: { fontSize: "0.8rem", color: "var(--text-muted)" } }, industry)
-          )),
-          e("td", { className: `watchlistPage__priceCell ${flashClass} text-mono ${isUp ? "text-green" : isDown ? "text-red" : "text-white"}` },
-            merged.price !== undefined ? Number(merged.price).toLocaleString() : "—"
-          ),
-          e("td", { className: `text-mono ${isUp ? "text-green" : isDown ? "text-red" : "text-gray"}` },
-            changePct !== 0 ? `${isUp ? "+" : ""}${changePct.toFixed(2)}%` : "0.00%"
-          ),
-          e("td", { className: "text-mono text-white" }, rsiValue),
-          e("td", { className: "text-mono text-white" }, rvolValue),
-          e("td", { style: { textAlign: "center" } },
-            e("div", { style: { display: "flex", gap: "8px", justifyContent: "center" } },
-              e("button", {
-                className: "watchlistPage__btn watchlistPage__btn--secondary",
-                style: { padding: "4px 8px", fontSize: "0.75rem" },
-                onClick: () => handlePromoteToWatchlist(symbol)
-              }, "⭐️ +Watchlist"),
-              e("button", {
-                className: `watchlistPage__btn ${isAlreadyTracked ? "watchlistPage__btn--secondary" : "watchlistPage__btn--primary"}`,
-                style: { padding: "4px 8px", fontSize: "0.75rem" },
-                onClick: () => handlePromoteToTracked(symbol),
-                disabled: isAlreadyTracked
-              }, isAlreadyTracked ? "🐋 Đang giám sát" : "🐋 +Giám sát")
-            )
-          ),
-          e("td", { className: "watchlistPage__sparklineCell" }, renderSparkline(symbol))
+        return (
+          <tr key={symbol} className="border-b border-slate-800 hover:bg-slate-800/10">
+            <td className="p-3">
+              <a className="watchlistPage__symbolLink font-mono font-bold text-cyan-400 hover:underline" href={`/stocks/${symbol}`}>
+                {symbol}
+              </a>
+            </td>
+            <td className="p-3">
+              <div className="flex flex-col">
+                <span className="font-bold text-slate-100">{companyName}</span>
+                <span className="text-xs text-slate-400">{industry}</span>
+              </div>
+            </td>
+            <td className={`watchlistPage__priceCell p-3 ${flashClass} font-mono font-semibold ${isUp ? "text-emerald-400" : isDown ? "text-rose-400" : "text-slate-100"}`}>
+              {merged.price !== undefined ? Number(merged.price).toLocaleString() : "—"}
+            </td>
+            <td className={`p-3 font-mono ${isUp ? "text-emerald-400" : isDown ? "text-rose-400" : "text-slate-500"}`}>
+              {changePct !== 0 ? `${isUp ? "+" : ""}${changePct.toFixed(2)}%` : "0.00%"}
+            </td>
+            <td className="p-3 font-mono text-slate-100">{rsiValue}</td>
+            <td className="p-3 font-mono text-slate-100">{rvolValue}</td>
+            <td className="p-3 text-center">
+              <div className="flex gap-2 justify-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2 py-1 text-xs"
+                  onClick={() => handlePromoteToWatchlist(symbol)}
+                >
+                  ⭐️ +Watchlist
+                </Button>
+                <Button
+                  variant={isAlreadyTracked ? "outline" : "default"}
+                  size="sm"
+                  className="h-8 px-2 py-1 text-xs"
+                  onClick={() => handlePromoteToTracked(symbol)}
+                  disabled={isAlreadyTracked}
+                >
+                  {isAlreadyTracked ? "🐋 Đang giám sát" : "🐋 +Giám sát"}
+                </Button>
+              </div>
+            </td>
+            <td className="watchlistPage__sparklineCell p-3 text-center">{renderSparkline(symbol)}</td>
+          </tr>
         );
       }
     });
   };
 
-  return e(
-    "div",
-    { className: "watchlistPage__container" },
+  return (
+    <div className="watchlistPage__container flex flex-col gap-6 w-full text-slate-200 h-[calc(100vh-120px)] overflow-hidden">
+      {errorMsg && <div className="shellPage__notice shellPage__notice--error bg-rose-500/10 border border-rose-500/20 text-rose-400 px-4 py-3 rounded text-sm">{errorMsg}</div>}
+      {successMsg && <div className="shellPage__notice shellPage__notice--success bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-3 rounded text-sm">{successMsg}</div>}
 
-    errorMsg && e("div", { className: "shellPage__notice shellPage__notice--error" }, errorMsg),
-    successMsg && e("div", { className: "shellPage__notice shellPage__notice--success" }, successMsg),
-
-    e(
-      "div",
-      { className: "watchlistPage__layout" },
-
-      // Sidebar
-      e(
-        "aside",
-        { className: "watchlistPage__sidebarCard" },
-
-        e("h2", { className: "watchlistPage__sidebarTitle" }, "Danh mục của tôi"),
-        e(
-          "div",
-          { className: "watchlistPage__list", style: { marginBottom: "1.25rem" } },
-
-          e(
-            "div",
-            {
-              className: `watchlistPage__listItem ${selectedType === "holds" ? "watchlistPage__listItem--active" : ""}`,
-              onClick: () => {
+      <div className="watchlistPage__layout grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 w-full items-stretch h-full overflow-hidden">
+        {/* Sidebar */}
+        <aside className="watchlistPage__sidebarCard flex flex-col gap-5 p-6 rounded-lg border border-slate-800 bg-slate-900/40 backdrop-blur-md shadow-lg h-full overflow-y-auto box-border">
+          <h2 className="watchlistPage__sidebarTitle text-lg font-bold text-slate-100 border-b border-slate-800 pb-3 mb-1 tracking-tight">
+            Danh mục của tôi
+          </h2>
+          
+          <div className="watchlistPage__list flex flex-col gap-2 mb-2">
+            <div
+              className={`watchlistPage__listItem flex justify-between items-center bg-slate-950/20 border border-slate-800 rounded px-4 py-3 cursor-pointer transition-all hover:bg-cyan-500/5 hover:border-slate-700 ${
+                selectedType === "holds" ? "watchlistPage__listItem--active border-cyan-500 bg-cyan-500/10" : ""
+              }`}
+              onClick={() => {
                 setSelectedType("holds");
                 setSelectedId(null);
                 setErrorMsg("");
                 setSuccessMsg("");
-              }
-            },
-            e("span", { className: "watchlistPage__listItemName" }, "💼 Cổ phiếu nắm giữ"),
-            e("span", { className: "watchlistPage__listItemCount" }, `${holdings.length} mã`)
-          ),
+              }}
+            >
+              <span className={`watchlistPage__listItemName text-sm font-semibold ${selectedType === "holds" ? "text-cyan-400" : "text-slate-100"}`}>
+                💼 Cổ phiếu nắm giữ
+              </span>
+              <span className="watchlistPage__listItemCount text-xs bg-slate-900 border border-slate-800 rounded-full px-2 py-0.5 text-slate-400 font-medium">
+                {holdings.length} mã
+              </span>
+            </div>
 
-          e(
-            "div",
-            {
-              className: `watchlistPage__listItem ${selectedType === "tracked" ? "watchlistPage__listItem--active" : ""}`,
-              onClick: () => {
+            <div
+              className={`watchlistPage__listItem flex justify-between items-center bg-slate-950/20 border border-slate-800 rounded px-4 py-3 cursor-pointer transition-all hover:bg-cyan-500/5 hover:border-slate-700 ${
+                selectedType === "tracked" ? "watchlistPage__listItem--active border-cyan-500 bg-cyan-500/10" : ""
+              }`}
+              onClick={() => {
                 setSelectedType("tracked");
                 setSelectedId(null);
                 setErrorMsg("");
                 setSuccessMsg("");
-              }
-            },
-            e("span", { className: "watchlistPage__listItemName" }, "🐋 Cảnh báo dòng tiền"),
-            e("span", { className: "watchlistPage__listItemCount" }, `${trackedSymbols.length} mã`)
-          ),
+              }}
+            >
+              <span className={`watchlistPage__listItemName text-sm font-semibold ${selectedType === "tracked" ? "text-cyan-400" : "text-slate-100"}`}>
+                🐋 Cảnh báo dòng tiền
+              </span>
+              <span className="watchlistPage__listItemCount text-xs bg-slate-900 border border-slate-800 rounded-full px-2 py-0.5 text-slate-400 font-medium">
+                {trackedSymbols.length} mã
+              </span>
+            </div>
 
-          watchlists.map(wl => {
-            const isEditing = editingWlId === wl.id;
-            const isActive = selectedType === "watchlist" && selectedId === wl.id;
+            {watchlists.map(wl => {
+              const isEditing = editingWlId === wl.id;
+              const isActive = selectedType === "watchlist" && selectedId === wl.id;
 
-            return e(
-              "div",
-              {
-                key: wl.id,
-                className: `watchlistPage__listItem ${isActive ? "watchlistPage__listItem--active" : ""}`,
-                onClick: () => {
-                  if (!isEditing) {
-                    setSelectedType("watchlist");
-                    setSelectedId(wl.id);
+              return (
+                <div
+                  key={wl.id}
+                  className={`watchlistPage__listItem flex justify-between items-center bg-slate-950/20 border border-slate-800 rounded px-4 py-3 cursor-pointer transition-all hover:bg-cyan-500/5 hover:border-slate-700 ${
+                    isActive ? "watchlistPage__listItem--active border-cyan-500 bg-cyan-500/10" : ""
+                  }`}
+                  onClick={() => {
+                    if (!isEditing) {
+                      setSelectedType("watchlist");
+                      setSelectedId(wl.id);
+                      setErrorMsg("");
+                      setSuccessMsg("");
+                    }
+                  }}
+                >
+                  {isEditing ? (
+                    <input
+                      className="watchlistPage__input w-full px-2 py-1 text-sm m-0 bg-slate-950 border border-slate-800 rounded text-slate-100 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                      value={editingWlName}
+                      onChange={(ev: React.ChangeEvent<HTMLInputElement>) => setEditingWlName(ev.target.value)}
+                      onKeyDown={(ev: React.KeyboardEvent) => {
+                        if (ev.key === "Enter") handleRenameWatchlist(wl.id);
+                        else if (ev.key === "Escape") setEditingWlId(null);
+                      }}
+                      autoFocus
+                      onClick={ev => ev.stopPropagation()}
+                      onBlur={() => handleRenameWatchlist(wl.id)}
+                    />
+                  ) : (
+                    <span className={`watchlistPage__listItemName text-sm font-semibold ${isActive ? "text-cyan-400" : "text-slate-100"}`}>
+                      📁 {wl.name}
+                    </span>
+                  )}
+
+                  {!isEditing && (
+                    <div
+                      className="watchlistPage__itemActions flex gap-2 items-center"
+                      onClick={ev => ev.stopPropagation()}
+                    >
+                      <span
+                        className="cursor-pointer text-xs opacity-70 hover:opacity-100 transition-opacity"
+                        title="Đổi tên"
+                        onClick={() => {
+                          setEditingWlId(wl.id);
+                          setEditingWlName(wl.name);
+                        }}
+                      >
+                        ✏️
+                      </span>
+                      <span
+                        className="cursor-pointer text-xs opacity-70 hover:opacity-100 transition-opacity"
+                        title="Xóa danh sách"
+                        onClick={() => handleDeleteWatchlist(wl.id, wl.name)}
+                      >
+                        🗑️
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <form className="watchlistPage__sidebarAction flex flex-col gap-2 mb-4" onSubmit={handleCreateWatchlist}>
+            <input
+              className="watchlistPage__input w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded text-slate-100 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500"
+              placeholder="Tên danh sách mới..."
+              value={newListName}
+              onChange={(ev: React.ChangeEvent<HTMLInputElement>) => setNewListName(ev.target.value)}
+            />
+            <Button type="submit" variant="secondary" className="w-full text-slate-100 font-bold bg-slate-800 hover:bg-slate-700">
+              Tạo danh sách
+            </Button>
+          </form>
+
+          <h2 className="watchlistPage__sidebarTitle text-lg font-bold text-slate-100 border-b border-slate-800 pb-3 mb-1 tracking-tight">
+            Thị trường & Chỉ số
+          </h2>
+          
+          <div className="watchlistPage__list flex flex-col gap-2">
+            {legacyGroups.map(group => {
+              const symbolsList = (group.items || []).map(item => item.symbol);
+              const counters = getGroupCounters(symbolsList);
+              const showUpDown = counters.up > 0 || counters.down > 0;
+              const isGroupActive = selectedType === "group" && selectedId === group.id;
+
+              return (
+                <div
+                  key={group.id}
+                  className={`watchlistPage__listItem flex justify-between items-center bg-slate-950/20 border border-slate-800 rounded px-4 py-3 cursor-pointer transition-all hover:bg-cyan-500/5 hover:border-slate-700 ${
+                    isGroupActive ? "watchlistPage__listItem--active border-cyan-500 bg-cyan-500/10" : ""
+                  }`}
+                  onClick={() => {
+                    setSelectedType("group");
+                    setSelectedId(group.id);
                     setErrorMsg("");
                     setSuccessMsg("");
-                  }
-                }
-              },
-              isEditing
-                ? e("input", {
-                    className: "watchlistPage__input",
-                    style: { width: "100%", padding: "4px 8px", fontSize: "0.9rem", margin: 0 },
-                    value: editingWlName,
-                    onChange: (ev: React.ChangeEvent<HTMLInputElement>) => setEditingWlName(ev.target.value),
-                    onKeyDown: (ev: React.KeyboardEvent) => {
-                      if (ev.key === "Enter") handleRenameWatchlist(wl.id);
-                      else if (ev.key === "Escape") setEditingWlId(null);
-                    },
-                    autoFocus: true,
-                    onClick: (ev: React.MouseEvent) => ev.stopPropagation(),
-                    onBlur: () => handleRenameWatchlist(wl.id),
+                  }}
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <span className={`watchlistPage__listItemName text-sm font-semibold ${isGroupActive ? "text-cyan-400" : "text-slate-100"}`}>
+                      🌐 {group.name}
+                    </span>
+                    {showUpDown && (
+                      <span className="text-xs text-slate-400 mt-0.5 font-mono">
+                        <span className="text-emerald-400 font-semibold">▲{counters.up}</span>{" "}
+                        <span className="text-rose-400 font-semibold">▼{counters.down}</span>
+                      </span>
+                    )}
+                  </div>
+                  <span className="watchlistPage__listItemCount text-xs bg-slate-900 border border-slate-800 rounded-full px-2 py-0.5 text-slate-400 font-medium">
+                    {counters.total} mã
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </aside>
+
+        {/* Main Content */}
+        <main className="watchlistPage__mainCard flex flex-col gap-6 p-7 rounded-lg border border-slate-800 bg-slate-900/40 backdrop-blur-md shadow-lg h-full overflow-y-auto box-border">
+          <div className="watchlistPage__header flex justify-between items-start gap-4 flex-wrap">
+            <div className="watchlistPage__titleGroup flex flex-col gap-1">
+              <h1 className="watchlistPage__title text-2xl font-bold text-slate-100 tracking-tight">{getActiveTitle()}</h1>
+              <p className="watchlistPage__description text-sm text-slate-400 mt-1">{getActiveDescription()}</p>
+            </div>
+            
+            <div className="flex gap-2 items-center flex-wrap">
+              <span className="watchlistPage__syncBadge flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-800 bg-slate-900 text-xs font-mono text-cyan-400 font-medium">
+                <span
+                  className={`shellPage__statusDot w-2 h-2 rounded-full inline-block ${
+                    realtimeFeed?.realtimeStatus === "live" ? "bg-emerald-400" : "bg-amber-400"
+                  }`}
+                />
+                Realtime: {realtimeFeed?.realtimeStatus === "live" ? "Live" : "Sync"} | Sync: {formatTime(lastSyncTime)}
+              </span>
+              
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3 text-xs bg-slate-800 border-slate-700 text-slate-100 hover:bg-slate-700"
+                  onClick={() => setSyncDialogOpen(true)}
+                  disabled={syncingStockProfile}
+                >
+                  {syncingStockProfile ? "Đang đồng bộ..." : "Tự động lấy mã"}
+                </Button>
+              )}
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3 text-xs bg-slate-800 border-slate-700 text-slate-100 hover:bg-slate-700"
+                  onClick={handleSyncPrices}
+                >
+                  Đồng bộ giá
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {selectedType === "watchlist" && (
+            <div className="watchlistPage__tabs flex gap-3 border-b border-slate-800 pb-3">
+              <button
+                className={`watchlistPage__tabBtn px-4 py-2 text-sm font-semibold rounded-full border transition-all ${
+                  activeTab === "table"
+                    ? "watchlistPage__tabBtn--active border-cyan-500 bg-cyan-500/10 text-cyan-400"
+                    : "border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 bg-slate-900/10"
+                }`}
+                onClick={() => setActiveTab("table")}
+              >
+                Bảng giá
+              </button>
+              <button
+                className={`watchlistPage__tabBtn px-4 py-2 text-sm font-semibold rounded-full border transition-all ${
+                  activeTab === "manage"
+                    ? "watchlistPage__tabBtn--active border-cyan-500 bg-cyan-500/10 text-cyan-400"
+                    : "border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 bg-slate-900/10"
+                }`}
+                onClick={() => setActiveTab("manage")}
+              >
+                Quản lý mã
+              </button>
+              <button
+                className={`watchlistPage__tabBtn px-4 py-2 text-sm font-semibold rounded-full border transition-all ${
+                  activeTab === "alerts"
+                    ? "watchlistPage__tabBtn--active border-cyan-500 bg-cyan-500/10 text-cyan-400"
+                    : "border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 bg-slate-900/10"
+                }`}
+                onClick={() => setActiveTab("alerts")}
+              >
+                Cảnh báo giá
+              </button>
+            </div>
+          )}
+
+          {selectedType === "tracked" && (
+            <form
+              className="watchlistPage__form flex gap-3 items-center mb-4 flex-wrap p-4 bg-slate-900/30 rounded-lg border border-slate-800"
+              onSubmit={handleAddTrackedSymbol}
+            >
+              <span className="text-sm font-bold text-slate-200">Thêm mã giám sát:</span>
+              <input
+                className="watchlistPage__input w-36 uppercase px-3 py-2 bg-slate-950 border border-slate-800 rounded text-slate-100 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                placeholder="Mã CP (vd: HPG)"
+                value={newTrackedSymbol}
+                onChange={ev => setNewTrackedSymbol(ev.target.value.toUpperCase())}
+              />
+              <input
+                type="number"
+                className="watchlistPage__input w-48 px-3 py-2 bg-slate-950 border border-slate-800 rounded text-slate-100 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                placeholder="Ngưỡng cảnh báo (Tr.đ)"
+                value={newTrackedThreshold}
+                onChange={ev => setNewTrackedThreshold(ev.target.value)}
+              />
+              <Button type="submit" size="sm" className="bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400 h-9 px-4">
+                Thêm theo dõi
+              </Button>
+            </form>
+          )}
+
+          {(selectedType !== "watchlist" || activeTab === "table") && (
+            <div className="shellPage__stack flex flex-col gap-4">
+              <div className="watchlistPage__controls flex justify-between items-center gap-4 flex-wrap">
+                <div className="text-slate-400 text-sm">Đang hiển thị {activeItems.length} mã chứng khoán.</div>
+                
+                <div className="watchlistPage__densityToggle inline-flex bg-slate-950/50 p-1 border border-slate-800 rounded-full">
+                  <button
+                    className={`watchlistPage__densityBtn px-3.5 py-1.5 text-xs font-semibold rounded-full border-none cursor-pointer transition-all ${
+                      density === "compact" ? "watchlistPage__densityBtn--active bg-slate-800 text-cyan-400 shadow-lg" : "text-slate-400"
+                    }`}
+                    onClick={() => setDensity("compact")}
+                  >
+                    Compact
+                  </button>
+                  <button
+                    className={`watchlistPage__densityBtn px-3.5 py-1.5 text-xs font-semibold rounded-full border-none cursor-pointer transition-all ${
+                      density === "comfortable" ? "watchlistPage__densityBtn--active bg-slate-800 text-cyan-400 shadow-lg" : "text-slate-400"
+                    }`}
+                    onClick={() => setDensity("comfortable")}
+                  >
+                    Comfortable
+                  </button>
+                </div>
+              </div>
+
+              {activeItems.length === 0 ? (
+                <div className="watchlistPage__emptyState flex flex-col items-center justify-center py-12 px-6 gap-3 text-slate-400 text-center">
+                  <span className="watchlistPage__emptyIcon text-4xl opacity-30">💼</span>
+                  <p className="text-sm">Chưa có mã nào trong danh sách hiện tại.</p>
+                  {selectedType === "watchlist" && (
+                    <Button variant="outline" size="sm" onClick={() => setActiveTab("manage")}>
+                      Thêm mã ngay
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="watchlistPage__tableWrapper overflow-x-auto border border-slate-800 rounded bg-slate-950/20 w-full">
+                  <table className={`watchlistPage__table w-full border-collapse text-left ${density === "compact" ? "watchlistPage__table--compact" : ""}`}>
+                    <thead>
+                      {renderTableHeader()}
+                    </thead>
+                    <tbody>
+                      {renderTableBody()}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {selectedType === "watchlist" && activeTab === "manage" && (
+            <div className="shellPage__stack flex flex-col gap-4">
+              <h3 className="shellPage__itemTitle text-md font-bold text-slate-200">Quản lý danh sách</h3>
+              
+              <form className="watchlistPage__form flex gap-2 items-center flex-wrap" onSubmit={handleAddSymbol}>
+                <input
+                  className="watchlistPage__input w-48 px-3 py-2 bg-slate-950 border border-slate-800 rounded text-slate-100 text-sm focus:outline-none"
+                  placeholder="Mã (Ví dụ: HPG)..."
+                  value={newSymbol}
+                  onChange={ev => setNewSymbol(ev.target.value)}
+                />
+                <input
+                  className="watchlistPage__input w-72 px-3 py-2 bg-slate-950 border border-slate-800 rounded text-slate-100 text-sm focus:outline-none"
+                  placeholder="Ghi chú nhanh..."
+                  value={newSymbolNote}
+                  onChange={ev => setNewSymbolNote(ev.target.value)}
+                />
+                <Button type="submit" size="sm">Thêm vào danh sách</Button>
+              </form>
+
+              <div className="shellPage__list flex flex-col gap-3 mt-4 w-full">
+                {items.length === 0 ? (
+                  <div className="shellPage__empty text-center py-8 text-slate-500 border border-dashed border-slate-800 rounded bg-slate-950/20">
+                    Chưa có mã chứng khoán nào trong danh sách này.
+                  </div>
+                ) : (
+                  items.map(item => (
+                    <article className="shellPage__listItem flex justify-between items-center bg-slate-950/20 border border-slate-800 rounded p-4 hover:border-slate-700" key={item.id}>
+                      <div className="flex flex-col">
+                        <h4 className="shellPage__itemTitle font-mono font-bold text-slate-200 m-0">{item.symbol}</h4>
+                        {item.note && <p className="shellPage__itemMeta text-xs text-slate-400 mt-1 m-0">{item.note}</p>}
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleRemoveSymbol(item.symbol)}
+                      >
+                        Xóa
+                      </Button>
+                    </article>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {selectedType === "watchlist" && activeTab === "alerts" && (
+            <div className="shellPage__stack flex flex-col gap-4">
+              <h3 className="shellPage__itemTitle text-md font-bold text-slate-200">Thiết lập Cảnh báo giá</h3>
+              
+              <form className="watchlistPage__form flex gap-2 items-center flex-wrap" onSubmit={handleCreateAlert}>
+                <input
+                  className="watchlistPage__input w-36 px-3 py-2 bg-slate-950 border border-slate-800 rounded text-slate-100 text-sm focus:outline-none"
+                  placeholder="Mã (Ví dụ: SSI)..."
+                  value={newAlertSymbol}
+                  onChange={ev => setNewAlertSymbol(ev.target.value)}
+                />
+                <select
+                  className="watchlistPage__select w-48 px-3 py-2 bg-slate-950 border border-slate-800 rounded text-slate-100 text-sm focus:outline-none"
+                  value={newAlertCondition}
+                  onChange={ev => setNewAlertCondition(ev.target.value as "ABOVE" | "BELOW" | "EQUAL")}
+                >
+                  <option value="ABOVE">Giá vượt quá (&gt;=)</option>
+                  <option value="BELOW">Giá giảm dưới (&lt;=)</option>
+                  <option value="EQUAL">Bằng giá (=)</option>
+                </select>
+                <input
+                  className="watchlistPage__input w-44 px-3 py-2 bg-slate-950 border border-slate-800 rounded text-slate-100 text-sm focus:outline-none"
+                  placeholder="Mức giá cảnh báo..."
+                  value={newAlertPrice}
+                  onChange={ev => setNewAlertPrice(ev.target.value)}
+                />
+                <input
+                  className="watchlistPage__input w-44 px-3 py-2 bg-slate-950 border border-slate-800 rounded text-slate-100 text-sm focus:outline-none"
+                  placeholder="Cooldown (giây, vd: 300)..."
+                  value={newAlertCooldown}
+                  onChange={ev => setNewAlertCooldown(ev.target.value)}
+                />
+                <Button type="submit" size="sm">Tạo cảnh báo</Button>
+              </form>
+
+              <div className="shellPage__list flex flex-col gap-3 mt-4 w-full">
+                {priceAlerts.length === 0 ? (
+                  <div className="shellPage__empty text-center py-8 text-slate-500 border border-dashed border-slate-800 rounded bg-slate-950/20">
+                    Chưa thiết lập cảnh báo giá nào.
+                  </div>
+                ) : (
+                  priceAlerts.map(alert => {
+                    const merged = getMergedData(alert.symbol);
+                    const currentPrice = merged.price || alert.current_price;
+                    const typeLabel = alert.condition === "ABOVE" ? ">=" : alert.condition === "BELOW" ? "<=" : "=";
+
+                    return (
+                      <article className="shellPage__listItem flex justify-between items-center bg-slate-950/20 border border-slate-800 rounded p-4 hover:border-slate-700" key={alert.id}>
+                        <div className="flex flex-col">
+                          <h4 className="shellPage__itemTitle font-mono font-bold text-slate-200 m-0">
+                            {alert.symbol} {typeLabel} {Number(alert.target_price).toLocaleString()} VNĐ
+                          </h4>
+                          <p className="shellPage__itemMeta text-xs text-slate-400 mt-1 m-0">
+                            Giá hiện tại: {currentPrice ? Number(currentPrice).toLocaleString() : "—"} | Trạng thái:{" "}
+                            <span className={alert.is_active ? "text-emerald-400 font-semibold" : "text-slate-500"}>
+                              {alert.is_active ? "Đang hoạt động" : "Triggered/Vô hiệu"}
+                            </span>
+                          </p>
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteAlert(alert.id)}
+                        >
+                          Xóa
+                        </Button>
+                      </article>
+                    );
                   })
-                : e("span", { className: "watchlistPage__listItemName" }, `📁 ${wl.name}`),
+                )}
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
 
-              !isEditing && e("div", { 
-                className: "watchlistPage__itemActions", 
-                style: { display: "flex", gap: "8px", alignItems: "center" },
-                onClick: (ev: React.MouseEvent) => ev.stopPropagation()
-              },
-                e("span", {
-                  style: { cursor: "pointer", fontSize: "0.85rem", opacity: 0.7 },
-                  title: "Đổi tên",
-                  onClick: () => {
-                    setEditingWlId(wl.id);
-                    setEditingWlName(wl.name);
-                  }
-                }, "✏️"),
-                e("span", {
-                  style: { cursor: "pointer", fontSize: "0.85rem", opacity: 0.7 },
-                  title: "Xóa danh sách",
-                  onClick: () => handleDeleteWatchlist(wl.id, wl.name)
-                }, "🗑️")
-              )
-            );
-          })
-        ),
+      {/* Confirmation Dialog replacement for window.confirm */}
+      <Dialog open={confirmState.isOpen} onOpenChange={open => setConfirmState(prev => ({ ...prev, isOpen: open }))}>
+        <DialogContent className="sm:max-w-[425px] bg-slate-900 border-slate-800 text-slate-100 shadow-xl rounded-lg">
+          <DialogHeader>
+            <DialogTitle className="text-slate-100 font-bold text-lg">{confirmState.title}</DialogTitle>
+            <DialogDescription className="text-slate-400 mt-2 text-sm">
+              {confirmState.message}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-slate-100 h-9 px-4 text-xs font-semibold"
+              onClick={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="destructive"
+              className="bg-rose-600 hover:bg-rose-500 text-slate-50 h-9 px-4 text-xs font-semibold"
+              onClick={async () => {
+                await confirmState.onConfirm();
+                setConfirmState(prev => ({ ...prev, isOpen: false }));
+              }}
+            >
+              Xác nhận
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        e(
-          "form",
-          { className: "watchlistPage__sidebarAction", style: { marginBottom: "1.5rem" }, onSubmit: handleCreateWatchlist },
-          e("input", {
-            className: "watchlistPage__input",
-            style: { width: "100%", boxSizing: "border-box", marginBottom: "0.5rem" },
-            placeholder: "Tên danh sách mới...",
-            value: newListName,
-            onChange: (ev: React.ChangeEvent<HTMLInputElement>) => setNewListName(ev.target.value),
-          }),
-          e("button", { type: "submit", className: "watchlistPage__btn", style: { width: "100%" } }, "Tạo danh sách")
-        ),
+      {/* Sync Stock Profile Dialog replacement for window.prompt */}
+      <Dialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen}>
+        <DialogContent className="sm:max-w-[450px] bg-slate-900 border-slate-800 text-slate-100 shadow-xl rounded-lg">
+          <DialogHeader>
+            <DialogTitle className="text-slate-100 font-bold text-lg">ĐỒNG BỘ MÃ CHỨNG KHOÁN</DialogTitle>
+            <DialogDescription className="text-slate-400 mt-2 text-sm">
+              Chọn phạm vi đồng bộ mã chứng khoán từ nguồn dữ liệu sàn giao dịch. (Chỉ dành cho Quản trị viên)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 py-4 text-sm text-slate-300">
+            <label className="flex items-start gap-3 cursor-pointer p-3 bg-slate-950/40 border border-slate-800 rounded hover:border-cyan-500/50 transition-all">
+              <input
+                type="radio"
+                name="syncMode"
+                value="active"
+                className="mt-1 accent-cyan-500"
+                checked={syncMode === "active"}
+                onChange={() => setSyncMode("active")}
+              />
+              <div className="flex flex-col">
+                <span className="font-semibold text-slate-100 flex items-center gap-1.5">
+                  Chỉ mã đang hoạt động <span className="text-[10px] text-cyan-400 bg-cyan-400/10 px-1.5 py-0.5 rounded font-mono">Khuyến nghị</span>
+                </span>
+                <span className="text-xs text-slate-400 mt-1">Đồng bộ khoảng 1,300 mã đang có giao dịch phát sinh. Tối ưu thời gian xử lý.</span>
+              </div>
+            </label>
 
-        e("h2", { className: "watchlistPage__sidebarTitle" }, "Thị trường & Chỉ số"),
-        e(
-          "div",
-          { className: "watchlistPage__list" },
-          legacyGroups.map(group => {
-            const symbolsList = (group.items || []).map(item => item.symbol);
-            const counters = getGroupCounters(symbolsList);
-            const showUpDown = counters.up > 0 || counters.down > 0;
-
-            return e(
-              "div",
-              {
-                key: group.id,
-                className: `watchlistPage__listItem ${selectedType === "group" && selectedId === group.id ? "watchlistPage__listItem--active" : ""}`,
-                onClick: () => {
-                  setSelectedType("group");
-                  setSelectedId(group.id);
-                  setErrorMsg("");
-                  setSuccessMsg("");
-                }
-              },
-              e(
-                "div",
-                { style: { display: "flex", flexDirection: "column", gap: "2px" } },
-                e("span", { className: "watchlistPage__listItemName" }, `🌐 ${group.name}`),
-                showUpDown && e(
-                  "span",
-                  { style: { fontSize: "0.825rem", color: "var(--text-muted)", marginTop: "2px" } },
-                  `▲${counters.up}  ▼${counters.down}`
-                )
-              ),
-              e("span", { className: "watchlistPage__listItemCount" }, `${counters.total} mã`)
-            );
-          })
-        )
-      ),
-
-      // Main content
-      e(
-        "main",
-        { className: "watchlistPage__mainCard" },
-
-        e(
-          "div",
-          { className: "watchlistPage__header" },
-          e(
-            "div",
-            { className: "watchlistPage__titleGroup" },
-            e("h1", { className: "watchlistPage__title" }, getActiveTitle()),
-            e("p", { className: "watchlistPage__description" }, getActiveDescription())
-          ),
-          e(
-            "div",
-            { style: { display: "flex", gap: "0.5rem", alignItems: "center" } },
-            e(
-              "span",
-              { className: "watchlistPage__syncBadge" },
-              e("span", {
-                className: "shellPage__statusDot",
-                style: {
-                  backgroundColor: realtimeFeed?.realtimeStatus === "live" ? "#00FFBB" : "#f59e0b"
-                }
-              }),
-              `Realtime: ${realtimeFeed?.realtimeStatus === "live" ? "Live" : "Sync"} | Sync: ${formatTime(lastSyncTime)}`
-            ),
-            isAdmin && e(
-              "button",
-              {
-                className: "watchlistPage__btn watchlistPage__btn--secondary",
-                onClick: handleSyncStockProfile,
-                disabled: syncingStockProfile,
-                style: { padding: "8px 16px", fontSize: "0.875rem" }
-              },
-              syncingStockProfile ? "Đang đồng bộ..." : "Tự động lấy mã"
-            ),
-            isAdmin && e(
-              "button",
-              {
-                className: "watchlistPage__btn watchlistPage__btn--secondary",
-                onClick: handleSyncPrices,
-                style: { padding: "8px 16px", fontSize: "0.875rem" }
-              },
-              "Đồng bộ giá"
-            )
-          )
-        ),
-
-        selectedType === "watchlist" && e(
-          "div",
-          { className: "watchlistPage__tabs" },
-          e(
-            "button",
-            {
-              className: `watchlistPage__tabBtn ${activeTab === "table" ? "watchlistPage__tabBtn--active" : ""}`,
-              onClick: () => setActiveTab("table")
-            },
-            "Bảng giá"
-          ),
-          e(
-            "button",
-            {
-              className: `watchlistPage__tabBtn ${activeTab === "manage" ? "watchlistPage__tabBtn--active" : ""}`,
-              onClick: () => setActiveTab("manage")
-            },
-            "Quản lý mã"
-          ),
-          e(
-            "button",
-            {
-              className: `watchlistPage__tabBtn ${activeTab === "alerts" ? "watchlistPage__tabBtn--active" : ""}`,
-              onClick: () => setActiveTab("alerts")
-            },
-            "Cảnh báo giá"
-          )
-        ),
-
-        selectedType === "tracked" && e(
-          "form",
-          {
-            className: "watchlistPage__form",
-            style: { display: "flex", gap: "10px", alignItems: "center", marginBottom: "15px", flexWrap: "wrap" },
-            onSubmit: handleAddTrackedSymbol
-          },
-          e("span", { style: { fontWeight: "bold", fontSize: "0.9rem" } }, "Thêm mã giám sát:"),
-          e("input", {
-            className: "watchlistPage__input",
-            style: { width: "120px", textTransform: "uppercase" },
-            placeholder: "Mã CP (vd: HPG)",
-            value: newTrackedSymbol,
-            onChange: (ev: React.ChangeEvent<HTMLInputElement>) => setNewTrackedSymbol(ev.target.value.toUpperCase()),
-          }),
-          e("input", {
-            type: "number",
-            className: "watchlistPage__input",
-            style: { width: "180px" },
-            placeholder: "Ngưỡng cảnh báo (Tr.đ)",
-            value: newTrackedThreshold,
-            onChange: (ev: React.ChangeEvent<HTMLInputElement>) => setNewTrackedThreshold(ev.target.value),
-          }),
-          e("button", { type: "submit", className: "watchlistPage__btn" }, "Thêm theo dõi")
-        ),
-
-        (selectedType !== "watchlist" || activeTab === "table") && e(
-          "div",
-          { className: "shellPage__stack" },
-
-          e(
-            "div",
-            { className: "watchlistPage__controls" },
-            e("div", { className: "text-gray", style: { fontSize: "0.875rem" } }, `Đang hiển thị ${activeItems.length} mã chứng khoán.`),
-            e(
-              "div",
-              { className: "watchlistPage__densityToggle" },
-              e(
-                "button",
-                {
-                  className: `watchlistPage__densityBtn ${density === "compact" ? "watchlistPage__densityBtn--active" : ""}`,
-                  onClick: () => setDensity("compact")
-                },
-                "Compact"
-              ),
-              e(
-                "button",
-                {
-                  className: `watchlistPage__densityBtn ${density === "comfortable" ? "watchlistPage__densityBtn--active" : ""}`,
-                  onClick: () => setDensity("comfortable")
-                },
-                "Comfortable"
-              )
-            )
-          ),
-
-          activeItems.length === 0
-            ? e(
-                "div",
-                { className: "watchlistPage__emptyState" },
-                e("span", { className: "watchlistPage__emptyIcon" }, "💼"),
-                e("p", null, "Chưa có mã nào trong danh sách hiện tại."),
-                selectedType === "watchlist" && e("button", { className: "watchlistPage__btn", onClick: () => setActiveTab("manage") }, "Thêm mã ngay")
-              )
-            : e(
-                "div",
-                { className: "watchlistPage__tableWrapper" },
-                e(
-                  "table",
-                  { className: `watchlistPage__table ${density === "compact" ? "watchlistPage__table--compact" : ""}` },
-                  e("thead", null, renderTableHeader()),
-                  e("tbody", null, renderTableBody())
-                )
-              )
-        ),
-
-        selectedType === "watchlist" && activeTab === "manage" && e(
-          "div",
-          { className: "shellPage__stack" },
-          e("h3", { className: "shellPage__itemTitle" }, "Quản lý danh sách"),
-          e(
-            "form",
-            { className: "watchlistPage__form", onSubmit: handleAddSymbol },
-            e("input", {
-              className: "watchlistPage__input",
-              placeholder: "Mã (Ví dụ: HPG)...",
-              value: newSymbol,
-              onChange: (ev: React.ChangeEvent<HTMLInputElement>) => setNewSymbol(ev.target.value),
-            }),
-            e("input", {
-              className: "watchlistPage__input",
-              placeholder: "Ghi chú nhanh...",
-              value: newSymbolNote,
-              onChange: (ev: React.ChangeEvent<HTMLInputElement>) => setNewSymbolNote(ev.target.value),
-            }),
-            e("button", { type: "submit", className: "watchlistPage__btn" }, "Thêm vào danh sách")
-          ),
-
-          e(
-            "div",
-            { className: "shellPage__list", style: { marginTop: "1rem" } },
-            items.length === 0
-              ? e("div", { className: "shellPage__empty" }, "Chưa có mã chứng khoán nào trong danh sách này.")
-              : items.map(item => e(
-                  "article",
-                  { className: "shellPage__listItem", key: item.id },
-                  e(
-                    "div",
-                    { className: "shellPage__listItemHeader", style: { display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center" } },
-                    e(
-                      "div",
-                      null,
-                      e("h4", { className: "shellPage__itemTitle", style: { margin: 0, fontFamily: "monospace" } }, item.symbol),
-                      item.note && e("p", { className: "shellPage__itemMeta", style: { margin: "4px 0 0 0" } }, item.note)
-                    ),
-                    e("button", {
-                      type: "button",
-                      className: "watchlistPage__btn watchlistPage__btn--danger",
-                      onClick: () => handleRemoveSymbol(item.symbol)
-                    }, "Xóa")
-                  )
-                ))
-          )
-        ),
-
-        selectedType === "watchlist" && activeTab === "alerts" && e(
-          "div",
-          { className: "shellPage__stack" },
-          e("h3", { className: "shellPage__itemTitle" }, "Thiết lập Cảnh báo giá"),
-          e(
-            "form",
-            { className: "watchlistPage__form", onSubmit: handleCreateAlert },
-            e("input", {
-              className: "watchlistPage__input",
-              placeholder: "Mã (Ví dụ: SSI)...",
-              value: newAlertSymbol,
-              onChange: (ev: React.ChangeEvent<HTMLInputElement>) => setNewAlertSymbol(ev.target.value),
-            }),
-            e(
-              "select",
-              {
-                className: "watchlistPage__select",
-                value: newAlertCondition,
-                onChange: (ev: React.ChangeEvent<HTMLSelectElement>) => setNewAlertCondition(ev.target.value as "ABOVE" | "BELOW" | "EQUAL")
-              },
-              e("option", { value: "ABOVE" }, "Giá vượt quá (>=)"),
-              e("option", { value: "BELOW" }, "Giá giảm dưới (<=)"),
-              e("option", { value: "EQUAL" }, "Bằng giá (=)")
-            ),
-            e("input", {
-              className: "watchlistPage__input",
-              placeholder: "Mức giá cảnh báo...",
-              value: newAlertPrice,
-              onChange: (ev: React.ChangeEvent<HTMLInputElement>) => setNewAlertPrice(ev.target.value),
-            }),
-            e("input", {
-              className: "watchlistPage__input",
-              placeholder: "Cooldown (giây, vd: 300)...",
-              value: newAlertCooldown,
-              onChange: (ev: React.ChangeEvent<HTMLInputElement>) => setNewAlertCooldown(ev.target.value),
-            }),
-            e("button", { type: "submit", className: "watchlistPage__btn" }, "Tạo cảnh báo")
-          ),
-
-          e(
-            "div",
-            { className: "shellPage__list", style: { marginTop: "1rem" } },
-            priceAlerts.length === 0
-              ? e("div", { className: "shellPage__empty" }, "Chưa thiết lập cảnh báo giá nào.")
-              : priceAlerts.map(alert => {
-                  const merged = getMergedData(alert.symbol);
-                  const currentPrice = merged.price || alert.current_price;
-                  const typeLabel = alert.condition === "ABOVE" ? ">=" : alert.condition === "BELOW" ? "<=" : "=";
-
-                  return e(
-                    "article",
-                    { className: "shellPage__listItem", key: alert.id },
-                    e(
-                      "div",
-                      { className: "shellPage__listItemHeader", style: { display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center" } },
-                      e(
-                        "div",
-                        null,
-                        e("h4", { className: "shellPage__itemTitle", style: { margin: 0, fontFamily: "monospace" } }, `${alert.symbol} ${typeLabel} ${Number(alert.target_price).toLocaleString()} VNĐ`),
-                        e(
-                          "p",
-                          { className: "shellPage__itemMeta", style: { margin: "4px 0 0 0" } },
-                          `Giá hiện tại: ${currentPrice ? Number(currentPrice).toLocaleString() : "—"} | Trạng thái: ${alert.is_active ? "Đang hoạt động" : "Triggered/Vô hiệu"}`
-                        )
-                      ),
-                      e("button", {
-                        type: "button",
-                        className: "watchlistPage__btn watchlistPage__btn--danger",
-                        onClick: () => handleDeleteAlert(alert.id)
-                      }, "Xóa")
-                    )
-                  );
-                })
-          )
-        )
-      )
-    )
+            <label className="flex items-start gap-3 cursor-pointer p-3 bg-slate-950/40 border border-slate-800 rounded hover:border-cyan-500/50 transition-all">
+              <input
+                type="radio"
+                name="syncMode"
+                value="all"
+                className="mt-1 accent-cyan-500"
+                checked={syncMode === "all"}
+                onChange={() => setSyncMode("all")}
+              />
+              <div className="flex flex-col">
+                <span className="font-semibold text-slate-100">Toàn bộ mã thị trường</span>
+                <span className="text-xs text-slate-400 mt-1">Đồng bộ khoảng 3,200 mã bao gồm cả chứng quyền (warrants), trái phiếu, mã đã ngừng giao dịch...</span>
+              </div>
+            </label>
+          </div>
+          <DialogFooter className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-slate-100 h-9 px-4 text-xs font-semibold"
+              onClick={() => setSyncDialogOpen(false)}
+            >
+              Hủy
+            </Button>
+            <Button
+              className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 h-9 px-4 text-xs font-semibold font-bold"
+              onClick={() => executeSyncStockProfile(syncMode)}
+            >
+              Bắt đầu đồng bộ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
+
 export default WatchlistPage;

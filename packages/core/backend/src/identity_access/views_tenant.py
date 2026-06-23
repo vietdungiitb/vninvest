@@ -486,6 +486,33 @@ def partner_revoke_pat(request, pat_id):
     )
 
 
+class TenantLifecycleView(APIView):
+    """Return tenant plan and status for the current authenticated user.
+
+    Used by the frontend dashboard to determine feature gating and
+    billing status.  Returns minimal envelope — consumer is expected
+    to cache this response on the client side.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            tenant = _get_request_tenant(request)
+        except PermissionDenied:
+            return Response(
+                {'detail': 'Tenant not found for the current user.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response({
+            'plan': tenant.plan,
+            'status': tenant.status,
+            'tenant_id': tenant.public_id,
+            'tenant_code': tenant.tenant_code,
+            'display_name': tenant.display_name,
+        })
+
+
 class PartnerUsageMetersView(generics.ListAPIView):
     """Usage meters list — placeholder until usage metering is implemented."""
     permission_classes = TENANT_PERMISSION_CLASSES

@@ -38,10 +38,10 @@ export {
 
 export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setTokens, clearTokens } = {}) {
   const transport = createCoreTransport(env, {
-    getToken,
-    getRefreshToken,
-    setTokens,
-    clearTokens,
+    getToken: getToken ?? (() => authTokenStorage.getAccessToken()),
+    getRefreshToken: getRefreshToken ?? (() => authTokenStorage.getRefreshToken()),
+    setTokens: setTokens ?? ((tokens) => authTokenStorage.setTokens(tokens)),
+    clearTokens: clearTokens ?? (() => authTokenStorage.clearTokens()),
   });
 
   // Start multi-tab token sync listener
@@ -120,6 +120,11 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
 
   // Combine into a single unified API client object (Facade)
   return {
+    coreGet: transport.coreGet,
+    corePost: transport.corePost,
+    corePut: transport.corePut,
+    corePatch: transport.corePatch,
+    coreDelete: transport.coreDelete,
     ...authClient,
     ...marketClient,
     ...workspaceClient,

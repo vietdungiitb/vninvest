@@ -75,6 +75,22 @@
 
 ---
 
+---
+
+## Tenant Lifecycle & Order Flow Fix (2026-06-23)
+
+| Fix | Status | Details |
+|-----|--------|---------|
+| `TenantLifecycleView` in `views_tenant.py` | ✅ Done | Returns `plan`/`status`/`tenant_id`/`tenant_code`/`display_name` via `_get_request_tenant()` |
+| Route `/tenant/lifecycle/` in `urls.py` | ✅ Done | Both `/tenant/lifecycle/` and `/tenant/lifecycle` registered |
+| `authTokenStorage` fallback in `coreApiAdapter.js` | ✅ Done | `getToken: getToken ?? (() => authTokenStorage.getAccessToken())` — fixes 401 when adapter created without explicit token |
+| Python syntax check | ✅ Pass | Both `views_tenant.py` and `urls.py` |
+| TypeScript check | ✅ Pass | `npx tsc --noEmit` — 0 errors |
+| Dev build | ✅ Done | `./start_dev.ps1` — all core images rebuilt, frontend building |
+| Audit ledger | ✅ Done | Entry 10 added to `CODE_CHANGE_AUDIT_LEDGER.md` |
+
+---
+
 ## Open Risks
 
 | Risk | Impact | Mitigation |

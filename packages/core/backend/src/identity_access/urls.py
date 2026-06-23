@@ -28,6 +28,8 @@ urlpatterns = [
     path('onboarding/register/', onboarding_views.register_tenant_view, name='onboarding-register-slash'),
     # Tenant & Service Account management
     path('tenant', views.TenantDetailView.as_view(), name='tenant-detail'),
+    path('tenant/lifecycle/', views.TenantLifecycleView.as_view(), name='tenant-lifecycle-slash'),
+    path('tenant/lifecycle', views.TenantLifecycleView.as_view(), name='tenant-lifecycle'),
     path('service-accounts', views.ServiceAccountListView.as_view(), name='service-account-list'),
     path('service-accounts/<str:service_account_id>', views.ServiceAccountDetailView.as_view(), name='service-account-detail'),
     path('service-accounts/<str:service_account_id>/pat/issue', views.issue_pat, name='pat-issue'),

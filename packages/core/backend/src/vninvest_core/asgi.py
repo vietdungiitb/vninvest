@@ -20,7 +20,7 @@ from django.urls import path
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'vninvest_core.settings')
 
 # Import consumers AFTER Django setup
-from signal_intelligence.consumers import MarketTickerConsumer  # noqa: E402
+from signal_intelligence.consumers import MarketTickerConsumer, RealtimeConsumer  # noqa: E402
 
 _django_asgi_app = get_asgi_application()
 
@@ -29,6 +29,7 @@ application = ProtocolTypeRouter({
     'websocket': AllowedHostsOriginValidator(
         AuthMiddlewareStack(
             URLRouter([
+                path('ws/realtime/', RealtimeConsumer.as_asgi()),
                 path('ws/market/<str:symbol>/', MarketTickerConsumer.as_asgi()),
             ])
         )
