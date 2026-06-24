@@ -136,6 +136,17 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     ...operatorClient,
     ...miscClient,
     ...socClient,
+
+    // Tenant-admin usage (partner/usage/*)
+    getAllUsageTrends(days = 30) {
+      return transport.coreGet(`/partner/usage/trend/?days=${days}`);
+    },
+    getUsageForecast() {
+      return transport.coreGet("/partner/usage/forecast/");
+    },
+    getAlertConfigs() {
+      return transport.coreGet("/partner/usage/alert-config/");
+    },
   };
 }
 

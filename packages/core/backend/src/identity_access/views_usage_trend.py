@@ -1,0 +1,157 @@
+"""
+Per-Meter Usage Trend views for tenant-admin.
+
+Provides historical daily consumption for specific meters (Phase 1 of Tenant Admin Upgrade Plan).
+"""
+from datetime import date, timedelta
+from django.db.models import Sum
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.exceptions import NotFound
+
+from .models import CoreTenant
+from .permissions import IsTenantActive, require_human_session
+
+
+def _get_request_tenant(request) -> CoreTenant:
+    tenant = getattr(request, 'tenant', None)
+    if tenant is not None:
+        return tenant
+    user = getattr(request, 'user', None)
+    if user and user.is_authenticated:
+        try:
+            tenant = CoreTenant.objects.get(owner_user=user)
+        except CoreTenant.DoesNotExist:
+            from .models import TenantMember
+            member = TenantMember.objects.filter(user=user).select_related('tenant').first()
+            if member:
+                tenant = member.tenant
+    if tenant is None:
+        from rest_framework.exceptions import PermissionDenied
+        raise PermissionDenied('Không tìm thấy tenant.')
+    return tenant
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsTenantActive])
+def partner_usage_trend(request):
+    """
+    Get daily consumption history for a specific meter.
+    
+    Query params:
+    - meter_code: required (api_calls, ai_regenerate, whale_symbols, exports)
+    - days: 1-365 (default 30)
+    """
+    require_human_session(request)
+    tenant = _get_request_tenant(request)
+
+    meter_code = request.GET.get('meter_code')
+    if not meter_code:
+        return Response(
+            {'detail': 'meter_code is required'},
+            status=400
+        )
+
+    valid_meters = ['api_calls', 'ai_regenerate', 'whale_symbols', 'exports']
+    if meter_code not in valid_meters:
+        return Response(
+            {'detail': f'Invalid meter_code. Must be one of: {", ".join(valid_meters)}'},
+            status=400
+        )
+
+    days = 30
+    try:
+        days = max(1, min(int(request.GET.get('days', 30)), 365))
+    except (TypeError, ValueError):
+        days = 30
+
+    today = date.today()
+    start = today - timedelta(days=days - 1)
+
+    from commercial.models import QuotaRecord
+
+    daily = []
+    for offset in range(days):
+        d = start + timedelta(days=offset)
+        consumed = 0
+        try:
+            qr = QuotaRecord.objects.filter(
+                tenant=tenant,
+                meter_code=meter_code,
+                date=d,
+            ).first()
+            if qr:
+                consumed = qr.consumed or 0
+        except Exception:
+            pass
+
+        daily.append({
+            'date': d.isoformat(),
+            'consumed': consumed,
+        })
+
+    return Response({
+        'meter_code': meter_code,
+        'daily': daily,
+        'days': days,
+        'start_date': start.isoformat(),
+        'end_date': today.isoformat(),
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsTenantActive])
+def partner_usage_trend_all(request):
+    """
+    Get daily consumption history for ALL meters.
+    
+    Query params:
+    - days: 1-365 (default 30)
+    """
+    require_human_session(request)
+    tenant = _get_request_tenant(request)
+
+    days = 30
+    try:
+        days = max(1, min(int(request.GET.get('days', 30)), 365))
+    except (TypeError, ValueError):
+        days = 30
+
+    today = date.today()
+    start = today - timedelta(days=days - 1)
+
+    from commercial.models import QuotaRecord
+
+    meters = ['api_calls', 'ai_regenerate', 'whale_symbols', 'exports']
+    result = {}
+
+    for meter_code in meters:
+        daily = []
+        for offset in range(days):
+            d = start + timedelta(days=offset)
+            consumed = 0
+            try:
+                qr = QuotaRecord.objects.filter(
+                    tenant=tenant,
+                    meter_code=meter_code,
+                    date=d,
+                ).first()
+                if qr:
+                    consumed = qr.consumed or 0
+            except Exception:
+                pass
+
+            daily.append({
+                'date': d.isoformat(),
+                'consumed': consumed,
+            })
+        result[meter_code] = daily
+
+    return Response({
+        'meters': result,
+        'days': days,
+        'start_date': start.isoformat(),
+        'end_date': today.isoformat(),
+    })

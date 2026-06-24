@@ -64,11 +64,11 @@ declare module "./adapters/coreApiAdapter" {
     syncAdminMarketGroups: (mode: string) => Promise<any>;
     getMarketGroupsSyncStatus: (taskId: string) => Promise<any>;
 
-    // Core REST methods
-    coreGet: (path: string, params?: any) => Promise<Response>;
-    corePost: (path: string, data?: any) => Promise<Response>;
-    corePatch: (path: string, data?: any) => Promise<Response>;
-    coreDelete: (path: string) => Promise<Response>;
+    // Core REST methods — return parsed JSON body, not raw Response
+    coreGet: (path: string, params?: any) => Promise<any>;
+    corePost: (path: string, data?: any) => Promise<any>;
+    corePatch: (path: string, data?: any) => Promise<any>;
+    coreDelete: (path: string) => Promise<any>;
 
     // SOC
     getOperationsCenter: () => Promise<any>;

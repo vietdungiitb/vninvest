@@ -139,6 +139,11 @@ export interface CoreApiAdapter {
   getMailConfig: () => Promise<any>;
   updateMailConfig: (data: any) => Promise<any>;
   sendTestEmail: (data: any) => Promise<any>;
+
+  // Tenant-admin usage
+  getAllUsageTrends: (days?: number) => Promise<any>;
+  getUsageForecast: () => Promise<any>;
+  getAlertConfigs: () => Promise<any>;
 }
 
 export function createCoreApiAdapter(options?: {
