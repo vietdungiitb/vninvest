@@ -57,6 +57,17 @@ frontend/yarn-debug.log*
 frontend/yarn-error.log*
 frontend/.eslintcache
 
+# ── Playwright / Test artifacts ─────────────────────────────────────────────
+packages/web/test-results/
+packages/web/playwright-report/
+
+# ── Junk backup copies (Windows Explorer duplicates, temp files) ────────────
+packages/web/src/components/dashboard/* (1).*
+packages/web/src/layouts/**/* (1).*
+packages/web/src/utils/dashboardSymbols.js
+packages/web/vite (1).config.ts
+packages/web/vite.config.ts.timestamp-*.mjs
+
 # ── OS / Editor ──────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
