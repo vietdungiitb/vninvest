@@ -8,6 +8,7 @@
 import {
   createCoreTransport,
   authTokenStorage,
+  tenantIdStorage,
   CoreApiRequestError,
   initTokenStorageSync,
   destroyTokenStorageSync,
@@ -29,6 +30,7 @@ import { createSocClient } from "./core/soc.js";
 
 export {
   authTokenStorage,
+  tenantIdStorage,
   CoreApiRequestError,
   initTokenStorageSync,
   destroyTokenStorageSync,
@@ -103,6 +105,9 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
   const operatorClient = createOperatorClient({
     coreGet: transport.coreGet,
     corePost: transport.corePost,
+    corePut: transport.corePut,
+    corePatch: transport.corePatch,
+    coreDelete: transport.coreDelete,
   });
 
   const miscClient = createMiscClient({

@@ -66,6 +66,7 @@ urlpatterns = [
 
     # Tenant member & invite endpoints (T09) — specific routes FIRST
     path('tenant-members/invites/<str:token>/accept/', tenant_member_views.TenantInviteAcceptView.as_view(), name='tenant-invites-accept'),
+    path('tenant-members/invites/<str:invite_id>/cancel/', tenant_member_views.TenantInviteCancelView.as_view(), name='tenant-invites-cancel'),
     path('tenant-members/invites/', tenant_member_views.TenantInvitesCombinedView.as_view(), name='tenant-invites'),
     path('tenant-members/<str:member_id>/', tenant_member_views.TenantMemberRemoveView.as_view(), name='tenant-members-remove'),
     path('tenant-members/', tenant_member_views.TenantMemberListView.as_view(), name='tenant-members-list'),

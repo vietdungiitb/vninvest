@@ -116,6 +116,68 @@
 
 ---
 
+---
+
+## Tenant Admin Console Migration (2026-06-23)
+
+| Fix / Feature | Status | Details |
+|---|---|---|
+| `response.ok` → direct JSON in 7 TSX pages | ✅ Done | Home, Members, ServiceAccounts, PATs, Usage, Billing, AuditLogs — all fixed |
+| `localStorage` → `sessionStorage` for `tenant_id` | ✅ Done | `transport.js`: `tenantIdStorage` helper (get/set/clear) via `sessionStorage` |
+| `coreApiAdapter.js` re-export | ✅ Done | `tenantIdStorage` exported for consumer access |
+| `coreApiAdapter.d.ts` method signatures | ✅ Done | Added `coreGet`/`corePost`/`corePut`/`corePatch`/`coreDelete` + `TenantIdStorage` interface |
+| `TenantAdminSSOPage.tsx` port | ✅ Done | New 331-line TSX, `createElement`, Enterprise plan gate, SSO test section, endpoint `/core/v1/partner/sso/` |
+| Route registration | ✅ Done | `pageRegistry.js` + `main.tsx` (`tenant-admin/sso`) |
+| i18n keys (vi/en) | ✅ Done | 28 keys per locale in `tenantSSO` block |
+| TypeScript check | ✅ Pass | `npx tsc --noEmit` — 0 errors |
+| Build | ✅ Pass | 3244 modules, `TenantAdminSSOPage.js` 8.68 kB |
+| Dev stack refresh | ✅ In Progress | `./start_dev.ps1` building |
+
+---
+
+## TenantAdminHomePage Redesign — Frontend Review (2026-06-23)
+
+| Fix / Feature | Status | Details |
+|---|---|---|
+| i18n via `useI18n()` | ✅ Done | All text through `t()` keys (`tenantHome.*`, `plans.*`, `common.*`) |
+| Permission gating via `ability.can()` | ✅ Done | Nav links filtered + `readAccess` metric card |
+| User identity display | ✅ Done | Username/email/plan from `usePortfolio().userIdentity` / `userPlan` |
+| Quota caps display | ✅ Done | API calls, AI regenerations, whale symbols, exports/day from `userEntitlements.quota` |
+| SPA navigation (`<Link>` instead of `<a>`) | ✅ Done | Client-side transitions via react-router-dom |
+| No-tenant context state | ✅ Done | Graceful i18n message when `activeTenantId` is null |
+| Metric cards (plan, ability, quota, access) | ✅ Done | 4 `renderShellMetric` cards in hero section |
+| Identity summary card | ✅ Done | `renderSummaryCard` with username, email, plan |
+| Quota summary card | ✅ Done | `renderSummaryCard` with 4 quota values + unlimited support |
+| ShellPageTemplate CSS classes | ✅ Done | `ShellPageChrome`, `ShellPanel`, `shellPage__surfaceCard`, etc. |
+| TypeScript check | ✅ Pass | `npx tsc --noEmit` — 0 errors |
+| Build | ✅ Pass | 3244 modules, 0 errors, chunk 3.85 kB |
+| Dev stack refresh | ✅ Done | `./start_dev.ps1` — all services built, healthy, smoke checks pass |
+| Audit ledger | ✅ Done | Entry 13 added to `CODE_CHANGE_AUDIT_LEDGER.md` |
+| Remaining pages need i18n & permission gating | ⏳ Deferred | Members, ServiceAccounts, PATs, Usage, Billing, AuditLogs, Capabilities, SSO |
+
+---
+
+---
+
+## SaaS Full Independence B1-B2 (2026-06-24)
+
+| Item | Status | Details |
+|------|--------|---------|
+| B1: Proxy Gateway (`legacy_proxy.py`) | ✅ Done | `httpx.Client`, hop-by-hop stripped, 5s connect / 120s read / 30s write / 5s pool timeout, 502 JSON on backend down |
+| B1: Proxy route last in `urls.py` | ✅ Done | Native routes take priority (no explicit exclusion list needed) |
+| B1: `LEGACY_BACKEND_URL` env | ✅ Done | `settings.py` env var, default `http://backend:8000` |
+| B2.1: Email backend config | ✅ Done | EMAIL_HOST/PORT/USE_TLS from env in `settings.py` |
+| B2.2: Native register endpoint | ✅ Done | 3-layer spam shield + transactional outbox + email verification |
+| B2.3: Native verify/resend email | ✅ Done | POST `/api/auth/verify-email/` + `/api/auth/resend-verification/` |
+| B2.4: Native password reset | ✅ Done | DB-backed tokens, rate-limited, POST `/api/auth/password-reset/` + `/password-reset/confirm/` |
+| B2.5: User migration script | ✅ Done | `scripts/migrate_users_to_core.py`, idempotent, `--dry-run`, reads `LEGACY_DATABASE_URL` |
+| B2.6: Auth compat routes | ✅ Done | `identity_access/api_urls.py` with `/api/auth/*` → native views, included BEFORE proxy |
+| Model/DB alignment | ✅ Fixed | Added `allowed_symbols`, `features` to `CoreServiceAccount`, `gateway_rate_tier_override` to `CoreTenant`; migration 0018 faked |
+| Register endpoint | ✅ Verified | POST `/api/auth/register/` → 201 with correct Vietnamese response |
+| Native auth routes | ✅ Verified | OPTIONS/POST `/api/auth/token/` → 200/401 (native, not proxied) |
+| Proxy catch-all preserved | ✅ Verified | `/api/nonexistent-route` → 502 `LEGACY_BACKEND_DOWN` |
+| Audit ledger | ✅ Done | Entries 14-18 added to `CODE_CHANGE_AUDIT_LEDGER.md` |
+
 ## Open Risks
 
 | Risk | Impact | Mitigation |

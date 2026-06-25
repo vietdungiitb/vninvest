@@ -76,6 +76,7 @@ services:
       REDIS_URL: redis://core-redis:6379/3
       CELERY_BROKER_URL: redis://core-redis:6379/3
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:-bhVAxIWMEP0forZ4OatG_UemXTulVgWdcRveIXDe2Io=}
+      LEGACY_BACKEND_URL: http://backend:8000
 
     command: ["api"]
     restart: unless-stopped

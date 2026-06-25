@@ -8,6 +8,14 @@ export interface AuthTokenStorage {
 
 export const authTokenStorage: AuthTokenStorage;
 
+export interface TenantIdStorage {
+  getTenantId: () => string | null;
+  setTenantId: (value: string) => void;
+  clearTenantId: () => void;
+}
+
+export const tenantIdStorage: TenantIdStorage;
+
 export class CoreApiRequestError extends Error {
   status: number;
   statusCode: number;
@@ -16,6 +24,13 @@ export class CoreApiRequestError extends Error {
 }
 
 export interface CoreApiAdapter {
+  // Raw transport methods
+  coreGet: (path: string, options?: any) => Promise<any>;
+  corePost: (path: string, body?: any) => Promise<any>;
+  corePut: (path: string, body?: any) => Promise<any>;
+  corePatch: (path: string, body?: any) => Promise<any>;
+  coreDelete: (path: string) => Promise<any>;
+
   // Auth
   loginUser: (credentials: { username: string; password: string }) => Promise<any>;
   registerUser: (data: { username: string; email: string; password: string; password_confirm: string }) => Promise<any>;
@@ -144,6 +159,46 @@ export interface CoreApiAdapter {
   getAllUsageTrends: (days?: number) => Promise<any>;
   getUsageForecast: () => Promise<any>;
   getAlertConfigs: () => Promise<any>;
+
+  // Tenant-admin operator (partner/*)
+  getAdminAuditLog: (params?: any) => Promise<any>;
+  getDashboardSummary: () => Promise<any>;
+  getUsageTrend: (days?: number) => Promise<any>;
+  updateAlertConfig: (meterCode: string, data: any) => Promise<any>;
+  getUsageForecast: (meterCode?: string | null, lookback?: number) => Promise<any>;
+  getUsageTrendMeter: (meterCode: string, days?: number) => Promise<any>;
+  getAllUsageTrends: (days?: number) => Promise<any>;
+
+  // Phase 2: Cost Analytics
+  getCostTrend: (months?: number) => Promise<any>;
+
+  // Phase 2: Scheduled Reports
+  getScheduledReports: () => Promise<any>;
+  createScheduledReport: (data: any) => Promise<any>;
+  updateScheduledReport: (id: number, data: any) => Promise<any>;
+  deleteScheduledReport: (id: number) => Promise<any>;
+  testScheduledReport: (id: number) => Promise<any>;
+  getReportDeliveryLog: () => Promise<any>;
+
+  // Phase 3: Security Dashboard
+  getLoginActivity: (days?: number) => Promise<any>;
+  getActiveSessions: () => Promise<any>;
+  revokeSession: (sessionId: number) => Promise<any>;
+  revokeAllSessions: () => Promise<any>;
+
+  // Phase 4: Webhooks
+  getWebhooks: () => Promise<any>;
+  createWebhook: (data: any) => Promise<any>;
+  updateWebhook: (id: number, data: any) => Promise<any>;
+  deleteWebhook: (id: number) => Promise<any>;
+  getWebhookDeliveries: (id: number) => Promise<any>;
+  regenerateWebhookSecret: (id: number) => Promise<any>;
+  testWebhook: (id: number) => Promise<any>;
+  retryWebhookDelivery: (configId: number, deliveryId: number) => Promise<any>;
+
+  // Phase 4: Billing status + plan preview
+  getBillingStatus: () => Promise<any>;
+  previewPlanChange: (planCode: string) => Promise<any>;
 }
 
 export function createCoreApiAdapter(options?: {

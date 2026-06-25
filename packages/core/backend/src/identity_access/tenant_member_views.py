@@ -293,3 +293,26 @@ class TenantMemberRemoveView(APIView):
         )
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class TenantInviteCancelView(APIView):
+    """Cancel tenant invitation."""
+    permission_classes = [permissions.IsAuthenticated, IsTenantActive]
+
+    def post(self, request, invite_id):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_role(request, 'owner', 'admin')
+        tenant = _get_request_tenant(request)
+
+        # Find invite
+        invite = TenantInvite.objects.filter(public_id=invite_id, tenant=tenant).first()
+        if not invite:
+            raise NotFoundErrorException('Invite not found')
+
+        if invite.status != TenantInvite.StatusChoices.PENDING:
+            raise ValidationErrorException('Only pending invites can be canceled')
+
+        # Delete the invite record
+        invite.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)

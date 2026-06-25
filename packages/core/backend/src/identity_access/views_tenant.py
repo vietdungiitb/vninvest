@@ -324,24 +324,28 @@ class UserProfileView(APIView):
 
     def get(self, request):
         require_human_session(request)
+        user = request.user
         profile, _ = UserProfile.objects.get_or_create(
-            user=request.user,
+            user=user,
             defaults={
-                'display_name': request.user.get_full_name() or request.user.username,
+                'display_name': user.get_full_name() or user.username,
             },
         )
         from django.db.models import Q
-        from .views.helpers import _tenant_payload
-        user_tenants = CoreTenant.objects.filter(Q(owner_user=request.user) | Q(members__user=request.user)).distinct()
+        from .views.helpers import _build_abilities, _tenant_payload
+        user_tenants = CoreTenant.objects.filter(Q(owner_user=user) | Q(members__user=user)).distinct()
+        tenant = user_tenants.first()
+        abilities = _build_abilities(user, tenant) if tenant else []
         return Response({
-            'username': request.user.username,
-            'email': request.user.email,
+            'username': user.username,
+            'email': user.email,
             'display_name': profile.display_name,
             'language': profile.language,
             'theme': profile.theme,
             'whale_alert_threshold': str(profile.whale_alert_threshold),
             'preferences': profile.preferences,
             'tenants': [_tenant_payload(t) for t in user_tenants],
+            'abilities': abilities,
         })
 
     def patch(self, request):

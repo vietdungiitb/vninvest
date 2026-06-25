@@ -105,6 +105,25 @@ export function clearBrowserStorageToken(key) {
   window.localStorage?.removeItem(key);
 }
 
+export function getBrowserSessionStorage(key) {
+  if (typeof window === "undefined") return null;
+  return window.sessionStorage?.getItem(key) || null;
+}
+
+export function setBrowserSessionStorage(key, value) {
+  if (typeof window === "undefined") return;
+  if (!value) {
+    window.sessionStorage?.removeItem(key);
+    return;
+  }
+  window.sessionStorage?.setItem(key, value);
+}
+
+export function clearBrowserSessionStorage(key) {
+  if (typeof window === "undefined") return;
+  window.sessionStorage?.removeItem(key);
+}
+
 let storageUnsubscribe = null;
 
 export function initTokenStorageSync() {
@@ -144,6 +163,18 @@ export const authTokenStorage = Object.freeze({
   clearTokens() {
     clearBrowserStorageToken("access_token");
     clearBrowserStorageToken("refresh_token");
+  },
+});
+
+export const tenantIdStorage = Object.freeze({
+  getTenantId() {
+    return getBrowserSessionStorage("tenant_id");
+  },
+  setTenantId(value) {
+    setBrowserSessionStorage("tenant_id", value);
+  },
+  clearTenantId() {
+    clearBrowserSessionStorage("tenant_id");
   },
 });
 
@@ -297,11 +328,9 @@ export function createCoreTransport(env = {}, options = {}) {
       ...(init.headers || {}),
     };
 
-    if (typeof window !== "undefined" && window.localStorage) {
-      const storedTenantId = window.localStorage.getItem("tenant_id");
-      if (storedTenantId) {
-        headers["X-Tenant-ID"] = storedTenantId;
-      }
+    const storedTenantId = tenantIdStorage.getTenantId();
+    if (storedTenantId) {
+      headers["X-Tenant-ID"] = storedTenantId;
     }
 
     const response = await fetch(`${base}${path}`, {

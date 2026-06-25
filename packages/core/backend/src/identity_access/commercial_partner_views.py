@@ -23,6 +23,28 @@ def _get_tenant(user):
     return CoreTenant.objects.get(owner_user=user)
 
 
+class PartnerCostTrendView(APIView):
+    """
+    GET /api/core/v1/partner/billing/cost-trend/?months=6
+    
+    Monthly cost breakdown for the last N months.
+    Delegates to commercial.views_analytics.PartnerCostTrendView.
+    """
+    permission_classes = TENANT_PERMISSION_CLASSES
+
+    def get(self, request, *args, **kwargs):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        try:
+            from commercial.views_analytics import PartnerCostTrendView as InnerView
+            view = InnerView.as_view()
+            return view(request._request)
+        except ImportError:
+            return Response({'monthly': [], 'note': 'commercial app not available'})
+        except Exception as e:
+            logger.error('PartnerCostTrendView failed for user=%s: %s', request.user.id, e, exc_info=True)
+            return Response({'monthly': [], 'note': str(e)})
+
+
 class PartnerUsageMetersView(generics.GenericAPIView):
     """Usage meters — delegates to commercial UsageMeter if table exists, else empty list."""
     permission_classes = TENANT_PERMISSION_CLASSES

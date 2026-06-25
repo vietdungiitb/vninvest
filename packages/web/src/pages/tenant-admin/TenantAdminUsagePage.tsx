@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
+import { ShellEmptyState } from "../../components/ShellEmptyState.js";
+import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
@@ -127,7 +129,7 @@ export function TenantAdminUsagePage({
     }
   }, [t]);
 
-  const loadHistory = useCallback(async (days) => {
+  const loadHistory = useCallback(async (days: number) => {
     try {
       setHistoryLoading(true);
       const data = await defaultCoreApiAdapter.getAllUsageTrends(days);
@@ -205,7 +207,7 @@ export function TenantAdminUsagePage({
         notice={t("common.noPermission")}
       >
         <div className="shellPage__panel">
-          <div className="shellPage__empty">{t("tenantUsage.meterEmpty")}</div>
+          <ShellEmptyState description={t("tenantUsage.meterEmpty")} />
         </div>
       </ShellPageChrome>
     );
@@ -218,7 +220,9 @@ export function TenantAdminUsagePage({
         title={t("tenantUsage.title")}
         description={t("common.loading")}
       >
-        <div className="shellPage__panel">{t("common.loading")}</div>
+        <ShellSkeleton variant="metric" count={2} />
+        <div style={{ height: 16 }} />
+        <ShellSkeleton variant="table-row" count={5} />
       </ShellPageChrome>
     );
   }
@@ -300,11 +304,11 @@ export function TenantAdminUsagePage({
 
         {/* Meters Tab */}
         {activeTab === "meters" && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 20 }}>
+          <>
             <ShellPanel title={t("tenantUsage.meterListTitle")} actions={refreshAction}>
               <div className="shellPage__list">
                 {meters.length === 0 ? (
-                  <div className="shellPage__empty">{t("tenantUsage.meterEmpty")}</div>
+          <ShellEmptyState description={t("tenantUsage.meterEmpty")} />
                 ) : (
                   meters.map(meter => {
                     const quota = quotaByMeterCode.get(meter.meter_code);
@@ -316,7 +320,7 @@ export function TenantAdminUsagePage({
                         <div className="shellPage__listItemHeader">
                           <div>
                             <div className="shellPage__itemTitle" style={{ fontSize: "15px" }}>{meter.display_name}</div>
-                            <code style={{ fontSize: "11px", color: "#64748b", display: "block", marginTop: "2px", fontFamily: "monospace" }}>{meter.meter_code}</code>
+                            <code style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginTop: "2px", fontFamily: "monospace" }}>{meter.meter_code}</code>
                           </div>
                           <span
                             className="shellPage__pill"
@@ -344,7 +348,7 @@ export function TenantAdminUsagePage({
                           </div>
                         </div>
                         {alertConfig && alertConfig.enabled && (
-                          <div style={{ marginTop: 8, fontSize: 11, color: "#64748b" }}>
+                          <div style={{ marginTop: 8, fontSize: 11, color: "#94a3b8" }}>
                             {t("tenantUsage.alertThresholds")}: {t("tenantUsage.warningLabel")} {alertConfig.warning_pct}%, {t("tenantUsage.criticalLabel")} {alertConfig.critical_pct}%
                           </div>
                         )}
@@ -359,7 +363,7 @@ export function TenantAdminUsagePage({
             <ShellPanel title={t("tenantUsage.quotaListTitle")}>
               <div className="shellPage__list">
                 {quotas.length === 0 ? (
-                  <div className="shellPage__empty">{t("tenantUsage.quotaEmpty")}</div>
+                  <ShellEmptyState description={t("tenantUsage.quotaEmpty")} />
                 ) : (
                   quotas.map(quota => (
                     <div key={quota.meter_code} className="shellPage__listItem">
@@ -399,7 +403,7 @@ export function TenantAdminUsagePage({
                 )}
               </div>
             </ShellPanel>
-          </div>
+          </>
         )}
 
         {/* History Tab */}
@@ -446,8 +450,8 @@ export function TenantAdminUsagePage({
               <div style={{ width: "100%", height: 220 }}>
                 <ResponsiveContainer>
                   <BarChart data={chartData} margin={{ top: 4, right: 4, bottom: 4, left: -16 }}>
-                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
                     <Tooltip
                       contentStyle={{
                         background: "rgba(15,23,42,0.95)", border: "1px solid rgba(255,255,255,0.08)",
@@ -459,9 +463,7 @@ export function TenantAdminUsagePage({
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="shellPage__empty" style={{ height: 150, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {t("tenantUsage.noHistoryData")}
-              </div>
+              <ShellEmptyState description={t("tenantUsage.noHistoryData")} />
             )}
           </ShellPanel>
         )}
@@ -511,7 +513,7 @@ export function TenantAdminUsagePage({
                 </ShellPanel>
               ))
             ) : (
-              <div className="shellPage__empty" style={{ gridColumn: "1 / -1" }}>{t("tenantUsage.noForecastData")}</div>
+              <ShellEmptyState description={t("tenantUsage.noForecastData")} />
             )}
           </div>
         )}

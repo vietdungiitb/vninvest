@@ -1,7 +1,11 @@
 from rest_framework import serializers
 import ipaddress
 
-from .models import CorePATCredential, CoreServiceAccount, CoreTenant, TenantMember, TenantInvite, TenantSSOConfig
+from .models import (
+    CorePATCredential, CoreServiceAccount, CoreTenant, TenantMember,
+    TenantInvite, TenantSSOConfig, ScheduledReport, ReportDeliveryLog,
+    TenantWebhookConfig, WebhookDelivery,
+)
 
 
 POLICY_TO_SCOPE_CODES = {
@@ -428,4 +432,48 @@ class SaaSRegisterSerializer(serializers.Serializer):
         except requests.RequestException as e:
             logger.error(f"[SPAM_SHIELD] Turnstile validation timeout/failure: {str(e)}")
             raise serializers.ValidationError({"turnstile_token": "Không thể kết nối máy chủ xác thực Turnstile. Vui lòng thử lại."})
+
+
+class ScheduledReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ScheduledReport
+        fields = [
+            'id', 'name', 'report_type', 'schedule',
+            'recipients', 'format', 'is_active', 'last_sent_at',
+            'total_deliveries', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'last_sent_at', 'total_deliveries', 'created_at', 'updated_at']
+
+
+class ReportDeliveryLogSerializer(serializers.ModelSerializer):
+    report_name = serializers.CharField(source='report.name', read_only=True)
+
+    class Meta:
+        model = ReportDeliveryLog
+        fields = ['id', 'report', 'report_name', 'status', 'recipient', 'error_message', 'sent_at', 'created_at']
+        read_only_fields = fields
+
+
+class TenantWebhookConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TenantWebhookConfig
+        fields = [
+            'id', 'name', 'url', 'events', 'is_active',
+            'headers', 'retry_count', 'timeout_seconds',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class WebhookDeliverySerializer(serializers.ModelSerializer):
+    config_name = serializers.CharField(source='config.name', read_only=True)
+
+    class Meta:
+        model = WebhookDelivery
+        fields = [
+            'id', 'config', 'config_name', 'event_type', 'event_id',
+            'status', 'response_code', 'response_body',
+            'attempts', 'next_retry_at', 'duration_ms', 'created_at',
+        ]
+        read_only_fields = fields
 

@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from . import views_health
+from .legacy_proxy import legacy_proxy_view
 
 
 @api_view(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])
@@ -51,6 +52,10 @@ urlpatterns = [
     # D2: admin-ops decommissioned — all sub-paths return 410 GONE
     re_path(r'^api/admin-ops/.*$', admin_ops_gone),
     path('api/soc/', include(('service_ops.urls', 'service_ops'), namespace='service_ops')),
+    # SFI-B2: Auth compat routes — handled natively, not proxied.
+    path('api/', include(('identity_access.api_urls', 'identity_access_api'), namespace='identity_access_api')),
+    # SFI-B1.3: Proxy catch-all — last route, unmatched /api/* forwarded to legacy backend.
+    path('api/<path:remaining>', legacy_proxy_view),
 ]
 
 if settings.DEBUG:

@@ -64,6 +64,21 @@ declare module "./adapters/coreApiAdapter" {
     syncAdminMarketGroups: (mode: string) => Promise<any>;
     getMarketGroupsSyncStatus: (taskId: string) => Promise<any>;
 
+    // Partner Dashboard
+    getDashboardSummary: () => Promise<any>;
+    getUsageTrend: (days?: number) => Promise<any>;
+
+    // Alert Config (Phase 1)
+    getAlertConfigs: () => Promise<any>;
+    updateAlertConfig: (meterCode: string, data: any) => Promise<any>;
+
+    // Usage Forecast (Phase 1/2)
+    getUsageForecast: (meterCode?: string, lookback?: number) => Promise<any>;
+
+    // Per-Meter Usage Trend (Phase 1)
+    getUsageTrendMeter: (meterCode: string, days?: number) => Promise<any>;
+    getAllUsageTrends: (days?: number) => Promise<any>;
+
     // Core REST methods — return parsed JSON body, not raw Response
     coreGet: (path: string, params?: any) => Promise<any>;
     corePost: (path: string, data?: any) => Promise<any>;

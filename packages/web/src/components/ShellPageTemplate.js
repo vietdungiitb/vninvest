@@ -91,6 +91,14 @@ export const SHELL_PAGE_TEMPLATE_STYLES = `
   border-radius: 20px;
   padding: 16px 18px;
   backdrop-filter: blur(8px);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.shellPage__metric:hover {
+  transform: translateY(-1.5px);
+  background: rgba(15, 23, 42, 0.65);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
 }
 
 .shellPage__metricLabel {
@@ -277,6 +285,17 @@ export const SHELL_PAGE_TEMPLATE_STYLES = `
   backdrop-filter: blur(8px);
 }
 
+a.shellPage__listItem {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+a.shellPage__listItem:hover {
+  transform: translateY(-2.5px);
+  background: rgba(15, 23, 42, 0.75);
+  border-color: rgba(0, 180, 216, 0.35);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35), 0 0 15px rgba(0, 180, 216, 0.12);
+}
+
 .shellPage__listItemHeader {
   display: flex;
   gap: 10px;
@@ -329,6 +348,90 @@ export const SHELL_PAGE_TEMPLATE_STYLES = `
   .shellPage__formGrid {
     grid-template-columns: 1fr;
   }
+}
+
+/* ── Transition micro-interactions & UI polish ── */
+
+.shellPage__surfaceCard {
+  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.shellPage__surfaceCard:hover {
+  border-color: rgba(255,255,255,0.15);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+}
+
+.shellPage__panel {
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+
+.shellPage__listItem {
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+  cursor: default;
+}
+.shellPage__listItem:hover {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.12);
+}
+
+.shellPage__button {
+  transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+.shellPage__button:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+.shellPage__button--primary:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+.shellPage__button--secondary:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.shellPage__input {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.shellPage__input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+}
+
+.shellPage__pill {
+  transition: opacity 0.2s ease, transform 0.15s ease;
+}
+.shellPage__pill:hover {
+  transform: scale(1.05);
+}
+
+.shellPage__metric {
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+.shellPage__metric:hover {
+  border-color: rgba(255,255,255,0.15);
+}
+
+.shellPage__modal {
+  animation: shellModalFadeIn 0.2s ease;
+}
+@keyframes shellModalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.shellPage__modalContent {
+  animation: shellModalSlideUp 0.25s ease;
+}
+@keyframes shellModalSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.shellPage__itemTitle a {
+  transition: color 0.2s ease;
+}
+.shellPage__itemTitle a:hover {
+  color: #60a5fa;
+  text-decoration: underline;
 }
 `;
 
@@ -481,6 +584,36 @@ export function renderShellField(props) {
 
 export function renderShellSelectField(props) {
   return renderElement(ShellSelectField, props);
+}
+
+export function ShellEmptyState({ icon = null, title, description, ctaLabel, ctaOnClick, children }) {
+  return renderElement(
+    "div",
+    { className: "shellPage__empty", style: { textAlign: "center", padding: "32px 18px" } },
+    icon || renderElement(
+      "svg",
+      {
+        width: 48, height: 48, viewBox: "0 0 48 48", fill: "none",
+        style: { margin: "0 auto 16px", opacity: 0.4, display: "block" },
+      },
+      renderElement("rect", { x: 8, y: 12, width: 32, height: 24, rx: 4, stroke: "var(--shell-muted)", strokeWidth: 2, fill: "none" }),
+      renderElement("path", { d: "M16 20h16M16 26h12M16 32h8", stroke: "var(--shell-muted)", strokeWidth: 2, strokeLinecap: "round" }),
+    ),
+    title ? renderElement("p", { style: { fontWeight: 700, marginBottom: 6, color: "var(--shell-ink)" } }, title) : null,
+    description ? renderElement("p", { style: { fontSize: 13, color: "var(--shell-muted)", marginBottom: ctaLabel ? 16 : 0 } }, description) : null,
+    ctaLabel
+      ? renderElement(
+        "button",
+        {
+          className: "shellPage__button",
+          onClick: ctaOnClick,
+          style: { padding: "8px 20px", fontSize: 13, fontWeight: 600 },
+        },
+        ctaLabel,
+      )
+      : null,
+    children,
+  );
 }
 
 export function renderShellPanel(props) {

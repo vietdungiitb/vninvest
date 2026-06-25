@@ -120,6 +120,9 @@ DATABASES = {
     },
 }
 
+# SFI-B1.4: Legacy backend URL — core-api transparent proxy forwards unmatched /api/* here.
+LEGACY_BACKEND_URL = os.environ.get('LEGACY_BACKEND_URL', 'http://backend:8000')
+
 # Legacy read-only connection for materializers (cutover period).
 # Set LEGACY_DATABASE_URL in env; if absent, materializers run in degraded/skip mode.
 _legacy_db_url = os.environ.get('LEGACY_DATABASE_URL', '')

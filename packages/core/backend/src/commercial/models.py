@@ -76,6 +76,7 @@ class Invoice(models.Model):
     period_end = models.DateField()
     due_date = models.DateField(null=True, blank=True)
     paid_at = models.DateTimeField(null=True, blank=True)
+    line_items = models.JSONField(default=dict, blank=True, help_text='Breakdown: {"subscription": 1500000, "api_overage": 500000, "storage": 0}')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -70,26 +70,24 @@ def partner_usage_trend(request):
     today = date.today()
     start = today - timedelta(days=days - 1)
 
-    from commercial.models import QuotaRecord
+    from commercial.models import QuotaHistory
+
+    records = QuotaHistory.objects.filter(
+        tenant=tenant,
+        meter_code=meter_code,
+        date__gte=start,
+        date__lte=today,
+    ).order_by('date')
+
+    consumed_by_date = {r.date.isoformat(): r.consumed_amount for r in records}
 
     daily = []
     for offset in range(days):
         d = start + timedelta(days=offset)
-        consumed = 0
-        try:
-            qr = QuotaRecord.objects.filter(
-                tenant=tenant,
-                meter_code=meter_code,
-                date=d,
-            ).first()
-            if qr:
-                consumed = qr.consumed or 0
-        except Exception:
-            pass
-
+        d_str = d.isoformat()
         daily.append({
-            'date': d.isoformat(),
-            'consumed': consumed,
+            'date': d_str,
+            'consumed': consumed_by_date.get(d_str, 0)
         })
 
     return Response({
@@ -122,30 +120,30 @@ def partner_usage_trend_all(request):
     today = date.today()
     start = today - timedelta(days=days - 1)
 
-    from commercial.models import QuotaRecord
+    from commercial.models import QuotaHistory
 
     meters = ['api_calls', 'ai_regenerate', 'whale_symbols', 'exports']
-    result = {}
+    
+    records = QuotaHistory.objects.filter(
+        tenant=tenant,
+        meter_code__in=meters,
+        date__gte=start,
+        date__lte=today,
+    ).order_by('date')
 
+    lookup = {}
+    for r in records:
+        lookup[(r.meter_code, r.date.isoformat())] = r.consumed_amount
+
+    result = {}
     for meter_code in meters:
         daily = []
         for offset in range(days):
             d = start + timedelta(days=offset)
-            consumed = 0
-            try:
-                qr = QuotaRecord.objects.filter(
-                    tenant=tenant,
-                    meter_code=meter_code,
-                    date=d,
-                ).first()
-                if qr:
-                    consumed = qr.consumed or 0
-            except Exception:
-                pass
-
+            d_str = d.isoformat()
             daily.append({
-                'date': d.isoformat(),
-                'consumed': consumed,
+                'date': d_str,
+                'consumed': lookup.get((meter_code, d_str), 0)
             })
         result[meter_code] = daily
 

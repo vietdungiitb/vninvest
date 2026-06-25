@@ -37,26 +37,33 @@ def _get_request_tenant(request) -> CoreTenant:
 
 def _forecast_meter(tenant, meter_code, lookback_days=30):
     """Calculate forecast for a single meter code."""
-    from commercial.models import QuotaRecord, UsageMeter
+    from commercial.models import QuotaHistory
 
-    # Get the meter for this tenant and meter_code
-    try:
-        meter = UsageMeter.objects.get(tenant=tenant, meter_code=meter_code)
-    except UsageMeter.DoesNotExist:
-        return None
+    # Get the latest history record for this tenant and meter_code to act as current meter status
+    latest_record = QuotaHistory.objects.filter(
+        tenant=tenant, meter_code=meter_code
+    ).order_by('-date').first()
+
+    if not latest_record:
+        # Fallback default entitlements if no history exists yet
+        entitled = 5000 if meter_code == 'api_calls' else 100
+        consumed = 0
+    else:
+        entitled = latest_record.entitled_amount
+        consumed = latest_record.consumed_amount
 
     # Get historical daily consumption
     end_date = date.today()
     start_date = end_date - timedelta(days=lookback_days - 1)
 
-    records = QuotaRecord.objects.filter(
+    records = QuotaHistory.objects.filter(
         tenant=tenant,
         meter_code=meter_code,
         date__gte=start_date,
         date__lte=end_date,
     ).order_by('date')
 
-    daily_rates = list(records.values_list('consumed', flat=True))
+    daily_rates = list(records.values_list('consumed_amount', flat=True))
     valid_days = [r for r in daily_rates if r > 0]
 
     if len(valid_days) < 3:
@@ -66,13 +73,13 @@ def _forecast_meter(tenant, meter_code, lookback_days=30):
             'days_remaining': None,
             'forecast_exhaust_date': None,
             'confidence': 'insufficient_data',
-            'total_entitled': meter.entitled_amount,
-            'total_consumed': meter.consumed_amount,
-            'remaining': meter.entitled_amount - meter.consumed_amount,
+            'total_entitled': entitled,
+            'total_consumed': consumed,
+            'remaining': max(0, entitled - consumed),
         }
 
     avg_daily = sum(valid_days) / len(valid_days)
-    remaining = max(0, meter.entitled_amount - meter.consumed_amount)
+    remaining = max(0, entitled - consumed)
 
     if avg_daily <= 0:
         days_remaining = None
@@ -95,8 +102,8 @@ def _forecast_meter(tenant, meter_code, lookback_days=30):
         'days_remaining': days_remaining,
         'forecast_exhaust_date': forecast_date,
         'confidence': confidence,
-        'total_entitled': meter.entitled_amount,
-        'total_consumed': meter.consumed_amount,
+        'total_entitled': entitled,
+        'total_consumed': consumed,
         'remaining': remaining,
         'lookback_days': lookback_days,
         'valid_data_points': len(valid_days),
@@ -124,8 +131,7 @@ def partner_usage_forecast(request):
         return Response(forecast)
 
     # All meters forecast
-    from commercial.models import UsageMeter
-    meters = UsageMeter.objects.filter(tenant=tenant).values_list('meter_code', flat=True)
+    meters = ['api_calls', 'ai_regenerate', 'whale_symbols', 'exports']
 
     forecasts = []
     for mc in meters:
@@ -157,19 +163,19 @@ def partner_usage_forecast_detail(request, meter_code):
         raise NotFound(f'Meter {meter_code} not found for this tenant.')
 
     # Add historical daily data for charting
-    from commercial.models import QuotaRecord
+    from commercial.models import QuotaHistory
     end_date = date.today()
     start_date = end_date - timedelta(days=lookback_days - 1)
 
-    daily_records = QuotaRecord.objects.filter(
+    daily_records = QuotaHistory.objects.filter(
         tenant=tenant,
         meter_code=meter_code,
         date__gte=start_date,
         date__lte=end_date,
-    ).order_by('date').values('date', 'consumed')
+    ).order_by('date').values('date', 'consumed_amount')
 
     forecast['historical'] = [
-        {'date': r['date'].isoformat(), 'consumed': r['consumed']}
+        {'date': r['date'].isoformat(), 'consumed': r['consumed_amount']}
         for r in daily_records
     ]
 

@@ -1,5 +1,7 @@
-import { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
+import { ShellEmptyState } from "../../components/ShellEmptyState.js";
+import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 
 interface AbilityItem {
@@ -13,33 +15,25 @@ interface QuotaItem {
   value: number;
 }
 
-interface ListPanelProps {
-  title: string;
-  emptyLabel: string;
-  items: AbilityItem[] | QuotaItem[];
-  renderItem: (item: AbilityItem | QuotaItem) => ReactNode;
-}
-
-function ListPanel({ title, emptyLabel, items, renderItem }: ListPanelProps): ReactNode {
-  return (
-    <ShellPanel title={title} subtitle={`${items.length} mục`}>
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-        {items.length === 0 ? (
-          <div style={{ padding: "16px", textAlign: "center", color: "#64748b" }}>{emptyLabel}</div>
-        ) : (
-          items.map(item => renderItem(item))
-        )}
-      </div>
-    </ShellPanel>
-  );
-}
-
-function formatQuotaValue(value: number): string {
+function formatQuotaValue(value: number, formatNumber: (n: number, opts?: object) => string, tt: (key: string, opts?: object) => string): string {
   if (value === null || value === undefined || value < 0) {
-    return "Không giới hạn";
+    return tt("tenantHome.unlimited");
   }
-  return new Intl.NumberFormat("vi-VN").format(value);
+  return formatNumber(value);
 }
+
+const CAP_CSS = `
+.capGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.capCard { background: var(--shell-surface); border: 1px solid var(--shell-border); border-radius: 12px; padding: 16px; }
+.capCard__header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.capCard__title { font-size: 13px; font-weight: 700; color: var(--shell-ink); }
+.capCard__value { font-size: 22px; font-weight: 800; color: var(--shell-accent); }
+.capCard__sub { font-size: 11px; color: var(--shell-muted); margin-top: 2px; }
+.capProgress { height: 6px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; margin-top: 8px; }
+.capProgress__bar { height: 100%; border-radius: 999px; transition: width 0.6s ease; }
+.capAbilityGroup { margin-bottom: 16px; }
+.capAbilityGroup__header { font-size: 12px; font-weight: 700; color: var(--shell-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+`;
 
 interface TenantAdminCapabilitiesPageProps {
   env?: Record<string, unknown>;
@@ -49,17 +43,9 @@ interface TenantAdminCapabilitiesPageProps {
   initialSnapshot?: Record<string, unknown> | null;
 }
 
-const PLAN_LABELS: Record<string, string> = {
-  free: "Miễn phí",
-  basic: "Cơ bản",
-  starter: "Khởi động",
-  pro: "Chuyên nghiệp",
-  premium: "Cao cấp",
-  enterprise: "Doanh nghiệp",
-};
-
 export function TenantAdminCapabilitiesPage({}: TenantAdminCapabilitiesPageProps) {
-  const { userPlan, userEntitlements } = usePortfolio();
+  const { t, formatNumber } = useI18n();
+  const { ability, userPlan, userEntitlements } = usePortfolio();
 
   const entitlements = userEntitlements || {};
   const abilities = Array.isArray(entitlements.abilities) ? entitlements.abilities as Array<{ action: string; subject: string }> : [];
@@ -73,53 +59,132 @@ export function TenantAdminCapabilitiesPage({}: TenantAdminCapabilitiesPageProps
 
   const quotaItems: QuotaItem[] = Object.entries(quotaCaps).map(([key, value]) => ({ key, value: value as number }));
 
+  const planLabel = t(`plans.${userPlan}`, { defaultValue: userPlan });
+
   const metrics = [
-    renderShellMetric("Gói dịch vụ", PLAN_LABELS[userPlan as string] || userPlan || "N/A"),
-    renderShellMetric("Số lượng quyền hạn", String(abilities.length)),
-    renderShellMetric("Số lượng hạn ngạch", String(quotaItems.length)),
+    renderShellMetric(t("tenantCapabilities.metricPlan"), planLabel),
+    renderShellMetric(t("tenantCapabilities.metricAbilityCount"), String(abilities.length)),
+    renderShellMetric(t("tenantCapabilities.metricQuotaCount"), String(quotaItems.length)),
   ];
+
+  const canRead = ability?.can?.("read", "TenantCapabilityView") ?? true;
+
+  if (!canRead) {
+    return (
+      <ShellPageChrome
+        eyebrow={t("tenantCapabilities.eyebrow")}
+        title={t("tenantCapabilities.title")}
+        description={t("tenantCapabilities.description")}
+        notice={t("common.noPermission")}
+        metrics={metrics}
+      >
+        <div className="shellPage__panel">
+          <ShellEmptyState description={t("tenantCapabilities.noAbilities")} />
+        </div>
+      </ShellPageChrome>
+    );
+  }
+
+  const iconMap: Record<string, string> = {
+    api_calls_monthly: "📡",
+    active_members: "👥",
+    service_accounts: "🔧",
+    webhooks: "🔗",
+    reports: "📊",
+    storage_gb: "💾",
+  };
 
   return (
     <ShellPageChrome
-      eyebrow="Tenant Admin"
-      title="Quyền hạn & Hạn ngạch (Capabilities)"
-      description="Xem các tính năng được phân quyền và giới hạn sử dụng (Quota) của bạn trên hệ thống"
+      eyebrow={t("tenantCapabilities.eyebrow")}
+      title={t("tenantCapabilities.title")}
+      description={t("tenantCapabilities.description")}
       metrics={metrics}
     >
-      <section className="shellPage__bodyGrid">
-        <div className="shellPage__stack">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px" }}>
-            <ListPanel
-              title="Quyền hạn chức năng (Abilities)"
-              emptyLabel="Không có quyền hạn đặc biệt nào được cấu hình."
-              items={abilityItems}
-              renderItem={(item) => (
-                <div
-                  key={item.key}
-                  style={{ padding: "10px 12px", background: "rgba(15,23,42,0.3)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "10px" }}
-                >
-                  <p style={{ margin: 0, fontSize: "11px", fontWeight: 600, color: "#a78bfa", textTransform: "uppercase" }}>{(item as AbilityItem).action}</p>
-                  <p style={{ margin: "4px 0 0", fontSize: "14px", color: "#cbd5e1" }}>{(item as AbilityItem).subject}</p>
+      <style>{CAP_CSS}</style>
+      <section className="shellPage__stack">
+          <ShellPanel title={t("tenantCapabilities.planOverview")}>
+            <div className="capGrid">
+              <div className="capCard">
+                <div className="capCard__header">
+                  <div className="capCard__title">{t("tenantCapabilities.currentPlan")}</div>
+                  <span className="shellPage__pill" style={{ background: "rgba(0,180,216,0.15)", color: "#00b4d8" }}>
+                    {planLabel}
+                  </span>
                 </div>
-              )}
-            />
+                <div className="capCard__value">{planLabel}</div>
+                <div className="capCard__sub">{t("tenantCapabilities.metricAbilityCount")}: {abilities.length}</div>
+                {userPlan !== "enterprise" && (
+                  <div style={{ marginTop: 12 }}>
+                    <Link to="/tenant-admin/billing" className="shellPage__button shellPage__button--primary" style={{ textDecoration: "none", fontWeight: 700, fontSize: 12 }}>
+                      {t("tenantCapabilities.upgradeAction")}
+                    </Link>
+                  </div>
+                )}
+              </div>
+              <div className="capCard">
+                <div className="capCard__header">
+                  <div className="capCard__title">{t("tenantCapabilities.metricQuotaCount")}</div>
+                </div>
+                <div className="capCard__value">{quotaItems.length}</div>
+                <div className="capCard__sub">{t("tenantCapabilities.quotaTitle")}</div>
+              </div>
+            </div>
+          </ShellPanel>
 
-            <ListPanel
-              title="Hạn ngạch giới hạn (Quotas)"
-              emptyLabel="Không có hạn ngạch giới hạn được áp dụng."
-              items={quotaItems}
-              renderItem={(item) => (
-                <div
-                  key={item.key}
-                  style={{ padding: "10px 12px", background: "rgba(15,23,42,0.3)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "10px" }}
-                >
-                  <p style={{ margin: 0, fontSize: "11px", fontWeight: 600, color: "#34d399", textTransform: "uppercase" }}>{item.key}</p>
-                  <p style={{ margin: "4px 0 0", fontSize: "14px", color: "#cbd5e1" }}>{formatQuotaValue((item as QuotaItem).value)}</p>
-                </div>
-              )}
-            />
-          </div>
-        </div>
+          <ShellPanel title={t("tenantCapabilities.quotaTitle")}>
+            {quotaItems.length === 0 ? (
+              <ShellEmptyState description={t("tenantCapabilities.noQuota")} />
+            ) : (
+              <div className="capGrid">
+                {quotaItems.map(item => {
+                  const fillColor = item.value > 0 ? "#00b4d8" : "#94a3b8";
+                  const pct = item.value > 0 ? 100 : 0;
+                  return (
+                    <div key={item.key} className="capCard">
+                      <div className="capCard__header">
+                        <div className="capCard__title">
+                          {iconMap[item.key] || "📋"} {item.key.replace(/_/g, " ")}
+                        </div>
+                        <div className="capCard__value" style={{ fontSize: 16 }}>
+                          {formatQuotaValue(item.value, formatNumber, t)}
+                        </div>
+                      </div>
+                      <div className="capProgress">
+                        <div className="capProgress__bar" style={{ width: `${pct}%`, background: fillColor }} />
+                      </div>
+                      <div className="capCard__sub">{t("tenantCapabilities.limitLabel")}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </ShellPanel>
+
+          <ShellPanel title={t("tenantCapabilities.abilityTitle")} subtitle={`${abilities.length}`}>
+            {abilityItems.length === 0 ? (
+              <ShellEmptyState description={t("tenantCapabilities.noAbilities")} />
+            ) : (
+              <div>
+                {["read", "write", "admin"].map(action => {
+                  const actionAbilities = abilityItems.filter(a => a.action === action);
+                  if (actionAbilities.length === 0) return null;
+                  return (
+                    <div key={action} className="capAbilityGroup">
+                      <div className="capAbilityGroup__header">{action}</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 12 }}>
+                        {actionAbilities.map(a => (
+                          <span key={a.key} className="shellPage__pill" style={{ background: "rgba(167,139,250,0.12)", color: "#a78bfa", fontSize: 11 }}>
+                            {a.subject}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </ShellPanel>
       </section>
     </ShellPageChrome>
   );

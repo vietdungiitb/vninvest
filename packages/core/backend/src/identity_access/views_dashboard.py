@@ -148,23 +148,23 @@ def partner_dashboard_usage_trend(request):
     today = date.today()
     start = today - timedelta(days=days - 1)
 
+    from commercial.models import QuotaHistory
+    
+    # Fetch daily api_calls consumption in one query
+    history_records = QuotaHistory.objects.filter(
+        tenant=tenant,
+        meter_code='api_calls',
+        date__gte=start,
+        date__lte=today,
+    )
+    api_calls_by_date = {r.date.isoformat(): r.consumed_amount for r in history_records}
+
     from .models import TenantMember
 
     daily = []
     for offset in range(days):
         d = start + timedelta(days=offset)
-        api_calls = 0
-        try:
-            from commercial.models import QuotaRecord
-            qr = QuotaRecord.objects.filter(
-                tenant=tenant,
-                period_start__lte=d,
-                period_end__gte=d,
-            ).first()
-            if qr:
-                api_calls = qr.api_calls_used or 0
-        except Exception:
-            pass
+        d_str = d.isoformat()
 
         active_members = TenantMember.objects.filter(
             tenant=tenant,
@@ -172,8 +172,8 @@ def partner_dashboard_usage_trend(request):
         ).count()
 
         daily.append({
-            'date': d.isoformat(),
-            'api_calls': api_calls,
+            'date': d_str,
+            'api_calls': api_calls_by_date.get(d_str, 0),
             'active_members': active_members,
         })
 

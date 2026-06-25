@@ -101,6 +101,11 @@ class CoreTenant(models.Model):
     stripe_current_period_end = models.DateTimeField(null=True, blank=True, verbose_name='Stripe Current Period End')
     stripe_cancel_at_period_end = models.BooleanField(default=False, verbose_name='Stripe Cancel at Period End')
 
+    # API usage quotas (SFI-B2 compat — added to match existing DB schema)
+    api_calls_limit = models.IntegerField(default=10000, verbose_name='API calls monthly limit')
+    api_calls_used = models.IntegerField(default=0, verbose_name='API calls used this period')
+    gateway_rate_tier_override = models.JSONField(null=True, blank=True, verbose_name='Gateway rate tier override configuration')
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -153,6 +158,8 @@ class CoreServiceAccount(models.Model):
     )
     scopes = models.JSONField(default=list, blank=True, verbose_name='Allowed scopes')
     metadata = models.JSONField(default=dict, blank=True, verbose_name='Non-sensitive metadata')
+    allowed_symbols = models.JSONField(default=list, blank=True, verbose_name='Allowed symbols for data access')
+    features = models.JSONField(default=dict, blank=True, verbose_name='Feature flags for this service account')
     last_rotated_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -940,6 +947,55 @@ class TenantSSOConfig(models.Model):
         return f'SSO Config for {self.tenant.display_name} (enabled={self.is_enabled})'
 
 
+class UsageAlertConfig(models.Model):
+    """Per-tenant, per-meter alert threshold configuration."""
+    class MeterCodeChoices(models.TextChoices):
+        API_CALLS = 'api_calls', 'API Calls'
+        AI_REGENERATE = 'ai_regenerate', 'AI Regenerations'
+        WHALE_SYMBOLS = 'whale_symbols', 'Whale Symbols'
+        EXPORTS = 'exports', 'Exports'
+
+    tenant = models.ForeignKey(
+        CoreTenant,
+        on_delete=models.CASCADE,
+        related_name='usage_alert_configs',
+        verbose_name='Tenant',
+    )
+    meter_code = models.CharField(
+        max_length=64,
+        choices=MeterCodeChoices.choices,
+        db_index=True,
+        verbose_name='Meter code',
+    )
+    warning_pct = models.IntegerField(default=80, verbose_name='Warning threshold (%)')
+    critical_pct = models.IntegerField(default=95, verbose_name='Critical threshold (%)')
+    enabled = models.BooleanField(default=True, verbose_name='Alert enabled')
+    notify_email = models.BooleanField(default=True, verbose_name='Send email notification')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Usage Alert Configuration'
+        verbose_name_plural = 'Usage Alert Configurations'
+        unique_together = [('tenant', 'meter_code')]
+        indexes = [
+            models.Index(fields=['tenant', 'enabled']),
+        ]
+
+    def __str__(self):
+        return f'{self.tenant.display_name} - {self.meter_code} (warn={self.warning_pct}%, crit={self.critical_pct}%)'
+
+    def clean(self):
+        super().clean()
+        if self.warning_pct is not None and self.critical_pct is not None:
+            if self.warning_pct >= self.critical_pct:
+                raise ValidationError({'warning_pct': 'Warning threshold must be less than critical threshold.'})
+        if self.warning_pct is not None and (self.warning_pct < 1 or self.warning_pct > 99):
+            raise ValidationError({'warning_pct': 'Warning threshold must be between 1 and 99.'})
+        if self.critical_pct is not None and (self.critical_pct < 2 or self.critical_pct > 100):
+            raise ValidationError({'critical_pct': 'Critical threshold must be between 2 and 100.'})
+
+
 class OutboxEvent(models.Model):
     STATUS_PENDING = 'pending'
     STATUS_PROCESSED = 'processed'
@@ -1014,4 +1070,154 @@ class EmailVerificationToken(models.Model):
 
     def __str__(self) -> str:
         return f'Token for {self.user.username} - Used: {self.is_used}'
+
+
+class LoginAttempt(models.Model):
+    tenant = models.ForeignKey(CoreTenant, on_delete=models.CASCADE, null=True, db_index=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    username = models.CharField(max_length=150, db_index=True)
+    email = models.EmailField(blank=True, default='')
+    ip_address = models.GenericIPAddressField(db_index=True)
+    user_agent = models.TextField(blank=True)
+    success = models.BooleanField(db_index=True)
+    failure_reason = models.CharField(max_length=64, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'core_login_attempt'
+        verbose_name = 'Login Attempt'
+        verbose_name_plural = 'Login Attempts'
+        indexes = [
+            models.Index(fields=['tenant', 'created_at']),
+            models.Index(fields=['tenant', 'success']),
+        ]
+
+    def __str__(self):
+        return f'{self.username} ({self.ip_address}) — {"success" if self.success else "failed"}'
+
+
+class ScheduledReport(models.Model):
+    class ReportTypeChoices(models.TextChoices):
+        USAGE_SUMMARY = 'usage_summary', 'Usage Summary'
+        BILLING_SUMMARY = 'billing_summary', 'Billing Summary'
+        SECURITY_DIGEST = 'security_digest', 'Security Digest'
+        AUDIT_LOG = 'audit_log', 'Audit Log'
+
+    class ScheduleChoices(models.TextChoices):
+        DAILY = 'daily', 'Daily'
+        WEEKLY_MON = 'weekly_mon', 'Weekly Monday'
+        WEEKLY_FRI = 'weekly_fri', 'Weekly Friday'
+        MONTHLY_1 = 'monthly_1', 'Monthly 1st'
+        MONTHLY_15 = 'monthly_15', 'Monthly 15th'
+
+    class FormatChoices(models.TextChoices):
+        HTML = 'html', 'HTML'
+        CSV = 'csv', 'CSV'
+
+    tenant = models.ForeignKey(CoreTenant, on_delete=models.CASCADE, related_name='scheduled_reports')
+    name = models.CharField(max_length=128)
+    report_type = models.CharField(max_length=32, choices=ReportTypeChoices.choices)
+    schedule = models.CharField(max_length=16, choices=ScheduleChoices.choices)
+    recipients = models.JSONField(default=list, help_text='List of email strings')
+    format = models.CharField(max_length=8, choices=FormatChoices.choices, default=FormatChoices.HTML)
+    is_active = models.BooleanField(default=True)
+    last_sent_at = models.DateTimeField(null=True, blank=True)
+    total_deliveries = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'core_scheduled_report'
+        ordering = ['-created_at']
+        verbose_name = 'Scheduled Report'
+        verbose_name_plural = 'Scheduled Reports'
+
+    def __str__(self):
+        return f'{self.tenant.display_name} — {self.name} ({self.report_type})'
+
+
+class ReportDeliveryLog(models.Model):
+    class StatusChoices(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        SUCCESS = 'success', 'Success'
+        FAILED = 'failed', 'Failed'
+
+    report = models.ForeignKey(ScheduledReport, on_delete=models.CASCADE, related_name='delivery_logs')
+    status = models.CharField(max_length=16, choices=StatusChoices.choices, default=StatusChoices.PENDING)
+    recipient = models.EmailField()
+    error_message = models.TextField(null=True, blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'core_report_delivery_log'
+        ordering = ['-created_at']
+        verbose_name = 'Report Delivery Log'
+        verbose_name_plural = 'Report Delivery Logs'
+
+    def __str__(self):
+        return f'Delivery for {self.report.name} to {self.recipient} — {self.status}'
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 — Webhook Management
+# ---------------------------------------------------------------------------
+
+class TenantWebhookConfig(models.Model):
+    tenant = models.ForeignKey(
+        CoreTenant, on_delete=models.CASCADE, related_name='webhook_configs'
+    )
+    name = models.CharField(max_length=128, default='Default')
+    url = models.URLField(max_length=512)
+    secret = models.CharField(max_length=64, blank=True, default='')
+    events = models.JSONField(default=list)
+    is_active = models.BooleanField(default=True)
+    headers = models.JSONField(default=dict, blank=True)
+    retry_count = models.IntegerField(default=3)
+    timeout_seconds = models.IntegerField(default=10)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'core_tenant_webhook_config'
+        verbose_name = 'Tenant Webhook Config'
+        verbose_name_plural = 'Tenant Webhook Configs'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.name} — {self.url} ({self.tenant.display_name})'
+
+    def save(self, *args, **kwargs):
+        if not self.secret:
+            self.secret = secrets.token_hex(32)
+        super().save(*args, **kwargs)
+
+
+class WebhookDelivery(models.Model):
+    config = models.ForeignKey(
+        TenantWebhookConfig, on_delete=models.CASCADE, related_name='deliveries'
+    )
+    event_type = models.CharField(max_length=64)
+    event_id = models.CharField(max_length=64, db_index=True)
+    payload = models.JSONField()
+    status = models.CharField(max_length=16, default='pending')
+    response_code = models.IntegerField(null=True)
+    response_body = models.TextField(blank=True, default='')
+    attempts = models.IntegerField(default=0)
+    next_retry_at = models.DateTimeField(null=True)
+    duration_ms = models.IntegerField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'core_webhook_delivery'
+        verbose_name = 'Webhook Delivery'
+        verbose_name_plural = 'Webhook Deliveries'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['config', 'created_at']),
+            models.Index(fields=['status', 'next_retry_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.event_type} — {self.status} ({self.config.name})'
 

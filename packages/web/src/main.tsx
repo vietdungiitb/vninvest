@@ -4,8 +4,11 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { PortfolioProvider } from './context/PortfolioContext.js';
 import { LangProvider } from './context/LangContext.js';
 import { RealtimeProvider } from './context/RealtimeContext.js';
+import { ToastProvider } from './components/ShellToast.js';
+import { ConfirmProvider } from './components/ConfirmModal.js';
 import { getPageComponent } from './pages/pageRegistry.js';
 import { AppShell } from './layouts/AppShell';
+import { TenantAdminLayout } from './components/TenantAdminLayout.js';
 import './index.css';
 
 function resolvePageComponent(routeId: string) {
@@ -85,15 +88,22 @@ function App() {
         createElement(Route, { path: 'operations-center', element: createElement(resolvePageComponent('operations-center')) }),
         createElement(Route, { path: 'operations-center/mail-config', element: createElement(resolvePageComponent('operations-center-mail-config')) }),
         createElement(Route, { path: 'stocks/:symbol', element: createElement(resolvePageComponent('core-stock-detail')) }),
-        createElement(Route, { path: 'tenant-admin/home', element: createElement(resolvePageComponent('tenant-admin-home')) }),
-        createElement(Route, { path: 'tenant-admin/members', element: createElement(resolvePageComponent('tenant-admin-members')) }),
-        createElement(Route, { path: 'tenant-admin/service-accounts', element: createElement(resolvePageComponent('tenant-admin-service-accounts')) }),
-        createElement(Route, { path: 'tenant-admin/pats', element: createElement(resolvePageComponent('tenant-admin-pats')) }),
-        createElement(Route, { path: 'tenant-admin/usage', element: createElement(resolvePageComponent('tenant-admin-usage')) }),
-        createElement(Route, { path: 'tenant-admin/billing', element: createElement(resolvePageComponent('tenant-admin-billing')) }),
-        createElement(Route, { path: 'tenant-admin/capabilities', element: createElement(resolvePageComponent('tenant-admin-capabilities')) }),
-        createElement(Route, { path: 'tenant-admin/audit-logs', element: createElement(resolvePageComponent('tenant-admin-audit-logs')) }),
-        createElement(Route, { path: 'tenant-admin', element: createElement(Navigate, { to: '/tenant-admin/home', replace: true }) }),
+        createElement(Route, { path: 'tenant-admin', element: createElement(TenantAdminLayout) },
+          createElement(Route, { index: true, element: createElement(Navigate, { to: '/tenant-admin/home', replace: true }) }),
+          createElement(Route, { path: 'home', element: createElement(resolvePageComponent('tenant-admin-home')) }),
+          createElement(Route, { path: 'members', element: createElement(resolvePageComponent('tenant-admin-members')) }),
+          createElement(Route, { path: 'service-accounts', element: createElement(resolvePageComponent('tenant-admin-service-accounts')) }),
+          createElement(Route, { path: 'pats', element: createElement(resolvePageComponent('tenant-admin-pats')) }),
+          createElement(Route, { path: 'usage', element: createElement(resolvePageComponent('tenant-admin-usage')) }),
+          createElement(Route, { path: 'usage-history', element: createElement(resolvePageComponent('tenant-admin-usage-history')) }),
+          createElement(Route, { path: 'billing', element: createElement(resolvePageComponent('tenant-admin-billing')) }),
+          createElement(Route, { path: 'capabilities', element: createElement(resolvePageComponent('tenant-admin-capabilities')) }),
+          createElement(Route, { path: 'audit-logs', element: createElement(resolvePageComponent('tenant-admin-audit-logs')) }),
+          createElement(Route, { path: 'reports', element: createElement(resolvePageComponent('tenant-admin-reports')) }),
+          createElement(Route, { path: 'sso', element: createElement(resolvePageComponent('tenant-admin-sso')) }),
+          createElement(Route, { path: 'security', element: createElement(resolvePageComponent('tenant-admin-security')) }),
+          createElement(Route, { path: 'webhooks', element: createElement(resolvePageComponent('tenant-admin-webhooks')) }),
+        ),
         createElement(Route, { path: 'alert-center', element: createElement(resolvePageComponent('alert-center')) }),
         createElement(Route, { path: 'commercial/billing', element: createElement(resolvePageComponent('commercial-billing-center')) }),
         createElement(Route, { path: 'commercial/payment-return', element: createElement(resolvePageComponent('commercial-payment-return')) }),
@@ -114,9 +124,17 @@ if (container) {
         LangProvider,
         null,
         createElement(
-          RealtimeProvider,
+          ToastProvider,
           null,
-          createElement(App)
+          createElement(
+            ConfirmProvider,
+            null,
+            createElement(
+              RealtimeProvider,
+              null,
+              createElement(App)
+            )
+          )
         )
       )
     )

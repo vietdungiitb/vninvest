@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
-import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
+import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField, ShellSelectField } from "../../components/ShellPageTemplate.js";
+import { ShellEmptyState } from "../../components/ShellEmptyState.js";
+import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { PolicyCheckboxes, policyIdsToScopeCodes } from "../../components/PolicyCheckboxes.js";
+import { useI18n } from "../../context/LangContext.js";
+import { usePortfolio } from "../../context/PortfolioContext.js";
+import { useToast } from "../../components/ShellToast.js";
+import { useConfirm } from "../../components/ConfirmModal.js";
 
 interface Token {
   pat_id?: string;
@@ -55,6 +61,11 @@ export function TenantAdminPATsPage({
   autoLoad: _autoLoad = true,
   initialSnapshot: _initialSnapshot = null,
 }: TenantAdminPATsPageProps) {
+  const { t, formatDate: fmtDate, formatDateTime: fmtDateTime } = useI18n();
+  const { ability } = usePortfolio();
+  const toast = useToast();
+  const confirm = useConfirm();
+
   const [tokens, setTokens] = useState<Token[]>([]);
   const [serviceAccounts, setServiceAccounts] = useState<ServiceAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,6 +76,7 @@ export function TenantAdminPATsPage({
   const [copySuccess, setCopySuccess] = useState(false);
   const [activeTokenId, setActiveTokenId] = useState("");
   const [hideRevoked, setHideRevoked] = useState(true);
+  const [hideUnused, setHideUnused] = useState(false);
 
   const [createForm, setCreateForm] = useState<CreateForm>({
     service_account_id: "",
@@ -73,20 +85,23 @@ export function TenantAdminPATsPage({
     policy_ids: ["pol_market_read", "pol_signals_read"],
   });
 
+  const SCOPE_CATEGORIES = [
+    { key: "market_data", label: "tenantPats.scopeMarketData", icon: "📊" },
+    { key: "signals", label: "tenantPats.scopeSignals", icon: "🔔" },
+    { key: "admin", label: "tenantPats.scopeAdmin", icon: "⚙️" },
+  ];
+
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const [tokensRes, saRes] = await Promise.all([
+      const [tokenData, saData] = await Promise.all([
         defaultCoreApiAdapter.coreGet("/partner/pats/"),
         defaultCoreApiAdapter.coreGet("/partner/service-accounts/"),
       ]);
 
-      const tokenData = tokensRes.ok ? (await tokensRes.json()).results || [] : [];
-      const saData = saRes.ok ? (await saRes.json()).results || [] : [];
-
-      setTokens(tokenData);
-      setServiceAccounts(saData);
+      setTokens(tokenData.results || []);
+      setServiceAccounts(saData.results || []);
 
       if (saData.length > 0) {
         setCreateForm(prev => ({
@@ -95,7 +110,7 @@ export function TenantAdminPATsPage({
         }));
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Lỗi khi tải dữ liệu API Tokens");
+      setError(err instanceof Error ? err.message : t("tenantPats.loadError"));
     } finally {
       setLoading(false);
     }
@@ -108,14 +123,14 @@ export function TenantAdminPATsPage({
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createForm.service_account_id) {
-      alert("Vui lòng chọn Service Account");
+      toast.error(t("tenantPats.noServiceAccountSelected"));
       return;
     }
 
     setSubmitting(true);
     try {
       const scopeCodes = policyIdsToScopeCodes(createForm.policy_ids);
-      const response = await defaultCoreApiAdapter.corePost("/partner/pats/issue/", {
+      const responseData = await defaultCoreApiAdapter.corePost("/partner/pats/issue/", {
         service_account_id: createForm.service_account_id,
         display_name: createForm.display_name,
         expires_at: createForm.expires_at ? new Date(createForm.expires_at).toISOString() : null,
@@ -123,8 +138,7 @@ export function TenantAdminPATsPage({
         audit_reason: "Issued via Tenant Admin Console",
       });
 
-      const responseData = response.ok ? await response.json() : null;
-      if (response.ok && responseData && (responseData.secret || responseData.token || responseData.access)) {
+      if (responseData && (responseData.secret || responseData.token || responseData.access)) {
         const secretVal = responseData.secret || responseData.token || responseData.access;
         const prefixVal = responseData.token_prefix || "";
         setSecretReveal({ secret: secretVal, token_prefix: prefixVal });
@@ -137,43 +151,43 @@ export function TenantAdminPATsPage({
         });
         await loadData();
       } else {
-        alert("Không nhận được token từ server");
+        toast.error(t("tenantPats.issueError"));
       }
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Lỗi khi tạo API Token");
+      toast.error(err instanceof Error ? err.message : t("tenantPats.issueError"));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleRotateToken = async (tokenId: string) => {
-    if (!confirm("Bạn có chắc chắn muốn xoay (rotate) token này? Token cũ sẽ có thời gian ân hạn 1 giờ trước khi bị hủy.")) return;
+    const ok = await confirm({ title: t("common.rotate"), message: t("tenantPats.rotateConfirm") });
+    if (!ok) return;
     setActiveTokenId(tokenId);
     try {
-      const response = await defaultCoreApiAdapter.corePost(`/partner/pats/${tokenId}/rotate/`, {
+      const nextToken = await defaultCoreApiAdapter.corePost(`/partner/pats/${tokenId}/rotate/`, {
         grace_period_seconds: 3600,
         audit_reason: "Rotated via Tenant Admin Console",
       });
 
-      const responseData = response.ok ? await response.json() : null;
-      const nextToken = responseData;
       if (nextToken && (nextToken.secret || nextToken.token || nextToken.access)) {
         const secretVal = nextToken.secret || nextToken.token || nextToken.access;
         const prefixVal = nextToken.token_prefix || "";
         setSecretReveal({ secret: secretVal, token_prefix: prefixVal });
         await loadData();
       } else {
-        alert("Không nhận được token mới từ server");
+        toast.error(t("tenantPats.rotateError"));
       }
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Lỗi khi xoay token");
+      toast.error(err instanceof Error ? err.message : t("tenantPats.rotateError"));
     } finally {
       setActiveTokenId("");
     }
   };
 
   const handleRevokeToken = async (tokenId: string) => {
-    if (!confirm("Bạn có chắc chắn muốn thu hồi (revoke) token này lập tức? Hành động này không thể hoàn tác.")) return;
+    const ok = await confirm({ title: t("common.revoke"), message: t("tenantPats.revokeConfirm") });
+    if (!ok) return;
     setActiveTokenId(tokenId);
     try {
       await defaultCoreApiAdapter.corePost(`/partner/pats/${tokenId}/revoke/`, {
@@ -181,7 +195,7 @@ export function TenantAdminPATsPage({
       });
       await loadData();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Lỗi khi thu hồi token");
+      toast.error(err instanceof Error ? err.message : t("tenantPats.revokeError"));
     } finally {
       setActiveTokenId("");
     }
@@ -195,14 +209,33 @@ export function TenantAdminPATsPage({
     });
   };
 
+  const canRead = ability?.can?.("read", "TenantPATAdmin") ?? true;
+
+  if (!canRead) {
+    return (
+      <ShellPageChrome
+        eyebrow={t("tenantPats.eyebrow")}
+        title={t("tenantPats.title")}
+        description={t("tenantPats.description")}
+        notice={t("common.noPermission")}
+      >
+        <div className="shellPage__panel">
+          <ShellEmptyState description={t("tenantPats.emptyState")} />
+        </div>
+      </ShellPageChrome>
+    );
+  }
+
   if (loading && tokens.length === 0) {
     return (
       <ShellPageChrome
-        eyebrow="Tenant Admin"
-        title="API Tokens (PATs)"
-        description="Đang tải danh sách API Tokens..."
+        eyebrow={t("tenantPats.eyebrow")}
+        title={t("tenantPats.title")}
+        description={t("common.loading")}
       >
-        <div className="shellPage__panel">Đang tải...</div>
+        <ShellSkeleton variant="metric" count={2} />
+        <div style={{ height: 16 }} />
+        <ShellSkeleton variant="table-row" count={5} />
       </ShellPageChrome>
     );
   }
@@ -210,9 +243,9 @@ export function TenantAdminPATsPage({
   if (error && tokens.length === 0) {
     return (
       <ShellPageChrome
-        eyebrow="Tenant Admin"
-        title="API Tokens (PATs)"
-        description="Không thể tải danh sách API Tokens"
+        eyebrow={t("tenantPats.eyebrow")}
+        title={t("tenantPats.title")}
+        description={t("tenantPats.loadError")}
         error={error}
       >
         <div className="shellPage__panel">{error}</div>
@@ -221,252 +254,235 @@ export function TenantAdminPATsPage({
   }
 
   const activeCount = tokens.filter(t => t.status === "active" || t.status === "rotating" || !t.revoked).length;
+  const revokedCount = tokens.filter(t => t.status === "revoked" || t.revoked).length;
   const metrics = [
-    renderShellMetric("Tổng Tokens", String(tokens.length)),
-    renderShellMetric("Đang hoạt động", String(activeCount)),
-    renderShellMetric("Đã thu hồi", String(tokens.filter(t => t.status === "revoked" || t.revoked).length)),
+    renderShellMetric(t("tenantPats.metricTotal"), String(tokens.length)),
+    renderShellMetric(t("tenantPats.metricActive"), String(activeCount)),
+    renderShellMetric(t("tenantPats.metricRevoked"), String(revokedCount)),
   ];
 
-  const visibleTokens = hideRevoked ? tokens.filter(t => t.status !== "revoked" && !t.revoked) : tokens;
+  const visibleTokens = hideRevoked
+    ? tokens.filter(t => t.status !== "revoked" && !t.revoked)
+    : tokens;
+
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+  const filteredTokens = hideUnused
+    ? visibleTokens.filter(t => {
+        if (!t.last_used_at) return false;
+        return new Date(t.last_used_at) >= ninetyDaysAgo;
+      })
+    : visibleTokens;
+
+  const isUnusedOver90 = (token: Token): boolean => {
+    if (!token.last_used_at) return true;
+    return new Date(token.last_used_at) < ninetyDaysAgo;
+  };
+
+  const isExpiringSoon = (token: Token): boolean => {
+    if (!token.expires_at) return false;
+    const sevenDays = new Date();
+    sevenDays.setDate(sevenDays.getDate() + 7);
+    return new Date(token.expires_at) <= sevenDays && new Date(token.expires_at) > new Date();
+  };
   const serviceAccountMap = new Map(serviceAccounts.map(sa => [sa.service_account_id || sa.id, sa]));
+
+  const tokenStatusKey = (token: Token): string => {
+    if (token.status === "revoked" || token.revoked) return "revoked";
+    if (token.status === "rotating") return "rotating";
+    return "active";
+  };
 
   return (
     <ShellPageChrome
-      eyebrow="Tenant Admin"
-      title="API Tokens (PATs)"
-      description="Quản lý mã truy cập cá nhân (Personal Access Tokens - PAT) của các Service Accounts"
+      eyebrow={t("tenantPats.eyebrow")}
+      title={t("tenantPats.title")}
+      description={t("tenantPats.description")}
       metrics={metrics}
     >
-      <section className="shellPage__bodyGrid">
-        <div className="shellPage__stack">
+      <section className="shellPage__stack">
           {secretReveal && (
-            <div
-              style={{
-                padding: "20px",
-                background: "rgba(34,197,94,0.1)",
-                border: "1px solid rgba(34,197,94,0.3)",
-                borderRadius: "12px",
-                marginBottom: "20px",
-              }}
-            >
-              <h4 style={{ margin: "0 0 10px", color: "#22c55e", fontSize: "16px" }}>Khởi tạo API Token thành công!</h4>
-              <p style={{ margin: "0 0 16px", color: "#94a3b8", fontSize: "13px" }}>
-                LƯU Ý: Đây là lần DUY NHẤT mã khóa này được hiển thị. Vui lòng sao chép và cất giữ cẩn thận.
+            <div className="shellPage__surfaceCard" style={{ border: "1px solid rgba(34,197,94,0.3)", marginBottom: "20px" }}>
+              <h4 className="shellPage__itemTitle" style={{ color: "#22c55e", fontSize: "16px", margin: "0 0 10px" }}>
+                {t("tenantPats.secretTitle")}
+              </h4>
+              <p className="shellPage__itemMeta" style={{ margin: "0 0 16px" }}>
+                {t("tenantPats.secretHint")}
               </p>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  background: "rgba(15,23,42,0.6)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  padding: "12px",
-                  borderRadius: "8px",
-                }}
-              >
+              <div className="shellPage__listItem" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <code style={{ flex: 1, color: "#f1f5f9", fontSize: "14px", wordBreak: "break-all", fontFamily: "monospace" }}>
                   {secretReveal.secret}
                 </code>
                 <button
                   onClick={() => handleCopyToken(secretReveal.secret)}
+                  className="shellPage__button"
                   style={{
-                    padding: "6px 16px",
                     background: copySuccess ? "rgba(34,197,94,0.2)" : "rgba(0,180,216,0.2)",
                     border: copySuccess ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(0,180,216,0.3)",
-                    borderRadius: "6px",
                     color: copySuccess ? "#22c55e" : "#00b4d8",
-                    cursor: "pointer",
                     fontWeight: 600,
                     fontSize: "12px",
                   }}
                 >
-                  {copySuccess ? "Đã sao chép!" : "Sao chép"}
+                  {copySuccess ? t("tenantPats.copySuccess") : t("tenantPats.copyTokenAction")}
                 </button>
               </div>
               <button
                 onClick={() => setSecretReveal(null)}
-                style={{
-                  marginTop: "12px",
-                  padding: "6px 12px",
-                  background: "transparent",
-                  border: "none",
-                  color: "#94a3b8",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  textDecoration: "underline",
-                }}
+                className="shellPage__button"
+                style={{ marginTop: "12px", color: "#94a3b8", fontSize: "12px", textDecoration: "underline", background: "transparent", border: "none" }}
               >
-                Đóng thông báo
+                {t("tenantPats.closeAction")}
               </button>
             </div>
           )}
 
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+          <div className="shellPage__listItemHeader">
+            <h2 className="shellPage__itemTitle" style={{ fontSize: "20px", margin: 0 }}>
+              {t("tenantPats.listTitle")}
+            </h2>
             <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-              <h2 style={{ margin: 0, fontSize: "20px" }}>Danh sách API Tokens</h2>
               {tokens.some(t => t.status === "revoked" || t.revoked) && (
                 <button
                   onClick={() => setHideRevoked(!hideRevoked)}
-                  style={{
-                    padding: "4px 10px",
-                    background: "rgba(148,163,184,0.1)",
-                    border: "1px solid rgba(148,163,184,0.2)",
-                    borderRadius: "6px",
-                    color: "#94a3b8",
-                    cursor: "pointer",
-                    fontSize: "11px",
-                  }}
+                  className="shellPage__button"
+                  style={{ fontSize: "11px" }}
                 >
-                  {hideRevoked ? "Hiện token đã thu hồi" : "Ẩn token đã thu hồi"}
+                  {hideRevoked ? t("tenantPats.showRevokedAction") : t("tenantPats.hideRevokedAction")}
                 </button>
               )}
+              {tokens.some(t => !t.last_used_at || isUnusedOver90(t)) && (
+                <button
+                  onClick={() => setHideUnused(!hideUnused)}
+                  className="shellPage__button"
+                  style={{
+                    fontSize: "11px",
+                    background: hideUnused ? "rgba(234,179,8,0.2)" : "rgba(255,255,255,0.06)",
+                    color: hideUnused ? "#eab308" : "var(--shell-ink)",
+                    border: hideUnused ? "1px solid rgba(234,179,8,0.3)" : "1px solid var(--shell-border)",
+                  }}
+                >
+                  {hideUnused ? t("tenantPats.showAllAction") : t("tenantPats.filterUnused")}
+                </button>
+              )}
+              <button
+                onClick={() => setShowCreateModal(true)}
+                disabled={serviceAccounts.length === 0}
+                className="shellPage__button shellPage__button--primary"
+              >
+                + {t("tenantPats.issueAction")}
+              </button>
             </div>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              disabled={serviceAccounts.length === 0}
-              style={{
-                padding: "10px 20px",
-                background: "rgba(0,180,216,0.2)",
-                border: "1px solid rgba(0,180,216,0.3)",
-                borderRadius: "8px",
-                color: "#00b4d8",
-                cursor: serviceAccounts.length === 0 ? "not-allowed" : "pointer",
-                opacity: serviceAccounts.length === 0 ? 0.6 : 1,
-                fontWeight: 600,
-              }}
-            >
-              + Cấp API Token mới
-            </button>
           </div>
 
           {serviceAccounts.length === 0 && (
-            <div
-              style={{
-                padding: "16px",
-                background: "rgba(255,127,80,0.1)",
-                border: "1px solid rgba(255,127,80,0.3)",
-                borderRadius: "10px",
-                marginBottom: "20px",
-                color: "#ff7f50",
-                fontSize: "14px",
-              }}
-            >
-              Bạn cần tạo ít nhất một Service Account trước khi cấp API Token (PAT).
+            <div className="shellPage__surfaceCard" style={{ border: "1px solid rgba(255,127,80,0.3)", marginBottom: "20px" }}>
+              <p className="shellPage__itemMeta" style={{ color: "#ff7f50" }}>
+                {t("tenantPats.noServiceAccounts")}
+              </p>
             </div>
           )}
 
           <ShellPanel
-            title="API Tokens"
-            subtitle={`${visibleTokens.length} token(s) đang hiển thị`}
+            title={t("tenantPats.listTitle")}
+            subtitle={t("tenantPats.showingCount", { count: String(filteredTokens.length) })}
           >
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              {visibleTokens.length === 0 ? (
-                <div style={{ padding: "24px", textAlign: "center", color: "#64748b" }}>Không có API Token nào.</div>
+            <div className="shellPage__list">
+              {filteredTokens.length === 0 ? (
+                <ShellEmptyState description={t("tenantPats.emptyState")} ctaLabel={t("tenantPats.issueAction")} ctaOnClick={() => setShowCreateModal(true)} />
               ) : (
-                visibleTokens.map(token => {
+                filteredTokens.map(token => {
                   const sa = serviceAccountMap.get(token.service_account_id);
                   const isTokenRotating = activeTokenId === (token.pat_id || token.id);
                   const isRevoked = token.status === "revoked" || token.revoked;
                   const tokenId = token.pat_id || token.id;
+                  const stKey = tokenStatusKey(token);
 
                   return (
-                    <div
-                      key={tokenId}
-                      style={{
-                        border: "1px solid rgba(255,255,255,0.06)",
-                        background: "rgba(15,23,42,0.3)",
-                        borderRadius: "12px",
-                        padding: "16px",
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px", marginBottom: "12px" }}>
+                    <div key={tokenId} className="shellPage__listItem">
+                      <div className="shellPage__listItemHeader" style={{ marginBottom: "12px" }}>
                         <div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <span style={{ fontWeight: 600, fontSize: "15px", color: "#f1f5f9" }}>{token.label || "API Token"}</span>
-                            <code style={{ padding: "2px 6px", background: "rgba(255,255,255,0.06)", borderRadius: "4px", fontSize: "11px", color: "#94a3b8", fontFamily: "monospace" }}>
+                          <div className="shellPage__itemTitle" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <span style={{ fontWeight: 600, fontSize: "15px" }}>
+                              {token.label || "API Token"}
+                            </span>
+                            <code className="shellPage__pill" style={{ fontFamily: "monospace" }}>
                               {token.token_prefix}
                             </code>
                           </div>
-                          <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px" }}>
-                            Service Account: {sa?.name || token.service_account_id}
+                          <div className="shellPage__itemMeta" style={{ marginTop: "2px" }}>
+                            {t("tenantPats.serviceAccountFor", { name: sa?.name || token.service_account_id })}
                           </div>
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                          <span
-                            style={{
-                              padding: "4px 10px",
-                              borderRadius: "999px",
-                              fontSize: "11px",
-                              fontWeight: 600,
-                              background: isRevoked ? "rgba(239,68,68,0.2)" : (token.status === "rotating" ? "rgba(234,179,8,0.2)" : "rgba(34,197,94,0.2)"),
-                              color: isRevoked ? "#ef4444" : (token.status === "rotating" ? "#eab308" : "#22c55e"),
-                            }}
-                          >
-                            {isRevoked ? "Đã thu hồi" : (token.status === "rotating" ? "Đang xoay" : "Hoạt động")}
-                          </span>
-                        </div>
+                        <span
+                          className="shellPage__pill"
+                          style={{
+                            background: stKey === "revoked" ? "rgba(239,68,68,0.2)" : (stKey === "rotating" ? "rgba(234,179,8,0.2)" : "rgba(34,197,94,0.2)"),
+                            color: stKey === "revoked" ? "#ef4444" : (stKey === "rotating" ? "#eab308" : "#22c55e"),
+                          }}
+                        >
+                          {t(`tenantPats.statuses.${stKey}`)}
+                        </span>
                       </div>
 
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", fontSize: "13px", borderTop: "1px solid rgba(255,255,255,0.04)", paddingTop: "12px" }}>
-                        <div style={{ flex: "1 1 200px" }}>
-                          <span style={{ color: "#64748b", display: "block", fontSize: "11px", textTransform: "uppercase" }}>Hạn mức Scopes</span>
+                      <div className="shellPage__summaryGrid" style={{ gap: "16px", fontSize: "13px", paddingTop: "12px" }}>
+                        <div>
+                          <div className="shellPage__itemMeta" style={{ fontSize: "11px" }}>{t("tenantPats.scopesLabel")}</div>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "4px" }}>
                             {(token.scope_codes || token.scopes || []).map((sc: string) => (
-                              <span key={sc} style={{ padding: "2px 6px", background: "rgba(0,180,216,0.1)", borderRadius: "4px", color: "#00b4d8", fontSize: "11px" }}>
+                              <span key={sc} className="shellPage__pill" style={{ background: "rgba(0,180,216,0.1)", color: "#00b4d8" }}>
                                 {sc}
                               </span>
                             ))}
                           </div>
                         </div>
-                        <div style={{ flex: "1 1 120px" }}>
-                          <span style={{ color: "#64748b", display: "block", fontSize: "11px", textTransform: "uppercase" }}>Ngày tạo</span>
-                          <span style={{ color: "#cbd5e1" }}>{token.created_at ? new Date(token.created_at).toLocaleDateString("vi-VN") : "N/A"}</span>
-                        </div>
-                        <div style={{ flex: "1 1 120px" }}>
-                          <span style={{ color: "#64748b", display: "block", fontSize: "11px", textTransform: "uppercase" }}>Hết hạn</span>
-                          <span style={{ color: token.expires_at && new Date(token.expires_at) < new Date() ? "#ef4444" : "#cbd5e1" }}>
-                            {token.expires_at ? new Date(token.expires_at).toLocaleString("vi-VN") : "Vô thời hạn"}
+                        <div>
+                          <div className="shellPage__itemMeta" style={{ fontSize: "11px" }}>{t("tenantPats.createdAtLabel")}</div>
+                          <span className="shellPage__itemTitle" style={{ fontSize: "13px" }}>
+                            {token.created_at ? fmtDate(token.created_at) : t("common.notAvailable")}
                           </span>
                         </div>
-                        <div style={{ flex: "1 1 120px" }}>
-                          <span style={{ color: "#64748b", display: "block", fontSize: "11px", textTransform: "uppercase" }}>Dùng cuối</span>
-                          <span style={{ color: "#cbd5e1" }}>
-                            {token.last_used_at ? new Date(token.last_used_at).toLocaleString("vi-VN") : "Chưa từng dùng"}
+                        <div>
+                          <div className="shellPage__itemMeta" style={{ fontSize: "11px" }}>{t("tenantPats.lastUsed")}</div>
+                          <span className="shellPage__itemTitle" style={{
+                            fontSize: "13px",
+                            color: isUnusedOver90(token) ? "#eab308" : undefined,
+                          }}>
+                            {token.last_used_at ? fmtDateTime(token.last_used_at) : (
+                              <span style={{ color: "#eab308" }}>{t("tenantPats.neverUsed")} {"⚠️"}</span>
+                            )}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="shellPage__itemMeta" style={{ fontSize: "11px" }}>{t("tenantPats.expiresAtLabel")}</div>
+                          <span className="shellPage__itemTitle" style={{
+                            fontSize: "13px",
+                            color: isExpiringSoon(token) ? "#eab308" : (token.expires_at && new Date(token.expires_at) < new Date() ? "#ef4444" : undefined),
+                          }}>
+                            {token.expires_at ? fmtDateTime(token.expires_at) : t("tenantPats.neverExpire")}
+                            {isExpiringSoon(token) && <span style={{ marginLeft: 4, fontSize: 11 }}>{"⚠️"}</span>}
                           </span>
                         </div>
                       </div>
 
                       {!isRevoked && (
-                        <div style={{ display: "flex", gap: "8px", marginTop: "14px", borderTop: "1px solid rgba(255,255,255,0.04)", paddingTop: "12px" }}>
+                        <div className="shellPage__listItemHeader" style={{ gap: "8px", marginTop: "14px", paddingTop: "12px" }}>
                           <button
                             onClick={() => handleRotateToken(tokenId!)}
                             disabled={isTokenRotating}
-                            style={{
-                              padding: "6px 12px",
-                              background: "rgba(0,180,216,0.15)",
-                              border: "1px solid rgba(0,180,216,0.3)",
-                              borderRadius: "6px",
-                              color: "#00b4d8",
-                              cursor: "pointer",
-                              fontSize: "12px",
-                            }}
+                            className="shellPage__button"
+                            style={{ background: "rgba(0,180,216,0.15)", border: "1px solid rgba(0,180,216,0.3)", color: "#00b4d8", fontSize: "12px" }}
                           >
-                            {isTokenRotating ? "Đang xoay..." : "Xoay Token"}
+                            {isTokenRotating ? t("tenantPats.rotatingAction") : t("tenantPats.rotateAction")}
                           </button>
                           <button
                             onClick={() => handleRevokeToken(tokenId!)}
                             disabled={isTokenRotating}
-                            style={{
-                              padding: "6px 12px",
-                              background: "rgba(239,68,68,0.15)",
-                              border: "1px solid rgba(239,68,68,0.3)",
-                              borderRadius: "6px",
-                              color: "#ef4444",
-                              cursor: "pointer",
-                              fontSize: "12px",
-                            }}
+                            className="shellPage__button"
+                            style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444", fontSize: "12px" }}
                           >
-                            Thu hồi
+                            {t("tenantPats.revokeAction")}
                           </button>
                         </div>
                       )}
@@ -479,6 +495,7 @@ export function TenantAdminPATsPage({
 
           {showCreateModal && (
             <div
+              role="presentation"
               style={{
                 position: "fixed",
                 top: 0,
@@ -492,12 +509,12 @@ export function TenantAdminPATsPage({
                 zIndex: 1000,
               }}
               onClick={() => setShowCreateModal(false)}
+              onKeyDown={(e) => { if (e.key === 'Escape') setShowCreateModal(false); }}
             >
               <div
+                className="shellPage__surfaceCard"
                 style={{
-                  background: "#0b0f19",
                   border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: "16px",
                   padding: "24px",
                   width: "100%",
                   maxWidth: "550px",
@@ -506,70 +523,96 @@ export function TenantAdminPATsPage({
                 }}
                 onClick={e => e.stopPropagation()}
               >
-                <h3 style={{ margin: "0 0 20px", fontSize: "18px" }}>Cấp API Token mới</h3>
+                <h3 className="shellPage__itemTitle" style={{ margin: "0 0 20px", fontSize: "18px" }}>
+                  {t("tenantPats.issueTitle")}
+                </h3>
                 <form onSubmit={handleCreateSubmit}>
-                  <div style={{ marginBottom: "16px" }}>
-                    <label style={{ display: "block", marginBottom: "6px", fontWeight: 500 }}>Tên hiển thị (Mô tả)</label>
-                    <input
-                      type="text"
-                      value={createForm.display_name}
-                      onChange={e => setCreateForm(prev => ({ ...prev, display_name: e.target.value }))}
-                      placeholder="Ví dụ: Token cho Jenkins, Token cho Python App"
-                      required
-                      style={{ width: "100%", padding: "10px 12px", background: "rgba(15,23,42,0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", color: "#f1f5f9", fontSize: "14px" }}
-                    />
+                  <ShellField
+                    label={t("tenantPats.displayNameLabel")}
+                    name="display_name"
+                    type="text"
+                    value={createForm.display_name}
+                    onChange={e => setCreateForm(prev => ({ ...prev, display_name: e.target.value }))}
+                    placeholder={t("tenantPats.displayNamePlaceholder")}
+                  />
+                  <ShellSelectField
+                    label={t("tenantPats.serviceAccountLabel")}
+                    name="service_account_id"
+                    value={createForm.service_account_id}
+                    onChange={e => setCreateForm(prev => ({ ...prev, service_account_id: e.target.value }))}
+                    options={serviceAccounts.map(sa => ({
+                      key: sa.service_account_id || sa.id || "",
+                      label: `${sa.name} (${(sa.metadata?.environment || sa.environment || "prod").toUpperCase()})`,
+                    }))}
+                  />
+                  <ShellField
+                    label={t("tenantPats.expiresAtLabel")}
+                    name="expires_at"
+                    type="datetime-local"
+                    value={createForm.expires_at}
+                    onChange={e => setCreateForm(prev => ({ ...prev, expires_at: e.target.value }))}
+                  />
+                  <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                    {[
+                      { label: "30d", offset: 30 },
+                      { label: "90d", offset: 90 },
+                      { label: "1y", offset: 365 },
+                      { label: t("tenantPats.neverExpire"), offset: 0 },
+                    ].map(preset => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => {
+                          if (preset.offset === 0) {
+                            setCreateForm(prev => ({ ...prev, expires_at: "" }));
+                          } else {
+                            const d = new Date();
+                            d.setDate(d.getDate() + preset.offset);
+                            const local = d.toISOString().slice(0, 16);
+                            setCreateForm(prev => ({ ...prev, expires_at: local }));
+                          }
+                        }}
+                        className="shellPage__button"
+                        style={{ fontSize: 11, padding: "4px 10px" }}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
                   </div>
-                  <div style={{ marginBottom: "16px" }}>
-                    <label style={{ display: "block", marginBottom: "6px", fontWeight: 500 }}>Chọn Service Account</label>
-                    <select
-                      value={createForm.service_account_id}
-                      onChange={e => setCreateForm(prev => ({ ...prev, service_account_id: e.target.value }))}
-                      style={{ width: "100%", padding: "10px 12px", background: "rgba(15,23,42,0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", color: "#f1f5f9", fontSize: "14px" }}
-                    >
-                      {serviceAccounts.map(sa => (
-                        <option key={sa.service_account_id || sa.id} value={sa.service_account_id || sa.id}>
-                          {sa.name} ({(sa.metadata?.environment || sa.environment || "prod").toUpperCase()})
-                        </option>
+                  <div className="shellPage__field">
+                    <span className="shellPage__fieldLabel">{t("tenantPats.policiesLabel")}</span>
+                    <div style={{ marginBottom: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {SCOPE_CATEGORIES.map(cat => (
+                        <span key={cat.key} className="shellPage__pill" style={{ background: "rgba(0,180,216,0.1)", color: "#00b4d8", fontSize: 11 }}>
+                          {cat.icon} {t(cat.label)}
+                        </span>
                       ))}
-                    </select>
-                  </div>
-                  <div style={{ marginBottom: "16px" }}>
-                    <label style={{ display: "block", marginBottom: "6px", fontWeight: 500 }}>Ngày hết hạn (Để trống nếu vô thời hạn)</label>
-                    <input
-                      type="datetime-local"
-                      value={createForm.expires_at}
-                      onChange={e => setCreateForm(prev => ({ ...prev, expires_at: e.target.value }))}
-                      style={{ width: "100%", padding: "10px 12px", background: "rgba(15,23,42,0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", color: "#f1f5f9", fontSize: "14px" }}
-                    />
-                  </div>
-                  <div style={{ marginBottom: "16px" }}>
-                    <label style={{ display: "block", marginBottom: "6px", fontWeight: 500 }}>Quyền hạn (Policies)</label>
+                    </div>
                     <PolicyCheckboxes
                       selectedPolicies={createForm.policy_ids}
                       onChange={(policies: string[]) => setCreateForm(prev => ({ ...prev, policy_ids: policies }))}
                     />
                   </div>
-                  <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "24px" }}>
+                  <div className="shellPage__listItemHeader" style={{ gap: "12px", marginTop: "24px" }}>
                     <button
                       type="button"
                       onClick={() => setShowCreateModal(false)}
-                      style={{ padding: "10px 20px", background: "rgba(148,163,184,0.15)", border: "1px solid rgba(148,163,184,0.3)", borderRadius: "8px", color: "#94a3b8", cursor: "pointer" }}
+                      className="shellPage__button shellPage__button--secondary"
                     >
-                      Hủy
+                      {t("tenantPats.cancelAction")}
                     </button>
                     <button
                       type="submit"
                       disabled={submitting}
-                      style={{ padding: "10px 20px", background: "rgba(0,180,216,0.2)", border: "1px solid rgba(0,180,216,0.3)", borderRadius: "8px", color: "#00b4d8", fontWeight: 600, cursor: submitting ? "not-allowed" : "pointer" }}
+                      className="shellPage__button shellPage__button--primary"
                     >
-                      {submitting ? "Đang cấp..." : "Cấp Token"}
+                      {submitting ? t("tenantPats.submitting") : t("tenantPats.issueAction")}
                     </button>
                   </div>
                 </form>
               </div>
             </div>
           )}
-        </div>
       </section>
     </ShellPageChrome>
   );
