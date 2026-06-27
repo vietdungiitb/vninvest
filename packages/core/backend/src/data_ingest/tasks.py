@@ -14,6 +14,7 @@ from decimal import Decimal
 from typing import Optional
 
 from celery import shared_task
+from celery.exceptions import SoftTimeLimitExceeded
 from django.conf import settings as django_settings
 from django.core.mail import send_mail
 from django.utils.dateparse import parse_datetime
@@ -1194,8 +1195,7 @@ def _b08_finalize_stale_running_runs(job_key: 'str | None', stale_after_seconds:
         return {'stale_run_logs': 0, 'stale_backfill_runs': 0}
 
 
-@shared_task(bind=True, max_retries=2, default_retry_delay=60)
-def backfill_daily_prices(
+def _backfill_daily_prices_impl(
     self,
     days: int = 365,
     symbols: list = None,
@@ -1557,6 +1557,88 @@ def backfill_daily_prices(
     return result
 
 
+@shared_task(
+    bind=True,
+    max_retries=2,
+    default_retry_delay=60,
+    time_limit=11400,
+    soft_time_limit=10800,
+)
+def backfill_daily_prices(
+    self,
+    days: int = 365,
+    symbols: list = None,
+    max_workers: int = None,
+    plan_items: list[dict] | None = None,
+    service_run_log_id: int | None = None,
+    _scheduler_job_key: str | None = None,
+    # B07 — explicit mode and trigger
+    mode: str = 'daily_delta',
+    trigger: str = 'beat_schedule',
+    celery_task_id: str | None = None,
+):
+    try:
+        return _backfill_daily_prices_impl(
+            self,
+            days=days,
+            symbols=symbols,
+            max_workers=max_workers,
+            plan_items=plan_items,
+            service_run_log_id=service_run_log_id,
+            _scheduler_job_key=_scheduler_job_key,
+            mode=mode,
+            trigger=trigger,
+            celery_task_id=celery_task_id,
+        )
+    except SoftTimeLimitExceeded as exc:
+        _task_id = celery_task_id or getattr(self.request, 'id', '') or ''
+        logger.warning(
+            'backfill_daily_prices: soft time limit exceeded! job_key=%s task_id=%s',
+            _scheduler_job_key,
+            _task_id,
+        )
+        # 1. Finalize BackfillExecutionRun in DB
+        try:
+            from service_ops.models import BackfillExecutionRun
+            _exec_run = BackfillExecutionRun.objects.filter(
+                job_key=_scheduler_job_key or '',
+                status='running',
+            ).first()
+            if _exec_run:
+                from django.utils import timezone as _tz
+                _exec_run.status = 'failed'
+                _exec_run.finished_at = _tz.now()
+                _exec_run.error_summary = 'Bị dừng do vượt quá thời gian giới hạn (soft time limit exceeded).'
+                _exec_run.save(update_fields=['status', 'finished_at', 'error_summary'])
+        except Exception:
+            pass
+
+        # 2. Finalize ServiceRunLog in DB
+        try:
+            from service_ops.models import ServiceRunLog
+            from service_ops.tasks import _mark_run_log_finished
+            _log_query = ServiceRunLog.objects.filter(
+                celery_task_id=_task_id,
+                status='running',
+            )
+            if service_run_log_id:
+                _log_query = ServiceRunLog.objects.filter(pk=service_run_log_id)
+            
+            _run_log = _log_query.first()
+            if _run_log:
+                _mark_run_log_finished(
+                    _run_log,
+                    status_value='failed',
+                    output_summary={'reason': 'soft_time_limit_exceeded', 'days': days},
+                )
+        except Exception:
+            pass
+
+        # 3. Clear inflight cache
+        _b01_clear_inflight_cache(_scheduler_job_key)
+        raise exc
+
+
 @shared_task(bind=True, max_retries=2, default_retry_delay=300)
 def backfill_pre5y_to_market_inception(
     self,
@@ -1847,6 +1929,8 @@ _DNSE_BACKFILL_COUNTDOWN_SECS = int(getattr(django_settings, 'DNSE_BACKFILL_COUN
     name='data_ingest.tasks.backfill_intraday_tick_system',
     queue='manual_on_demand',
     rate_limit=_DNSE_TASK_RATE_LIMIT,
+    time_limit=600,
+    soft_time_limit=540,
 )
 def backfill_intraday_tick_system(self, *, symbol: str, trade_date: str) -> dict:
     """
@@ -2045,6 +2129,8 @@ def backfill_intraday_tick_user(self, *, user_id: int, symbol: str, trade_date: 
     bind=True,
     name='data_ingest.tasks.enqueue_dnse_quarterly_backfill',
     queue='enrichment_offhours',
+    time_limit=600,
+    soft_time_limit=500,
 )
 def enqueue_dnse_quarterly_backfill(
     self,

@@ -589,7 +589,7 @@ def _execute_scheduler_action(
                             celery_app.control.revoke(
                                 run_log.celery_task_id,
                                 terminate=True,
-                                signal='SIGTERM',
+                                signal='SIGKILL',
                             )
                             revoked_count += 1
                         except Exception:

@@ -10,6 +10,10 @@ Note: gunicorn runs WSGI (wsgi:application) for HTTP.
       This file provides the ASGI entrypoint for when full ASGI is needed.
 """
 import os
+import socket
+
+# Prevent socket blocking operations from hanging indefinitely
+socket.setdefaulttimeout(60.0)
 
 from channels.auth import AuthMiddlewareStack
 from channels.routing import ProtocolTypeRouter, URLRouter
