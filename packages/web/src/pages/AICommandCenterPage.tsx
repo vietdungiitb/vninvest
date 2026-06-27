@@ -1,6 +1,8 @@
-import { useState, useEffect, createElement, FormEvent, ChangeEvent } from "react";
+import { useState, useEffect, useCallback, createElement, FormEvent, ChangeEvent } from "react";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
+import { AIAuditLogsPanel } from "../components/AIAuditLogsPanel.js";
+import { AIAdvisoryPromptConfigDrawer } from "../components/AIAdvisoryPromptConfigDrawer.js";
 
 const e = createElement;
 
@@ -78,7 +80,19 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
   const [refreshInterval, setRefreshInterval] = useState(24);
   const [testLatency, setTestLatency] = useState<number | null>(null);
 
-  const loadSettings = async (showNoticeFlag = false) => {
+  const [effectiveSource, setEffectiveSource] = useState("command_center");
+  const [effectiveProvider, setEffectiveProvider] = useState("");
+  const [effectiveModel, setEffectiveModel] = useState("");
+  const [aiReady, setAiReady] = useState(false);
+  const [aiConfigMessage, setAiConfigMessage] = useState("");
+  const [refreshIntervalDisplay, setRefreshIntervalDisplay] = useState(24);
+  const [maxAutoRefreshes, setMaxAutoRefreshes] = useState(24);
+  const [eventGateEnabled, setEventGateEnabled] = useState<boolean | null>(null);
+  const [promptConfigOpen, setPromptConfigOpen] = useState(false);
+  const [promptConfig, setPromptConfig] = useState<Record<string, unknown> | null>(null);
+  const [refreshAuditKey, setRefreshAuditKey] = useState(0);
+
+  const loadSettings = useCallback(async (showNoticeFlag = false) => {
     setLoading(true);
     setError("");
     try {
@@ -108,6 +122,25 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
       setAiApiKey("");
       setTestLatency(null);
 
+      setEffectiveSource((data as any).effective_ai_source || "command_center");
+      setEffectiveProvider((data as any).effective_ai_provider || data.ai_provider || "openclaw");
+      setEffectiveModel((data as any).effective_ai_model || data.ai_model || "");
+      setAiReady((data as any).ai_ready ?? false);
+      setAiConfigMessage((data as any).ai_config_message || "");
+      setRefreshIntervalDisplay((data as any).advisory_refresh_interval_hours ?? refreshInterval);
+      setMaxAutoRefreshes((data as any).advisory_max_auto_refreshes_per_day ?? 24);
+
+      if ((data as any).ai_prompt_config) {
+        setPromptConfig((data as any).ai_prompt_config);
+      }
+
+      // Load event gate status
+      try {
+        const userConfig = await (coreApiAdapter as any).getUserConfig();
+        const prefs = userConfig?.preferences || {};
+        setEventGateEnabled(prefs.advisory_whale_signal_enabled !== false);
+      } catch { /* silent fail */ }
+
       if (showNoticeFlag) {
         setNotice("Đã làm mới cấu hình AI.");
         setTimeout(() => setNotice(""), 3000);
@@ -117,11 +150,11 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
     } finally {
       setLoading(false);
     }
-  };
+  }, [refreshInterval]);
 
   useEffect(() => {
     loadSettings();
-  }, []);
+  }, [loadSettings]);
 
   const handleProviderChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const provider = e.target.value;
@@ -185,10 +218,19 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
       payload.ai_api_key = aiApiKey.trim();
     }
 
+    if (promptConfig) {
+      payload.ai_prompt_config = promptConfig;
+    }
+
     try {
       const nextData: AISettings = await (coreApiAdapter as any).updateAICommandCenterConfig(payload);
       setSettings(nextData);
       setAiApiKey("");
+      setEffectiveSource((nextData as any).effective_ai_source || "command_center");
+      setEffectiveProvider((nextData as any).effective_ai_provider || aiProvider);
+      setEffectiveModel((nextData as any).effective_ai_model || finalModel);
+      setAiReady((nextData as any).ai_ready ?? false);
+      setRefreshAuditKey(k => k + 1);
       setNotice("Lưu cấu hình AI thành công.");
       setTimeout(() => setNotice(""), 3000);
     } catch (err: unknown) {
@@ -256,6 +298,60 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
     e("header", { key: "header", className: "core-page-header" }, [
       e("h1", { className: "text-xl font-bold text-slate-100" }, "Trung tâm điều hành AI"),
       e("p", { className: "mt-1 text-sm text-slate-400" }, "Cấu hình nhà cung cấp AI, lựa chọn mô hình và API key phục vụ AI Advisor.")
+    ]),
+
+    // Summary Cards
+    e("div", { key: "summary-cards", className: "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4" }, [
+      e("div", { key: "card-provider", className: "rounded-xl border border-slate-800 bg-slate-900/40 p-4" }, [
+        e("p", { className: "text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, "Nhà cung cấp hiệu lực"),
+        e("p", { className: "mt-1 text-sm font-medium text-slate-100" }, effectiveProvider || "—"),
+        e("p", { className: "mt-0.5 text-[10px] text-slate-600" }, "Nguồn đọc từ AI Command Center.")
+      ]),
+      e("div", { key: "card-model", className: "rounded-xl border border-slate-800 bg-slate-900/40 p-4" }, [
+        e("p", { className: "text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, "Mô hình hiệu lực"),
+        e("p", { className: "mt-1 text-sm font-medium text-slate-100" }, effectiveModel || "Chưa cấu hình"),
+        e("p", { className: "mt-0.5 text-[10px] text-slate-600" }, "Mô hình đang dùng cho advisory runtime.")
+      ]),
+      e("div", { key: "card-source", className: "rounded-xl border border-slate-800 bg-slate-900/40 p-4" }, [
+        e("p", { className: "text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, "Nguồn hiệu lực"),
+        e("p", { className: "mt-1 text-sm font-medium text-slate-100" }, effectiveSource),
+        e("p", { className: "mt-0.5 text-[10px] text-slate-600" }, "command_center hoặc system fallback.")
+      ]),
+      e("div", { key: "card-status", className: "rounded-xl border border-slate-800 bg-slate-900/40 p-4" }, [
+        e("p", { className: "text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, "Trạng thái runtime"),
+        e("p", { className: `mt-1 text-sm font-medium ${aiReady ? "text-emerald-400" : "text-red-400"}` }, aiReady ? "Sẵn sàng" : "Cần cấu hình"),
+        e("p", { className: "mt-0.5 text-[10px] text-slate-600" }, aiReady ? "Runtime có thể sinh advisory." : "Thiếu key, model hoặc source hợp lệ.")
+      ])
+    ]),
+
+    // Policy Section
+    e("div", { key: "policy-section", className: "rounded-xl border border-slate-800 bg-slate-900/40 p-4" }, [
+      e("h3", { className: "mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400" }, "Chính sách vận hành"),
+      e("div", { className: "grid grid-cols-2 gap-3 sm:grid-cols-4" }, [
+        e("div", { key: "pol-gate" }, [
+          e("p", { className: "text-[10px] text-slate-500" }, "Gate sự kiện"),
+          e("p", { className: "text-xs font-medium text-slate-200" },
+            eventGateEnabled === null ? "Chưa đọc" : eventGateEnabled ? "Bật" : "Tắt"
+          )
+        ]),
+        e("div", { key: "pol-refresh" }, [
+          e("p", { className: "text-[10px] text-slate-500" }, "Khoảng làm mới"),
+          e("p", { className: "text-xs font-medium text-slate-200" }, `${refreshIntervalDisplay} giờ/lần`)
+        ]),
+        e("div", { key: "pol-auto" }, [
+          e("p", { className: "text-[10px] text-slate-500" }, "Auto refresh/ngày"),
+          e("p", { className: "text-xs font-medium text-slate-200" }, `${maxAutoRefreshes}`)
+        ]),
+        e("div", { key: "pol-tokens" }, [
+          e("p", { className: "text-[10px] text-slate-500" }, "Token/ngày"),
+          e("p", { className: "text-xs font-medium text-slate-200" }, `${maxTokens}`)
+        ])
+      ]),
+      aiConfigMessage
+        ? e("div", { key: "pol-msg", className: "mt-2 border-t border-slate-800 pt-2 text-[10px] text-slate-500" },
+            `Thông điệp cấu hình: ${aiConfigMessage}`
+          )
+        : null
     ]),
 
     notice ? e("div", { key: "notice-banner", className: "rounded-lg border border-emerald-700/70 bg-emerald-900/20 px-3 py-2 text-sm text-emerald-200" }, notice) : null,
@@ -374,7 +470,14 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
           type: "button",
           onClick: () => loadSettings(true),
           className: "rounded-lg border border-slate-700 bg-slate-800/30 px-4 py-2 text-sm text-slate-400 hover:text-slate-200"
-        }, "Làm mới form")
+        }, "Làm mới form"),
+
+        e("button", {
+          key: "prompt-config-btn",
+          type: "button",
+          onClick: () => setPromptConfigOpen(true),
+          className: "rounded-lg border border-slate-700 bg-slate-800/30 px-4 py-2 text-sm text-slate-400 hover:text-slate-200"
+        }, "Tinh chỉnh nguồn dữ liệu")
       ]),
 
       testStatus && testResult
@@ -429,6 +532,26 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
             : e("p", { className: "mt-2 text-xs text-slate-500" },
                 "Nếu API Key cá nhân gặp lỗi, hệ thống sẽ tự động dùng key sao lưu.")
         ])
+        : null,
+
+    // Audit Logs Section
+    e("div", { key: "audit-section", className: "space-y-3 rounded-xl border border-slate-800 bg-slate-900/30 p-4" }, [
+      e("h2", { key: "audit-title", className: "text-sm font-semibold text-slate-100" }, "Nhật ký audit Command Center"),
+      e("p", { key: "audit-desc", className: "text-xs text-slate-500" }, "Mỗi trang hiển thị 10 bản ghi."),
+      e(AIAuditLogsPanel, { key: `audit-panel-${refreshAuditKey}`, refreshKey: refreshAuditKey })
+    ]),
+
+    // Drawer overlay (rendered outside main flow)
+    promptConfigOpen
+      ? e(AIAdvisoryPromptConfigDrawer, {
+          key: "prompt-config-drawer",
+          isOpen: promptConfigOpen,
+          onClose: () => setPromptConfigOpen(false),
+          config: promptConfig,
+          onConfigChange: (nextConfig: Record<string, unknown>) => {
+            setPromptConfig(nextConfig);
+          },
+        })
       : null
   ]);
 }

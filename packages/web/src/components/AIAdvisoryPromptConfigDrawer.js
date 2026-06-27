@@ -83,7 +83,97 @@ export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfig
     .filter(([_, cfg]) => cfg.enabled)
     .length;
 
-  const enabledIndicators = (localConfig.sources.technical?.indicators || []).length;
+  const     enabledIndicators = (localConfig.sources.technical?.indicators || []).length;
+
+  const PRESET_CONFIGS = {
+    balanced: {
+      sources: {
+        whale: { enabled: true, lookback: 180 },
+        dark_flow: { enabled: true, lookback: 90 },
+        technical: { enabled: true, lookback: 30, indicators: ['vols', 'prices', 'cdms', 'ma20', 'ma50', 'rsi', 'bollinger', 'snapshot'] },
+        news: { enabled: true, lookback: 14 },
+        market: { enabled: true, lookback: 7 },
+        fundamental: { enabled: false, lookback: 1 },
+        ownership: { enabled: false, lookback: 365 },
+        sector: { enabled: false, lookback: 60 },
+      },
+    },
+    flow_first: {
+      sources: {
+        whale: { enabled: true, lookback: 30 },
+        dark_flow: { enabled: true, lookback: 30 },
+        technical: { enabled: true, lookback: 5, indicators: ['vols', 'prices'] },
+        news: { enabled: false, lookback: 14 },
+        market: { enabled: true, lookback: 7 },
+        fundamental: { enabled: false, lookback: 90 },
+        ownership: { enabled: false, lookback: 365 },
+        sector: { enabled: false, lookback: 60 },
+      },
+    },
+    deep_dive: {
+      sources: {
+        whale: { enabled: true, lookback: 180 },
+        dark_flow: { enabled: true, lookback: 180 },
+        technical: { enabled: true, lookback: 60, indicators: ['vols', 'prices', 'cdms', 'ma20', 'ma50', 'rsi', 'bollinger', 'snapshot'] },
+        news: { enabled: true, lookback: 30 },
+        market: { enabled: true, lookback: 30 },
+        fundamental: { enabled: true, lookback: 365 },
+        ownership: { enabled: true, lookback: 730 },
+        sector: { enabled: true, lookback: 90 },
+      },
+    },
+    cost_control: {
+      sources: {
+        whale: { enabled: true, lookback: 7 },
+        dark_flow: { enabled: false, lookback: 30 },
+        technical: { enabled: true, lookback: 5, indicators: ['vols', 'prices'] },
+        news: { enabled: false, lookback: 7 },
+        market: { enabled: false, lookback: 7 },
+        fundamental: { enabled: false, lookback: 1 },
+        ownership: { enabled: false, lookback: 365 },
+        sector: { enabled: false, lookback: 60 },
+      },
+    },
+  };
+
+  const PRESET_LABELS = {
+    balanced: 'Cân bằng',
+    flow_first: 'Ưu tiên dòng tiền',
+    deep_dive: 'Chuyên sâu',
+    cost_control: 'Tiết kiệm token',
+  };
+
+  const LOOKBACK_OPTIONS = [7, 14, 30, 60, 90, 180, 365, 730];
+
+  const applyPreset = (presetId) => {
+    const presetConfig = PRESET_CONFIGS[presetId];
+    if (!presetConfig) return;
+    setLocalConfig(presetConfig);
+    onConfigChange(presetConfig);
+  };
+
+  const handleTechnicalPreset = (mode) => {
+    const ALL_INDICATORS = ['vols', 'prices', 'cdms', 'ma20', 'ma50', 'rsi', 'bollinger', 'snapshot'];
+    const LEAN_INDICATORS = ['vols', 'prices', 'rsi'];
+    const indicators = mode === 'full' ? ALL_INDICATORS : LEAN_INDICATORS;
+    const techObj = localConfig.sources.technical || { enabled: true, lookback: 20 };
+    const updated = {
+      ...localConfig,
+      sources: {
+        ...localConfig.sources,
+        technical: { ...techObj, indicators },
+      },
+    };
+    setLocalConfig(updated);
+    onConfigChange(updated);
+  };
+
+  const handleLookbackQuickSelect = (sourceId, value) => {
+    const meta = SOURCES_METADATA[sourceId];
+    if (!meta) return;
+    const clamped = Math.max(meta.min, Math.min(meta.max, Number(value) || meta.defaultLookback));
+    handleLookbackChange(sourceId, clamped);
+  };
 
   return e(
     "div",
@@ -106,6 +196,19 @@ export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfig
           "button",
           { className: "sdp-drawer-close-btn", onClick: onClose, type: "button" },
           "✕"
+        )
+      ),
+
+      // Preset Bar
+      e("div", { key: "preset-bar", className: "sdp-preset-bar" },
+        e("span", { className: "sdp-preset-label" }, "Mẫu cấu hình nhanh:"),
+        Object.entries(PRESET_LABELS).map(([id, label]) =>
+          e("button", {
+            key: id,
+            type: "button",
+            onClick: () => applyPreset(id),
+            className: "sdp-preset-btn",
+          }, label)
         )
       ),
 
@@ -145,20 +248,30 @@ export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfig
               isEnabled &&
               e(
                 "div",
-                { className: "sdp-indicators-pills" },
-                TECHNICAL_INDICATORS.map((ind) => {
-                  const isSelected = (localConfig.sources.technical?.indicators || []).includes(ind);
-                  return e(
-                    "button",
-                    {
-                      key: ind,
-                      type: "button",
-                      onClick: () => handleIndicatorToggle(ind),
-                      className: `sdp-indicator-pill ${isSelected ? "sdp-pill-selected" : ""}`,
-                    },
-                    ind.toUpperCase()
-                  );
-                })
+                { className: "sdp-indicators-section" },
+                e(
+                  "div",
+                  { className: "sdp-indicators-presets" },
+                  e("button", { type: "button", onClick: () => handleTechnicalPreset('full'), className: "sdp-indicator-preset-btn" }, "Bật toàn bộ"),
+                  e("button", { type: "button", onClick: () => handleTechnicalPreset('lean'), className: "sdp-indicator-preset-btn" }, "Bộ gọn")
+                ),
+                e(
+                  "div",
+                  { className: "sdp-indicators-pills" },
+                  TECHNICAL_INDICATORS.map((ind) => {
+                    const isSelected = (localConfig.sources.technical?.indicators || []).includes(ind);
+                    return e(
+                      "button",
+                      {
+                        key: ind,
+                        type: "button",
+                        onClick: () => handleIndicatorToggle(ind),
+                        className: `sdp-indicator-pill ${isSelected ? "sdp-pill-selected" : ""}`,
+                      },
+                      ind.toUpperCase()
+                    );
+                  })
+                )
               ),
 
             // Lookback Slider
@@ -189,6 +302,18 @@ export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfig
                   className: "sdp-lookback-number-input",
                 }),
                 e("span", { className: "sdp-lookback-unit" }, " phiên")
+              ),
+              e(
+                "select",
+                {
+                  disabled: !isEnabled,
+                  onChange: (e) => handleLookbackQuickSelect(sourceId, e.target.value),
+                  value: lookbackDays,
+                  className: "sdp-lookback-quick-select",
+                },
+                LOOKBACK_OPTIONS.filter(opt => opt >= meta.min && opt <= meta.max).map(opt =>
+                  e("option", { key: opt, value: opt }, `${opt} phiên`)
+                )
               )
             )
           );

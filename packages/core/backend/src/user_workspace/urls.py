@@ -18,6 +18,8 @@ from .portfolio_analytics_views import (
     PortfolioAIAdvisoryRefreshView,
     PortfolioAICommandCenterView,
     PortfolioAICommandCenterTestView,
+    PortfolioAICommandCenterAuditLogView,
+    PortfolioUserConfigLegacyView,
     PortfolioMarketDiscoveryHubView,
     PortfolioWhaleAnalyticsView,
     PortfolioWhaleBacktestStatsView,
@@ -44,6 +46,8 @@ urlpatterns = [
     path('workspace/whale-analytics/<str:symbol>/', PortfolioWhaleAnalyticsView.as_view(), name='workspace-whale-analytics'),
     path('workspace/ai-command-center/', PortfolioAICommandCenterView.as_view(), name='workspace-ai-cc-direct'),
     path('workspace/ai-command-center/test-connection/', PortfolioAICommandCenterTestView.as_view(), name='workspace-ai-cc-test'),
+    path('workspace/ai-command-center/audit-logs/', PortfolioAICommandCenterAuditLogView.as_view(), name='workspace-ai-cc-audit-logs'),
+    path('workspace/userconfig/', PortfolioUserConfigLegacyView.as_view(), name='workspace-userconfig'),
 
     # Legacy compat: portfolio ai-advisory routes (proxy for legacy frontend client.js calls)
     path('portfolio/ai-advisory/', PortfolioAIAdvisoryListView.as_view(), name='portfolio-ai-advisory-list'),

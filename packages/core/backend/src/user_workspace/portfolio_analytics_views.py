@@ -515,6 +515,19 @@ class PortfolioAICommandCenterView(APIView):
         # Save to UserAICredential (BYOK SSOT)
         user_cred = self._get_or_create_user_credential(request.user)
 
+        # Capture before-state for audit log
+        from advisory.serializers import sanitize_sensitive_fields
+        before_snapshot = sanitize_sensitive_fields({
+            'ai_provider': user_cred.ai_provider or '',
+            'ai_model': user_cred.ai_model or config.ai_model,
+            'custom_endpoint': user_cred.custom_endpoint or '',
+            'effective_ai_source': metadata.get('effective_ai_source') or 'command_center',
+            'ai_ready': bool(user_cred.encrypted_api_key) or user_cred.ai_provider in ('openclaw', 'local'),
+            'advisory_refresh_interval_hours': int(metadata.get('advisory_refresh_interval_hours', 24)),
+            'advisory_max_auto_refreshes_per_day': int(metadata.get('advisory_max_auto_refreshes_per_day', 24)),
+            'advisory_max_tokens_per_day': config.max_tokens,
+        })
+
         if 'ai_provider' in payload:
             user_cred.ai_provider = str(payload.get('ai_provider') or 'openai').strip().lower()
             metadata['ai_provider'] = user_cred.ai_provider
@@ -566,6 +579,33 @@ class PortfolioAICommandCenterView(APIView):
         config.metadata = metadata
         config.save()
 
+        # Create audit log
+        from advisory.models import AIAuditLog
+        after_snapshot = sanitize_sensitive_fields({
+            'ai_provider': user_cred.ai_provider or '',
+            'ai_model': user_cred.ai_model or config.ai_model,
+            'custom_endpoint': user_cred.custom_endpoint or '',
+            'effective_ai_source': metadata.get('effective_ai_source') or 'command_center',
+            'ai_ready': bool(user_cred.encrypted_api_key) or user_cred.ai_provider in ('openclaw', 'local'),
+            'advisory_refresh_interval_hours': int(metadata.get('advisory_refresh_interval_hours', 24)),
+            'advisory_max_auto_refreshes_per_day': int(metadata.get('advisory_max_auto_refreshes_per_day', 24)),
+            'advisory_max_tokens_per_day': config.max_tokens,
+        })
+        diff_parts = []
+        for field in ['ai_provider', 'ai_model', 'effective_ai_source', 'custom_endpoint']:
+            bv = str(before_snapshot.get(field, ''))
+            av = str(after_snapshot.get(field, ''))
+            if bv != av:
+                diff_parts.append(f'{field}: {bv} → {av}')
+        AIAuditLog.objects.create(
+            action=AIAuditLog.ActionChoices.UPDATE_SETTINGS,
+            actor=request.user.username,
+            reason=f'Cập nhật cấu hình AI: {"; ".join(diff_parts) if diff_parts else "không có thay đổi"}.',
+            before_json=before_snapshot,
+            after_json=after_snapshot,
+            diff_summary='; '.join(diff_parts) if diff_parts else 'Không có thay đổi',
+        )
+
         provider = user_cred.ai_provider or 'openai'
         api_key_configured = bool(user_cred.encrypted_api_key)
         ai_ready = api_key_configured or (provider in ('openclaw', 'local'))
@@ -606,6 +646,7 @@ class PortfolioAICommandCenterTestView(APIView):
 
     def post(self, request):
         from vninvest_core.exceptions import ValidationErrorException
+        from advisory.models import AIAuditLog
         import httpx
 
         payload = request.data if isinstance(request.data, dict) else {}
@@ -619,8 +660,20 @@ class PortfolioAICommandCenterTestView(APIView):
         if not model:
             raise ValidationErrorException(detail='Vui lòng chọn hoặc cấu hình Mô hình AI.', code='validation_error')
 
+        # Helper to write audit logs
+        def _log_test(audit_action, message):
+            AIAuditLog.objects.create(
+                action=audit_action,
+                actor=request.user.username,
+                reason=message,
+                before_json={},
+                after_json={'ai_provider': provider, 'ai_model': model, 'status': 'success' if 'SUCCESS' in audit_action else 'failed'},
+                diff_summary=f'Test connection {provider}/{model}: {message}',
+            )
+
         # openclaw: system default, luôn ready
         if provider == 'openclaw':
+            _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_SUCCESS, 'OpenClaw mặc định luôn sẵn sàng.')
             return Response({
                 'message': f'Kết nối đến OpenClaw (Default) với mô hình {model} thành công. Phản hồi mượt mà.',
                 'latency_ms': 0,
@@ -636,6 +689,7 @@ class PortfolioAICommandCenterTestView(APIView):
                     resp.raise_for_status()
                     data = resp.json()
                     models_list = [m.get('name', m.get('id', '')) for m in (data.get('data') or data.get('models') or [])]
+                    _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_SUCCESS, f'Local Model {endpoint} kết nối thành công.')
                     return Response({
                         'message': f'Kết nối đến Local Model ({endpoint}) thành công. Mô hình khả dụng: {", ".join(models_list[:5]) or "N/A"}.',
                         'endpoint': endpoint,
@@ -643,16 +697,19 @@ class PortfolioAICommandCenterTestView(APIView):
                         'latency_ms': int(resp.elapsed.total_seconds() * 1000),
                     })
             except httpx.TimeoutException:
+                _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED, f'Local Model {endpoint} timeout 5s.')
                 raise ValidationErrorException(
                     detail=f'Không thể kết nối đến Local Model tại {endpoint} — timeout 5s. Kiểm tra endpoint hoặc khởi động Ollama/vLLM.',
                     code='validation_error',
                 )
             except httpx.HTTPStatusError as e:
+                _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED, f'Local Model {endpoint} HTTP {e.response.status_code}.')
                 raise ValidationErrorException(
                     detail=f'Local Model tại {endpoint} trả về lỗi HTTP {e.response.status_code}.',
                     code='validation_error',
                 )
             except Exception as e:
+                _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED, f'Local Model {endpoint}: {str(e)}.')
                 raise ValidationErrorException(
                     detail=f'Không thể kết nối Local Model: {str(e)}.',
                     code='validation_error',
@@ -681,6 +738,7 @@ class PortfolioAICommandCenterTestView(APIView):
                     resolved_key = decrypt_user_api_key(sys_encrypted)
 
         if not resolved_key:
+            _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED, f'Thiếu API Key cho {provider}/{model}.')
             raise ValidationErrorException(
                 detail=f'Lỗi kết nối đến {provider}: Thiếu API Key cho mô hình {model}. Vui lòng cấu hình API Key trong AI Command Center.',
                 code='validation_error',
@@ -711,11 +769,13 @@ class PortfolioAICommandCenterTestView(APIView):
                 resp = client.post(endpoint, headers=headers, json=test_payload)
                 resp.raise_for_status()
                 latency_ms = int((__import__('time').time() - start) * 1000)
+                _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_SUCCESS, f'{provider}/{model} kết nối thành công ({latency_ms}ms).')
                 return Response({
                     'message': f'Kiểm tra kết nối thành công: Đã xác thực API Key với {provider} / {model}. Phản hồi trong {latency_ms}ms.',
                     'latency_ms': latency_ms,
                 })
         except httpx.TimeoutException:
+            _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED, f'{provider}/{model} timeout 10s.')
             raise ValidationErrorException(
                 detail=f'Kết nối đến {provider} timeout sau 10s. Kiểm tra API Key hoặc mạng.',
                 code='validation_error',
@@ -723,19 +783,92 @@ class PortfolioAICommandCenterTestView(APIView):
         except httpx.HTTPStatusError as e:
             status_code = e.response.status_code
             if status_code == 401:
+                _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED, f'{provider}/{model} từ chối API Key (HTTP 401).')
                 raise ValidationErrorException(
                     detail=f'{provider} từ chối API Key (HTTP 401). Kiểm tra lại API Key cho mô hình {model}.',
                     code='validation_error',
                 )
+            _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED, f'{provider}/{model} HTTP {status_code}.')
             raise ValidationErrorException(
                 detail=f'{provider} trả về lỗi HTTP {status_code} cho mô hình {model}.',
                 code='validation_error',
             )
         except Exception as e:
+            _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED, f'{provider}/{model}: {str(e)}.')
             raise ValidationErrorException(
                 detail=f'Lỗi kết nối đến {provider}: {str(e)}.',
                 code='validation_error',
             )
+
+
+class PortfolioAICommandCenterAuditLogView(APIView):
+    """GET /workspace/ai-command-center/audit-logs/
+
+    Trả về audit logs với pagination, filter theo action/actor/date range.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from advisory.models import AIAuditLog
+        from advisory.serializers import AIAuditLogSerializer
+
+        queryset = AIAuditLog.objects.all()
+
+        action = request.query_params.get('action', '').strip()
+        if action:
+            queryset = queryset.filter(action=action)
+
+        actor = request.query_params.get('actor', '').strip()
+        if actor:
+            queryset = queryset.filter(actor__icontains=actor)
+
+        date_from = request.query_params.get('date_from', '').strip()
+        if date_from:
+            queryset = queryset.filter(created_at__gte=date_from)
+
+        date_to = request.query_params.get('date_to', '').strip()
+        if date_to:
+            queryset = queryset.filter(created_at__lte=date_to)
+
+        try:
+            limit = min(int(request.query_params.get('limit', 10)), 100)
+        except (TypeError, ValueError):
+            limit = 10
+        try:
+            offset = max(int(request.query_params.get('offset', 0)), 0)
+        except (TypeError, ValueError):
+            offset = 0
+
+        total = queryset.count()
+        logs = queryset[offset:offset + limit]
+        serializer = AIAuditLogSerializer(logs, many=True)
+
+        return Response({
+            'results': serializer.data,
+            'total': total,
+            'limit': limit,
+            'offset': offset,
+        })
+
+
+class PortfolioUserConfigLegacyView(APIView):
+    """GET /workspace/userconfig/ — proxy đến identity_access.UserProfile
+
+    Cung cấp event gate status (advisory_whale_signal_enabled) cho SaaS frontend.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from identity_access.models import UserProfile
+        profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        prefs = profile.preferences or {}
+        return Response({
+            'id': profile.pk,
+            'language': profile.language,
+            'theme': profile.theme,
+            'preferences': prefs,
+            'advisory_whale_signal_enabled': prefs.get('advisory_whale_signal_enabled', True),
+        })
 
 
 class PortfolioMarketDiscoveryHubView(APIView):

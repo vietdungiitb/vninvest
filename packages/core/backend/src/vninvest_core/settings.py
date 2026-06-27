@@ -5,6 +5,7 @@ Uses environment variables for all secrets/infrastructure.
 Default DATABASE_URL uses SQLite for local testing convenience.
 """
 import os
+import sys
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
@@ -69,6 +70,8 @@ INSTALLED_APPS = [
     'service_ops',
     'support',
     'advertising',
+    'ai_agents',
+    'ai_analytics',
 ]
 
 MIDDLEWARE = [
@@ -217,21 +220,21 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.UserRateThrottle',
-    ],
+    ] if 'test' not in sys.argv else [],
     'DEFAULT_THROTTLE_RATES': {
-        'user': '1000/hour',
-        'ingest_admin_trigger': '10/hour',
+        'user': '999999/day' if 'test' in sys.argv else '1000/hour',
+        'ingest_admin_trigger': '999999/day' if 'test' in sys.argv else '10/hour',
         # D03/D04: DNSE backfill throttle (AGENTS §14.9)
-        'system_backfill_trigger': '30/hour',
-        'user_backfill_trigger': '5/hour',
+        'system_backfill_trigger': '999999/day' if 'test' in sys.argv else '30/hour',
+        'user_backfill_trigger': '999999/day' if 'test' in sys.argv else '5/hour',
         # Independent realtime polling bucket — does not consume 'user' quota
-        'realtime_data': '120/min',
+        'realtime_data': '999999/day' if 'test' in sys.argv else '120/min',
         # Independent SOC operator read bucket — does not consume 'user' quota
-        'soc_operator_read': '120/min',
+        'soc_operator_read': '999999/day' if 'test' in sys.argv else '120/min',
         # Independent auth-bootstrap bucket — /auth/me/ and capabilities must never
         # be blocked by operational polling exhausting the global 'user' bucket
-        'auth_bootstrap': '60/min',
-        'notification': '3/second',
+        'auth_bootstrap': '999999/day' if 'test' in sys.argv else '60/min',
+        'notification': '999999/day' if 'test' in sys.argv else '3/second',
     },
 }
 

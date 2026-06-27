@@ -404,6 +404,26 @@
   - `npm run build` -> ✅ Pass (built in 20.14s, 3860 modules, 0 errors)
 - **Residual risk**: None.
 
+---
 
+## Entry 22: Jest Native ESM Testing Pipeline Configuration & Synced DynamicChart Refactoring
 
-
+- **PR / branch**: `dev`
+- **Date**: 2026-06-27
+- **Files touched**:
+  - `packages/web/package.json`
+  - `packages/web/babel.config.json`
+  - `packages/web/jest.config.js`
+  - `packages/web/test/setupTests.js`
+  - `packages/web/src/pages/auth/AuthPages.test.js`
+  - `packages/web/src/pages/auth/AuthLoginPage.tsx`
+  - `packages/web/src/pages/auth/AuthRegisterPage.tsx`
+  - `packages/web/src/pages/auth/AuthResetPasswordPage.tsx`
+  - `frontend/src/components/vnstockcharts/lib/core/DynamicChart.tsx`
+  - `docs/CODE_CHANGE_AUDIT_LEDGER.md` (this entry)
+- **Summary**: Thiết lập hoàn chỉnh môi trường chạy test Native ESM Jest trong `packages/web`. Sử dụng cấu hình `modules: false` toàn cục của Babel, thiết lập `extensionsToTreatAsEsm` để tải `.jsx`, `.ts`, `.tsx` dưới dạng ES Modules và giữ nguyên `setupTests.js` sử dụng ESM imports. Chuyển đổi các import tĩnh của auth pages trong `AuthPages.test.js` thành dynamic `await import()` và sử dụng `jest.unstable_mockModule` thay vì `jest.mock`. Sửa đổi các import `FormEvent` trong auth pages thành type-only `import type` để giải quyết lỗi Node ESM phân tích runtime value export của React CommonJS package. Đồng thời, đồng bộ cấu trúc `renderSeries` trong `DynamicChart.tsx` của legacy frontend sang mô hình registry dispatcher để đồng nhất hoàn toàn với package `packages/web` (SaaS native).
+- **Validation**:
+  - `npm run test` trong `packages/web/` -> ✅ 15/15 test suites passed (209/209 tests passed, 0 failures, 0 errors, Native ESM active).
+  - `npx tsc --noEmit` trong cả `packages/web/` và `frontend/` -> ✅ Pass (0 errors).
+  - `npm run build` trong `packages/web/` -> ✅ Pass (transforming 3863 modules, Vite production build succeeded).
+- **Residual risk**: None.

@@ -574,5 +574,60 @@ export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, c
     testAICommandCenterConnection(data) {
       return corePost("/workspace/ai-command-center/test-connection/", data);
     },
+
+    getAIAuditLogs(params = {}) {
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
+      ).toString();
+      return coreGet(`/workspace/ai-command-center/audit-logs/${query ? `?${query}` : ''}`);
+    },
+
+    getUserConfig() {
+      return coreGet('/workspace/userconfig/');
+    },
+
+    // ─── AI Agent Registry API ───────────────────────────────────────────
+
+    getAIAgents(params = {}) {
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
+      ).toString();
+      return coreGet(`/ai/agents/${query ? `?${query}` : ''}`);
+    },
+
+    createAIAgent(data) {
+      return corePost('/ai/agents/', data);
+    },
+
+    updateAIAgent(id, data) {
+      return corePatch(`/ai/agents/${id}/`, data);
+    },
+
+    deleteAIAgent(id) {
+      return coreDelete(`/ai/agents/${id}/`);
+    },
+
+    // ─── AI Usage Analytics API ──────────────────────────────────────────
+
+    getAIUsageRecords(params = {}) {
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
+      ).toString();
+      return coreGet(`/ai/usage/${query ? `?${query}` : ''}`);
+    },
+
+    getAIUsageSummary(params = {}) {
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
+      ).toString();
+      return coreGet(`/ai/usage/summary/${query ? `?${query}` : ''}`);
+    },
+
+    getAIUsageAggregate(params = {}) {
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
+      ).toString();
+      return coreGet(`/ai/usage/aggregate/${query ? `?${query}` : ''}`);
+    },
   };
 }

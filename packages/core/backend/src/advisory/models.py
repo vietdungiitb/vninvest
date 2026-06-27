@@ -270,3 +270,41 @@ class UserAICredential(models.Model):
         )
         self.refresh_from_db()
         return True
+
+
+class AIAuditLog(models.Model):
+    """
+    Audit log cho AI Command Center actions.
+    Ghi lại mọi thay đổi cấu hình và test-connection để traceability.
+    before_json/after_json được sanitize trước khi persist (API key masking).
+    """
+
+    class ActionChoices(models.TextChoices):
+        UPDATE_SETTINGS = 'update_settings', 'Cập nhật cấu hình'
+        TEST_CONNECTION_SUCCESS = 'test_connection_success', 'Test kết nối thành công'
+        TEST_CONNECTION_FAILED = 'test_connection_failed', 'Test kết nối thất bại'
+
+    action = models.CharField(
+        max_length=32,
+        choices=ActionChoices.choices,
+        db_index=True,
+        verbose_name='Hành động',
+    )
+    actor = models.CharField(
+        max_length=128,
+        blank=True, default='',
+        verbose_name='Người thực hiện',
+    )
+    reason = models.TextField(blank=True, default='', verbose_name='Lý do')
+    before_json = models.JSONField(default=dict, blank=True, verbose_name='Trạng thái trước')
+    after_json = models.JSONField(default=dict, blank=True, verbose_name='Trạng thái sau')
+    diff_summary = models.TextField(blank=True, default='', verbose_name='Tóm tắt thay đổi')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = 'AI Audit Log'
+        verbose_name_plural = 'AI Audit Logs'
+        ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        return f'{self.action} by {self.actor or "system"} @ {self.created_at}'

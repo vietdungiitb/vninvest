@@ -84,6 +84,8 @@ function App() {
         createElement(Route, { path: 'support', element: createElement(resolvePageComponent('support')) }),
         createElement(Route, { path: 'settings', element: createElement(resolvePageComponent('settings')) }),
         createElement(Route, { path: 'settings/ai', element: createElement(resolvePageComponent('ai-command-center')) }),
+        createElement(Route, { path: 'settings/ai/agents', element: createElement(resolvePageComponent('ai-agent-federation')) }),
+        createElement(Route, { path: 'settings/ai/usage', element: createElement(resolvePageComponent('ai-usage-analytics')) }),
         createElement(Route, { path: 'ai-command-center', element: createElement(resolvePageComponent('shell-ai-command-center')) }),
         createElement(Route, { path: 'operations-center', element: createElement(resolvePageComponent('operations-center')) }),
         createElement(Route, { path: 'operations-center/mail-config', element: createElement(resolvePageComponent('operations-center-mail-config')) }),

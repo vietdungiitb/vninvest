@@ -70,20 +70,20 @@ describe("SOC adapter", () => {
     it("getSocVnbrokerConfig calls coreGet and normalizes", async () => {
       coreGet.mockResolvedValue({ status: "ok", config: { timeout: 30 } });
       const result = await soc.getSocVnbrokerConfig();
-      expect(coreGet).toHaveBeenCalledWith("/operator/vnbroker/config/");
+      expect(coreGet).toHaveBeenCalledWith("/operator/soc/vnbroker/config/");
       expect(result.config).toEqual({ timeout: 30 });
     });
 
     it("applySocVnbrokerConfig calls corePost and normalizes", async () => {
       corePost.mockResolvedValue({ status: "saved", config_payload: { timeout: 30 } });
       const result = await soc.applySocVnbrokerConfig({ timeout: 30 });
-      expect(corePost).toHaveBeenCalledWith("/operator/vnbroker/config/", { config_payload: { timeout: 30 } });
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/vnbroker/config/", { config_payload: { timeout: 30 } });
       expect(result.config_payload).toEqual({ timeout: 30 });
     });
 
     it("previewSocVnbrokerConfig calls corePost", async () => {
       await soc.previewSocVnbrokerConfig({ proxy: "auto" });
-      expect(corePost).toHaveBeenCalledWith("/operator/vnbroker/config/preview/", { config_payload: { proxy: "auto" } });
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/vnbroker/config/preview/", { config_payload: { proxy: "auto" } });
     });
 
     it("getSocVnbrokerHealth calls coreGet and normalizes", async () => {
@@ -95,27 +95,27 @@ describe("SOC adapter", () => {
 
     it("testSocVnbrokerConnection calls corePost", async () => {
       await soc.testSocVnbrokerConnection();
-      expect(corePost).toHaveBeenCalledWith("/operator/vnbroker/test-connection/");
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/vnbroker/test-connection/");
     });
 
     it("getSocVnbrokerProviders calls coreGet", async () => {
       await soc.getSocVnbrokerProviders();
-      expect(coreGet).toHaveBeenCalledWith("/operator/vnbroker/providers/");
+      expect(coreGet).toHaveBeenCalledWith("/operator/soc/vnbroker/providers/");
     });
 
     it("runSocVnbrokerBenchmark calls corePost with payload", async () => {
       await soc.runSocVnbrokerBenchmark({ count: 100 });
-      expect(corePost).toHaveBeenCalledWith("/operator/vnbroker/benchmark/", { count: 100 });
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/vnbroker/benchmark/", { count: 100 });
     });
 
     it("getSocVnbrokerBenchmarkLatest calls coreGet", async () => {
       await soc.getSocVnbrokerBenchmarkLatest();
-      expect(coreGet).toHaveBeenCalledWith("/operator/vnbroker/benchmark/");
+      expect(coreGet).toHaveBeenCalledWith("/operator/soc/vnbroker/benchmark/");
     });
 
     it("getSocVnbrokerCircuitBreaker calls coreGet", async () => {
       await soc.getSocVnbrokerCircuitBreaker();
-      expect(coreGet).toHaveBeenCalledWith("/operator/vnbroker/circuit-breaker-status/");
+      expect(coreGet).toHaveBeenCalledWith("/operator/soc/vnbroker/circuit-breaker-status/");
     });
 
     it("getSocVnbrokerMetrics derives from health", async () => {
@@ -145,7 +145,7 @@ describe("SOC adapter", () => {
 
     it("getSocDataOpsRunLogs calls coreGet with page", async () => {
       await soc.getSocDataOpsRunLogs(5);
-      expect(coreGet).toHaveBeenCalledWith("/operator/scraping/dataops/run-logs/?page=5");
+      expect(coreGet).toHaveBeenCalledWith("/operator/scraping/dataops/run-logs/?page=5&page_size=20");
     });
   });
 
@@ -251,7 +251,7 @@ describe("SOC adapter", () => {
 
     it("applySocPrefetchConfig calls corePost", async () => {
       await soc.applySocPrefetchConfig({ ttl: 600 });
-      expect(corePost).toHaveBeenCalledWith("/operator/prefetch/config/", { config_payload: { ttl: 600 } });
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/prefetch/config/", { config_payload: { ttl: 600 } });
     });
 
     it("getSocPrefetchProfiles maps profiles", async () => {
@@ -270,21 +270,21 @@ describe("SOC adapter", () => {
 
     it("purgeSocPrefetchCache calls corePost", async () => {
       await soc.purgeSocPrefetchCache();
-      expect(corePost).toHaveBeenCalledWith("/operator/prefetch/purge-cache/");
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/prefetch/purge-cache/");
     });
 
     it("warmSocPrefetchNow calls corePost with mode", async () => {
       await soc.warmSocPrefetchNow("sync");
-      expect(corePost).toHaveBeenCalledWith("/operator/prefetch/warm-now/?mode=sync");
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/prefetch/warm-now/?mode=sync");
     });
 
     it("getSocPrefetchUniverseGroups / Schedule / Metrics call coreGet", async () => {
       await soc.getSocPrefetchUniverseGroups();
-      expect(coreGet).toHaveBeenCalledWith("/operator/prefetch/universe-groups/");
+      expect(coreGet).toHaveBeenCalledWith("/operator/soc/prefetch/universe-groups/");
       await soc.getSocPrefetchSchedule();
-      expect(coreGet).toHaveBeenCalledWith("/operator/prefetch/task-schedule/");
+      expect(coreGet).toHaveBeenCalledWith("/operator/soc/prefetch/task-schedule/");
       await soc.getSocPrefetchMetrics();
-      expect(coreGet).toHaveBeenCalledWith("/operator/prefetch/metrics/");
+      expect(coreGet).toHaveBeenCalledWith("/operator/soc/prefetch/metrics/");
     });
   });
 

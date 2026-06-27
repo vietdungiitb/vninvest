@@ -1,4 +1,5 @@
-import { createElement, FormEvent, useMemo, useState } from "react";
+import { createElement, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { CoreApiRequestError, coreApiAdapter } from "../../adapters/coreApiAdapter.js";
 

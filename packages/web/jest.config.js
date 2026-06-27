@@ -3,7 +3,7 @@ const config = {
   testEnvironment: 'jsdom',
   // Transform ESM modules
   transform: {
-    '^.+\\.(js|jsx)$': ['babel-jest', { configFile: './babel.config.json' }],
+    '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { configFile: './babel.config.json' }],
   },
   testPathIgnorePatterns: [
     "/node_modules/",
@@ -15,8 +15,9 @@ const config = {
   },
   setupFilesAfterEnv: ['<rootDir>/test/setupTests.js'],
   testMatch: [
-    '**/*.test.{js,jsx}',
+    '**/*.test.{js,jsx,ts,tsx}',
   ],
+  extensionsToTreatAsEsm: ['.jsx', '.ts', '.tsx'],
 };
 
 export default config;

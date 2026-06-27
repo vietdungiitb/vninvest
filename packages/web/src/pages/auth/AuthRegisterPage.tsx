@@ -1,4 +1,5 @@
-import { createElement, FormEvent, useState } from "react";
+import { createElement, useState } from "react";
+import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { CoreApiRequestError, coreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { TurnstileWidget } from "../../components/auth/TurnstileWidget.js";
@@ -69,7 +70,7 @@ export function AuthRegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({ ...EMPTY_FIELD_ERRORS });
+  const [fieldErrors, setFieldErrors] = useState({ ...EMPTY_FIELD_ERRORS } as FieldErrors);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();

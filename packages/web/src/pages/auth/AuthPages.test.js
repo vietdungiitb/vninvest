@@ -1,13 +1,17 @@
 import React from "react";
 import "jest-location-mock";
 import { describe, test, expect, jest, beforeEach, afterEach } from "@jest/globals";
-import { act, create } from "react-test-renderer";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { AuthLoginPage } from "./AuthLoginPage.js";
-import { AuthRegisterPage } from "./AuthRegisterPage.js";
-import { AuthVerifyEmailPage } from "./AuthVerifyEmailPage.js";
-import { AuthResetPasswordPage } from "./AuthResetPasswordPage.js";
-import { CoreApiRequestError, coreApiAdapter } from "../../adapters/coreApiAdapter.js";
+jest.unstable_mockModule("@marsidev/react-turnstile", () => ({
+  Turnstile: () => null,
+}));
+
+const { act, create } = await import("react-test-renderer");
+const { MemoryRouter, Route, Routes } = await import("react-router-dom");
+const { AuthLoginPage } = await import("./AuthLoginPage.tsx");
+const { AuthRegisterPage } = await import("./AuthRegisterPage.tsx");
+const { AuthVerifyEmailPage } = await import("./AuthVerifyEmailPage.tsx");
+const { AuthResetPasswordPage } = await import("./AuthResetPasswordPage.tsx");
+const { CoreApiRequestError, coreApiAdapter } = await import("../../adapters/coreApiAdapter.js");
 
 function renderAtRoute(path, element, entry) {
   const initialEntry = entry || path;

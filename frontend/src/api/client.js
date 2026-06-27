@@ -791,16 +791,6 @@ export const getAICommandCenterConfig = () => apiClient.get('/workspace/ai-comma
 export const updateAICommandCenterConfig = (data) => apiClient.put('/workspace/ai-command-center/', data, withCoreBase());
 export const testAICommandCenterConnection = (data) =>
   apiClient.post('/portfolio/ai-command-center/test-connection/', data);
-export const getAICommandCenterAuditLogs = (params = {}) => {
-  const query = new URLSearchParams();
-  Object.entries(params || {}).forEach(([key, value]) => {
-    if (value === null || value === undefined || value === '') return;
-    query.set(key, String(value));
-  });
-  const suffix = query.toString() ? `?${query.toString()}` : '';
-  return apiClient.get(`/portfolio/ai-command-center/audit-logs/${suffix}`);
-};
-
 export const getAIConfig = getAICommandCenterConfig;
 export const updateAIConfig = updateAICommandCenterConfig;
 export const getAIOptions = () => apiClient.get('/ai-options/');
