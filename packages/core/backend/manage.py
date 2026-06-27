@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 """Django management utility for packages/core."""
 import os
+import socket
 import sys
+
+# Prevent socket blocking operations from hanging indefinitely
+socket.setdefaulttimeout(60.0)
 
 
 def main():
