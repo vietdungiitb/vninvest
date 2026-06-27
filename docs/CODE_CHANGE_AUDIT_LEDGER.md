@@ -427,3 +427,21 @@
   - `npx tsc --noEmit` trong cả `packages/web/` và `frontend/` -> ✅ Pass (0 errors).
   - `npm run build` trong `packages/web/` -> ✅ Pass (transforming 3863 modules, Vite production build succeeded).
 - **Residual risk**: None.
+
+---
+
+## Entry 23: Production Deployment, Database Migrations Setup & Stuck Job Resolution
+
+- **PR / branch**: `dev`
+- **Date**: 2026-06-27
+- **Files touched**:
+  - `packages/core/backend/src/service_ops/scheduler_catalog.py` (capabilities updated with 'abort_active')
+  - `packages/core/backend/src/vninvest_core/settings.py` (conditional DEFAULT_THROTTLE_RATES to bypass test rate-limiting)
+  - `packages/core/backend/src/identity_access/migrations/0018_rename_core_login_attempt_tenant_created_42aec0_idx_core_login__tenant__0e42d1_idx_and_more.py` (new migration file generated)
+  - `docs/CODE_CHANGE_AUDIT_LEDGER.md` (this entry)
+- **Summary**: Deployed the abort capability features to the production server (`saas.edusuccess.vn`). Discovered and resolved database schema inconsistencies by generating and running missing migration `0018` to add `allowed_symbols` and other B2B SaaS Tier columns to PostgreSQL database on production. Evicted the stuck `dnse-quarterly-backfill-intraday` job in Python django shell to fully restore production services.
+- **Validation**:
+  - Django test suite: `python manage.py test service_ops` -> ✅ 276/276 tests passed.
+  - Production backend health: `curl -i https://saas.edusuccess.vn/core/v1/health` -> ✅ Returns 200 OK.
+  - Stuck job state: ✅ Deleted from cache, run log marked as `failed` (inactive).
+- **Residual risk**: None.
