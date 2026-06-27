@@ -227,9 +227,13 @@ export function createCoreTransport(env = {}, options = {}) {
   let refreshPromise = null;
 
   function toCoreApiRequestError(path, response, payload, fallbackText = "") {
+    let cleanFallback = fallbackText;
+    if (fallbackText && (fallbackText.toLowerCase().includes("<!doctype") || fallbackText.toLowerCase().includes("<html"))) {
+      cleanFallback = `Server error (HTTP ${response.status})`;
+    }
     const detail =
       (payload && typeof payload === "object" && (payload.detail || payload.message)) ||
-      fallbackText ||
+      cleanFallback ||
       response.statusText ||
       "Request failed";
     const fieldErrors =

@@ -45,8 +45,9 @@ frontend/.env.*.local
 .env.saas-prod
 
 # ── Node / React ─────────────────────────────────────────────────────────────
-frontend/node_modules/
-packages/web/node_modules/
+node_modules/
+/package.json
+/package-lock.json
 packages/vip-app/local-backend/data/
 frontend/build/
 frontend/.pnp
@@ -89,4 +90,10 @@ htmlcov/
 scratch/
 .agents/
 .blackbox/
+
+# ── Build Logs & Artifacts ───────────────────────────────────────────────────
+/*.log
+/build_log*.txt
+/*.tar
+/*.bundle
 

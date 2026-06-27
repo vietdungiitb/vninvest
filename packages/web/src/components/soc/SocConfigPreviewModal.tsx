@@ -5,13 +5,15 @@ import styles from "./soc.module.css";
 interface SocConfigPreviewModalProps {
   before: Record<string, unknown> | null;
   after: Record<string, unknown> | null;
+  changeSummary?: string[];
+  impactWarnings?: string[];
   validationErrors?: string[];
   onConfirm: () => void;
   onCancel: () => void;
   loading?: boolean;
 }
 
-export function SocConfigPreviewModal({ before, after, validationErrors, onConfirm, onCancel, loading }: SocConfigPreviewModalProps) {
+export function SocConfigPreviewModal({ before, after, changeSummary, impactWarnings, validationErrors, onConfirm, onCancel, loading }: SocConfigPreviewModalProps) {
   const { t } = useI18n();
 
   return createElement(
@@ -62,6 +64,7 @@ export function SocConfigPreviewModal({ before, after, validationErrors, onConfi
           "\u2715",
         ),
       ),
+
       validationErrors && validationErrors.length > 0
         ? createElement(
             "div",
@@ -70,6 +73,29 @@ export function SocConfigPreviewModal({ before, after, validationErrors, onConfi
             validationErrors.map((err, i) => createElement("div", { key: i, style: { fontSize: "0.75rem" } }, `\u2022 ${err}`)),
           )
         : null,
+
+      impactWarnings && impactWarnings.length > 0
+        ? createElement(
+            "div",
+            { className: styles.inlineError, style: { marginBottom: "1rem", background: "rgba(251, 191, 36, 0.1)", border: "1px solid rgba(251, 191, 36, 0.3)" } },
+            createElement("div", { style: { fontWeight: 700, marginBottom: "0.25rem", color: "#fbbf24" } }, t("soc.config_preview.impact_warnings")),
+            impactWarnings.map((w, i) => createElement("div", { key: i, style: { fontSize: "0.75rem", color: "#fbbf24" } }, `\u26A0 ${w}`)),
+          )
+        : null,
+
+      changeSummary && changeSummary.length > 0
+        ? createElement(
+            "div",
+            { style: { marginBottom: "1rem" } },
+            createElement("div", { style: { fontWeight: 700, fontSize: "0.8rem", marginBottom: "0.5rem", color: "var(--accent-cyan)" } }, t("soc.config_preview.changes")),
+            createElement(
+              "div",
+              { style: { fontSize: "0.75rem", maxHeight: "120px", overflow: "auto", padding: "0.5rem", background: "rgba(15, 23, 42, 0.3)", borderRadius: "6px" } },
+              changeSummary.map((c, i) => createElement("div", { key: i, style: { padding: "0.15rem 0" } }, c)),
+            ),
+          )
+        : null,
+
       createElement(
         "div",
         { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.25rem" } },

@@ -1,6 +1,7 @@
-import { createElement, useState } from "react";
+import { createElement, useState, useCallback } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { SocTabNavigation } from "../../components/soc/SocTabNavigation.js";
+import { SocOverviewPanel } from "../../components/soc/SocOverviewPanel.js";
 import { SocSignalsPanel } from "../../components/soc/SocSignalsPanel.js";
 import { SocPrefetchPanel } from "../../components/soc/SocPrefetchPanel.js";
 import { SocScreenerPanel } from "../../components/soc/SocScreenerPanel.js";
@@ -17,7 +18,32 @@ interface ShellOperationsCenterPageProps {
   initialSnapshot?: Record<string, unknown> | null;
 }
 
+function useSearchParams() {
+  const [params, setParams] = useState(() => new URLSearchParams(
+    typeof window !== "undefined" ? window.location.search : "",
+  ));
+  const updateParams = useCallback((key: string, value: string) => {
+    const next = new URLSearchParams(
+      typeof window !== "undefined" ? window.location.search : "",
+    );
+    if (value) {
+      next.set(key, value);
+    } else {
+      next.delete(key);
+    }
+    if (typeof window !== "undefined") {
+      const newUrl = next.toString()
+        ? `${window.location.pathname}?${next.toString()}`
+        : window.location.pathname;
+      window.history.replaceState(null, "", newUrl);
+    }
+    setParams(next);
+  }, []);
+  return [params, updateParams] as const;
+}
+
 const SOC_TABS = [
+  { key: "overview", icon: "\u{1F5C3}" },
   { key: "signals", icon: "\u{1F6EC}" },
   { key: "dataops", icon: "\u{1F4E1}" },
   { key: "prefetch", icon: "\u{26A1}" },
@@ -29,10 +55,19 @@ const SOC_TABS = [
 
 export function ShellOperationsCenterPage(_props: ShellOperationsCenterPageProps) {
   const { t } = useI18n();
-  const [activeTab, setActiveTab] = useState("signals");
+  const [searchParams, setSearchParam] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab") || "overview";
+  const [activeTab, setActiveTab] = useState(tabFromUrl);
+
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    setSearchParam("tab", tab);
+  }, [setSearchParam]);
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case "overview":
+        return createElement(SocOverviewPanel, { onChangeTab: handleTabChange });
       case "signals":
         return createElement(SocSignalsPanel);
       case "prefetch":
@@ -48,7 +83,7 @@ export function ShellOperationsCenterPage(_props: ShellOperationsCenterPageProps
       case "dnse-backfill":
         return createElement(SocDnseBackfillPanel);
       default:
-        return createElement(SocSignalsPanel);
+        return createElement(SocOverviewPanel, { onChangeTab: handleTabChange });
     }
   };
 
@@ -105,7 +140,7 @@ export function ShellOperationsCenterPage(_props: ShellOperationsCenterPageProps
     createElement(SocTabNavigation, {
       tabs: SOC_TABS,
       activeTab,
-      onChange: setActiveTab,
+      onChange: handleTabChange,
     }),
     renderTabContent(),
   );

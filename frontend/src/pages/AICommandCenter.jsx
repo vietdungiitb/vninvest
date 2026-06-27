@@ -1297,13 +1297,15 @@ const AICommandCenter = () => {
                         className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
                       />
                     </label>
-                    <label className="text-xs font-medium text-slate-400">
+                     <label className="text-xs font-medium text-slate-400">
                       Từ ngày
                       <input
                         type="date"
                         value={auditFilters.date_from}
                         onChange={(e) => setAuditFilters((prev) => ({ ...prev, date_from: e.target.value }))}
-                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
+                        onClick={(e) => { try { e.target.showPicker(); } catch {} }}
+                        onFocus={(e) => { try { e.target.showPicker(); } catch {} }}
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500 cursor-pointer"
                       />
                     </label>
                     <label className="text-xs font-medium text-slate-400">
@@ -1312,7 +1314,9 @@ const AICommandCenter = () => {
                         type="date"
                         value={auditFilters.date_to}
                         onChange={(e) => setAuditFilters((prev) => ({ ...prev, date_to: e.target.value }))}
-                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
+                        onClick={(e) => { try { e.target.showPicker(); } catch {} }}
+                        onFocus={(e) => { try { e.target.showPicker(); } catch {} }}
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500 cursor-pointer"
                       />
                     </label>
                   </div>

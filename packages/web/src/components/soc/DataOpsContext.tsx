@@ -11,17 +11,33 @@ interface BackfillRun {
 }
 
 interface InventoryData {
-  total_rows: number;
-  total_symbols: number;
-  earliest_date: string;
-  latest_date: string;
-  groups: Record<string, unknown>;
+  summary: {
+    total_rows: number;
+    total_symbols: number;
+    earliest_date: string | null;
+    latest_date: string | null;
+    calendar_days: number;
+  };
+  by_year: { year: string; rows: number; symbols: number }[];
+  by_group: {
+    id: string; name: string; type: string;
+    symbol_count: number; covered_symbols: number; recent_symbols: number;
+    total_rows: number; earliest_date: string | null; latest_date: string | null;
+    calendar_days: number;
+  }[];
+  data_types: {
+    name: string; label: string;
+    total_rows: number; symbols: number;
+    earliest_date: string | null; latest_date: string | null;
+  }[];
   [key: string]: unknown;
 }
 
 interface CoverageData {
   [key: string]: unknown;
 }
+
+
 
 interface DataOpsState {
   activeSubTab: string;

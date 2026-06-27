@@ -3,7 +3,7 @@ import { useI18n } from "../../context/LangContext.js";
 import { ShellPanel } from "../../components/ShellPageTemplate.js";
 import { DataOpsProvider, useDataOps } from "./DataOpsContext.js";
 import { SocDataInventorySection } from "./SocDataInventorySection.js";
-import { SocDataOpsBackfillForm } from "./SocDataOpsBackfillForm.js";
+import { SocDataOpsOperationsSection } from "./SocDataOpsOperationsSection.js";
 import { SocDataOpsMonitorSection } from "./SocDataOpsMonitorSection.js";
 import { SocDataOpsConfigSection } from "./SocDataOpsConfigSection.js";
 import { SocSchedulerBoard } from "./SocSchedulerBoard.js";
@@ -30,20 +30,45 @@ function DataOpsContent() {
   };
 
   const renderSubTabContent = () => {
+    let content;
+    let title = "";
+    let subtitle = "";
+
     switch (activeSubTab) {
       case "inventory":
-        return createElement(SocDataInventorySection);
+        title = t("soc.dataops.subtab.inventory");
+        subtitle = t("soc.dataops.inventory_section_desc", { defaultValue: "Báo cáo dung lượng, độ phủ và queue tiers." });
+        content = createElement(SocDataInventorySection);
+        break;
       case "operations":
-        return createElement(SocDataOpsBackfillForm);
+        title = t("soc.dataops.subtab.operations");
+        subtitle = t("soc.dataops.operations_section_desc", { defaultValue: "Bề mặt vận hành chạy bù backfill và planner." });
+        content = createElement(SocDataOpsOperationsSection);
+        break;
       case "monitor":
-        return createElement(SocDataOpsMonitorSection);
+        title = t("soc.dataops.subtab.monitor");
+        subtitle = t("soc.dataops.monitor_section_desc", { defaultValue: "Ma trận cào song song, parity gates và health." });
+        content = createElement(SocDataOpsMonitorSection);
+        break;
       case "scheduler":
-        return createElement(SocSchedulerBoard, { domain: "dataops" });
+        title = t("soc.scheduler.board_title");
+        subtitle = t("soc.dataops.scheduler_section_desc", { defaultValue: "Trạng thái kích hoạt và nhịp điệu của các tác vụ hệ thống." });
+        content = createElement(SocSchedulerBoard, { hideHeaderTitle: true });
+        break;
       case "config":
-        return createElement(SocDataOpsConfigSection);
+        title = t("soc.dataops.subtab.config");
+        subtitle = t("soc.dataops.config_section_desc", { defaultValue: "Chỉnh sửa tệp cấu hình runtime và vết kiểm toán." });
+        content = createElement(SocDataOpsConfigSection);
+        break;
       default:
         return createElement("p", { className: styles.emptyState }, t("soc.dataops.subtab_not_found"));
     }
+
+    return createElement(
+      ShellPanel,
+      { title, subtitle },
+      content
+    );
   };
 
   return createElement(
@@ -79,18 +104,9 @@ function DataOpsContent() {
 }
 
 export function SocDataOpsPanel() {
-  const { t } = useI18n();
-
   return createElement(
     "div",
     { className: styles.glassPanel },
-    createElement(
-      ShellPanel,
-      {
-        title: t("soc.dataops.title"),
-        subtitle: t("soc.dataops.description"),
-      },
-      createElement(DataOpsProvider, null, createElement(DataOpsContent)),
-    ),
+    createElement(DataOpsProvider, null, createElement(DataOpsContent)),
   );
 }

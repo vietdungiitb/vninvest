@@ -600,7 +600,7 @@ const en = {
       col_actions: 'Actions',
       col_history: 'History',
       empty_state: 'No matching jobs found',
-      view_history: 'View history',
+      view_history: 'History',
       action_enable: 'Enable',
       action_disable: 'Disable',
       action_run_now: 'Run Now',

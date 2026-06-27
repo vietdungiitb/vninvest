@@ -441,7 +441,9 @@ const BackfillCenterSection = ({ t, canApply, customGroups }) => {
             type="date"
             value={form.fromDate}
             onChange={(e) => setForm((prev) => ({ ...prev, fromDate: e.target.value }))}
-            className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+            onClick={(e) => { try { e.target.showPicker(); } catch {} }}
+            onFocus={(e) => { try { e.target.showPicker(); } catch {} }}
+            className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none cursor-pointer"
           />
         </div>
         <div>
@@ -450,7 +452,9 @@ const BackfillCenterSection = ({ t, canApply, customGroups }) => {
             type="date"
             value={form.toDate}
             onChange={(e) => setForm((prev) => ({ ...prev, toDate: e.target.value }))}
-            className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+            onClick={(e) => { try { e.target.showPicker(); } catch {} }}
+            onFocus={(e) => { try { e.target.showPicker(); } catch {} }}
+            className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none cursor-pointer"
           />
         </div>
         <div>

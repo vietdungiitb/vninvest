@@ -466,6 +466,8 @@ export function ShellField({ label, name, type = "text", value, onChange, placeh
       onChange,
       placeholder,
       autoComplete,
+      onClick: type === "date" ? (e) => { try { e.target.showPicker(); } catch {} } : undefined,
+      onFocus: type === "date" ? (e) => { try { e.target.showPicker(); } catch {} } : undefined,
     }),
   );
 }

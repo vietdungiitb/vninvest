@@ -1,5 +1,8 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { forwardRef, useImperativeHandle, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocalStorageState } from "./hooks/useLocalStorageState.js";
+import { formatSeriesSuffix, formatSeriesDisplayName, seriesLabelKeys, seriesAbbreviations } from "./utils/seriesLabelUtils.js";
+import { buildPaneToolbarWrapperProps, buildPaneSplitterWrapperProps, buildDrawingChromeWrapperProps, buildDrawingChromeContent } from "./VNInvestChartsChrome.js";
 import { scaleUtc } from "d3-scale";
 import { discontinuousTimeScaleProviderBuilder } from "../lib/scale/index.js";
 import { createPaneSpecsFromDescriptors, createDateTimeIndexMap, } from "@vninvestcharts/vn-kline-engine-core";
@@ -14,7 +17,7 @@ import { ExternalCVDOverlay } from "../lib/indicators/overlays/ExternalCVDOverla
 import { DarkFlowBadge } from "../lib/indicators/overlays/DarkFlowBadge.js";
 import { AdvisoryPanel } from "../lib/advisory/AdvisoryPanel.js";
 import { TapePanel } from "../lib/tape/TapePanel.js";
-import { resolveDrawingShortcut, FloatingSelectionToolbar, createDrawingSelectionToolbarModel, resolveDrawingSelectionToolbarPosition } from "../lib/drawing/index.js";
+import { resolveDrawingShortcut } from "../lib/drawing/index.js";
 import { cloneDrawingSnapshot, offsetDrawingByPixels } from "../lib/drawing/clipboard.js";
 import { createDrawingContextMenuItems } from "../lib/drawing/drawingActionSurface.js";
 import { isDrawingToolName } from "../lib/drawing/registry.js";
@@ -50,7 +53,7 @@ import { SnapshotPreviewModal } from "./components/settings/SnapshotPreviewModal
 import { VNSymbolSearch } from "./components/search/VNSymbolSearch.js";
 import { resolveChartRangeExtents } from "./utils/chartRange.js";
 import SaveChartAsImage from "../lib/helper/SaveChartAsImage.js";
-import { priceFormat, volumeFormat, dateFormat, CHART_MARGIN, FORK_DEGRADE_PIXEL_CHECK_DELAY_MS, FORK_DEGRADE_PIXEL_RECHECK_DELAY_MS, FORK_DEGRADE_REQUIRED_BLANK_CHECKS, FALLBACK_ADAPTER, isWidgetTestEnvironment, formatForkXAxisLabel, resolveDiscontinuousXExtents, resolveDateDomainFromDiscontinuous, resolveEngineSeriesValueForRuntime, buildLegacyPaneSnapshots, resolveVisiblePanes, mergePaneSnapshotDomains, arePaneSnapshotsEqual, areRuntimeCapabilitiesEqual, } from "./utils/widgetHelpers.js";
+import { priceFormat, volumeFormat, dateFormat, CHART_MARGIN, FORK_DEGRADE_PIXEL_CHECK_DELAY_MS, FORK_DEGRADE_PIXEL_RECHECK_DELAY_MS, FORK_DEGRADE_REQUIRED_BLANK_CHECKS, FALLBACK_ADAPTER, formatForkXAxisLabel, resolveDiscontinuousXExtents, resolveDateDomainFromDiscontinuous, resolveEngineSeriesValueForRuntime, buildLegacyPaneSnapshots, resolveVisiblePanes, mergePaneSnapshotDomains, arePaneSnapshotsEqual, areRuntimeCapabilitiesEqual, } from "./utils/widgetHelpers.js";
 export { normalizePaneDescriptorsForExplicitScaleSlots } from "./utils/widgetHelpers.js";
 import { createWidgetCoordinateBridge, createForkChartRenderContextValue, createForkStockChartContextValue, } from "./utils/coordinateBridge.js";
 import { ForkPaneTooltips } from "./components/ForkPaneTooltips.js";
@@ -104,77 +107,21 @@ showToolbar, showHeader, showFooter, renderToolbar, renderHeader, renderFooter, 
     // ── WE2 Local Settings & Fallbacks ──────────────────────────────────
     const [localSelectedPaneId, setLocalSelectedPaneId] = useState("price");
     const [toolbarCollapsed, setToolbarCollapsed] = useState(false);
-    const [localMaxVisiblePanes, setLocalMaxVisiblePanes] = useState(() => {
-        try {
-            const val = typeof localStorage !== "undefined" && !isWidgetTestEnvironment() && localStorage.getItem("vnsc_maxVisiblePanes");
-            return val ? parseInt(val, 10) : 6;
-        }
-        catch {
-            return 6;
-        }
-    });
+    const [localMaxVisiblePanes, setLocalMaxVisiblePanes] = useLocalStorageState("vnsc_maxVisiblePanes", 6, { parse: parseInt });
     const activeMaxVisiblePanes = maxVisiblePanes !== undefined ? maxVisiblePanes : localMaxVisiblePanes;
-    const [localMaxVisibleBars, setLocalMaxVisibleBars] = useState(() => {
-        try {
-            const val = typeof localStorage !== "undefined" && !isWidgetTestEnvironment() && localStorage.getItem("vnsc_maxVisibleBars");
-            return val ? parseInt(val, 10) : 40000;
-        }
-        catch {
-            return 40000;
-        }
-    });
+    const [localMaxVisibleBars, setLocalMaxVisibleBars] = useLocalStorageState("vnsc_maxVisibleBars", 40000, { parse: parseInt });
     const activeMaxVisibleBars = maxVisibleBars !== undefined ? maxVisibleBars : localMaxVisibleBars;
-    const [localShowNonTradingDays, setLocalShowNonTradingDays] = useState(() => {
-        try {
-            const val = typeof localStorage !== "undefined" && !isWidgetTestEnvironment() && localStorage.getItem("vnsc_showNonTradingDays");
-            return val ? val === "true" : false;
-        }
-        catch {
-            return false;
-        }
-    });
+    const [localShowNonTradingDays, setLocalShowNonTradingDays] = useLocalStorageState("vnsc_showNonTradingDays", false, { parse: (v) => v === "true" });
     const activeShowNonTradingDays = showNonTradingDays !== undefined ? showNonTradingDays : localShowNonTradingDays;
-    const [localShowDrawingPriceMarkers, setLocalShowDrawingPriceMarkers] = useState(() => {
-        try {
-            const val = typeof localStorage !== "undefined" && !isWidgetTestEnvironment() && localStorage.getItem("vnsc_showDrawingPriceMarkers");
-            return val ? val === "true" : true;
-        }
-        catch {
-            return true;
-        }
-    });
+    const [localShowDrawingPriceMarkers, setLocalShowDrawingPriceMarkers] = useLocalStorageState("vnsc_showDrawingPriceMarkers", true, { parse: (v) => v === "true" });
     const activeShowDrawingPriceMarkers = showDrawingPriceMarkers !== undefined ? showDrawingPriceMarkers : localShowDrawingPriceMarkers;
-    const [localEnableWhale, setLocalEnableWhale] = useState(() => {
-        try {
-            const val = typeof localStorage !== "undefined" && !isWidgetTestEnvironment() && localStorage.getItem("vnsc_enableWhale");
-            return val ? val === "true" : true;
-        }
-        catch {
-            return true;
-        }
-    });
+    const [localEnableWhale, setLocalEnableWhale] = useLocalStorageState("vnsc_enableWhale", true, { parse: (v) => v === "true" });
     const activeEnableWhale = enableWhale !== undefined ? enableWhale : localEnableWhale;
-    const [localWhaleThreshold, setLocalWhaleThreshold] = useState(() => {
-        try {
-            const val = typeof localStorage !== "undefined" && !isWidgetTestEnvironment() && localStorage.getItem("vnsc_whaleThreshold");
-            return val ? parseInt(val, 10) : 1000000;
-        }
-        catch {
-            return 1000000;
-        }
-    });
+    const [localWhaleThreshold, setLocalWhaleThreshold] = useLocalStorageState("vnsc_whaleThreshold", 1000000, { parse: parseInt });
     const activeWhaleThreshold = whaleThreshold !== undefined ? whaleThreshold : localWhaleThreshold;
-    const [localEnableCVD, setLocalEnableCVD] = useState(() => {
-        try {
-            const val = typeof localStorage !== "undefined" && !isWidgetTestEnvironment() && localStorage.getItem("vnsc_enableCVD");
-            return val ? val === "true" : false;
-        }
-        catch {
-            return false;
-        }
-    });
+    const [localEnableCVD, setLocalEnableCVD] = useLocalStorageState("vnsc_enableCVD", false, { parse: (v) => v === "true" });
     const activeEnableCVD = enableCVD !== undefined ? enableCVD : localEnableCVD;
-    const [localCvdMode, setLocalCvdMode] = useState("oscillator");
+    const [localCvdMode, setLocalCvdMode] = useLocalStorageState("vnsc_cvdMode", "oscillator");
     const activeCvdMode = cvdMode !== undefined ? cvdMode : localCvdMode;
     const [localTimezone, setLocalTimezone] = useState("Asia/Ho_Chi_Minh");
     const activeTimezone = timezone || localTimezone;
@@ -640,71 +587,7 @@ showToolbar, showHeader, showFooter, renderToolbar, renderHeader, renderFooter, 
             }
         } })) : null;
     const drawingDockNode = showDrawingDock && drawingWorkspace && drawingWorkspace.state.dock.isOpen ? (renderDrawingDock ? renderDrawingDock({ isOpen: drawingWorkspace.state.dock.isOpen, activeTab: drawingWorkspace.state.dock.activeTab, labels: drawingDockLabels, onClose: () => drawingWorkspace.closeDock(), onTabChange: (tab) => drawingWorkspace.setDockTab(tab), propertiesContent, objectsContent }) : _jsx(DrawingDock, { isOpen: drawingWorkspace.state.dock.isOpen, activeTab: drawingWorkspace.state.dock.activeTab, labels: drawingDockLabels, onClose: () => drawingWorkspace.closeDock(), onTabChange: (tab) => drawingWorkspace.setDockTab(tab), propertiesContent: propertiesContent, objectsContent: objectsContent })) : null;
-    const settingsModalNode = activeSettingsOpen ? (renderSettings ? renderSettings({ open: activeSettingsOpen, onClose: activeOnSettingsClose }) : (_jsx(SettingsModal, { open: activeSettingsOpen, onClose: activeOnSettingsClose, dataAdapterName: dataAdapterName, onDataAdapterChange: onDataAdapterChange, selectedPaneId: localSelectedPaneId, onSelectedPaneIdChange: setLocalSelectedPaneId, maxVisiblePanes: activeMaxVisiblePanes, onMaxVisiblePanesChange: (next) => {
-            setLocalMaxVisiblePanes(next);
-            try {
-                if (typeof localStorage !== "undefined") {
-                    localStorage.setItem("vnsc_maxVisiblePanes", String(next));
-                }
-            }
-            catch { /* ignore */ }
-        }, maxVisibleBars: activeMaxVisibleBars, onMaxVisibleBarsChange: (next) => {
-            setLocalMaxVisibleBars(next);
-            try {
-                if (typeof localStorage !== "undefined") {
-                    localStorage.setItem("vnsc_maxVisibleBars", String(next));
-                }
-            }
-            catch { /* ignore */ }
-        }, showNonTradingDays: activeShowNonTradingDays, onShowNonTradingDaysChange: (next) => {
-            setLocalShowNonTradingDays(next);
-            try {
-                if (typeof localStorage !== "undefined") {
-                    localStorage.setItem("vnsc_showNonTradingDays", String(next));
-                }
-            }
-            catch { /* ignore */ }
-        }, showDrawingPriceMarkers: activeShowDrawingPriceMarkers, onShowDrawingPriceMarkersChange: (next) => {
-            setLocalShowDrawingPriceMarkers(next);
-            try {
-                if (typeof localStorage !== "undefined") {
-                    localStorage.setItem("vnsc_showDrawingPriceMarkers", String(next));
-                }
-            }
-            catch { /* ignore */ }
-        }, enableWhale: activeEnableWhale, onEnableWhaleChange: (next) => {
-            setLocalEnableWhale(next);
-            try {
-                if (typeof localStorage !== "undefined") {
-                    localStorage.setItem("vnsc_enableWhale", String(next));
-                }
-            }
-            catch { /* ignore */ }
-        }, whaleThreshold: activeWhaleThreshold, onWhaleThresholdChange: (next) => {
-            setLocalWhaleThreshold(next);
-            try {
-                if (typeof localStorage !== "undefined") {
-                    localStorage.setItem("vnsc_whaleThreshold", String(next));
-                }
-            }
-            catch { /* ignore */ }
-        }, enableCVD: activeEnableCVD, onEnableCVDChange: (next) => {
-            setLocalEnableCVD(next);
-            try {
-                if (typeof localStorage !== "undefined") {
-                    localStorage.setItem("vnsc_enableCVD", String(next));
-                }
-            }
-            catch { /* ignore */ }
-        }, cvdMode: activeCvdMode, onCVDModeChange: (next) => {
-            setLocalCvdMode(next);
-            try {
-                if (typeof localStorage !== "undefined") {
-                    localStorage.setItem("vnsc_cvdMode", String(next));
-                }
-            }
-            catch { /* ignore */ }
-        }, isDark: isDark, toggleTheme: themeState.toggleTheme, timezone: activeTimezone, onTimezoneChange: (next) => {
+    const settingsModalNode = activeSettingsOpen ? (renderSettings ? renderSettings({ open: activeSettingsOpen, onClose: activeOnSettingsClose }) : (_jsx(SettingsModal, { open: activeSettingsOpen, onClose: activeOnSettingsClose, dataAdapterName: dataAdapterName, onDataAdapterChange: onDataAdapterChange, selectedPaneId: localSelectedPaneId, onSelectedPaneIdChange: setLocalSelectedPaneId, maxVisiblePanes: activeMaxVisiblePanes, onMaxVisiblePanesChange: setLocalMaxVisiblePanes, maxVisibleBars: activeMaxVisibleBars, onMaxVisibleBarsChange: setLocalMaxVisibleBars, showNonTradingDays: activeShowNonTradingDays, onShowNonTradingDaysChange: setLocalShowNonTradingDays, showDrawingPriceMarkers: activeShowDrawingPriceMarkers, onShowDrawingPriceMarkersChange: setLocalShowDrawingPriceMarkers, enableWhale: activeEnableWhale, onEnableWhaleChange: setLocalEnableWhale, whaleThreshold: activeWhaleThreshold, onWhaleThresholdChange: setLocalWhaleThreshold, enableCVD: activeEnableCVD, onEnableCVDChange: setLocalEnableCVD, cvdMode: activeCvdMode, onCVDModeChange: setLocalCvdMode, isDark: isDark, toggleTheme: themeState.toggleTheme, timezone: activeTimezone, onTimezoneChange: (next) => {
             setLocalTimezone(next);
             if (onTimezoneChange) {
                 onTimezoneChange(next);
@@ -1345,140 +1228,8 @@ showToolbar, showHeader, showFooter, renderToolbar, renderHeader, renderFooter, 
             deleteGroup: (groupId) => drawingWorkspace.interaction.deleteGroup(groupId),
         });
     }, [bringSelectedToFront, copySelectedDrawing, drawingWorkspace, forkDrawingContextMenuDrawing, pasteCopiedDrawing, sendSelectedToBack, t]);
-    const seriesLabelKeys = {
-        Candlestick: "indicator.candlestick",
-        HollowCandle: "indicator.hollowCandle",
-        OHLC: "indicator.ohlc",
-        HeikinAshi: "indicator.heikinAshi",
-        Line: "indicator.line",
-        Area: "indicator.area",
-        Bar: "indicator.bar",
-        Volume: "indicator.volume",
-        EMA: "indicator.ema",
-        BollingerBand: "indicator.bollingerBand",
-        RSI: "indicator.rsi",
-        MACD: "indicator.macd",
-        CVDApprox: "indicator.cvdApprox",
-        CVDRealtime: "indicator.cvdRealtime",
-        StrengthElder: "indicator.strengthElder",
-        StrengthRelative: "indicator.strengthRelative",
-        Whale: "indicator.whale",
-        MA: "indicator.ma",
-        BBI: "indicator.bbi",
-        SAR: "indicator.sar",
-        OBV: "indicator.obv",
-        WR: "indicator.wr",
-        VR: "indicator.vr",
-        KDJ: "indicator.kdj",
-        CCI: "indicator.cci",
-        DMI: "indicator.dmi",
-        BIAS: "indicator.bias",
-        BRAR: "indicator.brar",
-        MTM: "indicator.mtm",
-        EMV: "indicator.emv",
-        AO: "indicator.ao",
-        ROC: "indicator.roc",
-        TRIX: "indicator.trix",
-        DMA: "indicator.dma",
-        PVT: "indicator.pvt",
-        PSY: "indicator.psy",
-        CR: "indicator.cr",
-    };
-    const formatSeriesSuffix = (type, params) => {
-        const numberParam = (p, key, fallback) => {
-            const val = p?.[key];
-            return typeof val === "number" && Number.isFinite(val) ? val : fallback;
-        };
-        switch (type) {
-            case "EMA":
-                return `(${numberParam(params, "period", 20)})`;
-            case "RSI":
-                return `(${numberParam(params, "period", 14)})`;
-            case "BollingerBand":
-                return `(${numberParam(params, "period", 20)},${numberParam(params, "stdDev", 2)})`;
-            case "MACD":
-                return `(${numberParam(params, "fast", 12)},${numberParam(params, "slow", 26)},${numberParam(params, "signal", 9)})`;
-            case "KDJ":
-                return `(${numberParam(params, "period", 9)},${numberParam(params, "m1", 3)},${numberParam(params, "m2", 3)})`;
-            case "CCI":
-                return `(${numberParam(params, "period", 20)})`;
-            case "DMI":
-                return `(${numberParam(params, "period", 14)})`;
-            case "BIAS":
-                return `(${numberParam(params, "period", 6)})`;
-            case "BRAR":
-                return `(${numberParam(params, "period", 26)})`;
-            case "MTM":
-                return `(${numberParam(params, "period", 6)})`;
-            case "EMV":
-                return `(${numberParam(params, "period", 14)})`;
-            case "ROC":
-                return `(${numberParam(params, "period", 12)})`;
-            case "TRIX":
-                return `(${numberParam(params, "period", 12)})`;
-            case "DMA":
-                return `(${numberParam(params, "fastPeriod", 10)},${numberParam(params, "slowPeriod", 50)})`;
-            case "PSY":
-                return `(${numberParam(params, "period", 12)})`;
-            case "CR":
-                return `(${numberParam(params, "period", 26)})`;
-            case "Whale":
-                return `(${numberParam(params, "threshold", 50_000)})`;
-            default:
-                return "";
-        }
-    };
-    const seriesAbbreviations = {
-        EMA: "EMA",
-        BollingerBand: "BB",
-        RSI: "RSI",
-        MACD: "MACD",
-        CVDApprox: "CVD Approx",
-        CVDRealtime: "CVD Realtime",
-        StrengthElder: "Elder Strength",
-        StrengthRelative: "RS",
-        Whale: "Whale Flow",
-        MA: "MA",
-        BBI: "BBI",
-        SAR: "SAR",
-        OBV: "OBV",
-        WR: "WR",
-        VR: "VR",
-        KDJ: "KDJ",
-        CCI: "CCI",
-        DMI: "DMI",
-        BIAS: "BIAS",
-        BRAR: "BRAR",
-        MTM: "MTM",
-        EMV: "EMV",
-        AO: "AO",
-        ROC: "ROC",
-        TRIX: "TRIX",
-        DMA: "DMA",
-        PVT: "PVT",
-        PSY: "PSY",
-        CR: "CR",
-        Candlestick: "Candlestick",
-        HollowCandle: "Hollow Candle",
-        OHLC: "OHLC",
-        HeikinAshi: "HA",
-        Line: "Line",
-        Area: "Area",
-        Bar: "Bar",
-        Volume: "Volume",
-    };
-    const formatSeriesDisplayName = (type, params, t, index) => {
-        const baseLabel = t ? (t(seriesLabelKeys[type]) || type) : type;
-        const suffix = formatSeriesSuffix(type, params);
-        let withSuffix = suffix ? `${baseLabel} ${suffix}` : baseLabel;
-        if (!params) {
-            const abbreviation = seriesAbbreviations[type];
-            if (abbreviation && baseLabel !== abbreviation) {
-                withSuffix = `${baseLabel} (${abbreviation})`;
-            }
-        }
-        return typeof index === "number" ? `${withSuffix} #${index + 1}` : withSuffix;
-    };
+    // seriesLabelKeys, formatSeriesSuffix, seriesAbbreviations, formatSeriesDisplayName
+    // extracted to utils/seriesLabelUtils.js
     const paneHeaderLabels = useMemo(() => ({
         dragAriaLabel: (label) => t("library.dragPane", { pane: label }) || `Drag ${label}`,
         dragTitle: (pane) => pane.pinned ? (t("library.dragDisabled") || "Drag disabled") : (t("library.dragTitle") || "Drag to reposition pane"),
@@ -1523,155 +1274,72 @@ showToolbar, showHeader, showFooter, renderToolbar, renderHeader, renderFooter, 
             const paneLeft = snapshot.plotBounds.left;
             const paneRight = Math.max(0, size.width - (snapshot.plotBounds.left + snapshot.plotBounds.width));
             const paneToolbarRight = paneRight + 3;
-            return (_jsx("div", { "data-rsc-fork-pointer-owner": useForkRuntime ? "pane-toolbar" : undefined, className: `rsc-pane-wrap vnsc-pane-wrap${hoveredPaneId === pane.id ? " rsc-pane-wrap--active vnsc-pane-wrap--active" : ""}`, onPointerDownCapture: useForkRuntime ? () => claimForkPointerOwner("pane-toolbar") : undefined, onPointerUpCapture: useForkRuntime ? () => releaseForkPointerOwner("pane-toolbar") : undefined, onPointerCancelCapture: useForkRuntime ? () => releaseForkPointerOwner("pane-toolbar") : undefined, style: {
-                    position: "absolute",
-                    top: snapshot.headerAnchor.top,
-                    left: paneLeft,
-                    right: paneToolbarRight,
-                    height: 28,
-                    zIndex: 20,
-                }, children: renderPaneToolbar({
-                    pane,
-                    snapshot,
+            var wrapperProps = buildPaneToolbarWrapperProps(pane, snapshot, hoveredPaneId, useForkRuntime, claimForkPointerOwner, releaseForkPointerOwner, size);
+            return _jsx("div", Object.assign({}, wrapperProps, { children: renderPaneToolbar({
+                    pane: pane,
+                    snapshot: snapshot,
                     hovered: hoveredPaneId === pane.id,
                     actions: {
-                        toggleVisibility: () => handlePaneToggleVisible(pane.id),
-                        removePane: () => handlePaneRemove(pane.id),
-                        addSeries: () => handlePaneAddSeries(pane.id),
-                        toggleSeries: (seriesType, seriesIndex) => handlePaneToggleSeries(pane.id, seriesType, seriesIndex),
-                        removeSeries: (seriesType, seriesIndex) => handlePaneRemoveSeries(pane.id, seriesType, seriesIndex),
+                        toggleVisibility: function () { return handlePaneToggleVisible(pane.id); },
+                        removePane: function () { return handlePaneRemove(pane.id); },
+                        addSeries: function () { return handlePaneAddSeries(pane.id); },
+                        toggleSeries: function (seriesType, seriesIndex) { return handlePaneToggleSeries(pane.id, seriesType, seriesIndex); },
+                        removeSeries: function (seriesType, seriesIndex) { return handlePaneRemoveSeries(pane.id, seriesType, seriesIndex); },
                     },
-                }) }, `${pane.id}-toolbar`));
+                }) }), "".concat(pane.id, "-toolbar"));
         })
-        : visiblePanes.map((pane) => {
-            const snapshot = paneSnapshotMap.get(pane.id);
+        : visiblePanes.map(function (pane) {
+            var snapshot = paneSnapshotMap.get(pane.id);
             if (!snapshot) {
                 return null;
             }
-            const paneLeft = snapshot.plotBounds.left;
-            const paneRight = Math.max(0, size.width - (snapshot.plotBounds.left + snapshot.plotBounds.width));
-            const paneToolbarRight = paneRight + 3;
-            const localizedPane = localizePane(pane);
-            return (_jsx("div", { "data-rsc-fork-pointer-owner": useForkRuntime ? "pane-toolbar" : undefined, className: `rsc-pane-wrap vnsc-pane-wrap${hoveredPaneId === pane.id ? " rsc-pane-wrap--active vnsc-pane-wrap--active" : ""}`, onPointerDownCapture: useForkRuntime ? () => claimForkPointerOwner("pane-toolbar") : undefined, onPointerUpCapture: useForkRuntime ? () => releaseForkPointerOwner("pane-toolbar") : undefined, onPointerCancelCapture: useForkRuntime ? () => releaseForkPointerOwner("pane-toolbar") : undefined, style: {
-                    position: "absolute",
-                    top: snapshot.headerAnchor.top,
-                    left: paneLeft,
-                    right: paneToolbarRight,
-                    height: 28,
-                    zIndex: 20,
-                }, children: _jsx(PaneHeader, { pane: localizedPane, className: "vnsc-pane-header", onToggleVisible: () => handlePaneToggleVisible(pane.id), onRemove: () => handlePaneRemove(pane.id), onAddSeries: () => handlePaneAddSeries(pane.id), addButtonRef: undefined, labels: paneHeaderLabels, children: _jsx(IndicatorLegend, { pane: localizedPane, onToggleSeries: (seriesType, seriesIndex) => handlePaneToggleSeries(pane.id, seriesType, seriesIndex), onRemoveSeries: (seriesType, seriesIndex) => handlePaneRemoveSeries(pane.id, seriesType, seriesIndex), className: "rsc-pane-header__legend", labels: indicatorLegendLabels }) }) }, `${pane.id}-toolbar`));
+            var localizedPane = localizePane(pane);
+            var wrapperProps = buildPaneToolbarWrapperProps(pane, snapshot, hoveredPaneId, useForkRuntime, claimForkPointerOwner, releaseForkPointerOwner, size);
+            return _jsx("div", Object.assign({}, wrapperProps, { children: _jsxs(PaneHeader, { pane: localizedPane, className: "vnsc-pane-header", onToggleVisible: function () { return handlePaneToggleVisible(pane.id); }, onRemove: function () { return handlePaneRemove(pane.id); }, onAddSeries: function () { return handlePaneAddSeries(pane.id); }, addButtonRef: undefined, labels: paneHeaderLabels, children: [_jsx(IndicatorLegend, { pane: localizedPane, onToggleSeries: function (seriesType, seriesIndex) { return handlePaneToggleSeries(pane.id, seriesType, seriesIndex); }, onRemoveSeries: function (seriesType, seriesIndex) { return handlePaneRemoveSeries(pane.id, seriesType, seriesIndex); }, className: "rsc-pane-header__legend", labels: indicatorLegendLabels })] }) }), "".concat(pane.id, "-toolbar"));
         });
-    const paneSplitterNodes = renderPaneSplitter
-        ? visiblePanes.slice(0, -1).map((pane, splitterIndex) => {
-            const snapshot = paneSnapshotMap.get(pane.id);
+    var paneSplitterNodes = renderPaneSplitter
+        ? visiblePanes.slice(0, -1).map(function (pane, splitterIndex) {
+            var snapshot = paneSnapshotMap.get(pane.id);
             if (!snapshot) {
                 return null;
             }
-            return (_jsx("div", { "data-rsc-fork-pointer-owner": useForkRuntime ? "pane-splitter" : undefined, onPointerDownCapture: useForkRuntime ? () => claimForkPointerOwner("pane-splitter") : undefined, onPointerUpCapture: useForkRuntime ? () => releaseForkPointerOwner("pane-splitter") : undefined, onPointerCancelCapture: useForkRuntime ? () => releaseForkPointerOwner("pane-splitter") : undefined, children: renderPaneSplitter({
-                    pane,
-                    snapshot,
-                    splitterIndex,
+            var splitterWrapperProps = buildPaneSplitterWrapperProps(pane, snapshot, useForkRuntime, claimForkPointerOwner, releaseForkPointerOwner);
+            return _jsx("div", Object.assign({}, splitterWrapperProps, { children: renderPaneSplitter({
+                    pane: pane,
+                    snapshot: snapshot,
+                    splitterIndex: splitterIndex,
                     top: snapshot.bounds.top + snapshot.bounds.height,
                     left: snapshot.plotBounds.left,
                     right: Math.max(0, size.width - (snapshot.plotBounds.left + snapshot.plotBounds.width)),
-                }) }, `${pane.id}-splitter-owner`));
+                }) }), "".concat(pane.id, "-splitter-owner"));
         })
-        : visiblePanes.slice(0, -1).map((pane, splitterIndex) => {
-            const snapshot = paneSnapshotMap.get(pane.id);
+        : visiblePanes.slice(0, -1).map(function (pane, splitterIndex) {
+            var snapshot = paneSnapshotMap.get(pane.id);
             if (!snapshot) {
                 return null;
             }
-            return (_jsx("div", { "data-rsc-fork-pointer-owner": useForkRuntime ? "pane-splitter" : undefined, onPointerDownCapture: useForkRuntime ? () => claimForkPointerOwner("pane-splitter") : undefined, onPointerUpCapture: useForkRuntime ? () => releaseForkPointerOwner("pane-splitter") : undefined, onPointerCancelCapture: useForkRuntime ? () => releaseForkPointerOwner("pane-splitter") : undefined, children: _jsx(ChartSplitter, { className: "vnsc-splitter", splitterIndex: splitterIndex, available: localAvailable, onCommitDelta: localApplyDelta, onDoubleClick: localResetToDefault, title: t("library.splitterHint") || "Drag to resize", style: {
+            var splitterWrapperProps = buildPaneSplitterWrapperProps(pane, snapshot, useForkRuntime, claimForkPointerOwner, releaseForkPointerOwner);
+            return _jsx("div", Object.assign({}, splitterWrapperProps, { children: _jsx(ChartSplitter, { className: "vnsc-splitter", splitterIndex: splitterIndex, available: localAvailable, onCommitDelta: localApplyDelta, onDoubleClick: localResetToDefault, title: t("library.splitterHint") || "Drag to resize", style: {
                         top: snapshot.bounds.top + snapshot.bounds.height,
                         left: snapshot.plotBounds.left,
                         right: Math.max(0, size.width - (snapshot.plotBounds.left + snapshot.plotBounds.width)),
-                    } }, `${pane.id}-splitter`) }, `${pane.id}-splitter-owner`));
+                    } }, "".concat(pane.id, "-splitter")) }), "".concat(pane.id, "-splitter-owner"));
         });
-    const drawingChromeContent = renderDrawingChrome
+    var drawingChromeContent = renderDrawingChrome
         ? renderDrawingChrome({
             activeTool: drawingWorkspace.state.activeTool,
-            drawingWorkspace,
-            isDark,
-            magnetSensitivity,
-            paneSnapshots,
+            drawingWorkspace: drawingWorkspace,
+            isDark: isDark,
+            magnetSensitivity: magnetSensitivity,
+            paneSnapshots: paneSnapshots,
             selectedDrawing: resolvedSelectedDrawing,
             visibleRange: useForkRuntime ? effectiveForkVisibleRange : resolvedLegacyVisibleRange,
             size: { width: size.width, height: size.height },
         })
-        : (() => {
-            if (!resolvedSelectedDrawing) {
-                return null;
-            }
-            const labels = {
-                clone: t("drawing.clone") || "Clone",
-                lock: t("drawing.lock") || "Lock",
-                unlock: t("drawing.unlock") || "Unlock",
-                hide: t("drawing.hide") || "Hide",
-                show: t("drawing.show") || "Show",
-                edit: t("drawing.edit") || "Edit",
-                bringToFront: t("drawing.bringToFront") || "Bring to Front",
-                sendToBack: t("drawing.sendToBack") || "Send to Back",
-                delete: t("drawing.delete") || "Delete",
-                openProperties: t("drawing.properties") || "Settings",
-            };
-            const toolbarModel = createDrawingSelectionToolbarModel(resolvedSelectedDrawing, labels);
-            if (!toolbarModel) {
-                return null;
-            }
-            const position = resolveDrawingSelectionToolbarPosition({
-                drawing: resolvedSelectedDrawing,
-                paneSnapshots,
-                plotData,
-                visibleDomain: visibleDomainRef.current,
-                shellSize: { width: size.width, height: size.height },
-            });
-            if (!position) {
-                return null;
-            }
-            const handleAction = (actionId) => {
-                switch (actionId) {
-                    case "clone":
-                        cloneSelectedDrawing();
-                        break;
-                    case "toggleLock":
-                        toggleSelectedLock();
-                        break;
-                    case "toggleVisibility":
-                        if (resolvedSelectedDrawing) {
-                            drawingWorkspace?.interaction.updateDrawing(resolvedSelectedDrawing.id, {
-                                visible: resolvedSelectedDrawing.visible === false,
-                            });
-                        }
-                        break;
-                    case "editText":
-                        handleStartTextEdit();
-                        break;
-                    case "bringToFront":
-                        bringSelectedToFront();
-                        break;
-                    case "sendToBack":
-                        sendSelectedToBack();
-                        break;
-                    case "delete":
-                        if (resolvedSelectedDrawing && drawingWorkspace) {
-                            const nextDrawings = drawingWorkspace.interaction.allDrawings.filter((d) => d.id !== resolvedSelectedDrawing.id);
-                            drawingWorkspace.interaction.replaceDrawings(nextDrawings);
-                            drawingWorkspace.selectDrawing(null);
-                        }
-                        break;
-                    case "openProperties":
-                        drawingWorkspace?.openDock("properties");
-                        break;
-                    default:
-                        break;
-                }
-            };
-            return (_jsx(FloatingSelectionToolbar, { model: toolbarModel, position: position, ariaLabel: t("drawing.inspectorTitle") || "Drawing Toolbar", isDark: isDark, onAction: handleAction, drawing: resolvedSelectedDrawing, onUpdate: (patch) => {
-                    drawingWorkspace?.interaction.updateDrawing(resolvedSelectedDrawing.id, patch);
-                } }));
-        })();
-    const drawingChromeNode = drawingChromeContent
-        ? (_jsx("div", { "data-rsc-fork-pointer-owner": useForkRuntime ? "drawing-chrome" : undefined, onPointerDownCapture: useForkRuntime ? () => claimForkPointerOwner("drawing-chrome") : undefined, onPointerUpCapture: useForkRuntime ? () => releaseForkPointerOwner("drawing-chrome") : undefined, onPointerCancelCapture: useForkRuntime ? () => releaseForkPointerOwner("drawing-chrome") : undefined, children: drawingChromeContent }))
+        : buildDrawingChromeContent(resolvedSelectedDrawing, drawingWorkspace, isDark, magnetSensitivity, paneSnapshots, resolvedLegacyVisibleRange, useForkRuntime, effectiveForkVisibleRange, size, t, plotData, visibleDomainRef, cloneSelectedDrawing, toggleSelectedLock, handleStartTextEdit, bringSelectedToFront, sendSelectedToBack);
+    var drawingChromeWrapperProps = buildDrawingChromeWrapperProps(useForkRuntime, claimForkPointerOwner, releaseForkPointerOwner);
+    var drawingChromeNode = drawingChromeContent
+        ? _jsx("div", Object.assign({}, drawingChromeWrapperProps, { children: drawingChromeContent }))
         : null;
     return (_jsxs("div", { ref: ref, className: `vnsc-root ${className || ""}`, "data-chart-theme": resolvedTheme, "data-vn-camera-envelope": useForkRuntime ? forkCameraEnvelopeMode : "shared", onPointerMove: handleWidgetPointerMove, onPointerLeave: handleWidgetPointerLeave, style: {
             position: "relative",

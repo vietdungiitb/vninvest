@@ -1,7 +1,8 @@
 import { createElement, useEffect, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { SocConfigPreviewModal } from "./SocConfigPreviewModal.js";
-import { SocSchedulerBoard } from "./SocSchedulerBoard.js";
+import { SocOwnershipBadge } from "./SocOwnershipBadge.js";
+import { SocWriteGuardBanner } from "./SocWriteGuardBanner.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import styles from "./soc.module.css";
 
@@ -9,33 +10,107 @@ interface RuntimeConfig {
   [key: string]: unknown;
 }
 
+interface OwnershipInfo {
+  owner_team?: string;
+  mode?: string;
+  can_apply?: boolean;
+  write_block_reason?: string;
+  writer?: string;
+  write_surface?: string;
+  locked_fields?: string[];
+}
+
+interface RuntimeEnvelope {
+  config: RuntimeConfig;
+  ownership: OwnershipInfo | null;
+  updated_at: string | null;
+}
+
+interface AuditEntry {
+  actor?: string;
+  action?: string;
+  timestamp?: string;
+  [key: string]: unknown;
+}
+
+function computeChangeSummary(before: RuntimeConfig, after: RuntimeConfig): string[] {
+  const changes: string[] = [];
+  const allKeys = new Set([...Object.keys(before || {}), ...Object.keys(after || {})]);
+  for (const key of allKeys) {
+    const bVal = before?.[key];
+    const aVal = after?.[key];
+    const bStr = typeof bVal === "object" ? JSON.stringify(bVal) : String(bVal ?? "");
+    const aStr = typeof aVal === "object" ? JSON.stringify(aVal) : String(aVal ?? "");
+    if (bStr !== aStr) {
+      changes.push(`\u2022 ${key}: ${bStr.slice(0, 80)} \u2192 ${aStr.slice(0, 80)}`);
+    }
+  }
+  return changes;
+}
+
+function computeImpactWarnings(before: RuntimeConfig, after: RuntimeConfig): string[] {
+  const warnings: string[] = [];
+  
+  if (before.decay_days !== undefined && after.decay_days !== undefined && after.decay_days !== before.decay_days) {
+    warnings.push(`Thay đổi số ngày phân rã (decay_days): ${before.decay_days} \u2192 ${after.decay_days}`);
+  }
+  if (before.parity_snapshot_retention_days !== undefined && after.parity_snapshot_retention_days !== undefined && after.parity_snapshot_retention_days !== before.parity_snapshot_retention_days) {
+    warnings.push(`Thay đổi ngày lưu trữ parity snapshot: ${before.parity_snapshot_retention_days} \u2192 ${after.parity_snapshot_retention_days}`);
+  }
+
+  const queues = ["hot_user_demand", "warm_liquid_market", "cold_full_market", "recovery_backlog"];
+  for (const q of queues) {
+    const bQ = before[q] as Record<string, unknown> | undefined;
+    const aQ = after[q] as Record<string, unknown> | undefined;
+    if (bQ && aQ) {
+      if (aQ.poll_interval_seconds !== undefined && bQ.poll_interval_seconds !== undefined && aQ.poll_interval_seconds !== bQ.poll_interval_seconds) {
+        warnings.push(`Thay đổi chu kỳ quét của ${q} (poll_interval_seconds): ${bQ.poll_interval_seconds}s \u2192 ${aQ.poll_interval_seconds}s`);
+      }
+      if (aQ.max_batch_size !== undefined && bQ.max_batch_size !== undefined && aQ.max_batch_size !== bQ.max_batch_size) {
+        warnings.push(`Thay đổi kích thước batch của ${q} (max_batch_size): ${bQ.max_batch_size} \u2192 ${aQ.max_batch_size}`);
+      }
+      if (aQ.max_dispatch_per_cycle !== undefined && bQ.max_dispatch_per_cycle !== undefined && aQ.max_dispatch_per_cycle !== bQ.max_dispatch_per_cycle) {
+        warnings.push(`Thay đổi số lượng phát hành của ${q} (max_dispatch_per_cycle): ${bQ.max_dispatch_per_cycle} \u2192 ${aQ.max_dispatch_per_cycle}`);
+      }
+    }
+  }
+
+  return warnings;
+}
+
 export function SocDataOpsConfigSection() {
   const { t } = useI18n();
-  const [config, setConfig] = useState<RuntimeConfig | null>(null);
+  const [envelope, setEnvelope] = useState<RuntimeEnvelope | null>(null);
   const [editConfig, setEditConfig] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [previewModal, setPreviewModal] = useState<{ before: Record<string, unknown>; after: Record<string, unknown> } | null>(null);
+  const [previewModal, setPreviewModal] = useState<{
+    before: RuntimeConfig;
+    after: RuntimeConfig;
+    changeSummary: string[];
+    impactWarnings: string[];
+    validationErrors?: string[];
+  } | null>(null);
   const [applying, setApplying] = useState(false);
-  const [runLogs, setRunLogs] = useState<any[]>([]);
-  const [auditTrail, setAuditTrail] = useState<any[]>([]);
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
+  const [auditHasMore, setAuditHasMore] = useState(false);
 
   const fetchConfig = async () => {
     setLoading(true);
     try {
       const adapter = defaultCoreApiAdapter as unknown as {
-        getSocDataOpsRuntimeConfig: () => Promise<RuntimeConfig>;
-        getSocDataOpsRunLogs: (page: number) => Promise<{ results?: any[] }>;
-        getSocDataOpsRuntimeConfigAudit: (page: number) => Promise<{ results?: any[] }>;
+        getSocDataOpsRuntimeConfig: () => Promise<RuntimeEnvelope>;
+        getSocDataOpsRuntimeConfigAudit: (page: number) => Promise<{ results?: AuditEntry[]; next?: string | null }>;
       };
-      const [cfg, logs, audit] = await Promise.all([
+      const [envelopeData, auditData] = await Promise.all([
         adapter.getSocDataOpsRuntimeConfig(),
-        adapter.getSocDataOpsRunLogs(1),
-        adapter.getSocDataOpsRuntimeConfigAudit(1),
+        adapter.getSocDataOpsRuntimeConfigAudit(auditPage),
       ]);
-      setConfig(cfg);
-      setRunLogs(logs.results || []);
-      setAuditTrail(audit.results || []);
+      setEnvelope(envelopeData);
+      setEditConfig(JSON.stringify(envelopeData.config || {}, null, 2));
+      setAuditTrail(auditData.results || []);
+      setAuditHasMore(!!auditData.next);
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Cannot load config data.");
@@ -46,12 +121,35 @@ export function SocDataOpsConfigSection() {
 
   useEffect(() => {
     fetchConfig();
-  }, []);
+  }, [auditPage]);
 
-  const handlePreview = () => {
+  const handlePreview = async () => {
     try {
       const parsed = JSON.parse(editConfig) as RuntimeConfig;
-      setPreviewModal({ before: config || {}, after: parsed });
+      const before = envelope?.config || {};
+      const changeSummary = computeChangeSummary(before, parsed);
+      const impactWarnings = computeImpactWarnings(before, parsed);
+
+      // Call preview API
+      const adapter = defaultCoreApiAdapter as unknown as {
+        previewSocDataOpsRuntimeConfig: (cfg: RuntimeConfig) => Promise<{
+          projected_config?: RuntimeConfig;
+          validation_errors?: string[];
+          is_valid?: boolean;
+        }>;
+      };
+
+      let validationErrors: string[] = [];
+      try {
+        const previewResult = await adapter.previewSocDataOpsRuntimeConfig(parsed);
+        if (previewResult && Array.isArray(previewResult.validation_errors)) {
+          validationErrors = previewResult.validation_errors;
+        }
+      } catch (err) {
+        validationErrors = [err instanceof Error ? err.message : "Lỗi kiểm tra cấu hình."];
+      }
+
+      setPreviewModal({ before, after: parsed, changeSummary, impactWarnings, validationErrors });
     } catch {
       alert(t("soc.dataops.invalid_json"));
     }
@@ -61,10 +159,11 @@ export function SocDataOpsConfigSection() {
     try {
       const parsed = JSON.parse(editConfig) as RuntimeConfig;
       setApplying(true);
-      const adapter = defaultCoreApiAdapter as unknown as { applySocDataOpsRuntimeConfig: (cfg: RuntimeConfig) => Promise<void> };
-      await adapter.applySocDataOpsRuntimeConfig(parsed);
+      const adapter = defaultCoreApiAdapter as unknown as { applySocDataOpsRuntimeConfig: (cfg: RuntimeConfig) => Promise<RuntimeEnvelope> };
+      const result = await adapter.applySocDataOpsRuntimeConfig(parsed);
       setPreviewModal(null);
-      await fetchConfig();
+      setEnvelope(result);
+      setEditConfig(JSON.stringify(result.config || {}, null, 2));
     } catch (err) {
       alert(`Error: ${err instanceof Error ? err.message : "Apply failed."}`);
     } finally {
@@ -72,17 +171,7 @@ export function SocDataOpsConfigSection() {
     }
   };
 
-  const handlePurgeLogs = async () => {
-    if (!window.confirm(t("soc.dataops.purge_logs_confirm"))) return;
-    try {
-      const adapter = defaultCoreApiAdapter as unknown as { purgeSocDataOpsRunLogs: (keep: number) => Promise<void> };
-      await adapter.purgeSocDataOpsRunLogs(50);
-      alert(t("soc.dataops.purge_logs_success"));
-      await fetchConfig();
-    } catch (err) {
-      alert(`Error: ${err instanceof Error ? err.message : "Purge failed."}`);
-    }
-  };
+  const ownership = envelope?.ownership;
 
   if (loading) {
     return createElement("p", { className: styles.emptyState }, t("soc.dataops.loading"));
@@ -92,14 +181,38 @@ export function SocDataOpsConfigSection() {
     "div",
     { style: { display: "flex", flexDirection: "column", gap: "1.25rem" } },
     error ? createElement("div", { className: styles.inlineError }, error) : null,
+
+    ownership
+      ? createElement(SocOwnershipBadge, {
+          team: ownership.owner_team,
+          writable: ownership.can_apply,
+          accessLevel: ownership.mode,
+        })
+      : null,
+
+    ownership?.write_block_reason
+      ? createElement(SocWriteGuardBanner, {
+          owner: ownership.owner_team,
+          writer: ownership.writer || ownership.owner_team,
+          surface: ownership.write_surface,
+        })
+      : null,
+
     createElement(
       "div",
       { className: styles.sectionCard },
       createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.config_editor")),
+      ownership?.locked_fields && ownership.locked_fields.length > 0
+        ? createElement(
+            "div",
+            { style: { fontSize: "0.7rem", color: "var(--accent-amber)", marginBottom: "0.5rem" } },
+            `${t("soc.dataops.locked_fields")}: ${ownership.locked_fields.join(", ")}`,
+          )
+        : null,
       createElement(
         "textarea",
         {
-          value: editConfig || JSON.stringify(config || {}, null, 2),
+          value: editConfig || JSON.stringify(envelope?.config || {}, null, 2),
           onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setEditConfig(e.target.value),
           className: styles.configEditor,
           rows: 12,
@@ -110,21 +223,25 @@ export function SocDataOpsConfigSection() {
         { style: { display: "flex", gap: "0.5rem", marginTop: "0.75rem", flexWrap: "wrap" } },
         createElement(
           "button",
-          { onClick: handlePreview, className: styles.actionBtn, style: { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan)" } },
+          {
+            onClick: handlePreview,
+            className: styles.actionBtn,
+            style: { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan)" },
+          },
           t("soc.actions.preview"),
         ),
         createElement(
           "button",
-          { onClick: () => setEditConfig(JSON.stringify(config || {}, null, 2)), className: styles.actionBtn, style: { background: "rgba(255, 191, 77, 0.15)", color: "var(--accent-amber)" } },
+          {
+            onClick: () => setEditConfig(JSON.stringify(envelope?.config || {}, null, 2)),
+            className: styles.actionBtn,
+            style: { background: "rgba(255, 191, 77, 0.15)", color: "var(--accent-amber)" },
+          },
           t("soc.actions.edit"),
-        ),
-        createElement(
-          "button",
-          { onClick: handlePurgeLogs, className: styles.actionBtn, style: { background: "rgba(239, 68, 68, 0.15)", color: "#f87171" } },
-          t("soc.dataops.purge_logs"),
         ),
       ),
     ),
+
     auditTrail.length > 0
       ? createElement(
           "div",
@@ -132,8 +249,8 @@ export function SocDataOpsConfigSection() {
           createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.audit_trail")),
           createElement(
             "div",
-            { style: { maxHeight: "200px", overflow: "auto" } },
-            auditTrail.slice(0, 10).map((entry, i) =>
+            { style: { maxHeight: "240px", overflow: "auto" } },
+            auditTrail.map((entry, i) =>
               createElement(
                 "div",
                 {
@@ -152,42 +269,45 @@ export function SocDataOpsConfigSection() {
               ),
             ),
           ),
-        )
-      : null,
-    runLogs.length > 0
-      ? createElement(
-          "div",
-          { className: styles.sectionCard },
-          createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.run_logs")),
           createElement(
             "div",
-            { style: { maxHeight: "200px", overflow: "auto" } },
-            runLogs.slice(0, 10).map((log, i) =>
-              createElement(
-                "div",
-                {
-                  key: i,
-                  style: {
-                    padding: "0.5rem",
-                    borderBottom: "1px solid var(--border-default)",
-                    fontSize: "0.75rem",
-                  },
-                },
-                log.message || log.event || JSON.stringify(log).slice(0, 100),
-              ),
+            { style: { display: "flex", justifyContent: "center", gap: "0.5rem", marginTop: "0.5rem" } },
+            createElement(
+              "button",
+              {
+                onClick: () => setAuditPage((p) => Math.max(1, p - 1)),
+                disabled: auditPage <= 1,
+                className: styles.actionBtn,
+                style: { fontSize: "0.7rem", background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted)" },
+              },
+              "\u25C0 " + t("soc.actions.prev"),
+            ),
+            createElement(
+              "span",
+              { style: { fontSize: "0.7rem", color: "var(--text-muted)", alignSelf: "center" } },
+              t("soc.actions.page", { page: auditPage }),
+            ),
+            createElement(
+              "button",
+              {
+                onClick: () => setAuditPage((p) => p + 1),
+                disabled: !auditHasMore,
+                className: styles.actionBtn,
+                style: { fontSize: "0.7rem", background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted)" },
+              },
+              t("soc.actions.next") + " \u25B6",
             ),
           ),
         )
       : null,
-    createElement(
-      "div",
-      { style: { marginTop: "0.5rem" } },
-      createElement(SocSchedulerBoard, { domain: "dataops" }),
-    ),
+
     previewModal
       ? createElement(SocConfigPreviewModal, {
           before: previewModal.before,
           after: previewModal.after,
+          changeSummary: previewModal.changeSummary,
+          impactWarnings: previewModal.impactWarnings,
+          validationErrors: previewModal.validationErrors,
           onConfirm: handleApply,
           onCancel: () => setPreviewModal(null),
           loading: applying,

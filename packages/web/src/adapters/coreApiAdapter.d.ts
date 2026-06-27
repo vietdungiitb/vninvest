@@ -137,6 +137,8 @@ export interface CoreApiAdapter {
   getDnseConnection: () => Promise<any>;
   updateDnseConnection: (data: any) => Promise<any>;
   testDnseConnection: () => Promise<any>;
+  getDnseBackfillJobs: () => Promise<any>;
+  triggerDnseBackfill: (data: any) => Promise<any>;
   
   // Operator
   getOperatorStats: () => Promise<any>;

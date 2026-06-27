@@ -70,39 +70,39 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
 
     // ─── VNBroker ──────────────────────────────────────────────────────────
     getSocVnbrokerConfig() {
-      return coreGet("/operator/vnbroker/config/").then(normalizeConfigEnvelope);
+      return coreGet("/operator/soc/vnbroker/config/").then(normalizeConfigEnvelope);
     },
 
     applySocVnbrokerConfig(config) {
-      return corePost("/operator/vnbroker/config/", { config_payload: config }).then(normalizeConfigEnvelope);
+      return corePost("/operator/soc/vnbroker/config/", { config_payload: config }).then(normalizeConfigEnvelope);
     },
 
     previewSocVnbrokerConfig(config) {
-      return corePost("/operator/vnbroker/config/preview/", { config_payload: config });
+      return corePost("/operator/soc/vnbroker/config/preview/", { config_payload: config });
     },
 
     getSocVnbrokerHealth() {
-      return coreGet("/operator/vnbroker/health/").then(normalizeVnbrokerHealth);
+      return coreGet("/operator/soc/vnbroker/health/").then(normalizeVnbrokerHealth);
     },
 
     testSocVnbrokerConnection() {
-      return corePost("/operator/vnbroker/test-connection/");
+      return corePost("/operator/soc/vnbroker/test-connection/");
     },
 
     getSocVnbrokerProviders() {
-      return coreGet("/operator/vnbroker/providers/");
+      return coreGet("/operator/soc/vnbroker/providers/");
     },
 
     runSocVnbrokerBenchmark(payload = {}) {
-      return corePost("/operator/vnbroker/benchmark/", payload);
+      return corePost("/operator/soc/vnbroker/benchmark/", payload);
     },
 
     getSocVnbrokerBenchmarkLatest() {
-      return coreGet("/operator/vnbroker/benchmark/");
+      return coreGet("/operator/soc/vnbroker/benchmark/");
     },
 
     getSocVnbrokerCircuitBreaker() {
-      return coreGet("/operator/vnbroker/circuit-breaker-status/");
+      return coreGet("/operator/soc/vnbroker/circuit-breaker-status/");
     },
 
     getSocVnbrokerMetrics() {
@@ -136,8 +136,8 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
       return coreGet("/operator/scraping/dataops/observability/");
     },
 
-    getSocDataOpsRunLogs(page = 1) {
-      return coreGet(`/operator/scraping/dataops/run-logs/?page=${page}`);
+    getSocDataOpsRunLogs(page = 1, pageSize = 20) {
+      return coreGet(`/operator/scraping/dataops/run-logs/?page=${page}&page_size=${pageSize}`);
     },
 
     // ─── Service Management ────────────────────────────────────────────────
@@ -229,15 +229,15 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
 
     // ─── Prefetch ──────────────────────────────────────────────────────────
     getSocPrefetchConfig() {
-      return coreGet("/operator/prefetch/config/").then(normalizeConfigEnvelope);
+      return coreGet("/operator/soc/prefetch/config/").then(normalizeConfigEnvelope);
     },
 
     applySocPrefetchConfig(config) {
-      return corePost("/operator/prefetch/config/", { config_payload: config }).then(normalizeConfigEnvelope);
+      return corePost("/operator/soc/prefetch/config/", { config_payload: config }).then(normalizeConfigEnvelope);
     },
 
     getSocPrefetchProfiles() {
-      return coreGet("/operator/prefetch/config/profiles/").then((data) => ({
+      return coreGet("/operator/soc/prefetch/config/profiles/").then((data) => ({
         ...data,
         results: (data.profiles || []).map((profile) => ({
           name: profile,
@@ -247,7 +247,7 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
     },
 
     getSocPrefetchCacheStatus() {
-      return coreGet("/operator/prefetch/cache-status/").then((data) => ({
+      return coreGet("/operator/soc/prefetch/cache-status/").then((data) => ({
         ...data,
         hit_rate: Number(((data.hit_ratio || 0) * 100).toFixed(1)),
         size_mb: data.redis?.memory_usage_mb || 0,
@@ -256,23 +256,23 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
     },
 
     purgeSocPrefetchCache() {
-      return corePost("/operator/prefetch/purge-cache/");
+      return corePost("/operator/soc/prefetch/purge-cache/");
     },
 
     warmSocPrefetchNow(mode = 'async') {
-      return corePost(`/operator/prefetch/warm-now/?mode=${encodeURIComponent(mode)}`);
+      return corePost(`/operator/soc/prefetch/warm-now/?mode=${encodeURIComponent(mode)}`);
     },
 
     getSocPrefetchUniverseGroups() {
-      return coreGet("/operator/prefetch/universe-groups/");
+      return coreGet("/operator/soc/prefetch/universe-groups/");
     },
 
     getSocPrefetchSchedule() {
-      return coreGet("/operator/prefetch/task-schedule/");
+      return coreGet("/operator/soc/prefetch/task-schedule/");
     },
 
     getSocPrefetchMetrics() {
-      return coreGet("/operator/prefetch/metrics/");
+      return coreGet("/operator/soc/prefetch/metrics/");
     },
 
     // ─── Signals (Read-Only) ───────────────────────────────────────────────
@@ -302,6 +302,36 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
 
     getSocSignalMetrics() {
       return coreGet("/operator/soc/signals/summary/");
+    },
+
+    // ─── Signals (Advanced) ────────────────────────────────────────────────
+    getSocSignalPerformanceMetrics() {
+      return coreGet("/operator/soc/signals/performance-metrics/");
+    },
+
+    getSocWhaleRecent() {
+      return coreGet("/operator/soc/signals/whale/recent/");
+    },
+
+    getSocDarkPoolRecent() {
+      return coreGet("/operator/soc/signals/dark-pool/recent/");
+    },
+
+    getSocScreenerRecent() {
+      return coreGet("/operator/soc/signals/screener/recent/");
+    },
+
+    runSocSignalJob(domain, symbol) {
+      return corePost("/operator/soc/signals/jobs/run/", { domain, symbol });
+    },
+
+    getSocSignalJobStatus(runLogId) {
+      if (!runLogId) throw new Error("runLogId is required for getSocSignalJobStatus");
+      return coreGet(`/operator/soc/signals/jobs/status/?run_log_id=${encodeURIComponent(runLogId)}`);
+    },
+
+    getSocSignalMaterialization() {
+      return coreGet("/operator/soc/signals/materialization/");
     },
 
     // ─── Screener ──────────────────────────────────────────────────────────
@@ -400,7 +430,27 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
     },
 
     getSocMatrixProviders() {
-      return coreGet("/operator/soc/matrix/providers/");
+      return coreGet("/operator/soc/matrix/providers/").then((data) => {
+        if (data && Array.isArray(data.providers)) {
+          return {
+            ...data,
+            providers: data.providers.map((item) => ({
+              ...item,
+              key: item.provider || item.key || "",
+              name: item.label || item.name || "",
+              status: item.status || (item.runtime_ready ? "ready" : "blocked"),
+            })),
+          };
+        } else if (Array.isArray(data)) {
+          return data.map((item) => ({
+            ...item,
+            key: item.provider || item.key || "",
+            name: item.label || item.name || "",
+            status: item.status || (item.runtime_ready ? "ready" : "blocked"),
+          }));
+        }
+        return data;
+      });
     },
 
     getSocMatrixMonitor(cycleId) {

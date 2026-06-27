@@ -112,13 +112,15 @@
     "jest-environment-jsdom": "^30.4.1",
     "jest-environment-node": "^29.7.0",
     "jest-location-mock": "^4.0.1",
+    "jsdom": "^29.1.1",
     "lint-staged": "^17.0.8",
     "postcss": "^8.4.38",
     "prettier": "^3.8.4",
     "react-test-renderer": "^18.3.1",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.5.4",
-    "vite": "^5.3.1"
+    "vite": "^5.3.1",
+    "vitest": "^4.1.9"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

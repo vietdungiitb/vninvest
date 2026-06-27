@@ -29,7 +29,7 @@ export function SocPrefetchPanel() {
   const [error, setError] = useState("");
   const [config, setConfig] = useState<PrefetchConfig | null>(null);
   const [cacheStatus, setCacheStatus] = useState<PrefetchCacheStatus | null>(null);
-  const [universeGroups, setUniverseGroups] = useState<string[]>([]);
+  const [universeGroups, setUniverseGroups] = useState<any[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [editConfig, setEditConfig] = useState("");
   const [previewModal, setPreviewModal] = useState<{ before: Record<string, unknown>; after: Record<string, unknown> } | null>(null);
@@ -41,7 +41,7 @@ export function SocPrefetchPanel() {
       const adapter = defaultCoreApiAdapter as unknown as {
         getSocPrefetchConfig: () => Promise<PrefetchConfig>;
         getSocPrefetchCacheStatus: () => Promise<PrefetchCacheStatus>;
-        getSocPrefetchUniverseGroups: () => Promise<{ groups?: string[] }>;
+        getSocPrefetchUniverseGroups: () => Promise<{ groups?: any[] }>;
       };
 
       const [cfg, cache, groups] = await Promise.all([
@@ -52,8 +52,13 @@ export function SocPrefetchPanel() {
 
       setConfig(cfg);
       setCacheStatus(cache);
-      setUniverseGroups(groups.groups || []);
-      setSelectedGroups((prev) => prev.length > 0 ? prev : (groups.groups || []).slice(0, 2));
+      const groupsList = groups.groups || [];
+      setUniverseGroups(groupsList);
+      setSelectedGroups((prev) => {
+        if (prev.length > 0) return prev;
+        const initial = groupsList.filter((g: any) => g.selected).map((g: any) => g.id);
+        return initial.length > 0 ? initial : groupsList.map((g: any) => g.id).slice(0, 2);
+      });
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Cannot load prefetch data.");
@@ -116,9 +121,9 @@ export function SocPrefetchPanel() {
     }
   };
 
-  const toggleGroup = (group: string) => {
+  const toggleGroup = (groupId: string) => {
     setSelectedGroups((prev) =>
-      prev.includes(group) ? prev.filter((g) => g !== group) : [...prev, group]
+      prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId]
     );
   };
 
@@ -159,11 +164,11 @@ export function SocPrefetchPanel() {
                       createElement(
                         "button",
                         {
-                          key: group,
-                          onClick: () => toggleGroup(group),
-                          className: `${styles.filterBtn} ${selectedGroups.includes(group) ? styles.filterBtnActive : styles.filterBtnInactive}`,
+                          key: group.id,
+                          onClick: () => toggleGroup(group.id),
+                          className: `${styles.filterBtn} ${selectedGroups.includes(group.id) ? styles.filterBtnActive : styles.filterBtnInactive}`,
                         },
-                        `${selectedGroups.includes(group) ? "\u2705" : "\u2B1C"} ${group}`,
+                        `${selectedGroups.includes(group.id) ? "\u2705" : "\u2B1C"} ${group.name || group.id}`,
                       ),
                     ),
                   ),

@@ -26,7 +26,6 @@ RUN --mount=type=secret,id=vnbroker_github_token \
     test -f "$token_file"; \
     token="$(cat "$token_file")"; \
     test -n "$token"; \
-    echo "DEBUG token value: $(echo "$token" | cut -c 1-10)..."; \
     export GIT_CONFIG_COUNT=1; \
     export GIT_CONFIG_KEY_0=url."https://x-access-token:${token}@github.com/".insteadOf; \
     export GIT_CONFIG_VALUE_0=https://github.com/; \

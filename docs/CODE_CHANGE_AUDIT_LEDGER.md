@@ -352,4 +352,58 @@
   - `./start_dev.ps1` — all services healthy
 - **Residual risk**: None. Model now in sync with PostgreSQL schema.
 
+---
+
+## Entry 19: SOC DataOps Steps 4 & 5 Parity Migrations
+
+- **PR / branch**: `dev`
+- **Date**: 2026-06-25
+- **Files touched**:
+  - `packages/web/src/i18n/vi.js`
+  - `packages/web/src/i18n/en.js`
+  - `packages/web/src/components/soc/SocDataOpsConfigSection.tsx`
+  - `packages/web/src/components/soc/SocMatrixScrapeMonitor.tsx`
+  - `packages/web/src/components/soc/SocDataOpsMonitorSection.tsx`
+  - `packages/web/src/components/soc/SocParityGatesPanel.tsx` (NEW)
+  - `packages/web/src/components/soc/SocRetentionHealthPanel.tsx` (NEW)
+  - `packages/web/src/components/soc/SocAnomalyGuardPanel.tsx` (NEW)
+- **Summary**: Hoàn thiện các subtab SOC DataOps (Bước 4: Config Section, Bước 5: Monitor Section). Tích hợp OwnershipBadge, WriteGuardBanner, cải tiến preview warnings từ API và các trường thực tế. Chuyển đổi bảng độ phủ thành ma trận Compact Matrix datasets x freshness states, sửa đổi logic top gaps tương thích với API. Thiết lập SimpleCache tránh mất trạng thái polling matrix 10s khi đổi tab. Phân tách và tạo 3 component chuyên dụng: SocParityGatesPanel, SocRetentionHealthPanel, SocAnomalyGuardPanel sử dụng React.createElement.
+- **Validation**:
+  - `npx tsc --noEmit` -> ✅ Pass (0 errors)
+  - `npm run build` -> ✅ Pass (3862 modules)
+  - `.\start_dev.ps1` -> ✅ Rebuilt docker dev environment successfully, all services healthy.
+- **Residual risk**: None.
+
+## Entry 20: SOC DataOps Operations Section UI & Layout Redesign
+ 
+- **PR / branch**: `dev`
+- **Date**: 2026-06-25
+- **Files touched**:
+  - `packages/web/src/components/soc/SocDataOpsOperationsSection.tsx` (Tái cấu trúc toàn bộ)
+  - `packages/web/src/components/soc/soc.module.css` (Bổ sung opsLayoutContainer, opsLeftCol, opsRightCol, previewTable, pulsing status, drawer styles)
+- **Summary**: Nâng cấp và cải tiến toàn bộ luồng vận hành dữ liệu (Operations) của tab SOC DataOps. Loại bỏ thanh chip phụ 3 tầng lộn xộn. Tái cấu trúc thành giao diện hai cột tích hợp: Cột trái (Form cấu hình Backfill/Planner, tích hợp danh sách 8 dataset bao gồm các dataset dòng tiền bị khuyết, ô nhập mã Custom trượt động), Cột phải (Active run progress bar với Celery task, Preview Console gồm Planned/Skipped items có phân trang đầy đủ). Nhật ký chạy Celery (Run Logs) được đặt ở dưới chân trang full-width. Tích hợp Drawer trượt từ bên phải chứa trình quản lý Custom Group mà không rời khỏi màn hình chính.
+- **Validation**:
+  - `npx tsc --noEmit` -> ✅ Pass (0 errors)
+  - `npm run build` -> ✅ Pass (3860 modules, built in 15.52s)
+- **Residual risk**: None.
+
+---
+
+## Entry 21: SOC DataOps Tabs Layout, Dynamic Headers & Celery Scheduler Board
+
+- **PR / branch**: `dev`
+- **Date**: 2026-06-25
+- **Files touched**:
+  - `packages/web/src/components/soc/soc.module.css` (Tái cấu trúc .tabBar và .tabButton để dàn đều tab và ẩn scrollbars)
+  - `packages/web/src/components/soc/SocDataOpsPanel.tsx` (Di chuyển subtabs lên đầu tiên của glassPanel, wrap nội dung tab con trong ShellPanel riêng với tiêu đề và mô tả động, gỡ bỏ domain dataops restriction)
+  - `packages/web/src/components/soc/SocSchedulerBoard.tsx` (Viết lại hoàn toàn để khôi phục health strip, dropdown bộ lọc domain, bảng 8 cột trạng thái chi tiết, confirm modal và history drawer có phân trang)
+  - `docs/CODE_CHANGE_AUDIT_LEDGER.md` (this entry)
+- **Summary**: Hoàn thành Giai đoạn 2 nâng cấp UI/UX cho SOC DataOps. Dàn đều tab buttons bằng `flex: 1` và `justify-content: center` đồng thời dập tắt triệt để scrollbars dọc bằng `overflow-y: hidden`. Sắp xếp lại luồng tiêu đề: thanh subtabs được đặt ở trên cùng, các dòng tiêu đề và mô tả của tab con thay đổi động bên dưới. Viết lại Celery Scheduler Board chuẩn 1:1 legacy, hiển thị stats sức khỏe scheduler, bộ lọc domain, Live badge nhấp nháy, Stuck cảnh báo, Modal nhập lý do, và Drawer lịch sử chạy chi tiết.
+- **Validation**:
+  - `npx tsc --noEmit` -> ✅ Pass (0 errors)
+  - `npm run build` -> ✅ Pass (built in 20.14s, 3860 modules, 0 errors)
+- **Residual risk**: None.
+
+
+
 

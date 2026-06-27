@@ -20,15 +20,26 @@ interface MatrixProvider {
   [key: string]: unknown;
 }
 
+interface ScrapeMonitorCache {
+  cycles: MatrixCycle[];
+  providers: MatrixProvider[];
+  lastFetched?: number;
+}
+
+const monitorCache: ScrapeMonitorCache = {
+  cycles: [],
+  providers: [],
+};
+
 export function SocMatrixScrapeMonitor() {
   const { t } = useI18n();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!monitorCache.lastFetched);
   const [error, setError] = useState("");
-  const [cycles, setCycles] = useState<MatrixCycle[]>([]);
-  const [providers, setProviders] = useState<MatrixProvider[]>([]);
+  const [cycles, setCycles] = useState<MatrixCycle[]>(monitorCache.cycles);
+  const [providers, setProviders] = useState<MatrixProvider[]>(monitorCache.providers);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const adapter = defaultCoreApiAdapter as unknown as {
         getSocMatrixMonitor: (cycleId?: string) => Promise<{ cycles?: MatrixCycle[] }>;
@@ -38,19 +49,25 @@ export function SocMatrixScrapeMonitor() {
         adapter.getSocMatrixMonitor(),
         adapter.getSocMatrixProviders(),
       ]);
-      setCycles(monitor.cycles || []);
-      setProviders(prov.providers || []);
+      const nextCycles = monitor.cycles || [];
+      const nextProviders = prov.providers || [];
+      setCycles(nextCycles);
+      setProviders(nextProviders);
+      monitorCache.cycles = nextCycles;
+      monitorCache.providers = nextProviders;
+      monitorCache.lastFetched = Date.now();
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Cannot load matrix monitor data.");
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
+    const hasCache = !!monitorCache.lastFetched;
+    fetchData(hasCache);
+    const interval = setInterval(() => fetchData(true), 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -82,6 +99,8 @@ export function SocMatrixScrapeMonitor() {
       case "completed": return "var(--accent-cyan)";
       case "failed": return "#f87171";
       case "aborted": return "#94a3b8";
+      case "ready": return "#34d399";
+      case "blocked": return "#f87171";
       default: return "#fbbf24";
     }
   };

@@ -25,12 +25,18 @@ export function SocOwnershipBadge({ team, writable, accessLevel }: SocOwnershipB
       createElement(
         "span",
         {
-          className: `${styles.statusBadge} ${styles.statusDot}`,
+          className: styles.statusBadge,
           style: {
             background: writable ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
             color: writable ? "#34d399" : "#f87171",
           },
         },
+        createElement("span", {
+          className: styles.statusDot,
+          style: {
+            background: writable ? "#34d399" : "#f87171",
+          },
+        }),
         writableLabel,
       ),
       createElement("span", { className: styles.statusBadge, style: { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan)" } },
