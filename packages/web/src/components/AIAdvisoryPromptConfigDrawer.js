@@ -15,12 +15,31 @@ const SOURCES_METADATA = {
 
 const TECHNICAL_INDICATORS = ["rsi", "bollinger", "vols", "prices", "ma20", "ma50", "snapshot", "cdms"];
 
+const DEFAULT_CONFIG = {
+  version: 2,
+  sources: {
+    whale: { enabled: true, lookback: 30 },
+    dark_flow: { enabled: true, lookback: 30 },
+    technical: { enabled: true, lookback: 20, indicators: ['vols', 'prices', 'cdms', 'ma20', 'ma50', 'rsi', 'bollinger', 'snapshot'] },
+    news: { enabled: true, lookback: 14 },
+    market: { enabled: true, lookback: 7 },
+    fundamental: { enabled: false, lookback: 1 },
+    ownership: { enabled: false, lookback: 365 },
+    sector: { enabled: false, lookback: 60 },
+  },
+};
+
 export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfigChange }) {
-  const [localConfig, setLocalConfig] = useState(config);
+  const mergedConfig = config ? { ...DEFAULT_CONFIG, ...config, sources: { ...DEFAULT_CONFIG.sources, ...(config.sources || {}) } } : DEFAULT_CONFIG;
+  const [localConfig, setLocalConfig] = useState(mergedConfig);
 
   useEffect(() => {
     if (config) {
-      setLocalConfig(config);
+      setLocalConfig({
+        ...DEFAULT_CONFIG,
+        ...config,
+        sources: { ...DEFAULT_CONFIG.sources, ...(config.sources || {}) },
+      });
     }
   }, [config, isOpen]);
 

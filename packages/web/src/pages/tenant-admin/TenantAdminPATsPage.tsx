@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField, ShellSelectField } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
-import { PolicyCheckboxes, policyIdsToScopeCodes } from "../../components/PolicyCheckboxes.js";
+import { PolicyCheckboxes, policyIdsToScopeCodes, POLICIES } from "../../components/PolicyCheckboxes.js";
 import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useToast } from "../../components/ShellToast.js";
@@ -32,6 +33,7 @@ interface ServiceAccount {
     environment?: string;
   };
   environment?: string;
+  scopes?: string[];
 }
 
 interface CreateForm {
@@ -91,7 +93,7 @@ export function TenantAdminPATsPage({
     { key: "admin", label: "tenantPats.scopeAdmin", icon: "⚙️" },
   ];
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -100,13 +102,14 @@ export function TenantAdminPATsPage({
         defaultCoreApiAdapter.coreGet("/partner/service-accounts/"),
       ]);
 
+      const saList = saData.results || [];
       setTokens(tokenData.results || []);
-      setServiceAccounts(saData.results || []);
+      setServiceAccounts(saList);
 
-      if (saData.length > 0) {
+      if (saList.length > 0) {
         setCreateForm(prev => ({
           ...prev,
-          service_account_id: prev.service_account_id || saData[0].service_account_id || saData[0].id,
+          service_account_id: prev.service_account_id || saList[0].service_account_id || saList[0].id || "",
         }));
       }
     } catch (err: unknown) {
@@ -114,11 +117,28 @@ export function TenantAdminPATsPage({
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
+
+  const selectedSA = serviceAccounts.find(sa => (sa.service_account_id || sa.id) === createForm.service_account_id);
+
+  useEffect(() => {
+    if (!selectedSA) return;
+    const saScopes = new Set(selectedSA.scopes || []);
+    const newPolicies = createForm.policy_ids.filter(policyId => {
+      const policy = POLICIES.find(p => p.id === policyId);
+      return policy ? policy.scopes.every(scope => saScopes.has(scope)) : false;
+    });
+    const defaultPolicies = POLICIES.filter(p => p.scopes.every(s => saScopes.has(s))).map(p => p.id);
+    setCreateForm(prev => ({
+      ...prev,
+      policy_ids: newPolicies.length > 0 ? newPolicies : defaultPolicies,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [createForm.service_account_id, serviceAccounts]);
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -303,38 +323,90 @@ export function TenantAdminPATsPage({
     >
       <section className="shellPage__stack">
           {secretReveal && (
-            <div className="shellPage__surfaceCard" style={{ border: "1px solid rgba(34,197,94,0.3)", marginBottom: "20px" }}>
-              <h4 className="shellPage__itemTitle" style={{ color: "#22c55e", fontSize: "16px", margin: "0 0 10px" }}>
-                {t("tenantPats.secretTitle")}
-              </h4>
-              <p className="shellPage__itemMeta" style={{ margin: "0 0 16px" }}>
-                {t("tenantPats.secretHint")}
-              </p>
-              <div className="shellPage__listItem" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <code style={{ flex: 1, color: "#f1f5f9", fontSize: "14px", wordBreak: "break-all", fontFamily: "monospace" }}>
-                  {secretReveal.secret}
-                </code>
-                <button
-                  onClick={() => handleCopyToken(secretReveal.secret)}
-                  className="shellPage__button"
+            <div
+              role="presentation"
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: "rgba(0,0,0,0.8)",
+                backdropFilter: "blur(8px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1100,
+              }}
+            >
+              <div
+                className="shellPage__surfaceCard"
+                style={{
+                  border: "1px solid rgba(34,197,94,0.3)",
+                  padding: "28px",
+                  width: "100%",
+                  maxWidth: "550px",
+                  background: "rgba(15,23,42,0.95)",
+                  boxShadow: "0 20px 25px -5px rgba(0,0,0,0.5)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+                  <span style={{ fontSize: "24px" }}>🔑</span>
+                  <h3 className="shellPage__itemTitle" style={{ color: "#22c55e", fontSize: "20px", margin: 0 }}>
+                    {t("tenantPats.secretTitle")}
+                  </h3>
+                </div>
+                <p className="shellPage__itemMeta" style={{ margin: "0 0 20px", color: "#94a3b8", lineHeight: "1.6" }}>
+                  {t("tenantPats.secretHint")}
+                </p>
+                <div
                   style={{
-                    background: copySuccess ? "rgba(34,197,94,0.2)" : "rgba(0,180,216,0.2)",
-                    border: copySuccess ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(0,180,216,0.3)",
-                    color: copySuccess ? "#22c55e" : "#00b4d8",
-                    fontWeight: 600,
-                    fontSize: "12px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    background: "rgba(0,0,0,0.4)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: "10px",
+                    padding: "12px 16px",
+                    marginBottom: "24px",
                   }}
                 >
-                  {copySuccess ? t("tenantPats.copySuccess") : t("tenantPats.copyTokenAction")}
-                </button>
+                  <code style={{ flex: 1, color: "#38bdf8", fontSize: "14px", wordBreak: "break-all", fontFamily: "monospace", fontWeight: "600" }}>
+                    {secretReveal.secret}
+                  </code>
+                  <button
+                    onClick={() => handleCopyToken(secretReveal.secret)}
+                    className="shellPage__button"
+                    style={{
+                      background: copySuccess ? "rgba(34,197,94,0.2)" : "rgba(0,180,216,0.2)",
+                      border: copySuccess ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(0,180,216,0.3)",
+                      color: copySuccess ? "#22c55e" : "#00b4d8",
+                      fontWeight: 600,
+                      fontSize: "12px",
+                      padding: "8px 16px",
+                      borderRadius: "6px",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {copySuccess ? t("tenantPats.copySuccess") : t("tenantPats.copyTokenAction")}
+                  </button>
+                </div>
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    onClick={() => setSecretReveal(null)}
+                    className="shellPage__button shellPage__button--primary"
+                    style={{
+                      background: "#22c55e",
+                      border: "none",
+                      color: "#ffffff",
+                      fontWeight: 600,
+                      padding: "10px 24px",
+                    }}
+                  >
+                    {t("tenantPats.closeAction")}
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={() => setSecretReveal(null)}
-                className="shellPage__button"
-                style={{ marginTop: "12px", color: "#94a3b8", fontSize: "12px", textDecoration: "underline", background: "transparent", border: "none" }}
-              >
-                {t("tenantPats.closeAction")}
-              </button>
             </div>
           )}
 
@@ -377,10 +449,13 @@ export function TenantAdminPATsPage({
           </div>
 
           {serviceAccounts.length === 0 && (
-            <div className="shellPage__surfaceCard" style={{ border: "1px solid rgba(255,127,80,0.3)", marginBottom: "20px" }}>
-              <p className="shellPage__itemMeta" style={{ color: "#ff7f50" }}>
+            <div className="shellPage__surfaceCard" style={{ border: "1px solid rgba(255,127,80,0.3)", padding: "18px 24px", marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
+              <p className="shellPage__itemMeta" style={{ color: "#ff7f50", margin: 0, fontSize: "14px", fontWeight: 500 }}>
                 {t("tenantPats.noServiceAccounts")}
               </p>
+              <Link to="/tenant-admin/service-accounts" className="shellPage__button" style={{ background: "rgba(255,127,80,0.15)", border: "1px solid rgba(255,127,80,0.3)", color: "#ff7f50", textDecoration: "none", fontSize: "12px", fontWeight: "600", whiteSpace: "nowrap" }}>
+                + Tạo Service Account
+              </Link>
             </div>
           )}
 
@@ -545,6 +620,24 @@ export function TenantAdminPATsPage({
                       label: `${sa.name} (${(sa.metadata?.environment || sa.environment || "prod").toUpperCase()})`,
                     }))}
                   />
+                  {selectedSA && (
+                    <div style={{ marginTop: "-12px", marginBottom: "20px", paddingLeft: "4px" }}>
+                      <span style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "6px" }}>
+                        Quyền hạn của Service Account:
+                      </span>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                        {selectedSA.scopes && selectedSA.scopes.length > 0 ? (
+                          selectedSA.scopes.map(s => (
+                            <span key={s} className="shellPage__pill" style={{ fontSize: "10px", padding: "2px 6px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", color: "#f1f5f9" }}>
+                              {s}
+                            </span>
+                          ))
+                        ) : (
+                          <span style={{ fontSize: "11px", color: "#64748b", fontStyle: "italic" }}>Không có quyền hạn</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <ShellField
                     label={t("tenantPats.expiresAtLabel")}
                     name="expires_at"
@@ -552,32 +645,66 @@ export function TenantAdminPATsPage({
                     value={createForm.expires_at}
                     onChange={e => setCreateForm(prev => ({ ...prev, expires_at: e.target.value }))}
                   />
-                  <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                  <div style={{ display: "flex", gap: 6, marginTop: -6, marginBottom: 12 }}>
                     {[
-                      { label: "30d", offset: 30 },
-                      { label: "90d", offset: 90 },
-                      { label: "1y", offset: 365 },
+                      { label: "30 ngày", offset: 30 },
+                      { label: "90 ngày", offset: 90 },
+                      { label: "1 năm", offset: 365 },
                       { label: t("tenantPats.neverExpire"), offset: 0 },
-                    ].map(preset => (
-                      <button
-                        key={preset.label}
-                        type="button"
-                        onClick={() => {
-                          if (preset.offset === 0) {
-                            setCreateForm(prev => ({ ...prev, expires_at: "" }));
-                          } else {
-                            const d = new Date();
-                            d.setDate(d.getDate() + preset.offset);
-                            const local = d.toISOString().slice(0, 16);
-                            setCreateForm(prev => ({ ...prev, expires_at: local }));
-                          }
-                        }}
-                        className="shellPage__button"
-                        style={{ fontSize: 11, padding: "4px 10px" }}
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
+                    ].map(preset => {
+                      // Determine if this preset matches current selection
+                      let isActive = false;
+                      if (preset.offset === 0 && !createForm.expires_at) {
+                        isActive = true;
+                      } else if (createForm.expires_at) {
+                        const d = new Date();
+                        d.setDate(d.getDate() + preset.offset);
+                        const expectedDateStr = d.toISOString().slice(0, 10);
+                        const currentDateStr = new Date(createForm.expires_at).toISOString().slice(0, 10);
+                        isActive = expectedDateStr === currentDateStr;
+                      }
+
+                      return (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() => {
+                            if (preset.offset === 0) {
+                              setCreateForm(prev => ({ ...prev, expires_at: "" }));
+                            } else {
+                              const d = new Date();
+                              d.setDate(d.getDate() + preset.offset);
+                              const local = d.toISOString().slice(0, 16);
+                              setCreateForm(prev => ({ ...prev, expires_at: local }));
+                            }
+                          }}
+                          className="shellPage__button"
+                          style={{
+                            flex: 1,
+                            fontSize: "11px",
+                            padding: "8px 6px",
+                            background: isActive ? "rgba(0,180,216,0.15)" : "rgba(255,255,255,0.04)",
+                            border: isActive ? "1px solid rgba(0,180,216,0.3)" : "1px solid rgba(255,255,255,0.08)",
+                            color: isActive ? "#00b4d8" : "#94a3b8",
+                            fontWeight: isActive ? 600 : 400,
+                            borderRadius: "6px",
+                          }}
+                        >
+                          {preset.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={{ marginTop: "-6px", marginBottom: "20px", paddingLeft: "4px" }}>
+                    {createForm.expires_at ? (
+                      <div style={{ fontSize: "11px", color: "#22c55e" }}>
+                        ✓ Hết hạn vào: <strong>{new Date(createForm.expires_at).toLocaleString("vi-VN")}</strong>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: "11px", color: "#eab308" }}>
+                        ⚠ Hoạt động vô thời hạn (Không khuyến nghị về bảo mật).
+                      </div>
+                    )}
                   </div>
                   <div className="shellPage__field">
                     <span className="shellPage__fieldLabel">{t("tenantPats.policiesLabel")}</span>
@@ -591,6 +718,7 @@ export function TenantAdminPATsPage({
                     <PolicyCheckboxes
                       selectedPolicies={createForm.policy_ids}
                       onChange={(policies: string[]) => setCreateForm(prev => ({ ...prev, policy_ids: policies }))}
+                      allowedScopes={selectedSA?.scopes}
                     />
                   </div>
                   <div className="shellPage__listItemHeader" style={{ gap: "12px", marginTop: "24px" }}>
