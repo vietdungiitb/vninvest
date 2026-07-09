@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
+import { useI18n } from '../../context/LangContext.js';
 
 function toneClasses(status: any) {
   const normalized = String(status || '').toLowerCase();
@@ -59,6 +60,7 @@ function ValueRow({ label, value }: { label: string; value: any }) {
 }
 
 export function AdminCoreTenantsPage() {
+  const { t } = useI18n();
   const { tenantId } = useParams<{ tenantId: string }>();
   const [searchDraft, setSearchDraft] = useState('');
   const [statusDraft, setStatusDraft] = useState('');
@@ -79,12 +81,12 @@ export function AdminCoreTenantsPage() {
         search: search || undefined,
         status: status || undefined,
       });
-      setRegistry(response.data || null);
+      setRegistry(response || null);
       setLastFetched(new Date());
     } catch (err: any) {
       setError(err?.response?.status === 403
-        ? 'Không đủ quyền để xem danh sách tenant.'
-        : 'Không tải được danh sách tenant.');
+        ? t('adminCoreTenants.errorNoPermission')
+        : t('adminCoreTenants.errorGeneric'));
     } finally {
       setLoadingRegistry(false);
     }
@@ -102,8 +104,8 @@ export function AdminCoreTenantsPage() {
       setDetail(response.data || null);
     } catch (err: any) {
       setError(err?.response?.status === 404
-        ? 'Không tìm thấy tenant cần xem chi tiết.'
-        : 'Không tải được chi tiết tenant.');
+        ? t('adminCoreTenants.errorNotFound')
+        : t('adminCoreTenants.errorDetail'));
     } finally {
       setLoadingDetail(false);
     }
@@ -148,10 +150,10 @@ export function AdminCoreTenantsPage() {
             <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Central Operator Admin</p>
             <div>
               <h1 className="text-3xl font-semibold tracking-tight">
-                {'Danh sách tenant'}
+                {t('adminCoreTenants.title')}
               </h1>
               <p className="mt-2 max-w-3xl text-sm text-slate-300">
-                {'Tra cứu tenant, xem trạng thái vận hành và mở chi tiết thương mại/bảo mật từ một chụp nhanh duy nhất.'}
+                {t('adminCoreTenants.description')}
               </p>
             </div>
           </div>
@@ -160,7 +162,7 @@ export function AdminCoreTenantsPage() {
               to="/admin/core/overview"
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
-              {'Quay lại tổng quan'}
+              {t('adminCoreTenants.backToOverview')}
             </Link>
             <button
               type="button"
@@ -168,7 +170,7 @@ export function AdminCoreTenantsPage() {
               className="rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-950 transition-colors hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={loadingRegistry || loadingDetail}
             >
-              {loadingRegistry || loadingDetail ? 'Đang tải…' : 'Làm mới'}
+              {loadingRegistry || loadingDetail ? t('adminCoreTenants.loading') : t('adminCoreTenants.refresh')}
             </button>
           </div>
         </div>
@@ -176,7 +178,7 @@ export function AdminCoreTenantsPage() {
 
       {lastFetchedLabel ? (
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          {`Đã chụp lúc ${lastFetchedLabel}`}
+          {t('adminCoreTenants.snapshotAt', { time: lastFetchedLabel })}
         </p>
       ) : null}
 
@@ -191,24 +193,24 @@ export function AdminCoreTenantsPage() {
         className="grid gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900 md:grid-cols-3"
       >
         <label className="space-y-2 text-sm text-slate-600 dark:text-slate-300 md:col-span-2">
-          <span>{'Tìm tenant'}</span>
+          <span>{t('adminCoreTenants.filterTenant')}</span>
           <input
             value={searchDraft}
             onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSearchDraft(event.target.value)}
-            placeholder="Mã tenant, tên hiển thị, email"
+            placeholder={t('adminCoreTenants.filterTenantPlaceholder')}
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
           />
         </label>
         <label className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-          <span>{'Trạng thái'}</span>
+          <span>{t('adminCoreTenants.filterStatus')}</span>
           <select
             value={statusDraft}
             onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setStatusDraft(event.target.value)}
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
           >
-            <option value="">{'Tất cả'}</option>
-            <option value="active">Active</option>
-            <option value="suspended">Suspended</option>
+            <option value="">{t('adminCoreTenants.filterAll')}</option>
+            <option value="active">{t('adminCoreTenants.filterActive')}</option>
+            <option value="suspended">{t('adminCoreTenants.filterSuspended')}</option>
           </select>
         </label>
         <div className="flex flex-wrap items-end gap-3 md:col-span-3">
@@ -216,21 +218,21 @@ export function AdminCoreTenantsPage() {
             type="submit"
             className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
           >
-            {'Áp dụng bộ lọc'}
+            {t('adminCoreTenants.applyFilters')}
           </button>
           <button
             type="button"
             onClick={clearFilters}
             className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
           >
-            {'Xóa bộ lọc'}
+            {t('adminCoreTenants.clearFilters')}
           </button>
         </div>
       </form>
 
       <Panel
-        title={'Tổng hợp tenant'}
-        description={'Các chỉ số từ registry hiện tại và trạng thái điều hành.'}
+        title={t('adminCoreTenants.summaryTitle')}
+        description={t('adminCoreTenants.summaryDescription')}
       >
         {summaryCards.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -240,26 +242,26 @@ export function AdminCoreTenantsPage() {
           </div>
         ) : (
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {'Chưa có dữ liệu tổng hợp tenant.'}
+            {t('adminCoreTenants.noSummaryData')}
           </p>
         )}
       </Panel>
 
       <div className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
         <Panel
-          title={'Registry'}
-          description={'Bảng tenant đang chạy thật trong current-code operator wrapper.'}
+          title={t('adminCoreTenants.registryTitle')}
+          description={t('adminCoreTenants.registryDescription')}
         >
           {tenants.length > 0 ? (
             <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
               <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                 <thead className="bg-slate-50 dark:bg-slate-950/60">
                   <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                    <th className="px-4 py-3">Tenant</th>
-                    <th className="px-4 py-3">Plan</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Risk</th>
-                    <th className="px-4 py-3">Updated</th>
+                    <th className="px-4 py-3">{t('adminCoreTenants.thTenant')}</th>
+                    <th className="px-4 py-3">{t('adminCoreTenants.thPlan')}</th>
+                    <th className="px-4 py-3">{t('adminCoreTenants.thStatus')}</th>
+                    <th className="px-4 py-3">{t('adminCoreTenants.thRisk')}</th>
+                    <th className="px-4 py-3">{t('adminCoreTenants.thUpdated')}</th>
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
@@ -293,7 +295,7 @@ export function AdminCoreTenantsPage() {
                             to={`/admin/core/tenants/${tenantRow.id}`}
                             className="text-sm font-semibold text-blue-600 hover:underline dark:text-blue-300"
                           >
-                            {'Xem chi tiết'}
+                            {t('adminCoreTenants.columnViewDetail')}
                           </Link>
                         </td>
                       </tr>
@@ -303,15 +305,15 @@ export function AdminCoreTenantsPage() {
               </table>
             </div>
           ) : (
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              {loadingRegistry ? 'Đang tải danh sách tenant…' : 'Không có tenant phù hợp bộ lọc.'}
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {loadingRegistry ? t('adminCoreTenants.loading') : t('adminCoreTenants.noTenants')}
             </p>
           )}
         </Panel>
 
         <Panel
-          title={'Chi tiết tenant'}
-          description={'Tổng hợp thương mại, bảo mật và hành động gần nhất cho tenant đang chọn.'}
+          title={t('adminCoreTenants.detailTitle')}
+          description={t('adminCoreTenants.detailDescription')}
         >
           {tenantId ? (
             selectedTenant ? (
@@ -326,25 +328,25 @@ export function AdminCoreTenantsPage() {
                       to={`/admin/core/tenants/${selectedTenant.id}/service-accounts`}
                       className="rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-500/15 dark:text-blue-200"
                     >
-                      {'Xem service accounts'}
+                      {t('adminCoreTenants.viewServiceAccounts')}
                     </Link>
                     <Link
                       to={`/admin/core/tenants/${selectedTenant.id}/pats`}
                       className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-700 transition-colors hover:bg-cyan-500/15 dark:text-cyan-200"
                     >
-                      {'Xem PATs'}
+                      {t('adminCoreTenants.viewPATs')}
                     </Link>
                     <Link
                       to={`/admin/core/tenants/${selectedTenant.id}/usage`}
                       className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-500/15 dark:text-emerald-200"
                     >
-                      {'Xem usage'}
+                      {t('adminCoreTenants.viewUsage')}
                     </Link>
                     <Link
                       to={`/admin/core/tenants/${selectedTenant.id}/billing`}
                       className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-700 transition-colors hover:bg-violet-500/15 dark:text-violet-200"
                     >
-                      {'Xem billing'}
+                      {t('adminCoreTenants.viewBilling')}
                     </Link>
                   </div>
                 </div>
@@ -355,13 +357,13 @@ export function AdminCoreTenantsPage() {
                 <ValueRow label="Invoice state" value={selectedTenant.invoice_state} />
 
                 <div>
-                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Thông tin thương mại</h3>
+                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.commercialInfo')}</h3>
                   <ValueRow label="Billing cycle" value={selectedCommercial?.billing_cycle || '—'} />
                   <ValueRow label="Next invoice" value={selectedCommercial?.next_invoice_date || '—'} />
                 </div>
 
                 <div>
-                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Thông tin bảo mật</h3>
+                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.securityInfo')}</h3>
                   <ValueRow label="Service accounts" value={String(selectedSecurity?.service_account_count ?? '—')} />
                   <ValueRow label="Active PATs" value={String(selectedSecurity?.active_pat_count ?? '—')} />
                   <ValueRow label="Rotations due" value={String(selectedSecurity?.rotations_due_count ?? '—')} />
@@ -370,7 +372,7 @@ export function AdminCoreTenantsPage() {
                 </div>
 
                 <div>
-                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Hành động gần nhất</h3>
+                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.recentActions')}</h3>
                   {recentActions.length > 0 ? (
                     <div className="space-y-3">
                       {recentActions.map((action: any) => (
@@ -384,18 +386,18 @@ export function AdminCoreTenantsPage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Chưa có hành động gần nhất.</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{t('adminCoreTenants.noRecentActions')}</p>
                   )}
                 </div>
               </div>
             ) : (
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                {loadingDetail ? 'Đang tải chi tiết tenant…' : 'Không tải được chi tiết tenant.'}
+                {loadingDetail ? t('adminCoreTenants.loading') : t('adminCoreTenants.noDetailData')}
               </p>
             )
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-              Chọn một tenant trong bảng bên trái để mở chi tiết thương mại, bảo mật và dòng hành động gần nhất.
+              {t('adminCoreTenants.noDetail')}
             </div>
           )}
         </Panel>

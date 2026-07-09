@@ -134,36 +134,36 @@ export function TenantAdminUsagePage({
       setHistoryLoading(true);
       const data = await defaultCoreApiAdapter.getAllUsageTrends(days);
       setHistoryData(data.meters || {});
-    } catch {
-      // silently fail
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t("tenantUsageHistory.loadError"));
     } finally {
       setHistoryLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const loadForecasts = useCallback(async () => {
     try {
       setForecastLoading(true);
       const data = await defaultCoreApiAdapter.getUsageForecast();
       setForecasts(data.forecasts || []);
-    } catch {
-      // silently fail
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t("tenantUsage.loadError"));
     } finally {
       setForecastLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const loadAlertConfigs = useCallback(async () => {
     try {
       setAlertConfigLoading(true);
       const data = await defaultCoreApiAdapter.getAlertConfigs();
       setAlertConfigs(data.configs || []);
-    } catch {
-      // silently fail
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t("tenantUsage.loadError"));
     } finally {
       setAlertConfigLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadMetersAndQuotas();

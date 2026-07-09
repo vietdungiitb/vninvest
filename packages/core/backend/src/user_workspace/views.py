@@ -288,6 +288,28 @@ class WatchlistItemListCreateView(APIView):
         symbol = str(request.data.get('symbol', '')).strip().upper()
         if not symbol:
             return Response({'detail': 'symbol là bắt buộc.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Ensure StockProfile exists for this symbol (seed dynamically from vnbroker)
+        from market_data.models import StockProfile
+        if not StockProfile.objects.filter(symbol=symbol).exists():
+            from market_data.vnbroker_adapter import fetch_listing_symbols
+            try:
+                listings = fetch_listing_symbols()
+                match = next((item for item in listings if item.get('symbol') == symbol), None)
+                if match:
+                    StockProfile.objects.get_or_create(
+                        symbol=symbol,
+                        defaults={
+                            'exchange': match.get('exchange', 'HOSE') or 'HOSE',
+                            'company_name': match.get('company_name', '') or '',
+                            'industry': match.get('industry', '') or '',
+                            'status': StockProfile.StatusChoices.ACTIVE
+                        }
+                    )
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error dynamically seeding StockProfile when adding to watchlist: {e}")
+
         item, created = WatchlistItem.objects.get_or_create(
             watchlist=watchlist,
             symbol=symbol,

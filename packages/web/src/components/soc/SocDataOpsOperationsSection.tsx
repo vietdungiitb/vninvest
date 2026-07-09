@@ -1,4 +1,5 @@
 import { createElement, useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useI18n } from "../../context/LangContext.js";
 import { useDataOps } from "./DataOpsContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
@@ -108,6 +109,13 @@ const ACTIVE_RUN_STYLES: Record<string, React.CSSProperties> = {
   } as React.CSSProperties,
 };
 
+const adapter = defaultCoreApiAdapter as unknown as {
+  getSocSymbolGroups: () => Promise<SymbolGroup[]>;
+  getSocDataOpsRunLogs: (page: number, pageSize: number) => Promise<{ results?: RunLogEntry[]; next?: string | null }>;
+  purgeSocDataOpsRunLogs: (keep: number) => Promise<void>;
+  previewSocDataOpsPlanner: (p: Record<string, unknown>) => Promise<PreviewResult>;
+};
+
 export function SocDataOpsOperationsSection() {
   const { t } = useI18n();
   const { state, actions } = useDataOps();
@@ -146,12 +154,6 @@ export function SocDataOpsOperationsSection() {
   // Drawer Custom Group State
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const adapter = defaultCoreApiAdapter as unknown as {
-    getSocSymbolGroups: () => Promise<SymbolGroup[]>;
-    getSocDataOpsRunLogs: (page: number, pageSize: number) => Promise<{ results?: RunLogEntry[]; next?: string | null }>;
-    purgeSocDataOpsRunLogs: (keep: number) => Promise<void>;
-    previewSocDataOpsPlanner: (p: Record<string, unknown>) => Promise<PreviewResult>;
-  };
 
   const fetchCustomGroups = useCallback(async () => {
     try {
@@ -184,11 +186,11 @@ export function SocDataOpsOperationsSection() {
   useEffect(() => {
     fetchCustomGroups();
     actions.refreshRuns();
-  }, []);
+  }, [fetchCustomGroups, actions]);
 
   useEffect(() => {
     fetchRunLogs(runLogsPage, runLogsPageSize);
-  }, [runLogsPage, runLogsPageSize]);
+  }, [runLogsPage, runLogsPageSize, fetchRunLogs]);
 
   const isCustom = selectedGroup === CUSTOM_GROUP_KEY;
 
@@ -204,7 +206,7 @@ export function SocDataOpsOperationsSection() {
     dry_run: dryRun,
     execution_mode: executionMode,
     reason: reason.trim() || "ops_soc",
-  }), [selectedDatasets, selectedGroup, customSymbols, dateFrom, dateTo, mode, dryRun, executionMode, reason]);
+  }), [selectedDatasets, isCustom, selectedGroup, customSymbols, dateFrom, dateTo, mode, dryRun, executionMode, reason]);
 
   const handlePreview = async () => {
     if (isCustom && !customSymbols.trim()) {
@@ -238,14 +240,10 @@ export function SocDataOpsOperationsSection() {
     setSubmitting(true);
     try {
       const runId = await actions.triggerBackfill(buildPayload());
-      if (runId) {
-        setSuccess(t("soc.dataops.backfill_queued_with_run", { run_id: runId }));
-        setPreview(null);
-        fetchRunLogs(1, runLogsPageSize);
-        setRunLogsPage(1);
-      } else {
-        setError(t("soc.dataops.backfill_failed"));
-      }
+      setSuccess(t("soc.dataops.backfill_queued_with_run", { run_id: runId }));
+      setPreview(null);
+      fetchRunLogs(1, runLogsPageSize);
+      setRunLogsPage(1);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("soc.dataops.backfill_failed"));
     } finally {
@@ -846,30 +844,33 @@ export function SocDataOpsOperationsSection() {
     // Phần dưới: Nhật ký chạy (Run Logs)
     renderRunLogsSection(),
     // Ngăn kéo trượt Custom Group Manager Drawer
-    isDrawerOpen
-      ? createElement(
-          "div",
-          null,
-          createElement("div", { className: styles.drawerOverlay, onClick: () => setIsDrawerOpen(false) }),
+    isDrawerOpen && typeof document !== "undefined"
+      ? createPortal(
           createElement(
             "div",
-            { className: styles.drawerContent },
+            { style: { position: "fixed", inset: 0, zIndex: 9999 } },
+            createElement("div", { className: styles.drawerOverlay, onClick: () => setIsDrawerOpen(false) }),
             createElement(
               "div",
-              { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" } },
-              createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.backfill_custom_group_label")),
+              { className: styles.drawerContent },
               createElement(
-                "button",
-                {
-                  onClick: () => setIsDrawerOpen(false),
-                  className: styles.actionBtn,
-                  style: { background: "rgba(100, 116, 139, 0.2)", color: "var(--text-primary)", fontSize: "0.75rem", padding: "0.25rem 0.5rem" },
-                },
-                "\u2715",
+                "div",
+                { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" } },
+                createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.backfill_custom_group_label")),
+                createElement(
+                  "button",
+                  {
+                    onClick: () => setIsDrawerOpen(false),
+                    className: styles.actionBtn,
+                    style: { background: "rgba(100, 116, 139, 0.2)", color: "var(--text-primary)", fontSize: "0.75rem", padding: "0.25rem 0.5rem" },
+                  },
+                  "\u2715",
+                ),
               ),
+              createElement(SocCustomGroupManager, { onGroupsChanged: fetchCustomGroups }),
             ),
-            createElement(SocCustomGroupManager, { onGroupsChanged: fetchCustomGroups }),
           ),
+          document.body
         )
       : null,
   );

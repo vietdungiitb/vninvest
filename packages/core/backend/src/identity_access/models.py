@@ -23,9 +23,9 @@ def _generate_public_id(prefix: str) -> str:
     return f'{prefix}_{secrets.token_hex(10)}'
 
 
-def _build_pat_secret() -> str:
-    """Generate a cryptographically secure PAT secret string."""
-    return 'vni_' + secrets.token_urlsafe(48)
+def _build_pat_secret(plan_code: str = 'free') -> str:
+    """Generate a cryptographically secure PAT secret string with plan prefix."""
+    return f'vni_{plan_code}_' + secrets.token_urlsafe(48)
 
 
 def _extract_pat_prefix(raw_secret: str) -> str:
@@ -104,6 +104,7 @@ class CoreTenant(models.Model):
     # API usage quotas (SFI-B2 compat — added to match existing DB schema)
     api_calls_limit = models.IntegerField(default=10000, verbose_name='API calls monthly limit')
     api_calls_used = models.IntegerField(default=0, verbose_name='API calls used this period')
+    max_active_pats = models.IntegerField(default=-1, verbose_name='Max active PATs (-1 = unlimited)')
     gateway_rate_tier_override = models.JSONField(null=True, blank=True, verbose_name='Gateway rate tier override configuration')
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -279,7 +280,23 @@ class CorePATCredential(models.Model):
     @classmethod
     def issue_for_service_account(cls, service_account: CoreServiceAccount, scopes: list[str], expires_at=None, label: str = '', audit_reason: str = '', allowed_cidr_blocks: list[str] = None, is_human_session: bool = False):
         from django.utils import timezone
-        raw_secret = _build_pat_secret()
+        from django.core.exceptions import ValidationError
+
+        tenant = service_account.tenant
+        if tenant.max_active_pats != -1:
+            now = timezone.now()
+            active_count = cls.objects.filter(
+                service_account__tenant=tenant,
+                status=cls.StatusChoices.ACTIVE,
+                expires_at__gt=now,
+            ).count()
+            if active_count >= tenant.max_active_pats:
+                raise ValidationError(
+                    f'Tenant has reached the limit of {tenant.max_active_pats} active PATs. '
+                    f'Revoke or rotate an existing PAT before creating a new one.'
+                )
+
+        raw_secret = _build_pat_secret(tenant.plan)
         token_hash = _hash_pat_secret(raw_secret)
         token_prefix = _extract_pat_prefix(raw_secret)
         credential = cls.objects.create(

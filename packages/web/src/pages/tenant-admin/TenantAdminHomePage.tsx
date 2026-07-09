@@ -151,7 +151,9 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
     setTrendDays(days);
     defaultCoreApiAdapter.getUsageTrend(days).then((data) => {
       setTrend((data as { daily: DailyPoint[] }).daily || []);
-    }).catch((_err: unknown) => {});
+    }).catch((err: unknown) => {
+      setError(err instanceof Error ? err.message : t("tenantHome.trendLoadError"));
+    });
   };
 
   const planLabel = t(`plans.${userPlan}`, { defaultValue: userPlan });
@@ -171,11 +173,11 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
       setDeprovisionError("");
       await defaultCoreApiAdapter.corePost("/partner/billing/deprovision/");
       setDeprovisionDone(true);
+      setShowDeprovision(false);
     } catch {
       setDeprovisionError(t("tenantHome.deprovisionError"));
     } finally {
       setDeprovisioning(false);
-      setShowDeprovision(false);
     }
   };
 
@@ -279,7 +281,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
     {
       key: "pat",
       labelKey: "tenantHome.checklistPAT",
-      done: summary?.pats_expiring_soon !== undefined,
+      done: (summary?.pats_expiring_soon ?? 0) > 0,
       route: "/tenant-admin/pats",
     },
     {

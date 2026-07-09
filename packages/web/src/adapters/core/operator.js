@@ -183,5 +183,11 @@ export function createOperatorClient({ coreGet, corePost, corePut, corePatch, co
     previewPlanChange(planCode) {
       return corePost("/partner/billing/preview-plan-change/", { target_plan: planCode });
     },
+    createStripeCheckoutSession(planCode, successUrl, cancelUrl) {
+      return corePost("/partner/billing/stripe/session/", { plan: planCode, success_url: successUrl, cancel_url: cancelUrl });
+    },
+    createStripePortalSession(returnUrl) {
+      return corePost("/partner/billing/stripe/portal/", { return_url: returnUrl });
+    },
   };
 }

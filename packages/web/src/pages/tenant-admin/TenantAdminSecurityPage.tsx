@@ -57,16 +57,16 @@ interface SessionsResponse {
 function timeAgo(iso: string, t: (k: string, o?: Record<string, string | number>) => string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return vaint("common.justNow", t);
-  if (mins < 60) return t("common.minutesAgo", { count: mins });
+  if (mins < 1) return vaint("tenantHome.justNow", t);
+  if (mins < 60) return t("tenantHome.minutesAgo", { count: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return t("common.hoursAgo", { count: hours });
+  if (hours < 24) return t("tenantHome.hoursAgo", { count: hours });
   const days = Math.floor(hours / 24);
-  return t("common.daysAgo", { count: days });
+  return t("tenantHome.daysAgo", { count: days });
 }
 
 function vaint(key: string, t: (k: string, o?: Record<string, string | number>) => string): string {
-  return t(key, { defaultValue: "just now" });
+  return t(key, { defaultValue: "Vừa xong" });
 }
 
 interface TenantAdminSecurityPageProps {

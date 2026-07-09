@@ -5,6 +5,8 @@ import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
+import { useConfirm } from "../../components/ConfirmModal.js";
+import { useToast } from "../../components/ShellToast.js";
 
 interface SSOConfig {
   is_enabled?: boolean;
@@ -54,6 +56,8 @@ export function TenantAdminSSOPage({
 }: TenantAdminSSOPageProps) {
   const { t } = useI18n();
   const { ability } = usePortfolio();
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const [config, setConfig] = useState<SSOConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -299,31 +303,51 @@ export function TenantAdminSSOPage({
                     </Field>
 
                     <Field label={t("tenantSSO.spEntityIdLabel")} help={t("tenantSSO.spEntityIdHelp")}>
-                      <input
-                        className="shellPage__input"
-                        type="text"
-                        value={formData.sp_entity_id}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                          handleChange("sp_entity_id", e.target.value)
-                        }
-                        placeholder={t("tenantSSO.spEntityIdPlaceholder")}
-                        disabled={inputDisabled}
-                        style={{ opacity: inputDisabled ? 0.5 : 1 }}
-                      />
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <input
+                          className="shellPage__input"
+                          type="text"
+                          value={formData.sp_entity_id}
+                          readOnly
+                          placeholder={t("tenantSSO.spEntityIdPlaceholder")}
+                          style={{ opacity: 0.8, flex: 1 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(formData.sp_entity_id);
+                            toast.success(t("tenantPats.copySuccess") || "Đã sao chép!");
+                          }}
+                          className="shellPage__button"
+                          style={{ whiteSpace: "nowrap" }}
+                        >
+                          {t("tenantPats.copyTokenAction") || "Sao chép"}
+                        </button>
+                      </div>
                     </Field>
 
                     <Field label={t("tenantSSO.spAcsUrlLabel")} help={t("tenantSSO.spAcsUrlHelp")}>
-                      <input
-                        className="shellPage__input"
-                        type="url"
-                        value={formData.sp_acs_url}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                          handleChange("sp_acs_url", e.target.value)
-                        }
-                        placeholder={t("tenantSSO.spAcsUrlPlaceholder")}
-                        disabled={inputDisabled}
-                        style={{ opacity: inputDisabled ? 0.5 : 1 }}
-                      />
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <input
+                          className="shellPage__input"
+                          type="url"
+                          value={formData.sp_acs_url}
+                          readOnly
+                          placeholder={t("tenantSSO.spAcsUrlPlaceholder")}
+                          style={{ opacity: 0.8, flex: 1 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(formData.sp_acs_url);
+                            toast.success(t("tenantPats.copySuccess") || "Đã sao chép!");
+                          }}
+                          className="shellPage__button"
+                          style={{ whiteSpace: "nowrap" }}
+                        >
+                          {t("tenantPats.copyTokenAction") || "Sao chép"}
+                        </button>
+                      </div>
                     </Field>
 
                     <button
@@ -347,7 +371,23 @@ export function TenantAdminSSOPage({
               </p>
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
+                  const isDirty = config ? (
+                    formData.is_enabled !== (config.is_enabled || false) ||
+                    formData.idp_entity_id !== (config.idp_entity_id || "") ||
+                    formData.idp_sso_url !== (config.idp_sso_url || "") ||
+                    formData.idp_x509_cert !== (config.idp_x509_cert || "") ||
+                    formData.domain_hint !== (config.domain_hint || "")
+                  ) : false;
+
+                  if (isDirty) {
+                    const ok = await confirm({
+                      title: t("common.warning") || "Cảnh báo",
+                      message: t("tenantSSO.unsavedChangesWarning"),
+                    });
+                    if (!ok) return;
+                  }
+
                   const baseUrl = window.location.origin;
                   window.location.href = `${baseUrl}/core/v1/auth/sso/login/?domain=${formData.domain_hint}`;
                 }}

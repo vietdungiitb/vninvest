@@ -62,6 +62,7 @@ def _tenant_payload(tenant: CoreTenant) -> dict:
         'tenant_code': tenant.tenant_code,
         'display_name': tenant.display_name,
         'plan': tenant.plan,
+        'max_active_pats': tenant.max_active_pats,
         'status': tenant.status,
         'features': list(tenant.features or []),
     }
@@ -234,12 +235,19 @@ def _build_capabilities_payload(user, tenant: CoreTenant, service_account=None) 
 
 def _build_auth_payload(user, tenant: CoreTenant, service_account, credential, raw_secret: str) -> dict:
     capabilities = _build_capabilities_payload(user, tenant, service_account)
+    active_pat_count = CorePATCredential.objects.filter(
+        service_account__tenant=tenant,
+        status=CorePATCredential.StatusChoices.ACTIVE,
+        expires_at__gt=timezone.now(),
+    ).count()
     return {
         'access': raw_secret,
         'refresh': raw_secret,
         'token': raw_secret,
         'token_prefix': credential.token_prefix if credential else raw_secret[:12],
         'plan': tenant.plan,
+        'active_pat_count': active_pat_count,
+        'max_active_pats': tenant.max_active_pats,
         'user': _user_payload(user),
         'tenant': _tenant_payload(tenant),
         'abilities': capabilities['abilities'],

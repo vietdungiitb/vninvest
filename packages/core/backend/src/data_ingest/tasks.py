@@ -2419,9 +2419,36 @@ def enqueue_dnse_quarterly_backfill(
     except Exception as _svc_exc:
         logger.warning('enqueue_dnse_quarterly_backfill: ServiceRunLog setup failed: %s', _svc_exc)
 
-    # 1. Resolve symbols — global matrix là SSOT mặc định
+    # 1. Resolve symbols — global matrix hoặc nhóm cụ thể
     if not symbols_group or symbols_group == 'global':
         symbols = _get_default_global_registry_symbols()
+    elif symbols_group == 'vn100_watchlist':
+        try:
+            from market_data.vnbroker_adapter import fetch_symbol_group_members
+            raw_members = fetch_symbol_group_members('vn100')
+            vn100_symbols = {s.strip().upper() for s in raw_members if s and s.strip()}
+        except Exception as exc:
+            logger.warning('enqueue_dnse_quarterly_backfill: cannot resolve vn100: %s', exc)
+            vn100_symbols = set()
+
+        try:
+            from user_workspace.models import WatchlistItem, TrackedSymbol
+            watchlist_symbols = {
+                s.strip().upper()
+                for s in WatchlistItem.objects.values_list('symbol', flat=True).distinct()
+                if s and s.strip()
+            }
+            tracked_symbols = {
+                s.strip().upper()
+                for s in TrackedSymbol.objects.values_list('symbol', flat=True).distinct()
+                if s and s.strip()
+            }
+        except Exception as exc:
+            logger.warning('enqueue_dnse_quarterly_backfill: cannot resolve watchlists: %s', exc)
+            watchlist_symbols = set()
+            tracked_symbols = set()
+
+        symbols = sorted(vn100_symbols | watchlist_symbols | tracked_symbols)
     else:
         try:
             from market_data.vnbroker_adapter import fetch_symbol_group_members

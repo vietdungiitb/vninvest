@@ -674,7 +674,8 @@ export function TenantAdminPATsPage({
                             } else {
                               const d = new Date();
                               d.setDate(d.getDate() + preset.offset);
-                              const local = d.toISOString().slice(0, 16);
+                              const tzOffset = d.getTimezoneOffset() * 60000;
+                              const local = new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
                               setCreateForm(prev => ({ ...prev, expires_at: local }));
                             }
                           }}

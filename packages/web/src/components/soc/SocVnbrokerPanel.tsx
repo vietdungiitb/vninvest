@@ -49,6 +49,22 @@ interface BenchmarkResult {
   [key: string]: unknown;
 }
 
+const vnbrokerAdapter = defaultCoreApiAdapter as unknown as {
+  getSocVnbrokerConfig: () => Promise<VnbrokerConfig>;
+  getSocVnbrokerHealth: () => Promise<VnbrokerHealth>;
+  getSocVnbrokerProviders: () => Promise<{ providers?: VnbrokerProvider[] }>;
+  getSocVnbrokerBenchmarkLatest: () => Promise<{ results?: BenchmarkResult[] }>;
+  getSocVnbrokerCircuitBreaker: () => Promise<{ status?: string; tripped?: boolean; tripped_at?: string | null }>;
+  applySocVnbrokerConfig: (cfg: VnbrokerConfig) => Promise<void>;
+  previewSocVnbrokerConfig: (cfg: VnbrokerConfig) => Promise<{
+    change_summary?: string[];
+    impact_warnings?: string[];
+    validation_errors?: string[];
+  }>;
+  testSocVnbrokerConnection: () => Promise<{ status?: string; message?: string }>;
+  runSocVnbrokerBenchmark: (payload: Record<string, unknown>) => Promise<{ results?: BenchmarkResult[] }>;
+};
+
 export function SocVnbrokerPanel() {
   const { t } = useI18n();
   const [loading, setLoading] = useState(true);
@@ -63,27 +79,29 @@ export function SocVnbrokerPanel() {
   const [benchmarkLoading, setBenchmarkLoading] = useState(false);
   const [benchmarkProvider, setBenchmarkProvider] = useState("all");
 
+  // Circuit Breaker, preview details & connection testing states
+  const [circuitBreaker, setCircuitBreaker] = useState<{ status?: string; tripped?: boolean; tripped_at?: string | null } | null>(null);
+  const [previewResults, setPreviewResults] = useState<{ changeSummary?: string[]; impactWarnings?: string[]; validationErrors?: string[] } | null>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const adapter = defaultCoreApiAdapter as unknown as {
-        getSocVnbrokerConfig: () => Promise<VnbrokerConfig>;
-        getSocVnbrokerHealth: () => Promise<VnbrokerHealth>;
-        getSocVnbrokerProviders: () => Promise<{ providers?: VnbrokerProvider[] }>;
-        getSocVnbrokerBenchmarkLatest: () => Promise<{ results?: BenchmarkResult[] }>;
-      };
-
-      const [cfg, h, prov, bench] = await Promise.all([
-        adapter.getSocVnbrokerConfig(),
-        adapter.getSocVnbrokerHealth(),
-        adapter.getSocVnbrokerProviders(),
-        adapter.getSocVnbrokerBenchmarkLatest(),
+      const [cfg, h, prov, bench, cb] = await Promise.all([
+        vnbrokerAdapter.getSocVnbrokerConfig(),
+        vnbrokerAdapter.getSocVnbrokerHealth(),
+        vnbrokerAdapter.getSocVnbrokerProviders(),
+        vnbrokerAdapter.getSocVnbrokerBenchmarkLatest(),
+        vnbrokerAdapter.getSocVnbrokerCircuitBreaker(),
       ]);
 
       setConfig(cfg);
+      setEditConfig(JSON.stringify(cfg || {}, null, 2));
       setHealth(h);
       setProviders(prov.providers || []);
       setBenchmarkResults(bench.results || []);
+      setCircuitBreaker(cb);
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Cannot load vnbroker data.");
@@ -96,12 +114,21 @@ export function SocVnbrokerPanel() {
     fetchData();
   }, []);
 
-  const handlePreview = () => {
+  const handlePreview = async () => {
     try {
       const parsed = JSON.parse(editConfig) as VnbrokerConfig;
+      setPreviewing(true);
+      const result = await vnbrokerAdapter.previewSocVnbrokerConfig(parsed);
+      setPreviewResults({
+        changeSummary: result.change_summary || [],
+        impactWarnings: result.impact_warnings || [],
+        validationErrors: result.validation_errors || [],
+      });
       setPreviewModal({ before: config || {}, after: parsed });
-    } catch {
-      alert(t("soc.vnbroker.invalid_json"));
+    } catch (err) {
+      alert(`Error: ${err instanceof Error ? err.message : t("soc.vnbroker.invalid_json")}`);
+    } finally {
+      setPreviewing(false);
     }
   };
 
@@ -109,9 +136,9 @@ export function SocVnbrokerPanel() {
     try {
       const parsed = JSON.parse(editConfig) as VnbrokerConfig;
       setApplying(true);
-      const adapter = defaultCoreApiAdapter as unknown as { applySocVnbrokerConfig: (cfg: VnbrokerConfig) => Promise<void> };
-      await adapter.applySocVnbrokerConfig(parsed);
+      await vnbrokerAdapter.applySocVnbrokerConfig(parsed);
       setPreviewModal(null);
+      setPreviewResults(null);
       await fetchData();
     } catch (err) {
       alert(`Error: ${err instanceof Error ? err.message : "Apply failed."}`);
@@ -124,8 +151,7 @@ export function SocVnbrokerPanel() {
     setBenchmarkLoading(true);
     try {
       const payload = benchmarkProvider !== "all" ? { provider: benchmarkProvider } : {};
-      const adapter = defaultCoreApiAdapter as unknown as { runSocVnbrokerBenchmark: (payload: Record<string, unknown>) => Promise<{ results?: BenchmarkResult[] }> };
-      const result = await adapter.runSocVnbrokerBenchmark(payload);
+      const result = await vnbrokerAdapter.runSocVnbrokerBenchmark(payload);
       setBenchmarkResults(result.results || []);
     } catch (err) {
       alert(`Error: ${err instanceof Error ? err.message : "Benchmark failed."}`);
@@ -137,11 +163,22 @@ export function SocVnbrokerPanel() {
   const handleResetToDefaults = async () => {
     if (!window.confirm(t("soc.vnbroker.reset_confirm"))) return;
     try {
-      const adapter = defaultCoreApiAdapter as unknown as { applySocVnbrokerConfig: (cfg: VnbrokerConfig) => Promise<void> };
-      await adapter.applySocVnbrokerConfig({});
+      await vnbrokerAdapter.applySocVnbrokerConfig({});
       await fetchData();
     } catch (err) {
       alert(`Error: ${err instanceof Error ? err.message : "Reset failed."}`);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    setTestingConnection(true);
+    try {
+      await vnbrokerAdapter.testSocVnbrokerConnection();
+      alert(t("soc.vnbroker.connection_success"));
+    } catch (err) {
+      alert(`Error: ${err instanceof Error ? err.message : "Connection test failed."}`);
+    } finally {
+      setTestingConnection(false);
     }
   };
 
@@ -178,7 +215,7 @@ export function SocVnbrokerPanel() {
                   createElement(
                     "textarea",
                     {
-                      value: editConfig || JSON.stringify(config || {}, null, 2),
+                      value: editConfig,
                       onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setEditConfig(e.target.value),
                       className: styles.configEditor,
                       rows: 10,
@@ -189,8 +226,13 @@ export function SocVnbrokerPanel() {
                     { style: { display: "flex", gap: "0.5rem", marginTop: "0.75rem", flexWrap: "wrap" } },
                     createElement(
                       "button",
-                      { onClick: handlePreview, className: styles.actionBtn, style: { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan)" } },
-                      t("soc.actions.preview"),
+                      {
+                        onClick: handlePreview,
+                        disabled: previewing,
+                        className: styles.actionBtn,
+                        style: { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan)", cursor: previewing ? "not-allowed" : "pointer" }
+                      },
+                      previewing ? t("soc.prefetch.loading") : t("soc.actions.preview"),
                     ),
                     createElement(
                       "button",
@@ -202,6 +244,54 @@ export function SocVnbrokerPanel() {
                       { onClick: handleResetToDefaults, className: styles.actionBtn, style: { background: "rgba(239, 68, 68, 0.15)", color: "#f87171" } },
                       t("soc.vnbroker.reset_defaults"),
                     ),
+                  ),
+                ),
+                createElement(
+                  "div",
+                  { className: styles.sectionCard },
+                  createElement(
+                    "div",
+                    { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" } },
+                    createElement("div", { className: styles.sectionCardTitle }, t("soc.vnbroker.circuit_breaker_title")),
+                    createElement(
+                      "span",
+                      {
+                        className: styles.statusBadge,
+                        style: {
+                          background: circuitBreaker?.tripped ? "rgba(239, 68, 68, 0.15)" : "rgba(52, 211, 153, 0.15)",
+                          color: circuitBreaker?.tripped ? "#f87171" : "#34d399",
+                          fontSize: "0.7rem",
+                          padding: "0.2rem 0.5rem",
+                          borderRadius: "4px",
+                          fontWeight: 600,
+                        },
+                      },
+                      circuitBreaker?.tripped ? t("soc.vnbroker.breaker_tripped") : t("soc.vnbroker.breaker_closed"),
+                    ),
+                  ),
+                  createElement(
+                    "div",
+                    { style: { fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.4" } },
+                    circuitBreaker?.tripped
+                      ? `Tripped at: ${circuitBreaker.tripped_at ? circuitBreaker.tripped_at.split("T")[1]?.slice(0, 8) : "N/A"}`
+                      : t("soc.vnbroker.breaker_normal_desc"),
+                  ),
+                  createElement("hr", { style: { border: "none", borderTop: "1px solid var(--border-default)", margin: "0.75rem 0" } }),
+                  createElement("div", { className: styles.sectionCardTitle, style: { fontSize: "0.8rem", marginBottom: "0.5rem" } }, t("soc.vnbroker.test_connection")),
+                  createElement(
+                    "button",
+                    {
+                      onClick: handleTestConnection,
+                      disabled: testingConnection,
+                      className: styles.actionBtn,
+                      style: {
+                        background: "rgba(56, 189, 248, 0.15)",
+                        color: "#38bdf8",
+                        cursor: testingConnection ? "not-allowed" : "pointer",
+                        width: "100%",
+                      },
+                    },
+                    testingConnection ? t("soc.vnbroker.testing_connection") : t("soc.vnbroker.test_connection"),
                   ),
                 ),
                 createElement(
@@ -256,23 +346,61 @@ export function SocVnbrokerPanel() {
                       { style: { width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" } },
                       createElement("thead", null,
                         createElement("tr", null,
-                          createElement("th", { style: { textAlign: "left", padding: "0.5rem", borderBottom: "1px solid var(--border-default)" } }, t("soc.vnbroker.provider")),
-                          createElement("th", { style: { textAlign: "left", padding: "0.5rem", borderBottom: "1px solid var(--border-default)" } }, t("soc.vnbroker.latency")),
-                          createElement("th", { style: { textAlign: "left", padding: "0.5rem", borderBottom: "1px solid var(--border-default)" } }, "RPM"),
-                          createElement("th", { style: { textAlign: "left", padding: "0.5rem", borderBottom: "1px solid var(--border-default)" } }, t("soc.vnbroker.success_rate")),
-                          createElement("th", { style: { textAlign: "left", padding: "0.5rem", borderBottom: "1px solid var(--border-default)" } }, t("soc.vnbroker.rate_limit")),
+                          createElement("th", { style: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid var(--border-default)", color: "var(--text-muted)", fontWeight: 600 } }, t("soc.vnbroker.provider")),
+                          createElement("th", { style: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid var(--border-default)", color: "var(--text-muted)", fontWeight: 600 } }, t("soc.vnbroker.latency")),
+                          createElement("th", { style: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid var(--border-default)", color: "var(--text-muted)", fontWeight: 600 } }, "RPM"),
+                          createElement("th", { style: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid var(--border-default)", color: "var(--text-muted)", fontWeight: 600 } }, t("soc.vnbroker.success_rate")),
+                          createElement("th", { style: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid var(--border-default)", color: "var(--text-muted)", fontWeight: 600 } }, t("soc.vnbroker.rate_limit")),
                         ),
                       ),
                       createElement("tbody", null,
-                        benchmarkResults.map((r) =>
-                          createElement("tr", { key: r.provider },
-                            createElement("td", { style: { padding: "0.5rem", borderBottom: "1px solid var(--border-default)", fontWeight: 600 } }, r.provider),
-                            createElement("td", { style: { padding: "0.5rem", borderBottom: "1px solid var(--border-default)" } }, `${r.latency_ms}ms`),
-                            createElement("td", { style: { padding: "0.5rem", borderBottom: "1px solid var(--border-default)" } }, r.rpm),
-                            createElement("td", { style: { padding: "0.5rem", borderBottom: "1px solid var(--border-default)" } }, `${r.success_rate}%`),
-                            createElement("td", { style: { padding: "0.5rem", borderBottom: "1px solid var(--border-default)", color: r.rate_limit_pct > 5 ? "#f87171" : "var(--text-muted)" } }, `${r.rate_limit_pct}%`),
-                          ),
-                        ),
+                        benchmarkResults.map((r) => {
+                          const successColor = r.success_rate >= 100 ? "#34d399" : r.success_rate >= 95 ? "#fbbf24" : "#f87171";
+                          const rateLimitColor = r.rate_limit_pct > 5 ? "#f87171" : "var(--text-muted)";
+                          return createElement(
+                            "tr",
+                            { key: r.provider, style: { borderBottom: "1px solid var(--border-default)" } },
+                            createElement("td", { style: { padding: "0.75rem", fontWeight: 600 } }, r.provider),
+                            createElement("td", { style: { padding: "0.75rem" } }, `${r.latency_ms}ms`),
+                            createElement("td", { style: { padding: "0.75rem" } }, r.rpm),
+                            createElement(
+                              "td",
+                              { style: { padding: "0.75rem" } },
+                              createElement(
+                                "span",
+                                {
+                                  style: {
+                                    background: `${successColor}15`,
+                                    color: successColor,
+                                    padding: "0.2rem 0.5rem",
+                                    borderRadius: "4px",
+                                    fontSize: "0.7rem",
+                                    fontWeight: 600,
+                                  },
+                                },
+                                `${r.success_rate}%`
+                              )
+                            ),
+                            createElement(
+                              "td",
+                              { style: { padding: "0.75rem" } },
+                              createElement(
+                                "span",
+                                {
+                                  style: {
+                                    background: r.rate_limit_pct > 5 ? "rgba(239, 68, 68, 0.15)" : "transparent",
+                                    color: rateLimitColor,
+                                    padding: r.rate_limit_pct > 5 ? "0.2rem 0.5rem" : "0",
+                                    borderRadius: "4px",
+                                    fontSize: "0.7rem",
+                                    fontWeight: r.rate_limit_pct > 5 ? 600 : 400,
+                                  },
+                                },
+                                `${r.rate_limit_pct}%`
+                              )
+                            ),
+                          );
+                        }),
                       ),
                     )
                   : createElement("p", { className: styles.emptyState }, t("soc.vnbroker.no_benchmark_results")),
@@ -303,8 +431,14 @@ export function SocVnbrokerPanel() {
       ? createElement(SocConfigPreviewModal, {
           before: previewModal.before,
           after: previewModal.after,
+          changeSummary: previewResults?.changeSummary,
+          impactWarnings: previewResults?.impactWarnings,
+          validationErrors: previewResults?.validationErrors,
           onConfirm: handleApply,
-          onCancel: () => setPreviewModal(null),
+          onCancel: () => {
+            setPreviewModal(null);
+            setPreviewResults(null);
+          },
           loading: applying,
         })
       : null,

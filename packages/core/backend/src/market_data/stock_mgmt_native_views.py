@@ -1217,9 +1217,30 @@ class StockManagementStockListView(APIView):
     pagination_class = StockManagementStockListCursorPagination
 
     def get(self, request):
-        qs = StockProfile.objects.filter(status=StockProfile.StatusChoices.ACTIVE).order_by('symbol')
-
         search = str(request.query_params.get('search') or request.query_params.get('q') or '').strip()
+        if search and len(search) == 3 and search.isalpha():
+            search_upper = search.upper()
+            if not StockProfile.objects.filter(symbol=search_upper).exists():
+                from market_data.vnbroker_adapter import fetch_listing_symbols
+                try:
+                    listings = fetch_listing_symbols()
+                    match = next((item for item in listings if item.get('symbol') == search_upper), None)
+                    if match:
+                        StockProfile.objects.get_or_create(
+                            symbol=search_upper,
+                            defaults={
+                                'exchange': match.get('exchange', 'HOSE') or 'HOSE',
+                                'company_name': match.get('company_name', '') or '',
+                                'industry': match.get('industry', '') or '',
+                                'status': StockProfile.StatusChoices.ACTIVE
+                            }
+                        )
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error seeding stock profile for search {search_upper}: {e}")
+
+        qs = StockProfile.objects.filter(status=StockProfile.StatusChoices.ACTIVE).order_by('symbol')
         if search:
             qs = qs.filter(
                 Q(symbol__icontains=search)
@@ -1493,7 +1514,24 @@ class StockManagementDetailView(APIView):
         try:
             profile = StockProfile.objects.get(symbol=symbol)
         except StockProfile.DoesNotExist:
-            raise NotFound(f'Stock not found: {symbol}')
+            from market_data.vnbroker_adapter import fetch_listing_symbols
+            try:
+                listings = fetch_listing_symbols()
+                match = next((item for item in listings if item.get('symbol') == symbol), None)
+                if not match:
+                    raise NotFound(f'Stock not found: {symbol}')
+                profile = StockProfile.objects.create(
+                    symbol=symbol,
+                    exchange=match.get('exchange', 'HOSE') or 'HOSE',
+                    company_name=match.get('company_name', '') or '',
+                    industry=match.get('industry', '') or '',
+                    status=StockProfile.StatusChoices.ACTIVE
+                )
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error dynamically creating StockProfile for {symbol}: {e}")
+                raise NotFound(f'Stock not found: {symbol}')
 
         metadata = profile.metadata or {}
         cache_valid = False

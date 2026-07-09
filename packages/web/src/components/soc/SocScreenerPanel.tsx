@@ -76,6 +76,7 @@ export function SocScreenerPanel() {
       ]);
 
       setConfig(cfg);
+      setEditConfig(JSON.stringify(cfg || {}, null, 2));
       setRules(rulesData.rules || []);
       setResults(resultsData.symbols_matched || []);
       setAlerts(alertsData.alerts || []);
@@ -118,7 +119,7 @@ export function SocScreenerPanel() {
 
   const handleManualScan = async () => {
     if (!manualSymbols.trim()) {
-      alert(t("soc.screenter.symbols_required"));
+      alert(t("soc.screener.scan_symbols_required"));
       return;
     }
     setScanning(true);
@@ -126,7 +127,7 @@ export function SocScreenerPanel() {
       const symbols = manualSymbols.split(",").map((s) => s.trim()).filter(Boolean);
       const adapter = defaultCoreApiAdapter as unknown as { manualSocScreenerScan: (symbols: string[]) => Promise<void> };
       await adapter.manualSocScreenerScan(symbols);
-      alert(t("soc.screener.scan_started"));
+      alert(t("soc.screener.scan_queued"));
       setManualSymbols("");
       await fetchData();
     } catch (err) {
@@ -177,7 +178,7 @@ export function SocScreenerPanel() {
                 createElement(
                   "textarea",
                   {
-                    value: editConfig || JSON.stringify(config || {}, null, 2),
+                    value: editConfig,
                     onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setEditConfig(e.target.value),
                     className: styles.configEditor,
                     rows: 6,

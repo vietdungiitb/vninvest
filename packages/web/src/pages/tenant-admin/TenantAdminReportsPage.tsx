@@ -212,7 +212,7 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
             <ShellEmptyState description={t("tenantReports.empty")} ctaLabel={t("tenantReports.createAction")} ctaOnClick={() => setShowCreateModal(true)} />
           </ShellPanel>
         ) : (
-          <ShellPanel title={t("tenantReports.listTitle")} subtitle={`${reports.length}`}>
+          <ShellPanel title={t("tenantReports.listTitle")} subtitle={`${reports.length}`} actions={canManage ? createAction : null}>
             <div className="shellPage__list">
               {reports.map(report => (
                 <div key={report.id} className="shellPage__listItem" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>

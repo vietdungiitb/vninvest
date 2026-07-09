@@ -6,6 +6,7 @@ import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useToast } from "../../components/ShellToast.js";
+import { useConfirm } from "../../components/ConfirmModal.js";
 
 interface Subscription {
   plan_code: string;
@@ -113,6 +114,7 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
   const { t, formatCurrency: fmtCurrency, formatDate: fmtDate } = useI18n();
   const { ability } = usePortfolio();
   const toast = useToast();
+  const confirm = useConfirm();
 
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -133,7 +135,8 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
       ]);
 
       setSubscription(subData);
-      setInvoices(invData.results || invData.data || invData || []);
+      const invList = invData?.results || invData?.data || [];
+      setInvoices(Array.isArray(invList) ? invList : []);
       setCostTrend(costData);
     } catch (err) {
       setError((err as Error).message || t("tenantBilling.loadError"));
@@ -301,12 +304,20 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
                 </p>
                 <button
                   onClick={async () => {
+                    const ok = await confirm({
+                      title: t("tenantBilling.updatePaymentMethod"),
+                      message: t("tenantBilling.paymentFormInstruction"),
+                    });
+                    if (!ok) return;
+
                     setPaymentMethodLoading(true);
                     try {
-                      await defaultCoreApiAdapter.corePost("/partner/billing/update-payment-method/", {});
-                      toast.success(t("tenantBilling.paymentUpdateSuccess"));
-                      setShowPaymentForm(false);
-                      loadData();
+                      const res = await defaultCoreApiAdapter.createStripePortalSession(window.location.href);
+                      if (res.url) {
+                        window.location.href = res.url;
+                      } else {
+                        toast.error(t("tenantBilling.paymentUpdateError"));
+                      }
                     } catch (err) {
                       toast.error((err as Error).message || t("tenantBilling.paymentUpdateError"));
                     } finally {
@@ -487,13 +498,12 @@ const planValues: Record<string, Record<string, string | ((plan: string, t: (k: 
   },
 };
 
-function PreviewPlanChange({ planCode, t, operatorClient }: { planCode: string; t: (k: string, o?: object) => string; operatorClient: { previewPlanChange: (code: string) => Promise<any> } }) {
+function PreviewPlanChange({ planCode, t, operatorClient }: { planCode: string; t: (k: string, o?: object) => string; operatorClient: { previewPlanChange: (code: string) => Promise<any>; createStripeCheckoutSession: (plan: string, success: string, cancel: string) => Promise<any> } }) {
+  const confirm = useConfirm();
   const [targetPlan, setTargetPlan] = useState(planCode === "enterprise" ? "enterprise" : "pro");
   const [previewResult, setPreviewResult] = useState<Record<string, unknown> | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState("");
-  const [upgradeDone, setUpgradeDone] = useState(false);
-
   const handlePreview = async () => {
     if (targetPlan === planCode) return;
     try {
@@ -509,19 +519,32 @@ function PreviewPlanChange({ planCode, t, operatorClient }: { planCode: string; 
   };
 
   const handleUpgrade = async () => {
+    const ok = await confirm({
+      title: t("tenantBilling.upgradeAction"),
+      message: `${t("tenantBilling.upgradePanelDesc")} (${t(`tenantBilling.column${targetPlan.charAt(0).toUpperCase() + targetPlan.slice(1)}`)})?`,
+    });
+    if (!ok) return;
+
     try {
-      await operatorClient.previewPlanChange(targetPlan);
-      setUpgradeDone(true);
+      setPreviewLoading(true);
+      const res = await operatorClient.createStripeCheckoutSession(
+        targetPlan,
+        window.location.origin + "/tenant-admin/billing?upgrade=success",
+        window.location.origin + "/tenant-admin/billing?upgrade=cancel"
+      );
+      if (res.url) {
+        window.location.href = res.url;
+      } else {
+        setPreviewError(t("tenantBilling.previewLoadError"));
+      }
     } catch {
       setPreviewError(t("tenantBilling.previewLoadError"));
+    } finally {
+      setPreviewLoading(false);
     }
   };
 
   const plans = ["free", "basic", "pro", "premium", "enterprise"].filter(p => p !== planCode);
-
-  if (upgradeDone) {
-    return <div style={{ color: "#22c55e", fontSize: 13, padding: 12 }}>{t("tenantBilling.upgradeRequested")}</div>;
-  }
 
   return (
     <div>

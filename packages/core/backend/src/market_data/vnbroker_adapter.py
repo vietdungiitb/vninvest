@@ -483,13 +483,20 @@ def fetch_price_board_snapshots_batch(symbols: list[str], *, source: str | None 
         return {}
 
     try:
-        dfs = quote_class.fetch_multiple(
+        raw_res = quote_class.fetch_multiple(
             symbols=cleaned_symbols,
             start=today.isoformat(),
             end=today.isoformat(),
             interval='1D',
             show_log=False,
         )
+        if asyncio.iscoroutine(raw_res):
+            from asgiref.sync import async_to_sync
+            async def _wait_coro():
+                return await raw_res
+            dfs = async_to_sync(_wait_coro)()
+        else:
+            dfs = raw_res
     except Exception as exc:
         logger.error('fetch_price_board_snapshots_batch failed: %s', exc)
         return {}
@@ -497,7 +504,12 @@ def fetch_price_board_snapshots_batch(symbols: list[str], *, source: str | None 
     results = {}
     for df in dfs:
         if df is not None and not df.empty:
-            symbol = getattr(df, 'name', '').strip().upper()
+            symbol = ''
+            if hasattr(df, 'attrs') and isinstance(df.attrs, dict):
+                symbol = df.attrs.get('symbol') or ''
+            if not symbol:
+                symbol = getattr(df, 'name', '') or getattr(df, 'symbol', '')
+            symbol = str(symbol).strip().upper()
             if not symbol:
                 continue
             row = df.iloc[-1]

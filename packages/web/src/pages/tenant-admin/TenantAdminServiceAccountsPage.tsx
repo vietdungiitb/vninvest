@@ -59,6 +59,10 @@ export function TenantAdminServiceAccountsPage({
 
   useEffect(() => {
     async function loadServiceAccounts() {
+      if (!canRead) {
+        setLoading(false);
+        return;
+      }
       try {
         setLoading(true);
         const data = await defaultCoreApiAdapter.coreGet("/partner/service-accounts/");
@@ -70,7 +74,7 @@ export function TenantAdminServiceAccountsPage({
       }
     }
     loadServiceAccounts();
-  }, []);
+  }, [canRead]);
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,7 +98,11 @@ export function TenantAdminServiceAccountsPage({
     }
   };
 
-  const handleDeleteSA = async (saId: string) => {
+  const handleDeleteSA = async (saId?: string) => {
+    if (!saId) {
+      toast.error("Invalid service account ID");
+      return;
+    }
     const ok = await confirm({ title: t("common.delete"), message: t("tenantServiceAccounts.confirmDelete") });
     if (!ok) return;
 

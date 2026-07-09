@@ -26,24 +26,26 @@ export function SocDataInventorySection() {
   const [queueTiers, setQueueTiers] = useState<QueueTierData[]>([]);
   const [queueTiersExpanded, setQueueTiersExpanded] = useState<string | null>(null);
   const [queueTiersLoading, setQueueTiersLoading] = useState(false);
+  const [queueTiersError, setQueueTiersError] = useState<string | null>(null);
 
   useEffect(() => {
     actions.refreshInventory();
-  }, []);
+  }, [actions]);
 
   useEffect(() => {
-    if (!queueTiersLoading && queueTiers.length === 0) {
+    if (!queueTiersLoading && queueTiers.length === 0 && !queueTiersError) {
       setQueueTiersLoading(true);
       const adapter = defaultCoreApiAdapter as unknown as {
         getSocDataOpsQueueTiers: () => Promise<{ tiers?: QueueTierData[] }>;
       };
       adapter.getSocDataOpsQueueTiers().then((res) => {
         setQueueTiers(res.tiers || []);
-      }).catch(() => {
-        // Silently fail
+        setQueueTiersError(null);
+      }).catch((err) => {
+        setQueueTiersError(err instanceof Error ? err.message : "Failed to load queue tiers.");
       }).finally(() => setQueueTiersLoading(false));
     }
-  }, []);
+  }, [queueTiersLoading, queueTiers.length, queueTiersError]);
 
   if (loading.inventory) {
     return createElement("p", { className: styles.emptyState }, t("soc.dataops.loading"));
@@ -161,42 +163,47 @@ export function SocDataInventorySection() {
         )
       : null,
 
-    queueTiers.length > 0
+    queueTiersError
       ? createElement("div", { className: styles.sectionCard },
           createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.queue_tiers")),
-          createElement("div", null,
-            queueTiers.map((tier) =>
-              createElement("div", { key: tier.tier, className: styles.accordion },
-                createElement("div", {
-                  className: styles.accordionHeader,
-                  onClick: () => setQueueTiersExpanded(queueTiersExpanded === tier.tier ? null : tier.tier),
-                },
-                  createElement("span", { style: { fontWeight: 600, fontSize: "0.85rem" } }, tier.tier),
-                  createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted)" } },
-                    `${tier.symbol_count} symbols \u2022 ${tier.cadence || "N/A"}`,
+          createElement("div", { className: styles.inlineError }, queueTiersError),
+        )
+      : queueTiers.length > 0
+        ? createElement("div", { className: styles.sectionCard },
+            createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.queue_tiers")),
+            createElement("div", null,
+              queueTiers.map((tier) =>
+                createElement("div", { key: tier.tier, className: styles.accordion },
+                  createElement("div", {
+                    className: styles.accordionHeader,
+                    onClick: () => setQueueTiersExpanded(queueTiersExpanded === tier.tier ? null : tier.tier),
+                  },
+                    createElement("span", { style: { fontWeight: 600, fontSize: "0.85rem" } }, tier.tier),
+                    createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted)" } },
+                      `${tier.symbol_count} symbols \u2022 ${tier.cadence || "N/A"}`,
+                    ),
                   ),
+                  queueTiersExpanded === tier.tier
+                    ? createElement("div", { className: styles.accordionContent },
+                        createElement("div", { style: { fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.5rem" } },
+                          `Cadence: ${tier.cadence || "N/A"} \u2022 Active: ${tier.symbol_count} symbols`,
+                        ),
+                        tier.active_symbols?.length > 0
+                          ? createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: "0.35rem" } },
+                              tier.active_symbols.slice(0, 10).map((sym) =>
+                                createElement("span", { key: sym, className: styles.statusBadge, style: { background: "rgba(0, 180, 216, 0.12)", color: "var(--accent-cyan)", fontSize: "0.65rem" } }, sym),
+                              ),
+                              tier.active_symbols.length > 10
+                                ? createElement("span", { style: { fontSize: "0.65rem", color: "var(--text-muted)" } }, `+${tier.active_symbols.length - 10} more`)
+                                : null,
+                            )
+                          : createElement("span", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } }, t("soc.dataops.empty_examples")),
+                      )
+                    : null,
                 ),
-                queueTiersExpanded === tier.tier
-                  ? createElement("div", { className: styles.accordionContent },
-                      createElement("div", { style: { fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.5rem" } },
-                        `Cadence: ${tier.cadence || "N/A"} \u2022 Active: ${tier.symbol_count} symbols`,
-                      ),
-                      tier.active_symbols?.length > 0
-                        ? createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: "0.35rem" } },
-                            tier.active_symbols.slice(0, 10).map((sym) =>
-                              createElement("span", { key: sym, className: styles.statusBadge, style: { background: "rgba(0, 180, 216, 0.12)", color: "var(--accent-cyan)", fontSize: "0.65rem" } }, sym),
-                            ),
-                            tier.active_symbols.length > 10
-                              ? createElement("span", { style: { fontSize: "0.65rem", color: "var(--text-muted)" } }, `+${tier.active_symbols.length - 10} more`)
-                              : null,
-                          )
-                        : createElement("span", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } }, t("soc.dataops.empty_examples")),
-                    )
-                  : null,
               ),
             ),
-          ),
-        )
-      : null,
+          )
+        : null,
   );
 }

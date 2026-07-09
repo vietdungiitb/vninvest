@@ -52,7 +52,7 @@ interface DataOpsActions {
   refreshInventory: () => Promise<void>;
   refreshRuns: () => Promise<void>;
   refreshCoverage: () => Promise<void>;
-  triggerBackfill: (payload: Record<string, unknown>) => Promise<string | null>;
+  triggerBackfill: (payload: Record<string, unknown>) => Promise<string>;
   abortRun: (runId: string) => Promise<void>;
 }
 
@@ -63,20 +63,20 @@ interface DataOpsContextValue {
 
 const DataOpsContext = createContext<DataOpsContextValue | null>(null);
 
+const adapter = defaultCoreApiAdapter as unknown as {
+  getSocDataOpsInventory: () => Promise<InventoryData>;
+  getSocBackfillRuns: (params?: { status?: string; limit?: number }) => Promise<{ runs?: BackfillRun[] }>;
+  getSocDataOpsCoverage: () => Promise<CoverageData>;
+  runSocDataOpsPlanner: (payload: Record<string, unknown>) => Promise<{ run_id?: string }>;
+  abortSocDataOpsPlannerRun: (runId: string) => Promise<void>;
+};
+
 export function DataOpsProvider({ children }: { children: React.ReactNode }) {
   const [activeSubTab, setActiveSubTab] = useState("inventory");
   const [runs, setRuns] = useState<BackfillRun[]>([]);
   const [inventory, setInventory] = useState<InventoryData | null>(null);
   const [coverage, setCoverage] = useState<CoverageData | null>(null);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
-
-  const adapter = defaultCoreApiAdapter as unknown as {
-    getSocDataOpsInventory: () => Promise<InventoryData>;
-    getSocBackfillRuns: (params?: { status?: string; limit?: number }) => Promise<{ runs?: BackfillRun[] }>;
-    getSocDataOpsCoverage: () => Promise<CoverageData>;
-    runSocDataOpsPlanner: (payload: Record<string, unknown>) => Promise<{ run_id?: string }>;
-    abortSocDataOpsPlannerRun: (runId: string) => Promise<void>;
-  };
 
   const refreshInventory = useCallback(async () => {
     setLoading((prev) => ({ ...prev, inventory: true }));
@@ -111,14 +111,10 @@ export function DataOpsProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const triggerBackfill = useCallback(async (payload: Record<string, unknown>): Promise<string | null> => {
-    try {
-      const result = await adapter.runSocDataOpsPlanner(payload);
-      await refreshRuns();
-      return result.run_id || null;
-    } catch {
-      return null;
-    }
+  const triggerBackfill = useCallback(async (payload: Record<string, unknown>): Promise<string> => {
+    const result = await adapter.runSocDataOpsPlanner(payload);
+    await refreshRuns();
+    return result.run_id || "";
   }, [refreshRuns]);
 
   const abortRun = useCallback(async (runId: string): Promise<void> => {
@@ -126,10 +122,19 @@ export function DataOpsProvider({ children }: { children: React.ReactNode }) {
     await refreshRuns();
   }, [refreshRuns]);
 
+  const actions = useMemo<DataOpsActions>(() => ({
+    setActiveSubTab,
+    refreshInventory,
+    refreshRuns,
+    refreshCoverage,
+    triggerBackfill,
+    abortRun
+  }), [setActiveSubTab, refreshInventory, refreshRuns, refreshCoverage, triggerBackfill, abortRun]);
+
   const value = useMemo<DataOpsContextValue>(() => ({
     state: { activeSubTab, runs, inventory, coverage, loading },
-    actions: { setActiveSubTab, refreshInventory, refreshRuns, refreshCoverage, triggerBackfill, abortRun },
-  }), [activeSubTab, runs, inventory, coverage, loading, refreshInventory, refreshRuns, refreshCoverage, triggerBackfill, abortRun]);
+    actions,
+  }), [activeSubTab, runs, inventory, coverage, loading, actions]);
 
   return createElement(DataOpsContext.Provider, { value }, children);
 }

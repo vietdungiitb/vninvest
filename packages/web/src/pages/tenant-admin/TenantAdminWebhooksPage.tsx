@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
+import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
 
@@ -57,8 +58,12 @@ interface TenantAdminWebhooksPageProps {
 
 export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
   const { t, formatDateTime: fmtDateTime } = useI18n();
+  const { ability } = usePortfolio();
   const toast = useToast();
   const confirm = useConfirm();
+
+  const canRead = ability?.can?.("read", "TenantWebhookView") ?? true;
+  const canManage = ability?.can?.("write", "TenantWebhookView") ?? false;
 
   const [configs, setConfigs] = useState<WebhookConfig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,7 +92,11 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
   });
   const toggleCategory = (cat: string) => setExpandedCategories(prev => ({ ...prev, [cat]: !prev[cat] }));
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    if (!canRead) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
@@ -98,11 +107,11 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [canRead, t]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const openCreate = () => {
     setEditingConfig(null);
@@ -146,17 +155,19 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
         is_active: form.is_active,
       };
 
+      let newSecret = null;
       if (editingConfig) {
         await defaultCoreApiAdapter.corePatch(`/partner/webhooks/${editingConfig.id}/`, payload);
       } else {
         const result = await defaultCoreApiAdapter.corePost("/partner/webhooks/", payload);
         if (result.raw_secret) {
+          newSecret = result.raw_secret;
           setSecretReveal(result.raw_secret);
         }
       }
 
       await loadData();
-      if (!secretReveal) {
+      if (!newSecret) {
         setShowModal(false);
       }
     } catch (err: unknown) {
@@ -227,6 +238,21 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
     renderShellMetric(t("tenantWebhooks.metricDeliverySuccessRate"), `${successRate}%`),
   ];
 
+  if (!canRead) {
+    return (
+      <ShellPageChrome
+        eyebrow={t("tenantWebhooks.eyebrow")}
+        title={t("tenantWebhooks.title")}
+        description={t("tenantWebhooks.description")}
+        notice={t("common.noPermission")}
+      >
+        <div className="shellPage__panel">
+          <ShellEmptyState description={t("tenantWebhooks.empty")} />
+        </div>
+      </ShellPageChrome>
+    );
+  }
+
   if (loading && configs.length === 0) {
     return (
       <ShellPageChrome eyebrow={t("tenantWebhooks.eyebrow")} title={t("tenantWebhooks.title")} description={t("common.loading")}>
@@ -259,15 +285,21 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
     >
       <section className="shellPage__stack">
         <style>{WEBHOOK_CSS}</style>
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-          <button onClick={openCreate} className="shellPage__button shellPage__button--primary" style={{ fontWeight: 700 }}>
-            + {t("tenantWebhooks.createAction")}
-          </button>
-        </div>
+        {canManage && (
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+            <button onClick={openCreate} className="shellPage__button shellPage__button--primary" style={{ fontWeight: 700 }}>
+              + {t("tenantWebhooks.createAction")}
+            </button>
+          </div>
+        )}
 
-          {configs.length === 0 ? (
+        {configs.length === 0 ? (
           <ShellPanel title={t("tenantWebhooks.listTitle")}>
-            <ShellEmptyState description={t("tenantWebhooks.empty")} ctaLabel={t("tenantWebhooks.createAction")} ctaOnClick={() => openCreate()} />
+            <ShellEmptyState
+              description={t("tenantWebhooks.empty")}
+              ctaLabel={canManage ? t("tenantWebhooks.createAction") : undefined}
+              ctaOnClick={canManage ? () => openCreate() : undefined}
+            />
           </ShellPanel>
         ) : (
           configs.map(config => {
@@ -287,11 +319,17 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
                   )}
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button onClick={() => openEdit(config)} className="shellPage__button shellPage__button--secondary" style={{ fontSize: 12 }}>{t("common.edit")}</button>
+                  {canManage && (
+                    <button onClick={() => openEdit(config)} className="shellPage__button shellPage__button--secondary" style={{ fontSize: 12 }}>{t("common.edit")}</button>
+                  )}
                   <button onClick={() => { loadDeliveries(config.id); }} className="shellPage__button shellPage__button--secondary" style={{ fontSize: 12 }}>{t("tenantWebhooks.deliveryLog")}</button>
-                  <button onClick={() => handleTest(config.id)} className="shellPage__button shellPage__button--secondary" style={{ fontSize: 12 }}>{t("tenantWebhooks.testAction")}</button>
-                  <button onClick={() => handleRegenerate(config.id)} className="shellPage__button shellPage__button--secondary" style={{ fontSize: 12 }}>{t("tenantWebhooks.regenerateAction")}</button>
-                  <button onClick={() => handleDelete(config)} className="shellPage__button" style={{ fontSize: 12, color: "#ef4444" }}>{t("common.delete")}</button>
+                  {canManage && (
+                    <>
+                      <button onClick={() => handleTest(config.id)} className="shellPage__button shellPage__button--secondary" style={{ fontSize: 12 }}>{t("tenantWebhooks.testAction")}</button>
+                      <button onClick={() => handleRegenerate(config.id)} className="shellPage__button shellPage__button--secondary" style={{ fontSize: 12 }}>{t("tenantWebhooks.regenerateAction")}</button>
+                      <button onClick={() => handleDelete(config)} className="shellPage__button" style={{ fontSize: 12, color: "#ef4444" }}>{t("common.delete")}</button>
+                    </>
+                  )}
                 </div>
 
                 {showDeliveryLog === config.id && (

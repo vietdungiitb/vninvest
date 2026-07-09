@@ -576,14 +576,6 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
     return () => clearInterval(interval);
   }, [load]);
 
-  const handleAction = useCallback((job: SchedulerJob, action: string) => {
-    if (RISKY_ACTIONS.has(action)) {
-      setConfirmModal({ job, action });
-    } else {
-      executeAction(job.job_key, action, "");
-    }
-  }, [onAction]);
-
   const executeAction = useCallback(async (jobKey: string, action: string, reason: string) => {
     setConfirmModal(null);
     try {
@@ -609,6 +601,14 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
     }
     setTimeout(() => setActionBanner(null), 6000);
   }, [load, t, onAction]);
+
+  const handleAction = useCallback((job: SchedulerJob, action: string) => {
+    if (RISKY_ACTIONS.has(action)) {
+      setConfirmModal({ job, action });
+    } else {
+      executeAction(job.job_key, action, "");
+    }
+  }, [executeAction]);
 
   const embedded = domainProp != null;
   const activeDomainFilter = embedded ? domainProp : domainFilter;
@@ -931,10 +931,13 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
     ),
 
     // History Drawer
-    historyJob && createElement(JobHistoryDrawer, {
-      jobKey: historyJob,
-      onClose: () => setHistoryJob(null),
-      t
-    })
+    historyJob && typeof document !== "undefined" && createPortal(
+      createElement(JobHistoryDrawer, {
+        jobKey: historyJob,
+        onClose: () => setHistoryJob(null),
+        t
+      }),
+      document.body
+    )
   );
 }

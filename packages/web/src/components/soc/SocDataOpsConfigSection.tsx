@@ -1,4 +1,4 @@
-import { createElement, useEffect, useState } from "react";
+import { createElement, useCallback, useEffect, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { SocConfigPreviewModal } from "./SocConfigPreviewModal.js";
 import { SocOwnershipBadge } from "./SocOwnershipBadge.js";
@@ -96,7 +96,7 @@ export function SocDataOpsConfigSection() {
   const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
   const [auditHasMore, setAuditHasMore] = useState(false);
 
-  const fetchConfig = async () => {
+  const fetchConfig = useCallback(async () => {
     setLoading(true);
     try {
       const adapter = defaultCoreApiAdapter as unknown as {
@@ -117,11 +117,11 @@ export function SocDataOpsConfigSection() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [auditPage]);
 
   useEffect(() => {
     fetchConfig();
-  }, [auditPage]);
+  }, [fetchConfig]);
 
   const handlePreview = async () => {
     try {
@@ -212,7 +212,7 @@ export function SocDataOpsConfigSection() {
       createElement(
         "textarea",
         {
-          value: editConfig || JSON.stringify(envelope?.config || {}, null, 2),
+          value: editConfig,
           onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setEditConfig(e.target.value),
           className: styles.configEditor,
           rows: 12,

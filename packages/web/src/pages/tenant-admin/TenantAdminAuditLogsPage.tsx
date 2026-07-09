@@ -254,7 +254,7 @@ export function TenantAdminAuditLogsPage({
 
         {/* Analytics Row: Pie Chart + Daily Activity */}
         {logs.length > 0 && (<>
-          <ShellPanel title={t("tenantAuditLogs.eventBreakdownTitle")}>
+          <ShellPanel title={t("tenantAuditLogs.eventBreakdownTitle")} subtitle={t("tenantAuditLogs.statsDisclaimer")}>
             <div style={{ width: "100%", height: 200 }}>
               <ResponsiveContainer>
                 <PieChart>
@@ -283,7 +283,7 @@ export function TenantAdminAuditLogsPage({
             </div>
           </ShellPanel>
 
-          <ShellPanel title={t("tenantAuditLogs.dailyActivityTitle")}>
+          <ShellPanel title={t("tenantAuditLogs.dailyActivityTitle")} subtitle={t("tenantAuditLogs.statsDisclaimer")}>
             {dailyActivity.length > 0 ? (
               <div style={{ width: "100%", height: 200 }}>
                 <ResponsiveContainer>

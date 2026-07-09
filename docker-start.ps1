@@ -4,7 +4,7 @@
 $ErrorActionPreference = 'Stop'
 
 # Export token (required by docker-compose.dev.yml)
-$env:VNBROKER_GITHUB_TOKEN = "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"
+$env:VNBROKER_GITHUB_TOKEN = "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"
 
 Write-Host "🐋 Starting Docker dev stack with GitHub token..." -ForegroundColor Cyan
 Write-Host "Token: $($env:VNBROKER_GITHUB_TOKEN.Substring(0, 20))..." -ForegroundColor Gray

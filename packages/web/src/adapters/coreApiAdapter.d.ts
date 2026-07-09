@@ -201,6 +201,8 @@ export interface CoreApiAdapter {
   // Phase 4: Billing status + plan preview
   getBillingStatus: () => Promise<any>;
   previewPlanChange: (planCode: string) => Promise<any>;
+  createStripeCheckoutSession: (planCode: string, successUrl: string, cancelUrl: string) => Promise<any>;
+  createStripePortalSession: (returnUrl: string) => Promise<any>;
 }
 
 export function createCoreApiAdapter(options?: {

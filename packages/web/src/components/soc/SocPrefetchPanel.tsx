@@ -51,6 +51,7 @@ export function SocPrefetchPanel() {
       ]);
 
       setConfig(cfg);
+      setEditConfig(JSON.stringify(cfg || {}, null, 2));
       setCacheStatus(cache);
       const groupsList = groups.groups || [];
       setUniverseGroups(groupsList);
@@ -183,7 +184,7 @@ export function SocPrefetchPanel() {
                   createElement(
                     "textarea",
                     {
-                      value: editConfig || JSON.stringify(config || {}, null, 2),
+                      value: editConfig,
                       onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setEditConfig(e.target.value),
                       className: styles.configEditor,
                       rows: 8,
