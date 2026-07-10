@@ -229,7 +229,7 @@ export function TenantAdminPATsPage({
     });
   };
 
-  const canRead = ability?.can?.("read", "TenantPATAdmin") ?? true;
+  const canRead = ability?.can?.("read", "TenantPATAdmin") ?? false;
 
   if (!canRead) {
     return (

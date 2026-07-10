@@ -120,6 +120,16 @@ def _build_abilities(user, tenant: CoreTenant) -> list:
         {'action': 'remove', 'subject': 'TenantMemberAdmin'},
         {'action': 'manage', 'subject': 'TenantServiceAccountAdmin'},
         {'action': 'manage', 'subject': 'TenantPATAdmin'},
+        {'action': 'read', 'subject': 'TenantWebhookView'},
+        {'action': 'manage', 'subject': 'TenantWebhookView'},
+        {'action': 'read', 'subject': 'TenantSecurityView'},
+        {'action': 'manage', 'subject': 'TenantSecurityView'},
+        {'action': 'read', 'subject': 'TenantAuditAdmin'},
+        {'action': 'manage', 'subject': 'TenantAuditAdmin'},
+        {'action': 'read', 'subject': 'TenantSSOAdmin'},
+        {'action': 'manage', 'subject': 'TenantSSOAdmin'},
+        {'action': 'read', 'subject': 'TenantReportsView'},
+        {'action': 'manage', 'subject': 'TenantReportsView'},
     ]
 
     _paid_plans = {

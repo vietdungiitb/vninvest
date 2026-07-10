@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ShellPageChrome, ShellPanel } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
@@ -75,7 +75,7 @@ export function TenantAdminSSOPage({
     sp_acs_url: "",
   });
 
-  const loadConfig = async () => {
+  const loadConfig = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -95,11 +95,11 @@ export function TenantAdminSSOPage({
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     loadConfig();
-  }, []);
+  }, [loadConfig]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,7 +123,7 @@ export function TenantAdminSSOPage({
 
   const isEnterprisePlan = config?.tenant?.plan === "enterprise";
   const inputDisabled = loading || saving || !isEnterprisePlan;
-  const canRead = ability?.can?.("read", "TenantSSOAdmin") ?? true;
+  const canRead = ability?.can?.("read", "TenantSSOAdmin") ?? false;
 
   if (!canRead) {
     return (

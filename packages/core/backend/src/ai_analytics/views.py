@@ -4,12 +4,14 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from identity_access.permissions import IsCoreOperator
+
 from .models import AIUsageRecord, AIUsageSummary
 from .serializers import AIUsageRecordSerializer, AIUsageSummarySerializer
 
 
 class AIUsageRecordListView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCoreOperator]
 
     def get(self, request):
         queryset = AIUsageRecord.objects.all()
@@ -59,7 +61,7 @@ class AIUsageRecordListView(APIView):
 
 
 class AIUsageSummaryView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCoreOperator]
 
     def get(self, request):
         queryset = AIUsageSummary.objects.all()
@@ -81,7 +83,7 @@ class AIUsageSummaryView(APIView):
 
 
 class AIUsageAggregateView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCoreOperator]
 
     def get(self, request):
         queryset = AIUsageRecord.objects.all()

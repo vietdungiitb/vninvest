@@ -37,8 +37,13 @@ class StripeService:
         return bool(self.api_key and self.webhook_secret)
 
     def get_price_id(self, plan_code: str) -> str:
-        """Get Stripe Price ID for a plan code."""
-        return self.price_ids.get(plan_code, '')
+        """Get Stripe Price ID for a plan code (delegate to plan_catalog)."""
+        from .plan_catalog import normalize_plan, get_stripe_price_id
+
+        canonical = normalize_plan(plan_code)
+        if not canonical:
+            return ''
+        return get_stripe_price_id(canonical)
 
     # ─── Customer Management ────────────────────────────────────────────────
 

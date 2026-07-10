@@ -100,6 +100,8 @@ class PaymentTransaction(models.Model):
     txn_ref = models.CharField(max_length=64, unique=True, db_index=True)  # vnp_TxnRef
     vnp_transaction_no = models.CharField(max_length=64, null=True, blank=True)
     amount = models.DecimalField(max_digits=18, decimal_places=2)
+    plan = models.CharField(max_length=32, null=True, blank=True, db_index=True,
+                            help_text='Canonical plan code (starter/pro/enterprise) captured at payment creation.')
     status = models.CharField(max_length=16, choices=StatusChoices.choices, default=StatusChoices.PENDING, db_index=True)
     pay_url = models.TextField(null=True, blank=True)
     error_code = models.CharField(max_length=16, null=True, blank=True)

@@ -1,6 +1,7 @@
 import { createElement, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useI18n } from '@/context/LangContext.js';
+import { usePortfolio } from '@/context/PortfolioContext.js';
 import {
   LayoutDashboard, Users, Key, Fingerprint, Activity, CreditCard,
   ShieldCheck, FileText, ScrollText, Globe, Lock, Webhook, FileSpreadsheet,
@@ -11,22 +12,23 @@ interface SidebarItem {
   path: string;
   labelKey: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  subject?: string;
 }
 
 const SIDEBAR_ITEMS: SidebarItem[] = [
   { path: 'home', labelKey: 'tenantHome.title', icon: LayoutDashboard },
-  { path: 'members', labelKey: 'tenantMembers.title', icon: Users },
-  { path: 'service-accounts', labelKey: 'tenantServiceAccounts.title', icon: Key },
-  { path: 'pats', labelKey: 'tenantPats.title', icon: Fingerprint },
-  { path: 'usage', labelKey: 'tenantUsage.title', icon: Activity },
-  { path: 'usage-history', labelKey: 'tenantUsageHistory.title', icon: ScrollText },
-  { path: 'billing', labelKey: 'tenantBilling.title', icon: CreditCard },
-  { path: 'capabilities', labelKey: 'tenantCapabilities.title', icon: ShieldCheck },
-  { path: 'audit-logs', labelKey: 'tenantAuditLogs.title', icon: FileText },
-  { path: 'reports', labelKey: 'tenantReports.title', icon: FileSpreadsheet },
-  { path: 'sso', labelKey: 'tenantSSO.title', icon: Globe },
-  { path: 'security', labelKey: 'tenantSecurity.title', icon: Lock },
-  { path: 'webhooks', labelKey: 'tenantWebhooks.title', icon: Webhook },
+  { path: 'members', labelKey: 'tenantMembers.title', icon: Users, subject: 'TenantMemberAdmin' },
+  { path: 'service-accounts', labelKey: 'tenantServiceAccounts.title', icon: Key, subject: 'TenantServiceAccountAdmin' },
+  { path: 'pats', labelKey: 'tenantPats.title', icon: Fingerprint, subject: 'TenantPATAdmin' },
+  { path: 'usage', labelKey: 'tenantUsage.title', icon: Activity, subject: 'TenantUsageView' },
+  { path: 'usage-history', labelKey: 'tenantUsageHistory.title', icon: ScrollText, subject: 'TenantUsageView' },
+  { path: 'billing', labelKey: 'tenantBilling.title', icon: CreditCard, subject: 'TenantBillingView' },
+  { path: 'capabilities', labelKey: 'tenantCapabilities.title', icon: ShieldCheck, subject: 'TenantCapabilityView' },
+  { path: 'audit-logs', labelKey: 'tenantAuditLogs.title', icon: FileText, subject: 'TenantAuditAdmin' },
+  { path: 'reports', labelKey: 'tenantReports.title', icon: FileSpreadsheet, subject: 'TenantReportsView' },
+  { path: 'sso', labelKey: 'tenantSSO.title', icon: Globe, subject: 'TenantSSOAdmin' },
+  { path: 'security', labelKey: 'tenantSecurity.title', icon: Lock, subject: 'TenantSecurityView' },
+  { path: 'webhooks', labelKey: 'tenantWebhooks.title', icon: Webhook, subject: 'TenantWebhookView' },
 ];
 
 const SIDEBAR_CSS = `
@@ -138,6 +140,7 @@ const SIDEBAR_CSS = `
 export function TenantAdminSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const { t } = useI18n();
+  const { ability } = usePortfolio();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -145,7 +148,9 @@ export function TenantAdminSidebar() {
 
   const segment = location.pathname.replace('/tenant-admin/', '').split('/')[0];
 
-  const navItems = SIDEBAR_ITEMS.map((item) => {
+  const navItems = SIDEBAR_ITEMS
+    .filter((item) => !item.subject || ability?.can?.('read', item.subject))
+    .map((item) => {
     const isActive = segment === item.path || (!segment && item.path === 'home');
     return createElement(
       'button',

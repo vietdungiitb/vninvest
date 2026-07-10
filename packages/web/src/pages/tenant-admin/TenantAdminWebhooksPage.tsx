@@ -62,8 +62,8 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
   const toast = useToast();
   const confirm = useConfirm();
 
-  const canRead = ability?.can?.("read", "TenantWebhookView") ?? true;
-  const canManage = ability?.can?.("write", "TenantWebhookView") ?? false;
+  const canRead = ability?.can?.("read", "TenantWebhookView") ?? false;
+  const canManage = ability?.can?.("manage", "TenantWebhookView") ?? false;
 
   const [configs, setConfigs] = useState<WebhookConfig[]>([]);
   const [loading, setLoading] = useState(true);

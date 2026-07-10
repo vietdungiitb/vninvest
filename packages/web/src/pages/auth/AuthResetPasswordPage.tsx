@@ -2,6 +2,7 @@ import { createElement, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { CoreApiRequestError, coreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { useI18n } from "../../context/LangContext.js";
 
 function normalizeErrorMessage(error: unknown, fallbackMessage: string): string {
   if (error instanceof CoreApiRequestError) {
@@ -24,6 +25,7 @@ function normalizeErrorMessage(error: unknown, fallbackMessage: string): string 
 }
 
 export function AuthResetPasswordPage() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const token = useMemo(() => String(searchParams.get("token") || "").trim(), [searchParams]);
   const isConfirmMode = Boolean(token);
@@ -46,9 +48,9 @@ export function AuthResetPasswordPage() {
 
     try {
       const payload = await (coreApiAdapter as any).requestPasswordReset(email.trim()) as Record<string, unknown>;
-      setMessage((payload?.detail || payload?.message || "Nếu email tồn tại trong hệ thống, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.") as string);
+      setMessage((payload?.detail || payload?.message || t("auth.resetSuccess", { defaultValue: "Nếu email tồn tại trong hệ thống, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu." })) as string);
     } catch (error) {
-      setErrorMessage(normalizeErrorMessage(error, "Không thể gửi yêu cầu đặt lại mật khẩu."));
+      setErrorMessage(normalizeErrorMessage(error, t("auth.resetFailed", { defaultValue: "Không thể gửi yêu cầu đặt lại mật khẩu." })));
     } finally {
       setIsSubmitting(false);
     }
@@ -66,11 +68,11 @@ export function AuthResetPasswordPage() {
 
     try {
       const payload = await (coreApiAdapter as any).confirmPasswordReset(token, newPassword, newPasswordConfirm) as Record<string, unknown>;
-      setMessage((payload?.detail || payload?.message || "Mật khẩu đã được đặt lại thành công.") as string);
+      setMessage((payload?.detail || payload?.message || t("auth.resetConfirmSuccess", { defaultValue: "Mật khẩu đã được đặt lại thành công." })) as string);
       setNewPassword("");
       setNewPasswordConfirm("");
     } catch (error) {
-      setErrorMessage(normalizeErrorMessage(error, "Không thể đặt lại mật khẩu."));
+      setErrorMessage(normalizeErrorMessage(error, t("auth.resetConfirmFailed", { defaultValue: "Không thể đặt lại mật khẩu." })));
     } finally {
       setIsSubmitting(false);
     }
@@ -82,11 +84,11 @@ export function AuthResetPasswordPage() {
     createElement(
       "section",
       { className: "w-full max-w-md rounded-xl border border-gray-800 bg-gray-900 p-8" },
-      createElement("h1", { className: "text-2xl font-bold text-brand-500" }, "VNInvest"),
+      createElement("h1", { className: "text-2xl font-bold text-brand-500" }, t("auth.resetTitle", { defaultValue: "VNInvest" })),
       createElement(
         "p",
         { className: "mt-2 text-sm text-gray-400" },
-        isConfirmMode ? "Thiết lập mật khẩu mới" : "Yêu cầu đặt lại mật khẩu",
+        isConfirmMode ? t("auth.resetConfirmSubtitle", { defaultValue: "Thiết lập mật khẩu mới" }) : t("auth.resetSubtitle", { defaultValue: "Yêu cầu đặt lại mật khẩu" }),
       ),
       createElement(
         "form",
@@ -106,7 +108,7 @@ export function AuthResetPasswordPage() {
               required: true,
               minLength: 8,
               className: "w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-brand-500",
-              placeholder: "Mật khẩu mới",
+              placeholder: t("auth.resetNewPasswordPlaceholder", { defaultValue: "Mật khẩu mới" }),
             }),
             createElement("input", {
               type: "password",
@@ -116,7 +118,7 @@ export function AuthResetPasswordPage() {
               required: true,
               minLength: 8,
               className: "w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-brand-500",
-              placeholder: "Nhập lại mật khẩu mới",
+              placeholder: t("auth.resetConfirmPasswordPlaceholder", { defaultValue: "Nhập lại mật khẩu mới" }),
             }),
           )
           : createElement("input", {
@@ -126,7 +128,7 @@ export function AuthResetPasswordPage() {
             onChange: (event) => setEmail((event.target as HTMLInputElement).value),
             required: true,
             className: "w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-brand-500",
-            placeholder: "Email tài khoản",
+            placeholder: t("auth.resetEmailPlaceholder", { defaultValue: "Email tài khoản" }),
           }),
         message ? createElement("p", { className: "text-emerald-400 text-xs leading-5" }, message) : null,
         errorMessage ? createElement("p", { className: "text-red-400 text-xs leading-5" }, errorMessage) : null,
@@ -138,14 +140,14 @@ export function AuthResetPasswordPage() {
             disabled: isSubmitting,
           },
           isSubmitting
-            ? (isConfirmMode ? "Đang cập nhật mật khẩu..." : "Đang gửi yêu cầu...")
-            : (isConfirmMode ? "Xác nhận mật khẩu mới" : "Gửi yêu cầu đặt lại mật khẩu"),
+            ? (isConfirmMode ? t("auth.resetConfirmSubmitting", { defaultValue: "Đang cập nhật mật khẩu..." }) : t("auth.resetSubmitting", { defaultValue: "Đang gửi yêu cầu..." }))
+            : (isConfirmMode ? t("auth.resetConfirmSubmit", { defaultValue: "Xác nhận mật khẩu mới" }) : t("auth.resetSubmit", { defaultValue: "Gửi yêu cầu đặt lại mật khẩu" })),
         ),
       ),
       createElement(
         "div",
         { className: "mt-6" },
-        createElement(Link, { to: "/login", className: "text-sm text-brand-400 hover:text-brand-300 transition-colors" }, "Quay lại đăng nhập"),
+        createElement(Link, { to: "/login", className: "text-sm text-brand-400 hover:text-brand-300 transition-colors" }, t("auth.resetBackToLogin", { defaultValue: "Quay lại đăng nhập" })),
       ),
     ),
   );

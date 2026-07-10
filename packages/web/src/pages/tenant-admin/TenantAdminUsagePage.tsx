@@ -187,7 +187,7 @@ export function TenantAdminUsagePage({
     }
   }, [activeTab, loadAlertConfigs]);
 
-  const canRead = ability?.can?.("read", "TenantUsageView") ?? true;
+  const canRead = ability?.can?.("read", "TenantUsageView") ?? false;
 
   // History chart data (must be before early returns — React hook order)
   const chartData = useMemo(() => {

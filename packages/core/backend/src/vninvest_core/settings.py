@@ -325,6 +325,8 @@ CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+# P3: Disable broker connection pool — prevents pool exhaustion under long-running ASGI.
+CELERY_BROKER_POOL_LIMIT = None
 
 import sys
 if 'test' in sys.argv or any('test' in arg for arg in sys.argv):

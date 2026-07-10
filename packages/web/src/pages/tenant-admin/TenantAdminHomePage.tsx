@@ -190,8 +190,8 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
     { labelKey: "tenantHome.usageHistoryRoute", to: "/tenant-admin/usage-history", subject: "TenantUsageView", icon: "\uD83D\uDCC8" },
     { labelKey: "tenantHome.billingRoute", to: "/tenant-admin/billing", subject: "TenantBillingView", icon: "\uD83D\uDCB3" },
     { labelKey: "tenantHome.capabilitiesRoute", to: "/tenant-admin/capabilities", subject: "TenantCapabilityView", icon: "\u2699\uFE0F" },
-    { labelKey: "tenantHome.auditLogsRoute", to: "/tenant-admin/audit-logs", subject: "TenantAuditLogView", icon: "\uD83D\uDCC4" },
-    { labelKey: "tenantHome.ssoRoute", to: "/tenant-admin/sso", subject: "TenantSSOView", icon: "\uD83D\uDD10" },
+    { labelKey: "tenantHome.auditLogsRoute", to: "/tenant-admin/audit-logs",       subject: "TenantAuditAdmin", icon: "\uD83D\uDCC4" },
+    { labelKey: "tenantHome.ssoRoute", to: "/tenant-admin/sso", subject: "TenantSSOAdmin", icon: "\uD83D\uDD10" },
     { labelKey: "tenantHome.reportsRoute", to: "/tenant-admin/reports", subject: "TenantReportsView", icon: "\uD83D\uDCCB" },
     { labelKey: "tenantHome.securityRoute", to: "/tenant-admin/security", subject: "TenantSecurityView", icon: "\uD83D\uDEE1\uFE0F" },
   ];
@@ -293,7 +293,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
     {
       key: "sso",
       labelKey: "tenantHome.checklistSSO",
-      done: ability.can("read", "TenantSSOView"),
+      done: ability.can("read", "TenantSSOAdmin"),
       route: "/tenant-admin/sso",
     },
     {

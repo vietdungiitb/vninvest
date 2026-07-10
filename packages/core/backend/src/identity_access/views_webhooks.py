@@ -31,8 +31,15 @@ logger = logging.getLogger(__name__)
 TENANT_PERMISSION_CLASSES = [permissions.IsAuthenticated, IsTenantActive]
 
 
-def _get_tenant(user):
-    return CoreTenant.objects.get(owner_user=user)
+def _get_request_tenant(request) -> CoreTenant:
+    tenant = getattr(request, 'tenant', None)
+    if tenant is not None:
+        return tenant
+    try:
+        return CoreTenant.objects.get(owner_user=request.user)
+    except CoreTenant.DoesNotExist:
+        from rest_framework.exceptions import PermissionDenied
+        raise PermissionDenied('Không tìm thấy tenant trong request.')
 
 
 class WebhookConfigListCreateView(generics.GenericAPIView):
@@ -40,13 +47,13 @@ class WebhookConfigListCreateView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
-        tenant = _get_tenant(request.user)
+        tenant = _get_request_tenant(request)
         qs = TenantWebhookConfig.objects.filter(tenant=tenant).order_by('-created_at')
         return Response(TenantWebhookConfigSerializer(qs, many=True).data)
 
     def post(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
-        tenant = _get_tenant(request.user)
+        tenant = _get_request_tenant(request)
         serializer = TenantWebhookConfigSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -60,7 +67,7 @@ class WebhookConfigDetailView(generics.GenericAPIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
     def _get_config(self, request, config_id):
-        tenant = _get_tenant(request.user)
+        tenant = _get_request_tenant(request)
         try:
             return TenantWebhookConfig.objects.get(id=config_id, tenant=tenant)
         except TenantWebhookConfig.DoesNotExist:
@@ -98,7 +105,7 @@ class WebhookRegenerateSecretView(generics.GenericAPIView):
 
     def post(self, request, config_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
-        tenant = _get_tenant(request.user)
+        tenant = _get_request_tenant(request)
         try:
             config = TenantWebhookConfig.objects.get(id=config_id, tenant=tenant)
         except TenantWebhookConfig.DoesNotExist:
@@ -113,7 +120,7 @@ class WebhookDeliveryLogView(generics.GenericAPIView):
 
     def get(self, request, config_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
-        tenant = _get_tenant(request.user)
+        tenant = _get_request_tenant(request)
         try:
             config = TenantWebhookConfig.objects.get(id=config_id, tenant=tenant)
         except TenantWebhookConfig.DoesNotExist:
@@ -127,7 +134,7 @@ class WebhookTestView(generics.GenericAPIView):
 
     def post(self, request, config_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
-        tenant = _get_tenant(request.user)
+        tenant = _get_request_tenant(request)
         try:
             config = TenantWebhookConfig.objects.get(id=config_id, tenant=tenant)
         except TenantWebhookConfig.DoesNotExist:
@@ -145,7 +152,7 @@ class WebhookManualRetryView(generics.GenericAPIView):
 
     def post(self, request, config_id, delivery_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
-        tenant = _get_tenant(request.user)
+        tenant = _get_request_tenant(request)
         try:
             config = TenantWebhookConfig.objects.get(id=config_id, tenant=tenant)
         except TenantWebhookConfig.DoesNotExist:
@@ -164,7 +171,7 @@ class BillingStatusView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
-        tenant = _get_tenant(request.user)
+        tenant = _get_request_tenant(request)
         data = {
             'plan': tenant.plan,
             'status': tenant.status,
@@ -180,7 +187,7 @@ class PreviewPlanChangeView(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
-        tenant = _get_tenant(request.user)
+        tenant = _get_request_tenant(request)
         target_plan = request.data.get('target_plan', '').strip()
         if target_plan not in dict(CoreTenant.PlanChoices.choices):
             return Response({'detail': f'Invalid plan: {target_plan}'}, status=status.HTTP_400_BAD_REQUEST)
@@ -217,7 +224,7 @@ class DeprovisionView(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
-        tenant = _get_tenant(request.user)
+        tenant = _get_request_tenant(request)
         if tenant.status == CoreTenant.StatusChoices.DEPROVISIONED:
             return Response({'detail': 'Tenant already deprovisioned.'}, status=status.HTTP_400_BAD_REQUEST)
 

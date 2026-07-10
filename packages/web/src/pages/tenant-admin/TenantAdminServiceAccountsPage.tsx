@@ -55,7 +55,7 @@ export function TenantAdminServiceAccountsPage({
   const [createForm, setCreateForm] = useState<CreateForm>({ name: "", environment: "prod", policy_ids: [] });
   const [submitting, setSubmitting] = useState(false);
 
-  const canRead = ability?.can?.("read", "TenantServiceAccountAdmin") ?? true;
+  const canRead = ability?.can?.("read", "TenantServiceAccountAdmin") ?? false;
 
   useEffect(() => {
     async function loadServiceAccounts() {
@@ -74,7 +74,7 @@ export function TenantAdminServiceAccountsPage({
       }
     }
     loadServiceAccounts();
-  }, [canRead]);
+  }, [canRead, t]);
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

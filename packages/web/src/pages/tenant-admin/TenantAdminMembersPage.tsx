@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField, ShellSelectField } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
@@ -49,26 +49,27 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
   const [inviteForm, setInviteForm] = useState<{ invited_email: string; role: string }>({ invited_email: "", role: "viewer" });
   const [submitting, setSubmitting] = useState(false);
 
-  const canRead = ability?.can?.("read", "TenantMemberAdmin") ?? true;
+  const canRead = ability?.can?.("read", "TenantMemberAdmin") ?? false;
+
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [membersData, invitesData] = await Promise.all([
+        defaultCoreApiAdapter.coreGet("/tenant-members/"),
+        defaultCoreApiAdapter.coreGet("/tenant-members/invites/"),
+      ]);
+      setMembers(membersData.members || []);
+      setInvites(invitesData.invites || []);
+    } catch (err) {
+      setError((err as Error).message || t("tenantMembers.loadError"));
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true);
-        const [membersData, invitesData] = await Promise.all([
-          defaultCoreApiAdapter.coreGet("/tenant-members/"),
-          defaultCoreApiAdapter.coreGet("/tenant-members/invites/"),
-        ]);
-        setMembers(membersData.members || []);
-        setInvites(invitesData.invites || []);
-      } catch (err) {
-        setError((err as Error).message || t("tenantMembers.loadError"));
-      } finally {
-        setLoading(false);
-      }
-    }
     loadData();
-  }, []);
+  }, [loadData]);
 
   const roleT = (role: string): string => t(`tenantMembers.roleOptions.${role}`, { defaultValue: role });
   const statusT = (status: string): string => t(`tenantMembers.statuses.${status}`, { defaultValue: status });

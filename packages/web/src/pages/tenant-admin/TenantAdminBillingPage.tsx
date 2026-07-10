@@ -163,7 +163,7 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
     loadData();
   }, []);
 
-  const canRead = ability?.can?.("read", "TenantBillingView") ?? true;
+  const canRead = ability?.can?.("read", "TenantBillingView") ?? false;
 
   if (!canRead) {
     return (

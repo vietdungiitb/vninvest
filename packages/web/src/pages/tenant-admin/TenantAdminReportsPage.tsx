@@ -156,7 +156,7 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
     }
   };
 
-  const canManage = ability?.can?.("manage", "TenantReportsView") ?? true;
+  const canManage = ability?.can?.("manage", "TenantReportsView") ?? false;
 
   const activeReports = reports.filter(r => r.is_active).length;
   const totalDeliveries = reports.reduce((s, r) => s + r.total_deliveries, 0);

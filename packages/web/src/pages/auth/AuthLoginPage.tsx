@@ -2,6 +2,7 @@ import { createElement, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { CoreApiRequestError, authTokenStorage, coreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { useI18n } from "../../context/LangContext.js";
 
 function resolveMessage(error: unknown, fallbackMessage: string): string {
   if (!(error instanceof Error)) {
@@ -34,6 +35,7 @@ function readTokenPayload(payload: unknown): { access: string; refresh: string }
 }
 
 export function AuthLoginPage() {
+  const { t } = useI18n();
   const location = useLocation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -97,14 +99,14 @@ export function AuthLoginPage() {
 
       const tokenPayload = readTokenPayload(payload);
       if (!tokenPayload?.access || !tokenPayload?.refresh) {
-        throw new Error("Không nhận được bộ token đăng nhập hợp lệ.");
+        throw new Error(t("auth.loginNoToken", { defaultValue: "Không nhận được bộ token đăng nhập hợp lệ." }));
       }
 
       if (typeof window !== "undefined") {
         window.location.assign(destination);
       }
     } catch (error) {
-      setErrorMessage(resolveMessage(error, "Đăng nhập thất bại. Vui lòng thử lại."));
+      setErrorMessage(resolveMessage(error, t("auth.loginFailed", { defaultValue: "Đăng nhập thất bại. Vui lòng thử lại." })));
     } finally {
       setIsSubmitting(false);
     }
@@ -117,8 +119,8 @@ export function AuthLoginPage() {
       createElement(
         "section",
         { className: "w-full max-w-md rounded-xl border border-gray-800 bg-gray-900 p-8" },
-        createElement("h1", { className: "text-2xl font-bold text-brand-500" }, "VNInvest"),
-        createElement("p", { className: "mt-2 text-sm text-gray-400" }, "Đang kiểm tra phiên đăng nhập..."),
+        createElement("h1", { className: "text-2xl font-bold text-brand-500" }, t("auth.loginTitle", { defaultValue: "VNInvest" })),
+        createElement("p", { className: "mt-2 text-sm text-gray-400" }, t("auth.loginChecking", { defaultValue: "Đang kiểm tra phiên đăng nhập..." })),
       ),
     );
   }
@@ -129,8 +131,8 @@ export function AuthLoginPage() {
     createElement(
       "section",
       { className: "w-full max-w-md rounded-xl border border-gray-800 bg-gray-900 p-8" },
-      createElement("h1", { className: "text-2xl font-bold text-brand-500" }, "VNInvest"),
-      createElement("p", { className: "mt-2 text-sm text-gray-400" }, "Đăng nhập vào nền tảng SaaS VNInvest"),
+      createElement("h1", { className: "text-2xl font-bold text-brand-500" }, t("auth.loginTitle", { defaultValue: "VNInvest" })),
+      createElement("p", { className: "mt-2 text-sm text-gray-400" }, t("auth.loginSubtitle", { defaultValue: "Đăng nhập vào nền tảng SaaS VNInvest" })),
       createElement(
         "form",
         {
@@ -140,21 +142,21 @@ export function AuthLoginPage() {
         createElement(
           "div",
           null,
-          createElement("label", { className: "block text-xs text-gray-400 mb-1.5", htmlFor: "auth-login-username" }, "Tên đăng nhập hoặc email"),
+          createElement("label", { className: "block text-xs text-gray-400 mb-1.5", htmlFor: "auth-login-username" }, t("auth.loginUsernameLabel", { defaultValue: "Tên đăng nhập hoặc email" })),
           createElement("input", {
             id: "auth-login-username",
             autoComplete: "username",
             value: username,
             onChange: (event) => setUsername((event.target as HTMLInputElement).value),
             className: "w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-brand-500",
-            placeholder: "Nhập tên đăng nhập hoặc email",
+            placeholder: t("auth.loginUsernamePlaceholder", { defaultValue: "Nhập tên đăng nhập hoặc email" }),
             required: true,
           }),
         ),
         createElement(
           "div",
           null,
-          createElement("label", { className: "block text-xs text-gray-400 mb-1.5", htmlFor: "auth-login-password" }, "Mật khẩu"),
+          createElement("label", { className: "block text-xs text-gray-400 mb-1.5", htmlFor: "auth-login-password" }, t("auth.loginPasswordLabel", { defaultValue: "Mật khẩu" })),
           createElement("input", {
             id: "auth-login-password",
             type: "password",
@@ -162,7 +164,7 @@ export function AuthLoginPage() {
             value: password,
             onChange: (event) => setPassword((event.target as HTMLInputElement).value),
             className: "w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-brand-500",
-            placeholder: "••••••••",
+            placeholder: t("auth.loginPasswordPlaceholder", { defaultValue: "••••••••" }),
             required: true,
           }),
         ),
@@ -176,14 +178,14 @@ export function AuthLoginPage() {
             className: "w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-semibold py-2 rounded-md text-sm transition-colors",
             disabled: isSubmitting,
           },
-          isSubmitting ? "Đang đăng nhập..." : "Đăng nhập",
+          isSubmitting ? t("auth.loginSubmitting", { defaultValue: "Đang đăng nhập..." }) : t("auth.loginSubmit", { defaultValue: "Đăng nhập" }),
         ),
       ),
       createElement(
         "div",
         { className: "mt-6 flex items-center justify-between text-sm" },
-        createElement(Link, { to: "/register", className: "text-brand-400 hover:text-brand-300 transition-colors" }, "Tạo tài khoản"),
-        createElement(Link, { to: "/reset-password", className: "text-gray-400 hover:text-gray-300 transition-colors" }, "Quên mật khẩu?"),
+        createElement(Link, { to: "/register", className: "text-brand-400 hover:text-brand-300 transition-colors" }, t("auth.loginCreateAccount", { defaultValue: "Tạo tài khoản" })),
+        createElement(Link, { to: "/reset-password", className: "text-gray-400 hover:text-gray-300 transition-colors" }, t("auth.loginForgotPassword", { defaultValue: "Quên mật khẩu?" })),
       ),
     ),
   );

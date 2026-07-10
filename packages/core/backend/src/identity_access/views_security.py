@@ -4,6 +4,7 @@ Login Activity, Active Sessions, Session Revocation.
 """
 from datetime import timedelta
 
+from django.db import connection
 from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
@@ -35,6 +36,25 @@ def _get_request_tenant(request) -> CoreTenant:
     return tenant
 
 
+def _query_daily_login_activity(tenant_id: int, since):
+    """Raw SQL: avoids Django ORM nested-aggregate bug with TruncDate + Count(filter=)."""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT date(created_at) AS "date",
+                   COUNT(*) FILTER (WHERE success = true)  AS success,
+                   COUNT(*) FILTER (WHERE success = false) AS failed
+            FROM core_login_attempt
+            WHERE tenant_id = %s AND created_at >= %s
+            GROUP BY "date"
+            ORDER BY "date"
+            """,
+            [tenant_id, since],
+        )
+        cols = [col[0] for col in cursor.description]
+        return [dict(zip(cols, row)) for row in cursor.fetchall()]
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsTenantActive])
 def partner_login_activity(request):
@@ -45,17 +65,7 @@ def partner_login_activity(request):
 
     since = timezone.now() - timedelta(days=days)
 
-    daily = (
-        LoginAttempt.objects
-        .filter(tenant=tenant, created_at__gte=since)
-        .extra(select={'date': "date(created_at)"})
-        .values('date')
-        .annotate(
-            success=Count('id', filter=Q(success=True)),
-            failed=Count('id', filter=Q(success=False)),
-        )
-        .order_by('date')
-    )
+    daily = _query_daily_login_activity(tenant.id, since)
 
     total_logins = LoginAttempt.objects.filter(tenant=tenant, created_at__gte=since).count()
     total_failed = LoginAttempt.objects.filter(tenant=tenant, created_at__gte=since, success=False).count()
@@ -92,14 +102,14 @@ def partner_login_activity(request):
     ]
 
     return Response({
-        'daily': list(daily),
+        'daily': daily,
         'summary': {
             'total_logins': total_logins,
             'total_failed': total_failed,
             'success_rate_pct': success_rate_pct,
             'unique_ips': unique_ips,
             'unique_users': unique_users,
-            'most_active_day': max(daily, key=lambda d: d['success'] + d['failed']).get('date') if daily else None,
+            'most_active_day': max(daily, key=lambda d: d['success'] + d['failed'])['date'] if daily else None,
             'recent_failures': recent_failures,
         },
     })

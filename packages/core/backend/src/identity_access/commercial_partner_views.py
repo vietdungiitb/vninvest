@@ -46,43 +46,53 @@ class PartnerCostTrendView(APIView):
 
 
 class PartnerUsageMetersView(generics.GenericAPIView):
-    """Usage meters — delegates to commercial UsageMeter if table exists, else empty list."""
+    """Usage meters — latest QuotaHistory snapshot per meter_code (C4)."""
     permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         try:
-            from commercial.models import UsageMeter
-            from commercial.serializers import UsageMeterSerializer
+            from django.db.models import Subquery, OuterRef
+            from commercial.models import QuotaHistory
+            from commercial.serializers import PartnerUsageMeterSerializer
+
             tenant = _get_tenant(request.user)
-            qs = UsageMeter.objects.filter(tenant=tenant).order_by('-period_start')
-            return Response(UsageMeterSerializer(qs, many=True).data)
+            latest_ids = QuotaHistory.objects.filter(
+                tenant=tenant, meter_code=OuterRef('meter_code')
+            ).order_by('-date').values('id')[:1]
+            rows = QuotaHistory.objects.filter(
+                tenant=tenant, id=Subquery(latest_ids)
+            ).order_by('meter_code')
+
+            return Response({'results': PartnerUsageMeterSerializer(rows, many=True).data})
         except ImportError:
-            # commercial app or UsageMeter not yet migrated — return empty list
-            return Response([])
-        except Exception as e:
-            logger.error('PartnerUsageMetersView failed for user=%s: %s', request.user.id, e, exc_info=True)
-            return Response([])
+            # commercial app not available — return empty list
+            return Response({'results': []})
 
 
 class PartnerUsageQuotasView(generics.GenericAPIView):
-    """Usage quotas — delegates to commercial QuotaRecord if table exists."""
+    """Usage quotas — latest QuotaHistory snapshot per meter_code (C4)."""
     permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         try:
-            from commercial.models import QuotaRecord
-            from commercial.serializers import QuotaRecordSerializer
+            from django.db.models import Subquery, OuterRef
+            from commercial.models import QuotaHistory
+            from commercial.serializers import PartnerUsageMeterSerializer
+
             tenant = _get_tenant(request.user)
-            qs = QuotaRecord.objects.filter(tenant=tenant).order_by('-period_start')
-            return Response(QuotaRecordSerializer(qs, many=True).data)
+            latest_ids = QuotaHistory.objects.filter(
+                tenant=tenant, meter_code=OuterRef('meter_code')
+            ).order_by('-date').values('id')[:1]
+            rows = QuotaHistory.objects.filter(
+                tenant=tenant, id=Subquery(latest_ids)
+            ).order_by('meter_code')
+
+            return Response({'results': PartnerUsageMeterSerializer(rows, many=True).data})
         except ImportError:
-            # commercial app not yet migrated — return empty list
-            return Response([])
-        except Exception as e:
-            logger.error('PartnerUsageQuotasView failed for user=%s: %s', request.user.id, e, exc_info=True)
-            return Response([])
+            # commercial app not available — return empty list
+            return Response({'results': []})
 
 
 class PartnerBillingSubscriptionView(generics.GenericAPIView):
@@ -239,11 +249,11 @@ class PartnerUsageHistoryView(generics.GenericAPIView):
                 qs = qs.filter(date__lte=end_date_str)
             
             qs = qs.order_by('date', 'meter_code')
-            
-            return Response(QuotaHistorySerializer(qs, many=True).data)
+
+            return Response({'results': QuotaHistorySerializer(qs, many=True).data})
         except ImportError:
             # commercial app or QuotaHistory not yet migrated
-            return Response([])
+            return Response({'results': []})
         except Exception as e:
             logger.error('PartnerUsageHistoryView failed for user=%s: %s', request.user.id, e, exc_info=True)
             return Response({'error': str(e)}, status=500)

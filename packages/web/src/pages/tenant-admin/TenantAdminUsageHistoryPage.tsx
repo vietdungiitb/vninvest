@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -59,9 +59,9 @@ export function TenantAdminUsageHistoryPage({
   const [days, setDays] = useState(30);
   const [chartType, setChartType] = useState<"area" | "bar">("area");
 
-  const canRead = ability?.can?.("read", "TenantUsageView") ?? true;
+  const canRead = ability?.can?.("read", "TenantUsageView") ?? false;
 
-  const loadHistory = async (fetchDays = days) => {
+  const loadHistory = useCallback(async (fetchDays = days) => {
     try {
       setLoading(true);
       setError(null);
@@ -78,7 +78,7 @@ export function TenantAdminUsageHistoryPage({
     } finally {
       setLoading(false);
     }
-  };
+  }, [days, t]);
 
   const selectedHistory = histories.find((h) => h.meter_code === selectedMeter) || histories[0];
   const chartData = useMemo(
@@ -109,7 +109,7 @@ export function TenantAdminUsageHistoryPage({
 
   useEffect(() => {
     loadHistory();
-  }, []);
+  }, [loadHistory]);
 
   if (!canRead) {
     return (

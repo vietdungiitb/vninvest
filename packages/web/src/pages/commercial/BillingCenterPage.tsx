@@ -1,51 +1,8 @@
 import { useEffect, useState } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { ShellPageChrome, ShellPanel, ShellField } from "../../components/ShellPageTemplate.js";
-
-interface I18nContext {
-  t: (key: string, options?: { defaultValue?: string }) => string;
-  language: string;
-}
-
-function useI18n(): I18nContext {
-  return {
-    t: (key: string, options?: { defaultValue?: string }) => {
-      const map: Record<string, string> = {
-        'commercial.billingCenter.title': 'Trung tâm Thanh toán (Billing Center)',
-        'commercial.billingCenter.titleShort': 'Trung tâm Thanh toán',
-        'commercial.billingCenter.loading': 'Đang tải dữ liệu thanh toán...',
-        'commercial.billingCenter.errorFetch': 'Không thể tải một số dữ liệu thanh toán. Vui lòng thử lại sau.',
-        'commercial.billingCenter.errorGeneric': 'Đã xảy ra lỗi khi tải dữ liệu thanh toán.',
-        'commercial.billingCenter.errorTitle': 'Lỗi',
-        'commercial.billingCenter.upgradeTitle': 'Nâng cấp gói thành viên VIP',
-        'commercial.billingCenter.currentPlanTitle': 'Gói dịch vụ hiện tại',
-        'commercial.billingCenter.planLabel': 'Gói dịch vụ: ',
-        'commercial.billingCenter.planDefault': 'Mặc định (Miễn phí)',
-        'commercial.billingCenter.statusLabel': 'Trạng thái: ',
-        'commercial.billingCenter.statusActive': 'Đang hoạt động',
-        'commercial.billingCenter.renewalDateLabel': 'Ngày gia hạn: ',
-        'commercial.billingCenter.noPlan': 'Bạn chưa đăng ký gói cước VIP nào. Hãy chọn gói bên dưới để nâng cấp trải nghiệm.',
-        'commercial.billingCenter.quotaTitle': 'Hạn mức tài nguyên & Tính năng (Quota)',
-        'commercial.billingCenter.quotaUnlimited': 'Không giới hạn',
-        'commercial.billingCenter.noQuota': 'Không có thông tin hạn mức tài nguyên.',
-        'commercial.billingCenter.invoiceTitle': 'Lịch sử giao dịch & Hóa đơn',
-        'commercial.billingCenter.invoiceId': 'Mã Hóa đơn',
-        'commercial.billingCenter.invoiceDate': 'Ngày tạo',
-        'commercial.billingCenter.invoiceAmount': 'Số tiền',
-        'commercial.billingCenter.invoiceStatus': 'Trạng thái',
-        'commercial.billingCenter.noInvoices': 'Chưa có lịch sử giao dịch nào được ghi nhận.',
-        'commercial.billingCenter.form.planLabel': 'Chọn gói cước VIP:',
-        'commercial.billingCenter.form.amountLabel': 'Số tiền thanh toán (VND): ',
-        'commercial.billingCenter.form.submitProcessing': 'Đang kết nối cổng thanh toán...',
-        'commercial.billingCenter.form.submitButton': 'Thanh toán an toàn ngay',
-        'commercial.billingCenter.form.errorNoUrl': 'Không nhận được URL thanh toán từ máy chủ.',
-        'commercial.billingCenter.form.errorInit': 'Lỗi khi khởi tạo thanh toán.',
-      };
-      return map[key] || options?.defaultValue || key;
-    },
-    language: 'vi',
-  };
-}
+import { useI18n } from "../../context/LangContext.js";
+import { PLAN_OPTIONS, VIP_TO_CANONICAL, type VipPlan } from "../../constants/planCatalog.js";
 
 const BILLING_CUSTOM_STYLES = `
 .billing-grid {
@@ -419,7 +376,7 @@ export function BillingCenterPage() {
     <ShellPageChrome
       eyebrow="SaaS Commerce System"
       title={t('commercial.billingCenter.titleShort')}
-      description="Nâng cấp tài khoản lên gói VIP hội viên để mở khóa toàn bộ tính năng phân tích cá mập, dòng tiền chìm nâng cao và chatbot AI bám sát dữ liệu thị trường."
+      description={t('commercial.billingCenter.description')}
       error={error || undefined}
     >
       <style>{BILLING_CUSTOM_STYLES}</style>
@@ -428,14 +385,14 @@ export function BillingCenterPage() {
         <div className="shellPage__stack">
           <ShellPanel
             title={t('commercial.billingCenter.upgradeTitle')}
-            subtitle="Chọn gói thành viên phù hợp nhất với tần suất giao dịch và nhu cầu phân tích của bạn."
+            subtitle={t('commercial.billingCenter.upgradeSubtitle')}
           >
             <PaymentCreateForm t={t} />
           </ShellPanel>
 
           <ShellPanel
             title={t('commercial.billingCenter.invoiceTitle')}
-            subtitle="Danh sách 10 hóa đơn giao dịch gần đây nhất trên hệ thống."
+            subtitle={t('commercial.billingCenter.invoiceSubtitle')}
           >
             {invoices && invoices.length > 0 ? (
               <div style={{ overflowX: "auto" }}>
@@ -456,8 +413,8 @@ export function BillingCenterPage() {
                         ? "invoice-status-pill--completed"
                         : isPending ? "invoice-status-pill--pending" : "invoice-status-pill--failed";
                       const statusLabel = isCompleted
-                        ? "Thành công"
-                        : isPending ? "Chờ xử lý" : "Thất bại";
+                        ? t('commercial.billingCenter.invoiceStatusSuccess')
+                        : isPending ? t('commercial.billingCenter.invoiceStatusPending') : t('commercial.billingCenter.invoiceStatusFailed');
 
                       return (
                         <tr key={idx}>
@@ -506,7 +463,7 @@ export function BillingCenterPage() {
 
           <ShellPanel
             title={t('commercial.billingCenter.quotaTitle')}
-            subtitle="Giám sát mức độ tiêu hao tài nguyên định ngạch trong chu kỳ thanh toán hiện tại."
+            subtitle={t('commercial.billingCenter.quotaSubtitle')}
           >
             {quota && quota.length > 0 ? (
               <div className="quota-bar-container">
@@ -552,46 +509,18 @@ export function BillingCenterPage() {
   );
 }
 
-function PaymentCreateForm({ t }: { t: I18nContext['t'] }) {
+function PaymentCreateForm({ t }: { t: (key: string, options?: { defaultValue?: string }) => string }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [amount, setAmount] = useState(100000);
-  const [activePlan, setActivePlan] = useState("VIP_1M");
+  const [activePlan, setActivePlan] = useState<VipPlan>("VIP_1M");
 
-  const plans: PlanOption[] = [
-    {
-      id: "VIP_1M",
-      title: "VIP 1 Tháng",
-      desc: "Trải nghiệm đầy đủ tính năng phân tích cơ bản và dòng tiền cá mập.",
-      price: 100000,
-      period: "Tháng",
-      savings: null,
-      badge: null,
-    },
-    {
-      id: "VIP_6M",
-      title: "VIP 6 Tháng",
-      desc: "Giải pháp tối ưu cho nhà giao dịch năng động, tiết kiệm chi phí.",
-      price: 500000,
-      period: "6 Tháng",
-      savings: "Tiết kiệm 100,000 đ",
-      badge: "Phổ biến nhất",
-    },
-    {
-      id: "VIP_12M",
-      title: "VIP 12 Tháng",
-      desc: "Đặc quyền VIP trọn vẹn, cập nhật tín hiệu sớm nhất và AI Advisor hỗ trợ 24/7.",
-      price: 900000,
-      period: "Năm",
-      savings: "Tiết kiệm 300,000 đ",
-      badge: "Giá trị nhất",
-    },
-  ];
+  const plans: PlanOption[] = PLAN_OPTIONS;
 
   const handlePlanSelect = (planId: string, price: number) => {
     if (submitting) return;
-    setActivePlan(planId);
+    setActivePlan(planId as VipPlan);
     setAmount(price);
   };
 
@@ -603,7 +532,7 @@ function PaymentCreateForm({ t }: { t: I18nContext['t'] }) {
       setSubmitting(true);
       setError(null);
 
-      const payload = { amount, plan: activePlan };
+      const payload = { amount, plan: VIP_TO_CANONICAL[activePlan] ?? activePlan };
       const response = await billingApi.createPayment(payload);
 
       if (response && response.pay_url) {

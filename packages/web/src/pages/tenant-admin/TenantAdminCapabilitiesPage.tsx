@@ -67,7 +67,7 @@ export function TenantAdminCapabilitiesPage({}: TenantAdminCapabilitiesPageProps
     renderShellMetric(t("tenantCapabilities.metricQuotaCount"), String(quotaItems.length)),
   ];
 
-  const canRead = ability?.can?.("read", "TenantCapabilityView") ?? true;
+  const canRead = ability?.can?.("read", "TenantCapabilityView") ?? false;
 
   if (!canRead) {
     return (

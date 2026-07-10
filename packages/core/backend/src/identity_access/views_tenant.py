@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 
 from rest_framework import generics, permissions, status
@@ -10,6 +11,8 @@ from vninvest_core.pagination import CoreCursorPagination
 
 from .models import CorePATCredential, CoreServiceAccount, CoreTenant, UserProfile
 from .permissions import IsTenantActive, require_human_session, require_pat_scopes_or_human_session
+
+logger = logging.getLogger(__name__)
 from .serializers import (
     CorePATCredentialSerializer,
     CoreServiceAccountSerializer,
@@ -127,6 +130,10 @@ def _get_request_tenant(request) -> CoreTenant:
                         sa = CoreServiceAccount.objects.select_related('tenant').get(public_id=service_account_id)
                         tenant = sa.tenant
                         request.tenant = tenant
+                        logger.info(
+                            'Staff %s resolved tenant %s via service_account_id %s (cross-tenant access)',
+                            user.username, tenant.public_id, service_account_id,
+                        )
                         return tenant
                     except CoreServiceAccount.DoesNotExist:
                         pass

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, UserCircle } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
@@ -96,10 +96,10 @@ export function TenantAdminSecurityPage({
   const [days, setDays] = useState(30);
   const [revokingId, setRevokingId] = useState<number | null>(null);
 
-  const canRead = ability?.can?.("read", "TenantSecurityView") ?? true;
+  const canRead = ability?.can?.("read", "TenantSecurityView") ?? false;
   const canManage = ability?.can?.("manage", "TenantSecurityView") ?? false;
 
-  const loadData = async (d = days) => {
+  const loadData = useCallback(async (d = days) => {
     try {
       setLoading(true);
       setError(undefined);
@@ -114,11 +114,11 @@ export function TenantAdminSecurityPage({
     } finally {
       setLoading(false);
     }
-  };
+  }, [days, t]);
 
   useEffect(() => {
     loadData();
-  }, [days]);
+  }, [days, loadData]);
 
   const handleDaysChange = (d: number) => {
     setDays(d);

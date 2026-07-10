@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, PieChart, Pie, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
@@ -59,9 +59,35 @@ export function TenantAdminAuditLogsPage({
 
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
-  const canRead = ability?.can?.("read", "TenantAuditAdmin") ?? true;
+  const canRead = ability?.can?.("read", "TenantAuditAdmin") ?? false;
 
-  const loadLogs = async (cursorValue = "") => {
+  const eventBreakdown = useMemo(() => {
+    const counts: Record<string, number> = {};
+    logs.forEach(log => {
+      counts[log.event_type] = (counts[log.event_type] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([name, value], idx) => ({ name, value, color: EVENT_COLORS[idx % EVENT_COLORS.length] }))
+      .sort((a, b) => b.value - a.value);
+  }, [logs]);
+
+  const dailyActivity = useMemo(() => {
+    const counts: Record<string, number> = {};
+    logs.forEach(log => {
+      const day = log.created_at.slice(0, 10);
+      counts[day] = (counts[day] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([date, count]) => ({ date: date.slice(5), count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [logs]);
+
+  const uniqueEventTypes = useMemo(() => {
+    const types = new Set(logs.map(l => l.event_type));
+    return Array.from(types);
+  }, [logs]);
+
+  const loadLogs = useCallback(async (cursorValue = "") => {
     try {
       setLoading(true);
       setError(null);
@@ -90,11 +116,11 @@ export function TenantAdminAuditLogsPage({
     } finally {
       setLoading(false);
     }
-  };
+  }, [eventType, startDate, endDate, t]);
 
   useEffect(() => {
     loadLogs();
-  }, []);
+  }, [loadLogs]);
 
   if (!canRead) {
     return (
@@ -159,34 +185,6 @@ export function TenantAdminAuditLogsPage({
       setExpandedLogId(logId);
     }
   };
-
-  // Event type breakdown for pie chart
-  const eventBreakdown = useMemo(() => {
-    const counts: Record<string, number> = {};
-    logs.forEach(log => {
-      counts[log.event_type] = (counts[log.event_type] || 0) + 1;
-    });
-    return Object.entries(counts)
-      .map(([name, value], idx) => ({ name, value, color: EVENT_COLORS[idx % EVENT_COLORS.length] }))
-      .sort((a, b) => b.value - a.value);
-  }, [logs]);
-
-  // Daily activity heatmap data
-  const dailyActivity = useMemo(() => {
-    const counts: Record<string, number> = {};
-    logs.forEach(log => {
-      const day = log.created_at.slice(0, 10);
-      counts[day] = (counts[day] || 0) + 1;
-    });
-    return Object.entries(counts)
-      .map(([date, count]) => ({ date: date.slice(5), count }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }, [logs]);
-
-  const uniqueEventTypes = useMemo(() => {
-    const types = new Set(logs.map(l => l.event_type));
-    return Array.from(types);
-  }, [logs]);
 
   const metrics = [
     renderShellMetric(t("tenantAuditLogs.metricLogs"), String(logs.length)),
