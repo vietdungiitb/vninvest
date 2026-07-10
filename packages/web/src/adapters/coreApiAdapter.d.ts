@@ -161,6 +161,7 @@ export interface CoreApiAdapter {
   getAllUsageTrends: (days?: number) => Promise<any>;
   getUsageForecast: () => Promise<any>;
   getAlertConfigs: () => Promise<any>;
+  getApiUsageAnalytics: (groupBy?: string, days?: number) => Promise<any>;
 
   // Tenant-admin operator (partner/*)
   getAdminAuditLog: (params?: any) => Promise<any>;

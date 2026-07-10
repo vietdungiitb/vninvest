@@ -50,6 +50,26 @@ interface AlertConfig {
   notify_email: boolean;
 }
 
+interface ApiUsageGroup {
+  key: string;
+  count: number;
+  error_count?: number;
+  avg_duration_ms?: number;
+}
+
+interface ApiUsageAnalyticsResponse {
+  group_by: string;
+  data: ApiUsageGroup[];
+  days: number;
+  start_date: string;
+  end_date: string;
+}
+
+interface ApiUsageAnalyticsResponse {
+  group_by: string;
+  data: ApiUsageGroup[];
+}
+
 interface UsageBarProps {
   consumedAmount: number;
   entitledAmount: number;
@@ -97,10 +117,11 @@ export function TenantAdminUsagePage({
 
   const [meters, setMeters] = useState<Meter[]>([]);
   const [quotas, setQuotas] = useState<Quota[]>([]);
+  const [tenantApiUsage, setTenantApiUsage] = useState<{ api_calls_limit: number; api_calls_used: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<"meters" | "history" | "forecast">("meters");
+  const [activeTab, setActiveTab] = useState<"meters" | "history" | "forecast" | "analytics">("meters");
   const [historyData, setHistoryData] = useState<Record<string, DailyPoint[]>>({});
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyDays, setHistoryDays] = useState(30);
@@ -112,22 +133,46 @@ export function TenantAdminUsagePage({
   const [alertConfigs, setAlertConfigs] = useState<AlertConfig[]>([]);
   const [alertConfigLoading, setAlertConfigLoading] = useState(false);
 
+  const [analyticsData, setAnalyticsData] = useState<ApiUsageAnalyticsResponse | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsGroupBy, setAnalyticsGroupBy] = useState<"ip" | "endpoint" | "status" | "hour">("endpoint");
+  const [analyticsDays, setAnalyticsDays] = useState(7);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
   const loadMetersAndQuotas = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const [metersData, quotasData] = await Promise.all([
+      const [metersData, quotasData, tenantData] = await Promise.all([
         defaultCoreApiAdapter.coreGet("/partner/usage/meters/"),
         defaultCoreApiAdapter.coreGet("/partner/usage/quotas/"),
+        defaultCoreApiAdapter.coreGet("/partner/tenant/"),
       ]);
       setMeters(metersData.results || []);
       setQuotas(quotasData.results || []);
+      setTenantApiUsage({
+        api_calls_limit: tenantData.api_calls_limit ?? -1,
+        api_calls_used: tenantData.api_calls_used ?? 0,
+      });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t("tenantUsage.loadError"));
     } finally {
       setLoading(false);
     }
   }, [t]);
+
+  const loadAnalytics = useCallback(async (groupBy?: "ip" | "endpoint" | "status" | "hour", days?: number) => {
+    try {
+      setAnalyticsLoading(true);
+      setAnalyticsError(null);
+      const data = await defaultCoreApiAdapter.getApiUsageAnalytics(groupBy || analyticsGroupBy, days || analyticsDays);
+      setAnalyticsData(data);
+    } catch (err: unknown) {
+      setAnalyticsError(err instanceof Error ? err.message : t("tenantUsage.loadError"));
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, [t, analyticsGroupBy, analyticsDays]);
 
   const loadHistory = useCallback(async (days: number) => {
     try {
@@ -168,6 +213,12 @@ export function TenantAdminUsagePage({
   useEffect(() => {
     loadMetersAndQuotas();
   }, [loadMetersAndQuotas]);
+
+  useEffect(() => {
+    if (activeTab === "analytics") {
+      loadAnalytics();
+    }
+  }, [activeTab, loadAnalytics]);
 
   useEffect(() => {
     if (activeTab === "history") {
@@ -261,6 +312,16 @@ export function TenantAdminUsagePage({
     renderShellMetric(t("tenantUsage.metricCritical"), String(criticalCount)),
   ];
 
+  // Alert indicator for API calls usage
+  const apiUsagePct = tenantApiUsage && tenantApiUsage.api_calls_limit > 0
+    ? Math.round((tenantApiUsage.api_calls_used / tenantApiUsage.api_calls_limit) * 100)
+    : 0;
+  const apiAlertRisk = apiUsagePct >= 95 ? "critical" : apiUsagePct >= 80 ? "warning" : "normal";
+  const apiAlertColor = resolveToneColor(apiAlertRisk);
+  const apiAlertText = apiUsagePct > 0
+    ? `${t("tenantUsage.apiCallsUsage", { defaultValue: "API Calls Usage" })}: ${apiUsagePct}% ${t("tenantUsage.usedOfLimit", { defaultValue: "used / limit" })}`
+    : "";
+
   const refreshAction = (
     <button onClick={loadMetersAndQuotas} className="shellPage__button shellPage__button--secondary">
       {t("tenantUsage.refreshAction")}
@@ -271,6 +332,7 @@ export function TenantAdminUsagePage({
     { key: "meters" as const, label: t("tenantUsage.tabMeters") },
     { key: "history" as const, label: t("tenantUsage.tabHistory") },
     { key: "forecast" as const, label: t("tenantUsage.tabForecast") },
+    { key: "analytics" as const, label: t("tenantUsage.tabAnalytics", { defaultValue: "API Analytics" }) },
   ];
 
   const tabBar = (
@@ -302,9 +364,75 @@ export function TenantAdminUsagePage({
       <section className="shellPage__stack">
         {tabBar}
 
+        {/* Alert indicator bar */}
+        {apiUsagePct > 0 && (
+          <div
+            style={{
+              padding: "8px 12px",
+              marginBottom: 16,
+              borderRadius: 8,
+              background: `${apiAlertColor}20`,
+              border: `1px solid ${apiAlertColor}`,
+              color: apiAlertColor,
+              fontSize: 13,
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <span style={{ fontSize: 14 }}>{apiAlertRisk === "critical" ? "🔴" : "🟡"}</span>
+            <span>{apiAlertText}</span>
+            <div
+              style={{
+                flex: 1,
+                height: 6,
+                background: "rgba(255,255,255,0.1)",
+                borderRadius: 3,
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  width: `${Math.min(apiUsagePct, 100)}%`,
+                  height: "100%",
+                  background: apiAlertColor,
+                  transition: "width 0.3s ease",
+                }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Meters Tab */}
         {activeTab === "meters" && (
           <>
+            <ShellPanel title={t("tenantUsage.apiCallsUsageTitle", { defaultValue: "API Calls Usage" })}>
+              {tenantApiUsage ? (() => {
+                const apiLimit = tenantApiUsage.api_calls_limit;
+                const apiUsed = tenantApiUsage.api_calls_used;
+                const apiRatio = apiLimit > 0 ? (apiUsed / apiLimit) * 100 : 0;
+                const apiRisk = apiRatio >= 95 ? "critical" : apiRatio >= 80 ? "warning" : "normal";
+                return (
+                  <div>
+                    <UsageBar consumedAmount={apiLimit > 0 ? apiUsed : 0} entitledAmount={apiLimit > 0 ? apiLimit : 0} riskState={apiRisk} />
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "12px", fontSize: "13px" }}>
+                      <div>
+                        <span className="shellPage__itemMeta" style={{ display: "block", fontSize: "11px" }}>{t("tenantUsage.consumedLabel")}</span>
+                        <span style={{ color: "#cbd5e1" }}>{formatUsageNumber(apiUsed)}</span>
+                      </div>
+                      <div>
+                        <span className="shellPage__itemMeta" style={{ display: "block", fontSize: "11px" }}>{t("tenantUsage.limitLabel")}</span>
+                        <span style={{ color: "#cbd5e1" }}>{formatUsageNumber(apiLimit)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })() : (
+                <div style={{ fontSize: 12, color: "var(--shell-muted)" }}>{t("common.loading")}</div>
+              )}
+            </ShellPanel>
+
             <ShellPanel title={t("tenantUsage.meterListTitle")} actions={refreshAction}>
               <div className="shellPage__list">
                 {meters.length === 0 ? (
@@ -516,6 +644,109 @@ export function TenantAdminUsagePage({
               <ShellEmptyState description={t("tenantUsage.noForecastData")} />
             )}
           </div>
+        )}
+        {/* Analytics Tab */}
+        {activeTab === "analytics" && (
+          <ShellPanel title={t("tenantUsage.analyticsTitle", { defaultValue: "API Analytics" })}>
+            <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 6 }}>
+                {(["ip", "endpoint", "status", "hour"] as const).map(group => (
+                  <button
+                    key={group}
+                    onClick={() => { setAnalyticsGroupBy(group); loadAnalytics(group); }}
+                    style={{
+                      background: analyticsGroupBy === group ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)",
+                      color: analyticsGroupBy === group ? "var(--shell-accent)" : "var(--shell-ink)",
+                      border: analyticsGroupBy === group ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--shell-border)",
+                      borderRadius: 12, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                    }}
+                  >
+                    {t(`tenantUsage.analytics.groupBy.${group}`, { defaultValue: group })}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                {[7, 14, 30, 90].map(d => (
+                  <button
+                    key={d}
+                    onClick={() => { setAnalyticsDays(d); loadAnalytics(analyticsGroupBy, d); }}
+                    style={{
+                      background: analyticsDays === d ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)",
+                      color: analyticsDays === d ? "var(--shell-accent)" : "var(--shell-ink)",
+                      border: analyticsDays === d ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--shell-border)",
+                      borderRadius: 12, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                    }}
+                  >
+                    {d}d
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {analyticsLoading ? (
+              <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>{t("common.loading")}</div>
+            ) : analyticsError ? (
+              <div style={{ padding: 16, color: "#ef4444" }}>{analyticsError}</div>
+            ) : analyticsData?.data && analyticsData.data.length > 0 ? (
+              <div style={{ display: "grid", gap: 16 }}>
+                <ShellPanel title={t("tenantUsage.analytics.topItems", { defaultValue: "Top Items" })}>
+                  <div className="shellPage__list">
+                    {analyticsData.data.map((item, idx) => (
+                      <div key={`${item.key}-${idx}`} className="shellPage__listItem">
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <code style={{ color: "#cbd5e1", fontSize: 11, wordBreak: "break-all", maxWidth: "70%" }}>{item.key}</code>
+                          <span className="shellPage__pill" style={{
+                            background: "rgba(0,180,216,0.15)", color: "#00b4d8", fontSize: 12,
+                          }}>
+                            {item.count} {t("tenantUsage.callsLabel", { defaultValue: "calls" })}
+                            {item.error_count && item.error_count > 0 && (
+                              <span style={{ marginLeft: 8, color: "#ef4444" }}>
+                                {t("tenantUsage.errorsLabel", { defaultValue: "errors" })}: {item.error_count}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ShellPanel>
+
+                <ShellPanel title={t("tenantUsage.analytics.timelineTitle", { defaultValue: "Timeline" })}>
+                  {analyticsGroupBy === "hour" && analyticsData?.data.length > 0 ? (
+                    <div style={{ width: "100%", height: 220 }}>
+                      <ResponsiveContainer>
+                        <BarChart data={analyticsData.data.map(d => ({ hour: d.key, count: d.count }))} margin={{ top: 4, right: 4, bottom: 4, left: -16 }}>
+                          <XAxis dataKey="hour" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                          <Tooltip
+                            contentStyle={{
+                              background: "rgba(15,23,42,0.95)", border: "1px solid rgba(255,255,255,0.08)",
+                              borderRadius: 12, fontSize: 12, color: "#f1f5f9",
+                            }}
+                          />
+                          <Bar dataKey="count" fill="#00b4d8" radius={[4, 4, 0, 0]} name={t("tenantUsage.callsLabel")} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div style={{ display: "grid", gap: 8, maxHeight: 200, overflow: "auto" }}>
+{analyticsData?.data.map((item, idx) => (
+                        <div key={`${item.key}-${idx}`} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                          <span style={{ width: 60, color: "#94a3b8" }}>{item.key}</span>
+                          <div style={{ flex: 1, height: 8, background: "rgba(255,255,255,0.06)", borderRadius: 999, overflow: "hidden" }}>
+                            <div style={{ width: `${Math.max(1, (item.count / Math.max(1, ...analyticsData?.data.map(d => d.count) ?? [1])) * 100)}%`, height: "100%", background: "#a855f7", borderRadius: 999 }} />
+                          </div>
+                          <span style={{ width: 36, textAlign: "right", color: "#cbd5e1" }}>{item.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ShellPanel>
+              </div>
+            ) : (
+              <ShellEmptyState description={t("tenantUsage.noAnalyticsData", { defaultValue: "No analytics data available" })} />
+            )}
+          </ShellPanel>
         )}
       </section>
     </ShellPageChrome>

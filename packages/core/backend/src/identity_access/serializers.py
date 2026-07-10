@@ -72,8 +72,9 @@ class CoreTenantSerializer(serializers.ModelSerializer):
             'tenant_id', 'tenant_code', 'display_name', 'plan', 'status',
             'features', 'trial_ends_at', 'activated_at', 'suspended_at',
             'billing_period_start', 'billing_period_end', 'created_at', 'updated_at',
+            'api_calls_limit', 'api_calls_used',
         ]
-        read_only_fields = ['tenant_id', 'created_at', 'updated_at']
+        read_only_fields = ['tenant_id', 'created_at', 'updated_at', 'api_calls_limit', 'api_calls_used']
 
 
 class CoreServiceAccountSerializer(serializers.ModelSerializer):

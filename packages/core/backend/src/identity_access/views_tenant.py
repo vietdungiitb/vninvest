@@ -1,6 +1,9 @@
 import logging
 from datetime import timedelta
 
+from django.db.models import Count
+from django.db.models.functions import TruncDate
+from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -9,7 +12,7 @@ from rest_framework.views import APIView
 
 from vninvest_core.pagination import CoreCursorPagination
 
-from .models import CorePATCredential, CoreServiceAccount, CoreTenant, UserProfile
+from .models import CorePATCredential, CoreServiceAccount, CoreTenant, PATAuditLog, UserProfile
 from .permissions import IsTenantActive, require_human_session, require_pat_scopes_or_human_session
 
 logger = logging.getLogger(__name__)
@@ -530,3 +533,142 @@ class PartnerUsageMetersView(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         return Response([])
+
+
+# ---------------------------------------------------------------------------
+# PAT / Service Account usage analytics (Phase 1)
+# ---------------------------------------------------------------------------
+
+def _parse_days_param(request, default: int = 30, maximum: int = 90) -> int:
+    try:
+        days = int(request.query_params.get('days', default))
+    except (TypeError, ValueError):
+        days = default
+    return max(1, min(days, maximum))
+
+
+def _status_breakdown(logs) -> dict:
+    counts = logs.values('status_code').annotate(c=Count('id'))
+    breakdown = {'2xx': 0, '4xx': 0, '5xx': 0}
+    for row in counts:
+        code = row['status_code']
+        if code < 300:
+            breakdown['2xx'] += row['c']
+        elif code < 500:
+            breakdown['4xx'] += row['c']
+        else:
+            breakdown['5xx'] += row['c']
+    return breakdown
+
+
+@api_view(['GET'])
+@permission_classes(TENANT_PERMISSION_CLASSES)
+def partner_pat_usage(request, pat_id):
+    """Per-PAT usage breakdown: calls, top IPs/endpoints, status, timeline."""
+    _require_partner_scope(request, PARTNER_SCOPE_MANAGE_PATS)
+    _require_tenant_role(request, 'owner', 'admin')
+    tenant = _get_request_tenant(request)
+    pat = generics.get_object_or_404(
+        CorePATCredential,
+        public_id=pat_id,
+        service_account__tenant=tenant,
+        is_human_session=False,
+    )
+    days = _parse_days_param(request)
+    since = timezone.now() - timedelta(days=days)
+    logs = PATAuditLog.objects.filter(pat=pat, occurred_at__gte=since)
+    total_calls = logs.count()
+
+    top_endpoints = [
+        {'endpoint': e['endpoint'], 'count': e['count']}
+        for e in logs.values('endpoint').annotate(count=Count('id')).order_by('-count')[:10]
+    ]
+    timeline = [
+        {'date': t['date'].isoformat(), 'count': t['count']}
+        for t in logs.annotate(date=TruncDate('occurred_at'))
+        .values('date').annotate(count=Count('id')).order_by('date')
+    ]
+
+    return Response({
+        'pat_id': pat.public_id,
+        'label': pat.label,
+        'total_calls': total_calls,
+        'unique_ips': logs.values('ip_address').distinct().count() if total_calls else 0,
+        'top_endpoints': top_endpoints,
+        'status_breakdown': _status_breakdown(logs),
+        'timeline': timeline,
+        'last_used_at': pat.last_used_at.isoformat() if pat.last_used_at else None,
+        'expires_at': pat.expires_at.isoformat() if pat.expires_at else None,
+    })
+
+
+@api_view(['GET'])
+@permission_classes(TENANT_PERMISSION_CLASSES)
+def partner_pat_usage_summary(request):
+    """Tenant-wide PAT usage summary."""
+    _require_partner_scope(request, PARTNER_SCOPE_MANAGE_PATS)
+    _require_tenant_role(request, 'owner', 'admin')
+    tenant = _get_request_tenant(request)
+    days = _parse_days_param(request)
+    since = timezone.now() - timedelta(days=days)
+
+    pats = CorePATCredential.objects.filter(
+        service_account__tenant=tenant,
+        is_human_session=False,
+    )
+    pat_ids = list(pats.values_list('id', flat=True))
+    total_calls = (
+        PATAuditLog.objects.filter(pat_id__in=pat_ids, occurred_at__gte=since).count()
+        if pat_ids else 0
+    )
+    pats_usage = [
+        {
+            'pat_id': pat.public_id,
+            'label': pat.label,
+            'calls_30d': PATAuditLog.objects.filter(pat=pat, occurred_at__gte=since).count(),
+            'last_used_at': pat.last_used_at.isoformat() if pat.last_used_at else None,
+        }
+        for pat in pats
+    ]
+    return Response({
+        'total_pats': pats.count(),
+        'active_pats': pats.filter(status=CorePATCredential.StatusChoices.ACTIVE).count(),
+        'total_calls_30d': total_calls,
+        'pats_usage': pats_usage,
+    })
+
+
+@api_view(['GET'])
+@permission_classes(TENANT_PERMISSION_CLASSES)
+def partner_service_account_usage(request, sa_id):
+    """Per-ServiceAccount usage: PAT breakdown and total calls."""
+    _require_partner_scope(request, PARTNER_SCOPE_MANAGE_SERVICE_ACCOUNTS)
+    _require_tenant_role(request, 'owner', 'admin')
+    tenant = _get_request_tenant(request)
+    sa = generics.get_object_or_404(
+        CoreServiceAccount,
+        public_id=sa_id,
+        tenant=tenant,
+    )
+    days = _parse_days_param(request)
+    since = timezone.now() - timedelta(days=days)
+
+    pats = list(sa.pat_credentials.filter(is_human_session=False))
+    total_calls = 0
+    pats_usage = []
+    for pat in pats:
+        calls = PATAuditLog.objects.filter(pat=pat, occurred_at__gte=since).count()
+        total_calls += calls
+        pats_usage.append({
+            'pat_id': pat.public_id,
+            'label': pat.label,
+            'calls_30d': calls,
+            'last_used_at': pat.last_used_at.isoformat() if pat.last_used_at else None,
+        })
+    return Response({
+        'sa_id': sa.public_id,
+        'name': sa.name,
+        'total_pats': len(pats),
+        'total_calls': total_calls,
+        'pats': pats_usage,
+    })

@@ -48,6 +48,18 @@ interface SecretReveal {
   token_prefix: string;
 }
 
+interface PatUsage {
+  pat_id: string;
+  label: string;
+  total_calls: number;
+  unique_ips: number;
+  top_endpoints: { endpoint: string; count: number }[];
+  status_breakdown: { '2xx': number; '4xx': number; '5xx': number };
+  timeline: { date: string; count: number }[];
+  last_used_at: string | null;
+  expires_at: string | null;
+}
+
 interface TenantAdminPATsPageProps {
   env?: Record<string, unknown>;
   fetchImpl?: unknown;
@@ -79,6 +91,10 @@ export function TenantAdminPATsPage({
   const [activeTokenId, setActiveTokenId] = useState("");
   const [hideRevoked, setHideRevoked] = useState(true);
   const [hideUnused, setHideUnused] = useState(false);
+  const [usagePat, setUsagePat] = useState<Token | null>(null);
+  const [usageData, setUsageData] = useState<PatUsage | null>(null);
+  const [usageLoading, setUsageLoading] = useState(false);
+  const [usageError, setUsageError] = useState<string | null>(null);
 
   const [createForm, setCreateForm] = useState<CreateForm>({
     service_account_id: "",
@@ -227,6 +243,20 @@ export function TenantAdminPATsPage({
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     });
+  };
+
+  const handleOpenUsage = (token: Token) => {
+    const patId = token.pat_id || token.id || "";
+    if (!patId) return;
+    setUsagePat(token);
+    setUsageData(null);
+    setUsageError(null);
+    setUsageLoading(true);
+    defaultCoreApiAdapter
+      .coreGet(`/partner/pats/${patId}/usage/?days=30`)
+      .then(data => setUsageData(data as PatUsage))
+      .catch(err => setUsageError(err instanceof Error ? err.message : t("tenantPats.loadError")))
+      .finally(() => setUsageLoading(false));
   };
 
   const canRead = ability?.can?.("read", "TenantPATAdmin") ?? false;
@@ -410,6 +440,132 @@ export function TenantAdminPATsPage({
             </div>
           )}
 
+          {usagePat && (
+            <div
+              role="presentation"
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: "rgba(0,0,0,0.7)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1000,
+              }}
+              onClick={() => setUsagePat(null)}
+              onKeyDown={(e) => { if (e.key === 'Escape') setUsagePat(null); }}
+            >
+              <div
+                className="shellPage__surfaceCard"
+                style={{
+                  border: "1px solid rgba(168,85,247,0.3)",
+                  padding: "24px",
+                  width: "100%",
+                  maxWidth: "640px",
+                  maxHeight: "90vh",
+                  overflow: "auto",
+                }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="shellPage__listItemHeader" style={{ marginBottom: "16px" }}>
+                  <h3 className="shellPage__itemTitle" style={{ margin: 0, fontSize: "18px", color: "#a855f7" }}>
+                    {t("tenantPats.usageTitle", { defaultValue: "PAT Usage" })}
+                  </h3>
+                  <button
+                    onClick={() => setUsagePat(null)}
+                    className="shellPage__button"
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid var(--shell-border)", fontSize: "12px" }}
+                  >
+                    {t("tenantPats.closeAction")}
+                  </button>
+                </div>
+
+                {usageLoading && (
+                  <div style={{ padding: 24, textAlign: "center", color: "var(--shell-muted)" }}>{t("common.loading")}</div>
+                )}
+                {usageError && (
+                  <div style={{ padding: 16, color: "#ef4444", fontSize: 13 }}>{usageError}</div>
+                )}
+                {usageData && !usageLoading && (
+                  <div style={{ display: "grid", gap: 16 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", fontSize: "13px" }}>
+                      <div>
+                        <div className="shellPage__itemMeta" style={{ fontSize: 11 }}>{t("tenantPats.totalCalls", { defaultValue: "Total calls (30d)" })}</div>
+                        <span style={{ color: "#cbd5e1", fontWeight: 600 }}>{usageData.total_calls}</span>
+                      </div>
+                      <div>
+                        <div className="shellPage__itemMeta" style={{ fontSize: 11 }}>{t("tenantPats.uniqueIps", { defaultValue: "Unique IPs" })}</div>
+                        <span style={{ color: "#cbd5e1", fontWeight: 600 }}>{usageData.unique_ips}</span>
+                      </div>
+                      <div>
+                        <div className="shellPage__itemMeta" style={{ fontSize: 11 }}>{t("tenantPats.lastUsedLabel", { defaultValue: "Last used" })}</div>
+                        <span style={{ color: "#cbd5e1", fontSize: 12 }}>{usageData.last_used_at ? fmtDateTime(usageData.last_used_at) : t("tenantPats.neverUsed", { defaultValue: "Never" })}</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="shellPage__itemMeta" style={{ fontSize: 12, marginBottom: 6 }}>{t("tenantPats.statusBreakdown", { defaultValue: "Status breakdown" })}</div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        {(['2xx', '4xx', '5xx'] as const).map(k => (
+                          <span key={k} className="shellPage__pill" style={{
+                            background: k === '2xx' ? 'rgba(34,197,94,0.2)' : k === '4xx' ? 'rgba(234,179,8,0.2)' : 'rgba(239,68,68,0.2)',
+                            color: k === '2xx' ? '#22c55e' : k === '4xx' ? '#eab308' : '#ef4444',
+                            fontSize: 12,
+                          }}>
+                            {k}: {usageData.status_breakdown[k]}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="shellPage__itemMeta" style={{ fontSize: 12, marginBottom: 6 }}>{t("tenantPats.timeline", { defaultValue: "Timeline (30d)" })}</div>
+                      <div style={{ display: "grid", gap: 3, maxHeight: 160, overflow: "auto" }}>
+                        {usageData.timeline.length === 0 ? (
+                          <span style={{ fontSize: 12, color: "var(--shell-muted)" }}>{t("tenantPats.noUsageData", { defaultValue: "No usage data" })}</span>
+                        ) : (
+                          usageData.timeline.map(p => {
+                            const max = Math.max(1, ...usageData.timeline.map(x => x.count));
+                            return (
+                              <div key={p.date} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                                <span style={{ width: 70, color: "#94a3b8" }}>{p.date.slice(5)}</span>
+                                <div style={{ flex: 1, height: 8, background: "rgba(255,255,255,0.06)", borderRadius: 999, overflow: "hidden" }}>
+                                  <div style={{ width: `${(p.count / max) * 100}%`, height: "100%", background: "#a855f7", borderRadius: 999 }} />
+                                </div>
+                                <span style={{ width: 36, textAlign: "right", color: "#cbd5e1" }}>{p.count}</span>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="shellPage__itemMeta" style={{ fontSize: 12, marginBottom: 6 }}>{t("tenantPats.topEndpoints", { defaultValue: "Top endpoints" })}</div>
+                      <div className="shellPage__list" style={{ maxHeight: 200, overflow: "auto" }}>
+                        {usageData.top_endpoints.length === 0 ? (
+                          <span style={{ fontSize: 12, color: "var(--shell-muted)" }}>{t("tenantPats.noUsageData", { defaultValue: "No usage data" })}</span>
+                        ) : (
+                          usageData.top_endpoints.map(ep => (
+                            <div key={ep.endpoint} className="shellPage__listItem" style={{ padding: "8px 0" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 12 }}>
+                                <code style={{ color: "#cbd5e1", fontSize: 11, wordBreak: "break-all" }}>{ep.endpoint}</code>
+                                <span style={{ color: "#a855f7", fontWeight: 600, whiteSpace: "nowrap" }}>{ep.count}</span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="shellPage__listItemHeader">
             <h2 className="shellPage__itemTitle" style={{ fontSize: "20px", margin: 0 }}>
               {t("tenantPats.listTitle")}
@@ -543,6 +699,13 @@ export function TenantAdminPATsPage({
 
                       {!isRevoked && (
                         <div className="shellPage__listItemHeader" style={{ gap: "8px", marginTop: "14px", paddingTop: "12px" }}>
+                          <button
+                            onClick={() => handleOpenUsage(token)}
+                            className="shellPage__button"
+                            style={{ background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.3)", color: "#a855f7", fontSize: "12px" }}
+                          >
+                            {t("tenantPats.usageAction", { defaultValue: "Usage" })}
+                          </button>
                           <button
                             onClick={() => handleRotateToken(tokenId!)}
                             disabled={isTokenRotating}

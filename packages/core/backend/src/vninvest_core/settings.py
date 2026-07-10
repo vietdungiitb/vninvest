@@ -84,6 +84,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'identity_access.middleware.TenantResolutionMiddleware',
     'identity_access.middleware.TenantQuotaMiddleware',
+    'identity_access.middleware.RateLimitHeadersMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
 ]
 
@@ -219,6 +220,7 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'vninvest_core.exceptions.core_api_exception_handler',
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_THROTTLE_CLASSES': [
+        'identity_access.throttles.PATRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
     ] if 'test' not in sys.argv else [],
     'DEFAULT_THROTTLE_RATES': {
@@ -357,6 +359,26 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 60.0,
         'options': {'queue': SCHEDULER_QUEUE_MAP['flush-quota-counters']},
     },
+    'snapshot-quota-history': {
+        'task': 'commercial.tasks.snapshot_quota_history',
+        'schedule': crontab(minute=55, hour=23),
+        'options': {'queue': SCHEDULER_QUEUE_MAP['snapshot-quota-history']},
+    },
+    'aggregate-api-call-rollup': {
+        'task': 'ops_audit.tasks.aggregate_api_call_rollup',
+        'schedule': 300.0,  # every 5 minutes
+        'options': {'queue': SCHEDULER_QUEUE_MAP['aggregate-api-call-rollup']},
+    },
+    'flush-pat-audit-log': {
+        'task': 'identity_access.tasks.flush_pat_audit_log',
+        'schedule': 10.0,
+        'options': {'queue': SCHEDULER_QUEUE_MAP['flush-pat-audit-log']},
+    },
+    'cross-ref-pat-audit-events': {
+        'task': 'identity_access.tasks.cross_ref_pat_audit_events',
+        'schedule': 60.0,
+        'options': {'queue': SCHEDULER_QUEUE_MAP['cross-ref-pat-audit-events']},
+    },
     'generate-monthly-invoices': {
         'task': 'commercial.tasks.generate_monthly_invoices',
         'schedule': crontab(day_of_month='1', hour='0', minute='5'),
@@ -386,6 +408,11 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'tenant_lifecycle.tasks.send_trial_expiry_warning',
         'schedule': crontab(hour='9', minute='0'),
         'options': {'queue': SCHEDULER_QUEUE_MAP['send-trial-expiry-warning']},
+    },
+    'check-usage-thresholds': {
+        'task': 'commercial.tasks.check_usage_thresholds',
+        'schedule': 300.0,  # every 5 minutes
+        'options': {'queue': SCHEDULER_QUEUE_MAP['check-usage-thresholds']},
     },
     'auto-deprovision-stale': {
         'task': 'tenant_lifecycle.tasks.auto_deprovision_stale',

@@ -142,17 +142,20 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     ...miscClient,
     ...socClient,
 
-    // Tenant-admin usage (partner/usage/*)
-    getAllUsageTrends(days = 30) {
-      return transport.coreGet(`/partner/usage/trend/?days=${days}`);
-    },
-    getUsageForecast() {
-      return transport.coreGet("/partner/usage/forecast/");
-    },
-    getAlertConfigs() {
-      return transport.coreGet("/partner/usage/alert-config/");
-    },
-  };
+// Tenant-admin usage (partner/usage/*)
+  getAllUsageTrends(days = 30) {
+    return transport.coreGet(`/partner/usage/trend/?days=${days}`);
+  },
+  getUsageForecast() {
+    return transport.coreGet("/partner/usage/forecast/");
+  },
+  getAlertConfigs() {
+    return transport.coreGet("/partner/usage/alert-config/");
+  },
+  getApiUsageAnalytics(groupBy = "endpoint", days = 7) {
+    return transport.coreGet(`/partner/usage/api-calls/?group_by=${groupBy}&days=${days}`);
+  },
+};
 }
 
 export const defaultCoreApiAdapter = createCoreApiAdapter({

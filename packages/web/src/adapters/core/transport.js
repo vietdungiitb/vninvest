@@ -223,6 +223,7 @@ export function createCoreTransport(env = {}, options = {}) {
     getRefreshToken = () => null,
     setTokens = () => {},
     clearTokens = () => {},
+    onRateLimit = null, // callback: (headers) => void
   } = options;
   let refreshPromise = null;
 
@@ -313,7 +314,7 @@ export function createCoreTransport(env = {}, options = {}) {
     return refreshPromise;
   }
 
-  async function requestWithAuth(path, init = {}, attemptRefresh = true) {
+  async function requestWithAuth(path, init = {}, attemptRefresh = true, onRateLimit = null) {
     const base = resolveCoreApiBase(env);
     const requestId = generateRequestId();
 
@@ -343,6 +344,17 @@ export function createCoreTransport(env = {}, options = {}) {
       credentials: "include",
     });
 
+    // Extract rate limit headers for callback
+    if (onRateLimit) {
+      const limit = response.headers.get('X-RateLimit-Limit');
+      const remaining = response.headers.get('X-RateLimit-Remaining');
+      const reset = response.headers.get('X-RateLimit-Reset');
+      const resource = response.headers.get('X-RateLimit-Resource');
+      if (limit !== null && remaining !== null && reset !== null) {
+        onRateLimit({ limit, remaining, reset, resource });
+      }
+    }
+
     // 401 retry: try a token refresh and retry once
     if (attemptRefresh && shouldTryRefresh(path, response.status)) {
       const nextAccessToken = await requestTokenRefresh();
@@ -355,7 +367,8 @@ export function createCoreTransport(env = {}, options = {}) {
   }
 
   async function coreGet(path, options = {}) {
-    const response = await requestWithAuth(path, options, true);
+    const { onRateLimit, ...fetchOptions } = options;
+    const response = await requestWithAuth(path, fetchOptions, true, onRateLimit);
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
@@ -371,11 +384,13 @@ export function createCoreTransport(env = {}, options = {}) {
     return response.json();
   }
 
-  async function corePost(path, body = undefined) {
+  async function corePost(path, body = undefined, options = {}) {
+    const { onRateLimit, ...fetchOptions } = options;
     const response = await requestWithAuth(path, {
       method: "POST",
       body: body !== undefined ? JSON.stringify(body) : undefined,
-    }, true);
+      ...fetchOptions,
+    }, true, onRateLimit);
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
@@ -392,11 +407,13 @@ export function createCoreTransport(env = {}, options = {}) {
     return response.json();
   }
 
-  async function corePut(path, body = undefined) {
+  async function corePut(path, body = undefined, options = {}) {
+    const { onRateLimit, ...fetchOptions } = options;
     const response = await requestWithAuth(path, {
       method: "PUT",
       body: body !== undefined ? JSON.stringify(body) : undefined,
-    }, true);
+      ...fetchOptions,
+    }, true, onRateLimit);
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
@@ -413,11 +430,13 @@ export function createCoreTransport(env = {}, options = {}) {
   }
 
 
-  async function corePatch(path, body = undefined) {
+  async function corePatch(path, body = undefined, options = {}) {
+    const { onRateLimit, ...fetchOptions } = options;
     const response = await requestWithAuth(path, {
       method: "PATCH",
       body: body !== undefined ? JSON.stringify(body) : undefined,
-    }, true);
+      ...fetchOptions,
+    }, true, onRateLimit);
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
@@ -433,10 +452,12 @@ export function createCoreTransport(env = {}, options = {}) {
     return response.json();
   }
 
-  async function coreDelete(path) {
+  async function coreDelete(path, options = {}) {
+    const { onRateLimit, ...fetchOptions } = options;
     const response = await requestWithAuth(path, {
       method: "DELETE",
-    }, true);
+      ...fetchOptions,
+    }, true, onRateLimit);
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");

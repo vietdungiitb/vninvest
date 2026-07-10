@@ -16,6 +16,7 @@ from . import views_reports
 from . import views_security
 from . import views_webhooks
 from . import views_tenant as views
+from . import views_usage
 from .commercial_partner_views import (
     PartnerBillingInvoicesView,
     PartnerBillingSubscriptionView,
@@ -36,14 +37,21 @@ urlpatterns = [
     # Service accounts
     path('partner/service-accounts/', views.ServiceAccountListView.as_view(), name='partner-sa-list'),
     path('partner/service-accounts', views.ServiceAccountListView.as_view(), name='partner-sa-list-noslash'),
+    path('partner/service-accounts/<str:sa_id>/usage/', views.partner_service_account_usage, name='partner-sa-usage'),
+    path('partner/service-accounts/<str:sa_id>/usage', views.partner_service_account_usage, name='partner-sa-usage-noslash'),
 
     # PATs
     path('partner/pats/', views.PATListView.as_view(), name='partner-pat-list'),
     path('partner/pats', views.PATListView.as_view(), name='partner-pat-list-noslash'),
+    # MUST be declared before '<str:pat_id>' routes so 'usage-summary' is not captured as pat_id.
+    path('partner/pats/usage-summary/', views.partner_pat_usage_summary, name='partner-pat-usage-summary'),
+    path('partner/pats/usage-summary', views.partner_pat_usage_summary, name='partner-pat-usage-summary-noslash'),
     path('partner/pats/issue/', views.partner_issue_pat, name='partner-pat-issue'),
     path('partner/pats/issue', views.partner_issue_pat, name='partner-pat-issue-noslash'),
     path('partner/pats/<str:pat_id>/rotate/', views.partner_rotate_pat, name='partner-pat-rotate'),
     path('partner/pats/<str:pat_id>/revoke/', views.partner_revoke_pat, name='partner-pat-revoke'),
+    path('partner/pats/<str:pat_id>/usage/', views.partner_pat_usage, name='partner-pat-usage'),
+    path('partner/pats/<str:pat_id>/usage', views.partner_pat_usage, name='partner-pat-usage-noslash'),
 
     # SSO Configuration
     path('partner/sso/', PartnerSSOConfigView.as_view(), name='partner-sso-config'),
@@ -56,6 +64,14 @@ urlpatterns = [
     path('partner/usage/quotas', PartnerUsageQuotasView.as_view(), name='partner-usage-quotas-noslash'),
     path('partner/usage/history/', PartnerUsageHistoryView.as_view(), name='partner-usage-history'),
     path('partner/usage/history', PartnerUsageHistoryView.as_view(), name='partner-usage-history-noslash'),
+
+    # Phase 2 — API Analytics
+    path('partner/usage/api-calls/', views_usage.partner_api_usage, name='partner-api-usage'),
+    path('partner/usage/api-calls', views_usage.partner_api_usage, name='partner-api-usage-noslash'),
+    path('partner/usage/api-calls/timeline/', views_usage.partner_api_timeline, name='partner-api-timeline'),
+    path('partner/usage/api-calls/timeline', views_usage.partner_api_timeline, name='partner-api-timeline-noslash'),
+    path('partner/usage/api-calls/export/', views_usage.partner_api_export, name='partner-api-export'),
+    path('partner/usage/api-calls/export', views_usage.partner_api_export, name='partner-api-export-noslash'),
 
     # Billing (delegates to commercial app)
     path('partner/billing/subscription/', PartnerBillingSubscriptionView.as_view(), name='partner-billing-sub'),

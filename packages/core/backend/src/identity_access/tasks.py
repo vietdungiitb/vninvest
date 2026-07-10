@@ -449,3 +449,138 @@ def deprovision_tenant_async(self, tenant_public_id: str):
 
     logger.info('Deprovision cleanup for %s: %s', tenant_public_id, removed)
     return removed
+
+
+PAT_AUDIT_QUEUE_KEY = 'pat_audit_queue'
+PAT_AUDIT_FLUSH_BATCH = 500
+
+
+@shared_task(name='identity_access.tasks.flush_pat_audit_log', bind=True, max_retries=3, default_retry_delay=30)
+def flush_pat_audit_log(self):
+    """Flush batched PATAuditLog entries from the Redis list into the DB.
+
+    Runs every 10s. Entries are enqueued by TenantQuotaMiddleware (one RPUSH
+    per PAT request) so the request hot path never writes to the DB directly.
+    Entries whose PAT/tenant can no longer be resolved are dropped.
+    """
+    from django.core.cache import cache
+    from identity_access.models import CorePATCredential, CoreTenant, PATAuditLog
+
+    cache_client = getattr(cache, '_cache', None)
+    if cache_client is None:
+        return {'status': 'skipped', 'reason': 'no_cache_client'}
+
+    pending = []
+    try:
+        for _ in range(PAT_AUDIT_FLUSH_BATCH):
+            raw = cache_client.lpop(PAT_AUDIT_QUEUE_KEY)
+            if not raw:
+                break
+            if isinstance(raw, bytes):
+                raw = raw.decode('utf-8')
+            pending.append(json.loads(raw))
+    except Exception as exc:
+        logger.error('flush_pat_audit_log: failed to pop queue: %s', exc, exc_info=True)
+        return {'status': 'error', 'reason': str(exc)}
+
+    if not pending:
+        return {'status': 'ok', 'flushed': 0}
+
+    pat_ids = {e['pat_pk'] for e in pending if e.get('pat_pk')}
+    tenant_ids = {e['tenant_pk'] for e in pending if e.get('tenant_pk')}
+    pats = {p.pk: p for p in CorePATCredential.objects.filter(pk__in=pat_ids)}
+    tenants = {t.pk: t for t in CoreTenant.objects.filter(pk__in=tenant_ids)}
+
+    objects = []
+    dropped = 0
+    for entry in pending:
+        pat = pats.get(entry.get('pat_pk'))
+        tenant = tenants.get(entry.get('tenant_pk'))
+        if pat is None or tenant is None:
+            dropped += 1
+            continue
+        objects.append(PATAuditLog(
+            pat=pat,
+            tenant=tenant,
+            ip_address=entry.get('ip_address') or None,
+            endpoint=entry.get('endpoint', ''),
+            method=entry.get('method', ''),
+            status_code=entry.get('status_code', 0),
+            user_agent=entry.get('user_agent', ''),
+            duration_ms=entry.get('duration_ms', 0),
+            auth_source=entry.get('auth_source', 'pat'),
+        ))
+
+    created = 0
+    if objects:
+        try:
+            PATAuditLog.objects.bulk_create(objects, batch_size=PAT_AUDIT_FLUSH_BATCH)
+            created = len(objects)
+        except Exception as exc:
+            logger.error('flush_pat_audit_log: bulk_create failed: %s', exc, exc_info=True)
+            # Re-queue the failed entries for the next attempt
+            for obj in objects:
+                cache_client.rpush(PAT_AUDIT_QUEUE_KEY, json.dumps({
+                    'pat_pk': obj.pat_id,
+                    'tenant_pk': obj.tenant_id,
+                    'ip_address': obj.ip_address or '',
+                    'endpoint': obj.endpoint,
+                    'method': obj.method,
+                    'status_code': obj.status_code,
+                    'user_agent': obj.user_agent,
+                    'auth_source': obj.auth_source,
+                    'duration_ms': obj.duration_ms,
+                }, default=str))
+            return {'status': 'error', 'reason': str(exc), 'flushed': 0}
+
+    return {'status': 'ok', 'flushed': created, 'dropped': dropped}
+
+
+@shared_task(name='identity_access.tasks.cross_ref_pat_audit_events', bind=True, max_retries=2, default_retry_delay=120)
+def cross_ref_pat_audit_events(self, hours: int = 1):
+    """Best-effort cross-reference: tag AuditEvent rows with their PAT id.
+
+    AuditEvent already records every request (including PAT requests). This task
+    links them to the originating PAT so cross-table analytics (AuditEvent JOIN
+    PATAuditLog) are possible. Matching is conservative: only AuditEvents whose
+    pat_id is still NULL, scoped by tenant, and matching a single PATAuditLog on
+    (ip, method, endpoint, status_code) within a 10s window are updated. If no
+    reliable match exists, the row is left untouched (PATAuditLog remains the
+    source of truth for per-PAT queries).
+    """
+    from django.db.models import OuterRef, Subquery
+    from ops_audit.models import AuditEvent
+    from identity_access.models import PATAuditLog
+
+    since = timezone.now() - timedelta(hours=hours)
+    candidates = AuditEvent.objects.filter(
+        pat_id__isnull=True,
+        tenant_id__gt='',
+        occurred_at__gte=since,
+    ).only('id', 'tenant_id', 'ip_address', 'action', 'resource_type', 'request_id', 'occurred_at', 'metadata')
+
+    updated = 0
+    for event in candidates.iterator(chunk_size=500):
+        # Real HTTP method/path live in the metadata JSON (RequestTraceMiddleware),
+        # not in the top-level action/resource_type fields.
+        meta = event.metadata or {}
+        method = meta.get('method')
+        path = meta.get('path')
+
+        match_qs = PATAuditLog.objects.filter(
+            tenant__public_id=event.tenant_id,
+            ip_address=event.ip_address,
+            occurred_at__gte=event.occurred_at - timedelta(seconds=10),
+            occurred_at__lte=event.occurred_at + timedelta(seconds=10),
+        )
+        if method:
+            match_qs = match_qs.filter(method=method)
+        if path:
+            match_qs = match_qs.filter(endpoint=path[:256])
+        match = match_qs.first()
+        if match is not None:
+            event.pat_id = match.pat.public_id
+            event.save(update_fields=['pat_id'])
+            updated += 1
+
+    return {'status': 'ok', 'updated': updated}
