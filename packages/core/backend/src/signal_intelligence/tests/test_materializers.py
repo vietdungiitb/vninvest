@@ -239,8 +239,8 @@ class UnifiedAlertMaterializerTests(TestCase):
             symbol='VCI',
             session_date=now.date(),
             price=Decimal('40000.00'),
-            price_change=Decimal('3500.00'),
-            price_change_pct=Decimal('8.75'),
+            price_change=Decimal('2000.00'),
+            price_change_pct=Decimal('5.00'),
             volume=1500,
             market_status=SymbolSnapshot.MarketStatusChoices.OPEN,
             source=SymbolSnapshot.SourceChoices.CORE,
@@ -255,8 +255,8 @@ class UnifiedAlertMaterializerTests(TestCase):
         self.assertEqual(result['created'], 1)
         self.assertEqual(alert.alert_type, UnifiedAlert.AlertTypeChoices.SIGNAL)
         self.assertEqual(alert.severity, UnifiedAlert.SeverityChoices.MEDIUM)
-        self.assertEqual(alert.confidence, 0.8)
-        self.assertEqual(alert.evidence['price_change_pct'], 8.75)
+        self.assertEqual(alert.confidence, 0.85)
+        self.assertEqual(alert.evidence['price_change_pct'], 5.0)
         self.assertEqual(fact.event_type, MarketAnomalyEvent.EventTypeChoices.PRICE_SHOCK)
         self.assertEqual(fact.unified_alert_id, alert.id)
 

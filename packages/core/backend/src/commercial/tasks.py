@@ -9,7 +9,7 @@ from celery import shared_task
 from django.core.cache import cache
 from django.utils import timezone
 
-from commercial.models import Invoice, QuotaRecord, Subscription
+from commercial.models import Invoice, QuotaRecord, Subscription, QuotaHistory
 from identity_access.models import CoreTenant
 
 
@@ -287,4 +287,101 @@ def manage_subscriptions_lifecycle(self, today_iso: str | None = None):
         'downgraded_subscriptions': downgraded,
         'new_renewal_invoices': renewed,
         'checked_at': today.isoformat()
+    }
+
+
+@shared_task(name='commercial.tasks.snapshot_quota_history', bind=True, max_retries=2, default_retry_delay=300)
+def snapshot_quota_history(self, target_date: str | None = None):
+    """
+    Create daily snapshots of quota usage for historical tracking and charts.
+    Runs daily after quota counters are flushed.
+    """
+    today = date.fromisoformat(target_date) if target_date else timezone.now().date()
+    created = 0
+    updated = 0
+
+    # Get all tenants with quota records for the current billing period
+    period_start, period_end = _current_billing_period(today)
+    
+    quota_records = QuotaRecord.objects.select_related('tenant').filter(
+        period_start=period_start,
+        period_end=period_end,
+    )
+
+    for quota_record in quota_records:
+        tenant = quota_record.tenant
+        
+        # Create history entries for each meter type
+        meters = [
+            {
+                'meter_code': 'api_calls',
+                'meter_name': 'API Calls',
+                'unit': 'calls',
+                'consumed': quota_record.api_calls_used,
+                'entitled': quota_record.api_calls_limit,
+            },
+            {
+                'meter_code': 'symbols',
+                'meter_name': 'Symbols',
+                'unit': 'symbols',
+                'consumed': quota_record.symbols_used,
+                'entitled': quota_record.symbols_limit,
+            },
+            {
+                'meter_code': 'users',
+                'meter_name': 'Users',
+                'unit': 'users',
+                'consumed': quota_record.users_used,
+                'entitled': quota_record.users_limit,
+            },
+            {
+                'meter_code': 'storage_mb',
+                'meter_name': 'Storage',
+                'unit': 'MB',
+                'consumed': quota_record.storage_mb_used,
+                'entitled': quota_record.storage_mb_limit,
+            },
+        ]
+
+        for meter in meters:
+            entitled = meter['entitled']
+            consumed = meter['consumed']
+            remaining = max(0, entitled - consumed) if entitled > 0 else 0
+            
+            # Determine risk state
+            if entitled > 0:
+                usage_pct = (consumed / entitled) * 100
+                if usage_pct >= 90:
+                    risk_state = 'critical'
+                elif usage_pct >= 75:
+                    risk_state = 'warning'
+                else:
+                    risk_state = 'normal'
+            else:
+                risk_state = 'normal'
+
+            history, was_created = QuotaHistory.objects.update_or_create(
+                tenant=tenant,
+                date=today,
+                meter_code=meter['meter_code'],
+                defaults={
+                    'meter_name': meter['meter_name'],
+                    'unit': meter['unit'],
+                    'consumed_amount': consumed,
+                    'entitled_amount': entitled,
+                    'remaining_amount': remaining,
+                    'risk_state': risk_state,
+                    'hard_stop': False,  # Could be enhanced with plan-specific hard stops
+                }
+            )
+            if was_created:
+                created += 1
+            else:
+                updated += 1
+
+    return {
+        'status': 'ok',
+        'date': today.isoformat(),
+        'created': created,
+        'updated': updated,
     }

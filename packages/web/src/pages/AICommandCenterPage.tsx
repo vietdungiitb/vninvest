@@ -1,0 +1,557 @@
+import { useState, useEffect, useCallback, createElement, FormEvent, ChangeEvent } from "react";
+import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
+import { useI18n } from "../context/LangContext.js";
+import { AIAuditLogsPanel } from "../components/AIAuditLogsPanel.js";
+import { AIAdvisoryPromptConfigDrawer } from "../components/AIAdvisoryPromptConfigDrawer.js";
+
+const e = createElement;
+
+const PROVIDER_MODELS: Record<string, { key: string; label: string }[]> = {
+  openai: [
+    { key: "gpt-4o-mini", label: "gpt-4o-mini" },
+    { key: "gpt-4o", label: "gpt-4o" },
+    { key: "gpt-3.5-turbo", label: "gpt-3.5-turbo" },
+    { key: "custom", label: "Mô hình tùy chỉnh..." }
+  ],
+  gemini: [
+    { key: "gemini-1.5-flash", label: "gemini-1.5-flash" },
+    { key: "gemini-1.5-pro", label: "gemini-1.5-pro" },
+    { key: "gemini-pro", label: "gemini-pro" },
+    { key: "custom", label: "Mô hình tùy chỉnh..." }
+  ],
+  claude: [
+    { key: "claude-3-5-sonnet", label: "claude-3-5-sonnet" },
+    { key: "claude-3-haiku", label: "claude-3-haiku" },
+    { key: "custom", label: "Mô hình tùy chỉnh..." }
+  ],
+  openclaw: [
+    { key: "gpt-4o-mini", label: "gpt-4o-mini" },
+    { key: "custom", label: "Mô hình tùy chỉnh..." }
+  ],
+  local: [
+    { key: "llama3.2", label: "llama3.2" },
+    { key: "llama3.1", label: "llama3.1" },
+    { key: "mistral", label: "mistral" },
+    { key: "phi4", label: "phi-4" },
+    { key: "qwen2.5", label: "qwen2.5" },
+    { key: "custom", label: "Mô hình tùy chỉnh..." }
+  ],
+  copilot: [
+    { key: "custom", label: "Mô hình tùy chỉnh..." }
+  ]
+};
+
+interface AISettings {
+  ai_provider?: string;
+  ai_model?: string;
+  custom_endpoint?: string;
+  advisory_max_tokens_per_day?: number;
+  advisory_refresh_interval_hours?: number;
+  fallback_quota_max?: number;
+  fallback_quota_remaining?: number;
+  fallback_quota_reset?: string;
+  ai_api_key_configured?: boolean;
+  [key: string]: unknown;
+}
+
+interface AICommandCenterPageProps {
+  className?: string;
+}
+
+export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps) {
+  useI18n();
+  const [settings, setSettings] = useState<AISettings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+
+  const [testStatus, setTestStatus] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState("");
+
+  const [aiProvider, setAiProvider] = useState("openclaw");
+  const [aiModel, setAiModel] = useState("gpt-4o-mini");
+  const [customModel, setCustomModel] = useState("");
+  const [showCustomModel, setShowCustomModel] = useState(false);
+  const [aiApiKey, setAiApiKey] = useState("");
+  const [customEndpoint, setCustomEndpoint] = useState("");
+  const [showCustomEndpoint, setShowCustomEndpoint] = useState(false);
+  const [maxTokens, setMaxTokens] = useState(5000);
+  const [refreshInterval, setRefreshInterval] = useState(24);
+  const [testLatency, setTestLatency] = useState<number | null>(null);
+
+  const [effectiveSource, setEffectiveSource] = useState("command_center");
+  const [effectiveProvider, setEffectiveProvider] = useState("");
+  const [effectiveModel, setEffectiveModel] = useState("");
+  const [aiReady, setAiReady] = useState(false);
+  const [aiConfigMessage, setAiConfigMessage] = useState("");
+  const [refreshIntervalDisplay, setRefreshIntervalDisplay] = useState(24);
+  const [maxAutoRefreshes, setMaxAutoRefreshes] = useState(24);
+  const [eventGateEnabled, setEventGateEnabled] = useState<boolean | null>(null);
+  const [promptConfigOpen, setPromptConfigOpen] = useState(false);
+  const [promptConfig, setPromptConfig] = useState<Record<string, unknown> | null>(null);
+  const [refreshAuditKey, setRefreshAuditKey] = useState(0);
+
+  const loadSettings = useCallback(async (showNoticeFlag = false) => {
+    setLoading(true);
+    setError("");
+    try {
+      const data: AISettings = await (coreApiAdapter as any).getAICommandCenterConfig();
+      setSettings(data);
+
+      setAiProvider(data.ai_provider || "openclaw");
+
+      const currentModel = data.ai_model || "";
+      const modelsForProvider = PROVIDER_MODELS[data.ai_provider || "openclaw"] || [];
+      const isKnownModel = modelsForProvider.some(m => m.key === currentModel);
+
+      if (isKnownModel && currentModel !== "custom") {
+        setAiModel(currentModel);
+        setShowCustomModel(false);
+        setCustomModel("");
+      } else {
+        setAiModel("custom");
+        setShowCustomModel(true);
+        setCustomModel(currentModel);
+      }
+
+      setCustomEndpoint(data.custom_endpoint || "");
+      setShowCustomEndpoint(data.ai_provider === "local");
+      setMaxTokens(data.advisory_max_tokens_per_day || 5000);
+      setRefreshInterval(data.advisory_refresh_interval_hours || 24);
+      setAiApiKey("");
+      setTestLatency(null);
+
+      setEffectiveSource((data as any).effective_ai_source || "command_center");
+      setEffectiveProvider((data as any).effective_ai_provider || data.ai_provider || "openclaw");
+      setEffectiveModel((data as any).effective_ai_model || data.ai_model || "");
+      setAiReady((data as any).ai_ready ?? false);
+      setAiConfigMessage((data as any).ai_config_message || "");
+      setRefreshIntervalDisplay((data as any).advisory_refresh_interval_hours ?? refreshInterval);
+      setMaxAutoRefreshes((data as any).advisory_max_auto_refreshes_per_day ?? 24);
+
+      if ((data as any).ai_prompt_config) {
+        setPromptConfig((data as any).ai_prompt_config);
+      }
+
+      // Load event gate status
+      try {
+        const userConfig = await (coreApiAdapter as any).getUserConfig();
+        const prefs = userConfig?.preferences || {};
+        setEventGateEnabled(prefs.advisory_whale_signal_enabled !== false);
+      } catch { /* silent fail */ }
+
+      if (showNoticeFlag) {
+        setNotice("Đã làm mới cấu hình AI.");
+        setTimeout(() => setNotice(""), 3000);
+      }
+    } catch (err: unknown) {
+      setError((err && typeof err === 'object' && 'message' in err ? (err as Error).message : '') || "Lỗi khi tải cấu hình AI.");
+    } finally {
+      setLoading(false);
+    }
+  }, [refreshInterval]);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
+
+  const handleProviderChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    const provider = e.target.value;
+    setAiProvider(provider);
+    setShowCustomEndpoint(provider === "local");
+
+    const models = PROVIDER_MODELS[provider] || [];
+    if (models.length > 0) {
+      const defaultModel = models[0].key;
+      setAiModel(defaultModel);
+      if (defaultModel === "custom") {
+        setShowCustomModel(true);
+        setCustomModel("");
+      } else {
+        setShowCustomModel(false);
+        setCustomModel("");
+      }
+    } else {
+      setAiModel("custom");
+      setShowCustomModel(true);
+      setCustomModel("");
+    }
+  };
+
+  const handleModelChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setAiModel(val);
+    if (val === "custom") {
+      setShowCustomModel(true);
+    } else {
+      setShowCustomModel(false);
+    }
+  };
+
+  const handleSaveSettings = async (ev: FormEvent) => {
+    if (ev && ev.preventDefault) ev.preventDefault();
+
+    setSaving(true);
+    setNotice("");
+    setError("");
+
+    const finalModel = aiModel === "custom" ? customModel.trim() : aiModel;
+    if (!finalModel) {
+      setError("Mô hình AI không được để trống.");
+      setSaving(false);
+      return;
+    }
+
+    const payload: Record<string, unknown> = {
+      ai_provider: aiProvider,
+      ai_model: finalModel,
+      advisory_max_tokens_per_day: parseInt(String(maxTokens)),
+      advisory_refresh_interval_hours: parseInt(String(refreshInterval)),
+    };
+
+    if (aiProvider === "local" && customEndpoint.trim()) {
+      payload.custom_endpoint = customEndpoint.trim();
+    }
+
+    if (aiApiKey.trim()) {
+      payload.ai_api_key = aiApiKey.trim();
+    }
+
+    if (promptConfig) {
+      payload.ai_prompt_config = promptConfig;
+    }
+
+    try {
+      const nextData: AISettings = await (coreApiAdapter as any).updateAICommandCenterConfig(payload);
+      setSettings(nextData);
+      setAiApiKey("");
+      setEffectiveSource((nextData as any).effective_ai_source || "command_center");
+      setEffectiveProvider((nextData as any).effective_ai_provider || aiProvider);
+      setEffectiveModel((nextData as any).effective_ai_model || finalModel);
+      setAiReady((nextData as any).ai_ready ?? false);
+      setRefreshAuditKey(k => k + 1);
+      setNotice("Lưu cấu hình AI thành công.");
+      setTimeout(() => setNotice(""), 3000);
+    } catch (err: unknown) {
+      setError((err && typeof err === 'object' && 'message' in err ? (err as Error).message : '') || "Lỗi khi lưu cấu hình.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const testConnection = async () => {
+    setTestStatus("testing");
+    setTestResult("");
+    setTestLatency(null);
+
+    const finalModel = aiModel === "custom" ? customModel.trim() : aiModel;
+    const payload: Record<string, unknown> = {
+      ai_provider: aiProvider,
+      ai_model: finalModel,
+    };
+
+    if (aiApiKey.trim()) {
+      payload.ai_api_key = aiApiKey.trim();
+    }
+
+    if (aiProvider === "local" && customEndpoint.trim()) {
+      payload.custom_endpoint = customEndpoint.trim();
+    }
+
+    try {
+      const data = await (coreApiAdapter as any).testAICommandCenterConnection(payload) as Record<string, unknown>;
+      if (data?.ok ?? true) {
+        setTestStatus("success");
+        setTestResult((data?.message as string) || "Kết nối thành công!");
+        if (data?.latency_ms != null) {
+          setTestLatency(data.latency_ms as number);
+        }
+      } else {
+        setTestStatus("error");
+        setTestResult((data?.message as string) || "Kết nối thất bại.");
+      }
+    } catch (err: unknown) {
+      setTestStatus("error");
+      setTestResult((err && typeof err === 'object' && 'message' in err ? (err as Error).message : '') || "Lỗi mạng khi thử nghiệm kết nối.");
+    }
+  };
+
+  if (loading) {
+    return e("div", { className: "core-ai-command-center core-page-loading " + className },
+      e("p", null, "Đang tải cấu hình AI...")
+    );
+  }
+
+  const providerOptions = [
+    { key: "openclaw", label: "OpenClaw (System Default)" },
+    { key: "openai", label: "OpenAI (ChatGPT)" },
+    { key: "gemini", label: "Google Gemini" },
+    { key: "claude", label: "Anthropic (Claude)" },
+    { key: "local", label: "Local Model (Ollama/vLLM)" },
+    { key: "copilot", label: "GitHub Copilot" }
+  ];
+
+  const modelsForSelectedProvider = PROVIDER_MODELS[aiProvider] || [];
+
+  return e("div", { className: "mx-auto max-w-[1200px] space-y-4 px-5 py-6 " + className }, [
+    e("header", { key: "header", className: "core-page-header" }, [
+      e("h1", { className: "text-xl font-bold text-slate-100" }, "Trung tâm điều hành AI"),
+      e("p", { className: "mt-1 text-sm text-slate-400" }, "Cấu hình nhà cung cấp AI, lựa chọn mô hình và API key phục vụ AI Advisor.")
+    ]),
+
+    // Summary Cards
+    e("div", { key: "summary-cards", className: "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4" }, [
+      e("div", { key: "card-provider", className: "rounded-xl border border-slate-800 bg-slate-900/40 p-4" }, [
+        e("p", { className: "text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, "Nhà cung cấp hiệu lực"),
+        e("p", { className: "mt-1 text-sm font-medium text-slate-100" }, effectiveProvider || "—"),
+        e("p", { className: "mt-0.5 text-[10px] text-slate-600" }, "Nguồn đọc từ AI Command Center.")
+      ]),
+      e("div", { key: "card-model", className: "rounded-xl border border-slate-800 bg-slate-900/40 p-4" }, [
+        e("p", { className: "text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, "Mô hình hiệu lực"),
+        e("p", { className: "mt-1 text-sm font-medium text-slate-100" }, effectiveModel || "Chưa cấu hình"),
+        e("p", { className: "mt-0.5 text-[10px] text-slate-600" }, "Mô hình đang dùng cho advisory runtime.")
+      ]),
+      e("div", { key: "card-source", className: "rounded-xl border border-slate-800 bg-slate-900/40 p-4" }, [
+        e("p", { className: "text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, "Nguồn hiệu lực"),
+        e("p", { className: "mt-1 text-sm font-medium text-slate-100" }, effectiveSource),
+        e("p", { className: "mt-0.5 text-[10px] text-slate-600" }, "command_center hoặc system fallback.")
+      ]),
+      e("div", { key: "card-status", className: "rounded-xl border border-slate-800 bg-slate-900/40 p-4" }, [
+        e("p", { className: "text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, "Trạng thái runtime"),
+        e("p", { className: `mt-1 text-sm font-medium ${aiReady ? "text-emerald-400" : "text-red-400"}` }, aiReady ? "Sẵn sàng" : "Cần cấu hình"),
+        e("p", { className: "mt-0.5 text-[10px] text-slate-600" }, aiReady ? "Runtime có thể sinh advisory." : "Thiếu key, model hoặc source hợp lệ.")
+      ])
+    ]),
+
+    // Policy Section
+    e("div", { key: "policy-section", className: "rounded-xl border border-slate-800 bg-slate-900/40 p-4" }, [
+      e("h3", { className: "mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400" }, "Chính sách vận hành"),
+      e("div", { className: "grid grid-cols-2 gap-3 sm:grid-cols-4" }, [
+        e("div", { key: "pol-gate" }, [
+          e("p", { className: "text-[10px] text-slate-500" }, "Gate sự kiện"),
+          e("p", { className: "text-xs font-medium text-slate-200" },
+            eventGateEnabled === null ? "Chưa đọc" : eventGateEnabled ? "Bật" : "Tắt"
+          )
+        ]),
+        e("div", { key: "pol-refresh" }, [
+          e("p", { className: "text-[10px] text-slate-500" }, "Khoảng làm mới"),
+          e("p", { className: "text-xs font-medium text-slate-200" }, `${refreshIntervalDisplay} giờ/lần`)
+        ]),
+        e("div", { key: "pol-auto" }, [
+          e("p", { className: "text-[10px] text-slate-500" }, "Auto refresh/ngày"),
+          e("p", { className: "text-xs font-medium text-slate-200" }, `${maxAutoRefreshes}`)
+        ]),
+        e("div", { key: "pol-tokens" }, [
+          e("p", { className: "text-[10px] text-slate-500" }, "Token/ngày"),
+          e("p", { className: "text-xs font-medium text-slate-200" }, `${maxTokens}`)
+        ])
+      ]),
+      aiConfigMessage
+        ? e("div", { key: "pol-msg", className: "mt-2 border-t border-slate-800 pt-2 text-[10px] text-slate-500" },
+            `Thông điệp cấu hình: ${aiConfigMessage}`
+          )
+        : null
+    ]),
+
+    notice ? e("div", { key: "notice-banner", className: "rounded-lg border border-emerald-700/70 bg-emerald-900/20 px-3 py-2 text-sm text-emerald-200" }, notice) : null,
+    error ? e("div", { key: "error-banner", className: "rounded-lg border border-rose-700/70 bg-rose-900/20 px-3 py-2 text-sm text-rose-200" }, error) : null,
+
+    e("form", { key: "settings-form", className: "space-y-4 rounded-xl border border-slate-800 bg-slate-900/50 p-6", onSubmit: handleSaveSettings }, [
+      e("h2", { key: "form-title", className: "text-sm font-semibold uppercase tracking-wide text-slate-300" }, "CẤU HÌNH AI RUNTIME"),
+
+      e("div", { key: "row-1", className: "grid grid-cols-1 gap-4 md:grid-cols-2" }, [
+        e("div", { key: "provider-block" }, [
+          e("label", { className: "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400" }, "Nhà cung cấp AI"),
+          e("select", {
+            value: aiProvider,
+            onChange: handleProviderChange,
+            className: "w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500"
+          }, providerOptions.map(p =>
+            e("option", { key: p.key, value: p.key }, p.label)
+          ))
+        ]),
+
+        e("div", { key: "model-block" }, [
+          e("label", { className: "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400" }, "Mô hình AI"),
+          e("select", {
+            value: aiModel,
+            onChange: handleModelChange,
+            className: "w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500"
+          }, modelsForSelectedProvider.map(m =>
+            e("option", { key: m.key, value: m.key }, m.label)
+          ))
+        ])
+      ]),
+
+      showCustomModel ? e("div", { key: "custom-model-row" }, [
+        e("label", { className: "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400" }, "Tên mô hình tùy chỉnh"),
+        e("input", {
+          type: "text",
+          value: customModel,
+          onChange: (ev: ChangeEvent<HTMLInputElement>) => setCustomModel(ev.target.value),
+          className: "w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500",
+          placeholder: "Ví dụ: o1-preview, gemini-2.5-pro",
+          required: true
+        })
+      ]) : null,
+
+      showCustomEndpoint ? e("div", { key: "custom-endpoint-row" }, [
+        e("label", { className: "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400" }, "Custom Endpoint (API gốc)"),
+        e("input", {
+          type: "text",
+          value: customEndpoint,
+          onChange: (ev: ChangeEvent<HTMLInputElement>) => setCustomEndpoint(ev.target.value),
+          className: "w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500",
+          placeholder: "http://localhost:11434/v1",
+          required: false
+        }),
+        e("p", { className: "mt-1 text-xs text-slate-500" }, "Để trống nếu dùng Ollama mặc định (http://localhost:11434/v1). Điền endpoint nếu dùng vLLM hoặc remote.")
+      ]) : null,
+
+      e("div", { key: "row-2", className: "grid grid-cols-1 gap-4 md:grid-cols-2" }, [
+        e("div", { key: "api-key-block" }, [
+          e("label", { className: "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400" }, "API Key"),
+          e("input", {
+            type: "password",
+            value: aiApiKey,
+            onChange: (ev: ChangeEvent<HTMLInputElement>) => setAiApiKey(ev.target.value),
+            className: "w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500",
+            placeholder: settings?.ai_api_key_configured
+              ? "Đã có API Key, nhập key mới để thay đổi..."
+              : "Nhập API Key của nhà cung cấp...",
+            autoComplete: "new-password"
+          })
+        ]),
+
+        e("div", { key: "token-block" }, [
+          e("label", { className: "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400" }, "Định mức Token / ngày"),
+          e("input", {
+            type: "number",
+            value: maxTokens,
+            onChange: (ev: ChangeEvent<HTMLInputElement>) => setMaxTokens(Number(ev.target.value)),
+            className: "w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500",
+            placeholder: "5000"
+          })
+        ])
+      ]),
+
+      e("div", { key: "row-3", className: "grid grid-cols-1 gap-4 md:grid-cols-2" }, [
+        e("div", { key: "refresh-block" }, [
+          e("label", { className: "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400" }, "Khoảng làm mới tự động (giờ)"),
+          e("input", {
+            type: "number",
+            value: refreshInterval,
+            onChange: (ev: ChangeEvent<HTMLInputElement>) => setRefreshInterval(Number(ev.target.value)),
+            className: "w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500",
+            placeholder: "24"
+          })
+        ])
+      ]),
+
+      e("div", { key: "form-actions", className: "flex flex-wrap gap-2 pt-2" }, [
+        e("button", {
+          key: "save-btn",
+          type: "submit",
+          disabled: saving,
+          className: "rounded-lg border border-cyan-600 bg-cyan-600/20 px-4 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+        }, saving ? "Đang lưu cấu hình..." : "Lưu cấu hình"),
+
+        e("button", {
+          key: "test-btn",
+          type: "button",
+          onClick: testConnection,
+          disabled: testStatus === "testing",
+          className: "rounded-lg border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+        }, testStatus === "testing" ? "Đang kết nối..." : "Kiểm tra kết nối"),
+
+        e("button", {
+          key: "refresh-btn",
+          type: "button",
+          onClick: () => loadSettings(true),
+          className: "rounded-lg border border-slate-700 bg-slate-800/30 px-4 py-2 text-sm text-slate-400 hover:text-slate-200"
+        }, "Làm mới form"),
+
+        e("button", {
+          key: "prompt-config-btn",
+          type: "button",
+          onClick: () => setPromptConfigOpen(true),
+          className: "rounded-lg border border-slate-700 bg-slate-800/30 px-4 py-2 text-sm text-slate-400 hover:text-slate-200"
+        }, "Tinh chỉnh nguồn dữ liệu")
+      ]),
+
+      testStatus && testResult
+        ? e("div", {
+            key: "test-feedback",
+            className: `rounded-lg border p-3 text-sm mt-3 ${
+              testStatus === "success"
+                ? "border-emerald-700/65 bg-emerald-950/40 text-emerald-300"
+                : "border-rose-700/65 bg-rose-950/40 text-rose-300"
+            }`
+          }, [
+            e("p", { key: "msg" }, testResult),
+            testLatency != null
+              ? e("p", { key: "latency", className: "mt-1 text-xs opacity-70" }, `Độ trễ: ${testLatency}ms`)
+              : null
+          ])
+        : null
+    ]),
+
+    settings && settings.fallback_quota_max != null && settings.fallback_quota_max > 0 && aiProvider !== "openclaw" && aiProvider !== "local"
+      ? e("div", { key: "quota-card", className: "rounded-xl border border-slate-800 bg-slate-900/30 p-4" }, [
+          e("h3", { className: "mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400" }, "Sao lưu hệ thống AI (Fallback)"),
+          e("div", { className: "flex items-center gap-3" }, [
+            e("div", {
+              key: "quota-bar",
+              className: "h-2 flex-1 overflow-hidden rounded-full bg-slate-800"
+            }, [
+              e("div", {
+                style: {
+                  width: `${settings.fallback_quota_max > 0
+                    ? (settings.fallback_quota_remaining! / settings.fallback_quota_max) * 100
+                    : 0}%`
+                } as React.CSSProperties,
+                className: `h-full rounded-full transition-all ${
+                  settings.fallback_quota_remaining! > 0
+                    ? "bg-amber-500"
+                    : "bg-rose-500"
+                }`
+              })
+            ]),
+            e("span", { className: "text-xs text-slate-400" },
+              `${settings.fallback_quota_remaining} / ${settings.fallback_quota_max} lượt`
+            )
+          ]),
+          settings.fallback_quota_reset
+            ? e("p", { className: "mt-1 text-xs text-slate-500" },
+                `Đặt lại: ${new Date(settings.fallback_quota_reset).toLocaleDateString("vi-VN")}`)
+            : null,
+          settings.fallback_quota_remaining === 0
+            ? e("p", { className: "mt-2 text-xs text-rose-400" },
+                "Đã hết lượt fallback hôm nay. Vui lòng cấu hình API Key cá nhân để tiếp tục sử dụng AI Advisor.")
+            : e("p", { className: "mt-2 text-xs text-slate-500" },
+                "Nếu API Key cá nhân gặp lỗi, hệ thống sẽ tự động dùng key sao lưu.")
+        ])
+        : null,
+
+    // Audit Logs Section
+    e("div", { key: "audit-section", className: "space-y-3 rounded-xl border border-slate-800 bg-slate-900/30 p-4" }, [
+      e("h2", { key: "audit-title", className: "text-sm font-semibold text-slate-100" }, "Nhật ký audit Command Center"),
+      e("p", { key: "audit-desc", className: "text-xs text-slate-500" }, "Mỗi trang hiển thị 10 bản ghi."),
+      e(AIAuditLogsPanel, { key: `audit-panel-${refreshAuditKey}`, refreshKey: refreshAuditKey })
+    ]),
+
+    // Drawer overlay (rendered outside main flow)
+    promptConfigOpen
+      ? e(AIAdvisoryPromptConfigDrawer, {
+          key: "prompt-config-drawer",
+          isOpen: promptConfigOpen,
+          onClose: () => setPromptConfigOpen(false),
+          config: promptConfig,
+          onConfigChange: (nextConfig: Record<string, unknown>) => {
+            setPromptConfig(nextConfig);
+          },
+        })
+      : null
+  ]);
+}

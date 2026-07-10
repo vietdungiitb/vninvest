@@ -28,7 +28,12 @@ logger = logging.getLogger(__name__)
 def _b02_mark_run_failed_on_crash(task_id, exc, traceback, *args, **kwargs):
     """Celery task_failure signal handler — B02 crash-safety for backfill_daily_prices."""
     sender = kwargs.get('sender')
-    if sender is None or getattr(sender, 'name', '') != 'data_ingest.tasks.backfill_daily_prices':
+    sender_name = getattr(sender, 'name', '') or ''
+    if sender_name not in (
+        'data_ingest.tasks.backfill_daily_prices',
+        'data_ingest.tasks.backfill_pre5y_to_market_inception',
+        'data_ingest.tasks.ingest_daily_prices',
+    ):
         return
     try:
         exec_run_id = kwargs.get('einfo') or getattr(traceback, '_b02_exec_run_id', None)
@@ -973,30 +978,209 @@ def warm_intraday_universe(
 
 
 @shared_task(bind=True, max_retries=2)
-def sync_market_groups(self):
+def sync_market_groups(self, user_id=None, mode='active'):
     """
-    Native: Đồng bộ danh sách symbol niêm yết từ vnbroker.
-    Cập nhật hoặc tạo mới registry-backed market data profiles.
+    Native: Đồng bộ danh sách symbol niêm yết từ vnbroker và seed default watchlist.
     """
-    from market_data.vnbroker_adapter import fetch_listing_symbols
+    import logging
+    from django.conf import settings
+    from market_data.vnbroker_adapter import fetch_listing_symbols, fetch_symbol_group_members
     from market_data.models import StockProfile
-    
-    symbols_data = fetch_listing_symbols()
-    upserted = 0
-    
-    for item in symbols_data:
-        StockProfile.objects.update_or_create(
-            symbol=item['symbol'],
-            defaults={
-                'exchange': item.get('exchange', 'HOSE'),
-                'company_name': item.get('company_name', ''),
-                'industry': item.get('industry', ''),
-                'status': StockProfile.StatusChoices.ACTIVE,
-            }
-        )
-        upserted += 1
-        
-    return {'status': 'ok', 'upserted': upserted}
+    from market_data.global_symbol_registry import sync_admin_group_symbol_set, sync_system_default_symbol_group
+    from market_data.global_symbol_planner import create_global_planner_run
+
+    logger = logging.getLogger(__name__)
+
+    # 0. Sync StockProfile metadata
+    try:
+        logger.info("Syncing StockProfile metadata from upstream listing client...")
+        symbols_data = fetch_listing_symbols()
+        if symbols_data:
+            if mode == 'active':
+                # Filter for standard 3-character stock symbols
+                symbols_data = [
+                    item for item in symbols_data
+                    if item.get('symbol') and len(item['symbol']) == 3 and item['symbol'].isalpha()
+                ]
+            existing_profiles = {p.symbol: p for p in StockProfile.objects.all()}
+            to_create = []
+            to_update = []
+            for item in symbols_data:
+                sym = item.get('symbol')
+                if not sym:
+                    continue
+                exchange = item.get('exchange', 'HOSE') or 'HOSE'
+                company_name = item.get('company_name', '')
+                industry = item.get('industry', '') or ''
+                if sym in existing_profiles:
+                    profile = existing_profiles[sym]
+                    changed = False
+                    if profile.exchange != exchange:
+                        profile.exchange = exchange
+                        changed = True
+                    if profile.company_name != company_name:
+                        profile.company_name = company_name
+                        changed = True
+                    if profile.industry != industry:
+                        profile.industry = industry
+                        changed = True
+                    if profile.status != StockProfile.StatusChoices.ACTIVE:
+                        profile.status = StockProfile.StatusChoices.ACTIVE
+                        changed = True
+                    if changed:
+                        to_update.append(profile)
+                else:
+                    to_create.append(StockProfile(
+                        symbol=sym,
+                        exchange=exchange,
+                        company_name=company_name,
+                        industry=industry,
+                        status=StockProfile.StatusChoices.ACTIVE
+                    ))
+            if to_create:
+                StockProfile.objects.bulk_create(to_create, batch_size=500)
+            if to_update:
+                StockProfile.objects.bulk_update(to_update, ['exchange', 'company_name', 'industry', 'status'], batch_size=500)
+            logger.info(f"Bulk synced StockProfile metadata: created {len(to_create)}, updated {len(to_update)}")
+    except Exception as e:
+        logger.error(f"Failed to sync StockProfile metadata during admin sync task: {e}")
+
+    # Seed default watchlist groups if user_id is provided
+    if user_id is not None:
+        try:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            user = User.objects.get(pk=user_id)
+            from market_data.stock_mgmt_native_views import seed_default_watchlist_groups
+            logger.info(f"Re-seeding default watchlist groups for user {user.username}...")
+            seed_default_watchlist_groups(user, force_recreate=True, mode=mode)
+        except Exception as e:
+            logger.error(f"Failed to re-seed default watchlist groups during admin sync task: {e}")
+
+    exchange_groups = getattr(settings, 'MARKET_DATA_SYNC_EXCHANGE_GROUPS', ['HOSE', 'HNX', 'UPCOM'])
+    sector_groups = getattr(settings, 'MARKET_DATA_SYNC_SECTOR_GROUPS', [])
+    index_groups = getattr(settings, 'MARKET_DATA_SYNC_INDEX_GROUPS', ['VN30', 'VN100'])
+
+    all_synced_symbols = set()
+    sync_results = {}
+    errors = []
+
+    # 1. Sync exchange-based groups (HOSE, HNX, UPCOM)
+    for exchange in exchange_groups:
+        try:
+            logger.info(f"Fetching symbols for exchange: {exchange}")
+            symbols = fetch_symbol_group_members(exchange)
+            if symbols:
+                if mode == 'active':
+                    symbols = [s for s in symbols if len(s) == 3 and s.isalpha()]
+                synced = sync_admin_group_symbol_set(
+                    group_name=exchange.lower(),
+                    symbols=symbols,
+                    group_type="EXCHANGE",
+                    description=f"All symbols on {exchange}",
+                )
+                count = len(synced)
+                all_synced_symbols.update(symbols)
+                sync_results[exchange] = {"synced": count, "symbols": symbols}
+                logger.info(f"Synced {count} symbols for {exchange}")
+            else:
+                sync_results[exchange] = {"synced": 0, "symbols": [], "warning": "No symbols returned"}
+        except Exception as e:
+            error_msg = f"Failed to sync {exchange}: {str(e)}"
+            logger.error(error_msg)
+            errors.append(error_msg)
+            sync_results[exchange] = {"synced": 0, "error": str(e)}
+
+    # 2. Sync sector groups (if configured)
+    for sector in sector_groups:
+        try:
+            logger.info(f"Fetching symbols for sector: {sector}")
+            symbols = fetch_symbol_group_members(sector)
+            if symbols:
+                if mode == 'active':
+                    symbols = [s for s in symbols if len(s) == 3 and s.isalpha()]
+                synced = sync_admin_group_symbol_set(
+                    group_name=sector.lower().replace(' ', '_'),
+                    symbols=symbols,
+                    group_type="SECTOR",
+                    description=f"Sector: {sector}",
+                )
+                count = len(synced)
+                all_synced_symbols.update(symbols)
+                sync_results[sector] = {"synced": count, "symbols": symbols}
+                logger.info(f"Synced {count} symbols for sector {sector}")
+        except Exception as e:
+            error_msg = f"Failed to sync sector {sector}: {str(e)}"
+            logger.error(error_msg)
+            errors.append(error_msg)
+            sync_results[sector] = {"synced": 0, "error": str(e)}
+
+    # 3. Sync index groups (VN30, VN100)
+    for index_name in index_groups:
+        try:
+            logger.info(f"Fetching symbols for index: {index_name}")
+            symbols = fetch_symbol_group_members(index_name)
+            if symbols:
+                if mode == 'active':
+                    symbols = [s for s in symbols if len(s) == 3 and s.isalpha()]
+                synced = sync_admin_group_symbol_set(
+                    group_name=index_name.lower(),
+                    symbols=symbols,
+                    group_type="INDEX",
+                    description=f"Index: {index_name}",
+                )
+                count = len(synced)
+                all_synced_symbols.update(symbols)
+                sync_results[index_name] = {"synced": count, "symbols": symbols}
+                logger.info(f"Synced {count} symbols for index {index_name}")
+        except Exception as e:
+            error_msg = f"Failed to sync index {index_name}: {str(e)}"
+            logger.error(error_msg)
+            errors.append(error_msg)
+            sync_results[index_name] = {"synced": 0, "error": str(e)}
+
+    # 4. Sync system default groups (VN30, VN100)
+    try:
+        for group_id in ('vn30', 'vn100'):
+            symbols = fetch_symbol_group_members(group_id.upper())
+            if symbols:
+                if mode == 'active':
+                    symbols = [s for s in symbols if len(s) == 3 and s.isalpha()]
+                sync_system_default_symbol_group(group_id, symbols)
+    except Exception as e:
+        logger.warning(f"Failed to sync system default groups: {e}")
+
+    # 5. Trigger GlobalSymbolPlanner for data ingestion
+    planner_result = None
+    if all_synced_symbols:
+        try:
+            logger.info(f"Triggering GlobalSymbolPlanner for {len(all_synced_symbols)} symbols")
+            planner_result = create_global_planner_run(
+                symbols=list(all_synced_symbols),
+                datasets=['daily_prices', 'price_board_snapshot'],
+                mode='missing_only',
+                force_refresh=False,
+                reason='admin_market_groups_sync',
+                execution_mode='async',
+            )
+            logger.info(f"Planner triggered: {planner_result.get('run_id')}")
+        except Exception as e:
+            error_msg = f"Failed to trigger planner: {str(e)}"
+            logger.error(error_msg)
+            errors.append(error_msg)
+
+    total_synced = sum(r.get('synced', 0) for r in sync_results.values())
+
+    return {
+        "ok": len(errors) == 0,
+        "total_symbols_synced": total_synced,
+        "unique_symbols": len(all_synced_symbols),
+        "groups": {k: {"synced": v.get("synced", 0)} for k, v in sync_results.items()},
+        "planner": planner_result,
+        "errors": errors,
+        "message": f"Synced {total_synced} symbols across {len(sync_results)} groups" + 
+                   (f" ({len(errors)} errors)" if errors else ""),
+    }
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
@@ -1206,6 +1390,7 @@ def _backfill_daily_prices_impl(
     # B07 — explicit mode and trigger
     mode: str = 'daily_delta',
     trigger: str = 'beat_schedule',
+    celery_task_id: str | None = None,
 ):
     """
     Backfill DailyPrice cho tất cả active symbols (hoặc danh sách truyền vào).
@@ -1224,7 +1409,7 @@ def _backfill_daily_prices_impl(
     """
     # B01: Run log lifecycle management
     service_run_log = None
-    _task_id = getattr(self.request, 'id', '') or ''
+    _task_id = celery_task_id or getattr(self.request, 'id', '') or ''
     _b08_cleanup_result = _b08_finalize_stale_running_runs(_scheduler_job_key)
     if _b08_cleanup_result.get('stale_run_logs') or _b08_cleanup_result.get('stale_backfill_runs'):
         logger.warning(
@@ -1318,6 +1503,12 @@ def _backfill_daily_prices_impl(
     # Store exec_run ref on request so on_failure handler can access it
     if _exec_run is not None:
         self.request.update({'_b02_exec_run_id': _exec_run.pk})
+        try:
+            from celery import current_task
+            if current_task and current_task is not self and hasattr(current_task, 'request'):
+                current_task.request.update({'_b02_exec_run_id': _exec_run.pk})
+        except Exception:
+            pass
 
     providers = _HISTORY_PROVIDERS
     n = len(providers)
@@ -1463,7 +1654,7 @@ def _backfill_daily_prices_impl(
                             from django.utils import timezone as _tz
                             _failed_syms = result.get('failed') or []
                             _batch_obj.state = 'failed' if _failed_syms and not int(result.get('inserted') or 0) and not int(result.get('updated') or 0) else ('done' if not _failed_syms else 'done')
-                            _batch_obj.completed_symbols_count = len(result.get('failed') or []) + int(result.get('inserted') or 0) + int(result.get('updated') or 0) + int(result.get('skipped_existing') or 0)
+                            _batch_obj.completed_symbols_count = len(buckets.get(provider) or [])
                             _batch_obj.inserted_rows = int(result.get('inserted') or 0)
                             _batch_obj.updated_rows = int(result.get('updated') or 0)
                             _batch_obj.skipped_existing_rows = int(result.get('skipped_existing') or 0)
@@ -1708,6 +1899,7 @@ def backfill_pre5y_to_market_inception(
         _scheduler_job_key=_scheduler_job_key,
         mode='historical_inception_backfill',
         trigger=trigger_mode,
+        celery_task_id=getattr(self.request, 'id', ''),
     )
     result['market_inception_date'] = parsed_inception_date.isoformat()
     result['pre5y_end_date'] = pre5y_end_date.isoformat()
@@ -1958,9 +2150,22 @@ def backfill_intraday_tick_system(self, *, symbol: str, trade_date: str) -> dict
 
     api_key, api_secret = creds  # không log
 
-    # §14.5: Presence check trước bulk_create
+    # §14.5: Presence check trước bulk_create using fast range query
     try:
-        existing = IntradayTick.objects.filter(symbol=symbol_upper, timestamp__date=trade_date).exists()
+        from datetime import datetime, time
+        import pytz
+        from django.utils.timezone import make_aware
+
+        tz = pytz.timezone('Asia/Ho_Chi_Minh')
+        dt_parsed = datetime.strptime(trade_date, '%Y-%m-%d')
+        start_dt = make_aware(datetime.combine(dt_parsed, time.min), tz)
+        end_dt = make_aware(datetime.combine(dt_parsed, time.max), tz)
+
+        existing = IntradayTick.objects.filter(
+            symbol=symbol_upper,
+            timestamp__gte=start_dt,
+            timestamp__lte=end_dt
+        ).exists()
     except Exception as exc:
         logger.error('backfill_intraday_tick_system: DB check error: %s', exc)
         return {'status': 'error', 'reason': str(exc), 'symbol': symbol_upper, 'date': trade_date}
@@ -2067,8 +2272,27 @@ def backfill_intraday_tick_user(self, *, user_id: int, symbol: str, trade_date: 
         logger.error('backfill_intraday_tick_user: credential error user_id=%s: %s', user_id, exc)
         return {'status': 'error', 'reason': 'credential_error', 'user_id': user_id}
 
-    # §14.5: Presence check
-    if IntradayTick.objects.filter(symbol=symbol_upper, timestamp__date=trade_date).exists():
+    # §14.5: Presence check using fast range query
+    try:
+        from datetime import datetime, time
+        import pytz
+        from django.utils.timezone import make_aware
+
+        tz = pytz.timezone('Asia/Ho_Chi_Minh')
+        dt_parsed = datetime.strptime(trade_date, '%Y-%m-%d')
+        start_dt = make_aware(datetime.combine(dt_parsed, time.min), tz)
+        end_dt = make_aware(datetime.combine(dt_parsed, time.max), tz)
+
+        user_ticks_exist = IntradayTick.objects.filter(
+            symbol=symbol_upper,
+            timestamp__gte=start_dt,
+            timestamp__lte=end_dt
+        ).exists()
+    except Exception as exc:
+        logger.error('backfill_intraday_tick_user: DB check error: %s', exc)
+        return {'status': 'error', 'reason': str(exc), 'symbol': symbol_upper, 'date': trade_date}
+
+    if user_ticks_exist:
         return {'status': 'skipped', 'reason': 'already_exists', 'symbol': symbol_upper, 'date': trade_date}
 
     ticks = fetch_intraday_tape_history(
@@ -2195,9 +2419,36 @@ def enqueue_dnse_quarterly_backfill(
     except Exception as _svc_exc:
         logger.warning('enqueue_dnse_quarterly_backfill: ServiceRunLog setup failed: %s', _svc_exc)
 
-    # 1. Resolve symbols — global matrix là SSOT mặc định
+    # 1. Resolve symbols — global matrix hoặc nhóm cụ thể
     if not symbols_group or symbols_group == 'global':
         symbols = _get_default_global_registry_symbols()
+    elif symbols_group == 'vn100_watchlist':
+        try:
+            from market_data.vnbroker_adapter import fetch_symbol_group_members
+            raw_members = fetch_symbol_group_members('vn100')
+            vn100_symbols = {s.strip().upper() for s in raw_members if s and s.strip()}
+        except Exception as exc:
+            logger.warning('enqueue_dnse_quarterly_backfill: cannot resolve vn100: %s', exc)
+            vn100_symbols = set()
+
+        try:
+            from user_workspace.models import WatchlistItem, TrackedSymbol
+            watchlist_symbols = {
+                s.strip().upper()
+                for s in WatchlistItem.objects.values_list('symbol', flat=True).distinct()
+                if s and s.strip()
+            }
+            tracked_symbols = {
+                s.strip().upper()
+                for s in TrackedSymbol.objects.values_list('symbol', flat=True).distinct()
+                if s and s.strip()
+            }
+        except Exception as exc:
+            logger.warning('enqueue_dnse_quarterly_backfill: cannot resolve watchlists: %s', exc)
+            watchlist_symbols = set()
+            tracked_symbols = set()
+
+        symbols = sorted(vn100_symbols | watchlist_symbols | tracked_symbols)
     else:
         try:
             from market_data.vnbroker_adapter import fetch_symbol_group_members
@@ -2222,16 +2473,34 @@ def enqueue_dnse_quarterly_backfill(
         cur += timedelta(days=1)
 
     # 3. Presence check — lấy tập (symbol, date) đã có data
+    # Use IntradayBar (1H timeframe) for presence check as it is ~1000x smaller
+    # and composite indexed on (symbol, timeframe, datetime)
     existing_pairs: set[tuple[str, str]] = set()
     try:
-        qs = (
-            IntradayTick.objects
-            .filter(symbol__in=symbols, timestamp__date__in=trade_dates)
-            .values_list('symbol', 'timestamp__date')
-            .distinct()
-        )
-        for sym, dt in qs:
-            existing_pairs.add((sym, str(dt)))
+        from datetime import datetime, time
+        import pytz
+        from django.db.models.functions import TruncDate
+        from django.utils.timezone import make_aware
+        from market_data.models import IntradayBar
+
+        tz = pytz.timezone('Asia/Ho_Chi_Minh')
+        sorted_dates = sorted(trade_dates)
+        if sorted_dates:
+            min_date = datetime.strptime(sorted_dates[0], '%Y-%m-%d').date()
+            max_date = datetime.strptime(sorted_dates[-1], '%Y-%m-%d').date()
+            start_dt = make_aware(datetime.combine(min_date, time.min), tz)
+            end_dt = make_aware(datetime.combine(max_date, time.max), tz)
+
+            qs = (
+                IntradayBar.objects
+                .filter(symbol__in=symbols, timeframe='1H', datetime__gte=start_dt, datetime__lte=end_dt)
+                .annotate(trade_date=TruncDate('datetime'))
+                .values_list('symbol', 'trade_date')
+                .distinct()
+            )
+            for sym, dt in qs:
+                if dt:
+                    existing_pairs.add((sym, dt.isoformat() if hasattr(dt, 'isoformat') else str(dt)))
     except Exception as exc:
         logger.warning('enqueue_dnse_quarterly_backfill: presence query failed: %s', exc)
         # Nếu lỗi presence check — abort để tránh over-queue

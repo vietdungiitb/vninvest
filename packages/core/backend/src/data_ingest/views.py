@@ -15,7 +15,11 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
-from vninvest_core.pagination import StandardPageNumberPagination
+from vninvest_core.pagination import CoreCursorPagination
+from vninvest_core.exceptions import ValidationErrorException
+
+class IngestRunCursorPagination(CoreCursorPagination):
+    ordering = '-started_at'
 from .models import IngestJob, IngestRun
 from .serializers import (
     IngestJobSerializer,
@@ -44,7 +48,7 @@ class IngestJobViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = IngestJob.objects.all().order_by('name')
     serializer_class = IngestJobSerializer
     permission_classes = [IsAdminUser]
-    pagination_class = StandardPageNumberPagination
+    pagination_class = CoreCursorPagination
     filterset_fields = ['source', 'status']
 
 
@@ -55,12 +59,12 @@ class IngestRunViewSet(viewsets.ReadOnlyModelViewSet):
     """
     serializer_class = IngestRunSerializer
     permission_classes = [IsAdminUser]
-    pagination_class = StandardPageNumberPagination
+    pagination_class = IngestRunCursorPagination
     filterset_fields = ['job', 'state']
 
     def get_queryset(self):
         # Limit to last 100 runs for performance, ordered by most recent first
-        return IngestRun.objects.select_related('job').order_by('-started_at')[:100]
+        return IngestRun.objects.select_related('job').order_by('-started_at')
 
 
 class DataIngestAdminViewSet(viewsets.ViewSet):
@@ -368,18 +372,17 @@ class SystemBackfillTriggerView(APIView):
         # ── Validate datasets ────────────────────────────────────────────────
         datasets = data.get('datasets') or []
         if not isinstance(datasets, list) or not datasets:
-            return Response({'detail': 'datasets phải là list không rỗng.'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException('datasets phải là list không rỗng.')
         unsupported = [d for d in datasets if d not in _SYSTEM_BACKFILL_SUPPORTED_DATASETS]
         if unsupported:
-            return Response(
-                {'detail': f'Dataset chưa hỗ trợ: {unsupported}. Hiện chỉ hỗ trợ: {list(_SYSTEM_BACKFILL_SUPPORTED_DATASETS)}.'},
-                status=status.HTTP_400_BAD_REQUEST,
+            raise ValidationErrorException(
+                f'Dataset chưa hỗ trợ: {unsupported}. Hiện chỉ hỗ trợ: {list(_SYSTEM_BACKFILL_SUPPORTED_DATASETS)}.'
             )
 
         # ── Validate mode ────────────────────────────────────────────────────
         mode = str(data.get('mode') or 'missing_only').strip()
         if mode not in _VALID_MODES:
-            return Response({'detail': f'mode phải là một trong: {list(_VALID_MODES)}.'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException(f'mode phải là một trong: {list(_VALID_MODES)}.')
 
         dry_run = bool(data.get('dry_run', False))
 
@@ -388,23 +391,22 @@ class SystemBackfillTriggerView(APIView):
         custom_symbol = str(data.get('symbol') or '').strip().upper()
         symbols = _resolve_backfill_symbols(symbols_group, custom_symbol)
         if not symbols:
-            return Response(
-                {'detail': 'Không thể xác định danh sách mã. Kiểm tra lại symbols_group hoặc symbol.'},
-                status=status.HTTP_400_BAD_REQUEST,
+            raise ValidationErrorException(
+                'Không thể xác định danh sách mã. Kiểm tra lại symbols_group hoặc symbol.'
             )
 
         # ── Validate & build date range ──────────────────────────────────────
         from_date_str = str(data.get('from_date') or '').strip()
         to_date_str = str(data.get('to_date') or '').strip()
         if not from_date_str or not to_date_str:
-            return Response({'detail': 'from_date và to_date là bắt buộc.'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException('from_date và to_date là bắt buộc.')
         try:
             trade_dates = _build_trading_date_range(from_date_str, to_date_str)
         except ValueError as exc:
-            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException(str(exc))
 
         if not trade_dates:
-            return Response({'detail': 'Không có ngày giao dịch hợp lệ trong khoảng ngày đã chọn.'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationErrorException('Không có ngày giao dịch hợp lệ trong khoảng ngày đã chọn.')
 
         # ── Build (symbol, date) slots & apply missing-only filter via pandas ──
         import pandas as pd
@@ -419,13 +421,33 @@ class SystemBackfillTriggerView(APIView):
 
         if mode == 'missing_only':
             # §14.5 one bulk query → pandas anti-join to get only missing slots
-            existing_qs = (
-                IntradayTick.objects
-                .filter(symbol__in=symbols, timestamp__date__in=trade_dates)
-                .values_list('symbol', 'timestamp__date')
-                .distinct()
-            )
-            existing_df = pd.DataFrame(list(existing_qs), columns=['symbol', 'trade_date'])
+            # Use IntradayBar (1H timeframe) for presence check as it is ~1000x smaller
+            # and composite indexed on (symbol, timeframe, datetime)
+            from datetime import datetime, time
+            import pytz
+            from django.db.models.functions import TruncDate
+            from django.utils.timezone import make_aware
+            from market_data.models import IntradayBar
+
+            tz = pytz.timezone('Asia/Ho_Chi_Minh')
+            sorted_dates = sorted(trade_dates)
+            existing_pairs = []
+            if sorted_dates:
+                min_date = datetime.strptime(sorted_dates[0], '%Y-%m-%d').date()
+                max_date = datetime.strptime(sorted_dates[-1], '%Y-%m-%d').date()
+                start_dt = make_aware(datetime.combine(min_date, time.min), tz)
+                end_dt = make_aware(datetime.combine(max_date, time.max), tz)
+
+                existing_qs = (
+                    IntradayBar.objects
+                    .filter(symbol__in=symbols, timeframe='1H', datetime__gte=start_dt, datetime__lte=end_dt)
+                    .annotate(trade_date=TruncDate('datetime'))
+                    .values_list('symbol', 'trade_date')
+                    .distinct()
+                )
+                existing_pairs = [(sym, dt.isoformat() if hasattr(dt, 'isoformat') else str(dt)) for sym, dt in existing_qs if dt]
+
+            existing_df = pd.DataFrame(existing_pairs, columns=['symbol', 'trade_date'])
             if not existing_df.empty:
                 existing_df['trade_date'] = existing_df['trade_date'].astype(str)
                 merged = all_slots.merge(existing_df, on=['symbol', 'trade_date'], how='left', indicator=True)
@@ -487,26 +509,19 @@ class UserBackfillTriggerView(APIView):
         trade_date_str = str(request.data.get('trade_date') or '').strip()
 
         if not symbol or not trade_date_str:
-            return Response(
-                {'detail': 'symbol và trade_date là bắt buộc.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            raise ValidationErrorException('symbol và trade_date là bắt buộc.')
 
         # §14.8: clamp trade_date không được quá 180 ngày trước hôm nay
         try:
             from datetime import datetime
             trade_date = datetime.strptime(trade_date_str, '%Y-%m-%d').date()
         except ValueError:
-            return Response(
-                {'detail': 'trade_date phải có định dạng YYYY-MM-DD.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            raise ValidationErrorException('trade_date phải có định dạng YYYY-MM-DD.')
 
         min_allowed = date.today() - timedelta(days=_USER_BACKFILL_MAX_DAYS)
         if trade_date < min_allowed:
-            return Response(
-                {'detail': f'trade_date không được trước {min_allowed.isoformat()} (tối đa {_USER_BACKFILL_MAX_DAYS} ngày).'},
-                status=status.HTTP_400_BAD_REQUEST,
+            raise ValidationErrorException(
+                f'trade_date không được trước {min_allowed.isoformat()} (tối đa {_USER_BACKFILL_MAX_DAYS} ngày).'
             )
 
         from .tasks import backfill_intraday_tick_user

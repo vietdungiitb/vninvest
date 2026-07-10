@@ -13,7 +13,7 @@ function createAbortError() {
     return error;
 }
 function createLodBucketizerWorker() {
-    return new Worker(new URL("./LodBucketizer.worker.ts", import.meta.url), { type: "module" });
+    return new Worker(new URL("./LodBucketizer.worker.js", import.meta.url), { type: "module" });
 }
 function resolveWorkerError(event) {
     if (event.error instanceof Error) {

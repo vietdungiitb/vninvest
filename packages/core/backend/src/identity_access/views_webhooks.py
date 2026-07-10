@@ -1,0 +1,244 @@
+"""
+Webhook Management views for partner namespace (Phase 4).
+
+Endpoints:
+  GET    /partner/webhooks/                        — list
+  POST   /partner/webhooks/                        — create
+  GET    /partner/webhooks/<id>/                   — detail
+  PATCH  /partner/webhooks/<id>/                   — update
+  DELETE /partner/webhooks/<id>/                   — delete
+  POST   /partner/webhooks/<id>/regenerate-secret/ — rotate HMAC secret
+  GET    /partner/webhooks/<id>/deliveries/         — delivery log
+  POST   /partner/webhooks/<id>/test/               — test dispatch
+"""
+from __future__ import annotations
+
+import logging
+import secrets
+
+from django.utils import timezone
+from rest_framework import generics, permissions, status
+from rest_framework.response import Response
+
+from identity_access.models import CoreTenant, TenantWebhookConfig, WebhookDelivery
+from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
+from identity_access.serializers import TenantWebhookConfigSerializer, WebhookDeliverySerializer
+from identity_access.tasks import deprovision_tenant_async
+from identity_access.webhook_dispatcher import WebhookDispatcher
+
+logger = logging.getLogger(__name__)
+
+TENANT_PERMISSION_CLASSES = [permissions.IsAuthenticated, IsTenantActive]
+
+
+def _get_request_tenant(request) -> CoreTenant:
+    tenant = getattr(request, 'tenant', None)
+    if tenant is not None:
+        return tenant
+    try:
+        return CoreTenant.objects.get(owner_user=request.user)
+    except CoreTenant.DoesNotExist:
+        from rest_framework.exceptions import PermissionDenied
+        raise PermissionDenied('Không tìm thấy tenant trong request.')
+
+
+class WebhookConfigListCreateView(generics.GenericAPIView):
+    permission_classes = TENANT_PERMISSION_CLASSES
+
+    def get(self, request, *args, **kwargs):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        tenant = _get_request_tenant(request)
+        qs = TenantWebhookConfig.objects.filter(tenant=tenant).order_by('-created_at')
+        return Response(TenantWebhookConfigSerializer(qs, many=True).data)
+
+    def post(self, request, *args, **kwargs):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        tenant = _get_request_tenant(request)
+        serializer = TenantWebhookConfigSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        config = serializer.save(tenant=tenant)
+        data = TenantWebhookConfigSerializer(config).data
+        data['raw_secret'] = config.secret
+        return Response(data, status=status.HTTP_201_CREATED)
+
+
+class WebhookConfigDetailView(generics.GenericAPIView):
+    permission_classes = TENANT_PERMISSION_CLASSES
+
+    def _get_config(self, request, config_id):
+        tenant = _get_request_tenant(request)
+        try:
+            return TenantWebhookConfig.objects.get(id=config_id, tenant=tenant)
+        except TenantWebhookConfig.DoesNotExist:
+            return None
+
+    def get(self, request, config_id, *args, **kwargs):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        config = self._get_config(request, config_id)
+        if config is None:
+            return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(TenantWebhookConfigSerializer(config).data)
+
+    def patch(self, request, config_id, *args, **kwargs):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        config = self._get_config(request, config_id)
+        if config is None:
+            return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = TenantWebhookConfigSerializer(config, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(TenantWebhookConfigSerializer(config).data)
+
+    def delete(self, request, config_id, *args, **kwargs):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        config = self._get_config(request, config_id)
+        if config is None:
+            return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+        config.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class WebhookRegenerateSecretView(generics.GenericAPIView):
+    permission_classes = TENANT_PERMISSION_CLASSES
+
+    def post(self, request, config_id, *args, **kwargs):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        tenant = _get_request_tenant(request)
+        try:
+            config = TenantWebhookConfig.objects.get(id=config_id, tenant=tenant)
+        except TenantWebhookConfig.DoesNotExist:
+            return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+        config.secret = secrets.token_hex(32)
+        config.save(update_fields=['secret'])
+        return Response({'raw_secret': config.secret})
+
+
+class WebhookDeliveryLogView(generics.GenericAPIView):
+    permission_classes = TENANT_PERMISSION_CLASSES
+
+    def get(self, request, config_id, *args, **kwargs):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        tenant = _get_request_tenant(request)
+        try:
+            config = TenantWebhookConfig.objects.get(id=config_id, tenant=tenant)
+        except TenantWebhookConfig.DoesNotExist:
+            return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+        qs = WebhookDelivery.objects.filter(config=config).order_by('-created_at')[:100]
+        return Response(WebhookDeliverySerializer(qs, many=True).data)
+
+
+class WebhookTestView(generics.GenericAPIView):
+    permission_classes = TENANT_PERMISSION_CLASSES
+
+    def post(self, request, config_id, *args, **kwargs):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        tenant = _get_request_tenant(request)
+        try:
+            config = TenantWebhookConfig.objects.get(id=config_id, tenant=tenant)
+        except TenantWebhookConfig.DoesNotExist:
+            return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+        from .webhook_dispatcher import _schedule_delivery
+        _schedule_delivery(config, 'webhook.test', {
+            'event': 'webhook.test',
+            'message': 'This is a test event from VNInvest webhook system.',
+        })
+        return Response({'detail': 'Test webhook dispatched'})
+
+
+class WebhookManualRetryView(generics.GenericAPIView):
+    permission_classes = TENANT_PERMISSION_CLASSES
+
+    def post(self, request, config_id, delivery_id, *args, **kwargs):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        tenant = _get_request_tenant(request)
+        try:
+            config = TenantWebhookConfig.objects.get(id=config_id, tenant=tenant)
+        except TenantWebhookConfig.DoesNotExist:
+            return Response({'detail': 'Config not found'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            delivery = WebhookDelivery.objects.get(id=delivery_id, config=config)
+        except WebhookDelivery.DoesNotExist:
+            return Response({'detail': 'Delivery not found'}, status=status.HTTP_404_NOT_FOUND)
+        from .tasks import deliver_webhook
+        deliver_webhook.delay(delivery.id)
+        return Response({'detail': 'Retry dispatched'})
+
+
+class BillingStatusView(generics.GenericAPIView):
+    permission_classes = TENANT_PERMISSION_CLASSES
+
+    def get(self, request, *args, **kwargs):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        tenant = _get_request_tenant(request)
+        data = {
+            'plan': tenant.plan,
+            'status': tenant.status,
+            'pending': False,
+            'trial_ends_at': tenant.trial_ends_at.isoformat() if tenant.trial_ends_at else None,
+            'stripe_current_period_end': tenant.stripe_current_period_end.isoformat() if tenant.stripe_current_period_end else None,
+        }
+        return Response(data)
+
+
+class PreviewPlanChangeView(generics.GenericAPIView):
+    permission_classes = TENANT_PERMISSION_CLASSES
+
+    def post(self, request, *args, **kwargs):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        tenant = _get_request_tenant(request)
+        target_plan = request.data.get('target_plan', '').strip()
+        if target_plan not in dict(CoreTenant.PlanChoices.choices):
+            return Response({'detail': f'Invalid plan: {target_plan}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        features_map = {
+            'free': {'api_calls': 1000, 'members': 3, 'sso': False, 'webhooks': False, 'audit_days': 7},
+            'starter': {'api_calls': 10000, 'members': 5, 'sso': False, 'webhooks': False, 'audit_days': 7},
+            'pro': {'api_calls': 50000, 'members': 25, 'sso': True, 'webhooks': True, 'audit_days': 30},
+            'enterprise': {'api_calls': None, 'members': None, 'sso': True, 'webhooks': True, 'audit_days': 90},
+        }
+
+        current = features_map.get(tenant.plan, features_map['free'])
+        target = features_map.get(target_plan, features_map['pro'])
+
+        changes = {}
+        for key in ['api_calls', 'members', 'sso', 'webhooks', 'audit_days']:
+            if current.get(key) != target.get(key):
+                changes[key] = {'from': current.get(key), 'to': target.get(key)}
+
+        from datetime import date
+        return Response({
+            'current_plan': tenant.plan,
+            'target_plan': target_plan,
+            'prorated_amount': 0,
+            'next_billing_amount': 0,
+            'effective_date': date.today().isoformat(),
+            'trial_extension_days': None,
+            'changes': changes,
+        })
+
+
+class DeprovisionView(generics.GenericAPIView):
+    permission_classes = [permissions.IsAuthenticated, IsTenantActive]
+
+    def post(self, request, *args, **kwargs):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        tenant = _get_request_tenant(request)
+        if tenant.status == CoreTenant.StatusChoices.DEPROVISIONED:
+            return Response({'detail': 'Tenant already deprovisioned.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        tenant.status = CoreTenant.StatusChoices.DEPROVISIONED
+        tenant.save(update_fields=['status'])
+
+        deprovision_tenant_async.delay(tenant.public_id)
+
+        WebhookDispatcher.dispatch(tenant, 'tenant.deprovisioned', {
+            'event': 'tenant.deprovisioned',
+            'tenant_id': tenant.public_id,
+            'tenant_code': tenant.tenant_code,
+            'status': tenant.status,
+            'occurred_at': timezone.now().isoformat(),
+        })
+
+        return Response({'detail': 'Tenant deprovisioned successfully.'}, status=status.HTTP_200_OK)

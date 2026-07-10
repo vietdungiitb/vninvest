@@ -8,7 +8,7 @@ All views require IsAuthenticated; symbol param is always uppercased.
 """
 from datetime import date
 
-from django.db.models import Avg, Max
+from django.db.models import Avg, Max, Q
 from django.utils import timezone
 from rest_framework import permissions
 from rest_framework.response import Response
@@ -75,7 +75,17 @@ class RealtimeTickerListView(APIView):
         symbols_raw = request.query_params.get('symbols', '')
         if symbols_raw:
             symbols = [s.strip().upper() for s in symbols_raw.split(',') if s.strip()][:self._MAX_SYMBOLS]
-            qs = SymbolSnapshot.objects.filter(symbol__in=symbols, session_date=target_date)
+            # Fetch latest session_date per symbol so symbols missing on the
+            # global target_date still return their most recent snapshot.
+            latest_dates = (
+                SymbolSnapshot.objects.filter(symbol__in=symbols)
+                .values('symbol')
+                .annotate(latest_date=Max('session_date'))
+            )
+            q_filter = Q()
+            for entry in latest_dates:
+                q_filter |= Q(symbol=entry['symbol'], session_date=entry['latest_date'])
+            qs = SymbolSnapshot.objects.filter(q_filter) if q_filter else SymbolSnapshot.objects.none()
         else:
             qs = SymbolSnapshot.objects.filter(session_date=target_date).order_by('symbol')[:self._MAX_SYMBOLS]
         # Return as dict keyed by symbol so frontend can do Object.values(tickersMap)
@@ -306,15 +316,104 @@ class RealtimeRvolView(APIView):
 
 
 class RealtimeDepthChartView(APIView):
-    """GET /api/realtime/depth-chart/<symbol>/ — order book depth (native stub)."""
+    """GET /api/realtime/depth-chart/<symbol>/ — order book depth (mock implementation)."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
-        # Order book depth requires realtime feed not yet available natively.
-        # Return empty gracefully per code quality constitution §INV-04 pattern.
+        symbol = symbol.upper()
+        
+        # Fetch latest snapshot for reference price and volume
+        today = date.today()
+        snap = SymbolSnapshot.objects.filter(symbol=symbol, session_date=today).first()
+        if not snap:
+            snap = SymbolSnapshot.objects.filter(symbol=symbol).order_by('-session_date', '-fetched_at').first()
+        
+        if not snap or not snap.price:
+            return Response({
+                'symbol': symbol,
+                'bids': [],
+                'asks': [],
+                'spread': 0,
+                'timestamp': timezone.now().isoformat(),
+                'note': 'no_snapshot_data',
+            })
+        
+        # Get tick size from security master or default to 0.05
+        tick_size = self._get_tick_size(symbol)
+        
+        # Reference price (last traded price)
+        last_price = float(snap.price)
+        ref_price = float(snap.reference_price) if snap.reference_price else last_price
+        total_volume = snap.volume or 0
+        
+        # Calculate spread (max of 0.15% of price or tick_size)
+        spread_pct = 0.0015  # 0.15%
+        min_spread = max(last_price * spread_pct, tick_size)
+        spread = round(min_spread / tick_size) * tick_size  # Round to tick size
+        
+        # Generate 3 bid levels (below last price) and 3 ask levels (at/above last price)
+        bids = []
+        asks = []
+        
+        # Volume distribution: 40%, 30%, 20% of (total_volume / 100) per level
+        base_volume = max(total_volume // 100, 1000)  # Minimum 1000 shares per level base
+        
+        volume_distribution = [0.40, 0.30, 0.20]
+        
+        # Deterministic seed based on symbol + date for consistency
+        import hashlib
+        seed_str = f"{symbol}{today.isoformat()}"
+        seed_hash = int(hashlib.md5(seed_str.encode()).hexdigest()[:8], 16)
+        
+        def pseudo_random(base_min, base_max, level):
+            """Generate pseudo-random number based on seed."""
+            nonlocal seed_hash
+            seed_hash = (seed_hash * 1103515245 + 12345) & 0x7fffffff
+            return base_min + (seed_hash % (base_max - base_min + 1))
+        
+        # Bids: last_price - 1*tick, -2*tick, -3*tick
+        for i in range(3):
+            price = round(last_price - (i + 1) * tick_size, 2)
+            vol_pct = volume_distribution[i]
+            volume = int(base_volume * vol_pct)
+            orders = pseudo_random(15, 80, i)
+            bids.append({
+                'price': price,
+                'volume': volume,
+                'orders': orders,
+            })
+        
+        # Asks: last_price + 0*tick, +1*tick, +2*tick
+        for i in range(3):
+            price = round(last_price + i * tick_size, 2)
+            vol_pct = volume_distribution[i]
+            volume = int(base_volume * vol_pct)
+            orders = pseudo_random(15, 80, i + 3)
+            asks.append({
+                'price': price,
+                'volume': volume,
+                'orders': orders,
+            })
+        
         return Response({
-            'symbol': symbol.upper(),
-            'bids': [],
-            'asks': [],
-            'note': 'depth_not_available_in_native',
+            'symbol': symbol,
+            'bids': bids,
+            'asks': asks,
+            'spread': spread,
+            'timestamp': timezone.now().isoformat(),
+            'reference_price': ref_price,
+            'last_price': last_price,
+            'tick_size': tick_size,
         })
+    
+    def _get_tick_size(self, symbol):
+        """Get tick size for symbol from security master or use default."""
+        try:
+            from market_data.models import StockProfile
+            profile = StockProfile.objects.filter(symbol=symbol).first()
+            if profile and profile.tick_size:
+                return float(profile.tick_size)
+        except Exception:
+            pass
+        # Default tick size for VN market
+        return 0.05

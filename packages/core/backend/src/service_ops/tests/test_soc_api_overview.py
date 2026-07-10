@@ -205,3 +205,223 @@ class OverviewAuthContractTestCase(TestCase):
         self.assertIn('code', payload)
         self.assertIn('timestamp', payload)
         self.assertIn('request_id', payload)
+
+
+class OverviewAdminActionTestCase(OverviewApiBaseTestCase):
+    """Tests for admin write actions: toggle active, config apply, config reset."""
+
+    def test_toggle_service_active_state(self):
+        """Test PATCH /services/{key}/ toggles is_active and affects list view."""
+        # Initial state should be active
+        self.assertTrue(self.vnbroker_service.is_active)
+
+        # Toggle to inactive
+        response = self.client.patch(
+            f'/api/soc/services/{self.vnbroker_service.service_key}/',
+            {'is_active': False},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertFalse(payload['is_active'])
+
+        # Verify in database
+        self.vnbroker_service.refresh_from_db()
+        self.assertFalse(self.vnbroker_service.is_active)
+
+        # Toggle back to active
+        response = self.client.patch(
+            f'/api/soc/services/{self.vnbroker_service.service_key}/',
+            {'is_active': True},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertTrue(payload['is_active'])
+
+        # Verify in database
+        self.vnbroker_service.refresh_from_db()
+        self.assertTrue(self.vnbroker_service.is_active)
+
+        # Verify list view includes inactive services (no is_active filter)
+        response = self.client.get('/api/soc/services/?page_size=100')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        service_keys = [item['service_key'] for item in payload['results']]
+        self.assertIn(self.vnbroker_service.service_key, service_keys)
+
+    def test_toggle_service_active_invalid_payload(self):
+        """Test PATCH with missing or invalid is_active returns 400."""
+        # Missing is_active
+        response = self.client.patch(
+            f'/api/soc/services/{self.vnbroker_service.service_key}/',
+            {},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        payload = response.json()
+        self.assertEqual(payload['code'], 'INVALID_PAYLOAD')
+
+        # Invalid type for is_active
+        response = self.client.patch(
+            f'/api/soc/services/{self.vnbroker_service.service_key}/',
+            {'is_active': 'not_a_boolean'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        payload = response.json()
+        self.assertEqual(payload['code'], 'INVALID_PAYLOAD')
+
+    def test_reset_service_config_to_baseline(self):
+        """Test POST /services/{key}/config/reset/ restores default config."""
+        # First, apply a custom config
+        custom_config = {
+            'timeout': {'connect': 15.0, 'read': 45.0},
+            'max_retries': 5,
+            'retry_delay_seconds': 3.0,
+        }
+        response = self.client.post(
+            f'/api/soc/services/{self.vnbroker_service.service_key}/config/',
+            {'config_payload': custom_config, 'change_reason': 'Test custom config'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        custom_payload = response.json()['config_payload']
+        self.assertEqual(custom_payload['timeout']['connect'], 15.0)
+
+        # Now reset to baseline
+        response = self.client.post(
+            f'/api/soc/services/{self.vnbroker_service.service_key}/config/reset/',
+            {'change_reason': 'Khôi phục cấu hình mặc định hệ thống'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        payload = response.json()
+        self.assertEqual(payload['change_reason'], 'Khôi phục cấu hình mặc định hệ thống')
+
+        # Verify config matches default
+        from service_ops.domain_configs import VnbrokerDomainConfig
+        default_config = VnbrokerDomainConfig().to_dict()
+        self.assertEqual(payload['config_payload']['timeout']['connect'], default_config['timeout']['connect'])
+        self.assertEqual(payload['config_payload']['max_retries'], default_config['max_retries'])
+
+        # Verify audit trail has reset action
+        from service_ops.models import ConfigChangeAudit
+        reset_audit = ConfigChangeAudit.objects.filter(
+            service=self.vnbroker_service,
+            action='reset'
+        ).first()
+        self.assertIsNotNone(reset_audit)
+        self.assertEqual(reset_audit.change_summary, 'Khôi phục cấu hình mặc định hệ thống')
+
+    def test_post_invalid_config_payload_returns_400(self):
+        """Test POST with invalid config payload returns 400 with validation errors."""
+        # Invalid timeout values
+        invalid_config = {
+            'timeout': {'connect': 100.0, 'read': 500.0},  # Out of range
+            'max_retries': 15,  # Out of range
+        }
+        response = self.client.post(
+            f'/api/soc/services/{self.vnbroker_service.service_key}/config/',
+            {'config_payload': invalid_config, 'change_reason': 'Invalid config test'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        payload = response.json()
+        self.assertEqual(payload['code'], 'CONFIG_VALIDATION_FAILED')
+        self.assertIn('field_errors', payload)
+        self.assertIn('payload', payload['field_errors'])
+        errors = payload['field_errors']['payload']
+        self.assertTrue(any('timeout.connect' in err for err in errors))
+        self.assertTrue(any('max_retries' in err for err in errors))
+
+    def test_unauthorized_post_returns_403(self):
+        """Test non-staff user cannot POST to config endpoints."""
+        user = User.objects.create_user(
+            username='soc-regular-user',
+            email='soc-regular@test.local',
+            password='pass123',
+        )
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        # Try to apply config
+        response = client.post(
+            f'/api/soc/services/{self.vnbroker_service.service_key}/config/',
+            {'config_payload': {'timeout': {'connect': 10.0}}, 'change_reason': 'test'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Try to reset config
+        response = client.post(
+            f'/api/soc/services/{self.vnbroker_service.service_key}/config/reset/',
+            {'change_reason': 'test'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Try to toggle active
+        response = client.patch(
+            f'/api/soc/services/{self.vnbroker_service.service_key}/',
+            {'is_active': False},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_config_apply_creates_audit_trail(self):
+        """Test that config apply creates proper audit trail with before/after snapshots."""
+        # Get initial config
+        initial_response = self.client.get(f'/api/soc/services/{self.vnbroker_service.service_key}/config/')
+        initial_payload = initial_response.json()['config_payload']
+
+        # Apply new config
+        new_config = {
+            'timeout': {'connect': 12.0, 'read': 35.0},
+            'max_retries': 4,
+            'retry_delay_seconds': 2.5,
+        }
+        response = self.client.post(
+            f'/api/soc/services/{self.vnbroker_service.service_key}/config/',
+            {'config_payload': new_config, 'change_reason': 'Test audit trail'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Verify audit trail
+        from service_ops.models import ConfigChangeAudit
+        audit = ConfigChangeAudit.objects.filter(
+            service=self.vnbroker_service,
+            action='apply'
+        ).latest('timestamp')
+        self.assertEqual(audit.actor, self.user.username)
+        self.assertEqual(audit.change_summary, 'Test audit trail')
+        self.assertEqual(audit.before_snapshot, initial_payload)
+        self.assertEqual(audit.after_snapshot['timeout']['connect'], 12.0)
+        self.assertEqual(audit.after_snapshot['max_retries'], 4)
+
+    def test_overview_summary_includes_inactive_services(self):
+        """Test that overview summary returns all services including inactive ones."""
+        # Create an inactive service
+        inactive_service = ServiceDefinition.objects.create(
+            service_key='test_inactive_service',
+            name='Test Inactive Service',
+            domain='platform',
+            is_active=False,
+        )
+
+        response = self.client.get('/api/soc/overview/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+
+        # Should include the inactive service
+        service_keys = [s['service_key'] for s in payload['services']]
+        self.assertIn('test_inactive_service', service_keys)
+        self.assertIn(self.vnbroker_service.service_key, service_keys)
+
+        # Find the inactive service in results
+        inactive_svc = next(s for s in payload['services'] if s['service_key'] == 'test_inactive_service')
+        self.assertFalse(inactive_svc['is_active'])
+
+        # Total count should include inactive
+        self.assertGreaterEqual(payload['summary']['total'], 2)

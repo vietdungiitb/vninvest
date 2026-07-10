@@ -3,7 +3,7 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from identity_access.models import UserProfile
+from identity_access.models import CoreTenant, UserProfile
 from signal_intelligence.materializers import materialize_ai_signal_alerts
 from signal_intelligence.models import AdvisorySignalEvent, OrderFlowEvent, UnifiedAlert
 from user_workspace.models import Watchlist, WatchlistItem
@@ -12,8 +12,15 @@ from user_workspace.models import Watchlist, WatchlistItem
 class AISignalLaneTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username='ai-lane-user', password='password123')
-        UserProfile.objects.create(user=self.user, whale_alert_threshold=100)
-        watchlist = Watchlist.objects.create(user=self.user, name='AI lane', is_default=True)
+        self.tenant = CoreTenant.objects.create(
+            owner_user=self.user,
+            tenant_code='ai-lane-tenant',
+            display_name='AI Lane Tenant',
+            plan=CoreTenant.PlanChoices.PRO,
+            status=CoreTenant.StatusChoices.ACTIVE,
+        )
+        UserProfile.objects.create(user=self.user, tenant=self.tenant, whale_alert_threshold=100)
+        watchlist = Watchlist.objects.create(user=self.user, tenant=self.tenant, name='AI lane', is_default=True)
         WatchlistItem.objects.create(watchlist=watchlist, symbol='FPT')
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)

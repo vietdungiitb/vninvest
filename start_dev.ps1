@@ -30,29 +30,6 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-function Get-GitHubCliToken {
-    $ghCommand = Get-Command gh -ErrorAction SilentlyContinue
-    if (-not $ghCommand) {
-        return $null
-    }
-
-    try {
-        $tokenOutput = & $ghCommand.Source auth token 2>$null
-        if ($LASTEXITCODE -ne 0) {
-            return $null
-        }
-
-        $token = [string]::Join("`n", @($tokenOutput)).Trim()
-        if ([string]::IsNullOrWhiteSpace($token)) {
-            return $null
-        }
-
-        return $token
-    } catch {
-        return $null
-    }
-}
-$SkipBuild = $false
 
 $ComposeFiles = @("-f", "docker-compose.yml", "-f", "docker-compose.dev.yml")
 $ComposeEnvFile = "compose.dev.env"
@@ -136,7 +113,6 @@ function Get-GitHubCliToken {
 function Ensure-VnbrokerGitHubToken {
     $envToken = $env:VNBROKER_GITHUB_TOKEN
     $ghToken = Get-GitHubCliToken
-    $backendToken = Get-EnvValueFromFile -Path (Join-Path $PSScriptRoot "backend/.env.dev") -Key "VNBROKER_GITHUB_TOKEN"
     $composeToken = Get-EnvValueFromFile -Path (Join-Path $PSScriptRoot $ComposeEnvFile) -Key "VNBROKER_GITHUB_TOKEN"
 
     if (-not (Test-IsPlaceholderSecretValue -Value $ghToken)) {
@@ -151,37 +127,12 @@ function Ensure-VnbrokerGitHubToken {
         $token = $null
     }
 
-    if ([string]::IsNullOrWhiteSpace($token) -and -not (Test-IsPlaceholderSecretValue -Value $backendToken)) {
-        $token = $backendToken
-    }
-
     if ([string]::IsNullOrWhiteSpace($token) -and -not (Test-IsPlaceholderSecretValue -Value $composeToken)) {
         $token = $composeToken
     }
 
     if ([string]::IsNullOrWhiteSpace($token)) {
-        Write-Step "Bootstrap VNBROKER token"
-        if (Test-Path $setupScript) {
-            & $setupScript
-            if ($LASTEXITCODE -ne 0) {
-                throw "scripts/dev-setup.ps1 failed while bootstrapping VNBROKER_GITHUB_TOKEN."
-            }
-        } else {
-            throw "Missing scripts/dev-setup.ps1 to bootstrap VNBROKER_GITHUB_TOKEN."
-        }
-
-        $backendToken = Get-EnvValueFromFile -Path (Join-Path $PSScriptRoot "backend/.env.dev") -Key "VNBROKER_GITHUB_TOKEN"
-        $composeToken = Get-EnvValueFromFile -Path (Join-Path $PSScriptRoot $ComposeEnvFile) -Key "VNBROKER_GITHUB_TOKEN"
-
-        if (-not (Test-IsPlaceholderSecretValue -Value $backendToken)) {
-            $token = $backendToken
-        } elseif (-not (Test-IsPlaceholderSecretValue -Value $composeToken)) {
-            $token = $composeToken
-        }
-    }
-
-    if ([string]::IsNullOrWhiteSpace($token)) {
-        throw "VNBROKER_GITHUB_TOKEN is still missing after bootstrap."
+        throw "VNBROKER_GITHUB_TOKEN is missing. Please define it in compose.dev.env or your environment."
     }
 
     $env:VNBROKER_GITHUB_TOKEN = $token
@@ -266,18 +217,12 @@ if ($Down) {
 
 # ── Bootstrap env files (tự động nếu thiếu) ─────────────────────────────────
 Write-Step "Bootstrap env files"
-$devEnvPath   = Join-Path $PSScriptRoot "backend/.env.dev"
-$setupScript  = Join-Path $PSScriptRoot "scripts/dev-setup.ps1"
+$devEnvPath   = Join-Path $PSScriptRoot "compose.dev.env"
 if (-not (Test-Path $devEnvPath)) {
-    Write-Host "  backend/.env.dev khong ton tai — chay bootstrap..." -ForegroundColor Yellow
-    if (Test-Path $setupScript) {
-        & $setupScript
-    } else {
-        Write-Host "  Khong tim thay scripts/dev-setup.ps1. Copy thu cong: backend/.env.example -> backend/.env.dev" -ForegroundColor Red
-        exit 1
-    }
+    Write-Host "  compose.dev.env khong ton tai — chay bootstrap..." -ForegroundColor Yellow
+    exit 1
 } else {
-    Write-Host "  backend/.env.dev da co. (Dung -Force de gen lai: .\scripts\dev-setup.ps1 -Force)" -ForegroundColor DarkGray
+    Write-Host "  compose.dev.env da co." -ForegroundColor DarkGray
 }
 
 Ensure-VnbrokerGitHubToken

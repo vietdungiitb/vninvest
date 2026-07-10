@@ -28,7 +28,7 @@ class RateLimitLoginEndpointTests(APITestCase):
     
     def setUp(self):
         self.client = APIClient()
-        self.login_url = '/api/auth/login/'
+        self.login_url = '/core/v1/login/'
         # Create a test user
         self.user = User.objects.create_user(
             username='testuser',
@@ -115,7 +115,7 @@ class RateLimitRegisterEndpointTests(APITestCase):
     
     def setUp(self):
         self.client = APIClient()
-        self.register_url = '/api/auth/register/'
+        self.register_url = '/core/v1/register/'
         # Clear cache before each test
         cache.clear()
     
@@ -201,7 +201,7 @@ class RateLimitPasswordResetEndpointTests(APITestCase):
     
     def setUp(self):
         self.client = APIClient()
-        self.password_reset_url = '/api/auth/password-reset/'
+        self.password_reset_url = '/core/v1/password-reset/'
         # Clear cache before each test
         cache.clear()
     
@@ -302,8 +302,8 @@ class RateLimitWindowExpiryTests(APITestCase):
     
     def setUp(self):
         self.client = APIClient()
-        self.register_url = '/api/auth/register/'
-        self.password_reset_url = '/api/auth/password-reset/'
+        self.register_url = '/core/v1/register/'
+        self.password_reset_url = '/core/v1/password-reset/'
         # Clear cache before each test
         cache.clear()
     

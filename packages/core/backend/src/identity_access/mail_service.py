@@ -1,4 +1,5 @@
 import base64
+from datetime import date
 from email.utils import formataddr
 import json
 import logging
@@ -205,6 +206,29 @@ def send_system_email(
     if html_message:
         email.attach_alternative(html_message, 'text/html')
     return email.send(fail_silently=fail_silently)
+
+
+def send_report_email(
+    recipient: str,
+    subject: str,
+    html_content: str | None = None,
+    csv_content: str | None = None,
+    report_format: str = 'html',
+) -> int:
+    """Send a scheduled report email with optional HTML body and CSV attachment."""
+    from django.core.mail import EmailMultiAlternatives
+
+    message = f'Báo cáo {subject} từ VNInvest'
+    email = EmailMultiAlternatives(
+        subject=subject,
+        body=message,
+        to=[recipient],
+    )
+    if html_content:
+        email.attach_alternative(html_content, 'text/html')
+    if csv_content and report_format == 'csv':
+        email.attach(f'report_{date.today().isoformat()}.csv', csv_content, 'text/csv')
+    return email.send(fail_silently=False)
 
 
 def send_test_email(account: SystemMailConfig, recipient_email: str) -> int:

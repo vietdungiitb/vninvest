@@ -5,7 +5,7 @@
  * and Operator mail configuration endpoints for coreApiAdapter.
  */
 
-export function createWorkspaceClient({ coreGet, corePost, corePatch, coreDelete }) {
+export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, coreDelete }) {
   return {
     /**
      * List portfolios for the authenticated user.
@@ -58,6 +58,27 @@ export function createWorkspaceClient({ coreGet, corePost, corePatch, coreDelete
      */
     createWatchlist(data) {
       return corePost("/workspace/watchlists/", data);
+    },
+
+    /**
+     * Update a watchlist (rename or update description).
+     * @param {number|string} watchlistId
+     * @param {{ name?: string, description?: string }} data
+     * @returns {Promise<object>}
+     */
+    updateWatchlist(watchlistId, data) {
+      if (!watchlistId) throw new Error("watchlistId is required for updateWatchlist");
+      return corePatch(`/workspace/watchlists/${encodeURIComponent(watchlistId)}/`, data);
+    },
+
+    /**
+     * Delete a watchlist.
+     * @param {number|string} watchlistId
+     * @returns {Promise<void>}
+     */
+    deleteWatchlist(watchlistId) {
+      if (!watchlistId) throw new Error("watchlistId is required for deleteWatchlist");
+      return coreDelete(`/workspace/watchlists/${encodeURIComponent(watchlistId)}/`);
     },
 
     /**
@@ -196,6 +217,19 @@ export function createWorkspaceClient({ coreGet, corePost, corePatch, coreDelete
     removeTrackedSymbol(id) {
       if (!id) throw new Error("id is required for removeTrackedSymbol");
       return coreDelete(`/stock-management/tracked-symbols/${encodeURIComponent(id)}/`);
+    },
+
+    /**
+     * Update a tracked symbol's alert threshold.
+     * @param {number|string} id
+     * @param {number} whaleAlertThresholdMillion
+     * @returns {Promise<object>}
+     */
+    updateTrackedSymbol(id, whaleAlertThresholdMillion) {
+      if (!id) throw new Error("id is required for updateTrackedSymbol");
+      return corePatch(`/stock-management/tracked-symbols/${encodeURIComponent(id)}/`, {
+        whale_alert_threshold_million: whaleAlertThresholdMillion,
+      });
     },
 
     /**
@@ -370,6 +404,230 @@ export function createWorkspaceClient({ coreGet, corePost, corePatch, coreDelete
 
     testOperatorMailConfig(data) {
       return corePost("/operator/mail-configs/test/", data);
+    },
+
+    // ─── Support Tickets API ─────────────────────────────────────────────────
+
+    listSupportTickets() {
+      return coreGet("/support/tickets/");
+    },
+
+    getSupportTicketDetail(ticketId) {
+      if (!ticketId) throw new Error("ticketId is required for getSupportTicketDetail");
+      return coreGet(`/support/tickets/${encodeURIComponent(ticketId)}/`);
+    },
+
+    createSupportTicket(data) {
+      return corePost("/support/tickets/", data);
+    },
+
+    replySupportTicket(ticketId, data) {
+      if (!ticketId) throw new Error("ticketId is required for replySupportTicket");
+      return corePost(`/support/tickets/${encodeURIComponent(ticketId)}/reply/`, data);
+    },
+
+    reopenSupportTicket(ticketId) {
+      if (!ticketId) throw new Error("ticketId is required for reopenSupportTicket");
+      return corePost(`/support/tickets/${encodeURIComponent(ticketId)}/reopen/`, {});
+    },
+
+    listStaffSupportTickets() {
+      return coreGet("/support/staff/tickets/");
+    },
+
+    getStaffSupportDashboard() {
+      return coreGet("/support/staff/dashboard/");
+    },
+
+    patchStaffSupportTicket(ticketId, data) {
+      if (!ticketId) throw new Error("ticketId is required for patchStaffSupportTicket");
+      return corePatch(`/support/staff/tickets/${encodeURIComponent(ticketId)}/`, data);
+    },
+
+    replyStaffSupportTicket(ticketId, data) {
+      if (!ticketId) throw new Error("ticketId is required for replyStaffSupportTicket");
+      return corePost(`/support/staff/tickets/${encodeURIComponent(ticketId)}/reply/`, data);
+    },
+
+    // ─── Portfolio Chart / Analytics ─────────────────────────────────────────
+
+    getPortfolioChart(portfolioId, days = 90) {
+      if (!portfolioId) throw new Error("portfolioId is required for getPortfolioChart");
+      return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/chart/?days=${days}`);
+    },
+
+    getPortfolioEquityCurve(portfolioId, days = 180) {
+      if (!portfolioId) throw new Error("portfolioId is required for getPortfolioEquityCurve");
+      return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/equity-curve/?days=${days}`);
+    },
+
+    getPortfolioAllocation(portfolioId) {
+      if (!portfolioId) throw new Error("portfolioId is required for getPortfolioAllocation");
+      return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/allocation/`);
+    },
+
+    getPortfolioAllocationBySector(portfolioId) {
+      if (!portfolioId) throw new Error("portfolioId is required for getPortfolioAllocationBySector");
+      return coreGet(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/allocation/sector/`);
+    },
+
+    syncPortfolioPrices(portfolioId, days = 30) {
+      if (!portfolioId) throw new Error("portfolioId is required for syncPortfolioPrices");
+      return corePost(`/workspace/portfolios/${encodeURIComponent(portfolioId)}/sync-prices/`, { days });
+    },
+
+    // ─── Tracked Symbol Bulk Operations ─────────────────────────────────────
+
+    bulkUpdateTrackedSymbolThreshold(trackedSymbolIds, whaleAlertThresholdMillion) {
+      if (!trackedSymbolIds || trackedSymbolIds.length === 0) {
+        throw new Error("trackedSymbolIds is required for bulkUpdateTrackedSymbolThreshold");
+      }
+      return corePost("/stock-management/tracked-symbols/bulk-threshold/", {
+        tracked_symbol_ids: trackedSymbolIds,
+        whale_alert_threshold_million: whaleAlertThresholdMillion,
+      });
+    },
+
+    deleteTrackedSymbol(id) {
+      if (!id) throw new Error("id is required for deleteTrackedSymbol");
+      return coreDelete(`/stock-management/tracked-symbols/${encodeURIComponent(id)}/`);
+    },
+
+    markPriceAlertTriggered(id) {
+      if (!id) throw new Error("id is required for markPriceAlertTriggered");
+      return corePost(`/stock-management/price-alerts/${encodeURIComponent(id)}/mark-triggered/`);
+    },
+
+    seedWatchlist() {
+      return corePost("/stock-management/watchlist/seed/");
+    },
+
+    syncWatchlistPrices(days = 5) {
+      return corePost("/stock-management/watchlist/sync-prices/", { days });
+    },
+
+    // ─── SubAccounts API ─────────────────────────────────────────────────────
+
+    getSubAccounts() {
+      return coreGet("/portfolio/subaccounts/");
+    },
+
+    createSubAccount(data) {
+      return corePost("/portfolio/subaccounts/", data);
+    },
+
+    updateSubAccount(subAccountId, data) {
+      if (!subAccountId) throw new Error("subAccountId is required for updateSubAccount");
+      return corePatch(`/portfolio/subaccounts/${encodeURIComponent(subAccountId)}/`, data);
+    },
+
+    deleteSubAccount(subAccountId) {
+      if (!subAccountId) throw new Error("subAccountId is required for deleteSubAccount");
+      return coreDelete(`/portfolio/subaccounts/${encodeURIComponent(subAccountId)}/`);
+    },
+
+    getSubAccountTransactions(subAccountId) {
+      if (!subAccountId) throw new Error("subAccountId is required for getSubAccountTransactions");
+      return coreGet(`/portfolio/subaccounts/${encodeURIComponent(subAccountId)}/transactions/`);
+    },
+
+    createSubAccountTransaction(subAccountId, data) {
+      if (!subAccountId) throw new Error("subAccountId is required for createSubAccountTransaction");
+      return corePost(`/portfolio/subaccounts/${encodeURIComponent(subAccountId)}/transactions/`, data);
+    },
+
+    // ─── Screener Rules API ──────────────────────────────────────────────────
+
+    getScreenerRules() {
+      return coreGet("/portfolio/screener/rules/");
+    },
+
+    createScreenerRule(data) {
+      return corePost("/portfolio/screener/rules/", data);
+    },
+
+    updateScreenerRule(ruleId, data) {
+      if (!ruleId) throw new Error("ruleId is required for updateScreenerRule");
+      return corePatch(`/portfolio/screener/rules/${encodeURIComponent(ruleId)}/`, data);
+    },
+
+    deleteScreenerRule(ruleId) {
+      if (!ruleId) throw new Error("ruleId is required for deleteScreenerRule");
+      return coreDelete(`/portfolio/screener/rules/${encodeURIComponent(ruleId)}/`);
+    },
+
+    runScreenerRule(ruleId) {
+      if (!ruleId) throw new Error("ruleId is required for runScreenerRule");
+      return corePost(`/portfolio/screener/rules/${encodeURIComponent(ruleId)}/run/`, {});
+    },
+
+    // ─── AI Command Center API ───────────────────────────────────────────────
+
+    getAICommandCenterConfig() {
+      return coreGet("/workspace/ai-command-center/");
+    },
+
+    updateAICommandCenterConfig(data) {
+      return corePut("/workspace/ai-command-center/", data);
+    },
+
+    testAICommandCenterConnection(data) {
+      return corePost("/workspace/ai-command-center/test-connection/", data);
+    },
+
+    getAIAuditLogs(params = {}) {
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
+      ).toString();
+      return coreGet(`/workspace/ai-command-center/audit-logs/${query ? `?${query}` : ''}`);
+    },
+
+    getUserConfig() {
+      return coreGet('/workspace/userconfig/');
+    },
+
+    // ─── AI Agent Registry API ───────────────────────────────────────────
+
+    getAIAgents(params = {}) {
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
+      ).toString();
+      return coreGet(`/ai/agents/${query ? `?${query}` : ''}`);
+    },
+
+    createAIAgent(data) {
+      return corePost('/ai/agents/', data);
+    },
+
+    updateAIAgent(id, data) {
+      return corePatch(`/ai/agents/${id}/`, data);
+    },
+
+    deleteAIAgent(id) {
+      return coreDelete(`/ai/agents/${id}/`);
+    },
+
+    // ─── AI Usage Analytics API ──────────────────────────────────────────
+
+    getAIUsageRecords(params = {}) {
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
+      ).toString();
+      return coreGet(`/ai/usage/${query ? `?${query}` : ''}`);
+    },
+
+    getAIUsageSummary(params = {}) {
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
+      ).toString();
+      return coreGet(`/ai/usage/summary/${query ? `?${query}` : ''}`);
+    },
+
+    getAIUsageAggregate(params = {}) {
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
+      ).toString();
+      return coreGet(`/ai/usage/aggregate/${query ? `?${query}` : ''}`);
     },
   };
 }

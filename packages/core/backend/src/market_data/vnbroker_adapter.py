@@ -204,19 +204,21 @@ def warm_up_intraday_symbols(symbols: list[str], page_size: int = 50) -> dict[st
 
 def get_active_config() -> VnbrokerRuntimeConfig:
     """Lấy cấu hình đang hoạt động hoặc tạo mặc định."""
+    from django.db import transaction
     try:
-        config = VnbrokerRuntimeConfig.objects.filter(is_active=True).first()
-        if not config:
-            config, _ = VnbrokerRuntimeConfig.objects.get_or_create(
-                name='Default Config',
-                defaults={
-                    'is_active': True,
-                    'data_source': VnbrokerRuntimeConfig.SourceChoices.VCI,
-                    'max_workers': 4,
-                    'batch_size': 50,
-                }
-            )
-        return config
+        with transaction.atomic():
+            config = VnbrokerRuntimeConfig.objects.filter(is_active=True).first()
+            if not config:
+                config, _ = VnbrokerRuntimeConfig.objects.get_or_create(
+                    name='Default Config',
+                    defaults={
+                        'is_active': True,
+                        'data_source': VnbrokerRuntimeConfig.SourceChoices.VCI,
+                        'max_workers': 4,
+                        'batch_size': 50,
+                    }
+                )
+            return config
     except (ProgrammingError, OperationalError):
         # Fallback for early bootstrap when DB migration for runtime config is missing.
         # This keeps ingest pipeline alive in dev and SaaS cutover smoke runs.
@@ -359,6 +361,11 @@ def _normalize_listing_rows(rows: Any, source: str) -> list[dict[str, Any]]:
             company_name = item.get('company_name') or item.get('organ_name') or item.get('name') or item.get('short_name')
             exchange = item.get('exchange') or item.get('board') or item.get('market') or item.get('exchange_code')
             industry = item.get('industry') or item.get('sector') or item.get('icb_name') or item.get('category')
+            
+            # Filter out non-stock security types (like warrants cw, bonds, funds) if type is populated
+            sec_type = item.get('type') or item.get('security_type')
+            if sec_type and str(sec_type).strip().lower() != 'stock':
+                continue
         else:
             symbol_value = item
             company_name = None
@@ -446,18 +453,92 @@ def fetch_realtime_price(symbol: str, *, source: str | None = None) -> dict[str,
         return None
 
 
+def fetch_price_board_snapshots_batch(symbols: list[str], *, source: str | None = None) -> dict[str, dict[str, Any]]:
+    """
+    Fetch realtime snapshot for a list of symbols in batch using async fetch_multiple.
+    Returns a dict mapping symbol -> snapshot dict:
+    {
+        'FPT': {
+            'symbol': 'FPT',
+            'close': 74000.0,
+            'open': 73600.0,
+            'high': 74300.0,
+            'low': 73500.0,
+            'volume': 2987500,
+            'fetched_at': '...',
+            'source': '...'
+        }
+    }
+    """
+    normalized_source = _resolve_realtime_source(source)
+    quote_class = _load_quote_class(normalized_source)
+    logger.info('Fetching batch price board snapshot from %s for %d symbols.', normalized_source, len(symbols))
+
+    import asyncio
+    from datetime import date as dt_date
+    today = dt_date.today()
+
+    cleaned_symbols = sorted({str(sym).strip().upper() for sym in symbols if str(sym).strip()})
+    if not cleaned_symbols:
+        return {}
+
+    try:
+        raw_res = quote_class.fetch_multiple(
+            symbols=cleaned_symbols,
+            start=today.isoformat(),
+            end=today.isoformat(),
+            interval='1D',
+            show_log=False,
+        )
+        if asyncio.iscoroutine(raw_res):
+            from asgiref.sync import async_to_sync
+            async def _wait_coro():
+                return await raw_res
+            dfs = async_to_sync(_wait_coro)()
+        else:
+            dfs = raw_res
+    except Exception as exc:
+        logger.error('fetch_price_board_snapshots_batch failed: %s', exc)
+        return {}
+
+    results = {}
+    for df in dfs:
+        if df is not None and not df.empty:
+            symbol = ''
+            if hasattr(df, 'attrs') and isinstance(df.attrs, dict):
+                symbol = df.attrs.get('symbol') or ''
+            if not symbol:
+                symbol = getattr(df, 'name', '') or getattr(df, 'symbol', '')
+            symbol = str(symbol).strip().upper()
+            if not symbol:
+                continue
+            row = df.iloc[-1]
+            results[symbol] = {
+                'symbol': symbol,
+                'close': float(row['close']),
+                'open': float(row.get('open') or row['close']),
+                'high': float(row.get('high') or row['close']),
+                'low': float(row.get('low') or row['close']),
+                'volume': int(row.get('volume') or 0),
+                'fetched_at': now().isoformat(),
+                'source': normalized_source,
+            }
+    return results
+
+
 def fetch_price_board_snapshot(symbols: list[str], *, source: str | None = None) -> list[dict[str, Any]]:
     """
     Lấy snapshot giá realtime cho danh sách symbol qua provider được chỉ định.
-    Tất cả calls qua fetch_realtime_price để đảm bảo SSOT.
+    Sử dụng batch fetch để tránh rate limit 429 và tối ưu hiệu năng.
     """
     normalized_source = _resolve_realtime_source(source)
-    _load_quote_class(normalized_source)
-    logger.info('Fetching price board snapshot from %s for %d symbols.', normalized_source, len(symbols))
+    logger.info('Fetching price board snapshot from %s for %d symbols in batch.', normalized_source, len(symbols))
 
+    snapshots = fetch_price_board_snapshots_batch(symbols, source=normalized_source)
     results = []
     for symbol in symbols:
-        live = fetch_realtime_price(symbol, source=normalized_source)
+        sym_upper = symbol.strip().upper()
+        live = snapshots.get(sym_upper)
         if live is None:
             logger.debug('fetch_price_board_snapshot: no live data for %s — skipped', symbol)
             continue
@@ -473,6 +554,7 @@ def fetch_price_board_snapshot(symbols: list[str], *, source: str | None = None)
 
     return results
 
+
 def fetch_daily_history(
     symbol: str,
     days: int = 365,
@@ -482,62 +564,80 @@ def fetch_daily_history(
     end_date: dt_date | None = None,
 ) -> list[dict[str, Any]]:
     """
-    Lấy lịch sử giá ngày (OHLCV) cho một symbol qua provider được chỉ định.
+    Lấy lịch sử giá ngày (OHLCV) cho một symbol qua provider được chỉ định (có fallback).
     Trả về list dict chuẩn hoá để ghi vào DailyPrice.
     """
     symbol_upper = symbol.strip().upper()
-    normalized_source = _resolve_daily_history_source(source)
-    if not normalized_source:
+    primary_source = _resolve_daily_history_source(source)
+    if not primary_source:
         return []
+
+    # Build fallback candidates list (primary first, then other allowed sources)
+    sources_to_try = [primary_source]
+    for allowed in _DAILY_HISTORY_ALLOWED_SOURCES:
+        if allowed != primary_source and allowed not in sources_to_try:
+            sources_to_try.append(allowed)
 
     normalized_end_date = end_date or timezone.now().date()
     normalized_days = max(int(days or 1), 1)
     normalized_start_date = start_date or (normalized_end_date - timedelta(days=normalized_days))
     if normalized_start_date > normalized_end_date:
         logger.warning(
-            'fetch_daily_history %s ignored for %s due to invalid date range (%s > %s).',
-            normalized_source,
+            'fetch_daily_history ignored for %s due to invalid date range (%s > %s).',
             symbol_upper,
             normalized_start_date,
             normalized_end_date,
         )
         return []
 
-    try:
-        quote_class = _load_quote_class(normalized_source)
-        quote_client = quote_class(symbol=symbol_upper)
-        df = quote_client.history(
-            start=normalized_start_date.isoformat(),
-            end=normalized_end_date.isoformat(),
-            interval='1D',
-            show_log=False,
-        )
-    except Exception as exc:
-        logger.warning('fetch_daily_history %s failed for %s: %s', normalized_source, symbol_upper, exc)
-        return []
-
-    if df is None or df.empty:
-        return []
-
-    rows: list[dict[str, Any]] = []
-    for _, row in df.iterrows():
+    last_error = None
+    for current_source in sources_to_try:
         try:
-            trade_date = pd.to_datetime(row['time']).date() if not isinstance(row['time'], dt_date) else row['time']
-            rows.append({
-                'symbol': symbol_upper,
-                'date': trade_date,
-                'open': float(row['open']),
-                'high': float(row['high']),
-                'low': float(row['low']),
-                'close': float(row['close']),
-                'volume': int(row['volume']),
-                'source': normalized_source,
-            })
-        except (KeyError, TypeError, ValueError) as exc:
-            logger.debug('Skipping malformed OHLCV row for %s via %s: %s', symbol_upper, normalized_source, exc)
-            continue
+            quote_class = _load_quote_class(current_source)
+            quote_client = quote_class(symbol=symbol_upper)
+            df = quote_client.history(
+                start=normalized_start_date.isoformat(),
+                end=normalized_end_date.isoformat(),
+                interval='1D',
+                show_log=False,
+            )
+            
+            if df is None or df.empty:
+                logger.warning('fetch_daily_history %s returned empty DataFrame for %s (range: %s to %s)',
+                               current_source, symbol_upper, normalized_start_date, normalized_end_date)
+                continue
 
-    return rows
+            rows: list[dict[str, Any]] = []
+            for _, row in df.iterrows():
+                try:
+                    trade_date = pd.to_datetime(row['time']).date() if not isinstance(row['time'], dt_date) else row['time']
+                    rows.append({
+                        'symbol': symbol_upper,
+                        'date': trade_date,
+                        'open': float(row['open']),
+                        'high': float(row['high']),
+                        'low': float(row['low']),
+                        'close': float(row['close']),
+                        'volume': int(row['volume']),
+                        'source': current_source,
+                    })
+                except (KeyError, TypeError, ValueError) as exc:
+                    logger.debug('Skipping malformed OHLCV row for %s via %s: %s', symbol_upper, current_source, exc)
+                    continue
+
+            if rows:
+                if current_source != primary_source:
+                    logger.info('fetch_daily_history primary source %s failed; fallback to %s succeeded for %s',
+                                primary_source, current_source, symbol_upper)
+                return rows
+        except Exception as exc:
+            last_error = exc
+            logger.warning('fetch_daily_history %s failed for %s: %s', current_source, symbol_upper, exc)
+
+    if last_error:
+        logger.warning('fetch_daily_history exhausted all sources for %s. Last error: %s', symbol_upper, last_error)
+    return []
+
 
 def fetch_listing_symbols(*, source: str | None = None) -> list[dict[str, Any]]:
     """
@@ -552,8 +652,31 @@ def fetch_listing_symbols(*, source: str | None = None) -> list[dict[str, Any]]:
     try:
         listing_class = _load_listing_adapter_class()
         listing_client = listing_class(source=normalized_source)
-        listing_rows = _normalize_listing_rows(listing_client.all_symbols(), normalized_source)
+        
+        # Try fetching symbols via symbols_by_exchange('HOSE') first to get populated exchange/type fields
+        try:
+            raw_data = listing_client.symbols_by_exchange('HOSE')
+        except Exception as exchange_exc:
+            logger.info('symbols_by_exchange failed, falling back to all_symbols: %s', exchange_exc)
+            raw_data = listing_client.all_symbols()
+
+        # Try fetching industry mapping if available
+        ind_map = {}
+        try:
+            if hasattr(listing_client, 'symbols_by_industries'):
+                df_ind = listing_client.symbols_by_industries()
+                if df_ind is not None and not df_ind.empty:
+                    ind_map = dict(zip(df_ind['symbol'], df_ind['industry_name']))
+        except Exception as ind_exc:
+            logger.warning('Failed to fetch industry mapping from symbols_by_industries: %s', ind_exc)
+
+        listing_rows = _normalize_listing_rows(raw_data, normalized_source)
         if listing_rows:
+            # Inject industry names from the mapping
+            for row in listing_rows:
+                sym = row['symbol']
+                if ind_map.get(sym):
+                    row['industry'] = ind_map[sym]
             return listing_rows
     except Exception as exc:
         logger.warning('fetch_listing_symbols %s failed: %s', normalized_source, exc)
@@ -604,6 +727,16 @@ def fetch_symbol_group_members(symbol_group_id: str, *, source: str | None = Non
 
     logger.info('Falling back to listing universe slice for %s from %s.', group_id, normalized_source)
     listing_rows = fetch_listing_symbols(source=normalized_source)
+
+    # HNX30 slice fallback: only take HNX symbols and limit to 30
+    if group_id == 'hnx30':
+        hnx_symbols = [
+            row['symbol'] for row in listing_rows
+            if row.get('symbol') and str(row.get('exchange') or '').upper() == 'HNX'
+        ]
+        if hnx_symbols:
+            return hnx_symbols[:30]
+
     # Exchange-based groups: filter by exchange field in listing rows
     if group_id in _EXCHANGE_BASED_GROUPS:
         exchange_upper = group_id.upper()
@@ -818,4 +951,178 @@ def fetch_intraday_tape_history(
             symbol_upper, trade_date_str,
         )
         return []
+
+
+def fetch_company_info(symbol: str, source: str = 'KBS') -> dict:
+    """
+    Fetch company profile details (overview, officers, shareholders, events) from vnbroker.
+    """
+    symbol_upper = symbol.upper()
+    try:
+        from vnbroker import Company
+        company = Company(symbol=symbol_upper, source=source)
+        
+        # 1. overview
+        try:
+            overview_df = company.overview()
+            if overview_df is not None and not overview_df.empty:
+                overview_df = overview_df.loc[:, ~overview_df.columns.duplicated()]
+                overview_df = overview_df.where(pd.notnull(overview_df), None)
+                overview = overview_df.to_dict(orient='records')[0]
+            else:
+                overview = {}
+        except Exception as e:
+            logger.error('Error fetching company overview for %s from vnbroker: %s', symbol_upper, e)
+            overview = {}
+
+        # 2. officers
+        try:
+            officers_df = company.officers()
+            if officers_df is not None and not officers_df.empty:
+                officers_df = officers_df.loc[:, ~officers_df.columns.duplicated()]
+                officers_df = officers_df.where(pd.notnull(officers_df), None)
+                officers = officers_df.to_dict(orient='records')
+            else:
+                officers = []
+        except Exception as e:
+            logger.error('Error fetching company officers for %s from vnbroker: %s', symbol_upper, e)
+            officers = []
+
+        # 3. shareholders
+        try:
+            shareholders_df = company.shareholders()
+            if shareholders_df is not None and not shareholders_df.empty:
+                shareholders_df = shareholders_df.loc[:, ~shareholders_df.columns.duplicated()]
+                shareholders_df = shareholders_df.where(pd.notnull(shareholders_df), None)
+                shareholders = shareholders_df.to_dict(orient='records')
+            else:
+                shareholders = []
+        except Exception as e:
+            logger.error('Error fetching company shareholders for %s from vnbroker: %s', symbol_upper, e)
+            shareholders = []
+
+        # 4. events
+        try:
+            events_df = company.events()
+            if events_df is not None and not events_df.empty:
+                events_df = events_df.loc[:, ~events_df.columns.duplicated()]
+                events_df = events_df.where(pd.notnull(events_df), None)
+                events = events_df.to_dict(orient='records')
+            else:
+                events = []
+        except Exception as e:
+            logger.error('Error fetching company events for %s from vnbroker: %s', symbol_upper, e)
+            events = []
+
+        return {
+            'overview': overview,
+            'officers': officers,
+            'shareholders': shareholders,
+            'events': events,
+        }
+    except Exception as e:
+        logger.error('Failed to fetch company info for %s from vnbroker: %s', symbol_upper, e)
+        return {
+            'overview': {},
+            'officers': [],
+            'shareholders': [],
+            'events': [],
+        }
+
+
+def fetch_company_financials(symbol: str, source: str = 'KBS') -> dict:
+    """
+    Fetch company ratios, income statement, and balance sheet from vnbroker.
+    """
+    symbol_upper = symbol.upper()
+    try:
+        from vnbroker import Finance
+        finance = Finance(symbol=symbol_upper, source=source)
+        
+        # 1. ratios
+        try:
+            ratios_df = finance.ratio(period='quarter')
+            if ratios_df is not None and not ratios_df.empty:
+                ratios_df = ratios_df.loc[:, ~ratios_df.columns.duplicated()]
+                ratios_df = ratios_df.where(pd.notnull(ratios_df), None)
+                ratios = ratios_df.to_dict(orient='records')
+            else:
+                ratios = []
+        except Exception as e:
+            logger.error('Error fetching ratios for %s from vnbroker: %s', symbol_upper, e)
+            ratios = []
+
+        # 2. income statement
+        try:
+            income_df = finance.income_statement(period='quarter')
+            if income_df is not None and not income_df.empty:
+                income_df = income_df.loc[:, ~income_df.columns.duplicated()]
+                income_df = income_df.where(pd.notnull(income_df), None)
+                income = income_df.to_dict(orient='records')
+            else:
+                income = []
+        except Exception as e:
+            logger.error('Error fetching income statement for %s from vnbroker: %s', symbol_upper, e)
+            income = []
+
+        # 3. balance sheet
+        try:
+            balance_df = finance.balance_sheet(period='quarter')
+            if balance_df is not None and not balance_df.empty:
+                balance_df = balance_df.loc[:, ~balance_df.columns.duplicated()]
+                balance_df = balance_df.where(pd.notnull(balance_df), None)
+                balance = balance_df.to_dict(orient='records')
+            else:
+                balance = []
+        except Exception as e:
+            logger.error('Error fetching balance sheet for %s from vnbroker: %s', symbol_upper, e)
+            balance = []
+
+        return {
+            'ratio': ratios,
+            'income_statement': income,
+            'balance_sheet': balance,
+        }
+    except Exception as e:
+        logger.error('Failed to fetch company financials for %s from vnbroker: %s', symbol_upper, e)
+        return {
+            'ratio': [],
+            'income_statement': [],
+            'balance_sheet': [],
+        }
+
+
+def fetch_rss_news(symbol: str) -> list[dict]:
+    """
+    Fetch news for a symbol using Google News RSS search feed.
+    """
+    symbol_upper = symbol.upper()
+    url = f"https://news.google.com/rss/search?q={symbol_upper}&hl=vi&gl=VN&ceid=VN:vi"
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    try:
+        import xml.etree.ElementTree as ET
+        response = httpx.get(url, headers=headers, timeout=10.0)
+        if response.status_code != 200:
+            return []
+        root = ET.fromstring(response.content)
+        news_items = []
+        for item in root.findall(".//item"):
+            title = item.find("title").text if item.find("title") is not None else ""
+            link = item.find("link").text if item.find("link") is not None else ""
+            pub_date = item.find("pubDate").text if item.find("pubDate") is not None else ""
+            # Clean title (remove trailing source name like "- CafeF")
+            clean_title = title.rsplit(" - ", 1)[0] if " - " in title else title
+            news_items.append({
+                'news_id': f"rss:{hash(link)}",
+                'title': clean_title,
+                'summary': '',
+                'url': link,
+                'published_at': pub_date,
+                'source': 'Google News',
+            })
+        return news_items
+    except Exception as e:
+        logger.error('Error fetching Google News RSS for %s: %s', symbol_upper, e)
+        return []
+
 

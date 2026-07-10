@@ -164,6 +164,12 @@ export default function TenantUsage() {
               >
                 {t('tenantUsage.refreshAction')}
               </button>
+              <Link
+                to="/tenant-admin/usage/history"
+                className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition-colors hover:border-emerald-400/60 hover:bg-emerald-500/20"
+              >
+                {t('tenantUsage.historyTab')}
+              </Link>
               {canReadBilling ? (
                 <Link
                   to="/tenant-admin/billing"

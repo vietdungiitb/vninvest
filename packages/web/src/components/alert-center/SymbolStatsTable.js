@@ -1,27 +1,54 @@
 import React from "react";
+const styles = {
+  dashboardPanel: "core-dashboard-panel",
+  sectionTitle: "core-section-title",
+  symbolStatsSearch: "core-symbol-stats-search",
+  searchInput: "searchInput",
+  scrollableContainer: "core-scrollable-container",
+  emptyState: "core-empty",
+  symbolStatsTable: "core-symbol-stats-table",
+  symbolStatsRow: "core-symbol-stats-row",
+  statsSymbolBadge: "core-stats-symbol-badge",
+  countCell: "count-cell",
+  strengthContainer: "core-stats-strength-container",
+  strengthBar: "core-stats-strength-bar",
+  strengthBuy: "core-stats-strength-buy",
+  strengthSell: "core-stats-strength-sell",
+  strengthNeutral: "core-stats-strength-neutral",
+  strengthText: "core-stats-strength-text",
+  directionBuy: "direction-buy",
+  directionSell: "direction-sell",
+  frequencyBadge: "core-stats-frequency-badge",
+  freqExplosive: "freq-explosive",
+  freqHigh: "freq-high",
+  freqMedium: "freq-medium",
+  freqLow: "freq-low",
+  valueCell: "value-cell"
+};
 
 const { createElement } = React;
 const e = createElement;
 
 export function SymbolStatsTable({ paginatedSymbols, searchTermModule2, setSearchTermModule2, formatAlertValue }) {
-  return e("div", { className: "core-dashboard-panel" }, [
-    e("h2", { key: "title", className: "core-section-title", style: { borderLeftColor: "var(--neon-green)" } }, "THỐNG KÊ THEO MÃ CỔ PHIẾU"),
+  return e("div", { className: styles.dashboardPanel }, [
+    e("h2", { key: "title", className: styles.sectionTitle }, "THỐNG KÊ THEO MÃ CỔ PHIẾU"),
     
     // Search in stats panel
-    e("div", { key: "search-box", className: "core-symbol-stats-search" }, [
+    e("div", { key: "search-box", className: styles.symbolStatsSearch }, [
       e("input", {
         type: "text",
         value: searchTermModule2,
         maxLength: 10,
         placeholder: "Tìm nhanh mã (ví dụ: VNM)...",
         onChange: (event) => setSearchTermModule2(event.target.value.toUpperCase()),
+        className: styles.searchInput,
       }),
     ]),
 
-    e("div", { key: "table-container", className: "core-scrollable-container" }, [
+    e("div", { key: "table-container", className: styles.scrollableContainer }, [
       paginatedSymbols.length === 0
-        ? e("p", { key: "empty", className: "core-empty", style: { padding: "20px" } }, "Không có mã thống kê phù hợp.")
-        : e("table", { key: "table", className: "core-symbol-stats-table" }, [
+        ? e("p", { key: "empty", className: styles.emptyState }, "Không có mã thống kê phù hợp.")
+        : e("table", { key: "table", className: styles.symbolStatsTable }, [
             e("thead", { key: "thead" }, e("tr", null, [
               e("th", null, "Mã CP"),
               e("th", null, "Số Alert"),
@@ -34,17 +61,17 @@ export function SymbolStatsTable({ paginatedSymbols, searchTermModule2, setSearc
               const sellPercent = item.count > 0 ? (item.sellCount / item.count) * 100 : 0;
               const neutralPercent = item.count > 0 ? (item.neutralCount / item.count) * 100 : 0;
               
-              let freqClass = "freq-low";
-              if (item.freq === "Bùng nổ") freqClass = "freq-explosive";
-              else if (item.freq === "Cao") freqClass = "freq-high";
-              else if (item.freq === "Trung bình") freqClass = "freq-medium";
+              let freqClass = styles.freqLow;
+              if (item.freq === "Bùng nổ") freqClass = styles.freqExplosive;
+              else if (item.freq === "Cao") freqClass = styles.freqHigh;
+              else if (item.freq === "Trung bình") freqClass = styles.freqMedium;
 
-              return e("tr", { key: item.symbol, className: "core-symbol-stats-row" }, [
+              return e("tr", { key: item.symbol, className: styles.symbolStatsRow }, [
                 // Ticker badge with link
                 e("td", null, 
                   e("a", { 
                     href: `/stocks/${item.symbol}`, 
-                    className: "core-stats-symbol-badge",
+                    className: styles.statsSymbolBadge,
                     title: "Mở Stock workspace chi tiết cho mã này"
                   }, [
                     item.symbol,
@@ -61,27 +88,27 @@ export function SymbolStatsTable({ paginatedSymbols, searchTermModule2, setSearc
                   ])
                 ),
                 // Count of occurrences
-                e("td", { style: { fontWeight: "800", fontFamily: "monospace", fontSize: "0.9rem" } }, `${item.count} lần`),
+                e("td", { className: styles.countCell }, `${item.count} lần`),
                 // Buy/Sell strength bar
                 e("td", null, 
-                  e("div", { className: "core-stats-strength-container" }, [
-                    e("div", { className: "core-stats-strength-bar" }, [
-                      buyPercent > 0 ? e("div", { className: "core-stats-strength-buy", style: { width: `${buyPercent}%` }, title: `Mua: ${item.buyCount} lần` }) : null,
-                      sellPercent > 0 ? e("div", { className: "core-stats-strength-sell", style: { width: `${sellPercent}%` }, title: `Bán: ${item.sellCount} lần` }) : null,
-                      neutralPercent > 0 ? e("div", { className: "core-stats-strength-neutral", style: { width: `${neutralPercent}%` }, title: `Khác: ${item.neutralCount} lần` }) : null,
+                  e("div", { className: styles.strengthContainer }, [
+                    e("div", { className: styles.strengthBar }, [
+                      buyPercent > 0 ? e("div", { className: styles.strengthBuy, style: { width: `${buyPercent}%` }, title: `Mua: ${item.buyCount} lần` }) : null,
+                      sellPercent > 0 ? e("div", { className: styles.strengthSell, style: { width: `${sellPercent}%` }, title: `Bán: ${item.sellCount} lần` }) : null,
+                      neutralPercent > 0 ? e("div", { className: styles.strengthNeutral, style: { width: `${neutralPercent}%` }, title: `Khác: ${item.neutralCount} lần` }) : null,
                     ]),
-                    e("div", { className: "core-stats-strength-text" }, [
-                      e("span", { className: "direction-buy" }, `B:${item.buyCount}`),
-                      e("span", { className: "direction-sell" }, `S:${item.sellCount}`),
+                    e("div", { className: styles.strengthText }, [
+                      e("span", { className: styles.directionBuy }, `B:${item.buyCount}`),
+                      e("span", { className: styles.directionSell }, `S:${item.sellCount}`),
                     ])
                   ])
                 ),
                 // Frequency level
                 e("td", null, 
-                  e("span", { className: `core-stats-frequency-badge ${freqClass}` }, item.freq)
+                  e("span", { className: `${styles.frequencyBadge} ${freqClass}` }, item.freq)
                 ),
                 // Matched Value
-                e("td", { style: { fontFamily: "monospace", color: "var(--neon-blue)", fontWeight: "600" } }, 
+                e("td", { className: styles.valueCell }, 
                   `${formatAlertValue(item.totalValue)}`
                 ),
               ]);

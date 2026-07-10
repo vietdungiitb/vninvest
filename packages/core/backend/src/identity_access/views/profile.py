@@ -4,7 +4,8 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.response import Response
 
 from ..authentication import CorePATAuthentication
-from ..models import CoreTenant
+from ..models import CorePATCredential, CoreTenant
+from django.utils import timezone
 from ..permissions import require_human_session
 from .helpers import (
     TENANT_PERMISSION_CLASSES,
@@ -51,10 +52,20 @@ def profile_view(request):
             'status': subscription.status,
         }
 
+    from django.db.models import Q
+    user_tenants = CoreTenant.objects.filter(Q(owner_user=user) | Q(members__user=user)).distinct()
+
+    active_pat_count = CorePATCredential.objects.filter(
+        service_account__tenant=tenant,
+        status=CorePATCredential.StatusChoices.ACTIVE,
+        expires_at__gt=timezone.now(),
+    ).count()
+
     return Response(
         {
             **_user_payload(user),
             'plan': tenant.plan,
+            'active_pat_count': active_pat_count,
             'abilities': capabilities['abilities'],
             'entitlements': capabilities['entitlements'],
             'capabilities': capabilities,
@@ -63,6 +74,7 @@ def profile_view(request):
                 **_tenant_payload(tenant),
                 'created_at': tenant.created_at.isoformat() if hasattr(tenant, 'created_at') else None,
             },
+            'tenants': [_tenant_payload(t) for t in user_tenants],
             'subscription': subscription_payload,
         }
     )

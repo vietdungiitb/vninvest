@@ -36,13 +36,24 @@ jest.unstable_mockModule("react", () => {
       return mockRefCurrent[refKey];
     },
     useCallback: (fn) => fn,
+    useMemo: (fn) => fn(),
+    createContext: (initialVal) => {
+      return {
+        Provider: ({ value, children }) => children,
+        Consumer: ({ children }) => children(initialVal),
+        _currentValue: initialVal,
+      };
+    },
+    useContext: (context) => {
+      return context?._currentValue;
+    },
     createElement: () => ({}),
   };
 });
 
 // Import modules
 const { useCoreDashboardData } = await import("../useCoreDashboardData.js");
-const { collectUniqueSortedSymbols } = await import("../../../pages/DashboardPage.js");
+const { collectUniqueSortedSymbols } = await import("../../../utils/dashboardSymbols.js");
 const { coreApiAdapter } = await import("../../../adapters/coreApiAdapter.js");
 
 describe("SaaS Native Dashboard Lifecycle Tests", () => {

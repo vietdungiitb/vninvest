@@ -1,0 +1,363 @@
+@import "tailwindcss";
+@import 'tailwind-sidebar/styles.css';
+@import 'simplebar/dist/simplebar.min.css';
+
+@theme {
+  /* VNInvest Color Palette - Dark Mode Default */
+  --color-primary-50: #ecfeff;
+  --color-primary-100: #cffafe;
+  --color-primary-200: #a5f3fc;
+  --color-primary-300: #67e8f9;
+  --color-primary-400: #06b6d4;
+  --color-primary-500: #0891b2;
+  --color-primary-600: #0e7490;
+  --color-primary-700: #155e75;
+  --color-primary-800: #164e63;
+  --color-primary-900: #164e63;
+  --color-primary-950: #083344;
+
+  /* Slate for backgrounds */
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+  --color-slate-950: #020617;
+
+  /* Semantic colors */
+  --color-success-400: #34d399;
+  --color-success-500: #10b981;
+  --color-warning-400: #fbbf24;
+  --color-warning-500: #f59e0b;
+  --color-danger-400: #f87171;
+  --color-danger-500: #ef4444;
+  --color-info-400: #60a5fa;
+  --color-info-500: #3b82f6;
+
+  /* VNInvest specific semantic colors */
+  --color-bg-primary: #020617;
+  --color-bg-secondary: #0f172a;
+  --color-bg-tertiary: #1e293b;
+  --color-bg-panel: #0f172a;
+  --color-bg-panel-hover: #1e293b;
+  --color-bg-input: #0f172a;
+  --color-bg-input-hover: #1e293b;
+
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  --color-text-inverse: #020617;
+
+  --color-border-primary: #1e293b;
+  --color-border-secondary: #334155;
+  --color-border-focus: #06b6d4;
+  --color-border-error: #ef4444;
+
+  --color-accent-primary: #06b6d4;
+  --color-accent-secondary: #0891b2;
+  --color-accent-hover: #67e8f9;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+
+  /* Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-full: 9999px;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Layout */
+  --layout-header-height: 4.5rem;
+  --layout-sidebar-width: 18rem;
+  --layout-sidebar-collapsed-width: 4rem;
+  --layout-sidebar-mobile-width: 18rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border-primary);
+  }
+
+  html {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  body {
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Focus visible styles */
+  *:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+
+  /* Scrollbar styles */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-bg-secondary);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-secondary);
+    border-radius: var(--radius-full);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
+  }
+
+  /* Selection */
+  ::selection {
+    background-color: var(--color-accent-primary);
+    color: var(--color-text-inverse);
+  }
+}
+
+@layer utilities {
+  /* Text utilities */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Animation utilities */
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .animate-slide-in-right {
+    animation: slideInRight 0.3s ease-out;
+  }
+
+  .animate-slide-in-left {
+    animation: slideInLeft 0.3s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideInRight {
+    from { opacity: 0; transform: translateX(10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  /* Live dot pulse animation */
+  .live-dot-pulse {
+    animation: liveDotPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes liveDotPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+  }
+
+  /* Sidebar sticky header */
+  .sidebar-sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--color-bg-secondary);
+    backdrop-filter: blur(8px);
+  }
+
+  /* Glass morphism */
+  .glass {
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--color-border-primary);
+  }
+
+  .glass-strong {
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--color-border-secondary);
+  }
+
+  /* ==========================================================================
+     BENTO BOX LAYOUT - Commercial Grade Dashboard Styles
+     ========================================================================== */
+
+  /* Bento Card wrapper for triad panels (Alert Lane, Heatmap, AI Advisor) */
+  .dashboard-triad-lane {
+    background-color: rgba(30, 41, 59, 0.4); /* bg-slate-900/40 */
+    border: 1px solid rgba(51, 65, 85, 0.6); /* border-slate-800/60 */
+    border-radius: 1rem; /* rounded-2xl */
+    padding: 1.25rem; /* p-5 */
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.1); /* shadow-lg */
+    height: 580px;
+    min-width: 0;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Bento Card for full-width deck */
+  .dashboard-full-width-deck {
+    background-color: rgba(30, 41, 59, 0.4);
+    border: 1px solid rgba(51, 65, 85, 0.6);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    min-height: 400px;
+    min-width: 0;
+    overflow: auto;
+  }
+
+  /* Grid layout for triad */
+  .dashboard-triad-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 1fr;
+    gap: 1rem; /* gap-4 */
+    height: 580px;
+    min-width: 0;
+  }
+
+  /* Stats header slot */
+  .core-dashboard-slot--stats {
+    margin-bottom: 1rem; /* mb-4 */
+  }
+
+  /* Triad slot */
+  .core-dashboard-slot--triad {
+    margin-bottom: 1rem; /* mb-4 */
+  }
+
+  /* Deck slot */
+  .core-dashboard-slot--deck {
+    /* Full width deck */
+  }
+
+  /* Heatmap slot — tighter padding (top stays 1.25rem for header alignment) */
+  div.core-dashboard-slot--heatmap {
+    padding: 1.25rem 0.5rem 0.5rem 0.5rem;
+  }
+
+  /* ECharts Tooltip Dark Mode Override */
+  .echarts-tooltip-dark {
+    background-color: rgba(15, 23, 42, 0.95) !important; /* bg-slate-900/95 */
+    border: 1px solid rgba(51, 65, 85, 0.8) !important; /* border-slate-800/80 */
+    border-radius: 0.75rem !important; /* rounded-xl */
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4) !important; /* shadow-lg */
+    color: #f1f5f9 !important; /* text-slate-100 */
+    font-size: 0.75rem !important; /* text-xs */
+    padding: 0.75rem 1rem !important; /* p-3 px-4 */
+  }
+
+  .echarts-tooltip-dark .echarts-tooltip-title {
+    color: #06b6d4 !important; /* text-cyan-400 */
+    font-weight: 700 !important;
+    margin-bottom: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.5) !important;
+  }
+
+  .echarts-tooltip-dark .echarts-tooltip-content {
+    color: #e2e8f0 !important; /* text-slate-200 */
+    line-height: 1.6 !important;
+  }
+
+  .echarts-tooltip-dark .echarts-tooltip-content span {
+    color: #94a3b8 !important; /* text-slate-400 */
+  }
+
+  .echarts-tooltip-dark .echarts-tooltip-content strong {
+    color: #f1f5f9 !important; /* text-slate-100 */
+  }
+
+  /* Muted Treemap Colors - Professional Palette */
+  :root {
+    --heat-up-strong: #10b981; /* emerald-500 */
+    --heat-up-soft: #34d399; /* emerald-400 */
+    --heat-down-strong: #ef4444; /* red-500 */
+    --heat-down-soft: #f87171; /* red-400 */
+    --heat-neutral: #f59e0b; /* amber-500 */
+  }
+
+  /* Scrollbar for panels */
+  .panel-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(51, 65, 85, 0.6) transparent;
+  }
+
+  .panel-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .panel-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .panel-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(51, 65, 85, 0.6);
+    border-radius: 3px;
+  }
+
+  .panel-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(51, 65, 85, 0.9);
+  }
+
+  /* Card hover effects */
+  .bento-card-hover {
+    transition: all 0.2s ease-out;
+  }
+
+  .bento-card-hover:hover {
+    border-color: rgba(6, 182, 212, 0.4); /* border-cyan-400/40 */
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.1); /* shadow-xl */
+  }
+
+  /* Focus visible for interactive elements */
+  .focus-visible-ring:focus-visible {
+    outline: none;
+    ring: 2px;
+    ring-color: var(--color-accent-primary);
+    ring-offset: 2px;
+    ring-offset-color: var(--color-bg-primary);
+  }
+}

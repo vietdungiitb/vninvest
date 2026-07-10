@@ -25,7 +25,7 @@ class OnboardingRegisterTenantTest(TestCase):
             password='test_password',
             is_active=True,
         )
-        self.url = '/api/core/v1/onboarding/register'
+        self.url = '/core/v1/onboarding/register'
 
     def test_register_tenant_success_creates_trial(self):
         """Test: User creates tenant → status=trial, trial_ends_at=now+14d, 201."""

@@ -125,6 +125,7 @@ class VnbrokerRuntimeConfig(models.Model):
     class Meta:
         verbose_name = 'Cấu hình vnbroker runtime'
         verbose_name_plural = 'Cấu hình vnbroker runtime'
+        db_table = 'market_data_vnstockruntimeconfig'
 
     def __str__(self) -> str:
         active_flag = ' [ACTIVE]' if self.is_active else ''

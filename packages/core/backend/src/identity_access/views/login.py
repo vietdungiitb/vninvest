@@ -7,6 +7,7 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 
 from ..authentication import CorePATAuthentication
 from ..models import CorePATCredential, CoreServiceAccount, CoreTenant
+from ..security_utils import LoginRecorder
 from vninvest_core.exceptions import (
     ValidationErrorException,
     AuthenticationErrorException,
@@ -74,6 +75,7 @@ def login_view(request):
     ip_count = cache.get(ip_key, 0)
     ip_limit = getattr(django_settings, 'LOGIN_IP_LIMIT_THRESHOLD', 5)
     if ip_count >= ip_limit:
+        LoginRecorder.record_login(request, user=None, tenant=None, success=False, failure_reason='rate_limit_ip')
         raise RateLimitErrorException(
             detail='Quá nhiều yêu cầu đăng nhập từ địa chỉ IP này. Vui lòng thử lại sau 1 phút.',
             code='login_rate_limit_exceeded',
@@ -84,6 +86,7 @@ def login_view(request):
     subnet_count = cache.get(subnet_key, 0)
     subnet_limit = getattr(django_settings, 'LOGIN_SUBNET_LIMIT_THRESHOLD', 15)
     if subnet_count >= subnet_limit:
+        LoginRecorder.record_login(request, user=None, tenant=None, success=False, failure_reason='rate_limit_subnet')
         raise RateLimitErrorException(
             detail='Quá nhiều yêu cầu đăng nhập từ mạng này. Vui lòng thử lại sau 1 phút.',
             code='login_rate_limit_exceeded',
@@ -94,6 +97,7 @@ def login_view(request):
     user_count = cache.get(user_key, 0)
     user_limit = getattr(django_settings, 'LOGIN_USER_LIMIT_THRESHOLD', 3)
     if user_count >= user_limit:
+        LoginRecorder.record_login(request, user=None, tenant=None, success=False, failure_reason='rate_limit_user')
         raise RateLimitErrorException(
             detail='Quá nhiều yêu cầu đăng nhập cho tài khoản này. Vui lòng thử lại sau 1 phút.',
             code='login_rate_limit_exceeded',
@@ -119,6 +123,7 @@ def login_view(request):
     # 5. Authenticate credentials
     user = authenticate(request, username=auth_username, password=password)
     if user is None:
+        LoginRecorder.record_login(request, user=None, tenant=None, success=False, failure_reason='invalid_credentials')
         raise AuthenticationErrorException(
             detail='Tên đăng nhập hoặc mật khẩu không chính xác.',
             code='invalid_credentials',
@@ -128,13 +133,20 @@ def login_view(request):
     try:
         tenant = user.core_tenant
     except CoreTenant.DoesNotExist:
-        raise PermissionErrorException(
-            detail='Không tìm thấy Workspace/Tenant liên kết với tài khoản này.',
-            code='tenant_not_found',
-        )
+        from ..models import TenantMember
+        member = TenantMember.objects.filter(user=user).select_related('tenant').first()
+        if member:
+            tenant = member.tenant
+        else:
+            LoginRecorder.record_login(request, user=user, tenant=None, success=False, failure_reason='tenant_not_found')
+            raise PermissionErrorException(
+                detail='Không tìm thấy Workspace/Tenant liên kết với tài khoản này.',
+                code='tenant_not_found',
+            )
 
     service_account = tenant.service_accounts.filter(status='active').first()
     if service_account is None:
+        LoginRecorder.record_login(request, user=user, tenant=tenant, success=False, failure_reason='sa_inactive')
         raise PermissionErrorException(
             detail='Tài khoản chưa có Service Account hoạt động.',
             code='service_account_inactive',
@@ -151,6 +163,7 @@ def login_view(request):
     )
 
     auth_payload = _build_auth_payload(user, tenant, service_account, credential, raw_secret)
+    LoginRecorder.record_login(request, user=user, tenant=tenant, success=True)
     return success_response(auth_payload, status.HTTP_200_OK, request=request)
 
 

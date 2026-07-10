@@ -25,7 +25,7 @@ services:
     ports:
       # Expose port 5432 từ core-db cho backend local (hybrid mode) hoặc stack khác connect được.
       # C≤ th? set DEV_BIND_HOST=0.0.0.0 khi c?n cross-stack qua host.docker.internal.
-      - "${DEV_BIND_HOST:-127.0.0.1}:5432:5432"
+      - "${DEV_BIND_HOST:-127.0.0.1}:5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U vninvest -d vninvest_core"]
       interval: 10s
@@ -42,7 +42,7 @@ services:
     command: ["redis-server", "--appendonly", "yes"]
     ports:
       # Expose Redis cho backend local (hybrid mode), admin stats, ho?c stack khßc.
-      - "${DEV_BIND_HOST:-127.0.0.1}:6379:6379"
+      - "${DEV_BIND_HOST:-127.0.0.1}:6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -50,7 +50,7 @@ services:
       retries: 5
     networks:
       - vninvest_network
-    mem_limit: ${REDIS_MEM_LIMIT:-512m}
+    mem_limit: ${CORE_REDIS_MEM_LIMIT:-512m}
     cpus: ${REDIS_CPUS:-0.75}
 
   mailpit:
@@ -70,11 +70,16 @@ services:
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "*"
+      CORS_API_DYNAMIC_ALLOW: "true"
       VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:-devpassword}@core-db:5432/vninvest_core
       REDIS_URL: redis://core-redis:6379/3
       CELERY_BROKER_URL: redis://core-redis:6379/3
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:-bhVAxIWMEP0forZ4OatG_UemXTulVgWdcRveIXDe2Io=}
+      DNSE_API_KEY: ${DNSE_API_KEY:-}
+      DNSE_API_SECRET: ${DNSE_API_SECRET:-}
+      LEGACY_BACKEND_URL: http://backend:8000
+
     command: ["api"]
     restart: unless-stopped
     healthcheck:
@@ -82,9 +87,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 600s
+      start_period: 120s
     ports:
-      - "0.0.0.0:8001:8100"
+      - "127.0.0.1:8001:8100"
     networks:
       - vninvest_network
     mem_limit: ${CORE_API_MEM_LIMIT:-1g}
@@ -109,6 +114,8 @@ services:
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:-devpassword}@core-db:5432/vninvest_core
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:-bhVAxIWMEP0forZ4OatG_UemXTulVgWdcRveIXDe2Io=}
+      DNSE_API_KEY: ${DNSE_API_KEY:-}
+      DNSE_API_SECRET: ${DNSE_API_SECRET:-}
     command: ["worker"]
     restart: unless-stopped
     depends_on:
@@ -116,8 +123,8 @@ services:
         condition: service_healthy
     networks:
       - vninvest_network
-    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
-    cpus: ${CORE_WORKER_CPUS:-0.25}
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-512m}
+    cpus: ${CORE_WORKER_CPUS:-0.50}
 
   queue-drain-monitor:
     container_name: vninvest-dev-queue-drain-monitor
@@ -183,6 +190,8 @@ services:
       CELERY_POOL: solo
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:-devpassword}@core-db:5432/vninvest_core
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
+      DNSE_API_KEY: ${DNSE_API_KEY:-}
+      DNSE_API_SECRET: ${DNSE_API_SECRET:-}
     command: ["worker"]
     restart: unless-stopped
     depends_on:
@@ -190,7 +199,7 @@ services:
         condition: service_healthy
     networks:
       - vninvest_network
-    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-512m}
     cpus: ${CORE_WORKER_CPUS:-0.25}
 
   core-worker-analytics:
@@ -218,7 +227,7 @@ services:
         condition: service_healthy
     networks:
       - vninvest_network
-    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-512m}
     cpus: ${CORE_WORKER_CPUS:-0.25}
 
   core-worker-realtime-stream:
@@ -235,7 +244,8 @@ services:
       REDIS_URL: redis://core-redis:6379/3
       CELERY_BROKER_URL: redis://core-redis:6379/3
       CELERY_QUEUES: realtime_stream
-      CELERY_CONCURRENCY: "4"
+      CELERY_CONCURRENCY: "1"
+      CELERY_POOL: solo
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:-devpassword}@core-db:5432/vninvest_core
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
     command: ["worker"]
@@ -245,7 +255,7 @@ services:
         condition: service_healthy
     networks:
       - vninvest_network
-    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-512m}
     cpus: ${CORE_WORKER_CPUS:-0.25}
 
   core-worker-enrichment:
@@ -276,7 +286,7 @@ services:
         condition: service_healthy
     networks:
       - vninvest_network
-    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-512m}
     cpus: ${CORE_WORKER_CPUS:-0.25}
 
   core-worker-manual:
@@ -338,120 +348,22 @@ services:
     mem_limit: ${CORE_BEAT_MEM_LIMIT:-128m}
     cpus: ${CORE_BEAT_CPUS:-0.25}
 
-  # SFI-B1: Legacy backend hidden behind core-api proxy.
-  # No ports exposed to the host. Single entry point is now core-api.
-  # C7: DECOMMISSIONED — backend:8000 and backend-worker no longer needed
-  # All realtime/stock-mgmt/portfolio routes now served natively by core-api:8100
-  # Keeping commented services as reference; delete after verification cutover.
-  #
-  # backend:
-  #   container_name: vninvest-dev-backend-legacy
-  #   image: python:3.11-slim
-  #   working_dir: /app
-  #   volumes:
-  #     - ./backend:/app
-  #   environment:
-  #     DJANGO_SETTINGS_MODULE: config.settings
-  #     DJANGO_DEBUG: "true"
-  #     DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-django-secret-key}
-  #     DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,10.0.2.2,testserver,backend}
-  #     VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
-  #     DB_ENGINE: postgres
-  #     POSTGRES_DB: vninvest
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: devpassword
-  #     POSTGRES_HOST: db
-  #     POSTGRES_PORT: "5432"
-  #     REDIS_URL: redis://redis:6379/1
-  #     CELERY_BROKER_URL: redis://redis:6379/1
-  #     CACHE_REDIS_URL: redis://redis:6379/2
-  #   entrypoint: []
-  #   command:
-  #     - sh
-  #     - -c
-  #     - >-
-  #       apt-get update && apt-get install -y git &&
-  #       pip install -r requirements.txt -q &&
-  #       python manage.py migrate --noinput &&
-  #       python manage.py runserver 0.0.0.0:8000
-  #   restart: unless-stopped
-  #   networks:
-  #     - vninvest_network
-  #   mem_limit: 512m
-  #   cpus: 0.5
-
-  # # Realtime prefetch worker for market data ingest
-  # # Executes legacy backend tasks (schedule_realtime_prefetch_shards, offpeak_vnbroker_ingest)
-  # # Syncs ticker data to Redis cache (ticker:{symbol}) and TickerSessionClose table
-  # backend-worker:
-  #   container_name: vninvest-dev-backend-worker
-  #   image: python:3.11-slim
-  #   working_dir: /app
-  #   volumes:
-  #     - ./backend:/app
-  #   environment:
-  #     DJANGO_SETTINGS_MODULE: config.settings
-  #     DJANGO_DEBUG: "true"
-  #     DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-django-secret-key}
-  #     VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
-  #     DB_ENGINE: postgres
-  #     POSTGRES_DB: vninvest
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: devpassword
-  #     POSTGRES_HOST: db
-  #     POSTGRES_PORT: "5432"
-  #     REDIS_URL: redis://redis:6379/1
-  #     CELERY_BROKER_URL: redis://redis:6379/1
-  #     CACHE_REDIS_URL: redis://redis:6379/2
-  #     # Realtime prefetch config
-  #     REALTIME_PREFETCH_ENABLED: "true"
-  #     REALTIME_PREFETCH_INTERVAL_SECONDS: "3"
-  #     OFFPEAK_VNBROKER_INGEST_ENABLED: "true"
-  #     # vnbroker runtime settings
-  #     VNBROKER_PROVIDER_CACHE_ENABLED: "true"
-  #     VNBROKER_CLIENT_CACHE_ENABLED: "true"
-  #   entrypoint: []
-  #   command:
-  #     - sh
-  #     - -c
-  #     - >-
-  #       apt-get update && apt-get install -y git &&
-  #       pip install -r requirements.txt -q &&
-  #       python -m celery -A config worker --loglevel=INFO --concurrency=2 --queues=celery,realtime_prefetch --without-heartbeat --without-gossip --without-mingle --max-tasks-per-child=100
-  #   restart: unless-stopped
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   networks:
-  #     - vninvest_network
-  #   mem_limit: 512m
-  #   cpus: 0.5
-
-  # SFI-B8: Legacy worker/beat services removed from dev stack.
-  # Runtime is SaaS-core only (core-api/core-workers/core-beat).
-
   frontend:
     container_name: vninvest-dev-frontend
     image: vninvest-dev-frontend:latest
     build:
-      context: .
-      dockerfile: frontend/Dockerfile.dev-package-shell
-      secrets:
-        - vnbroker_github_token
+      context: packages/web/
+      dockerfile: Dockerfile
       args:
-        REACT_APP_API_BASE_URL: /api
-        REACT_APP_AI_ADVISORY_PATH: /ai-advisory
-        REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "0"
-        REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: /core/v1
+        VITE_API_URL: /api
         STOCKCHART_REF: ${STOCKCHART_REF:-dev}
+        GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN}
     depends_on: !override
       # SFI-B1.6: frontend depends only on core-api (single entry point); backend is internal.
       core-api:
         condition: service_healthy
     ports:
-      - "${FRONTEND_PORT:-80}:80"
+      - "${FRONTEND_PORT:-8080}:80"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks: !override
@@ -461,11 +373,15 @@ services:
     cpus: ${FRONTEND_CPUS:-0.5}
 
 
+volumes:
+  core_pgdata:
+    name: vninvest-dev_core_pgdata
+
 networks:
   vninvest_network:
     name: vninvest-dev_vninvest_network
     driver: bridge
 
 secrets:
-  vnbroker_github_token:
+  vnbroker_github_token: !override
     environment: VNBROKER_GITHUB_TOKEN

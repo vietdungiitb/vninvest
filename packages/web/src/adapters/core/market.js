@@ -6,6 +6,18 @@
 
 export function createMarketClient({ coreGet, corePost }) {
   return {
+    getRealtimeTickers(symbols) {
+      if (!symbols || symbols.length === 0) return Promise.resolve({ data: {} });
+      const symbolList = Array.isArray(symbols) ? symbols : [symbols];
+      const q = symbolList.map((s) => encodeURIComponent(String(s).toUpperCase())).join(",");
+      return coreGet(`/realtime/tickers/?symbols=${q}`).then((data) => ({ data }));
+    },
+
+    getRealtimeTicker(symbol) {
+      if (!symbol) throw new Error("symbol is required for getRealtimeTicker");
+      return coreGet(`/realtime/tickers/?symbols=${encodeURIComponent(symbol.toUpperCase())}`).then((data) => ({ data }));
+    },
+
     /**
      * Get the latest SymbolSnapshot for a given symbol.
      * @param {string} symbol - Stock ticker (e.g. 'VCI')
@@ -212,7 +224,17 @@ ext`/`previous` links.
      */
     getStockProfile(symbol) {
       if (!symbol) throw new Error("symbol is required for getStockProfile");
-      return coreGet(`/market-data/symbols/${encodeURIComponent(symbol.toUpperCase())}/`);
+      return coreGet(`/stock-management/stocks/${encodeURIComponent(symbol.toUpperCase())}/`);
+    },
+
+    /**
+     * Get stock overview (SSI iBoard details) for a symbol.
+     * @param {string} symbol
+     * @returns {Promise<object>}
+     */
+    getStockOverview(symbol) {
+      if (!symbol) throw new Error("symbol is required for getStockOverview");
+      return coreGet(`/stock-management/stocks/${encodeURIComponent(symbol.toUpperCase())}/overview/`);
     },
 
     /**
@@ -334,6 +356,47 @@ ext`/`previous` links.
     },
 
     /**
+     * Get realtime order book depth (Market Depth) for a symbol.
+     * Calls the native core route /core/v1/realtime/depth-chart/{symbol}/.
+     * @param {string} symbol
+     * @returns {Promise<object>}
+     */
+    getRealtimeDepthChart(symbol) {
+      if (!symbol) throw new Error("symbol is required for getRealtimeDepthChart");
+      return coreGet(`/realtime/depth-chart/${encodeURIComponent(String(symbol).toUpperCase())}/`);
+    },
+
+    /**
+     * Get realtime intraday trades (Trade Log) for a symbol.
+     * Calls the native core route /core/v1/realtime/intraday/{symbol}/.
+     * @param {string} symbol
+     * @param {object} [params] - page_size, etc.
+     * @returns {Promise<object>}
+     */
+    getRealtimeIntraday(symbol, params = {}) {
+      if (!symbol) throw new Error("symbol is required for getRealtimeIntraday");
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+      ).toString();
+      return coreGet(`/realtime/intraday/${encodeURIComponent(String(symbol).toUpperCase())}/${query ? `?${query}` : ""}`);
+    },
+
+    /**
+     * Get whale feed aggregate for a symbol.
+     * Calls the native core route /core/v1/realtime/whale-feed-aggregate/{symbol}/.
+     * @param {string} symbol
+     * @param {object} [params] - session_date, limit, sort, window
+     * @returns {Promise<object>}
+     */
+    getWhaleFeedAggregate(symbol, params = {}) {
+      if (!symbol) throw new Error("symbol is required for getWhaleFeedAggregate");
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+      ).toString();
+      return coreGet(`/realtime/whale-feed-aggregate/${encodeURIComponent(String(symbol).toUpperCase())}/${query ? `?${query}` : ""}`);
+    },
+
+    /**
      * Get watchlist-backed market groups used for symbol universe construction.
      * Keeps the legacy method name so existing callers can migrate without churn.
      * @returns {Promise<{results: object[]}>}
@@ -357,11 +420,15 @@ ext`/`previous` links.
     /**
      * Request an advisory refresh/generation for a symbol.
      * @param {string} symbol
+     * @param {object} [promptConfig] - Optional client prompt config configuration.
      * @returns {Promise<object>}
      */
-    refreshAdvisory(symbol) {
+    refreshAdvisory(symbol, promptConfig) {
       if (!symbol) throw new Error("symbol is required for refreshAdvisory");
-      return corePost(`/advisory/refresh/${encodeURIComponent(symbol.toUpperCase())}/`);
+      return corePost(
+        `/advisory/refresh/${encodeURIComponent(symbol.toUpperCase())}/`,
+        promptConfig ? { prompt_config: promptConfig } : {}
+      );
     },
 
     /**
@@ -404,6 +471,79 @@ ext`/`previous` links.
     getStockFinancials(symbol) {
       if (!symbol) throw new Error("symbol is required for getStockFinancials");
       return coreGet(`/stock-management/stocks/${encodeURIComponent(symbol.toUpperCase())}/financials/`);
+    },
+
+    /**
+     * Trigger admin market groups sync.
+     * POST /core/v1/market-data/admin-groups/sync/
+     * @param {string} [mode] - 'active' (default) or 'all'
+     * @returns {Promise<object>}
+     */
+    syncAdminMarketGroups(mode = "active") {
+      return corePost(`/market-data/admin-groups/sync/`, { mode });
+    },
+
+    /**
+     * Get market groups sync task status.
+     * GET /core/v1/data-ingest/task-status/{taskId}/
+     * @param {string} taskId
+     * @returns {Promise<object>}
+     */
+    getMarketGroupsSyncStatus(taskId) {
+      if (!taskId) throw new Error("taskId is required for getMarketGroupsSyncStatus");
+      return coreGet(`/data-ingest/task-status/${encodeURIComponent(taskId)}/`);
+    },
+
+    /**
+     * Preview admin market groups sync (dry run).
+     * GET /core/v1/market-data/admin-groups/preview/
+     * @returns {Promise<object>}
+     */
+    previewAdminMarketGroups() {
+      return coreGet(`/market-data/admin-groups/preview/`);
+    },
+
+    /**
+     * Seed system default groups (VN30, VN100).
+     * POST /core/v1/market-data/system-defaults/seed/
+     * @returns {Promise<object>}
+     */
+    seedSystemDefaults() {
+      return corePost(`/market-data/system-defaults/seed/`);
+    },
+
+    /**
+     * Get whale campaigns aggregate feed.
+     * @param {object} [params] - symbols, watchlistGroupIds, window, campaignLimit, campaignSort, campaignGapMinutes, cursor
+     * @returns {Promise<{results: object[], next: string|null}>}
+     */
+    getWhaleCampaigns(params = {}) {
+      const query = new URLSearchParams();
+      if (Array.isArray(params.symbols) && params.symbols.length > 0) {
+        query.set("symbols", params.symbols.join(","));
+      }
+      if (Array.isArray(params.watchlistGroupIds) && params.watchlistGroupIds.length > 0) {
+        query.set("watchlist_group_ids", params.watchlistGroupIds.join(","));
+      }
+      if (params.window) query.set("window", params.window);
+      if (params.campaignLimit) query.set("campaign_limit", String(params.campaignLimit));
+      if (params.campaignSort) query.set("campaign_sort", params.campaignSort);
+      if (Number.isFinite(Number(params.campaignGapMinutes))) {
+        query.set("campaign_gap_minutes", String(params.campaignGapMinutes));
+      }
+      if (params.cursor) query.set("cursor", params.cursor);
+      const qs = query.toString();
+      return coreGet(`/realtime/whale-campaigns/${qs ? `?${qs}` : ""}`);
+    },
+
+    /**
+     * Get raw whale feed for a symbol (non-aggregate).
+     * @param {string} symbol
+     * @returns {Promise<object>}
+     */
+    getWhaleFeed(symbol) {
+      if (!symbol) throw new Error("symbol is required for getWhaleFeed");
+      return coreGet(`/realtime/whale-feed/${encodeURIComponent(symbol.toUpperCase())}/`);
     },
   };
 }

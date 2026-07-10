@@ -5,6 +5,7 @@ Uses environment variables for all secrets/infrastructure.
 Default DATABASE_URL uses SQLite for local testing convenience.
 """
 import os
+import sys
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
@@ -50,6 +51,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'drf_spectacular',
+    'drf_spectacular_sidecar',
     'corsheaders',
     'django_celery_beat',
     # SFI-B7: WebSocket support
@@ -66,6 +68,10 @@ INSTALLED_APPS = [
     'user_workspace',
     'market_data',
     'service_ops',
+    'support',
+    'advertising',
+    'ai_agents',
+    'ai_analytics',
 ]
 
 MIDDLEWARE = [
@@ -76,6 +82,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'identity_access.middleware.TenantResolutionMiddleware',
     'identity_access.middleware.TenantQuotaMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
 ]
@@ -115,6 +122,9 @@ DATABASES = {
         'CONN_MAX_AGE': int(os.environ.get('CORE_DB_CONN_MAX_AGE', '60')),
     },
 }
+
+# SFI-B1.4: Legacy backend URL — core-api transparent proxy forwards unmatched /api/* here.
+LEGACY_BACKEND_URL = os.environ.get('LEGACY_BACKEND_URL', 'http://backend:8000')
 
 # Legacy read-only connection for materializers (cutover period).
 # Set LEGACY_DATABASE_URL in env; if absent, materializers run in degraded/skip mode.
@@ -161,6 +171,19 @@ STRICT_TURNSTILE_ENFORCEMENT = os.environ.get('STRICT_TURNSTILE_ENFORCEMENT', st
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 OPENAI_DEFAULT_MODEL = os.environ.get('OPENAI_DEFAULT_MODEL', 'gpt-4o-mini')
 ADVISORY_TOKEN_BUDGET = int(os.environ.get('ADVISORY_TOKEN_BUDGET', '2000'))
+AI_FALLBACK_DAILY_QUOTA = int(os.environ.get('AI_FALLBACK_DAILY_QUOTA', '5'))
+
+# Stripe Billing Integration
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
+
+# Stripe Price IDs mapping (plan_code -> Stripe Price ID)
+STRIPE_PRICE_IDS = {
+    'starter': os.environ.get('STRIPE_PRICE_ID_STARTER', ''),
+    'pro': os.environ.get('STRIPE_PRICE_ID_PRO', ''),
+    'enterprise': os.environ.get('STRIPE_PRICE_ID_ENTERPRISE', ''),
+}
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Asia/Ho_Chi_Minh'
@@ -181,6 +204,7 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 50,
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'identity_access.authentication.CorePATAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -196,21 +220,21 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.UserRateThrottle',
-    ],
+    ] if 'test' not in sys.argv else [],
     'DEFAULT_THROTTLE_RATES': {
-        'user': '1000/hour',
-        'ingest_admin_trigger': '10/hour',
+        'user': '999999/day' if 'test' in sys.argv else '1000/hour',
+        'ingest_admin_trigger': '999999/day' if 'test' in sys.argv else '10/hour',
         # D03/D04: DNSE backfill throttle (AGENTS §14.9)
-        'system_backfill_trigger': '30/hour',
-        'user_backfill_trigger': '5/hour',
+        'system_backfill_trigger': '999999/day' if 'test' in sys.argv else '30/hour',
+        'user_backfill_trigger': '999999/day' if 'test' in sys.argv else '5/hour',
         # Independent realtime polling bucket — does not consume 'user' quota
-        'realtime_data': '120/min',
+        'realtime_data': '999999/day' if 'test' in sys.argv else '120/min',
         # Independent SOC operator read bucket — does not consume 'user' quota
-        'soc_operator_read': '120/min',
+        'soc_operator_read': '999999/day' if 'test' in sys.argv else '120/min',
         # Independent auth-bootstrap bucket — /auth/me/ and capabilities must never
         # be blocked by operational polling exhausting the global 'user' bucket
-        'auth_bootstrap': '60/min',
-        'notification': '3/second',
+        'auth_bootstrap': '999999/day' if 'test' in sys.argv else '60/min',
+        'notification': '999999/day' if 'test' in sys.argv else '3/second',
     },
 }
 
@@ -221,6 +245,9 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
     'SORT_OPERATIONS': False,
+    'SWAGGER_UI_DIST': 'SIDECAR',
+    'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
+    'REDOC_DIST': 'SIDECAR',
 }
 
 CORS_ALLOW_ALL_ORIGINS = False
@@ -240,6 +267,9 @@ if not DEBUG and not CORS_ALLOWED_ORIGINS:
         "CORS_ALLOWED_ORIGINS must be set in production. "
         "Set CORS_ALLOWED_ORIGINS env var (comma-separated origins)."
     )
+
+# Dynamic CORS allowance toggle for API endpoints (/core/v1/* and /api/*)
+CORS_API_DYNAMIC_ALLOW = os.environ.get('CORS_API_DYNAMIC_ALLOW', 'true').strip().lower() in ('true', '1', 'yes')
 
 # CSRF origin checks must know the public host(s) in production, but local dev
 # should work out of the box on localhost without extra env wiring.
@@ -294,8 +324,25 @@ CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
-CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TIMEZONE = TIME_ZONE
+# P3: Disable broker connection pool — prevents pool exhaustion under long-running ASGI.
+CELERY_BROKER_POOL_LIMIT = None
+
+import sys
+if 'test' in sys.argv or any('test' in arg for arg in sys.argv):
+    CELERY_TASK_ALWAYS_EAGER = True
+    try:
+        import celery
+        celery.current_app.conf.task_always_eager = True
+    except Exception:
+        pass
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
+
 
 # SM-P2.2: Beat schedule for materializer tasks + realtime data collection.
 from celery.schedules import crontab  # noqa: E402
@@ -419,6 +466,17 @@ CELERY_BEAT_SCHEDULE = {
             )
         },
     },
+    # === Task thăm dò sức khỏe hệ thống dịch vụ SOC ===
+    'service-ops-health-check-60s': {
+        'task': 'service_ops.health_check_all_services',
+        'schedule': 60.0,
+        'options': {
+            'queue': SCHEDULER_QUEUE_MAP.get(
+                'service-ops-health-check-60s',
+                'manual_on_demand',
+            )
+        },
+    },
 
     # === C1: Native ingest — price board every 60s ===
     # Replaces legacy-worker as sole SymbolSnapshot update source.
@@ -447,7 +505,7 @@ CELERY_BEAT_SCHEDULE = {
     # Upserts 365 days of daily candles for all tracked symbols via VCI+KBS parallel.
     'daily-backfill-prices-1700': {
         'task': 'data_ingest.tasks.backfill_daily_prices',
-        'schedule': crontab(hour=10, minute=5),  # 17:05 ICT (UTC+7) = 10:05 UTC
+        'schedule': crontab(hour=17, minute=5),  # 17:05 ICT (UTC+7)
         'kwargs': {'days': 365, '_scheduler_job_key': 'daily-backfill-prices-1700'},
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('daily-backfill-prices-1700', 'enrichment_offhours')},
     },
@@ -458,8 +516,8 @@ CELERY_BEAT_SCHEDULE = {
     # Enabled=True — chạy hàng tuần để fill gap tự động.
     'dnse-quarterly-backfill-intraday': {
         'task': 'data_ingest.tasks.enqueue_dnse_quarterly_backfill',
-        'schedule': crontab(hour=18, minute=0, day_of_week=6),  # Sat 18:00 UTC = Sun 01:00 ICT
-        'kwargs': {'days_back': 90, 'symbols_group': 'global', '_scheduler_job_key': 'dnse-quarterly-backfill-intraday'},
+        'schedule': crontab(hour=1, minute=0, day_of_week=0),  # Sun 01:00 ICT
+        'kwargs': {'days_back': 90, 'symbols_group': 'vn100_watchlist', '_scheduler_job_key': 'dnse-quarterly-backfill-intraday'},
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('dnse-quarterly-backfill-intraday', 'enrichment_offhours')},
     },
 
@@ -469,7 +527,7 @@ CELERY_BEAT_SCHEDULE = {
     # Runs only once per week (off-market, off-peak) to avoid API quota pressure.
     'deep-history-bootstrap-weekly': {
         'task': 'data_ingest.tasks.backfill_daily_prices',
-        'schedule': crontab(hour=20, minute=0, day_of_week=6),  # Sat 20:00 UTC = Sun 03:00 ICT
+        'schedule': crontab(hour=3, minute=0, day_of_week=0),  # Sun 03:00 ICT
         'kwargs': {'days': 1825, '_scheduler_job_key': 'deep-history-bootstrap-weekly'},
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('deep-history-bootstrap-weekly', 'enrichment_offhours')},
     },
@@ -479,7 +537,7 @@ CELERY_BEAT_SCHEDULE = {
     # from market inception up to the day before the rolling 5-year window.
     'pre5y-history-backfill-weekly': {
         'task': 'data_ingest.tasks.backfill_pre5y_to_market_inception',
-        'schedule': crontab(hour=21, minute=0, day_of_week=6),  # Sat 21:00 UTC = Sun 04:00 ICT
+        'schedule': crontab(hour=4, minute=0, day_of_week=0),  # Sun 04:00 ICT
         'kwargs': {
             'market_inception_date': '2000-07-28',
             'recent_years': 5,
@@ -494,7 +552,7 @@ CELERY_BEAT_SCHEDULE = {
     # Once parity is confirmed, remove 'daily-backfill-prices-1700' and keep this one.
     'ingest-daily-prices-1705': {
         'task': 'data_ingest.tasks.ingest_daily_prices',
-        'schedule': crontab(hour=10, minute=10),  # 17:10 ICT = 10:10 UTC (staggered 5m after backfill)
+        'schedule': crontab(hour=17, minute=10),  # 17:10 ICT
         'kwargs': {'days': 1},
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('ingest-daily-prices-1705', 'enrichment_offhours')},
         'enabled': False,  # Disabled by default for P3-T03 (enable during shadow run)
@@ -539,6 +597,12 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'signal_intelligence.materializers.materialize_unified_alerts',
         'schedule': 120.0,  # every 2 minutes
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('materialize-unified-alerts-2m', 'analytics_heavy')},
+    },
+    # === Signal intelligence: materialize AI signal alerts — every 5 minutes ===
+    'materialize-ai-signal-alerts-5m': {
+        'task': 'signal_intelligence.materializers.materialize_ai_signal_alerts',
+        'schedule': 300.0,
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('materialize-ai-signal-alerts-5m', 'analytics_heavy')},
     },
     # === Advisory: reset daily token budgets — daily at 00:00 (UTC+7 / Asia/Ho_Chi_Minh) ===
     'reset-daily-token-budgets-0000': {

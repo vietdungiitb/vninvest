@@ -5,6 +5,7 @@ from decimal import Decimal
 from celery import shared_task
 from django.db.models import Count
 
+from .broadcasting import broadcast_unified_alert
 from .materializers import materialize_unified_alerts, materialize_whale_feed_aggregate
 
 logger = logging.getLogger(__name__)
@@ -359,6 +360,12 @@ def _bulk_write_whale_canonical(whale_df, symbol: str, session_date) -> int:
 
     if canonical_to_create:
         WhaleAlertCanonical.objects.bulk_create(canonical_to_create, ignore_conflicts=True)
+
+    # Broadcast newly created alerts to WebSocket groups
+    for unified in unified_map.values():
+        if unified.pk in existing_canonical_pks:
+            continue
+        broadcast_unified_alert(unified)
 
     logger.debug(
         '_bulk_write_whale_canonical: %s/%s — %d new canonical records',

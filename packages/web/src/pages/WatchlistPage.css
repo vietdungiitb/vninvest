@@ -6,6 +6,8 @@
   gap: 1.5rem;
   width: 100%;
   color: #e2e8f0;
+  height: calc(100vh - 120px);
+  overflow: hidden;
 }
 
 .watchlistPage__layout {
@@ -13,34 +15,80 @@
   grid-template-columns: 280px 1fr;
   gap: 1.5rem;
   width: 100%;
-  align-items: start;
+  align-items: stretch;
+  height: 100%;
+  overflow: hidden;
 }
 
 @media (max-width: 1024px) {
   .watchlistPage__layout {
     grid-template-columns: 1fr;
+    height: auto;
+    overflow-y: auto;
   }
 }
 
 /* Sidebar Styling */
 .watchlistPage__sidebarCard {
-  background: rgba(15, 23, 42, 0.45);
+  background: var(--bg-panel-soft);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 1.25rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
+  height: 100%;
+  max-height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
+  box-shadow: var(--shadow-panel);
+}
+
+/* Sleek custom scrollbars for WebKit browsers (Chrome, Safari, Edge) */
+.watchlistPage__sidebarCard::-webkit-scrollbar,
+.watchlistPage__mainCard::-webkit-scrollbar,
+.watchlistPage__tableWrapper::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.watchlistPage__sidebarCard::-webkit-scrollbar-track,
+.watchlistPage__mainCard::-webkit-scrollbar-track,
+.watchlistPage__tableWrapper::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 3px;
+}
+
+.watchlistPage__sidebarCard::-webkit-scrollbar-thumb,
+.watchlistPage__mainCard::-webkit-scrollbar-thumb,
+.watchlistPage__tableWrapper::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.watchlistPage__sidebarCard::-webkit-scrollbar-thumb:hover,
+.watchlistPage__mainCard::-webkit-scrollbar-thumb:hover,
+.watchlistPage__tableWrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Firefox scrollbar styling */
+.watchlistPage__sidebarCard,
+.watchlistPage__mainCard,
+.watchlistPage__tableWrapper {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) rgba(0, 0, 0, 0.05);
 }
 
 .watchlistPage__sidebarTitle {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #f8fafc;
-  margin-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 0.5rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-default);
+  padding-bottom: 0.75rem;
+  letter-spacing: -0.01em;
 }
 
 .watchlistPage__list {
@@ -50,10 +98,10 @@
 }
 
 .watchlistPage__listItem {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
+  background: rgba(8, 23, 52, 0.3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
   cursor: pointer;
   transition: all 0.2s ease-in-out;
   display: flex;
@@ -62,30 +110,33 @@
 }
 
 .watchlistPage__listItem:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(18, 199, 232, 0.08);
+  border-color: var(--border-strong);
 }
 
 .watchlistPage__listItem--active {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(18, 199, 232, 0.15);
+  border-color: var(--accent-cyan);
 }
 
 .watchlistPage__listItemName {
-  font-weight: 500;
-  color: #e2e8f0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .watchlistPage__listItem--active .watchlistPage__listItemName {
-  color: #3b82f6;
+  color: var(--accent-cyan);
 }
 
 .watchlistPage__listItemCount {
-  font-size: 0.75rem;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 2px 8px;
-  color: #94a3b8;
+  font-size: 0.85rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .watchlistPage__sidebarAction {
@@ -94,14 +145,19 @@
 
 /* Main Area Card */
 .watchlistPage__mainCard {
-  background: rgba(15, 23, 42, 0.45);
+  background: var(--bg-panel-soft);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 1.5rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.5rem;
+  height: 100%;
+  max-height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
+  box-shadow: var(--shadow-panel);
 }
 
 /* Header & Metadata */
@@ -120,57 +176,62 @@
 }
 
 .watchlistPage__title {
-  font-size: 1.5rem;
+  font-size: 2rem;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 .watchlistPage__description {
-  font-size: 0.875rem;
-  color: #94a3b8;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
 }
 
 .watchlistPage__syncBadge {
-  font-size: 0.75rem;
-  color: #38bdf8;
-  background: rgba(56, 189, 248, 0.1);
-  padding: 4px 10px;
-  border-radius: 100px;
-  border: 1px solid rgba(56, 189, 248, 0.2);
+  font-size: 0.85rem;
+  color: var(--accent-cyan);
+  background: var(--accent-cyan-soft);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-family: monospace;
+  gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
 }
 
 /* Tabs */
 .watchlistPage__tabs {
   display: flex;
-  gap: 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding-bottom: 0.5rem;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border-default);
+  padding-bottom: 0.75rem;
 }
 
 .watchlistPage__tabBtn {
-  background: none;
-  border: none;
-  color: #94a3b8;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  padding: 8px 18px;
+  font-size: 0.95rem;
+  font-weight: 600;
   cursor: pointer;
-  border-radius: 6px;
-  transition: all 0.2s;
+  border-radius: var(--radius-pill);
+  transition: all 0.2s ease-in-out;
 }
 
 .watchlistPage__tabBtn:hover {
-  color: #e2e8f0;
-  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+  border-color: rgba(18, 199, 232, 0.4);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .watchlistPage__tabBtn--active {
-  color: #38bdf8;
-  background: rgba(56, 189, 248, 0.1);
+  color: var(--accent-cyan);
+  background: rgba(18, 199, 232, 0.08);
+  border-color: var(--accent-cyan);
 }
 
 /* Bloomberg Density Grid controls */
@@ -184,35 +245,36 @@
 
 .watchlistPage__densityToggle {
   display: inline-flex;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 2px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(8, 23, 52, 0.5);
+  padding: 4px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-default);
 }
 
 .watchlistPage__densityBtn {
   background: none;
   border: none;
-  padding: 4px 10px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #94a3b8;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: var(--radius-pill);
   transition: all 0.2s;
 }
 
 .watchlistPage__densityBtn--active {
-  background: rgba(255, 255, 255, 0.1);
-  color: #f8fafc;
+  background: var(--bg-panel-soft);
+  color: var(--accent-cyan);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* Radar Table Styling */
 .watchlistPage__tableWrapper {
   overflow-x: auto;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: rgba(8, 23, 52, 0.45);
 }
 
 .watchlistPage__table {
@@ -222,28 +284,29 @@
 }
 
 .watchlistPage__table th {
-  background: rgba(255, 255, 255, 0.03);
-  color: #94a3b8;
-  font-size: 0.75rem;
-  font-weight: 600;
+  background: rgba(8, 23, 52, 0.7);
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 10px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  letter-spacing: 0.08em;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-default);
 }
 
 /* Default Comfortable View Row */
 .watchlistPage__table td {
-  padding: 10px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  font-size: 0.875rem;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-default);
+  font-size: 0.95rem;
   vertical-align: middle;
+  color: var(--text-primary);
 }
 
 /* High-Density Compact View Row */
 .watchlistPage__table--compact td {
-  padding: 4px 14px;
-  font-size: 0.75rem;
+  padding: 6px 16px;
+  font-size: 0.875rem;
 }
 
 .watchlistPage__table tr:hover td {
@@ -251,13 +314,15 @@
 }
 
 .watchlistPage__symbolLink {
-  color: #38bdf8;
+  color: var(--accent-cyan);
   text-decoration: none;
-  font-weight: 600;
-  font-family: monospace;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  transition: color 0.2s;
 }
 
 .watchlistPage__symbolLink:hover {
+  color: #3dd9eb;
   text-decoration: underline;
 }
 
@@ -288,25 +353,25 @@
 
 /* Text Colors */
 .text-green {
-  color: #00FFBB;
+  color: var(--accent-emerald);
   font-weight: bold;
 }
 
 .text-red {
-  color: #FF3344;
+  color: var(--accent-rose);
   font-weight: bold;
 }
 
 .text-gray {
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .text-white {
-  color: #f8fafc;
+  color: var(--text-primary);
 }
 
 .text-mono {
-  font-family: monospace;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 /* Mini-Sparkline Cell */
@@ -331,64 +396,26 @@
   flex-wrap: wrap;
 }
 
-.watchlistPage__input {
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #f8fafc;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 0.875rem;
+.watchlistPage__input,
+.watchlistPage__select {
+  background: rgba(8, 23, 52, 0.5);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  padding: 10px 14px;
+  border-radius: var(--radius-xs);
+  font-size: 0.95rem;
   outline: none;
   min-width: 180px;
+  transition: all 0.2s ease-in-out;
 }
 
-.watchlistPage__input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+.watchlistPage__input:focus,
+.watchlistPage__select:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 2px var(--shadow-focus);
 }
 
-.watchlistPage__select {
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #f8fafc;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  outline: none;
-}
 
-.watchlistPage__btn {
-  background: #3b82f6;
-  border: none;
-  color: #ffffff;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.watchlistPage__btn:hover {
-  background: #2563eb;
-}
-
-.watchlistPage__btn--danger {
-  background: #ef4444;
-}
-
-.watchlistPage__btn--danger:hover {
-  background: #dc2626;
-}
-
-.watchlistPage__btn--secondary {
-  background: rgba(255, 255, 255, 0.1);
-  color: #e2e8f0;
-}
-
-.watchlistPage__btn--secondary:hover {
-  background: rgba(255, 255, 255, 0.15);
-}
 
 /* Empty State */
 .watchlistPage__emptyState {
@@ -404,4 +431,59 @@
 .watchlistPage__emptyIcon {
   font-size: 2rem;
   color: rgba(255, 255, 255, 0.2);
+}
+
+/* SaaS Operations Center shellPage layout styles for list items */
+.shellPage__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.shellPage__listItem {
+  background: rgba(8, 23, 52, 0.3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: all 0.2s ease-in-out;
+}
+
+.shellPage__listItem:hover {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: var(--border-strong);
+}
+
+.shellPage__listItemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 1rem;
+}
+
+.shellPage__itemTitle {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.shellPage__itemMeta {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.shellPage__empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-sm);
+  background: rgba(8, 23, 52, 0.15);
 }

@@ -2,7 +2,47 @@
  * transport.js
  *
  * Core network transport layer for coreApiAdapter domain modules.
+ *
+ * AuthProvider mini-spec features:
+ * - Pre-emptive silent refresh when JWT expires within 60s
+ * - Automatic 401 retry with refresh (existing)
+ * - Multi-tab session sync via storage event
  */
+
+export function decodeJwtPayload(token) {
+  if (!token || typeof token !== "string") return null;
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const decoded = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
+export function getTokenExpiry(token) {
+  const payload = decodeJwtPayload(token);
+  return payload?.exp || null;
+}
+
+export function isTokenExpiringSoon(token, thresholdSeconds = 60) {
+  const exp = getTokenExpiry(token);
+  if (!exp) return false;
+  const now = Math.floor(Date.now() / 1000);
+  return exp - now <= thresholdSeconds;
+}
+
+export function listenTokenStorage(callback) {
+  if (typeof window === "undefined" || typeof window.addEventListener !== "function") return () => {};
+  function handleStorage(e) {
+    if (e.key === "access_token" || e.key === "refresh_token") {
+      callback(e);
+    }
+  }
+  window.addEventListener("storage", handleStorage);
+  return () => window.removeEventListener("storage", handleStorage);
+}
 
 export function resolveCoreApiBase(env = {}) {
   if (env && typeof env.CORE_API_BASE_URL === "string" && env.CORE_API_BASE_URL.trim()) {
@@ -65,6 +105,44 @@ export function clearBrowserStorageToken(key) {
   window.localStorage?.removeItem(key);
 }
 
+export function getBrowserSessionStorage(key) {
+  if (typeof window === "undefined") return null;
+  return window.sessionStorage?.getItem(key) || null;
+}
+
+export function setBrowserSessionStorage(key, value) {
+  if (typeof window === "undefined") return;
+  if (!value) {
+    window.sessionStorage?.removeItem(key);
+    return;
+  }
+  window.sessionStorage?.setItem(key, value);
+}
+
+export function clearBrowserSessionStorage(key) {
+  if (typeof window === "undefined") return;
+  window.sessionStorage?.removeItem(key);
+}
+
+let storageUnsubscribe = null;
+
+export function initTokenStorageSync() {
+  if (storageUnsubscribe) return;
+  storageUnsubscribe = listenTokenStorage((e) => {
+    if (e.key === "access_token" && !e.newValue) {
+      // Another tab cleared tokens → trigger logout
+      window?.location?.reload();
+    }
+  });
+}
+
+export function destroyTokenStorageSync() {
+  if (storageUnsubscribe) {
+    storageUnsubscribe();
+    storageUnsubscribe = null;
+  }
+}
+
 export const authTokenStorage = Object.freeze({
   getAccessToken() {
     return getBrowserStorageToken("access_token");
@@ -85,6 +163,18 @@ export const authTokenStorage = Object.freeze({
   clearTokens() {
     clearBrowserStorageToken("access_token");
     clearBrowserStorageToken("refresh_token");
+  },
+});
+
+export const tenantIdStorage = Object.freeze({
+  getTenantId() {
+    return getBrowserSessionStorage("tenant_id");
+  },
+  setTenantId(value) {
+    setBrowserSessionStorage("tenant_id", value);
+  },
+  clearTenantId() {
+    clearBrowserSessionStorage("tenant_id");
   },
 });
 
@@ -137,9 +227,13 @@ export function createCoreTransport(env = {}, options = {}) {
   let refreshPromise = null;
 
   function toCoreApiRequestError(path, response, payload, fallbackText = "") {
+    let cleanFallback = fallbackText;
+    if (fallbackText && (fallbackText.toLowerCase().includes("<!doctype") || fallbackText.toLowerCase().includes("<html"))) {
+      cleanFallback = `Server error (HTTP ${response.status})`;
+    }
     const detail =
       (payload && typeof payload === "object" && (payload.detail || payload.message)) ||
-      fallbackText ||
+      cleanFallback ||
       response.statusText ||
       "Request failed";
     const fieldErrors =
@@ -222,17 +316,34 @@ export function createCoreTransport(env = {}, options = {}) {
   async function requestWithAuth(path, init = {}, attemptRefresh = true) {
     const base = resolveCoreApiBase(env);
     const requestId = generateRequestId();
+
+    // Pre-emptive silent refresh: if token expires within 60s, refresh proactively
+    if (attemptRefresh) {
+      const currentToken = getToken();
+      if (currentToken && isTokenExpiringSoon(currentToken, 60)) {
+        await requestTokenRefresh();
+      }
+    }
+
+    const headers = {
+      "Content-Type": "application/json",
+      "X-Request-ID": requestId,
+      ...getAuthorizationHeader(getToken),
+      ...(init.headers || {}),
+    };
+
+    const storedTenantId = tenantIdStorage.getTenantId();
+    if (storedTenantId) {
+      headers["X-Tenant-ID"] = storedTenantId;
+    }
+
     const response = await fetch(`${base}${path}`, {
       ...init,
-      headers: {
-        "Content-Type": "application/json",
-        "X-Request-ID": requestId,
-        ...getAuthorizationHeader(getToken),
-        ...(init.headers || {}),
-      },
+      headers,
       credentials: "include",
     });
 
+    // 401 retry: try a token refresh and retry once
     if (attemptRefresh && shouldTryRefresh(path, response.status)) {
       const nextAccessToken = await requestTokenRefresh();
       if (nextAccessToken) {
@@ -248,9 +359,13 @@ export function createCoreTransport(env = {}, options = {}) {
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
-      throw new Error(
-        `Core API error ${response.status} ${response.statusText} — ${path}: ${text}`
-      );
+      let payload = null;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = null;
+      }
+      throw toCoreApiRequestError(path, response, payload, text);
     }
 
     return response.json();
@@ -264,14 +379,39 @@ export function createCoreTransport(env = {}, options = {}) {
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
-      throw new Error(
-        `Core API POST error ${response.status} ${response.statusText} — ${path}: ${text}`
-      );
+      let payload = null;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = null;
+      }
+      throw toCoreApiRequestError(path, response, payload, text);
     }
 
     if (response.status === 204) return null;
     return response.json();
   }
+
+  async function corePut(path, body = undefined) {
+    const response = await requestWithAuth(path, {
+      method: "PUT",
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    }, true);
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      let payload = null;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = null;
+      }
+      throw toCoreApiRequestError(path, response, payload, text);
+    }
+
+    return response.json();
+  }
+
 
   async function corePatch(path, body = undefined) {
     const response = await requestWithAuth(path, {
@@ -281,9 +421,13 @@ export function createCoreTransport(env = {}, options = {}) {
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
-      throw new Error(
-        `Core API PATCH error ${response.status} ${response.statusText} — ${path}: ${text}`
-      );
+      let payload = null;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = null;
+      }
+      throw toCoreApiRequestError(path, response, payload, text);
     }
 
     return response.json();
@@ -296,9 +440,13 @@ export function createCoreTransport(env = {}, options = {}) {
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
-      throw new Error(
-        `Core API DELETE error ${response.status} ${response.statusText} — ${path}: ${text}`
-      );
+      let payload = null;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = null;
+      }
+      throw toCoreApiRequestError(path, response, payload, text);
     }
 
     return null;
@@ -326,5 +474,5 @@ export function createCoreTransport(env = {}, options = {}) {
     return payload;
   }
 
-  return { coreGet, corePost, corePatch, coreDelete, publicPost };
+  return { coreGet, corePost, corePut, corePatch, coreDelete, publicPost };
 }

@@ -76,6 +76,7 @@ class Invoice(models.Model):
     period_end = models.DateField()
     due_date = models.DateField(null=True, blank=True)
     paid_at = models.DateTimeField(null=True, blank=True)
+    line_items = models.JSONField(default=dict, blank=True, help_text='Breakdown: {"subscription": 1500000, "api_overage": 500000, "storage": 0}')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -99,6 +100,8 @@ class PaymentTransaction(models.Model):
     txn_ref = models.CharField(max_length=64, unique=True, db_index=True)  # vnp_TxnRef
     vnp_transaction_no = models.CharField(max_length=64, null=True, blank=True)
     amount = models.DecimalField(max_digits=18, decimal_places=2)
+    plan = models.CharField(max_length=32, null=True, blank=True, db_index=True,
+                            help_text='Canonical plan code (starter/pro/enterprise) captured at payment creation.')
     status = models.CharField(max_length=16, choices=StatusChoices.choices, default=StatusChoices.PENDING, db_index=True)
     pay_url = models.TextField(null=True, blank=True)
     error_code = models.CharField(max_length=16, null=True, blank=True)
@@ -125,3 +128,35 @@ class VNPayIPNLog(models.Model):
 
     def __str__(self):
         return f'IPN Log {self.txn_ref} at {self.created_at}'
+
+
+class QuotaHistory(models.Model):
+    """Daily snapshot of quota usage for historical tracking and charts."""
+    tenant = models.ForeignKey(CoreTenant, on_delete=models.CASCADE, related_name='quota_history')
+    date = models.DateField(db_index=True)
+    meter_code = models.CharField(max_length=64, db_index=True)
+    meter_name = models.CharField(max_length=128)
+    unit = models.CharField(max_length=32)
+    consumed_amount = models.BigIntegerField(default=0)
+    entitled_amount = models.BigIntegerField(default=-1)  # -1 = unlimited
+    remaining_amount = models.BigIntegerField(default=0)
+    risk_state = models.CharField(max_length=16, choices=[
+        ('normal', 'Normal'),
+        ('warning', 'Warning'),
+        ('critical', 'Critical'),
+    ], default='normal')
+    hard_stop = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Quota History'
+        verbose_name_plural = 'Quota History'
+        unique_together = [('tenant', 'date', 'meter_code')]
+        ordering = ['-date', 'meter_code']
+        indexes = [
+            models.Index(fields=['tenant', 'date']),
+            models.Index(fields=['tenant', 'meter_code', 'date']),
+        ]
+
+    def __str__(self):
+        return f'{self.tenant} — {self.meter_code} on {self.date}: {self.consumed_amount}/{self.entitled_amount}'

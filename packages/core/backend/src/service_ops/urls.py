@@ -14,11 +14,12 @@ from django.urls import path
 
 from .views import dataops, matrix, overview, prefetch, screener, signals, symbol_groups, vnbroker
 
-# Overview endpoints (10)
+# Overview endpoints (12)
 urlpatterns = [
   path('overview/', overview.OverviewSummaryView.as_view(), name='soc_overview_summary'),
   path('overview/health-status/', overview.HealthStatusView.as_view(), name='soc_health_status'),
   path('overview/<str:service_key>/config/', overview.ServiceCurrentConfigView.as_view(), name='soc_service_config'),
+  path('overview/<str:service_key>/config/reset/', overview.ServiceCurrentConfigView.as_view(), name='soc_service_config_reset'),
   path('overview/<str:service_key>/health/', overview.ServiceHealthView.as_view(), name='soc_service_health'),
   path('overview/<str:service_key>/audit/', overview.ServiceAuditView.as_view(), name='soc_service_audit'),
   path('overview/<str:service_key>/history/', overview.ServiceConfigHistoryView.as_view(), name='soc_service_history'),
@@ -27,11 +28,12 @@ urlpatterns = [
     path('overview/<str:service_key>/run-logs/', overview.ServiceRunLogsView.as_view(), name='soc_run_logs'),
     path('overview/<str:service_key>/ownership/', overview.ServiceOwnershipView.as_view(), name='soc_ownership'),
 
-    # Service catalog endpoints (6)
+    # Service catalog endpoints (8)
     path('run-logs/', overview.RunLogListView.as_view(), name='soc_run_logs_list'),
     path('change-audit/', overview.ChangeAuditListView.as_view(), name='soc_change_audit_list'),
     path('services/', overview.ServiceListView.as_view(), name='soc_services_list'),
     path('services/<str:service_key>/config/', overview.ServiceCurrentConfigView.as_view(), name='soc_services_config'),
+    path('services/<str:service_key>/config/reset/', overview.ServiceCurrentConfigView.as_view(), name='soc_services_config_reset'),
     path('services/<str:service_key>/health/', overview.ServiceHealthView.as_view(), name='soc_services_health'),
     path('services/<str:service_key>/audit/', overview.ServiceAuditView.as_view(), name='soc_services_audit'),
     path('services/<str:service_key>/history/', overview.ServiceConfigHistoryView.as_view(), name='soc_services_history'),
@@ -120,6 +122,11 @@ urlpatterns = [
     path('dataops/runtime-config/preview/', dataops.DataOpsRuntimeConfigPreviewView.as_view(), name='soc_dataops_runtime_config_preview'),
     path('dataops/runtime-config/audit/', dataops.DataOpsRuntimeConfigAuditView.as_view(), name='soc_dataops_runtime_config_audit'),
     path('dataops/inventory/', dataops.DataOpsInventoryView.as_view(), name='soc_dataops_inventory'),
+
+    # Backfill Progress API (B03)
+    path('dataops/backfill/runs/', dataops.BackfillRunListView.as_view(), name='soc_backfill_run_list'),
+    path('dataops/backfill/runs/<str:run_id>/', dataops.BackfillRunDetailView.as_view(), name='soc_backfill_run_detail'),
+    path('dataops/backfill/run-now/', dataops.BackfillRunNowView.as_view(), name='soc_backfill_run_now'),
 
     # Symbol Groups domain (predefined + custom CRUD)
     path('symbol-groups/', symbol_groups.SymbolGroupListView.as_view(), name='soc_symbol_groups_list'),

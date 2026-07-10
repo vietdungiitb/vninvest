@@ -14,11 +14,6 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'vninvest_core.settings')
 app = Celery('vninvest_core')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 
-# Explicitly set result backend if not already set (fixes DisabledBackend issue)
-if not app.conf.result_backend:
-    from django.conf import settings as django_settings
-    app.conf.result_backend = django_settings.CELERY_RESULT_BACKEND
-
 app.autodiscover_tasks()
 
 app.conf.task_queues = CELERY_TASK_QUEUES

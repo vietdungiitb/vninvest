@@ -137,7 +137,7 @@ class TenantQuotaMiddlewareTests(TestCase):
         self.assertEqual(api_calls_limit, 100)
 
     def test_exceeded_limit_returns_429(self):
-        request = self._request('/api/core/v1/identity/profile/', self.user)
+        request = self._request('/core/v1/identity/profile/', self.user)
 
         for _ in range(100):
             response = self._run_with_cache(request, quota_tuple=(self.tenant.public_id, 100))
@@ -158,7 +158,7 @@ class TenantQuotaMiddlewareTests(TestCase):
         )
 
     def test_unlimited_quota_counts_but_never_blocks(self):
-        request = self._request('/api/core/v1/identity/profile/', self.unlimited_user)
+        request = self._request('/core/v1/identity/profile/', self.unlimited_user)
 
         for _ in range(1000):
             response = self._run_with_cache(request, quota_tuple=(self.unlimited_tenant.public_id, -1))
@@ -172,7 +172,7 @@ class TenantQuotaMiddlewareTests(TestCase):
         )
 
     def test_auth_path_is_exempt(self):
-        request = self._request('/api/core/v1/auth/login', self.user)
+        request = self._request('/core/v1/auth/login', self.user)
 
         response = self._run_with_cache(request)
 
@@ -196,7 +196,7 @@ class TenantQuotaMiddlewareTests(TestCase):
         self.assertEqual(self.cache_stub.store, {})
 
     def test_unauthenticated_request_is_not_counted(self):
-        request = self._request('/api/core/v1/identity/profile/')
+        request = self._request('/core/v1/identity/profile/')
         request.user = AnonymousUser()
 
         response = self._run_with_cache(request)
@@ -205,7 +205,7 @@ class TenantQuotaMiddlewareTests(TestCase):
         self.assertEqual(self.cache_stub.store, {})
 
     def test_superuser_request_is_not_counted(self):
-        request = self._request('/api/core/v1/identity/profile/', self.superuser)
+        request = self._request('/core/v1/identity/profile/', self.superuser)
 
         response = self._run_with_cache(request)
 

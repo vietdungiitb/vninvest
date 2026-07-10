@@ -1,6 +1,7 @@
 import {
   createContext,
   createElement,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -8,6 +9,7 @@ import {
 } from "react";
 
 import { createShellAuthRuntime } from "./authRuntime.js";
+import { authTokenStorage, isTokenExpiringSoon } from "../adapters/coreApiAdapter.js";
 
 export const ShellAuthContext = createContext(null);
 export const ShellAuthRuntimeContext = createContext(null);
@@ -60,14 +62,58 @@ export function ShellAuthProvider({
     activeRuntime.getState,
   );
 
+  const silentRefreshRef = useRef(null);
+
+  const scheduleSilentRefresh = useCallback(() => {
+    const accessToken = authTokenStorage.getAccessToken();
+    if (!accessToken) return;
+
+    // If token expires within 60s, refresh proactively
+    if (isTokenExpiringSoon(accessToken, 60)) {
+      void activeRuntime.refresh();
+      return;
+    }
+
+    // Otherwise schedule a check at token expiry - 60s, minimum 5s
+    const payload = (() => {
+      try {
+        const parts = accessToken.split(".");
+        if (parts.length !== 3) return null;
+        return JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+      } catch { return null; }
+    })();
+
+    if (payload?.exp) {
+      const now = Math.floor(Date.now() / 1000);
+      const msUntilExp = (payload.exp - now - 60) * 1000;
+      if (msUntilExp > 5000 && isFinite(msUntilExp)) {
+        silentRefreshRef.current = setTimeout(scheduleSilentRefresh, msUntilExp);
+      }
+    }
+  }, [activeRuntime]);
+
   useEffect(() => {
+    silentRefreshRef.current = null;
+
     if (!autoRefresh) {
-      return undefined;
+      return () => {
+        if (silentRefreshRef.current) {
+          clearTimeout(silentRefreshRef.current);
+          silentRefreshRef.current = null;
+        }
+      };
     }
 
     void activeRuntime.refresh();
-    return undefined;
-  }, [activeRuntime, autoRefresh]);
+    scheduleSilentRefresh();
+
+    return () => {
+      if (silentRefreshRef.current) {
+        clearTimeout(silentRefreshRef.current);
+        silentRefreshRef.current = null;
+      }
+    };
+  }, [activeRuntime, autoRefresh, scheduleSilentRefresh]);
 
   return createElement(
     ShellAuthRuntimeContext.Provider,

@@ -23,9 +23,9 @@ def _generate_public_id(prefix: str) -> str:
     return f'{prefix}_{secrets.token_hex(10)}'
 
 
-def _build_pat_secret() -> str:
-    """Generate a cryptographically secure PAT secret string."""
-    return 'vni_' + secrets.token_urlsafe(48)
+def _build_pat_secret(plan_code: str = 'free') -> str:
+    """Generate a cryptographically secure PAT secret string with plan prefix."""
+    return f'vni_{plan_code}_' + secrets.token_urlsafe(48)
 
 
 def _extract_pat_prefix(raw_secret: str) -> str:
@@ -93,6 +93,20 @@ class CoreTenant(models.Model):
     suspended_at = models.DateTimeField(null=True, blank=True)
     billing_period_start = models.DateField(null=True, blank=True)
     billing_period_end = models.DateField(null=True, blank=True)
+    
+    # Stripe Billing Fields
+    stripe_customer_id = models.CharField(max_length=128, unique=True, null=True, blank=True, db_index=True, verbose_name='Stripe Customer ID')
+    stripe_subscription_id = models.CharField(max_length=128, null=True, blank=True, db_index=True, verbose_name='Stripe Subscription ID')
+    stripe_price_id = models.CharField(max_length=128, null=True, blank=True, verbose_name='Stripe Price ID')
+    stripe_current_period_end = models.DateTimeField(null=True, blank=True, verbose_name='Stripe Current Period End')
+    stripe_cancel_at_period_end = models.BooleanField(default=False, verbose_name='Stripe Cancel at Period End')
+
+    # API usage quotas (SFI-B2 compat — added to match existing DB schema)
+    api_calls_limit = models.IntegerField(default=10000, verbose_name='API calls monthly limit')
+    api_calls_used = models.IntegerField(default=0, verbose_name='API calls used this period')
+    max_active_pats = models.IntegerField(default=-1, verbose_name='Max active PATs (-1 = unlimited)')
+    gateway_rate_tier_override = models.JSONField(null=True, blank=True, verbose_name='Gateway rate tier override configuration')
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -145,6 +159,8 @@ class CoreServiceAccount(models.Model):
     )
     scopes = models.JSONField(default=list, blank=True, verbose_name='Allowed scopes')
     metadata = models.JSONField(default=dict, blank=True, verbose_name='Non-sensitive metadata')
+    allowed_symbols = models.JSONField(default=list, blank=True, verbose_name='Allowed symbols for data access')
+    features = models.JSONField(default=dict, blank=True, verbose_name='Feature flags for this service account')
     last_rotated_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -195,21 +211,24 @@ class CorePATCredential(models.Model):
         verbose_name='Service account',
     )
     label = models.CharField(max_length=120, blank=True, default='', verbose_name='Display label')
-    token_prefix = models.CharField(max_length=12, verbose_name='Safe token prefix (12 chars)')
-    token_secret_hash = models.CharField(max_length=64, verbose_name='Token secret HMAC-SHA256 hash')
-    scopes = models.JSONField(default=list, blank=True, verbose_name='Effective scopes')
+    token_prefix = models.CharField(max_length=12, db_index=True, verbose_name='Token prefix (first 12 chars)')
+    token_secret_hash = models.CharField(max_length=64, unique=True, db_index=True, verbose_name='HMAC-SHA256 hash of token')
+    scopes = models.JSONField(default=list, blank=True, verbose_name='Granted scope codes')
     status = models.CharField(
         max_length=24,
         choices=StatusChoices.choices,
         default=StatusChoices.ACTIVE,
         db_index=True,
     )
-    expires_at = models.DateTimeField(null=True, blank=True)
-    last_used_at = models.DateTimeField(null=True, blank=True)
-    revoked = models.BooleanField(default=False, db_index=True)
-    is_human_session = models.BooleanField(default=False, db_index=True)
-    revoked_at = models.DateTimeField(null=True, blank=True)
-    audit_reason = models.CharField(max_length=255, blank=True, default='')
+    is_human_session = models.BooleanField(default=False, db_index=True, verbose_name='Human login session PAT')
+    expires_at = models.DateTimeField(null=True, blank=True, db_index=True, verbose_name='Expiration timestamp')
+    last_used_at = models.DateTimeField(null=True, blank=True, verbose_name='Last successful authentication')
+    revoked_at = models.DateTimeField(null=True, blank=True, verbose_name='Revocation timestamp')
+    revoked_reason = models.TextField(blank=True, default='', verbose_name='Reason for revocation')
+    grace_until = models.DateTimeField(null=True, blank=True, verbose_name='Grace period end for rotation')
+    audit_reason = models.TextField(blank=True, default='', verbose_name='Audit trail reason')
+    allowed_cidr_blocks = models.JSONField(default=list, blank=True, verbose_name='Allowed CIDR blocks for IP whitelisting')
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -219,11 +238,12 @@ class CorePATCredential(models.Model):
         ordering = ['-created_at', '-pk']
         indexes = [
             models.Index(fields=['service_account', 'status']),
-            models.Index(fields=['token_prefix']),
+            models.Index(fields=['token_prefix', 'status']),
+            models.Index(fields=['is_human_session', 'status']),
         ]
 
     def __str__(self):
-        return f'{self.public_id or "pat"} ({self.status})'
+        return f'{self.label or self.token_prefix} ({self.status})'
 
     def save(self, *args, **kwargs):
         if not self.public_id:
@@ -233,66 +253,85 @@ class CorePATCredential(models.Model):
 
     @property
     def effective_status(self) -> str:
-        if self.revoked:
-            return self.StatusChoices.REVOKED
-        if self.expires_at and self.expires_at <= timezone.now():
+        if self.status == self.StatusChoices.ACTIVE and self.expires_at and self.expires_at <= timezone.now():
             return self.StatusChoices.EXPIRED
         return self.status
 
+    @property
+    def revoked(self) -> bool:
+        """Backward compatibility property for tests."""
+        return self.status == self.StatusChoices.REVOKED
+
     @classmethod
     def resolve_from_raw_secret(cls, raw_secret: str):
-        """Resolve a PAT credential from raw secret. Returns credential or None."""
-        secret = str(raw_secret or '').strip()
-        if not secret:
+        from django.utils import timezone
+        prefix = _extract_pat_prefix(raw_secret)
+        try:
+            credential = cls.objects.select_related('service_account__tenant').get(token_prefix=prefix)
+        except cls.DoesNotExist:
             return None
-        prefix = _extract_pat_prefix(secret)
-        if not prefix:
+        if not hmac.compare_digest(credential.token_secret_hash, _hash_pat_secret(raw_secret)):
             return None
-        expected_hash = _hash_pat_secret(secret)
-        candidates = (
-            cls.objects
-            .select_related('service_account', 'service_account__tenant')
-            .filter(token_prefix=prefix, revoked=False)
-            .order_by('-created_at')
-        )
-        for credential in candidates:
-            if hmac.compare_digest(str(credential.token_secret_hash or ''), expected_hash):
-                return credential
-        return None
+        # Don't return revoked credentials
+        if credential.status == cls.StatusChoices.REVOKED:
+            return None
+        return credential
 
     @classmethod
-    def issue_for_service_account(
-        cls,
-        *,
-        service_account: 'CoreServiceAccount',
-        scopes: list,
-        expires_at=None,
-        label: str = '',
-        audit_reason: str = '',
-        is_human_session: bool = False,
-    ):
-        """Issue a new PAT and return (credential, raw_secret). raw_secret shown once only."""
-        raw_secret = _build_pat_secret()
+    def issue_for_service_account(cls, service_account: CoreServiceAccount, scopes: list[str], expires_at=None, label: str = '', audit_reason: str = '', allowed_cidr_blocks: list[str] = None, is_human_session: bool = False):
+        from django.utils import timezone
+        from django.core.exceptions import ValidationError
+
+        tenant = service_account.tenant
+        if tenant.max_active_pats != -1:
+            now = timezone.now()
+            active_count = cls.objects.filter(
+                service_account__tenant=tenant,
+                status=cls.StatusChoices.ACTIVE,
+                expires_at__gt=now,
+            ).count()
+            if active_count >= tenant.max_active_pats:
+                raise ValidationError(
+                    f'Tenant has reached the limit of {tenant.max_active_pats} active PATs. '
+                    f'Revoke or rotate an existing PAT before creating a new one.'
+                )
+
+        raw_secret = _build_pat_secret(tenant.plan)
+        token_hash = _hash_pat_secret(raw_secret)
+        token_prefix = _extract_pat_prefix(raw_secret)
         credential = cls.objects.create(
             service_account=service_account,
-            label=str(label or '').strip(),
-            token_prefix=_extract_pat_prefix(raw_secret),
-            token_secret_hash=_hash_pat_secret(raw_secret),
-            scopes=list(scopes or []),
+            label=label,
+            token_prefix=token_prefix,
+            token_secret_hash=token_hash,
+            scopes=scopes,
             expires_at=expires_at,
-            audit_reason=str(audit_reason or '').strip(),
-            is_human_session=bool(is_human_session),
+            audit_reason=audit_reason,
+            allowed_cidr_blocks=allowed_cidr_blocks or [],
+            is_human_session=is_human_session,
         )
-        service_account.last_rotated_at = timezone.now()
-        service_account.save(update_fields=['last_rotated_at', 'updated_at'])
         return credential, raw_secret
 
-    def revoke_pat(self, *, reason: str = '') -> None:
-        self.revoked = True
-        self.revoked_at = timezone.now()
+    def mark_rotating(self, grace_period_seconds: int = 3600, reason: str = 'rotated'):
+        from django.utils import timezone
+        self.status = self.StatusChoices.ROTATING
+        self.grace_until = timezone.now() + timedelta(seconds=grace_period_seconds)
+        self.audit_reason = reason
+        self.save(update_fields=['status', 'grace_until', 'audit_reason', 'updated_at'])
+        return self.grace_until
+
+    def revoke_pat(self, reason: str = 'revoked'):
+        from django.utils import timezone
         self.status = self.StatusChoices.REVOKED
-        self.audit_reason = str(reason or '').strip()
-        self.save(update_fields=['revoked', 'revoked_at', 'status', 'audit_reason', 'updated_at'])
+        self.revoked_at = timezone.now()
+        self.revoked_reason = reason
+        self.audit_reason = reason
+        self.save(update_fields=['status', 'revoked_at', 'revoked_reason', 'audit_reason', 'updated_at'])
+
+    def record_usage(self):
+        from django.utils import timezone
+        self.last_used_at = timezone.now()
+        self.save(update_fields=['last_used_at', 'updated_at'])
 
     def mark_rotating(self, *, grace_period_seconds: int = 3600, reason: str = ''):
         grace_seconds = max(0, int(grace_period_seconds or 0))
@@ -899,6 +938,81 @@ class SystemMailConfig(models.Model):
                 raise ValidationError("Cấu hình Google Gmail API yêu cầu bộ thông tin OAuth2 hoặc Service Account DWD.")
 
 
+class TenantSSOConfig(models.Model):
+    """SAML 2.0 SSO configuration for Enterprise tenants."""
+    tenant = models.OneToOneField(
+        CoreTenant,
+        on_delete=models.CASCADE,
+        related_name='sso_config',
+        verbose_name='Tenant',
+    )
+    is_enabled = models.BooleanField(default=False, verbose_name='SSO enabled')
+    idp_entity_id = models.CharField(max_length=255, blank=True, default='', verbose_name='IdP Entity ID')
+    idp_sso_url = models.CharField(max_length=500, blank=True, default='', verbose_name='IdP SSO URL')
+    idp_x509_cert = models.TextField(blank=True, default='', verbose_name='IdP X.509 Certificate')
+    domain_hint = models.CharField(max_length=255, blank=True, default='', verbose_name='Domain hint for IdP discovery')
+    sp_entity_id = models.CharField(max_length=255, blank=True, default='', verbose_name='SP Entity ID (this app)')
+    sp_acs_url = models.CharField(max_length=500, blank=True, default='', verbose_name='SP Assertion Consumer Service URL')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Tenant SSO Configuration'
+        verbose_name_plural = 'Tenant SSO Configurations'
+
+    def __str__(self):
+        return f'SSO Config for {self.tenant.display_name} (enabled={self.is_enabled})'
+
+
+class UsageAlertConfig(models.Model):
+    """Per-tenant, per-meter alert threshold configuration."""
+    class MeterCodeChoices(models.TextChoices):
+        API_CALLS = 'api_calls', 'API Calls'
+        AI_REGENERATE = 'ai_regenerate', 'AI Regenerations'
+        WHALE_SYMBOLS = 'whale_symbols', 'Whale Symbols'
+        EXPORTS = 'exports', 'Exports'
+
+    tenant = models.ForeignKey(
+        CoreTenant,
+        on_delete=models.CASCADE,
+        related_name='usage_alert_configs',
+        verbose_name='Tenant',
+    )
+    meter_code = models.CharField(
+        max_length=64,
+        choices=MeterCodeChoices.choices,
+        db_index=True,
+        verbose_name='Meter code',
+    )
+    warning_pct = models.IntegerField(default=80, verbose_name='Warning threshold (%)')
+    critical_pct = models.IntegerField(default=95, verbose_name='Critical threshold (%)')
+    enabled = models.BooleanField(default=True, verbose_name='Alert enabled')
+    notify_email = models.BooleanField(default=True, verbose_name='Send email notification')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Usage Alert Configuration'
+        verbose_name_plural = 'Usage Alert Configurations'
+        unique_together = [('tenant', 'meter_code')]
+        indexes = [
+            models.Index(fields=['tenant', 'enabled']),
+        ]
+
+    def __str__(self):
+        return f'{self.tenant.display_name} - {self.meter_code} (warn={self.warning_pct}%, crit={self.critical_pct}%)'
+
+    def clean(self):
+        super().clean()
+        if self.warning_pct is not None and self.critical_pct is not None:
+            if self.warning_pct >= self.critical_pct:
+                raise ValidationError({'warning_pct': 'Warning threshold must be less than critical threshold.'})
+        if self.warning_pct is not None and (self.warning_pct < 1 or self.warning_pct > 99):
+            raise ValidationError({'warning_pct': 'Warning threshold must be between 1 and 99.'})
+        if self.critical_pct is not None and (self.critical_pct < 2 or self.critical_pct > 100):
+            raise ValidationError({'critical_pct': 'Critical threshold must be between 2 and 100.'})
+
+
 class OutboxEvent(models.Model):
     STATUS_PENDING = 'pending'
     STATUS_PROCESSED = 'processed'
@@ -973,4 +1087,154 @@ class EmailVerificationToken(models.Model):
 
     def __str__(self) -> str:
         return f'Token for {self.user.username} - Used: {self.is_used}'
+
+
+class LoginAttempt(models.Model):
+    tenant = models.ForeignKey(CoreTenant, on_delete=models.CASCADE, null=True, db_index=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    username = models.CharField(max_length=150, db_index=True)
+    email = models.EmailField(blank=True, default='')
+    ip_address = models.GenericIPAddressField(db_index=True)
+    user_agent = models.TextField(blank=True)
+    success = models.BooleanField(db_index=True)
+    failure_reason = models.CharField(max_length=64, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'core_login_attempt'
+        verbose_name = 'Login Attempt'
+        verbose_name_plural = 'Login Attempts'
+        indexes = [
+            models.Index(fields=['tenant', 'created_at']),
+            models.Index(fields=['tenant', 'success']),
+        ]
+
+    def __str__(self):
+        return f'{self.username} ({self.ip_address}) — {"success" if self.success else "failed"}'
+
+
+class ScheduledReport(models.Model):
+    class ReportTypeChoices(models.TextChoices):
+        USAGE_SUMMARY = 'usage_summary', 'Usage Summary'
+        BILLING_SUMMARY = 'billing_summary', 'Billing Summary'
+        SECURITY_DIGEST = 'security_digest', 'Security Digest'
+        AUDIT_LOG = 'audit_log', 'Audit Log'
+
+    class ScheduleChoices(models.TextChoices):
+        DAILY = 'daily', 'Daily'
+        WEEKLY_MON = 'weekly_mon', 'Weekly Monday'
+        WEEKLY_FRI = 'weekly_fri', 'Weekly Friday'
+        MONTHLY_1 = 'monthly_1', 'Monthly 1st'
+        MONTHLY_15 = 'monthly_15', 'Monthly 15th'
+
+    class FormatChoices(models.TextChoices):
+        HTML = 'html', 'HTML'
+        CSV = 'csv', 'CSV'
+
+    tenant = models.ForeignKey(CoreTenant, on_delete=models.CASCADE, related_name='scheduled_reports')
+    name = models.CharField(max_length=128)
+    report_type = models.CharField(max_length=32, choices=ReportTypeChoices.choices)
+    schedule = models.CharField(max_length=16, choices=ScheduleChoices.choices)
+    recipients = models.JSONField(default=list, help_text='List of email strings')
+    format = models.CharField(max_length=8, choices=FormatChoices.choices, default=FormatChoices.HTML)
+    is_active = models.BooleanField(default=True)
+    last_sent_at = models.DateTimeField(null=True, blank=True)
+    total_deliveries = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'core_scheduled_report'
+        ordering = ['-created_at']
+        verbose_name = 'Scheduled Report'
+        verbose_name_plural = 'Scheduled Reports'
+
+    def __str__(self):
+        return f'{self.tenant.display_name} — {self.name} ({self.report_type})'
+
+
+class ReportDeliveryLog(models.Model):
+    class StatusChoices(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        SUCCESS = 'success', 'Success'
+        FAILED = 'failed', 'Failed'
+
+    report = models.ForeignKey(ScheduledReport, on_delete=models.CASCADE, related_name='delivery_logs')
+    status = models.CharField(max_length=16, choices=StatusChoices.choices, default=StatusChoices.PENDING)
+    recipient = models.EmailField()
+    error_message = models.TextField(null=True, blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'core_report_delivery_log'
+        ordering = ['-created_at']
+        verbose_name = 'Report Delivery Log'
+        verbose_name_plural = 'Report Delivery Logs'
+
+    def __str__(self):
+        return f'Delivery for {self.report.name} to {self.recipient} — {self.status}'
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 — Webhook Management
+# ---------------------------------------------------------------------------
+
+class TenantWebhookConfig(models.Model):
+    tenant = models.ForeignKey(
+        CoreTenant, on_delete=models.CASCADE, related_name='webhook_configs'
+    )
+    name = models.CharField(max_length=128, default='Default')
+    url = models.URLField(max_length=512)
+    secret = models.CharField(max_length=64, blank=True, default='')
+    events = models.JSONField(default=list)
+    is_active = models.BooleanField(default=True)
+    headers = models.JSONField(default=dict, blank=True)
+    retry_count = models.IntegerField(default=3)
+    timeout_seconds = models.IntegerField(default=10)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'core_tenant_webhook_config'
+        verbose_name = 'Tenant Webhook Config'
+        verbose_name_plural = 'Tenant Webhook Configs'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.name} — {self.url} ({self.tenant.display_name})'
+
+    def save(self, *args, **kwargs):
+        if not self.secret:
+            self.secret = secrets.token_hex(32)
+        super().save(*args, **kwargs)
+
+
+class WebhookDelivery(models.Model):
+    config = models.ForeignKey(
+        TenantWebhookConfig, on_delete=models.CASCADE, related_name='deliveries'
+    )
+    event_type = models.CharField(max_length=64)
+    event_id = models.CharField(max_length=64, db_index=True)
+    payload = models.JSONField()
+    status = models.CharField(max_length=16, default='pending')
+    response_code = models.IntegerField(null=True)
+    response_body = models.TextField(blank=True, default='')
+    attempts = models.IntegerField(default=0)
+    next_retry_at = models.DateTimeField(null=True)
+    duration_ms = models.IntegerField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'core_webhook_delivery'
+        verbose_name = 'Webhook Delivery'
+        verbose_name_plural = 'Webhook Deliveries'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['config', 'created_at']),
+            models.Index(fields=['status', 'next_retry_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.event_type} — {self.status} ({self.config.name})'
 

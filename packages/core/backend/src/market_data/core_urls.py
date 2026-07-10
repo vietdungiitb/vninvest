@@ -19,6 +19,7 @@ from .stock_mgmt_native_views import (
     StockManagementGroupDetailView,
     StockManagementGroupItemsView,
     StockManagementGroupsView,
+    StockManagementItemDetailView,
     StockManagementNewsAISummaryView,
     StockManagementNewsView,
     StockManagementOrderFlowView,
@@ -28,16 +29,25 @@ from .stock_mgmt_native_views import (
     StockManagementPriceAlertsView,
     StockManagementPortfolioNewsDigestView,
     StockManagementSeedView,
+    StockManagementStockListView,
     StockManagementSyncView,
+    StockManagementTechnicalsView,
     StockManagementTrackedSymbolBulkThresholdView,
     StockManagementTrackedSymbolDetailView,
     StockManagementTrackedSymbolsView,
 )
 from .urls import urlpatterns as shared_urlpatterns
-
+from .admin_sync_views import (
+    AdminOpsMarketGroupsSyncView,
+    AdminOpsMarketGroupsPreviewView,
+    AdminOpsSystemDefaultsSeedView,
+)
 
 urlpatterns = [
     *shared_urlpatterns,
+    path('market-data/admin-groups/sync/', AdminOpsMarketGroupsSyncView.as_view(), name='api-admin-market-groups-sync'),
+    path('market-data/admin-groups/preview/', AdminOpsMarketGroupsPreviewView.as_view(), name='api-admin-market-groups-preview'),
+    path('market-data/system-defaults/seed/', AdminOpsSystemDefaultsSeedView.as_view(), name='api-admin-system-defaults-seed'),
     path('stock-management/groups/', StockManagementGroupsView.as_view(), name='market-data-groups'),
     path('stock-management/groups/<int:group_id>/', StockManagementGroupDetailView.as_view(), name='market-data-group-detail'),
     path('stock-management/groups/<int:group_id>/items/', StockManagementGroupItemsView.as_view(), name='market-data-group-items'),
@@ -69,4 +79,7 @@ urlpatterns = [
     path('stock-management/tracked-symbols/', StockManagementTrackedSymbolsView.as_view(), name='market-data-tracked-symbols'),
     path('stock-management/tracked-symbols/bulk-threshold/', StockManagementTrackedSymbolBulkThresholdView.as_view(), name='market-data-tracked-symbol-bulk-threshold'),
     path('stock-management/tracked-symbols/<int:pk>/', StockManagementTrackedSymbolDetailView.as_view(), name='market-data-tracked-symbol-detail'),
+    path('stock-management/items/<int:item_id>/', StockManagementItemDetailView.as_view(), name='market-data-item-detail'),
+    path('stock-management/technicals/bulk/', StockManagementTechnicalsView.as_view(), name='market-data-technicals-bulk'),
+    path('stock-management/stocks/', StockManagementStockListView.as_view(), name='market-data-stock-list'),
 ]

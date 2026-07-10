@@ -45,8 +45,9 @@ frontend/.env.*.local
 .env.saas-prod
 
 # ── Node / React ─────────────────────────────────────────────────────────────
-frontend/node_modules/
-packages/web/node_modules/
+node_modules/
+/package.json
+/package-lock.json
 packages/vip-app/local-backend/data/
 frontend/build/
 frontend/.pnp
@@ -56,6 +57,17 @@ frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
 frontend/.eslintcache
+
+# ── Playwright / Test artifacts ─────────────────────────────────────────────
+packages/web/test-results/
+packages/web/playwright-report/
+
+# ── Junk backup copies (Windows Explorer duplicates, temp files) ────────────
+packages/web/src/components/dashboard/* (1).*
+packages/web/src/layouts/**/* (1).*
+packages/web/src/utils/dashboardSymbols.js
+packages/web/vite (1).config.ts
+packages/web/vite.config.ts.timestamp-*.mjs
 
 # ── OS / Editor ──────────────────────────────────────────────────────────────
 .DS_Store
@@ -73,3 +85,15 @@ opennews-main/
 htmlcov/
 .pytest_cache/
 .mypy_cache/
+
+# ── Local developer scratch files ─────────────────────────────────────────────
+scratch/
+.agents/
+.blackbox/
+
+# ── Build Logs & Artifacts ───────────────────────────────────────────────────
+/*.log
+/build_log*.txt
+/*.tar
+/*.bundle
+

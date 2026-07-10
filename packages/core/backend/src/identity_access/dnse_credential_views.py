@@ -19,6 +19,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from vninvest_core.exceptions import (
+    ValidationErrorException,
+    PermissionErrorException,
+    NotFoundErrorException,
+    InternalErrorException,
+)
+
 from .models import UserDNSECredential, _encrypt_credential
 from .permissions import require_human_session
 
@@ -38,7 +45,7 @@ class DNSECredentialView(APIView):
         try:
             cred = UserDNSECredential.objects.get(user=request.user)
         except UserDNSECredential.DoesNotExist:
-            return Response({'detail': 'Chưa cấu hình DNSE credential.'}, status=status.HTTP_404_NOT_FOUND)
+            raise NotFoundErrorException('Chưa cấu hình DNSE credential.')
         return Response(_safe_serialize(cred))
 
     def post(self, request):
@@ -48,17 +55,11 @@ class DNSECredentialView(APIView):
         is_system = bool(request.data.get('is_system_provider', False))
 
         if not api_key or not api_secret:
-            return Response(
-                {'detail': 'api_key và api_secret là bắt buộc.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            raise ValidationErrorException('api_key và api_secret là bắt buộc.')
 
         # Hard rule §14.6: chỉ admin mới set is_system_provider
         if is_system and not request.user.is_staff:
-            return Response(
-                {'detail': 'Chỉ admin mới được đặt is_system_provider=true.'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            raise PermissionErrorException('Chỉ admin mới được đặt is_system_provider=true.')
 
         try:
             cred, created = UserDNSECredential.objects.get_or_create(
@@ -74,10 +75,7 @@ class DNSECredentialView(APIView):
         except RuntimeError as exc:
             # Thiếu DNSE_CREDENTIAL_FERNET_KEY
             logger.error('DNSECredentialView POST: Fernet key error: %s', exc)
-            return Response(
-                {'detail': 'Lỗi cấu hình mã hoá phía server. Liên hệ admin.'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+            raise InternalErrorException('Lỗi cấu hình mã hoá phía server. Liên hệ admin.')
 
         return Response(
             _safe_serialize(cred),
@@ -89,7 +87,7 @@ class DNSECredentialView(APIView):
         deleted, _ = UserDNSECredential.objects.filter(user=request.user).delete()
         if deleted:
             return Response({'detail': 'DNSE credential đã được xoá.'}, status=status.HTTP_204_NO_CONTENT)
-        return Response({'detail': 'Không tìm thấy credential.'}, status=status.HTTP_404_NOT_FOUND)
+        raise NotFoundErrorException('Không tìm thấy credential.')
 
 
 def _safe_serialize(cred: UserDNSECredential) -> dict:

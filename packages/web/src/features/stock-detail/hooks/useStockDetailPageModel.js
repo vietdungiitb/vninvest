@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createCoreApiAdapter } from "../../../adapters/coreApiAdapter.js";
 import { buildEffectiveOrderFlowData } from "../orderFlowFallback.js";
+import { useRealtimeFeedFromManager } from "../../../context/RealtimeContext.js";
 
 const DEFAULT_ENV = {};
 const DEFAULT_ORDER_FLOW_WINDOW = "1h";
@@ -48,7 +49,7 @@ function normalizeChartBarsPayload(payload) {
 export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {}) {
   const [symbol, setSymbol] = useState(initialSymbol || "");
   const [activeTimeframe, setActiveTimeframe] = useState("1D");
-  const [activePeriod, setActivePeriod] = useState("6M");
+  const [activePeriod, setActivePeriod] = useState("1M");
   const [selectedSession, setSelectedSession] = useState(null);
   const [visibleRange, setVisibleRange] = useState(null);
 
@@ -62,6 +63,7 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
     chartBars: [],
     orderFlowData: null,
     advisory: null,
+    advisoryFallbackFlags: null,
     whaleFeed: [],
   });
 
@@ -86,8 +88,13 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
       setSymbol(initialSymbol);
       setSelectedSession(null);
       setVisibleRange(null);
+      setNews(null);
+      setFinancials(null);
+      setActiveTab("giao-dich");
       setModelState((s) => ({
         ...s,
+        profile: null,
+        snapshot: null,
         chartBars: [],
       }));
     }
@@ -108,9 +115,8 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
 
     async function loadBlocking() {
       try {
-        const [profileRes, snapshotRes, orderFlowRes, sessionFactsCvdRes, whaleSnapshotRes] = await Promise.allSettled([
-          adapter.getStockProfile(symbol),
-          adapter.getSymbolSnapshot(symbol),
+        const [overviewRes, orderFlowRes, sessionFactsCvdRes, whaleSnapshotRes] = await Promise.allSettled([
+          adapter.getStockOverview(symbol),
           adapter.getStockOrderFlow(symbol, { window: DEFAULT_ORDER_FLOW_WINDOW }),
           adapter.getSessionFactsCvd(symbol, { window: DEFAULT_ORDER_FLOW_WINDOW }),
           adapter.getWhaleAnalyticsSnapshot(symbol, {
@@ -125,8 +131,7 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
         setModelState((s) => ({
           ...s,
           loadingBlocking: false,
-          profile: profileRes.status === "fulfilled" ? profileRes.value : null,
-          snapshot: snapshotRes.status === "fulfilled" ? snapshotRes.value : null,
+          snapshot: overviewRes.status === "fulfilled" ? overviewRes.value : null,
           orderFlowData: buildEffectiveOrderFlowData({
             orderFlowPayload: orderFlowRes.status === "fulfilled" ? orderFlowRes.value : null,
             sessionFactsCvdPayload: sessionFactsCvdRes.status === "fulfilled" ? sessionFactsCvdRes.value : null,
@@ -188,40 +193,87 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
     loadDeferred();
   }, [env, symbol, selectedSession]);
 
+  const [activeTab, setActiveTab] = useState("giao-dich");
   const [news, setNews] = useState(null);
   const [financials, setFinancials] = useState(null);
   const [loadingNews, setLoadingNews] = useState(false);
   const [loadingFinancials, setLoadingFinancials] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(false);
 
-  // 3. Insight/Stubs Lane: news & financials
+  // 3. Lazy loading lanes: fetch profile, news, financials based on activeTab
   useEffect(() => {
     if (!symbol) return;
-    setLoadingNews(true);
-    setLoadingFinancials(true);
     const adapter = createCoreApiAdapter({ env, getToken: env.getToken });
 
-    async function loadInsights() {
-      try {
-        const [newsRes, finRes] = await Promise.allSettled([
-          adapter.getStockNews(symbol),
-          adapter.getStockFinancials(symbol),
-        ]);
-
-        if (!mountedRef.current) return;
-
-        setNews(newsRes.status === "fulfilled" ? (newsRes.value?.results ?? newsRes.value ?? null) : null);
-        setFinancials(finRes.status === "fulfilled" ? finRes.value || null : null);
-      } catch (e) {
-        // Gracefully ignore stub errors to avoid page crash
-      } finally {
-        if (mountedRef.current) {
-          setLoadingNews(false);
-          setLoadingFinancials(false);
-        }
-      }
+    // Fetch profile for Hồ sơ / Cổ đông / Vốn & Cổ tức / Lịch sử sự kiện tabs
+    if (
+      (activeTab === "ho-so" ||
+        activeTab === "co-dong" ||
+        activeTab === "von-co-tuc" ||
+        activeTab === "su-kien") &&
+      !modelState.profile &&
+      !loadingProfile
+    ) {
+      setLoadingProfile(true);
+      adapter
+        .getStockProfile(symbol)
+        .then((data) => {
+          if (mountedRef.current) {
+            setModelState((s) => ({ ...s, profile: data }));
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (mountedRef.current) setLoadingProfile(false);
+        });
     }
-    loadInsights();
-  }, [env, symbol]);
+
+    // Fetch news for Tin tức tab
+    if (activeTab === "tin-tuc" && !news && !loadingNews) {
+      setLoadingNews(true);
+      adapter
+        .getStockNews(symbol)
+        .then((data) => {
+          if (mountedRef.current) {
+            setNews(data?.news ?? data?.results ?? data ?? []);
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (mountedRef.current) setLoadingNews(false);
+        });
+    }
+
+    // Fetch financials for Tài chính / Thống kê / Vốn & Cổ tức tabs
+    if (
+      (activeTab === "tai-chinh" || activeTab === "thong-ke" || activeTab === "von-co-tuc") &&
+      !financials &&
+      !loadingFinancials
+    ) {
+      setLoadingFinancials(true);
+      adapter
+        .getStockFinancials(symbol)
+        .then((data) => {
+          if (mountedRef.current) {
+            setFinancials(data?.financials ?? data ?? null);
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (mountedRef.current) setLoadingFinancials(false);
+        });
+    }
+  }, [
+    env,
+    symbol,
+    activeTab,
+    modelState.profile,
+    loadingProfile,
+    news,
+    loadingNews,
+    financials,
+    loadingFinancials,
+  ]);
 
   // 4. 250ms Throttled Realtime Snapshot updates (WebSocket batching)
   const handleRealtimeSnapshot = useCallback((nextSnapshot) => {
@@ -247,6 +299,117 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
     }, 250);
   }, []);
 
+  // --- Real-time Feed Subscription & Forwarding ---
+  const realtimeFeed = useRealtimeFeedFromManager({
+    symbols: symbol ? [symbol] : [],
+    pollInterval: 5000,
+  });
+
+  useEffect(() => {
+    if (symbol && realtimeFeed?.quotesBySymbol?.[symbol]) {
+      const quote = realtimeFeed.quotesBySymbol[symbol];
+      handleRealtimeSnapshot(quote);
+    }
+  }, [realtimeFeed?.quotesBySymbol?.[symbol], symbol, handleRealtimeSnapshot]);
+  // ------------------------------------------------
+
+  const refreshAdvisoryData = useCallback(async (promptConfig) => {
+    if (!symbol) return;
+    const adapter = createCoreApiAdapter({ env, getToken: env.getToken });
+    const startTime = Date.now();
+
+    setModelState((s) => ({
+      ...s,
+      loadingDeferred: true,
+      error: null,
+    }));
+
+    try {
+      // Trigger the refresh request and capture response for fallback flags
+      const refreshResponse = await adapter.refreshAdvisory(symbol, promptConfig);
+      if (refreshResponse && mountedRef.current) {
+        setModelState((s) => ({
+          ...s,
+          advisoryFallbackFlags: {
+            personal_key_failed: refreshResponse.personal_key_failed,
+            personal_key_error: refreshResponse.personal_key_error,
+            using_system_fallback: refreshResponse.using_system_fallback,
+            fallback_quota_remaining: refreshResponse.fallback_quota_remaining,
+          },
+        }));
+      }
+
+      // Now poll for the new advisory
+      let attempts = 0;
+      const maxAttempts = 15;
+      const pollInterval = 2000; // 2 seconds
+
+      const checkAdvisory = async () => {
+        try {
+          const latest = await adapter.getAdvisoryLatest(symbol);
+          if (latest && latest.generated_at) {
+            const genTime = new Date(latest.generated_at).getTime();
+            if (genTime >= startTime) {
+              if (mountedRef.current) {
+                setModelState((s) => ({
+                  ...s,
+                  loadingDeferred: false,
+                  advisory: latest,
+                }));
+              }
+              return true;
+            }
+          }
+        } catch (e) {
+          // If 404 or other error, just continue polling
+        }
+        return false;
+      };
+
+      const runPolling = () => {
+        setTimeout(async () => {
+          if (!mountedRef.current) return;
+          const success = await checkAdvisory();
+          if (success) return;
+
+          attempts++;
+          if (attempts < maxAttempts) {
+            runPolling();
+          } else {
+            // Timeout, stop loading and try to load whatever is latest
+            if (mountedRef.current) {
+              try {
+                const latest = await adapter.getAdvisoryLatest(symbol);
+                setModelState((s) => ({
+                  ...s,
+                  loadingDeferred: false,
+                  advisory: latest,
+                }));
+              } catch (err) {
+                setModelState((s) => ({
+                  ...s,
+                  loadingDeferred: false,
+                }));
+              }
+            }
+          }
+        }, pollInterval);
+      };
+
+      // Start polling
+      runPolling();
+
+    } catch (err) {
+      if (mountedRef.current) {
+        setModelState((s) => ({
+          ...s,
+          loadingDeferred: false,
+          error: err?.message || "Không thể yêu cầu làm mới AI Advisory.",
+        }));
+      }
+    }
+  }, [env, symbol]);
+
   const setChartBars = useCallback((bars) => {
     setModelState((s) => ({
       ...s,
@@ -271,7 +434,10 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
     financials,
     loadingNews,
     loadingFinancials,
+    activeTab,
+    setActiveTab,
+    loadingProfile,
+    refreshAdvisoryData,
     ...modelState,
   };
-
 }

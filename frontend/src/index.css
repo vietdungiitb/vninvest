@@ -755,3 +755,20 @@ textarea {
 .agentic-glow-cyan:hover::after {
   @apply opacity-100;
 }
+
+/* Date Input Styling for calendar picker visibility and behavior */
+input[type="date"] {
+  position: relative;
+  cursor: pointer;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(0.9);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s ease-in-out;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}

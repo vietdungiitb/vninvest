@@ -224,145 +224,228 @@ function candleBodyWidth(props, moreProps) {
     return Math.max(1, Math.min(maxSafeWidth, Math.floor(targetWidth)));
 }
 function renderSeries(series) {
-    const type = series.type;
-    const entry = getSeries(type);
-    const params = { ...entry.defaultParams, ...series.params };
-    const styleOverride = getSeriesStyleOverrideForSeries(series);
-    if (series.visible === false || styleOverride?.visible === false) {
+    var type = series.type;
+    var entry = getSeries(type);
+    var params = Object.assign(Object.assign({}, entry.defaultParams), series.params);
+    var styleOverride = getSeriesStyleOverrideForSeries(series);
+    if (series.visible === false || (styleOverride === null || styleOverride === void 0 ? void 0 : styleOverride.visible) === false) {
         return null;
     }
-    const lineColor = styleOverride?.color ?? series.color ?? String(params.color ?? "#2962ff");
-    const fillColor = styleOverride?.color ?? series.color ?? String(params.fill ?? lineColor);
-    const upColor = styleOverride?.color ?? String(params.upColor ?? "#089981");
-    const downColor = styleOverride?.color ?? String(params.downColor ?? "#f23645");
-    const lineWidth = styleOverride?.lineWidth
-        ?? (typeof series.lineWidth === "number" && Number.isFinite(series.lineWidth) ? Math.max(1, series.lineWidth) : undefined)
-        ?? (series.overlay ? 1.5 : 1.2);
-    const strokeOpacity = styleOverride?.opacity ?? 1;
-    const fillOpacity = styleOverride?.opacity ?? 0.5;
-    const dashArray = dashPatternToSeriesDasharray(styleOverride?.dashPattern);
-    const seriesKey = series.id ?? type;
-    const accessor = (datum) => resolveSeriesValue(datum, series);
-    const structured = (datum) => resolveSeriesStructuredValue(datum, series);
-    const fieldAccessor = (field) => (datum) => structured(datum)?.[field];
-    /** Resolve a per-component sub-color, falling back to fallback color */
-    const sc = (key, fallback) => series.subColors?.[key] ?? fallback;
-    switch (type) {
-        case "Candlestick":
-        case "HeikinAshi":
-            return (_jsx(CandlestickSeries, { width: candleBodyWidth, yAccessor: (datum) => datum, fill: ((datum) => (styleOverride?.color ? lineColor : datum.close >= datum.open ? upColor : downColor)), stroke: ((datum) => (styleOverride?.color ? lineColor : datum.close >= datum.open ? upColor : downColor)), wickStroke: ((datum) => (styleOverride?.color ? lineColor : datum.close >= datum.open ? upColor : downColor)), candleStrokeWidth: styleOverride?.lineWidth ?? 0.5, opacity: styleOverride?.opacity ?? 0.5 }, seriesKey));
-        case "HollowCandle":
-            return (_jsx(CandlestickSeries, { width: candleBodyWidth, yAccessor: (datum) => datum, fill: ((datum) => (styleOverride?.color ? lineColor : datum.close >= datum.open ? "transparent" : downColor)), stroke: ((datum) => (styleOverride?.color ? lineColor : datum.close >= datum.open ? upColor : downColor)), wickStroke: ((datum) => (styleOverride?.color ? lineColor : datum.close >= datum.open ? upColor : downColor)), candleStrokeWidth: styleOverride?.lineWidth ?? 0.5, opacity: styleOverride?.opacity ?? 0.5 }, seriesKey));
-        case "OHLC":
-            return _jsx(OHLCSeries, { stroke: (datum) => (styleOverride?.color ? lineColor : datum.close >= datum.open ? upColor : downColor) }, seriesKey);
-        case "Line":
-        case "EMA":
-        case "CVDApprox":
-        case "CVDRealtime":
-        case "StrengthRelative":
-            return (_jsx(LineSeries, { yAccessor: accessor, stroke: lineColor, strokeWidth: lineWidth, strokeOpacity: strokeOpacity, strokeDasharray: dashArray }, seriesKey));
-        case "Area":
-            return (_jsx(AreaSeries, { yAccessor: accessor, stroke: lineColor, fill: fillColor, strokeWidth: lineWidth, strokeOpacity: strokeOpacity, opacity: fillOpacity, strokeDasharray: dashArray }, seriesKey));
-        case "Bar":
-        case "Volume":
-        case "Whale":
-            return (_jsx(BarSeries, { width: candleBodyWidth, yAccessor: (datum) => {
-                    if (type === "Whale") {
-                        const whale = resolveSeriesStructuredValue(datum, series);
-                        return whale?.whaleBuyVol ?? (whale?.whaleSellVol ? -whale.whaleSellVol : undefined);
-                    }
-                    return accessor(datum);
-                }, fill: (datum) => (styleOverride?.color ? lineColor : datum.close >= datum.open ? upColor : downColor), opacity: styleOverride?.opacity ?? (type === "Volume" ? 0.75 : 0.6) }, seriesKey));
-        case "BollingerBand": {
-            // Sub-colors: middle, top, bottom — apply 53% alpha to band lines for visual clarity
-            const bbMidColor = sc("middle", lineColor);
-            const bbTopRaw = sc("top", lineColor);
-            const bbBotRaw = sc("bottom", lineColor);
-            const bbFillModeRaw = typeof series.params?.fillMode === "string" ? series.params.fillMode : "none";
-            const bbFillMode = bbFillModeRaw === "solid" || bbFillModeRaw === "fade" ? bbFillModeRaw : "none";
-            const bbFillOpacity = typeof series.params?.fillOpacity === "number"
-                ? Math.max(0, Math.min(1, series.params.fillOpacity))
-                : (styleOverride?.opacity ?? 0.15);
-            const bbFillColor = typeof series.params?.fillColor === "string" ? series.params.fillColor : fillColor;
-            const withAlpha = (c) => c.match(/^#[0-9a-fA-F]{6}$/) ? c + "88" : c;
-            return (_jsx(BollingerSeries, { yAccessor: (datum) => resolveSeriesStructuredValue(datum, series), stroke: { top: withAlpha(bbTopRaw), middle: bbMidColor, bottom: withAlpha(bbBotRaw) }, strokeWidth: { top: lineWidth, middle: lineWidth, bottom: lineWidth }, fill: bbFillColor, opacity: bbFillMode === "none" ? 0 : bbFillOpacity, fillMode: bbFillMode }, seriesKey));
-        }
-        case "RSI": {
-            const rsiLine = sc("line", lineColor);
-            const rsiOB = sc("overbought", "#f23645");
-            const rsiMid = sc("middle", "#9ca3af");
-            const rsiOS = sc("oversold", "#089981");
-            return (_jsx(RSISeries, { yAccessor: (datum) => resolveSeriesValue(datum, series), stroke: {
-                    top: rsiOB,
-                    middle: rsiMid,
-                    bottom: rsiOS,
-                    outsideThreshold: rsiLine,
-                    insideThreshold: rsiLine,
-                }, opacity: { top: 0.5, middle: 0.4, bottom: 0.5 }, strokeDasharray: { line: dashArray, top: "ShortDash", middle: "ShortDash", bottom: "ShortDash" }, strokeWidth: {
-                    outsideThreshold: lineWidth,
-                    insideThreshold: lineWidth,
-                    top: 1,
-                    middle: 1,
-                    bottom: 1,
-                } }, seriesKey));
-        }
-        case "MACD": {
-            const macdColor = sc("macd", lineColor);
-            const signalColor = sc("signal", "#ff6d00");
-            const divergeColor = sc("diverge", "#26a69a");
-            return _jsx(MACDSeries, { yAccessor: (datum) => resolveSeriesStructuredValue(datum, series), stroke: { macd: macdColor, signal: signalColor }, strokeWidth: { macd: lineWidth, signal: lineWidth }, fill: { divergence: divergeColor }, opacity: strokeOpacity }, seriesKey);
-        }
-        case "KDJ": {
-            const kColor = sc("k", lineColor);
-            const dColor = sc("d", "#ff6d00");
-            const jColor = sc("j", "#26a69a");
-            return (_jsxs("g", { children: [_jsx(LineSeries, { yAccessor: fieldAccessor("k"), stroke: kColor, strokeWidth: lineWidth }, `${type}-k`), _jsx(LineSeries, { yAccessor: fieldAccessor("d"), stroke: dColor, strokeWidth: lineWidth }, `${type}-d`), _jsx(LineSeries, { yAccessor: fieldAccessor("j"), stroke: jColor, strokeWidth: lineWidth }, `${type}-j`), _jsx(StraightLine, { stroke: kColor, opacity: 0.35, yValue: 80, strokeDasharray: "ShortDash" }), _jsx(StraightLine, { stroke: kColor, opacity: 0.35, yValue: 50, strokeDasharray: "ShortDash" }), _jsx(StraightLine, { stroke: kColor, opacity: 0.35, yValue: 20, strokeDasharray: "ShortDash" })] }, seriesKey));
-        }
-        case "CCI":
-            return (_jsxs("g", { children: [_jsx(LineSeries, { yAccessor: accessor, stroke: lineColor, strokeWidth: lineWidth }, `${type}-line`), _jsx(StraightLine, { stroke: lineColor, opacity: 0.35, yValue: 100, strokeDasharray: "ShortDash" }), _jsx(StraightLine, { stroke: lineColor, opacity: 0.35, yValue: 0, strokeDasharray: "ShortDash" }), _jsx(StraightLine, { stroke: lineColor, opacity: 0.35, yValue: -100, strokeDasharray: "ShortDash" })] }, seriesKey));
-        case "DMI": {
-            const plusColor = sc("plusDI", "#089981");
-            const minusColor = sc("minusDI", "#f23645");
-            const adxColor = sc("adx", lineColor);
-            return (_jsxs("g", { children: [_jsx(LineSeries, { yAccessor: fieldAccessor("plusDI"), stroke: plusColor, strokeWidth: lineWidth }, `${type}-plus`), _jsx(LineSeries, { yAccessor: fieldAccessor("minusDI"), stroke: minusColor, strokeWidth: lineWidth }, `${type}-minus`), _jsx(LineSeries, { yAccessor: fieldAccessor("adx"), stroke: adxColor, strokeWidth: lineWidth }, `${type}-adx`)] }, seriesKey));
-        }
-        case "BIAS":
-            return _jsx(LineSeries, { yAccessor: accessor, stroke: lineColor, strokeWidth: lineWidth }, type);
-        case "BRAR": {
-            const arColor = sc("ar", lineColor);
-            const brColor = sc("br", "#ff6d00");
-            return (_jsxs("g", { children: [_jsx(LineSeries, { yAccessor: fieldAccessor("ar"), stroke: arColor, strokeWidth: lineWidth }, `${type}-ar`), _jsx(LineSeries, { yAccessor: fieldAccessor("br"), stroke: brColor, strokeWidth: lineWidth }, `${type}-br`)] }, seriesKey));
-        }
-        case "MTM": {
-            return (_jsxs("g", { children: [_jsx(LineSeries, { yAccessor: fieldAccessor("mtm"), stroke: sc("mtm", lineColor), strokeWidth: lineWidth }, `${type}-mtm`), _jsx(LineSeries, { yAccessor: fieldAccessor("signal"), stroke: sc("signal", "#ff6d00"), strokeWidth: lineWidth }, `${type}-signal`)] }, seriesKey));
-        }
-        case "EMV": {
-            return (_jsxs("g", { children: [_jsx(LineSeries, { yAccessor: fieldAccessor("emv"), stroke: sc("emv", lineColor), strokeWidth: lineWidth }, `${type}-emv`), _jsx(LineSeries, { yAccessor: fieldAccessor("signal"), stroke: sc("signal", "#ff6d00"), strokeWidth: lineWidth }, `${type}-signal`)] }, seriesKey));
-        }
-        case "AO":
-            return (_jsx(BarSeries, { width: candleBodyWidth, yAccessor: accessor, fill: (datum) => datum.aoColor ?? lineColor, opacity: 0.85 }, seriesKey));
-        case "ROC":
-            return _jsx(LineSeries, { yAccessor: accessor, stroke: lineColor, strokeWidth: lineWidth }, type);
-        case "TRIX": {
-            return (_jsxs("g", { children: [_jsx(LineSeries, { yAccessor: fieldAccessor("trix"), stroke: sc("trix", lineColor), strokeWidth: lineWidth }, `${type}-trix`), _jsx(LineSeries, { yAccessor: fieldAccessor("signal"), stroke: sc("signal", "#ff6d00"), strokeWidth: lineWidth }, `${type}-signal`)] }, seriesKey));
-        }
-        case "DMA": {
-            return (_jsxs("g", { children: [_jsx(LineSeries, { yAccessor: fieldAccessor("ddd"), stroke: sc("ddd", lineColor), strokeWidth: lineWidth }, `${type}-ddd`), _jsx(LineSeries, { yAccessor: fieldAccessor("ama"), stroke: sc("ama", "#ff6d00"), strokeWidth: lineWidth }, `${type}-ama`)] }, seriesKey));
-        }
-        case "PVT":
-            return _jsx(LineSeries, { yAccessor: accessor, stroke: lineColor, strokeWidth: lineWidth }, type);
-        case "PSY": {
-            return (_jsxs("g", { children: [_jsx(LineSeries, { yAccessor: fieldAccessor("psy"), stroke: sc("psy", lineColor), strokeWidth: lineWidth }, `${type}-psy`), _jsx(LineSeries, { yAccessor: fieldAccessor("signal"), stroke: sc("signal", "#ff6d00"), strokeWidth: lineWidth }, `${type}-signal`)] }, seriesKey));
-        }
-        case "CR": {
-            return (_jsxs("g", { children: [_jsx(LineSeries, { yAccessor: fieldAccessor("cr"), stroke: sc("cr", lineColor), strokeWidth: lineWidth }, `${type}-cr`), _jsx(LineSeries, { yAccessor: fieldAccessor("ma1"), stroke: sc("ma1", "#ff6d00"), strokeWidth: lineWidth }, `${type}-ma1`), _jsx(LineSeries, { yAccessor: fieldAccessor("ma2"), stroke: sc("ma2", "#26a69a"), strokeWidth: lineWidth }, `${type}-ma2`), _jsx(LineSeries, { yAccessor: fieldAccessor("ma3"), stroke: sc("ma3", "#f23645"), strokeWidth: lineWidth }, `${type}-ma3`), _jsx(LineSeries, { yAccessor: fieldAccessor("ma4"), stroke: sc("ma4", "#9ca3af"), strokeWidth: lineWidth }, `${type}-ma4`)] }, seriesKey));
-        }
-        case "StrengthElder": {
-            return (_jsx(ElderRaySeries, { yAccessor: (datum) => resolveSeriesStructuredValue(datum, series), bullPowerFill: sc("bull", "#089981"), bearPowerFill: sc("bear", "#f23645"), straightLineStroke: lineColor, straightLineOpacity: strokeOpacity, opacity: fillOpacity }, seriesKey));
-        }
-        default:
-            return _jsx(LineSeries, { yAccessor: accessor, stroke: lineColor, strokeWidth: lineWidth, strokeOpacity: strokeOpacity, strokeDasharray: dashArray }, seriesKey);
-    }
+    var lineColor = (_b = styleOverride === null || styleOverride === void 0 ? void 0 : styleOverride.color) !== null && _b !== void 0 ? _b : (_c = series.color) !== null && _c !== void 0 ? _c : String(params.color !== null && params.color !== void 0 ? params.color : "#2962ff");
+    var fillColor = (_d = styleOverride === null || styleOverride === void 0 ? void 0 : styleOverride.color) !== null && _d !== void 0 ? _d : (_e = series.color) !== null && _e !== void 0 ? _e : String(params.fill !== null && params.fill !== void 0 ? params.fill : lineColor);
+    var upColor = (_f = styleOverride === null || styleOverride === void 0 ? void 0 : styleOverride.color) !== null && _f !== void 0 ? _f : String(params.upColor !== null && params.upColor !== void 0 ? params.upColor : "#089981");
+    var downColor = (_g = styleOverride === null || styleOverride === void 0 ? void 0 : styleOverride.color) !== null && _g !== void 0 ? _g : String(params.downColor !== null && params.downColor !== void 0 ? params.downColor : "#f23645");
+    var lineWidth = (_h = styleOverride === null || styleOverride === void 0 ? void 0 : styleOverride.lineWidth) !== null && _h !== void 0 ? _h : (typeof series.lineWidth === "number" && Number.isFinite(series.lineWidth) ? Math.max(1, series.lineWidth) : undefined)
+        !== null && _h !== void 0 ? _h : (series.overlay ? 1.5 : 1.2);
+    var strokeOpacity = (_l = styleOverride === null || styleOverride === void 0 ? void 0 : styleOverride.opacity) !== null && _l !== void 0 ? _l : 1;
+    var fillOpacity = (_m = styleOverride === null || styleOverride === void 0 ? void 0 : styleOverride.opacity) !== null && _m !== void 0 ? _m : 0.5;
+    var dashArray = dashPatternToSeriesDasharray(styleOverride === null || styleOverride === void 0 ? void 0 : styleOverride.dashPattern);
+    var seriesKey = series.id !== null && series.id !== void 0 ? series.id : type;
+    var accessor = function (datum) { return resolveSeriesValue(datum, series); };
+    var ctx = { type: type, params: params, styleOverride: styleOverride, series: series, lineColor: lineColor, fillColor: fillColor, upColor: upColor, downColor: downColor, lineWidth: lineWidth, strokeOpacity: strokeOpacity, fillOpacity: fillOpacity, dashArray: dashArray, seriesKey: seriesKey, accessor: accessor, candleBodyWidth: candleBodyWidth };
+    var renderer = seriesRendererRegistry[type] || seriesRendererRegistry._default;
+    return renderer(ctx);
+}
+
+var _b, _c, _d, _e, _f, _g, _h, _l, _m;
+
+var seriesRendererRegistry = {
+    Candlestick: function (ctx) { return renderCandlestick(ctx); },
+    HeikinAshi: function (ctx) { return renderCandlestick(ctx); },
+    HollowCandle: function (ctx) { return renderHollowCandle(ctx); },
+    OHLC: function (ctx) { return renderOHLC(ctx); },
+    Line: function (ctx) { return renderLine(ctx); },
+    EMA: function (ctx) { return renderLine(ctx); },
+    CVDApprox: function (ctx) { return renderLine(ctx); },
+    CVDRealtime: function (ctx) { return renderLine(ctx); },
+    StrengthRelative: function (ctx) { return renderLine(ctx); },
+    BIAS: function (ctx) { return renderLine(ctx); },
+    ROC: function (ctx) { return renderLine(ctx); },
+    PVT: function (ctx) { return renderLine(ctx); },
+    Area: function (ctx) { return renderArea(ctx); },
+    Bar: function (ctx) { return renderBar(ctx); },
+    Volume: function (ctx) { return renderBar(ctx); },
+    Whale: function (ctx) { return renderWhale(ctx); },
+    BollingerBand: function (ctx) { return renderBollingerBand(ctx); },
+    RSI: function (ctx) { return renderRSI(ctx); },
+    MACD: function (ctx) { return renderMACD(ctx); },
+    StrengthElder: function (ctx) { return renderElderRay(ctx); },
+    KDJ: function (ctx) { return renderKDJ(ctx); },
+    CCI: function (ctx) { return renderCCI(ctx); },
+    DMI: function (ctx) { return renderDMI(ctx); },
+    BRAR: function (ctx) { return renderBRAR(ctx); },
+    MTM: function (ctx) { return renderMTM(ctx); },
+    EMV: function (ctx) { return renderEMV(ctx); },
+    AO: function (ctx) { return renderAO(ctx); },
+    TRIX: function (ctx) { return renderTRIX(ctx); },
+    DMA: function (ctx) { return renderDMA(ctx); },
+    PSY: function (ctx) { return renderPSY(ctx); },
+    CR: function (ctx) { return renderCR(ctx); },
+    _default: function (ctx) { return renderLine(ctx); },
+};
+
+function renderCandlestick(ctx) {
+    var sc = function (key, fallback) { var _a; return (_a = ctx.series.subColors) === null || _a === void 0 ? void 0 : _a[key]; };
+    var sv = ctx.styleOverride;
+    var upColor = sv === null || sv === void 0 ? void 0 : sv.color ? ctx.lineColor : ctx.upColor;
+    var downColor = sv === null || sv === void 0 ? void 0 : sv.color ? ctx.lineColor : ctx.downColor;
+    return _jsx(CandlestickSeries, { width: ctx.candleBodyWidth, yAccessor: function (datum) { return datum; }, fill: function (datum) { return (sv !== null && sv !== void 0 && sv.color ? ctx.lineColor : datum.close >= datum.open ? upColor : downColor); }, stroke: function (datum) { return (sv !== null && sv !== void 0 && sv.color ? ctx.lineColor : datum.close >= datum.open ? upColor : downColor); }, wickStroke: function (datum) { return (sv !== null && sv !== void 0 && sv.color ? ctx.lineColor : datum.close >= datum.open ? upColor : downColor); }, candleStrokeWidth: (sv === null || sv === void 0 ? void 0 : sv.lineWidth) ?? 0.5, opacity: (sv === null || sv === void 0 ? void 0 : sv.opacity) ?? 0.5 }, ctx.seriesKey);
+}
+
+function renderHollowCandle(ctx) {
+    var sv = ctx.styleOverride;
+    var upColor = sv === null || sv === void 0 ? void 0 : sv.color ? ctx.lineColor : ctx.upColor;
+    var downColor = sv === null || sv === void 0 ? void 0 : sv.color ? ctx.lineColor : ctx.downColor;
+    return _jsx(CandlestickSeries, { width: ctx.candleBodyWidth, yAccessor: function (datum) { return datum; }, fill: function (datum) { return (sv !== null && sv !== void 0 && sv.color ? ctx.lineColor : datum.close >= datum.open ? "transparent" : downColor); }, stroke: function (datum) { return (sv !== null && sv !== void 0 && sv.color ? ctx.lineColor : datum.close >= datum.open ? upColor : downColor); }, wickStroke: function (datum) { return (sv !== null && sv !== void 0 && sv.color ? ctx.lineColor : datum.close >= datum.open ? upColor : downColor); }, candleStrokeWidth: (sv === null || sv === void 0 ? void 0 : sv.lineWidth) ?? 0.5, opacity: (sv === null || sv === void 0 ? void 0 : sv.opacity) ?? 0.5 }, ctx.seriesKey);
+}
+
+function renderOHLC(ctx) {
+    var sv = ctx.styleOverride;
+    return _jsx(OHLCSeries, { stroke: function (datum) { return (sv !== null && sv !== void 0 && sv.color ? ctx.lineColor : datum.close >= datum.open ? ctx.upColor : ctx.downColor); } }, ctx.seriesKey);
+}
+
+function renderLine(ctx) {
+    return _jsx(LineSeries, { yAccessor: ctx.accessor, stroke: ctx.lineColor, strokeWidth: ctx.lineWidth, strokeOpacity: ctx.strokeOpacity, strokeDasharray: ctx.dashArray }, ctx.seriesKey);
+}
+
+function renderArea(ctx) {
+    return _jsx(AreaSeries, { yAccessor: ctx.accessor, stroke: ctx.lineColor, fill: ctx.fillColor, strokeWidth: ctx.lineWidth, strokeOpacity: ctx.strokeOpacity, opacity: ctx.fillOpacity, strokeDasharray: ctx.dashArray }, ctx.seriesKey);
+}
+
+function renderBar(ctx) {
+    var sv = ctx.styleOverride;
+    return _jsx(BarSeries, { width: ctx.candleBodyWidth, yAccessor: ctx.accessor, fill: function (datum) { return (sv !== null && sv !== void 0 && sv.color ? ctx.lineColor : datum.close >= datum.open ? ctx.upColor : ctx.downColor); }, opacity: (sv === null || sv === void 0 ? void 0 : sv.opacity) ?? 0.75 }, ctx.seriesKey);
+}
+
+function renderWhale(ctx) {
+    var series = ctx.series;
+    var sv = ctx.styleOverride;
+    return _jsx(BarSeries, { width: ctx.candleBodyWidth, yAccessor: function (datum) {
+            var whale = resolveSeriesStructuredValue(datum, series);
+            return (whale === null || whale === void 0 ? void 0 : whale.whaleBuyVol) !== null && (whale === null || whale === void 0 ? void 0 : whale.whaleBuyVol) !== void 0 ? whale.whaleBuyVol : (whale === null || whale === void 0 ? void 0 : whale.whaleSellVol) ? -whale.whaleSellVol : undefined;
+        }, fill: function (datum) { return (sv !== null && sv !== void 0 && sv.color ? ctx.lineColor : datum.close >= datum.open ? ctx.upColor : ctx.downColor); }, opacity: (sv === null || sv === void 0 ? void 0 : sv.opacity) ?? 0.6 }, ctx.seriesKey);
+}
+
+function renderBollingerBand(ctx) {
+    var series = ctx.series;
+    var sc = function (key, fallback) { var _a; return (_a = series.subColors) !== null && _a !== void 0 ? _a : fallback; }(key, fallback);
+    var bbMidColor = sc("middle", ctx.lineColor);
+    var bbTopRaw = sc("top", ctx.lineColor);
+    var bbBotRaw = sc("bottom", ctx.lineColor);
+    var _a = series.params || {};
+    var _b = _a.fillMode, bbFillModeRaw = _b === void 0 ? "none" : _b;
+    var bbFillMode = bbFillModeRaw === "solid" || bbFillModeRaw === "fade" ? bbFillModeRaw : "none";
+    var _c = _a.fillOpacity, bbFillOpacityRaw = _c === void 0 ? (ctx.styleOverride === null || ctx.styleOverride === void 0 ? void 0 : ctx.styleOverride.opacity) ?? 0.15 : _c;
+    var bbFillOpacity = typeof bbFillOpacityRaw === "number" ? Math.max(0, Math.min(1, bbFillOpacityRaw)) : 0.15;
+    var bbFillColor = typeof _a.fillColor === "string" ? _a.fillColor : ctx.fillColor;
+    var withAlpha = function (c) { return c.match(/^#[0-9a-fA-F]{6}$/) ? c + "88" : c; };
+    return _jsx(BollingerSeries, { yAccessor: function (datum) { return resolveSeriesStructuredValue(datum, series); }, stroke: { top: withAlpha(bbTopRaw), middle: bbMidColor, bottom: withAlpha(bbBotRaw) }, strokeWidth: { top: ctx.lineWidth, middle: ctx.lineWidth, bottom: ctx.lineWidth }, fill: bbFillColor, opacity: bbFillMode === "none" ? 0 : bbFillOpacity, fillMode: bbFillMode }, ctx.seriesKey);
+}
+
+function renderRSI(ctx) {
+    var sc = function (key, fallback) { var _a; return (_a = ctx.series.subColors) !== null && _a !== void 0 ? _a : fallback; }(key, fallback);
+    var rsiLine = sc("line", ctx.lineColor);
+    var rsiOB = sc("overbought", "#f23645");
+    var rsiMid = sc("middle", "#9ca3af");
+    var rsiOS = sc("oversold", "#089981");
+    return _jsx(RSISeries, { yAccessor: function (datum) { return resolveSeriesValue(datum, ctx.series); }, stroke: {
+            top: rsiOB,
+            middle: rsiMid,
+            bottom: rsiOS,
+            outsideThreshold: rsiLine,
+            insideThreshold: rsiLine,
+        }, opacity: { top: 0.5, middle: 0.4, bottom: 0.5 }, strokeDasharray: { line: ctx.dashArray, top: "ShortDash", middle: "ShortDash", bottom: "ShortDash" }, strokeWidth: {
+            outsideThreshold: ctx.lineWidth,
+            insideThreshold: ctx.lineWidth,
+            top: 1,
+            middle: 1,
+            bottom: 1,
+        } }, ctx.seriesKey);
+}
+
+function renderMACD(ctx) {
+    var sc = function (key, fallback) { var _a; return (_a = ctx.series.subColors) !== null && _a !== void 0 ? _a : fallback; }(key, fallback);
+    var macdColor = sc("macd", ctx.lineColor);
+    var signalColor = sc("signal", "#ff6d00");
+    var divergeColor = sc("diverge", "#26a69a");
+    return _jsx(MACDSeries, { yAccessor: function (datum) { return resolveSeriesStructuredValue(datum, ctx.series); }, stroke: { macd: macdColor, signal: signalColor }, strokeWidth: { macd: ctx.lineWidth, signal: ctx.lineWidth }, fill: { divergence: divergeColor }, opacity: ctx.strokeOpacity }, ctx.seriesKey);
+}
+
+function renderElderRay(ctx) {
+    var sc = function (key, fallback) { var _a; return (_a = ctx.series.subColors) !== null && _a !== void 0 ? _a : fallback; }(key, fallback);
+    return _jsx(ElderRaySeries, { yAccessor: function (datum) { return resolveSeriesStructuredValue(datum, ctx.series); }, bullPowerFill: sc("bull", "#089981"), bearPowerFill: sc("bear", "#f23645"), straightLineStroke: ctx.lineColor, straightLineOpacity: ctx.strokeOpacity, opacity: ctx.fillOpacity }, ctx.seriesKey);
+}
+
+function renderKDJ(ctx) {
+    var sc = function (key, fallback) { var _a; return (_a = ctx.series.subColors) !== null && _a !== void 0 ? _a : fallback; }(key, fallback);
+    var structured = function (datum) { return resolveSeriesStructuredValue(datum, ctx.series); };
+    var fa = function (field) { return function (datum) { var _a; return (_a = structured(datum)) === null || _a === void 0 ? void 0 : _a[field]; }; };
+    var kC = sc("k", ctx.lineColor), dC = sc("d", "#ff6d00"), jC = sc("j", "#26a69a");
+    return _jsxs("g", { children: [_jsx(LineSeries, { yAccessor: fa("k"), stroke: kC, strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-k"), _jsx(LineSeries, { yAccessor: fa("d"), stroke: dC, strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-d"), _jsx(LineSeries, { yAccessor: fa("j"), stroke: jC, strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-j"), _jsx(StraightLine, { stroke: kC, opacity: 0.35, yValue: 80, strokeDasharray: "ShortDash" }), _jsx(StraightLine, { stroke: kC, opacity: 0.35, yValue: 50, strokeDasharray: "ShortDash" }), _jsx(StraightLine, { stroke: kC, opacity: 0.35, yValue: 20, strokeDasharray: "ShortDash" })] }, ctx.seriesKey);
+}
+
+function renderCCI(ctx) {
+    return _jsxs("g", { children: [_jsx(LineSeries, { yAccessor: ctx.accessor, stroke: ctx.lineColor, strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-line"), _jsx(StraightLine, { stroke: ctx.lineColor, opacity: 0.35, yValue: 100, strokeDasharray: "ShortDash" }), _jsx(StraightLine, { stroke: ctx.lineColor, opacity: 0.35, yValue: 0, strokeDasharray: "ShortDash" }), _jsx(StraightLine, { stroke: ctx.lineColor, opacity: 0.35, yValue: -100, strokeDasharray: "ShortDash" })] }, ctx.seriesKey);
+}
+
+function renderDMI(ctx) {
+    var sc = function (key, fallback) { var _a; return (_a = ctx.series.subColors) !== null && _a !== void 0 ? _a : fallback; }(key, fallback);
+    var structured = function (datum) { return resolveSeriesStructuredValue(datum, ctx.series); };
+    var fa = function (field) { return function (datum) { var _a; return (_a = structured(datum)) === null || _a === void 0 ? void 0 : _a[field]; }; };
+    return _jsxs("g", { children: [_jsx(LineSeries, { yAccessor: fa("plusDI"), stroke: sc("plusDI", "#089981"), strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-plus"), _jsx(LineSeries, { yAccessor: fa("minusDI"), stroke: sc("minusDI", "#f23645"), strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-minus"), _jsx(LineSeries, { yAccessor: fa("adx"), stroke: sc("adx", ctx.lineColor), strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-adx")] }, ctx.seriesKey);
+}
+
+function renderBRAR(ctx) {
+    var sc = function (key, fallback) { var _a; return (_a = ctx.series.subColors) !== null && _a !== void 0 ? _a : fallback; }(key, fallback);
+    var structured = function (datum) { return resolveSeriesStructuredValue(datum, ctx.series); };
+    var fa = function (field) { return function (datum) { var _a; return (_a = structured(datum)) === null || _a === void 0 ? void 0 : _a[field]; }; };
+    return _jsxs("g", { children: [_jsx(LineSeries, { yAccessor: fa("ar"), stroke: sc("ar", ctx.lineColor), strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-ar"), _jsx(LineSeries, { yAccessor: fa("br"), stroke: sc("br", "#ff6d00"), strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-br")] }, ctx.seriesKey);
+}
+
+function renderMTM(ctx) {
+    var sc = function (key, fallback) { var _a; return (_a = ctx.series.subColors) !== null && _a !== void 0 ? _a : fallback; }(key, fallback);
+    var structured = function (datum) { return resolveSeriesStructuredValue(datum, ctx.series); };
+    var fa = function (field) { return function (datum) { var _a; return (_a = structured(datum)) === null || _a === void 0 ? void 0 : _a[field]; }; };
+    return _jsxs("g", { children: [_jsx(LineSeries, { yAccessor: fa("mtm"), stroke: sc("mtm", ctx.lineColor), strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-mtm"), _jsx(LineSeries, { yAccessor: fa("signal"), stroke: sc("signal", "#ff6d00"), strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-signal")] }, ctx.seriesKey);
+}
+
+function renderEMV(ctx) {
+    var sc = function (key, fallback) { var _a; return (_a = ctx.series.subColors) !== null && _a !== void 0 ? _a : fallback; }(key, fallback);
+    var structured = function (datum) { return resolveSeriesStructuredValue(datum, ctx.series); };
+    var fa = function (field) { return function (datum) { var _a; return (_a = structured(datum)) === null || _a === void 0 ? void 0 : _a[field]; }; };
+    return _jsxs("g", { children: [_jsx(LineSeries, { yAccessor: fa("emv"), stroke: sc("emv", ctx.lineColor), strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-emv"), _jsx(LineSeries, { yAccessor: fa("signal"), stroke: sc("signal", "#ff6d00"), strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-signal")] }, ctx.seriesKey);
+}
+
+function renderAO(ctx) {
+    return _jsx(BarSeries, { width: ctx.candleBodyWidth, yAccessor: ctx.accessor, fill: function (datum) { return datum.aoColor ?? ctx.lineColor; }, opacity: 0.85 }, ctx.seriesKey);
+}
+
+function renderTRIX(ctx) {
+    var sc = function (key, fallback) { var _a; return (_a = ctx.series.subColors) !== null && _a !== void 0 ? _a : fallback; }(key, fallback);
+    var structured = function (datum) { return resolveSeriesStructuredValue(datum, ctx.series); };
+    var fa = function (field) { return function (datum) { var _a; return (_a = structured(datum)) === null || _a === void 0 ? void 0 : _a[field]; }; };
+    return _jsxs("g", { children: [_jsx(LineSeries, { yAccessor: fa("trix"), stroke: sc("trix", ctx.lineColor), strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-trix"), _jsx(LineSeries, { yAccessor: fa("signal"), stroke: sc("signal", "#ff6d00"), strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-signal")] }, ctx.seriesKey);
+}
+
+function renderDMA(ctx) {
+    var sc = function (key, fallback) { var _a; return (_a = ctx.series.subColors) !== null && _a !== void 0 ? _a : fallback; }(key, fallback);
+    var structured = function (datum) { return resolveSeriesStructuredValue(datum, ctx.series); };
+    var fa = function (field) { return function (datum) { var _a; return (_a = structured(datum)) === null || _a === void 0 ? void 0 : _a[field]; }; };
+    return _jsxs("g", { children: [_jsx(LineSeries, { yAccessor: fa("ddd"), stroke: sc("ddd", ctx.lineColor), strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-ddd"), _jsx(LineSeries, { yAccessor: fa("ama"), stroke: sc("ama", "#ff6d00"), strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-ama")] }, ctx.seriesKey);
+}
+
+function renderPSY(ctx) {
+    var sc = function (key, fallback) { var _a; return (_a = ctx.series.subColors) !== null && _a !== void 0 ? _a : fallback; }(key, fallback);
+    var structured = function (datum) { return resolveSeriesStructuredValue(datum, ctx.series); };
+    var fa = function (field) { return function (datum) { var _a; return (_a = structured(datum)) === null || _a === void 0 ? void 0 : _a[field]; }; };
+    return _jsxs("g", { children: [_jsx(LineSeries, { yAccessor: fa("psy"), stroke: sc("psy", ctx.lineColor), strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-psy"), _jsx(LineSeries, { yAccessor: fa("signal"), stroke: sc("signal", "#ff6d00"), strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-signal")] }, ctx.seriesKey);
+}
+
+function renderCR(ctx) {
+    var sc = function (key, fallback) { var _a; return (_a = ctx.series.subColors) !== null && _a !== void 0 ? _a : fallback; }(key, fallback);
+    var structured = function (datum) { return resolveSeriesStructuredValue(datum, ctx.series); };
+    var fa = function (field) { return function (datum) { var _a; return (_a = structured(datum)) === null || _a === void 0 ? void 0 : _a[field]; }; };
+    return _jsxs("g", { children: [_jsx(LineSeries, { yAccessor: fa("cr"), stroke: sc("cr", ctx.lineColor), strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-cr"), _jsx(LineSeries, { yAccessor: fa("ma1"), stroke: sc("ma1", "#ff6d00"), strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-ma1"), _jsx(LineSeries, { yAccessor: fa("ma2"), stroke: sc("ma2", "#26a69a"), strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-ma2"), _jsx(LineSeries, { yAccessor: fa("ma3"), stroke: sc("ma3", "#f23645"), strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-ma3"), _jsx(LineSeries, { yAccessor: fa("ma4"), stroke: sc("ma4", "#9ca3af"), strokeWidth: ctx.lineWidth }, ctx.seriesKey + "-ma4")] }, ctx.seriesKey);
 }
 /** Adaptive tooltip date format based on visible bar count. */
 function inferMinimumPositiveDateDiffMs(data) {

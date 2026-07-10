@@ -25,7 +25,7 @@ function createDeferredPageComponent(loadComponent, routeId) {
       return () => {
         mountedRef.current = false;
       };
-    }, [loadComponent]);
+    }, [loadComponent]); // eslint-disable-line react-hooks/exhaustive-deps
 
     if (resolvedComponent) {
       return createElement(resolvedComponent, props);
@@ -50,8 +50,112 @@ function createDeferredPageComponent(loadComponent, routeId) {
         role: "status",
         "aria-live": "polite",
       },
-      createElement("h2", { className: "shellPage__panelTitle" }, "Đang tải trang"),
-      createElement("p", { className: "shellPage__panelSubtitle" }, `Route ${routeId} đang được nạp động.`),
+      createElement(
+        "div",
+        { className: "clock-container" },
+        createElement(
+          "style",
+          null,
+          `
+            @keyframes spin-hour {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+            @keyframes spin-minute {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+            .clock-hour {
+              transform-origin: 32px 32px;
+              animation: spin-hour 12s linear infinite;
+            }
+            .clock-minute {
+              transform-origin: 32px 32px;
+              animation: spin-minute 1s linear infinite;
+            }
+            .clock-container {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              padding: 40px 20px;
+              text-align: center;
+            }
+            .clock-glow {
+              filter: drop-shadow(0 0 10px rgba(0, 180, 216, 0.55));
+            }
+            .loading-text {
+              font-size: 18px;
+              font-weight: 600;
+              color: var(--shell-ink, #f1f5f9);
+              margin-top: 20px;
+              letter-spacing: 0.05em;
+            }
+            .loading-subtext {
+              font-size: 13px;
+              color: var(--shell-muted, #94a3b8);
+              margin-top: 6px;
+            }
+          `
+        ),
+        createElement(
+          "svg",
+          {
+            className: "clock-glow",
+            xmlns: "http://www.w3.org/2000/svg",
+            viewBox: "0 0 64 64",
+            width: "64",
+            height: "64",
+            style: { display: "block" }
+          },
+          createElement("circle", {
+            cx: "32",
+            cy: "32",
+            r: "28",
+            fill: "none",
+            stroke: "url(#clock-grad)",
+            strokeWidth: "3.5",
+            strokeLinecap: "round"
+          }),
+          createElement("line", { x1: "32", y1: "8", x2: "32", y2: "11", stroke: "#00b4d8", strokeWidth: "2", strokeLinecap: "round" }),
+          createElement("line", { x1: "56", y1: "32", x2: "53", y2: "32", stroke: "#00b4d8", strokeWidth: "2", strokeLinecap: "round" }),
+          createElement("line", { x1: "32", y1: "56", x2: "32", y2: "53", stroke: "#00b4d8", strokeWidth: "2", strokeLinecap: "round" }),
+          createElement("line", { x1: "8", y1: "32", x2: "11", y2: "32", stroke: "#00b4d8", strokeWidth: "2", strokeLinecap: "round" }),
+          createElement("circle", { cx: "32", cy: "32", r: "3", fill: "#ffffff" }),
+          createElement("line", {
+            className: "clock-hand clock-hour",
+            x1: "32",
+            y1: "32",
+            x2: "32",
+            y2: "18",
+            stroke: "#ffffff",
+            strokeWidth: "2.5",
+            strokeLinecap: "round"
+          }),
+          createElement("line", {
+            className: "clock-hand clock-minute",
+            x1: "32",
+            y1: "32",
+            x2: "32",
+            y2: "12",
+            stroke: "#00b4d8",
+            strokeWidth: "2",
+            strokeLinecap: "round"
+          }),
+          createElement(
+            "defs",
+            null,
+            createElement(
+              "linearGradient",
+              { id: "clock-grad", x1: "0%", y1: "0%", x2: "100%", y2: "100%" },
+              createElement("stop", { offset: "0%", stopColor: "#00b4d8" }),
+              createElement("stop", { offset: "100%", stopColor: "#ff7f50" })
+            )
+          )
+        ),
+        createElement("div", { className: "loading-text" }, "Đang tải trang"),
+        createElement("div", { className: "loading-subtext" }, `Route ${routeId} đang được nạp động.`)
+      )
     );
   }
 
@@ -69,58 +173,116 @@ function makePageEntry(routeId, status, loadComponent) {
 
 export const pageRegistry = Object.freeze([
   makePageEntry("operations-center", "baseline", () =>
-    import("./admin/ShellOperationsCenterPage.js").then((module) => module.ShellOperationsCenterPage)),
+    import("./admin/ShellOperationsCenterPage.tsx").then((module) => module.ShellOperationsCenterPage)),
   makePageEntry("operations-center-mail-config", "baseline", () =>
-    import("./admin/ShellMailConfigPage.js").then((module) => module.ShellMailConfigPage)),
+    import("./admin/ShellMailConfigPage.tsx").then((module) => module.ShellMailConfigPage)),
   makePageEntry("ai-command-center", "baseline", () =>
-    import("./system/ShellAiCommandCenterPage.js").then((module) => module.ShellAiCommandCenterPage)),
+    import("./AICommandCenterPage.tsx").then((module) => module.AICommandCenterPage)),
+  makePageEntry("ai-agent-federation", "baseline", () =>
+    import("./AIAgentFederationPage.tsx").then((module) => module.AIAgentFederationPage)),
+  makePageEntry("ai-usage-analytics", "baseline", () =>
+    import("./AIUsageAnalyticsPage.tsx").then((module) => module.AIUsageAnalyticsPage)),
   makePageEntry("ai-advisory", "baseline", () =>
-    import("./signals/ShellAiAdvisoryPage.js").then((module) => module.ShellAiAdvisoryPage)),
+    import("./signals/ShellAiAdvisoryPage.tsx").then((module) => module.ShellAiAdvisoryPage)),
   makePageEntry("whale-alerts", "baseline", () =>
-    import("./signals/ShellWhaleAlertsPage.js").then((module) => module.ShellWhaleAlertsPage)),
+    import("./signals/ShellWhaleAlertsPage.tsx").then((module) => module.ShellWhaleAlertsPage)),
   makePageEntry("dashboard", "baseline", () =>
-    import("./workspace/ShellDashboardPage.js").then((module) => module.ShellDashboardPage)),
+    import("./workspace/ShellDashboardPage.tsx").then((module) => module.ShellDashboardPage)),
   makePageEntry("transactions", "baseline", () =>
-    import("./workspace/ShellTransactionsPage.js").then((module) => module.ShellTransactionsPage)),
+    import("./workspace/ShellTransactionsPage.tsx").then((module) => module.ShellTransactionsPage)),
   makePageEntry("watchlist", "baseline", () =>
-    import("./workspace/ShellWatchlistPage.js").then((module) => module.ShellWatchlistPage)),
+    import("./workspace/ShellWatchlistPage.tsx").then((module) => module.ShellWatchlistPage)),
   makePageEntry("portfolios", "baseline", () =>
-    import("./workspace/ShellPortfoliosPage.js").then((module) => module.ShellPortfoliosPage)),
+    import("./workspace/ShellPortfoliosPage.tsx").then((module) => module.ShellPortfoliosPage)),
   makePageEntry("support", "baseline", () =>
-    import("./system/ShellSupportPage.js").then((module) => module.ShellSupportPage)),
+    import("./SupportPage.tsx").then((module) => module.SupportPage)),
   makePageEntry("settings", "baseline", () =>
-    import("./system/ShellSettingsPage.js").then((module) => module.ShellSettingsPage)),
+    import("./system/ShellSettingsPage.tsx").then((module) => module.ShellSettingsPage)),
+  makePageEntry("shell-ai-command-center", "baseline", () =>
+    import("./system/ShellAiCommandCenterPage.tsx").then((module) => module.ShellAiCommandCenterPage)),
   makePageEntry("vip-local-control", "baseline", () =>
-    import("./vip/VipLocalControlPage.js").then((module) => module.VipLocalControlPage)),
+    import("./vip/VipLocalControlPage.tsx").then((module) => module.VipLocalControlPage)),
   // SM-P4 core user-facing pages
   makePageEntry("alert-center", "core", () =>
-    import("./AlertCenterPage.js").then((module) => module.AlertCenterPage)),
+    import("./AlertCenterPage.tsx").then((module) => module.AlertCenterPage)),
   makePageEntry("core-dashboard", "core", () =>
-    import("./DashboardPage.js").then((module) => module.DashboardPage)),
+    import("./DashboardPage.tsx").then((module) => module.DashboardPage)),
   makePageEntry("core-whale-alerts", "core", () =>
-    import("./WhaleAlertsPage.js").then((module) => module.WhaleAlertsPage)),
+    import("./WhaleAlertsPage.tsx").then((module) => module.WhaleAlertsPage)),
   makePageEntry("core-stock-detail", "core", () =>
-    import("./market/ShellStockDetailPage.js").then((module) => module.ShellStockDetailPage)),
+    import("./StockDetailPage.tsx").then((module) => module.StockDetailPage)),
   makePageEntry("core-portfolios", "core", () =>
-    import("./PortfoliosPage.js").then((module) => module.PortfoliosPage)),
+    import("./PortfoliosPage.tsx").then((module) => module.PortfoliosPage)),
   makePageEntry("core-transactions", "core", () =>
-    import("./TransactionsPage.js").then((module) => module.TransactionsPage)),
+    import("./TransactionsPage.tsx").then((module) => module.TransactionsPage)),
   makePageEntry("core-user-settings", "core", () =>
-    import("./UserSettingsPage.js").then((module) => module.UserSettingsPage)),
+    import("./UserSettingsPage.tsx").then((module) => module.UserSettingsPage)),
   makePageEntry("core-watchlist", "core", () =>
-    import("./WatchlistPage.js").then((module) => module.WatchlistPage)),
+    import("./WatchlistPage.tsx").then((module) => module.WatchlistPage)),
   makePageEntry("auth-login", "core", () =>
-    import("./auth/AuthLoginPage.js").then((module) => module.AuthLoginPage)),
+    import("./auth/AuthLoginPage.tsx").then((module) => module.AuthLoginPage)),
   makePageEntry("auth-register", "core", () =>
-    import("./auth/AuthRegisterPage.js").then((module) => module.AuthRegisterPage)),
+    import("./auth/AuthRegisterPage.tsx").then((module) => module.AuthRegisterPage)),
   makePageEntry("auth-verify-email", "core", () =>
-    import("./auth/AuthVerifyEmailPage.js").then((module) => module.AuthVerifyEmailPage)),
+    import("./auth/AuthVerifyEmailPage.tsx").then((module) => module.AuthVerifyEmailPage)),
   makePageEntry("auth-reset-password", "core", () =>
-    import("./auth/AuthResetPasswordPage.js").then((module) => module.AuthResetPasswordPage)),
+    import("./auth/AuthResetPasswordPage.tsx").then((module) => module.AuthResetPasswordPage)),
   makePageEntry("commercial-billing-center", "core", () =>
-    import("./commercial/BillingCenterPage.js").then((module) => module.BillingCenterPage)),
+    import("./commercial/BillingCenterPage.tsx").then((module) => module.BillingCenterPage)),
   makePageEntry("commercial-payment-return", "core", () =>
-    import("./commercial/PaymentReturnPage.js").then((module) => module.PaymentReturnPage)),
+    import("./commercial/PaymentReturnPage.tsx").then((module) => module.PaymentReturnPage)),
+  makePageEntry("screener", "core", () =>
+    import("./ScreenerPage.tsx").then((module) => module.ScreenerPage)),
+  // Tenant Admin Pages
+  makePageEntry("upgrade", "core", () =>
+    import("./UpgradePage.tsx").then((module) => module.default)),
+  makePageEntry("admin-crawl-control", "core", () =>
+    import("./AdminCrawlControlPage.tsx").then((module) => module.default)),
+  // AdminCore Pages (SaaS Operator Console)
+  makePageEntry("admin-core-overview", "core", () =>
+    import("./admin/AdminCoreOverviewPage.tsx").then((module) => module.AdminCoreOverviewPage)),
+  makePageEntry("admin-core-tenants", "core", () =>
+    import("./admin/AdminCoreTenantsPage.tsx").then((module) => module.AdminCoreTenantsPage)),
+  makePageEntry("admin-core-service-accounts", "core", () =>
+    import("./admin/AdminCoreServiceAccountsPage.tsx").then((module) => module.AdminCoreServiceAccountsPage)),
+  makePageEntry("admin-core-pats", "core", () =>
+    import("./admin/AdminCorePATsPage.tsx").then((module) => module.AdminCorePATsPage)),
+  makePageEntry("admin-core-usage", "core", () =>
+    import("./admin/AdminCoreUsagePage.tsx").then((module) => module.AdminCoreUsagePage)),
+  makePageEntry("admin-core-billing", "core", () =>
+    import("./admin/AdminCoreBillingPage.tsx").then((module) => module.AdminCoreBillingPage)),
+  makePageEntry("admin-core-jobs", "core", () =>
+    import("./admin/AdminCoreJobsPage.tsx").then((module) => module.AdminCoreJobsPage)),
+  makePageEntry("admin-core-audit-trace", "core", () =>
+    import("./admin/AdminCoreAuditTracePage.tsx").then((module) => module.AdminCoreAuditTracePage)),
+  makePageEntry("whale-advisory", "core", () =>
+    import("./signals/WhaleAdvisoryPage.tsx").then((module) => module.WhaleAdvisoryPage)),
+  makePageEntry("tenant-admin-home", "core", () =>
+    import("./tenant-admin/TenantAdminHomePage.tsx").then((module) => module.TenantAdminHomePage)),
+  makePageEntry("tenant-admin-members", "core", () =>
+    import("./tenant-admin/TenantAdminMembersPage.tsx").then((module) => module.TenantAdminMembersPage)),
+  makePageEntry("tenant-admin-service-accounts", "core", () =>
+    import("./tenant-admin/TenantAdminServiceAccountsPage.tsx").then((module) => module.TenantAdminServiceAccountsPage)),
+  makePageEntry("tenant-admin-pats", "core", () =>
+    import("./tenant-admin/TenantAdminPATsPage.tsx").then((module) => module.TenantAdminPATsPage)),
+  makePageEntry("tenant-admin-usage", "core", () =>
+    import("./tenant-admin/TenantAdminUsagePage.tsx").then((module) => module.TenantAdminUsagePage)),
+  makePageEntry("tenant-admin-billing", "core", () =>
+    import("./tenant-admin/TenantAdminBillingPage.tsx").then((module) => module.TenantAdminBillingPage)),
+  makePageEntry("tenant-admin-capabilities", "core", () =>
+    import("./tenant-admin/TenantAdminCapabilitiesPage.tsx").then((module) => module.TenantAdminCapabilitiesPage)),
+  makePageEntry("tenant-admin-audit-logs", "core", () =>
+    import("./tenant-admin/TenantAdminAuditLogsPage.tsx").then((module) => module.TenantAdminAuditLogsPage)),
+  makePageEntry("tenant-admin-sso", "core", () =>
+    import("./tenant-admin/TenantAdminSSOPage.tsx").then((module) => module.TenantAdminSSOPage)),
+  makePageEntry("tenant-admin-usage-history", "core", () =>
+    import("./tenant-admin/TenantAdminUsageHistoryPage.tsx").then((module) => module.TenantAdminUsageHistoryPage)),
+  makePageEntry("tenant-admin-reports", "core", () =>
+    import("./tenant-admin/TenantAdminReportsPage.tsx").then((module) => module.TenantAdminReportsPage)),
+  makePageEntry("tenant-admin-security", "core", () =>
+    import("./tenant-admin/TenantAdminSecurityPage.tsx").then((module) => module.TenantAdminSecurityPage)),
+  makePageEntry("tenant-admin-webhooks", "core", () =>
+    import("./tenant-admin/TenantAdminWebhooksPage.tsx").then((module) => module.TenantAdminWebhooksPage)),
 ]);
 
 export function getPageRegistryRouteIds() {

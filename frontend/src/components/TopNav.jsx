@@ -97,7 +97,6 @@ export default function TopNav() {
   const portfolioItems = [
     { to: '/transactions', label: t('layout.nav.transactions') },
     { to: '/portfolios', label: t('layout.nav.portfolioManagement') },
-    { to: '/watchlist', label: t('layout.nav.watchlist') },
   ];
 
   const systemItems = [

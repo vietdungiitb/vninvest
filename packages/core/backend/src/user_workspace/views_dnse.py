@@ -23,6 +23,7 @@ from .tasks import (
     sync_dnse_accounts_task,
     sync_dnse_balances_task,
 )
+from vninvest_core.exceptions import ValidationErrorException, NotFoundErrorException
 
 
 def _to_bool(value) -> bool:
@@ -152,19 +153,19 @@ def dnse_sync_balances_api(request):
     user = request.user
     credential = DNSECredential.objects.filter(user=user, is_active=True).first()
     if not credential or not credential.has_credentials():
-        return Response({
-            "ok": False,
-            "error": "DNSE LightSpeed credential chưa được thiết lập. Cấu hình Client ID và Client Secret trước.",
-        }, status=status.HTTP_400_BAD_REQUEST)
+        raise ValidationErrorException(
+            detail="DNSE LightSpeed credential chưa được thiết lập. Cấu hình Client ID và Client Secret trước.",
+            code="validation_error"
+        )
 
     result = sync_dnse_balances_task(user.id)
     if result.get("ok"):
         return Response(result)
 
-    return Response({
-        "ok": False,
-        "error": result.get("error", "Đồng bộ số dư thất bại."),
-    }, status=status.HTTP_502_BAD_GATEWAY)
+    raise ValidationErrorException(
+        detail=result.get("error", "Đồng bộ số dư thất bại."),
+        code="validation_error"
+    )
 
 
 @api_view(['POST'])
@@ -176,10 +177,10 @@ def dnse_reconcile_transactions_api(request):
     user = request.user
     credential = DNSECredential.objects.filter(user=user, is_active=True).first()
     if not credential or not credential.has_credentials():
-        return Response({
-            "ok": False,
-            "error": "DNSE LightSpeed credential chưa được thiết lập. Cấu hình Client ID và Client Secret trước.",
-        }, status=status.HTTP_400_BAD_REQUEST)
+        raise ValidationErrorException(
+            detail="DNSE LightSpeed credential chưa được thiết lập. Cấu hình Client ID và Client Secret trước.",
+            code="validation_error"
+        )
 
     raw_days_back = request.data.get("days_back", 7)
     try:
@@ -191,10 +192,10 @@ def dnse_reconcile_transactions_api(request):
     if result.get("ok"):
         return Response(result)
 
-    return Response({
-        "ok": False,
-        "error": result.get("error", "Đối soát giao dịch thất bại."),
-    }, status=status.HTTP_502_BAD_GATEWAY)
+    raise ValidationErrorException(
+        detail=result.get("error", "Đối soát giao dịch thất bại."),
+        code="validation_error"
+    )
 
 
 @api_view(['POST'])
@@ -211,16 +212,16 @@ def dnse_place_order_api(request):
     dry_run = _to_bool(request.data.get("dry_run", False))
 
     if not trading_token:
-        return Response({
-            "ok": False,
-            "error": "Thiếu trading_token. Vui lòng gửi OTP và tạo trading token trước khi đặt lệnh.",
-        }, status=status.HTTP_400_BAD_REQUEST)
+        raise ValidationErrorException(
+            detail="Thiếu trading_token. Vui lòng gửi OTP và tạo trading token trước khi đặt lệnh.",
+            code="validation_error"
+        )
 
     if not isinstance(payload, dict) or not payload:
-        return Response({
-            "ok": False,
-            "error": "Thiếu payload đặt lệnh hợp lệ.",
-        }, status=status.HTTP_400_BAD_REQUEST)
+        raise ValidationErrorException(
+            detail="Thiếu payload đặt lệnh hợp lệ.",
+            code="validation_error"
+        )
 
     try:
         client = _get_active_dnse_client(user)
@@ -232,19 +233,13 @@ def dnse_place_order_api(request):
             dry_run=dry_run,
             raw=False,
         )
-        return Response({
-            "ok": True,
-            "result": result,
-        })
+        return Response({"result": result})
     except DNSECredentialMissingError as exc:
-        return Response({"ok": False, "error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        raise ValidationErrorException(detail=str(exc), code="validation_error")
     except DNSEAdapterError as exc:
-        return Response({"ok": False, "error": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+        raise ValidationErrorException(detail=str(exc), code="validation_error")
     except Exception as exc:
-        return Response({
-            "ok": False,
-            "error": f"Đặt lệnh DNSE thất bại: {exc}",
-        }, status=status.HTTP_502_BAD_GATEWAY)
+        raise ValidationErrorException(detail=f"Đặt lệnh DNSE thất bại: {exc}", code="validation_error")
 
 
 @api_view(['POST'])
@@ -259,19 +254,13 @@ def dnse_send_email_otp_api(request):
     try:
         client = _get_active_dnse_client(user)
         result = client.send_email_otp(dry_run=dry_run, raw=False)
-        return Response({
-            "ok": True,
-            "result": result,
-        })
+        return Response({"result": result})
     except DNSECredentialMissingError as exc:
-        return Response({"ok": False, "error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        raise ValidationErrorException(detail=str(exc), code="validation_error")
     except DNSEAdapterError as exc:
-        return Response({"ok": False, "error": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+        raise ValidationErrorException(detail=str(exc), code="validation_error")
     except Exception as exc:
-        return Response({
-            "ok": False,
-            "error": f"Gửi OTP DNSE thất bại: {exc}",
-        }, status=status.HTTP_502_BAD_GATEWAY)
+        raise ValidationErrorException(detail=f"Gửi OTP DNSE thất bại: {exc}", code="validation_error")
 
 
 @api_view(['POST'])
@@ -286,10 +275,10 @@ def dnse_create_trading_token_api(request):
     dry_run = _to_bool(request.data.get("dry_run", False))
 
     if not passcode:
-        return Response({
-            "ok": False,
-            "error": "Thiếu passcode OTP từ DNSE.",
-        }, status=status.HTTP_400_BAD_REQUEST)
+        raise ValidationErrorException(
+            detail="Thiếu passcode OTP từ DNSE.",
+            code="validation_error"
+        )
 
     try:
         client = _get_active_dnse_client(user)
@@ -309,12 +298,9 @@ def dnse_create_trading_token_api(request):
     except DNSECredentialMissingError as exc:
         return Response({"ok": False, "error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
     except DNSEAdapterError as exc:
-        return Response({"ok": False, "error": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+        raise ValidationErrorException(detail=str(exc), code="validation_error")
     except Exception as exc:
-        return Response({
-            "ok": False,
-            "error": f"Tạo trading token DNSE thất bại: {exc}",
-        }, status=status.HTTP_502_BAD_GATEWAY)
+        raise ValidationErrorException(detail=f"Tạo trading token DNSE thất bại: {exc}", code="validation_error")
 
 
 @api_view(['GET'])
@@ -327,12 +313,10 @@ def dnse_token_status_api(request):
     credential = DNSECredential.objects.filter(user=user, is_active=True).first()
     if not credential or not credential.has_credentials():
         return Response({
-            "ok": False,
             "is_configured": False,
             "message": "DNSE LightSpeed credential chưa được cấu hình.",
         })
     return Response({
-        "ok": True,
         "is_configured": True,
         "is_active": credential.is_active,
         "last_sync_at": credential.last_sync_at,

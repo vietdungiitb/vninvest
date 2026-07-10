@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Security Digest</title></head>
+<body style="font-family:sans-serif;padding:20px;">
+<h2>Security Digest — {{ tenant.display_name }}</h2>
+<p>Date: {{ date }}</p>
+<ul>
+<li>Active PATs: {{ active_pats }}</li>
+<li>Revoked (7 days): {{ recent_revoked }}</li>
+<li>Active Service Accounts: {{ active_sas }}</li>
+</ul>
+</body>
+</html>

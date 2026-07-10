@@ -8,31 +8,54 @@
 import {
   createCoreTransport,
   authTokenStorage,
+  tenantIdStorage,
   CoreApiRequestError,
+  initTokenStorageSync,
+  destroyTokenStorageSync,
+  decodeJwtPayload,
+  isTokenExpiringSoon,
 } from "./core/transport.js";
 
 import { createAuthClient } from "./core/auth.js";
 import { createMarketClient } from "./core/market.js";
 import { createWorkspaceClient } from "./core/workspace.js";
 import { createCommercialClient } from "./core/commercial.js";
+import { createScreenerClient } from "./core/screener.js";
+import { createAdvisoryClient } from "./core/advisory.js";
+import { createCrawlClient } from "./core/crawl.js";
+import { createDnseClient } from "./core/dnse.js";
+import { createOperatorClient } from "./core/operator.js";
+import { createMiscClient } from "./core/misc.js";
+import { createSocClient } from "./core/soc.js";
 
-export { authTokenStorage, CoreApiRequestError };
+export {
+  authTokenStorage,
+  tenantIdStorage,
+  CoreApiRequestError,
+  initTokenStorageSync,
+  destroyTokenStorageSync,
+  decodeJwtPayload,
+  isTokenExpiringSoon,
+};
 
 export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setTokens, clearTokens } = {}) {
   const transport = createCoreTransport(env, {
-    getToken,
-    getRefreshToken,
-    setTokens,
-    clearTokens,
+    getToken: getToken ?? (() => authTokenStorage.getAccessToken()),
+    getRefreshToken: getRefreshToken ?? (() => authTokenStorage.getRefreshToken()),
+    setTokens: setTokens ?? ((tokens) => authTokenStorage.setTokens(tokens)),
+    clearTokens: clearTokens ?? (() => authTokenStorage.clearTokens()),
   });
+
+  // Start multi-tab token sync listener
+  initTokenStorageSync();
 
   const persistTokens = typeof setTokens === "function" ? setTokens : () => {};
 
   // Build individual clients with shared transport helpers
   const authClient = createAuthClient({
     coreGet: transport.coreGet,
+    corePost: transport.corePost,
     corePatch: transport.corePatch,
-    publicPost: transport.publicPost,
     persistTokens,
     getRefreshToken,
   });
@@ -45,6 +68,7 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
   const workspaceClient = createWorkspaceClient({
     coreGet: transport.coreGet,
     corePost: transport.corePost,
+    corePut: transport.corePut,
     corePatch: transport.corePatch,
     coreDelete: transport.coreDelete,
   });
@@ -54,12 +78,80 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     corePost: transport.corePost,
   });
 
+  const screenerClient = createScreenerClient({
+    coreGet: transport.coreGet,
+    corePost: transport.corePost,
+    corePut: transport.corePut,
+    coreDelete: transport.coreDelete,
+  });
+
+  const advisoryClient = createAdvisoryClient({
+    coreGet: transport.coreGet,
+    corePost: transport.corePost,
+    coreDelete: transport.coreDelete,
+  });
+
+  const crawlClient = createCrawlClient({
+    coreGet: transport.coreGet,
+    corePost: transport.corePost,
+  });
+
+  const dnseClient = createDnseClient({
+    coreGet: transport.coreGet,
+    corePost: transport.corePost,
+    coreDelete: transport.coreDelete,
+  });
+
+  const operatorClient = createOperatorClient({
+    coreGet: transport.coreGet,
+    corePost: transport.corePost,
+    corePut: transport.corePut,
+    corePatch: transport.corePatch,
+    coreDelete: transport.coreDelete,
+  });
+
+  const miscClient = createMiscClient({
+    coreGet: transport.coreGet,
+    corePost: transport.corePost,
+  });
+
+  const socClient = createSocClient({
+    coreGet: transport.coreGet,
+    corePost: transport.corePost,
+    corePut: transport.corePut,
+    corePatch: transport.corePatch,
+    coreDelete: transport.coreDelete,
+  });
+
   // Combine into a single unified API client object (Facade)
   return {
+    coreGet: transport.coreGet,
+    corePost: transport.corePost,
+    corePut: transport.corePut,
+    corePatch: transport.corePatch,
+    coreDelete: transport.coreDelete,
     ...authClient,
     ...marketClient,
     ...workspaceClient,
     ...commercialClient,
+    ...screenerClient,
+    ...advisoryClient,
+    ...crawlClient,
+    ...dnseClient,
+    ...operatorClient,
+    ...miscClient,
+    ...socClient,
+
+    // Tenant-admin usage (partner/usage/*)
+    getAllUsageTrends(days = 30) {
+      return transport.coreGet(`/partner/usage/trend/?days=${days}`);
+    },
+    getUsageForecast() {
+      return transport.coreGet("/partner/usage/forecast/");
+    },
+    getAlertConfigs() {
+      return transport.coreGet("/partner/usage/alert-config/");
+    },
   };
 }
 

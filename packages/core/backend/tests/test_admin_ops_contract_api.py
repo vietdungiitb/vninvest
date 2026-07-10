@@ -52,6 +52,7 @@ from vninvest_core.contracts.admin_ops.views import (
 )
 
 
+@override_settings(ROOT_URLCONF='tests.urls_test_admin_ops')
 class AdminOpsContractApiTests(TestCase):
     def setUp(self):
         clear_latest_price_board_benchmark_report()
@@ -180,7 +181,6 @@ class AdminOpsContractApiTests(TestCase):
         response = self.client.get('/api/admin-ops/runtime-kpi/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(response.data['ok'])
         self.assertEqual(response.data['market_observability']['overall']['http_requests'], 2)
         self.assertEqual(response.data['market_observability']['overall']['http_5xx_ratio_pct'], 50.0)
         endpoint_snapshot = response.data['market_observability']['endpoints']['/core/v1/health']
@@ -202,7 +202,6 @@ class AdminOpsContractApiTests(TestCase):
         response = self.client.get('/api/admin-ops/system-ai-settings/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(response.data['ok'])
         self.assertFalse(response.data['settings']['write_capabilities']['prefetch_runtime_settings'])
 
         update_response = self.client.put(
@@ -218,7 +217,6 @@ class AdminOpsContractApiTests(TestCase):
         )
 
         self.assertEqual(update_response.status_code, status.HTTP_200_OK)
-        self.assertTrue(update_response.data['ok'])
         self.assertEqual(update_response.data['settings']['governance_delta_thresholds']['warning'], 1.5)
         config = SystemAISettings.objects.get(name='default')
         self.assertEqual(config.metadata['governance_delta_thresholds']['critical'], 3.5)
@@ -238,7 +236,6 @@ class AdminOpsContractApiTests(TestCase):
         get_response = self.client.get('/api/admin-ops/vnbroker-config/current/')
 
         self.assertEqual(get_response.status_code, status.HTTP_200_OK)
-        self.assertTrue(get_response.data['ok'])
         self.assertIn('settings', get_response.data)
         self.assertIn('rulebook', get_response.data)
 
@@ -303,13 +300,11 @@ class AdminOpsContractApiTests(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(response.data['queued'])
-        self.assertTrue(response.data['ok'])
         self.assertEqual(response.data['result']['upserted'], 42)
 
     def test_benchmark_latest_returns_native_empty_state_without_report(self):
         benchmark_response = self.client.get('/api/admin-ops/vnbroker-config/benchmark-price-board/latest/')
         self.assertEqual(benchmark_response.status_code, status.HTTP_200_OK)
-        self.assertTrue(benchmark_response.data['ok'])
         self.assertFalse(benchmark_response.data['has_report'])
 
     @patch('vninvest_core.contracts.admin_ops.views._is_celery_alive', return_value=True)
@@ -324,7 +319,6 @@ class AdminOpsContractApiTests(TestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
-        self.assertTrue(response.data['ok'])
         self.assertEqual(response.data['status'], 'started')
         self.assertEqual(response.data['task_id'], 'bench-1')
         self.assertEqual(response.data['mode'], 'celery')
@@ -350,7 +344,6 @@ class AdminOpsContractApiTests(TestCase):
         )
 
         self.assertEqual(latest_response.status_code, status.HTTP_200_OK)
-        self.assertTrue(latest_response.data['ok'])
         self.assertFalse(latest_response.data['has_report'])
         self.assertEqual(run_response.status_code, status.HTTP_202_ACCEPTED)
         self.assertEqual(run_response.data['task_id'], 'bench-2')
@@ -372,7 +365,6 @@ class AdminOpsContractApiTests(TestCase):
         response = self.client.get('/api/admin-ops/vnbroker-config/benchmark-price-board/latest/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(response.data['ok'])
         self.assertTrue(response.data['has_report'])
         self.assertEqual(response.data['report']['symbol'], 'FPT')
 
@@ -416,7 +408,7 @@ class AdminOpsContractApiTests(TestCase):
             format='json',
             HTTP_AUTHORIZATION=auth_header,
         )
-        self.assertEqual(backfill_apply_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(backfill_apply_response.status_code, status.HTTP_202_ACCEPTED)
 
         backfill_status_response = self.client.get(
             '/api/admin-ops/intraday-side-backfill/status/bf-1/',

@@ -11,7 +11,6 @@ import TransactionsShellHost from './pages/TransactionsShellHost';
 import Support from './pages/Support';
 import SupportShellHost from './pages/SupportShellHost';
 import SettingsShellHost from './pages/SettingsShellHost';
-import AICommandCenterShellHost from './pages/AICommandCenterShellHost';
 import PortfoliosShellHost from './pages/PortfoliosShellHost';
 import Watchlist from './pages/Watchlist';
 import WatchlistShellHost from './pages/WatchlistShellHost';
@@ -35,7 +34,8 @@ import TenantMembers from './pages/admin/tenant/TenantMembers';
 import TenantPATs from './pages/admin/tenant/TenantPATs';
 import TenantServiceAccounts from './pages/admin/tenant/TenantServiceAccounts';
 import TenantUsage from './pages/admin/tenant/TenantUsage';
-import AICommandCenter from './pages/AICommandCenter';
+import TenantUsageHistory from './pages/admin/tenant/TenantUsageHistory';
+import TenantAdminSSOPage from './pages/admin/tenant/TenantAdminSSOPage';
 import Upgrade from './pages/Upgrade';
 import { PortfolioProvider, usePortfolio } from './context/PortfolioContext';
 import { LangProvider } from './context/LangContext';
@@ -286,6 +286,14 @@ export default function App() {
                     )}
                   />
                   <Route
+                    path="tenant-admin/usage/history"
+                    element={(
+                      <ProtectedRoute action="read" subject="TenantUsageView">
+                        <TenantUsageHistory />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route
                     path="tenant-admin/billing"
                     element={(
                       <ProtectedRoute action="read" subject="TenantBillingView">
@@ -317,6 +325,14 @@ export default function App() {
                       </ProtectedRoute>
                     )}
                   />
+                  <Route
+                    path="tenant-admin/sso"
+                    element={(
+                      <ProtectedRoute action="read" subject="TenantAdmin">
+                        <TenantAdminSSOPage />
+                      </ProtectedRoute>
+                    )}
+                  />
                   <Route path="tenant-admin" element={<Navigate to="/tenant-admin/home" replace />} />
                   <Route path="screener" element={<Screener />} />
                   <Route path="admin-ops" element={<Navigate to="/operations-center" replace />} />
@@ -327,12 +343,6 @@ export default function App() {
                     path="settings"
                     element={(
                       packageShellHostEnabled ? <SettingsShellHost /> : <UserConfig />
-                    )}
-                  />
-                  <Route
-                    path="settings/ai"
-                    element={(
-                      packageShellHostEnabled ? <AICommandCenterShellHost /> : <AICommandCenter />
                     )}
                   />
                 </Route>

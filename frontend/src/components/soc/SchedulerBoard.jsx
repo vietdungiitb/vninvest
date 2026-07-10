@@ -233,7 +233,7 @@ function JobActionButtons({ job, onAction, t }) {
         type="button"
         disabled={!supported || lockedByRunning}
         onClick={() => onAction(job, action)}
-        className={`rounded px-2 py-1 text-xs font-semibold transition ${tone} disabled:cursor-not-allowed disabled:opacity-70`}
+        className={`rounded px-2 py-1 text-xs font-semibold transition ${tone} disabled:cursor-not-allowed disabled:opacity-70 whitespace-nowrap`}
       >
         {label}
       </button>
@@ -241,7 +241,7 @@ function JobActionButtons({ job, onAction, t }) {
   };
 
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-nowrap gap-1">
       {btn('enable', t('soc.scheduler.action_enable'), 'bg-blue-800 text-blue-100 hover:bg-blue-700')}
       {btn('disable', t('soc.scheduler.action_disable'), 'bg-slate-700 text-slate-200 hover:bg-slate-600')}
       {btn('run_now', t('soc.scheduler.action_run_now'), 'bg-emerald-800 text-emerald-100 hover:bg-emerald-700')}

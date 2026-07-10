@@ -6,7 +6,7 @@
 
 import { normalizeRefreshResponsePayload } from "./transport.js";
 
-export function createAuthClient({ coreGet, corePatch, publicPost, persistTokens, getRefreshToken }) {
+export function createAuthClient({ coreGet, corePost, corePatch, persistTokens, getRefreshToken }) {
   return {
     /**
      * Get tenant lifecycle/subscription status (requires authentication).
@@ -23,7 +23,7 @@ export function createAuthClient({ coreGet, corePatch, publicPost, persistTokens
      * @returns {Promise<object>}
      */
     async loginUser(payload) {
-      const responsePayload = await publicPost("/auth/token/", {
+      const responsePayload = await corePost("/auth/token/", {
         username: String(payload?.username || "").trim(),
         password: String(payload?.password || ""),
       });
@@ -41,7 +41,7 @@ export function createAuthClient({ coreGet, corePatch, publicPost, persistTokens
      */
     async refreshAuthToken(refresh) {
       const refreshValue = String(refresh || getRefreshToken?.() || "").trim();
-      const responsePayload = await publicPost("/auth/token/refresh/", {
+      const responsePayload = await corePost("/auth/token/refresh/", {
         refresh: refreshValue,
       });
       const tokenPayload = normalizeRefreshResponsePayload(responsePayload);
@@ -58,7 +58,7 @@ export function createAuthClient({ coreGet, corePatch, publicPost, persistTokens
      * @returns {Promise<object>}
      */
     registerUser(payload) {
-      return publicPost("/auth/register/", {
+      return corePost("/auth/register/", {
         username: String(payload?.username || "").trim(),
         email: String(payload?.email || "").trim().toLowerCase(),
         password: String(payload?.password || ""),
@@ -74,7 +74,7 @@ export function createAuthClient({ coreGet, corePatch, publicPost, persistTokens
      * @returns {Promise<object>}
      */
     resendVerificationEmail(email) {
-      return publicPost("/auth/resend-verification/", {
+      return corePost("/auth/resend-verification/", {
         email: String(email || "").trim().toLowerCase(),
       });
     },
@@ -85,7 +85,7 @@ export function createAuthClient({ coreGet, corePatch, publicPost, persistTokens
      * @returns {Promise<object>}
      */
     verifyEmailToken(token) {
-      return publicPost("/auth/verify-email/", {
+      return corePost("/auth/verify-email/", {
         token: String(token || "").trim(),
       });
     },
@@ -96,7 +96,7 @@ export function createAuthClient({ coreGet, corePatch, publicPost, persistTokens
      * @returns {Promise<object>}
      */
     requestPasswordReset(email) {
-      return publicPost("/auth/password-reset/", {
+      return corePost("/auth/password-reset/", {
         email: String(email || "").trim().toLowerCase(),
       });
     },
@@ -109,7 +109,7 @@ export function createAuthClient({ coreGet, corePatch, publicPost, persistTokens
      * @returns {Promise<object>}
      */
     confirmPasswordReset(token, newPassword, newPasswordConfirm) {
-      return publicPost("/auth/password-reset/confirm/", {
+      return corePost("/auth/password-reset/confirm/", {
         token: String(token || "").trim(),
         new_password: String(newPassword || ""),
         new_password_confirm: String(newPasswordConfirm || ""),

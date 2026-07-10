@@ -1,0 +1,129 @@
+/**
+ * VninvestInput CSS Module
+ * Standardized form input styling using design system CSS variables
+ * Border radius: 12px (--radius-sm) chuẩn across all inputs
+ */
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.wrapper:not(.w-full) {
+  width: auto;
+}
+
+.label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.label--required .required {
+  color: var(--accent-rose);
+  font-size: var(--font-size-sm);
+}
+
+.input {
+  display: block;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  background-color: var(--bg-panel-soft);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm); /* 12px chuẩn */
+  outline: none;
+  transition: border-color var(--transition-spring-smooth), box-shadow var(--transition-spring-smooth);
+  box-sizing: border-box;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.input:hover:not(:disabled):not(.input--error) {
+  border-color: var(--border-strong);
+}
+
+.input:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: var(--shadow-focus);
+}
+
+.input--error {
+  border-color: var(--accent-rose);
+  background-color: rgba(255, 94, 126, 0.05);
+}
+
+.input--error:focus {
+  border-color: var(--accent-rose);
+  box-shadow: 0 0 0 2px rgba(255, 94, 126, 0.25);
+}
+
+.input--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: var(--bg-panel);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--accent-rose);
+  font-weight: 500;
+}
+
+.helper {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+/* Select variant */
+.select {
+  composes: input;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239cb2d1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  padding-right: var(--space-10);
+}
+
+/* Textarea variant */
+.textarea {
+  composes: input;
+  min-height: 100px;
+  resize: vertical;
+  font-family: var(--font-mono);
+}
+
+/* Dark mode support (when using class strategy) */
+.dark .input {
+  background-color: var(--bg-panel-strong);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+
+.dark .input:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: var(--shadow-focus);
+}
+
+.dark .input--error {
+  border-color: var(--accent-rose);
+  background-color: rgba(255, 94, 126, 0.08);
+}
+
+.dark .label {
+  color: var(--text-primary);
+}

@@ -78,7 +78,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'data_types': ['daily_prices'],
         'trigger_type': 'cron',
         'control_mode': 'beat_enabled',
-        'capabilities': ['enable', 'disable', 'run_now'],
+        'capabilities': ['enable', 'disable', 'run_now', 'abort_active'],
         'display_name': 'Daily price backfill (17:00 ICT)',
         'service_key': 'backfill_daily_prices',
         'max_expected_run_seconds': 10800,  # 3h — 1 năm × toàn bộ symbol
@@ -90,7 +90,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'data_types': ['intraday_ticks'],
         'trigger_type': 'cron',
         'control_mode': 'beat_enabled',
-        'capabilities': ['enable', 'disable', 'run_now'],
+        'capabilities': ['enable', 'disable', 'run_now', 'abort_active'],
         'display_name': 'DNSE intraday tape backfill 90 ngày (Chủ nhật 01:00)',
         'service_key': 'dnse_intraday_quarterly_backfill',
         'max_expected_run_seconds': 7200,  # 2h — VN100 × 90 ngày queue dispatch
@@ -110,7 +110,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'data_types': ['daily_prices'],
         'trigger_type': 'cron',
         'control_mode': 'beat_enabled',
-        'capabilities': ['enable', 'disable', 'run_now'],
+        'capabilities': ['enable', 'disable', 'run_now', 'abort_active'],
         'display_name': 'Deep history bootstrap — 5 năm (Chủ nhật 03:00)',
         'service_key': 'deep_history_bootstrap',
         'max_expected_run_seconds': 28800,  # 8h — 5 năm × toàn bộ symbol
@@ -121,7 +121,7 @@ CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
         'data_types': ['daily_prices'],
         'trigger_type': 'cron',
         'control_mode': 'beat_enabled',
-        'capabilities': ['enable', 'disable', 'run_now'],
+        'capabilities': ['enable', 'disable', 'run_now', 'abort_active'],
         'display_name': 'Backfill lịch sử trước 5 năm đến market inception (Chủ nhật 04:00)',
         'service_key': 'pre5y_history_backfill',
         'max_expected_run_seconds': 43200,  # 12h — long historical window

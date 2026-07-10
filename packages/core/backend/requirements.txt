@@ -1,6 +1,7 @@
 Django>=5.2,<6.0
 djangorestframework>=3.15,<4.0
 drf-spectacular>=0.27,<1.0
+drf-spectacular-sidecar>=2024.0,<2025.0
 dj-database-url>=2.0
 psycopg2-binary>=2.9
 celery>=5.3,<6.0
@@ -13,6 +14,8 @@ whitenoise>=6.6,<7.0
 sentry-sdk[django]>=1.40,<2.0
 django-prometheus>=2.3,<3.0
 httpx>=0.27,<1.0
+h2>=4.1.0
+
 # Pandas vectorized processing cho order flow / CVD engine
 pandas>=2.0
 # SFI-B7: WebSocket support
@@ -23,5 +26,7 @@ daphne>=4.0,<5.0
 google-auth>=2.0,<3.0
 google-api-python-client>=2.0,<3.0
 # DNSE LightSpeed broker connector (private git source via env-driven token)
-# # vnbroker @ git...
-# vnstockcharts @ git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/vietdungiitb/vninvestcharts.git
+vnbroker @ git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/vietdungiitb/vnbroker.git@v1.1.0
+
+# Stripe Billing Integration
+stripe>=7.0,<8.0

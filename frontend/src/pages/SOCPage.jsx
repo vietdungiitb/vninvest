@@ -51,7 +51,7 @@ const SOCPage = ({ t }) => {
   };
 
   const panels = {
-    overview: <OverviewPanel t={pageT} services={serviceList} />,
+    overview: <OverviewPanel t={pageT} />,
     signals: <SignalsPanel t={pageT} />,
     dataops: <DataOpsPanel t={pageT} />,
     prefetch: <PrefetchPanel t={pageT} />,

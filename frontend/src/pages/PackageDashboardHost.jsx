@@ -49,6 +49,7 @@ export default function PackageDashboardHost() {
   // once holdings are ready and the realtime feed will update.
   const [holdings, setHoldings] = React.useState(EMPTY);
   const [trackedSymbols, setTrackedSymbols] = React.useState(EMPTY);
+  const [watchlists, setWatchlists] = React.useState(EMPTY);
   const [watchlistGroups, setWatchlistGroups] = React.useState(EMPTY);
   const [digest, setDigest] = React.useState(null);
   const digestFetchInFlightRef = React.useRef(false);
@@ -83,8 +84,37 @@ export default function PackageDashboardHost() {
     [liveHoldings, trackedSymbols, watchlistGroups, quotesBySymbol],
   );
 
+  const heatmapSymbols = useMemo(() => {
+    const symbolsSet = new Set();
+
+    // 1. Portfolio holdings
+    liveHoldings.forEach((h) => {
+      if (h?.symbol) {
+        symbolsSet.add(normalizeSymbol(h.symbol));
+      }
+    });
+
+    // 2. Tracked symbols
+    trackedSymbols.forEach((t) => {
+      if (t?.symbol) {
+        symbolsSet.add(normalizeSymbol(t.symbol));
+      }
+    });
+
+    // 3. Personal watchlists (user-created, not system market groups)
+    watchlists.forEach((group) => {
+      (group.items || []).forEach((item) => {
+        if (item?.symbol) {
+          symbolsSet.add(normalizeSymbol(item.symbol));
+        }
+      });
+    });
+
+    return Array.from(symbolsSet);
+  }, [liveHoldings, trackedSymbols, watchlists]);
+
   const heatmapData = useMemo(() => {
-    if (!monitoredSymbols.length) return [];
+    if (!heatmapSymbols.length) return [];
 
     const holdingsMap = new Map(liveHoldings.map((h) => [normalizeSymbol(h.symbol), h]));
     const trackedMap = new Map(trackedSymbols.map((t) => [normalizeSymbol(t.symbol), t]));
@@ -107,7 +137,7 @@ export default function PackageDashboardHost() {
         .map((v) => Number(v.toFixed(2)));
     };
 
-    return monitoredSymbols.map((symbol) => {
+    return heatmapSymbols.map((symbol) => {
       const held = holdingsMap.get(symbol);
       const quote = quotesBySymbol[symbol] || {};
       const trackedInfo = trackedMap.get(symbol);
@@ -145,7 +175,7 @@ export default function PackageDashboardHost() {
         is_holding: false,
       };
     });
-  }, [liveHoldings, monitoredSymbols, quotesBySymbol, trackedSymbols]);
+  }, [liveHoldings, heatmapSymbols, quotesBySymbol, trackedSymbols]);
 
   const trackedSymbolNames = useMemo(
     () => trackedSymbols.map((s) => s?.symbol || s?.name || s).filter(Boolean),
@@ -375,9 +405,10 @@ export default function PackageDashboardHost() {
   // We pass a side-channel callback so PackageDashboardHost can update local
   // state for realtime feed once core data is loaded.
   const handleDataReady = React.useCallback(
-    ({ holdings: h, trackedSymbols: ts, watchlistGroups: wg }) => {
+    ({ holdings: h, trackedSymbols: ts, watchlistGroups: wg, watchlists: wl }) => {
       setHoldings(h || EMPTY);
       setTrackedSymbols(ts || EMPTY);
+      setWatchlists(wl || EMPTY);
       setWatchlistGroups(wg || EMPTY);
     },
     [],
