@@ -1,6 +1,7 @@
 from django.urls import re_path
 from rest_framework.routers import DefaultRouter
 from advertising import views
+from advertising.views import WidgetConfigView, WidgetAdView
 
 # Disable format suffix patterns to avoid double registration during system checks
 class NoFormatSuffixRouter(DefaultRouter):
@@ -31,4 +32,8 @@ router = NoFormatSuffixRouter()
 router.register(r'operator/ads/campaigns', views.OperatorAdCampaignViewSet, basename='operator-ad-campaign')
 router.register(r'operator/ads/analytics', views.OperatorAdDailySummaryViewSet, basename='operator-ad-analytics')
 
-urlpatterns = router.urls
+# Widget public endpoints (B2: trailing slash optional via /?$ to match engine no-slash fetch)
+urlpatterns = [
+    re_path(r'^widget/config/?$', WidgetConfigView.as_view(), name='widget-config'),
+    re_path(r'^widget/ad/?$', WidgetAdView.as_view(), name='widget-ad'),
+] + router.urls
