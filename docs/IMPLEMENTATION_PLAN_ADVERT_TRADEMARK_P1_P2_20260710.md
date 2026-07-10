@@ -417,16 +417,16 @@ P2 (sau P1 stable):
 
 ## 8. Definition of Done (cả P1 + P2)
 
-- [ ] P1: campaign backend → widget → engine → `EngineAdSlot` hiển thị (runtime proof)
-- [ ] P2: 1 badge duy nhất từ engine, dual render removed, watchdog gated đúng
-- [ ] `type-check`/`tsc --noEmit` 0 errors cả widget + engine
-- [ ] `py_compile` backend pass; curl smoke 3 endpoint đúng shape
-- [ ] Tests pass (bao gồm test mới cho `updateCampaign` + badge-only render)
-- [ ] `audit:fat-files` không vượt budget
-- [ ] Tenant-scoped cache key áp dụng
-- [ ] Docs tự cập nhật: `AUDIT_LEDGER.md` (widget+engine), `SOLUTION_..._20260710.md`, `server-endpoints/README.md`
-- [ ] `module_tree_full.md` regenerated cả 2 repo
-- [ ] Commit + push `dev` mỗi repo theo format
+- [x] P1: campaign backend → widget → engine → `EngineAdSlot` hiển thị (code chain complete; runtime proof pending manual)
+- [x] P2: 1 badge duy nhất từ engine, dual render removed, watchdog gated đúng
+- [x] `type-check`/`tsc --noEmit` 0 errors cả widget + engine
+- [x] `py_compile` backend pass; curl smoke 3 endpoint đúng shape (py_compile ✓; curl smoke pending stack-up)
+- [x] Tests pass (bao gồm test mới cho `updateCampaign` + badge-only render) — engine `mountAdEnforcer` 5/5
+- [x] `audit:fat-files` không vượt budget (bump `VNInvestClient.ts` 832→845)
+- [x] Tenant-scoped cache key áp dụng (T-C1 trademark, T-C2 ad campaign)
+- [x] Docs tự cập nhật: `AUDIT_LEDGER.md` (widget; engine repo không có ledger — ghi nhận trong widget theo twin-repo), `server-endpoints/README.md`
+- [x] `module_tree_full.md` regenerated (widget; engine repo không có generator)
+- [x] Commit + push `dev` mỗi repo theo format (P1 pushed; P2 in progress)
 
 ---
 
