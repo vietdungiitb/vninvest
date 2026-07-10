@@ -266,16 +266,14 @@ class CorePATCredential(models.Model):
     def resolve_from_raw_secret(cls, raw_secret: str):
         from django.utils import timezone
         prefix = _extract_pat_prefix(raw_secret)
-        try:
-            credential = cls.objects.select_related('service_account__tenant').get(token_prefix=prefix)
-        except cls.DoesNotExist:
-            return None
-        if not hmac.compare_digest(credential.token_secret_hash, _hash_pat_secret(raw_secret)):
-            return None
-        # Don't return revoked credentials
-        if credential.status == cls.StatusChoices.REVOKED:
-            return None
-        return credential
+        candidates = cls.objects.select_related('service_account__tenant').filter(token_prefix=prefix)
+        hashed = _hash_pat_secret(raw_secret)
+        for credential in candidates:
+            if hmac.compare_digest(credential.token_secret_hash, hashed):
+                if credential.status != cls.StatusChoices.REVOKED:
+                    return credential
+                break
+        return None
 
     @classmethod
     def issue_for_service_account(cls, service_account: CoreServiceAccount, scopes: list[str], expires_at=None, label: str = '', audit_reason: str = '', allowed_cidr_blocks: list[str] = None, is_human_session: bool = False):
