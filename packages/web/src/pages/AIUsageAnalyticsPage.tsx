@@ -1,4 +1,5 @@
 import { createElement } from "react";
+import styles from "../components/aiSettings.module.css";
 import { useI18n } from "../context/LangContext.js";
 import { AIUsageDashboard } from "../components/AIUsageDashboard.js";
 
@@ -10,7 +11,7 @@ interface AIUsageAnalyticsPageProps {
 
 export function AIUsageAnalyticsPage({ className = "" }: AIUsageAnalyticsPageProps) {
   useI18n();
-  return e("div", { className: `core-ai-usage-analytics-page ${className}` },
+  return e("div", { className: `${styles.page} ${className}` },
     e(AIUsageDashboard, null),
   );
 }

@@ -485,6 +485,7 @@ class PortfolioAICommandCenterView(APIView):
             'advisory_refresh_interval_hours': int(metadata.get('advisory_refresh_interval_hours', 24)),
             'advisory_max_auto_refreshes_per_day': int(metadata.get('advisory_max_auto_refreshes_per_day', 24)),
             'advisory_max_tokens_per_day': config.max_tokens,
+            'temperature': float(config.temperature),
             'fallback_quota_remaining': fallback_remaining,
             'fallback_quota_max': fallback_quota_max,
             'fallback_quota_reset': fallback_date,
@@ -576,6 +577,12 @@ class PortfolioAICommandCenterView(APIView):
             except (TypeError, ValueError):
                 pass
 
+        if 'temperature' in payload:
+            try:
+                config.temperature = min(1.0, max(0.0, float(payload.get('temperature'))))
+            except (TypeError, ValueError):
+                pass
+
         config.metadata = metadata
         config.save()
 
@@ -590,6 +597,7 @@ class PortfolioAICommandCenterView(APIView):
             'advisory_refresh_interval_hours': int(metadata.get('advisory_refresh_interval_hours', 24)),
             'advisory_max_auto_refreshes_per_day': int(metadata.get('advisory_max_auto_refreshes_per_day', 24)),
             'advisory_max_tokens_per_day': config.max_tokens,
+            'temperature': float(config.temperature),
         })
         diff_parts = []
         for field in ['ai_provider', 'ai_model', 'effective_ai_source', 'custom_endpoint']:
@@ -627,6 +635,7 @@ class PortfolioAICommandCenterView(APIView):
             'advisory_refresh_interval_hours': int(metadata.get('advisory_refresh_interval_hours', 24)),
             'advisory_max_auto_refreshes_per_day': int(metadata.get('advisory_max_auto_refreshes_per_day', 24)),
             'advisory_max_tokens_per_day': config.max_tokens,
+            'temperature': float(config.temperature),
             'fallback_quota_remaining': user_cred.fallback_quota_remaining,
             'fallback_quota_max': fallback_quota_max,
             'fallback_quota_reset': user_cred.fallback_quota_date,
@@ -866,6 +875,23 @@ class PortfolioUserConfigLegacyView(APIView):
             'id': profile.pk,
             'language': profile.language,
             'theme': profile.theme,
+            'preferences': prefs,
+            'advisory_whale_signal_enabled': prefs.get('advisory_whale_signal_enabled', True),
+        })
+
+    def patch(self, request):
+        from identity_access.models import UserProfile
+        profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        prefs = profile.preferences or {}
+
+        if 'advisory_whale_signal_enabled' in request.data:
+            prefs['advisory_whale_signal_enabled'] = bool(request.data['advisory_whale_signal_enabled'])
+
+        profile.preferences = prefs
+        profile.save(update_fields=['preferences'])
+
+        return Response({
+            'ok': True,
             'preferences': prefs,
             'advisory_whale_signal_enabled': prefs.get('advisory_whale_signal_enabled', True),
         })
@@ -1355,7 +1381,10 @@ class PortfolioScreenerRuleRunView(APIView):
         
         from market_serving.models import SymbolSnapshot, SessionFacts
         from market_data.models import DailyPrice
-        from user_workspace.screener_helpers import _screener_build_technical, _apply_screener_condition
+        from user_workspace.screener_helpers import _screener_build_technical, _apply_screener_condition, _compute_fundamental_metrics
+        from user_workspace.ai_advisory_helpers import compute_ai_advisory
+        from market_data.models import StockProfile
+        from market_data.vnbroker_adapter import get_company_financials_response
         from datetime import date, timedelta
         from collections import defaultdict
         
@@ -1377,6 +1406,12 @@ class PortfolioScreenerRuleRunView(APIView):
         facts_list = SessionFacts.objects.filter(session_date=session_date)
         facts_map = {f.symbol: f for f in facts_list}
         
+        # Bulk-read outstanding shares (canonical profile source) for market_cap derivation
+        profile_map = {
+            p['symbol']: p
+            for p in StockProfile.objects.filter(symbol__in=symbols).values('symbol', 'outstanding_shares')
+        }
+        
         lookback_date = session_date - timedelta(days=90)
         prices = DailyPrice.objects.filter(symbol__in=symbols, date__gte=lookback_date).order_by('symbol', 'date')
         
@@ -1388,7 +1423,15 @@ class PortfolioScreenerRuleRunView(APIView):
         for snap in snapshots:
             sym = snap.symbol
             hist = history_map[sym]
-            tech = _screener_build_technical(sym, snap.price, snap.volume, hist)
+            # SSOT: fundamentals come from the canonical vnbroker adapter (cached 12h)
+            financials = get_company_financials_response(sym).get('financials', {})
+            os_shares = profile_map.get(sym, {}).get('outstanding_shares')
+            fundamental_metrics = _compute_fundamental_metrics(
+                financials,
+                float(snap.price) if snap.price is not None else None,
+                os_shares,
+            )
+            tech = _screener_build_technical(sym, snap.price, snap.volume, hist, fundamental_metrics=fundamental_metrics)
             
             facts = facts_map.get(sym)
             flow_facts = {}
@@ -1425,8 +1468,34 @@ class PortfolioScreenerRuleRunView(APIView):
                 **tech,
                 **flow_facts,
             }
+
+            # AI advisory (S3.1) — fallback None nếu lỗi, không crash scan
+            try:
+                row['ai_advisory'] = compute_ai_advisory(row)
+            except Exception:
+                row['ai_advisory'] = None
             
-            if all(_apply_screener_condition(row.get(cond['field']), cond['op'], cond['value']) for cond in conditions):
+            # Evaluate conditions with AND/OR/NOT logic
+            if conditions:
+                # First condition always applies (no logic operator)
+                first_cond = conditions[0]
+                result = _apply_screener_condition(row.get(first_cond['field']), first_cond['op'], first_cond['value'])
+                
+                # Process remaining conditions with their logic operators
+                for cond in conditions[1:]:
+                    cond_result = _apply_screener_condition(row.get(cond['field']), cond['op'], cond['value'])
+                    logic = cond.get('logic', 'AND')
+                    if logic == 'AND':
+                        result = result and cond_result
+                    elif logic == 'OR':
+                        result = result or cond_result
+                    elif logic == 'NOT':
+                        result = result and (not cond_result)
+                
+                if result:
+                    matched.append(row)
+            else:
+                # No conditions means match all
                 matched.append(row)
                 
         matched.sort(key=lambda item: item.get('close') or 0, reverse=True)
@@ -1438,4 +1507,13 @@ class PortfolioScreenerRuleRunView(APIView):
             'matched_count': len(matched),
             'matched': matched,
         })
+
+
+class ScreenerTemplatesView(APIView):
+    """GET /screener/templates/ — pre-built screener template catalog (S2.5)."""
+
+    def get(self, request):
+        from .screener_templates import SCREENER_TEMPLATES
+
+        return Response({'templates': SCREENER_TEMPLATES})
 

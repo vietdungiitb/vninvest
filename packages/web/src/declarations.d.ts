@@ -30,6 +30,7 @@ declare module "./adapters/coreApiAdapter" {
     verifyEmailToken: (token: string) => Promise<any>;
 
     // Screener
+    getScreenerTemplates: () => Promise<any>;
     getScreenerRules: () => Promise<any>;
     createScreenerRule: (data: any) => Promise<any>;
     updateScreenerRule: (id: string, data: any) => Promise<any>;

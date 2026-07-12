@@ -2842,3 +2842,10 @@ def execute_provisioning_consumer(event_id, payload) -> tuple[str, str]:
         logger.exception(f"Provisioning consumer failed for user {user_id}: {e}")
         return "failed", str(e)
 
+
+# ---------------------------------------------------------------------------
+# S2.0: Fundamentics consumed via the canonical vnbroker adapter
+#        (market_data.vnbroker_adapter.get_company_financials_response, cached 12h).
+#        No bespoke StockFundamental store / enrichment task — SSOT.
+# ---------------------------------------------------------------------------
+

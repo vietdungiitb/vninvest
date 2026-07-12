@@ -3064,42 +3064,11 @@ class StockManagementFinancialsView(APIView):
     )
 
     def get(self, request, symbol):
-        from django.core.cache import cache
-        from market_data.vnbroker_adapter import fetch_company_financials
-        
+        from market_data.vnbroker_adapter import get_company_financials_response
+
         symbol = symbol.upper()
         force = str(request.query_params.get('force', '')).lower() == 'true'
-        cache_key = f"stock_financials:{symbol}"
-        
-        if not force:
-            cached_data = cache.get(cache_key)
-            if cached_data is not None:
-                return Response(cached_data)
-
-        try:
-            financials_data = fetch_company_financials(symbol, source='KBS')
-        except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error('Error fetching company financials in StockManagementFinancialsView for %s: %s', symbol, e)
-            financials_data = {
-                'ratio': [],
-                'income_statement': [],
-                'balance_sheet': [],
-            }
-
-        response_data = clean_nan({
-            'symbol': symbol,
-            'financials': {
-                'ratio': financials_data.get('ratio', []),
-                'income_statement': financials_data.get('income_statement', []),
-                'balance_sheet': financials_data.get('balance_sheet', []),
-            },
-            'note': 'financials_loaded_successfully',
-        })
-        
-        cache.set(cache_key, response_data, timeout=43200)  # 12 hours
-        return Response(response_data)
+        return Response(get_company_financials_response(symbol, force=force))
 
 
 # ---------------------------------------------------------------------------

@@ -370,11 +370,6 @@ describe("SOC adapter", () => {
       expect(metrics.rules_hit_rate).toBe(5);
       expect(metrics.avg_scan_duration_ms).toBe(1500);
     });
-
-    it("getSocScreenerTemplates calls coreGet", async () => {
-      await soc.getSocScreenerTemplates();
-      expect(coreGet).toHaveBeenCalledWith("/operator/soc/screener/templates/");
-    });
   });
 
   // ─── Matrix ──────────────────────────────────────────────────────────────

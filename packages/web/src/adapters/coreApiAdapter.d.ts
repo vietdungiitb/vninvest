@@ -68,6 +68,7 @@ export interface CoreApiAdapter {
   getDarkPoolData: (symbol: string) => Promise<any>;
   getWhaleAlerts: (params: any) => Promise<any>;
   getAiAdvisory: (params: any) => Promise<any>;
+  getDailyPrices: (symbol: string, params?: any) => Promise<any>;
   
   // Workspace
   getPortfolios: () => Promise<any>;
@@ -113,12 +114,11 @@ export interface CoreApiAdapter {
   processPayment: (data: any) => Promise<any>;
   
   // Screener
-  getScreenerPresets: () => Promise<any>;
-  createScreenerPreset: (data: any) => Promise<any>;
-  updateScreenerPreset: (id: string, data: any) => Promise<any>;
-  deleteScreenerPreset: (id: string) => Promise<any>;
-  runScreener: (params: any) => Promise<any>;
-  getScreenerResults: (id: string) => Promise<any>;
+  getScreenerRules: () => Promise<any>;
+  createScreenerRule: (data: any) => Promise<any>;
+  updateScreenerRule: (id: string, data: any) => Promise<any>;
+  deleteScreenerRule: (id: string) => Promise<any>;
+  runScreenerRule: (id: string) => Promise<any>;
   
   // Advisory
   createAdvisorySession: (data: any) => Promise<any>;
@@ -139,6 +139,11 @@ export interface CoreApiAdapter {
   testDnseConnection: () => Promise<any>;
   getDnseBackfillJobs: () => Promise<any>;
   triggerDnseBackfill: (data: any) => Promise<any>;
+  getDNSEConfig: () => Promise<{ is_configured: boolean; data?: { client_id_preview?: string; is_active?: boolean; last_sync_at?: string | null } }>;
+  updateDNSEConfig: (data: { client_id: string; client_secret: string; is_active?: boolean }) => Promise<{ ok: boolean }>;
+  deleteDNSEConfig: () => Promise<{ ok: boolean }>;
+  getUserConfig: () => Promise<{ id: number; preferences: Record<string, unknown>; advisory_whale_signal_enabled: boolean }>;
+  updateUserConfig: (data: { advisory_whale_signal_enabled?: boolean }) => Promise<{ ok: boolean; preferences: Record<string, unknown>; advisory_whale_signal_enabled: boolean }>;
   
   // Operator
   getOperatorStats: () => Promise<any>;
@@ -156,6 +161,19 @@ export interface CoreApiAdapter {
   getMailConfig: () => Promise<any>;
   updateMailConfig: (data: any) => Promise<any>;
   sendTestEmail: (data: any) => Promise<any>;
+
+  // SOC Screener
+  getSocScreenerConfig: () => Promise<any>;
+  applySocScreenerConfig: (config: any) => Promise<any>;
+  getSocScreenerRules: () => Promise<any>;
+  createSocScreenerRule: (data: any) => Promise<any>;
+  updateSocScreenerRule: (id: string, data: any) => Promise<any>;
+  deleteSocScreenerRule: (id: string) => Promise<any>;
+  getSocScreenerResults: () => Promise<any>;
+  getSocScreenerAlerts: () => Promise<any>;
+  getSocScreenerMetrics: () => Promise<any>;
+  manualSocScreenerScan: (symbols: string[]) => Promise<any>;
+  getSocScreenerOwnership: () => Promise<any>;
 
   // Tenant-admin usage
   getAllUsageTrends: (days?: number) => Promise<any>;

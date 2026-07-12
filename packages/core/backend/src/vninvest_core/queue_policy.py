@@ -110,7 +110,6 @@ QUEUE_DOMAIN_MATRIX = {
         ),
         'periodic_tasks': (
             'enrich_history_bars',
-            'enrich_fundamentals',
             'materialize-pre-open-snapshots-20m',
             # Daily price backfill at 17:00 ICT (after HOSE close)
             'daily-backfill-prices-1700',

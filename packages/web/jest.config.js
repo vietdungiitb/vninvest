@@ -7,7 +7,8 @@ const config = {
   },
   testPathIgnorePatterns: [
     "/node_modules/",
-    "<rootDir>/src/components/vninvestcharts/"
+    "<rootDir>/src/components/vninvestcharts/",
+    "<rootDir>/src/.*\\.component\\.test\\.(js|ts|tsx)$"
   ],
   moduleNameMapper: {
     '\\.(css|less|scss)$': '<rootDir>/test/styleMock.cjs',

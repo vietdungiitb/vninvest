@@ -13,6 +13,7 @@
     "check:stock-detail-shell": "node ./scripts/check-stock-detail-shell.mjs",
     "check:vip": "node ./scripts/check-vip-local-control.mjs",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --no-coverage",
+    "test:components": "vitest run",
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
     "capture:baseline": "node ./scripts/capture-baseline.mjs",

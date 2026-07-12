@@ -1,0 +1,156 @@
+import { createElement, useState, useEffect } from "react";
+import { useI18n } from "../../context/LangContext.js";
+import styles from "./soc.module.css";
+
+interface SocScreenerConfigFormProps {
+  initialConfig: {
+    scan_interval_seconds?: number;
+    max_symbols_per_scan?: number;
+    alert_cooldown_seconds?: number;
+    max_alerts_per_symbol_per_hour?: number;
+    result_retention_hours?: number;
+  };
+  onSave: (config: {
+    scan_interval_seconds?: number;
+    max_symbols_per_scan?: number;
+    alert_cooldown_seconds?: number;
+    max_alerts_per_symbol_per_hour?: number;
+    result_retention_hours?: number;
+  }) => Promise<void>;
+  onCancel: () => void;
+  loading?: boolean;
+}
+
+function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
+  const { t } = useI18n();
+  const { initialConfig, onSave, onCancel, loading = false } = props;
+
+  const [config, setConfig] = useState({
+    scan_interval_seconds: initialConfig.scan_interval_seconds ?? 60,
+    max_symbols_per_scan: initialConfig.max_symbols_per_scan ?? 2000,
+    alert_cooldown_seconds: initialConfig.alert_cooldown_seconds ?? 300,
+    max_alerts_per_symbol_per_hour: initialConfig.max_alerts_per_symbol_per_hour ?? 5,
+    result_retention_hours: initialConfig.result_retention_hours ?? 24,
+  });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    setConfig({
+      scan_interval_seconds: initialConfig.scan_interval_seconds ?? 60,
+      max_symbols_per_scan: initialConfig.max_symbols_per_scan ?? 2000,
+      alert_cooldown_seconds: initialConfig.alert_cooldown_seconds ?? 300,
+      max_alerts_per_symbol_per_hour: initialConfig.max_alerts_per_symbol_per_hour ?? 5,
+      result_retention_hours: initialConfig.result_retention_hours ?? 24,
+    });
+  }, [initialConfig]);
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (config.scan_interval_seconds < 30) {
+      newErrors.scan_interval_seconds = t("soc.screener.config.scan_interval_min", { min: 30 });
+    }
+    if (config.max_symbols_per_scan < 1 || config.max_symbols_per_scan > 5000) {
+      newErrors.max_symbols_per_scan = t("soc.screener.config.max_symbols_range", { min: 1, max: 5000 });
+    }
+    if (config.alert_cooldown_seconds < 60) {
+      newErrors.alert_cooldown_seconds = t("soc.screener.config.alert_cooldown_min", { min: 60 });
+    }
+    if (config.max_alerts_per_symbol_per_hour < 1) {
+      newErrors.max_alerts_per_symbol_per_hour = t("soc.screener.config.alerts_per_symbol_min", { min: 1 });
+    }
+    if (config.result_retention_hours < 1) {
+      newErrors.result_retention_hours = t("soc.screener.config.retention_min", { min: 1 });
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!validate()) return;
+    await onSave(config);
+  };
+
+  const handleReset = () => {
+    setConfig({
+      scan_interval_seconds: 60,
+      max_symbols_per_scan: 2000,
+      alert_cooldown_seconds: 300,
+      max_alerts_per_symbol_per_hour: 5,
+      result_retention_hours: 24,
+    });
+    setErrors({});
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "0.5rem",
+    background: "rgba(15,23,42,0.6)",
+    border: "1px solid var(--border-default)",
+    borderRadius: "6px",
+    color: "var(--text-primary)",
+    fontSize: "0.875rem",
+    outline: "none",
+  };
+
+  const field = (key: keyof typeof config, label: string, min?: number, max?: number) =>
+    createElement("div", { style: { marginBottom: "1rem" } },
+      createElement("label", { style: { display: "block", marginBottom: "0.25rem", fontSize: "0.875rem", color: "var(--text-secondary)" } }, label),
+      createElement("input", {
+        type: "number",
+        value: config[key],
+        onChange: (e) => setConfig((prev) => ({ ...prev, [key]: parseInt(e.target.value, 10) || (min ?? 0) })),
+        min: min,
+        max: max,
+        style: { ...inputStyle, borderColor: errors[key as string] ? "var(--accent-red)" : "var(--border-default)" },
+      }),
+      errors[key as string] && createElement("p", { style: { marginTop: "0.25rem", fontSize: "0.75rem", color: "var(--accent-red)" } }, errors[key as string])
+    );
+
+  return createElement("div", null,
+    createElement("div", { className: styles.sectionCard },
+      createElement("div", { className: styles.sectionCardTitle }, t("soc.screener.config_title")),
+      createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" } },
+        field("scan_interval_seconds", t("soc.screener.config.scan_interval"), 30),
+        field("max_symbols_per_scan", t("soc.screener.config.max_symbols"), 1, 5000),
+        field("alert_cooldown_seconds", t("soc.screener.config.alert_cooldown"), 60),
+        field("max_alerts_per_symbol_per_hour", t("soc.screener.config.max_alerts_per_symbol"), 1),
+        field("result_retention_hours", t("soc.screener.config.retention_hours"), 1),
+      ),
+    ),
+    createElement("details", { className: styles.sectionCard, style: { marginTop: "1rem" } },
+      createElement("summary", { style: { cursor: "pointer", color: "var(--text-muted)", fontSize: "0.875rem", fontWeight: 500 } },
+        t("soc.screener.config.advanced")
+      ),
+      createElement("div", { className: styles.configEditor, style: { marginTop: "0.75rem", fontFamily: "monospace", fontSize: "0.75rem" } },
+        JSON.stringify(props.initialConfig, null, 2)
+      ),
+    ),
+    createElement("div", { style: { display: "flex", gap: "0.5rem", marginTop: "1rem", justifyContent: "flex-end" } },
+      createElement("button", {
+        onClick: handleReset,
+        className: styles.actionBtn,
+        style: { background: "rgba(15,23,42,0.6)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" },
+      },
+      t("soc.screener.config.reset")
+      ),
+      createElement("button", {
+        onClick: onCancel,
+        className: styles.actionBtn,
+        style: { background: "rgba(15,23,42,0.6)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" },
+      },
+      t("common.cancel")
+      ),
+      createElement("button", {
+        onClick: handleSave,
+        disabled: loading,
+        className: styles.actionBtn,
+        style: { background: "var(--accent-cyan)", color: "#fff" },
+      },
+      loading ? t("common.saving") : t("common.save")
+      ),
+    ),
+  );
+}
+
+export { SocScreenerConfigForm };

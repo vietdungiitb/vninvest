@@ -410,8 +410,8 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
       });
     },
 
-    getSocScreenerTemplates() {
-      return coreGet("/operator/soc/screener/templates/");
+    getSocScreenerOwnership() {
+      return coreGet("/operator/soc/screener/ownership/");
     },
 
     // ─── Matrix ────────────────────────────────────────────────────────────

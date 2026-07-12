@@ -104,6 +104,16 @@ export const routeCatalog = Object.freeze([
     status: "baseline",
   },
   {
+    id: "screener",
+    path: "/screener",
+    titleKey: "routes.screener",
+    group: "workspace",
+    buildTargets: ALL_BUILD_TARGETS,
+    requiredCapabilities: ["workspace.screener.read"],
+    adapter: "core",
+    status: "baseline",
+  },
+  {
     id: "transactions",
     path: "/transactions",
     titleKey: "routes.transactions",

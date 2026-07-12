@@ -1126,3 +1126,56 @@ def fetch_rss_news(symbol: str) -> list[dict]:
         return []
 
 
+def _clean_financials_nan(obj):
+    """Recursively replace NaN/Inf with None so cached payloads are JSON-safe."""
+    import math
+    if isinstance(obj, dict):
+        return {k: _clean_financials_nan(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_clean_financials_nan(x) for x in obj]
+    if isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
+        return None
+    return obj
+
+
+def get_company_financials_response(symbol: str, force: bool = False) -> dict:
+    """
+    SSOT: canonical cached fetch of company financials from vnbroker.
+
+    Single gateway for all vnbroker financials data (ratio / income_statement /
+    balance_sheet). Caches 12h in Django cache under ``stock_financials:{symbol}``
+    — the same key consumed by StockManagementFinancialsView — so every consumer
+    shares one source of truth and one cache. Returns the cached response payload
+    ``{symbol, financials, note}``. On failure returns an empty-but-valid payload
+    (graceful, no crash) and does NOT cache the failure (allows retry on next call).
+    """
+    from django.core.cache import cache
+
+    symbol = symbol.upper()
+    cache_key = f"stock_financials:{symbol}"
+
+    if not force:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+    try:
+        fin = fetch_company_financials(symbol, source='KBS')
+    except Exception as e:  # noqa: BLE001 - vnbroker feed may be unreachable
+        logger.error('get_company_financials_response: fetch failed for %s: %s', symbol, e)
+        fin = {'ratio': [], 'income_statement': [], 'balance_sheet': []}
+
+    response_data = _clean_financials_nan({
+        'symbol': symbol,
+        'financials': {
+            'ratio': fin.get('ratio', []),
+            'income_statement': fin.get('income_statement', []),
+            'balance_sheet': fin.get('balance_sheet', []),
+        },
+        'note': 'financials_loaded_successfully',
+    })
+
+    cache.set(cache_key, response_data, timeout=43200)  # 12 hours
+    return response_data
+
+

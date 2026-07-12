@@ -8,7 +8,7 @@ export const navigationCatalog = Object.freeze([
     labelKey: "navigation.workspace",
     buildTargets: ALL_BUILD_TARGETS,
     requiredCapabilities: ["workspace.group.read"],
-    items: ["dashboard", "watchlist", "transactions", "portfolios"],
+    items: ["dashboard", "watchlist", "transactions", "portfolios", "screener"],
   },
   {
     id: "signals",

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, createElement, FormEvent, ChangeEvent } from "react";
+import styles from "./aiSettings.module.css";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
+import { PROVIDER_MODELS, PROVIDER_OPTIONS } from "../shared/providerModels.js";
 
 const e = createElement;
 
@@ -32,7 +34,7 @@ interface AIAgentFederationPanelProps {
 }
 
 export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPanelProps) {
-  useI18n();
+  const { t } = useI18n();
   const [agents, setAgents] = useState<AgentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -63,9 +65,9 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
     setError("");
     agentClient.getAIAgents()
       .then((res) => { setAgents(res.results || []); })
-      .catch(() => { setError("Không thể tải danh sách agent."); })
+      .catch(() => { setError(t("agentFederation.loadError")); })
       .finally(() => { setLoading(false); });
-  }, [agentClient]);
+  }, [agentClient, t]);
 
   useEffect(() => { loadAgents(); }, [loadAgents]);
 
@@ -84,24 +86,24 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
       : agentClient.createAIAgent(payload);
     promise
       .then(() => {
-        setNotice(editingId ? "Đã cập nhật agent thành công." : "Đã tạo agent thành công.");
+        setNotice(editingId ? t("agentFederation.updated") : t("agentFederation.created"));
         setShowForm(false);
         setEditingId(null);
         setFormData({ name: "", agent_type: "advisory", provider: "openai", model: "gpt-4o-mini", capabilities: [], system_prompt: "", is_active: true });
         loadAgents();
       })
-      .catch(() => { setError("Không thể lưu agent."); })
+      .catch(() => { setError(t("agentFederation.saveError")); })
       .finally(() => { setSaving(false); });
   };
 
   const handleDelete = (id: number) => {
-    if (!confirm("Xác nhận xoá agent này?")) return;
+    if (!confirm(t("agentFederation.confirmDelete"))) return;
     agentClient.deleteAIAgent(id)
       .then(() => {
-        setNotice("Đã xoá agent thành công.");
+        setNotice(t("agentFederation.deleted"));
         loadAgents();
       })
-      .catch(() => { setError("Không thể xoá agent."); });
+      .catch(() => { setError(t("agentFederation.deleteError")); });
   };
 
   const openEdit = (agent: AgentRecord) => {
@@ -129,141 +131,163 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const typeLabel = (t: string) => AGENT_TYPES.find((a) => a.value === t)?.label || t;
+  const handleProviderChange = (ev: ChangeEvent<HTMLSelectElement>) => {
+    const provider = ev.target.value;
+    const firstModel = PROVIDER_MODELS[provider]?.[0]?.key || "gpt-4o-mini";
+    setFormData((prev) => ({ ...prev, provider, model: firstModel }));
+  };
 
-  return e("div", { className: `ai-agent-federation ${className}` },
-    notice && e("div", { className: "core-page-notice", onClick: () => setNotice("") }, notice),
+  const typeLabel = (type: string) => AGENT_TYPES.find((a) => a.value === type)?.label || type;
 
-    e("div", { className: "core-page-section-header" },
-      e("h2", null, "Quản lý Agent AI"),
-      e("p", null, "Đăng ký và quản lý các agent AI trong hệ thống."),
+  const btnPrimary = `${styles.btn} ${styles.btnPrimary}`;
+  const btnGhost = `${styles.btn} ${styles.btnGhost}`;
+  const btnDangerSm = `${styles.btn} ${styles.btnSm} ${styles.btnDanger}`;
+  const btnGhostSm = `${styles.btn} ${styles.btnSm} ${styles.btnGhost}`;
+
+  return e("div", { className: `${styles.panel} ${className}` },
+    notice && e("div", {
+      className: `${styles.alert} ${styles.alertSuccess}`,
+      style: { cursor: "pointer" },
+      onClick: () => setNotice(""),
+    }, notice),
+
+    e("div", { className: styles.panelHeader },
+      e("div", null,
+        e("h2", { className: styles.panelTitle }, t("agentFederation.title")),
+        e("p", { className: styles.panelSubtitle }, t("agentFederation.description")),
+      ),
       e("button", {
-        className: "core-btn core-btn--primary",
+        className: btnPrimary,
         onClick: openCreate,
         disabled: showForm,
-      }, "Thêm agent"),
+      }, t("agentFederation.addAgent")),
     ),
 
-    error && e("div", { className: "core-page-error", role: "alert" }, error),
+    error && e("div", { className: `${styles.alert} ${styles.alertError}`, role: "alert" }, error),
 
     showForm && e("form", {
-      className: "core-page-form",
+      className: styles.formGrid,
       onSubmit: handleSubmit,
     },
-      e("div", { className: "core-form-group" },
-        e("label", null, "Tên agent"),
+      e("div", { className: styles.field },
+        e("label", { className: styles.label }, t("agentFederation.name")),
         e("input", {
-          className: "core-input",
+          className: styles.input,
           value: formData.name,
           onChange: handleFieldChange("name"),
           placeholder: "VD: Phân tích ngành",
           required: true,
         }),
       ),
-      e("div", { className: "core-form-group" },
-        e("label", null, "Loại agent"),
+      e("div", { className: styles.field },
+        e("label", { className: styles.label }, t("agentFederation.type")),
         e("select", {
-          className: "core-input",
+          className: styles.input,
           value: formData.agent_type,
           onChange: handleFieldChange("agent_type"),
-        }, ...AGENT_TYPES.map((t) =>
-          e("option", { key: t.value, value: t.value }, t.label)
+        }, ...AGENT_TYPES.map((tp) =>
+          e("option", { key: tp.value, value: tp.value }, tp.label)
         )),
       ),
-      e("div", { className: "core-form-group" },
-        e("label", null, "Nhà cung cấp"),
-        e("input", {
-          className: "core-input",
+      e("div", { className: styles.field },
+        e("label", { className: styles.label }, t("agentFederation.provider")),
+        e("select", {
+          className: styles.input,
           value: formData.provider,
-          onChange: handleFieldChange("provider"),
-        }),
+          onChange: handleProviderChange,
+        }, ...PROVIDER_OPTIONS.map((p) =>
+          e("option", { key: p.key, value: p.key }, p.label)
+        )),
       ),
-      e("div", { className: "core-form-group" },
-        e("label", null, "Mô hình"),
-        e("input", {
-          className: "core-input",
+      e("div", { className: styles.field },
+        e("label", { className: styles.label }, t("agentFederation.model")),
+        e("select", {
+          className: styles.input,
           value: formData.model,
           onChange: handleFieldChange("model"),
-        }),
+        }, ...(PROVIDER_MODELS[formData.provider] || []).map((m) =>
+          e("option", { key: m.key, value: m.key }, m.label)
+        )),
       ),
-      e("div", { className: "core-form-group" },
-        e("label", null, "Năng lực (phân cách bằng dấu phẩy)"),
+      e("div", { className: styles.field, style: { gridColumn: "1 / -1" } },
+        e("label", { className: styles.label }, t("agentFederation.capabilities")),
         e("input", {
-          className: "core-input",
+          className: styles.input,
           value: Array.isArray(formData.capabilities) ? formData.capabilities.join(", ") : formData.capabilities,
           onChange: handleFieldChange("capabilities"),
           placeholder: "phân_tích_ngành, báo_cáo",
         }),
       ),
-      e("div", { className: "core-form-group" },
-        e("label", null, "System prompt"),
+      e("div", { className: styles.field, style: { gridColumn: "1 / -1" } },
+        e("label", { className: styles.label }, t("agentFederation.systemPrompt")),
         e("textarea", {
-          className: "core-input core-textarea",
+          className: styles.textarea,
           value: formData.system_prompt,
           onChange: handleFieldChange("system_prompt"),
           rows: 3,
         }),
       ),
-      e("div", { className: "core-form-group core-form-group--checkbox" },
-        e("label", null,
+      e("div", { className: styles.field, style: { gridColumn: "1 / -1" } },
+        e("label", { className: `${styles.toggleRow}` },
           e("input", {
             type: "checkbox",
+            className: styles.checkbox,
             checked: formData.is_active,
             onChange: handleFieldChange("is_active"),
           }),
-          " Đang kích hoạt"
+          " " + t("agentFederation.active"),
         ),
       ),
-      e("div", { className: "core-form-actions" },
+      e("div", { className: styles.toolbar, style: { gridColumn: "1 / -1" } },
         e("button", {
           type: "submit",
-          className: "core-btn core-btn--primary",
+          className: btnPrimary,
           disabled: saving,
-        }, saving ? "Đang lưu..." : "Lưu agent"),
+        }, saving ? t("agentFederation.loading") : t("agentFederation.save")),
         e("button", {
           type: "button",
-          className: "core-btn core-btn--secondary",
+          className: btnGhost,
           onClick: () => { setShowForm(false); setEditingId(null); },
           disabled: saving,
-        }, "Huỷ"),
+        }, t("agentFederation.cancel")),
       ),
     ),
 
-    loading && e("p", { className: "core-page-loading" }, "Đang tải agent AI..."),
+    loading && e("p", { className: styles.loading }, t("agentFederation.loading")),
 
-    !loading && agents.length === 0 && e("p", null, "Chưa có agent nào."),
+    !loading && agents.length === 0 && e("p", { className: styles.empty }, t("agentFederation.empty")),
 
-    !loading && agents.length > 0 && e("div", { className: "core-page-table-wrap" },
-      e("table", { className: "core-page-table" },
+    !loading && agents.length > 0 && e("div", { className: styles.tableWrap },
+      e("table", { className: styles.table },
         e("thead", null,
           e("tr", null,
-            e("th", null, "Tên"),
-            e("th", null, "Loại"),
-            e("th", null, "Provider"),
-            e("th", null, "Model"),
-            e("th", null, "Năng lực"),
-            e("th", null, "Kích hoạt"),
-            e("th", null, "Hành động"),
+            e("th", { className: styles.th }, t("agentFederation.name")),
+            e("th", { className: styles.th }, t("agentFederation.type")),
+            e("th", { className: styles.th }, t("agentFederation.provider")),
+            e("th", { className: styles.th }, t("agentFederation.model")),
+            e("th", { className: styles.th }, t("agentFederation.capabilities")),
+            e("th", { className: styles.th }, t("agentFederation.active")),
+            e("th", { className: styles.th }, t("agentFederation.actions")),
           ),
         ),
         e("tbody", null, ...agents.map((agent) =>
-          e("tr", { key: agent.id },
-            e("td", null, agent.name),
-            e("td", null, typeLabel(agent.agent_type)),
-            e("td", null, agent.provider),
-            e("td", null, agent.model),
-            e("td", null, (agent.capabilities || []).join(", ")),
-            e("td", null, agent.is_active ? "Có" : "Không"),
-            e("td", null,
+          e("tr", { key: agent.id, className: styles.tr },
+            e("td", { className: styles.td }, agent.name),
+            e("td", { className: styles.td }, typeLabel(agent.agent_type)),
+            e("td", { className: styles.td }, agent.provider),
+            e("td", { className: styles.td }, agent.model),
+            e("td", { className: styles.td }, (agent.capabilities || []).join(", ")),
+            e("td", { className: styles.td }, agent.is_active ? "Có" : "Không"),
+            e("td", { className: styles.td },
               e("button", {
-                className: "core-btn core-btn--small core-btn--secondary",
+                className: btnGhostSm,
                 onClick: () => openEdit(agent),
                 style: { marginRight: 8 },
-              }, "Sửa"),
+              }, t("agentFederation.edit")),
               e("button", {
-                className: "core-btn core-btn--small core-btn--danger",
+                className: btnDangerSm,
                 onClick: () => handleDelete(agent.id!),
-              }, "Xoá"),
+              }, t("agentFederation.delete")),
             ),
           ),
         )),
