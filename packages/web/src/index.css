@@ -1,6 +1,7 @@
 @import "tailwindcss";
-@import 'tailwind-sidebar/styles.css';
-@import 'simplebar/dist/simplebar.min.css';
+@import "./theme/tokens.css";
+@import "tailwind-sidebar/styles.css";
+@import "simplebar/dist/simplebar.min.css";
 
 @theme {
   /* VNInvest Color Palette - Dark Mode Default */
@@ -65,8 +66,10 @@
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl:
+    0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
 
   /* Radius */
@@ -102,7 +105,15 @@
   }
 
   html {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-family:
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      "Helvetica Neue",
+      Arial,
+      sans-serif;
   }
 
   body {
@@ -167,23 +178,45 @@
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   @keyframes slideInRight {
-    from { opacity: 0; transform: translateX(10px); }
-    to { opacity: 1; transform: translateX(0); }
+    from {
+      opacity: 0;
+      transform: translateX(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
 
   @keyframes slideInLeft {
-    from { opacity: 0; transform: translateX(-10px); }
-    to { opacity: 1; transform: translateX(0); }
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
 
   @keyframes scaleIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
 
   /* Live dot pulse animation */
@@ -192,8 +225,15 @@
   }
 
   @keyframes liveDotPulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(1.2); }
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.5;
+      transform: scale(1.2);
+    }
   }
 
   /* Sidebar sticky header */
@@ -228,7 +268,9 @@
     border: 1px solid rgba(51, 65, 85, 0.6); /* border-slate-800/60 */
     border-radius: 1rem; /* rounded-2xl */
     padding: 1.25rem; /* p-5 */
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.1); /* shadow-lg */
+    box-shadow:
+      0 10px 15px -3px rgba(0, 0, 0, 0.3),
+      0 4px 6px -4px rgba(0, 0, 0, 0.1); /* shadow-lg */
     height: 580px;
     min-width: 0;
     overflow: auto;
@@ -242,7 +284,9 @@
     border: 1px solid rgba(51, 65, 85, 0.6);
     border-radius: 1rem;
     padding: 1.25rem;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    box-shadow:
+      0 10px 15px -3px rgba(0, 0, 0, 0.3),
+      0 4px 6px -4px rgba(0, 0, 0, 0.1);
     min-height: 400px;
     min-width: 0;
     overflow: auto;
@@ -349,7 +393,9 @@
 
   .bento-card-hover:hover {
     border-color: rgba(6, 182, 212, 0.4); /* border-cyan-400/40 */
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.1); /* shadow-xl */
+    box-shadow:
+      0 20px 25px -5px rgba(0, 0, 0, 0.4),
+      0 8px 10px -6px rgba(0, 0, 0, 0.1); /* shadow-xl */
   }
 
   /* Focus visible for interactive elements */

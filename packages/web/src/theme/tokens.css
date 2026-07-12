@@ -1,0 +1,13 @@
+:root {
+  --text-primary: var(--color-text-primary, #f1f5f9);
+  --text-muted: var(--color-text-muted, #64748b);
+  --text-secondary: var(--color-text-secondary, #94a3b8);
+  --accent-cyan: var(--color-accent-primary, #06b6d4);
+  --accent-emerald: var(--color-success-500, #10b981);
+  --accent-rose: var(--color-danger-500, #ef4444);
+  --accent-amber: var(--color-warning-500, #f59e0b);
+  --bg-panel: var(--color-bg-panel, #0f172a);
+  --bg-panel-soft: var(--color-bg-panel, #0f172a);
+  --border-default: var(--color-border-primary, #1e293b);
+  --shadow-panel: var(--shadow-lg, 0 10px 15px rgb(0 0 0 / 0.1));
+}
