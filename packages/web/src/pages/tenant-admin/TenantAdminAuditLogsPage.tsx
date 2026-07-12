@@ -1,3 +1,4 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, PieChart, Pie, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField } from "../../components/ShellPageTemplate.js";
@@ -6,7 +7,6 @@ import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
-
 interface AuditLog {
   id: string;
   event_type: string;
@@ -130,7 +130,7 @@ export function TenantAdminAuditLogsPage({
         description={t("tenantAuditLogs.description")}
         notice={t("common.noPermission")}
       >
-        <div className="shellPage__panel">
+        <div className={`${styles.panel}`}>
           <ShellEmptyState description={t("tenantAuditLogs.noLogs")} />
         </div>
       </ShellPageChrome>
@@ -159,7 +159,7 @@ export function TenantAdminAuditLogsPage({
         description={t("tenantAuditLogs.loadError")}
         error={error}
       >
-        <div className="shellPage__panel">{t("tenantAuditLogs.loadError")}</div>
+        <div className={`${styles.panel}`}>{t("tenantAuditLogs.loadError")}</div>
       </ShellPageChrome>
     );
   }
@@ -199,7 +199,7 @@ export function TenantAdminAuditLogsPage({
       description={t("tenantAuditLogs.description")}
       metrics={metrics}
     >
-      <section className="shellPage__stack">
+      <section className={`${styles.stack}`}>
         {/* Filters */}
         <ShellPanel
           title={t("tenantAuditLogs.filterTitle")}
@@ -207,10 +207,10 @@ export function TenantAdminAuditLogsPage({
         >
           <form onSubmit={handleFilterSubmit} style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "flex-end" }}>
             <div style={{ flex: "1 1 200px" }}>
-              <div className="shellPage__field">
-                <label className="shellPage__fieldLabel">{t("tenantAuditLogs.eventType")}</label>
+              <div className={`${styles.field}`}>
+                <label className={`${styles.fieldLabel}`}>{t("tenantAuditLogs.eventType")}</label>
                 <select
-                  className="shellPage__input"
+                  className={`${styles.input}`}
                   value={eventType}
                   onChange={e => setEventType(e.target.value)}
                 >
@@ -240,10 +240,10 @@ export function TenantAdminAuditLogsPage({
               />
             </div>
             <div style={{ display: "flex", gap: "8px" }}>
-              <button type="submit" className="shellPage__button shellPage__button--primary">
+              <button type="submit" className={`${styles.button} ${styles.buttonPrimary}`}>
                 {t("tenantAuditLogs.search")}
               </button>
-              <button type="button" onClick={handleClearFilters} className="shellPage__button shellPage__button--secondary">
+              <button type="button" onClick={handleClearFilters} className={`${styles.button} ${styles.buttonSecondary}`}>
                 {t("tenantAuditLogs.clearFilter")}
               </button>
             </div>
@@ -309,7 +309,7 @@ export function TenantAdminAuditLogsPage({
           title={t("tenantAuditLogs.timelineTitle")}
           subtitle={t("tenantAuditLogs.timelineSubtitle")}
         >
-          <div className="shellPage__list">
+          <div className={`${styles.list}`}>
             {loading && logs.length === 0 ? (
               <ShellSkeleton variant="card" count={3} />
             ) : logs.length === 0 ? (
@@ -323,21 +323,21 @@ export function TenantAdminAuditLogsPage({
                   return (
                     <div
                       key={log.id}
-                      className="shellPage__listItem"
+                      className={`${styles.listItem}`}
                       style={{ cursor: hasDetails ? "pointer" : "default" }}
                       {...(hasDetails ? { role: "button", tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpandLog(log.id); } } } : {})}
                       onClick={() => hasDetails && toggleExpandLog(log.id)}
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
                         <div>
-                          <span className="shellPage__pill" style={{ background: "rgba(0,180,216,0.1)", color: "#00b4d8", border: "1px solid rgba(0,180,216,0.2)" }}>
+                          <span className={`${styles.pill}`} style={{ background: "rgba(0,180,216,0.1)", color: "#00b4d8", border: "1px solid rgba(0,180,216,0.2)" }}>
                             {log.event_type}
                           </span>
-                          <span className="shellPage__itemMeta" style={{ marginLeft: "12px" }}>
+                          <span className={`${styles.itemMeta}`} style={{ marginLeft: "12px" }}>
                             {t("tenantAuditLogs.performedBy")}: {log.actor_username || t("tenantAuditLogs.systemName")}
                           </span>
                         </div>
-                        <div className="shellPage__itemMeta" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <div className={`${styles.itemMeta}`} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                           {log.ip_address && <span>IP: {log.ip_address}</span>}
                           <span>{fmtDateTime(log.created_at)}</span>
                         </div>
@@ -350,7 +350,7 @@ export function TenantAdminAuditLogsPage({
                         >
                           {log.metadata ? (
                             <div style={{ marginBottom: "10px" }}>
-                              <span className="shellPage__itemMeta" style={{ fontWeight: 600, fontSize: "11px", textTransform: "uppercase" }}>
+                              <span className={`${styles.itemMeta}`} style={{ fontWeight: 600, fontSize: "11px", textTransform: "uppercase" }}>
                                 {t("tenantAuditLogs.metadata")}
                               </span>
                               <pre style={{ background: "rgba(15,23,42,0.6)", padding: "10px", borderRadius: "6px", overflowX: "auto", margin: "4px 0", color: "#38bdf8", fontFamily: "monospace", fontSize: "12px" }}>
@@ -362,7 +362,7 @@ export function TenantAdminAuditLogsPage({
                           {(log.old_value || log.new_value) ? (
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                               <div>
-                                <span className="shellPage__itemMeta" style={{ fontWeight: 600, fontSize: "11px", textTransform: "uppercase", color: "#f87171" }}>
+                                <span className={`${styles.itemMeta}`} style={{ fontWeight: 600, fontSize: "11px", textTransform: "uppercase", color: "#f87171" }}>
                                   − {t("tenantAuditLogs.oldValue")}
                                 </span>
                                 <pre style={{ background: "rgba(248,113,113,0.06)", padding: "10px", borderRadius: "6px", overflowX: "auto", margin: "4px 0", color: "#fca5a5", fontFamily: "monospace", fontSize: "12px", borderLeft: "2px solid #f87171" }}>
@@ -370,7 +370,7 @@ export function TenantAdminAuditLogsPage({
                                 </pre>
                               </div>
                               <div>
-                                <span className="shellPage__itemMeta" style={{ fontWeight: 600, fontSize: "11px", textTransform: "uppercase", color: "#4ade80" }}>
+                                <span className={`${styles.itemMeta}`} style={{ fontWeight: 600, fontSize: "11px", textTransform: "uppercase", color: "#4ade80" }}>
                                   + {t("tenantAuditLogs.newValue")}
                                 </span>
                                 <pre style={{ background: "rgba(74,222,128,0.06)", padding: "10px", borderRadius: "6px", overflowX: "auto", margin: "4px 0", color: "#86efac", fontFamily: "monospace", fontSize: "12px", borderLeft: "2px solid #4ade80" }}>
@@ -394,7 +394,7 @@ export function TenantAdminAuditLogsPage({
                     <button
                       onClick={() => prevCursor !== null && loadLogs(prevCursor)}
                       disabled={!prevCursor || loading}
-                      className="shellPage__button shellPage__button--secondary"
+                      className={`${styles.button} ${styles.buttonSecondary}`}
                       style={{ color: !prevCursor || loading ? "#94a3b8" : "#cbd5e1" }}
                     >
                       {t("tenantAuditLogs.previous")}
@@ -402,7 +402,7 @@ export function TenantAdminAuditLogsPage({
                     <button
                       onClick={() => nextCursor !== null && loadLogs(nextCursor)}
                       disabled={!nextCursor || loading}
-                      className="shellPage__button shellPage__button--secondary"
+                      className={`${styles.button} ${styles.buttonSecondary}`}
                       style={{ color: !nextCursor || loading ? "#94a3b8" : "#cbd5e1" }}
                     >
                       {t("tenantAuditLogs.next")}

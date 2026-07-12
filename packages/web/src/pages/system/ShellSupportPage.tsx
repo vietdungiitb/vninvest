@@ -1,3 +1,4 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import {
   ShellPageChrome,
   ShellPanel,
@@ -107,8 +108,8 @@ export function ShellSupportPage({
       title="Trung tâm hỗ trợ hệ thống"
       description="Trang này xác nhận lane hỗ trợ của core shell đã có route-level page thật, bám đúng system routes, support ability và bootstrap session mà không cần thêm backend contract mới."
       badge={(
-        <div className="shellPage__heroBadge">
-          <span className="shellPage__statusDot" />
+        <div className={`${styles.heroBadge}`}>
+          <span className={`${styles.statusDot}`} />
           {viewState.loading ? "Đang đồng bộ lane hỗ trợ" : "Lane hỗ trợ sẵn sàng cho kiểm tra"}
         </div>
       )}
@@ -116,14 +117,14 @@ export function ShellSupportPage({
       notice={viewState.notice}
       error={viewState.error}
     >
-      <section className="shellPage__bodyGrid">
-        <div className="shellPage__stack">
+      <section className={`${styles.bodyGrid}`}>
+        <div className={`${styles.stack}`}>
           <ShellPanel
             title="Snapshot operator và runtime"
             subtitle="Đọc nhanh session, build meta và runtime health trước khi nối các workflow support thật vào lane này."
             actions={renderRefreshAction({ onClick: handleRefresh, disabled: viewState.loading })}
           >
-            <section className="shellPage__summaryGrid">
+            <section className={`${styles.summaryGrid}`}>
               {summaryCards}
             </section>
           </ShellPanel>
@@ -132,11 +133,11 @@ export function ShellSupportPage({
             subtitle="Kiểm tra group `system` cùng route `support` đã được runtime mở đúng theo shell hiện tại hay chưa."
           >
             <div key="support-groups">
-              <h3 className="shellPage__itemTitle">Visible groups</h3>
+              <h3 className={`${styles.itemTitle}`}>Visible groups</h3>
               {renderFlagList(groupFlags, "Session hiện chưa mở group điều hướng nào.", "support-groups")}
             </div>
             <div key="support-routes">
-              <h3 className="shellPage__itemTitle">System routes</h3>
+              <h3 className={`${styles.itemTitle}`}>System routes</h3>
               {renderFlagList(routeFlags, "Runtime hiện chưa expose route hỗ trợ nào cho session này.", "support-routes")}
             </div>
           </ShellPanel>
@@ -148,11 +149,11 @@ export function ShellSupportPage({
         >
           {renderBuildMetaCard({ key: "support-build-meta", buildMeta })}
           <div key="support-system-routes">
-            <h3 className="shellPage__itemTitle">System routes</h3>
+            <h3 className={`${styles.itemTitle}`}>System routes</h3>
             {renderValueList(systemRoutes, "Runtime hiện chưa mở route system nào.", "support-system-routes")}
           </div>
           <div key="support-surfaces">
-            <h3 className="shellPage__itemTitle">Enabled surfaces</h3>
+            <h3 className={`${styles.itemTitle}`}>Enabled surfaces</h3>
             {renderValueList(enabledSurfaces, "Runtime chưa bật surface flag nào.", "support-surfaces")}
           </div>
           {renderAbilityList({

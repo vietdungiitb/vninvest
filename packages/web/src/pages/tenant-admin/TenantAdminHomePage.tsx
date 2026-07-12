@@ -1,3 +1,4 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
@@ -7,7 +8,6 @@ import { renderSummaryCard } from "../coreShellPageHelpers.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
-
 interface DashboardSummary {
   health_score: number;
   members_active_today: number;
@@ -145,6 +145,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleTrendDaysChange = (days: number) => {
@@ -204,7 +205,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
         title={t("tenantHome.title")}
         description={t("common.loading")}
       >
-        <div className="shellPage__panel">{t("common.loading")}</div>
+        <div className={`${styles.panel}`}>{t("common.loading")}</div>
       </ShellPageChrome>
     );
   }
@@ -215,12 +216,12 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
     label: string; value: string; sub?: string; color?: string; gauge?: number;
   }) {
     return (
-      <div className="shellPage__metric" style={{ display: "flex", alignItems: "center", gap: 14 }}>
+      <div className={`${styles.metric}`} style={{ display: "flex", alignItems: "center", gap: 14 }}>
         {gauge != null && <HealthGauge score={gauge} />}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <span className="shellPage__metricLabel">{label}</span>
-          <div className="shellPage__metricValue" style={{ color: color || "var(--shell-ink)" }}>{value}</div>
-          {sub && <div style={{ fontSize: 12, color: "var(--shell-muted)", marginTop: 2 }}>{sub}</div>}
+          <span className={`${styles.metricLabel}`}>{label}</span>
+          <div className={`${styles.metricValue}`} style={{ color: color || "var(--text-primary)" }}>{value}</div>
+          {sub && <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>{sub}</div>}
         </div>
       </div>
     );
@@ -246,22 +247,22 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
     : "";
 
   const refreshAction = (
-    <button onClick={() => loadData()} className="shellPage__button shellPage__button--secondary">
+    <button onClick={() => loadData()} className={`${styles.button} ${styles.buttonSecondary}`}>
       {t("common.refresh")}
     </button>
   );
 
   const trendActions = (
-    <div className="shellPage__actions">
+    <div className={`${styles.actions}`}>
       {[7, 14, 30].map((d) => (
         <button
           key={d}
           onClick={() => handleTrendDaysChange(d)}
-          className="shellPage__button"
+          className={`${styles.button}`}
           style={{
             background: trendDays === d ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)",
-            color: trendDays === d ? "var(--shell-accent)" : "var(--shell-ink)",
-            border: trendDays === d ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--shell-border)",
+            color: trendDays === d ? "var(--accent-shell)" : "var(--text-primary)",
+            border: trendDays === d ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)",
             borderRadius: 14, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
           }}
         >
@@ -319,14 +320,14 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
       notice={showTrialBanner ? trialBannerText : undefined}
       error={error || undefined}
     >
-      <section className="shellPage__stack">
+      <section className={`${styles.stack}`}>
           {/* Trial upgrade prompt */}
           {showTrialBanner && (
             <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "8px 0" }}>
-              <Link to="/tenant-admin/billing" className="shellPage__button shellPage__button--primary" style={{ fontSize: 12, fontWeight: 700, textDecoration: "none" }}>
+              <Link to="/tenant-admin/billing" className={`${styles.button} ${styles.buttonPrimary}`} style={{ fontSize: 12, fontWeight: 700, textDecoration: "none" }}>
                 {t("tenantHome.upgradePrompt")}
               </Link>
-              <button onClick={() => setShowDeprovision(true)} className="shellPage__button" style={{ fontSize: 12, color: "#ef4444" }}>
+              <button onClick={() => setShowDeprovision(true)} className={`${styles.button}`} style={{ fontSize: 12, color: "#ef4444" }}>
                 {t("tenantHome.deprovisionAction")}
               </button>
             </div>
@@ -354,10 +355,10 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
                 <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: "#ef4444" }}>{t("tenantHome.deprovisionConfirmTitle")}</h3>
                 <p style={{ fontSize: 13, color: "#94a3b8", marginBottom: 16, lineHeight: 1.5 }}>{t("tenantHome.deprovisionConfirmBody")}</p>
                 <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                  <button onClick={() => setShowDeprovision(false)} className="shellPage__button shellPage__button--secondary" style={{ fontSize: 13 }}>
+                  <button onClick={() => setShowDeprovision(false)} className={`${styles.button} ${styles.buttonSecondary}`} style={{ fontSize: 13 }}>
                     {t("tenantHome.deprovisionCancel")}
                   </button>
-                  <button onClick={handleDeprovision} disabled={deprovisioning} className="shellPage__button" style={{ fontSize: 13, fontWeight: 700, color: "#ef4444" }}>
+                  <button onClick={handleDeprovision} disabled={deprovisioning} className={`${styles.button}`} style={{ fontSize: 13, fontWeight: 700, color: "#ef4444" }}>
                     {deprovisioning ? t("common.saving") : t("tenantHome.deprovisionAction")}
                   </button>
                 </div>
@@ -406,7 +407,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
           >
             <div style={{ marginBottom: 12 }}>
               <div className="capProgress">
-                <div className="capProgress__bar" style={{ width: `${checklistPct}%`, background: "var(--shell-accent)" }} />
+                <div className="capProgress__bar" style={{ width: `${checklistPct}%`, background: "var(--accent-shell)" }} />
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -420,11 +421,11 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
                   }}>
                     {item.done ? "✓" : "·"}
                   </span>
-                  <span style={{ flex: 1, fontSize: 13, color: item.done ? "var(--shell-ink)" : "var(--shell-muted)" }}>
+                  <span style={{ flex: 1, fontSize: 13, color: item.done ? "var(--text-primary)" : "var(--text-secondary)" }}>
                     {t(item.labelKey)}
                   </span>
                   {item.route && !item.done && (
-                    <Link to={item.route} className="shellPage__button" style={{ fontSize: 11, padding: "4px 10px", textDecoration: "none" }}>
+                    <Link to={item.route} className={`${styles.button}`} style={{ fontSize: 11, padding: "4px 10px", textDecoration: "none" }}>
                       {t("tenantHome.checklistSetup")}
                     </Link>
                   )}
@@ -515,9 +516,9 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
                     <Link
                       key={entry.to}
                       to={entry.to}
-                      className="shellPage__listItem"
+                      className={`${styles.listItem}`}
                       style={{
-                        textDecoration: "none", color: "var(--shell-ink)", fontWeight: 600,
+                        textDecoration: "none", color: "var(--text-primary)", fontWeight: 600,
                         display: "flex", alignItems: "center", gap: 10,
                         transition: "transform 0.2s ease, border-color 0.2s ease",
                       }}
@@ -534,16 +535,16 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
           {/* Recent Activity */}
           <ShellPanel title={t("tenantHome.activityTitle")} actions={refreshAction}>
             {summary?.recent_events && summary.recent_events.length > 0 ? (
-              <div className="shellPage__list">
+              <div className={`${styles.list}`}>
                 {summary.recent_events.map((ev, i) => (
-                  <div key={`${ev.event_type}-${i}`} className="shellPage__listItem" style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                  <div key={`${ev.event_type}-${i}`} className={`${styles.listItem}`} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                     <span style={{ fontSize: 16, marginTop: 1 }}>{eventIcon(ev.event_type)}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--shell-ink)" }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
                         {eventLabel(ev.event_type, t)}
                       </div>
                       {ev.description && (
-                        <div className="shellPage__itemMeta" style={{ marginTop: 2, fontSize: 12 }}>
+                        <div className={`${styles.itemMeta}`} style={{ marginTop: 2, fontSize: 12 }}>
                           {ev.description}
                         </div>
                       )}
@@ -563,10 +564,10 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
           {/* Status Summary */}
           {summary && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
-              <div className="shellPage__listItem" style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div className={`${styles.listItem}`} style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <span style={{ fontSize: 22, background: "rgba(255,255,255,0.04)", width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,0.06)" }}>🔧</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6, color: "var(--shell-ink)" }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6, color: "var(--text-primary)" }}>
                     {t("tenantHome.serviceAccountsLabel")}
                     {summary.service_accounts.active > 0 && (
                       <span style={{
@@ -587,16 +588,16 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--shell-muted)", marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>
                     {summary.service_accounts.active} {t("tenantHome.active")}
                     {summary.service_accounts.disabled > 0 && `, ${summary.service_accounts.disabled} ${t("tenantHome.disabled")}`}
                   </div>
                 </div>
               </div>
-              <div className="shellPage__listItem" style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div className={`${styles.listItem}`} style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <span style={{ fontSize: 22, background: "rgba(255,255,255,0.04)", width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,0.06)" }}>⏳</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6, color: "var(--shell-ink)" }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6, color: "var(--text-primary)" }}>
                     {t("tenantHome.patsExpiringLabel")}
                     {summary.pats_expiring_soon > 0 && (
                       <span style={{
@@ -617,7 +618,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: 12, color: summary.pats_expiring_soon > 0 ? "#f59e0b" : "var(--shell-muted)", marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: summary.pats_expiring_soon > 0 ? "#f59e0b" : "var(--text-secondary)", marginTop: 2 }}>
                     {summary.pats_expiring_soon > 0
                       ? `${summary.pats_expiring_soon} ${t("tenantHome.expiringWithin7Days")}`
                       : t("tenantHome.noneExpiring")}
@@ -630,7 +631,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
           {/* Identity Card */}
           {userIdentity.username && (
             <ShellPanel title={t("tenantHome.identityTitle")}>
-              <section className="shellPage__summaryGrid">
+              <section className={`${styles.summaryGrid}`}>
                 {renderSummaryCard({
                   key: "identity",
                   title: t("tenantHome.identityTitle"),

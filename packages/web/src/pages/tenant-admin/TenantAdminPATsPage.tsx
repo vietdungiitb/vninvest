@@ -1,3 +1,4 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField, ShellSelectField } from "../../components/ShellPageTemplate.js";
@@ -9,7 +10,6 @@ import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
-
 interface Token {
   pat_id?: string;
   id?: string;
@@ -269,7 +269,7 @@ export function TenantAdminPATsPage({
         description={t("tenantPats.description")}
         notice={t("common.noPermission")}
       >
-        <div className="shellPage__panel">
+        <div className={`${styles.panel}`}>
           <ShellEmptyState description={t("tenantPats.emptyState")} />
         </div>
       </ShellPageChrome>
@@ -298,7 +298,7 @@ export function TenantAdminPATsPage({
         description={t("tenantPats.loadError")}
         error={error}
       >
-        <div className="shellPage__panel">{error}</div>
+        <div className={`${styles.panel}`}>{error}</div>
       </ShellPageChrome>
     );
   }
@@ -351,7 +351,7 @@ export function TenantAdminPATsPage({
       description={t("tenantPats.description")}
       metrics={metrics}
     >
-      <section className="shellPage__stack">
+      <section className={`${styles.stack}`}>
           {secretReveal && (
             <div
               role="presentation"
@@ -370,7 +370,7 @@ export function TenantAdminPATsPage({
               }}
             >
               <div
-                className="shellPage__surfaceCard"
+                className={`${styles.surfaceCard}`}
                 style={{
                   border: "1px solid rgba(34,197,94,0.3)",
                   padding: "28px",
@@ -382,11 +382,11 @@ export function TenantAdminPATsPage({
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
                   <span style={{ fontSize: "24px" }}>🔑</span>
-                  <h3 className="shellPage__itemTitle" style={{ color: "#22c55e", fontSize: "20px", margin: 0 }}>
+                  <h3 className={`${styles.itemTitle}`} style={{ color: "#22c55e", fontSize: "20px", margin: 0 }}>
                     {t("tenantPats.secretTitle")}
                   </h3>
                 </div>
-                <p className="shellPage__itemMeta" style={{ margin: "0 0 20px", color: "#94a3b8", lineHeight: "1.6" }}>
+                <p className={`${styles.itemMeta}`} style={{ margin: "0 0 20px", color: "#94a3b8", lineHeight: "1.6" }}>
                   {t("tenantPats.secretHint")}
                 </p>
                 <div
@@ -406,7 +406,7 @@ export function TenantAdminPATsPage({
                   </code>
                   <button
                     onClick={() => handleCopyToken(secretReveal.secret)}
-                    className="shellPage__button"
+                    className={`${styles.button}`}
                     style={{
                       background: copySuccess ? "rgba(34,197,94,0.2)" : "rgba(0,180,216,0.2)",
                       border: copySuccess ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(0,180,216,0.3)",
@@ -424,7 +424,7 @@ export function TenantAdminPATsPage({
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
                   <button
                     onClick={() => setSecretReveal(null)}
-                    className="shellPage__button shellPage__button--primary"
+                    className={`${styles.button} ${styles.buttonPrimary}`}
                     style={{
                       background: "#22c55e",
                       border: "none",
@@ -459,7 +459,7 @@ export function TenantAdminPATsPage({
               onKeyDown={(e) => { if (e.key === 'Escape') setUsagePat(null); }}
             >
               <div
-                className="shellPage__surfaceCard"
+                className={`${styles.surfaceCard}`}
                 style={{
                   border: "1px solid rgba(168,85,247,0.3)",
                   padding: "24px",
@@ -470,21 +470,21 @@ export function TenantAdminPATsPage({
                 }}
                 onClick={e => e.stopPropagation()}
               >
-                <div className="shellPage__listItemHeader" style={{ marginBottom: "16px" }}>
-                  <h3 className="shellPage__itemTitle" style={{ margin: 0, fontSize: "18px", color: "#a855f7" }}>
+                <div className={`${styles.listItemHeader}`} style={{ marginBottom: "16px" }}>
+                  <h3 className={`${styles.itemTitle}`} style={{ margin: 0, fontSize: "18px", color: "#a855f7" }}>
                     {t("tenantPats.usageTitle", { defaultValue: "PAT Usage" })}
                   </h3>
                   <button
                     onClick={() => setUsagePat(null)}
-                    className="shellPage__button"
-                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid var(--shell-border)", fontSize: "12px" }}
+                    className={`${styles.button}`}
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid var(--border-shell)", fontSize: "12px" }}
                   >
                     {t("tenantPats.closeAction")}
                   </button>
                 </div>
 
                 {usageLoading && (
-                  <div style={{ padding: 24, textAlign: "center", color: "var(--shell-muted)" }}>{t("common.loading")}</div>
+                  <div style={{ padding: 24, textAlign: "center", color: "var(--text-secondary)" }}>{t("common.loading")}</div>
                 )}
                 {usageError && (
                   <div style={{ padding: 16, color: "#ef4444", fontSize: 13 }}>{usageError}</div>
@@ -493,24 +493,24 @@ export function TenantAdminPATsPage({
                   <div style={{ display: "grid", gap: 16 }}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", fontSize: "13px" }}>
                       <div>
-                        <div className="shellPage__itemMeta" style={{ fontSize: 11 }}>{t("tenantPats.totalCalls", { defaultValue: "Total calls (30d)" })}</div>
+                        <div className={`${styles.itemMeta}`} style={{ fontSize: 11 }}>{t("tenantPats.totalCalls", { defaultValue: "Total calls (30d)" })}</div>
                         <span style={{ color: "#cbd5e1", fontWeight: 600 }}>{usageData.total_calls}</span>
                       </div>
                       <div>
-                        <div className="shellPage__itemMeta" style={{ fontSize: 11 }}>{t("tenantPats.uniqueIps", { defaultValue: "Unique IPs" })}</div>
+                        <div className={`${styles.itemMeta}`} style={{ fontSize: 11 }}>{t("tenantPats.uniqueIps", { defaultValue: "Unique IPs" })}</div>
                         <span style={{ color: "#cbd5e1", fontWeight: 600 }}>{usageData.unique_ips}</span>
                       </div>
                       <div>
-                        <div className="shellPage__itemMeta" style={{ fontSize: 11 }}>{t("tenantPats.lastUsedLabel", { defaultValue: "Last used" })}</div>
+                        <div className={`${styles.itemMeta}`} style={{ fontSize: 11 }}>{t("tenantPats.lastUsedLabel", { defaultValue: "Last used" })}</div>
                         <span style={{ color: "#cbd5e1", fontSize: 12 }}>{usageData.last_used_at ? fmtDateTime(usageData.last_used_at) : t("tenantPats.neverUsed", { defaultValue: "Never" })}</span>
                       </div>
                     </div>
 
                     <div>
-                      <div className="shellPage__itemMeta" style={{ fontSize: 12, marginBottom: 6 }}>{t("tenantPats.statusBreakdown", { defaultValue: "Status breakdown" })}</div>
+                      <div className={`${styles.itemMeta}`} style={{ fontSize: 12, marginBottom: 6 }}>{t("tenantPats.statusBreakdown", { defaultValue: "Status breakdown" })}</div>
                       <div style={{ display: "flex", gap: 8 }}>
                         {(['2xx', '4xx', '5xx'] as const).map(k => (
-                          <span key={k} className="shellPage__pill" style={{
+                          <span key={k} className={`${styles.pill}`} style={{
                             background: k === '2xx' ? 'rgba(34,197,94,0.2)' : k === '4xx' ? 'rgba(234,179,8,0.2)' : 'rgba(239,68,68,0.2)',
                             color: k === '2xx' ? '#22c55e' : k === '4xx' ? '#eab308' : '#ef4444',
                             fontSize: 12,
@@ -522,10 +522,10 @@ export function TenantAdminPATsPage({
                     </div>
 
                     <div>
-                      <div className="shellPage__itemMeta" style={{ fontSize: 12, marginBottom: 6 }}>{t("tenantPats.timeline", { defaultValue: "Timeline (30d)" })}</div>
+                      <div className={`${styles.itemMeta}`} style={{ fontSize: 12, marginBottom: 6 }}>{t("tenantPats.timeline", { defaultValue: "Timeline (30d)" })}</div>
                       <div style={{ display: "grid", gap: 3, maxHeight: 160, overflow: "auto" }}>
                         {usageData.timeline.length === 0 ? (
-                          <span style={{ fontSize: 12, color: "var(--shell-muted)" }}>{t("tenantPats.noUsageData", { defaultValue: "No usage data" })}</span>
+                          <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t("tenantPats.noUsageData", { defaultValue: "No usage data" })}</span>
                         ) : (
                           usageData.timeline.map(p => {
                             const max = Math.max(1, ...usageData.timeline.map(x => x.count));
@@ -544,13 +544,13 @@ export function TenantAdminPATsPage({
                     </div>
 
                     <div>
-                      <div className="shellPage__itemMeta" style={{ fontSize: 12, marginBottom: 6 }}>{t("tenantPats.topEndpoints", { defaultValue: "Top endpoints" })}</div>
-                      <div className="shellPage__list" style={{ maxHeight: 200, overflow: "auto" }}>
+                      <div className={`${styles.itemMeta}`} style={{ fontSize: 12, marginBottom: 6 }}>{t("tenantPats.topEndpoints", { defaultValue: "Top endpoints" })}</div>
+                      <div className={`${styles.list}`} style={{ maxHeight: 200, overflow: "auto" }}>
                         {usageData.top_endpoints.length === 0 ? (
-                          <span style={{ fontSize: 12, color: "var(--shell-muted)" }}>{t("tenantPats.noUsageData", { defaultValue: "No usage data" })}</span>
+                          <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t("tenantPats.noUsageData", { defaultValue: "No usage data" })}</span>
                         ) : (
                           usageData.top_endpoints.map(ep => (
-                            <div key={ep.endpoint} className="shellPage__listItem" style={{ padding: "8px 0" }}>
+                            <div key={ep.endpoint} className={`${styles.listItem}`} style={{ padding: "8px 0" }}>
                               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 12 }}>
                                 <code style={{ color: "#cbd5e1", fontSize: 11, wordBreak: "break-all" }}>{ep.endpoint}</code>
                                 <span style={{ color: "#a855f7", fontWeight: 600, whiteSpace: "nowrap" }}>{ep.count}</span>
@@ -566,15 +566,15 @@ export function TenantAdminPATsPage({
             </div>
           )}
 
-          <div className="shellPage__listItemHeader">
-            <h2 className="shellPage__itemTitle" style={{ fontSize: "20px", margin: 0 }}>
+          <div className={`${styles.listItemHeader}`}>
+            <h2 className={`${styles.itemTitle}`} style={{ fontSize: "20px", margin: 0 }}>
               {t("tenantPats.listTitle")}
             </h2>
             <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
               {tokens.some(t => t.status === "revoked" || t.revoked) && (
                 <button
                   onClick={() => setHideRevoked(!hideRevoked)}
-                  className="shellPage__button"
+                  className={`${styles.button}`}
                   style={{ fontSize: "11px" }}
                 >
                   {hideRevoked ? t("tenantPats.showRevokedAction") : t("tenantPats.hideRevokedAction")}
@@ -583,12 +583,12 @@ export function TenantAdminPATsPage({
               {tokens.some(t => !t.last_used_at || isUnusedOver90(t)) && (
                 <button
                   onClick={() => setHideUnused(!hideUnused)}
-                  className="shellPage__button"
+                  className={`${styles.button}`}
                   style={{
                     fontSize: "11px",
                     background: hideUnused ? "rgba(234,179,8,0.2)" : "rgba(255,255,255,0.06)",
-                    color: hideUnused ? "#eab308" : "var(--shell-ink)",
-                    border: hideUnused ? "1px solid rgba(234,179,8,0.3)" : "1px solid var(--shell-border)",
+                    color: hideUnused ? "#eab308" : "var(--text-primary)",
+                    border: hideUnused ? "1px solid rgba(234,179,8,0.3)" : "1px solid var(--border-shell)",
                   }}
                 >
                   {hideUnused ? t("tenantPats.showAllAction") : t("tenantPats.filterUnused")}
@@ -597,7 +597,7 @@ export function TenantAdminPATsPage({
               <button
                 onClick={() => setShowCreateModal(true)}
                 disabled={serviceAccounts.length === 0}
-                className="shellPage__button shellPage__button--primary"
+                className={`${styles.button} ${styles.buttonPrimary}`}
               >
                 + {t("tenantPats.issueAction")}
               </button>
@@ -605,11 +605,11 @@ export function TenantAdminPATsPage({
           </div>
 
           {serviceAccounts.length === 0 && (
-            <div className="shellPage__surfaceCard" style={{ border: "1px solid rgba(255,127,80,0.3)", padding: "18px 24px", marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
-              <p className="shellPage__itemMeta" style={{ color: "#ff7f50", margin: 0, fontSize: "14px", fontWeight: 500 }}>
+            <div className={`${styles.surfaceCard}`} style={{ border: "1px solid rgba(255,127,80,0.3)", padding: "18px 24px", marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
+              <p className={`${styles.itemMeta}`} style={{ color: "#ff7f50", margin: 0, fontSize: "14px", fontWeight: 500 }}>
                 {t("tenantPats.noServiceAccounts")}
               </p>
-              <Link to="/tenant-admin/service-accounts" className="shellPage__button" style={{ background: "rgba(255,127,80,0.15)", border: "1px solid rgba(255,127,80,0.3)", color: "#ff7f50", textDecoration: "none", fontSize: "12px", fontWeight: "600", whiteSpace: "nowrap" }}>
+              <Link to="/tenant-admin/service-accounts" className={`${styles.button}`} style={{ background: "rgba(255,127,80,0.15)", border: "1px solid rgba(255,127,80,0.3)", color: "#ff7f50", textDecoration: "none", fontSize: "12px", fontWeight: "600", whiteSpace: "nowrap" }}>
                 + Tạo Service Account
               </Link>
             </div>
@@ -619,7 +619,7 @@ export function TenantAdminPATsPage({
             title={t("tenantPats.listTitle")}
             subtitle={t("tenantPats.showingCount", { count: String(filteredTokens.length) })}
           >
-            <div className="shellPage__list">
+            <div className={`${styles.list}`}>
               {filteredTokens.length === 0 ? (
                 <ShellEmptyState description={t("tenantPats.emptyState")} ctaLabel={t("tenantPats.issueAction")} ctaOnClick={() => setShowCreateModal(true)} />
               ) : (
@@ -631,23 +631,23 @@ export function TenantAdminPATsPage({
                   const stKey = tokenStatusKey(token);
 
                   return (
-                    <div key={tokenId} className="shellPage__listItem">
-                      <div className="shellPage__listItemHeader" style={{ marginBottom: "12px" }}>
+                    <div key={tokenId} className={`${styles.listItem}`}>
+                      <div className={`${styles.listItemHeader}`} style={{ marginBottom: "12px" }}>
                         <div>
-                          <div className="shellPage__itemTitle" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <div className={`${styles.itemTitle}`} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                             <span style={{ fontWeight: 600, fontSize: "15px" }}>
                               {token.label || "API Token"}
                             </span>
-                            <code className="shellPage__pill" style={{ fontFamily: "monospace" }}>
+                            <code className={`${styles.pill}`} style={{ fontFamily: "monospace" }}>
                               {token.token_prefix}
                             </code>
                           </div>
-                          <div className="shellPage__itemMeta" style={{ marginTop: "2px" }}>
+                          <div className={`${styles.itemMeta}`} style={{ marginTop: "2px" }}>
                             {t("tenantPats.serviceAccountFor", { name: sa?.name || token.service_account_id })}
                           </div>
                         </div>
                         <span
-                          className="shellPage__pill"
+                          className={`${styles.pill}`}
                           style={{
                             background: stKey === "revoked" ? "rgba(239,68,68,0.2)" : (stKey === "rotating" ? "rgba(234,179,8,0.2)" : "rgba(34,197,94,0.2)"),
                             color: stKey === "revoked" ? "#ef4444" : (stKey === "rotating" ? "#eab308" : "#22c55e"),
@@ -657,26 +657,26 @@ export function TenantAdminPATsPage({
                         </span>
                       </div>
 
-                      <div className="shellPage__summaryGrid" style={{ gap: "16px", fontSize: "13px", paddingTop: "12px" }}>
+                      <div className={`${styles.summaryGrid}`} style={{ gap: "16px", fontSize: "13px", paddingTop: "12px" }}>
                         <div>
-                          <div className="shellPage__itemMeta" style={{ fontSize: "11px" }}>{t("tenantPats.scopesLabel")}</div>
+                          <div className={`${styles.itemMeta}`} style={{ fontSize: "11px" }}>{t("tenantPats.scopesLabel")}</div>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "4px" }}>
                             {(token.scope_codes || token.scopes || []).map((sc: string) => (
-                              <span key={sc} className="shellPage__pill" style={{ background: "rgba(0,180,216,0.1)", color: "#00b4d8" }}>
+                              <span key={sc} className={`${styles.pill}`} style={{ background: "rgba(0,180,216,0.1)", color: "#00b4d8" }}>
                                 {sc}
                               </span>
                             ))}
                           </div>
                         </div>
                         <div>
-                          <div className="shellPage__itemMeta" style={{ fontSize: "11px" }}>{t("tenantPats.createdAtLabel")}</div>
-                          <span className="shellPage__itemTitle" style={{ fontSize: "13px" }}>
+                          <div className={`${styles.itemMeta}`} style={{ fontSize: "11px" }}>{t("tenantPats.createdAtLabel")}</div>
+                          <span className={`${styles.itemTitle}`} style={{ fontSize: "13px" }}>
                             {token.created_at ? fmtDate(token.created_at) : t("common.notAvailable")}
                           </span>
                         </div>
                         <div>
-                          <div className="shellPage__itemMeta" style={{ fontSize: "11px" }}>{t("tenantPats.lastUsed")}</div>
-                          <span className="shellPage__itemTitle" style={{
+                          <div className={`${styles.itemMeta}`} style={{ fontSize: "11px" }}>{t("tenantPats.lastUsed")}</div>
+                          <span className={`${styles.itemTitle}`} style={{
                             fontSize: "13px",
                             color: isUnusedOver90(token) ? "#eab308" : undefined,
                           }}>
@@ -686,8 +686,8 @@ export function TenantAdminPATsPage({
                           </span>
                         </div>
                         <div>
-                          <div className="shellPage__itemMeta" style={{ fontSize: "11px" }}>{t("tenantPats.expiresAtLabel")}</div>
-                          <span className="shellPage__itemTitle" style={{
+                          <div className={`${styles.itemMeta}`} style={{ fontSize: "11px" }}>{t("tenantPats.expiresAtLabel")}</div>
+                          <span className={`${styles.itemTitle}`} style={{
                             fontSize: "13px",
                             color: isExpiringSoon(token) ? "#eab308" : (token.expires_at && new Date(token.expires_at) < new Date() ? "#ef4444" : undefined),
                           }}>
@@ -698,10 +698,10 @@ export function TenantAdminPATsPage({
                       </div>
 
                       {!isRevoked && (
-                        <div className="shellPage__listItemHeader" style={{ gap: "8px", marginTop: "14px", paddingTop: "12px" }}>
+                        <div className={`${styles.listItemHeader}`} style={{ gap: "8px", marginTop: "14px", paddingTop: "12px" }}>
                           <button
                             onClick={() => handleOpenUsage(token)}
-                            className="shellPage__button"
+                            className={`${styles.button}`}
                             style={{ background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.3)", color: "#a855f7", fontSize: "12px" }}
                           >
                             {t("tenantPats.usageAction", { defaultValue: "Usage" })}
@@ -709,7 +709,7 @@ export function TenantAdminPATsPage({
                           <button
                             onClick={() => handleRotateToken(tokenId!)}
                             disabled={isTokenRotating}
-                            className="shellPage__button"
+                            className={`${styles.button}`}
                             style={{ background: "rgba(0,180,216,0.15)", border: "1px solid rgba(0,180,216,0.3)", color: "#00b4d8", fontSize: "12px" }}
                           >
                             {isTokenRotating ? t("tenantPats.rotatingAction") : t("tenantPats.rotateAction")}
@@ -717,7 +717,7 @@ export function TenantAdminPATsPage({
                           <button
                             onClick={() => handleRevokeToken(tokenId!)}
                             disabled={isTokenRotating}
-                            className="shellPage__button"
+                            className={`${styles.button}`}
                             style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444", fontSize: "12px" }}
                           >
                             {t("tenantPats.revokeAction")}
@@ -750,7 +750,7 @@ export function TenantAdminPATsPage({
               onKeyDown={(e) => { if (e.key === 'Escape') setShowCreateModal(false); }}
             >
               <div
-                className="shellPage__surfaceCard"
+                className={`${styles.surfaceCard}`}
                 style={{
                   border: "1px solid rgba(255,255,255,0.08)",
                   padding: "24px",
@@ -761,7 +761,7 @@ export function TenantAdminPATsPage({
                 }}
                 onClick={e => e.stopPropagation()}
               >
-                <h3 className="shellPage__itemTitle" style={{ margin: "0 0 20px", fontSize: "18px" }}>
+                <h3 className={`${styles.itemTitle}`} style={{ margin: "0 0 20px", fontSize: "18px" }}>
                   {t("tenantPats.issueTitle")}
                 </h3>
                 <form onSubmit={handleCreateSubmit}>
@@ -791,7 +791,7 @@ export function TenantAdminPATsPage({
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
                         {selectedSA.scopes && selectedSA.scopes.length > 0 ? (
                           selectedSA.scopes.map(s => (
-                            <span key={s} className="shellPage__pill" style={{ fontSize: "10px", padding: "2px 6px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", color: "#f1f5f9" }}>
+                            <span key={s} className={`${styles.pill}`} style={{ fontSize: "10px", padding: "2px 6px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", color: "#f1f5f9" }}>
                               {s}
                             </span>
                           ))
@@ -842,7 +842,7 @@ export function TenantAdminPATsPage({
                               setCreateForm(prev => ({ ...prev, expires_at: local }));
                             }
                           }}
-                          className="shellPage__button"
+                          className={`${styles.button}`}
                           style={{
                             flex: 1,
                             fontSize: "11px",
@@ -870,11 +870,11 @@ export function TenantAdminPATsPage({
                       </div>
                     )}
                   </div>
-                  <div className="shellPage__field">
-                    <span className="shellPage__fieldLabel">{t("tenantPats.policiesLabel")}</span>
+                  <div className={`${styles.field}`}>
+                    <span className={`${styles.fieldLabel}`}>{t("tenantPats.policiesLabel")}</span>
                     <div style={{ marginBottom: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {SCOPE_CATEGORIES.map(cat => (
-                        <span key={cat.key} className="shellPage__pill" style={{ background: "rgba(0,180,216,0.1)", color: "#00b4d8", fontSize: 11 }}>
+                        <span key={cat.key} className={`${styles.pill}`} style={{ background: "rgba(0,180,216,0.1)", color: "#00b4d8", fontSize: 11 }}>
                           {cat.icon} {t(cat.label)}
                         </span>
                       ))}
@@ -885,18 +885,18 @@ export function TenantAdminPATsPage({
                       allowedScopes={selectedSA?.scopes}
                     />
                   </div>
-                  <div className="shellPage__listItemHeader" style={{ gap: "12px", marginTop: "24px" }}>
+                  <div className={`${styles.listItemHeader}`} style={{ gap: "12px", marginTop: "24px" }}>
                     <button
                       type="button"
                       onClick={() => setShowCreateModal(false)}
-                      className="shellPage__button shellPage__button--secondary"
+                      className={`${styles.button} ${styles.buttonSecondary}`}
                     >
                       {t("tenantPats.cancelAction")}
                     </button>
                     <button
                       type="submit"
                       disabled={submitting}
-                      className="shellPage__button shellPage__button--primary"
+                      className={`${styles.button} ${styles.buttonPrimary}`}
                     >
                       {submitting ? t("tenantPats.submitting") : t("tenantPats.issueAction")}
                     </button>

@@ -1,9 +1,9 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import { Link } from "react-router-dom";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
-
 interface AbilityItem {
   key: string;
   action: string;
@@ -24,15 +24,15 @@ function formatQuotaValue(value: number, formatNumber: (n: number, opts?: object
 
 const CAP_CSS = `
 .capGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
-.capCard { background: var(--shell-surface); border: 1px solid var(--shell-border); border-radius: 12px; padding: 16px; }
+.capCard { background: var(--bg-shell-surface); border: 1px solid var(--border-shell); border-radius: 12px; padding: 16px; }
 .capCard__header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
-.capCard__title { font-size: 13px; font-weight: 700; color: var(--shell-ink); }
-.capCard__value { font-size: 22px; font-weight: 800; color: var(--shell-accent); }
-.capCard__sub { font-size: 11px; color: var(--shell-muted); margin-top: 2px; }
+.capCard__title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.capCard__value { font-size: 22px; font-weight: 800; color: var(--accent-shell); }
+.capCard__sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
 .capProgress { height: 6px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; margin-top: 8px; }
 .capProgress__bar { height: 100%; border-radius: 999px; transition: width 0.6s ease; }
 .capAbilityGroup { margin-bottom: 16px; }
-.capAbilityGroup__header { font-size: 12px; font-weight: 700; color: var(--shell-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+.capAbilityGroup__header { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
 `;
 
 interface TenantAdminCapabilitiesPageProps {
@@ -78,7 +78,7 @@ export function TenantAdminCapabilitiesPage({}: TenantAdminCapabilitiesPageProps
         notice={t("common.noPermission")}
         metrics={metrics}
       >
-        <div className="shellPage__panel">
+        <div className={`${styles.panel}`}>
           <ShellEmptyState description={t("tenantCapabilities.noAbilities")} />
         </div>
       </ShellPageChrome>
@@ -102,13 +102,13 @@ export function TenantAdminCapabilitiesPage({}: TenantAdminCapabilitiesPageProps
       metrics={metrics}
     >
       <style>{CAP_CSS}</style>
-      <section className="shellPage__stack">
+      <section className={`${styles.stack}`}>
           <ShellPanel title={t("tenantCapabilities.planOverview")}>
             <div className="capGrid">
               <div className="capCard">
                 <div className="capCard__header">
                   <div className="capCard__title">{t("tenantCapabilities.currentPlan")}</div>
-                  <span className="shellPage__pill" style={{ background: "rgba(0,180,216,0.15)", color: "#00b4d8" }}>
+                  <span className={`${styles.pill}`} style={{ background: "rgba(0,180,216,0.15)", color: "#00b4d8" }}>
                     {planLabel}
                   </span>
                 </div>
@@ -116,7 +116,7 @@ export function TenantAdminCapabilitiesPage({}: TenantAdminCapabilitiesPageProps
                 <div className="capCard__sub">{t("tenantCapabilities.metricAbilityCount")}: {abilities.length}</div>
                 {userPlan !== "enterprise" && (
                   <div style={{ marginTop: 12 }}>
-                    <Link to="/tenant-admin/billing" className="shellPage__button shellPage__button--primary" style={{ textDecoration: "none", fontWeight: 700, fontSize: 12 }}>
+                    <Link to="/tenant-admin/billing" className={`${styles.button} ${styles.buttonPrimary}`} style={{ textDecoration: "none", fontWeight: 700, fontSize: 12 }}>
                       {t("tenantCapabilities.upgradeAction")}
                     </Link>
                   </div>
@@ -174,7 +174,7 @@ export function TenantAdminCapabilitiesPage({}: TenantAdminCapabilitiesPageProps
                       <div className="capAbilityGroup__header">{action}</div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 12 }}>
                         {actionAbilities.map(a => (
-                          <span key={a.key} className="shellPage__pill" style={{ background: "rgba(167,139,250,0.12)", color: "#a78bfa", fontSize: 11 }}>
+                          <span key={a.key} className={`${styles.pill}`} style={{ background: "rgba(167,139,250,0.12)", color: "#a78bfa", fontSize: 11 }}>
                             {a.subject}
                           </span>
                         ))}

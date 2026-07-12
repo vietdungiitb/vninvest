@@ -1,3 +1,4 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ShellPageChrome, ShellPanel } from "../../components/ShellPageTemplate.js";
@@ -7,7 +8,6 @@ import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
 import { useToast } from "../../components/ShellToast.js";
-
 interface SSOConfig {
   is_enabled?: boolean;
   idp_entity_id?: string;
@@ -39,10 +39,10 @@ function Field({
   children: ReactNode;
 }) {
   return (
-    <div className="shellPage__field">
-      <span className="shellPage__fieldLabel">{label}</span>
+    <div className={`${styles.field}`}>
+      <span className={`${styles.fieldLabel}`}>{label}</span>
       {children}
-      {help ? <span className="shellPage__itemMeta">{help}</span> : null}
+      {help ? <span className={`${styles.itemMeta}`}>{help}</span> : null}
     </div>
   );
 }
@@ -133,7 +133,7 @@ export function TenantAdminSSOPage({
         description={t("tenantSSO.description")}
         notice={t("common.noPermission")}
       >
-        <div className="shellPage__panel">
+        <div className={`${styles.panel}`}>
           <ShellEmptyState description={t("common.noPermission")} />
         </div>
       </ShellPageChrome>
@@ -147,7 +147,7 @@ export function TenantAdminSSOPage({
         title={t("tenantSSO.title")}
         description={t("common.loading")}
       >
-        <div className="shellPage__panel">{t("common.loading")}</div>
+        <div className={`${styles.panel}`}>{t("common.loading")}</div>
       </ShellPageChrome>
     );
   }
@@ -163,15 +163,15 @@ export function TenantAdminSSOPage({
       description={t("tenantSSO.description")}
       notice={enterpriseNotice}
     >
-      <section className="shellPage__stack">
+      <section className={`${styles.stack}`}>
           {error ? (
-            <div className="shellPage__banner shellPage__banner--error" role="alert">
+            <div className={`${styles.banner} ${styles.bannerError}`} role="alert">
               {error}
             </div>
           ) : null}
           {success ? (
             <div
-              className="shellPage__banner"
+              className={`${styles.banner}`}
               style={{
                 background: "rgba(34,197,94,0.1)",
                 border: "1px solid rgba(34,197,94,0.3)",
@@ -185,19 +185,19 @@ export function TenantAdminSSOPage({
           ) : null}
 
           <div
-            className="shellPage__actions"
+            className={`${styles.actions}`}
             style={{ justifyContent: "flex-end", marginBottom: "20px" }}
           >
             <button
               onClick={loadConfig}
               disabled={loading}
-              className="shellPage__button shellPage__button--secondary"
+              className={`${styles.button} ${styles.buttonSecondary}`}
             >
               {t("tenantSSO.refreshAction")}
             </button>
             <Link
               to="/tenant-admin/home"
-              className="shellPage__button shellPage__button--secondary"
+              className={`${styles.button} ${styles.buttonSecondary}`}
               style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}
             >
               {t("tenantSSO.backToHome")}
@@ -206,9 +206,9 @@ export function TenantAdminSSOPage({
 
           <form onSubmit={handleSave}>
             <ShellPanel title={t("tenantSSO.title")} subtitle="SAML 2.0">
-              <div className="shellPage__form">
+              <div className={`${styles.form}`}>
                 <div
-                  className="shellPage__field"
+                  className={`${styles.field}`}
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
@@ -240,10 +240,10 @@ export function TenantAdminSSOPage({
                 {!isEnterprisePlan ? (
                   <ShellEmptyState description={t("tenantSSO.enterpriseOnlyNotice")} />
                 ) : (
-                  <div className="shellPage__form">
+                  <div className={`${styles.form}`}>
                     <Field label={t("tenantSSO.idpEntityIdLabel")} help={t("tenantSSO.idpEntityIdHelp")}>
                       <input
-                        className="shellPage__input"
+                        className={`${styles.input}`}
                         type="text"
                         value={formData.idp_entity_id}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -257,7 +257,7 @@ export function TenantAdminSSOPage({
 
                     <Field label={t("tenantSSO.idpSsoUrlLabel")} help={t("tenantSSO.idpSsoUrlHelp")}>
                       <input
-                        className="shellPage__input"
+                        className={`${styles.input}`}
                         type="url"
                         value={formData.idp_sso_url}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -271,7 +271,7 @@ export function TenantAdminSSOPage({
 
                     <Field label={t("tenantSSO.idpX509CertLabel")} help={t("tenantSSO.idpX509CertHelp")}>
                       <textarea
-                        className="shellPage__input"
+                        className={`${styles.input}`}
                         value={formData.idp_x509_cert}
                         onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                           handleChange("idp_x509_cert", e.target.value)
@@ -290,7 +290,7 @@ export function TenantAdminSSOPage({
 
                     <Field label={t("tenantSSO.domainHintLabel")} help={t("tenantSSO.domainHintHelp")}>
                       <input
-                        className="shellPage__input"
+                        className={`${styles.input}`}
                         type="text"
                         value={formData.domain_hint}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -305,7 +305,7 @@ export function TenantAdminSSOPage({
                     <Field label={t("tenantSSO.spEntityIdLabel")} help={t("tenantSSO.spEntityIdHelp")}>
                       <div style={{ display: "flex", gap: 8 }}>
                         <input
-                          className="shellPage__input"
+                          className={`${styles.input}`}
                           type="text"
                           value={formData.sp_entity_id}
                           readOnly
@@ -318,7 +318,7 @@ export function TenantAdminSSOPage({
                             navigator.clipboard.writeText(formData.sp_entity_id);
                             toast.success(t("tenantPats.copySuccess") || "Đã sao chép!");
                           }}
-                          className="shellPage__button"
+                          className={`${styles.button}`}
                           style={{ whiteSpace: "nowrap" }}
                         >
                           {t("tenantPats.copyTokenAction") || "Sao chép"}
@@ -329,7 +329,7 @@ export function TenantAdminSSOPage({
                     <Field label={t("tenantSSO.spAcsUrlLabel")} help={t("tenantSSO.spAcsUrlHelp")}>
                       <div style={{ display: "flex", gap: 8 }}>
                         <input
-                          className="shellPage__input"
+                          className={`${styles.input}`}
                           type="url"
                           value={formData.sp_acs_url}
                           readOnly
@@ -342,7 +342,7 @@ export function TenantAdminSSOPage({
                             navigator.clipboard.writeText(formData.sp_acs_url);
                             toast.success(t("tenantPats.copySuccess") || "Đã sao chép!");
                           }}
-                          className="shellPage__button"
+                          className={`${styles.button}`}
                           style={{ whiteSpace: "nowrap" }}
                         >
                           {t("tenantPats.copyTokenAction") || "Sao chép"}
@@ -353,7 +353,7 @@ export function TenantAdminSSOPage({
                     <button
                       type="submit"
                       disabled={saving || !isEnterprisePlan}
-                      className="shellPage__button shellPage__button--primary"
+                      className={`${styles.button} ${styles.buttonPrimary}`}
                       style={{ alignSelf: "flex-start" }}
                     >
                       {saving ? t("tenantSSO.saving") : t("tenantSSO.saveAction")}
@@ -365,8 +365,8 @@ export function TenantAdminSSOPage({
           </form>
 
           <ShellPanel title={t("tenantSSO.ssoTestPanelTitle")} subtitle={t("tenantSSO.ssoTestPanelDesc")}>
-            <div className="shellPage__form">
-              <p className="shellPage__itemMeta" style={{ margin: 0 }}>
+            <div className={`${styles.form}`}>
+              <p className={`${styles.itemMeta}`} style={{ margin: 0 }}>
                 {t("tenantSSO.ssoTestPanelDesc")}
               </p>
               <button
@@ -392,12 +392,12 @@ export function TenantAdminSSOPage({
                   window.location.href = `${baseUrl}/core/v1/auth/sso/login/?domain=${formData.domain_hint}`;
                 }}
                 disabled={!formData.domain_hint || !formData.is_enabled || loading || saving}
-                className="shellPage__button shellPage__button--secondary"
+                className={`${styles.button} ${styles.buttonSecondary}`}
                 style={{ alignSelf: "flex-start" }}
               >
                 {t("tenantSSO.testConnectionAction")}
               </button>
-              <p className="shellPage__itemMeta" style={{ margin: 0 }}>
+              <p className={`${styles.itemMeta}`} style={{ margin: 0 }}>
                 {t("tenantSSO.spAcsUrlDisplay")}{" "}
                 <code style={{ color: "#cbd5e1", fontFamily: "monospace" }}>
                   {formData.sp_acs_url || t("tenantSSO.notConfigured")}

@@ -3,7 +3,6 @@ import { Outlet } from 'react-router-dom';
 import { TenantAdminSidebar } from './TenantAdminSidebar.js';
 import { Breadcrumb } from './Breadcrumb.js';
 import { PageTransition } from './PageTransition.js';
-
 const LAYOUT_CSS = `
 .taLayout {
   display: flex;
@@ -41,11 +40,11 @@ const LAYOUT_CSS = `
   .shellPage .MuiTableBody-root .MuiTableRow-root {
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--shell-border);
+    border: 1px solid var(--border-shell);
     border-radius: 10px;
     padding: 12px;
     margin-bottom: 8px;
-    background: var(--shell-surface);
+    background: var(--bg-shell-surface);
   }
   .shellPage td,
   .shellPage th,
@@ -60,7 +59,7 @@ const LAYOUT_CSS = `
   .shellPage td::before {
     content: attr(data-label);
     font-weight: 600;
-    color: var(--shell-muted);
+    color: var(--text-secondary);
     margin-right: 12px;
     flex-shrink: 0;
     font-size: 11px;
@@ -68,7 +67,6 @@ const LAYOUT_CSS = `
     letter-spacing: 0.04em;
   }
   .shellPage button,
-  .shellPage .shellPage__button,
   .shellPage [role="button"],
   .shellPage input,
   .shellPage select,
@@ -76,9 +74,6 @@ const LAYOUT_CSS = `
   .shellPage .MuiButtonBase-root {
     min-height: 44px;
     min-width: 44px;
-  }
-  .shellPage .shellPage__stack > * {
-    margin-bottom: 12px;
   }
 }
 `;

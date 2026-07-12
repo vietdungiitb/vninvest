@@ -1,3 +1,4 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import { ReactNode, useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
@@ -7,7 +8,6 @@ import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
-
 interface Subscription {
   plan_code: string;
   status: string;
@@ -45,8 +45,8 @@ interface FieldCardProps {
 
 function FieldCard({ label, value }: FieldCardProps): ReactNode {
   return (
-    <div className="shellPage__listItem">
-      <p className="shellPage__itemMeta" style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#94a3b8" }}>{label}</p>
+    <div className={`${styles.listItem}`}>
+      <p className={`${styles.itemMeta}`} style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#94a3b8" }}>{label}</p>
       <p style={{ margin: "4px 0 0", fontSize: "14px", fontWeight: 500, color: "#cbd5e1" }}>{value}</p>
     </div>
   );
@@ -161,6 +161,7 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const canRead = ability?.can?.("read", "TenantBillingView") ?? false;
@@ -173,7 +174,7 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
         description={t("tenantBilling.description")}
         notice={t("common.noPermission")}
       >
-        <div className="shellPage__panel">
+        <div className={`${styles.panel}`}>
           <ShellEmptyState description={t("tenantBilling.subscriptionEmpty")} />
         </div>
       </ShellPageChrome>
@@ -187,7 +188,7 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
         title={t("tenantBilling.title")}
         description={t("common.loading")}
       >
-        <div className="shellPage__panel">{t("common.loading")}</div>
+        <div className={`${styles.panel}`}>{t("common.loading")}</div>
       </ShellPageChrome>
     );
   }
@@ -200,7 +201,7 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
         description={t("tenantBilling.loadError")}
         error={error}
       >
-        <div className="shellPage__panel">{error}</div>
+        <div className={`${styles.panel}`}>{error}</div>
       </ShellPageChrome>
     );
   }
@@ -212,7 +213,7 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
   ];
 
   const refreshAction = (
-    <button onClick={loadData} className="shellPage__button shellPage__button--secondary">
+    <button onClick={loadData} className={`${styles.button} ${styles.buttonSecondary}`}>
       {t("tenantBilling.refreshAction")}
     </button>
   );
@@ -224,7 +225,7 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
       description={t("tenantBilling.description")}
       metrics={metrics}
     >
-      <section className="shellPage__stack">
+      <section className={`${styles.stack}`}>
           <ShellPanel title={t("tenantBilling.costTrendTitle")} subtitle={t("tenantBilling.costTrendSubtitle")}>
             <CostTrendChart
               data={costTrend?.monthly || []}
@@ -236,7 +237,7 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
           </ShellPanel>
 
           <ShellPanel title={t("tenantBilling.subscriptionTitle")} actions={refreshAction}>
-            <div className="shellPage__summaryGrid">
+            <div className={`${styles.summaryGrid}`}>
               <FieldCard label={t("tenantBilling.planLabel")} value={subscription?.plan_code || t("common.notAvailable")} />
               <FieldCard
                 label={t("tenantBilling.statusLabel")}
@@ -268,18 +269,18 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
           </ShellPanel>
 
           <ShellPanel title={t("tenantBilling.paymentMethodTitle")}>
-            <div className="shellPage__summaryGrid">
+            <div className={`${styles.summaryGrid}`}>
               <FieldCard
                 label={t("tenantBilling.currentMethod")}
                 value={invoices.find(i => i.payment_method)?.payment_method || t("common.notAvailable")}
               />
-              <div className="shellPage__listItem">
-                <p className="shellPage__itemMeta" style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#94a3b8", marginBottom: 8 }}>
+              <div className={`${styles.listItem}`}>
+                <p className={`${styles.itemMeta}`} style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#94a3b8", marginBottom: 8 }}>
                   {t("tenantBilling.billingCycleLabel")}
                 </p>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {subscription?.auto_renew !== undefined && (
-                    <span className="shellPage__pill" style={{
+                    <span className={`${styles.pill}`} style={{
                       background: subscription.auto_renew ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)",
                       color: subscription.auto_renew ? "#22c55e" : "#ef4444",
                       fontSize: 11,
@@ -291,7 +292,7 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
               </div>
               <button
                 onClick={() => setShowPaymentForm(!showPaymentForm)}
-                className="shellPage__button"
+                className={`${styles.button}`}
                 style={{ fontSize: 12, fontWeight: 600, justifySelf: "start" }}
               >
                 {showPaymentForm ? t("common.cancel") : t("tenantBilling.updatePaymentMethod")}
@@ -325,7 +326,7 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
                     }
                   }}
                   disabled={paymentMethodLoading}
-                  className="shellPage__button shellPage__button--primary"
+                  className={`${styles.button} ${styles.buttonPrimary}`}
                   style={{ fontWeight: 700 }}
                 >
                   {paymentMethodLoading ? t("common.saving") : t("tenantBilling.requestUpdateAction")}
@@ -335,23 +336,23 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
           </ShellPanel>
 
           <ShellPanel title={t("tenantBilling.invoiceTitle")} subtitle={`${invoices.length}`}>
-            <div className="shellPage__list" style={{ maxHeight: "400px", overflowY: "auto" }}>
+            <div className={`${styles.list}`} style={{ maxHeight: "400px", overflowY: "auto" }}>
               {invoices.length === 0 ? (
                 <ShellEmptyState description={t("tenantBilling.invoiceEmpty")} />
               ) : (
                 invoices.map(invoice => (
                   <div
                     key={invoice.id}
-                    className="shellPage__listItem"
+                    className={`${styles.listItem}`}
                     style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
                   >
                     <div>
-                      <div className="shellPage__itemTitle" style={{ fontSize: "14px" }}>{invoice.invoice_number}</div>
-                      <div className="shellPage__itemMeta" style={{ marginTop: "2px" }}>
+                      <div className={`${styles.itemTitle}`} style={{ fontSize: "14px" }}>{invoice.invoice_number}</div>
+                      <div className={`${styles.itemMeta}`} style={{ marginTop: "2px" }}>
                         {t("tenantBilling.issueDateLabel")}: {formatDateField(invoice.issue_date, fmtDate)}
                       </div>
                       <div
-                        className="shellPage__itemMeta"
+                        className={`${styles.itemMeta}`}
                         style={{ fontWeight: 600, color: invoice.status === "paid" ? "#22c55e" : "#ff7f50", marginTop: "4px" }}
                       >
                         {invoice.status === "paid" ? t("tenantBilling.paidLabel") : t("tenantBilling.pendingLabel")}
@@ -359,17 +360,17 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span className="shellPage__itemTitle" style={{ fontSize: "14px" }}>{formatCurrency(invoice.total_amount, fmtCurrency, t)}</span>
+                        <span className={`${styles.itemTitle}`} style={{ fontSize: "14px" }}>{formatCurrency(invoice.total_amount, fmtCurrency, t)}</span>
                         <button
                           onClick={() => handleDownloadInvoice(invoice.id)}
-                          className="shellPage__button"
+                          className={`${styles.button}`}
                           style={{ fontSize: 11, padding: "4px 8px", background: "rgba(0,180,216,0.1)", border: "1px solid rgba(0,180,216,0.2)", color: "#00b4d8" }}
                           title={t("tenantBilling.downloadInvoice")}
                         >
                           ↓
                         </button>
                       </div>
-                      {invoice.payment_method && <span className="shellPage__itemMeta" style={{ marginTop: "2px" }}>{invoice.payment_method}</span>}
+                      {invoice.payment_method && <span className={`${styles.itemMeta}`} style={{ marginTop: "2px" }}>{invoice.payment_method}</span>}
                     </div>
                   </div>
                 ))
@@ -549,10 +550,10 @@ function PreviewPlanChange({ planCode, t, operatorClient }: { planCode: string; 
   return (
     <div>
       <div style={{ display: "flex", gap: 12, alignItems: "flex-end", marginBottom: 12 }}>
-        <div className="shellPage__fieldGroup" style={{ flex: 1 }}>
-          <label className="shellPage__label">{t("tenantBilling.previewTargetPlan")}</label>
+        <div className="fieldGroup" style={{ flex: 1 }}>
+          <label className="fieldLabel">{t("tenantBilling.previewTargetPlan")}</label>
           <select
-            className="shellPage__input"
+            className={`${styles.input}`}
             value={targetPlan}
             onChange={e => { setTargetPlan(e.target.value); setPreviewResult(null); }}
           >
@@ -566,7 +567,7 @@ function PreviewPlanChange({ planCode, t, operatorClient }: { planCode: string; 
         <button
           onClick={handlePreview}
           disabled={previewLoading}
-          className="shellPage__button shellPage__button--primary"
+          className={`${styles.button} ${styles.buttonPrimary}`}
           style={{ fontSize: 13, fontWeight: 700 }}
         >
           {t("tenantBilling.previewButton")}
@@ -584,7 +585,7 @@ function PreviewPlanChange({ planCode, t, operatorClient }: { planCode: string; 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
             <button
               onClick={handleUpgrade}
-              className="shellPage__button shellPage__button--primary"
+              className={`${styles.button} ${styles.buttonPrimary}`}
               style={{ fontSize: 13, fontWeight: 700 }}
             >
               {t("tenantBilling.upgradeAction")}

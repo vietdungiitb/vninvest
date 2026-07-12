@@ -1,3 +1,4 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import { Fragment, useState, useEffect, createElement } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import {
@@ -241,12 +242,12 @@ export function ShellMailConfigPage() {
   ];
 
   const configListContent = loading
-    ? createElement("p", { className: "shellPage__empty" }, "Đang tải cấu hình…")
+    ? createElement("p", { className: `${styles.empty}` }, "Đang tải cấu hình…")
     : configs.length === 0
-    ? createElement("div", { className: "shellPage__empty" }, "Chưa có cấu hình mail nào.")
+    ? createElement("div", { className: `${styles.empty}` }, "Chưa có cấu hình mail nào.")
     : createElement(
         "div",
-        { className: "shellPage__list" },
+        { className: `${styles.list}` },
         configs.map((config) => {
           const hostPort =
             config.provider === "smtp"
@@ -257,37 +258,37 @@ export function ShellMailConfigPage() {
 
           return createElement(
             "div",
-            { key: String(config.id), className: "shellPage__listItem" },
+            { key: String(config.id), className: `${styles.listItem}` },
             createElement(
               "div",
-              { className: "shellPage__listItemHeader" },
+              { className: `${styles.listItemHeader}` },
               createElement(
                 "div",
                 null,
                 createElement(
                   "h3",
-                  { className: "shellPage__itemTitle" },
+                  { className: `${styles.itemTitle}` },
                   (PROVIDER_LABELS[config.provider] || config.provider) + " — " + (config.from_email || "—")
                 ),
-                createElement("p", { className: "shellPage__itemMeta" }, hostPort)
+                createElement("p", { className: `${styles.itemMeta}` }, hostPort)
               ),
               createElement(
                 "div",
                 { style: { display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" } },
                 config.is_active
-                  ? createElement("span", { className: "shellPage__pill" }, "✓ Đang hoạt động")
+                  ? createElement("span", { className: `${styles.pill}` }, "✓ Đang hoạt động")
                   : createElement(
                       "span",
                       {
-                        className: "shellPage__pill",
-                        style: { background: "rgba(16,42,67,0.08)", color: "var(--shell-muted)" },
+                        className: `${styles.pill}`,
+                        style: { background: "rgba(16,42,67,0.08)", color: "var(--text-secondary)" },
                       },
                       "Không hoạt động"
                     ),
                 createElement(
                   "button",
                   {
-                    className: "shellPage__button shellPage__button--secondary",
+                    className: `${styles.button} ${styles.buttonSecondary}`,
                     style: { padding: "6px 12px", fontSize: "13px" },
                     onClick: () => handleOpenEdit(config),
                   },
@@ -297,7 +298,7 @@ export function ShellMailConfigPage() {
                   createElement(
                     "button",
                     {
-                      className: "shellPage__button shellPage__button--primary",
+                      className: `${styles.button} ${styles.buttonPrimary}`,
                       style: { padding: "6px 12px", fontSize: "13px" },
                       onClick: () => handleActivate(config.id),
                     },
@@ -307,7 +308,7 @@ export function ShellMailConfigPage() {
                   createElement(
                     "button",
                     {
-                      className: "shellPage__button shellPage__button--signal",
+                      className: `${styles.button} ${styles.buttonSignal}`,
                       style: { padding: "6px 12px", fontSize: "13px" },
                       onClick: () => handleDelete(config.id),
                     },
@@ -321,7 +322,7 @@ export function ShellMailConfigPage() {
 
   const testPanelContent = createElement(
     "div",
-    { className: "shellPage__form" },
+    { className: `${styles.form}` },
     createElement(ShellField, {
       label: "Email nhận test",
       name: "testEmail",
@@ -339,7 +340,7 @@ export function ShellMailConfigPage() {
             "button",
             {
               key: "test-" + config.id,
-              className: "shellPage__button shellPage__button--signal",
+              className: `${styles.button} ${styles.buttonSignal}`,
               style: { fontSize: "13px" },
               onClick: () => handleTestConnection(config),
               disabled: testLoading || !testEmail,
@@ -354,9 +355,8 @@ export function ShellMailConfigPage() {
       createElement(
         "div",
         {
-          className:
-            "shellPage__banner " +
-            (testMessage.type === "success" ? "shellPage__banner--notice" : "shellPage__banner--error"),
+          className: `${styles.banner}` +
+            (testMessage.type === "success" ? styles.bannerNotice : styles.bannerError),
         },
         testMessage.text
       )
@@ -383,7 +383,7 @@ export function ShellMailConfigPage() {
       createElement(
         "div",
         {
-          className: "shellPage__panel",
+          className: `${styles.panel}`,
           style: {
             minWidth: "480px",
             maxWidth: "640px",
@@ -394,20 +394,20 @@ export function ShellMailConfigPage() {
         },
         createElement(
           "div",
-          { className: "shellPage__panelHeader" },
+          { className: `${styles.panelHeader}` },
           createElement(
             "div",
             null,
             createElement(
               "h2",
-              { className: "shellPage__panelTitle" },
+              { className: `${styles.panelTitle}` },
               editingConfig ? "Sửa cấu hình #" + editingConfig.id : "Tạo cấu hình mail mới"
             )
           ),
           createElement(
             "button",
             {
-              className: "shellPage__button shellPage__button--secondary",
+              className: `${styles.button} ${styles.buttonSecondary}`,
               style: { padding: "6px 12px", fontSize: "16px" },
               onClick: handleCloseModal,
               type: "button",
@@ -417,10 +417,10 @@ export function ShellMailConfigPage() {
         ),
         createElement(
           "form",
-          { className: "shellPage__form", onSubmit: handleSubmitForm },
+          { className: `${styles.form}`, onSubmit: handleSubmitForm },
           createElement(
             "div",
-            { className: "shellPage__formGrid" },
+            { className: `${styles.formGrid}` },
             createElement(ShellSelectField, {
               label: "Provider",
               name: "provider",
@@ -446,7 +446,7 @@ export function ShellMailConfigPage() {
               null,
               createElement(
                 "div",
-                { className: "shellPage__formGrid" },
+                { className: `${styles.formGrid}` },
                 createElement(ShellField, {
                   label: "SMTP Host",
                   name: "smtp_host",
@@ -465,7 +465,7 @@ export function ShellMailConfigPage() {
               ),
               createElement(
                 "div",
-                { className: "shellPage__formGrid" },
+                { className: `${styles.formGrid}` },
                 createElement(ShellField, {
                   label: "SMTP Username",
                   name: "smtp_username",
@@ -494,7 +494,7 @@ export function ShellMailConfigPage() {
                       cursor: "pointer",
                       fontSize: "14px",
                       fontWeight: "700",
-                      color: "var(--shell-muted)",
+                      color: "var(--text-secondary)",
                     },
                   },
                   createElement("input", {
@@ -514,7 +514,7 @@ export function ShellMailConfigPage() {
                       cursor: "pointer",
                       fontSize: "14px",
                       fontWeight: "700",
-                      color: "var(--shell-muted)",
+                      color: "var(--text-secondary)",
                     },
                   },
                   createElement("input", {
@@ -532,10 +532,10 @@ export function ShellMailConfigPage() {
               null,
               createElement(
                 "label",
-                { className: "shellPage__field" },
-                createElement("span", { className: "shellPage__fieldLabel" }, "Credentials JSON (Service Account hoặc OAuth2 Web Client)"),
+                { className: `${styles.field}` },
+                createElement("span", { className: `${styles.fieldLabel}` }, "Credentials JSON (Service Account hoặc OAuth2 Web Client)"),
                 createElement("textarea", {
-                  className: "shellPage__input",
+                  className: `${styles.input}`,
                   value: formData.google_service_account_json,
                   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => handleFormChange("google_service_account_json", e.target.value),
                   placeholder: editingConfig
@@ -549,7 +549,7 @@ export function ShellMailConfigPage() {
                   {
                     style: {
                       fontSize: "12px",
-                      color: "var(--shell-muted)",
+                      color: "var(--text-secondary)",
                       marginTop: "4px",
                       display: "block",
                     },
@@ -574,15 +574,15 @@ export function ShellMailConfigPage() {
                 placeholder: "admin@yourdomain.com (chỉ cần với Service Account DWD)",
               })
             ),
-          formError && createElement("div", { className: "shellPage__banner shellPage__banner--error" }, formError),
+          formError && createElement("div", { className: `${styles.banner} ${styles.bannerError}` }, formError),
           createElement(
             "div",
-            { className: "shellPage__actions", style: { justifyContent: "flex-end" } },
+            { className: `${styles.actions}`, style: { justifyContent: "flex-end" } },
             createElement(
               "button",
               {
                 type: "button",
-                className: "shellPage__button shellPage__button--secondary",
+                className: `${styles.button} ${styles.buttonSecondary}`,
                 onClick: handleCloseModal,
                 disabled: formLoading,
               },
@@ -592,7 +592,7 @@ export function ShellMailConfigPage() {
               "button",
               {
                 type: "submit",
-                className: "shellPage__button shellPage__button--primary",
+                className: `${styles.button} ${styles.buttonPrimary}`,
                 disabled: formLoading,
               },
               formLoading ? "Đang lưu…" : editingConfig ? "Cập nhật" : "Tạo mới"
@@ -611,7 +611,7 @@ export function ShellMailConfigPage() {
       badge: createElement(
         "button",
         {
-          className: "shellPage__button shellPage__button--primary",
+          className: `${styles.button} ${styles.buttonPrimary}`,
           onClick: handleOpenCreate,
           type: "button",
         },
@@ -622,7 +622,7 @@ export function ShellMailConfigPage() {
     },
     createElement(
       "div",
-      { className: "shellPage__bodyGrid" },
+      { className: `${styles.bodyGrid}` },
       createElement(
         ShellPanel,
         {

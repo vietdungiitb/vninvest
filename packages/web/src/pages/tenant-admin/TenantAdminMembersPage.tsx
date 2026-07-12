@@ -1,3 +1,4 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import { useCallback, useEffect, useState } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField, ShellSelectField } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
@@ -6,7 +7,6 @@ import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
-
 interface Member {
   member_id: string;
   username: string;
@@ -109,7 +109,7 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
         description={t("tenantMembers.description")}
         notice={t("common.noPermission")}
       >
-        <div className="shellPage__panel">
+        <div className={`${styles.panel}`}>
           <ShellEmptyState description={t("tenantMembers.membersEmpty")} />
         </div>
       </ShellPageChrome>
@@ -123,7 +123,7 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
         title={t("tenantMembers.title")}
         description={t("common.loading")}
       >
-        <div className="shellPage__panel">{t("common.loading")}</div>
+        <div className={`${styles.panel}`}>{t("common.loading")}</div>
       </ShellPageChrome>
     );
   }
@@ -136,7 +136,7 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
         description={t("tenantMembers.loadError")}
         error={error}
       >
-        <div className="shellPage__panel">{error}</div>
+        <div className={`${styles.panel}`}>{error}</div>
       </ShellPageChrome>
     );
   }
@@ -197,11 +197,11 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
       description={t("tenantMembers.description")}
       metrics={metrics}
     >
-      <section className="shellPage__stack">
+      <section className={`${styles.stack}`}>
           <div style={{ display: "flex", gap: "8px", marginBottom: "20px", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: "8px" }}>
             <button
               onClick={() => setActiveTab("members")}
-              className="shellPage__button"
+              className={`${styles.button}`}
               style={{
                 background: activeTab === "members" ? "rgba(0,180,216,0.2)" : "rgba(15,23,42,0.5)",
                 border: "1px solid rgba(255,255,255,0.08)",
@@ -212,7 +212,7 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
             </button>
             <button
               onClick={() => setActiveTab("invites")}
-              className="shellPage__button"
+              className={`${styles.button}`}
               style={{
                 background: activeTab === "invites" ? "rgba(0,180,216,0.2)" : "rgba(15,23,42,0.5)",
                 border: "1px solid rgba(255,255,255,0.08)",
@@ -231,12 +231,12 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                   <button
                     key={role}
                     onClick={() => setRoleFilter(role)}
-                    className="shellPage__button"
+                    className={`${styles.button}`}
                     style={{
                       fontSize: 11, padding: "4px 10px",
                       background: roleFilter === role ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)",
-                      color: roleFilter === role ? "var(--shell-accent)" : "var(--shell-ink)",
-                      border: roleFilter === role ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--shell-border)",
+                      color: roleFilter === role ? "var(--accent-shell)" : "var(--text-primary)",
+                      border: roleFilter === role ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)",
                     }}
                   >
                     {role === "all" ? t("common.all") : t(`tenantMembers.roleOptions.${role}`)}
@@ -249,7 +249,7 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder={t("tenantMembers.searchPlaceholder")}
-                  className="shellPage__input"
+                  className={`${styles.input}`}
                   style={{ width: "100%", maxWidth: 320 }}
                 />
               </div>
@@ -258,22 +258,22 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-                        <th className="shellPage__itemMeta" style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
                           {t("tenantMembers.tableHeaderUsername")}
                         </th>
-                        <th className="shellPage__itemMeta" style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
                           {t("tenantMembers.emailLabel")}
                         </th>
-                        <th className="shellPage__itemMeta" style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
                           {t("tenantMembers.roleLabel")}
                         </th>
-                        <th className="shellPage__itemMeta" style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
                           {t("tenantMembers.inviterLabel")}
                         </th>
-                        <th className="shellPage__itemMeta" style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
                           {t("tenantMembers.joinedAtLabel")}
                         </th>
-                        <th className="shellPage__itemMeta" style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
                           {t("tenantMembers.tableHeaderActions")}
                         </th>
                       </tr>
@@ -290,7 +290,7 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                           <td style={{ padding: "12px", color: "#cbd5e1" }}>{member.email}</td>
                           <td style={{ padding: "12px" }}>
                             <span
-                              className="shellPage__pill"
+                              className={`${styles.pill}`}
                               style={roleBadgeStyle(member.role)}
                             >
                               {roleT(member.role)}
@@ -302,7 +302,7 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                             {member.role !== "owner" && (
                               <button
                                 onClick={() => handleRemoveMember(member.member_id)}
-                                className="shellPage__button"
+                                className={`${styles.button}`}
                                 style={{
                                   background: "rgba(255,127,80,0.15)",
                                   border: "1px solid rgba(255,127,80,0.3)",
@@ -350,7 +350,7 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="shellPage__button shellPage__button--primary"
+                    className={`${styles.button} ${styles.buttonPrimary}`}
                     style={{ width: "100%", marginTop: "16px" }}
                   >
                     {submitting ? t("tenantMembers.submitting") : t("tenantMembers.inviteAction")}
@@ -363,22 +363,22 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-                        <th className="shellPage__itemMeta" style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
                           {t("tenantMembers.emailLabel")}
                         </th>
-                        <th className="shellPage__itemMeta" style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
                           {t("tenantMembers.roleLabel")}
                         </th>
-                        <th className="shellPage__itemMeta" style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
                           {t("tenantMembers.inviterLabel")}
                         </th>
-                        <th className="shellPage__itemMeta" style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
                           {t("tenantMembers.metricInvites")}
                         </th>
-                        <th className="shellPage__itemMeta" style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
                           {t("tenantMembers.expiresAtLabel")}
                         </th>
-                        <th className="shellPage__itemMeta" style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
                           {t("tenantMembers.tableHeaderActions")}
                         </th>
                       </tr>
@@ -390,7 +390,7 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                           <td style={{ padding: "12px", color: "#cbd5e1" }}>{roleT(invite.role)}</td>
                           <td style={{ padding: "12px", color: "#cbd5e1" }}>{invite.inviter_username || t("common.notAvailable")}</td>
                           <td style={{ padding: "12px" }}>
-                            <span className="shellPage__pill" style={statusBadgeStyle(invite.status)}>
+                            <span className={`${styles.pill}`} style={statusBadgeStyle(invite.status)}>
                               {statusT(invite.status)}
                             </span>
                           </td>
@@ -408,7 +408,7 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                                     toast.error((err as Error).message);
                                   }
                                 }}
-                                className="shellPage__button"
+                                className={`${styles.button}`}
                                 style={{
                                   background: "rgba(255,127,80,0.15)",
                                   border: "1px solid rgba(255,127,80,0.3)",

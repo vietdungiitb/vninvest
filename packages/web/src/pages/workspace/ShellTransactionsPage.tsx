@@ -1,3 +1,4 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import {
   ShellPageChrome,
   ShellPanel,
@@ -107,8 +108,8 @@ export function ShellTransactionsPage({
       title="Trung tâm giao dịch và workspace"
       description="Trang này xác nhận lane giao dịch của core shell đã có route-level page thật, bám đúng workspace routes, transactions ability và bootstrap session mà không cần thêm backend contract mới."
       badge={(
-        <div className="shellPage__heroBadge">
-          <span className="shellPage__statusDot" />
+        <div className={`${styles.heroBadge}`}>
+          <span className={`${styles.statusDot}`} />
           {viewState.loading ? "Đang đồng bộ lane giao dịch" : "Lane giao dịch sẵn sàng cho kiểm tra"}
         </div>
       )}
@@ -116,14 +117,14 @@ export function ShellTransactionsPage({
       notice={viewState.notice}
       error={viewState.error}
     >
-      <section className="shellPage__bodyGrid">
-        <div className="shellPage__stack">
+      <section className={`${styles.bodyGrid}`}>
+        <div className={`${styles.stack}`}>
           <ShellPanel
             title="Snapshot operator và runtime"
             subtitle="Đọc nhanh session, runtime health và build meta trước khi nối lane giao dịch thật vào workspace shell này."
             actions={renderRefreshAction({ onClick: handleRefresh, disabled: viewState.loading })}
           >
-            <section className="shellPage__summaryGrid">
+            <section className={`${styles.summaryGrid}`}>
               {summaryCards}
             </section>
           </ShellPanel>
@@ -132,11 +133,11 @@ export function ShellTransactionsPage({
             subtitle="Kiểm tra group `workspace` cùng route `transactions` đã được runtime mở đúng theo bootstrap hiện tại hay chưa."
           >
             <div key="transactions-groups">
-              <h3 className="shellPage__itemTitle">Visible groups</h3>
+              <h3 className={`${styles.itemTitle}`}>Visible groups</h3>
               {renderFlagList(groupFlags, "Session hiện chưa mở group điều hướng nào.", "transactions-groups")}
             </div>
             <div key="transactions-routes">
-              <h3 className="shellPage__itemTitle">Workspace routes</h3>
+              <h3 className={`${styles.itemTitle}`}>Workspace routes</h3>
               {renderFlagList(routeFlags, "Runtime hiện chưa expose route giao dịch nào cho session này.", "transactions-routes")}
             </div>
           </ShellPanel>
@@ -148,11 +149,11 @@ export function ShellTransactionsPage({
         >
           {renderBuildMetaCard({ key: "transactions-build-meta", buildMeta })}
           <div key="transactions-workspace-routes">
-            <h3 className="shellPage__itemTitle">Workspace routes</h3>
+            <h3 className={`${styles.itemTitle}`}>Workspace routes</h3>
             {renderValueList(workspaceRoutes, "Runtime hiện chưa mở route workspace nào.", "transactions-workspace-routes")}
           </div>
           <div key="transactions-surfaces">
-            <h3 className="shellPage__itemTitle">Enabled surfaces</h3>
+            <h3 className={`${styles.itemTitle}`}>Enabled surfaces</h3>
             {renderValueList(enabledSurfaces, "Runtime chưa bật surface flag nào.", "transactions-surfaces")}
           </div>
           {renderAbilityList({
@@ -160,10 +161,10 @@ export function ShellTransactionsPage({
             emptyText: "Runtime hiện chưa trả về ability giao dịch nào cho route này.",
             keyPrefix: "transactions-ability",
           })}
-          <article className="shellPage__surfaceCard" key="transactions-summary-card">
-            <h3 className="shellPage__itemTitle">Workspace summary</h3>
-            <p className="shellPage__itemMeta">Workspace routes visible: {workspaceRoutes.length}</p>
-            <p className="shellPage__itemMeta">Transactions routes active: {countFlagsByState(routeFlags, "ACTIVE")}</p>
+          <article className={`${styles.surfaceCard}`} key="transactions-summary-card">
+            <h3 className={`${styles.itemTitle}`}>Workspace summary</h3>
+            <p className={`${styles.itemMeta}`}>Workspace routes visible: {workspaceRoutes.length}</p>
+            <p className={`${styles.itemMeta}`}>Transactions routes active: {countFlagsByState(routeFlags, "ACTIVE")}</p>
           </article>
         </ShellPanel>
       </section>

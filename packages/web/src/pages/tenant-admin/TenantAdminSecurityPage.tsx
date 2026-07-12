@@ -1,3 +1,4 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, UserCircle } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -8,7 +9,6 @@ import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
-
 interface DailyPoint {
   date: string;
   success: number;
@@ -164,7 +164,7 @@ export function TenantAdminSecurityPage({
         description={t("tenantSecurity.description")}
         notice={t("common.noPermission")}
       >
-        <div className="shellPage__panel">
+        <div className={`${styles.panel}`}>
           <ShellEmptyState description={t("tenantSecurity.emptyState")} />
         </div>
       </ShellPageChrome>
@@ -178,7 +178,7 @@ export function TenantAdminSecurityPage({
         title={t("tenantSecurity.title")}
         description={t("common.loading")}
       >
-        <div className="shellPage__panel">{t("common.loading")}</div>
+        <div className={`${styles.panel}`}>{t("common.loading")}</div>
       </ShellPageChrome>
     );
   }
@@ -194,16 +194,16 @@ export function TenantAdminSecurityPage({
     : [];
 
   const dayActions = (
-    <div className="shellPage__actions">
+    <div className={`${styles.actions}`}>
       {[7, 14, 30].map((d) => (
         <button
           key={d}
           onClick={() => handleDaysChange(d)}
-          className="shellPage__button"
+          className={`${styles.button}`}
           style={{
             background: days === d ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)",
-            color: days === d ? "var(--shell-accent)" : "var(--shell-ink)",
-            border: days === d ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--shell-border)",
+            color: days === d ? "var(--accent-shell)" : "var(--text-primary)",
+            border: days === d ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)",
             borderRadius: 14, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
           }}
         >
@@ -230,7 +230,7 @@ export function TenantAdminSecurityPage({
       metrics={metrics}
       error={error}
     >
-      <section className="shellPage__stack">
+      <section className={`${styles.stack}`}>
         <ShellPanel title={t("tenantSecurity.loginActivityTitle")} actions={dayActions}>
           {chartData.length > 0 ? (
             <div style={{ width: "100%", height: 220 }}>
@@ -256,13 +256,13 @@ export function TenantAdminSecurityPage({
 
         {recentFailures.length > 0 && (
           <ShellPanel title={t("tenantSecurity.recentFailuresTitle")}>
-            <div className="shellPage__list">
+            <div className={`${styles.list}`}>
               {recentFailures.map((f, i) => (
-                <div key={`fail-${i}`} className="shellPage__listItem" style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                <div key={`fail-${i}`} className={`${styles.listItem}`} style={{ display: "flex", gap: 12, alignItems: "center" }}>
                   <AlertCircle className="w-5 h-5" style={{ color: "#ef4444", flexShrink: 0 }} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>{f.username}</div>
-                    <div className="shellPage__itemMeta" style={{ fontSize: 12 }}>
+                    <div className={`${styles.itemMeta}`} style={{ fontSize: 12 }}>
                       {f.ip} &middot; {f.attempts} {t("tenantSecurity.attempts")}
                     </div>
                   </div>
@@ -279,7 +279,7 @@ export function TenantAdminSecurityPage({
               <button
                 onClick={handleRevokeAll}
                 disabled={revokingId === -1}
-                className="shellPage__button"
+                className={`${styles.button}`}
                 style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444", fontSize: "12px" }}
               >
                 {t("tenantSecurity.revokeAllAction")}
@@ -290,23 +290,23 @@ export function TenantAdminSecurityPage({
           {activeSessions.length === 0 ? (
             <ShellEmptyState description={t("tenantSecurity.noSessions")} />
           ) : (
-            <div className="shellPage__list">
+            <div className={`${styles.list}`}>
               {activeSessions.map((s) => (
-                <div key={s.session_id} className="shellPage__listItem">
-                  <div className="shellPage__listItemHeader" style={{ marginBottom: 8 }}>
+                <div key={s.session_id} className={`${styles.listItem}`}>
+                  <div className={`${styles.listItemHeader}`} style={{ marginBottom: 8 }}>
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <UserCircle className="w-5 h-5" style={{ color: "#94a3b8", flexShrink: 0 }} />
                         <span style={{ fontWeight: 600, fontSize: 14 }}>
                           {s.username}
                           {s.is_current && (
-                            <span className="shellPage__pill" style={{ marginLeft: 8, background: "rgba(34,197,94,0.2)", color: "#22c55e", fontSize: 10 }}>
+                            <span className={`${styles.pill}`} style={{ marginLeft: 8, background: "rgba(34,197,94,0.2)", color: "#22c55e", fontSize: 10 }}>
                               {t("tenantSecurity.currentSession")}
                             </span>
                           )}
                         </span>
                       </div>
-                      <div className="shellPage__itemMeta" style={{ fontSize: 12, marginTop: 4 }}>
+                      <div className={`${styles.itemMeta}`} style={{ fontSize: 12, marginTop: 4 }}>
                         {s.ip_address}
                         {s.user_agent && ` · ${s.user_agent.slice(0, 80)}`}
                       </div>
@@ -315,16 +315,16 @@ export function TenantAdminSecurityPage({
                       <button
                         onClick={() => handleRevokeSession(s.session_id)}
                         disabled={revokingId === s.session_id}
-                        className="shellPage__button"
+                        className={`${styles.button}`}
                         style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444", fontSize: "12px" }}
                       >
                         {revokingId === s.session_id ? t("common.loading") : t("tenantSecurity.revokeAction")}
                       </button>
                     )}
                   </div>
-                  <div className="shellPage__summaryGrid" style={{ gap: 16, fontSize: 12, paddingTop: 8 }}>
+                  <div className={`${styles.summaryGrid}`} style={{ gap: 16, fontSize: 12, paddingTop: 8 }}>
                     <div>
-                      <div className="shellPage__itemMeta" style={{ fontSize: 10 }}>{t("tenantSecurity.loginAtLabel")}</div>
+                      <div className={`${styles.itemMeta}`} style={{ fontSize: 10 }}>{t("tenantSecurity.loginAtLabel")}</div>
                       <span style={{ fontSize: 12 }}>{timeAgo(s.login_at, t)}</span>
                     </div>
                   </div>

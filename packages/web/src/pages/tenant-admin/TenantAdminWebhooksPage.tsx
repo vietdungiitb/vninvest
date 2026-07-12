@@ -1,3 +1,4 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import { useEffect, useState, useCallback } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
@@ -7,8 +8,6 @@ import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
-
-
 interface WebhookConfig {
   id: number;
   name: string;
@@ -246,7 +245,7 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
         description={t("tenantWebhooks.description")}
         notice={t("common.noPermission")}
       >
-        <div className="shellPage__panel">
+        <div className={`${styles.panel}`}>
           <ShellEmptyState description={t("tenantWebhooks.empty")} />
         </div>
       </ShellPageChrome>
@@ -264,13 +263,13 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
   }
 
   const WEBHOOK_CSS = `
-.wbCategoryGroup { margin-bottom: 12px; border: 1px solid var(--shell-border); border-radius: 10px; overflow: hidden; }
+.wbCategoryGroup { margin-bottom: 12px; border: 1px solid var(--border-shell); border-radius: 10px; overflow: hidden; }
 .wbCategoryHeader { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; cursor: pointer; background: rgba(255,255,255,0.03); font-size: 13px; font-weight: 700; }
 .wbCategoryHeader:hover { background: rgba(255,255,255,0.06); }
 .wbCategoryHeader:focus-visible { outline: 2px solid #3b82f6; outline-offset: -2px; }
 .wbCategoryBody { padding: 8px 14px 12px; display: flex; flex-direction: column; gap: 6px; }
-.wbEventCheck { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--shell-ink); cursor: pointer; }
-.wbEventCheck input { accent-color: var(--shell-accent); }
+.wbEventCheck { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-primary); cursor: pointer; }
+.wbEventCheck input { accent-color: var(--accent-shell); }
 .wbMetricSuccess { color: #22c55e; }
 .wbMetricFail { color: #ef4444; }
 `;
@@ -283,11 +282,11 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
       metrics={metrics}
       error={error || undefined}
     >
-      <section className="shellPage__stack">
+      <section className={`${styles.stack}`}>
         <style>{WEBHOOK_CSS}</style>
         {canManage && (
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-            <button onClick={openCreate} className="shellPage__button shellPage__button--primary" style={{ fontWeight: 700 }}>
+            <button onClick={openCreate} className={`${styles.button} ${styles.buttonPrimary}`} style={{ fontWeight: 700 }}>
               + {t("tenantWebhooks.createAction")}
             </button>
           </div>
@@ -320,20 +319,20 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {canManage && (
-                    <button onClick={() => openEdit(config)} className="shellPage__button shellPage__button--secondary" style={{ fontSize: 12 }}>{t("common.edit")}</button>
+                    <button onClick={() => openEdit(config)} className={`${styles.button} ${styles.buttonSecondary}`} style={{ fontSize: 12 }}>{t("common.edit")}</button>
                   )}
-                  <button onClick={() => { loadDeliveries(config.id); }} className="shellPage__button shellPage__button--secondary" style={{ fontSize: 12 }}>{t("tenantWebhooks.deliveryLog")}</button>
+                  <button onClick={() => { loadDeliveries(config.id); }} className={`${styles.button} ${styles.buttonSecondary}`} style={{ fontSize: 12 }}>{t("tenantWebhooks.deliveryLog")}</button>
                   {canManage && (
                     <>
-                      <button onClick={() => handleTest(config.id)} className="shellPage__button shellPage__button--secondary" style={{ fontSize: 12 }}>{t("tenantWebhooks.testAction")}</button>
-                      <button onClick={() => handleRegenerate(config.id)} className="shellPage__button shellPage__button--secondary" style={{ fontSize: 12 }}>{t("tenantWebhooks.regenerateAction")}</button>
-                      <button onClick={() => handleDelete(config)} className="shellPage__button" style={{ fontSize: 12, color: "#ef4444" }}>{t("common.delete")}</button>
+                      <button onClick={() => handleTest(config.id)} className={`${styles.button} ${styles.buttonSecondary}`} style={{ fontSize: 12 }}>{t("tenantWebhooks.testAction")}</button>
+                      <button onClick={() => handleRegenerate(config.id)} className={`${styles.button} ${styles.buttonSecondary}`} style={{ fontSize: 12 }}>{t("tenantWebhooks.regenerateAction")}</button>
+                      <button onClick={() => handleDelete(config)} className={`${styles.button}`} style={{ fontSize: 12, color: "#ef4444" }}>{t("common.delete")}</button>
                     </>
                   )}
                 </div>
 
                 {showDeliveryLog === config.id && (
-                  <div style={{ marginTop: 16, borderTop: "1px solid var(--shell-border)", paddingTop: 12 }}>
+                  <div style={{ marginTop: 16, borderTop: "1px solid var(--border-shell)", paddingTop: 12 }}>
                     <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: "#94a3b8" }}>{t("tenantWebhooks.deliveryLog")}</h4>
                     {deliveriesLoading ? (
                       <div style={{ fontSize: 12, color: "#94a3b8" }}>{t("common.loading")}</div>
@@ -373,7 +372,7 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
                                   {d.status === "failed" && (
                                     <button
                                       onClick={() => handleRetry(config.id, d.id)}
-                                      className="shellPage__button"
+                                      className={`${styles.button}`}
                                       style={{ fontSize: 11, padding: "2px 8px" }}
                                     >
                                       {t("tenantWebhooks.retryAction")}
@@ -388,7 +387,7 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
                     )}
                     <button
                       onClick={() => setShowDeliveryLog(null)}
-                      className="shellPage__button shellPage__button--secondary"
+                      className={`${styles.button} ${styles.buttonSecondary}`}
                       style={{ fontSize: 11, marginTop: 8 }}
                     >
                       {t("tenantWebhooks.closeLogAction")}
@@ -413,7 +412,7 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
                       setShowModal(false);
                     });
                   }}
-                  className="shellPage__button"
+                  className={`${styles.button}`}
                   style={{ fontSize: 12 }}
                 >
                   {t("tenantWebhooks.copyAndCloseAction")}
@@ -433,28 +432,28 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
                 {editingConfig ? t("tenantWebhooks.editTitle") : t("tenantWebhooks.createTitle")}
               </h3>
 
-              <div className="shellPage__fieldGroup" style={{ marginBottom: 12 }}>
-                <label className="shellPage__label">{t("tenantWebhooks.nameLabel")}</label>
+              <div className="fieldGroup" style={{ marginBottom: 12 }}>
+                <label className="fieldLabel">{t("tenantWebhooks.nameLabel")}</label>
                 <input
-                  className="shellPage__input"
+                  className={`${styles.input}`}
                   value={form.name}
                   onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
                   placeholder={t("tenantWebhooks.namePlaceholder")}
                 />
               </div>
 
-              <div className="shellPage__fieldGroup" style={{ marginBottom: 12 }}>
-                <label className="shellPage__label">{t("tenantWebhooks.urlLabel")}</label>
+              <div className="fieldGroup" style={{ marginBottom: 12 }}>
+                <label className="fieldLabel">{t("tenantWebhooks.urlLabel")}</label>
                 <input
-                  className="shellPage__input"
+                  className={`${styles.input}`}
                   value={form.url}
                   onChange={e => setForm(p => ({ ...p, url: e.target.value }))}
                   placeholder="https://hooks.example.com/events"
                 />
               </div>
 
-              <div className="shellPage__fieldGroup" style={{ marginBottom: 12 }}>
-                <label className="shellPage__label">{t("tenantWebhooks.eventsLabel")}</label>
+              <div className="fieldGroup" style={{ marginBottom: 12 }}>
+                <label className="fieldLabel">{t("tenantWebhooks.eventsLabel")}</label>
                 {Object.entries(EVENT_CATEGORIES).map(([cat, catInfo]) => {
                   const catEvents = catInfo.events;
                   const selectedInCat = form.events.filter(e => catEvents.includes(e));
@@ -499,23 +498,23 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-                <div className="shellPage__fieldGroup">
-                  <label className="shellPage__label">{t("tenantWebhooks.retryLabel")}</label>
-                  <input className="shellPage__input" type="number" min={0} max={10}
+                <div className="fieldGroup">
+                  <label className="fieldLabel">{t("tenantWebhooks.retryLabel")}</label>
+                  <input className={`${styles.input}`} type="number" min={0} max={10}
                     value={form.retry_count}
                     onChange={e => setForm(p => ({ ...p, retry_count: Math.max(0, Math.min(10, Number(e.target.value) || 0)) }))}
                   />
                 </div>
-                <div className="shellPage__fieldGroup">
-                  <label className="shellPage__label">{t("tenantWebhooks.timeoutLabel")}</label>
-                  <input className="shellPage__input" type="number" min={1} max={120}
+                <div className="fieldGroup">
+                  <label className="fieldLabel">{t("tenantWebhooks.timeoutLabel")}</label>
+                  <input className={`${styles.input}`} type="number" min={1} max={120}
                     value={form.timeout_seconds}
                     onChange={e => setForm(p => ({ ...p, timeout_seconds: Math.max(1, Math.min(120, Number(e.target.value) || 10)) }))}
                   />
                 </div>
               </div>
 
-              <div className="shellPage__fieldGroup" style={{ marginBottom: 16 }}>
+              <div className="fieldGroup" style={{ marginBottom: 16 }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "#cbd5e1" }}>
                   <input type="checkbox" checked={form.is_active}
                     onChange={e => setForm(p => ({ ...p, is_active: e.target.checked }))}
@@ -526,11 +525,11 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
 
               <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                 <button onClick={() => { setShowModal(false); setSecretReveal(null); }}
-                  className="shellPage__button shellPage__button--secondary" style={{ fontSize: 13 }}>
+                  className={`${styles.button} ${styles.buttonSecondary}`} style={{ fontSize: 13 }}>
                   {t("common.cancel")}
                 </button>
                 <button onClick={handleSubmit} disabled={submitting || !form.url}
-                  className="shellPage__button shellPage__button--primary" style={{ fontSize: 13, fontWeight: 700 }}>
+                  className={`${styles.button} ${styles.buttonPrimary}`} style={{ fontSize: 13, fontWeight: 700 }}>
                   {submitting ? t("common.saving") : (editingConfig ? t("common.save") : t("tenantWebhooks.createAction"))}
                 </button>
               </div>

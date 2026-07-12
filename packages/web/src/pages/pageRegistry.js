@@ -1,5 +1,5 @@
+import styles from "../components/ShellPageTemplate.module.css";
 import { createElement, useEffect, useRef, useState } from "react";
-
 function createDeferredPageComponent(loadComponent, routeId) {
   function DeferredPageComponent(props) {
     const [resolvedComponent, setResolvedComponent] = useState(null);
@@ -35,18 +35,18 @@ function createDeferredPageComponent(loadComponent, routeId) {
       return createElement(
         "article",
         {
-          className: "shellPage__panel",
+          className: `${styles.panel}`,
           role: "alert",
         },
-        createElement("h2", { className: "shellPage__panelTitle" }, "Không thể tải trang"),
-        createElement("p", { className: "shellPage__panelSubtitle" }, `Route ${routeId}: ${loadError}`),
+        createElement("h2", { className: `${styles.panelTitle}` }, "Không thể tải trang"),
+        createElement("p", { className: `${styles.panelSubtitle}` }, `Route ${routeId}: ${loadError}`),
       );
     }
 
     return createElement(
       "article",
       {
-        className: "shellPage__panel",
+        className: `${styles.panel}`,
         role: "status",
         "aria-live": "polite",
       },
@@ -87,13 +87,13 @@ function createDeferredPageComponent(loadComponent, routeId) {
             .loading-text {
               font-size: 18px;
               font-weight: 600;
-              color: var(--shell-ink, #f1f5f9);
+              color: var(--text-primary, #f1f5f9);
               margin-top: 20px;
               letter-spacing: 0.05em;
             }
             .loading-subtext {
               font-size: 13px;
-              color: var(--shell-muted, #94a3b8);
+              color: var(--text-secondary, #94a3b8);
               margin-top: 6px;
             }
           `

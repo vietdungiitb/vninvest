@@ -1,3 +1,4 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import { useEffect, useState } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField, ShellSelectField } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
@@ -7,7 +8,6 @@ import { usePortfolio } from "../../context/PortfolioContext.js";
 import { PolicyCheckboxes } from "../../components/PolicyCheckboxes.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
-
 interface ServiceAccount {
   service_account_id?: string;
   id?: string;
@@ -134,7 +134,7 @@ export function TenantAdminServiceAccountsPage({
         title={t("tenantServiceAccounts.title")}
         description={t("common.loading")}
       >
-        <div className="shellPage__panel">{t("common.loading")}</div>
+        <div className={`${styles.panel}`}>{t("common.loading")}</div>
       </ShellPageChrome>
     );
   }
@@ -147,7 +147,7 @@ export function TenantAdminServiceAccountsPage({
         description={t("tenantServiceAccounts.loadError")}
         error={error}
       >
-        <div className="shellPage__panel">{error}</div>
+        <div className={`${styles.panel}`}>{error}</div>
       </ShellPageChrome>
     );
   }
@@ -160,7 +160,7 @@ export function TenantAdminServiceAccountsPage({
         description={t("tenantServiceAccounts.description")}
         notice={t("common.noPermission")}
       >
-        <div className="shellPage__panel">
+        <div className={`${styles.panel}`}>
           <ShellEmptyState description={t("tenantServiceAccounts.emptyState")} />
         </div>
       </ShellPageChrome>
@@ -181,14 +181,14 @@ export function TenantAdminServiceAccountsPage({
       description={t("tenantServiceAccounts.description")}
       metrics={metrics}
     >
-      <section className="shellPage__stack">
+      <section className={`${styles.stack}`}>
           <ShellPanel
             title={t("tenantServiceAccounts.listTitle")}
             subtitle={`${serviceAccounts.length}`}
             actions={
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="shellPage__button shellPage__button--primary"
+                className={`${styles.button} ${styles.buttonPrimary}`}
               >
                 + {t("tenantServiceAccounts.createTitle")}
               </button>
@@ -230,7 +230,7 @@ export function TenantAdminServiceAccountsPage({
                           <td style={{ padding: "12px", fontWeight: 500 }}>{sa.name}</td>
                           <td style={{ padding: "12px" }}>
                             <span
-                              className="shellPage__pill"
+                              className={`${styles.pill}`}
                               style={{
                                 background: isProd ? "rgba(0,180,216,0.2)" : "rgba(148,163,184,0.2)",
                                 color: isProd ? "#00b4d8" : "#94a3b8",
@@ -241,7 +241,7 @@ export function TenantAdminServiceAccountsPage({
                           </td>
                           <td style={{ padding: "12px" }}>
                             <span
-                              className="shellPage__pill"
+                              className={`${styles.pill}`}
                               style={{
                                 background: sa.status === "active" ? "rgba(34,197,94,0.2)" : "rgba(255,127,80,0.2)",
                                 color: sa.status === "active" ? "#22c55e" : "#ff7f50",
@@ -255,7 +255,7 @@ export function TenantAdminServiceAccountsPage({
                               {(sa.policy_ids || sa.metadata?.policy_ids || []).map((policy: string) => (
                                 <span
                                   key={policy}
-                                  className="shellPage__pill"
+                                  className={`${styles.pill}`}
                                   style={{ background: "rgba(0,180,216,0.15)", color: "#00b4d8" }}
                                 >
                                   {policy}
@@ -271,7 +271,7 @@ export function TenantAdminServiceAccountsPage({
                             <div style={{ display: "flex", gap: "8px" }}>
                               <button
                                 onClick={() => handleToggleStatus(sa)}
-                                className="shellPage__button"
+                                className={`${styles.button}`}
                                 style={{
                                   padding: "6px 12px",
                                   background: sa.status === "active" ? "rgba(255,127,80,0.15)" : "rgba(34,197,94,0.15)",
@@ -286,7 +286,7 @@ export function TenantAdminServiceAccountsPage({
                               </button>
                               <button
                                 onClick={() => handleDeleteSA(saId!)}
-                                className="shellPage__button"
+                                className={`${styles.button}`}
                                 style={{
                                   padding: "6px 12px",
                                   background: "rgba(255,127,80,0.15)",
@@ -360,7 +360,7 @@ export function TenantAdminServiceAccountsPage({
                     ]}
                   />
                   <div style={{ marginBottom: "16px" }}>
-                    <label className="shellPage__fieldLabel">{t("tenantServiceAccounts.policyHeader")}</label>
+                    <label className={`${styles.fieldLabel}`}>{t("tenantServiceAccounts.policyHeader")}</label>
                     <PolicyCheckboxes
                       selectedPolicies={createForm.policy_ids}
                       onChange={(policies: string[]) => setCreateForm(prev => ({ ...prev, policy_ids: policies }))}
@@ -370,14 +370,14 @@ export function TenantAdminServiceAccountsPage({
                     <button
                       type="button"
                       onClick={() => setShowCreateModal(false)}
-                      className="shellPage__button shellPage__button--secondary"
+                      className={`${styles.button} ${styles.buttonSecondary}`}
                     >
                       {t("tenantServiceAccounts.cancelAction")}
                     </button>
                     <button
                       type="submit"
                       disabled={submitting}
-                      className="shellPage__button shellPage__button--primary"
+                      className={`${styles.button} ${styles.buttonPrimary}`}
                     >
                       {submitting ? t("tenantServiceAccounts.submitting") : t("tenantServiceAccounts.createAction")}
                     </button>

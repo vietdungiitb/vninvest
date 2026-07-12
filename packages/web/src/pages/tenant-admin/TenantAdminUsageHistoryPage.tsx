@@ -1,3 +1,4 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Area,
@@ -15,7 +16,6 @@ import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
-
 interface DailyPoint {
   date: string;
   consumed: number;
@@ -119,7 +119,7 @@ export function TenantAdminUsageHistoryPage({
         description={t("tenantUsageHistory.description")}
         notice={t("common.noPermission")}
       >
-        <div className="shellPage__panel">
+        <div className={`${styles.panel}`}>
           <ShellEmptyState description={t("common.noPermission")} />
         </div>
       </ShellPageChrome>
@@ -148,28 +148,28 @@ export function TenantAdminUsageHistoryPage({
         description={t("tenantUsageHistory.loadError")}
         error={error}
       >
-        <div className="shellPage__panel">{error}</div>
+        <div className={`${styles.panel}`}>{error}</div>
       </ShellPageChrome>
     );
   }
 
   const refreshAction = (
-    <button onClick={() => loadHistory(days)} className="shellPage__button shellPage__button--secondary">
+    <button onClick={() => loadHistory(days)} className={`${styles.button} ${styles.buttonSecondary}`}>
       {t("common.refresh")}
     </button>
   );
 
   const chartTypeButtons = (
-    <div className="shellPage__actions" style={{ gap: 8 }}>
+    <div className={`${styles.actions}`} style={{ gap: 8 }}>
       {(["area", "bar"] as const).map((type) => (
         <button
           key={type}
           onClick={() => setChartType(type)}
-          className="shellPage__button"
+          className={`${styles.button}`}
           style={{
             background: chartType === type ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)",
-            color: chartType === type ? "var(--shell-accent)" : "var(--shell-ink)",
-            border: chartType === type ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--shell-border)",
+            color: chartType === type ? "var(--accent-shell)" : "var(--text-primary)",
+            border: chartType === type ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)",
             borderRadius: 14,
             padding: "6px 14px",
             fontSize: 12,
@@ -184,16 +184,16 @@ export function TenantAdminUsageHistoryPage({
   );
 
   const daysButtons = (
-    <div className="shellPage__actions" style={{ gap: 8 }}>
+    <div className={`${styles.actions}`} style={{ gap: 8 }}>
       {[7, 14, 30, 90].map((d) => (
         <button
           key={d}
           onClick={() => loadHistory(d)}
-          className="shellPage__button"
+          className={`${styles.button}`}
           style={{
             background: days === d ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)",
-            color: days === d ? "var(--shell-accent)" : "var(--shell-ink)",
-            border: days === d ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--shell-border)",
+            color: days === d ? "var(--accent-shell)" : "var(--text-primary)",
+            border: days === d ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)",
             borderRadius: 14,
             padding: "6px 14px",
             fontSize: 12,
@@ -215,8 +215,8 @@ export function TenantAdminUsageHistoryPage({
           onClick={() => setSelectedMeter(m.code)}
           style={{
             background: selectedMeter === m.code ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)",
-            color: selectedMeter === m.code ? "var(--shell-accent)" : "var(--shell-ink)",
-            border: selectedMeter === m.code ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--shell-border)",
+            color: selectedMeter === m.code ? "var(--accent-shell)" : "var(--text-primary)",
+            border: selectedMeter === m.code ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)",
             borderRadius: 12,
             padding: "6px 12px",
             fontSize: 12,
@@ -237,9 +237,9 @@ export function TenantAdminUsageHistoryPage({
       description={t("tenantUsageHistory.description")}
       metrics={metrics}
     >
-      <section className="shellPage__stack">
+      <section className={`${styles.stack}`}>
         <ShellPanel title={t("tenantUsageHistory.meterSelectorTitle")} actions={meterSelector}>
-          <div className="shellPage__itemMeta">{t("tenantUsageHistory.meterSelectorDesc")}</div>
+          <div className={`${styles.itemMeta}`}>{t("tenantUsageHistory.meterSelectorDesc")}</div>
         </ShellPanel>
 
         <ShellPanel title={t("tenantUsageHistory.chartTitle")} actions={chartTypeButtons}>
@@ -293,28 +293,28 @@ export function TenantAdminUsageHistoryPage({
         </ShellPanel>
 
         <ShellPanel title={t("tenantUsageHistory.detailTitle")} actions={refreshAction}>
-          <div className="shellPage__list">
+          <div className={`${styles.list}`}>
             {histories.length === 0 ? (
               <ShellEmptyState description={t("tenantUsageHistory.noMeters")} />
             ) : (
               histories.map((h) => (
-                <div key={h.meter_code} className="shellPage__listItem">
-                  <div className="shellPage__listItemHeader">
+                <div key={h.meter_code} className={`${styles.listItem}`}>
+                  <div className={`${styles.listItemHeader}`}>
                     <div>
-                      <div className="shellPage__itemTitle">{h.display_name}</div>
+                      <div className={`${styles.itemTitle}`}>{h.display_name}</div>
                       <code style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginTop: "2px", fontFamily: "monospace" }}>
                         {h.meter_code}
                       </code>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                       <div>
-                        <span className="shellPage__itemMeta" style={{ display: "block", fontSize: "11px" }}>
+                        <span className={`${styles.itemMeta}`} style={{ display: "block", fontSize: "11px" }}>
                           {t("tenantUsageHistory.totalConsumed")}
                         </span>
                         <span style={{ color: "#cbd5e1", fontWeight: 600 }}>{fmtNumber(h.daily.reduce((s, d) => s + d.consumed, 0))}</span>
                       </div>
                       <div>
-                        <span className="shellPage__itemMeta" style={{ display: "block", fontSize: "11px" }}>
+                        <span className={`${styles.itemMeta}`} style={{ display: "block", fontSize: "11px" }}>
                           {t("tenantUsageHistory.avgDaily")}
                         </span>
                         <span style={{ color: "#cbd5e1", fontWeight: 600 }}>

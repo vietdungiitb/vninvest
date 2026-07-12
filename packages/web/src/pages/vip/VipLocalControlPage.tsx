@@ -1,3 +1,4 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import {
   startTransition,
   useEffect,
@@ -14,7 +15,6 @@ import {
   renderShellMetric,
 } from "../../components/ShellPageTemplate.js";
 import { loadShellBootstrap } from "../../context/bootstrapClient.js";
-
 const ROLE_OPTIONS = Object.freeze([
   { key: "vip_viewer", label: "Người xem VIP" },
   { key: "vip_operator", label: "Điều phối viên VIP" },
@@ -230,24 +230,24 @@ function renderUserItem(user: User) {
   const roleText = roleKeys.length > 0 ? roleKeys.map(getRoleLabel).join(" • ") : "Chưa gán vai trò";
 
   return (
-    <li className="shellPage__listItem" key={`${user.user_id}:${user.username}`}>
-      <div className="shellPage__listItemHeader">
-        <h3 className="shellPage__itemTitle">{user.username}</h3>
-        <span className="shellPage__pill">{roleText}</span>
+    <li className={`${styles.listItem}`} key={`${user.user_id}:${user.username}`}>
+      <div className={`${styles.listItemHeader}`}>
+        <h3 className={`${styles.itemTitle}`}>{user.username}</h3>
+        <span className={`${styles.pill}`}>{roleText}</span>
       </div>
-      <p className="shellPage__itemMeta">{user.email || "Chưa có email"} · Mã người dùng {user.user_id}</p>
+      <p className={`${styles.itemMeta}`}>{user.email || "Chưa có email"} · Mã người dùng {user.user_id}</p>
     </li>
   );
 }
 
 function renderAuditItem(entry: AuditEntry) {
   return (
-    <li className="shellPage__listItem" key={`${entry.audit_id}:${entry.action}`}>
-      <div className="shellPage__listItemHeader">
-        <h3 className="shellPage__itemTitle">{entry.action}</h3>
-        <span className="shellPage__pill">{formatTimestamp(entry.created_at)}</span>
+    <li className={`${styles.listItem}`} key={`${entry.audit_id}:${entry.action}`}>
+      <div className={`${styles.listItemHeader}`}>
+        <h3 className={`${styles.itemTitle}`}>{entry.action}</h3>
+        <span className={`${styles.pill}`}>{formatTimestamp(entry.created_at)}</span>
       </div>
-      <p className="shellPage__itemMeta">Tác nhân: {entry.actor_username || "system"}</p>
+      <p className={`${styles.itemMeta}`}>Tác nhân: {entry.actor_username || "system"}</p>
     </li>
   );
 }
@@ -491,26 +491,26 @@ export function VipLocalControlPage({
 
   const sessionCards = (
     <>
-      <article className="shellPage__surfaceCard" key="session">
-        <h3 className="shellPage__itemTitle">Tóm tắt phiên local</h3>
-        <p className="shellPage__itemMeta">Tài khoản: {currentSessionUsername}</p>
-        <p className="shellPage__itemMeta">Mã phiên: {currentSessionId}</p>
+      <article className={`${styles.surfaceCard}`} key="session">
+        <h3 className={`${styles.itemTitle}`}>Tóm tắt phiên local</h3>
+        <p className={`${styles.itemMeta}`}>Tài khoản: {currentSessionUsername}</p>
+        <p className={`${styles.itemMeta}`}>Mã phiên: {currentSessionId}</p>
       </article>
-      <article className="shellPage__surfaceCard" key="surface">
-        <h3 className="shellPage__itemTitle">Health và route đang mở</h3>
-        <p className="shellPage__itemMeta">Dịch vụ: {viewState.health?.service || "vip-app-local-api"}</p>
-        <p className="shellPage__itemMeta">Route nhìn thấy: {visibleRouteCount}</p>
+      <article className={`${styles.surfaceCard}`} key="surface">
+        <h3 className={`${styles.itemTitle}`}>Health và route đang mở</h3>
+        <p className={`${styles.itemMeta}`}>Dịch vụ: {viewState.health?.service || "vip-app-local-api"}</p>
+        <p className={`${styles.itemMeta}`}>Route nhìn thấy: {visibleRouteCount}</p>
       </article>
     </>
   );
 
   const userList = viewState.users.length > 0
-    ? <ul className="shellPage__list" key="user-list">{viewState.users.map(renderUserItem)}</ul>
-    : <div className="shellPage__empty" key="user-empty">Local backend chưa có người dùng nào ngoài seed user.</div>;
+    ? <ul className={`${styles.list}`} key="user-list">{viewState.users.map(renderUserItem)}</ul>
+    : <div className={`${styles.empty}`} key="user-empty">Local backend chưa có người dùng nào ngoài seed user.</div>;
 
   const auditList = viewState.auditLogs.length > 0
-    ? <ol className="shellPage__list" key="audit-list">{viewState.auditLogs.map(renderAuditItem)}</ol>
-    : <div className="shellPage__empty" key="audit-empty">Nhật ký audit chưa có bản ghi nào để hiển thị.</div>;
+    ? <ol className={`${styles.list}`} key="audit-list">{viewState.auditLogs.map(renderAuditItem)}</ol>
+    : <div className={`${styles.empty}`} key="audit-empty">Nhật ký audit chưa có bản ghi nào để hiển thị.</div>;
 
   return (
     <ShellPageChrome
@@ -518,8 +518,8 @@ export function VipLocalControlPage({
       title="Trung tâm điều khiển VIP cục bộ"
       description="Bề mặt này neo trực tiếp vào local backend của VIP để đăng nhập thử, rà soát tài khoản con và đọc chuỗi audit gần nhất mà không cần tự ghép URL ngoài adapter seam."
       badge={
-        <div className="shellPage__heroBadge">
-          <span className="shellPage__statusDot" />
+        <div className={`${styles.heroBadge}`}>
+          <span className={`${styles.statusDot}`} />
           {viewState.loading || viewState.working ? "Đang đồng bộ local backend" : "Local backend sẵn sàng cho audit"}
         </div>
       }
@@ -527,16 +527,16 @@ export function VipLocalControlPage({
       notice={viewState.notice}
       error={viewState.error}
     >
-      <section className="shellPage__bodyGrid">
-        <div className="shellPage__stack">
+      <section className={`${styles.bodyGrid}`}>
+        <div className={`${styles.stack}`}>
           <ShellPanel
             title="Đăng nhập và phục hồi phiên"
             subtitle="Dùng seed account mặc định hoặc đăng nhập bằng sub-user đã tạo ngay trong local backend."
             actions={
-              <div className="shellPage__actions">
+              <div className={`${styles.actions}`}>
                 <button
                   type="button"
-                  className="shellPage__button shellPage__button--secondary"
+                  className={`${styles.button} ${styles.buttonSecondary}`}
                   onClick={handleRefresh}
                   disabled={viewState.working}
                 >
@@ -545,11 +545,11 @@ export function VipLocalControlPage({
               </div>
             }
           >
-            <section className="shellPage__summaryGrid" key="session-grid">
+            <section className={`${styles.summaryGrid}`} key="session-grid">
               {sessionCards}
             </section>
-            <form className="shellPage__form" onSubmit={handleLogin} key="login-form">
-              <div className="shellPage__formGrid">
+            <form className={`${styles.form}`} onSubmit={handleLogin} key="login-form">
+              <div className={`${styles.formGrid}`}>
                 <ShellField
                   label="Tên đăng nhập local"
                   name="vip-local-username"
@@ -574,17 +574,17 @@ export function VipLocalControlPage({
                   }}
                 />
               </div>
-              <div className="shellPage__actions">
+              <div className={`${styles.actions}`}>
                 <button
                   type="submit"
-                  className="shellPage__button shellPage__button--primary"
+                  className={`${styles.button} ${styles.buttonPrimary}`}
                   disabled={viewState.working}
                 >
                   Đăng nhập local
                 </button>
                 <button
                   type="button"
-                  className="shellPage__button shellPage__button--signal"
+                  className={`${styles.button} ${styles.buttonSignal}`}
                   onClick={handleResetSession}
                   disabled={viewState.working}
                 >
@@ -592,7 +592,7 @@ export function VipLocalControlPage({
                 </button>
                 <button
                   type="button"
-                  className="shellPage__button shellPage__button--secondary"
+                  className={`${styles.button} ${styles.buttonSecondary}`}
                   onClick={handleLogout}
                   disabled={viewState.working}
                 >
@@ -605,8 +605,8 @@ export function VipLocalControlPage({
             title="Danh sách người dùng cục bộ"
             subtitle="Tạo nhanh sub-user để test lane operator/admin trước khi dựng các surface sâu hơn."
           >
-            <form className="shellPage__form" onSubmit={handleUserSubmit} key="user-form">
-              <div className="shellPage__formGrid">
+            <form className={`${styles.form}`} onSubmit={handleUserSubmit} key="user-form">
+              <div className={`${styles.formGrid}`}>
                 <ShellField
                   label="Tên đăng nhập mới"
                   name="vip-user-username"
@@ -653,10 +653,10 @@ export function VipLocalControlPage({
                   }}
                 />
               </div>
-              <div className="shellPage__actions">
+              <div className={`${styles.actions}`}>
                 <button
                   type="submit"
-                  className="shellPage__button shellPage__button--primary"
+                  className={`${styles.button} ${styles.buttonPrimary}`}
                   disabled={viewState.working}
                 >
                   Lưu người dùng local
@@ -670,8 +670,8 @@ export function VipLocalControlPage({
           title="Nhật ký audit gần nhất"
           subtitle="Theo dõi nhanh chuỗi đăng nhập, reset phiên và thay đổi RBAC để auditor có thể kiểm tra ngay trên route local control."
           actions={
-            <div className="shellPage__actions">
-              <span className="shellPage__pill">Health: {viewState.health?.ok ? "OK" : "Chưa xác nhận"}</span>
+            <div className={`${styles.actions}`}>
+              <span className={`${styles.pill}`}>Health: {viewState.health?.ok ? "OK" : "Chưa xác nhận"}</span>
             </div>
           }
         >

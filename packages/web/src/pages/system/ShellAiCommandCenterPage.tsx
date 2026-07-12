@@ -1,3 +1,4 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import { useState, useEffect, useRef } from "react";
 import {
   ShellPageChrome,
@@ -21,7 +22,6 @@ import {
   useCoreShellPageSnapshot,
 } from "../coreShellPageHelpers.js";
 import { PROVIDER_MODELS, PROVIDER_OPTIONS } from "../../shared/providerModels.js";
-
 interface AISettings {
   ai_provider?: string;
   ai_model?: string;
@@ -320,8 +320,8 @@ export function ShellAiCommandCenterPage({
       title="Trung tâm điều hành AI shell"
       description="Trang này cho phép cấu hình Nhà cung cấp AI và Mô hình AI tương ứng trực tiếp cho core runtime, kết nối đồng bộ an toàn qua SaaS-native endpoints."
       badge={(
-        <div className="shellPage__heroBadge">
-          <span className="shellPage__statusDot" />
+        <div className={`${styles.heroBadge}`}>
+          <span className={`${styles.statusDot}`} />
           {viewState.loading ? "Đang đồng bộ..." : "Sẵn sàng hoạt động"}
         </div>
       )}
@@ -329,19 +329,19 @@ export function ShellAiCommandCenterPage({
       notice={settingsNotice || viewState.notice}
       error={settingsError || viewState.error}
     >
-      <section className="shellPage__bodyGrid">
-        <div className="shellPage__stack">
+      <section className={`${styles.bodyGrid}`}>
+        <div className={`${styles.stack}`}>
           <ShellPanel
             title="Cấu hình AI Runtime"
             subtitle="Thiết lập nhà cung cấp AI, lựa chọn mô hình và API key an toàn."
             actions={renderRefreshAction({ onClick: () => loadSettings(true), disabled: loadingSettings, label: "Làm mới form" })}
           >
             {loadingSettings ? (
-              <div className="shellPage__empty">Đang tải cấu hình AI...</div>
+              <div className={`${styles.empty}`}>Đang tải cấu hình AI...</div>
             ) : (
               <>
-                <form key="ai-settings-form" className="shellPage__form" onSubmit={handleSaveSettings}>
-                  <div className="shellPage__formGrid">
+                <form key="ai-settings-form" className={`${styles.form}`} onSubmit={handleSaveSettings}>
+                  <div className={`${styles.formGrid}`}>
                     {renderShellSelectField({
                       label: "Nhà cung cấp AI",
                       name: "ai-provider-select",
@@ -359,7 +359,7 @@ export function ShellAiCommandCenterPage({
                   </div>
 
                   {showCustomModel ? (
-                    <div className="shellPage__formGrid" key="custom-model-block">
+                    <div className={`${styles.formGrid}`} key="custom-model-block">
                       {renderShellField({
                         label: "Tên mô hình tùy chỉnh",
                         name: "ai-custom-model-input",
@@ -371,7 +371,7 @@ export function ShellAiCommandCenterPage({
                     </div>
                   ) : null}
 
-                  <div className="shellPage__formGrid">
+                  <div className={`${styles.formGrid}`}>
                     {renderShellField({
                       label: "API Key",
                       name: "ai-api-key-input",
@@ -393,7 +393,7 @@ export function ShellAiCommandCenterPage({
                     })}
                   </div>
 
-                  <div className="shellPage__formGrid">
+                  <div className={`${styles.formGrid}`}>
                     {renderShellField({
                       label: "Khoảng làm mới tự động (giờ)",
                       name: "ai-refresh-input",
@@ -404,11 +404,11 @@ export function ShellAiCommandCenterPage({
                     })}
                   </div>
 
-                  <div className="shellPage__actions" style={{ marginTop: "12px" }}>
-                    <button type="submit" className="shellPage__button shellPage__button--primary" disabled={savingSettings}>
+                  <div className={`${styles.actions}`} style={{ marginTop: "12px" }}>
+                    <button type="submit" className={`${styles.button} ${styles.buttonPrimary}`} disabled={savingSettings}>
                       {savingSettings ? "Đang lưu cấu hình..." : "Lưu cấu hình"}
                     </button>
-                    <button type="button" className="shellPage__button shellPage__button--secondary" onClick={testConnection} disabled={testStatus === "testing"}>
+                    <button type="button" className={`${styles.button} ${styles.buttonSecondary}`} onClick={testConnection} disabled={testStatus === "testing"}>
                       {testStatus === "testing" ? "Đang kết nối..." : "Kiểm tra kết nối"}
                     </button>
                   </div>
@@ -417,7 +417,7 @@ export function ShellAiCommandCenterPage({
                 {testStatus && testResult ? (
                   <div
                     key="test-feedback"
-                    className={`shellPage__banner shellPage__banner--${testStatus === "success" ? "notice" : "error"}`}
+                    className={`${styles.banner} ${styles.banner}--${testStatus === "success" ? "notice" : "error"}`}
                     style={{ marginTop: "14px" }}
                   >
                     {testResult}
@@ -431,7 +431,7 @@ export function ShellAiCommandCenterPage({
             title="Snapshot operator và runtime"
             subtitle="Đọc nhanh session, build meta và runtime health trước khi nối các control AI thật vào page này."
           >
-            <section className="shellPage__summaryGrid">
+            <section className={`${styles.summaryGrid}`}>
               {summaryCards}
             </section>
           </ShellPanel>
@@ -443,7 +443,7 @@ export function ShellAiCommandCenterPage({
           actions={renderHealthStatusPill(health)}
         >
           <div key="ai-groups-block">
-            <h3 className="shellPage__itemTitle">AI Groups & Routes</h3>
+            <h3 className={`${styles.itemTitle}`}>AI Groups & Routes</h3>
             {renderFlagList(groupFlags, "Session hiện chưa mở group điều hướng nào.", "ai-groups")}
             <div style={{ height: "10px" }} />
             {renderFlagList(routeFlags, "Runtime hiện chưa expose route AI nào.", "ai-routes")}

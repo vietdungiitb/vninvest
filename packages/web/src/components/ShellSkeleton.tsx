@@ -13,13 +13,13 @@ const baseKeyframes = `
 
 const pulseStyle: React.CSSProperties = {
   animation: "shellPulse 1.5s ease-in-out infinite",
-  background: "var(--shell-border, rgba(255,255,255,0.08))",
+  background: "var(--border-shell, rgba(255,255,255,0.08))",
   borderRadius: 6,
 };
 
 const shimmerStyle: React.CSSProperties = {
   animation: "shellShimmer 2s ease-in-out infinite",
-  background: "linear-gradient(90deg, var(--shell-border, rgba(255,255,255,0.06)) 0%, var(--shell-surface, rgba(255,255,255,0.12)) 50%, var(--shell-border, rgba(255,255,255,0.06)) 100%)",
+  background: "linear-gradient(90deg, var(--border-shell, rgba(255,255,255,0.06)) 0%, var(--bg-shell-surface, rgba(255,255,255,0.12)) 50%, var(--border-shell, rgba(255,255,255,0.06)) 100%)",
   backgroundSize: "200% 100%",
   borderRadius: 6,
 };
@@ -58,8 +58,8 @@ export function ShellSkeleton({
   const Bar = anim === "shimmer" ? Shimmer : Pulse;
 
   const baseSurface: React.CSSProperties = {
-    background: "var(--shell-surface, rgba(15,23,42,0.65))",
-    border: "1px solid var(--shell-border, rgba(255,255,255,0.08))",
+    background: "var(--bg-shell-surface, rgba(15,23,42,0.65))",
+    border: "1px solid var(--border-shell, rgba(255,255,255,0.08))",
     borderRadius: 12,
   };
 

@@ -1,3 +1,4 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import { useEffect, useState, useCallback } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
@@ -7,7 +8,6 @@ import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
-
 interface ScheduledReport {
   id: number;
   name: string;
@@ -168,7 +168,7 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
   ];
 
   const createAction = canManage ? (
-    <button onClick={() => setShowCreateModal(true)} className="shellPage__button shellPage__button--primary">
+    <button onClick={() => setShowCreateModal(true)} className={`${styles.button} ${styles.buttonPrimary}`}>
       {t("tenantReports.createAction")}
     </button>
   ) : null;
@@ -206,41 +206,41 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
       metrics={metrics}
       error={error || undefined}
     >
-      <div className="shellPage__stack">
+      <div className={`${styles.stack}`}>
         {reports.length === 0 ? (
           <ShellPanel title={t("tenantReports.listTitle")} actions={canManage ? createAction : null}>
             <ShellEmptyState description={t("tenantReports.empty")} ctaLabel={t("tenantReports.createAction")} ctaOnClick={() => setShowCreateModal(true)} />
           </ShellPanel>
         ) : (
           <ShellPanel title={t("tenantReports.listTitle")} subtitle={`${reports.length}`} actions={canManage ? createAction : null}>
-            <div className="shellPage__list">
+            <div className={`${styles.list}`}>
               {reports.map(report => (
-                <div key={report.id} className="shellPage__listItem" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div key={report.id} className={`${styles.listItem}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
-                    <div className="shellPage__itemTitle" style={{ fontSize: "14px" }}>
+                    <div className={`${styles.itemTitle}`} style={{ fontSize: "14px" }}>
                       {report.name}
                       {!report.is_active && <span style={{ color: "#f59e0b", marginLeft: "8px", fontSize: "11px" }}>({t("tenantReports.paused")})</span>}
                     </div>
-                    <div className="shellPage__itemMeta" style={{ marginTop: "2px" }}>
+                    <div className={`${styles.itemMeta}`} style={{ marginTop: "2px" }}>
                       {getReportTypeLabel(report.report_type, t)} · {getScheduleLabel(report.schedule, t)} · {report.format.toUpperCase()}
                     </div>
-                    <div className="shellPage__itemMeta" style={{ marginTop: "2px" }}>
+                    <div className={`${styles.itemMeta}`} style={{ marginTop: "2px" }}>
                       {t("tenantReports.recipients")}: {report.recipients.join(", ")}
                     </div>
-                    <div className="shellPage__itemMeta" style={{ marginTop: "2px" }}>
+                    <div className={`${styles.itemMeta}`} style={{ marginTop: "2px" }}>
                       {t("tenantReports.lastSent")}: {formatDateField(report.last_sent_at, fmtDate)} · {t("tenantReports.deliveries")}: {report.total_deliveries}
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                     {canManage && (
                       <>
-                        <button onClick={() => handleToggleActive(report)} className="shellPage__button shellPage__button--secondary" style={{ fontSize: "11px", padding: "4px 8px" }}>
+                        <button onClick={() => handleToggleActive(report)} className={`${styles.button} ${styles.buttonSecondary}`} style={{ fontSize: "11px", padding: "4px 8px" }}>
                           {report.is_active ? t("tenantReports.pauseAction") : t("tenantReports.resumeAction")}
                         </button>
-                        <button onClick={() => handleTest(report)} disabled={testingId === report.id} className="shellPage__button shellPage__button--secondary" style={{ fontSize: "11px", padding: "4px 8px" }}>
+                        <button onClick={() => handleTest(report)} disabled={testingId === report.id} className={`${styles.button} ${styles.buttonSecondary}`} style={{ fontSize: "11px", padding: "4px 8px" }}>
                           {testingId === report.id ? "..." : t("tenantReports.testAction")}
                         </button>
-                        <button onClick={() => handleDelete(report)} className="shellPage__button shellPage__button--danger" style={{ fontSize: "11px", padding: "4px 8px" }}>
+                        <button onClick={() => handleDelete(report)} className={`${styles.button} "${styles.button}--danger"`} style={{ fontSize: "11px", padding: "4px 8px" }}>
                           {t("tenantReports.deleteAction")}
                         </button>
                       </>
@@ -254,8 +254,8 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
       </div>
 
       {showCreateModal && (
-        <div className="shellPage__modal" onClick={() => setShowCreateModal(false)}>
-          <div className="shellPage__modalContent" onClick={e => e.stopPropagation()}>
+        <div className={`${styles.modal}`} onClick={() => setShowCreateModal(false)}>
+          <div className={`${styles.modalContent}`} onClick={e => e.stopPropagation()}>
             <h3 style={{ margin: "0 0 16px", color: "#cbd5e1" }}>{t("tenantReports.createTitle")}</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               <label style={{ fontSize: "12px", color: "#94a3b8" }}>{t("tenantReports.nameLabel")}</label>
@@ -263,14 +263,14 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
                 type="text"
                 value={formData.name}
                 onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                className="shellPage__input"
+                className={`${styles.input}`}
                 placeholder={t("tenantReports.namePlaceholder")}
               />
               <label style={{ fontSize: "12px", color: "#94a3b8" }}>{t("tenantReports.typeLabel")}</label>
               <select
                 value={formData.report_type}
                 onChange={e => setFormData(prev => ({ ...prev, report_type: e.target.value }))}
-                className="shellPage__input"
+                className={`${styles.input}`}
               >
                 {REPORT_TYPES.map(type => (
                   <option key={type} value={type}>{getReportTypeLabel(type, t)}</option>
@@ -280,7 +280,7 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
               <select
                 value={formData.schedule}
                 onChange={e => setFormData(prev => ({ ...prev, schedule: e.target.value }))}
-                className="shellPage__input"
+                className={`${styles.input}`}
               >
                 {SCHEDULES.map(sch => (
                   <option key={sch} value={sch}>{getScheduleLabel(sch, t)}</option>
@@ -312,13 +312,13 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
                       updated[i] = e.target.value;
                       setFormData(prev => ({ ...prev, recipients: updated }));
                     }}
-                    className="shellPage__input"
+                    className={`${styles.input}`}
                     placeholder="email@example.com"
                   />
                   {formData.recipients.length > 1 && (
                     <button
                       onClick={() => setFormData(prev => ({ ...prev, recipients: prev.recipients.filter((_, j) => j !== i) }))}
-                      className="shellPage__button shellPage__button--danger"
+                      className={`${styles.button} "${styles.button}--danger"`}
                       style={{ fontSize: "11px", padding: "4px 8px" }}
                     >
                       &times;
@@ -327,7 +327,7 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
                   {i === formData.recipients.length - 1 && (
                     <button
                       onClick={() => setFormData(prev => ({ ...prev, recipients: [...prev.recipients, ""] }))}
-                      className="shellPage__button shellPage__button--secondary"
+                      className={`${styles.button} ${styles.buttonSecondary}`}
                       style={{ fontSize: "11px", padding: "4px 8px" }}
                     >
                       +{t("tenantReports.addRecipient")}
@@ -336,10 +336,10 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
                 </div>
               ))}
               <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "8px" }}>
-                <button onClick={() => setShowCreateModal(false)} className="shellPage__button shellPage__button--secondary">
+                <button onClick={() => setShowCreateModal(false)} className={`${styles.button} ${styles.buttonSecondary}`}>
                   {t("tenantReports.cancelAction")}
                 </button>
-                <button onClick={handleCreate} disabled={saving} className="shellPage__button shellPage__button--primary">
+                <button onClick={handleCreate} disabled={saving} className={`${styles.button} ${styles.buttonPrimary}`}>
                   {saving ? "..." : t("tenantReports.createAction")}
                 </button>
               </div>

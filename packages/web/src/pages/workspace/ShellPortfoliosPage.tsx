@@ -1,3 +1,4 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import {
   ShellPageChrome,
   ShellPanel,
@@ -109,8 +110,8 @@ export function ShellPortfoliosPage({
       title="Trung tâm danh mục và workspace"
       description="Trang này xác nhận lane danh mục của core shell đã có route-level page thật, bám đúng workspace routes, ability danh mục và session bootstrap mà không cần mở contract backend mới."
       badge={(
-        <div className="shellPage__heroBadge">
-          <span className="shellPage__statusDot" />
+        <div className={`${styles.heroBadge}`}>
+          <span className={`${styles.statusDot}`} />
           {viewState.loading ? "Đang đồng bộ lane danh mục" : "Lane danh mục sẵn sàng cho kiểm tra"}
         </div>
       )}
@@ -118,14 +119,14 @@ export function ShellPortfoliosPage({
       notice={viewState.notice}
       error={viewState.error}
     >
-      <section className="shellPage__bodyGrid">
-        <div className="shellPage__stack">
+      <section className={`${styles.bodyGrid}`}>
+        <div className={`${styles.stack}`}>
           <ShellPanel
             title="Snapshot operator và runtime"
             subtitle="Đọc nhanh session, runtime health và build meta trước khi nối portfolio workspace thật vào shell này."
             actions={renderRefreshAction({ onClick: handleRefresh, disabled: viewState.loading })}
           >
-            <section className="shellPage__summaryGrid">
+            <section className={`${styles.summaryGrid}`}>
               {summaryCards}
             </section>
           </ShellPanel>
@@ -134,11 +135,11 @@ export function ShellPortfoliosPage({
             subtitle="Kiểm tra group `workspace` cùng route `portfolios` đã được runtime mở đúng theo bootstrap hiện tại hay chưa."
           >
             <div key="portfolio-groups">
-              <h3 className="shellPage__itemTitle">Visible groups</h3>
+              <h3 className={`${styles.itemTitle}`}>Visible groups</h3>
               {renderFlagList(groupFlags, "Session hiện chưa mở group điều hướng nào.", "portfolio-groups")}
             </div>
             <div key="portfolio-routes">
-              <h3 className="shellPage__itemTitle">Portfolio routes</h3>
+              <h3 className={`${styles.itemTitle}`}>Portfolio routes</h3>
               {renderFlagList(routeFlags, "Runtime hiện chưa expose route danh mục nào cho session này.", "portfolio-routes")}
             </div>
           </ShellPanel>
@@ -150,11 +151,11 @@ export function ShellPortfoliosPage({
         >
           {renderBuildMetaCard({ key: "portfolio-build-meta", buildMeta })}
           <div key="workspace-routes-all">
-            <h3 className="shellPage__itemTitle">Workspace routes</h3>
+            <h3 className={`${styles.itemTitle}`}>Workspace routes</h3>
             {renderValueList(workspaceRoutes, "Runtime hiện chưa mở route workspace nào.", "workspace-routes")}
           </div>
           <div key="portfolio-surfaces">
-            <h3 className="shellPage__itemTitle">Enabled surfaces</h3>
+            <h3 className={`${styles.itemTitle}`}>Enabled surfaces</h3>
             {renderValueList(enabledSurfaces, "Runtime chưa bật surface flag nào.", "portfolio-surfaces")}
           </div>
           {renderAbilityList({
@@ -162,10 +163,10 @@ export function ShellPortfoliosPage({
             emptyText: "Runtime hiện chưa trả về ability danh mục nào cho route này.",
             keyPrefix: "portfolio-ability",
           })}
-          <article className="shellPage__surfaceCard" key="portfolio-summary-card">
-            <h3 className="shellPage__itemTitle">Workspace summary</h3>
-            <p className="shellPage__itemMeta">Workspace routes visible: {workspaceRoutes.length}</p>
-            <p className="shellPage__itemMeta">Portfolio routes active: {countFlagsByState(routeFlags, "ACTIVE")}</p>
+          <article className={`${styles.surfaceCard}`} key="portfolio-summary-card">
+            <h3 className={`${styles.itemTitle}`}>Workspace summary</h3>
+            <p className={`${styles.itemMeta}`}>Workspace routes visible: {workspaceRoutes.length}</p>
+            <p className={`${styles.itemMeta}`}>Portfolio routes active: {countFlagsByState(routeFlags, "ACTIVE")}</p>
           </article>
         </ShellPanel>
       </section>

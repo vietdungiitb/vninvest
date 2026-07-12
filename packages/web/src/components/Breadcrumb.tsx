@@ -1,25 +1,24 @@
 import { createElement } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useI18n } from '@/context/LangContext.js';
-
 const BREADCRUMB_CSS = `
 .breadcrumb {
   font-size: 12px;
-  color: var(--shell-muted);
+  color: var(--text-secondary);
   margin-bottom: 16px;
   display: flex;
   gap: 6px;
   align-items: center;
 }
 .breadcrumb__link {
-  color: var(--shell-accent);
+  color: var(--accent-shell);
   text-decoration: none;
 }
 .breadcrumb__link:hover {
   text-decoration: underline;
 }
 .breadcrumb__sep {
-  color: var(--shell-border);
+  color: var(--border-shell);
 }
 `;
 

@@ -38,8 +38,8 @@ const SIDEBAR_CSS = `
   height: 100vh;
   position: sticky;
   top: 0;
-  background: var(--shell-surface);
-  border-right: 1px solid var(--shell-border);
+  background: var(--bg-shell-surface);
+  border-right: 1px solid var(--border-shell);
   transition: width 0.2s ease;
   overflow: hidden;
   flex-shrink: 0;
@@ -50,10 +50,10 @@ const SIDEBAR_CSS = `
   align-items: center;
   justify-content: center;
   height: 56px;
-  border-bottom: 1px solid var(--shell-border);
+  border-bottom: 1px solid var(--border-shell);
   font-weight: 800;
   font-size: 18px;
-  color: var(--shell-accent);
+  color: var(--accent-shell);
   letter-spacing: 0.05em;
   flex-shrink: 0;
 }
@@ -72,7 +72,7 @@ const SIDEBAR_CSS = `
   width: 100%;
   border: none;
   background: transparent;
-  color: var(--shell-muted);
+  color: var(--text-secondary);
   cursor: pointer;
   font-size: 13px;
   text-align: left;
@@ -84,18 +84,18 @@ const SIDEBAR_CSS = `
   white-space: nowrap;
 }
 .taSidebar__item:hover {
-  color: var(--shell-ink);
+  color: var(--text-primary);
   background: rgba(255, 255, 255, 0.04);
 }
 .taSidebar__item--active {
-  color: var(--shell-accent);
+  color: var(--accent-shell);
   font-weight: 700;
-  border-left-color: var(--shell-accent);
+  border-left-color: var(--accent-shell);
   background: rgba(0, 180, 216, 0.08);
 }
 .taSidebar__item--active:hover {
   background: rgba(0, 180, 216, 0.12);
-  color: var(--shell-accent);
+  color: var(--accent-shell);
 }
 .taSidebar__icon {
   flex-shrink: 0;
@@ -107,7 +107,7 @@ const SIDEBAR_CSS = `
   text-overflow: ellipsis;
 }
 .taSidebar__footer {
-  border-top: 1px solid var(--shell-border);
+  border-top: 1px solid var(--border-shell);
   padding: 8px;
   display: flex;
   justify-content: center;
@@ -122,13 +122,13 @@ const SIDEBAR_CSS = `
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: var(--shell-muted);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 .taSidebar__toggle:hover {
   background: rgba(255, 255, 255, 0.06);
-  color: var(--shell-ink);
+  color: var(--text-primary);
 }
 .taSidebar__toggleIcon {
   width: 18px;
