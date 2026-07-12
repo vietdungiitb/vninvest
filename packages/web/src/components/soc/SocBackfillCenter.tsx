@@ -19,7 +19,7 @@ const EXEC_OPTIONS = ["async", "sync"];
 const LABEL_STYLE: React.CSSProperties = {
   fontSize: "0.7rem",
   fontWeight: 600,
-  color: "var(--text-muted)",
+  color: "var(--text-muted, #94a3b8)",
   marginBottom: "0.25rem",
   display: "block",
 };
@@ -73,7 +73,7 @@ const ACTIVE_RUN_STYLES: Record<string, React.CSSProperties> = {
     display: "flex",
     gap: "0.75rem",
     fontSize: "0.6rem",
-    color: "var(--text-muted)",
+    color: "var(--text-muted, #94a3b8)",
     marginTop: "0.35rem",
   } as React.CSSProperties,
 };
@@ -97,6 +97,7 @@ export function SocBackfillCenter({ customGroups = [] }: SocBackfillCenterProps)
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { actions.refreshRuns(); }, []);
 
   const isCustom = selectedGroup === CUSTOM_GROUP_KEY;
@@ -113,6 +114,7 @@ export function SocBackfillCenter({ customGroups = [] }: SocBackfillCenterProps)
     dry_run: dryRun,
     execution_mode: executionMode,
     reason: reason.trim() || "ops_soc",
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [selectedDatasets, selectedGroup, customSymbols, dateFrom, dateTo, mode, dryRun, executionMode, reason]);
 
   const handleRun = async () => {
@@ -145,7 +147,7 @@ export function SocBackfillCenter({ customGroups = [] }: SocBackfillCenterProps)
   const getStatusColor = (s: string): string => {
     switch (s) {
       case "running": return "#34d399";
-      case "success": case "completed": return "var(--accent-cyan)";
+      case "success": case "completed": return "var(--accent-cyan, #06b6d4)";
       case "failed": return "#f87171";
       case "aborted": case "cancelled": return "#94a3b8";
       default: return "#fbbf24";
@@ -197,7 +199,7 @@ export function SocBackfillCenter({ customGroups = [] }: SocBackfillCenterProps)
               "span",
               { style: { fontSize: "0.72rem" } },
               createElement("span", { style: { fontWeight: 600, display: "block" } }, t(`soc.dataops.dataset_${key}`)),
-              createElement("span", { style: { fontSize: "0.62rem", color: "var(--text-muted)", display: "block", marginTop: "0.1rem" } },
+              createElement("span", { style: { fontSize: "0.62rem", color: "var(--text-muted, #94a3b8)", display: "block", marginTop: "0.1rem" } },
                 t(`soc.dataops.dataset_field_${key}`)),
             ),
           ),
@@ -240,7 +242,7 @@ export function SocBackfillCenter({ customGroups = [] }: SocBackfillCenterProps)
               placeholder: t("soc.dataops.backfill_custom_symbols_placeholder"),
               style: { minHeight: "60px", resize: "vertical", fontSize: "0.75rem", width: "100%" },
             }),
-            createElement("p", { style: { fontSize: "0.55rem", color: "var(--text-muted)", marginTop: "0.1rem" } },
+            createElement("p", { style: { fontSize: "0.55rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.1rem" } },
               t("soc.dataops.backfill_custom_symbols_hint")),
           )
         : null,
@@ -372,7 +374,7 @@ export function SocBackfillCenter({ customGroups = [] }: SocBackfillCenterProps)
       "div",
       { className: styles.sectionCard },
       createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.run_history_title")),
-      createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted)", margin: "0 0 0.75rem 0" } },
+      createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", margin: "0 0 0.75rem 0" } },
         t("soc.dataops.run_history_description")),
       loading.runs
         ? createElement("p", { className: styles.emptyState }, t("soc.dataops.loading_runs"))
@@ -397,7 +399,7 @@ export function SocBackfillCenter({ customGroups = [] }: SocBackfillCenterProps)
                     { style: { flex: 1, minWidth: 0 } },
                     createElement("div", { style: { fontWeight: 600, fontSize: "0.75rem" } },
                       t(`soc.dataops.dataset_${run.dataset}`) || run.dataset),
-                    createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted)" } },
+                    createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)" } },
                       `${run.run_id.slice(0, 8)}... \u2022 ${run.started_at?.split("T")[0] || "N/A"}`),
                   ),
                   createElement(
@@ -431,7 +433,7 @@ export function SocBackfillCenter({ customGroups = [] }: SocBackfillCenterProps)
       "div",
       { className: styles.sectionCard },
       createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.backfill_center")),
-      createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted)", margin: "0 0 0.75rem 0" } },
+      createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", margin: "0 0 0.75rem 0" } },
         t("soc.dataops.backfill_context_purpose")),
       renderDatasetCheckboxes(),
       renderSymbolGroupRadios(),

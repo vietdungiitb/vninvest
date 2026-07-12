@@ -123,9 +123,9 @@ export function ScreenerExport({ results, visibleColumns = DEFAULT_COLUMNS }: Sc
         style: {
           padding: "6px 12px",
           background: "rgba(15,23,42,0.6)",
-          border: "1px solid var(--border-default)",
+          border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
           borderRadius: "6px",
-          color: "var(--text-primary)",
+          color: "var(--text-primary, #f1f5f9)",
           fontSize: "12px",
           cursor: "pointer",
         },
@@ -140,9 +140,9 @@ export function ScreenerExport({ results, visibleColumns = DEFAULT_COLUMNS }: Sc
         style: {
           padding: "6px 12px",
           background: "rgba(15,23,42,0.6)",
-          border: "1px solid var(--border-default)",
+          border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
           borderRadius: "6px",
-          color: "var(--text-primary)",
+          color: "var(--text-primary, #f1f5f9)",
           fontSize: "12px",
           cursor: "pointer",
         },

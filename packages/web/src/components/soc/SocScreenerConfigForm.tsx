@@ -86,23 +86,23 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
     width: "100%",
     padding: "0.5rem",
     background: "rgba(15,23,42,0.6)",
-    border: "1px solid var(--border-default)",
+    border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
     borderRadius: "6px",
-    color: "var(--text-primary)",
+    color: "var(--text-primary, #f1f5f9)",
     fontSize: "0.875rem",
     outline: "none",
   };
 
   const field = (key: keyof typeof config, label: string, min?: number, max?: number) =>
     createElement("div", { style: { marginBottom: "1rem" } },
-      createElement("label", { style: { display: "block", marginBottom: "0.25rem", fontSize: "0.875rem", color: "var(--text-secondary)" } }, label),
+      createElement("label", { style: { display: "block", marginBottom: "0.25rem", fontSize: "0.875rem", color: "var(--text-secondary, #94a3b8)" } }, label),
       createElement("input", {
         type: "number",
         value: config[key],
         onChange: (e) => setConfig((prev) => ({ ...prev, [key]: parseInt(e.target.value, 10) || (min ?? 0) })),
         min: min,
         max: max,
-        style: { ...inputStyle, borderColor: errors[key as string] ? "var(--accent-red)" : "var(--border-default)" },
+        style: { ...inputStyle, borderColor: errors[key as string] ? "var(--accent-red)" : "var(--border-default, rgba(80, 120, 168, 0.28))" },
       }),
       errors[key as string] && createElement("p", { style: { marginTop: "0.25rem", fontSize: "0.75rem", color: "var(--accent-red)" } }, errors[key as string])
     );
@@ -119,7 +119,7 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
       ),
     ),
     createElement("details", { className: styles.sectionCard, style: { marginTop: "1rem" } },
-      createElement("summary", { style: { cursor: "pointer", color: "var(--text-muted)", fontSize: "0.875rem", fontWeight: 500 } },
+      createElement("summary", { style: { cursor: "pointer", color: "var(--text-muted, #94a3b8)", fontSize: "0.875rem", fontWeight: 500 } },
         t("soc.screener.config.advanced")
       ),
       createElement("div", { className: styles.configEditor, style: { marginTop: "0.75rem", fontFamily: "monospace", fontSize: "0.75rem" } },
@@ -130,14 +130,14 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
       createElement("button", {
         onClick: handleReset,
         className: styles.actionBtn,
-        style: { background: "rgba(15,23,42,0.6)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" },
+        style: { background: "rgba(15,23,42,0.6)", color: "var(--text-secondary, #94a3b8)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" },
       },
       t("soc.screener.config.reset")
       ),
       createElement("button", {
         onClick: onCancel,
         className: styles.actionBtn,
-        style: { background: "rgba(15,23,42,0.6)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" },
+        style: { background: "rgba(15,23,42,0.6)", color: "var(--text-secondary, #94a3b8)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" },
       },
       t("common.cancel")
       ),
@@ -145,7 +145,7 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
         onClick: handleSave,
         disabled: loading,
         className: styles.actionBtn,
-        style: { background: "var(--accent-cyan)", color: "#fff" },
+        style: { background: "var(--accent-cyan, #06b6d4)", color: "#fff" },
       },
       loading ? t("common.saving") : t("common.save")
       ),

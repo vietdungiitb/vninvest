@@ -96,7 +96,7 @@ export function SocMatrixScrapeMonitor() {
   const getStatusColor = (status: string): string => {
     switch (status) {
       case "running": return "#34d399";
-      case "completed": return "var(--accent-cyan)";
+      case "completed": return "var(--accent-cyan, #06b6d4)";
       case "failed": return "#f87171";
       case "aborted": return "#94a3b8";
       case "ready": return "#34d399";
@@ -150,7 +150,7 @@ export function SocMatrixScrapeMonitor() {
                             padding: "0.75rem",
                             borderRadius: "8px",
                             background: "rgba(15, 23, 42, 0.3)",
-                            border: "1px solid var(--border-default)",
+                            border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
                           },
                         },
                         createElement(
@@ -159,7 +159,7 @@ export function SocMatrixScrapeMonitor() {
                           createElement("div", { style: { fontWeight: 600, fontSize: "0.85rem" } },
                             `Cycle: ${cycle.cycle_id.slice(0, 8)}...`,
                           ),
-                          createElement("div", { style: { fontSize: "0.75rem", color: "var(--text-muted)" } },
+                          createElement("div", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)" } },
                             `${cycle.completed_cells || 0}/${cycle.total_cells || 0} cells \u2022 ${cycle.started_at?.split("T")[0] || "N/A"}`,
                           ),
                           cycle.progress != null

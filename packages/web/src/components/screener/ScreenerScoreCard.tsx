@@ -27,7 +27,7 @@ function actionColor(action: string): string {
     case "HOLD":
       return "#fbbf24";
     default:
-      return "var(--text-muted)";
+      return "var(--text-muted, #94a3b8)";
   }
 }
 
@@ -37,7 +37,7 @@ export function ScreenerScoreCard({ advisory }: ScreenerScoreCardProps) {
   if (!advisory) {
     return createElement(
       "span",
-      { style: { color: "var(--text-muted)", fontSize: "12px" } },
+      { style: { color: "var(--text-muted, #94a3b8)", fontSize: "12px" } },
       "—",
     );
   }
@@ -90,7 +90,7 @@ export function ScreenerScoreCard({ advisory }: ScreenerScoreCardProps) {
     ),
     createElement(
       "span",
-      { style: { fontSize: "10px", color: "var(--text-muted)" } },
+      { style: { fontSize: "10px", color: "var(--text-muted, #94a3b8)" } },
       "(" + t("screener.risk." + riskKey) + ")",
     ),
   );

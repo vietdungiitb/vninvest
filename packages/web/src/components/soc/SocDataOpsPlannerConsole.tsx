@@ -15,7 +15,7 @@ const PLANNER_DATASETS = [
 const LABEL_STYLE: React.CSSProperties = {
   fontSize: "0.7rem",
   fontWeight: 600,
-  color: "var(--text-muted)",
+  color: "var(--text-muted, #94a3b8)",
   marginBottom: "0.25rem",
   display: "block",
 };
@@ -164,7 +164,7 @@ export function SocDataOpsPlannerConsole() {
         onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setSymbols(e.target.value),
         style: { minHeight: "80px", resize: "vertical", fontSize: "0.75rem", width: "100%" },
       }),
-      createElement("p", { style: { fontSize: "0.6rem", color: "var(--text-muted)", marginTop: "0.15rem" } },
+      createElement("p", { style: { fontSize: "0.6rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.15rem" } },
         t("soc.dataops.planner_symbols_hint")),
     );
 
@@ -215,7 +215,7 @@ export function SocDataOpsPlannerConsole() {
           className: styles.actionBtn,
           onClick: handlePreview,
           disabled: previewing || submitting,
-          style: { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan)" },
+          style: { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan, #06b6d4)" },
         },
         previewing ? t("soc.dataops.planner_preview_loading") : t("soc.dataops.planner_preview"),
       ),
@@ -249,8 +249,8 @@ export function SocDataOpsPlannerConsole() {
         onClick: () => setExpanded(!expanded),
         style: {
           width: "100%", textAlign: "left", fontSize: "0.7rem",
-          background: "rgba(15, 23, 42, 0.3)", border: "1px solid var(--border-default)",
-          color: "var(--text-primary)", padding: "0.4rem 0.6rem",
+          background: "rgba(15, 23, 42, 0.3)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
+          color: "var(--text-primary, #f1f5f9)", padding: "0.4rem 0.6rem",
           cursor: "pointer",
         },
       },
@@ -272,7 +272,7 @@ export function SocDataOpsPlannerConsole() {
                 columns.map((c) =>
                   createElement("th", {
                     key: c.key,
-                    style: { textAlign: "left", padding: "0.3rem 0.5rem", borderBottom: "1px solid var(--border-default)", color: "#94a3b8", fontWeight: 600, whiteSpace: "nowrap" },
+                    style: { textAlign: "left", padding: "0.3rem 0.5rem", borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "#94a3b8", fontWeight: 600, whiteSpace: "nowrap" },
                   }, c.label),
                 ),
               ),
@@ -287,7 +287,7 @@ export function SocDataOpsPlannerConsole() {
                   columns.map((c) =>
                     createElement("td", {
                       key: c.key,
-                      style: { padding: "0.3rem 0.5rem", borderBottom: "1px solid rgba(80, 120, 168, 0.08)", color: "var(--text-primary)", whiteSpace: "nowrap" },
+                      style: { padding: "0.3rem 0.5rem", borderBottom: "1px solid rgba(80, 120, 168, 0.08)", color: "var(--text-primary, #f1f5f9)", whiteSpace: "nowrap" },
                     }, String(item[c.key] ?? "")),
                   ),
                 ),
@@ -304,7 +304,7 @@ export function SocDataOpsPlannerConsole() {
                   disabled: page === 0,
                   style: { fontSize: "0.6rem", padding: "0.2rem 0.4rem" },
                 }, "\u25C0"),
-                createElement("span", { style: { fontSize: "0.65rem", color: "var(--text-muted)" } },
+                createElement("span", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)" } },
                   `${t("soc.dataops.planner_page")} ${page + 1}/${totalPages}`),
                 createElement("button", {
                   className: styles.actionBtn,
@@ -323,7 +323,7 @@ export function SocDataOpsPlannerConsole() {
     if (!preview) return null;
     return createElement(
       "div",
-      { style: { marginTop: "0.75rem", padding: "0.75rem", borderRadius: "8px", background: "rgba(15, 23, 42, 0.3)", border: "1px solid var(--border-default)" } },
+      { style: { marginTop: "0.75rem", padding: "0.75rem", borderRadius: "8px", background: "rgba(15, 23, 42, 0.3)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
       createElement("div", { style: { fontWeight: 700, fontSize: "0.8rem", marginBottom: "0.5rem" } }, t("soc.dataops.planner_preview_summary")),
       createElement(
         "div",
@@ -331,7 +331,7 @@ export function SocDataOpsPlannerConsole() {
         createElement(
           "div", { className: styles.metricCard, onClick: () => setPlannedExpanded(!plannedExpanded), style: { cursor: "pointer" } },
           createElement("div", { className: styles.metricLabel }, t("soc.dataops.planner_planned_items")),
-          createElement("div", { className: styles.metricValue, style: { color: "var(--accent-cyan)" } }, String(plannedCount)),
+          createElement("div", { className: styles.metricValue, style: { color: "var(--accent-cyan, #06b6d4)" } }, String(plannedCount)),
         ),
         createElement(
           "div", { className: styles.metricCard, onClick: () => setSkippedExpanded(!skippedExpanded), style: { cursor: "pointer" } },
@@ -366,14 +366,14 @@ export function SocDataOpsPlannerConsole() {
         {
           style: {
             fontSize: "0.6rem", padding: "0.15rem 0.4rem", borderRadius: "4px",
-            background: "rgba(34, 211, 238, 0.12)", color: "var(--accent-cyan)",
+            background: "rgba(34, 211, 238, 0.12)", color: "var(--accent-cyan, #06b6d4)",
             fontWeight: 600, whiteSpace: "nowrap",
           },
         },
         "planner",
       ),
     ),
-    createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted)", margin: "0 0 0.75rem 0" } },
+    createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", margin: "0 0 0.75rem 0" } },
       t("soc.dataops.planner_description")),
     renderSymbolsTextarea(),
     renderDatasetCheckboxes(),

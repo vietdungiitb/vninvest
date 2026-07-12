@@ -12,7 +12,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none; /* Hide scrollbars for Firefox */
-  -ms-overflow-style: none;  /* Hide scrollbars for IE/Edge */
+  -ms-overflow-style: none; /* Hide scrollbars for IE/Edge */
   -webkit-overflow-scrolling: touch;
 }
 
@@ -51,7 +51,7 @@
 }
 
 .tabButtonActive::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: -1px;
   left: 0;
@@ -63,8 +63,14 @@
 }
 
 @keyframes tabActiveSlide {
-  from { transform: scaleX(0); opacity: 0; }
-  to { transform: scaleX(1); opacity: 1; }
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
 }
 
 .tabIcon {
@@ -283,7 +289,7 @@
   color: #67e8f9;
   resize: vertical;
   box-sizing: border-box;
-  font-family: 'Menlo', 'Consolas', monospace;
+  font-family: "Menlo", "Consolas", monospace;
 }
 
 .configEditor:focus {
@@ -326,15 +332,24 @@
 
 /* Skeleton loading */
 .skeleton {
-  background: linear-gradient(90deg, rgba(30, 41, 59, 0.4) 25%, rgba(30, 41, 59, 0.6) 50%, rgba(30, 41, 59, 0.4) 75%);
+  background: linear-gradient(
+    90deg,
+    rgba(30, 41, 59, 0.4) 25%,
+    rgba(30, 41, 59, 0.6) 50%,
+    rgba(30, 41, 59, 0.4) 75%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
   border-radius: 6px;
 }
 
 @keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* JSON pre block */
@@ -344,7 +359,7 @@
   border-radius: 8px;
   padding: 0.75rem;
   font-size: 0.75rem;
-  font-family: 'Menlo', 'Consolas', monospace;
+  font-family: "Menlo", "Consolas", monospace;
   color: #67e8f9;
   overflow-x: auto;
   white-space: pre-wrap;
@@ -399,7 +414,9 @@
   margin-top: 0;
 }
 @media (max-width: 1100px) {
-  .signalsTwoCol { grid-template-columns: 1fr; }
+  .signalsTwoCol {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Signal row */
@@ -470,14 +487,14 @@
 
 .signalVolume {
   font-size: 0.75rem;
-  color: var(--text-muted);
+  color: var(--text-muted, #94a3b8);
   font-variant-numeric: tabular-nums;
   margin-left: auto;
 }
 
 .signalTime {
   font-size: 0.7rem;
-  color: var(--text-muted);
+  color: var(--text-muted, #94a3b8);
   white-space: nowrap;
   min-width: 52px;
   text-align: right;
@@ -492,7 +509,7 @@
   border-top: none;
   font-size: 0.7rem;
   color: #67e8f9;
-  font-family: 'Menlo', 'Consolas', monospace;
+  font-family: "Menlo", "Consolas", monospace;
   overflow-x: auto;
   white-space: pre-wrap;
   line-height: 1.4;
@@ -527,14 +544,16 @@
   cursor: pointer;
   border: none;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-muted, #94a3b8);
   transition: all 0.15s;
   text-align: center;
 }
-.subTabBtn:hover { color: var(--text-primary); }
+.subTabBtn:hover {
+  color: var(--text-primary, #f1f5f9);
+}
 .subTabBtnActive {
   background: rgba(0, 180, 216, 0.15);
-  color: var(--accent-cyan);
+  color: var(--accent-cyan, #06b6d4);
 }
 
 /* Sentiment meter */
@@ -567,12 +586,12 @@
   border-radius: 6px;
   border: 1px solid var(--border-default, rgba(80, 120, 168, 0.2));
   background: rgba(2, 11, 35, 0.6);
-  color: var(--text-primary);
+  color: var(--text-primary, #f1f5f9);
   font-size: 0.75rem;
 }
 .jobDomainSelect:focus {
   outline: none;
-  border-color: var(--accent-cyan);
+  border-color: var(--accent-cyan, #06b6d4);
 }
 
 .runBtn {
@@ -583,11 +602,16 @@
   cursor: pointer;
   border: none;
   background: rgba(0, 180, 216, 0.2);
-  color: var(--accent-cyan);
+  color: var(--accent-cyan, #06b6d4);
   transition: all 0.15s;
 }
-.runBtn:hover { background: rgba(0, 180, 216, 0.3); }
-.runBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.runBtn:hover {
+  background: rgba(0, 180, 216, 0.3);
+}
+.runBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 /* Materialization cards */
 .matGrid {
@@ -661,7 +685,8 @@
   .sectionGrid {
     grid-template-columns: 1fr;
   }
-  .feedCard, .controlCard {
+  .feedCard,
+  .controlCard {
     padding: 0.75rem;
   }
   .radarContainer {
@@ -725,8 +750,18 @@
 }
 
 @keyframes accordionSlide {
-  from { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; }
-  to { opacity: 1; max-height: 500px; padding-top: 1rem; padding-bottom: 1rem; }
+  from {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
 }
 
 /* ─── Premium UI/UX Refinements ─── */
@@ -765,7 +800,8 @@
   box-shadow: 0 0 8px rgba(0, 180, 216, 0.25);
 }
 
-.feedCard, .controlCard {
+.feedCard,
+.controlCard {
   background: rgba(15, 23, 42, 0.2);
   border: 1px solid var(--border-default, rgba(80, 120, 168, 0.15));
   border-radius: 12px;
@@ -773,7 +809,8 @@
   transition: all 0.2s ease-in-out;
 }
 
-.feedCard:hover, .controlCard:hover {
+.feedCard:hover,
+.controlCard:hover {
   border-color: rgba(80, 120, 168, 0.25);
   background: rgba(15, 23, 42, 0.35);
 }
@@ -821,7 +858,11 @@
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: conic-gradient(from 0deg, rgba(0, 180, 216, 0.4) 0deg, transparent 90deg);
+  background: conic-gradient(
+    from 0deg,
+    rgba(0, 180, 216, 0.4) 0deg,
+    transparent 90deg
+  );
   animation: radarRotate 3s infinite linear;
 }
 
@@ -840,14 +881,24 @@
 }
 
 @keyframes radarPulse {
-  0% { box-shadow: 0 0 0 0 rgba(0, 180, 216, 0.2); }
-  70% { box-shadow: 0 0 0 12px rgba(0, 180, 216, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(0, 180, 216, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 180, 216, 0.2);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(0, 180, 216, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 180, 216, 0);
+  }
 }
 
 @keyframes radarRotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Data Types Grid */
@@ -992,15 +1043,27 @@
 }
 
 @keyframes pulseGreen {
-  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-  70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
 }
 
 @keyframes pulseRed {
-  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-  70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
 }
 
 /* Drawer CSS */
@@ -1033,13 +1096,21 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideInRight {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 /* Date Input Styling */
@@ -1058,6 +1129,3 @@
 .searchInput[type="date"]::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
 }
-
-
-

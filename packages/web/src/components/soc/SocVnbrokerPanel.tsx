@@ -187,7 +187,7 @@ export function SocVnbrokerPanel() {
       "div",
       { className: styles.metricCard },
       createElement("div", { className: styles.metricLabel }, label),
-      createElement("div", { className: styles.metricValue, style: { color: color || "var(--text-primary)" } }, value),
+      createElement("div", { className: styles.metricValue, style: { color: color || "var(--text-primary, #f1f5f9)" } }, value),
     );
   };
 
@@ -230,7 +230,7 @@ export function SocVnbrokerPanel() {
                         onClick: handlePreview,
                         disabled: previewing,
                         className: styles.actionBtn,
-                        style: { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan)", cursor: previewing ? "not-allowed" : "pointer" }
+                        style: { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan, #06b6d4)", cursor: previewing ? "not-allowed" : "pointer" }
                       },
                       previewing ? t("soc.prefetch.loading") : t("soc.actions.preview"),
                     ),
@@ -271,12 +271,12 @@ export function SocVnbrokerPanel() {
                   ),
                   createElement(
                     "div",
-                    { style: { fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.4" } },
+                    { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", lineHeight: "1.4" } },
                     circuitBreaker?.tripped
                       ? `Tripped at: ${circuitBreaker.tripped_at ? circuitBreaker.tripped_at.split("T")[1]?.slice(0, 8) : "N/A"}`
                       : t("soc.vnbroker.breaker_normal_desc"),
                   ),
-                  createElement("hr", { style: { border: "none", borderTop: "1px solid var(--border-default)", margin: "0.75rem 0" } }),
+                  createElement("hr", { style: { border: "none", borderTop: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", margin: "0.75rem 0" } }),
                   createElement("div", { className: styles.sectionCardTitle, style: { fontSize: "0.8rem", marginBottom: "0.5rem" } }, t("soc.vnbroker.test_connection")),
                   createElement(
                     "button",
@@ -304,7 +304,7 @@ export function SocVnbrokerPanel() {
                     renderMetricCard(t("soc.health.status_critical"), health?.provider_health?.critical ?? 0, "#f87171"),
                   ),
                   createElement("div", { className: styles.metricGrid, style: { marginTop: "0.75rem" } },
-                    renderMetricCard(t("soc.vnbroker.throughput"), `${health?.avg_response_ms ? (1000 / health.avg_response_ms).toFixed(1) : 0}/s`, "var(--accent-cyan)"),
+                    renderMetricCard(t("soc.vnbroker.throughput"), `${health?.avg_response_ms ? (1000 / health.avg_response_ms).toFixed(1) : 0}/s`, "var(--accent-cyan, #06b6d4)"),
                     renderMetricCard(t("soc.vnbroker.avg_latency"), `${health?.avg_response_ms ?? 0}ms`, "#fbbf24"),
                   ),
                 ),
@@ -346,20 +346,20 @@ export function SocVnbrokerPanel() {
                       { style: { width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" } },
                       createElement("thead", null,
                         createElement("tr", null,
-                          createElement("th", { style: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid var(--border-default)", color: "var(--text-muted)", fontWeight: 600 } }, t("soc.vnbroker.provider")),
-                          createElement("th", { style: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid var(--border-default)", color: "var(--text-muted)", fontWeight: 600 } }, t("soc.vnbroker.latency")),
-                          createElement("th", { style: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid var(--border-default)", color: "var(--text-muted)", fontWeight: 600 } }, "RPM"),
-                          createElement("th", { style: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid var(--border-default)", color: "var(--text-muted)", fontWeight: 600 } }, t("soc.vnbroker.success_rate")),
-                          createElement("th", { style: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid var(--border-default)", color: "var(--text-muted)", fontWeight: 600 } }, t("soc.vnbroker.rate_limit")),
+                          createElement("th", { style: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, t("soc.vnbroker.provider")),
+                          createElement("th", { style: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, t("soc.vnbroker.latency")),
+                          createElement("th", { style: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, "RPM"),
+                          createElement("th", { style: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, t("soc.vnbroker.success_rate")),
+                          createElement("th", { style: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, t("soc.vnbroker.rate_limit")),
                         ),
                       ),
                       createElement("tbody", null,
                         benchmarkResults.map((r) => {
                           const successColor = r.success_rate >= 100 ? "#34d399" : r.success_rate >= 95 ? "#fbbf24" : "#f87171";
-                          const rateLimitColor = r.rate_limit_pct > 5 ? "#f87171" : "var(--text-muted)";
+                          const rateLimitColor = r.rate_limit_pct > 5 ? "#f87171" : "var(--text-muted, #94a3b8)";
                           return createElement(
                             "tr",
-                            { key: r.provider, style: { borderBottom: "1px solid var(--border-default)" } },
+                            { key: r.provider, style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
                             createElement("td", { style: { padding: "0.75rem", fontWeight: 600 } }, r.provider),
                             createElement("td", { style: { padding: "0.75rem" } }, `${r.latency_ms}ms`),
                             createElement("td", { style: { padding: "0.75rem" } }, r.rpm),

@@ -405,7 +405,7 @@ function JobHistoryDrawer({
         },
         createElement("div", null,
           createElement("p", { style: { margin: 0, fontWeight: 700, fontSize: "0.85rem", color: "#fff" } }, t("soc.scheduler.history_drawer_title")),
-          createElement("p", { style: { margin: "0.15rem 0 0 0", fontFamily: "monospace", fontSize: "0.7rem", color: "var(--text-muted)" } }, jobKey)
+          createElement("p", { style: { margin: "0.15rem 0 0 0", fontFamily: "monospace", fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)" } }, jobKey)
         ),
         createElement("button", {
           type: "button",
@@ -413,31 +413,31 @@ function JobHistoryDrawer({
           style: {
             background: "none",
             border: "none",
-            color: "var(--text-muted)",
+            color: "var(--text-muted, #94a3b8)",
             cursor: "pointer",
             fontSize: "1rem"
           }
         }, "✕")
       ),
       // Content body
-      loading && createElement("p", { style: { fontSize: "0.75rem", color: "var(--text-muted)" } }, t("common.loading")),
+      loading && createElement("p", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)" } }, t("common.loading")),
       error && createElement("p", { style: { fontSize: "0.75rem", color: "#f87171" } }, error),
       history && !loading && createElement(
         "div",
         null,
         createElement(
           "p",
-          { style: { fontSize: "0.7rem", color: "var(--text-muted)", marginBottom: "0.75rem" } },
+          { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", marginBottom: "0.75rem" } },
           t("soc.scheduler.history_count", { count: history.count })
         ),
         history.results.length === 0
-          ? createElement("p", { style: { fontSize: "0.75rem", color: "var(--text-muted)" } }, t("soc.scheduler.history_empty"))
+          ? createElement("p", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.scheduler.history_empty"))
           : createElement(
               "table",
               { style: { width: "100%", fontSize: "0.7rem", borderCollapse: "collapse", textAlign: "left" } },
               createElement(
                 "thead",
-                { style: { borderBottom: "1px solid rgba(80, 120, 168, 0.15)", color: "var(--text-muted)" } },
+                { style: { borderBottom: "1px solid rgba(80, 120, 168, 0.15)", color: "var(--text-muted, #94a3b8)" } },
                 createElement(
                   "tr",
                   null,
@@ -478,7 +478,7 @@ function JobHistoryDrawer({
                        style: {
                          padding: "0.4rem 0.25rem",
                          fontFamily: "monospace",
-                         color: "var(--text-muted)",
+                         color: "var(--text-muted, #94a3b8)",
                          maxWidth: "100px",
                          overflow: "hidden",
                          textOverflow: "ellipsis",
@@ -502,7 +502,7 @@ function JobHistoryDrawer({
               borderTop: "1px solid rgba(80, 120, 168, 0.15)"
             }
           },
-          createElement("span", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } },
+          createElement("span", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)" } },
             `${t("soc.dataops.run_history_page")} ${page}/${history.total_pages || 1}`
           ),
           createElement(
@@ -775,7 +775,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
                 null,
                 createElement(
                   "td",
-                  { colSpan: 8, style: { padding: "2rem", textAlign: "center", color: "var(--text-muted)" } },
+                  { colSpan: 8, style: { padding: "2rem", textAlign: "center", color: "var(--text-muted, #94a3b8)" } },
                   t("soc.scheduler.empty_state")
                 )
               )
@@ -797,7 +797,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
                     "td",
                     { style: { padding: "0.6rem 0.75rem" } },
                     createElement("p", { style: { margin: 0, fontFamily: "monospace", fontSize: "0.75rem", color: "#cbd5e1" } }, job.job_key),
-                    job.display_name && createElement("p", { style: { margin: "0.15rem 0 0 0", fontSize: "0.65rem", color: "var(--text-muted)" } }, job.display_name)
+                    job.display_name && createElement("p", { style: { margin: "0.15rem 0 0 0", fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)" } }, job.display_name)
                   ),
                   // Domain
                   createElement(

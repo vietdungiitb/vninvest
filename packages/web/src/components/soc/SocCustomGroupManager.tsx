@@ -65,8 +65,10 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchGroups(); }, []);
 
   const resetCreate = () => {
@@ -148,7 +150,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
     createElement(
       "div",
       { style: { marginBottom: "0.75rem" } },
-      createElement("label", { style: { fontSize: "0.7rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "0.25rem", display: "block" } },
+      createElement("label", { style: { fontSize: "0.7rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)", marginBottom: "0.25rem", display: "block" } },
         t("soc.dataops.custom_group_list")),
       loading
         ? createElement("p", { className: styles.emptyState }, t("soc.dataops.loading"))
@@ -175,10 +177,10 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
                         { style: { flex: 1, minWidth: 0, cursor: "pointer" }, onClick: () => startEdit(g) },
                         createElement("span", { style: { fontWeight: 600, fontSize: "0.75rem", color: "rgba(45, 212, 191, 0.9)" } },
                           `\u2605 ${g.name}`),
-                        createElement("span", { style: { fontSize: "0.6rem", color: "var(--text-muted)", marginLeft: "0.35rem" } },
+                        createElement("span", { style: { fontSize: "0.6rem", color: "var(--text-muted, #94a3b8)", marginLeft: "0.35rem" } },
                           `(${g.symbol_count ?? "?"})`),
                         g.description
-                          ? createElement("div", { style: { fontSize: "0.62rem", color: "var(--text-muted)", marginTop: "0.1rem" } }, g.description)
+                          ? createElement("div", { style: { fontSize: "0.62rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.1rem" } }, g.description)
                           : null,
                       ),
                       createElement(
@@ -221,7 +223,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
       createElement(
         "div",
         { style: { marginBottom: "0.5rem" } },
-        createElement("label", { style: { fontSize: "0.65rem", fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: "0.15rem" } },
+        createElement("label", { style: { fontSize: "0.65rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)", display: "block", marginBottom: "0.15rem" } },
           t("soc.dataops.group_manager_name_label")),
         createElement("input", {
           type: "text", value: editName, className: styles.searchInput,
@@ -232,7 +234,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
       createElement(
         "div",
         { style: { marginBottom: "0.5rem" } },
-        createElement("label", { style: { fontSize: "0.65rem", fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: "0.15rem" } },
+        createElement("label", { style: { fontSize: "0.65rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)", display: "block", marginBottom: "0.15rem" } },
           t("soc.dataops.group_manager_desc_label")),
         createElement("input", {
           type: "text", value: editDescription, className: styles.searchInput,
@@ -243,7 +245,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
       createElement(
         "div",
         { style: { marginBottom: "0.5rem" } },
-        createElement("label", { style: { fontSize: "0.65rem", fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: "0.15rem" } },
+        createElement("label", { style: { fontSize: "0.65rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)", display: "block", marginBottom: "0.15rem" } },
           t("soc.dataops.group_manager_symbols_label")),
         createElement("textarea", {
           value: editSymbols, className: styles.searchInput,
@@ -251,7 +253,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
           onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setEditSymbols(e.target.value),
           style: { minHeight: "60px", resize: "vertical", fontSize: "0.75rem", width: "100%" },
         }),
-        createElement("p", { style: { fontSize: "0.55rem", color: "var(--text-muted)", marginTop: "0.1rem" } },
+        createElement("p", { style: { fontSize: "0.55rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.1rem" } },
           t("soc.dataops.group_manager_symbols_hint")),
       ),
       createElement(
@@ -285,13 +287,13 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
       {
         style: {
           padding: "0.75rem", borderRadius: "8px",
-          background: "rgba(15, 23, 42, 0.3)", border: "1px solid var(--border-default)",
+          background: "rgba(15, 23, 42, 0.3)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
         },
       },
       createElement(
         "div",
         { style: { marginBottom: "0.5rem" } },
-        createElement("label", { style: { fontSize: "0.65rem", fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: "0.15rem" } },
+        createElement("label", { style: { fontSize: "0.65rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)", display: "block", marginBottom: "0.15rem" } },
           t("soc.dataops.group_manager_name_label")),
         createElement("input", {
           type: "text", value: name, className: styles.searchInput,
@@ -303,7 +305,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
       createElement(
         "div",
         { style: { marginBottom: "0.5rem" } },
-        createElement("label", { style: { fontSize: "0.65rem", fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: "0.15rem" } },
+        createElement("label", { style: { fontSize: "0.65rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)", display: "block", marginBottom: "0.15rem" } },
           t("soc.dataops.group_manager_desc_label")),
         createElement("input", {
           type: "text", value: description, className: styles.searchInput,
@@ -315,7 +317,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
       createElement(
         "div",
         { style: { marginBottom: "0.5rem" } },
-        createElement("label", { style: { fontSize: "0.65rem", fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: "0.15rem" } },
+        createElement("label", { style: { fontSize: "0.65rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)", display: "block", marginBottom: "0.15rem" } },
           t("soc.dataops.group_manager_symbols_label")),
         createElement("textarea", {
           value: symbols, className: styles.searchInput,
@@ -323,7 +325,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
           onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setSymbols(e.target.value),
           style: { minHeight: "60px", resize: "vertical", fontSize: "0.75rem", width: "100%" },
         }),
-        createElement("p", { style: { fontSize: "0.55rem", color: "var(--text-muted)", marginTop: "0.1rem" } },
+        createElement("p", { style: { fontSize: "0.55rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.1rem" } },
           t("soc.dataops.group_manager_symbols_hint")),
       ),
       createElement(
@@ -370,7 +372,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
           )
         : null,
     ),
-    createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted)", margin: "0 0 0.75rem 0" } },
+    createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", margin: "0 0 0.75rem 0" } },
       t("soc.dataops.group_manager_description")),
     error ? createElement("div", { className: styles.inlineError, style: { marginBottom: "0.5rem" } }, error) : null,
     success ? createElement("div", { className: styles.inlineSuccess, style: { marginBottom: "0.5rem" } }, success) : null,

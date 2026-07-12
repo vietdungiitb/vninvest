@@ -20,7 +20,7 @@ const EXEC_OPTIONS = ["async", "sync"];
 const LABEL_STYLE: React.CSSProperties = {
   fontSize: "0.7rem",
   fontWeight: 600,
-  color: "var(--text-muted)",
+  color: "var(--text-muted, #94a3b8)",
   marginBottom: "0.25rem",
   display: "block",
 };
@@ -56,6 +56,7 @@ export function SocDataOpsBackfillForm() {
     previewSocDataOpsPlanner: (p: Record<string, unknown>) => Promise<PreviewResult>;
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { actions.refreshRuns(); }, []);
 
   const buildPayload = useCallback(() => ({
@@ -111,7 +112,7 @@ export function SocDataOpsBackfillForm() {
   const getStatusColor = (s: string): string => {
     switch (s) {
       case "running": return "#34d399";
-      case "success": case "completed": return "var(--accent-cyan)";
+      case "success": case "completed": return "var(--accent-cyan, #06b6d4)";
       case "failed": return "#f87171";
       case "aborted": case "cancelled": return "#94a3b8";
       default: return "#fbbf24";
@@ -160,7 +161,7 @@ export function SocDataOpsBackfillForm() {
               "span",
               { style: { fontSize: "0.72rem" } },
               createElement("span", { style: { fontWeight: 600, display: "block" } }, t(`soc.dataops.dataset_${key}`)),
-              createElement("span", { style: { fontSize: "0.62rem", color: "var(--text-muted)", display: "block", marginTop: "0.1rem" } },
+              createElement("span", { style: { fontSize: "0.62rem", color: "var(--text-muted, #94a3b8)", display: "block", marginTop: "0.1rem" } },
                 t(`soc.dataops.dataset_field_${key}`)),
             ),
           ),
@@ -200,7 +201,7 @@ export function SocDataOpsBackfillForm() {
               onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setCustomSymbols(e.target.value),
               style: { minHeight: "50px", resize: "vertical", fontSize: "0.75rem" },
             }),
-            createElement("p", { style: { fontSize: "0.6rem", color: "var(--text-muted)", marginTop: "0.15rem" } },
+            createElement("p", { style: { fontSize: "0.6rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.15rem" } },
               t("soc.dataops.planner_symbols_hint")),
           )
         : null,
@@ -286,7 +287,7 @@ export function SocDataOpsBackfillForm() {
           className: styles.actionBtn,
           onClick: handlePreview,
           disabled: previewing || submitting,
-          style: { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan)" },
+          style: { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan, #06b6d4)" },
         },
         previewing ? t("soc.dataops.planner_preview_loading") : t("soc.dataops.planner_preview"),
       ),
@@ -305,7 +306,7 @@ export function SocDataOpsBackfillForm() {
     if (!preview) return null;
     return createElement(
       "div",
-      { style: { marginTop: "0.75rem", padding: "0.75rem", borderRadius: "8px", background: "rgba(15, 23, 42, 0.3)", border: "1px solid var(--border-default)" } },
+      { style: { marginTop: "0.75rem", padding: "0.75rem", borderRadius: "8px", background: "rgba(15, 23, 42, 0.3)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
       createElement("div", { style: { fontWeight: 700, fontSize: "0.8rem", marginBottom: "0.5rem" } }, t("soc.dataops.planner_preview_summary")),
       createElement(
         "div",
@@ -313,7 +314,7 @@ export function SocDataOpsBackfillForm() {
         createElement(
           "div", { className: styles.metricCard },
           createElement("div", { className: styles.metricLabel }, t("soc.dataops.planner_planned_items")),
-          createElement("div", { className: styles.metricValue, style: { color: "var(--accent-cyan)" } }, String(plannedCount)),
+          createElement("div", { className: styles.metricValue, style: { color: "var(--accent-cyan, #06b6d4)" } }, String(plannedCount)),
         ),
         createElement(
           "div", { className: styles.metricCard },
@@ -350,7 +351,7 @@ export function SocDataOpsBackfillForm() {
       "div",
       { className: styles.sectionCard },
       createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.run_history_title")),
-      createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted)", margin: "0 0 0.75rem 0" } },
+      createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", margin: "0 0 0.75rem 0" } },
         t("soc.dataops.run_history_description")),
       loading.runs
         ? createElement("p", { className: styles.emptyState }, t("soc.dataops.loading_runs"))
@@ -375,7 +376,7 @@ export function SocDataOpsBackfillForm() {
                     { style: { flex: 1, minWidth: 0 } },
                     createElement("div", { style: { fontWeight: 600, fontSize: "0.75rem" } },
                       t(`soc.dataops.dataset_${run.dataset}`) || run.dataset),
-                    createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted)" } },
+                    createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)" } },
                       `${run.run_id.slice(0, 8)}... \u2022 ${run.started_at?.split("T")[0] || "N/A"}`),
                   ),
                   createElement(
@@ -409,7 +410,7 @@ export function SocDataOpsBackfillForm() {
       "div",
       { className: styles.sectionCard },
       createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.planner_title")),
-      createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted)", margin: "0 0 0.75rem 0" } },
+      createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", margin: "0 0 0.75rem 0" } },
         t("soc.dataops.planner_description")),
       renderDatasetCheckboxes(),
       renderSymbolGroupRadios(),

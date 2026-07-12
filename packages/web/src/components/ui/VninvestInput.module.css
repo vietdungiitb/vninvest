@@ -19,7 +19,7 @@
 .label {
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-primary, #f1f5f9);
   margin-bottom: var(--space-1);
   display: flex;
   align-items: center;
@@ -37,17 +37,19 @@
   padding: var(--space-3) var(--space-4);
   font-family: var(--font-sans);
   font-size: var(--font-size-sm);
-  color: var(--text-primary);
-  background-color: var(--bg-panel-soft);
-  border: 1px solid var(--border-default);
+  color: var(--text-primary, #f1f5f9);
+  background-color: var(--bg-panel-soft, rgba(8, 23, 52, 0.3));
+  border: 1px solid var(--border-default, rgba(80, 120, 168, 0.28));
   border-radius: var(--radius-sm); /* 12px chuẩn */
   outline: none;
-  transition: border-color var(--transition-spring-smooth), box-shadow var(--transition-spring-smooth);
+  transition:
+    border-color var(--transition-spring-smooth),
+    box-shadow var(--transition-spring-smooth);
   box-sizing: border-box;
 }
 
 .input::placeholder {
-  color: var(--text-muted);
+  color: var(--text-muted, #94a3b8);
   opacity: 0.6;
 }
 
@@ -56,7 +58,7 @@
 }
 
 .input:focus {
-  border-color: var(--accent-cyan);
+  border-color: var(--accent-cyan, #06b6d4);
   box-shadow: var(--shadow-focus);
 }
 
@@ -73,7 +75,7 @@
 .input--disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background-color: var(--bg-panel);
+  background-color: var(--bg-panel, #0f172a);
 }
 
 .error {
@@ -86,7 +88,7 @@
 .helper {
   margin: 0;
   font-size: var(--font-size-xs);
-  color: var(--text-muted);
+  color: var(--text-muted, #94a3b8);
 }
 
 /* Select variant */
@@ -110,12 +112,12 @@
 /* Dark mode support (when using class strategy) */
 .dark .input {
   background-color: var(--bg-panel-strong);
-  border-color: var(--border-default);
-  color: var(--text-primary);
+  border-color: var(--border-default, rgba(80, 120, 168, 0.28));
+  color: var(--text-primary, #f1f5f9);
 }
 
 .dark .input:focus {
-  border-color: var(--accent-cyan);
+  border-color: var(--accent-cyan, #06b6d4);
   box-shadow: var(--shadow-focus);
 }
 
@@ -125,5 +127,5 @@
 }
 
 .dark .label {
-  color: var(--text-primary);
+  color: var(--text-primary, #f1f5f9);
 }

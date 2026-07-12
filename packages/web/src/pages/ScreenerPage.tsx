@@ -38,11 +38,11 @@ function RuleEditor({ initial, onSave, onCancel }: RuleEditorProps) {
 
   return (
     <div style={{
-      background: 'var(--bg-panel)', border: '1px solid var(--border-default)',
+      background: 'var(--bg-panel, #0f172a)', border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))',
       borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px',
     }}>
       <div>
-        <label htmlFor="screener-rule-name" style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>
+        <label htmlFor="screener-rule-name" style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)', marginBottom: '4px', display: 'block' }}>
           {t('screener.ruleName')}
         </label>
         <input
@@ -52,8 +52,8 @@ function RuleEditor({ initial, onSave, onCancel }: RuleEditorProps) {
           onChange={(e) => setName(e.target.value)}
           placeholder={t('screener.ruleNamePlaceholder')}
           style={{
-            width: '100%', background: 'rgba(15,23,42,0.6)', border: '1px solid var(--border-default)',
-            color: 'var(--text-primary)', fontSize: '14px', borderRadius: '4px',
+            width: '100%', background: 'rgba(15,23,42,0.6)', border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))',
+            color: 'var(--text-primary, #f1f5f9)', fontSize: '14px', borderRadius: '4px',
             padding: '8px 12px', outline: 'none',
           }}
         />
@@ -68,7 +68,7 @@ function RuleEditor({ initial, onSave, onCancel }: RuleEditorProps) {
         <button
           onClick={handleSave}
           style={{
-            padding: '6px 16px', background: 'var(--accent-cyan)', color: '#fff', fontSize: '14px',
+            padding: '6px 16px', background: 'var(--accent-cyan, #06b6d4)', color: '#fff', fontSize: '14px',
             borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 600,
           }}
         >
@@ -77,8 +77,8 @@ function RuleEditor({ initial, onSave, onCancel }: RuleEditorProps) {
         <button
           onClick={onCancel}
           style={{
-            padding: '6px 16px', background: 'rgba(15,23,42,0.8)', color: 'var(--text-secondary)', fontSize: '14px',
-            borderRadius: '8px', border: '1px solid var(--border-default)', cursor: 'pointer',
+            padding: '6px 16px', background: 'rgba(15,23,42,0.8)', color: 'var(--text-secondary, #94a3b8)', fontSize: '14px',
+            borderRadius: '8px', border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))', cursor: 'pointer',
           }}
         >
           {t('common.cancel')}
@@ -221,8 +221,8 @@ export function ScreenerPage() {
     <div style={pageStyle}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{t('screener.title')}</h1>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+          <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-primary, #f1f5f9)' }}>{t('screener.title')}</h1>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)', marginTop: '2px' }}>
             {t('screener.subtitle')}
           </p>
         </div>
@@ -230,7 +230,7 @@ export function ScreenerPage() {
           <button
             onClick={() => setEditing('new')}
             style={{
-              padding: '8px 16px', background: 'var(--accent-cyan)', color: '#fff',
+              padding: '8px 16px', background: 'var(--accent-cyan, #06b6d4)', color: '#fff',
               fontSize: '14px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 600,
             }}
           >
@@ -274,9 +274,9 @@ export function ScreenerPage() {
         </div>
       ) : rules.length === 0 ? (
         <div style={{
-          background: 'var(--bg-panel)', border: '1px solid var(--border-default)',
+          background: 'var(--bg-panel, #0f172a)', border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))',
           borderRadius: '12px', padding: '40px', textAlign: 'center',
-          color: 'var(--text-muted)', fontSize: '14px',
+          color: 'var(--text-muted, #94a3b8)', fontSize: '14px',
         }}>
           {t('screener.noRules')}
         </div>
@@ -284,13 +284,13 @@ export function ScreenerPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {rules.map((rule) => (
             <div key={rule.id} style={{
-              background: 'var(--bg-panel)', border: '1px solid var(--border-default)',
+              background: 'var(--bg-panel, #0f172a)', border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))',
               borderRadius: '12px', padding: '16px',
             }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
                 <div style={{ flex: '1', minWidth: '0' }}>
-                  <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{rule.name}</p>
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary, #f1f5f9)' }}>{rule.name}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)', marginTop: '2px' }}>
                     {Array.isArray(rule.rules_json) ? formatNumber(rule.rules_json.length) : '?'} {t('screener.conditionsCount')}
                     {' · '}
                     {Array.isArray(rule.rules_json) ? rule.rules_json.map((c) => {
@@ -326,7 +326,7 @@ export function ScreenerPage() {
                     onClick={() => setEditing(rule)}
                     style={{
                       padding: '6px 12px', background: 'rgba(15,23,42,0.6)',
-                      border: '1px solid var(--border-default)', color: 'var(--text-secondary)',
+                      border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))', color: 'var(--text-secondary, #94a3b8)',
                       fontSize: '12px', borderRadius: '8px', cursor: 'pointer',
                     }}
                   >

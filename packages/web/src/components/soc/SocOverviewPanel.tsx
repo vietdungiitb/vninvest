@@ -81,7 +81,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
     fetchData();
   }, []);
 
-  const services = data?.services ?? [];
+  const services = useMemo(() => data?.services ?? [], [data]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -267,7 +267,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                       null,
                       createElement("h4", { style: { margin: 0, fontWeight: 700, fontSize: "1rem" } }, service.name),
                       createElement("p", {
-                        style: { margin: "0.25rem 0 0", fontSize: "0.75rem", color: "var(--text-muted)" },
+                        style: { margin: "0.25rem 0 0", fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)" },
                       }, `${service.service_key} \u2022 ${service.domain}`),
                     ),
                     createElement(
@@ -285,7 +285,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                     createElement(
                       "div",
                       { style: { background: "rgba(2, 11, 35, 0.4)", padding: "0.5rem 0.75rem", borderRadius: "8px" } },
-                      createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted)", textTransform: "uppercase" } }, t("soc.health.latency_label")),
+                      createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)", textTransform: "uppercase" } }, t("soc.health.latency_label")),
                       createElement("div", { style: { fontWeight: 600, fontSize: "0.9rem", marginTop: "0.15rem" } },
                         service.is_active && service.avg_response_ms != null
                           ? `${service.avg_response_ms.toFixed(0)}ms`
@@ -295,7 +295,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                     createElement(
                       "div",
                       { style: { background: "rgba(2, 11, 35, 0.4)", padding: "0.5rem 0.75rem", borderRadius: "8px" } },
-                      createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted)", textTransform: "uppercase" } }, t("soc.health.last_check_label")),
+                      createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)", textTransform: "uppercase" } }, t("soc.health.last_check_label")),
                       createElement("div", { style: { fontWeight: 500, fontSize: "0.8rem", marginTop: "0.15rem" } },
                         service.last_check_at
                           ? service.last_check_at.split("T")[1]?.slice(0, 8) || t("soc.health.unknown_value")
@@ -365,7 +365,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                   ),
                   createElement(
                     "span",
-                    { style: { fontSize: "0.8rem", color: "var(--text-muted)" } },
+                    { style: { fontSize: "0.8rem", color: "var(--text-muted, #94a3b8)" } },
                     t("soc.overview.page_of", { page: String(safePage), total: String(totalPages) }),
                   ),
                   createElement(

@@ -44,7 +44,7 @@
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-muted, #94a3b8);
   border-bottom: 1px solid var(--border-glass);
 }
 
@@ -132,7 +132,7 @@
 
 .freqLow {
   background: rgba(255, 255, 255, 0.05);
-  color: var(--text-muted);
+  color: var(--text-muted, #94a3b8);
 }
 
 .freqMedium {
@@ -160,7 +160,7 @@
 .emptyState {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border-glass);
-  color: var(--text-muted);
+  color: var(--text-muted, #94a3b8);
   text-align: center;
   padding: 40px 20px;
   border-radius: 12px;
@@ -179,7 +179,9 @@
   width: 100%;
   max-width: 200px;
   outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .searchInput:focus {

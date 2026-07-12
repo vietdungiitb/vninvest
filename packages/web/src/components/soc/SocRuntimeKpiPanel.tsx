@@ -31,8 +31,8 @@ export function SocRuntimeKpiPanel() {
           },
           createElement("path", { d: "M22 12h-4l-3 9L9 3l-3 9H2" }),
         ),
-        createElement("p", { style: { fontWeight: 700, marginBottom: "0.5rem", color: "var(--text-primary)" } }, t("soc.runtime_kpi.coming_soon")),
-        createElement("p", { style: { fontSize: "0.85rem", color: "var(--text-muted)" } }, t("soc.runtime_kpi.description")),
+        createElement("p", { style: { fontWeight: 700, marginBottom: "0.5rem", color: "var(--text-primary, #f1f5f9)" } }, t("soc.runtime_kpi.coming_soon")),
+        createElement("p", { style: { fontSize: "0.85rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.runtime_kpi.description")),
       ),
     ),
   );

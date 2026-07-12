@@ -86,11 +86,11 @@ export function ScreenerHistory({ runs }: ScreenerHistoryProps) {
       "div",
       {
         style: {
-          background: "var(--bg-panel)",
-          border: "1px solid var(--border-default)",
+          background: "var(--bg-panel, #0f172a)",
+          border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
           borderRadius: "12px",
           padding: "24px",
-          color: "var(--text-muted)",
+          color: "var(--text-muted, #94a3b8)",
           fontSize: "14px",
         },
       },
@@ -99,8 +99,8 @@ export function ScreenerHistory({ runs }: ScreenerHistoryProps) {
   }
 
   const panel: CSSProperties = {
-    background: "var(--bg-panel)",
-    border: "1px solid var(--border-default)",
+    background: "var(--bg-panel, #0f172a)",
+    border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
     borderRadius: "12px",
     padding: "20px",
     display: "flex",
@@ -114,7 +114,7 @@ export function ScreenerHistory({ runs }: ScreenerHistoryProps) {
     createElement(
       "div",
       { style: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" } },
-      createElement("h2", { style: { fontSize: "16px", fontWeight: 600, color: "var(--text-primary)" } }, t("screener.history.title")),
+      createElement("h2", { style: { fontSize: "16px", fontWeight: 600, color: "var(--text-primary, #f1f5f9)" } }, t("screener.history.title")),
       createElement(
         "button",
         {
@@ -123,8 +123,8 @@ export function ScreenerHistory({ runs }: ScreenerHistoryProps) {
           style: {
             padding: "6px 12px",
             background: "rgba(15,23,42,0.6)",
-            border: "1px solid var(--border-default)",
-            color: "var(--text-secondary)",
+            border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
+            color: "var(--text-secondary, #94a3b8)",
             fontSize: "12px",
             borderRadius: "8px",
             cursor: refreshing ? "not-allowed" : "pointer",
@@ -136,7 +136,7 @@ export function ScreenerHistory({ runs }: ScreenerHistoryProps) {
     ),
     createElement(
       "p",
-      { style: { fontSize: "12px", color: "var(--text-muted)", margin: 0 } },
+      { style: { fontSize: "12px", color: "var(--text-muted, #94a3b8)", margin: 0 } },
       t("screener.history.backtestNote")
     ),
     createElement(
@@ -145,7 +145,7 @@ export function ScreenerHistory({ runs }: ScreenerHistoryProps) {
       createElement(
         "div",
         null,
-        createElement("div", { style: { fontSize: "12px", color: "var(--text-muted)" } }, t("screener.history.winRate")),
+        createElement("div", { style: { fontSize: "12px", color: "var(--text-muted, #94a3b8)" } }, t("screener.history.winRate")),
         createElement(
           "div",
           { style: { fontSize: "24px", fontWeight: 700, color: winRate >= 50 ? "#4ade80" : "#f87171" } },
@@ -155,19 +155,19 @@ export function ScreenerHistory({ runs }: ScreenerHistoryProps) {
       createElement(
         "div",
         null,
-        createElement("div", { style: { fontSize: "12px", color: "var(--text-muted)" } }, t("screener.history.evaluated")),
-        createElement("div", { style: { fontSize: "24px", fontWeight: 700, color: "var(--text-primary)" } }, formatNumber(trades.length))
+        createElement("div", { style: { fontSize: "12px", color: "var(--text-muted, #94a3b8)" } }, t("screener.history.evaluated")),
+        createElement("div", { style: { fontSize: "24px", fontWeight: 700, color: "var(--text-primary, #f1f5f9)" } }, formatNumber(trades.length))
       ),
       createElement(
         "div",
         null,
-        createElement("div", { style: { fontSize: "12px", color: "var(--text-muted)" } }, t("screener.history.wins")),
+        createElement("div", { style: { fontSize: "12px", color: "var(--text-muted, #94a3b8)" } }, t("screener.history.wins")),
         createElement("div", { style: { fontSize: "24px", fontWeight: 700, color: "#4ade80" } }, formatNumber(wins))
       ),
       createElement(
         "div",
         null,
-        createElement("div", { style: { fontSize: "12px", color: "var(--text-muted)" } }, t("screener.history.losses")),
+        createElement("div", { style: { fontSize: "12px", color: "var(--text-muted, #94a3b8)" } }, t("screener.history.losses")),
         createElement("div", { style: { fontSize: "24px", fontWeight: 700, color: "#f87171" } }, formatNumber(losses))
       )
     ),
@@ -175,7 +175,7 @@ export function ScreenerHistory({ runs }: ScreenerHistoryProps) {
       createElement(
         "div",
         { style: { display: "flex", flexDirection: "column", gap: "4px" } },
-        createElement("div", { style: { fontSize: "12px", color: "var(--text-secondary)", fontWeight: 600 } }, t("screener.history.trades")),
+        createElement("div", { style: { fontSize: "12px", color: "var(--text-secondary, #94a3b8)", fontWeight: 600 } }, t("screener.history.trades")),
         ...trades.slice(0, 15).map((tr) =>
           createElement(
             "div",
@@ -186,10 +186,10 @@ export function ScreenerHistory({ runs }: ScreenerHistoryProps) {
                 alignItems: "center",
                 gap: "12px",
                 fontSize: "12px",
-                color: "var(--text-secondary)",
+                color: "var(--text-secondary, #94a3b8)",
               },
             },
-            createElement("span", { style: { width: "56px", color: "var(--text-primary)", fontWeight: 600 } }, tr.symbol),
+            createElement("span", { style: { width: "56px", color: "var(--text-primary, #f1f5f9)", fontWeight: 600 } }, tr.symbol),
             actionBadge(t, tr.action),
             createElement("span", null, `${t("screener.history.entry")}: ${formatNumber(Math.round(tr.entry * 100) / 100)}`),
             createElement("span", null, `${t("screener.history.exit")}: ${formatNumber(Math.round(tr.exit * 100) / 100)}`),
@@ -202,7 +202,7 @@ export function ScreenerHistory({ runs }: ScreenerHistoryProps) {
         )
       ),
     trades.length === 0 &&
-      createElement("p", { style: { fontSize: "12px", color: "var(--text-muted)" } }, t("screener.history.noTrades")),
+      createElement("p", { style: { fontSize: "12px", color: "var(--text-muted, #94a3b8)" } }, t("screener.history.noTrades")),
     createElement(
       "div",
       { style: { display: "flex", flexDirection: "column", gap: "10px" } },
@@ -212,7 +212,7 @@ export function ScreenerHistory({ runs }: ScreenerHistoryProps) {
           {
             key: run.id,
             style: {
-              borderTop: "1px solid var(--border-default)",
+              borderTop: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
               paddingTop: "10px",
               display: "flex",
               flexDirection: "column",
@@ -222,10 +222,10 @@ export function ScreenerHistory({ runs }: ScreenerHistoryProps) {
           createElement(
             "div",
             { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", flexWrap: "wrap" } },
-            createElement("span", { style: { fontSize: "13px", color: "var(--text-primary)", fontWeight: 600 } }, run.ruleName),
+            createElement("span", { style: { fontSize: "13px", color: "var(--text-primary, #f1f5f9)", fontWeight: 600 } }, run.ruleName),
             createElement(
               "span",
-              { style: { fontSize: "11px", color: "var(--text-muted)" } },
+              { style: { fontSize: "11px", color: "var(--text-muted, #94a3b8)" } },
               `${t("screener.history.runAt")}: ${new Date(run.timestamp).toLocaleString()} · ${formatNumber(run.rows.length)} ${t("screener.history.matches")}`
             )
           ),
@@ -246,14 +246,14 @@ export function ScreenerHistory({ runs }: ScreenerHistoryProps) {
                       alignItems: "center",
                       gap: "4px",
                       fontSize: "11px",
-                      color: "var(--text-secondary)",
+                      color: "var(--text-secondary, #94a3b8)",
                       background: "rgba(15,23,42,0.6)",
-                      border: "1px solid var(--border-default)",
+                      border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
                       borderRadius: "6px",
                       padding: "2px 6px",
                     },
                   },
-                  createElement("span", { style: { color: "var(--text-primary)", fontWeight: 600 } }, r.symbol),
+                  createElement("span", { style: { color: "var(--text-primary, #f1f5f9)", fontWeight: 600 } }, r.symbol),
                   actionBadge(t, r.action),
                   r.score != null && createElement("span", null, formatNumber(Math.round(r.score)))
                 )

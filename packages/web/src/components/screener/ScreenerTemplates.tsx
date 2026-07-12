@@ -24,8 +24,8 @@ export function ScreenerTemplates({ templates, applyingId, onApply }: ScreenerTe
     "div",
     {
       style: {
-        background: "var(--bg-panel)",
-        border: "1px solid var(--border-default)",
+        background: "var(--bg-panel, #0f172a)",
+        border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
         borderRadius: "12px",
         padding: "20px",
         display: "flex",
@@ -35,7 +35,7 @@ export function ScreenerTemplates({ templates, applyingId, onApply }: ScreenerTe
     },
     createElement(
       "h3",
-      { style: { margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--text-secondary)" } },
+      { style: { margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--text-secondary, #94a3b8)" } },
       t("screener.templates.title"),
     ),
     createElement(
@@ -58,7 +58,7 @@ export function ScreenerTemplates({ templates, applyingId, onApply }: ScreenerTe
               gap: "10px",
               padding: "14px",
               background: "rgba(15,23,42,0.35)",
-              border: "1px solid var(--border-default)",
+              border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
               borderRadius: "10px",
             },
           },
@@ -80,10 +80,10 @@ export function ScreenerTemplates({ templates, applyingId, onApply }: ScreenerTe
               },
               t("screener.templates.category." + tmpl.category),
             ),
-            createElement("span", { style: { fontSize: "11px", color: "var(--text-muted)" } }, String(tmpl.rules_json.length)),
+            createElement("span", { style: { fontSize: "11px", color: "var(--text-muted, #94a3b8)" } }, String(tmpl.rules_json.length)),
           ),
-          createElement("p", { style: { margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" } }, t(tmpl.name_key)),
-          createElement("p", { style: { margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.4, minHeight: "34px" } }, t(tmpl.desc_key)),
+          createElement("p", { style: { margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--text-primary, #f1f5f9)" } }, t(tmpl.name_key)),
+          createElement("p", { style: { margin: 0, fontSize: "12px", color: "var(--text-muted, #94a3b8)", lineHeight: 1.4, minHeight: "34px" } }, t(tmpl.desc_key)),
           createElement(
             "button",
             {
@@ -92,7 +92,7 @@ export function ScreenerTemplates({ templates, applyingId, onApply }: ScreenerTe
               onClick: () => onApply(tmpl),
               style: {
                 padding: "6px 12px",
-                background: applyingId === tmpl.id ? "rgba(34,211,238,0.3)" : "var(--accent-cyan)",
+                background: applyingId === tmpl.id ? "rgba(34,211,238,0.3)" : "var(--accent-cyan, #06b6d4)",
                 color: "#fff",
                 fontSize: "12px",
                 borderRadius: "6px",

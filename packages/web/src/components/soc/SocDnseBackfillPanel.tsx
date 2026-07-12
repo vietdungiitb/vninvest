@@ -76,7 +76,7 @@ export function SocDnseBackfillPanel() {
   const getStatusColor = (status: string): string => {
     switch (status) {
       case "completed": return "#34d399";
-      case "running": return "var(--accent-cyan)";
+      case "running": return "var(--accent-cyan, #06b6d4)";
       case "failed": return "#f87171";
       case "queued": return "#fbbf24";
       default: return "#94a3b8";
@@ -109,7 +109,7 @@ export function SocDnseBackfillPanel() {
                   createElement(
                     "div",
                     null,
-                    createElement("label", { style: { fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "0.25rem", display: "block" } }, t("soc.dnse.symbol")),
+                    createElement("label", { style: { fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)", marginBottom: "0.25rem", display: "block" } }, t("soc.dnse.symbol")),
                     createElement(
                       "input",
                       {
@@ -124,7 +124,7 @@ export function SocDnseBackfillPanel() {
                   createElement(
                     "div",
                     null,
-                    createElement("label", { style: { fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "0.25rem", display: "block" } }, t("soc.dnse.date_from")),
+                    createElement("label", { style: { fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)", marginBottom: "0.25rem", display: "block" } }, t("soc.dnse.date_from")),
                     createElement(
                       "input",
                       {
@@ -140,7 +140,7 @@ export function SocDnseBackfillPanel() {
                   createElement(
                     "div",
                     null,
-                    createElement("label", { style: { fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "0.25rem", display: "block" } }, t("soc.dnse.date_to")),
+                    createElement("label", { style: { fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)", marginBottom: "0.25rem", display: "block" } }, t("soc.dnse.date_to")),
                     createElement(
                       "input",
                       {
@@ -191,14 +191,14 @@ export function SocDnseBackfillPanel() {
                               padding: "0.5rem 0.75rem",
                               borderRadius: "6px",
                               background: "rgba(15, 23, 42, 0.3)",
-                              border: "1px solid var(--border-default)",
+                              border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
                             },
                           },
                           createElement(
                             "div",
                             { style: { flex: 1 } },
-                            createElement("span", { style: { fontWeight: 700, color: "var(--accent-cyan)" } }, job.symbol),
-                            createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "0.5rem" } },
+                            createElement("span", { style: { fontWeight: 700, color: "var(--accent-cyan, #06b6d4)" } }, job.symbol),
+                            createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", marginLeft: "0.5rem" } },
                               job.date || "N/A",
                             ),
                           ),

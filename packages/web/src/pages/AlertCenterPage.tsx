@@ -386,7 +386,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
         e("div", { className: styles["core-dashboard-panel"] as string }, [
           e("h2", { className: styles["core-section-title"] as string }, [
             "BẢNG TIN THỜI GIAN THỰC",
-            e("span", { key: "sub", style: { fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: "normal" } as React.CSSProperties }, `Hiện thị ${alerts.length} sự kiện gần nhất`)
+            e("span", { key: "sub", style: { fontSize: "0.8rem", color: "var(--text-muted, #94a3b8)", fontWeight: "normal" } as React.CSSProperties }, `Hiện thị ${alerts.length} sự kiện gần nhất`)
           ]),
 
           e("div", { className: styles["core-feed-control-bar"] as string }, [

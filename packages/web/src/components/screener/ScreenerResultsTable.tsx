@@ -65,14 +65,14 @@ function getCellStyle(val: any, key: keyof ScreenerRow): CSSProperties {
   const base: React.CSSProperties = { textAlign: "right" };
   switch (key) {
     case "rsi_14":
-      return { ...base, color: val < 30 ? "#4ade80" : val > 70 ? "#f87171" : "var(--text-secondary)", fontWeight: 500 };
+      return { ...base, color: val < 30 ? "#4ade80" : val > 70 ? "#f87171" : "var(--text-secondary, #94a3b8)", fontWeight: 500 };
     case "price_vs_sma20_pct":
     case "price_vs_sma50_pct":
       return { ...base, color: val > 0 ? "#4ade80" : "#f87171" };
     case "macd_hist":
       return { ...base, color: val > 0 ? "#34d399" : "#fb7185", fontWeight: 500 };
     case "volume_rvol":
-      return { ...base, color: val >= 2 ? "#fbbf24" : "var(--text-muted)", fontWeight: val >= 2 ? 600 : 400 };
+      return { ...base, color: val >= 2 ? "#fbbf24" : "var(--text-muted, #94a3b8)", fontWeight: val >= 2 ? 600 : 400 };
     case "momentum_20d_pct":
     case "eps_growth_yoy":
     case "revenue_growth_yoy":
@@ -142,17 +142,17 @@ export function ScreenerResultsTable({ results }: { results: ScreenerResult }) {
 
   return createElement(
     "div",
-    { style: { background: "var(--bg-panel)", border: "1px solid var(--border-default)", borderRadius: "12px", padding: "20px" } },
+    { style: { background: "var(--bg-panel, #0f172a)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", borderRadius: "12px", padding: "20px" } },
     createElement(
       "div",
       { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px", flexWrap: "wrap", gap: "8px" } },
       createElement(
         "div",
         { style: { display: "flex", alignItems: "center", gap: "12px" } },
-        createElement("h3", { style: { fontSize: "14px", fontWeight: 600, color: "var(--text-secondary)" } }, results.rule_name),
+        createElement("h3", { style: { fontSize: "14px", fontWeight: 600, color: "var(--text-secondary, #94a3b8)" } }, results.rule_name),
         createElement(
           "div",
-          { style: { fontSize: "12px", color: "var(--text-muted)" } },
+          { style: { fontSize: "12px", color: "var(--text-muted, #94a3b8)" } },
           createElement("span", { style: { color: "#4ade80", fontWeight: "bold" } }, formatNumber(results.matched_count)),
           " ",
           t("screener.matched"),
@@ -171,21 +171,21 @@ export function ScreenerResultsTable({ results }: { results: ScreenerResult }) {
           {
             type: "button",
             onClick: () => setShowPicker((s) => !s),
-            style: { padding: "6px 12px", background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default)", borderRadius: "6px", color: "var(--text-primary)", fontSize: "12px", cursor: "pointer" },
+            style: { padding: "6px 12px", background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", borderRadius: "6px", color: "var(--text-primary, #f1f5f9)", fontSize: "12px", cursor: "pointer" },
           },
           t("screener.columnsBtn"),
         ),
       ),
     ),
     results.matched.length === 0
-      ? createElement("p", { style: { color: "var(--text-muted)", fontSize: "14px", textAlign: "center", padding: "24px 0" } }, t("screener.noMatchedSymbols"))
+      ? createElement("p", { style: { color: "var(--text-muted, #94a3b8)", fontSize: "14px", textAlign: "center", padding: "24px 0" } }, t("screener.noMatchedSymbols"))
       : createElement(
           "div",
           null,
           showPicker &&
             createElement(
               "div",
-              { style: { marginBottom: "12px", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "8px", background: "rgba(15,23,42,0.3)", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px" } },
+              { style: { marginBottom: "12px", padding: "12px", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", borderRadius: "8px", background: "rgba(15,23,42,0.3)", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px" } },
               groupedColumns.map((gc) =>
                 createElement(
                   "div",
@@ -194,12 +194,12 @@ export function ScreenerResultsTable({ results }: { results: ScreenerResult }) {
                   gc.cols.map((c) =>
                     createElement(
                       "label",
-                      { key: String(c.key), style: { display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--text-secondary)", cursor: "pointer", padding: "2px 0" } },
+                      { key: String(c.key), style: { display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--text-secondary, #94a3b8)", cursor: "pointer", padding: "2px 0" } },
                       createElement("input", {
                         type: "checkbox",
                         checked: !!visible[c.key],
                         onChange: () => setVisible((prev) => ({ ...prev, [c.key]: !prev[c.key] })),
-                        style: { width: "16px", height: "16px", accentColor: "var(--accent-cyan)" },
+                        style: { width: "16px", height: "16px", accentColor: "var(--accent-cyan, #06b6d4)" },
                       }),
                       t(c.labelKey),
                     ),
@@ -218,7 +218,7 @@ export function ScreenerResultsTable({ results }: { results: ScreenerResult }) {
                 null,
                 createElement(
                   "tr",
-                  { style: { color: "var(--text-muted)", borderBottom: "1px solid var(--border-default)" } },
+                  { style: { color: "var(--text-muted, #94a3b8)", borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
                   visibleColumns.map((col) =>
                     createElement(
                       "th",
@@ -265,11 +265,11 @@ export function ScreenerResultsTable({ results }: { results: ScreenerResult }) {
                           style: {
                             padding: "8px 16px 8px 0",
                             textAlign: col.format === "string" ? "left" : "right",
-                            ...(col.key === "symbol" ? { fontWeight: "bold", color: "var(--accent-cyan)" } : getCellStyle(row[col.key], col.key)),
+                            ...(col.key === "symbol" ? { fontWeight: "bold", color: "var(--accent-cyan, #06b6d4)" } : getCellStyle(row[col.key], col.key)),
                           },
                         },
                         col.key === "symbol"
-                          ? createElement("a", { href: "/stocks/" + row.symbol, style: { color: "var(--accent-cyan)", textDecoration: "none", fontWeight: "bold" } }, row.symbol)
+                          ? createElement("a", { href: "/stocks/" + row.symbol, style: { color: "var(--accent-cyan, #06b6d4)", textDecoration: "none", fontWeight: "bold" } }, row.symbol)
                           : col.key === "ai_advisory"
                             ? createElement(ScreenerScoreCard, { advisory: row.ai_advisory })
                             : formatValue(row[col.key], col.format),
@@ -290,18 +290,18 @@ export function ScreenerResultsTable({ results }: { results: ScreenerResult }) {
                   type: "button",
                   onClick: () => setCurrentPage((p) => Math.max(1, p - 1)),
                   disabled: currentPage <= 1,
-                  style: { padding: "6px 12px", background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default)", borderRadius: "6px", color: "var(--text-primary)", cursor: currentPage <= 1 ? "not-allowed" : "pointer", opacity: currentPage <= 1 ? 0.5 : 1 },
+                  style: { padding: "6px 12px", background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", borderRadius: "6px", color: "var(--text-primary, #f1f5f9)", cursor: currentPage <= 1 ? "not-allowed" : "pointer", opacity: currentPage <= 1 ? 0.5 : 1 },
                 },
                 t("common.prev"),
               ),
-              createElement("span", { style: { color: "var(--text-muted)", fontSize: "12px" } }, currentPage + " / " + totalPages),
+              createElement("span", { style: { color: "var(--text-muted, #94a3b8)", fontSize: "12px" } }, currentPage + " / " + totalPages),
               createElement(
                 "button",
                 {
                   type: "button",
                   onClick: () => setCurrentPage((p) => Math.min(totalPages, p + 1)),
                   disabled: currentPage >= totalPages,
-                  style: { padding: "6px 12px", background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default)", borderRadius: "6px", color: "var(--text-primary)", cursor: currentPage >= totalPages ? "not-allowed" : "pointer", opacity: currentPage >= totalPages ? 0.5 : 1 },
+                  style: { padding: "6px 12px", background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", borderRadius: "6px", color: "var(--text-primary, #f1f5f9)", cursor: currentPage >= totalPages ? "not-allowed" : "pointer", opacity: currentPage >= totalPages ? 0.5 : 1 },
                 },
                 t("common.next"),
               ),

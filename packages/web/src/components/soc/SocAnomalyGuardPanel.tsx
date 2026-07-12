@@ -37,7 +37,7 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
       "div",
       { className: styles.metricCard },
       createElement("div", { className: styles.metricLabel }, label),
-      createElement("div", { className: styles.metricValue, style: { color: color || "var(--text-primary)" } }, value)
+      createElement("div", { className: styles.metricValue, style: { color: color || "var(--text-primary, #f1f5f9)" } }, value)
     );
   };
 
@@ -55,7 +55,7 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
           { className: styles.sectionCardTitle, style: { color: "var(--accent-amber)", display: "flex", alignItems: "center", gap: "0.4rem" } },
           `⚠️ ${t("soc.dataops.anomaly_guard")}`
         ),
-        createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted)", margin: "0.15rem 0 0 0" } }, t("soc.dataops.anomaly_guard_desc"))
+        createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", margin: "0.15rem 0 0 0" } }, t("soc.dataops.anomaly_guard_desc"))
       )
     ),
 
@@ -79,7 +79,7 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
         { className: styles.glassPanel, style: { padding: "0.75rem", background: "rgba(15, 23, 42, 0.3)" } },
         createElement(
           "h4",
-          { style: { margin: "0 0 0.5rem 0", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary)" } },
+          { style: { margin: "0 0 0.5rem 0", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary, #f1f5f9)" } },
           t("soc.dataops.anomaly_critical_gaps")
         ),
         createElement(
@@ -93,11 +93,11 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
               null,
               createElement(
                 "tr",
-                { style: { borderBottom: "1px solid var(--border-default)" } },
-                createElement("th", { style: { textAlign: "left", padding: "0.3rem", color: "var(--text-muted)" } }, t("soc.dataops.coverage_gap_symbol")),
-                createElement("th", { style: { textAlign: "left", padding: "0.3rem", color: "var(--text-muted)" } }, t("soc.dataops.coverage_gap_tier")),
-                createElement("th", { style: { textAlign: "right", padding: "0.3rem", color: "var(--text-muted)" } }, t("soc.dataops.coverage_gap_score")),
-                createElement("th", { style: { textAlign: "center", padding: "0.3rem", color: "var(--text-muted)" } }, t("soc.dataops.coverage_gap_freshness"))
+                { style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
+                createElement("th", { style: { textAlign: "left", padding: "0.3rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.coverage_gap_symbol")),
+                createElement("th", { style: { textAlign: "left", padding: "0.3rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.coverage_gap_tier")),
+                createElement("th", { style: { textAlign: "right", padding: "0.3rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.coverage_gap_score")),
+                createElement("th", { style: { textAlign: "center", padding: "0.3rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.coverage_gap_freshness"))
               )
             ),
             createElement(
@@ -106,9 +106,9 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
               (anomalyGuard.critical_gap_symbols || []).map((item) =>
                 createElement(
                   "tr",
-                  { key: item.symbol, style: { borderBottom: "1px solid var(--border-default)" } },
+                  { key: item.symbol, style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
                   createElement("td", { style: { padding: "0.3rem", fontWeight: 600, color: "var(--accent-amber)" } }, item.symbol),
-                  createElement("td", { style: { padding: "0.3rem", color: "var(--text-muted)" } }, item.tier || "—"),
+                  createElement("td", { style: { padding: "0.3rem", color: "var(--text-muted, #94a3b8)" } }, item.tier || "—"),
                   createElement("td", { style: { padding: "0.3rem", textAlign: "right", fontWeight: 600, color: "#f87171" } }, item.gap_score?.toFixed(1)),
                   createElement("td", { style: { padding: "0.3rem", textAlign: "center" } }, item.freshness_state)
                 )
@@ -117,7 +117,7 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
                 createElement(
                   "tr",
                   null,
-                  createElement("td", { colSpan: 4, style: { padding: "1rem", textAlign: "center", color: "var(--text-muted)" } }, t("soc.dataops.no_critical_gaps"))
+                  createElement("td", { colSpan: 4, style: { padding: "1rem", textAlign: "center", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.no_critical_gaps"))
                 )
             )
           )
@@ -130,7 +130,7 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
         { className: styles.glassPanel, style: { padding: "0.75rem", background: "rgba(15, 23, 42, 0.3)" } },
         createElement(
           "h4",
-          { style: { margin: "0 0 0.5rem 0", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary)" } },
+          { style: { margin: "0 0 0.5rem 0", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary, #f1f5f9)" } },
           t("soc.dataops.anomaly_hot_breaches")
         ),
         createElement(
@@ -144,11 +144,11 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
               null,
               createElement(
                 "tr",
-                { style: { borderBottom: "1px solid var(--border-default)" } },
-                createElement("th", { style: { textAlign: "left", padding: "0.3rem", color: "var(--text-muted)" } }, t("soc.dataops.coverage_gap_symbol")),
-                createElement("th", { style: { textAlign: "right", padding: "0.3rem", color: "var(--text-muted)" } }, t("soc.dataops.coverage_gap_days")),
-                createElement("th", { style: { textAlign: "right", padding: "0.3rem", color: "var(--text-muted)" } }, t("soc.dataops.coverage_gap_score")),
-                createElement("th", { style: { textAlign: "center", padding: "0.3rem", color: "var(--text-muted)" } }, t("soc.dataops.coverage_gap_freshness"))
+                { style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
+                createElement("th", { style: { textAlign: "left", padding: "0.3rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.coverage_gap_symbol")),
+                createElement("th", { style: { textAlign: "right", padding: "0.3rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.coverage_gap_days")),
+                createElement("th", { style: { textAlign: "right", padding: "0.3rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.coverage_gap_score")),
+                createElement("th", { style: { textAlign: "center", padding: "0.3rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.coverage_gap_freshness"))
               )
             ),
             createElement(
@@ -157,10 +157,10 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
               (anomalyGuard.hot_tier_breach || []).map((item) =>
                 createElement(
                   "tr",
-                  { key: item.symbol, style: { borderBottom: "1px solid var(--border-default)", background: "rgba(239, 68, 68, 0.03)" } },
+                  { key: item.symbol, style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", background: "rgba(239, 68, 68, 0.03)" } },
                   createElement("td", { style: { padding: "0.3rem", fontWeight: 600, color: "#f87171" } }, item.symbol),
                   createElement("td", { style: { padding: "0.3rem", textAlign: "right", fontWeight: 600, color: "#f87171" } }, item.gap_days),
-                  createElement("td", { style: { padding: "0.3rem", textAlign: "right", color: "var(--text-muted)" } }, item.gap_score?.toFixed(1)),
+                  createElement("td", { style: { padding: "0.3rem", textAlign: "right", color: "var(--text-muted, #94a3b8)" } }, item.gap_score?.toFixed(1)),
                   createElement("td", { style: { padding: "0.3rem", textAlign: "center" } }, item.freshness_state)
                 )
               ),
@@ -168,7 +168,7 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
                 createElement(
                   "tr",
                   null,
-                  createElement("td", { colSpan: 4, style: { padding: "1rem", textAlign: "center", color: "var(--text-muted)" } }, t("soc.dataops.no_hot_breach"))
+                  createElement("td", { colSpan: 4, style: { padding: "1rem", textAlign: "center", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.no_hot_breach"))
                 )
             )
           )

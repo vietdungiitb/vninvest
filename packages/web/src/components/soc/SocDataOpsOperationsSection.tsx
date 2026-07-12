@@ -64,7 +64,7 @@ const PREVIEW_PAGE_SIZE = 8;
 const LABEL_STYLE: React.CSSProperties = {
   fontSize: "0.7rem",
   fontWeight: 600,
-  color: "var(--text-muted)",
+  color: "var(--text-muted, #94a3b8)",
   marginBottom: "0.25rem",
   display: "block",
 };
@@ -104,7 +104,7 @@ const ACTIVE_RUN_STYLES: Record<string, React.CSSProperties> = {
     display: "flex",
     gap: "0.75rem",
     fontSize: "0.6rem",
-    color: "var(--text-muted)",
+    color: "var(--text-muted, #94a3b8)",
     marginTop: "0.35rem",
   } as React.CSSProperties,
 };
@@ -279,7 +279,7 @@ export function SocDataOpsOperationsSection() {
   const getStatusBadgeStyle = (status: string) => {
     switch (status) {
       case "success": case "completed": return { background: "rgba(16, 185, 129, 0.15)", color: "#34d399" };
-      case "running": case "active": return { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan)" };
+      case "running": case "active": return { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan, #06b6d4)" };
       case "failed": case "error": return { background: "rgba(239, 68, 68, 0.15)", color: "#f87171" };
       case "partial": return { background: "rgba(251, 191, 36, 0.15)", color: "#fbbf24" };
       case "queued": case "pending": return { background: "rgba(148, 163, 184, 0.15)", color: "#94a3b8" };
@@ -347,7 +347,7 @@ export function SocDataOpsOperationsSection() {
                   )
                 : createElement(
                     "span",
-                    { style: { fontSize: "0.6rem", color: "var(--text-muted)", display: "block", marginTop: "0.05rem" } },
+                    { style: { fontSize: "0.6rem", color: "var(--text-muted, #94a3b8)", display: "block", marginTop: "0.05rem" } },
                     t(`soc.dataops.dataset_field_${ds.key}`),
                   ),
             ),
@@ -369,7 +369,7 @@ export function SocDataOpsOperationsSection() {
           {
             type: "button",
             onClick: () => setIsDrawerOpen(true),
-            style: { background: "none", border: "none", color: "var(--accent-cyan)", cursor: "pointer", fontSize: "0.75rem", display: "inline-flex", alignItems: "center", gap: "0.2rem" },
+            style: { background: "none", border: "none", color: "var(--accent-cyan, #06b6d4)", cursor: "pointer", fontSize: "0.75rem", display: "inline-flex", alignItems: "center", gap: "0.2rem" },
             title: t("soc.dataops.ops_section_custom_groups"),
           },
           "\u2699 " + t("soc.dataops.subtab.config"),
@@ -405,7 +405,7 @@ export function SocDataOpsOperationsSection() {
               placeholder: t("soc.dataops.backfill_custom_symbols_placeholder"),
               style: { minHeight: "60px", resize: "vertical", fontSize: "0.75rem", width: "100%" },
             }),
-            createElement("p", { style: { fontSize: "0.55rem", color: "var(--text-muted)", marginTop: "0.1rem" } },
+            createElement("p", { style: { fontSize: "0.55rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.1rem" } },
               t("soc.dataops.backfill_custom_symbols_hint")),
           )
         : null,
@@ -491,7 +491,7 @@ export function SocDataOpsOperationsSection() {
           className: styles.actionBtn,
           onClick: handlePreview,
           disabled: previewing || submitting,
-          style: { background: "rgba(0, 180, 216, 0.12)", color: "var(--accent-cyan)" },
+          style: { background: "rgba(0, 180, 216, 0.12)", color: "var(--accent-cyan, #06b6d4)" },
         },
         previewing ? t("soc.dataops.planner_preview_loading") : t("soc.dataops.planner_preview"),
       ),
@@ -562,8 +562,8 @@ export function SocDataOpsOperationsSection() {
         onClick: () => setExpanded(!expanded),
         style: {
           width: "100%", textAlign: "left", fontSize: "0.7rem",
-          background: "rgba(15, 23, 42, 0.3)", border: "1px solid var(--border-default)",
-          color: "var(--text-primary)", padding: "0.4rem 0.6rem",
+          background: "rgba(15, 23, 42, 0.3)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
+          color: "var(--text-primary, #f1f5f9)", padding: "0.4rem 0.6rem",
           cursor: "pointer",
         },
       },
@@ -611,7 +611,7 @@ export function SocDataOpsOperationsSection() {
                   disabled: page === 0,
                   style: { fontSize: "0.6rem", padding: "0.15rem 0.35rem" },
                 }, "\u25C0"),
-                createElement("span", { style: { fontSize: "0.65rem", color: "var(--text-muted)" } },
+                createElement("span", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)" } },
                   `${page + 1}/${totalPages}`),
                 createElement("button", {
                   className: styles.actionBtn,
@@ -630,7 +630,7 @@ export function SocDataOpsOperationsSection() {
     if (!preview) {
       return createElement(
         "div",
-        { className: styles.sectionCard, style: { display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: "180px", color: "var(--text-muted)" } },
+        { className: styles.sectionCard, style: { display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: "180px", color: "var(--text-muted, #94a3b8)" } },
         createElement("span", { style: { fontSize: "2.5rem", marginBottom: "0.5rem" } }, "\u{1F5D2}"),
         createElement("p", { style: { fontSize: "0.75rem", margin: 0, textAlign: "center" } }, t("soc.dataops.planner_preview_empty")),
       );
@@ -645,13 +645,13 @@ export function SocDataOpsOperationsSection() {
         { className: styles.metricGrid },
         createElement(
           "div",
-          { className: styles.metricCard, onClick: () => setPlannedExpanded(!plannedExpanded), style: { cursor: "pointer", border: plannedExpanded ? "1px solid var(--accent-cyan)" : undefined } },
+          { className: styles.metricCard, onClick: () => setPlannedExpanded(!plannedExpanded), style: { cursor: "pointer", border: plannedExpanded ? "1px solid var(--accent-cyan, #06b6d4)" : undefined } },
           createElement("div", { className: styles.metricLabel }, t("soc.dataops.planner_planned_items")),
-          createElement("div", { className: styles.metricValue, style: { color: "var(--accent-cyan)" } }, String(plannedCount)),
+          createElement("div", { className: styles.metricValue, style: { color: "var(--accent-cyan, #06b6d4)" } }, String(plannedCount)),
         ),
         createElement(
           "div",
-          { className: styles.metricCard, onClick: () => setSkippedExpanded(!skippedExpanded), style: { cursor: "pointer", border: skippedExpanded ? "1px solid var(--text-muted)" : undefined } },
+          { className: styles.metricCard, onClick: () => setSkippedExpanded(!skippedExpanded), style: { cursor: "pointer", border: skippedExpanded ? "1px solid var(--text-muted, #94a3b8)" : undefined } },
           createElement("div", { className: styles.metricLabel }, t("soc.dataops.planner_skipped_items")),
           createElement("div", { className: styles.metricValue, style: { color: "#94a3b8" } }, String(skippedCount)),
         ),
@@ -696,7 +696,7 @@ export function SocDataOpsOperationsSection() {
                 background: "rgba(15, 23, 42, 0.4)",
                 border: "1px solid var(--border-default, rgba(80, 120, 168, 0.2))",
                 borderRadius: "4px",
-                color: "var(--text-primary)",
+                color: "var(--text-primary, #f1f5f9)",
                 cursor: "pointer",
                 height: "28px"
               }
@@ -732,7 +732,7 @@ export function SocDataOpsOperationsSection() {
                       padding: "0.6rem 0.75rem",
                       borderRadius: "8px",
                       background: "rgba(15, 23, 42, 0.25)",
-                      border: "1px solid var(--border-default)",
+                      border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
                       fontSize: "0.75rem",
                     },
                   },
@@ -744,7 +744,7 @@ export function SocDataOpsOperationsSection() {
                       null,
                       createElement("span", { style: { fontWeight: 600 } }, t(`soc.dataops.dataset_${log.dataset}`) || log.dataset),
                       log.message
-                        ? createElement("div", { style: { color: "var(--text-muted)", marginTop: "0.1rem", fontSize: "0.68rem" } }, log.message)
+                        ? createElement("div", { style: { color: "var(--text-muted, #94a3b8)", marginTop: "0.1rem", fontSize: "0.68rem" } }, log.message)
                         : null,
                     ),
                     createElement("span", {
@@ -755,7 +755,7 @@ export function SocDataOpsOperationsSection() {
                   (log.planned != null || log.inserted != null || log.updated != null || log.skipped_existing != null || log.failed != null)
                     ? createElement(
                         "div",
-                        { style: { display: "flex", gap: "0.75rem", marginTop: "0.35rem", fontSize: "0.62rem", color: "var(--text-muted)" } },
+                        { style: { display: "flex", gap: "0.75rem", marginTop: "0.35rem", fontSize: "0.62rem", color: "var(--text-muted, #94a3b8)" } },
                         log.planned != null ? createElement("span", null, `${t("soc.dataops.backfill_planned")}: ${log.planned}`) : null,
                         log.inserted != null ? createElement("span", null, `${t("soc.dataops.backfill_inserted")}: ${log.inserted}`) : null,
                         log.updated != null ? createElement("span", null, `${t("soc.dataops.backfill_updated")}: ${log.updated}`) : null,
@@ -765,7 +765,7 @@ export function SocDataOpsOperationsSection() {
                     : null,
                   createElement(
                     "div",
-                    { style: { fontSize: "0.58rem", color: "var(--text-muted)", marginTop: "0.2rem" } },
+                    { style: { fontSize: "0.58rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.2rem" } },
                     log.started_at?.split("T").join(" ")?.slice(0, 19) || "—",
                   ),
                 ),
@@ -779,13 +779,13 @@ export function SocDataOpsOperationsSection() {
                     onClick: () => setRunLogsPage((p) => Math.max(1, p - 1)),
                     disabled: runLogsPage <= 1,
                     className: styles.actionBtn,
-                    style: { fontSize: "0.7rem", background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted)" },
+                    style: { fontSize: "0.7rem", background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted, #94a3b8)" },
                   },
                   "\u25C0 " + t("soc.actions.prev"),
                 ),
                 createElement(
                   "span",
-                  { style: { fontSize: "0.7rem", color: "var(--text-muted)" } },
+                  { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)" } },
                   t("soc.actions.page", { page: runLogsPage }),
                 ),
                 createElement(
@@ -794,7 +794,7 @@ export function SocDataOpsOperationsSection() {
                     onClick: () => setRunLogsPage((p) => p + 1),
                     disabled: !runLogsHasMore,
                     className: styles.actionBtn,
-                    style: { fontSize: "0.7rem", background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted)" },
+                    style: { fontSize: "0.7rem", background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted, #94a3b8)" },
                   },
                   t("soc.actions.next") + " \u25B6",
                 ),
@@ -862,7 +862,7 @@ export function SocDataOpsOperationsSection() {
                   {
                     onClick: () => setIsDrawerOpen(false),
                     className: styles.actionBtn,
-                    style: { background: "rgba(100, 116, 139, 0.2)", color: "var(--text-primary)", fontSize: "0.75rem", padding: "0.25rem 0.5rem" },
+                    style: { background: "rgba(100, 116, 139, 0.2)", color: "var(--text-primary, #f1f5f9)", fontSize: "0.75rem", padding: "0.25rem 0.5rem" },
                   },
                   "\u2715",
                 ),

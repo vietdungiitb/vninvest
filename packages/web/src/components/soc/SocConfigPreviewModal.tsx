@@ -55,7 +55,7 @@ export function SocConfigPreviewModal({ before, after, changeSummary, impactWarn
             style: {
               background: "none",
               border: "none",
-              color: "var(--text-muted)",
+              color: "var(--text-muted, #94a3b8)",
               fontSize: "1.2rem",
               cursor: "pointer",
               padding: "0.25rem 0.5rem",
@@ -87,7 +87,7 @@ export function SocConfigPreviewModal({ before, after, changeSummary, impactWarn
         ? createElement(
             "div",
             { style: { marginBottom: "1rem" } },
-            createElement("div", { style: { fontWeight: 700, fontSize: "0.8rem", marginBottom: "0.5rem", color: "var(--accent-cyan)" } }, t("soc.config_preview.changes")),
+            createElement("div", { style: { fontWeight: 700, fontSize: "0.8rem", marginBottom: "0.5rem", color: "var(--accent-cyan, #06b6d4)" } }, t("soc.config_preview.changes")),
             createElement(
               "div",
               { style: { fontSize: "0.75rem", maxHeight: "120px", overflow: "auto", padding: "0.5rem", background: "rgba(15, 23, 42, 0.3)", borderRadius: "6px" } },
@@ -102,13 +102,13 @@ export function SocConfigPreviewModal({ before, after, changeSummary, impactWarn
         createElement(
           "div",
           null,
-          createElement("div", { style: { fontWeight: 700, fontSize: "0.8rem", marginBottom: "0.5rem", color: "var(--text-muted)" } }, t("soc.config_preview.before")),
+          createElement("div", { style: { fontWeight: 700, fontSize: "0.8rem", marginBottom: "0.5rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.config_preview.before")),
           createElement("pre", { className: styles.jsonBlock }, JSON.stringify(before || {}, null, 2)),
         ),
         createElement(
           "div",
           null,
-          createElement("div", { style: { fontWeight: 700, fontSize: "0.8rem", marginBottom: "0.5rem", color: "var(--accent-cyan)" } }, t("soc.config_preview.after")),
+          createElement("div", { style: { fontWeight: 700, fontSize: "0.8rem", marginBottom: "0.5rem", color: "var(--accent-cyan, #06b6d4)" } }, t("soc.config_preview.after")),
           createElement("pre", { className: styles.jsonBlock }, JSON.stringify(after || {}, null, 2)),
         ),
       ),
@@ -121,7 +121,7 @@ export function SocConfigPreviewModal({ before, after, changeSummary, impactWarn
             onClick: onCancel,
             disabled: loading,
             className: styles.actionBtn,
-            style: { background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted)" },
+            style: { background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted, #94a3b8)" },
           },
           t("soc.actions.cancel"),
         ),

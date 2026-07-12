@@ -15,7 +15,7 @@ interface QueueTierData {
 function MetricCard({ label, value, color }: { label: string; value: string | number; color?: string }) {
   return createElement("div", { className: styles.metricCard },
     createElement("div", { className: styles.metricLabel }, label),
-    createElement("div", { className: styles.metricValue, style: { color: color || "var(--text-primary)" } }, value),
+    createElement("div", { className: styles.metricValue, style: { color: color || "var(--text-primary, #f1f5f9)" } }, value),
   );
 }
 
@@ -72,7 +72,7 @@ export function SocDataInventorySection() {
   return createElement("div", { style: { display: "flex", flexDirection: "column", gap: "1.25rem" } },
 
     createElement("div", { className: styles.metricGrid },
-      MetricCard({ label: t("soc.dataops.total_rows"), value: (s.total_rows ?? 0).toLocaleString(), color: "var(--accent-cyan)" }),
+      MetricCard({ label: t("soc.dataops.total_rows"), value: (s.total_rows ?? 0).toLocaleString(), color: "var(--accent-cyan, #06b6d4)" }),
       MetricCard({ label: t("soc.dataops.total_symbols"), value: (s.total_symbols ?? 0).toLocaleString(), color: "#34d399" }),
       MetricCard({ label: t("soc.dataops.earliest_date"), value: s.earliest_date ?? "N/A", color: "#fbbf24" }),
       MetricCard({ label: t("soc.dataops.latest_date"), value: s.latest_date ?? "N/A", color: "#f87171" }),
@@ -95,7 +95,7 @@ export function SocDataInventorySection() {
                 createElement("div", { className: styles.metricValue, style: { fontSize: "0.95rem" } },
                   dt.total_rows.toLocaleString(),
                 ),
-                createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted)", marginTop: "0.15rem" } },
+                createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.15rem" } },
                   `${dt.symbols} symbols${dt.earliest_date ? ` \u2022 ${dt.earliest_date}` : ""}`,
                 ),
               ),
@@ -110,7 +110,7 @@ export function SocDataInventorySection() {
           createElement("div", { style: { display: "flex", flexDirection: "column", gap: "0.5rem" } },
             years.map((yr) =>
               createElement("div", { key: yr.year, style: { display: "flex", alignItems: "center", gap: "0.5rem" } },
-                createElement("span", { style: { minWidth: "3rem", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)" } }, yr.year),
+                createElement("span", { style: { minWidth: "3rem", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)" } }, yr.year),
                 createElement("div", { style: { flex: 1, height: "1.25rem", background: "rgba(15, 23, 42, 0.4)", borderRadius: "4px", overflow: "hidden" } },
                   createElement("div", { className: styles.barFill, style: { width: `${(yr.rows / maxYearRows) * 100}%` } }),
                 ),
@@ -148,7 +148,7 @@ export function SocDataInventorySection() {
                     createElement("td", { className: styles.coverageCell, style: { color: coverageColor(g.covered_symbols, g.symbol_count) } },
                       `${g.covered_symbols} / ${g.symbol_count}`,
                     ),
-                    createElement("td", { style: { color: g.calendar_days != null && g.calendar_days < 30 ? "#fbbf24" : "var(--text-muted)", fontWeight: g.calendar_days != null && g.calendar_days < 30 ? 700 : 400 } },
+                    createElement("td", { style: { color: g.calendar_days != null && g.calendar_days < 30 ? "#fbbf24" : "var(--text-muted, #94a3b8)", fontWeight: g.calendar_days != null && g.calendar_days < 30 ? 700 : 400 } },
                       g.calendar_days != null ? `${g.calendar_days.toLocaleString()} ngày${g.calendar_days < 30 ? ' \u26A0' : ''}` : "N/A",
                     ),
                     createElement("td", null, g.total_rows.toLocaleString()),
@@ -179,25 +179,25 @@ export function SocDataInventorySection() {
                     onClick: () => setQueueTiersExpanded(queueTiersExpanded === tier.tier ? null : tier.tier),
                   },
                     createElement("span", { style: { fontWeight: 600, fontSize: "0.85rem" } }, tier.tier),
-                    createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted)" } },
+                    createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)" } },
                       `${tier.symbol_count} symbols \u2022 ${tier.cadence || "N/A"}`,
                     ),
                   ),
                   queueTiersExpanded === tier.tier
                     ? createElement("div", { className: styles.accordionContent },
-                        createElement("div", { style: { fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.5rem" } },
+                        createElement("div", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", marginBottom: "0.5rem" } },
                           `Cadence: ${tier.cadence || "N/A"} \u2022 Active: ${tier.symbol_count} symbols`,
                         ),
                         tier.active_symbols?.length > 0
                           ? createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: "0.35rem" } },
                               tier.active_symbols.slice(0, 10).map((sym) =>
-                                createElement("span", { key: sym, className: styles.statusBadge, style: { background: "rgba(0, 180, 216, 0.12)", color: "var(--accent-cyan)", fontSize: "0.65rem" } }, sym),
+                                createElement("span", { key: sym, className: styles.statusBadge, style: { background: "rgba(0, 180, 216, 0.12)", color: "var(--accent-cyan, #06b6d4)", fontSize: "0.65rem" } }, sym),
                               ),
                               tier.active_symbols.length > 10
-                                ? createElement("span", { style: { fontSize: "0.65rem", color: "var(--text-muted)" } }, `+${tier.active_symbols.length - 10} more`)
+                                ? createElement("span", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)" } }, `+${tier.active_symbols.length - 10} more`)
                                 : null,
                             )
-                          : createElement("span", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } }, t("soc.dataops.empty_examples")),
+                          : createElement("span", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.empty_examples")),
                       )
                     : null,
                 ),

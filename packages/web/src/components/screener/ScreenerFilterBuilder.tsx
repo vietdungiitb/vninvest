@@ -40,7 +40,7 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
           padding: "8px",
           background: "rgba(15,23,42,0.3)",
           borderRadius: "8px",
-          border: "1px solid var(--border-default)",
+          border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
         }
       },
       index > 0 && createElement(
@@ -51,9 +51,9 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
           style: {
             padding: "4px 8px",
             background: "rgba(15,23,42,0.6)",
-            border: "1px solid var(--border-default)",
+            border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
             borderRadius: "4px",
-            color: "var(--text-primary)",
+            color: "var(--text-primary, #f1f5f9)",
             fontSize: "12px",
             outline: "none",
             minWidth: "70px",
@@ -61,7 +61,7 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
         },
         LOGIC_OPTIONS.map((o) => createElement("option", { key: o.value, value: o.value }, t("screener.logic." + o.value.toLowerCase())))
       ),
-      index === 0 && createElement("span", { style: { width: "70px", color: "var(--text-muted)", fontSize: "12px" } }, "\u2014"),
+      index === 0 && createElement("span", { style: { width: "70px", color: "var(--text-muted, #94a3b8)", fontSize: "12px" } }, "\u2014"),
       createElement(
         "select",
         {
@@ -70,9 +70,9 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
           style: {
             padding: "4px 8px",
             background: "rgba(15,23,42,0.6)",
-            border: "1px solid var(--border-default)",
+            border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
             borderRadius: "4px",
-            color: "var(--text-primary)",
+            color: "var(--text-primary, #f1f5f9)",
             fontSize: "12px",
             outline: "none",
             minWidth: "180px",
@@ -94,9 +94,9 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
           style: {
             padding: "4px 8px",
             background: "rgba(15,23,42,0.6)",
-            border: "1px solid var(--border-default)",
+            border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
             borderRadius: "4px",
-            color: "var(--text-primary)",
+            color: "var(--text-primary, #f1f5f9)",
             fontSize: "12px",
             outline: "none",
             minWidth: "60px",
@@ -116,9 +116,9 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
             width: "100px",
             padding: "4px 8px",
             background: "rgba(15,23,42,0.6)",
-            border: "1px solid var(--border-default)",
+            border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
             borderRadius: "4px",
-            color: "var(--text-primary)",
+            color: "var(--text-primary, #f1f5f9)",
             fontSize: "12px",
             outline: "none",
           }
@@ -149,14 +149,14 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
     createElement(
       "div",
       { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" } },
-      createElement("h3", { style: { margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--text-secondary)" } }, t("screener.conditionsLabel")),
+      createElement("h3", { style: { margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--text-secondary, #94a3b8)" } }, t("screener.conditionsLabel")),
       conditions.length < 20 && createElement(
         "button",
         {
           onClick: addCondition,
           style: {
             padding: "6px 12px",
-            background: "var(--accent-cyan)",
+            background: "var(--accent-cyan, #06b6d4)",
             color: "#fff",
             fontSize: "12px",
             borderRadius: "6px",
@@ -175,8 +175,8 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
     ),
     createElement(
       "details",
-      { style: { marginTop: "16px", border: "1px solid var(--border-default)", borderRadius: "8px", background: "rgba(15,23,42,0.3)" } },
-      createElement("summary", { style: { padding: "12px", cursor: "pointer", fontSize: "13px", fontWeight: 500, color: "var(--accent-cyan)" } },
+      { style: { marginTop: "16px", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", borderRadius: "8px", background: "rgba(15,23,42,0.3)" } },
+      createElement("summary", { style: { padding: "12px", cursor: "pointer", fontSize: "13px", fontWeight: 500, color: "var(--accent-cyan, #06b6d4)" } },
         t("screener.fieldPicker")
       ),
       createElement("div", { style: { padding: "12px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "16px" } },
@@ -186,12 +186,12 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
               t("screener.group." + groupKey)
             ),
             Object.entries(group.fields).map(([fieldKey, field]) =>
-              createElement("label", { key: fieldKey, style: { display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--text-secondary)", cursor: "pointer" } },
+              createElement("label", { key: fieldKey, style: { display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--text-secondary, #94a3b8)", cursor: "pointer" } },
                 createElement("input", {
                   type: "checkbox",
                   checked: conditions.some(c => c.field === fieldKey),
                   onChange: () => {},
-                  style: { width: "16px", height: "16px", accentColor: "var(--accent-cyan)" },
+                  style: { width: "16px", height: "16px", accentColor: "var(--accent-cyan, #06b6d4)" },
                 }),
                 t("screener.fields." + field.key)
               )

@@ -133,7 +133,7 @@ export function SocPrefetchPanel() {
       "div",
       { className: styles.metricCard },
       createElement("div", { className: styles.metricLabel }, label),
-      createElement("div", { className: styles.metricValue, style: { color: color || "var(--text-primary)" } }, value),
+      createElement("div", { className: styles.metricValue, style: { color: color || "var(--text-primary, #f1f5f9)" } }, value),
     );
   };
 
@@ -173,7 +173,7 @@ export function SocPrefetchPanel() {
                       ),
                     ),
                   ),
-                  createElement("div", { style: { fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.5rem" } },
+                  createElement("div", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.5rem" } },
                     t("soc.prefetch.groups_summary", { count: selectedGroups.length, total: universeGroups.length }),
                   ),
                 ),
@@ -195,7 +195,7 @@ export function SocPrefetchPanel() {
                     { style: { display: "flex", gap: "0.5rem", marginTop: "0.75rem" } },
                     createElement(
                       "button",
-                      { onClick: handlePreview, className: styles.actionBtn, style: { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan)" } },
+                      { onClick: handlePreview, className: styles.actionBtn, style: { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan, #06b6d4)" } },
                       t("soc.actions.preview"),
                     ),
                     createElement(
@@ -208,7 +208,7 @@ export function SocPrefetchPanel() {
               ),
               createElement("div", { className: styles.metricGrid, style: { marginTop: "1.25rem" } },
                 renderMetricCard(t("soc.prefetch.hit_rate"), `${cacheStatus?.hit_rate ?? 0}%`, "#34d399"),
-                renderMetricCard(t("soc.prefetch.cache_size"), `${cacheStatus?.size_mb ?? 0} MB`, "var(--accent-cyan)"),
+                renderMetricCard(t("soc.prefetch.cache_size"), `${cacheStatus?.size_mb ?? 0} MB`, "var(--accent-cyan, #06b6d4)"),
                 renderMetricCard(t("soc.prefetch.cache_ttl"), `${cacheStatus?.ttl_minutes ?? 0} min`, "#fbbf24"),
               ),
               createElement(

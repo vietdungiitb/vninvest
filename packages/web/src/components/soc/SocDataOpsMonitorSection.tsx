@@ -135,18 +135,18 @@ function renderPagination(page: number, hasMore: boolean, onPrev: () => void, on
         onClick: onPrev,
         disabled: page <= 1,
         className: styles.actionBtn,
-        style: { fontSize: "0.7rem", background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted)", cursor: page <= 1 ? "not-allowed" : "pointer" },
+        style: { fontSize: "0.7rem", background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted, #94a3b8)", cursor: page <= 1 ? "not-allowed" : "pointer" },
       },
       "\u25C0 " + t("soc.actions.prev")
     ),
-    createElement("span", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } }, t("soc.actions.page", { page })),
+    createElement("span", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.actions.page", { page })),
     createElement(
       "button",
       {
         onClick: onNext,
         disabled: !hasMore,
         className: styles.actionBtn,
-        style: { fontSize: "0.7rem", background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted)", cursor: hasMore ? "pointer" : "not-allowed" },
+        style: { fontSize: "0.7rem", background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted, #94a3b8)", cursor: hasMore ? "pointer" : "not-allowed" },
       },
       t("soc.actions.next") + " \u25B6"
     )
@@ -184,6 +184,7 @@ export function SocDataOpsMonitorSection() {
       }
     };
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const renderMetricCard = (label: string, value: string | number, color?: string) => {
@@ -191,7 +192,7 @@ export function SocDataOpsMonitorSection() {
       "div",
       { className: styles.metricCard, style: { flex: 1, minWidth: "140px" } },
       createElement("div", { className: styles.metricLabel }, label),
-      createElement("div", { className: styles.metricValue, style: { color: color || "var(--text-primary)" } }, value)
+      createElement("div", { className: styles.metricValue, style: { color: color || "var(--text-primary, #f1f5f9)" } }, value)
     );
   };
 
@@ -220,7 +221,7 @@ export function SocDataOpsMonitorSection() {
           createElement("span", { style: { fontWeight: 700, fontSize: "0.75rem", color: "#34d399" } }, t("soc.dataops.monitor_active_runs_title")),
           createElement(
             "span",
-            { style: { fontSize: "0.6rem", color: "var(--text-muted)", marginLeft: "0.5rem" } },
+            { style: { fontSize: "0.6rem", color: "var(--text-muted, #94a3b8)", marginLeft: "0.5rem" } },
             t("soc.dataops.monitor_active_runs_desc")
           )
         ),
@@ -256,7 +257,7 @@ export function SocDataOpsMonitorSection() {
       ),
       createElement(
         "div",
-        { style: { display: "flex", gap: "0.75rem", fontSize: "0.6rem", color: "var(--text-muted)", marginTop: "0.3rem" } },
+        { style: { display: "flex", gap: "0.75rem", fontSize: "0.6rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.3rem" } },
         createElement("span", null, `${activeRun.run_id.slice(0, 8)}...`),
         createElement("span", null, `${activeRun.dataset || ""}`),
         createElement("span", null, `${progress.toFixed(0)}%`)
@@ -302,7 +303,7 @@ export function SocDataOpsMonitorSection() {
           {
             onClick: () => setMatrixExpanded((v) => !v),
             className: styles.actionBtn,
-            style: { fontSize: "0.7rem", background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted)" },
+            style: { fontSize: "0.7rem", background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted, #94a3b8)" },
           },
           matrixExpanded ? t("soc.dataops.matrix_collapse") : t("soc.dataops.matrix_expand")
         )
@@ -321,11 +322,11 @@ export function SocDataOpsMonitorSection() {
         observability?.updated_at &&
           createElement(
             "span",
-            { style: { fontSize: "0.65rem", color: "var(--text-muted)" } },
+            { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)" } },
             `${t("soc.dataops.observability_updated_at")}: ${new Date(observability.updated_at).toLocaleString()}`
           )
       ),
-      createElement("p", { style: { fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.75rem" } }, t("soc.dataops.observability_description")),
+      createElement("p", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", marginBottom: "0.75rem" } }, t("soc.dataops.observability_description")),
 
       observability
         ? createElement(
@@ -357,7 +358,7 @@ export function SocDataOpsMonitorSection() {
                 { className: styles.glassPanel, style: { padding: "0.75rem", background: "rgba(15, 23, 42, 0.3)" } },
                 createElement(
                   "h4",
-                  { style: { margin: "0 0 0.5rem 0", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary)" } },
+                  { style: { margin: "0 0 0.5rem 0", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary, #f1f5f9)" } },
                   t("soc.dataops.backlog_by_dataset")
                 ),
                 createElement(
@@ -371,9 +372,9 @@ export function SocDataOpsMonitorSection() {
                       null,
                       createElement(
                         "tr",
-                        { style: { borderBottom: "1px solid var(--border-default)" } },
-                        createElement("th", { style: { textAlign: "left", padding: "0.35rem", color: "var(--text-muted)" } }, t("soc.dataops.dataset")),
-                        createElement("th", { style: { textAlign: "right", padding: "0.35rem", color: "var(--text-muted)" } }, t("soc.dataops.backlog_count"))
+                        { style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
+                        createElement("th", { style: { textAlign: "left", padding: "0.35rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.dataset")),
+                        createElement("th", { style: { textAlign: "right", padding: "0.35rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.backlog_count"))
                       )
                     ),
                     createElement(
@@ -382,7 +383,7 @@ export function SocDataOpsMonitorSection() {
                       (observability.backlog?.by_dataset || []).map((item) =>
                         createElement(
                           "tr",
-                          { key: item.dataset, style: { borderBottom: "1px solid var(--border-default)" } },
+                          { key: item.dataset, style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
                           createElement("td", { style: { padding: "0.35rem", fontWeight: 600 } }, t(DATASET_LABEL_KEYS[item.dataset] || "soc.dataops.dataset_unknown")),
                           createElement("td", { style: { padding: "0.35rem", textAlign: "right", fontMono: "1" } }, item.backlog_count.toLocaleString())
                         )
@@ -391,7 +392,7 @@ export function SocDataOpsMonitorSection() {
                         createElement(
                           "tr",
                           null,
-                          createElement("td", { colSpan: 2, style: { padding: "1rem", textAlign: "center", color: "var(--text-muted)" } }, t("soc.dataops.no_backlog"))
+                          createElement("td", { colSpan: 2, style: { padding: "1rem", textAlign: "center", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.no_backlog"))
                         )
                     )
                   )
@@ -404,7 +405,7 @@ export function SocDataOpsMonitorSection() {
                 { className: styles.glassPanel, style: { padding: "0.75rem", background: "rgba(15, 23, 42, 0.3)" } },
                 createElement(
                   "h4",
-                  { style: { margin: "0 0 0.5rem 0", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary)" } },
+                  { style: { margin: "0 0 0.5rem 0", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary, #f1f5f9)" } },
                   t("soc.dataops.starvation_indicator")
                 ),
                 createElement(
@@ -423,7 +424,7 @@ export function SocDataOpsMonitorSection() {
                           padding: "0.5rem",
                           borderRadius: "6px",
                           background: "rgba(15, 23, 42, 0.2)",
-                          border: "1px solid var(--border-default)",
+                          border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
                         },
                       },
                       createElement(
@@ -432,7 +433,7 @@ export function SocDataOpsMonitorSection() {
                         createElement("div", { style: { fontWeight: 600, fontSize: "0.75rem" } }, t(TIER_LABEL_KEYS[item.tier] || "soc.dataops.unknown_tier")),
                         createElement(
                           "div",
-                          { style: { fontSize: "0.6rem", color: "var(--text-muted)", marginTop: "0.15rem" } },
+                          { style: { fontSize: "0.6rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.15rem" } },
                           t("soc.dataops.starvation_last_progress_seconds", {
                             seconds: item.seconds_since_last_progress ?? "-",
                             threshold: item.threshold_seconds,
@@ -455,7 +456,7 @@ export function SocDataOpsMonitorSection() {
                     );
                   }),
                   (!observability.starvation || observability.starvation.length === 0) &&
-                    createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted)", textAlign: "center" } }, t("soc.dataops.no_starvation_data"))
+                    createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", textAlign: "center" } }, t("soc.dataops.no_starvation_data"))
                 )
               )
             ),
@@ -466,7 +467,7 @@ export function SocDataOpsMonitorSection() {
               { className: styles.glassPanel, style: { padding: "0.75rem", background: "rgba(15, 23, 42, 0.3)" } },
               createElement(
                 "h4",
-                { style: { margin: "0 0 0.5rem 0", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary)" } },
+                { style: { margin: "0 0 0.5rem 0", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary, #f1f5f9)" } },
                 t("soc.dataops.backlog_by_tier")
               ),
               createElement(
@@ -480,10 +481,10 @@ export function SocDataOpsMonitorSection() {
                     null,
                     createElement(
                       "tr",
-                      { style: { borderBottom: "1px solid var(--border-default)" } },
-                      createElement("th", { style: { textAlign: "left", padding: "0.35rem", color: "var(--text-muted)" } }, t("soc.dataops.queue_tier")),
-                      createElement("th", { style: { textAlign: "right", padding: "0.35rem", color: "var(--text-muted)" } }, t("soc.dataops.symbol_count")),
-                      createElement("th", { style: { textAlign: "right", padding: "0.35rem", color: "var(--text-muted)" } }, t("soc.dataops.backlog_symbols"))
+                      { style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
+                      createElement("th", { style: { textAlign: "left", padding: "0.35rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.queue_tier")),
+                      createElement("th", { style: { textAlign: "right", padding: "0.35rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.symbol_count")),
+                      createElement("th", { style: { textAlign: "right", padding: "0.35rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.backlog_symbols"))
                     )
                   ),
                   createElement(
@@ -492,7 +493,7 @@ export function SocDataOpsMonitorSection() {
                     (observability.backlog?.by_tier || []).map((item) =>
                       createElement(
                         "tr",
-                        { key: item.tier, style: { borderBottom: "1px solid var(--border-default)" } },
+                        { key: item.tier, style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
                         createElement("td", { style: { padding: "0.35rem", fontWeight: 600 } }, t(TIER_LABEL_KEYS[item.tier] || "soc.dataops.unknown_tier")),
                         createElement("td", { style: { padding: "0.35rem", textAlign: "right", fontMono: "1" } }, item.symbol_count.toLocaleString()),
                         createElement("td", { style: { padding: "0.35rem", textAlign: "right", fontMono: "1" } }, item.backlog_symbols.toLocaleString())
@@ -502,7 +503,7 @@ export function SocDataOpsMonitorSection() {
                       createElement(
                         "tr",
                         null,
-                        createElement("td", { colSpan: 3, style: { padding: "1rem", textAlign: "center", color: "var(--text-muted)" } }, t("soc.dataops.no_backlog"))
+                        createElement("td", { colSpan: 3, style: { padding: "1rem", textAlign: "center", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.no_backlog"))
                       )
                   )
                 )
@@ -545,11 +546,11 @@ export function SocDataOpsMonitorSection() {
         coverage?.updated_at &&
           createElement(
             "span",
-            { style: { fontSize: "0.65rem", color: "var(--text-muted)" } },
+            { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)" } },
             `${t("soc.dataops.coverage_updated_at")}: ${new Date(coverage.updated_at).toLocaleString()}`
           )
       ),
-      createElement("p", { style: { fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.75rem" } }, t("soc.dataops.coverage_description")),
+      createElement("p", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", marginBottom: "0.75rem" } }, t("soc.dataops.coverage_description")),
 
       Array.isArray(coverage?.datasets) && coverage.datasets.length > 0
         ? createElement(
@@ -564,15 +565,15 @@ export function SocDataOpsMonitorSection() {
                 createElement(
                   "tr",
                   null,
-                  createElement("th", { style: { textAlign: "left", padding: "0.5rem", borderBottom: "1px solid var(--border-default)", color: "var(--text-muted)", fontWeight: 600 } }, t("soc.dataops.dataset")),
+                  createElement("th", { style: { textAlign: "left", padding: "0.5rem", borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, t("soc.dataops.dataset")),
                   COVERAGE_STATE_ORDER.map((stateKey) =>
                     createElement(
                       "th",
-                      { key: stateKey, style: { textAlign: "center", padding: "0.5rem", borderBottom: "1px solid var(--border-default)", color: "var(--text-muted)", fontWeight: 600 } },
+                      { key: stateKey, style: { textAlign: "center", padding: "0.5rem", borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } },
                       t(FRESHNESS_LABEL_KEYS[stateKey] || "soc.dataops.freshness_unknown")
                     )
                   ),
-                  createElement("th", { style: { textAlign: "right", padding: "0.5rem", borderBottom: "1px solid var(--border-default)", color: "var(--text-muted)", fontWeight: 600 } }, "Total")
+                  createElement("th", { style: { textAlign: "right", padding: "0.5rem", borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, "Total")
                 )
               ),
               createElement(
@@ -582,7 +583,7 @@ export function SocDataOpsMonitorSection() {
                   const total = COVERAGE_STATE_ORDER.reduce((sum, stateKey) => sum + ((ds as any)[stateKey] || 0), 0);
                   return createElement(
                     "tr",
-                    { key: ds.dataset, style: { borderBottom: "1px solid var(--border-default)" } },
+                    { key: ds.dataset, style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
                     createElement("td", { style: { padding: "0.5rem", fontWeight: 600 } }, t(DATASET_LABEL_KEYS[ds.dataset] || "soc.dataops.dataset_unknown")),
                     COVERAGE_STATE_ORDER.map((stateKey) => {
                       const count = (ds as any)[stateKey] || 0;
@@ -619,10 +620,10 @@ export function SocDataOpsMonitorSection() {
                 createElement(
                   "tr",
                   null,
-                  createElement("th", { style: { textAlign: "left", padding: "0.35rem", borderBottom: "1px solid var(--border-default)", color: "var(--text-muted)", fontWeight: 600 } }, t("soc.dataops.coverage_gap_symbol")),
-                  createElement("th", { style: { textAlign: "left", padding: "0.35rem", borderBottom: "1px solid var(--border-default)", color: "var(--text-muted)", fontWeight: 600 } }, t("soc.dataops.dataset")),
-                  createElement("th", { style: { textAlign: "center", padding: "0.35rem", borderBottom: "1px solid var(--border-default)", color: "var(--text-muted)", fontWeight: 600 } }, t("soc.dataops.coverage_gap_freshness")),
-                  createElement("th", { style: { textAlign: "left", padding: "0.35rem", borderBottom: "1px solid var(--border-default)", color: "var(--text-muted)", fontWeight: 600 } }, t("soc.dataops.next_action"))
+                  createElement("th", { style: { textAlign: "left", padding: "0.35rem", borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, t("soc.dataops.coverage_gap_symbol")),
+                  createElement("th", { style: { textAlign: "left", padding: "0.35rem", borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, t("soc.dataops.dataset")),
+                  createElement("th", { style: { textAlign: "center", padding: "0.35rem", borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, t("soc.dataops.coverage_gap_freshness")),
+                  createElement("th", { style: { textAlign: "left", padding: "0.35rem", borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, t("soc.dataops.next_action"))
                 )
               ),
               createElement(
@@ -631,9 +632,9 @@ export function SocDataOpsMonitorSection() {
                 coverage.top_gaps.slice((gapsPage - 1) * 20, gapsPage * 20).map((gap, i) =>
                   createElement(
                     "tr",
-                    { key: i, style: { borderBottom: "1px solid var(--border-default)" } },
+                    { key: i, style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
                     createElement("td", { style: { padding: "0.35rem", fontWeight: 600 } }, gap.symbol),
-                    createElement("td", { style: { padding: "0.35rem", color: "var(--text-muted)" } }, t(DATASET_LABEL_KEYS[gap.dataset] || "soc.dataops.dataset_unknown")),
+                    createElement("td", { style: { padding: "0.35rem", color: "var(--text-muted, #94a3b8)" } }, t(DATASET_LABEL_KEYS[gap.dataset] || "soc.dataops.dataset_unknown")),
                     createElement(
                       "td",
                       { style: { padding: "0.35rem", textAlign: "center" } },
@@ -652,7 +653,7 @@ export function SocDataOpsMonitorSection() {
                     ),
                     createElement(
                       "td",
-                      { style: { padding: "0.35rem", color: "var(--text-muted)" } },
+                      { style: { padding: "0.35rem", color: "var(--text-muted, #94a3b8)" } },
                       gap.next_recommended_action ? t(ACTION_LABEL_KEYS[gap.next_recommended_action] || "soc.dataops.action_unknown") : "—"
                     )
                   )
@@ -678,7 +679,7 @@ export function SocDataOpsMonitorSection() {
           "div",
           { className: styles.sectionCard },
           createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.queue_tiers")),
-          createElement("div", { style: { fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.75rem" } }, t("soc.dataops.queue_tiers_description")),
+          createElement("div", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", marginBottom: "0.75rem" } }, t("soc.dataops.queue_tiers_description")),
           createElement(
             "div",
             { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "0.75rem" } },
@@ -691,19 +692,19 @@ export function SocDataOpsMonitorSection() {
                     padding: "0.75rem",
                     borderRadius: "8px",
                     background: "rgba(15, 23, 42, 0.3)",
-                    border: "1px solid var(--border-default)",
+                    border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
                   },
                 },
                 createElement("div", { style: { fontWeight: 700, fontSize: "0.9rem" } }, t(TIER_LABEL_KEYS[tier.tier] || "soc.dataops.unknown_tier")),
                 createElement(
                   "div",
-                  { style: { fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.25rem" } },
+                  { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.25rem" } },
                   `${tier.symbol_count} ${t("soc.dataops.tier_symbols")} \u2022 Cadence: ${tier.cadence || "N/A"}`
                 ),
                 tier.active_symbols?.length > 0
                   ? createElement(
                       "div",
-                      { style: { fontSize: "0.7rem", color: "var(--accent-cyan)", marginTop: "0.25rem" } },
+                      { style: { fontSize: "0.7rem", color: "var(--accent-cyan, #06b6d4)", marginTop: "0.25rem" } },
                       `${t("soc.dataops.tier_examples")}: ${tier.active_symbols.slice(0, 5).join(", ")}`
                     )
                   : null

@@ -319,7 +319,7 @@ export function SocSignalsPanel() {
                 : null,
             ].filter(Boolean)
       ),
-      createElement("div", { style: { display: "flex", gap: "1rem", fontSize: "0.7rem", color: "var(--text-muted)", justifyContent: "center", marginBottom: 0 } },
+      createElement("div", { style: { display: "flex", gap: "1rem", fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", justifyContent: "center", marginBottom: 0 } },
         createElement("span", { style: { color: "#34d399" } },
           `\u25B2 ${t("soc.signals_overview.bullish")}: ${sentiment.bullish ?? 0}`,
         ),
@@ -364,7 +364,7 @@ export function SocSignalsPanel() {
             : t("soc.signals_overview.run_job"),
         ),
       ),
-      createElement("div", { style: { fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.6 } },
+      createElement("div", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", lineHeight: 1.6 } },
         t("soc.signals_overview.job_console_hint"),
       ),
       jobStatus
@@ -410,12 +410,12 @@ export function SocSignalsPanel() {
             createElement("div", null,
               createElement("div", { className: styles.matCardLabel }, svc.service_key),
               svc.last_finished_at
-                ? createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted)", marginTop: "0.15rem" } },
+                ? createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.15rem" } },
                     svc.last_finished_at.split("T")[0],
                   )
                 : null,
               svc.run_log_id != null
-                ? createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted)" } },
+                ? createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)" } },
                     `Log #${svc.run_log_id}`,
                   )
                 : null,
@@ -427,7 +427,7 @@ export function SocSignalsPanel() {
         ),
       ),
       summaryChildren.length > 0
-        ? createElement("div", { style: { display: "flex", gap: "1rem", fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.75rem", justifyContent: "center" } },
+        ? createElement("div", { style: { display: "flex", gap: "1rem", fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.75rem", justifyContent: "center" } },
             ...summaryChildren,
           )
         : null,

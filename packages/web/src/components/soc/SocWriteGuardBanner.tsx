@@ -32,7 +32,7 @@ export function SocWriteGuardBanner({ owner, writer, surface }: SocWriteGuardBan
       "div",
       { style: { flex: 1 } },
       createElement("div", { style: { fontWeight: 700, fontSize: "0.8rem" } }, t("soc.guard.read_only_title")),
-      createElement("div", { style: { fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "0.15rem" } },
+      createElement("div", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.15rem" } },
         t("soc.guard.read_only_desc", { owner: owner || t("soc.guard.unknown"), writer: writer || t("soc.guard.unknown"), surface: surface || t("soc.guard.unknown") }),
       ),
     ),

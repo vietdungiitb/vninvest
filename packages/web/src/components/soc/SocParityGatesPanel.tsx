@@ -91,13 +91,13 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
               padding: "1rem",
               borderRadius: "8px",
               background: "rgba(15, 23, 42, 0.3)",
-              border: "1px solid var(--border-default)",
+              border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
             },
           },
           createElement(
             "div",
             { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
-            createElement("h4", { style: { margin: 0, fontSize: "0.85rem", fontWeight: 700, color: "var(--text-primary)" } }, `${window} window`),
+            createElement("h4", { style: { margin: 0, fontSize: "0.85rem", fontWeight: 700, color: "var(--text-primary, #f1f5f9)" } }, `${window} window`),
             createElement(
               "span",
               {
@@ -114,12 +114,12 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
           ),
           createElement(
             "p",
-            { style: { fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: "0.5rem 0 0.25rem 0" } },
+            { style: { fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary, #f1f5f9)", margin: "0.5rem 0 0.25rem 0" } },
             `${strictParity.toFixed(2)}%`
           ),
           createElement(
             "p",
-            { style: { fontSize: "0.7rem", color: "var(--text-muted)", margin: "0.15rem 0" } },
+            { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", margin: "0.15rem 0" } },
             t("soc.dataops.parity_strict_line", {
               count: parityWindow.strict_fresh_count || 0,
               total: parityWindow.evaluated_symbols || 0,
@@ -166,8 +166,8 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
           ),
           createElement(
             "div",
-            { style: { marginTop: "0.75rem", borderTop: "1px solid var(--border-default)", paddingTop: "0.5rem" } },
-            createElement("p", { style: { fontSize: "0.65rem", color: "var(--text-muted)", margin: "0 0 0.4rem 0", fontWeight: 600 } }, t("soc.dataops.parity_history_title")),
+            { style: { marginTop: "0.75rem", borderTop: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", paddingTop: "0.5rem" } },
+            createElement("p", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)", margin: "0 0 0.4rem 0", fontWeight: 600 } }, t("soc.dataops.parity_history_title")),
             createElement(
               "div",
               { style: { display: "flex", flexWrap: "wrap", gap: "0.3rem" } },
@@ -184,7 +184,7 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
                       fontSize: "0.6rem",
                       background: "rgba(100, 116, 139, 0.1)",
                       border: "1px solid rgba(100, 116, 139, 0.2)",
-                      color: "var(--text-muted)",
+                      color: "var(--text-muted, #94a3b8)",
                       cursor: "help",
                       padding: "0.1rem 0.35rem",
                     },
@@ -203,7 +203,7 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
               windowHistory.length === 0 &&
                 createElement(
                   "span",
-                  { style: { fontSize: "0.65rem", color: "var(--text-muted)" } },
+                  { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)" } },
                   t("soc.dataops.parity_history_empty")
                 )
             )

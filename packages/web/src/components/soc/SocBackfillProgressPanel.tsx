@@ -81,7 +81,7 @@ export function SocBackfillProgressPanel() {
   const getStatusColor = (status: string): string => {
     switch (status) {
       case "running": return "#34d399";
-      case "completed": return "var(--accent-cyan)";
+      case "completed": return "var(--accent-cyan, #06b6d4)";
       case "failed": return "#f87171";
       case "aborted": return "#94a3b8";
       default: return "#fbbf24";
@@ -100,7 +100,7 @@ export function SocBackfillProgressPanel() {
         {
           onClick: fetchRuns,
           className: styles.actionBtn,
-          style: { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan)" },
+          style: { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan, #06b6d4)" },
         },
         t("soc.backfill.refresh"),
       ),
@@ -131,7 +131,7 @@ export function SocBackfillProgressPanel() {
                             padding: "0.75rem",
                             borderRadius: "8px",
                             background: selectedRun === run.run_id ? "rgba(0, 180, 216, 0.08)" : "rgba(15, 23, 42, 0.3)",
-                            border: selectedRun === run.run_id ? "1px solid var(--accent-cyan)" : "1px solid var(--border-default)",
+                            border: selectedRun === run.run_id ? "1px solid var(--accent-cyan, #06b6d4)" : "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
                             cursor: "pointer",
                             transition: "all 0.15s ease",
                           },
@@ -149,7 +149,7 @@ export function SocBackfillProgressPanel() {
                             run.status,
                           ),
                         ),
-                        createElement("div", { style: { fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.25rem" } },
+                        createElement("div", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.25rem" } },
                           `${run.completed_symbols || 0}/${run.total_symbols || 0} symbols \u2022 ${run.started_at?.split("T")[0] || "N/A"}`,
                         ),
                         run.progress != null
@@ -197,19 +197,19 @@ export function SocBackfillProgressPanel() {
                             "div",
                             { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" } },
                             createElement("div", null,
-                              createElement("div", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } }, t("soc.backfill.dataset")),
+                              createElement("div", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.backfill.dataset")),
                               createElement("div", { style: { fontWeight: 600 } }, runDetail.dataset),
                             ),
                             createElement("div", null,
-                              createElement("div", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } }, t("soc.backfill.status")),
+                              createElement("div", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.backfill.status")),
                               createElement("div", { style: { fontWeight: 600, color: getStatusColor(runDetail.status) } }, runDetail.status),
                             ),
                             createElement("div", null,
-                              createElement("div", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } }, t("soc.backfill.progress")),
+                              createElement("div", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.backfill.progress")),
                               createElement("div", { style: { fontWeight: 600 } }, `${runDetail.progress ?? 0}%`),
                             ),
                             createElement("div", null,
-                              createElement("div", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } }, t("soc.backfill.started")),
+                              createElement("div", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.backfill.started")),
                               createElement("div", { style: { fontWeight: 600 } }, runDetail.started_at?.split("T")[0] || "N/A"),
                             ),
                           ),
