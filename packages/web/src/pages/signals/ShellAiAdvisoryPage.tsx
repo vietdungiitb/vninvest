@@ -28,7 +28,7 @@ import {
   useCoreShellPageSnapshot,
 } from "../coreShellPageHelpers.js";
 
-const SIGNAL_ROUTE_IDS = ["ai-advisory", "whale-alerts"];
+const SIGNAL_ROUTE_IDS = ["ai-advisory", "alert-center"];
 
 function normalizeAdvisorySymbol(value: unknown): string {
   return String(value || "").trim().toUpperCase();

@@ -207,7 +207,7 @@ export function WhaleAdvisoryCommandPanel({
         rowMessage ? e('p', { className: 'text-[11px] font-bold text-cyan-400 animate-in fade-in duration-300' }, rowMessage) : e(
           'div',
           { className: 'flex gap-4' },
-          e(Link, { to: `/whale-alerts/${resolvedSymbol}`, className: 'text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors' }, 'Bảng điều khiển cá voi'),
+          e(Link, { to: `/alert-center/${resolvedSymbol}`, className: 'text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors' }, 'Bảng điều khiển cá voi'),
           e(Link, { to: `/stocks/${resolvedSymbol}`, className: 'text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors' }, 'Workspace')
         )
       ),

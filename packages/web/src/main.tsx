@@ -14,7 +14,7 @@ import './index.css';
 function resolvePageComponent(routeId: string) {
   let registryId = routeId;
   if (routeId === 'dashboard') registryId = 'core-dashboard';
-  else if (routeId === 'whale-alerts') registryId = 'core-whale-alerts';
+  else if (routeId === 'whale-alerts') registryId = 'alert-center';
   else if (routeId === 'ai-advisory') registryId = 'whale-advisory';
   else if (routeId === 'watchlist') registryId = 'core-watchlist';
   else if (routeId === 'transactions') registryId = 'core-transactions';
@@ -77,7 +77,6 @@ function App() {
         createElement(Route, { path: 'screener', element: createElement(resolvePageComponent('screener')) }),
         createElement(Route, { path: 'transactions', element: createElement(resolvePageComponent('transactions')) }),
         createElement(Route, { path: 'portfolios', element: createElement(resolvePageComponent('portfolios')) }),
-        createElement(Route, { path: 'whale-alerts', element: createElement(resolvePageComponent('whale-alerts')) }),
         createElement(Route, { path: 'ai-advisory', element: createElement(resolvePageComponent('ai-advisory')) }),
         createElement(Route, { path: 'upgrade', element: createElement(resolvePageComponent('upgrade')) }),
         createElement(Route, { path: 'admin-crawl-control', element: createElement(resolvePageComponent('admin-crawl-control')) }),
