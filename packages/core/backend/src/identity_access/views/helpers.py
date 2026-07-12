@@ -159,6 +159,15 @@ def _build_abilities(user, tenant: CoreTenant) -> list:
             {'action': 'read', 'subject': 'CoreAuditTrace'},
         ])
 
+        # Advertising admin — gated behind the ADVERTISING_ADMIN_ENABLED flag
+        # for gradual rollout.
+        if getattr(settings, 'ADVERTISING_ADMIN_ENABLED', True):
+            abilities.extend([
+                {'action': 'read', 'subject': 'Advertising'},
+                {'action': 'manage', 'subject': 'AdCampaign'},
+                {'action': 'update', 'subject': 'TrademarkConfig'},
+            ])
+
     if _build_target() == 'vip':
         abilities.append({'action': 'read', 'subject': 'vip.local_control.read'})
 
@@ -175,6 +184,8 @@ def _build_navigation(user, tenant: CoreTenant) -> dict:
     if user.is_staff or user.is_superuser:
         groups.append('admin')
         routes.extend(['operations-center', 'operations-center-mail-config', 'ai-command-center'])
+        if getattr(settings, 'ADVERTISING_ADMIN_ENABLED', True):
+            routes.append('advertising-admin')
 
     if _build_target() == 'vip':
         groups.append('vip-local')

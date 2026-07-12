@@ -27,6 +27,7 @@ import { createDnseClient } from "./core/dnse.js";
 import { createOperatorClient } from "./core/operator.js";
 import { createMiscClient } from "./core/misc.js";
 import { createSocClient } from "./core/soc.js";
+import { createAdvertisingClient } from "./core/advertising.js";
 
 export {
   authTokenStorage,
@@ -123,6 +124,13 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     coreDelete: transport.coreDelete,
   });
 
+  const advertisingClient = createAdvertisingClient({
+    coreGet: transport.coreGet,
+    corePost: transport.corePost,
+    corePatch: transport.corePatch,
+    coreDelete: transport.coreDelete,
+  });
+
   // Combine into a single unified API client object (Facade)
   return {
     coreGet: transport.coreGet,
@@ -141,6 +149,7 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     ...operatorClient,
     ...miscClient,
     ...socClient,
+    ...advertisingClient,
 
 // Tenant-admin usage (partner/usage/*)
   getAllUsageTrends(days = 30) {

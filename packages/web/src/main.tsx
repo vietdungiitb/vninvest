@@ -11,6 +11,12 @@ import { AppShell } from './layouts/AppShell';
 import { TenantAdminLayout } from './components/TenantAdminLayout.js';
 import './index.css';
 
+// Feature flag for gradual rollout of the Advertising & Trademark admin page.
+// Defaults to enabled; set VITE_FEATURE_ADVERTISING_ADMIN=false to disable.
+function isAdvertisingAdminEnabled(): boolean {
+  return import.meta.env.VITE_FEATURE_ADVERTISING_ADMIN !== 'false';
+}
+
 function resolvePageComponent(routeId: string) {
   let registryId = routeId;
   if (routeId === 'dashboard') registryId = 'core-dashboard';
@@ -88,6 +94,9 @@ function App() {
         createElement(Route, { path: 'ai-command-center', element: createElement(resolvePageComponent('shell-ai-command-center')) }),
         createElement(Route, { path: 'operations-center', element: createElement(resolvePageComponent('operations-center')) }),
         createElement(Route, { path: 'operations-center/mail-config', element: createElement(resolvePageComponent('operations-center-mail-config')) }),
+        ...(isAdvertisingAdminEnabled()
+          ? [createElement(Route, { path: 'admin/advertising', element: createElement(resolvePageComponent('advertising-admin')) })]
+          : []),
         createElement(Route, { path: 'stocks/:symbol', element: createElement(resolvePageComponent('core-stock-detail')) }),
         createElement(Route, { path: 'tenant-admin', element: createElement(TenantAdminLayout) },
           createElement(Route, { index: true, element: createElement(Navigate, { to: '/tenant-admin/home', replace: true }) }),

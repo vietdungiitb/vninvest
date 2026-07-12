@@ -174,6 +174,13 @@ OPENAI_DEFAULT_MODEL = os.environ.get('OPENAI_DEFAULT_MODEL', 'gpt-4o-mini')
 ADVISORY_TOKEN_BUDGET = int(os.environ.get('ADVISORY_TOKEN_BUDGET', '2000'))
 AI_FALLBACK_DAILY_QUOTA = int(os.environ.get('AI_FALLBACK_DAILY_QUOTA', '5'))
 
+# Advertising & Trademark admin feature flag (gradual rollout).
+# Set ADVERTISING_ADMIN_ENABLED=false to hide the admin panel and revoke
+# its CASL abilities entirely. Defaults to enabled.
+ADVERTISING_ADMIN_ENABLED = os.environ.get(
+    'ADVERTISING_ADMIN_ENABLED', 'true'
+).strip().lower() in ('1', 'true', 'yes')
+
 # Stripe Billing Integration
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')

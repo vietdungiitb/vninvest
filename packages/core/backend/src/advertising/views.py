@@ -13,7 +13,7 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
 from identity_access.authentication import CorePATAuthentication
-from advertising.models import AdCampaign, AdDailySummary
+from advertising.models import AdCampaign, AdDailySummary, TrademarkConfig
 from advertising.serializers import AdCampaignSerializer, AdDailySummarySerializer
 from advertising.tasks import _get_redis_client
 from vninvest_core.exceptions import ValidationErrorException, PermissionErrorException
@@ -201,21 +201,56 @@ class WidgetConfigView(APIView):
     """
     GET /core/v1/widget/config[/]
     Trademark enforcement config for the chart widget. No auth required.
+    The client reads this endpoint to decide whether to run the trademark watchdog.
+    Response: { "trademark": { "enabled": bool, "activationTs": int|null, "version": str } }
+
+    PATCH /core/v1/widget/config[/]
+    Update trademark config from the operator admin page. IsAdminUser required.
     Response: { "trademark": { "enabled": bool, "activationTs": int|null, "version": str } }
     """
-    authentication_classes = [CorePATAuthentication]
+    authentication_classes = [CorePATAuthentication, SessionAuthentication]
     permission_classes = [permissions.AllowAny]
     throttle_classes = [AdvertisingAnonRateThrottle, AdvertisingUserRateThrottle]
 
+    def get_permissions(self):
+        if self.request.method == "PATCH":
+            return [permissions.IsAdminUser()]
+        return [permissions.AllowAny()]
+
     def get(self, request):
-        enabled = bool(getattr(settings, 'CORE_WIDGET_TRADEMARK_ENABLED', False))
-        activation_ts = getattr(settings, 'CORE_WIDGET_TRADEMARK_ACTIVATION_TS', None)
-        version = str(getattr(settings, 'CORE_WIDGET_CONFIG_VERSION', 'cfg_v1'))
+        config = TrademarkConfig.get_config()
         return Response({
             "trademark": {
-                "enabled": enabled,
-                "activationTs": activation_ts,
-                "version": version,
+                "enabled": config.enabled,
+                "activationTs": config.activation_ts,
+                "version": config.version,
+            }
+        }, status=status.HTTP_200_OK)
+
+    def patch(self, request):
+        config = TrademarkConfig.get_config()
+        enabled = request.data.get("enabled")
+        activation_ts = request.data.get("activation_ts")
+
+        if enabled is not None:
+            config.enabled = bool(enabled)
+        if activation_ts is not None:
+            config.activation_ts = int(activation_ts) if activation_ts else None
+
+        # Increment version for cache invalidation
+        try:
+            major, minor = config.version.split("_v")
+            config.version = f"cfg_v{int(minor) + 1}"
+        except Exception:
+            config.version = "cfg_v2"
+
+        config.save()
+
+        return Response({
+            "trademark": {
+                "enabled": config.enabled,
+                "activationTs": config.activation_ts,
+                "version": config.version,
             }
         }, status=status.HTTP_200_OK)
 
@@ -390,3 +425,4 @@ class OperatorAdDailySummaryViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = AdDailySummarySerializer
     permission_classes = [permissions.IsAdminUser]
     authentication_classes = [CorePATAuthentication, SessionAuthentication]
+
