@@ -1,0 +1,383 @@
+@import "./tokens.css";
+
+/* === Buttons === */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
+  border-radius: var(--radius-md, 0.375rem);
+  border: 1px solid transparent;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+  color: var(--text-primary);
+}
+
+.btnPrimary {
+  composes: btn;
+  background-color: var(--accent-cyan);
+  color: var(--color-bg-primary, #020617);
+}
+
+.btnPrimary:hover {
+  background-color: var(--color-accent-hover, #67e8f9);
+}
+
+.btnSecondary {
+  composes: btn;
+  background-color: color-mix(in srgb, var(--bg-panel) 70%, transparent);
+  border-color: var(--border-default);
+}
+
+.btnSecondary:hover {
+  border-color: var(--accent-cyan);
+}
+
+.btnDanger {
+  composes: btn;
+  background-color: var(--accent-rose);
+  color: var(--color-bg-primary, #020617);
+}
+
+.btnGhost {
+  composes: btn;
+  background-color: transparent;
+  border-color: var(--border-default);
+  color: var(--text-muted);
+}
+
+.btnGhost:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-cyan);
+}
+
+/* === Card / Panel === */
+.card {
+  background-color: color-mix(in srgb, var(--bg-panel) 88%, transparent);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg, 0.5rem);
+  box-shadow: var(--shadow-md, 0 4px 6px rgb(0 0 0 / 0.1));
+}
+
+.panelSoft {
+  background-color: color-mix(in srgb, var(--bg-panel) 60%, transparent);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg, 0.5rem);
+}
+
+.panelGlass {
+  background-color: color-mix(in srgb, var(--bg-panel) 55%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-default) 70%, transparent);
+  border-radius: var(--radius-lg, 0.5rem);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* === Input / Select === */
+.input {
+  width: 100%;
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  background-color: color-mix(in srgb, var(--bg-panel) 75%, transparent);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md, 0.375rem);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.inputFocused {
+  composes: input;
+  border-color: var(--accent-cyan);
+  outline: 2px solid color-mix(in srgb, var(--accent-cyan) 40%, transparent);
+  outline-offset: 0;
+}
+
+.inputError {
+  composes: input;
+  border-color: var(--accent-rose);
+}
+
+.select {
+  composes: input;
+  appearance: none;
+  cursor: pointer;
+}
+
+.selectTrigger {
+  composes: input;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+/* === Checkbox / Toggle === */
+.checkbox {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--accent-cyan);
+  cursor: pointer;
+}
+
+.toggle {
+  position: relative;
+  width: 2.5rem;
+  height: 1.25rem;
+  border-radius: var(--radius-full, 9999px);
+  background-color: var(--border-default);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.toggleActive {
+  composes: toggle;
+  background-color: var(--accent-cyan);
+}
+
+/* === Badge / Status === */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem var(--space-2, 0.5rem);
+  border-radius: var(--radius-full, 9999px);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background-color: color-mix(in srgb, var(--bg-panel) 70%, transparent);
+  border: 1px solid var(--border-default);
+}
+
+.badgeSuccess {
+  composes: badge;
+  color: var(--accent-emerald);
+  border-color: color-mix(in srgb, var(--accent-emerald) 50%, transparent);
+}
+
+.badgeWarning {
+  composes: badge;
+  color: var(--accent-amber);
+  border-color: color-mix(in srgb, var(--accent-amber) 50%, transparent);
+}
+
+.badgeDanger {
+  composes: badge;
+  color: var(--accent-rose);
+  border-color: color-mix(in srgb, var(--accent-rose) 50%, transparent);
+}
+
+.statusDot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--radius-full, 9999px);
+  background-color: var(--text-muted);
+}
+
+/* === Alert === */
+.alert {
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  border-radius: var(--radius-md, 0.375rem);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  background-color: color-mix(in srgb, var(--bg-panel) 70%, transparent);
+}
+
+.alertInfo {
+  composes: alert;
+  border-color: color-mix(in srgb, var(--accent-cyan) 50%, transparent);
+  color: var(--accent-cyan);
+}
+
+.alertSuccess {
+  composes: alert;
+  border-color: color-mix(in srgb, var(--accent-emerald) 50%, transparent);
+  color: var(--accent-emerald);
+}
+
+.alertWarning {
+  composes: alert;
+  border-color: color-mix(in srgb, var(--accent-amber) 50%, transparent);
+  color: var(--accent-amber);
+}
+
+.alertDanger {
+  composes: alert;
+  border-color: color-mix(in srgb, var(--accent-rose) 50%, transparent);
+  color: var(--accent-rose);
+}
+
+/* === Tabs === */
+.tabs {
+  display: flex;
+  gap: var(--space-1, 0.25rem);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.tab {
+  padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.tabActive {
+  composes: tab;
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--accent-cyan);
+}
+
+.tabPanel {
+  padding: var(--space-4, 1rem) 0;
+}
+
+/* === Modal / Drawer === */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgb(0 0 0 / 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modalContent {
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg, 0.5rem);
+  box-shadow: var(--shadow-xl, 0 20px 25px rgb(0 0 0 / 0.1));
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.drawerOverlay {
+  composes: modalOverlay;
+  justify-content: flex-end;
+}
+
+.drawerContent {
+  composes: modalContent;
+  height: 100vh;
+  border-radius: 0;
+}
+
+/* === Table === */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tableHeader {
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-default);
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+}
+
+.tableRow {
+  border-bottom: 1px solid var(--border-default);
+}
+
+.tableRow:hover {
+  background-color: color-mix(in srgb, var(--bg-panel) 60%, transparent);
+}
+
+.tableCell {
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+/* === Skeleton === */
+.skeleton {
+  background-color: color-mix(in srgb, var(--border-default) 60%, transparent);
+  border-radius: var(--radius-md, 0.375rem);
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+}
+
+.skeletonPulse {
+  composes: skeleton;
+}
+
+@keyframes skeletonPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* === Empty state === */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-12, 3rem) var(--space-4, 1rem);
+  color: var(--text-muted);
+}
+
+.emptyStateIcon {
+  font-size: 2rem;
+  opacity: 0.6;
+}
+
+.emptyStateText {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* === Toolbar === */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  flex-wrap: wrap;
+}
+
+.toolbarGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+}
+
+/* === Metric === */
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+}
+
+.metricValue {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.metricLabel {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
