@@ -20,7 +20,7 @@ Theo dõi tiến độ chuẩn hóa theme `packages/web`. Kế hoạch gốc:
 | S3 | ShellPageTemplate refactor + `--shell-*` | ✅ Done | `f3cd7bd4` | 38 files; `docs/S3_SHELL_CONSUMERS.md`; 1 regression nhỏ (Watchlist list) → S10 |
 | **S4** | AI Area Cleanup | ✅ Done | `eb1d6262` | xóa dead `AIAdvisorAlertPanel.css`; inline AI 3→0; `aiSettings.module.css` giữ nguyên |
 | **S5** | SOC Inline → Module (≥80%) | ✅ Done | `S5_COMMIT` | 28 SOC files; 651 `s5_` classes → `soc.module.css`; 0 orphan; tsc+build+79 SOC tests pass |
-| **S6** | AlertCenter Dead Code | 🔲 Todo | — | xóa `AlertCenterPage.module.css` (dead) |
+| **S6** | AlertCenter Dead Code | ✅ Done | `S6_COMMIT` | xóa `pages/AlertCenterPage.module.css` (0 imports, dead); `.styles.js` active giữ |
 | **S7** | Stock-Detail Standardization | 🔲 Todo | — | `StockDetailPage.css` 2.175 dòng → bridged tokens |
 | **S8** | Core Pages Standardization | 🔲 Todo | — | per-page CSS bridged, `core-` −50% |
 | **S9** | TenantAdmin Inline (≥80%) | 🔲 Todo | — | 8 file, tạo `TenantAdmin.module.css` |
