@@ -404,7 +404,7 @@ export function ShellAiCommandCenterPage({
                     })}
                   </div>
 
-                  <div className={`${styles.actions}`} style={{ marginTop: "12px" }}>
+                  <div className={`${styles.actions} mt-3`}>
                     <button type="submit" className={`${styles.button} ${styles.buttonPrimary}`} disabled={savingSettings}>
                       {savingSettings ? "Đang lưu cấu hình..." : "Lưu cấu hình"}
                     </button>
@@ -417,8 +417,7 @@ export function ShellAiCommandCenterPage({
                 {testStatus && testResult ? (
                   <div
                     key="test-feedback"
-                    className={`${styles.banner} ${styles.banner}--${testStatus === "success" ? "notice" : "error"}`}
-                    style={{ marginTop: "14px" }}
+                    className={`${styles.banner} ${styles.banner}--${testStatus === "success" ? "notice" : "error"} mt-3.5`}
                   >
                     {testResult}
                   </div>
@@ -445,7 +444,7 @@ export function ShellAiCommandCenterPage({
           <div key="ai-groups-block">
             <h3 className={`${styles.itemTitle}`}>AI Groups & Routes</h3>
             {renderFlagList(groupFlags, "Session hiện chưa mở group điều hướng nào.", "ai-groups")}
-            <div style={{ height: "10px" }} />
+            <div className="h-2.5" />
             {renderFlagList(routeFlags, "Runtime hiện chưa expose route AI nào.", "ai-routes")}
           </div>
           {renderFlagList(aiFlags, "Runtime chưa công bố surface flag AI nào.", "ai-flags")}
