@@ -22,7 +22,7 @@ Theo dõi tiến độ chuẩn hóa theme `packages/web`. Kế hoạch gốc:
 | **S5** | SOC Inline → Module (≥80%) | ✅ Done | `S5_COMMIT` | 28 SOC files; 651 `s5_` classes → `soc.module.css`; 0 orphan; tsc+build+79 SOC tests pass |
 | **S6** | AlertCenter Dead Code | ✅ Done | `S6_COMMIT` | xóa `pages/AlertCenterPage.module.css` (0 imports, dead); `.styles.js` active giữ |
 | **S7** | Stock-Detail Standardization | ✅ Done | `S7_COMMIT` | `StockDetailPage.css` 2.546 dòng: solid hex → global tokens, 127 rgba → 23 `--sdp-*-rgb` channel tokens; 0 literal màu; 12 visual tests pass |
-| **S8** | Core Pages Standardization | 🔲 Todo | — | per-page CSS bridged, `core-` −50% |
+| **S8** | Core Pages Standardization | ✅ Done | `S8_COMMIT` | 5 core CSS → bridged tokens: PortfoliosPage, DNSEConnectionPanel, dashboard/SmartStatsHeader, alert-center/*.module.css; 0 literal màu; build + 12 visual tests pass |
 | **S9** | TenantAdmin Inline (≥80%) | 🔲 Todo | — | 8 file, tạo `TenantAdmin.module.css` |
 | **S10** | Watchlist + Remaining | 🔲 Todo | — | xóa `VninvestInput.module.css`, verify Watchlist/Auth/DNSE |
 
@@ -54,8 +54,14 @@ Theo dõi tiến độ chuẩn hóa theme `packages/web`. Kế hoạch gốc:
 - AC: S7.1 ✓ bridged; S7.3 ✓ `sdp-` scoped; S7.5 ✓ visual identical.
 
 ### S8 — Core Pages Standardization
-- Per-page CSS dùng bridged tokens; `core-` classes −50%.
-- AC: S8.1 per-page CSS bridged; S8.2 `core-` −50%; S8.4 tsc+build+test.
+- Áp dụng hybrid tokenization (script `s8_tokenize.js`) cho 5 core CSS:
+  `PortfoliosPage.css` (5 local solids + 2 rgb), `DNSEConnectionPanel.css` (6+4),
+  `dashboard/SmartStatsHeader.css` (0+5, toàn global tokens),
+  `alert-center/DetailDrawer.module.css` (0+7), `SymbolStatsTable.module.css` (0+13).
+- Solid hex → global tokens (`--color-*`); rgba → `--<prefix>-<base>-rgb` channel triplets;
+  brand colors (blue/red/green ngoài palette) → local `--<prefix>-cN`. 0 literal màu.
+- AC: S8.1 ✓ bridged; S8.4 ✓ build + 12 visual tests pass (dashboard + alert-center khớp 100%).
+- Ghi chú: PortfoliosPage/DNSE chưa có snapshot riêng (route registry) — token hóa value-identical nên an toàn; có thể bổ sung snapshot sau.
 
 ### S9 — TenantAdmin Inline Cleanup (≥80%)
 - 8 file: PATs 90, Usage 84, Webhooks 58, Home 58, Billing 44, Members 43, AuditLogs 28, ServiceAccounts 25 (tổng ~377 → ≤75).

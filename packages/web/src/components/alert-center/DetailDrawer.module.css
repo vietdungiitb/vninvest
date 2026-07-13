@@ -1,10 +1,21 @@
+/* S8 bridged tokens — DetailDrawer.module.css (visual-identical, acdrawer- scoped) */
+:root {
+  --acdrawer-acdrawer-rgb0-rgb: 41 121 255;
+  --acdrawer-acdrawer-rgb1-rgb: 255 255 255;
+  --acdrawer-acdrawer-rgb2-rgb: 255 23 68;
+  --acdrawer-acdrawer-rgb3-rgb: 255 23 68;
+  --acdrawer-acdrawer-rgb4-rgb: 0 0 0;
+  --acdrawer-acdrawer-rgb5-rgb: 255 255 255;
+  --acdrawer-acdrawer-rgb6-rgb: 255 255 255;
+}
+
 .detailDrawer {
   background: var(--bg-glass);
   border: 1px solid var(--border-glass);
   border-radius: 12px;
   padding: 20px;
   margin-top: 30px;
-  box-shadow: 0 8px 32px rgba(41, 121, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(var(--acdrawer-acdrawer-rgb0-rgb) / 0.1);
   backdrop-filter: blur(20px);
   position: relative;
 }
@@ -40,9 +51,9 @@
 }
 
 .closeBtn {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--acdrawer-acdrawer-rgb1-rgb) / 0.04);
   border: 1px solid var(--border-glass);
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-muted, var(--color-text-secondary));
   border-radius: 50%;
   width: 26px;
   height: 26px;
@@ -55,16 +66,16 @@
 }
 
 .closeBtn:hover {
-  background: rgba(255, 23, 68, 0.1);
+  background: rgba(var(--acdrawer-acdrawer-rgb2-rgb) / 0.1);
   color: var(--neon-red);
-  border-color: rgba(255, 23, 68, 0.2);
+  border-color: rgba(var(--acdrawer-acdrawer-rgb3-rgb) / 0.2);
 }
 
 .detailSection {
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(var(--acdrawer-acdrawer-rgb4-rgb) / 0.15);
   padding: 15px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(var(--acdrawer-acdrawer-rgb5-rgb) / 0.03);
   margin-bottom: 15px;
 }
 
@@ -73,14 +84,14 @@
   font-size: 0.85rem;
   font-weight: 700;
   text-transform: uppercase;
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-muted, var(--color-text-secondary));
 }
 
 .detailSection p {
   margin: 0;
   font-size: 0.95rem;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(var(--acdrawer-acdrawer-rgb6-rgb) / 0.9);
 }
 
 .detailGrid {
@@ -97,7 +108,7 @@
 
 .detailItem span {
   font-size: 0.75rem;
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-muted, var(--color-text-secondary));
   text-transform: uppercase;
   font-weight: 700;
 }
@@ -121,5 +132,5 @@
 
 .fontSize85remColorMuted {
   font-size: 0.85rem;
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-muted, var(--color-text-secondary));
 }
