@@ -21,7 +21,7 @@ Theo dõi tiến độ chuẩn hóa theme `packages/web`. Kế hoạch gốc:
 | **S4** | AI Area Cleanup | ✅ Done | `eb1d6262` | xóa dead `AIAdvisorAlertPanel.css`; inline AI 3→0; `aiSettings.module.css` giữ nguyên |
 | **S5** | SOC Inline → Module (≥80%) | ✅ Done | `S5_COMMIT` | 28 SOC files; 651 `s5_` classes → `soc.module.css`; 0 orphan; tsc+build+79 SOC tests pass |
 | **S6** | AlertCenter Dead Code | ✅ Done | `S6_COMMIT` | xóa `pages/AlertCenterPage.module.css` (0 imports, dead); `.styles.js` active giữ |
-| **S7** | Stock-Detail Standardization | 🔲 Todo | — | `StockDetailPage.css` 2.175 dòng → bridged tokens |
+| **S7** | Stock-Detail Standardization | ✅ Done | `S7_COMMIT` | `StockDetailPage.css` 2.546 dòng: solid hex → global tokens, 127 rgba → 23 `--sdp-*-rgb` channel tokens; 0 literal màu; 12 visual tests pass |
 | **S8** | Core Pages Standardization | 🔲 Todo | — | per-page CSS bridged, `core-` −50% |
 | **S9** | TenantAdmin Inline (≥80%) | 🔲 Todo | — | 8 file, tạo `TenantAdmin.module.css` |
 | **S10** | Watchlist + Remaining | 🔲 Todo | — | xóa `VninvestInput.module.css`, verify Watchlist/Auth/DNSE |
@@ -48,8 +48,10 @@ Theo dõi tiến độ chuẩn hóa theme `packages/web`. Kế hoạch gốc:
 - AC: S6.1 module.css deleted; S6.3 no import; S6.4 tsc+build pass.
 
 ### S7 — Stock-Detail Standardization
-- `StockDetailPage.css` (2.175 dòng, god-file) giữ domain, chỉ convert sang bridged tokens.
-- AC: S7.1 tokens bridged; S7.2 inline −50%; S7.3 `sdp-` scoped; S7.5 visual identical.
+- **Phát hiện**: file KHÔNG có hệ thống `--gc-*` (comment header sai); có ~155 literal màu (28 hex + 127 rgba alpha-layer). Full tokenize thủ công = ~155 token, rủi ro cao.
+- **Hybrid approach** (user chọn): solid hex → global tokens (`--color-slate-*`, `--color-success-500`, v.v.) khi exact-match; 127 rgba → 23 `--sdp-*-rgb` channel triplet (`rgba(var(--sdp-X-rgb) / A)`), mỗi base color định nghĩa 1 lần. 13 local solid `--sdp-*` cho brand colors (indigo/pink/rose/violet…) không có global token.
+- Kết quả: 0 literal màu còn lại trong body; 395 `var()` refs; tsc+build OK; 12 visual tests pass (stock-detail-vcb desktop/tablet/mobile khớp 100%).
+- AC: S7.1 ✓ bridged; S7.3 ✓ `sdp-` scoped; S7.5 ✓ visual identical.
 
 ### S8 — Core Pages Standardization
 - Per-page CSS dùng bridged tokens; `core-` classes −50%.
