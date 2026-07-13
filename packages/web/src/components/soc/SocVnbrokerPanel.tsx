@@ -223,7 +223,7 @@ export function SocVnbrokerPanel() {
                   ),
                   createElement(
                     "div",
-                    { style: { display: "flex", gap: "0.5rem", marginTop: "0.75rem", flexWrap: "wrap" } },
+                    { className: "s5_0_SocVnbrokerPanel",  },
                     createElement(
                       "button",
                       {
@@ -236,12 +236,12 @@ export function SocVnbrokerPanel() {
                     ),
                     createElement(
                       "button",
-                      { onClick: () => setEditConfig(JSON.stringify(config || {}, null, 2)), className: styles.actionBtn, style: { background: "rgba(255, 191, 77, 0.15)", color: "var(--accent-amber)" } },
+                      { onClick: () => setEditConfig(JSON.stringify(config || {}, null, 2)), className: `styles.actionBtn s5_1_SocVnbrokerPanel`,  },
                       t("soc.actions.edit"),
                     ),
                     createElement(
                       "button",
-                      { onClick: handleResetToDefaults, className: styles.actionBtn, style: { background: "rgba(239, 68, 68, 0.15)", color: "#f87171" } },
+                      { onClick: handleResetToDefaults, className: `styles.actionBtn s5_2_SocVnbrokerPanel`,  },
                       t("soc.vnbroker.reset_defaults"),
                     ),
                   ),
@@ -251,7 +251,7 @@ export function SocVnbrokerPanel() {
                   { className: styles.sectionCard },
                   createElement(
                     "div",
-                    { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" } },
+                    { className: "s5_3_SocVnbrokerPanel",  },
                     createElement("div", { className: styles.sectionCardTitle }, t("soc.vnbroker.circuit_breaker_title")),
                     createElement(
                       "span",
@@ -271,13 +271,13 @@ export function SocVnbrokerPanel() {
                   ),
                   createElement(
                     "div",
-                    { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", lineHeight: "1.4" } },
+                    { className: "s5_4_SocVnbrokerPanel",  },
                     circuitBreaker?.tripped
                       ? `Tripped at: ${circuitBreaker.tripped_at ? circuitBreaker.tripped_at.split("T")[1]?.slice(0, 8) : "N/A"}`
                       : t("soc.vnbroker.breaker_normal_desc"),
                   ),
-                  createElement("hr", { style: { border: "none", borderTop: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", margin: "0.75rem 0" } }),
-                  createElement("div", { className: styles.sectionCardTitle, style: { fontSize: "0.8rem", marginBottom: "0.5rem" } }, t("soc.vnbroker.test_connection")),
+                  createElement("hr", { className: "s5_5_SocVnbrokerPanel",  }),
+                  createElement("div", { className: `styles.sectionCardTitle s5_6_SocVnbrokerPanel`,  }, t("soc.vnbroker.test_connection")),
                   createElement(
                     "button",
                     {
@@ -303,24 +303,24 @@ export function SocVnbrokerPanel() {
                     renderMetricCard(t("soc.health.status_degraded"), health?.provider_health?.degraded ?? 0, "#fbbf24"),
                     renderMetricCard(t("soc.health.status_critical"), health?.provider_health?.critical ?? 0, "#f87171"),
                   ),
-                  createElement("div", { className: styles.metricGrid, style: { marginTop: "0.75rem" } },
+                  createElement("div", { className: `styles.metricGrid s5_7_SocVnbrokerPanel`,  },
                     renderMetricCard(t("soc.vnbroker.throughput"), `${health?.avg_response_ms ? (1000 / health.avg_response_ms).toFixed(1) : 0}/s`, "var(--accent-cyan, #06b6d4)"),
                     renderMetricCard(t("soc.vnbroker.avg_latency"), `${health?.avg_response_ms ?? 0}ms`, "#fbbf24"),
                   ),
                 ),
               ),
-              createElement("div", { className: styles.sectionCard, style: { marginTop: "1.25rem" } },
+              createElement("div", { className: `styles.sectionCard s5_8_SocVnbrokerPanel`,  },
                 createElement("div", { className: styles.sectionCardTitle }, t("soc.vnbroker.benchmark_title")),
                 createElement(
                   "div",
-                  { style: { display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "1rem" } },
+                  { className: "s5_9_SocVnbrokerPanel",  },
                   createElement(
                     "select",
                     {
                       value: benchmarkProvider,
                       onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setBenchmarkProvider(e.target.value),
-                      className: styles.searchInput,
-                      style: { maxWidth: "200px" },
+                      className: `styles.searchInput s5_10_SocVnbrokerPanel`,
+                      
                     },
                     createElement("option", { value: "all" }, t("soc.vnbroker.all_providers")),
                     providers.map((p) => createElement("option", { key: p.key, value: p.key }, p.name)),
@@ -343,14 +343,14 @@ export function SocVnbrokerPanel() {
                 benchmarkResults.length > 0
                   ? createElement(
                       "table",
-                      { style: { width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" } },
+                      { className: "s5_11_SocVnbrokerPanel",  },
                       createElement("thead", null,
                         createElement("tr", null,
-                          createElement("th", { style: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, t("soc.vnbroker.provider")),
-                          createElement("th", { style: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, t("soc.vnbroker.latency")),
-                          createElement("th", { style: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, "RPM"),
-                          createElement("th", { style: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, t("soc.vnbroker.success_rate")),
-                          createElement("th", { style: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, t("soc.vnbroker.rate_limit")),
+                          createElement("th", { className: "s5_12_SocVnbrokerPanel",  }, t("soc.vnbroker.provider")),
+                          createElement("th", { className: "s5_13_SocVnbrokerPanel",  }, t("soc.vnbroker.latency")),
+                          createElement("th", { className: "s5_14_SocVnbrokerPanel",  }, "RPM"),
+                          createElement("th", { className: "s5_15_SocVnbrokerPanel",  }, t("soc.vnbroker.success_rate")),
+                          createElement("th", { className: "s5_16_SocVnbrokerPanel",  }, t("soc.vnbroker.rate_limit")),
                         ),
                       ),
                       createElement("tbody", null,
@@ -359,13 +359,13 @@ export function SocVnbrokerPanel() {
                           const rateLimitColor = r.rate_limit_pct > 5 ? "#f87171" : "var(--text-muted, #94a3b8)";
                           return createElement(
                             "tr",
-                            { key: r.provider, style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
-                            createElement("td", { style: { padding: "0.75rem", fontWeight: 600 } }, r.provider),
-                            createElement("td", { style: { padding: "0.75rem" } }, `${r.latency_ms}ms`),
-                            createElement("td", { style: { padding: "0.75rem" } }, r.rpm),
+                            { key: r.provider, className: "s5_17_SocVnbrokerPanel",  },
+                            createElement("td", { className: "s5_18_SocVnbrokerPanel",  }, r.provider),
+                            createElement("td", { className: "s5_19_SocVnbrokerPanel",  }, `${r.latency_ms}ms`),
+                            createElement("td", { className: "s5_20_SocVnbrokerPanel",  }, r.rpm),
                             createElement(
                               "td",
-                              { style: { padding: "0.75rem" } },
+                              { className: "s5_21_SocVnbrokerPanel",  },
                               createElement(
                                 "span",
                                 {
@@ -383,7 +383,7 @@ export function SocVnbrokerPanel() {
                             ),
                             createElement(
                               "td",
-                              { style: { padding: "0.75rem" } },
+                              { className: "s5_22_SocVnbrokerPanel",  },
                               createElement(
                                 "span",
                                 {
@@ -405,11 +405,11 @@ export function SocVnbrokerPanel() {
                     )
                   : createElement("p", { className: styles.emptyState }, t("soc.vnbroker.no_benchmark_results")),
               ),
-              createElement("div", { className: styles.sectionCard, style: { marginTop: "1.25rem" } },
+              createElement("div", { className: `styles.sectionCard s5_23_SocVnbrokerPanel`,  },
                 createElement("div", { className: styles.sectionCardTitle }, t("soc.vnbroker.providers_title")),
                 createElement(
                   "div",
-                  { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: "0.75rem" } },
+                  { className: "s5_24_SocVnbrokerPanel",  },
                   providers.map((p) =>
                     createElement(SocServiceHealthCard, {
                       key: p.key,

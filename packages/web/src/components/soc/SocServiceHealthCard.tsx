@@ -54,12 +54,12 @@ export function SocServiceHealthCard({ service }: SocServiceHealthCardProps) {
     { className: styles.serviceCard },
     createElement(
       "div",
-      { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" } },
+      { className: "s5_0_SocServiceHealthCard",  },
       createElement(
         "div",
         null,
-        createElement("h4", { style: { margin: 0, fontWeight: 700, fontSize: "1rem" } }, service.name),
-        createElement("p", { style: { margin: "0.25rem 0 0", fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)" } },
+        createElement("h4", { className: "s5_1_SocServiceHealthCard",  }, service.name),
+        createElement("p", { className: "s5_2_SocServiceHealthCard",  },
           `${service.service_key} \u2022 ${service.domain}`,
         ),
       ),
@@ -74,18 +74,18 @@ export function SocServiceHealthCard({ service }: SocServiceHealthCardProps) {
     ),
     createElement(
       "div",
-      { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" } },
+      { className: "s5_3_SocServiceHealthCard",  },
       createElement(
         "div",
-        { style: { background: "rgba(2, 11, 35, 0.4)", padding: "0.5rem 0.75rem", borderRadius: "8px" } },
-        createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)", textTransform: "uppercase" } }, t("soc.health.latency_label")),
-        createElement("div", { style: { fontWeight: 600, fontSize: "0.9rem", marginTop: "0.15rem" } }, latency),
+        { className: "s5_4_SocServiceHealthCard",  },
+        createElement("div", { className: "s5_5_SocServiceHealthCard",  }, t("soc.health.latency_label")),
+        createElement("div", { className: "s5_6_SocServiceHealthCard",  }, latency),
       ),
       createElement(
         "div",
-        { style: { background: "rgba(2, 11, 35, 0.4)", padding: "0.5rem 0.75rem", borderRadius: "8px" } },
-        createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)", textTransform: "uppercase" } }, t("soc.health.last_check_label")),
-        createElement("div", { style: { fontWeight: 500, fontSize: "0.8rem", marginTop: "0.15rem" } }, lastCheck),
+        { className: "s5_7_SocServiceHealthCard",  },
+        createElement("div", { className: "s5_8_SocServiceHealthCard",  }, t("soc.health.last_check_label")),
+        createElement("div", { className: "s5_9_SocServiceHealthCard",  }, lastCheck),
       ),
     ),
   );

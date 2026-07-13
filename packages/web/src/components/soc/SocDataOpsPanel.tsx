@@ -77,10 +77,10 @@ function DataOpsContent() {
     createElement(
       "nav",
       {
-        className: styles.tabBar,
+        className: `styles.tabBar s5_0_SocDataOpsPanel`,
         role: "tablist",
         "aria-label": t("soc.dataops.subtabs"),
-        style: { marginBottom: "1rem" },
+        
       },
       DATAOPS_SUB_TABS.map((tab) =>
         createElement(

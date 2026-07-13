@@ -128,7 +128,7 @@ const COVERAGE_STATE_ORDER = ["fresh", "warm", "stale", "missing", "error", "unk
 function renderPagination(page: number, hasMore: boolean, onPrev: () => void, onNext: () => void, t: (key: string, vars?: Record<string, unknown>) => string) {
   return createElement(
     "div",
-    { style: { display: "flex", justifyContent: "center", gap: "0.5rem", marginTop: "0.75rem", alignItems: "center" } },
+    { className: "s5_0_SocDataOpsMonitorSection",  },
     createElement(
       "button",
       {
@@ -139,7 +139,7 @@ function renderPagination(page: number, hasMore: boolean, onPrev: () => void, on
       },
       "\u25C0 " + t("soc.actions.prev")
     ),
-    createElement("span", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.actions.page", { page })),
+    createElement("span", { className: "s5_1_SocDataOpsMonitorSection",  }, t("soc.actions.page", { page })),
     createElement(
       "button",
       {
@@ -190,7 +190,7 @@ export function SocDataOpsMonitorSection() {
   const renderMetricCard = (label: string, value: string | number, color?: string) => {
     return createElement(
       "div",
-      { className: styles.metricCard, style: { flex: 1, minWidth: "140px" } },
+      { className: `styles.metricCard s5_2_SocDataOpsMonitorSection`,  },
       createElement("div", { className: styles.metricLabel }, label),
       createElement("div", { className: styles.metricValue, style: { color: color || "var(--text-primary, #f1f5f9)" } }, value)
     );
@@ -204,33 +204,27 @@ export function SocDataOpsMonitorSection() {
     return createElement(
       "div",
       {
-        style: {
-          padding: "0.75rem",
-          borderRadius: "8px",
-          background: "rgba(16, 185, 129, 0.06)",
-          border: "1px solid rgba(16, 185, 129, 0.2)",
-          marginBottom: "0.5rem",
-        },
+        className: "s5_3_SocDataOpsMonitorSection", 
       },
       createElement(
         "div",
-        { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" } },
+        { className: "s5_4_SocDataOpsMonitorSection",  },
         createElement(
           "div",
           null,
-          createElement("span", { style: { fontWeight: 700, fontSize: "0.75rem", color: "#34d399" } }, t("soc.dataops.monitor_active_runs_title")),
+          createElement("span", { className: "s5_5_SocDataOpsMonitorSection",  }, t("soc.dataops.monitor_active_runs_title")),
           createElement(
             "span",
-            { style: { fontSize: "0.6rem", color: "var(--text-muted, #94a3b8)", marginLeft: "0.5rem" } },
+            { className: "s5_6_SocDataOpsMonitorSection",  },
             t("soc.dataops.monitor_active_runs_desc")
           )
         ),
         createElement(
           "button",
           {
-            className: styles.actionBtn,
+            className: `styles.actionBtn s5_7_SocDataOpsMonitorSection`,
             onClick: () => actions.abortRun(activeRun.run_id),
-            style: { background: "rgba(239, 68, 68, 0.15)", color: "#f87171", fontSize: "0.65rem" },
+            
           },
           t("soc.dataops.abort")
         )
@@ -238,12 +232,7 @@ export function SocDataOpsMonitorSection() {
       createElement(
         "div",
         {
-          style: {
-            height: "6px",
-            borderRadius: "3px",
-            background: "rgba(16, 185, 129, 0.15)",
-            overflow: "hidden",
-          },
+          className: "s5_8_SocDataOpsMonitorSection", 
         },
         createElement("div", {
           style: {
@@ -257,7 +246,7 @@ export function SocDataOpsMonitorSection() {
       ),
       createElement(
         "div",
-        { style: { display: "flex", gap: "0.75rem", fontSize: "0.6rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.3rem" } },
+        { className: "s5_9_SocDataOpsMonitorSection",  },
         createElement("span", null, `${activeRun.run_id.slice(0, 8)}...`),
         createElement("span", null, `${activeRun.dataset || ""}`),
         createElement("span", null, `${progress.toFixed(0)}%`)
@@ -286,7 +275,7 @@ export function SocDataOpsMonitorSection() {
 
   return createElement(
     "div",
-    { style: { display: "flex", flexDirection: "column", gap: "1.25rem" } },
+    { className: "s5_10_SocDataOpsMonitorSection",  },
     error ? createElement("div", { className: styles.inlineError }, error) : null,
     renderActiveRunBanner(),
 
@@ -296,14 +285,14 @@ export function SocDataOpsMonitorSection() {
       { className: styles.sectionCard },
       createElement(
         "div",
-        { style: { display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" } },
+        { className: "s5_11_SocDataOpsMonitorSection",  },
         createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.matrix_snapshot")),
         createElement(
           "button",
           {
             onClick: () => setMatrixExpanded((v) => !v),
-            className: styles.actionBtn,
-            style: { fontSize: "0.7rem", background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted, #94a3b8)" },
+            className: `styles.actionBtn s5_12_SocDataOpsMonitorSection`,
+            
           },
           matrixExpanded ? t("soc.dataops.matrix_collapse") : t("soc.dataops.matrix_expand")
         )
@@ -317,25 +306,25 @@ export function SocDataOpsMonitorSection() {
       { className: styles.sectionCard },
       createElement(
         "div",
-        { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" } },
+        { className: "s5_13_SocDataOpsMonitorSection",  },
         createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.observability_title")),
         observability?.updated_at &&
           createElement(
             "span",
-            { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)" } },
+            { className: "s5_14_SocDataOpsMonitorSection",  },
             `${t("soc.dataops.observability_updated_at")}: ${new Date(observability.updated_at).toLocaleString()}`
           )
       ),
-      createElement("p", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", marginBottom: "0.75rem" } }, t("soc.dataops.observability_description")),
+      createElement("p", { className: "s5_15_SocDataOpsMonitorSection",  }, t("soc.dataops.observability_description")),
 
       observability
         ? createElement(
             "div",
-            { style: { display: "flex", flexDirection: "column", gap: "1rem" } },
+            { className: "s5_16_SocDataOpsMonitorSection",  },
             // Metric Cards
             createElement(
               "div",
-              { className: styles.metricGrid, style: { display: "flex", flexWrap: "wrap", gap: "0.75rem" } },
+              { className: `styles.metricGrid s5_17_SocDataOpsMonitorSection`,  },
               renderMetricCard(
                 t("soc.dataops.fail_rate_1h"),
                 `${(oneHourData.fail_rate_pct || 0).toFixed(2)}%`,
@@ -351,30 +340,30 @@ export function SocDataOpsMonitorSection() {
             // Backlog Tables
             createElement(
               "div",
-              { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1rem" } },
+              { className: "s5_18_SocDataOpsMonitorSection",  },
               // Backlog by Dataset Table
               createElement(
                 "div",
-                { className: styles.glassPanel, style: { padding: "0.75rem", background: "rgba(15, 23, 42, 0.3)" } },
+                { className: `styles.glassPanel s5_19_SocDataOpsMonitorSection`,  },
                 createElement(
                   "h4",
-                  { style: { margin: "0 0 0.5rem 0", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary, #f1f5f9)" } },
+                  { className: "s5_20_SocDataOpsMonitorSection",  },
                   t("soc.dataops.backlog_by_dataset")
                 ),
                 createElement(
                   "div",
-                  { style: { overflowX: "auto" } },
+                  { className: "s5_21_SocDataOpsMonitorSection",  },
                   createElement(
                     "table",
-                    { style: { width: "100%", borderCollapse: "collapse", fontSize: "0.7rem" } },
+                    { className: "s5_22_SocDataOpsMonitorSection",  },
                     createElement(
                       "thead",
                       null,
                       createElement(
                         "tr",
-                        { style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
-                        createElement("th", { style: { textAlign: "left", padding: "0.35rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.dataset")),
-                        createElement("th", { style: { textAlign: "right", padding: "0.35rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.backlog_count"))
+                        { className: "s5_23_SocDataOpsMonitorSection",  },
+                        createElement("th", { className: "s5_24_SocDataOpsMonitorSection",  }, t("soc.dataops.dataset")),
+                        createElement("th", { className: "s5_25_SocDataOpsMonitorSection",  }, t("soc.dataops.backlog_count"))
                       )
                     ),
                     createElement(
@@ -383,16 +372,16 @@ export function SocDataOpsMonitorSection() {
                       (observability.backlog?.by_dataset || []).map((item) =>
                         createElement(
                           "tr",
-                          { key: item.dataset, style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
-                          createElement("td", { style: { padding: "0.35rem", fontWeight: 600 } }, t(DATASET_LABEL_KEYS[item.dataset] || "soc.dataops.dataset_unknown")),
-                          createElement("td", { style: { padding: "0.35rem", textAlign: "right", fontMono: "1" } }, item.backlog_count.toLocaleString())
+                          { key: item.dataset, className: "s5_26_SocDataOpsMonitorSection",  },
+                          createElement("td", { className: "s5_27_SocDataOpsMonitorSection",  }, t(DATASET_LABEL_KEYS[item.dataset] || "soc.dataops.dataset_unknown")),
+                          createElement("td", { className: "s5_28_SocDataOpsMonitorSection",  }, item.backlog_count.toLocaleString())
                         )
                       ),
                       (!observability.backlog?.by_dataset || observability.backlog.by_dataset.length === 0) &&
                         createElement(
                           "tr",
                           null,
-                          createElement("td", { colSpan: 2, style: { padding: "1rem", textAlign: "center", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.no_backlog"))
+                          createElement("td", { colSpan: 2, className: "s5_29_SocDataOpsMonitorSection",  }, t("soc.dataops.no_backlog"))
                         )
                     )
                   )
@@ -402,38 +391,30 @@ export function SocDataOpsMonitorSection() {
               // Starvation Indicator Section
               createElement(
                 "div",
-                { className: styles.glassPanel, style: { padding: "0.75rem", background: "rgba(15, 23, 42, 0.3)" } },
+                { className: `styles.glassPanel s5_30_SocDataOpsMonitorSection`,  },
                 createElement(
                   "h4",
-                  { style: { margin: "0 0 0.5rem 0", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary, #f1f5f9)" } },
+                  { className: "s5_31_SocDataOpsMonitorSection",  },
                   t("soc.dataops.starvation_indicator")
                 ),
                 createElement(
                   "div",
-                  { style: { display: "flex", flexDirection: "column", gap: "0.4rem" } },
+                  { className: "s5_32_SocDataOpsMonitorSection",  },
                   (observability.starvation || []).map((item) => {
                     const isStarved = !!item.is_starved;
                     return createElement(
                       "div",
                       {
                         key: item.tier,
-                        style: {
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          padding: "0.5rem",
-                          borderRadius: "6px",
-                          background: "rgba(15, 23, 42, 0.2)",
-                          border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
-                        },
+                        className: "s5_33_SocDataOpsMonitorSection", 
                       },
                       createElement(
                         "div",
                         null,
-                        createElement("div", { style: { fontWeight: 600, fontSize: "0.75rem" } }, t(TIER_LABEL_KEYS[item.tier] || "soc.dataops.unknown_tier")),
+                        createElement("div", { className: "s5_34_SocDataOpsMonitorSection",  }, t(TIER_LABEL_KEYS[item.tier] || "soc.dataops.unknown_tier")),
                         createElement(
                           "div",
-                          { style: { fontSize: "0.6rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.15rem" } },
+                          { className: "s5_35_SocDataOpsMonitorSection",  },
                           t("soc.dataops.starvation_last_progress_seconds", {
                             seconds: item.seconds_since_last_progress ?? "-",
                             threshold: item.threshold_seconds,
@@ -456,7 +437,7 @@ export function SocDataOpsMonitorSection() {
                     );
                   }),
                   (!observability.starvation || observability.starvation.length === 0) &&
-                    createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", textAlign: "center" } }, t("soc.dataops.no_starvation_data"))
+                    createElement("p", { className: "s5_36_SocDataOpsMonitorSection",  }, t("soc.dataops.no_starvation_data"))
                 )
               )
             ),
@@ -464,27 +445,27 @@ export function SocDataOpsMonitorSection() {
             // Backlog by Tier Table
             createElement(
               "div",
-              { className: styles.glassPanel, style: { padding: "0.75rem", background: "rgba(15, 23, 42, 0.3)" } },
+              { className: `styles.glassPanel s5_37_SocDataOpsMonitorSection`,  },
               createElement(
                 "h4",
-                { style: { margin: "0 0 0.5rem 0", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary, #f1f5f9)" } },
+                { className: "s5_38_SocDataOpsMonitorSection",  },
                 t("soc.dataops.backlog_by_tier")
               ),
               createElement(
                 "div",
-                { style: { overflowX: "auto" } },
+                { className: "s5_39_SocDataOpsMonitorSection",  },
                 createElement(
                   "table",
-                  { style: { width: "100%", borderCollapse: "collapse", fontSize: "0.7rem" } },
+                  { className: "s5_40_SocDataOpsMonitorSection",  },
                   createElement(
                     "thead",
                     null,
                     createElement(
                       "tr",
-                      { style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
-                      createElement("th", { style: { textAlign: "left", padding: "0.35rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.queue_tier")),
-                      createElement("th", { style: { textAlign: "right", padding: "0.35rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.symbol_count")),
-                      createElement("th", { style: { textAlign: "right", padding: "0.35rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.backlog_symbols"))
+                      { className: "s5_41_SocDataOpsMonitorSection",  },
+                      createElement("th", { className: "s5_42_SocDataOpsMonitorSection",  }, t("soc.dataops.queue_tier")),
+                      createElement("th", { className: "s5_43_SocDataOpsMonitorSection",  }, t("soc.dataops.symbol_count")),
+                      createElement("th", { className: "s5_44_SocDataOpsMonitorSection",  }, t("soc.dataops.backlog_symbols"))
                     )
                   ),
                   createElement(
@@ -493,17 +474,17 @@ export function SocDataOpsMonitorSection() {
                     (observability.backlog?.by_tier || []).map((item) =>
                       createElement(
                         "tr",
-                        { key: item.tier, style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
-                        createElement("td", { style: { padding: "0.35rem", fontWeight: 600 } }, t(TIER_LABEL_KEYS[item.tier] || "soc.dataops.unknown_tier")),
-                        createElement("td", { style: { padding: "0.35rem", textAlign: "right", fontMono: "1" } }, item.symbol_count.toLocaleString()),
-                        createElement("td", { style: { padding: "0.35rem", textAlign: "right", fontMono: "1" } }, item.backlog_symbols.toLocaleString())
+                        { key: item.tier, className: "s5_45_SocDataOpsMonitorSection",  },
+                        createElement("td", { className: "s5_46_SocDataOpsMonitorSection",  }, t(TIER_LABEL_KEYS[item.tier] || "soc.dataops.unknown_tier")),
+                        createElement("td", { className: "s5_47_SocDataOpsMonitorSection",  }, item.symbol_count.toLocaleString()),
+                        createElement("td", { className: "s5_48_SocDataOpsMonitorSection",  }, item.backlog_symbols.toLocaleString())
                       )
                     ),
                     (!observability.backlog?.by_tier || observability.backlog.by_tier.length === 0) &&
                       createElement(
                         "tr",
                         null,
-                        createElement("td", { colSpan: 3, style: { padding: "1rem", textAlign: "center", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.no_backlog"))
+                        createElement("td", { colSpan: 3, className: "s5_49_SocDataOpsMonitorSection",  }, t("soc.dataops.no_backlog"))
                       )
                   )
                 )
@@ -541,39 +522,39 @@ export function SocDataOpsMonitorSection() {
       { className: styles.sectionCard },
       createElement(
         "div",
-        { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" } },
+        { className: "s5_50_SocDataOpsMonitorSection",  },
         createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.coverage_title")),
         coverage?.updated_at &&
           createElement(
             "span",
-            { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)" } },
+            { className: "s5_51_SocDataOpsMonitorSection",  },
             `${t("soc.dataops.coverage_updated_at")}: ${new Date(coverage.updated_at).toLocaleString()}`
           )
       ),
-      createElement("p", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", marginBottom: "0.75rem" } }, t("soc.dataops.coverage_description")),
+      createElement("p", { className: "s5_52_SocDataOpsMonitorSection",  }, t("soc.dataops.coverage_description")),
 
       Array.isArray(coverage?.datasets) && coverage.datasets.length > 0
         ? createElement(
             "div",
-            { style: { overflowX: "auto" } },
+            { className: "s5_53_SocDataOpsMonitorSection",  },
             createElement(
               "table",
-              { style: { width: "100%", borderCollapse: "collapse", fontSize: "0.75rem" } },
+              { className: "s5_54_SocDataOpsMonitorSection",  },
               createElement(
                 "thead",
                 null,
                 createElement(
                   "tr",
                   null,
-                  createElement("th", { style: { textAlign: "left", padding: "0.5rem", borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, t("soc.dataops.dataset")),
+                  createElement("th", { className: "s5_55_SocDataOpsMonitorSection",  }, t("soc.dataops.dataset")),
                   COVERAGE_STATE_ORDER.map((stateKey) =>
                     createElement(
                       "th",
-                      { key: stateKey, style: { textAlign: "center", padding: "0.5rem", borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } },
+                      { key: stateKey, className: "s5_56_SocDataOpsMonitorSection",  },
                       t(FRESHNESS_LABEL_KEYS[stateKey] || "soc.dataops.freshness_unknown")
                     )
                   ),
-                  createElement("th", { style: { textAlign: "right", padding: "0.5rem", borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, "Total")
+                  createElement("th", { className: "s5_57_SocDataOpsMonitorSection",  }, "Total")
                 )
               ),
               createElement(
@@ -583,17 +564,17 @@ export function SocDataOpsMonitorSection() {
                   const total = COVERAGE_STATE_ORDER.reduce((sum, stateKey) => sum + ((ds as any)[stateKey] || 0), 0);
                   return createElement(
                     "tr",
-                    { key: ds.dataset, style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
-                    createElement("td", { style: { padding: "0.5rem", fontWeight: 600 } }, t(DATASET_LABEL_KEYS[ds.dataset] || "soc.dataops.dataset_unknown")),
+                    { key: ds.dataset, className: "s5_58_SocDataOpsMonitorSection",  },
+                    createElement("td", { className: "s5_59_SocDataOpsMonitorSection",  }, t(DATASET_LABEL_KEYS[ds.dataset] || "soc.dataops.dataset_unknown")),
                     COVERAGE_STATE_ORDER.map((stateKey) => {
                       const count = (ds as any)[stateKey] || 0;
                       return createElement(
                         "td",
-                        { key: stateKey, style: { padding: "0.5rem", textAlign: "center", fontMono: "1" } },
+                        { key: stateKey, className: "s5_60_SocDataOpsMonitorSection",  },
                         count > 0 ? count.toLocaleString() : "—"
                       );
                     }),
-                    createElement("td", { style: { padding: "0.5rem", textAlign: "right", fontWeight: 600 } }, total.toLocaleString())
+                    createElement("td", { className: "s5_61_SocDataOpsMonitorSection",  }, total.toLocaleString())
                   );
                 })
               )
@@ -610,20 +591,20 @@ export function SocDataOpsMonitorSection() {
           createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.coverage_gaps_title")),
           createElement(
             "div",
-            { style: { overflowX: "auto" } },
+            { className: "s5_62_SocDataOpsMonitorSection",  },
             createElement(
               "table",
-              { style: { width: "100%", borderCollapse: "collapse", fontSize: "0.7rem" } },
+              { className: "s5_63_SocDataOpsMonitorSection",  },
               createElement(
                 "thead",
                 null,
                 createElement(
                   "tr",
                   null,
-                  createElement("th", { style: { textAlign: "left", padding: "0.35rem", borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, t("soc.dataops.coverage_gap_symbol")),
-                  createElement("th", { style: { textAlign: "left", padding: "0.35rem", borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, t("soc.dataops.dataset")),
-                  createElement("th", { style: { textAlign: "center", padding: "0.35rem", borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, t("soc.dataops.coverage_gap_freshness")),
-                  createElement("th", { style: { textAlign: "left", padding: "0.35rem", borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-muted, #94a3b8)", fontWeight: 600 } }, t("soc.dataops.next_action"))
+                  createElement("th", { className: "s5_64_SocDataOpsMonitorSection",  }, t("soc.dataops.coverage_gap_symbol")),
+                  createElement("th", { className: "s5_65_SocDataOpsMonitorSection",  }, t("soc.dataops.dataset")),
+                  createElement("th", { className: "s5_66_SocDataOpsMonitorSection",  }, t("soc.dataops.coverage_gap_freshness")),
+                  createElement("th", { className: "s5_67_SocDataOpsMonitorSection",  }, t("soc.dataops.next_action"))
                 )
               ),
               createElement(
@@ -632,12 +613,12 @@ export function SocDataOpsMonitorSection() {
                 coverage.top_gaps.slice((gapsPage - 1) * 20, gapsPage * 20).map((gap, i) =>
                   createElement(
                     "tr",
-                    { key: i, style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
-                    createElement("td", { style: { padding: "0.35rem", fontWeight: 600 } }, gap.symbol),
-                    createElement("td", { style: { padding: "0.35rem", color: "var(--text-muted, #94a3b8)" } }, t(DATASET_LABEL_KEYS[gap.dataset] || "soc.dataops.dataset_unknown")),
+                    { key: i, className: "s5_68_SocDataOpsMonitorSection",  },
+                    createElement("td", { className: "s5_69_SocDataOpsMonitorSection",  }, gap.symbol),
+                    createElement("td", { className: "s5_70_SocDataOpsMonitorSection",  }, t(DATASET_LABEL_KEYS[gap.dataset] || "soc.dataops.dataset_unknown")),
                     createElement(
                       "td",
-                      { style: { padding: "0.35rem", textAlign: "center" } },
+                      { className: "s5_71_SocDataOpsMonitorSection",  },
                       createElement(
                         "span",
                         {
@@ -653,7 +634,7 @@ export function SocDataOpsMonitorSection() {
                     ),
                     createElement(
                       "td",
-                      { style: { padding: "0.35rem", color: "var(--text-muted, #94a3b8)" } },
+                      { className: "s5_72_SocDataOpsMonitorSection",  },
                       gap.next_recommended_action ? t(ACTION_LABEL_KEYS[gap.next_recommended_action] || "soc.dataops.action_unknown") : "—"
                     )
                   )
@@ -679,32 +660,27 @@ export function SocDataOpsMonitorSection() {
           "div",
           { className: styles.sectionCard },
           createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.queue_tiers")),
-          createElement("div", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", marginBottom: "0.75rem" } }, t("soc.dataops.queue_tiers_description")),
+          createElement("div", { className: "s5_73_SocDataOpsMonitorSection",  }, t("soc.dataops.queue_tiers_description")),
           createElement(
             "div",
-            { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "0.75rem" } },
+            { className: "s5_74_SocDataOpsMonitorSection",  },
             queueTiers.map((tier) =>
               createElement(
                 "div",
                 {
                   key: tier.tier,
-                  style: {
-                    padding: "0.75rem",
-                    borderRadius: "8px",
-                    background: "rgba(15, 23, 42, 0.3)",
-                    border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
-                  },
+                  className: "s5_75_SocDataOpsMonitorSection", 
                 },
-                createElement("div", { style: { fontWeight: 700, fontSize: "0.9rem" } }, t(TIER_LABEL_KEYS[tier.tier] || "soc.dataops.unknown_tier")),
+                createElement("div", { className: "s5_76_SocDataOpsMonitorSection",  }, t(TIER_LABEL_KEYS[tier.tier] || "soc.dataops.unknown_tier")),
                 createElement(
                   "div",
-                  { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.25rem" } },
+                  { className: "s5_77_SocDataOpsMonitorSection",  },
                   `${tier.symbol_count} ${t("soc.dataops.tier_symbols")} \u2022 Cadence: ${tier.cadence || "N/A"}`
                 ),
                 tier.active_symbols?.length > 0
                   ? createElement(
                       "div",
-                      { style: { fontSize: "0.7rem", color: "var(--accent-cyan, #06b6d4)", marginTop: "0.25rem" } },
+                      { className: "s5_78_SocDataOpsMonitorSection",  },
                       `${t("soc.dataops.tier_examples")}: ${tier.active_symbols.slice(0, 5).join(", ")}`
                     )
                   : null

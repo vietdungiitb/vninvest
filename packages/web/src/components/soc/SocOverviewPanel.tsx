@@ -212,7 +212,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
               "div",
               { className: styles.toolbar },
               createElement("input", {
-                className: styles.searchInput,
+                className: `styles.searchInput s5_0_SocOverviewPanel`,
                 type: "text",
                 placeholder: t("soc.overview.search_placeholder"),
                 value: search,
@@ -220,11 +220,11 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                   setSearch(e.target.value);
                   setPage(1);
                 },
-                style: { maxWidth: "320px" },
+                
               }),
               createElement(
                 "div",
-                { style: { display: "flex", gap: "0.4rem", flexWrap: "wrap" } },
+                { className: "s5_1_SocOverviewPanel",  },
                 ...filterButtons.map((btn) =>
                   createElement(
                     "button",
@@ -261,13 +261,13 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                   },
                   createElement(
                     "div",
-                    { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" } },
+                    { className: "s5_2_SocOverviewPanel",  },
                     createElement(
                       "div",
                       null,
-                      createElement("h4", { style: { margin: 0, fontWeight: 700, fontSize: "1rem" } }, service.name),
+                      createElement("h4", { className: "s5_3_SocOverviewPanel",  }, service.name),
                       createElement("p", {
-                        style: { margin: "0.25rem 0 0", fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)" },
+                        className: "s5_4_SocOverviewPanel", 
                       }, `${service.service_key} \u2022 ${service.domain}`),
                     ),
                     createElement(
@@ -281,12 +281,12 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                   ),
                   createElement(
                     "div",
-                    { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" } },
+                    { className: "s5_5_SocOverviewPanel",  },
                     createElement(
                       "div",
-                      { style: { background: "rgba(2, 11, 35, 0.4)", padding: "0.5rem 0.75rem", borderRadius: "8px" } },
-                      createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)", textTransform: "uppercase" } }, t("soc.health.latency_label")),
-                      createElement("div", { style: { fontWeight: 600, fontSize: "0.9rem", marginTop: "0.15rem" } },
+                      { className: "s5_6_SocOverviewPanel",  },
+                      createElement("div", { className: "s5_7_SocOverviewPanel",  }, t("soc.health.latency_label")),
+                      createElement("div", { className: "s5_8_SocOverviewPanel",  },
                         service.is_active && service.avg_response_ms != null
                           ? `${service.avg_response_ms.toFixed(0)}ms`
                           : t("soc.health.unknown_value"),
@@ -294,9 +294,9 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                     ),
                     createElement(
                       "div",
-                      { style: { background: "rgba(2, 11, 35, 0.4)", padding: "0.5rem 0.75rem", borderRadius: "8px" } },
-                      createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)", textTransform: "uppercase" } }, t("soc.health.last_check_label")),
-                      createElement("div", { style: { fontWeight: 500, fontSize: "0.8rem", marginTop: "0.15rem" } },
+                      { className: "s5_9_SocOverviewPanel",  },
+                      createElement("div", { className: "s5_10_SocOverviewPanel",  }, t("soc.health.last_check_label")),
+                      createElement("div", { className: "s5_11_SocOverviewPanel",  },
                         service.last_check_at
                           ? service.last_check_at.split("T")[1]?.slice(0, 8) || t("soc.health.unknown_value")
                           : t("soc.health.unknown_value"),
@@ -305,7 +305,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                   ),
                   createElement(
                     "div",
-                    { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" } },
+                    { className: "s5_12_SocOverviewPanel",  },
                     createElement(
                       "button",
                       {
@@ -326,10 +326,10 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                     createElement(
                       "button",
                       {
-                        className: styles.actionBtn,
+                        className: `styles.actionBtn s5_13_SocOverviewPanel`,
                         disabled: isLoadingHealth || !service.is_active,
                         onClick: () => handleHealthCheck(service),
-                        style: { background: "rgba(0, 180, 216, 0.12)", color: "#22d3ee" },
+                        
                       },
                       isLoadingHealth
                         ? t("soc.overview.loading_text")
@@ -339,9 +339,9 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                       ? createElement(
                           "button",
                           {
-                            className: styles.actionBtn,
+                            className: `styles.actionBtn s5_14_SocOverviewPanel`,
                             onClick: () => handleConfigure(service),
-                            style: { background: "rgba(251, 191, 36, 0.12)", color: "#fbbf24" },
+                            
                           },
                           t("soc.overview.configure_service"),
                         )
@@ -365,7 +365,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                   ),
                   createElement(
                     "span",
-                    { style: { fontSize: "0.8rem", color: "var(--text-muted, #94a3b8)" } },
+                    { className: "s5_15_SocOverviewPanel",  },
                     t("soc.overview.page_of", { page: String(safePage), total: String(totalPages) }),
                   ),
                   createElement(

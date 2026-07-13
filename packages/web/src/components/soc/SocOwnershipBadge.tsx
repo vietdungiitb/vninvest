@@ -17,11 +17,11 @@ export function SocOwnershipBadge({ team, writable, accessLevel }: SocOwnershipB
 
   return createElement(
     "div",
-    { className: styles.sectionCard, style: { padding: "0.75rem", minWidth: "200px" } },
-    createElement("div", { className: styles.sectionCardTitle, style: { fontSize: "0.75rem" } }, t("soc.badge.ownership_title")),
+    { className: `styles.sectionCard s5_0_SocOwnershipBadge`,  },
+    createElement("div", { className: `styles.sectionCardTitle s5_1_SocOwnershipBadge`,  }, t("soc.badge.ownership_title")),
     createElement(
       "div",
-      { style: { display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.5rem" } },
+      { className: "s5_2_SocOwnershipBadge",  },
       createElement(
         "span",
         {
@@ -39,10 +39,10 @@ export function SocOwnershipBadge({ team, writable, accessLevel }: SocOwnershipB
         }),
         writableLabel,
       ),
-      createElement("span", { className: styles.statusBadge, style: { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan, #06b6d4)" } },
+      createElement("span", { className: `styles.statusBadge s5_3_SocOwnershipBadge`,  },
         t("soc.badge.team", { team: teamLabel }),
       ),
-      createElement("span", { className: styles.statusBadge, style: { background: "rgba(255, 191, 77, 0.15)", color: "var(--accent-amber)" } },
+      createElement("span", { className: `styles.statusBadge s5_4_SocOwnershipBadge`,  },
         t("soc.badge.access", { level: accessLabel }),
       ),
     ),

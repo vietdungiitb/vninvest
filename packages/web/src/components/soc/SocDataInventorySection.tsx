@@ -69,7 +69,7 @@ export function SocDataInventorySection() {
     return "#f87171";
   };
 
-  return createElement("div", { style: { display: "flex", flexDirection: "column", gap: "1.25rem" } },
+  return createElement("div", { className: "s5_0_SocDataInventorySection",  },
 
     createElement("div", { className: styles.metricGrid },
       MetricCard({ label: t("soc.dataops.total_rows"), value: (s.total_rows ?? 0).toLocaleString(), color: "var(--accent-cyan, #06b6d4)" }),
@@ -92,10 +92,10 @@ export function SocDataInventorySection() {
                 title: `${dt.total_rows.toLocaleString()} rows \u2022 ${dt.symbols} symbols`,
               },
                 createElement("div", { className: styles.metricLabel }, dt.label),
-                createElement("div", { className: styles.metricValue, style: { fontSize: "0.95rem" } },
+                createElement("div", { className: `styles.metricValue s5_1_SocDataInventorySection`,  },
                   dt.total_rows.toLocaleString(),
                 ),
-                createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.15rem" } },
+                createElement("div", { className: "s5_2_SocDataInventorySection",  },
                   `${dt.symbols} symbols${dt.earliest_date ? ` \u2022 ${dt.earliest_date}` : ""}`,
                 ),
               ),
@@ -107,14 +107,14 @@ export function SocDataInventorySection() {
     years.length > 0
       ? createElement("div", { className: styles.sectionCard },
           createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.year_distribution")),
-          createElement("div", { style: { display: "flex", flexDirection: "column", gap: "0.5rem" } },
+          createElement("div", { className: "s5_3_SocDataInventorySection",  },
             years.map((yr) =>
-              createElement("div", { key: yr.year, style: { display: "flex", alignItems: "center", gap: "0.5rem" } },
-                createElement("span", { style: { minWidth: "3rem", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)" } }, yr.year),
-                createElement("div", { style: { flex: 1, height: "1.25rem", background: "rgba(15, 23, 42, 0.4)", borderRadius: "4px", overflow: "hidden" } },
+              createElement("div", { key: yr.year, className: "s5_4_SocDataInventorySection",  },
+                createElement("span", { className: "s5_5_SocDataInventorySection",  }, yr.year),
+                createElement("div", { className: "s5_6_SocDataInventorySection",  },
                   createElement("div", { className: styles.barFill, style: { width: `${(yr.rows / maxYearRows) * 100}%` } }),
                 ),
-                createElement("span", { style: { minWidth: "5rem", fontSize: "0.75rem", textAlign: "right", fontVariantNumeric: "tabular-nums" } },
+                createElement("span", { className: "s5_7_SocDataInventorySection",  },
                   yr.rows.toLocaleString(),
                 ),
               ),
@@ -126,7 +126,7 @@ export function SocDataInventorySection() {
     groups.length > 0
       ? createElement("div", { className: styles.sectionCard },
           createElement("div", { className: styles.sectionCardTitle }, "Coverage by Group"),
-          createElement("div", { style: { overflowX: "auto" } },
+          createElement("div", { className: "s5_8_SocDataInventorySection",  },
             createElement("table", { className: styles.coverageTable },
               createElement("thead", null,
                 createElement("tr", null,
@@ -152,7 +152,7 @@ export function SocDataInventorySection() {
                       g.calendar_days != null ? `${g.calendar_days.toLocaleString()} ngày${g.calendar_days < 30 ? ' \u26A0' : ''}` : "N/A",
                     ),
                     createElement("td", null, g.total_rows.toLocaleString()),
-                    createElement("td", { style: { fontSize: "0.7rem" } },
+                    createElement("td", { className: "s5_9_SocDataInventorySection",  },
                       g.earliest_date && g.latest_date ? `${g.earliest_date} \u2013 ${g.latest_date}` : "N/A",
                     ),
                   ),
@@ -178,26 +178,26 @@ export function SocDataInventorySection() {
                     className: styles.accordionHeader,
                     onClick: () => setQueueTiersExpanded(queueTiersExpanded === tier.tier ? null : tier.tier),
                   },
-                    createElement("span", { style: { fontWeight: 600, fontSize: "0.85rem" } }, tier.tier),
-                    createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)" } },
+                    createElement("span", { className: "s5_10_SocDataInventorySection",  }, tier.tier),
+                    createElement("span", { className: "s5_11_SocDataInventorySection",  },
                       `${tier.symbol_count} symbols \u2022 ${tier.cadence || "N/A"}`,
                     ),
                   ),
                   queueTiersExpanded === tier.tier
                     ? createElement("div", { className: styles.accordionContent },
-                        createElement("div", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", marginBottom: "0.5rem" } },
+                        createElement("div", { className: "s5_12_SocDataInventorySection",  },
                           `Cadence: ${tier.cadence || "N/A"} \u2022 Active: ${tier.symbol_count} symbols`,
                         ),
                         tier.active_symbols?.length > 0
-                          ? createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: "0.35rem" } },
+                          ? createElement("div", { className: "s5_13_SocDataInventorySection",  },
                               tier.active_symbols.slice(0, 10).map((sym) =>
-                                createElement("span", { key: sym, className: styles.statusBadge, style: { background: "rgba(0, 180, 216, 0.12)", color: "var(--accent-cyan, #06b6d4)", fontSize: "0.65rem" } }, sym),
+                                createElement("span", { key: sym, className: `styles.statusBadge s5_14_SocDataInventorySection`,  }, sym),
                               ),
                               tier.active_symbols.length > 10
-                                ? createElement("span", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)" } }, `+${tier.active_symbols.length - 10} more`)
+                                ? createElement("span", { className: "s5_15_SocDataInventorySection",  }, `+${tier.active_symbols.length - 10} more`)
                                 : null,
                             )
-                          : createElement("span", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.empty_examples")),
+                          : createElement("span", { className: "s5_16_SocDataInventorySection",  }, t("soc.dataops.empty_examples")),
                       )
                     : null,
                 ),

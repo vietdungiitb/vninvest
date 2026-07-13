@@ -51,7 +51,7 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
     createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.parity_gates")),
     createElement(
       "div",
-      { className: styles.metricGrid, style: { gridTemplateColumns: "1fr 1fr", gap: "1rem" } },
+      { className: `styles.metricGrid s5_0_SocParityGatesPanel`,  },
       (["24h", "72h"] as const).map((window) => {
         const windowKey = `window_${window}` as const;
         const parityWindow = parityGates[windowKey];
@@ -86,18 +86,13 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
           "div",
           {
             key: window,
-            className: styles.glassPanel,
-            style: {
-              padding: "1rem",
-              borderRadius: "8px",
-              background: "rgba(15, 23, 42, 0.3)",
-              border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
-            },
+            className: `styles.glassPanel s5_1_SocParityGatesPanel`,
+            
           },
           createElement(
             "div",
-            { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
-            createElement("h4", { style: { margin: 0, fontSize: "0.85rem", fontWeight: 700, color: "var(--text-primary, #f1f5f9)" } }, `${window} window`),
+            { className: "s5_2_SocParityGatesPanel",  },
+            createElement("h4", { className: "s5_3_SocParityGatesPanel",  }, `${window} window`),
             createElement(
               "span",
               {
@@ -114,12 +109,12 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
           ),
           createElement(
             "p",
-            { style: { fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary, #f1f5f9)", margin: "0.5rem 0 0.25rem 0" } },
+            { className: "s5_4_SocParityGatesPanel",  },
             `${strictParity.toFixed(2)}%`
           ),
           createElement(
             "p",
-            { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", margin: "0.15rem 0" } },
+            { className: "s5_5_SocParityGatesPanel",  },
             t("soc.dataops.parity_strict_line", {
               count: parityWindow.strict_fresh_count || 0,
               total: parityWindow.evaluated_symbols || 0,
@@ -142,7 +137,7 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
           ),
           createElement(
             "p",
-            { style: { fontSize: "0.7rem", color: "var(--accent-amber)", margin: "0.4rem 0 0.15rem 0" } },
+            { className: "s5_6_SocParityGatesPanel",  },
             t("soc.dataops.parity_relaxed_line", {
               parity: relaxedParity.toFixed(2),
               count: parityWindow.fresh_or_warm_count || 0,
@@ -166,11 +161,11 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
           ),
           createElement(
             "div",
-            { style: { marginTop: "0.75rem", borderTop: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", paddingTop: "0.5rem" } },
-            createElement("p", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)", margin: "0 0 0.4rem 0", fontWeight: 600 } }, t("soc.dataops.parity_history_title")),
+            { className: "s5_7_SocParityGatesPanel",  },
+            createElement("p", { className: "s5_8_SocParityGatesPanel",  }, t("soc.dataops.parity_history_title")),
             createElement(
               "div",
-              { style: { display: "flex", flexWrap: "wrap", gap: "0.3rem" } },
+              { className: "s5_9_SocParityGatesPanel",  },
               windowHistory.slice(0, 7).map((historyPoint, index) => {
                 const pointSequence = historyPoint.sequence ?? index;
                 const pointStrictPct = (historyPoint.strict_fresh_parity || 0) * 100;
@@ -179,15 +174,8 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
                   "span",
                   {
                     key: `${window}-${pointSequence}`,
-                    className: styles.statusBadge,
-                    style: {
-                      fontSize: "0.6rem",
-                      background: "rgba(100, 116, 139, 0.1)",
-                      border: "1px solid rgba(100, 116, 139, 0.2)",
-                      color: "var(--text-muted, #94a3b8)",
-                      cursor: "help",
-                      padding: "0.1rem 0.35rem",
-                    },
+                    className: `styles.statusBadge s5_10_SocParityGatesPanel`,
+                    
                     title: t("soc.dataops.parity_history_point_tooltip", {
                       strict: pointStrictPct.toFixed(2),
                       relaxed: pointRelaxedPct.toFixed(2),
@@ -203,7 +191,7 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
               windowHistory.length === 0 &&
                 createElement(
                   "span",
-                  { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)" } },
+                  { className: "s5_11_SocParityGatesPanel",  },
                   t("soc.dataops.parity_history_empty")
                 )
             )

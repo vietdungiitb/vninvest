@@ -43,25 +43,25 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
 
   return createElement(
     "div",
-    { className: styles.sectionCard, style: { border: "1px solid rgba(249, 115, 22, 0.2)" } },
+    { className: `styles.sectionCard s5_0_SocAnomalyGuardPanel`,  },
     createElement(
       "div",
-      { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" } },
+      { className: "s5_1_SocAnomalyGuardPanel",  },
       createElement(
         "div",
         null,
         createElement(
           "h3",
-          { className: styles.sectionCardTitle, style: { color: "var(--accent-amber)", display: "flex", alignItems: "center", gap: "0.4rem" } },
+          { className: `styles.sectionCardTitle s5_2_SocAnomalyGuardPanel`,  },
           `⚠️ ${t("soc.dataops.anomaly_guard")}`
         ),
-        createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", margin: "0.15rem 0 0 0" } }, t("soc.dataops.anomaly_guard_desc"))
+        createElement("p", { className: "s5_3_SocAnomalyGuardPanel",  }, t("soc.dataops.anomaly_guard_desc"))
       )
     ),
 
     createElement(
       "div",
-      { className: styles.metricGrid, style: { gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "0.75rem", marginBottom: "1.25rem" } },
+      { className: `styles.metricGrid s5_4_SocAnomalyGuardPanel`,  },
       renderMetricCard(t("soc.dataops.anomaly_promotion_backlog"), promotionCount, promotionCount > 50 ? "var(--accent-amber)" : "#34d399"),
       renderMetricCard(
         t("soc.dataops.anomaly_repair_age"),
@@ -72,32 +72,32 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
 
     createElement(
       "div",
-      { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1rem" } },
+      { className: "s5_5_SocAnomalyGuardPanel",  },
       // Critical gaps table
       createElement(
         "div",
-        { className: styles.glassPanel, style: { padding: "0.75rem", background: "rgba(15, 23, 42, 0.3)" } },
+        { className: `styles.glassPanel s5_6_SocAnomalyGuardPanel`,  },
         createElement(
           "h4",
-          { style: { margin: "0 0 0.5rem 0", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary, #f1f5f9)" } },
+          { className: "s5_7_SocAnomalyGuardPanel",  },
           t("soc.dataops.anomaly_critical_gaps")
         ),
         createElement(
           "div",
-          { style: { overflowX: "auto" } },
+          { className: "s5_8_SocAnomalyGuardPanel",  },
           createElement(
             "table",
-            { style: { width: "100%", borderCollapse: "collapse", fontSize: "0.65rem" } },
+            { className: "s5_9_SocAnomalyGuardPanel",  },
             createElement(
               "thead",
               null,
               createElement(
                 "tr",
-                { style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
-                createElement("th", { style: { textAlign: "left", padding: "0.3rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.coverage_gap_symbol")),
-                createElement("th", { style: { textAlign: "left", padding: "0.3rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.coverage_gap_tier")),
-                createElement("th", { style: { textAlign: "right", padding: "0.3rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.coverage_gap_score")),
-                createElement("th", { style: { textAlign: "center", padding: "0.3rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.coverage_gap_freshness"))
+                { className: "s5_10_SocAnomalyGuardPanel",  },
+                createElement("th", { className: "s5_11_SocAnomalyGuardPanel",  }, t("soc.dataops.coverage_gap_symbol")),
+                createElement("th", { className: "s5_12_SocAnomalyGuardPanel",  }, t("soc.dataops.coverage_gap_tier")),
+                createElement("th", { className: "s5_13_SocAnomalyGuardPanel",  }, t("soc.dataops.coverage_gap_score")),
+                createElement("th", { className: "s5_14_SocAnomalyGuardPanel",  }, t("soc.dataops.coverage_gap_freshness"))
               )
             ),
             createElement(
@@ -106,18 +106,18 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
               (anomalyGuard.critical_gap_symbols || []).map((item) =>
                 createElement(
                   "tr",
-                  { key: item.symbol, style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
-                  createElement("td", { style: { padding: "0.3rem", fontWeight: 600, color: "var(--accent-amber)" } }, item.symbol),
-                  createElement("td", { style: { padding: "0.3rem", color: "var(--text-muted, #94a3b8)" } }, item.tier || "—"),
-                  createElement("td", { style: { padding: "0.3rem", textAlign: "right", fontWeight: 600, color: "#f87171" } }, item.gap_score?.toFixed(1)),
-                  createElement("td", { style: { padding: "0.3rem", textAlign: "center" } }, item.freshness_state)
+                  { key: item.symbol, className: "s5_15_SocAnomalyGuardPanel",  },
+                  createElement("td", { className: "s5_16_SocAnomalyGuardPanel",  }, item.symbol),
+                  createElement("td", { className: "s5_17_SocAnomalyGuardPanel",  }, item.tier || "—"),
+                  createElement("td", { className: "s5_18_SocAnomalyGuardPanel",  }, item.gap_score?.toFixed(1)),
+                  createElement("td", { className: "s5_19_SocAnomalyGuardPanel",  }, item.freshness_state)
                 )
               ),
               (anomalyGuard.critical_gap_symbols || []).length === 0 &&
                 createElement(
                   "tr",
                   null,
-                  createElement("td", { colSpan: 4, style: { padding: "1rem", textAlign: "center", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.no_critical_gaps"))
+                  createElement("td", { colSpan: 4, className: "s5_20_SocAnomalyGuardPanel",  }, t("soc.dataops.no_critical_gaps"))
                 )
             )
           )
@@ -127,28 +127,28 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
       // Hot tier breach table
       createElement(
         "div",
-        { className: styles.glassPanel, style: { padding: "0.75rem", background: "rgba(15, 23, 42, 0.3)" } },
+        { className: `styles.glassPanel s5_21_SocAnomalyGuardPanel`,  },
         createElement(
           "h4",
-          { style: { margin: "0 0 0.5rem 0", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary, #f1f5f9)" } },
+          { className: "s5_22_SocAnomalyGuardPanel",  },
           t("soc.dataops.anomaly_hot_breaches")
         ),
         createElement(
           "div",
-          { style: { overflowX: "auto" } },
+          { className: "s5_23_SocAnomalyGuardPanel",  },
           createElement(
             "table",
-            { style: { width: "100%", borderCollapse: "collapse", fontSize: "0.65rem" } },
+            { className: "s5_24_SocAnomalyGuardPanel",  },
             createElement(
               "thead",
               null,
               createElement(
                 "tr",
-                { style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
-                createElement("th", { style: { textAlign: "left", padding: "0.3rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.coverage_gap_symbol")),
-                createElement("th", { style: { textAlign: "right", padding: "0.3rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.coverage_gap_days")),
-                createElement("th", { style: { textAlign: "right", padding: "0.3rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.coverage_gap_score")),
-                createElement("th", { style: { textAlign: "center", padding: "0.3rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.coverage_gap_freshness"))
+                { className: "s5_25_SocAnomalyGuardPanel",  },
+                createElement("th", { className: "s5_26_SocAnomalyGuardPanel",  }, t("soc.dataops.coverage_gap_symbol")),
+                createElement("th", { className: "s5_27_SocAnomalyGuardPanel",  }, t("soc.dataops.coverage_gap_days")),
+                createElement("th", { className: "s5_28_SocAnomalyGuardPanel",  }, t("soc.dataops.coverage_gap_score")),
+                createElement("th", { className: "s5_29_SocAnomalyGuardPanel",  }, t("soc.dataops.coverage_gap_freshness"))
               )
             ),
             createElement(
@@ -157,18 +157,18 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
               (anomalyGuard.hot_tier_breach || []).map((item) =>
                 createElement(
                   "tr",
-                  { key: item.symbol, style: { borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", background: "rgba(239, 68, 68, 0.03)" } },
-                  createElement("td", { style: { padding: "0.3rem", fontWeight: 600, color: "#f87171" } }, item.symbol),
-                  createElement("td", { style: { padding: "0.3rem", textAlign: "right", fontWeight: 600, color: "#f87171" } }, item.gap_days),
-                  createElement("td", { style: { padding: "0.3rem", textAlign: "right", color: "var(--text-muted, #94a3b8)" } }, item.gap_score?.toFixed(1)),
-                  createElement("td", { style: { padding: "0.3rem", textAlign: "center" } }, item.freshness_state)
+                  { key: item.symbol, className: "s5_30_SocAnomalyGuardPanel",  },
+                  createElement("td", { className: "s5_31_SocAnomalyGuardPanel",  }, item.symbol),
+                  createElement("td", { className: "s5_32_SocAnomalyGuardPanel",  }, item.gap_days),
+                  createElement("td", { className: "s5_33_SocAnomalyGuardPanel",  }, item.gap_score?.toFixed(1)),
+                  createElement("td", { className: "s5_34_SocAnomalyGuardPanel",  }, item.freshness_state)
                 )
               ),
               (anomalyGuard.hot_tier_breach || []).length === 0 &&
                 createElement(
                   "tr",
                   null,
-                  createElement("td", { colSpan: 4, style: { padding: "1rem", textAlign: "center", color: "var(--text-muted, #94a3b8)" } }, t("soc.dataops.no_hot_breach"))
+                  createElement("td", { colSpan: 4, className: "s5_35_SocAnomalyGuardPanel",  }, t("soc.dataops.no_hot_breach"))
                 )
             )
           )

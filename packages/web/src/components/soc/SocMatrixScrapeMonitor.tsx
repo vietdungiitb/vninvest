@@ -110,14 +110,14 @@ export function SocMatrixScrapeMonitor() {
     { className: styles.glassPanel },
     createElement(
       "div",
-      { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" } },
-      createElement("h3", { style: { margin: 0, fontSize: "1.1rem", fontWeight: 700 } }, t("soc.matrix.title")),
+      { className: "s5_0_SocMatrixScrapeMonitor",  },
+      createElement("h3", { className: "s5_1_SocMatrixScrapeMonitor",  }, t("soc.matrix.title")),
       createElement(
         "button",
         {
           onClick: handleStartCycle,
-          className: styles.actionBtn,
-          style: { background: "rgba(16, 185, 129, 0.2)", color: "#34d399" },
+          className: `styles.actionBtn s5_2_SocMatrixScrapeMonitor`,
+          
         },
         t("soc.matrix.start_cycle"),
       ),
@@ -128,7 +128,7 @@ export function SocMatrixScrapeMonitor() {
         ? createElement("div", { className: styles.inlineError }, error)
         : createElement(
             "div",
-            { style: { display: "flex", flexDirection: "column", gap: "1.25rem" } },
+            { className: "s5_3_SocMatrixScrapeMonitor",  },
             createElement(
               "div",
               { className: styles.sectionCard },
@@ -137,35 +137,27 @@ export function SocMatrixScrapeMonitor() {
                 ? createElement("p", { className: styles.emptyState }, t("soc.matrix.no_cycles"))
                 : createElement(
                     "div",
-                    { style: { display: "flex", flexDirection: "column", gap: "0.5rem" } },
+                    { className: "s5_4_SocMatrixScrapeMonitor",  },
                     cycles.slice(0, 10).map((cycle) =>
                       createElement(
                         "div",
                         {
                           key: cycle.cycle_id,
-                          style: {
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            padding: "0.75rem",
-                            borderRadius: "8px",
-                            background: "rgba(15, 23, 42, 0.3)",
-                            border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
-                          },
+                          className: "s5_5_SocMatrixScrapeMonitor", 
                         },
                         createElement(
                           "div",
-                          { style: { flex: 1 } },
-                          createElement("div", { style: { fontWeight: 600, fontSize: "0.85rem" } },
+                          { className: "s5_6_SocMatrixScrapeMonitor",  },
+                          createElement("div", { className: "s5_7_SocMatrixScrapeMonitor",  },
                             `Cycle: ${cycle.cycle_id.slice(0, 8)}...`,
                           ),
-                          createElement("div", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)" } },
+                          createElement("div", { className: "s5_8_SocMatrixScrapeMonitor",  },
                             `${cycle.completed_cells || 0}/${cycle.total_cells || 0} cells \u2022 ${cycle.started_at?.split("T")[0] || "N/A"}`,
                           ),
                           cycle.progress != null
                             ? createElement(
                                 "div",
-                                { style: { marginTop: "0.25rem", height: "4px", borderRadius: "2px", background: "rgba(100, 116, 139, 0.2)" } },
+                                { className: "s5_9_SocMatrixScrapeMonitor",  },
                                 createElement("div", {
                                   style: {
                                     height: "100%",
@@ -191,8 +183,8 @@ export function SocMatrixScrapeMonitor() {
                               "button",
                               {
                                 onClick: () => handleAbort(cycle.cycle_id),
-                                className: styles.actionBtn,
-                                style: { background: "rgba(239, 68, 68, 0.15)", color: "#f87171", fontSize: "0.65rem", marginLeft: "0.5rem" },
+                                className: `styles.actionBtn s5_10_SocMatrixScrapeMonitor`,
+                                
                               },
                               t("soc.matrix.abort"),
                             )
@@ -208,7 +200,7 @@ export function SocMatrixScrapeMonitor() {
                   createElement("div", { className: styles.sectionCardTitle }, t("soc.matrix.providers")),
                   createElement(
                     "div",
-                    { style: { display: "flex", flexWrap: "wrap", gap: "0.5rem" } },
+                    { className: "s5_11_SocMatrixScrapeMonitor",  },
                     providers.map((p) =>
                       createElement(
                         "span",

@@ -105,11 +105,11 @@ export function SocDnseBackfillPanel() {
                 createElement("div", { className: styles.sectionCardTitle }, t("soc.dnse.trigger_title")),
                 createElement(
                   "div",
-                  { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem" } },
+                  { className: "s5_0_SocDnseBackfillPanel",  },
                   createElement(
                     "div",
                     null,
-                    createElement("label", { style: { fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)", marginBottom: "0.25rem", display: "block" } }, t("soc.dnse.symbol")),
+                    createElement("label", { className: "s5_1_SocDnseBackfillPanel",  }, t("soc.dnse.symbol")),
                     createElement(
                       "input",
                       {
@@ -124,7 +124,7 @@ export function SocDnseBackfillPanel() {
                   createElement(
                     "div",
                     null,
-                    createElement("label", { style: { fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)", marginBottom: "0.25rem", display: "block" } }, t("soc.dnse.date_from")),
+                    createElement("label", { className: "s5_2_SocDnseBackfillPanel",  }, t("soc.dnse.date_from")),
                     createElement(
                       "input",
                       {
@@ -140,7 +140,7 @@ export function SocDnseBackfillPanel() {
                   createElement(
                     "div",
                     null,
-                    createElement("label", { style: { fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)", marginBottom: "0.25rem", display: "block" } }, t("soc.dnse.date_to")),
+                    createElement("label", { className: "s5_3_SocDnseBackfillPanel",  }, t("soc.dnse.date_to")),
                     createElement(
                       "input",
                       {
@@ -172,33 +172,25 @@ export function SocDnseBackfillPanel() {
               ),
               createElement(
                 "div",
-                { className: styles.sectionCard, style: { marginTop: "1.25rem" } },
+                { className: `styles.sectionCard s5_4_SocDnseBackfillPanel`,  },
                 createElement("div", { className: styles.sectionCardTitle }, t("soc.dnse.recent_jobs")),
                 jobs.length === 0
                   ? createElement("p", { className: styles.emptyState }, t("soc.dnse.no_jobs"))
                   : createElement(
                       "div",
-                      { style: { display: "flex", flexDirection: "column", gap: "0.5rem" } },
+                      { className: "s5_5_SocDnseBackfillPanel",  },
                       jobs.slice(0, 15).map((job) =>
                         createElement(
                           "div",
                           {
                             key: job.id,
-                            style: {
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              padding: "0.5rem 0.75rem",
-                              borderRadius: "6px",
-                              background: "rgba(15, 23, 42, 0.3)",
-                              border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
-                            },
+                            className: "s5_6_SocDnseBackfillPanel", 
                           },
                           createElement(
                             "div",
-                            { style: { flex: 1 } },
-                            createElement("span", { style: { fontWeight: 700, color: "var(--accent-cyan, #06b6d4)" } }, job.symbol),
-                            createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", marginLeft: "0.5rem" } },
+                            { className: "s5_7_SocDnseBackfillPanel",  },
+                            createElement("span", { className: "s5_8_SocDnseBackfillPanel",  }, job.symbol),
+                            createElement("span", { className: "s5_9_SocDnseBackfillPanel",  },
                               job.date || "N/A",
                             ),
                           ),
@@ -211,7 +203,7 @@ export function SocDnseBackfillPanel() {
                             job.status,
                           ),
                           job.error
-                            ? createElement("span", { style: { fontSize: "0.7rem", color: "#f87171", marginLeft: "0.5rem" } }, job.error)
+                            ? createElement("span", { className: "s5_10_SocDnseBackfillPanel",  }, job.error)
                             : null,
                         ),
                       ),

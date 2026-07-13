@@ -125,18 +125,7 @@ function SchedulerHealthStrip({ health, t }: { health: SchedulerHealth | null; t
   return createElement(
     "div",
     {
-      style: {
-        display: "flex",
-        flexWrap: "wrap",
-        gap: "1rem",
-        borderRadius: "8px",
-        border: "1px solid rgba(80, 120, 168, 0.15)",
-        background: "rgba(2, 11, 35, 0.4)",
-        padding: "0.75rem 1.25rem",
-        fontSize: "0.75rem",
-        marginBottom: "1rem",
-        alignItems: "center",
-      }
+      className: "s5_0_SocSchedulerBoard", 
     },
     createElement(
       "span",
@@ -152,31 +141,31 @@ function SchedulerHealthStrip({ health, t }: { health: SchedulerHealth | null; t
     ),
     createElement(
       "span",
-      { style: { color: "var(--text-muted, #94a3b8)" } },
+      { className: "s5_1_SocSchedulerBoard",  },
       `${t("soc.scheduler.health_total")}: `,
-      createElement("span", { style: { color: "#f1f5f9", fontWeight: 600 } }, health.jobs_total)
+      createElement("span", { className: "s5_2_SocSchedulerBoard",  }, health.jobs_total)
     ),
     createElement(
       "span",
-      { style: { color: "var(--text-muted, #94a3b8)" } },
+      { className: "s5_3_SocSchedulerBoard",  },
       `${t("soc.scheduler.health_enabled")}: `,
-      createElement("span", { style: { color: "#60a5fa", fontWeight: 600 } }, health.enabled_count)
+      createElement("span", { className: "s5_4_SocSchedulerBoard",  }, health.enabled_count)
     ),
     createElement(
       "span",
-      { style: { color: "var(--text-muted, #94a3b8)" } },
+      { className: "s5_5_SocSchedulerBoard",  },
       `${t("soc.scheduler.health_degraded")}: `,
-      createElement("span", { style: { color: "#fbbf24", fontWeight: 600 } }, health.degraded_count)
+      createElement("span", { className: "s5_6_SocSchedulerBoard",  }, health.degraded_count)
     ),
     createElement(
       "span",
-      { style: { color: "var(--text-muted, #94a3b8)" } },
+      { className: "s5_7_SocSchedulerBoard",  },
       `${t("soc.scheduler.health_inflight")}: `,
-      createElement("span", { style: { color: "#34d399", fontWeight: 600 } }, health.by_status?.running || 0)
+      createElement("span", { className: "s5_8_SocSchedulerBoard",  }, health.by_status?.running || 0)
     ),
     createElement(
       "span",
-      { style: { color: "var(--text-muted, #94a3b8)" } },
+      { className: "s5_9_SocSchedulerBoard",  },
       `${t("soc.scheduler.health_stale")}: `,
       createElement("span", { style: { color: health.by_freshness?.stale ? "#f87171" : "#f1f5f9", fontWeight: 600 } }, health.by_freshness?.stale || 0)
     )
@@ -242,7 +231,7 @@ function JobActionButtons({
 
   return createElement(
     "div",
-    { style: { display: "flex", flexWrap: "nowrap", gap: "0.25rem", alignItems: "center" } },
+    { className: "s5_10_SocSchedulerBoard",  },
     isJobDisabled
       ? btn("enable", t("soc.scheduler.action_enable"), { background: "rgba(59, 130, 246, 0.15)", color: "#60a5fa" })
       : btn("disable", t("soc.scheduler.action_disable"), { background: "rgba(148, 163, 184, 0.15)", color: "#cbd5e1" }),
@@ -269,55 +258,46 @@ function ActionConfirmModal({
   return createElement(
     "div",
     {
-      style: {
-        position: "fixed",
-        inset: 0,
-        zIndex: 9999,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "rgba(0, 0, 0, 0.6)",
-        padding: "1rem",
-      },
+      className: "s5_11_SocSchedulerBoard", 
       onClick: onCancel,
     },
     createElement(
       "div",
       {
-        className: styles.glassPanel,
-        style: { maxWidth: "400px", width: "100%", background: "#0b1528" },
+        className: `styles.glassPanel s5_12_SocSchedulerBoard`,
+        
         onClick: (e: any) => e.stopPropagation(),
       },
-      createElement("h3", { style: { margin: "0 0 0.5rem", fontSize: "1rem", fontWeight: 700, color: "#fff" } }, 
+      createElement("h3", { className: "s5_13_SocSchedulerBoard",  }, 
         t("soc.scheduler.confirm_title")
       ),
-      createElement("p", { style: { margin: "0 0 1rem", fontSize: "0.8rem", color: "var(--text-muted, #94a3b8)" } },
+      createElement("p", { className: "s5_14_SocSchedulerBoard",  },
         `${t("soc.scheduler.confirm_action")}: `,
-        createElement("span", { style: { color: "#fbbf24", fontWeight: 600 } }, action),
+        createElement("span", { className: "s5_15_SocSchedulerBoard",  }, action),
         " — ",
-        createElement("span", { style: { fontFamily: "monospace", fontSize: "0.75rem", color: "#94a3b8" } }, job.job_key)
+        createElement("span", { className: "s5_16_SocSchedulerBoard",  }, job.job_key)
       ),
-      createElement("label", { style: { display: "block", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted, #94a3b8)", marginBottom: "0.25rem", fontWeight: 600 } },
+      createElement("label", { className: "s5_17_SocSchedulerBoard",  },
         t("soc.scheduler.reason_label")
       ),
       createElement("textarea", {
-        className: styles.configEditor,
+        className: `styles.configEditor s5_18_SocSchedulerBoard`,
         rows: 2,
         placeholder: t("soc.scheduler.reason_placeholder"),
         value: reason,
         onChange: (e: any) => setReason(e.target.value),
-        style: { width: "100%", marginBottom: "1rem", boxSizing: "border-box" },
+        
       }),
       createElement(
         "div",
-        { style: { display: "flex", justifyContent: "flex-end", gap: "0.5rem" } },
+        { className: "s5_19_SocSchedulerBoard",  },
         createElement(
           "button",
           {
             type: "button",
             onClick: onCancel,
-            className: styles.actionBtn,
-            style: { background: "rgba(148, 163, 184, 0.15)", color: "#cbd5e1" },
+            className: `styles.actionBtn s5_20_SocSchedulerBoard`,
+            
           },
           t("common.cancel")
         ),
@@ -394,57 +374,44 @@ function JobHistoryDrawer({
       createElement(
         "div",
         {
-          style: {
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            borderBottom: "1px solid rgba(80, 120, 168, 0.2)",
-            paddingBottom: "0.75rem",
-            marginBottom: "1rem",
-          }
+          className: "s5_21_SocSchedulerBoard", 
         },
         createElement("div", null,
-          createElement("p", { style: { margin: 0, fontWeight: 700, fontSize: "0.85rem", color: "#fff" } }, t("soc.scheduler.history_drawer_title")),
-          createElement("p", { style: { margin: "0.15rem 0 0 0", fontFamily: "monospace", fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)" } }, jobKey)
+          createElement("p", { className: "s5_22_SocSchedulerBoard",  }, t("soc.scheduler.history_drawer_title")),
+          createElement("p", { className: "s5_23_SocSchedulerBoard",  }, jobKey)
         ),
         createElement("button", {
           type: "button",
           onClick: onClose,
-          style: {
-            background: "none",
-            border: "none",
-            color: "var(--text-muted, #94a3b8)",
-            cursor: "pointer",
-            fontSize: "1rem"
-          }
+          className: "s5_24_SocSchedulerBoard", 
         }, "✕")
       ),
       // Content body
-      loading && createElement("p", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)" } }, t("common.loading")),
-      error && createElement("p", { style: { fontSize: "0.75rem", color: "#f87171" } }, error),
+      loading && createElement("p", { className: "s5_25_SocSchedulerBoard",  }, t("common.loading")),
+      error && createElement("p", { className: "s5_26_SocSchedulerBoard",  }, error),
       history && !loading && createElement(
         "div",
         null,
         createElement(
           "p",
-          { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", marginBottom: "0.75rem" } },
+          { className: "s5_27_SocSchedulerBoard",  },
           t("soc.scheduler.history_count", { count: history.count })
         ),
         history.results.length === 0
-          ? createElement("p", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.scheduler.history_empty"))
+          ? createElement("p", { className: "s5_28_SocSchedulerBoard",  }, t("soc.scheduler.history_empty"))
           : createElement(
               "table",
-              { style: { width: "100%", fontSize: "0.7rem", borderCollapse: "collapse", textAlign: "left" } },
+              { className: "s5_29_SocSchedulerBoard",  },
               createElement(
                 "thead",
-                { style: { borderBottom: "1px solid rgba(80, 120, 168, 0.15)", color: "var(--text-muted, #94a3b8)" } },
+                { className: "s5_30_SocSchedulerBoard",  },
                 createElement(
                   "tr",
                   null,
-                  createElement("th", { style: { padding: "0.4rem 0.25rem" } }, t("soc.scheduler.history_col_status")),
-                  createElement("th", { style: { padding: "0.4rem 0.25rem" } }, t("soc.scheduler.history_col_started")),
-                  createElement("th", { style: { padding: "0.4rem 0.25rem" } }, t("soc.scheduler.history_col_duration")),
-                  createElement("th", { style: { padding: "0.4rem 0.25rem" } }, t("soc.scheduler.history_col_task_id"))
+                  createElement("th", { className: "s5_31_SocSchedulerBoard",  }, t("soc.scheduler.history_col_status")),
+                  createElement("th", { className: "s5_32_SocSchedulerBoard",  }, t("soc.scheduler.history_col_started")),
+                  createElement("th", { className: "s5_33_SocSchedulerBoard",  }, t("soc.scheduler.history_col_duration")),
+                  createElement("th", { className: "s5_34_SocSchedulerBoard",  }, t("soc.scheduler.history_col_task_id"))
                 )
               ),
               createElement(
@@ -454,8 +421,8 @@ function JobHistoryDrawer({
                    const statusStyles = getStatusStyles(run.status);
                    return createElement(
                      "tr",
-                     { key: run.id, style: { borderBottom: "1px solid rgba(80, 120, 168, 0.08)", verticalAlign: "top" } },
-                     createElement("td", { style: { padding: "0.4rem 0.25rem" } },
+                     { key: run.id, className: "s5_35_SocSchedulerBoard",  },
+                     createElement("td", { className: "s5_36_SocSchedulerBoard",  },
                        createElement(
                          "span",
                          {
@@ -472,18 +439,10 @@ function JobHistoryDrawer({
                          run.status
                        )
                      ),
-                     createElement("td", { style: { padding: "0.4rem 0.25rem", color: "#cbd5e1" } }, run.started_at || "—"),
-                     createElement("td", { style: { padding: "0.4rem 0.25rem", color: "#cbd5e1" } }, run.duration_seconds != null ? `${run.duration_seconds}s` : "—"),
+                     createElement("td", { className: "s5_37_SocSchedulerBoard",  }, run.started_at || "—"),
+                     createElement("td", { className: "s5_38_SocSchedulerBoard",  }, run.duration_seconds != null ? `${run.duration_seconds}s` : "—"),
                      createElement("td", {
-                       style: {
-                         padding: "0.4rem 0.25rem",
-                         fontFamily: "monospace",
-                         color: "var(--text-muted, #94a3b8)",
-                         maxWidth: "100px",
-                         overflow: "hidden",
-                         textOverflow: "ellipsis",
-                         whiteSpace: "nowrap"
-                       }
+                       className: "s5_39_SocSchedulerBoard", 
                      }, run.celery_task_id || "—")
                    );
                 })
@@ -493,29 +452,22 @@ function JobHistoryDrawer({
         createElement(
           "div",
           {
-            style: {
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginTop: "1rem",
-              paddingTop: "0.75rem",
-              borderTop: "1px solid rgba(80, 120, 168, 0.15)"
-            }
+            className: "s5_40_SocSchedulerBoard", 
           },
-          createElement("span", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)" } },
+          createElement("span", { className: "s5_41_SocSchedulerBoard",  },
             `${t("soc.dataops.run_history_page")} ${page}/${history.total_pages || 1}`
           ),
           createElement(
             "div",
-            { style: { display: "flex", gap: "0.5rem" } },
+            { className: "s5_42_SocSchedulerBoard",  },
             createElement(
               "button",
               {
                 type: "button",
                 disabled: !history.previous,
                 onClick: () => setPage((p) => Math.max(1, p - 1)),
-                className: styles.pageBtn,
-                style: { padding: "0.25rem 0.5rem", fontSize: "0.65rem", whiteSpace: "nowrap" }
+                className: `styles.pageBtn s5_43_SocSchedulerBoard`,
+                
               },
               t("soc.dataops.run_history_previous")
             ),
@@ -525,8 +477,8 @@ function JobHistoryDrawer({
                 type: "button",
                 disabled: !history.next,
                 onClick: () => setPage((p) => p + 1),
-                className: styles.pageBtn,
-                style: { padding: "0.25rem 0.5rem", fontSize: "0.65rem", whiteSpace: "nowrap" }
+                className: `styles.pageBtn s5_44_SocSchedulerBoard`,
+                
               },
               t("soc.dataops.run_history_next")
             )
@@ -619,7 +571,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
 
   return createElement(
     "div",
-    { style: { display: "flex", flexDirection: "column", gap: "1rem" } },
+    { className: "s5_45_SocSchedulerBoard",  },
     
     // Health strip (hidden in embedded mode)
     !embedded && createElement(SchedulerHealthStrip, { health, t }),
@@ -644,7 +596,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
       createElement("span", null, actionBanner.msg),
       actionBanner.requestId && createElement(
         "span",
-        { style: { fontFamily: "monospace", fontSize: "0.7rem", opacity: 0.7 } },
+        { className: "s5_46_SocSchedulerBoard",  },
         actionBanner.requestId
       )
     ),
@@ -653,31 +605,25 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
     createElement(
       "div",
       {
-        style: {
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "1rem",
-          flexWrap: "wrap",
-        }
+        className: "s5_47_SocSchedulerBoard", 
       },
       createElement(
         "div",
         null,
         !hideHeaderTitle && createElement(
           "h3",
-          { style: { margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "#fff" } },
+          { className: "s5_48_SocSchedulerBoard",  },
           t("soc.scheduler.board_title")
         ),
         plan?.generated_at && createElement(
           "p",
-          { style: { margin: "0.25rem 0 0 0", fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)" } },
+          { className: "s5_49_SocSchedulerBoard",  },
           `${t("soc.scheduler.board_generated_at")}: ${new Date(plan.generated_at).toLocaleString("vi-VN")}`
         )
       ),
       createElement(
         "div",
-        { style: { display: "flex", gap: "0.5rem", alignItems: "center" } },
+        { className: "s5_50_SocSchedulerBoard",  },
         
         // Domain Filter Select (hidden in embedded mode)
         !embedded && createElement(
@@ -685,8 +631,8 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
           {
             value: domainFilter,
             onChange: (e: any) => setDomainFilter(e.target.value),
-            className: styles.jobDomainSelect,
-            style: { width: "auto", minWidth: "120px", padding: "0.35rem 1.75rem 0.35rem 0.5rem" }
+            className: `styles.jobDomainSelect s5_51_SocSchedulerBoard`,
+            
           },
           DOMAIN_FILTER_OPTIONS.map((d) => 
             createElement(
@@ -704,8 +650,8 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
             type: "button",
             onClick: load,
             disabled: loading,
-            className: styles.pageBtn,
-            style: { padding: "0.35rem 0.75rem" }
+            className: `styles.pageBtn s5_52_SocSchedulerBoard`,
+            
           },
           loading ? t("common.loading") : t("common.refresh")
         )
@@ -723,47 +669,29 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
     !error && createElement(
       "div",
       {
-        style: {
-          overflowX: "auto",
-          borderRadius: "8px",
-          border: "1px solid rgba(80, 120, 168, 0.15)",
-          background: "rgba(8, 23, 52, 0.2)",
-        }
+        className: "s5_53_SocSchedulerBoard", 
       },
       createElement(
         "table",
         {
-          style: {
-            width: "100%",
-            borderCollapse: "collapse",
-            fontSize: "0.75rem",
-            textAlign: "left"
-          }
+          className: "s5_54_SocSchedulerBoard", 
         },
         createElement(
           "thead",
           {
-            style: {
-              borderBottom: "1px solid rgba(80, 120, 168, 0.15)",
-              background: "rgba(15, 23, 42, 0.4)",
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-              color: "var(--text-muted, #94a3b8)",
-              fontSize: "0.7rem",
-              fontWeight: 700
-            }
+            className: "s5_55_SocSchedulerBoard", 
           },
           createElement(
             "tr",
             null,
-            createElement("th", { style: { padding: "0.6rem 0.75rem" } }, t("soc.scheduler.col_job")),
-            createElement("th", { style: { padding: "0.6rem 0.75rem" } }, t("soc.scheduler.col_domain")),
-            createElement("th", { style: { padding: "0.6rem 0.75rem" } }, t("soc.scheduler.col_status")),
-            createElement("th", { style: { padding: "0.6rem 0.75rem" } }, t("soc.scheduler.col_freshness")),
-            createElement("th", { style: { padding: "0.6rem 0.75rem" } }, t("soc.scheduler.col_next_run")),
-            createElement("th", { style: { padding: "0.6rem 0.75rem" } }, t("soc.scheduler.col_lag")),
-            createElement("th", { style: { padding: "0.6rem 0.75rem" } }, t("soc.scheduler.col_actions")),
-            createElement("th", { style: { padding: "0.6rem 0.75rem" } }, t("soc.scheduler.col_history"))
+            createElement("th", { className: "s5_56_SocSchedulerBoard",  }, t("soc.scheduler.col_job")),
+            createElement("th", { className: "s5_57_SocSchedulerBoard",  }, t("soc.scheduler.col_domain")),
+            createElement("th", { className: "s5_58_SocSchedulerBoard",  }, t("soc.scheduler.col_status")),
+            createElement("th", { className: "s5_59_SocSchedulerBoard",  }, t("soc.scheduler.col_freshness")),
+            createElement("th", { className: "s5_60_SocSchedulerBoard",  }, t("soc.scheduler.col_next_run")),
+            createElement("th", { className: "s5_61_SocSchedulerBoard",  }, t("soc.scheduler.col_lag")),
+            createElement("th", { className: "s5_62_SocSchedulerBoard",  }, t("soc.scheduler.col_actions")),
+            createElement("th", { className: "s5_63_SocSchedulerBoard",  }, t("soc.scheduler.col_history"))
           )
         ),
         createElement(
@@ -775,7 +703,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
                 null,
                 createElement(
                   "td",
-                  { colSpan: 8, style: { padding: "2rem", textAlign: "center", color: "var(--text-muted, #94a3b8)" } },
+                  { colSpan: 8, className: "s5_64_SocSchedulerBoard",  },
                   t("soc.scheduler.empty_state")
                 )
               )
@@ -787,28 +715,25 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
                   "tr",
                   {
                     key: job.job_key,
-                    style: {
-                      borderBottom: "1px solid rgba(80, 120, 168, 0.08)",
-                      verticalAlign: "top"
-                    }
+                    className: "s5_65_SocSchedulerBoard", 
                   },
                   // Job key and display name
                   createElement(
                     "td",
-                    { style: { padding: "0.6rem 0.75rem" } },
-                    createElement("p", { style: { margin: 0, fontFamily: "monospace", fontSize: "0.75rem", color: "#cbd5e1" } }, job.job_key),
-                    job.display_name && createElement("p", { style: { margin: "0.15rem 0 0 0", fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)" } }, job.display_name)
+                    { className: "s5_66_SocSchedulerBoard",  },
+                    createElement("p", { className: "s5_67_SocSchedulerBoard",  }, job.job_key),
+                    job.display_name && createElement("p", { className: "s5_68_SocSchedulerBoard",  }, job.display_name)
                   ),
                   // Domain
                   createElement(
                     "td",
-                    { style: { padding: "0.6rem 0.75rem", color: "#94a3b8" } },
+                    { className: "s5_69_SocSchedulerBoard",  },
                     job.domain
                   ),
                   // Status + Live/Stuck indicators
                   createElement(
                     "td",
-                    { style: { padding: "0.6rem 0.75rem" } },
+                    { className: "s5_70_SocSchedulerBoard",  },
                     createElement(
                       "span",
                       {
@@ -827,21 +752,8 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
                     job.is_inflight && createElement(
                       "span",
                       {
-                        className: styles.pulsingDot,
-                        style: {
-                          marginLeft: "0.35rem",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          background: "rgba(16, 185, 129, 0.2)",
-                          border: "1px solid rgba(16, 185, 129, 0.4)",
-                          color: "#34d399",
-                          fontSize: "0.6rem",
-                          padding: "0.05rem 0.25rem",
-                          borderRadius: "3px",
-                          fontWeight: 700,
-                          textTransform: "uppercase"
-                        }
+                        className: `styles.pulsingDot s5_71_SocSchedulerBoard`,
+                        
                       },
                       "live"
                     ),
@@ -849,27 +761,13 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
                       "span",
                       {
                         title: t("soc.scheduler.tooltip_stuck"),
-                        style: {
-                          marginLeft: "0.35rem",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          background: "rgba(245, 158, 11, 0.2)",
-                          border: "1px solid rgba(245, 158, 11, 0.4)",
-                          color: "#fbbf24",
-                          fontSize: "0.6rem",
-                          padding: "0.05rem 0.25rem",
-                          borderRadius: "3px",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          cursor: "help"
-                        }
+                        className: "s5_72_SocSchedulerBoard", 
                       },
                       t("soc.scheduler.badge_stuck")
                     ),
                     job.is_possibly_stuck && job.inflight_elapsed_seconds != null && createElement(
                       "p",
-                      { style: { margin: "0.15rem 0 0 0", fontSize: "0.6rem", color: "#fbbf24" } },
+                      { className: "s5_73_SocSchedulerBoard",  },
                       `${Math.floor(job.inflight_elapsed_seconds / 3600)}h${Math.floor((job.inflight_elapsed_seconds % 3600) / 60)}m`
                     )
                   ),
@@ -882,32 +780,32 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
                   // Next run
                   createElement(
                     "td",
-                    { style: { padding: "0.6rem 0.75rem", color: "#cbd5e1" } },
+                    { className: "s5_74_SocSchedulerBoard",  },
                     formatNextRun(job.next_run_at)
                   ),
                   // Lag
                   createElement(
                     "td",
-                    { style: { padding: "0.6rem 0.75rem", color: "#cbd5e1" } },
+                    { className: "s5_75_SocSchedulerBoard",  },
                     formatLag(job.lag_seconds)
                   ),
                   // Actions buttons
                   createElement(
                     "td",
-                    { style: { padding: "0.6rem 0.75rem" } },
+                    { className: "s5_76_SocSchedulerBoard",  },
                     createElement(JobActionButtons, { job, onAction: handleAction, t })
                   ),
                   // History button
                   createElement(
                     "td",
-                    { style: { padding: "0.6rem 0.75rem" } },
+                    { className: "s5_77_SocSchedulerBoard",  },
                     createElement(
                       "button",
                       {
                         type: "button",
                         onClick: () => setHistoryJob(job.job_key),
-                        className: styles.pageBtn,
-                        style: { padding: "0.25rem 0.5rem", fontSize: "0.65rem" }
+                        className: `styles.pageBtn s5_78_SocSchedulerBoard`,
+                        
                       },
                       t("soc.scheduler.view_history")
                     )

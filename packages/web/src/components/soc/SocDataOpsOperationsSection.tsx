@@ -307,11 +307,11 @@ export function SocDataOpsOperationsSection() {
   const renderDatasetCheckboxes = () =>
     createElement(
       "div",
-      { style: { marginBottom: "0.75rem" } },
+      { className: "s5_0_SocDataOpsOperationsSection",  },
       createElement("label", { style: LABEL_STYLE }, t("soc.dataops.backfill_datasets")),
       createElement(
         "div",
-        { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "0.4rem", marginTop: "0.25rem" } },
+        { className: "s5_1_SocDataOpsOperationsSection",  },
         DATASETS_WITH_METADATA.map((ds) => {
           const isSelected = selectedDatasets.includes(ds.key);
           return createElement(
@@ -333,21 +333,21 @@ export function SocDataOpsOperationsSection() {
               checked: isSelected && ds.supported,
               disabled: !ds.supported,
               onChange: () => ds.supported && toggleDataset(ds.key),
-              style: { marginTop: "0.1rem", accentColor: "#22d3ee" },
+              className: "s5_2_SocDataOpsOperationsSection", 
             }),
             createElement(
               "span",
-              { style: { fontSize: "0.7rem" } },
-              createElement("span", { style: { fontWeight: 600, display: "block" } }, t(`soc.dataops.dataset_${ds.key}`)),
+              { className: "s5_3_SocDataOpsOperationsSection",  },
+              createElement("span", { className: "s5_4_SocDataOpsOperationsSection",  }, t(`soc.dataops.dataset_${ds.key}`)),
               !ds.supported
                 ? createElement(
                     "span",
-                    { style: { fontSize: "0.55rem", color: "var(--accent-amber)", fontWeight: 600, marginTop: "0.1rem", display: "block" } },
+                    { className: "s5_5_SocDataOpsOperationsSection",  },
                     "Coming soon",
                   )
                 : createElement(
                     "span",
-                    { style: { fontSize: "0.6rem", color: "var(--text-muted, #94a3b8)", display: "block", marginTop: "0.05rem" } },
+                    { className: "s5_6_SocDataOpsOperationsSection",  },
                     t(`soc.dataops.dataset_field_${ds.key}`),
                   ),
             ),
@@ -359,17 +359,17 @@ export function SocDataOpsOperationsSection() {
   const renderSymbolGroupSelect = () =>
     createElement(
       "div",
-      { style: { marginBottom: "0.75rem" } },
+      { className: "s5_7_SocDataOpsOperationsSection",  },
       createElement(
         "div",
-        { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem" } },
+        { className: "s5_8_SocDataOpsOperationsSection",  },
         createElement("label", { style: { ...LABEL_STYLE, marginBottom: 0 } }, t("soc.dataops.backfill_symbol_group")),
         createElement(
           "button",
           {
             type: "button",
             onClick: () => setIsDrawerOpen(true),
-            style: { background: "none", border: "none", color: "var(--accent-cyan, #06b6d4)", cursor: "pointer", fontSize: "0.75rem", display: "inline-flex", alignItems: "center", gap: "0.2rem" },
+            className: "s5_9_SocDataOpsOperationsSection", 
             title: t("soc.dataops.ops_section_custom_groups"),
           },
           "\u2699 " + t("soc.dataops.subtab.config"),
@@ -377,7 +377,7 @@ export function SocDataOpsOperationsSection() {
       ),
       createElement(
         "div",
-        { style: { display: "flex", flexWrap: "wrap", gap: "0.3rem" } },
+        { className: "s5_10_SocDataOpsOperationsSection",  },
         allGroups.map((g) =>
           createElement(
             "button",
@@ -396,16 +396,16 @@ export function SocDataOpsOperationsSection() {
       isCustom
         ? createElement(
             "div",
-            { style: { marginTop: "0.5rem" } },
+            { className: "s5_11_SocDataOpsOperationsSection",  },
             createElement("label", { style: { ...LABEL_STYLE, marginBottom: "0.15rem" } }, t("soc.dataops.backfill_custom_symbols")),
             createElement("textarea", {
               value: customSymbols,
               onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setCustomSymbols(e.target.value),
-              className: styles.searchInput,
+              className: `styles.searchInput s5_12_SocDataOpsOperationsSection`,
               placeholder: t("soc.dataops.backfill_custom_symbols_placeholder"),
-              style: { minHeight: "60px", resize: "vertical", fontSize: "0.75rem", width: "100%" },
+              
             }),
-            createElement("p", { style: { fontSize: "0.55rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.1rem" } },
+            createElement("p", { className: "s5_13_SocDataOpsOperationsSection",  },
               t("soc.dataops.backfill_custom_symbols_hint")),
           )
         : null,
@@ -414,7 +414,7 @@ export function SocDataOpsOperationsSection() {
   const renderDateModeRow = () =>
     createElement(
       "div",
-      { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "0.5rem", marginBottom: "0.75rem" } },
+      { className: "s5_14_SocDataOpsOperationsSection",  },
       createElement(
         "div", null,
         createElement("label", { style: LABEL_STYLE }, t("soc.dataops.backfill_from_date")),
@@ -460,7 +460,7 @@ export function SocDataOpsOperationsSection() {
   const renderReasonInput = () =>
     createElement(
       "div",
-      { style: { marginBottom: "0.75rem" } },
+      { className: "s5_15_SocDataOpsOperationsSection",  },
       createElement("label", { style: LABEL_STYLE }, t("soc.dataops.reason")),
       createElement("input", {
         type: "text", value: reason, className: styles.searchInput,
@@ -472,11 +472,11 @@ export function SocDataOpsOperationsSection() {
   const renderDryRunCheckbox = () =>
     createElement(
       "label",
-      { style: { display: "flex", alignItems: "center", gap: "0.4rem", cursor: "pointer", marginBottom: "0.75rem", fontSize: "0.75rem", color: "#fbbf24" } },
+      { className: "s5_16_SocDataOpsOperationsSection",  },
       createElement("input", {
         type: "checkbox", checked: dryRun,
         onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDryRun(e.target.checked),
-        style: { accentColor: "#fbbf24" },
+        className: "s5_17_SocDataOpsOperationsSection", 
       }),
       t("soc.dataops.backfill_dry_run"),
     );
@@ -484,14 +484,14 @@ export function SocDataOpsOperationsSection() {
   const renderActionRow = () =>
     createElement(
       "div",
-      { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" } },
+      { className: "s5_18_SocDataOpsOperationsSection",  },
       createElement(
         "button",
         {
-          className: styles.actionBtn,
+          className: `styles.actionBtn s5_19_SocDataOpsOperationsSection`,
           onClick: handlePreview,
           disabled: previewing || submitting,
-          style: { background: "rgba(0, 180, 216, 0.12)", color: "var(--accent-cyan, #06b6d4)" },
+          
         },
         previewing ? t("soc.dataops.planner_preview_loading") : t("soc.dataops.planner_preview"),
       ),
@@ -522,9 +522,9 @@ export function SocDataOpsOperationsSection() {
         createElement(
           "button",
           {
-            className: styles.actionBtn,
+            className: `styles.actionBtn s5_20_SocDataOpsOperationsSection`,
             onClick: () => handleAbort(activeRun.run_id),
-            style: { background: "rgba(239, 68, 68, 0.15)", color: "#f87171", fontSize: "0.65rem" },
+            
           },
           t("soc.dataops.abort"),
         ),
@@ -558,21 +558,16 @@ export function SocDataOpsOperationsSection() {
     const headerBtn = createElement(
       "button",
       {
-        className: styles.filterBtn,
+        className: `styles.filterBtn s5_21_SocDataOpsOperationsSection`,
         onClick: () => setExpanded(!expanded),
-        style: {
-          width: "100%", textAlign: "left", fontSize: "0.7rem",
-          background: "rgba(15, 23, 42, 0.3)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
-          color: "var(--text-primary, #f1f5f9)", padding: "0.4rem 0.6rem",
-          cursor: "pointer",
-        },
+        
       },
       `${t(labelKey)} (${count}) ${expanded ? "\u25B2" : "\u25BC"}`,
     );
     const tableContent = expanded
       ? createElement(
           "div",
-          { style: { overflowX: "auto", marginTop: "0.25rem" } },
+          { className: "s5_22_SocDataOpsOperationsSection",  },
           createElement(
             "table",
             { className: styles.previewTable },
@@ -604,35 +599,35 @@ export function SocDataOpsOperationsSection() {
           totalPages > 1
             ? createElement(
                 "div",
-                { style: { display: "flex", justifyContent: "center", alignItems: "center", gap: "0.4rem", marginTop: "0.4rem" } },
+                { className: "s5_23_SocDataOpsOperationsSection",  },
                 createElement("button", {
-                  className: styles.actionBtn,
+                  className: `styles.actionBtn s5_24_SocDataOpsOperationsSection`,
                   onClick: () => setPage(Math.max(0, page - 1)),
                   disabled: page === 0,
-                  style: { fontSize: "0.6rem", padding: "0.15rem 0.35rem" },
+                  
                 }, "\u25C0"),
-                createElement("span", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)" } },
+                createElement("span", { className: "s5_25_SocDataOpsOperationsSection",  },
                   `${page + 1}/${totalPages}`),
                 createElement("button", {
-                  className: styles.actionBtn,
+                  className: `styles.actionBtn s5_26_SocDataOpsOperationsSection`,
                   onClick: () => setPage(Math.min(totalPages - 1, page + 1)),
                   disabled: page >= totalPages - 1,
-                  style: { fontSize: "0.6rem", padding: "0.15rem 0.35rem" },
+                  
                 }, "\u25B6"),
               )
             : null,
         )
       : null;
-    return createElement("div", { style: { marginTop: "0.5rem" } }, headerBtn, tableContent);
+    return createElement("div", { className: "s5_27_SocDataOpsOperationsSection",  }, headerBtn, tableContent);
   };
 
   const renderPreviewResults = () => {
     if (!preview) {
       return createElement(
         "div",
-        { className: styles.sectionCard, style: { display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: "180px", color: "var(--text-muted, #94a3b8)" } },
-        createElement("span", { style: { fontSize: "2.5rem", marginBottom: "0.5rem" } }, "\u{1F5D2}"),
-        createElement("p", { style: { fontSize: "0.75rem", margin: 0, textAlign: "center" } }, t("soc.dataops.planner_preview_empty")),
+        { className: `styles.sectionCard s5_28_SocDataOpsOperationsSection`,  },
+        createElement("span", { className: "s5_29_SocDataOpsOperationsSection",  }, "\u{1F5D2}"),
+        createElement("p", { className: "s5_30_SocDataOpsOperationsSection",  }, t("soc.dataops.planner_preview_empty")),
       );
     }
 
@@ -647,13 +642,13 @@ export function SocDataOpsOperationsSection() {
           "div",
           { className: styles.metricCard, onClick: () => setPlannedExpanded(!plannedExpanded), style: { cursor: "pointer", border: plannedExpanded ? "1px solid var(--accent-cyan, #06b6d4)" : undefined } },
           createElement("div", { className: styles.metricLabel }, t("soc.dataops.planner_planned_items")),
-          createElement("div", { className: styles.metricValue, style: { color: "var(--accent-cyan, #06b6d4)" } }, String(plannedCount)),
+          createElement("div", { className: `styles.metricValue s5_31_SocDataOpsOperationsSection`,  }, String(plannedCount)),
         ),
         createElement(
           "div",
           { className: styles.metricCard, onClick: () => setSkippedExpanded(!skippedExpanded), style: { cursor: "pointer", border: skippedExpanded ? "1px solid var(--text-muted, #94a3b8)" : undefined } },
           createElement("div", { className: styles.metricLabel }, t("soc.dataops.planner_skipped_items")),
-          createElement("div", { className: styles.metricValue, style: { color: "#94a3b8" } }, String(skippedCount)),
+          createElement("div", { className: `styles.metricValue s5_32_SocDataOpsOperationsSection`,  }, String(skippedCount)),
         ),
       ),
       renderItemsTable(
@@ -678,28 +673,18 @@ export function SocDataOpsOperationsSection() {
       { className: styles.sectionCard },
       createElement(
         "div",
-        { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" } },
+        { className: "s5_33_SocDataOpsOperationsSection",  },
         createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.run_logs")),
         createElement(
           "div",
-          { style: { display: "flex", alignItems: "center", gap: "0.5rem" } },
+          { className: "s5_34_SocDataOpsOperationsSection",  },
           createElement(
             "select",
             {
               value: runLogsPageSize,
               onChange: handlePageSizeChange,
-              className: styles.searchInput,
-              style: {
-                width: "auto",
-                padding: "0.2rem 1.8rem 0.2rem 0.5rem",
-                fontSize: "0.7rem",
-                background: "rgba(15, 23, 42, 0.4)",
-                border: "1px solid var(--border-default, rgba(80, 120, 168, 0.2))",
-                borderRadius: "4px",
-                color: "var(--text-primary, #f1f5f9)",
-                cursor: "pointer",
-                height: "28px"
-              }
+              className: `styles.searchInput s5_35_SocDataOpsOperationsSection`,
+              
             },
             [5, 10, 15, 20].map((size) =>
               createElement("option", { key: size, value: size }, `${size} ${t("soc.dataops.run_logs_per_page")}`)
@@ -709,8 +694,8 @@ export function SocDataOpsOperationsSection() {
             "button",
             {
               onClick: handlePurgeLogs,
-              className: styles.actionBtn,
-              style: { background: "rgba(239, 68, 68, 0.15)", color: "#f87171", fontSize: "0.7rem", height: "28px" },
+              className: `styles.actionBtn s5_36_SocDataOpsOperationsSection`,
+              
             },
             t("soc.dataops.purge_logs"),
           ),
@@ -722,29 +707,23 @@ export function SocDataOpsOperationsSection() {
           ? createElement("p", { className: styles.emptyState }, t("soc.dataops.no_run_logs"))
           : createElement(
               "div",
-              { style: { display: "flex", flexDirection: "column", gap: "0.4rem", marginTop: "0.5rem" } },
+              { className: "s5_37_SocDataOpsOperationsSection",  },
               runLogs.map((log, i) =>
                 createElement(
                   "div",
                   {
                     key: log.run_id || i,
-                    style: {
-                      padding: "0.6rem 0.75rem",
-                      borderRadius: "8px",
-                      background: "rgba(15, 23, 42, 0.25)",
-                      border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
-                      fontSize: "0.75rem",
-                    },
+                    className: "s5_38_SocDataOpsOperationsSection", 
                   },
                   createElement(
                     "div",
-                    { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" } },
+                    { className: "s5_39_SocDataOpsOperationsSection",  },
                     createElement(
                       "div",
                       null,
-                      createElement("span", { style: { fontWeight: 600 } }, t(`soc.dataops.dataset_${log.dataset}`) || log.dataset),
+                      createElement("span", { className: "s5_40_SocDataOpsOperationsSection",  }, t(`soc.dataops.dataset_${log.dataset}`) || log.dataset),
                       log.message
-                        ? createElement("div", { style: { color: "var(--text-muted, #94a3b8)", marginTop: "0.1rem", fontSize: "0.68rem" } }, log.message)
+                        ? createElement("div", { className: "s5_41_SocDataOpsOperationsSection",  }, log.message)
                         : null,
                     ),
                     createElement("span", {
@@ -755,37 +734,37 @@ export function SocDataOpsOperationsSection() {
                   (log.planned != null || log.inserted != null || log.updated != null || log.skipped_existing != null || log.failed != null)
                     ? createElement(
                         "div",
-                        { style: { display: "flex", gap: "0.75rem", marginTop: "0.35rem", fontSize: "0.62rem", color: "var(--text-muted, #94a3b8)" } },
+                        { className: "s5_42_SocDataOpsOperationsSection",  },
                         log.planned != null ? createElement("span", null, `${t("soc.dataops.backfill_planned")}: ${log.planned}`) : null,
                         log.inserted != null ? createElement("span", null, `${t("soc.dataops.backfill_inserted")}: ${log.inserted}`) : null,
                         log.updated != null ? createElement("span", null, `${t("soc.dataops.backfill_updated")}: ${log.updated}`) : null,
-                        log.skipped_existing != null ? createElement("span", { style: { color: "#94a3b8" } }, `${t("soc.dataops.backfill_skipped")}: ${log.skipped_existing}`) : null,
-                        log.failed != null ? createElement("span", { style: { color: "#f87171" } }, `${t("soc.dataops.backfill_failed")}: ${log.failed}`) : null,
+                        log.skipped_existing != null ? createElement("span", { className: "s5_43_SocDataOpsOperationsSection",  }, `${t("soc.dataops.backfill_skipped")}: ${log.skipped_existing}`) : null,
+                        log.failed != null ? createElement("span", { className: "s5_44_SocDataOpsOperationsSection",  }, `${t("soc.dataops.backfill_failed")}: ${log.failed}`) : null,
                       )
                     : null,
                   createElement(
                     "div",
-                    { style: { fontSize: "0.58rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.2rem" } },
+                    { className: "s5_45_SocDataOpsOperationsSection",  },
                     log.started_at?.split("T").join(" ")?.slice(0, 19) || "—",
                   ),
                 ),
               ),
               createElement(
                 "div",
-                { style: { display: "flex", justifyContent: "center", gap: "0.5rem", marginTop: "0.5rem", alignItems: "center" } },
+                { className: "s5_46_SocDataOpsOperationsSection",  },
                 createElement(
                   "button",
                   {
                     onClick: () => setRunLogsPage((p) => Math.max(1, p - 1)),
                     disabled: runLogsPage <= 1,
-                    className: styles.actionBtn,
-                    style: { fontSize: "0.7rem", background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted, #94a3b8)" },
+                    className: `styles.actionBtn s5_47_SocDataOpsOperationsSection`,
+                    
                   },
                   "\u25C0 " + t("soc.actions.prev"),
                 ),
                 createElement(
                   "span",
-                  { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)" } },
+                  { className: "s5_48_SocDataOpsOperationsSection",  },
                   t("soc.actions.page", { page: runLogsPage }),
                 ),
                 createElement(
@@ -793,8 +772,8 @@ export function SocDataOpsOperationsSection() {
                   {
                     onClick: () => setRunLogsPage((p) => p + 1),
                     disabled: !runLogsHasMore,
-                    className: styles.actionBtn,
-                    style: { fontSize: "0.7rem", background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted, #94a3b8)" },
+                    className: `styles.actionBtn s5_49_SocDataOpsOperationsSection`,
+                    
                   },
                   t("soc.actions.next") + " \u25B6",
                 ),
@@ -804,11 +783,11 @@ export function SocDataOpsOperationsSection() {
 
   return createElement(
     "div",
-    { style: { display: "flex", flexDirection: "column", gap: "1rem" } },
+    { className: "s5_50_SocDataOpsOperationsSection",  },
     // Banner Cảnh báo / Badge Phân quyền
     createElement(
       "div",
-      { style: { display: "flex", justifyContent: "flex-end", gap: "0.5rem" } },
+      { className: "s5_51_SocDataOpsOperationsSection",  },
       createElement(SocOwnershipBadge, { team: "core", writable: true, accessLevel: "service_ops" }),
     ),
     // Bố cục lưới 2 cột chính
@@ -828,8 +807,8 @@ export function SocDataOpsOperationsSection() {
           renderDateModeRow(),
           renderReasonInput(),
           renderDryRunCheckbox(),
-          error ? createElement("div", { className: styles.inlineError, style: { marginBottom: "0.5rem" } }, error) : null,
-          success ? createElement("div", { className: styles.inlineSuccess, style: { marginBottom: "0.5rem" } }, success) : null,
+          error ? createElement("div", { className: `styles.inlineError s5_52_SocDataOpsOperationsSection`,  }, error) : null,
+          success ? createElement("div", { className: `styles.inlineSuccess s5_53_SocDataOpsOperationsSection`,  }, success) : null,
           renderActionRow(),
         ),
       ),
@@ -848,21 +827,21 @@ export function SocDataOpsOperationsSection() {
       ? createPortal(
           createElement(
             "div",
-            { style: { position: "fixed", inset: 0, zIndex: 9999 } },
+            { className: "s5_54_SocDataOpsOperationsSection",  },
             createElement("div", { className: styles.drawerOverlay, onClick: () => setIsDrawerOpen(false) }),
             createElement(
               "div",
               { className: styles.drawerContent },
               createElement(
                 "div",
-                { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" } },
+                { className: "s5_55_SocDataOpsOperationsSection",  },
                 createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.backfill_custom_group_label")),
                 createElement(
                   "button",
                   {
                     onClick: () => setIsDrawerOpen(false),
-                    className: styles.actionBtn,
-                    style: { background: "rgba(100, 116, 139, 0.2)", color: "var(--text-primary, #f1f5f9)", fontSize: "0.75rem", padding: "0.25rem 0.5rem" },
+                    className: `styles.actionBtn s5_56_SocDataOpsOperationsSection`,
+                    
                   },
                   "\u2715",
                 ),

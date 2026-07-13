@@ -284,7 +284,7 @@ export function SocSignalsPanel() {
   // ─── Sentiment tab ─────────────────────────────────────────────────────
   const renderOverviewTab = () => {
     return createElement("div", null,
-      createElement("h4", { style: { margin: "0 0 0.5rem", fontSize: "0.8rem", fontWeight: 700 } },
+      createElement("h4", { className: "s5_0_SocSignalsPanel",  },
         t("soc.signals_overview.sentiment"),
       ),
       createElement(
@@ -292,8 +292,8 @@ export function SocSignalsPanel() {
         { className: styles.sentimentBar },
         totalSentiment === 0
           ? createElement("div", {
-              className: styles.sentimentSegment,
-              style: { width: "100%", background: "rgba(148, 163, 184, 0.15)", color: "rgba(148, 163, 184, 0.5)" },
+              className: `styles.sentimentSegment s5_1_SocSignalsPanel`,
+              
             }, t("soc.signals_overview.no_data"))
           : [
               sentiment.bullish != null && sentiment.bullish > 0
@@ -319,14 +319,14 @@ export function SocSignalsPanel() {
                 : null,
             ].filter(Boolean)
       ),
-      createElement("div", { style: { display: "flex", gap: "1rem", fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", justifyContent: "center", marginBottom: 0 } },
-        createElement("span", { style: { color: "#34d399" } },
+      createElement("div", { className: "s5_2_SocSignalsPanel",  },
+        createElement("span", { className: "s5_3_SocSignalsPanel",  },
           `\u25B2 ${t("soc.signals_overview.bullish")}: ${sentiment.bullish ?? 0}`,
         ),
-        createElement("span", { style: { color: "#94a3b8" } },
+        createElement("span", { className: "s5_4_SocSignalsPanel",  },
           `\u25C6 ${t("soc.signals_overview.neutral")}: ${sentiment.neutral ?? 0}`,
         ),
-        createElement("span", { style: { color: "#f87171" } },
+        createElement("span", { className: "s5_5_SocSignalsPanel",  },
           `\u25BC ${t("soc.signals_overview.bearish")}: ${sentiment.bearish ?? 0}`,
         ),
       )
@@ -347,12 +347,12 @@ export function SocSignalsPanel() {
           createElement("option", { value: "screener" }, "Screener"),
         ),
         createElement("input", {
-          className: styles.searchInput,
+          className: `styles.searchInput s5_6_SocSignalsPanel`,
           type: "text",
           placeholder: t("soc.signals_overview.symbol_placeholder"),
           value: jobSymbol,
           onChange: (e: { target: { value: string } }) => setJobSymbol(e.target.value.toUpperCase()),
-          style: { maxWidth: "100px" },
+          
         }),
         createElement("button", {
           className: styles.runBtn,
@@ -364,13 +364,13 @@ export function SocSignalsPanel() {
             : t("soc.signals_overview.run_job"),
         ),
       ),
-      createElement("div", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", lineHeight: 1.6 } },
+      createElement("div", { className: "s5_7_SocSignalsPanel",  },
         t("soc.signals_overview.job_console_hint"),
       ),
       jobStatus
         ? (jobStatus.includes("fail") || jobStatus.includes("error") || jobStatus.includes("l\u1ed7i")
-            ? createElement("div", { className: styles.inlineError, style: { marginTop: "0.5rem" } }, jobStatus)
-            : createElement("div", { className: styles.inlineSuccess, style: { marginTop: "0.5rem" } }, jobStatus))
+            ? createElement("div", { className: `styles.inlineError s5_8_SocSignalsPanel`,  }, jobStatus)
+            : createElement("div", { className: `styles.inlineSuccess s5_9_SocSignalsPanel`,  }, jobStatus))
         : null,
     );
 
@@ -410,12 +410,12 @@ export function SocSignalsPanel() {
             createElement("div", null,
               createElement("div", { className: styles.matCardLabel }, svc.service_key),
               svc.last_finished_at
-                ? createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.15rem" } },
+                ? createElement("div", { className: "s5_10_SocSignalsPanel",  },
                     svc.last_finished_at.split("T")[0],
                   )
                 : null,
               svc.run_log_id != null
-                ? createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)" } },
+                ? createElement("div", { className: "s5_11_SocSignalsPanel",  },
                     `Log #${svc.run_log_id}`,
                   )
                 : null,
@@ -427,7 +427,7 @@ export function SocSignalsPanel() {
         ),
       ),
       summaryChildren.length > 0
-        ? createElement("div", { style: { display: "flex", gap: "1rem", fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.75rem", justifyContent: "center" } },
+        ? createElement("div", { className: "s5_12_SocSignalsPanel",  },
             ...summaryChildren,
           )
         : null,
@@ -468,8 +468,8 @@ export function SocSignalsPanel() {
             createElement("div", { className: styles.signalsTwoCol },
               // ── Left: Live signal feed ──────────────────────────────────
               createElement("div", { className: styles.feedCard },
-                createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" } },
-                  createElement("h3", { style: { margin: 0, fontSize: "0.85rem", fontWeight: 700 } },
+                createElement("div", { className: "s5_13_SocSignalsPanel",  },
+                  createElement("h3", { className: "s5_14_SocSignalsPanel",  },
                     t("soc.signals_overview.live_feed"),
                   ),
                   null,
@@ -482,7 +482,7 @@ export function SocSignalsPanel() {
                       onClick: () => { setTypeFilter(ft); setExpandedId(null); },
                     }, ft === "all" ? t("soc.signals_overview.filter_all") : signalTypeLabel(ft)),
                   ),
-                  createElement("div", { className: styles.searchWrapper, style: { marginLeft: "auto" } },
+                  createElement("div", { className: `styles.searchWrapper s5_15_SocSignalsPanel`,  },
                     createElement("span", { className: styles.searchIcon }, "\uD83D\uDD0D"),
                     createElement("input", {
                       className: styles.searchInputWithIcon,
@@ -513,7 +513,7 @@ export function SocSignalsPanel() {
                     }, st.label),
                   ),
                 ),
-                createElement("div", { style: { minHeight: "200px" } },
+                createElement("div", { className: "s5_16_SocSignalsPanel",  },
                   subTabContent[subTab](),
                 ),
               ),

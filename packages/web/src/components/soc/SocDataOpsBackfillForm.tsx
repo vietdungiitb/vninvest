@@ -131,11 +131,11 @@ export function SocDataOpsBackfillForm() {
   const renderDatasetCheckboxes = () =>
     createElement(
       "div",
-      { style: { marginBottom: "0.75rem" } },
+      { className: "s5_0_SocDataOpsBackfillForm",  },
       createElement("label", { style: LABEL_STYLE }, t("soc.dataops.backfill_datasets")),
       createElement(
         "div",
-        { style: { display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.25rem" } },
+        { className: "s5_1_SocDataOpsBackfillForm",  },
         SUPPORTED_DATASETS.map((key) =>
           createElement(
             "label",
@@ -155,13 +155,13 @@ export function SocDataOpsBackfillForm() {
               type: "checkbox",
               checked: selectedDatasets.includes(key),
               onChange: () => toggleDataset(key),
-              style: { marginTop: "0.1rem", accentColor: "#22d3ee" },
+              className: "s5_2_SocDataOpsBackfillForm", 
             }),
             createElement(
               "span",
-              { style: { fontSize: "0.72rem" } },
-              createElement("span", { style: { fontWeight: 600, display: "block" } }, t(`soc.dataops.dataset_${key}`)),
-              createElement("span", { style: { fontSize: "0.62rem", color: "var(--text-muted, #94a3b8)", display: "block", marginTop: "0.1rem" } },
+              { className: "s5_3_SocDataOpsBackfillForm",  },
+              createElement("span", { className: "s5_4_SocDataOpsBackfillForm",  }, t(`soc.dataops.dataset_${key}`)),
+              createElement("span", { className: "s5_5_SocDataOpsBackfillForm",  },
                 t(`soc.dataops.dataset_field_${key}`)),
             ),
           ),
@@ -172,11 +172,11 @@ export function SocDataOpsBackfillForm() {
   const renderSymbolGroupRadios = () =>
     createElement(
       "div",
-      { style: { marginBottom: "0.75rem" } },
+      { className: "s5_6_SocDataOpsBackfillForm",  },
       createElement("label", { style: LABEL_STYLE }, t("soc.dataops.backfill_symbol_group")),
       createElement(
         "div",
-        { style: { display: "flex", flexWrap: "wrap", gap: "0.35rem", marginTop: "0.25rem" } },
+        { className: "s5_7_SocDataOpsBackfillForm",  },
         SYMBOL_GROUPS.map((g) =>
           createElement(
             "button",
@@ -193,15 +193,15 @@ export function SocDataOpsBackfillForm() {
       selectedGroup === "CUSTOM"
         ? createElement(
             "div",
-            { style: { marginTop: "0.35rem" } },
+            { className: "s5_8_SocDataOpsBackfillForm",  },
             createElement("textarea", {
-              className: styles.searchInput,
+              className: `styles.searchInput s5_9_SocDataOpsBackfillForm`,
               placeholder: t("soc.dataops.planner_symbols_placeholder"),
               value: customSymbols,
               onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setCustomSymbols(e.target.value),
-              style: { minHeight: "50px", resize: "vertical", fontSize: "0.75rem" },
+              
             }),
-            createElement("p", { style: { fontSize: "0.6rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.15rem" } },
+            createElement("p", { className: "s5_10_SocDataOpsBackfillForm",  },
               t("soc.dataops.planner_symbols_hint")),
           )
         : null,
@@ -210,7 +210,7 @@ export function SocDataOpsBackfillForm() {
   const renderDateModeRow = () =>
     createElement(
       "div",
-      { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "0.5rem", marginBottom: "0.75rem" } },
+      { className: "s5_11_SocDataOpsBackfillForm",  },
       createElement(
         "div", null,
         createElement("label", { style: LABEL_STYLE }, t("soc.dataops.backfill_from_date")),
@@ -256,7 +256,7 @@ export function SocDataOpsBackfillForm() {
   const renderReasonInput = () =>
     createElement(
       "div",
-      { style: { marginBottom: "0.75rem" } },
+      { className: "s5_12_SocDataOpsBackfillForm",  },
       createElement("label", { style: LABEL_STYLE }, t("soc.dataops.reason")),
       createElement("input", {
         type: "text", value: reason, className: styles.searchInput,
@@ -268,11 +268,11 @@ export function SocDataOpsBackfillForm() {
   const renderDryRunCheckbox = () =>
     createElement(
       "label",
-      { style: { display: "flex", alignItems: "center", gap: "0.4rem", cursor: "pointer", marginBottom: "0.75rem", fontSize: "0.75rem", color: "#fbbf24" } },
+      { className: "s5_13_SocDataOpsBackfillForm",  },
       createElement("input", {
         type: "checkbox", checked: dryRun,
         onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDryRun(e.target.checked),
-        style: { accentColor: "#fbbf24" },
+        className: "s5_14_SocDataOpsBackfillForm", 
       }),
       t("soc.dataops.backfill_dry_run"),
     );
@@ -280,14 +280,14 @@ export function SocDataOpsBackfillForm() {
   const renderActionRow = () =>
     createElement(
       "div",
-      { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" } },
+      { className: "s5_15_SocDataOpsBackfillForm",  },
       createElement(
         "button",
         {
-          className: styles.actionBtn,
+          className: `styles.actionBtn s5_16_SocDataOpsBackfillForm`,
           onClick: handlePreview,
           disabled: previewing || submitting,
-          style: { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan, #06b6d4)" },
+          
         },
         previewing ? t("soc.dataops.planner_preview_loading") : t("soc.dataops.planner_preview"),
       ),
@@ -306,20 +306,20 @@ export function SocDataOpsBackfillForm() {
     if (!preview) return null;
     return createElement(
       "div",
-      { style: { marginTop: "0.75rem", padding: "0.75rem", borderRadius: "8px", background: "rgba(15, 23, 42, 0.3)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
-      createElement("div", { style: { fontWeight: 700, fontSize: "0.8rem", marginBottom: "0.5rem" } }, t("soc.dataops.planner_preview_summary")),
+      { className: "s5_17_SocDataOpsBackfillForm",  },
+      createElement("div", { className: "s5_18_SocDataOpsBackfillForm",  }, t("soc.dataops.planner_preview_summary")),
       createElement(
         "div",
         { className: styles.metricGrid },
         createElement(
           "div", { className: styles.metricCard },
           createElement("div", { className: styles.metricLabel }, t("soc.dataops.planner_planned_items")),
-          createElement("div", { className: styles.metricValue, style: { color: "var(--accent-cyan, #06b6d4)" } }, String(plannedCount)),
+          createElement("div", { className: `styles.metricValue s5_19_SocDataOpsBackfillForm`,  }, String(plannedCount)),
         ),
         createElement(
           "div", { className: styles.metricCard },
           createElement("div", { className: styles.metricLabel }, t("soc.dataops.planner_skipped_items")),
-          createElement("div", { className: styles.metricValue, style: { color: "#94a3b8" } }, String(skippedCount)),
+          createElement("div", { className: `styles.metricValue s5_20_SocDataOpsBackfillForm`,  }, String(skippedCount)),
         ),
       ),
     );
@@ -329,7 +329,7 @@ export function SocDataOpsBackfillForm() {
     if (!activeRun) return null;
     return createElement(
       "div",
-      { style: { padding: "0.6rem 0.75rem", borderRadius: "8px", background: "rgba(245, 158, 11, 0.08)", border: "1px solid rgba(245, 158, 11, 0.2)", color: "#fbbf24", fontSize: "0.75rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem", marginBottom: "0.75rem" } },
+      { className: "s5_21_SocDataOpsBackfillForm",  },
       createElement(
         "span", null,
         `${t("soc.dataops.backfill_active_run_label")}: ${activeRun.run_id.slice(0, 8)}...`,
@@ -337,9 +337,9 @@ export function SocDataOpsBackfillForm() {
       createElement(
         "button",
         {
-          className: styles.actionBtn,
+          className: `styles.actionBtn s5_22_SocDataOpsBackfillForm`,
           onClick: () => handleAbort(activeRun.run_id),
-          style: { background: "rgba(239, 68, 68, 0.15)", color: "#f87171", fontSize: "0.65rem" },
+          
         },
         t("soc.dataops.abort"),
       ),
@@ -351,7 +351,7 @@ export function SocDataOpsBackfillForm() {
       "div",
       { className: styles.sectionCard },
       createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.run_history_title")),
-      createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", margin: "0 0 0.75rem 0" } },
+      createElement("p", { className: "s5_23_SocDataOpsBackfillForm",  },
         t("soc.dataops.run_history_description")),
       loading.runs
         ? createElement("p", { className: styles.emptyState }, t("soc.dataops.loading_runs"))
@@ -359,24 +359,20 @@ export function SocDataOpsBackfillForm() {
           ? createElement("p", { className: styles.emptyState }, t("soc.dataops.no_runs"))
           : createElement(
               "div",
-              { style: { display: "flex", flexDirection: "column", gap: "0.35rem" } },
+              { className: "s5_24_SocDataOpsBackfillForm",  },
               runs.slice(0, 20).map((run) =>
                 createElement(
                   "div",
                   {
                     key: run.run_id,
-                    style: {
-                      display: "flex", justifyContent: "space-between", alignItems: "center",
-                      padding: "0.4rem 0.6rem", borderRadius: "6px",
-                      background: "rgba(15, 23, 42, 0.25)", border: "1px solid rgba(80, 120, 168, 0.1)",
-                    },
+                    className: "s5_25_SocDataOpsBackfillForm", 
                   },
                   createElement(
                     "div",
-                    { style: { flex: 1, minWidth: 0 } },
-                    createElement("div", { style: { fontWeight: 600, fontSize: "0.75rem" } },
+                    { className: "s5_26_SocDataOpsBackfillForm",  },
+                    createElement("div", { className: "s5_27_SocDataOpsBackfillForm",  },
                       t(`soc.dataops.dataset_${run.dataset}`) || run.dataset),
-                    createElement("div", { style: { fontSize: "0.65rem", color: "var(--text-muted, #94a3b8)" } },
+                    createElement("div", { className: "s5_28_SocDataOpsBackfillForm",  },
                       `${run.run_id.slice(0, 8)}... \u2022 ${run.started_at?.split("T")[0] || "N/A"}`),
                   ),
                   createElement(
@@ -392,8 +388,8 @@ export function SocDataOpsBackfillForm() {
                         "button",
                         {
                           onClick: () => handleAbort(run.run_id),
-                          className: styles.actionBtn,
-                          style: { background: "rgba(239, 68, 68, 0.12)", color: "#f87171", fontSize: "0.6rem", marginLeft: "0.35rem" },
+                          className: `styles.actionBtn s5_29_SocDataOpsBackfillForm`,
+                          
                         },
                         t("soc.dataops.abort"),
                       )
@@ -405,12 +401,12 @@ export function SocDataOpsBackfillForm() {
 
   return createElement(
     "div",
-    { style: { display: "flex", flexDirection: "column", gap: "1rem" } },
+    { className: "s5_30_SocDataOpsBackfillForm",  },
     createElement(
       "div",
       { className: styles.sectionCard },
       createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.planner_title")),
-      createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", margin: "0 0 0.75rem 0" } },
+      createElement("p", { className: "s5_31_SocDataOpsBackfillForm",  },
         t("soc.dataops.planner_description")),
       renderDatasetCheckboxes(),
       renderSymbolGroupRadios(),
@@ -418,8 +414,8 @@ export function SocDataOpsBackfillForm() {
       renderDryRunCheckbox(),
       renderReasonInput(),
       renderActiveRunBanner(),
-      error ? createElement("div", { className: styles.inlineError, style: { marginBottom: "0.5rem" } }, error) : null,
-      success ? createElement("div", { className: styles.inlineSuccess, style: { marginBottom: "0.5rem" } }, success) : null,
+      error ? createElement("div", { className: `styles.inlineError s5_32_SocDataOpsBackfillForm`,  }, error) : null,
+      success ? createElement("div", { className: `styles.inlineSuccess s5_33_SocDataOpsBackfillForm`,  }, success) : null,
       renderActionRow(),
       renderPreviewResults(),
     ),

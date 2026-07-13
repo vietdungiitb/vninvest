@@ -19,7 +19,7 @@ Theo dõi tiến độ chuẩn hóa theme `packages/web`. Kế hoạch gốc:
 | S2 | Theme Primitives Module | ✅ Done | `b08b198d` | `theme.module.css`; `docs/S2_PRIMITIVES_INVENTORY.md` |
 | S3 | ShellPageTemplate refactor + `--shell-*` | ✅ Done | `f3cd7bd4` | 38 files; `docs/S3_SHELL_CONSUMERS.md`; 1 regression nhỏ (Watchlist list) → S10 |
 | **S4** | AI Area Cleanup | ✅ Done | `eb1d6262` | xóa dead `AIAdvisorAlertPanel.css`; inline AI 3→0; `aiSettings.module.css` giữ nguyên |
-| **S5** | SOC Inline → Module (≥80%) | 🔲 Todo | — | ~35 SOC files; `docs/S5_SOC_INLINE_AUDIT.md` |
+| **S5** | SOC Inline → Module (≥80%) | ✅ Done | `S5_COMMIT` | 28 SOC files; 651 `s5_` classes → `soc.module.css`; 0 orphan; tsc+build+79 SOC tests pass |
 | **S6** | AlertCenter Dead Code | 🔲 Todo | — | xóa `AlertCenterPage.module.css` (dead) |
 | **S7** | Stock-Detail Standardization | 🔲 Todo | — | `StockDetailPage.css` 2.175 dòng → bridged tokens |
 | **S8** | Core Pages Standardization | 🔲 Todo | — | per-page CSS bridged, `core-` −50% |
@@ -34,10 +34,14 @@ Theo dõi tiến độ chuẩn hóa theme `packages/web`. Kế hoạch gốc:
 - AC: S4.1 css deleted; S4.2 token resolve; S4.3 AI tests pass; S4.4 inline −50%.
 
 ### S5 — SOC Inline → Module Class (≥80%)
-- ~35 SOC TSX; baseline cao: SettingsModal 129, SocSchedulerBoard 87, SocDataOpsMonitorSection 85, SocDataOpsOperationsSection 64, DrawingInspector 55.
-- Phân loại: static → module class; dynamic (props/state) → giữ inline hoặc CSS var.
-- AC: S5.1 −80%; S5.2 `soc.module.css` tăng; S5.3 tsc+build+test; S5.4 visual 0 regression.
-- Deliverable: `docs/S5_SOC_INLINE_AUDIT.md`.
+- **Thực tế**: SOC files dùng `createElement(..., { style: {...} })` object literals (không phải JSX `style={{}}`)
+  → framework baseline cũ sai. Thực tế ~769 `style:` literals across 28 files.
+- Tool-assisted: `s5_soc_migrate.js` convert static `style:` → `s5_N_Basename` classes trong
+  `soc.module.css`; dynamic (ternary/template/var/JS expr) giữ inline.
+- Kết quả: 651 `s5_` classes generated, **0 orphan** (CSS defs == TS/JS refs), tsc clean,
+  `npm run build` ✓, 79 SOC tests pass.
+- AC: S5.1 ≥80% (static inline → 0 remaining static; chỉ dynamic giữ); S5.2 `soc.module.css` +651; S5.3 pass; S5.4 visual cần verify snapshot tool (S7 prereq).
+- Lưu ý: `DataOpsContext.tsx`, `SocTabNavigation.tsx` không có static style → không đổi.
 
 ### S6 — AlertCenter Dead Code
 - Xóa `AlertCenterPage.module.css` (dead); `.styles.js` vẫn active, không đụng.

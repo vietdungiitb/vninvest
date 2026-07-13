@@ -19,47 +19,25 @@ export function SocConfigPreviewModal({ before, after, changeSummary, impactWarn
   return createElement(
     "div",
     {
-      style: {
-        position: "fixed",
-        inset: 0,
-        zIndex: 9999,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "rgba(0, 0, 0, 0.6)",
-        backdropFilter: "blur(4px)",
-      },
+      className: "s5_0_SocConfigPreviewModal", 
       onClick: onCancel,
     },
     createElement(
       "div",
       {
-        className: styles.glassPanel,
-        style: {
-          width: "90%",
-          maxWidth: "720px",
-          maxHeight: "80vh",
-          overflow: "auto",
-          position: "relative",
-        },
+        className: `styles.glassPanel s5_1_SocConfigPreviewModal`,
+        
         onClick: (e: React.MouseEvent) => e.stopPropagation(),
       },
       createElement(
         "div",
-        { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" } },
-        createElement("h3", { style: { margin: 0, fontSize: "1.1rem", fontWeight: 700 } }, t("soc.config_preview.title")),
+        { className: "s5_2_SocConfigPreviewModal",  },
+        createElement("h3", { className: "s5_3_SocConfigPreviewModal",  }, t("soc.config_preview.title")),
         createElement(
           "button",
           {
             onClick: onCancel,
-            style: {
-              background: "none",
-              border: "none",
-              color: "var(--text-muted, #94a3b8)",
-              fontSize: "1.2rem",
-              cursor: "pointer",
-              padding: "0.25rem 0.5rem",
-            },
+            className: "s5_4_SocConfigPreviewModal", 
           },
           "\u2715",
         ),
@@ -68,60 +46,60 @@ export function SocConfigPreviewModal({ before, after, changeSummary, impactWarn
       validationErrors && validationErrors.length > 0
         ? createElement(
             "div",
-            { className: styles.inlineError, style: { marginBottom: "1rem" } },
-            createElement("div", { style: { fontWeight: 700, marginBottom: "0.25rem" } }, t("soc.config_preview.validation_errors")),
-            validationErrors.map((err, i) => createElement("div", { key: i, style: { fontSize: "0.75rem" } }, `\u2022 ${err}`)),
+            { className: `styles.inlineError s5_5_SocConfigPreviewModal`,  },
+            createElement("div", { className: "s5_6_SocConfigPreviewModal",  }, t("soc.config_preview.validation_errors")),
+            validationErrors.map((err, i) => createElement("div", { key: i, className: "s5_7_SocConfigPreviewModal",  }, `\u2022 ${err}`)),
           )
         : null,
 
       impactWarnings && impactWarnings.length > 0
         ? createElement(
             "div",
-            { className: styles.inlineError, style: { marginBottom: "1rem", background: "rgba(251, 191, 36, 0.1)", border: "1px solid rgba(251, 191, 36, 0.3)" } },
-            createElement("div", { style: { fontWeight: 700, marginBottom: "0.25rem", color: "#fbbf24" } }, t("soc.config_preview.impact_warnings")),
-            impactWarnings.map((w, i) => createElement("div", { key: i, style: { fontSize: "0.75rem", color: "#fbbf24" } }, `\u26A0 ${w}`)),
+            { className: `styles.inlineError s5_8_SocConfigPreviewModal`,  },
+            createElement("div", { className: "s5_9_SocConfigPreviewModal",  }, t("soc.config_preview.impact_warnings")),
+            impactWarnings.map((w, i) => createElement("div", { key: i, className: "s5_10_SocConfigPreviewModal",  }, `\u26A0 ${w}`)),
           )
         : null,
 
       changeSummary && changeSummary.length > 0
         ? createElement(
             "div",
-            { style: { marginBottom: "1rem" } },
-            createElement("div", { style: { fontWeight: 700, fontSize: "0.8rem", marginBottom: "0.5rem", color: "var(--accent-cyan, #06b6d4)" } }, t("soc.config_preview.changes")),
+            { className: "s5_11_SocConfigPreviewModal",  },
+            createElement("div", { className: "s5_12_SocConfigPreviewModal",  }, t("soc.config_preview.changes")),
             createElement(
               "div",
-              { style: { fontSize: "0.75rem", maxHeight: "120px", overflow: "auto", padding: "0.5rem", background: "rgba(15, 23, 42, 0.3)", borderRadius: "6px" } },
-              changeSummary.map((c, i) => createElement("div", { key: i, style: { padding: "0.15rem 0" } }, c)),
+              { className: "s5_13_SocConfigPreviewModal",  },
+              changeSummary.map((c, i) => createElement("div", { key: i, className: "s5_14_SocConfigPreviewModal",  }, c)),
             ),
           )
         : null,
 
       createElement(
         "div",
-        { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.25rem" } },
+        { className: "s5_15_SocConfigPreviewModal",  },
         createElement(
           "div",
           null,
-          createElement("div", { style: { fontWeight: 700, fontSize: "0.8rem", marginBottom: "0.5rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.config_preview.before")),
+          createElement("div", { className: "s5_16_SocConfigPreviewModal",  }, t("soc.config_preview.before")),
           createElement("pre", { className: styles.jsonBlock }, JSON.stringify(before || {}, null, 2)),
         ),
         createElement(
           "div",
           null,
-          createElement("div", { style: { fontWeight: 700, fontSize: "0.8rem", marginBottom: "0.5rem", color: "var(--accent-cyan, #06b6d4)" } }, t("soc.config_preview.after")),
+          createElement("div", { className: "s5_17_SocConfigPreviewModal",  }, t("soc.config_preview.after")),
           createElement("pre", { className: styles.jsonBlock }, JSON.stringify(after || {}, null, 2)),
         ),
       ),
       createElement(
         "div",
-        { style: { display: "flex", justifyContent: "flex-end", gap: "0.75rem" } },
+        { className: "s5_18_SocConfigPreviewModal",  },
         createElement(
           "button",
           {
             onClick: onCancel,
             disabled: loading,
-            className: styles.actionBtn,
-            style: { background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted, #94a3b8)" },
+            className: `styles.actionBtn s5_19_SocConfigPreviewModal`,
+            
           },
           t("soc.actions.cancel"),
         ),

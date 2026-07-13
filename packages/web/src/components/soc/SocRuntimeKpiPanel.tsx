@@ -17,7 +17,7 @@ export function SocRuntimeKpiPanel() {
       },
       createElement(
         "div",
-        { className: styles.emptyState, style: { padding: "3rem 1rem" } },
+        { className: `styles.emptyState s5_0_SocRuntimeKpiPanel`,  },
         createElement(
           "svg",
           {
@@ -27,12 +27,12 @@ export function SocRuntimeKpiPanel() {
             fill: "none",
             stroke: "currentColor",
             strokeWidth: 1.5,
-            style: { margin: "0 auto 1rem", opacity: 0.4, display: "block" },
+            className: "s5_1_SocRuntimeKpiPanel", 
           },
           createElement("path", { d: "M22 12h-4l-3 9L9 3l-3 9H2" }),
         ),
-        createElement("p", { style: { fontWeight: 700, marginBottom: "0.5rem", color: "var(--text-primary, #f1f5f9)" } }, t("soc.runtime_kpi.coming_soon")),
-        createElement("p", { style: { fontSize: "0.85rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.runtime_kpi.description")),
+        createElement("p", { className: "s5_2_SocRuntimeKpiPanel",  }, t("soc.runtime_kpi.coming_soon")),
+        createElement("p", { className: "s5_3_SocRuntimeKpiPanel",  }, t("soc.runtime_kpi.description")),
       ),
     ),
   );

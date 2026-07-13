@@ -179,7 +179,7 @@ export function SocDataOpsConfigSection() {
 
   return createElement(
     "div",
-    { style: { display: "flex", flexDirection: "column", gap: "1.25rem" } },
+    { className: "s5_0_SocDataOpsConfigSection",  },
     error ? createElement("div", { className: styles.inlineError }, error) : null,
 
     ownership
@@ -205,7 +205,7 @@ export function SocDataOpsConfigSection() {
       ownership?.locked_fields && ownership.locked_fields.length > 0
         ? createElement(
             "div",
-            { style: { fontSize: "0.7rem", color: "var(--accent-amber)", marginBottom: "0.5rem" } },
+            { className: "s5_1_SocDataOpsConfigSection",  },
             `${t("soc.dataops.locked_fields")}: ${ownership.locked_fields.join(", ")}`,
           )
         : null,
@@ -220,13 +220,13 @@ export function SocDataOpsConfigSection() {
       ),
       createElement(
         "div",
-        { style: { display: "flex", gap: "0.5rem", marginTop: "0.75rem", flexWrap: "wrap" } },
+        { className: "s5_2_SocDataOpsConfigSection",  },
         createElement(
           "button",
           {
             onClick: handlePreview,
-            className: styles.actionBtn,
-            style: { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan, #06b6d4)" },
+            className: `styles.actionBtn s5_3_SocDataOpsConfigSection`,
+            
           },
           t("soc.actions.preview"),
         ),
@@ -234,8 +234,8 @@ export function SocDataOpsConfigSection() {
           "button",
           {
             onClick: () => setEditConfig(JSON.stringify(envelope?.config || {}, null, 2)),
-            className: styles.actionBtn,
-            style: { background: "rgba(255, 191, 77, 0.15)", color: "var(--accent-amber)" },
+            className: `styles.actionBtn s5_4_SocDataOpsConfigSection`,
+            
           },
           t("soc.actions.edit"),
         ),
@@ -249,21 +249,17 @@ export function SocDataOpsConfigSection() {
           createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.audit_trail")),
           createElement(
             "div",
-            { style: { maxHeight: "240px", overflow: "auto" } },
+            { className: "s5_5_SocDataOpsConfigSection",  },
             auditTrail.map((entry, i) =>
               createElement(
                 "div",
                 {
                   key: i,
-                  style: {
-                    padding: "0.5rem",
-                    borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
-                    fontSize: "0.75rem",
-                  },
+                  className: "s5_6_SocDataOpsConfigSection", 
                 },
-                createElement("span", { style: { fontWeight: 600, color: "var(--accent-cyan, #06b6d4)" } }, entry.actor || "system"),
+                createElement("span", { className: "s5_7_SocDataOpsConfigSection",  }, entry.actor || "system"),
                 ` \u2022 ${entry.action || "config_change"}`,
-                createElement("span", { style: { float: "right", color: "var(--text-muted, #94a3b8)" } },
+                createElement("span", { className: "s5_8_SocDataOpsConfigSection",  },
                   entry.timestamp?.split("T")[1]?.slice(0, 8) || "",
                 ),
               ),
@@ -271,20 +267,20 @@ export function SocDataOpsConfigSection() {
           ),
           createElement(
             "div",
-            { style: { display: "flex", justifyContent: "center", gap: "0.5rem", marginTop: "0.5rem" } },
+            { className: "s5_9_SocDataOpsConfigSection",  },
             createElement(
               "button",
               {
                 onClick: () => setAuditPage((p) => Math.max(1, p - 1)),
                 disabled: auditPage <= 1,
-                className: styles.actionBtn,
-                style: { fontSize: "0.7rem", background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted, #94a3b8)" },
+                className: `styles.actionBtn s5_10_SocDataOpsConfigSection`,
+                
               },
               "\u25C0 " + t("soc.actions.prev"),
             ),
             createElement(
               "span",
-              { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", alignSelf: "center" } },
+              { className: "s5_11_SocDataOpsConfigSection",  },
               t("soc.actions.page", { page: auditPage }),
             ),
             createElement(
@@ -292,8 +288,8 @@ export function SocDataOpsConfigSection() {
               {
                 onClick: () => setAuditPage((p) => p + 1),
                 disabled: !auditHasMore,
-                className: styles.actionBtn,
-                style: { fontSize: "0.7rem", background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted, #94a3b8)" },
+                className: `styles.actionBtn s5_12_SocDataOpsConfigSection`,
+                
               },
               t("soc.actions.next") + " \u25B6",
             ),

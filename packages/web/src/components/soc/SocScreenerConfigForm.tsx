@@ -94,8 +94,8 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
   };
 
   const field = (key: keyof typeof config, label: string, min?: number, max?: number) =>
-    createElement("div", { style: { marginBottom: "1rem" } },
-      createElement("label", { style: { display: "block", marginBottom: "0.25rem", fontSize: "0.875rem", color: "var(--text-secondary, #94a3b8)" } }, label),
+    createElement("div", { className: "s5_0_SocScreenerConfigForm",  },
+      createElement("label", { className: "s5_1_SocScreenerConfigForm",  }, label),
       createElement("input", {
         type: "number",
         value: config[key],
@@ -104,13 +104,13 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
         max: max,
         style: { ...inputStyle, borderColor: errors[key as string] ? "var(--accent-red)" : "var(--border-default, rgba(80, 120, 168, 0.28))" },
       }),
-      errors[key as string] && createElement("p", { style: { marginTop: "0.25rem", fontSize: "0.75rem", color: "var(--accent-red)" } }, errors[key as string])
+      errors[key as string] && createElement("p", { className: "s5_2_SocScreenerConfigForm",  }, errors[key as string])
     );
 
   return createElement("div", null,
     createElement("div", { className: styles.sectionCard },
       createElement("div", { className: styles.sectionCardTitle }, t("soc.screener.config_title")),
-      createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" } },
+      createElement("div", { className: "s5_3_SocScreenerConfigForm",  },
         field("scan_interval_seconds", t("soc.screener.config.scan_interval"), 30),
         field("max_symbols_per_scan", t("soc.screener.config.max_symbols"), 1, 5000),
         field("alert_cooldown_seconds", t("soc.screener.config.alert_cooldown"), 60),
@@ -118,34 +118,34 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
         field("result_retention_hours", t("soc.screener.config.retention_hours"), 1),
       ),
     ),
-    createElement("details", { className: styles.sectionCard, style: { marginTop: "1rem" } },
-      createElement("summary", { style: { cursor: "pointer", color: "var(--text-muted, #94a3b8)", fontSize: "0.875rem", fontWeight: 500 } },
+    createElement("details", { className: `styles.sectionCard s5_4_SocScreenerConfigForm`,  },
+      createElement("summary", { className: "s5_5_SocScreenerConfigForm",  },
         t("soc.screener.config.advanced")
       ),
-      createElement("div", { className: styles.configEditor, style: { marginTop: "0.75rem", fontFamily: "monospace", fontSize: "0.75rem" } },
+      createElement("div", { className: `styles.configEditor s5_6_SocScreenerConfigForm`,  },
         JSON.stringify(props.initialConfig, null, 2)
       ),
     ),
-    createElement("div", { style: { display: "flex", gap: "0.5rem", marginTop: "1rem", justifyContent: "flex-end" } },
+    createElement("div", { className: "s5_7_SocScreenerConfigForm",  },
       createElement("button", {
         onClick: handleReset,
-        className: styles.actionBtn,
-        style: { background: "rgba(15,23,42,0.6)", color: "var(--text-secondary, #94a3b8)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" },
+        className: `styles.actionBtn s5_8_SocScreenerConfigForm`,
+        
       },
       t("soc.screener.config.reset")
       ),
       createElement("button", {
         onClick: onCancel,
-        className: styles.actionBtn,
-        style: { background: "rgba(15,23,42,0.6)", color: "var(--text-secondary, #94a3b8)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" },
+        className: `styles.actionBtn s5_9_SocScreenerConfigForm`,
+        
       },
       t("common.cancel")
       ),
       createElement("button", {
         onClick: handleSave,
         disabled: loading,
-        className: styles.actionBtn,
-        style: { background: "var(--accent-cyan, #06b6d4)", color: "#fff" },
+        className: `styles.actionBtn s5_10_SocScreenerConfigForm`,
+        
       },
       loading ? t("common.saving") : t("common.save")
       ),

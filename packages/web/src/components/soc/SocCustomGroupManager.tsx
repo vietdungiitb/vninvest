@@ -149,8 +149,8 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
   const renderGroupList = () =>
     createElement(
       "div",
-      { style: { marginBottom: "0.75rem" } },
-      createElement("label", { style: { fontSize: "0.7rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)", marginBottom: "0.25rem", display: "block" } },
+      { className: "s5_0_SocCustomGroupManager",  },
+      createElement("label", { className: "s5_1_SocCustomGroupManager",  },
         t("soc.dataops.custom_group_list")),
       loading
         ? createElement("p", { className: styles.emptyState }, t("soc.dataops.loading"))
@@ -158,7 +158,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
           ? createElement("p", { className: styles.emptyState }, t("soc.dataops.custom_group_no_groups"))
           : createElement(
               "div",
-              { style: { display: "flex", flexDirection: "column", gap: "0.3rem" } },
+              { className: "s5_2_SocCustomGroupManager",  },
               groups.map((g) =>
                 editingSlug === g.slug
                   ? renderEditForm(g)
@@ -166,41 +166,37 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
                       "div",
                       {
                         key: g.slug,
-                        style: {
-                          display: "flex", justifyContent: "space-between", alignItems: "center",
-                          padding: "0.4rem 0.6rem", borderRadius: "6px",
-                          background: "rgba(15, 23, 42, 0.25)", border: "1px solid rgba(45, 212, 191, 0.15)",
-                        },
+                        className: "s5_3_SocCustomGroupManager", 
                       },
                       createElement(
                         "div",
-                        { style: { flex: 1, minWidth: 0, cursor: "pointer" }, onClick: () => startEdit(g) },
-                        createElement("span", { style: { fontWeight: 600, fontSize: "0.75rem", color: "rgba(45, 212, 191, 0.9)" } },
+                        { className: "s5_4_SocCustomGroupManager",  onClick: () => startEdit(g) },
+                        createElement("span", { className: "s5_5_SocCustomGroupManager",  },
                           `\u2605 ${g.name}`),
-                        createElement("span", { style: { fontSize: "0.6rem", color: "var(--text-muted, #94a3b8)", marginLeft: "0.35rem" } },
+                        createElement("span", { className: "s5_6_SocCustomGroupManager",  },
                           `(${g.symbol_count ?? "?"})`),
                         g.description
-                          ? createElement("div", { style: { fontSize: "0.62rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.1rem" } }, g.description)
+                          ? createElement("div", { className: "s5_7_SocCustomGroupManager",  }, g.description)
                           : null,
                       ),
                       createElement(
                         "div",
-                        { style: { display: "flex", gap: "0.25rem" } },
+                        { className: "s5_8_SocCustomGroupManager",  },
                         createElement(
                           "button",
                           {
-                            className: styles.actionBtn,
+                            className: `styles.actionBtn s5_9_SocCustomGroupManager`,
                             onClick: () => startEdit(g),
-                            style: { background: "rgba(45, 212, 191, 0.12)", color: "#5eead4", fontSize: "0.6rem" },
+                            
                           },
                           t("soc.dataops.custom_group_edit"),
                         ),
                         createElement(
                           "button",
                           {
-                            className: styles.actionBtn,
+                            className: `styles.actionBtn s5_10_SocCustomGroupManager`,
                             onClick: () => handleDelete(g.slug),
-                            style: { background: "rgba(239, 68, 68, 0.12)", color: "#f87171", fontSize: "0.6rem" },
+                            
                           },
                           t("soc.dataops.group_manager_delete"),
                         ),
@@ -215,66 +211,63 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
       "div",
       {
         key: `edit-${g.slug}`,
-        style: {
-          padding: "0.75rem", borderRadius: "8px",
-          background: "rgba(15, 23, 42, 0.3)", border: "1px solid rgba(45, 212, 191, 0.3)",
-        },
+        className: "s5_11_SocCustomGroupManager", 
       },
       createElement(
         "div",
-        { style: { marginBottom: "0.5rem" } },
-        createElement("label", { style: { fontSize: "0.65rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)", display: "block", marginBottom: "0.15rem" } },
+        { className: "s5_12_SocCustomGroupManager",  },
+        createElement("label", { className: "s5_13_SocCustomGroupManager",  },
           t("soc.dataops.group_manager_name_label")),
         createElement("input", {
-          type: "text", value: editName, className: styles.searchInput,
+          type: "text", value: editName, className: `styles.searchInput s5_14_SocCustomGroupManager`,
           onChange: (e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value),
-          style: { width: "100%" },
+          
         }),
       ),
       createElement(
         "div",
-        { style: { marginBottom: "0.5rem" } },
-        createElement("label", { style: { fontSize: "0.65rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)", display: "block", marginBottom: "0.15rem" } },
+        { className: "s5_15_SocCustomGroupManager",  },
+        createElement("label", { className: "s5_16_SocCustomGroupManager",  },
           t("soc.dataops.group_manager_desc_label")),
         createElement("input", {
-          type: "text", value: editDescription, className: styles.searchInput,
+          type: "text", value: editDescription, className: `styles.searchInput s5_17_SocCustomGroupManager`,
           onChange: (e: React.ChangeEvent<HTMLInputElement>) => setEditDescription(e.target.value),
-          style: { width: "100%" },
+          
         }),
       ),
       createElement(
         "div",
-        { style: { marginBottom: "0.5rem" } },
-        createElement("label", { style: { fontSize: "0.65rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)", display: "block", marginBottom: "0.15rem" } },
+        { className: "s5_18_SocCustomGroupManager",  },
+        createElement("label", { className: "s5_19_SocCustomGroupManager",  },
           t("soc.dataops.group_manager_symbols_label")),
         createElement("textarea", {
-          value: editSymbols, className: styles.searchInput,
+          value: editSymbols, className: `styles.searchInput s5_20_SocCustomGroupManager`,
           placeholder: t("soc.dataops.custom_group_symbols_placeholder"),
           onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setEditSymbols(e.target.value),
-          style: { minHeight: "60px", resize: "vertical", fontSize: "0.75rem", width: "100%" },
+          
         }),
-        createElement("p", { style: { fontSize: "0.55rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.1rem" } },
+        createElement("p", { className: "s5_21_SocCustomGroupManager",  },
           t("soc.dataops.group_manager_symbols_hint")),
       ),
       createElement(
         "div",
-        { style: { display: "flex", gap: "0.4rem" } },
+        { className: "s5_22_SocCustomGroupManager",  },
         createElement(
           "button",
           {
-            className: styles.runBtn,
+            className: `styles.runBtn s5_23_SocCustomGroupManager`,
             onClick: handleUpdate,
             disabled: savingEdit,
-            style: { fontSize: "0.7rem" },
+            
           },
           savingEdit ? t("soc.dataops.group_manager_creating") : t("soc.dataops.group_manager_save_btn"),
         ),
         createElement(
           "button",
           {
-            className: styles.actionBtn,
+            className: `styles.actionBtn s5_24_SocCustomGroupManager`,
             onClick: cancelEdit,
-            style: { fontSize: "0.7rem", background: "rgba(148, 163, 184, 0.12)", color: "#94a3b8" },
+            
           },
           t("soc.actions.cancel"),
         ),
@@ -285,68 +278,65 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
     createElement(
       "div",
       {
-        style: {
-          padding: "0.75rem", borderRadius: "8px",
-          background: "rgba(15, 23, 42, 0.3)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
-        },
+        className: "s5_25_SocCustomGroupManager", 
       },
       createElement(
         "div",
-        { style: { marginBottom: "0.5rem" } },
-        createElement("label", { style: { fontSize: "0.65rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)", display: "block", marginBottom: "0.15rem" } },
+        { className: "s5_26_SocCustomGroupManager",  },
+        createElement("label", { className: "s5_27_SocCustomGroupManager",  },
           t("soc.dataops.group_manager_name_label")),
         createElement("input", {
-          type: "text", value: name, className: styles.searchInput,
+          type: "text", value: name, className: `styles.searchInput s5_28_SocCustomGroupManager`,
           placeholder: t("soc.dataops.custom_group_name_placeholder"),
           onChange: (e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value),
-          style: { width: "100%" },
+          
         }),
       ),
       createElement(
         "div",
-        { style: { marginBottom: "0.5rem" } },
-        createElement("label", { style: { fontSize: "0.65rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)", display: "block", marginBottom: "0.15rem" } },
+        { className: "s5_29_SocCustomGroupManager",  },
+        createElement("label", { className: "s5_30_SocCustomGroupManager",  },
           t("soc.dataops.group_manager_desc_label")),
         createElement("input", {
-          type: "text", value: description, className: styles.searchInput,
+          type: "text", value: description, className: `styles.searchInput s5_31_SocCustomGroupManager`,
           placeholder: t("soc.dataops.group_manager_desc_placeholder"),
           onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDescription(e.target.value),
-          style: { width: "100%" },
+          
         }),
       ),
       createElement(
         "div",
-        { style: { marginBottom: "0.5rem" } },
-        createElement("label", { style: { fontSize: "0.65rem", fontWeight: 600, color: "var(--text-muted, #94a3b8)", display: "block", marginBottom: "0.15rem" } },
+        { className: "s5_32_SocCustomGroupManager",  },
+        createElement("label", { className: "s5_33_SocCustomGroupManager",  },
           t("soc.dataops.group_manager_symbols_label")),
         createElement("textarea", {
-          value: symbols, className: styles.searchInput,
+          value: symbols, className: `styles.searchInput s5_34_SocCustomGroupManager`,
           placeholder: t("soc.dataops.custom_group_symbols_placeholder"),
           onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setSymbols(e.target.value),
-          style: { minHeight: "60px", resize: "vertical", fontSize: "0.75rem", width: "100%" },
+          
         }),
-        createElement("p", { style: { fontSize: "0.55rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.1rem" } },
+        createElement("p", { className: "s5_35_SocCustomGroupManager",  },
           t("soc.dataops.group_manager_symbols_hint")),
       ),
       createElement(
         "div",
-        { style: { display: "flex", gap: "0.4rem" } },
+        { className: "s5_36_SocCustomGroupManager",  },
         createElement(
           "button",
           {
-            className: styles.runBtn,
+            className: `styles.runBtn s5_37_SocCustomGroupManager`,
             onClick: handleCreate,
             disabled: creating,
-            style: { fontSize: "0.7rem" },
+            
           },
           creating ? t("soc.dataops.group_manager_creating") : t("soc.dataops.group_manager_create_btn"),
         ),
         createElement(
           "button",
           {
-            className: styles.actionBtn,
+            className: `styles.actionBtn s5_38_SocCustomGroupManager`,
             onClick: () => { resetCreate(); },
-            style: { fontSize: "0.7rem", background: "rgba(148, 163, 184, 0.12)", color: "#94a3b8" },
+            
           },
           t("soc.actions.cancel"),
         ),
@@ -358,24 +348,24 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
     { className: styles.sectionCard },
     createElement(
       "div",
-      { style: { display: "flex", alignItems: "center", justifyContent: "space-between" } },
+      { className: "s5_39_SocCustomGroupManager",  },
       createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.group_manager_title")),
       !showForm
         ? createElement(
             "button",
             {
-              className: styles.runBtn,
+              className: `styles.runBtn s5_40_SocCustomGroupManager`,
               onClick: () => setShowForm(true),
-              style: { fontSize: "0.65rem", padding: "0.25rem 0.5rem" },
+              
             },
             "+",
           )
         : null,
     ),
-    createElement("p", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", margin: "0 0 0.75rem 0" } },
+    createElement("p", { className: "s5_41_SocCustomGroupManager",  },
       t("soc.dataops.group_manager_description")),
-    error ? createElement("div", { className: styles.inlineError, style: { marginBottom: "0.5rem" } }, error) : null,
-    success ? createElement("div", { className: styles.inlineSuccess, style: { marginBottom: "0.5rem" } }, success) : null,
+    error ? createElement("div", { className: `styles.inlineError s5_42_SocCustomGroupManager`,  }, error) : null,
+    success ? createElement("div", { className: `styles.inlineSuccess s5_43_SocCustomGroupManager`,  }, success) : null,
     renderGroupList(),
     showForm ? renderCreateForm() : null,
   );

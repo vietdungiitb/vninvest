@@ -93,14 +93,14 @@ export function SocBackfillProgressPanel() {
     { className: styles.glassPanel },
     createElement(
       "div",
-      { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" } },
-      createElement("h3", { style: { margin: 0, fontSize: "1.1rem", fontWeight: 700 } }, t("soc.backfill.title")),
+      { className: "s5_0_SocBackfillProgressPanel",  },
+      createElement("h3", { className: "s5_1_SocBackfillProgressPanel",  }, t("soc.backfill.title")),
       createElement(
         "button",
         {
           onClick: fetchRuns,
-          className: styles.actionBtn,
-          style: { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan, #06b6d4)" },
+          className: `styles.actionBtn s5_2_SocBackfillProgressPanel`,
+          
         },
         t("soc.backfill.refresh"),
       ),
@@ -120,7 +120,7 @@ export function SocBackfillProgressPanel() {
                 ? createElement("p", { className: styles.emptyState }, t("soc.backfill.no_runs"))
                 : createElement(
                     "div",
-                    { style: { display: "flex", flexDirection: "column", gap: "0.5rem" } },
+                    { className: "s5_3_SocBackfillProgressPanel",  },
                     runs.map((run) =>
                       createElement(
                         "div",
@@ -138,8 +138,8 @@ export function SocBackfillProgressPanel() {
                         },
                         createElement(
                           "div",
-                          { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
-                          createElement("div", { style: { fontWeight: 600, fontSize: "0.85rem" } }, run.dataset),
+                          { className: "s5_4_SocBackfillProgressPanel",  },
+                          createElement("div", { className: "s5_5_SocBackfillProgressPanel",  }, run.dataset),
                           createElement(
                             "span",
                             {
@@ -149,13 +149,13 @@ export function SocBackfillProgressPanel() {
                             run.status,
                           ),
                         ),
-                        createElement("div", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", marginTop: "0.25rem" } },
+                        createElement("div", { className: "s5_6_SocBackfillProgressPanel",  },
                           `${run.completed_symbols || 0}/${run.total_symbols || 0} symbols \u2022 ${run.started_at?.split("T")[0] || "N/A"}`,
                         ),
                         run.progress != null
                           ? createElement(
                               "div",
-                              { style: { marginTop: "0.25rem", height: "4px", borderRadius: "2px", background: "rgba(100, 116, 139, 0.2)" } },
+                              { className: "s5_7_SocBackfillProgressPanel",  },
                               createElement("div", {
                                 style: {
                                   height: "100%",
@@ -172,8 +172,8 @@ export function SocBackfillProgressPanel() {
                               "button",
                               {
                                 onClick: (e: React.MouseEvent) => { e.stopPropagation(); handleAbort(run.run_id); },
-                                className: styles.actionBtn,
-                                style: { marginTop: "0.5rem", background: "rgba(239, 68, 68, 0.15)", color: "#f87171", fontSize: "0.65rem" },
+                                className: `styles.actionBtn s5_8_SocBackfillProgressPanel`,
+                                
                               },
                               t("soc.backfill.abort"),
                             )
@@ -192,31 +192,31 @@ export function SocBackfillProgressPanel() {
                     : runDetail
                       ? createElement(
                           "div",
-                          { style: { display: "flex", flexDirection: "column", gap: "0.75rem" } },
+                          { className: "s5_9_SocBackfillProgressPanel",  },
                           createElement(
                             "div",
-                            { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" } },
+                            { className: "s5_10_SocBackfillProgressPanel",  },
                             createElement("div", null,
-                              createElement("div", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.backfill.dataset")),
-                              createElement("div", { style: { fontWeight: 600 } }, runDetail.dataset),
+                              createElement("div", { className: "s5_11_SocBackfillProgressPanel",  }, t("soc.backfill.dataset")),
+                              createElement("div", { className: "s5_12_SocBackfillProgressPanel",  }, runDetail.dataset),
                             ),
                             createElement("div", null,
-                              createElement("div", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.backfill.status")),
+                              createElement("div", { className: "s5_13_SocBackfillProgressPanel",  }, t("soc.backfill.status")),
                               createElement("div", { style: { fontWeight: 600, color: getStatusColor(runDetail.status) } }, runDetail.status),
                             ),
                             createElement("div", null,
-                              createElement("div", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.backfill.progress")),
-                              createElement("div", { style: { fontWeight: 600 } }, `${runDetail.progress ?? 0}%`),
+                              createElement("div", { className: "s5_14_SocBackfillProgressPanel",  }, t("soc.backfill.progress")),
+                              createElement("div", { className: "s5_15_SocBackfillProgressPanel",  }, `${runDetail.progress ?? 0}%`),
                             ),
                             createElement("div", null,
-                              createElement("div", { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)" } }, t("soc.backfill.started")),
-                              createElement("div", { style: { fontWeight: 600 } }, runDetail.started_at?.split("T")[0] || "N/A"),
+                              createElement("div", { className: "s5_16_SocBackfillProgressPanel",  }, t("soc.backfill.started")),
+                              createElement("div", { className: "s5_17_SocBackfillProgressPanel",  }, runDetail.started_at?.split("T")[0] || "N/A"),
                             ),
                           ),
                           runDetail.progress != null
                             ? createElement(
                                 "div",
-                                { style: { height: "8px", borderRadius: "4px", background: "rgba(100, 116, 139, 0.2)" } },
+                                { className: "s5_18_SocBackfillProgressPanel",  },
                                 createElement("div", {
                                   style: {
                                     height: "100%",
