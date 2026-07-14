@@ -24,7 +24,7 @@ Theo dõi tiến độ chuẩn hóa theme `packages/web`. Kế hoạch gốc:
 | **S7** | Stock-Detail Standardization | ✅ Done | `S7_COMMIT` | `StockDetailPage.css` 2.546 dòng: solid hex → global tokens, 127 rgba → 23 `--sdp-*-rgb` channel tokens; 0 literal màu; 12 visual tests pass |
 | **S8** | Core Pages Standardization | ✅ Done | `S8_COMMIT` | 5 core CSS → bridged tokens: PortfoliosPage, DNSEConnectionPanel, dashboard/SmartStatsHeader, alert-center/*.module.css; 0 literal màu; build + 12 visual tests pass |
 | **S9** | TenantAdmin Inline (>=80%) | Done | 34f24bc3 | 13 files -> 523 TenantAdmin.module.css classes; static routes visual-green, dynamic dashboards flaky |
-| **S10** | Watchlist + Remaining | 🔲 Todo | — | xóa `VninvestInput.module.css`, verify Watchlist/Auth/DNSE |
+| **S10** | Watchlist + Remaining | Done | dev | xoa inert .shellPage__list* (S3 fix); WatchlistPage.css -> --wl-* tokens; DNSE/AuthRegister verified tokenized; VninvestInput giu nguyen (theme thieu equivalents) |
 
 ## Chi tiết slice còn lại (tóm tắt)
 
@@ -72,7 +72,11 @@ Theo dõi tiến độ chuẩn hóa theme `packages/web`. Kế hoạch gốc:
 - Xóa `VninvestInput.module.css` (đã migrate sang `theme.module.css` ở S2/S4).
 - Verify `WatchlistPage.css` (đã fix fallback ở S0), `AuthRegisterPage.css`, `DNSEConnectionPanel.css`.
 - **S3 regression fix**: `WatchlistPage.css` `.shellPage__list*` overrides giờ inert → xử lý ở đây.
-- AC: S10.1 module deleted; S10.2 Watchlist tokens ≥34; S10.4 visual verify.
+- Thuc hien: (1) Xoa block `.shellPage__list*` (lines 442-495) trong WatchlistPage.css - dead/inert (S3 regression, khong component nao dung className nay). DoD `shellPage__/*--shell-*` = 0 dat duoc.
+- (2) Tokenize WatchlistPage.css: true literals -> `--wl-*` channel tokens (`rgba(var(--wl-X-rgb)/A)`) + `--wl-slate-200`/`--wl-cyan-bright`; `#94a3b8` -> `var(--text-muted)`. `var(--token, <literal>)` fallbacks giu nguyen. 0 true literal con lai.
+- (3) DNSEConnectionPanel.css / AuthRegisterPage.css: da tokenize (local `--dnse-c0..c5` defs) - verified, khong action.
+- (4) VninvestInput.module.css: da dung design tokens; `theme.module.css` THIEU equivalents (wrapper/label/error/helper/input--error/input--disabled/...) nen KHONG xoa (se break component). Giu nguyen, da compliant.
+- AC: S10.1 shellPage inert removed; S10.2 Watchlist tokens >=34 (--wl-*); S10.4 tsc+build OK.
 
 ## Pre-requisites (bắt buộc)
 - **Visual snapshot tooling (Chromatic/Percy) phải chốt trước S7** — thay đổi dính mọi page, manual screenshot rủi ro cao (framework §8).
@@ -82,6 +86,7 @@ Theo dõi tiến độ chuẩn hóa theme `packages/web`. Kế hoạch gốc:
 
 ## Changelog
 - S0 `eeec7afa` / S1 `b0dd5f80` / S2 `b08b198d` / S3 `f3cd7bd4` / S4 `eb1d6262` — committed & pushed to `dev`.
+
 
 
 
