@@ -23,7 +23,7 @@ Theo dõi tiến độ chuẩn hóa theme `packages/web`. Kế hoạch gốc:
 | **S6** | AlertCenter Dead Code | ✅ Done | `S6_COMMIT` | xóa `pages/AlertCenterPage.module.css` (0 imports, dead); `.styles.js` active giữ |
 | **S7** | Stock-Detail Standardization | ✅ Done | `S7_COMMIT` | `StockDetailPage.css` 2.546 dòng: solid hex → global tokens, 127 rgba → 23 `--sdp-*-rgb` channel tokens; 0 literal màu; 12 visual tests pass |
 | **S8** | Core Pages Standardization | ✅ Done | `S8_COMMIT` | 5 core CSS → bridged tokens: PortfoliosPage, DNSEConnectionPanel, dashboard/SmartStatsHeader, alert-center/*.module.css; 0 literal màu; build + 12 visual tests pass |
-| **S9** | TenantAdmin Inline (>=80%) | Done | eaef2810 | 13 files -> 523 TenantAdmin.module.css classes; static routes visual-green, dynamic dashboards flaky |
+| **S9** | TenantAdmin Inline (>=80%) | Done | 34f24bc3 | 13 files -> 523 TenantAdmin.module.css classes; static routes visual-green, dynamic dashboards flaky |
 | **S10** | Watchlist + Remaining | 🔲 Todo | — | xóa `VninvestInput.module.css`, verify Watchlist/Auth/DNSE |
 
 ## Chi tiết slice còn lại (tóm tắt)
@@ -82,6 +82,7 @@ Theo dõi tiến độ chuẩn hóa theme `packages/web`. Kế hoạch gốc:
 
 ## Changelog
 - S0 `eeec7afa` / S1 `b0dd5f80` / S2 `b08b198d` / S3 `f3cd7bd4` / S4 `eb1d6262` — committed & pushed to `dev`.
+
 
 
 
