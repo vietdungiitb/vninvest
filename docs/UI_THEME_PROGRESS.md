@@ -19,7 +19,7 @@ Theo dõi tiến độ chuẩn hóa theme `packages/web`. Kế hoạch gốc:
 | S2 | Theme Primitives Module | ✅ Done | `b08b198d` | `theme.module.css`; `docs/S2_PRIMITIVES_INVENTORY.md` |
 | S3 | ShellPageTemplate refactor + `--shell-*` | ✅ Done | `f3cd7bd4` | 38 files; `docs/S3_SHELL_CONSUMERS.md`; 1 regression nhỏ (Watchlist list) → S10 |
 | **S4** | AI Area Cleanup | ✅ Done | `eb1d6262` | xóa dead `AIAdvisorAlertPanel.css`; inline AI 3→0; `aiSettings.module.css` giữ nguyên |
-| **S5** | SOC Inline → Module (≥80%) | ✅ Done | `S5_COMMIT` | 28 SOC files; 651 `s5_` classes → `soc.module.css`; 0 orphan; tsc+build+79 SOC tests pass |
+| **S5** | SOC Inline → Module (≥80%) | ✅ Done | `817310d9` | 28 SOC files; 651 `s5_` classes → `soc.module.css`; 0 orphan; tsc+build+79 SOC tests pass. ⚠️ Extract verbatim (màu literal chưa tokenize) → see S11 |
 | **S6** | AlertCenter Dead Code | ✅ Done | `S6_COMMIT` | xóa `pages/AlertCenterPage.module.css` (0 imports, dead); `.styles.js` active giữ |
 | **S7** | Stock-Detail Standardization | ✅ Done | `S7_COMMIT` | `StockDetailPage.css` 2.546 dòng: solid hex → global tokens, 127 rgba → 23 `--sdp-*-rgb` channel tokens; 0 literal màu; 12 visual tests pass |
 | **S8** | Core Pages Standardization | ✅ Done | `S8_COMMIT` | 5 core CSS → bridged tokens: PortfoliosPage, DNSEConnectionPanel, dashboard/SmartStatsHeader, alert-center/*.module.css; 0 literal màu; build + 12 visual tests pass |
@@ -78,6 +78,17 @@ Theo dõi tiến độ chuẩn hóa theme `packages/web`. Kế hoạch gốc:
 - (4) VninvestInput.module.css: da dung design tokens; `theme.module.css` THIEU equivalents (wrapper/label/error/helper/input--error/input--disabled/...) nen KHONG xoa (se break component). Giu nguyen, da compliant.
 - AC: S10.1 shellPage inert removed; S10.2 Watchlist tokens >=34 (--wl-*); S10.4 tsc+build OK.
 
+### S11 — Color-Tokenization Follow-up (audit gap)
+- **Audit (user request "audit lại toàn bộ")** phát hiện: S5 (SOC) và S9 (TenantAdmin) chỉ extract `style:{}` tĩnh sang module CSS **nguyên xi cả mã màu**; S3/S4 (ShellPageTemplate / aiSettings) cũng để lại literal rgba. Chỉ S7/S8 áp dụng map màu→token. DoD "0 literal màu" chưa đạt ngoài S7/S8.
+- **Phương pháp (value-preserving, rủi ro 0 visual)**: mỗi literal → local CSS var giữ NGUYÊN giá trị.
+  - solid hex → `--<prefix>-c-<hex>` (vd `--soc-c-94a3b8: #94a3b8;`), usage `var(--soc-c-94a3b8)`.
+  - rgba → channel triplet `--<prefix>-rgb-<rrggbb>: R G B;` (vd `--soc-rgb-5078a8: 80 120 168;`), usage `rgba(var(--soc-rgb-5078a8) / A)`.
+  - Prefix per-file: `ta-` (TenantAdmin), `soc-`, `ais-`, `sh-`, `vi-`.
+  - Token-definition lines (`--x: value`) giữ nguyên (không tự-reference). `var(--token, <color>)` fallback → nested `var(--token, var(--prefix-c-xxx))` (hợp lệ, vẫn value-identical). `url(#...)` không đụng.
+- **Kết quả**: 5 file, mỗi file 1 `:root` token block, 0 self-ref, 0 literal màu trong body, `url(#)` preserved. Token counts: TenantAdmin 36, soc 36, aiSettings 20, ShellPageTemplate 18, VninvestInput 0 (already tokenized, 0 literals).
+- **Lưu ý bug khi làm**: protect-step ban đầu dùng `\s*` (khớp newline) → bắt sai fallback xuyên dòng; và protect thay toàn bộ `var(--name, #color)` bằng placeholder làm mất `var(--name,`. Fix: bỏ protect, tokenize fallback thành nested var. Script: `tokenize_css.py` (idempotent qua MARKER).
+- AC: S11.1 ✓ 0 literal màu trong 5 file; S11.2 ✓ tsc+build pass; S11.3 value-identical (token resolve = giá trị gốc) → 0 visual regression.
+
 ## Pre-requisites (bắt buộc)
 - **Visual snapshot tooling (Chromatic/Percy) phải chốt trước S7** — thay đổi dính mọi page, manual screenshot rủi ro cao (framework §8).
 
@@ -86,6 +97,8 @@ Theo dõi tiến độ chuẩn hóa theme `packages/web`. Kế hoạch gốc:
 
 ## Changelog
 - S0 `eeec7afa` / S1 `b0dd5f80` / S2 `b08b198d` / S3 `f3cd7bd4` / S4 `eb1d6262` — committed & pushed to `dev`.
+- S5 `817310d9` / S6 / S7 / S8 / S9 `34f24bc3` (+doc `ce367400`) / S10 `bc691b92` — committed & pushed to `dev`.
+- S11 `d11705c6` color-tokenization follow-up (5 files) — value-preserving; tsc+build pass.
 
 
 

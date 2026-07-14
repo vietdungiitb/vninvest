@@ -3,6 +3,30 @@
    token references use var(--token, rgba(...)) with explicit fallbacks so the
    module is self-contained even if the SOC :root tokens are not defined globally. */
 
+/* Color tokens (theme audit follow-up): value-preserving. */
+:root {
+  --ais-rgb-00b4d8: 0 180 216;
+  --ais-rgb-ff7f50: 255 127 80;
+  --ais-c-0b0f19: #0b0f19;
+  --ais-c-111827: #111827;
+  --ais-c-070a13: #070a13;
+  --ais-rgb-5078a8: 80 120 168;
+  --ais-rgb-ffffff: 255 255 255;
+  --ais-c-00b4d8: #00b4d8;
+  --ais-c-0077b6: #0077b6;
+  --ais-c-ffffff: #ffffff;
+  --ais-c-12c7e8: #12c7e8;
+  --ais-c-0090c4: #0090c4;
+  --ais-rgb-ff5e7e: 255 94 126;
+  --ais-c-ffd9e1: #ffd9e1;
+  --ais-rgb-040b23: 4 11 35;
+  --ais-rgb-16d7a0: 22 215 160;
+  --ais-c-b9f6e4: #b9f6e4;
+  --ais-rgb-12c7e8: 18 199 232;
+  --ais-rgb-030712: 3 7 18;
+  --ais-rgb-000000: 0 0 0;
+}
+
 .page {
   --ai-ink: var(--text-primary, #e6f3ff);
   --ai-muted: var(--text-muted, #6d86a8);
@@ -21,15 +45,20 @@
   background:
     radial-gradient(
       circle at top right,
-      rgba(0, 180, 216, 0.1),
+      rgba(var(--ais-rgb-00b4d8) / 0.1),
       transparent 45%
     ),
     radial-gradient(
       circle at left center,
-      rgba(255, 127, 80, 0.04),
+      rgba(var(--ais-rgb-ff7f50) / 0.04),
       transparent 45%
     ),
-    linear-gradient(160deg, #0b0f19 0%, #111827 50%, #070a13 100%);
+    linear-gradient(
+      160deg,
+      var(--ais-c-0b0f19) 0%,
+      var(--ais-c-111827) 50%,
+      var(--ais-c-070a13) 100%
+    );
   color: var(--ai-ink);
   font-family: "Segoe UI", "Arial", sans-serif;
   min-height: 100vh;
@@ -86,7 +115,7 @@
 }
 
 .panel:hover {
-  border-color: rgba(80, 120, 168, 0.4);
+  border-color: rgba(var(--ais-rgb-5078a8) / 0.4);
 }
 
 .panelHeader {
@@ -233,13 +262,13 @@
     opacity 0.2s ease,
     box-shadow 0.2s ease;
   color: var(--ai-ink);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--ais-rgb-ffffff) / 0.06);
   border-color: var(--ai-border);
 }
 
 .btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(var(--ais-rgb-ffffff) / 0.12);
 }
 
 .btn:disabled {
@@ -248,14 +277,22 @@
 }
 
 .btnPrimary {
-  background: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
+  background: linear-gradient(
+    135deg,
+    var(--ais-c-00b4d8) 0%,
+    var(--ais-c-0077b6) 100%
+  );
   border-color: transparent;
-  color: #fff;
-  box-shadow: 0 8px 24px rgba(0, 180, 216, 0.25);
+  color: var(--ais-c-ffffff);
+  box-shadow: 0 8px 24px rgba(var(--ais-rgb-00b4d8) / 0.25);
 }
 
 .btnPrimary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #12c7e8 0%, #0090c4 100%);
+  background: linear-gradient(
+    135deg,
+    var(--ais-c-12c7e8) 0%,
+    var(--ais-c-0090c4) 100%
+  );
 }
 
 .btnGhost {
@@ -266,17 +303,17 @@
 
 .btnGhost:hover:not(:disabled) {
   color: var(--ai-ink);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--ais-rgb-ffffff) / 0.06);
 }
 
 .btnDanger {
-  background: rgba(255, 94, 126, 0.18);
-  border-color: rgba(255, 94, 126, 0.5);
-  color: #ffd9e1;
+  background: rgba(var(--ais-rgb-ff5e7e) / 0.18);
+  border-color: rgba(var(--ais-rgb-ff5e7e) / 0.5);
+  color: var(--ais-c-ffd9e1);
 }
 
 .btnDanger:hover:not(:disabled) {
-  background: rgba(255, 94, 126, 0.28);
+  background: rgba(var(--ais-rgb-ff5e7e) / 0.28);
 }
 
 .btnSm {
@@ -312,7 +349,7 @@
   width: 100%;
   border-radius: 10px;
   border: 1px solid var(--ai-border);
-  background: rgba(4, 11, 35, 0.6);
+  background: rgba(var(--ais-rgb-040b23) / 0.6);
   color: var(--ai-ink);
   padding: 10px 12px;
   font-size: 13px;
@@ -338,7 +375,7 @@
   resize: vertical;
   border-radius: 10px;
   border: 1px solid var(--ai-border);
-  background: rgba(4, 11, 35, 0.6);
+  background: rgba(var(--ais-rgb-040b23) / 0.6);
   color: var(--ai-ink);
   padding: 10px 12px;
   font-size: 13px;
@@ -365,7 +402,7 @@
   border-radius: 5px;
   border: 1px solid var(--ai-border);
   accent-color: var(--ai-accent);
-  background: rgba(4, 11, 35, 0.6);
+  background: rgba(var(--ais-rgb-040b23) / 0.6);
   cursor: pointer;
 }
 
@@ -412,20 +449,20 @@
 }
 
 .alertError {
-  border-color: rgba(255, 94, 126, 0.6);
-  background: rgba(255, 94, 126, 0.14);
-  color: #ffd9e1;
+  border-color: rgba(var(--ais-rgb-ff5e7e) / 0.6);
+  background: rgba(var(--ais-rgb-ff5e7e) / 0.14);
+  color: var(--ais-c-ffd9e1);
 }
 
 .alertSuccess {
-  border-color: rgba(22, 215, 160, 0.5);
-  background: rgba(22, 215, 160, 0.12);
-  color: #b9f6e4;
+  border-color: rgba(var(--ais-rgb-16d7a0) / 0.5);
+  background: rgba(var(--ais-rgb-16d7a0) / 0.12);
+  color: var(--ais-c-b9f6e4);
 }
 
 .alertInfo {
   border-color: var(--ai-border);
-  background: rgba(18, 199, 232, 0.08);
+  background: rgba(var(--ais-rgb-12c7e8) / 0.08);
   color: var(--ai-secondary);
 }
 
@@ -441,13 +478,13 @@
 }
 
 .badgeActive {
-  background: rgba(22, 215, 160, 0.16);
+  background: rgba(var(--ais-rgb-16d7a0) / 0.16);
   color: var(--ai-success);
-  border: 1px solid rgba(22, 215, 160, 0.4);
+  border: 1px solid rgba(var(--ais-rgb-16d7a0) / 0.4);
 }
 
 .badgeInactive {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--ais-rgb-ffffff) / 0.06);
   color: var(--ai-muted);
   border: 1px solid var(--ai-border);
 }
@@ -509,7 +546,7 @@
   flex: 1;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--ais-rgb-ffffff) / 0.08);
 }
 
 .quotaFill {
@@ -541,7 +578,7 @@
 .drawerOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(3, 7, 18, 0.6);
+  background: rgba(var(--ais-rgb-030712) / 0.6);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   display: flex;
@@ -560,7 +597,7 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-left: 1px solid var(--ai-border);
-  box-shadow: -20px 0 50px rgba(0, 0, 0, 0.45);
+  box-shadow: -20px 0 50px rgba(var(--ais-rgb-000000) / 0.45);
   animation: aiDrawerSlideIn 0.25s ease;
 }
 
@@ -600,7 +637,7 @@
 
 .drawerClose {
   border: 1px solid var(--ai-border);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--ais-rgb-ffffff) / 0.04);
   color: var(--ai-muted);
   border-radius: 10px;
   width: 34px;
@@ -614,7 +651,7 @@
 }
 
 .drawerClose:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--ais-rgb-ffffff) / 0.1);
   color: var(--ai-ink);
 }
 
@@ -658,7 +695,7 @@
 
 .presetBtn {
   border: 1px solid var(--ai-border);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--ais-rgb-ffffff) / 0.04);
   color: var(--ai-secondary);
   border-radius: 999px;
   padding: 6px 12px;
@@ -681,7 +718,7 @@
   border: 1px solid var(--ai-border);
   border-radius: 12px;
   padding: 14px 16px;
-  background: rgba(4, 11, 35, 0.4);
+  background: rgba(var(--ais-rgb-040b23) / 0.4);
 }
 
 .sourceCardActive {
@@ -722,7 +759,7 @@
 
 .indicatorPresetBtn {
   border: 1px solid var(--ai-border);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--ais-rgb-ffffff) / 0.04);
   color: var(--ai-secondary);
   border-radius: 10px;
   padding: 6px 12px;
@@ -746,7 +783,7 @@
 
 .indicatorPill {
   border: 1px solid var(--ai-border);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--ais-rgb-ffffff) / 0.04);
   color: var(--ai-muted);
   border-radius: 999px;
   padding: 5px 12px;
@@ -802,7 +839,7 @@
   width: 72px;
   border-radius: 10px;
   border: 1px solid var(--ai-border);
-  background: rgba(4, 11, 35, 0.6);
+  background: rgba(var(--ais-rgb-040b23) / 0.6);
   color: var(--ai-ink);
   padding: 6px 8px;
   font-size: 13px;
@@ -822,7 +859,7 @@
 .quickSelect {
   border-radius: 10px;
   border: 1px solid var(--ai-border);
-  background: rgba(4, 11, 35, 0.6);
+  background: rgba(var(--ais-rgb-040b23) / 0.6);
   color: var(--ai-ink);
   padding: 6px 8px;
   font-size: 13px;
