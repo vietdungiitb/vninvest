@@ -1,4 +1,5 @@
 import styles from "../../components/ShellPageTemplate.module.css";
+import ta from "./TenantAdmin.module.css";
 import { useEffect, useState, useCallback } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
@@ -192,7 +193,7 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
         description={t("common.loading")}
       >
         <ShellSkeleton variant="metric" count={2} />
-        <div style={{ height: 16 }} />
+        <div className={ta.rep_1} />
         <ShellSkeleton variant="table-row" count={5} />
       </ShellPageChrome>
     );
@@ -215,11 +216,11 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
           <ShellPanel title={t("tenantReports.listTitle")} subtitle={`${reports.length}`} actions={canManage ? createAction : null}>
             <div className={`${styles.list}`}>
               {reports.map(report => (
-                <div key={report.id} className={`${styles.listItem}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div key={report.id} className={[`${styles.listItem}`, ta.rep_2].filter(Boolean).join(" ")} >
                   <div>
                     <div className={`${styles.itemTitle}`} style={{ fontSize: "14px" }}>
                       {report.name}
-                      {!report.is_active && <span style={{ color: "#f59e0b", marginLeft: "8px", fontSize: "11px" }}>({t("tenantReports.paused")})</span>}
+                      {!report.is_active && <span className={ta.rep_3}>({t("tenantReports.paused")})</span>}
                     </div>
                     <div className={`${styles.itemMeta}`} style={{ marginTop: "2px" }}>
                       {getReportTypeLabel(report.report_type, t)} · {getScheduleLabel(report.schedule, t)} · {report.format.toUpperCase()}
@@ -231,7 +232,7 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
                       {t("tenantReports.lastSent")}: {formatDateField(report.last_sent_at, fmtDate)} · {t("tenantReports.deliveries")}: {report.total_deliveries}
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                  <div className={ta.rep_4}>
                     {canManage && (
                       <>
                         <button onClick={() => handleToggleActive(report)} className={`${styles.button} ${styles.buttonSecondary}`} style={{ fontSize: "11px", padding: "4px 8px" }}>
@@ -256,9 +257,9 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
       {showCreateModal && (
         <div className={`${styles.modal}`} onClick={() => setShowCreateModal(false)}>
           <div className={`${styles.modalContent}`} onClick={e => e.stopPropagation()}>
-            <h3 style={{ margin: "0 0 16px", color: "#cbd5e1" }}>{t("tenantReports.createTitle")}</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              <label style={{ fontSize: "12px", color: "#94a3b8" }}>{t("tenantReports.nameLabel")}</label>
+            <h3 className={ta.rep_5}>{t("tenantReports.createTitle")}</h3>
+            <div className={ta.rep_6}>
+              <label className={ta.rep_7}>{t("tenantReports.nameLabel")}</label>
               <input
                 type="text"
                 value={formData.name}
@@ -266,7 +267,7 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
                 className={`${styles.input}`}
                 placeholder={t("tenantReports.namePlaceholder")}
               />
-              <label style={{ fontSize: "12px", color: "#94a3b8" }}>{t("tenantReports.typeLabel")}</label>
+              <label className={ta.rep_8}>{t("tenantReports.typeLabel")}</label>
               <select
                 value={formData.report_type}
                 onChange={e => setFormData(prev => ({ ...prev, report_type: e.target.value }))}
@@ -276,7 +277,7 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
                   <option key={type} value={type}>{getReportTypeLabel(type, t)}</option>
                 ))}
               </select>
-              <label style={{ fontSize: "12px", color: "#94a3b8" }}>{t("tenantReports.scheduleLabel")}</label>
+              <label className={ta.rep_9}>{t("tenantReports.scheduleLabel")}</label>
               <select
                 value={formData.schedule}
                 onChange={e => setFormData(prev => ({ ...prev, schedule: e.target.value }))}
@@ -286,10 +287,10 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
                   <option key={sch} value={sch}>{getScheduleLabel(sch, t)}</option>
                 ))}
               </select>
-              <label style={{ fontSize: "12px", color: "#94a3b8" }}>{t("tenantReports.formatLabel")}</label>
-              <div style={{ display: "flex", gap: "12px" }}>
+              <label className={ta.rep_10}>{t("tenantReports.formatLabel")}</label>
+              <div className={ta.rep_11}>
                 {FORMATS.map(fmt => (
-                  <label key={fmt} style={{ fontSize: "13px", color: "#cbd5e1", display: "flex", alignItems: "center", gap: "4px" }}>
+                  <label key={fmt} className={ta.rep_12}>
                     <input
                       type="radio"
                       name="format"
@@ -301,9 +302,9 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
                   </label>
                 ))}
               </div>
-              <label style={{ fontSize: "12px", color: "#94a3b8" }}>{t("tenantReports.recipientsLabel")}</label>
+              <label className={ta.rep_13}>{t("tenantReports.recipientsLabel")}</label>
               {formData.recipients.map((recipient, i) => (
-                <div key={i} style={{ display: "flex", gap: "6px" }}>
+                <div key={i} className={ta.rep_14}>
                   <input
                     type="email"
                     value={recipient}
@@ -335,7 +336,7 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
                   )}
                 </div>
               ))}
-              <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "8px" }}>
+              <div className={ta.rep_15}>
                 <button onClick={() => setShowCreateModal(false)} className={`${styles.button} ${styles.buttonSecondary}`}>
                   {t("tenantReports.cancelAction")}
                 </button>

@@ -1,4 +1,5 @@
 import styles from "../../components/ShellPageTemplate.module.css";
+import ta from "./TenantAdmin.module.css";
 import { ReactNode, useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
@@ -46,8 +47,8 @@ interface FieldCardProps {
 function FieldCard({ label, value }: FieldCardProps): ReactNode {
   return (
     <div className={`${styles.listItem}`}>
-      <p className={`${styles.itemMeta}`} style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#94a3b8" }}>{label}</p>
-      <p style={{ margin: "4px 0 0", fontSize: "14px", fontWeight: 500, color: "#cbd5e1" }}>{value}</p>
+      <p className={[`${styles.itemMeta}`, ta.bill_1].filter(Boolean).join(" ")} style={{ fontSize: "11px", color: "#94a3b8" }}>{label}</p>
+      <p className={ta.bill_2}>{value}</p>
     </div>
   );
 }
@@ -78,9 +79,9 @@ function CostTrendChart({ data, currency, projectedNext, projectedChangePct, tt 
   const avg = data.length > 0 ? total / data.length : 0;
   return (
     <div>
-      <div style={{ display: "flex", gap: "16px", marginBottom: "12px", flexWrap: "wrap" }}>
-        <span style={{ fontSize: "13px", color: "#94a3b8" }}>{tt("tenantBilling.costTotal")}: <strong style={{ color: "#cbd5e1" }}>{total.toLocaleString()} {currency}</strong></span>
-        <span style={{ fontSize: "13px", color: "#94a3b8" }}>{tt("tenantBilling.costAvg")}: <strong style={{ color: "#cbd5e1" }}>{avg.toLocaleString()} {currency}</strong></span>
+      <div className={ta.bill_3}>
+        <span className={ta.bill_4}>{tt("tenantBilling.costTotal")}: <strong className={ta.bill_5}>{total.toLocaleString()} {currency}</strong></span>
+        <span className={ta.bill_6}>{tt("tenantBilling.costAvg")}: <strong className={ta.bill_7}>{avg.toLocaleString()} {currency}</strong></span>
       </div>
       <ResponsiveContainer width="100%" height={200}>
         <BarChart data={data}>
@@ -94,7 +95,7 @@ function CostTrendChart({ data, currency, projectedNext, projectedChangePct, tt 
         </BarChart>
       </ResponsiveContainer>
       {projectedNext != null && projectedChangePct != null && projectedChangePct > 20 && (
-        <div style={{ marginTop: "12px", padding: "10px 14px", background: "#1e3a5f", border: "1px solid #2563eb", borderRadius: "8px", fontSize: "13px", color: "#93c5fd" }}>
+        <div className={ta.bill_8}>
           {tt("tenantBilling.costForecast", { projected: projectedNext.toLocaleString(), pct: projectedChangePct })}
         </div>
       )}
@@ -275,10 +276,10 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
                 value={invoices.find(i => i.payment_method)?.payment_method || t("common.notAvailable")}
               />
               <div className={`${styles.listItem}`}>
-                <p className={`${styles.itemMeta}`} style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#94a3b8", marginBottom: 8 }}>
+                <p className={[`${styles.itemMeta}`, ta.bill_9].filter(Boolean).join(" ")} style={{ fontSize: "11px", color: "#94a3b8", marginBottom: 8 }}>
                   {t("tenantBilling.billingCycleLabel")}
                 </p>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <div className={ta.bill_10}>
                   {subscription?.auto_renew !== undefined && (
                     <span className={`${styles.pill}`} style={{
                       background: subscription.auto_renew ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)",
@@ -292,15 +293,15 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
               </div>
               <button
                 onClick={() => setShowPaymentForm(!showPaymentForm)}
-                className={`${styles.button}`}
-                style={{ fontSize: 12, fontWeight: 600, justifySelf: "start" }}
+                className={[`${styles.button}`, ta.bill_11].filter(Boolean).join(" ")}
+                style={{ fontSize: 12, fontWeight: 600 }}
               >
                 {showPaymentForm ? t("common.cancel") : t("tenantBilling.updatePaymentMethod")}
               </button>
             </div>
             {showPaymentForm && (
-              <div style={{ marginTop: 16, padding: 16, background: "rgba(0,180,216,0.04)", border: "1px solid rgba(0,180,216,0.15)", borderRadius: 10 }}>
-                <p style={{ fontSize: 13, color: "#94a3b8", margin: "0 0 12px" }}>
+              <div className={ta.bill_12}>
+                <p className={ta.bill_13}>
                   {t("tenantBilling.paymentFormInstruction")}
                 </p>
                 <button
@@ -336,15 +337,15 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
           </ShellPanel>
 
           <ShellPanel title={t("tenantBilling.invoiceTitle")} subtitle={`${invoices.length}`}>
-            <div className={`${styles.list}`} style={{ maxHeight: "400px", overflowY: "auto" }}>
+            <div className={[`${styles.list}`, ta.bill_14].filter(Boolean).join(" ")} >
               {invoices.length === 0 ? (
                 <ShellEmptyState description={t("tenantBilling.invoiceEmpty")} />
               ) : (
                 invoices.map(invoice => (
                   <div
                     key={invoice.id}
-                    className={`${styles.listItem}`}
-                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                    className={[`${styles.listItem}`, ta.bill_15].filter(Boolean).join(" ")}
+                    
                   >
                     <div>
                       <div className={`${styles.itemTitle}`} style={{ fontSize: "14px" }}>{invoice.invoice_number}</div>
@@ -352,19 +353,19 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
                         {t("tenantBilling.issueDateLabel")}: {formatDateField(invoice.issue_date, fmtDate)}
                       </div>
                       <div
-                        className={`${styles.itemMeta}`}
-                        style={{ fontWeight: 600, color: invoice.status === "paid" ? "#22c55e" : "#ff7f50", marginTop: "4px" }}
+                        className={[`${styles.itemMeta}`, ta.bill_16].filter(Boolean).join(" ")}
+                        style={{ color: invoice.status === "paid" ? "#22c55e" : "#ff7f50", marginTop: "4px" }}
                       >
                         {invoice.status === "paid" ? t("tenantBilling.paidLabel") : t("tenantBilling.pendingLabel")}
                       </div>
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div className={ta.bill_17}>
+                      <div className={ta.bill_18}>
                         <span className={`${styles.itemTitle}`} style={{ fontSize: "14px" }}>{formatCurrency(invoice.total_amount, fmtCurrency, t)}</span>
                         <button
                           onClick={() => handleDownloadInvoice(invoice.id)}
-                          className={`${styles.button}`}
-                          style={{ fontSize: 11, padding: "4px 8px", background: "rgba(0,180,216,0.1)", border: "1px solid rgba(0,180,216,0.2)", color: "#00b4d8" }}
+                          className={[`${styles.button}`, ta.bill_19].filter(Boolean).join(" ")}
+                          style={{ fontSize: 11, padding: "4px 8px", border: "1px solid rgba(0,180,216,0.2)" }}
                           title={t("tenantBilling.downloadInvoice")}
                         >
                           ↓
@@ -404,16 +405,16 @@ function PlanComparisonTable({ planCode, t }: { planCode: string; t: (k: string,
   ];
 
   return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse", minWidth: 500 }}>
+    <div className={ta.bill_20}>
+      <table className={ta.bill_21}>
         <thead>
-          <tr style={{ color: "#94a3b8", textAlign: "left", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <th style={{ padding: "8px 10px", fontWeight: 600 }}>{t("tenantBilling.rowName")}</th>
+          <tr className={ta.bill_22}>
+            <th className={ta.bill_23}>{t("tenantBilling.rowName")}</th>
             {plans.map(p => (
-              <th key={p} style={{ padding: "8px 10px", fontWeight: 600 }}>
+              <th key={p} className={ta.bill_24}>
                 {t(`tenantBilling.column${p.charAt(0).toUpperCase() + p.slice(1)}`)}
                 {p === planCode && (
-                  <span style={{ fontSize: 10, color: "#00b4d8", fontWeight: 700, marginLeft: 6 }}>
+                  <span className={ta.bill_25}>
                     {t("tenantBilling.currentPlanBadge")}
                   </span>
                 )}
@@ -423,10 +424,10 @@ function PlanComparisonTable({ planCode, t }: { planCode: string; t: (k: string,
         </thead>
         <tbody>
           {rows.map(row => (
-            <tr key={row.labelKey} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-              <td style={{ padding: "8px 10px", color: "#cbd5e1" }}>{t(`tenantBilling.${row.labelKey}`)}</td>
+            <tr key={row.labelKey} className={ta.bill_26}>
+              <td className={ta.bill_27}>{t(`tenantBilling.${row.labelKey}`)}</td>
               {plans.map(p => (
-                <td key={p} style={{ padding: "8px 10px", color: "#94a3b8" }}>
+                <td key={p} className={ta.bill_28}>
                   {resolvePlanValue(row.valueKey, p, planCode, t)}
                 </td>
               ))}
@@ -549,8 +550,8 @@ function PreviewPlanChange({ planCode, t, operatorClient }: { planCode: string; 
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 12, alignItems: "flex-end", marginBottom: 12 }}>
-        <div className="fieldGroup" style={{ flex: 1 }}>
+      <div className={ta.bill_29}>
+        <div className={["fieldGroup", ta.bill_30].filter(Boolean).join(" ")} >
           <label className="fieldLabel">{t("tenantBilling.previewTargetPlan")}</label>
           <select
             className={`${styles.input}`}
@@ -574,15 +575,15 @@ function PreviewPlanChange({ planCode, t, operatorClient }: { planCode: string; 
         </button>
       </div>
 
-      {previewError && <div style={{ color: "#ef4444", fontSize: 12, marginBottom: 8 }}>{previewError}</div>}
+      {previewError && <div className={ta.bill_31}>{previewError}</div>}
 
       {previewResult && (
-        <div style={{ background: "#1e3a5f", border: "1px solid #2563eb", borderRadius: 8, padding: "12px 16px", fontSize: 13 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-            <div><strong style={{ color: "#94a3b8" }}>{t("tenantBilling.previewCurrentPlan")}:</strong> <span style={{ color: "#cbd5e1" }}>{planCode}</span></div>
-            <div><strong style={{ color: "#94a3b8" }}>{t("tenantBilling.previewTargetPlan")}:</strong> <span style={{ color: "#cbd5e1" }}>{targetPlan}</span></div>
+        <div className={ta.bill_32}>
+          <div className={ta.bill_33}>
+            <div><strong className={ta.bill_34}>{t("tenantBilling.previewCurrentPlan")}:</strong> <span className={ta.bill_35}>{planCode}</span></div>
+            <div><strong className={ta.bill_36}>{t("tenantBilling.previewTargetPlan")}:</strong> <span className={ta.bill_37}>{targetPlan}</span></div>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+          <div className={ta.bill_38}>
             <button
               onClick={handleUpgrade}
               className={`${styles.button} ${styles.buttonPrimary}`}

@@ -1,4 +1,5 @@
 import styles from "../../components/ShellPageTemplate.module.css";
+import ta from "./TenantAdmin.module.css";
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField, ShellSelectField } from "../../components/ShellPageTemplate.js";
@@ -284,7 +285,7 @@ export function TenantAdminPATsPage({
         description={t("common.loading")}
       >
         <ShellSkeleton variant="metric" count={2} />
-        <div style={{ height: 16 }} />
+        <div className={ta.pats_1} />
         <ShellSkeleton variant="table-row" count={5} />
       </ShellPageChrome>
     );
@@ -355,33 +356,14 @@ export function TenantAdminPATsPage({
           {secretReveal && (
             <div
               role="presentation"
-              style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: "rgba(0,0,0,0.8)",
-                backdropFilter: "blur(8px)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 1100,
-              }}
+              className={ta.pats_2}
             >
               <div
-                className={`${styles.surfaceCard}`}
-                style={{
-                  border: "1px solid rgba(34,197,94,0.3)",
-                  padding: "28px",
-                  width: "100%",
-                  maxWidth: "550px",
-                  background: "rgba(15,23,42,0.95)",
-                  boxShadow: "0 20px 25px -5px rgba(0,0,0,0.5)",
-                }}
+                className={[`${styles.surfaceCard}`, ta.pats_3].filter(Boolean).join(" ")}
+                style={{ border: "1px solid rgba(34,197,94,0.3)", padding: "28px", background: "rgba(15,23,42,0.95)", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.5)" }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-                  <span style={{ fontSize: "24px" }}>🔑</span>
+                <div className={ta.pats_4}>
+                  <span className={ta.pats_5}>🔑</span>
                   <h3 className={`${styles.itemTitle}`} style={{ color: "#22c55e", fontSize: "20px", margin: 0 }}>
                     {t("tenantPats.secretTitle")}
                   </h3>
@@ -390,38 +372,20 @@ export function TenantAdminPATsPage({
                   {t("tenantPats.secretHint")}
                 </p>
                 <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    background: "rgba(0,0,0,0.4)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: "10px",
-                    padding: "12px 16px",
-                    marginBottom: "24px",
-                  }}
+                  className={ta.pats_6}
                 >
-                  <code style={{ flex: 1, color: "#38bdf8", fontSize: "14px", wordBreak: "break-all", fontFamily: "monospace", fontWeight: "600" }}>
+                  <code className={ta.pats_7}>
                     {secretReveal.secret}
                   </code>
                   <button
                     onClick={() => handleCopyToken(secretReveal.secret)}
-                    className={`${styles.button}`}
-                    style={{
-                      background: copySuccess ? "rgba(34,197,94,0.2)" : "rgba(0,180,216,0.2)",
-                      border: copySuccess ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(0,180,216,0.3)",
-                      color: copySuccess ? "#22c55e" : "#00b4d8",
-                      fontWeight: 600,
-                      fontSize: "12px",
-                      padding: "8px 16px",
-                      borderRadius: "6px",
-                      whiteSpace: "nowrap",
-                    }}
+                    className={[`${styles.button}`, ta.pats_8].filter(Boolean).join(" ")}
+                    style={{ background: copySuccess ? "rgba(34,197,94,0.2)" : "rgba(0,180,216,0.2)", border: copySuccess ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(0,180,216,0.3)", color: copySuccess ? "#22c55e" : "#00b4d8", fontWeight: 600, fontSize: "12px", padding: "8px 16px", borderRadius: "6px" }}
                   >
                     {copySuccess ? t("tenantPats.copySuccess") : t("tenantPats.copyTokenAction")}
                   </button>
                 </div>
-                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <div className={ta.pats_9}>
                   <button
                     onClick={() => setSecretReveal(null)}
                     className={`${styles.button} ${styles.buttonPrimary}`}
@@ -443,31 +407,13 @@ export function TenantAdminPATsPage({
           {usagePat && (
             <div
               role="presentation"
-              style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: "rgba(0,0,0,0.7)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 1000,
-              }}
+              className={ta.pats_10}
               onClick={() => setUsagePat(null)}
               onKeyDown={(e) => { if (e.key === 'Escape') setUsagePat(null); }}
             >
               <div
-                className={`${styles.surfaceCard}`}
-                style={{
-                  border: "1px solid rgba(168,85,247,0.3)",
-                  padding: "24px",
-                  width: "100%",
-                  maxWidth: "640px",
-                  maxHeight: "90vh",
-                  overflow: "auto",
-                }}
+                className={[`${styles.surfaceCard}`, ta.pats_11].filter(Boolean).join(" ")}
+                style={{ border: "1px solid rgba(168,85,247,0.3)", padding: "24px" }}
                 onClick={e => e.stopPropagation()}
               >
                 <div className={`${styles.listItemHeader}`} style={{ marginBottom: "16px" }}>
@@ -476,39 +422,39 @@ export function TenantAdminPATsPage({
                   </h3>
                   <button
                     onClick={() => setUsagePat(null)}
-                    className={`${styles.button}`}
-                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid var(--border-shell)", fontSize: "12px" }}
+                    className={[`${styles.button}`, ta.pats_12].filter(Boolean).join(" ")}
+                    style={{ border: "1px solid var(--border-shell)", fontSize: "12px" }}
                   >
                     {t("tenantPats.closeAction")}
                   </button>
                 </div>
 
                 {usageLoading && (
-                  <div style={{ padding: 24, textAlign: "center", color: "var(--text-secondary)" }}>{t("common.loading")}</div>
+                  <div className={ta.pats_13}>{t("common.loading")}</div>
                 )}
                 {usageError && (
-                  <div style={{ padding: 16, color: "#ef4444", fontSize: 13 }}>{usageError}</div>
+                  <div className={ta.pats_14}>{usageError}</div>
                 )}
                 {usageData && !usageLoading && (
-                  <div style={{ display: "grid", gap: 16 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", fontSize: "13px" }}>
+                  <div className={ta.pats_15}>
+                    <div className={ta.pats_16}>
                       <div>
                         <div className={`${styles.itemMeta}`} style={{ fontSize: 11 }}>{t("tenantPats.totalCalls", { defaultValue: "Total calls (30d)" })}</div>
-                        <span style={{ color: "#cbd5e1", fontWeight: 600 }}>{usageData.total_calls}</span>
+                        <span className={ta.pats_17}>{usageData.total_calls}</span>
                       </div>
                       <div>
                         <div className={`${styles.itemMeta}`} style={{ fontSize: 11 }}>{t("tenantPats.uniqueIps", { defaultValue: "Unique IPs" })}</div>
-                        <span style={{ color: "#cbd5e1", fontWeight: 600 }}>{usageData.unique_ips}</span>
+                        <span className={ta.pats_18}>{usageData.unique_ips}</span>
                       </div>
                       <div>
                         <div className={`${styles.itemMeta}`} style={{ fontSize: 11 }}>{t("tenantPats.lastUsedLabel", { defaultValue: "Last used" })}</div>
-                        <span style={{ color: "#cbd5e1", fontSize: 12 }}>{usageData.last_used_at ? fmtDateTime(usageData.last_used_at) : t("tenantPats.neverUsed", { defaultValue: "Never" })}</span>
+                        <span className={ta.pats_19}>{usageData.last_used_at ? fmtDateTime(usageData.last_used_at) : t("tenantPats.neverUsed", { defaultValue: "Never" })}</span>
                       </div>
                     </div>
 
                     <div>
                       <div className={`${styles.itemMeta}`} style={{ fontSize: 12, marginBottom: 6 }}>{t("tenantPats.statusBreakdown", { defaultValue: "Status breakdown" })}</div>
-                      <div style={{ display: "flex", gap: 8 }}>
+                      <div className={ta.pats_20}>
                         {(['2xx', '4xx', '5xx'] as const).map(k => (
                           <span key={k} className={`${styles.pill}`} style={{
                             background: k === '2xx' ? 'rgba(34,197,94,0.2)' : k === '4xx' ? 'rgba(234,179,8,0.2)' : 'rgba(239,68,68,0.2)',
@@ -523,19 +469,19 @@ export function TenantAdminPATsPage({
 
                     <div>
                       <div className={`${styles.itemMeta}`} style={{ fontSize: 12, marginBottom: 6 }}>{t("tenantPats.timeline", { defaultValue: "Timeline (30d)" })}</div>
-                      <div style={{ display: "grid", gap: 3, maxHeight: 160, overflow: "auto" }}>
+                      <div className={ta.pats_21}>
                         {usageData.timeline.length === 0 ? (
-                          <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t("tenantPats.noUsageData", { defaultValue: "No usage data" })}</span>
+                          <span className={ta.pats_22}>{t("tenantPats.noUsageData", { defaultValue: "No usage data" })}</span>
                         ) : (
                           usageData.timeline.map(p => {
                             const max = Math.max(1, ...usageData.timeline.map(x => x.count));
                             return (
-                              <div key={p.date} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-                                <span style={{ width: 70, color: "#94a3b8" }}>{p.date.slice(5)}</span>
-                                <div style={{ flex: 1, height: 8, background: "rgba(255,255,255,0.06)", borderRadius: 999, overflow: "hidden" }}>
-                                  <div style={{ width: `${(p.count / max) * 100}%`, height: "100%", background: "#a855f7", borderRadius: 999 }} />
+                              <div key={p.date} className={ta.pats_23}>
+                                <span className={ta.pats_24}>{p.date.slice(5)}</span>
+                                <div className={ta.pats_25}>
+                                  <div className={ta.pats_26} style={{ width: `${(p.count / max) * 100}%` }} />
                                 </div>
-                                <span style={{ width: 36, textAlign: "right", color: "#cbd5e1" }}>{p.count}</span>
+                                <span className={ta.pats_27}>{p.count}</span>
                               </div>
                             );
                           })
@@ -545,15 +491,15 @@ export function TenantAdminPATsPage({
 
                     <div>
                       <div className={`${styles.itemMeta}`} style={{ fontSize: 12, marginBottom: 6 }}>{t("tenantPats.topEndpoints", { defaultValue: "Top endpoints" })}</div>
-                      <div className={`${styles.list}`} style={{ maxHeight: 200, overflow: "auto" }}>
+                      <div className={[`${styles.list}`, ta.pats_28].filter(Boolean).join(" ")} >
                         {usageData.top_endpoints.length === 0 ? (
-                          <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t("tenantPats.noUsageData", { defaultValue: "No usage data" })}</span>
+                          <span className={ta.pats_29}>{t("tenantPats.noUsageData", { defaultValue: "No usage data" })}</span>
                         ) : (
                           usageData.top_endpoints.map(ep => (
                             <div key={ep.endpoint} className={`${styles.listItem}`} style={{ padding: "8px 0" }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 12 }}>
-                                <code style={{ color: "#cbd5e1", fontSize: 11, wordBreak: "break-all" }}>{ep.endpoint}</code>
-                                <span style={{ color: "#a855f7", fontWeight: 600, whiteSpace: "nowrap" }}>{ep.count}</span>
+                              <div className={ta.pats_30}>
+                                <code className={ta.pats_31}>{ep.endpoint}</code>
+                                <span className={ta.pats_32}>{ep.count}</span>
                               </div>
                             </div>
                           ))
@@ -570,7 +516,7 @@ export function TenantAdminPATsPage({
             <h2 className={`${styles.itemTitle}`} style={{ fontSize: "20px", margin: 0 }}>
               {t("tenantPats.listTitle")}
             </h2>
-            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <div className={ta.pats_33}>
               {tokens.some(t => t.status === "revoked" || t.revoked) && (
                 <button
                   onClick={() => setHideRevoked(!hideRevoked)}
@@ -605,11 +551,11 @@ export function TenantAdminPATsPage({
           </div>
 
           {serviceAccounts.length === 0 && (
-            <div className={`${styles.surfaceCard}`} style={{ border: "1px solid rgba(255,127,80,0.3)", padding: "18px 24px", marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
-              <p className={`${styles.itemMeta}`} style={{ color: "#ff7f50", margin: 0, fontSize: "14px", fontWeight: 500 }}>
+            <div className={[`${styles.surfaceCard}`, ta.pats_34].filter(Boolean).join(" ")} style={{ border: "1px solid rgba(255,127,80,0.3)", padding: "18px 24px" }}>
+              <p className={[`${styles.itemMeta}`, ta.pats_35].filter(Boolean).join(" ")} style={{ color: "#ff7f50", margin: 0, fontSize: "14px" }}>
                 {t("tenantPats.noServiceAccounts")}
               </p>
-              <Link to="/tenant-admin/service-accounts" className={`${styles.button}`} style={{ background: "rgba(255,127,80,0.15)", border: "1px solid rgba(255,127,80,0.3)", color: "#ff7f50", textDecoration: "none", fontSize: "12px", fontWeight: "600", whiteSpace: "nowrap" }}>
+              <Link to="/tenant-admin/service-accounts" className={[`${styles.button}`, ta.pats_36].filter(Boolean).join(" ")} style={{ border: "1px solid rgba(255,127,80,0.3)", fontSize: "12px", fontWeight: "600" }}>
                 + Tạo Service Account
               </Link>
             </div>
@@ -634,11 +580,11 @@ export function TenantAdminPATsPage({
                     <div key={tokenId} className={`${styles.listItem}`}>
                       <div className={`${styles.listItemHeader}`} style={{ marginBottom: "12px" }}>
                         <div>
-                          <div className={`${styles.itemTitle}`} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <span style={{ fontWeight: 600, fontSize: "15px" }}>
+                          <div className={[`${styles.itemTitle}`, ta.pats_37].filter(Boolean).join(" ")} >
+                            <span className={ta.pats_38}>
                               {token.label || "API Token"}
                             </span>
-                            <code className={`${styles.pill}`} style={{ fontFamily: "monospace" }}>
+                            <code className={[`${styles.pill}`, ta.pats_39].filter(Boolean).join(" ")} >
                               {token.token_prefix}
                             </code>
                           </div>
@@ -657,10 +603,10 @@ export function TenantAdminPATsPage({
                         </span>
                       </div>
 
-                      <div className={`${styles.summaryGrid}`} style={{ gap: "16px", fontSize: "13px", paddingTop: "12px" }}>
+                      <div className={[`${styles.summaryGrid}`, ta.pats_40].filter(Boolean).join(" ")} style={{ gap: "16px" }}>
                         <div>
                           <div className={`${styles.itemMeta}`} style={{ fontSize: "11px" }}>{t("tenantPats.scopesLabel")}</div>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "4px" }}>
+                          <div className={ta.pats_41}>
                             {(token.scope_codes || token.scopes || []).map((sc: string) => (
                               <span key={sc} className={`${styles.pill}`} style={{ background: "rgba(0,180,216,0.1)", color: "#00b4d8" }}>
                                 {sc}
@@ -681,7 +627,7 @@ export function TenantAdminPATsPage({
                             color: isUnusedOver90(token) ? "#eab308" : undefined,
                           }}>
                             {token.last_used_at ? fmtDateTime(token.last_used_at) : (
-                              <span style={{ color: "#eab308" }}>{t("tenantPats.neverUsed")} {"⚠️"}</span>
+                              <span className={ta.pats_42}>{t("tenantPats.neverUsed")} {"⚠️"}</span>
                             )}
                           </span>
                         </div>
@@ -692,33 +638,33 @@ export function TenantAdminPATsPage({
                             color: isExpiringSoon(token) ? "#eab308" : (token.expires_at && new Date(token.expires_at) < new Date() ? "#ef4444" : undefined),
                           }}>
                             {token.expires_at ? fmtDateTime(token.expires_at) : t("tenantPats.neverExpire")}
-                            {isExpiringSoon(token) && <span style={{ marginLeft: 4, fontSize: 11 }}>{"⚠️"}</span>}
+                            {isExpiringSoon(token) && <span className={ta.pats_43}>{"⚠️"}</span>}
                           </span>
                         </div>
                       </div>
 
                       {!isRevoked && (
-                        <div className={`${styles.listItemHeader}`} style={{ gap: "8px", marginTop: "14px", paddingTop: "12px" }}>
+                        <div className={[`${styles.listItemHeader}`, ta.pats_44].filter(Boolean).join(" ")} style={{ gap: "8px" }}>
                           <button
                             onClick={() => handleOpenUsage(token)}
-                            className={`${styles.button}`}
-                            style={{ background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.3)", color: "#a855f7", fontSize: "12px" }}
+                            className={[`${styles.button}`, ta.pats_45].filter(Boolean).join(" ")}
+                            style={{ border: "1px solid rgba(168,85,247,0.3)", fontSize: "12px" }}
                           >
                             {t("tenantPats.usageAction", { defaultValue: "Usage" })}
                           </button>
                           <button
                             onClick={() => handleRotateToken(tokenId!)}
                             disabled={isTokenRotating}
-                            className={`${styles.button}`}
-                            style={{ background: "rgba(0,180,216,0.15)", border: "1px solid rgba(0,180,216,0.3)", color: "#00b4d8", fontSize: "12px" }}
+                            className={[`${styles.button}`, ta.pats_46].filter(Boolean).join(" ")}
+                            style={{ border: "1px solid rgba(0,180,216,0.3)", fontSize: "12px" }}
                           >
                             {isTokenRotating ? t("tenantPats.rotatingAction") : t("tenantPats.rotateAction")}
                           </button>
                           <button
                             onClick={() => handleRevokeToken(tokenId!)}
                             disabled={isTokenRotating}
-                            className={`${styles.button}`}
-                            style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444", fontSize: "12px" }}
+                            className={[`${styles.button}`, ta.pats_47].filter(Boolean).join(" ")}
+                            style={{ border: "1px solid rgba(239,68,68,0.3)", fontSize: "12px" }}
                           >
                             {t("tenantPats.revokeAction")}
                           </button>
@@ -734,31 +680,13 @@ export function TenantAdminPATsPage({
           {showCreateModal && (
             <div
               role="presentation"
-              style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: "rgba(0,0,0,0.7)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 1000,
-              }}
+              className={ta.pats_48}
               onClick={() => setShowCreateModal(false)}
               onKeyDown={(e) => { if (e.key === 'Escape') setShowCreateModal(false); }}
             >
               <div
-                className={`${styles.surfaceCard}`}
-                style={{
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  padding: "24px",
-                  width: "100%",
-                  maxWidth: "550px",
-                  maxHeight: "95vh",
-                  overflow: "auto",
-                }}
+                className={[`${styles.surfaceCard}`, ta.pats_49].filter(Boolean).join(" ")}
+                style={{ border: "1px solid rgba(255,255,255,0.08)", padding: "24px" }}
                 onClick={e => e.stopPropagation()}
               >
                 <h3 className={`${styles.itemTitle}`} style={{ margin: "0 0 20px", fontSize: "18px" }}>
@@ -784,19 +712,19 @@ export function TenantAdminPATsPage({
                     }))}
                   />
                   {selectedSA && (
-                    <div style={{ marginTop: "-12px", marginBottom: "20px", paddingLeft: "4px" }}>
-                      <span style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "6px" }}>
+                    <div className={ta.pats_50}>
+                      <span className={ta.pats_51}>
                         Quyền hạn của Service Account:
                       </span>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                      <div className={ta.pats_52}>
                         {selectedSA.scopes && selectedSA.scopes.length > 0 ? (
                           selectedSA.scopes.map(s => (
-                            <span key={s} className={`${styles.pill}`} style={{ fontSize: "10px", padding: "2px 6px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", color: "#f1f5f9" }}>
+                            <span key={s} className={[`${styles.pill}`, ta.pats_53].filter(Boolean).join(" ")} style={{ fontSize: "10px", padding: "2px 6px", background: "rgba(255,255,255,0.04)", color: "#f1f5f9" }}>
                               {s}
                             </span>
                           ))
                         ) : (
-                          <span style={{ fontSize: "11px", color: "#64748b", fontStyle: "italic" }}>Không có quyền hạn</span>
+                          <span className={ta.pats_54}>Không có quyền hạn</span>
                         )}
                       </div>
                     </div>
@@ -808,7 +736,7 @@ export function TenantAdminPATsPage({
                     value={createForm.expires_at}
                     onChange={e => setCreateForm(prev => ({ ...prev, expires_at: e.target.value }))}
                   />
-                  <div style={{ display: "flex", gap: 6, marginTop: -6, marginBottom: 12 }}>
+                  <div className={ta.pats_55}>
                     {[
                       { label: "30 ngày", offset: 30 },
                       { label: "90 ngày", offset: 90 },
@@ -842,37 +770,28 @@ export function TenantAdminPATsPage({
                               setCreateForm(prev => ({ ...prev, expires_at: local }));
                             }
                           }}
-                          className={`${styles.button}`}
-                          style={{
-                            flex: 1,
-                            fontSize: "11px",
-                            padding: "8px 6px",
-                            background: isActive ? "rgba(0,180,216,0.15)" : "rgba(255,255,255,0.04)",
-                            border: isActive ? "1px solid rgba(0,180,216,0.3)" : "1px solid rgba(255,255,255,0.08)",
-                            color: isActive ? "#00b4d8" : "#94a3b8",
-                            fontWeight: isActive ? 600 : 400,
-                            borderRadius: "6px",
-                          }}
+                          className={[`${styles.button}`, ta.pats_56].filter(Boolean).join(" ")}
+                          style={{ fontSize: "11px", padding: "8px 6px", background: isActive ? "rgba(0,180,216,0.15)" : "rgba(255,255,255,0.04)", border: isActive ? "1px solid rgba(0,180,216,0.3)" : "1px solid rgba(255,255,255,0.08)", color: isActive ? "#00b4d8" : "#94a3b8", fontWeight: isActive ? 600 : 400, borderRadius: "6px" }}
                         >
                           {preset.label}
                         </button>
                       );
                     })}
                   </div>
-                  <div style={{ marginTop: "-6px", marginBottom: "20px", paddingLeft: "4px" }}>
+                  <div className={ta.pats_57}>
                     {createForm.expires_at ? (
-                      <div style={{ fontSize: "11px", color: "#22c55e" }}>
+                      <div className={ta.pats_58}>
                         ✓ Hết hạn vào: <strong>{new Date(createForm.expires_at).toLocaleString("vi-VN")}</strong>
                       </div>
                     ) : (
-                      <div style={{ fontSize: "11px", color: "#eab308" }}>
+                      <div className={ta.pats_59}>
                         ⚠ Hoạt động vô thời hạn (Không khuyến nghị về bảo mật).
                       </div>
                     )}
                   </div>
                   <div className={`${styles.field}`}>
                     <span className={`${styles.fieldLabel}`}>{t("tenantPats.policiesLabel")}</span>
-                    <div style={{ marginBottom: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <div className={ta.pats_60}>
                       {SCOPE_CATEGORIES.map(cat => (
                         <span key={cat.key} className={`${styles.pill}`} style={{ background: "rgba(0,180,216,0.1)", color: "#00b4d8", fontSize: 11 }}>
                           {cat.icon} {t(cat.label)}
@@ -885,7 +804,7 @@ export function TenantAdminPATsPage({
                       allowedScopes={selectedSA?.scopes}
                     />
                   </div>
-                  <div className={`${styles.listItemHeader}`} style={{ gap: "12px", marginTop: "24px" }}>
+                  <div className={[`${styles.listItemHeader}`, ta.pats_61].filter(Boolean).join(" ")} style={{ gap: "12px" }}>
                     <button
                       type="button"
                       onClick={() => setShowCreateModal(false)}

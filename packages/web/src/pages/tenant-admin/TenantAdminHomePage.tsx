@@ -1,4 +1,5 @@
 import styles from "../../components/ShellPageTemplate.module.css";
+import ta from "./TenantAdmin.module.css";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
@@ -53,7 +54,7 @@ function HealthGauge({ score }: { score: number }) {
   const color = score >= 80 ? "#10b981" : score >= 50 ? "#f59e0b" : "#ef4444";
   const glowFilterId = useMemo(() => `gaugeGlow-${Math.floor(Math.random() * 1000000)}`, []);
   return (
-    <div style={{ position: "relative", width: 56, height: 56, flexShrink: 0 }}>
+    <div className={ta.home_1}>
       <svg width="56" height="56" viewBox="0 0 56 56">
         <defs>
           <filter id={glowFilterId} x="-20%" y="-20%" width="140%" height="140%">
@@ -70,13 +71,10 @@ function HealthGauge({ score }: { score: number }) {
           strokeDasharray={`${(score / 100) * 150.8} 150.8`}
           strokeLinecap="round" transform="rotate(-90 28 28)"
           filter={`url(#${glowFilterId})`}
-          style={{ transition: "stroke-dasharray 0.6s ease" }}
+          className={ta.home_2}
         />
       </svg>
-      <span style={{
-        position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 13, fontWeight: 700, color,
-      }}>
+      <span className={ta.home_3} style={{ color }}>
         {score}
       </span>
     </div>
@@ -216,12 +214,12 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
     label: string; value: string; sub?: string; color?: string; gauge?: number;
   }) {
     return (
-      <div className={`${styles.metric}`} style={{ display: "flex", alignItems: "center", gap: 14 }}>
+      <div className={[`${styles.metric}`, ta.home_4].filter(Boolean).join(" ")} >
         {gauge != null && <HealthGauge score={gauge} />}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div className={ta.home_5}>
           <span className={`${styles.metricLabel}`}>{label}</span>
           <div className={`${styles.metricValue}`} style={{ color: color || "var(--text-primary)" }}>{value}</div>
-          {sub && <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>{sub}</div>}
+          {sub && <div className={ta.home_6}>{sub}</div>}
         </div>
       </div>
     );
@@ -323,11 +321,11 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
       <section className={`${styles.stack}`}>
           {/* Trial upgrade prompt */}
           {showTrialBanner && (
-            <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "8px 0" }}>
-              <Link to="/tenant-admin/billing" className={`${styles.button} ${styles.buttonPrimary}`} style={{ fontSize: 12, fontWeight: 700, textDecoration: "none" }}>
+            <div className={ta.home_7}>
+              <Link to="/tenant-admin/billing" className={[`${styles.button} ${styles.buttonPrimary}`, ta.home_8].filter(Boolean).join(" ")} style={{ fontSize: 12, fontWeight: 700 }}>
                 {t("tenantHome.upgradePrompt")}
               </Link>
-              <button onClick={() => setShowDeprovision(true)} className={`${styles.button}`} style={{ fontSize: 12, color: "#ef4444" }}>
+              <button onClick={() => setShowDeprovision(true)} className={[`${styles.button}`, ta.home_9].filter(Boolean).join(" ")} style={{ fontSize: 12 }}>
                 {t("tenantHome.deprovisionAction")}
               </button>
             </div>
@@ -335,30 +333,27 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
 
           {/* Deprovision alert */}
           {deprovisionDone && (
-            <div style={{ background: "#22c55e", color: "#fff", padding: "10px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+            <div className={ta.home_10}>
               {t("tenantHome.deprovisionDone")}
             </div>
           )}
           {deprovisionError && (
-            <div style={{ background: "#ef4444", color: "#fff", padding: "10px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+            <div className={ta.home_11}>
               {deprovisionError}
             </div>
           )}
 
           {/* Deprovision confirmation modal */}
           {showDeprovision && (
-            <div style={{
-              position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex",
-              alignItems: "center", justifyContent: "center", zIndex: 1000,
-            }}>
-              <div style={{ background: "#1e293b", borderRadius: 12, padding: 24, width: "90%", maxWidth: 460 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: "#ef4444" }}>{t("tenantHome.deprovisionConfirmTitle")}</h3>
-                <p style={{ fontSize: 13, color: "#94a3b8", marginBottom: 16, lineHeight: 1.5 }}>{t("tenantHome.deprovisionConfirmBody")}</p>
-                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <div className={ta.home_12}>
+              <div className={ta.home_13}>
+                <h3 className={ta.home_14}>{t("tenantHome.deprovisionConfirmTitle")}</h3>
+                <p className={ta.home_15}>{t("tenantHome.deprovisionConfirmBody")}</p>
+                <div className={ta.home_16}>
                   <button onClick={() => setShowDeprovision(false)} className={`${styles.button} ${styles.buttonSecondary}`} style={{ fontSize: 13 }}>
                     {t("tenantHome.deprovisionCancel")}
                   </button>
-                  <button onClick={handleDeprovision} disabled={deprovisioning} className={`${styles.button}`} style={{ fontSize: 13, fontWeight: 700, color: "#ef4444" }}>
+                  <button onClick={handleDeprovision} disabled={deprovisioning} className={[`${styles.button}`, ta.home_17].filter(Boolean).join(" ")} style={{ fontSize: 13, fontWeight: 700 }}>
                     {deprovisioning ? t("common.saving") : t("tenantHome.deprovisionAction")}
                   </button>
                 </div>
@@ -367,11 +362,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
           )}
 
           {/* KPI Hero Row */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            gap: 14,
-          }}>
+          <div className={ta.home_18}>
             <KpiCard
               label={t("tenantHome.healthLabel")}
               value={summary ? `${summary.health_score}%` : "\u2014"}
@@ -405,27 +396,22 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
             title={t("tenantHome.checklistTitle")}
             subtitle={`${completedItems}/${checklistItems.length} ${t("tenantHome.checklistDone")}`}
           >
-            <div style={{ marginBottom: 12 }}>
+            <div className={ta.home_19}>
               <div className="capProgress">
-                <div className="capProgress__bar" style={{ width: `${checklistPct}%`, background: "var(--accent-shell)" }} />
+                <div className={["capProgress__bar", ta.home_20].filter(Boolean).join(" ")} style={{ width: `${checklistPct}%` }} />
               </div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div className={ta.home_21}>
               {checklistItems.map(item => (
-                <div key={item.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 8, background: "rgba(255,255,255,0.02)" }}>
-                  <span style={{
-                    width: 20, height: 20, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 11, fontWeight: 700,
-                    background: item.done ? "rgba(34,197,94,0.2)" : "rgba(148,163,184,0.15)",
-                    color: item.done ? "#22c55e" : "#64748b",
-                  }}>
+                <div key={item.key} className={ta.home_22}>
+                  <span className={ta.home_23} style={{ background: item.done ? "rgba(34,197,94,0.2)" : "rgba(148,163,184,0.15)", color: item.done ? "#22c55e" : "#64748b" }}>
                     {item.done ? "✓" : "·"}
                   </span>
-                  <span style={{ flex: 1, fontSize: 13, color: item.done ? "var(--text-primary)" : "var(--text-secondary)" }}>
+                  <span className={ta.home_24} style={{ color: item.done ? "var(--text-primary)" : "var(--text-secondary)" }}>
                     {t(item.labelKey)}
                   </span>
                   {item.route && !item.done && (
-                    <Link to={item.route} className={`${styles.button}`} style={{ fontSize: 11, padding: "4px 10px", textDecoration: "none" }}>
+                    <Link to={item.route} className={[`${styles.button}`, ta.home_25].filter(Boolean).join(" ")} style={{ fontSize: 11, padding: "4px 10px" }}>
                       {t("tenantHome.checklistSetup")}
                     </Link>
                   )}
@@ -435,17 +421,13 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
           </ShellPanel>
 
           {/* Usage Trend Chart + Quick Actions */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: summary ? "1.5fr 1fr" : "1fr",
-            gap: 18,
-          }}>
+          <div className={ta.home_26} style={{ gridTemplateColumns: summary ? "1.5fr 1fr" : "1fr" }}>
             <ShellPanel title={t("tenantHome.usageTrendTitle")} actions={trendDays !== 7 ? undefined : trendActions}>
               {trendDays !== 7 && (
-                <div style={{ marginBottom: 12 }}>{trendActions}</div>
+                <div className={ta.home_27}>{trendActions}</div>
               )}
               {usageChartData.length > 0 ? (
-                <div style={{ width: "100%", height: 200 }}>
+                <div className={ta.home_28}>
                   <ResponsiveContainer>
                     <AreaChart data={usageChartData} margin={{ top: 10, right: 6, bottom: 4, left: -16 }}>
                       <defs>
@@ -493,13 +475,13 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
                         type="monotone" dataKey="api_calls" stroke="#00b4d8"
                         fill="url(#apiGrad)" strokeWidth={2.5} dot={false}
                         name={t("tenantHome.apiCallsLabel")}
-                        style={{ filter: "url(#apiGlow)" }}
+                        className={ta.home_29}
                       />
                       <Area
                         type="monotone" dataKey="active_members" stroke="#10b981"
                         fill="url(#memberGrad)" strokeWidth={2.5} dot={false}
                         name={t("tenantHome.activeMembersLabel")}
-                        style={{ filter: "url(#memberGlow)" }}
+                        className={ta.home_30}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -511,19 +493,15 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
 
             {allowedLinks.length > 0 && (
               <ShellPanel title={t("tenantHome.quickActionsTitle")}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div className={ta.home_31}>
                   {allowedLinks.map((entry) => (
                     <Link
                       key={entry.to}
                       to={entry.to}
-                      className={`${styles.listItem}`}
-                      style={{
-                        textDecoration: "none", color: "var(--text-primary)", fontWeight: 600,
-                        display: "flex", alignItems: "center", gap: 10,
-                        transition: "transform 0.2s ease, border-color 0.2s ease",
-                      }}
+                      className={[`${styles.listItem}`, ta.home_32].filter(Boolean).join(" ")}
+                      style={{ transition: "transform 0.2s ease, border-color 0.2s ease" }}
                     >
-                      <span style={{ fontSize: 18 }}>{entry.icon}</span>
+                      <span className={ta.home_33}>{entry.icon}</span>
                       <span>{t(entry.labelKey)}</span>
                     </Link>
                   ))}
@@ -537,10 +515,10 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
             {summary?.recent_events && summary.recent_events.length > 0 ? (
               <div className={`${styles.list}`}>
                 {summary.recent_events.map((ev, i) => (
-                  <div key={`${ev.event_type}-${i}`} className={`${styles.listItem}`} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <span style={{ fontSize: 16, marginTop: 1 }}>{eventIcon(ev.event_type)}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
+                  <div key={`${ev.event_type}-${i}`} className={[`${styles.listItem}`, ta.home_34].filter(Boolean).join(" ")} >
+                    <span className={ta.home_35}>{eventIcon(ev.event_type)}</span>
+                    <div className={ta.home_36}>
+                      <div className={ta.home_37}>
                         {eventLabel(ev.event_type, t)}
                       </div>
                       {ev.description && (
@@ -548,7 +526,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
                           {ev.description}
                         </div>
                       )}
-                      <div style={{ display: "flex", gap: 12, marginTop: 4, fontSize: 11, color: "#94a3b8" }}>
+                      <div className={ta.home_38}>
                         {ev.actor && <span>{ev.actor}</span>}
                         <span>{timeAgo(ev.created_at, t)}</span>
                       </div>
@@ -563,62 +541,38 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
 
           {/* Status Summary */}
           {summary && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
-              <div className={`${styles.listItem}`} style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <span style={{ fontSize: 22, background: "rgba(255,255,255,0.04)", width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,0.06)" }}>🔧</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6, color: "var(--text-primary)" }}>
+            <div className={ta.home_39}>
+              <div className={[`${styles.listItem}`, ta.home_40].filter(Boolean).join(" ")} >
+                <span className={ta.home_41}>🔧</span>
+                <div className={ta.home_42}>
+                  <div className={ta.home_43}>
                     {t("tenantHome.serviceAccountsLabel")}
                     {summary.service_accounts.active > 0 && (
-                      <span style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                        fontSize: 9,
-                        fontWeight: 800,
-                        color: "#10b981",
-                        background: "rgba(16, 185, 129, 0.12)",
-                        padding: "2px 6px",
-                        borderRadius: 999,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
-                      }}>
-                        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#10b981", boxShadow: "0 0 6px #10b981" }} />
+                      <span className={ta.home_44}>
+                        <span className={ta.home_45} />
                         {t("tenantHome.active")}
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>
+                  <div className={ta.home_46}>
                     {summary.service_accounts.active} {t("tenantHome.active")}
                     {summary.service_accounts.disabled > 0 && `, ${summary.service_accounts.disabled} ${t("tenantHome.disabled")}`}
                   </div>
                 </div>
               </div>
-              <div className={`${styles.listItem}`} style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <span style={{ fontSize: 22, background: "rgba(255,255,255,0.04)", width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,0.06)" }}>⏳</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6, color: "var(--text-primary)" }}>
+              <div className={[`${styles.listItem}`, ta.home_47].filter(Boolean).join(" ")} >
+                <span className={ta.home_48}>⏳</span>
+                <div className={ta.home_49}>
+                  <div className={ta.home_50}>
                     {t("tenantHome.patsExpiringLabel")}
                     {summary.pats_expiring_soon > 0 && (
-                      <span style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                        fontSize: 9,
-                        fontWeight: 800,
-                        color: "#f59e0b",
-                        background: "rgba(245, 158, 11, 0.12)",
-                        padding: "2px 6px",
-                        borderRadius: 999,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
-                      }}>
-                        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#f59e0b", boxShadow: "0 0 6px #f59e0b" }} />
+                      <span className={ta.home_51}>
+                        <span className={ta.home_52} />
                         {t("tenantUsage.warningLabel") || "WARNING"}
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: 12, color: summary.pats_expiring_soon > 0 ? "#f59e0b" : "var(--text-secondary)", marginTop: 2 }}>
+                  <div className={ta.home_53} style={{ color: summary.pats_expiring_soon > 0 ? "#f59e0b" : "var(--text-secondary)" }}>
                     {summary.pats_expiring_soon > 0
                       ? `${summary.pats_expiring_soon} ${t("tenantHome.expiringWithin7Days")}`
                       : t("tenantHome.noneExpiring")}

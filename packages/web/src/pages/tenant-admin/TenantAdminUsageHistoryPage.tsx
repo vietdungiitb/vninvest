@@ -1,4 +1,5 @@
 import styles from "../../components/ShellPageTemplate.module.css";
+import ta from "./TenantAdmin.module.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Area,
@@ -134,7 +135,7 @@ export function TenantAdminUsageHistoryPage({
         description={t("common.loading")}
       >
         <ShellSkeleton variant="metric" count={2} />
-        <div style={{ height: 16 }} />
+        <div className={ta.uhist_1} />
         <ShellSkeleton variant="table-row" count={5} />
       </ShellPageChrome>
     );
@@ -208,21 +209,12 @@ export function TenantAdminUsageHistoryPage({
   );
 
   const meterSelector = (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+    <div className={ta.uhist_2}>
       {METER_CODES.map((m) => (
         <button
           key={m.code}
           onClick={() => setSelectedMeter(m.code)}
-          style={{
-            background: selectedMeter === m.code ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)",
-            color: selectedMeter === m.code ? "var(--accent-shell)" : "var(--text-primary)",
-            border: selectedMeter === m.code ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)",
-            borderRadius: 12,
-            padding: "6px 12px",
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
+          className={ta.uhist_3} style={{ background: selectedMeter === m.code ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)", color: selectedMeter === m.code ? "var(--accent-shell)" : "var(--text-primary)", border: selectedMeter === m.code ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)" }}
         >
           {t(m.labelKey, { defaultValue: m.code })}
         </button>
@@ -243,10 +235,10 @@ export function TenantAdminUsageHistoryPage({
         </ShellPanel>
 
         <ShellPanel title={t("tenantUsageHistory.chartTitle")} actions={chartTypeButtons}>
-          <div style={{ display: "flex", gap: 16, marginBottom: 12 }}>{daysButtons}</div>
+          <div className={ta.uhist_4}>{daysButtons}</div>
 
           {chartData.length > 0 ? (
-            <div style={{ width: "100%", height: 280 }}>
+            <div className={ta.uhist_5}>
               <ResponsiveContainer>
                 {chartType === "area" ? (
                   <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 4, left: -16 }}>
@@ -302,22 +294,22 @@ export function TenantAdminUsageHistoryPage({
                   <div className={`${styles.listItemHeader}`}>
                     <div>
                       <div className={`${styles.itemTitle}`}>{h.display_name}</div>
-                      <code style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginTop: "2px", fontFamily: "monospace" }}>
+                      <code className={ta.uhist_6}>
                         {h.meter_code}
                       </code>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div className={ta.uhist_7}>
                       <div>
-                        <span className={`${styles.itemMeta}`} style={{ display: "block", fontSize: "11px" }}>
+                        <span className={[`${styles.itemMeta}`, ta.uhist_8].filter(Boolean).join(" ")} style={{ fontSize: "11px" }}>
                           {t("tenantUsageHistory.totalConsumed")}
                         </span>
-                        <span style={{ color: "#cbd5e1", fontWeight: 600 }}>{fmtNumber(h.daily.reduce((s, d) => s + d.consumed, 0))}</span>
+                        <span className={ta.uhist_9}>{fmtNumber(h.daily.reduce((s, d) => s + d.consumed, 0))}</span>
                       </div>
                       <div>
-                        <span className={`${styles.itemMeta}`} style={{ display: "block", fontSize: "11px" }}>
+                        <span className={[`${styles.itemMeta}`, ta.uhist_10].filter(Boolean).join(" ")} style={{ fontSize: "11px" }}>
                           {t("tenantUsageHistory.avgDaily")}
                         </span>
-                        <span style={{ color: "#cbd5e1", fontWeight: 600 }}>
+                        <span className={ta.uhist_11}>
                           {fmtNumber(Math.round(h.daily.reduce((s, d) => s + d.consumed, 0) / Math.max(h.daily.length, 1)))}
                         </span>
                       </div>

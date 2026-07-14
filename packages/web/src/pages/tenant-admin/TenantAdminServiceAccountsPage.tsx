@@ -1,4 +1,5 @@
 import styles from "../../components/ShellPageTemplate.module.css";
+import ta from "./TenantAdmin.module.css";
 import { useEffect, useState } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField, ShellSelectField } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
@@ -194,10 +195,10 @@ export function TenantAdminServiceAccountsPage({
               </button>
             }
           >
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div className={ta.sa_1}>
+              <table className={ta.sa_2}>
                 <thead>
-                  <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                  <tr className={ta.sa_3}>
                     {[
                       t("tenantServiceAccounts.tableHeaderName"),
                       t("tenantServiceAccounts.tableHeaderEnvironment"),
@@ -206,7 +207,7 @@ export function TenantAdminServiceAccountsPage({
                       t("tenantServiceAccounts.tableHeaderCreatedAt"),
                       t("tenantServiceAccounts.tableHeaderActions"),
                     ].map(h => (
-                      <th key={h} style={{ padding: "12px", textAlign: "left", color: "#94a3b8", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                      <th key={h} className={ta.sa_4}>
                         {h}
                       </th>
                     ))}
@@ -215,7 +216,7 @@ export function TenantAdminServiceAccountsPage({
                 <tbody>
                   {serviceAccounts.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ padding: "24px", textAlign: "center" }}>
+                      <td colSpan={6} className={ta.sa_5}>
                         <ShellEmptyState description={t("tenantServiceAccounts.emptyState")} ctaLabel={t("tenantServiceAccounts.createTitle")} ctaOnClick={() => setShowCreateModal(true)} />
                       </td>
                     </tr>
@@ -226,9 +227,9 @@ export function TenantAdminServiceAccountsPage({
                       const isProd = environment === "prod";
                       const saId = sa.service_account_id || sa.id;
                       return (
-                        <tr key={saId} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                          <td style={{ padding: "12px", fontWeight: 500 }}>{sa.name}</td>
-                          <td style={{ padding: "12px" }}>
+                        <tr key={saId} className={ta.sa_6}>
+                          <td className={ta.sa_7}>{sa.name}</td>
+                          <td className={ta.sa_8}>
                             <span
                               className={`${styles.pill}`}
                               style={{
@@ -239,7 +240,7 @@ export function TenantAdminServiceAccountsPage({
                               {envLabel}
                             </span>
                           </td>
-                          <td style={{ padding: "12px" }}>
+                          <td className={ta.sa_9}>
                             <span
                               className={`${styles.pill}`}
                               style={{
@@ -250,8 +251,8 @@ export function TenantAdminServiceAccountsPage({
                               {t(`tenantServiceAccounts.statuses.${sa.status}`, { defaultValue: sa.status })}
                             </span>
                           </td>
-                          <td style={{ padding: "12px" }}>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                          <td className={ta.sa_10}>
+                            <div className={ta.sa_11}>
                               {(sa.policy_ids || sa.metadata?.policy_ids || []).map((policy: string) => (
                                 <span
                                   key={policy}
@@ -262,13 +263,13 @@ export function TenantAdminServiceAccountsPage({
                                 </span>
                               ))}
                               {(sa.policy_ids || sa.metadata?.policy_ids || []).length === 0 && (
-                                <span style={{ color: "#94a3b8", fontSize: "12px" }}>{t("tenantServiceAccounts.noPolicies")}</span>
+                                <span className={ta.sa_12}>{t("tenantServiceAccounts.noPolicies")}</span>
                               )}
                             </div>
                           </td>
-                          <td style={{ padding: "12px" }}>{sa.created_at ? fmtDate(sa.created_at) : t("common.notAvailable")}</td>
-                          <td style={{ padding: "12px" }}>
-                            <div style={{ display: "flex", gap: "8px" }}>
+                          <td className={ta.sa_13}>{sa.created_at ? fmtDate(sa.created_at) : t("common.notAvailable")}</td>
+                          <td className={ta.sa_14}>
+                            <div className={ta.sa_15}>
                               <button
                                 onClick={() => handleToggleStatus(sa)}
                                 className={`${styles.button}`}
@@ -286,16 +287,8 @@ export function TenantAdminServiceAccountsPage({
                               </button>
                               <button
                                 onClick={() => handleDeleteSA(saId!)}
-                                className={`${styles.button}`}
-                                style={{
-                                  padding: "6px 12px",
-                                  background: "rgba(255,127,80,0.15)",
-                                  border: "1px solid rgba(255,127,80,0.3)",
-                                  borderRadius: "6px",
-                                  color: "#ff7f50",
-                                  cursor: "pointer",
-                                  fontSize: "12px",
-                                }}
+                                className={[`${styles.button}`, ta.sa_16].filter(Boolean).join(" ")}
+                                style={{ padding: "6px 12px", border: "1px solid rgba(255,127,80,0.3)", borderRadius: "6px", cursor: "pointer", fontSize: "12px" }}
                               >
                                 {t("tenantServiceAccounts.deleteAction")}
                               </button>
@@ -312,34 +305,14 @@ export function TenantAdminServiceAccountsPage({
 
           {showCreateModal && (
             <div
-              style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: "rgba(0,0,0,0.7)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 1000,
-              }}
+              className={ta.sa_17}
               onClick={() => setShowCreateModal(false)}
             >
               <div
-                style={{
-                  background: "#0b0f19",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: "16px",
-                  padding: "24px",
-                  width: "100%",
-                  maxWidth: "500px",
-                  maxHeight: "90vh",
-                  overflow: "auto",
-                }}
+                className={ta.sa_18}
                 onClick={e => e.stopPropagation()}
               >
-                <h3 style={{ margin: "0 0 20px", fontSize: "18px" }}>{t("tenantServiceAccounts.createTitle")}</h3>
+                <h3 className={ta.sa_19}>{t("tenantServiceAccounts.createTitle")}</h3>
                 <form onSubmit={handleCreateSubmit}>
                   <ShellField
                     label={t("tenantServiceAccounts.nameLabel")}
@@ -359,14 +332,14 @@ export function TenantAdminServiceAccountsPage({
                       { key: "dev", label: t("tenantServiceAccounts.environmentOptionDev") },
                     ]}
                   />
-                  <div style={{ marginBottom: "16px" }}>
+                  <div className={ta.sa_20}>
                     <label className={`${styles.fieldLabel}`}>{t("tenantServiceAccounts.policyHeader")}</label>
                     <PolicyCheckboxes
                       selectedPolicies={createForm.policy_ids}
                       onChange={(policies: string[]) => setCreateForm(prev => ({ ...prev, policy_ids: policies }))}
                     />
                   </div>
-                  <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "24px" }}>
+                  <div className={ta.sa_21}>
                     <button
                       type="button"
                       onClick={() => setShowCreateModal(false)}

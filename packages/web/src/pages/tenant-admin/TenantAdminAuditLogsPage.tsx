@@ -1,4 +1,5 @@
 import styles from "../../components/ShellPageTemplate.module.css";
+import ta from "./TenantAdmin.module.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, PieChart, Pie, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField } from "../../components/ShellPageTemplate.js";
@@ -145,7 +146,7 @@ export function TenantAdminAuditLogsPage({
         description={t("common.loading")}
       >
         <ShellSkeleton variant="chart" count={6} />
-        <div style={{ height: 16 }} />
+        <div className={ta.aud_1} />
         <ShellSkeleton variant="card" count={3} />
       </ShellPageChrome>
     );
@@ -205,8 +206,8 @@ export function TenantAdminAuditLogsPage({
           title={t("tenantAuditLogs.filterTitle")}
           subtitle={t("tenantAuditLogs.filterSubtitle")}
         >
-          <form onSubmit={handleFilterSubmit} style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "flex-end" }}>
-            <div style={{ flex: "1 1 200px" }}>
+          <form onSubmit={handleFilterSubmit} className={ta.aud_2}>
+            <div className={ta.aud_3}>
               <div className={`${styles.field}`}>
                 <label className={`${styles.fieldLabel}`}>{t("tenantAuditLogs.eventType")}</label>
                 <select
@@ -221,7 +222,7 @@ export function TenantAdminAuditLogsPage({
                 </select>
               </div>
             </div>
-            <div style={{ flex: "1 1 150px" }}>
+            <div className={ta.aud_4}>
               <ShellField
                 label={t("tenantAuditLogs.fromDate")}
                 name="startDate"
@@ -230,7 +231,7 @@ export function TenantAdminAuditLogsPage({
                 onChange={e => setStartDate(e.target.value)}
               />
             </div>
-            <div style={{ flex: "1 1 150px" }}>
+            <div className={ta.aud_5}>
               <ShellField
                 label={t("tenantAuditLogs.toDate")}
                 name="endDate"
@@ -239,7 +240,7 @@ export function TenantAdminAuditLogsPage({
                 onChange={e => setEndDate(e.target.value)}
               />
             </div>
-            <div style={{ display: "flex", gap: "8px" }}>
+            <div className={ta.aud_6}>
               <button type="submit" className={`${styles.button} ${styles.buttonPrimary}`}>
                 {t("tenantAuditLogs.search")}
               </button>
@@ -253,7 +254,7 @@ export function TenantAdminAuditLogsPage({
         {/* Analytics Row: Pie Chart + Daily Activity */}
         {logs.length > 0 && (<>
           <ShellPanel title={t("tenantAuditLogs.eventBreakdownTitle")} subtitle={t("tenantAuditLogs.statsDisclaimer")}>
-            <div style={{ width: "100%", height: 200 }}>
+            <div className={ta.aud_7}>
               <ResponsiveContainer>
                 <PieChart>
                   <Pie
@@ -283,7 +284,7 @@ export function TenantAdminAuditLogsPage({
 
           <ShellPanel title={t("tenantAuditLogs.dailyActivityTitle")} subtitle={t("tenantAuditLogs.statsDisclaimer")}>
             {dailyActivity.length > 0 ? (
-              <div style={{ width: "100%", height: 200 }}>
+              <div className={ta.aud_8}>
                 <ResponsiveContainer>
                   <BarChart data={dailyActivity} margin={{ top: 8, right: 8, bottom: 4, left: -8 }}>
                     <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
@@ -328,16 +329,16 @@ export function TenantAdminAuditLogsPage({
                       {...(hasDetails ? { role: "button", tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpandLog(log.id); } } } : {})}
                       onClick={() => hasDetails && toggleExpandLog(log.id)}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+                      <div className={ta.aud_9}>
                         <div>
-                          <span className={`${styles.pill}`} style={{ background: "rgba(0,180,216,0.1)", color: "#00b4d8", border: "1px solid rgba(0,180,216,0.2)" }}>
+                          <span className={[`${styles.pill}`, ta.aud_10].filter(Boolean).join(" ")} style={{ background: "rgba(0,180,216,0.1)", color: "#00b4d8" }}>
                             {log.event_type}
                           </span>
                           <span className={`${styles.itemMeta}`} style={{ marginLeft: "12px" }}>
                             {t("tenantAuditLogs.performedBy")}: {log.actor_username || t("tenantAuditLogs.systemName")}
                           </span>
                         </div>
-                        <div className={`${styles.itemMeta}`} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <div className={[`${styles.itemMeta}`, ta.aud_11].filter(Boolean).join(" ")} >
                           {log.ip_address && <span>IP: {log.ip_address}</span>}
                           <span>{fmtDateTime(log.created_at)}</span>
                         </div>
@@ -346,40 +347,40 @@ export function TenantAdminAuditLogsPage({
                       {isExpanded && hasDetails && (
                         <div
                           onClick={e => e.stopPropagation()}
-                          style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "12px", fontSize: "13px" }}
+                          className={ta.aud_12}
                         >
                           {log.metadata ? (
-                            <div style={{ marginBottom: "10px" }}>
-                              <span className={`${styles.itemMeta}`} style={{ fontWeight: 600, fontSize: "11px", textTransform: "uppercase" }}>
+                            <div className={ta.aud_13}>
+                              <span className={[`${styles.itemMeta}`, ta.aud_14].filter(Boolean).join(" ")} style={{ fontSize: "11px" }}>
                                 {t("tenantAuditLogs.metadata")}
                               </span>
-                              <pre style={{ background: "rgba(15,23,42,0.6)", padding: "10px", borderRadius: "6px", overflowX: "auto", margin: "4px 0", color: "#38bdf8", fontFamily: "monospace", fontSize: "12px" }}>
+                              <pre className={ta.aud_15}>
                                 {JSON.stringify(log.metadata, null, 2)}
                               </pre>
                             </div>
                           ) : null}
 
                           {(log.old_value || log.new_value) ? (
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            <div className={ta.aud_16}>
                               <div>
-                                <span className={`${styles.itemMeta}`} style={{ fontWeight: 600, fontSize: "11px", textTransform: "uppercase", color: "#f87171" }}>
+                                <span className={[`${styles.itemMeta}`, ta.aud_17].filter(Boolean).join(" ")} style={{ fontSize: "11px", color: "#f87171" }}>
                                   − {t("tenantAuditLogs.oldValue")}
                                 </span>
-                                <pre style={{ background: "rgba(248,113,113,0.06)", padding: "10px", borderRadius: "6px", overflowX: "auto", margin: "4px 0", color: "#fca5a5", fontFamily: "monospace", fontSize: "12px", borderLeft: "2px solid #f87171" }}>
+                                <pre className={ta.aud_18}>
                                   {log.old_value ? JSON.stringify(log.old_value, null, 2) : "—"}
                                 </pre>
                               </div>
                               <div>
-                                <span className={`${styles.itemMeta}`} style={{ fontWeight: 600, fontSize: "11px", textTransform: "uppercase", color: "#4ade80" }}>
+                                <span className={[`${styles.itemMeta}`, ta.aud_19].filter(Boolean).join(" ")} style={{ fontSize: "11px", color: "#4ade80" }}>
                                   + {t("tenantAuditLogs.newValue")}
                                 </span>
-                                <pre style={{ background: "rgba(74,222,128,0.06)", padding: "10px", borderRadius: "6px", overflowX: "auto", margin: "4px 0", color: "#86efac", fontFamily: "monospace", fontSize: "12px", borderLeft: "2px solid #4ade80" }}>
+                                <pre className={ta.aud_20}>
                                   {log.new_value ? JSON.stringify(log.new_value, null, 2) : "—"}
                                 </pre>
                               </div>
                             </div>
                           ) : (
-                            <div style={{ color: "#94a3b8", fontStyle: "italic", fontSize: 12 }}>
+                            <div className={ta.aud_21}>
                               {t("tenantAuditLogs.noDetails") || "No details available"}
                             </div>
                           )}
@@ -390,7 +391,7 @@ export function TenantAdminAuditLogsPage({
                 })}
 
                 {(prevCursor || nextCursor) && (
-                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: "16px" }}>
+                  <div className={ta.aud_22}>
                     <button
                       onClick={() => prevCursor !== null && loadLogs(prevCursor)}
                       disabled={!prevCursor || loading}

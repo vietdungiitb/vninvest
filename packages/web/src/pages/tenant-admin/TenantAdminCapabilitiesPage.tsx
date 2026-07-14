@@ -1,4 +1,5 @@
 import styles from "../../components/ShellPageTemplate.module.css";
+import ta from "./TenantAdmin.module.css";
 import { Link } from "react-router-dom";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
@@ -115,8 +116,8 @@ export function TenantAdminCapabilitiesPage({}: TenantAdminCapabilitiesPageProps
                 <div className="capCard__value">{planLabel}</div>
                 <div className="capCard__sub">{t("tenantCapabilities.metricAbilityCount")}: {abilities.length}</div>
                 {userPlan !== "enterprise" && (
-                  <div style={{ marginTop: 12 }}>
-                    <Link to="/tenant-admin/billing" className={`${styles.button} ${styles.buttonPrimary}`} style={{ textDecoration: "none", fontWeight: 700, fontSize: 12 }}>
+                  <div className={ta.cap_1}>
+                    <Link to="/tenant-admin/billing" className={[`${styles.button} ${styles.buttonPrimary}`, ta.cap_2].filter(Boolean).join(" ")} style={{ fontWeight: 700, fontSize: 12 }}>
                       {t("tenantCapabilities.upgradeAction")}
                     </Link>
                   </div>
@@ -146,7 +147,7 @@ export function TenantAdminCapabilitiesPage({}: TenantAdminCapabilitiesPageProps
                         <div className="capCard__title">
                           {iconMap[item.key] || "📋"} {item.key.replace(/_/g, " ")}
                         </div>
-                        <div className="capCard__value" style={{ fontSize: 16 }}>
+                        <div className={["capCard__value", ta.cap_3].filter(Boolean).join(" ")} >
                           {formatQuotaValue(item.value, formatNumber, t)}
                         </div>
                       </div>
@@ -172,7 +173,7 @@ export function TenantAdminCapabilitiesPage({}: TenantAdminCapabilitiesPageProps
                   return (
                     <div key={action} className="capAbilityGroup">
                       <div className="capAbilityGroup__header">{action}</div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 12 }}>
+                      <div className={ta.cap_4}>
                         {actionAbilities.map(a => (
                           <span key={a.key} className={`${styles.pill}`} style={{ background: "rgba(167,139,250,0.12)", color: "#a78bfa", fontSize: 11 }}>
                             {a.subject}

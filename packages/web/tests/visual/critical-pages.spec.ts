@@ -19,9 +19,9 @@ for (const viewport of VIEWPORTS) {
 
     for (const pageConfig of PAGES) {
       test(`${pageConfig.name} - visual match`, async ({ page }) => {
-        await page.goto(pageConfig.path, { waitUntil: 'networkidle' });
+        await page.goto(pageConfig.path, { waitUntil: 'load' });
 
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(2000);
 
         await page.addStyleTag({
           content: `

@@ -1,4 +1,5 @@
 import styles from "../../components/ShellPageTemplate.module.css";
+import ta from "./TenantAdmin.module.css";
 import { useEffect, useState, useCallback } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
@@ -256,7 +257,7 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
     return (
       <ShellPageChrome eyebrow={t("tenantWebhooks.eyebrow")} title={t("tenantWebhooks.title")} description={t("common.loading")}>
         <ShellSkeleton variant="metric" count={2} />
-        <div style={{ height: 16 }} />
+        <div className={ta.whk_1} />
         <ShellSkeleton variant="table-row" count={5} />
       </ShellPageChrome>
     );
@@ -285,7 +286,7 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
       <section className={`${styles.stack}`}>
         <style>{WEBHOOK_CSS}</style>
         {canManage && (
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+          <div className={ta.whk_2}>
             <button onClick={openCreate} className={`${styles.button} ${styles.buttonPrimary}`} style={{ fontWeight: 700 }}>
               + {t("tenantWebhooks.createAction")}
             </button>
@@ -304,20 +305,20 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
           configs.map(config => {
             return (
               <ShellPanel key={config.id} title={config.name} actions={
-                <span style={{ color: config.is_active ? "#22c55e" : "#ef4444", fontSize: 12, fontWeight: 700 }}>
+                <span className={ta.whk_3} style={{ color: config.is_active ? "#22c55e" : "#ef4444" }}>
                   {config.is_active ? t("tenantWebhooks.activeLabel") : t("tenantWebhooks.inactiveLabel")}
                 </span>
               }>
-                <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 8 }}>{config.url}</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                <div className={ta.whk_4}>{config.url}</div>
+                <div className={ta.whk_5}>
                   {(config.events || []).slice(0, 5).map(ev => (
-                    <span key={ev} style={{ background: "rgba(0,180,216,0.12)", color: "#00b4d8", padding: "2px 8px", borderRadius: 10, fontSize: 11 }}>{ev}</span>
+                    <span key={ev} className={ta.whk_6}>{ev}</span>
                   ))}
                   {(config.events || []).length > 5 && (
-                    <span style={{ color: "#94a3b8", fontSize: 11 }}>+{config.events.length - 5}</span>
+                    <span className={ta.whk_7}>+{config.events.length - 5}</span>
                   )}
                 </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <div className={ta.whk_8}>
                   {canManage && (
                     <button onClick={() => openEdit(config)} className={`${styles.button} ${styles.buttonSecondary}`} style={{ fontSize: 12 }}>{t("common.edit")}</button>
                   )}
@@ -326,49 +327,46 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
                     <>
                       <button onClick={() => handleTest(config.id)} className={`${styles.button} ${styles.buttonSecondary}`} style={{ fontSize: 12 }}>{t("tenantWebhooks.testAction")}</button>
                       <button onClick={() => handleRegenerate(config.id)} className={`${styles.button} ${styles.buttonSecondary}`} style={{ fontSize: 12 }}>{t("tenantWebhooks.regenerateAction")}</button>
-                      <button onClick={() => handleDelete(config)} className={`${styles.button}`} style={{ fontSize: 12, color: "#ef4444" }}>{t("common.delete")}</button>
+                      <button onClick={() => handleDelete(config)} className={[`${styles.button}`, ta.whk_9].filter(Boolean).join(" ")} style={{ fontSize: 12 }}>{t("common.delete")}</button>
                     </>
                   )}
                 </div>
 
                 {showDeliveryLog === config.id && (
-                  <div style={{ marginTop: 16, borderTop: "1px solid var(--border-shell)", paddingTop: 12 }}>
-                    <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: "#94a3b8" }}>{t("tenantWebhooks.deliveryLog")}</h4>
+                  <div className={ta.whk_10}>
+                    <h4 className={ta.whk_11}>{t("tenantWebhooks.deliveryLog")}</h4>
                     {deliveriesLoading ? (
-                      <div style={{ fontSize: 12, color: "#94a3b8" }}>{t("common.loading")}</div>
+                      <div className={ta.whk_12}>{t("common.loading")}</div>
                     ) : deliveries.length === 0 ? (
-                      <div style={{ fontSize: 12, color: "#94a3b8" }}>{t("tenantWebhooks.deliveryLogEmpty")}</div>
+                      <div className={ta.whk_13}>{t("tenantWebhooks.deliveryLogEmpty")}</div>
                     ) : (
-                      <div style={{ maxHeight: 240, overflowY: "auto" }}>
-                        <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
+                      <div className={ta.whk_14}>
+                        <table className={ta.whk_15}>
                           <thead>
-                            <tr style={{ color: "#94a3b8", textAlign: "left" }}>
-                              <th style={{ padding: "4px 8px" }}>{t("tenantWebhooks.thTime")}</th>
-                              <th style={{ padding: "4px 8px" }}>{t("tenantWebhooks.thEvent")}</th>
-                              <th style={{ padding: "4px 8px" }}>{t("tenantWebhooks.thStatus")}</th>
-                              <th style={{ padding: "4px 8px" }}>HTTP</th>
-                              <th style={{ padding: "4px 8px" }}>{t("tenantWebhooks.thAttempts")}</th>
-                              <th style={{ padding: "4px 8px" }}>{t("tenantWebhooks.thDuration")}</th>
-                              <th style={{ padding: "4px 8px" }}></th>
+                            <tr className={ta.whk_16}>
+                              <th className={ta.whk_17}>{t("tenantWebhooks.thTime")}</th>
+                              <th className={ta.whk_18}>{t("tenantWebhooks.thEvent")}</th>
+                              <th className={ta.whk_19}>{t("tenantWebhooks.thStatus")}</th>
+                              <th className={ta.whk_20}>HTTP</th>
+                              <th className={ta.whk_21}>{t("tenantWebhooks.thAttempts")}</th>
+                              <th className={ta.whk_22}>{t("tenantWebhooks.thDuration")}</th>
+                              <th className={ta.whk_23}></th>
                             </tr>
                           </thead>
                           <tbody>
                             {deliveries.map(d => (
-                              <tr key={d.id} style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-                                <td style={{ padding: "6px 8px", color: "#94a3b8" }}>{fmtDateTime(d.created_at)}</td>
-                                <td style={{ padding: "6px 8px", color: "#cbd5e1" }}>{d.event_type}</td>
-                                <td style={{ padding: "6px 8px" }}>
-                                  <span style={{
-                                    color: d.status === "success" ? "#22c55e" : d.status === "retrying" ? "#f59e0b" : "#ef4444",
-                                    fontWeight: 600,
-                                  }}>
+                              <tr key={d.id} className={ta.whk_24}>
+                                <td className={ta.whk_25}>{fmtDateTime(d.created_at)}</td>
+                                <td className={ta.whk_26}>{d.event_type}</td>
+                                <td className={ta.whk_27}>
+                                  <span className={ta.whk_28} style={{ color: d.status === "success" ? "#22c55e" : d.status === "retrying" ? "#f59e0b" : "#ef4444" }}>
                                     {d.status === "success" ? t("tenantWebhooks.statusSuccess") : d.status === "failed" ? t("tenantWebhooks.statusFailed") : t("tenantWebhooks.statusRetrying")}
                                   </span>
                                 </td>
-                                <td style={{ padding: "6px 8px", color: "#94a3b8" }}>{d.response_code ?? "\u2014"}</td>
-                                <td style={{ padding: "6px 8px", color: "#94a3b8" }}>{d.attempts}</td>
-                                <td style={{ padding: "6px 8px", color: "#94a3b8" }}>{d.duration_ms != null ? `${d.duration_ms}ms` : "\u2014"}</td>
-                                <td style={{ padding: "6px 8px" }}>
+                                <td className={ta.whk_29}>{d.response_code ?? "\u2014"}</td>
+                                <td className={ta.whk_30}>{d.attempts}</td>
+                                <td className={ta.whk_31}>{d.duration_ms != null ? `${d.duration_ms}ms` : "\u2014"}</td>
+                                <td className={ta.whk_32}>
                                   {d.status === "failed" && (
                                     <button
                                       onClick={() => handleRetry(config.id, d.id)}
@@ -387,8 +385,8 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
                     )}
                     <button
                       onClick={() => setShowDeliveryLog(null)}
-                      className={`${styles.button} ${styles.buttonSecondary}`}
-                      style={{ fontSize: 11, marginTop: 8 }}
+                      className={[`${styles.button} ${styles.buttonSecondary}`, ta.whk_33].filter(Boolean).join(" ")}
+                      style={{ fontSize: 11 }}
                     >
                       {t("tenantWebhooks.closeLogAction")}
                     </button>
@@ -401,10 +399,10 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
 
         {secretReveal && (
           <ShellPanel title={t("tenantWebhooks.secretTitle")}>
-            <div style={{ background: "#1e3a5f", border: "1px solid #2563eb", borderRadius: 8, padding: "12px 16px" }}>
-              <p style={{ fontSize: 12, color: "#93c5fd", marginBottom: 8 }}>{t("tenantWebhooks.secretWarning")}</p>
-              <code style={{ fontSize: 13, color: "#e2e8f0", wordBreak: "break-all" }}>{secretReveal}</code>
-              <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+            <div className={ta.whk_34}>
+              <p className={ta.whk_35}>{t("tenantWebhooks.secretWarning")}</p>
+              <code className={ta.whk_36}>{secretReveal}</code>
+              <div className={ta.whk_37}>
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(secretReveal).then(() => {
@@ -423,16 +421,13 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
         )}
 
         {showModal && !secretReveal && (
-          <div style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex",
-            alignItems: "center", justifyContent: "center", zIndex: 1000,
-          }}>
-            <div style={{ background: "#1e293b", borderRadius: 12, padding: 24, width: "90%", maxWidth: 540, maxHeight: "80vh", overflowY: "auto" }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>
+          <div className={ta.whk_38}>
+            <div className={ta.whk_39}>
+              <h3 className={ta.whk_40}>
                 {editingConfig ? t("tenantWebhooks.editTitle") : t("tenantWebhooks.createTitle")}
               </h3>
 
-              <div className="fieldGroup" style={{ marginBottom: 12 }}>
+              <div className={["fieldGroup", ta.whk_41].filter(Boolean).join(" ")} >
                 <label className="fieldLabel">{t("tenantWebhooks.nameLabel")}</label>
                 <input
                   className={`${styles.input}`}
@@ -442,7 +437,7 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
                 />
               </div>
 
-              <div className="fieldGroup" style={{ marginBottom: 12 }}>
+              <div className={["fieldGroup", ta.whk_42].filter(Boolean).join(" ")} >
                 <label className="fieldLabel">{t("tenantWebhooks.urlLabel")}</label>
                 <input
                   className={`${styles.input}`}
@@ -452,7 +447,7 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
                 />
               </div>
 
-              <div className="fieldGroup" style={{ marginBottom: 12 }}>
+              <div className={["fieldGroup", ta.whk_43].filter(Boolean).join(" ")} >
                 <label className="fieldLabel">{t("tenantWebhooks.eventsLabel")}</label>
                 {Object.entries(EVENT_CATEGORIES).map(([cat, catInfo]) => {
                   const catEvents = catInfo.events;
@@ -466,7 +461,7 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
                       </div>
                       {expandedCategories[cat] && (
                         <div className="wbCategoryBody">
-                          <label className="wbEventCheck" style={{ fontWeight: 700 }}>
+                          <label className={["wbEventCheck", ta.whk_44].filter(Boolean).join(" ")} >
                             <input
                               type="checkbox"
                               checked={allSelectedInCat}
@@ -481,7 +476,7 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
                             {t("common.selectAll")}
                           </label>
                           {catInfo.events.map(eventType => (
-                            <label key={eventType} className="wbEventCheck" style={{ paddingLeft: 16 }}>
+                            <label key={eventType} className={["wbEventCheck", ta.whk_45].filter(Boolean).join(" ")} >
                               <input
                                 type="checkbox"
                                 checked={form.events.includes(eventType)}
@@ -497,7 +492,7 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
                 })}
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+              <div className={ta.whk_46}>
                 <div className="fieldGroup">
                   <label className="fieldLabel">{t("tenantWebhooks.retryLabel")}</label>
                   <input className={`${styles.input}`} type="number" min={0} max={10}
@@ -514,8 +509,8 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
                 </div>
               </div>
 
-              <div className="fieldGroup" style={{ marginBottom: 16 }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "#cbd5e1" }}>
+              <div className={["fieldGroup", ta.whk_47].filter(Boolean).join(" ")} >
+                <label className={ta.whk_48}>
                   <input type="checkbox" checked={form.is_active}
                     onChange={e => setForm(p => ({ ...p, is_active: e.target.checked }))}
                   />
@@ -523,7 +518,7 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
                 </label>
               </div>
 
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <div className={ta.whk_49}>
                 <button onClick={() => { setShowModal(false); setSecretReveal(null); }}
                   className={`${styles.button} ${styles.buttonSecondary}`} style={{ fontSize: 13 }}>
                   {t("common.cancel")}

@@ -1,4 +1,5 @@
 import styles from "../../components/ShellPageTemplate.module.css";
+import ta from "./TenantAdmin.module.css";
 import { useCallback, useEffect, useState } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField, ShellSelectField } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
@@ -166,12 +167,7 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
     const initial = (name || "?").charAt(0).toUpperCase();
     const bgColor = `hsl(${name.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) % 360}, 55%, 45%)`;
     return (
-      <div style={{
-        width: size, height: size, borderRadius: "50%", background: bgColor,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: size * 0.45, fontWeight: 700, color: "#fff",
-        flexShrink: 0,
-      }}>
+      <div className={ta.mem_1} style={{ width: size, height: size, background: bgColor, fontSize: size * 0.45 }}>
         {initial}
       </div>
     );
@@ -198,26 +194,18 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
       metrics={metrics}
     >
       <section className={`${styles.stack}`}>
-          <div style={{ display: "flex", gap: "8px", marginBottom: "20px", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: "8px" }}>
+          <div className={ta.mem_2}>
             <button
               onClick={() => setActiveTab("members")}
-              className={`${styles.button}`}
-              style={{
-                background: activeTab === "members" ? "rgba(0,180,216,0.2)" : "rgba(15,23,42,0.5)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                color: "#f1f5f9",
-              }}
+              className={[`${styles.button}`, ta.mem_3].filter(Boolean).join(" ")}
+              style={{ background: activeTab === "members" ? "rgba(0,180,216,0.2)" : "rgba(15,23,42,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
             >
               {`${t("tenantMembers.membersListTitle")} (${searchQuery || roleFilter !== "all" ? `${filteredMembers.length}/${members.length}` : members.length})`}
             </button>
             <button
               onClick={() => setActiveTab("invites")}
-              className={`${styles.button}`}
-              style={{
-                background: activeTab === "invites" ? "rgba(0,180,216,0.2)" : "rgba(15,23,42,0.5)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                color: "#f1f5f9",
-              }}
+              className={[`${styles.button}`, ta.mem_4].filter(Boolean).join(" ")}
+              style={{ background: activeTab === "invites" ? "rgba(0,180,216,0.2)" : "rgba(15,23,42,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
             >
               {`${t("tenantMembers.invitesListTitle")} (${pendingInvites})`}
             </button>
@@ -249,46 +237,46 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder={t("tenantMembers.searchPlaceholder")}
-                  className={`${styles.input}`}
-                  style={{ width: "100%", maxWidth: 320 }}
+                  className={[`${styles.input}`, ta.mem_5].filter(Boolean).join(" ")}
+                  style={{ width: "100%" }}
                 />
               </div>
               <ShellPanel title={t("tenantMembers.membersListTitle")} subtitle={`${filteredMembers.length}/${members.length}`}>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <div className={ta.mem_6}>
+                  <table className={ta.mem_7}>
                     <thead>
-                      <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                      <tr className={ta.mem_8}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_9].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
                           {t("tenantMembers.tableHeaderUsername")}
                         </th>
-                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_10].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
                           {t("tenantMembers.emailLabel")}
                         </th>
-                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_11].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
                           {t("tenantMembers.roleLabel")}
                         </th>
-                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_12].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
                           {t("tenantMembers.inviterLabel")}
                         </th>
-                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_13].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
                           {t("tenantMembers.joinedAtLabel")}
                         </th>
-                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_14].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
                           {t("tenantMembers.tableHeaderActions")}
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredMembers.map(member => (
-                        <tr key={member.member_id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                          <td style={{ padding: "12px", color: "#cbd5e1" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <tr key={member.member_id} className={ta.mem_15}>
+                          <td className={ta.mem_16}>
+                            <div className={ta.mem_17}>
                               <AvatarInitials name={member.username} size={28} />
                               {member.username}
                             </div>
                           </td>
-                          <td style={{ padding: "12px", color: "#cbd5e1" }}>{member.email}</td>
-                          <td style={{ padding: "12px" }}>
+                          <td className={ta.mem_18}>{member.email}</td>
+                          <td className={ta.mem_19}>
                             <span
                               className={`${styles.pill}`}
                               style={roleBadgeStyle(member.role)}
@@ -296,20 +284,14 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                               {roleT(member.role)}
                             </span>
                           </td>
-                          <td style={{ padding: "12px", color: "#cbd5e1" }}>{member.invited_by || t("tenantMembers.invitedBySystem")}</td>
-                          <td style={{ padding: "12px", color: "#cbd5e1" }}>{member.joined_at ? fmtDate(member.joined_at) : t("common.notAvailable")}</td>
-                          <td style={{ padding: "12px" }}>
+                          <td className={ta.mem_20}>{member.invited_by || t("tenantMembers.invitedBySystem")}</td>
+                          <td className={ta.mem_21}>{member.joined_at ? fmtDate(member.joined_at) : t("common.notAvailable")}</td>
+                          <td className={ta.mem_22}>
                             {member.role !== "owner" && (
                               <button
                                 onClick={() => handleRemoveMember(member.member_id)}
-                                className={`${styles.button}`}
-                                style={{
-                                  background: "rgba(255,127,80,0.15)",
-                                  border: "1px solid rgba(255,127,80,0.3)",
-                                  color: "#ff7f50",
-                                  fontSize: "12px",
-                                  padding: "6px 12px",
-                                }}
+                                className={[`${styles.button}`, ta.mem_23].filter(Boolean).join(" ")}
+                                style={{ border: "1px solid rgba(255,127,80,0.3)", fontSize: "12px", padding: "6px 12px" }}
                               >
                                 {t("tenantMembers.removeAction")}
                               </button>
@@ -327,7 +309,7 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
           {activeTab === "invites" && (
             <div>
               <ShellPanel title={t("tenantMembers.inviteTitle")}>
-                <form onSubmit={handleInviteSubmit} style={{ maxWidth: "400px" }}>
+                <form onSubmit={handleInviteSubmit} className={ta.mem_24}>
                   <ShellField
                     label={t("tenantMembers.emailLabel")}
                     name="invited_email"
@@ -350,8 +332,8 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className={`${styles.button} ${styles.buttonPrimary}`}
-                    style={{ width: "100%", marginTop: "16px" }}
+                    className={[`${styles.button} ${styles.buttonPrimary}`, ta.mem_25].filter(Boolean).join(" ")}
+                    
                   >
                     {submitting ? t("tenantMembers.submitting") : t("tenantMembers.inviteAction")}
                   </button>
@@ -359,43 +341,43 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
               </ShellPanel>
 
               <ShellPanel title={t("tenantMembers.invitesListTitle")} subtitle={`${pendingInvites}`}>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <div className={ta.mem_26}>
+                  <table className={ta.mem_27}>
                     <thead>
-                      <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                      <tr className={ta.mem_28}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_29].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
                           {t("tenantMembers.emailLabel")}
                         </th>
-                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_30].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
                           {t("tenantMembers.roleLabel")}
                         </th>
-                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_31].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
                           {t("tenantMembers.inviterLabel")}
                         </th>
-                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_32].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
                           {t("tenantMembers.metricInvites")}
                         </th>
-                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_33].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
                           {t("tenantMembers.expiresAtLabel")}
                         </th>
-                        <th className={`${styles.itemMeta}`} style={{ padding: "12px", textAlign: "left", fontSize: "12px", textTransform: "uppercase" }}>
+                        <th className={[`${styles.itemMeta}`, ta.mem_34].filter(Boolean).join(" ")} style={{ fontSize: "12px" }}>
                           {t("tenantMembers.tableHeaderActions")}
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       {invites.map(invite => (
-                        <tr key={invite.invite_id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                          <td style={{ padding: "12px", color: "#cbd5e1" }}>{invite.invited_email}</td>
-                          <td style={{ padding: "12px", color: "#cbd5e1" }}>{roleT(invite.role)}</td>
-                          <td style={{ padding: "12px", color: "#cbd5e1" }}>{invite.inviter_username || t("common.notAvailable")}</td>
-                          <td style={{ padding: "12px" }}>
+                        <tr key={invite.invite_id} className={ta.mem_35}>
+                          <td className={ta.mem_36}>{invite.invited_email}</td>
+                          <td className={ta.mem_37}>{roleT(invite.role)}</td>
+                          <td className={ta.mem_38}>{invite.inviter_username || t("common.notAvailable")}</td>
+                          <td className={ta.mem_39}>
                             <span className={`${styles.pill}`} style={statusBadgeStyle(invite.status)}>
                               {statusT(invite.status)}
                             </span>
                           </td>
-                          <td style={{ padding: "12px", color: "#cbd5e1" }}>{invite.expires_at ? fmtDate(invite.expires_at) : t("common.notAvailable")}</td>
-                          <td style={{ padding: "12px" }}>
+                          <td className={ta.mem_40}>{invite.expires_at ? fmtDate(invite.expires_at) : t("common.notAvailable")}</td>
+                          <td className={ta.mem_41}>
                               {invite.status === "pending" && (
                               <button
                                 onClick={async () => {
@@ -408,14 +390,8 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                                     toast.error((err as Error).message);
                                   }
                                 }}
-                                className={`${styles.button}`}
-                                style={{
-                                  background: "rgba(255,127,80,0.15)",
-                                  border: "1px solid rgba(255,127,80,0.3)",
-                                  color: "#ff7f50",
-                                  fontSize: "12px",
-                                  padding: "6px 12px",
-                                }}
+                                className={[`${styles.button}`, ta.mem_42].filter(Boolean).join(" ")}
+                                style={{ border: "1px solid rgba(255,127,80,0.3)", fontSize: "12px", padding: "6px 12px" }}
                               >
                                 {t("common.cancel")}
                               </button>

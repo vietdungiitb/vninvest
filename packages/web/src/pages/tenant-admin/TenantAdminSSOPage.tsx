@@ -1,4 +1,5 @@
 import styles from "../../components/ShellPageTemplate.module.css";
+import ta from "./TenantAdmin.module.css";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ShellPageChrome, ShellPanel } from "../../components/ShellPageTemplate.js";
@@ -171,12 +172,8 @@ export function TenantAdminSSOPage({
           ) : null}
           {success ? (
             <div
-              className={`${styles.banner}`}
-              style={{
-                background: "rgba(34,197,94,0.1)",
-                border: "1px solid rgba(34,197,94,0.3)",
-                color: "#22c55e",
-              }}
+              className={[`${styles.banner}`, ta.sso_1].filter(Boolean).join(" ")}
+              
               role="status"
               aria-live="polite"
             >
@@ -185,8 +182,8 @@ export function TenantAdminSSOPage({
           ) : null}
 
           <div
-            className={`${styles.actions}`}
-            style={{ justifyContent: "flex-end", marginBottom: "20px" }}
+            className={[`${styles.actions}`, ta.sso_2].filter(Boolean).join(" ")}
+            
           >
             <button
               onClick={loadConfig}
@@ -197,8 +194,8 @@ export function TenantAdminSSOPage({
             </button>
             <Link
               to="/tenant-admin/home"
-              className={`${styles.button} ${styles.buttonSecondary}`}
-              style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}
+              className={[`${styles.button} ${styles.buttonSecondary}`, ta.sso_3].filter(Boolean).join(" ")}
+              
             >
               {t("tenantSSO.backToHome")}
             </Link>
@@ -208,12 +205,8 @@ export function TenantAdminSSOPage({
             <ShellPanel title={t("tenantSSO.title")} subtitle="SAML 2.0">
               <div className={`${styles.form}`}>
                 <div
-                  className={`${styles.field}`}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: "10px",
-                  }}
+                  className={[`${styles.field}`, ta.sso_4].filter(Boolean).join(" ")}
+                  style={{ gap: "10px" }}
                 >
                   <input
                     type="checkbox"
@@ -223,16 +216,12 @@ export function TenantAdminSSOPage({
                       handleChange("is_enabled", e.target.checked)
                     }
                     disabled={!isEnterprisePlan || loading || saving}
-                    style={{
-                      width: "18px",
-                      height: "18px",
-                      cursor: isEnterprisePlan ? "pointer" : "not-allowed",
-                    }}
+                    className={ta.sso_5} style={{ cursor: isEnterprisePlan ? "pointer" : "not-allowed" }}
                   />
-                  <span style={{ fontWeight: 500, color: "#f1f5f9" }}>
+                  <span className={ta.sso_6}>
                     {t("tenantSSO.isEnabledLabel")}
                   </span>
-                  <span style={{ fontSize: "12px", color: "#94a3b8", marginLeft: "4px" }}>
+                  <span className={ta.sso_7}>
                     {t("tenantSSO.isEnabledHelp")}
                   </span>
                 </div>
@@ -271,7 +260,7 @@ export function TenantAdminSSOPage({
 
                     <Field label={t("tenantSSO.idpX509CertLabel")} help={t("tenantSSO.idpX509CertHelp")}>
                       <textarea
-                        className={`${styles.input}`}
+                        className={[`${styles.input}`, ta.sso_8].filter(Boolean).join(" ")}
                         value={formData.idp_x509_cert}
                         onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                           handleChange("idp_x509_cert", e.target.value)
@@ -279,12 +268,7 @@ export function TenantAdminSSOPage({
                         placeholder={t("tenantSSO.idpX509CertPlaceholder")}
                         rows={6}
                         disabled={inputDisabled}
-                        style={{
-                          fontFamily: "monospace",
-                          fontSize: "12px",
-                          resize: "vertical",
-                          opacity: inputDisabled ? 0.5 : 1,
-                        }}
+                        style={{ fontSize: "12px", opacity: inputDisabled ? 0.5 : 1 }}
                       />
                     </Field>
 
@@ -303,14 +287,14 @@ export function TenantAdminSSOPage({
                     </Field>
 
                     <Field label={t("tenantSSO.spEntityIdLabel")} help={t("tenantSSO.spEntityIdHelp")}>
-                      <div style={{ display: "flex", gap: 8 }}>
+                      <div className={ta.sso_9}>
                         <input
-                          className={`${styles.input}`}
+                          className={[`${styles.input}`, ta.sso_10].filter(Boolean).join(" ")}
                           type="text"
                           value={formData.sp_entity_id}
                           readOnly
                           placeholder={t("tenantSSO.spEntityIdPlaceholder")}
-                          style={{ opacity: 0.8, flex: 1 }}
+                          
                         />
                         <button
                           type="button"
@@ -318,8 +302,8 @@ export function TenantAdminSSOPage({
                             navigator.clipboard.writeText(formData.sp_entity_id);
                             toast.success(t("tenantPats.copySuccess") || "Đã sao chép!");
                           }}
-                          className={`${styles.button}`}
-                          style={{ whiteSpace: "nowrap" }}
+                          className={[`${styles.button}`, ta.sso_11].filter(Boolean).join(" ")}
+                          
                         >
                           {t("tenantPats.copyTokenAction") || "Sao chép"}
                         </button>
@@ -327,14 +311,14 @@ export function TenantAdminSSOPage({
                     </Field>
 
                     <Field label={t("tenantSSO.spAcsUrlLabel")} help={t("tenantSSO.spAcsUrlHelp")}>
-                      <div style={{ display: "flex", gap: 8 }}>
+                      <div className={ta.sso_12}>
                         <input
-                          className={`${styles.input}`}
+                          className={[`${styles.input}`, ta.sso_13].filter(Boolean).join(" ")}
                           type="url"
                           value={formData.sp_acs_url}
                           readOnly
                           placeholder={t("tenantSSO.spAcsUrlPlaceholder")}
-                          style={{ opacity: 0.8, flex: 1 }}
+                          
                         />
                         <button
                           type="button"
@@ -342,8 +326,8 @@ export function TenantAdminSSOPage({
                             navigator.clipboard.writeText(formData.sp_acs_url);
                             toast.success(t("tenantPats.copySuccess") || "Đã sao chép!");
                           }}
-                          className={`${styles.button}`}
-                          style={{ whiteSpace: "nowrap" }}
+                          className={[`${styles.button}`, ta.sso_14].filter(Boolean).join(" ")}
+                          
                         >
                           {t("tenantPats.copyTokenAction") || "Sao chép"}
                         </button>
@@ -353,8 +337,8 @@ export function TenantAdminSSOPage({
                     <button
                       type="submit"
                       disabled={saving || !isEnterprisePlan}
-                      className={`${styles.button} ${styles.buttonPrimary}`}
-                      style={{ alignSelf: "flex-start" }}
+                      className={[`${styles.button} ${styles.buttonPrimary}`, ta.sso_15].filter(Boolean).join(" ")}
+                      
                     >
                       {saving ? t("tenantSSO.saving") : t("tenantSSO.saveAction")}
                     </button>
@@ -392,14 +376,14 @@ export function TenantAdminSSOPage({
                   window.location.href = `${baseUrl}/core/v1/auth/sso/login/?domain=${formData.domain_hint}`;
                 }}
                 disabled={!formData.domain_hint || !formData.is_enabled || loading || saving}
-                className={`${styles.button} ${styles.buttonSecondary}`}
-                style={{ alignSelf: "flex-start" }}
+                className={[`${styles.button} ${styles.buttonSecondary}`, ta.sso_16].filter(Boolean).join(" ")}
+                
               >
                 {t("tenantSSO.testConnectionAction")}
               </button>
               <p className={`${styles.itemMeta}`} style={{ margin: 0 }}>
                 {t("tenantSSO.spAcsUrlDisplay")}{" "}
-                <code style={{ color: "#cbd5e1", fontFamily: "monospace" }}>
+                <code className={ta.sso_17}>
                   {formData.sp_acs_url || t("tenantSSO.notConfigured")}
                 </code>
               </p>

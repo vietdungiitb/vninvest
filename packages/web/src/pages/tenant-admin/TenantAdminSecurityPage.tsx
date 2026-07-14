@@ -1,4 +1,5 @@
 import styles from "../../components/ShellPageTemplate.module.css";
+import ta from "./TenantAdmin.module.css";
 import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, UserCircle } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -233,7 +234,7 @@ export function TenantAdminSecurityPage({
       <section className={`${styles.stack}`}>
         <ShellPanel title={t("tenantSecurity.loginActivityTitle")} actions={dayActions}>
           {chartData.length > 0 ? (
-            <div style={{ width: "100%", height: 220 }}>
+            <div className={ta.sec_1}>
               <ResponsiveContainer>
                 <BarChart data={chartData} margin={{ top: 8, right: 8, bottom: 4, left: -8 }}>
                   <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
@@ -258,10 +259,10 @@ export function TenantAdminSecurityPage({
           <ShellPanel title={t("tenantSecurity.recentFailuresTitle")}>
             <div className={`${styles.list}`}>
               {recentFailures.map((f, i) => (
-                <div key={`fail-${i}`} className={`${styles.listItem}`} style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                  <AlertCircle className="w-5 h-5" style={{ color: "#ef4444", flexShrink: 0 }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{f.username}</div>
+                <div key={`fail-${i}`} className={[`${styles.listItem}`, ta.sec_2].filter(Boolean).join(" ")} >
+                  <AlertCircle className={["w-5 h-5", ta.sec_3].filter(Boolean).join(" ")}  />
+                  <div className={ta.sec_4}>
+                    <div className={ta.sec_5}>{f.username}</div>
                     <div className={`${styles.itemMeta}`} style={{ fontSize: 12 }}>
                       {f.ip} &middot; {f.attempts} {t("tenantSecurity.attempts")}
                     </div>
@@ -279,8 +280,8 @@ export function TenantAdminSecurityPage({
               <button
                 onClick={handleRevokeAll}
                 disabled={revokingId === -1}
-                className={`${styles.button}`}
-                style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444", fontSize: "12px" }}
+                className={[`${styles.button}`, ta.sec_6].filter(Boolean).join(" ")}
+                style={{ border: "1px solid rgba(239,68,68,0.3)", fontSize: "12px" }}
               >
                 {t("tenantSecurity.revokeAllAction")}
               </button>
@@ -295,12 +296,12 @@ export function TenantAdminSecurityPage({
                 <div key={s.session_id} className={`${styles.listItem}`}>
                   <div className={`${styles.listItemHeader}`} style={{ marginBottom: 8 }}>
                     <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <UserCircle className="w-5 h-5" style={{ color: "#94a3b8", flexShrink: 0 }} />
-                        <span style={{ fontWeight: 600, fontSize: 14 }}>
+                      <div className={ta.sec_7}>
+                        <UserCircle className={["w-5 h-5", ta.sec_8].filter(Boolean).join(" ")}  />
+                        <span className={ta.sec_9}>
                           {s.username}
                           {s.is_current && (
-                            <span className={`${styles.pill}`} style={{ marginLeft: 8, background: "rgba(34,197,94,0.2)", color: "#22c55e", fontSize: 10 }}>
+                            <span className={[`${styles.pill}`, ta.sec_10].filter(Boolean).join(" ")} style={{ background: "rgba(34,197,94,0.2)", color: "#22c55e", fontSize: 10 }}>
                               {t("tenantSecurity.currentSession")}
                             </span>
                           )}
@@ -315,17 +316,17 @@ export function TenantAdminSecurityPage({
                       <button
                         onClick={() => handleRevokeSession(s.session_id)}
                         disabled={revokingId === s.session_id}
-                        className={`${styles.button}`}
-                        style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444", fontSize: "12px" }}
+                        className={[`${styles.button}`, ta.sec_11].filter(Boolean).join(" ")}
+                        style={{ border: "1px solid rgba(239,68,68,0.3)", fontSize: "12px" }}
                       >
                         {revokingId === s.session_id ? t("common.loading") : t("tenantSecurity.revokeAction")}
                       </button>
                     )}
                   </div>
-                  <div className={`${styles.summaryGrid}`} style={{ gap: 16, fontSize: 12, paddingTop: 8 }}>
+                  <div className={[`${styles.summaryGrid}`, ta.sec_12].filter(Boolean).join(" ")} style={{ gap: 16 }}>
                     <div>
                       <div className={`${styles.itemMeta}`} style={{ fontSize: 10 }}>{t("tenantSecurity.loginAtLabel")}</div>
-                      <span style={{ fontSize: 12 }}>{timeAgo(s.login_at, t)}</span>
+                      <span className={ta.sec_13}>{timeAgo(s.login_at, t)}</span>
                     </div>
                   </div>
                 </div>

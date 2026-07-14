@@ -1,4 +1,5 @@
 import styles from "../../components/ShellPageTemplate.module.css";
+import ta from "./TenantAdmin.module.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
@@ -97,9 +98,9 @@ function UsageBar({ consumedAmount, entitledAmount, riskState }: UsageBarProps) 
   const toneColor = resolveToneColor(riskState);
 
   return (
-    <div style={{ marginTop: "12px", marginBottom: "12px" }}>
-      <div style={{ height: "8px", overflow: "hidden", borderRadius: "999px", background: "rgba(255,255,255,0.06)" }}>
-        <div style={{ height: "100%", borderRadius: "999px", width: `${ratio}%`, background: toneColor, transition: "width 0.3s ease" }} />
+    <div className={ta.usage_1}>
+      <div className={ta.usage_2}>
+        <div className={ta.usage_3} style={{ width: `${ratio}%`, background: toneColor }} />
       </div>
     </div>
   );
@@ -272,7 +273,7 @@ export function TenantAdminUsagePage({
         description={t("common.loading")}
       >
         <ShellSkeleton variant="metric" count={2} />
-        <div style={{ height: 16 }} />
+        <div className={ta.usage_4} />
         <ShellSkeleton variant="table-row" count={5} />
       </ShellPageChrome>
     );
@@ -336,17 +337,12 @@ export function TenantAdminUsagePage({
   ];
 
   const tabBar = (
-    <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+    <div className={ta.usage_5}>
       {tabs.map(tab => (
         <button
           key={tab.key}
           onClick={() => setActiveTab(tab.key)}
-          style={{
-            background: activeTab === tab.key ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)",
-            color: activeTab === tab.key ? "var(--accent-shell)" : "var(--text-primary)",
-            border: activeTab === tab.key ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)",
-            borderRadius: 14, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer",
-          }}
+          className={ta.usage_6} style={{ background: activeTab === tab.key ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)", color: activeTab === tab.key ? "var(--accent-shell)" : "var(--text-primary)", border: activeTab === tab.key ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)" }}
         >
           {tab.label}
         </button>
@@ -367,38 +363,15 @@ export function TenantAdminUsagePage({
         {/* Alert indicator bar */}
         {apiUsagePct > 0 && (
           <div
-            style={{
-              padding: "8px 12px",
-              marginBottom: 16,
-              borderRadius: 8,
-              background: `${apiAlertColor}20`,
-              border: `1px solid ${apiAlertColor}`,
-              color: apiAlertColor,
-              fontSize: 13,
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
+            className={ta.usage_7} style={{ background: `${apiAlertColor}20`, border: `1px solid ${apiAlertColor}`, color: apiAlertColor }}
           >
-            <span style={{ fontSize: 14 }}>{apiAlertRisk === "critical" ? "🔴" : "🟡"}</span>
+            <span className={ta.usage_8}>{apiAlertRisk === "critical" ? "🔴" : "🟡"}</span>
             <span>{apiAlertText}</span>
             <div
-              style={{
-                flex: 1,
-                height: 6,
-                background: "rgba(255,255,255,0.1)",
-                borderRadius: 3,
-                overflow: "hidden",
-              }}
+              className={ta.usage_9}
             >
               <div
-                style={{
-                  width: `${Math.min(apiUsagePct, 100)}%`,
-                  height: "100%",
-                  background: apiAlertColor,
-                  transition: "width 0.3s ease",
-                }}
+                className={ta.usage_10} style={{ width: `${Math.min(apiUsagePct, 100)}%`, background: apiAlertColor }}
               />
             </div>
           </div>
@@ -416,20 +389,20 @@ export function TenantAdminUsagePage({
                 return (
                   <div>
                     <UsageBar consumedAmount={apiLimit > 0 ? apiUsed : 0} entitledAmount={apiLimit > 0 ? apiLimit : 0} riskState={apiRisk} />
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "12px", fontSize: "13px" }}>
+                    <div className={ta.usage_11}>
                       <div>
-                        <span className={`${styles.itemMeta}`} style={{ display: "block", fontSize: "11px" }}>{t("tenantUsage.consumedLabel")}</span>
-                        <span style={{ color: "#cbd5e1" }}>{formatUsageNumber(apiUsed)}</span>
+                        <span className={[`${styles.itemMeta}`, ta.usage_12].filter(Boolean).join(" ")} style={{ fontSize: "11px" }}>{t("tenantUsage.consumedLabel")}</span>
+                        <span className={ta.usage_13}>{formatUsageNumber(apiUsed)}</span>
                       </div>
                       <div>
-                        <span className={`${styles.itemMeta}`} style={{ display: "block", fontSize: "11px" }}>{t("tenantUsage.limitLabel")}</span>
-                        <span style={{ color: "#cbd5e1" }}>{formatUsageNumber(apiLimit)}</span>
+                        <span className={[`${styles.itemMeta}`, ta.usage_14].filter(Boolean).join(" ")} style={{ fontSize: "11px" }}>{t("tenantUsage.limitLabel")}</span>
+                        <span className={ta.usage_15}>{formatUsageNumber(apiLimit)}</span>
                       </div>
                     </div>
                   </div>
                 );
               })() : (
-                <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t("common.loading")}</div>
+                <div className={ta.usage_16}>{t("common.loading")}</div>
               )}
             </ShellPanel>
 
@@ -448,7 +421,7 @@ export function TenantAdminUsagePage({
                         <div className={`${styles.listItemHeader}`}>
                           <div>
                             <div className={`${styles.itemTitle}`} style={{ fontSize: "15px" }}>{meter.display_name}</div>
-                            <code style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginTop: "2px", fontFamily: "monospace" }}>{meter.meter_code}</code>
+                            <code className={ta.usage_17}>{meter.meter_code}</code>
                           </div>
                           <span
                             className={`${styles.pill}`}
@@ -461,22 +434,22 @@ export function TenantAdminUsagePage({
                           </span>
                         </div>
                         <UsageBar consumedAmount={meter.consumed_amount} entitledAmount={entitledAmount} riskState={meter.risk_state} />
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1.2fr", gap: "10px", marginTop: "12px", fontSize: "13px" }}>
+                        <div className={ta.usage_18}>
                           <div>
-                            <span className={`${styles.itemMeta}`} style={{ display: "block", fontSize: "11px" }}>{t("tenantUsage.consumedLabel")}</span>
-                            <span style={{ color: "#cbd5e1" }}>{formatUsageNumber(meter.consumed_amount)}</span>
+                            <span className={[`${styles.itemMeta}`, ta.usage_19].filter(Boolean).join(" ")} style={{ fontSize: "11px" }}>{t("tenantUsage.consumedLabel")}</span>
+                            <span className={ta.usage_20}>{formatUsageNumber(meter.consumed_amount)}</span>
                           </div>
                           <div>
-                            <span className={`${styles.itemMeta}`} style={{ display: "block", fontSize: "11px" }}>{t("tenantUsage.remainingLabel")}</span>
-                            <span style={{ color: "#cbd5e1" }}>{formatUsageNumber(meter.remaining_amount)}</span>
+                            <span className={[`${styles.itemMeta}`, ta.usage_21].filter(Boolean).join(" ")} style={{ fontSize: "11px" }}>{t("tenantUsage.remainingLabel")}</span>
+                            <span className={ta.usage_22}>{formatUsageNumber(meter.remaining_amount)}</span>
                           </div>
                           <div>
-                            <span className={`${styles.itemMeta}`} style={{ display: "block", fontSize: "11px" }}>{t("tenantUsage.resetAtLabel")}</span>
-                            <span style={{ color: "#cbd5e1" }}>{formatUsageDate(meter.reset_at)}</span>
+                            <span className={[`${styles.itemMeta}`, ta.usage_23].filter(Boolean).join(" ")} style={{ fontSize: "11px" }}>{t("tenantUsage.resetAtLabel")}</span>
+                            <span className={ta.usage_24}>{formatUsageDate(meter.reset_at)}</span>
                           </div>
                         </div>
                         {alertConfig && alertConfig.enabled && (
-                          <div style={{ marginTop: 8, fontSize: 11, color: "#94a3b8" }}>
+                          <div className={ta.usage_25}>
                             {t("tenantUsage.alertThresholds")}: {t("tenantUsage.warningLabel")} {alertConfig.warning_pct}%, {t("tenantUsage.criticalLabel")} {alertConfig.critical_pct}%
                           </div>
                         )}
@@ -485,7 +458,7 @@ export function TenantAdminUsagePage({
                   })
                 )}
               </div>
-              {alertConfigLoading && <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t("common.loading")}</div>}
+              {alertConfigLoading && <div className={ta.usage_26}>{t("common.loading")}</div>}
             </ShellPanel>
 
             <ShellPanel title={t("tenantUsage.quotaListTitle")}>
@@ -498,7 +471,7 @@ export function TenantAdminUsagePage({
                       <div className={`${styles.listItemHeader}`}>
                         <div>
                           <span className={`${styles.itemTitle}`} style={{ fontSize: "14px" }}>{quota.display_name}</span>
-                          <span className={`${styles.itemMeta}`} style={{ display: "block", marginTop: "2px" }}>
+                          <span className={[`${styles.itemMeta}`, ta.usage_27].filter(Boolean).join(" ")} style={{ marginTop: "2px" }}>
                             {t("tenantUsage.limitLabel")}: {formatUsageNumber(quota.entitled_amount)} {quota.unit}
                           </span>
                         </div>
@@ -512,18 +485,18 @@ export function TenantAdminUsagePage({
                           {quota.hard_stop ? t("tenantUsage.hardStop") : t("tenantUsage.overageAllowed")}
                         </span>
                       </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginTop: "10px", fontSize: "12px" }}>
+                      <div className={ta.usage_28}>
                         <div>
-                          <span className={`${styles.itemMeta}`} style={{ display: "block", fontSize: "10px" }}>{t("tenantUsage.limitLabel")}</span>
-                          <span style={{ color: "#cbd5e1" }}>{formatUsageNumber(quota.entitled_amount)}</span>
+                          <span className={[`${styles.itemMeta}`, ta.usage_29].filter(Boolean).join(" ")} style={{ fontSize: "10px" }}>{t("tenantUsage.limitLabel")}</span>
+                          <span className={ta.usage_30}>{formatUsageNumber(quota.entitled_amount)}</span>
                         </div>
                         <div>
-                          <span className={`${styles.itemMeta}`} style={{ display: "block", fontSize: "10px" }}>{t("tenantUsage.consumedLabel")}</span>
-                          <span style={{ color: "#cbd5e1" }}>{formatUsageNumber(quota.consumed_amount)}</span>
+                          <span className={[`${styles.itemMeta}`, ta.usage_31].filter(Boolean).join(" ")} style={{ fontSize: "10px" }}>{t("tenantUsage.consumedLabel")}</span>
+                          <span className={ta.usage_32}>{formatUsageNumber(quota.consumed_amount)}</span>
                         </div>
                         <div>
-                          <span className={`${styles.itemMeta}`} style={{ display: "block", fontSize: "10px" }}>{t("tenantUsage.remainingLabel")}</span>
-                          <span style={{ color: "#cbd5e1" }}>{formatUsageNumber(quota.remaining_amount)}</span>
+                          <span className={[`${styles.itemMeta}`, ta.usage_33].filter(Boolean).join(" ")} style={{ fontSize: "10px" }}>{t("tenantUsage.remainingLabel")}</span>
+                          <span className={ta.usage_34}>{formatUsageNumber(quota.remaining_amount)}</span>
                         </div>
                       </div>
                     </div>
@@ -537,34 +510,24 @@ export function TenantAdminUsagePage({
         {/* History Tab */}
         {activeTab === "history" && (
           <ShellPanel title={t("tenantUsage.historyTitle")}>
-            <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-              <div style={{ display: "flex", gap: 6 }}>
+            <div className={ta.usage_35}>
+              <div className={ta.usage_36}>
                 {METER_CODES.map(code => (
                   <button
                     key={code}
                     onClick={() => setSelectedMeter(code)}
-                    style={{
-                      background: selectedMeter === code ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)",
-                      color: selectedMeter === code ? "var(--accent-shell)" : "var(--text-primary)",
-                      border: selectedMeter === code ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)",
-                      borderRadius: 12, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer",
-                    }}
+                    className={ta.usage_37} style={{ background: selectedMeter === code ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)", color: selectedMeter === code ? "var(--accent-shell)" : "var(--text-primary)", border: selectedMeter === code ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)" }}
                   >
                     {t(`tenantUsage.meter.${code}`, { defaultValue: code })}
                   </button>
                 ))}
               </div>
-              <div style={{ display: "flex", gap: 6 }}>
+              <div className={ta.usage_38}>
                 {[7, 14, 30, 90].map(d => (
                   <button
                     key={d}
                     onClick={() => { setHistoryDays(d); loadHistory(d); }}
-                    style={{
-                      background: historyDays === d ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)",
-                      color: historyDays === d ? "var(--accent-shell)" : "var(--text-primary)",
-                      border: historyDays === d ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)",
-                      borderRadius: 12, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer",
-                    }}
+                    className={ta.usage_39} style={{ background: historyDays === d ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)", color: historyDays === d ? "var(--accent-shell)" : "var(--text-primary)", border: historyDays === d ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)" }}
                   >
                     {d}d
                   </button>
@@ -573,9 +536,9 @@ export function TenantAdminUsagePage({
             </div>
 
             {historyLoading ? (
-              <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>{t("common.loading")}</div>
+              <div className={ta.usage_40}>{t("common.loading")}</div>
             ) : chartData.length > 0 ? (
-              <div style={{ width: "100%", height: 220 }}>
+              <div className={ta.usage_41}>
                 <ResponsiveContainer>
                   <BarChart data={chartData} margin={{ top: 4, right: 4, bottom: 4, left: -16 }}>
                     <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
@@ -598,34 +561,31 @@ export function TenantAdminUsagePage({
 
         {/* Forecast Tab */}
         {activeTab === "forecast" && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+          <div className={ta.usage_42}>
             {forecastLoading ? (
-              <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 40 }}>{t("common.loading")}</div>
+              <div className={ta.usage_43}>{t("common.loading")}</div>
             ) : forecasts.length > 0 ? (
               forecasts.map(f => (
                 <ShellPanel key={f.meter_code} title={t(`tenantUsage.meter.${f.meter_code}`, { defaultValue: f.meter_code })}>
-                  <div style={{ display: "grid", gap: 10 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t("tenantUsage.dailyRateLabel")}</span>
-                      <span style={{ fontSize: 14, fontWeight: 600 }}>{f.daily_rate != null ? formatUsageNumber(f.daily_rate) : "—"}</span>
+                  <div className={ta.usage_44}>
+                    <div className={ta.usage_45}>
+                      <span className={ta.usage_46}>{t("tenantUsage.dailyRateLabel")}</span>
+                      <span className={ta.usage_47}>{f.daily_rate != null ? formatUsageNumber(f.daily_rate) : "—"}</span>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t("tenantUsage.daysRemainingLabel")}</span>
-                      <span style={{
-                        fontSize: 14, fontWeight: 600,
-                        color: f.days_remaining != null && f.days_remaining < 7 ? "#ef4444" : f.days_remaining != null && f.days_remaining < 14 ? "#f59e0b" : "#10b981",
-                      }}>
+                    <div className={ta.usage_48}>
+                      <span className={ta.usage_49}>{t("tenantUsage.daysRemainingLabel")}</span>
+                      <span className={ta.usage_50} style={{ color: f.days_remaining != null && f.days_remaining < 7 ? "#ef4444" : f.days_remaining != null && f.days_remaining < 14 ? "#f59e0b" : "#10b981" }}>
                         {f.days_remaining != null ? `${f.days_remaining} ${t("tenantUsage.daysLabel")}` : t("tenantUsage.unlimited")}
                       </span>
                     </div>
                     {f.forecast_exhaust_date && (
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t("tenantUsage.exhaustDateLabel")}</span>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: "#f59e0b" }}>{f.forecast_exhaust_date}</span>
+                      <div className={ta.usage_51}>
+                        <span className={ta.usage_52}>{t("tenantUsage.exhaustDateLabel")}</span>
+                        <span className={ta.usage_53}>{f.forecast_exhaust_date}</span>
                       </div>
                     )}
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t("tenantUsage.confidenceLabel")}</span>
+                    <div className={ta.usage_54}>
+                      <span className={ta.usage_55}>{t("tenantUsage.confidenceLabel")}</span>
                       <span className={`${styles.pill}`} style={{
                         background: f.confidence === "high" ? "rgba(16,185,129,0.2)" : f.confidence === "medium" ? "rgba(245,158,11,0.2)" : "rgba(239,68,68,0.2)",
                         color: f.confidence === "high" ? "#10b981" : f.confidence === "medium" ? "#f59e0b" : "#ef4444",
@@ -633,9 +593,9 @@ export function TenantAdminUsagePage({
                         {t(`tenantUsage.confidence.${f.confidence}`, { defaultValue: f.confidence })}
                       </span>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t("tenantUsage.remainingLabel")}</span>
-                      <span style={{ fontSize: 14, fontWeight: 600 }}>{formatUsageNumber(f.remaining)}</span>
+                    <div className={ta.usage_56}>
+                      <span className={ta.usage_57}>{t("tenantUsage.remainingLabel")}</span>
+                      <span className={ta.usage_58}>{formatUsageNumber(f.remaining)}</span>
                     </div>
                   </div>
                 </ShellPanel>
@@ -648,34 +608,24 @@ export function TenantAdminUsagePage({
         {/* Analytics Tab */}
         {activeTab === "analytics" && (
           <ShellPanel title={t("tenantUsage.analyticsTitle", { defaultValue: "API Analytics" })}>
-            <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-              <div style={{ display: "flex", gap: 6 }}>
+            <div className={ta.usage_59}>
+              <div className={ta.usage_60}>
                 {(["ip", "endpoint", "status", "hour"] as const).map(group => (
                   <button
                     key={group}
                     onClick={() => { setAnalyticsGroupBy(group); loadAnalytics(group); }}
-                    style={{
-                      background: analyticsGroupBy === group ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)",
-                      color: analyticsGroupBy === group ? "var(--accent-shell)" : "var(--text-primary)",
-                      border: analyticsGroupBy === group ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)",
-                      borderRadius: 12, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer",
-                    }}
+                    className={ta.usage_61} style={{ background: analyticsGroupBy === group ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)", color: analyticsGroupBy === group ? "var(--accent-shell)" : "var(--text-primary)", border: analyticsGroupBy === group ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)" }}
                   >
                     {t(`tenantUsage.analytics.groupBy.${group}`, { defaultValue: group })}
                   </button>
                 ))}
               </div>
-              <div style={{ display: "flex", gap: 6 }}>
+              <div className={ta.usage_62}>
                 {[7, 14, 30, 90].map(d => (
                   <button
                     key={d}
                     onClick={() => { setAnalyticsDays(d); loadAnalytics(analyticsGroupBy, d); }}
-                    style={{
-                      background: analyticsDays === d ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)",
-                      color: analyticsDays === d ? "var(--accent-shell)" : "var(--text-primary)",
-                      border: analyticsDays === d ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)",
-                      borderRadius: 12, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer",
-                    }}
+                    className={ta.usage_63} style={{ background: analyticsDays === d ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)", color: analyticsDays === d ? "var(--accent-shell)" : "var(--text-primary)", border: analyticsDays === d ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)" }}
                   >
                     {d}d
                   </button>
@@ -684,23 +634,23 @@ export function TenantAdminUsagePage({
             </div>
 
             {analyticsLoading ? (
-              <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>{t("common.loading")}</div>
+              <div className={ta.usage_64}>{t("common.loading")}</div>
             ) : analyticsError ? (
-              <div style={{ padding: 16, color: "#ef4444" }}>{analyticsError}</div>
+              <div className={ta.usage_65}>{analyticsError}</div>
             ) : analyticsData?.data && analyticsData.data.length > 0 ? (
-              <div style={{ display: "grid", gap: 16 }}>
+              <div className={ta.usage_66}>
                 <ShellPanel title={t("tenantUsage.analytics.topItems", { defaultValue: "Top Items" })}>
                   <div className={`${styles.list}`}>
                     {analyticsData.data.map((item, idx) => (
                       <div key={`${item.key}-${idx}`} className={`${styles.listItem}`}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <code style={{ color: "#cbd5e1", fontSize: 11, wordBreak: "break-all", maxWidth: "70%" }}>{item.key}</code>
+                        <div className={ta.usage_67}>
+                          <code className={ta.usage_68}>{item.key}</code>
                           <span className={`${styles.pill}`} style={{
                             background: "rgba(0,180,216,0.15)", color: "#00b4d8", fontSize: 12,
                           }}>
                             {item.count} {t("tenantUsage.callsLabel", { defaultValue: "calls" })}
                             {item.error_count && item.error_count > 0 && (
-                              <span style={{ marginLeft: 8, color: "#ef4444" }}>
+                              <span className={ta.usage_69}>
                                 {t("tenantUsage.errorsLabel", { defaultValue: "errors" })}: {item.error_count}
                               </span>
                             )}
@@ -713,7 +663,7 @@ export function TenantAdminUsagePage({
 
                 <ShellPanel title={t("tenantUsage.analytics.timelineTitle", { defaultValue: "Timeline" })}>
                   {analyticsGroupBy === "hour" && analyticsData?.data.length > 0 ? (
-                    <div style={{ width: "100%", height: 220 }}>
+                    <div className={ta.usage_70}>
                       <ResponsiveContainer>
                         <BarChart data={analyticsData.data.map(d => ({ hour: d.key, count: d.count }))} margin={{ top: 4, right: 4, bottom: 4, left: -16 }}>
                           <XAxis dataKey="hour" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
@@ -729,14 +679,14 @@ export function TenantAdminUsagePage({
                       </ResponsiveContainer>
                     </div>
                   ) : (
-                    <div style={{ display: "grid", gap: 8, maxHeight: 200, overflow: "auto" }}>
+                    <div className={ta.usage_71}>
 {analyticsData?.data.map((item, idx) => (
-                        <div key={`${item.key}-${idx}`} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-                          <span style={{ width: 60, color: "#94a3b8" }}>{item.key}</span>
-                          <div style={{ flex: 1, height: 8, background: "rgba(255,255,255,0.06)", borderRadius: 999, overflow: "hidden" }}>
-                            <div style={{ width: `${Math.max(1, (item.count / Math.max(1, ...analyticsData?.data.map(d => d.count) ?? [1])) * 100)}%`, height: "100%", background: "#a855f7", borderRadius: 999 }} />
+                        <div key={`${item.key}-${idx}`} className={ta.usage_72}>
+                          <span className={ta.usage_73}>{item.key}</span>
+                          <div className={ta.usage_74}>
+                            <div className={ta.usage_75} style={{ width: `${Math.max(1, (item.count / Math.max(1, ...analyticsData?.data.map(d => d.count) ?? [1])) * 100)}%` }} />
                           </div>
-                          <span style={{ width: 36, textAlign: "right", color: "#cbd5e1" }}>{item.count}</span>
+                          <span className={ta.usage_76}>{item.count}</span>
                         </div>
                       ))}
                     </div>
