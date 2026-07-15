@@ -2,7 +2,6 @@ import { createElement, MouseEvent } from "react";
 import { useWatchlist } from "./WatchlistContext";
 import { WatchlistItem, Holding, MergedData } from "../WatchlistTypes";
 import { useI18n } from "../../../context/LangContext.js";
-import styles from "../../../components/soc/soc.module.css";
 
 export function WatchlistTable({ density }: { density: "compact" | "comfortable" }) {
   const { 
@@ -101,6 +100,49 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
     );
   };
 
+  const renderActions = (symbol: string) => {
+    const handleChart = (ev: MouseEvent) => {
+      ev.stopPropagation();
+      setActiveSymbolDetail(symbol);
+    };
+    const handleAlert = (ev: MouseEvent) => {
+      ev.stopPropagation();
+    };
+    const handleTrade = (ev: MouseEvent) => {
+      ev.stopPropagation();
+      window.location.href = `/stocks/${symbol}`;
+    };
+    const handleRemove = (ev: MouseEvent) => {
+      ev.stopPropagation();
+      if (selectedId) removeSymbol(selectedId, symbol);
+    };
+
+    return createElement(
+      "div",
+      { className: "watchlistPage__rowActions" },
+      createElement("button", {
+        className: "watchlistPage__rowActionBtn watchlistPage__rowActionBtn--chart",
+        title: t("watchlist.table.view_chart", { defaultValue: "Bi\u1EBFu \u0111\u1ED3" }),
+        onClick: handleChart
+      }, "\uD83D\uDCCA"),
+      createElement("button", {
+        className: "watchlistPage__rowActionBtn watchlistPage__rowActionBtn--alert",
+        title: t("watchlist.table.set_alert", { defaultValue: "T\u1EA1o c\u1EA3nh b\u00E1o gi\u00E1" }),
+        onClick: handleAlert
+      }, "\u26A0\uFE0F"),
+      createElement("button", {
+        className: "watchlistPage__rowActionBtn watchlistPage__rowActionBtn--trade",
+        title: t("watchlist.table.view_detail", { defaultValue: "Xem chi ti\u1EBFt" }),
+        onClick: handleTrade
+      }, "\uD83D\uDCC8"),
+      createElement("button", {
+        className: "watchlistPage__rowActionBtn watchlistPage__rowActionBtn--remove",
+        title: t("watchlist.table.delete", { defaultValue: "X\u00F3a" }),
+        onClick: handleRemove
+      }, "\u2715")
+    );
+  };
+
   const renderTableHeader = () => {
     const thStyle = {
       padding: density === "compact" ? "8px 12px" : "12px 16px",
@@ -124,6 +166,7 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
         createElement("th", { style: { ...thStyle, textAlign: "right" } }, t("watchlist.table.market_value", { defaultValue: "Giá trị TT" })),
         createElement("th", { style: { ...thStyle, textAlign: "right" } }, t("watchlist.table.pnl", { defaultValue: "Lãi / Lỗ" })),
         createElement("th", { style: { ...thStyle, textAlign: "right" } }, t("watchlist.table.pnl_pct", { defaultValue: "% Lãi / Lỗ" })),
+        createElement("th", { style: { ...thStyle, textAlign: "center", width: "90px" } }, t("watchlist.table.quick_action", { defaultValue: "Hành động" })),
         createElement("th", { style: { ...thStyle, textAlign: "center", width: "100px" } }, t("watchlist.table.trend", { defaultValue: "Xu hướng" }))
       );
     } else if (selectedType === "tracked") {
@@ -135,7 +178,7 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
         createElement("th", { style: thStyle }, t("watchlist.table.price", { defaultValue: "Giá hiện tại" })),
         createElement("th", { style: thStyle }, t("watchlist.table.change", { defaultValue: "% Thay đổi" })),
         createElement("th", { style: { ...thStyle, textAlign: "right", paddingRight: "32px" } }, t("watchlist.table.limit", { defaultValue: "Ngưỡng giám sát" })),
-        createElement("th", { style: { ...thStyle, textAlign: "center" } }, t("watchlist.table.action", { defaultValue: "Hành động" })),
+        createElement("th", { style: { ...thStyle, textAlign: "center", width: "90px" } }, t("watchlist.table.quick_action", { defaultValue: "Hành động" })),
         createElement("th", { style: { ...thStyle, textAlign: "center", width: "100px" } }, t("watchlist.table.trend", { defaultValue: "Xu hướng" }))
       );
     } else if (selectedType === "watchlist") {
@@ -149,7 +192,7 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
         visibleColumns.rvol && createElement("th", { style: thStyle }, t("watchlist.column.rvol", { defaultValue: "RVOL" })),
         visibleColumns.ma20Dist && createElement("th", { style: thStyle }, t("watchlist.column.ma20_dist", { defaultValue: "% Cách MA20" })),
         visibleColumns.bias && createElement("th", { style: thStyle }, t("watchlist.column.bias", { defaultValue: "Định hướng" })),
-        createElement("th", { style: { ...thStyle, textAlign: "center" } }, t("watchlist.table.action", { defaultValue: "Hành động" })),
+        createElement("th", { style: { ...thStyle, textAlign: "center", width: "90px" } }, t("watchlist.table.quick_action", { defaultValue: "Hành động" })),
         createElement("th", { style: { ...thStyle, textAlign: "center", width: "100px" } }, t("watchlist.table.trend", { defaultValue: "Xu hướng" }))
       );
     } else {
@@ -193,6 +236,7 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
         cursor: "pointer",
         transition: "all 0.15s ease"
       };
+      const rowClass = `hover:bg-slate-800/20${isActiveRow ? " watchlistPage__row--active" : ""}`;
 
       if (selectedType === "holds") {
         const h = item as Holding;
@@ -204,7 +248,7 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
 
         return createElement(
           "tr",
-          { key: symbol, style: rowStyle, onClick: () => handleRowClick(symbol), className: "hover:bg-slate-800/20" },
+          { key: symbol, style: rowStyle, onClick: () => handleRowClick(symbol), className: rowClass },
           createElement(
             "td",
             { style: { padding: tdPadding, fontFamily: "monospace", fontWeight: 700, color: isActiveRow ? "var(--accent-cyan, #22d3ee)" : "var(--text-primary, #f1f5f9)" } },
@@ -243,6 +287,11 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
           ),
           createElement(
             "td",
+            { style: { padding: tdPadding, textAlign: "center" } },
+            renderActions(symbol)
+          ),
+          createElement(
+            "td",
             { style: { padding: "4px", textAlign: "center", verticalAlign: "middle" } },
             renderSparkline(symbol)
           )
@@ -255,7 +304,7 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
 
         return createElement(
           "tr",
-          { key: symbol, style: rowStyle, onClick: () => handleRowClick(symbol), className: "hover:bg-slate-800/20" },
+          { key: symbol, style: rowStyle, onClick: () => handleRowClick(symbol), className: rowClass },
           createElement(
             "td",
             { style: { padding: tdPadding, fontFamily: "monospace", fontWeight: 700, color: isActiveRow ? "var(--accent-cyan, #22d3ee)" : "var(--text-primary, #f1f5f9)" } },
@@ -294,28 +343,7 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
           createElement(
             "td",
             { style: { padding: tdPadding, textAlign: "center" } },
-            createElement(
-              "button",
-              {
-                className: styles.actionBtn,
-                style: {
-                  padding: "4px 8px",
-                  fontSize: "0.7rem",
-                  fontWeight: 700,
-                  background: "rgba(239, 68, 68, 0.12)",
-                  border: "1px solid rgba(239, 68, 68, 0.3)",
-                  borderRadius: "4px",
-                  color: "#ef4444",
-                  cursor: "pointer",
-                  transition: "all 0.15s"
-                },
-                onClick: (ev: MouseEvent<HTMLButtonElement>) => {
-                  ev.stopPropagation();
-                  if (selectedId) removeSymbol(selectedId, symbol);
-                }
-              },
-              t("watchlist.table.delete", { defaultValue: "Xóa" })
-            )
+            renderActions(symbol)
           ),
           createElement(
             "td",
@@ -328,7 +356,7 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
       // Fallback for group and tracked
       return createElement(
         "tr",
-        { key: symbol, style: rowStyle, onClick: () => handleRowClick(symbol), className: "hover:bg-slate-800/20" },
+        { key: symbol, style: rowStyle, onClick: () => handleRowClick(symbol), className: rowClass },
         createElement(
           "td",
           { style: { padding: tdPadding, fontFamily: "monospace", fontWeight: 700, color: isActiveRow ? "var(--accent-cyan, #22d3ee)" : "var(--text-primary, #f1f5f9)" } },
@@ -366,9 +394,14 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
           "td",
           { 
             style: { padding: tdPadding, color: "var(--text-muted, #94a3b8)", fontSize: "0.85rem" }, 
-            colSpan: selectedType === "tracked" ? 2 : 3 
+            colSpan: selectedType === "tracked" ? 1 : 2 
           },
           "—"
+        ),
+        createElement(
+          "td",
+          { style: { padding: tdPadding, textAlign: "center" } },
+          renderActions(symbol)
         ),
         createElement(
           "td",

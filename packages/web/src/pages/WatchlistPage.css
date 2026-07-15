@@ -23,8 +23,8 @@
 
 .watchlistPage__layout {
   display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 1.5rem;
+  grid-template-columns: 240px 1fr;
+  gap: 1.25rem;
   width: 100%;
   align-items: stretch;
   height: 100%;
@@ -37,6 +37,207 @@
     height: auto;
     overflow-y: auto;
   }
+}
+
+/* === Slide-Over Overlay === */
+.watchlistPage__slideOverOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  justify-content: flex-end;
+  animation: wl-overlay-fade-in 0.15s ease-out;
+}
+
+@keyframes wl-overlay-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.watchlistPage__slideOver {
+  width: 420px;
+  max-width: 90vw;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(24px);
+  border-left: 1px solid rgba(80, 120, 168, 0.2);
+  box-shadow: -20px 0 60px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: wl-slide-in 0.2s ease-out;
+}
+
+@keyframes wl-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.watchlistPage__slideOverHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(80, 120, 168, 0.15);
+  flex-shrink: 0;
+}
+
+.watchlistPage__slideOverTitle {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+  font-family: "JetBrains Mono", monospace;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.watchlistPage__slideOverBadge {
+  font-size: 0.65rem;
+  background: rgba(0, 180, 216, 0.12);
+  color: var(--accent-cyan, #06b6d4);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  border: 1px solid rgba(0, 180, 216, 0.25);
+  font-weight: 600;
+  font-family: "JetBrains Mono", monospace;
+}
+
+.watchlistPage__slideOverClose {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted, #94a3b8);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+
+.watchlistPage__slideOverClose:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary, #f1f5f9);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.watchlistPage__slideOverChart {
+  width: 100%;
+  height: 280px;
+  border-bottom: 1px solid rgba(80, 120, 168, 0.15);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.watchlistPage__slideOverSection {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(80, 120, 168, 0.1);
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.watchlistPage__slideOverSection--news {
+  flex: 1;
+}
+
+.watchlistPage__slideOverSection--ai {
+  background: rgba(99, 102, 241, 0.04);
+}
+
+.watchlistPage__slideOverSectionTitle {
+  margin: 0 0 0.625rem 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary, #94a3b8);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.watchlistPage__slideOverSectionText {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-primary, #f1f5f9);
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+.watchlistPage__slideOverFlowList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.watchlistPage__slideOverFlowItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+}
+
+.watchlistPage__slideOverFlowTime {
+  font-family: "JetBrains Mono", monospace;
+  color: var(--text-muted, #94a3b8);
+}
+
+.watchlistPage__slideOverFlowBuy {
+  font-weight: 700;
+  color: var(--accent-emerald, #10b981);
+}
+
+.watchlistPage__slideOverFlowSell {
+  font-weight: 700;
+  color: var(--accent-rose, #ef4444);
+}
+
+.watchlistPage__slideOverNewsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.watchlistPage__slideOverNewsItem {
+  border-bottom: 1px solid rgba(80, 120, 168, 0.1);
+  padding-bottom: 0.625rem;
+}
+
+.watchlistPage__slideOverNewsLink {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent-cyan, #06b6d4);
+  text-decoration: none;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.watchlistPage__slideOverNewsLink:hover {
+  text-decoration: underline;
+}
+
+.watchlistPage__slideOverNewsMeta {
+  font-size: 0.65rem;
+  color: var(--text-muted, #94a3b8);
+  margin-top: 2px;
+  display: block;
 }
 
 /* Sidebar Styling */
@@ -449,4 +650,86 @@
 .watchlistPage__emptyIcon {
   font-size: 2rem;
   color: rgba(var(--wl-white-rgb) / 0.2);
+}
+
+/* === Row Action Buttons (hover-to-reveal) === */
+.watchlistPage__rowActions {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.watchlistPage__table tr:hover .watchlistPage__rowActions,
+.watchlistPage__rowActions:focus-within {
+  opacity: 1;
+}
+
+.watchlistPage__rowActionBtn {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text-muted, #94a3b8);
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  transition: all 0.12s ease;
+  padding: 0;
+}
+
+.watchlistPage__rowActionBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary, #f1f5f9);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.watchlistPage__rowActionBtn--chart:hover {
+  color: var(--accent-cyan, #06b6d4);
+  border-color: rgba(0, 180, 216, 0.3);
+  background: rgba(0, 180, 216, 0.08);
+}
+
+.watchlistPage__rowActionBtn--alert:hover {
+  color: var(--accent-amber, #f59e0b);
+  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.watchlistPage__rowActionBtn--trade:hover {
+  color: var(--accent-emerald, #10b981);
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.watchlistPage__rowActionBtn--remove:hover {
+  color: var(--accent-rose, #ef4444);
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+/* Always show actions for active row */
+.watchlistPage__table tr.watchlistPage__row--active .watchlistPage__rowActions {
+  opacity: 1;
+}
+
+/* Sidebar compact tweaks */
+.watchlistPage__sidebarCard {
+  padding: 1rem !important;
+  gap: 1rem !important;
+}
+
+.watchlistPage__sidebarTitle {
+  font-size: 1rem !important;
+  margin-bottom: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+.watchlistPage__listItem {
+  padding: 8px 12px !important;
 }

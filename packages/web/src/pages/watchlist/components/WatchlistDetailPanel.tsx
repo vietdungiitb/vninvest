@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { createElement, useEffect, useCallback } from "react";
 import { useWatchlist } from "./WatchlistContext";
 import { VNInvestCharts } from "../../../components/vninvestcharts/src/widget/VNInvestCharts.js";
 
@@ -7,88 +7,155 @@ const Chart = VNInvestCharts as any;
 export function WatchlistDetailPanel() {
   const { activeSymbolDetail, setActiveSymbolDetail } = useWatchlist();
 
+  const handleClose = useCallback(() => {
+    setActiveSymbolDetail(null);
+  }, [setActiveSymbolDetail]);
+
+  useEffect(() => {
+    if (!activeSymbolDetail) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [activeSymbolDetail, handleClose]);
+
   if (!activeSymbolDetail) return null;
 
-  return (
-    <aside className="w-[350px] flex flex-col gap-4 border-l border-slate-800 bg-slate-900/60 backdrop-blur-xl h-full p-4 overflow-y-auto shrink-0 animate-in slide-in-from-right duration-300">
-      <div className="flex justify-between items-center mb-2">
-        <h2 className="text-xl font-bold text-slate-100 font-mono tracking-tight flex items-center gap-2">
-          {activeSymbolDetail}
-          <span className="text-xs bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded border border-cyan-500/30">
-            Realtime
-          </span>
-        </h2>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="h-6 w-6 p-0 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-full"
-          onClick={() => setActiveSymbolDetail(null)}
-        >
-          ✕
-        </Button>
-      </div>
+  return createElement(
+    "div",
+    { className: "watchlistPage__slideOverOverlay", onClick: handleClose },
+    createElement(
+      "div",
+      {
+        className: "watchlistPage__slideOver",
+        onClick: (e: React.MouseEvent) => e.stopPropagation()
+      },
+      // Header
+      createElement(
+        "div",
+        { className: "watchlistPage__slideOverHeader" },
+        createElement(
+          "h2",
+          { className: "watchlistPage__slideOverTitle" },
+          activeSymbolDetail,
+          createElement(
+            "span",
+            { className: "watchlistPage__slideOverBadge" },
+            "Realtime"
+          )
+        ),
+        createElement(
+          "button",
+          { className: "watchlistPage__slideOverClose", onClick: handleClose },
+          "\u2715"
+        )
+      ),
 
-      <div className="w-full h-[280px] rounded-lg border border-slate-800 overflow-hidden bg-slate-950/80 shadow-inner relative">
-        <Chart 
-          symbol={activeSymbolDetail} 
-          theme="dark" 
-          hideToolbar={true} // Compact mode
-          hideFooter={true}
-        />
-      </div>
+      // Chart
+      createElement(
+        "div",
+        { className: "watchlistPage__slideOverChart" },
+        createElement(Chart, {
+          symbol: activeSymbolDetail,
+          theme: "dark",
+          hideToolbar: true,
+          hideFooter: true
+        })
+      ),
 
-      {/* AI Advisor Panel Placeholder */}
-      <div className="flex flex-col gap-2 p-4 rounded-lg border border-indigo-500/30 bg-indigo-950/20 mt-2 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
-        <h3 className="text-sm font-bold text-indigo-300 flex items-center gap-2">
-          <span>🧠</span> AI Advisor
-        </h3>
-        <p className="text-xs text-slate-300 leading-relaxed">
-          <strong>Nhận định nhanh:</strong> Dòng tiền hiện tại vào mã {activeSymbolDetail} đang duy trì sức mạnh. MACD Histogram mở rộng cho thấy xu hướng Bullish trong ngắn hạn.
-        </p>
-      </div>
+      // AI Advisor
+      createElement(
+        "div",
+        { className: "watchlistPage__slideOverSection watchlistPage__slideOverSection--ai" },
+        createElement(
+          "h3",
+          { className: "watchlistPage__slideOverSectionTitle" },
+          "\uD83E\uDDE0 AI Advisor"
+        ),
+        createElement(
+          "p",
+          { className: "watchlistPage__slideOverSectionText" },
+          createElement("strong", null, "Nh\u1EADn \u0111\u1ECBnh nhanh:"),
+          ` D\u00F4ng ti\u1EC1n hi\u1EC7n t\u1EA1i v\u00E0o m\u00E3 ${activeSymbolDetail} \u0111ang duy tr\u00EC s\u1EE9c m\u1EA1nh. MACD Histogram m\u1EDF r\u1ED9ng cho th\u1EA5y xu h\u01B0\u1EDBng Bullish trong ng\u1EAFn h\u1EA1n.`
+        )
+      ),
 
-      {/* Whale Alerts Panel Placeholder */}
-      <div className="flex flex-col gap-2 p-4 rounded-lg border border-slate-800 bg-slate-950/40 mt-2">
-        <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-          <span>🐋</span> Whale Order Flow
-        </h3>
-        <ul className="flex flex-col gap-2 mt-1">
-          <li className="flex justify-between items-center text-xs">
-            <span className="text-slate-400 font-mono">14:28:10</span>
-            <span className="text-emerald-400 font-bold">MUA 150,000</span>
-          </li>
-          <li className="flex justify-between items-center text-xs">
-            <span className="text-slate-400 font-mono">14:15:05</span>
-            <span className="text-rose-400 font-bold">BÁN 80,000</span>
-          </li>
-          <li className="flex justify-between items-center text-xs">
-            <span className="text-slate-400 font-mono">13:50:22</span>
-            <span className="text-emerald-400 font-bold">MUA 220,000</span>
-          </li>
-        </ul>
-      </div>
-      
-      {/* News Feed Placeholder */}
-      <div className="flex flex-col gap-3 p-4 rounded-lg border border-slate-800 bg-slate-950/40 mt-2 flex-grow">
-        <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-          <span>📰</span> Tin tức liên quan
-        </h3>
-        <div className="flex flex-col gap-3">
-          <article className="border-b border-slate-800 pb-2">
-            <a href="#" className="text-xs font-semibold text-cyan-400 hover:underline line-clamp-2">
-              Khối ngoại mua ròng {activeSymbolDetail} phiên thứ 3 liên tiếp.
-            </a>
-            <span className="text-[10px] text-slate-500 mt-1 block">15 phút trước - CafeF</span>
-          </article>
-          <article className="">
-            <a href="#" className="text-xs font-semibold text-cyan-400 hover:underline line-clamp-2">
-              Phân tích kỹ thuật {activeSymbolDetail}: Vượt cản chéo trung hạn.
-            </a>
-            <span className="text-[10px] text-slate-500 mt-1 block">2 giờ trước - FireAnt</span>
-          </article>
-        </div>
-      </div>
-    </aside>
+      // Whale Flow
+      createElement(
+        "div",
+        { className: "watchlistPage__slideOverSection" },
+        createElement(
+          "h3",
+          { className: "watchlistPage__slideOverSectionTitle" },
+          "\uD83D\uDC0B Whale Order Flow"
+        ),
+        createElement(
+          "ul",
+          { className: "watchlistPage__slideOverFlowList" },
+          createElement(
+            "li",
+            { className: "watchlistPage__slideOverFlowItem" },
+            createElement("span", { className: "watchlistPage__slideOverFlowTime" }, "14:28:10"),
+            createElement("span", { className: "watchlistPage__slideOverFlowBuy" }, "MUA 150,000")
+          ),
+          createElement(
+            "li",
+            { className: "watchlistPage__slideOverFlowItem" },
+            createElement("span", { className: "watchlistPage__slideOverFlowTime" }, "14:15:05"),
+            createElement("span", { className: "watchlistPage__slideOverFlowSell" }, "B\u00C1N 80,000")
+          ),
+          createElement(
+            "li",
+            { className: "watchlistPage__slideOverFlowItem" },
+            createElement("span", { className: "watchlistPage__slideOverFlowTime" }, "13:50:22"),
+            createElement("span", { className: "watchlistPage__slideOverFlowBuy" }, "MUA 220,000")
+          )
+        )
+      ),
+
+      // News
+      createElement(
+        "div",
+        { className: "watchlistPage__slideOverSection watchlistPage__slideOverSection--news" },
+        createElement(
+          "h3",
+          { className: "watchlistPage__slideOverSectionTitle" },
+          "\uD83D\uDCF0 Tin t\u1EE9c li\u00EAn quan"
+        ),
+        createElement(
+          "div",
+          { className: "watchlistPage__slideOverNewsList" },
+          createElement(
+            "article",
+            { className: "watchlistPage__slideOverNewsItem" },
+            createElement(
+              "a",
+              { href: "#", className: "watchlistPage__slideOverNewsLink" },
+              `Kh\u1ED1i ngo\u1EA1i mua r\u00F2ng ${activeSymbolDetail} phi\u00EAn th\u1EE9 3 li\u00EAn ti\u1EBFp.`
+            ),
+            createElement(
+              "span",
+              { className: "watchlistPage__slideOverNewsMeta" },
+              "15 ph\u00FAt tr\u01B0\u1EDBc - CafeF"
+            )
+          ),
+          createElement(
+            "article",
+            { className: "watchlistPage__slideOverNewsItem" },
+            createElement(
+              "a",
+              { href: "#", className: "watchlistPage__slideOverNewsLink" },
+              `Ph\u00E2n t\u00EDch k\u1EF9 thu\u1EADt ${activeSymbolDetail}: V\u01B0\u1EE3t c\u1EADn ch\u00E9o trung h\u1EA1n.`
+            ),
+            createElement(
+              "span",
+              { className: "watchlistPage__slideOverNewsMeta" },
+              "2 gi\u1EDD tr\u01B0\u1EDBc - FireAnt"
+            )
+          )
+        )
+      )
+    )
   );
 }

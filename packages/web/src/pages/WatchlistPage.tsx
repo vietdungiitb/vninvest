@@ -37,32 +37,22 @@ function WatchlistPageContent({ autoLoad = true }: WatchlistPageProps) {
       loadAllLists(true);
       fetchPriceAlertsList();
     }
-  }, [autoLoad]);
+  }, [autoLoad, loadAllLists, fetchPriceAlertsList]);
 
   return createElement(
     ShellPageChrome,
     {
-      eyebrow: t("watchlist.eyebrow", { defaultValue: "Rada Thị Trường" }),
-      title: t("watchlist.title", { defaultValue: "Danh Mục Theo Dõi" }),
-      description: t("watchlist.description", { defaultValue: "Theo dõi biến động giá cổ phiếu, rsi, rvol và xu hướng thị trường." }),
+      eyebrow: t("watchlist.eyebrow", { defaultValue: "Rada Thi Tr\u01B0\u1EDDng" }),
+      title: t("watchlist.title", { defaultValue: "Danh M\u00DAc Theo D\u00F5i" }),
+      description: t("watchlist.description", { defaultValue: "Theo d\u00F5i bi\u1EBFn \u0111\u1ED9ng gi\u00E1 c\u1ED5 phi\u1EBFu, rsi, rvol v\u00E0 xu h\u01B0\u1EDBng th\u1ECB tr\u01B0\u1EDDng." }),
     },
     createElement(
       "div",
-      {
-        className: "watchlistPage__container",
-        style: {
-          display: "grid",
-          gridTemplateColumns: "300px 1fr 340px",
-          gap: "1.5rem",
-          height: "calc(100vh - 200px)",
-          alignItems: "stretch",
-          overflow: "hidden"
-        }
-      },
+      { className: "watchlistPage__layout" },
       createElement(WatchlistSidebar),
-      createElement(WatchlistMainWorkspace),
-      createElement(WatchlistDetailPanel)
-    )
+      createElement(WatchlistMainWorkspace)
+    ),
+    createElement(WatchlistDetailPanel)
   );
 }
 
