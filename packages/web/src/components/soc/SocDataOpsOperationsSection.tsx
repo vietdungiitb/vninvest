@@ -5,15 +5,9 @@ import { useDataOps } from "./DataOpsContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { SocCustomGroupManager } from "./SocCustomGroupManager.js";
 import { SocOwnershipBadge } from "./SocOwnershipBadge.js";
+import { useSymbolGroups } from "../../hooks/useSymbolGroups.js";
+import { CUSTOM_GROUP_KEY, DEFAULT_SYMBOL_GROUP } from "../../constants/marketGroups.js";
 import styles from "./soc.module.css";
-
-interface SymbolGroup {
-  slug: string;
-  name: string;
-  description?: string;
-  type: string;
-  symbol_count?: number;
-}
 
 interface RunLogEntry {
   run_id: string;
@@ -54,11 +48,8 @@ const DATASETS_WITH_METADATA = [
   { key: "dark_flow", supported: false },
 ];
 
-const SYMBOL_GROUPS = ["VN30", "VN50", "VN100", "HOSE", "HNX", "UPCOM", "ALL"];
 const MODE_OPTIONS = ["missing_only", "force_refresh"];
 const EXEC_OPTIONS = ["async", "sync"];
-
-const CUSTOM_GROUP_KEY = "__custom__";
 const PREVIEW_PAGE_SIZE = 8;
 
 const LABEL_STYLE: React.CSSProperties = {
@@ -110,7 +101,6 @@ const ACTIVE_RUN_STYLES: Record<string, React.CSSProperties> = {
 };
 
 const adapter = defaultCoreApiAdapter as unknown as {
-  getSocSymbolGroups: () => Promise<SymbolGroup[]>;
   getSocDataOpsRunLogs: (page: number, pageSize: number) => Promise<{ results?: RunLogEntry[]; next?: string | null }>;
   purgeSocDataOpsRunLogs: (keep: number) => Promise<void>;
   previewSocDataOpsPlanner: (p: Record<string, unknown>) => Promise<PreviewResult>;
@@ -121,7 +111,7 @@ export function SocDataOpsOperationsSection() {
   const { state, actions } = useDataOps();
   const { runs } = state;
 
-  const [customGroups, setCustomGroups] = useState<SymbolGroup[]>([]);
+  const { predefined, custom: apiCustomGroups, reload: reloadGroups } = useSymbolGroups();
   const [runLogs, setRunLogs] = useState<RunLogEntry[]>([]);
   const [runLogsPage, setRunLogsPage] = useState(1);
   const [runLogsPageSize, setRunLogsPageSize] = useState(10);
@@ -130,7 +120,7 @@ export function SocDataOpsOperationsSection() {
 
   // Form State
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>(["intraday_ticks"]);
-  const [selectedGroup, setSelectedGroup] = useState("VN30");
+  const [selectedGroup, setSelectedGroup] = useState(DEFAULT_SYMBOL_GROUP);
   const [customSymbols, setCustomSymbols] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -154,16 +144,6 @@ export function SocDataOpsOperationsSection() {
   // Drawer Custom Group State
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-
-  const fetchCustomGroups = useCallback(async () => {
-    try {
-      const data = await adapter.getSocSymbolGroups();
-      setCustomGroups(data.filter((g) => g.type === "custom"));
-    } catch {
-      setCustomGroups([]);
-    }
-  }, []);
-
   const fetchRunLogs = useCallback(async (page: number, pageSize: number) => {
     setRunLogsLoading(true);
     try {
@@ -184,9 +164,8 @@ export function SocDataOpsOperationsSection() {
   };
 
   useEffect(() => {
-    fetchCustomGroups();
     actions.refreshRuns();
-  }, [fetchCustomGroups, actions]);
+  }, [actions]);
 
   useEffect(() => {
     fetchRunLogs(runLogsPage, runLogsPageSize);
@@ -298,8 +277,8 @@ export function SocDataOpsOperationsSection() {
   const skippedPageItems = skippedItems.slice(skippedPage * PREVIEW_PAGE_SIZE, (skippedPage + 1) * PREVIEW_PAGE_SIZE);
 
   const allGroups = [
-    ...SYMBOL_GROUPS.map((g) => ({ key: g, label: g, type: "builtin" })),
-    ...customGroups.map((g) => ({ key: g.slug, label: g.name, type: "custom" })),
+    ...predefined.map((g) => ({ key: g.group_id, label: g.name, type: "builtin" })),
+    ...apiCustomGroups.map((g) => ({ key: g.slug, label: g.name, type: "custom" })),
     { key: CUSTOM_GROUP_KEY, label: t("soc.dataops.backfill_custom_group_label"), type: "custom" },
   ];
 
@@ -846,7 +825,7 @@ export function SocDataOpsOperationsSection() {
                   "\u2715",
                 ),
               ),
-              createElement(SocCustomGroupManager, { onGroupsChanged: fetchCustomGroups }),
+              createElement(SocCustomGroupManager, { onGroupsChanged: reloadGroups }),
             ),
           ),
           document.body

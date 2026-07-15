@@ -28,10 +28,8 @@ function SidebarPanelFallback({ minHeightClass = 'min-h-[220px]', label = 'Đang
 }
 
 const EXCLUDED_MARKET_GROUPS = new Set([
-  'VN100',
-  'HOSE',
-  'HNX',
-  'UPCOM',
+  'VN30', 'VN50', 'VN100', 'HNX30',
+  'HOSE', 'HNX', 'UPCOM',
 ]);
 
 export default function ModernDashboard() {

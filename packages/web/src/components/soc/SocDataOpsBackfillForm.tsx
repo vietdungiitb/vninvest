@@ -2,6 +2,8 @@ import { createElement, useCallback, useEffect, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { useDataOps } from "./DataOpsContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { useSymbolGroups } from "../../hooks/useSymbolGroups.js";
+import { CUSTOM_GROUP_KEY, DEFAULT_SYMBOL_GROUP } from "../../constants/marketGroups.js";
 import styles from "./soc.module.css";
 
 const SUPPORTED_DATASETS = [
@@ -11,8 +13,6 @@ const SUPPORTED_DATASETS = [
   "intraday_ticks",
   "session_facts",
 ];
-
-const SYMBOL_GROUPS = ["VN30", "VN50", "VN100", "HOSE", "HNX", "UPCOM", "ALL", "CUSTOM"];
 
 const MODE_OPTIONS = ["missing_only", "force_refresh"];
 const EXEC_OPTIONS = ["async", "sync"];
@@ -36,8 +36,9 @@ export function SocDataOpsBackfillForm() {
   const { state, actions } = useDataOps();
   const { runs, loading } = state;
 
+  const { predefined } = useSymbolGroups();
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>(["intraday_ticks"]);
-  const [selectedGroup, setSelectedGroup] = useState("VN30");
+  const [selectedGroup, setSelectedGroup] = useState(DEFAULT_SYMBOL_GROUP);
   const [customSymbols, setCustomSymbols] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -61,8 +62,8 @@ export function SocDataOpsBackfillForm() {
 
   const buildPayload = useCallback(() => ({
     datasets: selectedDatasets,
-    symbol_group: selectedGroup === "CUSTOM" ? "custom" : selectedGroup,
-    ...(selectedGroup === "CUSTOM" && customSymbols.trim() ? { symbols: customSymbols } : {}),
+    symbol_group: selectedGroup === CUSTOM_GROUP_KEY ? "custom" : selectedGroup,
+    ...(selectedGroup === CUSTOM_GROUP_KEY && customSymbols.trim() ? { symbols: customSymbols } : {}),
     date_from: dateFrom || undefined,
     date_to: dateTo || undefined,
     mode,
@@ -177,20 +178,23 @@ export function SocDataOpsBackfillForm() {
       createElement(
         "div",
         { className: "s5_7_SocDataOpsBackfillForm",  },
-        SYMBOL_GROUPS.map((g) =>
+        [
+          ...predefined.map((g) => ({ key: g.group_id, label: g.name })),
+          { key: CUSTOM_GROUP_KEY, label: t("soc.dataops.backfill_custom_group_label") || "CUSTOM" },
+        ].map((g) =>
           createElement(
             "button",
             {
-              key: g,
+              key: g.key,
               type: "button",
-              className: `${styles.filterBtn} ${selectedGroup === g ? styles.filterBtnActive : styles.filterBtnInactive}`,
-              onClick: () => setSelectedGroup(g),
+              className: `${styles.filterBtn} ${selectedGroup === g.key ? styles.filterBtnActive : styles.filterBtnInactive}`,
+              onClick: () => setSelectedGroup(g.key),
             },
-            g === "CUSTOM" ? t("soc.dataops.backfill_mode_missing_only")?.replace("Missing-only", "Custom") || "CUSTOM" : g,
+            g.label,
           ),
         ),
       ),
-      selectedGroup === "CUSTOM"
+      selectedGroup === CUSTOM_GROUP_KEY
         ? createElement(
             "div",
             { className: "s5_8_SocDataOpsBackfillForm",  },

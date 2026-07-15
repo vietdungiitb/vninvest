@@ -463,6 +463,10 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
       return coreGet("/operator/soc/symbol-groups/");
     },
 
+    syncSocSymbolGroups(payload) {
+      return corePost("/operator/soc/symbol-groups/sync/", payload || {});
+    },
+
     createSocSymbolGroup(payload) {
       return corePost("/operator/soc/symbol-groups/", payload);
     },

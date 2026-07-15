@@ -446,6 +446,62 @@ class CustomSymbolGroup(models.Model):
 
 
 # ---------------------------------------------------------------------------
+# Cached Symbol Groups — SSOT từ vnbroker provider
+# ---------------------------------------------------------------------------
+
+
+class CachedSymbolGroup(models.Model):
+    """Nhóm thị trường cache từ vnbroker provider — single source of truth cho group list.
+
+    Thay thế PREDEFINED_SYMBOL_GROUPS hardcoded trong matrix_coordinator.py.
+    Sync qua POST /api/soc/symbol-groups/sync/ → symbol_group_sync.sync_groups().
+    """
+
+    group_name = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name='Tên nhóm',
+        help_text='VD: VN30, HOSE, VNMidCap',
+    )
+    group_code = models.CharField(
+        max_length=20,
+        blank=True,
+        default='',
+        verbose_name='Mã nhóm (provider code)',
+        help_text='Mã nội bộ provider. VD: KBS dùng "30" cho VN30',
+    )
+    category = models.CharField(
+        max_length=50,
+        blank=True,
+        default='',
+        verbose_name='Phân loại',
+        help_text='VD: Chỉ số VN, Sàn giao dịch, ETF/Quỹ',
+    )
+    description = models.TextField(blank=True, default='', verbose_name='Mô tả')
+    source_provider = models.CharField(
+        max_length=20,
+        verbose_name='Provider nguồn',
+        help_text='Provider lấy dữ liệu: KBS, VCI, TCBS',
+    )
+    symbol_count = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Số lượng mã',
+        help_text='Số mã trong nhóm (null nếu chưa resolve)',
+    )
+    is_active = models.BooleanField(default=True, verbose_name='Đang hoạt động')
+    synced_at = models.DateTimeField(auto_now=True, verbose_name='Lần sync gần nhất')
+
+    class Meta:
+        ordering = ['category', 'group_name']
+        verbose_name = 'Nhóm thị trường (cached)'
+        verbose_name_plural = 'Nhóm thị trường (cached)'
+
+    def __str__(self):
+        return f'{self.group_name} ({self.symbol_count or "?"} mã, {self.source_provider})'
+
+
+# ---------------------------------------------------------------------------
 # B02 — Backfill Progress Persistence
 # ---------------------------------------------------------------------------
 

@@ -1,6 +1,8 @@
 import { createElement, useCallback, useEffect, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { useDataOps } from "./DataOpsContext.js";
+import { useSymbolGroups } from "../../hooks/useSymbolGroups.js";
+import { CUSTOM_GROUP_KEY, DEFAULT_SYMBOL_GROUP } from "../../constants/marketGroups.js";
 import styles from "./soc.module.css";
 
 const SUPPORTED_DATASETS = [
@@ -10,8 +12,6 @@ const SUPPORTED_DATASETS = [
   "intraday_ticks",
   "session_facts",
 ];
-
-const SYMBOL_GROUPS = ["VN30", "VN50", "VN100", "HOSE", "HNX", "UPCOM", "ALL"];
 
 const MODE_OPTIONS = ["missing_only", "force_refresh"];
 const EXEC_OPTIONS = ["async", "sync"];
@@ -24,18 +24,8 @@ const LABEL_STYLE: React.CSSProperties = {
   display: "block",
 };
 
-const CUSTOM_GROUP_KEY = "__custom__";
-
-interface CustomGroup {
-  slug: string;
-  name: string;
-  type: string;
-  symbol_count?: number;
-  description?: string;
-}
-
 interface SocBackfillCenterProps {
-  customGroups?: CustomGroup[];
+  customGroups?: Array<{ slug: string; name: string; type: string; symbol_count?: number; description?: string }>;
 }
 
 const ACTIVE_RUN_STYLES: Record<string, React.CSSProperties> = {
@@ -78,13 +68,16 @@ const ACTIVE_RUN_STYLES: Record<string, React.CSSProperties> = {
   } as React.CSSProperties,
 };
 
-export function SocBackfillCenter({ customGroups = [] }: SocBackfillCenterProps) {
+export function SocBackfillCenter({ customGroups: propCustomGroups = [] }: SocBackfillCenterProps) {
   const { t } = useI18n();
   const { state, actions } = useDataOps();
   const { runs, loading } = state;
 
+  const { predefined, custom: apiCustomGroups } = useSymbolGroups();
+  const customGroups = propCustomGroups.length > 0 ? propCustomGroups : apiCustomGroups;
+
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>(["intraday_ticks"]);
-  const [selectedGroup, setSelectedGroup] = useState("VN30");
+  const [selectedGroup, setSelectedGroup] = useState(DEFAULT_SYMBOL_GROUP);
   const [customSymbols, setCustomSymbols] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -161,7 +154,7 @@ export function SocBackfillCenter({ customGroups = [] }: SocBackfillCenterProps)
   const activeRun = runs.find((r) => r.status === "running" || r.status === "queued");
 
   const allGroups = [
-    ...SYMBOL_GROUPS.map((g) => ({ key: g, label: g, type: "builtin" })),
+    ...predefined.map((g) => ({ key: g.group_id, label: g.name, type: "builtin" })),
     ...customGroups.map((g) => ({ key: g.slug, label: g.name, type: "custom" })),
     { key: CUSTOM_GROUP_KEY, label: t("soc.dataops.backfill_custom_group_label"), type: "custom" },
   ];

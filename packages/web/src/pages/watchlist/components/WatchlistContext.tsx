@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useRef,
 import { coreApiAdapter } from "../../../adapters/coreApiAdapter.js";
 import { useRealtimeFeedFromManager } from "../../../context/RealtimeContext.js";
 import { useI18n } from "../../../context/LangContext.js";
+import { SYSTEM_GROUP_IDS } from "../../../constants/marketGroups.js";
 import { 
   Watchlist, LegacyGroup, Holding, TrackedSymbol, PriceAlert, 
   TechnicalData, WatchlistItem, RealtimeFeedData 
@@ -55,11 +56,6 @@ interface WatchlistContextType {
 
 const WatchlistContext = createContext<WatchlistContextType | undefined>(undefined);
 
-const EXCLUDED_MARKET_GROUPS = [
-  "Ngân hàng", "Bất động sản", "Thép & Vật liệu", "Dầu khí", "Công nghệ", 
-  "Bán lẻ & Tiêu dùng", "VN30", "VN100", "HNX30", "HOSE", "HNX", "UPCOM"
-];
-
 export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { t } = useI18n();
 
@@ -107,7 +103,10 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
       try {
         const res = await api.getWatchlists();
         wlList = Array.isArray(res) ? res : (res?.results ?? []);
-        wlList = wlList.filter((wl: Watchlist) => !EXCLUDED_MARKET_GROUPS.includes(wl.name));
+        wlList = wlList.filter((wl: Watchlist) => {
+          const slug = String(wl.id || wl.name || "").toLowerCase().replace(/\s+/g, "-");
+          return !SYSTEM_GROUP_IDS.includes(slug);
+        });
       } catch (err) {
         console.warn("Lỗi tải watchlists:", (err as Error).message);
       }
@@ -290,8 +289,9 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
   }, [realtimeFeed?.quotesBySymbol]);
 
   useEffect(() => {
+    const refs = flashTimeoutRefs.current;
     return () => {
-      Object.values(flashTimeoutRefs.current).forEach(t => clearTimeout(t));
+      Object.values(refs).forEach(t => clearTimeout(t));
     };
   }, []);
 

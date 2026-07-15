@@ -1179,3 +1179,94 @@ def get_company_financials_response(symbol: str, force: bool = False) -> dict:
     return response_data
 
 
+# ---------------------------------------------------------------------------
+# CachedSymbolGroup sync — SSOT cho nhóm thị trường
+# ---------------------------------------------------------------------------
+
+_PROVIDER_SYNC_ORDER = ('KBS', 'VCI', 'TCBS')
+
+
+def sync_cached_symbol_groups(*, source: str | None = None) -> dict[str, Any]:
+    """Sync nhóm thị trường từ vnbroker provider vào CachedSymbolGroup model.
+
+    Gọi listing.get_supported_groups() → upsert vào DB.
+    Với mỗi group, gọi listing.symbols_by_group() để đếm symbol_count.
+
+    Returns:
+        dict: {synced: int, deactivated: int, source: str, error: str|None}
+    """
+    from .models import CachedSymbolGroup  # lazy import — same package
+
+    providers_to_try = [source.upper()] if source else list(_PROVIDER_SYNC_ORDER)
+
+    for prov in providers_to_try:
+        try:
+            normalized = _resolve_realtime_source(prov)
+            listing_class = _load_listing_adapter_class()
+            client = listing_class(source=normalized)
+
+            groups_df = client.get_supported_groups()
+            if groups_df is None or (hasattr(groups_df, 'empty') and groups_df.empty):
+                logger.warning('sync_cached_symbol_groups: %s trả về empty groups', normalized)
+                continue
+
+            imported_names: set[str] = set()
+            synced = 0
+
+            for _, row in groups_df.iterrows():
+                group_name = str(row.get('group_name', '')).strip()
+                if not group_name:
+                    continue
+
+                group_code = str(row.get('group_code', '')).strip()
+                category = str(row.get('category', '')).strip()
+                description = str(row.get('description', '')).strip()
+
+                # Đếm symbols — lazy, có thể fail
+                symbol_count = None
+                try:
+                    symbols = client.symbols_by_group(group=group_name)
+                    if symbols is not None and hasattr(symbols, '__len__'):
+                        symbol_count = len(symbols)
+                except Exception:
+                    pass
+
+                CachedSymbolGroup.objects.update_or_create(
+                    group_name=group_name,
+                    defaults={
+                        'group_code': group_code,
+                        'category': category,
+                        'description': description,
+                        'source_provider': normalized,
+                        'symbol_count': symbol_count,
+                        'is_active': True,
+                    },
+                )
+                imported_names.add(group_name)
+                synced += 1
+
+            # Soft-deactivate groups không còn ở provider này
+            deactivated = CachedSymbolGroup.objects.filter(
+                is_active=True,
+                source_provider=normalized,
+            ).exclude(
+                group_name__in=imported_names,
+            ).update(is_active=False)
+
+            logger.info(
+                'sync_cached_symbol_groups: synced=%d, deactivated=%d, source=%s',
+                synced, deactivated, normalized,
+            )
+            return {'synced': synced, 'deactivated': deactivated, 'source': normalized, 'error': None}
+
+        except Exception as exc:
+            logger.warning('sync_cached_symbol_groups: provider %s fail: %s', prov, exc)
+            continue
+
+    return {
+        'synced': 0,
+        'deactivated': 0,
+        'source': 'none',
+        'error': 'Tất cả vnbroker providers đều không khả dụng',
+    }
+
