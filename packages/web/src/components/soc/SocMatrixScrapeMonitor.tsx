@@ -1,6 +1,7 @@
 import { createElement, useEffect, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { statusColor, getStatusBadgeStyle } from "./socStatusColors.js";
 import styles from "./soc.module.css";
 
 interface MatrixCycle {
@@ -93,30 +94,20 @@ export function SocMatrixScrapeMonitor() {
     }
   };
 
-  const getStatusColor = (status: string): string => {
-    switch (status) {
-      case "running": return "#34d399";
-      case "completed": return "var(--accent-cyan, #06b6d4)";
-      case "failed": return "#f87171";
-      case "aborted": return "#94a3b8";
-      case "ready": return "#34d399";
-      case "blocked": return "#f87171";
-      default: return "#fbbf24";
-    }
-  };
+  const getStatusColor = (status: string): string => statusColor(status);
 
   return createElement(
     "div",
     { className: styles.glassPanel },
     createElement(
       "div",
-      { className: "s5_0_SocMatrixScrapeMonitor",  },
-      createElement("h3", { className: "s5_1_SocMatrixScrapeMonitor",  }, t("soc.matrix.title")),
+      { },
+      createElement("h3", { }, t("soc.matrix.title")),
       createElement(
         "button",
         {
           onClick: handleStartCycle,
-          className: `styles.actionBtn s5_2_SocMatrixScrapeMonitor`,
+          className: `styles.actionBtn`,
           
         },
         t("soc.matrix.start_cycle"),
@@ -128,7 +119,7 @@ export function SocMatrixScrapeMonitor() {
         ? createElement("div", { className: styles.inlineError }, error)
         : createElement(
             "div",
-            { className: "s5_3_SocMatrixScrapeMonitor",  },
+            { },
             createElement(
               "div",
               { className: styles.sectionCard },
@@ -137,27 +128,26 @@ export function SocMatrixScrapeMonitor() {
                 ? createElement("p", { className: styles.emptyState }, t("soc.matrix.no_cycles"))
                 : createElement(
                     "div",
-                    { className: "s5_4_SocMatrixScrapeMonitor",  },
+                    { },
                     cycles.slice(0, 10).map((cycle) =>
                       createElement(
                         "div",
                         {
                           key: cycle.cycle_id,
-                          className: "s5_5_SocMatrixScrapeMonitor", 
-                        },
+                          },
                         createElement(
                           "div",
-                          { className: "s5_6_SocMatrixScrapeMonitor",  },
-                          createElement("div", { className: "s5_7_SocMatrixScrapeMonitor",  },
+                          { },
+                          createElement("div", { },
                             `Cycle: ${cycle.cycle_id.slice(0, 8)}...`,
                           ),
-                          createElement("div", { className: "s5_8_SocMatrixScrapeMonitor",  },
+                          createElement("div", { },
                             `${cycle.completed_cells || 0}/${cycle.total_cells || 0} cells \u2022 ${cycle.started_at?.split("T")[0] || "N/A"}`,
                           ),
                           cycle.progress != null
                             ? createElement(
                                 "div",
-                                { className: "s5_9_SocMatrixScrapeMonitor",  },
+                                { },
                                 createElement("div", {
                                   style: {
                                     height: "100%",
@@ -173,8 +163,8 @@ export function SocMatrixScrapeMonitor() {
                         createElement(
                           "span",
                           {
-                            className: styles.statusBadge,
-                            style: { background: `${getStatusColor(cycle.status)}20`, color: getStatusColor(cycle.status) },
+                          className: styles.statusBadge,
+                          style: { ...getStatusBadgeStyle(cycle.status) },
                           },
                           cycle.status,
                         ),
@@ -183,7 +173,7 @@ export function SocMatrixScrapeMonitor() {
                               "button",
                               {
                                 onClick: () => handleAbort(cycle.cycle_id),
-                                className: `styles.actionBtn s5_10_SocMatrixScrapeMonitor`,
+                                className: `styles.actionBtn`,
                                 
                               },
                               t("soc.matrix.abort"),
@@ -200,17 +190,16 @@ export function SocMatrixScrapeMonitor() {
                   createElement("div", { className: styles.sectionCardTitle }, t("soc.matrix.providers")),
                   createElement(
                     "div",
-                    { className: "s5_11_SocMatrixScrapeMonitor",  },
+                    { },
                     providers.map((p) =>
                       createElement(
                         "span",
                         {
                           key: p.key,
-                          className: styles.statusBadge,
-                          style: {
-                            background: `${getStatusColor(p.status)}20`,
-                            color: getStatusColor(p.status),
-                          },
+                           className: styles.statusBadge,
+                           style: {
+                             ...getStatusBadgeStyle(p.status),
+                           },
                         },
                         `${p.name} (${p.status})`,
                       ),

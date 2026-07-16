@@ -94,8 +94,8 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
   };
 
   const field = (key: keyof typeof config, label: string, min?: number, max?: number) =>
-    createElement("div", { className: "s5_0_SocScreenerConfigForm",  },
-      createElement("label", { className: "s5_1_SocScreenerConfigForm",  }, label),
+    createElement("div", { },
+      createElement("label", { }, label),
       createElement("input", {
         type: "number",
         value: config[key],
@@ -104,13 +104,13 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
         max: max,
         style: { ...inputStyle, borderColor: errors[key as string] ? "var(--accent-red)" : "var(--border-default, rgba(80, 120, 168, 0.28))" },
       }),
-      errors[key as string] && createElement("p", { className: "s5_2_SocScreenerConfigForm",  }, errors[key as string])
+      errors[key as string] && createElement("p", { }, errors[key as string])
     );
 
   return createElement("div", null,
     createElement("div", { className: styles.sectionCard },
       createElement("div", { className: styles.sectionCardTitle }, t("soc.screener.config_title")),
-      createElement("div", { className: "s5_3_SocScreenerConfigForm",  },
+      createElement("div", { },
         field("scan_interval_seconds", t("soc.screener.config.scan_interval"), 30),
         field("max_symbols_per_scan", t("soc.screener.config.max_symbols"), 1, 5000),
         field("alert_cooldown_seconds", t("soc.screener.config.alert_cooldown"), 60),
@@ -118,25 +118,25 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
         field("result_retention_hours", t("soc.screener.config.retention_hours"), 1),
       ),
     ),
-    createElement("details", { className: `styles.sectionCard s5_4_SocScreenerConfigForm`,  },
-      createElement("summary", { className: "s5_5_SocScreenerConfigForm",  },
+    createElement("details", { className: `styles.sectionCard`,  },
+      createElement("summary", { },
         t("soc.screener.config.advanced")
       ),
-      createElement("div", { className: `styles.configEditor s5_6_SocScreenerConfigForm`,  },
+      createElement("div", { className: `styles.configEditor`,  },
         JSON.stringify(props.initialConfig, null, 2)
       ),
     ),
-    createElement("div", { className: "s5_7_SocScreenerConfigForm",  },
+    createElement("div", { },
       createElement("button", {
         onClick: handleReset,
-        className: `styles.actionBtn s5_8_SocScreenerConfigForm`,
+        className: `styles.actionBtn`,
         
       },
       t("soc.screener.config.reset")
       ),
       createElement("button", {
         onClick: onCancel,
-        className: `styles.actionBtn s5_9_SocScreenerConfigForm`,
+        className: `styles.actionBtn`,
         
       },
       t("common.cancel")
@@ -144,7 +144,7 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
       createElement("button", {
         onClick: handleSave,
         disabled: loading,
-        className: `styles.actionBtn s5_10_SocScreenerConfigForm`,
+        className: `styles.actionBtn`,
         
       },
       loading ? t("common.saving") : t("common.save")

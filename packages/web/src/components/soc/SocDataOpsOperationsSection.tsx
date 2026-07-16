@@ -5,6 +5,8 @@ import { useDataOps } from "./DataOpsContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { SocCustomGroupManager } from "./SocCustomGroupManager.js";
 import { SocOwnershipBadge } from "./SocOwnershipBadge.js";
+import { SocStatusBadge } from "./SocStatusBadge.js";
+import { LucideIcon } from "../ui/lucide-icon.js";
 import { useSymbolGroups } from "../../hooks/useSymbolGroups.js";
 import { CUSTOM_GROUP_KEY, DEFAULT_SYMBOL_GROUP } from "../../constants/marketGroups.js";
 import styles from "./soc.module.css";
@@ -76,8 +78,8 @@ const ACTIVE_RUN_STYLES: Record<string, React.CSSProperties> = {
   },
   title: {
     fontWeight: 700,
-    fontSize: "0.75rem",
-    color: "#34d399",
+    fontSize: "var(--fs-xs, 0.75rem)",
+    color: "var(--color-success-500, #34d399)",
   },
   progressBar: {
     height: "6px",
@@ -254,18 +256,6 @@ export function SocDataOpsOperationsSection() {
   const toggleDataset = (key: string) => {
     setSelectedDatasets((prev) => prev.includes(key) ? prev.filter((d) => d !== key) : [...prev, key]);
   };
-
-  const getStatusBadgeStyle = (status: string) => {
-    switch (status) {
-      case "success": case "completed": return { background: "rgba(16, 185, 129, 0.15)", color: "#34d399" };
-      case "running": case "active": return { background: "rgba(0, 180, 216, 0.15)", color: "var(--accent-cyan, #06b6d4)" };
-      case "failed": case "error": return { background: "rgba(239, 68, 68, 0.15)", color: "#f87171" };
-      case "partial": return { background: "rgba(251, 191, 36, 0.15)", color: "#fbbf24" };
-      case "queued": case "pending": return { background: "rgba(148, 163, 184, 0.15)", color: "#94a3b8" };
-      default: return { background: "rgba(148, 163, 184, 0.15)", color: "#94a3b8" };
-    }
-  };
-
   const activeRun = runs.find((r) => r.status === "running" || r.status === "queued");
   const plannedCount = preview?.summary?.planned_count ?? 0;
   const skippedCount = preview?.summary?.skipped_count ?? 0;
@@ -286,11 +276,11 @@ export function SocDataOpsOperationsSection() {
   const renderDatasetCheckboxes = () =>
     createElement(
       "div",
-      { className: "s5_0_SocDataOpsOperationsSection",  },
+      { },
       createElement("label", { style: LABEL_STYLE }, t("soc.dataops.backfill_datasets")),
       createElement(
         "div",
-        { className: "s5_1_SocDataOpsOperationsSection",  },
+        { },
         DATASETS_WITH_METADATA.map((ds) => {
           const isSelected = selectedDatasets.includes(ds.key);
           return createElement(
@@ -312,21 +302,20 @@ export function SocDataOpsOperationsSection() {
               checked: isSelected && ds.supported,
               disabled: !ds.supported,
               onChange: () => ds.supported && toggleDataset(ds.key),
-              className: "s5_2_SocDataOpsOperationsSection", 
-            }),
+              }),
             createElement(
               "span",
-              { className: "s5_3_SocDataOpsOperationsSection",  },
-              createElement("span", { className: "s5_4_SocDataOpsOperationsSection",  }, t(`soc.dataops.dataset_${ds.key}`)),
+              { },
+              createElement("span", { }, t(`soc.dataops.dataset_${ds.key}`)),
               !ds.supported
                 ? createElement(
                     "span",
-                    { className: "s5_5_SocDataOpsOperationsSection",  },
+                    { },
                     "Coming soon",
                   )
                 : createElement(
                     "span",
-                    { className: "s5_6_SocDataOpsOperationsSection",  },
+                    { },
                     t(`soc.dataops.dataset_field_${ds.key}`),
                   ),
             ),
@@ -338,17 +327,16 @@ export function SocDataOpsOperationsSection() {
   const renderSymbolGroupSelect = () =>
     createElement(
       "div",
-      { className: "s5_7_SocDataOpsOperationsSection",  },
+      { },
       createElement(
         "div",
-        { className: "s5_8_SocDataOpsOperationsSection",  },
+        { },
         createElement("label", { style: { ...LABEL_STYLE, marginBottom: 0 } }, t("soc.dataops.backfill_symbol_group")),
         createElement(
           "button",
           {
             type: "button",
             onClick: () => setIsDrawerOpen(true),
-            className: "s5_9_SocDataOpsOperationsSection", 
             title: t("soc.dataops.ops_section_custom_groups"),
           },
           "\u2699 " + t("soc.dataops.subtab.config"),
@@ -356,7 +344,7 @@ export function SocDataOpsOperationsSection() {
       ),
       createElement(
         "div",
-        { className: "s5_10_SocDataOpsOperationsSection",  },
+        { },
         allGroups.map((g) =>
           createElement(
             "button",
@@ -375,16 +363,16 @@ export function SocDataOpsOperationsSection() {
       isCustom
         ? createElement(
             "div",
-            { className: "s5_11_SocDataOpsOperationsSection",  },
+            { },
             createElement("label", { style: { ...LABEL_STYLE, marginBottom: "0.15rem" } }, t("soc.dataops.backfill_custom_symbols")),
             createElement("textarea", {
               value: customSymbols,
               onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setCustomSymbols(e.target.value),
-              className: `styles.searchInput s5_12_SocDataOpsOperationsSection`,
+              className: `styles.searchInput`,
               placeholder: t("soc.dataops.backfill_custom_symbols_placeholder"),
               
             }),
-            createElement("p", { className: "s5_13_SocDataOpsOperationsSection",  },
+            createElement("p", { },
               t("soc.dataops.backfill_custom_symbols_hint")),
           )
         : null,
@@ -393,7 +381,7 @@ export function SocDataOpsOperationsSection() {
   const renderDateModeRow = () =>
     createElement(
       "div",
-      { className: "s5_14_SocDataOpsOperationsSection",  },
+      { },
       createElement(
         "div", null,
         createElement("label", { style: LABEL_STYLE }, t("soc.dataops.backfill_from_date")),
@@ -439,7 +427,7 @@ export function SocDataOpsOperationsSection() {
   const renderReasonInput = () =>
     createElement(
       "div",
-      { className: "s5_15_SocDataOpsOperationsSection",  },
+      { },
       createElement("label", { style: LABEL_STYLE }, t("soc.dataops.reason")),
       createElement("input", {
         type: "text", value: reason, className: styles.searchInput,
@@ -451,23 +439,22 @@ export function SocDataOpsOperationsSection() {
   const renderDryRunCheckbox = () =>
     createElement(
       "label",
-      { className: "s5_16_SocDataOpsOperationsSection",  },
+      { },
       createElement("input", {
         type: "checkbox", checked: dryRun,
         onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDryRun(e.target.checked),
-        className: "s5_17_SocDataOpsOperationsSection", 
-      }),
+        }),
       t("soc.dataops.backfill_dry_run"),
     );
 
   const renderActionRow = () =>
     createElement(
       "div",
-      { className: "s5_18_SocDataOpsOperationsSection",  },
+      { },
       createElement(
         "button",
         {
-          className: `styles.actionBtn s5_19_SocDataOpsOperationsSection`,
+          className: `styles.actionBtn`,
           onClick: handlePreview,
           disabled: previewing || submitting,
           
@@ -501,7 +488,7 @@ export function SocDataOpsOperationsSection() {
         createElement(
           "button",
           {
-            className: `styles.actionBtn s5_20_SocDataOpsOperationsSection`,
+            className: `styles.actionBtn`,
             onClick: () => handleAbort(activeRun.run_id),
             
           },
@@ -537,7 +524,7 @@ export function SocDataOpsOperationsSection() {
     const headerBtn = createElement(
       "button",
       {
-        className: `styles.filterBtn s5_21_SocDataOpsOperationsSection`,
+        className: `styles.filterBtn`,
         onClick: () => setExpanded(!expanded),
         
       },
@@ -546,7 +533,7 @@ export function SocDataOpsOperationsSection() {
     const tableContent = expanded
       ? createElement(
           "div",
-          { className: "s5_22_SocDataOpsOperationsSection",  },
+          { },
           createElement(
             "table",
             { className: styles.previewTable },
@@ -578,17 +565,17 @@ export function SocDataOpsOperationsSection() {
           totalPages > 1
             ? createElement(
                 "div",
-                { className: "s5_23_SocDataOpsOperationsSection",  },
+                { },
                 createElement("button", {
-                  className: `styles.actionBtn s5_24_SocDataOpsOperationsSection`,
+                  className: `styles.actionBtn`,
                   onClick: () => setPage(Math.max(0, page - 1)),
                   disabled: page === 0,
                   
                 }, "\u25C0"),
-                createElement("span", { className: "s5_25_SocDataOpsOperationsSection",  },
+                createElement("span", { },
                   `${page + 1}/${totalPages}`),
                 createElement("button", {
-                  className: `styles.actionBtn s5_26_SocDataOpsOperationsSection`,
+                  className: `styles.actionBtn`,
                   onClick: () => setPage(Math.min(totalPages - 1, page + 1)),
                   disabled: page >= totalPages - 1,
                   
@@ -597,16 +584,16 @@ export function SocDataOpsOperationsSection() {
             : null,
         )
       : null;
-    return createElement("div", { className: "s5_27_SocDataOpsOperationsSection",  }, headerBtn, tableContent);
+    return createElement("div", { }, headerBtn, tableContent);
   };
 
   const renderPreviewResults = () => {
     if (!preview) {
       return createElement(
         "div",
-        { className: `styles.sectionCard s5_28_SocDataOpsOperationsSection`,  },
-        createElement("span", { className: "s5_29_SocDataOpsOperationsSection",  }, "\u{1F5D2}"),
-        createElement("p", { className: "s5_30_SocDataOpsOperationsSection",  }, t("soc.dataops.planner_preview_empty")),
+        { className: styles.emptyState },
+        createElement(LucideIcon, { name: "ClipboardList", className: styles.emptyStateIcon }),
+        createElement("p", { }, t("soc.dataops.planner_preview_empty")),
       );
     }
 
@@ -621,13 +608,13 @@ export function SocDataOpsOperationsSection() {
           "div",
           { className: styles.metricCard, onClick: () => setPlannedExpanded(!plannedExpanded), style: { cursor: "pointer", border: plannedExpanded ? "1px solid var(--accent-cyan, #06b6d4)" : undefined } },
           createElement("div", { className: styles.metricLabel }, t("soc.dataops.planner_planned_items")),
-          createElement("div", { className: `styles.metricValue s5_31_SocDataOpsOperationsSection`,  }, String(plannedCount)),
+          createElement("div", { className: `styles.metricValue`,  }, String(plannedCount)),
         ),
         createElement(
           "div",
           { className: styles.metricCard, onClick: () => setSkippedExpanded(!skippedExpanded), style: { cursor: "pointer", border: skippedExpanded ? "1px solid var(--text-muted, #94a3b8)" : undefined } },
           createElement("div", { className: styles.metricLabel }, t("soc.dataops.planner_skipped_items")),
-          createElement("div", { className: `styles.metricValue s5_32_SocDataOpsOperationsSection`,  }, String(skippedCount)),
+          createElement("div", { className: `styles.metricValue`,  }, String(skippedCount)),
         ),
       ),
       renderItemsTable(
@@ -652,17 +639,17 @@ export function SocDataOpsOperationsSection() {
       { className: styles.sectionCard },
       createElement(
         "div",
-        { className: "s5_33_SocDataOpsOperationsSection",  },
+        { },
         createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.run_logs")),
         createElement(
           "div",
-          { className: "s5_34_SocDataOpsOperationsSection",  },
+          { },
           createElement(
             "select",
             {
               value: runLogsPageSize,
               onChange: handlePageSizeChange,
-              className: `styles.searchInput s5_35_SocDataOpsOperationsSection`,
+              className: `styles.searchInput`,
               
             },
             [5, 10, 15, 20].map((size) =>
@@ -673,7 +660,7 @@ export function SocDataOpsOperationsSection() {
             "button",
             {
               onClick: handlePurgeLogs,
-              className: `styles.actionBtn s5_36_SocDataOpsOperationsSection`,
+              className: `styles.actionBtn`,
               
             },
             t("soc.dataops.purge_logs"),
@@ -686,64 +673,64 @@ export function SocDataOpsOperationsSection() {
           ? createElement("p", { className: styles.emptyState }, t("soc.dataops.no_run_logs"))
           : createElement(
               "div",
-              { className: "s5_37_SocDataOpsOperationsSection",  },
+              { },
               runLogs.map((log, i) =>
                 createElement(
                   "div",
                   {
                     key: log.run_id || i,
-                    className: "s5_38_SocDataOpsOperationsSection", 
-                  },
+                    },
                   createElement(
                     "div",
-                    { className: "s5_39_SocDataOpsOperationsSection",  },
+                    { },
                     createElement(
                       "div",
                       null,
-                      createElement("span", { className: "s5_40_SocDataOpsOperationsSection",  }, t(`soc.dataops.dataset_${log.dataset}`) || log.dataset),
+                      createElement("span", { }, t(`soc.dataops.dataset_${log.dataset}`) || log.dataset),
                       log.message
-                        ? createElement("div", { className: "s5_41_SocDataOpsOperationsSection",  }, log.message)
+                        ? createElement("div", { }, log.message)
                         : null,
                     ),
-                    createElement("span", {
-                      className: styles.statusBadge,
-                      style: { ...getStatusBadgeStyle(log.status), fontSize: "0.62rem" },
-                    }, t(`soc.dataops.run_status_${log.status}`) || log.status),
+                    createElement(SocStatusBadge, {
+                      status: log.status,
+                      label: t(`soc.dataops.run_status_${log.status}`) || log.status,
+                      dot: false,
+                    }),
                   ),
                   (log.planned != null || log.inserted != null || log.updated != null || log.skipped_existing != null || log.failed != null)
                     ? createElement(
                         "div",
-                        { className: "s5_42_SocDataOpsOperationsSection",  },
+                        { },
                         log.planned != null ? createElement("span", null, `${t("soc.dataops.backfill_planned")}: ${log.planned}`) : null,
                         log.inserted != null ? createElement("span", null, `${t("soc.dataops.backfill_inserted")}: ${log.inserted}`) : null,
                         log.updated != null ? createElement("span", null, `${t("soc.dataops.backfill_updated")}: ${log.updated}`) : null,
-                        log.skipped_existing != null ? createElement("span", { className: "s5_43_SocDataOpsOperationsSection",  }, `${t("soc.dataops.backfill_skipped")}: ${log.skipped_existing}`) : null,
-                        log.failed != null ? createElement("span", { className: "s5_44_SocDataOpsOperationsSection",  }, `${t("soc.dataops.backfill_failed")}: ${log.failed}`) : null,
+                        log.skipped_existing != null ? createElement("span", { }, `${t("soc.dataops.backfill_skipped")}: ${log.skipped_existing}`) : null,
+                        log.failed != null ? createElement("span", { }, `${t("soc.dataops.backfill_failed")}: ${log.failed}`) : null,
                       )
                     : null,
                   createElement(
                     "div",
-                    { className: "s5_45_SocDataOpsOperationsSection",  },
+                    { },
                     log.started_at?.split("T").join(" ")?.slice(0, 19) || "—",
                   ),
                 ),
               ),
               createElement(
                 "div",
-                { className: "s5_46_SocDataOpsOperationsSection",  },
+                { },
                 createElement(
                   "button",
                   {
                     onClick: () => setRunLogsPage((p) => Math.max(1, p - 1)),
                     disabled: runLogsPage <= 1,
-                    className: `styles.actionBtn s5_47_SocDataOpsOperationsSection`,
+                    className: `styles.actionBtn`,
                     
                   },
                   "\u25C0 " + t("soc.actions.prev"),
                 ),
                 createElement(
                   "span",
-                  { className: "s5_48_SocDataOpsOperationsSection",  },
+                  { },
                   t("soc.actions.page", { page: runLogsPage }),
                 ),
                 createElement(
@@ -751,7 +738,7 @@ export function SocDataOpsOperationsSection() {
                   {
                     onClick: () => setRunLogsPage((p) => p + 1),
                     disabled: !runLogsHasMore,
-                    className: `styles.actionBtn s5_49_SocDataOpsOperationsSection`,
+                    className: `styles.actionBtn`,
                     
                   },
                   t("soc.actions.next") + " \u25B6",
@@ -762,11 +749,11 @@ export function SocDataOpsOperationsSection() {
 
   return createElement(
     "div",
-    { className: "s5_50_SocDataOpsOperationsSection",  },
+    { },
     // Banner Cảnh báo / Badge Phân quyền
     createElement(
       "div",
-      { className: "s5_51_SocDataOpsOperationsSection",  },
+      { },
       createElement(SocOwnershipBadge, { team: "core", writable: true, accessLevel: "service_ops" }),
     ),
     // Bố cục lưới 2 cột chính
@@ -786,8 +773,8 @@ export function SocDataOpsOperationsSection() {
           renderDateModeRow(),
           renderReasonInput(),
           renderDryRunCheckbox(),
-          error ? createElement("div", { className: `styles.inlineError s5_52_SocDataOpsOperationsSection`,  }, error) : null,
-          success ? createElement("div", { className: `styles.inlineSuccess s5_53_SocDataOpsOperationsSection`,  }, success) : null,
+          error ? createElement("div", { className: `styles.inlineError`,  }, error) : null,
+          success ? createElement("div", { className: `styles.inlineSuccess`,  }, success) : null,
           renderActionRow(),
         ),
       ),
@@ -806,20 +793,20 @@ export function SocDataOpsOperationsSection() {
       ? createPortal(
           createElement(
             "div",
-            { className: "s5_54_SocDataOpsOperationsSection",  },
+            { },
             createElement("div", { className: styles.drawerOverlay, onClick: () => setIsDrawerOpen(false) }),
             createElement(
               "div",
               { className: styles.drawerContent },
               createElement(
                 "div",
-                { className: "s5_55_SocDataOpsOperationsSection",  },
+                { },
                 createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.backfill_custom_group_label")),
                 createElement(
                   "button",
                   {
                     onClick: () => setIsDrawerOpen(false),
-                    className: `styles.actionBtn s5_56_SocDataOpsOperationsSection`,
+                    className: `styles.actionBtn`,
                     
                   },
                   "\u2715",

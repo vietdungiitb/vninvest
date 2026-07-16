@@ -43,14 +43,14 @@ function useSearchParams() {
 }
 
 const SOC_TABS = [
-  { key: "overview", icon: "\u{1F5C3}" },
-  { key: "signals", icon: "\u{1F6EC}" },
-  { key: "dataops", icon: "\u{1F4E1}" },
-  { key: "prefetch", icon: "\u{26A1}" },
-  { key: "screener", icon: "\u{1F50D}" },
-  { key: "vnbroker", icon: "\u{1F4E0}" },
-  { key: "runtime-kpi", icon: "\u{1F4C8}" },
-  { key: "dnse-backfill", icon: "\u{1F504}" },
+  { key: "overview", icon: "BookOpen" },
+  { key: "signals", icon: "TrendingUp" },
+  { key: "dataops", icon: "Radio" },
+  { key: "prefetch", icon: "Zap" },
+  { key: "screener", icon: "Search" },
+  { key: "vnbroker", icon: "LineChart" },
+  { key: "runtime-kpi", icon: "BarChart3" },
+  { key: "dnse-backfill", icon: "RefreshCw" },
 ];
 
 export function ShellOperationsCenterPage(_props: ShellOperationsCenterPageProps) {

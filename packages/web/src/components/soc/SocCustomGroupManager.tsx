@@ -149,8 +149,8 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
   const renderGroupList = () =>
     createElement(
       "div",
-      { className: "s5_0_SocCustomGroupManager",  },
-      createElement("label", { className: "s5_1_SocCustomGroupManager",  },
+      { },
+      createElement("label", { },
         t("soc.dataops.custom_group_list")),
       loading
         ? createElement("p", { className: styles.emptyState }, t("soc.dataops.loading"))
@@ -158,7 +158,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
           ? createElement("p", { className: styles.emptyState }, t("soc.dataops.custom_group_no_groups"))
           : createElement(
               "div",
-              { className: "s5_2_SocCustomGroupManager",  },
+              { },
               groups.map((g) =>
                 editingSlug === g.slug
                   ? renderEditForm(g)
@@ -166,26 +166,25 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
                       "div",
                       {
                         key: g.slug,
-                        className: "s5_3_SocCustomGroupManager", 
-                      },
+                        },
                       createElement(
                         "div",
-                        { className: "s5_4_SocCustomGroupManager",  onClick: () => startEdit(g) },
-                        createElement("span", { className: "s5_5_SocCustomGroupManager",  },
+                        { onClick: () => startEdit(g) },
+                        createElement("span", { },
                           `\u2605 ${g.name}`),
-                        createElement("span", { className: "s5_6_SocCustomGroupManager",  },
+                        createElement("span", { },
                           `(${g.symbol_count ?? "?"})`),
                         g.description
-                          ? createElement("div", { className: "s5_7_SocCustomGroupManager",  }, g.description)
+                          ? createElement("div", { }, g.description)
                           : null,
                       ),
                       createElement(
                         "div",
-                        { className: "s5_8_SocCustomGroupManager",  },
+                        { },
                         createElement(
                           "button",
                           {
-                            className: `styles.actionBtn s5_9_SocCustomGroupManager`,
+                            className: `styles.actionBtn`,
                             onClick: () => startEdit(g),
                             
                           },
@@ -194,7 +193,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
                         createElement(
                           "button",
                           {
-                            className: `styles.actionBtn s5_10_SocCustomGroupManager`,
+                            className: `styles.actionBtn`,
                             onClick: () => handleDelete(g.slug),
                             
                           },
@@ -211,51 +210,50 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
       "div",
       {
         key: `edit-${g.slug}`,
-        className: "s5_11_SocCustomGroupManager", 
-      },
+        },
       createElement(
         "div",
-        { className: "s5_12_SocCustomGroupManager",  },
-        createElement("label", { className: "s5_13_SocCustomGroupManager",  },
+        { },
+        createElement("label", { },
           t("soc.dataops.group_manager_name_label")),
         createElement("input", {
-          type: "text", value: editName, className: `styles.searchInput s5_14_SocCustomGroupManager`,
+          type: "text", value: editName, className: `styles.searchInput`,
           onChange: (e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value),
           
         }),
       ),
       createElement(
         "div",
-        { className: "s5_15_SocCustomGroupManager",  },
-        createElement("label", { className: "s5_16_SocCustomGroupManager",  },
+        { },
+        createElement("label", { },
           t("soc.dataops.group_manager_desc_label")),
         createElement("input", {
-          type: "text", value: editDescription, className: `styles.searchInput s5_17_SocCustomGroupManager`,
+          type: "text", value: editDescription, className: `styles.searchInput`,
           onChange: (e: React.ChangeEvent<HTMLInputElement>) => setEditDescription(e.target.value),
           
         }),
       ),
       createElement(
         "div",
-        { className: "s5_18_SocCustomGroupManager",  },
-        createElement("label", { className: "s5_19_SocCustomGroupManager",  },
+        { },
+        createElement("label", { },
           t("soc.dataops.group_manager_symbols_label")),
         createElement("textarea", {
-          value: editSymbols, className: `styles.searchInput s5_20_SocCustomGroupManager`,
+          value: editSymbols, className: `styles.searchInput`,
           placeholder: t("soc.dataops.custom_group_symbols_placeholder"),
           onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setEditSymbols(e.target.value),
           
         }),
-        createElement("p", { className: "s5_21_SocCustomGroupManager",  },
+        createElement("p", { },
           t("soc.dataops.group_manager_symbols_hint")),
       ),
       createElement(
         "div",
-        { className: "s5_22_SocCustomGroupManager",  },
+        { },
         createElement(
           "button",
           {
-            className: `styles.runBtn s5_23_SocCustomGroupManager`,
+            className: `styles.runBtn`,
             onClick: handleUpdate,
             disabled: savingEdit,
             
@@ -265,7 +263,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
         createElement(
           "button",
           {
-            className: `styles.actionBtn s5_24_SocCustomGroupManager`,
+            className: `styles.actionBtn`,
             onClick: cancelEdit,
             
           },
@@ -278,15 +276,14 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
     createElement(
       "div",
       {
-        className: "s5_25_SocCustomGroupManager", 
-      },
+        },
       createElement(
         "div",
-        { className: "s5_26_SocCustomGroupManager",  },
-        createElement("label", { className: "s5_27_SocCustomGroupManager",  },
+        { },
+        createElement("label", { },
           t("soc.dataops.group_manager_name_label")),
         createElement("input", {
-          type: "text", value: name, className: `styles.searchInput s5_28_SocCustomGroupManager`,
+          type: "text", value: name, className: `styles.searchInput`,
           placeholder: t("soc.dataops.custom_group_name_placeholder"),
           onChange: (e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value),
           
@@ -294,11 +291,11 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
       ),
       createElement(
         "div",
-        { className: "s5_29_SocCustomGroupManager",  },
-        createElement("label", { className: "s5_30_SocCustomGroupManager",  },
+        { },
+        createElement("label", { },
           t("soc.dataops.group_manager_desc_label")),
         createElement("input", {
-          type: "text", value: description, className: `styles.searchInput s5_31_SocCustomGroupManager`,
+          type: "text", value: description, className: `styles.searchInput`,
           placeholder: t("soc.dataops.group_manager_desc_placeholder"),
           onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDescription(e.target.value),
           
@@ -306,25 +303,25 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
       ),
       createElement(
         "div",
-        { className: "s5_32_SocCustomGroupManager",  },
-        createElement("label", { className: "s5_33_SocCustomGroupManager",  },
+        { },
+        createElement("label", { },
           t("soc.dataops.group_manager_symbols_label")),
         createElement("textarea", {
-          value: symbols, className: `styles.searchInput s5_34_SocCustomGroupManager`,
+          value: symbols, className: `styles.searchInput`,
           placeholder: t("soc.dataops.custom_group_symbols_placeholder"),
           onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setSymbols(e.target.value),
           
         }),
-        createElement("p", { className: "s5_35_SocCustomGroupManager",  },
+        createElement("p", { },
           t("soc.dataops.group_manager_symbols_hint")),
       ),
       createElement(
         "div",
-        { className: "s5_36_SocCustomGroupManager",  },
+        { },
         createElement(
           "button",
           {
-            className: `styles.runBtn s5_37_SocCustomGroupManager`,
+            className: `styles.runBtn`,
             onClick: handleCreate,
             disabled: creating,
             
@@ -334,7 +331,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
         createElement(
           "button",
           {
-            className: `styles.actionBtn s5_38_SocCustomGroupManager`,
+            className: `styles.actionBtn`,
             onClick: () => { resetCreate(); },
             
           },
@@ -348,13 +345,13 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
     { className: styles.sectionCard },
     createElement(
       "div",
-      { className: "s5_39_SocCustomGroupManager",  },
+      { },
       createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.group_manager_title")),
       !showForm
         ? createElement(
             "button",
             {
-              className: `styles.runBtn s5_40_SocCustomGroupManager`,
+              className: `styles.runBtn`,
               onClick: () => setShowForm(true),
               
             },
@@ -362,10 +359,10 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
           )
         : null,
     ),
-    createElement("p", { className: "s5_41_SocCustomGroupManager",  },
+    createElement("p", { },
       t("soc.dataops.group_manager_description")),
-    error ? createElement("div", { className: `styles.inlineError s5_42_SocCustomGroupManager`,  }, error) : null,
-    success ? createElement("div", { className: `styles.inlineSuccess s5_43_SocCustomGroupManager`,  }, success) : null,
+    error ? createElement("div", { className: `styles.inlineError`,  }, error) : null,
+    success ? createElement("div", { className: `styles.inlineSuccess`,  }, success) : null,
     renderGroupList(),
     showForm ? renderCreateForm() : null,
   );

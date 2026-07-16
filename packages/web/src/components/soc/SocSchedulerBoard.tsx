@@ -2,6 +2,7 @@ import { createElement, useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useI18n } from "../../context/LangContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { toneColor, getStatusBadgeStyle } from "./socStatusColors.js";
 import styles from "./soc.module.css";
 
 interface SchedulerJob {
@@ -60,32 +61,15 @@ interface SocSchedulerBoardProps {
 const RISKY_ACTIONS = new Set(["disable", "abort"]);
 const DOMAIN_FILTER_OPTIONS = ["all", "market_data", "signals", "whale", "platform", "maintenance"];
 
-const getStatusStyles = (status: string) => {
-  switch (status) {
-    case "running":
-      return { background: "rgba(16, 185, 129, 0.2)", color: "#34d399", border: "1px solid rgba(16, 185, 129, 0.3)" };
-    case "enabled":
-      return { background: "rgba(59, 130, 246, 0.2)", color: "#60a5fa", border: "1px solid rgba(59, 130, 246, 0.3)" };
-    case "idle":
-      return { background: "rgba(148, 163, 184, 0.15)", color: "#cbd5e1", border: "1px solid rgba(148, 163, 184, 0.2)" };
-    case "disabled":
-      return { background: "rgba(71, 85, 105, 0.2)", color: "#94a3b8", border: "1px solid rgba(71, 85, 105, 0.3)" };
-    case "degraded":
-      return { background: "rgba(245, 158, 11, 0.2)", color: "#f59e0b", border: "1px solid rgba(245, 158, 11, 0.3)" };
-    case "stale":
-      return { background: "rgba(244, 63, 94, 0.2)", color: "#f43f5e", border: "1px solid rgba(244, 63, 94, 0.3)" };
-    default:
-      return { background: "rgba(148, 163, 184, 0.15)", color: "#94a3b8", border: "1px solid rgba(148, 163, 184, 0.2)" };
-  }
-};
+const getStatusStyles = (status: string) => getStatusBadgeStyle(status);
 
 const getFreshnessColor = (freshness?: string) => {
   switch (freshness) {
-    case "fresh": return "#34d399";
-    case "warm": return "#60a5fa";
-    case "stale": return "#fbbf24";
+    case "fresh": return toneColor("success");
+    case "warm": return toneColor("info");
+    case "stale": return toneColor("warning");
     case "missing": return "#64748b";
-    default: return "#94a3b8";
+    default: return "var(--color-text-muted, #94a3b8)";
   }
 };
 
@@ -117,16 +101,15 @@ function formatNextRun(dateStr?: string) {
 function SchedulerHealthStrip({ health, t }: { health: SchedulerHealth | null; t: (key: string, o?: any) => string }) {
   if (!health) return null;
   const healthColor = health.overall_health === "healthy" 
-    ? "#34d399" 
+    ? toneColor("success") 
     : health.overall_health === "degraded" 
-      ? "#fbbf24" 
-      : "#f87171";
+      ? toneColor("warning") 
+      : toneColor("danger");
   
   return createElement(
     "div",
     {
-      className: "s5_0_SocSchedulerBoard", 
-    },
+      },
     createElement(
       "span",
       {
@@ -141,33 +124,33 @@ function SchedulerHealthStrip({ health, t }: { health: SchedulerHealth | null; t
     ),
     createElement(
       "span",
-      { className: "s5_1_SocSchedulerBoard",  },
+      { },
       `${t("soc.scheduler.health_total")}: `,
-      createElement("span", { className: "s5_2_SocSchedulerBoard",  }, health.jobs_total)
+      createElement("span", { }, health.jobs_total)
     ),
     createElement(
       "span",
-      { className: "s5_3_SocSchedulerBoard",  },
+      { },
       `${t("soc.scheduler.health_enabled")}: `,
-      createElement("span", { className: "s5_4_SocSchedulerBoard",  }, health.enabled_count)
+      createElement("span", { }, health.enabled_count)
     ),
     createElement(
       "span",
-      { className: "s5_5_SocSchedulerBoard",  },
+      { },
       `${t("soc.scheduler.health_degraded")}: `,
-      createElement("span", { className: "s5_6_SocSchedulerBoard",  }, health.degraded_count)
+      createElement("span", { }, health.degraded_count)
     ),
     createElement(
       "span",
-      { className: "s5_7_SocSchedulerBoard",  },
+      { },
       `${t("soc.scheduler.health_inflight")}: `,
-      createElement("span", { className: "s5_8_SocSchedulerBoard",  }, health.by_status?.running || 0)
+      createElement("span", { }, health.by_status?.running || 0)
     ),
     createElement(
       "span",
-      { className: "s5_9_SocSchedulerBoard",  },
+      { },
       `${t("soc.scheduler.health_stale")}: `,
-      createElement("span", { style: { color: health.by_freshness?.stale ? "#f87171" : "#f1f5f9", fontWeight: 600 } }, health.by_freshness?.stale || 0)
+      createElement("span", { style: { color: health.by_freshness?.stale ? toneColor("danger") : "#f1f5f9", fontWeight: 600 } }, health.by_freshness?.stale || 0)
     )
   );
 }
@@ -231,12 +214,12 @@ function JobActionButtons({
 
   return createElement(
     "div",
-    { className: "s5_10_SocSchedulerBoard",  },
+    { },
     isJobDisabled
-      ? btn("enable", t("soc.scheduler.action_enable"), { background: "rgba(59, 130, 246, 0.15)", color: "#60a5fa" })
-      : btn("disable", t("soc.scheduler.action_disable"), { background: "rgba(148, 163, 184, 0.15)", color: "#cbd5e1" }),
-    btn("run_now", t("soc.scheduler.action_run_now"), { background: "rgba(16, 185, 129, 0.15)", color: "#34d399" }),
-    btn("abort", t("soc.scheduler.action_abort"), { background: "rgba(244, 63, 94, 0.15)", color: "#f43f5e" })
+      ? btn("enable", t("soc.scheduler.action_enable"), { background: "rgba(59, 130, 246, 0.15)", color: toneColor("info") })
+      : btn("disable", t("soc.scheduler.action_disable"), { background: "rgba(148, 163, 184, 0.15)", color: "var(--color-text-secondary, #cbd5e1)" }),
+    btn("run_now", t("soc.scheduler.action_run_now"), { background: "rgba(16, 185, 129, 0.15)", color: toneColor("success") }),
+    btn("abort", t("soc.scheduler.action_abort"), { background: "rgba(244, 63, 94, 0.15)", color: "var(--color-danger-400, #f43f5e)" })
   );
 }
 
@@ -258,30 +241,29 @@ function ActionConfirmModal({
   return createElement(
     "div",
     {
-      className: "s5_11_SocSchedulerBoard", 
       onClick: onCancel,
     },
     createElement(
       "div",
       {
-        className: `styles.glassPanel s5_12_SocSchedulerBoard`,
+        className: `styles.glassPanel`,
         
         onClick: (e: any) => e.stopPropagation(),
       },
-      createElement("h3", { className: "s5_13_SocSchedulerBoard",  }, 
+      createElement("h3", { }, 
         t("soc.scheduler.confirm_title")
       ),
-      createElement("p", { className: "s5_14_SocSchedulerBoard",  },
+      createElement("p", { },
         `${t("soc.scheduler.confirm_action")}: `,
-        createElement("span", { className: "s5_15_SocSchedulerBoard",  }, action),
+        createElement("span", { }, action),
         " — ",
-        createElement("span", { className: "s5_16_SocSchedulerBoard",  }, job.job_key)
+        createElement("span", { }, job.job_key)
       ),
-      createElement("label", { className: "s5_17_SocSchedulerBoard",  },
+      createElement("label", { },
         t("soc.scheduler.reason_label")
       ),
       createElement("textarea", {
-        className: `styles.configEditor s5_18_SocSchedulerBoard`,
+        className: `styles.configEditor`,
         rows: 2,
         placeholder: t("soc.scheduler.reason_placeholder"),
         value: reason,
@@ -290,13 +272,13 @@ function ActionConfirmModal({
       }),
       createElement(
         "div",
-        { className: "s5_19_SocSchedulerBoard",  },
+        { },
         createElement(
           "button",
           {
             type: "button",
             onClick: onCancel,
-            className: `styles.actionBtn s5_20_SocSchedulerBoard`,
+            className: `styles.actionBtn`,
             
           },
           t("common.cancel")
@@ -310,7 +292,7 @@ function ActionConfirmModal({
             className: styles.actionBtn,
             style: {
               background: "rgba(245, 158, 11, 0.2)",
-              color: "#fbbf24",
+              color: toneColor("warning"),
               border: "1px solid rgba(245, 158, 11, 0.3)",
               cursor: !reason.trim() ? "not-allowed" : "pointer",
             },
@@ -374,44 +356,42 @@ function JobHistoryDrawer({
       createElement(
         "div",
         {
-          className: "s5_21_SocSchedulerBoard", 
-        },
+          },
         createElement("div", null,
-          createElement("p", { className: "s5_22_SocSchedulerBoard",  }, t("soc.scheduler.history_drawer_title")),
-          createElement("p", { className: "s5_23_SocSchedulerBoard",  }, jobKey)
+          createElement("p", { }, t("soc.scheduler.history_drawer_title")),
+          createElement("p", { }, jobKey)
         ),
         createElement("button", {
           type: "button",
           onClick: onClose,
-          className: "s5_24_SocSchedulerBoard", 
-        }, "✕")
+          }, "✕")
       ),
       // Content body
-      loading && createElement("p", { className: "s5_25_SocSchedulerBoard",  }, t("common.loading")),
-      error && createElement("p", { className: "s5_26_SocSchedulerBoard",  }, error),
+      loading && createElement("p", { }, t("common.loading")),
+      error && createElement("p", { }, error),
       history && !loading && createElement(
         "div",
         null,
         createElement(
           "p",
-          { className: "s5_27_SocSchedulerBoard",  },
+          { },
           t("soc.scheduler.history_count", { count: history.count })
         ),
         history.results.length === 0
-          ? createElement("p", { className: "s5_28_SocSchedulerBoard",  }, t("soc.scheduler.history_empty"))
+          ? createElement("p", { }, t("soc.scheduler.history_empty"))
           : createElement(
               "table",
-              { className: "s5_29_SocSchedulerBoard",  },
+              { },
               createElement(
                 "thead",
-                { className: "s5_30_SocSchedulerBoard",  },
+                { },
                 createElement(
                   "tr",
                   null,
-                  createElement("th", { className: "s5_31_SocSchedulerBoard",  }, t("soc.scheduler.history_col_status")),
-                  createElement("th", { className: "s5_32_SocSchedulerBoard",  }, t("soc.scheduler.history_col_started")),
-                  createElement("th", { className: "s5_33_SocSchedulerBoard",  }, t("soc.scheduler.history_col_duration")),
-                  createElement("th", { className: "s5_34_SocSchedulerBoard",  }, t("soc.scheduler.history_col_task_id"))
+                  createElement("th", { }, t("soc.scheduler.history_col_status")),
+                  createElement("th", { }, t("soc.scheduler.history_col_started")),
+                  createElement("th", { }, t("soc.scheduler.history_col_duration")),
+                  createElement("th", { }, t("soc.scheduler.history_col_task_id"))
                 )
               ),
               createElement(
@@ -421,8 +401,8 @@ function JobHistoryDrawer({
                    const statusStyles = getStatusStyles(run.status);
                    return createElement(
                      "tr",
-                     { key: run.id, className: "s5_35_SocSchedulerBoard",  },
-                     createElement("td", { className: "s5_36_SocSchedulerBoard",  },
+                     { key: run.id, },
+                     createElement("td", { },
                        createElement(
                          "span",
                          {
@@ -439,11 +419,10 @@ function JobHistoryDrawer({
                          run.status
                        )
                      ),
-                     createElement("td", { className: "s5_37_SocSchedulerBoard",  }, run.started_at || "—"),
-                     createElement("td", { className: "s5_38_SocSchedulerBoard",  }, run.duration_seconds != null ? `${run.duration_seconds}s` : "—"),
+                     createElement("td", { }, run.started_at || "—"),
+                     createElement("td", { }, run.duration_seconds != null ? `${run.duration_seconds}s` : "—"),
                      createElement("td", {
-                       className: "s5_39_SocSchedulerBoard", 
-                     }, run.celery_task_id || "—")
+                       }, run.celery_task_id || "—")
                    );
                 })
               )
@@ -452,21 +431,20 @@ function JobHistoryDrawer({
         createElement(
           "div",
           {
-            className: "s5_40_SocSchedulerBoard", 
-          },
-          createElement("span", { className: "s5_41_SocSchedulerBoard",  },
+            },
+          createElement("span", { },
             `${t("soc.dataops.run_history_page")} ${page}/${history.total_pages || 1}`
           ),
           createElement(
             "div",
-            { className: "s5_42_SocSchedulerBoard",  },
+            { },
             createElement(
               "button",
               {
                 type: "button",
                 disabled: !history.previous,
                 onClick: () => setPage((p) => Math.max(1, p - 1)),
-                className: `styles.pageBtn s5_43_SocSchedulerBoard`,
+                className: `styles.pageBtn`,
                 
               },
               t("soc.dataops.run_history_previous")
@@ -477,7 +455,7 @@ function JobHistoryDrawer({
                 type: "button",
                 disabled: !history.next,
                 onClick: () => setPage((p) => p + 1),
-                className: `styles.pageBtn s5_44_SocSchedulerBoard`,
+                className: `styles.pageBtn`,
                 
               },
               t("soc.dataops.run_history_next")
@@ -571,7 +549,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
 
   return createElement(
     "div",
-    { className: "s5_45_SocSchedulerBoard",  },
+    { },
     
     // Health strip (hidden in embedded mode)
     !embedded && createElement(SchedulerHealthStrip, { health, t }),
@@ -584,7 +562,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
           borderRadius: "8px",
           border: actionBanner.type === "success" ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(244, 63, 94, 0.4)",
           background: actionBanner.type === "success" ? "rgba(16, 185, 129, 0.1)" : "rgba(244, 63, 94, 0.1)",
-          color: actionBanner.type === "success" ? "#34d399" : "#f43f5e",
+          color: actionBanner.type === "success" ? toneColor("success") : "var(--color-danger-400, #f43f5e)",
           padding: "0.75rem 1rem",
           fontSize: "0.75rem",
           fontWeight: 600,
@@ -596,7 +574,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
       createElement("span", null, actionBanner.msg),
       actionBanner.requestId && createElement(
         "span",
-        { className: "s5_46_SocSchedulerBoard",  },
+        { },
         actionBanner.requestId
       )
     ),
@@ -605,25 +583,24 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
     createElement(
       "div",
       {
-        className: "s5_47_SocSchedulerBoard", 
-      },
+        },
       createElement(
         "div",
         null,
         !hideHeaderTitle && createElement(
           "h3",
-          { className: "s5_48_SocSchedulerBoard",  },
+          { },
           t("soc.scheduler.board_title")
         ),
         plan?.generated_at && createElement(
           "p",
-          { className: "s5_49_SocSchedulerBoard",  },
+          { },
           `${t("soc.scheduler.board_generated_at")}: ${new Date(plan.generated_at).toLocaleString("vi-VN")}`
         )
       ),
       createElement(
         "div",
-        { className: "s5_50_SocSchedulerBoard",  },
+        { },
         
         // Domain Filter Select (hidden in embedded mode)
         !embedded && createElement(
@@ -631,7 +608,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
           {
             value: domainFilter,
             onChange: (e: any) => setDomainFilter(e.target.value),
-            className: `styles.jobDomainSelect s5_51_SocSchedulerBoard`,
+            className: `styles.jobDomainSelect`,
             
           },
           DOMAIN_FILTER_OPTIONS.map((d) => 
@@ -650,7 +627,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
             type: "button",
             onClick: load,
             disabled: loading,
-            className: `styles.pageBtn s5_52_SocSchedulerBoard`,
+            className: `styles.pageBtn`,
             
           },
           loading ? t("common.loading") : t("common.refresh")
@@ -669,29 +646,26 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
     !error && createElement(
       "div",
       {
-        className: "s5_53_SocSchedulerBoard", 
-      },
+        },
       createElement(
         "table",
         {
-          className: "s5_54_SocSchedulerBoard", 
-        },
+          },
         createElement(
           "thead",
           {
-            className: "s5_55_SocSchedulerBoard", 
-          },
+            },
           createElement(
             "tr",
             null,
-            createElement("th", { className: "s5_56_SocSchedulerBoard",  }, t("soc.scheduler.col_job")),
-            createElement("th", { className: "s5_57_SocSchedulerBoard",  }, t("soc.scheduler.col_domain")),
-            createElement("th", { className: "s5_58_SocSchedulerBoard",  }, t("soc.scheduler.col_status")),
-            createElement("th", { className: "s5_59_SocSchedulerBoard",  }, t("soc.scheduler.col_freshness")),
-            createElement("th", { className: "s5_60_SocSchedulerBoard",  }, t("soc.scheduler.col_next_run")),
-            createElement("th", { className: "s5_61_SocSchedulerBoard",  }, t("soc.scheduler.col_lag")),
-            createElement("th", { className: "s5_62_SocSchedulerBoard",  }, t("soc.scheduler.col_actions")),
-            createElement("th", { className: "s5_63_SocSchedulerBoard",  }, t("soc.scheduler.col_history"))
+            createElement("th", { }, t("soc.scheduler.col_job")),
+            createElement("th", { }, t("soc.scheduler.col_domain")),
+            createElement("th", { }, t("soc.scheduler.col_status")),
+            createElement("th", { }, t("soc.scheduler.col_freshness")),
+            createElement("th", { }, t("soc.scheduler.col_next_run")),
+            createElement("th", { }, t("soc.scheduler.col_lag")),
+            createElement("th", { }, t("soc.scheduler.col_actions")),
+            createElement("th", { }, t("soc.scheduler.col_history"))
           )
         ),
         createElement(
@@ -703,7 +677,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
                 null,
                 createElement(
                   "td",
-                  { colSpan: 8, className: "s5_64_SocSchedulerBoard",  },
+                  { colSpan: 8, },
                   t("soc.scheduler.empty_state")
                 )
               )
@@ -715,25 +689,24 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
                   "tr",
                   {
                     key: job.job_key,
-                    className: "s5_65_SocSchedulerBoard", 
-                  },
+                    },
                   // Job key and display name
                   createElement(
                     "td",
-                    { className: "s5_66_SocSchedulerBoard",  },
-                    createElement("p", { className: "s5_67_SocSchedulerBoard",  }, job.job_key),
-                    job.display_name && createElement("p", { className: "s5_68_SocSchedulerBoard",  }, job.display_name)
+                    { },
+                    createElement("p", { }, job.job_key),
+                    job.display_name && createElement("p", { }, job.display_name)
                   ),
                   // Domain
                   createElement(
                     "td",
-                    { className: "s5_69_SocSchedulerBoard",  },
+                    { },
                     job.domain
                   ),
                   // Status + Live/Stuck indicators
                   createElement(
                     "td",
-                    { className: "s5_70_SocSchedulerBoard",  },
+                    { },
                     createElement(
                       "span",
                       {
@@ -752,7 +725,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
                     job.is_inflight && createElement(
                       "span",
                       {
-                        className: `styles.pulsingDot s5_71_SocSchedulerBoard`,
+                        className: `styles.pulsingDot`,
                         
                       },
                       "live"
@@ -761,13 +734,12 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
                       "span",
                       {
                         title: t("soc.scheduler.tooltip_stuck"),
-                        className: "s5_72_SocSchedulerBoard", 
-                      },
+                        },
                       t("soc.scheduler.badge_stuck")
                     ),
                     job.is_possibly_stuck && job.inflight_elapsed_seconds != null && createElement(
                       "p",
-                      { className: "s5_73_SocSchedulerBoard",  },
+                      { },
                       `${Math.floor(job.inflight_elapsed_seconds / 3600)}h${Math.floor((job.inflight_elapsed_seconds % 3600) / 60)}m`
                     )
                   ),
@@ -780,31 +752,31 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
                   // Next run
                   createElement(
                     "td",
-                    { className: "s5_74_SocSchedulerBoard",  },
+                    { },
                     formatNextRun(job.next_run_at)
                   ),
                   // Lag
                   createElement(
                     "td",
-                    { className: "s5_75_SocSchedulerBoard",  },
+                    { },
                     formatLag(job.lag_seconds)
                   ),
                   // Actions buttons
                   createElement(
                     "td",
-                    { className: "s5_76_SocSchedulerBoard",  },
+                    { },
                     createElement(JobActionButtons, { job, onAction: handleAction, t })
                   ),
                   // History button
                   createElement(
                     "td",
-                    { className: "s5_77_SocSchedulerBoard",  },
+                    { },
                     createElement(
                       "button",
                       {
                         type: "button",
                         onClick: () => setHistoryJob(job.job_key),
-                        className: `styles.pageBtn s5_78_SocSchedulerBoard`,
+                        className: `styles.pageBtn`,
                         
                       },
                       t("soc.scheduler.view_history")

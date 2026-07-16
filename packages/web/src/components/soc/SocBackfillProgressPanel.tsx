@@ -1,6 +1,7 @@
 import { createElement, useEffect, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { statusColor, getStatusBadgeStyle } from "./socStatusColors.js";
 import styles from "./soc.module.css";
 
 interface BackfillRun {
@@ -78,28 +79,20 @@ export function SocBackfillProgressPanel() {
     }
   };
 
-  const getStatusColor = (status: string): string => {
-    switch (status) {
-      case "running": return "#34d399";
-      case "completed": return "var(--accent-cyan, #06b6d4)";
-      case "failed": return "#f87171";
-      case "aborted": return "#94a3b8";
-      default: return "#fbbf24";
-    }
-  };
+  const getStatusColor = (status: string): string => statusColor(status);
 
   return createElement(
     "div",
     { className: styles.glassPanel },
     createElement(
       "div",
-      { className: "s5_0_SocBackfillProgressPanel",  },
-      createElement("h3", { className: "s5_1_SocBackfillProgressPanel",  }, t("soc.backfill.title")),
+      { },
+      createElement("h3", { }, t("soc.backfill.title")),
       createElement(
         "button",
         {
           onClick: fetchRuns,
-          className: `styles.actionBtn s5_2_SocBackfillProgressPanel`,
+          className: `styles.actionBtn`,
           
         },
         t("soc.backfill.refresh"),
@@ -120,7 +113,7 @@ export function SocBackfillProgressPanel() {
                 ? createElement("p", { className: styles.emptyState }, t("soc.backfill.no_runs"))
                 : createElement(
                     "div",
-                    { className: "s5_3_SocBackfillProgressPanel",  },
+                    { },
                     runs.map((run) =>
                       createElement(
                         "div",
@@ -138,24 +131,24 @@ export function SocBackfillProgressPanel() {
                         },
                         createElement(
                           "div",
-                          { className: "s5_4_SocBackfillProgressPanel",  },
-                          createElement("div", { className: "s5_5_SocBackfillProgressPanel",  }, run.dataset),
+                          { },
+                          createElement("div", { }, run.dataset),
                           createElement(
                             "span",
                             {
                               className: styles.statusBadge,
-                              style: { background: `${getStatusColor(run.status)}20`, color: getStatusColor(run.status) },
+                              style: { ...getStatusBadgeStyle(run.status) },
                             },
                             run.status,
                           ),
                         ),
-                        createElement("div", { className: "s5_6_SocBackfillProgressPanel",  },
+                        createElement("div", { },
                           `${run.completed_symbols || 0}/${run.total_symbols || 0} symbols \u2022 ${run.started_at?.split("T")[0] || "N/A"}`,
                         ),
                         run.progress != null
                           ? createElement(
                               "div",
-                              { className: "s5_7_SocBackfillProgressPanel",  },
+                              { },
                               createElement("div", {
                                 style: {
                                   height: "100%",
@@ -172,7 +165,7 @@ export function SocBackfillProgressPanel() {
                               "button",
                               {
                                 onClick: (e: React.MouseEvent) => { e.stopPropagation(); handleAbort(run.run_id); },
-                                className: `styles.actionBtn s5_8_SocBackfillProgressPanel`,
+                                className: `styles.actionBtn`,
                                 
                               },
                               t("soc.backfill.abort"),
@@ -192,31 +185,31 @@ export function SocBackfillProgressPanel() {
                     : runDetail
                       ? createElement(
                           "div",
-                          { className: "s5_9_SocBackfillProgressPanel",  },
+                          { },
                           createElement(
                             "div",
-                            { className: "s5_10_SocBackfillProgressPanel",  },
+                            { },
                             createElement("div", null,
-                              createElement("div", { className: "s5_11_SocBackfillProgressPanel",  }, t("soc.backfill.dataset")),
-                              createElement("div", { className: "s5_12_SocBackfillProgressPanel",  }, runDetail.dataset),
+                              createElement("div", { }, t("soc.backfill.dataset")),
+                              createElement("div", { }, runDetail.dataset),
                             ),
                             createElement("div", null,
-                              createElement("div", { className: "s5_13_SocBackfillProgressPanel",  }, t("soc.backfill.status")),
+                              createElement("div", { }, t("soc.backfill.status")),
                               createElement("div", { style: { fontWeight: 600, color: getStatusColor(runDetail.status) } }, runDetail.status),
                             ),
                             createElement("div", null,
-                              createElement("div", { className: "s5_14_SocBackfillProgressPanel",  }, t("soc.backfill.progress")),
-                              createElement("div", { className: "s5_15_SocBackfillProgressPanel",  }, `${runDetail.progress ?? 0}%`),
+                              createElement("div", { }, t("soc.backfill.progress")),
+                              createElement("div", { }, `${runDetail.progress ?? 0}%`),
                             ),
                             createElement("div", null,
-                              createElement("div", { className: "s5_16_SocBackfillProgressPanel",  }, t("soc.backfill.started")),
-                              createElement("div", { className: "s5_17_SocBackfillProgressPanel",  }, runDetail.started_at?.split("T")[0] || "N/A"),
+                              createElement("div", { }, t("soc.backfill.started")),
+                              createElement("div", { }, runDetail.started_at?.split("T")[0] || "N/A"),
                             ),
                           ),
                           runDetail.progress != null
                             ? createElement(
                                 "div",
-                                { className: "s5_18_SocBackfillProgressPanel",  },
+                                { },
                                 createElement("div", {
                                   style: {
                                     height: "100%",

@@ -6,6 +6,7 @@ import { SocMatrixScrapeMonitor } from "./SocMatrixScrapeMonitor.js";
 import { SocParityGatesPanel } from "./SocParityGatesPanel.js";
 import { SocRetentionHealthPanel } from "./SocRetentionHealthPanel.js";
 import { SocAnomalyGuardPanel } from "./SocAnomalyGuardPanel.js";
+import { toneColor } from "./socStatusColors.js";
 import styles from "./soc.module.css";
 
 interface QueueTier {
@@ -128,7 +129,7 @@ const COVERAGE_STATE_ORDER = ["fresh", "warm", "stale", "missing", "error", "unk
 function renderPagination(page: number, hasMore: boolean, onPrev: () => void, onNext: () => void, t: (key: string, vars?: Record<string, unknown>) => string) {
   return createElement(
     "div",
-    { className: "s5_0_SocDataOpsMonitorSection",  },
+    { },
     createElement(
       "button",
       {
@@ -139,7 +140,7 @@ function renderPagination(page: number, hasMore: boolean, onPrev: () => void, on
       },
       "\u25C0 " + t("soc.actions.prev")
     ),
-    createElement("span", { className: "s5_1_SocDataOpsMonitorSection",  }, t("soc.actions.page", { page })),
+    createElement("span", { }, t("soc.actions.page", { page })),
     createElement(
       "button",
       {
@@ -190,7 +191,7 @@ export function SocDataOpsMonitorSection() {
   const renderMetricCard = (label: string, value: string | number, color?: string) => {
     return createElement(
       "div",
-      { className: `styles.metricCard s5_2_SocDataOpsMonitorSection`,  },
+      { className: `styles.metricCard`,  },
       createElement("div", { className: styles.metricLabel }, label),
       createElement("div", { className: styles.metricValue, style: { color: color || "var(--text-primary, #f1f5f9)" } }, value)
     );
@@ -204,25 +205,24 @@ export function SocDataOpsMonitorSection() {
     return createElement(
       "div",
       {
-        className: "s5_3_SocDataOpsMonitorSection", 
-      },
+        },
       createElement(
         "div",
-        { className: "s5_4_SocDataOpsMonitorSection",  },
+        { },
         createElement(
           "div",
           null,
-          createElement("span", { className: "s5_5_SocDataOpsMonitorSection",  }, t("soc.dataops.monitor_active_runs_title")),
+          createElement("span", { }, t("soc.dataops.monitor_active_runs_title")),
           createElement(
             "span",
-            { className: "s5_6_SocDataOpsMonitorSection",  },
+            { },
             t("soc.dataops.monitor_active_runs_desc")
           )
         ),
         createElement(
           "button",
           {
-            className: `styles.actionBtn s5_7_SocDataOpsMonitorSection`,
+            className: `styles.actionBtn`,
             onClick: () => actions.abortRun(activeRun.run_id),
             
           },
@@ -232,21 +232,20 @@ export function SocDataOpsMonitorSection() {
       createElement(
         "div",
         {
-          className: "s5_8_SocDataOpsMonitorSection", 
-        },
+          },
         createElement("div", {
           style: {
             height: "100%",
             width: `${Math.min(progress, 100)}%`,
             borderRadius: "3px",
-            background: "linear-gradient(90deg, #34d399, #22d3ee)",
+            background: "linear-gradient(90deg, " + toneColor("success") + ", var(--accent-cyan, #06b6d4))",
             transition: "width 0.5s ease",
           },
         })
       ),
       createElement(
         "div",
-        { className: "s5_9_SocDataOpsMonitorSection",  },
+        { },
         createElement("span", null, `${activeRun.run_id.slice(0, 8)}...`),
         createElement("span", null, `${activeRun.dataset || ""}`),
         createElement("span", null, `${progress.toFixed(0)}%`)
@@ -275,7 +274,7 @@ export function SocDataOpsMonitorSection() {
 
   return createElement(
     "div",
-    { className: "s5_10_SocDataOpsMonitorSection",  },
+    { },
     error ? createElement("div", { className: styles.inlineError }, error) : null,
     renderActiveRunBanner(),
 
@@ -285,13 +284,13 @@ export function SocDataOpsMonitorSection() {
       { className: styles.sectionCard },
       createElement(
         "div",
-        { className: "s5_11_SocDataOpsMonitorSection",  },
+        { },
         createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.matrix_snapshot")),
         createElement(
           "button",
           {
             onClick: () => setMatrixExpanded((v) => !v),
-            className: `styles.actionBtn s5_12_SocDataOpsMonitorSection`,
+            className: `styles.actionBtn`,
             
           },
           matrixExpanded ? t("soc.dataops.matrix_collapse") : t("soc.dataops.matrix_expand")
@@ -306,64 +305,64 @@ export function SocDataOpsMonitorSection() {
       { className: styles.sectionCard },
       createElement(
         "div",
-        { className: "s5_13_SocDataOpsMonitorSection",  },
+        { },
         createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.observability_title")),
         observability?.updated_at &&
           createElement(
             "span",
-            { className: "s5_14_SocDataOpsMonitorSection",  },
+            { },
             `${t("soc.dataops.observability_updated_at")}: ${new Date(observability.updated_at).toLocaleString()}`
           )
       ),
-      createElement("p", { className: "s5_15_SocDataOpsMonitorSection",  }, t("soc.dataops.observability_description")),
+      createElement("p", { }, t("soc.dataops.observability_description")),
 
       observability
         ? createElement(
             "div",
-            { className: "s5_16_SocDataOpsMonitorSection",  },
+            { },
             // Metric Cards
             createElement(
               "div",
-              { className: `styles.metricGrid s5_17_SocDataOpsMonitorSection`,  },
+              { className: `styles.metricGrid`,  },
               renderMetricCard(
                 t("soc.dataops.fail_rate_1h"),
                 `${(oneHourData.fail_rate_pct || 0).toFixed(2)}%`,
-                (oneHourData.fail_rate_pct || 0) > 10 ? "#f87171" : "#34d399"
+                 (oneHourData.fail_rate_pct || 0) > 10 ? toneColor("danger") : toneColor("success")
               ),
               renderMetricCard(
                 t("soc.dataops.fail_rate_24h"),
                 `${(twentyFourHourData.fail_rate_pct || 0).toFixed(2)}%`,
-                (twentyFourHourData.fail_rate_pct || 0) > 5 ? "#fbbf24" : "#34d399"
+                 (twentyFourHourData.fail_rate_pct || 0) > 5 ? toneColor("warning") : toneColor("success")
               )
             ),
 
             // Backlog Tables
             createElement(
               "div",
-              { className: "s5_18_SocDataOpsMonitorSection",  },
+              { },
               // Backlog by Dataset Table
               createElement(
                 "div",
-                { className: `styles.glassPanel s5_19_SocDataOpsMonitorSection`,  },
+                { className: `styles.glassPanel`,  },
                 createElement(
                   "h4",
-                  { className: "s5_20_SocDataOpsMonitorSection",  },
+                  { },
                   t("soc.dataops.backlog_by_dataset")
                 ),
                 createElement(
                   "div",
-                  { className: "s5_21_SocDataOpsMonitorSection",  },
+                  { },
                   createElement(
                     "table",
-                    { className: "s5_22_SocDataOpsMonitorSection",  },
+                    { },
                     createElement(
                       "thead",
                       null,
                       createElement(
                         "tr",
-                        { className: "s5_23_SocDataOpsMonitorSection",  },
-                        createElement("th", { className: "s5_24_SocDataOpsMonitorSection",  }, t("soc.dataops.dataset")),
-                        createElement("th", { className: "s5_25_SocDataOpsMonitorSection",  }, t("soc.dataops.backlog_count"))
+                        { },
+                        createElement("th", { }, t("soc.dataops.dataset")),
+                        createElement("th", { }, t("soc.dataops.backlog_count"))
                       )
                     ),
                     createElement(
@@ -372,16 +371,16 @@ export function SocDataOpsMonitorSection() {
                       (observability.backlog?.by_dataset || []).map((item) =>
                         createElement(
                           "tr",
-                          { key: item.dataset, className: "s5_26_SocDataOpsMonitorSection",  },
-                          createElement("td", { className: "s5_27_SocDataOpsMonitorSection",  }, t(DATASET_LABEL_KEYS[item.dataset] || "soc.dataops.dataset_unknown")),
-                          createElement("td", { className: "s5_28_SocDataOpsMonitorSection",  }, item.backlog_count.toLocaleString())
+                          { key: item.dataset, },
+                          createElement("td", { }, t(DATASET_LABEL_KEYS[item.dataset] || "soc.dataops.dataset_unknown")),
+                          createElement("td", { }, item.backlog_count.toLocaleString())
                         )
                       ),
                       (!observability.backlog?.by_dataset || observability.backlog.by_dataset.length === 0) &&
                         createElement(
                           "tr",
                           null,
-                          createElement("td", { colSpan: 2, className: "s5_29_SocDataOpsMonitorSection",  }, t("soc.dataops.no_backlog"))
+                          createElement("td", { colSpan: 2, }, t("soc.dataops.no_backlog"))
                         )
                     )
                   )
@@ -391,30 +390,29 @@ export function SocDataOpsMonitorSection() {
               // Starvation Indicator Section
               createElement(
                 "div",
-                { className: `styles.glassPanel s5_30_SocDataOpsMonitorSection`,  },
+                { className: `styles.glassPanel`,  },
                 createElement(
                   "h4",
-                  { className: "s5_31_SocDataOpsMonitorSection",  },
+                  { },
                   t("soc.dataops.starvation_indicator")
                 ),
                 createElement(
                   "div",
-                  { className: "s5_32_SocDataOpsMonitorSection",  },
+                  { },
                   (observability.starvation || []).map((item) => {
                     const isStarved = !!item.is_starved;
                     return createElement(
                       "div",
                       {
                         key: item.tier,
-                        className: "s5_33_SocDataOpsMonitorSection", 
-                      },
+                        },
                       createElement(
                         "div",
                         null,
-                        createElement("div", { className: "s5_34_SocDataOpsMonitorSection",  }, t(TIER_LABEL_KEYS[item.tier] || "soc.dataops.unknown_tier")),
+                        createElement("div", { }, t(TIER_LABEL_KEYS[item.tier] || "soc.dataops.unknown_tier")),
                         createElement(
                           "div",
-                          { className: "s5_35_SocDataOpsMonitorSection",  },
+                          { },
                           t("soc.dataops.starvation_last_progress_seconds", {
                             seconds: item.seconds_since_last_progress ?? "-",
                             threshold: item.threshold_seconds,
@@ -427,7 +425,7 @@ export function SocDataOpsMonitorSection() {
                           className: styles.statusBadge,
                           style: {
                             background: isStarved ? "rgba(239, 68, 68, 0.15)" : "rgba(16, 185, 129, 0.15)",
-                            color: isStarved ? "#f87171" : "#34d399",
+                            color: isStarved ? toneColor("danger") : toneColor("success"),
                             fontSize: "0.6rem",
                             fontWeight: 600,
                           },
@@ -437,7 +435,7 @@ export function SocDataOpsMonitorSection() {
                     );
                   }),
                   (!observability.starvation || observability.starvation.length === 0) &&
-                    createElement("p", { className: "s5_36_SocDataOpsMonitorSection",  }, t("soc.dataops.no_starvation_data"))
+                    createElement("p", { }, t("soc.dataops.no_starvation_data"))
                 )
               )
             ),
@@ -445,27 +443,27 @@ export function SocDataOpsMonitorSection() {
             // Backlog by Tier Table
             createElement(
               "div",
-              { className: `styles.glassPanel s5_37_SocDataOpsMonitorSection`,  },
+              { className: `styles.glassPanel`,  },
               createElement(
                 "h4",
-                { className: "s5_38_SocDataOpsMonitorSection",  },
+                { },
                 t("soc.dataops.backlog_by_tier")
               ),
               createElement(
                 "div",
-                { className: "s5_39_SocDataOpsMonitorSection",  },
+                { },
                 createElement(
                   "table",
-                  { className: "s5_40_SocDataOpsMonitorSection",  },
+                  { },
                   createElement(
                     "thead",
                     null,
                     createElement(
                       "tr",
-                      { className: "s5_41_SocDataOpsMonitorSection",  },
-                      createElement("th", { className: "s5_42_SocDataOpsMonitorSection",  }, t("soc.dataops.queue_tier")),
-                      createElement("th", { className: "s5_43_SocDataOpsMonitorSection",  }, t("soc.dataops.symbol_count")),
-                      createElement("th", { className: "s5_44_SocDataOpsMonitorSection",  }, t("soc.dataops.backlog_symbols"))
+                      { },
+                      createElement("th", { }, t("soc.dataops.queue_tier")),
+                      createElement("th", { }, t("soc.dataops.symbol_count")),
+                      createElement("th", { }, t("soc.dataops.backlog_symbols"))
                     )
                   ),
                   createElement(
@@ -474,17 +472,17 @@ export function SocDataOpsMonitorSection() {
                     (observability.backlog?.by_tier || []).map((item) =>
                       createElement(
                         "tr",
-                        { key: item.tier, className: "s5_45_SocDataOpsMonitorSection",  },
-                        createElement("td", { className: "s5_46_SocDataOpsMonitorSection",  }, t(TIER_LABEL_KEYS[item.tier] || "soc.dataops.unknown_tier")),
-                        createElement("td", { className: "s5_47_SocDataOpsMonitorSection",  }, item.symbol_count.toLocaleString()),
-                        createElement("td", { className: "s5_48_SocDataOpsMonitorSection",  }, item.backlog_symbols.toLocaleString())
+                        { key: item.tier, },
+                        createElement("td", { }, t(TIER_LABEL_KEYS[item.tier] || "soc.dataops.unknown_tier")),
+                        createElement("td", { }, item.symbol_count.toLocaleString()),
+                        createElement("td", { }, item.backlog_symbols.toLocaleString())
                       )
                     ),
                     (!observability.backlog?.by_tier || observability.backlog.by_tier.length === 0) &&
                       createElement(
                         "tr",
                         null,
-                        createElement("td", { colSpan: 3, className: "s5_49_SocDataOpsMonitorSection",  }, t("soc.dataops.no_backlog"))
+                        createElement("td", { colSpan: 3, }, t("soc.dataops.no_backlog"))
                       )
                   )
                 )
@@ -522,39 +520,39 @@ export function SocDataOpsMonitorSection() {
       { className: styles.sectionCard },
       createElement(
         "div",
-        { className: "s5_50_SocDataOpsMonitorSection",  },
+        { },
         createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.coverage_title")),
         coverage?.updated_at &&
           createElement(
             "span",
-            { className: "s5_51_SocDataOpsMonitorSection",  },
+            { },
             `${t("soc.dataops.coverage_updated_at")}: ${new Date(coverage.updated_at).toLocaleString()}`
           )
       ),
-      createElement("p", { className: "s5_52_SocDataOpsMonitorSection",  }, t("soc.dataops.coverage_description")),
+      createElement("p", { }, t("soc.dataops.coverage_description")),
 
       Array.isArray(coverage?.datasets) && coverage.datasets.length > 0
         ? createElement(
             "div",
-            { className: "s5_53_SocDataOpsMonitorSection",  },
+            { },
             createElement(
               "table",
-              { className: "s5_54_SocDataOpsMonitorSection",  },
+              { },
               createElement(
                 "thead",
                 null,
                 createElement(
                   "tr",
                   null,
-                  createElement("th", { className: "s5_55_SocDataOpsMonitorSection",  }, t("soc.dataops.dataset")),
+                  createElement("th", { }, t("soc.dataops.dataset")),
                   COVERAGE_STATE_ORDER.map((stateKey) =>
                     createElement(
                       "th",
-                      { key: stateKey, className: "s5_56_SocDataOpsMonitorSection",  },
+                      { key: stateKey, },
                       t(FRESHNESS_LABEL_KEYS[stateKey] || "soc.dataops.freshness_unknown")
                     )
                   ),
-                  createElement("th", { className: "s5_57_SocDataOpsMonitorSection",  }, "Total")
+                  createElement("th", { }, "Total")
                 )
               ),
               createElement(
@@ -564,17 +562,17 @@ export function SocDataOpsMonitorSection() {
                   const total = COVERAGE_STATE_ORDER.reduce((sum, stateKey) => sum + ((ds as any)[stateKey] || 0), 0);
                   return createElement(
                     "tr",
-                    { key: ds.dataset, className: "s5_58_SocDataOpsMonitorSection",  },
-                    createElement("td", { className: "s5_59_SocDataOpsMonitorSection",  }, t(DATASET_LABEL_KEYS[ds.dataset] || "soc.dataops.dataset_unknown")),
+                    { key: ds.dataset, },
+                    createElement("td", { }, t(DATASET_LABEL_KEYS[ds.dataset] || "soc.dataops.dataset_unknown")),
                     COVERAGE_STATE_ORDER.map((stateKey) => {
                       const count = (ds as any)[stateKey] || 0;
                       return createElement(
                         "td",
-                        { key: stateKey, className: "s5_60_SocDataOpsMonitorSection",  },
+                        { key: stateKey, },
                         count > 0 ? count.toLocaleString() : "—"
                       );
                     }),
-                    createElement("td", { className: "s5_61_SocDataOpsMonitorSection",  }, total.toLocaleString())
+                    createElement("td", { }, total.toLocaleString())
                   );
                 })
               )
@@ -591,20 +589,20 @@ export function SocDataOpsMonitorSection() {
           createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.coverage_gaps_title")),
           createElement(
             "div",
-            { className: "s5_62_SocDataOpsMonitorSection",  },
+            { },
             createElement(
               "table",
-              { className: "s5_63_SocDataOpsMonitorSection",  },
+              { },
               createElement(
                 "thead",
                 null,
                 createElement(
                   "tr",
                   null,
-                  createElement("th", { className: "s5_64_SocDataOpsMonitorSection",  }, t("soc.dataops.coverage_gap_symbol")),
-                  createElement("th", { className: "s5_65_SocDataOpsMonitorSection",  }, t("soc.dataops.dataset")),
-                  createElement("th", { className: "s5_66_SocDataOpsMonitorSection",  }, t("soc.dataops.coverage_gap_freshness")),
-                  createElement("th", { className: "s5_67_SocDataOpsMonitorSection",  }, t("soc.dataops.next_action"))
+                  createElement("th", { }, t("soc.dataops.coverage_gap_symbol")),
+                  createElement("th", { }, t("soc.dataops.dataset")),
+                  createElement("th", { }, t("soc.dataops.coverage_gap_freshness")),
+                  createElement("th", { }, t("soc.dataops.next_action"))
                 )
               ),
               createElement(
@@ -613,19 +611,19 @@ export function SocDataOpsMonitorSection() {
                 coverage.top_gaps.slice((gapsPage - 1) * 20, gapsPage * 20).map((gap, i) =>
                   createElement(
                     "tr",
-                    { key: i, className: "s5_68_SocDataOpsMonitorSection",  },
-                    createElement("td", { className: "s5_69_SocDataOpsMonitorSection",  }, gap.symbol),
-                    createElement("td", { className: "s5_70_SocDataOpsMonitorSection",  }, t(DATASET_LABEL_KEYS[gap.dataset] || "soc.dataops.dataset_unknown")),
+                    { key: i, },
+                    createElement("td", { }, gap.symbol),
+                    createElement("td", { }, t(DATASET_LABEL_KEYS[gap.dataset] || "soc.dataops.dataset_unknown")),
                     createElement(
                       "td",
-                      { className: "s5_71_SocDataOpsMonitorSection",  },
+                      { },
                       createElement(
                         "span",
                         {
                           className: styles.statusBadge,
                           style: {
                             background: gap.freshness_state === "error" ? "rgba(239, 68, 68, 0.15)" : gap.freshness_state === "missing" ? "rgba(239, 68, 68, 0.1)" : "rgba(245, 158, 11, 0.1)",
-                            color: gap.freshness_state === "error" ? "#ef4444" : gap.freshness_state === "missing" ? "#f87171" : "#fbbf24",
+                            color: gap.freshness_state === "error" ? "var(--color-danger-500, #ef4444)" : gap.freshness_state === "missing" ? toneColor("danger") : toneColor("warning"),
                             fontSize: "0.6rem",
                           },
                         },
@@ -634,7 +632,7 @@ export function SocDataOpsMonitorSection() {
                     ),
                     createElement(
                       "td",
-                      { className: "s5_72_SocDataOpsMonitorSection",  },
+                      { },
                       gap.next_recommended_action ? t(ACTION_LABEL_KEYS[gap.next_recommended_action] || "soc.dataops.action_unknown") : "—"
                     )
                   )
@@ -660,27 +658,26 @@ export function SocDataOpsMonitorSection() {
           "div",
           { className: styles.sectionCard },
           createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.queue_tiers")),
-          createElement("div", { className: "s5_73_SocDataOpsMonitorSection",  }, t("soc.dataops.queue_tiers_description")),
+          createElement("div", { }, t("soc.dataops.queue_tiers_description")),
           createElement(
             "div",
-            { className: "s5_74_SocDataOpsMonitorSection",  },
+            { },
             queueTiers.map((tier) =>
               createElement(
                 "div",
                 {
                   key: tier.tier,
-                  className: "s5_75_SocDataOpsMonitorSection", 
-                },
-                createElement("div", { className: "s5_76_SocDataOpsMonitorSection",  }, t(TIER_LABEL_KEYS[tier.tier] || "soc.dataops.unknown_tier")),
+                  },
+                createElement("div", { }, t(TIER_LABEL_KEYS[tier.tier] || "soc.dataops.unknown_tier")),
                 createElement(
                   "div",
-                  { className: "s5_77_SocDataOpsMonitorSection",  },
+                  { },
                   `${tier.symbol_count} ${t("soc.dataops.tier_symbols")} \u2022 Cadence: ${tier.cadence || "N/A"}`
                 ),
                 tier.active_symbols?.length > 0
                   ? createElement(
                       "div",
-                      { className: "s5_78_SocDataOpsMonitorSection",  },
+                      { },
                       `${t("soc.dataops.tier_examples")}: ${tier.active_symbols.slice(0, 5).join(", ")}`
                     )
                   : null

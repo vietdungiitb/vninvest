@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { ShellPanel } from "../../components/ShellPageTemplate.js";
+import { LucideIcon } from "../ui/lucide-icon.js";
 import { DataOpsProvider, useDataOps } from "./DataOpsContext.js";
 import { SocDataInventorySection } from "./SocDataInventorySection.js";
 import { SocDataOpsOperationsSection } from "./SocDataOpsOperationsSection.js";
@@ -10,11 +11,11 @@ import { SocSchedulerBoard } from "./SocSchedulerBoard.js";
 import styles from "./soc.module.css";
 
 const DATAOPS_SUB_TABS = [
-  { key: "inventory", icon: "\u{1F4CA}" },
-  { key: "operations", icon: "\u{1F680}" },
-  { key: "monitor", icon: "\u{1F4E1}" },
-  { key: "scheduler", icon: "\u{23F0}" },
-  { key: "config", icon: "\u{2699}" },
+  { key: "inventory", icon: "BarChart3" },
+  { key: "operations", icon: "Rocket" },
+  { key: "monitor", icon: "Radio" },
+  { key: "scheduler", icon: "Clock" },
+  { key: "config", icon: "Settings" },
 ];
 
 function DataOpsContent() {
@@ -74,14 +75,14 @@ function DataOpsContent() {
   return createElement(
     "div",
     null,
-    createElement(
-      "nav",
-      {
-        className: `styles.tabBar s5_0_SocDataOpsPanel`,
-        role: "tablist",
-        "aria-label": t("soc.dataops.subtabs"),
-        
-      },
+      createElement(
+        "nav",
+        {
+          className: `${styles.tabBar} ${styles.tabBarDataOps}`,
+          role: "tablist",
+          "aria-label": t("soc.dataops.subtabs"),
+          "aria-orientation": "horizontal",
+        },
       DATAOPS_SUB_TABS.map((tab) =>
         createElement(
           "button",
@@ -93,7 +94,7 @@ function DataOpsContent() {
             onClick: () => actions.setActiveSubTab(tab.key),
           },
           tab.icon
-            ? createElement("span", { className: styles.tabIcon }, tab.icon)
+            ? createElement(LucideIcon, { name: tab.icon, className: styles.tabIcon })
             : null,
           resolveLabel(tab.key),
         ),

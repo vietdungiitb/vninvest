@@ -17,7 +17,7 @@ export function SocRuntimeKpiPanel() {
       },
       createElement(
         "div",
-        { className: `styles.emptyState s5_0_SocRuntimeKpiPanel`,  },
+        { className: `styles.emptyState`,  },
         createElement(
           "svg",
           {
@@ -27,12 +27,11 @@ export function SocRuntimeKpiPanel() {
             fill: "none",
             stroke: "currentColor",
             strokeWidth: 1.5,
-            className: "s5_1_SocRuntimeKpiPanel", 
-          },
+            },
           createElement("path", { d: "M22 12h-4l-3 9L9 3l-3 9H2" }),
         ),
-        createElement("p", { className: "s5_2_SocRuntimeKpiPanel",  }, t("soc.runtime_kpi.coming_soon")),
-        createElement("p", { className: "s5_3_SocRuntimeKpiPanel",  }, t("soc.runtime_kpi.description")),
+        createElement("p", { }, t("soc.runtime_kpi.coming_soon")),
+        createElement("p", { }, t("soc.runtime_kpi.description")),
       ),
     ),
   );

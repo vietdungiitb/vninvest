@@ -1,5 +1,6 @@
 import { createElement } from "react";
 import { useI18n } from "../../context/LangContext.js";
+import { getStatusBadgeStyle } from "./socStatusColors.js";
 import styles from "./soc.module.css";
 
 interface SocServiceHealthCardProps {
@@ -29,18 +30,6 @@ export function SocServiceHealthCard({ service }: SocServiceHealthCardProps) {
     }
   };
 
-  const getStatusColor = (status: string, isActive: boolean): string => {
-    if (!isActive) return "#94a3b8";
-    switch (status) {
-      case "healthy": return "#34d399";
-      case "degraded": return "#fbbf24";
-      case "unhealthy": return "#f87171";
-      case "maintenance": return "#38bdf8";
-      default: return "#cbd5e1";
-    }
-  };
-
-  const statusColor = getStatusColor(service.status, service.is_active);
   const statusLabel = getStatusLabel(service.status, service.is_active);
   const latency = service.is_active && service.avg_response_ms != null
     ? `${service.avg_response_ms.toFixed(0)}ms`
@@ -54,12 +43,12 @@ export function SocServiceHealthCard({ service }: SocServiceHealthCardProps) {
     { className: styles.serviceCard },
     createElement(
       "div",
-      { className: "s5_0_SocServiceHealthCard",  },
+      { },
       createElement(
         "div",
         null,
-        createElement("h4", { className: "s5_1_SocServiceHealthCard",  }, service.name),
-        createElement("p", { className: "s5_2_SocServiceHealthCard",  },
+        createElement("h4", { }, service.name),
+        createElement("p", { },
           `${service.service_key} \u2022 ${service.domain}`,
         ),
       ),
@@ -67,25 +56,25 @@ export function SocServiceHealthCard({ service }: SocServiceHealthCardProps) {
         "span",
         {
           className: styles.statusBadge,
-          style: { background: `${statusColor}20`, color: statusColor },
+          style: { ...getStatusBadgeStyle(service.status) },
         },
         statusLabel,
       ),
     ),
     createElement(
       "div",
-      { className: "s5_3_SocServiceHealthCard",  },
+      { },
       createElement(
         "div",
-        { className: "s5_4_SocServiceHealthCard",  },
-        createElement("div", { className: "s5_5_SocServiceHealthCard",  }, t("soc.health.latency_label")),
-        createElement("div", { className: "s5_6_SocServiceHealthCard",  }, latency),
+        { },
+        createElement("div", { }, t("soc.health.latency_label")),
+        createElement("div", { }, latency),
       ),
       createElement(
         "div",
-        { className: "s5_7_SocServiceHealthCard",  },
-        createElement("div", { className: "s5_8_SocServiceHealthCard",  }, t("soc.health.last_check_label")),
-        createElement("div", { className: "s5_9_SocServiceHealthCard",  }, lastCheck),
+        { },
+        createElement("div", { }, t("soc.health.last_check_label")),
+        createElement("div", { }, lastCheck),
       ),
     ),
   );

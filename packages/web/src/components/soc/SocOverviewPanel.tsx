@@ -1,6 +1,7 @@
 import { createElement, useEffect, useState, useMemo } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { toneColor, getStatusBadgeStyle } from "./socStatusColors.js";
 import styles from "./soc.module.css";
 
 interface ServiceItem {
@@ -33,13 +34,7 @@ const STATUS_LABEL_MAP: Record<string, string> = {
   maintenance: "soc.health.status_maintenance",
 };
 
-const STATUS_COLOR_MAP: Record<string, string> = {
-  healthy: "#34d399",
-  degraded: "#fbbf24",
-  unhealthy: "#f87171",
-  critical: "#f87171",
-  maintenance: "#38bdf8",
-};
+
 
 const DOMAIN_TAB_MAP: Record<string, string> = {
   prefetch: "prefetch",
@@ -163,11 +158,6 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
     return key ? t(key) : t("soc.health.status_unknown");
   };
 
-  const getStatusColor = (status: string, isActive: boolean): string => {
-    if (!isActive) return "#94a3b8";
-    return STATUS_COLOR_MAP[status] || "#cbd5e1";
-  };
-
   const filterButtons = [
     { key: "all", label: t("soc.overview.filter_all") },
     { key: "healthy", label: t("soc.overview.filter_healthy") },
@@ -202,17 +192,17 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
               "div",
               { className: styles.metricGrid },
               renderMetricCard(t("soc.overview.total_services"), stats.total, "#f1f5f9"),
-              renderMetricCard(t("soc.overview.healthy_count"), stats.healthy, "#34d399"),
-              renderMetricCard(t("soc.overview.degraded_count"), stats.degraded, "#fbbf24"),
-              renderMetricCard(t("soc.overview.critical_count"), stats.critical, "#f87171"),
-              renderMetricCard(t("soc.overview.unknown_count"), stats.unknown, "#cbd5e1"),
-              renderMetricCard(t("soc.overview.disabled_count"), stats.disabled, "#94a3b8"),
+              renderMetricCard(t("soc.overview.healthy_count"), stats.healthy, toneColor("success")),
+              renderMetricCard(t("soc.overview.degraded_count"), stats.degraded, toneColor("warning")),
+              renderMetricCard(t("soc.overview.critical_count"), stats.critical, toneColor("danger")),
+              renderMetricCard(t("soc.overview.unknown_count"), stats.unknown, "var(--color-text-secondary, #cbd5e1)"),
+              renderMetricCard(t("soc.overview.disabled_count"), stats.disabled, "var(--color-text-muted, #94a3b8)"),
             ),
             createElement(
               "div",
               { className: styles.toolbar },
               createElement("input", {
-                className: `styles.searchInput s5_0_SocOverviewPanel`,
+                className: `styles.searchInput`,
                 type: "text",
                 placeholder: t("soc.overview.search_placeholder"),
                 value: search,
@@ -224,7 +214,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
               }),
               createElement(
                 "div",
-                { className: "s5_1_SocOverviewPanel",  },
+                { },
                 ...filterButtons.map((btn) =>
                   createElement(
                     "button",
@@ -245,7 +235,6 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
               "div",
               { className: styles.servicesGrid },
               ...paginated.map((service) => {
-                const statusColor = getStatusColor(service.status, service.is_active);
                 const statusLabel = getStatusLabel(service.status, service.is_active);
                 const toggleKey = `toggle-${service.service_key}`;
                 const healthKey = `health-${service.service_key}`;
@@ -261,32 +250,31 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                   },
                   createElement(
                     "div",
-                    { className: "s5_2_SocOverviewPanel",  },
+                    { },
                     createElement(
                       "div",
                       null,
-                      createElement("h4", { className: "s5_3_SocOverviewPanel",  }, service.name),
+                      createElement("h4", { }, service.name),
                       createElement("p", {
-                        className: "s5_4_SocOverviewPanel", 
-                      }, `${service.service_key} \u2022 ${service.domain}`),
+                        }, `${service.service_key} \u2022 ${service.domain}`),
                     ),
                     createElement(
                       "span",
                       {
-                        className: styles.statusBadge,
-                        style: { background: `${statusColor}20`, color: statusColor },
+                         className: styles.statusBadge,
+                         style: { ...getStatusBadgeStyle(service.status) },
                       },
                       statusLabel,
                     ),
                   ),
                   createElement(
                     "div",
-                    { className: "s5_5_SocOverviewPanel",  },
+                    { },
                     createElement(
                       "div",
-                      { className: "s5_6_SocOverviewPanel",  },
-                      createElement("div", { className: "s5_7_SocOverviewPanel",  }, t("soc.health.latency_label")),
-                      createElement("div", { className: "s5_8_SocOverviewPanel",  },
+                      { },
+                      createElement("div", { }, t("soc.health.latency_label")),
+                      createElement("div", { },
                         service.is_active && service.avg_response_ms != null
                           ? `${service.avg_response_ms.toFixed(0)}ms`
                           : t("soc.health.unknown_value"),
@@ -294,9 +282,9 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                     ),
                     createElement(
                       "div",
-                      { className: "s5_9_SocOverviewPanel",  },
-                      createElement("div", { className: "s5_10_SocOverviewPanel",  }, t("soc.health.last_check_label")),
-                      createElement("div", { className: "s5_11_SocOverviewPanel",  },
+                      { },
+                      createElement("div", { }, t("soc.health.last_check_label")),
+                      createElement("div", { },
                         service.last_check_at
                           ? service.last_check_at.split("T")[1]?.slice(0, 8) || t("soc.health.unknown_value")
                           : t("soc.health.unknown_value"),
@@ -305,7 +293,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                   ),
                   createElement(
                     "div",
-                    { className: "s5_12_SocOverviewPanel",  },
+                    { },
                     createElement(
                       "button",
                       {
@@ -314,7 +302,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                         onClick: () => handleToggle(service),
                         style: {
                           background: service.is_active ? "rgba(239, 68, 68, 0.15)" : "rgba(34, 197, 94, 0.15)",
-                          color: service.is_active ? "#f87171" : "#34d399",
+                          color: service.is_active ? toneColor("danger") : toneColor("success"),
                         },
                       },
                       isLoadingToggle
@@ -326,7 +314,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                     createElement(
                       "button",
                       {
-                        className: `styles.actionBtn s5_13_SocOverviewPanel`,
+                        className: `styles.actionBtn`,
                         disabled: isLoadingHealth || !service.is_active,
                         onClick: () => handleHealthCheck(service),
                         
@@ -339,7 +327,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                       ? createElement(
                           "button",
                           {
-                            className: `styles.actionBtn s5_14_SocOverviewPanel`,
+                            className: `styles.actionBtn`,
                             onClick: () => handleConfigure(service),
                             
                           },
@@ -365,7 +353,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                   ),
                   createElement(
                     "span",
-                    { className: "s5_15_SocOverviewPanel",  },
+                    { },
                     t("soc.overview.page_of", { page: String(safePage), total: String(totalPages) }),
                   ),
                   createElement(

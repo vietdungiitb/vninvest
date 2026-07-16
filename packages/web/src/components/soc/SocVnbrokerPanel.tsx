@@ -4,6 +4,7 @@ import { ShellPanel } from "../../components/ShellPageTemplate.js";
 import { SocConfigPreviewModal } from "./SocConfigPreviewModal.js";
 import { SocServiceHealthCard } from "./SocServiceHealthCard.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { toneColor } from "./socStatusColors.js";
 import styles from "./soc.module.css";
 
 interface VnbrokerConfig {
@@ -223,7 +224,7 @@ export function SocVnbrokerPanel() {
                   ),
                   createElement(
                     "div",
-                    { className: "s5_0_SocVnbrokerPanel",  },
+                    { },
                     createElement(
                       "button",
                       {
@@ -236,12 +237,12 @@ export function SocVnbrokerPanel() {
                     ),
                     createElement(
                       "button",
-                      { onClick: () => setEditConfig(JSON.stringify(config || {}, null, 2)), className: `styles.actionBtn s5_1_SocVnbrokerPanel`,  },
+                      { onClick: () => setEditConfig(JSON.stringify(config || {}, null, 2)), className: `styles.actionBtn`,  },
                       t("soc.actions.edit"),
                     ),
                     createElement(
                       "button",
-                      { onClick: handleResetToDefaults, className: `styles.actionBtn s5_2_SocVnbrokerPanel`,  },
+                      { onClick: handleResetToDefaults, className: `styles.actionBtn`,  },
                       t("soc.vnbroker.reset_defaults"),
                     ),
                   ),
@@ -251,7 +252,7 @@ export function SocVnbrokerPanel() {
                   { className: styles.sectionCard },
                   createElement(
                     "div",
-                    { className: "s5_3_SocVnbrokerPanel",  },
+                    { },
                     createElement("div", { className: styles.sectionCardTitle }, t("soc.vnbroker.circuit_breaker_title")),
                     createElement(
                       "span",
@@ -259,7 +260,7 @@ export function SocVnbrokerPanel() {
                         className: styles.statusBadge,
                         style: {
                           background: circuitBreaker?.tripped ? "rgba(239, 68, 68, 0.15)" : "rgba(52, 211, 153, 0.15)",
-                          color: circuitBreaker?.tripped ? "#f87171" : "#34d399",
+                          color: circuitBreaker?.tripped ? toneColor("danger") : "var(--color-success-500, #34d399)",
                           fontSize: "0.7rem",
                           padding: "0.2rem 0.5rem",
                           borderRadius: "4px",
@@ -271,13 +272,13 @@ export function SocVnbrokerPanel() {
                   ),
                   createElement(
                     "div",
-                    { className: "s5_4_SocVnbrokerPanel",  },
+                    { },
                     circuitBreaker?.tripped
                       ? `Tripped at: ${circuitBreaker.tripped_at ? circuitBreaker.tripped_at.split("T")[1]?.slice(0, 8) : "N/A"}`
                       : t("soc.vnbroker.breaker_normal_desc"),
                   ),
-                  createElement("hr", { className: "s5_5_SocVnbrokerPanel",  }),
-                  createElement("div", { className: `styles.sectionCardTitle s5_6_SocVnbrokerPanel`,  }, t("soc.vnbroker.test_connection")),
+                  createElement("hr", { }),
+                  createElement("div", { className: `styles.sectionCardTitle`,  }, t("soc.vnbroker.test_connection")),
                   createElement(
                     "button",
                     {
@@ -286,7 +287,7 @@ export function SocVnbrokerPanel() {
                       className: styles.actionBtn,
                       style: {
                         background: "rgba(56, 189, 248, 0.15)",
-                        color: "#38bdf8",
+                        color: "var(--accent-cyan, #06b6d4)",
                         cursor: testingConnection ? "not-allowed" : "pointer",
                         width: "100%",
                       },
@@ -299,27 +300,27 @@ export function SocVnbrokerPanel() {
                   { className: styles.sectionCard },
                   createElement("div", { className: styles.sectionCardTitle }, t("soc.vnbroker.health_title")),
                   createElement("div", { className: styles.metricGrid },
-                    renderMetricCard(t("soc.health.status_healthy"), health?.provider_health?.healthy ?? 0, "#34d399"),
-                    renderMetricCard(t("soc.health.status_degraded"), health?.provider_health?.degraded ?? 0, "#fbbf24"),
-                    renderMetricCard(t("soc.health.status_critical"), health?.provider_health?.critical ?? 0, "#f87171"),
+                    renderMetricCard(t("soc.health.status_healthy"), health?.provider_health?.healthy ?? 0, "var(--color-success-500, #34d399)"),
+                    renderMetricCard(t("soc.health.status_degraded"), health?.provider_health?.degraded ?? 0, toneColor("warning")),
+                    renderMetricCard(t("soc.health.status_critical"), health?.provider_health?.critical ?? 0, toneColor("danger")),
                   ),
-                  createElement("div", { className: `styles.metricGrid s5_7_SocVnbrokerPanel`,  },
+                  createElement("div", { className: `styles.metricGrid`,  },
                     renderMetricCard(t("soc.vnbroker.throughput"), `${health?.avg_response_ms ? (1000 / health.avg_response_ms).toFixed(1) : 0}/s`, "var(--accent-cyan, #06b6d4)"),
-                    renderMetricCard(t("soc.vnbroker.avg_latency"), `${health?.avg_response_ms ?? 0}ms`, "#fbbf24"),
+                    renderMetricCard(t("soc.vnbroker.avg_latency"), `${health?.avg_response_ms ?? 0}ms`, toneColor("warning")),
                   ),
                 ),
               ),
-              createElement("div", { className: `styles.sectionCard s5_8_SocVnbrokerPanel`,  },
+              createElement("div", { className: `styles.sectionCard`,  },
                 createElement("div", { className: styles.sectionCardTitle }, t("soc.vnbroker.benchmark_title")),
                 createElement(
                   "div",
-                  { className: "s5_9_SocVnbrokerPanel",  },
+                  { },
                   createElement(
                     "select",
                     {
                       value: benchmarkProvider,
                       onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setBenchmarkProvider(e.target.value),
-                      className: `styles.searchInput s5_10_SocVnbrokerPanel`,
+                      className: `styles.searchInput`,
                       
                     },
                     createElement("option", { value: "all" }, t("soc.vnbroker.all_providers")),
@@ -333,7 +334,7 @@ export function SocVnbrokerPanel() {
                       className: styles.actionBtn,
                       style: {
                         background: "rgba(16, 185, 129, 0.15)",
-                        color: "#34d399",
+                        color: "var(--color-success-500, #34d399)",
                         cursor: benchmarkLoading ? "not-allowed" : "pointer",
                       },
                     },
@@ -343,29 +344,29 @@ export function SocVnbrokerPanel() {
                 benchmarkResults.length > 0
                   ? createElement(
                       "table",
-                      { className: "s5_11_SocVnbrokerPanel",  },
+                      { },
                       createElement("thead", null,
                         createElement("tr", null,
-                          createElement("th", { className: "s5_12_SocVnbrokerPanel",  }, t("soc.vnbroker.provider")),
-                          createElement("th", { className: "s5_13_SocVnbrokerPanel",  }, t("soc.vnbroker.latency")),
-                          createElement("th", { className: "s5_14_SocVnbrokerPanel",  }, "RPM"),
-                          createElement("th", { className: "s5_15_SocVnbrokerPanel",  }, t("soc.vnbroker.success_rate")),
-                          createElement("th", { className: "s5_16_SocVnbrokerPanel",  }, t("soc.vnbroker.rate_limit")),
+                          createElement("th", { }, t("soc.vnbroker.provider")),
+                          createElement("th", { }, t("soc.vnbroker.latency")),
+                          createElement("th", { }, "RPM"),
+                          createElement("th", { }, t("soc.vnbroker.success_rate")),
+                          createElement("th", { }, t("soc.vnbroker.rate_limit")),
                         ),
                       ),
                       createElement("tbody", null,
                         benchmarkResults.map((r) => {
-                          const successColor = r.success_rate >= 100 ? "#34d399" : r.success_rate >= 95 ? "#fbbf24" : "#f87171";
-                          const rateLimitColor = r.rate_limit_pct > 5 ? "#f87171" : "var(--text-muted, #94a3b8)";
+                           const successColor = r.success_rate >= 100 ? "var(--color-success-500, #34d399)" : r.success_rate >= 95 ? toneColor("warning") : toneColor("danger");
+                           const rateLimitColor = r.rate_limit_pct > 5 ? toneColor("danger") : "var(--color-text-muted, #94a3b8)";
                           return createElement(
                             "tr",
-                            { key: r.provider, className: "s5_17_SocVnbrokerPanel",  },
-                            createElement("td", { className: "s5_18_SocVnbrokerPanel",  }, r.provider),
-                            createElement("td", { className: "s5_19_SocVnbrokerPanel",  }, `${r.latency_ms}ms`),
-                            createElement("td", { className: "s5_20_SocVnbrokerPanel",  }, r.rpm),
+                            { key: r.provider, },
+                            createElement("td", { }, r.provider),
+                            createElement("td", { }, `${r.latency_ms}ms`),
+                            createElement("td", { }, r.rpm),
                             createElement(
                               "td",
-                              { className: "s5_21_SocVnbrokerPanel",  },
+                              { },
                               createElement(
                                 "span",
                                 {
@@ -383,7 +384,7 @@ export function SocVnbrokerPanel() {
                             ),
                             createElement(
                               "td",
-                              { className: "s5_22_SocVnbrokerPanel",  },
+                              { },
                               createElement(
                                 "span",
                                 {
@@ -405,11 +406,11 @@ export function SocVnbrokerPanel() {
                     )
                   : createElement("p", { className: styles.emptyState }, t("soc.vnbroker.no_benchmark_results")),
               ),
-              createElement("div", { className: `styles.sectionCard s5_23_SocVnbrokerPanel`,  },
+              createElement("div", { className: `styles.sectionCard`,  },
                 createElement("div", { className: styles.sectionCardTitle }, t("soc.vnbroker.providers_title")),
                 createElement(
                   "div",
-                  { className: "s5_24_SocVnbrokerPanel",  },
+                  { },
                   providers.map((p) =>
                     createElement(SocServiceHealthCard, {
                       key: p.key,

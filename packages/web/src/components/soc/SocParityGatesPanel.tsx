@@ -1,5 +1,6 @@
 import { createElement } from "react";
 import { useI18n } from "../../context/LangContext.js";
+import { toneColor } from "./socStatusColors.js";
 import styles from "./soc.module.css";
 
 interface ParityWindowData {
@@ -51,7 +52,7 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
     createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.parity_gates")),
     createElement(
       "div",
-      { className: `styles.metricGrid s5_0_SocParityGatesPanel`,  },
+      { className: `styles.metricGrid`,  },
       (["24h", "72h"] as const).map((window) => {
         const windowKey = `window_${window}` as const;
         const parityWindow = parityGates[windowKey];
@@ -86,20 +87,20 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
           "div",
           {
             key: window,
-            className: `styles.glassPanel s5_1_SocParityGatesPanel`,
+            className: `styles.glassPanel`,
             
           },
           createElement(
             "div",
-            { className: "s5_2_SocParityGatesPanel",  },
-            createElement("h4", { className: "s5_3_SocParityGatesPanel",  }, `${window} window`),
+            { },
+            createElement("h4", { }, `${window} window`),
             createElement(
               "span",
               {
                 className: styles.statusBadge,
                 style: {
                   background: hasPassed ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                  color: hasPassed ? "#34d399" : "#f87171",
+                  color: hasPassed ? toneColor("success") : toneColor("danger"),
                   fontSize: "0.65rem",
                   fontWeight: 600,
                 },
@@ -109,12 +110,12 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
           ),
           createElement(
             "p",
-            { className: "s5_4_SocParityGatesPanel",  },
+            { },
             `${strictParity.toFixed(2)}%`
           ),
           createElement(
             "p",
-            { className: "s5_5_SocParityGatesPanel",  },
+            { },
             t("soc.dataops.parity_strict_line", {
               count: parityWindow.strict_fresh_count || 0,
               total: parityWindow.evaluated_symbols || 0,
@@ -127,7 +128,7 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
               style: {
                 fontSize: "0.7rem",
                 margin: "0.15rem 0",
-                color: strictTrendDirection === "up" ? "#34d399" : strictTrendDirection === "down" ? "#f87171" : "#94a3b8",
+                color: strictTrendDirection === "up" ? toneColor("success") : strictTrendDirection === "down" ? toneColor("danger") : "var(--color-text-muted, #94a3b8)",
               },
             },
             t("soc.dataops.parity_trend_line", {
@@ -137,7 +138,7 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
           ),
           createElement(
             "p",
-            { className: "s5_6_SocParityGatesPanel",  },
+            { },
             t("soc.dataops.parity_relaxed_line", {
               parity: relaxedParity.toFixed(2),
               count: parityWindow.fresh_or_warm_count || 0,
@@ -151,7 +152,7 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
               style: {
                 fontSize: "0.7rem",
                 margin: "0.15rem 0",
-                color: relaxedTrendDirection === "up" ? "#34d399" : relaxedTrendDirection === "down" ? "#f87171" : "#94a3b8",
+                color: relaxedTrendDirection === "up" ? toneColor("success") : relaxedTrendDirection === "down" ? toneColor("danger") : "var(--color-text-muted, #94a3b8)",
               },
             },
             t("soc.dataops.parity_relaxed_trend_line", {
@@ -161,11 +162,11 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
           ),
           createElement(
             "div",
-            { className: "s5_7_SocParityGatesPanel",  },
-            createElement("p", { className: "s5_8_SocParityGatesPanel",  }, t("soc.dataops.parity_history_title")),
+            { },
+            createElement("p", { }, t("soc.dataops.parity_history_title")),
             createElement(
               "div",
-              { className: "s5_9_SocParityGatesPanel",  },
+              { },
               windowHistory.slice(0, 7).map((historyPoint, index) => {
                 const pointSequence = historyPoint.sequence ?? index;
                 const pointStrictPct = (historyPoint.strict_fresh_parity || 0) * 100;
@@ -174,7 +175,7 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
                   "span",
                   {
                     key: `${window}-${pointSequence}`,
-                    className: `styles.statusBadge s5_10_SocParityGatesPanel`,
+                    className: `styles.statusBadge`,
                     
                     title: t("soc.dataops.parity_history_point_tooltip", {
                       strict: pointStrictPct.toFixed(2),
@@ -191,7 +192,7 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
               windowHistory.length === 0 &&
                 createElement(
                   "span",
-                  { className: "s5_11_SocParityGatesPanel",  },
+                  { },
                   t("soc.dataops.parity_history_empty")
                 )
             )

@@ -35,6 +35,26 @@ const iconMap: Record<string, ComponentType<React.SVGProps<SVGSVGElement>>> = {
   Moon: Icons.Moon,
   Sun: Icons.Sun,
   Check: Icons.Check,
+  // ── SOC DataOps / Operations Center ──
+  BarChart3: Icons.BarChart3,
+  Database: Icons.Database,
+  ServerCog: Icons.ServerCog,
+  Radio: Icons.Radio,
+  Activity: Icons.Activity,
+  Clock: Icons.Clock,
+  SlidersHorizontal: Icons.SlidersHorizontal,
+  ListChecks: Icons.ListChecks,
+  FolderKanban: Icons.FolderKanban,
+  ShieldCheck: Icons.ShieldCheck,
+  Gauge: Icons.Gauge,
+  Syringe: Icons.Syringe,
+  // ── SOC top-level tabs ──
+  BookOpen: Icons.BookOpen,
+  TrendingUp: Icons.TrendingUp,
+  Zap: Icons.Zap,
+  LineChart: Icons.LineChart,
+  Layers: Icons.Layers,
+  ClipboardList: Icons.ClipboardList,
 };
 
 export function LucideIcon({ name, className = 'h-5 w-5' }: LucideIconProps) {

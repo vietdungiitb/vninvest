@@ -1,5 +1,6 @@
 import { createElement } from "react";
 import { useI18n } from "../../context/LangContext.js";
+import { toneColor } from "./socStatusColors.js";
 import styles from "./soc.module.css";
 
 interface SocOwnershipBadgeProps {
@@ -17,32 +18,32 @@ export function SocOwnershipBadge({ team, writable, accessLevel }: SocOwnershipB
 
   return createElement(
     "div",
-    { className: `styles.sectionCard s5_0_SocOwnershipBadge`,  },
-    createElement("div", { className: `styles.sectionCardTitle s5_1_SocOwnershipBadge`,  }, t("soc.badge.ownership_title")),
+    { className: `styles.sectionCard`,  },
+    createElement("div", { className: `styles.sectionCardTitle`,  }, t("soc.badge.ownership_title")),
     createElement(
       "div",
-      { className: "s5_2_SocOwnershipBadge",  },
+      { },
       createElement(
         "span",
         {
           className: styles.statusBadge,
           style: {
             background: writable ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
-            color: writable ? "#34d399" : "#f87171",
+            color: writable ? "var(--color-success-500, #34d399)" : toneColor("danger"),
           },
         },
         createElement("span", {
           className: styles.statusDot,
           style: {
-            background: writable ? "#34d399" : "#f87171",
+            background: writable ? "var(--color-success-500, #34d399)" : toneColor("danger"),
           },
         }),
         writableLabel,
       ),
-      createElement("span", { className: `styles.statusBadge s5_3_SocOwnershipBadge`,  },
+      createElement("span", { className: `styles.statusBadge`,  },
         t("soc.badge.team", { team: teamLabel }),
       ),
-      createElement("span", { className: `styles.statusBadge s5_4_SocOwnershipBadge`,  },
+      createElement("span", { className: `styles.statusBadge`,  },
         t("soc.badge.access", { level: accessLabel }),
       ),
     ),

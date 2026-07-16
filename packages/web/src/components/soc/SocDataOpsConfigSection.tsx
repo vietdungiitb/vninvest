@@ -179,7 +179,7 @@ export function SocDataOpsConfigSection() {
 
   return createElement(
     "div",
-    { className: "s5_0_SocDataOpsConfigSection",  },
+    { },
     error ? createElement("div", { className: styles.inlineError }, error) : null,
 
     ownership
@@ -205,7 +205,7 @@ export function SocDataOpsConfigSection() {
       ownership?.locked_fields && ownership.locked_fields.length > 0
         ? createElement(
             "div",
-            { className: "s5_1_SocDataOpsConfigSection",  },
+            { },
             `${t("soc.dataops.locked_fields")}: ${ownership.locked_fields.join(", ")}`,
           )
         : null,
@@ -220,12 +220,12 @@ export function SocDataOpsConfigSection() {
       ),
       createElement(
         "div",
-        { className: "s5_2_SocDataOpsConfigSection",  },
+        { },
         createElement(
           "button",
           {
             onClick: handlePreview,
-            className: `styles.actionBtn s5_3_SocDataOpsConfigSection`,
+            className: `styles.actionBtn`,
             
           },
           t("soc.actions.preview"),
@@ -234,7 +234,7 @@ export function SocDataOpsConfigSection() {
           "button",
           {
             onClick: () => setEditConfig(JSON.stringify(envelope?.config || {}, null, 2)),
-            className: `styles.actionBtn s5_4_SocDataOpsConfigSection`,
+            className: `styles.actionBtn`,
             
           },
           t("soc.actions.edit"),
@@ -249,17 +249,16 @@ export function SocDataOpsConfigSection() {
           createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.audit_trail")),
           createElement(
             "div",
-            { className: "s5_5_SocDataOpsConfigSection",  },
+            { },
             auditTrail.map((entry, i) =>
               createElement(
                 "div",
                 {
                   key: i,
-                  className: "s5_6_SocDataOpsConfigSection", 
-                },
-                createElement("span", { className: "s5_7_SocDataOpsConfigSection",  }, entry.actor || "system"),
+                  },
+                createElement("span", { }, entry.actor || "system"),
                 ` \u2022 ${entry.action || "config_change"}`,
-                createElement("span", { className: "s5_8_SocDataOpsConfigSection",  },
+                createElement("span", { },
                   entry.timestamp?.split("T")[1]?.slice(0, 8) || "",
                 ),
               ),
@@ -267,20 +266,20 @@ export function SocDataOpsConfigSection() {
           ),
           createElement(
             "div",
-            { className: "s5_9_SocDataOpsConfigSection",  },
+            { },
             createElement(
               "button",
               {
                 onClick: () => setAuditPage((p) => Math.max(1, p - 1)),
                 disabled: auditPage <= 1,
-                className: `styles.actionBtn s5_10_SocDataOpsConfigSection`,
+                className: `styles.actionBtn`,
                 
               },
               "\u25C0 " + t("soc.actions.prev"),
             ),
             createElement(
               "span",
-              { className: "s5_11_SocDataOpsConfigSection",  },
+              { },
               t("soc.actions.page", { page: auditPage }),
             ),
             createElement(
@@ -288,7 +287,7 @@ export function SocDataOpsConfigSection() {
               {
                 onClick: () => setAuditPage((p) => p + 1),
                 disabled: !auditHasMore,
-                className: `styles.actionBtn s5_12_SocDataOpsConfigSection`,
+                className: `styles.actionBtn`,
                 
               },
               t("soc.actions.next") + " \u25B6",

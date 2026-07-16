@@ -6,6 +6,7 @@ import { SocScreenerRuleModal } from "./SocScreenerRuleModal.js";
 import { SocScreenerConfigForm } from "./SocScreenerConfigForm.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
+import { toneColor } from "./socStatusColors.js";
 import styles from "./soc.module.css";
 
 interface ScreenerConfig {
@@ -218,40 +219,40 @@ export function SocScreenerPanel() {
                 loading: applying,
               }),
             ),
-            createElement("div", { className: `styles.sectionCard s5_0_SocScreenerPanel`,  },
-              createElement("div", { className: `styles.sectionCardTitle s5_1_SocScreenerPanel`,  },
+            createElement("div", { className: `styles.sectionCard`,  },
+              createElement("div", { className: `styles.sectionCardTitle`,  },
                 t("soc.screener.rules_title"),
                 createElement(
                   "button",
-                  { onClick: handleOpenCreateRule, className: `styles.actionBtn s5_2_SocScreenerPanel`,  },
+                  { onClick: handleOpenCreateRule, className: `styles.actionBtn`,  },
                   t("soc.screener.add_rule")
                 ),
               ),
               createElement(
                 "table",
-                { className: "s5_3_SocScreenerPanel",  },
+                { },
                 createElement("thead", null,
                   createElement("tr", null,
-                    createElement("th", { className: "s5_4_SocScreenerPanel",  }, t("soc.screener.rule_name")),
-                    createElement("th", { className: "s5_5_SocScreenerPanel",  }, t("soc.screener.rule_type")),
-                    createElement("th", { className: "s5_6_SocScreenerPanel",  }, t("soc.screener.rule_enabled")),
-                    createElement("th", { className: "s5_7_SocScreenerPanel",  }, t("soc.actions.actions")),
+                    createElement("th", { }, t("soc.screener.rule_name")),
+                    createElement("th", { }, t("soc.screener.rule_type")),
+                    createElement("th", { }, t("soc.screener.rule_enabled")),
+                    createElement("th", { }, t("soc.actions.actions")),
                   ),
                 ),
                 createElement("tbody", null,
                   rules.map((rule) =>
                     createElement("tr", { key: rule.id },
-                      createElement("td", { className: "s5_8_SocScreenerPanel",  }, rule.name),
-                      createElement("td", { className: "s5_9_SocScreenerPanel",  }, rule.type),
-                      createElement("td", { className: "s5_10_SocScreenerPanel",  },
+                      createElement("td", { }, rule.name),
+                      createElement("td", { }, rule.type),
+                      createElement("td", { },
                         rule.enabled ? "\u2705" : "\u274C",
                       ),
-                      createElement("td", { className: "s5_11_SocScreenerPanel",  },
+                      createElement("td", { },
                         createElement(
                           "button",
                           {
                             onClick: () => handleOpenEditRule(rule),
-                            className: `styles.actionBtn s5_12_SocScreenerPanel`,
+                            className: `styles.actionBtn`,
                             
                           },
                           t("soc.actions.edit"),
@@ -260,7 +261,7 @@ export function SocScreenerPanel() {
                           "button",
                           {
                             onClick: () => handleDeleteRule(rule.id),
-                            className: `styles.actionBtn s5_13_SocScreenerPanel`,
+                            className: `styles.actionBtn`,
                             
                           },
                           t("soc.actions.delete"),
@@ -271,18 +272,18 @@ export function SocScreenerPanel() {
                 ),
               ),
             ),
-            createElement("div", { className: `styles.sectionCard s5_14_SocScreenerPanel`,  },
+            createElement("div", { className: `styles.sectionCard`,  },
               createElement("div", { className: styles.sectionCardTitle }, t("soc.screener.manual_scan_title")),
               createElement(
                 "div",
-                { className: "s5_15_SocScreenerPanel",  },
+                { },
                 createElement(
                   "input",
                   {
                     type: "text",
                     value: manualSymbols,
                     onChange: (e: React.ChangeEvent<HTMLInputElement>) => setManualSymbols(e.target.value),
-                    className: `styles.searchInput s5_16_SocScreenerPanel`,
+                    className: `styles.searchInput`,
                     placeholder: t("soc.screener.symbols_placeholder"),
                     
                   },
@@ -295,7 +296,7 @@ export function SocScreenerPanel() {
                     className: styles.actionBtn,
                     style: {
                       background: "rgba(16, 185, 129, 0.15)",
-                      color: "#34d399",
+                      color: "var(--color-success-500, #34d399)",
                       cursor: scanning ? "not-allowed" : "pointer",
                     },
                   },
@@ -303,7 +304,7 @@ export function SocScreenerPanel() {
                 ),
               ),
             ),
-            createElement("div", { className: `styles.sectionGrid s5_17_SocScreenerPanel`,  },
+            createElement("div", { className: `styles.sectionGrid`,  },
               createElement(
                 "div",
                 { className: styles.sectionCard },
@@ -312,17 +313,16 @@ export function SocScreenerPanel() {
                   ? createElement("p", { className: styles.emptyState }, t("soc.screener.no_results"))
                   : createElement(
                       "div",
-                      { className: "s5_18_SocScreenerPanel",  },
+                      { },
                       results.slice(0, 20).map((r) =>
                         createElement(
                           "div",
                           {
                             key: r.id,
-                            className: "s5_19_SocScreenerPanel", 
-                          },
-                          createElement("span", { className: "s5_20_SocScreenerPanel",  }, r.symbol),
+                            },
+                          createElement("span", { }, r.symbol),
                           ` \u2022 ${r.rule_name}`,
-                          createElement("span", { className: "s5_21_SocScreenerPanel",  },
+                          createElement("span", { },
                             r.timestamp?.split("T")[1]?.slice(0, 8) || "",
                           ),
                         ),
@@ -337,24 +337,23 @@ export function SocScreenerPanel() {
                   ? createElement("p", { className: styles.emptyState }, t("soc.screener.no_alerts"))
                   : createElement(
                       "div",
-                      { className: "s5_22_SocScreenerPanel",  },
+                      { },
                       alerts.slice(0, 10).map((a) =>
                         createElement(
                           "div",
                           {
                             key: a.id,
-                            className: "s5_23_SocScreenerPanel", 
-                          },
-                          createElement("span", { className: "s5_24_SocScreenerPanel",  }, a.symbol),
+                            },
+                          createElement("span", { }, a.symbol),
                           `: ${a.message}`,
                         ),
                       ),
                     ),
               ),
             ),
-            createElement("div", { className: `styles.metricGrid s5_25_SocScreenerPanel`,  },
+            createElement("div", { className: `styles.metricGrid`,  },
               renderMetricCard(t("soc.screener.avg_scan"), `${metrics?.avg_scan_duration_ms ?? 0}ms`, "var(--accent-cyan, #06b6d4)"),
-              renderMetricCard(t("soc.screener.hit_rate"), `${metrics?.rules_hit_rate ?? 0}%`, "#34d399"),
+              renderMetricCard(t("soc.screener.hit_rate"), `${metrics?.rules_hit_rate ?? 0}%`, toneColor("success")),
             ),
           ),
     ),

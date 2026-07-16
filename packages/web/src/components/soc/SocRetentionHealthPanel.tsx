@@ -1,5 +1,6 @@
 import { createElement } from "react";
 import { useI18n } from "../../context/LangContext.js";
+import { toneColor } from "./socStatusColors.js";
 import styles from "./soc.module.css";
 
 interface RetentionRun {
@@ -56,28 +57,28 @@ export function SocRetentionHealthPanel({ retentionHealth }: SocRetentionHealthP
   const retentionLatestRunAgeHours = retentionTrend.latest_run_age_hours || 0;
 
   const isWithinStaleness = !!retentionTrend.within_staleness_threshold;
-  const retentionThresholdTone = isWithinStaleness ? "#34d399" : "#fbbf24";
+  const retentionThresholdTone = isWithinStaleness ? toneColor("success") : toneColor("warning");
 
   const statusColors =
     retentionStatus === "success"
-      ? { bg: "rgba(16, 185, 129, 0.15)", text: "#34d399", label: t("soc.dataops.retention_status_ok") }
+      ? { bg: "rgba(16, 185, 129, 0.15)", text: "var(--color-success-500, #34d399)", label: t("soc.dataops.retention_status_ok") }
       : retentionStatus === "failed"
-      ? { bg: "rgba(239, 68, 68, 0.15)", text: "#f87171", label: t("soc.dataops.retention_status_failed") }
-      : { bg: "rgba(100, 116, 139, 0.15)", text: "#94a3b8", label: t("soc.dataops.retention_status_unknown") };
+      ? { bg: "rgba(239, 68, 68, 0.15)", text: toneColor("danger"), label: t("soc.dataops.retention_status_failed") }
+      : { bg: "rgba(100, 116, 139, 0.15)", text: "var(--color-text-muted, #94a3b8)", label: t("soc.dataops.retention_status_unknown") };
 
   return createElement(
     "div",
     { className: styles.sectionCard },
     createElement(
       "div",
-      { className: "s5_0_SocRetentionHealthPanel",  },
+      { },
       createElement(
         "div",
         null,
         createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.retention_health")),
         createElement(
           "p",
-          { className: "s5_1_SocRetentionHealthPanel",  },
+          { },
           t("soc.dataops.retention_deleted_line", {
             deleted: retentionHealth.latest_run?.deleted_rows || 0,
             retained: retentionHealth.latest_run?.retained_rows || 0,
@@ -101,14 +102,14 @@ export function SocRetentionHealthPanel({ retentionHealth }: SocRetentionHealthP
 
     createElement(
       "div",
-      { className: `styles.metricGrid s5_2_SocRetentionHealthPanel`,  },
+      { className: `styles.metricGrid`,  },
       createElement(
         "div",
         { className: styles.metricCard },
         createElement("div", { className: styles.metricLabel }, t("soc.dataops.retention_deleted")),
         createElement(
           "div",
-          { className: `styles.metricValue s5_3_SocRetentionHealthPanel`,  },
+          { className: `styles.metricValue`,  },
           (retentionHealth.latest_run?.deleted_rows || 0).toLocaleString()
         )
       ),
@@ -118,7 +119,7 @@ export function SocRetentionHealthPanel({ retentionHealth }: SocRetentionHealthP
         createElement("div", { className: styles.metricLabel }, t("soc.dataops.retention_days")),
         createElement(
           "div",
-          { className: `styles.metricValue s5_4_SocRetentionHealthPanel`,  },
+          { className: `styles.metricValue`,  },
           `${retentionHealth.retention_days || 0} days`
         )
       )
@@ -126,17 +127,17 @@ export function SocRetentionHealthPanel({ retentionHealth }: SocRetentionHealthP
 
     createElement(
       "div",
-      { className: "s5_5_SocRetentionHealthPanel",  },
+      { },
       createElement(
         "p",
-        { className: "s5_6_SocRetentionHealthPanel",  },
+        { },
         t("soc.dataops.retention_policy_line", {
           days: retentionHealth.retention_days || 0,
         })
       ),
       createElement(
         "p",
-        { className: "s5_7_SocRetentionHealthPanel",  },
+        { },
         t("soc.dataops.retention_trend_line", {
           delta: retentionDeletedDelta > 0 ? `+${retentionDeletedDelta}` : `${retentionDeletedDelta}`,
           average: (retentionTrend.average_deleted_rows || 0).toFixed(2),
@@ -144,7 +145,7 @@ export function SocRetentionHealthPanel({ retentionHealth }: SocRetentionHealthP
       ),
       createElement(
         "p",
-        { className: "s5_8_SocRetentionHealthPanel",  },
+        { },
         t("soc.dataops.retention_retained_delta_line", {
           delta: retentionRetainedDelta > 0 ? `+${retentionRetainedDelta}` : `${retentionRetainedDelta}`,
         })
@@ -153,11 +154,11 @@ export function SocRetentionHealthPanel({ retentionHealth }: SocRetentionHealthP
 
     createElement(
       "div",
-      { className: "s5_9_SocRetentionHealthPanel",  },
+      { },
       createElement(
         "div",
-        { className: "s5_10_SocRetentionHealthPanel",  },
-        createElement("p", { className: "s5_11_SocRetentionHealthPanel",  }, t("soc.dataops.retention_chart_title")),
+        { },
+        createElement("p", { }, t("soc.dataops.retention_chart_title")),
         createElement(
           "span",
           {
@@ -175,8 +176,7 @@ export function SocRetentionHealthPanel({ retentionHealth }: SocRetentionHealthP
       createElement(
         "div",
         {
-          className: "s5_12_SocRetentionHealthPanel", 
-        },
+          },
         retentionBars.map((historyPoint, index) => {
           const deletedRows = historyPoint.deleted_rows || 0;
           const heightPct = Math.max(10, Math.round((deletedRows / retentionPeakDeletedRows) * 100));
@@ -199,7 +199,7 @@ export function SocRetentionHealthPanel({ retentionHealth }: SocRetentionHealthP
         retentionBars.length === 0 &&
           createElement(
             "span",
-            { className: "s5_13_SocRetentionHealthPanel",  },
+            { },
             t("soc.dataops.retention_history_empty")
           )
       ),

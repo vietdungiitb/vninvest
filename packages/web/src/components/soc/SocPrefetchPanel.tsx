@@ -4,6 +4,7 @@ import { ShellPanel } from "../../components/ShellPageTemplate.js";
 import { SocSchedulerBoard } from "./SocSchedulerBoard.js";
 import { SocConfigPreviewModal } from "./SocConfigPreviewModal.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { toneColor } from "./socStatusColors.js";
 import styles from "./soc.module.css";
 
 interface PrefetchConfig {
@@ -160,7 +161,7 @@ export function SocPrefetchPanel() {
                   createElement("div", { className: styles.sectionCardTitle }, t("soc.prefetch.universe_groups_title")),
                   createElement(
                     "div",
-                    { className: "s5_0_SocPrefetchPanel",  },
+                    { },
                     universeGroups.map((group) =>
                       createElement(
                         "button",
@@ -173,7 +174,7 @@ export function SocPrefetchPanel() {
                       ),
                     ),
                   ),
-                  createElement("div", { className: "s5_1_SocPrefetchPanel",  },
+                  createElement("div", { },
                     t("soc.prefetch.groups_summary", { count: selectedGroups.length, total: universeGroups.length }),
                   ),
                 ),
@@ -192,40 +193,40 @@ export function SocPrefetchPanel() {
                   ),
                   createElement(
                     "div",
-                    { className: "s5_2_SocPrefetchPanel",  },
+                    { },
                     createElement(
                       "button",
-                      { onClick: handlePreview, className: `styles.actionBtn s5_3_SocPrefetchPanel`,  },
+                      { onClick: handlePreview, className: `styles.actionBtn`,  },
                       t("soc.actions.preview"),
                     ),
                     createElement(
                       "button",
-                      { onClick: handleEditConfig, className: `styles.actionBtn s5_4_SocPrefetchPanel`,  },
+                      { onClick: handleEditConfig, className: `styles.actionBtn`,  },
                       t("soc.actions.edit"),
                     ),
                   ),
                 ),
               ),
-              createElement("div", { className: `styles.metricGrid s5_5_SocPrefetchPanel`,  },
-                renderMetricCard(t("soc.prefetch.hit_rate"), `${cacheStatus?.hit_rate ?? 0}%`, "#34d399"),
+              createElement("div", { className: `styles.metricGrid`,  },
+                renderMetricCard(t("soc.prefetch.hit_rate"), `${cacheStatus?.hit_rate ?? 0}%`, toneColor("success")),
                 renderMetricCard(t("soc.prefetch.cache_size"), `${cacheStatus?.size_mb ?? 0} MB`, "var(--accent-cyan, #06b6d4)"),
-                renderMetricCard(t("soc.prefetch.cache_ttl"), `${cacheStatus?.ttl_minutes ?? 0} min`, "#fbbf24"),
+                renderMetricCard(t("soc.prefetch.cache_ttl"), `${cacheStatus?.ttl_minutes ?? 0} min`, toneColor("warning")),
               ),
               createElement(
                 "div",
-                { className: "s5_6_SocPrefetchPanel",  },
+                { },
                 createElement(
                   "button",
-                  { onClick: handleWarmNow, className: `styles.actionBtn s5_7_SocPrefetchPanel`,  },
+                  { onClick: handleWarmNow, className: `styles.actionBtn`,  },
                   t("soc.prefetch.warm_now"),
                 ),
                 createElement(
                   "button",
-                  { onClick: handlePurgeCache, className: `styles.actionBtn s5_8_SocPrefetchPanel`,  },
+                  { onClick: handlePurgeCache, className: `styles.actionBtn`,  },
                   t("soc.prefetch.purge_cache"),
                 ),
               ),
-              createElement("div", { className: "s5_9_SocPrefetchPanel",  },
+              createElement("div", { },
                 createElement(SocSchedulerBoard, { domain: "prefetch" }),
               ),
             ),

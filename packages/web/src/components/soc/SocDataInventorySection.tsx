@@ -2,6 +2,7 @@ import { createElement, useEffect, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { useDataOps } from "./DataOpsContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { toneColor } from "./socStatusColors.js";
 import styles from "./soc.module.css";
 
 interface QueueTierData {
@@ -62,20 +63,20 @@ export function SocDataInventorySection() {
   const maxYearRows = years.length > 0 ? Math.max(...years.map((y) => y.rows)) : 1;
 
   const coverageColor = (covered: number, total: number): string => {
-    if (total === 0) return "#f87171";
+    if (total === 0) return toneColor("danger");
     const ratio = covered / total;
-    if (ratio >= 0.9) return "#34d399";
-    if (ratio >= 0.5) return "#fbbf24";
-    return "#f87171";
+    if (ratio >= 0.9) return toneColor("success");
+    if (ratio >= 0.5) return toneColor("warning");
+    return toneColor("danger");
   };
 
-  return createElement("div", { className: "s5_0_SocDataInventorySection",  },
+  return createElement("div", { className: styles.inventoryRoot },
 
     createElement("div", { className: styles.metricGrid },
       MetricCard({ label: t("soc.dataops.total_rows"), value: (s.total_rows ?? 0).toLocaleString(), color: "var(--accent-cyan, #06b6d4)" }),
-      MetricCard({ label: t("soc.dataops.total_symbols"), value: (s.total_symbols ?? 0).toLocaleString(), color: "#34d399" }),
-      MetricCard({ label: t("soc.dataops.earliest_date"), value: s.earliest_date ?? "N/A", color: "#fbbf24" }),
-      MetricCard({ label: t("soc.dataops.latest_date"), value: s.latest_date ?? "N/A", color: "#f87171" }),
+      MetricCard({ label: t("soc.dataops.total_symbols"), value: (s.total_symbols ?? 0).toLocaleString(), color: toneColor("success") }),
+      MetricCard({ label: t("soc.dataops.earliest_date"), value: s.earliest_date ?? "N/A", color: toneColor("warning") }),
+      MetricCard({ label: t("soc.dataops.latest_date"), value: s.latest_date ?? "N/A", color: toneColor("danger") }),
     ),
 
     dataTypes.length > 0
@@ -92,10 +93,10 @@ export function SocDataInventorySection() {
                 title: `${dt.total_rows.toLocaleString()} rows \u2022 ${dt.symbols} symbols`,
               },
                 createElement("div", { className: styles.metricLabel }, dt.label),
-                createElement("div", { className: `styles.metricValue s5_1_SocDataInventorySection`,  },
+                createElement("div", { className: `styles.metricValue`,  },
                   dt.total_rows.toLocaleString(),
                 ),
-                createElement("div", { className: "s5_2_SocDataInventorySection",  },
+                createElement("div", { },
                   `${dt.symbols} symbols${dt.earliest_date ? ` \u2022 ${dt.earliest_date}` : ""}`,
                 ),
               ),
@@ -107,14 +108,14 @@ export function SocDataInventorySection() {
     years.length > 0
       ? createElement("div", { className: styles.sectionCard },
           createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.year_distribution")),
-          createElement("div", { className: "s5_3_SocDataInventorySection",  },
+          createElement("div", { },
             years.map((yr) =>
-              createElement("div", { key: yr.year, className: "s5_4_SocDataInventorySection",  },
-                createElement("span", { className: "s5_5_SocDataInventorySection",  }, yr.year),
-                createElement("div", { className: "s5_6_SocDataInventorySection",  },
+              createElement("div", { key: yr.year, },
+                createElement("span", { }, yr.year),
+                createElement("div", { },
                   createElement("div", { className: styles.barFill, style: { width: `${(yr.rows / maxYearRows) * 100}%` } }),
                 ),
-                createElement("span", { className: "s5_7_SocDataInventorySection",  },
+                createElement("span", { },
                   yr.rows.toLocaleString(),
                 ),
               ),
@@ -125,34 +126,34 @@ export function SocDataInventorySection() {
 
     groups.length > 0
       ? createElement("div", { className: styles.sectionCard },
-          createElement("div", { className: styles.sectionCardTitle }, "Coverage by Group"),
-          createElement("div", { className: "s5_8_SocDataInventorySection",  },
+          createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.inventory_table.title")),
+          createElement("div", { className: styles.coverageTableWrap },
             createElement("table", { className: styles.coverageTable },
               createElement("thead", null,
                 createElement("tr", null,
-                  createElement("th", null, "Group"),
-                  createElement("th", null, "Symbols"),
-                  createElement("th", null, "Covered"),
-                  createElement("th", null, "Ngày lịch"),
-                  createElement("th", null, "Total Rows"),
-                  createElement("th", null, "Date Range"),
+                  createElement("th", null, t("soc.dataops.inventory_table.col_group")),
+                  createElement("th", null, t("soc.dataops.inventory_table.col_symbols")),
+                  createElement("th", null, t("soc.dataops.inventory_table.col_covered")),
+                  createElement("th", null, t("soc.dataops.inventory_table.col_calendar_days")),
+                  createElement("th", null, t("soc.dataops.inventory_table.col_total_rows")),
+                  createElement("th", null, t("soc.dataops.inventory_table.col_date_range")),
                 ),
               ),
               createElement("tbody", null,
                 groups.map((g) =>
                   createElement("tr", { key: g.id },
-                    createElement("td", { style: { fontWeight: 600, color: g.type === "custom" ? "#5eead4" : "inherit" } },
+                    createElement("td", { style: { fontWeight: 600, color: g.type === "custom" ? "var(--color-success-400, #5eead4)" : "inherit" } },
                       `${g.type === "custom" ? "\u2605 " : ""}${g.name}`,
                     ),
                     createElement("td", null, g.symbol_count.toLocaleString()),
                     createElement("td", { className: styles.coverageCell, style: { color: coverageColor(g.covered_symbols, g.symbol_count) } },
                       `${g.covered_symbols} / ${g.symbol_count}`,
                     ),
-                    createElement("td", { style: { color: g.calendar_days != null && g.calendar_days < 30 ? "#fbbf24" : "var(--text-muted, #94a3b8)", fontWeight: g.calendar_days != null && g.calendar_days < 30 ? 700 : 400 } },
+                    createElement("td", { style: { color: g.calendar_days != null && g.calendar_days < 30 ? "var(--color-warning-500, #fbbf24)" : "var(--text-muted, #94a3b8)", fontWeight: g.calendar_days != null && g.calendar_days < 30 ? 700 : 400 } },
                       g.calendar_days != null ? `${g.calendar_days.toLocaleString()} ngày${g.calendar_days < 30 ? ' \u26A0' : ''}` : "N/A",
                     ),
                     createElement("td", null, g.total_rows.toLocaleString()),
-                    createElement("td", { className: "s5_9_SocDataInventorySection",  },
+                    createElement("td", { style: { whiteSpace: "nowrap" } },
                       g.earliest_date && g.latest_date ? `${g.earliest_date} \u2013 ${g.latest_date}` : "N/A",
                     ),
                   ),
@@ -178,26 +179,26 @@ export function SocDataInventorySection() {
                     className: styles.accordionHeader,
                     onClick: () => setQueueTiersExpanded(queueTiersExpanded === tier.tier ? null : tier.tier),
                   },
-                    createElement("span", { className: "s5_10_SocDataInventorySection",  }, tier.tier),
-                    createElement("span", { className: "s5_11_SocDataInventorySection",  },
+                    createElement("span", { }, tier.tier),
+                    createElement("span", { },
                       `${tier.symbol_count} symbols \u2022 ${tier.cadence || "N/A"}`,
                     ),
                   ),
                   queueTiersExpanded === tier.tier
                     ? createElement("div", { className: styles.accordionContent },
-                        createElement("div", { className: "s5_12_SocDataInventorySection",  },
+                        createElement("div", { },
                           `Cadence: ${tier.cadence || "N/A"} \u2022 Active: ${tier.symbol_count} symbols`,
                         ),
                         tier.active_symbols?.length > 0
-                          ? createElement("div", { className: "s5_13_SocDataInventorySection",  },
+                          ? createElement("div", { },
                               tier.active_symbols.slice(0, 10).map((sym) =>
-                                createElement("span", { key: sym, className: `styles.statusBadge s5_14_SocDataInventorySection`,  }, sym),
+                                createElement("span", { key: sym, className: `styles.statusBadge`,  }, sym),
                               ),
                               tier.active_symbols.length > 10
-                                ? createElement("span", { className: "s5_15_SocDataInventorySection",  }, `+${tier.active_symbols.length - 10} more`)
+                                ? createElement("span", { }, `+${tier.active_symbols.length - 10} more`)
                                 : null,
                             )
-                          : createElement("span", { className: "s5_16_SocDataInventorySection",  }, t("soc.dataops.empty_examples")),
+                          : createElement("span", { }, t("soc.dataops.empty_examples")),
                       )
                     : null,
                 ),

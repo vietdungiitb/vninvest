@@ -2,6 +2,7 @@ import { createElement, useEffect, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { ShellPanel } from "../../components/ShellPageTemplate.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { getStatusBadgeStyle } from "./socStatusColors.js";
 import styles from "./soc.module.css";
 
 interface BackfillJob {
@@ -73,16 +74,6 @@ export function SocDnseBackfillPanel() {
     }
   };
 
-  const getStatusColor = (status: string): string => {
-    switch (status) {
-      case "completed": return "#34d399";
-      case "running": return "var(--accent-cyan, #06b6d4)";
-      case "failed": return "#f87171";
-      case "queued": return "#fbbf24";
-      default: return "#94a3b8";
-    }
-  };
-
   return createElement(
     "div",
     { className: styles.glassPanel },
@@ -105,11 +96,11 @@ export function SocDnseBackfillPanel() {
                 createElement("div", { className: styles.sectionCardTitle }, t("soc.dnse.trigger_title")),
                 createElement(
                   "div",
-                  { className: "s5_0_SocDnseBackfillPanel",  },
+                  { },
                   createElement(
                     "div",
                     null,
-                    createElement("label", { className: "s5_1_SocDnseBackfillPanel",  }, t("soc.dnse.symbol")),
+                    createElement("label", { }, t("soc.dnse.symbol")),
                     createElement(
                       "input",
                       {
@@ -124,7 +115,7 @@ export function SocDnseBackfillPanel() {
                   createElement(
                     "div",
                     null,
-                    createElement("label", { className: "s5_2_SocDnseBackfillPanel",  }, t("soc.dnse.date_from")),
+                    createElement("label", { }, t("soc.dnse.date_from")),
                     createElement(
                       "input",
                       {
@@ -140,7 +131,7 @@ export function SocDnseBackfillPanel() {
                   createElement(
                     "div",
                     null,
-                    createElement("label", { className: "s5_3_SocDnseBackfillPanel",  }, t("soc.dnse.date_to")),
+                    createElement("label", { }, t("soc.dnse.date_to")),
                     createElement(
                       "input",
                       {
@@ -163,8 +154,8 @@ export function SocDnseBackfillPanel() {
                     style: {
                       marginTop: "0.75rem",
                       background: "rgba(16, 185, 129, 0.2)",
-                      color: "#34d399",
-                      cursor: submitting ? "not-allowed" : "pointer",
+                      color: "var(--color-success-500, #34d399)",
+                       cursor: submitting ? "not-allowed" : "pointer",
                     },
                   },
                   submitting ? t("soc.dnse.submitting") : t("soc.dnse.start_backfill"),
@@ -172,25 +163,24 @@ export function SocDnseBackfillPanel() {
               ),
               createElement(
                 "div",
-                { className: `styles.sectionCard s5_4_SocDnseBackfillPanel`,  },
+                { className: `styles.sectionCard`,  },
                 createElement("div", { className: styles.sectionCardTitle }, t("soc.dnse.recent_jobs")),
                 jobs.length === 0
                   ? createElement("p", { className: styles.emptyState }, t("soc.dnse.no_jobs"))
                   : createElement(
                       "div",
-                      { className: "s5_5_SocDnseBackfillPanel",  },
+                      { },
                       jobs.slice(0, 15).map((job) =>
                         createElement(
                           "div",
                           {
                             key: job.id,
-                            className: "s5_6_SocDnseBackfillPanel", 
-                          },
+                            },
                           createElement(
                             "div",
-                            { className: "s5_7_SocDnseBackfillPanel",  },
-                            createElement("span", { className: "s5_8_SocDnseBackfillPanel",  }, job.symbol),
-                            createElement("span", { className: "s5_9_SocDnseBackfillPanel",  },
+                            { },
+                            createElement("span", { }, job.symbol),
+                            createElement("span", { },
                               job.date || "N/A",
                             ),
                           ),
@@ -198,12 +188,12 @@ export function SocDnseBackfillPanel() {
                             "span",
                             {
                               className: styles.statusBadge,
-                              style: { background: `${getStatusColor(job.status)}20`, color: getStatusColor(job.status) },
+                              style: { ...getStatusBadgeStyle(job.status) },
                             },
                             job.status,
                           ),
                           job.error
-                            ? createElement("span", { className: "s5_10_SocDnseBackfillPanel",  }, job.error)
+                            ? createElement("span", { }, job.error)
                             : null,
                         ),
                       ),

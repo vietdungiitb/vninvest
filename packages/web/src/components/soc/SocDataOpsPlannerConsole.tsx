@@ -116,11 +116,11 @@ export function SocDataOpsPlannerConsole() {
   const renderDatasetCheckboxes = () =>
     createElement(
       "div",
-      { className: "s5_0_SocDataOpsPlannerConsole",  },
+      { },
       createElement("label", { style: LABEL_STYLE }, t("soc.dataops.backfill_datasets")),
       createElement(
         "div",
-        { className: "s5_1_SocDataOpsPlannerConsole",  },
+        { },
         PLANNER_DATASETS.map((key) =>
           createElement(
             "label",
@@ -140,12 +140,11 @@ export function SocDataOpsPlannerConsole() {
               type: "checkbox",
               checked: selectedDatasets.includes(key),
               onChange: () => toggleDataset(key),
-              className: "s5_2_SocDataOpsPlannerConsole", 
-            }),
+              }),
             createElement(
               "span",
-              { className: "s5_3_SocDataOpsPlannerConsole",  },
-              createElement("span", { className: "s5_4_SocDataOpsPlannerConsole",  }, t(`soc.dataops.dataset_${key}`)),
+              { },
+              createElement("span", { }, t(`soc.dataops.dataset_${key}`)),
             ),
           ),
         ),
@@ -155,23 +154,23 @@ export function SocDataOpsPlannerConsole() {
   const renderSymbolsTextarea = () =>
     createElement(
       "div",
-      { className: "s5_5_SocDataOpsPlannerConsole",  },
+      { },
       createElement("label", { style: LABEL_STYLE }, t("soc.dataops.planner_symbols")),
       createElement("textarea", {
-        className: `styles.searchInput s5_6_SocDataOpsPlannerConsole`,
+        className: `styles.searchInput`,
         placeholder: t("soc.dataops.planner_symbols_placeholder"),
         value: symbols,
         onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setSymbols(e.target.value),
         
       }),
-      createElement("p", { className: "s5_7_SocDataOpsPlannerConsole",  },
+      createElement("p", { },
         t("soc.dataops.planner_symbols_hint")),
     );
 
   const renderControlsRow = () =>
     createElement(
       "div",
-      { className: "s5_8_SocDataOpsPlannerConsole",  },
+      { },
       createElement(
         "div", null,
         createElement("label", { style: LABEL_STYLE }, t("soc.dataops.backfill_execution")),
@@ -196,23 +195,22 @@ export function SocDataOpsPlannerConsole() {
   const renderForceRefreshCheckbox = () =>
     createElement(
       "label",
-      { className: "s5_9_SocDataOpsPlannerConsole",  },
+      { },
       createElement("input", {
         type: "checkbox", checked: forceRefresh,
         onChange: (e: React.ChangeEvent<HTMLInputElement>) => setForceRefresh(e.target.checked),
-        className: "s5_10_SocDataOpsPlannerConsole", 
-      }),
+        }),
       t("soc.dataops.planner_force_refresh"),
     );
 
   const renderActionRow = () =>
     createElement(
       "div",
-      { className: "s5_11_SocDataOpsPlannerConsole",  },
+      { },
       createElement(
         "button",
         {
-          className: `styles.actionBtn s5_12_SocDataOpsPlannerConsole`,
+          className: `styles.actionBtn`,
           onClick: handlePreview,
           disabled: previewing || submitting,
           
@@ -245,7 +243,7 @@ export function SocDataOpsPlannerConsole() {
     const headerBtn = createElement(
       "button",
       {
-        className: `styles.filterBtn s5_13_SocDataOpsPlannerConsole`,
+        className: `styles.filterBtn`,
         onClick: () => setExpanded(!expanded),
         
       },
@@ -254,10 +252,10 @@ export function SocDataOpsPlannerConsole() {
     const tableContent = expanded
       ? createElement(
           "div",
-          { className: "s5_14_SocDataOpsPlannerConsole",  },
+          { },
           createElement(
             "table",
-            { className: "s5_15_SocDataOpsPlannerConsole",  },
+            { },
             createElement(
               "thead",
               null,
@@ -267,8 +265,7 @@ export function SocDataOpsPlannerConsole() {
                 columns.map((c) =>
                   createElement("th", {
                     key: c.key,
-                    className: "s5_16_SocDataOpsPlannerConsole", 
-                  }, c.label),
+                    }, c.label),
                 ),
               ),
             ),
@@ -282,8 +279,7 @@ export function SocDataOpsPlannerConsole() {
                   columns.map((c) =>
                     createElement("td", {
                       key: c.key,
-                      className: "s5_17_SocDataOpsPlannerConsole", 
-                    }, String(item[c.key] ?? "")),
+                      }, String(item[c.key] ?? "")),
                   ),
                 ),
               ),
@@ -292,17 +288,17 @@ export function SocDataOpsPlannerConsole() {
           totalPages > 1
             ? createElement(
                 "div",
-                { className: "s5_18_SocDataOpsPlannerConsole",  },
+                { },
                 createElement("button", {
-                  className: `styles.actionBtn s5_19_SocDataOpsPlannerConsole`,
+                  className: `styles.actionBtn`,
                   onClick: () => setPage(Math.max(0, page - 1)),
                   disabled: page === 0,
                   
                 }, "\u25C0"),
-                createElement("span", { className: "s5_20_SocDataOpsPlannerConsole",  },
+                createElement("span", { },
                   `${t("soc.dataops.planner_page")} ${page + 1}/${totalPages}`),
                 createElement("button", {
-                  className: `styles.actionBtn s5_21_SocDataOpsPlannerConsole`,
+                  className: `styles.actionBtn`,
                   onClick: () => setPage(Math.min(totalPages - 1, page + 1)),
                   disabled: page >= totalPages - 1,
                   
@@ -311,27 +307,27 @@ export function SocDataOpsPlannerConsole() {
             : null,
         )
       : null;
-    return createElement("div", { className: "s5_22_SocDataOpsPlannerConsole",  }, headerBtn, tableContent);
+    return createElement("div", { }, headerBtn, tableContent);
   };
 
   const renderPreviewResults = () => {
     if (!preview) return null;
     return createElement(
       "div",
-      { className: "s5_23_SocDataOpsPlannerConsole",  },
-      createElement("div", { className: "s5_24_SocDataOpsPlannerConsole",  }, t("soc.dataops.planner_preview_summary")),
+      { },
+      createElement("div", { }, t("soc.dataops.planner_preview_summary")),
       createElement(
         "div",
         { className: styles.metricGrid },
         createElement(
-          "div", { className: `styles.metricCard s5_25_SocDataOpsPlannerConsole`, onClick: () => setPlannedExpanded(!plannedExpanded),  },
+          "div", { className: `styles.metricCard`, onClick: () => setPlannedExpanded(!plannedExpanded),  },
           createElement("div", { className: styles.metricLabel }, t("soc.dataops.planner_planned_items")),
-          createElement("div", { className: `styles.metricValue s5_26_SocDataOpsPlannerConsole`,  }, String(plannedCount)),
+          createElement("div", { className: `styles.metricValue`,  }, String(plannedCount)),
         ),
         createElement(
-          "div", { className: `styles.metricCard s5_27_SocDataOpsPlannerConsole`, onClick: () => setSkippedExpanded(!skippedExpanded),  },
+          "div", { className: `styles.metricCard`, onClick: () => setSkippedExpanded(!skippedExpanded),  },
           createElement("div", { className: styles.metricLabel }, t("soc.dataops.planner_skipped_items")),
-          createElement("div", { className: `styles.metricValue s5_28_SocDataOpsPlannerConsole`,  }, String(skippedCount)),
+          createElement("div", { className: `styles.metricValue`,  }, String(skippedCount)),
         ),
       ),
       renderItemsTable(
@@ -354,24 +350,23 @@ export function SocDataOpsPlannerConsole() {
     { className: styles.sectionCard },
     createElement(
       "div",
-      { className: "s5_29_SocDataOpsPlannerConsole",  },
+      { },
       createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.planner_title")),
       createElement(
         "span",
         {
-          className: "s5_30_SocDataOpsPlannerConsole", 
-        },
+          },
         "planner",
       ),
     ),
-    createElement("p", { className: "s5_31_SocDataOpsPlannerConsole",  },
+    createElement("p", { },
       t("soc.dataops.planner_description")),
     renderSymbolsTextarea(),
     renderDatasetCheckboxes(),
     renderControlsRow(),
     renderForceRefreshCheckbox(),
-    error ? createElement("div", { className: `styles.inlineError s5_32_SocDataOpsPlannerConsole`,  }, error) : null,
-    success ? createElement("div", { className: `styles.inlineSuccess s5_33_SocDataOpsPlannerConsole`,  }, success) : null,
+    error ? createElement("div", { className: `styles.inlineError`,  }, error) : null,
+    success ? createElement("div", { className: `styles.inlineSuccess`,  }, success) : null,
     renderActionRow(),
     renderPreviewResults(),
   );
