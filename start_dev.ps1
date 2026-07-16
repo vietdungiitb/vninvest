@@ -19,12 +19,14 @@
 .USAGE
     .\start_dev.ps1             # full build + up
     .\start_dev.ps1 -SkipBuild  # chỉ up (đã build rồi)
+    .\start_dev.ps1 -NoCache    # build không dùng cache (--no-cache)
     .\start_dev.ps1 -Down       # dừng và xóa containers
 #>
 param(
     [switch]$SkipBuild,
     [switch]$Down,
-    [switch]$FrontendOnly
+    [switch]$FrontendOnly,
+    [switch]$NoCache
 )
 
 Set-StrictMode -Version Latest
@@ -244,7 +246,11 @@ if ($FrontendOnly) {
 Write-Host "DEBUG SkipBuild value: '$SkipBuild', type: '$($SkipBuild.GetType().FullName)'"
 if (-not $SkipBuild) {
     Write-Step "Build Docker images (lần đầu mất 3–5 phút)"
-    $composeBuildArgs = @("build", "--parallel") + $TargetServices
+    $composeBuildArgs = @("build", "--parallel")
+    if ($NoCache) {
+        $composeBuildArgs += "--no-cache"
+    }
+    $composeBuildArgs += $TargetServices
     Invoke-Compose @composeBuildArgs
     if ($LASTEXITCODE -ne 0) {
         throw "docker compose build failed with exit code $LASTEXITCODE. Aborting so stale images are not started."

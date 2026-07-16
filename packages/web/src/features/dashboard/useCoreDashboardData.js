@@ -10,7 +10,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
-import { SYSTEM_GROUP_IDS } from "../../constants/marketGroups.js";
+import { SYSTEM_GROUP_IDS } from "../../constants/marketGroups";
 
 const EMPTY_ARRAY = [];
 

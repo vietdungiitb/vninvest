@@ -106,7 +106,16 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
       e(
         'nav',
         { className: 'hidden md:flex items-center gap-2 text-sm text-slate-400', 'aria-label': 'Breadcrumb' },
-        e('span', null, 'VNInvest'),
+        e(
+          'button',
+          {
+            type: 'button',
+            onClick: () => navigate('/dashboard'),
+            className: 'hover:text-slate-200 transition-colors cursor-pointer bg-transparent border-0 p-0 font-inherit',
+            'aria-label': t('layout.home') || 'Về trang tổng quan'
+          },
+          'VNInvest'
+        ),
         e('span', { className: 'mx-1' }, '/'),
         e('span', { className: 'text-slate-200 font-medium' }, location.pathname.split('/').pop() || 'Dashboard')
       )
