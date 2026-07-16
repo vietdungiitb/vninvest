@@ -684,6 +684,12 @@ def fetch_listing_symbols(*, source: str | None = None) -> list[dict[str, Any]]:
     return _build_listing_seed_rows(normalized_source)
 
 
+# Các group đại diện cho TOÀN BỘ thị trường — chỉ những group này mới được
+# fallback trả về toàn bộ universe. Mọi group khác (BOND, ETF, CW, sector...)
+# phải lấy danh sách thành viên thực tế, nếu không có thì trả rỗng (không pollute).
+_ALL_MARKET_GROUP_IDS = frozenset({'all', 'toan-thi-truong', 'toanbo', 'vnall', 'vnxall'})
+
+
 def fetch_symbol_group_members(symbol_group_id: str, *, source: str | None = None) -> list[str]:
     normalized_source = _resolve_realtime_source(source)
     group_id = str(symbol_group_id or '').strip().lower()
@@ -703,24 +709,34 @@ def fetch_symbol_group_members(symbol_group_id: str, *, source: str | None = Non
             logger.warning('fetch_symbol_group_members custom group %s failed: %s', slug, exc)
         return []
 
+    # Candidate group names to probe the listing adapter with. Prefer the
+    # canonical vnbroker alias, then fall back to the raw id / its uppercase form
+    # (vnbroker supports arbitrary group names such as BOND, ETF, CW, FU_INDEX).
+    candidate_groups: list[str] = []
     group_alias = _LISTING_GROUP_ALIASES.get(group_id)
-
     if group_alias:
+        candidate_groups.append(group_alias)
+    else:
+        candidate_groups.extend([group_id, group_id.upper()])
+
+    listing_class = _load_listing_adapter_class()
+    for candidate in candidate_groups:
+        if not candidate:
+            continue
         try:
-            logger.info('Fetching symbol group %s from %s.', group_alias, normalized_source)
-            listing_class = _load_listing_adapter_class()
+            logger.info('Fetching symbol group %s from %s.', candidate, normalized_source)
             listing_client = listing_class(source=normalized_source)
             group_symbols = _normalize_listing_rows(
-                listing_client.symbols_by_group(group=group_alias),
+                listing_client.symbols_by_group(group=candidate),
                 normalized_source,
             )
-            symbols = [row['symbol'] for row in group_symbols]
+            symbols = [row['symbol'] for row in group_symbols if row.get('symbol')]
             if symbols:
                 return symbols
         except Exception as exc:
             logger.warning(
                 'fetch_symbol_group_members %s via %s failed: %s',
-                group_id,
+                candidate,
                 normalized_source,
                 exc,
             )
@@ -746,8 +762,18 @@ def fetch_symbol_group_members(symbol_group_id: str, *, source: str | None = Non
         ]
         if exchange_symbols:
             return exchange_symbols
-    listing_symbols = [row['symbol'] for row in listing_rows if row.get('symbol')]
-    return _slice_listing_symbols(listing_symbols, group_id)
+
+    # Chỉ group đại diện toàn thị trường mới được trả toàn bộ universe.
+    # Các group khác (BOND, ETF, CW, sector...) trả rỗng thay vì pollute 1522 mã.
+    if group_id in _ALL_MARKET_GROUP_IDS:
+        listing_symbols = [row['symbol'] for row in listing_rows if row.get('symbol')]
+        return _slice_listing_symbols(listing_symbols, group_id)
+
+    logger.warning(
+        'fetch_symbol_group_members %s returned empty: no real members resolved.',
+        group_id,
+    )
+    return []
 
 
 def fetch_intraday_ohlcv(symbol: str, timeframe: str = '1H', days: int = 180) -> dict[str, Any]:
@@ -1185,19 +1211,142 @@ def get_company_financials_response(symbol: str, force: bool = False) -> dict:
 
 _PROVIDER_SYNC_ORDER = ('KBS', 'VCI', 'TCBS')
 
+# Static display metadata — vnbroker chỉ trả category/group_name, KHÔNG trả color/order/group_type.
+# Map này cung cấp visual properties cho UI, giữ nguyên khi provider thay đổi.
+_GROUP_METADATA: dict[str, dict[str, Any]] = {
+    # ── Sector groups (hardcoded ở backend, frontend chỉ hiển thị) ──
+    'Ngân hàng':             {'group_type': 'SECTOR', 'color': '#3b82f6', 'display_order': 1},
+    'Bất động sản':          {'group_type': 'SECTOR', 'color': '#f59e0b', 'display_order': 2},
+    'Thép & Vật liệu':       {'group_type': 'SECTOR', 'color': '#ef4444', 'display_order': 3},
+    'Dầu khí':               {'group_type': 'SECTOR', 'color': '#8b5cf6', 'display_order': 4},
+    'Công nghệ':             {'group_type': 'SECTOR', 'color': '#22c55e', 'display_order': 5},
+    'Bán lẻ & Tiêu dùng':   {'group_type': 'SECTOR', 'color': '#ec4899', 'display_order': 6},
+    # ── Index groups (từ vnbroker) ──
+    'VN30':                  {'group_type': 'INDEX',  'color': '#6366f1', 'display_order': 10},
+    'VN50':                  {'group_type': 'INDEX',  'color': '#818cf8', 'display_order': 11},
+    'VN100':                 {'group_type': 'INDEX',  'color': '#14b8a6', 'display_order': 12},
+    'VNX50':                 {'group_type': 'INDEX',  'color': '#0ea5e9', 'display_order': 13},
+    'VNXALL':                {'group_type': 'INDEX',  'color': '#06b6d4', 'display_order': 14},
+    'VNALL':                 {'group_type': 'INDEX',  'color': '#0891b2', 'display_order': 15},
+    'VNSmallCap':            {'group_type': 'INDEX',  'color': '#a78bfa', 'display_order': 16},
+    'VNMidCap':              {'group_type': 'INDEX',  'color': '#c084fc', 'display_order': 17},
+    'VNSI':                  {'group_type': 'INDEX',  'color': '#e879f9', 'display_order': 18},
+    'HNX30':                 {'group_type': 'INDEX',  'color': '#f43f5e', 'display_order': 19},
+    # ── Exchange groups (từ vnbroker) ──
+    'HOSE':                  {'group_type': 'EXCHANGE', 'color': '#10b981', 'display_order': 30},
+    'HNX':                   {'group_type': 'EXCHANGE', 'color': '#6366f1', 'display_order': 31},
+    'UPCOM':                 {'group_type': 'EXCHANGE', 'color': '#ec4899', 'display_order': 32},
+    # ── Other groups (từ vnbroker) ──
+    'ETF':                   {'group_type': 'ETF',      'color': '#f59e0b', 'display_order': 40},
+    'CW':                    {'group_type': 'CW',       'color': '#8b5cf6', 'display_order': 41},
+    'BOND':                  {'group_type': 'BOND',     'color': '#22c55e', 'display_order': 42},
+    'FU_INDEX':              {'group_type': 'DERIVATIVE', 'color': '#ef4444', 'display_order': 43},
+    # ── VCI extended groups ──
+    'HNXCon':                {'group_type': 'INDEX',  'color': '#fb923c', 'display_order': 20},
+    'HNXFin':                {'group_type': 'INDEX',  'color': '#fb923c', 'display_order': 21},
+    'HNXLCap':               {'group_type': 'INDEX',  'color': '#fb923c', 'display_order': 22},
+    'HNXMSCap':              {'group_type': 'INDEX',  'color': '#fb923c', 'display_order': 23},
+    'HNXMan':                {'group_type': 'INDEX',  'color': '#fb923c', 'display_order': 24},
+}
+
+# Sector groups — hardcoded ở backend, không sync từ vnbroker (provider không có sector).
+_SECTOR_GROUPS: list[dict[str, Any]] = [
+    {
+        'group_name': 'Ngân hàng',
+        'group_code': 'SECTOR_BANK',
+        'category': 'Sector — VN',
+        'description': 'Nhóm ngân hàng',
+        'group_type': 'SECTOR',
+        'color': '#3b82f6',
+        'display_order': 1,
+    },
+    {
+        'group_name': 'Bất động sản',
+        'group_code': 'SECTOR_RE',
+        'category': 'Sector — VN',
+        'description': 'Nhóm bất động sản',
+        'group_type': 'SECTOR',
+        'color': '#f59e0b',
+        'display_order': 2,
+    },
+    {
+        'group_name': 'Thép & Vật liệu',
+        'group_code': 'SECTOR_MAT',
+        'category': 'Sector — VN',
+        'description': 'Nhóm thép và vật liệu xây dựng',
+        'group_type': 'SECTOR',
+        'color': '#ef4444',
+        'display_order': 3,
+    },
+    {
+        'group_name': 'Dầu khí',
+        'group_code': 'SECTOR_OG',
+        'category': 'Sector — VN',
+        'description': 'Nhóm dầu khí và năng lượng',
+        'group_type': 'SECTOR',
+        'color': '#8b5cf6',
+        'display_order': 4,
+    },
+    {
+        'group_name': 'Công nghệ',
+        'group_code': 'SECTOR_TECH',
+        'category': 'Sector — VN',
+        'description': 'Nhóm công nghệ và viễn thông',
+        'group_type': 'SECTOR',
+        'color': '#22c55e',
+        'display_order': 5,
+    },
+    {
+        'group_name': 'Bán lẻ & Tiêu dùng',
+        'group_code': 'SECTOR_RET',
+        'category': 'Sector — VN',
+        'description': 'Nhóm bán lẻ và hàng tiêu dùng',
+        'group_type': 'SECTOR',
+        'color': '#ec4899',
+        'display_order': 6,
+    },
+]
+
 
 def sync_cached_symbol_groups(*, source: str | None = None) -> dict[str, Any]:
-    """Sync nhóm thị trường từ vnbroker provider vào CachedSymbolGroup model.
+    """Sync nhóm thị trường từ vnbroker provider + sector groups vào CachedSymbolGroup.
 
-    Gọi listing.get_supported_groups() → upsert vào DB.
-    Với mỗi group, gọi listing.symbols_by_group() để đếm symbol_count.
+    1. Upsert sector groups (hardcoded) — luôn sync, không phụ thuộc provider.
+    2. Gọi listing.get_supported_groups() → upsert vào DB.
+    3. Với mỗi group, populate group_type/color/display_order từ _GROUP_METADATA.
+    4. Soft-deactivate groups không còn ở provider (giữ sector groups).
 
     Returns:
         dict: {synced: int, deactivated: int, source: str, error: str|None}
     """
-    from .models import CachedSymbolGroup  # lazy import — same package
+    from service_ops.models import CachedSymbolGroup  # lazy import — cross package
 
+    imported_names: set[str] = set()
+    synced = 0
+
+    # ── Step 1: Upsert sector groups (hardcoded, không phụ thuộc provider) ──
+    for sg in _SECTOR_GROUPS:
+        meta = _GROUP_METADATA.get(sg['group_name'], {})
+        CachedSymbolGroup.objects.update_or_create(
+            group_name=sg['group_name'],
+            defaults={
+                'group_code': sg['group_code'],
+                'category': sg['category'],
+                'description': sg['description'],
+                'source_provider': 'SECTOR',
+                'group_type': meta.get('group_type', sg.get('group_type', 'SECTOR')),
+                'color': meta.get('color', sg.get('color', '')),
+                'display_order': meta.get('display_order', sg.get('display_order', 999)),
+                'symbol_count': None,
+                'is_active': True,
+            },
+        )
+        imported_names.add(sg['group_name'])
+        synced += 1
+
+    # ── Step 2: Sync từ vnbroker provider ──
     providers_to_try = [source.upper()] if source else list(_PROVIDER_SYNC_ORDER)
+    provider_source = None
 
     for prov in providers_to_try:
         try:
@@ -1210,8 +1359,7 @@ def sync_cached_symbol_groups(*, source: str | None = None) -> dict[str, Any]:
                 logger.warning('sync_cached_symbol_groups: %s trả về empty groups', normalized)
                 continue
 
-            imported_names: set[str] = set()
-            synced = 0
+            provider_source = normalized
 
             for _, row in groups_df.iterrows():
                 group_name = str(row.get('group_name', '')).strip()
@@ -1221,6 +1369,8 @@ def sync_cached_symbol_groups(*, source: str | None = None) -> dict[str, Any]:
                 group_code = str(row.get('group_code', '')).strip()
                 category = str(row.get('category', '')).strip()
                 description = str(row.get('description', '')).strip()
+
+                meta = _GROUP_METADATA.get(group_name, {})
 
                 # Đếm symbols — lazy, có thể fail
                 symbol_count = None
@@ -1239,13 +1389,16 @@ def sync_cached_symbol_groups(*, source: str | None = None) -> dict[str, Any]:
                         'description': description,
                         'source_provider': normalized,
                         'symbol_count': symbol_count,
+                        'group_type': meta.get('group_type', ''),
+                        'color': meta.get('color', ''),
+                        'display_order': meta.get('display_order', 999),
                         'is_active': True,
                     },
                 )
                 imported_names.add(group_name)
                 synced += 1
 
-            # Soft-deactivate groups không còn ở provider này
+            # Soft-deactivate provider groups không còn ở provider này
             deactivated = CachedSymbolGroup.objects.filter(
                 is_active=True,
                 source_provider=normalized,
@@ -1262,6 +1415,10 @@ def sync_cached_symbol_groups(*, source: str | None = None) -> dict[str, Any]:
         except Exception as exc:
             logger.warning('sync_cached_symbol_groups: provider %s fail: %s', prov, exc)
             continue
+
+    # Sector groups synced even if all providers fail
+    if synced > 0:
+        return {'synced': synced, 'deactivated': 0, 'source': 'SECTOR', 'error': None}
 
     return {
         'synced': 0,

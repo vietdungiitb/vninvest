@@ -1,7 +1,9 @@
-import { createElement, MouseEvent } from "react";
+import { createElement, MouseEvent, useState, useMemo, useEffect } from "react";
 import { useWatchlist } from "./WatchlistContext";
 import { WatchlistItem, Holding, MergedData } from "../WatchlistTypes";
 import { useI18n } from "../../../context/LangContext.js";
+
+const PAGE_SIZE_OPTIONS = [50, 100, 200];
 
 export function WatchlistTable({ density }: { density: "compact" | "comfortable" }) {
   const { 
@@ -12,6 +14,22 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
   } = useWatchlist();
 
   const { t } = useI18n();
+
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
+
+  // Reset to first page whenever the active list changes.
+  const listKey = `${selectedType}:${selectedId}`;
+  useEffect(() => {
+    setPage(0);
+  }, [listKey]);
+
+  const pagedItems = useMemo(() => {
+    const start = page * pageSize;
+    return activeItems.slice(start, start + pageSize);
+  }, [activeItems, page, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(activeItems.length / pageSize));
 
   const getMergedData = (symbol: string): MergedData => {
     const staticData = technicalsMap[symbol] || {};
@@ -218,7 +236,19 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
   const renderTableBody = () => {
     const tdPadding = density === "compact" ? "6px 12px" : "12px 16px";
 
-    return activeItems.map(item => {
+    if (pagedItems.length === 0) {
+      return createElement(
+        "tr",
+        null,
+        createElement(
+          "td",
+          { colSpan: 10, style: { padding: "2rem", textAlign: "center", color: "var(--text-muted, #94a3b8)" } },
+          t("watchlist.table.empty", { defaultValue: "Danh sách trống." })
+        )
+      );
+    }
+
+    return pagedItems.map(item => {
       const symbol = (item as WatchlistItem).symbol;
       const merged = getMergedData(symbol);
       const changePct = Number(merged.price_change_pct || 0);
@@ -435,10 +465,105 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
         { style: { background: "rgba(8, 23, 52, 0.5)", position: "sticky", top: 0, zIndex: 10 } },
         renderTableHeader()
       ),
+    createElement(
+      "tbody",
+      { style: { background: "transparent" } },
+      renderTableBody()
+    )
+    ),
+    activeItems.length > pageSize && createElement(WatchlistTablePager, {
+      page, pageSize, totalPages, totalItems: activeItems.length,
+      onPageChange: setPage, onPageSizeChange: (s: number) => { setPageSize(s); setPage(0); },
+    })
+  );
+}
+
+function WatchlistTablePager({
+  page, pageSize, totalPages, totalItems, onPageChange, onPageSizeChange,
+}: {
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  totalItems: number;
+  onPageChange: (p: number) => void;
+  onPageSizeChange: (s: number) => void;
+}) {
+  const { t } = useI18n();
+  const from = page * pageSize + 1;
+  const to = Math.min((page + 1) * pageSize, totalItems);
+
+  const pagerBtn = (label: string, targetPage: number, disabled: boolean, key: string) =>
+    createElement(
+      "button",
+      {
+        key,
+        type: "button",
+        disabled,
+        onClick: () => onPageChange(targetPage),
+        style: {
+          padding: "6px 12px",
+          fontSize: "0.8rem",
+          fontWeight: 600,
+          borderRadius: "6px",
+          border: "1px solid rgba(80, 120, 168, 0.25)",
+          background: disabled ? "rgba(15, 23, 42, 0.4)" : "rgba(0, 180, 216, 0.12)",
+          color: disabled ? "var(--text-muted, #64748b)" : "var(--accent-cyan, #22d3ee)",
+          cursor: disabled ? "not-allowed" : "pointer",
+          opacity: disabled ? 0.5 : 1,
+        },
+      },
+      label
+    );
+
+  return createElement(
+    "div",
+    {
+      className: "watchlistPage__pager",
+      style: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: "1rem",
+        flexWrap: "wrap",
+        padding: "12px 16px",
+        borderTop: "1px solid rgba(80, 120, 168, 0.15)",
+      },
+    },
+    createElement(
+      "span",
+      { style: { fontSize: "0.8rem", color: "var(--text-muted, #94a3b8)" } },
+      t("watchlist.table.pager_range", {
+        defaultValue: `Hiển thị ${from}–${to} / ${totalItems} mã`,
+      })
+    ),
+    createElement(
+      "div",
+      { style: { display: "flex", alignItems: "center", gap: "0.5rem" } },
+      pagerBtn("‹", Math.max(0, page - 1), page <= 0, "prev"),
       createElement(
-        "tbody",
-        { style: { background: "transparent" } },
-        renderTableBody()
+        "span",
+        { style: { fontSize: "0.8rem", color: "var(--text-primary, #f1f5f9)", minWidth: "90px", textAlign: "center" } },
+        t("watchlist.table.pager_page", { defaultValue: `Trang ${page + 1} / ${totalPages}` })
+      ),
+      pagerBtn("›", Math.min(totalPages - 1, page + 1), page >= totalPages - 1, "next"),
+      createElement(
+        "select",
+        {
+          value: pageSize,
+          onChange: (ev: any) => onPageSizeChange(Number(ev.target.value)),
+          style: {
+            padding: "6px 8px",
+            fontSize: "0.8rem",
+            borderRadius: "6px",
+            border: "1px solid rgba(80, 120, 168, 0.25)",
+            background: "rgba(2, 11, 35, 0.6)",
+            color: "var(--text-primary, #f1f5f9)",
+            cursor: "pointer",
+          },
+        },
+        PAGE_SIZE_OPTIONS.map(opt =>
+          createElement("option", { key: opt, value: opt }, `${opt} / trang`)
+        )
       )
     )
   );

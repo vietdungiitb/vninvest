@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useRef, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef, useCallback, ReactNode } from "react";
 import { coreApiAdapter } from "../../../adapters/coreApiAdapter.js";
 import { useRealtimeFeedFromManager } from "../../../context/RealtimeContext.js";
 import { useI18n } from "../../../context/LangContext.js";
@@ -95,51 +95,59 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
   const prevPricesRef = useRef<Record<string, number>>({});
   const flashTimeoutRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  const loadAllLists = async (selectFirst = false) => {
+  const loadAllLists = useCallback(async (selectFirst = false) => {
     setLoading(true);
     setErrorMsg("");
     try {
+      // PIPELINE: Parallel fetch all independent data sources (was sequential waterfall)
+      const [watchlistsResult, groupsResult, portfoliosResult, trackedResult] = await Promise.allSettled([
+        api.getWatchlists().catch(err => { console.warn("Lỗi tải watchlists:", err.message); return []; }),
+        api.getLegacyWatchlistGroups().catch(err => { console.warn("Lỗi tải groups:", err.message); return []; }),
+        api.getPortfolios().catch(err => { console.warn("Lỗi tải portfolios:", err.message); return []; }),
+        api.getTrackedSymbols().catch(err => { console.warn("Lỗi tải tracked symbols:", err.message); return []; }),
+      ]);
+
+      // Process watchlists
       let wlList: Watchlist[] = [];
-      try {
-        const res = await api.getWatchlists();
+      if (watchlistsResult.status === 'fulfilled') {
+        const res = watchlistsResult.value;
         wlList = Array.isArray(res) ? res : (res?.results ?? []);
         wlList = wlList.filter((wl: Watchlist) => {
           const slug = String(wl.id || wl.name || "").toLowerCase().replace(/\s+/g, "-");
           return !SYSTEM_GROUP_IDS.includes(slug);
         });
-      } catch (err) {
-        console.warn("Lỗi tải watchlists:", (err as Error).message);
       }
       setWatchlists(wlList);
 
+      // Process groups
       let groupsList: LegacyGroup[] = [];
-      try {
-        const res = await api.getLegacyWatchlistGroups();
+      if (groupsResult.status === 'fulfilled') {
+        const res = groupsResult.value;
         groupsList = Array.isArray(res) ? res : (res?.results ?? []);
-      } catch (err) {
-        console.warn("Lỗi tải groups:", (err as Error).message);
       }
       setLegacyGroups(groupsList);
 
+      // Process holdings (depends on portfolios)
       let holdingsList: Holding[] = [];
-      try {
-        const portfoliosRes = await api.getPortfolios();
+      if (portfoliosResult.status === 'fulfilled') {
+        const portfoliosRes = portfoliosResult.value;
         const portfolios = Array.isArray(portfoliosRes) ? portfoliosRes : (portfoliosRes?.results ?? []);
         if (portfolios.length > 0) {
-          const holdingsRes = await api.getPortfolioHoldings(portfolios[0].id);
-          holdingsList = Array.isArray(holdingsRes) ? holdingsRes : (holdingsRes?.results ?? []);
+          try {
+            const holdingsRes = await api.getPortfolioHoldings(portfolios[0].id);
+            holdingsList = Array.isArray(holdingsRes) ? holdingsRes : (holdingsRes?.results ?? []);
+          } catch (err) {
+            console.warn("Lỗi tải holdings:", (err as Error).message);
+          }
         }
-      } catch (err) {
-        console.warn("Lỗi tải holdings:", (err as Error).message);
       }
       setHoldings(holdingsList);
 
+      // Process tracked symbols
       let trackedList: TrackedSymbol[] = [];
-      try {
-        const trackedRes = await api.getTrackedSymbols();
+      if (trackedResult.status === 'fulfilled') {
+        const trackedRes = trackedResult.value;
         trackedList = Array.isArray(trackedRes) ? trackedRes : (trackedRes?.results ?? []);
-      } catch (err) {
-        console.warn("Lỗi tải tracked symbols:", (err as Error).message);
       }
       setTrackedSymbols(trackedList);
 
@@ -160,9 +168,9 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
     } finally {
       setLoading(false);
     }
-  };
+  }, [setWatchlists, setLegacyGroups, setHoldings, setTrackedSymbols, setSelectedType, setSelectedId, setLoading, setErrorMsg]);
 
-  const fetchItems = async (watchlistId: string | number) => {
+  const fetchItems = useCallback(async (watchlistId: string | number) => {
     if (!watchlistId) return;
     try {
       const res = await api.getWatchlistItems(watchlistId);
@@ -172,9 +180,9 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
     } catch (err) {
       setErrorMsg((err as Error).message || "Không thể tải danh sách mã.");
     }
-  };
+  }, [setItems, setLastSyncTime, setErrorMsg]);
 
-  const fetchPriceAlertsList = async () => {
+  const fetchPriceAlertsList = useCallback(async () => {
     try {
       const res = await api.getPriceAlerts();
       const list = Array.isArray(res) ? res : (res?.results ?? []);
@@ -182,7 +190,7 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
     } catch (err) {
       console.warn("Lỗi tải cảnh báo giá:", (err as Error).message);
     }
-  };
+  }, [setPriceAlerts]);
 
   const removeSymbol = async (watchlistId: string | number, symbol: string) => {
     setErrorMsg("");
@@ -218,7 +226,7 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
     if (selectedType === "watchlist" && selectedId) {
       fetchItems(selectedId);
     }
-  }, [selectedType, selectedId]);
+  }, [selectedType, selectedId, fetchItems]);
 
   const activeItems = useMemo<(WatchlistItem | Holding | TrackedSymbol)[]>(() => {
     if (selectedType === "holds") return holdings;

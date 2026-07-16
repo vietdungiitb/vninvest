@@ -19,6 +19,7 @@ export function WatchlistSidebar() {
   const [newListName, setNewListName] = useState("");
   const [editingWlId, setEditingWlId] = useState<string | number | null>(null);
   const [editingWlName, setEditingWlName] = useState("");
+  const [groupsExpanded, setGroupsExpanded] = useState(true);
 
   const handleCreateWatchlist = async (e: FormEvent) => {
     e.preventDefault();
@@ -334,13 +335,45 @@ export function WatchlistSidebar() {
 
     // Market & Indices Section
     createElement(
-      "h2",
-      { className: `${styles.sectionCardTitle} watchlistPage__sidebarTitle`, style: { marginTop: "1rem" } },
-      t("watchlist.sidebar.market_indices", { defaultValue: "Thị trường & Chỉ số" })
-    ),
-    createElement(
       "div",
-      { className: "watchlistPage__list", style: { display: "flex", flexDirection: "column", gap: "0.5rem" } },
+      { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "1rem" } },
+      createElement(
+        "h2",
+        { className: `${styles.sectionCardTitle} watchlistPage__sidebarTitle`, style: { margin: 0 } },
+        t("watchlist.sidebar.market_indices", { defaultValue: "Thị trường & Chỉ số" })
+      ),
+      createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => setGroupsExpanded(prev => !prev),
+          title: groupsExpanded ? t("watchlist.sidebar.collapse", { defaultValue: "Thu gọn" }) : t("watchlist.sidebar.expand", { defaultValue: "Mở rộng" }),
+          style: {
+            fontSize: "0.75rem",
+            padding: "2px 8px",
+            borderRadius: "6px",
+            border: "1px solid rgba(80, 120, 168, 0.25)",
+            background: "rgba(15, 23, 42, 0.4)",
+            color: "var(--text-muted, #94a3b8)",
+            cursor: "pointer",
+          },
+        },
+        groupsExpanded ? "▾" : "▸"
+      )
+    ),
+    groupsExpanded && createElement(
+      "div",
+      {
+        className: "watchlistPage__list",
+        style: {
+          display: "flex",
+          flexDirection: "column",
+          gap: "0.5rem",
+          maxHeight: "320px",
+          overflowY: "auto",
+          paddingRight: "4px",
+        },
+      },
       legacyGroups.map(group => {
         const symbolsList = (group.items || []).map(item => item.symbol);
         const isGroupActive = selectedType === "group" && selectedId === group.id;

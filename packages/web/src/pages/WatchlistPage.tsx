@@ -1,4 +1,4 @@
-import { createElement, useEffect } from "react";
+import { createElement, useEffect, useRef } from "react";
 import "./WatchlistPage.css";
 import { ShellPageChrome } from "../components/ShellPageTemplate.js";
 import { WatchlistProvider, useWatchlist } from "./watchlist/components/WatchlistContext";
@@ -31,12 +31,13 @@ export interface WatchlistPageProps {
 function WatchlistPageContent({ autoLoad = true }: WatchlistPageProps) {
   const { loadAllLists, fetchPriceAlertsList } = useWatchlist();
   const { t } = useI18n();
+  const didInitRef = useRef(false);
 
   useEffect(() => {
-    if (autoLoad) {
-      loadAllLists(true);
-      fetchPriceAlertsList();
-    }
+    if (!autoLoad || didInitRef.current) return;
+    didInitRef.current = true;
+    loadAllLists(true);
+    fetchPriceAlertsList();
   }, [autoLoad, loadAllLists, fetchPriceAlertsList]);
 
   return createElement(
