@@ -79,6 +79,7 @@ services:
       DNSE_API_KEY: ${DNSE_API_KEY:-}
       DNSE_API_SECRET: ${DNSE_API_SECRET:-}
       LEGACY_BACKEND_URL: http://backend:8000
+      FRONTEND_URL: http://localhost:80
 
     command: ["api"]
     restart: unless-stopped
@@ -116,6 +117,7 @@ services:
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:-bhVAxIWMEP0forZ4OatG_UemXTulVgWdcRveIXDe2Io=}
       DNSE_API_KEY: ${DNSE_API_KEY:-}
       DNSE_API_SECRET: ${DNSE_API_SECRET:-}
+      FRONTEND_URL: http://localhost:80
     command: ["worker"]
     restart: unless-stopped
     depends_on:
@@ -192,6 +194,7 @@ services:
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
       DNSE_API_KEY: ${DNSE_API_KEY:-}
       DNSE_API_SECRET: ${DNSE_API_SECRET:-}
+      FRONTEND_URL: http://localhost:80
     command: ["worker"]
     restart: unless-stopped
     depends_on:
@@ -220,6 +223,7 @@ services:
       CELERY_POOL: solo
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:-devpassword}@core-db:5432/vninvest_core
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
+      FRONTEND_URL: http://localhost:80
     command: ["worker"]
     restart: unless-stopped
     depends_on:
@@ -248,6 +252,7 @@ services:
       CELERY_POOL: solo
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:-devpassword}@core-db:5432/vninvest_core
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
+      FRONTEND_URL: http://localhost:80
     command: ["worker"]
     restart: unless-stopped
     depends_on:
@@ -279,6 +284,7 @@ services:
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:-}
       DNSE_API_KEY: ${DNSE_API_KEY:-}
       DNSE_API_SECRET: ${DNSE_API_SECRET:-}
+      FRONTEND_URL: http://localhost:80
     command: ["worker"]
     restart: unless-stopped
     depends_on:
@@ -308,6 +314,7 @@ services:
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:-devpassword}@core-db:5432/vninvest_core
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:-bhVAxIWMEP0forZ4OatG_UemXTulVgWdcRveIXDe2Io=}
+      FRONTEND_URL: http://localhost:80
     command: ["worker"]
     restart: unless-stopped
     depends_on:
@@ -333,6 +340,7 @@ services:
       CELERY_BROKER_URL: redis://core-redis:6379/3
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:-devpassword}@core-db:5432/vninvest_core
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
+      FRONTEND_URL: http://localhost:80
     command: ["beat"]
     restart: unless-stopped
     depends_on:

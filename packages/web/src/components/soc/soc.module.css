@@ -62,6 +62,12 @@
   display: none; /* Hide scrollbars for Chrome, Safari, and Opera */
 }
 
+/* DataOps subtab bar variant — cyan-tinted divider to distinguish the
+   DataOps workspace from the other SOC tabs. */
+.tabBarDataOps {
+  border-bottom-color: var(--accent-cyan, rgba(var(--soc-rgb-5078a8) / 0.35));
+}
+
 .tabButton {
   display: inline-flex;
   align-items: center;

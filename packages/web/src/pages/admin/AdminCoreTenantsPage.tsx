@@ -90,7 +90,7 @@ export function AdminCoreTenantsPage() {
     } finally {
       setLoadingRegistry(false);
     }
-  }, [search, status]);
+  }, [search, status, t]);
 
   const loadDetail = useCallback(async () => {
     if (!tenantId) {
@@ -109,7 +109,7 @@ export function AdminCoreTenantsPage() {
     } finally {
       setLoadingDetail(false);
     }
-  }, [tenantId]);
+  }, [tenantId, t]);
 
   useEffect(() => {
     loadRegistry();

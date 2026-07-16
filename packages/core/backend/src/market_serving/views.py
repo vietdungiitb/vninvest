@@ -158,9 +158,14 @@ class SymbolSnapshotDetailView(generics.RetrieveAPIView):
         return Response(data)
 
 
+import os
+
+_DEV_MODE = os.environ.get('DJANGO_DEBUG', '').strip().lower() in ('1', 'true', 'yes')
+
+
 class MarketDataThrottle(UserRateThrottle):
-    """60 req/min per authenticated user — market data endpoints."""
-    rate = '60/min'
+    """Market data endpoints — higher limit in dev to avoid 429 during reload."""
+    rate = '999999/day' if _DEV_MODE else '120/min'
 
 
 class SessionFactsListView(generics.ListAPIView):

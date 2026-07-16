@@ -310,7 +310,7 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
       const quote = realtimeFeed.quotesBySymbol[symbol];
       handleRealtimeSnapshot(quote);
     }
-  }, [realtimeFeed?.quotesBySymbol?.[symbol], symbol, handleRealtimeSnapshot]);
+  }, [realtimeFeed, realtimeFeed?.quotesBySymbol?.[symbol], symbol, handleRealtimeSnapshot]);
   // ------------------------------------------------
 
   const refreshAdvisoryData = useCallback(async (promptConfig) => {

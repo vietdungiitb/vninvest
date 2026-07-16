@@ -1,4 +1,4 @@
-import { useState, useEffect, createElement } from "react";
+import { useState, useEffect, useCallback, createElement } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { RotateCw, AlertTriangle, TrendingUp, TrendingDown, Minus, Activity } from "lucide-react";
 
@@ -108,7 +108,7 @@ export function AIAdvisorAlertPanel({ className = "" }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchFeed = async () => {
+  const fetchFeed = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -125,11 +125,11 @@ export function AIAdvisorAlertPanel({ className = "" }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     fetchFeed();
-  }, []);
+  }, [fetchFeed]);
 
   const getPulseGlowClass = (alert) => {
     const rsi = alert?.metadata?.rsi || alert?.evidence?.rsi || alert?.evidence?.rsi_at_signal;

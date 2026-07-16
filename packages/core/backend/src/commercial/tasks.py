@@ -11,8 +11,8 @@ from celery import shared_task
 from django.core.cache import cache
 from django.utils import timezone
 
-from commercial.models import Invoice, QuotaRecord, Subscription, QuotaHistory, UsageAlertConfig
-from identity_access.models import CoreTenant, TenantLifecycleEvent
+from commercial.models import Invoice, QuotaRecord, Subscription, QuotaHistory
+from identity_access.models import CoreTenant
 
 
 logger = logging.getLogger(__name__)
@@ -580,6 +580,7 @@ def _dispatch_quota_webhook(tenant: CoreTenant, meter_code: str, level: str, usa
 
 def _log_tenant_lifecycle_event(tenant: CoreTenant, meter_code: str, level: str):
     """Create TenantLifecycleEvent for audit trail."""
+    from tenant_lifecycle.models import TenantLifecycleEvent
     event_type = 'quota_warning' if level == 'warning' else 'quota_exceeded'
     try:
         TenantLifecycleEvent.objects.create(

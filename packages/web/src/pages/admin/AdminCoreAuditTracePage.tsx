@@ -178,11 +178,11 @@ export function AdminCoreAuditTracePage() {
     } finally {
       setLoading(false);
     }
-  }, [cursor.endingBefore, cursor.startingAfter, filters.action, filters.actor, filters.kind, filters.reason, filters.search, filters.serviceCode, filters.symbol, refreshTick]);
+  }, [cursor.endingBefore, cursor.startingAfter, filters.action, filters.actor, filters.kind, filters.reason, filters.search, filters.serviceCode, filters.symbol]);
 
   useEffect(() => {
     loadAuditRequests();
-  }, [loadAuditRequests]);
+  }, [loadAuditRequests, refreshTick]);
 
   useEffect(() => {
     let cancelled = false;

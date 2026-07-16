@@ -1,8 +1,26 @@
 # Kế hoạch: Chuẩn hóa nhóm thị trường — Single Source of Truth từ vnbroker
 
 **Ngày:** 2026-07-15
+**Cập nhật:** 2026-07-16
 **Mục tiêu:** Loại bỏ hoàn toàn hardcode gây drift data giữa backend, frontend, và vnbroker providers
-**Trạng thái:** Planning
+**Trạng thái:** Đã implement (Steps 1-13 phần backend + frontend cơ bản)
+
+### Trạng thái thực tế (2026-07-16)
+- ✅ Step 1: `CachedSymbolGroup` model có thêm `group_type`, `color`, `display_order` (migration `0009`)
+- ✅ Step 2: `sync_cached_symbol_groups()` upsert cả sector groups (từ `_SECTOR_GROUPS` static) + provider groups, populate metadata từ `_GROUP_METADATA`
+- ✅ Step 3: `SymbolGroupSyncView` đã tồn tại
+- ✅ Step 4: `SymbolGroupListView.get()` trả `group_type`, `color`, `display_order` từ DB
+- ✅ Step 5: Auto-sync khi DB trống
+- ✅ Step 6: `seed_default_watchlist_groups()` dùng `CachedSymbolGroup` làm SSOT (KHÔNG còn đọc `default_groups.py`)
+- ✅ Step 7-9: Frontend `useSymbolGroups` đã có, không còn `SYMBOL_GROUPS` hardcode
+- ✅ Step 10: `StockManagementGroupsView` + `StockManagementSeedView` (legacy + native) dùng `CachedSymbolGroup`
+- ✅ `default_groups.py` giờ chỉ làm fallback (first deploy trước sync) — không còn SSOT
+
+### Lưu ý quan trọng
+- **vnbroker KHÔNG có sector groups** → sector groups (Ngân hàng, BĐS, ...) được sync từ `_SECTOR_GROUPS` static map trong `vnbroker_adapter.py`, KHÔNG từ provider.
+- **Display metadata** (`color`, `group_type`, `display_order`) lấy từ `_GROUP_METADATA` static map (vnbroker chỉ trả `group_name`/`category`).
+- `default_groups.py` giữ lại làm fallback an toàn, nhưng KHÔNG còn là nguồn data chính.
+
 
 ---
 

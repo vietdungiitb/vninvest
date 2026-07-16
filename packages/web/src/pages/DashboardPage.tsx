@@ -282,7 +282,26 @@ export function DashboardPage({
       prevReadyTokenRef.current = token;
       onDataReady({ holdings, trackedSymbols, watchlistGroups, watchlists });
     }
-  }, [loading, error, holdings, trackedSymbols, watchlists, onDataReady]);
+  }, [loading, error, holdings, trackedSymbols, watchlists, watchlistGroups, onDataReady]);
+
+  // Auto-select first tracked symbol (fallback to first universe symbol) so the
+  // detail panel renders instead of the "Vui lòng chọn mã cổ phiếu" empty state.
+  const autoSelectedRef = useRef(false);
+  useEffect(() => {
+    if (autoSelectedRef.current) return;
+    if (loading || error) return;
+    if (selectedSymbol) {
+      autoSelectedRef.current = true;
+      return;
+    }
+    const firstTracked = (trackedSymbols || [])[0]?.symbol;
+    const firstUniverse = collectUniqueSortedSymbols(holdings, trackedSymbols, watchlists, [])[0];
+    const target = firstTracked || firstUniverse;
+    if (target) {
+      setSelectedSymbol(String(target).toUpperCase().trim());
+      autoSelectedRef.current = true;
+    }
+  }, [loading, error, selectedSymbol, trackedSymbols, holdings, watchlists]);
 
   if (!enabled || !resolvedPortfolioId) {
     return (

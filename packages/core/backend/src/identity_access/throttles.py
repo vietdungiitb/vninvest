@@ -1,6 +1,7 @@
 """PAT-based rate limiting for tenant API access."""
 from __future__ import annotations
 
+import os
 import time
 import logging
 
@@ -11,12 +12,14 @@ from identity_access.models import CoreTenant
 
 logger = logging.getLogger(__name__)
 
+_DEV_MODE = os.environ.get('DJANGO_DEBUG', '').strip().lower() in ('1', 'true', 'yes')
 
 # Plan → requests per hour mapping
 # -1 means unlimited (no rate limiting for enterprise/internal)
+# Dev mode: much higher limits to avoid 429 during reload cycles
 PAT_RATE_MAP: dict[str, int] = {
-    CoreTenant.PlanChoices.FREE: 100,
-    CoreTenant.PlanChoices.STARTER: 1_000,
+    CoreTenant.PlanChoices.FREE: 10_000 if _DEV_MODE else 100,
+    CoreTenant.PlanChoices.STARTER: 10_000 if _DEV_MODE else 1_000,
     CoreTenant.PlanChoices.PRO: 10_000,
     CoreTenant.PlanChoices.ENTERPRISE: -1,  # unlimited
     CoreTenant.PlanChoices.CUSTOM: -1,

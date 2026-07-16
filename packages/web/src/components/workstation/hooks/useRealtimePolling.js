@@ -70,7 +70,7 @@ export function useRealtimePolling({
       mountedRef.current = false;
       stop();
     };
-  }, []);
+  }, [stop]);
 
   const stop = useCallback(() => {
     if (intervalRef.current) {

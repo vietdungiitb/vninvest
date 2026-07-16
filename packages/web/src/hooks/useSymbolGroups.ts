@@ -8,6 +8,9 @@ export interface SymbolGroup {
   symbol_count: number | null;
   category?: string;
   group_code?: string;
+  group_type?: string;
+  color?: string;
+  display_order?: number;
   source_provider?: string;
   synced_at?: string;
   type: "index" | "exchange" | "etf" | "other" | "custom";

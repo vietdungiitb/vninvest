@@ -456,7 +456,7 @@ export default function VNStockChartPanel({
         { type: "MACD", yAxis: "right", color: "#34d399", scaleSlotId: "macd-right" }
       ]
     }
-  ], []);
+  ], [t]);
 
   // Handle visible range updates to sync viewport indicators
   const handleVisibleRangeChange = useCallback((range) => {

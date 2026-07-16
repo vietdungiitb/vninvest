@@ -231,7 +231,7 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle',
     ] if 'test' not in sys.argv else [],
     'DEFAULT_THROTTLE_RATES': {
-        'user': '999999/day' if 'test' in sys.argv else '1000/hour',
+        'user': '999999/day' if 'test' in sys.argv else ('999999/day' if DEBUG else '1000/hour'),
         'ingest_admin_trigger': '999999/day' if 'test' in sys.argv else '10/hour',
         # D03/D04: DNSE backfill throttle (AGENTS §14.9)
         'system_backfill_trigger': '999999/day' if 'test' in sys.argv else '30/hour',

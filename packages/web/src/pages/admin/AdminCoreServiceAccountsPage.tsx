@@ -140,7 +140,7 @@ export function AdminCoreServiceAccountsPage() {
     return () => {
       cancelled = true;
     };
-  }, [filters, refreshTick, tenantId]);
+  }, [filters, refreshTick, tenantId, tenantIdStr, t]);
 
   const selectedServiceAccount = serviceAccounts.find((item: any) => item.id === selectedServiceAccountId) || null;
   const tenantSummary = tenantDetail?.tenant || null;

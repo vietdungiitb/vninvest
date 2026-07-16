@@ -100,7 +100,7 @@ export function RealtimeProvider({ children }) {
         },
       },
     };
-  }, [feed, subscriptions, aggregatedSymbols]);
+  }, [feed, subscriptions, aggregatedSymbols, register, unregister, update]);
 
   return React.createElement(RealtimeContext.Provider, { value }, children);
 }
@@ -131,14 +131,12 @@ export function useRealtimeFeedFromManager({ symbols, pollInterval = 15000, maxA
         hasRegisteredRef.current = false;
       }
     };
-  }, [contextValue?.enabled, contextValue?.register, contextValue?.unregister]);
+  }, [contextValue, contextValue?.enabled, contextValue?.register, contextValue?.unregister, normalizedSymbols, pollInterval, maxAlerts]);
 
   React.useEffect(() => {
     if (!contextValue?.enabled || !consumerIdRef.current) return;
     contextValue.update(consumerIdRef.current, { symbols: normalizedSymbols, pollInterval, maxAlerts });
-  }, [contextValue?.enabled, contextValue?.update, symbolsKey, pollInterval, maxAlerts, normalizedSymbols]);
-
-  if (!contextValue?.enabled) return null;
+  }, [contextValue, contextValue?.enabled, contextValue?.update, symbolsKey, pollInterval, maxAlerts, normalizedSymbols]);
 
   const baseFeed = contextValue.feed || {};
 
@@ -191,9 +189,10 @@ export function useRealtimeFeedFromManager({ symbols, pollInterval = 15000, maxA
     baseFeed.latestMarketDiscoveryEvent,
     baseFeed.metrics,
     normalizedSymbols,
-    maxAlerts,
-    quotesKey
+    maxAlerts
   ]);
+
+  if (!contextValue?.enabled) return null;
 
   return memoizedResult;
 }

@@ -145,7 +145,7 @@ export function AdminCorePATsPage() {
     return () => {
       cancelled = true;
     };
-  }, [filters, refreshTick, tenantId]);
+  }, [filters, refreshTick, tenantId, tenantIdStr]);
 
   const selectedToken = tokens.find((item: any) => item.id === selectedTokenId) || null;
   const serviceAccountMap = new Map(serviceAccounts.map((item: any) => [item.id, item]));

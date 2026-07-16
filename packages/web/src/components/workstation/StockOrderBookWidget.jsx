@@ -52,8 +52,14 @@ export function StockOrderBookWidget({ orderBook, loading, error, onRefresh }) {
     return Number(p).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  const bids = orderBook?.bids ?? (loading ? skeletonRows : []);
-  const asks = orderBook?.asks ?? (loading ? skeletonRows : []);
+  const bids = useMemo(
+    () => orderBook?.bids ?? (loading ? skeletonRows : []),
+    [orderBook?.bids, loading, skeletonRows]
+  );
+  const asks = useMemo(
+    () => orderBook?.asks ?? (loading ? skeletonRows : []),
+    [orderBook?.asks, loading, skeletonRows]
+  );
   const spread = orderBook?.spread ?? 0;
 
   // Calculate total bid/ask volume for the title badges

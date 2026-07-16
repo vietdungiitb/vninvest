@@ -204,9 +204,9 @@ class WatchlistListCreateView(APIView):
     def get(self, request):
         tenant = getattr(request, 'tenant', None)
         if tenant:
-            watchlists = Watchlist.objects.filter(user=request.user, tenant=tenant).order_by('name')
+            watchlists = Watchlist.objects.filter(user=request.user, tenant=tenant).exclude(is_default=True).order_by('name')
         else:
-            watchlists = Watchlist.objects.filter(user=request.user).order_by('name')
+            watchlists = Watchlist.objects.filter(user=request.user).exclude(is_default=True).order_by('name')
         
         # Apply pagination
         paginator = self.pagination_class()

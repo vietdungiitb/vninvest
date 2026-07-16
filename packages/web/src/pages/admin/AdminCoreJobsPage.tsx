@@ -166,11 +166,11 @@ export function AdminCoreJobsPage() {
     } finally {
       setLoading(false);
     }
-  }, [cursor.endingBefore, cursor.startingAfter, filters.kind, filters.search, filters.serviceCode, filters.serviceDomain, filters.status, refreshTick]);
+  }, [cursor.endingBefore, cursor.startingAfter, filters.kind, filters.search, filters.serviceCode, filters.serviceDomain, filters.status]);
 
   useEffect(() => {
     loadJobs();
-  }, [loadJobs]);
+  }, [loadJobs, refreshTick]);
 
   const summaryCards = Array.isArray(snapshot?.summary_cards) ? snapshot.summary_cards : [];
   const jobs = Array.isArray(snapshot?.data) ? snapshot.data : [];

@@ -9,6 +9,15 @@ export default [
   {
     ignores: ['dist/', 'node_modules/', 'visual-baselines/', '*.config.js', '*.config.ts', '**/*.d.ts'],
   },
+  // Vendored third-party charting library: do not lint (overwritten on update,
+  // ships its own eslint config). Legacy VNInvestCharts.js is first-party but a
+  // large pre-existing orchestrator excluded from the strict hook rules.
+  {
+    ignores: [
+      'src/components/vninvestcharts/**',
+      'src/components/VNInvestCharts.js',
+    ],
+  },
   {
     files: ['**/*.{js,jsx}'],
     languageOptions: {

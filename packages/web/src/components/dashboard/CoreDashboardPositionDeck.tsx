@@ -52,7 +52,7 @@ export function CoreDashboardPositionDeck({
   const [activeTab, setActiveTab] = useState('overview');
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-  const [symbolScope, setSymbolScope] = useState('holdings');
+  const [symbolScope, setSymbolScope] = useState('all');
   const [selectedSymbol, setSelectedSymbol] = useState(selectedSymbolProp || 'all');
 
   const handleTabChange = (tabId: string) => {

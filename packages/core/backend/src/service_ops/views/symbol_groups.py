@@ -78,9 +78,12 @@ class SymbolGroupListView(SOCBaseView):
                 'symbol_count': g.symbol_count,
                 'category': g.category,
                 'group_code': g.group_code,
+                'group_type': g.group_type,
+                'color': g.color,
+                'display_order': g.display_order,
                 'source_provider': g.source_provider,
                 'synced_at': g.synced_at.isoformat() if g.synced_at else None,
-                'type': _category_to_type(g.category),
+                'type': _category_to_type(g.category) or (g.group_type.lower() if g.group_type else 'other'),
                 'is_active': True,
                 'is_predefined': True,
             }

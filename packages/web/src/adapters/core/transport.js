@@ -223,7 +223,6 @@ export function createCoreTransport(env = {}, options = {}) {
     getRefreshToken = () => null,
     setTokens = () => {},
     clearTokens = () => {},
-    onRateLimit = null, // callback: (headers) => void
   } = options;
   let refreshPromise = null;
 
@@ -366,22 +365,33 @@ export function createCoreTransport(env = {}, options = {}) {
     return response;
   }
 
+  const inflightGetCache = new Map();
+
   async function coreGet(path, options = {}) {
     const { onRateLimit, ...fetchOptions } = options;
-    const response = await requestWithAuth(path, fetchOptions, true, onRateLimit);
+    const method = fetchOptions.method || "GET";
 
-    if (!response.ok) {
-      const text = await response.text().catch(() => "");
-      let payload = null;
-      try {
-        payload = JSON.parse(text);
-      } catch {
-        payload = null;
-      }
-      throw toCoreApiRequestError(path, response, payload, text);
+    if (method === "GET" && inflightGetCache.has(path)) {
+      return inflightGetCache.get(path);
     }
 
-    return response.json();
+    const promise = requestWithAuth(path, fetchOptions, true, onRateLimit)
+      .then(async (response) => {
+        if (!response.ok) {
+          const text = await response.text().catch(() => "");
+          let payload = null;
+          try { payload = JSON.parse(text); } catch { payload = null; }
+          throw toCoreApiRequestError(path, response, payload, text);
+        }
+        return response.json();
+      });
+
+    if (method === "GET") {
+      inflightGetCache.set(path, promise);
+      promise.finally(() => inflightGetCache.delete(path));
+    }
+
+    return promise;
   }
 
   async function corePost(path, body = undefined, options = {}) {
