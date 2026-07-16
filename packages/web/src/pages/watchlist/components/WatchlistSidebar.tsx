@@ -97,7 +97,7 @@ export function WatchlistSidebar() {
     createElement(
       "h2",
       { className: `${styles.sectionCardTitle} watchlistPage__sidebarTitle` },
-      t("watchlist.sidebar.my_lists", { defaultValue: "Danh mục của tôi" })
+      t("watchlist.sidebar.my_lists", { defaultValue: "Danh sách tự tạo" })
     ),
     createElement(
       "div",
@@ -249,7 +249,28 @@ export function WatchlistSidebar() {
                     color: isActive ? "var(--accent-cyan, #22d3ee)" : "var(--text-primary, #f1f5f9)" 
                   } 
                 },
-                `📁 ${wl.name}`
+                createElement(
+                  "span",
+                  { style: { display: "inline-flex", alignItems: "center", gap: "6px" } },
+                  `📁 ${wl.name}`,
+                  createElement(
+                    "span",
+                    {
+                      className: "watchlistPage__badge watchlistPage__badge--user",
+                      style: {
+                        fontSize: "0.6rem",
+                        fontWeight: 700,
+                        padding: "1px 6px",
+                        borderRadius: "999px",
+                        background: "rgba(34, 211, 238, 0.15)",
+                        color: "var(--accent-cyan, #22d3ee)",
+                        border: "1px solid rgba(34, 211, 238, 0.35)",
+                        whiteSpace: "nowrap",
+                      },
+                    },
+                    t("watchlist.sidebar.badge_user", { defaultValue: "Của tôi" })
+                  )
+                )
               ),
           
           !isEditing && createElement(
@@ -411,7 +432,28 @@ export function WatchlistSidebar() {
                 color: isGroupActive ? "var(--accent-cyan, #22d3ee)" : "var(--text-primary, #f1f5f9)" 
               } 
             },
-            `🌐 ${group.name}`
+                createElement(
+                  "span",
+                  { style: { display: "inline-flex", alignItems: "center", gap: "6px" } },
+                  `🌐 ${group.name}`,
+                  createElement(
+                    "span",
+                    {
+                      className: "watchlistPage__badge watchlistPage__badge--system",
+                      style: {
+                        fontSize: "0.6rem",
+                        fontWeight: 700,
+                        padding: "1px 6px",
+                        borderRadius: "999px",
+                        background: "rgba(148, 163, 184, 0.15)",
+                        color: "var(--text-muted, #94a3b8)",
+                        border: "1px solid rgba(148, 163, 184, 0.35)",
+                        whiteSpace: "nowrap",
+                      },
+                    },
+                    t("watchlist.sidebar.badge_system", { defaultValue: "Hệ thống" })
+                  )
+                )
           ),
           createElement(
             "span",

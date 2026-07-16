@@ -39,6 +39,7 @@ from .global_symbol_planner import create_global_planner_run
 from .global_symbol_registry import sync_admin_group_symbol_set, sync_system_default_symbol_group
 from .models import DailyPrice, IntradayBar, IntradayTick, StockProfile
 from .vnbroker_adapter import fetch_symbol_group_members
+from service_ops.models import CachedSymbolGroup, CachedSymbolGroupMember
 from user_workspace.models import PriceAlert, TrackedSymbol, Watchlist, WatchlistItem
 import math
 
@@ -419,13 +420,46 @@ def _price_alerts_queryset_for_user(user):
     return queryset
 
 
-def _group_sort_key(watchlist):
-    template = _STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP.get(watchlist.name, {})
+def _group_sort_key(watchlist, group_meta_map=None):
+    meta = (group_meta_map or {}).get(watchlist.name, {})
     return (
-        template.get('order', 999),
+        meta.get('display_order', 999),
         str(watchlist.name or '').lower(),
         watchlist.pk or 0,
     )
+
+
+def _load_group_meta_map() -> dict[str, dict]:
+    """Batch-load group display metadata from CachedSymbolGroup (DB).
+
+    Returns: {group_name: {group_type, color, display_order}}
+    Falls back to default_groups.py if DB is empty (first deploy / no sync yet).
+    """
+    try:
+        from service_ops.models import CachedSymbolGroup
+        groups = CachedSymbolGroup.objects.filter(is_active=True).values(
+            'group_name', 'group_type', 'color', 'display_order',
+        )
+        if groups:
+            return {
+                g['group_name']: {
+                    'group_type': g['group_type'],
+                    'color': g['color'],
+                    'display_order': g['display_order'],
+                }
+                for g in groups
+            }
+    except Exception:
+        pass
+    # Fallback: read from default_groups.py if CachedSymbolGroup is empty
+    return {
+        g['name']: {
+            'group_type': g.get('group_type', 'CUSTOM'),
+            'color': g.get('color', ''),
+            'display_order': g.get('order', 999),
+        }
+        for g in _STOCK_MANAGEMENT_DEFAULT_GROUPS
+    }
 
 
 def _validate_stock_symbol(raw_symbol):
@@ -595,7 +629,7 @@ def _serialize_stock_management_item(item, price_map):
     return {
         'id': item.pk,
         'symbol': item.symbol,
-        'note': item.note or '',
+        'note': getattr(item, 'note', '') or '',
         'current_price': info.get('current_price'),
         'prev_price': info.get('prev_price'),
         'change_value': info.get('change_value'),
@@ -604,11 +638,11 @@ def _serialize_stock_management_item(item, price_map):
     }
 
 
-def _serialize_stock_management_group(watchlist, index, price_map):
-    template = _STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP.get(watchlist.name) or {}
-    color = template.get('color') or _STOCK_MANAGEMENT_COLOR_PALETTE[index % len(_STOCK_MANAGEMENT_COLOR_PALETTE)]
-    group_type = template.get('group_type') or 'CUSTOM'
-    order = template.get('order') or (index + 1)
+def _serialize_stock_management_group(watchlist, index, price_map, group_meta_map=None):
+    meta = (group_meta_map or {}).get(watchlist.name, {})
+    color = meta.get('color') or _STOCK_MANAGEMENT_COLOR_PALETTE[index % len(_STOCK_MANAGEMENT_COLOR_PALETTE)]
+    group_type = meta.get('group_type') or 'CUSTOM'
+    order = meta.get('display_order') or (index + 1)
     return {
         'id': watchlist.pk,
         'name': watchlist.name,
@@ -618,6 +652,38 @@ def _serialize_stock_management_group(watchlist, index, price_map):
         'order': order,
         'items': [_serialize_stock_management_item(item, price_map) for item in watchlist.items.all()],
     }
+
+
+def _group_sort_key_cached(group, group_meta_map=None):
+    meta = (group_meta_map or {}).get(group.group_name, {})
+    return (
+        meta.get('display_order', 999),
+        str(group.group_name or '').lower(),
+        group.pk or 0,
+    )
+
+
+def _serialize_cached_group(group, index, price_map, group_meta_map=None):
+    meta = (group_meta_map or {}).get(group.group_name, {})
+    color = meta.get('color') or _STOCK_MANAGEMENT_COLOR_PALETTE[index % len(_STOCK_MANAGEMENT_COLOR_PALETTE)]
+    group_type = group.group_type or meta.get('group_type') or 'CUSTOM'
+    order = group.display_order or meta.get('display_order') or (index + 1)
+    return {
+        'id': group.pk,
+        'name': group.group_name,
+        'group_type': group_type,
+        'description': group.description,
+        'color': color,
+        'order': order,
+        'items': [_serialize_stock_management_item(m, price_map) for m in group.members.all()],
+    }
+
+
+def _get_cached_group_or_404(group_id):
+    group = CachedSymbolGroup.objects.filter(pk=group_id).prefetch_related('members').first()
+    if group is None:
+        raise NotFound('Không tìm thấy nhóm.')
+    return group
 
 
 def _serialize_tracked_symbol_row(tracked_symbol, price_map, profile_map):
@@ -1221,9 +1287,15 @@ class StockManagementStockListView(APIView):
         if search and len(search) == 3 and search.isalpha():
             search_upper = search.upper()
             if not StockProfile.objects.filter(symbol=search_upper).exists():
+                from django.core.cache import cache
                 from market_data.vnbroker_adapter import fetch_listing_symbols
                 try:
-                    listings = fetch_listing_symbols()
+                    # Cache listing symbols for 1 hour to avoid repeated provider calls
+                    cache_key = 'vnbroker_listing_symbols_cache'
+                    listings = cache.get(cache_key)
+                    if listings is None:
+                        listings = fetch_listing_symbols()
+                        cache.set(cache_key, listings, timeout=3600)
                     match = next((item for item in listings if item.get('symbol') == search_upper), None)
                     if match:
                         StockProfile.objects.get_or_create(
@@ -2164,7 +2236,7 @@ class StockManagementNewsView(APIView):
             'note': 'news_loaded_successfully',
         }
         
-        cache.set(cache_key, response_data, timeout=1800)  # 30 minutes
+        cache.set(cache_key, response_data, timeout=7200)  # 2 hours — news changes infrequently
         return Response(response_data)
 
 
@@ -3268,30 +3340,38 @@ class StockManagementGroupsView(APIView):
     )
     def get(self, request):
         include_prices = str(request.query_params.get('include_prices', '1')).strip().lower() not in {'0', 'false', 'no'}
-        watchlists = list(_watchlists_queryset_for_user(request.user).prefetch_related('items'))
-        watchlists.sort(key=_group_sort_key)
-        symbols = [item.symbol for watchlist in watchlists for item in watchlist.items.all()]
+        group_meta_map = _load_group_meta_map()
+        groups = list(CachedSymbolGroup.objects.filter(is_active=True).prefetch_related('members'))
+        groups.sort(key=lambda g: _group_sort_key_cached(g, group_meta_map))
+        symbols = [m.symbol for g in groups for m in g.members.all()]
         price_map = _build_price_change_map(symbols) if include_prices else {}
         return Response([
-            _serialize_stock_management_group(watchlist, index, price_map)
-            for index, watchlist in enumerate(watchlists)
+            _serialize_cached_group(g, index, price_map, group_meta_map)
+            for index, g in enumerate(groups)
         ])
 
 
 def seed_default_watchlist_groups(user, force_recreate=False, mode='active'):
+    """Seed watchlist groups from CachedSymbolGroup (SSOT) — không dùng default_groups.py nữa.
+
+    Group types:
+    - SECTOR: classify từ StockProfile.industry/company_name
+    - INDEX: fetch_symbol_group_members() từ vnbroker
+    - EXCHANGE: classify từ StockProfile.exchange
+    - ETF/CW/BOND/DERIVATIVE: fetch_symbol_group_members() hoặc skip nếu fail
+    """
     tenant = _resolve_user_tenant(user)
     created_groups = []
     updated_groups = []
+    created_group_pks = set()
     added_symbols = 0
 
-    from .vnbroker_adapter import fetch_listing_symbols
+    from .vnbroker_adapter import fetch_listing_symbols, fetch_symbol_group_members
     from market_data.models import StockProfile
-    from user_workspace.models import Watchlist, WatchlistItem
-    from market_data.default_groups import get_default_groups, get_system_default_group_ids
     import logging
     logger = logging.getLogger(__name__)
 
-    # First, make sure StockProfiles are populated
+    # ── Ensure StockProfiles are populated ──
     try:
         symbols_data = fetch_listing_symbols()
         if symbols_data:
@@ -3311,35 +3391,26 @@ def seed_default_watchlist_groups(user, force_recreate=False, mode='active'):
                     }
                 )
     except Exception as e:
-        logger.warning(f"Failed to sync stock profiles from listing source during seeding: {e}")
+        logger.warning("Failed to sync stock profiles from listing source during seeding: %s", e)
 
-    # Build symbols map for classification
-    group_symbols_map = {
-        "Ngân hàng": [],
-        "Bất động sản": [],
-        "Thép & Vật liệu": [],
-        "Dầu khí": [],
-        "Công nghệ": [],
-        "Bán lẻ & Tiêu dùng": [],
-        "VN30": [],
-        "VN100": [],
-        "HNX30": [],
-        "HOSE": [],
-        "HNX": [],
-        "UPCOM": [],
-    }
+    # ── Load groups from CachedSymbolGroup (SSOT) ──
+    from service_ops.models import CachedSymbolGroup
+    cached_groups = list(CachedSymbolGroup.objects.filter(is_active=True).order_by('display_order', 'group_name'))
 
-    default_groups = get_default_groups()
-    sector_by_symbol = {}
-    for group_data in default_groups:
-        if group_data.get('group_type') == 'SECTOR':
-            for sym in group_data['symbols']:
-                sector_by_symbol[sym] = group_data['name']
+    # If DB empty, auto-sync first
+    if not cached_groups:
+        from .vnbroker_adapter import sync_cached_symbol_groups
+        sync_cached_symbol_groups()
+        cached_groups = list(CachedSymbolGroup.objects.filter(is_active=True).order_by('display_order', 'group_name'))
 
-    # Heuristic classification function
+    # ── Classify sector groups from StockProfile ──
+    # Sector group names for classification
+    _SECTOR_NAMES = [g.group_name for g in cached_groups if g.group_type == 'SECTOR']
+
     def classify_profile(p):
-        # 1. Try mapping from profile.industry
         ind_lower = str(p.industry or '').strip().lower()
+        name_lower = str(p.company_name or '').lower()
+
         if ind_lower:
             if any(k in ind_lower for k in ['ngân hàng', 'bank', 'chứng khoán', 'securities', 'bảo hiểm', 'insurance', 'tài chính', 'finance']):
                 return "Ngân hàng"
@@ -3354,141 +3425,109 @@ def seed_default_watchlist_groups(user, force_recreate=False, mode='active'):
             if any(k in ind_lower for k in ['bán lẻ', 'retail', 'tiêu dùng', 'consumer', 'thực phẩm', 'food', 'đồ uống', 'beverage', 'thủy sản', 'seafood', 'nông sản', 'nông - lâm - ngư', 'bán buôn', 'nhựa', 'hóa chất', 'chăm sóc sức khỏe', 'pharma', 'dược', 'gia dụng', 'household', 'vận tải', 'transport', 'logistic', 'logistics', 'cảng', 'port', 'hàng không', 'aviation', 'du lịch', 'tourism', 'dịch vụ', 'service', 'dệt', 'may', 'garment', 'y tế', 'medical', 'nông nghiệp', 'agriculture', 'chăn nuôi', 'cao su', 'rubber', 'nhựa', 'plastic', 'hóa chất', 'chemical', 'giấy', 'paper', 'sản xuất', 'chế biến']):
                 return "Bán lẻ & Tiêu dùng"
 
-        # 2. Try mapping from company_name
-        name_lower = str(p.company_name or '').lower()
-        if any(k in name_lower for k in ['ngân hàng', 'bank', 'chứng khoán', 'securities', 'bảo hiểm', 'insurance', 'tài chính', 'finance', 'commercial bank']):
-            return "Ngân hàng"
-        if any(k in name_lower for k in ['bất động sản', 'địa ốc', 'land', 'real estate', 'house', 'đô thị', 'phát triển nhà', 'khu công nghiệp', 'property', 'properties']):
-            return "Bất động sản"
-        if any(k in name_lower for k in ['thép', 'steel', 'xi măng', 'cement', 'vật liệu', 'material', 'sắt', 'nhôm', 'gạch', 'bê tông', 'concrete', 'kính', 'glass', 'xây dựng', 'construction', 'mechanical', 'chế tạo', 'phụ tùng', 'kim loại', 'metal']):
-            return "Thép & Vật liệu"
-        if any(k in name_lower for k in ['dầu khí', 'xăng dầu', 'khí', 'petrol', 'petro', 'gas', 'oil', 'coal', 'than', 'năng lượng', 'energy', 'power', 'điện', 'nhiệt điện', 'thủy điện', 'khoáng sản', 'mineral', 'mining', 'khai thác']):
-            return "Dầu khí"
-        if any(k in name_lower for k in ['công nghệ', 'technology', 'viễn thông', 'telecom', 'phần mềm', 'software', 'tin học', 'communication', 'media', 'truyền thông']):
-            return "Công nghệ"
-        if any(k in name_lower for k in ['bán lẻ', 'retail', 'tiêu dùng', 'consumer', 'thực phẩm', 'food', 'đồ uống', 'beverage', 'thủy sản', 'seafood', 'nông sản', 'agriculture', 'sữa', 'milk', 'dược', 'pharmaceutical', 'pharma', 'y tế', 'medical', 'mỹ phẩm', 'cosmetics', 'may', 'garment', 'dệt', 'nhựa', 'bao bì', 'bánh', 'kẹo', 'hóa chất', 'chemical', 'cao su', 'rubber', 'giấy', 'paper', 'vận tải', 'transport', 'logistic', 'logistics', 'port', 'cảng', 'hàng không', 'aviation', 'airline', 'hàng hải', 'shipping', 'dịch vụ', 'service', 'du lịch', 'tourism', 'khách sạn', 'hotel', 'siêu thị', 'supermarket', 'nông nghiệp', 'chăn nuôi', 'thủy điện', 'nước', 'water', 'môi trường', 'environment', 'sách', 'book', 'in ấn', 'printing', 'chế biến', 'sản xuất', 'ingredient', 'ingredients', 'bagging', 'packaging', 'beer']):
-            return "Bán lẻ & Tiêu dùng"
+        if name_lower:
+            if any(k in name_lower for k in ['ngân hàng', 'bank', 'chứng khoán', 'securities', 'bảo hiểm', 'insurance', 'tài chính', 'finance', 'commercial bank']):
+                return "Ngân hàng"
+            if any(k in name_lower for k in ['bất động sản', 'địa ốc', 'land', 'real estate', 'house', 'đô thị', 'phát triển nhà', 'khu công nghiệp', 'property', 'properties']):
+                return "Bất động sản"
+            if any(k in name_lower for k in ['thép', 'steel', 'xi măng', 'cement', 'vật liệu', 'material', 'sắt', 'nhôm', 'gạch', 'bê tông', 'concrete', 'kính', 'glass', 'xây dựng', 'construction', 'mechanical', 'chế tạo', 'phụ tùng', 'kim loại', 'metal']):
+                return "Thép & Vật liệu"
+            if any(k in name_lower for k in ['dầu khí', 'xăng dầu', 'khí', 'petrol', 'petro', 'gas', 'oil', 'coal', 'than', 'năng lượng', 'energy', 'power', 'điện', 'nhiệt điện', 'thủy điện', 'khoáng sản', 'mineral', 'mining', 'khai thác']):
+                return "Dầu khí"
+            if any(k in name_lower for k in ['công nghệ', 'technology', 'viễn thông', 'telecom', 'phần mềm', 'software', 'tin học', 'communication', 'media', 'truyền thông']):
+                return "Công nghệ"
+            if any(k in name_lower for k in ['bán lẻ', 'retail', 'tiêu dùng', 'consumer', 'thực phẩm', 'food', 'đồ uống', 'beverage', 'thủy sản', 'seafood', 'nông sản', 'agriculture', 'sữa', 'milk', 'dược', 'pharmaceutical', 'pharma', 'y tế', 'medical', 'mỹ phẩm', 'cosmetics', 'may', 'garment', 'dệt', 'nhựa', 'bao bì', 'bánh', 'kẹo', 'hóa chất', 'chemical', 'cao su', 'rubber', 'giấy', 'paper', 'vận tải', 'transport', 'logistic', 'logistics', 'port', 'cảng', 'hàng không', 'aviation', 'airline', 'hàng hải', 'shipping', 'dịch vụ', 'service', 'du lịch', 'tourism', 'khách sạn', 'hotel', 'siêu thị', 'supermarket', 'nông nghiệp', 'chăn nuôi', 'thủy điện', 'nước', 'water', 'môi trường', 'environment', 'sách', 'book', 'in ấn', 'printing', 'chế biến', 'sản xuất', 'ingredient', 'ingredients', 'bagging', 'packaging', 'beer']):
+                return "Bán lẻ & Tiêu dùng"
 
-        # 3. Fall back to hardcoded default group sector mapping
-        return sector_by_symbol.get(p.symbol)
+        return None
 
-    # Classify from StockProfile
+    # ── Build symbols map from CachedSymbolGroup ──
+    group_symbols_map: dict[str, list[str]] = {g.group_name: [] for g in cached_groups}
+
+    # Classify sector symbols from StockProfile
     profiles = list(StockProfile.objects.filter(status=StockProfile.StatusChoices.ACTIVE))
     if mode == 'active':
         profiles = [p for p in profiles if len(p.symbol) == 3 and p.symbol.isalpha()]
     for p in profiles:
-        group_name = classify_profile(p)
-        if group_name in group_symbols_map:
-            group_symbols_map[group_name].append(p.symbol)
-        
-        # Populate exchange groups dynamically
+        sector_name = classify_profile(p)
+        if sector_name and sector_name in group_symbols_map:
+            group_symbols_map[sector_name].append(p.symbol)
+        # Exchange groups
         exch = str(p.exchange or '').upper().strip()
         if exch in group_symbols_map:
             group_symbols_map[exch].append(p.symbol)
 
-    # Fetch VN30, VN100 & HNX30
-    vn30_symbols = []
-    vn100_symbols = []
-    hnx30_symbols = []
-    try:
-        vn30_symbols = fetch_symbol_group_members("vn30")
-        if vn30_symbols:
-            group_symbols_map["VN30"] = vn30_symbols
-    except Exception as e:
-        logger.warning(f"Failed to fetch VN30 symbols during seeding: {e}")
+    # Fetch index groups from vnbroker
+    for g in cached_groups:
+        if g.group_type == 'INDEX':
+            try:
+                syms = fetch_symbol_group_members(g.group_name.lower())
+                if syms:
+                    group_symbols_map[g.group_name] = syms
+            except Exception as e:
+                logger.warning("Failed to fetch %s symbols: %s", g.group_name, e)
 
-    try:
-        vn100_symbols = fetch_symbol_group_members("vn100")
-        if vn100_symbols:
-            group_symbols_map["VN100"] = vn100_symbols
-    except Exception as e:
-        logger.warning(f"Failed to fetch VN100 symbols during seeding: {e}")
+    # Fetch ETF/CW/BOND/DERIVATIVE from vnbroker (best effort)
+    for g in cached_groups:
+        if g.group_type in ('ETF', 'CW', 'BOND', 'DERIVATIVE') and not group_symbols_map.get(g.group_name):
+            try:
+                syms = fetch_symbol_group_members(g.group_name.lower())
+                if syms:
+                    group_symbols_map[g.group_name] = syms
+            except Exception:
+                pass
 
-    try:
-        hnx30_symbols = fetch_symbol_group_members("hnx30")
-        if hnx30_symbols:
-            group_symbols_map["HNX30"] = hnx30_symbols
-    except Exception as e:
-        logger.warning(f"Failed to fetch HNX30 symbols during seeding: {e}")
+    # ── Sync CachedSymbolGroup members (tách biệt với Watchlist của user) ──
+    # Các nhóm này là system/market universe (BOND, HOSE, VN30, sector...),
+    # KHÔNG phải danh mục do user tạo. Thành viên lưu vào CachedSymbolGroupMember
+    # (bảng riêng), không ghi vào Watchlist/WatchlistItem của user → không lộn
+    # vào "Danh mục của tôi".
+    from service_ops.models import CachedSymbolGroupMember
 
-    default_groups = get_default_groups()
+    for g in cached_groups:
+        group_symbols = group_symbols_map.get(g.group_name, [])
 
-    # Fallback to hardcoded list if empty
-    for group_data in default_groups:
-        name = group_data['name']
-        if not group_symbols_map.get(name):
-            group_symbols_map[name] = group_data['symbols']
-
-    # Update or create Watchlists
-    for group_data in default_groups:
-        watchlist, created = Watchlist.objects.get_or_create(
-            user=user,
-            tenant=tenant,
-            name=group_data['name'],
-            defaults={
-                'description': group_data['description'],
-                'is_default': False,
-            },
-        )
-
-        updated_fields = []
-        if watchlist.description != group_data['description']:
-            watchlist.description = group_data['description']
-            updated_fields.append('description')
-        if watchlist.is_default:
-            watchlist.is_default = False
-            updated_fields.append('is_default')
-        if updated_fields:
-            watchlist.save(update_fields=updated_fields)
-
-        # Sync items
-        group_symbols = group_symbols_map.get(group_data['name'], [])
-        
-        # If force_recreate or a fresh list is requested, clear existing items first
         if force_recreate:
-            WatchlistItem.objects.filter(watchlist=watchlist).delete()
-            
-        group_added_symbols = 0
-        for symbol in group_symbols:
-            _, item_created = WatchlistItem.objects.get_or_create(
-                watchlist=watchlist,
-                symbol=symbol,
-                defaults={'note': ''},
-            )
-            if item_created:
-                group_added_symbols += 1
+            CachedSymbolGroupMember.objects.filter(group=g).delete()
 
-        # Sync to GlobalSymbolRegistry
+        existing = set(
+            CachedSymbolGroupMember.objects.filter(group=g).values_list('symbol', flat=True)
+        )
+        new_members = [
+            CachedSymbolGroupMember(group=g, symbol=s, display_order=i)
+            for i, s in enumerate(group_symbols)
+            if s not in existing
+        ]
+        if new_members:
+            CachedSymbolGroupMember.objects.bulk_create(new_members)
+
+        group_added_symbols = len(new_members)
+
         from market_data.global_symbol_registry import sync_admin_group_symbol_set
         res_sync = sync_admin_group_symbol_set(
-            group_data['name'],
+            g.group_name,
             group_symbols,
-            group_type=group_data.get('group_type'),
-            description=group_data.get('description'),
+            group_type=g.group_type,
+            description=g.description,
         )
-        logger.debug("DEBUG SYNC: group='%s', symbols=%s, res_len=%d", group_data['name'], group_symbols, len(res_sync))
+        logger.debug("DEBUG SYNC: group='%s', symbols=%s, res_len=%d", g.group_name, group_symbols, len(res_sync))
 
         added_symbols += group_added_symbols
-        if created:
-            created_groups.append({'group': watchlist.name, 'symbols': len(group_symbols)})
-        elif updated_fields or group_added_symbols:
-            updated_groups.append({'group': watchlist.name, 'new_symbols': group_added_symbols})
+        if g.pk not in created_group_pks:
+            created_groups.append({'group': g.group_name, 'symbols': len(group_symbols)})
+            created_group_pks.add(g.pk)
+        elif group_added_symbols:
+            updated_groups.append({'group': g.group_name, 'new_symbols': group_added_symbols})
 
     # System default groups seeding
     from market_data.global_symbol_registry import sync_system_default_symbol_group
     system_default_group_ids = get_system_default_group_ids()
     synced_system_groups = []
     for group_id in system_default_group_ids:
-        system_symbols = []
-        if group_id.lower() == 'vn30':
-            system_symbols = vn30_symbols
-        elif group_id.lower() == 'vn100':
-            system_symbols = vn100_symbols
-        elif group_id.lower() == 'hnx30':
-            system_symbols = hnx30_symbols
-        else:
+        try:
             system_symbols = fetch_symbol_group_members(group_id)
-            
+        except Exception:
+            system_symbols = []
         if system_symbols:
             sync_system_default_symbol_group(group_id, system_symbols)
             synced_system_groups.append({'group_id': group_id, 'symbols': len(system_symbols)})
@@ -4382,13 +4421,13 @@ class StockManagementGroupDetailView(APIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, group_id):
-        watchlist = _get_watchlist_or_404_for_user(request.user, group_id)
-        symbols = [item.symbol for item in watchlist.items.all()]
+        group = _get_cached_group_or_404(group_id)
+        symbols = [m.symbol for m in group.members.all()]
         price_map = _build_price_change_map(symbols)
-        watchlists = list(_watchlists_queryset_for_user(request.user).only('id', 'name'))
-        watchlists.sort(key=_group_sort_key)
-        index_map = {item.pk: index for index, item in enumerate(watchlists)}
-        return Response(_serialize_stock_management_group(watchlist, index_map.get(watchlist.pk, 0), price_map))
+        groups = list(CachedSymbolGroup.objects.filter(is_active=True).only('id', 'group_name'))
+        groups.sort(key=_group_sort_key_cached)
+        index_map = {g.pk: index for index, g in enumerate(groups)}
+        return Response(_serialize_cached_group(group, index_map.get(group.pk, 0), price_map))
 
     def patch(self, request, group_id):
         return Response(
@@ -4408,10 +4447,10 @@ class StockManagementGroupItemsView(APIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, group_id):
-        watchlist = _get_watchlist_or_404_for_user(request.user, group_id)
-        symbols = [item.symbol for item in watchlist.items.all()]
+        group = _get_cached_group_or_404(group_id)
+        symbols = [m.symbol for m in group.members.all()]
         price_map = _build_price_change_map(symbols)
-        return Response([_serialize_stock_management_item(item, price_map) for item in watchlist.items.all()])
+        return Response([_serialize_stock_management_item(m, price_map) for m in group.members.all()])
 
 
 class StockManagementItemDetailView(APIView):

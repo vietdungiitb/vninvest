@@ -489,16 +489,62 @@ class CachedSymbolGroup(models.Model):
         verbose_name='Số lượng mã',
         help_text='Số mã trong nhóm (null nếu chưa resolve)',
     )
+    group_type = models.CharField(
+        max_length=20,
+        blank=True,
+        default='',
+        verbose_name='Loại nhóm',
+        help_text='SECTOR, INDEX, EXCHANGE, ETF, CW, BOND, DERIVATIVE',
+    )
+    color = models.CharField(
+        max_length=20,
+        blank=True,
+        default='',
+        verbose_name='Màu hiển thị',
+        help_text='Hex color code cho UI, VD: #3b82f6',
+    )
+    display_order = models.PositiveIntegerField(
+        default=999,
+        verbose_name='Thứ tự hiển thị',
+        help_text='Thứ tự sắp xếp trong sidebar',
+    )
     is_active = models.BooleanField(default=True, verbose_name='Đang hoạt động')
     synced_at = models.DateTimeField(auto_now=True, verbose_name='Lần sync gần nhất')
 
     class Meta:
-        ordering = ['category', 'group_name']
+        ordering = ['display_order', 'group_name']
         verbose_name = 'Nhóm thị trường (cached)'
         verbose_name_plural = 'Nhóm thị trường (cached)'
 
     def __str__(self):
         return f'{self.group_name} ({self.symbol_count or "?"} mã, {self.source_provider})'
+
+
+class CachedSymbolGroupMember(models.Model):
+    """Thành viên mã của một CachedSymbolGroup (system/market group).
+
+    Tách biệt hoàn toàn với WatchlistItem của user. Mỗi CachedSymbolGroup có
+    danh sách mã riêng, không phụ thuộc vào user/tenant — đây là SSOT cho
+    "Thị trường & Chỉ số".
+    """
+
+    group = models.ForeignKey(
+        CachedSymbolGroup,
+        on_delete=models.CASCADE,
+        related_name='members',
+        verbose_name='Nhóm thị trường',
+    )
+    symbol = models.CharField(max_length=32, db_index=True, verbose_name='Mã cổ phiếu')
+    display_order = models.PositiveIntegerField(default=0, verbose_name='Thứ tự hiển thị')
+
+    class Meta:
+        ordering = ['display_order', 'symbol']
+        unique_together = [('group', 'symbol')]
+        verbose_name = 'Mã trong nhóm thị trường (cached)'
+        verbose_name_plural = 'Mã trong nhóm thị trường (cached)'
+
+    def __str__(self):
+        return f'{self.group.group_name} / {self.symbol}'
 
 
 # ---------------------------------------------------------------------------
