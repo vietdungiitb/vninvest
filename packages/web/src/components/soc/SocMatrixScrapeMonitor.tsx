@@ -107,7 +107,7 @@ export function SocMatrixScrapeMonitor() {
         "button",
         {
           onClick: handleStartCycle,
-          className: `styles.actionBtn`,
+          className: styles.actionBtn,
           
         },
         t("soc.matrix.start_cycle"),
@@ -173,7 +173,7 @@ export function SocMatrixScrapeMonitor() {
                               "button",
                               {
                                 onClick: () => handleAbort(cycle.cycle_id),
-                                className: `styles.actionBtn`,
+                                className: styles.actionBtn,
                                 
                               },
                               t("soc.matrix.abort"),

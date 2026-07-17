@@ -219,12 +219,12 @@ export function SocScreenerPanel() {
                 loading: applying,
               }),
             ),
-            createElement("div", { className: `styles.sectionCard`,  },
-              createElement("div", { className: `styles.sectionCardTitle`,  },
+            createElement("div", { className: styles.sectionCard,  },
+              createElement("div", { className: styles.sectionCardTitle,  },
                 t("soc.screener.rules_title"),
                 createElement(
                   "button",
-                  { onClick: handleOpenCreateRule, className: `styles.actionBtn`,  },
+                  { onClick: handleOpenCreateRule, className: styles.actionBtn,  },
                   t("soc.screener.add_rule")
                 ),
               ),
@@ -252,7 +252,7 @@ export function SocScreenerPanel() {
                           "button",
                           {
                             onClick: () => handleOpenEditRule(rule),
-                            className: `styles.actionBtn`,
+                            className: styles.actionBtn,
                             
                           },
                           t("soc.actions.edit"),
@@ -261,7 +261,7 @@ export function SocScreenerPanel() {
                           "button",
                           {
                             onClick: () => handleDeleteRule(rule.id),
-                            className: `styles.actionBtn`,
+                            className: styles.actionBtn,
                             
                           },
                           t("soc.actions.delete"),
@@ -272,7 +272,7 @@ export function SocScreenerPanel() {
                 ),
               ),
             ),
-            createElement("div", { className: `styles.sectionCard`,  },
+            createElement("div", { className: styles.sectionCard,  },
               createElement("div", { className: styles.sectionCardTitle }, t("soc.screener.manual_scan_title")),
               createElement(
                 "div",
@@ -283,7 +283,7 @@ export function SocScreenerPanel() {
                     type: "text",
                     value: manualSymbols,
                     onChange: (e: React.ChangeEvent<HTMLInputElement>) => setManualSymbols(e.target.value),
-                    className: `styles.searchInput`,
+                    className: styles.searchInput,
                     placeholder: t("soc.screener.symbols_placeholder"),
                     
                   },
@@ -304,7 +304,7 @@ export function SocScreenerPanel() {
                 ),
               ),
             ),
-            createElement("div", { className: `styles.sectionGrid`,  },
+            createElement("div", { className: styles.sectionGrid,  },
               createElement(
                 "div",
                 { className: styles.sectionCard },
@@ -351,7 +351,7 @@ export function SocScreenerPanel() {
                     ),
               ),
             ),
-            createElement("div", { className: `styles.metricGrid`,  },
+            createElement("div", { className: styles.metricGrid,  },
               renderMetricCard(t("soc.screener.avg_scan"), `${metrics?.avg_scan_duration_ms ?? 0}ms`, "var(--accent-cyan, #06b6d4)"),
               renderMetricCard(t("soc.screener.hit_rate"), `${metrics?.rules_hit_rate ?? 0}%`, toneColor("success")),
             ),

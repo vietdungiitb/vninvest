@@ -25,7 +25,7 @@ export function SocBackfillProgressPanel() {
   const [runDetail, setRunDetail] = useState<BackfillRun | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  const fetchRuns = async () => {
+  const fetchRuns = useCallback(async () => {
     setLoading(true);
     try {
       const adapter = defaultCoreApiAdapter as unknown as {
@@ -35,17 +35,17 @@ export function SocBackfillProgressPanel() {
       setRuns(data.runs || []);
       setError("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Cannot load backfill runs.");
+      setError(err instanceof Error ? err.message : t("soc.dataops.error_load_backfill"));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     fetchRuns();
     const interval = setInterval(fetchRuns, 15000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchRuns]);
 
   const fetchRunDetail = async (runId: string) => {
     setDetailLoading(true);
@@ -55,7 +55,7 @@ export function SocBackfillProgressPanel() {
       };
       const detail = await adapter.getSocBackfillRunDetail(runId);
       setRunDetail(detail);
-    } catch (err) {
+    } catch {
       setRunDetail(null);
     } finally {
       setDetailLoading(false);
@@ -75,7 +75,7 @@ export function SocBackfillProgressPanel() {
       await fetchRuns();
       if (selectedRun === runId) setSelectedRun(null);
     } catch (err) {
-      alert(`Error: ${err instanceof Error ? err.message : "Abort failed."}`);
+      setError(err instanceof Error ? err.message : "Abort failed.");
     }
   };
 
@@ -92,7 +92,7 @@ export function SocBackfillProgressPanel() {
         "button",
         {
           onClick: fetchRuns,
-          className: `styles.actionBtn`,
+          className: styles.actionBtn,
           
         },
         t("soc.backfill.refresh"),
@@ -143,7 +143,7 @@ export function SocBackfillProgressPanel() {
                           ),
                         ),
                         createElement("div", { },
-                          `${run.completed_symbols || 0}/${run.total_symbols || 0} symbols \u2022 ${run.started_at?.split("T")[0] || "N/A"}`,
+                          `${run.completed_symbols || 0}/${run.total_symbols || 0} ${t("soc.dataops.label_symbols")} \u2022 ${run.started_at?.split("T")[0] || t("soc.dataops.fallback_na")}`,
                         ),
                         run.progress != null
                           ? createElement(
@@ -165,7 +165,7 @@ export function SocBackfillProgressPanel() {
                               "button",
                               {
                                 onClick: (e: React.MouseEvent) => { e.stopPropagation(); handleAbort(run.run_id); },
-                                className: `styles.actionBtn`,
+                                className: styles.actionBtn,
                                 
                               },
                               t("soc.backfill.abort"),
@@ -203,7 +203,7 @@ export function SocBackfillProgressPanel() {
                             ),
                             createElement("div", null,
                               createElement("div", { }, t("soc.backfill.started")),
-                              createElement("div", { }, runDetail.started_at?.split("T")[0] || "N/A"),
+                              createElement("div", { }, runDetail.started_at?.split("T")[0] || t("soc.dataops.fallback_na")),
                             ),
                           ),
                           runDetail.progress != null

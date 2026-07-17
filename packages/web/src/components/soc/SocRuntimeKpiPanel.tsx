@@ -17,7 +17,7 @@ export function SocRuntimeKpiPanel() {
       },
       createElement(
         "div",
-        { className: `styles.emptyState`,  },
+        { className: styles.emptyState,  },
         createElement(
           "svg",
           {

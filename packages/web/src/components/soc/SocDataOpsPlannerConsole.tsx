@@ -157,7 +157,7 @@ export function SocDataOpsPlannerConsole() {
       { },
       createElement("label", { style: LABEL_STYLE }, t("soc.dataops.planner_symbols")),
       createElement("textarea", {
-        className: `styles.searchInput`,
+        className: styles.searchInput,
         placeholder: t("soc.dataops.planner_symbols_placeholder"),
         value: symbols,
         onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setSymbols(e.target.value),
@@ -210,7 +210,7 @@ export function SocDataOpsPlannerConsole() {
       createElement(
         "button",
         {
-          className: `styles.actionBtn`,
+          className: styles.actionBtn,
           onClick: handlePreview,
           disabled: previewing || submitting,
           
@@ -243,7 +243,7 @@ export function SocDataOpsPlannerConsole() {
     const headerBtn = createElement(
       "button",
       {
-        className: `styles.filterBtn`,
+        className: styles.filterBtn,
         onClick: () => setExpanded(!expanded),
         
       },
@@ -290,7 +290,7 @@ export function SocDataOpsPlannerConsole() {
                 "div",
                 { },
                 createElement("button", {
-                  className: `styles.actionBtn`,
+                  className: styles.actionBtn,
                   onClick: () => setPage(Math.max(0, page - 1)),
                   disabled: page === 0,
                   
@@ -298,7 +298,7 @@ export function SocDataOpsPlannerConsole() {
                 createElement("span", { },
                   `${t("soc.dataops.planner_page")} ${page + 1}/${totalPages}`),
                 createElement("button", {
-                  className: `styles.actionBtn`,
+                  className: styles.actionBtn,
                   onClick: () => setPage(Math.min(totalPages - 1, page + 1)),
                   disabled: page >= totalPages - 1,
                   
@@ -320,14 +320,14 @@ export function SocDataOpsPlannerConsole() {
         "div",
         { className: styles.metricGrid },
         createElement(
-          "div", { className: `styles.metricCard`, onClick: () => setPlannedExpanded(!plannedExpanded),  },
+          "div", { className: styles.metricCard, onClick: () => setPlannedExpanded(!plannedExpanded),  },
           createElement("div", { className: styles.metricLabel }, t("soc.dataops.planner_planned_items")),
-          createElement("div", { className: `styles.metricValue`,  }, String(plannedCount)),
+          createElement("div", { className: styles.metricValue,  }, String(plannedCount)),
         ),
         createElement(
-          "div", { className: `styles.metricCard`, onClick: () => setSkippedExpanded(!skippedExpanded),  },
+          "div", { className: styles.metricCard, onClick: () => setSkippedExpanded(!skippedExpanded),  },
           createElement("div", { className: styles.metricLabel }, t("soc.dataops.planner_skipped_items")),
-          createElement("div", { className: `styles.metricValue`,  }, String(skippedCount)),
+          createElement("div", { className: styles.metricValue,  }, String(skippedCount)),
         ),
       ),
       renderItemsTable(
@@ -365,8 +365,8 @@ export function SocDataOpsPlannerConsole() {
     renderDatasetCheckboxes(),
     renderControlsRow(),
     renderForceRefreshCheckbox(),
-    error ? createElement("div", { className: `styles.inlineError`,  }, error) : null,
-    success ? createElement("div", { className: `styles.inlineSuccess`,  }, success) : null,
+    error ? createElement("div", { className: styles.inlineError,  }, error) : null,
+    success ? createElement("div", { className: styles.inlineSuccess,  }, success) : null,
     renderActionRow(),
     renderPreviewResults(),
   );

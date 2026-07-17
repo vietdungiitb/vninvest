@@ -299,7 +299,7 @@ export function SocSignalsPanel() {
         { className: styles.sentimentBar },
         totalSentiment === 0
           ? createElement("div", {
-              className: `styles.sentimentSegment`,
+              className: styles.sentimentSegment,
               
             }, t("soc.signals_overview.no_data"))
           : [
@@ -354,7 +354,7 @@ export function SocSignalsPanel() {
           createElement("option", { value: "screener" }, "Screener"),
         ),
         createElement("input", {
-          className: `styles.searchInput`,
+          className: styles.searchInput,
           type: "text",
           placeholder: t("soc.signals_overview.symbol_placeholder"),
           value: jobSymbol,
@@ -376,8 +376,8 @@ export function SocSignalsPanel() {
       ),
       jobStatus
         ? (jobStatus.includes("fail") || jobStatus.includes("error") || jobStatus.includes("l\u1ed7i")
-            ? createElement("div", { className: `styles.inlineError`,  }, jobStatus)
-            : createElement("div", { className: `styles.inlineSuccess`,  }, jobStatus))
+            ? createElement("div", { className: styles.inlineError,  }, jobStatus)
+            : createElement("div", { className: styles.inlineSuccess,  }, jobStatus))
         : null,
     );
 
@@ -489,7 +489,7 @@ export function SocSignalsPanel() {
                       onClick: () => { setTypeFilter(ft); setExpandedId(null); },
                     }, ft === "all" ? t("soc.signals_overview.filter_all") : signalTypeLabel(ft)),
                   ),
-                  createElement("div", { className: `styles.searchWrapper`,  },
+                  createElement("div", { className: styles.searchWrapper,  },
                     createElement("span", { className: styles.searchIcon }, "\uD83D\uDD0D"),
                     createElement("input", {
                       className: styles.searchInputWithIcon,

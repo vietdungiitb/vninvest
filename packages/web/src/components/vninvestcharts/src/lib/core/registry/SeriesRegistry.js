@@ -129,6 +129,12 @@ export function subscribeSeriesStyleChanges(callback) {
 export function registerSeries(type, entry) {
     registry.set(type, entry);
 }
+export function attachRenderer(type, renderer) {
+    const entry = registry.get(type);
+    if (entry) {
+        entry.renderer = renderer;
+    }
+}
 export function getSeries(type) {
     const entry = registry.get(type);
     if (!entry) {

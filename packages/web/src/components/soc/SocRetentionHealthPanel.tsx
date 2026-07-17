@@ -102,14 +102,14 @@ export function SocRetentionHealthPanel({ retentionHealth }: SocRetentionHealthP
 
     createElement(
       "div",
-      { className: `styles.metricGrid`,  },
+      { className: styles.metricGrid,  },
       createElement(
         "div",
         { className: styles.metricCard },
         createElement("div", { className: styles.metricLabel }, t("soc.dataops.retention_deleted")),
         createElement(
           "div",
-          { className: `styles.metricValue`,  },
+          { className: styles.metricValue,  },
           (retentionHealth.latest_run?.deleted_rows || 0).toLocaleString()
         )
       ),
@@ -119,7 +119,7 @@ export function SocRetentionHealthPanel({ retentionHealth }: SocRetentionHealthP
         createElement("div", { className: styles.metricLabel }, t("soc.dataops.retention_days")),
         createElement(
           "div",
-          { className: `styles.metricValue`,  },
+          { className: styles.metricValue,  },
           `${retentionHealth.retention_days || 0} days`
         )
       )

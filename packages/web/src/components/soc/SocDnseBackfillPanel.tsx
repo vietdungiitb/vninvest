@@ -163,7 +163,7 @@ export function SocDnseBackfillPanel() {
               ),
               createElement(
                 "div",
-                { className: `styles.sectionCard`,  },
+                { className: styles.sectionCard,  },
                 createElement("div", { className: styles.sectionCardTitle }, t("soc.dnse.recent_jobs")),
                 jobs.length === 0
                   ? createElement("p", { className: styles.emptyState }, t("soc.dnse.no_jobs"))

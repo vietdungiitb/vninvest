@@ -237,12 +237,12 @@ export function SocVnbrokerPanel() {
                     ),
                     createElement(
                       "button",
-                      { onClick: () => setEditConfig(JSON.stringify(config || {}, null, 2)), className: `styles.actionBtn`,  },
+                      { onClick: () => setEditConfig(JSON.stringify(config || {}, null, 2)), className: styles.actionBtn,  },
                       t("soc.actions.edit"),
                     ),
                     createElement(
                       "button",
-                      { onClick: handleResetToDefaults, className: `styles.actionBtn`,  },
+                      { onClick: handleResetToDefaults, className: styles.actionBtn,  },
                       t("soc.vnbroker.reset_defaults"),
                     ),
                   ),
@@ -278,7 +278,7 @@ export function SocVnbrokerPanel() {
                       : t("soc.vnbroker.breaker_normal_desc"),
                   ),
                   createElement("hr", { }),
-                  createElement("div", { className: `styles.sectionCardTitle`,  }, t("soc.vnbroker.test_connection")),
+                  createElement("div", { className: styles.sectionCardTitle,  }, t("soc.vnbroker.test_connection")),
                   createElement(
                     "button",
                     {
@@ -304,13 +304,13 @@ export function SocVnbrokerPanel() {
                     renderMetricCard(t("soc.health.status_degraded"), health?.provider_health?.degraded ?? 0, toneColor("warning")),
                     renderMetricCard(t("soc.health.status_critical"), health?.provider_health?.critical ?? 0, toneColor("danger")),
                   ),
-                  createElement("div", { className: `styles.metricGrid`,  },
+                  createElement("div", { className: styles.metricGrid,  },
                     renderMetricCard(t("soc.vnbroker.throughput"), `${health?.avg_response_ms ? (1000 / health.avg_response_ms).toFixed(1) : 0}/s`, "var(--accent-cyan, #06b6d4)"),
                     renderMetricCard(t("soc.vnbroker.avg_latency"), `${health?.avg_response_ms ?? 0}ms`, toneColor("warning")),
                   ),
                 ),
               ),
-              createElement("div", { className: `styles.sectionCard`,  },
+              createElement("div", { className: styles.sectionCard,  },
                 createElement("div", { className: styles.sectionCardTitle }, t("soc.vnbroker.benchmark_title")),
                 createElement(
                   "div",
@@ -320,7 +320,7 @@ export function SocVnbrokerPanel() {
                     {
                       value: benchmarkProvider,
                       onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setBenchmarkProvider(e.target.value),
-                      className: `styles.searchInput`,
+                      className: styles.searchInput,
                       
                     },
                     createElement("option", { value: "all" }, t("soc.vnbroker.all_providers")),
@@ -406,7 +406,7 @@ export function SocVnbrokerPanel() {
                     )
                   : createElement("p", { className: styles.emptyState }, t("soc.vnbroker.no_benchmark_results")),
               ),
-              createElement("div", { className: `styles.sectionCard`,  },
+              createElement("div", { className: styles.sectionCard,  },
                 createElement("div", { className: styles.sectionCardTitle }, t("soc.vnbroker.providers_title")),
                 createElement(
                   "div",

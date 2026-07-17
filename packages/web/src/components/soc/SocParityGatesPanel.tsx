@@ -52,7 +52,7 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
     createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.parity_gates")),
     createElement(
       "div",
-      { className: `styles.metricGrid`,  },
+      { className: styles.metricGrid,  },
       (["24h", "72h"] as const).map((window) => {
         const windowKey = `window_${window}` as const;
         const parityWindow = parityGates[windowKey];
@@ -87,7 +87,7 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
           "div",
           {
             key: window,
-            className: `styles.glassPanel`,
+            className: styles.glassPanel,
             
           },
           createElement(
@@ -175,7 +175,7 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
                   "span",
                   {
                     key: `${window}-${pointSequence}`,
-                    className: `styles.statusBadge`,
+                    className: styles.statusBadge,
                     
                     title: t("soc.dataops.parity_history_point_tooltip", {
                       strict: pointStrictPct.toFixed(2),

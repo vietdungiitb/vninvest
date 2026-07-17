@@ -84,7 +84,7 @@ function formatLag(seconds?: number) {
   if (h < 24) return rem > 0 ? `${h}h ${rem}p` : `${h}h`;
   const d = Math.floor(h / 24);
   const rh = h % 24;
-  return rh > 0 ? `${d} ngày ${rh}h` : `${d} ngày`;
+  return rh > 0 ? `${d} ng\xE0y ${rh}h` : `${d} ng\xE0y`;
 }
 
 function formatNextRun(dateStr?: string) {
@@ -97,72 +97,77 @@ function formatNextRun(dateStr?: string) {
   }
 }
 
+function domainBadgeClass(domain: string): string {
+  const d = domain.toLowerCase();
+  if (d.includes("platform")) return styles.schedulerDomainBadgePlatform;
+  if (d.includes("dataops") || d.includes("data")) return styles.schedulerDomainBadgeDataops;
+  if (d.includes("material")) return styles.schedulerDomainBadgeMaterialization;
+  if (d.includes("prefetch")) return styles.schedulerDomainBadgePrefetch;
+  return styles.schedulerDomainBadgePlatform;
+}
+
 // ─── Health summary strip ─────────────────────────────────────────────────────
 function SchedulerHealthStrip({ health, t }: { health: SchedulerHealth | null; t: (key: string, o?: any) => string }) {
   if (!health) return null;
-  const healthColor = health.overall_health === "healthy" 
-    ? toneColor("success") 
-    : health.overall_health === "degraded" 
-      ? toneColor("warning") 
+  const healthColor = health.overall_health === "healthy"
+    ? toneColor("success")
+    : health.overall_health === "degraded"
+      ? toneColor("warning")
       : toneColor("danger");
-  
+
   return createElement(
     "div",
-    {
-      },
+    { className: styles.schedulerHealthStrip },
     createElement(
       "span",
-      {
-        style: {
-          fontWeight: 700,
-          textTransform: "uppercase",
-          color: healthColor,
-          letterSpacing: "0.05em",
-        }
-      },
+      { className: styles.schedulerHealthBadge, style: { color: healthColor } },
       health.overall_health
     ),
     createElement(
       "span",
-      { },
+      { className: styles.schedulerHealthItem },
       `${t("soc.scheduler.health_total")}: `,
-      createElement("span", { }, health.jobs_total)
+      createElement("span", { className: styles.schedulerHealthValue }, health.jobs_total)
     ),
     createElement(
       "span",
-      { },
+      { className: styles.schedulerHealthItem },
       `${t("soc.scheduler.health_enabled")}: `,
-      createElement("span", { }, health.enabled_count)
+      createElement("span", { className: styles.schedulerHealthValue }, health.enabled_count)
     ),
     createElement(
       "span",
-      { },
+      { className: styles.schedulerHealthItem },
       `${t("soc.scheduler.health_degraded")}: `,
-      createElement("span", { }, health.degraded_count)
+      createElement("span", { className: styles.schedulerHealthValue }, health.degraded_count)
     ),
     createElement(
       "span",
-      { },
+      { className: styles.schedulerHealthItem },
       `${t("soc.scheduler.health_inflight")}: `,
-      createElement("span", { }, health.by_status?.running || 0)
+      createElement("span", { className: styles.schedulerHealthValue }, health.by_status?.running || 0)
     ),
     createElement(
       "span",
-      { },
+      { className: styles.schedulerHealthItem },
       `${t("soc.scheduler.health_stale")}: `,
-      createElement("span", { style: { color: health.by_freshness?.stale ? toneColor("danger") : "#f1f5f9", fontWeight: 600 } }, health.by_freshness?.stale || 0)
+      createElement(
+        "span",
+        { className: styles.schedulerHealthValue, style: { color: health.by_freshness?.stale ? toneColor("danger") : undefined } },
+        health.by_freshness?.stale || 0
+      )
     )
   );
 }
 
-// ─── Action Button row for a single job ─────────────────────────────────────────────
-function JobActionButtons({ 
-  job, 
-  onAction, 
-  t 
-}: { 
-  job: SchedulerJob; 
-  onAction: (job: SchedulerJob, action: string) => void; 
+// ─── Action Button row for a single job ───────────────────────────────────────
+function JobActionButtons({
+  job,
+  onAction,
+  t
+}: {
+  job: SchedulerJob;
+  onAction: (job: SchedulerJob, action: string) => void;
   t: (key: string, o?: any) => string;
 }) {
   const normalizedCaps = (() => {
@@ -184,11 +189,12 @@ function JobActionButtons({
   })();
 
   const isRunning = job.is_inflight;
+  const isJobDisabled = job.status === "disabled";
 
-  const btn = (action: string, label: string, stylesObj: Record<string, string>) => {
+  const btn = (action: string, label: string, variantClass: string) => {
     const supported = normalizedCaps.includes(action);
     const lockedByRunning = isRunning && action === "run_now";
-    
+
     return createElement(
       "button",
       {
@@ -196,91 +202,66 @@ function JobActionButtons({
         type: "button",
         disabled: !supported || lockedByRunning,
         onClick: () => onAction(job, action),
-        className: styles.actionBtn,
-        style: {
-          padding: "0.25rem 0.5rem",
-          fontSize: "0.65rem",
-          whiteSpace: "nowrap",
-          opacity: (!supported || lockedByRunning) ? 0.4 : 1,
-          cursor: (!supported || lockedByRunning) ? "not-allowed" : "pointer",
-          ...stylesObj,
-        }
+        className: `${styles.schedulerActionCapsule} ${variantClass}`,
       },
       label
     );
   };
 
-  const isJobDisabled = job.status === "disabled";
-
   return createElement(
     "div",
-    { },
+    { className: styles.schedulerActionsRow },
     isJobDisabled
-      ? btn("enable", t("soc.scheduler.action_enable"), { background: "rgba(59, 130, 246, 0.15)", color: toneColor("info") })
-      : btn("disable", t("soc.scheduler.action_disable"), { background: "rgba(148, 163, 184, 0.15)", color: "var(--color-text-secondary, #cbd5e1)" }),
-    btn("run_now", t("soc.scheduler.action_run_now"), { background: "rgba(16, 185, 129, 0.15)", color: toneColor("success") }),
-    btn("abort", t("soc.scheduler.action_abort"), { background: "rgba(244, 63, 94, 0.15)", color: "var(--color-danger-400, #f43f5e)" })
+      ? btn("enable", t("soc.scheduler.action_enable"), styles.schedulerActionEnable)
+      : btn("disable", t("soc.scheduler.action_disable"), styles.schedulerActionDisable),
+    btn("run_now", t("soc.scheduler.action_run_now"), styles.schedulerActionRunNow),
+    btn("abort", t("soc.scheduler.action_abort"), styles.schedulerActionAbort)
   );
 }
 
 // ─── Confirm action modal ────────────────────────────────────────────────────
-function ActionConfirmModal({ 
-  job, 
-  action, 
-  onConfirm, 
-  onCancel, 
-  t 
-}: { 
-  job: SchedulerJob; 
-  action: string; 
-  onConfirm: (reason: string) => void; 
-  onCancel: () => void; 
+function ActionConfirmModal({
+  job,
+  action,
+  onConfirm,
+  onCancel,
+  t
+}: {
+  job: SchedulerJob;
+  action: string;
+  onConfirm: (reason: string) => void;
+  onCancel: () => void;
   t: (key: string, o?: any) => string;
 }) {
   const [reason, setReason] = useState("");
   return createElement(
     "div",
-    {
-      onClick: onCancel,
-    },
+    { className: styles.schedulerModalOverlay, onClick: onCancel },
     createElement(
       "div",
-      {
-        className: `styles.glassPanel`,
-        
-        onClick: (e: any) => e.stopPropagation(),
-      },
-      createElement("h3", { }, 
-        t("soc.scheduler.confirm_title")
+      { className: styles.schedulerModalCard, onClick: (e: any) => e.stopPropagation() },
+      createElement("h3", { className: styles.schedulerModalTitle }, t("soc.scheduler.confirm_title")),
+      createElement(
+        "p",
+        { className: styles.schedulerModalBody },
+        createElement("span", { className: styles.schedulerModalAction }, action),
+        " \u2014 ",
+        job.job_key
       ),
-      createElement("p", { },
-        `${t("soc.scheduler.confirm_action")}: `,
-        createElement("span", { }, action),
-        " — ",
-        createElement("span", { }, job.job_key)
-      ),
-      createElement("label", { },
-        t("soc.scheduler.reason_label")
-      ),
+      createElement("label", { className: styles.schedulerModalField }, t("soc.scheduler.reason_label")),
       createElement("textarea", {
-        className: `styles.configEditor`,
+        className: styles.schedulerModalTextarea,
         rows: 2,
         placeholder: t("soc.scheduler.reason_placeholder"),
         value: reason,
         onChange: (e: any) => setReason(e.target.value),
-        
       }),
       createElement(
         "div",
-        { },
+        { className: styles.schedulerModalActions },
         createElement(
           "button",
-          {
-            type: "button",
-            onClick: onCancel,
-            className: `styles.actionBtn`,
-            
-          },
+          { type: "button", onClick: onCancel, className: styles.schedulerModalCancel },
           t("common.cancel")
         ),
         createElement(
@@ -289,13 +270,7 @@ function ActionConfirmModal({
             type: "button",
             onClick: () => onConfirm(reason),
             disabled: !reason.trim(),
-            className: styles.actionBtn,
-            style: {
-              background: "rgba(245, 158, 11, 0.2)",
-              color: toneColor("warning"),
-              border: "1px solid rgba(245, 158, 11, 0.3)",
-              cursor: !reason.trim() ? "not-allowed" : "pointer",
-            },
+            className: styles.schedulerModalProceed,
           },
           t("soc.scheduler.confirm_proceed")
         )
@@ -305,13 +280,13 @@ function ActionConfirmModal({
 }
 
 // ─── Job history drawer ───────────────────────────────────────────────────────
-function JobHistoryDrawer({ 
-  jobKey, 
-  onClose, 
-  t 
-}: { 
-  jobKey: string; 
-  onClose: () => void; 
+function JobHistoryDrawer({
+  jobKey,
+  onClose,
+  t
+}: {
+  jobKey: string;
+  onClose: () => void;
   t: (key: string, o?: any) => string;
 }) {
   const [history, setHistory] = useState<JobRunHistory | null>(null);
@@ -329,11 +304,11 @@ function JobHistoryDrawer({
       const data = await adapter.getSocSchedulerJobHistory(jobKey, p, 15);
       setHistory(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error loading history");
+      setError(err instanceof Error ? err.message : t("soc.dataops.error_load_history"));
     } finally {
       setLoading(false);
     }
-  }, [jobKey]);
+  }, [jobKey, t]);
 
   useEffect(() => {
     load(page);
@@ -342,56 +317,46 @@ function JobHistoryDrawer({
   return createElement(
     "div",
     null,
-    createElement("div", {
-      className: styles.drawerOverlay,
-      onClick: onClose,
-    }),
+    createElement("div", { className: styles.drawerOverlay, onClick: onClose }),
     createElement(
       "div",
-      {
-        className: styles.drawerContent,
-        onClick: (e: any) => e.stopPropagation(),
-      },
-      // Header
+      { className: styles.drawerContent, onClick: (e: any) => e.stopPropagation() },
       createElement(
         "div",
-        {
-          },
-        createElement("div", null,
-          createElement("p", { }, t("soc.scheduler.history_drawer_title")),
-          createElement("p", { }, jobKey)
+        { className: styles.schedulerDrawerHeader },
+        createElement(
+          "div",
+          { className: styles.schedulerDrawerInfo },
+          createElement("p", { className: styles.schedulerDrawerTitle }, t("soc.scheduler.history_drawer_title")),
+          createElement("p", { className: styles.schedulerDrawerSub }, jobKey)
         ),
-        createElement("button", {
-          type: "button",
-          onClick: onClose,
-          }, "✕")
+        createElement("button", { type: "button", onClick: onClose, className: styles.schedulerDrawerClose }, "\u2715")
       ),
-      // Content body
-      loading && createElement("p", { }, t("common.loading")),
-      error && createElement("p", { }, error),
+      loading && createElement("p", { className: styles.schedulerDrawerCount }, t("common.loading")),
+      error && createElement("p", { className: styles.schedulerDrawerCount, style: { color: toneColor("danger") } }, error),
       history && !loading && createElement(
         "div",
         null,
         createElement(
           "p",
-          { },
+          { className: styles.schedulerDrawerCount },
           t("soc.scheduler.history_count", { count: history.count })
         ),
         history.results.length === 0
-          ? createElement("p", { }, t("soc.scheduler.history_empty"))
+          ? createElement("p", { className: styles.schedulerDrawerCount }, t("soc.scheduler.history_empty"))
           : createElement(
               "table",
-              { },
+              { className: styles.coverageTable },
               createElement(
                 "thead",
-                { },
+                null,
                 createElement(
                   "tr",
                   null,
-                  createElement("th", { }, t("soc.scheduler.history_col_status")),
-                  createElement("th", { }, t("soc.scheduler.history_col_started")),
-                  createElement("th", { }, t("soc.scheduler.history_col_duration")),
-                  createElement("th", { }, t("soc.scheduler.history_col_task_id"))
+                  createElement("th", null, t("soc.scheduler.history_col_status")),
+                  createElement("th", null, t("soc.scheduler.history_col_started")),
+                  createElement("th", null, t("soc.scheduler.history_col_duration")),
+                  createElement("th", null, t("soc.scheduler.history_col_task_id"))
                 )
               ),
               createElement(
@@ -401,51 +366,39 @@ function JobHistoryDrawer({
                    const statusStyles = getStatusStyles(run.status);
                    return createElement(
                      "tr",
-                     { key: run.id, },
-                     createElement("td", { },
+                     { key: run.id },
+                     createElement("td", null,
                        createElement(
                          "span",
-                         {
-                           style: {
-                             display: "inline-block",
-                             padding: "0.1rem 0.35rem",
-                             borderRadius: "4px",
-                             fontWeight: 700,
-                             textTransform: "uppercase",
-                             fontSize: "0.65rem",
-                             ...statusStyles
-                           }
-                         },
+                         { className: styles.schedulerStatusBadge, style: statusStyles },
                          run.status
                        )
                      ),
-                     createElement("td", { }, run.started_at || "—"),
-                     createElement("td", { }, run.duration_seconds != null ? `${run.duration_seconds}s` : "—"),
-                     createElement("td", {
-                       }, run.celery_task_id || "—")
+                     createElement("td", { style: { fontSize: "0.7rem" } }, run.started_at || "\u2014"),
+                     createElement("td", { style: { fontSize: "0.7rem", fontVariantNumeric: "tabular-nums" } }, run.duration_seconds != null ? `${run.duration_seconds}s` : "\u2014"),
+                     createElement("td", { style: { fontSize: "0.65rem", fontFamily: "monospace", wordBreak: "break-all", maxWidth: "200px" } }, run.celery_task_id || "\u2014")
                    );
                 })
               )
             ),
-        // Pagination
-        createElement(
+        history.total_pages > 1 && createElement(
           "div",
-          {
-            },
-          createElement("span", { },
+          { className: styles.schedulerDrawerPagination },
+          createElement(
+            "span",
+            { className: styles.schedulerDrawerPageInfo },
             `${t("soc.dataops.run_history_page")} ${page}/${history.total_pages || 1}`
           ),
           createElement(
             "div",
-            { },
+            { className: styles.schedulerDrawerPageBtns },
             createElement(
               "button",
               {
                 type: "button",
                 disabled: !history.previous,
                 onClick: () => setPage((p) => Math.max(1, p - 1)),
-                className: `styles.pageBtn`,
-                
+                className: styles.pageBtnSmall,
               },
               t("soc.dataops.run_history_previous")
             ),
@@ -455,8 +408,7 @@ function JobHistoryDrawer({
                 type: "button",
                 disabled: !history.next,
                 onClick: () => setPage((p) => p + 1),
-                className: `styles.pageBtn`,
-                
+                className: styles.pageBtnSmall,
               },
               t("soc.dataops.run_history_next")
             )
@@ -494,11 +446,11 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
       setPlan(planData);
       setHealth(healthData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Cannot load scheduler status.");
+      setError(err instanceof Error ? err.message : t("soc.dataops.error_load_scheduler"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -549,8 +501,8 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
 
   return createElement(
     "div",
-    { },
-    
+    { className: styles.schedulerWrap },
+
     // Health strip (hidden in embedded mode)
     !embedded && createElement(SchedulerHealthStrip, { health, t }),
 
@@ -558,77 +510,49 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
     actionBanner && createElement(
       "div",
       {
-        style: {
-          borderRadius: "8px",
-          border: actionBanner.type === "success" ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(244, 63, 94, 0.4)",
-          background: actionBanner.type === "success" ? "rgba(16, 185, 129, 0.1)" : "rgba(244, 63, 94, 0.1)",
-          color: actionBanner.type === "success" ? toneColor("success") : "var(--color-danger-400, #f43f5e)",
-          padding: "0.75rem 1rem",
-          fontSize: "0.75rem",
-          fontWeight: 600,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center"
-        }
+        className: `${styles.schedulerActionBanner} ${actionBanner.type === "success" ? styles.schedulerActionBannerSuccess : styles.schedulerActionBannerError}`,
       },
       createElement("span", null, actionBanner.msg),
-      actionBanner.requestId && createElement(
-        "span",
-        { },
-        actionBanner.requestId
-      )
+      actionBanner.requestId && createElement("span", { style: { opacity: 0.6, fontSize: "0.65rem", fontFamily: "monospace" } }, actionBanner.requestId)
     ),
 
     // Header row
     createElement(
       "div",
-      {
-        },
+      { className: styles.schedulerHeader },
       createElement(
         "div",
-        null,
-        !hideHeaderTitle && createElement(
-          "h3",
-          { },
-          t("soc.scheduler.board_title")
-        ),
+        { className: styles.schedulerHeaderLeft },
+        !hideHeaderTitle && createElement("h3", { className: styles.schedulerTitle }, t("soc.scheduler.board_title")),
         plan?.generated_at && createElement(
           "p",
-          { },
+          { className: styles.schedulerTimestamp },
           `${t("soc.scheduler.board_generated_at")}: ${new Date(plan.generated_at).toLocaleString("vi-VN")}`
         )
       ),
       createElement(
         "div",
-        { },
-        
-        // Domain Filter Select (hidden in embedded mode)
+        { className: styles.schedulerHeaderRight },
         !embedded && createElement(
           "select",
           {
             value: domainFilter,
             onChange: (e: any) => setDomainFilter(e.target.value),
-            className: `styles.jobDomainSelect`,
-            
+            className: styles.jobDomainSelect,
           },
-          DOMAIN_FILTER_OPTIONS.map((d) => 
-            createElement(
-              "option",
-              { key: d, value: d },
+          DOMAIN_FILTER_OPTIONS.map((d) =>
+            createElement("option", { key: d, value: d },
               d === "all" ? t("soc.scheduler.filter_all_domains") : d
             )
           )
         ),
-
-        // Refresh button
         createElement(
           "button",
           {
             type: "button",
             onClick: load,
             disabled: loading,
-            className: `styles.pageBtn`,
-            
+            className: styles.pageBtnSmall,
           },
           loading ? t("common.loading") : t("common.refresh")
         )
@@ -636,36 +560,29 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
     ),
 
     // Error banner
-    error && createElement(
-      "div",
-      { className: styles.inlineError },
-      error
-    ),
+    error && createElement("div", { className: styles.inlineError }, error),
 
     // Table Content
     !error && createElement(
       "div",
-      {
-        },
+      { className: styles.schedulerTableWrap },
       createElement(
         "table",
-        {
-          },
+        { className: styles.coverageTable },
         createElement(
           "thead",
-          {
-            },
+          null,
           createElement(
             "tr",
             null,
-            createElement("th", { }, t("soc.scheduler.col_job")),
-            createElement("th", { }, t("soc.scheduler.col_domain")),
-            createElement("th", { }, t("soc.scheduler.col_status")),
-            createElement("th", { }, t("soc.scheduler.col_freshness")),
-            createElement("th", { }, t("soc.scheduler.col_next_run")),
-            createElement("th", { }, t("soc.scheduler.col_lag")),
-            createElement("th", { }, t("soc.scheduler.col_actions")),
-            createElement("th", { }, t("soc.scheduler.col_history"))
+            createElement("th", null, t("soc.scheduler.col_job")),
+            createElement("th", null, t("soc.scheduler.col_domain")),
+            createElement("th", null, t("soc.scheduler.col_status")),
+            createElement("th", null, t("soc.scheduler.col_freshness")),
+            createElement("th", null, t("soc.scheduler.col_next_run")),
+            createElement("th", null, t("soc.scheduler.col_lag")),
+            createElement("th", null, t("soc.scheduler.col_actions")),
+            createElement("th", null, t("soc.scheduler.col_history"))
           )
         ),
         createElement(
@@ -675,9 +592,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
             ? createElement(
                 "tr",
                 null,
-                createElement(
-                  "td",
-                  { colSpan: 8, },
+                createElement("td", { colSpan: 8, style: { textAlign: "center", padding: "2rem", color: "var(--text-muted, #94a3b8)" } },
                   t("soc.scheduler.empty_state")
                 )
               )
@@ -687,97 +602,74 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
 
                 return createElement(
                   "tr",
-                  {
-                    key: job.job_key,
-                    },
-                  // Job key and display name
+                  { key: job.job_key },
                   createElement(
                     "td",
-                    { },
-                    createElement("p", { }, job.job_key),
-                    job.display_name && createElement("p", { }, job.display_name)
-                  ),
-                  // Domain
-                  createElement(
-                    "td",
-                    { },
-                    job.domain
-                  ),
-                  // Status + Live/Stuck indicators
-                  createElement(
-                    "td",
-                    { },
+                    null,
                     createElement(
-                      "span",
-                      {
-                        style: {
-                          display: "inline-block",
-                          padding: "0.1rem 0.35rem",
-                          borderRadius: "4px",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          fontSize: "0.65rem",
-                          ...statusStyles
-                        }
-                      },
-                      t(`soc.scheduler.status_${job.status}`, { defaultValue: job.status })
-                    ),
-                    job.is_inflight && createElement(
-                      "span",
-                      {
-                        className: `styles.pulsingDot`,
-                        
-                      },
-                      "live"
-                    ),
-                    job.is_possibly_stuck && createElement(
-                      "span",
-                      {
-                        title: t("soc.scheduler.tooltip_stuck"),
-                        },
-                      t("soc.scheduler.badge_stuck")
-                    ),
-                    job.is_possibly_stuck && job.inflight_elapsed_seconds != null && createElement(
-                      "p",
-                      { },
-                      `${Math.floor(job.inflight_elapsed_seconds / 3600)}h${Math.floor((job.inflight_elapsed_seconds % 3600) / 60)}m`
+                      "div",
+                      { className: styles.schedulerJobCell },
+                      createElement("span", { className: styles.schedulerJobKey }, job.job_key),
+                      job.display_name && createElement("span", { className: styles.schedulerJobDesc }, job.display_name)
                     )
                   ),
-                  // Freshness
                   createElement(
                     "td",
-                    { style: { padding: "0.6rem 0.75rem", fontWeight: 600, color: freshnessColor } },
-                    job.freshness_state ? t(`soc.scheduler.freshness_${job.freshness_state}`, { defaultValue: job.freshness_state }) : "—"
+                    null,
+                    createElement(
+                      "span",
+                      { className: `${styles.schedulerDomainBadge} ${domainBadgeClass(job.domain)}` },
+                      job.domain
+                    )
                   ),
-                  // Next run
                   createElement(
                     "td",
-                    { },
-                    formatNextRun(job.next_run_at)
+                    null,
+                    createElement(
+                      "span",
+                      { className: styles.schedulerStatusBadge, style: statusStyles },
+                      t(`soc.scheduler.status_${job.status}`, { defaultValue: job.status })
+                    ),
+                    (job.is_inflight || job.is_possibly_stuck) && createElement(
+                      "div",
+                      { className: styles.schedulerStatusIndicators },
+                      job.is_inflight && createElement(
+                        "span",
+                        { className: styles.schedulerLiveDot },
+                        createElement("span", { className: styles.pulsingDot }),
+                        t("soc.dataops.indicator_live")
+                      ),
+                      job.is_possibly_stuck && createElement(
+                        "span",
+                        { className: styles.schedulerStuckBadge, title: t("soc.scheduler.tooltip_stuck") },
+                        t("soc.scheduler.badge_stuck")
+                      ),
+                      job.is_possibly_stuck && job.inflight_elapsed_seconds != null && createElement(
+                        "span",
+                        { className: styles.schedulerStuckElapsed },
+                        `${Math.floor(job.inflight_elapsed_seconds / 3600)}h${Math.floor((job.inflight_elapsed_seconds % 3600) / 60)}m`
+                      )
+                    )
                   ),
-                  // Lag
                   createElement(
                     "td",
-                    { },
-                    formatLag(job.lag_seconds)
+                    null,
+                    createElement(
+                      "span",
+                      { className: styles.schedulerFreshness, style: { color: freshnessColor } },
+                      job.freshness_state ? t(`soc.scheduler.freshness_${job.freshness_state}`, { defaultValue: job.freshness_state }) : "\u2014"
+                    )
                   ),
-                  // Actions buttons
-                  createElement(
-                    "td",
-                    { },
-                    createElement(JobActionButtons, { job, onAction: handleAction, t })
-                  ),
-                  // History button
-                  createElement(
-                    "td",
-                    { },
+                  createElement("td", { style: { fontSize: "0.7rem", fontVariantNumeric: "tabular-nums" } }, formatNextRun(job.next_run_at)),
+                  createElement("td", { style: { fontSize: "0.7rem", fontVariantNumeric: "tabular-nums" } }, formatLag(job.lag_seconds)),
+                  createElement("td", null, createElement(JobActionButtons, { job, onAction: handleAction, t })),
+                  createElement("td", null,
                     createElement(
                       "button",
                       {
                         type: "button",
                         onClick: () => setHistoryJob(job.job_key),
-                        className: `styles.pageBtn`,
-                        
+                        className: styles.schedulerHistoryBtn,
                       },
                       t("soc.scheduler.view_history")
                     )

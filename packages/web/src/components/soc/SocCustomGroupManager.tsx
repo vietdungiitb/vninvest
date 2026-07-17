@@ -184,7 +184,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
                         createElement(
                           "button",
                           {
-                            className: `styles.actionBtn`,
+                            className: styles.actionBtn,
                             onClick: () => startEdit(g),
                             
                           },
@@ -193,7 +193,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
                         createElement(
                           "button",
                           {
-                            className: `styles.actionBtn`,
+                            className: styles.actionBtn,
                             onClick: () => handleDelete(g.slug),
                             
                           },
@@ -217,7 +217,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
         createElement("label", { },
           t("soc.dataops.group_manager_name_label")),
         createElement("input", {
-          type: "text", value: editName, className: `styles.searchInput`,
+          type: "text", value: editName, className: styles.searchInput,
           onChange: (e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value),
           
         }),
@@ -228,7 +228,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
         createElement("label", { },
           t("soc.dataops.group_manager_desc_label")),
         createElement("input", {
-          type: "text", value: editDescription, className: `styles.searchInput`,
+          type: "text", value: editDescription, className: styles.searchInput,
           onChange: (e: React.ChangeEvent<HTMLInputElement>) => setEditDescription(e.target.value),
           
         }),
@@ -239,7 +239,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
         createElement("label", { },
           t("soc.dataops.group_manager_symbols_label")),
         createElement("textarea", {
-          value: editSymbols, className: `styles.searchInput`,
+          value: editSymbols, className: styles.searchInput,
           placeholder: t("soc.dataops.custom_group_symbols_placeholder"),
           onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setEditSymbols(e.target.value),
           
@@ -253,7 +253,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
         createElement(
           "button",
           {
-            className: `styles.runBtn`,
+            className: styles.runBtn,
             onClick: handleUpdate,
             disabled: savingEdit,
             
@@ -263,7 +263,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
         createElement(
           "button",
           {
-            className: `styles.actionBtn`,
+            className: styles.actionBtn,
             onClick: cancelEdit,
             
           },
@@ -283,7 +283,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
         createElement("label", { },
           t("soc.dataops.group_manager_name_label")),
         createElement("input", {
-          type: "text", value: name, className: `styles.searchInput`,
+          type: "text", value: name, className: styles.searchInput,
           placeholder: t("soc.dataops.custom_group_name_placeholder"),
           onChange: (e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value),
           
@@ -295,7 +295,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
         createElement("label", { },
           t("soc.dataops.group_manager_desc_label")),
         createElement("input", {
-          type: "text", value: description, className: `styles.searchInput`,
+          type: "text", value: description, className: styles.searchInput,
           placeholder: t("soc.dataops.group_manager_desc_placeholder"),
           onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDescription(e.target.value),
           
@@ -307,7 +307,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
         createElement("label", { },
           t("soc.dataops.group_manager_symbols_label")),
         createElement("textarea", {
-          value: symbols, className: `styles.searchInput`,
+          value: symbols, className: styles.searchInput,
           placeholder: t("soc.dataops.custom_group_symbols_placeholder"),
           onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setSymbols(e.target.value),
           
@@ -321,7 +321,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
         createElement(
           "button",
           {
-            className: `styles.runBtn`,
+            className: styles.runBtn,
             onClick: handleCreate,
             disabled: creating,
             
@@ -331,7 +331,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
         createElement(
           "button",
           {
-            className: `styles.actionBtn`,
+            className: styles.actionBtn,
             onClick: () => { resetCreate(); },
             
           },
@@ -351,7 +351,7 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
         ? createElement(
             "button",
             {
-              className: `styles.runBtn`,
+              className: styles.runBtn,
               onClick: () => setShowForm(true),
               
             },
@@ -361,8 +361,8 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
     ),
     createElement("p", { },
       t("soc.dataops.group_manager_description")),
-    error ? createElement("div", { className: `styles.inlineError`,  }, error) : null,
-    success ? createElement("div", { className: `styles.inlineSuccess`,  }, success) : null,
+    error ? createElement("div", { className: styles.inlineError,  }, error) : null,
+    success ? createElement("div", { className: styles.inlineSuccess,  }, success) : null,
     renderGroupList(),
     showForm ? renderCreateForm() : null,
   );

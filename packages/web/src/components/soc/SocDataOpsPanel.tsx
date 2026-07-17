@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import { createElement, useMemo } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { ShellPanel } from "../../components/ShellPageTemplate.js";
 import { LucideIcon } from "../ui/lucide-icon.js";
@@ -18,16 +18,44 @@ const DATAOPS_SUB_TABS = [
   { key: "config", icon: "Settings" },
 ];
 
+const HERO_METRIC_DEFS = [
+  { key: "totalRows", icon: "Database", colorVar: "--soc-c-22d3ee", bgVar: "rgba(34,211,238,0.12)" },
+  { key: "queuePending", icon: "Clock", colorVar: "--soc-c-fbbf24", bgVar: "rgba(251,191,36,0.12)" },
+  { key: "running", icon: "Play", colorVar: "--soc-c-34d399", bgVar: "rgba(52,211,153,0.12)" },
+  { key: "failed", icon: "AlertTriangle", colorVar: "--soc-c-f87171", bgVar: "rgba(248,113,113,0.12)" },
+] as const;
+
+const HERO_METRIC_COLORS: Record<string, string> = {
+  totalRows: "#22d3ee",
+  queuePending: "#fbbf24",
+  running: "#34d399",
+  failed: "#f87171",
+};
+
 function DataOpsContent() {
   const { t } = useI18n();
   const { state, actions } = useDataOps();
-  const { activeSubTab } = state;
+  const { activeSubTab, runs, inventory, loading } = state;
 
   const resolveLabel = (tabKey: string): string => {
     const i18nKey = `soc.dataops.subtab.${tabKey}`;
     const translated = t(i18nKey);
     if (translated && translated !== i18nKey) return translated;
     return tabKey.charAt(0).toUpperCase() + tabKey.slice(1);
+  };
+
+  const heroMetrics = useMemo(() => {
+    const totalRows = inventory?.summary?.total_rows ?? 0;
+    const queuePending = runs.filter((r) => r.status === "queued" || r.status === "pending").length;
+    const running = runs.filter((r) => r.status === "running").length;
+    const failed = runs.filter((r) => r.status === "failed").length;
+    return { totalRows, queuePending, running, failed };
+  }, [runs, inventory]);
+
+  const formatNumber = (n: number): string => {
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+    return String(n);
   };
 
   const renderSubTabContent = () => {
@@ -68,39 +96,103 @@ function DataOpsContent() {
     return createElement(
       ShellPanel,
       { title, subtitle },
-      content
+      content,
     );
   };
+
+  const isLoading = loading.inventory && loading.runs;
 
   return createElement(
     "div",
     null,
+
+    /* ── 1. Page Header ── */
+    createElement(
+      "div",
+      { className: styles.dataopsPageHeader },
       createElement(
-        "nav",
-        {
-          className: `${styles.tabBar} ${styles.tabBarDataOps}`,
-          role: "tablist",
-          "aria-label": t("soc.dataops.subtabs"),
-          "aria-orientation": "horizontal",
-        },
-      DATAOPS_SUB_TABS.map((tab) =>
+        "div",
+        { className: styles.dataopsEyebrow },
+        createElement(LucideIcon, { name: "Database", className: "h-3.5 w-3.5" }),
+        "DATAOPS",
+      ),
+      createElement("h2", { className: styles.dataopsTitle }, t("soc.dataops.page_title")),
+      createElement("p", { className: styles.dataopsDescription }, t("soc.dataops.page_description")),
+    ),
+
+    /* ── 2. Summary Metrics ── */
+    isLoading
+      ? createElement(
+          "div",
+          { className: styles.dataopsHeroMetrics },
+          ...Array.from({ length: 4 }, (_, i) =>
+            createElement("div", {
+              key: i,
+              className: `${styles.skeleton} ${styles.dataopsSkeletonMetric}`,
+            }),
+          ),
+        )
+      : createElement(
+          "div",
+          { className: styles.dataopsHeroMetrics },
+          ...HERO_METRIC_DEFS.map((def) => {
+            const value = heroMetrics[def.key as keyof typeof heroMetrics];
+            const labelKey = `soc.dataops.metric_${def.key === "totalRows" ? "total_datasets" : def.key === "queuePending" ? "queue_pending" : def.key === "running" ? "running" : "errors_24h"}`;
+            return createElement(
+              "div",
+              { key: def.key, className: styles.dataopsHeroMetricCard },
+              createElement(
+                "div",
+                {
+                  className: styles.dataopsHeroMetricIcon,
+                  style: { background: def.bgVar },
+                },
+                createElement(LucideIcon, { name: def.icon, className: "h-5 w-5" }),
+              ),
+              createElement(
+                "div",
+                { className: styles.dataopsHeroMetricBody },
+                createElement("div", { className: styles.dataopsHeroMetricLabel }, t(labelKey)),
+                createElement(
+                  "div",
+                  { className: styles.dataopsHeroMetricValue, style: { color: HERO_METRIC_COLORS[def.key] } },
+                  def.key === "totalRows" ? formatNumber(value) : String(value),
+                ),
+              ),
+            );
+          }),
+        ),
+
+    /* ── 3. Subtab Bar ── */
+    createElement(
+      "nav",
+      {
+        className: styles.dataopsSubtabBar,
+        role: "tablist",
+        "aria-label": t("soc.dataops.subtabs"),
+      },
+      ...DATAOPS_SUB_TABS.map((tab) =>
         createElement(
           "button",
           {
             key: tab.key,
             role: "tab",
             "aria-selected": activeSubTab === tab.key,
-            className: `${styles.tabButton} ${activeSubTab === tab.key ? styles.tabButtonActive : ""}`,
+            className: `${styles.dataopsSubtabItem} ${activeSubTab === tab.key ? styles.dataopsSubtabItemActive : ""}`,
             onClick: () => actions.setActiveSubTab(tab.key),
           },
-          tab.icon
-            ? createElement(LucideIcon, { name: tab.icon, className: styles.tabIcon })
-            : null,
+          createElement(LucideIcon, { name: tab.icon, className: styles.dataopsSubtabIcon }),
           resolveLabel(tab.key),
         ),
       ),
     ),
-    renderSubTabContent(),
+
+    /* ── 4. Content Area ── */
+    createElement(
+      "div",
+      { className: styles.dataopsContentArea },
+      renderSubTabContent(),
+    ),
   );
 }
 

@@ -24,7 +24,7 @@ export function SocConfigPreviewModal({ before, after, changeSummary, impactWarn
     createElement(
       "div",
       {
-        className: `styles.glassPanel`,
+        className: styles.glassPanel,
         
         onClick: (e: React.MouseEvent) => e.stopPropagation(),
       },
@@ -44,7 +44,7 @@ export function SocConfigPreviewModal({ before, after, changeSummary, impactWarn
       validationErrors && validationErrors.length > 0
         ? createElement(
             "div",
-            { className: `styles.inlineError`,  },
+            { className: styles.inlineError,  },
             createElement("div", { }, t("soc.config_preview.validation_errors")),
             validationErrors.map((err, i) => createElement("div", { key: i, }, `\u2022 ${err}`)),
           )
@@ -53,7 +53,7 @@ export function SocConfigPreviewModal({ before, after, changeSummary, impactWarn
       impactWarnings && impactWarnings.length > 0
         ? createElement(
             "div",
-            { className: `styles.inlineError`,  },
+            { className: styles.inlineError,  },
             createElement("div", { }, t("soc.config_preview.impact_warnings")),
             impactWarnings.map((w, i) => createElement("div", { key: i, }, `\u26A0 ${w}`)),
           )
@@ -96,7 +96,7 @@ export function SocConfigPreviewModal({ before, after, changeSummary, impactWarn
           {
             onClick: onCancel,
             disabled: loading,
-            className: `styles.actionBtn`,
+            className: styles.actionBtn,
             
           },
           t("soc.actions.cancel"),

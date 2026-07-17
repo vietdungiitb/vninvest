@@ -118,25 +118,25 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
         field("result_retention_hours", t("soc.screener.config.retention_hours"), 1),
       ),
     ),
-    createElement("details", { className: `styles.sectionCard`,  },
+    createElement("details", { className: styles.sectionCard,  },
       createElement("summary", { },
         t("soc.screener.config.advanced")
       ),
-      createElement("div", { className: `styles.configEditor`,  },
+      createElement("div", { className: styles.configEditor,  },
         JSON.stringify(props.initialConfig, null, 2)
       ),
     ),
     createElement("div", { },
       createElement("button", {
         onClick: handleReset,
-        className: `styles.actionBtn`,
+        className: styles.actionBtn,
         
       },
       t("soc.screener.config.reset")
       ),
       createElement("button", {
         onClick: onCancel,
-        className: `styles.actionBtn`,
+        className: styles.actionBtn,
         
       },
       t("common.cancel")
@@ -144,7 +144,7 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
       createElement("button", {
         onClick: handleSave,
         disabled: loading,
-        className: `styles.actionBtn`,
+        className: styles.actionBtn,
         
       },
       loading ? t("common.saving") : t("common.save")

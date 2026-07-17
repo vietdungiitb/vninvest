@@ -1,5 +1,6 @@
 import { createElement, useCallback, useEffect, useRef } from "react";
 import { useI18n } from "../../context/LangContext.js";
+import { LucideIcon } from "../ui/lucide-icon.js";
 import styles from "./soc.module.css";
 
 interface TabDef {
@@ -76,7 +77,7 @@ export function SocTabNavigation({ tabs, activeTab, onChange }: SocTabNavigation
           onClick: () => handleTabChange(tab.key),
         },
         tab.icon
-          ? createElement("span", { className: styles.tabIcon }, tab.icon)
+          ? createElement(LucideIcon, { name: tab.icon, className: styles.tabIcon })
           : null,
         resolveLabel(tab.key),
       )

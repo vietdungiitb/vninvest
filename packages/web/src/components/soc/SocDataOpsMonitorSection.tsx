@@ -181,7 +181,7 @@ export function SocDataOpsMonitorSection() {
         actions.refreshCoverage();
         setError("");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Cannot load monitor data.");
+        setError(err instanceof Error ? err.message : t("soc.dataops.error_load_monitor"));
       }
     };
     fetchData();
@@ -191,7 +191,7 @@ export function SocDataOpsMonitorSection() {
   const renderMetricCard = (label: string, value: string | number, color?: string) => {
     return createElement(
       "div",
-      { className: `styles.metricCard`,  },
+      { className: styles.metricCard,  },
       createElement("div", { className: styles.metricLabel }, label),
       createElement("div", { className: styles.metricValue, style: { color: color || "var(--text-primary, #f1f5f9)" } }, value)
     );
@@ -222,7 +222,7 @@ export function SocDataOpsMonitorSection() {
         createElement(
           "button",
           {
-            className: `styles.actionBtn`,
+            className: styles.actionBtn,
             onClick: () => actions.abortRun(activeRun.run_id),
             
           },
@@ -290,7 +290,7 @@ export function SocDataOpsMonitorSection() {
           "button",
           {
             onClick: () => setMatrixExpanded((v) => !v),
-            className: `styles.actionBtn`,
+            className: styles.actionBtn,
             
           },
           matrixExpanded ? t("soc.dataops.matrix_collapse") : t("soc.dataops.matrix_expand")
@@ -323,7 +323,7 @@ export function SocDataOpsMonitorSection() {
             // Metric Cards
             createElement(
               "div",
-              { className: `styles.metricGrid`,  },
+              { className: styles.metricGrid,  },
               renderMetricCard(
                 t("soc.dataops.fail_rate_1h"),
                 `${(oneHourData.fail_rate_pct || 0).toFixed(2)}%`,
@@ -343,7 +343,7 @@ export function SocDataOpsMonitorSection() {
               // Backlog by Dataset Table
               createElement(
                 "div",
-                { className: `styles.glassPanel`,  },
+                { className: styles.glassPanel,  },
                 createElement(
                   "h4",
                   { },
@@ -354,7 +354,7 @@ export function SocDataOpsMonitorSection() {
                   { },
                   createElement(
                     "table",
-                    { },
+                    { className: styles.coverageTable },
                     createElement(
                       "thead",
                       null,
@@ -390,7 +390,7 @@ export function SocDataOpsMonitorSection() {
               // Starvation Indicator Section
               createElement(
                 "div",
-                { className: `styles.glassPanel`,  },
+                { className: styles.glassPanel,  },
                 createElement(
                   "h4",
                   { },
@@ -443,7 +443,7 @@ export function SocDataOpsMonitorSection() {
             // Backlog by Tier Table
             createElement(
               "div",
-              { className: `styles.glassPanel`,  },
+              { className: styles.glassPanel,  },
               createElement(
                 "h4",
                 { },
@@ -454,7 +454,7 @@ export function SocDataOpsMonitorSection() {
                 { },
                 createElement(
                   "table",
-                  { },
+                  { className: styles.coverageTable },
                   createElement(
                     "thead",
                     null,
@@ -537,7 +537,7 @@ export function SocDataOpsMonitorSection() {
             { },
             createElement(
               "table",
-              { },
+              { className: styles.coverageTable },
               createElement(
                 "thead",
                 null,
@@ -552,7 +552,7 @@ export function SocDataOpsMonitorSection() {
                       t(FRESHNESS_LABEL_KEYS[stateKey] || "soc.dataops.freshness_unknown")
                     )
                   ),
-                  createElement("th", { }, "Total")
+                  createElement("th", { }, t("soc.dataops.col_total"))
                 )
               ),
               createElement(
@@ -592,7 +592,7 @@ export function SocDataOpsMonitorSection() {
             { },
             createElement(
               "table",
-              { },
+              { className: styles.coverageTable },
               createElement(
                 "thead",
                 null,

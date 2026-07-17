@@ -44,7 +44,7 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
 
   return createElement(
     "div",
-    { className: `styles.sectionCard`,  },
+    { className: styles.sectionCard,  },
     createElement(
       "div",
       { },
@@ -53,7 +53,7 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
         null,
         createElement(
           "h3",
-          { className: `styles.sectionCardTitle`,  },
+          { className: styles.sectionCardTitle,  },
           `⚠️ ${t("soc.dataops.anomaly_guard")}`
         ),
         createElement("p", { }, t("soc.dataops.anomaly_guard_desc"))
@@ -62,7 +62,7 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
 
     createElement(
       "div",
-      { className: `styles.metricGrid`,  },
+      { className: styles.metricGrid,  },
       renderMetricCard(t("soc.dataops.anomaly_promotion_backlog"), promotionCount, promotionCount > 50 ? "var(--accent-amber)" : toneColor("success")),
       renderMetricCard(
         t("soc.dataops.anomaly_repair_age"),
@@ -77,7 +77,7 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
       // Critical gaps table
       createElement(
         "div",
-        { className: `styles.glassPanel`,  },
+        { className: styles.glassPanel,  },
         createElement(
           "h4",
           { },
@@ -128,7 +128,7 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
       // Hot tier breach table
       createElement(
         "div",
-        { className: `styles.glassPanel`,  },
+        { className: styles.glassPanel,  },
         createElement(
           "h4",
           { },

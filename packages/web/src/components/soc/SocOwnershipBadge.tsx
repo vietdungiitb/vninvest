@@ -18,8 +18,8 @@ export function SocOwnershipBadge({ team, writable, accessLevel }: SocOwnershipB
 
   return createElement(
     "div",
-    { className: `styles.sectionCard`,  },
-    createElement("div", { className: `styles.sectionCardTitle`,  }, t("soc.badge.ownership_title")),
+    { className: styles.sectionCard,  },
+    createElement("div", { className: styles.sectionCardTitle,  }, t("soc.badge.ownership_title")),
     createElement(
       "div",
       { },
@@ -40,10 +40,10 @@ export function SocOwnershipBadge({ team, writable, accessLevel }: SocOwnershipB
         }),
         writableLabel,
       ),
-      createElement("span", { className: `styles.statusBadge`,  },
+      createElement("span", { className: styles.statusBadge,  },
         t("soc.badge.team", { team: teamLabel }),
       ),
-      createElement("span", { className: `styles.statusBadge`,  },
+      createElement("span", { className: styles.statusBadge,  },
         t("soc.badge.access", { level: accessLabel }),
       ),
     ),

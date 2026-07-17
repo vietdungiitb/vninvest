@@ -122,8 +122,9 @@
 }
 
 .tabIcon {
-  font-size: 0.9rem;
-  line-height: 1;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
 }
 
 /* Glassmorphism Panel */
@@ -214,7 +215,273 @@
   display: inline-block;
 }
 
-/* Metric Grid */
+/* ─── Overview Page Layout ────────────────────────────────────── */
+
+.overviewPageHeader {
+  margin-bottom: 1.5rem;
+}
+
+.overviewEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent-cyan, var(--soc-c-22d3ee));
+  margin-bottom: 0.5rem;
+}
+
+.overviewTitle {
+  margin: 0 0 0.35rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  line-height: 1.2;
+}
+
+.overviewDescription {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary, var(--soc-c-94a3b8));
+  line-height: 1.5;
+  max-width: 520px;
+}
+
+.overviewHeroBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(var(--soc-rgb-0f172a) / 0.6);
+  border: 1px solid rgba(var(--soc-rgb-10b981) / 0.25);
+  color: var(--soc-c-34d399);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.overviewHeroBadgePulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--soc-c-10b981);
+  box-shadow: 0 0 0 4px rgba(var(--soc-rgb-10b981) / 0.15);
+  animation: pulse-ring 2s ease-in-out infinite;
+}
+
+@keyframes pulse-ring {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px rgba(var(--soc-rgb-10b981) / 0.15);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(var(--soc-rgb-10b981) / 0.08);
+  }
+}
+
+/* Health Ratio Bar */
+.overviewHealthBar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(var(--soc-rgb-1e293b) / 0.6);
+  overflow: hidden;
+  display: flex;
+  margin-bottom: 1.25rem;
+  border: 1px solid rgba(var(--soc-rgb-5078a8) / 0.1);
+}
+
+.overviewHealthBarSegment {
+  height: 100%;
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 0;
+}
+
+.overviewHealthBarSegmentHealthy {
+  background: linear-gradient(90deg, var(--soc-c-10b981), var(--soc-c-34d399));
+}
+
+.overviewHealthBarSegmentDegraded {
+  background: linear-gradient(90deg, var(--soc-c-f59e0b), var(--soc-c-fbbf24));
+}
+
+.overviewHealthBarSegmentCritical {
+  background: linear-gradient(90deg, var(--soc-c-ef4444), var(--soc-c-f87171));
+}
+
+/* Overview Metric Cards */
+.overviewMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 768px) {
+  .overviewMetricGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .overviewMetricGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.overviewMetricCard {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  background: rgba(var(--soc-rgb-0f172a) / 0.5);
+  border: 1px solid rgba(var(--soc-rgb-5078a8) / 0.12);
+  border-left: 3px solid var(--soc-rgb-5078a8);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.overviewMetricCard:hover {
+  transform: translateY(-1.5px);
+  background: rgba(var(--soc-rgb-0f172a) / 0.65);
+  border-color: rgba(var(--soc-rgb-5078a8) / 0.25);
+  box-shadow: 0 8px 20px rgba(var(--soc-rgb-000000) / 0.2);
+}
+
+.overviewMetricIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.1rem;
+}
+
+.overviewMetricBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.overviewMetricLabel {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.overviewMetricValue {
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+/* Overview Service Cards */
+.overviewServiceCard {
+  padding: 1rem 1.15rem;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--soc-rgb-5078a8) / 0.12);
+  background: rgba(var(--soc-rgb-081734) / 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.overviewServiceCard:hover {
+  border-color: rgba(var(--soc-rgb-5078a8) / 0.28);
+  background: rgba(var(--soc-rgb-081734) / 0.45);
+  box-shadow: 0 4px 16px rgba(var(--soc-rgb-000000) / 0.15);
+}
+
+.overviewServiceCardInactive {
+  opacity: 0.6;
+}
+
+.overviewServiceHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.overviewServiceInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.overviewServiceName {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.overviewServiceKey {
+  font-size: 0.7rem;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  font-family: "Menlo", "Consolas", monospace;
+  margin: 0;
+}
+
+.overviewServiceStats {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.overviewStatItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.overviewStatLabel {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+}
+
+.overviewStatValue {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  font-variant-numeric: tabular-nums;
+}
+
+.overviewServiceActions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+/* Overview Skeleton */
+.overviewSkeletonMetric {
+  height: 72px;
+  border-radius: 12px;
+}
+
+.overviewSkeletonCard {
+  height: 120px;
+  border-radius: 12px;
+}
+
+/* ─── Existing Metric Grid (kept for other panels) ─────────────── */
+
 .inventoryRoot {
   display: flex;
   flex-direction: column;
@@ -973,22 +1240,35 @@
 /* Data Types Grid */
 .dataTypeGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 0.5rem;
 }
 
 .dataTypeCard {
-  padding: 0.65rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem;
   border-radius: 8px;
   background: rgba(var(--soc-rgb-0f172a) / 0.3);
   border: 1px solid var(--border-default, rgba(var(--soc-rgb-5078a8) / 0.12));
+  border-top: 2px solid rgba(var(--soc-rgb-00b4d8) / 0.25);
   transition: all 0.15s ease;
   cursor: default;
 }
 
 .dataTypeCard:hover {
   border-color: rgba(var(--soc-rgb-00b4d8) / 0.3);
+  border-top-color: rgba(var(--soc-rgb-00b4d8) / 0.5);
   background: rgba(var(--soc-rgb-0f172a) / 0.5);
+}
+
+/* Coverage Table Wrap */
+.coverageTableWrap {
+  overflow-x: auto;
+  border: 1px solid rgba(var(--soc-rgb-5078a8) / 0.1);
+  border-radius: 8px;
+  background: rgba(var(--soc-rgb-0f172a) / 0.2);
 }
 
 /* Coverage Table */
@@ -1020,8 +1300,35 @@
   background: rgba(var(--soc-rgb-0f172a) / 0.3);
 }
 
+.coverageTable tbody tr:not(:last-child) td {
+  border-bottom: 1px solid rgba(var(--soc-rgb-5078a8) / 0.06);
+}
+
 .coverageCell {
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.coverageRatioBar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.coverageRatioTrack {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(var(--soc-rgb-1e293b) / 0.5);
+  overflow: hidden;
+  max-width: 60px;
+}
+
+.coverageRatioFill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
 }
 
 /* Bar Chart Fill */
@@ -1035,6 +1342,276 @@
   border-radius: 4px;
   transition: width 0.4s ease;
   min-width: 2px;
+}
+
+/* Year Distribution Chart */
+.yearChart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.yearChart::-webkit-scrollbar {
+  width: 4px;
+}
+
+.yearChart::-webkit-scrollbar-track {
+  background: rgba(var(--soc-rgb-0f172a) / 0.3);
+  border-radius: 2px;
+}
+
+.yearChart::-webkit-scrollbar-thumb {
+  background: rgba(var(--soc-rgb-5078a8) / 0.3);
+  border-radius: 2px;
+}
+
+.yearRow {
+  display: grid;
+  grid-template-columns: 3rem 1fr 5.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0.3rem;
+  border-radius: 4px;
+  transition: background 0.12s ease;
+}
+
+.yearRow:hover {
+  background: rgba(var(--soc-rgb-0f172a) / 0.3);
+}
+
+.yearLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.yearBarTrack {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(var(--soc-rgb-1e293b) / 0.5);
+  overflow: hidden;
+}
+
+.yearBarFill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--soc-rgb-00b4d8) / 0.6),
+    var(--soc-c-22d3ee)
+  );
+  transition: width 0.3s ease;
+  min-width: 2px;
+}
+
+.yearCount {
+  font-size: 0.68rem;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ─── DataOps Page Layout ───────────────────────────────────── */
+
+.dataopsPageHeader {
+  margin-bottom: 1.5rem;
+}
+
+.dataopsEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent-cyan, var(--soc-c-22d3ee));
+  margin-bottom: 0.5rem;
+}
+
+.dataopsTitle {
+  margin: 0 0 0.35rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  line-height: 1.2;
+}
+
+.dataopsDescription {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary, var(--soc-c-94a3b8));
+  line-height: 1.5;
+  max-width: 560px;
+}
+
+/* Summary Metric Cards */
+.dataopsHeroMetrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .dataopsHeroMetrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .dataopsHeroMetrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dataopsHeroMetricCard {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(var(--soc-rgb-0f172a) / 0.5);
+  border: 1px solid rgba(var(--soc-rgb-5078a8) / 0.12);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dataopsHeroMetricCard:hover {
+  transform: translateY(-1.5px);
+  background: rgba(var(--soc-rgb-0f172a) / 0.65);
+  border-color: rgba(var(--soc-rgb-5078a8) / 0.25);
+  box-shadow: 0 8px 20px rgba(var(--soc-rgb-000000) / 0.2);
+}
+
+.dataopsHeroMetricIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dataopsHeroMetricBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.dataopsHeroMetricLabel {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dataopsHeroMetricValue {
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+/* DataOps Subtab Bar */
+.dataopsSubtabBar {
+  display: flex;
+  gap: 0.2rem;
+  border-bottom: 1px solid rgba(var(--soc-rgb-5078a8) / 0.15);
+  margin-bottom: 1.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.dataopsSubtabBar::-webkit-scrollbar {
+  display: none;
+}
+
+.dataopsSubtabItem {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  position: relative;
+}
+
+.dataopsSubtabItem:hover {
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  background: rgba(var(--soc-rgb-0f172a) / 0.3);
+}
+
+.dataopsSubtabItemActive {
+  color: var(--accent-cyan, var(--soc-c-22d3ee));
+  border-bottom-color: var(--accent-cyan, var(--soc-c-22d3ee));
+}
+
+.dataopsSubtabItemActive::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent-cyan, var(--soc-c-22d3ee));
+  border-radius: 999px;
+  animation: subtabSlide 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes subtabSlide {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.dataopsSubtabIcon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+
+.dataopsSubtabItemActive .dataopsSubtabIcon {
+  opacity: 1;
+}
+
+/* Content Area */
+.dataopsContentArea {
+  min-height: 200px;
+}
+
+/* Skeleton */
+.dataopsSkeletonHeader {
+  height: 14px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.dataopsSkeletonMetric {
+  height: 68px;
+  border-radius: 12px;
 }
 
 /* ─── Ops Unified Layout CSS ─────────────────────────────────── */
@@ -1141,6 +1718,392 @@
   }
 }
 
+/* ─── Operations Form Grid ──────────────────────────────────── */
+.opsFormGrid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 1.25rem;
+}
+
+@media (max-width: 1024px) {
+  .opsFormGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.opsFormLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.opsFormRight {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.opsFormActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(var(--soc-rgb-5078a8) / 0.12);
+}
+
+.opsSectionHeader {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(var(--soc-rgb-00b4d8) / 0.15);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.opsCheckboxGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+@media (max-width: 768px) {
+  .opsCheckboxGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.opsCheckboxLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.opsCheckboxLabel:hover {
+  border-color: rgba(var(--soc-rgb-5078a8) / 0.2);
+  background: rgba(var(--soc-rgb-0f172a) / 0.3);
+}
+
+.opsCheckboxLabelDisabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.opsCheckboxLabelActive {
+  border-color: rgba(var(--soc-rgb-00b4d8) / 0.35);
+}
+
+.opsConfigFields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+@media (max-width: 480px) {
+  .opsConfigFields {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Preview Drawer (wider than standard drawer) */
+.opsPreviewDrawer {
+  width: 560px;
+  max-width: 90vw;
+}
+
+.opsDrawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(var(--soc-rgb-5078a8) / 0.15);
+}
+
+.opsDrawerClose {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: rgba(var(--soc-rgb-64748b) / 0.15);
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  font-size: 0.85rem;
+}
+
+.opsDrawerClose:hover {
+  background: rgba(var(--soc-rgb-64748b) / 0.3);
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+}
+
+/* Compact Run Log Entry */
+.opsRunLogCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 6px;
+  background: rgba(var(--soc-rgb-0f172a) / 0.2);
+  border: 1px solid rgba(var(--soc-rgb-5078a8) / 0.08);
+  transition: all 0.12s ease;
+  font-size: 0.75rem;
+}
+
+.opsRunLogCard:hover {
+  background: rgba(var(--soc-rgb-0f172a) / 0.35);
+  border-color: rgba(var(--soc-rgb-5078a8) / 0.15);
+}
+
+.opsRunLogRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.opsRunLogMeta {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.65rem;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+}
+
+.opsRunLogStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.75rem;
+  font-size: 0.65rem;
+}
+
+.opsRunLogStat {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Symbol group bar */
+.opsGroupBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.opsGroupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.opsFormField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.opsFormLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  display: block;
+}
+
+.opsDryRunRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  padding: 0.3rem 0;
+}
+
+/* Active run banner with glassmorphism */
+.opsActiveBanner {
+  border-radius: 8px;
+  border: 1px solid rgba(var(--soc-rgb-10b981) / 0.2);
+  background: rgba(var(--soc-rgb-10b981) / 0.06);
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 0;
+}
+
+.opsActiveBannerHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.opsActiveBannerTitle {
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: var(--soc-c-34d399);
+}
+
+.opsActiveBannerMeta {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.6rem;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  margin-top: 0.3rem;
+}
+
+/* Card section separator */
+.opsSeparator {
+  border: none;
+  border-top: 1px solid rgba(var(--soc-rgb-5078a8) / 0.1);
+  margin: 0.75rem 0;
+}
+
+.opsCheckboxContent {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.opsCheckboxName {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  line-height: 1.3;
+}
+
+.opsCheckboxDesc {
+  font-size: 0.62rem;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.opsCheckboxComing {
+  font-size: 0.62rem;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  font-style: italic;
+}
+
+/* Toolbar (run logs) */
+.opsToolbarRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+/* ─── Reusable Patterns ─────────────────────────────────────── */
+
+/* Progress Bar */
+.progressBar {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(var(--soc-rgb-1e293b) / 0.6);
+  overflow: hidden;
+}
+
+.progressBarFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+/* Status Badge Variants */
+.statusBadgeSuccess {
+  composes: statusBadge;
+  background: rgba(var(--soc-rgb-10b981) / 0.15);
+  color: var(--soc-c-34d399);
+}
+
+.statusBadgeWarning {
+  composes: statusBadge;
+  background: rgba(var(--soc-rgb-f59e0b) / 0.15);
+  color: var(--soc-c-fbbf24);
+}
+
+.statusBadgeDanger {
+  composes: statusBadge;
+  background: rgba(var(--soc-rgb-ef4444) / 0.15);
+  color: var(--soc-c-f87171);
+}
+
+.statusBadgeInfo {
+  composes: statusBadge;
+  background: rgba(var(--soc-rgb-00b4d8) / 0.15);
+  color: var(--soc-c-22d3ee);
+}
+
+/* Pagination Button */
+.pageBtnSmall {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: rgba(var(--soc-rgb-64748b) / 0.15);
+  color: var(--soc-c-cbd5e1);
+  transition: all 0.15s;
+}
+
+.pageBtnSmall:disabled {
+  color: rgba(var(--soc-rgb-94a3b8) / 0.4);
+  cursor: not-allowed;
+}
+
+.pageBtnSmall:not(:disabled):hover {
+  background: rgba(var(--soc-rgb-64748b) / 0.3);
+  color: var(--soc-c-f1f5f9);
+}
+
+/* Active Run Banner */
+.activeRunBanner {
+  border-radius: 8px;
+  border: 1px solid rgba(var(--soc-rgb-00b4d8) / 0.25);
+  background: rgba(var(--soc-rgb-00b4d8) / 0.06);
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Action Banner */
+.actionBanner {
+  border-radius: 8px;
+  border: 1px solid rgba(var(--soc-rgb-5078a8) / 0.2);
+  background: rgba(var(--soc-rgb-0f172a) / 0.3);
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Label (section header) */
+.opsLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  margin-bottom: 0.5rem;
+}
+
 /* Drawer CSS */
 .drawerOverlay {
   position: fixed;
@@ -1233,4 +2196,462 @@
   .metricCard:hover {
     transform: none;
   }
+}
+
+/* ─── Scheduler Board ────────────────────────────────────────────────────────── */
+.schedulerWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.schedulerHealthStrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  background: rgba(var(--soc-rgb-0f172a) / 0.25);
+  border: 1px solid rgba(var(--soc-rgb-5078a8) / 0.1);
+}
+
+.schedulerHealthBadge {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.75rem;
+}
+
+.schedulerHealthItem {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--text-secondary, var(--soc-c-cbd5e1));
+}
+
+.schedulerHealthValue {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+}
+
+.schedulerHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.schedulerHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.schedulerHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.schedulerTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  margin: 0;
+}
+
+.schedulerTimestamp {
+  font-size: 0.68rem;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  margin: 0;
+}
+
+.schedulerActionBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 8px;
+  padding: 0.65rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.schedulerActionBannerSuccess {
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--accent-green, var(--soc-c-34d399));
+}
+
+.schedulerActionBannerError {
+  border: 1px solid rgba(244, 63, 94, 0.4);
+  background: rgba(244, 63, 94, 0.1);
+  color: var(--color-danger-400, #f43f5e);
+}
+
+.schedulerTableWrap {
+  overflow-x: auto;
+  border: 1px solid rgba(var(--soc-rgb-5078a8) / 0.1);
+  border-radius: 8px;
+  background: rgba(var(--soc-rgb-0f172a) / 0.2);
+}
+
+.schedulerJobCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.schedulerJobKey {
+  font-weight: 600;
+  font-size: 0.75rem;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  word-break: break-all;
+}
+
+.schedulerJobDesc {
+  font-size: 0.65rem;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  line-height: 1.3;
+}
+
+.schedulerDomainBadge {
+  display: inline-block;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.schedulerDomainBadgePlatform {
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--soc-c-60a5fa);
+}
+
+.schedulerDomainBadgeDataops {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--soc-c-34d399);
+}
+
+.schedulerDomainBadgeMaterialization {
+  background: rgba(168, 85, 247, 0.12);
+  color: var(--soc-c-a78bfa);
+}
+
+.schedulerDomainBadgePrefetch {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--soc-c-fbbf24);
+}
+
+.schedulerStatusBadge {
+  display: inline-block;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.schedulerStatusIndicators {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.schedulerLiveDot {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--accent-cyan, var(--soc-c-22d3ee));
+}
+
+.schedulerStuckBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  background: rgba(244, 63, 94, 0.12);
+  color: var(--color-danger-400, #f43f5e);
+}
+
+.schedulerStuckElapsed {
+  font-size: 0.6rem;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+}
+
+.schedulerFreshness {
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.schedulerActionsRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.3rem;
+}
+
+.schedulerActionCapsule {
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border: none;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  line-height: 1.4;
+}
+
+.schedulerActionCapsule:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.schedulerActionCapsule:not(:disabled):hover {
+  filter: brightness(1.3);
+}
+
+.schedulerActionEnable {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--soc-c-60a5fa);
+}
+
+.schedulerActionDisable {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--text-secondary, var(--soc-c-cbd5e1));
+}
+
+.schedulerActionRunNow {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--soc-c-34d399);
+}
+
+.schedulerActionAbort {
+  background: rgba(244, 63, 94, 0.15);
+  color: var(--color-danger-400, #f43f5e);
+}
+
+.schedulerHistoryBtn {
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border: none;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  background: rgba(var(--soc-rgb-64748b) / 0.15);
+  color: var(--text-muted, var(--soc-c-94a3b8));
+}
+
+.schedulerHistoryBtn:hover {
+  background: rgba(var(--soc-rgb-64748b) / 0.3);
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+}
+
+.schedulerModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.schedulerModalCard {
+  background: rgba(var(--soc-rgb-081734) / 0.55);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(var(--soc-rgb-5078a8) / 0.2);
+  border-radius: 12px;
+  padding: 1.25rem;
+  min-width: 360px;
+  max-width: 480px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+}
+
+.schedulerModalTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  margin: 0 0 0.5rem 0;
+}
+
+.schedulerModalBody {
+  font-size: 0.75rem;
+  color: var(--text-secondary, var(--soc-c-cbd5e1));
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.schedulerModalAction {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  color: var(--color-warning-500, #fbbf24);
+}
+
+.schedulerModalField {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  margin-bottom: 0.35rem;
+}
+
+.schedulerModalTextarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  background: rgba(var(--soc-rgb-0f172a) / 0.4);
+  border: 1px solid rgba(var(--soc-rgb-5078a8) / 0.2);
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  resize: vertical;
+  font-family: inherit;
+  margin-bottom: 1rem;
+}
+
+.schedulerModalTextarea:focus {
+  outline: none;
+  border-color: rgba(var(--soc-rgb-00b4d8) / 0.5);
+}
+
+.schedulerModalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.schedulerModalCancel {
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid rgba(var(--soc-rgb-5078a8) / 0.2);
+  background: transparent;
+  color: var(--text-secondary, var(--soc-c-cbd5e1));
+  transition: all 0.12s ease;
+}
+
+.schedulerModalCancel:hover {
+  background: rgba(var(--soc-rgb-5078a8) / 0.1);
+}
+
+.schedulerModalProceed {
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--color-warning-500, #fbbf24);
+  transition: all 0.12s ease;
+}
+
+.schedulerModalProceed:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.schedulerModalProceed:not(:disabled):hover {
+  background: rgba(245, 158, 11, 0.3);
+}
+
+/* History draw header */
+.schedulerDrawerHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.schedulerDrawerInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.schedulerDrawerTitle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  margin: 0;
+}
+
+.schedulerDrawerSub {
+  font-size: 0.68rem;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  word-break: break-all;
+  margin: 0;
+}
+
+.schedulerDrawerClose {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: none;
+  background: rgba(var(--soc-rgb-5078a8) / 0.1);
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.schedulerDrawerClose:hover {
+  background: rgba(var(--soc-rgb-5078a8) / 0.25);
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+}
+
+.schedulerDrawerCount {
+  font-size: 0.7rem;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  margin: 0 0 0.75rem 0;
+}
+
+.schedulerDrawerPagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(var(--soc-rgb-5078a8) / 0.1);
+}
+
+.schedulerDrawerPageInfo {
+  font-size: 0.7rem;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+}
+
+.schedulerDrawerPageBtns {
+  display: flex;
+  gap: 0.35rem;
 }

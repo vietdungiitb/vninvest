@@ -6,7 +6,6 @@ import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { SocCustomGroupManager } from "./SocCustomGroupManager.js";
 import { SocOwnershipBadge } from "./SocOwnershipBadge.js";
 import { SocStatusBadge } from "./SocStatusBadge.js";
-import { LucideIcon } from "../ui/lucide-icon.js";
 import { useSymbolGroups } from "../../hooks/useSymbolGroups.js";
 import { CUSTOM_GROUP_KEY, DEFAULT_SYMBOL_GROUP } from "../../constants/marketGroups.js";
 import styles from "./soc.module.css";
@@ -54,54 +53,6 @@ const MODE_OPTIONS = ["missing_only", "force_refresh"];
 const EXEC_OPTIONS = ["async", "sync"];
 const PREVIEW_PAGE_SIZE = 8;
 
-const LABEL_STYLE: React.CSSProperties = {
-  fontSize: "0.7rem",
-  fontWeight: 600,
-  color: "var(--text-muted, #94a3b8)",
-  marginBottom: "0.25rem",
-  display: "block",
-};
-
-const ACTIVE_RUN_STYLES: Record<string, React.CSSProperties> = {
-  card: {
-    padding: "0.75rem",
-    borderRadius: "8px",
-    background: "rgba(16, 185, 129, 0.06)",
-    border: "1px solid rgba(16, 185, 129, 0.2)",
-    marginBottom: "0.75rem",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "0.5rem",
-  },
-  title: {
-    fontWeight: 700,
-    fontSize: "var(--fs-xs, 0.75rem)",
-    color: "var(--color-success-500, #34d399)",
-  },
-  progressBar: {
-    height: "6px",
-    borderRadius: "3px",
-    background: "rgba(16, 185, 129, 0.15)",
-    overflow: "hidden",
-  } as React.CSSProperties,
-  progressFill: {
-    height: "100%",
-    borderRadius: "3px",
-    background: "linear-gradient(90deg, #34d399, #22d3ee)",
-    transition: "width 0.5s ease",
-  } as React.CSSProperties,
-  meta: {
-    display: "flex",
-    gap: "0.75rem",
-    fontSize: "0.6rem",
-    color: "var(--text-muted, #94a3b8)",
-    marginTop: "0.35rem",
-  } as React.CSSProperties,
-};
-
 const adapter = defaultCoreApiAdapter as unknown as {
   getSocDataOpsRunLogs: (page: number, pageSize: number) => Promise<{ results?: RunLogEntry[]; next?: string | null }>;
   purgeSocDataOpsRunLogs: (keep: number) => Promise<void>;
@@ -145,6 +96,7 @@ export function SocDataOpsOperationsSection() {
 
   // Drawer Custom Group State
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isPreviewDrawerOpen, setIsPreviewDrawerOpen] = useState(false);
 
   const fetchRunLogs = useCallback(async (page: number, pageSize: number) => {
     setRunLogsLoading(true);
@@ -201,6 +153,7 @@ export function SocDataOpsOperationsSection() {
     try {
       const result = await adapter.previewSocDataOpsPlanner(buildPayload());
       setPreview(result);
+      setIsPreviewDrawerOpen(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("soc.dataops.preview_failed"));
     } finally {
@@ -274,29 +227,29 @@ export function SocDataOpsOperationsSection() {
 
   // Render Left Form Components
   const renderDatasetCheckboxes = () =>
-    createElement(
-      "div",
-      { },
-      createElement("label", { style: LABEL_STYLE }, t("soc.dataops.backfill_datasets")),
       createElement(
         "div",
         { },
-        DATASETS_WITH_METADATA.map((ds) => {
-          const isSelected = selectedDatasets.includes(ds.key);
-          return createElement(
-            "label",
-            {
-              key: ds.key,
-              className: styles.dataTypeCard,
-              style: {
-                cursor: ds.supported ? "pointer" : "not-allowed",
-                display: "flex",
-                alignItems: "flex-start",
-                gap: "0.35rem",
-                opacity: ds.supported ? 1 : 0.5,
-                ...(isSelected && ds.supported ? { borderColor: "rgba(34, 211, 238, 0.4)" } : {}),
-              },
-            },
+        createElement("label", { className: styles.opsFormLabel }, t("soc.dataops.backfill_datasets")),
+          createElement(
+            "div",
+            { className: styles.opsCheckboxGrid },
+            DATASETS_WITH_METADATA.map((ds) => {
+              const isSelected = selectedDatasets.includes(ds.key);
+              return createElement(
+                "label",
+                {
+                  key: ds.key,
+                  className: [
+                    styles.dataTypeCard,
+                    !ds.supported ? styles.opsCheckboxLabelDisabled : "",
+                    isSelected && ds.supported ? styles.opsCheckboxLabelActive : "",
+                  ].filter(Boolean).join(" "),
+                  style: {
+                    cursor: ds.supported ? "pointer" : "not-allowed",
+                    opacity: ds.supported ? 1 : 0.5,
+                  },
+                },
             createElement("input", {
               type: "checkbox",
               checked: isSelected && ds.supported,
@@ -305,17 +258,17 @@ export function SocDataOpsOperationsSection() {
               }),
             createElement(
               "span",
-              { },
-              createElement("span", { }, t(`soc.dataops.dataset_${ds.key}`)),
+              { className: styles.opsCheckboxContent },
+              createElement("span", { className: styles.opsCheckboxName }, t(`soc.dataops.dataset_${ds.key}`)),
               !ds.supported
                 ? createElement(
                     "span",
-                    { },
+                    { className: styles.opsCheckboxComing },
                     "Coming soon",
                   )
                 : createElement(
                     "span",
-                    { },
+                    { className: styles.opsCheckboxDesc },
                     t(`soc.dataops.dataset_field_${ds.key}`),
                   ),
             ),
@@ -330,21 +283,22 @@ export function SocDataOpsOperationsSection() {
       { },
       createElement(
         "div",
-        { },
-        createElement("label", { style: { ...LABEL_STYLE, marginBottom: 0 } }, t("soc.dataops.backfill_symbol_group")),
+        { className: styles.opsGroupHeader },
+        createElement("label", { className: styles.opsFormLabel, style: { marginBottom: 0 } }, t("soc.dataops.backfill_symbol_group")),
         createElement(
           "button",
           {
             type: "button",
             onClick: () => setIsDrawerOpen(true),
             title: t("soc.dataops.ops_section_custom_groups"),
+            className: styles.actionBtn,
           },
           "\u2699 " + t("soc.dataops.subtab.config"),
         ),
       ),
       createElement(
         "div",
-        { },
+        { className: styles.opsGroupBar },
         allGroups.map((g) =>
           createElement(
             "button",
@@ -364,11 +318,11 @@ export function SocDataOpsOperationsSection() {
         ? createElement(
             "div",
             { },
-            createElement("label", { style: { ...LABEL_STYLE, marginBottom: "0.15rem" } }, t("soc.dataops.backfill_custom_symbols")),
+            createElement("label", { className: styles.opsFormLabel, style: { marginBottom: "0.15rem" } }, t("soc.dataops.backfill_custom_symbols")),
             createElement("textarea", {
               value: customSymbols,
               onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setCustomSymbols(e.target.value),
-              className: `styles.searchInput`,
+              className: styles.searchInput,
               placeholder: t("soc.dataops.backfill_custom_symbols_placeholder"),
               
             }),
@@ -379,56 +333,56 @@ export function SocDataOpsOperationsSection() {
     );
 
   const renderDateModeRow = () =>
-    createElement(
-      "div",
-      { },
       createElement(
-        "div", null,
-        createElement("label", { style: LABEL_STYLE }, t("soc.dataops.backfill_from_date")),
-        createElement("input", {
-          type: "date", value: dateFrom, className: styles.searchInput,
-          onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDateFrom(e.target.value),
-          onClick: (e: any) => { try { e.target.showPicker(); } catch {} },
-          onFocus: (e: any) => { try { e.target.showPicker(); } catch {} },
-        }),
-      ),
-      createElement(
-        "div", null,
-        createElement("label", { style: LABEL_STYLE }, t("soc.dataops.backfill_to_date")),
-        createElement("input", {
-          type: "date", value: dateTo, className: styles.searchInput,
-          onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDateTo(e.target.value),
-          onClick: (e: any) => { try { e.target.showPicker(); } catch {} },
-          onFocus: (e: any) => { try { e.target.showPicker(); } catch {} },
-        }),
-      ),
-      createElement(
-        "div", null,
-        createElement("label", { style: LABEL_STYLE }, t("soc.dataops.backfill_mode")),
-        createElement("select", {
-          value: mode, className: styles.searchInput,
-          onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setMode(e.target.value),
-        }, MODE_OPTIONS.map((m) =>
-          createElement("option", { key: m, value: m }, t(`soc.dataops.backfill_mode_${m}`)),
-        )),
-      ),
-      createElement(
-        "div", null,
-        createElement("label", { style: LABEL_STYLE }, t("soc.dataops.backfill_execution")),
-        createElement("select", {
-          value: executionMode, className: styles.searchInput,
-          onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setExecutionMode(e.target.value),
-        }, EXEC_OPTIONS.map((e) =>
-          createElement("option", { key: e, value: e }, t(`soc.dataops.backfill_exec_${e}`)),
-        )),
-      ),
-    );
+        "div",
+        { className: styles.opsConfigFields },
+        createElement(
+          "div", { className: styles.opsFormField },
+          createElement("label", { className: styles.opsFormLabel }, t("soc.dataops.backfill_from_date")),
+          createElement("input", {
+            type: "date", value: dateFrom, className: styles.searchInput,
+            onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDateFrom(e.target.value),
+            onClick: (e: any) => { try { e.target.showPicker(); } catch {} },
+            onFocus: (e: any) => { try { e.target.showPicker(); } catch {} },
+          }),
+        ),
+        createElement(
+          "div", { className: styles.opsFormField },
+          createElement("label", { className: styles.opsFormLabel }, t("soc.dataops.backfill_to_date")),
+          createElement("input", {
+            type: "date", value: dateTo, className: styles.searchInput,
+            onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDateTo(e.target.value),
+            onClick: (e: any) => { try { e.target.showPicker(); } catch {} },
+            onFocus: (e: any) => { try { e.target.showPicker(); } catch {} },
+          }),
+        ),
+        createElement(
+          "div", { className: styles.opsFormField },
+          createElement("label", { className: styles.opsFormLabel }, t("soc.dataops.backfill_mode")),
+          createElement("select", {
+            value: mode, className: styles.searchInput,
+            onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setMode(e.target.value),
+          }, MODE_OPTIONS.map((m) =>
+            createElement("option", { key: m, value: m }, t(`soc.dataops.backfill_mode_${m}`)),
+          )),
+        ),
+        createElement(
+          "div", { className: styles.opsFormField },
+          createElement("label", { className: styles.opsFormLabel }, t("soc.dataops.backfill_execution")),
+          createElement("select", {
+            value: executionMode, className: styles.searchInput,
+            onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setExecutionMode(e.target.value),
+          }, EXEC_OPTIONS.map((e) =>
+            createElement("option", { key: e, value: e }, t(`soc.dataops.backfill_exec_${e}`)),
+          )),
+        ),
+      );
 
   const renderReasonInput = () =>
-    createElement(
-      "div",
-      { },
-      createElement("label", { style: LABEL_STYLE }, t("soc.dataops.reason")),
+      createElement(
+        "div",
+        { className: styles.opsFormField },
+        createElement("label", { className: styles.opsFormLabel }, t("soc.dataops.reason")),
       createElement("input", {
         type: "text", value: reason, className: styles.searchInput,
         placeholder: t("soc.dataops.reason_placeholder"),
@@ -439,7 +393,7 @@ export function SocDataOpsOperationsSection() {
   const renderDryRunCheckbox = () =>
     createElement(
       "label",
-      { },
+      { className: styles.opsDryRunRow },
       createElement("input", {
         type: "checkbox", checked: dryRun,
         onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDryRun(e.target.checked),
@@ -450,17 +404,7 @@ export function SocDataOpsOperationsSection() {
   const renderActionRow = () =>
     createElement(
       "div",
-      { },
-      createElement(
-        "button",
-        {
-          className: `styles.actionBtn`,
-          onClick: handlePreview,
-          disabled: previewing || submitting,
-          
-        },
-        previewing ? t("soc.dataops.planner_preview_loading") : t("soc.dataops.planner_preview"),
-      ),
+      { className: styles.opsFormActions },
       createElement(
         "button",
         {
@@ -470,6 +414,16 @@ export function SocDataOpsOperationsSection() {
         },
         submitting ? t("soc.dataops.planner_run_loading") : t("soc.dataops.backfill_run"),
       ),
+      createElement(
+        "button",
+        {
+          className: styles.actionBtn,
+          onClick: handlePreview,
+          disabled: previewing || submitting,
+          
+        },
+        previewing ? t("soc.dataops.planner_preview_loading") : t("soc.dataops.planner_preview"),
+      ),
     );
 
   // Render Right Column Components
@@ -478,17 +432,17 @@ export function SocDataOpsOperationsSection() {
     const progress = typeof activeRun.progress === "number" ? activeRun.progress : 0;
     return createElement(
       "div",
-      { style: ACTIVE_RUN_STYLES.card },
+      { className: styles.opsActiveBanner },
       createElement(
         "div",
-        { style: ACTIVE_RUN_STYLES.header },
-        createElement("span", { style: ACTIVE_RUN_STYLES.title },
+        { className: styles.opsActiveBannerHeader },
+        createElement("span", { className: styles.opsActiveBannerTitle },
           `${t("soc.dataops.backfill_active_run_label")}: ${activeRun.run_id.slice(0, 8)}...`,
         ),
         createElement(
           "button",
           {
-            className: `styles.actionBtn`,
+            className: styles.actionBtn,
             onClick: () => handleAbort(activeRun.run_id),
             
           },
@@ -497,12 +451,12 @@ export function SocDataOpsOperationsSection() {
       ),
       createElement(
         "div",
-        { style: ACTIVE_RUN_STYLES.progressBar },
-        createElement("div", { style: { ...ACTIVE_RUN_STYLES.progressFill, width: `${Math.min(progress, 100)}%` } }),
+        { className: styles.progressBar },
+        createElement("div", { className: styles.progressBarFill, style: { width: `${Math.min(progress, 100)}%`, background: "linear-gradient(90deg, #34d399, #22d3ee)" } }),
       ),
       createElement(
         "div",
-        { style: ACTIVE_RUN_STYLES.meta },
+        { className: styles.opsActiveBannerMeta },
         createElement("span", null, `${activeRun.dataset || ""}`),
         createElement("span", null, `${progress.toFixed(0)}%`),
       ),
@@ -524,7 +478,7 @@ export function SocDataOpsOperationsSection() {
     const headerBtn = createElement(
       "button",
       {
-        className: `styles.filterBtn`,
+        className: styles.filterBtn,
         onClick: () => setExpanded(!expanded),
         
       },
@@ -567,7 +521,7 @@ export function SocDataOpsOperationsSection() {
                 "div",
                 { },
                 createElement("button", {
-                  className: `styles.actionBtn`,
+                  className: styles.actionBtn,
                   onClick: () => setPage(Math.max(0, page - 1)),
                   disabled: page === 0,
                   
@@ -575,7 +529,7 @@ export function SocDataOpsOperationsSection() {
                 createElement("span", { },
                   `${page + 1}/${totalPages}`),
                 createElement("button", {
-                  className: `styles.actionBtn`,
+                  className: styles.actionBtn,
                   onClick: () => setPage(Math.min(totalPages - 1, page + 1)),
                   disabled: page >= totalPages - 1,
                   
@@ -588,19 +542,9 @@ export function SocDataOpsOperationsSection() {
   };
 
   const renderPreviewResults = () => {
-    if (!preview) {
-      return createElement(
-        "div",
-        { className: styles.emptyState },
-        createElement(LucideIcon, { name: "ClipboardList", className: styles.emptyStateIcon }),
-        createElement("p", { }, t("soc.dataops.planner_preview_empty")),
-      );
-    }
-
     return createElement(
       "div",
-      { className: styles.sectionCard },
-      createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.planner_preview_summary")),
+      { },
       createElement(
         "div",
         { className: styles.metricGrid },
@@ -608,13 +552,13 @@ export function SocDataOpsOperationsSection() {
           "div",
           { className: styles.metricCard, onClick: () => setPlannedExpanded(!plannedExpanded), style: { cursor: "pointer", border: plannedExpanded ? "1px solid var(--accent-cyan, #06b6d4)" : undefined } },
           createElement("div", { className: styles.metricLabel }, t("soc.dataops.planner_planned_items")),
-          createElement("div", { className: `styles.metricValue`,  }, String(plannedCount)),
+          createElement("div", { className: styles.metricValue }, String(plannedCount)),
         ),
         createElement(
           "div",
           { className: styles.metricCard, onClick: () => setSkippedExpanded(!skippedExpanded), style: { cursor: "pointer", border: skippedExpanded ? "1px solid var(--text-muted, #94a3b8)" : undefined } },
           createElement("div", { className: styles.metricLabel }, t("soc.dataops.planner_skipped_items")),
-          createElement("div", { className: `styles.metricValue`,  }, String(skippedCount)),
+          createElement("div", { className: styles.metricValue }, String(skippedCount)),
         ),
       ),
       renderItemsTable(
@@ -649,7 +593,7 @@ export function SocDataOpsOperationsSection() {
             {
               value: runLogsPageSize,
               onChange: handlePageSizeChange,
-              className: `styles.searchInput`,
+              className: styles.searchInput,
               
             },
             [5, 10, 15, 20].map((size) =>
@@ -660,7 +604,7 @@ export function SocDataOpsOperationsSection() {
             "button",
             {
               onClick: handlePurgeLogs,
-              className: `styles.actionBtn`,
+              className: styles.actionBtn,
               
             },
             t("soc.dataops.purge_logs"),
@@ -673,45 +617,40 @@ export function SocDataOpsOperationsSection() {
           ? createElement("p", { className: styles.emptyState }, t("soc.dataops.no_run_logs"))
           : createElement(
               "div",
-              { },
+              { style: { display: "flex", flexDirection: "column", gap: "0.35rem" } },
               runLogs.map((log, i) =>
                 createElement(
                   "div",
                   {
                     key: log.run_id || i,
+                    className: styles.opsRunLogCard,
                     },
                   createElement(
                     "div",
-                    { },
-                    createElement(
-                      "div",
-                      null,
-                      createElement("span", { }, t(`soc.dataops.dataset_${log.dataset}`) || log.dataset),
-                      log.message
-                        ? createElement("div", { }, log.message)
-                        : null,
-                    ),
+                    { className: styles.opsRunLogRow },
+                    createElement("span", { style: { fontWeight: 600 } }, log.dataset ? t(`soc.dataops.dataset_${log.dataset}`) || log.dataset : "—"),
                     createElement(SocStatusBadge, {
                       status: log.status,
-                      label: t(`soc.dataops.run_status_${log.status}`) || log.status,
+                      label: log.status ? t(`soc.dataops.run_status_${log.status}`) || log.status : "—",
                       dot: false,
                     }),
                   ),
                   (log.planned != null || log.inserted != null || log.updated != null || log.skipped_existing != null || log.failed != null)
                     ? createElement(
                         "div",
-                        { },
-                        log.planned != null ? createElement("span", null, `${t("soc.dataops.backfill_planned")}: ${log.planned}`) : null,
-                        log.inserted != null ? createElement("span", null, `${t("soc.dataops.backfill_inserted")}: ${log.inserted}`) : null,
-                        log.updated != null ? createElement("span", null, `${t("soc.dataops.backfill_updated")}: ${log.updated}`) : null,
-                        log.skipped_existing != null ? createElement("span", { }, `${t("soc.dataops.backfill_skipped")}: ${log.skipped_existing}`) : null,
-                        log.failed != null ? createElement("span", { }, `${t("soc.dataops.backfill_failed")}: ${log.failed}`) : null,
+                        { className: styles.opsRunLogStats },
+                        log.planned != null ? createElement("span", { className: styles.opsRunLogStat }, `${t("soc.dataops.backfill_planned")}: ${log.planned}`) : null,
+                        log.inserted != null ? createElement("span", { className: styles.opsRunLogStat }, `${t("soc.dataops.backfill_inserted")}: ${log.inserted}`) : null,
+                        log.updated != null ? createElement("span", { className: styles.opsRunLogStat }, `${t("soc.dataops.backfill_updated")}: ${log.updated}`) : null,
+                        log.skipped_existing != null ? createElement("span", { className: styles.opsRunLogStat }, `${t("soc.dataops.backfill_skipped")}: ${log.skipped_existing}`) : null,
+                        log.failed != null ? createElement("span", { className: styles.opsRunLogStat }, `${t("soc.dataops.backfill_failed")}: ${log.failed}`) : null,
                       )
                     : null,
                   createElement(
                     "div",
-                    { },
-                    log.started_at?.split("T").join(" ")?.slice(0, 19) || "—",
+                    { className: styles.opsRunLogMeta },
+                    createElement("span", null, log.started_at?.split("T").join(" ")?.slice(0, 19) || "—"),
+                    log.message ? createElement("span", null, log.message) : null,
                   ),
                 ),
               ),
@@ -723,7 +662,7 @@ export function SocDataOpsOperationsSection() {
                   {
                     onClick: () => setRunLogsPage((p) => Math.max(1, p - 1)),
                     disabled: runLogsPage <= 1,
-                    className: `styles.actionBtn`,
+                    className: styles.actionBtn,
                     
                   },
                   "\u25C0 " + t("soc.actions.prev"),
@@ -738,7 +677,7 @@ export function SocDataOpsOperationsSection() {
                   {
                     onClick: () => setRunLogsPage((p) => p + 1),
                     disabled: !runLogsHasMore,
-                    className: `styles.actionBtn`,
+                    className: styles.actionBtn,
                     
                   },
                   t("soc.actions.next") + " \u25B6",
@@ -750,45 +689,44 @@ export function SocDataOpsOperationsSection() {
   return createElement(
     "div",
     { },
-    // Banner Cảnh báo / Badge Phân quyền
     createElement(
       "div",
       { },
       createElement(SocOwnershipBadge, { team: "core", writable: true, accessLevel: "service_ops" }),
     ),
-    // Bố cục lưới 2 cột chính
-    createElement(
-      "div",
-      { className: styles.opsLayoutContainer },
-      // Cột trái (Form cấu hình)
       createElement(
         "div",
-        { className: styles.opsLeftCol },
+        { className: styles.sectionCard },
+        createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.backfill_form_title")),
         createElement(
           "div",
-          { className: styles.sectionCard },
-          createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.backfill_form_title")),
-          renderDatasetCheckboxes(),
-          renderSymbolGroupSelect(),
-          renderDateModeRow(),
-          renderReasonInput(),
-          renderDryRunCheckbox(),
-          error ? createElement("div", { className: `styles.inlineError`,  }, error) : null,
-          success ? createElement("div", { className: `styles.inlineSuccess`,  }, success) : null,
-          renderActionRow(),
+          { className: styles.opsFormGrid },
+          // Left: Dataset checkboxes
+          createElement(
+            "div",
+            { className: styles.opsFormLeft },
+            createElement("div", { className: styles.opsSectionHeader }, t("soc.dataops.backfill_datasets")),
+            renderDatasetCheckboxes(),
+          ),
+          // Right: Config fields
+          createElement(
+            "div",
+            { className: styles.opsFormRight },
+            createElement("div", { className: styles.opsSectionHeader }, t("soc.dataops.backfill_symbol_group")),
+            renderSymbolGroupSelect(),
+            createElement("hr", { className: styles.opsSeparator }),
+            renderDateModeRow(),
+            renderReasonInput(),
+            renderDryRunCheckbox(),
+          ),
         ),
-      ),
-      // Cột phải (Active run + Preview console)
-      createElement(
-        "div",
-        { className: styles.opsRightCol },
+        error ? createElement("div", { className: styles.inlineError }, error) : null,
+        success ? createElement("div", { className: styles.inlineSuccess }, success) : null,
+        renderActionRow(),
         renderActiveRunBanner(),
-        renderPreviewResults(),
       ),
-    ),
-    // Phần dưới: Nhật ký chạy (Run Logs)
     renderRunLogsSection(),
-    // Ngăn kéo trượt Custom Group Manager Drawer
+    // Custom Group Drawer
     isDrawerOpen && typeof document !== "undefined"
       ? createPortal(
           createElement(
@@ -800,19 +738,47 @@ export function SocDataOpsOperationsSection() {
               { className: styles.drawerContent },
               createElement(
                 "div",
-                { },
+                { className: styles.opsDrawerHeader },
                 createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.backfill_custom_group_label")),
                 createElement(
                   "button",
                   {
                     onClick: () => setIsDrawerOpen(false),
-                    className: `styles.actionBtn`,
-                    
+                    className: styles.opsDrawerClose,
                   },
                   "\u2715",
                 ),
               ),
               createElement(SocCustomGroupManager, { onGroupsChanged: reloadGroups }),
+            ),
+          ),
+          document.body
+        )
+      : null,
+    // Preview Planner Drawer
+    isPreviewDrawerOpen && typeof document !== "undefined" && preview
+      ? createPortal(
+          createElement(
+            "div",
+            { },
+            createElement("div", { className: styles.drawerOverlay, onClick: () => setIsPreviewDrawerOpen(false) }),
+            createElement(
+              "div",
+              { className: [styles.drawerContent, styles.opsPreviewDrawer].join(" ") },
+              createElement(
+                "div",
+                { className: styles.opsDrawerHeader },
+                createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.planner_preview_summary")),
+                createElement(
+                  "button",
+                  {
+                    onClick: () => setIsPreviewDrawerOpen(false),
+                    className: styles.opsDrawerClose,
+                  },
+                  "\u2715",
+                ),
+              ),
+              renderPreviewResults(),
             ),
           ),
           document.body

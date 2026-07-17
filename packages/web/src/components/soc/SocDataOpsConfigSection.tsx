@@ -225,7 +225,7 @@ export function SocDataOpsConfigSection() {
           "button",
           {
             onClick: handlePreview,
-            className: `styles.actionBtn`,
+            className: styles.actionBtn,
             
           },
           t("soc.actions.preview"),
@@ -234,7 +234,7 @@ export function SocDataOpsConfigSection() {
           "button",
           {
             onClick: () => setEditConfig(JSON.stringify(envelope?.config || {}, null, 2)),
-            className: `styles.actionBtn`,
+            className: styles.actionBtn,
             
           },
           t("soc.actions.edit"),
@@ -272,7 +272,7 @@ export function SocDataOpsConfigSection() {
               {
                 onClick: () => setAuditPage((p) => Math.max(1, p - 1)),
                 disabled: auditPage <= 1,
-                className: `styles.actionBtn`,
+                className: styles.actionBtn,
                 
               },
               "\u25C0 " + t("soc.actions.prev"),
@@ -287,7 +287,7 @@ export function SocDataOpsConfigSection() {
               {
                 onClick: () => setAuditPage((p) => p + 1),
                 disabled: !auditHasMore,
-                className: `styles.actionBtn`,
+                className: styles.actionBtn,
                 
               },
               t("soc.actions.next") + " \u25B6",
