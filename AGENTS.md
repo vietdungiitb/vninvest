@@ -1,9 +1,8 @@
 
 ## Goal
-Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã xong. Chuyển sang 3 priority mới: split VNInvestCharts.js (orchestration layer), refactor renderSeries() trong DynamicChart.js (switch → registry), split VNInvestCharts.contract.test.js (theo feature domain).
+Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã xong. Maintenance và build verification cho codebase sau khi thay local vninvestcharts component bằng npm package `vninvestcharts-widget`.
 
 ## Constraints & Preferences
-- Pure createElement pattern (không JSX) — pre-commit hook react/jsx-no-literals. Với UI phức tạp dùng helper factory functions.
 - SOC glassmorphism patterns, soc.module.css tokens, i18n qua LangContext.
 - API calls dùng defaultCoreApiAdapter cast as unknown as { … }.
 - Vietnamese labels full dấu, theo bảng thuật ngữ thống nhất.
@@ -18,20 +17,21 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - Step 2a–2d: Inventory section rewrite — SocDataInventorySection.tsx — dynamic data types grid, coverage by group table (6 columns, color-coded ratio), queue tiers accordion, year distribution bar chart.
 - Step 3a–3c: Operations section rewrite — SocDataOpsBackfillForm.tsx — dataset checkboxes, VN100+CUSTOM groups, Preview+Run flow với Planner Console, Run Logs, inline error/success. tsc + build pass.
 - Documented full chart refactor analysis: docs/CHART_REFACTOR_ANALYSIS_20260625.md.
+- **Migration to vninvestcharts-widget (npm)**: Xoá local component tree `packages/web/src/components/vninvestcharts/` (+ `packages/vn-kline-engine-core/`, `packages/vn-kline-engine-react/`) — 745 files, -102k lines. Import chuyển sang `vninvestcharts-widget` ^1.2.5. Path aliases trong tsconfig + vite.config dọn dẹp. WatchlistDetailPanel sửa props `hideX` → `showX`.
+- **Priority 2 (renderSeries registry)**: Hoàn thành trong commit `3df5ff6c`. DynamicChart renderSeries() chuyển 40 case switch → SeriesRendererRegistry dispatcher, tách ~200 dòng.
+- **Priority 1 & 3**: Obsolete — local VNInvestCharts.js và contract tests đã bị xoá cùng component tree.
 
 ### In Progress
-- (chưa bắt đầu 3 priority chart refactor)
+- (pending commit + build verify)
 
 ## Next Steps
-1. Priority 1 — Split VNInvestCharts.js: extract useLocalStorageState hook, decompose rendering sub-components, tách pane chrome helpers
-2. Priority 2 — Refactor renderSeries() trong DynamicChart.js: tạo SeriesRendererRegistry, chuyển 40 case switch → registry dispatcher
-3. Priority 3 — Split VNInvestCharts.contract.test.js: tách 73 tests thành 4 file theo domain (core, drawingSelection, drawingCreation, drawingManipulation)
-4. Verify npx tsc --noEmit, npm run build
+1. Commit tất cả changes: staged deletions (745 files), unstaged modifications (WatchlistDetailPanel, tsconfig, vite.config, package.json, package-lock.json), untracked files (chartAdapter.js, vninvestcharts-widget.d.ts)
+2. Run npx tsc --noEmit, npm run build
+3. Xác định priority mới dựa trên SOC DataOps feature gaps còn lại
 
 ## Key Decisions & Metrics
-- VNInvestCharts.js — 1,782 dòng thực tế (user estimate 3,160). VNInvestChartsContent forwardRef (58-1745) là target chính.
-- DynamicChart.js renderSeries() — 140 dòng thực tế (user estimate 700). 40 switch-case, 3 pattern lặp (line/compound/bar).
-- VNInvestCharts.contract.test.js — 3,773 dòng thực tế (user estimate 8,912). 73 tests, 1 describe block, 5 nhóm domain. Đã có 35+ split test files pattern.
-- renderSeries() line count: thực tế 140 dòng, không phải 700. VNInvestCharts.js: 1,782 dòng (khác user estimate 3,160).
-- DynamicChart tồn tại ở cả packages/web (JS ESM) và frontend/legacy (TSX) — cần verify sync.
-- SeriesRegistry.js hiện chỉ quản lý theme/style — cần mở rộng cho component binding.
+- Local `vninvestcharts/` component tree (~745 files, -102k lines) replaced by npm package `vninvestcharts-widget` ^1.2.5
+- New adapter file: `packages/web/src/adapters/chartAdapter.js` — bridges core API → chart bar format
+- New type declarations: `packages/web/src/types/vninvestcharts-widget.d.ts` — 44 lines
+- renderSeries() registry refactor (Priority 2) completed in commit `3df5ff6c`
+- Priority 1 (VNInvestCharts.js split) và Priority 3 (contract test split) obsolete — component đã xoá

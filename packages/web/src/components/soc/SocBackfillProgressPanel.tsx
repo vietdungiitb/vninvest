@@ -1,4 +1,4 @@
-import { createElement, useEffect, useState } from "react";
+import { createElement, useCallback, useEffect, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { statusColor, getStatusBadgeStyle } from "./socStatusColors.js";

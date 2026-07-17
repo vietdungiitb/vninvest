@@ -1,6 +1,7 @@
+import "vninvestcharts-widget/dist/index.css";
 import { createElement, useEffect, useCallback } from "react";
 import { useWatchlist } from "./WatchlistContext";
-import { VNInvestCharts } from "../../../components/vninvestcharts/src/widget/VNInvestCharts.js";
+import { VNInvestCharts } from "vninvestcharts-widget";
 
 const Chart = VNInvestCharts as any;
 
@@ -59,8 +60,8 @@ export function WatchlistDetailPanel() {
         createElement(Chart, {
           symbol: activeSymbolDetail,
           theme: "dark",
-          hideToolbar: true,
-          hideFooter: true
+          showToolbar: false,
+          showFooter: false
         })
       ),
 
