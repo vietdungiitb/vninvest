@@ -21,17 +21,15 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - **Priority 2 (renderSeries registry)**: Hoàn thành trong commit `3df5ff6c`. DynamicChart renderSeries() chuyển 40 case switch → SeriesRendererRegistry dispatcher, tách ~200 dòng.
 - **Priority 1 & 3**: Obsolete — local VNInvestCharts.js và contract tests đã bị xoá cùng component tree.
 
-### In Progress
-- (pending commit + build verify)
-
-## Next Steps
-1. Commit tất cả changes: staged deletions (745 files), unstaged modifications (WatchlistDetailPanel, tsconfig, vite.config, package.json, package-lock.json), untracked files (chartAdapter.js, vninvestcharts-widget.d.ts)
-2. Run npx tsc --noEmit, npm run build
-3. Xác định priority mới dựa trên SOC DataOps feature gaps còn lại
+### Done (2026-07-17)
+- **React 19 peer-dep TDZ fix**: `vninvestcharts-widget` ^1.2.5 declares `peerDependencies: react ^19.0.0` nhưng app là React 18.3.1. Static import trong `VNStockChartPanel.js` gây TDZ `Cannot access 'N' before initialization` lúc load `StockDetailPage`. Quyết định: lazy-load widget qua dynamic `import()` trong `useEffect` (Option B), KHÔNG upgrade app lên React 19 — vì recharts v2 peer-dep không hỗ trợ React 19 (sẽ ép recharts v3 migration rủi ro). Widget tách thành async chunk riêng (`index-C5jP24jD.js`, 2.1MB), `StockDetailPage` giảm từ ~3.5MB → 58KB. tsc + build pass.
+- **SOC DataOps gap analysis — ALL 20 gaps CLOSED**: P0 #1–5, P1 #6–11, P2 #12–16, P3 #17–20 đều đã implement (Inventory/Operations/Monitor/Config sections). `docs/GAP_ANALYSIS_DATAOPS_LEGACY_VS_SAAS_NATIVE.md` đã stale → đánh dấu hoàn thành.
 
 ## Key Decisions & Metrics
 - Local `vninvestcharts/` component tree (~745 files, -102k lines) replaced by npm package `vninvestcharts-widget` ^1.2.5
 - New adapter file: `packages/web/src/adapters/chartAdapter.js` — bridges core API → chart bar format
 - New type declarations: `packages/web/src/types/vninvestcharts-widget.d.ts` — 44 lines
 - renderSeries() registry refactor (Priority 2) completed in commit `3df5ff6c`
+- **Widget lazy-load** (Option B): React 18 giữ nguyên, tránh recharts v3 migration. Widget code-split thành async chunk.
+- **SOC DataOps parity: ~95%+** (tất cả 20 feature gaps đóng).
 - Priority 1 (VNInvestCharts.js split) và Priority 3 (contract test split) obsolete — component đã xoá

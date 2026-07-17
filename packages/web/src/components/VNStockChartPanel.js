@@ -1,6 +1,5 @@
 import 'vninvestcharts-widget/dist/index.css';
 import React, { createElement, useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { VNInvestCharts, widgetMessagesVi } from 'vninvestcharts-widget';
 import { createChartStockDataAdapter } from '../adapters/chartAdapter.js';
 import { mapToOHLCVBars, mapToWhaleOrders, mapToCvdSeries } from '../utils/VNInvestSignalAdapter.js';
 import { useViewportWhaleMarkers } from '../features/stock-detail/hooks/useViewportWhaleMarkers.js';
@@ -41,6 +40,26 @@ export default function VNStockChartPanel({
   enableInstitutionalStrength = false,
 }) {
   const { t } = useI18n();
+
+  const [widgetModule, setWidgetModule] = useState(null);
+  const [widgetError, setWidgetError] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    import('vninvestcharts-widget')
+      .then((mod) => {
+        if (active) setWidgetModule(mod);
+      })
+      .catch((err) => {
+        if (active) setWidgetError(err instanceof Error ? err.message : String(err));
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const VNInvestCharts = widgetModule?.VNInvestCharts;
+  const widgetMessagesVi = widgetModule?.widgetMessagesVi;
 
   const adapter = useMemo(() => createChartStockDataAdapter({ env }), [env]);
 
@@ -177,18 +196,31 @@ export default function VNStockChartPanel({
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
 
-  const chartBody = loading
+  const chartBody = !VNInvestCharts
     ? e(
         'div',
         { className: 'absolute inset-0 flex items-center justify-center bg-slate-950/40 text-sm text-slate-500' },
         e(
           'div',
           { className: 'flex flex-col items-center gap-2' },
-          e('div', { className: 'animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-500' }),
-          e('span', null, t('vninvest.loading', { defaultValue: 'Đang tải dữ liệu biểu đồ...' })),
+          widgetError
+            ? e('span', { className: 'text-rose-400' }, t('vninvest.load_error', { defaultValue: 'Không thể tải biểu đồ' }))
+            : e('div', { className: 'animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-500' }),
+          e('span', null, widgetError ? widgetError : t('vninvest.loading', { defaultValue: 'Đang tải dữ liệu biểu đồ...' })),
         ),
       )
-    : e(
+    : loading
+      ? e(
+          'div',
+          { className: 'absolute inset-0 flex items-center justify-center bg-slate-950/40 text-sm text-slate-500' },
+          e(
+            'div',
+            { className: 'flex flex-col items-center gap-2' },
+            e('div', { className: 'animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-500' }),
+            e('span', null, t('vninvest.loading', { defaultValue: 'Đang tải dữ liệu biểu đồ...' })),
+          ),
+        )
+      : e(
         VNInvestCharts,
         {
           adapter,

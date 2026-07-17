@@ -1,5 +1,7 @@
 # Gap Analysis: Legacy DataOpsPanel.jsx vs SaaS Native
 
+> **⚠️ DOC STALE — COMPLETED (2026-07-17)**. Tất cả 20 feature gaps (P0 #1–5, P1 #6–11, P2 #12–16, P3 #17–20) đã được implement trong `packages/web/src/components/soc/` (Inventory / Operations / Monitor / Config sections). SOC DataOps parity đạt ~95%+. Bảng dưới chỉ giữ làm tài liệu tham khảo lịch sử; đừng dùng làm backlog.
+
 Phân tích so sánh chi tiết từng tính năng của legacy `frontend/src/components/soc/DataOpsPanel.jsx` (2777 dòng, 56k chars) so với implementation hiện tại trong `packages/web/src/components/soc/`.
 
 ## 1. Tổng quan
