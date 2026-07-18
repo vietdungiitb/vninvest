@@ -132,6 +132,49 @@ class CoreTenant(models.Model):
         super().save(*args, **kwargs)
 
 
+class TenantSettings(models.Model):
+    """Per-tenant display and locale preferences."""
+
+    class ThemeChoices(models.TextChoices):
+        DARK = 'dark', 'Dark'
+        LIGHT = 'light', 'Light'
+
+    class LocaleChoices(models.TextChoices):
+        VI = 'vi', 'Tiếng Việt'
+        EN = 'en', 'English'
+
+    tenant = models.OneToOneField(
+        CoreTenant,
+        on_delete=models.CASCADE,
+        related_name='settings',
+        verbose_name='Tenant',
+    )
+    logo_url = models.URLField(blank=True, null=True, verbose_name='Logo URL')
+    timezone = models.CharField(max_length=64, default='Asia/Ho_Chi_Minh', verbose_name='Timezone')
+    locale = models.CharField(
+        max_length=10,
+        choices=LocaleChoices.choices,
+        default=LocaleChoices.VI,
+        verbose_name='Locale',
+    )
+    theme = models.CharField(
+        max_length=20,
+        choices=ThemeChoices.choices,
+        default=ThemeChoices.DARK,
+        verbose_name='Theme',
+    )
+    custom_domain = models.CharField(max_length=255, blank=True, null=True, verbose_name='Custom domain')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Tenant Settings'
+        verbose_name_plural = 'Tenant Settings'
+
+    def __str__(self):
+        return f'Settings for {self.tenant.display_name}'
+
+
 class CoreServiceAccount(models.Model):
     class StatusChoices(models.TextChoices):
         ACTIVE = 'active', 'Active'
@@ -210,6 +253,14 @@ class CorePATCredential(models.Model):
         related_name='pat_credentials',
         verbose_name='Service account',
     )
+    issued_for_member = models.ForeignKey(
+        'TenantMember',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='pat_credentials',
+        verbose_name='Issued for tenant member',
+    )
     label = models.CharField(max_length=120, blank=True, default='', verbose_name='Display label')
     token_prefix = models.CharField(max_length=12, db_index=True, verbose_name='Token prefix (first 12 chars)')
     token_secret_hash = models.CharField(max_length=64, unique=True, db_index=True, verbose_name='HMAC-SHA256 hash of token')
@@ -266,7 +317,9 @@ class CorePATCredential(models.Model):
     def resolve_from_raw_secret(cls, raw_secret: str):
         from django.utils import timezone
         prefix = _extract_pat_prefix(raw_secret)
-        candidates = cls.objects.select_related('service_account__tenant').filter(token_prefix=prefix)
+        candidates = cls.objects.select_related(
+            'service_account__tenant', 'issued_for_member'
+        ).filter(token_prefix=prefix)
         hashed = _hash_pat_secret(raw_secret)
         for credential in candidates:
             if hmac.compare_digest(credential.token_secret_hash, hashed):
@@ -276,7 +329,7 @@ class CorePATCredential(models.Model):
         return None
 
     @classmethod
-    def issue_for_service_account(cls, service_account: CoreServiceAccount, scopes: list[str], expires_at=None, label: str = '', audit_reason: str = '', allowed_cidr_blocks: list[str] = None, is_human_session: bool = False):
+    def issue_for_service_account(cls, service_account: CoreServiceAccount, scopes: list[str], expires_at=None, label: str = '', audit_reason: str = '', allowed_cidr_blocks: list[str] = None, is_human_session: bool = False, issued_for_member=None):
         from django.utils import timezone
         from django.core.exceptions import ValidationError
 
@@ -307,6 +360,7 @@ class CorePATCredential(models.Model):
             audit_reason=audit_reason,
             allowed_cidr_blocks=allowed_cidr_blocks or [],
             is_human_session=is_human_session,
+            issued_for_member=issued_for_member,
         )
         return credential, raw_secret
 
@@ -469,6 +523,57 @@ class UserProfile(models.Model):
         return f'UserProfile({self.user.username})'
 
 
+class TenantCustomRole(models.Model):
+    """
+    Custom role for fine-grained tenant permission management.
+
+    Permissions are stored as a list of strings (e.g. ['member:read', 'sa:write']).
+    System roles (owner/admin/editor/viewer) are seeded via SYSTEM_ROLE_PERMISSIONS
+    dict in resolve_tenant.py. Custom roles override system role permissions
+    via TenantMember.custom_role FK.
+    """
+    public_id = models.CharField(
+        max_length=36,
+        unique=True,
+        db_index=True,
+        editable=False,
+    )
+    tenant = models.ForeignKey(
+        'CoreTenant',
+        on_delete=models.CASCADE,
+        related_name='custom_roles',
+    )
+    name = models.CharField(max_length=64)
+    permissions = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='List of permission tokens, e.g. ["member:read", "sa:write"]',
+    )
+    is_system = models.BooleanField(
+        default=False,
+        help_text='System roles cannot be edited/deleted by users.',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Tenant Custom Role'
+        verbose_name_plural = 'Tenant Custom Roles'
+        unique_together = [('tenant', 'name')]
+        indexes = [
+            models.Index(fields=['tenant', 'is_system']),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.name} ({self.tenant.display_name})'
+
+    def save(self, *args, **kwargs):
+        if not self.public_id:
+            import uuid
+            self.public_id = str(uuid.uuid4())
+        super().save(*args, **kwargs)
+
+
 class TenantMember(models.Model):
     """
     Represents a user's membership in a tenant.
@@ -503,6 +608,14 @@ class TenantMember(models.Model):
         choices=RoleChoices.choices,
         default=RoleChoices.VIEWER,
         db_index=True,
+    )
+    custom_role = models.ForeignKey(
+        'TenantCustomRole',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='members',
+        help_text='Custom role override. When set, permissions come from custom_role.permissions instead of system role.',
     )
     invited_by = models.ForeignKey(
         User,
@@ -575,6 +688,14 @@ class TenantInvite(models.Model):
         max_length=32,
         choices=TenantMember.RoleChoices.choices,
         default=TenantMember.RoleChoices.VIEWER,
+    )
+    custom_role = models.ForeignKey(
+        'TenantCustomRole',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='invites',
+        help_text='Optional custom role to assign on accept (overrides system role).',
     )
     status = models.CharField(
         max_length=32,

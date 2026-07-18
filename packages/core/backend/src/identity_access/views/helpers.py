@@ -130,6 +130,8 @@ def _build_abilities(user, tenant: CoreTenant) -> list:
         {'action': 'manage', 'subject': 'TenantSSOAdmin'},
         {'action': 'read', 'subject': 'TenantReportsView'},
         {'action': 'manage', 'subject': 'TenantReportsView'},
+        {'action': 'read', 'subject': 'TenantRoleAdmin'},
+        {'action': 'manage', 'subject': 'TenantRoleAdmin'},
     ]
 
     _paid_plans = {

@@ -1,8 +1,8 @@
-import { createElement } from 'react';
 import { Outlet } from 'react-router-dom';
 import { TenantAdminSidebar } from './TenantAdminSidebar.js';
 import { Breadcrumb } from './Breadcrumb.js';
 import { PageTransition } from './PageTransition.js';
+import { TenantAdminErrorBoundary } from './TenantAdminErrorBoundary.js';
 const LAYOUT_CSS = `
 .taLayout {
   display: flex;
@@ -79,20 +79,18 @@ const LAYOUT_CSS = `
 `;
 
 export function TenantAdminLayout() {
-  return createElement(
-    'div',
-    { className: 'taLayout' },
-    createElement('style', null, LAYOUT_CSS),
-    createElement(TenantAdminSidebar),
-    createElement(
-      'main',
-      { className: 'taLayout__main' },
-      createElement(Breadcrumb),
-      createElement(
-        PageTransition,
-        null,
-        createElement(Outlet),
-      ),
-    ),
+  return (
+    <div className="taLayout">
+      <style>{LAYOUT_CSS}</style>
+      <TenantAdminSidebar />
+      <main className="taLayout__main">
+        <Breadcrumb />
+        <TenantAdminErrorBoundary>
+          <PageTransition>
+            <Outlet />
+          </PageTransition>
+        </TenantAdminErrorBoundary>
+      </main>
+    </div>
   );
 }

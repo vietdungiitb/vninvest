@@ -1,6 +1,6 @@
 import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -14,9 +14,9 @@ import {
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { ShellSkeleton } from "../../components/ShellSkeleton.js";
-import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
+import { useTenantAdminQuery } from "./useTenantAdminQuery.js";
 interface DailyPoint {
   date: string;
   consumed: number;
@@ -26,6 +26,10 @@ interface MeterHistory {
   meter_code: string;
   display_name: string;
   daily: DailyPoint[];
+}
+
+interface UsageTrendResponse {
+  meters?: Record<string, DailyPoint[]>;
 }
 
 interface TenantAdminUsageHistoryPageProps {
@@ -53,33 +57,26 @@ export function TenantAdminUsageHistoryPage({
   const { t, formatNumber: fmtNumber } = useI18n();
   const { ability } = usePortfolio();
 
-  const [histories, setHistories] = useState<MeterHistory[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedMeter, setSelectedMeter] = useState("api_calls");
   const [days, setDays] = useState(30);
   const [chartType, setChartType] = useState<"area" | "bar">("area");
 
   const canRead = ability?.can?.("read", "TenantUsageView") ?? false;
 
-  const loadHistory = useCallback(async (fetchDays = days) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await defaultCoreApiAdapter.getAllUsageTrends(fetchDays);
-      const meters = Object.entries(data.meters || {}).map(([meter_code, daily]) => ({
-        meter_code,
-        display_name: t(`tenantUsage.meter.${meter_code}`, { defaultValue: meter_code }),
-        daily: (daily as DailyPoint[]) || [],
-      }));
-      setHistories(meters);
-      setDays(fetchDays);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("tenantUsageHistory.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [days, t]);
+  const { data: trendData, isLoading, error } = useTenantAdminQuery<UsageTrendResponse>(
+    ["tenant-admin", "usage-history", String(days)],
+    `/partner/usage/trend/?days=${days}`,
+    { enabled: canRead },
+  );
+
+  const histories: MeterHistory[] = useMemo(() => {
+    const meters = trendData?.meters || {};
+    return Object.entries(meters).map(([meter_code, daily]) => ({
+      meter_code,
+      display_name: t(`tenantUsage.meter.${meter_code}`, { defaultValue: meter_code }),
+      daily: (daily as DailyPoint[]) || [],
+    }));
+  }, [trendData, t]);
 
   const selectedHistory = histories.find((h) => h.meter_code === selectedMeter) || histories[0];
   const chartData = useMemo(
@@ -108,10 +105,6 @@ export function TenantAdminUsageHistoryPage({
     renderShellMetric(t("tenantUsageHistory.metricDaysTracked"), String(chartData.length)),
   ];
 
-  useEffect(() => {
-    loadHistory();
-  }, [loadHistory]);
-
   if (!canRead) {
     return (
       <ShellPageChrome
@@ -127,7 +120,7 @@ export function TenantAdminUsageHistoryPage({
     );
   }
 
-  if (loading && histories.length === 0) {
+  if (isLoading && histories.length === 0) {
     return (
       <ShellPageChrome
         eyebrow={t("tenantUsageHistory.eyebrow")}
@@ -147,15 +140,15 @@ export function TenantAdminUsageHistoryPage({
         eyebrow={t("tenantUsageHistory.eyebrow")}
         title={t("tenantUsageHistory.title")}
         description={t("tenantUsageHistory.loadError")}
-        error={error}
+        error={error?.message || t("tenantUsageHistory.loadError")}
       >
-        <div className={`${styles.panel}`}>{error}</div>
+        <div className={`${styles.panel}`}>{error?.message || t("tenantUsageHistory.loadError")}</div>
       </ShellPageChrome>
     );
   }
 
   const refreshAction = (
-    <button onClick={() => loadHistory(days)} className={`${styles.button} ${styles.buttonSecondary}`}>
+    <button disabled className={`${styles.button} ${styles.buttonSecondary}`}>
       {t("common.refresh")}
     </button>
   );
@@ -189,7 +182,7 @@ export function TenantAdminUsageHistoryPage({
       {[7, 14, 30, 90].map((d) => (
         <button
           key={d}
-          onClick={() => loadHistory(d)}
+          onClick={() => setDays(d)}
           className={`${styles.button}`}
           style={{
             background: days === d ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)",

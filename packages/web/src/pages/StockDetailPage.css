@@ -2770,3 +2770,102 @@
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(var(--sdp-emerald-rgb) / 0.25);
 }
+
+/* ============================================================
+   Mobile responsive (consolidated 768px + 480px)
+   Single-column layout, stacked header, full-width chart.
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .sdp-page {
+    padding: 8px;
+    gap: 12px;
+  }
+
+  .sdp-premium-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .sdp-header-row-1 {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .sdp-action-group {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .sdp-action-group .sdp-watch-btn,
+  .sdp-action-group .sdp-alert-btn,
+  .sdp-action-group .sdp-trade-btn {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .sdp-header-row-3 .sdp-index-strip {
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    font-size: 0.72rem;
+  }
+
+  .sdp-left-workspace,
+  .sdp-right-workspace {
+    width: 100%;
+  }
+
+  .sdp-tabs-header-bar {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sdp-tab-btn {
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+
+  .sdp-profile-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .sdp-page {
+    padding: 6px;
+  }
+
+  .sdp-company-name {
+    font-size: 1.1rem;
+  }
+
+  .sdp-large-price {
+    font-size: 1.6rem;
+  }
+
+  .sdp-header-tags {
+    flex-wrap: wrap;
+  }
+
+  .sdp-header-row-3 .sdp-index-strip {
+    font-size: 0.66rem;
+  }
+
+  .sdp-chart-wrapper {
+    height: 40vh;
+    min-height: 260px;
+  }
+
+  .sdp-toast-container {
+    left: 8px;
+    right: 8px;
+  }
+
+  .sdp-toast {
+    width: 100%;
+  }
+}

@@ -57,6 +57,24 @@ class TenantResolutionMiddleware:
             self._resolve_superuser_tenant(request, user)
             return self.get_response(request)
 
+        # Machine PATs are bound to their issuing tenant; reject cross-tenant
+        # header attempts with a dedicated error code (human session PATs may switch).
+        credential = getattr(request, 'auth', None)
+        header_tenant_id = request.META.get('HTTP_X_TENANT_ID', '').strip()
+        if (
+            credential is not None
+            and not credential.is_human_session
+            and header_tenant_id
+            and str(credential.service_account.tenant.public_id) != header_tenant_id
+        ):
+            return JsonResponse(
+                {
+                    'error': 'pat_tenant_mismatch',
+                    'detail': 'Machine PAT không được phép truy cập tenant khác với tenant phát hành.',
+                },
+                status=403,
+            )
+
         tenant, role = self._resolve_tenant(request, user)
         if tenant is None:
             return JsonResponse(
@@ -81,7 +99,15 @@ class TenantResolutionMiddleware:
         return self.get_response(request)
 
     def _is_exempt_path(self, path: str) -> bool:
-        return any(path.startswith(prefix) for prefix in self.EXEMPT_PATH_PREFIXES)
+        import re
+        if any(path.startswith(prefix) for prefix in self.EXEMPT_PATH_PREFIXES):
+            return True
+        # Invite accept/cancel: invitee is not yet a tenant member, so
+        # tenant resolution must be skipped; the view resolves tenant from
+        # the invite token itself.
+        if re.search(r'/invites/[^/]+/(accept|cancel)/?$', path):
+            return True
+        return False
 
     def _get_user_from_pat(self, request):
         """Extract user from PAT token in Authorization header."""
@@ -108,16 +134,22 @@ class TenantResolutionMiddleware:
             if credential.service_account.status != credential.service_account.StatusChoices.ACTIVE:
                 return None
             
-            # Return the tenant owner as the user (same as CorePATAuthentication)
-            owner = credential.service_account.tenant.owner_user
-            if not credential.is_human_session:
-                owner.is_staff = False
-                owner.is_superuser = False
+            # Resolve the request user. A human-session PAT issued for a specific
+            # TenantMember carries the real member role (Sprint 4 prerequisite fix);
+            # machine PATs and owner-equivalent PATs collapse to the tenant owner.
+            from identity_access.utils.resolve_tenant import apply_pat_user_privileges
+            member = credential.issued_for_member
+            if member is not None:
+                user = member.user
+                request.tenant_role = member.role
+            else:
+                user = credential.service_account.tenant.owner_user
+            user = apply_pat_user_privileges(user, credential)
             # Expose the resolved credential on the request so downstream middleware
             # (e.g. TenantQuotaMiddleware) can attribute the request to a PAT without
             # re-resolving it. DRF re-sets request.auth later with the same credential.
             request.auth = credential
-            return owner
+            return user
         except Exception:
             return None
 

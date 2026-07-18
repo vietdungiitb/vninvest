@@ -1,4 +1,5 @@
 import { createElement } from "react";
+import { useI18n } from "../../../context/LangContext.js";
 
 const e = createElement;
 
@@ -32,6 +33,9 @@ export function StockDetailHeader({
   onAlertTrigger,
   onTradeTrigger
 }) {
+  const { t } = useI18n();
+  const tk = (key) => `stockDetail.page.${key}`;
+
   const companyName = profile?.company_name || snapshot?.company_name || symbol;
   const exchange = profile?.exchange || snapshot?.exchange || "";
   const industry = profile?.industry || snapshot?.industry || "";
@@ -75,7 +79,7 @@ export function StockDetailHeader({
             { className: "sdp-header-tags" },
             exchange && e("span", { className: "sdp-tag sdp-tag-exchange" }, exchange),
             industry && e("span", { className: "sdp-tag sdp-tag-industry" }, industry),
-            snapshot?.stale && e("span", { className: "sdp-tag sdp-tag-stale" }, "⚠️ Chậm")
+            snapshot?.stale && e("span", { className: "sdp-tag sdp-tag-stale" }, `⚠️ ${t(tk("stale"))}`)
           )
         )
       ),
@@ -88,9 +92,9 @@ export function StockDetailHeader({
             className: `sdp-watch-btn ${isWatched ? "sdp-watched" : ""}`,
             type: "button",
             onClick: onWatch,
-            title: isWatched ? "Bỏ theo dõi" : "Thêm vào danh sách theo dõi"
+            title: isWatched ? t(tk("unwatch")) : t(tk("addToWatchlist"))
           },
-          isWatched ? "★ Đã theo dõi" : "☆ Theo dõi"
+          isWatched ? `★ ${t(tk("watched"))}` : `☆ ${t(tk("watch"))}`
         ),
         e(
           "button",
@@ -98,9 +102,9 @@ export function StockDetailHeader({
             className: "sdp-alert-btn",
             type: "button",
             onClick: onAlertTrigger,
-            title: "Bật/Tắt khuyến nghị AI và phân tích cơ bản"
+            title: t(tk("aiConfigTrigger"))
           },
-          "🤖 Phân tích cơ bản"
+          `🤖 ${t(tk("fundamentalAnalysis"))}`
         ),
         e(
           "button",
@@ -108,9 +112,9 @@ export function StockDetailHeader({
             className: "sdp-trade-btn",
             type: "button",
             onClick: onTradeTrigger,
-            title: "Mở bảng đặt lệnh nhanh"
+            title: t(tk("tradeTrigger"))
           },
-          "⚡ Đặt lệnh"
+          `⚡ ${t(tk("placeOrder"))}`
         )
       )
     ),
@@ -141,16 +145,16 @@ export function StockDetailHeader({
       e(
         "div",
         { className: "sdp-index-strip" },
-        e("span", { className: "sdp-strip-item" }, "Trần: ", e("strong", { className: "text-purple" }, fmtPrice(ceil))),
+        e("span", { className: "sdp-strip-item" }, t(tk("ceil")), ": ", e("strong", { className: "text-purple" }, fmtPrice(ceil))),
         e("span", { className: "sdp-strip-divider" }, "|"),
-        e("span", { className: "sdp-strip-item" }, "Sàn: ", e("strong", { className: "text-cyan" }, fmtPrice(floor))),
+        e("span", { className: "sdp-strip-item" }, t(tk("floor")), ": ", e("strong", { className: "text-cyan" }, fmtPrice(floor))),
         e("span", { className: "sdp-strip-divider" }, "|"),
-        e("span", { className: "sdp-strip-item" }, "Tham chiếu: ", e("strong", { className: "text-yellow" }, fmtPrice(ref))),
+        e("span", { className: "sdp-strip-item" }, t(tk("reference")), ": ", e("strong", { className: "text-yellow" }, fmtPrice(ref))),
         e("span", { className: "sdp-strip-divider" }, "|"),
         e(
           "span",
           { className: "sdp-strip-item" },
-          "Mở cửa / Trung bình: ",
+          t(tk("openAvg")), ": ",
           e("strong", { className: getPriceColorClass(open, ref, ceil, floor) }, fmtPrice(open)),
           " / ",
           e("strong", { className: getPriceColorClass(average, ref, ceil, floor) }, fmtPrice(average))
@@ -159,13 +163,13 @@ export function StockDetailHeader({
         e(
           "span",
           { className: "sdp-strip-item" },
-          "Thấp / Cao: ",
+          t(tk("lowHigh")), ": ",
           e("strong", { className: getPriceColorClass(low, ref, ceil, floor) }, fmtPrice(low)),
           " / ",
           e("strong", { className: getPriceColorClass(high, ref, ceil, floor) }, fmtPrice(high))
         ),
         e("span", { className: "sdp-strip-divider" }, "|"),
-        e("span", { className: "sdp-strip-item" }, "Tổng KL: ", e("strong", { className: "text-white" }, volume != null ? volume.toLocaleString("vi-VN") : "—"))
+        e("span", { className: "sdp-strip-item" }, t(tk("totalVolume")), ": ", e("strong", { className: "text-white" }, volume != null ? volume.toLocaleString("vi-VN") : "—"))
       )
     )
   );

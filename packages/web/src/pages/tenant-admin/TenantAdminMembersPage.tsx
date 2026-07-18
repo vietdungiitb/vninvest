@@ -1,6 +1,6 @@
 import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField, ShellSelectField } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
@@ -8,11 +8,13 @@ import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
+import { useTenantAdminQuery, useTenantAdminMutation } from "./useTenantAdminQuery.js";
 interface Member {
   member_id: string;
   username: string;
   email: string;
   role: "owner" | "admin" | "editor" | "viewer";
+  custom_role_name?: string;
   invited_by?: string;
   joined_at?: string;
 }
@@ -21,9 +23,29 @@ interface Invite {
   invite_id: string;
   invited_email: string;
   role: string;
+  custom_role_id?: string;
+  custom_role_name?: string;
   inviter_username?: string;
   status: "pending" | "accepted" | "declined" | "expired";
   expires_at?: string;
+}
+
+interface CustomRole {
+  public_id: string;
+  name: string;
+  is_system: boolean;
+}
+
+interface MembersResponse {
+  members?: Member[];
+}
+
+interface InvitesResponse {
+  invites?: Invite[];
+}
+
+interface RolesResponse {
+  roles?: CustomRole[];
 }
 
 interface TenantAdminMembersPageProps {
@@ -40,37 +62,52 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
   const toast = useToast();
   const confirm = useConfirm();
 
-  const [members, setMembers] = useState<Member[]>([]);
-  const [invites, setInvites] = useState<Invite[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<"members" | "invites">("members");
-  const [inviteForm, setInviteForm] = useState<{ invited_email: string; role: string }>({ invited_email: "", role: "viewer" });
-  const [submitting, setSubmitting] = useState(false);
+  const [inviteForm, setInviteForm] = useState<{ invited_email: string; role: string; custom_role_id: string }>({
+    invited_email: "", role: "viewer", custom_role_id: "",
+  });
 
   const canRead = ability?.can?.("read", "TenantMemberAdmin") ?? false;
 
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [membersData, invitesData] = await Promise.all([
-        defaultCoreApiAdapter.coreGet("/tenant-members/"),
-        defaultCoreApiAdapter.coreGet("/tenant-members/invites/"),
-      ]);
-      setMembers(membersData.members || []);
-      setInvites(invitesData.invites || []);
-    } catch (err) {
-      setError((err as Error).message || t("tenantMembers.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+  const membersQuery = useTenantAdminQuery<MembersResponse>(
+    ["tenant-admin", "members"],
+    "/tenant-members/",
+    { enabled: canRead },
+  );
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const invitesQuery = useTenantAdminQuery<InvitesResponse>(
+    ["tenant-admin", "members", "invites"],
+    "/tenant-members/invites/",
+    { enabled: canRead },
+  );
+
+  const rolesQuery = useTenantAdminQuery<RolesResponse>(
+    ["tenant-admin", "members", "roles"],
+    "/partner/roles/",
+    { enabled: canRead },
+  );
+
+  const members: Member[] = membersQuery.data?.members || [];
+  const invites: Invite[] = invitesQuery.data?.invites || [];
+  const customRoles: CustomRole[] = (rolesQuery.data?.roles || []).filter((r: CustomRole) => !r.is_system);
+
+  const loading = membersQuery.isLoading || invitesQuery.isLoading || rolesQuery.isLoading;
+  const error = membersQuery.error || invitesQuery.error || rolesQuery.error;
+
+  const inviteMutation = useTenantAdminMutation(
+    "post", "/tenant-members/invites/",
+    [["tenant-admin", "members", "invites"]],
+    {
+      onSuccess: () => {
+        setInviteForm({ invited_email: "", role: "viewer", custom_role_id: "" });
+      },
+      onError: (err) => {
+        toast.error(err?.message || t("tenantMembers.inviteError"));
+      },
+    },
+  );
 
   const roleT = (role: string): string => t(`tenantMembers.roleOptions.${role}`, { defaultValue: role });
   const statusT = (status: string): string => t(`tenantMembers.statuses.${status}`, { defaultValue: status });
@@ -78,17 +115,14 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
   const handleInviteSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!inviteForm.invited_email.trim()) return;
-
-    setSubmitting(true);
-    try {
-      const data = await defaultCoreApiAdapter.corePost("/tenant-members/invites/", inviteForm);
-      setInvites(prev => [data, ...prev]);
-      setInviteForm({ invited_email: "", role: "viewer" });
-    } catch (err) {
-      toast.error((err as Error).message || t("tenantMembers.inviteError"));
-    } finally {
-      setSubmitting(false);
+    const payload: Record<string, string> = {
+      invited_email: inviteForm.invited_email,
+      role: inviteForm.role,
+    };
+    if (inviteForm.custom_role_id) {
+      payload.custom_role_id = inviteForm.custom_role_id;
     }
+    inviteMutation.mutate(payload);
   };
 
   const handleRemoveMember = async (memberId: string) => {
@@ -96,7 +130,6 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
     if (!ok) return;
     try {
       await defaultCoreApiAdapter.coreDelete(`/tenant-members/${memberId}/`);
-      setMembers(prev => prev.filter(m => m.member_id !== memberId));
     } catch (err) {
       toast.error((err as Error).message || t("tenantMembers.removeError"));
     }
@@ -117,7 +150,7 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
     );
   }
 
-  if (loading) {
+  if (loading && members.length === 0) {
     return (
       <ShellPageChrome
         eyebrow={t("tenantMembers.eyebrow")}
@@ -129,15 +162,15 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
     );
   }
 
-  if (error) {
+  if (error && members.length === 0) {
     return (
       <ShellPageChrome
         eyebrow={t("tenantMembers.eyebrow")}
         title={t("tenantMembers.title")}
         description={t("tenantMembers.loadError")}
-        error={error}
+        error={error?.message || t("tenantMembers.loadError")}
       >
-        <div className={`${styles.panel}`}>{error}</div>
+        <div className={`${styles.panel}`}>{error?.message || t("tenantMembers.loadError")}</div>
       </ShellPageChrome>
     );
   }
@@ -322,20 +355,32 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                     label={t("tenantMembers.roleLabel")}
                     name="role"
                     value={inviteForm.role}
-                    onChange={e => setInviteForm(prev => ({ ...prev, role: e.target.value }))}
+                    onChange={e => setInviteForm(prev => ({ ...prev, role: e.target.value, custom_role_id: "" }))}
                     options={[
                       { key: "viewer", label: t("tenantMembers.roleOptions.viewer") },
                       { key: "editor", label: t("tenantMembers.roleOptions.editor") },
                       { key: "admin", label: t("tenantMembers.roleOptions.admin") },
                     ]}
                   />
+                  {customRoles.length > 0 && (
+                    <ShellSelectField
+                      label={t("tenantMembers.customRoleLabel")}
+                      name="custom_role_id"
+                      value={inviteForm.custom_role_id}
+                      onChange={e => setInviteForm(prev => ({ ...prev, custom_role_id: e.target.value }))}
+                      options={[
+                        { key: "", label: t("tenantMembers.customRoleNone") },
+                        ...customRoles.map(r => ({ key: r.public_id, label: r.name })),
+                      ]}
+                    />
+                  )}
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={inviteMutation.isPending}
                     className={[`${styles.button} ${styles.buttonPrimary}`, ta.mem_25].filter(Boolean).join(" ")}
                     
                   >
-                    {submitting ? t("tenantMembers.submitting") : t("tenantMembers.inviteAction")}
+                    {inviteMutation.isPending ? t("tenantMembers.submitting") : t("tenantMembers.inviteAction")}
                   </button>
                 </form>
               </ShellPanel>
@@ -385,7 +430,6 @@ export function TenantAdminMembersPage({}: TenantAdminMembersPageProps) {
                                   if (!ok) return;
                                   try {
                                     await defaultCoreApiAdapter.corePost(`/tenant-members/invites/${invite.invite_id}/cancel/`);
-                                    setInvites(prev => prev.filter(i => i.invite_id !== invite.invite_id));
                                   } catch (err) {
                                     toast.error((err as Error).message);
                                   }

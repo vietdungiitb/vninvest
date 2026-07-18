@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="{{ lang|default:'vi' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  {% if lang == 'en' %}<title>Welcome to {{ tenant.display_name }}</title>{% else %}<title>Chào mừng đến với {{ tenant.display_name }}</title>{% endif %}
+</head>
+<body style="margin:0;padding:0;background:#0f172a;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;padding:32px 0;">
+    <tr>
+      <td align="center">
+        <table width="560" cellpadding="0" cellspacing="0" style="background:#1e293b;border-radius:12px;border:1px solid rgba(255,255,255,0.06);overflow:hidden;">
+          <!-- Header -->
+          <tr>
+            <td style="padding:32px 40px 24px;border-bottom:1px solid rgba(255,255,255,0.06);">
+              <h1 style="margin:0;font-size:22px;color:#f1f5f9;font-weight:600;">
+                {% if lang == 'en' %}Welcome to {{ tenant.display_name }}{% else %}Chào mừng đến với {{ tenant.display_name }}{% endif %}
+              </h1>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px 40px;">
+              <p style="margin:0 0 16px;font-size:15px;color:#cbd5e1;line-height:1.6;">
+                {% if lang == 'en' %}Hello <strong style="color:#f1f5f9;">{{ user.display_name|default:user.email }}</strong>{% else %}Xin chào <strong style="color:#f1f5f9;">{{ user.display_name|default:user.email }}</strong>{% endif %},
+              </p>
+              <p style="margin:0 0 16px;font-size:15px;color:#cbd5e1;line-height:1.6;">
+                {% if lang == 'en' %}Your workspace account has been created successfully. You can start using the admin panel to configure and manage your system.{% else %}Tài khoản workspace của bạn đã được tạo thành công. Bạn có thể bắt đầu sử dụng trang quản trị để cấu hình và quản lý hệ thống.{% endif %}
+              </p>
+              <p style="margin:0 0 8px;font-size:14px;color:#94a3b8;">
+                {% if lang == 'en' %}Current plan: <strong style="color:#f1f5f9;">{{ tenant.get_plan_display }}</strong>{% else %}Gói hiện tại: <strong style="color:#f1f5f9;">{{ tenant.get_plan_display }}</strong>{% endif %}
+              </p>
+              {% if tenant.trial_ends_at %}
+              <p style="margin:0 0 24px;font-size:14px;color:#94a3b8;">
+                {% if lang == 'en' %}Trial until: <strong style="color:#f1f5f9;">{{ tenant.trial_ends_at|date:"d/m/Y" }}</strong>{% else %}Dùng thử đến: <strong style="color:#f1f5f9;">{{ tenant.trial_ends_at|date:"d/m/Y" }}</strong>{% endif %}
+              </p>
+              {% else %}
+              <p style="margin:0 0 24px;font-size:14px;color:#94a3b8;"></p>
+              {% endif %}
+              <!-- CTA -->
+              <table cellpadding="0" cellspacing="0" style="margin:0;">
+                <tr>
+                  <td style="background:linear-gradient(135deg,#f97316,#ea580c);border-radius:8px;">
+                    <a href="{{ dashboard_url }}" style="display:inline-block;padding:12px 28px;font-size:15px;font-weight:600;color:#fff;text-decoration:none;">
+                      {% if lang == 'en' %}Go to Admin Panel →{% else %}Vào trang quản trị →{% endif %}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 40px;border-top:1px solid rgba(255,255,255,0.06);">
+              <p style="margin:0;font-size:12px;color:#64748b;line-height:1.5;">
+                {% if lang == 'en' %}This email was sent automatically from {{ frontend_url }}. If you did not request an account creation, please ignore this email.{% else %}Email này được gửi tự động từ {{ frontend_url }}. Nếu bạn không yêu cầu tạo tài khoản, vui lòng bỏ qua email này.{% endif %}
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

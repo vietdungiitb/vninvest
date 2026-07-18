@@ -1,16 +1,17 @@
 import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField, ShellSelectField } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
-import { PolicyCheckboxes, policyIdsToScopeCodes, POLICIES } from "../../components/PolicyCheckboxes.js";
+import { PolicyCheckboxes, policyIdsToScopeCodes } from "../../components/PolicyCheckboxes.js";
 import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
+import { useTenantAdminQuery, useTenantAdminMutation } from "./useTenantAdminQuery.js";
 interface Token {
   pat_id?: string;
   id?: string;
@@ -61,6 +62,14 @@ interface PatUsage {
   expires_at: string | null;
 }
 
+interface TokensResponse {
+  results?: Token[];
+}
+
+interface ServiceAccountsResponse {
+  results?: ServiceAccount[];
+}
+
 interface TenantAdminPATsPageProps {
   env?: Record<string, unknown>;
   fetchImpl?: unknown;
@@ -81,12 +90,7 @@ export function TenantAdminPATsPage({
   const toast = useToast();
   const confirm = useConfirm();
 
-  const [tokens, setTokens] = useState<Token[]>([]);
-  const [serviceAccounts, setServiceAccounts] = useState<ServiceAccount[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [secretReveal, setSecretReveal] = useState<SecretReveal | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
   const [activeTokenId, setActiveTokenId] = useState("");
@@ -96,7 +100,6 @@ export function TenantAdminPATsPage({
   const [usageData, setUsageData] = useState<PatUsage | null>(null);
   const [usageLoading, setUsageLoading] = useState(false);
   const [usageError, setUsageError] = useState<string | null>(null);
-
   const [createForm, setCreateForm] = useState<CreateForm>({
     service_account_id: "",
     display_name: "",
@@ -110,52 +113,53 @@ export function TenantAdminPATsPage({
     { key: "admin", label: "tenantPats.scopeAdmin", icon: "⚙️" },
   ];
 
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [tokenData, saData] = await Promise.all([
-        defaultCoreApiAdapter.coreGet("/partner/pats/"),
-        defaultCoreApiAdapter.coreGet("/partner/service-accounts/"),
-      ]);
+  const canRead = ability?.can?.("read", "TenantPATAdmin") ?? false;
 
-      const saList = saData.results || [];
-      setTokens(tokenData.results || []);
-      setServiceAccounts(saList);
+  const tokensQuery = useTenantAdminQuery<TokensResponse>(
+    ["tenant-admin", "pats"],
+    "/partner/pats/",
+    { enabled: canRead },
+  );
 
-      if (saList.length > 0) {
-        setCreateForm(prev => ({
-          ...prev,
-          service_account_id: prev.service_account_id || saList[0].service_account_id || saList[0].id || "",
-        }));
-      }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("tenantPats.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+  const saQuery = useTenantAdminQuery<ServiceAccountsResponse>(
+    ["tenant-admin", "pats", "service-accounts"],
+    "/partner/service-accounts/",
+    { enabled: canRead },
+  );
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const tokens: Token[] = tokensQuery.data?.results || [];
+  const serviceAccounts: ServiceAccount[] = saQuery.data?.results || [];
+  const loading = tokensQuery.isLoading && tokens.length === 0;
+  const error = tokensQuery.error || saQuery.error;
 
   const selectedSA = serviceAccounts.find(sa => (sa.service_account_id || sa.id) === createForm.service_account_id);
 
-  useEffect(() => {
-    if (!selectedSA) return;
-    const saScopes = new Set(selectedSA.scopes || []);
-    const newPolicies = createForm.policy_ids.filter(policyId => {
-      const policy = POLICIES.find(p => p.id === policyId);
-      return policy ? policy.scopes.every(scope => saScopes.has(scope)) : false;
-    });
-    const defaultPolicies = POLICIES.filter(p => p.scopes.every(s => saScopes.has(s))).map(p => p.id);
-    setCreateForm(prev => ({
-      ...prev,
-      policy_ids: newPolicies.length > 0 ? newPolicies : defaultPolicies,
-    }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [createForm.service_account_id, serviceAccounts]);
+  const issueMutation = useTenantAdminMutation(
+    "post", "/partner/pats/issue/",
+    [["tenant-admin", "pats"]],
+    {
+      onSuccess: (responseData: unknown) => {
+        const resp = responseData as Record<string, unknown>;
+        if (resp && (resp.secret || resp.token || resp.access)) {
+          const secretVal = resp.secret || resp.token || resp.access;
+          const prefixVal = resp.token_prefix || "";
+          setSecretReveal({ secret: secretVal as string, token_prefix: prefixVal as string });
+          setShowCreateModal(false);
+          setCreateForm({
+            service_account_id: serviceAccounts[0]?.service_account_id || serviceAccounts[0]?.id || "",
+            display_name: "",
+            expires_at: "",
+            policy_ids: ["pol_market_read", "pol_signals_read"],
+          });
+        } else {
+          toast.error(t("tenantPats.issueError"));
+        }
+      },
+      onError: (err) => {
+        toast.error(err?.message || t("tenantPats.issueError"));
+      },
+    },
+  );
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,38 +167,14 @@ export function TenantAdminPATsPage({
       toast.error(t("tenantPats.noServiceAccountSelected"));
       return;
     }
-
-    setSubmitting(true);
-    try {
-      const scopeCodes = policyIdsToScopeCodes(createForm.policy_ids);
-      const responseData = await defaultCoreApiAdapter.corePost("/partner/pats/issue/", {
-        service_account_id: createForm.service_account_id,
-        display_name: createForm.display_name,
-        expires_at: createForm.expires_at ? new Date(createForm.expires_at).toISOString() : null,
-        scope_codes: scopeCodes,
-        audit_reason: "Issued via Tenant Admin Console",
-      });
-
-      if (responseData && (responseData.secret || responseData.token || responseData.access)) {
-        const secretVal = responseData.secret || responseData.token || responseData.access;
-        const prefixVal = responseData.token_prefix || "";
-        setSecretReveal({ secret: secretVal, token_prefix: prefixVal });
-        setShowCreateModal(false);
-        setCreateForm({
-          service_account_id: serviceAccounts[0]?.service_account_id || serviceAccounts[0]?.id || "",
-          display_name: "",
-          expires_at: "",
-          policy_ids: ["pol_market_read", "pol_signals_read"],
-        });
-        await loadData();
-      } else {
-        toast.error(t("tenantPats.issueError"));
-      }
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t("tenantPats.issueError"));
-    } finally {
-      setSubmitting(false);
-    }
+    const scopeCodes = policyIdsToScopeCodes(createForm.policy_ids);
+    issueMutation.mutate({
+      service_account_id: createForm.service_account_id,
+      display_name: createForm.display_name,
+      expires_at: createForm.expires_at ? new Date(createForm.expires_at).toISOString() : null,
+      scope_codes: scopeCodes,
+      audit_reason: "Issued via Tenant Admin Console",
+    });
   };
 
   const handleRotateToken = async (tokenId: string) => {
@@ -211,7 +191,6 @@ export function TenantAdminPATsPage({
         const secretVal = nextToken.secret || nextToken.token || nextToken.access;
         const prefixVal = nextToken.token_prefix || "";
         setSecretReveal({ secret: secretVal, token_prefix: prefixVal });
-        await loadData();
       } else {
         toast.error(t("tenantPats.rotateError"));
       }
@@ -230,7 +209,6 @@ export function TenantAdminPATsPage({
       await defaultCoreApiAdapter.corePost(`/partner/pats/${tokenId}/revoke/`, {
         reason: "Tenant admin manually revoked",
       });
-      await loadData();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : t("tenantPats.revokeError"));
     } finally {
@@ -260,7 +238,19 @@ export function TenantAdminPATsPage({
       .finally(() => setUsageLoading(false));
   };
 
-  const canRead = ability?.can?.("read", "TenantPATAdmin") ?? false;
+  const isUnusedOver90 = (token: Token): boolean => {
+    if (!token.last_used_at) return true;
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    return new Date(token.last_used_at) < ninetyDaysAgo;
+  };
+
+  const isExpiringSoon = (token: Token): boolean => {
+    if (!token.expires_at) return false;
+    const sevenDays = new Date();
+    sevenDays.setDate(sevenDays.getDate() + 7);
+    return new Date(token.expires_at) <= sevenDays && new Date(token.expires_at) > new Date();
+  };
 
   if (!canRead) {
     return (
@@ -277,7 +267,7 @@ export function TenantAdminPATsPage({
     );
   }
 
-  if (loading && tokens.length === 0) {
+  if (loading && !tokensQuery.data) {
     return (
       <ShellPageChrome
         eyebrow={t("tenantPats.eyebrow")}
@@ -297,9 +287,9 @@ export function TenantAdminPATsPage({
         eyebrow={t("tenantPats.eyebrow")}
         title={t("tenantPats.title")}
         description={t("tenantPats.loadError")}
-        error={error}
+        error={error?.message || t("tenantPats.loadError")}
       >
-        <div className={`${styles.panel}`}>{error}</div>
+        <div className={`${styles.panel}`}>{error?.message || t("tenantPats.loadError")}</div>
       </ShellPageChrome>
     );
   }
@@ -326,17 +316,6 @@ export function TenantAdminPATsPage({
       })
     : visibleTokens;
 
-  const isUnusedOver90 = (token: Token): boolean => {
-    if (!token.last_used_at) return true;
-    return new Date(token.last_used_at) < ninetyDaysAgo;
-  };
-
-  const isExpiringSoon = (token: Token): boolean => {
-    if (!token.expires_at) return false;
-    const sevenDays = new Date();
-    sevenDays.setDate(sevenDays.getDate() + 7);
-    return new Date(token.expires_at) <= sevenDays && new Date(token.expires_at) > new Date();
-  };
   const serviceAccountMap = new Map(serviceAccounts.map(sa => [sa.service_account_id || sa.id, sa]));
 
   const tokenStatusKey = (token: Token): string => {
@@ -556,7 +535,7 @@ export function TenantAdminPATsPage({
                 {t("tenantPats.noServiceAccounts")}
               </p>
               <Link to="/tenant-admin/service-accounts" className={[`${styles.button}`, ta.pats_36].filter(Boolean).join(" ")} style={{ border: "1px solid rgba(255,127,80,0.3)", fontSize: "12px", fontWeight: "600" }}>
-                + Tạo Service Account
+                {t("tenantPats.createServiceAccount")}
               </Link>
             </div>
           )}
@@ -714,7 +693,7 @@ export function TenantAdminPATsPage({
                   {selectedSA && (
                     <div className={ta.pats_50}>
                       <span className={ta.pats_51}>
-                        Quyền hạn của Service Account:
+                        {t("tenantPats.serviceAccountScopes")}
                       </span>
                       <div className={ta.pats_52}>
                         {selectedSA.scopes && selectedSA.scopes.length > 0 ? (
@@ -724,7 +703,7 @@ export function TenantAdminPATsPage({
                             </span>
                           ))
                         ) : (
-                          <span className={ta.pats_54}>Không có quyền hạn</span>
+                          <span className={ta.pats_54}>{t("tenantPats.noScopes")}</span>
                         )}
                       </div>
                     </div>
@@ -738,12 +717,11 @@ export function TenantAdminPATsPage({
                   />
                   <div className={ta.pats_55}>
                     {[
-                      { label: "30 ngày", offset: 30 },
-                      { label: "90 ngày", offset: 90 },
-                      { label: "1 năm", offset: 365 },
+                      { label: t("tenantPats.days30"), offset: 30 },
+                      { label: t("tenantPats.days90"), offset: 90 },
+                      { label: t("tenantPats.year1"), offset: 365 },
                       { label: t("tenantPats.neverExpire"), offset: 0 },
                     ].map(preset => {
-                      // Determine if this preset matches current selection
                       let isActive = false;
                       if (preset.offset === 0 && !createForm.expires_at) {
                         isActive = true;
@@ -781,11 +759,11 @@ export function TenantAdminPATsPage({
                   <div className={ta.pats_57}>
                     {createForm.expires_at ? (
                       <div className={ta.pats_58}>
-                        ✓ Hết hạn vào: <strong>{new Date(createForm.expires_at).toLocaleString("vi-VN")}</strong>
+                        ✓ {t("tenantPats.expiresAt")} <strong>{new Date(createForm.expires_at).toLocaleString("vi-VN")}</strong>
                       </div>
                     ) : (
                       <div className={ta.pats_59}>
-                        ⚠ Hoạt động vô thời hạn (Không khuyến nghị về bảo mật).
+                        ⚠ {t("tenantPats.unlimitedWarning")}
                       </div>
                     )}
                   </div>
@@ -814,10 +792,10 @@ export function TenantAdminPATsPage({
                     </button>
                     <button
                       type="submit"
-                      disabled={submitting}
+                      disabled={issueMutation.isPending}
                       className={`${styles.button} ${styles.buttonPrimary}`}
                     >
-                      {submitting ? t("tenantPats.submitting") : t("tenantPats.issueAction")}
+                      {issueMutation.isPending ? t("tenantPats.submitting") : t("tenantPats.issueAction")}
                     </button>
                   </div>
                 </form>

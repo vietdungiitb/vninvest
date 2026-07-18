@@ -27,12 +27,16 @@ from .commercial_partner_views import (
     PartnerStripeCheckoutSessionView,
     PartnerStripePortalSessionView,
 )
-from .views.sso import PartnerSSOConfigView
+from .views.sso import PartnerSSOConfigView, PartnerSSOTestConnectionView, PartnerSSOTestLoginView
 
 urlpatterns = [
     # Tenant summary
     path('partner/tenant/', views.TenantDetailView.as_view(), name='partner-tenant'),
     path('partner/tenant', views.TenantDetailView.as_view(), name='partner-tenant-noslash'),
+
+    # Tenant Settings
+    path('partner/settings/', views.PartnerTenantSettingsView.as_view(), name='partner-settings'),
+    path('partner/settings', views.PartnerTenantSettingsView.as_view(), name='partner-settings-noslash'),
 
     # Service accounts
     path('partner/service-accounts/', views.ServiceAccountListView.as_view(), name='partner-sa-list'),
@@ -56,6 +60,10 @@ urlpatterns = [
     # SSO Configuration
     path('partner/sso/', PartnerSSOConfigView.as_view(), name='partner-sso-config'),
     path('partner/sso', PartnerSSOConfigView.as_view(), name='partner-sso-config-noslash'),
+    path('partner/sso/test/', PartnerSSOTestConnectionView.as_view(), name='partner-sso-test'),
+    path('partner/sso/test', PartnerSSOTestConnectionView.as_view(), name='partner-sso-test-noslash'),
+    path('partner/sso/test-login/', PartnerSSOTestLoginView.as_view(), name='partner-sso-test-login'),
+    path('partner/sso/test-login', PartnerSSOTestLoginView.as_view(), name='partner-sso-test-login-noslash'),
 
     # Usage
     path('partner/usage/meters/', PartnerUsageMetersView.as_view(), name='partner-usage-meters'),
@@ -154,4 +162,10 @@ urlpatterns = [
     # Phase 4 — Deprovision
     path('partner/billing/deprovision/', views_webhooks.DeprovisionView.as_view(), name='partner-billing-deprovision'),
     path('partner/billing/deprovision', views_webhooks.DeprovisionView.as_view(), name='partner-billing-deprovision-noslash'),
+
+    # Phase 4 — Custom Roles (RBAC)
+    path('partner/roles/', views.PartnerRoleListCreateView.as_view(), name='partner-role-list'),
+    path('partner/roles', views.PartnerRoleListCreateView.as_view(), name='partner-role-list-noslash'),
+    path('partner/roles/<str:role_id>/', views.PartnerRoleDetailView.as_view(), name='partner-role-detail'),
+    path('partner/roles/<str:role_id>', views.PartnerRoleDetailView.as_view(), name='partner-role-detail-noslash'),
 ]

@@ -1,4 +1,5 @@
 import { createElement } from "react";
+import { useI18n } from "../../../context/LangContext.js";
 
 const e = createElement;
 
@@ -7,6 +8,9 @@ export function StockSessionWitness({
   onClearSession,
   loading
 }) {
+  const { t } = useI18n();
+  const tk = (key) => `stockDetail.page.${key}`;
+
   const hasActiveSession = !!selectedSession;
   const sessionDateStr = hasActiveSession
     ? new Date(selectedSession.tradeDate).toLocaleDateString("vi-VN", {
@@ -27,15 +31,15 @@ export function StockSessionWitness({
         "div",
         { className: "sdp-witness-left" },
         e("span", { className: `sdp-witness-dot ${hasActiveSession ? "sdp-pulse" : ""}` }),
-        e("span", { className: "sdp-witness-label" }, hasActiveSession ? "Bộ lọc theo phiên chọn:" : "Dữ liệu thời gian thực:"),
+        e("span", { className: "sdp-witness-label" }, hasActiveSession ? t(tk("sessionFilterLabel")) : t(tk("realtimeLabel"))),
         e(
           "span",
           { className: "sdp-witness-value" },
           loading
-            ? e("span", { className: "sdp-witness-loading" }, "Đang đồng bộ...")
+            ? e("span", { className: "sdp-witness-loading" }, t(tk("syncing")))
             : hasActiveSession
             ? sessionDateStr
-            : "Phiên hôm nay (Mặc định)"
+            : t(tk("todaySession"))
         )
       ),
       hasActiveSession &&
@@ -45,15 +49,15 @@ export function StockSessionWitness({
             type: "button",
             className: "sdp-witness-clear-btn",
             onClick: onClearSession,
-            title: "Bỏ chọn phiên, quay lại phiên hôm nay"
+            title: t(tk("clearSession"))
           },
-          "✕ Bỏ lọc phiên"
+          `✕ ${t(tk("clearSession"))}`
         ),
       !hasActiveSession &&
         e(
           "span",
           { className: "sdp-witness-hint" },
-          "💡 Mẹo: Nhấp vào một cây nến trên biểu đồ để xem dòng tiền & khuyến nghị chi tiết cho phiên đó."
+          t(tk("sessionHint"))
         )
     )
   );

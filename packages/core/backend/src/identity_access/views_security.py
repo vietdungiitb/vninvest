@@ -15,25 +15,7 @@ from rest_framework import status
 from .models import CoreTenant, LoginAttempt
 from .permissions import IsTenantActive, require_human_session
 from .security_utils import LoginRecorder
-
-
-def _get_request_tenant(request) -> CoreTenant:
-    tenant = getattr(request, 'tenant', None)
-    if tenant is not None:
-        return tenant
-    user = getattr(request, 'user', None)
-    if user and user.is_authenticated:
-        try:
-            tenant = CoreTenant.objects.get(owner_user=user)
-        except CoreTenant.DoesNotExist:
-            from .models import TenantMember
-            member = TenantMember.objects.filter(user=user).select_related('tenant').first()
-            if member:
-                tenant = member.tenant
-    if tenant is None:
-        from rest_framework.exceptions import PermissionDenied
-        raise PermissionDenied('Không tìm thấy tenant.')
-    return tenant
+from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
 
 
 def _query_daily_login_activity(tenant_id: int, since):
@@ -59,6 +41,7 @@ def _query_daily_login_activity(tenant_id: int, since):
 @permission_classes([IsAuthenticated, IsTenantActive])
 def partner_login_activity(request):
     require_human_session(request)
+    _require_tenant_permission(request, 'security:read')
     tenant = _get_request_tenant(request)
     days = int(request.query_params.get('days', 30))
     days = max(1, min(365, days))
@@ -119,6 +102,7 @@ def partner_login_activity(request):
 @permission_classes([IsAuthenticated, IsTenantActive])
 def partner_active_sessions(request):
     require_human_session(request)
+    _require_tenant_permission(request, 'security:read')
     tenant = _get_request_tenant(request)
 
     sessions_qs = LoginRecorder.get_active_sessions(tenant)
@@ -149,6 +133,7 @@ def partner_active_sessions(request):
 @permission_classes([IsAuthenticated, IsTenantActive])
 def partner_revoke_session(request):
     require_human_session(request)
+    _require_tenant_permission(request, 'security:read')
     tenant = _get_request_tenant(request)
     current_cred = getattr(request, 'auth', None)
     current_id = current_cred.id if current_cred else None

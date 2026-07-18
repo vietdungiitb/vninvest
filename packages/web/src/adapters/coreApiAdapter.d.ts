@@ -26,10 +26,10 @@ export class CoreApiRequestError extends Error {
 export interface CoreApiAdapter {
   // Raw transport methods
   coreGet: (path: string, options?: any) => Promise<any>;
-  corePost: (path: string, body?: any) => Promise<any>;
-  corePut: (path: string, body?: any) => Promise<any>;
-  corePatch: (path: string, body?: any) => Promise<any>;
-  coreDelete: (path: string) => Promise<any>;
+  corePost: (path: string, body?: any, options?: any) => Promise<any>;
+  corePut: (path: string, body?: any, options?: any) => Promise<any>;
+  corePatch: (path: string, body?: any, options?: any) => Promise<any>;
+  coreDelete: (path: string, options?: any) => Promise<any>;
 
   // Auth
   loginUser: (credentials: { username: string; password: string }) => Promise<any>;

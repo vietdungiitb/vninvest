@@ -16,27 +16,9 @@ from rest_framework.exceptions import PermissionDenied
 
 from .models import CoreTenant
 from .permissions import IsTenantActive, require_pat_scopes_or_human_session
+from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
 
 RAW_QUERY_MAX_DAYS = 1  # configurable threshold for raw AuditEvent fallback
-
-
-def _get_request_tenant(request) -> CoreTenant:
-    """Get tenant from request (set by TenantResolutionMiddleware)."""
-    tenant = getattr(request, 'tenant', None)
-    if tenant is not None:
-        return tenant
-    user = getattr(request, 'user', None)
-    if user and user.is_authenticated:
-        try:
-            tenant = CoreTenant.objects.get(owner_user=user)
-        except CoreTenant.DoesNotExist:
-            from .models import TenantMember
-            member = TenantMember.objects.filter(user=user).select_related('tenant').first()
-            if member:
-                tenant = member.tenant
-    if tenant is None:
-        raise PermissionDenied('Không tìm thấy tenant.')
-    return tenant
 
 
 @api_view(['GET'])
@@ -53,6 +35,7 @@ def partner_api_usage(request):
       - endpoint: path pattern (filter)
     """
     require_pat_scopes_or_human_session(request, 'manage_tenant')
+    _require_tenant_permission(request, 'usage:read')
     tenant = _get_request_tenant(request)
 
     group_by = request.GET.get('group_by')
@@ -175,6 +158,7 @@ def partner_api_timeline(request):
       - status: 2xx | 4xx | 5xx (filter)
     """
     require_pat_scopes_or_human_session(request, 'manage_tenant')
+    _require_tenant_permission(request, 'usage:read')
     tenant = _get_request_tenant(request)
 
     interval = request.GET.get('interval', 'day')
@@ -236,6 +220,7 @@ def partner_api_export(request):
     Streams CSV with columns: date, hour, ip_address, endpoint_group, status_group, call_count, error_count, total_duration_ms
     """
     require_pat_scopes_or_human_session(request, 'manage_tenant')
+    _require_tenant_permission(request, 'usage:read')
     tenant = _get_request_tenant(request)
 
     try:

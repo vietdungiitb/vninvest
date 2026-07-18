@@ -1,11 +1,11 @@
-import { createElement, useState } from 'react';
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useI18n } from '@/context/LangContext.js';
 import { usePortfolio } from '@/context/PortfolioContext.js';
 import {
   LayoutDashboard, Users, Key, Fingerprint, Activity, CreditCard,
   ShieldCheck, FileText, ScrollText, Globe, Lock, Webhook, FileSpreadsheet,
-  ChevronLeft,
+  Settings, ChevronLeft, UserCog,
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -29,6 +29,8 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   { path: 'sso', labelKey: 'tenantSSO.title', icon: Globe, subject: 'TenantSSOAdmin' },
   { path: 'security', labelKey: 'tenantSecurity.title', icon: Lock, subject: 'TenantSecurityView' },
   { path: 'webhooks', labelKey: 'tenantWebhooks.title', icon: Webhook, subject: 'TenantWebhookView' },
+  { path: 'settings', labelKey: 'tenantSettings.title', icon: Settings },
+  { path: 'roles', labelKey: 'tenantRoles.title', icon: UserCog, subject: 'TenantRoleAdmin' },
 ];
 
 const SIDEBAR_CSS = `
@@ -152,44 +154,38 @@ export function TenantAdminSidebar() {
     .filter((item) => !item.subject || ability?.can?.('read', item.subject))
     .map((item) => {
     const isActive = segment === item.path || (!segment && item.path === 'home');
-    return createElement(
-      'button',
-      {
-        key: item.path,
-        onClick: () => navigate(`/tenant-admin/${item.path}`),
-        className: 'taSidebar__item' + (isActive ? ' taSidebar__item--active' : ''),
-        title: collapsed ? (t(item.labelKey) || item.labelKey) : undefined,
-      },
-      createElement(item.icon, { className: 'taSidebar__icon' }),
-      collapsed ? null : createElement('span', { className: 'taSidebar__label' }, t(item.labelKey) || item.labelKey),
+    return (
+      <button
+        key={item.path}
+        onClick={() => navigate(`/tenant-admin/${item.path}`)}
+        className={'taSidebar__item' + (isActive ? ' taSidebar__item--active' : '')}
+        title={collapsed ? (t(item.labelKey) || item.labelKey) : undefined}
+      >
+        <item.icon className="taSidebar__icon" />
+        {collapsed ? null : <span className="taSidebar__label">{t(item.labelKey) || item.labelKey}</span>}
+      </button>
     );
   });
 
-  return createElement(
-    'aside',
-    { className: 'taSidebar', style: { width: collapsed ? '60px' : '240px' } },
-    createElement('style', null, SIDEBAR_CSS),
-    createElement(
-      'div',
-      { className: 'taSidebar__logo' },
-      collapsed ? createElement('span', null, 'TA') : createElement('span', null, 'Tenant Admin'),
-    ),
-    createElement('nav', { className: 'taSidebar__nav' }, ...navItems),
-    createElement(
-      'div',
-      { className: 'taSidebar__footer' },
-      createElement(
-        'button',
-        {
-          onClick: toggle,
-          className: 'taSidebar__toggle',
-          title: collapsed ? 'Expand' : 'Collapse',
-        },
-        createElement(ChevronLeft, {
-          className: 'taSidebar__toggleIcon',
-          style: { transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)' },
-        }),
-      ),
-    ),
+  return (
+    <aside className="taSidebar" style={{ width: collapsed ? '60px' : '240px' }}>
+      <style>{SIDEBAR_CSS}</style>
+      <div className="taSidebar__logo">
+        {collapsed ? <span>TA</span> : <span>Tenant Admin</span>}
+      </div>
+      <nav className="taSidebar__nav">{navItems}</nav>
+      <div className="taSidebar__footer">
+        <button
+          onClick={toggle}
+          className="taSidebar__toggle"
+          title={collapsed ? 'Expand' : 'Collapse'}
+        >
+          <ChevronLeft
+            className="taSidebar__toggleIcon"
+            style={{ transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)' }}
+          />
+        </button>
+      </div>
+    </aside>
   );
 }

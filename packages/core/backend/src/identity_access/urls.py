@@ -6,7 +6,7 @@ from . import onboarding_views
 from . import views_operator
 from . import tenant_member_views
 from .dnse_credential_views import DNSECredentialView
-from .views.sso import SSOLoginInitiateView, SSOCallbackView
+from .views.sso import SSOLoginInitiateView, SSOCallbackView, SSOMetadataView
 
 urlpatterns = [
     # Auth endpoints (Gate A2, A3)
@@ -60,6 +60,8 @@ urlpatterns = [
     path('auth/sso/login', SSOLoginInitiateView.as_view(), name='auth-sso-login-noslash'),
     path('auth/sso/callback/', SSOCallbackView.as_view(), name='auth-sso-callback'),
     path('auth/sso/callback', SSOCallbackView.as_view(), name='auth-sso-callback-noslash'),
+    path('auth/sso/metadata/<str:tenant_code>/', SSOMetadataView.as_view(), name='auth-sso-metadata'),
+    path('auth/sso/metadata/<str:tenant_code>', SSOMetadataView.as_view(), name='auth-sso-metadata-noslash'),
 
     # DNSE Credential management (D02)
     path('dnse-credential/', DNSECredentialView.as_view(), name='dnse-credential'),

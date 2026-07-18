@@ -142,7 +142,6 @@ export function useCoreDashboardData({ portfolioId, enabled = true } = {}) {
 
         const holdings = safeResults(holdingsRes);
         const rawWatchlists = safeResults(watchlistsRes);
-        console.log("RAW WATCHLISTS NAMES:", rawWatchlists.map(w => w?.name));
         const trackedSymbols = safeResults(trackedRes);
         const rawWatchlistGroups = safeResults(groupsRes);
 
@@ -150,7 +149,6 @@ export function useCoreDashboardData({ portfolioId, enabled = true } = {}) {
           const slug = String(wl?.id || wl?.name || "").toLowerCase().replace(/\s+/g, "-");
           return !SYSTEM_GROUP_IDS.includes(slug);
         });
-        console.log("FILTERED WATCHLISTS NAMES:", watchlists.map(w => w?.name));
 
         // Keep ALL watchlistGroups (market groups) unfiltered
         // so the heatmap can include symbols from all sectors/groups the user follows

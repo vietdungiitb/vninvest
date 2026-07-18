@@ -1,6 +1,311 @@
 # Code Change Audit Ledger
 
 
+# 2026-07-18 | Sprint 4 Prereq: PAT Auth Model carries real member role ?
+
+## Problem Solved
+- Critical finding (Sprint 1 Phase B audit): PAT auth layer (`middleware.py:112`,
+  `authentication.py:55`) always authenticated every PAT as the tenant OWNER, so
+  `request.tenant_role` was always 'owner' regardless of which TenantMember (editor/viewer)
+  logged in. Role guards (`_require_tenant_role`) declared correctly but unenforceable.
+- `CorePATCredential` had no link to `TenantMember` → auth layer blind to real member role.
+- Also closed a pre-existing security gap: machine PATs could switch tenants via
+  `X-Tenant-ID` header when the user held membership in both tenants.
+
+## Changes
+1. `identity_access/models.py` — added FK `issued_for_member` (null) to `CorePATCredential`;
+   `issue_for_service_account(..., issued_for_member=None)`.
+2. `identity_access/migrations/0022_pat_issued_for_member.py` — generated migration.
+3. `identity_access/views/login.py` — resolve `TenantMember` for non-owner login user, pass
+   to human-session PAT issue (None for owner → legacy owner-equivalent behavior).
+4. `identity_access/middleware.py` — `_get_user_from_pat` resolves `user=member.user` +
+   `request.tenant_role=member.role` when `issued_for_member` set; added machine-PAT
+   tenant-binding check → 403 `pat_tenant_mismatch` for cross-tenant header.
+5. `identity_access/authentication.py` — `authenticate` mirrors member resolution.
+6. `identity_access/tests/test_tenant_role_matrix.py` — converted gap test (assert 200) →
+   enforcement (viewer PUT settings → 403); +2 unit tests (member role resolve, machine→owner).
+
+## Verification Results
+- `test_tenant_role_matrix` (5 tests): OK
+- `MachinePATTenantBindingIntegrationTests` (5 tests): OK
+- Full `identity_access` suite: 141/142 pass. 1 pre-existing ERROR
+  (`test_drf_auth_reuses_middleware_credential_avoids_double_query`) = DB lock conflict under
+  full-suite parallel run, unrelated to this change (fails identically on baseline).
+- Web `tsc --noEmit`: EXIT 0 (frontend untouched).
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/identity_access/models.py` | FK `issued_for_member` + param |
+| `packages/core/backend/src/identity_access/migrations/0022_pat_issued_for_member.py` | new migration |
+| `packages/core/backend/src/identity_access/views/login.py` | pass member to PAT issue |
+| `packages/core/backend/src/identity_access/middleware.py` | member role + machine binding |
+| `packages/core/backend/src/identity_access/authentication.py` | member resolution |
+| `packages/core/backend/src/identity_access/tests/test_tenant_role_matrix.py` | enforcement tests |
+
+## Impact
+- Sprint 1 Phase B role guards now ENFORCE correctly (viewer rejected from owner writes).
+- Unblocks Sprint 4 (Custom RBAC): auth layer carries real `request.tenant_role`.
+- Backward-compatible: machine PATs + owner PATs unchanged behavior.
+
+---
+
+# 2026-07-18 | Independent Critique Fixes: P0/P1/P2 on Auth Model ?
+
+## Problem Solved
+Independent critique found the initial "DONE" was premature: the fix worked only for
+first PAT issuance, not the token lifecycle. 2 P0 bugs (refresh + SSO dropped
+`issued_for_member` → role escalation), 2 P1 risks (CASCADE destroys audit trail; N+1
+query), 3 P2 issues (stale docstring; duplicated privilege mutation; staff fallback
+escalation) were confirmed by code evidence and fixed.
+
+## Changes
+1. `views/login.py` — refresh_token_view: `member = credential.issued_for_member`;
+   `user = member.user if member else owner`; pass `issued_for_member=member` to issue.
+2. `views/sso.py` — pass `issued_for_member=member` + `is_human_session=True` inline.
+3. `models.py` — `issued_for_member` `on_delete=models.SET_NULL` (was CASCADE);
+   `resolve_from_raw_secret` adds `select_related('issued_for_member')` (N+1 fix).
+4. `migrations/0023_pat_issued_for_member_set_null.py` — generated.
+5. `utils/resolve_tenant.py` — new `apply_pat_user_privileges(user, credential)` shared
+   helper; `get_tenant_role` does member lookup BEFORE `is_staff → admin` shortcut.
+6. `middleware.py` + `authentication.py` — use `apply_pat_user_privileges` (dedup).
+7. `tests/test_tenant_role_matrix.py` — rewritten docstring; +2 tests (refresh preserves
+   role, SSO-style issue keeps member role).
+
+## Verification Results
+- `test_tenant_role_matrix`: 7/7 OK
+- `MachinePATTenantBindingIntegrationTests`: 5/5 OK
+- Full `identity_access`: 143/144 pass. 1 pre-existing ERROR
+  (`test_drf_auth_reuses_middleware_credential_avoids_double_query` — DB lock / MagicMock
+  under full-suite parallel run; fails identically on baseline, unrelated to change).
+- Web `tsc --noEmit`: EXIT 0.
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/identity_access/views/login.py` | refresh carries member |
+| `packages/core/backend/src/identity_access/views/sso.py` | SSO carries member |
+| `packages/core/backend/src/identity_access/models.py` | SET_NULL + select_related |
+| `packages/core/backend/src/identity_access/migrations/0023_*.py` | new migration |
+| `packages/core/backend/src/identity_access/utils/resolve_tenant.py` | shared helper + staff fix |
+| `packages/core/backend/src/identity_access/middleware.py` | use shared helper |
+| `packages/core/backend/src/identity_access/authentication.py` | use shared helper |
+| `packages/core/backend/src/identity_access/tests/test_tenant_role_matrix.py` | +2 tests, docstring |
+
+## Impact
+- Token lifecycle (login → refresh → SSO) now consistently carries real member role.
+- No role escalation after refresh; audit trail preserved on member removal.
+- Sprint 4 (Custom RBAC) prerequisite COMPLETE.
+
+---
+
+# 2026-07-17 | AI Audit/Research Framework — Quy định cứng bắt buộc ✅
+
+## Problem Solved
+- Dự án thiếu một khung audit/research chuẩn hóa bắt buộc. Các AI session audit trước đây
+  làm việc ad-hoc, dễ bỏ sót: CSS/soc.module.css "chết" vẫn được dùng, plan trỏ file
+  không tồn tại, quên external coupling (vninvestcharts-widget / defaultCoreApiAdapter),
+  quên quality gates (lint/type-check/i18n/test). Bài học cụ thể: navigation bug 2026-07-17
+  (BrowserRouter `v7_startTransition` gây TDZ) và 404 uncaught advisory — đều do thiếu
+  trace thực tế qua file:line.
+
+## Changes
+1. **AGENTS.md** (cuối file): Thêm section "AI Audit/Research Framework (Quy định cứng bắt buộc)":
+   - 6 nguyên tắc chống lỗi audit (kế thừa DRAWING_DOCK + bài học 2026-07-17), hiệu chỉnh cho
+     thực tế vninvest: quét `.css`/`.module.css`/`soc.module.css`, kiểm tra
+     `src/types/vninvestcharts-widget.d.ts` + `src/adapters/core/*`, quality gates =
+     `npm run lint` / `npm run build` / `npm run i18n:scan` / `npm run test`.
+   - Cấu trúc khung prompt chuẩn (mục 0–5) với output format bắt buộc
+     (Bản đồ kiến trúc / Luồng dữ liệu / CONTRADICTIONS / Findings / Quality gates / Đánh giá).
+   - Quy định cập nhật `CODE_CHANGE_AUDIT_LEDGER.md` sau mọi audit/thay đổi.
+2. **docs/AI_AUDIT_FRAMEWORK.md** (mới): File template tập trung, tham chiếu từ AGENTS.md,
+   copy từ `vninvestcharts-widget/docs/AI_AUDIT_FRAMEWORK_TEMPLATE.md` và hiệu chỉnh scope
+   sang repo vninvest (packages/web, packages/core, external npm widget).
+
+## Verification Results
+- File `AGENTS.md` cập nhật thành công (section quy định cứng).
+- File `docs/AI_AUDIT_FRAMEWORK.md` tạo thành công.
+- Không thay đổi mã nguồn runtime → không ảnh hưởng build/lint.
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `AGENTS.md` | Thêm section "AI Audit/Research Framework (Quy định cứng bắt buộc)" |
+| `docs/AI_AUDIT_FRAMEWORK.md` | Tạo mới — template chuẩn hóa |
+
+---
+
+# 2026-07-18 | Fix Sprint Plan C1-C5: Counter-Audit Contradictions ✅
+
+## Problem Solved
+- Sửa 5 contradictions (C1-C5) từ counter-audit `docs/COUNTER_AUDIT_SPRINT_PLAN_20260718.md`
+  trong `docs/TENANT_MANAGEMENT_SPRINT_PLAN.md`.
+
+## Changes
+1. **`docs/TENANT_MANAGEMENT_SPRINT_PLAN.md`** (line 79): Dev port `:5199` → `:3000`
+   (vite.config.ts:28 confirms port 3000).
+2. **`docs/TENANT_MANAGEMENT_SPRINT_PLAN.md`** (line ~917): Bỏ step "Thêm `@tanstack/react-query`"
+   vì `@tanstack/react-query@^5.101.2` đã có sẵn (package.json:59). Giữ QueryProvider.tsx + migrate.
+3. **`docs/TENANT_MANAGEMENT_SPRINT_PLAN.md`** (lines ~489, ~630): "NEW in `partner_urls.py`" →
+   "Existing `partner_urls.py` — thêm route(s)" vì file đã tồn tại.
+4. **`docs/TENANT_MANAGEMENT_SPRINT_PLAN.md`** (dependency graph): Bỏ dependency
+   Sprint 5 (SSO) → Sprint 4 (RBAC) vì `views/sso.py` self-contained, không import RBAC.
+   Bỏ dependency Sprint 2 (Email) → Sprint 1.5 (member limit) vì cùng implement feature mới.
+   Critical path mới: Sprint 1 → {S2, S4, S5 song song} → S8.
+5. **`docs/TENANT_MANAGEMENT_SPRINT_PLAN.md`** (A6 gate + Sprint 1 checklists): Đổi `grep -rn`
+   → `rg` (ripgrep) cho Windows cross-platform compatibility.
+
+## Verification Results
+- `rg "def _get_request_tenant" packages/core/` → 10 results (all views, expected before Sprint 1)
+- `vite.config.ts:28` → `port: 3000` confirmed
+- `package.json:59` → `@tanstack/react-query` confirmed
+- `identity_access/partner_urls.py` EXISTS confirmed
+- `views/sso.py:38` → self-contained `_require_tenant_role`, no RBAC import
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `docs/TENANT_MANAGEMENT_SPRINT_PLAN.md` | Fix C1 (port), C2 (react-query), C3 (partner_urls), C4/C5 (deps), A6 (rg) |
+
+---
+
+# 2026-07-18 | Counter-Audit: Tenant Management Sprint Plan ✅
+
+## Problem Solved
+- Phản biện `docs/TENANT_MANAGEMENT_SPRINT_PLAN.md` (1374 lines, 44.3KB) theo framework
+  chuẩn AGENTS.md — verify mọi file:line citation + quality gate commands + dependency logic.
+- Kết quả: Sprint 1 backend citations **CHÍNH XÁC 100%** (có thể thực thi ngay). Chỉ 4 lỗi
+  nhỏ (C1-C3 sai số, C4-C5 dependency artificial). Không có phantom file.
+
+## Changes (research only — no code modified)
+- `docs/COUNTER_AUDIT_SPRINT_PLAN_20260718.md` (mới): báo cáo phản biện với CONTRADICTIONS
+  (C1-C5), findings table (quality gates / Sprint 1 citations / structural / dependency).
+
+## Verification Results
+- **Sprint 1 backend citations:** verify 22 file:line claims → TẤT CẢ exact. VD:
+  views_tenant.py:120 (`_get_request_tenant`), tenant_member_views.py:31/68/95,
+  views/sso.py:20/29/38/74-118/121-223, views_webhooks.py:34/103-115/222-234,
+  views_dashboard.py:20, views_security.py:20, views_alert_config.py:15,
+  views_usage.py:23, views_usage_trend.py:18, views_forecast.py:19, onboarding_views.py:29-39.
+- **Quality gates:** `npm run test` (package.json:15), `i18n:scan` (package.json:22, THỰC TỀN TẠI),
+  `lint` (package.json:20), `build` (package.json:9) — all valid.
+- **Structural:** `providers/QueryProvider.tsx`, `TenantAdminErrorBoundary.tsx`,
+  `TenantAdminSettingsPage.tsx`, `TenantAdminRolesPage.tsx` — NOT FOUND (consistent NEW).
+  `tests/visual/tenant-admin.spec.ts` EXISTS (consistent "update existing").
+  `tasks.py:420-451` `deprovision_tenant_async` exact. `Sidebar.tsx` exists.
+- **C1 WRONG:** Dev port `:5199` (DoD line 79) → thực là `:3000` (`vite.config.ts:28`).
+- **C2 WRONG:** `@tanstack/react-query@^5.101.2` đã có sẵn (package.json:59), Sprint 6.2 "Thêm" là no-op.
+- **C3 WRONG:** `partner_urls.py` đã tồn tại, không phải NEW.
+- **C4 ARTIFICIAL:** Sprint 5 (SSO) → Sprint 4 (RBAC) dependency không có code coupling
+  (views/sso.py tự define role check, hardcoded owner/admin).
+- **C5 ARTIFICIAL:** Sprint 2 (Email) → Sprint 1.5 (member limit) — code không có member
+  limit (chỉ có `max_active_pats` PAT limit). Cùng implement 1 feature, không phải dependency.
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `docs/COUNTER_AUDIT_SPRINT_PLAN_20260718.md` | Tạo mới — phản biện sprint plan |
+
+---
+
+# 2026-07-18 | Counter-Audit: Tenant Management Audit & Upgrade Plan ✅
+
+## Problem Solved
+- Phản biện `docs/TENANT_MANAGEMENT_AUDIT_AND_UPGRADE_PLAN.md` (649 lines, 28.9KB) theo
+  framework chuẩn AGENTS.md — verify từng claim bug/security gap/feature gap qua source thực tế.
+- Kết quả: 100% substantive findings CONFIRMED (15 bugs + 8 security gaps + feature matrix).
+  Structural claims (13 pages line counts, 11 model line numbers, 13 i18n namespaces) khớp exact.
+- Phát hiện 5 lỗi kỹ thuật (C1-C5): B1 count/sai line, B3 thiếu 1 def (×2→×3),
+  B5 sai file citation của features_map, S1 sai range, backend path dùng `/` thay `\`.
+
+## Changes (research only — no code modified)
+- `docs/COUNTER_AUDIT_TENANT_MANAGEMENT_20260718.md` (mới): báo cáo phản biện chi tiết
+  với CONTRADICTIONS (C1-C5), findings verify table (backend + frontend + structural),
+  đánh giá chất lượng, khuyến nghị.
+
+## Verification Results
+- Backend source: `packages/core/backend/src/identity_access/` — grep `def _get_request_tenant`
+  (9 defs), `def _require_tenant_role` (3 defs exact), `def _get_request_tenant_role` (3 defs,
+  doc ghi 2), `_require_tenant_role(` calls (22 sites, all `'owner','admin'` → B4 CONFIRMED).
+- SSO mock: `views/sso.py:83-223` không import SAML, callback đọc email từ body (S1/S2 CONFIRMED).
+- Member limit: `tenant_member_views.py:126-177` invite POST không check limit (B5 CONFIRMED);
+  features_map tại `views_webhooks.py:195-200` (không phải tenant_member_views.py:126).
+- Frontend: `PortfolioContext.js:263-268` reload + `:298` non-reactive (B6/B7 CONFIRMED);
+  `TenantAdminPATsPage.tsx:559,727,741-743,784,788` + `TenantAdminSSOPage.tsx:303,327`
+  hardcoded VN (B10 CONFIRMED); `createElement` trong layout (B15 CONFIRMED);
+  không ErrorBoundary trong `TenantAdminLayout.tsx` (CONFIRMED).
+- Model line numbers: CoreTenant:42, TenantMember:472, TenantInvite:536, TenantSSOConfig:995,
+  TenantWebhookConfig:1237, ScheduledReport:1170 — tất cả khớp doc.
+- 13 i18n namespaces trong `vi.js` — đủ (tenantHome...tenantReports).
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `docs/COUNTER_AUDIT_TENANT_MANAGEMENT_20260718.md` | Tạo mới — phản biện audit tenant mgmt |
+
+---
+
+# 2026-07-17 | Stock Detail Page Audit Fix Plan — 12 slices IMPLEMENTED ✅
+
+## Problem Solved
+- Thực thi `docs/IMPLEMENTATION_PLAN_STOCK_DETAIL_AUDIT_20260717.md` (12 slices S1–S12)
+  khắc phục các gap audit của Stock Detail Page so với `vninvestcharts-widget` v1.2.5.
+- Counter-audit `docs/COUNTER_AUDIT_IMPLEMENTATION_PLAN_20260717.md` (C1 blocker, C2/C4 high,
+  C3/C5 medium, C6/C7/C8 low) — 8 findings ĐÃ ÁP DỤNG vào plan trước khi implement.
+- W-01–W-05 (widget-side root causes) ngoài scope host, escalated to widget coder.
+
+## Changes (Host only)
+1. **components/PageErrorBoundary.tsx** (mới): generic error boundary, `onRetry`, logs `[StockDetailPage]`.
+2. **pages/StockDetailPage.tsx**: S1 wrap + retry→`loadBlocking`; S6 watchlist API
+   (`getWatchlists`/`addWatchlistItem`/`removeWatchlistItem`); S7 `promptConfig` schema-validate
+   (version+sources); S11 `useI18n` + `stockDetail.page.*` keys.
+3. **features/stock-detail/hooks/useStockDetailPageModel.js**: S1 `loadBlocking` extracted to
+   `useCallback`, exposed in return.
+4. **adapters/chartAdapter.js**: S2 `searchSymbols`→`getSymbolList`; S9 `subscribeToTrades`
+   (poll `getMarketTrades` 5s) + `subscribeToOrderbook` no-op.
+5. **components/VNStockChartPanel.js**: S3 locale/theme từ LangContext; S4 `useNavigate`
+   (thay `window.location.href`); S5 safe props; S8 `workspaceId`+`storageAdapter`;
+   S9 data props; S10 `VNInvestMultiCharts || VNInvestCharts` switch. `t` wrapped in
+   `useCallback` (fix `react-hooks/exhaustive-deps` error).
+6. **types/vninvestcharts-widget.d.ts**: extended with MultiCharts, `workspaceId`, `storageAdapter`,
+   safe + data-dependent props (no `.d.ts` ships from widget — C4).
+7. **i18n/vi.js + en.js**: `stockDetail.page.*` (~90 keys) cho S11.
+8. **features/stock-detail/components/{StockDetailHeader,StockDetailTabs,StockSessionWitness,StockContextDeck}.js**:
+   S11 wired `useI18n` + `tk` helper, replaced hardcoded VN strings.
+9. **pages/StockDetailPage.css**: S12 mobile media queries (max-width 768px / 480px), 2772→2880 lines.
+
+## Verification Results
+- `npm run build` (tsc + vite): ✅ PASS (~24s), widget code-split to async `index-*.js` 2.11MB.
+- `npx tsc --noEmit`: ✅ EXIT 0 (0 errors).
+- ESLint (changed files): ✅ 0 errors (1 `exhaustive-deps` found & fixed during self-audit);
+  remaining warnings are pre-existing `react/jsx-no-literals`/`no-unused-vars` in unrelated files.
+- Risk gate B-02: ✅ SATISFIED (single widget dep, no fork/vendor/patch-package; host `.d.ts` type-only).
+- Self-audit: `docs/SELF_AUDIT_STOCK_DETAIL_20260717.md` (per-slice acceptance + contradictions + findings).
+
+## Findings (host)
+- F1 LOW: `subscribeToOrderbook` no-op (no core endpoint) → widget W-04.
+- F2 LOW: `subscribeToTrades` 5s poll (not WS) → upgrade when core streams.
+- F3 INFO: mobile CSS appended at EOF (could merge with 1024px block later).
+- No HIGH/CRITICAL; no host blockers.
+
+## Modified Files
+| File | Slices |
+|------|--------|
+| `pages/StockDetailPage.tsx` | S1, S6, S7, S11 |
+| `features/stock-detail/hooks/useStockDetailPageModel.js` | S1 |
+| `adapters/chartAdapter.js` | S2, S9 |
+| `components/VNStockChartPanel.js` | S3, S4, S5, S8, S9, S10 |
+| `components/PageErrorBoundary.tsx` | S1 (new) |
+| `types/vninvestcharts-widget.d.ts` | S5, S8, S9 |
+| `i18n/vi.js`, `i18n/en.js` | S11 |
+| `features/stock-detail/components/StockDetailHeader.js` | S11 |
+| `features/stock-detail/components/StockDetailTabs.js` | S11 |
+| `features/stock-detail/components/StockSessionWitness.js` | S11 |
+| `features/stock-detail/components/StockContextDeck.js` | S11 |
+| `pages/StockDetailPage.css` | S12 |
+
+---
+
 # 2026-06-23 | Stock Details Page Normal Mode Cutover & Heatmap Drill-down Fix ✅
 
 ## Problem Solved
@@ -9372,3 +9677,549 @@ Resolved by:
 | `frontend/docker/nginx.conf` | Added explicit compat locations for API health paths |
 | `module_tree_full.md` | Regenerated |
 | `CODE_CHANGE_AUDIT_LEDGER.md` | Added this entry |
+
+---
+
+# 2026-07-17 | Stock Detail Page Audit — Bugs, Widget Compatibility & Commercial-Grade Upgrade Plan ✅ (RESEARCH/PROPOSAL)
+
+## Problem Solved
+- Nghiên cứu phân tích toàn diện trang `/stocks/:symbol` (`StockDetailPage.tsx`) theo AI Audit/Research Framework (AGENTS.md): xác định 21 findings (P0-P3), đánh giá tính tương thích `vninvestcharts-widget` v1.2.5, và đề xuất lộ trình nâng cấp lên đẳng cấp phần mềm thương mại phổ biến (TradingView/TCBS-level).
+- Phát hiện widget mạnh hơn nhiều so với cách dùng hiện tại: có sẵn `VNInvestMultiCharts` (grid layout), `VNSymbolSearch` (autocomplete), `showAdvisoryPanel`, `showTapePanel`, `showCorporateEvents`, `WorkspaceSerializer`, `WidgetErrorBoundary` — đều CHƯA được tận dụng.
+- Phân tách rõ ràng: bug/gap thuộc host app (packages/web) vs. root-cause fixes nên yêu cầu coder widget sửa (peerDeps React 18, publish `dist/index.d.ts`, expose `openSearch()`).
+
+## Key Findings (24 total — bao gồm 3 findings bổ sung từ counter-audit)
+- **P0 (thực sự)**: (F-05) KHÔNG có ErrorBoundary bao quanh page → white-screen risk duy nhất.
+- **P1**: (F-06) Watchlist button dummy, không gọi API; (F-07) 100% Vietnamese hardcoded trong 6 components; (F-22) `chartAdapter.searchSymbols` stub → Multichart search sẽ không hoạt động.
+- **P2**: (F-02) `loadingProfile` không reset explicit nhưng self-heal qua dependency array (race nhẹ); (F-08) `VNStockChartPanel` local i18n hardcode; (F-09) `isWatched` không persist; (F-10) tabs không lazy-load; (F-11) `onSymbolChange` dùng `window.location.href`; (F-12) KHÔNG có mobile responsive; (F-13) adapter tạo lại khi deps change (minor); (F-14) duplicate utils; (F-15) `createElement` alias (trade-off, không phải anti-pattern); (F-16) `as any`; (F-17) subscribe stubs; (F-18) CSS monolithic; (F-23) không có error retry; (F-24) `promptConfig` không validate schema.
+- **P3**: (F-01) state declaration xa nơi dùng (KHÔNG phải TDZ bug); (F-03) `showToast` cleanup không dùng (KHÔNG phải leak thực tế); (F-04) `prevClose` edge case `0` (hypothetical); (F-19) `onBarsChange` dual store (design split, KHÔNG phải race); (F-20) widget `locale` hardcode; (F-21) widget `theme` hardcode.
+
+> **COUNTER-AUDIT (2026-07-17):** F-01, F-02, F-03, F-13, F-19 bị phản biện — điều chỉnh severity từ P0/P3 xuống P2/P3. F-01/F-02/F-19 KHÔNG phải bug (React guarantee / self-heal / design split). Xem `docs/STOCK_DETAIL_PAGE_AUDIT_20260717.md` Mục 8.
+
+## Widget Capability Assessment (v1.2.5)
+- `VNInvestMultiCharts` export có đầy đủ: `layout` (rows×cols + presets L/T/Main+3Sidebar), `charts[]`, `defaultChartProps`, `sync*` flags (crosshair/range/drawings/timeframe/symbolLinks), `showWorkspaceToolbar` (có search), `workspaceId` + `storageAdapter`, ref methods (`addChart`, `setLayout`, `saveWorkspace`, `setActiveChart`).
+- `VNSymbolSearch` built-in dùng `adapter.searchSymbols()` — host app hiện stub (`chartAdapter.js:130-132`).
+- 60+ indicators, 68 drawing tools, PaperTradePanel, Advisory/Tape/CorporateEvents panels — chưa dùng.
+- **Widget root-cause issues**: (W-01) `dist/index.d.ts` missing dù package.json khai báo; (W-02) internal `version="1.0.0"` stale (package 1.2.5); (W-03) peerDeps `"react":"^19"` nên host phải lazy-load tránh TDZ; (W-04) `VNSymbolSearch` không expose external trigger; (W-05) cần consistent export sau lazy-load.
+
+## Proposed Upgrade Path
+- **A. Widget coder fixes**: W-01 publish types, W-02 sync version, W-03 open peerDeps `^18 || ^19`, W-04 expose `openSearch()` ref, W-05 stable MultiCharts export. (~1.75 ngày)
+- **B. MultiChart mode**: Thay `VNInvestCharts` → `VNInvestMultiCharts` layout `1×1` default. **RISK**: chưa test production, thêm sync surface area → nên thử dev env trước, giữ SingleChart nếu unstable.
+- **C. Host app fixes**: C-01 thực `searchSymbols` → wire `getSymbolList()` (`market.js:197`, backend đã có); C-02 wire locale/theme (covers F-20/F-21); C-03 SPA navigate; C-04 workspace persistence; C-05 **ErrorBoundary + Retry merge F-05+F-23 (1.5 ngày)**; C-06 watchlist API (P1); C-07 i18n 6 components (**3-4 ngày**); C-08 mobile responsive (**4-5 ngày**).
+- **B-04 split**: (a) safe props `showNonTradingDays`/`showSymbolBadges` = 0.25 ngày; (b) data-dependent `showTapePanel`/`showAdvisoryPanel`/`showCorporateEvents` = 1-2 ngày + CẦN fix F-17 (subscribe stubs) trước.
+- **Expected UX lift**: TradingView-level coverage ~40% → ~85%.
+- **Priority reorder**: F-05 (ErrorBoundary) + F-06 (Watchlist) + F-07 (i18n) + F-22 (search stub) là thực sự quan trọng nhất. F-01/F-02/F-19 đã downgrade không phải blocker.
+- **Effort revised (vòng 2)**: Widget ~1.75 ngày | Host ~11-12 ngày | **Grand total ~13-14 ngày** (tăng từ 11 do C-05 merge + B-04 split).
+- **Round-2 scorecard**: Accuracy 9.5/10, Action plan 7.5/10, Consistency 8.5/10, Readiness 8/10. Báo cáo đủ accurate làm basis cho implementation plan.
+
+## Verification Results
+- Đây là research/audit slice — KHÔNG thay đổi runtime code.
+- Báo cáo chi tiết: `docs/STOCK_DETAIL_PAGE_AUDIT_20260717.md`.
+- Không chạy build/lint (không có code change).
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `docs/STOCK_DETAIL_PAGE_AUDIT_20260717.md` | Tạo mới — báo cáo audit đầy đủ (21 findings + widget capability + upgrade plan) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this ledger entry |
+
+## Residual Risk
+- Widget v1.2.5 peerDeps React 19 → host app (React 18.3.1) hiện lazy-load qua dynamic `import()` để tránh TDZ; nếu widget coder mở peerDeps (W-03) thì có thể bỏ lazy-load.
+- MultiChart migration (B-01) cần verify widget `VNInvestMultiCharts` render đúng trên React 18 sau lazy-load (W-05).
+- i18n cho 6 components (C-07) là effort lớn nhất (~2 ngày) nhưng bắt buộc cho SaaS multi-locale.
+
+---
+
+### ENTRY: 2026-07-17 — Implementation Plan cho Stock Detail Audit
+
+**Type:** planning
+**Scope:** Detailed implementation plan — 12 slices, acceptance criteria, audit checklists, dependency graph
+**Source:** `docs/STOCK_DETAIL_PAGE_AUDIT_20260717.md` (24 findings, 3 counter-audit rounds)
+
+## Verification Results
+- Đây là planning slice — KHÔNG thay đổi runtime code.
+- Plan chi tiết: `docs/IMPLEMENTATION_PLAN_STOCK_DETAIL_AUDIT_20260717.md`.
+- Không chạy build/lint (không có code change).
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `docs/IMPLEMENTATION_PLAN_STOCK_DETAIL_AUDIT_20260717.md` | Tạo mới — implementation plan 12 slices với acceptance criteria, audit checklists, dependency graph, verification protocol |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this ledger entry |
+
+## Residual Risk
+- S10 (MultiChart switch) cần S2 (searchSymbols) + S3 (i18n) + W-03 (peerDeps) hoàn thành trước.
+- S11 (i18n 6 components) là effort lớn nhất (3-4d) — cần audit string count trước khi commit.
+- S12 (mobile responsive) cần rewrite CSS monolithic 2772 dòng — rủi ro regress design.
+
+---
+
+### ENTRY: 2026-07-17 — Counter-Audit của Implementation Plan
+
+**Type:** planning-audit
+**Scope:** Internal consistency, reference code accuracy, dependency correctness of implementation plan
+**Source:** `docs/IMPLEMENTATION_PLAN_STOCK_DETAIL_AUDIT_20260717.md`
+
+## Verification Results
+- Đây là planning audit — KHÔNG thay đổi runtime code.
+- Counter-audit: `docs/COUNTER_AUDIT_IMPLEMENTATION_PLAN_20260717.md`.
+- Không chạy build/lint (không có code change).
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `docs/COUNTER_AUDIT_IMPLEMENTATION_PLAN_20260717.md` | Tạo mới — 8 findings (2 BLOCKER/HIGH, 3 MEDIUM, 3 LOW) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this ledger entry |
+
+## Residual Risk
+- **C1 (BLOCKER):** S1 reference code là fake — dùng wrong APIs (`getCompanyProfile` vs `getStockOverview`), wrong state setter (`setState` vs `setModelState`), thiếu `mountedRef` guard. Code team sẽ viết sai nếu follow reference.
+- **C2 (HIGH):** ErrorBoundary trong StockDetailPage KHÔNG catch lazy-load chunk failure — cần boundary riêng ở pageRegistry/router level.
+- **C4 (HIGH):** `defaultWatchlistId` trong S6 reference code chưa được source từ bất kỳ đâu.
+- Plan readiness: 6/10 → cần fix C1-C4 trước khi dùng làm implementation basis.
+
+---
+
+### ENTRY: 2026-07-17 — Apply 8 Counter-Audit Fixes vào Implementation Plan
+
+**Type:** planning-fix
+**Scope:** Fix all 8 findings from counter-audit into implementation plan
+**Source:** `docs/COUNTER_AUDIT_IMPLEMENTATION_PLAN_20260717.md`
+
+## Verification Results
+- Đây là planning fix — KHÔNG thay đổi runtime code.
+- Plan đã fix: `docs/IMPLEMENTATION_PLAN_STOCK_DETAIL_AUDIT_20260717.md`.
+- Không chạy build/lint (không có code change).
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `docs/IMPLEMENTATION_PLAN_STOCK_DETAIL_AUDIT_20260717.md` | Applied 8 fixes: C1 (S1 reference rewrite), C2 (AC#3 correction), C3 (S3 locale fix), C4 (S6 watchlist source), C5 (S8 verify note), C6 (S11 string scan), C7 (S10+S4 deps), C8 (S9 data source) |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this ledger entry |
+
+## Fix Summary
+| # | Finding | Fix Applied |
+|---|---------|-------------|
+| C1 | S1 reference code fake | Rewritten: `setModelState`, 4 real APIs, `mountedRef`, `buildEffectiveOrderFlowData`, adapter hoisted |
+| C2 | AC#3 wrong claim | Corrected: lazy-load caught by `createDeferredPageComponent`, S1 covers render crashes only |
+| C3 | S3 `language` → `locale` | Fixed: `locale: locale` with destructured `const { locale, t } = useI18n()` |
+| C4 | `defaultWatchlistId` undeclared | Sourced: `getWatchlists()` → pick first watchlist, with mount-time check for `isWatched` |
+| S5 | S8 import unverified | Added verification step: check widget exports before committing |
+| C6 | S11 string count unverified | Added pre-work `rg` string scan command |
+| C7 | S10 deps missing S4 | Added S4 to priority map and dependency graph |
+| C8 | S9 data source unspecified | Added data source spec: trades=RealtimeContext, orderbook=useOrderBook, corporate=check backend |
+
+## Residual Risk
+- S1 reference code đã rewrite đúng nhưng là significant refactor (hoist adapter, extract useCallback, simplify useEffect). Code team cần careful review khi implement.
+- S6 watchlist: `getWatchlists()` return `{ results: object[] }` — need to verify items/symbols shape matches `addWatchlistItem` expectations.
+- S8: `createLocalStorageAdapter` export仍 unverified — widget team cần confirm trước khi commit.
+- Plan readiness: 8.5/10 (after fixes).
+
+---
+
+### ENTRY: 2026-07-17 — Resolve Remaining 3 Self-Audit Findings (F1-F3)
+
+**Type:** runtime-fix
+**Scope:** Fix 3 remaining findings from self-audit: broken trades subscription, unwired orderbook, scattered mobile CSS
+**Source:** `docs/SELF_AUDIT_STOCK_DETAIL_20260717.md` F1-F3
+
+## Verification Results
+- `npx tsc --noEmit`: ✅ EXIT 0 (0 errors)
+- `npm run build`: ✅ PASS (~44s)
+- `npx eslint chartAdapter.js StockDetailPage.css`: ✅ 0 errors (pre-existing warnings only)
+- CSS: 2880 → 2838 lines (removed duplicate rules)
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `adapters/chartAdapter.js:122-165` | F1: `subscribeToOrderbook` wired to `getRealtimeDepthChart` (5s poll). F2: `subscribeToTrades` fixed from non-existent `getMarketTrades` → `getRealtimeIntraday` (was a runtime bug) |
+| `pages/StockDetailPage.css:2774-2838` | F3: Mobile 768px/480px rules consolidated — removed duplicate `.sdp-chart-wrapper`/`.sdp-deck-grid`, kept only new rules |
+| `docs/SELF_AUDIT_STOCK_DETAIL_20260717.md` | Updated F1-F3 status to RESOLVED, updated overall assessment |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this ledger entry |
+
+## Fix Summary
+| # | Finding | Severity | Fix |
+|---|---------|----------|-----|
+| F1 | `subscribeToOrderbook` was no-op | LOW → RESOLVED | Wired to `getRealtimeDepthChart(symbol)` (`market.js:367`), polls every 5s, returns `{ bids, asks, spread }` |
+| F2 | `subscribeToTrades` called non-existent `getMarketTrades` | LOW → **BUG FIX** | Replaced with `getRealtimeIntraday(symbol, { page_size: 50 })` (`market.js:379`). Was a runtime crash. |
+| F3 | Mobile CSS appended at EOF with duplicates | INFO → RESOLVED | Consolidated: removed duplicate rules, kept new-only rules, 2880→2838 lines |
+
+## Residual Risk
+- F1/F2: Polling at 5s intervals (not WebSocket). Acceptable for tape/orderbook panels. Upgrade to WS when core exposes stream endpoints.
+- F2 was a **hidden runtime bug** — `getMarketTrades` doesn't exist on the adapter. The trades panel would have thrown `TypeError: coreAdapter.getMarketTrades is not a function` when widget subscribed.
+
+---
+
+### ENTRY: 2026-07-17 — Counter-Audit of React 19 Upgrade Proposal
+
+**Type:** planning-audit
+**Scope:** Full verification of `docs/REACT19_UPGRADE_PROPOSAL_20260717.md` against actual code + node_modules
+**Source:** `docs/REACT19_UPGRADE_PROPOSAL_20260717.md`
+
+## Verification Results
+- peerDep table: 14/16 packages verified ✅, 2 minor inaccuracies (A1: @vitejs/plugin-react misleading column, A2: echarts-for-react understated range)
+- Source-code scan: ALL 12 breaking-pattern greps verified — 0 hits confirmed for all deprecated APIs
+- AGENTS.md contradictions: 2 contradictions confirmed (recharts v3 claim outdated)
+- Findings F1-F6: ALL file:line references verified correct
+- Upgrade sequence: 2 missing steps identified (C1: test migration complexity, C2: type friction checklist)
+- Effort estimate: UNDERESTIMATED — 0.5-1d → revised 1-1.5d
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `docs/COUNTER_AUDIT_REACT19_PROPOSAL_20260717.md` | Created — 5 findings (2 MEDIUM, 3 LOW), full verification report |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | Added this ledger entry |
+
+## Residual Risk
+- **C1 (MEDIUM):** `AuthPages.test.js` migration from RTR→RTL is non-trivial — 7 tests use RTR-specific APIs (`create()`, `root.findByProps()`, `root.findByType()`, `toJSON()`). Each test needs rewriting. Estimated 0.5-1d alone.
+- **C2 (MEDIUM):** `@types/react@19` introduces 4+ breaking type changes not listed in proposal. Build may fail unexpectedly during B3 quality gates.
+- Proposal overall quality: **SOLID** — implementable with 4 minor corrections. No contradictions found between proposal and reality.
+
+---
+
+### ENTRY: 2026-07-17 — React 19 Upgrade Implementation ✅
+
+**Type:** implementation
+**Scope:** Upgrade from React 18.3.1 → React 19.2.7, remove react-test-renderer, rewrite tests, cleanup dead files, update docs
+**Status:** ✅ COMPLETE
+
+## What Was Done
+
+### B1: Dependency Upgrade
+- `react@19.2.7`, `react-dom@19.2.7`, `@types/react@19.2.17`, `@types/react-dom@19.2.3` installed
+- `react-test-renderer` removed from package.json
+- Pre-existing babel peerDep conflict (`@babel/preset-env@8.0.2` requires `@babel/core@^8` but project has `7.29.0`) — used `--legacy-peer-deps` to proceed. Unrelated to React 19.
+
+### B2: AuthPages.test.js Rewrite (RTR → RTL)
+- Migrated 7 tests from `react-test-renderer` (`create()`, `root.findByProps()`, `root.findByType()`, `toJSON()`) to `@testing-library/react` (`render()`, `screen.*`, `userEvent`)
+- Two runtime fixes discovered during rewrite:
+  - **Submit button disabled**: Register form submit button is `disabled` without turnstile token. Tests 2 & 3 used `userEvent.click(disabled button)` → nothing happened. Fix: `fireEvent.submit(form)` bypasses disabled check.
+  - **Duplicate error text**: Password mismatch and API field errors appear twice (field error + global error). `getByText` throws on duplicates. Fix: `getAllByText` with `toBeGreaterThanOrEqual(1)`.
+
+### B3: Quality Gates
+- tsc: ✅ 0 errors
+- build: ✅ PASS (~26s)
+- Jest (AuthPages): ✅ 7/7 pass
+- Vitest (components): ✅ 11/11 pass
+- Pre-existing: `coreApiAdapter.test.js` child process crash (VCI symbol-snapshot) — unrelated
+
+### B5: Dead File Cleanup
+- Deleted `src/main.js` (124 lines) — dead duplicate of `src/main.tsx`. `index.html` references `main.tsx` only. No imports from any file. Has `v7_startTransition` drift vs current `main.tsx`.
+
+### B6: AGENTS.md Correction
+- Line 25: Updated React 19 TDZ fix entry — removed false "KHÔNG upgrade app lên React 19" claim. Updated to reflect actual upgrade to React 19.
+- Line 33: Updated "React 18 giữ nguyên, tránh recharts v3 migration" → reflects React 19 with recharts@2.15.4 supporting ^19.0.0.
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/web/package.json` | react@^19.0.0, react-dom@^19.0.0, @types/react@^19, @types/react-dom@^19; react-test-renderer removed |
+| `packages/web/src/pages/auth/AuthPages.test.js` | Full rewrite from RTR to RTL (173 lines) — imports, 7 tests, fireEvent for disabled button |
+| `packages/web/src/main.js` | DELETED — dead duplicate of main.tsx |
+| `AGENTS.md:25,33` | Fixed outdated recharts v3 / React 18 claims → reflects React 19 upgrade |
+| `CODE_CHANGE_AUDIT_LEDGER.md` | This entry |
+
+## Residual Risk
+- `@babel/preset-env@8.0.2` / `@babel/core@7.29.0` peerDep mismatch — pre-existing, not caused by React 19. Uses `--legacy-peer-deps` for installs.
+- Widget lazy-load (Option B) unchanged — `vninvestcharts-widget` still loaded as async chunk. No runtime change.
+- `NODE_OPTIONS=--experimental-vm-modules` required for Jest ESM `.js` files on Windows — may need to add to package.json test script for CI.
+
+---
+
+# 2026-07-18 | Sprint 2 Counter-Audit Fixes (APPROVED) + Sprint 3 (Tenant Settings Page) ✅
+
+## Problem Solved
+- Sprint 2 counter-audit (`docs/AUDIT_TENANT_SPRINT2_20260718.md`) raised F1–F4 (approved after fix):
+  F1 throttles in `sys.argv`, F2 no task tests, F3 hardcoded VN emails, F4 no integration test.
+- Sprint 3 (Tenant Settings Page) per `docs/TENANT_MANAGEMENT_SPRINT_PLAN.md` lines 446–570:
+  TenantSettings model + GET/PUT `/core/v1/partner/settings/` + settings page + sidebar entry.
+
+## Changes (Sprint 2 fixes)
+1. **settings.py:10** — `TESTING = 'test' in sys.argv ...` flag, used for all 8 throttle rates (lines 236–249) + DEFAULT_THROTTLE_CLASSES.
+2. **tests/test_email_tasks.py** — 7 new tests: SendWelcomeEmailTests×3, SendInviteEmailTests×3, EmailTaskIntegrationTests.test_invite_view_wires_invite_email.
+3. **email_tasks.py** — bilingual vi/en dicts, `lang` param on both tasks; templates use `{% if lang == 'en' %}`.
+4. **email_tasks.py** (bonus) — `UserProfile.objects.select_related('user').get(user__id=user_id)`.
+
+## Changes (Sprint 3)
+1. **models.py** — `TenantSettings` model (OneToOne CoreTenant: logo_url, timezone, locale, theme, custom_domain; created_at/updated_at).
+2. **migrations/0021_tenantsettings.py** — created + applied.
+3. **admin.py** — `TenantSettingsAdmin` registered.
+4. **serializers.py** — `TenantSettingsSerializer` (fields: logo_url, timezone, locale, theme, custom_domain, created_at, updated_at; read-only timestamps).
+5. **views_tenant.py:592** — `PartnerTenantSettingsView` (APIView GET/PUT) with `require_pat_scopes_or_human_session('manage_tenant')` + `_require_tenant_role('owner','admin')`.
+6. **partner_urls.py:38-39** — `partner/settings/` + `partner/settings` routes.
+7. **pages/tenant-admin/TenantAdminSettingsPage.tsx** — NEW settings page (ShellPageChrome + ShellPanel + ShellSelectField/ShellField form, TIMEZONES list, PUT via coreGet).
+8. **TenantAdminSidebar.tsx** — added `Settings` icon + `{ path: 'settings', labelKey: 'tenantSettings.title', icon: Settings }`.
+9. **main.tsx** — `<Route path='settings' element={resolvePageComponent('tenant-admin-settings')}>`.
+10. **pageRegistry.js** — added `tenant-admin-settings` entry.
+11. **i18n/vi.js + en.js** — `tenantSettings` block (eyebrow, title, description, timezoneLabel, localeLabel, themeLabel, customDomainLabel, save, saving, discard, saveSuccess, saveFailed, loadFailed, lastUpdated).
+12. **tests/test_tenant_settings.py** — NEW: 4 tests (GET default / PUT update / machine PAT missing scope 403 / cross-tenant PAT 403).
+
+## Verification Results
+- Frontend: `npx tsc --noEmit` ✅ 0 errors; `npm run build` ✅ PASS (chunk-size warning is pre-existing).
+- Backend (Sprint 3 tests): `python manage.py test identity_access.tests.test_tenant_settings` ✅ 4/4 pass.
+- Backend full `identity_access` suite: same 5+1 pre-existing failures in `test_pat_tenant_binding.py`
+  (cross-tenant PAT middleware returns 200 instead of 403) — NO regressions from Sprint 2/3.
+- Note: human-session PATs (is_human_session=True) bypass scope check by design (permissions.py:41);
+  role guard at view level always passes for owner (PAT authenticates as tenant owner_user, authentication.py:55).
+  Role/scope enforcement is exercised via machine PATs (is_human_session=False) — covered by test_machine_pat_missing_scope_rejected + test_cross_tenant_pat_rejected.
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/vninvest_core/settings.py` | TESTING flag + throttle rates |
+| `packages/core/backend/src/identity_access/tests/test_email_tasks.py` | 7 new Sprint 2 tests |
+| `packages/core/backend/src/identity_access/email_tasks.py` | bilingual lang param + select_related fix |
+| `packages/core/backend/src/identity_access/models.py` | TenantSettings model |
+| `packages/core/backend/src/identity_access/migrations/0021_tenantsettings.py` | NEW migration |
+| `packages/core/backend/src/identity_access/admin.py` | TenantSettingsAdmin |
+| `packages/core/backend/src/identity_access/serializers.py` | TenantSettingsSerializer |
+| `packages/core/backend/src/identity_access/views_tenant.py` | PartnerTenantSettingsView |
+| `packages/core/backend/src/identity_access/partner_urls.py` | settings routes |
+| `packages/core/backend/src/identity_access/tests/test_tenant_settings.py` | NEW 4 tests |
+| `packages/web/src/pages/tenant-admin/TenantAdminSettingsPage.tsx` | NEW settings page |
+| `packages/web/src/components/TenantAdminSidebar.tsx` | settings nav item |
+| `packages/web/src/main.tsx` | settings route |
+| `packages/web/src/pages/pageRegistry.js` | tenant-admin-settings entry |
+| `packages/web/src/i18n/vi.js` + `en.js` | tenantSettings i18n keys |
+
+## Residual Risk
+- Outstanding minor findings from Sprint 2 counter-audit: F7 (no throttle 429 test), F8 (view calls `.delay()` without `lang` → i18n always 'vi') — not yet fixed.
+- Backend `test_pat_tenant_binding.py` 5+1 pre-existing failures unrelated to Sprint 3.
+
+---
+
+# 2026-07-18 | Sprint 3 Minor Gaps (F1/F6) + Sprint 1 Phase B (Editor/Viewer Roles) ✅ (declare) / ⚠️ (enforce blocked)
+
+## Problem Solved
+- Sprint 3 independent audit (`docs/AUDIT_TENANT_SPRINT3_20260718.md`) APPROVED; 2 minor gaps: F1 (PUT scope-guard untested) + F6 (hardcoded VN option labels).
+- Sprint 1 Phase B: enforce Role Permission Matrix (plan Step 1.4) on remaining `_require_tenant_role` call sites.
+
+## Changes — Sprint 3 minors
+1. **i18n/vi.js + en.js** — added `tenantSettings.localeVi/localeEn/themeDark/themeLight`.
+2. **pages/tenant-admin/TenantAdminSettingsPage.tsx** — locale/theme ShellSelectField options via `t()` (fix F6).
+3. **tests/test_tenant_settings.py** — added `test_machine_pat_missing_scope_rejected_on_put` (fix F1).
+
+## Changes — Sprint 1 Phase B
+1. **views_tenant.py** — PAT/SA write ops → `'owner','admin','editor'`; read ops → `'owner','admin','editor','viewer'`. `ServiceAccountDetailView.perform_update/perform_destroy` guarded separately (editor); `get_queryset` all-roles. Files: `partner_issue_pat:313`, `partner_rotate_pat:345`, `partner_revoke_pat:396`, `issue_pat:227`, `PATListView.get_queryset:216`, `ServiceAccountListView:149/155`, `ServiceAccountDetailView:166/194/200`, `partner_pat_usage:488`, `partner_pat_usage_summary:529`, `partner_service_account_usage:565`.
+2. **tenant_member_views / views_webhooks / views/sso / settings(602,611)** — GIỮ owner/admin (correct per matrix: invite/remove, webhooks, SSO, tenant settings = owner/admin only).
+3. **tests/test_tenant_role_matrix.py** — NEW: 3 tests recording declare-correct + auth limitation.
+
+## 🔴 BLOCKER (verified by evidence)
+- **Auth model collapses every PAT → tenant OWNER**: `middleware.py:112` + `authentication.py:55` return `service_account.tenant.owner_user`. Login (`views/login.py:156`) issues human PAT for `tenant.service_accounts.first()`. ⇒ `request.tenant_role` ALWAYS `'owner'` regardless of TenantMember role.
+- ⇒ Role Matrix NOT enforceable via current PAT auth. Guards declared correctly but cannot reject viewer/editor today.
+- This is an architectural gap → **Sprint 4 (Custom RBAC) prerequisite**: fix auth layer to resolve actual member role.
+
+## Verification Results
+- Frontend: `npx tsc --noEmit` ✅ 0 errors; `npm run build` ✅ PASS.
+- Backend: `test_tenant_settings` 5/5 ✅; `test_tenant_role_matrix` 3/3 ✅.
+- Backend full `identity_access` suite: same 5+1 pre-existing failures in `test_pat_tenant_binding.py` — no new regressions.
+- `python manage.py check --deploy`: not run (out of scope; no model changes).
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/web/src/i18n/vi.js` + `en.js` | tenantSettings option-label keys |
+| `packages/web/src/pages/tenant-admin/TenantAdminSettingsPage.tsx` | t() option labels (F6) |
+| `packages/core/backend/src/identity_access/views_tenant.py` | Role Matrix tuples (Phase B) |
+| `packages/core/backend/src/identity_access/tests/test_tenant_settings.py` | PUT scope 403 test (F1) |
+| `packages/core/backend/src/identity_access/tests/test_tenant_role_matrix.py` | NEW 3 tests |
+
+## Residual Risk
+- **RBAC enforcement blocked** by PAT-always-owner auth model — must be fixed in Sprint 4 before editor/viewer roles have any runtime effect.
+- Plan Step 1.4 line numbers were stale (cited non-existent lines 223,234,240...); actual guards at views_tenant.py 149/155/166/194/200/216/227/313/345/396/488/529/565. Plan doc needs citation fix (logged in audit plan §5 CONTRADICTIONS).
+
+---
+
+# 2026-07-18 | Sprint 4 Phase C: Custom Role CRUD API ✅
+
+## Problem Solved
+- Phase A (model + resolution) and Phase B (guard refactor) shipped. Phase C delivers the
+  management API for custom roles: list/create (PartnerRoleListCreateView) + retrieve/update/delete
+  (PartnerRoleDetailView), wired to `partner/roles/` and `partner/roles/<role_id>/`.
+- System roles immutable (is_system=True → PATCH/DELETE denied). Custom-role deletion reassigns
+  members (custom_role=NULL) before delete. Tenant-scoped name uniqueness returns clean 400
+  (not 500 IntegrityError).
+
+## Changes
+1. **views_tenant.py** — PartnerRoleListCreateView (get/post) + PartnerRoleDetailView
+   (get/patch/delete) at L620-686. Both call `require_pat_scopes_or_human_session(request, 'manage_tenant')`
+   + `_require_tenant_permission(request, 'settings:write')`.
+2. **serializers.py** — TenantCustomRoleSerializer (L492+) now accepts `tenant=` kwarg;
+   `validate_name` enforces tenant-scoped uniqueness (mirrors model unique_together);
+   `validate_permissions` rejects unknown tokens.
+3. **partner_urls.py** — routes `partner/roles/` + `partner/roles/<role_id>/` (L162-166).
+4. **tests/test_tenant_custom_role.py** — PartnerRoleCRUDAPITests rewritten to use APIClient +
+   force_authenticate + X-Tenant-ID header (exercises full middleware + permission_classes stack).
+   12 tests: list-empty, create, duplicate-name→400, invalid-token→400, admin-can-create,
+   viewer-cannot-create→403, get-detail, update, delete-reassigns-members, system-not-editable→403,
+   system-not-deletable→403, nonexistent→404.
+
+## Verification Results
+- `python manage.py test identity_access.tests.test_tenant_custom_role.PartnerRoleCRUDAPITests` ✅ 12/12.
+- Full `identity_access` suite: 183/184 pass. 1 pre-existing ERROR
+  (`test_drf_auth_reuses_middleware_credential_avoids_double_query`) = MagicMock/DB issue in
+  test_pat_tenant_binding.py, unrelated to Phase C (fails identically on baseline).
+- settings/middleware/matrix suites: 30/30 pass.
+- Frontend untouched → no tsc/build needed for Phase C.
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/identity_access/views_tenant.py` | 2 new role CRUD views |
+| `packages/core/backend/src/identity_access/serializers.py` | tenant-aware uniqueness validation |
+| `packages/core/backend/src/identity_access/partner_urls.py` | role routes |
+| `packages/core/backend/src/identity_access/tests/test_tenant_custom_role.py` | 12 CRUD tests |
+
+## Residual Risk
+- Phase D (frontend TenantAdminRolesPage) not yet started.
+- Pre-existing test_pat_tenant_binding.py error tracked separately (baseline failure).
+
+---
+
+# 2026-07-18 | Sprint 4 Phase D: Frontend TenantAdminRolesPage ✅
+
+## Problem Solved
+- Phase C shipped the custom-role CRUD API. Phase D delivers the management UI so tenant
+  owners/admins can list, create, edit, and delete custom roles (system roles immutable,
+  deletion reassigns members) — closing the full Custom RBAC loop end-to-end.
+
+## Changes
+1. **pages/tenant-admin/TenantAdminRolesPage.tsx** — NEW: list of roles (card per role with
+   permission chips + member count), create/edit modal (name + 22 granular-permission toggle
+   chips), delete-confirm modal. Calls coreGet/corePost/corePatch/coreDelete on
+   `/core/v1/partner/roles/`. Gated by `ability.can('manage', 'TenantRoleAdmin')`.
+2. **main.tsx** — route `tenant-admin/roles` → `tenant-admin-roles`.
+3. **pages/pageRegistry.js** — `tenant-admin-roles` lazy entry.
+4. **components/TenantAdminSidebar.tsx** — `roles` nav item (UserCog icon, subject `TenantRoleAdmin`).
+5. **i18n/vi.js + en.js** — `tenantRoles` block (eyebrow, title, description, create/edit/delete
+   labels, permission labels, success/failure toasts, system badge, delete-reassign note).
+6. **identity_access/views/helpers.py** — abilities now include
+   `{action:'read',subject:'TenantRoleAdmin'}` + `{action:'manage',subject:'TenantRoleAdmin'}`.
+7. **tests/test_capabilities_soc.py** — asserts TenantRoleAdmin read+manage abilities present.
+
+## Verification Results
+- Frontend: `npx tsc --noEmit` ✅ 0 errors; `npm run build` ✅ PASS (28.86s; only pre-existing
+  vninvestcharts-widget eval warning).
+- Backend: `test_capabilities_soc` 3/3 ✅; `test_tenant_custom_role` (CRUD) 12/12 ✅.
+- Full `identity_access` suite: ~183/184 (1 pre-existing baseline failure in test_pat_tenant_binding.py).
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/web/src/pages/tenant-admin/TenantAdminRolesPage.tsx` | NEW roles page |
+| `packages/web/src/main.tsx` | roles route |
+| `packages/web/src/pages/pageRegistry.js` | roles lazy entry |
+| `packages/web/src/components/TenantAdminSidebar.tsx` | roles nav item |
+| `packages/web/src/i18n/vi.js` + `en.js` | tenantRoles keys |
+| `packages/core/backend/src/identity_access/views/helpers.py` | TenantRoleAdmin ability |
+| `packages/core/backend/src/identity_access/tests/test_capabilities_soc.py` | ability assertion |
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/web/src/pages/tenant-admin/TenantAdminRolesPage.tsx` | NEW roles page |
+| `packages/web/src/main.tsx` | roles route |
+| `packages/web/src/pages/pageRegistry.js` | roles lazy entry |
+| `packages/web/src/components/TenantAdminSidebar.tsx` | roles nav item |
+| `packages/web/src/i18n/vi.js` + `en.js` | tenantRoles keys |
+| `packages/core/backend/src/identity_access/views/helpers.py` | TenantRoleAdmin ability |
+| `packages/core/backend/src/identity_access/tests/test_capabilities_soc.py` | ability assertion |
+
+## Residual Risk
+- Custom role → TenantMember.custom_role FK assignment (applying a role to a member) is backend-
+  supported (model FK) but NOT yet exposed in the members UI — Phase E (member role assignment)
+  is the natural follow-up.
+- Pre-existing test_pat_tenant_binding.py error tracked separately (baseline failure).
+
+---
+
+# 2026-07-18 | Sprint 5: Real SAML SSO (Steps 5.1–5.6)
+
+## Problem Solved
+- Replaced mock SSO with real SAML 2.0 integration using lxml (pure Python XML library).
+- `SAMLService` class handles AuthnRequest generation, Response parsing (Conditions,
+  SubjectConfirmation, Attributes), SP Metadata XML, and connection test.
+- `SSOLoginInitiateView` generates real AuthnRequest with RelayState.
+- `SSOCallbackView` parses SAML Response, validates NotOnOrAfter/InResponseTo/StatusCode,
+  extracts email/name/groups, creates/updates user, issues PAT.
+- `SSOMetadataView` serves SP metadata XML.
+- `PartnerSSOTestConnectionView` validates IdP connectivity (DNS, HTTP, XML parse).
+- `PartnerSSOTestLoginView` initiates a test AuthnRequest flow.
+- Frontend `TenantAdminSSOPage.tsx` updated with connection test button + test login flow button.
+
+## Changes
+1. `identity_access/saml_service.py` — NEW `SAMLService` class with AuthnRequest, Response parsing,
+   metadata generation, connection test. `SAML_SIGNATURE_VERIFICATION_MODE` env var (noop/strict).
+2. `identity_access/views/sso.py` — Rewritten: `SSOLoginInitiateView` (real AuthnRequest),
+   `SSOCallbackView` (real Response parsing), `SSOMetadataView`, `PartnerSSOTestConnectionView`,
+   `PartnerSSOTestLoginView`.
+3. `identity_access/tests/test_saml_sso.py` — 41 tests (AuthnRequest, Response, metadata, test views).
+4. `requirements.txt` — Added `lxml>=5.0,<6.0` (not python3-saml — intentional trade-off).
+5. `packages/web/src/pages/tenant-admin/TenantAdminSSOPage.tsx` — Added connection test button + test login flow button.
+6. `packages/web/src/i18n/vi.js` + `en.js` — Added `testLoginAction` key.
+7. `docs/AUDIT_SPRINT5_SAML_SSO_INDEPENDENT_REVIEW_20260718.md` — Independent audit findings.
+8. `docs/TENANT_MANAGEMENT_SPRINT_PLAN.md` — Updated Step 5.1 with lxml deviation note.
+
+## Verification Results
+- Backend: `test_saml_sso` 41/41 ✅
+- Frontend: tsc --noEmit pending (Step 5.6 frontend change)
+
+## Modified Files
+| File | Change |
+|------|--------|
+| `packages/core/backend/src/identity_access/saml_service.py` | NEW SAMLService class |
+| `packages/core/backend/src/identity_access/views/sso.py` | Rewritten with real SAML views |
+| `packages/core/backend/src/identity_access/tests/test_saml_sso.py` | NEW 41 tests |
+| `packages/core/backend/requirements.txt` | Added lxml>=5.0,<6.0 |
+| `packages/web/src/pages/tenant-admin/TenantAdminSSOPage.tsx` | Added test buttons |
+| `packages/web/src/i18n/vi.js` + `en.js` | Added testLoginAction key |
+| `docs/AUDIT_SPRINT5_SAML_SSO_INDEPENDENT_REVIEW_20260718.md` | NEW audit report |
+| `docs/TENANT_MANAGEMENT_SPRINT_PLAN.md` | Updated Step 5.1 with lxml deviation |
+
+## Impact
+- Sprint 5 backend complete (Steps 5.1–5.5). Frontend Step 5.6 complete.
+- Signature verification is noop by default; strict mode available via env var.
+- Independent audit closed with 3 actionable findings (F1, F2, F6) all resolved.
+
+## Sprint 6: UX Improvements (2026-07-18)
+
+### Objective
+Improve TenantAdmin UX: no-reload tenant switching, React Query migration, loading states, JSX modernization.
+
+### Changes
+| File | Change |
+|------|--------|
+| packages/web/src/context/PortfolioContext.js | switchTenant dispatches 	enant-changed CustomEvent |
+| packages/web/src/providers/QueryProvider.tsx | NEW React Query provider (staleTime 30s, gcTime 5min) |
+| packages/web/src/main.tsx | Wrapped app with QueryProvider |
+| packages/web/src/pages/tenant-admin/useTenantAdminQuery.ts | NEW useTenantAdminQuery/useTenantAdminMutation hooks |
+| packages/web/src/pages/tenant-admin/TenantAdminSecurityPage.tsx | Migrated + toast |
+| packages/web/src/pages/tenant-admin/TenantAdminSSOPage.tsx | Migrated + toast |
+| packages/web/src/pages/tenant-admin/TenantAdminRolesPage.tsx | Migrated + toast |
+| packages/web/src/pages/tenant-admin/TenantAdminSettingsPage.tsx | Migrated + toast |
+| packages/web/src/pages/tenant-admin/TenantAdminWebhooksPage.tsx | Migrated + toast |
+| packages/web/src/components/TenantAdminLayout.tsx | createElement → JSX |
+| packages/web/src/components/TenantAdminSidebar.tsx | createElement → JSX |
+| packages/web/src/adapters/coreApiAdapter.d.ts | Allow 3-arg signatures |
+| packages/web/package.json | Added @tanstack/react-query ^5.101.2 |
+
+### Impact
+- 10/13 TenantAdmin pages on React Query. AuditLogs/Billing/Usage deferred (complex pagination/multi-endpoint).
+- Tenant switching no longer triggers full page reload.
+- tsc --noEmit PASS.
+
+## Sprint 6 Follow-up: F3+F4+F5 (2026-07-18)
+
+### From docs/AUDIT_SPRINT6_UX_INDEPENDENT_REVIEW_20260718.md
+- F3 (P2): AuditLogs/Billing/Usage chua migrate React Query.
+- F4/F5 (P3): Skeleton + toast consistency.
+
+### Fix
+| File | Change |
+|------|--------|
+| useTenantAdminQuery.ts | Them option queryFn custom (cho multi-endpoint). |
+| TenantAdminAuditLogsPage.tsx | Migrate sang useQuery (key = [tenant-audit-logs, cursor, eventType, startDate, endDate]); cursor pagination + filters. |
+| TenantAdminBillingPage.tsx | Migrate sang useTenantAdminQuery voi queryFn Promise.all(3 endpoint). Refresh = refetch. |
+| TenantAdminUsagePage.tsx | 5 useTenantAdminQuery (main/history/forecast/analytics/alerts), enabled theo activeTab. |
+
+### Result
+- 13/13 TenantAdmin page dung React Query cho GET. Mutations dung truc tiep adapter + toast.
+- Skeleton co trong moi loading state. tsc --noEmit PASS. F3+F4+F5 closed.

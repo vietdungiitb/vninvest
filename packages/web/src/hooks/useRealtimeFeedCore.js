@@ -961,7 +961,7 @@ export default function useRealtimeFeedCore({
         return;
       }
 
-      if (process.env.REACT_APP_DISABLE_REALTIME_WEBSOCKET === 'true') {
+      if (typeof process !== "undefined" && process.env?.REACT_APP_DISABLE_REALTIME_WEBSOCKET === 'true') {
         wsHealthyRef.current = false;
         setRealtimeStatus('polling');
         setConnectionState((prev) => ({

@@ -300,7 +300,10 @@ ext`/`previous` links.
       ).toString();
       return coreGet(
         `/session-facts/${encodeURIComponent(symbol.toUpperCase())}/cvd${query ? `?${query}` : ""}`
-      );
+      ).catch((err) => {
+        if (err && err.status === 404) return null;
+        throw err;
+      });
     },
 
     /**
@@ -414,7 +417,12 @@ ext`/`previous` links.
     getAdvisoryLatest(symbol, date) {
       if (!symbol) throw new Error("symbol is required for getAdvisoryLatest");
       const query = date ? `?date=${encodeURIComponent(date)}` : "";
-      return coreGet(`/advisory/latest/${encodeURIComponent(symbol.toUpperCase())}/${query}`);
+      return coreGet(`/advisory/latest/${encodeURIComponent(symbol.toUpperCase())}/${query}`).catch(
+        (err) => {
+          if (err && err.status === 404) return null;
+          throw err;
+        }
+      );
     },
 
     /**
@@ -444,7 +452,10 @@ ext`/`previous` links.
       ).toString();
       return coreGet(
         `/advisory/history/${encodeURIComponent(symbol.toUpperCase())}/${query ? `?${query}` : ""}`
-      );
+      ).catch((err) => {
+        if (err && err.status === 404) return { results: [], next: null, previous: null };
+        throw err;
+      });
     },
 
     /**

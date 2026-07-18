@@ -1,15 +1,15 @@
 import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { AlertCircle, UserCircle } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
-import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
+import { useTenantAdminQuery, useTenantAdminMutation } from "./useTenantAdminQuery.js";
 interface DailyPoint {
   date: string;
   success: number;
@@ -90,52 +90,46 @@ export function TenantAdminSecurityPage({
   const toast = useToast();
   const confirm = useConfirm();
 
-  const [loginActivity, setLoginActivity] = useState<LoginActivity | null>(null);
-  const [sessions, setSessions] = useState<SessionsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | undefined>(undefined);
   const [days, setDays] = useState(30);
   const [revokingId, setRevokingId] = useState<number | null>(null);
 
   const canRead = ability?.can?.("read", "TenantSecurityView") ?? false;
   const canManage = ability?.can?.("manage", "TenantSecurityView") ?? false;
 
-  const loadData = useCallback(async (d = days) => {
-    try {
-      setLoading(true);
-      setError(undefined);
-      const [activity, sessionData] = await Promise.all([
-        defaultCoreApiAdapter.coreGet(`/partner/security/login-activity/?days=${d}`),
-        defaultCoreApiAdapter.coreGet("/partner/security/sessions/"),
-      ]);
-      setLoginActivity(activity as LoginActivity);
-      setSessions(sessionData as SessionsResponse);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("tenantSecurity.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [days, t]);
+  const { data: loginActivity, isLoading: activityLoading, error: activityError } = useTenantAdminQuery<LoginActivity>(
+    ["tenant-security", "login-activity", String(days)],
+    `/partner/security/login-activity/?days=${days}`,
+  );
 
-  useEffect(() => {
-    loadData();
-  }, [days, loadData]);
+  const { data: sessions, isLoading: sessionsLoading, error: sessionsError } = useTenantAdminQuery<SessionsResponse>(
+    ["tenant-security", "sessions"],
+    "/partner/security/sessions/",
+  );
+
+  const loading = activityLoading || sessionsLoading;
+  const error = activityError?.message || sessionsError?.message || undefined;
 
   const handleDaysChange = (d: number) => {
     setDays(d);
   };
+
+  const revokeMutation = useTenantAdminMutation<unknown>(
+    "post",
+    "/partner/security/sessions/revoke/",
+    [["tenant-security", "sessions"]],
+    {
+      onError: (err) => toast.error(err.message || t("tenantSecurity.loadError")),
+    },
+  );
 
   const handleRevokeSession = async (sessionId: number) => {
     const ok = await confirm({ title: t("common.revoke"), message: t("tenantSecurity.confirmRevoke") });
     if (!ok) return;
     setRevokingId(sessionId);
     try {
-      await defaultCoreApiAdapter.corePost("/partner/security/sessions/revoke/", {
-        session_id: sessionId,
-      });
-      await loadData();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t("tenantSecurity.loadError"));
+      await revokeMutation.mutateAsync({ session_id: sessionId });
+    } catch {
+      // error handled in onError
     } finally {
       setRevokingId(null);
     }
@@ -146,12 +140,9 @@ export function TenantAdminSecurityPage({
     if (!ok) return;
     setRevokingId(-1);
     try {
-      await defaultCoreApiAdapter.corePost("/partner/security/sessions/revoke/", {
-        revoke_all_except_current: true,
-      });
-      await loadData();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t("tenantSecurity.loadError"));
+      await revokeMutation.mutateAsync({ revoke_all_except_current: true });
+    } catch {
+      // error handled in onError
     } finally {
       setRevokingId(null);
     }
@@ -172,7 +163,7 @@ export function TenantAdminSecurityPage({
     );
   }
 
-  if (loading && !loginActivity) {
+  if (loading) {
     return (
       <ShellPageChrome
         eyebrow={t("tenantSecurity.eyebrow")}

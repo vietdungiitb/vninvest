@@ -6,6 +6,7 @@ import { LangProvider } from './context/LangContext.js';
 import { RealtimeProvider } from './context/RealtimeContext.js';
 import { ToastProvider } from './components/ShellToast.js';
 import { ConfirmProvider } from './components/ConfirmModal.js';
+import { QueryProvider } from './providers/QueryProvider.js';
 import { getPageComponent } from './pages/pageRegistry.js';
 import { AppShell } from './layouts/AppShell';
 import { TenantAdminLayout } from './components/TenantAdminLayout.js';
@@ -65,7 +66,7 @@ import { authTokenStorage } from './adapters/coreApiAdapter.js';
 function App() {
   return createElement(
     BrowserRouter,
-    { future: { v7_startTransition: true, v7_relativeSplatPath: true } },
+    { future: { v7_relativeSplatPath: true } },
     createElement(
       Routes,
       null,
@@ -113,6 +114,8 @@ function App() {
           createElement(Route, { path: 'sso', element: createElement(resolvePageComponent('tenant-admin-sso')) }),
           createElement(Route, { path: 'security', element: createElement(resolvePageComponent('tenant-admin-security')) }),
           createElement(Route, { path: 'webhooks', element: createElement(resolvePageComponent('tenant-admin-webhooks')) }),
+          createElement(Route, { path: 'settings', element: createElement(resolvePageComponent('tenant-admin-settings')) }),
+          createElement(Route, { path: 'roles', element: createElement(resolvePageComponent('tenant-admin-roles')) }),
         ),
         createElement(Route, { path: 'alert-center', element: createElement(resolvePageComponent('alert-center')) }),
         createElement(Route, { path: 'commercial/billing', element: createElement(resolvePageComponent('commercial-billing-center')) }),
@@ -128,21 +131,25 @@ if (container) {
   const root = createRoot(container);
   root.render(
     createElement(
-      PortfolioProvider,
+      QueryProvider,
       null,
       createElement(
-        LangProvider,
+        PortfolioProvider,
         null,
         createElement(
-          ToastProvider,
+          LangProvider,
           null,
           createElement(
-            ConfirmProvider,
+            ToastProvider,
             null,
             createElement(
-              RealtimeProvider,
+              ConfirmProvider,
               null,
-              createElement(App)
+              createElement(
+                RealtimeProvider,
+                null,
+                createElement(App)
+              )
             )
           )
         )

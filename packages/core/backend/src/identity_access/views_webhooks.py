@@ -22,6 +22,7 @@ from rest_framework.response import Response
 
 from identity_access.models import CoreTenant, TenantWebhookConfig, WebhookDelivery
 from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
+from identity_access.utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
 from identity_access.serializers import TenantWebhookConfigSerializer, WebhookDeliverySerializer
 from identity_access.tasks import deprovision_tenant_async
 from identity_access.webhook_dispatcher import WebhookDispatcher
@@ -31,28 +32,19 @@ logger = logging.getLogger(__name__)
 TENANT_PERMISSION_CLASSES = [permissions.IsAuthenticated, IsTenantActive]
 
 
-def _get_request_tenant(request) -> CoreTenant:
-    tenant = getattr(request, 'tenant', None)
-    if tenant is not None:
-        return tenant
-    try:
-        return CoreTenant.objects.get(owner_user=request.user)
-    except CoreTenant.DoesNotExist:
-        from rest_framework.exceptions import PermissionDenied
-        raise PermissionDenied('Không tìm thấy tenant trong request.')
-
-
 class WebhookConfigListCreateView(generics.GenericAPIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'webhook:read')
         tenant = _get_request_tenant(request)
         qs = TenantWebhookConfig.objects.filter(tenant=tenant).order_by('-created_at')
         return Response(TenantWebhookConfigSerializer(qs, many=True).data)
 
     def post(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'webhook:write')
         tenant = _get_request_tenant(request)
         serializer = TenantWebhookConfigSerializer(data=request.data)
         if not serializer.is_valid():
@@ -105,6 +97,7 @@ class WebhookRegenerateSecretView(generics.GenericAPIView):
 
     def post(self, request, config_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'webhook:write')
         tenant = _get_request_tenant(request)
         try:
             config = TenantWebhookConfig.objects.get(id=config_id, tenant=tenant)
@@ -120,6 +113,7 @@ class WebhookDeliveryLogView(generics.GenericAPIView):
 
     def get(self, request, config_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'webhook:read')
         tenant = _get_request_tenant(request)
         try:
             config = TenantWebhookConfig.objects.get(id=config_id, tenant=tenant)
@@ -134,6 +128,7 @@ class WebhookTestView(generics.GenericAPIView):
 
     def post(self, request, config_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'webhook:write')
         tenant = _get_request_tenant(request)
         try:
             config = TenantWebhookConfig.objects.get(id=config_id, tenant=tenant)
@@ -152,6 +147,7 @@ class WebhookManualRetryView(generics.GenericAPIView):
 
     def post(self, request, config_id, delivery_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'webhook:write')
         tenant = _get_request_tenant(request)
         try:
             config = TenantWebhookConfig.objects.get(id=config_id, tenant=tenant)
@@ -171,6 +167,7 @@ class BillingStatusView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'billing:read')
         tenant = _get_request_tenant(request)
         data = {
             'plan': tenant.plan,
@@ -187,6 +184,7 @@ class PreviewPlanChangeView(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'billing:write')
         tenant = _get_request_tenant(request)
         target_plan = request.data.get('target_plan', '').strip()
         if target_plan not in dict(CoreTenant.PlanChoices.choices):
@@ -224,6 +222,7 @@ class DeprovisionView(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'tenant:write')
         tenant = _get_request_tenant(request)
         if tenant.status == CoreTenant.StatusChoices.DEPROVISIONED:
             return Response({'detail': 'Tenant already deprovisioned.'}, status=status.HTTP_400_BAD_REQUEST)

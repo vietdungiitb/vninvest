@@ -30,3 +30,6 @@ vnbroker @ git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/vietdu
 
 # Stripe Billing Integration
 stripe>=7.0,<8.0
+
+# SAML 2.0 SSO support (XML parsing for AuthnRequest/Response/Metadata)
+lxml>=5.0,<6.0

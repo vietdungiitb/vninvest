@@ -1,6 +1,6 @@
 import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { ShellSkeleton } from "../../components/ShellSkeleton.js";
@@ -9,6 +9,7 @@ import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
+import { useTenantAdminQuery } from "./useTenantAdminQuery.js";
 interface ScheduledReport {
   id: number;
   name: string;
@@ -74,9 +75,6 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
   const toast = useToast();
   const confirm = useConfirm();
 
-  const [reports, setReports] = useState<ScheduledReport[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | undefined>(undefined);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -88,22 +86,15 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
   const [saving, setSaving] = useState(false);
   const [testingId, setTestingId] = useState<number | null>(null);
 
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(undefined);
-      const data = await defaultCoreApiAdapter.getScheduledReports();
-      setReports(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError((err as Error).message || t("tenantReports.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+  const canManage = ability?.can?.("manage", "TenantReportsView") ?? false;
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const { data: reportsData, isLoading, error } = useTenantAdminQuery<ScheduledReport[]>(
+    ["tenant-admin", "reports"],
+    "/partner/reports/",
+    { enabled: canManage },
+  );
+
+  const reports: ScheduledReport[] = Array.isArray(reportsData) ? reportsData : [];
 
   const handleCreate = async () => {
     if (!formData.name.trim()) return;
@@ -117,9 +108,8 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
       await defaultCoreApiAdapter.createScheduledReport(payload);
       setShowCreateModal(false);
       setFormData({ name: "", report_type: "usage_summary", schedule: "daily", format: "html", recipients: [""] });
-      await loadData();
     } catch (err) {
-      setError((err as Error).message || t("tenantReports.createError"));
+      toast.error((err as Error).message || t("tenantReports.createError"));
     } finally {
       setSaving(false);
     }
@@ -128,9 +118,8 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
   const handleToggleActive = async (report: ScheduledReport) => {
     try {
       await defaultCoreApiAdapter.updateScheduledReport(report.id, { is_active: !report.is_active });
-      await loadData();
     } catch (err) {
-      setError((err as Error).message || t("tenantReports.updateError"));
+      toast.error((err as Error).message || t("tenantReports.updateError"));
     }
   };
 
@@ -139,9 +128,8 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
     if (!ok) return;
     try {
       await defaultCoreApiAdapter.deleteScheduledReport(report.id);
-      await loadData();
     } catch (err) {
-      setError((err as Error).message || t("tenantReports.deleteError"));
+      toast.error((err as Error).message || t("tenantReports.deleteError"));
     }
   };
 
@@ -151,13 +139,11 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
       await defaultCoreApiAdapter.testScheduledReport(report.id);
       toast.success(t("tenantReports.testQueued"));
     } catch (err) {
-      setError((err as Error).message || t("tenantReports.testError"));
+      toast.error((err as Error).message || t("tenantReports.testError"));
     } finally {
       setTestingId(null);
     }
   };
-
-  const canManage = ability?.can?.("manage", "TenantReportsView") ?? false;
 
   const activeReports = reports.filter(r => r.is_active).length;
   const totalDeliveries = reports.reduce((s, r) => s + r.total_deliveries, 0);
@@ -185,7 +171,7 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
     );
   }
 
-  if (loading && reports.length === 0) {
+  if (isLoading && reports.length === 0) {
     return (
       <ShellPageChrome
         eyebrow={t("tenantReports.eyebrow")}
@@ -205,7 +191,7 @@ export function TenantAdminReportsPage({}: TenantAdminReportsPageProps) {
       title={t("tenantReports.title")}
       description={t("tenantReports.description")}
       metrics={metrics}
-      error={error || undefined}
+      error={error?.message || undefined}
     >
       <div className={`${styles.stack}`}>
         {reports.length === 0 ? (

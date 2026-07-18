@@ -11,6 +11,13 @@ declare module "vninvestcharts-widget" {
     showHeader?: boolean;
     showToolbar?: boolean;
     showFooter?: boolean;
+    showNonTradingDays?: boolean;
+    showSymbolBadges?: boolean;
+    workspaceId?: string;
+    storageAdapter?: unknown;
+    showTapePanel?: boolean;
+    showAdvisoryPanel?: boolean;
+    showCorporateEvents?: boolean;
     adapter?: Record<string, unknown>;
     data?: unknown[];
     panes?: unknown[];
@@ -31,10 +38,32 @@ declare module "vninvestcharts-widget" {
     children?: ReactNode;
   }
 
-  export const VNInvestCharts: ForwardRefExoticComponent<VNInvestChartsProps & RefAttributes<unknown>>;
-  export const widgetMessagesVi: Record<string, string>;
-  export const widgetMessagesEn: Record<string, string>;
-  export const version: string;
+   export const VNInvestCharts: ForwardRefExoticComponent<VNInvestChartsProps & RefAttributes<unknown>>;
+
+   export interface MultiChartLayout {
+     rows?: number;
+     cols?: number;
+   }
+
+   export interface MultiChartPaneConfig {
+     symbol?: string;
+     timeframe?: string;
+     range?: string;
+   }
+
+   export interface VNInvestMultiChartsProps extends VNInvestChartsProps {
+     layout?: MultiChartLayout;
+     charts?: MultiChartPaneConfig[];
+     showWorkspaceToolbar?: boolean;
+     onSymbolChange?: (symbol: string) => void;
+     onLayoutChange?: (layout: MultiChartLayout) => void;
+   }
+
+   export const VNInvestMultiCharts: ForwardRefExoticComponent<VNInvestMultiChartsProps & RefAttributes<unknown>>;
+   export const widgetMessagesVi: Record<string, string>;
+   export const widgetMessagesEn: Record<string, string>;
+   export const version: string;
+   export function createLocalStorageAdapter(prefix?: string): unknown;
 }
 
 declare module "vninvestcharts-widget/adapters" {

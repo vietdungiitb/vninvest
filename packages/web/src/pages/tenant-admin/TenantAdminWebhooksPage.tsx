@@ -1,6 +1,6 @@
 import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { ShellSkeleton } from "../../components/ShellSkeleton.js";
@@ -9,6 +9,8 @@ import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
+import { useQueryClient } from "@tanstack/react-query";
+import { useTenantAdminQuery, invalidateTenantAdminQueries } from "./useTenantAdminQuery.js";
 interface WebhookConfig {
   id: number;
   name: string;
@@ -61,13 +63,12 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
   const { ability } = usePortfolio();
   const toast = useToast();
   const confirm = useConfirm();
+  const queryClient = useQueryClient();
 
   const canRead = ability?.can?.("read", "TenantWebhookView") ?? false;
   const canManage = ability?.can?.("manage", "TenantWebhookView") ?? false;
 
   const [configs, setConfigs] = useState<WebhookConfig[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingConfig, setEditingConfig] = useState<WebhookConfig | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -92,26 +93,17 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
   });
   const toggleCategory = (cat: string) => setExpandedCategories(prev => ({ ...prev, [cat]: !prev[cat] }));
 
-  const loadData = useCallback(async () => {
-    if (!canRead) {
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await defaultCoreApiAdapter.coreGet("/partner/webhooks/");
-      setConfigs(data.results || data || []);
-    } catch (err: unknown) {
-      setError((err as Error).message || t("tenantWebhooks.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [canRead, t]);
+  const { data, isLoading: loading, error } = useTenantAdminQuery<WebhookConfig[] | { results: WebhookConfig[] }>(
+    ["tenant-webhooks"],
+    "/partner/webhooks/",
+    { enabled: canRead },
+  );
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (data) {
+      setConfigs(Array.isArray(data) ? data : (data.results || []));
+    }
+  }, [data]);
 
   const openCreate = () => {
     setEditingConfig(null);
@@ -166,12 +158,12 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
         }
       }
 
-      await loadData();
+      invalidateTenantAdminQueries(queryClient);
       if (!newSecret) {
         setShowModal(false);
       }
     } catch (err: unknown) {
-      setError((err as Error).message || t("tenantWebhooks.saveError"));
+      toast.error((err as Error).message || t("tenantWebhooks.saveError"));
     } finally {
       setSubmitting(false);
     }
@@ -182,9 +174,9 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
     if (!ok) return;
     try {
       await defaultCoreApiAdapter.coreDelete(`/partner/webhooks/${config.id}/`);
-      await loadData();
+      invalidateTenantAdminQueries(queryClient);
     } catch (err: unknown) {
-      setError((err as Error).message || t("tenantWebhooks.deleteError"));
+      toast.error((err as Error).message || t("tenantWebhooks.deleteError"));
     }
   };
 
@@ -193,7 +185,7 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
       const result = await defaultCoreApiAdapter.corePost(`/partner/webhooks/${configId}/regenerate-secret/`);
       setSecretReveal(result.raw_secret);
     } catch (err: unknown) {
-      setError((err as Error).message || t("tenantWebhooks.regenerateError"));
+      toast.error((err as Error).message || t("tenantWebhooks.regenerateError"));
     }
   };
 
@@ -202,7 +194,7 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
       await defaultCoreApiAdapter.corePost(`/partner/webhooks/${configId}/test/`);
       toast.success(t("tenantWebhooks.testSent"));
     } catch (err: unknown) {
-      setError((err as Error).message || t("tenantWebhooks.saveError"));
+      toast.error((err as Error).message || t("tenantWebhooks.saveError"));
     }
   };
 
@@ -263,6 +255,14 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
     );
   }
 
+  if (error && configs.length === 0) {
+    return (
+      <ShellPageChrome eyebrow={t("tenantWebhooks.eyebrow")} title={t("tenantWebhooks.title")} description={t("common.loading")} error={error.message || t("tenantWebhooks.loadError")}>
+        <div className="panel-error">{error.message || t("tenantWebhooks.loadError")}</div>
+      </ShellPageChrome>
+    );
+  }
+
   const WEBHOOK_CSS = `
 .wbCategoryGroup { margin-bottom: 12px; border: 1px solid var(--border-shell); border-radius: 10px; overflow: hidden; }
 .wbCategoryHeader { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; cursor: pointer; background: rgba(255,255,255,0.03); font-size: 13px; font-weight: 700; }
@@ -281,7 +281,7 @@ export function TenantAdminWebhooksPage({}: TenantAdminWebhooksPageProps) {
       title={t("tenantWebhooks.title")}
       description={t("tenantWebhooks.description")}
       metrics={metrics}
-      error={error || undefined}
+      error={error?.message || undefined}
     >
       <section className={`${styles.stack}`}>
         <style>{WEBHOOK_CSS}</style>

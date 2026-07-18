@@ -347,18 +347,9 @@ export function PortfolioHeatmap({
   }
 
   const handleClick = (params) => {
-    if (params?.data) {
-      if (chartRef.current) {
-        const instance = chartRef.current.getEchartsInstance();
-        instance.dispatchAction({ type: "hideTip" });
-      }
-      const data = params.data;
-      setSelectedDetail(data);
-      fetchTrendData(data.name);
-    }
-    if (params?.name && onSelectSymbol) {
-      onSelectSymbol(params.name);
-    }
+    const symbol = params?.data?.name || params?.name;
+    if (!symbol) return;
+    handleNavigateToStock(symbol);
   };
 
   if (loading) {

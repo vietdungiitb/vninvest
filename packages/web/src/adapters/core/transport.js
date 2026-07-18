@@ -378,6 +378,13 @@ export function createCoreTransport(env = {}, options = {}) {
     const promise = requestWithAuth(path, fetchOptions, true, onRateLimit)
       .then(async (response) => {
         if (!response.ok) {
+          // 404 on advisory/session-facts means "no data yet" (empty state), not an error.
+          if (
+            response.status === 404 &&
+            (path.includes("/advisory/latest/") || path.includes("/session-facts/") || path.includes("/advisory/history/"))
+          ) {
+            return null;
+          }
           const text = await response.text().catch(() => "");
           let payload = null;
           try { payload = JSON.parse(text); } catch { payload = null; }

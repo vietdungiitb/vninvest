@@ -14,25 +14,7 @@ from rest_framework.exceptions import NotFound
 
 from .models import CoreTenant
 from .permissions import IsTenantActive, require_human_session
-
-
-def _get_request_tenant(request) -> CoreTenant:
-    tenant = getattr(request, 'tenant', None)
-    if tenant is not None:
-        return tenant
-    user = getattr(request, 'user', None)
-    if user and user.is_authenticated:
-        try:
-            tenant = CoreTenant.objects.get(owner_user=user)
-        except CoreTenant.DoesNotExist:
-            from .models import TenantMember
-            member = TenantMember.objects.filter(user=user).select_related('tenant').first()
-            if member:
-                tenant = member.tenant
-    if tenant is None:
-        from rest_framework.exceptions import PermissionDenied
-        raise PermissionDenied('Không tìm thấy tenant.')
-    return tenant
+from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
 
 
 def _forecast_meter(tenant, meter_code, lookback_days=30):
@@ -114,6 +96,7 @@ def _forecast_meter(tenant, meter_code, lookback_days=30):
 @permission_classes([IsAuthenticated, IsTenantActive])
 def partner_usage_forecast(request):
     require_human_session(request)
+    _require_tenant_permission(request, 'forecast:write')
     tenant = _get_request_tenant(request)
 
     meter_code = request.GET.get('meter_code')
@@ -150,6 +133,7 @@ def partner_usage_forecast(request):
 def partner_usage_forecast_detail(request, meter_code):
     """Get detailed forecast for a specific meter."""
     require_human_session(request)
+    _require_tenant_permission(request, 'forecast:write')
     tenant = _get_request_tenant(request)
 
     lookback_days = 30

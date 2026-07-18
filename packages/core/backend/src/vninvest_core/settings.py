@@ -7,6 +7,8 @@ Default DATABASE_URL uses SQLite for local testing convenience.
 import os
 import sys
 
+TESTING = 'test' in sys.argv or any('test' in arg for arg in sys.argv)
+
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
@@ -229,21 +231,22 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_CLASSES': [
         'identity_access.throttles.PATRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
-    ] if 'test' not in sys.argv else [],
+    ] if not TESTING else [],
     'DEFAULT_THROTTLE_RATES': {
-        'user': '999999/day' if 'test' in sys.argv else ('999999/day' if DEBUG else '1000/hour'),
-        'ingest_admin_trigger': '999999/day' if 'test' in sys.argv else '10/hour',
+        'user': '999999/day' if TESTING else ('999999/day' if DEBUG else '1000/hour'),
+        'ingest_admin_trigger': '999999/day' if TESTING else '10/hour',
         # D03/D04: DNSE backfill throttle (AGENTS §14.9)
-        'system_backfill_trigger': '999999/day' if 'test' in sys.argv else '30/hour',
-        'user_backfill_trigger': '999999/day' if 'test' in sys.argv else '5/hour',
+        'system_backfill_trigger': '999999/day' if TESTING else '30/hour',
+        'user_backfill_trigger': '999999/day' if TESTING else '5/hour',
         # Independent realtime polling bucket — does not consume 'user' quota
-        'realtime_data': '999999/day' if 'test' in sys.argv else '120/min',
+        'realtime_data': '999999/day' if TESTING else '120/min',
         # Independent SOC operator read bucket — does not consume 'user' quota
-        'soc_operator_read': '999999/day' if 'test' in sys.argv else '120/min',
+        'soc_operator_read': '999999/day' if TESTING else '120/min',
         # Independent auth-bootstrap bucket — /auth/me/ and capabilities must never
         # be blocked by operational polling exhausting the global 'user' bucket
-        'auth_bootstrap': '999999/day' if 'test' in sys.argv else '60/min',
-        'notification': '999999/day' if 'test' in sys.argv else '3/second',
+        'auth_bootstrap': '999999/day' if TESTING else '60/min',
+        'notification': '999999/day' if TESTING else '3/second',
+        'tenant_invite': '999999/day' if TESTING else '10/hour',
     },
 }
 
@@ -338,7 +341,7 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_BROKER_POOL_LIMIT = None
 
 import sys
-if 'test' in sys.argv or any('test' in arg for arg in sys.argv):
+if TESTING:
     CELERY_TASK_ALWAYS_EAGER = True
     try:
         import celery

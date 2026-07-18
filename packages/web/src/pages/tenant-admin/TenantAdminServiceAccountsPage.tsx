@@ -1,6 +1,6 @@
 import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField, ShellSelectField } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
@@ -9,6 +9,7 @@ import { usePortfolio } from "../../context/PortfolioContext.js";
 import { PolicyCheckboxes } from "../../components/PolicyCheckboxes.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
+import { useTenantAdminQuery, useTenantAdminMutation } from "./useTenantAdminQuery.js";
 interface ServiceAccount {
   service_account_id?: string;
   id?: string;
@@ -27,6 +28,10 @@ interface CreateForm {
   name: string;
   environment: string;
   policy_ids: string[];
+}
+
+interface ServiceAccountsResponse {
+  results?: ServiceAccount[];
 }
 
 interface TenantAdminServiceAccountsPageProps {
@@ -49,54 +54,42 @@ export function TenantAdminServiceAccountsPage({
   const toast = useToast();
   const confirm = useConfirm();
 
-  const [serviceAccounts, setServiceAccounts] = useState<ServiceAccount[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState<CreateForm>({ name: "", environment: "prod", policy_ids: [] });
-  const [submitting, setSubmitting] = useState(false);
 
   const canRead = ability?.can?.("read", "TenantServiceAccountAdmin") ?? false;
 
-  useEffect(() => {
-    async function loadServiceAccounts() {
-      if (!canRead) {
-        setLoading(false);
-        return;
-      }
-      try {
-        setLoading(true);
-        const data = await defaultCoreApiAdapter.coreGet("/partner/service-accounts/");
-        setServiceAccounts(data.results || data || []);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : t("tenantServiceAccounts.loadError"));
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadServiceAccounts();
-  }, [canRead, t]);
+  const { data: saResponse, isLoading, error } = useTenantAdminQuery<ServiceAccountsResponse>(
+    ["tenant-admin", "service-accounts"],
+    "/partner/service-accounts/",
+    { enabled: canRead },
+  );
+
+  const serviceAccounts: ServiceAccount[] = saResponse?.results || (saResponse as unknown as ServiceAccount[]) || [];
+
+  const createMutation = useTenantAdminMutation<ServiceAccount>(
+    "post", "/partner/service-accounts/",
+    [["tenant-admin", "service-accounts"]],
+    {
+      onSuccess: () => {
+        setShowCreateModal(false);
+        setCreateForm({ name: "", environment: "prod", policy_ids: [] });
+      },
+      onError: (err) => {
+        toast.error(err?.message || t("tenantServiceAccounts.submitError"));
+      },
+    },
+  );
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createForm.name.trim()) return;
-
-    setSubmitting(true);
-    try {
-      const data = await defaultCoreApiAdapter.corePost("/partner/service-accounts/", {
-        name: createForm.name,
-        environment: createForm.environment,
-        policy_ids: createForm.policy_ids,
-        audit_reason: "Created via tenant admin",
-      });
-      setServiceAccounts(prev => [data, ...prev]);
-      setShowCreateModal(false);
-      setCreateForm({ name: "", environment: "prod", policy_ids: [] });
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t("tenantServiceAccounts.submitError"));
-    } finally {
-      setSubmitting(false);
-    }
+    createMutation.mutate({
+      name: createForm.name,
+      environment: createForm.environment,
+      policy_ids: createForm.policy_ids,
+      audit_reason: "Created via tenant admin",
+    });
   };
 
   const handleDeleteSA = async (saId?: string) => {
@@ -106,10 +99,8 @@ export function TenantAdminServiceAccountsPage({
     }
     const ok = await confirm({ title: t("common.delete"), message: t("tenantServiceAccounts.confirmDelete") });
     if (!ok) return;
-
     try {
       await defaultCoreApiAdapter.coreDelete(`/partner/service-accounts/${saId}/`);
-      setServiceAccounts(prev => prev.filter(sa => sa.service_account_id !== saId && sa.id !== saId));
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : t("tenantServiceAccounts.deleteError"));
     }
@@ -118,17 +109,16 @@ export function TenantAdminServiceAccountsPage({
   const handleToggleStatus = async (sa: ServiceAccount) => {
     const newStatus = sa.status === "active" ? "disabled" : "active";
     try {
-      const data = await defaultCoreApiAdapter.corePatch(`/partner/service-accounts/${sa.service_account_id || sa.id}/`, {
+      await defaultCoreApiAdapter.corePatch(`/partner/service-accounts/${sa.service_account_id || sa.id}/`, {
         status: newStatus,
         audit_reason: `Status changed to ${newStatus} via tenant admin`,
       });
-      setServiceAccounts(prev => prev.map(sa => (sa.service_account_id === data.service_account_id || sa.id === data.id) ? data : sa));
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : t("tenantServiceAccounts.toggleError"));
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <ShellPageChrome
         eyebrow={t("tenantServiceAccounts.eyebrow")}
@@ -146,9 +136,9 @@ export function TenantAdminServiceAccountsPage({
         eyebrow={t("tenantServiceAccounts.eyebrow")}
         title={t("tenantServiceAccounts.title")}
         description={t("tenantServiceAccounts.loadError")}
-        error={error}
+        error={error?.message || t("tenantServiceAccounts.loadError")}
       >
-        <div className={`${styles.panel}`}>{error}</div>
+        <div className={`${styles.panel}`}>{error?.message || t("tenantServiceAccounts.loadError")}</div>
       </ShellPageChrome>
     );
   }
@@ -349,10 +339,10 @@ export function TenantAdminServiceAccountsPage({
                     </button>
                     <button
                       type="submit"
-                      disabled={submitting}
+                      disabled={createMutation.isPending}
                       className={`${styles.button} ${styles.buttonPrimary}`}
                     >
-                      {submitting ? t("tenantServiceAccounts.submitting") : t("tenantServiceAccounts.createAction")}
+                      {createMutation.isPending ? t("tenantServiceAccounts.submitting") : t("tenantServiceAccounts.createAction")}
                     </button>
                   </div>
                 </form>

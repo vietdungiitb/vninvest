@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 
 from identity_access.models import CoreTenant
 from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
+from identity_access.utils.resolve_tenant import require_tenant_permission as _require_tenant_permission
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ class PartnerCostTrendView(APIView):
 
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'billing:read')
         try:
             from commercial.views_analytics import PartnerCostTrendView as InnerView
             view = InnerView.as_view()
@@ -51,6 +53,7 @@ class PartnerUsageMetersView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'billing:read')
         try:
             from django.db.models import Subquery, OuterRef
             from commercial.models import QuotaHistory
@@ -76,6 +79,7 @@ class PartnerUsageQuotasView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'billing:read')
         try:
             from django.db.models import Subquery, OuterRef
             from commercial.models import QuotaHistory
@@ -101,6 +105,7 @@ class PartnerBillingSubscriptionView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'billing:read')
         try:
             from commercial.models import Subscription
             from commercial.serializers import SubscriptionSerializer
@@ -142,6 +147,7 @@ class PartnerBillingInvoicesView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'billing:read')
         try:
             from commercial.models import Invoice
             from commercial.serializers import InvoiceSerializer
@@ -169,6 +175,7 @@ class PartnerStripeCheckoutSessionView(APIView):
 
     def post(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'billing:write')
         try:
             from commercial.views import StripeCheckoutSessionView
             view = StripeCheckoutSessionView.as_view()
@@ -191,6 +198,7 @@ class PartnerStripePortalSessionView(APIView):
 
     def post(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'billing:write')
         try:
             from commercial.views import StripePortalSessionView
             view = StripePortalSessionView.as_view()
@@ -218,6 +226,7 @@ class PartnerUsageHistoryView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'billing:read')
         try:
             from commercial.models import QuotaHistory
             from commercial.serializers import QuotaHistorySerializer

@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import { StockContextDeck } from "./StockContextDeck.js";
 import { AIAdvisoryWarningBanner } from "./AIAdvisoryWarningBanner.js";
+import { useI18n } from "../../../context/LangContext.js";
 
 const e = createElement;
 
@@ -60,15 +61,18 @@ export function StockDetailTabs({
   onRefreshAdvisory,
   onOpenConfigDrawer
 }) {
+  const { t } = useI18n();
+  const tk = (key) => `stockDetail.page.${key}`;
+
   const tabsList = [
-    { id: "giao-dich", label: "Giao dịch" },
-    { id: "ho-so", label: "Hồ sơ" },
-    { id: "co-dong", label: "Cổ đông" },
-    { id: "von-co-tuc", label: "Vốn và cổ tức" },
-    { id: "tin-tuc", label: "Tin tức" },
-    { id: "su-kien", label: "Lịch sử sự kiện" },
-    { id: "thong-ke", label: "Thống kê" },
-    { id: "tai-chinh", label: "Tài chính" }
+    { id: "giao-dich", label: t(tk("tabGiaoDich")) },
+    { id: "ho-so", label: t(tk("tabHoSo")) },
+    { id: "co-dong", label: t(tk("tabCoDong")) },
+    { id: "von-co-tuc", label: t(tk("tabVonCoTuc")) },
+    { id: "tin-tuc", label: t(tk("tabTinTuc")) },
+    { id: "su-kien", label: t(tk("tabSuKien")) },
+    { id: "thong-ke", label: t(tk("tabThongKe")) },
+    { id: "tai-chinh", label: t(tk("tabTaiChinh")) }
   ];
 
   // Helper renderers
@@ -96,7 +100,7 @@ export function StockDetailTabs({
         e(
           "div",
           { className: "sdp-card-header", style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
-          e("h3", null, "🤖 Khuyến Nghị Trí Tuệ Nhân Tạo AI"),
+          e("h3", null, `🤖 ${t(tk("aiAdvisoryTitle"))}`),
           e(
             "div",
             { style: { display: "flex", gap: "8px", alignItems: "center" } },
@@ -109,7 +113,7 @@ export function StockDetailTabs({
                 title: "Cấu hình nguồn và chỉ báo AI",
                 style: { background: "rgba(99, 102, 241, 0.15)", border: "1px solid rgba(99, 102, 241, 0.4)", color: "#a5b4fc", borderRadius: "8px", padding: "4px 10px", fontSize: "0.75rem", cursor: "pointer", fontWeight: "600" }
               },
-              "⚙️ Cài đặt"
+              `⚙️ ${t(tk("advisoryConfig"))}`
             ),
             e(
               "button",
@@ -121,9 +125,9 @@ export function StockDetailTabs({
                 disabled: loadingDeferred,
                 style: { background: "rgba(16, 185, 129, 0.15)", border: "1px solid rgba(16, 185, 129, 0.4)", color: "#6ee7b7", borderRadius: "8px", padding: "4px 10px", fontSize: "0.75rem", cursor: "pointer", fontWeight: "600", opacity: loadingDeferred ? 0.6 : 1 }
               },
-              loadingDeferred ? "Đang phân tích..." : "↻ Làm mới"
+              loadingDeferred ? t(tk("advisoryAnalyzing")) : `↻ ${t(tk("advisoryRefresh"))}`
             ),
-            e("span", { className: "sdp-card-badge" }, "Cố Vấn Phân Tích")
+            e("span", { className: "sdp-card-badge" }, t(tk("advisoryConsultant")))
           )
         ),
         e(
@@ -154,7 +158,7 @@ export function StockDetailTabs({
                 "div",
                 { className: "sdp-deck-empty" },
                 e("span", { className: "sdp-empty-icon" }, "🧠"),
-                e("p", null, "Chưa có khuyến nghị AI cho phiên này hoặc hệ thống đang phân tích.")
+                e("p", null, t(tk("advisoryEmpty")))
               )
         )
       ),
@@ -186,7 +190,7 @@ export function StockDetailTabs({
             e(
               "div",
               { className: "sdp-profile-section sdp-glass-card" },
-              e("h3", { className: "sdp-section-title" }, "ℹ️ Thông tin Tổng quan"),
+              e("h3", { className: "sdp-section-title" }, `ℹ️ ${t(tk("overviewTitle"))}`),
               e(
                 "div",
                 { className: "sdp-overview-grid" },
@@ -205,7 +209,7 @@ export function StockDetailTabs({
               overview.business_model && e(
                 "div",
                 { className: "sdp-business-model", style: { marginTop: "20px" } },
-                e("h4", null, "Ngành nghề kinh doanh & Mô hình"),
+                e("h4", null, t(tk("businessModel"))),
                 e("p", { style: { whiteSpace: "pre-line", color: "#94a3b8", fontSize: "0.9rem", lineHeight: "1.6" } }, overview.business_model)
               )
             ),
@@ -213,19 +217,19 @@ export function StockDetailTabs({
             e(
               "div",
               { className: "sdp-profile-section sdp-glass-card", style: { marginTop: "20px" } },
-              e("h3", { className: "sdp-section-title" }, "👥 Ban Lãnh Đạo (Officers)"),
+              e("h3", { className: "sdp-section-title" }, `👥 ${t(tk("officersTitle"))}`),
               officers.length > 0
                 ? e(
                     "table",
                     { className: "sdp-premium-table" },
-                    e("thead", null, e("tr", null, e("th", null, "Họ tên"), e("th", null, "Chức vụ"), e("th", null, "Năm bắt đầu"))),
+                    e("thead", null, e("tr", null, e("th", null, t(tk("officerName"))), e("th", null, t(tk("officerRole"))), e("th", null, t(tk("officerSince"))))),
                     e(
                       "tbody",
                       null,
                       officers.map((off, i) => e("tr", { key: i }, e("td", null, off.name), e("td", null, off.position), e("td", null, off.from_date || "—")))
                     )
                   )
-                : e("p", { className: "sdp-empty-placeholder" }, "Không có thông tin ban lãnh đạo.")
+                : e("p", { className: "sdp-empty-placeholder" }, t(tk("noOfficers")))
             )
           )
     );
@@ -242,12 +246,12 @@ export function StockDetailTabs({
         : e(
             "div",
             { className: "sdp-glass-card" },
-            e("h3", { className: "sdp-section-title" }, "🏛️ Cơ Cấu Cổ Đông Lớn"),
+            e("h3", { className: "sdp-section-title" }, `🏛️ ${t(tk("shareholdersTitle"))}`),
             shareholders.length > 0
               ? e(
                   "table",
                   { className: "sdp-premium-table" },
-                  e("thead", null, e("tr", null, e("th", null, "Tên cổ đông"), e("th", { style: { textAlign: "right" } }, "Số cổ phần nắm giữ"), e("th", { style: { textAlign: "right" } }, "Tỷ lệ %"))),
+                  e("thead", null, e("tr", null, e("th", null, t(tk("shareholderName"))), e("th", { style: { textAlign: "right" } }, t(tk("shareholderShares"))), e("th", { style: { textAlign: "right" } }, t(tk("shareholderPct"))))),
                   e(
                     "tbody",
                     null,
@@ -265,7 +269,7 @@ export function StockDetailTabs({
                       )
                   )
                 )
-              : e("p", { className: "sdp-empty-placeholder" }, "Không có dữ liệu cổ đông lớn.")
+               : e("p", { className: "sdp-empty-placeholder" }, t(tk("noShareholders")))
           )
     );
   }
@@ -290,17 +294,17 @@ export function StockDetailTabs({
         : e(
             "div",
             { className: "sdp-glass-card" },
-            e("h3", { className: "sdp-section-title" }, "💸 Vốn điều lệ & Cổ tức"),
+            e("h3", { className: "sdp-section-title" }, `💸 ${t(tk("capitalTitle"))}`),
             e(
               "div",
               { className: "sdp-overview-grid" },
-              e("div", { className: "sdp-overview-item" }, e("span", null, "Vốn điều lệ:"), e("strong", { className: "text-cyan" }, overview.charter_capital ? `${overview.charter_capital.toLocaleString("vi-VN")} tỷđ` : "—")),
+               e("div", { className: "sdp-overview-item" }, e("span", null, t(tk("charterCapital"))), e("strong", { className: "text-cyan" }, overview.charter_capital ? `${overview.charter_capital.toLocaleString("vi-VN")} tỷđ` : "—")),
               e("span", { className: "sdp-overview-divider" }),
-              e("div", { className: "sdp-overview-item" }, e("span", null, "Số CP niêm yết:"), e("strong", null, overview.listed_volume ? `${fmtCompact(overview.listed_volume * 1000000)} CP` : "—")),
+              e("div", { className: "sdp-overview-item" }, e("span", null, t(tk("listedVolume"))), e("strong", null, overview.listed_volume ? `${fmtCompact(overview.listed_volume * 1000000)} CP` : "—")),
               e("span", { className: "sdp-overview-divider" }),
-              e("div", { className: "sdp-overview-item" }, e("span", null, "Số CP lưu hành:"), e("strong", null, profile.outstanding_shares ? `${profile.outstanding_shares.toLocaleString("vi-VN")} CP` : "—")),
+              e("div", { className: "sdp-overview-item" }, e("span", null, t(tk("outstandingShares"))), e("strong", null, profile.outstanding_shares ? `${profile.outstanding_shares.toLocaleString("vi-VN")} CP` : "—")),
               e("span", { className: "sdp-overview-divider" }),
-              e("div", { className: "sdp-overview-item" }, e("span", null, "Tỷ suất cổ tức:"), e("strong", { className: "text-green" }, divYieldVal != null ? `${(divYieldVal * 100).toFixed(2)}%` : "—"))
+              e("div", { className: "sdp-overview-item" }, e("span", null, t(tk("dividendYield"))), e("strong", { className: "text-green" }, divYieldVal != null ? `${(divYieldVal * 100).toFixed(2)}%` : "—"))
             )
           )
     );
@@ -316,7 +320,7 @@ export function StockDetailTabs({
         ? e(
             "div",
             { className: "sdp-glass-card" },
-            e("h3", { className: "sdp-section-title" }, "📰 Tin Tức Mới Nhất"),
+            e("h3", { className: "sdp-section-title" }, `📰 ${t(tk("newsTitle"))}`),
             e(
               "ul",
               { className: "sdp-insight-news-list" },
@@ -339,7 +343,7 @@ export function StockDetailTabs({
             "div",
             { className: "sdp-deck-empty" },
             e("span", { className: "sdp-empty-icon" }, "📡"),
-            e("p", null, "Không tìm thấy tin tức phù hợp với mã cổ phiếu.")
+            e("p", null, t(tk("noNews")))
           )
     );
   }
@@ -355,12 +359,12 @@ export function StockDetailTabs({
         : e(
             "div",
             { className: "sdp-glass-card" },
-            e("h3", { className: "sdp-section-title" }, "🗓️ Lịch Sử Sự Kiện Doanh Nghiệp"),
+            e("h3", { className: "sdp-section-title" }, `🗓️ ${t(tk("eventsTitle"))}`),
             events.length > 0
               ? e(
                   "table",
                   { className: "sdp-premium-table" },
-                  e("thead", null, e("tr", null, e("th", null, "Ngày"), e("th", null, "Sự kiện"))),
+                  e("thead", null, e("tr", null, e("th", null, t(tk("eventDate"))), e("th", null, t(tk("eventName"))))),
                   e(
                     "tbody",
                     null,
@@ -374,7 +378,7 @@ export function StockDetailTabs({
                     )
                   )
                 )
-              : e("p", { className: "sdp-empty-placeholder" }, "Không có lịch sử sự kiện doanh nghiệp nổi bật.")
+               : e("p", { className: "sdp-empty-placeholder" }, t(tk("noEvents")))
           )
     );
   }
@@ -399,17 +403,17 @@ export function StockDetailTabs({
         : e(
             "div",
             { className: "sdp-glass-card" },
-            e("h3", { className: "sdp-section-title" }, "📈 Chỉ Số Định Giá Định Kỳ (Thống Kê)"),
+            e("h3", { className: "sdp-section-title" }, `📈 ${t(tk("statsTitle"))}`),
             e(
               "div",
               { className: "sdp-stats-grid" },
-              e("div", { className: "sdp-stat-box" }, e("span", null, "Chỉ số P/E:"), e("strong", { className: "text-green" }, getRatioValue("p_e"))),
-              e("div", { className: "sdp-stat-box" }, e("span", null, "Chỉ số P/B:"), e("strong", { className: "text-cyan" }, getRatioValue("p_b"))),
-              e("div", { className: "sdp-stat-box" }, e("span", null, "Lợi nhuận EPS:"), e("strong", null, getRatioValue("trailing_eps"))),
-              e("div", { className: "sdp-stat-box" }, e("span", null, "Tỷ suất ROE:"), e("strong", null, getRatioValue("roe") !== "—" ? `${getRatioValue("roe")}%` : (getRatioValue("roe_trailling") !== "—" ? `${getRatioValue("roe_trailling")}%` : "—"))),
-              e("div", { className: "sdp-stat-box" }, e("span", null, "Tỷ suất ROA:"), e("strong", null, getRatioValue("roa") !== "—" ? `${getRatioValue("roa")}%` : (getRatioValue("roa_trailling") !== "—" ? `${getRatioValue("roa_trailling")}%` : "—"))),
-              e("div", { className: "sdp-stat-box" }, e("span", null, "Hệ số Beta:"), e("strong", null, getRatioValue("beta"))),
-              e("div", { className: "sdp-stat-box" }, e("span", null, "Giá trị sổ sách (BVPS):"), e("strong", null, getRatioValue("book_value_per_share_bvps")))
+              e("div", { className: "sdp-stat-box" }, e("span", null, t(tk("pe"))), e("strong", { className: "text-green" }, getRatioValue("p_e"))),
+              e("div", { className: "sdp-stat-box" }, e("span", null, t(tk("pb"))), e("strong", { className: "text-cyan" }, getRatioValue("p_b"))),
+              e("div", { className: "sdp-stat-box" }, e("span", null, t(tk("eps"))), e("strong", null, getRatioValue("trailing_eps"))),
+              e("div", { className: "sdp-stat-box" }, e("span", null, t(tk("roe"))), e("strong", null, getRatioValue("roe") !== "—" ? `${getRatioValue("roe")}%` : (getRatioValue("roe_trailling") !== "—" ? `${getRatioValue("roe_trailling")}%` : "—"))),
+              e("div", { className: "sdp-stat-box" }, e("span", null, t(tk("roa"))), e("strong", null, getRatioValue("roa") !== "—" ? `${getRatioValue("roa")}%` : (getRatioValue("roa_trailling") !== "—" ? `${getRatioValue("roa_trailling")}%` : "—"))),
+              e("div", { className: "sdp-stat-box" }, e("span", null, t(tk("beta"))), e("strong", null, getRatioValue("beta"))),
+              e("div", { className: "sdp-stat-box" }, e("span", null, t(tk("bvps"))), e("strong", null, getRatioValue("book_value_per_share_bvps")))
             )
           )
     );
@@ -441,7 +445,7 @@ export function StockDetailTabs({
             e(
               "div",
               { className: "sdp-glass-card", style: { marginBottom: "20px" } },
-              e("h3", { className: "sdp-section-title" }, "📊 Kết quả kinh doanh ( Income Statement )"),
+              e("h3", { className: "sdp-section-title" }, `📊 ${t(tk("incomeTitle"))}`),
               incList.length > 0 && incPeriods.length > 0
                 ? e(
                     "table",
@@ -452,7 +456,7 @@ export function StockDetailTabs({
                       e(
                         "tr",
                         null,
-                        e("th", null, "Chỉ tiêu"),
+                        e("th", null, t(tk("metric"))),
                         incPeriods.map(p => e("th", { key: p, style: { textAlign: "right" } }, p))
                       )
                     ),
@@ -479,13 +483,13 @@ export function StockDetailTabs({
                       )
                     )
                   )
-                : e("p", { className: "sdp-empty-placeholder" }, "Không có dữ liệu báo cáo thu nhập.")
+                 : e("p", { className: "sdp-empty-placeholder" }, t(tk("noIncome")))
             ),
             // Bal Table
             e(
               "div",
               { className: "sdp-glass-card" },
-              e("h3", { className: "sdp-section-title" }, "⚖️ Bảng cân đối kế toán ( Balance Sheet )"),
+              e("h3", { className: "sdp-section-title" }, `⚖️ ${t(tk("balanceTitle"))}`),
               balList.length > 0 && balPeriods.length > 0
                 ? e(
                     "table",
@@ -496,7 +500,7 @@ export function StockDetailTabs({
                       e(
                         "tr",
                         null,
-                        e("th", null, "Chỉ tiêu"),
+                        e("th", null, t(tk("metric"))),
                         balPeriods.map(p => e("th", { key: p, style: { textAlign: "right" } }, p))
                       )
                     ),
@@ -523,7 +527,7 @@ export function StockDetailTabs({
                       )
                     )
                   )
-                : e("p", { className: "sdp-empty-placeholder" }, "Không có dữ liệu bảng cân đối kế toán.")
+                 : e("p", { className: "sdp-empty-placeholder" }, t(tk("noBalance")))
             )
           )
     );

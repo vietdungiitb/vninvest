@@ -1,6 +1,6 @@
 import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
@@ -9,6 +9,7 @@ import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
+import { useTenantAdminQuery } from "./useTenantAdminQuery.js";
 interface Subscription {
   plan_code: string;
   status: string;
@@ -117,34 +118,40 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
   const toast = useToast();
   const confirm = useConfirm();
 
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [costTrend, setCostTrend] = useState<CostTrend | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentMethodLoading, setPaymentMethodLoading] = useState(false);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [subData, invData, costData] = await Promise.all([
-        defaultCoreApiAdapter.coreGet("/partner/billing/subscription/"),
-        defaultCoreApiAdapter.coreGet("/partner/billing/invoices/"),
-        defaultCoreApiAdapter.getCostTrend(6).catch(() => null),
-      ]);
+  const { data, isLoading, error, refetch } = useTenantAdminQuery<{
+    subscription: Subscription | null;
+    invoices: Invoice[];
+    costTrend: CostTrend | null;
+  }>(
+    ["tenant-billing"],
+    "/partner/billing/subscription/",
+    {
+      queryFn: async () => {
+        const adapter = defaultCoreApiAdapter as unknown as {
+          coreGet: (u: string) => Promise<any>;
+          getCostTrend: (m: number) => Promise<any>;
+        };
+        const [subData, invData, costData] = await Promise.all([
+          adapter.coreGet("/partner/billing/subscription/"),
+          adapter.coreGet("/partner/billing/invoices/"),
+          adapter.getCostTrend(6).catch(() => null),
+        ]);
+        const invList = invData?.results || invData?.data || [];
+        return {
+          subscription: subData,
+          invoices: Array.isArray(invList) ? invList : [],
+          costTrend: costData,
+        };
+      },
+    },
+  );
 
-      setSubscription(subData);
-      const invList = invData?.results || invData?.data || [];
-      setInvoices(Array.isArray(invList) ? invList : []);
-      setCostTrend(costData);
-    } catch (err) {
-      setError((err as Error).message || t("tenantBilling.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  };
+  const subscription = data?.subscription ?? null;
+  const invoices = data?.invoices ?? [];
+  const costTrend = data?.costTrend ?? null;
 
   const handleDownloadInvoice = async (invoiceId: string) => {
     try {
@@ -159,11 +166,6 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
       toast.error(t("tenantBilling.downloadError"));
     }
   };
-
-  useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const canRead = ability?.can?.("read", "TenantBillingView") ?? false;
 
@@ -182,7 +184,7 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
     );
   }
 
-  if (loading && !subscription) {
+  if (isLoading && !subscription) {
     return (
       <ShellPageChrome
         eyebrow={t("tenantBilling.eyebrow")}
@@ -200,9 +202,9 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
         eyebrow={t("tenantBilling.eyebrow")}
         title={t("tenantBilling.title")}
         description={t("tenantBilling.loadError")}
-        error={error}
+        error={error?.message || t("tenantBilling.loadError")}
       >
-        <div className={`${styles.panel}`}>{error}</div>
+        <div className={`${styles.panel}`}>{error?.message || t("tenantBilling.loadError")}</div>
       </ShellPageChrome>
     );
   }
@@ -214,7 +216,7 @@ export function TenantAdminBillingPage({}: TenantAdminBillingPageProps) {
   ];
 
   const refreshAction = (
-    <button onClick={loadData} className={`${styles.button} ${styles.buttonSecondary}`}>
+    <button onClick={() => refetch()} className={`${styles.button} ${styles.buttonSecondary}`}>
       {t("tenantBilling.refreshAction")}
     </button>
   );

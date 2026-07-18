@@ -1,4 +1,5 @@
 import { createCoreApiAdapter } from './coreApiAdapter.js';
+import { authTokenStorage } from './core/transport.js';
 
 function normalizeTimeframe(tf) {
   const lower = (tf || '').toLowerCase();
@@ -55,8 +56,14 @@ function parseBars(payload) {
     .sort((a, b) => a.date.getTime() - b.date.getTime());
 }
 
-export function createChartStockDataAdapter({ env }) {
-  const coreAdapter = createCoreApiAdapter({ env });
+export function createChartStockDataAdapter({ env = {} }) {
+  const coreAdapter = createCoreApiAdapter({
+    env,
+    getToken: () => authTokenStorage.getAccessToken(),
+    getRefreshToken: () => authTokenStorage.getRefreshToken(),
+    setTokens: (tokens) => authTokenStorage.setTokens(tokens),
+    clearTokens: () => authTokenStorage.clearTokens(),
+  });
 
   const adapter = {
     label: 'core-api-adapter',
@@ -119,16 +126,70 @@ export function createChartStockDataAdapter({ env }) {
       return false;
     },
 
-    subscribeToTrades() {
-      return () => {};
+    subscribeToTrades(symbol, onTrades) {
+      if (!symbol || typeof onTrades !== "function") return () => {};
+      let active = true;
+      let timer = null;
+      const poll = () => {
+        coreAdapter
+          .getRealtimeIntraday(symbol, { page_size: 50 })
+          .then((res) => {
+            if (!active) return;
+            const data = res?.data ?? res;
+            const trades = data?.trades ?? data?.results ?? data ?? [];
+            if (Array.isArray(trades) && trades.length) onTrades(trades);
+          })
+          .catch(() => {})
+          .finally(() => {
+            if (active) timer = setTimeout(poll, 5000);
+          });
+      };
+      poll();
+      return () => {
+        active = false;
+        if (timer) clearTimeout(timer);
+      };
     },
 
-    subscribeToOrderbook() {
-      return () => {};
+    subscribeToOrderbook(symbol, onOrderbook) {
+      if (!symbol || typeof onOrderbook !== "function") return () => {};
+      let active = true;
+      let timer = null;
+      const poll = () => {
+        coreAdapter
+          .getRealtimeDepthChart(symbol)
+          .then((res) => {
+            if (!active) return;
+            const data = res?.data ?? res;
+            if (data && (data.bids || data.asks)) onOrderbook(data);
+          })
+          .catch(() => {})
+          .finally(() => {
+            if (active) timer = setTimeout(poll, 5000);
+          });
+      };
+      poll();
+      return () => {
+        active = false;
+        if (timer) clearTimeout(timer);
+      };
     },
 
     async searchSymbols(query) {
-      return [{ symbol: query, name: query, exchange: 'VNINVEST' }];
+      try {
+        const payload = await coreAdapter.getSymbolList({ q: query, limit: 20 });
+        const results = payload?.results ?? payload ?? [];
+        if (!Array.isArray(results) || results.length === 0) {
+          return [{ symbol: query, name: 'Không tìm thấy', exchange: '' }];
+        }
+        return results.map((s) => ({
+          symbol: s.symbol ?? s.code ?? '',
+          name: s.name ?? s.company_name ?? '',
+          exchange: s.exchange ?? s.market ?? '',
+        }));
+      } catch {
+        return [{ symbol: query, name: 'Không tìm thấy', exchange: '' }];
+      }
     },
   };
 

@@ -281,6 +281,10 @@ export const pageRegistry = Object.freeze([
     import("./tenant-admin/TenantAdminSecurityPage.tsx").then((module) => module.TenantAdminSecurityPage)),
   makePageEntry("tenant-admin-webhooks", "core", () =>
     import("./tenant-admin/TenantAdminWebhooksPage.tsx").then((module) => module.TenantAdminWebhooksPage)),
+  makePageEntry("tenant-admin-settings", "core", () =>
+    import("./tenant-admin/TenantAdminSettingsPage.tsx").then((module) => module.TenantAdminSettingsPage)),
+  makePageEntry("tenant-admin-roles", "core", () =>
+    import("./tenant-admin/TenantAdminRolesPage.tsx").then((module) => module.TenantAdminRolesPage)),
 ]);
 
 export function getPageRegistryRouteIds() {

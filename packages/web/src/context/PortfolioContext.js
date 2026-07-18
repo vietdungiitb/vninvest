@@ -22,6 +22,23 @@ export function PortfolioProvider({ children }) {
   const [capabilitySnapshot, setCapabilitySnapshot] = useState(null);
   const [ability, setAbility] = useState(() => createAbilityFromRules([]));
   const [userTenants, setUserTenants] = useState([]);
+  const [activeTenantId, setActiveTenantIdState] = useState(() => {
+    return typeof window !== "undefined" && window.localStorage
+      ? window.localStorage.getItem("tenant_id")
+      : null;
+  });
+
+  // Sync activeTenantId with localStorage
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.localStorage) return;
+    const handleStorage = (e) => {
+      if (e.key === "tenant_id") {
+        setActiveTenantIdState(e.newValue);
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
 
   const logout = useCallback(() => {
     authTokenStorage.clearTokens();
@@ -263,7 +280,8 @@ export function PortfolioProvider({ children }) {
   const switchTenant = useCallback((tenantId) => {
     if (typeof window !== "undefined" && window.localStorage) {
       window.localStorage.setItem("tenant_id", tenantId);
-      window.location.reload();
+      setActiveTenantIdState(tenantId);
+      window.dispatchEvent(new CustomEvent('tenant-changed', { detail: { tenantId } }));
     }
   }, []);
 
@@ -295,7 +313,7 @@ export function PortfolioProvider({ children }) {
     deleteSubAccount,
     userTenants,
     switchTenant,
-    activeTenantId: typeof window !== "undefined" && window.localStorage ? window.localStorage.getItem("tenant_id") : null,
+    activeTenantId,
   }), [
     portfolios, activePortfolioId, isAuthenticated, authStateReady, login, register,
     resendVerification, logout, refreshAccessToken, userConfig,
@@ -304,7 +322,7 @@ export function PortfolioProvider({ children }) {
     capabilitySnapshot,
     ability, createPortfolio, updatePortfolio, deletePortfolio,
     createSubAccount, updateSubAccount, deleteSubAccount,
-    userTenants, switchTenant,
+    userTenants, switchTenant, activeTenantId,
   ]);
 
   return createElement(

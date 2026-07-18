@@ -1,6 +1,6 @@
 import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
@@ -8,6 +8,7 @@ import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
+import { useTenantAdminQuery } from "./useTenantAdminQuery.js";
 interface Meter {
   meter_code: string;
   display_name: string;
@@ -119,125 +120,117 @@ export function TenantAdminUsagePage({
   const [meters, setMeters] = useState<Meter[]>([]);
   const [quotas, setQuotas] = useState<Quota[]>([]);
   const [tenantApiUsage, setTenantApiUsage] = useState<{ api_calls_limit: number; api_calls_used: number } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<"meters" | "history" | "forecast" | "analytics">("meters");
   const [historyData, setHistoryData] = useState<Record<string, DailyPoint[]>>({});
-  const [historyLoading, setHistoryLoading] = useState(false);
   const [historyDays, setHistoryDays] = useState(30);
   const [selectedMeter, setSelectedMeter] = useState("api_calls");
 
   const [forecasts, setForecasts] = useState<ForecastResult[]>([]);
-  const [forecastLoading, setForecastLoading] = useState(false);
 
   const [alertConfigs, setAlertConfigs] = useState<AlertConfig[]>([]);
-  const [alertConfigLoading, setAlertConfigLoading] = useState(false);
 
   const [analyticsData, setAnalyticsData] = useState<ApiUsageAnalyticsResponse | null>(null);
-  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [analyticsGroupBy, setAnalyticsGroupBy] = useState<"ip" | "endpoint" | "status" | "hour">("endpoint");
   const [analyticsDays, setAnalyticsDays] = useState(7);
-  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
 
-  const loadMetersAndQuotas = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [metersData, quotasData, tenantData] = await Promise.all([
-        defaultCoreApiAdapter.coreGet("/partner/usage/meters/"),
-        defaultCoreApiAdapter.coreGet("/partner/usage/quotas/"),
-        defaultCoreApiAdapter.coreGet("/partner/tenant/"),
-      ]);
-      setMeters(metersData.results || []);
-      setQuotas(quotasData.results || []);
-      setTenantApiUsage({
-        api_calls_limit: tenantData.api_calls_limit ?? -1,
-        api_calls_used: tenantData.api_calls_used ?? 0,
-      });
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("tenantUsage.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+  const adapter = defaultCoreApiAdapter as unknown as {
+    coreGet: (u: string) => Promise<any>;
+    getApiUsageAnalytics: (g: string, d: number) => Promise<any>;
+    getAllUsageTrends: (d: number) => Promise<any>;
+    getUsageForecast: () => Promise<any>;
+    getAlertConfigs: () => Promise<any>;
+  };
 
-  const loadAnalytics = useCallback(async (groupBy?: "ip" | "endpoint" | "status" | "hour", days?: number) => {
-    try {
-      setAnalyticsLoading(true);
-      setAnalyticsError(null);
-      const data = await defaultCoreApiAdapter.getApiUsageAnalytics(groupBy || analyticsGroupBy, days || analyticsDays);
-      setAnalyticsData(data);
-    } catch (err: unknown) {
-      setAnalyticsError(err instanceof Error ? err.message : t("tenantUsage.loadError"));
-    } finally {
-      setAnalyticsLoading(false);
-    }
-  }, [t, analyticsGroupBy, analyticsDays]);
+  const {
+    data: mainData,
+    isLoading: loading,
+    error,
+    refetch,
+  } = useTenantAdminQuery<{
+    meters: Meter[];
+    quotas: Quota[];
+    tenantApiUsage: { api_calls_limit: number; api_calls_used: number };
+  }>(
+    ["tenant-usage-main"],
+    "/partner/usage/meters/",
+    {
+      queryFn: async () => {
+        const [metersData, quotasData, tenantData] = await Promise.all([
+          adapter.coreGet("/partner/usage/meters/"),
+          adapter.coreGet("/partner/usage/quotas/"),
+          adapter.coreGet("/partner/tenant/"),
+        ]);
+        return {
+          meters: metersData.results || [],
+          quotas: quotasData.results || [],
+          tenantApiUsage: {
+            api_calls_limit: tenantData.api_calls_limit ?? -1,
+            api_calls_used: tenantData.api_calls_used ?? 0,
+          },
+        };
+      },
+    },
+  );
 
-  const loadHistory = useCallback(async (days: number) => {
-    try {
-      setHistoryLoading(true);
-      const data = await defaultCoreApiAdapter.getAllUsageTrends(days);
-      setHistoryData(data.meters || {});
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("tenantUsageHistory.loadError"));
-    } finally {
-      setHistoryLoading(false);
-    }
-  }, [t]);
+  if (mainData) {
+    if (meters !== mainData.meters) setMeters(mainData.meters);
+    if (quotas !== mainData.quotas) setQuotas(mainData.quotas);
+    if (tenantApiUsage !== mainData.tenantApiUsage) setTenantApiUsage(mainData.tenantApiUsage);
+  }
 
-  const loadForecasts = useCallback(async () => {
-    try {
-      setForecastLoading(true);
-      const data = await defaultCoreApiAdapter.getUsageForecast();
-      setForecasts(data.forecasts || []);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("tenantUsage.loadError"));
-    } finally {
-      setForecastLoading(false);
-    }
-  }, [t]);
+  const { data: historyData_, isFetching: historyLoading } = useTenantAdminQuery<{ meters: Record<string, DailyPoint[]> }>(
+    ["tenant-usage-history", String(historyDays)],
+    "/partner/usage/trends/",
+    {
+      enabled: activeTab === "history",
+      queryFn: async () => {
+        const data = await adapter.getAllUsageTrends(historyDays);
+        return { meters: data.meters || {} };
+      },
+    },
+  );
+  if (historyData_ && historyData !== historyData_.meters) setHistoryData(historyData_.meters);
 
-  const loadAlertConfigs = useCallback(async () => {
-    try {
-      setAlertConfigLoading(true);
-      const data = await defaultCoreApiAdapter.getAlertConfigs();
-      setAlertConfigs(data.configs || []);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("tenantUsage.loadError"));
-    } finally {
-      setAlertConfigLoading(false);
-    }
-  }, [t]);
+  const { data: forecastData, isFetching: forecastLoading } = useTenantAdminQuery<{ forecasts: ForecastResult[] }>(
+    ["tenant-usage-forecast"],
+    "/partner/usage/forecast/",
+    {
+      enabled: activeTab === "forecast",
+      queryFn: async () => {
+        const data = await adapter.getUsageForecast();
+        return { forecasts: data.forecasts || [] };
+      },
+    },
+  );
+  if (forecastData && forecasts !== forecastData.forecasts) setForecasts(forecastData.forecasts);
 
-  useEffect(() => {
-    loadMetersAndQuotas();
-  }, [loadMetersAndQuotas]);
+  const { data: analyticsData_, isFetching: analyticsLoading, error: analyticsErr } = useTenantAdminQuery<ApiUsageAnalyticsResponse>(
+    ["tenant-usage-analytics", analyticsGroupBy, String(analyticsDays)],
+    "/partner/usage/analytics/",
+    {
+      enabled: activeTab === "analytics",
+      queryFn: async () => {
+        return adapter.getApiUsageAnalytics(analyticsGroupBy, analyticsDays);
+      },
+    },
+  );
+  if (analyticsData_ && analyticsData !== analyticsData_) setAnalyticsData(analyticsData_);
+  if (analyticsErr && analyticsError !== (analyticsErr.message || null)) setAnalyticsError(analyticsErr.message || null);
 
-  useEffect(() => {
-    if (activeTab === "analytics") {
-      loadAnalytics();
-    }
-  }, [activeTab, loadAnalytics]);
-
-  useEffect(() => {
-    if (activeTab === "history") {
-      loadHistory(historyDays);
-    }
-  }, [activeTab, historyDays, loadHistory]);
-
-  useEffect(() => {
-    if (activeTab === "forecast") {
-      loadForecasts();
-    }
-  }, [activeTab, loadForecasts]);
-
-  useEffect(() => {
-    if (activeTab === "meters") {
-      loadAlertConfigs();
-    }
-  }, [activeTab, loadAlertConfigs]);
+  const { data: alertData, isFetching: alertConfigLoading } = useTenantAdminQuery<{ configs: AlertConfig[] }>(
+    ["tenant-usage-alerts"],
+    "/partner/usage/alert-configs/",
+    {
+      enabled: activeTab === "meters",
+      queryFn: async () => {
+        const data = await adapter.getAlertConfigs();
+        return { configs: data.configs || [] };
+      },
+    },
+  );
+  if (alertData && alertConfigs !== alertData.configs) setAlertConfigs(alertData.configs);
 
   const canRead = ability?.can?.("read", "TenantUsageView") ?? false;
 
@@ -285,9 +278,9 @@ export function TenantAdminUsagePage({
         eyebrow={t("tenantUsage.eyebrow")}
         title={t("tenantUsage.title")}
         description={t("tenantUsage.loadError")}
-        error={error}
+        error={error?.message || t("tenantUsage.loadError")}
       >
-        <div className={`${styles.panel}`}>{error}</div>
+        <div className={`${styles.panel}`}>{error?.message || t("tenantUsage.loadError")}</div>
       </ShellPageChrome>
     );
   }
@@ -324,7 +317,7 @@ export function TenantAdminUsagePage({
     : "";
 
   const refreshAction = (
-    <button onClick={loadMetersAndQuotas} className={`${styles.button} ${styles.buttonSecondary}`}>
+    <button onClick={() => refetch()} className={`${styles.button} ${styles.buttonSecondary}`}>
       {t("tenantUsage.refreshAction")}
     </button>
   );
@@ -526,7 +519,7 @@ export function TenantAdminUsagePage({
                 {[7, 14, 30, 90].map(d => (
                   <button
                     key={d}
-                    onClick={() => { setHistoryDays(d); loadHistory(d); }}
+                    onClick={() => { setHistoryDays(d); }}
                     className={ta.usage_39} style={{ background: historyDays === d ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)", color: historyDays === d ? "var(--accent-shell)" : "var(--text-primary)", border: historyDays === d ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)" }}
                   >
                     {d}d
@@ -613,7 +606,7 @@ export function TenantAdminUsagePage({
                 {(["ip", "endpoint", "status", "hour"] as const).map(group => (
                   <button
                     key={group}
-                    onClick={() => { setAnalyticsGroupBy(group); loadAnalytics(group); }}
+                    onClick={() => { setAnalyticsGroupBy(group); }}
                     className={ta.usage_61} style={{ background: analyticsGroupBy === group ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)", color: analyticsGroupBy === group ? "var(--accent-shell)" : "var(--text-primary)", border: analyticsGroupBy === group ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)" }}
                   >
                     {t(`tenantUsage.analytics.groupBy.${group}`, { defaultValue: group })}
@@ -624,7 +617,7 @@ export function TenantAdminUsagePage({
                 {[7, 14, 30, 90].map(d => (
                   <button
                     key={d}
-                    onClick={() => { setAnalyticsDays(d); loadAnalytics(analyticsGroupBy, d); }}
+                    onClick={() => { setAnalyticsDays(d); }}
                     className={ta.usage_63} style={{ background: analyticsDays === d ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)", color: analyticsDays === d ? "var(--accent-shell)" : "var(--text-primary)", border: analyticsDays === d ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)" }}
                   >
                     {d}d

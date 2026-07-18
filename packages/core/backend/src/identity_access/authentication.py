@@ -52,11 +52,15 @@ class CorePATAuthentication(BaseAuthentication):
                 raise AuthenticationFailed('Địa chỉ IP không được phép truy cập bằng Token này.')
 
         # Return (user, auth) — user is the service account's tenant owner surrogate
-        owner = credential.service_account.tenant.owner_user
-        if not credential.is_human_session:
-            owner.is_staff = False
-            owner.is_superuser = False
-        return (owner, credential)
+        # unless the PAT was issued for a specific TenantMember (Sprint 4 prereq fix).
+        from identity_access.utils.resolve_tenant import apply_pat_user_privileges
+        member = credential.issued_for_member
+        if member is not None:
+            user = member.user
+        else:
+            user = credential.service_account.tenant.owner_user
+        user = apply_pat_user_privileges(user, credential)
+        return (user, credential)
 
     def authenticate_header(self, request):
         return self.keyword

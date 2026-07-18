@@ -101,7 +101,49 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
   }, [initialSymbol]);
 
   // 1. Blocking Lane: Symbol metadata, quote snapshot, order flow summary.
-  // Dependencies: symbol, activeTimeframe.
+  // Exposed as `loadBlocking` useCallback for ErrorBoundary retry (S1).
+  const loadBlocking = useCallback(async () => {
+    if (!symbol) return;
+
+    const adapter = createCoreApiAdapter({ env, getToken: env.getToken });
+
+    try {
+      const [overviewRes, orderFlowRes, sessionFactsCvdRes, whaleSnapshotRes] = await Promise.allSettled([
+        adapter.getStockOverview(symbol),
+        adapter.getStockOrderFlow(symbol, { window: DEFAULT_ORDER_FLOW_WINDOW }),
+        adapter.getSessionFactsCvd(symbol, { window: DEFAULT_ORDER_FLOW_WINDOW }),
+        adapter.getWhaleAnalyticsSnapshot(symbol, {
+          timeframe: DEFAULT_ORDER_FLOW_WINDOW,
+          compact: 0,
+          includeBaseline: false,
+        }),
+      ]);
+
+      if (!mountedRef.current) return;
+
+      setModelState((s) => ({
+        ...s,
+        loadingBlocking: false,
+        snapshot: overviewRes.status === "fulfilled" ? overviewRes.value : null,
+        orderFlowData: buildEffectiveOrderFlowData({
+          orderFlowPayload: orderFlowRes.status === "fulfilled" ? orderFlowRes.value : null,
+          sessionFactsCvdPayload: sessionFactsCvdRes.status === "fulfilled" ? sessionFactsCvdRes.value : null,
+          whaleSnapshotPayload: whaleSnapshotRes.status === "fulfilled" ? whaleSnapshotRes.value : null,
+          symbol,
+          fallbackWindow: DEFAULT_ORDER_FLOW_WINDOW,
+        }),
+      }));
+    } catch (err) {
+      if (!mountedRef.current) return;
+      setModelState((s) => ({
+        ...s,
+        loadingBlocking: false,
+        error: err?.message || "Không thể tải thông tin cốt lõi của cổ phiếu.",
+      }));
+    }
+  }, [env, symbol]);
+
+  // Trigger the blocking lane on symbol/timeframe change.
   useEffect(() => {
     if (!symbol) return;
 
@@ -111,47 +153,8 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
       error: null,
     }));
 
-    const adapter = createCoreApiAdapter({ env, getToken: env.getToken });
-
-    async function loadBlocking() {
-      try {
-        const [overviewRes, orderFlowRes, sessionFactsCvdRes, whaleSnapshotRes] = await Promise.allSettled([
-          adapter.getStockOverview(symbol),
-          adapter.getStockOrderFlow(symbol, { window: DEFAULT_ORDER_FLOW_WINDOW }),
-          adapter.getSessionFactsCvd(symbol, { window: DEFAULT_ORDER_FLOW_WINDOW }),
-          adapter.getWhaleAnalyticsSnapshot(symbol, {
-            timeframe: DEFAULT_ORDER_FLOW_WINDOW,
-            compact: 0,
-            includeBaseline: false,
-          }),
-        ]);
-
-        if (!mountedRef.current) return;
-
-        setModelState((s) => ({
-          ...s,
-          loadingBlocking: false,
-          snapshot: overviewRes.status === "fulfilled" ? overviewRes.value : null,
-          orderFlowData: buildEffectiveOrderFlowData({
-            orderFlowPayload: orderFlowRes.status === "fulfilled" ? orderFlowRes.value : null,
-            sessionFactsCvdPayload: sessionFactsCvdRes.status === "fulfilled" ? sessionFactsCvdRes.value : null,
-            whaleSnapshotPayload: whaleSnapshotRes.status === "fulfilled" ? whaleSnapshotRes.value : null,
-            symbol,
-            fallbackWindow: DEFAULT_ORDER_FLOW_WINDOW,
-          }),
-        }));
-      } catch (err) {
-        if (!mountedRef.current) return;
-        setModelState((s) => ({
-          ...s,
-          loadingBlocking: false,
-          error: err?.message || "Không thể tải thông tin cốt lõi của cổ phiếu.",
-        }));
-      }
-    }
-
     loadBlocking();
-  }, [env, symbol, activeTimeframe]);
+  }, [env, symbol, activeTimeframe, loadBlocking]);
 
   // 2. Deferred Lane: AI Advisory and Whale Feed matching the currently selected session date.
   // Dependencies: symbol, selectedSession.
@@ -168,18 +171,15 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
 
     async function loadDeferred() {
       try {
-        const [advisoryRes, whaleFeedRes] = await Promise.allSettled([
-          adapter.getAdvisoryLatest(symbol, sessionDate),
-          adapter.getWhaleFeedAggregate(symbol, sessionDate ? { session_date: sessionDate } : {}),
-        ]);
+        const whaleFeedRes = await adapter.getWhaleFeedAggregate(symbol, sessionDate ? { session_date: sessionDate } : {}).catch(() => null);
 
         if (!mountedRef.current) return;
 
         setModelState((s) => ({
           ...s,
           loadingDeferred: false,
-          advisory: advisoryRes.status === "fulfilled" ? advisoryRes.value : null,
-          whaleFeed: whaleFeedRes.status === "fulfilled" ? (whaleFeedRes.value?.results ?? []) : [],
+          advisory: null,
+          whaleFeed: whaleFeedRes?.results ?? [],
         }));
       } catch (err) {
         if (!mountedRef.current) return;
@@ -438,6 +438,7 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
     setActiveTab,
     loadingProfile,
     refreshAdvisoryData,
+    loadBlocking,
     ...modelState,
   };
 }

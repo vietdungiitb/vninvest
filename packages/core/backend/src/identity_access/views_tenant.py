@@ -12,8 +12,9 @@ from rest_framework.views import APIView
 
 from vninvest_core.pagination import CoreCursorPagination
 
-from .models import CorePATCredential, CoreServiceAccount, CoreTenant, PATAuditLog, UserProfile
+from .models import CorePATCredential, CoreServiceAccount, CoreTenant, PATAuditLog, TenantSettings, UserProfile, TenantCustomRole
 from .permissions import IsTenantActive, require_human_session, require_pat_scopes_or_human_session
+from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
 
 logger = logging.getLogger(__name__)
 from .serializers import (
@@ -23,6 +24,8 @@ from .serializers import (
     PartnerPATIssueSerializer,
     PartnerPATRevokeSerializer,
     PartnerPATRotateSerializer,
+    TenantSettingsSerializer,
+    TenantCustomRoleSerializer,
 )
 
 
@@ -117,93 +120,6 @@ def _serialize_partner_pat(credential: CorePATCredential, *, secret: str | None 
     return payload
 
 
-def _get_request_tenant(request) -> CoreTenant:
-    """Get tenant from request (set by TenantResolutionMiddleware)."""
-    tenant = getattr(request, 'tenant', None)
-    if tenant is None:
-        # Hot-fix for test suite: resolve tenant from authenticated user
-        user = getattr(request, 'user', None)
-        if user and user.is_authenticated:
-            # Staff users can access any tenant via service_account_id in request data
-            if user.is_staff:
-                # Try to get tenant from service_account_id in request data
-                service_account_id = request.data.get('service_account_id') if hasattr(request, 'data') else None
-                if service_account_id:
-                    try:
-                        sa = CoreServiceAccount.objects.select_related('tenant').get(public_id=service_account_id)
-                        tenant = sa.tenant
-                        request.tenant = tenant
-                        logger.info(
-                            'Staff %s resolved tenant %s via service_account_id %s (cross-tenant access)',
-                            user.username, tenant.public_id, service_account_id,
-                        )
-                        return tenant
-                    except CoreServiceAccount.DoesNotExist:
-                        pass
-            
-            # Try header first
-            tenant_id = request.META.get('HTTP_X_TENANT_ID')
-            if tenant_id:
-                try:
-                    tenant = CoreTenant.objects.get(public_id=tenant_id)
-                    request.tenant = tenant
-                    return tenant
-                except CoreTenant.DoesNotExist:
-                    pass
-            
-            # Fallback: tenant where user is owner
-            try:
-                tenant = CoreTenant.objects.get(owner_user=user)
-                request.tenant = tenant
-                return tenant
-            except CoreTenant.DoesNotExist:
-                pass
-            
-            # Fallback: first tenant where user is member
-            from .models import TenantMember
-            member = TenantMember.objects.filter(user=user).select_related('tenant').first()
-            if member:
-                request.tenant = member.tenant
-                return member.tenant
-        
-        raise PermissionDenied('Không tìm thấy tenant trong request. Middleware chưa chạy hoặc tenant không hợp lệ.')
-    return tenant
-
-
-def _get_request_tenant_role(request) -> str:
-    """Get tenant role from request (set by TenantResolutionMiddleware)."""
-    role = getattr(request, 'tenant_role', None)
-    if role is None:
-        # Hot-fix for test suite: resolve role from tenant membership
-        tenant = getattr(request, 'tenant', None)
-        if tenant is None:
-            tenant = _get_request_tenant(request)
-        user = getattr(request, 'user', None)
-        if tenant and user and user.is_authenticated:
-            if tenant.owner_user == user:
-                request.tenant_role = 'owner'
-                return 'owner'
-            # Staff users can act as admin
-            if user.is_staff:
-                request.tenant_role = 'admin'
-                return 'admin'
-            from .models import TenantMember
-            member = TenantMember.objects.filter(tenant=tenant, user=user).first()
-            if member:
-                request.tenant_role = member.role
-                return member.role
-        
-        raise PermissionDenied('Tenant role not found in request.')
-    return role
-
-
-def _require_tenant_role(request, *allowed_roles: str) -> None:
-    """Check if request.tenant_role is in allowed_roles."""
-    role = _get_request_tenant_role(request)
-    if role not in allowed_roles:
-        raise PermissionDenied(f'Vai trò {role} không có quyền thực hiện hành động này.')
-
-
 def _resolve_issue_target_service_account(*, request, service_account_id: str) -> CoreServiceAccount:
     tenant = _get_request_tenant(request)
     queryset = CoreServiceAccount.objects.filter(
@@ -220,7 +136,7 @@ class TenantDetailView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         _require_partner_scope(self.request, PARTNER_SCOPE_MANAGE_TENANT)
-        _require_tenant_role(self.request, 'owner', 'admin')
+        _require_tenant_permission(self.request, 'tenant:write')
         return _get_request_tenant(self.request)
 
 
@@ -231,13 +147,13 @@ class ServiceAccountListView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         _require_partner_scope(self.request, PARTNER_SCOPE_MANAGE_SERVICE_ACCOUNTS)
-        _require_tenant_role(self.request, 'owner', 'admin')
+        _require_tenant_permission(self.request, 'sa:read')
         tenant = _get_request_tenant(self.request)
         return CoreServiceAccount.objects.filter(tenant=tenant).order_by('-created_at')
 
     def perform_create(self, serializer):
         _require_partner_scope(self.request, PARTNER_SCOPE_MANAGE_SERVICE_ACCOUNTS)
-        _require_tenant_role(self.request, 'owner', 'admin')
+        _require_tenant_permission(self.request, 'sa:write')
         tenant = _get_request_tenant(self.request)
         serializer.save(tenant=tenant)
 
@@ -248,7 +164,7 @@ class ServiceAccountDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         _require_partner_scope(self.request, PARTNER_SCOPE_MANAGE_SERVICE_ACCOUNTS)
-        _require_tenant_role(self.request, 'owner', 'admin')
+        _require_tenant_permission(self.request, 'sa:read')
         tenant = _get_request_tenant(self.request)
         return CoreServiceAccount.objects.filter(tenant=tenant)
 
@@ -277,12 +193,16 @@ class ServiceAccountDetailView(generics.RetrieveUpdateDestroyAPIView):
         raise ValidationError({'detail': 'Không thể vô hiệu hóa service account đang hoạt động cuối cùng của tenant.'})
 
     def perform_update(self, serializer):
+        _require_partner_scope(self.request, PARTNER_SCOPE_MANAGE_SERVICE_ACCOUNTS)
+        _require_tenant_permission(self.request, 'sa:write')
         instance = self.get_object()
         next_status = serializer.validated_data.get('status', instance.status)
         self._ensure_not_last_active_service_account(instance, next_status=next_status)
         serializer.save()
 
     def perform_destroy(self, instance):
+        _require_partner_scope(self.request, PARTNER_SCOPE_MANAGE_SERVICE_ACCOUNTS)
+        _require_tenant_permission(self.request, 'sa:write')
         self._ensure_not_last_active_service_account(instance, deleting=True)
         instance.delete()
 
@@ -294,7 +214,7 @@ class PATListView(generics.ListAPIView):
 
     def get_queryset(self):
         _require_partner_scope(self.request, PARTNER_SCOPE_MANAGE_PATS)
-        _require_tenant_role(self.request, 'owner', 'admin')
+        _require_tenant_permission(self.request, 'pat:read')
         tenant = _get_request_tenant(self.request)
         return CorePATCredential.objects.filter(
             service_account__tenant=tenant,
@@ -305,7 +225,7 @@ class PATListView(generics.ListAPIView):
 def issue_pat(request, service_account_id):
     """Issue a new PAT for a service account (legacy endpoint)."""
     _require_partner_scope(request, PARTNER_SCOPE_MANAGE_PATS)
-    _require_tenant_role(request, 'owner', 'admin')
+    _require_tenant_permission(request, 'pat:write')
     sa = _resolve_issue_target_service_account(request=request, service_account_id=service_account_id)
 
     scopes = _normalize_scope_codes(request.data.get('scope_codes', []))
@@ -395,7 +315,7 @@ class UserProfileView(APIView):
 def partner_issue_pat(request):
     """Issue a new PAT. Takes service_account_id from request body."""
     _require_partner_scope(request, PARTNER_SCOPE_MANAGE_PATS)
-    _require_tenant_role(request, 'owner', 'admin')
+    _require_tenant_permission(request, 'pat:write')
     tenant = _get_request_tenant(request)
     serializer = PartnerPATIssueSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -427,7 +347,7 @@ def partner_issue_pat(request):
 def partner_rotate_pat(request, pat_id):
     """Revoke old PAT and issue a replacement for the same service account."""
     _require_partner_scope(request, PARTNER_SCOPE_MANAGE_PATS)
-    _require_tenant_role(request, 'owner', 'admin')
+    _require_tenant_permission(request, 'pat:write')
     tenant = _get_request_tenant(request)
     old_pat = generics.get_object_or_404(
         CorePATCredential,
@@ -478,7 +398,7 @@ def partner_rotate_pat(request, pat_id):
 def partner_revoke_pat(request, pat_id):
     """Revoke a PAT owned by the authenticated tenant."""
     _require_partner_scope(request, PARTNER_SCOPE_MANAGE_PATS)
-    _require_tenant_role(request, 'owner', 'admin')
+    _require_tenant_permission(request, 'pat:write')
     tenant = _get_request_tenant(request)
     pat = generics.get_object_or_404(
         CorePATCredential,
@@ -566,7 +486,7 @@ def _status_breakdown(logs) -> dict:
 def partner_pat_usage(request, pat_id):
     """Per-PAT usage breakdown: calls, top IPs/endpoints, status, timeline."""
     _require_partner_scope(request, PARTNER_SCOPE_MANAGE_PATS)
-    _require_tenant_role(request, 'owner', 'admin')
+    _require_tenant_permission(request, 'pat:read')
     tenant = _get_request_tenant(request)
     pat = generics.get_object_or_404(
         CorePATCredential,
@@ -607,7 +527,7 @@ def partner_pat_usage(request, pat_id):
 def partner_pat_usage_summary(request):
     """Tenant-wide PAT usage summary."""
     _require_partner_scope(request, PARTNER_SCOPE_MANAGE_PATS)
-    _require_tenant_role(request, 'owner', 'admin')
+    _require_tenant_permission(request, 'pat:read')
     tenant = _get_request_tenant(request)
     days = _parse_days_param(request)
     since = timezone.now() - timedelta(days=days)
@@ -643,7 +563,7 @@ def partner_pat_usage_summary(request):
 def partner_service_account_usage(request, sa_id):
     """Per-ServiceAccount usage: PAT breakdown and total calls."""
     _require_partner_scope(request, PARTNER_SCOPE_MANAGE_SERVICE_ACCOUNTS)
-    _require_tenant_role(request, 'owner', 'admin')
+    _require_tenant_permission(request, 'sa:read')
     tenant = _get_request_tenant(request)
     sa = generics.get_object_or_404(
         CoreServiceAccount,
@@ -672,3 +592,95 @@ def partner_service_account_usage(request, sa_id):
         'total_calls': total_calls,
         'pats': pats_usage,
     })
+
+
+class PartnerTenantSettingsView(APIView):
+    """GET/PUT tenant settings (owner/admin only)."""
+    permission_classes = [permissions.IsAuthenticated, IsTenantActive]
+
+    def get(self, request):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'settings:write')
+        tenant = _get_request_tenant(request)
+
+        settings_obj, _created = TenantSettings.objects.get_or_create(tenant=tenant)
+        serializer = TenantSettingsSerializer(settings_obj)
+        return Response(serializer.data)
+
+    def put(self, request):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'settings:write')
+        tenant = _get_request_tenant(request)
+
+        settings_obj, _created = TenantSettings.objects.get_or_create(tenant=tenant)
+        serializer = TenantSettingsSerializer(settings_obj, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+
+class PartnerRoleListCreateView(APIView):
+    """List and create custom roles for the tenant (owner/admin only)."""
+    permission_classes = [permissions.IsAuthenticated, IsTenantActive]
+
+    def get(self, request):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'settings:write')
+        tenant = _get_request_tenant(request)
+        roles = TenantCustomRole.objects.filter(tenant=tenant).order_by('-is_system', 'name')
+        return Response({
+            'roles': TenantCustomRoleSerializer(roles, many=True).data,
+        })
+
+    def post(self, request):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'settings:write')
+        tenant = _get_request_tenant(request)
+
+        serializer = TenantCustomRoleSerializer(data=request.data, tenant=tenant)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(tenant=tenant)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class PartnerRoleDetailView(APIView):
+    """Retrieve, update, delete a custom role (owner/admin only)."""
+    permission_classes = [permissions.IsAuthenticated, IsTenantActive]
+
+    def _get_role(self, request, role_id):
+        tenant = _get_request_tenant(request)
+        try:
+            return TenantCustomRole.objects.get(public_id=role_id, tenant=tenant)
+        except TenantCustomRole.DoesNotExist:
+            from rest_framework.exceptions import NotFound
+            raise NotFound('Vai trò không tồn tại.')
+
+    def get(self, request, role_id):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'settings:write')
+        role = self._get_role(request, role_id)
+        return Response(TenantCustomRoleSerializer(role, tenant=role.tenant).data)
+
+    def patch(self, request, role_id):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'settings:write')
+        role = self._get_role(request, role_id)
+        if role.is_system:
+            from rest_framework.exceptions import PermissionDenied as DRFPermissionDenied
+            raise DRFPermissionDenied('Không thể sửa vai trò hệ thống.')
+        serializer = TenantCustomRoleSerializer(role, data=request.data, partial=True, tenant=role.tenant)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request, role_id):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'settings:write')
+        role = self._get_role(request, role_id)
+        if role.is_system:
+            from rest_framework.exceptions import PermissionDenied as DRFPermissionDenied
+            raise DRFPermissionDenied('Không thể xoá vai trò hệ thống.')
+        # Reassign members back to viewer before deleting
+        role.members.update(custom_role=None)
+        role.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -4,11 +4,12 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ShellPageChrome, ShellPanel } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
-import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
-import { useConfirm } from "../../components/ConfirmModal.js";
 import { useToast } from "../../components/ShellToast.js";
+import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { useQueryClient } from "@tanstack/react-query";
+import { useTenantAdminQuery, invalidateTenantAdminQueries } from "./useTenantAdminQuery.js";
 interface SSOConfig {
   is_enabled?: boolean;
   idp_entity_id?: string;
@@ -20,6 +21,12 @@ interface SSOConfig {
   tenant?: {
     plan?: string;
   };
+}
+
+interface SSOTestResult {
+  success: boolean;
+  checks?: string[];
+  errors?: string[];
 }
 
 interface TenantAdminSSOPageProps {
@@ -57,14 +64,16 @@ export function TenantAdminSSOPage({
 }: TenantAdminSSOPageProps) {
   const { t } = useI18n();
   const { ability } = usePortfolio();
-  const confirm = useConfirm();
   const toast = useToast();
+  const queryClient = useQueryClient();
 
-  const [config, setConfig] = useState<SSOConfig | null>(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<SSOTestResult | null>(null);
+  const [testingLogin, setTestingLogin] = useState(false);
+  const [testLoginResult, setTestLoginResult] = useState<{ redirect_url?: string; sso_url?: string; error?: string } | null>(null);
 
   const [formData, setFormData] = useState({
     is_enabled: false,
@@ -76,31 +85,25 @@ export function TenantAdminSSOPage({
     sp_acs_url: "",
   });
 
-  const loadConfig = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const data = await defaultCoreApiAdapter.coreGet("/partner/sso/");
-      setConfig(data);
-      setFormData({
-        is_enabled: data.is_enabled || false,
-        idp_entity_id: data.idp_entity_id || "",
-        idp_sso_url: data.idp_sso_url || "",
-        idp_x509_cert: data.idp_x509_cert || "",
-        domain_hint: data.domain_hint || "",
-        sp_entity_id: data.sp_entity_id || "",
-        sp_acs_url: data.sp_acs_url || "",
-      });
-    } catch (err) {
-      setError((err as Error).message || t("tenantSSO.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+  const { data: configData, isLoading: loading, error: configError } = useTenantAdminQuery<SSOConfig>(
+    ["tenant-sso", "config"],
+    "/partner/sso/",
+  );
 
+  // Sync form state from fetched config
   useEffect(() => {
-    loadConfig();
-  }, [loadConfig]);
+    if (configData) {
+      setFormData({
+        is_enabled: configData.is_enabled || false,
+        idp_entity_id: configData.idp_entity_id || "",
+        idp_sso_url: configData.idp_sso_url || "",
+        idp_x509_cert: configData.idp_x509_cert || "",
+        domain_hint: configData.domain_hint || "",
+        sp_entity_id: configData.sp_entity_id || "",
+        sp_acs_url: configData.sp_acs_url || "",
+      });
+    }
+  }, [configData]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,8 +111,8 @@ export function TenantAdminSSOPage({
     setError("");
     setSuccess("");
     try {
-      const data = await defaultCoreApiAdapter.corePatch("/partner/sso/", formData);
-      setConfig(data);
+      await defaultCoreApiAdapter.corePatch("/partner/sso/", formData);
+      invalidateTenantAdminQueries(queryClient);
       setSuccess(t("tenantSSO.savedSuccess"));
     } catch (err) {
       setError((err as Error).message || t("tenantSSO.saveError"));
@@ -122,7 +125,38 @@ export function TenantAdminSSOPage({
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const isEnterprisePlan = config?.tenant?.plan === "enterprise";
+  const handleTestConnection = useCallback(async () => {
+    setTesting(true);
+    setTestResult(null);
+    setError("");
+    try {
+      const result = await defaultCoreApiAdapter.corePost("/partner/sso/test/", {});
+      setTestResult(result as SSOTestResult);
+    } catch (err) {
+      setTestResult({
+        success: false,
+        errors: [(err as Error).message || t("tenantSSO.testError")],
+      });
+    } finally {
+      setTesting(false);
+    }
+  }, [t]);
+
+  const handleTestLogin = useCallback(async () => {
+    setTestingLogin(true);
+    setTestLoginResult(null);
+    setError("");
+    try {
+      const result = await defaultCoreApiAdapter.corePost("/partner/sso/test-login/", {});
+      setTestLoginResult(result as { redirect_url?: string; sso_url?: string });
+    } catch (err) {
+      setTestLoginResult({ error: (err as Error).message || t("tenantSSO.testError") });
+    } finally {
+      setTestingLogin(false);
+    }
+  }, [t]);
+
+  const isEnterprisePlan = configData?.tenant?.plan === "enterprise";
   const inputDisabled = loading || saving || !isEnterprisePlan;
   const canRead = ability?.can?.("read", "TenantSSOAdmin") ?? false;
 
@@ -141,7 +175,7 @@ export function TenantAdminSSOPage({
     );
   }
 
-  if (loading && !config) {
+  if (loading && !configData) {
     return (
       <ShellPageChrome
         eyebrow={t("tenantSSO.eyebrow")}
@@ -154,7 +188,7 @@ export function TenantAdminSSOPage({
   }
 
   const enterpriseNotice = !isEnterprisePlan
-    ? `${t("tenantSSO.enterpriseOnlyNotice")} ${config?.tenant?.plan ? `${t("tenantSSO.currentPlanLabel")}: ${config.tenant.plan}.` : ""} ${t("tenantSSO.upgradeRequired")}`
+    ? `${t("tenantSSO.enterpriseOnlyNotice")} ${configData?.tenant?.plan ? `${t("tenantSSO.currentPlanLabel")}: ${configData.tenant.plan}.` : ""} ${t("tenantSSO.upgradeRequired")}`
     : "";
 
   return (
@@ -165,9 +199,9 @@ export function TenantAdminSSOPage({
       notice={enterpriseNotice}
     >
       <section className={`${styles.stack}`}>
-          {error ? (
+          {error || configError ? (
             <div className={`${styles.banner} ${styles.bannerError}`} role="alert">
-              {error}
+              {error || configError?.message || t("tenantSSO.loadError")}
             </div>
           ) : null}
           {success ? (
@@ -186,7 +220,7 @@ export function TenantAdminSSOPage({
             
           >
             <button
-              onClick={loadConfig}
+              onClick={() => invalidateTenantAdminQueries(queryClient)}
               disabled={loading}
               className={`${styles.button} ${styles.buttonSecondary}`}
             >
@@ -300,12 +334,12 @@ export function TenantAdminSSOPage({
                           type="button"
                           onClick={() => {
                             navigator.clipboard.writeText(formData.sp_entity_id);
-                            toast.success(t("tenantPats.copySuccess") || "Đã sao chép!");
+                            toast.success(t("tenantSSO.copySuccess"));
                           }}
                           className={[`${styles.button}`, ta.sso_11].filter(Boolean).join(" ")}
                           
                         >
-                          {t("tenantPats.copyTokenAction") || "Sao chép"}
+                          {t("tenantSSO.copyAction")}
                         </button>
                       </div>
                     </Field>
@@ -324,12 +358,12 @@ export function TenantAdminSSOPage({
                           type="button"
                           onClick={() => {
                             navigator.clipboard.writeText(formData.sp_acs_url);
-                            toast.success(t("tenantPats.copySuccess") || "Đã sao chép!");
+                            toast.success(t("tenantSSO.copySuccess"));
                           }}
                           className={[`${styles.button}`, ta.sso_14].filter(Boolean).join(" ")}
                           
                         >
-                          {t("tenantPats.copyTokenAction") || "Sao chép"}
+                          {t("tenantSSO.copyAction")}
                         </button>
                       </div>
                     </Field>
@@ -353,34 +387,72 @@ export function TenantAdminSSOPage({
               <p className={`${styles.itemMeta}`} style={{ margin: 0 }}>
                 {t("tenantSSO.ssoTestPanelDesc")}
               </p>
-              <button
-                type="button"
-                onClick={async () => {
-                  const isDirty = config ? (
-                    formData.is_enabled !== (config.is_enabled || false) ||
-                    formData.idp_entity_id !== (config.idp_entity_id || "") ||
-                    formData.idp_sso_url !== (config.idp_sso_url || "") ||
-                    formData.idp_x509_cert !== (config.idp_x509_cert || "") ||
-                    formData.domain_hint !== (config.domain_hint || "")
-                  ) : false;
-
-                  if (isDirty) {
-                    const ok = await confirm({
-                      title: t("common.warning") || "Cảnh báo",
-                      message: t("tenantSSO.unsavedChangesWarning"),
-                    });
-                    if (!ok) return;
-                  }
-
-                  const baseUrl = window.location.origin;
-                  window.location.href = `${baseUrl}/core/v1/auth/sso/login/?domain=${formData.domain_hint}`;
-                }}
-                disabled={!formData.domain_hint || !formData.is_enabled || loading || saving}
-                className={[`${styles.button} ${styles.buttonSecondary}`, ta.sso_16].filter(Boolean).join(" ")}
-                
-              >
-                {t("tenantSSO.testConnectionAction")}
-              </button>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={handleTestConnection}
+                  disabled={testing || loading || saving}
+                  className={[`${styles.button} ${styles.buttonSecondary}`, ta.sso_16].filter(Boolean).join(" ")}
+                >
+                  {testing ? t("tenantSSO.testingConnection") : t("tenantSSO.testConnectionAction")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTestLogin}
+                  disabled={testingLogin || !formData.is_enabled || loading || saving}
+                  className={[`${styles.button} ${styles.buttonSecondary}`, ta.sso_16].filter(Boolean).join(" ")}
+                >
+                  {testingLogin ? t("tenantSSO.testingConnection") : t("tenantSSO.testLoginAction")}
+                </button>
+              </div>
+              {testResult ? (
+                <div className={`${styles.form}`} style={{ marginTop: "12px" }}>
+                  <div
+                    className={`${styles.banner} ${testResult.success ? styles.bannerSuccess : styles.bannerError}`}
+                    role={testResult.success ? "status" : "alert"}
+                  >
+                    {testResult.success
+                      ? t("tenantSSO.testSuccess")
+                      : t("tenantSSO.testError")}
+                  </div>
+                  {testResult.checks && testResult.checks.length > 0 ? (
+                    <ul style={{ margin: "8px 0 0 0", paddingLeft: "20px" }}>
+                      {testResult.checks.map((check, i) => (
+                        <li key={i} className={`${styles.itemMeta}`}>{check}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {testResult.errors && testResult.errors.length > 0 ? (
+                    <ul style={{ margin: "8px 0 0 0", paddingLeft: "20px", color: "var(--color-error)" }}>
+                      {testResult.errors.map((err, i) => (
+                        <li key={i} className={`${styles.itemMeta}`}>{err}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
+              {testLoginResult ? (
+                <div className={`${styles.form}`} style={{ marginTop: "12px" }}>
+                  <div
+                    className={`${styles.banner} ${testLoginResult.error ? styles.bannerError : styles.bannerSuccess}`}
+                    role={testLoginResult.error ? "alert" : "status"}
+                  >
+                    {testLoginResult.error
+                      ? testLoginResult.error
+                      : t("tenantSSO.testLoginSuccess")}
+                  </div>
+                  {testLoginResult.redirect_url ? (
+                    <div style={{ marginTop: "8px" }}>
+                      <p className={`${styles.itemMeta}`}>
+                        {t("tenantSSO.testLoginRedirectUrl")}
+                      </p>
+                      <code style={{ fontSize: "12px", wordBreak: "break-all" }}>
+                        {testLoginResult.redirect_url}
+                      </code>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               <p className={`${styles.itemMeta}`} style={{ margin: 0 }}>
                 {t("tenantSSO.spAcsUrlDisplay")}{" "}
                 <code className={ta.sso_17}>

@@ -1,26 +1,21 @@
 import 'vninvestcharts-widget/dist/index.css';
 import React, { createElement, useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createChartStockDataAdapter } from '../adapters/chartAdapter.js';
 import { mapToOHLCVBars, mapToWhaleOrders, mapToCvdSeries } from '../utils/VNInvestSignalAdapter.js';
 import { useViewportWhaleMarkers } from '../features/stock-detail/hooks/useViewportWhaleMarkers.js';
 import { useRealtimeFeedFromManager } from '../context/RealtimeContext.js';
+import { useI18n } from '../context/LangContext.js';
 
 const e = createElement;
 
-function useI18n() {
-  return {
-    t: (key, options) => {
-      const map = {
-        'stockDetail.chartPrice': 'Giá',
-        'stockDetail.chartVolume': 'Khối lượng',
-        'stockDetail.chartRsiMacd': 'RSI + MACD',
-        'vninvest.loading': 'Đang tải dữ liệu biểu đồ...',
-      };
-      return map[key] || options?.defaultValue || key;
-    },
-    language: 'vi',
-  };
-}
+const CHART_I18N_DEFAULTS = {
+  'stockDetail.chartPrice': 'Giá',
+  'stockDetail.chartVolume': 'Khối lượng',
+  'stockDetail.chartRsiMacd': 'RSI + MACD',
+  'vninvest.loading': 'Đang tải dữ liệu biểu đồ...',
+  'vninvest.load_error': 'Không thể tải biểu đồ',
+};
 
 export default function VNStockChartPanel({
   symbol,
@@ -38,8 +33,19 @@ export default function VNStockChartPanel({
   orderFlowData = null,
   enableCVD = false,
   enableInstitutionalStrength = false,
+  workspaceId,
 }) {
-  const { t } = useI18n();
+  const { t: globalT, locale } = useI18n();
+  const t = useCallback((key, options) => {
+    if (key in CHART_I18N_DEFAULTS) return CHART_I18N_DEFAULTS[key];
+    return globalT(key, options);
+  }, [globalT]);
+
+  const navigate = useNavigate();
+
+  const theme = typeof document !== "undefined" && document.documentElement?.getAttribute("data-theme") === "light"
+    ? "light"
+    : "dark";
 
   const [widgetModule, setWidgetModule] = useState(null);
   const [widgetError, setWidgetError] = useState(null);
@@ -59,6 +65,7 @@ export default function VNStockChartPanel({
   }, []);
 
   const VNInvestCharts = widgetModule?.VNInvestCharts;
+  const VNInvestMultiCharts = widgetModule?.VNInvestMultiCharts;
   const widgetMessagesVi = widgetModule?.widgetMessagesVi;
 
   const adapter = useMemo(() => createChartStockDataAdapter({ env }), [env]);
@@ -92,9 +99,11 @@ export default function VNStockChartPanel({
   }, [activeTimeframe]);
 
   const nextBar = useMemo(() => buildBarFromQuote(quote), [quote, buildBarFromQuote]);
-  if (nextBar) {
-    adapter.pushRealtimeBar(nextBar);
-  }
+  useEffect(() => {
+    if (nextBar) {
+      adapter.pushRealtimeBar(nextBar);
+    }
+  }, [nextBar, adapter]);
 
   const [internalBars, setInternalBars] = useState([]);
   const [visibleRange, setVisibleRange] = useState(null);
@@ -196,7 +205,9 @@ export default function VNStockChartPanel({
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
 
-  const chartBody = !VNInvestCharts
+  const chartComponent = VNInvestCharts;
+
+  const chartBody = !chartComponent
     ? e(
         'div',
         { className: 'absolute inset-0 flex items-center justify-center bg-slate-950/40 text-sm text-slate-500' },
@@ -221,7 +232,7 @@ export default function VNStockChartPanel({
           ),
         )
       : e(
-        VNInvestCharts,
+        chartComponent,
         {
           adapter,
           symbol,
@@ -233,9 +244,15 @@ export default function VNStockChartPanel({
           showToolbar: true,
           showHeader: true,
           showFooter: true,
-          locale: 'vi',
+          showNonTradingDays: true,
+          showSymbolBadges: true,
+          workspaceId: workspaceId ?? `stock-${symbol}`,
+          showTapePanel: false,
+          showAdvisoryPanel: false,
+          showCorporateEvents: false,
+          locale: locale,
           messages: widgetMessagesVi,
-          theme: 'dark',
+          theme: theme,
           enableWhale: true,
           whaleOrders: mappedWhaleOrders,
           enableCVD,
@@ -249,11 +266,11 @@ export default function VNStockChartPanel({
             const mapped = tf === '1d' ? 'D' : tf === '1h' ? '1H' : tf;
             onTimeframeChange?.(mapped);
           },
-          onSymbolChange: (sym) => {
-            window.location.href = '/stocks/' + sym;
+onSymbolChange: (sym) => {
+              navigate('/stocks/' + sym);
+            },
+            ref: chartRef,
           },
-          ref: chartRef,
-        },
       );
 
   return e(

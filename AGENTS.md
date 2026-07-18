@@ -22,14 +22,139 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - **Priority 1 & 3**: Obsolete — local VNInvestCharts.js và contract tests đã bị xoá cùng component tree.
 
 ### Done (2026-07-17)
-- **React 19 peer-dep TDZ fix**: `vninvestcharts-widget` ^1.2.5 declares `peerDependencies: react ^19.0.0` nhưng app là React 18.3.1. Static import trong `VNStockChartPanel.js` gây TDZ `Cannot access 'N' before initialization` lúc load `StockDetailPage`. Quyết định: lazy-load widget qua dynamic `import()` trong `useEffect` (Option B), KHÔNG upgrade app lên React 19 — vì recharts v2 peer-dep không hỗ trợ React 19 (sẽ ép recharts v3 migration rủi ro). Widget tách thành async chunk riêng (`index-C5jP24jD.js`, 2.1MB), `StockDetailPage` giảm từ ~3.5MB → 58KB. tsc + build pass.
+- **React 19 peer-dep TDZ fix**: `vninvestcharts-widget` ^1.2.5 declares `peerDependencies: react ^19.0.0` nhưng app là React 18.3.1. Static import trong `VNStockChartPanel.js` gây TDZ `Cannot access 'N' before initialization` lúc load `StockDetailPage`. Quyết định ban đầu: lazy-load widget qua dynamic `import()` trong `useEffect` (Option B) để giữ React 18 — vì sợ recharts v2 peer-dep không hỗ trợ React 19. Tuy nhiên, `recharts@2.15.4` đã chính thức hỗ trợ `^19.0.0`. **Đã upgrade lên React 19**: `react@19.2.7`, `react-dom@19.2.7`, `@types/react@19.2.17`, `@types/react-dom@19.2.3`. `react-test-renderer` removed, `AuthPages.test.js` rewritten to RTL. Widget vẫn lazy-load as async chunk. tsc + build pass.
 - **SOC DataOps gap analysis — ALL 20 gaps CLOSED**: P0 #1–5, P1 #6–11, P2 #12–16, P3 #17–20 đều đã implement (Inventory/Operations/Monitor/Config sections). `docs/GAP_ANALYSIS_DATAOPS_LEGACY_VS_SAAS_NATIVE.md` đã stale → đánh dấu hoàn thành.
+
+### Done (2026-07-18)
+- **Sprint 5 Steps 5.1–5.5 (Real SAML SSO backend)**: `SAMLService` class (AuthnRequest, Response parsing, metadata, connection test), `SSOLoginInitiateView`, `SSOCallbackView`, `SSOMetadataView`, `PartnerSSOTestConnectionView`, `PartnerSSOTestLoginView`. 41 tests pass. `lxml` added to requirements (not `python3-saml` — intentional trade-off, see plan deviation note).
+- **Independent audit** (docs/AUDIT_SPRINT5_SAML_SSO_INDEPENDENT_REVIEW_20260718.md): 6 findings (F1–F6). F1 (P0→P1): signature verification stub → added `SAML_SIGNATURE_VERIFICATION_MODE` env var; F2 (P1): python3-saml deviation → plan updated; F6 (P3): AGENTS.md/ledger updated.
+- **Step 5.6 (Frontend SSO test button)**: Added connection test button + test login flow button to `TenantAdminSSOPage.tsx`. Calls `POST /partner/sso/test/` and displays checks/errors inline.
+
+### Done (2026-07-18) — Sprint 6: UX Improvements (partial)
+- **Step 6.1**: `PortfolioContext.switchTenant` dispatches `tenant-changed` CustomEvent (no reload). Sidebar uses it without page reload.
+- **Step 6.2**: Added `QueryProvider` (`providers/QueryProvider.tsx`) wrapping app in `main.tsx`. Created `useTenantAdminQuery`/`useTenantAdminMutation` hooks. Migrated 10/13 TenantAdmin pages to React Query: Security, SSO, Roles, Settings, Webhooks (full), plus Members/PATs/ServiceAccounts/Reports/UsageHistory (migrated Sprint 4/5). AuditLogs/Billing/Usage left with `coreGet` due to cursor-pagination / multi-endpoint complexity.
+- **Step 6.3**: Loading skeletons present in migrated pages (ShellSkeleton).
+- **Step 6.4**: `TenantAdminLayout.tsx` + `TenantAdminSidebar.tsx` converted from `createElement` to JSX.
+- **Step 6.5**: Toast notifications on mutations in all migrated pages.
+- Quality gate: `npx tsc --noEmit` PASS.
+- **Sprint 6 follow-up (F1–F5 from AUDIT_SPRINT6)**: 
+  - F1+F2 (P0 cross-tenant stale): `useTenantAdminQuery` scope mọi queryKey bằng `tenant_id` (localStorage) + `QueryProvider` listener `tenant-changed` → `invalidateTenantAdminQueries`. Đóng.
+  - F3 (3 page chưa migrate): AuditLogsPage (cursor pagination + filters), BillingPage (Promise.all 3 endpoint), UsagePage (5 tab query) — đều migrate sang React Query. Tất cả 13/13 TenantAdmin page giờ dùng React Query cho GET data.
+  - F4/F5 (skeleton + toast): Skeleton có trong mọi loading state; toast đồng nhất (success/error) trong mutation handlers.
+  - `useTenantAdminQuery` mở rộng hỗ trợ `queryFn` custom (cho multi-endpoint). tsc PASS.
+
+### Done (2026-07-18) — Sprint 7: Quality Gates & Tests
+- **7.1 Lint**: `npm run lint` (sửa script `--ext` → flat config). Exit 0. Sửa 1 error `react-hooks/exhaustive-deps` trong AuditLogsPage (wrap `logs` trong useMemo). Chỉ còn warnings (pre-existing).
+- **7.2 Build**: `npm run build` (tsc + vite) exit 0. Chỉ chunk-size warning (pre-existing).
+- **7.3 Test isolate cross-tenant**: `useTenantAdminQuery.component.test.ts` (3 tests) — verify queryKey scope theo `tenant_id`, không share cache giữa 2 tenant (no stale data), `invalidateTenantAdminQueries` chỉ invalidate scope đúng. PASS.
+- **7.4 Component test**: `TenantAdminRolesPage.component.test.tsx` (2 tests) — skeleton khi loading, error state khi fetch fail. PASS.
+- **7.5 Hook test**: coverage hook qua 7.3. 
+- **Kết quả**: `vitest run` 6 files / 16 tests PASS (5 mới). Lint + build + tsc đều xanh. Sprint 6 DoD giờ đạt đầy đủ (A2/A3/A4 từ audit Sprint6 đã đóng).
 
 ## Key Decisions & Metrics
 - Local `vninvestcharts/` component tree (~745 files, -102k lines) replaced by npm package `vninvestcharts-widget` ^1.2.5
 - New adapter file: `packages/web/src/adapters/chartAdapter.js` — bridges core API → chart bar format
 - New type declarations: `packages/web/src/types/vninvestcharts-widget.d.ts` — 44 lines
 - renderSeries() registry refactor (Priority 2) completed in commit `3df5ff6c`
-- **Widget lazy-load** (Option B): React 18 giữ nguyên, tránh recharts v3 migration. Widget code-split thành async chunk.
+- **Widget lazy-load** (Option B): Widget code-split thành async chunk. App đã upgrade lên React 19 — recharts@2.15.4 hỗ trợ ^19.0.0.
 - **SOC DataOps parity: ~95%+** (tất cả 20 feature gaps đóng).
 - Priority 1 (VNInvestCharts.js split) và Priority 3 (contract test split) obsolete — component đã xoá
+
+---
+
+## AI Audit/Research Framework (Quy định cứng bắt buộc)
+
+Mọi prompt audit, nghiên cứu, phân tích chi tiết dự án (bao gồm nhưng không giới hạn: audit code, research architecture, phân tích subsystem, review plan-vs-code, impact analysis, debugging investigation, spec verification, code-review, integration-test review) PHẢI tuân theo khung dưới đây. Quy định này áp dụng bắt buộc cho toàn bộ repo `vninvest`, không phụ thuộc vào repo `vninvestcharts-widget`.
+
+### Nguyên tắc chống lỗi audit (kế thừa bài học DRAWING_DOCK + sai sót navigation/TDZ 2026-07-17)
+
+| Bài học | Nguyên tắc chống tái diễn |
+|---------|--------------------------|
+| Plan bảo CSS "chết" nhưng code vẫn dùng | **Nguyên tắc 1**: grep/scrape PHẢI quét TOÀN repo bao gồm `.css`, `.module.css`, `soc.module.css`, config (`vite.config.ts`, `tsconfig*.json`), demo, i18n (`src/i18n/vi.js`, `en.js`). Không dừng ở file `.ts`/`.tsx`. |
+| Plan bảo field X có trong state nhưng code không có | **Nguyên tắc 2**: Đối chiếu plan→code phải có mục CONTRADICTIONS riêng, mỗi dòng kèm `plan:file:line \| code:file:line \| impact`. |
+| Plan trỏ file không tồn tại | **Nguyên tắc 3**: MỌI reference file phải được `read` hoặc `grep` xác nhận tồn tại. File KHÔNG TỒN TẠI → báo `KHÔNG TỒN TẠI`, không suy diễn "có thể ở đâu đó". |
+| Quên external package coupling | **Nguyên tắc 4**: Web app tiêu thụ `vninvestcharts-widget` (npm `^1.2.5`) và `defaultCoreApiAdapter`. Mọi tracing qua ranh giới widget/adapter PHẢI kiểm tra (a) type declarations `src/types/vninvestcharts-widget.d.ts`, (b) adapter `src/adapters/core/market.js` + `transport.js`, (c) version thực tế trong `packages/web/package.json`. Không đoán shape của package ngoài. |
+| Quên i18n / fat-file / quality gates | **Nguyên tắc 5**: Phần "Quality Gates" audit PHẢI gồm: (a) eslint status (`npm run lint`), (b) type-check status (`npm run build` = `tsc && vite build`), (c) i18n hardcoded string scan (`src/i18n/vi.js`, `en.js`, `npm run i18n:scan`), (d) test coverage gap (`npm run test`, `npm run test:components`). |
+| Debug navigation/TDZ do thiếu trace thực tế | **Nguyên tắc 6**: Mọi điều tra bug runtime/UI PHẢI reproduce-first và trace từng bước qua file:line. Không chốt root cause bằng suy luận; phải có bằng chứng (console error, repro script, hoặc trace log) trước khi đề xuất fix. |
+
+### Cấu trúc khung prompt chuẩn (điền scope cụ thể vào `[...]`)
+
+```markdown
+Bạn là kiểm toán viên mã nguồn cấp cao. Nhiệm vụ: NGHIÊN CỨU và PHÂN TÍCH CHI TIẾT
+[phạm vi: subsystem / feature / module / package] tại:
+
+  C:\Mujoco Projects\vninvest
+
+(liên quan: packages/web = React/Vite app, packages/core = Django backend,
+packages/vip-app, packages/opencore, packages/mobile — mọi phân tích qua
+ranh giới web↔core hoặc web↔widget PHẢI tham chiếu CẢ HAI bên).
+
+=== 0. NGUY TẮC BẮT BUỘC ===
+1. MỌI khẳng định kèm `file_path:line_number`. Không có line = không hợp lệ.
+2. KHÔNG đoán. Chưa đọc file thật → ghi "CHƯA XÁC MINH".
+3. Bắt buộc dùng grep/glob/read, không dùng kinh nghiệm chung.
+4. Plan/doc MÂU THUẪN với code → finding quan trọng nhất, báo mục CONTRADICTIONS.
+5. grep/scrape TOÀN repo bao gồm .css, .module.css, config, i18n, adapters.
+6. KHÔNG viết code. Chỉ nghiên cứu + phân tích + đề xuất (trừ khi được yêu cầu rõ).
+7. KHÔNG bịa file. File không tồn tại → báo "KHÔNG TỒN TẠI".
+8. Ngôn ngữ báo cáo: Tiếng Việt.
+
+=== 1. ĐỌC TRƯỚC (bắt buộc) ===
+- AGENTS.md, CODE_CHANGE_AUDIT_LEDGER.md
+- docs/ [các file context cần đọc]
+- [tên plan / spec / review cần đối chiếu, ví dụ RUN_SPEC_AUDIT_*, RUN_CODE_REVIEW_*]
+
+=== 2. PHẠM VI NGHIÊN CỨU ===
+A. [SUB] — [mô tả subsystem A]
+   - [file patterns / dirs cần glob, ví dụ packages/web/src/features/...]
+   - [symbols cần grep]
+   - [plan cần đối chiếu]
+
+B. [SUB] — [mô tả subsystem B]
+   - ...
+
+C. CROSS-PACKAGE / EXTERNAL COUPLING (nếu có)
+   - web↔core API contract (defaultCoreApiAdapter, src/adapters/core/*)
+   - web↔vninvestcharts-widget (src/types/vninvestcharts-widget.d.ts, package.json version)
+   - dist vs src staleness nếu liên quan engine
+
+D. QUALITY GATES
+   - Lint: npm run lint (packages/web)
+   - Type-check: npm run build (= tsc && vite build)
+   - i18n: src/i18n/vi.js, en.js + npm run i18n:scan
+   - Test: npm run test, npm run test:components
+
+=== 3. PHƯƠNG PHÁP ===
+B1: Đọc context docs + plans (mục 1)
+B2: glob [dir patterns]
+B3: grep [key symbols]
+B4: read từng file cốt lõi, trace 1 use-case cụ thể
+B5: Đối chiếu plan ↔ code, gạch chỗ lệch
+B6: Check ranh giới: lint, type-check, i18n, test, external coupling
+
+=== 4. ĐẦU RA ===
+A. Bản đồ kiến trúc (bảng: file | line_count | trách nhiệm | note)
+B. Luồng dữ liệu đã trace (use-case cụ thể, kèm file:line từng bước)
+C. CONTRADICTIONS (plan/doc vs code): [mỗi dòng] Plan X (file:line) | Thực tế Y (file:line) | Tác động
+D. Findings: [ID] <ERROR|GAP|RISK> | Mức | file:line | Thực tế | Tác động | Đề xuất fix
+E. Quality gates audit (lint / type-check / i18n / test)
+F. Câu hỏi cần làm rõ
+G. Đánh giá tổng thể: implementable? blocker? ưu tiên sửa?
+
+=== 5. ĐẦU RA NGẮN ===
+Tóm tắt 5 findings nghiêm trọng nhất vào 1 đoạn đầu file.
+```
+
+### Cách dùng
+
+Khi cần AI phân tích/research/audit bất kỳ phần nào của dự án:
+1. Copy template từ mục "Cấu trúc khung prompt chuẩn"
+2. Điền `[phạm vi]`, file paths, symbols cần tra
+3. Paste vào session AI mới
+4. AI sẽ tự chạy grep/glob/read theo đúng quy trình
+
+Không deviation khỏi cấu trúc đầu ra (mục 4). Thiếu section = kết quả không hợp lệ.
+
+### Ghi chú ledger
+
+Sau mọi thay đổi mã nguồn hoặc kết luận audit quan trọng, PHẢI cập nhật `CODE_CHANGE_AUDIT_LEDGER.md` (root) theo quy ước现存 của dự án.

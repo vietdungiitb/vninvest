@@ -1,13 +1,13 @@
 import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Bar, BarChart, PieChart, Pie, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ShellPageChrome, ShellPanel, renderShellMetric, ShellField } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { ShellSkeleton } from "../../components/ShellSkeleton.js";
-import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
+import { useTenantAdminQuery } from "./useTenantAdminQuery.js";
 interface AuditLog {
   id: string;
   event_type: string;
@@ -49,11 +49,7 @@ export function TenantAdminAuditLogsPage({
   const { t, formatDateTime: fmtDateTime } = useI18n();
   const { ability } = usePortfolio();
 
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [prevCursor, setPrevCursor] = useState<string | null>(null);
+  const [cursor, setCursor] = useState("");
   const [eventType, setEventType] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -61,6 +57,28 @@ export function TenantAdminAuditLogsPage({
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
   const canRead = ability?.can?.("read", "TenantAuditAdmin") ?? false;
+
+  const buildQuery = (cursorValue: string) => {
+    let queryPath = "/partner/audit-logs/?";
+    if (cursorValue) queryPath += `cursor=${cursorValue}&`;
+    if (eventType) queryPath += `event_type=${encodeURIComponent(eventType)}&`;
+    if (startDate) queryPath += `start_date=${encodeURIComponent(startDate)}&`;
+    if (endDate) queryPath += `end_date=${encodeURIComponent(endDate)}&`;
+    return queryPath;
+  };
+
+  const { data, isLoading, isFetching, error } = useTenantAdminQuery<{
+    results: AuditLog[];
+    next: string | null;
+    previous: string | null;
+  }>(
+    ["tenant-audit-logs", cursor, eventType, startDate, endDate],
+    buildQuery(cursor),
+  );
+
+  const logs = useMemo(() => data?.results ?? [], [data]);
+  const nextCursor = getQueryParam(data?.next ?? null, "cursor");
+  const prevCursor = getQueryParam(data?.previous ?? null, "cursor");
 
   const eventBreakdown = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -88,40 +106,9 @@ export function TenantAdminAuditLogsPage({
     return Array.from(types);
   }, [logs]);
 
-  const loadLogs = useCallback(async (cursorValue = "") => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      let queryPath = "/partner/audit-logs/?";
-      if (cursorValue) {
-        queryPath += `cursor=${cursorValue}&`;
-      }
-      if (eventType) {
-        queryPath += `event_type=${encodeURIComponent(eventType)}&`;
-      }
-      if (startDate) {
-        queryPath += `start_date=${encodeURIComponent(startDate)}&`;
-      }
-      if (endDate) {
-        queryPath += `end_date=${encodeURIComponent(endDate)}&`;
-      }
-
-      const data = await defaultCoreApiAdapter.coreGet(queryPath);
-
-      setLogs(data.results || []);
-      setNextCursor(getQueryParam(data.next, "cursor"));
-      setPrevCursor(getQueryParam(data.previous, "cursor"));
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("tenantAuditLogs.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [eventType, startDate, endDate, t]);
-
-  useEffect(() => {
-    loadLogs();
-  }, [loadLogs]);
+  const loadLogs = (cursorValue: string) => {
+    setCursor(cursorValue);
+  };
 
   if (!canRead) {
     return (
@@ -138,7 +125,7 @@ export function TenantAdminAuditLogsPage({
     );
   }
 
-  if (loading && logs.length === 0) {
+  if (isLoading && logs.length === 0) {
     return (
       <ShellPageChrome
         eyebrow={t("tenantAuditLogs.eyebrow")}
@@ -158,7 +145,7 @@ export function TenantAdminAuditLogsPage({
         eyebrow={t("tenantAuditLogs.eyebrow")}
         title={t("tenantAuditLogs.title")}
         description={t("tenantAuditLogs.loadError")}
-        error={error}
+        error={error?.message || t("tenantAuditLogs.loadError")}
       >
         <div className={`${styles.panel}`}>{t("tenantAuditLogs.loadError")}</div>
       </ShellPageChrome>
@@ -311,7 +298,7 @@ export function TenantAdminAuditLogsPage({
           subtitle={t("tenantAuditLogs.timelineSubtitle")}
         >
           <div className={`${styles.list}`}>
-            {loading && logs.length === 0 ? (
+            {isLoading && logs.length === 0 ? (
               <ShellSkeleton variant="card" count={3} />
             ) : logs.length === 0 ? (
               <ShellEmptyState description={t("tenantAuditLogs.noLogs")} />
@@ -394,17 +381,17 @@ export function TenantAdminAuditLogsPage({
                   <div className={ta.aud_22}>
                     <button
                       onClick={() => prevCursor !== null && loadLogs(prevCursor)}
-                      disabled={!prevCursor || loading}
+                      disabled={!prevCursor || isFetching}
                       className={`${styles.button} ${styles.buttonSecondary}`}
-                      style={{ color: !prevCursor || loading ? "#94a3b8" : "#cbd5e1" }}
+                      style={{ color: !prevCursor || isFetching ? "#94a3b8" : "#cbd5e1" }}
                     >
                       {t("tenantAuditLogs.previous")}
                     </button>
                     <button
                       onClick={() => nextCursor !== null && loadLogs(nextCursor)}
-                      disabled={!nextCursor || loading}
+                      disabled={!nextCursor || isFetching}
                       className={`${styles.button} ${styles.buttonSecondary}`}
-                      style={{ color: !nextCursor || loading ? "#94a3b8" : "#cbd5e1" }}
+                      style={{ color: !nextCursor || isFetching ? "#94a3b8" : "#cbd5e1" }}
                     >
                       {t("tenantAuditLogs.next")}
                     </button>
