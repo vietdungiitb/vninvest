@@ -10223,3 +10223,45 @@ Improve TenantAdmin UX: no-reload tenant switching, React Query migration, loadi
 ### Result
 - 13/13 TenantAdmin page dung React Query cho GET. Mutations dung truc tiep adapter + toast.
 - Skeleton co trong moi loading state. tsc --noEmit PASS. F3+F4+F5 closed.
+
+## Alert Center P0 (2026-07-18) — Phases 1-5 hoàn tất
+
+### Plan: docs/IMPLEMENTATION_PLAN_ALERT_CENTER_P0_20260718.md (F1, F3, F5, F12 + R1/R2/R3/R5)
+### Findings goc: docs/AUDIT_ALERT_CENTER_INDEPENDENT_REVIEW_20260718.md
+
+### Phase 1 (F1 + F3 contract doc)
+- packages/web/src/hooks/useAlertCenterRealtime.js (moi) — boc useRealtimeFeedCore({symbols:['market_discovery']}), merge whale+darkflow, dedupe event_id.
+- packages/web/src/pages/AlertCenterPage.tsx — integrate WS, live badge LIVE (WS)/LIVE (polling)/PAUSED.
+- docs/WEBSOCKET_EVENT_CONTRACT.md — sua Sec4 (subscribe symbols), them Sec3.5/3.6 (market_discovery group, optional event types).
+- Test useAlertCenterRealtime.test.js (6 tests PASS).
+
+### Phase 2 (F5 filter)
+- useAlertCenterData.js — them params severity/alertFamily, forward query severity/alert_family, JSDoc type, DEFAULT_ENV, fix deps.
+- AlertCenterPage.tsx — severityFilter/familyFilter state, chip filter strip, reset pageFeed.
+- Test useAlertCenterData.test.js (3 tests PASS).
+
+### Phase 3 (F3 i18n)
+- namespace alertCenter (85 keys) trong vi.js + en.js (parity verified).
+- AlertCenterPage.tsx / AlertCard.js / SummaryMetrics.js / SymbolStatsTable.js / DetailDrawer.js — refactor tat ca string VN/EN qua t().
+- Fix type: useI18n().t khong nhan string defaultValue -> dung { defaultValue } hoac bo fallback.
+
+### Phase 4 (F5 contract JSON + F12 dead code)
+- shared/api-contracts/unified-alert.contract.json — bo additionalProperties:false, them alert_family/lane/summary/executed_at/evidence/confidence/freshness_state (khop serializers.py:14-18). version 1.1.0.
+- Xoa packages/web/src/components/dashboard/UnifiedAlertCenter (1).js (dup, khong import dau).
+
+### Phase 5 (R1/R2/R3/R5 theme refactor)
+- Tao AlertCenterPage.module.css (tu CORE_STYLES, bo :root, map --neon-* -> system tokens, modifier classes :global).
+- Xoa AlertCenterPage.styles.js (CORE_STYLES inline) + <style dangerouslySetInnerHTML> trong AlertCenterPage.tsx.
+- 4 component con import chung AlertCenterPage.module.css (thay Proxy/raw string).
+- Xoa DetailDrawer.module.css + SymbolStatsTable.module.css (dead, Option A).
+
+### Quality Gates (2026-07-18)
+- npx tsc --noEmit: PASS
+- npx eslint (5 file alert-center): PASS (0 error)
+- npm run build: PASS (chunk-size warning pre-existing)
+- i18n scan: alertCenter 85 keys vi/en parity
+- Khong con dangerouslySetInnerHTML / --neon-* / :root trong AlertCenter
+- Test: jest 9/9 PASS (realtime 6 + data 3)
+
+### Backend
+- KHONG doi backend code. Chi doc (shared/api-contracts + WEBSOCKET_EVENT_CONTRACT).

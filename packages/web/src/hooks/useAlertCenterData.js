@@ -3,7 +3,12 @@ import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 
 const { useEffect, useRef, useState } = React;
 
-export function useAlertCenterData({ env = DEFAULT_ENV, lane = "main", symbol = "", sessionDate = "", timeframe = "", refreshToken = 0 } = {}) {
+const DEFAULT_ENV = {};
+
+/**
+ * @param {{ env?: object, lane?: string, symbol?: string, sessionDate?: string, timeframe?: string, severity?: string[], alertFamily?: string[], refreshToken?: number }} params
+ */
+export function useAlertCenterData({ env = DEFAULT_ENV, lane = "main", symbol = "", sessionDate = "", timeframe = "", severity = [], alertFamily = [], refreshToken = 0 } = {}) {
   const mountedRef = useRef(null);
   const [state, setState] = useState({
     loading: true,
@@ -13,6 +18,11 @@ export function useAlertCenterData({ env = DEFAULT_ENV, lane = "main", symbol = 
     symbolStats: { symbols: [], total_alerts_in_scope: 0, pagination: { page: 1, page_size: 200, total_pages: 1, total_symbols: 0 } },
   });
 
+  const normalizedSeverity = Array.isArray(severity) ? severity : [];
+  const normalizedFamily = Array.isArray(alertFamily) ? alertFamily : [];
+  const severityKey = normalizedSeverity.join(',');
+  const familyKey = normalizedFamily.join(',');
+
   useEffect(() => {
     mountedRef.current = true;
 
@@ -20,10 +30,12 @@ export function useAlertCenterData({ env = DEFAULT_ENV, lane = "main", symbol = 
       try {
         setState((currentState) => ({ ...currentState, loading: currentState.payload.results.length === 0, error: "" }));
         const adapter = coreApiAdapter;
-        const query = { 
+        const query = {
           symbol: symbol || undefined,
           session_date: sessionDate || undefined,
-          timeframe: timeframe || undefined
+          timeframe: timeframe || undefined,
+          ...(normalizedSeverity.length ? { severity: normalizedSeverity.join(',') } : {}),
+          ...(normalizedFamily.length ? { alert_family: normalizedFamily.join(',') } : {}),
         };
         
         const [payload, summary, symbolStats] = await Promise.all([
@@ -86,7 +98,8 @@ export function useAlertCenterData({ env = DEFAULT_ENV, lane = "main", symbol = 
     return () => {
       mountedRef.current = false;
     };
-  }, [env, lane, symbol, sessionDate, timeframe, refreshToken]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [env, lane, symbol, sessionDate, timeframe, severityKey, familyKey, refreshToken]);
 
   return state;
 }

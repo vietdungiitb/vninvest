@@ -24,6 +24,10 @@ export function getLocaleTag(locale) {
   return localeTags[normalizeLocale(locale)] || localeTags[DEFAULT_LOCALE];
 }
 
+/**
+ * @param {string} locale
+ * @returns {(key: string, varsOrDefault?: Record<string, any> | string) => string}
+ */
 export function createTranslator(locale) {
   const normalizedLocale = normalizeLocale(locale);
   const dictionary = dictionaries[normalizedLocale] || dictionaries[DEFAULT_LOCALE];

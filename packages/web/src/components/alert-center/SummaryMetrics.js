@@ -1,21 +1,24 @@
 import React from "react";
+import { useI18n } from "../../context/LangContext.js";
+import styles from "../../pages/AlertCenterPage.module.css";
 
 const { createElement } = React;
 const e = createElement;
 
-function renderSummaryCard(label, value, modifier = "") {
-  return e("div", { key: label, className: `core-alert-center-summary-card ${modifier}`.trim() }, [
-    e("div", { key: "label", className: "core-alert-center-summary-label" }, label),
-    e("div", { key: "value", className: "core-alert-center-summary-value" }, value),
+function renderSummaryCard(t, labelKey, value, modifier = "") {
+  return e("div", { key: labelKey, className: `${styles["core-alert-center-summary-card"]} ${modifier}`.trim() }, [
+    e("div", { key: "label", className: styles["core-alert-center-summary-label"] }, t(labelKey)),
+    e("div", { key: "value", className: styles["core-alert-center-summary-value"] }, value),
   ]);
 }
 
 export function SummaryMetrics({ summary, alertsCount, highSeverityCount, aiSuggestCount, lane, appliedSymbol }) {
-  return e("section", { className: "core-alert-center-summary-grid" }, [
-    renderSummaryCard("Tổng số alert", String(summary?.total ?? alertsCount)),
-    renderSummaryCard("Chưa đọc", String(summary?.unseen ?? 0)),
-    renderSummaryCard("Mức Cao & Siêu Cao", String(highSeverityCount), "severity-high"),
-    renderSummaryCard("AI Suggest", String(aiSuggestCount), lane === "ai" ? "is-highlighted" : ""),
-    renderSummaryCard("Bộ lọc mã", appliedSymbol || "Toàn bộ"),
+  const { t } = useI18n();
+  return e("section", { className: styles["core-alert-center-summary-grid"] }, [
+    renderSummaryCard(t, "alertCenter.summary.total", String(summary?.total ?? alertsCount)),
+    renderSummaryCard(t, "alertCenter.summary.unseen", String(summary?.unseen ?? 0)),
+    renderSummaryCard(t, "alertCenter.summary.highCritical", String(highSeverityCount), "severity-high"),
+    renderSummaryCard(t, "alertCenter.summary.aiSuggest", String(aiSuggestCount), lane === "ai" ? "is-highlighted" : ""),
+    renderSummaryCard(t, "alertCenter.summary.symbolFilter", appliedSymbol || t("alertCenter.summary.symbolFilterAll", "Toàn bộ")),
   ]);
 }

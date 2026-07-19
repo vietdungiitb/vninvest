@@ -1,37 +1,28 @@
 import React from "react";
-const styles = {
-  dashboardPanel: "core-dashboard-panel",
-  sectionTitle: "core-section-title",
-  symbolStatsSearch: "core-symbol-stats-search",
-  searchInput: "searchInput",
-  scrollableContainer: "core-scrollable-container",
-  emptyState: "core-empty",
-  symbolStatsTable: "core-symbol-stats-table",
-  symbolStatsRow: "core-symbol-stats-row",
-  statsSymbolBadge: "core-stats-symbol-badge",
-  countCell: "count-cell",
-  strengthContainer: "core-stats-strength-container",
-  strengthBar: "core-stats-strength-bar",
-  strengthBuy: "core-stats-strength-buy",
-  strengthSell: "core-stats-strength-sell",
-  strengthNeutral: "core-stats-strength-neutral",
-  strengthText: "core-stats-strength-text",
-  directionBuy: "direction-buy",
-  directionSell: "direction-sell",
-  frequencyBadge: "core-stats-frequency-badge",
-  freqExplosive: "freq-explosive",
-  freqHigh: "freq-high",
-  freqMedium: "freq-medium",
-  freqLow: "freq-low",
-  valueCell: "value-cell"
-};
+import { useI18n } from "../../context/LangContext.js";
+import styles from "../../pages/AlertCenterPage.module.css";
 
 const { createElement } = React;
 const e = createElement;
 
+const FREQ_CLASS_MAP = {
+  "Bùng nổ": "freqExplosive",
+  "Cao": "freqHigh",
+  "Trung bình": "freqMedium",
+  "Thấp": "freqLow",
+};
+
+const FREQ_KEY_MAP = {
+  "Bùng nổ": "alertCenter.freqExplosive",
+  "Cao": "alertCenter.freqHigh",
+  "Trung bình": "alertCenter.freqMedium",
+  "Thấp": "alertCenter.freqLow",
+};
+
 export function SymbolStatsTable({ paginatedSymbols, searchTermModule2, setSearchTermModule2, formatAlertValue }) {
+  const { t } = useI18n();
   return e("div", { className: styles.dashboardPanel }, [
-    e("h2", { key: "title", className: styles.sectionTitle }, "THỐNG KÊ THEO MÃ CỔ PHIẾU"),
+    e("h2", { key: "title", className: styles.sectionTitle }, t("alertCenter.statsTitle")),
     
     // Search in stats panel
     e("div", { key: "search-box", className: styles.symbolStatsSearch }, [
@@ -39,7 +30,7 @@ export function SymbolStatsTable({ paginatedSymbols, searchTermModule2, setSearc
         type: "text",
         value: searchTermModule2,
         maxLength: 10,
-        placeholder: "Tìm nhanh mã (ví dụ: VNM)...",
+        placeholder: t("alertCenter.statsSearch"),
         onChange: (event) => setSearchTermModule2(event.target.value.toUpperCase()),
         className: styles.searchInput,
       }),
@@ -47,14 +38,14 @@ export function SymbolStatsTable({ paginatedSymbols, searchTermModule2, setSearc
 
     e("div", { key: "table-container", className: styles.scrollableContainer }, [
       paginatedSymbols.length === 0
-        ? e("p", { key: "empty", className: styles.emptyState }, "Không có mã thống kê phù hợp.")
+        ? e("p", { key: "empty", className: styles.emptyState }, t("alertCenter.statsEmpty"))
         : e("table", { key: "table", className: styles.symbolStatsTable }, [
             e("thead", { key: "thead" }, e("tr", null, [
-              e("th", null, "Mã CP"),
-              e("th", null, "Số Alert"),
-              e("th", null, "Mua / Bán"),
-              e("th", null, "Tần Suất"),
-              e("th", null, "Tổng Giá Trị"),
+              e("th", null, t("alertCenter.colSymbol")),
+              e("th", null, t("alertCenter.colCount")),
+              e("th", null, t("alertCenter.colBuySell")),
+              e("th", null, t("alertCenter.colFreq")),
+              e("th", null, t("alertCenter.colValue")),
             ])),
             e("tbody", { key: "tbody" }, paginatedSymbols.map((item) => {
               const buyPercent = item.count > 0 ? (item.buyCount / item.count) * 100 : 0;
@@ -62,9 +53,7 @@ export function SymbolStatsTable({ paginatedSymbols, searchTermModule2, setSearc
               const neutralPercent = item.count > 0 ? (item.neutralCount / item.count) * 100 : 0;
               
               let freqClass = styles.freqLow;
-              if (item.freq === "Bùng nổ") freqClass = styles.freqExplosive;
-              else if (item.freq === "Cao") freqClass = styles.freqHigh;
-              else if (item.freq === "Trung bình") freqClass = styles.freqMedium;
+              if (FREQ_CLASS_MAP[item.freq]) freqClass = styles[FREQ_CLASS_MAP[item.freq]];
 
               return e("tr", { key: item.symbol, className: styles.symbolStatsRow }, [
                 // Ticker badge with link
@@ -72,7 +61,7 @@ export function SymbolStatsTable({ paginatedSymbols, searchTermModule2, setSearc
                   e("a", { 
                     href: `/stocks/${item.symbol}`, 
                     className: styles.statsSymbolBadge,
-                    title: "Mở Stock workspace chi tiết cho mã này"
+                    title: t("alertCenter.openStockWorkspace", { symbol: item.symbol })
                   }, [
                     item.symbol,
                     e("svg", {
@@ -88,24 +77,24 @@ export function SymbolStatsTable({ paginatedSymbols, searchTermModule2, setSearc
                   ])
                 ),
                 // Count of occurrences
-                e("td", { className: styles.countCell }, `${item.count} lần`),
+                e("td", { className: styles.countCell }, t("alertCenter.times", { count: item.count })),
                 // Buy/Sell strength bar
                 e("td", null, 
                   e("div", { className: styles.strengthContainer }, [
                     e("div", { className: styles.strengthBar }, [
-                      buyPercent > 0 ? e("div", { className: styles.strengthBuy, style: { width: `${buyPercent}%` }, title: `Mua: ${item.buyCount} lần` }) : null,
-                      sellPercent > 0 ? e("div", { className: styles.strengthSell, style: { width: `${sellPercent}%` }, title: `Bán: ${item.sellCount} lần` }) : null,
-                      neutralPercent > 0 ? e("div", { className: styles.strengthNeutral, style: { width: `${neutralPercent}%` }, title: `Khác: ${item.neutralCount} lần` }) : null,
+                      buyPercent > 0 ? e("div", { className: styles.strengthBuy, style: { width: `${buyPercent}%` }, title: `${t("alertCenter.labelBuy")}: ${item.buyCount} ${t("alertCenter.timesShort")}` }) : null,
+                      sellPercent > 0 ? e("div", { className: styles.strengthSell, style: { width: `${sellPercent}%` }, title: `${t("alertCenter.labelSell")}: ${item.sellCount} ${t("alertCenter.timesShort")}` }) : null,
+                      neutralPercent > 0 ? e("div", { className: styles.strengthNeutral, style: { width: `${neutralPercent}%` }, title: `${t("alertCenter.labelOther")}: ${item.neutralCount} ${t("alertCenter.timesShort")}` }) : null,
                     ]),
                     e("div", { className: styles.strengthText }, [
-                      e("span", { className: styles.directionBuy }, `B:${item.buyCount}`),
-                      e("span", { className: styles.directionSell }, `S:${item.sellCount}`),
+                      e("span", { className: styles.directionBuy }, `${t("alertCenter.buyShort")}:${item.buyCount}`),
+                      e("span", { className: styles.directionSell }, `${t("alertCenter.sellShort")}:${item.sellCount}`),
                     ])
                   ])
                 ),
                 // Frequency level
                 e("td", null, 
-                  e("span", { className: `${styles.frequencyBadge} ${freqClass}` }, item.freq)
+                  e("span", { className: `${styles.frequencyBadge} ${freqClass}` }, t(FREQ_KEY_MAP[item.freq] || "alertCenter.freqLow", item.freq))
                 ),
                 // Matched Value
                 e("td", { className: styles.valueCell }, 

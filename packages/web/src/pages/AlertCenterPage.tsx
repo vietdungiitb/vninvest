@@ -1,15 +1,13 @@
-import { createElement, useCallback, useEffect, useState } from "react";
+import { createElement, useCallback, useEffect, useMemo, useState } from "react";
+import { useI18n } from "../context/LangContext.js";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { SummaryMetrics } from "../components/alert-center/SummaryMetrics.js";
 import { AlertCard } from "../components/alert-center/AlertCard.js";
 import { SymbolStatsTable } from "../components/alert-center/SymbolStatsTable.js";
 import { DetailDrawer } from "../components/alert-center/DetailDrawer.js";
-import { CORE_STYLES } from "./AlertCenterPage.styles.js";
+import styles from "./AlertCenterPage.module.css";
 import { useAlertCenterData } from "../hooks/useAlertCenterData.js";
-
-const styles = new Proxy({} as Record<string, string>, {
-  get: (_target, prop) => prop
-});
+import { useAlertCenterRealtime } from "../hooks/useAlertCenterRealtime.js";
 
 const e = createElement;
 const DEFAULT_ENV: Record<string, unknown> = {};
@@ -28,8 +26,8 @@ const WINDOW_OPTIONS = Object.freeze([
 ]);
 
 const SORT_OPTIONS = Object.freeze([
-  { value: "latest", label: "Mới nhất" },
-  { value: "largestValue", label: "Giá trị lớn nhất" },
+  { value: "latest", labelKey: "alertCenter.sortLatest" },
+  { value: "largestValue", labelKey: "alertCenter.sortLargest" },
 ]);
 
 function formatAlertValue(value: unknown): string {
@@ -72,11 +70,14 @@ interface AlertCenterPageProps {
 }
 
 export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCenterPageProps) {
+  const { t } = useI18n();
   const [lane, setLane] = useState("main");
   const [symbolDraft, setSymbolDraft] = useState("");
   const [appliedSymbol, setAppliedSymbol] = useState("");
   const [sessionDate] = useState("");
   const [timeframe, setTimeframe] = useState("session");
+  const [severityFilter, setSeverityFilter] = useState<string[]>([]);
+  const [familyFilter, setFamilyFilter] = useState<string[]>([]);
   const [sorting, setSorting] = useState("latest");
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshToken, setRefreshToken] = useState(0);
@@ -97,15 +98,35 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
     symbol: appliedSymbol,
     sessionDate,
     timeframe,
+    severity: severityFilter,
+    alertFamily: familyFilter,
     refreshToken
   });
 
-  const rawAlerts = (payload as Record<string, unknown>)?.results ?? [];
-  const alerts = Array.isArray(rawAlerts) ? rawAlerts : [];
+  const { realtimeAlerts, realtimeStatus } = useAlertCenterRealtime({ enabled: autoRefresh });
+
+  // Merge REST (base) + WS (incremental). WS wins on recency for same event_id.
+  const alerts = useMemo(() => {
+    const rawAlerts = (payload as Record<string, unknown>)?.results ?? [];
+    const restAlerts = Array.isArray(rawAlerts) ? rawAlerts : [];
+    if (!realtimeAlerts.length) {
+      return restAlerts;
+    }
+    const byId = new Map();
+    for (const item of restAlerts) {
+      const key = item?.alert_id ?? item?.event_id;
+      if (key != null) byId.set(String(key), item);
+    }
+    for (const item of realtimeAlerts) {
+      const key = item?.alert_id ?? item?.event_id;
+      if (key != null) byId.set(String(key), item);
+    }
+    return Array.from(byId.values());
+  }, [payload, realtimeAlerts]);
 
   useEffect(() => {
     setPageFeed(1);
-  }, [lane, appliedSymbol, sessionDate, timeframe, sorting]);
+  }, [lane, appliedSymbol, sessionDate, timeframe, sorting, severityFilter, familyFilter]);
 
   useEffect(() => {
     setPageStats(1);
@@ -171,6 +192,28 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
     event.preventDefault();
     setAppliedSymbol(normalizeSymbol(symbolDraft));
   }
+
+  const SEVERITY_OPTIONS = Object.freeze([
+    { value: "critical", labelKey: "alertCenter.sevCritical" },
+    { value: "high", labelKey: "alertCenter.sevHigh" },
+    { value: "medium", labelKey: "alertCenter.sevMedium" },
+    { value: "low", labelKey: "alertCenter.sevLow" },
+  ]);
+
+  const FAMILY_OPTIONS = Object.freeze([
+    { value: "whale", labelKey: "alertCenter.famWhale" },
+    { value: "dark_flow", labelKey: "alertCenter.famDarkFlow" },
+    { value: "price_shock", labelKey: "alertCenter.famPriceShock" },
+    { value: "signal", labelKey: "alertCenter.famSignal" },
+    { value: "system", labelKey: "alertCenter.famSystem" },
+    { value: "ai_suggest", labelKey: "alertCenter.famAiSuggest" },
+  ]);
+
+  const toggleInArray = (list: string[], value: string): string[] =>
+    list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+
+  const toggleSeverity = (value: string) => setSeverityFilter((prev) => toggleInArray(prev, value));
+  const toggleFamily = (value: string) => setFamilyFilter((prev) => toggleInArray(prev, value));
 
   async function handleLoadDetail(alert: AlertItem) {
     if (!alert?.alert_id || !alert?.symbol) return;
@@ -255,7 +298,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
         className: "core-pagination-btn",
         disabled: currentPage === 1,
         onClick: () => setCurrentPage(1),
-        title: "Đầu"
+        title: t("alertCenter.paginationFirst")
       }, "«"),
       e("button", {
         key: "prev",
@@ -263,19 +306,19 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
         className: "core-pagination-btn",
         disabled: currentPage === 1,
         onClick: () => setCurrentPage(Math.max(1, currentPage - 1)),
-        title: "Trước"
+        title: t("alertCenter.paginationPrev")
       }, "‹"),
       e("span", {
         key: "info",
         className: "core-pagination-info"
-      }, `Trang ${currentPage} / ${totalPages}`),
+      }, t("alertCenter.paginationPage", { current: currentPage, total: totalPages })),
       e("button", {
         key: "next",
         type: "button",
         className: "core-pagination-btn",
         disabled: currentPage === totalPages,
         onClick: () => setCurrentPage(Math.min(totalPages, currentPage + 1)),
-        title: "Sau"
+        title: t("alertCenter.paginationNext")
       }, "›"),
       e("button", {
         key: "last",
@@ -283,20 +326,19 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
         className: "core-pagination-btn",
         disabled: currentPage === totalPages,
         onClick: () => setCurrentPage(totalPages),
-        title: "Cuối"
+        title: t("alertCenter.paginationLast")
       }, "»")
     ]);
   }
 
   return e("div", { className: `${String(styles["core-alert-center-page"])} ${className}`.trim() }, [
-    e("style", { key: "global-styles", dangerouslySetInnerHTML: { __html: CORE_STYLES } }),
     e("header", { key: "header", className: styles["core-alert-center-header"] }, [
       e("div", { key: "title-container" }, [
-        e("h1", { key: "title" }, "Whale Alerts Workspace"),
+        e("h1", { key: "title" }, t("alertCenter.title", { defaultValue: "Whale Alerts Workspace" })),
         e(
           "p",
           { key: "subtitle", className: styles["core-alert-center-subtitle"] },
-          "Đại bản doanh whale, dark-flow & Price Shock theo chuẩn OpenAPI."
+          t("alertCenter.subtitle")
         ),
       ]),
       e("div", { key: "live-indicator-container", style: { display: "flex", alignItems: "center", gap: "15px" } as React.CSSProperties }, [
@@ -307,26 +349,30 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
             className: `${String(styles["core-alert-live-badge"])} ${!autoRefresh ? String(styles["is-paused"]) : ""}`.trim(),
             style: { cursor: "pointer" },
             onClick: () => setAutoRefresh(!autoRefresh),
-            title: autoRefresh ? "Bấm để dừng tự động cập nhật" : "Bấm để bật tự động cập nhật"
+            title: autoRefresh ? t("alertCenter.liveBadgePauseTitle") : t("alertCenter.liveBadgeResumeTitle")
           },
           [
             e("div", { key: "dot", className: styles["core-alert-live-dot"] }),
-            autoRefresh ? "LIVE (5s)" : "PAUSED",
+            !autoRefresh
+              ? "PAUSED"
+              : realtimeStatus === "live"
+                ? "LIVE (WS)"
+                : "LIVE (polling)",
           ]
         ),
         e("form", { key: "filters", className: styles["core-alert-center-filter-bar"], onSubmit: handleApply }, [
           e("label", { key: "symbol-label", className: styles["core-alert-center-filter-field"] }, [
-            e("span", { key: "symbol-text" }, "Lọc Mã"),
+            e("span", { key: "symbol-text" }, t("alertCenter.filterSymbol")),
             e("input", {
               key: "symbol-input",
               type: "text",
               value: symbolDraft,
               maxLength: 10,
-              placeholder: "Ví dụ: HPG",
+              placeholder: t("alertCenter.filterSymbolPlaceholder"),
               onChange: (event: React.ChangeEvent<HTMLInputElement>) => setSymbolDraft(normalizeSymbol(event.target.value)),
             }),
           ]),
-          e("button", { key: "apply", type: "submit" }, "Lọc feed"),
+          e("button", { key: "apply", type: "submit" }, t("alertCenter.applyFilter")),
         ]),
       ]),
     ]),
@@ -345,12 +391,12 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
                 setActiveDetail(null);
               },
             },
-            option.label
+            option.value === "ai" ? t("alertCenter.laneAi") : t("alertCenter.laneMain")
           )
         ),
       ]),
       e("div", { key: "time-strip", className: "core-alert-time-strip" }, [
-        e("span", { key: "lbl", className: "core-alert-time-label" }, "Phạm Vi Thời Gian:"),
+        e("span", { key: "lbl", className: "core-alert-time-label" }, t("alertCenter.timeframe")),
         ...WINDOW_OPTIONS.map((w: { value: string; label: string }) =>
           e(
             "button",
@@ -363,6 +409,49 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
             w.label
           )
         ),
+      ]),
+      e("div", { key: "filter-strip", className: "core-alert-filter-strip" }, [
+        e("span", { key: "sev-lbl", className: "core-alert-time-label" }, t("alertCenter.severity")),
+        ...SEVERITY_OPTIONS.map((s: { value: string; labelKey: string }) =>
+          e(
+            "button",
+            {
+              key: `sev-${s.value}`,
+              type: "button",
+              className: `core-alert-chip ${severityFilter.includes(s.value) ? "is-active" : ""}`.trim(),
+              onClick: () => toggleSeverity(s.value),
+            },
+            t(s.labelKey)
+          )
+        ),
+        e("span", { key: "fam-lbl", className: "core-alert-time-label" }, t("alertCenter.family")),
+        ...FAMILY_OPTIONS.map((f: { value: string; labelKey: string }) =>
+          e(
+            "button",
+            {
+              key: `fam-${f.value}`,
+              type: "button",
+              className: `core-alert-chip ${familyFilter.includes(f.value) ? "is-active" : ""}`.trim(),
+              onClick: () => toggleFamily(f.value),
+            },
+            t(f.labelKey)
+          )
+        ),
+        (severityFilter.length > 0 || familyFilter.length > 0)
+          ? e(
+              "button",
+              {
+                key: "clear",
+                type: "button",
+                className: "core-alert-chip core-alert-chip-clear",
+                onClick: () => {
+                  setSeverityFilter([]);
+                  setFamilyFilter([]);
+                },
+              },
+              t("alertCenter.clearFilter")
+            )
+          : null,
       ]),
     ]),
 
@@ -385,13 +474,13 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
       e("div", { key: "feed-column", className: styles["core-alert-feed-column"] as string }, [
         e("div", { className: styles["core-dashboard-panel"] as string }, [
           e("h2", { className: styles["core-section-title"] as string }, [
-            "BẢNG TIN THỜI GIAN THỰC",
-            e("span", { key: "sub", style: { fontSize: "0.8rem", color: "var(--text-muted, #94a3b8)", fontWeight: "normal" } as React.CSSProperties }, `Hiện thị ${alerts.length} sự kiện gần nhất`)
+            t("alertCenter.feedTitle"),
+            e("span", { key: "sub", style: { fontSize: "0.8rem", color: "var(--text-muted, #94a3b8)", fontWeight: "normal" } as React.CSSProperties }, t("alertCenter.feedShowing", { count: alerts.length }))
           ]),
 
           e("div", { className: styles["core-feed-control-bar"] as string }, [
             e("div", { className: styles["core-feed-control-left"] as string }, [
-              ...SORT_OPTIONS.map((s: { value: string; label: string }) =>
+              ...SORT_OPTIONS.map((s: { value: string; labelKey: string }) =>
                 e(
                   "button",
                   {
@@ -400,7 +489,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
                     className: `${String(styles["core-feed-sort-btn"])} ${sorting === s.value ? String(styles["is-active"]) : ""}`.trim(),
                     onClick: () => setSorting(s.value),
                   },
-                  s.label
+            t(s.labelKey)
                 )
               ),
             ]),
@@ -411,7 +500,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
                   checked: autoRefresh,
                   onChange: (event: React.ChangeEvent<HTMLInputElement>) => setAutoRefresh(event.target.checked),
                 }),
-                "Tự động làm mới",
+                t("alertCenter.autoRefresh"),
               ]),
               e(
                 "button",
@@ -436,7 +525,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
                   }, [
                     e("path", { key: "p1", d: "M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" })
                   ]),
-                  " Làm mới",
+                  ` ${t("alertCenter.refresh")}`,
                 ]
               ),
             ]),
@@ -444,7 +533,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
 
           e("div", { className: styles["core-scrollable-container"] as string }, [
             paginatedAlerts.length === 0
-              ? e("p", { className: styles["core-empty"] as string }, "Chưa có sự kiện cảnh báo nào phù hợp với bộ lọc hiện tại.")
+              ? e("p", { className: styles["core-empty"] as string }, t("alertCenter.empty"))
               : e("div", { className: styles["core-alert-center-list"] as string },
                   paginatedAlerts.map((alert: AlertItem) =>
                     e(AlertCard, {
