@@ -1,4 +1,4 @@
-import { createContext, createElement, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 
 interface BackfillRun {
@@ -45,6 +45,7 @@ interface DataOpsState {
   inventory: InventoryData | null;
   coverage: CoverageData | null;
   loading: Record<string, boolean>;
+  error: string | null;
 }
 
 interface DataOpsActions {
@@ -76,14 +77,18 @@ export function DataOpsProvider({ children }: { children: React.ReactNode }) {
   const [runs, setRuns] = useState<BackfillRun[]>([]);
   const [inventory, setInventory] = useState<InventoryData | null>(null);
   const [coverage, setCoverage] = useState<CoverageData | null>(null);
-  const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState<Record<string, boolean>>({ inventory: true, runs: true, coverage: true });
+  const [contextError, setContextError] = useState<string | null>(null);
 
   const refreshInventory = useCallback(async () => {
     setLoading((prev) => ({ ...prev, inventory: true }));
+    setContextError(null);
     try {
       const data = await adapter.getSocDataOpsInventory();
       setInventory(data);
-    } catch { /* handled by section */ }
+    } catch (err: unknown) {
+      setContextError(err && typeof err === 'object' && 'message' in err ? String((err as Error).message) : 'Không thể tải dữ liệu DataOps Inventory.');
+    }
     finally {
       setLoading((prev) => ({ ...prev, inventory: false }));
     }
@@ -91,10 +96,13 @@ export function DataOpsProvider({ children }: { children: React.ReactNode }) {
 
   const refreshRuns = useCallback(async () => {
     setLoading((prev) => ({ ...prev, runs: true }));
+    setContextError(null);
     try {
       const data = await adapter.getSocBackfillRuns({ limit: 20 });
       setRuns(data.runs || []);
-    } catch { /* handled by section */ }
+    } catch (err: unknown) {
+      setContextError(err && typeof err === 'object' && 'message' in err ? String((err as Error).message) : 'Không thể tải backfill runs.');
+    }
     finally {
       setLoading((prev) => ({ ...prev, runs: false }));
     }
@@ -102,10 +110,13 @@ export function DataOpsProvider({ children }: { children: React.ReactNode }) {
 
   const refreshCoverage = useCallback(async () => {
     setLoading((prev) => ({ ...prev, coverage: true }));
+    setContextError(null);
     try {
       const data = await adapter.getSocDataOpsCoverage();
       setCoverage(data);
-    } catch { /* handled by section */ }
+    } catch (err: unknown) {
+      setContextError(err && typeof err === 'object' && 'message' in err ? String((err as Error).message) : 'Không thể tải coverage.');
+    }
     finally {
       setLoading((prev) => ({ ...prev, coverage: false }));
     }
@@ -122,6 +133,12 @@ export function DataOpsProvider({ children }: { children: React.ReactNode }) {
     await refreshRuns();
   }, [refreshRuns]);
 
+  useEffect(() => {
+    refreshInventory();
+    refreshRuns();
+    refreshCoverage();
+  }, [refreshInventory, refreshRuns, refreshCoverage]);
+
   const actions = useMemo<DataOpsActions>(() => ({
     setActiveSubTab,
     refreshInventory,
@@ -132,9 +149,9 @@ export function DataOpsProvider({ children }: { children: React.ReactNode }) {
   }), [setActiveSubTab, refreshInventory, refreshRuns, refreshCoverage, triggerBackfill, abortRun]);
 
   const value = useMemo<DataOpsContextValue>(() => ({
-    state: { activeSubTab, runs, inventory, coverage, loading },
+    state: { activeSubTab, runs, inventory, coverage, loading, error: contextError },
     actions,
-  }), [activeSubTab, runs, inventory, coverage, loading, actions]);
+  }), [activeSubTab, runs, inventory, coverage, loading, contextError, actions]);
 
   return createElement(DataOpsContext.Provider, { value }, children);
 }

@@ -28,6 +28,7 @@ urlpatterns = [
     path('api/health', views_health.health, name='api_health_compat_no_slash'),
     path('api/health/', views_health.health, name='api_health_compat'),
     path('core/v1/health', views_health.health, name='core_health'),
+    path('core/v1/health/', views_health.health, name='core_health_slash'),
     path('core/v1/capability-bootstrap', views_health.capability_bootstrap, name='core_capability_bootstrap'),
     # OpenAPI schema + Swagger UI (chỉ DEBUG hoặc internal)
     path('core/v1/schema/', SpectacularAPIView.as_view(), name='schema'),

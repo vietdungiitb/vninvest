@@ -97,7 +97,7 @@ class DataOpsRunLogsView(SOCBaseView):
 
     def get(self, request):
         queryset = ServiceRunLog.objects.filter(
-            service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'],
+            service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['dataops'],
         ).order_by('-started_at', '-pk')
         page = self.paginate_queryset(queryset, request)
         if page is not None:
@@ -151,7 +151,7 @@ class DataOpsRunLogsPurgeView(SOCBaseView):
             keep = 50
 
         base_qs = ServiceRunLog.objects.filter(
-            service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'],
+            service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['dataops'],
         )
         total = base_qs.count()
 
@@ -357,7 +357,7 @@ class DataOpsPlannerRunAbortView(SOCBaseView):
 
         run_log = ServiceRunLog.objects.filter(
             pk=run_log_id,
-            service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'],
+            service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['dataops'],
         ).first()
         if run_log is None:
             return self.error_response(

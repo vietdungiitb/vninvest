@@ -241,6 +241,7 @@ REQUIRED_SERVICE_KEYS = frozenset(service['service_key'] for service in CANONICA
 SOC_DOMAIN_PRIMARY_SERVICE_KEYS = {
     'vnbroker': 'vnbroker_quote',
     'prefetch': 'prefetch_daily',
+    'dataops': 'backfill_daily_prices',
     'signals': 'signal_whale_detector',
     'screener': 'screener_rule_engine',
     'matrix': 'matrix_cycle_coordinator',
