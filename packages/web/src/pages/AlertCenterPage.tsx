@@ -1,27 +1,62 @@
 import { createElement, useCallback, useEffect, useMemo, useState } from "react";
+import { FixedSizeList } from "react-window";
+// react-window's render-prop `children` typing conflicts with createElement's overloads;
+// cast to any since AlertCard is a JS module (untyped) and props are dynamic.
+const VirtualFeedList = FixedSizeList as any;
 import { useI18n } from "../context/LangContext.js";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
-import { SummaryMetrics } from "../components/alert-center/SummaryMetrics.js";
 import { AlertCard } from "../components/alert-center/AlertCard.js";
+const FeedCard = AlertCard as any;
 import { SymbolStatsTable } from "../components/alert-center/SymbolStatsTable.js";
 import { DetailDrawer } from "../components/alert-center/DetailDrawer.js";
+import { PageErrorBoundary } from "../components/PageErrorBoundary.js";
+import { ShellSkeleton } from "../components/ShellSkeleton.js";
 import styles from "./AlertCenterPage.module.css";
+import { ShellPageChrome, ShellPanel, ShellMetric } from "../components/ShellPageTemplate.js";
+import shell from "../components/ShellPageTemplate.module.css";
+import soc from "../components/soc/soc.module.css";
 import { useAlertCenterData } from "../hooks/useAlertCenterData.js";
 import { useAlertCenterRealtime } from "../hooks/useAlertCenterRealtime.js";
 
 const e = createElement;
 const DEFAULT_ENV: Record<string, unknown> = {};
 
+interface AlertSeverityBreakdown {
+  critical?: number;
+  high?: number;
+  medium?: number;
+  low?: number;
+}
+interface AlertSummary {
+  total?: number;
+  unseen?: number;
+  by_severity?: AlertSeverityBreakdown;
+}
+interface SymbolStatRow {
+  symbol?: string;
+  count?: number;
+  buy_count?: number;
+  sell_count?: number;
+  neutral_count?: number;
+  total_value?: number;
+  by_severity?: Record<string, number>;
+  latest_triggered_at?: string;
+}
+interface SymbolStatsPayload {
+  symbols?: SymbolStatRow[];
+  pagination?: { total_symbols?: number };
+}
+
 const LANE_OPTIONS = Object.freeze([
-  { value: "main", label: "Luồng chính" },
-  { value: "ai", label: "AI Alerts / AI Suggests" },
+  { value: "main", label: "alertCenter.laneMain" },
+  { value: "ai", label: "alertCenter.laneAi" },
 ]);
 
 const WINDOW_OPTIONS = Object.freeze([
   { value: "5m", label: "5m" },
   { value: "15m", label: "15m" },
   { value: "1h", label: "1h" },
-  { value: "session", label: "Phiên" },
+  { value: "session", label: "alertCenter.timeSession" },
   { value: "5d", label: "5d" },
 ]);
 
@@ -30,23 +65,37 @@ const SORT_OPTIONS = Object.freeze([
   { value: "largestValue", labelKey: "alertCenter.sortLargest" },
 ]);
 
+const SEVERITY_OPTIONS = Object.freeze([
+  { value: "critical", labelKey: "alertCenter.sevCritical" },
+  { value: "high", labelKey: "alertCenter.sevHigh" },
+  { value: "medium", labelKey: "alertCenter.sevMedium" },
+  { value: "low", labelKey: "alertCenter.sevLow" },
+]);
+
+const FAMILY_OPTIONS = Object.freeze([
+  { value: "whale", labelKey: "alertCenter.famWhale" },
+  { value: "dark_flow", labelKey: "alertCenter.famDarkFlow" },
+  { value: "price_shock", labelKey: "alertCenter.famPriceShock" },
+  { value: "signal", labelKey: "alertCenter.famSignal" },
+  { value: "system", labelKey: "alertCenter.famSystem" },
+  { value: "ai_suggest", labelKey: "alertCenter.famAiSuggest" },
+]);
+
 function formatAlertValue(value: unknown): string {
-  if (value == null || value === "") {
-    return "—";
-  }
+  if (value == null || value === "") return "—";
   const numericValue = Number(value);
   return Number.isFinite(numericValue) ? numericValue.toLocaleString("vi-VN") : String(value);
 }
 
 function formatAlertTimestamp(value: unknown): string {
-  if (!value) {
-    return "—";
-  }
+  if (!value) return "—";
   const timestamp = new Date(String(value));
-  if (Number.isNaN(timestamp.getTime())) {
-    return String(value);
-  }
-  return timestamp.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " " + timestamp.toLocaleDateString("vi-VN");
+  if (Number.isNaN(timestamp.getTime())) return String(value);
+  return (
+    timestamp.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) +
+    " " +
+    timestamp.toLocaleDateString("vi-VN")
+  );
 }
 
 function normalizeSymbol(value: unknown): string {
@@ -80,19 +129,19 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
   const [familyFilter, setFamilyFilter] = useState<string[]>([]);
   const [sorting, setSorting] = useState("latest");
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [refreshToken, setRefreshToken] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeAlertId, setActiveAlertId] = useState<string | number>("");
   const [activeDetail, setActiveDetail] = useState<unknown>(null);
   const [activeContext, setActiveContext] = useState<unknown>(null);
   const [actionError, setActionError] = useState("");
   const [busyAlertId, setBusyAlertId] = useState<string | number>("");
+  const [optimisticAck, setOptimisticAck] = useState<Record<string, boolean>>({});
+  const [optimisticMuted, setOptimisticMuted] = useState<Record<string, boolean>>({});
   const [expandedEvidence, setExpandedEvidence] = useState<Record<string, boolean>>({});
   const [searchTermModule2, setSearchTermModule2] = useState("");
-  const [pageFeed, setPageFeed] = useState(1);
   const [pageStats, setPageStats] = useState(1);
 
-  const { loading, error, payload, summary, symbolStats } = useAlertCenterData({
+  const { loading, error, payload, summary, symbolStats, refetch } = useAlertCenterData({
     env,
     lane,
     symbol: appliedSymbol,
@@ -100,18 +149,15 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
     timeframe,
     severity: severityFilter,
     alertFamily: familyFilter,
-    refreshToken
+    autoRefresh,
   });
 
   const { realtimeAlerts, realtimeStatus } = useAlertCenterRealtime({ enabled: autoRefresh });
 
-  // Merge REST (base) + WS (incremental). WS wins on recency for same event_id.
   const alerts = useMemo(() => {
     const rawAlerts = (payload as Record<string, unknown>)?.results ?? [];
     const restAlerts = Array.isArray(rawAlerts) ? rawAlerts : [];
-    if (!realtimeAlerts.length) {
-      return restAlerts;
-    }
+    if (!realtimeAlerts.length) return restAlerts;
     const byId = new Map();
     for (const item of restAlerts) {
       const key = item?.alert_id ?? item?.event_id;
@@ -125,41 +171,46 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
   }, [payload, realtimeAlerts]);
 
   useEffect(() => {
-    setPageFeed(1);
-  }, [lane, appliedSymbol, sessionDate, timeframe, sorting, severityFilter, familyFilter]);
-
-  useEffect(() => {
     setPageStats(1);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTermModule2, symbolStats?.pagination?.total_symbols, lane, appliedSymbol, sessionDate, timeframe]);
-
-  useEffect(() => {
-    if (!autoRefresh) return;
-    const interval = setInterval(() => {
-      setRefreshToken((r) => r + 1);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [autoRefresh]);
 
   const triggerManualRefresh = useCallback(() => {
     setIsRefreshing(true);
-    setRefreshToken((r) => r + 1);
+    refetch();
     setTimeout(() => setIsRefreshing(false), 800);
-  }, []);
+  }, [refetch]);
 
   const sortedAlerts = [...alerts].sort((a: AlertItem, b: AlertItem) => {
     if (sorting === "largestValue") {
-      const valA = Number(a?.value || 0);
-      const valB = Number(b?.value || 0);
-      return valB - valA;
+      return Number(b?.value || 0) - Number(a?.value || 0);
     }
     const timeA = a?.triggered_at ? new Date(a.triggered_at).getTime() : 0;
     const timeB = b?.triggered_at ? new Date(b.triggered_at).getTime() : 0;
     return timeB - timeA;
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const aggregatedSymbols = ((symbolStats as any)?.symbols && Array.isArray((symbolStats as any).symbols) ? (symbolStats as any).symbols : []).map((item: Record<string, unknown>) => {
+  const displayAlerts = useMemo(() => {
+    if (!Object.keys(optimisticAck).length && !Object.keys(optimisticMuted).length) {
+      return sortedAlerts;
+    }
+    return sortedAlerts.map((alert: AlertItem) => {
+      const id = String(alert.alert_id);
+      const sym = normalizeSymbol(alert.symbol);
+      if (optimisticAck[id]) {
+        return { ...alert, acknowledged: true, _optimistic: true };
+      }
+      if (optimisticMuted[sym]) {
+        return { ...alert, muted: true, _optimistic: true };
+      }
+      return alert;
+    });
+  }, [sortedAlerts, optimisticAck, optimisticMuted]);
+
+  const symbolStatsPayload = symbolStats as unknown as SymbolStatsPayload;
+  const rawSymbolRows = Array.isArray(symbolStatsPayload?.symbols) ? symbolStatsPayload.symbols : [];
+  const aggregatedSymbols = rawSymbolRows
+  .map((item: SymbolStatRow) => {
     const mapped: Record<string, unknown> = {
       symbol: normalizeSymbol(item?.symbol || "UNKNOWN"),
       count: Number(item?.count || 0),
@@ -176,12 +227,11 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
       latestTime: item?.latest_triggered_at ? new Date(item.latest_triggered_at as string).getTime() : 0,
       familiesList: "",
     };
-
-    let freq = "Thấp";
-    if (mapped.count as number >= 8) freq = "Bùng nổ";
-    else if (mapped.count as number >= 4) freq = "Cao";
-    else if (mapped.count as number >= 2) freq = "Trung bình";
-
+    let freq = t("alertCenter.freqLow");
+    const c = mapped.count as number;
+    if (c >= 8) freq = t("alertCenter.freqExplosive");
+    else if (c >= 4) freq = t("alertCenter.freqHigh");
+    else if (c >= 2) freq = t("alertCenter.freqMedium");
     return { ...mapped, freq };
   }).filter((item: Record<string, unknown>) => {
     if (!searchTermModule2) return true;
@@ -193,25 +243,8 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
     setAppliedSymbol(normalizeSymbol(symbolDraft));
   }
 
-  const SEVERITY_OPTIONS = Object.freeze([
-    { value: "critical", labelKey: "alertCenter.sevCritical" },
-    { value: "high", labelKey: "alertCenter.sevHigh" },
-    { value: "medium", labelKey: "alertCenter.sevMedium" },
-    { value: "low", labelKey: "alertCenter.sevLow" },
-  ]);
-
-  const FAMILY_OPTIONS = Object.freeze([
-    { value: "whale", labelKey: "alertCenter.famWhale" },
-    { value: "dark_flow", labelKey: "alertCenter.famDarkFlow" },
-    { value: "price_shock", labelKey: "alertCenter.famPriceShock" },
-    { value: "signal", labelKey: "alertCenter.famSignal" },
-    { value: "system", labelKey: "alertCenter.famSystem" },
-    { value: "ai_suggest", labelKey: "alertCenter.famAiSuggest" },
-  ]);
-
   const toggleInArray = (list: string[], value: string): string[] =>
     list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
-
   const toggleSeverity = (value: string) => setSeverityFilter((prev) => toggleInArray(prev, value));
   const toggleFamily = (value: string) => setFamilyFilter((prev) => toggleInArray(prev, value));
 
@@ -221,14 +254,18 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
     setBusyAlertId(alert.alert_id);
     try {
       const [detail, context] = await Promise.all([
-        (coreApiAdapter as any).getAlertCenterEventDetail(alert.alert_id),
-        (coreApiAdapter as any).getAlertCenterSymbolContext(alert.symbol),
+        coreApiAdapter.getAlertCenterEventDetail(alert.alert_id),
+        coreApiAdapter.getAlertCenterSymbolContext(alert.symbol),
       ]);
       setActiveAlertId(alert.alert_id);
       setActiveDetail(detail || null);
       setActiveContext(context || null);
     } catch (actionErr: unknown) {
-      setActionError((actionErr && typeof actionErr === 'object' && 'message' in actionErr ? (actionErr as Error).message : '') || "Không thể tải chi tiết alert.");
+      setActionError(
+        (actionErr && typeof actionErr === "object" && "message" in actionErr
+          ? (actionErr as Error).message
+          : "") || "Không thể tải chi tiết alert.",
+      );
     } finally {
       setBusyAlertId("");
     }
@@ -236,13 +273,24 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
 
   async function handleAcknowledge(alert: AlertItem) {
     if (!alert?.alert_id) return;
+    const id = String(alert.alert_id);
     setActionError("");
     setBusyAlertId(alert.alert_id);
+    setOptimisticAck((prev) => ({ ...prev, [id]: true }));
     try {
-      await (coreApiAdapter as any).acknowledgeAlertCenterEvent(alert.alert_id);
-      setRefreshToken((value: number) => value + 1);
+      await coreApiAdapter.acknowledgeAlertCenterEvent(alert.alert_id);
+      refetch();
     } catch (actionErr: unknown) {
-      setActionError((actionErr && typeof actionErr === 'object' && 'message' in actionErr ? (actionErr as Error).message : '') || "Không thể xác nhận alert.");
+      setOptimisticAck((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      setActionError(
+        (actionErr && typeof actionErr === "object" && "message" in actionErr
+          ? (actionErr as Error).message
+          : "") || "Không thể xác nhận alert.",
+      );
     } finally {
       setBusyAlertId("");
     }
@@ -250,192 +298,224 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
 
   async function handleMuteSymbol(alert: AlertItem) {
     if (!alert?.symbol) return;
+    const sym = normalizeSymbol(alert.symbol);
     setActionError("");
     setBusyAlertId(alert.alert_id || alert.symbol);
+    setOptimisticMuted((prev) => ({ ...prev, [sym]: true }));
     try {
-      await (coreApiAdapter as any).muteAlertCenterPreference({
+      await coreApiAdapter.muteAlertCenterPreference({
         symbol: alert.symbol,
         alert_family: alert.alert_family || alert.alert_type || "",
         mute_minutes: 30,
       });
-      setRefreshToken((value: number) => value + 1);
+      refetch();
     } catch (actionErr: unknown) {
-      setActionError((actionErr && typeof actionErr === 'object' && 'message' in actionErr ? (actionErr as Error).message : '') || "Không thể tắt tiếng cảnh báo mã.");
+      setOptimisticMuted((prev) => {
+        const next = { ...prev };
+        delete next[sym];
+        return next;
+      });
+      setActionError(
+        (actionErr && typeof actionErr === "object" && "message" in actionErr
+          ? (actionErr as Error).message
+          : "") || "Không thể tắt tiếng cảnh báo mã.",
+      );
     } finally {
       setBusyAlertId("");
     }
   }
 
   const toggleEvidence = (alertId: string) => {
-    setExpandedEvidence((prev) => ({
-      ...prev,
-      [alertId]: !prev[alertId],
-    }));
+    setExpandedEvidence((prev) => ({ ...prev, [alertId]: !prev[alertId] }));
   };
 
-  const highSeverityCount = Number((summary as any)?.by_severity?.high || 0) + Number((summary as any)?.by_severity?.critical || 0);
-  const aiSuggestCount = alerts.filter((alert: AlertItem) => alert?.alert_family === "ai_suggest" || alert?.alert_type === "ai_suggest").length;
+  const summaryData = summary as unknown as AlertSummary;
+  const highSeverityCount =
+    Number(summaryData?.by_severity?.high || 0) +
+    Number(summaryData?.by_severity?.critical || 0);
+  const aiSuggestCount = alerts.filter(
+    (alert: AlertItem) => alert?.alert_family === "ai_suggest" || alert?.alert_type === "ai_suggest",
+  ).length;
 
-  const ITEMS_PER_PAGE_FEED = 5;
   const ITEMS_PER_PAGE_STATS = 8;
-
-  const totalPagesFeed = Math.ceil(sortedAlerts.length / ITEMS_PER_PAGE_FEED) || 1;
-  const activePageFeed = Math.min(pageFeed, totalPagesFeed);
-  const startIndexFeed = (activePageFeed - 1) * ITEMS_PER_PAGE_FEED;
-  const paginatedAlerts = sortedAlerts.slice(startIndexFeed, startIndexFeed + ITEMS_PER_PAGE_FEED);
-
   const totalPagesStats = Math.ceil(aggregatedSymbols.length / ITEMS_PER_PAGE_STATS) || 1;
   const activePageStats = Math.min(pageStats, totalPagesStats);
-  const startIndexStats = (activePageStats - 1) * ITEMS_PER_PAGE_STATS;
-  const paginatedSymbols = aggregatedSymbols.slice(startIndexStats, startIndexStats + ITEMS_PER_PAGE_STATS);
+  const paginatedSymbols = aggregatedSymbols.slice(
+    (activePageStats - 1) * ITEMS_PER_PAGE_STATS,
+    activePageStats * ITEMS_PER_PAGE_STATS,
+  );
 
   function renderPagination(currentPage: number, totalPages: number, setCurrentPage: (page: number) => void) {
     if (totalPages <= 1) return null;
-    return e("div", { className: "core-pagination-controls" }, [
+    return e("div", { className: styles.acPagination }, [
       e("button", {
         key: "first",
         type: "button",
-        className: "core-pagination-btn",
+        className: styles.acPageBtn,
         disabled: currentPage === 1,
         onClick: () => setCurrentPage(1),
-        title: t("alertCenter.paginationFirst")
+        title: t("alertCenter.pageFirst"),
       }, "«"),
       e("button", {
         key: "prev",
         type: "button",
-        className: "core-pagination-btn",
+        className: styles.acPageBtn,
         disabled: currentPage === 1,
         onClick: () => setCurrentPage(Math.max(1, currentPage - 1)),
-        title: t("alertCenter.paginationPrev")
+        title: t("alertCenter.pagePrev"),
       }, "‹"),
-      e("span", {
-        key: "info",
-        className: "core-pagination-info"
-      }, t("alertCenter.paginationPage", { current: currentPage, total: totalPages })),
+      e("span", { key: "info", className: styles.acPageInfo }, `Trang ${currentPage} / ${totalPages}`),
       e("button", {
         key: "next",
         type: "button",
-        className: "core-pagination-btn",
+        className: styles.acPageBtn,
         disabled: currentPage === totalPages,
         onClick: () => setCurrentPage(Math.min(totalPages, currentPage + 1)),
-        title: t("alertCenter.paginationNext")
+        title: t("alertCenter.pageNext"),
       }, "›"),
       e("button", {
         key: "last",
         type: "button",
-        className: "core-pagination-btn",
+        className: styles.acPageBtn,
         disabled: currentPage === totalPages,
         onClick: () => setCurrentPage(totalPages),
-        title: t("alertCenter.paginationLast")
-      }, "»")
+        title: t("alertCenter.pageLast"),
+      }, "»"),
     ]);
   }
 
-  return e("div", { className: `${String(styles["core-alert-center-page"])} ${className}`.trim() }, [
-    e("header", { key: "header", className: styles["core-alert-center-header"] }, [
-      e("div", { key: "title-container" }, [
-        e("h1", { key: "title" }, t("alertCenter.title", { defaultValue: "Whale Alerts Workspace" })),
+  const liveBadge = e(
+    "div",
+    {
+      className: `${soc.heroBadge}`,
+      style: { cursor: "pointer" } as React.CSSProperties,
+      onClick: () => setAutoRefresh(!autoRefresh),
+      title: autoRefresh ? t("alertCenter.pauseHint") : t("alertCenter.resumeHint"),
+    },
+    [
+      e("span", {
+        className: `${autoRefresh ? soc.statusDot : styles.acLiveDotPaused} ${styles.acLiveDot}`,
+      }),
+      !autoRefresh ? t("alertCenter.paused") : realtimeStatus === "live" ? t("alertCenter.liveWs") : t("alertCenter.livePolling"),
+    ],
+  );
+
+  const metrics = [
+    e(ShellMetric, { key: "m-total", label: t("alertCenter.summary.total"), value: String(summaryData?.total ?? alerts.length) }),
+    e(ShellMetric, { key: "m-high", label: t("alertCenter.summary.highCritical"), value: String(highSeverityCount) }),
+    e(ShellMetric, { key: "m-ai", label: t("alertCenter.summary.aiSuggest"), value: String(aiSuggestCount) }),
+    e(ShellMetric, { key: "m-unseen", label: t("alertCenter.summary.unseen"), value: String(summaryData?.unseen ?? 0) }),
+  ];
+
+  return e(
+    ShellPageChrome,
+    {
+      eyebrow: t("alertCenter.eyebrow"),
+      title: t("alertCenter.title"),
+      description: t("alertCenter.subtitle"),
+      badge: liveBadge,
+      metrics,
+      className,
+    },
+    [
+      /* ── Controls bar ── */
+      e("div", { key: "controls", className: `${soc.toolbar}` }, [
+        /* Lane + timeframe as segmented sub-tabs */
+        e("div", { key: "seg", className: `${soc.subTabBar}` }, [
+          ...LANE_OPTIONS.map((option: { value: string; label: string }) =>
+            e(
+              "button",
+              {
+                key: option.value,
+                type: "button",
+                className: `${soc.subTabBtn} ${lane === option.value ? soc.subTabBtnActive : ""}`.trim(),
+                onClick: () => {
+                  setLane(option.value);
+                  setActiveDetail(null);
+                },
+              },
+              t(option.label),
+            ),
+          ),
+          e("span", { key: "divider", style: { width: 1, alignSelf: "stretch", background: "rgba(80,120,168,0.2)", margin: "0 4px" } as React.CSSProperties }),
+          ...WINDOW_OPTIONS.map((w: { value: string; label: string }) =>
+            e(
+              "button",
+              {
+                key: w.value,
+                type: "button",
+                className: `${soc.subTabBtn} ${timeframe === w.value ? soc.subTabBtnActive : ""}`.trim(),
+                onClick: () => setTimeframe(w.value),
+              },
+              w.label,
+            ),
+          ),
+        ]),
+        /* Symbol filter + refresh */
         e(
-          "p",
-          { key: "subtitle", className: styles["core-alert-center-subtitle"] },
-          t("alertCenter.subtitle")
-        ),
-      ]),
-      e("div", { key: "live-indicator-container", style: { display: "flex", alignItems: "center", gap: "15px" } as React.CSSProperties }, [
-        e(
-          "div",
-          {
-            key: "live-badge",
-            className: `${String(styles["core-alert-live-badge"])} ${!autoRefresh ? String(styles["is-paused"]) : ""}`.trim(),
-            style: { cursor: "pointer" },
-            onClick: () => setAutoRefresh(!autoRefresh),
-            title: autoRefresh ? t("alertCenter.liveBadgePauseTitle") : t("alertCenter.liveBadgeResumeTitle")
-          },
+          "form",
+          { key: "filters", className: `${soc.searchWrapper}`, onSubmit: handleApply },
           [
-            e("div", { key: "dot", className: styles["core-alert-live-dot"] }),
-            !autoRefresh
-              ? "PAUSED"
-              : realtimeStatus === "live"
-                ? "LIVE (WS)"
-                : "LIVE (polling)",
-          ]
-        ),
-        e("form", { key: "filters", className: styles["core-alert-center-filter-bar"], onSubmit: handleApply }, [
-          e("label", { key: "symbol-label", className: styles["core-alert-center-filter-field"] }, [
-            e("span", { key: "symbol-text" }, t("alertCenter.filterSymbol")),
+            e("span", { className: soc.searchIcon }, "⌕"),
             e("input", {
               key: "symbol-input",
               type: "text",
+              className: soc.searchInputWithIcon,
               value: symbolDraft,
               maxLength: 10,
-              placeholder: t("alertCenter.filterSymbolPlaceholder"),
+              placeholder: t("alertCenter.filterSymbol"),
               onChange: (event: React.ChangeEvent<HTMLInputElement>) => setSymbolDraft(normalizeSymbol(event.target.value)),
             }),
-          ]),
-          e("button", { key: "apply", type: "submit" }, t("alertCenter.applyFilter")),
-        ]),
+          ],
+        ),
+        e(
+          "button",
+          {
+            key: "refresh",
+            type: "button",
+            className: `${shell.button} ${shell.buttonSecondary}`,
+            onClick: triggerManualRefresh,
+            style: { display: "inline-flex", alignItems: "center", gap: "6px" } as React.CSSProperties,
+          },
+          [
+            e("svg", {
+              key: "refresh-svg",
+              className: isRefreshing ? styles.acSpin : "",
+              width: "14", height: "14", viewBox: "0 0 24 24", fill: "none",
+              stroke: "currentColor", strokeWidth: "3", strokeLinecap: "round", strokeLinejoin: "round",
+            }, e("path", { key: "p1", d: "M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" })),
+            t("alertCenter.refresh"),
+          ],
+        ),
       ]),
-    ]),
 
-    e("section", { key: "combined-controls", className: "core-alert-combined-controls" }, [
-      e("div", { key: "lane-block", className: "core-alert-lane-block" }, [
-        ...LANE_OPTIONS.map((option: { value: string; label: string }) =>
-          e(
-            "button",
-            {
-              key: option.value,
-              type: "button",
-              className: `core-alert-center-lane-button ${lane === option.value ? "is-active" : ""}`.trim(),
-              onClick: () => {
-                setLane(option.value);
-                setActiveDetail(null);
-              },
-            },
-            option.value === "ai" ? t("alertCenter.laneAi") : t("alertCenter.laneMain")
-          )
-        ),
-      ]),
-      e("div", { key: "time-strip", className: "core-alert-time-strip" }, [
-        e("span", { key: "lbl", className: "core-alert-time-label" }, t("alertCenter.timeframe")),
-        ...WINDOW_OPTIONS.map((w: { value: string; label: string }) =>
-          e(
-            "button",
-            {
-              key: w.value,
-              type: "button",
-              className: `core-alert-time-btn ${timeframe === w.value ? "is-active" : ""}`.trim(),
-              onClick: () => setTimeframe(w.value),
-            },
-            w.label
-          )
-        ),
-      ]),
-      e("div", { key: "filter-strip", className: "core-alert-filter-strip" }, [
-        e("span", { key: "sev-lbl", className: "core-alert-time-label" }, t("alertCenter.severity")),
+      /* ── Severity + family filter chips ── */
+      e("div", { key: "filter-strip", className: `${soc.feedCardFilterBar}` }, [
+        e("span", { key: "sev", className: soc.filterBtnInactive, style: { pointerEvents: "none", background: "transparent", border: "none" } as React.CSSProperties }, t("alertCenter.severity")),
         ...SEVERITY_OPTIONS.map((s: { value: string; labelKey: string }) =>
           e(
             "button",
             {
               key: `sev-${s.value}`,
               type: "button",
-              className: `core-alert-chip ${severityFilter.includes(s.value) ? "is-active" : ""}`.trim(),
+              className: `${soc.filterBtn} ${severityFilter.includes(s.value) ? soc.filterBtnActive : soc.filterBtnInactive}`.trim(),
               onClick: () => toggleSeverity(s.value),
             },
-            t(s.labelKey)
-          )
+            t(s.labelKey),
+          ),
         ),
-        e("span", { key: "fam-lbl", className: "core-alert-time-label" }, t("alertCenter.family")),
+        e("span", { key: "fam", className: soc.filterBtnInactive, style: { pointerEvents: "none", background: "transparent", border: "none" } as React.CSSProperties }, t("alertCenter.family")),
         ...FAMILY_OPTIONS.map((f: { value: string; labelKey: string }) =>
           e(
             "button",
             {
               key: `fam-${f.value}`,
               type: "button",
-              className: `core-alert-chip ${familyFilter.includes(f.value) ? "is-active" : ""}`.trim(),
+              className: `${soc.filterBtn} ${familyFilter.includes(f.value) ? soc.filterBtnActive : soc.filterBtnInactive}`.trim(),
               onClick: () => toggleFamily(f.value),
             },
-            t(f.labelKey)
-          )
+            t(f.labelKey),
+          ),
         ),
         (severityFilter.length > 0 || familyFilter.length > 0)
           ? e(
@@ -443,137 +523,125 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
               {
                 key: "clear",
                 type: "button",
-                className: "core-alert-chip core-alert-chip-clear",
+                className: `${soc.filterBtn} ${soc.filterBtnInactive}`.trim(),
+                style: { color: "var(--accent-amber, #f59e0b)", borderColor: "rgba(245,158,11,0.4)" } as React.CSSProperties,
                 onClick: () => {
                   setSeverityFilter([]);
                   setFamilyFilter([]);
                 },
               },
-              t("alertCenter.clearFilter")
+              t("alertCenter.clearFilter"),
             )
           : null,
       ]),
-    ]),
 
-    e(SummaryMetrics, {
-      key: "summary-metrics",
-      summary,
-      alertsCount: alerts.length,
-      highSeverityCount,
-      aiSuggestCount,
-      lane,
-      appliedSymbol,
-    }),
-
-    loading && !isRefreshing ? e("p", { key: "loading", className: styles["core-loading"] as string }, "Đang tải dữ liệu cảnh báo từ Core API...") : null,
-    error ? e("p", { key: "error", className: styles["core-error"] as string }, error) : null,
-    actionError ? e("p", { key: "action-error", className: styles["core-error"] as string }, actionError) : null,
-
-    !loading || isRefreshing ? e("div", { key: "dashboard-container", className: styles["core-alert-dashboard-container"] as string }, [
-
-      e("div", { key: "feed-column", className: styles["core-alert-feed-column"] as string }, [
-        e("div", { className: styles["core-dashboard-panel"] as string }, [
-          e("h2", { className: styles["core-section-title"] as string }, [
-            t("alertCenter.feedTitle"),
-            e("span", { key: "sub", style: { fontSize: "0.8rem", color: "var(--text-muted, #94a3b8)", fontWeight: "normal" } as React.CSSProperties }, t("alertCenter.feedShowing", { count: alerts.length }))
-          ]),
-
-          e("div", { className: styles["core-feed-control-bar"] as string }, [
-            e("div", { className: styles["core-feed-control-left"] as string }, [
-              ...SORT_OPTIONS.map((s: { value: string; labelKey: string }) =>
-                e(
-                  "button",
-                  {
-                    key: s.value,
-                    type: "button",
-                    className: `${String(styles["core-feed-sort-btn"])} ${sorting === s.value ? String(styles["is-active"]) : ""}`.trim(),
-                    onClick: () => setSorting(s.value),
-                  },
-            t(s.labelKey)
-                )
-              ),
-            ]),
-            e("div", { className: styles["core-feed-refresh-group"] as string }, [
-              e("label", { className: styles["core-feed-auto-toggle"] as string }, [
-                e("input", {
-                  type: "checkbox",
-                  checked: autoRefresh,
-                  onChange: (event: React.ChangeEvent<HTMLInputElement>) => setAutoRefresh(event.target.checked),
-                }),
-                t("alertCenter.autoRefresh"),
-              ]),
+      error && !loading
+        ? e(
+            "div",
+            { key: "error-banner", className: `${styles.acBannerError}` },
+            [
+              e("span", { key: "msg" }, error),
               e(
                 "button",
-                {
-                  type: "button",
-                  className: styles["core-feed-refresh-btn"] as string,
-                  onClick: triggerManualRefresh,
-                },
-                [
-                  e("svg", {
-                    key: "refresh-svg",
-                    className: isRefreshing ? styles["is-spinning"] as string : "",
-                    width: "12",
-                    height: "12",
-                    viewBox: "0 0 24 24",
-                    fill: "none",
-                    stroke: "currentColor",
-                    strokeWidth: "3",
-                    strokeLinecap: "round",
-                    strokeLinejoin: "round",
-                    style: { marginRight: "2px" } as React.CSSProperties
-                  }, [
-                    e("path", { key: "p1", d: "M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" })
-                  ]),
-                  ` ${t("alertCenter.refresh")}`,
-                ]
+                { key: "retry", type: "button", className: `${shell.buttonPrimary} ${styles.acBtnInline}`, onClick: triggerManualRefresh },
+                t("alertCenter.retry"),
               ),
-            ]),
+            ],
+          )
+        : null,
+      actionError ? e("div", { key: "action-error", className: `${styles.acBannerError}` }, actionError) : null,
+
+      e("div", { key: "dashboard-container", className: `${soc.opsLayoutContainer}` }, [
+            /* Feed column */
+            e(
+              ShellPanel,
+              {
+                key: "feed-panel",
+                title: t("alertCenter.feedTitle"),
+                subtitle: t("alertCenter.feedShowing", { count: alerts.length }),
+                actions: e(
+                  "div",
+                  { className: `${soc.signalFeedFilterBar}`, style: { marginBottom: 0 } as React.CSSProperties },
+                  SORT_OPTIONS.map((s: { value: string; labelKey: string }) =>
+                    e(
+                      "button",
+                      {
+                        key: s.value,
+                        type: "button",
+                        className: `${soc.filterBtn} ${sorting === s.value ? soc.filterBtnActive : soc.filterBtnInactive}`.trim(),
+                        onClick: () => setSorting(s.value),
+                      },
+                      t(s.labelKey),
+                    ),
+                  ),
+                ),
+              },
+              e(
+                PageErrorBoundary,
+                {
+                  key: "feed-boundary",
+                  errorMessage: t("alertCenter.feedError"),
+                  retryLabel: t("alertCenter.retry"),
+                  onRetry: triggerManualRefresh,
+                },
+                loading && !isRefreshing
+                  ? e(ShellSkeleton, { key: "feed-skeleton", variant: "card", count: 5, anim: "shimmer" })
+                  : displayAlerts.length === 0
+                    ? e("div", { key: "empty", className: `${soc.emptyState}` }, t("alertCenter.empty"))
+                    : e(
+                      VirtualFeedList,
+                      {
+                        key: "feed-list",
+                        height: 460,
+                        width: "100%",
+                        itemCount: displayAlerts.length,
+                        itemSize: 230,
+                        className: `${styles.acScrollable}`,
+                        children: ({ index, style }: { index: number; style: React.CSSProperties }) =>
+                          e(FeedCard, {
+                            key: displayAlerts[index].alert_id,
+                            style,
+                            alert: displayAlerts[index],
+                            lane,
+                            busyAlertId,
+                            isEvidenceExpanded: !!expandedEvidence[String(displayAlerts[index].alert_id)],
+                            toggleEvidence,
+                            handleLoadDetail,
+                            handleAcknowledge,
+                            handleMuteSymbol,
+                            formatAlertValue,
+                            formatAlertTimestamp,
+                          }),
+                      },
+                    ),
+              ),
+            ),
+
+            /* Stats column */
+            e(
+              "div",
+              { key: "stats-column", className: `${soc.opsRightCol}` },
+              [
+                e(SymbolStatsTable, {
+                  key: "stats-panel",
+                  paginatedSymbols,
+                  searchTermModule2,
+                  setSearchTermModule2,
+                  formatAlertValue,
+                }),
+                renderPagination(activePageStats, totalPagesStats, setPageStats),
+              ],
+            ),
           ]),
 
-          e("div", { className: styles["core-scrollable-container"] as string }, [
-            paginatedAlerts.length === 0
-              ? e("p", { className: styles["core-empty"] as string }, t("alertCenter.empty"))
-              : e("div", { className: styles["core-alert-center-list"] as string },
-                  paginatedAlerts.map((alert: AlertItem) =>
-                    e(AlertCard, {
-                      key: alert.alert_id,
-                      alert,
-                      lane,
-                      busyAlertId,
-                      isEvidenceExpanded: !!expandedEvidence[String(alert.alert_id)],
-                      toggleEvidence,
-                      handleLoadDetail,
-                      handleAcknowledge,
-                      handleMuteSymbol,
-                      formatAlertValue,
-                      formatAlertTimestamp,
-                    })
-                  )
-                )
-          ]),
-          renderPagination(activePageFeed, totalPagesFeed, setPageFeed)
-        ])
-      ]),
-
-      e("div", { key: "stats-column", className: styles["core-alert-stats-column"] as string }, [
-        e(SymbolStatsTable, {
-          paginatedSymbols,
-          searchTermModule2,
-          setSearchTermModule2,
-          formatAlertValue,
-        }),
-        renderPagination(activePageStats, totalPagesStats, setPageStats)
-      ])
-    ]) : null,
-
-    e(DetailDrawer, {
-      key: "detail-drawer",
-      activeAlertId,
-      activeDetail,
-      activeContext,
-      appliedSymbol,
-      onClose: () => setActiveDetail(null),
-    })
-  ]);
+      e(DetailDrawer, {
+        key: "detail-drawer",
+        activeAlertId,
+        activeDetail,
+        activeContext,
+        appliedSymbol,
+        onClose: () => setActiveDetail(null),
+      }),
+    ],
+  );
 }

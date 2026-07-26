@@ -4840,6 +4840,8 @@ const vi = {
     autoRefresh: 'Tự động làm mới',
     refresh: 'Làm mới',
     empty: 'Chưa có sự kiện cảnh báo nào phù hợp với bộ lọc hiện tại.',
+    feedError: 'Không thể hiển thị danh sách cảnh báo. Đã xảy ra lỗi không mong muốn.',
+    retry: 'Thử lại',
     statsTitle: 'THỐNG KÊ THEO MÃ CỔ PHIẾU',
     statsSearch: 'Tìm nhanh mã (ví dụ: VNM)...',
     colSymbol: 'Mã CP',
@@ -4905,6 +4907,8 @@ const vi = {
     liveBadgePauseTitle: 'Bấm để dừng tự động cập nhật',
     liveBadgeResumeTitle: 'Bấm để bật tự động cập nhật',
     filterSymbolPlaceholder: 'Ví dụ: HPG',
+    pendingAck: 'Đang xác nhận...',
+    pendingMute: 'Đang tắt tiếng...',
   },
 };
 

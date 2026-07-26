@@ -4824,6 +4824,8 @@ const en = {
     autoRefresh: 'Auto refresh',
     refresh: 'Refresh',
     empty: 'No alert events match the current filters.',
+    feedError: 'Unable to render the alert feed. An unexpected error occurred.',
+    retry: 'Retry',
     statsTitle: 'ALERT STATS BY SYMBOL',
     statsSearch: 'Quick symbol search (e.g. VNM)...',
     colSymbol: 'Symbol',
@@ -4889,6 +4891,8 @@ const en = {
     liveBadgePauseTitle: 'Click to pause auto refresh',
     liveBadgeResumeTitle: 'Click to resume auto refresh',
     filterSymbolPlaceholder: 'e.g. HPG',
+    pendingAck: 'Acknowledging...',
+    pendingMute: 'Muting...',
   },
 };
 

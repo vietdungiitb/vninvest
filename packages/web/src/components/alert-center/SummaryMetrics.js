@@ -1,24 +1,21 @@
 import React from "react";
 import { useI18n } from "../../context/LangContext.js";
-import styles from "../../pages/AlertCenterPage.module.css";
+import { ShellMetric } from "../../components/ShellPageTemplate.js";
+import shell from "../../components/ShellPageTemplate.module.css";
 
 const { createElement } = React;
 const e = createElement;
 
-function renderSummaryCard(t, labelKey, value, modifier = "") {
-  return e("div", { key: labelKey, className: `${styles["core-alert-center-summary-card"]} ${modifier}`.trim() }, [
-    e("div", { key: "label", className: styles["core-alert-center-summary-label"] }, t(labelKey)),
-    e("div", { key: "value", className: styles["core-alert-center-summary-value"] }, value),
-  ]);
-}
-
-export function SummaryMetrics({ summary, alertsCount, highSeverityCount, aiSuggestCount, lane, appliedSymbol }) {
+export function SummaryMetrics({ summary, _alertsCount, highSeverityCount, aiSuggestCount, _lane, _appliedSymbol }) {
   const { t } = useI18n();
-  return e("section", { className: styles["core-alert-center-summary-grid"] }, [
-    renderSummaryCard(t, "alertCenter.summary.total", String(summary?.total ?? alertsCount)),
-    renderSummaryCard(t, "alertCenter.summary.unseen", String(summary?.unseen ?? 0)),
-    renderSummaryCard(t, "alertCenter.summary.highCritical", String(highSeverityCount), "severity-high"),
-    renderSummaryCard(t, "alertCenter.summary.aiSuggest", String(aiSuggestCount), lane === "ai" ? "is-highlighted" : ""),
-    renderSummaryCard(t, "alertCenter.summary.symbolFilter", appliedSymbol || t("alertCenter.summary.symbolFilterAll", "Toàn bộ")),
+  return e("section", { className: `${shell.metrics}` }, [
+    e(ShellMetric, { key: "unseen", label: t("alertCenter.summary.unseen"), value: String(summary?.unseen ?? 0) }),
+    e(ShellMetric, { key: "high", label: t("alertCenter.summary.highCritical"), value: String(highSeverityCount) }),
+    e(ShellMetric, {
+      key: "ai",
+      label: t("alertCenter.summary.aiSuggest"),
+      value: String(aiSuggestCount),
+    }),
+    e(ShellMetric, { key: "sym", label: t("alertCenter.summary.symbolFilter"), value: appliedSymbol || t("alertCenter.summary.symbolFilterAll") }),
   ]);
 }

@@ -175,6 +175,60 @@ export interface CoreApiAdapter {
   manualSocScreenerScan: (symbols: string[]) => Promise<any>;
   getSocScreenerOwnership: () => Promise<any>;
 
+  // Alert Center (SOC) — endpoints under /core/v1/signals/alert-center/*
+  getAlertCenterFeed: (params?: Record<string, unknown>) => Promise<{
+    results: Record<string, unknown>[];
+    next: string | null;
+    previous: string | null;
+  }>;
+  getAIAlertsFeed: (params?: Record<string, unknown>) => Promise<{
+    results: Record<string, unknown>[];
+    next: string | null;
+    previous: string | null;
+  }>;
+  getAlertCenterSummary: (params?: Record<string, unknown>) => Promise<{
+    total: number;
+    unseen: number;
+    by_severity: { critical: number; high: number; medium: number; low: number };
+  }>;
+  getAIAlertsSummary: (params?: Record<string, unknown>) => Promise<{
+    total: number;
+    unseen: number;
+    by_severity: { critical: number; high: number; medium: number; low: number };
+  }>;
+  getAlertCenterSymbolStats: (params?: Record<string, unknown>) => Promise<{
+    symbols: Record<string, unknown>[];
+    total_alerts_in_scope: number;
+    pagination: { page: number; page_size: number; total_pages: number; total_symbols: number };
+  }>;
+  getAIAlertsSymbolStats: (params?: Record<string, unknown>) => Promise<{
+    symbols: Record<string, unknown>[];
+    total_alerts_in_scope: number;
+    pagination: { page: number; page_size: number; total_pages: number; total_symbols: number };
+  }>;
+  getAlertCenterEventDetail: (alertId: string | number) => Promise<Record<string, unknown>>;
+  getAlertCenterSymbolContext: (symbol: string) => Promise<{
+    symbol: string;
+    lane: string;
+    total: number;
+    unseen: number;
+    in_delivery_scope: boolean;
+    recent_events: Record<string, unknown>[];
+  }>;
+  acknowledgeAlertCenterEvent: (alertId: string | number) => Promise<Record<string, unknown>>;
+  muteAlertCenterPreference: (payload: {
+    symbol?: string;
+    alert_family?: string;
+    mute_minutes?: number;
+    cooldown_seconds?: number;
+    metadata?: Record<string, unknown>;
+  }) => Promise<{
+    symbol: string;
+    alert_family: string;
+    mute_until: string | null;
+    cooldown_seconds: number;
+  }>;
+
   // Tenant-admin usage
   getAllUsageTrends: (days?: number) => Promise<any>;
   getUsageForecast: () => Promise<any>;

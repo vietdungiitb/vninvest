@@ -48,7 +48,7 @@ describe("useTenantAdminQuery tenant isolation", () => {
 
   it("does NOT share cache between two tenants (no cross-tenant stale data)", async () => {
     window.localStorage.setItem("tenant_id", "tenant-A");
-    const { Wrapper, client } = wrapper();
+    const { Wrapper } = wrapper();
     const first = renderHook(
       () => useTenantAdminQuery<any>(["members"], "/partner/members/"),
       { wrapper: Wrapper as any },
