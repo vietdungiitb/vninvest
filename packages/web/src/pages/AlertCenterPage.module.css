@@ -1,232 +1,22 @@
-/* Alert Center — only the pieces that are genuinely Alert-Center-specific.
+/* Alert Center — only what SOC does not provide.
    Everything else (page shell, panels, buttons, inputs, chips, tables,
-   badges, dots) comes from ShellPageTemplate.module.css + soc.module.css
-   so the page matches the SOC design system. Tokens resolve to the global
-   theme (tokens.css) and fall back to the legacy SOC values. */
+   badges, dots) comes from ShellPageTemplate.module.css + soc.module.css. */
 
-/* ── Pulse for the LIVE badge ── */
-@keyframes acPulseLive {
-  0% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55);
-  }
-  70% {
-    transform: scale(1);
-    box-shadow: 0 0 0 7px rgba(16, 185, 129, 0);
-  }
-  100% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-  }
-}
-
-@keyframes acSpin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.acLiveDot {
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-  background-color: var(--accent-shell, #00b4d8);
-  animation: acPulseLive 1.8s infinite;
-}
-
-.acLiveDotPaused {
-  background-color: var(--text-muted, #94a3b8);
-  animation: none;
-}
-
-.acSpin {
-  animation: acSpin 0.8s linear infinite;
-}
-
-/* ── Alert feed card (built on soc feedCard) ── */
-.acCard {
-  position: relative;
-  border-left: 3px solid var(--accent-cyan, #06b6d4);
-  animation: acCardEnter 300ms ease-out both;
-}
-
-@keyframes acCardEnter {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .acCard {
-    animation: none;
-  }
-}
+/* 1. Severity left-border variants for feedCard */
 .acCardCritical {
-  border-left-color: var(--soc-c-ef4444, #ef4444);
+  border-left: 3px solid var(--soc-c-ef4444, #ef4444);
 }
 .acCardHigh {
-  border-left-color: var(--accent-amber, #f59e0b);
-}
-.acCardLow {
-  border-left-color: var(--text-muted, #94a3b8);
+  border-left: 3px solid var(--accent-amber, #f59e0b);
 }
 .acCardMedium {
-  border-left-color: var(--accent-cyan, #06b6d4);
+  border-left: 3px solid var(--accent-cyan, #06b6d4);
+}
+.acCardLow {
+  border-left: 3px solid var(--text-muted, #94a3b8);
 }
 
-.acSevCritical {
-  background: rgba(239, 68, 68, 0.14);
-  color: var(--soc-c-f87171, #f87171);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-}
-.acSevHigh {
-  background: rgba(245, 158, 11, 0.14);
-  color: var(--accent-amber, #fbbf24);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-}
-.acSevMedium {
-  background: rgba(0, 180, 216, 0.14);
-  color: var(--accent-shell, #00b4d8);
-  border: 1px solid rgba(0, 180, 216, 0.25);
-}
-.acSevLow {
-  background: rgba(148, 163, 184, 0.14);
-  color: var(--text-muted, #94a3b8);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-}
-
-.acCardTop {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-
-.acCardTitle {
-  margin: 0 0 4px;
-  font-size: 1.02rem;
-  font-weight: 700;
-  color: var(--text-primary, #f1f5f9);
-  line-height: 1.3;
-}
-
-.acCardMeta {
-  margin: 0;
-  font-size: 0.78rem;
-  color: var(--text-muted, #94a3b8);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.acSymbolBadge {
-  font-weight: 800;
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 0.78rem;
-  background: rgba(0, 180, 216, 0.14);
-  color: var(--accent-shell, #00b4d8);
-  border: 1px solid rgba(0, 180, 216, 0.28);
-}
-
-.acCardSummary {
-  font-size: 0.88rem;
-  line-height: 1.55;
-  margin: 0 0 12px;
-  color: var(--text-secondary, #cbd5e1);
-}
-
-.acCardMetrics {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 8px;
-  background: rgba(15, 23, 42, 0.35);
-  border: 1px solid rgba(80, 120, 168, 0.12);
-  padding: 10px 12px;
-  border-radius: 10px;
-  margin-bottom: 12px;
-  font-size: 0.8rem;
-}
-.acCardMetrics span {
-  color: var(--text-muted, #94a3b8);
-}
-.acCardMetrics strong {
-  color: var(--text-primary, #f1f5f9);
-  font-variant-numeric: tabular-nums;
-}
-
-.acDirectionBuy {
-  color: var(--soc-c-34d399, #34d399) !important;
-  font-weight: 700;
-}
-.acDirectionSell {
-  color: var(--soc-c-f87171, #f87171) !important;
-  font-weight: 700;
-}
-
-.acBtn {
-  min-width: 84px;
-  justify-content: center;
-}
-
-/* Expandable evidence */
-.acEvidenceHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 0.74rem;
-  color: var(--text-muted, #94a3b8);
-  font-weight: 700;
-  text-transform: uppercase;
-  cursor: pointer;
-  padding: 6px 12px;
-  background: rgba(15, 23, 42, 0.3);
-  border-radius: 8px;
-  border: 1px solid rgba(80, 120, 168, 0.1);
-  margin-bottom: 10px;
-  transition: all 0.2s ease;
-}
-.acEvidenceHeader:hover {
-  background: rgba(15, 23, 42, 0.5);
-  color: var(--text-primary, #f1f5f9);
-}
-
-.acEvidenceList {
-  margin: 0 0 12px;
-  padding: 10px 12px;
-  font-size: 0.78rem;
-  color: var(--text-muted, #94a3b8);
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  background: rgba(2, 11, 35, 0.3);
-  border-radius: 8px;
-  border: 1px solid rgba(80, 120, 168, 0.08);
-  list-style: none;
-}
-.acEvidenceList li {
-  font-family: "Menlo", "Consolas", monospace;
-  word-break: break-all;
-}
-
-.acCardActions {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-  flex-wrap: wrap;
-}
-
-/* ── Buy/Sell strength meter ── */
+/* 2. Buy/Sell strength bar (SOC không có) */
 .acStrengthContainer {
   display: flex;
   flex-direction: column;
@@ -249,226 +39,40 @@
   width: 100%;
 }
 .acStrengthBuy {
-  background-color: var(--soc-c-34d399, #34d399);
+  background: var(--soc-c-34d399, #34d399);
   height: 100%;
-  transition: width 0.3s ease;
+  transition: width 0.3s;
 }
 .acStrengthSell {
-  background-color: var(--soc-c-f87171, #f87171);
+  background: var(--soc-c-f87171, #f87171);
   height: 100%;
-  transition: width 0.3s ease;
+  transition: width 0.3s;
 }
 .acStrengthNeutral {
-  background-color: var(--text-muted, #94a3b8);
+  background: var(--text-muted, #94a3b8);
   height: 100%;
 }
 
-/* ── Frequency badge (uses system status colors) ── */
-.acFreqBadge {
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 999px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.acFreqExplosive {
-  background: rgba(239, 68, 68, 0.14);
-  color: var(--soc-c-f87171, #f87171);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-}
-.acFreqHigh {
-  background: rgba(245, 158, 11, 0.14);
-  color: var(--accent-amber, #fbbf24);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-}
-.acFreqMedium {
-  background: rgba(0, 180, 216, 0.14);
-  color: var(--accent-shell, #00b4d8);
-  border: 1px solid rgba(0, 180, 216, 0.25);
-}
-.acFreqLow {
-  background: rgba(148, 163, 184, 0.14);
-  color: var(--text-muted, #94a3b8);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-}
-
-/* ── Detail drawer (forensic) ── */
-.acDrawer {
-  background: var(--bg-shell-surface, rgba(15, 23, 42, 0.65));
-  border: 1px solid rgba(0, 180, 216, 0.3);
-  border-radius: 20px;
-  padding: 20px;
-  margin-top: 22px;
-  box-shadow: 0 8px 32px rgba(0, 180, 216, 0.1);
-  backdrop-filter: blur(16px);
-  position: relative;
-}
-.acDrawer::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(
-    90deg,
-    var(--accent-shell, #00b4d8) 0%,
-    var(--accent-signal, #ff7f50) 100%
-  );
-  border-top-left-radius: 20px;
-  border-top-right-radius: 20px;
-}
-.acDrawerTitleRow {
+/* 3. Evidence list */
+.acEvidenceList {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-}
-.acDrawerTitleRow h3 {
-  margin: 0;
-  font-size: 1.2rem;
-  font-weight: 800;
-  color: var(--text-primary, #f1f5f9);
-}
-.acCloseBtn {
-  background: rgba(100, 116, 139, 0.15);
-  border: 1px solid var(--border-shell, rgba(255, 255, 255, 0.08));
-  color: var(--text-muted, #94a3b8);
+  flex-direction: column;
+  gap: 5px;
+  background: rgba(2, 11, 35, 0.3);
   border-radius: 8px;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 0.8rem;
-  font-weight: 700;
-  transition: all 0.15s ease;
+  border: 1px solid rgba(80, 120, 168, 0.08);
+  list-style: none;
 }
-.acCloseBtn:hover {
-  background: rgba(239, 68, 68, 0.12);
-  color: var(--soc-c-f87171, #f87171);
-  border-color: rgba(239, 68, 68, 0.25);
-}
-.acDrawerSection {
-  background: rgba(2, 11, 35, 0.25);
-  padding: 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(80, 120, 168, 0.1);
-  margin-bottom: 12px;
-}
-.acDrawerSection h4 {
-  margin: 0 0 8px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--text-muted, #94a3b8);
-}
-.acDrawerSection p {
-  margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.6;
-  color: var(--text-secondary, #cbd5e1);
-}
-.acDrawerGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 12px;
-}
-.acDrawerItem {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.acDrawerItem span {
-  font-size: 0.7rem;
-  color: var(--text-muted, #94a3b8);
-  text-transform: uppercase;
-  font-weight: 700;
-}
-.acDrawerItem strong {
-  font-size: 0.95rem;
-  color: var(--text-primary, #f1f5f9);
-}
-.acDetailFlex {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 0.85rem;
-}
-.acDetailMuted {
-  color: var(--text-secondary, #cbd5e1);
+.acEvidenceList li {
+  font-family: "Menlo", "Consolas", monospace;
+  word-break: break-all;
 }
 
-/* ── Stats table wrapper / rows ── */
-.acStatsHeader {
-  margin-bottom: 12px;
-}
-.acStatsRow td {
-  font-variant-numeric: tabular-nums;
-}
-.acStatsSymbolBadge {
-  font-weight: 800;
-}
-.acCountCell {
-  color: var(--text-secondary, #cbd5e1);
-}
-.acValueCell {
-  color: var(--text-primary, #f1f5f9);
-  font-weight: 700;
-  text-align: right;
-}
-
-/* ── Loading / error / empty helpers ── */
-.acLoading {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--accent-shell, #00b4d8);
-  font-weight: 700;
-  font-size: 0.9rem;
-  margin: 18px 0;
-}
-.acLoading::before {
-  content: "";
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--accent-shell, #00b4d8);
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: acSpin 0.8s linear infinite;
-  display: inline-block;
-}
-.acError {
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.18);
-  color: var(--soc-c-f87171, #f87171);
-  padding: 12px 16px;
-  border-radius: 10px;
-  font-size: 0.88rem;
-  font-weight: 600;
-  margin: 16px 0;
-}
-.acBannerError {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.18);
-  color: var(--soc-c-f87171, #f87171);
-  padding: 12px 16px;
-  border-radius: 10px;
-  font-size: 0.88rem;
-  font-weight: 600;
-  margin: 16px 0;
-}
-.acBtnInline {
-  padding: 6px 14px;
-  font-size: 0.82rem;
-  margin-left: auto;
-}
+/* 4. Scrollbar (feed list) */
 .acScrollable {
   flex: 1;
   overflow-y: auto;
@@ -482,75 +86,28 @@
   border-radius: 3px;
 }
 
-.acPagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(80, 120, 168, 0.12);
-}
-.acPageBtn {
-  background: rgba(100, 116, 139, 0.15);
-  border: 1px solid var(--border-shell, rgba(255, 255, 255, 0.08));
-  color: var(--text-muted, #94a3b8);
-  padding: 5px 11px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.78rem;
-  font-weight: 700;
-  transition: all 0.15s ease;
-  min-width: 32px;
-  text-align: center;
-}
-.acPageBtn:not(:disabled):hover {
-  background: rgba(0, 180, 216, 0.14);
-  border-color: var(--accent-shell, #00b4d8);
-  color: var(--text-primary, #f1f5f9);
-}
-.acPageBtn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-.acPageInfo {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text-muted, #94a3b8);
-  padding: 0 8px;
-}
-
-.acPendingBadge {
-  display: inline-block;
-  margin-left: 8px;
-  padding: 2px 8px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  border-radius: 999px;
-  background: rgba(255, 191, 0, 0.16);
-  color: #ffd166;
-  border: 1px solid rgba(255, 191, 0, 0.4);
-  vertical-align: middle;
-}
-
-@media (max-width: 640px) {
-  .acMetrics {
-    grid-template-columns: repeat(2, 1fr);
+/* 5. Refresh spinner (SOC không có spin keyframe) */
+@keyframes acSpin {
+  from {
+    transform: rotate(0deg);
   }
-  .acStrengthWrap {
-    max-width: 100%;
+  to {
+    transform: rotate(360deg);
   }
 }
-
-/* ── Light theme variant (toggle via [data-theme="light"]) ── */
-[data-theme="light"] .acCard,
-[data-theme="light"] .acDrawer,
-[data-theme="light"] .acDetailSection {
-  background: var(--bg-shell-surface, #ffffff);
-  color: var(--text-primary, #0f172a);
-  border-color: rgba(15, 23, 42, 0.12);
+.acSpin {
+  animation: acSpin 0.8s linear infinite;
 }
-[data-theme="light"] .acCardSummary,
-[data-theme="light"] .acDetailMuted {
-  color: var(--text-muted, #475569);
+
+/* 6. Light theme variants — keep for strength/evidence */
+[data-theme="light"] .acStrengthBar {
+  background: rgba(0, 0, 0, 0.08);
+}
+[data-theme="light"] .acEvidenceList {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+[data-theme="light"] .acFeedCard {
+  background: #fff;
+  color: #0f172a;
 }

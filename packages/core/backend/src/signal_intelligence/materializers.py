@@ -401,6 +401,8 @@ def materialize_stale_quote_alerts(self, symbol: str | None = None):
             stale=snapshot.stale,
             source='market_serving.symbol_snapshot',
         )
+        pct = float(snapshot.price_change_pct or 0)
+        stale_direction = UnifiedAlert.DirectionChoices.BUY if pct >= 0 else UnifiedAlert.DirectionChoices.SELL
         alert, alert_created = UnifiedAlert.objects.get_or_create(
             source_ref=source_ref,
             defaults={
@@ -411,8 +413,8 @@ def materialize_stale_quote_alerts(self, symbol: str | None = None):
                 'freshness_state': 'stale',
                 'title': f'Bảng giá chậm {snapshot.symbol}',
                 'body': 'Snapshot thị trường đã bị đánh dấu stale.',
-                'value': None,
-                'direction': UnifiedAlert.DirectionChoices.NEUTRAL,
+                'value': abs(pct),
+                'direction': stale_direction,
                 'session_date': snapshot.session_date,
                 'triggered_at': snapshot.fetched_at,
                 'source_ref': source_ref,
@@ -461,6 +463,12 @@ def materialize_stale_quote_alerts(self, symbol: str | None = None):
         if alert.evidence != evidence:
             alert.evidence = evidence
             dirty_fields.append('evidence')
+        if alert.value != abs(pct):
+            alert.value = abs(pct)
+            dirty_fields.append('value')
+        if alert.direction != stale_direction:
+            alert.direction = stale_direction
+            dirty_fields.append('direction')
         if dirty_fields and not alert_created:
             alert.save(update_fields=dirty_fields)
 
@@ -470,7 +478,7 @@ def materialize_stale_quote_alerts(self, symbol: str | None = None):
             event_type='stale_quote',
             severity=severity,
             confidence=confidence,
-            direction=UnifiedAlert.DirectionChoices.NEUTRAL,
+            direction=stale_direction,
             source_ref=source_ref,
             evidence=evidence,
             metadata={
@@ -523,6 +531,7 @@ def materialize_market_anomaly_alerts(self, symbol: str | None = None):
             stale=snapshot.stale,
             source='market_serving.symbol_snapshot',
         )
+        anomaly_direction = UnifiedAlert.DirectionChoices.BUY if pct >= 0 else UnifiedAlert.DirectionChoices.SELL
         alert, alert_created = UnifiedAlert.objects.get_or_create(
             source_ref=source_ref,
             defaults={
@@ -533,8 +542,8 @@ def materialize_market_anomaly_alerts(self, symbol: str | None = None):
                 'freshness_state': 'fresh' if not snapshot.stale else 'stale',
                 'title': f'Biến động bất thường {snapshot.symbol}',
                 'body': f'Biến động giá {pct:.2f}%',
-                'value': None,
-                'direction': UnifiedAlert.DirectionChoices.NEUTRAL,
+                'value': abs(pct),
+                'direction': anomaly_direction,
                 'session_date': snapshot.session_date,
                 'triggered_at': snapshot.fetched_at,
                 'source_ref': source_ref,
@@ -569,6 +578,12 @@ def materialize_market_anomaly_alerts(self, symbol: str | None = None):
         if alert.session_date != snapshot.session_date:
             alert.session_date = snapshot.session_date
             dirty_fields.append('session_date')
+        if alert.value != abs(pct):
+            alert.value = abs(pct)
+            dirty_fields.append('value')
+        if alert.direction != anomaly_direction:
+            alert.direction = anomaly_direction
+            dirty_fields.append('direction')
         # triggered_at intentionally not updated — preserve first-seen semantics
         if alert.metadata != {
             'source': 'market_serving.symbol_snapshot',
@@ -593,7 +608,7 @@ def materialize_market_anomaly_alerts(self, symbol: str | None = None):
             event_type='price_shock',
             severity=severity,
             confidence=confidence,
-            direction=UnifiedAlert.DirectionChoices.NEUTRAL,
+            direction=anomaly_direction,
             source_ref=source_ref,
             evidence=evidence,
             metadata={

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { coreApiAdapter } from '../adapters/coreApiAdapter.js';
 
 export interface AlertFeedParams {
@@ -27,37 +27,60 @@ interface AlertFeedResponse {
   previous: string | null;
 }
 
+const POLL_INTERVAL = 15000;
+
 export function useAlertCenterSnapshot(initialParams: AlertFeedParams = {}) {
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [cursorHistory, setCursorHistory] = useState<string[]>([]);
+  const mountedRef = useRef(true);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Deconstruct primitive values from initialParams to avoid callback dependency invalidation
   const { symbol, severity, alert_family, session_date, page_size } = initialParams;
 
-  const fetchFeed = useCallback(async (params: AlertFeedParams) => {
-    setLoading(true);
+  const fetchFeed = useCallback(async (params: AlertFeedParams, silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const data = await (coreApiAdapter as any).getAlertCenterFeed(params) as AlertFeedResponse;
-      setAlerts(data.results || []);
-      setNextCursor(data.next);
+      if (mountedRef.current) {
+        setAlerts(data.results || []);
+        setNextCursor(data.next);
+      }
       return data;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Không thể tải dữ liệu cảnh báo.';
-      setError(msg);
-      setAlerts([]);
+      if (mountedRef.current) {
+        setError(msg);
+        setAlerts([]);
+      }
       return null;
     } finally {
-      setLoading(false);
+      if (!silent && mountedRef.current) setLoading(false);
     }
   }, []);
 
   const loadInitial = useCallback(() => {
     setCursorHistory([]);
     fetchFeed({ symbol, severity, alert_family, session_date, page_size });
+  }, [fetchFeed, symbol, severity, alert_family, session_date, page_size]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(() => {
+      if (mountedRef.current) {
+        fetchFeed({ symbol, severity, alert_family, session_date, page_size }, true);
+      }
+    }, POLL_INTERVAL);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [fetchFeed, symbol, severity, alert_family, session_date, page_size]);
 
   const goToNextPage = useCallback(() => {
