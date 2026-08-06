@@ -41,6 +41,15 @@ interface AlertCardProps {
   style?: React.CSSProperties;
 }
 
+const FAMILY_LABELS: Record<string, string> = {
+  whale: "alertCenter.famWhale",
+  dark_flow: "alertCenter.famDarkFlow",
+  price_shock: "alertCenter.famPriceShock",
+  signal: "alertCenter.famSignal",
+  system: "alertCenter.famSystem",
+  ai_suggest: "alertCenter.famAiSuggest",
+};
+
 const SEVERITY_TO_SOC: Record<string, string> = {
   critical: soc.statusBadgeDanger,
   high: soc.statusBadgeWarning,
@@ -53,6 +62,13 @@ function getDirectionClass(dir: string): string {
   if (d.includes("buy") || d === "mua") return soc.signalLabelBuy;
   if (d.includes("sell") || d === "bán") return soc.signalLabelSell;
   return soc.signalLabelNeutral;
+}
+
+function getDirectionArrow(dir: string): string {
+  const d = String(dir || "").toLowerCase();
+  if (d.includes("buy") || d === "mua") return "↑";
+  if (d.includes("sell") || d === "bán") return "↓";
+  return "—";
 }
 
 function renderEvidenceList(evidence: Record<string, unknown>, t: (key: string) => string) {
@@ -82,10 +98,12 @@ export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
   const borderClass = styles[`acCard${severityCap}` as keyof typeof styles] || styles.acCardMedium;
   const severityBadgeClass = SEVERITY_TO_SOC[severity] || "";
   const directionClass = getDirectionClass(alert.direction || "");
+  const directionArrow = getDirectionArrow(alert.direction || "");
+  const familyKey = FAMILY_LABELS[alert.alert_family || ""];
 
   return (
-    <article className={`${soc.feedCard} ${soc.signalRow} ${String(borderClass)}`.trim()} style={style}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+    <article className={`${soc.feedCard} ${String(borderClass)}`.trim()} style={style}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
         <div style={{ display: "flex", gap: 10, flex: 1, minWidth: 0 }}>
           <div className={`${soc.signalIcon} ${severityBadgeClass || soc.statusBadgeInfo}`}>
             {severity === "critical" ? "⚠" : severity === "high" ? "⚡" : "ℹ"}
@@ -103,22 +121,22 @@ export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
             <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.3 }}>
               {alert.title || t("alertCenter.cardTitle")}
             </h3>
-            <div className={`${soc.signalMeta}`}>
-              {alert.alert_family || alert.alert_type || "—"} · Lane: {alert.lane || lane}
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+              {familyKey ? t(familyKey as any) : alert.alert_family || alert.alert_type || "—"} · Lane {alert.lane || lane}
             </div>
           </div>
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
-          <div className={`${soc.signalVolume}`}>
+          <div className={`${soc.signalVolume}`} style={{ fontSize: "0.82rem", fontWeight: 700 }}>
             {formatAlertValue(alert.value)} VND
           </div>
           <div className={`${soc.signalLabel} ${directionClass}`.trim()}>
-            {alert.direction || "—"}
+            {directionArrow} {alert.direction || "—"}
           </div>
         </div>
       </div>
 
-      <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--text-secondary)", margin: "8px 0" }}>
+      <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text-secondary)", margin: "8px 0" }}>
         {alert.summary || alert.body || t("alertCenter.cardNoSummary")}
       </p>
 
@@ -128,10 +146,17 @@ export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
         </span>
       )}
 
-      <div className={`${soc.signalMeta}`} style={{ marginBottom: 10 }}>
-        <span><strong>{t("alertCenter.labelValue")}:</strong> {formatAlertValue(alert.value)} VND</span>
-        <span><strong>{t("alertCenter.labelDirection")}:</strong> <span className={directionClass}>{alert.direction || "—"}</span></span>
-        <span><strong>{t("alertCenter.labelConfidence")}:</strong> {alert.confidence != null ? `${alert.confidence}` : "—"}</span>
+      <div style={{
+        display: "flex", flexWrap: "wrap", gap: "4px 20px",
+        fontSize: "0.73rem", color: "var(--text-muted)",
+        marginBottom: 10, padding: "8px 12px",
+        background: "rgba(2,11,35,0.3)",
+        borderRadius: 8,
+        border: "1px solid rgba(80,120,168,0.08)",
+      }}>
+        <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>
+          {t("alertCenter.labelConfidence")}: {alert.confidence != null ? `${alert.confidence}%` : "—"}
+        </span>
         <span><strong>{t("alertCenter.labelFreshness")}:</strong> {alert.freshness_state || "—"}</span>
         <span><strong>{t("alertCenter.labelSession")}:</strong> {alert.session_date || "—"}</span>
         <span><strong>{alert.executed_at ? t("alertCenter.labelExecuted") : t("alertCenter.labelTime")}:</strong> {alert.executed_at ? formatAlertTimestamp(alert.executed_at) : formatAlertTimestamp(alert.triggered_at)}</span>
@@ -144,19 +169,22 @@ export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
             className={`${soc.accordionHeader}`}
             onClick={() => toggleEvidence(String(alert.alert_id))}
           >
-            <span>{t("alertCenter.evidenceView")}</span>
-            <span>{isEvidenceExpanded ? "▼" : "▶"}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span>{t("alertCenter.evidenceView")}</span>
+            </span>
+            <span style={{ fontSize: "0.65rem" }}>{isEvidenceExpanded ? "▼" : "▶"}</span>
           </button>
           {isEvidenceExpanded && renderEvidenceList(alert.evidence, t)}
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <button
           type="button"
           className={`${soc.filterBtn} ${soc.filterBtnActive}`}
           disabled={busyAlertId === alert.alert_id}
           onClick={() => handleLoadDetail(alert)}
+          style={{ fontWeight: 700 }}
         >
           {busyAlertId === alert.alert_id ? t("alertCenter.btnDetailLoading") : t("alertCenter.btnDetail")}
         </button>

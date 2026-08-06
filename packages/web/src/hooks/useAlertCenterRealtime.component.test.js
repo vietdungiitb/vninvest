@@ -1,16 +1,18 @@
 /**
- * useAlertCenterRealtime.test.js
+ * useAlertCenterRealtime.component.test.js
  * Unit tests for the AlertCenter realtime feed wrapper.
  * Mocks useRealtimeFeedCore (the heavy WS client) and asserts merge/dedupe/status.
+ * Migrated to vitest (component test convention) — jest 29 ESM (VM modules)
+ * cannot hoist jest.mock (require is not defined), vitest handles vi.mock natively.
  */
-import { jest } from '@jest/globals';
+import { describe, test, expect, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import useRealtimeFeedCore from './useRealtimeFeedCore.js';
 import { useAlertCenterRealtime } from './useAlertCenterRealtime.js';
 
-jest.mock('./useRealtimeFeedCore.js', () => ({
+vi.mock('./useRealtimeFeedCore.js', () => ({
   __esModule: true,
-  default: jest.fn(),
+  default: vi.fn(),
 }));
 
 function buildFeed({ alerts = [], darkFlowAlerts = [], realtimeStatus = 'live', lastEventAt = null, connectionState = {} } = {}) {
@@ -25,7 +27,7 @@ function buildFeed({ alerts = [], darkFlowAlerts = [], realtimeStatus = 'live', 
 
 describe('useAlertCenterRealtime', () => {
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test('subscribes to market_discovery group via core hook', () => {

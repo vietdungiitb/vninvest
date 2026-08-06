@@ -395,7 +395,7 @@ export function createCoreTransport(env = {}, options = {}) {
 
     if (method === "GET") {
       inflightGetCache.set(path, promise);
-      promise.finally(() => inflightGetCache.delete(path));
+      promise.finally(() => inflightGetCache.delete(path)).catch(() => {});
     }
 
     return promise;

@@ -3,6 +3,7 @@ import React, { createElement, useEffect, useRef, useState, useCallback } from "
 import { useCoreDashboardData } from "../features/dashboard/useCoreDashboardData.js";
 import { AIAdvisorAlertPanel } from "../features/dashboard/AIAdvisorAlertPanel.js";
 import { useRealtimeFeedFromManager } from "../context/RealtimeContext.js";
+import { useAlertCenterRealtime } from "../hooks/useAlertCenterRealtime.js";
 import { SmartStatsHeader } from "../components/dashboard/SmartStatsHeader.js";
 import { PortfolioHeatmap } from "../components/dashboard/PortfolioHeatmap.js";
 import { UnifiedAlertCenter } from "../components/dashboard/UnifiedAlertCenter.js";
@@ -173,8 +174,12 @@ export function DashboardPage({
 
   // --- Real-time Feed Integration ---
   const symbolString = collectUniqueSortedSymbols(holdings, trackedSymbols, watchlists, []);
-  const symbols = React.useMemo(() => (symbolString ? symbolString.split("|") : []), [symbolString]);
+  const symbols = React.useMemo(() => {
+    const parsed = symbolString ? symbolString.split("|") : [];
+    return parsed.length > 0 ? parsed : ["market_discovery"];
+  }, [symbolString]);
   const realtimeFeed = useRealtimeFeedFromManager({ symbols, pollInterval: 10000 });
+  const { realtimeAlerts: globalRealtimeAlerts } = useAlertCenterRealtime({ enabled: true });
 
   const mergedQuotes = React.useMemo(() => {
     return { ...quotesBySymbol, ...(realtimeFeed?.quotesBySymbol || {}) };
@@ -239,7 +244,8 @@ export function DashboardPage({
   // Merge realtime alerts + prop alerts + historical snapshot alerts
   const mergedAlerts = React.useMemo(() => {
     const feedAlerts = realtimeFeed?.alerts || [];
-    const allAlerts: AlertItem[] = [...feedAlerts, ...(alerts || []), ...snapshotAlerts];
+    const feedDarkFlow = realtimeFeed?.darkFlowAlerts || [];
+    const allAlerts: AlertItem[] = [...feedAlerts, ...feedDarkFlow, ...(globalRealtimeAlerts || []), ...(alerts || []), ...snapshotAlerts];
     const unique: AlertItem[] = [];
     const seen = new Set<string>();
     allAlerts.forEach((a) => {
@@ -250,7 +256,7 @@ export function DashboardPage({
       }
     });
     return unique;
-  }, [alerts, realtimeFeed?.alerts, snapshotAlerts]);
+  }, [alerts, realtimeFeed?.alerts, realtimeFeed?.darkFlowAlerts, globalRealtimeAlerts, snapshotAlerts]);
 
   // Alert pagination state for UnifiedAlertCenter
   const [severityFilter, setSeverityFilter] = useState<string>("all");

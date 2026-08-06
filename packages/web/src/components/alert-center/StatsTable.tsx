@@ -95,8 +95,8 @@ export function StatsTable(props: StatsTableProps) {
                       )}
                     </div>
                     <div className={`${styles.acStrengthText}`}>
-                      <span>{t("alertCenter.buyShort")}:{item.buyCount}</span>
-                      <span>{t("alertCenter.sellShort")}:{item.sellCount}</span>
+                      <span style={{ color: "var(--soc-c-34d399, #34d399)" }}>{t("alertCenter.buyShort")}: {item.buyCount}</span>
+                      <span style={{ color: "var(--soc-c-f87171, #f87171)" }}>{t("alertCenter.sellShort")}: {item.sellCount}</span>
                     </div>
                   </div>
                 </td>

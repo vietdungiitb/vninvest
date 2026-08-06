@@ -624,3 +624,65 @@
   - `ls tests/visual/alert-center.spec.ts` → ✅ tồn tại (D3)
   - Hex hardcoded surface: chỉ `.acPendingBadge` dùng `#ffd166` (amber status accent, chéo theme) → chấp nhận.
 - **Residual**: Không có. **TOÀN BỘ ALERT CENTER ROADMAP (Phase UI refactor + C1/C5/C2/C3/C4 + A1/A2 + D1/D2/D3) HOÀN TẤT.** Lệnh `npm run test:visual` sẽ generate baseline snapshots (cần chạy 1 lần để tạo reference). Kern: WS realtime merge (`useAlertCenterRealtime`) hoạt động xuyên suốt mọi slice.
+
+---
+
+## Entry 33: Audit Alert Center 2026-08-05 — 20 findings (8 P0), chưa sửa code
+
+- **Date**: 2026-08-05
+- **Type**: AUDIT (research only — không đổi code)
+- **Report**: `docs/AUDIT_ALERT_CENTER_20260805.md`
+- **Files touched**: không (chỉ phân tích)
+- **Tóm tắt P0**:
+  - F1: `useTenantAdminQuery.ts:34-52` KHÔNG forward `refetchInterval` → auto-refresh 5s (ghi ở Entry 27 là "đã giữ") THỰC TẾ không chạy → feed REST chỉ update khi bấm Refresh.
+  - F2: `AlertCenterPage.tsx:200-202` effect `[filters]` (object mới mỗi render) → phân trang stats luôn reset trang 1.
+  - F3: multi-select severity/alert_family join `','` (useAlertCenterData.js:45-46) vs backend exact match (views.py:176-178) → filter ≥2 giá trị luôn trả rỗng.
+  - F4: `normalizeAlert` (useRealtimeFeedCore.js:238-257) thiếu `triggered_at` → live WS alert bị xếp đáy feed "mới nhất".
+  - F5: detail/ack/context endpoints backend scoped lane='main' (views.py:525-590), UI không truyền lane → AI lane "Chi tiết" 404; WS item thiếu `alert_id` → detail/ack no-op.
+  - F6: `delivery_service.py:66-68` user không watchlist/tracked/holdings → thấy TOÀN BỘ alert global (rò rỉ).
+  - F7: `Sum('value')` null + `DecimalField` không allow_null (serializers.py:88) → symbol-stats 500.
+  - F8: polling quote rác cho pseudo-symbol `market_discovery` (useRealtimeFeedCore.js:737-855).
+- **Contradiction quan trọng**: Entry 27 tuyên bố "refetchInterval giữ auto-refresh toggle" — sai, option bị drop; plan P0 (IMPLEMENTATION_PLAN_ALERT_CENTER_P0_20260718.md:46,50,89-90,106) mâu thuẫn code (xem mục C report).
+- **Quality gates**: tsc PASS; vitest 16/16 PASS (nhưng không cover AlertCenterPage); hook tests (`useAlertCenterData.test.js`, `useAlertCenterRealtime.test.js`) KHÔNG chạy trong CI do vitest include chỉ `*.component.test.*`; i18n thiếu `alertCenter.close` + `alertCenter.detailSummary`.
+- **Hành động tiếp theo**: thực thi Phase 1 (fix 8 P0) theo plan mục G của report; sau mỗi fix update ledger.
+
+
+---
+
+## Entry 34: Implementation plan Alert Center upgrade + phát hiện F21 (babel infra jest RED)
+
+- **Date**: 2026-08-05
+- **Type**: PLAN + AUDIT FOLLOW-UP (research only — không đổi code)
+- **Plan**: `docs/IMPLEMENTATION_PLAN_ALERT_CENTER_UPGRADE_20260805.md`
+- **Files touched**: docs only (audit doc + plan + ledger)
+- **Tóm tắt**: Viết plan hand-off 3 phase (Phase 0 infra, Phase 1 fix 8 P0, Phase 2 P1, Phase 3 international) — mỗi task có file:line, spec đóng, test phải viết, AC + minh chứng, traceability matrix, DoD, audit checklist. Quyết định đã chốt: D1-D11 (không hỏi lại).
+- **F21 (mới, P0-infra)**: Chạy baseline `npm test` (jest) lần đầu → 3 suites fail: `useAlertCenterData.test.js` (ReferenceError: T is not defined tại `useTenantAdminQuery.ts:45` — `useQuery<T>` không được babel strip), `useAlertCenterRealtime.test.js` (cascade worker crash), `coreApiAdapter.test.js` (worker 4 exceptions). Root cause: `@babel/preset-env@8.0.2` + `@babel/preset-react@8.0.1` + `@babel/preset-typescript@8.0.1` yêu cầu `@babel/core ^8.0.0` nhưng core thực tế `7.29.0` (npm ls invalid) — bump presets lên 8.x từ commit `396d5a94` nhưng không nâng core; babel-jest `^30.4.1` peer-dep core 7 nên hướng fix = pin presets về `^7.26.x` (Task A0 trong plan), KHÔNG nâng core 8. Vite build không bị ảnh hưởng (esbuild) → bug âm thầm.
+- **Validation**: `npm test -- --no-coverage` baseline: 16/19 suites pass, 170/170 tests pass, 3 suites fail (như trên). `npx tsc --noEmit` PASS (không đổi). Audit doc + plan đã cập nhật F21/Quality Gates/Task A0.
+- **Residual**: chưa sửa babel (task A0 dành cho đội code — plan đã đóng spec + lệnh); sau A0 cần verify `coreApiAdapter.test.js` và `useAlertCenterRealtime.test.js` fail còn lại là flake hay lỗi thật (có thể liên quan uncaught 404 `/symbol-snapshot/VCI/`).
+
+
+---
+
+## Entry 35: Phase 0 Alert Center — fix jest infra (F21) + transport.js unhandled rejection + migrate hook tests to vitest
+
+- **Date**: 2026-08-05
+- **Type**: FIX (infra/test) — thực thi Task A0 của IMPLEMENTATION_PLAN_ALERT_CENTER_UPGRADE_20260805.md
+- **Files touched**:
+  - `packages/web/package.json` + `package-lock.json` (pin `@babel/preset-env@^7.26.9` → 7.29.7, `@babel/preset-react@^7.26.3` → 7.29.7, `@babel/preset-typescript@^7.26.10` → 7.29.7; trước đây 8.0.x yêu cầu core ^8 nhưng `@babel/core` là 7.29.0)
+  - `packages/web/src/adapters/core/transport.js:398` — `promise.finally(() => inflightGetCache.delete(path)).catch(() => {})` (trước: bỏ qua promise derived từ `.finally()` → mọi GET fail tạo unhandled rejection → crash jest worker)
+  - `packages/web/src/hooks/useAlertCenterRealtime.component.test.js` (mới — migrate từ `.test.js`)
+  - `packages/web/src/hooks/useAlertCenterData.component.test.js` (mới — migrate từ `.test.js`, thêm QueryClientProvider wrapper)
+  - Xoá: `useAlertCenterRealtime.test.js`, `useAlertCenterData.test.js`
+  - `docs/IMPLEMENTATION_PLAN_ALERT_CENTER_UPGRADE_20260805.md`, `docs/AUDIT_ALERT_CENTER_20260805.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md` (docs)
+- **Summary / Root cause chuỗi**:
+  1. F21: preset babel 8.0.x (commit `396d5a94`) chạy trên `@babel/core@7.29.0` → KHÔNG strip TypeScript types → `useQuery<T>` giữ nguyên → `ReferenceError: T is not defined` tại `useTenantAdminQuery.ts:45` khi jest import `.ts`. Vite không dùng babel (esbuild) nên build vẫn xanh. Fix: pin presets về ^7.26 (cài được 7.29.7), verify strip = `<T>` biến mất.
+  2. Sau fix (1), `coreApiAdapter.test.js` vẫn crash worker: unhandled rejection từ `transport.js:398` — `promise.finally(...)` trả promise phụ bị vứt; khi GET fail (vd symbol-snapshot 404 test), promise phụ reject không ai catch → Node 24 `triggerUncaughtException` → jest worker chết. Fix: `.catch(() => {})` (promise chính vẫn reject cho caller).
+  3. Sau fix (2), 2 hook tests fail chỉ khi chạy `npm test` (ESM mode): `packages/web/package.json` có `"type": "module"` + script test dùng `--experimental-vm-modules` → jest chạy file qua VM modules; `jest.mock` bị babel-plugin-jest-hoist chèn `_getJestObj()` → `require('@jest/globals')` → `require is not defined` trong ESM context (giới hạn jest 29 ESM). Fix: migrate 2 test sang vitest convention (`*.component.test.js`, `vi.mock`) — vitest handle hoisting đúng; jest suite giữ 221 tests còn lại. `useAlertCenterData` test cũng được bổ sung QueryClientProvider (trước đây fail `No QueryClient set` khi babel đúng).
+- **Validation** (chạy thật):
+  - `npx tsc --noEmit` → exit 0
+  - `npm test -- --cache=false` (jest) → 17/17 suites PASS, 221/221 tests PASS (trước: 3 suites fail)
+  - `npm run test:components` (vitest) → 8 files / 25 tests PASS (trước: 6/16; +2 files +9 tests từ migration)
+  - `npm run build` → ✓ built in 31.07s (chunk-size warning pre-existing)
+  - `npm ls @babel/core @babel/preset-env @babel/preset-react @babel/preset-typescript` → tất cả 7.x, hết `invalid`
+  - strip check: `useQuery<T>` → `useQuery({})`
+- **Residual**: `coreApiAdapter.test.js` (51 tests) pass nhưng nguyên nhân gốc của việc test dùng real fetch path đã được loại qua mock — không đổi behavior production (chỉ thêm catch no-op cho promise phụ). Hook test alert-center giờ nằm ở vitest suite thay vì jest — cập nhật trong plan traceability (mục F16/C5).
