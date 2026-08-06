@@ -686,3 +686,38 @@
   - `npm ls @babel/core @babel/preset-env @babel/preset-react @babel/preset-typescript` → tất cả 7.x, hết `invalid`
   - strip check: `useQuery<T>` → `useQuery({})`
 - **Residual**: `coreApiAdapter.test.js` (51 tests) pass nhưng nguyên nhân gốc của việc test dùng real fetch path đã được loại qua mock — không đổi behavior production (chỉ thêm catch no-op cho promise phụ). Hook test alert-center giờ nằm ở vitest suite thay vì jest — cập nhật trong plan traceability (mục F16/C5).
+
+---
+
+## Entry 36: Audit Stock Detail page /stocks/:symbol - 2026-08-06 - 15 findings (4 P0), chua sua code
+
+- **Date**: 2026-08-06
+- **Type**: AUDIT (research only, khong doi code)
+- **Report**: `docs/AUDIT_STOCK_DETAIL_FEBE_GAPS_20260806.md`
+- **Files touched**: khong (chi doc/phan tich)
+- **Summary**:
+  - P0-1 (F-01): Advisory contract mismatch - `AdvisoryRecordSerializer` (advisory/serializers.py:46-61) chi expose `advisory_text` nhung FE render `signal/summary/rationale/confidence_score`; `useStockDetailPageModel.js:178-183` set `advisory: null` co dinh khi mount -> AI Advisory card chet.
+  - P0-2 (F-02): Session-date filter silent-fail - FE gui `session_date` toi `/realtime/whale-feed-aggregate/` nhung `legacy_views.py:535-639` khong doc param (chi `window='session'` = Max(session_date)) -> click nen ngay X hien data whale sai phien.
+  - P0-3 (F-03): `/realtime/depth-chart/` (native_views.py:319-407) la MOCK - sinh bids/asks gia bang md5-seed, volume 40/30/20% tu snapshot -> order book widget hien so lenh gia nhu that.
+  - P0-4 (F-04): Whale feed item fields sai contract - FE doc `event_time/triggered_at` + `price/avg_price` nhung BE tra `ts/alert_at` + `matched_value` -> card khớp lệnh trong ngay rong "— — CP —", whale markers plot tai gia 0.
+  - P1: F-05 duplicate `getWhaleFeedAggregate` (market.js:180 vs 394); F-06 WhaleBubbleChart summary mismatch (`total_orders` vs `whale_order_count`); F-07 dark flow strength khong toi chart; F-08 whale feed pagination bo; F-09 advisory refresh poll 30s khong feedback; F-10 `?date=` vs `trade_date` latent.
+  - P2: F-11 ~15 hardcoded VN strings con sot; F-12 dead prop `flowData`; F-13 khong test cho page/model hook; F-14 fmt duplicate 3 files; F-15 adapter tao lai 6 cho.
+  - 8/21 findings audit cu 2026-07-17 da dong (watchlist, i18n, onSymbolChange, mobile responsive, chart subscribe, locale/theme).
+- **Roadmap**: Phase 1 Truth & Contract Fixes (T1.1-T1.5), Phase 2 UX quoc te (React Query, advisory Markdown+confidence gauge, chart pro-level, financials, news AI summary, code-split tabs), Phase 3 Enterprise (WebSocket, accessibility, observability, SEO/PWA, analytics).
+- **Validation**: khong chay build/test (khong doi code).
+
+---
+
+## Entry 37: Implementation plan Stock Detail FE-BE gaps - 2026-08-06 - ban giao doi code
+
+- **Date**: 2026-08-06
+- **Type**: PLAN (khong doi code)
+- **Plan**: `docs/IMPLEMENTATION_PLAN_STOCK_DETAIL_FEBE_GAPS_20260806.md`
+- **Source**: `docs/AUDIT_STOCK_DETAIL_FEBE_GAPS_20260806.md` (Entry 36)
+- **Files touched**: khong (chi tao docs)
+- **Summary**:
+  - Phase 1 (5-7 ngay, bat buoc truoc khi merge): T1.1 Advisory contract (them `structured_output` JSONField vao AdvisoryRecord + serializer expose signal/confidence/summary/rationale + deferred lane goi getAdvisoryLatest khi mount + fix timeout poll 30s); T1.2 session_date param tren RealtimeWhaleFeedAggregateView (WhaleAlertCanonical da co session_date, khong can migration); T1.3 depth-chart mock -> them `is_mock: true` + badge "Du lieu uoc tinh" (nguon that = backlog rieng); T1.4 chuẩn hoa contract 1 noi trong orderFlowFallback.js (normalizeWhaleFeedItem ts/matched_value, normalizeWhaleSummary whale_order_count, dark_flow.strength, xoa duplicate getWhaleFeedAggregate market.js:180, `?date=`->`trade_date=`, dead prop flowData, pagination next_cursor); T1.5 vitest cho useStockDetailPageModel + StockDetailPage (5 case).
+  - Phase 2 (8-12 ngay): T2.1 React Query (singleton adapter, query keys theo symbol/session), T2.2 Advisory Markdown+confidence gauge+components, T2.3 Chart pro (dark flow overlay, whale markers dung gia, session-aware candles), T2.4 Financials 8-12 ky + cash flow, T2.5 News AI summary (noi stub backend), T2.6 code-split 8 tabs + virtualize, T2.7 i18n don ~15 hardcoded.
+  - Phase 3 (10-15 ngay): WebSocket, accessibility, observability, SEO/PWA, analytics.
+  - DoD: moi task tsc + vitest + jest + build + backend test xanh; E2E checklist 7 muc; i18n 0 hardcoded moi; cap nhat ledger moi task.
+- **Validation**: khong chay build/test (khong doi code).
