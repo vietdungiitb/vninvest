@@ -176,7 +176,7 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol: propSymbol, classNa
 
   const handleWatch = useCallback(() => {
     if (!defaultWatchlistId) {
-      showToast("Chưa có danh sách theo dõi. Vui lòng tạo trước khi thêm mã.");
+      showToast(t("stockDetail.page.noWatchlist", { defaultValue: "Chưa có danh sách theo dõi. Vui lòng tạo trước khi thêm mã." }));
       return;
     }
     const next = !isWatched;
@@ -187,9 +187,9 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol: propSymbol, classNa
       : adapter.removeWatchlistItem(defaultWatchlistId, symbol);
     op.catch(() => {
       setIsWatched(!next);
-      showToast("Cập nhật danh sách theo dõi thất bại.");
+      showToast(t("stockDetail.page.watchUpdateFailed", { defaultValue: "Cập nhật danh sách theo dõi thất bại." }));
     });
-  }, [defaultWatchlistId, isWatched, symbol, env, showToast]);
+  }, [defaultWatchlistId, isWatched, symbol, env, showToast, t]);
 
   const handleConfigChange = useCallback((nextConfig: PromptConfig) => {
     setPromptConfig(nextConfig);
@@ -209,8 +209,8 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol: propSymbol, classNa
   }, []);
 
   const handleTradeTrigger = useCallback(() => {
-    showToast(`Chức năng giao dịch cho mã ${symbol} đang kết nối qua cổng bảo mật.`);
-  }, [symbol, showToast]);
+    showToast(t("stockDetail.page.tradeComingSoon", { symbol, defaultValue: `Chức năng giao dịch cho mã ${symbol} đang kết nối qua cổng bảo mật.` }));
+  }, [symbol, showToast, t]);
 
   const isFeatureEnabled = useMemo(() => {
     if (typeof window !== "undefined") {
@@ -263,7 +263,7 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol: propSymbol, classNa
             type: "button",
             onClick: () => loadBlocking(),
           },
-          "Thử lại"
+          t("stockDetail.page.retry", { defaultValue: "Thử lại" })
         )
       )
     );

@@ -114,7 +114,7 @@ export function StockDetailTabs({
                 className: "sdp-advisory-header-btn",
                 type: "button",
                 onClick: onOpenConfigDrawer,
-                title: "Cấu hình nguồn và chỉ báo AI",
+                title: t(tk("advisoryConfigTitle"), { defaultValue: "Cấu hình nguồn và chỉ báo AI" }),
                 style: { background: "rgba(99, 102, 241, 0.15)", border: "1px solid rgba(99, 102, 241, 0.4)", color: "#a5b4fc", borderRadius: "8px", padding: "4px 10px", fontSize: "0.75rem", cursor: "pointer", fontWeight: "600" }
               },
               `⚙️ ${t(tk("advisoryConfig"))}`
@@ -125,7 +125,7 @@ export function StockDetailTabs({
                 className: "sdp-advisory-header-btn",
                 type: "button",
                 onClick: onRefreshAdvisory,
-                title: "Làm mới thông minh với cấu hình đã chọn",
+                title: t(tk("advisoryRefreshTitle"), { defaultValue: "Làm mới thông minh với cấu hình đã chọn" }),
                 disabled: loadingDeferred,
                 style: { background: "rgba(16, 185, 129, 0.15)", border: "1px solid rgba(16, 185, 129, 0.4)", color: "#6ee7b7", borderRadius: "8px", padding: "4px 10px", fontSize: "0.75rem", cursor: "pointer", fontWeight: "600", opacity: loadingDeferred ? 0.6 : 1 }
               },
@@ -153,8 +153,8 @@ export function StockDetailTabs({
                   e(
                     "div",
                     { className: "sdp-advisory-meta-info" },
-                    e("span", { className: "sdp-session-lbl" }, `Phiên giao dịch: ${sessionLabel}`),
-                    advisory.confidence_score != null && e("span", { className: "sdp-confidence-lbl" }, `Độ tin cậy: ${(Number(advisory.confidence_score) * 100).toFixed(0)}%`)
+                    e("span", { className: "sdp-session-lbl" }, t(tk("sessionLabel"), { label: sessionLabel, defaultValue: `Phiên giao dịch: ${sessionLabel}` })),
+                    advisory.confidence_score != null && e("span", { className: "sdp-confidence-lbl" }, t(tk("confidenceLabel"), { value: (Number(advisory.confidence_score) * 100).toFixed(0), defaultValue: `Độ tin cậy: ${(Number(advisory.confidence_score) * 100).toFixed(0)}%` }))
                   )
                 ),
                 // T1.1: render advisory_text là nội dung chính (Markdown fallback = pre-wrap), backward-compat với record cũ chỉ có advisory_text
