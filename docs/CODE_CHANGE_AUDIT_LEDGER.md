@@ -863,3 +863,49 @@
   - Backend `test_advisory_serializer.py` null-safe (serializer method fallback) để lại cho follow-up nhỏ (BE đã null-safe trong Entry 41, FE test đã đủ gate Phase1).
   - WhaleBubbleChart hardcode "Lệnh mua/bán" giữ lại cho T2.7 i18n sweep (đúng R-4 scope).
 - **Next**: **Phase 1 DoD E2E checklist 7 mục** trên `/stocks/TPB` (advisory text, click nến đúng phiên, order book badge, card khớp lệnh time/price, stats >0, dark flow overlay, Xem thêm) → sau đó mở Phase 2 T2.1 React Query singleton.
+
+---
+
+## Entry 43: Phase 2 — T2.1 singleton + T2.4 financials 8 periods (quick wins)
+
+- **Date**: 2026-09-07
+- **Type**: REFACTOR — Phase 2 staged rollout (no API change, no migration)
+- **Plan**: `docs/IMPLEMENTATION_PLAN_STOCK_DETAIL_FEBE_GAPS_20260806.md` (T2.1 F-15, T2.4 C-1), `docs/AUDIT_PLAN_STOCK_DETAIL_INDEPENDENT_REVIEW_20260806.md` (R-3, C-1)
+- **Files touched**:
+  - `packages/web/src/features/stock-detail/hooks/useStockDetailPageModel.js:9-17,119,180,224,256,368` — T2.1: module-level `_cachedAdapter/_cachedEnv` + `getAdapter(env)` singleton, xoá 4 chỗ `createCoreApiAdapter` thủ công trong blocking/deferred/lazy/refresh lanes. `env` stable reference → không tạo mới mỗi render. Mock `createCoreApiAdapter` trong vitest vẫn work (getAdapter gọi mock).
+  - `packages/web/src/pages/StockDetailPage.tsx:6-17,132,174` — T2.1: module-level `_pageCachedAdapter/_pageCachedEnv` + `getPageAdapter(env)` singleton, xoá 2 chỗ `createCoreApiAdapter` trong watchlist load + handleWatch. Giữ import `createCoreApiAdapter` cho getPageAdapter.
+  - `packages/web/src/features/stock-detail/components/StockDetailTabs.js:440-444` — T2.4: `getPeriods` `slice(0,4)` → `slice(0,8)` (comment `T2.4 FE-only: nới từ 4 lên 8 kỳ, BE đã trả đủ vnbroker_adapter:1059`), hiển thị 8 kỳ gần nhất thay vì 4.
+- **Summary**: Đóng F-15 (adapter tạo lại 6 chỗ) và C-1 (financials giới hạn sai lớp). Không đổi API, không migration, backward-compatible. Singleton giảm GC + tránh tạo adapter mới mỗi render (đặc biệt khi env là object literal). Financials nới gấp đôi cột mà không cần BE.
+- **Validation (thật)**:
+  - `npx tsc --noEmit` → ✅ 0 errors
+  - `npx vitest run useStockDetailPageModel` → ✅ 7 passed (fix stableEnv infinite loop, 4.23s, trước 44s OOM)
+  - `npx vitest run StockDetailPage` → ✅ 5 passed
+  - `npm run test:components` → ✅ 10/10, 37/37 (8 cũ +2 mới)
+  - `npm test` → ✅ 17/17, 221/221
+  - `npm run build` → ✅ 37.68s (StockDetailPage 63.37kB)
+- **Residual**:
+  - React Query full (blocking/deferred/lazy lanes cache + refetchInterval 30s + optimistic watchlist) để lại cho T2.1-step2 (cần refactor hook sang useQuery, risk cao hơn, sẽ làm slice riêng với test mock QueryClient).
+  - i18n sweep còn lại (~10 chuỗi) để lại cho T2.7.
+- **Next**: T2.7 i18n + T2.1-step2 React Query.
+
+---
+
+## Entry 44: Phase 2 — T2.7 i18n dọn nốt hardcoded (retry, toast, advisory titles)
+
+- **Date**: 2026-09-07
+- **Type**: REFACTOR — i18n (no API change)
+- **Plan**: `docs/IMPLEMENTATION_PLAN_STOCK_DETAIL_FEBE_GAPS_20260806.md` (T2.7 F-11), `docs/AUDIT_STOCK_DETAIL_FEBE_GAPS_20260806.md` (F-11)
+- **Files touched**:
+  - `packages/web/src/i18n/vi.js:2832-2842` + `en.js:2834-2845` — thêm `stockDetail.page.noWatchlist/watchUpdateFailed/tradeComingSoon/retry/advisoryConfigTitle/advisoryRefreshTitle/sessionLabel/confidenceLabel` (8 keys, vi+en parity).
+  - `packages/web/src/pages/StockDetailPage.tsx:177-179,188-191,211-213,266` — 4 chỗ hardcode → `t("stockDetail.page.*",{defaultValue})` với defaultValue giữ literal cũ để mock t (`opts?.defaultValue ?? k`) vẫn trả "Thử lại". HandleWatch, watchUpdateFailed, tradeComingSoon, retry button.
+  - `packages/web/src/features/stock-detail/components/StockDetailTabs.js:111-117,126-128,153-157` — 2 title `advisoryConfigTitle/advisoryRefreshTitle` + `sessionLabel/confidenceLabel` → `t()` với defaultValue fallback.
+- **Summary**: Dọn 8/15 chuỗi hardcoded còn lại (F-11) trong file đang sửa ở T2.1/T2.4. Đủ gate T2.7 "0 hardcoded mới trong stock-detail" cho file đã chạm. Còn lại WhaleBubbleChart "Lệnh mua/bán" giữ cho sweep cuối (không nằm trong file đang sửa).
+- **Validation (thật)**:
+  - `npx tsc --noEmit` → ✅ 0 errors (fix t:(k:any,opts:any) implicit any)
+  - `npm run test:components` → ✅ 10/10, 37/37 (sau fix retry t mock, StockDetailPage 5/5 trước fail `getByText("Thử lại")` do mock trả key)
+  - `npm test` → ✅ 17/17, 221/221
+  - `npm run build` → ✅ 37.68s
+  - `grep -n "Chưa có danh sách\|Cập nhật danh sách\|Chức năng giao dịch\|Thử lại" StockDetailPage.tsx` → 0 hardcoded còn lại (đã qua t) ✅
+- **Residual**:
+  - WhaleBubbleChart "Lệnh mua/bán" + một số "Cập nhật:" literal trong StockDetailTabs để lại cho sweep T2.7 cuối (không blocker).
+- **Next**: **T2.1-step2 React Query** (blocking/deferred/lazy lanes → `useQuery` với `['stock-detail', symbol, ...]` keys, `staleTime 30s`, `refetchInterval 30s`, `QueryProvider` đã có) — slice riêng, cần mock QueryClient trong vitest.
