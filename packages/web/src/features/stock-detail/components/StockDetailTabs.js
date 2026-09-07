@@ -436,11 +436,11 @@ export function StockDetailTabs({
     const incList = financials?.income_statement || [];
     const balList = financials?.balance_sheet || [];
 
-    // Find all quarterly periods across arrays
+    // Find all quarterly periods across arrays — T2.4 FE-only: nới từ 4 lên 8 kỳ (BE đã trả đủ, vnbroker_adapter:1059)
     const getPeriods = (list) => {
       if (!list || list.length === 0) return [];
       const keys = Object.keys(list[0]).filter(k => k !== "item" && k !== "item_id");
-      return keys.slice(0, 4); // Limit to last 4 periods
+      return keys.slice(0, 8); // T2.4: hiển thị 8 kỳ gần nhất thay vì 4
     };
 
     const incPeriods = getPeriods(incList);

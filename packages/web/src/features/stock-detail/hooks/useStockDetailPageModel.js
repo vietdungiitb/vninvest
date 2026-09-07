@@ -6,6 +6,16 @@ import { useRealtimeFeedFromManager } from "../../../context/RealtimeContext.js"
 const DEFAULT_ENV = {};
 const DEFAULT_ORDER_FLOW_WINDOW = "1h";
 
+// T2.1: singleton adapter — xóa 6 chỗ createCoreApiAdapter thủ công (F-15)
+let _cachedAdapter = null;
+let _cachedEnv = null;
+function getAdapter(env) {
+  if (_cachedAdapter && _cachedEnv === env) return _cachedAdapter;
+  _cachedAdapter = createCoreApiAdapter({ env, getToken: env?.getToken });
+  _cachedEnv = env;
+  return _cachedAdapter;
+}
+
 function getLookbackDays(timeframe) {
   const tf = String(timeframe || "").toLowerCase();
   if (tf.includes("m")) {
@@ -106,7 +116,7 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
   const loadBlocking = useCallback(async () => {
     if (!symbol) return;
 
-    const adapter = createCoreApiAdapter({ env, getToken: env.getToken });
+    const adapter = getAdapter(env);
 
     try {
       const [overviewRes, orderFlowRes, sessionFactsCvdRes, whaleSnapshotRes] = await Promise.allSettled([
@@ -167,7 +177,7 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
       loadingDeferred: true,
     }));
 
-    const adapter = createCoreApiAdapter({ env, getToken: env.getToken });
+    const adapter = getAdapter(env);
     const sessionDate = selectedSession?.tradeDate ?? undefined;
 
     async function loadDeferred() {
@@ -211,7 +221,7 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
   const loadMoreWhaleFeed = useCallback(async () => {
     const cursor = modelState.whaleFeedMeta?.next_cursor;
     if (!symbol || !cursor) return;
-    const adapter = createCoreApiAdapter({ env, getToken: env.getToken });
+    const adapter = getAdapter(env);
     const sessionDate = selectedSession?.tradeDate ?? undefined;
     const params = { limit: 50, cursor };
     if (sessionDate) params.session_date = sessionDate;
@@ -243,7 +253,7 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
   // 3. Lazy loading lanes: fetch profile, news, financials based on activeTab
   useEffect(() => {
     if (!symbol) return;
-    const adapter = createCoreApiAdapter({ env, getToken: env.getToken });
+    const adapter = getAdapter(env);
 
     // Fetch profile for Hồ sơ / Cổ đông / Vốn & Cổ tức / Lịch sử sự kiện tabs
     if (
@@ -355,7 +365,7 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
 
   const refreshAdvisoryData = useCallback(async (promptConfig) => {
     if (!symbol) return;
-    const adapter = createCoreApiAdapter({ env, getToken: env.getToken });
+    const adapter = getAdapter(env);
     const startTime = Date.now();
 
     setModelState((s) => ({
@@ -483,3 +493,4 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
     ...modelState,
   };
 }
+

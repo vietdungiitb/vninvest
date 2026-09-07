@@ -5,6 +5,16 @@ import { useParams } from "react-router-dom";
 import { useStockDetailPageModel } from "../features/stock-detail/hooks/useStockDetailPageModel.js";
 import { createCoreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
+
+// T2.1: singleton adapter (F-15)
+let _pageCachedAdapter: any = null;
+let _pageCachedEnv: any = null;
+function getPageAdapter(env: any) {
+  if (_pageCachedAdapter && _pageCachedEnv === env) return _pageCachedAdapter;
+  _pageCachedAdapter = createCoreApiAdapter({ env: env as Record<string, string> });
+  _pageCachedEnv = env;
+  return _pageCachedAdapter;
+}
 import { StockDetailHeader } from "../features/stock-detail/components/StockDetailHeader.js";
 import { StockSessionWitness } from "../features/stock-detail/components/StockSessionWitness.js";
 import VNStockChartPanel from "../components/VNStockChartPanel.js";
@@ -129,7 +139,7 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol: propSymbol, classNa
   // S6: Load watchlists, resolve default, sync isWatched state.
   useEffect(() => {
     if (!symbol) return;
-    const adapter = createCoreApiAdapter({ env: env as Record<string, string> });
+    const adapter = getPageAdapter(env);
     let active = true;
     adapter
       .getWatchlists()
@@ -171,7 +181,7 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol: propSymbol, classNa
     }
     const next = !isWatched;
     setIsWatched(next);
-    const adapter = createCoreApiAdapter({ env: env as Record<string, string> });
+    const adapter = getPageAdapter(env);
     const op = next
       ? adapter.addWatchlistItem(defaultWatchlistId, symbol)
       : adapter.removeWatchlistItem(defaultWatchlistId, symbol);
@@ -384,3 +394,4 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol: propSymbol, classNa
     )
   );
 }
+
