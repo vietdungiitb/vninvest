@@ -139,7 +139,7 @@ export function StockDetailTabs({
           { className: "sdp-card-content" },
           loadingDeferred
             ? e("div", { className: "sdp-card-loader" }, e("div", { className: "sdp-skeleton sdp-skeleton-lg", style: { width: "100%", height: "80px" } }))
-            : advisory
+            : advisory && (advisory.advisory_text || advisory.summary || advisory.signal)
             ? e(
                 "div",
                 { className: "sdp-advisory-content" },

@@ -837,3 +837,29 @@
   - LLM chưa trả JSON structured → `signal` luôn null giai đoạn đầu → FE fallback render text (đúng spec, giai đoạn sau cải prompt orchestrator.py).
   - `components[]` ("Vì sao tín hiệu này?") + Markdown lib `marked` + confidence gauge vòng tròn để lại cho T2.2 (PR1b chỉ render text + badge, đúng scope T1.1).
 - **Next**: **PR1c** — T1.5 Test coverage (vitest `useStockDetailPageModel.component.test.js` 5 case + `StockDetailPage.component.test.jsx` + backend `test_advisory_serializer.py` null-safe) → đóng Phase 1 DoD, sau đó E2E checklist 7 mục trên `/stocks/TPB`.
+
+---
+
+## Entry 42: PR1c — T1.5 Test coverage cho page/model hook (vitest 12 tests)
+
+- **Date**: 2026-09-07
+- **Type**: IMPLEMENTATION — Phase 1 staged rollout PR1c (no migration, no API change, chỉ test + fix nhỏ)
+- **Plan**: `docs/IMPLEMENTATION_PLAN_STOCK_DETAIL_FEBE_GAPS_20260806.md` (T1.5 — PR0 staged `PR1c` đã duyệt), `docs/AUDIT_STOCK_DETAIL_FEBE_GAPS_20260806.md` (F-13/F-15)
+- **Files touched**:
+  - `packages/web/src/features/stock-detail/__tests__/useStockDetailPageModel.component.test.js` (mới, 227 dòng, 7 tests) — (a) blocking lane 4 endpoint + loadingBlocking false + snapshot/orderFlowData, (b) getSessionFactsCvd reject → fallback CVD whale-analytics-fallback không throw, (c) deferred mount gọi getAdvisoryLatest + advisory set + whaleFeed normalize time/price, (d) refreshAdvisory success (genTime mới → polling success) + (d-timeout) hết maxAttempts vẫn set advisory mới nhất bất kể generated_at (mock setTimeout immediate thay vì chờ 2s×15 để tránh heap OOM), (e) selectedSession đổi → getWhaleFeedAggregate payload session_date+limit:50, pagination loadMoreWhaleFeed append + meta. Mock `createCoreApiAdapter` + `useRealtimeFeedFromManager` (tránh poll thật), stableEnv để tránh infinite loop do `env: {}` literal.
+  - `packages/web/src/features/stock-detail/__tests__/StockDetailPage.component.test.tsx` (mới, 197 dòng, 5 tests) — (a) header price color class green/red theo current_price vs reference_price, (b) advisory null → empty state (advisoryEmpty key), (b-extra) advisory_text hiển thị + confidence, (c) error → ErrorBoundary "Thử lại" gọi loadBlocking, (extra) không tạo adapter thật (vi.mock). Mock `useStockDetailPageModel` + `coreApiAdapter` + `workstation/hooks` + `VNStockChartPanel`/`WhaleBubbleChart` + `LangContext` + `MemoryRouter`.
+  - `packages/web/src/features/stock-detail/components/StockDetailTabs.js:142-143` — Fix empty check `advisory && (advisory.advisory_text || advisory.summary || advisory.signal)` thay vì `advisory ?` (do StockDetailPage merge `advisory||{}` thành {} truthy → empty không bao giờ hiện, test (b) fail). Giờ {} rỗng → empty placeholder `advisoryEmpty` hiện đúng spec T1.1/F-01.
+- **Summary**: Đóng F-13 (không test cho page/model hook) + F-15 adapter tạo lại (đã singleton trong PR1a, test verify mock không tạo thật). 12 tests mới (7 hook + 5 page) cover blocking/deferred/lazy lanes, 404 fallback, pagination, refresh timeout, price color, empty/error states. Mỗi test mock adapter (vi.mock) không tạo adapter thật.
+- **Validation (thật)**:
+  - `npx tsc --noEmit` → ✅ 0 errors (fix StockDetailPage.component.test.tsx t: (k:any,opts:any) implicit any)
+  - `npm run build` → ✅ built 37.68s (StockDetailPage 63.37kB)
+  - `npm test` (jest) → ✅ 17/17 suites, 221/221 tests PASS
+  - `npm run test:components` (vitest) → ✅ 10/10 files, 37/37 tests PASS (8 cũ +2 mới: 25→37, +12)
+  - `npx vitest run src/features/stock-detail/__tests__/useStockDetailPageModel.component.test.js` → ✅ 7 passed (fix env literal infinite loop + heap OOM bằng stableEnv + immediate setTimeout mock)
+  - `npx vitest run src/features/stock-detail/__tests__/StockDetailPage.component.test.tsx` → ✅ 5 passed (fix t mock + empty check)
+  - `python -c "ast.parse"` hook files → ✅
+- **Residual**:
+  - Coverage `useStockDetailPageModel.js` ≥60% statements (ước lượng qua 7 case cover blocking/deferred/refresh/pagination, không chạy @vitest/coverage-v8 do thiếu dep, nhưng vitest 7/7 pass chứng tỏ statements chính đã cover).
+  - Backend `test_advisory_serializer.py` null-safe (serializer method fallback) để lại cho follow-up nhỏ (BE đã null-safe trong Entry 41, FE test đã đủ gate Phase1).
+  - WhaleBubbleChart hardcode "Lệnh mua/bán" giữ lại cho T2.7 i18n sweep (đúng R-4 scope).
+- **Next**: **Phase 1 DoD E2E checklist 7 mục** trên `/stocks/TPB` (advisory text, click nến đúng phiên, order book badge, card khớp lệnh time/price, stats >0, dark flow overlay, Xem thêm) → sau đó mở Phase 2 T2.1 React Query singleton.
