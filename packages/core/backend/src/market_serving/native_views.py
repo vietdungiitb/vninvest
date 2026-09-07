@@ -336,6 +336,8 @@ class RealtimeDepthChartView(APIView):
                 'spread': 0,
                 'timestamp': timezone.now().isoformat(),
                 'note': 'no_snapshot_data',
+                'is_mock': True,
+                'source': 'synthetic_from_snapshot',
             })
         
         # Get tick size from security master or default to 0.05
@@ -404,6 +406,9 @@ class RealtimeDepthChartView(APIView):
             'reference_price': ref_price,
             'last_price': last_price,
             'tick_size': tick_size,
+            'is_mock': True,
+            'source': 'synthetic_from_snapshot',
+            'note': 'estimates',
         })
     
     def _get_tick_size(self, symbol):

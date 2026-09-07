@@ -29,17 +29,19 @@ function signalColorClass(signal) {
   return "sdp-signal-neutral";
 }
 
-function signalLabel(signal) {
+function signalLabel(signal, t) {
+  const tk = (k) => `stockDetail.page.${k}`;
+  const key = String(signal || "").toLowerCase();
   const map = {
-    buy: "Mua",
-    strong_buy: "Mua Mạnh",
-    sell: "Bán",
-    strong_sell: "Bán Mạnh",
-    neutral: "Trung lập",
-    hold: "Giữ",
-    watch: "Theo dõi",
+    buy: t(tk("signalBuy"), { defaultValue: "Mua" }),
+    strong_buy: t(tk("signalStrongBuy"), { defaultValue: "Mua Mạnh" }),
+    sell: t(tk("signalSell"), { defaultValue: "Bán" }),
+    strong_sell: t(tk("signalStrongSell"), { defaultValue: "Bán Mạnh" }),
+    neutral: t(tk("signalNeutral"), { defaultValue: "Trung lập" }),
+    hold: t(tk("signalHold"), { defaultValue: "Giữ" }),
+    watch: t(tk("signalWatch"), { defaultValue: "Theo dõi" }),
   };
-  return map[String(signal || "").toLowerCase()] || signal || "—";
+  return map[key] || signal || "—";
 }
 
 export function StockDetailTabs({
@@ -51,6 +53,8 @@ export function StockDetailTabs({
   snapshot,
   orderFlowData,
   whaleFeed,
+  whaleFeedMeta,
+  onLoadMoreWhaleFeed,
   advisory,
   selectedSession,
   loadingDeferred,
@@ -79,7 +83,7 @@ export function StockDetailTabs({
   function renderGiaoDich() {
     const sessionLabel = selectedSession?.tradeDate
       ? new Date(selectedSession.tradeDate).toLocaleDateString("vi-VN")
-      : "Hôm nay";
+      : t(tk("sessionToday"), { defaultValue: "Hôm nay" });
 
     return e(
       "div",
@@ -142,7 +146,7 @@ export function StockDetailTabs({
                 e(
                   "div",
                   { className: "sdp-advisory-headline" },
-                  e("div", { className: `sdp-advisory-badge-large ${signalColorClass(advisory.signal)}` }, signalLabel(advisory.signal)),
+                  e("div", { className: `sdp-advisory-badge-large ${signalColorClass(advisory.signal)}` }, signalLabel(advisory.signal, t)),
                   e(
                     "div",
                     { className: "sdp-advisory-meta-info" },
@@ -162,13 +166,15 @@ export function StockDetailTabs({
               )
         )
       ),
-      // StockContextDeck (Shark Alerts, depth, strength matrix)
+      // StockContextDeck (Shark Alerts, depth, strength matrix) — T1.4: forward pagination meta (R-8)
       e(StockContextDeck, {
         symbol,
         selectedSession,
         snapshot,
         orderFlowData,
         whaleFeed,
+        whaleFeedMeta,
+        onLoadMoreWhaleFeed,
         loading: loadingDeferred
       })
     );

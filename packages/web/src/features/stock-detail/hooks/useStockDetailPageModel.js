@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createCoreApiAdapter } from "../../../adapters/coreApiAdapter.js";
-import { buildEffectiveOrderFlowData } from "../orderFlowFallback.js";
+import { buildEffectiveOrderFlowData, normalizeWhaleFeedItem } from "../orderFlowFallback.js";
 import { useRealtimeFeedFromManager } from "../../../context/RealtimeContext.js";
 
 const DEFAULT_ENV = {};
@@ -65,6 +65,7 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
     advisory: null,
     advisoryFallbackFlags: null,
     whaleFeed: [],
+    whaleFeedMeta: { next_cursor: null, has_more: false },
   });
 
   const mountedRef = useRef(true);
@@ -157,7 +158,7 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
   }, [env, symbol, activeTimeframe, loadBlocking]);
 
   // 2. Deferred Lane: AI Advisory and Whale Feed matching the currently selected session date.
-  // Dependencies: symbol, selectedSession.
+  // Dependencies: symbol, selectedSession. T1.2: session_date passed, limit 50, normalize items (T1.4).
   useEffect(() => {
     if (!symbol) return;
 
@@ -171,15 +172,24 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
 
     async function loadDeferred() {
       try {
-        const whaleFeedRes = await adapter.getWhaleFeedAggregate(symbol, sessionDate ? { session_date: sessionDate } : {}).catch(() => null);
+        const params = { limit: 50 };
+        if (sessionDate) params.session_date = sessionDate;
+        const whaleFeedRes = await adapter.getWhaleFeedAggregate(symbol, params).catch(() => null);
 
         if (!mountedRef.current) return;
+
+        const rawResults = whaleFeedRes?.results ?? [];
+        const normalized = Array.isArray(rawResults) ? rawResults.map(normalizeWhaleFeedItem) : [];
 
         setModelState((s) => ({
           ...s,
           loadingDeferred: false,
           advisory: null,
-          whaleFeed: whaleFeedRes?.results ?? [],
+          whaleFeed: normalized,
+          whaleFeedMeta: {
+            next_cursor: whaleFeedRes?.next_cursor ?? null,
+            has_more: Boolean(whaleFeedRes?.has_more),
+          },
         }));
       } catch (err) {
         if (!mountedRef.current) return;
@@ -192,6 +202,32 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
 
     loadDeferred();
   }, [env, symbol, selectedSession]);
+
+  // T1.4 F-08: pagination — load more whale feed with cursor
+  const loadMoreWhaleFeed = useCallback(async () => {
+    const cursor = modelState.whaleFeedMeta?.next_cursor;
+    if (!symbol || !cursor) return;
+    const adapter = createCoreApiAdapter({ env, getToken: env.getToken });
+    const sessionDate = selectedSession?.tradeDate ?? undefined;
+    const params = { limit: 50, cursor };
+    if (sessionDate) params.session_date = sessionDate;
+    try {
+      const res = await adapter.getWhaleFeedAggregate(symbol, params);
+      if (!mountedRef.current) return;
+      const rawResults = res?.results ?? [];
+      const normalized = Array.isArray(rawResults) ? rawResults.map(normalizeWhaleFeedItem) : [];
+      setModelState((s) => ({
+        ...s,
+        whaleFeed: [...(s.whaleFeed || []), ...normalized],
+        whaleFeedMeta: {
+          next_cursor: res?.next_cursor ?? null,
+          has_more: Boolean(res?.has_more),
+        },
+      }));
+    } catch {
+      // keep current feed on error
+    }
+  }, [env, symbol, selectedSession, modelState.whaleFeedMeta?.next_cursor]);
 
   const [activeTab, setActiveTab] = useState("giao-dich");
   const [news, setNews] = useState(null);
@@ -439,6 +475,7 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
     loadingProfile,
     refreshAdvisoryData,
     loadBlocking,
+    loadMoreWhaleFeed,
     ...modelState,
   };
 }

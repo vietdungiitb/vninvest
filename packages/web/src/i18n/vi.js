@@ -2829,6 +2829,23 @@ const vi = {
       dominateBuy: 'ÁP ĐẢO MUA',
       activeBuy: 'MUA CHỦ ĐỘNG',
       activeSell: 'BÁN CHỦ ĐỘNG',
+      signalBuy: 'Mua',
+      signalStrongBuy: 'Mua Mạnh',
+      signalSell: 'Bán',
+      signalStrongSell: 'Bán Mạnh',
+      signalNeutral: 'Trung lập',
+      signalHold: 'Giữ',
+      signalWatch: 'Theo dõi',
+      sessionToday: 'Hôm nay',
+      badgeCvdDarkFlow: 'CVD & Dark Flow',
+      badgeOrderBook: 'Order Book',
+      badgeInstitutionalRetail: 'Institutional / Retail',
+    },
+  },
+  workstation: {
+    orderBook: {
+      estimatedBadge: 'Dữ liệu ước tính',
+      estimatedTooltip: 'Sổ lệnh đang được ước tính từ snapshot — chưa phải dữ liệu khớp lệnh thật',
     },
   },
   portfolioManagement: {

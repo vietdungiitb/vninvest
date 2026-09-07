@@ -26,6 +26,8 @@ export function StockContextDeck({
   snapshot,
   orderFlowData,
   whaleFeed,
+  whaleFeedMeta,
+  onLoadMoreWhaleFeed,
   loading
 }) {
   const { t } = useI18n();
@@ -53,7 +55,7 @@ export function StockContextDeck({
           "div",
           { className: "sdp-card-header" },
           e("h3", null, `🦈 ${t(tk("sharkTitle"))} ${hasActiveSession ? `(${t(tk("sharkSession"))})` : `(${t(tk("sharkRealtime"))})`}`),
-          e("span", { className: "sdp-card-badge" }, "CVD & Dark Flow")
+          e("span", { className: "sdp-card-badge" }, t(tk("badgeCvdDarkFlow"), { defaultValue: "CVD & Dark Flow" }))
         ),
         e(
           "div",
@@ -68,34 +70,54 @@ export function StockContextDeck({
               )
             : whaleFeed && whaleFeed.length > 0
             ? e(
-                "ul",
-                { className: "sdp-matched-list" },
-                whaleFeed.slice(0, 5).map((ev, idx) => {
-                  const side = (ev.side || "buy").toLowerCase();
-                  const isBuy = side === "buy";
-                  return e(
-                    "li",
-                    { key: ev.id ?? ev.event_id ?? idx, className: `sdp-matched-item side-${side}` },
-                    e("span", { className: `sdp-indicator-dot ${isBuy ? "dot-buy" : "dot-sell"}` }),
-                    e(
-                      "span",
-                      { className: "sdp-matched-time" },
-                      ev.event_time ?? ev.triggered_at
-                        ? new Date(ev.event_time ?? ev.triggered_at).toLocaleTimeString("vi-VN", {
-                            hour: "2-digit",
-                            minute: "2-digit"
-                          })
-                        : "—"
-                    ),
-                    e(
-                      "span",
-                      { className: `sdp-matched-side ${isBuy ? "text-buy" : "text-sell"}` },
-                      isBuy ? t(tk("buyActive")) : t(tk("sellActive"))
-                    ),
-                    e("span", { className: "sdp-matched-vol" }, `${fmtCompact(ev.volume ?? ev.net_volume)} CP`),
-                    e("span", { className: "sdp-matched-price" }, fmtPrice(ev.price ?? ev.avg_price))
-                  );
-                })
+                "div",
+                null,
+                e(
+                  "ul",
+                  { className: "sdp-matched-list" },
+                  whaleFeed.slice(0, 5).map((ev, idx) => {
+                    const side = (ev.side || "buy").toLowerCase();
+                    const isBuy = side === "buy";
+                    // T1.4: BE trả ts/matched_value → FE chuẩn hoá time/price (normalizeWhaleFeedItem)
+                    const displayTime = ev.time ?? ev.ts ?? ev.alert_at ?? ev.event_time ?? ev.triggered_at;
+                    const displayPrice = ev.price ?? ev.matched_value ?? ev.value ?? ev.avg_price;
+                    const displayVolume = ev.volume ?? ev.net_volume;
+                    return e(
+                      "li",
+                      { key: ev.id ?? ev.event_id ?? idx, className: `sdp-matched-item side-${side}` },
+                      e("span", { className: `sdp-indicator-dot ${isBuy ? "dot-buy" : "dot-sell"}` }),
+                      e(
+                        "span",
+                        { className: "sdp-matched-time" },
+                        displayTime
+                          ? new Date(displayTime).toLocaleTimeString("vi-VN", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              second: "2-digit"
+                            })
+                          : "—"
+                      ),
+                      e(
+                        "span",
+                        { className: `sdp-matched-side ${isBuy ? "text-buy" : "text-sell"}` },
+                        isBuy ? t(tk("buyActive")) : t(tk("sellActive"))
+                      ),
+                      e("span", { className: "sdp-matched-vol" }, `${fmtCompact(displayVolume)} CP`),
+                      e("span", { className: "sdp-matched-price" }, fmtPrice(displayPrice))
+                    );
+                  })
+                ),
+                whaleFeedMeta?.has_more &&
+                  e(
+                    "button",
+                    {
+                      className: "sdp-load-more-btn",
+                      type: "button",
+                      onClick: onLoadMoreWhaleFeed,
+                      style: { marginTop: "10px", width: "100%", padding: "6px", fontSize: "0.78rem", borderRadius: "8px", border: "1px solid rgba(148,163,184,0.25)", background: "rgba(15,23,42,0.6)", color: "#cbd5e1", cursor: "pointer" },
+                    },
+                    "Xem thêm"
+                  )
               )
             : e(
                 "div",
@@ -114,7 +136,7 @@ export function StockContextDeck({
           "div",
           { className: "sdp-card-header" },
           e("h3", null, `📊 ${t(tk("depthTitle"))}`),
-          e("span", { className: "sdp-card-badge" }, "Order Book")
+          e("span", { className: "sdp-card-badge" }, t(tk("badgeOrderBook"), { defaultValue: "Order Book" }))
         ),
         e(
           "div",
@@ -202,7 +224,7 @@ export function StockContextDeck({
           "div",
           { className: "sdp-card-header" },
           e("h3", null, `🛡️ ${t(tk("strengthTitle"))}`),
-          e("span", { className: "sdp-card-badge" }, "Institutional / Retail")
+          e("span", { className: "sdp-card-badge" }, t(tk("badgeInstitutionalRetail"), { defaultValue: "Institutional / Retail" }))
         ),
         e(
           "div",

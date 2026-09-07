@@ -2831,6 +2831,23 @@ const en = {
       dominateBuy: 'DOMINANT BUY',
       activeBuy: 'BUY ACTIVE',
       activeSell: 'SELL ACTIVE',
+      signalBuy: 'Buy',
+      signalStrongBuy: 'Strong Buy',
+      signalSell: 'Sell',
+      signalStrongSell: 'Strong Sell',
+      signalNeutral: 'Neutral',
+      signalHold: 'Hold',
+      signalWatch: 'Watch',
+      sessionToday: 'Today',
+      badgeCvdDarkFlow: 'CVD & Dark Flow',
+      badgeOrderBook: 'Order Book',
+      badgeInstitutionalRetail: 'Institutional / Retail',
+    },
+  },
+  workstation: {
+    orderBook: {
+      estimatedBadge: 'Estimated data',
+      estimatedTooltip: 'Order book is estimated from snapshot — not real matched orders',
     },
   },
   portfolioManagement: {

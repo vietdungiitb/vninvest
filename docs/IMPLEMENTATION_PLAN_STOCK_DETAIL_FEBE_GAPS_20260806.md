@@ -11,7 +11,8 @@
 |---|---|
 | `docs/AUDIT_STOCK_DETAIL_FEBE_GAPS_20260806.md` | 15 findings + trace file:line + roadmap |
 | `docs/STOCK_DETAIL_PAGE_AUDIT_20260717.md` | Audit cũ (21 findings — 8 đã đóng) |
-| `docs/CODE_CHANGE_AUDIT_LEDGER.md` | Ledger (Entry 36 = audit này, Entry 37 = plan) |
+| `docs/CODE_CHANGE_AUDIT_LEDGER.md` | Ledger (Entry 36 = audit này, Entry 37 = plan, Entry 38 = independent review, Entry 39 = PR0 fix plan) |
+| `docs/AUDIT_PLAN_STOCK_DETAIL_INDEPENDENT_REVIEW_20260806.md` | Phản biện độc lập plan — 5 hiệu chỉnh PR0 (C-1/C-2/R-1/R-2/R-3/R-4) |
 | AGENTS.md | Quy ước i18n, SOC patterns, build verification |
 
 ## Tổng quan timeline
@@ -26,7 +27,7 @@
 
 # PHASE 1 — Truth & Contract Fixes
 
-**Mục tiêu:** Trang hiển thị đúng dữ liệu thật, không còn field chết / dữ liệu giả. **Ưu tiên thực hiện T1.1 → T1.4 tuần tự** (T1.5 viết test song song để tăng coverage cho code mới).
+**Mục tiêu:** Trang hiển thị đúng dữ liệu thật, không còn field chết / dữ liệu giả. **Trình tự staged rollout (PR0 đã duyệt 2026-08-06, ref `docs/AUDIT_PLAN_STOCK_DETAIL_INDEPENDENT_REVIEW_20260806.md`): PR1a (T1.2+T1.3+T1.4, backward-compatible, không migration) → PR1b (T1.1, có migration `structured_output`) → PR1c (T1.5 tests).** Gate Phase1→Phase2 giữ nguyên: tất cả T1.1–T1.5 phải đóng DoD mới sang Phase 2 (chỉ đổi thứ tự nội bộ Phase 1, không bỏ T1.1). T1.5 viết test song song để tăng coverage cho code mới.
 
 ---
 
@@ -141,14 +142,15 @@
 ### Bước thực hiện
 - [ ] 1. `orderFlowFallback.js` — thêm 2 function chuẩn hoá (export để test):
   - `normalizeWhaleFeedItem(item)`: map `ts ?? alert_at` → `time`, `matched_value ?? value` → `price`, `volume` giữ nguyên, `side` giữ nguyên, `size_class` giữ nguyên.
-  - `normalizeWhaleSummary(summary, items)`: map BE `{whale_order_count, extreme_order_count}` → FE `{total_orders: whale_order_count, buy_orders: count(side==='buy' trong items), sell_orders: count(side==='sell'), internal_orders: count(side khác)}`. Nếu BE trả sẵn `total_orders` thì giữ nguyên (backward-compatible).
+  - `normalizeWhaleSummary(summary, items)`: map BE `{whale_order_count, extreme_order_count}` → FE `{total_orders: whale_order_count, buy_orders: count(side==='buy' trong items), sell_orders: count(side==='sell'), internal_orders: 0}` (backend chưa từng trả `internal_orders` — `portfolio_analytics_views.py:1255-1256` — nên default 0; nếu BE sau này trả `total_orders` thì giữ nguyên backward-compatible). `extreme_order_count` có thể expose riêng làm KPI "Lệnh cực lớn" nếu cần (R-2 independent review).
 - [ ] 2. `useStockDetailPageModel.js`: deferred lane map `whaleFeedRes.results` qua `normalizeWhaleFeedItem`; thêm state `whaleFeedMeta = { next_cursor, has_more }` từ response (đã có sẵn: legacy_views.py:816-818).
 - [ ] 3. `StockContextDeck.js:83-96`: đọc `ev.time` + `ev.price` (đã chuẩn hoá); bỏ `??` fallback chuỗi field sai.
-- [ ] 4. `WhaleBubbleChart.jsx:1771-1810`: dùng `orderData.summary` đã chuẩn hoá từ `buildEffectiveOrderFlowData` (nếu summary hiện lấy từ snapshot trực tiếp thì chuyển qua normalize).
-- [ ] 5. `VNStockChartPanel.js:128-137`: `mappedWhaleOrders` đọc `s.price ?? s.close ?? 0` → sau khi chuẩn hoá là `s.price` (đã map từ matched_value); dòng 260: `darkFlowStrength: orderFlowData?.dark_flow?.strength ?? null` (BE trả `dark_flow` object — stock_mgmt_native_views.py:2112-2125).
-- [ ] 6. `market.js`: xoá method duplicate `getWhaleFeedAggregate` ở dòng 180-190 (giữ method dòng 394-400 gọi `/realtime/whale-feed-aggregate/`); sửa `getSessionFacts` (dòng ~39) `?date=` → `trade_date=` (BE đọc `trade_date` — market_serving/views.py:35-52).
+- [ ] 4. `WhaleBubbleChart.jsx` (R-2/C-2 independent review — luồng tự fetch): component **không** đi qua `buildEffectiveOrderFlowData`/`orderFlowFallback` mà tự fetch `adapter.getWhaleAnalyticsSnapshot` tại `WhaleBubbleChart.jsx:642`. Trong handler fetch đó, ngay sau khi nhận snapshot: `import { normalizeWhaleSummary } from "features/stock-detail/orderFlowFallback.js"` rồi `summary = normalizeWhaleSummary(snapshot.summary, snapshot.bubble_series ?? [])`; render `WhaleBubbleChart.jsx:1771-1810` dùng summary đã chuẩn hoá; `summary?.internal_orders` default 0 nên bar "Internal" không còn 0-width thầm lặng.
+- [ ] 5. `VNStockChartPanel.js:128-137` (R-1 independent review — marker plot tại giá 0): `mappedWhaleOrders` hiện `price: s.price ?? s.close ?? 0` — nếu cả 2 thiếu thì marker vẽ tại 0. Sửa cùng task F-04: map qua `normalizeWhaleFeedItem` trước hoặc inline `price: s.matched_value ?? s.price ?? s.close ?? null` và skip item khi `price == null` (không plot); dòng 260: `darkFlowStrength: orderFlowData?.dark_flow?.strength ?? null` (BE trả `dark_flow` object — stock_mgmt_native_views.py:2112-2125).
+- [ ] 6. `market.js`: xoá method duplicate `getWhaleFeedAggregate` ở dòng 180-190 (giữ method dòng 394-400 gọi `/realtime/whale-feed-aggregate/` — R-3 independent review, xoá đúng bản cũ `market.js:180`, giữ bản native `:394`); sửa `getSessionFacts` (dòng ~39) `?date=` → `trade_date=` (BE đọc `trade_date` — market_serving/views.py:35-52).
 - [ ] 7. `StockDetailPage.tsx:277`: bỏ prop `flowData` (chỉ giữ `orderFlowData`).
 - [ ] 8. Pagination (F-08): render nút "Xem thêm" khi `has_more` → gọi `getWhaleFeedAggregate` với `cursor: next_cursor`; nâng limit mặc định FE từ 20 → 50.
+- [ ] 9. **i18n per-component (R-4 independent review):** mọi string hardcode nằm trong file đang sửa ở bước 3-5 (`StockDetailTabs.js` signalLabel "Mua/Bán/Chờ", `WhaleBubbleChart.jsx:1666-1667` "Lệnh mua/bán", `StockContextDeck.js` "CVD & Dark Flow") phải chuyển sang `stockDetail.*` ngay trong cùng commit, không đẩy sang T2.7/T3 scan-batch.
 
 ### Minh chứng cần đạt (DoD)
 | # | Minh chứng | Cách kiểm tra |
@@ -209,11 +211,12 @@
 - [ ] Khai thác widget `workspaceId` để lưu drawing layouts theo symbol.
 - **Minh chứng:** E2E tay 3 scenario (dark flow hiển thị khi strength>0; marker đúng giá; đổi timeframe không reset marker); widget messages i18n đầy đủ.
 
-## T2.4 — Financials hoàn thiện
-- [ ] Backend: bỏ giới hạn 4 period (stock_mgmt_native_views.py financials — verify hiện trả bao nhiêu kỳ) → 8-12 kỳ.
-- [ ] Thêm Cash Flow + chỉ số định giá (P/E, P/B) percentile so ngành (nếu dữ liệu có sẵn — verify).
+## T2.4 — Financials hoàn thiện (C-1 independent review — FE-only, backend không giới hạn)
+
+- [ ] **FE-only:** nới `StockDetailTabs.js:430` `keys.slice(0, 4)` → `slice(0, 8)` (hoặc 12 theo chuẩn sản phẩm — chốt trước khi code; backend `market_data/vnbroker_adapter.py:1059` `fetch_company_financials` đã trả toàn bộ kỳ, không cần đổi). Verify: BE trả ≥8 kỳ quarterly là đúng, chỉ FE đang cắt.
+- [ ] Thêm Cash Flow + chỉ số định giá (P/E, P/B) percentile so ngành (nếu dữ liệu có sẵn — verify `fetch_company_financials` đã có income/balance/ratio).
 - [ ] Highlight chữ ký tăng/giảm (màu xanh/đỏ theo delta) trong bảng.
-- **Minh chứng:** API trả ≥8 kỳ; component test render đủ cột; i18n đủ.
+- **Minh chứng:** Table render ≥8 cột kỳ; API không đổi (vẫn trả đủ kỳ); component test render đủ cột; i18n đủ.
 
 ## T2.5 — News + AI summary
 - [ ] Backend: `ai-summary` STUB (stock_mgmt_native_views.py:2258) → nối real generation qua advisory orchestrator (có sẵn orchestration).
@@ -247,7 +250,7 @@
 
 # Definition of Done tổng thể
 
-1. **T1.1–T1.5 (Phase 1) bắt buộc đóng trước khi merge.** T2.x không được bắt đầu khi còn P0 mở.
+1. **T1.1–T1.5 (Phase 1) bắt buộc đóng trước khi merge — thứ tự staged rollout PR1a→PR1b→PR1c đã duyệt không vi phạm gate này (chỉ đổi thứ tự nội bộ Phase 1, T2.x vẫn chặn cho đến khi tất cả P0 đóng).** T2.x không được bắt đầu khi còn P0 mở.
 2. Mỗi task: tsc + vitest + jest + build xanh; backend test app tương ứng xanh.
 3. Mỗi task: cập nhật `CODE_CHANGE_AUDIT_LEDGER.md` (Entry mới: Type=Implementation, Files touched, Validation thật).
 4. E2E checklist cuối Phase 1 (chạy tay trên `/stocks/TPB`):

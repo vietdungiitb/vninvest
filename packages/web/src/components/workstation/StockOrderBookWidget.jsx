@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { createElement } from "react";
+import { useI18n } from "../../context/LangContext.js";
 
 /**
  * StockOrderBookWidget - Market Depth (Order Book) Display
@@ -20,6 +21,7 @@ import { createElement } from "react";
  */
 export function StockOrderBookWidget({ orderBook, loading, error, onRefresh }) {
   const e = createElement;
+  const { t } = useI18n();
 
   // Skeleton rows for loading state
   const skeletonRows = useMemo(() => [
@@ -144,7 +146,21 @@ export function StockOrderBookWidget({ orderBook, loading, error, onRefresh }) {
     e(
       "div",
       { className: "ob-header" },
-      e("h3", { className: "ob-title" }, "Độ sâu thị trường (Market Depth)"),
+      e(
+        "div",
+        { className: "ob-title-row", style: { display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" } },
+        e("h3", { className: "ob-title" }, "Độ sâu thị trường (Market Depth)"),
+        orderBook?.is_mock &&
+          e(
+            "span",
+            {
+              className: "ob-estimated-badge",
+              title: t("workstation.orderBook.estimatedTooltip", { defaultValue: "Sổ lệnh đang được ước tính từ snapshot — chưa phải dữ liệu khớp lệnh thật" }),
+              style: { background: "rgba(245, 158, 11, 0.18)", border: "1px solid rgba(245, 158, 11, 0.45)", color: "#fbbf24", borderRadius: "9999px", padding: "2px 8px", fontSize: "0.68rem", fontWeight: "700", letterSpacing: "0.02em" },
+            },
+            t("workstation.orderBook.estimatedBadge", { defaultValue: "Dữ liệu ước tính" })
+          )
+      ),
       orderBook && spread !== undefined && e(
         "div",
         { className: "ob-spread" },

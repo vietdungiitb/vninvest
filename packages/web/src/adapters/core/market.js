@@ -36,7 +36,8 @@ export function createMarketClient({ coreGet, corePost }) {
      */
     getSessionFacts(symbol, date) {
       if (!symbol) throw new Error("symbol is required for getSessionFacts");
-      const query = date ? `?date=${encodeURIComponent(date)}` : "";
+      // T1.4 F-10: BE reads `trade_date` (market_serving/views.py:35-52), not `date`
+      const query = date ? `?trade_date=${encodeURIComponent(date)}` : "";
       return coreGet(
         `/session-facts/${encodeURIComponent(symbol.toUpperCase())}/${query}`
       );
@@ -167,26 +168,6 @@ export function createMarketClient({ coreGet, corePost }) {
         Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
       ).toString();
       return coreGet(`/stock-management/portfolio/news-digest/${query ? `?${query}` : ""}`);
-    },
-
-    /**
-     * Get WhaleAlertCanonical feed for a symbol.
-     * Response includes cursor-pagination 
-ext`/`previous` links.
-     * @param {string} symbol
-     * @param {object} [params] - Additional filters: session_date, cursor
-     * @returns {Promise<{results: object[], next: string|null, previous: string|null}>}
-     */
-    getWhaleFeedAggregate(symbol, params = {}) {
-      if (!symbol) throw new Error("symbol is required for getWhaleFeedAggregate");
-      const query = new URLSearchParams(
-        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
-      ).toString();
-      return coreGet(
-        `/whale-feed-aggregate/${encodeURIComponent(symbol.toUpperCase())}/${
-          query ? `?${query}` : ""
-        }`
-      );
     },
 
     /**

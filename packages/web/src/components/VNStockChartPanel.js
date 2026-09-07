@@ -28,7 +28,6 @@ export default function VNStockChartPanel({
   onTimeframeChange,
   onVisibleRangeChange,
   onSessionChange,
-  flowData = null,
   whaleSignals = [],
   orderFlowData = null,
   enableCVD = false,
@@ -126,13 +125,21 @@ export default function VNStockChartPanel({
   const whaleTimes = useViewportWhaleMarkers(candlesForHook, startIndex, endIndex);
 
   const mappedWhaleOrders = useMemo(() => {
-    const signalsOrders = whaleSignals.map(s => ({
-      ts: s.ts ?? s.timestamp,
-      price: s.price ?? s.close ?? 0,
-      volume: s.volume ?? 0,
-      side: s.side || 'buy',
-      size_class: 'shark',
-    }));
+    // T1.4 R-1: BE trả matched_value/ts — map đầy đủ alias, skip khi thiếu price để không plot tại 0
+    const signalsOrders = whaleSignals
+      .map((s) => {
+        const price = s.matched_value ?? s.value ?? s.price ?? s.close ?? null;
+        if (price == null || !Number.isFinite(Number(price))) return null;
+        const ts = s.ts ?? s.alert_at ?? s.time ?? s.timestamp ?? null;
+        return {
+          ts,
+          price: Number(price),
+          volume: s.volume ?? s.net_volume ?? 0,
+          side: s.side || 'buy',
+          size_class: s.size_class || 'shark',
+        };
+      })
+      .filter(Boolean);
     return mapToWhaleOrders([...signalsOrders, ...(orderFlowData?.whale_orders || [])]);
   }, [whaleSignals, orderFlowData]);
 
@@ -257,7 +264,7 @@ export default function VNStockChartPanel({
           whaleOrders: mappedWhaleOrders,
           enableCVD,
           externalCvdSeries: mappedCvdSeries?.length ? mappedCvdSeries : undefined,
-          darkFlowStrength: orderFlowData?.darkFlowStrength ?? null,
+          darkFlowStrength: orderFlowData?.dark_flow?.strength ?? orderFlowData?.darkFlow?.strength ?? orderFlowData?.darkFlowStrength ?? orderFlowData?.dark_flow_strength ?? null,
           darkFlowSignalType: undefined,
           onClick: handleClick,
           onVisibleRangeChange: handleVisibleRangeChange,

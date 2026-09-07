@@ -721,3 +721,87 @@
   - Phase 3 (10-15 ngay): WebSocket, accessibility, observability, SEO/PWA, analytics.
   - DoD: moi task tsc + vitest + jest + build + backend test xanh; E2E checklist 7 muc; i18n 0 hardcoded moi; cap nhat ledger moi task.
 - **Validation**: khong chay build/test (khong doi code).
+
+---
+
+## Entry 38: Independent review implementation plan Stock Detail FE-BE - 2026-08-06 - 5 hieu chinh truoc kickoff
+
+- **Date**: 2026-08-06
+- **Type**: AUDIT (research only, khong doi code)
+- **Report**: docs/AUDIT_PLAN_STOCK_DETAIL_INDEPENDENT_REVIEW_20260806.md
+- **Source**: docs/IMPLEMENTATION_PLAN_STOCK_DETAIL_FEBE_GAPS_20260806.md (Entry 37)
+- **Files touched**: khong (chi tao docs)
+- **Summary**:
+  - Xac nhan DUNG: F-03 depth-chart mock (native_views.py:318-319), F-06 summary mismatch (portfolio_analytics_views.py:1254-1257 vs WhaleBubbleChart.jsx:1665-1667,1771-1810), F-01 serializer thieu signal/confidence (advisory/serializers.py:49-60), F-02 filter session_date kha thi (index san co).
+  - CONTRADICTIONS:
+    - T2.4 tro sai lop: backend KHONG gioi han period (vnbroker_adapter.py:1059-1118 tra toan bo); gioi han 4 ky nam o FE keys.slice(0,4) (StockDetailTabs.js:430). -> T2.4 thanh FE-only.
+    - T1.4 buoc 4 nham luong du lieu: WhaleBubbleChart TU FETCH snapshot rieng (WhaleBubbleChart.jsx:642), khong di qua buildEffectiveOrderFlowData/orderFlowFallback.js. -> nhung normalizeWhaleSummary vao luong fetch cua chinh component.
+  - Risks chua cover: R-1 marker whale plot tai gia 0 (VNStockChartPanel.js:128-137 price ?? close ?? 0) phai sua cung task F-04; R-2 summary?.internal_orders (WhaleBubbleChart.jsx:1810) khong ton tai o backend -> map internal_orders:0; R-3 duplicate getWhaleFeedAggregate (market.js:180 vs 394) xoa dung ban cu; R-4 i18n hardcode nam ngay trong component dang sua -> xu ly ngay trong task.
+  - De xuat: 5 hieu chinh toi thieu, khong blocker; uu tien sua T1.4 truoc (lien quan 2 P0 F-04/F-06).
+- **Validation**: khong chay build/test (khong doi code).
+
+---
+
+## Entry 39: PR0 — Fix implementation plan Stock Detail FE-BE gaps (5 hiệu chỉnh từ independent review)
+
+- **Date**: 2026-08-06
+- **Type**: PLAN FIX (docs only — không đổi code runtime)
+- **Plan**: `docs/IMPLEMENTATION_PLAN_STOCK_DETAIL_FEBE_GAPS_20260806.md` (sửa từ Entry 37 theo Entry 38/PR0)
+- **Source**: `docs/AUDIT_PLAN_STOCK_DETAIL_INDEPENDENT_REVIEW_20260806.md` (Entry 38: C-1/C-2/R-1/R-2/R-3/R-4)
+- **Files touched**:
+  - `docs/IMPLEMENTATION_PLAN_STOCK_DETAIL_FEBE_GAPS_20260806.md` — 6 vị trí sửa (đã verify tsc + grep, xem Validation)
+  - `docs/CODE_CHANGE_AUDIT_LEDGER.md` (this entry)
+- **Summary** (5 hiệu chỉnh đã duyệt PR0, đồng thuận 2 bên):
+  1. **Mục tiêu Phase 1** (`plan:30`): bổ sung trình tự staged rollout `PR1a (T1.2+T1.3+T1.4, no migration) → PR1b (T1.1, migration structured_output) → PR1c (T1.5 tests)`; ghi rõ gate Phase1→Phase2 giữ nguyên — chỉ đổi thứ tự nội bộ, không bỏ T1.1. Ref `AUDIT_PLAN...:84-90`.
+  2. **T1.4 bước 1** (`plan:145`): `normalizeWhaleSummary` default `internal_orders: 0` (backend `portfolio_analytics_views.py:1255-1256` chưa từng trả field này — R-2).
+  3. **T1.4 bước 4** (`plan:148`): viết lại — WhaleBubbleChart tự fetch `adapter.getWhaleAnalyticsSnapshot` tại `WhaleBubbleChart.jsx:642`, không đi qua `buildEffectiveOrderFlowData`; nhúng `normalizeWhaleSummary` ngay trong handler fetch của chính component (C-2).
+  4. **T1.4 bước 5** (`plan:149`): bổ sung R-1 — `VNStockChartPanel.js:128-137` `price: s.price ?? s.close ?? 0` → `s.matched_value ?? s.price ?? s.close ?? null` + skip khi null, sửa cùng task F-04.
+  5. **T1.4 bước 6** (`plan:150`): làm rõ R-3 — xoá đúng bản cũ `market.js:180` (`/whale-feed-aggregate/` thiếu prefix), giữ bản native `market.js:394` (`/realtime/whale-feed-aggregate/`).
+  6. **T1.4 bước 9 mới** (`plan:153`): i18n per-component (R-4) — mọi hardcode trong file đang sửa (StockDetailTabs signalLabel, WhaleBubbleChart `Lệnh mua/bán`, StockContextDeck) chuyển sang `stockDetail.*` ngay trong cùng commit.
+  7. **T2.4** (`plan:214-216`): đổi thành FE-only — `StockDetailTabs.js:430` `keys.slice(0,4) → slice(0,8)` (hoặc 12), backend `vnbroker_adapter.py:1059` `fetch_company_financials` đã trả toàn bộ, không đổi BE (C-1).
+  8. **DoD** (`plan:253`): ghi rõ staged rollout không vi phạm gate T1.1–T1.5; Tham chiếu tài liệu thêm dòng Entry 38 + 39.
+- **Validation**:
+  - `npx tsc --noEmit` (packages/web) → ✅ 0 errors (plan là md, không ảnh hưởng build)
+  - `grep -n "slice(0,"` plan → `216: keys.slice(0, 4) → slice(0, 8)` ✅
+  - `grep -n "WhaleBubbleChart|internal_orders|matched_value|PR1a|FE-only"` plan → tất cả 5 keyword match ✅
+  - `git diff --stat` → `IMPLEMENTATION_PLAN_STOCK_DETAIL_FEBE_GAPS_20260806.md` + `CODE_CHANGE_AUDIT_LEDGER.md` (docs only)
+- **Residual**: Không. Plan đã đóng PR0, sẵn sàng kickoff **PR1a** (T1.2 session_date + T1.3 is_mock + T1.4 normalize — backward-compatible, không migration) theo thứ tự đã duyệt.
+- **Next**: PR1a — implement T1.2+T1.3+T1.4 (3 P0: F-02/F-03/F-04/F-06/F-07) với tsc + vitest + build gate mỗi commit.
+
+---
+
+## Entry 40: PR1a — Stock Detail Truth & Contract Fixes (T1.2+T1.3+T1.4, no migration)
+
+- **Date**: 2026-08-06
+- **Type**: IMPLEMENTATION — Phase 1 staged rollout PR1a (backward-compatible, không migration)
+- **Plan**: `docs/IMPLEMENTATION_PLAN_STOCK_DETAIL_FEBE_GAPS_20260806.md` (T1.2+T1.3+T1.4 — PR0 staged `PR1a` đã duyệt), `docs/AUDIT_STOCK_DETAIL_FEBE_GAPS_20260806.md` (F-02/F-03/F-04/F-06/F-07/F-08/F-10/F-12), `docs/AUDIT_PLAN_STOCK_DETAIL_INDEPENDENT_REVIEW_20260806.md` (C-1/C-2/R-1/R-2/R-3/R-4)
+- **Files touched**:
+  - `packages/core/backend/src/market_serving/legacy_views.py:412-533,793-846` — T1.2: parse `session_date` (YYYY-MM-DD validate → 400), filter `queryset.filter(session_date=session_date)` khi có param (bỏ qua window filter), echo `filters.session_date` trong `_build_response` (thêm param `session_date` vào signature + return). AST OK. Backward-compatible: rỗng → hành vi cũ.
+  - `packages/core/backend/src/market_serving/native_views.py:331-340,398-407` — T1.3: `RealtimeDepthChartView` response thêm `is_mock: True`, `source: synthetic_from_snapshot`, `note: estimates` (cả branch no_snapshot và nhánh chính). Đánh dấu minh bạch MOCK (F-03).
+  - `packages/web/src/features/stock-detail/orderFlowFallback.js:5-59,109-138` — T1.4: thêm `normalizeWhaleFeedItem` (ts/alert_at→time, matched_value/value→price, volume) + `normalizeWhaleSummary` (whale_order_count→total_orders, buy/sell count từ items, internal_orders:0 default) exports để test + alias `dark_flow`↔`darkFlow` + flat `darkFlowStrength`/`dark_flow_strength` trong `buildEffectiveOrderFlowData` (VNStockChartPanel trước đọc `darkFlowStrength` nhưng BE trả `dark_flow.strength` — F-07).
+  - `packages/web/src/features/stock-detail/hooks/useStockDetailPageModel.js:1-3,56-68,161-254,456-479` — T1.2+T1.4+T1.8: import `normalizeWhaleFeedItem`, thêm `whaleFeedMeta` state, deferred lane gọi `getWhaleFeedAggregate(symbol, {limit:50, session_date})`, map results qua `normalizeWhaleFeedItem`, set meta `{next_cursor, has_more}`, thêm `loadMoreWhaleFeed` (cursor pagination, limit 50, session_date aware) expose trong return. T1.5 pagination (F-08).
+  - `packages/web/src/features/stock-detail/components/StockContextDeck.js:23-30,56,117,205,73-106` — T1.4: nhận thêm `whaleFeedMeta`/`onLoadMoreWhaleFeed`, badge i18n `badgeCvdDarkFlow`/`badgeOrderBook`/`badgeInstitutionalRetail`, item render đọc `time`/`price`/`volume` đã chuẩn hoá (ts/matched_value) với fallback cũ, time format `HH:mm:ss`, nút "Xem thêm" khi `has_more`.
+  - `packages/web/src/features/stock-detail/components/StockDetailTabs.js:32-44,47-65,147,170-177` — T1.4 R-4 i18n: `signalLabel(signal,t)` dùng `t(stockDetail.page.signal*)`, `sessionLabel` fallback `t(sessionToday)`, forward `whaleFeedMeta`/`onLoadMoreWhaleFeed` xuống `StockContextDeck`.
+  - `packages/web/src/components/VNStockChartPanel.js:31,128-137,260` — T1.4 R-1+F-04+F-07: `mappedWhaleOrders` map `matched_value ?? value ?? price ?? close ?? null` + filter null (không plot tại 0), `ts` alias `ts ?? alert_at ?? time`, `darkFlowStrength` đọc `dark_flow?.strength ?? darkFlow?.strength ?? darkFlowStrength ?? dark_flow_strength`.
+  - `packages/web/src/adapters/core/market.js:37-43,166-198` — T1.4 F-10+R-3: `getSessionFacts` `?date=`→`?trade_date=` (BE đọc trade_date), xoá duplicate `getWhaleFeedAggregate` bản cũ `:181` (`/whale-feed-aggregate/` thiếu prefix), giữ bản native `:394` (`/realtime/whale-feed-aggregate/`).
+  - `packages/web/src/pages/StockDetailPage.tsx:93-121,268-283,347-368` — T1.4 F-12: destructure `whaleFeedMeta`/`loadMoreWhaleFeed`, xoá dead prop `flowData: orderFlowData` khi gọi `VNStockChartPanel` (chỉ giữ `orderFlowData`), forward `whaleFeedMeta`/`onLoadMoreWhaleFeed` xuống `StockDetailTabs`.
+  - `packages/web/src/components/workstation/StockOrderBookWidget.jsx:1-3,21-23,141-159` — T1.3: import `useI18n`, header row thêm badge amber `is_mock` → `t(workstation.orderBook.estimatedBadge)` + tooltip `estimatedTooltip` (amber border).
+  - `packages/web/src/components/workstation/hooks/useOrderBook.js` — không đổi logic (orderBook payload đã chứa is_mock, widget đọc trực tiếp).
+  - `packages/web/src/i18n/vi.js:2832,2833-2842` + `en.js:2834,2835-2844` — T1.3 R-4: thêm `workstation.orderBook.estimatedBadge/estimatedTooltip` + `stockDetail.page.signalBuy/signalStrongBuy/signalSell/signalStrongSell/signalNeutral/signalHold/signalWatch/sessionToday/badgeCvdDarkFlow/badgeOrderBook/badgeInstitutionalRetail`.
+  - `packages/web/src/adapters/coreApiAdapter.test.js:84-90` — cập nhật kỳ vọng test `getSessionFacts` từ `?date=` → `?trade_date=` (đúng contract BE).
+  - `packages/web/src/components/VNStockChartPanel.js:31` — xoá param dead `flowData = null` (F-12).
+- **Summary**: Đóng 4 P0 + 4 P1/P2 contract trong 1 PR backward-compatible. T1.2 session filter end-to-end (click nến ngày X → whale feed đúng phiên), T1.3 minh bạch MOCK depth-chart, T1.4 chuẩn hoá 1 nơi (ts→time, matched_value→price, whale_order_count→total_orders, dark_flow.strength→darkFlowStrength, duplicate cleanup, dead prop, pagination next_cursor). Mọi filter mới là optional param.
+- **Validation (thật)**:
+  - `npx tsc --noEmit` (packages/web) → ✅ 0 errors
+  - `npm run build` (tsc && vite) → ✅ built in 42.02s (chỉ chunk-size warning pre-existing, StockDetailPage 63kB)
+  - `npm run test:components` (vitest) → ✅ 8 passed / 25 passed
+  - `npm test -- --cache=false` (jest) → 17 suites: 1 fail ban đầu (getSessionFacts kỳ vọng `?date=`) → sửa test → ✅ 17 passed / 221 passed
+  - `npm test -- src/features/stock-detail/__tests__/orderFlowFallback.test.js` → ✅ 2 passed (buildEffective fallback CVD)
+  - `python -c "ast.parse"` legacy_views.py + native_views.py → ✅ AST OK
+  - `grep -n "getWhaleFeedAggregate" market.js` → 1 định nghĩa (đã xoá duplicate `:181`) ✅
+  - `grep -n "flowData" VNStockChartPanel.js StockDetailPage.tsx` → 0 còn dùng trong StockDetailPage, chỉ signature VNInvestCharts đã xoá ✅
+  - `grep -n "trade_date" market.js` → `?trade_date=` ✅
+- **Residual**:
+  - WhaleBubbleChart hardcode "Lệnh mua"/"Lệnh bán" (WhaleBubbleChart.jsx:1666-1667) chưa i18n hết — để lại cho T2.7 sweep (đúng R-4 scope: chỉ i18n file đang sửa trong PR1a; WhaleBubbleChart summary đã đúng qua whaleAnalyticsSnapshotAdapter, không cần sửa mapping thêm).
+  - T1.1 (advisory migration structured_output) + T1.5 (vitest cho useStockDetailPageModel/StockDetailPage) để lại cho PR1b/PR1c theo staged rollout PR0 — gate Phase1→Phase2 vẫn chặn T2.x cho đến khi PR1b+PR1c đóng.
+- **Next**: **PR1b** — T1.1 AI Advisory hiển thị nội dung thật (advisory/models.py `structured_output` JSONField + serializer + deferred lane gọi getAdvisoryLatest khi mount + render advisory_text Markdown). Sau PR1b → PR1c (tests) → Phase1 DoD checklist 7 mục.

@@ -427,6 +427,17 @@ class RealtimeWhaleFeedAggregateView(RealtimeUnifiedAlertsView):
         if cursor_payload is not None and str(cursor_payload.get('window') or '') != window:
             return Response({'detail': 'cursor không hợp lệ cho window hiện tại.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # T1.2: session_date filter — validate YYYY-MM-DD, 400 nếu invalid
+        session_date_raw = request.query_params.get('session_date')
+        session_date = None
+        if session_date_raw is not None:
+            raw = str(session_date_raw).strip()
+            if raw:
+                try:
+                    session_date = datetime.strptime(raw, "%Y-%m-%d").date()
+                except ValueError:
+                    return Response({'detail': 'session_date không hợp lệ. Định dạng YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+
         now = timezone.now()
         
         # Support symbol from URL path (kwargs) for direct symbol access
@@ -458,6 +469,7 @@ class RealtimeWhaleFeedAggregateView(RealtimeUnifiedAlertsView):
                         sort=sort,
                         window=window,
                         limit=limit,
+                        session_date=session_date.isoformat() if session_date else None,
                     )
                 )
 
@@ -476,11 +488,16 @@ class RealtimeWhaleFeedAggregateView(RealtimeUnifiedAlertsView):
                     sort=sort,
                     window=window,
                     limit=limit,
+                    session_date=session_date.isoformat() if session_date else None,
                 )
             )
 
         queryset = WhaleAlertCanonical.objects.select_related('alert').filter(symbol__in=symbols)
-        queryset = self._apply_whale_window_filter(queryset, window, now)
+        # T1.2: session_date là filter mạnh hơn window — khi có session_date thì bỏ qua window filter
+        if session_date is not None:
+            queryset = queryset.filter(session_date=session_date)
+        else:
+            queryset = self._apply_whale_window_filter(queryset, window, now)
 
         if sort == 'matched_value':
             if cursor_payload is not None:
@@ -529,6 +546,7 @@ class RealtimeWhaleFeedAggregateView(RealtimeUnifiedAlertsView):
                 sort=sort,
                 window=window,
                 limit=limit,
+                session_date=session_date.isoformat() if session_date else None,
             )
         )
 
@@ -807,6 +825,7 @@ class RealtimeWhaleFeedAggregateView(RealtimeUnifiedAlertsView):
         sort,
         window,
         limit,
+        session_date=None,
     ):
         threshold_vnd = 0.0
         if results:
@@ -828,6 +847,7 @@ class RealtimeWhaleFeedAggregateView(RealtimeUnifiedAlertsView):
                 'window': window,
                 'limit': limit,
                 'threshold': threshold_vnd,
+                'session_date': session_date,
             },
             'meta': {
                 'contract_version': '1.1',
