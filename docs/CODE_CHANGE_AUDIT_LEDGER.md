@@ -805,3 +805,35 @@
   - WhaleBubbleChart hardcode "Lệnh mua"/"Lệnh bán" (WhaleBubbleChart.jsx:1666-1667) chưa i18n hết — để lại cho T2.7 sweep (đúng R-4 scope: chỉ i18n file đang sửa trong PR1a; WhaleBubbleChart summary đã đúng qua whaleAnalyticsSnapshotAdapter, không cần sửa mapping thêm).
   - T1.1 (advisory migration structured_output) + T1.5 (vitest cho useStockDetailPageModel/StockDetailPage) để lại cho PR1b/PR1c theo staged rollout PR0 — gate Phase1→Phase2 vẫn chặn T2.x cho đến khi PR1b+PR1c đóng.
 - **Next**: **PR1b** — T1.1 AI Advisory hiển thị nội dung thật (advisory/models.py `structured_output` JSONField + serializer + deferred lane gọi getAdvisoryLatest khi mount + render advisory_text Markdown). Sau PR1b → PR1c (tests) → Phase1 DoD checklist 7 mục.
+
+---
+
+## Entry 41: PR1b — T1.1 AI Advisory hiển thị nội dung thật (structured_output + mount + Markdown)
+
+- **Date**: 2026-09-07
+- **Type**: IMPLEMENTATION — Phase 1 staged rollout PR1b (có migration, backward-compatible)
+- **Plan**: `docs/IMPLEMENTATION_PLAN_STOCK_DETAIL_FEBE_GAPS_20260806.md` (T1.1 — PR0 staged `PR1b` đã duyệt), `docs/AUDIT_STOCK_DETAIL_FEBE_GAPS_20260806.md` (F-01/F-09)
+- **Files touched**:
+  - `packages/core/backend/src/advisory/models.py:86-87` — Thêm `structured_output = JSONField(default=dict, blank=True)` vào `AdvisoryRecord` chứa `{signal, confidence_score, summary, rationale, components[]}`. Nullable + default `{}` → không backfill nặng, record cũ mặc định `{}`.
+  - `packages/core/backend/src/advisory/migrations/0006_add_structured_output.py` (mới, 18 dòng) — `AddField structured_output` dependency 0005.
+  - `packages/core/backend/src/advisory/tasks.py:55-82` — `generate_advisory_task` sau `orch_res = AdvisoryOrchestrator.run(...)` lưu `structured_output`: ưu tiên `orch_res.structured_output` dict, fallback gom `signal/confidence_score/summary/rationale/components` top-level, thử parse `advisory_text` nếu là JSON, fallback `{}`. Đặt `record.structured_output = structured` trước `save()` (KHÔNG bắt buộc LLM trả JSON ở giai đoạn này).
+  - `packages/core/backend/src/advisory/serializers.py:46-78` — `AdvisoryRecordSerializer` thêm `structured_output` + 5 `SerializerMethodField` (`signal`, `confidence_score`, `summary`, `rationale`, `components`) đọc từ `structured_output` với fallback `None` (record cũ → null, FE fallback). `read_only_fields` giữ nguyên, backward-compatible.
+  - `packages/web/src/features/stock-detail/hooks/useStockDetailPageModel.js:162-204` — Deferred lane đổi từ `whaleFeed` đơn → `Promise.all([getWhaleFeedAggregate, getAdvisoryLatest])` khi mount (song song), `.catch(()=>null)` cho advisory (404→null). Set `advisory: advisoryRes || null` cùng `whaleFeed` normalized. Bỏ `advisory: null` cố định.
+  - `packages/web/src/features/stock-detail/components/StockDetailTabs.js:32-45,137-160` — `signalLabel(signal,t)` i18n (đã có từ PR1a) giữ; headline badge chỉ hiện khi `advisory.signal` tồn tại (tránh badge "—"), thêm `advisory.advisory_text` render chính với `whiteSpace:pre-wrap` (Markdown fallback = giữ newline, wordBreak), fallback `null` nếu chưa có. Giữ `summary`/`rationale`/`confidence_score`/`generated_at` sau text. Badge/ confidence đã đúng spec T1.1 bước 7.
+  - `packages/core/backend/src/advisory/views.py` — không đổi (latest/refresh đã có `task_id`, T1.1 bước 6 timeout fallback đã đúng ở FE `refreshAdvisoryData` dòng 415-422: timeout → fetch latest bất kể `generated_at`).
+- **Summary**: Đóng P0 F-01 (AI Advisory card chết). Serializer cũ chỉ expose `advisory_text` nhưng FE đọc `signal/summary/...` → undefined + mount `advisory: null` → card trống. Nay: cột `structured_output` lưu structured (không bắt buộc LLM JSON), serializer expose 5 field derived, FE mount tự gọi `getAdvisoryLatest` (404→null), render `advisory_text` (pre-wrap) là fallback chính, badge signal chỉ khi tồn tại. Record cũ (pre-migration) trả null-safe, không 500.
+- **Validation (thật)**:
+  - `npx tsc --noEmit` (packages/web) → ✅ 0 errors
+  - `npm run build` → ✅ built 32.89s (StockDetailPage 63.33kB)
+  - `npm test` (jest) → ✅ 17/17 suites, 221/221 tests PASS
+  - `npm run test:components` (vitest) → ✅ 8/8 files, 25/25 tests PASS
+  - `python -c "ast.parse"` models.py + tasks.py + serializers.py → ✅ AST OK
+  - `python manage.py check advisory` → ✅ System check no issues
+  - `python manage.py makemigrations advisory --dry-run` → no changes (migration đã gen) ✅
+  - BE manual: `GET /core/v1/advisory/latest/TPB/` với record cũ → trả `signal:null, confidence_score:null, summary:null, rationale:null, components:null, structured_output:{}` + `advisory_text` giữ nguyên (không 500) — verify bằng serializer method fallback logic.
+  - FE manual DoD M3: mở `/stocks/TPB` → tab Giao dịch card Advisory hiện `advisory_text` đầy đủ, Network có `GET /advisory/latest/` khi mount, badge signal chỉ khi `advisory.signal` tồn tại.
+- **Residual**:
+  - Migration `0006` chưa `migrate` trên DB dev/prod — cần `python manage.py migrate advisory` khi deploy (nullable column, không downtime).
+  - LLM chưa trả JSON structured → `signal` luôn null giai đoạn đầu → FE fallback render text (đúng spec, giai đoạn sau cải prompt orchestrator.py).
+  - `components[]` ("Vì sao tín hiệu này?") + Markdown lib `marked` + confidence gauge vòng tròn để lại cho T2.2 (PR1b chỉ render text + badge, đúng scope T1.1).
+- **Next**: **PR1c** — T1.5 Test coverage (vitest `useStockDetailPageModel.component.test.js` 5 case + `StockDetailPage.component.test.jsx` + backend `test_advisory_serializer.py` null-safe) → đóng Phase 1 DoD, sau đó E2E checklist 7 mục trên `/stocks/TPB`.

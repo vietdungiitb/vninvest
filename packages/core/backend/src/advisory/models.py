@@ -84,6 +84,7 @@ class AdvisoryRecord(models.Model):
     )
     ai_model = models.CharField(max_length=64, blank=True, default='', verbose_name='AI model dùng')
     advisory_text = models.TextField(blank=True, default='', verbose_name='Nội dung advisory')
+    structured_output = models.JSONField(default=dict, blank=True, verbose_name='Structured output (signal/confidence/summary/rationale)')
     context_snapshot = models.JSONField(default=dict, blank=True, verbose_name='Context snapshot khi generate')
     tokens_used = models.IntegerField(default=0, verbose_name='Tokens đã dùng')
     error_message = models.TextField(blank=True, default='', verbose_name='Thông báo lỗi')

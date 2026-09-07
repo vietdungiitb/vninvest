@@ -146,7 +146,10 @@ export function StockDetailTabs({
                 e(
                   "div",
                   { className: "sdp-advisory-headline" },
-                  e("div", { className: `sdp-advisory-badge-large ${signalColorClass(advisory.signal)}` }, signalLabel(advisory.signal, t)),
+                  // T1.1: badge chỉ hiện khi signal tồn tại, fallback không hiển thị badge rỗng
+                  advisory.signal
+                    ? e("div", { className: `sdp-advisory-badge-large ${signalColorClass(advisory.signal)}` }, signalLabel(advisory.signal, t))
+                    : null,
                   e(
                     "div",
                     { className: "sdp-advisory-meta-info" },
@@ -154,6 +157,10 @@ export function StockDetailTabs({
                     advisory.confidence_score != null && e("span", { className: "sdp-confidence-lbl" }, `Độ tin cậy: ${(Number(advisory.confidence_score) * 100).toFixed(0)}%`)
                   )
                 ),
+                // T1.1: render advisory_text là nội dung chính (Markdown fallback = pre-wrap), backward-compat với record cũ chỉ có advisory_text
+                advisory.advisory_text
+                  ? e("div", { className: "sdp-advisory-text", style: { whiteSpace: "pre-wrap", lineHeight: "1.65", color: "#e2e8f0", fontSize: "0.92rem", margin: "10px 0 8px", wordBreak: "break-word" } }, advisory.advisory_text)
+                  : null,
                 advisory.summary && e("p", { className: "sdp-advisory-summary" }, advisory.summary),
                 advisory.rationale && e("p", { className: "sdp-advisory-rationale" }, advisory.rationale),
                 advisory.generated_at && e("div", { className: "sdp-advisory-footer-meta" }, `Cập nhật: ${new Date(advisory.generated_at).toLocaleString("vi-VN")}`)

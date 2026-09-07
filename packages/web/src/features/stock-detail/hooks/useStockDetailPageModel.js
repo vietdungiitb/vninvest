@@ -174,7 +174,11 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
       try {
         const params = { limit: 50 };
         if (sessionDate) params.session_date = sessionDate;
-        const whaleFeedRes = await adapter.getWhaleFeedAggregate(symbol, params).catch(() => null);
+        // T1.1: song song whale feed + advisory latest khi mount (advisory 404 → null giữ nguyên)
+        const [whaleFeedRes, advisoryRes] = await Promise.all([
+          adapter.getWhaleFeedAggregate(symbol, params).catch(() => null),
+          adapter.getAdvisoryLatest(symbol).catch(() => null),
+        ]);
 
         if (!mountedRef.current) return;
 
@@ -184,7 +188,7 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
         setModelState((s) => ({
           ...s,
           loadingDeferred: false,
-          advisory: null,
+          advisory: advisoryRes || null,
           whaleFeed: normalized,
           whaleFeedMeta: {
             next_cursor: whaleFeedRes?.next_cursor ?? null,

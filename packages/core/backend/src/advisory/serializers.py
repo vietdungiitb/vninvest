@@ -44,6 +44,13 @@ def _mask_sensitive_value(value: str) -> str:
 
 
 class AdvisoryRecordSerializer(serializers.ModelSerializer):
+    # T1.1: expose structured fields từ structured_output (fallback None cho record cũ)
+    signal = serializers.SerializerMethodField()
+    confidence_score = serializers.SerializerMethodField()
+    summary = serializers.SerializerMethodField()
+    rationale = serializers.SerializerMethodField()
+    components = serializers.SerializerMethodField()
+
     class Meta:
         model = AdvisoryRecord
         fields = [
@@ -53,12 +60,38 @@ class AdvisoryRecordSerializer(serializers.ModelSerializer):
             'status',
             'ai_model',
             'advisory_text',
+            'structured_output',
+            'signal',
+            'confidence_score',
+            'summary',
+            'rationale',
+            'components',
             'tokens_used',
             'error_message',
             'generated_at',
             'created_at',
         ]
         read_only_fields = fields
+
+    def get_signal(self, obj):
+        data = getattr(obj, 'structured_output', None) or {}
+        return data.get('signal') if isinstance(data, dict) else None
+
+    def get_confidence_score(self, obj):
+        data = getattr(obj, 'structured_output', None) or {}
+        return data.get('confidence_score') if isinstance(data, dict) else None
+
+    def get_summary(self, obj):
+        data = getattr(obj, 'structured_output', None) or {}
+        return data.get('summary') if isinstance(data, dict) else None
+
+    def get_rationale(self, obj):
+        data = getattr(obj, 'structured_output', None) or {}
+        return data.get('rationale') if isinstance(data, dict) else None
+
+    def get_components(self, obj):
+        data = getattr(obj, 'structured_output', None) or {}
+        return data.get('components') if isinstance(data, dict) else None
 
 
 class SystemAISettingsSerializer(serializers.ModelSerializer):
