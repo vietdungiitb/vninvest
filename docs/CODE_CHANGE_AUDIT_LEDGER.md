@@ -1108,6 +1108,20 @@
   - **Đã xong**: P0-0 DOM contract (1 `<main>` + `useId` auto a11y HIGH1) → Pilot-0 baseline 24 tests CODE READY → P0-1 token allowlist 116→PASS (HIGH5) → P0-2 FullLayout `w-[var]` (HIGH6) → P0-3 alias + P1-4 SOC Shell + P1-3 bento token + P1-2 đã JSX — 6 slice, 5 commit `b98f9398`/`3362e3e0`/`52e520ab`
   - **Gate**: `tsc:0` + `build:29.29s` + `check-dom: PASS` + `check-tokens: PASS` + `vitest 7 PASS` + `Pilot-0 CODE READY / SNAPSHOTS PENDING` + `WorkstationShell`/`test:a11y` planned P2-1/P0-0 — đúng CONDITIONAL
   - **Còn lại**: P2-1/2/3 (Workstation/WL/Portfolios) → P3 cleanup (`theme.module.css:1` 383 orphaned, `TenantAdmin:1` 2475, flag `runtimeConfig.ts:1`) → P4 QC inventory (HIGH7) + viewport matrix + contrast
-- **Validation**: docs only, audit căn cứ file:line + lệnh gate (không suy diễn), `git log` 5 commit trên `feature/ui-unified-p0`
+- **Validation**: docs only, audit căn cứ file:line + lệnh gate (không suy diễn), `git log` 5 commit trên `feature/ui-unified-p0` + audit độc lập 2026-09-08d re-run 6/6 slice khớp 100%
 - **Residual**: Pilot-0 snapshots 24 chưa capture (cần preview + auth), P2→P4 chưa code
 - **Next**: **P2-1 WorkstationShell** (5d) → P2-2/3 → P3 → P4 — theo WBS `IMPLEMENTATION_PLAN §4`
+
+---
+
+## Entry 54: Audit độc lập 2026-09-08d — đính chính F-AUDIT-01
+
+- **Date**: 2026-09-08d
+- **Type**: AUDIT FIX (docs only — đính chính báo cáo)
+- **Audit**: Re-run thực tế `check:dom-landmarks` PASS + `check:tokens` PASS (68) + `tsc:0` + `build:15.98s` + `vitest 7/7` + `playwright --list 24 tests` + `FullLayout:82` 1 `<main>` + `ShellPageTemplate.js:87` `useId` + `grep w-72` 0 trong FullLayout + `check-shell` **FAIL** `ERR_UNKNOWN_FILE_EXTENSION .css` (pre-existing, `git diff origin/dev` rỗng)
+- **Files touched**:
+  - `docs/BAO_CAO_TONG_KET_UI_UNIFIED_20260908.md:45` — `Quality Gates` bảng `Shell | node scripts/check-shell.mjs | PASS | ✅ Existing` → `BROKEN pre-existing` `ERR_UNKNOWN_FILE_EXTENSION .css` (không phải do P0/P1, `git diff origin/dev -- scripts/check-shell.mjs` rỗng) → `⚠️ Pre-existing, not P0 regression` + header `2026-09-08d audit F-AUDIT-01`
+- **Summary**: Báo cáo tổng kết 6/6 slice P0→P1 đúng file:line 100% khi re-run; chỉ 1 sai lệch F-AUDIT-01 (MEDIUM) — `check:shell` dashboard ghi PASS nhưng thực tế **BROKEN** do Node ESM loader không resolve `.css` (nợ kỹ thuật cũ, không phải regression P0/P1). Đã đính chính bảng gate, không block P2-1.
+- **Validation**: `npx tsc --noEmit` 0, `node check-dom-landmarks` PASS 4/4, `check-tokens` PASS 68, `vitest 7/7`, `playwright --list 24`, `check-shell` FAIL `.css` (đã xác minh `git diff origin/dev` rỗng)
+- **Residual**: `check:shell` cần loader css no-op / `vite-node` trước khi coi PASS — để P3-1 hoặc P4 QC fix
+- **Next**: **P2-1 WorkstationShell** (5d) — không cần fix `check:shell` trước khi tiếp tục

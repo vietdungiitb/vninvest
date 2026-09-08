@@ -1,7 +1,7 @@
 # Báo Cáo Tổng Kết — Thống Nhất Giao Diện VNInvest (P0 → P1)
 
-> **Ngày**: 2026-09-08 · **Branch**: `feature/ui-unified-p0` · **Commit**: `52e520ab` (P0-3/P1) + `3362e3e0` (P0-1/2) + `b98f9398` (P0-0c)  
-> **Tài liệu gốc**: `AUDIT_UI_UNIFIED_TEMPLATE_INDEPENDENT_20260908.md:1` + `IMPLEMENTATION_PLAN_UI_UNIFIED_TEMPLATE_20260908.md:1` (patch b) + `DOM_LAYOUT_CONTRACT.md:1` + `PILOT0_BASELINE_MANIFEST.md:1`  
+> **Ngày**: 2026-09-08 (cập nhật 2026-09-08d audit F-AUDIT-01) · **Branch**: `feature/ui-unified-p0` · **Commit**: `52e520ab` (P0-3/P1) + `3362e3e0` (P0-1/2) + `b98f9398` (P0-0c)  
+> **Tài liệu gốc**: `AUDIT_UI_UNIFIED_TEMPLATE_INDEPENDENT_20260908.md:1` + `IMPLEMENTATION_PLAN_UI_UNIFIED_TEMPLATE_20260908.md:1` (patch b) + `DOM_LAYOUT_CONTRACT.md:1` + `PILOT0_BASELINE_MANIFEST.md:1` + Audit độc lập 2026-09-08d (6/6 slice khớp, 1 gate BROKEN pre-existing)  
 > **Phạm vi**: 53 routes `pageRegistry.js:174` → 1 form `FullLayout + Shell/Workstation + tokens.css SSOT` · **Mục tiêu**: loại 7 hệ CSS ~11k dòng phân mảnh
 
 ---
@@ -53,7 +53,7 @@
 | Scroll doc | `vitest scroll-owners` | 0 | **3 PASS** (doc, not runtime) | ✅ New (HIGH3) |
 | Tokens | `node scripts/check-tokens.mjs` | FAIL 116 | **PASS 68 allowlist** | ✅ New (P0-1) |
 | Visual Pilot-0 | `npx playwright test --update-snapshots` | 0 | **24 tests CODE READY** | ⏳ Snapshots pending (cần preview + `auth.setup.ts:1`) |
-| Shell | `node scripts/check-shell.mjs` | PASS | PASS | ✅ Existing |
+| Shell | `node scripts/check-shell.mjs` | **BROKEN pre-existing** `ERR_UNKNOWN_FILE_EXTENSION .css` (không phải do P0/P1, `git diff origin/dev` rỗng) | **BROKEN** — cần loader css no-op / `vite-node` trước khi coi PASS | ⚠️ Pre-existing, not P0 regression |
 | Ledger | `CODE_CHANGE_AUDIT_LEDGER.md:981` Entry 48-52 | — | 52 entries | ✅ |
 
 ---
