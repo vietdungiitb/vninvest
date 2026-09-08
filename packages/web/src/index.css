@@ -97,6 +97,9 @@
   --layout-sidebar-width: 18rem;
   --layout-sidebar-collapsed-width: 4rem;
   --layout-sidebar-mobile-width: 18rem;
+  --layout-content-max-width: 80rem;
+  --layout-content-pad-y: var(--sp-6, 1.5rem);
+  --layout-content-pad-x: var(--sp-6, 1.5rem);
 }
 
 @layer base {
@@ -262,15 +265,13 @@
      BENTO BOX LAYOUT - Commercial Grade Dashboard Styles
      ========================================================================== */
 
-  /* Bento Card wrapper for triad panels (Alert Lane, Heatmap, AI Advisor) */
+  /* Bento Card wrapper for triad panels — P1-3 token variant (value-preserving) */
   .dashboard-triad-lane {
-    background-color: rgba(30, 41, 59, 0.4); /* bg-slate-900/40 */
-    border: 1px solid rgba(51, 65, 85, 0.6); /* border-slate-800/60 */
-    border-radius: 1rem; /* rounded-2xl */
-    padding: 1.25rem; /* p-5 */
-    box-shadow:
-      0 10px 15px -3px rgba(0, 0, 0, 0.3),
-      0 4px 6px -4px rgba(0, 0, 0, 0.1); /* shadow-lg */
+    background: var(--bg-panel-soft, rgba(30, 41, 59, 0.4));
+    border: 1px solid var(--border-default, rgba(51, 65, 85, 0.6));
+    border-radius: var(--r-lg, 1rem);
+    padding: var(--sp-5, 1.25rem);
+    box-shadow: var(--shadow-panel, 0 10px 15px -3px rgba(0, 0, 0, 0.3));
     height: 580px;
     min-width: 0;
     overflow: auto;
@@ -278,10 +279,10 @@
     flex-direction: column;
   }
 
-  /* Bento Card for full-width deck */
+  /* Bento Card for full-width deck — P1-3 token variant */
   .dashboard-full-width-deck {
-    background-color: rgba(30, 41, 59, 0.4);
-    border: 1px solid rgba(51, 65, 85, 0.6);
+    background: var(--bg-panel-soft, rgba(30, 41, 59, 0.4));
+    border: 1px solid var(--border-default, rgba(51, 65, 85, 0.6));
     border-radius: 1rem;
     padding: 1.25rem;
     box-shadow:

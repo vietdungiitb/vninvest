@@ -47,6 +47,7 @@ export interface ShellPageChromeProps {
   error?: string;
   children?: ReactNode;
   className?: string;
+  id?: string;
 }
 
 export declare const ShellMetric: (props: ShellMetricProps) => ReactNode;

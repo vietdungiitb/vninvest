@@ -1,5 +1,6 @@
 import { createElement, useState, useCallback } from "react";
 import { useI18n } from "../../context/LangContext.js";
+import { ShellPageChrome } from "../../components/ShellPageTemplate.js";
 import { SocTabNavigation } from "../../components/soc/SocTabNavigation.js";
 import { SocOverviewPanel } from "../../components/soc/SocOverviewPanel.js";
 import { SocSignalsPanel } from "../../components/soc/SocSignalsPanel.js";
@@ -88,55 +89,12 @@ export function ShellOperationsCenterPage(_props: ShellOperationsCenterPageProps
   };
 
   return createElement(
-    "main",
+    ShellPageChrome,
     {
-      style: {
-        background: "radial-gradient(circle at top right, rgba(0, 180, 216, 0.08), transparent 45%), radial-gradient(circle at left center, rgba(255, 127, 80, 0.03), transparent 45%), linear-gradient(160deg, #0b0f19 0%, #111827 50%, #070a13 100%)",
-        minHeight: "100vh",
-        padding: "24px 28px",
-        boxSizing: "border-box",
-      },
+      eyebrow: t("soc.pages.breadcrumb_operations"),
+      title: t("soc.pages.soc_page_title"),
+      description: undefined,
     },
-    createElement(
-      "header",
-      {
-        style: {
-          marginBottom: "1.5rem",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: "1rem",
-        },
-      },
-      createElement(
-        "div",
-        null,
-        createElement(
-          "span",
-          {
-            style: {
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              fontSize: "12px",
-              fontWeight: 700,
-              color: "var(--accent-shell, #00b4d8)",
-              display: "block",
-              marginBottom: "0.25rem",
-            },
-          },
-          t("soc.pages.breadcrumb_operations"),
-        ),
-        createElement("h1", {
-          style: {
-            margin: 0,
-            fontSize: "28px",
-            lineHeight: 1.1,
-            color: "var(--text-primary, #f1f5f9)",
-          },
-        }, t("soc.pages.soc_page_title")),
-      ),
-    ),
     createElement(SocTabNavigation, {
       tabs: SOC_TABS,
       activeTab,
