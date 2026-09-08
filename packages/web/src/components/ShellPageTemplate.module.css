@@ -507,3 +507,8 @@ a.listItem:hover {
   color: var(--sh-c-60a5fa);
   text-decoration: underline;
 }
+
+/* V1 alias — P0-3: app-page-shell maps to shellPage (no nested main, see DOM_LAYOUT_CONTRACT.md:2) */
+:global(.app-page-shell) {
+  /* alias kept for V1 compatibility — ShellPageChrome already provides shellPage visual */
+}

@@ -1072,3 +1072,26 @@
   - `npm run build` → ✅ built 43.56s (3619 modules)
 - **Residual**: Pilot-1 diff (24 snapshots so với Pilot-0 baseline) chưa chạy — sẽ so sánh `pilot0` vs `pilot1` sau khi capture baseline (cần preview + auth)
 - **Next**: **Pilot-1 diff** (2d, so baseline `b98f9398` + P0-1/2 token, 6 viewport) → sau đó **P0-3 Shell alias** (1d) → **P1-4 SOC inline→Shell**
+
+---
+
+## Entry 52: P0-3 Shell alias + P1-4 SOC inline→Shell + P1-3 Dashboard token (P0-3→P1)
+
+- **Date**: 2026-09-08
+- **Type**: FIX (P0-3+P1-3+P1-4) — shell alias + bento token
+- **Plan**: `docs/IMPLEMENTATION_PLAN_UI_UNIFIED_TEMPLATE_20260908.md:138` P0-3/P1-4/P1-3 + `DOM_LAYOUT_CONTRACT.md:1`
+- **Files touched**:
+  - `packages/web/src/components/ShellPageTemplate.module.css:509` — thêm `:global(.app-page-shell)` alias (V1 compatibility, không nested `main`, chỉ comment — ShellPageChrome đã cung cấp `shellPage` visual, không tạo thêm wrapper DOM per P0-0 contract)
+  - `packages/web/src/pages/admin/ShellOperationsCenterPage.tsx:1-146` — `import {ShellPageChrome} from "../../components/ShellPageTemplate.js:2"` + `createElement("main", {style:{background:radial-gradient... padding 24px 28px}})` → `createElement(ShellPageChrome, {eyebrow: t("soc.pages.breadcrumb_operations"), title: t("soc.pages.soc_page_title")})` (P1-4) — bỏ inline `background: radial-gradient` + `padding` + `header` style, qua `shellPage` token (`ShellPageTemplate.module.css:23` `padding 28px` + gradient)
+  - `packages/web/src/index.css:269-296` — `.dashboard-triad-lane` + `.dashboard-full-width-deck` `background-color: rgba(30,41,59,0.4)` / `border 1px solid rgba(51,65,85,0.6)` → `background: var(--bg-panel-soft, ...)` / `border: 1px solid var(--border-default, ...)` + `border-radius: var(--r-lg,1rem)` + `padding: var(--sp-5,1.25rem)` + `box-shadow: var(--shadow-panel, ...)` — value-preserving (P1-3)
+- **Summary**: Đóng P0-3 (alias không nested, đúng contract), P1-4 (SOC hết inline `style` background/padding/header, qua `ShellPageChrome` — hết vi phạm `AGENTS.md:6` glassmorphism bypass), P1-3 (bento token variant, giữ `1fr 1.5fr 1fr` + `h580` nhưng token chung).
+- **Validation (thật)**:
+  - `npx tsc --noEmit` → ✅ EXIT 0
+  - `node scripts/check-dom-landmarks.mjs` → ✅ PASS (Shell `<div>`, FullLayout 1 `<main>`)
+  - `node scripts/check-tokens.mjs` → ✅ PASS (allowlist)
+  - `npx vitest run dom-landmarks(4)+scroll-owners(3)` → ✅ 7 passed
+  - `npm run build` → ✅ built 29.29s (3619 modules, `ShellOperationsCenterPage` chunk 128KB)
+- **Residual**:
+  - P1-2 `ShellAiAdvisoryPage.tsx:315-418` `createElement` → JSX chưa làm — để batch P1-2 riêng (medium)
+  - P1-3 `h580` first viewport audit chưa chụp — sẽ làm ở P4 visual matrix
+- **Next**: **P1-2 AI Advisory JSX** (3d, `ShellAiAdvisoryPage:315` `createElement` → JSX + `soc.*` badge) → sau đó **P2-1 WorkstationShell** (5d)
