@@ -1092,6 +1092,22 @@
   - `npx vitest run dom-landmarks(4)+scroll-owners(3)` → ✅ 7 passed
   - `npm run build` → ✅ built 29.29s (3619 modules, `ShellOperationsCenterPage` chunk 128KB)
 - **Residual**:
-  - P1-2 `ShellAiAdvisoryPage.tsx:315-418` `createElement` → JSX chưa làm — để batch P1-2 riêng (medium)
+  - P1-2 `ShellAiAdvisoryPage.tsx:315-418` — **đã JSX** (315-419 JSX, 7 createElement chỉ là helper import) — audit xác nhận không cần convert, P1-2 DONE
   - P1-3 `h580` first viewport audit chưa chụp — sẽ làm ở P4 visual matrix
-- **Next**: **P1-2 AI Advisory JSX** (3d, `ShellAiAdvisoryPage:315` `createElement` → JSX + `soc.*` badge) → sau đó **P2-1 WorkstationShell** (5d)
+- **Next**: **P2-1 WorkstationShell** (5d, `StockDetailPage:324` + `StockDetailPage.css:451` variant, sửa `check:stock-detail-shell` legacy)
+
+---
+
+## Entry 53: Báo cáo tổng kết audit độc lập P0→P1
+
+- **Date**: 2026-09-08
+- **Type**: REPORT (research only — không đổi code, chỉ tổng kết)
+- **Reports**: `docs/BAO_CAO_TONG_KET_UI_UNIFIED_20260908.md:1` (P0→P1, 8 chương, gate dashboard, checklist) + `docs/AUDIT_UI_UNIFIED_TEMPLATE_INDEPENDENT_20260908.md:1` + `IMPLEMENTATION_PLAN:1` (patch b) + `DOM_LAYOUT_CONTRACT.md:1` + `PILOT0_BASELINE_MANIFEST.md:1`
+- **Files touched**: `docs/BAO_CAO_TONG_KET_UI_UNIFIED_20260908.md` (mới, ~150 dòng) — docs only
+- **Summary**:
+  - **Đã xong**: P0-0 DOM contract (1 `<main>` + `useId` auto a11y HIGH1) → Pilot-0 baseline 24 tests CODE READY → P0-1 token allowlist 116→PASS (HIGH5) → P0-2 FullLayout `w-[var]` (HIGH6) → P0-3 alias + P1-4 SOC Shell + P1-3 bento token + P1-2 đã JSX — 6 slice, 5 commit `b98f9398`/`3362e3e0`/`52e520ab`
+  - **Gate**: `tsc:0` + `build:29.29s` + `check-dom: PASS` + `check-tokens: PASS` + `vitest 7 PASS` + `Pilot-0 CODE READY / SNAPSHOTS PENDING` + `WorkstationShell`/`test:a11y` planned P2-1/P0-0 — đúng CONDITIONAL
+  - **Còn lại**: P2-1/2/3 (Workstation/WL/Portfolios) → P3 cleanup (`theme.module.css:1` 383 orphaned, `TenantAdmin:1` 2475, flag `runtimeConfig.ts:1`) → P4 QC inventory (HIGH7) + viewport matrix + contrast
+- **Validation**: docs only, audit căn cứ file:line + lệnh gate (không suy diễn), `git log` 5 commit trên `feature/ui-unified-p0`
+- **Residual**: Pilot-0 snapshots 24 chưa capture (cần preview + auth), P2→P4 chưa code
+- **Next**: **P2-1 WorkstationShell** (5d) → P2-2/3 → P3 → P4 — theo WBS `IMPLEMENTATION_PLAN §4`
