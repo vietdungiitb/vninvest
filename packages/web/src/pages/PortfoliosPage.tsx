@@ -2,6 +2,7 @@ import { createElement, FormEvent, useCallback, useEffect, useRef, useState } fr
 
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import DNSEConnectionPanel from "../components/DNSEConnectionPanel.js";
+import { ShellPageChrome } from "../components/ShellPageTemplate.js";
 import "./PortfoliosPage.css";
 
 const e = createElement;
@@ -88,8 +89,8 @@ export function PortfoliosPage({ className = "" }: PortfoliosPageProps) {
     }
   }
 
-  return e("div", { className: "core-portfolios-page " + className },
-    e("header", { className: "core-page-header" }, e("h1", null, "Danh mục đầu tư")),
+  return e(ShellPageChrome, { eyebrow: "Portfolio", title: "Danh mục đầu tư", className },
+    e("div", { className: "core-portfolios-page" },
     e("section", { className: "core-dnse-panel-wrap" },
       e(DNSEConnectionPanel, null)
     ),
@@ -127,5 +128,6 @@ export function PortfoliosPage({ className = "" }: PortfoliosPageProps) {
         )
       ))
     ) : null
+    )
   );
 }

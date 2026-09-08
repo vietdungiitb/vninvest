@@ -228,7 +228,7 @@ export const pageRegistry = Object.freeze([
   makePageEntry("commercial-payment-return", "core", () =>
     import("./commercial/PaymentReturnPage.tsx").then((module) => module.PaymentReturnPage)),
   makePageEntry("core-stock-detail", "core", () =>
-    import("./StockDetailPage.tsx").then((module) => module.StockDetailPage)),
+    import("./market/ShellStockDetailPage.js").then((module) => module.ShellStockDetailPage)),
   makePageEntry("screener", "core", () =>
     import("./ScreenerPage.tsx").then((module) => module.ScreenerPage)),
   // Tenant Admin Pages

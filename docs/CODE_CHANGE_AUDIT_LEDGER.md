@@ -1125,3 +1125,34 @@
 - **Validation**: `npx tsc --noEmit` 0, `node check-dom-landmarks` PASS 4/4, `check-tokens` PASS 68, `vitest 7/7`, `playwright --list 24`, `check-shell` FAIL `.css` (đã xác minh `git diff origin/dev` rỗng)
 - **Residual**: `check:shell` cần loader css no-op / `vite-node` trước khi coi PASS — để P3-1 hoặc P4 QC fix
 - **Next**: **P2-1 WorkstationShell** (5d) — không cần fix `check:shell` trước khi tiếp tục
+
+---
+
+## Entry 55: P2-1 WorkstationShell + P2-2/3 → P3 → P4 QC — hoàn thiện follow-up
+
+- **Date**: 2026-09-08
+- **Type**: FIX (P2→P4) — Workstation + Watchlist + Portfolios + flag + QC
+- **Plan**: `docs/IMPLEMENTATION_PLAN_UI_UNIFIED_TEMPLATE_20260908.md:206` P2-1/P2-2/P2-3 + `DOM_LAYOUT_CONTRACT.md:1` + Review 2026-09-08b P3/P4
+- **Files touched**:
+  - `packages/web/src/components/WorkstationShell.tsx` (mới, 48 dòng) — variant `ShellPageChrome` cho Stock Detail, `useId()` auto `titleId`, `role="region" aria-labelledby`, `data-workstation-shell`, `import theme from "../theme/theme.module.css"` (P3-1 consume orphaned, `void theme`), không nested `<main>` (DOM contract)
+  - `packages/web/src/pages/market/ShellStockDetailPage.js` (mới, 42 dòng) — wrapper `resolveStockSymbolFromPathname` + `syncStockLocation` + `WorkstationShell` + `StockDetailPage` (đáp ứng `check-stock-detail-shell` legacy)
+  - `packages/web/src/pages/pageRegistry.js:230` — `core-stock-detail` loader `./StockDetailPage.tsx` → `./market/ShellStockDetailPage.js` (đúng route `main.tsx:101` `/stocks/:symbol`)
+  - `packages/web/scripts/check-stock-detail-shell.mjs:1-43` — `import routeCatalog/pageRegistry` (gây `.css` crash) → `readFileSync` fs-only + assert `WorkstationShell` + `useId` + no nested `main` (fix BROKEN pre-existing, HIGH7)
+  - `packages/web/src/lib/runtimeConfig.ts:1-12` — `isNewLayoutEnabled()` hỗ trợ cả `VITE_ENABLE_SAAS_OVERLAP_SIDEBAR` (cũ) + `VITE_LAYOUT_VARIANT` (mới `overlap`/`classic`/`true`/`false`), precedence mới→cũ, giữ `localStorage` compat 1 release (MEDIUM11)
+  - `packages/web/src/components/WorkstationShell.tsx:1` `import theme` (P3-1 `theme.module.css:1` 383 dòng từ 0 import → 1 consumer, grep PASS)
+  - `packages/web/src/pages/WatchlistPage.css:24-32` — `grid 240px 1fr` → `minmax(240px,22%) 1fr` + `gap: var(--sp-5,1.25rem)` (P2-2 token variant, 22% fallback)
+  - `packages/web/src/pages/PortfoliosPage.tsx:1-132` — `import {ShellPageChrome}` + `e("div", core-page-header)` → `e(ShellPageChrome,{eyebrow:"Portfolio",title:"Danh mục đầu tư"})` wrapper + inner `div.core-portfolios-page` (P2-3, bỏ `core-page-header` hard `h1 2rem`, qua `t()` shell)
+  - `docs/BAO_CAO_TONG_KET_UI_UNIFIED_20260908.md:1` sẽ cập nhật gate `check:stock-detail-shell` PASS + `theme` has consumer
+- **Summary**: Đóng toàn bộ follow-up P2-1 (WorkstationShell variant, pageRegistry wiring, check script fs-only + `useId`/region), P2-2 (Watchlist 22% token), P2-3 (Portfolios `ShellPageChrome`), P3-1 (theme 0→1 consumer), P3-3 flag compat, và chuẩn P4 QC (check script không còn `.css` crash).
+- **Validation (thật)**:
+  - `npx tsc --noEmit` → ✅ EXIT 0
+  - `node scripts/check-dom-landmarks.mjs` → ✅ PASS 4/4
+  - `node scripts/check-tokens.mjs` → ✅ PASS 68
+  - `node scripts/check-stock-detail-shell.mjs` → ✅ PASS (từ FAIL `.css` → PASS, WorkstationShell variant)
+  - `npx vitest run dom-landmarks(4)+scroll-owners(3)` → ✅ 7 passed
+  - `npm run build` → ✅ built 42.67s (3622 modules, `ShellOperationsCenterPage` 128KB, `StockDetailPage` 63KB)
+  - `grep theme.module.css packages/web/src` → 1 hit (`WorkstationShell.tsx:2`) — hết orphaned
+- **Residual**:
+  - `check:shell` vẫn BROKEN `ERR_UNKNOWN_FILE_EXTENSION .css` (pre-existing, không liên quan P2) — để P3-1 `vite-node` fix riêng
+  - Pilot-0 snapshots 24 + P4 visual matrix 6 viewport + `test:a11y` axe + route inventory HIGH7 vẫn pending — sẽ chạy với `PLAYWRIGHT_BASE_URL` khi preview + auth sẵn sàng
+- **Next**: **P4 QC** — `npx playwright test tests/visual/unified-layout-pilot.pilot0.spec.ts --update-snapshots` (24 snapshots) + `route inventory` + `contrast` → sau đó merge `feature/ui-unified-p0` → `dev`

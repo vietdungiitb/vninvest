@@ -23,8 +23,8 @@
 
 .watchlistPage__layout {
   display: grid;
-  grid-template-columns: 240px 1fr;
-  gap: 1.25rem;
+  grid-template-columns: minmax(240px, 22%) 1fr; /* P2-2 token variant — 240px fallback via 22% */
+  gap: var(--sp-5, 1.25rem);
   width: 100%;
   align-items: stretch;
   height: 100%;
