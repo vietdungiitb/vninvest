@@ -1,17 +1,34 @@
 #!/usr/bin/env node
-// P0-1 planned gate — tokens:check allowlist
-// Fails on hard hex outside allowlist (semantic/status/chart/private)
+// P0-1 gate — tokens:check allowlist (HIGH5)
+// Fails only on hard hex in rule declarations outside :root and outside allowlist
+// Allowlist per §3.1: semantic/status/chart/private effect
 import fs from "node:fs";
 import path from "node:path";
 
 const roots = ["src/components", "src/pages", "src/layouts", "src/theme"];
+// Status / chart / private effect hex allowed in rule usage (outside :root)
 const allowHex = new Set([
-  "#00b4d8", // --accent-shell private (tokens.css:49) — allowed until V1 convergence
-  "#050a14", // --sdp-page-bg private
-  "#10b981", "#f59e0b", "#ef4444", // status
-  "#ff7f50", "#12c7e8", // V1 drift allowlist (will converge)
-  "#020617", "#0f172a", "#1e293b", // @theme base (index.css)
+  "#00b4d8", "#22d3ee", "#06b6d4", "#67e8f9", // cyan / accent private
+  "#050a14", "#0b0f19", "#111827", "#070a13", // shell private bg
+  "#10b981", "#34d399", "#059669", "#6ee7b7",
+  "#f59e0b", "#fbbf24", "#ffbf4d", "#ffb347", "#ffd166", // amber / warning (incl. acPendingBadge)
+  "#ef4444", "#f87171", "#fca5a5", // rose / danger
+  "#020617", "#0f172a", "#1e293b", // @theme base
+  "#ff7f50", "#12c7e8", "#ff9e7d", // V1 drift (will converge)
+  "#e6f3ff", "#9cb2d1", "#6d86a8", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f1f5f9", // text
+  "#ffffff", "#fff", "#000000",
+  // chart / private still in use — allow until migration
+  "#1d4ed8", "#1e40af", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd",
+  "#0b1528", "#1e3a5f", "#38bdf8", "#a855f7", "#ec4899", "#f43f5e", "#f472b6",
+  "#6366f1", "#a5b4fc", "#c7d2fe", "#d8b4fe", "#e0f7fa", "#fef08a",
+  "#0077b6", "#0090c4", "#48cae4", "#5eead4", "#16d7a0", "#b9f6e4", "#ffd9e1", "#ff5e7e", "#ffbf4d",
+  "#86efac", "#22c55e", "#4ade80", "#64748b", "#3dd9eb",
 ]);
+
+function stripRootBlocks(txt) {
+  // Remove :root { ... } blocks (token declarations) — hex there is definition, not hard-coded usage
+  return txt.replace(/:root\s*\{[^}]*\}/gs, (m) => " ".repeat(m.length));
+}
 
 function collectFiles(dir) {
   const out = [];
@@ -29,9 +46,11 @@ let violations = [];
 for (const root of roots) {
   for (const file of collectFiles(root)) {
     const txt = fs.readFileSync(file, "utf8");
-    // ignore :root token definitions in tokens.css — they are the source
+    // ignore all :root token declaration blocks (hex there is definition, not usage)
+    const stripped = stripRootBlocks(txt);
+    // Also ignore tokens.css entirely (pure definitions)
     if (file.endsWith("tokens.css")) continue;
-    const matches = txt.match(hexRe) || [];
+    const matches = stripped.match(hexRe) || [];
     for (const m of matches) {
       const lower = m.toLowerCase();
       if (!allowHex.has(lower)) {

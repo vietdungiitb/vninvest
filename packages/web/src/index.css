@@ -97,6 +97,9 @@
   --layout-sidebar-width: 18rem;
   --layout-sidebar-collapsed-width: 4rem;
   --layout-sidebar-mobile-width: 18rem;
+  --layout-content-max-width: 80rem;
+  --layout-content-pad-y: var(--sp-6, 1.5rem);
+  --layout-content-pad-x: var(--sp-6, 1.5rem);
 }
 
 @layer base {

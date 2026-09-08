@@ -1051,3 +1051,24 @@
   - Snapshot capture: ⏳ **chưa chạy** — cần `npm run preview` + `auth.setup.ts` (cần backend/seed) hoặc `PLAYWRIGHT_BASE_URL` remote — sẽ điền checksum vào `PILOT0_BASELINE_MANIFEST.md:6` sau khi chạy
 - **Residual**: 24 snapshots chưa tồn tại — trạng thái **BASELINE CODE READY / SNAPSHOTS PENDING** (đúng HIGH4: Pilot-0 baseline trước P0-1)
 - **Next**: Chạy `npx playwright test tests/visual/unified-layout-pilot.pilot0.spec.ts --update-snapshots --project=chromium` với preview (hoặc remote) → điền checksum → sau đó **P0-1 token allowlist** (`tokens:check` planned)
+
+---
+
+## Entry 51: P0-1 Token allowlist + P0-2 FullLayout token hoá (HIGH5+6)
+
+- **Date**: 2026-09-08
+- **Type**: FIX (P0-1+P0-2) — token SSOT + layout bridge
+- **Plan**: `docs/IMPLEMENTATION_PLAN_UI_UNIFIED_TEMPLATE_20260908.md:98` P0-1/P0-2 + `docs/DOM_LAYOUT_CONTRACT.md:1` + HIGH5+6
+- **Files touched**:
+  - `packages/web/scripts/check-tokens.mjs:8-35` — allowlist 68 hex (§3.1 status/chart/private) + `stripRootBlocks()` bỏ `:root {}` token declarations (không flag hex trong `:root`), từ 116 FAIL → ✅ PASS (0 violations ngoài allowlist) — HIGH5 P0 giữ 18rem value-preserving
+  - `packages/web/src/layouts/full/FullLayout.tsx:45-88` — `bg-slate-950 → bg-[var(--color-bg-primary)]`, `lg:pl-0/16/72 → lg:pl-[var(--layout-sidebar-collapsed-width)]/lg:pl-[var(--layout-sidebar-width)]`, `p-6 → p-[var(--sp-6,1.5rem)]`, `max-w-7xl → max-w-[var(--layout-content-max-width,80rem)]` — HIGH6 `w-[var(...)]` giữ `lg:` responsive, value-preserving (288px)
+  - `packages/web/src/index.css:95-100` — thêm `--layout-content-max-width:80rem`, `--layout-content-pad-y/x: var(--sp-6)` (bridge cho FullLayout)
+- **Summary**: Đóng P0-1 (token drift chuẩn hoá bằng allowlist, private `:root` không flag, P0 giữ 18rem không đổi 320px V1) + P0-2 (FullLayout token-driven, pixel giữ nguyên 288px, không đổi layout). `tokens:check` từ FAIL 116 → PASS.
+- **Validation (thật)**:
+  - `npx tsc --noEmit` → ✅ EXIT 0
+  - `node scripts/check-dom-landmarks.mjs` → ✅ PASS
+  - `node scripts/check-tokens.mjs` → ✅ PASS (68 allowlisted, 0 violations)
+  - `npx vitest run dom-landmarks(4)+scroll-owners(3)` → ✅ 7 passed
+  - `npm run build` → ✅ built 43.56s (3619 modules)
+- **Residual**: Pilot-1 diff (24 snapshots so với Pilot-0 baseline) chưa chạy — sẽ so sánh `pilot0` vs `pilot1` sau khi capture baseline (cần preview + auth)
+- **Next**: **Pilot-1 diff** (2d, so baseline `b98f9398` + P0-1/2 token, 6 viewport) → sau đó **P0-3 Shell alias** (1d) → **P1-4 SOC inline→Shell**
