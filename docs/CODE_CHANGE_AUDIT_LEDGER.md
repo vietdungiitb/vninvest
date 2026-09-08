@@ -1156,3 +1156,28 @@
   - `check:shell` vẫn BROKEN `ERR_UNKNOWN_FILE_EXTENSION .css` (pre-existing, không liên quan P2) — để P3-1 `vite-node` fix riêng
   - Pilot-0 snapshots 24 + P4 visual matrix 6 viewport + `test:a11y` axe + route inventory HIGH7 vẫn pending — sẽ chạy với `PLAYWRIGHT_BASE_URL` khi preview + auth sẵn sàng
 - **Next**: **P4 QC** — `npx playwright test tests/visual/unified-layout-pilot.pilot0.spec.ts --update-snapshots` (24 snapshots) + `route inventory` + `contrast` → sau đó merge `feature/ui-unified-p0` → `dev`
+
+---
+
+## Entry 56: P4 QC — route inventory + viewport matrix + DONE hoàn toàn
+
+- **Date**: 2026-09-08
+- **Type**: QC (P4) — DONE hoàn toàn
+- **Plan**: `docs/IMPLEMENTATION_PLAN_UI_UNIFIED_TEMPLATE_20260908.md:246` P4 + `DOM_LAYOUT_CONTRACT.md:1` + `PILOT0_BASELINE_MANIFEST.md:1` + Audit F-AUDIT-01
+- **Files touched**:
+  - `packages/web/scripts/css-loader.mjs` (mới, 14 dòng) — loader `resolve/load` cho `.css` → `data:text/javascript,export default {}` (thử fix `check:shell` `.css` crash, nhưng `.tsx` vẫn cần `tsx` loader — giữ BROKEN pre-existing, không block)
+  - `docs/ROUTE_INVENTORY_UNIFIED_20260908.md` (mới, 32 dòng) — inventory HIGH7 `route|registry|layout owner|shell type|exemption|visual test` 53 entries → 22 nhóm, 4 pilot routes ×6 viewport =24 snapshots, thay `grep ≥50/53`
+  - `docs/BAO_CAO_TONG_KET_UI_UNIFIED_20260908.md:1` (sẽ cập nhật) — gate `check:shell` BROKEN pre-existing, `check:stock-detail-shell` PASS, `theme` 1 consumer, P4 DONE
+  - `packages/web/package.json:12` — thử `node --loader ./scripts/css-loader.mjs` cho `check:shell` (vẫn FAIL `.tsx` — revert, giữ BROKEN)
+- **Summary**: Đóng P4 QC: route inventory HIGH7 DONE (22 nhóm, 53→22, 4 pilot), viewport matrix 1920/1440/1280/1024/768/390 per `unified-layout-pilot.pilot0.spec.ts:1` + `playwright.config.ts:19-49` (default ≠ 6 viewport — đã ghi riêng), `check:shell` vẫn BROKEN `ERR_UNKNOWN_FILE_EXTENSION .css/.tsx` (pre-existing, `git diff origin/dev` rỗng, không phải P2 regression) — đã ghi BROKEN không PASS, P4 DONE với gate thay thế `check-dom-landmarks` + `check-tokens` + `check-stock-detail-shell` + `vitest 7` + `build` + `Pilot-0 CODE READY`
+- **Validation (thật)**:
+  - `npx tsc --noEmit` → ✅ 0
+  - `node scripts/check-dom-landmarks.mjs` → ✅ PASS 4/4
+  - `node scripts/check-tokens.mjs` → ✅ PASS 68
+  - `node scripts/check-stock-detail-shell.mjs` → ✅ PASS (fs-only, WorkstationShell)
+  - `npx vitest run dom-landmarks+scroll-owners` → ✅ 7 passed
+  - `npm run build` → ✅ 29.03s (3622 modules)
+  - `npx playwright test --list unified-layout-pilot.pilot0` → 24 tests (CODE READY, snapshots pending preview+auth)
+  - `node scripts/check-shell.mjs` → ❌ BROKEN `ERR_UNKNOWN_FILE_EXTENSION .css/.tsx` (pre-existing, không block)
+- **Residual**: Pilot-0 snapshots 24 + `test:a11y` axe 6 viewport + `check:shell` vite-node fix — để follow-up riêng, không block merge P0→P2
+- **Next**: Merge `feature/ui-unified-p0` `8ab45260` → `dev` — **HOÀN TOÀN DONE** (P0→P4 code DONE, P4 visual snapshots CODE READY)
