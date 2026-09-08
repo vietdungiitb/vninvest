@@ -1031,3 +1031,23 @@
   - `node scripts/check-tokens.mjs` → ✗ FAIL 116 — planned, không block
 - **Residual**: Route-level runtime `main` count trên 4 route(`/alert-center:132`/`/watchlist:83`/`/dashboard:82`/`/stocks/HPG:101`) chưa chạy → **CONDITIONAL**; sẽ PASS ở P4 Playwright `test:dom-landmarks` + `test:scroll-owners` runtime
 - **Next**: **Pilot-0 baseline 0 code** (2d, 6 viewport, commit `7d6ad05c` + patch c + checksum) — được phép tiếp tục
+
+---
+
+## Entry 50: Pilot-0 baseline 0 code — 4 routes × 6 viewports
+
+- **Date**: 2026-09-08
+- **Type**: TEST (Pilot-0) — baseline lock, 0 code change
+- **Plan**: `docs/IMPLEMENTATION_PLAN_UI_UNIFIED_TEMPLATE_20260908.md:150` Pilot-0 + `docs/PILOT0_BASELINE_MANIFEST.md:1` + `DOM_LAYOUT_CONTRACT.md:48`
+- **Files touched**:
+  - `packages/web/tests/visual/unified-layout-pilot.pilot0.spec.ts:1` (mới, 24 tests) — viewport matrix 1920/1440/1280/1024/768/390 per HIGH8, 4 routes `dashboard:82`/`alert-center:132`/`watchlist:83`/`stocks/HPG:101`, DOM assert `main` count 1 + `main main` null trước screenshot, `maxDiffPixels:100`
+  - `docs/PILOT0_BASELINE_MANIFEST.md:1` (mới) — commit `b98f9398` (chứa `7d6ad05c`), branch `feature/ui-unified-p0`, viewport/route/fixture/naming/ownership/checksum, run command `npm run build` + `npx playwright test --update-snapshots`
+- **Summary**: Khóa baseline trước khi chạm token (P0-1 HIGH5). Pilot-0 là 0 code, không sửa `FullLayout:72` hay `tokens.css:1`; Pilot-1 mới diff. Test file đóng vai trò artifact audit — snapshot 24 files sẽ được capture với preview server + `auth.setup.ts:1` (`testuser@vninvest.vn`).
+- **Validation (thật)**:
+  - `npx tsc --noEmit` → ✅ EXIT 0
+  - `node scripts/check-dom-landmarks.mjs` → ✅ PASS (static)
+  - `npx vitest run dom-landmarks + scroll-owners` → ✅ 7 passed
+  - `npx playwright test --list` (Pilot-0) → 24 tests discoverable (`pilot0-<route>-<vp>`)
+  - Snapshot capture: ⏳ **chưa chạy** — cần `npm run preview` + `auth.setup.ts` (cần backend/seed) hoặc `PLAYWRIGHT_BASE_URL` remote — sẽ điền checksum vào `PILOT0_BASELINE_MANIFEST.md:6` sau khi chạy
+- **Residual**: 24 snapshots chưa tồn tại — trạng thái **BASELINE CODE READY / SNAPSHOTS PENDING** (đúng HIGH4: Pilot-0 baseline trước P0-1)
+- **Next**: Chạy `npx playwright test tests/visual/unified-layout-pilot.pilot0.spec.ts --update-snapshots --project=chromium` với preview (hoặc remote) → điền checksum → sau đó **P0-1 token allowlist** (`tokens:check` planned)
