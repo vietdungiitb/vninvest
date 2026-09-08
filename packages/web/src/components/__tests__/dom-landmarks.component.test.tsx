@@ -7,8 +7,8 @@ import fs from "node:fs";
 // FullLayout DOM check is via scripts/check-dom-landmarks.mjs static + Playwright runtime in P4
 // Here we verify ShellPageChrome a11y contract isolated.
 
-describe("DOM landmarks — P0-0 contract (Shell isolated)", () => {
-  it("ShellPageChrome does NOT render <main>, renders region", () => {
+describe("DOM landmarks — P0-0 contract (Shell isolated) — HIGH1 fixed", () => {
+  it("ShellPageChrome does NOT render <main>, renders region with auto a11y", () => {
     const { container } = render(
       <ShellPageChrome title="Pilot title" eyebrow="Pilot" description="desc">
         <div>child</div>
@@ -18,12 +18,15 @@ describe("DOM landmarks — P0-0 contract (Shell isolated)", () => {
     expect(container.querySelector("main main")).toBeNull();
     const region = container.querySelector('[role="region"]');
     expect(region).not.toBeNull();
-    // without id, aria-labelledby is undefined (allowed); with id it must be truthy (next test)
+    // auto-generated id when not provided (HIGH1 fix)
+    expect(region?.getAttribute("aria-labelledby")).toBeTruthy();
+    const h1 = container.querySelector("h1");
+    expect(h1?.id).toBeTruthy();
+    expect(region?.getAttribute("aria-labelledby")).toBe(h1?.id);
   });
 
   it("ShellPageChrome title has id linked to region when id provided", () => {
     const { container } = render(
-      // @ts-expect-error — id is JS-only prop for a11y, not in TS props yet
       <ShellPageChrome id="test-shell" title="Hello" description="desc">
         <div>child</div>
       </ShellPageChrome>

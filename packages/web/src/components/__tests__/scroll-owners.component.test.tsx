@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
 
-// P0-0 BLOCKER2 — scroll contract
-// Frame 1 page-level scroll owner, workstation/panel nested allowed with selector+reason
+// P0-0 BLOCKER2+3 — scroll contract documentation test (not runtime)
+// Runtime scroll verification is planned Playwright gate at P4 — see DOM_LAYOUT_CONTRACT.md:4
+// This file only documents whitelist; actual overflow counting is DOM gate (planned).
 
-describe("Scroll owners — P0-0 contract", () => {
+describe("Scroll owners — P0-0 contract (documentation, not runtime)", () => {
   it("FullLayout main is the page-level scroll owner", async () => {
     const fs = await import("node:fs");
     const src = fs.readFileSync("src/layouts/full/FullLayout.tsx", "utf8");

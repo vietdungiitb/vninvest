@@ -1008,3 +1008,26 @@
   - `WorkstationShell` chưa tạo (planned P2-1), `test:a11y` axe chưa tạo (planned P0-0), `tokens:check` còn FAIL cho tới P0-1 — đúng trạng thái planned
   - Chưa chạy `test:visual` 6 viewport — làm ở Pilot-0 baseline (0 code) tiếp theo
 - **Next**: **Pilot-0 baseline** (2d, 0 code, 6 viewport 1920/1440/1280/1024/768/390, commit/branch/viewport/route/fixture/checksum) → sau đó **P0-1 token allowlist**
+
+---
+
+## Entry 49: P0-0c HIGH1 fix — auto `useId` a11y + audit P0-0 conditional
+
+- **Date**: 2026-09-08c
+- **Type**: FIX (P0-0c) — HIGH1 + MEDIUM5 + audit CONDITIONAL
+- **Audit**: P0-0 audit 2026-09-08c (3 HIGH + 3 MEDIUM) — P0-0 **DONE implementation / CONDITIONAL verification** (không rollback, Pilot-0 được phép)
+- **Files touched**:
+  - `packages/web/src/components/ShellPageTemplate.js:1,87-107` — `import {useId}` + `ShellPageChrome:87` auto `resolvedId = id || shell-${useId()}` → `titleId = ${resolvedId}-title` luôn truthy, `h1 id={titleId}` ↔ `div aria-labelledby={titleId}` (HIGH1)
+  - `packages/web/src/components/ShellPageTemplate.d.ts:40-50` — thêm `id?: string` vào `ShellPageChromeProps` (MEDIUM5, bỏ `// @ts-expect-error`)
+  - `packages/web/src/components/__tests__/dom-landmarks.component.test.tsx:10-22` — isolated test giữ `ShellPageChrome` không `main` + **auto a11y khi không truyền id** (HIGH1 fix), bỏ `@ts-expect-error`, giữ `FullLayout` static 1 `<main>`
+  - `packages/web/src/components/__tests__/scroll-owners.component.test.tsx:1-6` — đổi header `documentation, not runtime` (HIGH3) — không gọi là scroll runtime
+  - `packages/web/scripts/check-dom-landmarks.mjs:42` — log `runtime DOM on 4 routes is planned Playwright at P4` (MEDIUM4 — static gate, không thay runtime)
+  - `docs/DOM_LAYOUT_CONTRACT.md:1,10,36,48-59` — `useId` auto, gate `test:dom-landmarks` + `test:scroll-owners` ghi **DONE isolated+static / CONDITIONAL runtime**, `tokens:check` MEDIUM6 ghi 116 FAIL expected
+- **Summary**: Đóng HIGH1 (region luôn có accessible name dù `AlertCenterPage:239`/`WatchlistPage:42` không truyền `id`), chuẩn MEDIUM5 (d.ts), làm rõ HIGH2 (isolated+static, runtime 4 route planned P4) + HIGH3 (documentation test) + MEDIUM4/6 (static gate)
+- **Validation (thật)**:
+  - `npx tsc --noEmit` → ✅ EXIT 0
+  - `npx vitest run dom-landmarks(4 tests) + scroll-owners(3 tests)` → ✅ 7 passed (HIGH1 auto, HIGH3 header)
+  - `node scripts/check-dom-landmarks.mjs` → ✅ PASS (static)
+  - `node scripts/check-tokens.mjs` → ✗ FAIL 116 — planned, không block
+- **Residual**: Route-level runtime `main` count trên 4 route(`/alert-center:132`/`/watchlist:83`/`/dashboard:82`/`/stocks/HPG:101`) chưa chạy → **CONDITIONAL**; sẽ PASS ở P4 Playwright `test:dom-landmarks` + `test:scroll-owners` runtime
+- **Next**: **Pilot-0 baseline 0 code** (2d, 6 viewport, commit `7d6ad05c` + patch c + checksum) — được phép tiếp tục

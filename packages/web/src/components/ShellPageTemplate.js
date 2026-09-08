@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import { createElement, useId } from "react";
 import styles from "./ShellPageTemplate.module.css";
 
 function renderElement(type, props, ...children) {
@@ -94,10 +94,11 @@ export function ShellPageChrome({
   error = "",
   children,
   className = "",
-  // eslint-disable-next-line no-unused-vars
   id,
 }) {
-  const titleId = id ? `${id}-title` : undefined;
+  const autoId = useId();
+  const resolvedId = id || `shell-${autoId.replace(/:/g, "")}`;
+  const titleId = `${resolvedId}-title`;
   return renderElement(
     "div",
     {

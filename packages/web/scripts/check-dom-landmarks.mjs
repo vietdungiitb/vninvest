@@ -39,4 +39,4 @@ if (!full.includes('overflow-auto')) {
 }
 ok("FullLayout main has overflow-auto (page-level scroll owner)");
 
-console.log("check:dom-landmarks — PASS (static gate; runtime gate is vitest dom-landmarks.component.test.tsx)");
+console.log("check:dom-landmarks — PASS (static gate; runtime DOM on 4 routes is planned Playwright at P4 — see IMPLEMENTATION_PLAN §5)");
