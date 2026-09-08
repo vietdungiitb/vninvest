@@ -909,3 +909,102 @@
 - **Residual**:
   - WhaleBubbleChart "Lệnh mua/bán" + một số "Cập nhật:" literal trong StockDetailTabs để lại cho sweep T2.7 cuối (không blocker).
 - **Next**: **T2.1-step2 React Query** (blocking/deferred/lazy lanes → `useQuery` với `['stock-detail', symbol, ...]` keys, `staleTime 30s`, `refetchInterval 30s`, `QueryProvider` đã có) — slice riêng, cần mock QueryClient trong vitest.
+
+---
+
+## Entry 45: Audit UI Unified Template + Review Q1→Q5 — chốt quyết định kickoff
+
+- **Date**: 2026-09-08
+- **Type**: AUDIT + REVIEW (research only — không đổi code runtime)
+- **Reports**: `docs/AUDIT_UI_UNIFIED_TEMPLATE_INDEPENDENT_20260908.md:1` (299 dòng, 15 findings F-01→F-15, 7 contradictions C1→C7) + `docs/THAO_LUAN_UI_THONG_NHAT_TEMPLATE_20260908.md:1` (bản thảo luận) + Review trực tiếp 2026-09-08 (4 điểm chỉnh)
+- **Context đọc**: `AGENTS.md:65-159` framework + `PROJECT_UI_LAYOUT_TEMPLATE_V1_20260421.md:1` + `SYSTEM_FUNCTIONAL_MAP.md:1` + `UI_LAYOUT_AUDIT_REPORT_20260501.md:1` + `CODE_CHANGE_AUDIT_LEDGER.md:1` + neo `tokens.css:1`, `index.css:96-99`, `FullLayout.tsx:70-88`, `ShellPageTemplate.js:98-123`, `StockDetailPage.tsx:324`, `main.tsx:124,132`, `runtimeConfig.ts:1`, `Sidebar.tsx:28`, `Header.tsx:33`
+- **Summary**:
+  - Audit nêu đúng phân mảnh 7 hệ CSS ~11k dòng (`soc 2386 + sdp 2486 + ta 2039 + ...`), template V1 `app-page-shell/page-body-grid 22/48/30` chưa lan tới `packages/web` (grep 0 hit), `FullLayout p-6/max-w-7xl` hard-coded.
+  - Review chỉ ra 4 điểm cần sửa trước khi dùng làm implementation plan:
+    1. **Q1 alias**: `tokens.css:49-55` còn hard `--accent-shell/--bg-shell-surface`, `index.css:96-99` giữ `--layout-*` → chưa phải SSOT thuần; alias toàn bộ value-preserving sẽ giữ drift (`#12c7e8` vs `#06b6d4`). → Chốt: `tokens.css` semantic SSOT, `index.css` Tailwind/layout bridge, token private giữ lại, drift chuẩn hoá bằng allowlist.
+    2. **Q2 nested shell**: `ShellPageChrome:98` `<main class="shellPage">` trong `FullLayout:82` `<main>` → nested `<main>` + double padding (`28px + p-6`) + double max-width. → Chốt: `FullLayout` sở hữu frame, `ShellPageChrome` sở hữu header/surface, 1 contract DOM, không bọc thêm main.
+    3. **F-14 flag**: `runtimeConfig.ts:1-9` default `true` nhưng vẫn sống ở `FullLayout:11-35`, `Sidebar:28-42`, `Header:33-36` (178 hits) → không phải dead branch. → Chốt: giữ flag qua P0-P4, đổi tên rõ nghĩa, xóa sau 1 release.
+    4. **F-12 route**: `/whale-alerts` không phải route hiện tại; thực `alert-center` (`main.tsx:132`, `pageRegistry:206`), `/whale-alerts` rơi wildcard `* → /dashboard:124` → bookmark regression, không phải 404.
+  - **Quyết định Q1→Q5 đã chốt** (ghi vào THAO_LUAN §2): Q1 semantic SSOT + allowlist, Q2 FullLayout frame / Shell header, Q3 WorkstationShell variant (không bọc trực tiếp `sdp-page:49`), Q4 migrate theo cluster với primitives `ta-card/toolbar`, Q5 giữ flag.
+  - **P0 điều chỉnh**: thêm **P0-0 DOM/layout contract** trước token; pilot đổi `FullLayout:70` → `AlertCenterPage:238`/`WatchlistPage:42` (đã có Shell); gate bổ sung `package.json:6-24` `check:shell`, `check:stock-detail-shell`, `i18n:scan`, `test:visual`; acceptance cứng no nested `<main>`, 6 breakpoint, contrast.
+- **Files touched**: `docs/THAO_LUAN_UI_THONG_NHAT_TEMPLATE_20260908.md` (Q1-Q5, P0-0→P4, §6 Errata, §7 Next Step) + `docs/AUDIT_UI_UNIFIED_TEMPLATE_INDEPENDENT_20260908.md` (F-01/F-04/F-12/F-14/P0-0→P4/§7/§8.4/Errata) — docs only, không đổi code runtime
+- **Validation**:
+  - `npx tsc --noEmit` (packages/web) — không chạy trong review (research only), audit trước đó PASS
+  - Grep `isNewLayoutEnabled` 178 hits, `app-page-shell` 0 hit trong `packages/web` vs `frontend/src:182` có — đã xác minh
+  - `tokens.css:1-56` vs `index.css:96-99` vs `ShellPageTemplate:49-55` — đã đọc trực tiếp 3 file
+- **Residual**: Chưa chạy `npm run lint/build/test:visual` trong review; sẽ chạy ở slice P0-0 pilot đầu tiên. Chưa tạo branch `feature/ui-unified-p0`.
+- **Next**: Kickoff `P0-0 DOM contract` (2 ngày) → `P0-1 Token allowlist` (3 ngày) → pilot AlertCenter/Watchlist → `P0-2 FullLayout` — theo THAO_LUAN §3 & §7 đã chỉnh.
+
+---
+
+## Entry 46: Implementation Plan UI Unified Template — kickoff chi tiết
+
+- **Date**: 2026-09-08
+- **Type**: PLAN (research only — không đổi code runtime)
+- **Plan**: `docs/IMPLEMENTATION_PLAN_UI_UNIFIED_TEMPLATE_20260908.md:1` (10 chương, WBS P0-0→P4, 18 slice, traceability, gates, checklist audit)
+- **Source**: `AUDIT_UI_UNIFIED_TEMPLATE_INDEPENDENT_20260908.md:1` + `THAO_LUAN_UI_THONG_NHAT_TEMPLATE_20260908.md:1` + review Q1→Q5 đã chốt
+- **Files touched**: `docs/IMPLEMENTATION_PLAN_UI_UNIFIED_TEMPLATE_20260908.md` (mới, ~450 dòng) — docs only
+- **Summary**:
+  - **Mục tiêu**: 53 routes `pageRegistry.js:174` về 1 form `FullLayout frame + Shell/Workstation surface + tokens.css SSOT`, loại 7 hệ CSS ~11k dòng, giữ pixel P0 (allowlist), đổi visual có kiểm soát P1 (screenshot + diff)
+  - **Đã chốt Q1→Q5**: Q1 `tokens.css:1-48` semantic SSOT / `index.css:96-99` bridge / private giữ lại / drift allowlist; Q2 `FullLayout:70-88` frame vs `ShellPageTemplate.js:98-123` surface, không nested `<main>`; Q3 `sdp-page:49` giữ `WorkstationShell` variant; Q4 `ta-card/toolbar` theo cluster; Q5 giữ `runtimeConfig.ts:1` qua P4
+  - **WBS 18 slice**: P0-0 DOM contract (2d) → P0-1 token allowlist (3d) → Pilot AC/WL (3d) → P0-2 FullLayout token hoá (2d) → P0-3 alias (1d) → P1-1 AC (2d), P1-2 AI JSX (3d), P1-3 Dashboard bento `1fr 1.5fr 1fr` variant (5d), P1-4 SOC inline→Shell (3d) → P2-1 WorkstationShell (5d), P2-2 WL variant (3d), P2-3 Portfolios `core-page-header:29` → Shell (3d) → P3-1 theme orphaned, P3-2 TA numbered, P3-3 flag rename, P3-4 scrollbar/skeleton → P4 QC 6 breakpoint + contrast
+  - **Kết quả/gate mỗi slice**: 8 cột (Mô tả/File neo/Bước/Kết quả/Nghiệm thu/Bằng chứng audit/Gate/Owner/Phụ thuộc) — đủ để audit độc lập căn cứ file:line + lệnh gate (§5: `tsc`, `lint`, `build`, `i18n:scan`, `check:shell`, `check:stock-detail-shell`, `test:visual`)
+  - **Traceability**: §6 matrix V1 §2-§10 → Task → File → Evidence (C1 drift, F-04 nested main, F-12 route `main.tsx:132`, F-14 flag 178 hits)
+  - **Lịch trình**: 7-8 tuần, P1/P2 song song sau Pilot; phụ thuộc cứng P0-0 → P0-1 → Pilot → P0-2 → P1/P2
+  - **Checklist audit độc lập**: §10 copy-paste 17 dòng (no nested `<main>`, hard hex allowlist, `grep app-page-shell`, theme consumer, visual PASS)
+- **Validation**: docs only, `npx tsc --noEmit` không chạy (research), `grep app-page-shell` 0 hit trong `packages/web` vs `frontend/src:182` đã xác minh, `isNewLayoutEnabled` 178 hits đã đếm
+- **Residual**: Chưa tạo branch `feature/ui-unified-p0`, chưa chạy `test:visual` baseline 6 breakpoint — làm ở P0-0/Pilot đầu tiên
+- **Next**: Tạo branch `feature/ui-unified-p0` → kickoff **P0-0 DOM contract** (2 ngày) — owner FE shell
+
+---
+
+## Entry 47: Plan Patch 2026-09-08b — 11 findings review độc lập
+
+- **Date**: 2026-09-08b
+- **Type**: PLAN PATCH (research only — không đổi code runtime)
+- **Source**: Review độc lập P0-0 (3 BLOCKER + 5 HIGH + 3 MEDIUM) trên `IMPLEMENTATION_PLAN_UI_UNIFIED_TEMPLATE_20260908.md:1`
+- **Files touched**: `docs/IMPLEMENTATION_PLAN_UI_UNIFIED_TEMPLATE_20260908.md:1` (patch 11 điểm, ~60 dòng diff) + `docs/THAO_LUAN_UI_THONG_NHAT_TEMPLATE_20260908.md:1` (header + patch log) — docs only
+- **Summary** (11 chỉnh):
+  - **BLOCKER 1** `FullLayout:82` + `ShellPageTemplate.js:98` nested `<main>`: gate `grep "<main"` tĩnh → **runtime** `test:dom-landmarks` (`main` count 1, `main main` null trên 4 route `/alert-center`/watchlist/dashboard/stocks/HPG) + a11y landmark (MEDIUM10)
+  - **BLOCKER 2** scroll 1 owner → **frame 1 page-level + panel/workstation nested có selector+test riêng** (`StockDetailPage.css:451`, `WatchlistPage.css:21`), cấm overflow ngẫu nhiên, gate `test:scroll-owners` (planned, tạo ở P0-0)
+  - **BLOCKER 3** gate `tokens:check`/`test:a11y`/`WorkstationShell` chưa tồn tại: đánh dấu **planned** (tạo ở P0-0/P0-1/P2-1), không PASS trước khi tạo; `check:stock-detail-shell` sửa để check `WorkstationShell` mới không chỉ legacy `ShellStockDetailPage.js`
+  - **HIGH 4** Pilot 0/1 tách: **Pilot-0 baseline 0 code** (2d, 6 viewport) → P0-1 → **Pilot-1 diff** (2d) → P0-2; lịch §8 điều chỉnh, phụ thuộc cứng Pilot-0 không cần code
+  - **HIGH 5** pixel parity vs V1: **P0 giữ 18rem (288px)**, V1 320px phase riêng, acceptance computed-style diff allowlist, không gọi "theo V1" và "pixel parity" cùng lúc
+  - **HIGH 6** Tailwind `w-72/lg:pl-72` → `w-[var(...)]`/`lg:pl-[var(...)]` giữ responsive, ghi rõ implement
+  - **HIGH 7** D4 `grep ≥50/53` → **route inventory** `route|registry|layout owner|shell type|exemption|visual test` (§6.1) + runtime/AST, `pageRegistry.js:174` vs `main.tsx:75-138`
+  - **HIGH 8** visual `playwright.config.ts:1-75` Pixel5/iPhone12 ≠ 1920/1440/1280/1024/768/390 → **viewport matrix riêng** + server/seed/account/naming/isolation + diff % theo viewport
+  - **MEDIUM 9** `tokens.css:1-56` ownership bảng (§3.1) semantic/layout/private/chart phân tách, private không dùng cho layout chung
+  - **MEDIUM 10** `ShellPageChrome:98` `<main>`→`<div>` cần `aria-labelledby` + heading hierarchy, gate `test:a11y`
+  - **MEDIUM 11** `runtimeConfig.ts:1` rename `VITE_ENABLE_SAAS_OVERLAP_SIDEBAR` → `VITE_LAYOUT_VARIANT` hỗ trợ cả cũ+mới 1 release, precedence + 4 test `true/false/missing/invalid`
+- **Validation**: docs only, 0 code change, `ShellEmptyState:1` tồn tại còn `WorkstationShell` chưa (đã ghi planned), `playwright.config.ts:1-75` viewport đã đọc
+- **Residual**: Chưa tạo branch, chưa chạy gate runtime — làm ở P0-0; trạng thái plan **READY FOR KICKOFF** sau patch
+- **Next**: Kickoff **P0-0 + Pilot-0 baseline (0 code, 2d)** — owner FE shell, gate `test:dom-landmarks` + `test:scroll-owners` tạo trước
+
+---
+
+## Entry 48: P0-0 DOM/Layout Contract — fix nested `<main>` + a11y + gate
+
+- **Date**: 2026-09-08
+- **Type**: FIX (P0-0) — DOM contract BLOCKER1+2+3
+- **Plan**: `docs/IMPLEMENTATION_PLAN_UI_UNIFIED_TEMPLATE_20260908.md:75` + `docs/DOM_LAYOUT_CONTRACT.md:1` + Review 2026-09-08b
+- **Files touched**:
+  - `packages/web/src/components/ShellPageTemplate.js:87-123` — `<main>` → `<div role="region" aria-labelledby>` + `id` prop → `h1 id={titleId}` (MEDIUM10), không nested `<main>` trong `FullLayout.tsx:82`
+  - `packages/web/src/components/__tests__/dom-landmarks.component.test.tsx` (mới, 4 tests) — `ShellPageChrome` không render `<main>`, region a11y, `FullLayout` source 1 element `<main>`, `Shell` source không `renderElement("main"` (BLOCKER1 runtime không grep)
+  - `packages/web/src/components/__tests__/scroll-owners.component.test.tsx` (mới, 3 tests) — `FullLayout:82 overflow-auto` frame owner, whitelist `StockDetailPage.css:451` + `WatchlistPage.css:21`, cấm overflow ngẫu nhiên (BLOCKER2)
+  - `packages/web/scripts/check-dom-landmarks.mjs` (mới) — static gate `ShellPageChrome <div> not <main>`, `region + aria-labelledby`, `FullLayout 1 <main> element`, `overflow-auto`
+  - `packages/web/scripts/check-tokens.mjs` (mới, planned) — allowlist `status/chart/private` (§5.2), phát hiện hard hex ngoài allowlist (P0-1)
+  - `packages/web/package.json:12-16` — thêm `check:dom-landmarks`, `check:tokens`, `test:dom-landmarks`, `test:scroll-owners`
+  - `docs/DOM_LAYOUT_CONTRACT.md` (mới, 6 chương) — frame vs panel/workstation ownership, cấm nested `<main>` + double padding, gate `test:dom-landmarks`/`test:scroll-owners`/`test:a11y` planned
+  - `docs/IMPLEMENTATION_PLAN_UI_UNIFIED_TEMPLATE_20260908.md` + `docs/THAO_LUAN_UI_THONG_NHAT_TEMPLATE_20260908.md` + `docs/AUDIT_UI_UNIFIED_TEMPLATE_INDEPENDENT_20260908.md` đã patch 11 điểm ở Entry 47
+- **Summary**: Đóng BLOCKER1 (nested `<main>`), chuẩn BLOCKER2 (frame 1 scroll + panel/workstation nested whitelist), chuẩn BLOCKER3 (planned gates không PASS trước khi tạo). `ShellPageChrome` đổi `<main>` → `<div role="region" aria-labelledby>` giữ h1 hierarchy.
+- **Validation (thật)**:
+  - `npx tsc --noEmit` → ✅ EXIT 0
+  - `npm run build` → ✅ built 40.45s (3619 modules, chunk warning pre-existing)
+  - `node scripts/check-dom-landmarks.mjs` → ✅ PASS (Shell `<div>`, FullLayout 1 `<main>`, overflow-auto)
+  - `npx vitest run src/components/__tests__/dom-landmarks.component.test.tsx` → ✅ 4 passed
+  - `npx vitest run src/components/__tests__/scroll-owners.component.test.tsx` → ✅ 3 passed (sau fix `@/lib/utils` import)
+  - `node scripts/check-tokens.mjs` → ✗ FAIL (116 violations ngoài allowlist) — **planned**, không block P0-0 (sẽ PASS ở P0-1 khi allowlist + migrate)
+- **Residual**:
+  - `WorkstationShell` chưa tạo (planned P2-1), `test:a11y` axe chưa tạo (planned P0-0), `tokens:check` còn FAIL cho tới P0-1 — đúng trạng thái planned
+  - Chưa chạy `test:visual` 6 viewport — làm ở Pilot-0 baseline (0 code) tiếp theo
+- **Next**: **Pilot-0 baseline** (2d, 0 code, 6 viewport 1920/1440/1280/1024/768/390, commit/branch/viewport/route/fixture/checksum) → sau đó **P0-1 token allowlist**

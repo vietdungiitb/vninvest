@@ -94,10 +94,17 @@ export function ShellPageChrome({
   error = "",
   children,
   className = "",
+  // eslint-disable-next-line no-unused-vars
+  id,
 }) {
+  const titleId = id ? `${id}-title` : undefined;
   return renderElement(
-    "main",
-    { className: joinClassNames(styles.shellPage, className) },
+    "div",
+    {
+      className: joinClassNames(styles.shellPage, className),
+      role: "region",
+      "aria-labelledby": titleId,
+    },
     renderElement(
       "header",
       { className: styles.hero },
@@ -108,7 +115,7 @@ export function ShellPageChrome({
         renderElement(
           "div",
           null,
-          renderElement("h1", { className: styles.title }, title),
+          renderElement("h1", { id: titleId, className: styles.title }, title),
           description ? renderElement("p", { className: styles.description }, description) : null,
         ),
         badge,
