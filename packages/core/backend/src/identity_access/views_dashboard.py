@@ -116,6 +116,22 @@ def partner_dashboard_summary(request):
     except Exception:
         logger.warning("dashboard summary: sso/webhook fallback", exc_info=True)
 
+    # Phase 1 KPI delta: yesterday values for Δ vs previous day
+    yesterday = today - timedelta(days=1)
+    api_calls_yesterday = 0
+    members_active_yesterday = 0
+    try:
+        from commercial.models import QuotaHistory
+        qh_y = QuotaHistory.objects.filter(tenant=tenant, meter_code='api_calls', date=yesterday).first()
+        if qh_y:
+            api_calls_yesterday = qh_y.consumed_amount or 0
+    except Exception:
+        logger.warning("dashboard summary: api_calls_yesterday fallback", exc_info=True)
+    try:
+        members_active_yesterday = TenantMember.objects.filter(tenant=tenant, user__last_login__date=yesterday).count()
+    except Exception:
+        logger.warning("dashboard summary: members_active_yesterday fallback", exc_info=True)
+
     recent_events = _build_recent_events(tenant, limit=10)
 
     trial_remaining_days = None
@@ -134,6 +150,8 @@ def partner_dashboard_summary(request):
         'api_calls_today': api_calls_today,
         'api_calls_limit': api_calls_limit,
         'quota_headroom_pct': quota_headroom_pct,
+        'api_calls_yesterday': api_calls_yesterday,
+        'members_active_yesterday': members_active_yesterday,
         'plan': tenant.plan,
         'plan_status': tenant.status,
         'trial_remaining_days': trial_remaining_days if trial_remaining_days and trial_remaining_days >= 0 else None,

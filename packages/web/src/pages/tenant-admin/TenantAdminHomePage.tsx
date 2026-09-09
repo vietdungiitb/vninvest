@@ -19,6 +19,8 @@ interface DashboardSummary {
   api_calls_today: number;
   api_calls_limit: number;
   quota_headroom_pct: number;
+  api_calls_yesterday?: number;
+  members_active_yesterday?: number;
   plan: string;
   plan_status: string;
   trial_remaining_days: number | null;
@@ -126,6 +128,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
   const [deprovisionDone, setDeprovisionDone] = useState(false);
   const [deprovisionError, setDeprovisionError] = useState("");
   const [deprovisioning, setDeprovisioning] = useState(false);
+  const [deprovisionConfirm, setDeprovisionConfirm] = useState("");
 
   const canReadHome = (ability as unknown as { can: (a: string, s: string) => boolean })?.can?.("read", "TenantAdminHome") ?? true;
 
@@ -197,6 +200,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
       await defaultCoreApiAdapter.corePost("/partner/billing/deprovision/");
       setDeprovisionDone(true);
       setShowDeprovision(false);
+      setDeprovisionConfirm("");
     } catch {
       setDeprovisionError(t("tenantHome.deprovisionError"));
     } finally {
@@ -280,6 +284,16 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
   const formatLimit = (val: number): string => {
     if (val <= 0) return t("tenantHome.unlimited");
     return formatNumber(val);
+  };
+
+  const formatDelta = (today: number | undefined, yesterday: number | undefined): string | null => {
+    if (today == null || yesterday == null) return null;
+    const diff = today - yesterday;
+    if (yesterday === 0) return diff === 0 ? "—" : `↑${formatNumber(diff)}`;
+    const pct = Math.round((diff / Math.max(1, yesterday)) * 100);
+    const arrow = diff > 0 ? "↑" : diff < 0 ? "↓" : "→";
+    const sign = diff > 0 ? "+" : "";
+    return `${arrow} ${sign}${formatNumber(diff)} (${sign}${pct}%) vs hôm qua`;
   };
 
   const showTrialBanner = summary?.plan_status === "trial" && summary?.trial_remaining_days != null;
@@ -373,7 +387,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
               <Link to="/tenant-admin/billing" className={[`${styles.button} ${styles.buttonPrimary}`, ta.home_8].filter(Boolean).join(" ")} style={{ fontSize: 12, fontWeight: 700 }}>
                 {t("tenantHome.upgradePrompt")}
               </Link>
-              <button onClick={() => setShowDeprovision(true)} className={[`${styles.button}`, ta.home_9].filter(Boolean).join(" ")} style={{ fontSize: 12 }}>
+              <button onClick={() => { setDeprovisionConfirm(""); setShowDeprovision(true); }} className={[`${styles.button}`, ta.home_9].filter(Boolean).join(" ")} style={{ fontSize: 12 }}>
                 {t("tenantHome.deprovisionAction")}
               </button>
             </div>
@@ -391,17 +405,29 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
             </div>
           )}
 
-          {/* Deprovision confirmation modal */}
+          {/* Deprovision confirmation modal — guard: type DEPROVISION */}
           {showDeprovision && (
             <div className={ta.home_12}>
               <div className={ta.home_13}>
                 <h3 className={ta.home_14}>{t("tenantHome.deprovisionConfirmTitle")}</h3>
                 <p className={ta.home_15}>{t("tenantHome.deprovisionConfirmBody")}</p>
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ fontSize: 12, color: "#94a3b8", display: "block", marginBottom: 6 }}>
+                    Nhập <strong>DEPROVISION</strong> để xác nhận
+                  </label>
+                  <input
+                    className={`${styles.input}`}
+                    value={deprovisionConfirm}
+                    onChange={(e) => setDeprovisionConfirm(e.target.value)}
+                    placeholder="DEPROVISION"
+                    autoComplete="off"
+                  />
+                </div>
                 <div className={ta.home_16}>
-                  <button onClick={() => setShowDeprovision(false)} className={`${styles.button} ${styles.buttonSecondary}`} style={{ fontSize: 13 }}>
+                  <button onClick={() => { setShowDeprovision(false); setDeprovisionConfirm(""); }} className={`${styles.button} ${styles.buttonSecondary}`} style={{ fontSize: 13 }}>
                     {t("tenantHome.deprovisionCancel")}
                   </button>
-                  <button onClick={handleDeprovision} disabled={deprovisioning} className={[`${styles.button}`, ta.home_17].filter(Boolean).join(" ")} style={{ fontSize: 13, fontWeight: 700 }}>
+                  <button onClick={handleDeprovision} disabled={deprovisioning || deprovisionConfirm !== "DEPROVISION"} className={[`${styles.button}`, ta.home_17].filter(Boolean).join(" ")} style={{ fontSize: 13, fontWeight: 700 }}>
                     {deprovisioning ? t("common.saving") : t("tenantHome.deprovisionAction")}
                   </button>
                 </div>
@@ -414,20 +440,18 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
             <KpiCard
               label={t("tenantHome.healthLabel")}
               value={summary ? `${summary.health_score}%` : "\u2014"}
-              sub={planStatusLabel}
+              sub={summary?.health_breakdown ? `${planStatusLabel} · quota ${summary.health_breakdown.quota}% · activity ${summary.health_breakdown.activity}%` : planStatusLabel}
               gauge={summary?.health_score}
             />
             <KpiCard
               label={t("tenantHome.activeMembersLabel")}
               value={summary ? `${summary.members_active_today}/${summary.members_total}` : "\u2014"}
-              sub={summary ? `${Math.round((summary.members_active_today / Math.max(summary.members_total, 1)) * 100)}% ${t("tenantHome.todayLabel")}` : ""}
+              sub={summary ? `${Math.round((summary.members_active_today / Math.max(summary.members_total, 1)) * 100)}% ${t("tenantHome.todayLabel")} · ${formatDelta(summary.members_active_today, summary.members_active_yesterday) ?? ""}` : ""}
             />
             <KpiCard
               label={t("tenantHome.apiCallsLabel")}
               value={formatApiCalls(summary?.api_calls_today)}
-              sub={summary?.api_calls_limit && summary.api_calls_limit > 0
-                ? `${t("tenantHome.limitLabel")}: ${formatLimit(summary.api_calls_limit)}`
-                : t("tenantHome.unlimited")}
+              sub={summary ? `${summary?.api_calls_limit && summary.api_calls_limit > 0 ? `${t("tenantHome.limitLabel")}: ${formatLimit(summary.api_calls_limit)}` : t("tenantHome.unlimited")} · ${formatDelta(summary.api_calls_today, summary.api_calls_yesterday) ?? ""}` : ""}
               color={summary && summary.api_calls_limit > 0 && summary.api_calls_today > summary.api_calls_limit * 0.8
                 ? "#f59e0b" : undefined}
             />
