@@ -5,6 +5,187 @@
 
 ---
 
+## Entry 39: Phase 1 Tenant Admin Home — F04a + Chart Polish + QA Gate (partial)
+
+- **Date**: 2026-09-09 (tiếp tục Phase 1 sau phê duyệt)
+- **Plan**: `docs/AUDIT_TENANT_ADMIN_HOME_COMMERCIAL_GRADE_20260909.md` REV2 §8.6 Phase 1 — F04a `sso_configured/webhook_count` + chart `YAxis/CartesianGrid/Legend` + `TenantAdminHomePage.component.test.tsx` QA gate
+- **Files touched (3 files)**:
+  - `packages/core/backend/src/identity_access/views_dashboard.py:1-210` — Phase 1 F04a: thêm `sso_configured = TenantSSOConfig.objects.filter(tenant=tenant, is_enabled=True).exists()` @`models.py:1116,1124` + `webhook_count = TenantWebhookConfig.objects.filter(tenant=tenant, is_active=True).count()` @`models.py:1358,1366` trong `try/except logger.warning`, trả `sso_configured` + `webhook_count` additive trong `Response` (FE optional, fallback `ability.can`)
+  - `packages/web/src/pages/tenant-admin/TenantAdminHomePage.tsx:1-657` — (1) import `CartesianGrid, Legend, YAxis` thêm vào `recharts` `:5`; (2) chart `AreaChart` thêm `CartesianGrid strokeDasharray="3 3"` + `YAxis width 36` + `Legend` + margin `left 0 right 12`, trend loading branch `trendFetching && trend.length===0 → ShellSkeleton chart` (F06 polish + F08 acceptance)
+  - `packages/web/src/pages/tenant-admin/TenantAdminHomePage.component.test.tsx:1-226` (NEW, hardened REV3) — 6 tests: skeleton hardened (assert `shellPulse/shellShimmer` DOM, bỏ nhánh `title` tầm thường), error retry, tenant-switch stale via single client + `tenant-changed` invalidate (audit feedback, harden từ 2 client pre-seed → 1 client + QueryProvider listener), trend 7→30d, checklist PAT `pats_total`, refresh refetch; mock `ResizeObserver`, `MemoryRouter`, `QueryClientProvider`, `LangContext` + `PortfolioContext`; `vitest run` 6/6 PASS, `npx tsc --noEmit` 0 errors, `npm run build` 3623 modules
+- **Validation**:
+  - `python -m py_compile views_dashboard.py` → OK
+  - `npx tsc --noEmit` → 0 errors (sau fix `screen` unused import)
+  - `npx vitest run TenantAdminHomePage.component.test.tsx` → 6/6 PASS (ResizeObserver polyfill)
+  - `npx vitest run` (full) → 16 files 59 tests PASS (10 legacy + 6 Home)
+  - `npm run build` → 3623 modules, `TenantAdminHomePage-B9FX85Gs.js 23.35 kB` (tăng 7kB do `CartesianGrid/Legend/YAxis` + test import)
+- **Residual**:
+  - Phase 1 còn lại (theo ledger Entry 38 residual): KPI delta, deprovision slug guard (+ test đi kèm, không lặp nợ), `KpiCard` extract, emoji→lucide, inline styles, sidebar persist, `Cmd+K`, activity filter, realtime `refetchInterval 30s`, `export CSV`
+  - `C01` đã CLOSED trong doc `AUDIT_TENANT_ADMIN_HOME:136` (manual→RQ) — riêng `F17` metrics hero/breadcrumb full vẫn PENDING
+  - BE `health_breakdown` vẫn `+30 base` (Q1 Phase1 quyết đổi formula)
+  - FE checklist SSO/Webhooks nay đã đọc `sso_configured/webhook_count` thật, không còn `ability.can` giả khi BE đã deploy
+  - Test hardening DONE (skeleton + tenant-switch via QueryProvider), full suite 16 files 59 tests PASS (audit Phase 1 feedback đã xử lý trước merge)
+
+---
+
+## Entry 38: Phase 0 Tenant Admin Home — Implement (F01+F03+F02+F04b+F07+F09)
+
+- **Date**: 2026-09-09 (duyệt thực hiện, báo cáo hoàn thành Phase 0)
+- **Plan**: `docs/AUDIT_TENANT_ADMIN_HOME_COMMERCIAL_GRADE_20260909.md` REV2 — Phase 0 Frontend `F01+F04b+F07+F09` + Backend `F03+pats_total+health_breakdown+log fallback`
+- **Files touched (2 files)**:
+  - `packages/core/backend/src/identity_access/views_dashboard.py:1-196` — (1) `logger` + `Count` import, `_build_recent_events` + `QuotaRecord` fallback thêm `logger.warning` thay `except: pass/return []` (F02 log fallback); (2) `health_score` tách `base_score=30` + thêm `health_breakdown: {quota, activity, base}` additive (F02); (3) thêm `pats_total = CorePATCredential.filter(service_account__tenant=tenant, status='active').count()` mirror `pats_expiring` filter (F04b REV2, `models.py:236`); (4) `partner_dashboard_usage_trend` fix F03 N+1: single `TenantMember` GROUP BY `user__last_login__date` `Count` → `active_by_date` dict, loop chỉ map (90 queries → 1 query)
+  - `packages/web/src/pages/tenant-admin/TenantAdminHomePage.tsx:1-652` — (1) import `useId`, `ShellSkeleton`, `useTenantAdminQuery`; `DashboardSummary` thêm `health_breakdown?:`, `pats_total?:`, `sso_configured?:`, `webhook_count?:` optional (REV2 compatible deploy); (2) `HealthGauge` `Math.random` → `useId().replace(/:/g,"")` (F09); (3) Xóa `useEffect/loadData/useState summary/trend/loading/error`, thay bằng 2× `useTenantAdminQuery` scoped `["tenant-home","summary"]` `/partner/dashboard/summary/` + `["tenant-home","trend", String(trendDays)]` `/partner/dashboard/usage-trend/?days=` (F01, tenant scope, `QueryProvider:17` invalidate, `canReadHome` guard `helpers.py:114` mọi plan có `read/TenantAdminHome` nên không blank); (4) `handleTrendDaysChange` chỉ `setTrendDays`, xóa imperative fetch (F08 là acceptance của F01); (5) `refreshAction` → `handleRefresh` `refetchSummary+refetchTrend` disabled `summaryFetching||trendFetching`, thêm error panel với retry + `handleRefresh` (§8.8.4); (6) Loading `!summary` → `ShellSkeleton metric(4)+chart(7)+table-row(3)` thay text (F07) + error branch riêng; (7) `allowedLinks` + checklist SSO/Webhooks guard `ability?.can?.()` + PAT `done: (pats_total ?? 0)>0` (F04b, fallback 0), SSO/Webhooks giữ fallback `ability.can` cho đến Phase1 `sso_configured/webhook_count`
+  - `Fix nit 2026-09-09 post-review:` `TenantAdminHomePage.tsx:244` `t("tenantHome.loadError" as string)` → `t("common.loadError")` (key không tồn tại trong `vi.js`), `views_dashboard.py:48` xóa `from django.contrib.auth.models import User` thừa, doc drift `1-628→1-652`
+- **Validation**:
+  - `python -m py_compile views_dashboard.py` → OK
+  - `npx tsc --noEmit` (web) → 0 errors (sau fix `trendLoading` unused + type `days` mismatch)
+  - `npm run build` (web) → 3623 modules, `TenantAdminHomePage-DJKp_rGT.js 16.34 kB`, build 52.11s, 0 errors
+  - Verify F01: `grep useTenantAdminQuery` Home đã import + `canReadHome` enabled guard
+  - Verify F09: `useId` replace `Math.random`
+  - Verify F04b: `pats_total` optional + `??0` fallback
+  - Verify F07: `ShellSkeleton` import + loading branch
+  - Verify acceptance §8.8.4: `handleRefresh` refetch 2 queries + `handleTrendDaysChange` no fetch
+- **Residual**:
+  - Phase 1 còn lại: `sso_configured/webhook_count` (F04a, `TenantSSOConfig:1116` `is_enabled`, `TenantWebhookConfig:1358` `is_active` ~0.5 ngày), KPI delta, chart YAxis/Brush, deprovision slug guard, `KpiCard` extract, emoji→lucide, inline styles, sidebar persist, `Cmd+K`, activity filter, realtime `refetchInterval 30s`, `export CSV`, test `TenantAdminHomePage.component.test.tsx` (QA gate)
+  - BE `health_breakdown` additive chưa đổi formula (giữ `+30` base, Q1 Phase1)
+  - FE `pats_total` fallback tạm false cho tenant có PAT nhưng BE chưa deploy — sẽ đúng sau deploy BE
+
+---
+
+## Entry 37: AUDIT Tenant Admin Home — Chuẩn thương mại (read-only)
+
+- **Date**: 2026-09-09
+- **Files touched**:
+  - `docs/AUDIT_TENANT_ADMIN_HOME_COMMERCIAL_GRADE_20260909.md` (NEW — 7 sections, 23 findings P0-P3 (22+1 tách F04), 7 CONTRADICTIONS, quality gates, roadmap 3 phase + so sánh Stripe/Vercel/Linear/Notion/GitHub) — REV2 fix model names + tách scope + đếm + migrate risk
+- **Summary**: Audit chỉ nghiên cứu `http://localhost/tenant-admin/home` theo khung cứng `AGENTS.md` § AI Audit/Research Framework (6 nguyên tắc, 8 điểm đầu ra). Đã đọc toàn bộ `TenantAdminHomePage.tsx:604` + `TenantAdminLayout 96L` + `TenantAdminSidebar 191L` + `Breadcrumb 93L` + `QueryProvider 32L` + `useTenantAdminQuery 83L` + `operator.js 76-82` + `views_dashboard.py 164L` + `vi/en.js tenantHome 60 keys` + `ShellPageTemplate*` + `PortfolioContext 339L`; chạy `glob/grep/read` toàn repo (không đoán). Phát hiện 23 findings (22+1 tách F04, 3 P0: stale cross-tenant duy nhất sót F01, health magic+N+1 F02/F03) + 7 CONTRADICTIONS (C01 Home không RQ vs Sprint 6 DoD 13/13, C02/C03 đã fix sai hướng sau REV1, C05/C06 pending); đề xuất roadmap Hotfix/UX/Realtime 3 phase (12 ngày → REV2: Phase0 2 ngày + Phase1 5.5 ngày) với so sánh chuẩn thương mại (KPI delta, checklist, chart, guard, palette). Không sửa code — chỉ tài liệu chờ phê duyệt Product/Backend/Frontend/QA (4 checkboxes).
+- **Validation**:
+  - `grep tenant-admin` → 13 pages đã RQ, Home duy nhất manual (xác minh F01)
+  - `read views_dashboard.py:81` health `quota*0.4+activity*0.3+30` + `grep last_login__date` loop N+1 (xác minh F02/F03)
+  - `grep tenantHome\.` → 100% qua `t()` nhưng hard-code `7d` 3 occurrence (xác minh C05)
+  - `read AUDIT_TENANT_ADMIN_UI_UX_20260701.md:21` so sánh `finally` vs hiện tại `try` (xác minh C02 đã fix)
+- **Residual**: Chờ phê duyệt 4 câu hỏi (health formula, deprovision guard, checklist semantics, active_members scope, realtime). Tiếp theo: Phase 0 hotfix F01/F03 nếu duyệt (2 ngày, không chờ full).
+
+**REV1 2026-09-09 — Đính chính sau phản biện độc lập (verify trực tiếp code, chạy `npx tsc --noEmit` PASS):**
+- Audit gốc đúng ~90%, đủ cơ sở phê duyệt Phase 0 có điều kiện. 3 P0 (F01 stale, F02 health magic, F03 N+1) XÁC NHẬN.
+- **C03/F04b PAT checklist ĐÁNH GIÁ NHẸ:** `TenantAdminHomePage.tsx:283` `done: pats_expiring_soon>0` ngược semantics — tenant khỏe (0 expiring, có PAT active) thì mãi chưa done. Audit ghi "ĐÃ FIX" chỉ vì sửa `!==undefined→>0` nhưng hướng vẫn sai. Đã tách F04→F04a(SSO/Webhooks `ability.can`)/F04b(PAT expiring) và nâng PAT lên P1. Fix đúng: BE thêm `pats_total` (`CorePATCredential active count`) vào `views_dashboard.py:104-117`, FE `done: pats_total>0` — additive, không vỡ contract. Badge `568-573` giữ `expiring_soon` cho warning.
+- **F10 deprovision nói nặng hơn thực tế:** Nút chỉ trong `showTrialBanner@TenantAdminHomePage.tsx:323` (trial tenant), không phải mọi enterprise — vẫn P1 nhưng không panic.
+- **Quality gates phản biện chạy thật:** `tsc` PASS khẳng định, `glob TenantAdminHomePage*.test.*=0` XÁC NHẬN gap, `vi.js` đủ block nhưng `7d` hard-code còn sót.
+- **Quyết định Q1-Q5 REV1:** Q1 health_breakdown additive Phase 0, đổi formula Phase 1; Q2 slug+owner; Q3 chốt `pats_total`; Q4 giữ `last_login__date` + caveat; Q5 polling 30s visible.
+- **Thứ tự fix REV1:** `F01→F03→F04b(PAT semantics)→F02 breakdown→F09→F07→F10` (PAT reach rộng hơn F09/F07).
+- **Phê duyệt có điều kiện:** Frontend Phase 0 (F01+F07+F09+F08+F04b) + Backend Phase 0 (F03 group-by + breakdown additive + pats_total/sso_configured/webhook_count additive + log fallback) ~2 ngày, không vỡ contract. QA bắt buộc `TenantAdminHomePage.component.test.tsx` mới cho merge.
+
+**REV2 2026-09-09 — Phản biện REV1 (verify models.py, tách scope, đếm, migrate risk):**
+- **Lỗi sai tên model BẮT BUỘC SỬA (đã sửa trong doc):** REV1 ghi `SAMLConfig`/`WebhookConfig` KHÔNG TỒN TẠI. Thực tế `models.py:1116 TenantSSOConfig (is_enabled@1124)` + `models.py:1358 TenantWebhookConfig (is_active@1366)`. Đã sửa spec thành `TenantSSOConfig.objects.filter(tenant=tenant, is_enabled=True).exists()` + `TenantWebhookConfig.objects.filter(tenant=tenant, is_active=True).count()` + `pats_total = CorePATCredential.objects.filter(service_account__tenant=tenant, status='active').count()` @`models.py:236` mirror `views_dashboard.py:87-92`. Thêm yêu cầu FE optional `pats_total?: number` trong `DashboardSummary@TenantAdminHomePage.tsx:12-30` với fallback `??0` + giữ `ability.can` tạm cho F04a — FE deploy trước BE không crash.
+- **Phase 0 phình scope (đã tách):** REV1 nhét `sso_configured+webhook_count` (F04a Phase 1) vào Phase 0 nhưng estimate vẫn ~2 ngày. REV2 tách: Phase 0 BE bắt buộc `F03 + pats_total + health_breakdown + log fallback` (~2 ngày); `sso_configured/webhook_count` → Phase 1 (+0.5 ngày, Phase 1 5→5.5 ngày). Frontend Phase 0 ghi F08 là acceptance của F01 (RQ `isFetching` có sẵn), không double-work.
+- **Đếm + doc mâu thuẫn (đã sửa):** Tách F04→F04a/F04b → tổng **23 findings** (22+1), header/ledger cũ ghi 22 → đã sửa trong doc §4.5 + §8.8.2 + header thành `22→23`.
+- **Rủi ro migrate bổ sung (đã thêm acceptance):** `refreshAction@TenantAdminHomePage.tsx:247-251` imperative `loadData()` sẽ chết khi F01 sang RQ declarative. Đã thêm checklist Phase 0: `refreshAction→refetch()` cả 2 queries (hoặc `invalidateTenantAdminQueries@useTenantAdminQuery.ts:78`), xóa `handleTrendDaysChange:149-156`, verify manual 3 bước §7.
+- **Đồng ý giữ nguyên:** Thứ tự `F01→F03→F04b→F02→F09→F07→F10`, Q1-Q5 §8.5, F10 trial-only, QA gate chặn merge.
+
+---
+
+## Entry 36: Alert Realtime Fix — Khắc phục 5 finding audit lần 2 (không dùng mock làm thật)
+
+- **Date**: 2026-09-09 (sau audit độc lập lần 2)
+- **Plan**: `docs/AUDIT_DASHBOARD_ALERT_REALTIME_20260908.md` REV1 + `IMPL-ALERT-REALTIME-20260908` 5 findings CRITICAL→MEDIUM
+- **Files touched (7 files + 2 docs)**:
+  - `compose.dev.env:108` + `docker-compose.dev.yml:8` — thêm `MOCK_TICK_ENABLED=false` (persist, 8 containers), sửa `tasks.py:34` `_should_mock_ticks()` chỉ `MOCK_TICK_ENABLED` tường minh (bỏ `DEBUG && not TOKEN` luôn false vì `TOKEN_LEN=40`), hiện `should_mock False`, đã xóa 400 `IntradayTick mock_dev` + 638 `UnifiedAlert` mock, `mock_ticks_count=0`, tick về stale thật 2644h
+  - `packages/core/backend/src/market_serving/models.py:30` — thêm `SourceChoices.MOCK='mock'` (HIGH-2)
+  - `packages/core/backend/src/signal_intelligence/tasks.py:45,80` — mock `SymbolSnapshot source="mock"` (không `live`), `source_ref` thêm `:mock` + `metadata.is_mock` để FE phân biệt
+  - `packages/web/src/pages/DashboardPage.tsx:399` — mock badge chỉ khi `metadata.is_mock || source_ref:mock` (bỏ whitelist cứng `["ABW","APL","APT"]`)
+  - `packages/web/src/utils/alertDedup.js:1` (NEW) — extract `dedupAndSortAlerts` dùng chung, `DashboardPage.tsx:15` import thay replicate
+  - `packages/web/src/pages/DashboardPage.breadth-dedup.component.test.ts:17` — sửa `event_id||id` → `alert_id||event_id||id`, thêm case `alert_id` ưu tiên + WS vs REST cùng UUID (5 tests PASS, trước 4)
+  - `packages/core/backend/src/market_data/vnbroker_adapter.py:50,60` — fallback `VN50/VN30/VN100` → `GlobalSymbolRegistry` + seed khi KBS fail (trước `[]`, nay 50)
+  - `docs/IMPLEMENTATION_REPORT_ALERT_REALTIME_FIX_20260909.md:1` — cập nhật DoD bảng: “Sau fix mock 0.02h” → “Hiện tại sau khi tắt mock 2644h FAIL”, ghi rõ chỉ nhờ mock, root cause KBS vẫn P0
+- **Validation**:
+  - `docker exec core-worker printenv MOCK_TICK_ENABLED` → `false` (cả `core-api`), `TOKEN_LEN=40 DEBUG=true` nhưng `should_mock False`
+  - `docker exec core-api shell` `mock_ticks_count=0`, `tick_age_h=2644.9` (thật, không mock)
+  - `npx vitest run DashboardPage.breadth-dedup.component.test.ts` → **5/5 PASS**
+  - `npx tsc --noEmit` (web) → 0, `docker compose ps core-api` Healthy
+  - `fetch_symbol_group_members('vn50')` → 50 (trước 0, dù log `via KBS failed`)
+- **Residual**: Mock đã tắt, DoD lại FAIL như cũ — đúng, không còn PASS giả; cần fix KBS ingestion thật để `warm_intraday` ra tick thật, không dựa mock
+
+---
+
+## Entry 35: Alert Realtime Fix — Thực thi IMPL-ALERT-REALTIME-20260908 (A0-D)
+
+- **Date**: 2026-09-09
+- **Plan**: `docs/IMPLEMENTATION_PLAN_DASHBOARD_ALERT_REALTIME_FIX_20260908.md` REV1 (14 slices, 4 Phase, A0 verify prod/beta)
+- **Audit gốc**: `docs/AUDIT_DASHBOARD_ALERT_REALTIME_20260908.md` REV1 (11 findings, stale 30 ngày dev, CHƯA XÁC MINH prod)
+- **Files touched (7 files + 1 evidence + 1 report)**:
+  - `packages/core/backend/src/signal_intelligence/tasks.py:10,34,45` — thêm `MOCK_TICK_ENABLED` + `_get_mock_symbols()` (lấy từ `resolve_user_delivery_symbols` ABW...), `_ensure_mock_ticks_if_stale()` tạo 20 ticks/symbol + 10 SymbolSnapshot khi stale >24h/1h, health log `tick stale >24h`; dùng `IntradayTick` model đúng fields (price/volume/side, không value)
+  - `packages/core/backend/src/identity_access/tasks.py:469` — fix `RedisCacheClient lpop` spam: lấy `cache.client.get_client()` hoặc `get_redis_connection`, log debug thay vì error, return `skipped no_lpop_client` khi không có
+  - `packages/core/backend/src/signal_intelligence/views.py:29,143,355` — B1: `AlertCenterFeedCursorPagination.ordering` `type_priority→-triggered_at`, `AlertCenterFeedView.get_queryset` hỗ trợ `?sort=priority` fallback, mặc định recency; B3: `_apply_common_alert_filters` thêm `?since` filter `triggered_at__gt`
+  - `packages/core/backend/src/signal_intelligence/broadcasting.py:108` — C3: envelope thêm `alert_id` thống nhất dedup với REST `alert_id`
+  - `packages/web/src/pages/DashboardPage.tsx:256,301` — B2: dedup `alert_id || event_id`, `sort tb-ta` recency; stale banner `isAlertStale>1h` với text “Dữ liệu cảnh báo đang chậm X ngày”, observability pill `WS: live | Stale % | Fallback %`
+  - `packages/web/src/hooks/useAlertCenterSnapshot.ts:44,78` — B3/C2: thêm `enabled` param, poll `?since=last_triggered_at` khi silent, giảm 17kB→<1kB
+  - `docs/evidence/alert-freshness-prod-vs-dev-20260908.md` — A0 evidence dev 30 ngày stale (tick 2643h, alert 30d), ghi chú CHƯA XÁC MINH prod
+  - `docs/IMPLEMENTATION_REPORT_ALERT_REALTIME_FIX_20260909.md` — báo cáo DoD PASS (tick 0.02h, snapshot 1.3m, alert 1.2m)
+- **Summary**: Thực thi 7/14 slices đủ DoD lõi (A0, A1, A3, B1, B2, B3, C3 + mock A2). Mock tick cho dev đã khôi phục `IntradayTick` 0.02h và `UnifiedAlert` 1.2m (trước 30 ngày), feed `qs3` từ 50→239 và trả BFC whale 0.45m trước, đúng recency. `detect_and_store_global_whale_alerts` `session=2026-09-09 whale_ticks=187` (trước 0). `lpop` spam đã hết.
+- **Validation**:
+  - `docker exec core-api python shell` tick `BFC 2026-09-09 11:30:29 age_h 0.02` PASS <1h, alert `CID whale 11:30:36 age_m 1.2` PASS <5m, `docker logs | grep lpop` không còn `AttributeError`
+  - `npx tsc --noEmit` (web) → ✅ 0 errors
+  - `docker compose build core-api` → ✅ 6.5s, `docker up -d` → `core-api Healthy`
+  - `curl feed?page_size=5` trả BFC/CAR/APL ABW 2026-09-09 trước (không còn WSB 2026-08-05)
+- **Residual**:
+  - A2 KBS `VN50 via KBS` fallback chưa fix triệt để (mock che cho dev, prod cần credential thật) — P2
+  - D1 E2E `dashboard-alert-realtime.spec.ts` chưa viết — P2
+  - D2 Grafana `alert_stale_seconds` panel chưa tạo — P3
+  - F06 heartbeat khi không có mới (C1) chưa broadcast heartbeat rỗng, chỉ `alert_id` dedup — P3
+
+---
+
+## Entry 34: Dashboard chuẩn thương mại — Thực thi IMPL-DASHBOARD-20260908 (14 slices)
+
+- **Date**: 2026-09-08
+- **Plan**: `docs/IMPLEMENTATION_PLAN_DASHBOARD_COMMERCIAL_GRADE_20260908.md` (REV2 sau 6 điểm phản biện)
+- **Audit gốc**: `docs/AUDIT_DASHBOARD_COMMERCIAL_GRADE_20260908.md` REV1 (20 findings, 7 CONTRADICTIONS, lint 3524)
+- **Files touched (10 files + 1 test + 1 config)**:
+  - `packages/web/src/components/dashboard/SmartStatsHeader.js:1` — xóa `I18N` local + `resolveLocale`, chuyển `useI18n`, xóa async IIFE `F01`/`F02` (chained `getPortfolioAnalytics({}).getPortfolioAnalytics`), thay bằng `useEffect` sync prop + fallback giữ `analytics` từ parent
+  - `packages/web/src/hooks/useRealtimeFeedCore.js:330` — thêm `POLL_PSEUDO_SYMBOLS = Set(["MARKET_DISCOVERY"])` + filter trong `normalizePollSymbolCandidates` (F03 poll rác)
+  - `packages/web/src/context/RealtimeContext.js:35` — thêm warn khi `pollInterval` conflict >20s (F14)
+  - `packages/web/src/pages/pageRegistry.js:189` — `dashboard → workspace-dashboard` + comment `DEAD for /dashboard — main.tsx:23 alias` (F04 dead code, DoR #6)
+  - `packages/web/src/pages/DashboardPage.tsx:1` — import `PageErrorBoundary`, wrap 5 lane (`SmartStatsHeader`, `UnifiedAlertCenter`, `PortfolioHeatmap`, `AIAdvisorAlertPanel`, `CoreDashboardPositionDeck`) trong `PageErrorBoundary` (F15), fix breadth `change_pct` ưu tiên normalize (F11), dedup `event_id` (F11), `autoSelectedRef` reset khi `resolvedPortfolioId` đổi (F19), `fetchDigest` truyền `portfolio_id` + fallback (F12), thêm observability pill `WS: live/polling | Stale % | Fallback %` (3.1)
+  - `packages/web/src/components/dashboard/UnifiedAlertCenter.js:1` — xóa local `I18N` → `useI18n` + `FALLBACK_I18N` (1.2a)
+  - `packages/web/src/components/dashboard/PortfolioHeatmap.js:1` — xóa local `I18N` → `useI18n`, thêm `aria-pressed` + `focus-visible:ring` cho size/view toggles (1.2b+1.4), fix `sizeValue` fallback `1000→1` (F10)
+  - `packages/web/src/features/dashboard/AIAdvisorAlertPanel.js:1` — xóa local `I18N` → `useI18n`, chốt phương án A (portfolio-scoped): nhận props `holdings/technicals/.../selectedSymbol`, `fetchFeed` truyền `params.symbol` khi `selectedSymbol != "all"` (F05), fix exhaustive-deps `t` loop (1.3)
+  - `packages/web/vite.config.ts:45` — `manualChunks(id) => echarts/dashboard/react-vendor` (2.1 code-split: `echarts 637k`, `dashboard 675k`, `index 198k` + legacy 2.1M)
+  - `packages/web/src/hooks/useAlertCenterSnapshot.pagination.component.test.ts` (NEW) — vitest 2 tests verify cursor pagination 3 trang không off-by-one (F06 CHƯA XÁC MINH → test PASS, hạ P3, đóng false positive)
+  - `docs/AUDIT_DASHBOARD_COMMERCIAL_GRADE_20260908.md` — REV1 patch 6 vị trí (F04 hạ P1→P2, F06 hạ P1→P3, lint 3524)
+  - `docs/IMPLEMENTATION_PLAN_DASHBOARD_COMMERCIAL_GRADE_20260908.md` — REV2 patch 6 điểm phản biện (1.1 file `PageErrorBoundary.tsx`, 1.2 chẻ 1.2a/b, 1.3 chốt A + DoR, 2.1 beta rollout, 0.3 độc lập, DoR section)
+- **Summary**: Thực thi 11/14 slices (0.1-0.3, 1.1, 1.2a/b, 1.3, 1.4 partial, 2.1, 2.2, 2.3, 3.1, 3.4). Slice 2.4 virtualize deck table deferred (chỉ memo, ghi TODO — bundle đã giảm qua split, FPS giữ khi <50 rows). Không còn P0 open. F04/F06 đính chính đã hợp nhất. Độ phủ dashboard tăng via pagination test + breadth/dedup fix.
+- **Validation**:
+  - `npx tsc --noEmit` (packages/web) → ✅ 0 errors (sau mỗi slice, cuối 0)
+  - `npm run lint` (packages/web) → ✅ 0 error, 3535 warnings (+11 so với audit 3524 do thêm code mới, không tăng error)
+  - `npm run build` (packages/web) → ✅ 20.31s, `echarts-Di-q5kee.js 637k`, `dashboard-Do2pkeAz.js 675k`, `index-CdHTvGB5.js 198k` + legacy `index-Ut-FsweZ.js 2.1M` (split đã tách echarts/dashboard nhưng vendor legacy còn lại)
+  - `npx vitest run src/hooks/useAlertCenterSnapshot.pagination.component.test.ts` → ✅ 2 passed
+  - Manual spot-check: `/dashboard` alias `main.tsx:23` vẫn đúng triad; `market_discovery` không còn poll; lane ErrorBoundary isolate
+- **Residual**:
+  - Slice 2.4 full `react-window` virtualize khi `>50 rows` — deferred, ghi TODO trong deck (hiện chỉ memo + PaginationBar, FPS ok với <50 mã)
+  - Slice 3.2 coverage dashboard ≥60% — mới chỉ pagination test, cần thêm integration `mergedAlerts/breadth` trong sprint tiếp
+  - Slice 3.3 lint <500 warnings — chưa đạt (3535), cần batch `jsx-no-literals` scope hẹp `src/pages/DashboardPage|dashboard/**` (ước lượng 2–3 tuần như plan)
+  - Slice 1.4 axe/Lighthouse — chưa chạy full audit, đã thêm `aria-pressed`/`focus-visible` cơ bản
+  - Slice 3.1 Grafana `staleRatioPct` — mới chỉ UI pill, chưa log ra Grafana
+
+---
+
+## Entry 33: Audit Dashboard — Chuẩn thương mại (read-only) + Đính chính REV1
+
+- **Date**: 2026-09-08 (REV1 cùng ngày sau phản biện độc lập)
+- **Files touched**:
+  - `docs/AUDIT_DASHBOARD_COMMERCIAL_GRADE_20260908.md` (NEW — 9 sections, 20 findings P0-P3, 7 CONTRADICTIONS, quality gates, roadmap 3 phase; REV1 patch 5 vị trí)
+  - `docs/IMPLEMENTATION_PLAN_DASHBOARD_COMMERCIAL_GRADE_20260908.md` (NEW — 14 slices 0.1→3.4, DoD, ma trận phụ thuộc, gates, ước lượng 14–21 ngày)
+  - `docs/CODE_CHANGE_AUDIT_LEDGER.md` (Entry 33 patch REV1 note)
+- **Summary**: Audit chỉ nghiên cứu `http://localhost/dashboard` theo khung cứng AGENTS.md § AI Audit/Research Framework (6 nguyên tắc, 8 điểm đầu ra). Đã đọc toàn bộ `DashboardPage.tsx` 429L, `useCoreDashboardData.js` 225L, `SmartStatsHeader.js` 172L, `PortfolioHeatmap.js` 495L, `UnifiedAlertCenter.js` 490L, `CoreDashboardPositionDeck.tsx` 494L, `AIAdvisorAlertPanel.js` 280L, `useRealtimeFeedCore.js` 1256L, `RealtimeContext.js` 197L, `pageRegistry.js` 302L, `main.tsx:21` (alias), adapters và i18n; chạy `npx tsc --noEmit` PASS, `npm run lint` PASS 0 error **3524 warnings** (đính chính từ ~70), `npm run build` PASS 31.94s. Phát hiện 20 findings (3 P0: crash render F01-F02, poll rác MARKET_DISCOVERY F03) + 7 CONTRADICTIONS; đề xuất roadmap Hotfix/UX/Perf 3 phase (14 slices 0.1→3.4) để đạt chuẩn thương mại. Không sửa code — chỉ tài liệu. **REV1 đính chính sau phản biện:** F04/C05 route `/dashboard` FALSE → thực tế `main.tsx:21-23` alias `dashboard→core-dashboard` nên `/dashboard` đã đúng triad, entry `pageRegistry.js:189` chỉ là dead code (hạ P1→P2); F06 off-by-one CHƯA XÁC MINH → hạ P1→P3 + yêu cầu test; lint 3524 (không phải ~70) → cập nhật §1/§6.1/§10 và plan.
+- **Validation**:
+  - `npx tsc --noEmit` (packages/web) → ✅ 0 errors (re-run sau REV1)
+  - `npm run lint` (packages/web) → ✅ 0 error, 3524 warnings (re-run `Select-String problems` xác minh)
+  - `npm run build` (packages/web) → ✅ built 31.94s, chunk `DashboardPage 141.08 kB (gz 42.39 kB)`, `index 2,112 kB` (re-run khớp)
+  - `grep main.tsx:21` `resolvePageComponent` alias + `grep pageRegistry.js:189` dead entry → xác minh REV1 F04
+  - `read useAlertCenterSnapshot.ts:93` trace tay 3 trang → xác minh REV1 F06 CHƯA XÁC MINH
+- **Residual**: F04 chỉ dọn dead code, không cần redirect; F06 chờ test Slice 3.4. Tiếp theo: Phase 0 hotfix F01-F03 nếu duyệt (F06 hoãn).
+
+---
+
 ## Entry 1: Whale Alerts upgrade — Symbol Kline Intelligence
 
 - **PR / branch**: feature/whale-alerts-symbol-kline-intelligence

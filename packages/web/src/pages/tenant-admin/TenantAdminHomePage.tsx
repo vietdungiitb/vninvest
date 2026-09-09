@@ -1,16 +1,19 @@
 import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
-import { useEffect, useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ShellPageChrome, ShellPanel } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
+import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { renderSummaryCard } from "../coreShellPageHelpers.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
+import { useTenantAdminQuery } from "./useTenantAdminQuery.js";
 interface DashboardSummary {
   health_score: number;
+  health_breakdown?: { quota: number; activity: number; base: number };
   members_active_today: number;
   members_total: number;
   api_calls_today: number;
@@ -21,6 +24,9 @@ interface DashboardSummary {
   trial_remaining_days: number | null;
   service_accounts: { active: number; disabled: number };
   pats_expiring_soon: number;
+  pats_total?: number;
+  sso_configured?: boolean;
+  webhook_count?: number;
   recent_events: Array<{
     event_type: string;
     created_at: string;
@@ -52,7 +58,8 @@ interface TenantAdminHomePageProps {
 
 function HealthGauge({ score }: { score: number }) {
   const color = score >= 80 ? "#10b981" : score >= 50 ? "#f59e0b" : "#ef4444";
-  const glowFilterId = useMemo(() => `gaugeGlow-${Math.floor(Math.random() * 1000000)}`, []);
+  const rawId = useId();
+  const glowFilterId = useMemo(() => `gaugeGlow-${rawId.replace(/:/g, "")}`, [rawId]);
   return (
     <div className={ta.home_1}>
       <svg width="56" height="56" viewBox="0 0 56 56">
@@ -114,45 +121,62 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
   const { t, formatNumber } = useI18n();
   const { ability, userIdentity, userPlan } = usePortfolio();
 
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [trend, setTrend] = useState<DailyPoint[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [trendDays, setTrendDays] = useState(7);
   const [showDeprovision, setShowDeprovision] = useState(false);
   const [deprovisionDone, setDeprovisionDone] = useState(false);
   const [deprovisionError, setDeprovisionError] = useState("");
   const [deprovisioning, setDeprovisioning] = useState(false);
 
-  const loadData = async (days = trendDays) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [summaryData, trendData] = await Promise.all([
-        defaultCoreApiAdapter.getDashboardSummary(),
-        defaultCoreApiAdapter.getUsageTrend(days),
-      ]);
-      setSummary(summaryData as DashboardSummary);
-      setTrend((trendData as { daily: DailyPoint[] }).daily || []);
-    } catch (err) {
-      setError((err as Error).message || t("common.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  };
+  const canReadHome = (ability as unknown as { can: (a: string, s: string) => boolean })?.can?.("read", "TenantAdminHome") ?? true;
 
-  useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const {
+    data: summaryData,
+    isLoading: summaryLoading,
+    isFetching: summaryFetching,
+    error: summaryError,
+    refetch: refetchSummary,
+  } = useTenantAdminQuery<DashboardSummary>(
+    ["tenant-home", "summary"],
+    "/partner/dashboard/summary/",
+    {
+      enabled: canReadHome,
+      queryFn: async () => {
+        const adapter = defaultCoreApiAdapter as unknown as { getDashboardSummary: () => Promise<DashboardSummary> };
+        return adapter.getDashboardSummary();
+      },
+    },
+  );
+
+  const {
+    data: trendData,
+    isFetching: trendFetching,
+    error: trendError,
+    refetch: refetchTrend,
+  } = useTenantAdminQuery<{ daily: DailyPoint[]; days: number }>(
+    ["tenant-home", "trend", String(trendDays)],
+    `/partner/dashboard/usage-trend/?days=${trendDays}`,
+    {
+      enabled: canReadHome,
+      queryFn: async () => {
+        const adapter = defaultCoreApiAdapter as unknown as { getUsageTrend: (d: number) => Promise<{ daily: DailyPoint[]; days: number }> };
+        const res = await adapter.getUsageTrend(trendDays) as unknown as { daily: DailyPoint[]; days: number };
+        return res;
+      },
+    },
+  );
+
+  const summary = summaryData ?? null;
+  const trend = useMemo(() => trendData?.daily ?? [], [trendData]);
+  const loading = summaryLoading;
+  const error = summaryError ? ((summaryError as Error).message || t("common.loadError")) : trendError ? ((trendError as Error).message || t("tenantHome.trendLoadError")) : null;
 
   const handleTrendDaysChange = (days: number) => {
     setTrendDays(days);
-    defaultCoreApiAdapter.getUsageTrend(days).then((data) => {
-      setTrend((data as { daily: DailyPoint[] }).daily || []);
-    }).catch((err: unknown) => {
-      setError(err instanceof Error ? err.message : t("tenantHome.trendLoadError"));
-    });
+  };
+
+  const handleRefresh = () => {
+    void refetchSummary();
+    void refetchTrend();
   };
 
   const planLabel = t(`plans.${userPlan}`, { defaultValue: userPlan });
@@ -194,7 +218,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
     { labelKey: "tenantHome.reportsRoute", to: "/tenant-admin/reports", subject: "TenantReportsView", icon: "\uD83D\uDCCB" },
     { labelKey: "tenantHome.securityRoute", to: "/tenant-admin/security", subject: "TenantSecurityView", icon: "\uD83D\uDEE1\uFE0F" },
   ];
-  const allowedLinks = navEntries.filter((entry) => ability.can("read", entry.subject));
+  const allowedLinks = navEntries.filter((entry) => (ability as unknown as { can: (a: string, s: string) => boolean })?.can?.("read", entry.subject) ?? false);
 
   if (loading && !summary) {
     return (
@@ -203,7 +227,29 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
         title={t("tenantHome.title")}
         description={t("common.loading")}
       >
-        <div className={`${styles.panel}`}>{t("common.loading")}</div>
+        <ShellSkeleton variant="metric" count={4} />
+        <div style={{ height: 16 }} />
+        <ShellSkeleton variant="chart" count={7} />
+        <div style={{ height: 16 }} />
+        <ShellSkeleton variant="table-row" count={3} />
+      </ShellPageChrome>
+    );
+  }
+
+  if (summaryError && !summary) {
+    return (
+      <ShellPageChrome
+        eyebrow={t("tenantHome.eyebrow")}
+        title={t("tenantHome.title")}
+        description={t("common.loadError")}
+        error={(summaryError as Error)?.message || t("common.loadError")}
+      >
+        <div className={`${styles.panel}`}>
+          <ShellEmptyState description={(summaryError as Error)?.message || t("common.loadError")} />
+          <button onClick={handleRefresh} className={`${styles.button} ${styles.buttonSecondary}`} style={{ marginTop: 12 }}>
+            {t("common.refresh")}
+          </button>
+        </div>
       </ShellPageChrome>
     );
   }
@@ -245,8 +291,8 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
     : "";
 
   const refreshAction = (
-    <button onClick={() => loadData()} className={`${styles.button} ${styles.buttonSecondary}`}>
-      {t("common.refresh")}
+    <button onClick={handleRefresh} disabled={summaryFetching || trendFetching} className={`${styles.button} ${styles.buttonSecondary}`}>
+      {summaryFetching || trendFetching ? t("common.loading") : t("common.refresh")}
     </button>
   );
 
@@ -280,7 +326,8 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
     {
       key: "pat",
       labelKey: "tenantHome.checklistPAT",
-      done: (summary?.pats_expiring_soon ?? 0) > 0,
+      // REV2 F04b: done = pats_total>0 (optional FE, fallback 0 -> not done until BE deploy)
+      done: (summary?.pats_total ?? 0) > 0,
       route: "/tenant-admin/pats",
     },
     {
@@ -292,13 +339,14 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
     {
       key: "sso",
       labelKey: "tenantHome.checklistSSO",
-      done: ability.can("read", "TenantSSOAdmin"),
+      // REV2: Phase0 giữ ability.can fallback; Phase1 sẽ dùng summary.sso_configured
+      done: summary?.sso_configured != null ? !!summary.sso_configured : (ability as unknown as { can: (a: string, s: string) => boolean })?.can?.("read", "TenantSSOAdmin") ?? false,
       route: "/tenant-admin/sso",
     },
     {
       key: "webhooks",
       labelKey: "tenantHome.checklistWebhooks",
-      done: ability.can("read", "TenantWebhookView"),
+      done: summary?.webhook_count != null ? (summary.webhook_count ?? 0) > 0 : (ability as unknown as { can: (a: string, s: string) => boolean })?.can?.("read", "TenantWebhookView") ?? false,
       route: "/tenant-admin/webhooks",
     },
   ];
@@ -426,10 +474,12 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
               {trendDays !== 7 && (
                 <div className={ta.home_27}>{trendActions}</div>
               )}
-              {usageChartData.length > 0 ? (
+              {trendFetching && trend.length === 0 ? (
+                <ShellSkeleton variant="chart" count={trendDays} />
+              ) : usageChartData.length > 0 ? (
                 <div className={ta.home_28}>
                   <ResponsiveContainer>
-                    <AreaChart data={usageChartData} margin={{ top: 10, right: 6, bottom: 4, left: -16 }}>
+                    <AreaChart data={usageChartData} margin={{ top: 10, right: 12, bottom: 4, left: 0 }}>
                       <defs>
                         <linearGradient id="apiGrad" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#00b4d8" stopOpacity={0.3} />
@@ -460,10 +510,12 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
                           </feMerge>
                         </filter>
                       </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" vertical={false} />
                       <XAxis
                         dataKey="date" tick={{ fontSize: 11, fill: "#94a3b8" }}
                         axisLine={false} tickLine={false}
                       />
+                      <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} width={36} />
                       <Tooltip
                         contentStyle={{
                           background: "rgba(15,23,42,0.96)", border: "1px solid rgba(255,255,255,0.08)",
@@ -471,6 +523,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
                           boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)"
                         }}
                       />
+                      <Legend wrapperStyle={{ fontSize: 11, color: "#94a3b8", paddingTop: 8 }} />
                       <Area
                         type="monotone" dataKey="api_calls" stroke="#00b4d8"
                         fill="url(#apiGrad)" strokeWidth={2.5} dot={false}

@@ -4,9 +4,11 @@ Dashboard views for tenant-admin home page.
 Provides composite summary and usage trend data for the tenant admin
 dashboard home (Phase 0 of the Tenant Admin Upgrade Plan).
 """
+import logging
+
 from datetime import date, timedelta
 
-from django.db.models import Q, Sum
+from django.db.models import Count
 from django.utils import timezone
 
 from rest_framework.decorators import api_view, permission_classes
@@ -16,6 +18,8 @@ from rest_framework.response import Response
 from .models import CorePATCredential, CoreServiceAccount, CoreTenant
 from .permissions import IsTenantActive, require_human_session
 from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
+
+logger = logging.getLogger(__name__)
 
 
 def _build_recent_events(tenant, limit=10):
@@ -34,13 +38,13 @@ def _build_recent_events(tenant, limit=10):
             for e in events
         ]
     except Exception:
+        logger.warning("dashboard summary: _build_recent_events fallback", exc_info=True)
         return []
 
 
 def _count_active_members_today(tenant):
     today = date.today()
     from .models import TenantMember
-    from django.contrib.auth.models import User
     return TenantMember.objects.filter(
         tenant=tenant,
         user__last_login__date=today,
@@ -71,14 +75,20 @@ def partner_dashboard_summary(request):
             api_calls_today = qr.api_calls_used or 0
             api_calls_limit = qr.api_calls_limit if qr.api_calls_limit and qr.api_calls_limit > 0 else -1
     except Exception:
-        pass
+        logger.warning("dashboard summary: QuotaRecord fallback", exc_info=True)
 
     quota_headroom_pct = 100
     if api_calls_limit > 0:
         quota_headroom_pct = max(0, 100 - int((api_calls_today / max(api_calls_limit, 1)) * 100))
 
     member_activity_pct = int((members_active_today / max(members_total, 1)) * 100) if members_total > 0 else 100
-    health_score = int((quota_headroom_pct * 0.4) + (member_activity_pct * 0.3) + 30)
+    base_score = 30
+    health_score = int((quota_headroom_pct * 0.4) + (member_activity_pct * 0.3) + base_score)
+    health_breakdown = {
+        'quota': quota_headroom_pct,
+        'activity': member_activity_pct,
+        'base': base_score,
+    }
 
     sa_active = CoreServiceAccount.objects.filter(tenant=tenant, status='active').count()
     sa_disabled = CoreServiceAccount.objects.filter(tenant=tenant, status='disabled').count()
@@ -90,6 +100,21 @@ def partner_dashboard_summary(request):
         expires_at__lte=now + timedelta(days=7),
         expires_at__gte=now,
     ).count()
+    # REV2: additive pats_total for checklist PAT semantics (F04b)
+    pats_total = CorePATCredential.objects.filter(
+        service_account__tenant=tenant,
+        status='active',
+    ).count()
+
+    # Phase 1 F04a: sso_configured + webhook_count (additive, optional FE)
+    sso_configured = False
+    webhook_count = 0
+    try:
+        from .models import TenantSSOConfig, TenantWebhookConfig
+        sso_configured = TenantSSOConfig.objects.filter(tenant=tenant, is_enabled=True).exists()
+        webhook_count = TenantWebhookConfig.objects.filter(tenant=tenant, is_active=True).count()
+    except Exception:
+        logger.warning("dashboard summary: sso/webhook fallback", exc_info=True)
 
     recent_events = _build_recent_events(tenant, limit=10)
 
@@ -103,6 +128,7 @@ def partner_dashboard_summary(request):
 
     return Response({
         'health_score': health_score,
+        'health_breakdown': health_breakdown,
         'members_active_today': members_active_today,
         'members_total': members_total,
         'api_calls_today': api_calls_today,
@@ -113,6 +139,9 @@ def partner_dashboard_summary(request):
         'trial_remaining_days': trial_remaining_days if trial_remaining_days and trial_remaining_days >= 0 else None,
         'service_accounts': {'active': sa_active, 'disabled': sa_disabled},
         'pats_expiring_soon': pats_expiring,
+        'pats_total': pats_total,
+        'sso_configured': sso_configured,
+        'webhook_count': webhook_count,
         'recent_events': recent_events,
     })
 
@@ -133,7 +162,7 @@ def partner_dashboard_usage_trend(request):
     start = today - timedelta(days=days - 1)
 
     from commercial.models import QuotaHistory
-    
+
     # Fetch daily api_calls consumption in one query
     history_records = QuotaHistory.objects.filter(
         tenant=tenant,
@@ -145,20 +174,34 @@ def partner_dashboard_usage_trend(request):
 
     from .models import TenantMember
 
+    # F03 fix: single GROUP BY query for active_members, avoid N queries
+    active_by_date = {}
+    try:
+        rows = (
+            TenantMember.objects.filter(
+                tenant=tenant,
+                user__last_login__date__gte=start,
+                user__last_login__date__lte=today,
+            )
+            .values('user__last_login__date')
+            .annotate(c=Count('id'))
+        )
+        for r in rows:
+            d = r['user__last_login__date']
+            if d:
+                active_by_date[d.isoformat()] = r['c']
+    except Exception:
+        logger.warning("dashboard usage-trend: active_members GROUP BY fallback", exc_info=True)
+
     daily = []
     for offset in range(days):
         d = start + timedelta(days=offset)
         d_str = d.isoformat()
 
-        active_members = TenantMember.objects.filter(
-            tenant=tenant,
-            user__last_login__date=d,
-        ).count()
-
         daily.append({
             'date': d_str,
             'api_calls': api_calls_by_date.get(d_str, 0),
-            'active_members': active_members,
+            'active_members': active_by_date.get(d_str, 0),
         })
 
     return Response({'daily': daily, 'days': days})
