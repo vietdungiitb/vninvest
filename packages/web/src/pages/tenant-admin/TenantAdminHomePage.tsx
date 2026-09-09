@@ -108,16 +108,17 @@ function KpiCard({
   );
 }
 
-function EventIcon({ type }: { type: string }) {
-  const props = { size: 14, style: { flexShrink: 0 } as const };
-  if (type.includes("pat")) return <Fingerprint {...props} aria-label="pat" />;
-  if (type.includes("member")) return <Users {...props} aria-label="member" />;
-  if (type.includes("quota")) return <AlertTriangle {...props} aria-label="quota" />;
-  if (type.includes("plan") || type.includes("status")) return <TrendingUp {...props} aria-label="plan" />;
-  if (type.includes("invoice")) return <CreditCard {...props} aria-label="invoice" />;
-  if (type.includes("trial")) return <Clock {...props} aria-label="trial" />;
-  if (type.includes("deprov")) return <Trash2 {...props} aria-label="deprovision" />;
-  return <RefreshCw {...props} aria-label="activity" />;
+function EventIcon({ type, label }: { type: string; label?: string }) {
+  const props = { size: 14, style: { flexShrink: 0 } as const, role: "img" as const };
+  const aria = label || type;
+  if (type.includes("pat")) return <Fingerprint {...props} aria-label={aria} />;
+  if (type.includes("member")) return <Users {...props} aria-label={aria} />;
+  if (type.includes("quota")) return <AlertTriangle {...props} aria-label={aria} />;
+  if (type.includes("plan") || type.includes("status")) return <TrendingUp {...props} aria-label={aria} />;
+  if (type.includes("invoice")) return <CreditCard {...props} aria-label={aria} />;
+  if (type.includes("trial")) return <Clock {...props} aria-label={aria} />;
+  if (type.includes("deprov")) return <Trash2 {...props} aria-label={aria} />;
+  return <RefreshCw {...props} aria-label={aria} />;
 }
 
 function eventLabel(type: string, t: (k: string, o?: object) => string): string {
@@ -640,7 +641,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
                 <div className={`${styles.list}`}>
                   {(activityFilter === "all" ? summary.recent_events : summary.recent_events.filter((e) => e.event_type === activityFilter)).map((ev, i) => (
                     <div key={`${ev.event_type}-${i}`} className={[`${styles.listItem}`, ta.home_34].filter(Boolean).join(" ")} >
-                      <span className={ta.home_35}><EventIcon type={ev.event_type} /></span>
+                      <span className={ta.home_35}><EventIcon type={ev.event_type} label={eventLabel(ev.event_type, t)} /></span>
                       <div className={ta.home_36}>
                         <div className={ta.home_37}>
                           {eventLabel(ev.event_type, t)}
