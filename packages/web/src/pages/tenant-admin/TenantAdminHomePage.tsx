@@ -146,6 +146,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
   const [deprovisionError, setDeprovisionError] = useState("");
   const [deprovisioning, setDeprovisioning] = useState(false);
   const [deprovisionConfirm, setDeprovisionConfirm] = useState("");
+  const [activityFilter, setActivityFilter] = useState<string>("all");
 
   const canReadHome = (ability as unknown as { can: (a: string, s: string) => boolean })?.can?.("read", "TenantAdminHome") ?? true;
 
@@ -321,8 +322,20 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
     </div>
   );
 
+  const handleExportCsv = () => {
+    const rows = [["date", "api_calls", "active_members"], ...usageChartData.map((r) => [r.date, String(r.api_calls), String(r.active_members)])];
+    const csv = rows.map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `usage-trend-${trendDays}d.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const trendActions = (
-    <div className={`${styles.actions}`}>
+    <div className={`${styles.actions}`} style={{ gap: 8 }}>
       {[7, 14, 30].map((d) => (
         <button
           key={d}
@@ -338,6 +351,9 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
           {d}d
         </button>
       ))}
+      <button onClick={handleExportCsv} disabled={usageChartData.length === 0} className={`${styles.button} ${styles.buttonSecondary}`} style={{ padding: "6px 10px", fontSize: 11 }}>
+        Export CSV
+      </button>
     </div>
   );
 
@@ -598,30 +614,52 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
             )}
           </div>
 
-          {/* Recent Activity */}
+          {/* Recent Activity — filter + deep-link */}
           <ShellPanel title={t("tenantHome.activityTitle")} actions={refreshAction}>
             {summary?.recent_events && summary.recent_events.length > 0 ? (
-              <div className={`${styles.list}`}>
-                {summary.recent_events.map((ev, i) => (
-                  <div key={`${ev.event_type}-${i}`} className={[`${styles.listItem}`, ta.home_34].filter(Boolean).join(" ")} >
-                    <span className={ta.home_35}>{eventIcon(ev.event_type)}</span>
-                    <div className={ta.home_36}>
-                      <div className={ta.home_37}>
-                        {eventLabel(ev.event_type, t)}
-                      </div>
-                      {ev.description && (
-                        <div className={`${styles.itemMeta}`} style={{ marginTop: 2, fontSize: 12 }}>
-                          {ev.description}
+              <>
+                {(() => {
+                  const types = Array.from(new Set(summary.recent_events.map((e) => e.event_type)));
+                  if (types.length <= 1) return null;
+                  return (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                      <button onClick={() => setActivityFilter("all")} className={`${styles.button}`} style={{ padding: "4px 10px", fontSize: 11, background: activityFilter === "all" ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)", color: activityFilter === "all" ? "var(--accent-shell)" : "var(--text-secondary)", border: activityFilter === "all" ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)", borderRadius: 999 }}>
+                        Tất cả
+                      </button>
+                      {types.map((tp) => (
+                        <button key={tp} onClick={() => setActivityFilter(tp)} className={`${styles.button}`} style={{ padding: "4px 10px", fontSize: 11, background: activityFilter === tp ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)", color: activityFilter === tp ? "var(--accent-shell)" : "var(--text-secondary)", border: activityFilter === tp ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)", borderRadius: 999 }}>
+                          {eventLabel(tp, t)}
+                        </button>
+                      ))}
+                      <Link to="/tenant-admin/audit-logs" style={{ fontSize: 11, color: "var(--accent-shell)", alignSelf: "center", marginLeft: 8 }}>Xem tất cả →</Link>
+                    </div>
+                  );
+                })()}
+                <div className={`${styles.list}`}>
+                  {(activityFilter === "all" ? summary.recent_events : summary.recent_events.filter((e) => e.event_type === activityFilter)).map((ev, i) => (
+                    <div key={`${ev.event_type}-${i}`} className={[`${styles.listItem}`, ta.home_34].filter(Boolean).join(" ")} >
+                      <span className={ta.home_35}>{eventIcon(ev.event_type)}</span>
+                      <div className={ta.home_36}>
+                        <div className={ta.home_37}>
+                          {eventLabel(ev.event_type, t)}
                         </div>
-                      )}
-                      <div className={ta.home_38}>
-                        {ev.actor && <span>{ev.actor}</span>}
-                        <span>{timeAgo(ev.created_at, t)}</span>
+                        {ev.description && (
+                          <div className={`${styles.itemMeta}`} style={{ marginTop: 2, fontSize: 12 }}>
+                            {ev.description}
+                          </div>
+                        )}
+                        <div className={ta.home_38}>
+                          {ev.actor && <span>{ev.actor}</span>}
+                          <span>{timeAgo(ev.created_at, t)}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+                {activityFilter !== "all" && summary.recent_events.filter((e) => e.event_type === activityFilter).length === 0 && (
+                  <ShellEmptyState description={t("tenantHome.noActivity")} />
+                )}
+              </>
             ) : (
               <ShellEmptyState description={t("tenantHome.noActivity")} />
             )}
