@@ -289,11 +289,12 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
   const formatDelta = (today: number | undefined, yesterday: number | undefined): string | null => {
     if (today == null || yesterday == null) return null;
     const diff = today - yesterday;
+    const vsYesterday = t("tenantHome.vsYesterday");
     if (yesterday === 0) return diff === 0 ? "—" : `↑${formatNumber(diff)}`;
     const pct = Math.round((diff / Math.max(1, yesterday)) * 100);
     const arrow = diff > 0 ? "↑" : diff < 0 ? "↓" : "→";
     const sign = diff > 0 ? "+" : "";
-    return `${arrow} ${sign}${formatNumber(diff)} (${sign}${pct}%) vs hôm qua`;
+    return `${arrow} ${sign}${formatNumber(diff)} (${sign}${pct}%) ${vsYesterday}`;
   };
 
   const showTrialBanner = summary?.plan_status === "trial" && summary?.trial_remaining_days != null;
@@ -413,7 +414,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
                 <p className={ta.home_15}>{t("tenantHome.deprovisionConfirmBody")}</p>
                 <div style={{ marginBottom: 12 }}>
                   <label style={{ fontSize: 12, color: "#94a3b8", display: "block", marginBottom: 6 }}>
-                    Nhập <strong>DEPROVISION</strong> để xác nhận
+                    {t("tenantHome.deprovisionTypeHint", { phrase: "DEPROVISION" })}
                   </label>
                   <input
                     className={`${styles.input}`}

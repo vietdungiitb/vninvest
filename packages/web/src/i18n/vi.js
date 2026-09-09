@@ -1109,6 +1109,8 @@ const vi = {
     checklistMembers: 'Mời thành viên',
     checklistSSO: 'Cấu hình SSO',
     checklistWebhooks: 'Thiết lập webhook',
+    vsYesterday: 'vs hôm qua',
+    deprovisionTypeHint: 'Nhập {phrase} để xác nhận',
   },
   tenantCapabilities: {
     eyebrow: 'Bản đồ quyền tenant',

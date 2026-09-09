@@ -128,6 +128,7 @@ def partner_dashboard_summary(request):
     except Exception:
         logger.warning("dashboard summary: api_calls_yesterday fallback", exc_info=True)
     try:
+        from .models import TenantMember
         members_active_yesterday = TenantMember.objects.filter(tenant=tenant, user__last_login__date=yesterday).count()
     except Exception:
         logger.warning("dashboard summary: members_active_yesterday fallback", exc_info=True)

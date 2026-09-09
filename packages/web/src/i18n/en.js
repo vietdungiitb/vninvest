@@ -1109,6 +1109,8 @@ const en = {
     checklistMembers: 'Invite team members',
     checklistSSO: 'Configure SSO',
     checklistWebhooks: 'Set up webhooks',
+    vsYesterday: 'vs yesterday',
+    deprovisionTypeHint: 'Type {phrase} to confirm',
   },
   tenantCapabilities: {
     eyebrow: 'Tenant permission map',
