@@ -7,7 +7,6 @@ import { Users, Key, Fingerprint, Webhook, Activity, ScrollText, CreditCard, Shi
 import { ShellPageChrome, ShellPanel } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { ShellSkeleton } from "../../components/ShellSkeleton.js";
-import { renderSummaryCard } from "../coreShellPageHelpers.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
 import { usePortfolio } from "../../context/PortfolioContext.js";
@@ -141,7 +140,7 @@ function timeAgo(iso: string, t: (k: string, o?: object) => string): string {
 
 export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
   const { t, formatNumber } = useI18n();
-  const { ability, userIdentity, userPlan } = usePortfolio();
+  const { ability } = usePortfolio();
 
   const [trendDays, setTrendDays] = useState(7);
   const [showDeprovision, setShowDeprovision] = useState(false);
@@ -210,7 +209,6 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
 
   const liveAgo = summaryUpdatedAt ? timeAgo(new Date(summaryUpdatedAt).toISOString(), t) : "";
 
-  const planLabel = t(`plans.${userPlan}`, { defaultValue: userPlan });
   const planStatusLabel = summary
     ? t(`tenantHome.status.${summary.plan_status}`, { defaultValue: summary.plan_status })
     : "";
@@ -662,65 +660,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
             )}
           </ShellPanel>
 
-          {/* Status Summary */}
-          {summary && (
-            <div className={ta.home_39}>
-              <div className={[`${styles.listItem}`, ta.home_40].filter(Boolean).join(" ")} >
-                <span className={ta.home_41}><Key size={18} aria-hidden /></span>
-                <div className={ta.home_42}>
-                  <div className={ta.home_43}>
-                    {t("tenantHome.serviceAccountsLabel")}
-                    {summary.service_accounts.active > 0 && (
-                      <span className={ta.home_44}>
-                        <span className={ta.home_45} />
-                        {t("tenantHome.active")}
-                      </span>
-                    )}
-                  </div>
-                  <div className={ta.home_46}>
-                    {summary.service_accounts.active} {t("tenantHome.active")}
-                    {summary.service_accounts.disabled > 0 && `, ${summary.service_accounts.disabled} ${t("tenantHome.disabled")}`}
-                  </div>
-                </div>
-              </div>
-              <div className={[`${styles.listItem}`, ta.home_47].filter(Boolean).join(" ")} >
-                <span className={ta.home_48}><Clock size={18} aria-hidden /></span>
-                <div className={ta.home_49}>
-                  <div className={ta.home_50}>
-                    {t("tenantHome.patsExpiringLabel")}
-                    {summary.pats_expiring_soon > 0 && (
-                      <span className={ta.home_51}>
-                        <span className={ta.home_52} />
-                        {t("tenantUsage.warningLabel") || "WARNING"}
-                      </span>
-                    )}
-                  </div>
-                  <div className={ta.home_53} style={{ color: summary.pats_expiring_soon > 0 ? "#f59e0b" : "var(--text-secondary)" }}>
-                    {summary.pats_expiring_soon > 0
-                      ? `${summary.pats_expiring_soon} ${t("tenantHome.expiringWithin7Days")}`
-                      : t("tenantHome.noneExpiring")}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
-          {/* Identity Card */}
-          {userIdentity.username && (
-            <ShellPanel title={t("tenantHome.identityTitle")}>
-              <section className={`${styles.summaryGrid}`}>
-                {renderSummaryCard({
-                  key: "identity",
-                  title: t("tenantHome.identityTitle"),
-                  rows: [
-                    { label: t("tenantHome.usernameLabel"), value: userIdentity.username || "\u2014" },
-                    { label: t("tenantHome.emailLabel"), value: userIdentity.email || "\u2014" },
-                    { label: t("tenantHome.metricPlan"), value: planLabel },
-                  ],
-                })}
-              </section>
-            </ShellPanel>
-          )}
       </section>
     </ShellPageChrome>
   );
