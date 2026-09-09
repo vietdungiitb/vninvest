@@ -3,6 +3,7 @@ import ta from "./TenantAdmin.module.css";
 import { useId, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Users, Key, Fingerprint, Webhook, Activity, ScrollText, CreditCard, ShieldCheck, FileText, Globe, FileSpreadsheet, Lock, AlertTriangle, RefreshCw, Clock, Trash2, TrendingUp } from "lucide-react";
 import { ShellPageChrome, ShellPanel } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { ShellSkeleton } from "../../components/ShellSkeleton.js";
@@ -107,15 +108,16 @@ function KpiCard({
   );
 }
 
-function eventIcon(type: string): string {
-  if (type.includes("pat")) return "\uD83D\uDD11";
-  if (type.includes("member")) return "\uD83D\uDC64";
-  if (type.includes("quota")) return "\u26A0\uFE0F";
-  if (type.includes("plan") || type.includes("status")) return "\uD83D\uDCC8";
-  if (type.includes("invoice")) return "\uD83D\uDCB5";
-  if (type.includes("trial")) return "\u23F3";
-  if (type.includes("deprov")) return "\u274C";
-  return "\uD83D\uDD04";
+function EventIcon({ type }: { type: string }) {
+  const props = { size: 14, style: { flexShrink: 0 } as const };
+  if (type.includes("pat")) return <Fingerprint {...props} aria-label="pat" />;
+  if (type.includes("member")) return <Users {...props} aria-label="member" />;
+  if (type.includes("quota")) return <AlertTriangle {...props} aria-label="quota" />;
+  if (type.includes("plan") || type.includes("status")) return <TrendingUp {...props} aria-label="plan" />;
+  if (type.includes("invoice")) return <CreditCard {...props} aria-label="invoice" />;
+  if (type.includes("trial")) return <Clock {...props} aria-label="trial" />;
+  if (type.includes("deprov")) return <Trash2 {...props} aria-label="deprovision" />;
+  return <RefreshCw {...props} aria-label="activity" />;
 }
 
 function eventLabel(type: string, t: (k: string, o?: object) => string): string {
@@ -234,18 +236,18 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
   };
 
   const navEntries = [
-    { labelKey: "tenantHome.membersRoute", to: "/tenant-admin/members", subject: "TenantMemberAdmin", icon: "\uD83D\uDC65" },
-    { labelKey: "tenantHome.serviceAccountsRoute", to: "/tenant-admin/service-accounts", subject: "TenantServiceAccountAdmin", icon: "\uD83D\uDD27" },
-    { labelKey: "tenantHome.patsRoute", to: "/tenant-admin/pats", subject: "TenantPATAdmin", icon: "\uD83D\uDD11" },
-    { labelKey: "tenantHome.webhooksRoute", to: "/tenant-admin/webhooks", subject: "TenantWebhookView", icon: "\uD83D\uDD17" },
-    { labelKey: "tenantHome.usageRoute", to: "/tenant-admin/usage", subject: "TenantUsageView", icon: "\uD83D\uDCCA" },
-    { labelKey: "tenantHome.usageHistoryRoute", to: "/tenant-admin/usage-history", subject: "TenantUsageView", icon: "\uD83D\uDCC8" },
-    { labelKey: "tenantHome.billingRoute", to: "/tenant-admin/billing", subject: "TenantBillingView", icon: "\uD83D\uDCB3" },
-    { labelKey: "tenantHome.capabilitiesRoute", to: "/tenant-admin/capabilities", subject: "TenantCapabilityView", icon: "\u2699\uFE0F" },
-    { labelKey: "tenantHome.auditLogsRoute", to: "/tenant-admin/audit-logs",       subject: "TenantAuditAdmin", icon: "\uD83D\uDCC4" },
-    { labelKey: "tenantHome.ssoRoute", to: "/tenant-admin/sso", subject: "TenantSSOAdmin", icon: "\uD83D\uDD10" },
-    { labelKey: "tenantHome.reportsRoute", to: "/tenant-admin/reports", subject: "TenantReportsView", icon: "\uD83D\uDCCB" },
-    { labelKey: "tenantHome.securityRoute", to: "/tenant-admin/security", subject: "TenantSecurityView", icon: "\uD83D\uDEE1\uFE0F" },
+    { labelKey: "tenantHome.membersRoute", to: "/tenant-admin/members", subject: "TenantMemberAdmin", Icon: Users },
+    { labelKey: "tenantHome.serviceAccountsRoute", to: "/tenant-admin/service-accounts", subject: "TenantServiceAccountAdmin", Icon: Key },
+    { labelKey: "tenantHome.patsRoute", to: "/tenant-admin/pats", subject: "TenantPATAdmin", Icon: Fingerprint },
+    { labelKey: "tenantHome.webhooksRoute", to: "/tenant-admin/webhooks", subject: "TenantWebhookView", Icon: Webhook },
+    { labelKey: "tenantHome.usageRoute", to: "/tenant-admin/usage", subject: "TenantUsageView", Icon: Activity },
+    { labelKey: "tenantHome.usageHistoryRoute", to: "/tenant-admin/usage-history", subject: "TenantUsageView", Icon: ScrollText },
+    { labelKey: "tenantHome.billingRoute", to: "/tenant-admin/billing", subject: "TenantBillingView", Icon: CreditCard },
+    { labelKey: "tenantHome.capabilitiesRoute", to: "/tenant-admin/capabilities", subject: "TenantCapabilityView", Icon: ShieldCheck },
+    { labelKey: "tenantHome.auditLogsRoute", to: "/tenant-admin/audit-logs",       subject: "TenantAuditAdmin", Icon: FileText },
+    { labelKey: "tenantHome.ssoRoute", to: "/tenant-admin/sso", subject: "TenantSSOAdmin", Icon: Globe },
+    { labelKey: "tenantHome.reportsRoute", to: "/tenant-admin/reports", subject: "TenantReportsView", Icon: FileSpreadsheet },
+    { labelKey: "tenantHome.securityRoute", to: "/tenant-admin/security", subject: "TenantSecurityView", Icon: Lock },
   ];
   const allowedLinks = navEntries.filter((entry) => (ability as unknown as { can: (a: string, s: string) => boolean })?.can?.("read", entry.subject) ?? false);
 
@@ -605,7 +607,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
                       className={[`${styles.listItem}`, ta.home_32].filter(Boolean).join(" ")}
                       style={{ transition: "transform 0.2s ease, border-color 0.2s ease" }}
                     >
-                      <span className={ta.home_33}>{entry.icon}</span>
+                      <entry.Icon size={18} className={ta.home_33} aria-hidden />
                       <span>{t(entry.labelKey)}</span>
                     </Link>
                   ))}
@@ -638,7 +640,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
                 <div className={`${styles.list}`}>
                   {(activityFilter === "all" ? summary.recent_events : summary.recent_events.filter((e) => e.event_type === activityFilter)).map((ev, i) => (
                     <div key={`${ev.event_type}-${i}`} className={[`${styles.listItem}`, ta.home_34].filter(Boolean).join(" ")} >
-                      <span className={ta.home_35}>{eventIcon(ev.event_type)}</span>
+                      <span className={ta.home_35}><EventIcon type={ev.event_type} /></span>
                       <div className={ta.home_36}>
                         <div className={ta.home_37}>
                           {eventLabel(ev.event_type, t)}
@@ -669,7 +671,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
           {summary && (
             <div className={ta.home_39}>
               <div className={[`${styles.listItem}`, ta.home_40].filter(Boolean).join(" ")} >
-                <span className={ta.home_41}>🔧</span>
+                <span className={ta.home_41}><Key size={18} aria-hidden /></span>
                 <div className={ta.home_42}>
                   <div className={ta.home_43}>
                     {t("tenantHome.serviceAccountsLabel")}
@@ -687,7 +689,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
                 </div>
               </div>
               <div className={[`${styles.listItem}`, ta.home_47].filter(Boolean).join(" ")} >
-                <span className={ta.home_48}>⏳</span>
+                <span className={ta.home_48}><Clock size={18} aria-hidden /></span>
                 <div className={ta.home_49}>
                   <div className={ta.home_50}>
                     {t("tenantHome.patsExpiringLabel")}
