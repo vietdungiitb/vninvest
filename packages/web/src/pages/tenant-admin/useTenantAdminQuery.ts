@@ -38,6 +38,8 @@ export function useTenantAdminQuery<T = unknown>(
     enabled?: boolean;
     headers?: Record<string, string>;
     queryFn?: () => Promise<T>;
+    refetchInterval?: number | false;
+    refetchIntervalInBackground?: boolean;
   },
 ) {
   const tenantId = readActiveTenantId();
@@ -48,6 +50,8 @@ export function useTenantAdminQuery<T = unknown>(
       ? options.queryFn
       : () => coreFetch("get", url, undefined, options?.headers) as Promise<T>,
     enabled: options?.enabled,
+    refetchInterval: options?.refetchInterval,
+    refetchIntervalInBackground: options?.refetchIntervalInBackground,
   });
 }
 

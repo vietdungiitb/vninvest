@@ -155,11 +155,14 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
     isFetching: summaryFetching,
     error: summaryError,
     refetch: refetchSummary,
+    dataUpdatedAt: summaryUpdatedAt,
   } = useTenantAdminQuery<DashboardSummary>(
     ["tenant-home", "summary"],
     "/partner/dashboard/summary/",
     {
       enabled: canReadHome,
+      refetchInterval: 30_000,
+      refetchIntervalInBackground: false,
       queryFn: async () => {
         const adapter = defaultCoreApiAdapter as unknown as { getDashboardSummary: () => Promise<DashboardSummary> };
         return adapter.getDashboardSummary();
@@ -177,6 +180,8 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
     `/partner/dashboard/usage-trend/?days=${trendDays}`,
     {
       enabled: canReadHome,
+      refetchInterval: 30_000,
+      refetchIntervalInBackground: false,
       queryFn: async () => {
         const adapter = defaultCoreApiAdapter as unknown as { getUsageTrend: (d: number) => Promise<{ daily: DailyPoint[]; days: number }> };
         const res = await adapter.getUsageTrend(trendDays) as unknown as { daily: DailyPoint[]; days: number };
@@ -198,6 +203,8 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
     void refetchSummary();
     void refetchTrend();
   };
+
+  const liveAgo = summaryUpdatedAt ? timeAgo(new Date(summaryUpdatedAt).toISOString(), t) : "";
 
   const planLabel = t(`plans.${userPlan}`, { defaultValue: userPlan });
   const planStatusLabel = summary
@@ -306,9 +313,12 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
     : "";
 
   const refreshAction = (
-    <button onClick={handleRefresh} disabled={summaryFetching || trendFetching} className={`${styles.button} ${styles.buttonSecondary}`}>
-      {summaryFetching || trendFetching ? t("common.loading") : t("common.refresh")}
-    </button>
+    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      {liveAgo && <span style={{ fontSize: 11, color: "#10b981", fontWeight: 600 }}>● LIVE · {liveAgo}</span>}
+      <button onClick={handleRefresh} disabled={summaryFetching || trendFetching} className={`${styles.button} ${styles.buttonSecondary}`}>
+        {summaryFetching || trendFetching ? t("common.loading") : t("common.refresh")}
+      </button>
+    </div>
   );
 
   const trendActions = (
