@@ -343,13 +343,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
         <button
           key={d}
           onClick={() => handleTrendDaysChange(d)}
-          className={`${styles.button}`}
-          style={{
-            background: trendDays === d ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)",
-            color: trendDays === d ? "var(--accent-shell)" : "var(--text-primary)",
-            border: trendDays === d ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)",
-            borderRadius: 14, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
-          }}
+          className={trendDays === d ? ta.home_54 : ta.home_55}
         >
           {d}d
         </button>
