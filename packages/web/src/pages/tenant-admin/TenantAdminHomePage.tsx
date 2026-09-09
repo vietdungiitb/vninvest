@@ -1,7 +1,7 @@
 import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
-import { useId, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useId, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Users, Key, Fingerprint, Webhook, Activity, ScrollText, CreditCard, ShieldCheck, FileText, Globe, FileSpreadsheet, Lock, AlertTriangle, RefreshCw, Clock, Trash2, TrendingUp } from "lucide-react";
 import { ShellPageChrome, ShellPanel } from "../../components/ShellPageTemplate.js";
@@ -149,6 +149,9 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
   const [deprovisioning, setDeprovisioning] = useState(false);
   const [deprovisionConfirm, setDeprovisionConfirm] = useState("");
   const [activityFilter, setActivityFilter] = useState<string>("all");
+  const [showPalette, setShowPalette] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState("");
+  const navigate = useNavigate();
 
   const canReadHome = (ability as unknown as { can: (a: string, s: string) => boolean })?.can?.("read", "TenantAdminHome") ?? true;
 
@@ -233,6 +236,21 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
       setDeprovisioning(false);
     }
   };
+
+  // Cmd+K palette — mini-spec: Ctrl+K/Cmd+K, filter 12 navEntries by t(labelKey), Enter navigate, Esc close
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setShowPalette((v) => !v);
+        setPaletteQuery("");
+      } else if (e.key === "Escape" && showPalette) {
+        setShowPalette(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showPalette]);
 
   const navEntries = [
     { labelKey: "tenantHome.membersRoute", to: "/tenant-admin/members", subject: "TenantMemberAdmin", Icon: Users },
@@ -662,6 +680,31 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
 
 
       </section>
+      {/* Cmd+K Palette — tenant-admin quick nav */}
+      {showPalette && (
+        <div role="dialog" aria-modal="true" aria-label="Quick navigation" onClick={() => setShowPalette(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: 80, zIndex: 1000 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--bg-shell-surface)", border: "1px solid var(--border-shell)", borderRadius: 12, width: 480, maxWidth: "90vw", maxHeight: "60vh", overflow: "hidden", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
+            <input autoFocus value={paletteQuery} onChange={(e) => setPaletteQuery(e.target.value)} placeholder="Tìm trang… (Ctrl+K)" style={{ width: "100%", padding: "12px 16px", border: "none", borderBottom: "1px solid var(--border-shell)", background: "transparent", color: "var(--text-primary)", outline: "none", fontSize: 14 }} />
+            <div style={{ maxHeight: 320, overflowY: "auto", padding: 8 }}>
+              {navEntries
+                .filter((entry) => (ability as unknown as { can: (a: string, s: string) => boolean })?.can?.("read", entry.subject) ?? false)
+                .filter((entry) => !paletteQuery || t(entry.labelKey).toLowerCase().includes(paletteQuery.toLowerCase()) || entry.labelKey.toLowerCase().includes(paletteQuery.toLowerCase()))
+                .slice(0, 8)
+                .map((entry) => (
+                  <button key={entry.to} onClick={() => { setShowPalette(false); navigate(entry.to); }} style={{ display: "flex", gap: 12, alignItems: "center", width: "100%", padding: "10px 12px", borderRadius: 8, border: "none", background: "transparent", color: "var(--text-primary)", cursor: "pointer", textAlign: "left" }} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+                    <entry.Icon size={16} aria-hidden />
+                    <span style={{ flex: 1, fontSize: 13 }}>{t(entry.labelKey)}</span>
+                    <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{entry.to}</span>
+                  </button>
+                ))}
+            </div>
+            <div style={{ padding: "6px 12px", fontSize: 11, color: "var(--text-secondary)", borderTop: "1px solid var(--border-shell)", display: "flex", justifyContent: "space-between" }}>
+              <span>↵ Chọn · Esc Đóng</span>
+              <span>Ctrl+K</span>
+            </div>
+          </div>
+        </div>
+      )}
     </ShellPageChrome>
   );
 }
