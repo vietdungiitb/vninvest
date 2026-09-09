@@ -140,13 +140,23 @@ const SIDEBAR_CSS = `
 `;
 
 export function TenantAdminSidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("taSidebarCollapsed") === "1";
+    } catch {
+      return false;
+    }
+  });
   const { t } = useI18n();
   const { ability } = usePortfolio();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const toggle = () => setCollapsed((c) => !c);
+  const toggle = () => setCollapsed((c) => {
+    const next = !c;
+    try { localStorage.setItem("taSidebarCollapsed", next ? "1" : "0"); } catch {}
+    return next;
+  });
 
   const segment = location.pathname.replace('/tenant-admin/', '').split('/')[0];
 

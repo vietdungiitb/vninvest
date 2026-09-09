@@ -90,6 +90,23 @@ function HealthGauge({ score }: { score: number }) {
   );
 }
 
+function KpiCard({
+  label, value, sub, color, gauge,
+}: {
+  label: string; value: string; sub?: string; color?: string; gauge?: number;
+}) {
+  return (
+    <div className={[`${styles.metric}`, ta.home_4].filter(Boolean).join(" ")} >
+      {gauge != null && <HealthGauge score={gauge} />}
+      <div className={ta.home_5}>
+        <span className={`${styles.metricLabel}`}>{label}</span>
+        <div className={`${styles.metricValue}`} style={{ color: color || "var(--text-primary)" }}>{value}</div>
+        {sub && <div className={ta.home_6}>{sub}</div>}
+      </div>
+    </div>
+  );
+}
+
 function eventIcon(type: string): string {
   if (type.includes("pat")) return "\uD83D\uDD11";
   if (type.includes("member")) return "\uD83D\uDC64";
@@ -255,23 +272,6 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
           </button>
         </div>
       </ShellPageChrome>
-    );
-  }
-
-  function KpiCard({
-    label, value, sub, color, gauge,
-  }: {
-    label: string; value: string; sub?: string; color?: string; gauge?: number;
-  }) {
-    return (
-      <div className={[`${styles.metric}`, ta.home_4].filter(Boolean).join(" ")} >
-        {gauge != null && <HealthGauge score={gauge} />}
-        <div className={ta.home_5}>
-          <span className={`${styles.metricLabel}`}>{label}</span>
-          <div className={`${styles.metricValue}`} style={{ color: color || "var(--text-primary)" }}>{value}</div>
-          {sub && <div className={ta.home_6}>{sub}</div>}
-        </div>
-      </div>
     );
   }
 
