@@ -637,11 +637,11 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
                   if (types.length <= 1) return null;
                   return (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-                      <button onClick={() => setActivityFilter("all")} className={`${styles.button}`} style={{ padding: "4px 10px", fontSize: 11, background: activityFilter === "all" ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)", color: activityFilter === "all" ? "var(--accent-shell)" : "var(--text-secondary)", border: activityFilter === "all" ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)", borderRadius: 999 }}>
+                      <button onClick={() => setActivityFilter("all")} className={activityFilter === "all" ? ta.home_56 : ta.home_57}>
                         Tất cả
                       </button>
                       {types.map((tp) => (
-                        <button key={tp} onClick={() => setActivityFilter(tp)} className={`${styles.button}`} style={{ padding: "4px 10px", fontSize: 11, background: activityFilter === tp ? "rgba(0,180,216,0.2)" : "rgba(255,255,255,0.06)", color: activityFilter === tp ? "var(--accent-shell)" : "var(--text-secondary)", border: activityFilter === tp ? "1px solid rgba(0,180,216,0.3)" : "1px solid var(--border-shell)", borderRadius: 999 }}>
+                        <button key={tp} onClick={() => setActivityFilter(tp)} className={activityFilter === tp ? ta.home_56 : ta.home_57}>
                           {eventLabel(tp, t)}
                         </button>
                       ))}

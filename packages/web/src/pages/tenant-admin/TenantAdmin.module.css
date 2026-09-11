@@ -422,6 +422,26 @@
   cursor: pointer;
 }
 
+.home_56 {
+  background: rgba(var(--ta-rgb-00b4d8) / 0.2);
+  color: var(--accent-shell);
+  border: 1px solid rgba(var(--ta-rgb-00b4d8) / 0.3);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.home_57 {
+  background: rgba(var(--ta-rgb-ffffff) / 0.06);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-shell);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
 /* ===== TenantAdminPATsPage.tsx ===== */
 
 .pats_1 {
