@@ -249,7 +249,7 @@ export function DashboardPage({
     const unique: AlertItem[] = [];
     const seen = new Set<string>();
     allAlerts.forEach((a) => {
-      const key = a?.id || `${a?.symbol}-${a?.ts || a?.timestamp}`;
+      const key = (a as any)?.alert_id || (a as any)?.event_id || a?.id || `${a?.symbol}-${a?.ts || a?.timestamp}`;
       if (!seen.has(key)) {
         seen.add(key);
         unique.push(a);

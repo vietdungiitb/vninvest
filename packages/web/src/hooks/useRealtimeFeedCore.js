@@ -333,7 +333,11 @@ export function normalizePollSymbolCandidates(symbols, quotesBySymbol, wsHealthy
   const fresh = [];
   let hasOverThreshold = false;
 
-  (symbols || []).forEach((symbol) => {
+  const filteredSymbols = (symbols || []).filter((s) => {
+    const v = String(s || "").toLowerCase();
+    return v !== "market_discovery" && v !== "market_discovery_event";
+  });
+  filteredSymbols.forEach((symbol) => {
     const normalizedSymbol = normalizeSymbol(symbol);
     const quote = getQuoteBySymbol(normalizedQuotes, normalizedSymbol);
     const isMissing = !isValidQuotePrice(quote.current_price);
