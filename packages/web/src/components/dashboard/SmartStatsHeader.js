@@ -1,43 +1,9 @@
 import { createElement } from "react";
 import { RotateCw } from "lucide-react";
+import { useI18n } from "../../context/LangContext.js";
 import "./SmartStatsHeader.css";
 
 const e = createElement;
-
-const I18N = {
-  vi: {
-    "smartStats.marketValue": "Giá trị danh mục",
-    "smartStats.unrealizedPL": "Lãi/Lỗ chưa thực hiện",
-    "smartStats.breadthLabel": "Độ rộng thị trường",
-    "smartStats.refreshBtn": "Làm mới dữ liệu",
-    "smartStats.alpha": "Alpha",
-    "smartStats.beta": "Beta",
-    "smartStats.sharpe": "Sharpe",
-    "smartStats.maxDrawdown": "Drawdown tối đa",
-  },
-  en: {
-    "smartStats.marketValue": "Portfolio Value",
-    "smartStats.unrealizedPL": "Unrealized P/L",
-    "smartStats.breadthLabel": "Market Breadth",
-    "smartStats.refreshBtn": "Refresh Data",
-    "smartStats.alpha": "Alpha",
-    "smartStats.beta": "Beta",
-    "smartStats.sharpe": "Sharpe",
-    "smartStats.maxDrawdown": "Max Drawdown",
-  },
-};
-
-function resolveLocale() {
-  const browserLang = (typeof document !== "undefined" && document.documentElement?.lang) ||
-    (typeof navigator !== "undefined" ? navigator.language : "") || "vi";
-  return String(browserLang).toLowerCase().startsWith("en") ? "en" : "vi";
-}
-
-function createTranslator(locale = "vi") {
-  const lang = locale === "en" ? "en" : "vi";
-  const dict = I18N[lang];
-  return (key) => dict[key] || I18N.vi[key] || key;
-}
 
 export function SmartStatsHeader({
   summary,
@@ -48,7 +14,7 @@ export function SmartStatsHeader({
   onRefresh,
   className = "",
 }) {
-  const t = createTranslator(resolveLocale());
+  const { t } = useI18n();
   const analyticsData = analytics;
 
   const marketValue = summary?.total_market_value || 0;
