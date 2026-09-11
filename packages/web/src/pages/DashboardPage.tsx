@@ -12,6 +12,7 @@ import { usePortfolio } from "../context/PortfolioContext.js";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useAlertCenterSnapshot } from "../hooks/useAlertCenterSnapshot.js";
 import { collectUniqueSortedSymbols } from "../utils/dashboardSymbols.js";
+import { PageErrorBoundary } from "../components/PageErrorBoundary.js";
 
 const e = createElement;
 
@@ -143,7 +144,7 @@ export function DashboardPage({
   const fetchDigest = useCallback(async () => {
     if (!resolvedPortfolioId) return;
     try {
-      const res = await (coreApiAdapter as any).getPortfolioNewsDigest();
+      const res = await (coreApiAdapter as any).getPortfolioNewsDigest({ portfolio_id: resolvedPortfolioId } as any).catch(() => (coreApiAdapter as any).getPortfolioNewsDigest());
       setDigest(res);
     } catch (e) {
       console.warn("Failed to fetch news digest", e);
@@ -294,6 +295,9 @@ export function DashboardPage({
   // detail panel renders instead of the "Vui lòng chọn mã cổ phiếu" empty state.
   const autoSelectedRef = useRef(false);
   useEffect(() => {
+    autoSelectedRef.current = false;
+  }, [resolvedPortfolioId]);
+  useEffect(() => {
     if (autoSelectedRef.current) return;
     if (loading || error) return;
     if (selectedSymbol) {
@@ -329,98 +333,108 @@ export function DashboardPage({
     <div className={"core-dashboard-page " + className}>
 
       <div className="core-dashboard-slot core-dashboard-slot--stats">
-        {showSkeleton
-          ? <LoadingSkeleton rows={1} />
-          : <SmartStatsHeader
-              summary={summary}
-              analytics={analytics}
-              holdings={holdings}
-              loading={loading}
-              realtimeBreadth={resolvedBreadth}
-              onRefresh={refresh}
-            />
-        }
+        <PageErrorBoundary>
+          {showSkeleton
+            ? <LoadingSkeleton rows={1} />
+            : <SmartStatsHeader
+                summary={summary}
+                analytics={analytics}
+                holdings={holdings}
+                loading={loading}
+                realtimeBreadth={resolvedBreadth}
+                onRefresh={refresh}
+              />
+          }
+        </PageErrorBoundary>
       </div>
 
       <div className="dashboard-triad-grid core-dashboard-slot core-dashboard-slot--triad">
 
         <div className="dashboard-triad-lane dashboard-triad-lane--side core-dashboard-slot core-dashboard-slot--alert-lane">
-          {showSkeleton
-            ? <LoadingSkeleton rows={3} />
-            : <UnifiedAlertCenter {...{
-                alerts: filteredUnifiedAlerts as any,
-                alertSummary: alertSummary ?? null,
-                loading: loading || snapshotLoading,
-                error: snapshotError,
-                selectedSession,
-                onSelectSession: setSelectedSession,
-                selectedSymbol,
-                onSelectSymbol: setSelectedSymbol,
-                severityFilter,
-                onSeverityFilterChange: setSeverityFilter,
-                backendUnifiedHasMore: hasNextPage,
-                hasPreviousUnifiedPage: hasPrevPage,
-                goToNextUnifiedPage: goToNextPage,
-                goToPreviousUnifiedPage: goToPrevPage,
-              } as any} />
-          }
+          <PageErrorBoundary>
+            {showSkeleton
+              ? <LoadingSkeleton rows={3} />
+              : <UnifiedAlertCenter {...{
+                  alerts: filteredUnifiedAlerts as any,
+                  alertSummary: alertSummary ?? null,
+                  loading: loading || snapshotLoading,
+                  error: snapshotError,
+                  selectedSession,
+                  onSelectSession: setSelectedSession,
+                  selectedSymbol,
+                  onSelectSymbol: setSelectedSymbol,
+                  severityFilter,
+                  onSeverityFilterChange: setSeverityFilter,
+                  backendUnifiedHasMore: hasNextPage,
+                  hasPreviousUnifiedPage: hasPrevPage,
+                  goToNextUnifiedPage: goToNextPage,
+                  goToPreviousUnifiedPage: goToPrevPage,
+                } as any} />
+            }
+          </PageErrorBoundary>
         </div>
 
         <div className="dashboard-triad-lane dashboard-triad-lane--center core-dashboard-slot core-dashboard-slot--heatmap">
-          {showSkeleton
-            ? <LoadingSkeleton rows={3} />
-            : <PortfolioHeatmap
-                holdings={heatmapData as any}
-                quotesBySymbol={mergedQuotes}
-                technicals={technicals}
-                analytics={analytics}
-                loading={loading}
-                selectedSession={selectedSession}
-                onSelectSession={setSelectedSession}
-                selectedSymbol={selectedSymbol}
-                onSelectSymbol={setSelectedSymbol}
-              />
-          }
+          <PageErrorBoundary>
+            {showSkeleton
+              ? <LoadingSkeleton rows={3} />
+              : <PortfolioHeatmap
+                  holdings={heatmapData as any}
+                  quotesBySymbol={mergedQuotes}
+                  technicals={technicals}
+                  analytics={analytics}
+                  loading={loading}
+                  selectedSession={selectedSession}
+                  onSelectSession={setSelectedSession}
+                  selectedSymbol={selectedSymbol}
+                  onSelectSymbol={setSelectedSymbol}
+                />
+            }
+          </PageErrorBoundary>
         </div>
 
         <div className="dashboard-triad-lane dashboard-triad-lane--side core-dashboard-slot core-dashboard-slot--ai">
-          {showSkeleton
-            ? <LoadingSkeleton rows={3} />
-            : <AIAdvisorAlertPanel {...{
-                holdings,
-                technicals,
-                analytics,
-                alerts: mergedAlerts,
-                loading,
-                selectedSession,
-                onSelectSession: setSelectedSession,
-                selectedSymbol,
-                onSelectSymbol: setSelectedSymbol,
-              } as any} />
-          }
+          <PageErrorBoundary>
+            {showSkeleton
+              ? <LoadingSkeleton rows={3} />
+              : <AIAdvisorAlertPanel {...{
+                  holdings,
+                  technicals,
+                  analytics,
+                  alerts: mergedAlerts,
+                  loading,
+                  selectedSession,
+                  onSelectSession: setSelectedSession,
+                  selectedSymbol,
+                  onSelectSymbol: setSelectedSymbol,
+                } as any} />
+            }
+          </PageErrorBoundary>
         </div>
       </div>
 
       <div className="dashboard-full-width-deck core-dashboard-slot core-dashboard-slot--deck">
-        {showSkeleton
-          ? <LoadingSkeleton rows={4} />
-          : <CoreDashboardPositionDeck
-              holdings={holdings}
-              trackedSymbols={trackedSymbols}
-              watchlistGroups={watchlists}
-              technicals={technicals}
-              analytics={analytics}
-              quotesBySymbol={mergedQuotes}
-              alerts={mergedAlerts as any}
-              loading={loading}
-              selectedSession={selectedSession as any}
-              onSelectSession={setSelectedSession as any}
-              selectedSymbol={selectedSymbol as any}
-              onSelectSymbol={setSelectedSymbol as any}
-              digest={digest as any}
-              onRequestDigest={fetchDigest as any}
-            />
-        }
+        <PageErrorBoundary>
+          {showSkeleton
+            ? <LoadingSkeleton rows={4} />
+            : <CoreDashboardPositionDeck
+                holdings={holdings}
+                trackedSymbols={trackedSymbols}
+                watchlistGroups={watchlists}
+                technicals={technicals}
+                analytics={analytics}
+                quotesBySymbol={mergedQuotes}
+                alerts={mergedAlerts as any}
+                loading={loading}
+                selectedSession={selectedSession as any}
+                onSelectSession={setSelectedSession as any}
+                selectedSymbol={selectedSymbol as any}
+                onSelectSymbol={setSelectedSymbol as any}
+                digest={digest as any}
+                onRequestDigest={fetchDigest as any}
+              />
+          }
+        </PageErrorBoundary>
       </div>
     </div>
   );
