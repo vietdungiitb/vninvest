@@ -5,6 +5,23 @@
 
 ---
 
+## Entry 40: SOC DataOps Maintenance — Build Verification (A)
+
+- **Date**: 2026-09-10 (AGENTS.md goal — maintenance sau migration `vninvestcharts-widget`)
+- **Plan**: `AGENTS.md:Goal` + `AGENTS.md:Constraints` SOC glassmorphism + `vninvestcharts-widget ^1.2.5` verification
+- **Files touched (0 code, verify only)**:
+  - `packages/web/src/adapters/chartAdapter.js:6496B` exists — bridge core API → chart bar format (verify)
+  - `packages/web/src/types/vninvestcharts-widget.d.ts:2439B` exists — 44 lines type declarations (verify)
+  - `packages/web/package.json:98` `vninvestcharts-widget ^1.2.5` (verify)
+  - `packages/web/src/pages/tenant-admin/TenantAdminHomePage.tsx:652→710` not using widget (recharts only, no stale)
+- **Validation (AGENTS.md per sub-step)**:
+  - `npx tsc --noEmit` (packages/web) → 0 errors — PASS (A1)
+  - `npm run build` (packages/web) → 3622 modules, `build 43.33s`, chunk `TenantAdminHomePage-Ba87NVUh 27.23kB`, `index 925.76kB` — PASS, only chunk-size warning pre-existing (A1)
+  - `python -m py_compile views_dashboard.py + models.py` → OK — PASS (core verify)
+- **Summary**: SOC DataOps Phase 1 parity ~95%+ giữ nguyên, không drift sau tenant-admin/home 13 commits. Widget npm lazy-load async chunk, React 19 + recharts 2.15.4 compat, renderSeries registry done `3df5ff6c`. No code change — maintenance PASS, ledger updated per AGENTS.md.
+
+---
+
 ## Entry 39: Phase 1 Tenant Admin Home — F04a + Chart Polish + QA Gate (partial)
 
 - **Date**: 2026-09-09 (tiếp tục Phase 1 sau phê duyệt)
