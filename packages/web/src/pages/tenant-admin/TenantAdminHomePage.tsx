@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Area, AreaChart, Brush, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Users, Key, Fingerprint, Webhook, Activity, ScrollText, CreditCard, ShieldCheck, FileText, Globe, FileSpreadsheet, Lock, AlertTriangle, RefreshCw, Clock, Trash2, TrendingUp } from "lucide-react";
-import { ShellPageChrome, ShellPanel } from "../../components/ShellPageTemplate.js";
+import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
 import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
@@ -411,12 +411,19 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
 .capProgress__bar { height: 100%; border-radius: 999px; transition: width 0.6s ease; }
 `;
 
+  const heroMetrics = summary ? [
+    renderShellMetric(t("tenantHome.healthLabel"), `${summary.health_score}%`),
+    renderShellMetric(t("tenantHome.activeMembersLabel"), `${summary.members_active_today}/${summary.members_total}`),
+    renderShellMetric(t("tenantHome.apiCallsLabel"), formatApiCalls(summary.api_calls_today)),
+    renderShellMetric(t("tenantHome.quotaHeadroomLabel"), `${summary.quota_headroom_pct}%`),
+  ] : [];
+
   return (
     <ShellPageChrome
       eyebrow={t("tenantHome.eyebrow")}
       title={t("tenantHome.title")}
       description={t("tenantHome.description")}
-      metrics={undefined}
+      metrics={heroMetrics}
       notice={showTrialBanner ? trialBannerText : undefined}
       error={error || undefined}
     >
