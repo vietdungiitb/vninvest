@@ -2,7 +2,7 @@ import styles from "../../components/ShellPageTemplate.module.css";
 import ta from "./TenantAdmin.module.css";
 import { useEffect, useId, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, Brush, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Users, Key, Fingerprint, Webhook, Activity, ScrollText, CreditCard, ShieldCheck, FileText, Globe, FileSpreadsheet, Lock, AlertTriangle, RefreshCw, Clock, Trash2, TrendingUp } from "lucide-react";
 import { ShellPageChrome, ShellPanel } from "../../components/ShellPageTemplate.js";
 import { ShellEmptyState } from "../../components/ShellEmptyState.js";
@@ -600,6 +600,7 @@ export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
                         name={t("tenantHome.activeMembersLabel")}
                         className={ta.home_30}
                       />
+                      {trendDays === 30 && <Brush dataKey="date" height={20} stroke="#334155" travellerWidth={8} />}
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
