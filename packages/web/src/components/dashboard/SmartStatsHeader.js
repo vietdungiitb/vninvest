@@ -1,5 +1,4 @@
-import { createElement, useState } from "react";
-import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { createElement } from "react";
 import { RotateCw } from "lucide-react";
 import "./SmartStatsHeader.css";
 
@@ -50,16 +49,7 @@ export function SmartStatsHeader({
   className = "",
 }) {
   const t = createTranslator(resolveLocale());
-  const [analyticsData, setAnalyticsData] = useState(analytics);
-
-  if (!analyticsData && holdings?.length) {
-    (async () => {
-      try {
-        const res = await coreApiAdapter.getPortfolioAnalytics({}).getPortfolioAnalytics(holdings.map(h => h.symbol).join(","));
-        if (res) setAnalyticsData(res);
-      } catch (_) {}
-    })();
-  }
+  const analyticsData = analytics;
 
   const marketValue = summary?.total_market_value || 0;
   const dayPL = summary?.total_unrealized_pl || 0;
