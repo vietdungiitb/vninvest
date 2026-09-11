@@ -23,7 +23,7 @@ import {
   routeCatalog,
   ShellAdminOpsPage,
   ShellAiAdvisoryPage,
-  ShellWhaleAlertsPage,
+  AlertCenterPage,
   ShellAiCommandCenterPage,
   ShellDashboardPage,
   ShellPortfoliosPage,
@@ -94,7 +94,7 @@ const portfoliosRoute = routeCatalog.find((route) => route.id === "portfolios");
 const supportRoute = routeCatalog.find((route) => route.id === "support");
 const transactionsRoute = routeCatalog.find((route) => route.id === "transactions");
 const watchlistRoute = routeCatalog.find((route) => route.id === "watchlist");
-const whaleAlertsRoute = routeCatalog.find((route) => route.id === "whale-alerts");
+const alertCenterRoute = routeCatalog.find((route) => route.id === "alert-center");
 const vipShellAdapter = shellAdapters.find((adapter) => adapter.adapterId === "vip-app");
 const settingsRoute = routeCatalog.find((route) => route.id === "settings");
 const vipLocalControlRoute = routeCatalog.find((route) => route.id === "vip-local-control");
@@ -118,7 +118,7 @@ assert(portfoliosRoute?.status === "baseline", "portfolios route must move to ba
 assert(supportRoute?.status === "baseline", "support route must remain baseline once the shell support page exists");
 assert(transactionsRoute?.status === "baseline", "transactions route must remain baseline once the shell transactions page exists");
 assert(watchlistRoute?.status === "baseline", "watchlist route must remain baseline once the shell watchlist page exists");
-assert(whaleAlertsRoute?.status === "baseline", "whale-alerts route must remain baseline once the shell whale alerts page exists");
+assert(alertCenterRoute?.status === "baseline", "alert-center route must remain baseline once the shell alert center page exists");
 assert(settingsRoute?.status === "baseline", "settings route must remain baseline once the shell settings page exists");
 assert(vipLocalControlRoute?.status === "baseline", "vip-local-control route must move to baseline when the page exists");
 
@@ -130,7 +130,7 @@ assert(pageRegistryRouteIds.has("ai-command-center"), "pageRegistry must registe
 assert(pageRegistryRouteIds.has("dashboard"), "pageRegistry must register dashboard");
 assert(pageRegistryRouteIds.has("transactions"), "pageRegistry must register transactions");
 assert(pageRegistryRouteIds.has("watchlist"), "pageRegistry must register watchlist");
-assert(pageRegistryRouteIds.has("whale-alerts"), "pageRegistry must register whale-alerts");
+assert(pageRegistryRouteIds.has("alert-center"), "pageRegistry must register alert-center");
 assert(pageRegistryRouteIds.has("portfolios"), "pageRegistry must register portfolios");
 assert(pageRegistryRouteIds.has("support"), "pageRegistry must register support");
 assert(pageRegistryRouteIds.has("settings"), "pageRegistry must register settings");
@@ -141,7 +141,7 @@ assert(getPageComponent("ai-command-center") === ShellAiCommandCenterPage, "ai-c
 assert(getPageComponent("dashboard") === ShellDashboardPage, "dashboard must resolve to ShellDashboardPage");
 assert(getPageComponent("transactions") === ShellTransactionsPage, "transactions must resolve to ShellTransactionsPage");
 assert(getPageComponent("watchlist") === ShellWatchlistPage, "watchlist must resolve to ShellWatchlistPage");
-assert(getPageComponent("whale-alerts") === ShellWhaleAlertsPage, "whale-alerts must resolve to ShellWhaleAlertsPage");
+assert(getPageComponent("whale-alerts") === AlertCenterPage, "whale-alerts must resolve to AlertCenterPage");
 assert(getPageComponent("portfolios") === ShellPortfoliosPage, "portfolios must resolve to ShellPortfoliosPage");
 assert(getPageComponent("support") === ShellSupportPage, "support must resolve to ShellSupportPage");
 assert(getPageComponent("settings") === ShellSettingsPage, "settings must resolve to ShellSettingsPage");

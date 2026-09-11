@@ -59,17 +59,30 @@ def _get_active_dnse_client(user):
     return client
 
 
-@api_view(['GET', 'POST'])
+@api_view(['GET', 'POST', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def dnse_config_api(request):
     """
     GET: Lấy trạng thái cấu hình DNSE LightSpeed API hiện tại của user.
     POST: Cập nhật Client ID và Client Secret.
+    DELETE: Xoá credential DNSE LightSpeed API của user.
 
     Lưu ý: chỉ nhận client_id và client_secret (LightSpeed API credentials),
     không nhận username/password tài khoản cá nhân DNSE.
     """
     user = request.user
+
+    if request.method == 'DELETE':
+        credential = DNSECredential.objects.filter(user=user).first()
+        if credential:
+            credential.client_id_cipher = ''
+            credential.client_secret_cipher = ''
+            credential.is_active = False
+            credential.save()
+        return Response({
+            "ok": True,
+            "message": "Đã xoá DNSE LightSpeed credential thành công.",
+        })
 
     if request.method == 'GET':
         credential = DNSECredential.objects.filter(user=user).first()

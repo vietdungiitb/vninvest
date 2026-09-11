@@ -1,26 +1,50 @@
 import { createElement, useEffect, useState } from "react";
+import { useI18n } from "../context/LangContext.js";
+import styles from "./aiSettings.module.css";
 
 const e = createElement;
 
+const SOURCE_KEYS = ["whale", "darkFlow", "technical", "news", "market", "fundamental", "ownership", "sector"];
+
 const SOURCES_METADATA = {
-  whale:       { defaultLookback: 30,  min: 1, max: 180, label: "Dòng tiền Cá mập (Whale Alerts)" },
-  dark_flow:   { defaultLookback: 30,  min: 1, max: 180, label: "Dòng tiền ẩn danh (Dark Flow)" },
-  technical:   { defaultLookback: 20,  min: 1, max: 60,  label: "Phân tích kỹ thuật (Technical)" },
-  news:        { defaultLookback: 14,  min: 1, max: 90,  label: "Tin tức & Sự kiện (News Context)" },
-  market:      { defaultLookback: 7,   min: 1, max: 30,  label: "Bối cảnh thị trường (Market)" },
-  fundamental: { defaultLookback: 90,  min: 1, max: 365, label: "Phân tích cơ bản (Fundamental)" },
-  ownership:   { defaultLookback: 365, min: 1, max: 730, label: "Cơ cấu sở hữu (Ownership)" },
-  sector:      { defaultLookback: 20,  min: 1, max: 90,  label: "So sánh ngành (Sector)" },
+  whale:       { defaultLookback: 30,  min: 1, max: 180, labelKey: "whale" },
+  dark_flow:   { defaultLookback: 30,  min: 1, max: 180, labelKey: "darkFlow" },
+  technical:   { defaultLookback: 20,  min: 1, max: 60,  labelKey: "technical" },
+  news:        { defaultLookback: 14,  min: 1, max: 90,  labelKey: "news" },
+  market:      { defaultLookback: 7,   min: 1, max: 30,  labelKey: "market" },
+  fundamental: { defaultLookback: 90,  min: 1, max: 365, labelKey: "fundamental" },
+  ownership:   { defaultLookback: 365, min: 1, max: 730, labelKey: "ownership" },
+  sector:      { defaultLookback: 20,  min: 1, max: 90,  labelKey: "sector" },
 };
 
 const TECHNICAL_INDICATORS = ["rsi", "bollinger", "vols", "prices", "ma20", "ma50", "snapshot", "cdms"];
 
+const DEFAULT_CONFIG = {
+  version: 2,
+  sources: {
+    whale: { enabled: true, lookback: 30 },
+    dark_flow: { enabled: true, lookback: 30 },
+    technical: { enabled: true, lookback: 20, indicators: ['vols', 'prices', 'cdms', 'ma20', 'ma50', 'rsi', 'bollinger', 'snapshot'] },
+    news: { enabled: true, lookback: 14 },
+    market: { enabled: true, lookback: 7 },
+    fundamental: { enabled: false, lookback: 1 },
+    ownership: { enabled: false, lookback: 365 },
+    sector: { enabled: false, lookback: 60 },
+  },
+};
+
 export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfigChange }) {
-  const [localConfig, setLocalConfig] = useState(config);
+  const { t } = useI18n();
+  const mergedConfig = config ? { ...DEFAULT_CONFIG, ...config, sources: { ...DEFAULT_CONFIG.sources, ...(config.sources || {}) } } : DEFAULT_CONFIG;
+  const [localConfig, setLocalConfig] = useState(mergedConfig);
 
   useEffect(() => {
     if (config) {
-      setLocalConfig(config);
+      setLocalConfig({
+        ...DEFAULT_CONFIG,
+        ...config,
+        sources: { ...DEFAULT_CONFIG.sources, ...(config.sources || {}) },
+      });
     }
   }, [config, isOpen]);
 
@@ -83,36 +107,139 @@ export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfig
     .filter(([_, cfg]) => cfg.enabled)
     .length;
 
-  const enabledIndicators = (localConfig.sources.technical?.indicators || []).length;
+  const     enabledIndicators = (localConfig.sources.technical?.indicators || []).length;
+
+  const PRESET_CONFIGS = {
+    balanced: {
+      sources: {
+        whale: { enabled: true, lookback: 180 },
+        dark_flow: { enabled: true, lookback: 90 },
+        technical: { enabled: true, lookback: 30, indicators: ['vols', 'prices', 'cdms', 'ma20', 'ma50', 'rsi', 'bollinger', 'snapshot'] },
+        news: { enabled: true, lookback: 14 },
+        market: { enabled: true, lookback: 7 },
+        fundamental: { enabled: false, lookback: 1 },
+        ownership: { enabled: false, lookback: 365 },
+        sector: { enabled: false, lookback: 60 },
+      },
+    },
+    flow_first: {
+      sources: {
+        whale: { enabled: true, lookback: 30 },
+        dark_flow: { enabled: true, lookback: 30 },
+        technical: { enabled: true, lookback: 5, indicators: ['vols', 'prices'] },
+        news: { enabled: false, lookback: 14 },
+        market: { enabled: true, lookback: 7 },
+        fundamental: { enabled: false, lookback: 90 },
+        ownership: { enabled: false, lookback: 365 },
+        sector: { enabled: false, lookback: 60 },
+      },
+    },
+    deep_dive: {
+      sources: {
+        whale: { enabled: true, lookback: 180 },
+        dark_flow: { enabled: true, lookback: 180 },
+        technical: { enabled: true, lookback: 60, indicators: ['vols', 'prices', 'cdms', 'ma20', 'ma50', 'rsi', 'bollinger', 'snapshot'] },
+        news: { enabled: true, lookback: 30 },
+        market: { enabled: true, lookback: 30 },
+        fundamental: { enabled: true, lookback: 365 },
+        ownership: { enabled: true, lookback: 730 },
+        sector: { enabled: true, lookback: 90 },
+      },
+    },
+    cost_control: {
+      sources: {
+        whale: { enabled: true, lookback: 7 },
+        dark_flow: { enabled: false, lookback: 30 },
+        technical: { enabled: true, lookback: 5, indicators: ['vols', 'prices'] },
+        news: { enabled: false, lookback: 7 },
+        market: { enabled: false, lookback: 7 },
+        fundamental: { enabled: false, lookback: 1 },
+        ownership: { enabled: false, lookback: 365 },
+        sector: { enabled: false, lookback: 60 },
+      },
+    },
+  };
+
+  const PRESET_LABELS = {
+    balanced: t("promptConfig.presets.balanced") || "Cân bằng",
+    flow_first: t("promptConfig.presets.flowFirst") || "Ưu tiên dòng tiền",
+    deep_dive: t("promptConfig.presets.deepDive") || "Chuyên sâu",
+    cost_control: t("promptConfig.presets.costControl") || "Tiết kiệm token",
+  };
+
+  const LOOKBACK_OPTIONS = [7, 14, 30, 60, 90, 180, 365, 730];
+
+  const applyPreset = (presetId) => {
+    const presetConfig = PRESET_CONFIGS[presetId];
+    if (!presetConfig) return;
+    setLocalConfig(presetConfig);
+    onConfigChange(presetConfig);
+  };
+
+  const handleTechnicalPreset = (mode) => {
+    const ALL_INDICATORS = ['vols', 'prices', 'cdms', 'ma20', 'ma50', 'rsi', 'bollinger', 'snapshot'];
+    const LEAN_INDICATORS = ['vols', 'prices', 'rsi'];
+    const indicators = mode === 'full' ? ALL_INDICATORS : LEAN_INDICATORS;
+    const techObj = localConfig.sources.technical || { enabled: true, lookback: 20 };
+    const updated = {
+      ...localConfig,
+      sources: {
+        ...localConfig.sources,
+        technical: { ...techObj, indicators },
+      },
+    };
+    setLocalConfig(updated);
+    onConfigChange(updated);
+  };
+
+  const handleLookbackQuickSelect = (sourceId, value) => {
+    const meta = SOURCES_METADATA[sourceId];
+    if (!meta) return;
+    const clamped = Math.max(meta.min, Math.min(meta.max, Number(value) || meta.defaultLookback));
+    handleLookbackChange(sourceId, clamped);
+  };
 
   return e(
     "div",
-    { className: "sdp-drawer-overlay", onClick: onClose },
+    { className: styles.drawerOverlay, onClick: onClose },
     e(
       "div",
-      { className: "sdp-drawer-content", onClick: (e) => e.stopPropagation() },
-      
+      { className: styles.drawerContent, onClick: (e) => e.stopPropagation() },
+
       // Header
       e(
         "div",
-        { className: "sdp-drawer-header" },
+        { className: styles.drawerHeader },
         e(
           "div",
           null,
-          e("h2", { className: "sdp-drawer-title" }, "⚙️ Cài đặt Cố vấn AI (Prompt Config)"),
-          e("p", { className: "sdp-drawer-subtitle" }, `Đang bật ${enabledSources} nguồn dữ liệu & ${enabledIndicators} chỉ báo kỹ thuật`)
+          e("h2", { className: styles.drawerTitle }, t("promptConfig.title") || "⚙️ Cài đặt Cố vấn AI (Prompt Config)"),
+          e("p", { className: styles.drawerSubtitle }, (t("promptConfig.subtitle") || "Đang bật {sources} nguồn dữ liệu & {indicators} chỉ báo kỹ thuật").replace("{sources}", enabledSources).replace("{indicators}", enabledIndicators))
         ),
         e(
           "button",
-          { className: "sdp-drawer-close-btn", onClick: onClose, type: "button" },
+          { className: styles.drawerClose, onClick: onClose, type: "button" },
           "✕"
+        )
+      ),
+
+      // Preset Bar
+      e("div", { key: "preset-bar", className: styles.presetBar },
+        e("span", { className: styles.presetLabel }, t("promptConfig.presetLabel") || "Mẫu cấu hình nhanh:"),
+        Object.entries(PRESET_LABELS).map(([id, label]) =>
+          e("button", {
+            key: id,
+            type: "button",
+            onClick: () => applyPreset(id),
+            className: styles.presetBtn,
+          }, label)
         )
       ),
 
       // Scrollable Body
       e(
         "div",
-        { className: "sdp-drawer-body" },
+        { className: styles.drawerBody },
         Object.entries(SOURCES_METADATA).map(([sourceId, meta]) => {
           const cfg = localConfig.sources[sourceId] || { enabled: false, lookback: meta.defaultLookback };
           const isEnabled = cfg.enabled;
@@ -122,21 +249,21 @@ export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfig
             "div",
             {
               key: sourceId,
-              className: `sdp-drawer-source-card ${isEnabled ? "sdp-source-active" : ""}`,
+              className: `${styles.sourceCard} ${isEnabled ? styles.sourceCardActive : ""}`,
             },
             e(
               "div",
-              { className: "sdp-source-row-1" },
+              { className: styles.sourceRow },
               e(
                 "label",
-                { className: "sdp-source-label" },
+                { className: styles.sourceLabel },
                 e("input", {
                   type: "checkbox",
                   checked: isEnabled,
                   onChange: () => handleSourceToggle(sourceId),
-                  className: "sdp-source-checkbox",
+                  className: styles.checkbox,
                 }),
-                e("span", null, meta.label)
+                e("span", null, t(`promptConfig.sources.${meta.labelKey}`) || meta.labelKey)
               )
             ),
 
@@ -145,27 +272,37 @@ export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfig
               isEnabled &&
               e(
                 "div",
-                { className: "sdp-indicators-pills" },
-                TECHNICAL_INDICATORS.map((ind) => {
-                  const isSelected = (localConfig.sources.technical?.indicators || []).includes(ind);
-                  return e(
-                    "button",
-                    {
-                      key: ind,
-                      type: "button",
-                      onClick: () => handleIndicatorToggle(ind),
-                      className: `sdp-indicator-pill ${isSelected ? "sdp-pill-selected" : ""}`,
-                    },
-                    ind.toUpperCase()
-                  );
-                })
+                { className: styles.indicatorsSection },
+                e(
+                  "div",
+                  { className: styles.indicatorPresets },
+                  e("button", { type: "button", onClick: () => handleTechnicalPreset('full'), className: styles.indicatorPresetBtn }, t("promptConfig.enableAll") || "Bật toàn bộ"),
+                  e("button", { type: "button", onClick: () => handleTechnicalPreset('lean'), className: styles.indicatorPresetBtn }, t("promptConfig.leanSet") || "Bộ gọn")
+                ),
+                e(
+                  "div",
+                  { className: styles.indicatorsPills },
+                  TECHNICAL_INDICATORS.map((ind) => {
+                    const isSelected = (localConfig.sources.technical?.indicators || []).includes(ind);
+                    return e(
+                      "button",
+                      {
+                        key: ind,
+                        type: "button",
+                        onClick: () => handleIndicatorToggle(ind),
+                        className: `${styles.indicatorPill} ${isSelected ? styles.indicatorPillActive : ""}`,
+                      },
+                      ind.toUpperCase()
+                    );
+                  })
+                )
               ),
 
             // Lookback Slider
             e(
               "div",
-              { className: `sdp-lookback-control ${!isEnabled ? "sdp-control-disabled" : ""}` },
-              e("span", { className: "sdp-slider-bound" }, meta.min),
+              { className: `${styles.lookbackControl} ${!isEnabled ? styles.lookbackControlDisabled : ""}` },
+              e("span", { className: styles.sliderBound }, meta.min),
               e("input", {
                 type: "range",
                 min: meta.min,
@@ -173,12 +310,12 @@ export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfig
                 value: lookbackDays,
                 disabled: !isEnabled,
                 onChange: (e) => handleLookbackChange(sourceId, e.target.value),
-                className: "sdp-lookback-slider",
+                className: styles.slider,
               }),
-              e("span", { className: "sdp-slider-bound" }, meta.max),
+              e("span", { className: styles.sliderBound }, meta.max),
               e(
                 "div",
-                { className: "sdp-lookback-input-box" },
+                { className: styles.lookbackInputBox },
                 e("input", {
                   type: "number",
                   min: meta.min,
@@ -186,9 +323,21 @@ export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfig
                   value: lookbackDays,
                   disabled: !isEnabled,
                   onChange: (e) => handleLookbackChange(sourceId, e.target.value),
-                  className: "sdp-lookback-number-input",
+                  className: styles.numberInput,
                 }),
-                e("span", { className: "sdp-lookback-unit" }, " phiên")
+                e("span", { className: styles.lookbackUnit }, ` ${t("promptConfig.lookbackUnit") || "phiên"}`)
+              ),
+              e(
+                "select",
+                {
+                  disabled: !isEnabled,
+                  onChange: (e) => handleLookbackQuickSelect(sourceId, e.target.value),
+                  value: lookbackDays,
+                  className: styles.quickSelect,
+                },
+                LOOKBACK_OPTIONS.filter(opt => opt >= meta.min && opt <= meta.max).map(opt =>
+                  e("option", { key: opt, value: opt }, `${opt} ${t("promptConfig.lookbackUnit") || "phiên"}`)
+                )
               )
             )
           );
@@ -198,12 +347,12 @@ export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfig
       // Footer
       e(
         "div",
-        { className: "sdp-drawer-footer" },
-        e("span", { className: "sdp-drawer-footer-text" }, "Cấu hình được đồng bộ tự động và áp dụng cho lượt Làm mới tiếp theo."),
+        { className: styles.drawerFooter },
+        e("span", { className: styles.drawerFooterText }, "Cấu hình được đồng bộ tự động và áp dụng cho lượt Làm mới tiếp theo."),
         e(
           "button",
-          { className: "sdp-drawer-save-btn", onClick: onClose, type: "button" },
-          "Đóng & Lưu"
+          { className: `${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`, onClick: onClose, type: "button" },
+          t("promptConfig.close") || "Đóng"
         )
       )
     )

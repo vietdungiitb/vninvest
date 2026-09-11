@@ -5,6 +5,9 @@ Uses environment variables for all secrets/infrastructure.
 Default DATABASE_URL uses SQLite for local testing convenience.
 """
 import os
+import sys
+
+TESTING = 'test' in sys.argv or any('test' in arg for arg in sys.argv)
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
@@ -69,6 +72,8 @@ INSTALLED_APPS = [
     'service_ops',
     'support',
     'advertising',
+    'ai_agents',
+    'ai_analytics',
 ]
 
 MIDDLEWARE = [
@@ -81,6 +86,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'identity_access.middleware.TenantResolutionMiddleware',
     'identity_access.middleware.TenantQuotaMiddleware',
+    'identity_access.middleware.RateLimitHeadersMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
 ]
 
@@ -119,6 +125,9 @@ DATABASES = {
         'CONN_MAX_AGE': int(os.environ.get('CORE_DB_CONN_MAX_AGE', '60')),
     },
 }
+
+# SFI-B1.4: Legacy backend URL — core-api transparent proxy forwards unmatched /api/* here.
+LEGACY_BACKEND_URL = os.environ.get('LEGACY_BACKEND_URL', 'http://backend:8000')
 
 # Legacy read-only connection for materializers (cutover period).
 # Set LEGACY_DATABASE_URL in env; if absent, materializers run in degraded/skip mode.
@@ -167,6 +176,13 @@ OPENAI_DEFAULT_MODEL = os.environ.get('OPENAI_DEFAULT_MODEL', 'gpt-4o-mini')
 ADVISORY_TOKEN_BUDGET = int(os.environ.get('ADVISORY_TOKEN_BUDGET', '2000'))
 AI_FALLBACK_DAILY_QUOTA = int(os.environ.get('AI_FALLBACK_DAILY_QUOTA', '5'))
 
+# Advertising & Trademark admin feature flag (gradual rollout).
+# Set ADVERTISING_ADMIN_ENABLED=false to hide the admin panel and revoke
+# its CASL abilities entirely. Defaults to enabled.
+ADVERTISING_ADMIN_ENABLED = os.environ.get(
+    'ADVERTISING_ADMIN_ENABLED', 'true'
+).strip().lower() in ('1', 'true', 'yes')
+
 # Stripe Billing Integration
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
@@ -213,22 +229,24 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'vninvest_core.exceptions.core_api_exception_handler',
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_THROTTLE_CLASSES': [
+        'identity_access.throttles.PATRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
-    ],
+    ] if not TESTING else [],
     'DEFAULT_THROTTLE_RATES': {
-        'user': '1000/hour',
-        'ingest_admin_trigger': '10/hour',
+        'user': '999999/day' if TESTING else ('999999/day' if DEBUG else '1000/hour'),
+        'ingest_admin_trigger': '999999/day' if TESTING else '10/hour',
         # D03/D04: DNSE backfill throttle (AGENTS §14.9)
-        'system_backfill_trigger': '30/hour',
-        'user_backfill_trigger': '5/hour',
+        'system_backfill_trigger': '999999/day' if TESTING else '30/hour',
+        'user_backfill_trigger': '999999/day' if TESTING else '5/hour',
         # Independent realtime polling bucket — does not consume 'user' quota
-        'realtime_data': '120/min',
+        'realtime_data': '999999/day' if TESTING else '120/min',
         # Independent SOC operator read bucket — does not consume 'user' quota
-        'soc_operator_read': '120/min',
+        'soc_operator_read': '999999/day' if TESTING else '120/min',
         # Independent auth-bootstrap bucket — /auth/me/ and capabilities must never
         # be blocked by operational polling exhausting the global 'user' bucket
-        'auth_bootstrap': '60/min',
-        'notification': '3/second',
+        'auth_bootstrap': '999999/day' if TESTING else '60/min',
+        'notification': '999999/day' if TESTING else '3/second',
+        'tenant_invite': '999999/day' if TESTING else '10/hour',
     },
 }
 
@@ -319,9 +337,11 @@ CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+# P3: Disable broker connection pool — prevents pool exhaustion under long-running ASGI.
+CELERY_BROKER_POOL_LIMIT = None
 
 import sys
-if 'test' in sys.argv or any('test' in arg for arg in sys.argv):
+if TESTING:
     CELERY_TASK_ALWAYS_EAGER = True
     try:
         import celery
@@ -348,6 +368,26 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'commercial.tasks.flush_quota_counters',
         'schedule': 60.0,
         'options': {'queue': SCHEDULER_QUEUE_MAP['flush-quota-counters']},
+    },
+    'snapshot-quota-history': {
+        'task': 'commercial.tasks.snapshot_quota_history',
+        'schedule': crontab(minute=55, hour=23),
+        'options': {'queue': SCHEDULER_QUEUE_MAP['snapshot-quota-history']},
+    },
+    'aggregate-api-call-rollup': {
+        'task': 'ops_audit.tasks.aggregate_api_call_rollup',
+        'schedule': 300.0,  # every 5 minutes
+        'options': {'queue': SCHEDULER_QUEUE_MAP['aggregate-api-call-rollup']},
+    },
+    'flush-pat-audit-log': {
+        'task': 'identity_access.tasks.flush_pat_audit_log',
+        'schedule': 10.0,
+        'options': {'queue': SCHEDULER_QUEUE_MAP['flush-pat-audit-log']},
+    },
+    'cross-ref-pat-audit-events': {
+        'task': 'identity_access.tasks.cross_ref_pat_audit_events',
+        'schedule': 60.0,
+        'options': {'queue': SCHEDULER_QUEUE_MAP['cross-ref-pat-audit-events']},
     },
     'generate-monthly-invoices': {
         'task': 'commercial.tasks.generate_monthly_invoices',
@@ -378,6 +418,11 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'tenant_lifecycle.tasks.send_trial_expiry_warning',
         'schedule': crontab(hour='9', minute='0'),
         'options': {'queue': SCHEDULER_QUEUE_MAP['send-trial-expiry-warning']},
+    },
+    'check-usage-thresholds': {
+        'task': 'commercial.tasks.check_usage_thresholds',
+        'schedule': 300.0,  # every 5 minutes
+        'options': {'queue': SCHEDULER_QUEUE_MAP['check-usage-thresholds']},
     },
     'auto-deprovision-stale': {
         'task': 'tenant_lifecycle.tasks.auto_deprovision_stale',
@@ -509,7 +554,7 @@ CELERY_BEAT_SCHEDULE = {
     'dnse-quarterly-backfill-intraday': {
         'task': 'data_ingest.tasks.enqueue_dnse_quarterly_backfill',
         'schedule': crontab(hour=1, minute=0, day_of_week=0),  # Sun 01:00 ICT
-        'kwargs': {'days_back': 90, 'symbols_group': 'global', '_scheduler_job_key': 'dnse-quarterly-backfill-intraday'},
+        'kwargs': {'days_back': 90, 'symbols_group': 'vn100_watchlist', '_scheduler_job_key': 'dnse-quarterly-backfill-intraday'},
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('dnse-quarterly-backfill-intraday', 'enrichment_offhours')},
     },
 

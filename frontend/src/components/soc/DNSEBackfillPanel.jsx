@@ -198,7 +198,9 @@ const SystemBackfillSection = ({ t }) => {
               type="date"
               value={form.from_date}
               onChange={(e) => setForm((p) => ({ ...p, from_date: e.target.value }))}
-              className="rounded border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              onClick={(e) => { try { e.target.showPicker(); } catch {} }}
+              onFocus={(e) => { try { e.target.showPicker(); } catch {} }}
+              className="rounded border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -209,7 +211,9 @@ const SystemBackfillSection = ({ t }) => {
               type="date"
               value={form.to_date}
               onChange={(e) => setForm((p) => ({ ...p, to_date: e.target.value }))}
-              className="rounded border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              onClick={(e) => { try { e.target.showPicker(); } catch {} }}
+              onFocus={(e) => { try { e.target.showPicker(); } catch {} }}
+              className="rounded border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -353,8 +357,10 @@ const UserBackfillSection = ({ t }) => {
             type="date"
             value={form.trade_date}
             onChange={(e) => setForm((p) => ({ ...p, trade_date: e.target.value }))}
+            onClick={(e) => { try { e.target.showPicker(); } catch {} }}
+            onFocus={(e) => { try { e.target.showPicker(); } catch {} }}
             required
-            className="rounded border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+            className="rounded border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer"
           />
         </div>
         <button

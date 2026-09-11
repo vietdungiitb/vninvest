@@ -27,9 +27,7 @@
       "@context/*": ["./src/context/*"],
       "@hooks/*": ["./src/hooks/*"],
       "@pages/*": ["./src/pages/*"],
-      "@types/*": ["./src/types/*"],
-      "@vninvestcharts/vn-kline-engine-core": ["./src/components/vninvestcharts/packages/vn-kline-engine-core/src/index.js"],
-      "@vninvestcharts/vn-kline-engine-react": ["./src/components/vninvestcharts/packages/vn-kline-engine-react/src/index.js"]
+      "@types/*": ["./src/types/*"]
     }
   },
   "include": ["src"],

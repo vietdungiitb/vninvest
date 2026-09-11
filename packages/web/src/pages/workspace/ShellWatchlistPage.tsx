@@ -1,3 +1,4 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import {
   ShellPageChrome,
   ShellPanel,
@@ -20,7 +21,6 @@ import {
   useCoreShellPageSnapshot,
 } from "../coreShellPageHelpers.js";
 import { WatchlistPage } from "../WatchlistPage.tsx";
-
 interface ShellWatchlistPageProps {
   env?: Record<string, unknown>;
   fetchImpl?: unknown;
@@ -120,8 +120,8 @@ export function ShellWatchlistPage({
       title="Trung tâm watchlist và workspace"
       description="Trang này xác nhận lane watchlist của core shell đã có route-level page thật, bám đúng workspace routes, watchlist ability và bootstrap session mà không cần thêm backend contract mới."
       badge={(
-        <div className="shellPage__heroBadge">
-          <span className="shellPage__statusDot" />
+        <div className={`${styles.heroBadge}`}>
+          <span className={`${styles.statusDot}`} />
           {viewState.loading ? "Đang đồng bộ lane watchlist" : "Lane watchlist sẵn sàng cho kiểm tra"}
         </div>
       )}
@@ -129,14 +129,14 @@ export function ShellWatchlistPage({
       notice={viewState.notice}
       error={viewState.error}
     >
-      <section className="shellPage__bodyGrid">
-        <div className="shellPage__stack">
+      <section className={`${styles.bodyGrid}`}>
+        <div className={`${styles.stack}`}>
           <ShellPanel
             title="Snapshot operator và runtime"
             subtitle="Đọc nhanh session, runtime health và build meta trước khi nối watchlist workspace thật vào shell này."
             actions={renderRefreshAction({ onClick: handleRefresh, disabled: viewState.loading })}
           >
-            <section className="shellPage__summaryGrid">
+            <section className={`${styles.summaryGrid}`}>
               {summaryCards}
             </section>
           </ShellPanel>
@@ -145,11 +145,11 @@ export function ShellWatchlistPage({
             subtitle="Kiểm tra group `workspace` cùng route `watchlist` đã được runtime mở đúng theo bootstrap hiện tại hay chưa."
           >
             <div key="watchlist-groups">
-              <h3 className="shellPage__itemTitle">Visible groups</h3>
+              <h3 className={`${styles.itemTitle}`}>Visible groups</h3>
               {renderFlagList(groupFlags, "Session hiện chưa mở group điều hướng nào.", "watchlist-groups")}
             </div>
             <div key="watchlist-routes">
-              <h3 className="shellPage__itemTitle">Workspace routes</h3>
+              <h3 className={`${styles.itemTitle}`}>Workspace routes</h3>
               {renderFlagList(routeFlags, "Runtime hiện chưa expose route watchlist nào cho session này.", "watchlist-routes")}
             </div>
           </ShellPanel>
@@ -161,11 +161,11 @@ export function ShellWatchlistPage({
         >
           {renderBuildMetaCard({ key: "watchlist-build-meta", buildMeta })}
           <div key="watchlist-workspace-routes">
-            <h3 className="shellPage__itemTitle">Workspace routes</h3>
+            <h3 className={`${styles.itemTitle}`}>Workspace routes</h3>
             {renderValueList(workspaceRoutes, "Runtime hiện chưa mở route workspace nào.", "watchlist-workspace-routes")}
           </div>
           <div key="watchlist-surfaces">
-            <h3 className="shellPage__itemTitle">Enabled surfaces</h3>
+            <h3 className={`${styles.itemTitle}`}>Enabled surfaces</h3>
             {renderValueList(enabledSurfaces, "Runtime chưa bật surface flag nào.", "watchlist-surfaces")}
           </div>
           {renderAbilityList({
@@ -173,10 +173,10 @@ export function ShellWatchlistPage({
             emptyText: "Runtime hiện chưa trả về ability watchlist nào cho route này.",
             keyPrefix: "watchlist-ability",
           })}
-          <article className="shellPage__surfaceCard" key="watchlist-summary-card">
-            <h3 className="shellPage__itemTitle">Workspace summary</h3>
-            <p className="shellPage__itemMeta">Workspace routes visible: {workspaceRoutes.length}</p>
-            <p className="shellPage__itemMeta">Watchlist routes active: {countFlagsByState(routeFlags, "ACTIVE")}</p>
+          <article className={`${styles.surfaceCard}`} key="watchlist-summary-card">
+            <h3 className={`${styles.itemTitle}`}>Workspace summary</h3>
+            <p className={`${styles.itemMeta}`}>Workspace routes visible: {workspaceRoutes.length}</p>
+            <p className={`${styles.itemMeta}`}>Watchlist routes active: {countFlagsByState(routeFlags, "ACTIVE")}</p>
           </article>
         </ShellPanel>
       </section>

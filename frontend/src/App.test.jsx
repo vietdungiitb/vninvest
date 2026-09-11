@@ -188,9 +188,6 @@ jest.mock('./pages/admin/tenant/TenantUsage', () => function MockTenantUsage() {
   return <div data-testid="tenant-usage-page" />;
 });
 
-jest.mock('./pages/AICommandCenter', () => function MockAICommandCenter() {
-  return <div data-testid="ai-command-center-page" />;
-});
 
 jest.mock('./pages/Upgrade', () => function MockUpgrade() {
   return <div data-testid="upgrade-page" />;

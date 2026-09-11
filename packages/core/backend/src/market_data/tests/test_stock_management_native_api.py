@@ -13,6 +13,7 @@ from advisory.models import AdvisoryRecord
 from identity_access.models import CoreTenant, UserProfile
 from market_data.models import DailyPrice, GlobalSymbolDemandSource, GlobalSymbolRegistry, IntradayBar, IntradayTick, StockProfile
 from signal_intelligence.models import UnifiedAlert
+from service_ops.models import CachedSymbolGroup, CachedSymbolGroupMember
 from user_workspace.models import PriceAlert, TrackedSymbol, Watchlist, WatchlistItem
 
 User = get_user_model()
@@ -1394,8 +1395,11 @@ class StockManagementNativeApiTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_core_v1_groups_list_route_matches_public_contract(self):
-        watchlist = Watchlist.objects.create(user=self.user, name='Ngân hàng', description='Nhóm ngân hàng')
-        WatchlistItem.objects.create(watchlist=watchlist, symbol='TPB', note='Theo dõi ngân hàng')
+        group = CachedSymbolGroup.objects.create(
+            group_name='Ngân hàng', group_type='SECTOR', description='Nhóm ngân hàng',
+            is_active=True, display_order=1,
+        )
+        CachedSymbolGroupMember.objects.create(group=group, symbol='TPB', display_order=0)
         DailyPrice.objects.create(
             symbol='TPB',
             date=timezone.localdate() - timedelta(days=1),

@@ -27,16 +27,9 @@ class RegisterTenantSerializer(serializers.Serializer):
 
 
 def _enqueue_welcome_email(user, tenant):
-    """
-    Enqueue a welcome email task for the new trial tenant.
-
-    In production, this would call a Celery task. For now, we log the intent
-    as a side-effect and leave the actual email delivery to a later slice.
-    """
-    # TODO(T08-follow-up): Wire to actual mail queue task when available
-    # from vninvest_core.tasks import send_welcome_email
-    # send_welcome_email.delay(user.id, tenant.public_id)
-    pass
+    """Enqueue a welcome email task for the new trial tenant."""
+    from identity_access.email_tasks import send_welcome_email
+    send_welcome_email.delay(user.id, tenant.public_id)
 
 
 @api_view(['POST'])

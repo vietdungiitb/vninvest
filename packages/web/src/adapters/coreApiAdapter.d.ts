@@ -8,6 +8,14 @@ export interface AuthTokenStorage {
 
 export const authTokenStorage: AuthTokenStorage;
 
+export interface TenantIdStorage {
+  getTenantId: () => string | null;
+  setTenantId: (value: string) => void;
+  clearTenantId: () => void;
+}
+
+export const tenantIdStorage: TenantIdStorage;
+
 export class CoreApiRequestError extends Error {
   status: number;
   statusCode: number;
@@ -16,6 +24,13 @@ export class CoreApiRequestError extends Error {
 }
 
 export interface CoreApiAdapter {
+  // Raw transport methods
+  coreGet: (path: string, options?: any) => Promise<any>;
+  corePost: (path: string, body?: any, options?: any) => Promise<any>;
+  corePut: (path: string, body?: any, options?: any) => Promise<any>;
+  corePatch: (path: string, body?: any, options?: any) => Promise<any>;
+  coreDelete: (path: string, options?: any) => Promise<any>;
+
   // Auth
   loginUser: (credentials: { username: string; password: string }) => Promise<any>;
   registerUser: (data: { username: string; email: string; password: string; password_confirm: string }) => Promise<any>;
@@ -53,6 +68,7 @@ export interface CoreApiAdapter {
   getDarkPoolData: (symbol: string) => Promise<any>;
   getWhaleAlerts: (params: any) => Promise<any>;
   getAiAdvisory: (params: any) => Promise<any>;
+  getDailyPrices: (symbol: string, params?: any) => Promise<any>;
   
   // Workspace
   getPortfolios: () => Promise<any>;
@@ -98,12 +114,11 @@ export interface CoreApiAdapter {
   processPayment: (data: any) => Promise<any>;
   
   // Screener
-  getScreenerPresets: () => Promise<any>;
-  createScreenerPreset: (data: any) => Promise<any>;
-  updateScreenerPreset: (id: string, data: any) => Promise<any>;
-  deleteScreenerPreset: (id: string) => Promise<any>;
-  runScreener: (params: any) => Promise<any>;
-  getScreenerResults: (id: string) => Promise<any>;
+  getScreenerRules: () => Promise<any>;
+  createScreenerRule: (data: any) => Promise<any>;
+  updateScreenerRule: (id: string, data: any) => Promise<any>;
+  deleteScreenerRule: (id: string) => Promise<any>;
+  runScreenerRule: (id: string) => Promise<any>;
   
   // Advisory
   createAdvisorySession: (data: any) => Promise<any>;
@@ -122,6 +137,13 @@ export interface CoreApiAdapter {
   getDnseConnection: () => Promise<any>;
   updateDnseConnection: (data: any) => Promise<any>;
   testDnseConnection: () => Promise<any>;
+  getDnseBackfillJobs: () => Promise<any>;
+  triggerDnseBackfill: (data: any) => Promise<any>;
+  getDNSEConfig: () => Promise<{ is_configured: boolean; data?: { client_id_preview?: string; is_active?: boolean; last_sync_at?: string | null } }>;
+  updateDNSEConfig: (data: { client_id: string; client_secret: string; is_active?: boolean }) => Promise<{ ok: boolean }>;
+  deleteDNSEConfig: () => Promise<{ ok: boolean }>;
+  getUserConfig: () => Promise<{ id: number; preferences: Record<string, unknown>; advisory_whale_signal_enabled: boolean }>;
+  updateUserConfig: (data: { advisory_whale_signal_enabled?: boolean }) => Promise<{ ok: boolean; preferences: Record<string, unknown>; advisory_whale_signal_enabled: boolean }>;
   
   // Operator
   getOperatorStats: () => Promise<any>;
@@ -139,6 +161,121 @@ export interface CoreApiAdapter {
   getMailConfig: () => Promise<any>;
   updateMailConfig: (data: any) => Promise<any>;
   sendTestEmail: (data: any) => Promise<any>;
+
+  // SOC Screener
+  getSocScreenerConfig: () => Promise<any>;
+  applySocScreenerConfig: (config: any) => Promise<any>;
+  getSocScreenerRules: () => Promise<any>;
+  createSocScreenerRule: (data: any) => Promise<any>;
+  updateSocScreenerRule: (id: string, data: any) => Promise<any>;
+  deleteSocScreenerRule: (id: string) => Promise<any>;
+  getSocScreenerResults: () => Promise<any>;
+  getSocScreenerAlerts: () => Promise<any>;
+  getSocScreenerMetrics: () => Promise<any>;
+  manualSocScreenerScan: (symbols: string[]) => Promise<any>;
+  getSocScreenerOwnership: () => Promise<any>;
+
+  // Alert Center (SOC) — endpoints under /core/v1/signals/alert-center/*
+  getAlertCenterFeed: (params?: Record<string, unknown>) => Promise<{
+    results: Record<string, unknown>[];
+    next: string | null;
+    previous: string | null;
+  }>;
+  getAIAlertsFeed: (params?: Record<string, unknown>) => Promise<{
+    results: Record<string, unknown>[];
+    next: string | null;
+    previous: string | null;
+  }>;
+  getAlertCenterSummary: (params?: Record<string, unknown>) => Promise<{
+    total: number;
+    unseen: number;
+    by_severity: { critical: number; high: number; medium: number; low: number };
+  }>;
+  getAIAlertsSummary: (params?: Record<string, unknown>) => Promise<{
+    total: number;
+    unseen: number;
+    by_severity: { critical: number; high: number; medium: number; low: number };
+  }>;
+  getAlertCenterSymbolStats: (params?: Record<string, unknown>) => Promise<{
+    symbols: Record<string, unknown>[];
+    total_alerts_in_scope: number;
+    pagination: { page: number; page_size: number; total_pages: number; total_symbols: number };
+  }>;
+  getAIAlertsSymbolStats: (params?: Record<string, unknown>) => Promise<{
+    symbols: Record<string, unknown>[];
+    total_alerts_in_scope: number;
+    pagination: { page: number; page_size: number; total_pages: number; total_symbols: number };
+  }>;
+  getAlertCenterEventDetail: (alertId: string | number) => Promise<Record<string, unknown>>;
+  getAlertCenterSymbolContext: (symbol: string) => Promise<{
+    symbol: string;
+    lane: string;
+    total: number;
+    unseen: number;
+    in_delivery_scope: boolean;
+    recent_events: Record<string, unknown>[];
+  }>;
+  acknowledgeAlertCenterEvent: (alertId: string | number) => Promise<Record<string, unknown>>;
+  muteAlertCenterPreference: (payload: {
+    symbol?: string;
+    alert_family?: string;
+    mute_minutes?: number;
+    cooldown_seconds?: number;
+    metadata?: Record<string, unknown>;
+  }) => Promise<{
+    symbol: string;
+    alert_family: string;
+    mute_until: string | null;
+    cooldown_seconds: number;
+  }>;
+
+  // Tenant-admin usage
+  getAllUsageTrends: (days?: number) => Promise<any>;
+  getUsageForecast: () => Promise<any>;
+  getAlertConfigs: () => Promise<any>;
+  getApiUsageAnalytics: (groupBy?: string, days?: number) => Promise<any>;
+
+  // Tenant-admin operator (partner/*)
+  getAdminAuditLog: (params?: any) => Promise<any>;
+  getDashboardSummary: () => Promise<any>;
+  getUsageTrend: (days?: number) => Promise<any>;
+  updateAlertConfig: (meterCode: string, data: any) => Promise<any>;
+  getUsageForecast: (meterCode?: string | null, lookback?: number) => Promise<any>;
+  getUsageTrendMeter: (meterCode: string, days?: number) => Promise<any>;
+  getAllUsageTrends: (days?: number) => Promise<any>;
+
+  // Phase 2: Cost Analytics
+  getCostTrend: (months?: number) => Promise<any>;
+
+  // Phase 2: Scheduled Reports
+  getScheduledReports: () => Promise<any>;
+  createScheduledReport: (data: any) => Promise<any>;
+  updateScheduledReport: (id: number, data: any) => Promise<any>;
+  deleteScheduledReport: (id: number) => Promise<any>;
+  testScheduledReport: (id: number) => Promise<any>;
+  getReportDeliveryLog: () => Promise<any>;
+
+  // Phase 3: Security Dashboard
+  getLoginActivity: (days?: number) => Promise<any>;
+  getActiveSessions: () => Promise<any>;
+  revokeSession: (sessionId: number) => Promise<any>;
+  revokeAllSessions: () => Promise<any>;
+
+  // Phase 4: Webhooks
+  getWebhooks: () => Promise<any>;
+  createWebhook: (data: any) => Promise<any>;
+  updateWebhook: (id: number, data: any) => Promise<any>;
+  deleteWebhook: (id: number) => Promise<any>;
+  getWebhookDeliveries: (id: number) => Promise<any>;
+  regenerateWebhookSecret: (id: number) => Promise<any>;
+  testWebhook: (id: number) => Promise<any>;
+  retryWebhookDelivery: (configId: number, deliveryId: number) => Promise<any>;
+
+  // Phase 4: Billing status + plan preview
+  getBillingStatus: () => Promise<any>;
+  previewPlanChange: (planCode: string) => Promise<any>;
+  createStripeCheckoutSession: (planCode: string, successUrl: string, cancelUrl: string) => Promise<any>;
+  createStripePortalSession: (returnUrl: string) => Promise<any>;
 }
 
 export function createCoreApiAdapter(options?: {

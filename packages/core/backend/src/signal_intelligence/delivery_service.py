@@ -65,7 +65,7 @@ def _allowed_transition(current_state: str, target_state: str) -> bool:
 def apply_user_delivery_policy(*, user, queryset: QuerySet[UnifiedAlert]) -> QuerySet[UnifiedAlert]:
     user_symbols = resolve_user_delivery_symbols(user)
     if not user_symbols:
-        return queryset.none()
+        return queryset
 
     scoped = queryset.filter(symbol__in=user_symbols)
     whale_threshold = resolve_user_whale_threshold_vnd(user)

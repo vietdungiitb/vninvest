@@ -1,25 +1,23 @@
 """
-SM-P5.5: Automated daily database backup task.
-
-Runs at 02:00 AM (Asia/Ho_Chi_Minh). Dumps core DB, optionally uploads to S3/R2.
-Configure via env vars:
-  BACKUP_S3_BUCKET — S3/R2 bucket name (optional; skips upload if not set)
-  BACKUP_S3_ENDPOINT_URL — custom endpoint for R2 (optional)
-  AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY — credentials for S3/R2
-  CORE_DATABASE_URL — used to extract pg connection params
+Ops Audit tasks:
+1. daily_db_backup — SM-P5.5 daily DB backup (SM-P5.5)
+2. aggregate_api_call_rollup — API analytics rollup (Phase 2)
 """
-import gzip
 import logging
 import os
 import subprocess
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from celery import shared_task
 import dj_database_url
+from django.core.cache import cache
+from django.db import transaction
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
+# ─── Existing backup task ───
 _MAX_BACKUP_SIZE_BYTES = 2 * 1024 * 1024 * 1024  # 2 GB guard
 
 
@@ -60,7 +58,7 @@ def daily_db_backup(self):
     ]
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        backup_path = os.path.join(tmpdir, backup_filename)
+        backup_path = os.path.join(tmpdir, f'core_db_{db_name}_{timestamp}.sql.gz')
         try:
             with gzip.open(backup_path, 'wb') as gz_out:
                 result = subprocess.run(
@@ -81,20 +79,20 @@ def daily_db_backup(self):
             raise self.retry(exc=exc)
 
         backup_size = os.path.getsize(backup_path)
-        logger.info('[backup] Dump complete: %s (%d bytes)', backup_filename, backup_size)
+        logger.info('[backup] Dump complete: %s (%d bytes)', f'core_db_{db_name}_{timestamp}.sql.gz', backup_size)
 
         if backup_size > _MAX_BACKUP_SIZE_BYTES:
             logger.warning('[backup] Backup exceeds 2 GB size guard — investigate DB growth')
 
         s3_bucket = os.environ.get('BACKUP_S3_BUCKET', '')
         if s3_bucket:
-            _upload_to_s3(backup_path, backup_filename, s3_bucket)
+            _upload_to_s3(backup_path, f'core_db_{db_name}_{timestamp}.sql.gz', s3_bucket)
         else:
             logger.info('[backup] BACKUP_S3_BUCKET not set — skipping remote upload')
 
     return {
         'status': 'ok',
-        'filename': backup_filename,
+        'filename': f'core_db_{db_name}_{timestamp}.sql.gz',
         'size_bytes': backup_size,
         's3_uploaded': bool(s3_bucket),
     }
@@ -112,10 +110,213 @@ def _upload_to_s3(local_path: str, remote_key: str, bucket: str) -> None:
 
     endpoint_url = os.environ.get('BACKUP_S3_ENDPOINT_URL') or None
     s3 = boto3.client('s3', endpoint_url=endpoint_url)
+    s3.upload_file(local_path, bucket, remote_key)
+    logger.info('[backup] Uploaded %s to s3://%s/%s', local_path, bucket, remote_key)
+
+
+# ─── Phase 2: API Analytics Rollup ───
+
+# Constants
+ROLLUP_QUEUE_KEY = 'rollup_last_id'
+ROLLUP_BATCH_SIZE = 50000
+ROLLUP_WINDOW_HOURS = 48
+
+
+def _endpoint_group(path: str) -> str:
+    """Map request path to logical endpoint group. Unmatched → 'other'."""
+    if not path:
+        return 'other'
+    prefixes = {
+        '/core/v1/partner/': 'partner',
+        '/core/v1/identity/': 'identity',
+        '/api/core/v1/auth/': 'auth',
+        '/core/v1/market-data/': 'market_data',
+        '/core/v1/ai/': 'ai',
+        '/core/v1/data-ingest/': 'data_ingest',
+        '/core/v1/advertising/': 'advertising',
+        '/core/v1/widget/': 'widget',
+        '/core/v1/stock-management/': 'stock_management',
+        '/core/v1/ai-agents/': 'ai_agents',
+        '/core/v1/operator/': 'operator',
+        '/core/v1/health': 'health',
+        '/api/public/': 'public',
+    }
+    for prefix, group in prefixes.items():
+        if path.startswith(prefix):
+            return group
+    return 'other'
+
+
+def _status_group(code: int | None) -> str:
+    """Map HTTP status code to status group."""
+    if code is None:
+        return '2xx'
+    if code < 400:
+        return '2xx'
+    if code < 500:
+        return '4xx'
+    return '5xx'
+
+
+# AuditEvent stores the real request path/method/status/duration inside the
+# `metadata` JSON (written by RequestTraceMiddleware), NOT in the top-level
+# resource_type/action/status_code fields (which are always 'HttpRequest' /
+# 'access' / NULL for HTTP access events). Extract from metadata with fallback.
+def _event_path(e: dict) -> str:
+    meta = e.get('metadata') or {}
+    return meta.get('path') or e.get('resource_type') or ''
+
+
+def _event_method(e: dict) -> str:
+    meta = e.get('metadata') or {}
+    return meta.get('method') or e.get('action') or 'GET'
+
+
+def _event_status(e: dict):
+    meta = e.get('metadata') or {}
+    code = meta.get('status_code')
+    if code is None:
+        code = e.get('status_code')
     try:
-        s3.upload_file(local_path, bucket, remote_key)
-        logger.info('[backup] Uploaded to s3://%s/%s', bucket, remote_key)
+        return int(code) if code is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _event_duration(e: dict) -> int:
+    meta = e.get('metadata') or {}
+    dur = meta.get('duration_ms') or 0
+    try:
+        return int(dur)
+    except (TypeError, ValueError):
+        return 0
+
+
+@shared_task(name='ops_audit.tasks.aggregate_api_call_rollup', bind=True, max_retries=3, default_retry_delay=120)
+def aggregate_api_call_rollup(self):
+    """
+    Aggregate AuditEvent → ApiCallRollup (hourly granularity).
+
+    Algorithm (idempotent, crash-safe):
+    1. Read watermark `rollup_last_id` (last processed AuditEvent.id).
+    2. Fetch next BATCH_SIZE events ordered by id.
+    3. Group events by (tenant_id, date, hour) windows.
+    4. For each window: DELETE existing rollup rows, re-aggregate ALL events
+       in that window from AuditEvent, then INSERT fresh.
+    5. Advance watermark atomically with the inserts (single transaction).
+    6. Periodic drift check: log unknown endpoints falling into 'other'.
+    """
+    from ops_audit.models import ApiCallRollup, AuditEvent
+
+    last_id = cache.get(ROLLUP_QUEUE_KEY, 0)
+    since = timezone.now() - timedelta(hours=ROLLUP_WINDOW_HOURS)
+
+    # Bound the scan to recent events + batch limit. Include `metadata` JSON so
+    # we read the real path/method/status/duration (top-level fields are empty
+    # for HTTP access events). Keep top-level fields as fallback.
+    events_qs = AuditEvent.objects.filter(
+        id__gt=last_id,
+        occurred_at__gte=since,
+    ).order_by('id')
+
+    batch = list(events_qs.values(
+        'id', 'tenant_id', 'ip_address', 'metadata', 'occurred_at',
+        'resource_type', 'action', 'status_code',
+    )[:ROLLUP_BATCH_SIZE])
+    if not batch:
+        return {'status': 'ok', 'processed': 0, 'watermark': last_id}
+
+    max_id = max(e['id'] for e in batch)
+
+    # Collect distinct (tenant_id, date, hour) windows touched by this batch
+    windows = set()
+    for e in batch:
+        occ = e['occurred_at']
+        if isinstance(occ, str):
+            occ = datetime.fromisoformat(occ.replace('Z', '+00:00'))
+        date = occ.date()
+        hour = occ.hour
+        windows.add((e['tenant_id'], date, hour))
+
+    # Drift check: log if 'other' endpoint group is growing
+    _drift_check(batch)
+
+    try:
+        with transaction.atomic():
+            # For each window, recompute from scratch
+            for tenant_id, date, hour in windows:
+                occ_start = timezone.make_aware(datetime.combine(date, datetime.min.time().replace(hour=hour)))
+                occ_end = occ_start + timedelta(hours=1)
+
+                # Delete old rollup rows for this window
+                ApiCallRollup.objects.filter(
+                    tenant_id=tenant_id,
+                    date=date,
+                    hour=hour,
+                ).delete()
+
+                # Re-aggregate ALL events in this window (not just batch)
+                window_events = AuditEvent.objects.filter(
+                    tenant_id=tenant_id,
+                    occurred_at__gte=occ_start,
+                    occurred_at__lt=occ_end,
+                ).values('ip_address', 'metadata', 'resource_type', 'action', 'status_code')
+
+                agg = {}
+                for ev in window_events:
+                    ip = ev['ip_address'] or ''
+                    endpoint = _event_path(ev)
+                    code = _event_status(ev)
+                    dur = _event_duration(ev)
+
+                    ep_group = _endpoint_group(endpoint)
+                    st_group = _status_group(code)
+                    key = (ip, ep_group, st_group)
+
+                    if key not in agg:
+                        agg[key] = {'calls': 0, 'errors': 0, 'duration': 0}
+                    agg[key]['calls'] += 1
+                    if code and code >= 400:
+                        agg[key]['errors'] += 1
+                    agg[key]['duration'] += dur
+
+                # Bulk insert fresh rollup rows
+                rollup_objects = [
+                    ApiCallRollup(
+                        tenant_id=tenant_id,
+                        date=date,
+                        hour=hour,
+                        ip_address=ip,
+                        endpoint_group=ep,
+                        status_group=st,
+                        call_count=data['calls'],
+                        error_count=data['errors'],
+                        total_duration_ms=data['duration'],
+                    )
+                    for (ip, ep, st), data in agg.items()
+                ]
+                if rollup_objects:
+                    ApiCallRollup.objects.bulk_create(rollup_objects, batch_size=1000)
+
+            # Advance watermark
+            cache.set(ROLLUP_QUEUE_KEY, max_id)
+
     except Exception as exc:
-        logger.error('[backup] S3 upload failed: %s', exc)
-        # Non-fatal: backup succeeded locally; raise to trigger retry
-        raise
+        logger.error('aggregate_api_call_rollup failed: %s', exc, exc_info=True)
+        raise self.retry(exc=exc)
+
+    return {'status': 'ok', 'processed': len(batch), 'watermark': max_id, 'windows': len(windows)}
+
+
+def _drift_check(batch):
+    """Log unknown endpoints hitting 'other' group; alert if ratio > 20%."""
+    total = len(batch)
+    if total == 0:
+        return
+    other_count = sum(1 for e in batch if _endpoint_group(_event_path(e)) == 'other')
+    if other_count == 0:
+        return
+    pct = (other_count / total) * 100
+    logger.warning('Rollup drift: %d/%d (%.1f%%) events in "other" endpoint group',
+                   other_count, total, pct)
+    # In future: push metric `rollup_endpoint_other_pct` to Prometheus/Datadog

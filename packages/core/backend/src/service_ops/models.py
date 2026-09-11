@@ -446,6 +446,108 @@ class CustomSymbolGroup(models.Model):
 
 
 # ---------------------------------------------------------------------------
+# Cached Symbol Groups — SSOT từ vnbroker provider
+# ---------------------------------------------------------------------------
+
+
+class CachedSymbolGroup(models.Model):
+    """Nhóm thị trường cache từ vnbroker provider — single source of truth cho group list.
+
+    Thay thế PREDEFINED_SYMBOL_GROUPS hardcoded trong matrix_coordinator.py.
+    Sync qua POST /api/soc/symbol-groups/sync/ → symbol_group_sync.sync_groups().
+    """
+
+    group_name = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name='Tên nhóm',
+        help_text='VD: VN30, HOSE, VNMidCap',
+    )
+    group_code = models.CharField(
+        max_length=20,
+        blank=True,
+        default='',
+        verbose_name='Mã nhóm (provider code)',
+        help_text='Mã nội bộ provider. VD: KBS dùng "30" cho VN30',
+    )
+    category = models.CharField(
+        max_length=50,
+        blank=True,
+        default='',
+        verbose_name='Phân loại',
+        help_text='VD: Chỉ số VN, Sàn giao dịch, ETF/Quỹ',
+    )
+    description = models.TextField(blank=True, default='', verbose_name='Mô tả')
+    source_provider = models.CharField(
+        max_length=20,
+        verbose_name='Provider nguồn',
+        help_text='Provider lấy dữ liệu: KBS, VCI, TCBS',
+    )
+    symbol_count = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Số lượng mã',
+        help_text='Số mã trong nhóm (null nếu chưa resolve)',
+    )
+    group_type = models.CharField(
+        max_length=20,
+        blank=True,
+        default='',
+        verbose_name='Loại nhóm',
+        help_text='SECTOR, INDEX, EXCHANGE, ETF, CW, BOND, DERIVATIVE',
+    )
+    color = models.CharField(
+        max_length=20,
+        blank=True,
+        default='',
+        verbose_name='Màu hiển thị',
+        help_text='Hex color code cho UI, VD: #3b82f6',
+    )
+    display_order = models.PositiveIntegerField(
+        default=999,
+        verbose_name='Thứ tự hiển thị',
+        help_text='Thứ tự sắp xếp trong sidebar',
+    )
+    is_active = models.BooleanField(default=True, verbose_name='Đang hoạt động')
+    synced_at = models.DateTimeField(auto_now=True, verbose_name='Lần sync gần nhất')
+
+    class Meta:
+        ordering = ['display_order', 'group_name']
+        verbose_name = 'Nhóm thị trường (cached)'
+        verbose_name_plural = 'Nhóm thị trường (cached)'
+
+    def __str__(self):
+        return f'{self.group_name} ({self.symbol_count or "?"} mã, {self.source_provider})'
+
+
+class CachedSymbolGroupMember(models.Model):
+    """Thành viên mã của một CachedSymbolGroup (system/market group).
+
+    Tách biệt hoàn toàn với WatchlistItem của user. Mỗi CachedSymbolGroup có
+    danh sách mã riêng, không phụ thuộc vào user/tenant — đây là SSOT cho
+    "Thị trường & Chỉ số".
+    """
+
+    group = models.ForeignKey(
+        CachedSymbolGroup,
+        on_delete=models.CASCADE,
+        related_name='members',
+        verbose_name='Nhóm thị trường',
+    )
+    symbol = models.CharField(max_length=32, db_index=True, verbose_name='Mã cổ phiếu')
+    display_order = models.PositiveIntegerField(default=0, verbose_name='Thứ tự hiển thị')
+
+    class Meta:
+        ordering = ['display_order', 'symbol']
+        unique_together = [('group', 'symbol')]
+        verbose_name = 'Mã trong nhóm thị trường (cached)'
+        verbose_name_plural = 'Mã trong nhóm thị trường (cached)'
+
+    def __str__(self):
+        return f'{self.group.group_name} / {self.symbol}'
+
+
+# ---------------------------------------------------------------------------
 # B02 — Backfill Progress Persistence
 # ---------------------------------------------------------------------------
 

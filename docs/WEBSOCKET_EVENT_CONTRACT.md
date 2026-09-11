@@ -134,6 +134,26 @@ Ghi chu contract:
 }
 ```
 
+## 3.5 Subscription groups (channels)
+
+Clients subscribe by **symbol**, not by channel name. The special group
+symbol `market_discovery` carries the global alert feed (whale/dark-flow
+alerts for all symbols). Server implementation: `signal_intelligence/consumers.py`.
+
+## 3.6 Optional / not-yet-emitted event types
+
+The following `event_type` values are reserved in the client
+(`useRealtimeFeedCore.js`) but are **NOT currently emitted by the backend**
+(`signal_intelligence/broadcasting.py` only emits `whale_alert` /
+`dark_flow_alert` / `system_alert`). Treat them as optional / future:
+
+- `market_discovery_event` — reserved for a dedicated discovery summary
+  payload (with an `id` field). Currently dead on the server side.
+- `whale_advisory` — reserved.
+- `news_digest` — reserved.
+
+> Do NOT rely on these in production UI at this time.
+
 ## 4) WebSocket endpoint va auth
 
 Endpoint de xuat:
@@ -148,16 +168,21 @@ Client subscribe message:
 ```json
 {
   "action": "subscribe",
-  "channels": ["ticker:FPT", "whale:FPT", "user:12:alerts"]
+  "symbols": ["FPT", "HPG", "market_discovery"]
 }
 ```
+
+> Note: subscribe by **symbols** (not `channels`). `market_discovery` is a
+> special group symbol representing the global alert-discovery channel.
+> This matches the server implementation in
+> `signal_intelligence/consumers.py` (`RealtimeConsumer.receive`).
 
 Client unsubscribe message:
 
 ```json
 {
   "action": "unsubscribe",
-  "channels": ["ticker:FPT"]
+  "symbols": ["FPT", "market_discovery"]
 }
 ```
 
@@ -165,11 +190,13 @@ Server ack:
 
 ```json
 {
-  "event_type": "subscription_ack",
-  "ok": true,
-  "channels": ["ticker:FPT", "whale:FPT"]
+  "event_type": "subscribed",
+  "symbols": ["FPT", "HPG", "market_discovery"]
 }
 ```
+
+> Note: server acks with `event_type: "subscribed"` (not `subscription_ack`)
+> and echoes the subscribed `symbols` array. Matches `consumers.py` ack.
 
 ## 5) Ordering, dedupe, stale handling
 

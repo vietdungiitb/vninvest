@@ -24,6 +24,7 @@ from .models import (
     SystemMailConfig,
     TenantInvite,
     TenantMember,
+    TenantSettings,
     UserProfile,
 )
 
@@ -116,6 +117,14 @@ class TenantInviteAdmin(admin.ModelAdmin):
     search_fields = ('tenant__display_name', 'tenant__tenant_code', 'invited_email', 'token')
     readonly_fields = ('public_id', 'token', 'accepted_at', 'created_at', 'updated_at')
     ordering = ('-created_at',)
+
+
+@admin.register(TenantSettings)
+class TenantSettingsAdmin(admin.ModelAdmin):
+    list_display = ('tenant', 'timezone', 'locale', 'theme', 'custom_domain', 'updated_at')
+    list_filter = ('theme', 'locale')
+    search_fields = ('tenant__display_name', 'tenant__tenant_code', 'custom_domain')
+    readonly_fields = ('created_at', 'updated_at')
 
 
 # ---------------------------------------------------------------------------

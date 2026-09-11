@@ -3,6 +3,7 @@ WORKDIR /app
 
 # Copy package files and install dependencies
 COPY package*.json ./
+ENV NODE_OPTIONS=--max-old-space-size=2048
 RUN npm ci --legacy-peer-deps
 
 

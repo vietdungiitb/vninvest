@@ -1,43 +1,27 @@
-import { useState, useEffect, createElement, FormEvent, ChangeEvent } from "react";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense, memo, createElement, FormEvent, ChangeEvent } from "react";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
+import { AISettingsErrorBoundary } from "../components/AISettingsErrorBoundary.js";
+import { ShellPanel } from "../components/ShellPageTemplate.js";
+import styles from "../components/aiSettings.module.css";
+import { PROVIDER_MODELS, PROVIDER_OPTIONS } from "../shared/providerModels.js";
 
 const e = createElement;
 
-const PROVIDER_MODELS: Record<string, { key: string; label: string }[]> = {
-  openai: [
-    { key: "gpt-4o-mini", label: "gpt-4o-mini" },
-    { key: "gpt-4o", label: "gpt-4o" },
-    { key: "gpt-3.5-turbo", label: "gpt-3.5-turbo" },
-    { key: "custom", label: "Mô hình tùy chỉnh..." }
-  ],
-  gemini: [
-    { key: "gemini-1.5-flash", label: "gemini-1.5-flash" },
-    { key: "gemini-1.5-pro", label: "gemini-1.5-pro" },
-    { key: "gemini-pro", label: "gemini-pro" },
-    { key: "custom", label: "Mô hình tùy chỉnh..." }
-  ],
-  claude: [
-    { key: "claude-3-5-sonnet", label: "claude-3-5-sonnet" },
-    { key: "claude-3-haiku", label: "claude-3-haiku" },
-    { key: "custom", label: "Mô hình tùy chỉnh..." }
-  ],
-  openclaw: [
-    { key: "gpt-4o-mini", label: "gpt-4o-mini" },
-    { key: "custom", label: "Mô hình tùy chỉnh..." }
-  ],
-  local: [
-    { key: "llama3.2", label: "llama3.2" },
-    { key: "llama3.1", label: "llama3.1" },
-    { key: "mistral", label: "mistral" },
-    { key: "phi4", label: "phi-4" },
-    { key: "qwen2.5", label: "qwen2.5" },
-    { key: "custom", label: "Mô hình tùy chỉnh..." }
-  ],
-  copilot: [
-    { key: "custom", label: "Mô hình tùy chỉnh..." }
-  ]
-};
+const LazyAuditLogsPanel = lazy(() =>
+  import("../components/AIAuditLogsPanel.js").then((m) => ({ default: m.AIAuditLogsPanel }))
+);
+const LazyPromptConfigDrawer = lazy(() =>
+  import("../components/AIAdvisoryPromptConfigDrawer.js").then((m) => ({ default: m.AIAdvisoryPromptConfigDrawer }))
+);
+
+const SummaryCard = memo(function SummaryCard({ title, value, subtitle }: { title: string; value: string; subtitle: string }) {
+  return e("div", { className: styles.summaryCard }, [
+    e("p", { key: "title", className: styles.summaryLabel }, title),
+    e("p", { key: "value", className: styles.summaryValue }, value),
+    e("p", { key: "sub", className: styles.summarySub }, subtitle),
+  ]);
+});
 
 interface AISettings {
   ai_provider?: string;
@@ -57,7 +41,7 @@ interface AICommandCenterPageProps {
 }
 
 export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps) {
-  useI18n();
+  const { t } = useI18n();
   const [settings, setSettings] = useState<AISettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -76,9 +60,26 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
   const [showCustomEndpoint, setShowCustomEndpoint] = useState(false);
   const [maxTokens, setMaxTokens] = useState(5000);
   const [refreshInterval, setRefreshInterval] = useState(24);
+  const [temperature, setTemperature] = useState(0.3);
   const [testLatency, setTestLatency] = useState<number | null>(null);
 
-  const loadSettings = async (showNoticeFlag = false) => {
+  const [effectiveSource, setEffectiveSource] = useState("command_center");
+  const [effectiveProvider, setEffectiveProvider] = useState("");
+  const [effectiveModel, setEffectiveModel] = useState("");
+  const [aiReady, setAiReady] = useState(false);
+  const [aiConfigMessage, setAiConfigMessage] = useState("");
+  const [refreshIntervalDisplay, setRefreshIntervalDisplay] = useState(24);
+  const [maxAutoRefreshes, setMaxAutoRefreshes] = useState(24);
+  const [eventGateEnabled, setEventGateEnabled] = useState<boolean | null>(null);
+  const [eventGateSaving, setEventGateSaving] = useState(false);
+
+  const refreshIntervalRef = useRef(refreshInterval);
+  refreshIntervalRef.current = refreshInterval;
+  const [promptConfigOpen, setPromptConfigOpen] = useState(false);
+  const [promptConfig, setPromptConfig] = useState<Record<string, unknown> | null>(null);
+  const [refreshAuditKey, setRefreshAuditKey] = useState(0);
+
+  const loadSettings = useCallback(async (showNoticeFlag = false) => {
     setLoading(true);
     setError("");
     try {
@@ -105,23 +106,43 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
       setShowCustomEndpoint(data.ai_provider === "local");
       setMaxTokens(data.advisory_max_tokens_per_day || 5000);
       setRefreshInterval(data.advisory_refresh_interval_hours || 24);
+      setTemperature((data as any).temperature ?? 0.3);
       setAiApiKey("");
       setTestLatency(null);
 
+      setEffectiveSource((data as any).effective_ai_source || "command_center");
+      setEffectiveProvider((data as any).effective_ai_provider || data.ai_provider || "openclaw");
+      setEffectiveModel((data as any).effective_ai_model || data.ai_model || "");
+      setAiReady((data as any).ai_ready ?? false);
+      setAiConfigMessage((data as any).ai_config_message || "");
+      setRefreshIntervalDisplay((data as any).advisory_refresh_interval_hours ?? refreshIntervalRef.current);
+      setMaxAutoRefreshes((data as any).advisory_max_auto_refreshes_per_day ?? 24);
+
+      if ((data as any).ai_prompt_config) {
+        setPromptConfig((data as any).ai_prompt_config);
+      }
+
+      // Load event gate status
+      try {
+        const userConfig = await (coreApiAdapter as any).getUserConfig();
+        const prefs = userConfig?.preferences || {};
+        setEventGateEnabled(prefs.advisory_whale_signal_enabled !== false);
+      } catch { /* silent fail */ }
+
       if (showNoticeFlag) {
-        setNotice("Đã làm mới cấu hình AI.");
+        setNotice(t("aiCommandCenter.noticeRefreshed") || "Đã làm mới cấu hình AI.");
         setTimeout(() => setNotice(""), 3000);
       }
     } catch (err: unknown) {
-      setError((err && typeof err === 'object' && 'message' in err ? (err as Error).message : '') || "Lỗi khi tải cấu hình AI.");
+      setError((err && typeof err === 'object' && 'message' in err ? (err as Error).message : '') || t("aiCommandCenter.errorLoadConfig") || "Lỗi khi tải cấu hình AI.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     loadSettings();
-  }, []);
+  }, [loadSettings]);
 
   const handleProviderChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const provider = e.target.value;
@@ -165,7 +186,20 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
 
     const finalModel = aiModel === "custom" ? customModel.trim() : aiModel;
     if (!finalModel) {
-      setError("Mô hình AI không được để trống.");
+      setError(t("aiCommandCenter.errorEmptyModel") || "Mô hình AI không được để trống.");
+      setSaving(false);
+      return;
+    }
+
+    const parsedMaxTokens = Number(maxTokens);
+    const parsedRefreshInterval = Number(refreshInterval);
+    if (!Number.isFinite(parsedMaxTokens) || parsedMaxTokens < 1) {
+      setError(t("aiCommandCenter.errorTokensPositive") || "Định mức token/ngày phải lớn hơn 0.");
+      setSaving(false);
+      return;
+    }
+    if (!Number.isFinite(parsedRefreshInterval) || parsedRefreshInterval < 1) {
+      setError(t("aiCommandCenter.errorRefreshPositive") || "Khoảng làm mới (giờ) phải lớn hơn 0.");
       setSaving(false);
       return;
     }
@@ -173,8 +207,9 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
     const payload: Record<string, unknown> = {
       ai_provider: aiProvider,
       ai_model: finalModel,
-      advisory_max_tokens_per_day: parseInt(String(maxTokens)),
-      advisory_refresh_interval_hours: parseInt(String(refreshInterval)),
+      advisory_max_tokens_per_day: Math.max(1, Math.floor(parsedMaxTokens)),
+      advisory_refresh_interval_hours: Math.max(1, Math.floor(parsedRefreshInterval)),
+      temperature: Math.min(1, Math.max(0, Number(temperature) || 0.3)),
     };
 
     if (aiProvider === "local" && customEndpoint.trim()) {
@@ -185,16 +220,40 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
       payload.ai_api_key = aiApiKey.trim();
     }
 
+    if (promptConfig) {
+      payload.ai_prompt_config = promptConfig;
+    }
+
     try {
       const nextData: AISettings = await (coreApiAdapter as any).updateAICommandCenterConfig(payload);
       setSettings(nextData);
       setAiApiKey("");
-      setNotice("Lưu cấu hình AI thành công.");
+      setEffectiveSource((nextData as any).effective_ai_source || "command_center");
+      setEffectiveProvider((nextData as any).effective_ai_provider || aiProvider);
+      setEffectiveModel((nextData as any).effective_ai_model || finalModel);
+      setAiReady((nextData as any).ai_ready ?? false);
+      setRefreshAuditKey(k => k + 1);
+      setNotice(t("aiCommandCenter.noticeSaved") || "Lưu cấu hình AI thành công.");
       setTimeout(() => setNotice(""), 3000);
     } catch (err: unknown) {
-      setError((err && typeof err === 'object' && 'message' in err ? (err as Error).message : '') || "Lỗi khi lưu cấu hình.");
+      setError((err && typeof err === 'object' && 'message' in err ? (err as Error).message : '') || t("aiCommandCenter.errorSaveConfig") || "Lỗi khi lưu cấu hình.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleEventGateToggle = async () => {
+    if (eventGateEnabled === null || eventGateSaving) return;
+    setEventGateSaving(true);
+    setError("");
+    try {
+      const next = !(eventGateEnabled as boolean);
+      const res = await (coreApiAdapter as any).updateUserConfig({ advisory_whale_signal_enabled: next });
+      setEventGateEnabled(res?.advisory_whale_signal_enabled ?? next);
+    } catch (err: unknown) {
+      setError((err && typeof err === 'object' && 'message' in err ? (err as Error).message : '') || t("aiCommandCenter.errorEventGate") || "Lỗi khi cập nhật gate sự kiện.");
+    } finally {
+      setEventGateSaving(false);
     }
   };
 
@@ -221,214 +280,299 @@ export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps
       const data = await (coreApiAdapter as any).testAICommandCenterConnection(payload) as Record<string, unknown>;
       if (data?.ok ?? true) {
         setTestStatus("success");
-        setTestResult((data?.message as string) || "Kết nối thành công!");
+        setTestResult((data?.message as string) || t("aiCommandCenter.testSuccess") || "Kết nối thành công!");
         if (data?.latency_ms != null) {
           setTestLatency(data.latency_ms as number);
         }
       } else {
         setTestStatus("error");
-        setTestResult((data?.message as string) || "Kết nối thất bại.");
+        setTestResult((data?.message as string) || t("aiCommandCenter.testError") || "Kết nối thất bại.");
       }
     } catch (err: unknown) {
       setTestStatus("error");
-      setTestResult((err && typeof err === 'object' && 'message' in err ? (err as Error).message : '') || "Lỗi mạng khi thử nghiệm kết nối.");
+      setTestResult((err && typeof err === 'object' && 'message' in err ? (err as Error).message : '') || t("aiCommandCenter.testNetworkError") || "Lỗi mạng khi thử nghiệm kết nối.");
     }
   };
 
   if (loading) {
-    return e("div", { className: "core-ai-command-center core-page-loading " + className },
-      e("p", null, "Đang tải cấu hình AI...")
+    return e("div", { className: styles.panel + " " + className },
+      e("p", { className: styles.loading }, t("aiCommandCenter.loadingConfig") || "Đang tải cấu hình AI...")
     );
   }
 
-  const providerOptions = [
-    { key: "openclaw", label: "OpenClaw (System Default)" },
-    { key: "openai", label: "OpenAI (ChatGPT)" },
-    { key: "gemini", label: "Google Gemini" },
-    { key: "claude", label: "Anthropic (Claude)" },
-    { key: "local", label: "Local Model (Ollama/vLLM)" },
-    { key: "copilot", label: "GitHub Copilot" }
-  ];
+  const providerOptions = PROVIDER_OPTIONS;
 
   const modelsForSelectedProvider = PROVIDER_MODELS[aiProvider] || [];
 
-  return e("div", { className: "mx-auto max-w-[1200px] space-y-4 px-5 py-6 " + className }, [
-    e("header", { key: "header", className: "core-page-header" }, [
-      e("h1", { className: "text-xl font-bold text-slate-100" }, "Trung tâm điều hành AI"),
-      e("p", { className: "mt-1 text-sm text-slate-400" }, "Cấu hình nhà cung cấp AI, lựa chọn mô hình và API key phục vụ AI Advisor.")
-    ]),
-
-    notice ? e("div", { key: "notice-banner", className: "rounded-lg border border-emerald-700/70 bg-emerald-900/20 px-3 py-2 text-sm text-emerald-200" }, notice) : null,
-    error ? e("div", { key: "error-banner", className: "rounded-lg border border-rose-700/70 bg-rose-900/20 px-3 py-2 text-sm text-rose-200" }, error) : null,
-
-    e("form", { key: "settings-form", className: "space-y-4 rounded-xl border border-slate-800 bg-slate-900/50 p-6", onSubmit: handleSaveSettings }, [
-      e("h2", { key: "form-title", className: "text-sm font-semibold uppercase tracking-wide text-slate-300" }, "CẤU HÌNH AI RUNTIME"),
-
-      e("div", { key: "row-1", className: "grid grid-cols-1 gap-4 md:grid-cols-2" }, [
-        e("div", { key: "provider-block" }, [
-          e("label", { className: "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400" }, "Nhà cung cấp AI"),
-          e("select", {
-            value: aiProvider,
-            onChange: handleProviderChange,
-            className: "w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500"
-          }, providerOptions.map(p =>
-            e("option", { key: p.key, value: p.key }, p.label)
-          ))
-        ]),
-
-        e("div", { key: "model-block" }, [
-          e("label", { className: "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400" }, "Mô hình AI"),
-          e("select", {
-            value: aiModel,
-            onChange: handleModelChange,
-            className: "w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500"
-          }, modelsForSelectedProvider.map(m =>
-            e("option", { key: m.key, value: m.key }, m.label)
-          ))
+  return e(AISettingsErrorBoundary, {
+      fallbackTitle: t("aiCommandCenter.errorBoundaryTitle") || "Lỗi Trung tâm điều hành AI",
+      errorMessage: t("aiCommandCenter.unknownError") || "Lỗi không xác định.",
+      retryLabel: t("aiCommandCenter.retryButton") || "Thử lại"
+    },
+    e("div", { className: "shellPage " + className, style: { display: "flex", flexDirection: "column", gap: "20px", maxWidth: 1200, margin: "0 auto" } }, [
+      e("header", { className: styles.pageHeader },
+        e("div", null, [
+          e("span", { key: "eyebrow", className: styles.pageEyebrow }, t("aiCommandCenter.eyebrow") || "Cài đặt"),
+          e("h1", { key: "title", className: styles.pageTitle }, t("aiCommandCenter.title") || "Trung tâm điều hành AI"),
+          e("p", { key: "desc", className: styles.pageDesc }, t("aiCommandCenter.description") || "Cấu hình nhà cung cấp AI, lựa chọn mô hình và API key phục vụ AI Advisor."),
         ])
-      ]),
+      ),
 
-      showCustomModel ? e("div", { key: "custom-model-row" }, [
-        e("label", { className: "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400" }, "Tên mô hình tùy chỉnh"),
-        e("input", {
-          type: "text",
-          value: customModel,
-          onChange: (ev: ChangeEvent<HTMLInputElement>) => setCustomModel(ev.target.value),
-          className: "w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500",
-          placeholder: "Ví dụ: o1-preview, gemini-2.5-pro",
-          required: true
-        })
-      ]) : null,
-
-      showCustomEndpoint ? e("div", { key: "custom-endpoint-row" }, [
-        e("label", { className: "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400" }, "Custom Endpoint (API gốc)"),
-        e("input", {
-          type: "text",
-          value: customEndpoint,
-          onChange: (ev: ChangeEvent<HTMLInputElement>) => setCustomEndpoint(ev.target.value),
-          className: "w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500",
-          placeholder: "http://localhost:11434/v1",
-          required: false
-        }),
-        e("p", { className: "mt-1 text-xs text-slate-500" }, "Để trống nếu dùng Ollama mặc định (http://localhost:11434/v1). Điền endpoint nếu dùng vLLM hoặc remote.")
-      ]) : null,
-
-      e("div", { key: "row-2", className: "grid grid-cols-1 gap-4 md:grid-cols-2" }, [
-        e("div", { key: "api-key-block" }, [
-          e("label", { className: "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400" }, "API Key"),
-          e("input", {
-            type: "password",
-            value: aiApiKey,
-            onChange: (ev: ChangeEvent<HTMLInputElement>) => setAiApiKey(ev.target.value),
-            className: "w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500",
-            placeholder: settings?.ai_api_key_configured
-              ? "Đã có API Key, nhập key mới để thay đổi..."
-              : "Nhập API Key của nhà cung cấp...",
-            autoComplete: "new-password"
-          })
-        ]),
-
-        e("div", { key: "token-block" }, [
-          e("label", { className: "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400" }, "Định mức Token / ngày"),
-          e("input", {
-            type: "number",
-            value: maxTokens,
-            onChange: (ev: ChangeEvent<HTMLInputElement>) => setMaxTokens(Number(ev.target.value)),
-            className: "w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500",
-            placeholder: "5000"
-          })
+      // Summary Cards
+      e(ShellPanel, { key: "overview", title: t("aiCommandCenter.overview") || "Tổng quan" },
+        e("div", { className: styles.summaryGrid }, [
+          e(SummaryCard, { key: "card-provider", title: t("aiCommandCenter.effectiveProvider"), value: effectiveProvider || "—", subtitle: t("aiCommandCenter.effectiveProviderDesc") }),
+          e(SummaryCard, { key: "card-model", title: t("aiCommandCenter.effectiveModel"), value: effectiveModel || t("aiCommandCenter.needsConfig"), subtitle: t("aiCommandCenter.effectiveModelDesc") }),
+          e(SummaryCard, { key: "card-source", title: t("aiCommandCenter.effectiveSource"), value: effectiveSource, subtitle: t("aiCommandCenter.effectiveSourceDesc") }),
+          e(SummaryCard, { key: "card-status", title: t("aiCommandCenter.runtimeStatus"), value: aiReady ? t("aiCommandCenter.ready") : t("aiCommandCenter.needsConfig"), subtitle: aiReady ? t("aiCommandCenter.readyDesc") : t("aiCommandCenter.needsConfigDesc") }),
         ])
-      ]),
+      ),
 
-      e("div", { key: "row-3", className: "grid grid-cols-1 gap-4 md:grid-cols-2" }, [
-        e("div", { key: "refresh-block" }, [
-          e("label", { className: "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400" }, "Khoảng làm mới tự động (giờ)"),
-          e("input", {
-            type: "number",
-            value: refreshInterval,
-            onChange: (ev: ChangeEvent<HTMLInputElement>) => setRefreshInterval(Number(ev.target.value)),
-            className: "w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500",
-            placeholder: "24"
-          })
-        ])
-      ]),
-
-      e("div", { key: "form-actions", className: "flex flex-wrap gap-2 pt-2" }, [
-        e("button", {
-          key: "save-btn",
-          type: "submit",
-          disabled: saving,
-          className: "rounded-lg border border-cyan-600 bg-cyan-600/20 px-4 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-600/30 disabled:cursor-not-allowed disabled:opacity-50"
-        }, saving ? "Đang lưu cấu hình..." : "Lưu cấu hình"),
-
-        e("button", {
-          key: "test-btn",
-          type: "button",
-          onClick: testConnection,
-          disabled: testStatus === "testing",
-          className: "rounded-lg border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-        }, testStatus === "testing" ? "Đang kết nối..." : "Kiểm tra kết nối"),
-
-        e("button", {
-          key: "refresh-btn",
-          type: "button",
-          onClick: () => loadSettings(true),
-          className: "rounded-lg border border-slate-700 bg-slate-800/30 px-4 py-2 text-sm text-slate-400 hover:text-slate-200"
-        }, "Làm mới form")
-      ]),
-
-      testStatus && testResult
-        ? e("div", {
-            key: "test-feedback",
-            className: `rounded-lg border p-3 text-sm mt-3 ${
-              testStatus === "success"
-                ? "border-emerald-700/65 bg-emerald-950/40 text-emerald-300"
-                : "border-rose-700/65 bg-rose-950/40 text-rose-300"
-            }`
-          }, [
-            e("p", { key: "msg" }, testResult),
-            testLatency != null
-              ? e("p", { key: "latency", className: "mt-1 text-xs opacity-70" }, `Độ trễ: ${testLatency}ms`)
-              : null
-          ])
-        : null
-    ]),
-
-    settings && settings.fallback_quota_max != null && settings.fallback_quota_max > 0 && aiProvider !== "openclaw" && aiProvider !== "local"
-      ? e("div", { key: "quota-card", className: "rounded-xl border border-slate-800 bg-slate-900/30 p-4" }, [
-          e("h3", { className: "mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400" }, "Sao lưu hệ thống AI (Fallback)"),
-          e("div", { className: "flex items-center gap-3" }, [
-            e("div", {
-              key: "quota-bar",
-              className: "h-2 flex-1 overflow-hidden rounded-full bg-slate-800"
-            }, [
-              e("div", {
-                style: {
-                  width: `${settings.fallback_quota_max > 0
-                    ? (settings.fallback_quota_remaining! / settings.fallback_quota_max) * 100
-                    : 0}%`
-                } as React.CSSProperties,
-                className: `h-full rounded-full transition-all ${
-                  settings.fallback_quota_remaining! > 0
-                    ? "bg-amber-500"
-                    : "bg-rose-500"
-                }`
-              })
-            ]),
-            e("span", { className: "text-xs text-slate-400" },
-              `${settings.fallback_quota_remaining} / ${settings.fallback_quota_max} lượt`
-            )
+      // Policy Section
+      e(ShellPanel, { key: "policy", title: t("aiCommandCenter.operationPolicy") || "Chính sách vận hành" },
+        e("div", { className: styles.metricGrid }, [
+          e("div", { key: "pol-gate", className: styles.metricCard }, [
+            e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.eventGate") || "Gate sự kiện"),
+            e("label", { key: "v", className: styles.toggleRow },
+              e("input", {
+                type: "checkbox",
+                className: styles.checkbox,
+                checked: eventGateEnabled === true,
+                disabled: eventGateEnabled === null || eventGateSaving,
+                onChange: handleEventGateToggle,
+              }),
+              e("span", null,
+                eventGateEnabled === null ? t("aiCommandCenter.gateUnknown") || "Chưa đọc" : eventGateEnabled ? t("aiCommandCenter.gateEnabled") || "Bật" : t("aiCommandCenter.gateDisabled") || "Tắt"
+              )
+            ),
           ]),
-          settings.fallback_quota_reset
-            ? e("p", { className: "mt-1 text-xs text-slate-500" },
-                `Đặt lại: ${new Date(settings.fallback_quota_reset).toLocaleDateString("vi-VN")}`)
-            : null,
-          settings.fallback_quota_remaining === 0
-            ? e("p", { className: "mt-2 text-xs text-rose-400" },
-                "Đã hết lượt fallback hôm nay. Vui lòng cấu hình API Key cá nhân để tiếp tục sử dụng AI Advisor.")
-            : e("p", { className: "mt-2 text-xs text-slate-500" },
-                "Nếu API Key cá nhân gặp lỗi, hệ thống sẽ tự động dùng key sao lưu.")
+          e("div", { key: "pol-refresh", className: styles.metricCard }, [
+            e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.refreshInterval") || "Khoảng làm mới"),
+            e("p", { key: "v", className: styles.metricValue }, `${refreshIntervalDisplay} giờ/lần`),
+          ]),
+          e("div", { key: "pol-auto", className: styles.metricCard }, [
+            e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.autoRefreshPerDay") || "Auto refresh/ngày"),
+            e("p", { key: "v", className: styles.metricValue }, `${maxAutoRefreshes}`),
+          ]),
+          e("div", { key: "pol-tokens", className: styles.metricCard }, [
+            e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.tokensPerDay") || "Token/ngày"),
+            e("p", { key: "v", className: styles.metricValue }, `${maxTokens}`),
+          ]),
+        ]),
+        aiConfigMessage
+          ? e("div", { key: "pol-msg", className: styles.helpText },
+              `${t("aiCommandCenter.configMessagePrefix") || "Thông điệp cấu hình:"} ${aiConfigMessage}`
+            )
+          : null
+      ),
+
+      notice ? e("div", { key: "notice-banner", className: styles.alert + " " + styles.alertSuccess }, notice) : null,
+      error ? e("div", { key: "error-banner", className: styles.alert + " " + styles.alertError }, error) : null,
+
+      // Runtime config form
+      e(ShellPanel, { key: "form", title: t("aiCommandCenter.runtimeConfig") || "CẤU HÌNH AI RUNTIME" },
+        e("form", { className: styles.formGrid, onSubmit: handleSaveSettings }, [
+          e("div", { key: "provider-block", className: styles.field }, [
+            e("label", { className: styles.label }, t("aiCommandCenter.providerLabel") || "Nhà cung cấp AI"),
+            e("select", {
+              className: styles.select,
+              value: aiProvider,
+              onChange: handleProviderChange,
+            }, providerOptions.map(p =>
+              e("option", { key: p.key, value: p.key }, p.label)
+            ))
+          ]),
+
+          e("div", { key: "model-block", className: styles.field }, [
+            e("label", { className: styles.label }, t("aiCommandCenter.modelLabel") || "Mô hình AI"),
+            e("select", {
+              className: styles.select,
+              value: aiModel,
+              onChange: handleModelChange,
+            }, modelsForSelectedProvider.map(m =>
+              e("option", { key: m.key, value: m.key }, m.label)
+            ))
+          ]),
+
+          showCustomModel ? e("div", { key: "custom-model-row", className: styles.field }, [
+            e("label", { className: styles.label }, t("aiCommandCenter.customModelLabel") || "Tên mô hình tùy chỉnh"),
+            e("input", {
+              type: "text",
+              className: styles.input,
+              value: customModel,
+              onChange: (ev: ChangeEvent<HTMLInputElement>) => setCustomModel(ev.target.value),
+              placeholder: t("aiCommandCenter.customModelPlaceholder") || "Ví dụ: o1-preview, gemini-2.5-pro",
+              required: true
+            })
+          ]) : null,
+
+          showCustomEndpoint ? e("div", { key: "custom-endpoint-row", className: styles.field }, [
+            e("label", { className: styles.label }, t("aiCommandCenter.customEndpointLabel") || "Custom Endpoint (API gốc)"),
+            e("input", {
+              type: "text",
+              className: styles.input,
+              value: customEndpoint,
+              onChange: (ev: ChangeEvent<HTMLInputElement>) => setCustomEndpoint(ev.target.value),
+              placeholder: t("aiCommandCenter.customEndpointPlaceholder") || "http://localhost:11434/v1",
+              required: false
+            }),
+            e("p", { className: styles.helpText }, t("aiCommandCenter.customEndpointHelp") || "Để trống nếu dùng Ollama mặc định (http://localhost:11434/v1). Điền endpoint nếu dùng vLLM hoặc remote.")
+          ]) : null,
+
+          e("div", { key: "api-key-block", className: styles.field }, [
+            e("label", { className: styles.label }, t("aiCommandCenter.apiKeyLabel") || "API Key"),
+            e("input", {
+              type: "password",
+              className: styles.input,
+              value: aiApiKey,
+              onChange: (ev: ChangeEvent<HTMLInputElement>) => setAiApiKey(ev.target.value),
+              placeholder: settings?.ai_api_key_configured
+                ? t("aiCommandCenter.apiKeyPlaceholderConfigured") || "Đã có API Key, nhập key mới để thay đổi..."
+                : t("aiCommandCenter.apiKeyPlaceholderNew") || "Nhập API Key của nhà cung cấp...",
+              autoComplete: "new-password"
+            })
+          ]),
+
+          e("div", { key: "token-block", className: styles.field }, [
+            e("label", { className: styles.label }, t("aiCommandCenter.maxTokensLabel") || "Định mức Token / ngày"),
+            e("input", {
+              type: "number",
+              min: "1",
+              className: styles.input,
+              value: maxTokens,
+              onChange: (ev: ChangeEvent<HTMLInputElement>) => setMaxTokens(Number(ev.target.value)),
+              placeholder: "5000"
+            })
+          ]),
+
+          e("div", { key: "refresh-block", className: styles.field }, [
+            e("label", { className: styles.label }, t("aiCommandCenter.refreshIntervalLabel") || "Khoảng làm mới tự động (giờ)"),
+            e("input", {
+              type: "number",
+              min: "1",
+              className: styles.input,
+              value: refreshInterval,
+              onChange: (ev: ChangeEvent<HTMLInputElement>) => setRefreshInterval(Number(ev.target.value)),
+              placeholder: "24"
+            })
+          ]),
+
+          e("div", { key: "temperature-block", className: styles.field }, [
+            e("label", { className: styles.label }, `${t("aiCommandCenter.temperatureLabel") || "Temperature (0.0 - 1.0)"}: ${Number(temperature).toFixed(1)}`),
+            e("input", {
+              type: "range",
+              min: "0",
+              max: "1",
+              step: "0.1",
+              className: styles.range,
+              value: temperature,
+              onChange: (ev: ChangeEvent<HTMLInputElement>) => setTemperature(Number(ev.target.value)),
+            }),
+            e("p", { className: styles.helpText }, t("aiCommandCenter.temperatureHelp") || "0 = deterministic, 1 = creative. Mặc định 0.3.")
+          ]),
+
+          e("div", { key: "form-actions", className: styles.toolbar }, [
+            e("button", {
+              key: "save-btn",
+              type: "submit",
+              disabled: saving,
+              className: styles.btn + " " + styles.btnPrimary
+            }, saving ? t("aiCommandCenter.savingBtn") || "Đang lưu cấu hình..." : t("aiCommandCenter.saveBtn") || "Lưu cấu hình"),
+
+            e("button", {
+              key: "test-btn",
+              type: "button",
+              onClick: testConnection,
+              disabled: testStatus === "testing",
+              className: styles.btn
+            }, testStatus === "testing" ? t("aiCommandCenter.testingBtn") || "Đang kết nối..." : t("aiCommandCenter.testBtn") || "Kiểm tra kết nối"),
+
+            e("button", {
+              key: "refresh-btn",
+              type: "button",
+              onClick: () => loadSettings(true),
+              className: styles.btn + " " + styles.btnGhost
+            }, t("aiCommandCenter.refreshFormBtn") || "Làm mới form"),
+
+            e("button", {
+              key: "prompt-config-btn",
+              type: "button",
+              onClick: () => setPromptConfigOpen(true),
+              className: styles.btn + " " + styles.btnGhost
+            }, t("aiCommandCenter.promptConfig") || "Tinh chỉnh nguồn dữ liệu")
+          ]),
+
+          testStatus && testResult
+            ? e("div", {
+                key: "test-feedback",
+                className: styles.alert + " " + (testStatus === "success" ? styles.alertSuccess : styles.alertError),
+              }, [
+                e("p", { key: "msg" }, testResult),
+                testLatency != null
+                  ? e("p", { key: "latency", className: styles.helpText }, `${t("aiCommandCenter.latencyLabel") || "Độ trễ"}: ${testLatency}ms`)
+                  : null
+              ])
+            : null
         ])
-      : null
-  ]);
+      ),
+
+      settings && settings.fallback_quota_max != null && settings.fallback_quota_max > 0 && aiProvider !== "openclaw" && aiProvider !== "local"
+        ? e(ShellPanel, { key: "quota", title: t("aiCommandCenter.fallbackTitle") || "Sao lưu hệ thống AI (Fallback)" },
+            e("div", { className: styles.toolbar }, [
+              e("div", {
+                key: "quota-bar",
+                className: styles.quotaBar
+              }, [
+                e("div", {
+                  style: {
+                    width: `${settings.fallback_quota_max > 0
+                      ? (settings.fallback_quota_remaining! / settings.fallback_quota_max) * 100
+                      : 0}%`
+                  } as React.CSSProperties,
+                  className: styles.quotaFill + " " + (settings.fallback_quota_remaining! > 0 ? "" : styles.quotaFillEmpty)
+                })
+              ]),
+              e("span", { className: styles.metricLabel },
+                `${settings.fallback_quota_remaining} ${t("aiCommandCenter.quotaUsed") || "lượt"} / ${settings.fallback_quota_max} ${t("aiCommandCenter.quotaUsed") || "lượt"}`
+              )
+            ]),
+            settings.fallback_quota_reset
+              ? e("p", { className: styles.helpText },
+                  `${t("aiCommandCenter.fallbackReset") || "Đặt lại"}: ${new Date(settings.fallback_quota_reset).toLocaleDateString("vi-VN")}`)
+              : null,
+            settings.fallback_quota_remaining === 0
+              ? e("p", { className: styles.alert + " " + styles.alertError },
+                  t("aiCommandCenter.fallbackExhausted") || "Đã hết lượt fallback hôm nay. Vui lòng cấu hình API Key cá nhân để tiếp tục sử dụng AI Advisor.")
+              : e("p", { className: styles.helpText },
+                  t("aiCommandCenter.fallbackInfo") || "Nếu API Key cá nhân gặp lỗi, hệ thống sẽ tự động dùng key sao lưu.")
+          )
+        : null,
+
+      // Audit Logs Section
+      e(ShellPanel, {
+          key: "audit",
+          title: t("aiCommandCenter.auditLogsTitle") || "Nhật ký audit Command Center",
+          subtitle: t("aiCommandCenter.auditLogsDesc") || "Mỗi trang hiển thị 10 bản ghi.",
+        },
+        e(Suspense, { key: "audit-suspense", fallback: e("p", { className: styles.loading }, t("aiCommandCenter.auditLogsLoading") || "Đang tải nhật ký...") },
+          e(LazyAuditLogsPanel, { key: `audit-panel-${refreshAuditKey}`, refreshKey: refreshAuditKey })
+        )
+      ),
+
+      // Drawer overlay (rendered outside main flow)
+      promptConfigOpen
+        ? e(Suspense, { key: "drawer-suspense", fallback: null },
+            e(LazyPromptConfigDrawer, {
+              key: "prompt-config-drawer",
+              isOpen: promptConfigOpen,
+              onClose: () => setPromptConfigOpen(false),
+              config: promptConfig,
+              onConfigChange: (nextConfig: Record<string, unknown>) => {
+                setPromptConfig(nextConfig);
+              },
+            })
+          )
+        : null
+    ])
+  );
 }

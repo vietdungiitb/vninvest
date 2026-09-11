@@ -3,6 +3,7 @@ import React, { createElement, useEffect, useRef, useState, useCallback } from "
 import { useCoreDashboardData } from "../features/dashboard/useCoreDashboardData.js";
 import { AIAdvisorAlertPanel } from "../features/dashboard/AIAdvisorAlertPanel.js";
 import { useRealtimeFeedFromManager } from "../context/RealtimeContext.js";
+import { useAlertCenterRealtime } from "../hooks/useAlertCenterRealtime.js";
 import { SmartStatsHeader } from "../components/dashboard/SmartStatsHeader.js";
 import { PortfolioHeatmap } from "../components/dashboard/PortfolioHeatmap.js";
 import { UnifiedAlertCenter } from "../components/dashboard/UnifiedAlertCenter.js";
@@ -10,6 +11,7 @@ import { CoreDashboardPositionDeck } from "../components/dashboard/CoreDashboard
 import { usePortfolio } from "../context/PortfolioContext.js";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useAlertCenterSnapshot } from "../hooks/useAlertCenterSnapshot.js";
+import { collectUniqueSortedSymbols } from "../utils/dashboardSymbols.js";
 
 const e = createElement;
 
@@ -78,25 +80,6 @@ interface DashboardPageProps {
   className?: string;
 }
 
-export function collectUniqueSortedSymbols(
-  holdings: Holding[],
-  trackedSymbols: TrackedSymbol[],
-  watchlists: Watchlist[],
-  watchlistGroups: WatchlistGroup[]
-): string {
-  const rawList = [
-    ...(holdings || []).map((h) => h?.symbol),
-    ...(trackedSymbols || []).map((s) => s?.symbol),
-    ...(watchlists || []).flatMap((w) => (w?.items || []).map((i) => i?.symbol)),
-    ...(watchlistGroups || []).flatMap((g) => (g?.items || []).map((i) => i?.symbol)),
-  ];
-
-  const uniqueSorted = Array.from(
-    new Set(rawList.map((s) => String(s || "").trim().toUpperCase()).filter(Boolean))
-  ).sort();
-
-  return uniqueSorted.join("|");
-}
 
 interface LoadingSkeletonProps {
   rows?: number;
@@ -190,9 +173,13 @@ export function DashboardPage({
   }, [resolvedPortfolioId, enabled, loadInitial]);
 
   // --- Real-time Feed Integration ---
-  const symbolString = collectUniqueSortedSymbols(holdings, trackedSymbols, watchlists, watchlistGroups);
-  const symbols = React.useMemo(() => (symbolString ? symbolString.split("|") : []), [symbolString]);
+  const symbolString = collectUniqueSortedSymbols(holdings, trackedSymbols, watchlists, []);
+  const symbols = React.useMemo(() => {
+    const parsed = symbolString ? symbolString.split("|") : [];
+    return parsed.length > 0 ? parsed : ["market_discovery"];
+  }, [symbolString]);
   const realtimeFeed = useRealtimeFeedFromManager({ symbols, pollInterval: 10000 });
+  const { realtimeAlerts: globalRealtimeAlerts } = useAlertCenterRealtime({ enabled: true });
 
   const mergedQuotes = React.useMemo(() => {
     return { ...quotesBySymbol, ...(realtimeFeed?.quotesBySymbol || {}) };
@@ -218,39 +205,47 @@ export function DashboardPage({
   const hasRealtimeBreadth = realtimeBreadth && (realtimeBreadth.up > 0 || realtimeBreadth.down > 0 || realtimeBreadth.flat > 0);
   const resolvedBreadth = hasRealtimeBreadth ? realtimeBreadth : calculatedBreadth;
 
-  // Build merged heatmap data: holdings + trackedSymbols + watchlistGroups + watchlists
+  // Build merged heatmap data: holdings + trackedSymbols + watchlists of individual user
   const heatmapSymbols = React.useMemo(() => {
-    const EXCLUDED = new Set(['VN100', 'HOSE', 'HNX', 'UPCOM']);
     const s = new Set<string>();
     const add = (sym?: string) => { if (sym) s.add(sym.toUpperCase().trim()); };
     (holdings || []).forEach((h: Holding) => add(h.symbol));
     (trackedSymbols || []).forEach((t: TrackedSymbol) => add(t.symbol));
-    (watchlistGroups || []).forEach((g: WatchlistGroup) => {
-      const name = String(g?.name || '').toUpperCase().trim();
-      if (name && !EXCLUDED.has(name)) {
-        (g.items || []).forEach((i: WatchlistItem) => add(i.symbol));
-      }
-    });
     (watchlists || []).forEach((w: Watchlist) => {
       (w.items || []).forEach((i: WatchlistItem) => add(i.symbol));
     });
     return Array.from(s);
-  }, [holdings, trackedSymbols, watchlistGroups, watchlists]);
+  }, [holdings, trackedSymbols, watchlists]);
 
   const heatmapData = React.useMemo(() => {
     const hMap = new Map((holdings || []).map((h: Holding) => [(h.symbol || '').toUpperCase().trim(), h]));
+    const tMap = new Map((trackedSymbols || []).map((t: TrackedSymbol) => [(t.symbol || '').toUpperCase().trim(), t]));
     return heatmapSymbols.map((sym) => {
-      const held = hMap.get(sym);
-      if (held) return held;
-      const quote = mergedQuotes[sym] || {};
-      return { symbol: sym, quantity: 1, current_price: Number(quote.current_price || 0) };
+      const held = hMap.get(sym) as any;
+      const quote = (mergedQuotes[sym] || {}) as any;
+      if (held) {
+        return {
+          ...held,
+          in_holdings: true,
+          market_cap_bn: Number(held.market_cap_bn || quote?.market_cap_bn || quote?.market_cap || 0),
+        };
+      }
+      const tracked = tMap.get(sym) as any;
+      return {
+        symbol: sym,
+        quantity: 0,
+        current_price: Number(quote.current_price || tracked?.current_price || 0),
+        market_cap_bn: Number(tracked?.market_cap_bn || quote?.market_cap_bn || quote?.market_cap || 0),
+        in_holdings: false,
+      };
     });
-  }, [heatmapSymbols, holdings, mergedQuotes]);
+  }, [heatmapSymbols, holdings, trackedSymbols, mergedQuotes]);
 
   // Merge realtime alerts + prop alerts + historical snapshot alerts
   const mergedAlerts = React.useMemo(() => {
     const feedAlerts = realtimeFeed?.alerts || [];
-    const allAlerts: AlertItem[] = [...feedAlerts, ...(alerts || []), ...snapshotAlerts];
+    const feedDarkFlow = realtimeFeed?.darkFlowAlerts || [];
+    const allAlerts: AlertItem[] = [...feedAlerts, ...feedDarkFlow, ...(globalRealtimeAlerts || []), ...(alerts || []), ...snapshotAlerts];
     const unique: AlertItem[] = [];
     const seen = new Set<string>();
     allAlerts.forEach((a) => {
@@ -261,7 +256,7 @@ export function DashboardPage({
       }
     });
     return unique;
-  }, [alerts, realtimeFeed?.alerts, snapshotAlerts]);
+  }, [alerts, realtimeFeed?.alerts, realtimeFeed?.darkFlowAlerts, globalRealtimeAlerts, snapshotAlerts]);
 
   // Alert pagination state for UnifiedAlertCenter
   const [severityFilter, setSeverityFilter] = useState<string>("all");
@@ -288,12 +283,31 @@ export function DashboardPage({
 
   const prevReadyTokenRef = useRef("");
   useEffect(() => {
-    const token = collectUniqueSortedSymbols(holdings, trackedSymbols, watchlists, watchlistGroups);
+    const token = collectUniqueSortedSymbols(holdings, trackedSymbols, watchlists, []);
     if (!loading && !error && onDataReady && token !== prevReadyTokenRef.current) {
       prevReadyTokenRef.current = token;
       onDataReady({ holdings, trackedSymbols, watchlistGroups, watchlists });
     }
   }, [loading, error, holdings, trackedSymbols, watchlists, watchlistGroups, onDataReady]);
+
+  // Auto-select first tracked symbol (fallback to first universe symbol) so the
+  // detail panel renders instead of the "Vui lòng chọn mã cổ phiếu" empty state.
+  const autoSelectedRef = useRef(false);
+  useEffect(() => {
+    if (autoSelectedRef.current) return;
+    if (loading || error) return;
+    if (selectedSymbol) {
+      autoSelectedRef.current = true;
+      return;
+    }
+    const firstTracked = (trackedSymbols || [])[0]?.symbol;
+    const firstUniverse = collectUniqueSortedSymbols(holdings, trackedSymbols, watchlists, [])[0];
+    const target = firstTracked || firstUniverse;
+    if (target) {
+      setSelectedSymbol(String(target).toUpperCase().trim());
+      autoSelectedRef.current = true;
+    }
+  }, [loading, error, selectedSymbol, trackedSymbols, holdings, watchlists]);
 
   if (!enabled || !resolvedPortfolioId) {
     return (
@@ -393,7 +407,7 @@ export function DashboardPage({
           : <CoreDashboardPositionDeck
               holdings={holdings}
               trackedSymbols={trackedSymbols}
-              watchlistGroups={watchlistGroups}
+              watchlistGroups={watchlists}
               technicals={technicals}
               analytics={analytics}
               quotesBySymbol={mergedQuotes}

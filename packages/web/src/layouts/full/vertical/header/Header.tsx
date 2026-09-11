@@ -35,10 +35,18 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
   const newLayout = isNewLayoutEnabled();
 
   const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+  const [searchVal, setSearchVal] = useState('');
 
   useEffect(() => {
     setWsStatus('connected');
   }, []);
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchVal.trim()) {
+      navigate(`/stocks/${searchVal.trim().toUpperCase()}`);
+      setSearchVal('');
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -98,7 +106,16 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
       e(
         'nav',
         { className: 'hidden md:flex items-center gap-2 text-sm text-slate-400', 'aria-label': 'Breadcrumb' },
-        e('span', null, 'VNInvest'),
+        e(
+          'button',
+          {
+            type: 'button',
+            onClick: () => navigate('/dashboard'),
+            className: 'hover:text-slate-200 transition-colors cursor-pointer bg-transparent border-0 p-0 font-inherit',
+            'aria-label': t('layout.home') || 'Về trang tổng quan'
+          },
+          'VNInvest'
+        ),
         e('span', { className: 'mx-1' }, '/'),
         e('span', { className: 'text-slate-200 font-medium' }, location.pathname.split('/').pop() || 'Dashboard')
       )
@@ -114,7 +131,10 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
           type: 'text',
           placeholder: t('layout.searchPlaceholder') || 'Tìm mã cổ phiếu...',
           className: 'w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-800 text-slate-200 text-sm rounded-lg focus:border-cyan-400 focus:outline-none placeholder:text-slate-500',
-          'aria-label': t('layout.searchPlaceholder') || 'Search symbol'
+          'aria-label': t('layout.searchPlaceholder') || 'Search symbol',
+          value: searchVal,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => setSearchVal(e.target.value),
+          onKeyDown: handleSearchKeyDown
         }
       )
     ),

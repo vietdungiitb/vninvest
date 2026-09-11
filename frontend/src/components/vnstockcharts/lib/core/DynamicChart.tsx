@@ -311,6 +311,345 @@ function candleBodyWidth(
 	return Math.max(1, Math.min(maxSafeWidth, Math.floor(targetWidth)));
 }
 
+interface RendererContext {
+	type: string;
+	series: SeriesConfig;
+	params: any;
+	styleOverride: any;
+	lineColor: string;
+	fillColor: string;
+	upColor: string;
+	downColor: string;
+	lineWidth: number;
+	strokeOpacity: number;
+	fillOpacity: number;
+	dashArray: string;
+	seriesKey: string;
+	accessor: (datum: EnrichedDatum) => number | undefined;
+	structured: (datum: EnrichedDatum) => Record<string, number | undefined> | number | undefined;
+	fieldAccessor: (field: string) => (datum: EnrichedDatum) => number | undefined;
+	sc: (key: string, fallback: string) => string;
+}
+
+const seriesRendererRegistry: Record<string, (ctx: RendererContext) => ReactNode> = {
+	Candlestick: renderCandlestick,
+	HeikinAshi: renderCandlestick,
+	HollowCandle: renderHollowCandle,
+	OHLC: renderOHLC,
+	Line: renderLine,
+	EMA: renderLine,
+	CVDApprox: renderLine,
+	CVDRealtime: renderLine,
+	StrengthRelative: renderLine,
+	BIAS: renderLine,
+	ROC: renderLine,
+	PVT: renderLine,
+	Area: renderArea,
+	Bar: renderBar,
+	Volume: renderBar,
+	Whale: renderWhale,
+	BollingerBand: renderBollingerBand,
+	RSI: renderRSI,
+	MACD: renderMACD,
+	StrengthElder: renderElderRay,
+	KDJ: renderKDJ,
+	CCI: renderCCI,
+	DMI: renderDMI,
+	BRAR: renderBRAR,
+	MTM: renderMTM,
+	EMV: renderEMV,
+	AO: renderAO,
+	TRIX: renderTRIX,
+	DMA: renderDMA,
+	PSY: renderPSY,
+	CR: renderCR,
+	_default: renderLine,
+};
+
+function renderCandlestick(ctx: RendererContext) {
+	const sv = ctx.styleOverride;
+	const upColor = sv?.color ? ctx.lineColor : ctx.upColor;
+	const downColor = sv?.color ? ctx.lineColor : ctx.downColor;
+	return (
+		<CandlestickSeries
+			key={ctx.seriesKey}
+			width={candleBodyWidth}
+			yAccessor={(datum: EnrichedDatum) => datum as any}
+			fill={((datum: EnrichedDatum) => (sv?.color ? ctx.lineColor : datum.close >= datum.open ? upColor : downColor)) as any}
+			stroke={((datum: EnrichedDatum) => (sv?.color ? ctx.lineColor : datum.close >= datum.open ? upColor : downColor)) as any}
+			wickStroke={((datum: EnrichedDatum) => (sv?.color ? ctx.lineColor : datum.close >= datum.open ? upColor : downColor)) as any}
+			candleStrokeWidth={sv?.lineWidth ?? 0.5}
+			opacity={sv?.opacity ?? 0.5}
+		/>
+	);
+}
+
+function renderHollowCandle(ctx: RendererContext) {
+	const sv = ctx.styleOverride;
+	const upColor = sv?.color ? ctx.lineColor : ctx.upColor;
+	const downColor = sv?.color ? ctx.lineColor : ctx.downColor;
+	return (
+		<CandlestickSeries
+			key={ctx.seriesKey}
+			width={candleBodyWidth}
+			yAccessor={(datum: EnrichedDatum) => datum as any}
+			fill={((datum: EnrichedDatum) => (sv?.color ? ctx.lineColor : datum.close >= datum.open ? "transparent" : downColor)) as any}
+			stroke={((datum: EnrichedDatum) => (sv?.color ? ctx.lineColor : datum.close >= datum.open ? upColor : downColor)) as any}
+			wickStroke={((datum: EnrichedDatum) => (sv?.color ? ctx.lineColor : datum.close >= datum.open ? upColor : downColor)) as any}
+			candleStrokeWidth={sv?.lineWidth ?? 0.5}
+			opacity={sv?.opacity ?? 0.5}
+		/>
+	);
+}
+
+function renderOHLC(ctx: RendererContext) {
+	const sv = ctx.styleOverride;
+	return <OHLCSeries key={ctx.seriesKey} stroke={(datum: EnrichedDatum) => (sv?.color ? ctx.lineColor : datum.close >= datum.open ? ctx.upColor : ctx.downColor)} />;
+}
+
+function renderLine(ctx: RendererContext) {
+	return (
+		<LineSeries
+			key={ctx.seriesKey}
+			yAccessor={ctx.accessor as any}
+			stroke={ctx.lineColor}
+			strokeWidth={ctx.lineWidth}
+			strokeOpacity={ctx.strokeOpacity}
+			strokeDasharray={ctx.dashArray}
+		/>
+	);
+}
+
+function renderArea(ctx: RendererContext) {
+	return (
+		<AreaSeries
+			key={ctx.seriesKey}
+			yAccessor={ctx.accessor as any}
+			stroke={ctx.lineColor}
+			fill={ctx.fillColor}
+			strokeWidth={ctx.lineWidth}
+			strokeOpacity={ctx.strokeOpacity}
+			opacity={ctx.fillOpacity}
+			strokeDasharray={ctx.dashArray}
+		/>
+	);
+}
+
+function renderBar(ctx: RendererContext) {
+	const sv = ctx.styleOverride;
+	return (
+		<BarSeries
+			key={ctx.seriesKey}
+			width={candleBodyWidth}
+			yAccessor={ctx.accessor as any}
+			fill={(datum: EnrichedDatum) => (sv?.color ? ctx.lineColor : datum.close >= datum.open ? ctx.upColor : ctx.downColor)}
+			opacity={sv?.opacity ?? (ctx.type === "Volume" ? 0.75 : 0.6)}
+		/>
+	);
+}
+
+function renderWhale(ctx: RendererContext) {
+	const sv = ctx.styleOverride;
+	return (
+		<BarSeries
+			key={ctx.seriesKey}
+			width={candleBodyWidth}
+			yAccessor={(datum: EnrichedDatum) => {
+				const whale = ctx.structured(datum) as IndicatorWhaleValue | undefined;
+				return whale?.whaleBuyVol ?? (whale?.whaleSellVol ? -whale.whaleSellVol : undefined);
+			}}
+			fill={(datum: EnrichedDatum) => (sv?.color ? ctx.lineColor : datum.close >= datum.open ? ctx.upColor : ctx.downColor)}
+			opacity={sv?.opacity ?? 0.6}
+		/>
+	);
+}
+
+function renderBollingerBand(ctx: RendererContext) {
+	const bbMidColor = ctx.sc("middle", ctx.lineColor);
+	const bbTopRaw   = ctx.sc("top",    ctx.lineColor);
+	const bbBotRaw   = ctx.sc("bottom", ctx.lineColor);
+	const withAlpha  = (c: string) => c.match(/^#[0-9a-fA-F]{6}$/) ? c + "88" : c;
+	return (
+		<BollingerSeries
+			key={ctx.seriesKey}
+			yAccessor={(datum: EnrichedDatum) => ctx.structured(datum) as IndicatorBandValue | undefined}
+			stroke={{ top: withAlpha(bbTopRaw), middle: bbMidColor, bottom: withAlpha(bbBotRaw) }}
+			fill={ctx.fillColor}
+			opacity={ctx.styleOverride?.opacity ?? 0.15}
+		/>
+	);
+}
+
+function renderRSI(ctx: RendererContext) {
+	const rsiLine  = ctx.sc("line",       ctx.lineColor);
+	const rsiOB    = ctx.sc("overbought", "#f23645");
+	const rsiMid   = ctx.sc("middle",     "#9ca3af");
+	const rsiOS    = ctx.sc("oversold",   "#089981");
+	return (
+		<RSISeries
+			key={ctx.seriesKey}
+			yAccessor={(datum: EnrichedDatum) => resolveSeriesValue(datum, ctx.series)}
+			stroke={{
+				top: rsiOB,
+				middle: rsiMid,
+				bottom: rsiOS,
+				outsideThreshold: rsiLine,
+				insideThreshold: rsiLine,
+			}}
+			opacity={{ top: 0.5, middle: 0.4, bottom: 0.5 }}
+			strokeDasharray={{ line: ctx.dashArray, top: "ShortDash", middle: "ShortDash", bottom: "ShortDash" }}
+			strokeWidth={{
+				outsideThreshold: ctx.lineWidth,
+				insideThreshold: ctx.lineWidth,
+				top: 1,
+				middle: 1,
+				bottom: 1,
+			}}
+		/>
+	);
+}
+
+function renderMACD(ctx: RendererContext) {
+	const macdColor   = ctx.sc("macd",    ctx.lineColor);
+	const signalColor = ctx.sc("signal",  "#ff6d00");
+	const divergeColor = ctx.sc("diverge", "#26a69a");
+	return <MACDSeries key={ctx.seriesKey} yAccessor={(datum: EnrichedDatum) => ctx.structured(datum) as IndicatorMacdValue | undefined} stroke={{ macd: macdColor, signal: signalColor }} fill={{ divergence: divergeColor }} opacity={ctx.strokeOpacity} />;
+}
+
+function renderKDJ(ctx: RendererContext) {
+	const kColor = ctx.sc("k", ctx.lineColor);
+	const dColor = ctx.sc("d", "#ff6d00");
+	const jColor = ctx.sc("j", "#26a69a");
+	return (
+		<g key={ctx.seriesKey}>
+			<LineSeries key={`${ctx.type}-k`} yAccessor={ctx.fieldAccessor("k") as any} stroke={kColor} strokeWidth={1.2} />
+			<LineSeries key={`${ctx.type}-d`} yAccessor={ctx.fieldAccessor("d") as any} stroke={dColor} strokeWidth={1.2} />
+			<LineSeries key={`${ctx.type}-j`} yAccessor={ctx.fieldAccessor("j") as any} stroke={jColor} strokeWidth={1.2} />
+			<StraightLine stroke={kColor} opacity={0.35} yValue={80} strokeDasharray="ShortDash" />
+			<StraightLine stroke={kColor} opacity={0.35} yValue={50} strokeDasharray="ShortDash" />
+			<StraightLine stroke={kColor} opacity={0.35} yValue={20} strokeDasharray="ShortDash" />
+		</g>
+	);
+}
+
+function renderCCI(ctx: RendererContext) {
+	return (
+		<g key={ctx.seriesKey}>
+			<LineSeries key={`${ctx.type}-line`} yAccessor={ctx.accessor as any} stroke={ctx.lineColor} strokeWidth={1.2} />
+			<StraightLine stroke={ctx.lineColor} opacity={0.35} yValue={100} strokeDasharray="ShortDash" />
+			<StraightLine stroke={ctx.lineColor} opacity={0.35} yValue={0} strokeDasharray="ShortDash" />
+			<StraightLine stroke={ctx.lineColor} opacity={0.35} yValue={-100} strokeDasharray="ShortDash" />
+		</g>
+	);
+}
+
+function renderDMI(ctx: RendererContext) {
+	const plusColor  = ctx.sc("plusDI",  "#089981");
+	const minusColor = ctx.sc("minusDI", "#f23645");
+	const adxColor   = ctx.sc("adx",     ctx.lineColor);
+	return (
+		<g key={ctx.seriesKey}>
+			<LineSeries key={`${ctx.type}-plus`}  yAccessor={ctx.fieldAccessor("plusDI") as any}  stroke={plusColor}  strokeWidth={1.2} />
+			<LineSeries key={`${ctx.type}-minus`} yAccessor={ctx.fieldAccessor("minusDI") as any} stroke={minusColor} strokeWidth={1.2} />
+			<LineSeries key={`${ctx.type}-adx`}   yAccessor={ctx.fieldAccessor("adx") as any}     stroke={adxColor}   strokeWidth={1.2} />
+		</g>
+	);
+}
+
+function renderBRAR(ctx: RendererContext) {
+	const arColor = ctx.sc("ar", ctx.lineColor);
+	const brColor = ctx.sc("br", "#ff6d00");
+	return (
+		<g key={ctx.seriesKey}>
+			<LineSeries key={`${ctx.type}-ar`} yAccessor={ctx.fieldAccessor("ar") as any} stroke={arColor} strokeWidth={1.2} />
+			<LineSeries key={`${ctx.type}-br`} yAccessor={ctx.fieldAccessor("br") as any} stroke={brColor} strokeWidth={1.2} />
+		</g>
+	);
+}
+
+function renderMTM(ctx: RendererContext) {
+	return (
+		<g key={ctx.seriesKey}>
+			<LineSeries key={`${ctx.type}-mtm`}    yAccessor={ctx.fieldAccessor("mtm") as any}    stroke={ctx.sc("mtm",    ctx.lineColor)}  strokeWidth={1.2} />
+			<LineSeries key={`${ctx.type}-signal`} yAccessor={ctx.fieldAccessor("signal") as any} stroke={ctx.sc("signal", "#ff6d00")} strokeWidth={1.2} />
+		</g>
+	);
+}
+
+function renderEMV(ctx: RendererContext) {
+	return (
+		<g key={ctx.seriesKey}>
+			<LineSeries key={`${ctx.type}-emv`}    yAccessor={ctx.fieldAccessor("emv") as any}    stroke={ctx.sc("emv",    ctx.lineColor)}  strokeWidth={1.2} />
+			<LineSeries key={`${ctx.type}-signal`} yAccessor={ctx.fieldAccessor("signal") as any} stroke={ctx.sc("signal", "#ff6d00")} strokeWidth={1.2} />
+		</g>
+	);
+}
+
+function renderAO(ctx: RendererContext) {
+	return (
+		<BarSeries
+			key={ctx.seriesKey}
+			width={candleBodyWidth}
+			yAccessor={ctx.accessor as any}
+			fill={(datum: EnrichedDatum) => datum.aoColor ?? ctx.lineColor}
+			opacity={0.85}
+		/>
+	);
+}
+
+function renderTRIX(ctx: RendererContext) {
+	return (
+		<g key={ctx.seriesKey}>
+			<LineSeries key={`${ctx.type}-trix`}   yAccessor={ctx.fieldAccessor("trix") as any}   stroke={ctx.sc("trix",   ctx.lineColor)}  strokeWidth={1.2} />
+			<LineSeries key={`${ctx.type}-signal`} yAccessor={ctx.fieldAccessor("signal") as any} stroke={ctx.sc("signal", "#ff6d00")} strokeWidth={1.2} />
+		</g>
+	);
+}
+
+function renderDMA(ctx: RendererContext) {
+	return (
+		<g key={ctx.seriesKey}>
+			<LineSeries key={`${ctx.type}-ddd`} yAccessor={ctx.fieldAccessor("ddd") as any} stroke={ctx.sc("ddd", ctx.lineColor)}  strokeWidth={1.2} />
+			<LineSeries key={`${ctx.type}-ama`} yAccessor={ctx.fieldAccessor("ama") as any} stroke={ctx.sc("ama", "#ff6d00")} strokeWidth={1.2} />
+		</g>
+	);
+}
+
+function renderPSY(ctx: RendererContext) {
+	return (
+		<g key={ctx.seriesKey}>
+			<LineSeries key={`${ctx.type}-psy`}    yAccessor={ctx.fieldAccessor("psy") as any}    stroke={ctx.sc("psy",    ctx.lineColor)}  strokeWidth={1.2} />
+			<LineSeries key={`${ctx.type}-signal`} yAccessor={ctx.fieldAccessor("signal") as any} stroke={ctx.sc("signal", "#ff6d00")} strokeWidth={1.2} />
+		</g>
+	);
+}
+
+function renderCR(ctx: RendererContext) {
+	return (
+		<g key={ctx.seriesKey}>
+			<LineSeries key={`${ctx.type}-cr`}  yAccessor={ctx.fieldAccessor("cr") as any}  stroke={ctx.sc("cr",  ctx.lineColor)}  strokeWidth={1.2} />
+			<LineSeries key={`${ctx.type}-ma1`} yAccessor={ctx.fieldAccessor("ma1") as any} stroke={ctx.sc("ma1", "#ff6d00")} strokeWidth={1.1} />
+			<LineSeries key={`${ctx.type}-ma2`} yAccessor={ctx.fieldAccessor("ma2") as any} stroke={ctx.sc("ma2", "#26a69a")} strokeWidth={1.1} />
+			<LineSeries key={`${ctx.type}-ma3`} yAccessor={ctx.fieldAccessor("ma3") as any} stroke={ctx.sc("ma3", "#f23645")} strokeWidth={1.1} />
+			<LineSeries key={`${ctx.type}-ma4`} yAccessor={ctx.fieldAccessor("ma4") as any} stroke={ctx.sc("ma4", "#9ca3af")} strokeWidth={1.1} />
+		</g>
+	);
+}
+
+function renderElderRay(ctx: RendererContext) {
+	return (
+		<ElderRaySeries
+			key={ctx.seriesKey}
+			yAccessor={(datum: EnrichedDatum) => resolveSeriesStructuredValue(datum, ctx.series) as { bullPower?: number; bearPower?: number }}
+			bullPowerFill={ctx.sc("bull", "#089981")}
+			bearPowerFill={ctx.sc("bear", "#f23645")}
+			straightLineStroke={ctx.lineColor}
+			straightLineOpacity={ctx.strokeOpacity}
+			opacity={ctx.fillOpacity}
+		/>
+	);
+}
+
 function renderSeries(series: SeriesConfig) {
 	const type = series.type;
 	const entry = getSeries(type);
@@ -336,261 +675,28 @@ function renderSeries(series: SeriesConfig) {
 	/** Resolve a per-component sub-color, falling back to fallback color */
 	const sc = (key: string, fallback: string) => series.subColors?.[key] ?? fallback;
 
-	switch (type) {
-		case "Candlestick":
-		case "HeikinAshi":
-			return (
-				<CandlestickSeries
-					key={seriesKey}
-					width={candleBodyWidth}
-					yAccessor={(datum: EnrichedDatum) => datum as any}
-					fill={((datum: EnrichedDatum) => (styleOverride?.color ? lineColor : datum.close >= datum.open ? upColor : downColor)) as any}
-					stroke={((datum: EnrichedDatum) => (styleOverride?.color ? lineColor : datum.close >= datum.open ? upColor : downColor)) as any}
-					wickStroke={((datum: EnrichedDatum) => (styleOverride?.color ? lineColor : datum.close >= datum.open ? upColor : downColor)) as any}
-					candleStrokeWidth={styleOverride?.lineWidth ?? 0.5}
-					opacity={styleOverride?.opacity ?? 0.5}
-				/>
-			);
-			case "HollowCandle":
-				return (
-					<CandlestickSeries
-						key={seriesKey}
-						width={candleBodyWidth}
-						yAccessor={(datum: EnrichedDatum) => datum as any}
-						fill={((datum: EnrichedDatum) => (styleOverride?.color ? lineColor : datum.close >= datum.open ? "transparent" : downColor)) as any}
-						stroke={((datum: EnrichedDatum) => (styleOverride?.color ? lineColor : datum.close >= datum.open ? upColor : downColor)) as any}
-						wickStroke={((datum: EnrichedDatum) => (styleOverride?.color ? lineColor : datum.close >= datum.open ? upColor : downColor)) as any}
-						candleStrokeWidth={styleOverride?.lineWidth ?? 0.5}
-						opacity={styleOverride?.opacity ?? 0.5}
-					/>
-				);
-		case "OHLC":
-				return <OHLCSeries key={seriesKey} stroke={(datum: EnrichedDatum) => (styleOverride?.color ? lineColor : datum.close >= datum.open ? upColor : downColor)} />;
-		case "Line":
-		case "EMA":
-		case "CVDApprox":
-		case "CVDRealtime":
-		case "StrengthRelative":
-			return (
-				<LineSeries
-					key={seriesKey}
-					yAccessor={accessor as any}
-					stroke={lineColor}
-					strokeWidth={lineWidth}
-					strokeOpacity={strokeOpacity}
-					strokeDasharray={dashArray}
-				/>
-			);
-		case "Area":
-			return (
-				<AreaSeries
-					key={seriesKey}
-					yAccessor={accessor as any}
-					stroke={lineColor}
-					fill={fillColor}
-					strokeWidth={lineWidth}
-					strokeOpacity={strokeOpacity}
-					opacity={fillOpacity}
-					strokeDasharray={dashArray}
-				/>
-			);
-		case "Bar":
-		case "Volume":
-		case "Whale":
-			return (
-				<BarSeries
-					key={seriesKey}
-					width={candleBodyWidth}
-					yAccessor={(datum: EnrichedDatum) => {
-						if (type === "Whale") {
-							const whale = resolveSeriesStructuredValue(datum, series) as IndicatorWhaleValue | undefined;
-							return whale?.whaleBuyVol ?? (whale?.whaleSellVol ? -whale.whaleSellVol : undefined);
-						}
-						return accessor(datum) as number | undefined;
-					}}
-					fill={(datum: EnrichedDatum) => (styleOverride?.color ? lineColor : datum.close >= datum.open ? upColor : downColor)}
-					opacity={styleOverride?.opacity ?? (type === "Volume" ? 0.75 : 0.6)}
-				/>
-			);
-		case "BollingerBand": {
-			// Sub-colors: middle, top, bottom — apply 53% alpha to band lines for visual clarity
-			const bbMidColor = sc("middle", lineColor);
-			const bbTopRaw   = sc("top",    lineColor);
-			const bbBotRaw   = sc("bottom", lineColor);
-			const withAlpha  = (c: string) => c.match(/^#[0-9a-fA-F]{6}$/) ? c + "88" : c;
-			return (
-				<BollingerSeries
-					key={seriesKey}
-					yAccessor={(datum: EnrichedDatum) => resolveSeriesStructuredValue(datum, series) as IndicatorBandValue | undefined}
-					stroke={{ top: withAlpha(bbTopRaw), middle: bbMidColor, bottom: withAlpha(bbBotRaw) }}
-					fill={fillColor}
-					opacity={styleOverride?.opacity ?? 0.15}
-				/>
-			);
-		}
-		case "RSI": {
-			const rsiLine  = sc("line",       lineColor);
-			const rsiOB    = sc("overbought", "#f23645");
-			const rsiMid   = sc("middle",     "#9ca3af");
-			const rsiOS    = sc("oversold",   "#089981");
-			return (
-				<RSISeries
-					key={seriesKey}
-					yAccessor={(datum: EnrichedDatum) => resolveSeriesValue(datum, series)}
-					stroke={{
-						top: rsiOB,
-						middle: rsiMid,
-						bottom: rsiOS,
-						outsideThreshold: rsiLine,
-						insideThreshold: rsiLine,
-					}}
-					opacity={{ top: 0.5, middle: 0.4, bottom: 0.5 }}
-					strokeDasharray={{ line: dashArray, top: "ShortDash", middle: "ShortDash", bottom: "ShortDash" }}
-					strokeWidth={{
-						outsideThreshold: lineWidth,
-						insideThreshold: lineWidth,
-						top: 1,
-						middle: 1,
-						bottom: 1,
-					}}
-				/>
-			);
-		}
-		case "MACD": {
-			const macdColor   = sc("macd",    lineColor);
-			const signalColor = sc("signal",  "#ff6d00");
-			const divergeColor = sc("diverge", "#26a69a");
-			return <MACDSeries key={seriesKey} yAccessor={(datum: EnrichedDatum) => resolveSeriesStructuredValue(datum, series) as IndicatorMacdValue | undefined} stroke={{ macd: macdColor, signal: signalColor }} fill={{ divergence: divergeColor }} opacity={strokeOpacity} />;
-		}
-		case "KDJ": {
-			const kColor = sc("k", lineColor);
-			const dColor = sc("d", "#ff6d00");
-			const jColor = sc("j", "#26a69a");
-			return (
-				<g key={seriesKey}>
-					<LineSeries key={`${type}-k`} yAccessor={fieldAccessor("k") as any} stroke={kColor} strokeWidth={1.2} />
-					<LineSeries key={`${type}-d`} yAccessor={fieldAccessor("d") as any} stroke={dColor} strokeWidth={1.2} />
-					<LineSeries key={`${type}-j`} yAccessor={fieldAccessor("j") as any} stroke={jColor} strokeWidth={1.2} />
-					<StraightLine stroke={kColor} opacity={0.35} yValue={80} strokeDasharray="ShortDash" />
-					<StraightLine stroke={kColor} opacity={0.35} yValue={50} strokeDasharray="ShortDash" />
-					<StraightLine stroke={kColor} opacity={0.35} yValue={20} strokeDasharray="ShortDash" />
-				</g>
-			);
-		}
-		case "CCI":
-			return (
-				<g key={seriesKey}>
-					<LineSeries key={`${type}-line`} yAccessor={accessor as any} stroke={lineColor} strokeWidth={1.2} />
-					<StraightLine stroke={lineColor} opacity={0.35} yValue={100} strokeDasharray="ShortDash" />
-					<StraightLine stroke={lineColor} opacity={0.35} yValue={0} strokeDasharray="ShortDash" />
-					<StraightLine stroke={lineColor} opacity={0.35} yValue={-100} strokeDasharray="ShortDash" />
-				</g>
-			);
-		case "DMI": {
-			const plusColor  = sc("plusDI",  "#089981");
-			const minusColor = sc("minusDI", "#f23645");
-			const adxColor   = sc("adx",     lineColor);
-			return (
-				<g key={seriesKey}>
-					<LineSeries key={`${type}-plus`}  yAccessor={fieldAccessor("plusDI") as any}  stroke={plusColor}  strokeWidth={1.2} />
-					<LineSeries key={`${type}-minus`} yAccessor={fieldAccessor("minusDI") as any} stroke={minusColor} strokeWidth={1.2} />
-					<LineSeries key={`${type}-adx`}   yAccessor={fieldAccessor("adx") as any}     stroke={adxColor}   strokeWidth={1.2} />
-				</g>
-			);
-		}
-		case "BIAS":
-			return <LineSeries key={type} yAccessor={accessor as any} stroke={lineColor} strokeWidth={1.2} />;
-		case "BRAR": {
-			const arColor = sc("ar", lineColor);
-			const brColor = sc("br", "#ff6d00");
-			return (
-				<g key={seriesKey}>
-					<LineSeries key={`${type}-ar`} yAccessor={fieldAccessor("ar") as any} stroke={arColor} strokeWidth={1.2} />
-					<LineSeries key={`${type}-br`} yAccessor={fieldAccessor("br") as any} stroke={brColor} strokeWidth={1.2} />
-				</g>
-			);
-		}
-		case "MTM": {
-			return (
-				<g key={seriesKey}>
-					<LineSeries key={`${type}-mtm`}    yAccessor={fieldAccessor("mtm") as any}    stroke={sc("mtm",    lineColor)}  strokeWidth={1.2} />
-					<LineSeries key={`${type}-signal`} yAccessor={fieldAccessor("signal") as any} stroke={sc("signal", "#ff6d00")} strokeWidth={1.2} />
-				</g>
-			);
-		}
-		case "EMV": {
-			return (
-				<g key={seriesKey}>
-					<LineSeries key={`${type}-emv`}    yAccessor={fieldAccessor("emv") as any}    stroke={sc("emv",    lineColor)}  strokeWidth={1.2} />
-					<LineSeries key={`${type}-signal`} yAccessor={fieldAccessor("signal") as any} stroke={sc("signal", "#ff6d00")} strokeWidth={1.2} />
-				</g>
-			);
-		}
-		case "AO":
-			return (
-				<BarSeries
-					key={seriesKey}
-					width={candleBodyWidth}
-					yAccessor={accessor as any}
-					fill={(datum: EnrichedDatum) => datum.aoColor ?? lineColor}
-					opacity={0.85}
-				/>
-			);
-		case "ROC":
-			return <LineSeries key={type} yAccessor={accessor as any} stroke={lineColor} strokeWidth={1.2} />;
-		case "TRIX": {
-			return (
-				<g key={seriesKey}>
-					<LineSeries key={`${type}-trix`}   yAccessor={fieldAccessor("trix") as any}   stroke={sc("trix",   lineColor)}  strokeWidth={1.2} />
-					<LineSeries key={`${type}-signal`} yAccessor={fieldAccessor("signal") as any} stroke={sc("signal", "#ff6d00")} strokeWidth={1.2} />
-				</g>
-			);
-		}
-		case "DMA": {
-			return (
-				<g key={seriesKey}>
-					<LineSeries key={`${type}-ddd`} yAccessor={fieldAccessor("ddd") as any} stroke={sc("ddd", lineColor)}  strokeWidth={1.2} />
-					<LineSeries key={`${type}-ama`} yAccessor={fieldAccessor("ama") as any} stroke={sc("ama", "#ff6d00")} strokeWidth={1.2} />
-				</g>
-			);
-		}
-		case "PVT":
-			return <LineSeries key={type} yAccessor={accessor as any} stroke={lineColor} strokeWidth={1.2} />;
-		case "PSY": {
-			return (
-				<g key={seriesKey}>
-					<LineSeries key={`${type}-psy`}    yAccessor={fieldAccessor("psy") as any}    stroke={sc("psy",    lineColor)}  strokeWidth={1.2} />
-					<LineSeries key={`${type}-signal`} yAccessor={fieldAccessor("signal") as any} stroke={sc("signal", "#ff6d00")} strokeWidth={1.2} />
-				</g>
-			);
-		}
-		case "CR": {
-			return (
-				<g key={seriesKey}>
-					<LineSeries key={`${type}-cr`}  yAccessor={fieldAccessor("cr") as any}  stroke={sc("cr",  lineColor)}  strokeWidth={1.2} />
-					<LineSeries key={`${type}-ma1`} yAccessor={fieldAccessor("ma1") as any} stroke={sc("ma1", "#ff6d00")} strokeWidth={1.1} />
-					<LineSeries key={`${type}-ma2`} yAccessor={fieldAccessor("ma2") as any} stroke={sc("ma2", "#26a69a")} strokeWidth={1.1} />
-					<LineSeries key={`${type}-ma3`} yAccessor={fieldAccessor("ma3") as any} stroke={sc("ma3", "#f23645")} strokeWidth={1.1} />
-					<LineSeries key={`${type}-ma4`} yAccessor={fieldAccessor("ma4") as any} stroke={sc("ma4", "#9ca3af")} strokeWidth={1.1} />
-				</g>
-			);
-		}
-		case "StrengthElder": {
-			return (
-				<ElderRaySeries
-					key={seriesKey}
-					yAccessor={(datum: EnrichedDatum) => resolveSeriesStructuredValue(datum, series) as { bullPower?: number; bearPower?: number }}
-					bullPowerFill={sc("bull", "#089981")}
-					bearPowerFill={sc("bear", "#f23645")}
-					straightLineStroke={lineColor}
-					straightLineOpacity={strokeOpacity}
-					opacity={fillOpacity}
-				/>
-			);
-		}
-		default:
-			return <LineSeries key={seriesKey} yAccessor={accessor as any} stroke={lineColor} strokeWidth={lineWidth} strokeOpacity={strokeOpacity} strokeDasharray={dashArray} />;
-	}
+	const ctx: RendererContext = {
+		type,
+		series,
+		params,
+		styleOverride,
+		lineColor,
+		fillColor,
+		upColor,
+		downColor,
+		lineWidth,
+		strokeOpacity,
+		fillOpacity,
+		dashArray,
+		seriesKey,
+		accessor,
+		structured,
+		fieldAccessor,
+		sc,
+	};
+
+	const renderer = seriesRendererRegistry[type] || seriesRendererRegistry._default;
+	return renderer(ctx);
 }
 
 /** Adaptive tooltip date format based on visible bar count. */

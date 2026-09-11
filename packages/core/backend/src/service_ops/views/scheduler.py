@@ -19,11 +19,21 @@ from ..scheduler_catalog import build_scheduler_catalog, build_scheduler_health_
 from ..ownership import build_ownership_matrix_from_db
 from ..models import ConfigChangeAudit, ServiceRunLog
 from .base import SOCBaseView
-from vninvest_core.pagination import CoreCursorPagination
+from rest_framework.pagination import PageNumberPagination
 
-class SchedulerJobHistoryCursorPagination(CoreCursorPagination):
-    ordering = '-started_at'
+class SchedulerJobHistoryPagination(PageNumberPagination):
     page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+    def get_paginated_response(self, data):
+        return Response({
+            'count': self.page.paginator.count,
+            'page': self.page.number,
+            'page_size': self.get_page_size(self.request),
+            'total_pages': self.page.paginator.num_pages,
+            'results': data,
+        })
 
 
 # ── Serializers ────────────────────────────────────────────────────────────────
@@ -212,7 +222,7 @@ class SchedulerHealthView(SOCBaseView):
 )
 class SchedulerJobHistoryView(SOCBaseView):
     """GET /core/v1/operator/scraping/dataops/scheduler/jobs/{job_key}/history/"""
-    pagination_class = SchedulerJobHistoryCursorPagination
+    pagination_class = SchedulerJobHistoryPagination
 
     def get(self, request, job_key: str):
         from django.conf import settings
@@ -602,7 +612,7 @@ def _execute_scheduler_action(
                             celery_app.control.revoke(
                                 run_log.celery_task_id,
                                 terminate=True,
-                                signal='SIGTERM',
+                                signal='SIGKILL',
                             )
                             revoked_count += 1
                         except Exception:

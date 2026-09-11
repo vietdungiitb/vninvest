@@ -1,7 +1,9 @@
-"""Commercial automation tasks for quota flushing and invoicing."""
+"""Commercial automation tasks for quota flushing, invoicing, and alert enforcement."""
 from __future__ import annotations
 
+import json
 import logging
+import uuid
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
@@ -20,6 +22,32 @@ FLUSH_QUOTA_THROTTLE_KEY = 'commercial:flush_quota_counters:throttle'
 FLUSH_QUOTA_LOCK_KEY = 'commercial:flush_quota_counters:lock'
 FLUSH_QUOTA_MIN_INTERVAL_SECONDS = 55
 FLUSH_QUOTA_LOCK_SECONDS = 300
+
+# ─── Alert enforcement constants ───
+ALERT_COOLDOWN_HOURS = 6
+ALERT_COOLDOWN_SECONDS = ALERT_COOLDOWN_HOURS * 3600
+
+# Plan-based entitlement for meters not yet backed by a dedicated QuotaRecord field.
+# -1 means unlimited; 0 means the plan does not include this meter.
+# free/starter do NOT have ai_regenerate/exports; pro/enterprise have full (unlimited).
+METER_ENTITLEMENT_BY_PLAN: dict[str, dict[str, int]] = {
+    'ai_regenerate': {
+        'free': 0,
+        'starter': 0,
+        'pro': -1,
+        'enterprise': -1,
+        'custom': -1,
+        'internal': -1,
+    },
+    'exports': {
+        'free': 0,
+        'starter': 0,
+        'pro': -1,
+        'enterprise': -1,
+        'custom': -1,
+        'internal': -1,
+    },
+}
 
 
 def _iter_quota_counter_keys(day: date):
@@ -118,6 +146,9 @@ def flush_quota_counters(self, target_date: str | None = None):
             if quota_record.api_calls_used != used_calls:
                 quota_record.api_calls_used = used_calls
                 quota_record.save(update_fields=['api_calls_used', 'updated_at'])
+            # Keep CoreTenant.api_calls_used in sync for tenant-facing serializer exposure.
+            if tenant.api_calls_used != used_calls:
+                CoreTenant.objects.filter(pk=tenant.pk).update(api_calls_used=used_calls)
             processed += 1
 
         return {
@@ -310,8 +341,19 @@ def snapshot_quota_history(self, target_date: str | None = None):
 
     for quota_record in quota_records:
         tenant = quota_record.tenant
-        
-        # Create history entries for each meter type
+
+        # Plan-based entitlement for meters not backed by a dedicated QuotaRecord
+        # field yet. -1 means unlimited, 0 means the plan does not include the meter.
+        # ai_regenerate / exports are not yet tracked via Redis counters, so consumed
+        # starts at 0 until later phases wire up the counters.
+        plan = str(getattr(tenant, 'plan', '') or '')
+        meter_entitlement = METER_ENTITLEMENT_BY_PLAN.copy()
+        for _meter in ('ai_regenerate', 'exports'):
+            meter_entitlement[_meter] = METER_ENTITLEMENT_BY_PLAN[_meter].get(plan, 0)
+
+        # Create history entries for each meter type. Meter codes MUST match the
+        # valid meter list used by the trend/forecast/alert views
+        # (api_calls, ai_regenerate, whale_symbols, exports).
         meters = [
             {
                 'meter_code': 'api_calls',
@@ -321,25 +363,25 @@ def snapshot_quota_history(self, target_date: str | None = None):
                 'entitled': quota_record.api_calls_limit,
             },
             {
-                'meter_code': 'symbols',
-                'meter_name': 'Symbols',
+                'meter_code': 'whale_symbols',
+                'meter_name': 'Whale Symbols',
                 'unit': 'symbols',
                 'consumed': quota_record.symbols_used,
                 'entitled': quota_record.symbols_limit,
             },
             {
-                'meter_code': 'users',
-                'meter_name': 'Users',
-                'unit': 'users',
-                'consumed': quota_record.users_used,
-                'entitled': quota_record.users_limit,
+                'meter_code': 'ai_regenerate',
+                'meter_name': 'AI Regenerations',
+                'unit': 'regenerations',
+                'consumed': 0,
+                'entitled': meter_entitlement['ai_regenerate'],
             },
             {
-                'meter_code': 'storage_mb',
-                'meter_name': 'Storage',
-                'unit': 'MB',
-                'consumed': quota_record.storage_mb_used,
-                'entitled': quota_record.storage_mb_limit,
+                'meter_code': 'exports',
+                'meter_name': 'Exports',
+                'unit': 'exports',
+                'consumed': 0,
+                'entitled': meter_entitlement['exports'],
             },
         ]
 
@@ -385,3 +427,169 @@ def snapshot_quota_history(self, target_date: str | None = None):
         'created': created,
         'updated': updated,
     }
+
+
+# ─── Phase 3: Alert Enforcement ─────────────────────────────────────────────
+
+ALERT_COOLDOWN_HOURS = 6
+
+
+@shared_task(name='commercial.tasks.check_usage_thresholds', bind=True, max_retries=3, default_retry_delay=300)
+def check_usage_thresholds(self):
+    """
+    Check all active UsageAlertConfig against current Redis quota counters.
+    
+    For each tenant/meter where usage_pct >= threshold:
+    - Check cooldown (Redis key `alert_cooldown:{tenant}:{meter_code}:{level}` TTL 6h)
+    - If not cooling down: send email + webhook + create TenantLifecycleEvent
+    - Set cooldown key
+    """
+    from identity_access.models import UsageAlertConfig
+
+    now = timezone.now()
+    checked = 0
+    triggered = 0
+
+    # Get all active alert configs
+    configs = UsageAlertConfig.objects.filter(enabled=True).select_related('tenant')
+    
+    for config in configs:
+        tenant = config.tenant
+        meter_code = config.meter_code
+        plan = str(getattr(tenant, 'plan', '') or '')
+        
+        # Get current usage from Redis counter
+        today = timezone.now().date()
+        redis_key = f'quota:{meter_code}:{tenant.public_id}:{today.isoformat()}'
+        current_usage = cache.get(redis_key, 0)
+        
+        if meter_code == 'api_calls':
+            # api_calls also tracked on tenant model
+            current_usage = getattr(tenant, 'api_calls_used', current_usage)
+        
+        # Get entitled limit
+        if meter_code == 'api_calls':
+            entitled = getattr(tenant, 'api_calls_limit', -1)
+        elif meter_code == 'whale_symbols':
+            from commercial.models import QuotaRecord
+            qr = QuotaRecord.objects.filter(tenant=tenant).order_by('-period_start').first()
+            entitled = getattr(qr, 'symbols_limit', -1) if qr else -1
+        else:
+            # ai_regenerate / exports - plan-based
+            entitled = METER_ENTITLEMENT_BY_PLAN.get(meter_code, {}).get(plan, 0)
+        
+        if entitled <= 0 or current_usage <= 0:
+            continue
+        
+        usage_pct = (current_usage / entitled) * 100 if entitled > 0 else 0
+        if usage_pct < 1:
+            continue
+        
+        level = None
+        if usage_pct >= config.critical_pct:
+            level = 'critical'
+        elif usage_pct >= config.warning_pct:
+            level = 'warning'
+        else:
+            continue
+        
+        checked += 1
+        
+        # Check cooldown
+        cooldown_key = f'alert_cooldown:{tenant.public_id}:{meter_code}:{level}'
+        if cache.get(cooldown_key):
+            continue  # In cooldown, skip
+        
+        # Send notifications
+        _send_quota_alert_email(config, tenant, meter_code, level, current_usage, entitled)
+        _dispatch_quota_webhook(tenant, meter_code, level, usage_pct)
+        _log_tenant_lifecycle_event(tenant, meter_code, level)
+        
+        # Set cooldown
+        cache.set(cooldown_key, 1, timeout=ALERT_COOLDOWN_HOURS * 3600)
+        triggered += 1
+    
+    return {'status': 'ok', 'checked': checked, 'triggered': triggered}
+
+
+def _send_quota_alert_email(config, tenant: CoreTenant, meter_code: str, level: str, current_usage: int, limit: int):
+    """Send quota alert email to configured recipient."""
+    from django.core.mail import send_mail
+    from django.conf import settings
+    
+    # notify_email is a boolean flag (not an email address); when enabled we
+    # notify the tenant owner. Skip entirely when disabled.
+    if not config.notify_email:
+        return
+    owner = getattr(tenant, 'owner_user', None)
+    recipient = getattr(owner, 'email', None) if owner else None
+    if not recipient:
+        logger.warning('check_usage_thresholds: no owner email for tenant %s — skipping email', tenant.public_id)
+        return
+    
+    meter_names = {
+        'api_calls': 'API Calls',
+        'whale_symbols': 'Whale Symbols',
+        'ai_regenerate': 'AI Regenerations',
+        'exports': 'Exports',
+    }
+    meter_name = meter_names.get(meter_code, meter_code)
+    pct = (current_usage / limit * 100) if limit > 0 else 0
+    level_label = 'CẢNH BÁO NGHIÊM TRỌNG' if level == 'critical' else 'CẢNH BÁO'
+    
+    subject = f'[{level_label}] {tenant.display_name}: {meter_name} đạt {pct:.1f}%'
+    message = (
+        f'Tenant: {tenant.display_name} ({tenant.public_id})\n'
+        f'Chỉ số: {meter_name}\n'
+        f'Đã sử dụng: {current_usage:,} / {limit:,} ({pct:.1f}%)\n'
+        f'Mức độ: {level}\n'
+        f'Thời gian: {timezone.now().strftime("%Y-%m-%d %H:%M:%S")}\n\n'
+        f'Vui lòng xem xét nâng cấp gói hoặc tối ưu hóa sử dụng.'
+    )
+    
+    try:
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[recipient],
+            fail_silently=False,
+        )
+    except Exception as exc:
+        logging.getLogger(__name__).error('Failed to send quota alert email: %s', exc)
+
+
+def _dispatch_quota_webhook(tenant: CoreTenant, meter_code: str, level: str, usage_pct: float):
+    """Dispatch webhook notification for quota threshold breach."""
+    from identity_access.signals import dispatch_webhook
+    
+    event_type = 'quota_warning' if level == 'warning' else 'quota_exceeded'
+    payload = {
+        'tenant_id': tenant.public_id,
+        'tenant_name': tenant.display_name,
+        'meter_code': meter_code,
+        'level': level,
+        'usage_percent': round(usage_pct, 2),
+        'timestamp': timezone.now().isoformat(),
+    }
+    try:
+        dispatch_webhook(tenant, event_type, payload)
+    except Exception as exc:
+        logging.getLogger(__name__).error('Webhook dispatch failed: %s', exc)
+
+
+def _log_tenant_lifecycle_event(tenant: CoreTenant, meter_code: str, level: str):
+    """Create TenantLifecycleEvent for audit trail."""
+    from tenant_lifecycle.models import TenantLifecycleEvent
+    event_type = 'quota_warning' if level == 'warning' else 'quota_exceeded'
+    try:
+        TenantLifecycleEvent.objects.create(
+            tenant=tenant,
+            event_type=event_type,
+            actor_type='system',
+            metadata={'meter_code': meter_code, 'level': level},
+        )
+    except Exception as exc:
+        logging.getLogger(__name__).error('Failed to create TenantLifecycleEvent: %s', exc)
+    except Exception as exc:
+        logging.getLogger(__name__).error('Failed to create TenantLifecycleEvent: %s', exc)

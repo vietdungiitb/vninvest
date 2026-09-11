@@ -63,15 +63,6 @@ export function useRealtimePolling({
 
 
 
-  // Cleanup on unmount
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      stop();
-    };
-  }, []);
-
   const stop = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -141,6 +132,15 @@ export function useRealtimePolling({
       }
     }, intervalMs);
   }, [executePoll, intervalMs]);
+
+  // Cleanup on unmount (declared after stop/start so the closure can reference them)
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      stop();
+    };
+  }, [stop]);
 
   // Auto-start/stop based on enabled
   useEffect(() => {

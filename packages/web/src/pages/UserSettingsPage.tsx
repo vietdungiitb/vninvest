@@ -1,6 +1,7 @@
 import { createElement, ChangeEvent, FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
+import { DNSECredentialsSection } from "../components/DNSECredentialsSection.js";
 
 const e = createElement;
 
@@ -131,6 +132,8 @@ export function UserSettingsPage({ className = "" }: UserSettingsPageProps) {
       e("button", { type: "submit", disabled: saving }, saving ? "Đang lưu..." : "Lưu cài đặt"),
       saveError ? e("p", { className: "core-error" }, saveError) : null,
       saveSuccess ? e("p", { className: "core-success" }, "Đã lưu cài đặt thành công.") : null
-    )
+    ),
+    e("hr", { className: "core-divider" }),
+    e(DNSECredentialsSection, { className: "core-dnse-block" })
   );
 }

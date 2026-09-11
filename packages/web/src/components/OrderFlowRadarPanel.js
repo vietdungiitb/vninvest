@@ -84,10 +84,10 @@ export function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestReal
   // session-date cross-day sync is deferred to SD-06/backend lane.
   // This is a deliberate design tradeoff to always showcase live active money-flow delta.
   const { t, formatDateTime } = useI18n();
-  const cvdSeries = orderFlowData?.cvd_series || [];
+  const cvdSeries = useMemo(() => orderFlowData?.cvd_series || [], [orderFlowData]);
   const darkFlow = orderFlowData?.dark_flow || {};
   const latestSignal = orderFlowData?.latest_signal || null;
-  const signals = orderFlowData?.signals || [];
+  const signals = useMemo(() => orderFlowData?.signals || [], [orderFlowData]);
   const tickRate = orderFlowData?.tick_rate || {};
   const sizeDistribution = orderFlowData?.size_distribution || {};
 

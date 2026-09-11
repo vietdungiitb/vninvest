@@ -6,6 +6,7 @@ This module contains:
 """
 from __future__ import annotations
 
+import json
 from datetime import date
 
 from django.core.cache import cache
@@ -56,6 +57,24 @@ class TenantResolutionMiddleware:
             self._resolve_superuser_tenant(request, user)
             return self.get_response(request)
 
+        # Machine PATs are bound to their issuing tenant; reject cross-tenant
+        # header attempts with a dedicated error code (human session PATs may switch).
+        credential = getattr(request, 'auth', None)
+        header_tenant_id = request.META.get('HTTP_X_TENANT_ID', '').strip()
+        if (
+            credential is not None
+            and not credential.is_human_session
+            and header_tenant_id
+            and str(credential.service_account.tenant.public_id) != header_tenant_id
+        ):
+            return JsonResponse(
+                {
+                    'error': 'pat_tenant_mismatch',
+                    'detail': 'Machine PAT không được phép truy cập tenant khác với tenant phát hành.',
+                },
+                status=403,
+            )
+
         tenant, role = self._resolve_tenant(request, user)
         if tenant is None:
             return JsonResponse(
@@ -80,7 +99,15 @@ class TenantResolutionMiddleware:
         return self.get_response(request)
 
     def _is_exempt_path(self, path: str) -> bool:
-        return any(path.startswith(prefix) for prefix in self.EXEMPT_PATH_PREFIXES)
+        import re
+        if any(path.startswith(prefix) for prefix in self.EXEMPT_PATH_PREFIXES):
+            return True
+        # Invite accept/cancel: invitee is not yet a tenant member, so
+        # tenant resolution must be skipped; the view resolves tenant from
+        # the invite token itself.
+        if re.search(r'/invites/[^/]+/(accept|cancel)/?$', path):
+            return True
+        return False
 
     def _get_user_from_pat(self, request):
         """Extract user from PAT token in Authorization header."""
@@ -107,12 +134,22 @@ class TenantResolutionMiddleware:
             if credential.service_account.status != credential.service_account.StatusChoices.ACTIVE:
                 return None
             
-            # Return the tenant owner as the user (same as CorePATAuthentication)
-            owner = credential.service_account.tenant.owner_user
-            if not credential.is_human_session:
-                owner.is_staff = False
-                owner.is_superuser = False
-            return owner
+            # Resolve the request user. A human-session PAT issued for a specific
+            # TenantMember carries the real member role (Sprint 4 prerequisite fix);
+            # machine PATs and owner-equivalent PATs collapse to the tenant owner.
+            from identity_access.utils.resolve_tenant import apply_pat_user_privileges
+            member = credential.issued_for_member
+            if member is not None:
+                user = member.user
+                request.tenant_role = member.role
+            else:
+                user = credential.service_account.tenant.owner_user
+            user = apply_pat_user_privileges(user, credential)
+            # Expose the resolved credential on the request so downstream middleware
+            # (e.g. TenantQuotaMiddleware) can attribute the request to a PAT without
+            # re-resolving it. DRF re-sets request.auth later with the same credential.
+            request.auth = credential
+            return user
         except Exception:
             return None
 
@@ -233,8 +270,33 @@ class TenantQuotaMiddleware:
             api_calls_limit = self._get_tenant_quota_limit(tenant)
 
         used_calls = self._increment_daily_counter(tenant_id)
+        # Update PAT last_used_at when the request was authenticated via a PAT.
+        # request.auth is set to the CorePATCredential instance by
+        # TenantResolutionMiddleware for PAT-authenticated requests.
+        auth = getattr(request, 'auth', None)
+        is_pat = auth is not None and auth.__class__.__name__ == 'CorePATCredential'
+        if is_pat:
+            try:
+                from identity_access.models import CorePATCredential
+                CorePATCredential.objects.filter(pk=auth.pk).update(last_used_at=timezone.now())
+            except Exception:
+                logger.warning('TenantQuotaMiddleware: failed to update PAT last_used_at')
+
         if api_calls_limit >= 0 and used_calls > api_calls_limit:
-            return JsonResponse(
+            # Enterprise soft limit: log warning + header, don't block
+            is_enterprise = getattr(tenant, 'plan', '') == CoreTenant.PlanChoices.ENTERPRISE
+            if is_enterprise:
+                response = self.get_response(request)
+                response['X-Quota-Warning'] = 'exceeded'
+                logger.warning(
+                    'Enterprise tenant %s exceeded API quota (%d/%d) — request allowed',
+                    tenant.public_id, used_calls, api_calls_limit
+                )
+                if is_pat:
+                    self._enqueue_pat_audit(request, auth, 200)
+                return response
+            
+            response = JsonResponse(
                 {
                     'error': 'quota_exceeded',
                     'detail': 'Vượt quá giới hạn API trong ngày. Nâng cấp plan để tiếp tục.',
@@ -243,8 +305,42 @@ class TenantQuotaMiddleware:
                 },
                 status=429,
             )
+            if is_pat:
+                self._enqueue_pat_audit(request, auth, response.status_code)
+            return response
 
-        return self.get_response(request)
+        start_ts = timezone.now()
+        response = self.get_response(request)
+        if is_pat:
+            duration_ms = int((timezone.now() - start_ts).total_seconds() * 1000)
+            self._enqueue_pat_audit(request, auth, response.status_code, duration_ms)
+        return response
+
+    def _enqueue_pat_audit(self, request, credential, status_code: int, duration_ms: int = 0):
+        """Non-blocking enqueue of a PATAuditLog entry into the batch Redis list.
+
+        The flush_pat_audit_log Celery task pops these and bulk_create them, so
+        this never performs a DB write in the request hot path.
+        """
+        try:
+            client_ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() \
+                or request.META.get('REMOTE_ADDR', '')
+            entry = {
+                'pat_pk': credential.pk,
+                'tenant_pk': getattr(credential.service_account, 'tenant_id', None),
+                'ip_address': client_ip or '',
+                'endpoint': str(getattr(request, 'path', '') or '')[:256],
+                'method': str(getattr(request, 'method', '') or '')[:8],
+                'status_code': int(status_code),
+                'user_agent': str(request.META.get('HTTP_USER_AGENT', '') or '')[:2000],
+                'auth_source': 'pat',
+                'duration_ms': int(duration_ms or 0),
+            }
+            cache_client = getattr(cache, '_cache', None)
+            if cache_client is not None:
+                cache_client.rpush('pat_audit_queue', json.dumps(entry, default=str))
+        except Exception:
+            logger.warning('TenantQuotaMiddleware: failed to enqueue PAT audit entry')
 
     def _is_exempt_path(self, path: str) -> bool:
         return any(path.startswith(prefix) for prefix in self.QUOTA_EXEMPT_PATH_PREFIXES)
@@ -315,3 +411,39 @@ class TenantQuotaMiddleware:
     @staticmethod
     def _build_counter_key(tenant_id: str, day: date) -> str:
         return f'quota:api_calls:{tenant_id}:{day.isoformat()}'
+
+
+class RateLimitHeadersMiddleware:
+    """
+    Adds X-RateLimit-* headers to PAT-authenticated responses.
+    
+    Reads remaining quota from request._pat_rate_remaining (set by PATRateThrottle)
+    and computes reset timestamp from the sorted set window.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+
+        # Only add headers for PAT-authenticated requests
+        remaining = getattr(request, '_pat_rate_remaining', None)
+        if remaining is None:
+            return response
+
+        limit = getattr(request, '_pat_rate_limit', None)
+        if limit is None or limit < 0:
+            return response
+
+        # Compute reset time (next hour boundary)
+        import time
+        now = time.time()
+        reset_ts = int(now - (now % 3600) + 3600)
+
+        response['X-RateLimit-Limit'] = str(limit)
+        response['X-RateLimit-Remaining'] = str(max(0, remaining))
+        response['X-RateLimit-Reset'] = str(reset_ts)
+        response['X-RateLimit-Resource'] = f'pat:{getattr(request.auth, "public_id", "unknown")}'
+
+        return response

@@ -20,6 +20,12 @@ from .models import Invoice, QuotaRecord, Subscription, PaymentTransaction, VNPa
 from .serializers import InvoiceSerializer, QuotaRecordSerializer, SubscriptionSerializer
 from .vnpay_service import VNPayService
 from .stripe_service import stripe_service
+from .plan_catalog import (
+    CANONICAL_PLANS,
+    PLAN_PRICES_VND,
+    PLAN_DURATIONS_DAYS,
+    normalize_plan,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -85,11 +91,19 @@ class CreateVNPayPaymentView(APIView):
             )
 
         amount = request.data.get('amount')
-        plan = request.data.get('plan')
+        raw_plan = request.data.get('plan')
 
-        if not amount or not plan:
+        if not amount or not raw_plan:
             raise ValidationErrorException(
                 detail="amount và plan là bắt buộc.",
+                code="validation_error"
+            )
+
+        # Chuẩn hóa plan (VIP_* hoặc canonical) → canonical code; reject nếu không hợp lệ.
+        plan = normalize_plan(raw_plan)
+        if not plan:
+            raise ValidationErrorException(
+                detail="plan không hợp lệ (phải là starter/pro/enterprise hoặc VIP_1M/VIP_6M/VIP_12M).",
                 code="validation_error"
             )
 
@@ -100,6 +114,14 @@ class CreateVNPayPaymentView(APIView):
         except (TypeError, ValueError):
             raise ValidationErrorException(
                 detail="amount phải là số dương hợp lệ.",
+                code="validation_error"
+            )
+
+        # Validate server-side: amount phải khớp giá chuẩn của plan (chống tam giá).
+        expected_amount = PLAN_PRICES_VND.get(plan)
+        if expected_amount is not None and amount_dec != expected_amount:
+            raise ValidationErrorException(
+                detail="amount không khớp với gói cước đã chọn.",
                 code="validation_error"
             )
 
@@ -123,7 +145,8 @@ class CreateVNPayPaymentView(APIView):
                     currency='VND',
                     period_start=timezone.now().date(),
                     period_end=(timezone.now() + timezone.timedelta(days=30)).date(),
-                    due_date=(timezone.now() + timezone.timedelta(days=7)).date()
+                    due_date=(timezone.now() + timezone.timedelta(days=7)).date(),
+                    line_items={'plan': plan}
                 )
 
             # Generate unique payment txn_ref
@@ -144,6 +167,7 @@ class CreateVNPayPaymentView(APIView):
                 tenant=tenant,
                 txn_ref=txn_ref,
                 amount=amount_dec,
+                plan=plan,
                 status=PaymentTransaction.StatusChoices.PENDING,
                 pay_url=pay_url
             )
@@ -204,6 +228,17 @@ class VNPayIPNWebhookView(APIView):
                     ipn_log.save(update_fields=['processed', 'error_message'])
                     return Response({"RspCode": "02", "Message": "Order already confirmed"}, status=status.HTTP_200_OK)
 
+                # Validate amount (defense-in-depth): VNPay gửi vnp_Amount = amount*100
+                raw_amount = query_params.get('vnp_Amount', '0')
+                try:
+                    ipn_amount = int(raw_amount) // 100
+                except (ValueError, TypeError):
+                    ipn_amount = -1
+                if ipn_amount >= 0 and ipn_amount != txn.amount:
+                    ipn_log.error_message = f"Amount mismatch: IPN={ipn_amount}, txn={txn.amount} (raw={raw_amount})"
+                    ipn_log.save(update_fields=['error_message'])
+                    return Response({"RspCode": "99", "Message": "Amount mismatch"}, status=status.HTTP_200_OK)
+
                 # Process transaction update
                 txn.vnp_transaction_no = vnp_transaction_no
                 txn.error_code = response_code
@@ -220,13 +255,15 @@ class VNPayIPNWebhookView(APIView):
                     invoice.save(update_fields=['status', 'paid_at'])
 
                     # Activate or Extend Tenant Subscription
-                    plan_name = "pro"  # Default fallback
-                    if "pro" in invoice.invoice_number.lower():
-                        plan_name = "pro"
-                    elif "starter" in invoice.invoice_number.lower():
-                        plan_name = "starter"
-                    elif "enterprise" in invoice.invoice_number.lower():
-                        plan_name = "enterprise"
+                    # Đọc plan từ PaymentTransaction (đã lưu lúc create), fallback invoice.line_items.
+                    plan_name = txn.plan or (invoice.line_items or {}).get('plan') or ''
+                    if plan_name not in CANONICAL_PLANS:
+                        # Không xác định được plan hợp lệ → ghi log và reject IPN (không default "pro").
+                        ipn_log.error_message = f"Không xác định được plan hợp lệ cho txn {txn_ref} (txn.plan={txn.plan!r})."
+                        ipn_log.save(update_fields=['error_message'])
+                        return Response({"RspCode": "99", "Message": "Plan không hợp lệ"}, status=status.HTTP_200_OK)
+
+                    duration_days = PLAN_DURATIONS_DAYS.get(plan_name, 30)
 
                     # Create or update subscription
                     sub, created = Subscription.objects.get_or_create(
@@ -235,7 +272,7 @@ class VNPayIPNWebhookView(APIView):
                             'plan': plan_name,
                             'status': Subscription.StatusChoices.ACTIVE,
                             'current_period_start': timezone.now().date(),
-                            'current_period_end': (timezone.now() + timezone.timedelta(days=30)).date()
+                            'current_period_end': (timezone.now() + timezone.timedelta(days=duration_days)).date()
                         }
                     )
 
@@ -245,9 +282,9 @@ class VNPayIPNWebhookView(APIView):
                         sub.current_period_start = timezone.now().date()
                         # If existing active subscription, extend the end date
                         if sub.current_period_end >= timezone.now().date():
-                            sub.current_period_end = sub.current_period_end + timezone.timedelta(days=30)
+                            sub.current_period_end = sub.current_period_end + timezone.timedelta(days=duration_days)
                         else:
-                            sub.current_period_end = (timezone.now() + timezone.timedelta(days=30)).date()
+                            sub.current_period_end = (timezone.now() + timezone.timedelta(days=duration_days)).date()
                         sub.save()
 
                     # Trigger tenant model sync

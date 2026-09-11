@@ -13,18 +13,20 @@
         - App:       http://localhost/operations-center
         - Admin:     http://localhost/admin
         - API:       http://localhost:8001/core/v1/health
-            - Mailpit:   http://localhost:8025
+            - Mailpit:   http://localhost:8026 (MAILPIT_UI_PORT)
             - Core API log: docker compose logs -f core-api
 
 .USAGE
     .\start_dev.ps1             # full build + up
     .\start_dev.ps1 -SkipBuild  # chỉ up (đã build rồi)
+    .\start_dev.ps1 -NoCache    # build không dùng cache (--no-cache)
     .\start_dev.ps1 -Down       # dừng và xóa containers
 #>
 param(
     [switch]$SkipBuild,
     [switch]$Down,
-    [switch]$FrontendOnly
+    [switch]$FrontendOnly,
+    [switch]$NoCache
 )
 
 Set-StrictMode -Version Latest
@@ -241,10 +243,13 @@ if ($FrontendOnly) {
 }
 
 # ── Build image ──────────────────────────────────────────────────────────────
-Write-Host "DEBUG SkipBuild value: '$SkipBuild', type: '$($SkipBuild.GetType().FullName)'"
 if (-not $SkipBuild) {
     Write-Step "Build Docker images (lần đầu mất 3–5 phút)"
-    $composeBuildArgs = @("build", "--parallel") + $TargetServices
+    $composeBuildArgs = @("build", "--parallel")
+    if ($NoCache) {
+        $composeBuildArgs += "--no-cache"
+    }
+    $composeBuildArgs += $TargetServices
     Invoke-Compose @composeBuildArgs
     if ($LASTEXITCODE -ne 0) {
         throw "docker compose build failed with exit code $LASTEXITCODE. Aborting so stale images are not started."
@@ -258,8 +263,7 @@ Write-Step "Khởi động tất cả services"
 
 # Tạo external volumes nếu chưa tồn tại (tránh lỗi volume not found khi compose up).
 $requiredVolumes = @(
-    "${ProjectName}_postgres_data",
-    "${ProjectName}_redis_data"
+    "${ProjectName}_core_pgdata"
 )
 $existingVolumes = docker volume ls --format "{{.Name}}"
 foreach ($vol in $requiredVolumes) {
@@ -271,8 +275,8 @@ foreach ($vol in $requiredVolumes) {
 
 # Dọn stale containers có tên cố định để tránh lỗi conflict khi compose up.
 $devContainerNames = @(
-    "vninvest-dev-db",
-    "vninvest-dev-redis",
+    "vninvest-dev-core-db",
+    "vninvest-dev-core-redis",
     "vninvest-dev-mailpit",
     "vninvest-dev-core-api",
     "vninvest-dev-core-worker",
@@ -288,7 +292,7 @@ if ($FrontendOnly) {
     $devContainerNames = @("vninvest-dev-frontend")
 }
 foreach ($name in $devContainerNames) {
-    $exists = docker ps -a --filter "name=^/${name}$" --format "{{.Names}}" 2>$null
+    $exists = docker ps -a --filter "name=$name" --format "{{.Names}}" 2>$null
     if ($exists -eq $name) {
         Write-Host "  - Remove stale container: $name"
         docker rm -f $name | Out-Null
@@ -315,7 +319,11 @@ for ($i = 1; $i -le $maxRetries; $i++) {
         $status = Get-ContainerHealthStatus -ContainerName "vninvest-dev-core-api-1"
     }
     Write-Host "  [$i/$maxRetries] core-api health: $status"
-    if ($status -eq "healthy" -or $status -eq "running-no-healthcheck") {
+    if ($status -eq "healthy") {
+        $healthy = $true
+        break
+    } elseif ($status -eq "running-no-healthcheck" -and $i -ge 12) {
+        # Sau 60s nếu vẫn running-no-healthcheck (không có Health object) thì coi như healthy để không block (start_period 120s)
         $healthy = $true
         break
     }

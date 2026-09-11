@@ -123,7 +123,13 @@ urlpatterns = [
     path('dataops/runtime-config/audit/', dataops.DataOpsRuntimeConfigAuditView.as_view(), name='soc_dataops_runtime_config_audit'),
     path('dataops/inventory/', dataops.DataOpsInventoryView.as_view(), name='soc_dataops_inventory'),
 
-    # Symbol Groups domain (predefined + custom CRUD)
+    # Backfill Progress API (B03)
+    path('dataops/backfill/runs/', dataops.BackfillRunListView.as_view(), name='soc_backfill_run_list'),
+    path('dataops/backfill/runs/<str:run_id>/', dataops.BackfillRunDetailView.as_view(), name='soc_backfill_run_detail'),
+    path('dataops/backfill/run-now/', dataops.BackfillRunNowView.as_view(), name='soc_backfill_run_now'),
+
+    # Symbol Groups domain (cached predefined from vnbroker + custom CRUD)
+    path('symbol-groups/sync/', symbol_groups.SymbolGroupSyncView.as_view(), name='soc_symbol_groups_sync'),
     path('symbol-groups/', symbol_groups.SymbolGroupListView.as_view(), name='soc_symbol_groups_list'),
     path('symbol-groups/<slug:slug>/', symbol_groups.SymbolGroupDetailView.as_view(), name='soc_symbol_groups_detail'),
 ]

@@ -276,7 +276,7 @@ export function runCoreSaasQueueWarm() {
   }
 
   const warmRes = http.post(
-    `${BASE_URL}/api/admin-ops/prefetch/warm/?mode=async`,
+    `${BASE_URL}/api/soc/prefetch/warm/?mode=async`,
     '{}',
     { headers: buildJsonHeaders(OPS_PAT), tags: { name: 'warm-prefetch' } },
   );
@@ -305,7 +305,7 @@ export function runCoreSaasRuntimeProbe() {
   });
 
   const runtimeRes = http.get(
-    `${BASE_URL}/api/admin-ops/runtime-kpi/`,
+    `${BASE_URL}/api/soc/runtime-kpi/`,
     { headers: buildAuthHeaders(OPS_PAT), tags: { name: 'runtime-kpi' } },
   );
   recordHttpResponse(runtimeRes, 'runtime-kpi');
@@ -334,7 +334,7 @@ export function runQueuePressure() {
   }
 
   const warmRes = http.post(
-    `${BASE_URL}/api/admin-ops/prefetch/warm/?mode=async`,
+    `${BASE_URL}/api/soc/prefetch/warm/?mode=async`,
     '{}',
     { headers: buildJsonHeaders(OPS_PAT), tags: { name: 'warm-prefetch' } },
   );
@@ -344,7 +344,7 @@ export function runQueuePressure() {
   });
 
   const ingestRes = http.post(
-    `${BASE_URL}/api/admin-ops/prefetch/offpeak-ingest/?mode=async&days=5&max_symbols=25`,
+    `${BASE_URL}/api/soc/prefetch/offpeak-ingest/?mode=async&days=5&max_symbols=25`,
     '{}',
     { headers: buildJsonHeaders(OPS_PAT), tags: { name: 'offpeak-ingest' } },
   );
@@ -425,7 +425,7 @@ export function probeObservability() {
   });
 
   const runtimeRes = http.get(
-    `${BASE_URL}/api/admin-ops/runtime-kpi/`,
+    `${BASE_URL}/api/soc/runtime-kpi/`,
     { headers: buildAuthHeaders(OPS_PAT), tags: { name: 'runtime-kpi' } },
   );
   recordHttpResponse(runtimeRes, 'runtime-kpi');

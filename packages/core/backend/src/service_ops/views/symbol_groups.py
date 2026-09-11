@@ -1,4 +1,4 @@
-"""Symbol Groups domain views — list predefined groups + full CRUD for custom groups."""
+"""Symbol Groups domain views — SSOT từ CachedSymbolGroup (vnbroker sync) + custom CRUD."""
 
 from __future__ import annotations
 
@@ -8,8 +8,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.response import Response
 
-from ..matrix_coordinator import PREDEFINED_SYMBOL_GROUPS
-from ..models import CustomSymbolGroup
+from ..models import CachedSymbolGroup, CustomSymbolGroup
 from ..views.base import SOCBaseView
 
 
@@ -39,29 +38,56 @@ def _serialize_custom_group(group: CustomSymbolGroup) -> dict:
     }
 
 
+def _category_to_type(category: str) -> str:
+    """Map category từ vnbroker sang type string cho frontend."""
+    cat_lower = (category or '').lower()
+    if 'chỉ số' in cat_lower or 'index' in cat_lower:
+        return 'index'
+    if 'sàn' in cat_lower or 'exchange' in cat_lower:
+        return 'exchange'
+    if 'etf' in cat_lower or 'quỹ' in cat_lower or 'fund' in cat_lower:
+        return 'etf'
+    return 'other'
+
+
 class SymbolGroupListView(SOCBaseView):
     """
-    GET  /api/soc/symbol-groups/  → Danh sách nhóm mã (predefined + custom).
+    GET  /api/soc/symbol-groups/  → Danh sách nhóm mã (cached predefined + custom).
     POST /api/soc/symbol-groups/  → Tạo nhóm mã tuỳ chỉnh mới.
     """
 
     @extend_schema(
         summary='Danh sách nhóm mã',
-        description='Trả về toàn bộ nhóm mã predefined (VN30, VN100...) và custom do operator tạo.',
+        description='Trả về toàn bộ nhóm mã predefined (từ CachedSymbolGroup — sync từ vnbroker) và custom do operator tạo.',
         tags=['SOC Symbol Groups'],
     )
     def get(self, request):
+        predefined_qs = CachedSymbolGroup.objects.filter(is_active=True)
+
+        # Auto-sync nếu DB trống (first deploy hoặc sau migrate)
+        if not predefined_qs.exists():
+            from market_data.vnbroker_adapter import sync_cached_symbol_groups
+            sync_cached_symbol_groups()
+            predefined_qs = CachedSymbolGroup.objects.filter(is_active=True)
+
         predefined = [
             {
-                'slug': g['id'],
-                'group_id': g['id'],
-                'name': g['name'],
-                'symbol_count': g.get('symbol_count'),
-                'type': g.get('type', 'index'),
+                'slug': g.group_name.lower().replace(' ', '-'),
+                'group_id': g.group_name.lower().replace(' ', '-'),
+                'name': g.group_name,
+                'symbol_count': g.symbol_count,
+                'category': g.category,
+                'group_code': g.group_code,
+                'group_type': g.group_type,
+                'color': g.color,
+                'display_order': g.display_order,
+                'source_provider': g.source_provider,
+                'synced_at': g.synced_at.isoformat() if g.synced_at else None,
+                'type': _category_to_type(g.category) or (g.group_type.lower() if g.group_type else 'other'),
                 'is_active': True,
                 'is_predefined': True,
             }
-            for g in PREDEFINED_SYMBOL_GROUPS
+            for g in predefined_qs
         ]
         custom_qs = CustomSymbolGroup.objects.all().order_by('name')
         custom = [_serialize_custom_group(g) for g in custom_qs]
@@ -195,3 +221,41 @@ class SymbolGroupDetailView(SOCBaseView):
             return Response({'detail': 'Nhóm mã không tồn tại.'}, status=status.HTTP_404_NOT_FOUND)
         group.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SymbolGroupSyncView(SOCBaseView):
+    """
+    POST /api/soc/symbol-groups/sync/  → Trigger sync nhóm thị trường từ vnbroker provider.
+    """
+
+    @extend_schema(
+        summary='Đồng bộ nhóm thị trường từ vnbroker provider',
+        description=(
+            'Gọi listing.get_supported_groups() qua vnbroker_adapter '
+            'và lưu vào CachedSymbolGroup. '
+            'Provider mặc định: KBS. Có thể chỉ định source trong body.'
+        ),
+        tags=['SOC Symbol Groups'],
+    )
+    def post(self, request):
+        from market_data.vnbroker_adapter import sync_cached_symbol_groups
+
+        source = str(request.data.get('source') or '').strip() or None
+        result = sync_cached_symbol_groups(source=source)
+
+        if result.get('error'):
+            return Response(
+                {
+                    'detail': result['error'],
+                    'synced': result['synced'],
+                    'deactivated': result['deactivated'],
+                    'source': result['source'],
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response({
+            'synced': result['synced'],
+            'deactivated': result['deactivated'],
+            'source': result['source'],
+        })

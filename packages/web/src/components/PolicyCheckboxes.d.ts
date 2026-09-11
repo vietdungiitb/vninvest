@@ -4,6 +4,7 @@ export interface PolicyCheckboxesProps {
   selectedPolicies: string[];
   onChange: (policies: string[]) => void;
   disabled?: boolean;
+  allowedScopes?: string[] | null;
 }
 
 export declare const POLICIES: { id: string; label: string; description: string; scopes: string[] }[];

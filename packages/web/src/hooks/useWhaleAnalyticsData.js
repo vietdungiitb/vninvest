@@ -131,7 +131,7 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate, opti
         setLoading(false);
       }
     }
-  }, [includeBaseline, requestedTradeDatesKey, selectedTradeDate, skip, symbol, timeframe, tradeDate]);
+  }, [includeBaseline, requestedTradeDates, selectedTradeDate, skip, symbol, timeframe, tradeDate]);
 
   useEffect(() => {
     if (skip) {
@@ -181,7 +181,7 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate, opti
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleWindowFocus);
     };
-  }, [fetchData, requestedTradeDatesKey, skip, timeframe, tradeDate]);
+  }, [fetchData, requestedTradeDates, requestedTradeDatesKey, skip, timeframe, tradeDate]);
 
   return { 
     loading, 

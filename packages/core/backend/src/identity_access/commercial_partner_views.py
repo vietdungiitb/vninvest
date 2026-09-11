@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 
 from identity_access.models import CoreTenant
 from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
+from identity_access.utils.resolve_tenant import require_tenant_permission as _require_tenant_permission
 
 logger = logging.getLogger(__name__)
 
@@ -23,44 +24,79 @@ def _get_tenant(user):
     return CoreTenant.objects.get(owner_user=user)
 
 
-class PartnerUsageMetersView(generics.GenericAPIView):
-    """Usage meters — delegates to commercial UsageMeter if table exists, else empty list."""
+class PartnerCostTrendView(APIView):
+    """
+    GET /api/core/v1/partner/billing/cost-trend/?months=6
+    
+    Monthly cost breakdown for the last N months.
+    Delegates to commercial.views_analytics.PartnerCostTrendView.
+    """
     permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'billing:read')
         try:
-            from commercial.models import UsageMeter
-            from commercial.serializers import UsageMeterSerializer
-            tenant = _get_tenant(request.user)
-            qs = UsageMeter.objects.filter(tenant=tenant).order_by('-period_start')
-            return Response(UsageMeterSerializer(qs, many=True).data)
+            from commercial.views_analytics import PartnerCostTrendView as InnerView
+            view = InnerView.as_view()
+            return view(request._request)
         except ImportError:
-            # commercial app or UsageMeter not yet migrated — return empty list
-            return Response([])
+            return Response({'monthly': [], 'note': 'commercial app not available'})
         except Exception as e:
-            logger.error('PartnerUsageMetersView failed for user=%s: %s', request.user.id, e, exc_info=True)
-            return Response([])
+            logger.error('PartnerCostTrendView failed for user=%s: %s', request.user.id, e, exc_info=True)
+            return Response({'monthly': [], 'note': str(e)})
+
+
+class PartnerUsageMetersView(generics.GenericAPIView):
+    """Usage meters — latest QuotaHistory snapshot per meter_code (C4)."""
+    permission_classes = TENANT_PERMISSION_CLASSES
+
+    def get(self, request, *args, **kwargs):
+        require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'billing:read')
+        try:
+            from django.db.models import Subquery, OuterRef
+            from commercial.models import QuotaHistory
+            from commercial.serializers import PartnerUsageMeterSerializer
+
+            tenant = _get_tenant(request.user)
+            latest_ids = QuotaHistory.objects.filter(
+                tenant=tenant, meter_code=OuterRef('meter_code')
+            ).order_by('-date').values('id')[:1]
+            rows = QuotaHistory.objects.filter(
+                tenant=tenant, id=Subquery(latest_ids)
+            ).order_by('meter_code')
+
+            return Response({'results': PartnerUsageMeterSerializer(rows, many=True).data})
+        except ImportError:
+            # commercial app not available — return empty list
+            return Response({'results': []})
 
 
 class PartnerUsageQuotasView(generics.GenericAPIView):
-    """Usage quotas — delegates to commercial QuotaRecord if table exists."""
+    """Usage quotas — latest QuotaHistory snapshot per meter_code (C4)."""
     permission_classes = TENANT_PERMISSION_CLASSES
 
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'billing:read')
         try:
-            from commercial.models import QuotaRecord
-            from commercial.serializers import QuotaRecordSerializer
+            from django.db.models import Subquery, OuterRef
+            from commercial.models import QuotaHistory
+            from commercial.serializers import PartnerUsageMeterSerializer
+
             tenant = _get_tenant(request.user)
-            qs = QuotaRecord.objects.filter(tenant=tenant).order_by('-period_start')
-            return Response(QuotaRecordSerializer(qs, many=True).data)
+            latest_ids = QuotaHistory.objects.filter(
+                tenant=tenant, meter_code=OuterRef('meter_code')
+            ).order_by('-date').values('id')[:1]
+            rows = QuotaHistory.objects.filter(
+                tenant=tenant, id=Subquery(latest_ids)
+            ).order_by('meter_code')
+
+            return Response({'results': PartnerUsageMeterSerializer(rows, many=True).data})
         except ImportError:
-            # commercial app not yet migrated — return empty list
-            return Response([])
-        except Exception as e:
-            logger.error('PartnerUsageQuotasView failed for user=%s: %s', request.user.id, e, exc_info=True)
-            return Response([])
+            # commercial app not available — return empty list
+            return Response({'results': []})
 
 
 class PartnerBillingSubscriptionView(generics.GenericAPIView):
@@ -69,6 +105,7 @@ class PartnerBillingSubscriptionView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'billing:read')
         try:
             from commercial.models import Subscription
             from commercial.serializers import SubscriptionSerializer
@@ -110,6 +147,7 @@ class PartnerBillingInvoicesView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'billing:read')
         try:
             from commercial.models import Invoice
             from commercial.serializers import InvoiceSerializer
@@ -137,6 +175,7 @@ class PartnerStripeCheckoutSessionView(APIView):
 
     def post(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'billing:write')
         try:
             from commercial.views import StripeCheckoutSessionView
             view = StripeCheckoutSessionView.as_view()
@@ -159,6 +198,7 @@ class PartnerStripePortalSessionView(APIView):
 
     def post(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'billing:write')
         try:
             from commercial.views import StripePortalSessionView
             view = StripePortalSessionView.as_view()
@@ -186,6 +226,7 @@ class PartnerUsageHistoryView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'billing:read')
         try:
             from commercial.models import QuotaHistory
             from commercial.serializers import QuotaHistorySerializer
@@ -217,11 +258,11 @@ class PartnerUsageHistoryView(generics.GenericAPIView):
                 qs = qs.filter(date__lte=end_date_str)
             
             qs = qs.order_by('date', 'meter_code')
-            
-            return Response(QuotaHistorySerializer(qs, many=True).data)
+
+            return Response({'results': QuotaHistorySerializer(qs, many=True).data})
         except ImportError:
             # commercial app or QuotaHistory not yet migrated
-            return Response([])
+            return Response({'results': []})
         except Exception as e:
             logger.error('PartnerUsageHistoryView failed for user=%s: %s', request.user.id, e, exc_info=True)
             return Response({'error': str(e)}, status=500)

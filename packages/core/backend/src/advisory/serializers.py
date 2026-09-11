@@ -1,12 +1,56 @@
 """
 Advisory domain serializers.
 """
+import re
+
 from rest_framework import serializers
 
-from .models import AdvisoryRecord, SystemAISettings, UserAICredential
+from .models import AdvisoryRecord, SystemAISettings, UserAICredential, AIAuditLog
+
+
+# ── API Key Masking ────────────────────────────────────────────────────────
+
+SENSITIVE_KEY_PATTERNS = re.compile(
+    r'(sk-proj-|sk-ant-|AIza|ghp_|gho_|ghu_|sk-)[A-Za-z0-9_-]{20,}'
+)
+
+
+def sanitize_sensitive_fields(data: dict) -> dict:
+    """Mask sensitive fields in audit snapshots before persisting."""
+    sanitized = {}
+    for key, value in data.items():
+        if any(pattern in key.lower() for pattern in ['api_key', 'secret', 'credential', 'token']):
+            sanitized[key] = _mask_sensitive_value(str(value))
+        elif isinstance(value, dict):
+            sanitized[key] = sanitize_sensitive_fields(value)
+        else:
+            if isinstance(value, str):
+                sanitized[key] = SENSITIVE_KEY_PATTERNS.sub(
+                    lambda m: m.group(0)[:8] + '••••••••' + m.group(0)[-4:],
+                    value
+                )
+            else:
+                sanitized[key] = value
+    return sanitized
+
+
+def _mask_sensitive_value(value: str) -> str:
+    """sk-proj-1234567890abcdef1234 → sk-proj-••••••••1234"""
+    if len(value) <= 8:
+        return '••••••••'
+    if len(value) > 12:
+        return value[:8] + '••••••••' + value[-4:]
+    return value[:4] + '••••••••'
 
 
 class AdvisoryRecordSerializer(serializers.ModelSerializer):
+    # T1.1: expose structured fields từ structured_output (fallback None cho record cũ)
+    signal = serializers.SerializerMethodField()
+    confidence_score = serializers.SerializerMethodField()
+    summary = serializers.SerializerMethodField()
+    rationale = serializers.SerializerMethodField()
+    components = serializers.SerializerMethodField()
+
     class Meta:
         model = AdvisoryRecord
         fields = [
@@ -16,12 +60,38 @@ class AdvisoryRecordSerializer(serializers.ModelSerializer):
             'status',
             'ai_model',
             'advisory_text',
+            'structured_output',
+            'signal',
+            'confidence_score',
+            'summary',
+            'rationale',
+            'components',
             'tokens_used',
             'error_message',
             'generated_at',
             'created_at',
         ]
         read_only_fields = fields
+
+    def get_signal(self, obj):
+        data = getattr(obj, 'structured_output', None) or {}
+        return data.get('signal') if isinstance(data, dict) else None
+
+    def get_confidence_score(self, obj):
+        data = getattr(obj, 'structured_output', None) or {}
+        return data.get('confidence_score') if isinstance(data, dict) else None
+
+    def get_summary(self, obj):
+        data = getattr(obj, 'structured_output', None) or {}
+        return data.get('summary') if isinstance(data, dict) else None
+
+    def get_rationale(self, obj):
+        data = getattr(obj, 'structured_output', None) or {}
+        return data.get('rationale') if isinstance(data, dict) else None
+
+    def get_components(self, obj):
+        data = getattr(obj, 'structured_output', None) or {}
+        return data.get('components') if isinstance(data, dict) else None
 
 
 class SystemAISettingsSerializer(serializers.ModelSerializer):
@@ -78,3 +148,27 @@ class UserAICredentialSerializer(serializers.ModelSerializer):
     def get_fallback_quota_max(self, obj) -> int:
         from django.conf import settings as django_settings
         return getattr(django_settings, 'AI_FALLBACK_DAILY_QUOTA', 5)
+
+
+class AIAuditLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AIAuditLog
+        fields = [
+            'id',
+            'action',
+            'actor',
+            'reason',
+            'before_json',
+            'after_json',
+            'diff_summary',
+            'created_at',
+        ]
+        read_only_fields = fields
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if isinstance(data.get('before_json'), dict):
+            data['before_json'] = sanitize_sensitive_fields(data['before_json'])
+        if isinstance(data.get('after_json'), dict):
+            data['after_json'] = sanitize_sensitive_fields(data['after_json'])
+        return data

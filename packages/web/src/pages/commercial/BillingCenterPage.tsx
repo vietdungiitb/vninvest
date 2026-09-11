@@ -1,52 +1,9 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import { useEffect, useState } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { ShellPageChrome, ShellPanel, ShellField } from "../../components/ShellPageTemplate.js";
-
-interface I18nContext {
-  t: (key: string, options?: { defaultValue?: string }) => string;
-  language: string;
-}
-
-function useI18n(): I18nContext {
-  return {
-    t: (key: string, options?: { defaultValue?: string }) => {
-      const map: Record<string, string> = {
-        'commercial.billingCenter.title': 'Trung tâm Thanh toán (Billing Center)',
-        'commercial.billingCenter.titleShort': 'Trung tâm Thanh toán',
-        'commercial.billingCenter.loading': 'Đang tải dữ liệu thanh toán...',
-        'commercial.billingCenter.errorFetch': 'Không thể tải một số dữ liệu thanh toán. Vui lòng thử lại sau.',
-        'commercial.billingCenter.errorGeneric': 'Đã xảy ra lỗi khi tải dữ liệu thanh toán.',
-        'commercial.billingCenter.errorTitle': 'Lỗi',
-        'commercial.billingCenter.upgradeTitle': 'Nâng cấp gói thành viên VIP',
-        'commercial.billingCenter.currentPlanTitle': 'Gói dịch vụ hiện tại',
-        'commercial.billingCenter.planLabel': 'Gói dịch vụ: ',
-        'commercial.billingCenter.planDefault': 'Mặc định (Miễn phí)',
-        'commercial.billingCenter.statusLabel': 'Trạng thái: ',
-        'commercial.billingCenter.statusActive': 'Đang hoạt động',
-        'commercial.billingCenter.renewalDateLabel': 'Ngày gia hạn: ',
-        'commercial.billingCenter.noPlan': 'Bạn chưa đăng ký gói cước VIP nào. Hãy chọn gói bên dưới để nâng cấp trải nghiệm.',
-        'commercial.billingCenter.quotaTitle': 'Hạn mức tài nguyên & Tính năng (Quota)',
-        'commercial.billingCenter.quotaUnlimited': 'Không giới hạn',
-        'commercial.billingCenter.noQuota': 'Không có thông tin hạn mức tài nguyên.',
-        'commercial.billingCenter.invoiceTitle': 'Lịch sử giao dịch & Hóa đơn',
-        'commercial.billingCenter.invoiceId': 'Mã Hóa đơn',
-        'commercial.billingCenter.invoiceDate': 'Ngày tạo',
-        'commercial.billingCenter.invoiceAmount': 'Số tiền',
-        'commercial.billingCenter.invoiceStatus': 'Trạng thái',
-        'commercial.billingCenter.noInvoices': 'Chưa có lịch sử giao dịch nào được ghi nhận.',
-        'commercial.billingCenter.form.planLabel': 'Chọn gói cước VIP:',
-        'commercial.billingCenter.form.amountLabel': 'Số tiền thanh toán (VND): ',
-        'commercial.billingCenter.form.submitProcessing': 'Đang kết nối cổng thanh toán...',
-        'commercial.billingCenter.form.submitButton': 'Thanh toán an toàn ngay',
-        'commercial.billingCenter.form.errorNoUrl': 'Không nhận được URL thanh toán từ máy chủ.',
-        'commercial.billingCenter.form.errorInit': 'Lỗi khi khởi tạo thanh toán.',
-      };
-      return map[key] || options?.defaultValue || key;
-    },
-    language: 'vi',
-  };
-}
-
+import { useI18n } from "../../context/LangContext.js";
+import { PLAN_OPTIONS, VIP_TO_CANONICAL, type VipPlan } from "../../constants/planCatalog.js";
 const BILLING_CUSTOM_STYLES = `
 .billing-grid {
   display: grid;
@@ -75,7 +32,7 @@ const BILLING_CUSTOM_STYLES = `
 }
 
 .plan-card {
-  border: 1.5px solid var(--shell-border);
+  border: 1.5px solid var(--border-shell);
   background: rgba(15, 23, 42, 0.45);
   border-radius: 20px;
   padding: 22px 18px;
@@ -91,13 +48,13 @@ const BILLING_CUSTOM_STYLES = `
 
 .plan-card:hover {
   transform: translateY(-3px);
-  border-color: var(--shell-accent);
+  border-color: var(--accent-shell);
   background: rgba(15, 23, 42, 0.7);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
 }
 
 .plan-card.active {
-  border-color: var(--shell-accent);
+  border-color: var(--accent-shell);
   background: linear-gradient(145deg, rgba(0, 180, 216, 0.15) 0%, rgba(15, 23, 42, 0.8) 100%);
   box-shadow: 0 16px 32px rgba(0, 180, 216, 0.15);
 }
@@ -130,13 +87,13 @@ const BILLING_CUSTOM_STYLES = `
 .plan-card__title {
   font-size: 15px;
   font-weight: 800;
-  color: var(--shell-ink);
+  color: var(--text-primary);
   margin: 0 0 6px 0;
 }
 
 .plan-card__desc {
   font-size: 12px;
-  color: var(--shell-muted);
+  color: var(--text-secondary);
   margin: 0 0 16px 0;
   line-height: 1.4;
 }
@@ -148,20 +105,20 @@ const BILLING_CUSTOM_STYLES = `
 .plan-card__price {
   font-size: 24px;
   font-weight: 900;
-  color: var(--shell-accent);
+  color: var(--accent-shell);
   line-height: 1;
 }
 
 .plan-card__period {
   font-size: 11px;
-  color: var(--shell-muted);
+  color: var(--text-secondary);
   font-weight: 600;
   margin-left: 2px;
 }
 
 .plan-card__savings {
   font-size: 11px;
-  color: var(--shell-signal);
+  color: var(--accent-signal);
   font-weight: 700;
   margin-top: 6px;
   display: block;
@@ -174,7 +131,7 @@ const BILLING_CUSTOM_STYLES = `
 
 .quota-item {
   background: rgba(15, 23, 42, 0.35);
-  border: 1px solid var(--shell-border);
+  border: 1px solid var(--border-shell);
   border-radius: 16px;
   padding: 14px 16px;
 }
@@ -185,15 +142,15 @@ const BILLING_CUSTOM_STYLES = `
   margin-bottom: 8px;
   font-size: 13px;
   font-weight: 700;
-  color: var(--shell-ink);
+  color: var(--text-primary);
 }
 
 .quota-item__name {
-  color: var(--shell-ink);
+  color: var(--text-primary);
 }
 
 .quota-item__stat {
-  color: var(--shell-muted);
+  color: var(--text-secondary);
 }
 
 .quota-item__bar-bg {
@@ -212,7 +169,7 @@ const BILLING_CUSTOM_STYLES = `
 
 .current-plan-banner {
   background: linear-gradient(135deg, rgba(0, 180, 216, 0.12) 0%, rgba(10, 147, 150, 0.06) 100%);
-  border: 1.5px dashed var(--shell-accent);
+  border: 1.5px dashed var(--accent-shell);
   border-radius: 20px;
   padding: 20px;
   display: flex;
@@ -230,12 +187,12 @@ const BILLING_CUSTOM_STYLES = `
 .current-plan-banner__plan {
   font-size: 18px;
   font-weight: 800;
-  color: var(--shell-accent);
+  color: var(--accent-shell);
 }
 
 .current-plan-banner__status {
   font-size: 12px;
-  color: var(--shell-muted);
+  color: var(--text-secondary);
 }
 
 .invoice-table {
@@ -250,16 +207,16 @@ const BILLING_CUSTOM_STYLES = `
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--shell-muted);
-  border-bottom: 1px solid var(--shell-border);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-shell);
   font-weight: 700;
 }
 
 .invoice-table td {
   padding: 14px 16px;
   font-size: 13.5px;
-  border-bottom: 1px solid var(--shell-border);
-  color: var(--shell-ink);
+  border-bottom: 1px solid var(--border-shell);
+  color: var(--text-primary);
 }
 
 .invoice-table tr:last-child td {
@@ -419,23 +376,23 @@ export function BillingCenterPage() {
     <ShellPageChrome
       eyebrow="SaaS Commerce System"
       title={t('commercial.billingCenter.titleShort')}
-      description="Nâng cấp tài khoản lên gói VIP hội viên để mở khóa toàn bộ tính năng phân tích cá mập, dòng tiền chìm nâng cao và chatbot AI bám sát dữ liệu thị trường."
+      description={t('commercial.billingCenter.description')}
       error={error || undefined}
     >
       <style>{BILLING_CUSTOM_STYLES}</style>
       <div className="billing-grid">
         {/* Cột trái: Form chọn gói & Nâng cấp */}
-        <div className="shellPage__stack">
+        <div className={`${styles.stack}`}>
           <ShellPanel
             title={t('commercial.billingCenter.upgradeTitle')}
-            subtitle="Chọn gói thành viên phù hợp nhất với tần suất giao dịch và nhu cầu phân tích của bạn."
+            subtitle={t('commercial.billingCenter.upgradeSubtitle')}
           >
             <PaymentCreateForm t={t} />
           </ShellPanel>
 
           <ShellPanel
             title={t('commercial.billingCenter.invoiceTitle')}
-            subtitle="Danh sách 10 hóa đơn giao dịch gần đây nhất trên hệ thống."
+            subtitle={t('commercial.billingCenter.invoiceSubtitle')}
           >
             {invoices && invoices.length > 0 ? (
               <div style={{ overflowX: "auto" }}>
@@ -456,8 +413,8 @@ export function BillingCenterPage() {
                         ? "invoice-status-pill--completed"
                         : isPending ? "invoice-status-pill--pending" : "invoice-status-pill--failed";
                       const statusLabel = isCompleted
-                        ? "Thành công"
-                        : isPending ? "Chờ xử lý" : "Thất bại";
+                        ? t('commercial.billingCenter.invoiceStatusSuccess')
+                        : isPending ? t('commercial.billingCenter.invoiceStatusPending') : t('commercial.billingCenter.invoiceStatusFailed');
 
                       return (
                         <tr key={idx}>
@@ -474,13 +431,13 @@ export function BillingCenterPage() {
                 </table>
               </div>
             ) : (
-              <div className="shellPage__empty">{t('commercial.billingCenter.noInvoices')}</div>
+              <div className={`${styles.empty}`}>{t('commercial.billingCenter.noInvoices')}</div>
             )}
           </ShellPanel>
         </div>
 
         {/* Cột phải: Thông tin gói hiện tại & Quota */}
-        <div className="shellPage__stack">
+        <div className={`${styles.stack}`}>
           <ShellPanel title={t('commercial.billingCenter.currentPlanTitle')}>
             {subscription ? (
               <div className="current-plan-banner">
@@ -489,7 +446,7 @@ export function BillingCenterPage() {
                   <span className="current-plan-banner__status">{`${t('commercial.billingCenter.statusLabel')} ${subscription.status || t('commercial.billingCenter.statusActive')}`}</span>
                 </div>
                 {subscription.next_billing_date ? (
-                  <div className="shellPage__pill">
+                  <div className={`${styles.pill}`}>
                     {`${t('commercial.billingCenter.renewalDateLabel')} ${subscription.next_billing_date}`}
                   </div>
                 ) : null}
@@ -506,7 +463,7 @@ export function BillingCenterPage() {
 
           <ShellPanel
             title={t('commercial.billingCenter.quotaTitle')}
-            subtitle="Giám sát mức độ tiêu hao tài nguyên định ngạch trong chu kỳ thanh toán hiện tại."
+            subtitle={t('commercial.billingCenter.quotaSubtitle')}
           >
             {quota && quota.length > 0 ? (
               <div className="quota-bar-container">
@@ -543,7 +500,7 @@ export function BillingCenterPage() {
                 })}
               </div>
             ) : (
-              <div className="shellPage__empty">{t('commercial.billingCenter.noQuota')}</div>
+              <div className={`${styles.empty}`}>{t('commercial.billingCenter.noQuota')}</div>
             )}
           </ShellPanel>
         </div>
@@ -552,46 +509,18 @@ export function BillingCenterPage() {
   );
 }
 
-function PaymentCreateForm({ t }: { t: I18nContext['t'] }) {
+function PaymentCreateForm({ t }: { t: (key: string, options?: { defaultValue?: string }) => string }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [amount, setAmount] = useState(100000);
-  const [activePlan, setActivePlan] = useState("VIP_1M");
+  const [activePlan, setActivePlan] = useState<VipPlan>("VIP_1M");
 
-  const plans: PlanOption[] = [
-    {
-      id: "VIP_1M",
-      title: "VIP 1 Tháng",
-      desc: "Trải nghiệm đầy đủ tính năng phân tích cơ bản và dòng tiền cá mập.",
-      price: 100000,
-      period: "Tháng",
-      savings: null,
-      badge: null,
-    },
-    {
-      id: "VIP_6M",
-      title: "VIP 6 Tháng",
-      desc: "Giải pháp tối ưu cho nhà giao dịch năng động, tiết kiệm chi phí.",
-      price: 500000,
-      period: "6 Tháng",
-      savings: "Tiết kiệm 100,000 đ",
-      badge: "Phổ biến nhất",
-    },
-    {
-      id: "VIP_12M",
-      title: "VIP 12 Tháng",
-      desc: "Đặc quyền VIP trọn vẹn, cập nhật tín hiệu sớm nhất và AI Advisor hỗ trợ 24/7.",
-      price: 900000,
-      period: "Năm",
-      savings: "Tiết kiệm 300,000 đ",
-      badge: "Giá trị nhất",
-    },
-  ];
+  const plans: PlanOption[] = PLAN_OPTIONS;
 
   const handlePlanSelect = (planId: string, price: number) => {
     if (submitting) return;
-    setActivePlan(planId);
+    setActivePlan(planId as VipPlan);
     setAmount(price);
   };
 
@@ -603,7 +532,7 @@ function PaymentCreateForm({ t }: { t: I18nContext['t'] }) {
       setSubmitting(true);
       setError(null);
 
-      const payload = { amount, plan: activePlan };
+      const payload = { amount, plan: VIP_TO_CANONICAL[activePlan] ?? activePlan };
       const response = await billingApi.createPayment(payload);
 
       if (response && response.pay_url) {
@@ -618,12 +547,12 @@ function PaymentCreateForm({ t }: { t: I18nContext['t'] }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="shellPage__form">
+    <form onSubmit={handleSubmit} className={`${styles.form}`}>
       {error ? (
-        <div className="shellPage__banner shellPage__banner--error" style={{ margin: 0 }}>{error}</div>
+        <div className={`${styles.banner} ${styles.bannerError}`} style={{ margin: 0 }}>{error}</div>
       ) : null}
 
-      <span className="shellPage__fieldLabel">{t('commercial.billingCenter.form.planLabel')}</span>
+      <span className={`${styles.fieldLabel}`}>{t('commercial.billingCenter.form.planLabel')}</span>
 
       {/* Giao diện chọn Gói bằng Thẻ (Plan Cards Selector) */}
       <div className="plan-card-container">

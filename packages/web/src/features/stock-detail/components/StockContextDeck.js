@@ -1,4 +1,5 @@
 import { createElement } from "react";
+import { useI18n } from "../../../context/LangContext.js";
 
 const e = createElement;
 
@@ -25,8 +26,13 @@ export function StockContextDeck({
   snapshot,
   orderFlowData,
   whaleFeed,
+  whaleFeedMeta,
+  onLoadMoreWhaleFeed,
   loading
 }) {
+  const { t } = useI18n();
+  const tk = (key) => `stockDetail.page.${key}`;
+
   const hasActiveSession = !!selectedSession;
   
   // Calculate Buy/Sell ratios or institutions ratio if available — no fake hardcoded defaults
@@ -48,8 +54,8 @@ export function StockContextDeck({
         e(
           "div",
           { className: "sdp-card-header" },
-          e("h3", null, `🦈 Giao Dịch Cá Mập ${hasActiveSession ? "(Phiên Chọn)" : "(Thời Gian Thực)"}`),
-          e("span", { className: "sdp-card-badge" }, "CVD & Dark Flow")
+          e("h3", null, `🦈 ${t(tk("sharkTitle"))} ${hasActiveSession ? `(${t(tk("sharkSession"))})` : `(${t(tk("sharkRealtime"))})`}`),
+          e("span", { className: "sdp-card-badge" }, t(tk("badgeCvdDarkFlow"), { defaultValue: "CVD & Dark Flow" }))
         ),
         e(
           "div",
@@ -64,40 +70,60 @@ export function StockContextDeck({
               )
             : whaleFeed && whaleFeed.length > 0
             ? e(
-                "ul",
-                { className: "sdp-matched-list" },
-                whaleFeed.slice(0, 5).map((ev, idx) => {
-                  const side = (ev.side || "buy").toLowerCase();
-                  const isBuy = side === "buy";
-                  return e(
-                    "li",
-                    { key: ev.id ?? ev.event_id ?? idx, className: `sdp-matched-item side-${side}` },
-                    e("span", { className: `sdp-indicator-dot ${isBuy ? "dot-buy" : "dot-sell"}` }),
-                    e(
-                      "span",
-                      { className: "sdp-matched-time" },
-                      ev.event_time ?? ev.triggered_at
-                        ? new Date(ev.event_time ?? ev.triggered_at).toLocaleTimeString("vi-VN", {
-                            hour: "2-digit",
-                            minute: "2-digit"
-                          })
-                        : "—"
-                    ),
-                    e(
-                      "span",
-                      { className: `sdp-matched-side ${isBuy ? "text-buy" : "text-sell"}` },
-                      isBuy ? "MUA CHỦ ĐỘNG" : "BÁN CHỦ ĐỘNG"
-                    ),
-                    e("span", { className: "sdp-matched-vol" }, `${fmtCompact(ev.volume ?? ev.net_volume)} CP`),
-                    e("span", { className: "sdp-matched-price" }, fmtPrice(ev.price ?? ev.avg_price))
-                  );
-                })
+                "div",
+                null,
+                e(
+                  "ul",
+                  { className: "sdp-matched-list" },
+                  whaleFeed.slice(0, 5).map((ev, idx) => {
+                    const side = (ev.side || "buy").toLowerCase();
+                    const isBuy = side === "buy";
+                    // T1.4: BE trả ts/matched_value → FE chuẩn hoá time/price (normalizeWhaleFeedItem)
+                    const displayTime = ev.time ?? ev.ts ?? ev.alert_at ?? ev.event_time ?? ev.triggered_at;
+                    const displayPrice = ev.price ?? ev.matched_value ?? ev.value ?? ev.avg_price;
+                    const displayVolume = ev.volume ?? ev.net_volume;
+                    return e(
+                      "li",
+                      { key: ev.id ?? ev.event_id ?? idx, className: `sdp-matched-item side-${side}` },
+                      e("span", { className: `sdp-indicator-dot ${isBuy ? "dot-buy" : "dot-sell"}` }),
+                      e(
+                        "span",
+                        { className: "sdp-matched-time" },
+                        displayTime
+                          ? new Date(displayTime).toLocaleTimeString("vi-VN", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              second: "2-digit"
+                            })
+                          : "—"
+                      ),
+                      e(
+                        "span",
+                        { className: `sdp-matched-side ${isBuy ? "text-buy" : "text-sell"}` },
+                        isBuy ? t(tk("buyActive")) : t(tk("sellActive"))
+                      ),
+                      e("span", { className: "sdp-matched-vol" }, `${fmtCompact(displayVolume)} CP`),
+                      e("span", { className: "sdp-matched-price" }, fmtPrice(displayPrice))
+                    );
+                  })
+                ),
+                whaleFeedMeta?.has_more &&
+                  e(
+                    "button",
+                    {
+                      className: "sdp-load-more-btn",
+                      type: "button",
+                      onClick: onLoadMoreWhaleFeed,
+                      style: { marginTop: "10px", width: "100%", padding: "6px", fontSize: "0.78rem", borderRadius: "8px", border: "1px solid rgba(148,163,184,0.25)", background: "rgba(15,23,42,0.6)", color: "#cbd5e1", cursor: "pointer" },
+                    },
+                    "Xem thêm"
+                  )
               )
             : e(
                 "div",
                 { className: "sdp-deck-empty" },
                 e("span", { className: "sdp-empty-icon" }, "🌊"),
-                e("p", null, "Không có lệnh quét lớn (Whale Alerts) nào được ghi nhận.")
+                e("p", null, t(tk("noWhale")))
               )
         )
       ),
@@ -109,8 +135,8 @@ export function StockContextDeck({
         e(
           "div",
           { className: "sdp-card-header" },
-          e("h3", null, "📊 Độ Sâu Thị Trường & Thanh Khoản"),
-          e("span", { className: "sdp-card-badge" }, "Order Book")
+          e("h3", null, `📊 ${t(tk("depthTitle"))}`),
+          e("span", { className: "sdp-card-badge" }, t(tk("badgeOrderBook"), { defaultValue: "Order Book" }))
         ),
         e(
           "div",
@@ -126,7 +152,7 @@ export function StockContextDeck({
                 "div",
                 { className: "sdp-deck-empty" },
                 e("span", { className: "sdp-empty-icon" }, "📊"),
-                e("p", null, "Không có dữ liệu sổ lệnh & thanh khoản cho phiên này.")
+                e("p", null, t(tk("noDepth")))
               )
             : e(
                 "div",
@@ -137,7 +163,7 @@ export function StockContextDeck({
                   e(
                     "div",
                     { className: "sdp-depth-bar-row" },
-                    e("span", { className: "sdp-depth-label" }, "Tổng lệnh Mua"),
+                    e("span", { className: "sdp-depth-label" }, t(tk("totalBuy"))),
                     e("span", { className: "sdp-depth-value text-buy" }, snapshot.total_buy_qty != null ? `${fmtCompact(snapshot.total_buy_qty)} CP` : "—")
                   ),
                   e(
@@ -158,7 +184,7 @@ export function StockContextDeck({
                   e(
                     "div",
                     { className: "sdp-depth-bar-row" },
-                    e("span", { className: "sdp-depth-label" }, "Tổng lệnh Bán"),
+                    e("span", { className: "sdp-depth-label" }, t(tk("totalSell"))),
                     e("span", { className: "sdp-depth-value text-sell" }, snapshot.total_sell_qty != null ? `${fmtCompact(snapshot.total_sell_qty)} CP` : "—")
                   )
                 ),
@@ -168,13 +194,13 @@ export function StockContextDeck({
                   e(
                     "div",
                     { className: "sdp-depth-stat" },
-                    e("span", { className: "sdp-depth-stat-lbl" }, "Khối lượng khớp"),
+                    e("span", { className: "sdp-depth-stat-lbl" }, t(tk("matchedVolume"))),
                     e("strong", { className: "sdp-depth-stat-val" }, fmtCompact(snapshot.volume ?? snapshot.total_volume))
                   ),
                   e(
                     "div",
                     { className: "sdp-depth-stat" },
-                    e("span", { className: "sdp-depth-stat-lbl" }, "Giá trị giao dịch"),
+                    e("span", { className: "sdp-depth-stat-lbl" }, t(tk("tradeValue"))),
                     e(
                       "strong", 
                       { className: "sdp-depth-stat-val" }, 
@@ -197,8 +223,8 @@ export function StockContextDeck({
         e(
           "div",
           { className: "sdp-card-header" },
-          e("h3", null, "🛡️ Sức Mạnh Tương Quan (Strength Matrix)"),
-          e("span", { className: "sdp-card-badge" }, "Institutional / Retail")
+          e("h3", null, `🛡️ ${t(tk("strengthTitle"))}`),
+          e("span", { className: "sdp-card-badge" }, t(tk("badgeInstitutionalRetail"), { defaultValue: "Institutional / Retail" }))
         ),
         e(
           "div",
@@ -215,7 +241,7 @@ export function StockContextDeck({
                 "div",
                 { className: "sdp-deck-empty" },
                 e("span", { className: "sdp-empty-icon" }, "🛡️"),
-                e("p", null, "Không có dữ liệu cơ cấu lực mua ròng.")
+                e("p", null, t(tk("noStrength")))
               )
             : e(
                 "div",
@@ -226,7 +252,7 @@ export function StockContextDeck({
                   e(
                     "div",
                     { className: "sdp-strength-row-info" },
-                    e("span", null, "Lực mua Tổ chức"),
+                    e("span", null, t(tk("instBuy"))),
                     e("strong", null, institutionalBuy != null ? `${(institutionalBuy * 100).toFixed(0)}%` : "—")
                   ),
                   e(
@@ -241,7 +267,7 @@ export function StockContextDeck({
                   e(
                     "div",
                     { className: "sdp-strength-row-info" },
-                    e("span", null, "Lực mua Nhỏ lẻ"),
+                    e("span", null, t(tk("retailBuy"))),
                     e("strong", null, retailBuy != null ? `${(retailBuy * 100).toFixed(0)}%` : "—")
                   ),
                   e(
@@ -253,17 +279,17 @@ export function StockContextDeck({
                 e(
                   "div",
                   { className: "sdp-strength-summary" },
-                  e("span", { className: "sdp-strength-summary-lbl" }, "Tương quan lực mua ròng:"),
+                  e("span", { className: "sdp-strength-summary-lbl" }, t(tk("netBuySummary"))),
                   e(
                     "span",
                     { className: `sdp-strength-summary-val ${(totalBuyStrength ?? 0) >= 0.5 ? "text-buy" : "text-sell"}` },
                     totalBuyStrength == null 
                       ? "—" 
                       : totalBuyStrength >= 0.65 
-                        ? "ÁP ĐẢO MUA" 
+                        ? t(tk("dominateBuy")) 
                         : totalBuyStrength >= 0.5 
-                          ? "MUA CHỦ ĐỘNG" 
-                          : "BÁN CHỦ ĐỘNG"
+                          ? t(tk("activeBuy")) 
+                          : t(tk("activeSell"))
                   )
                 )
               )

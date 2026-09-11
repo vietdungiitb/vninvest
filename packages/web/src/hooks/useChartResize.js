@@ -45,7 +45,7 @@ export function useChartResize(chartRef, containerRef, dependencies = []) {
         resizeObserverRef.current = null;
       }
     };
-  }, [containerRef, resizeChart, ...dependencies]);
+  }, [containerRef, resizeChart, ...dependencies]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Return manual resize function for external triggers
   return { resizeChart };

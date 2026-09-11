@@ -52,14 +52,8 @@ export function CoreDashboardPositionDeck({
   const [activeTab, setActiveTab] = useState('overview');
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-  const [symbolScope, setSymbolScope] = useState('holdings');
+  const [symbolScope, setSymbolScope] = useState('all');
   const [selectedSymbol, setSelectedSymbol] = useState(selectedSymbolProp || 'all');
-
-  useEffect(() => {
-    if (selectedSymbolProp && selectedSymbolProp !== selectedSymbol) {
-      setSelectedSymbol(selectedSymbolProp);
-    }
-  }, [selectedSymbolProp, selectedSymbol]);
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
@@ -118,6 +112,35 @@ export function CoreDashboardPositionDeck({
     [scopedUniverse],
   );
 
+  // Synchronize parent selectedSymbolProp selection changes
+  useEffect(() => {
+    const target = selectedSymbolProp || 'all';
+    if (target !== selectedSymbol) {
+      // Auto-adjust scope if target is a specific symbol not present in current scope
+      if (target !== 'all') {
+        const uppercaseTarget = target.trim().toUpperCase();
+        const found = symbolUniverse.find((item: any) => String(item?.symbol || '').trim().toUpperCase() === uppercaseTarget);
+        if (found) {
+          const currentScopeSymbols = scopedUniverse.map((item: any) => String(item.symbol || '').trim().toUpperCase());
+          if (!currentScopeSymbols.includes(uppercaseTarget)) {
+            if (found.in_holdings) {
+              setSymbolScope('holdings');
+            } else if (found.in_tracked) {
+              setSymbolScope('tracked');
+            } else if (found.in_watchlist) {
+              setSymbolScope('watchlist');
+            } else {
+              setSymbolScope('all');
+            }
+          }
+        } else {
+          setSymbolScope('all');
+        }
+      }
+      setSelectedSymbol(target);
+    }
+  }, [selectedSymbolProp, selectedSymbol, symbolUniverse, scopedUniverse]);
+
   useEffect(() => {
     if (selectedSymbol !== 'all' && !symbolOptions.includes(selectedSymbol)) {
       setSelectedSymbol('all');
@@ -142,8 +165,33 @@ export function CoreDashboardPositionDeck({
 
   const filteredTechnicals = useMemo(() => {
     if (!needsTechnicalsView) return [];
-    return (technicals as any[]).filter((item: any) => activeSymbolSet.has(String(item?.symbol || '').trim().toUpperCase()));
-  }, [needsTechnicalsView, technicals, activeSymbolSet]);
+    const techMap = new Map();
+    (technicals || []).forEach((item: any) => {
+      const sym = String(item?.symbol || '').trim().toUpperCase();
+      if (sym) {
+        techMap.set(sym, item);
+      }
+    });
+
+    const symbolsToShow = selectedSymbol !== 'all' && selectedSymbol
+      ? [selectedSymbol]
+      : scopedUniverse.map((item: any) => item.symbol).filter(Boolean);
+
+    return symbolsToShow.map((symbol) => {
+      const upperSym = String(symbol).trim().toUpperCase();
+      const existing = techMap.get(upperSym);
+      if (existing) {
+        return existing;
+      }
+      return {
+        symbol: upperSym,
+        rsi_14: null,
+        sma20: null,
+        sma50: null,
+        momentum_20d_pct: null,
+      };
+    });
+  }, [needsTechnicalsView, technicals, selectedSymbol, scopedUniverse]);
 
   const pagedOverviewRows = useMemo(() => {
     if (!isOverviewTab) return [];
@@ -361,23 +409,45 @@ export function CoreDashboardPositionDeck({
                   {loading ? (
                     <tr><td colSpan={5} className="text-center py-4 animate-pulse">Đang tải...</td></tr>
                   ) : pagedTechnicals.length === 0 ? (
-                    <tr><td colSpan={5} className="text-center py-4 text-slate-600 italic">Không có dữ liệu kỹ thuật.</td></tr>
-                  ) : (pagedTechnicals as any[]).map((tech: any, idx: number) => (
-                    <tr key={idx} className="border-b border-slate-800/30 hover:bg-slate-800/30 cursor-pointer" onClick={() => {
-                      setSelectedSymbol(tech.symbol);
-                      onSelectSymbol?.(tech.symbol);
-                    }}>
-                      <td className="px-3 py-2 font-bold text-slate-200">{tech.symbol}</td>
-                      <td className={`px-3 py-2 text-right font-bold ${tech.rsi_14 > 70 ? 'text-rose-400' : tech.rsi_14 < 30 ? 'text-emerald-400' : 'text-slate-200'}`}>
-                        {tech.rsi_14 || '--'}
-                      </td>
-                      <td className="px-3 py-2 text-right text-slate-400">{tech.sma20?.toLocaleString('vi-VN')}</td>
-                      <td className="px-3 py-2 text-right text-slate-400">{tech.sma50?.toLocaleString('vi-VN')}</td>
-                      <td className={`px-3 py-2 text-right font-bold ${tech.momentum_20d_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {tech.momentum_20d_pct?.toFixed(2)}%
-                      </td>
-                    </tr>
-                  ))}
+                    <tr><td colSpan={5} className="text-center py-4 text-slate-400 italic">Không có dữ liệu kỹ thuật.</td></tr>
+                  ) : (pagedTechnicals as any[]).map((tech: any, idx: number) => {
+                    const hasRsi = tech.rsi_14 !== null && tech.rsi_14 !== undefined;
+                    const rsiColor = hasRsi
+                      ? tech.rsi_14 > 70
+                        ? 'text-rose-400'
+                        : tech.rsi_14 < 30
+                        ? 'text-emerald-400'
+                        : 'text-slate-200'
+                      : 'text-slate-500';
+
+                    const hasMomentum = tech.momentum_20d_pct !== null && tech.momentum_20d_pct !== undefined;
+                    const momentumColor = hasMomentum
+                      ? tech.momentum_20d_pct >= 0
+                        ? 'text-emerald-400'
+                        : 'text-rose-400'
+                      : 'text-slate-500';
+
+                    return (
+                      <tr key={`${tech.symbol}-${idx}`} className="border-b border-slate-800/30 hover:bg-slate-800/30 cursor-pointer" onClick={() => {
+                        setSelectedSymbol(tech.symbol);
+                        onSelectSymbol?.(tech.symbol);
+                      }}>
+                        <td className="px-3 py-2 font-bold text-slate-200">{tech.symbol}</td>
+                        <td className={`px-3 py-2 text-right font-bold ${rsiColor}`}>
+                          {hasRsi ? tech.rsi_14.toFixed(1) : '--'}
+                        </td>
+                        <td className="px-3 py-2 text-right text-slate-400">
+                          {tech.sma20 !== null && tech.sma20 !== undefined ? tech.sma20.toLocaleString('vi-VN') : '--'}
+                        </td>
+                        <td className="px-3 py-2 text-right text-slate-400">
+                          {tech.sma50 !== null && tech.sma50 !== undefined ? tech.sma50.toLocaleString('vi-VN') : '--'}
+                        </td>
+                        <td className={`px-3 py-2 text-right font-bold ${momentumColor}`}>
+                          {hasMomentum ? `${tech.momentum_20d_pct.toFixed(2)}%` : '--'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -18,6 +18,8 @@ from .portfolio_analytics_views import (
     PortfolioAIAdvisoryRefreshView,
     PortfolioAICommandCenterView,
     PortfolioAICommandCenterTestView,
+    PortfolioAICommandCenterAuditLogView,
+    PortfolioUserConfigLegacyView,
     PortfolioMarketDiscoveryHubView,
     PortfolioWhaleAnalyticsView,
     PortfolioWhaleBacktestStatsView,
@@ -25,7 +27,11 @@ from .portfolio_analytics_views import (
     PortfolioScreenerRuleRunView,
     PortfolioAIAdvisoryListView,
     PortfolioAIAdvisorySymbolStatsView,
+    ScreenerTemplatesView,
 )
+
+# Screener views
+from .views import ScreenerRuleListCreateAPIView
 
 urlpatterns = [
     # Native workspace paths (core/v1/ namespace)
@@ -44,6 +50,8 @@ urlpatterns = [
     path('workspace/whale-analytics/<str:symbol>/', PortfolioWhaleAnalyticsView.as_view(), name='workspace-whale-analytics'),
     path('workspace/ai-command-center/', PortfolioAICommandCenterView.as_view(), name='workspace-ai-cc-direct'),
     path('workspace/ai-command-center/test-connection/', PortfolioAICommandCenterTestView.as_view(), name='workspace-ai-cc-test'),
+    path('workspace/ai-command-center/audit-logs/', PortfolioAICommandCenterAuditLogView.as_view(), name='workspace-ai-cc-audit-logs'),
+    path('workspace/userconfig/', PortfolioUserConfigLegacyView.as_view(), name='workspace-userconfig'),
 
     # Legacy compat: portfolio ai-advisory routes (proxy for legacy frontend client.js calls)
     path('portfolio/ai-advisory/', PortfolioAIAdvisoryListView.as_view(), name='portfolio-ai-advisory-list'),
@@ -63,4 +71,12 @@ urlpatterns = [
     path('broker/dnse/create-trading-token/', views_dnse.dnse_create_trading_token_api, name='dnse-broker-create-trading-token'),
     path('broker/dnse/place-order/', views_dnse.dnse_place_order_api, name='dnse-broker-place-order'),
     path('broker/dnse/token-status/', views_dnse.dnse_token_status_api, name='dnse-broker-token-status'),
+]
+
+# Screener endpoints
+urlpatterns += [
+    path('screener/rules/', ScreenerRuleListCreateAPIView.as_view(), name='screener-rules-list'),
+    path('screener/rules/<int:pk>/', PortfolioScreenerRuleDetailView.as_view(), name='screener-rule-detail'),
+    path('screener/rules/<int:pk>/run/', PortfolioScreenerRuleRunView.as_view(), name='screener-rule-run'),
+    path('screener/templates/', ScreenerTemplatesView.as_view(), name='screener-templates'),
 ]

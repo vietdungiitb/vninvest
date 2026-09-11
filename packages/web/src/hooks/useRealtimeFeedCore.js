@@ -251,6 +251,7 @@ function normalizeAlert(payload) {
     event_score: readEventField(payload, 'event_score'),
     display_score: readEventField(payload, 'display_score'),
     weights_version: readEventField(payload, 'weights_version'),
+    executed_at: readEventField(payload, 'executed_at') ?? null,
     ts: normalizedTs,
   };
 }
@@ -268,6 +269,7 @@ function normalizeDarkFlowAlert(payload) {
     small_order_ratio: readEventField(payload, 'small_order_ratio'),
     cvd_at_signal: readEventField(payload, 'cvd_at_signal'),
     description: readEventField(payload, 'description'),
+    executed_at: readEventField(payload, 'executed_at') ?? null,
     ts: normalizedTs,
   };
 }
@@ -959,7 +961,7 @@ export default function useRealtimeFeedCore({
         return;
       }
 
-      if (process.env.REACT_APP_DISABLE_REALTIME_WEBSOCKET === 'true') {
+      if (typeof process !== "undefined" && process.env?.REACT_APP_DISABLE_REALTIME_WEBSOCKET === 'true') {
         wsHealthyRef.current = false;
         setRealtimeStatus('polling');
         setConnectionState((prev) => ({

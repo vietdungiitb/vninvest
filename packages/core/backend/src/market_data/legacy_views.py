@@ -43,10 +43,38 @@ from market_data.default_groups import (
     _build_item_payload as _build_stock_management_item_payload,
 )
 
-# Backwards compatibility - re-exported from default_groups
+# Backwards compatibility — re-exported from default_groups (fallback only)
 _STOCK_MANAGEMENT_DEFAULT_GROUPS = get_default_groups()
 _STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP = get_group_lookup()
 _STOCK_MANAGEMENT_COLOR_PALETTE = get_color_palette()
+
+
+def _load_legacy_group_meta_map():
+    """Load group display metadata — CachedSymbolGroup (DB) preferred, fallback to default_groups."""
+    try:
+        from service_ops.models import CachedSymbolGroup
+        groups = CachedSymbolGroup.objects.filter(is_active=True).values(
+            'group_name', 'group_type', 'color', 'display_order',
+        )
+        if groups:
+            return {
+                g['group_name']: {
+                    'group_type': g['group_type'],
+                    'color': g['color'],
+                    'display_order': g['display_order'],
+                }
+                for g in groups
+            }
+    except Exception:
+        pass
+    return {
+        g['name']: {
+            'group_type': g.get('group_type', 'CUSTOM'),
+            'color': g.get('color', ''),
+            'display_order': g.get('order', 999),
+        }
+        for g in _STOCK_MANAGEMENT_DEFAULT_GROUPS
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -59,17 +87,32 @@ class StockManagementGroupsView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
 
     def get(self, request):
-        from user_workspace.models import Watchlist
+        from service_ops.models import CachedSymbolGroup
 
-        watchlists = list(Watchlist.objects.filter(user=request.user, tenant=request.tenant).prefetch_related('items'))
-        watchlists.sort(
-            key=lambda watchlist: (
-                _STOCK_MANAGEMENT_DEFAULT_GROUP_LOOKUP.get(watchlist.name, {}).get('order', 999),
-                watchlist.name.lower(),
-                watchlist.pk or 0,
+        meta_map = _load_legacy_group_meta_map()
+        groups = list(CachedSymbolGroup.objects.filter(is_active=True).prefetch_related('members'))
+        groups.sort(
+            key=lambda g: (
+                meta_map.get(g.group_name, {}).get('display_order', 999),
+                (g.group_name or '').lower(),
+                g.pk or 0,
             )
         )
-        data = [_build_stock_management_group_payload(watchlist, index) for index, watchlist in enumerate(watchlists)]
+        data = []
+        for index, g in enumerate(groups):
+            template = meta_map.get(g.group_name) or {}
+            color = template.get('color') or _STOCK_MANAGEMENT_COLOR_PALETTE[index % len(_STOCK_MANAGEMENT_COLOR_PALETTE)]
+            group_type = g.group_type or template.get('group_type') or 'CUSTOM'
+            order = g.display_order or template.get('order') or (index + 1)
+            data.append({
+                'id': g.pk,
+                'name': g.group_name,
+                'group_type': group_type,
+                'description': g.description,
+                'color': color,
+                'order': order,
+                'items': [_build_stock_management_item_payload(m) for m in g.members.all()],
+            })
         return Response(data)
 
 
@@ -78,63 +121,25 @@ class StockManagementSeedView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
 
     def post(self, request):
-        from user_workspace.models import Watchlist, WatchlistItem
+        # Delegate to seed_default_watchlist_groups — uses CachedSymbolGroup (SSOT) not default_groups.py
+        from market_data.stock_mgmt_native_views import seed_default_watchlist_groups
 
-        created_groups = []
-        updated_groups = []
-        added_symbols = 0
-
-        for group_data in _STOCK_MANAGEMENT_DEFAULT_GROUPS:
-            watchlist, created = Watchlist.objects.get_or_create(
-                user=request.user,
-                tenant=request.tenant,
-                name=group_data['name'],
-                defaults={
-                    'description': group_data['description'],
-                    'is_default': False,
-                },
-            )
-
-            updated_fields = []
-            if watchlist.description != group_data['description']:
-                watchlist.description = group_data['description']
-                updated_fields.append('description')
-            if watchlist.is_default:
-                watchlist.is_default = False
-                updated_fields.append('is_default')
-            if updated_fields:
-                watchlist.save(update_fields=updated_fields)
-
-            group_added_symbols = 0
-            for symbol in group_data['symbols']:
-                item, item_created = WatchlistItem.objects.get_or_create(
-                    watchlist=watchlist,
-                    symbol=symbol.upper().strip(),
-                    defaults={'note': ''},
-                )
-                if item_created:
-                    group_added_symbols += 1
-
-            added_symbols += group_added_symbols
-            if created:
-                created_groups.append({'group': watchlist.name, 'symbols': len(group_data['symbols'])})
-            elif updated_fields or group_added_symbols:
-                updated_groups.append({'group': watchlist.name, 'new_symbols': group_added_symbols})
+        result = seed_default_watchlist_groups(request.user, force_recreate=True)
 
         message_parts = []
-        if created_groups:
-            message_parts.append(f'đã tạo {len(created_groups)} nhóm mặc định')
-        if updated_groups:
-            message_parts.append(f'cập nhật {len(updated_groups)} nhóm')
-        if added_symbols:
-            message_parts.append(f'thêm {added_symbols} mã')
+        if result['created']:
+            message_parts.append(f"đã tạo {len(result['created'])} nhóm mặc định")
+        if result['updated']:
+            message_parts.append(f"cập nhật {len(result['updated'])} nhóm")
+        if result['added_symbols']:
+            message_parts.append(f"thêm {result['added_symbols']} mã")
         if not message_parts:
             message_parts.append('không có thay đổi')
 
         return Response({
-            'created': created_groups,
-            'updated': updated_groups,
-            'added_symbols': added_symbols,
+            'created': result['created'],
+            'updated': result['updated'],
+            'added_symbols': result['added_symbols'],
             'message': ', '.join(message_parts).capitalize() + '.',
         })
 

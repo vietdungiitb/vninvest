@@ -86,7 +86,8 @@ describe("coreApiAdapter", () => {
 
     await coreApiAdapter.getSessionFacts("VCI", "2026-05-03");
     const [url] = fetchMock.mock.calls[0];
-    expect(url).toContain("/session-facts/VCI/?date=2026-05-03");
+    // T1.4 F-10: BE reads trade_date (market_serving/views.py:35-52)
+    expect(url).toContain("/session-facts/VCI/?trade_date=2026-05-03");
   });
 
   test("getSessionFacts works without date", async () => {

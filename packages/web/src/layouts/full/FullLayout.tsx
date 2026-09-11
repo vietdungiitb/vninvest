@@ -43,7 +43,7 @@ export function FullLayout() {
 
   return e(
     'div',
-    { className: 'min-h-screen bg-slate-950 text-slate-100 font-sans flex relative overflow-hidden' },
+    { className: 'min-h-screen bg-[var(--color-bg-primary)] text-slate-100 font-sans flex relative overflow-hidden' },
     // Sidebar backdrop overlay
     mobileSidebarOpen && e(
       'div',
@@ -69,7 +69,11 @@ export function FullLayout() {
       {
         className: cn(
           'flex-1 flex flex-col min-w-0 w-full transition-all duration-300',
-          newLayout ? 'lg:pl-0' : (sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-72')
+          newLayout
+            ? 'lg:pl-0'
+            : sidebarCollapsed
+              ? 'lg:pl-[var(--layout-sidebar-collapsed-width)]'
+              : 'lg:pl-[var(--layout-sidebar-width)]'
         )
       },
       // Header
@@ -82,10 +86,10 @@ export function FullLayout() {
       e(
         'main',
         {
-          className: 'flex-1 p-6 overflow-auto',
+          className: 'flex-1 p-[var(--sp-6,1.5rem)] overflow-auto',
           role: 'main'
         },
-        e('div', { className: 'max-w-7xl mx-auto' }, e(Outlet))
+        e('div', { className: 'max-w-[var(--layout-content-max-width,80rem)] mx-auto' }, e(Outlet))
       )
     )
   );

@@ -36,7 +36,6 @@ import TenantServiceAccounts from './pages/admin/tenant/TenantServiceAccounts';
 import TenantUsage from './pages/admin/tenant/TenantUsage';
 import TenantUsageHistory from './pages/admin/tenant/TenantUsageHistory';
 import TenantAdminSSOPage from './pages/admin/tenant/TenantAdminSSOPage';
-import AICommandCenter from './pages/AICommandCenter';
 import Upgrade from './pages/Upgrade';
 import { PortfolioProvider, usePortfolio } from './context/PortfolioContext';
 import { LangProvider } from './context/LangContext';
@@ -345,10 +344,6 @@ export default function App() {
                     element={(
                       packageShellHostEnabled ? <SettingsShellHost /> : <UserConfig />
                     )}
-                  />
-                  <Route
-                    path="settings/ai"
-                    element={<AICommandCenter />}
                   />
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />

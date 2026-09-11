@@ -622,14 +622,14 @@ export default function WhaleBubbleChart({
     if (selectedSymbol && selectedSymbol !== symbol && availableSymbols.includes(selectedSymbol)) {
       setSymbol(selectedSymbol);
     }
-  }, [availableSymbols, selectedSymbol, symbol]);
+  }, [availableSymbols, selectedSymbol, symbol, setSymbol]);
 
   // Auto-select first symbol if not already selected
   useEffect(() => {
     if ((!symbol || !availableSymbols.includes(symbol)) && availableSymbols.length > 0) {
       setSymbol(availableSymbols[0]);
     }
-  }, [availableSymbols, symbol]);
+  }, [availableSymbols, symbol, setSymbol]);
 
   // Fetch whale orders function - only if not controlled
   const fetchOrders = useCallback(async () => {
@@ -664,11 +664,15 @@ export default function WhaleBubbleChart({
   }, [fetchOrders, isControlled]);
 
   // Convert order data to bubble coordinates
-  const bubbles = useOrderBubbleCoordinates(
+  const rawBubbles = useOrderBubbleCoordinates(
     orderData ? [...(orderData.orders?.buy || []), ...(orderData.orders?.sell || []), ...(orderData.orders?.internal || [])] : [],
     orderData?.ref_price,
     orderData?.session_start
-  ) || { buy: [], sell: [], internal: [] };
+  );
+  const bubbles = useMemo(
+    () => rawBubbles || { buy: [], sell: [], internal: [] },
+    [rawBubbles]
+  );
 
   const totalOrders = orderData?.summary?.total_orders || 0;
   const visibleBubbleGroups = useMemo(() => {
@@ -1270,7 +1274,7 @@ export default function WhaleBubbleChart({
         },
       ],
     };
-  }, [orderData, bubbles, visibleBubbleGroups, showUnit, t, timeframeWindow, flowCvdPosSeries, flowCvdNegSeries, flowStrengthSeries, buyStrengthByTimestamp, institutionalStrengthByTimestamp, priceByTimestamp, priceLineSeries, flowBuyStrengthSeries, tooltipFormatter]);
+  }, [orderData, bubbles, visibleBubbleGroups, showUnit, t, timeframeWindow, flowCvdSeries, priceContextSeries, flowCvdPosSeries, flowCvdNegSeries, flowStrengthSeries, priceLineSeries, flowBuyStrengthSeries, tooltipFormatter]);
 
   // Handle sync events from chart to parent
   const onEvents = useMemo(() => ({

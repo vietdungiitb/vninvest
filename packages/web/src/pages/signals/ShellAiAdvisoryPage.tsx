@@ -1,3 +1,4 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import {
   useEffect,
   useRef,
@@ -28,7 +29,7 @@ import {
   useCoreShellPageSnapshot,
 } from "../coreShellPageHelpers.js";
 
-const SIGNAL_ROUTE_IDS = ["ai-advisory", "whale-alerts"];
+const SIGNAL_ROUTE_IDS = ["ai-advisory", "alert-center"];
 
 function normalizeAdvisorySymbol(value: unknown): string {
   return String(value || "").trim().toUpperCase();
@@ -316,8 +317,8 @@ export function ShellAiAdvisoryPage({
       title="Trung tâm AI advisory và tín hiệu"
       description="Trang này xác nhận lane AI advisory của core shell đã có route-level page thật, bám đúng signals routes, advisory ability và bootstrap session mà chỉ cần chỉnh rất hẹp ở bootstrap contract hiện có."
       badge={(
-        <div className="shellPage__heroBadge">
-          <span className="shellPage__statusDot" />
+        <div className={`${styles.heroBadge}`}>
+          <span className={`${styles.statusDot}`} />
           {viewState.loading ? "Đang đồng bộ lane AI advisory" : "Lane AI advisory sẵn sàng cho kiểm tra"}
         </div>
       )}
@@ -325,14 +326,14 @@ export function ShellAiAdvisoryPage({
       notice={viewState.notice}
       error={viewState.error}
     >
-      <section className="shellPage__bodyGrid">
-        <div className="shellPage__stack">
+      <section className={`${styles.bodyGrid}`}>
+        <div className={`${styles.stack}`}>
           <ShellPanel
             title="Snapshot operator và runtime"
             subtitle="Đọc nhanh session, runtime health và build meta trước khi nối advisory experience thật vào signals shell này."
             actions={renderRefreshAction({ onClick: handleRefreshAll, disabled: viewState.loading || advisoryState.loading })}
           >
-            <section className="shellPage__summaryGrid">{summaryCards}</section>
+            <section className={`${styles.summaryGrid}`}>{summaryCards}</section>
           </ShellPanel>
 
           <ShellPanel
@@ -340,11 +341,11 @@ export function ShellAiAdvisoryPage({
             subtitle="Kiểm tra group `signals` cùng route `ai-advisory` đã được runtime mở đúng theo bootstrap hiện tại hay chưa."
           >
             <div key="ai-advisory-groups">
-              <h3 className="shellPage__itemTitle">Visible groups</h3>
+              <h3 className={`${styles.itemTitle}`}>Visible groups</h3>
               {renderFlagList(groupFlags, "Session hiện chưa mở group điều hướng nào.", "ai-advisory-groups")}
             </div>
             <div key="ai-advisory-routes">
-              <h3 className="shellPage__itemTitle">Signals routes</h3>
+              <h3 className={`${styles.itemTitle}`}>Signals routes</h3>
               {renderFlagList(routeFlags, "Runtime hiện chưa expose route advisory nào cho session này.", "ai-advisory-routes")}
             </div>
           </ShellPanel>
@@ -355,8 +356,8 @@ export function ShellAiAdvisoryPage({
           subtitle="Giữ cùng một viewport cho auditor đọc signal reach, advisory session thật, benchmark aggregate và ability map của lane AI advisory."
           actions={renderHealthStatusPill(health)}
         >
-          <form className="shellPage__form" key="ai-advisory-symbol-form" onSubmit={handleAdvisorySymbolSubmit}>
-            <div className="shellPage__formGrid">
+          <form className={`${styles.form}`} key="ai-advisory-symbol-form" onSubmit={handleAdvisorySymbolSubmit}>
+            <div className={`${styles.formGrid}`}>
               {renderShellField({
                 label: "Mã advisory",
                 name: "ai-advisory-symbol",
@@ -366,8 +367,8 @@ export function ShellAiAdvisoryPage({
                 autoComplete: "off",
               })}
             </div>
-            <div className="shellPage__actions">
-              <button type="submit" className="shellPage__button shellPage__button--primary" disabled={advisoryState.loading || !advisorySymbolDraft}>
+            <div className={`${styles.actions}`}>
+              <button type="submit" className={`${styles.button} ${styles.buttonPrimary}`} disabled={advisoryState.loading || !advisorySymbolDraft}>
                 Đổi mã advisory
               </button>
             </div>
@@ -380,24 +381,24 @@ export function ShellAiAdvisoryPage({
           })}
 
           {advisoryState.error ? (
-            <div className="shellPage__empty" key="ai-advisory-runtime-error">{advisoryState.error}</div>
+            <div className={`${styles.empty}`} key="ai-advisory-runtime-error">{advisoryState.error}</div>
           ) : null}
           {advisoryState.loading && !advisoryState.data ? (
-            <div className="shellPage__empty" key="ai-advisory-runtime-loading">Đang nạp advisory session thật từ stock workspace runtime.</div>
+            <div className={`${styles.empty}`} key="ai-advisory-runtime-loading">Đang nạp advisory session thật từ stock workspace runtime.</div>
           ) : null}
 
           {renderBuildMetaCard({ key: "ai-advisory-build-meta", buildMeta })}
 
           <div key="ai-advisory-signal-routes">
-            <h3 className="shellPage__itemTitle">Signals routes</h3>
+            <h3 className={`${styles.itemTitle}`}>Signals routes</h3>
             {renderValueList(signalRoutes, "Runtime hiện chưa mở route signals nào.", "ai-advisory-signal-routes")}
           </div>
           <div key="ai-advisory-surfaces">
-            <h3 className="shellPage__itemTitle">Enabled surfaces</h3>
+            <h3 className={`${styles.itemTitle}`}>Enabled surfaces</h3>
             {renderValueList(enabledSurfaces, "Runtime chưa bật surface flag nào.", "ai-advisory-surfaces")}
           </div>
           <div key="ai-advisory-benchmarks">
-            <h3 className="shellPage__itemTitle">Advisory benchmarks</h3>
+            <h3 className={`${styles.itemTitle}`}>Advisory benchmarks</h3>
             {renderValueList(benchmarkItems, "Advisory session hiện chưa trả benchmark aggregate nào.", "ai-advisory-benchmarks")}
           </div>
 
@@ -407,10 +408,10 @@ export function ShellAiAdvisoryPage({
             keyPrefix: "ai-advisory-ability",
           })}
 
-          <article className="shellPage__surfaceCard" key="ai-advisory-summary-card">
-            <h3 className="shellPage__itemTitle">Signals summary</h3>
-            <p className="shellPage__itemMeta">Signals routes visible: {signalRoutes.length}</p>
-            <p className="shellPage__itemMeta">Advisory routes active: {countFlagsByState(routeFlags, "ACTIVE")}</p>
+          <article className={`${styles.surfaceCard}`} key="ai-advisory-summary-card">
+            <h3 className={`${styles.itemTitle}`}>Signals summary</h3>
+            <p className={`${styles.itemMeta}`}>Signals routes visible: {signalRoutes.length}</p>
+            <p className={`${styles.itemMeta}`}>Advisory routes active: {countFlagsByState(routeFlags, "ACTIVE")}</p>
           </article>
         </ShellPanel>
       </section>

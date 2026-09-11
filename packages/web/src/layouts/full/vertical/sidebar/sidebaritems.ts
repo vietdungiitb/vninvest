@@ -44,6 +44,9 @@ export const sidebarItems: NavGroup[] = [
       { labelKey: 'layout.nav.adminCrawlControl', path: '/admin-crawl-control', icon: 'RefreshCw' },
       { labelKey: 'layout.nav.alertCenter', path: '/alert-center', icon: 'Bell' },
       { labelKey: 'layout.nav.tenantAdmin', path: '/tenant-admin', icon: 'Building2' },
+      ...(import.meta.env.VITE_FEATURE_ADVERTISING_ADMIN !== 'false'
+        ? [{ labelKey: 'layout.nav.advertisingAdmin', path: '/admin/advertising', icon: 'Megaphone' }]
+        : []),
     ],
   },
 ];

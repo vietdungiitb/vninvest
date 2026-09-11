@@ -62,6 +62,7 @@ def _tenant_payload(tenant: CoreTenant) -> dict:
         'tenant_code': tenant.tenant_code,
         'display_name': tenant.display_name,
         'plan': tenant.plan,
+        'max_active_pats': tenant.max_active_pats,
         'status': tenant.status,
         'features': list(tenant.features or []),
     }
@@ -119,6 +120,18 @@ def _build_abilities(user, tenant: CoreTenant) -> list:
         {'action': 'remove', 'subject': 'TenantMemberAdmin'},
         {'action': 'manage', 'subject': 'TenantServiceAccountAdmin'},
         {'action': 'manage', 'subject': 'TenantPATAdmin'},
+        {'action': 'read', 'subject': 'TenantWebhookView'},
+        {'action': 'manage', 'subject': 'TenantWebhookView'},
+        {'action': 'read', 'subject': 'TenantSecurityView'},
+        {'action': 'manage', 'subject': 'TenantSecurityView'},
+        {'action': 'read', 'subject': 'TenantAuditAdmin'},
+        {'action': 'manage', 'subject': 'TenantAuditAdmin'},
+        {'action': 'read', 'subject': 'TenantSSOAdmin'},
+        {'action': 'manage', 'subject': 'TenantSSOAdmin'},
+        {'action': 'read', 'subject': 'TenantReportsView'},
+        {'action': 'manage', 'subject': 'TenantReportsView'},
+        {'action': 'read', 'subject': 'TenantRoleAdmin'},
+        {'action': 'manage', 'subject': 'TenantRoleAdmin'},
     ]
 
     _paid_plans = {
@@ -148,6 +161,15 @@ def _build_abilities(user, tenant: CoreTenant) -> list:
             {'action': 'read', 'subject': 'CoreAuditTrace'},
         ])
 
+        # Advertising admin — gated behind the ADVERTISING_ADMIN_ENABLED flag
+        # for gradual rollout.
+        if getattr(settings, 'ADVERTISING_ADMIN_ENABLED', True):
+            abilities.extend([
+                {'action': 'read', 'subject': 'Advertising'},
+                {'action': 'manage', 'subject': 'AdCampaign'},
+                {'action': 'update', 'subject': 'TrademarkConfig'},
+            ])
+
     if _build_target() == 'vip':
         abilities.append({'action': 'read', 'subject': 'vip.local_control.read'})
 
@@ -164,6 +186,8 @@ def _build_navigation(user, tenant: CoreTenant) -> dict:
     if user.is_staff or user.is_superuser:
         groups.append('admin')
         routes.extend(['operations-center', 'operations-center-mail-config', 'ai-command-center'])
+        if getattr(settings, 'ADVERTISING_ADMIN_ENABLED', True):
+            routes.append('advertising-admin')
 
     if _build_target() == 'vip':
         groups.append('vip-local')
@@ -234,12 +258,19 @@ def _build_capabilities_payload(user, tenant: CoreTenant, service_account=None) 
 
 def _build_auth_payload(user, tenant: CoreTenant, service_account, credential, raw_secret: str) -> dict:
     capabilities = _build_capabilities_payload(user, tenant, service_account)
+    active_pat_count = CorePATCredential.objects.filter(
+        service_account__tenant=tenant,
+        status=CorePATCredential.StatusChoices.ACTIVE,
+        expires_at__gt=timezone.now(),
+    ).count()
     return {
         'access': raw_secret,
         'refresh': raw_secret,
         'token': raw_secret,
         'token_prefix': credential.token_prefix if credential else raw_secret[:12],
         'plan': tenant.plan,
+        'active_pat_count': active_pat_count,
+        'max_active_pats': tenant.max_active_pats,
         'user': _user_payload(user),
         'tenant': _tenant_payload(tenant),
         'abilities': capabilities['abilities'],

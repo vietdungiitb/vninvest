@@ -53,6 +53,31 @@ STRICT_FRESH_MODE_QUEUE_TIERS = {
 }
 
 
+try:
+    from httpx import get as _httpx_get, ConnectError, TimeoutException
+except ImportError:
+    _httpx_get = None
+    ConnectError = ConnectionError
+    TimeoutException = TimeoutError
+
+
+CONSECUTIVE_FAILURE_COUNTER: dict[str, int] = {}
+PROBE_TIMEOUT_SECONDS = 8
+
+
+def _get_service_endpoint(service: ServiceDefinition) -> str | None:
+    """Resolve the external endpoint for a service based on its domain/service_key."""
+    domain_endpoint_map = {
+        'vnbroker': None,
+        'prefetch': None,
+        'dataops': None,
+        'signals': None,
+        'screener': None,
+        'matrix': None,
+    }
+    return domain_endpoint_map.get(service.domain)
+
+
 def _probe_service_health(service: ServiceDefinition) -> dict:
     started = perf_counter()
     detail = {
@@ -60,6 +85,8 @@ def _probe_service_health(service: ServiceDefinition) -> dict:
         'domain': service.domain,
         'service_key': service.service_key,
     }
+
+    degraded_reasons: list[str] = []
 
     if service.domain == 'signals':
         detail['active_alerts'] = UnifiedAlert.objects.count()
@@ -69,8 +96,43 @@ def _probe_service_health(service: ServiceDefinition) -> dict:
     else:
         detail['has_current_config'] = ServiceConfig.objects.filter(service=service, is_current=True).exists()
 
+    endpoint = _get_service_endpoint(service)
+    if endpoint:
+        try:
+            if _httpx_get is not None:
+                resp = _httpx_get(endpoint, timeout=PROBE_TIMEOUT_SECONDS)
+                detail['endpoint_status'] = resp.status_code
+                if resp.status_code >= 500:
+                    degraded_reasons.append(f'endpoint returned {resp.status_code}')
+            else:
+                detail['endpoint_status'] = 'skipped-no-httpx'
+        except (ConnectError, TimeoutException):
+            detail['endpoint_status'] = 'unreachable'
+            degraded_reasons.append('endpoint unreachable')
+        except Exception as exc:
+            detail['endpoint_status'] = f'error: {exc}'
+            degraded_reasons.append(f'endpoint probe error: {exc}')
+
+    detail['degraded_reasons'] = degraded_reasons
+
+    service_key = service.service_key
+    if degraded_reasons:
+        CONSECUTIVE_FAILURE_COUNTER[service_key] = CONSECUTIVE_FAILURE_COUNTER.get(service_key, 0) + 1
+    else:
+        CONSECUTIVE_FAILURE_COUNTER.pop(service_key, None)
+
+    consecutive = CONSECUTIVE_FAILURE_COUNTER.get(service_key, 0)
+    detail['consecutive_failures'] = consecutive
+
+    if consecutive >= 3:
+        status = 'unhealthy'
+    elif consecutive >= 1:
+        status = 'degraded'
+    else:
+        status = 'healthy'
+
     return {
-        'status': 'healthy',
+        'status': status,
         'detail': detail,
         'response_ms': round((perf_counter() - started) * 1000.0, 2),
     }

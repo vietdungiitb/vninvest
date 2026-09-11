@@ -1,336 +1,5 @@
-import { createElement } from "react";
-
-export const SHELL_PAGE_TEMPLATE_STYLES = `
-.shellPage {
-  --shell-ink: #f1f5f9;
-  --shell-muted: #94a3b8;
-  --shell-accent: #00b4d8;
-  --shell-accent-soft: rgba(0, 180, 216, 0.15);
-  --shell-signal: #ff7f50;
-  --shell-signal-soft: rgba(255, 127, 80, 0.15);
-  --shell-border: rgba(255, 255, 255, 0.08);
-  --shell-surface: rgba(15, 23, 42, 0.65);
-  --shell-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-  background:
-    radial-gradient(circle at top right, rgba(0, 180, 216, 0.12), transparent 45%),
-    radial-gradient(circle at left center, rgba(255, 127, 80, 0.04), transparent 45%),
-    linear-gradient(160deg, #0b0f19 0%, #111827 50%, #070a13 100%);
-  color: var(--shell-ink);
-  font-family: "Segoe UI", "Arial", sans-serif;
-  padding: 28px;
-  border-radius: 28px;
-  box-shadow: var(--shell-shadow);
-}
-
-.shellPage__hero {
-  display: grid;
-  gap: 12px;
-  margin-bottom: 22px;
-}
-
-.shellPage__eyebrow {
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--shell-accent);
-}
-
-.shellPage__titleRow {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: space-between;
-}
-
-.shellPage__title {
-  margin: 0;
-  font-size: 34px;
-  line-height: 1.05;
-}
-
-.shellPage__description {
-  margin: 0;
-  max-width: 720px;
-  color: var(--shell-muted);
-  font-size: 15px;
-  line-height: 1.65;
-}
-
-.shellPage__heroBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid var(--shell-border);
-  color: var(--shell-muted);
-  font-weight: 600;
-}
-
-.shellPage__statusDot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: var(--shell-signal);
-  box-shadow: 0 0 0 6px rgba(255, 127, 80, 0.16);
-}
-
-.shellPage__metrics {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 22px;
-}
-
-.shellPage__metric {
-  background: rgba(15, 23, 42, 0.5);
-  border: 1px solid var(--shell-border);
-  border-radius: 20px;
-  padding: 16px 18px;
-  backdrop-filter: blur(8px);
-}
-
-.shellPage__metricLabel {
-  display: block;
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--shell-muted);
-  margin-bottom: 10px;
-}
-
-.shellPage__metricValue {
-  font-size: 21px;
-  font-weight: 700;
-}
-
-.shellPage__banner {
-  border-radius: 18px;
-  padding: 14px 16px;
-  margin-bottom: 18px;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.shellPage__banner--notice {
-  background: var(--shell-accent-soft);
-  color: var(--shell-accent);
-  border: 1px solid rgba(0, 180, 216, 0.22);
-}
-
-.shellPage__banner--error {
-  background: var(--shell-signal-soft);
-  color: #ff9e7d;
-  border: 1px solid rgba(255, 127, 80, 0.22);
-}
-
-.shellPage__bodyGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-  gap: 18px;
-}
-
-.shellPage__stack {
-  display: grid;
-  gap: 18px;
-}
-
-.shellPage__panel {
-  background: var(--shell-surface);
-  border: 1px solid var(--shell-border);
-  border-radius: 24px;
-  padding: 20px;
-  backdrop-filter: blur(12px);
-}
-
-.shellPage__panelHeader {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-
-.shellPage__panelTitle {
-  margin: 0 0 6px;
-  font-size: 21px;
-}
-
-.shellPage__panelSubtitle {
-  margin: 0;
-  color: var(--shell-muted);
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.shellPage__actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.shellPage__button {
-  border: 0;
-  border-radius: 14px;
-  padding: 12px 14px;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, background 0.2s ease;
-}
-
-.shellPage__button:hover {
-  transform: translateY(-1px);
-}
-
-.shellPage__button:disabled {
-  cursor: wait;
-  opacity: 0.68;
-  transform: none;
-}
-
-.shellPage__button--primary {
-  background: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
-  color: #fff;
-  box-shadow: 0 8px 24px rgba(0, 180, 216, 0.25);
-}
-
-.shellPage__button--secondary {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--shell-ink);
-  border: 1px solid var(--shell-border);
-}
-
-.shellPage__button--secondary:hover {
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.shellPage__button--signal {
-  background: linear-gradient(135deg, #ff7f50 0%, #ffb347 100%);
-  color: #fff;
-  box-shadow: 0 8px 24px rgba(255, 127, 80, 0.25);
-}
-
-.shellPage__form {
-  display: grid;
-  gap: 14px;
-}
-
-.shellPage__formGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.shellPage__field {
-  display: grid;
-  gap: 8px;
-}
-
-.shellPage__fieldLabel {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--shell-muted);
-}
-
-.shellPage__input,
-.shellPage__select {
-  width: 100%;
-  border-radius: 14px;
-  border: 1px solid var(--shell-border);
-  background: rgba(15, 23, 42, 0.6);
-  padding: 12px 14px;
-  font-size: 14px;
-  color: var(--shell-ink);
-  box-sizing: border-box;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.shellPage__input:focus,
-.shellPage__select:focus {
-  outline: none;
-  border-color: var(--shell-accent);
-  box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.15);
-}
-
-.shellPage__summaryGrid,
-.shellPage__list {
-  display: grid;
-  gap: 12px;
-}
-
-.shellPage__summaryGrid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-bottom: 18px;
-}
-
-.shellPage__surfaceCard,
-.shellPage__listItem {
-  border-radius: 18px;
-  border: 1px solid var(--shell-border);
-  background: rgba(15, 23, 42, 0.45);
-  padding: 14px 16px;
-  backdrop-filter: blur(8px);
-}
-
-.shellPage__listItemHeader {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
-}
-
-.shellPage__itemTitle {
-  margin: 0;
-  font-size: 16px;
-}
-
-.shellPage__itemMeta {
-  margin: 0;
-  color: var(--shell-muted);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.shellPage__pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: var(--shell-accent-soft);
-  color: var(--shell-accent);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.shellPage__empty {
-  border-radius: 18px;
-  border: 1px dashed var(--shell-border);
-  padding: 18px;
-  color: var(--shell-muted);
-  background: rgba(15, 23, 42, 0.3);
-}
-
-@media (max-width: 980px) {
-  .shellPage {
-    padding: 22px;
-  }
-
-  .shellPage__metrics,
-  .shellPage__bodyGrid,
-  .shellPage__summaryGrid,
-  .shellPage__formGrid {
-    grid-template-columns: 1fr;
-  }
-}
-`;
+import { createElement, useId } from "react";
+import styles from "./ShellPageTemplate.module.css";
 
 function renderElement(type, props, ...children) {
   return createElement(type, props, ...children);
@@ -343,26 +12,28 @@ function joinClassNames(...values) {
 export function ShellMetric({ label, value }) {
   return renderElement(
     "article",
-    { className: "shellPage__metric" },
-    renderElement("span", { className: "shellPage__metricLabel" }, label),
-    renderElement("strong", { className: "shellPage__metricValue" }, value),
+    { className: styles.metric },
+    renderElement("span", { className: styles.metricLabel }, label),
+    renderElement("strong", { className: styles.metricValue }, value),
   );
 }
 
 export function ShellField({ label, name, type = "text", value, onChange, placeholder, autoComplete, fieldKey }) {
   return renderElement(
     "label",
-    { className: "shellPage__field", htmlFor: name, key: fieldKey || name },
-    renderElement("span", { className: "shellPage__fieldLabel" }, label),
+    { className: styles.field, htmlFor: name, key: fieldKey || name },
+    renderElement("span", { className: styles.fieldLabel }, label),
     renderElement("input", {
       id: name,
       name,
       type,
-      className: "shellPage__input",
+      className: styles.input,
       value,
       onChange,
       placeholder,
       autoComplete,
+      onClick: type === "date" ? (e) => { try { e.target.showPicker(); } catch {} } : undefined,
+      onFocus: type === "date" ? (e) => { try { e.target.showPicker(); } catch {} } : undefined,
     }),
   );
 }
@@ -370,14 +41,14 @@ export function ShellField({ label, name, type = "text", value, onChange, placeh
 export function ShellSelectField({ label, name, value, options, onChange, fieldKey }) {
   return renderElement(
     "label",
-    { className: "shellPage__field", htmlFor: name, key: fieldKey || name },
-    renderElement("span", { className: "shellPage__fieldLabel" }, label),
+    { className: styles.field, htmlFor: name, key: fieldKey || name },
+    renderElement("span", { className: styles.fieldLabel }, label),
     renderElement(
       "select",
       {
         id: name,
         name,
-        className: "shellPage__select",
+        className: styles.select,
         value,
         onChange,
       },
@@ -395,16 +66,16 @@ export function ShellSelectField({ label, name, value, options, onChange, fieldK
 export function ShellPanel({ title, subtitle, actions = null, children, className = "", as = "article" }) {
   return renderElement(
     as,
-    { className: joinClassNames("shellPage__panel", className) },
+    { className: joinClassNames(styles.panel, className) },
     title || subtitle || actions
       ? renderElement(
           "div",
-          { className: "shellPage__panelHeader" },
+          { className: styles.panelHeader },
           renderElement(
             "div",
             null,
-            title ? renderElement("h2", { className: "shellPage__panelTitle" }, title) : null,
-            subtitle ? renderElement("p", { className: "shellPage__panelSubtitle" }, subtitle) : null,
+            title ? renderElement("h2", { className: styles.panelTitle }, title) : null,
+            subtitle ? renderElement("p", { className: styles.panelSubtitle }, subtitle) : null,
           ),
           actions,
         )
@@ -423,33 +94,40 @@ export function ShellPageChrome({
   error = "",
   children,
   className = "",
+  id,
 }) {
+  const autoId = useId();
+  const resolvedId = id || `shell-${autoId.replace(/:/g, "")}`;
+  const titleId = `${resolvedId}-title`;
   return renderElement(
-    "main",
-    { className: joinClassNames("shellPage", className) },
-    renderElement("style", null, SHELL_PAGE_TEMPLATE_STYLES),
+    "div",
+    {
+      className: joinClassNames(styles.shellPage, className),
+      role: "region",
+      "aria-labelledby": titleId,
+    },
     renderElement(
       "header",
-      { className: "shellPage__hero" },
-      eyebrow ? renderElement("span", { className: "shellPage__eyebrow" }, eyebrow) : null,
+      { className: styles.hero },
+      eyebrow ? renderElement("span", { className: styles.eyebrow }, eyebrow) : null,
       renderElement(
         "div",
-        { className: "shellPage__titleRow" },
+        { className: styles.titleRow },
         renderElement(
           "div",
           null,
-          renderElement("h1", { className: "shellPage__title" }, title),
-          description ? renderElement("p", { className: "shellPage__description" }, description) : null,
+          renderElement("h1", { id: titleId, className: styles.title }, title),
+          description ? renderElement("p", { className: styles.description }, description) : null,
         ),
         badge,
       ),
     ),
-    metrics.length > 0 ? renderElement("section", { className: "shellPage__metrics" }, metrics) : null,
+    metrics.length > 0 ? renderElement("section", { className: styles.metrics }, metrics) : null,
     notice
       ? renderElement(
           "div",
           {
-            className: "shellPage__banner shellPage__banner--notice",
+            className: `${styles.banner} ${styles.bannerNotice}`,
             role: "status",
             "aria-live": "polite",
           },
@@ -460,7 +138,7 @@ export function ShellPageChrome({
       ? renderElement(
           "div",
           {
-            className: "shellPage__banner shellPage__banner--error",
+            className: `${styles.banner} ${styles.bannerError}`,
             role: "alert",
           },
           error,
@@ -481,6 +159,36 @@ export function renderShellField(props) {
 
 export function renderShellSelectField(props) {
   return renderElement(ShellSelectField, props);
+}
+
+export function ShellEmptyState({ icon = null, title, description, ctaLabel, ctaOnClick, children }) {
+  return renderElement(
+    "div",
+    { className: styles.empty, style: { textAlign: "center", padding: "32px 18px" } },
+    icon || renderElement(
+      "svg",
+      {
+        width: 48, height: 48, viewBox: "0 0 48 48", fill: "none",
+        style: { margin: "0 auto 16px", opacity: 0.4, display: "block" },
+      },
+      renderElement("rect", { x: 8, y: 12, width: 32, height: 24, rx: 4, stroke: "var(--text-secondary)", strokeWidth: 2, fill: "none" }),
+      renderElement("path", { d: "M16 20h16M16 26h12M16 32h8", stroke: "var(--text-secondary)", strokeWidth: 2, strokeLinecap: "round" }),
+    ),
+    title ? renderElement("p", { style: { fontWeight: 700, marginBottom: 6, color: "var(--text-primary)" } }, title) : null,
+    description ? renderElement("p", { style: { fontSize: 13, color: "var(--text-secondary)", marginBottom: ctaLabel ? 16 : 0 } }, description) : null,
+    ctaLabel
+      ? renderElement(
+        "button",
+        {
+          className: styles.button,
+          onClick: ctaOnClick,
+          style: { padding: "8px 20px", fontSize: 13, fontWeight: 600 },
+        },
+        ctaLabel,
+      )
+      : null,
+    children,
+  );
 }
 
 export function renderShellPanel(props) {

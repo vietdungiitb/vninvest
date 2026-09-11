@@ -22,8 +22,6 @@ export default defineConfig({
       '@hooks': path.resolve(__dirname, 'src/hooks'),
       '@pages': path.resolve(__dirname, 'src/pages'),
       '@types': path.resolve(__dirname, 'src/types'),
-      '@vninvestcharts/vn-kline-engine-core': path.resolve(__dirname, 'src/components/vninvestcharts/packages/vn-kline-engine-core/src/index.js'),
-      '@vninvestcharts/vn-kline-engine-react': path.resolve(__dirname, 'src/components/vninvestcharts/packages/vn-kline-engine-react/src/index.js'),
     },
   },
   server: {

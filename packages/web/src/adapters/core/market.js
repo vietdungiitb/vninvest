@@ -36,7 +36,8 @@ export function createMarketClient({ coreGet, corePost }) {
      */
     getSessionFacts(symbol, date) {
       if (!symbol) throw new Error("symbol is required for getSessionFacts");
-      const query = date ? `?date=${encodeURIComponent(date)}` : "";
+      // T1.4 F-10: BE reads `trade_date` (market_serving/views.py:35-52), not `date`
+      const query = date ? `?trade_date=${encodeURIComponent(date)}` : "";
       return coreGet(
         `/session-facts/${encodeURIComponent(symbol.toUpperCase())}/${query}`
       );
@@ -170,26 +171,6 @@ export function createMarketClient({ coreGet, corePost }) {
     },
 
     /**
-     * Get WhaleAlertCanonical feed for a symbol.
-     * Response includes cursor-pagination 
-ext`/`previous` links.
-     * @param {string} symbol
-     * @param {object} [params] - Additional filters: session_date, cursor
-     * @returns {Promise<{results: object[], next: string|null, previous: string|null}>}
-     */
-    getWhaleFeedAggregate(symbol, params = {}) {
-      if (!symbol) throw new Error("symbol is required for getWhaleFeedAggregate");
-      const query = new URLSearchParams(
-        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
-      ).toString();
-      return coreGet(
-        `/whale-feed-aggregate/${encodeURIComponent(symbol.toUpperCase())}/${
-          query ? `?${query}` : ""
-        }`
-      );
-    },
-
-    /**
      * List available symbols (with optional exchange/industry filter).
      * @param {object} [params] - exchange, industry, status, cursor
      * @returns {Promise<{results: object[], next: string|null}>}
@@ -300,7 +281,10 @@ ext`/`previous` links.
       ).toString();
       return coreGet(
         `/session-facts/${encodeURIComponent(symbol.toUpperCase())}/cvd${query ? `?${query}` : ""}`
-      );
+      ).catch((err) => {
+        if (err && err.status === 404) return null;
+        throw err;
+      });
     },
 
     /**
@@ -414,7 +398,12 @@ ext`/`previous` links.
     getAdvisoryLatest(symbol, date) {
       if (!symbol) throw new Error("symbol is required for getAdvisoryLatest");
       const query = date ? `?date=${encodeURIComponent(date)}` : "";
-      return coreGet(`/advisory/latest/${encodeURIComponent(symbol.toUpperCase())}/${query}`);
+      return coreGet(`/advisory/latest/${encodeURIComponent(symbol.toUpperCase())}/${query}`).catch(
+        (err) => {
+          if (err && err.status === 404) return null;
+          throw err;
+        }
+      );
     },
 
     /**
@@ -444,7 +433,10 @@ ext`/`previous` links.
       ).toString();
       return coreGet(
         `/advisory/history/${encodeURIComponent(symbol.toUpperCase())}/${query ? `?${query}` : ""}`
-      );
+      ).catch((err) => {
+        if (err && err.status === 404) return { results: [], next: null, previous: null };
+        throw err;
+      });
     },
 
     /**

@@ -1,10 +1,24 @@
 import "./StockDetailPage.css";
-import { createElement, useCallback, useState, useMemo } from "react";
+import { createElement, useCallback, useState, useMemo, useEffect } from "react";
+import { useParams } from "react-router-dom";
 
 import { useStockDetailPageModel } from "../features/stock-detail/hooks/useStockDetailPageModel.js";
+import { createCoreApiAdapter } from "../adapters/coreApiAdapter.js";
+import { useI18n } from "../context/LangContext.js";
+
+// T2.1: singleton adapter (F-15)
+let _pageCachedAdapter: any = null;
+let _pageCachedEnv: any = null;
+function getPageAdapter(env: any) {
+  if (_pageCachedAdapter && _pageCachedEnv === env) return _pageCachedAdapter;
+  _pageCachedAdapter = createCoreApiAdapter({ env: env as Record<string, string> });
+  _pageCachedEnv = env;
+  return _pageCachedAdapter;
+}
 import { StockDetailHeader } from "../features/stock-detail/components/StockDetailHeader.js";
 import { StockSessionWitness } from "../features/stock-detail/components/StockSessionWitness.js";
 import VNStockChartPanel from "../components/VNStockChartPanel.js";
+import { PageErrorBoundary } from "../components/PageErrorBoundary.js";
 import WhaleBubbleChart from "../components/WhaleBubbleChart.jsx";
 import { StockDetailTabs } from "../features/stock-detail/components/StockDetailTabs.js";
 import { WorkstationLayout, StockOrderBookWidget, StockExecutionLogWidget } from "../components/workstation/index.js";
@@ -36,18 +50,16 @@ interface StockDetailPageProps {
   className?: string;
 }
 
-export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }: StockDetailPageProps) {
+export function StockDetailPage({ env = DEFAULT_ENV, symbol: propSymbol, className = "" }: StockDetailPageProps) {
+  const { symbol: routeSymbol } = useParams<{ symbol: string }>();
+  const { t } = useI18n();
+  const symbol = propSymbol || routeSymbol || "";
   const [isWatched, setIsWatched] = useState(false);
+  const [defaultWatchlistId, setDefaultWatchlistId] = useState<number | string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [promptConfig, setPromptConfig] = useState<PromptConfig>(() => {
-    try {
-      const stored = localStorage.getItem(`ai_advisory_prompt_config:${symbol}`);
-      if (stored) return JSON.parse(stored);
-    } catch {
-      // ignore
-    }
-    return {
+    const fallback: PromptConfig = {
       version: 2,
       sources: {
         whale: { enabled: true, lookback: 30 },
@@ -60,6 +72,24 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }: S
         sector: { enabled: true, lookback: 20 }
       }
     };
+    try {
+      const stored = localStorage.getItem(`ai_advisory_prompt_config:${symbol}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (
+          parsed &&
+          typeof parsed === "object" &&
+          typeof parsed.version === "number" &&
+          parsed.sources &&
+          typeof parsed.sources === "object"
+        ) {
+          return parsed as PromptConfig;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return fallback;
   });
 
   const showToast = useCallback((message: string) => {
@@ -88,6 +118,8 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }: S
     advisory,
     advisoryFallbackFlags,
     whaleFeed,
+    whaleFeedMeta,
+    loadMoreWhaleFeed,
     news,
     financials,
     loadingNews,
@@ -95,7 +127,8 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }: S
     activeTab,
     setActiveTab,
     loadingProfile,
-    refreshAdvisoryData
+    refreshAdvisoryData,
+    loadBlocking
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } = useStockDetailPageModel({ env, initialSymbol: symbol } as any) as any;
 
@@ -103,13 +136,60 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }: S
     setSelectedSession(session);
   }, [setSelectedSession]);
 
+  // S6: Load watchlists, resolve default, sync isWatched state.
+  useEffect(() => {
+    if (!symbol) return;
+    const adapter = getPageAdapter(env);
+    let active = true;
+    adapter
+      .getWatchlists()
+      .then((res: any) => {
+        if (!active) return;
+        const lists = res?.results ?? res ?? [];
+        const defaultList = lists[0];
+        if (!defaultList) {
+          setDefaultWatchlistId(null);
+          setIsWatched(false);
+          return;
+        }
+        setDefaultWatchlistId(defaultList.id);
+        return adapter.getWatchlistItems(defaultList.id).then((items: any) => {
+          if (!active) return;
+          const itemList = items?.results ?? items ?? [];
+          setIsWatched(itemList.some((it: any) => String(it.symbol).toUpperCase() === symbol.toUpperCase()));
+        });
+      })
+      .catch(() => {
+        if (active) {
+          setDefaultWatchlistId(null);
+          setIsWatched(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [symbol, env]);
+
   const handleVisibleRangeChange = useCallback((range: unknown) => {
     setVisibleRange(range);
   }, [setVisibleRange]);
 
   const handleWatch = useCallback(() => {
-    setIsWatched((w) => !w);
-  }, []);
+    if (!defaultWatchlistId) {
+      showToast(t("stockDetail.page.noWatchlist", { defaultValue: "Chưa có danh sách theo dõi. Vui lòng tạo trước khi thêm mã." }));
+      return;
+    }
+    const next = !isWatched;
+    setIsWatched(next);
+    const adapter = getPageAdapter(env);
+    const op = next
+      ? adapter.addWatchlistItem(defaultWatchlistId, symbol)
+      : adapter.removeWatchlistItem(defaultWatchlistId, symbol);
+    op.catch(() => {
+      setIsWatched(!next);
+      showToast(t("stockDetail.page.watchUpdateFailed", { defaultValue: "Cập nhật danh sách theo dõi thất bại." }));
+    });
+  }, [defaultWatchlistId, isWatched, symbol, env, showToast, t]);
 
   const handleConfigChange = useCallback((nextConfig: PromptConfig) => {
     setPromptConfig(nextConfig);
@@ -129,8 +209,8 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }: S
   }, []);
 
   const handleTradeTrigger = useCallback(() => {
-    showToast(`Chức năng giao dịch cho mã ${symbol} đang kết nối qua cổng bảo mật.`);
-  }, [symbol, showToast]);
+    showToast(t("stockDetail.page.tradeComingSoon", { symbol, defaultValue: `Chức năng giao dịch cho mã ${symbol} đang kết nối qua cổng bảo mật.` }));
+  }, [symbol, showToast, t]);
 
   const isFeatureEnabled = useMemo(() => {
     if (typeof window !== "undefined") {
@@ -162,7 +242,7 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }: S
         "div",
         { className: "sdp-empty-state" },
         e("div", { className: "sdp-empty-icon" }, "📊"),
-        e("p", { className: "sdp-empty-text" }, "Vui lòng chọn mã cổ phiếu để xem chi tiết.")
+        e("p", { className: "sdp-empty-text" }, t("stockDetail.page.selectSymbol"))
       )
     );
   }
@@ -181,9 +261,9 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }: S
           {
             className: "sdp-retry-btn",
             type: "button",
-            onClick: () => setSelectedSession(null),
+            onClick: () => loadBlocking(),
           },
-          "Thử lại"
+          t("stockDetail.page.retry", { defaultValue: "Thử lại" })
         )
       )
     );
@@ -206,9 +286,9 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }: S
         onTimeframeChange: setActiveTimeframe,
         onVisibleRangeChange: handleVisibleRangeChange,
         onSessionChange: handleSessionChange,
-        flowData: orderFlowData,
         orderFlowData,
         whaleSignals: whaleFeed,
+        workspaceId: `stock-${symbol}`,
       })
     ),
     e(
@@ -232,73 +312,86 @@ export function StockDetailPage({ env = DEFAULT_ENV, symbol, className = "" }: S
   );
 
   return e(
-    "div",
-    { className: `sdp-page ${className}` },
-
-    e("div", { className: "sdp-bg-glow sdp-bg-glow-1", "aria-hidden": "true" }),
-    e("div", { className: "sdp-bg-glow sdp-bg-glow-2", "aria-hidden": "true" }),
-
-    e(StockDetailHeader, {
-      symbol,
-      profile,
-      snapshot: loadingBlocking ? null : snapshot,
-      loading: loadingBlocking,
-      isWatched,
-      onWatch: handleWatch,
-      onAlertTrigger: handleAlertTrigger,
-      onTradeTrigger: handleTradeTrigger
-    }),
-
-    e(StockSessionWitness, {
-      selectedSession,
-      onClearSession: () => setSelectedSession(null),
-      loading: loadingDeferred
-    }),
-
-    isFeatureEnabled
-      ? e(WorkstationLayout, {
-          enabled: true,
-          children: {
-            left: leftColumn,
-            right: rightColumn,
-          },
-        })
-      : leftColumn,
-
-    e(StockDetailTabs, {
-      symbol,
-      activeTab,
-      setActiveTab,
-      profile,
-      loadingProfile,
-      snapshot,
-      orderFlowData,
-      whaleFeed,
-      advisory: {
-        ...((advisory || {}) as Record<string, unknown>),
-        ...((advisoryFallbackFlags || {}) as Record<string, unknown>),
+    PageErrorBoundary,
+    {
+      fallbackTitle: "Lỗi hiển thị Stock Detail",
+      errorMessage: error || undefined,
+      onRetry: () => {
+        loadBlocking();
       },
-      selectedSession,
-      loadingDeferred,
-      news,
-      loadingNews,
-      financials,
-      loadingFinancials,
-      onRefreshAdvisory: handleRefreshAdvisory,
-      onOpenConfigDrawer: () => setDrawerOpen(true)
-    }),
-
-    drawerOpen && e(AIAdvisoryPromptConfigDrawer, {
-      isOpen: drawerOpen,
-      onClose: () => setDrawerOpen(false),
-      config: promptConfig,
-      onConfigChange: handleConfigChange
-    }),
-
-    toast && e(
+    },
+    e(
       "div",
-      { className: "sdp-toast-container" },
-      e("div", { className: "sdp-toast" }, `✨ ${toast}`)
+      { className: `sdp-page ${className}` },
+
+      e("div", { className: "sdp-bg-glow sdp-bg-glow-1", "aria-hidden": "true" }),
+      e("div", { className: "sdp-bg-glow sdp-bg-glow-2", "aria-hidden": "true" }),
+
+      e(StockDetailHeader, {
+        symbol,
+        profile,
+        snapshot: loadingBlocking ? null : snapshot,
+        loading: loadingBlocking,
+        isWatched,
+        onWatch: handleWatch,
+        onAlertTrigger: handleAlertTrigger,
+        onTradeTrigger: handleTradeTrigger
+      }),
+
+      e(StockSessionWitness, {
+        selectedSession,
+        onClearSession: () => setSelectedSession(null),
+        loading: loadingDeferred
+      }),
+
+      isFeatureEnabled
+        ? e(WorkstationLayout, {
+            enabled: true,
+            children: {
+              left: leftColumn,
+              right: rightColumn,
+            },
+          })
+        : leftColumn,
+
+      e(StockDetailTabs, {
+        symbol,
+        activeTab,
+        setActiveTab,
+        profile,
+        loadingProfile,
+        snapshot,
+        orderFlowData,
+        whaleFeed,
+        whaleFeedMeta,
+        onLoadMoreWhaleFeed: loadMoreWhaleFeed,
+        advisory: {
+          ...((advisory || {}) as Record<string, unknown>),
+          ...((advisoryFallbackFlags || {}) as Record<string, unknown>),
+        },
+        selectedSession,
+        loadingDeferred,
+        news,
+        loadingNews,
+        financials,
+        loadingFinancials,
+        onRefreshAdvisory: handleRefreshAdvisory,
+        onOpenConfigDrawer: () => setDrawerOpen(true)
+      }),
+
+      drawerOpen && e(AIAdvisoryPromptConfigDrawer, {
+        isOpen: drawerOpen,
+        onClose: () => setDrawerOpen(false),
+        config: promptConfig,
+        onConfigChange: handleConfigChange
+      }),
+
+      toast && e(
+        "div",
+        { className: "sdp-toast-container" },
+        e("div", { className: "sdp-toast" }, `✨ ${toast}`)
+      )
     )
   );
 }
+

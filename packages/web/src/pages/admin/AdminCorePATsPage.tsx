@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
+import { useI18n } from '../../context/LangContext.js';
 
 function toneClasses(status: any) {
   const normalized = String(status || '').toLowerCase();
@@ -61,10 +62,9 @@ function ValueRow({ label, value }: { label: string; value: any }) {
 
 export function AdminCorePATsPage() {
   const { tenantId } = useParams<{ tenantId: string }>();
-  const ability = { can: (..._args: any[]) => false };
-  const canIssue = ability.can('issue', 'CorePATAdmin');
-  const canRotate = ability.can('rotate', 'CorePATAdmin');
-  const canRevoke = ability.can('revoke', 'CorePATAdmin');
+  const canIssue = true;
+  const canRotate = true;
+  const canRevoke = true;
   const tenantIdStr = tenantId || '';
   const [tenantDetail, setTenantDetail] = useState<any>(null);
   const [serviceAccounts, setServiceAccounts] = useState<any[]>([]);
@@ -89,6 +89,7 @@ export function AdminCorePATsPage() {
     anomalyState: '',
     expiresWithinDays: '',
   });
+  const { t } = useI18n();
 
   useEffect(() => {
     let cancelled = false;
@@ -115,10 +116,10 @@ export function AdminCorePATsPage() {
         }
 
         setTenantDetail(tenantResponse.data || null);
-        const nextServiceAccounts = Array.isArray(serviceAccountResponse.data?.data) ? serviceAccountResponse.data.data : [];
-        const nextTokens = Array.isArray(patResponse.data?.data) ? patResponse.data.data : [];
+        const nextServiceAccounts = Array.isArray(serviceAccountResponse?.data) ? serviceAccountResponse.data : [];
+        const nextTokens = Array.isArray(patResponse?.data) ? patResponse.data : [];
         setServiceAccounts(nextServiceAccounts);
-        setSummaryCards(Array.isArray(patResponse.data?.summary_cards) ? patResponse.data.summary_cards : []);
+        setSummaryCards(Array.isArray(patResponse?.summary_cards) ? patResponse.summary_cards : []);
         setTokens(nextTokens);
         setSelectedTokenId((current) => {
           if (current && nextTokens.some((item: any) => item.id === current)) {
@@ -144,7 +145,7 @@ export function AdminCorePATsPage() {
     return () => {
       cancelled = true;
     };
-  }, [filters, refreshTick, tenantId]);
+  }, [filters, refreshTick, tenantId, tenantIdStr]);
 
   const selectedToken = tokens.find((item: any) => item.id === selectedTokenId) || null;
   const serviceAccountMap = new Map(serviceAccounts.map((item: any) => [item.id, item]));
@@ -183,10 +184,10 @@ export function AdminCorePATsPage() {
             <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Central Operator Admin</p>
             <div>
               <h1 className="text-3xl font-semibold tracking-tight">
-                {'PAT credentials theo tenant'}
+                {t('adminCoreTenants.patTitle')}
               </h1>
               <p className="mt-2 max-w-3xl text-sm text-slate-300">
-                {'Xem sổ đăng ký PAT, mức độ rủi ro và hành động gần nhất của tenant operator theo dữ liệu read-first.'}
+                {t('adminCoreTenants.patDescription')}
               </p>
             </div>
           </div>
@@ -195,19 +196,19 @@ export function AdminCorePATsPage() {
               to={`/admin/core/tenants/${tenantId}`}
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
-              {'Quay lại tenant'}
+              {t('adminCoreTenants.patBackToTenant')}
             </Link>
             <Link
               to={`/admin/core/tenants/${tenantId}/service-accounts`}
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
-              {'Quay lại service accounts'}
+              {t('adminCoreTenants.patBackToServiceAccounts')}
             </Link>
             <Link
               to="/admin/core/tenants"
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
-              {'Quay lại registry'}
+              {t('adminCoreTenants.patBackToRegistry')}
             </Link>
             <button
               type="button"
@@ -215,7 +216,7 @@ export function AdminCorePATsPage() {
               className="rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-950 transition-colors hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={loading}
             >
-              {loading ? 'Đang tải…' : 'Làm mới'}
+              {loading ? t('adminCoreTenants.loading') : t('adminCoreTenants.refresh')}
             </button>
           </div>
         </div>
@@ -234,8 +235,8 @@ export function AdminCorePATsPage() {
       ) : null}
 
       <Panel
-        title={'Thông tin tenant'}
-        description={'Bối cảnh tenant operator đang được điều tra cho sổ PAT.'}
+        title={t('adminCoreTenants.patTenantInfo')}
+        description={t('adminCoreTenants.patTenantDescription')}
         actions={(
           <span className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300">
             {loading ? 'Đang đồng bộ…' : headerTenantLabel}
@@ -261,35 +262,35 @@ export function AdminCorePATsPage() {
         className="grid gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900 md:grid-cols-3"
       >
         <label className="space-y-2 text-sm text-slate-600 dark:text-slate-300 md:col-span-2">
-          <span>{'Tìm PAT'}</span>
+          <span>{t('adminCoreTenants.patFilterSearch')}</span>
           <input
             value={filtersDraft.search}
             onChange={(event: React.ChangeEvent<HTMLInputElement>) => setFiltersDraft((current) => ({ ...current, search: event.target.value }))}
-            placeholder="Token prefix, PAT ID, scope"
+            placeholder={t('adminCoreTenants.patFilterSearchPlaceholder')}
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
           />
         </label>
         <label className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-          <span>{'Trạng thái'}</span>
+          <span>{t('adminCoreTenants.patFilterStatus')}</span>
           <select
             value={filtersDraft.status}
             onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setFiltersDraft((current) => ({ ...current, status: event.target.value }))}
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
           >
-            <option value="">{'Tất cả'}</option>
+            <option value="">{t('adminCoreTenants.filterAll')}</option>
             <option value="active">active</option>
             <option value="rotating">rotating</option>
             <option value="revoked">revoked</option>
           </select>
         </label>
         <label className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-          <span>{'Service account'}</span>
+          <span>{t('adminCoreTenants.patFilterServiceAccount')}</span>
           <select
             value={filtersDraft.serviceAccountId}
             onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setFiltersDraft((current) => ({ ...current, serviceAccountId: event.target.value }))}
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
           >
-            <option value="">{'Tất cả'}</option>
+            <option value="">{t('adminCoreTenants.filterAll')}</option>
             {serviceAccounts.map((serviceAccount: any) => (
               <option key={serviceAccount.id} value={serviceAccount.id}>
                 {serviceAccount.name}
@@ -298,20 +299,20 @@ export function AdminCorePATsPage() {
           </select>
         </label>
         <label className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-          <span>{'Anomaly'}</span>
+          <span>{t('adminCoreTenants.patFilterAnomaly')}</span>
           <select
             value={filtersDraft.anomalyState}
             onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setFiltersDraft((current) => ({ ...current, anomalyState: event.target.value }))}
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
           >
-            <option value="">{'Tất cả'}</option>
+            <option value="">{t('adminCoreTenants.filterAll')}</option>
             <option value="normal">normal</option>
             <option value="warning">warning</option>
             <option value="critical">critical</option>
           </select>
         </label>
         <label className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-          <span>{'Sắp hết hạn trong (ngày)'}</span>
+          <span>{t('adminCoreTenants.patFilterExpiresWithin')}</span>
           <input
             type="number"
             min={0}
@@ -327,45 +328,45 @@ export function AdminCorePATsPage() {
             type="submit"
             className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
           >
-            {'Áp dụng bộ lọc'}
+            {t('adminCoreTenants.applyFilters')}
           </button>
           <button
             type="button"
             onClick={clearFilters}
             className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
           >
-            {'Xóa bộ lọc'}
+            {t('adminCoreTenants.clearFilters')}
           </button>
           <button
             type="button"
             disabled={!canIssue}
-            onClick={() => setActionNote('Cấp PAT sẽ được nối ở slice viết sau; màn hình này chỉ giữ read-first và gating hiện tại.')}
+            onClick={() => setActionNote(t('adminCoreTenants.patIssueNote'))}
             className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-400 dark:text-emerald-200 dark:disabled:border-slate-700 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500"
           >
-            {'Cấp PAT'}
+            {t('adminCoreTenants.patIssue')}
           </button>
           <button
             type="button"
             disabled={!canRotate || !selectedToken}
-            onClick={() => setActionNote('Xoay PAT sẽ được nối ở slice viết sau; hiện tại màn hình này chỉ giữ read-first và gating.')}
+            onClick={() => setActionNote(t('adminCoreTenants.patRotateNote'))}
             className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-700 transition-colors hover:bg-cyan-500/15 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-400 dark:text-cyan-200 dark:disabled:border-slate-700 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500"
           >
-            {'Xoay PAT đã chọn'}
+            {t('adminCoreTenants.patRotate')}
           </button>
           <button
             type="button"
             disabled={!canRevoke || !selectedToken}
-            onClick={() => setActionNote('Thu hồi PAT sẽ được nối ở slice viết sau; hiện tại màn hình này chỉ giữ read-first và gating.')}
+            onClick={() => setActionNote(t('adminCoreTenants.patRevokeNote'))}
             className="rounded-full border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-700 transition-colors hover:bg-rose-500/15 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-400 dark:text-rose-200 dark:disabled:border-slate-700 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500"
           >
-            {'Thu hồi PAT đã chọn'}
+            {t('adminCoreTenants.patRevoke')}
           </button>
         </div>
       </form>
 
       <Panel
-        title={'Tổng hợp PAT'}
-        description={'Chỉ số từ current-code operator wrapper theo bộ lọc đang áp dụng.'}
+        title={t('adminCoreTenants.patSummaryTitle')}
+        description={t('adminCoreTenants.patSummaryDescription')}
       >
         {summaryCards.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -375,28 +376,28 @@ export function AdminCorePATsPage() {
           </div>
         ) : (
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {loading ? 'Đang tải summary…' : 'Chưa có dữ liệu summary.'}
+            {loading ? t('adminCoreTenants.loading') : t('adminCoreTenants.noSummaryData')}
           </p>
         )}
       </Panel>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <Panel
-          title={'Sổ đăng ký PAT'}
-          description={'Dữ liệu read projection từ operator wrapper cho tenant đang chọn.'}
-          actions={loading ? <span className="text-xs text-slate-500 dark:text-slate-400">Đang tải…</span> : null}
+          title={t('adminCoreTenants.patRegistryTitle')}
+          description={t('adminCoreTenants.patRegistryDescription')}
+          actions={loading ? <span className="text-xs text-slate-500 dark:text-slate-400">{t('adminCoreTenants.loading')}</span> : null}
         >
           {tokens.length > 0 ? (
             <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
               <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                 <thead className="bg-slate-50 dark:bg-slate-950/60">
                   <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                    <th className="px-4 py-3">PAT</th>
-                    <th className="px-4 py-3">Service account</th>
-                    <th className="px-4 py-3">Trạng thái</th>
-                    <th className="px-4 py-3">Hết hạn</th>
-                    <th className="px-4 py-3">Anomaly</th>
-                    <th className="px-4 py-3">Lần dùng gần nhất</th>
+                    <th className="px-4 py-3">{t('adminCoreTenants.thPatName')}</th>
+                    <th className="px-4 py-3">{t('adminCoreTenants.thPatServiceAccount')}</th>
+                    <th className="px-4 py-3">{t('adminCoreTenants.thPatStatus')}</th>
+                    <th className="px-4 py-3">{t('adminCoreTenants.thPatExpires')}</th>
+                    <th className="px-4 py-3">{t('adminCoreTenants.thPatAnomaly')}</th>
+                    <th className="px-4 py-3">{t('adminCoreTenants.thPatLastUsed')}</th>
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
@@ -440,7 +441,7 @@ export function AdminCorePATsPage() {
                             onClick={() => setSelectedTokenId(token.id)}
                             className="text-sm font-semibold text-blue-600 hover:underline dark:text-blue-300"
                           >
-                            {'Xem chi tiết'}
+                            {t('adminCoreTenants.columnViewDetail')}
                           </button>
                         </td>
                       </tr>
@@ -451,22 +452,22 @@ export function AdminCorePATsPage() {
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-              {loading ? 'Đang tải sổ PAT…' : 'Không có PAT phù hợp bộ lọc.'}
+              {loading ? t('adminCoreTenants.loading') : t('adminCoreTenants.patNoItems')}
             </div>
           )}
         </Panel>
 
         <Panel
-          title={'Chi tiết PAT'}
-          description={'Scopes, issuer, expiry và trạng thái cảnh báo của PAT đang chọn.'}
+          title={t('adminCoreTenants.patDetailTitle')}
+          description={t('adminCoreTenants.patDetailDescription')}
           actions={(
             <button
               type="button"
               disabled={!canRotate || !selectedToken}
-              onClick={() => setActionNote('Xoay PAT sẽ được nối ở slice viết sau; hiện tại màn hình này chỉ giữ read-first và gating.')}
+              onClick={() => setActionNote(t('adminCoreTenants.patRotateNote'))}
               className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-xs font-semibold text-cyan-700 transition-colors hover:bg-cyan-500/15 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-400 dark:text-cyan-200 dark:disabled:border-slate-700 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500"
             >
-              {'Xoay PAT đã chọn'}
+              {t('adminCoreTenants.patRotate')}
             </button>
           )}
         >
@@ -482,46 +483,46 @@ export function AdminCorePATsPage() {
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Trạng thái</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.patStatus')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{selectedToken.status}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Anomaly</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.patAnomaly')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{selectedToken.anomaly_state}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Hết hạn</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.patExpiry')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{selectedToken.expires_at || '—'}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Grace period</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{selectedToken.grace_period_active ? 'active' : 'inactive'}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.patGracePeriod')}</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{selectedToken.grace_period_active ? t('adminCoreTenants.patActive') : t('adminCoreTenants.patInactive')}</p>
                 </div>
               </div>
 
               <div>
-                <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Thuộc tính chính</h3>
-                <ValueRow label="Service account" value={selectedServiceAccount?.name || selectedToken.service_account_id} />
-                <ValueRow label="Mã service account" value={selectedToken.service_account_id} />
-                <ValueRow label="Scope bundle" value={Array.isArray(selectedToken.scope_codes) && selectedToken.scope_codes.length > 0 ? selectedToken.scope_codes.join(', ') : '—'} />
-                <ValueRow label="Issuer actor type" value={selectedToken.issuer_actor_type || '—'} />
-                <ValueRow label="Issuer actor id" value={selectedToken.issuer_actor_id || '—'} />
-                <ValueRow label="Last used" value={selectedToken.last_used_at || '—'} />
-                <ValueRow label="Last IP" value={selectedToken.last_ip || '—'} />
-                <ValueRow label="Last used IP country" value={selectedToken.last_used_ip_country || '—'} />
-                <ValueRow label="Last audit request" value={selectedToken.last_audit_request_id || '—'} />
+                <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.patProperties')}</h3>
+                <ValueRow label={t('adminCoreTenants.patServiceAccount')} value={selectedServiceAccount?.name || selectedToken.service_account_id} />
+                <ValueRow label={t('adminCoreTenants.patServiceAccountCode')} value={selectedToken.service_account_id} />
+                <ValueRow label={t('adminCoreTenants.patScopeBundle')} value={Array.isArray(selectedToken.scope_codes) && selectedToken.scope_codes.length > 0 ? selectedToken.scope_codes.join(', ') : '—'} />
+                <ValueRow label={t('adminCoreTenants.patIssuerType')} value={selectedToken.issuer_actor_type || '—'} />
+                <ValueRow label={t('adminCoreTenants.patIssuerId')} value={selectedToken.issuer_actor_id || '—'} />
+                <ValueRow label={t('adminCoreTenants.patLastUsed')} value={selectedToken.last_used_at || '—'} />
+                <ValueRow label={t('adminCoreTenants.patLastIp')} value={selectedToken.last_ip || '—'} />
+                <ValueRow label={t('adminCoreTenants.patLastIpCountry')} value={selectedToken.last_used_ip_country || '—'} />
+                <ValueRow label={t('adminCoreTenants.patLastAuditRequest')} value={selectedToken.last_audit_request_id || '—'} />
                 <ValueRow label="Revoked at" value={selectedToken.revoked_at || '—'} />
                 <ValueRow label="Created at" value={selectedToken.created_at || '—'} />
                 <ValueRow label="Updated at" value={selectedToken.updated_at || '—'} />
               </div>
 
               <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                {'Màn hình này giữ read-first cho CA-05. Secret PAT không được hiển thị; issue/rotate/revoke chỉ được gate theo ability và sẽ nối write flow ở slice sau.'}
+                {t('adminCoreTenants.patReadFirstNote')}
               </div>
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-              {loading ? 'Đang tải chi tiết PAT…' : 'Chọn một PAT trong bảng bên trái để mở chi tiết.'}
+              {loading ? t('adminCoreTenants.loading') : t('adminCoreTenants.patNoDetail')}
             </div>
           )}
         </Panel>

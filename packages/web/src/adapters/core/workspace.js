@@ -305,6 +305,14 @@ export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, c
     },
 
     /**
+     * Xoá cấu hình DNSE LightSpeed của user hiện tại.
+     * @returns {Promise<{ ok: boolean }>}
+     */
+    deleteDNSEConfig() {
+      return coreDelete("/broker/dnse/config/");
+    },
+
+    /**
      * Kích hoạt đồng bộ tiểu khoản từ DNSE LightSpeed API.
      * @returns {Promise<{ ok: boolean, synced_count: number, accounts: object[] }>}
      */
@@ -539,26 +547,30 @@ export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, c
     // ─── Screener Rules API ──────────────────────────────────────────────────
 
     getScreenerRules() {
-      return coreGet("/portfolio/screener/rules/");
+      return coreGet("/screener/rules/");
     },
 
     createScreenerRule(data) {
-      return corePost("/portfolio/screener/rules/", data);
+      return corePost("/screener/rules/", data);
     },
 
     updateScreenerRule(ruleId, data) {
       if (!ruleId) throw new Error("ruleId is required for updateScreenerRule");
-      return corePatch(`/portfolio/screener/rules/${encodeURIComponent(ruleId)}/`, data);
+      return corePut(`/screener/rules/${encodeURIComponent(ruleId)}/`, data);
     },
 
     deleteScreenerRule(ruleId) {
       if (!ruleId) throw new Error("ruleId is required for deleteScreenerRule");
-      return coreDelete(`/portfolio/screener/rules/${encodeURIComponent(ruleId)}/`);
+      return coreDelete(`/screener/rules/${encodeURIComponent(ruleId)}/`);
     },
 
     runScreenerRule(ruleId) {
       if (!ruleId) throw new Error("ruleId is required for runScreenerRule");
-      return corePost(`/portfolio/screener/rules/${encodeURIComponent(ruleId)}/run/`, {});
+      return corePost(`/screener/rules/${encodeURIComponent(ruleId)}/run/`, {});
+    },
+
+    getScreenerTemplates() {
+      return coreGet("/screener/templates/");
     },
 
     // ─── AI Command Center API ───────────────────────────────────────────────
@@ -573,6 +585,70 @@ export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, c
 
     testAICommandCenterConnection(data) {
       return corePost("/workspace/ai-command-center/test-connection/", data);
+    },
+
+    getAIAuditLogs(params = {}) {
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
+      ).toString();
+      return coreGet(`/workspace/ai-command-center/audit-logs/${query ? `?${query}` : ''}`);
+    },
+
+    getUserConfig() {
+      return coreGet('/workspace/userconfig/');
+    },
+
+    /**
+     * Cập nhật user config (preferences) — hiện tại hỗ trợ toggle event gate.
+     * @param {{ advisory_whale_signal_enabled?: boolean }} data
+     * @returns {Promise<{ ok: boolean, preferences: object, advisory_whale_signal_enabled: boolean }>}
+     */
+    updateUserConfig(data) {
+      return corePatch('/workspace/userconfig/', data);
+    },
+
+    // ─── AI Agent Registry API ───────────────────────────────────────────
+
+    getAIAgents(params = {}) {
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
+      ).toString();
+      return coreGet(`/ai/agents/${query ? `?${query}` : ''}`);
+    },
+
+    createAIAgent(data) {
+      return corePost('/ai/agents/', data);
+    },
+
+    updateAIAgent(id, data) {
+      return corePatch(`/ai/agents/${id}/`, data);
+    },
+
+    deleteAIAgent(id) {
+      return coreDelete(`/ai/agents/${id}/`);
+    },
+
+    // ─── AI Usage Analytics API ──────────────────────────────────────────
+
+    getAIUsageRecords(params = {}) {
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
+      ).toString();
+      return coreGet(`/ai/usage/${query ? `?${query}` : ''}`);
+    },
+
+    getAIUsageSummary(params = {}) {
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
+      ).toString();
+      return coreGet(`/ai/usage/summary/${query ? `?${query}` : ''}`);
+    },
+
+    getAIUsageAggregate(params = {}) {
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
+      ).toString();
+      return coreGet(`/ai/usage/aggregate/${query ? `?${query}` : ''}`);
     },
   };
 }

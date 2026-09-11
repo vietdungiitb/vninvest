@@ -328,3 +328,51 @@ class TenantMemberInviteTest(TestCase):
         )
         
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_cancel_invite_success(self):
+        """Test: Owner cancel pending invite → invite deleted."""
+        invite = TenantInvite.objects.create(
+            tenant=self.tenant,
+            invited_email='newmember@example.com',
+            inviter=self.owner,
+            token=TenantInvite.generate_token(),
+            role=TenantMember.RoleChoices.EDITOR,
+            expires_at=timezone.now() + timedelta(days=7),
+        )
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.post(
+            f'/core/v1/tenant-members/invites/{invite.public_id}/cancel/',
+            {},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(TenantInvite.objects.filter(public_id=invite.public_id).exists())
+
+    def test_cancel_invite_not_found(self):
+        """Test: Cancel non-existent invite → 404."""
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.post(
+            '/core/v1/tenant-members/invites/non-existent-id/cancel/',
+            {},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_cancel_invite_already_accepted_400(self):
+        """Test: Cancel already accepted invite → 400 Bad Request."""
+        invite = TenantInvite.objects.create(
+            tenant=self.tenant,
+            invited_email='newmember@example.com',
+            inviter=self.owner,
+            token=TenantInvite.generate_token(),
+            role=TenantMember.RoleChoices.EDITOR,
+            status=TenantInvite.StatusChoices.ACCEPTED,
+            expires_at=timezone.now() + timedelta(days=7),
+        )
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.post(
+            f'/core/v1/tenant-members/invites/{invite.public_id}/cancel/',
+            {},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

@@ -241,11 +241,7 @@ def _build_symbol_stats_payload(qs, *, lane: str, page: int, page_size: int) -> 
                 | Q(direction=''),
                 distinct=True,
             ),
-            total_value=Coalesce(
-                Sum('value'),
-                Value(0, output_field=DecimalField(max_digits=24, decimal_places=2)),
-                output_field=DecimalField(max_digits=24, decimal_places=2),
-            ),
+            total_value=Sum('value'),
             latest_triggered_at=Max('triggered_at'),
             critical_count=Count('id', filter=Q(severity=UnifiedAlert.SeverityChoices.CRITICAL), distinct=True),
             high_count=Count('id', filter=Q(severity=UnifiedAlert.SeverityChoices.HIGH), distinct=True),
@@ -268,7 +264,7 @@ def _build_symbol_stats_payload(qs, *, lane: str, page: int, page_size: int) -> 
                 'buy_count': int(row.get('buy_count') or 0),
                 'sell_count': int(row.get('sell_count') or 0),
                 'neutral_count': int(row.get('neutral_count') or 0),
-                'total_value': row.get('total_value') or 0,
+                'total_value': row.get('total_value'),
                 'latest_triggered_at': row.get('latest_triggered_at'),
                 'by_severity': {
                     'critical': int(row.get('critical_count') or 0),

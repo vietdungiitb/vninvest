@@ -8,14 +8,14 @@ export const navigationCatalog = Object.freeze([
     labelKey: "navigation.workspace",
     buildTargets: ALL_BUILD_TARGETS,
     requiredCapabilities: ["workspace.group.read"],
-    items: ["dashboard", "watchlist", "transactions", "portfolios"],
+    items: ["dashboard", "watchlist", "transactions", "portfolios", "screener"],
   },
   {
     id: "signals",
     labelKey: "navigation.signals",
     buildTargets: ["saas", "vip"],
     requiredCapabilities: ["signals.group.read"],
-    items: ["alert-center", "ai-advisory", "whale-alerts"],
+    items: ["alert-center", "ai-advisory"],
   },
   {
     id: "system",
@@ -29,7 +29,7 @@ export const navigationCatalog = Object.freeze([
     labelKey: "layout.nav.soc",
     buildTargets: ["saas", "vip"],
     requiredCapabilities: ["admin.operator.read"],
-    items: ["operations-center", "operations-center-mail-config"],
+    items: ["operations-center", "operations-center-mail-config", "advertising-admin"],
   },
   {
     id: "vip-local",

@@ -1,7 +1,11 @@
 from rest_framework import serializers
 import ipaddress
 
-from .models import CorePATCredential, CoreServiceAccount, CoreTenant, TenantMember, TenantInvite, TenantSSOConfig
+from .models import (
+    CorePATCredential, CoreServiceAccount, CoreTenant, TenantMember,
+    TenantInvite, TenantSSOConfig, TenantSettings, ScheduledReport, ReportDeliveryLog,
+    TenantWebhookConfig, WebhookDelivery, TenantCustomRole,
+)
 
 
 POLICY_TO_SCOPE_CODES = {
@@ -68,8 +72,9 @@ class CoreTenantSerializer(serializers.ModelSerializer):
             'tenant_id', 'tenant_code', 'display_name', 'plan', 'status',
             'features', 'trial_ends_at', 'activated_at', 'suspended_at',
             'billing_period_start', 'billing_period_end', 'created_at', 'updated_at',
+            'api_calls_limit', 'api_calls_used',
         ]
-        read_only_fields = ['tenant_id', 'created_at', 'updated_at']
+        read_only_fields = ['tenant_id', 'created_at', 'updated_at', 'api_calls_limit', 'api_calls_used']
 
 
 class CoreServiceAccountSerializer(serializers.ModelSerializer):
@@ -289,16 +294,24 @@ class TenantInviteSerializer(serializers.ModelSerializer):
     tenant_id = serializers.CharField(source='tenant.public_id', read_only=True)
     inviter_username = serializers.CharField(source='inviter.username', read_only=True)
     is_expired = serializers.SerializerMethodField(read_only=True)
+    custom_role_id = serializers.CharField(
+        source='custom_role.public_id', read_only=True, default=None,
+    )
+    custom_role_name = serializers.CharField(
+        source='custom_role.name', read_only=True, default=None,
+    )
 
     class Meta:
         model = TenantInvite
         fields = [
             'invite_id', 'tenant_id', 'invited_email', 'inviter_username',
-            'token', 'role', 'status', 'is_expired', 'expires_at',
+            'token', 'role', 'custom_role_id', 'custom_role_name',
+            'status', 'is_expired', 'expires_at',
             'accepted_at', 'created_at', 'updated_at',
         ]
         read_only_fields = [
             'invite_id', 'tenant_id', 'token', 'is_expired',
+            'custom_role_id', 'custom_role_name',
             'accepted_at', 'created_at', 'updated_at',
         ]
 
@@ -312,6 +325,10 @@ class TenantInviteCreateSerializer(serializers.Serializer):
     role = serializers.ChoiceField(
         choices=TenantMember.RoleChoices.choices,
         default=TenantMember.RoleChoices.VIEWER,
+    )
+    custom_role_id = serializers.CharField(
+        max_length=36, required=False, allow_blank=True, allow_null=True,
+        help_text='Optional custom role public_id to assign on accept.',
     )
 
 
@@ -428,4 +445,103 @@ class SaaSRegisterSerializer(serializers.Serializer):
         except requests.RequestException as e:
             logger.error(f"[SPAM_SHIELD] Turnstile validation timeout/failure: {str(e)}")
             raise serializers.ValidationError({"turnstile_token": "Không thể kết nối máy chủ xác thực Turnstile. Vui lòng thử lại."})
+
+
+class ScheduledReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ScheduledReport
+        fields = [
+            'id', 'name', 'report_type', 'schedule',
+            'recipients', 'format', 'is_active', 'last_sent_at',
+            'total_deliveries', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'last_sent_at', 'total_deliveries', 'created_at', 'updated_at']
+
+
+class ReportDeliveryLogSerializer(serializers.ModelSerializer):
+    report_name = serializers.CharField(source='report.name', read_only=True)
+
+    class Meta:
+        model = ReportDeliveryLog
+        fields = ['id', 'report', 'report_name', 'status', 'recipient', 'error_message', 'sent_at', 'created_at']
+        read_only_fields = fields
+
+
+class TenantWebhookConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TenantWebhookConfig
+        fields = [
+            'id', 'name', 'url', 'events', 'is_active',
+            'headers', 'retry_count', 'timeout_seconds',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class WebhookDeliverySerializer(serializers.ModelSerializer):
+    config_name = serializers.CharField(source='config.name', read_only=True)
+
+    class Meta:
+        model = WebhookDelivery
+        fields = [
+            'id', 'config', 'config_name', 'event_type', 'event_id',
+            'status', 'response_code', 'response_body',
+            'attempts', 'next_retry_at', 'duration_ms', 'created_at',
+        ]
+        read_only_fields = fields
+
+
+class TenantSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TenantSettings
+        fields = [
+            'logo_url', 'timezone', 'locale', 'theme', 'custom_domain',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+
+class TenantCustomRoleSerializer(serializers.ModelSerializer):
+    member_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TenantCustomRole
+        fields = [
+            'public_id', 'name', 'permissions', 'is_system',
+            'member_count', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['public_id', 'is_system', 'member_count', 'created_at', 'updated_at']
+
+    def get_member_count(self, obj):
+        return obj.members.count()
+
+    def __init__(self, *args, **kwargs):
+        self.tenant = kwargs.pop('tenant', None)
+        super().__init__(*args, **kwargs)
+
+    def validate_name(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError('Tên vai trò không được để trống.')
+        name = value.strip()
+        # Tenant-scoped uniqueness (mirrors unique_together on the model) so we
+        # return a clean 400 instead of a 500 IntegrityError.
+        qs = TenantCustomRole.objects.filter(tenant=self.tenant, name=name)
+        if self.instance is not None:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError(
+                'Tên vai trò đã tồn tại trong tenant này.'
+            )
+        return name
+
+    def validate_permissions(self, value):
+        from .utils.resolve_tenant import KNOWN_PERMISSION_TOKENS
+        if not isinstance(value, list):
+            raise serializers.ValidationError('permissions phải là một mảng.')
+        unknown = [p for p in value if p not in KNOWN_PERMISSION_TOKENS]
+        if unknown:
+            raise serializers.ValidationError(
+                f'Token không hợp lệ: {", ".join(unknown)}'
+            )
+        return value
 

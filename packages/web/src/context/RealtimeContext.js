@@ -100,7 +100,7 @@ export function RealtimeProvider({ children }) {
         },
       },
     };
-  }, [feed, subscriptions, aggregatedSymbols]);
+  }, [feed, subscriptions, aggregatedSymbols, register, unregister, update]);
 
   return React.createElement(RealtimeContext.Provider, { value }, children);
 }
@@ -112,33 +112,30 @@ export function useRealtimeFeedFromManager({ symbols, pollInterval = 15000, maxA
   const symbolsKey = React.useMemo(() => toSymbolsKey(symbols), [symbols]);
   const normalizedSymbols = React.useMemo(() => toUniqueSymbols(symbols), [symbolsKey]); // eslint-disable-line
 
-  const hasRegisteredRef = React.useRef(false);
+  const ctxRef = React.useRef(contextValue);
+  ctxRef.current = contextValue;
 
   React.useEffect(() => {
-    if (!contextValue?.enabled) return undefined;
+    const ctx = ctxRef.current;
+    if (!ctx?.enabled) return undefined;
 
     if (!consumerIdRef.current) {
       consumerIdRef.current = createConsumerId();
     }
-    if (!hasRegisteredRef.current) {
-      contextValue.register(consumerIdRef.current, { symbols: normalizedSymbols, pollInterval, maxAlerts });
-      hasRegisteredRef.current = true;
-    }
+    ctx.register(consumerIdRef.current, { symbols: normalizedSymbols, pollInterval, maxAlerts });
 
     return () => {
       if (consumerIdRef.current) {
-        contextValue.unregister(consumerIdRef.current);
-        hasRegisteredRef.current = false;
+        ctxRef.current?.unregister(consumerIdRef.current);
+        consumerIdRef.current = null;
       }
     };
-  }, [contextValue?.enabled, contextValue?.register, contextValue?.unregister]);
+  }, [symbolsKey, pollInterval, maxAlerts]); // eslint-disable-line react-hooks/exhaustive-deps
 
   React.useEffect(() => {
     if (!contextValue?.enabled || !consumerIdRef.current) return;
     contextValue.update(consumerIdRef.current, { symbols: normalizedSymbols, pollInterval, maxAlerts });
-  }, [contextValue?.enabled, contextValue?.update, symbolsKey, pollInterval, maxAlerts, normalizedSymbols]);
-
-  if (!contextValue?.enabled) return null;
+  }, [contextValue?.enabled, contextValue?.update, symbolsKey, pollInterval, maxAlerts, normalizedSymbols]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const baseFeed = contextValue.feed || {};
 
@@ -191,9 +188,10 @@ export function useRealtimeFeedFromManager({ symbols, pollInterval = 15000, maxA
     baseFeed.latestMarketDiscoveryEvent,
     baseFeed.metrics,
     normalizedSymbols,
-    maxAlerts,
-    quotesKey
+    maxAlerts
   ]);
+
+  if (!contextValue?.enabled) return null;
 
   return memoizedResult;
 }

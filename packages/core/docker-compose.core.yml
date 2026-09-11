@@ -30,8 +30,8 @@ services:
       DJANGO_ALLOWED_HOSTS: "*"
       VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
       CORE_DATABASE_URL: postgres://vninvest:vninvest@core-db:5432/vninvest_core
-      REDIS_URL: redis://core-redis:6379/0
-      CELERY_BROKER_URL: redis://core-redis:6379/0
+      REDIS_URL: redis://core-redis:6379/3
+      CELERY_BROKER_URL: redis://core-redis:6379/3
       CORE_PAT_PEPPER: "dev-pat-pepper-replace-in-production"
       PYTHONPATH: /workspace/src
     command: >-
@@ -54,8 +54,8 @@ services:
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
       CORE_DATABASE_URL: postgres://vninvest:vninvest@core-db:5432/vninvest_core
-      REDIS_URL: redis://core-redis:6379/0
-      CELERY_BROKER_URL: redis://core-redis:6379/0
+      REDIS_URL: redis://core-redis:6379/3
+      CELERY_BROKER_URL: redis://core-redis:6379/3
       PYTHONPATH: /workspace/src
       CELERY_QUEUES: celery,realtime_prefetch,realtime_stream,analytics_heavy,manual_on_demand
       CELERY_CONCURRENCY: "2"
@@ -78,8 +78,8 @@ services:
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
       CORE_DATABASE_URL: postgres://vninvest:vninvest@core-db:5432/vninvest_core
-      REDIS_URL: redis://core-redis:6379/0
-      CELERY_BROKER_URL: redis://core-redis:6379/0
+      REDIS_URL: redis://core-redis:6379/3
+      CELERY_BROKER_URL: redis://core-redis:6379/3
       PYTHONPATH: /workspace/src
       CELERY_QUEUES: realtime_prefetch
       CELERY_CONCURRENCY: "4"
@@ -102,8 +102,8 @@ services:
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
       CORE_DATABASE_URL: postgres://vninvest:vninvest@core-db:5432/vninvest_core
-      REDIS_URL: redis://core-redis:6379/0
-      CELERY_BROKER_URL: redis://core-redis:6379/0
+      REDIS_URL: redis://core-redis:6379/3
+      CELERY_BROKER_URL: redis://core-redis:6379/3
       PYTHONPATH: /workspace/src
       CELERY_QUEUES: realtime_stream
       CELERY_CONCURRENCY: "4"
@@ -126,8 +126,8 @@ services:
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
       CORE_DATABASE_URL: postgres://vninvest:vninvest@core-db:5432/vninvest_core
-      REDIS_URL: redis://core-redis:6379/0
-      CELERY_BROKER_URL: redis://core-redis:6379/0
+      REDIS_URL: redis://core-redis:6379/3
+      CELERY_BROKER_URL: redis://core-redis:6379/3
       PYTHONPATH: /workspace/src
       CELERY_QUEUES: enrichment_offhours
       CELERY_CONCURRENCY: "6"
@@ -150,8 +150,8 @@ services:
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
       CORE_DATABASE_URL: postgres://vninvest:vninvest@core-db:5432/vninvest_core
-      REDIS_URL: redis://core-redis:6379/0
-      CELERY_BROKER_URL: redis://core-redis:6379/0
+      REDIS_URL: redis://core-redis:6379/3
+      CELERY_BROKER_URL: redis://core-redis:6379/3
       PYTHONPATH: /workspace/src
       CELERY_QUEUES: analytics_heavy
       CELERY_CONCURRENCY: "4"
@@ -174,8 +174,8 @@ services:
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
       CORE_DATABASE_URL: postgres://vninvest:vninvest@core-db:5432/vninvest_core
-      REDIS_URL: redis://core-redis:6379/0
-      CELERY_BROKER_URL: redis://core-redis:6379/0
+      REDIS_URL: redis://core-redis:6379/3
+      CELERY_BROKER_URL: redis://core-redis:6379/3
       PYTHONPATH: /workspace/src
       CELERY_QUEUES: manual_on_demand
       CELERY_CONCURRENCY: "3"
@@ -198,8 +198,8 @@ services:
       DJANGO_SETTINGS_MODULE: vninvest_core.settings
       VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
       CORE_DATABASE_URL: postgres://vninvest:vninvest@core-db:5432/vninvest_core
-      REDIS_URL: redis://core-redis:6379/0
-      CELERY_BROKER_URL: redis://core-redis:6379/0
+      REDIS_URL: redis://core-redis:6379/3
+      CELERY_BROKER_URL: redis://core-redis:6379/3
       PYTHONPATH: /workspace/src
     command: >
       sh -c "pip install -r requirements.txt -q &&

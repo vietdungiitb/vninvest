@@ -1,6 +1,8 @@
-import { createElement, FormEvent, useState } from "react";
+import { createElement, useState } from "react";
+import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { CoreApiRequestError, coreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { useI18n } from "../../context/LangContext.js";
 import { TurnstileWidget } from "../../components/auth/TurnstileWidget.js";
 import "./AuthRegisterPage.css";
 
@@ -13,9 +15,9 @@ const EMPTY_FIELD_ERRORS = Object.freeze({
 
 type FieldErrors = Record<keyof typeof EMPTY_FIELD_ERRORS, string>;
 
-function parseApiErrors(error: unknown): { fieldErrors: FieldErrors; globalMessage: string } {
+function parseApiErrors(error: unknown, t: (key: string, opts?: { defaultValue?: string }) => string): { fieldErrors: FieldErrors; globalMessage: string } {
   const fieldErrors: FieldErrors = { ...EMPTY_FIELD_ERRORS };
-  let globalMessage = "Đăng ký thất bại. Vui lòng kiểm tra thông tin và thử lại.";
+  let globalMessage = t("auth.registerGlobalFailed", { defaultValue: "Đăng ký thất bại. Vui lòng kiểm tra thông tin và thử lại." });
 
   if (error instanceof CoreApiRequestError) {
     const payloadFieldErrors = (error as any)?.fieldErrors;
@@ -60,6 +62,7 @@ function parseApiErrors(error: unknown): { fieldErrors: FieldErrors; globalMessa
 }
 
 export function AuthRegisterPage() {
+  const { t } = useI18n();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -69,7 +72,7 @@ export function AuthRegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({ ...EMPTY_FIELD_ERRORS });
+  const [fieldErrors, setFieldErrors] = useState({ ...EMPTY_FIELD_ERRORS } as FieldErrors);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -78,16 +81,16 @@ export function AuthRegisterPage() {
     }
 
     if (password !== passwordConfirm) {
-      setErrorMessage("Mật khẩu xác nhận không khớp.");
+      setErrorMessage(t("auth.registerPasswordMismatch", { defaultValue: "Mật khẩu xác nhận không khớp." }));
       setMessage("");
-      setFieldErrors({ ...EMPTY_FIELD_ERRORS, password_confirm: "Mật khẩu xác nhận không khớp." });
+      setFieldErrors({ ...EMPTY_FIELD_ERRORS, password_confirm: t("auth.registerPasswordMismatch", { defaultValue: "Mật khẩu xác nhận không khớp." }) });
       return;
     }
 
     if (!turnstileToken.trim()) {
-      setErrorMessage("Vui lòng hoàn tất xác thực Turnstile.");
+      setErrorMessage(t("auth.registerTurnstileRequired", { defaultValue: "Vui lòng hoàn tất xác thực Turnstile." }));
       setMessage("");
-      setFieldErrors({ ...EMPTY_FIELD_ERRORS, turnstile_token: "Vui lòng xác thực bạn không phải robot." });
+      setFieldErrors({ ...EMPTY_FIELD_ERRORS, turnstile_token: t("auth.registerTurnstileNotRobot", { defaultValue: "Vui lòng xác thực bạn không phải robot." }) });
       return;
     }
 
@@ -107,7 +110,7 @@ export function AuthRegisterPage() {
       } as any);
 
       const payloadData = payload as Record<string, unknown>;
-      const successMessage = (payloadData.data as Record<string, unknown>)?.message || payloadData.message || "Đăng ký thành công. Vui lòng kiểm tra email để xác minh tài khoản.";
+      const successMessage = (payloadData.data as Record<string, unknown>)?.message || payloadData.message || t("auth.registerSuccess", { defaultValue: "Đăng ký thành công. Vui lòng kiểm tra email để xác minh tài khoản." });
       setMessage(successMessage as string);
       setUsername("");
       setEmail("");
@@ -117,7 +120,7 @@ export function AuthRegisterPage() {
       setTurnstileToken("");
       setFieldErrors({ ...EMPTY_FIELD_ERRORS });
     } catch (error) {
-      const parsedError = parseApiErrors(error);
+      const parsedError = parseApiErrors(error, t);
       setFieldErrors(parsedError.fieldErrors);
       setErrorMessage(parsedError.globalMessage);
       setTurnstileToken("");
@@ -132,8 +135,8 @@ export function AuthRegisterPage() {
     createElement(
       "section",
       { className: "w-full max-w-md rounded-xl border border-gray-800 bg-gray-900 p-8" },
-      createElement("h1", { className: "text-2xl font-bold text-brand-500" }, "VNInvest"),
-      createElement("p", { className: "mt-2 text-sm text-gray-400" }, "Tạo tài khoản SaaS mới"),
+      createElement("h1", { className: "text-2xl font-bold text-brand-500" }, t("auth.loginTitle", { defaultValue: "VNInvest" })),
+      createElement("p", { className: "mt-2 text-sm text-gray-400" }, t("auth.registerSubtitle", { defaultValue: "Tạo tài khoản SaaS mới" })),
       createElement(
         "form",
         { className: "mt-6 space-y-4", onSubmit: handleSubmit },
@@ -143,7 +146,7 @@ export function AuthRegisterPage() {
           required: true,
           autoComplete: "username",
           className: `w-full bg-gray-800 border rounded-md px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-brand-500 ${fieldErrors.username ? "border-red-500" : "border-gray-700"}`,
-          placeholder: "Tên đăng nhập",
+          placeholder: t("auth.registerUsernamePlaceholder", { defaultValue: "Tên đăng nhập" }),
         }),
         fieldErrors.username
           ? createElement("p", { className: "text-red-400 text-xs" }, fieldErrors.username)
@@ -155,7 +158,7 @@ export function AuthRegisterPage() {
           type: "email",
           autoComplete: "email",
           className: `w-full bg-gray-800 border rounded-md px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-brand-500 ${fieldErrors.email ? "border-red-500" : "border-gray-700"}`,
-          placeholder: "Email",
+          placeholder: t("auth.registerEmailPlaceholder", { defaultValue: "Email" }),
         }),
         fieldErrors.email
           ? createElement("p", { className: "text-red-400 text-xs" }, fieldErrors.email)
@@ -168,7 +171,7 @@ export function AuthRegisterPage() {
           autoComplete: "new-password",
           minLength: 8,
           className: "w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-brand-500",
-          placeholder: "Mật khẩu",
+          placeholder: t("auth.registerPasswordPlaceholder", { defaultValue: "Mật khẩu" }),
         }),
         createElement("input", {
           value: passwordConfirm,
@@ -178,7 +181,7 @@ export function AuthRegisterPage() {
           autoComplete: "new-password",
           minLength: 8,
           className: `w-full bg-gray-800 border rounded-md px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-brand-500 ${fieldErrors.password_confirm ? "border-red-500" : "border-gray-700"}`,
-          placeholder: "Nhập lại mật khẩu",
+          placeholder: t("auth.registerPasswordConfirmPlaceholder", { defaultValue: "Nhập lại mật khẩu" }),
         }),
         fieldErrors.password_confirm
           ? createElement("p", { className: "text-red-400 text-xs" }, fieldErrors.password_confirm)
@@ -189,7 +192,7 @@ export function AuthRegisterPage() {
           className: "invisible-honeypot",
           tabIndex: -1,
           autoComplete: "off",
-          placeholder: "Website",
+          placeholder: t("auth.registerWebsitePlaceholder", { defaultValue: "Website" }),
           "aria-hidden": true,
         }),
         createElement(TurnstileWidget, {
@@ -197,7 +200,7 @@ export function AuthRegisterPage() {
             setTurnstileToken(token);
             setFieldErrors((prev) => ({ ...prev, turnstile_token: "" }));
           },
-          onError: () => setErrorMessage("Không thể tải Turnstile. Vui lòng thử lại."),
+          onError: () => setErrorMessage(t("auth.registerTurnstileLoadFailed", { defaultValue: "Không thể tải Turnstile. Vui lòng thử lại." })),
           onExpire: () => setTurnstileToken(""),
         }),
         fieldErrors.turnstile_token
@@ -216,13 +219,13 @@ export function AuthRegisterPage() {
             className: "w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-semibold py-2 rounded-md text-sm transition-colors",
             disabled: isSubmitting || !turnstileToken,
           },
-          isSubmitting ? "Đang tạo tài khoản..." : "Đăng ký",
+          isSubmitting ? t("auth.registerSubmitting", { defaultValue: "Đang tạo tài khoản..." }) : t("auth.registerSubmit", { defaultValue: "Đăng ký" }),
         ),
       ),
       createElement(
         "div",
         { className: "mt-6 text-sm" },
-        createElement(Link, { to: "/login", className: "text-brand-400 hover:text-brand-300 transition-colors" }, "Quay lại đăng nhập"),
+        createElement(Link, { to: "/login", className: "text-brand-400 hover:text-brand-300 transition-colors" }, t("auth.registerBackToLogin", { defaultValue: "Quay lại đăng nhập" })),
       ),
     ),
   );

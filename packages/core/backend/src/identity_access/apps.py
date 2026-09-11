@@ -40,5 +40,8 @@ class IdentityAccessConfig(AppConfig):
         from corsheaders.signals import check_request_enabled
         check_request_enabled.connect(cors_allow_api_requests)
 
+        # Phase 4 — Register webhook signal handlers
+        import identity_access.signals  # noqa: F401
+
 
 

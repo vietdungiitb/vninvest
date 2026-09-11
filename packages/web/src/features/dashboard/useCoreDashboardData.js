@@ -10,6 +10,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { SYSTEM_GROUP_IDS } from "../../constants/marketGroups";
 
 const EMPTY_ARRAY = [];
 
@@ -144,27 +145,21 @@ export function useCoreDashboardData({ portfolioId, enabled = true } = {}) {
         const trackedSymbols = safeResults(trackedRes);
         const rawWatchlistGroups = safeResults(groupsRes);
 
-        const EXCLUDED_MARKET_GROUPS = [
-          "NGÂN HÀNG", "BẤT ĐỘNG SẢN", "THÉP & VẬT LIỆU", "DẦU KHÍ", "CÔNG NGHỆ", 
-          "BÁN LẺ & TIÊU DÙNG", "VN30", "VN100", "HNX30", "HOSE", "HNX", "UPCOM"
-        ];
-
         const watchlists = rawWatchlists.filter(wl => {
-          const name = String(wl?.name || "").trim().toUpperCase();
-          return !EXCLUDED_MARKET_GROUPS.includes(name);
+          const slug = String(wl?.id || wl?.name || "").toLowerCase().replace(/\s+/g, "-");
+          return !SYSTEM_GROUP_IDS.includes(slug);
         });
 
-        const watchlistGroups = rawWatchlistGroups.filter(g => {
-          const name = String(g?.name || "").trim().toUpperCase();
-          return !EXCLUDED_MARKET_GROUPS.includes(name);
-        });
+        // Keep ALL watchlistGroups (market groups) unfiltered
+        // so the heatmap can include symbols from all sectors/groups the user follows
+        const watchlistGroups = rawWatchlistGroups;
 
         // Phase 2 — bulk technicals once the monitored symbol universe is known
         const symbols = collectDashboardSymbols({
           holdings,
           trackedSymbols,
           watchlists,
-          watchlistGroups,
+          watchlistGroups: [],
         });
 
         let technicals = EMPTY_ARRAY;

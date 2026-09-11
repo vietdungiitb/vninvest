@@ -1,5 +1,9 @@
 """Celery application for vninvest_core."""
 import os
+import socket
+
+# Prevent socket blocking operations from hanging indefinitely
+socket.setdefaulttimeout(60.0)
 
 from celery import Celery
 

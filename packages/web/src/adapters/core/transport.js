@@ -105,6 +105,25 @@ export function clearBrowserStorageToken(key) {
   window.localStorage?.removeItem(key);
 }
 
+export function getBrowserSessionStorage(key) {
+  if (typeof window === "undefined") return null;
+  return window.sessionStorage?.getItem(key) || null;
+}
+
+export function setBrowserSessionStorage(key, value) {
+  if (typeof window === "undefined") return;
+  if (!value) {
+    window.sessionStorage?.removeItem(key);
+    return;
+  }
+  window.sessionStorage?.setItem(key, value);
+}
+
+export function clearBrowserSessionStorage(key) {
+  if (typeof window === "undefined") return;
+  window.sessionStorage?.removeItem(key);
+}
+
 let storageUnsubscribe = null;
 
 export function initTokenStorageSync() {
@@ -144,6 +163,18 @@ export const authTokenStorage = Object.freeze({
   clearTokens() {
     clearBrowserStorageToken("access_token");
     clearBrowserStorageToken("refresh_token");
+  },
+});
+
+export const tenantIdStorage = Object.freeze({
+  getTenantId() {
+    return getBrowserSessionStorage("tenant_id");
+  },
+  setTenantId(value) {
+    setBrowserSessionStorage("tenant_id", value);
+  },
+  clearTenantId() {
+    clearBrowserSessionStorage("tenant_id");
   },
 });
 
@@ -196,9 +227,13 @@ export function createCoreTransport(env = {}, options = {}) {
   let refreshPromise = null;
 
   function toCoreApiRequestError(path, response, payload, fallbackText = "") {
+    let cleanFallback = fallbackText;
+    if (fallbackText && (fallbackText.toLowerCase().includes("<!doctype") || fallbackText.toLowerCase().includes("<html"))) {
+      cleanFallback = `Server error (HTTP ${response.status})`;
+    }
     const detail =
       (payload && typeof payload === "object" && (payload.detail || payload.message)) ||
-      fallbackText ||
+      cleanFallback ||
       response.statusText ||
       "Request failed";
     const fieldErrors =
@@ -278,7 +313,7 @@ export function createCoreTransport(env = {}, options = {}) {
     return refreshPromise;
   }
 
-  async function requestWithAuth(path, init = {}, attemptRefresh = true) {
+  async function requestWithAuth(path, init = {}, attemptRefresh = true, onRateLimit = null) {
     const base = resolveCoreApiBase(env);
     const requestId = generateRequestId();
 
@@ -297,11 +332,9 @@ export function createCoreTransport(env = {}, options = {}) {
       ...(init.headers || {}),
     };
 
-    if (typeof window !== "undefined" && window.localStorage) {
-      const storedTenantId = window.localStorage.getItem("tenant_id");
-      if (storedTenantId) {
-        headers["X-Tenant-ID"] = storedTenantId;
-      }
+    const storedTenantId = tenantIdStorage.getTenantId();
+    if (storedTenantId) {
+      headers["X-Tenant-ID"] = storedTenantId;
     }
 
     const response = await fetch(`${base}${path}`, {
@@ -309,6 +342,17 @@ export function createCoreTransport(env = {}, options = {}) {
       headers,
       credentials: "include",
     });
+
+    // Extract rate limit headers for callback
+    if (onRateLimit) {
+      const limit = response.headers.get('X-RateLimit-Limit');
+      const remaining = response.headers.get('X-RateLimit-Remaining');
+      const reset = response.headers.get('X-RateLimit-Reset');
+      const resource = response.headers.get('X-RateLimit-Resource');
+      if (limit !== null && remaining !== null && reset !== null) {
+        onRateLimit({ limit, remaining, reset, resource });
+      }
+    }
 
     // 401 retry: try a token refresh and retry once
     if (attemptRefresh && shouldTryRefresh(path, response.status)) {
@@ -321,28 +365,49 @@ export function createCoreTransport(env = {}, options = {}) {
     return response;
   }
 
-  async function coreGet(path, options = {}) {
-    const response = await requestWithAuth(path, options, true);
+  const inflightGetCache = new Map();
 
-    if (!response.ok) {
-      const text = await response.text().catch(() => "");
-      let payload = null;
-      try {
-        payload = JSON.parse(text);
-      } catch {
-        payload = null;
-      }
-      throw toCoreApiRequestError(path, response, payload, text);
+  async function coreGet(path, options = {}) {
+    const { onRateLimit, ...fetchOptions } = options;
+    const method = fetchOptions.method || "GET";
+
+    if (method === "GET" && inflightGetCache.has(path)) {
+      return inflightGetCache.get(path);
     }
 
-    return response.json();
+    const promise = requestWithAuth(path, fetchOptions, true, onRateLimit)
+      .then(async (response) => {
+        if (!response.ok) {
+          // 404 on advisory/session-facts means "no data yet" (empty state), not an error.
+          if (
+            response.status === 404 &&
+            (path.includes("/advisory/latest/") || path.includes("/session-facts/") || path.includes("/advisory/history/"))
+          ) {
+            return null;
+          }
+          const text = await response.text().catch(() => "");
+          let payload = null;
+          try { payload = JSON.parse(text); } catch { payload = null; }
+          throw toCoreApiRequestError(path, response, payload, text);
+        }
+        return response.json();
+      });
+
+    if (method === "GET") {
+      inflightGetCache.set(path, promise);
+      promise.finally(() => inflightGetCache.delete(path)).catch(() => {});
+    }
+
+    return promise;
   }
 
-  async function corePost(path, body = undefined) {
+  async function corePost(path, body = undefined, options = {}) {
+    const { onRateLimit, ...fetchOptions } = options;
     const response = await requestWithAuth(path, {
       method: "POST",
       body: body !== undefined ? JSON.stringify(body) : undefined,
-    }, true);
+      ...fetchOptions,
+    }, true, onRateLimit);
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
@@ -359,11 +424,13 @@ export function createCoreTransport(env = {}, options = {}) {
     return response.json();
   }
 
-  async function corePut(path, body = undefined) {
+  async function corePut(path, body = undefined, options = {}) {
+    const { onRateLimit, ...fetchOptions } = options;
     const response = await requestWithAuth(path, {
       method: "PUT",
       body: body !== undefined ? JSON.stringify(body) : undefined,
-    }, true);
+      ...fetchOptions,
+    }, true, onRateLimit);
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
@@ -380,11 +447,13 @@ export function createCoreTransport(env = {}, options = {}) {
   }
 
 
-  async function corePatch(path, body = undefined) {
+  async function corePatch(path, body = undefined, options = {}) {
+    const { onRateLimit, ...fetchOptions } = options;
     const response = await requestWithAuth(path, {
       method: "PATCH",
       body: body !== undefined ? JSON.stringify(body) : undefined,
-    }, true);
+      ...fetchOptions,
+    }, true, onRateLimit);
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
@@ -400,10 +469,12 @@ export function createCoreTransport(env = {}, options = {}) {
     return response.json();
   }
 
-  async function coreDelete(path) {
+  async function coreDelete(path, options = {}) {
+    const { onRateLimit, ...fetchOptions } = options;
     const response = await requestWithAuth(path, {
       method: "DELETE",
-    }, true);
+      ...fetchOptions,
+    }, true, onRateLimit);
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");

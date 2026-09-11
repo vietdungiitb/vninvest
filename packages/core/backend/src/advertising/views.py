@@ -4,6 +4,7 @@ import time
 import logging
 import random
 from django.conf import settings
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -12,7 +13,7 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
 from identity_access.authentication import CorePATAuthentication
-from advertising.models import AdCampaign, AdDailySummary
+from advertising.models import AdCampaign, AdDailySummary, TrademarkConfig
 from advertising.serializers import AdCampaignSerializer, AdDailySummarySerializer
 from advertising.tasks import _get_redis_client
 from vninvest_core.exceptions import ValidationErrorException, PermissionErrorException
@@ -167,6 +168,166 @@ class ContentDisplayView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+def _sign_ad_tracking_urls(request, campaign_id_str, tenant_id_str, symbol):
+    """Build HMAC-signed click/impression tracking URLs for a campaign.
+
+    Shared by ContentDisplayView (legacy single-ad) and WidgetAdView (array).
+    """
+    expires_at = int(time.time()) + 300  # 5 minutes expiry window
+    client_ip = request.META.get(
+        'HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '')
+    ).split(',')[0].strip()
+    ad_signing_secret = getattr(
+        settings, 'CORE_AD_SIGNING_SECRET', 'dev-ad-signing-secret-replace-in-production'
+    )
+    msg = f"{campaign_id_str}:{tenant_id_str}:{client_ip}:{expires_at}"
+    sig = hmac.new(
+        ad_signing_secret.encode('utf-8'), msg.encode('utf-8'), hashlib.sha256
+    ).hexdigest()
+    domain = request.build_absolute_uri('/')[:-1]
+    click_tracking_url = (
+        f"{domain}/api/v1/metrics/log/click/{campaign_id_str}/"
+        f"?symbol={symbol}&tenant_id={tenant_id_str}&expires_at={expires_at}&sig={sig}"
+    )
+    impression_tracking_url = (
+        f"{domain}/api/v1/metrics/log/view/"
+        f"?campaign_id={campaign_id_str}&symbol={symbol}&tenant_id={tenant_id_str}"
+        f"&expires_at={expires_at}&sig={sig}"
+    )
+    return click_tracking_url, impression_tracking_url
+
+
+class WidgetConfigView(APIView):
+    """
+    GET /core/v1/widget/config[/]
+    Trademark enforcement config for the chart widget. No auth required.
+    The client reads this endpoint to decide whether to run the trademark watchdog.
+    Response: { "trademark": { "enabled": bool, "activationTs": int|null, "version": str } }
+
+    PATCH /core/v1/widget/config[/]
+    Update trademark config from the operator admin page. IsAdminUser required.
+    Response: { "trademark": { "enabled": bool, "activationTs": int|null, "version": str } }
+    """
+    authentication_classes = [CorePATAuthentication, SessionAuthentication]
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [AdvertisingAnonRateThrottle, AdvertisingUserRateThrottle]
+
+    def get_permissions(self):
+        if self.request.method == "PATCH":
+            return [permissions.IsAdminUser()]
+        return [permissions.AllowAny()]
+
+    def get(self, request):
+        config = TrademarkConfig.get_config()
+        return Response({
+            "trademark": {
+                "enabled": config.enabled,
+                "activationTs": config.activation_ts,
+                "version": config.version,
+            }
+        }, status=status.HTTP_200_OK)
+
+    def patch(self, request):
+        config = TrademarkConfig.get_config()
+        enabled = request.data.get("enabled")
+        activation_ts = request.data.get("activation_ts")
+
+        if enabled is not None:
+            config.enabled = bool(enabled)
+        if activation_ts is not None:
+            config.activation_ts = int(activation_ts) if activation_ts else None
+
+        # Increment version for cache invalidation
+        try:
+            major, minor = config.version.split("_v")
+            config.version = f"cfg_v{int(minor) + 1}"
+        except Exception:
+            config.version = "cfg_v2"
+
+        config.save()
+
+        return Response({
+            "trademark": {
+                "enabled": config.enabled,
+                "activationTs": config.activation_ts,
+                "version": config.version,
+            }
+        }, status=status.HTTP_200_OK)
+
+
+class WidgetAdView(APIView):
+    """
+    GET /core/v1/widget/ad[/]
+    Returns eligible ad campaigns for the chart widget as an array.
+    Optional Bearer PAT: premium tenants receive an empty list.
+    Response: { "campaigns": [ AdCampaign, ... ] }
+    """
+    authentication_classes = [CorePATAuthentication]
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [AdvertisingAnonRateThrottle, AdvertisingUserRateThrottle]
+
+    MAX_CAMPAIGNS = 20
+
+    def get(self, request):
+        user = request.user
+        tenant = None
+        is_premium = False
+
+        if user and user.is_authenticated:
+            try:
+                tenant = user.core_tenant
+                if tenant.plan in {'starter', 'pro', 'enterprise', 'custom', 'internal'}:
+                    is_premium = True
+            except AttributeError:
+                pass
+
+        # Premium tenants: no ads
+        if is_premium:
+            return Response({"campaigns": []}, status=status.HTTP_200_OK)
+
+        symbol = request.query_params.get('symbol', '').strip().upper()
+        now = timezone.now()
+
+        db_query = AdCampaign.objects.filter(
+            status=AdCampaign.Status.ACTIVE,
+            start_date__lte=now,
+            end_date__gte=now,
+        )
+        if tenant:
+            db_query = db_query.filter(Q(tenant=tenant) | Q(tenant__isnull=True))
+        else:
+            db_query = db_query.filter(tenant__isnull=True)
+
+        campaigns = list(db_query.order_by('-weight')[:self.MAX_CAMPAIGNS])
+
+        tenant_id_str = str(tenant.public_id) if tenant else ""
+        result = []
+        for campaign in campaigns:
+            campaign_id_str = str(campaign.id)
+            click_tracking_url, impression_tracking_url = _sign_ad_tracking_urls(
+                request, campaign_id_str, tenant_id_str, symbol or 'ALL'
+            )
+            result.append({
+                "campaign_id": campaign_id_str,
+                "image_source": {
+                    "default": campaign.banner_url,
+                    "retina": campaign.banner_url_retina or campaign.banner_url,
+                    "svg": campaign.banner_url_svg or campaign.banner_url,
+                },
+                "video_url": None,
+                "click_url": campaign.destination_url,
+                "click_tracking_url": click_tracking_url,
+                "impression_tracking_url": impression_tracking_url,
+                "width": campaign.banner_width,
+                "height": campaign.banner_height,
+                "targeting": campaign.targeting_rules or {},
+                "start_at": int(campaign.start_date.timestamp() * 1000) if campaign.start_date else None,
+                "end_at": int(campaign.end_date.timestamp() * 1000) if campaign.end_date else None,
+            })
+
+        return Response({"campaigns": result}, status=status.HTTP_200_OK)
+
+
 class BaseMetricsLogView(APIView):
     permission_classes = [permissions.AllowAny]
     throttle_classes = [AdvertisingAnonRateThrottle, AdvertisingUserRateThrottle]
@@ -264,3 +425,4 @@ class OperatorAdDailySummaryViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = AdDailySummarySerializer
     permission_classes = [permissions.IsAdminUser]
     authentication_classes = [CorePATAuthentication, SessionAuthentication]
+

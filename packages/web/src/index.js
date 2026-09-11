@@ -17,8 +17,7 @@ export { getPageComponent, getPageLoader, getPageRegistryRouteIds, pageRegistry 
 export { ShellOperationsCenterPage } from "./pages/admin/ShellOperationsCenterPage.tsx";
 export { ShellMailConfigPage } from "./pages/admin/ShellMailConfigPage.tsx";
 export { ShellAiAdvisoryPage } from "./pages/signals/ShellAiAdvisoryPage.tsx";
-export { ShellWhaleAlertsPage } from "./pages/signals/ShellWhaleAlertsPage.tsx";
-export { ShellStockDetailPage } from "./pages/market/ShellStockDetailPage.tsx";
+
 export { ShellAiCommandCenterPage } from "./pages/system/ShellAiCommandCenterPage.tsx";
 export { AICommandCenterPage } from "./pages/AICommandCenterPage.tsx";
 export { ShellDashboardPage } from "./pages/workspace/ShellDashboardPage.tsx";
@@ -31,7 +30,6 @@ export { VipLocalControlPage } from "./pages/vip/VipLocalControlPage.tsx";
 // SM-P4 core user-facing pages
 export { DashboardPage } from "./pages/DashboardPage.tsx";
 export { AlertCenterPage } from "./pages/AlertCenterPage.tsx";
-export { WhaleAlertsPage } from "./pages/WhaleAlertsPage.tsx";
 export { StockDetailPage } from "./pages/StockDetailPage.tsx";
 export { PortfoliosPage } from "./pages/PortfoliosPage.tsx";
 export { TransactionsPage } from "./pages/TransactionsPage.tsx";

@@ -1,5 +1,5 @@
+import styles from "../components/ShellPageTemplate.module.css";
 import { createElement, useEffect, useRef, useState } from "react";
-
 function createDeferredPageComponent(loadComponent, routeId) {
   function DeferredPageComponent(props) {
     const [resolvedComponent, setResolvedComponent] = useState(null);
@@ -35,18 +35,18 @@ function createDeferredPageComponent(loadComponent, routeId) {
       return createElement(
         "article",
         {
-          className: "shellPage__panel",
+          className: `${styles.panel}`,
           role: "alert",
         },
-        createElement("h2", { className: "shellPage__panelTitle" }, "Không thể tải trang"),
-        createElement("p", { className: "shellPage__panelSubtitle" }, `Route ${routeId}: ${loadError}`),
+        createElement("h2", { className: `${styles.panelTitle}` }, "Không thể tải trang"),
+        createElement("p", { className: `${styles.panelSubtitle}` }, `Route ${routeId}: ${loadError}`),
       );
     }
 
     return createElement(
       "article",
       {
-        className: "shellPage__panel",
+        className: `${styles.panel}`,
         role: "status",
         "aria-live": "polite",
       },
@@ -87,13 +87,13 @@ function createDeferredPageComponent(loadComponent, routeId) {
             .loading-text {
               font-size: 18px;
               font-weight: 600;
-              color: var(--shell-ink, #f1f5f9);
+              color: var(--text-primary, #f1f5f9);
               margin-top: 20px;
               letter-spacing: 0.05em;
             }
             .loading-subtext {
               font-size: 13px;
-              color: var(--shell-muted, #94a3b8);
+              color: var(--text-secondary, #94a3b8);
               margin-top: 6px;
             }
           `
@@ -176,12 +176,16 @@ export const pageRegistry = Object.freeze([
     import("./admin/ShellOperationsCenterPage.tsx").then((module) => module.ShellOperationsCenterPage)),
   makePageEntry("operations-center-mail-config", "baseline", () =>
     import("./admin/ShellMailConfigPage.tsx").then((module) => module.ShellMailConfigPage)),
+  makePageEntry("advertising-admin", "baseline", () =>
+    import("../features/advertising/pages/AdvertisingAdminPage.jsx").then((module) => module.default)),
   makePageEntry("ai-command-center", "baseline", () =>
     import("./AICommandCenterPage.tsx").then((module) => module.AICommandCenterPage)),
+  makePageEntry("ai-agent-federation", "baseline", () =>
+    import("./AIAgentFederationPage.tsx").then((module) => module.AIAgentFederationPage)),
+  makePageEntry("ai-usage-analytics", "baseline", () =>
+    import("./AIUsageAnalyticsPage.tsx").then((module) => module.AIUsageAnalyticsPage)),
   makePageEntry("ai-advisory", "baseline", () =>
     import("./signals/ShellAiAdvisoryPage.tsx").then((module) => module.ShellAiAdvisoryPage)),
-  makePageEntry("whale-alerts", "baseline", () =>
-    import("./signals/ShellWhaleAlertsPage.tsx").then((module) => module.ShellWhaleAlertsPage)),
   makePageEntry("dashboard", "baseline", () =>
     import("./workspace/ShellDashboardPage.tsx").then((module) => module.ShellDashboardPage)),
   makePageEntry("transactions", "baseline", () =>
@@ -202,11 +206,7 @@ export const pageRegistry = Object.freeze([
   makePageEntry("alert-center", "core", () =>
     import("./AlertCenterPage.tsx").then((module) => module.AlertCenterPage)),
   makePageEntry("core-dashboard", "core", () =>
-    import("./DashboardPage.tsx").then((module) => module.DashboardPage)),
-  makePageEntry("core-whale-alerts", "core", () =>
-    import("./WhaleAlertsPage.tsx").then((module) => module.WhaleAlertsPage)),
-  makePageEntry("core-stock-detail", "core", () =>
-    import("./market/ShellStockDetailPage.tsx").then((module) => module.ShellStockDetailPage)),
+    import("./DashboardPage.tsx").then((module) => module.default)),
   makePageEntry("core-portfolios", "core", () =>
     import("./PortfoliosPage.tsx").then((module) => module.PortfoliosPage)),
   makePageEntry("core-transactions", "core", () =>
@@ -227,6 +227,8 @@ export const pageRegistry = Object.freeze([
     import("./commercial/BillingCenterPage.tsx").then((module) => module.BillingCenterPage)),
   makePageEntry("commercial-payment-return", "core", () =>
     import("./commercial/PaymentReturnPage.tsx").then((module) => module.PaymentReturnPage)),
+  makePageEntry("core-stock-detail", "core", () =>
+    import("./market/ShellStockDetailPage.js").then((module) => module.ShellStockDetailPage)),
   makePageEntry("screener", "core", () =>
     import("./ScreenerPage.tsx").then((module) => module.ScreenerPage)),
   // Tenant Admin Pages
@@ -269,6 +271,20 @@ export const pageRegistry = Object.freeze([
     import("./tenant-admin/TenantAdminCapabilitiesPage.tsx").then((module) => module.TenantAdminCapabilitiesPage)),
   makePageEntry("tenant-admin-audit-logs", "core", () =>
     import("./tenant-admin/TenantAdminAuditLogsPage.tsx").then((module) => module.TenantAdminAuditLogsPage)),
+  makePageEntry("tenant-admin-sso", "core", () =>
+    import("./tenant-admin/TenantAdminSSOPage.tsx").then((module) => module.TenantAdminSSOPage)),
+  makePageEntry("tenant-admin-usage-history", "core", () =>
+    import("./tenant-admin/TenantAdminUsageHistoryPage.tsx").then((module) => module.TenantAdminUsageHistoryPage)),
+  makePageEntry("tenant-admin-reports", "core", () =>
+    import("./tenant-admin/TenantAdminReportsPage.tsx").then((module) => module.TenantAdminReportsPage)),
+  makePageEntry("tenant-admin-security", "core", () =>
+    import("./tenant-admin/TenantAdminSecurityPage.tsx").then((module) => module.TenantAdminSecurityPage)),
+  makePageEntry("tenant-admin-webhooks", "core", () =>
+    import("./tenant-admin/TenantAdminWebhooksPage.tsx").then((module) => module.TenantAdminWebhooksPage)),
+  makePageEntry("tenant-admin-settings", "core", () =>
+    import("./tenant-admin/TenantAdminSettingsPage.tsx").then((module) => module.TenantAdminSettingsPage)),
+  makePageEntry("tenant-admin-roles", "core", () =>
+    import("./tenant-admin/TenantAdminRolesPage.tsx").then((module) => module.TenantAdminRolesPage)),
 ]);
 
 export function getPageRegistryRouteIds() {

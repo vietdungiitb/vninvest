@@ -1,20 +1,53 @@
-import { useEffect, useState } from "react";
+import styles from "../../components/ShellPageTemplate.module.css";
+import ta from "./TenantAdmin.module.css";
+import { useEffect, useId, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Area, AreaChart, Brush, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Users, Key, Fingerprint, Webhook, Activity, ScrollText, CreditCard, ShieldCheck, FileText, Globe, FileSpreadsheet, Lock, AlertTriangle, RefreshCw, Clock, Trash2, TrendingUp } from "lucide-react";
 import { ShellPageChrome, ShellPanel, renderShellMetric } from "../../components/ShellPageTemplate.js";
-import { renderSummaryCard } from "../coreShellPageHelpers.js";
+import { ShellEmptyState } from "../../components/ShellEmptyState.js";
+import { ShellSkeleton } from "../../components/ShellSkeleton.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
-
-interface TenantData {
-  tenant_id: string;
+import { useI18n } from "../../context/LangContext.js";
+import { usePortfolio } from "../../context/PortfolioContext.js";
+import { useTenantAdminQuery } from "./useTenantAdminQuery.js";
+interface DashboardSummary {
+  health_score: number;
+  health_breakdown?: { quota: number; activity: number; base: number };
+  members_active_today: number;
+  members_total: number;
+  api_calls_today: number;
+  api_calls_limit: number;
+  quota_headroom_pct: number;
+  api_calls_yesterday?: number;
+  members_active_yesterday?: number;
   plan: string;
-  status: string;
-  tenant_code: string;
-  display_name: string;
-  trial_ends_at?: string;
-  activated_at?: string;
-  billing_period_start?: string;
-  billing_period_end?: string;
-  created_at?: string;
-  updated_at?: string;
+  plan_status: string;
+  trial_remaining_days: number | null;
+  service_accounts: { active: number; disabled: number };
+  pats_expiring_soon: number;
+  pats_total?: number;
+  sso_configured?: boolean;
+  webhook_count?: number;
+  recent_events: Array<{
+    event_type: string;
+    created_at: string;
+    actor: string | null;
+    description: string;
+  }>;
+}
+
+interface DailyPoint {
+  date: string;
+  api_calls: number;
+  active_members: number;
+}
+
+interface ChecklistItem {
+  key: string;
+  labelKey: string;
+  done: boolean;
+  route?: string;
 }
 
 interface TenantAdminHomePageProps {
@@ -25,118 +58,661 @@ interface TenantAdminHomePageProps {
   initialSnapshot?: Record<string, unknown> | null;
 }
 
+function HealthGauge({ score }: { score: number }) {
+  const color = score >= 80 ? "#10b981" : score >= 50 ? "#f59e0b" : "#ef4444";
+  const rawId = useId();
+  const glowFilterId = useMemo(() => `gaugeGlow-${rawId.replace(/:/g, "")}`, [rawId]);
+  return (
+    <div className={ta.home_1}>
+      <svg width="56" height="56" viewBox="0 0 56 56">
+        <defs>
+          <filter id={glowFilterId} x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="2" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="4" />
+        <circle
+          cx="28" cy="28" r="24" fill="none" stroke={color} strokeWidth="4"
+          strokeDasharray={`${(score / 100) * 150.8} 150.8`}
+          strokeLinecap="round" transform="rotate(-90 28 28)"
+          filter={`url(#${glowFilterId})`}
+          className={ta.home_2}
+        />
+      </svg>
+      <span className={ta.home_3} style={{ color }}>
+        {score}
+      </span>
+    </div>
+  );
+}
+
+function KpiCard({
+  label, value, sub, color, gauge,
+}: {
+  label: string; value: string; sub?: string; color?: string; gauge?: number;
+}) {
+  return (
+    <div className={[`${styles.metric}`, ta.home_4].filter(Boolean).join(" ")} >
+      {gauge != null && <HealthGauge score={gauge} />}
+      <div className={ta.home_5}>
+        <span className={`${styles.metricLabel}`}>{label}</span>
+        <div className={`${styles.metricValue}`} style={{ color: color || "var(--text-primary)" }}>{value}</div>
+        {sub && <div className={ta.home_6}>{sub}</div>}
+      </div>
+    </div>
+  );
+}
+
+function EventIcon({ type, label }: { type: string; label?: string }) {
+  const props = { size: 14, style: { flexShrink: 0 } as const, role: "img" as const };
+  const aria = label || type;
+  if (type.includes("pat")) return <Fingerprint {...props} aria-label={aria} />;
+  if (type.includes("member")) return <Users {...props} aria-label={aria} />;
+  if (type.includes("quota")) return <AlertTriangle {...props} aria-label={aria} />;
+  if (type.includes("plan") || type.includes("status")) return <TrendingUp {...props} aria-label={aria} />;
+  if (type.includes("invoice")) return <CreditCard {...props} aria-label={aria} />;
+  if (type.includes("trial")) return <Clock {...props} aria-label={aria} />;
+  if (type.includes("deprov")) return <Trash2 {...props} aria-label={aria} />;
+  return <RefreshCw {...props} aria-label={aria} />;
+}
+
+function eventLabel(type: string, t: (k: string, o?: object) => string): string {
+  const key = `tenantHome.event.${type}`;
+  const label = t(key, { defaultValue: "" });
+  if (label) return label;
+  return type.replace(/_/g, " ");
+}
+
+function timeAgo(iso: string, t: (k: string, o?: object) => string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return t("tenantHome.justNow");
+  if (mins < 60) return t("tenantHome.minutesAgo", { count: mins });
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return t("tenantHome.hoursAgo", { count: hours });
+  const days = Math.floor(hours / 24);
+  return t("tenantHome.daysAgo", { count: days });
+}
+
 export function TenantAdminHomePage({}: TenantAdminHomePageProps) {
-  const [tenant, setTenant] = useState<TenantData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { t, formatNumber } = useI18n();
+  const { ability } = usePortfolio();
 
-  useEffect(() => {
-    async function loadTenant() {
-      try {
-        setLoading(true);
-        const response = await defaultCoreApiAdapter.coreGet("/partner/tenant/");
-        if (response.ok) {
-          const data = await response.json();
-          setTenant(data);
-        } else {
-          setError("Không thể tải thông tin tenant");
-        }
-      } catch (err) {
-        setError((err as Error).message || "Lỗi khi tải tenant");
-      } finally {
-        setLoading(false);
-      }
+  const [trendDays, setTrendDays] = useState(7);
+  const [showDeprovision, setShowDeprovision] = useState(false);
+  const [deprovisionDone, setDeprovisionDone] = useState(false);
+  const [deprovisionError, setDeprovisionError] = useState("");
+  const [deprovisioning, setDeprovisioning] = useState(false);
+  const [deprovisionConfirm, setDeprovisionConfirm] = useState("");
+  const [activityFilter, setActivityFilter] = useState<string>("all");
+  const [showPalette, setShowPalette] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState("");
+  const navigate = useNavigate();
+
+  const canReadHome = (ability as unknown as { can: (a: string, s: string) => boolean })?.can?.("read", "TenantAdminHome") ?? true;
+
+  const {
+    data: summaryData,
+    isLoading: summaryLoading,
+    isFetching: summaryFetching,
+    error: summaryError,
+    refetch: refetchSummary,
+    dataUpdatedAt: summaryUpdatedAt,
+  } = useTenantAdminQuery<DashboardSummary>(
+    ["tenant-home", "summary"],
+    "/partner/dashboard/summary/",
+    {
+      enabled: canReadHome,
+      refetchInterval: 30_000,
+      refetchIntervalInBackground: false,
+      queryFn: async () => {
+        const adapter = defaultCoreApiAdapter as unknown as { getDashboardSummary: () => Promise<DashboardSummary> };
+        return adapter.getDashboardSummary();
+      },
+    },
+  );
+
+  const {
+    data: trendData,
+    isFetching: trendFetching,
+    error: trendError,
+    refetch: refetchTrend,
+  } = useTenantAdminQuery<{ daily: DailyPoint[]; days: number }>(
+    ["tenant-home", "trend", String(trendDays)],
+    `/partner/dashboard/usage-trend/?days=${trendDays}`,
+    {
+      enabled: canReadHome,
+      refetchInterval: 30_000,
+      refetchIntervalInBackground: false,
+      queryFn: async () => {
+        const adapter = defaultCoreApiAdapter as unknown as { getUsageTrend: (d: number) => Promise<{ daily: DailyPoint[]; days: number }> };
+        const res = await adapter.getUsageTrend(trendDays) as unknown as { daily: DailyPoint[]; days: number };
+        return res;
+      },
+    },
+  );
+
+  const summary = summaryData ?? null;
+  const trend = useMemo(() => trendData?.daily ?? [], [trendData]);
+  const loading = summaryLoading;
+  const error = summaryError ? ((summaryError as Error).message || t("common.loadError")) : trendError ? ((trendError as Error).message || t("tenantHome.trendLoadError")) : null;
+
+  const handleTrendDaysChange = (days: number) => {
+    setTrendDays(days);
+  };
+
+  const handleRefresh = () => {
+    void refetchSummary();
+    void refetchTrend();
+  };
+
+  const liveAgo = summaryUpdatedAt ? timeAgo(new Date(summaryUpdatedAt).toISOString(), t) : "";
+
+  const planStatusLabel = summary
+    ? t(`tenantHome.status.${summary.plan_status}`, { defaultValue: summary.plan_status })
+    : "";
+
+  const usageChartData = useMemo(() => trend.map((d) => ({
+    date: d.date.slice(5),
+    api_calls: d.api_calls,
+    active_members: d.active_members,
+  })), [trend]);
+
+  const handleDeprovision = async () => {
+    try {
+      setDeprovisioning(true);
+      setDeprovisionError("");
+      await defaultCoreApiAdapter.corePost("/partner/billing/deprovision/");
+      setDeprovisionDone(true);
+      setShowDeprovision(false);
+      setDeprovisionConfirm("");
+    } catch {
+      setDeprovisionError(t("tenantHome.deprovisionError"));
+    } finally {
+      setDeprovisioning(false);
     }
-    loadTenant();
-  }, []);
+  };
 
-  if (loading) {
+  // Cmd+K palette — mini-spec: Ctrl+K/Cmd+K, filter 12 navEntries by t(labelKey), Enter navigate, Esc close
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setShowPalette((v) => !v);
+        setPaletteQuery("");
+      } else if (e.key === "Escape" && showPalette) {
+        setShowPalette(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showPalette]);
+
+  const navEntries = [
+    { labelKey: "tenantHome.membersRoute", to: "/tenant-admin/members", subject: "TenantMemberAdmin", Icon: Users },
+    { labelKey: "tenantHome.serviceAccountsRoute", to: "/tenant-admin/service-accounts", subject: "TenantServiceAccountAdmin", Icon: Key },
+    { labelKey: "tenantHome.patsRoute", to: "/tenant-admin/pats", subject: "TenantPATAdmin", Icon: Fingerprint },
+    { labelKey: "tenantHome.webhooksRoute", to: "/tenant-admin/webhooks", subject: "TenantWebhookView", Icon: Webhook },
+    { labelKey: "tenantHome.usageRoute", to: "/tenant-admin/usage", subject: "TenantUsageView", Icon: Activity },
+    { labelKey: "tenantHome.usageHistoryRoute", to: "/tenant-admin/usage-history", subject: "TenantUsageView", Icon: ScrollText },
+    { labelKey: "tenantHome.billingRoute", to: "/tenant-admin/billing", subject: "TenantBillingView", Icon: CreditCard },
+    { labelKey: "tenantHome.capabilitiesRoute", to: "/tenant-admin/capabilities", subject: "TenantCapabilityView", Icon: ShieldCheck },
+    { labelKey: "tenantHome.auditLogsRoute", to: "/tenant-admin/audit-logs",       subject: "TenantAuditAdmin", Icon: FileText },
+    { labelKey: "tenantHome.ssoRoute", to: "/tenant-admin/sso", subject: "TenantSSOAdmin", Icon: Globe },
+    { labelKey: "tenantHome.reportsRoute", to: "/tenant-admin/reports", subject: "TenantReportsView", Icon: FileSpreadsheet },
+    { labelKey: "tenantHome.securityRoute", to: "/tenant-admin/security", subject: "TenantSecurityView", Icon: Lock },
+  ];
+  const allowedLinks = navEntries.filter((entry) => (ability as unknown as { can: (a: string, s: string) => boolean })?.can?.("read", entry.subject) ?? false);
+
+  if (loading && !summary) {
     return (
       <ShellPageChrome
-        eyebrow="Tenant Admin"
-        title="Dashboard"
-        description="Đang tải thông tin tenant..."
+        eyebrow={t("tenantHome.eyebrow")}
+        title={t("tenantHome.title")}
+        description={t("common.loading")}
       >
-        <div className="shellPage__panel">Đang tải...</div>
+        <ShellSkeleton variant="metric" count={4} />
+        <div style={{ height: 16 }} />
+        <ShellSkeleton variant="chart" count={7} />
+        <div style={{ height: 16 }} />
+        <ShellSkeleton variant="table-row" count={3} />
       </ShellPageChrome>
     );
   }
 
-  if (error) {
+  if (summaryError && !summary) {
     return (
       <ShellPageChrome
-        eyebrow="Tenant Admin"
-        title="Dashboard"
-        description="Không thể tải thông tin tenant"
-        error={error}
+        eyebrow={t("tenantHome.eyebrow")}
+        title={t("tenantHome.title")}
+        description={t("common.loadError")}
+        error={(summaryError as Error)?.message || t("common.loadError")}
       >
-        <div className="shellPage__panel">{error}</div>
+        <div className={`${styles.panel}`}>
+          <ShellEmptyState description={(summaryError as Error)?.message || t("common.loadError")} />
+          <button onClick={handleRefresh} className={`${styles.button} ${styles.buttonSecondary}`} style={{ marginTop: 12 }}>
+            {t("common.refresh")}
+          </button>
+        </div>
       </ShellPageChrome>
     );
   }
 
-  const metrics = [
-    renderShellMetric("Tenant ID", tenant?.tenant_id || "N/A"),
-    renderShellMetric("Plan", tenant?.plan || "N/A"),
-    renderShellMetric("Status", tenant?.status || "N/A"),
-    renderShellMetric("Tenant Code", tenant?.tenant_code || "N/A"),
-  ];
+  const formatApiCalls = (val: number | undefined | null): string => {
+    if (val == null) return "\u2014";
+    if (val < 0) return t("tenantHome.unlimited");
+    return formatNumber(val);
+  };
 
-  const summaryCards = [
-    renderSummaryCard({
-      key: "tenant-info",
-      title: "Thông tin Tenant",
-      rows: [
-        { label: "Tên hiển thị", value: tenant?.display_name || "N/A" },
-        { label: "Mã tenant", value: tenant?.tenant_code || "N/A" },
-        { label: "Gói cước", value: tenant?.plan || "N/A" },
-        { label: "Trạng thái", value: tenant?.status || "N/A" },
-        { label: "Trial kết thúc", value: tenant?.trial_ends_at ? new Date(tenant.trial_ends_at).toLocaleDateString("vi-VN") : "N/A" },
-        { label: "Kích hoạt lúc", value: tenant?.activated_at ? new Date(tenant.activated_at).toLocaleDateString("vi-VN") : "N/A" },
-      ],
-    }),
-    renderSummaryCard({
-      key: "billing-info",
-      title: "Thông tin thanh toán",
-      rows: [
-        { label: "Kỳ thanh toán bắt đầu", value: tenant?.billing_period_start || "N/A" },
-        { label: "Kỳ thanh toán kết thúc", value: tenant?.billing_period_end || "N/A" },
-        { label: "Ngày tạo", value: tenant?.created_at ? new Date(tenant.created_at).toLocaleDateString("vi-VN") : "N/A" },
-        { label: "Cập nhật lần cuối", value: tenant?.updated_at ? new Date(tenant.updated_at).toLocaleDateString("vi-VN") : "N/A" },
-      ],
-    }),
+  const formatLimit = (val: number): string => {
+    if (val <= 0) return t("tenantHome.unlimited");
+    return formatNumber(val);
+  };
+
+  const formatDelta = (today: number | undefined, yesterday: number | undefined): string | null => {
+    if (today == null || yesterday == null) return null;
+    const diff = today - yesterday;
+    const vsYesterday = t("tenantHome.vsYesterday");
+    if (yesterday === 0) return diff === 0 ? "—" : `↑${formatNumber(diff)}`;
+    const pct = Math.round((diff / Math.max(1, yesterday)) * 100);
+    const arrow = diff > 0 ? "↑" : diff < 0 ? "↓" : "→";
+    const sign = diff > 0 ? "+" : "";
+    return `${arrow} ${sign}${formatNumber(diff)} (${sign}${pct}%) ${vsYesterday}`;
+  };
+
+  const showTrialBanner = summary?.plan_status === "trial" && summary?.trial_remaining_days != null;
+  const isUrgent = showTrialBanner && summary!.trial_remaining_days! <= 3;
+  const trialBannerText = showTrialBanner && summary?.trial_remaining_days !== null
+    ? (isUrgent
+      ? t("tenantHome.trialUrgentBanner", { days: summary.trial_remaining_days })
+      : t("tenantHome.trialBanner", { days: summary.trial_remaining_days }))
+    : "";
+
+  const refreshAction = (
+    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      {liveAgo && <span style={{ fontSize: 11, color: "#10b981", fontWeight: 600 }}>● LIVE · {liveAgo}</span>}
+      <button onClick={handleRefresh} disabled={summaryFetching || trendFetching} className={`${styles.button} ${styles.buttonSecondary}`}>
+        {summaryFetching || trendFetching ? t("common.loading") : t("common.refresh")}
+      </button>
+    </div>
+  );
+
+  const handleExportCsv = () => {
+    const rows = [["date", "api_calls", "active_members"], ...usageChartData.map((r) => [r.date, String(r.api_calls), String(r.active_members)])];
+    const csv = rows.map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `usage-trend-${trendDays}d.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const trendActions = (
+    <div className={`${styles.actions}`} style={{ gap: 8 }}>
+      {[7, 14, 30].map((d) => (
+        <button
+          key={d}
+          onClick={() => handleTrendDaysChange(d)}
+          className={trendDays === d ? ta.home_54 : ta.home_55}
+        >
+          {d}d
+        </button>
+      ))}
+      <button onClick={handleExportCsv} disabled={usageChartData.length === 0} className={`${styles.button} ${styles.buttonSecondary}`} style={{ padding: "6px 10px", fontSize: 11 }}>
+        Export CSV
+      </button>
+    </div>
+  );
+
+  const checklistItems: ChecklistItem[] = [
+    {
+      key: "service_accounts",
+      labelKey: "tenantHome.checklistSA",
+      done: ((summary?.service_accounts.active || 0) + (summary?.service_accounts.disabled || 0)) > 0,
+      route: "/tenant-admin/service-accounts",
+    },
+    {
+      key: "pat",
+      labelKey: "tenantHome.checklistPAT",
+      // REV2 F04b: done = pats_total>0 (optional FE, fallback 0 -> not done until BE deploy)
+      done: (summary?.pats_total ?? 0) > 0,
+      route: "/tenant-admin/pats",
+    },
+    {
+      key: "members",
+      labelKey: "tenantHome.checklistMembers",
+      done: (summary?.members_total || 0) > 1,
+      route: "/tenant-admin/members",
+    },
+    {
+      key: "sso",
+      labelKey: "tenantHome.checklistSSO",
+      // REV2: Phase0 giữ ability.can fallback; Phase1 sẽ dùng summary.sso_configured
+      done: summary?.sso_configured != null ? !!summary.sso_configured : (ability as unknown as { can: (a: string, s: string) => boolean })?.can?.("read", "TenantSSOAdmin") ?? false,
+      route: "/tenant-admin/sso",
+    },
+    {
+      key: "webhooks",
+      labelKey: "tenantHome.checklistWebhooks",
+      done: summary?.webhook_count != null ? (summary.webhook_count ?? 0) > 0 : (ability as unknown as { can: (a: string, s: string) => boolean })?.can?.("read", "TenantWebhookView") ?? false,
+      route: "/tenant-admin/webhooks",
+    },
   ];
+  const completedItems = checklistItems.filter(i => i.done).length;
+  const checklistPct = Math.round((completedItems / checklistItems.length) * 100);
+  const capProgressStyle = `
+.capProgress { height: 6px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; }
+.capProgress__bar { height: 100%; border-radius: 999px; transition: width 0.6s ease; }
+`;
+
+  const heroMetrics = summary ? [
+    renderShellMetric(t("tenantHome.healthLabel"), `${summary.health_score}%`),
+    renderShellMetric(t("tenantHome.activeMembersLabel"), `${summary.members_active_today}/${summary.members_total}`),
+    renderShellMetric(t("tenantHome.apiCallsLabel"), formatApiCalls(summary.api_calls_today)),
+    renderShellMetric(t("tenantHome.quotaHeadroomLabel"), `${summary.quota_headroom_pct}%`),
+  ] : [];
 
   return (
     <ShellPageChrome
-      eyebrow="Tenant Admin"
-      title="Dashboard"
-      description="Tổng quan thông tin tenant và các chỉ số chính"
-      metrics={metrics}
+      eyebrow={t("tenantHome.eyebrow")}
+      title={t("tenantHome.title")}
+      description={t("tenantHome.description")}
+      metrics={heroMetrics}
+      notice={showTrialBanner ? trialBannerText : undefined}
+      error={error || undefined}
     >
-      <section className="shellPage__bodyGrid">
-        <div className="shellPage__stack">
+      <section className={`${styles.stack}`}>
+          {/* Trial upgrade prompt */}
+          {showTrialBanner && (
+            <div className={ta.home_7}>
+              <Link to="/tenant-admin/billing" className={[`${styles.button} ${styles.buttonPrimary}`, ta.home_8].filter(Boolean).join(" ")} style={{ fontSize: 12, fontWeight: 700 }}>
+                {t("tenantHome.upgradePrompt")}
+              </Link>
+              <button onClick={() => { setDeprovisionConfirm(""); setShowDeprovision(true); }} className={[`${styles.button}`, ta.home_9].filter(Boolean).join(" ")} style={{ fontSize: 12 }}>
+                {t("tenantHome.deprovisionAction")}
+              </button>
+            </div>
+          )}
+
+          {/* Deprovision alert */}
+          {deprovisionDone && (
+            <div className={ta.home_10}>
+              {t("tenantHome.deprovisionDone")}
+            </div>
+          )}
+          {deprovisionError && (
+            <div className={ta.home_11}>
+              {deprovisionError}
+            </div>
+          )}
+
+          {/* Deprovision confirmation modal — guard: type DEPROVISION */}
+          {showDeprovision && (
+            <div className={ta.home_12}>
+              <div className={ta.home_13}>
+                <h3 className={ta.home_14}>{t("tenantHome.deprovisionConfirmTitle")}</h3>
+                <p className={ta.home_15}>{t("tenantHome.deprovisionConfirmBody")}</p>
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ fontSize: 12, color: "#94a3b8", display: "block", marginBottom: 6 }}>
+                    {t("tenantHome.deprovisionTypeHint", { phrase: "DEPROVISION" })}
+                  </label>
+                  <input
+                    className={`${styles.input}`}
+                    value={deprovisionConfirm}
+                    onChange={(e) => setDeprovisionConfirm(e.target.value)}
+                    placeholder="DEPROVISION"
+                    autoComplete="off"
+                  />
+                </div>
+                <div className={ta.home_16}>
+                  <button onClick={() => { setShowDeprovision(false); setDeprovisionConfirm(""); }} className={`${styles.button} ${styles.buttonSecondary}`} style={{ fontSize: 13 }}>
+                    {t("tenantHome.deprovisionCancel")}
+                  </button>
+                  <button onClick={handleDeprovision} disabled={deprovisioning || deprovisionConfirm !== "DEPROVISION"} className={[`${styles.button}`, ta.home_17].filter(Boolean).join(" ")} style={{ fontSize: 13, fontWeight: 700 }}>
+                    {deprovisioning ? t("common.saving") : t("tenantHome.deprovisionAction")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* KPI Hero Row */}
+          <div className={ta.home_18}>
+            <KpiCard
+              label={t("tenantHome.healthLabel")}
+              value={summary ? `${summary.health_score}%` : "\u2014"}
+              sub={summary?.health_breakdown ? `${planStatusLabel} · quota ${summary.health_breakdown.quota}% · activity ${summary.health_breakdown.activity}%` : planStatusLabel}
+              gauge={summary?.health_score}
+            />
+            <KpiCard
+              label={t("tenantHome.activeMembersLabel")}
+              value={summary ? `${summary.members_active_today}/${summary.members_total}` : "\u2014"}
+              sub={summary ? `${Math.round((summary.members_active_today / Math.max(summary.members_total, 1)) * 100)}% ${t("tenantHome.todayLabel")} · ${formatDelta(summary.members_active_today, summary.members_active_yesterday) ?? ""}` : ""}
+            />
+            <KpiCard
+              label={t("tenantHome.apiCallsLabel")}
+              value={formatApiCalls(summary?.api_calls_today)}
+              sub={summary ? `${summary?.api_calls_limit && summary.api_calls_limit > 0 ? `${t("tenantHome.limitLabel")}: ${formatLimit(summary.api_calls_limit)}` : t("tenantHome.unlimited")} · ${formatDelta(summary.api_calls_today, summary.api_calls_yesterday) ?? ""}` : ""}
+              color={summary && summary.api_calls_limit > 0 && summary.api_calls_today > summary.api_calls_limit * 0.8
+                ? "#f59e0b" : undefined}
+            />
+            <KpiCard
+              label={t("tenantHome.quotaHeadroomLabel")}
+              value={summary ? `${summary.quota_headroom_pct}%` : "\u2014"}
+              color={summary && summary.quota_headroom_pct < 30 ? "#ef4444" : summary && summary.quota_headroom_pct < 60 ? "#f59e0b" : undefined}
+            />
+          </div>
+
+          {/* Onboarding Checklist */}
+          <style>{capProgressStyle}</style>
           <ShellPanel
-            title="Thông tin tenant"
-            subtitle="Chi tiết cấu hình và trạng thái tenant hiện tại"
+            title={t("tenantHome.checklistTitle")}
+            subtitle={`${completedItems}/${checklistItems.length} ${t("tenantHome.checklistDone")}`}
           >
-            <section className="shellPage__summaryGrid">{summaryCards}</section>
+            <div className={ta.home_19}>
+              <div className="capProgress">
+                <div className={["capProgress__bar", ta.home_20].filter(Boolean).join(" ")} style={{ width: `${checklistPct}%` }} />
+              </div>
+            </div>
+            <div className={ta.home_21}>
+              {checklistItems.map(item => (
+                <div key={item.key} className={ta.home_22}>
+                  <span className={ta.home_23} style={{ background: item.done ? "rgba(34,197,94,0.2)" : "rgba(148,163,184,0.15)", color: item.done ? "#22c55e" : "#64748b" }}>
+                    {item.done ? "✓" : "·"}
+                  </span>
+                  <span className={ta.home_24} style={{ color: item.done ? "var(--text-primary)" : "var(--text-secondary)" }}>
+                    {t(item.labelKey)}
+                  </span>
+                  {item.route && !item.done && (
+                    <Link to={item.route} className={[`${styles.button}`, ta.home_25].filter(Boolean).join(" ")} style={{ fontSize: 11, padding: "4px 10px" }}>
+                      {t("tenantHome.checklistSetup")}
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </div>
           </ShellPanel>
-          <ShellPanel
-            title="Lối nhanh"
-            subtitle="Điều hướng đến các chức năng quản trị"
-          >
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px" }}>
-              <li><a href="/tenant-admin/members" style={{ display: "block", padding: "16px", background: "rgba(15,23,42,0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", textDecoration: "none", color: "#f1f5f9", fontWeight: 600 }}>👥 Quản lý thành viên</a></li>
-              <li><a href="/tenant-admin/service-accounts" style={{ display: "block", padding: "16px", background: "rgba(15,23,42,0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", textDecoration: "none", color: "#f1f5f9", fontWeight: 600 }}>🔧 Service Accounts</a></li>
-              <li><a href="/tenant-admin/pats" style={{ display: "block", padding: "16px", background: "rgba(15,23,42,0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", textDecoration: "none", color: "#f1f5f9", fontWeight: 600 }}>🔑 API Tokens (PATs)</a></li>
-              <li><a href="/tenant-admin/usage" style={{ display: "block", padding: "16px", background: "rgba(15,23,42,0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", textDecoration: "none", color: "#f1f5f9", fontWeight: 600 }}>📊 Hạn mức sử dụng</a></li>
-              <li><a href="/tenant-admin/billing" style={{ display: "block", padding: "16px", background: "rgba(15,23,42,0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", textDecoration: "none", color: "#f1f5f9", fontWeight: 600 }}>💳 Hóa đơn & Cước</a></li>
-              <li><a href="/tenant-admin/audit-logs" style={{ display: "block", padding: "16px", background: "rgba(15,23,42,0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", textDecoration: "none", color: "#f1f5f9", fontWeight: 600 }}>📋 Nhật ký vận hành</a></li>
-            </ul>
+
+          {/* Usage Trend Chart + Quick Actions */}
+          <div className={ta.home_26} style={{ gridTemplateColumns: summary ? "1.5fr 1fr" : "1fr" }}>
+            <ShellPanel title={t("tenantHome.usageTrendTitle")} actions={trendDays !== 7 ? undefined : trendActions}>
+              {trendDays !== 7 && (
+                <div className={ta.home_27}>{trendActions}</div>
+              )}
+              {trendFetching && trend.length === 0 ? (
+                <ShellSkeleton variant="chart" count={trendDays} />
+              ) : usageChartData.length > 0 ? (
+                <div className={ta.home_28}>
+                  <ResponsiveContainer>
+                    <AreaChart data={usageChartData} margin={{ top: 10, right: 12, bottom: 4, left: 0 }}>
+                      <defs>
+                        <linearGradient id="apiGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#00b4d8" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#00b4d8" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="memberGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                        </linearGradient>
+                        <filter id="apiGlow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="3" result="blur" />
+                          <feComponentTransfer in="blur" result="glow">
+                            <feFuncA type="linear" slope="0.5"/>
+                          </feComponentTransfer>
+                          <feMerge>
+                            <feMergeNode in="glow" />
+                            <feMergeNode in="SourceGraphic" />
+                          </feMerge>
+                        </filter>
+                        <filter id="memberGlow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="3" result="blur" />
+                          <feComponentTransfer in="blur" result="glow">
+                            <feFuncA type="linear" slope="0.5"/>
+                          </feComponentTransfer>
+                          <feMerge>
+                            <feMergeNode in="glow" />
+                            <feMergeNode in="SourceGraphic" />
+                          </feMerge>
+                        </filter>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" vertical={false} />
+                      <XAxis
+                        dataKey="date" tick={{ fontSize: 11, fill: "#94a3b8" }}
+                        axisLine={false} tickLine={false}
+                      />
+                      <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} width={36} />
+                      <Tooltip
+                        contentStyle={{
+                          background: "rgba(15,23,42,0.96)", border: "1px solid rgba(255,255,255,0.08)",
+                          borderRadius: 12, fontSize: 12, color: "#f1f5f9",
+                          boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)"
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 11, color: "#94a3b8", paddingTop: 8 }} />
+                      <Area
+                        type="monotone" dataKey="api_calls" stroke="#00b4d8"
+                        fill="url(#apiGrad)" strokeWidth={2.5} dot={false}
+                        name={t("tenantHome.apiCallsLabel")}
+                        className={ta.home_29}
+                      />
+                      <Area
+                        type="monotone" dataKey="active_members" stroke="#10b981"
+                        fill="url(#memberGrad)" strokeWidth={2.5} dot={false}
+                        name={t("tenantHome.activeMembersLabel")}
+                        className={ta.home_30}
+                      />
+                      {trendDays === 30 && <Brush dataKey="date" height={20} stroke="#334155" travellerWidth={8} />}
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <ShellEmptyState description={t("tenantHome.noTrendData")} />
+              )}
+            </ShellPanel>
+
+            {allowedLinks.length > 0 && (
+              <ShellPanel title={t("tenantHome.quickActionsTitle")}>
+                <div className={ta.home_31}>
+                  {allowedLinks.map((entry) => (
+                    <Link
+                      key={entry.to}
+                      to={entry.to}
+                      className={[`${styles.listItem}`, ta.home_32].filter(Boolean).join(" ")}
+                      style={{ transition: "transform 0.2s ease, border-color 0.2s ease" }}
+                    >
+                      <entry.Icon size={18} className={ta.home_33} aria-hidden />
+                      <span>{t(entry.labelKey)}</span>
+                    </Link>
+                  ))}
+                </div>
+              </ShellPanel>
+            )}
+          </div>
+
+          {/* Recent Activity — filter + deep-link */}
+          <ShellPanel title={t("tenantHome.activityTitle")} actions={refreshAction}>
+            {summary?.recent_events && summary.recent_events.length > 0 ? (
+              <>
+                {(() => {
+                  const types = Array.from(new Set(summary.recent_events.map((e) => e.event_type)));
+                  if (types.length <= 1) return null;
+                  return (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                      <button onClick={() => setActivityFilter("all")} className={activityFilter === "all" ? ta.home_56 : ta.home_57}>
+                        Tất cả
+                      </button>
+                      {types.map((tp) => (
+                        <button key={tp} onClick={() => setActivityFilter(tp)} className={activityFilter === tp ? ta.home_56 : ta.home_57}>
+                          {eventLabel(tp, t)}
+                        </button>
+                      ))}
+                      <Link to="/tenant-admin/audit-logs" style={{ fontSize: 11, color: "var(--accent-shell)", alignSelf: "center", marginLeft: 8 }}>Xem tất cả →</Link>
+                    </div>
+                  );
+                })()}
+                <div className={`${styles.list}`}>
+                  {(activityFilter === "all" ? summary.recent_events : summary.recent_events.filter((e) => e.event_type === activityFilter)).map((ev, i) => (
+                    <div key={`${ev.event_type}-${i}`} className={[`${styles.listItem}`, ta.home_34].filter(Boolean).join(" ")} >
+                      <span className={ta.home_35}><EventIcon type={ev.event_type} label={eventLabel(ev.event_type, t)} /></span>
+                      <div className={ta.home_36}>
+                        <div className={ta.home_37}>
+                          {eventLabel(ev.event_type, t)}
+                        </div>
+                        {ev.description && (
+                          <div className={`${styles.itemMeta}`} style={{ marginTop: 2, fontSize: 12 }}>
+                            {ev.description}
+                          </div>
+                        )}
+                        <div className={ta.home_38}>
+                          {ev.actor && <span>{ev.actor}</span>}
+                          <span>{timeAgo(ev.created_at, t)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {activityFilter !== "all" && summary.recent_events.filter((e) => e.event_type === activityFilter).length === 0 && (
+                  <ShellEmptyState description={t("tenantHome.noActivity")} />
+                )}
+              </>
+            ) : (
+              <ShellEmptyState description={t("tenantHome.noActivity")} />
+            )}
           </ShellPanel>
-        </div>
+
+
       </section>
+      {/* Cmd+K Palette — tenant-admin quick nav */}
+      {showPalette && (
+        <div role="dialog" aria-modal="true" aria-label="Quick navigation" onClick={() => setShowPalette(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: 80, zIndex: 1000 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--bg-shell-surface)", border: "1px solid var(--border-shell)", borderRadius: 12, width: 480, maxWidth: "90vw", maxHeight: "60vh", overflow: "hidden", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
+            <input autoFocus value={paletteQuery} onChange={(e) => setPaletteQuery(e.target.value)} placeholder="Tìm trang… (Ctrl+K)" style={{ width: "100%", padding: "12px 16px", border: "none", borderBottom: "1px solid var(--border-shell)", background: "transparent", color: "var(--text-primary)", outline: "none", fontSize: 14 }} />
+            <div style={{ maxHeight: 320, overflowY: "auto", padding: 8 }}>
+              {navEntries
+                .filter((entry) => (ability as unknown as { can: (a: string, s: string) => boolean })?.can?.("read", entry.subject) ?? false)
+                .filter((entry) => !paletteQuery || t(entry.labelKey).toLowerCase().includes(paletteQuery.toLowerCase()) || entry.labelKey.toLowerCase().includes(paletteQuery.toLowerCase()))
+                .slice(0, 8)
+                .map((entry) => (
+                  <button key={entry.to} onClick={() => { setShowPalette(false); navigate(entry.to); }} style={{ display: "flex", gap: 12, alignItems: "center", width: "100%", padding: "10px 12px", borderRadius: 8, border: "none", background: "transparent", color: "var(--text-primary)", cursor: "pointer", textAlign: "left" }} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+                    <entry.Icon size={16} aria-hidden />
+                    <span style={{ flex: 1, fontSize: 13 }}>{t(entry.labelKey)}</span>
+                    <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{entry.to}</span>
+                  </button>
+                ))}
+            </div>
+            <div style={{ padding: "6px 12px", fontSize: 11, color: "var(--text-secondary)", borderTop: "1px solid var(--border-shell)", display: "flex", justifyContent: "space-between" }}>
+              <span>↵ Chọn · Esc Đóng</span>
+              <span>Ctrl+K</span>
+            </div>
+          </div>
+        </div>
+      )}
     </ShellPageChrome>
   );
 }

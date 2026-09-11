@@ -4,6 +4,40 @@ from django.core.exceptions import ValidationError
 from identity_access.models import CoreTenant
 
 
+class TrademarkConfig(models.Model):
+    """Singleton model for trademark enforcement configuration."""
+    enabled = models.BooleanField(default=False, verbose_name="Bật trademark")
+    activation_ts = models.BigIntegerField(null=True, blank=True, verbose_name="Timestamp kích hoạt (ms)")
+    version = models.CharField(max_length=32, default="cfg_v1", verbose_name="Phiên bản cấu hình")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Cấu hình Trademark"
+        verbose_name_plural = "Cấu hình Trademark"
+
+    def __str__(self):
+        return f"TrademarkConfig v{self.version} (enabled={self.enabled})"
+
+    def save(self, *args, **kwargs):
+        # Enforce singleton
+        if not self.pk and TrademarkConfig.objects.exists():
+            raise ValidationError("Chỉ được phép có một bản ghi TrademarkConfig.")
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_config(cls):
+        """Get or create the singleton config."""
+        config, _ = cls.objects.get_or_create(
+            pk=1,
+            defaults={
+                "enabled": False,
+                "activation_ts": None,
+                "version": "cfg_v1",
+            },
+        )
+        return config
+
+
 class AdCampaign(models.Model):
     class CampaignType(models.TextChoices):
         INTERNAL_PROMO = 'internal_promo', 'Internal Upgrade Promo'

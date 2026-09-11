@@ -1,3 +1,4 @@
+import styles from "../components/ShellPageTemplate.module.css";
 import {
   createElement,
   useEffect,
@@ -6,7 +7,6 @@ import {
 } from "react";
 
 import { loadShellBootstrap } from "../context/bootstrapClient.js";
-
 export function renderElement(type, props, ...children) {
   return createElement(type, props, ...children);
 }
@@ -243,12 +243,12 @@ export function countFlagsByState(flags, state) {
 export function renderRefreshAction({ onClick, disabled, label = "Làm mới snapshot" }) {
   return renderElement(
     "div",
-    { className: "shellPage__actions" },
+    { className: `${styles.actions}` },
     renderElement(
       "button",
       {
         type: "button",
-        className: "shellPage__button shellPage__button--secondary",
+        className: `${styles.button} ${styles.buttonSecondary}`,
         onClick,
         disabled,
       },
@@ -260,10 +260,10 @@ export function renderRefreshAction({ onClick, disabled, label = "Làm mới sna
 export function renderHealthStatusPill(health) {
   return renderElement(
     "div",
-    { className: "shellPage__actions" },
+    { className: `${styles.actions}` },
     renderElement(
       "span",
-      { className: "shellPage__pill" },
+      { className: `${styles.pill}` },
       `Health: ${health?.ok ? "OK" : "Chưa xác nhận"}`,
     ),
   );
@@ -272,12 +272,12 @@ export function renderHealthStatusPill(health) {
 export function renderSummaryCard({ key, title, rows }) {
   return renderElement(
     "article",
-    { className: "shellPage__surfaceCard", key },
-    renderElement("h3", { className: "shellPage__itemTitle" }, title),
+    { className: `${styles.surfaceCard}`, key },
+    renderElement("h3", { className: `${styles.itemTitle}` }, title),
     rows.map((row) =>
       renderElement(
         "p",
-        { className: "shellPage__itemMeta", key: `${key}:${row.label}` },
+        { className: `${styles.itemMeta}`, key: `${key}:${row.label}` },
         `${row.label}: ${row.value}`,
       ),
     ),
@@ -287,11 +287,11 @@ export function renderSummaryCard({ key, title, rows }) {
 export function renderBuildMetaCard({ key = "build-meta-card", buildMeta }) {
   return renderElement(
     "article",
-    { className: "shellPage__surfaceCard", key },
-    renderElement("h3", { className: "shellPage__itemTitle" }, "Build metadata"),
-    renderElement("p", { className: "shellPage__itemMeta" }, `Adapter: ${buildMeta?.adapterId || "core"}`),
-    renderElement("p", { className: "shellPage__itemMeta" }, `Display name: ${buildMeta?.displayName || "Core API"}`),
-    renderElement("p", { className: "shellPage__itemMeta" }, `Base URL: ${buildMeta?.baseUrl || "n/a"}`),
+    { className: `${styles.surfaceCard}`, key },
+    renderElement("h3", { className: `${styles.itemTitle}` }, "Build metadata"),
+    renderElement("p", { className: `${styles.itemMeta}` }, `Adapter: ${buildMeta?.adapterId || "core"}`),
+    renderElement("p", { className: `${styles.itemMeta}` }, `Display name: ${buildMeta?.displayName || "Core API"}`),
+    renderElement("p", { className: `${styles.itemMeta}` }, `Base URL: ${buildMeta?.baseUrl || "n/a"}`),
   );
 }
 
@@ -299,19 +299,19 @@ export function renderValueList(items, emptyText, keyPrefix) {
   if (!Array.isArray(items) || items.length === 0) {
     return renderElement(
       "div",
-      { className: "shellPage__empty", key: `${keyPrefix}-empty` },
+      { className: `${styles.empty}`, key: `${keyPrefix}-empty` },
       emptyText,
     );
   }
 
   return renderElement(
     "div",
-    { className: "shellPage__list", key: `${keyPrefix}-list` },
+    { className: `${styles.list}`, key: `${keyPrefix}-list` },
     items.map((item, index) =>
       renderElement(
         "article",
-        { className: "shellPage__listItem", key: `${keyPrefix}:${index}:${String(item)}` },
-        renderElement("p", { className: "shellPage__itemMeta" }, item),
+        { className: `${styles.listItem}`, key: `${keyPrefix}:${index}:${String(item)}` },
+        renderElement("p", { className: `${styles.itemMeta}` }, item),
       ),
     ),
   );
@@ -321,25 +321,25 @@ export function renderFlagList(flags, emptyText, keyPrefix) {
   if (!Array.isArray(flags) || flags.length === 0) {
     return renderElement(
       "div",
-      { className: "shellPage__empty", key: `${keyPrefix}-empty` },
+      { className: `${styles.empty}`, key: `${keyPrefix}-empty` },
       emptyText,
     );
   }
 
   return renderElement(
     "div",
-    { className: "shellPage__list", key: `${keyPrefix}-list` },
+    { className: `${styles.list}`, key: `${keyPrefix}-list` },
     flags.map((flag) =>
       renderElement(
         "article",
-        { className: "shellPage__listItem", key: `${keyPrefix}:${flag.label}` },
+        { className: `${styles.listItem}`, key: `${keyPrefix}:${flag.label}` },
         renderElement(
           "div",
-          { className: "shellPage__listItemHeader" },
-          renderElement("h3", { className: "shellPage__itemTitle" }, flag.label),
-          renderElement("span", { className: "shellPage__pill" }, flag.state),
+          { className: `${styles.listItemHeader}` },
+          renderElement("h3", { className: `${styles.itemTitle}` }, flag.label),
+          renderElement("span", { className: `${styles.pill}` }, flag.state),
         ),
-        renderElement("p", { className: "shellPage__itemMeta" }, flag.detail),
+        renderElement("p", { className: `${styles.itemMeta}` }, flag.detail),
       ),
     ),
   );
@@ -356,25 +356,25 @@ export function renderAbilityList({
   if (!Array.isArray(abilities) || abilities.length === 0) {
     return renderElement(
       "div",
-      { className: "shellPage__empty", key: `${keyPrefix}-empty` },
+      { className: `${styles.empty}`, key: `${keyPrefix}-empty` },
       emptyText,
     );
   }
 
   return renderElement(
     "div",
-    { className: "shellPage__list", key: `${keyPrefix}-list` },
+    { className: `${styles.list}`, key: `${keyPrefix}-list` },
     abilities.map((ability, index) =>
       renderElement(
         "article",
-        { className: "shellPage__listItem", key: `${keyPrefix}:${index}:${ability.action}:${ability.subject}` },
+        { className: `${styles.listItem}`, key: `${keyPrefix}:${index}:${ability.action}:${ability.subject}` },
         renderElement(
           "div",
-          { className: "shellPage__listItemHeader" },
-          renderElement("h3", { className: "shellPage__itemTitle" }, getTitle(ability)),
-          renderElement("span", { className: "shellPage__pill" }, getPill(ability)),
+          { className: `${styles.listItemHeader}` },
+          renderElement("h3", { className: `${styles.itemTitle}` }, getTitle(ability)),
+          renderElement("span", { className: `${styles.pill}` }, getPill(ability)),
         ),
-        renderElement("p", { className: "shellPage__itemMeta" }, getDetail(ability)),
+        renderElement("p", { className: `${styles.itemMeta}` }, getDetail(ability)),
       ),
     ),
   );

@@ -1,3 +1,4 @@
+import json
 import logging
 from celery import shared_task
 from django.utils import timezone
@@ -59,6 +60,25 @@ def generate_advisory_task(record_id: str, effective_context: dict, symbol: str)
         record.status = 'generated'
         record.tokens_used = orch_res.get('tokens_used', 0)
         record.generated_at = timezone.now()
+        # T1.1: lưu structured_output — nếu orchestrator trả JSON thì dùng, không thì {}
+        structured = {}
+        if isinstance(orch_res.get('structured_output'), dict):
+            structured = orch_res['structured_output']
+        else:
+            for _k in ('signal', 'confidence_score', 'summary', 'rationale', 'components'):
+                if _k in orch_res:
+                    structured[_k] = orch_res[_k]
+            # Thử parse advisory_text nếu là JSON (orchestrator có thể trả raw JSON)
+            if not structured and record.advisory_text:
+                try:
+                    _parsed = json.loads(record.advisory_text)
+                    if isinstance(_parsed, dict):
+                        for _k in ('signal', 'confidence_score', 'summary', 'rationale', 'components'):
+                            if _k in _parsed:
+                                structured[_k] = _parsed[_k]
+                except (ValueError, TypeError, json.JSONDecodeError):
+                    pass
+        record.structured_output = structured if isinstance(structured, dict) else {}
         record.save()
 
         if record.user_id is None:

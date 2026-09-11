@@ -1,3 +1,4 @@
+import styles from "../../components/ShellPageTemplate.module.css";
 import {
   ShellPageChrome,
   ShellPanel,
@@ -87,8 +88,8 @@ export function ShellSettingsPage({
       title="Thiết lập shell và quyền truy cập"
       description="Trang này xác nhận shell core đang nhận đúng health, build meta, session, navigation và surface flags trước khi các route hệ thống sâu hơn được dựng tiếp."
       badge={(
-        <div className="shellPage__heroBadge">
-          <span className="shellPage__statusDot" />
+        <div className={`${styles.heroBadge}`}>
+          <span className={`${styles.statusDot}`} />
           {viewState.loading ? "Đang đồng bộ core runtime" : "Core runtime sẵn sàng cho kiểm tra"}
         </div>
       )}
@@ -96,14 +97,14 @@ export function ShellSettingsPage({
       notice={viewState.notice}
       error={viewState.error}
     >
-      <section className="shellPage__bodyGrid">
-        <div className="shellPage__stack">
+      <section className={`${styles.bodyGrid}`}>
+        <div className={`${styles.stack}`}>
           <ShellPanel
             title="Snapshot runtime hiện tại"
             subtitle="Đọc nhanh tình trạng phiên, môi trường và adapter đang được shell core sử dụng."
             actions={renderRefreshAction({ onClick: handleRefresh, disabled: viewState.loading })}
           >
-            <section className="shellPage__summaryGrid">
+            <section className={`${styles.summaryGrid}`}>
               {summaryCards}
             </section>
           </ShellPanel>
@@ -112,15 +113,15 @@ export function ShellSettingsPage({
             subtitle="Cho phép kiểm tra nhanh gating hiện hành của system/workspace/admin trước khi page hệ thống thật được nối vào shell."
           >
             <div key="visible-groups-block">
-              <h3 className="shellPage__itemTitle">Visible groups</h3>
+              <h3 className={`${styles.itemTitle}`}>Visible groups</h3>
               {renderValueList(visibleGroups, "Chưa có navigation group nào được mở.", "groups")}
             </div>
             <div key="visible-routes-block">
-              <h3 className="shellPage__itemTitle">Visible routes</h3>
+              <h3 className={`${styles.itemTitle}`}>Visible routes</h3>
               {renderValueList(visibleRoutes, "Chưa có route nào được mở.", "routes")}
             </div>
             <div key="surfaces-block">
-              <h3 className="shellPage__itemTitle">Enabled surfaces</h3>
+              <h3 className={`${styles.itemTitle}`}>Enabled surfaces</h3>
               {renderValueList(enabledSurfaces, "Runtime chưa bật surface flag nào.", "surfaces")}
             </div>
           </ShellPanel>

@@ -4,10 +4,14 @@ SFI-B6: Custom DRF permissions for core-api.
 IsCoreOperator: Only allow staff/superuser (operator-level access).
                 Used for admin-ops, signal admin, runtime-kpi, ops_audit views.
 """
+import logging
+
 from identity_access.models import CorePATCredential, CoreTenant
 
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import BasePermission
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_scope_codes(scope_codes) -> list[str]:
@@ -37,12 +41,40 @@ def require_pat_scopes_or_human_session(request, *required_scopes: str) -> None:
     if not isinstance(auth, CorePATCredential) or auth.is_human_session:
         return
 
+    # Defense-in-depth: validate machine PAT tenant context
+    _assert_pat_tenant_match(request, auth)
+
     granted = set(_normalize_scope_codes(auth.scopes))
     missing_scopes = [scope for scope in required_scopes if scope not in granted]
     if missing_scopes:
         raise PermissionDenied(
             'PAT thiếu scope bắt buộc: ' + ', '.join(missing_scopes) + '.'
         )
+
+
+def _assert_pat_tenant_match(request, credential: CorePATCredential) -> None:
+    """Raise PermissionDenied nếu machine PAT tenant không khớp request.tenant.
+
+    Defense-in-depth: primary check là TenantResolutionMiddleware.
+    Check này bảo vệ thêm cho:
+    - Test suites mock hoặc skip TenantResolutionMiddleware
+    - Future refactors thay đổi middleware ordering
+    - Middleware error conditions không set request.tenant
+
+    Note: Celery tasks và management commands không đi qua HTTP view layer,
+    nên check này không áp dụng cho các context đó.
+    """
+    request_tenant = getattr(request, 'tenant', None)
+    if request_tenant is None:
+        logger.warning(
+            'pat_tenant_check_no_context: request.tenant=None khi validate '
+            'machine PAT prefix=%s. Denying (fail-closed).',
+            getattr(credential, 'token_prefix', '?'),
+        )
+        raise PermissionDenied('Không thể xác định tenant context cho request này.')
+    pat_tenant = credential.service_account.tenant
+    if str(pat_tenant.public_id) != str(request_tenant.public_id):
+        raise PermissionDenied('Token không được phép truy cập tenant này.')
 
 
 class IsCoreOperator(BasePermission):

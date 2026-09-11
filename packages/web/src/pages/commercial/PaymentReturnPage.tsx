@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { ShellPageChrome, ShellPanel } from "../../components/ShellPageTemplate.js";
-
 interface I18nContext {
   t: (key: string, options?: { defaultValue?: string }) => string;
   language: string;
@@ -66,13 +65,13 @@ const RETURN_CUSTOM_STYLES = `
 .return-title {
   font-size: 24px;
   font-weight: 800;
-  color: var(--shell-ink);
+  color: var(--text-primary);
   margin: 0 0 10px 0;
 }
 
 .return-desc {
   font-size: 14px;
-  color: var(--shell-muted);
+  color: var(--text-secondary);
   max-width: 460px;
   margin: 0 auto 30px auto;
   line-height: 1.6;
@@ -80,7 +79,7 @@ const RETURN_CUSTOM_STYLES = `
 
 .return-details-box {
   background: rgba(15, 23, 42, 0.5);
-  border: 1px solid var(--shell-border);
+  border: 1px solid var(--border-shell);
   border-radius: 20px;
   padding: 20px;
   width: 100%;
@@ -95,7 +94,7 @@ const RETURN_CUSTOM_STYLES = `
   display: flex;
   justify-content: space-between;
   font-size: 13.5px;
-  border-bottom: 1px dashed var(--shell-border);
+  border-bottom: 1px dashed var(--border-shell);
   padding-bottom: 10px;
 }
 
@@ -105,12 +104,12 @@ const RETURN_CUSTOM_STYLES = `
 }
 
 .return-detail-label {
-  color: var(--shell-muted);
+  color: var(--text-secondary);
   font-weight: 600;
 }
 
 .return-detail-value {
-  color: var(--shell-ink);
+  color: var(--text-primary);
   font-weight: 700;
 }
 
