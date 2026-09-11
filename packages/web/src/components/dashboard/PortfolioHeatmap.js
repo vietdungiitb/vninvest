@@ -140,7 +140,7 @@ export function PortfolioHeatmap({
 
       let sizeValue = 1;
       if (sizeMode === "marketCap") {
-        sizeValue = marketCap > 0 ? marketCap : 1000; // Fallback to 1000 billion if no market cap
+        sizeValue = marketCap > 0 ? marketCap : 1; // Fallback to 1 (was 1000B, distorted treemap)
       } else {
         if (quantity > 0) {
           sizeValue = marketValue;

@@ -102,10 +102,10 @@ function getTrendColor(direction) {
   }
 }
 
-export function AIAdvisorAlertPanel({ className = "" }) {
+export function AIAdvisorAlertPanel({ className = "", holdings: _holdings, technicals: _technicals, analytics: _analytics, alerts: propAlerts, loading: propLoading, selectedSession: _selectedSession, selectedSymbol: _selectedSymbol, onSelectSession: _onSelectSession, onSelectSymbol: _onSelectSymbol }) {
   const { t, language } = createAiAdvisorTranslator(resolveAiAdvisorLocale());
-  const [alerts, setAlerts] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [alerts, setAlerts] = useState(propAlerts ?? []);
+  const [loading, setLoading] = useState(propLoading ?? false);
   const [error, setError] = useState(null);
 
   const fetchFeed = useCallback(async () => {
