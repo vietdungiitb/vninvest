@@ -12,73 +12,13 @@ import { CanvasRenderer } from "echarts/renderers";
 import { useEChartsResize } from "../../hooks/useChartResize.js";
 import { RotateCw, Maximize2, Minimize2 } from "lucide-react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { useI18n } from "../../context/LangContext.js";
 
 echarts.use([TreemapChart, SunburstChart, CanvasRenderer]);
 
 const e = createElement;
 
-const I18N = {
-  vi: {
-    "heatmap.title": "Bản đồ danh mục",
-    "heatmap.treemap": "Treemap",
-    "heatmap.sunburst": "Sunburst",
-    "heatmap.sizeCap": "Vốn hóa",
-    "heatmap.sizeWeight": "Tỷ trọng",
-    "heatmap.empty": "Chưa có dữ liệu để hiển thị heatmap.",
-    "heatmap.refresh": "Làm mới",
-    "heatmap.expand": "Mở rộng",
-    "heatmap.collapse": "Thu gọn",
-    "heatmap.dialog.close": "Đóng",
-    "heatmap.dialog.trend": "Xu hướng 24h",
-    "heatmap.dialog.price": "Giá hiện tại",
-    "heatmap.dialog.volume": "Khối lượng",
-    "heatmap.dialog.marketCap": "Vốn hóa",
-    "heatmap.dialog.volatility": "Mức biến động",
-    "heatmap.dialog.loading": "Đang tải xu hướng...",
-    "heatmap.dialog.noData": "Không có dữ liệu",
-    "heatmap.dialog.companyDefault": "Công ty Cổ phần",
-    "heatmap.dialog.industryUnknown": "Chưa phân loại",
-    "heatmap.dialog.volLow": "Thấp",
-    "heatmap.dialog.volMed": "Vừa",
-    "heatmap.dialog.volHigh": "Cao",
-  },
-  en: {
-    "heatmap.title": "Portfolio Heatmap",
-    "heatmap.treemap": "Treemap",
-    "heatmap.sunburst": "Sunburst",
-    "heatmap.sizeCap": "Market Cap",
-    "heatmap.sizeWeight": "Weight",
-    "heatmap.empty": "No data available for heatmap.",
-    "heatmap.refresh": "Refresh",
-    "heatmap.expand": "Expand",
-    "heatmap.collapse": "Collapse",
-    "heatmap.dialog.close": "Close",
-    "heatmap.dialog.trend": "24h Trend",
-    "heatmap.dialog.price": "Current Price",
-    "heatmap.dialog.volume": "Volume",
-    "heatmap.dialog.marketCap": "Market Cap",
-    "heatmap.dialog.volatility": "Volatility",
-    "heatmap.dialog.loading": "Loading trend...",
-    "heatmap.dialog.noData": "No trend data",
-    "heatmap.dialog.companyDefault": "Joint Stock Company",
-    "heatmap.dialog.industryUnknown": "Unclassified",
-    "heatmap.dialog.volLow": "Low",
-    "heatmap.dialog.volMed": "Medium",
-    "heatmap.dialog.volHigh": "High",
-  },
-};
 
-function resolveLocale() {
-  const browserLang = (typeof document !== "undefined" && document.documentElement?.lang) ||
-    (typeof navigator !== "undefined" ? navigator.language : "") || "vi";
-  return String(browserLang).toLowerCase().startsWith("en") ? "en" : "vi";
-}
-
-function createTranslator(locale = "vi") {
-  const lang = locale === "en" ? "en" : "vi";
-  const dict = I18N[lang];
-  return (key) => dict[key] || I18N.vi[key] || key;
-}
 
 // Muted Professional Color Palette for Treemap
 const HEAT_COLORS = {
@@ -110,7 +50,7 @@ export function PortfolioHeatmap({
   className = "",
 }) {
   const navigate = useNavigate();
-  const t = createTranslator(resolveLocale());
+  const { t } = useI18n();
   const [viewMode, setViewMode] = useState("treemap");
   const [sizeMode, setSizeMode] = useState("weight"); // "weight" | "marketCap"
   const [selectedDetail, setSelectedDetail] = useState(null);
