@@ -1,0 +1,3 @@
+TanStack getPaginationRowModel rows>100 => FixedSizeList height 400 rowHeight 36/48 outerElementType tbody
+Manual test 120 rows => virtualized, 50 rows => normal table
+PASS

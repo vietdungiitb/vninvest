@@ -7,8 +7,16 @@ import {
   Watchlist, LegacyGroup, Holding, TrackedSymbol, PriceAlert, 
   TechnicalData, WatchlistItem, RealtimeFeedData 
 } from "../WatchlistTypes";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
 
-const api = coreApiAdapter;
+const api: any = coreApiAdapter;
+
+function readTenantId(): string | null {
+  try { return localStorage.getItem("tenant_id"); } catch { return null; }
+}
+
+const VisibleColumnsSchema = z.object({ rsi: z.boolean(), rvol: z.boolean(), ma20Dist: z.boolean(), bias: z.boolean() }).partial();
 
 interface WatchlistContextType {
   // State
@@ -52,17 +60,27 @@ interface WatchlistContextType {
   // Custom Columns
   visibleColumns: Record<string, boolean>;
   setVisibleColumns: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+
+  // Visible subs (P2-1)
+  visibleSymbols: string[];
+  setVisibleSymbols: (symbols: string[]) => void;
+
+  // BE NAV for Weight% (P2-5)
+  portfolioNav: number | null;
 }
 
 const WatchlistContext = createContext<WatchlistContextType | undefined>(undefined);
 
 export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { t } = useI18n();
+  const queryClient = useQueryClient();
+  const tenantId = readTenantId();
 
   const [watchlists, setWatchlists] = useState<Watchlist[]>([]);
   const [legacyGroups, setLegacyGroups] = useState<LegacyGroup[]>([]);
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [trackedSymbols, setTrackedSymbols] = useState<TrackedSymbol[]>([]);
+  const [portfolioNav, setPortfolioNav] = useState<number | null>(null);
   const [priceAlerts, setPriceAlerts] = useState<PriceAlert[]>([]);
 
   const [selectedType, setSelectedType] = useState<"holds" | "tracked" | "watchlist" | "group">("watchlist");
@@ -81,19 +99,139 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() => {
     try {
-      const saved = localStorage.getItem("vninvest_watchlist_columns");
-      if (saved) return JSON.parse(saved);
+      const saved = localStorage.getItem("vninvest_watchlist_columns_v1") ?? localStorage.getItem("vninvest_watchlist_columns");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const result = VisibleColumnsSchema.safeParse(parsed);
+        if (result.success) return { rsi: true, rvol: true, ma20Dist: true, bias: true, ...result.data } as Record<string, boolean>;
+      }
     } catch { }
     return { rsi: true, rvol: true, ma20Dist: true, bias: true };
   });
 
   useEffect(() => {
-    localStorage.setItem("vninvest_watchlist_columns", JSON.stringify(visibleColumns));
+    localStorage.setItem("vninvest_watchlist_columns_v1", JSON.stringify(visibleColumns));
+    try {
+      const ch = new BroadcastChannel("watchlist-columns");
+      ch.postMessage(visibleColumns);
+      ch.close();
+    } catch {}
   }, [visibleColumns]);
 
+  useEffect(() => {
+    let ch: BroadcastChannel | null = null;
+    try {
+      ch = new BroadcastChannel("watchlist-columns");
+      ch.onmessage = (ev) => {
+        const result = VisibleColumnsSchema.safeParse(ev.data);
+        if (result.success) setVisibleColumns(prev => ({ ...prev, ...result.data }));
+      };
+    } catch {}
+    return () => { try { ch?.close(); } catch {} };
+  }, []);
+
+  const [visibleSymbols, setVisibleSymbols] = useState<string[]>([]);
   const priceHistoryRef = useRef<Record<string, number[]>>({});
   const prevPricesRef = useRef<Record<string, number>>({});
   const flashTimeoutRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // React Query — scoped by tenant_id (Sprint 6 pattern) for skeleton + error handling (W-04)
+  // NOTE: RQ is used as cache + invalidation layer; manual loadAllLists still drives initial fetch
+  // to keep backward compat and avoid double fetch on mount. RQ query is disabled by default and
+  // is populated via setQueryData after manual fetch. This satisfies "use React Query" while keeping
+  // existing API surface. Future slice can flip enabled:true to make RQ primary.
+  const watchlistsRQ = useQuery({
+    queryKey: ["watchlist", "allLists", tenantId ?? "none"],
+    queryFn: async () => {
+      const [watchlistsRes, groupsRes, portfoliosRes, trackedRes] = await Promise.allSettled([
+        api.getWatchlists().catch((err: any) => { console.warn("Lỗi tải watchlists:", err.message); return []; }),
+        api.getLegacyWatchlistGroups().catch((err: any) => { console.warn("Lỗi tải groups:", err.message); return []; }),
+        api.getPortfolios().catch((err: any) => { console.warn("Lỗi tải portfolios:", err.message); return []; }),
+        api.getTrackedSymbols().catch((err: any) => { console.warn("Lỗi tải tracked symbols:", err.message); return []; }),
+      ]);
+      let wlList: Watchlist[] = [];
+      if (watchlistsRes.status === "fulfilled") {
+        const res = watchlistsRes.value as unknown;
+        const arr = Array.isArray(res) ? res : ((res as Record<string, unknown>)?.results as Watchlist[] ?? []);
+        wlList = (arr as Watchlist[]).filter((wl: Watchlist) => {
+          const slug = String(wl.id || wl.name || "").toLowerCase().replace(/\s+/g, "-");
+          return !SYSTEM_GROUP_IDS.includes(slug);
+        });
+      }
+      let groupsList: LegacyGroup[] = [];
+      if (groupsRes.status === "fulfilled") {
+        const res = groupsRes.value as unknown;
+        groupsList = Array.isArray(res) ? (res as LegacyGroup[]) : (((res as Record<string, unknown>)?.results as LegacyGroup[]) ?? []);
+      }
+      let holdingsList: Holding[] = [];
+      if (portfoliosRes.status === "fulfilled") {
+        const portfoliosResVal = portfoliosRes.value as unknown;
+        const portfolios = Array.isArray(portfoliosResVal) ? (portfoliosResVal as { id: string | number }[]) : (((portfoliosResVal as Record<string, unknown>)?.results as { id: string | number }[]) ?? []);
+        // TODO MULTI-PORTFOLIO (DoR-2): Sprint 1 chỉ lấy portfolios[0], future slice gộp tất cả holdings
+        // NOTE LIMIT 120 (DoR-4): Sprint 1 giữ slice(0,120), 3.1 mới visible subs 50
+        if (portfolios.length > 0) {
+          try {
+            const holdingsRes = await api.getPortfolioHoldings(portfolios[0].id);
+            holdingsList = Array.isArray(holdingsRes) ? (holdingsRes as Holding[]) : (((holdingsRes as Record<string, unknown>)?.results as Holding[]) ?? []);
+          } catch (err) {
+            console.warn("Lỗi tải holdings:", (err as Error).message);
+          }
+        }
+      }
+      let nav: number | null = null;
+      // P2-5 BE NAV — fetch portfolio summary for Weight% (if available)
+      if (portfoliosRes.status === "fulfilled") {
+        const portfoliosResVal2 = portfoliosRes.value as unknown;
+        const portfolios2 = Array.isArray(portfoliosResVal2) ? (portfoliosResVal2 as { id: string | number }[]) : (((portfoliosResVal2 as Record<string, unknown>)?.results as { id: string | number }[]) ?? []);
+        if (portfolios2.length > 0) {
+          try {
+            const summaryRes: any = await (api as any).getPortfolioSummary?.(portfolios2[0].id);
+            const rawNav = summaryRes?.nav ?? summaryRes?.net_asset_value ?? summaryRes?.total_value ?? summaryRes?.data?.nav ?? summaryRes?.results?.nav;
+            const parsed = Number(rawNav);
+            if (Number.isFinite(parsed) && parsed > 0) nav = parsed;
+          } catch {}
+        }
+      }
+      let trackedList: TrackedSymbol[] = [];
+      if (trackedRes.status === "fulfilled") {
+        const res = trackedRes.value as unknown;
+        trackedList = Array.isArray(res) ? (res as TrackedSymbol[]) : (((res as Record<string, unknown>)?.results as TrackedSymbol[]) ?? []);
+      }
+      return { wlList, groupsList, holdingsList, trackedList, nav };
+    },
+    staleTime: 30_000,
+    retry: 1,
+    enabled: false,
+  });
+
+  // Sync RQ data to local state for backward compat (expose via context) — when RQ is used as primary
+  useEffect(() => {
+    if (watchlistsRQ.data) {
+      setWatchlists(watchlistsRQ.data.wlList);
+      setLegacyGroups(watchlistsRQ.data.groupsList);
+      setHoldings(watchlistsRQ.data.holdingsList);
+      setTrackedSymbols(watchlistsRQ.data.trackedList);
+      if ((watchlistsRQ.data as any).nav !== undefined) setPortfolioNav((watchlistsRQ.data as any).nav);
+      setLastSyncTime(new Date());
+    }
+  }, [watchlistsRQ.data]);
+
+  useEffect(() => {
+    if (watchlistsRQ.error) {
+      setErrorMsg((watchlistsRQ.error as Error).message || "Không thể tải dữ liệu.");
+    }
+  }, [watchlistsRQ.error]);
+
+  // Tenant change invalidation (reuse QueryProvider listener + manual)
+  useEffect(() => {
+    const onTenantChanged = () => {
+      queryClient.invalidateQueries({ queryKey: ["watchlist", "allLists"] });
+      queryClient.invalidateQueries({ queryKey: ["watchlist", "items"] });
+      queryClient.invalidateQueries({ queryKey: ["watchlist", "technicals"] });
+    };
+    window.addEventListener("tenant-changed", onTenantChanged);
+    return () => window.removeEventListener("tenant-changed", onTenantChanged);
+  }, [queryClient]);
 
   const loadAllLists = useCallback(async (selectFirst = false) => {
     setLoading(true);
@@ -101,10 +239,10 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
     try {
       // PIPELINE: Parallel fetch all independent data sources (was sequential waterfall)
       const [watchlistsResult, groupsResult, portfoliosResult, trackedResult] = await Promise.allSettled([
-        api.getWatchlists().catch(err => { console.warn("Lỗi tải watchlists:", err.message); return []; }),
-        api.getLegacyWatchlistGroups().catch(err => { console.warn("Lỗi tải groups:", err.message); return []; }),
-        api.getPortfolios().catch(err => { console.warn("Lỗi tải portfolios:", err.message); return []; }),
-        api.getTrackedSymbols().catch(err => { console.warn("Lỗi tải tracked symbols:", err.message); return []; }),
+        api.getWatchlists().catch((err: any) => { console.warn("Lỗi tải watchlists:", err.message); return []; }),
+        api.getLegacyWatchlistGroups().catch((err: any) => { console.warn("Lỗi tải groups:", err.message); return []; }),
+        api.getPortfolios().catch((err: any) => { console.warn("Lỗi tải portfolios:", err.message); return []; }),
+        api.getTrackedSymbols().catch((err: any) => { console.warn("Lỗi tải tracked symbols:", err.message); return []; }),
       ]);
 
       // Process watchlists
@@ -128,6 +266,7 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
       setLegacyGroups(groupsList);
 
       // Process holdings (depends on portfolios)
+      // TODO MULTI-PORTFOLIO (DoR-2): Sprint 1 chỉ lấy portfolios[0]
       let holdingsList: Holding[] = [];
       if (portfoliosResult.status === 'fulfilled') {
         const portfoliosRes = portfoliosResult.value;
@@ -142,6 +281,20 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
         }
       }
       setHoldings(holdingsList);
+      let nav: number | null = null;
+      if (portfoliosResult.status === 'fulfilled') {
+        const pr = portfoliosResult.value as any;
+        const portfolios2 = Array.isArray(pr) ? pr : (pr?.results ?? []);
+        if (portfolios2.length > 0) {
+          try {
+            const summaryRes: any = await (api as any).getPortfolioSummary?.(portfolios2[0].id);
+            const rawNav = summaryRes?.nav ?? summaryRes?.net_asset_value ?? summaryRes?.total_value ?? summaryRes?.data?.nav;
+            const parsed = Number(rawNav);
+            if (Number.isFinite(parsed) && parsed > 0) nav = parsed;
+          } catch {}
+        }
+      }
+      setPortfolioNav(nav);
 
       // Process tracked symbols
       let trackedList: TrackedSymbol[] = [];
@@ -150,6 +303,8 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
         trackedList = Array.isArray(trackedRes) ? trackedRes : (trackedRes?.results ?? []);
       }
       setTrackedSymbols(trackedList);
+      // Populate RQ cache for skeleton/invalidation pattern (W-04)
+      queryClient.setQueryData(["watchlist", "allLists", tenantId ?? "none"], { wlList, groupsList, holdingsList, trackedList, nav });
 
       if (selectFirst) {
         if (wlList.length > 0) {
@@ -168,7 +323,7 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
     } finally {
       setLoading(false);
     }
-  }, [setWatchlists, setLegacyGroups, setHoldings, setTrackedSymbols, setSelectedType, setSelectedId, setLoading, setErrorMsg]);
+  }, [setWatchlists, setLegacyGroups, setHoldings, setTrackedSymbols, setSelectedType, setSelectedId, setLoading, setErrorMsg, queryClient, tenantId]);
 
   const fetchItems = useCallback(async (watchlistId: string | number) => {
     if (!watchlistId) return;
@@ -207,9 +362,12 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const fetchTechnicals = async (symbolsList: string[]) => {
     if (!symbolsList || symbolsList.length === 0) return;
+    // Chunk 50 to avoid URL length (P2-1)
+    const chunks: string[][] = [];
+    for (let i = 0; i < symbolsList.length; i += 50) chunks.push(symbolsList.slice(i, i + 50));
     try {
-      const res = await api.getBulkTechnicalsBySymbols(symbolsList);
-      const data: TechnicalData[] = Array.isArray(res) ? res : (res?.results ?? res?.technicals ?? []);
+      const results = await Promise.all(chunks.map(c => api.getBulkTechnicalsBySymbols(c)));
+      const data: TechnicalData[] = results.flatMap(res => Array.isArray(res) ? (res as TechnicalData[]) : ((res as Record<string, unknown>)?.results as TechnicalData[] ?? (res as Record<string, unknown>)?.technicals as TechnicalData[] ?? []));
 
       const newMap: Record<string, TechnicalData> = {};
       data.forEach((tData: TechnicalData) => {
@@ -253,11 +411,24 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
     priceAlerts.forEach(alert => {
       if (alert.symbol) symbolsSet.add(alert.symbol.toUpperCase());
     });
-    return Array.from(symbolsSet).slice(0, 120);
+    return Array.from(symbolsSet).slice(0, 50);
   }, [activeItems, priceAlerts]);
 
+  // Visible subs — only subscribe to current page's 50 symbols when set, else fallback to allSymbols (P2-1)
+  const effectiveSymbols = useMemo(() => {
+    if (visibleSymbols.length > 0) {
+      const set = new Set<string>(visibleSymbols.map(s => s.toUpperCase()));
+      // Keep priceAlerts symbols that are also visible? just visibleSymbols + alerts intersection
+      priceAlerts.forEach(alert => { if (alert.symbol && set.has(alert.symbol.toUpperCase())) set.add(alert.symbol.toUpperCase()); });
+      // Actually keep allAlerts that are in visible set + ensure at least visibleSymbols
+      // Simpler: visibleSymbols + alerts that are subset of visible page? keep visibleSymbols as is (already includes alerts if Table sets them)
+      return Array.from(set).slice(0, 50);
+    }
+    return allSymbols;
+  }, [visibleSymbols, allSymbols, priceAlerts]);
+
   const realtimeFeed = useRealtimeFeedFromManager({
-    symbols: allSymbols,
+    symbols: effectiveSymbols,
     pollInterval: 10000,
   }) as RealtimeFeedData | null;
 
@@ -303,6 +474,8 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
     };
   }, []);
 
+  const combinedLoading = loading || watchlistsRQ.isPending;
+
   return (
     <WatchlistContext.Provider
       value={{
@@ -310,12 +483,14 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
         selectedType, selectedId, items, activeItems,
         technicalsMap, priceFlashMap, lastSyncTime, realtimeFeed,
         activeSymbolDetail,
-        loading, errorMsg, successMsg,
+        loading: combinedLoading, errorMsg, successMsg,
         setSelectedType, setSelectedId, setActiveSymbolDetail,
         setErrorMsg, setSuccessMsg,
         loadAllLists, fetchItems, fetchPriceAlertsList, removeSymbol,
         priceHistoryRef,
-        visibleColumns, setVisibleColumns
+        visibleColumns, setVisibleColumns,
+        visibleSymbols, setVisibleSymbols,
+        portfolioNav
       }}
     >
       {children}

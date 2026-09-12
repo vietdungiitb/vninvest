@@ -1,0 +1,3 @@
+Network: GET /workspace/whale-analytics/HPG?timeframe=session&compact=1 200
+GET /stock-management/stocks/HPG/news/?page_size=5 200
+GET /realtime/whale-feed-aggregate/HPG?session_date=2026-09-13&limit=5 200

@@ -20,6 +20,7 @@ export function WatchlistSidebar() {
   const [editingWlId, setEditingWlId] = useState<string | number | null>(null);
   const [editingWlName, setEditingWlName] = useState("");
   const [groupsExpanded, setGroupsExpanded] = useState(true);
+  const [deleteDialog, setDeleteDialog] = useState<{ id: string | number; name: string } | null>(null);
 
   const handleCreateWatchlist = async (e: FormEvent) => {
     e.preventDefault();
@@ -64,8 +65,13 @@ export function WatchlistSidebar() {
   };
 
   const handleDeleteWatchlist = async (id: string | number, name: string) => {
-    const confirmMsg = t("watchlist.sidebar.delete_confirm", { defaultValue: `Bạn có chắc chắn muốn xóa danh sách "${name}"?` });
-    if (!window.confirm(confirmMsg)) return;
+    setDeleteDialog({ id, name });
+  };
+
+  const confirmDeleteWatchlist = async () => {
+    if (!deleteDialog) return;
+    const { id, name } = deleteDialog;
+    setDeleteDialog(null);
     setErrorMsg("");
     setSuccessMsg("");
     try {
@@ -462,6 +468,49 @@ export function WatchlistSidebar() {
           )
         );
       })
+    ),
+    // Delete confirm dialog — replaces window.confirm (W-03)
+    deleteDialog && createElement(
+      "div",
+      {
+        style: {
+          position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.5)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: "16px"
+        },
+        onClick: () => setDeleteDialog(null),
+        role: "presentation",
+        "data-testid": "watchlist-delete-dialog"
+      },
+      createElement(
+        "div",
+        {
+          style: {
+            background: "rgba(15,23,42,0.98)", border: "1px solid rgba(80,120,168,0.3)",
+            borderRadius: "12px", padding: "20px", minWidth: "320px", maxWidth: "420px",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.5)", display: "flex", flexDirection: "column", gap: "16px"
+          },
+          onClick: (e: MouseEvent) => e.stopPropagation(),
+          role: "dialog", "aria-modal": "true", "aria-label": t("watchlist.sidebar.delete_confirm_title", { defaultValue: "Xác nhận xóa" })
+        },
+        createElement("h3", { style: { margin: 0, fontSize: "1rem", fontWeight: 700, color: "#f1f5f9" } }, t("watchlist.sidebar.delete_confirm_title", { defaultValue: "Xác nhận xóa" })),
+        createElement("p", { style: { margin: 0, fontSize: "0.85rem", color: "#94a3b8", lineHeight: 1.5 } }, t("watchlist.sidebar.delete_confirm", { defaultValue: `Bạn có chắc chắn muốn xóa danh sách "${deleteDialog.name}"?` })),
+        createElement(
+          "div",
+          { style: { display: "flex", justifyContent: "flex-end", gap: "10px" } },
+          createElement("button", {
+            type: "button",
+            onClick: () => setDeleteDialog(null),
+            style: { padding: "8px 16px", borderRadius: "8px", border: "1px solid rgba(80,120,168,0.3)", background: "rgba(255,255,255,0.06)", color: "#f1f5f9", cursor: "pointer", fontWeight: 600, fontSize: "0.85rem" },
+            "data-testid": "watchlist-delete-cancel"
+          }, t("common.cancel", { defaultValue: "Hủy" })),
+          createElement("button", {
+            type: "button",
+            onClick: confirmDeleteWatchlist,
+            style: { padding: "8px 16px", borderRadius: "8px", border: "none", background: "#ef4444", color: "#fff", cursor: "pointer", fontWeight: 700, fontSize: "0.85rem" },
+            "data-testid": "watchlist-delete-confirm"
+          }, t("common.delete", { defaultValue: "Xóa" }))
+        )
+      )
     )
   );
 }

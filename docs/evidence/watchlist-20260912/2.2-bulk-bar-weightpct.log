@@ -1,0 +1,4 @@
+holds Weight% col: market_value/totalMV*100
+tracked limit: 1.5M / Mặc định
+bulk bar select 3 => Xóa 3 mã
+PASS

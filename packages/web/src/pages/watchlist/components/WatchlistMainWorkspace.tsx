@@ -135,7 +135,7 @@ export function WatchlistMainWorkspace() {
     watchlists, legacyGroups, 
     selectedType, selectedId, 
     activeItems, realtimeFeed,
-    errorMsg, successMsg,
+    errorMsg, successMsg, loading,
     fetchItems, fetchPriceAlertsList
   } = useWatchlist();
 
@@ -298,6 +298,7 @@ export function WatchlistMainWorkspace() {
             createElement("input", {
               type: "text",
               className: "watchlistPage__input",
+              "data-testid": "watchlist-add-input",
               style: {
                 flex: 1,
                 padding: "8px 12px",
@@ -317,6 +318,7 @@ export function WatchlistMainWorkspace() {
               "button",
               {
                 type: "submit",
+                "data-testid": "watchlist-add-submit",
                 className: styles.actionBtn,
                 style: {
                   padding: "8px 16px",
@@ -378,7 +380,17 @@ export function WatchlistMainWorkspace() {
       )
     ),
 
-    // Watchlist Table
-    createElement(WatchlistTable, { density })
+    // Watchlist Table / Skeleton (W-04)
+    loading && activeItems.length === 0
+      ? createElement(
+          "div",
+          { style: { display: "flex", flexDirection: "column", gap: "10px", padding: "8px 0" }, "data-testid": "watchlist-skeleton" },
+          createElement("div", { style: { height: "14px", width: "30%", background: "rgba(148,163,184,0.12)", borderRadius: "6px", animation: "pulse 1.5s infinite" } }),
+          createElement("div", { style: { height: "44px", background: "rgba(148,163,184,0.08)", borderRadius: "8px" } }),
+          createElement("div", { style: { height: "44px", background: "rgba(148,163,184,0.08)", borderRadius: "8px" } }),
+          createElement("div", { style: { height: "44px", background: "rgba(148,163,184,0.08)", borderRadius: "8px" } }),
+          createElement("div", { style: { height: "14px", width: "40%", background: "rgba(148,163,184,0.10)", borderRadius: "6px", marginTop: "8px" } })
+        )
+      : createElement(WatchlistTable, { density })
   );
 }

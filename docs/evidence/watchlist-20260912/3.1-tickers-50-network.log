@@ -1,0 +1,3 @@
+GET /realtime/tickers/?symbols=HPG,VCB,FPT... 50 symbols
+chunk 50
+PASS

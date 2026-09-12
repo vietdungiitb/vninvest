@@ -49,9 +49,11 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: (id) => {
+          if (id.includes("node_modules/vninvestcharts-widget")) return "widget";
           if (id.includes("node_modules/echarts") || id.includes("echarts-for-react")) return "echarts";
           if (id.includes("src/components/dashboard/") || id.includes("src/features/dashboard/")) return "dashboard";
           if (id.includes("node_modules/react") || id.includes("node_modules/react-dom") || id.includes("node_modules/react-router")) return "react-vendor";
+          if (id.includes("node_modules/@tanstack")) return "tanstack";
         },
       },
     },

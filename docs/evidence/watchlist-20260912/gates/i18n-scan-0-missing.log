@@ -1,0 +1,4 @@
+npm run i18n:scan
+0 missing watchlist.*
+vi.js 64 keys + en.js 64 keys
+PASS

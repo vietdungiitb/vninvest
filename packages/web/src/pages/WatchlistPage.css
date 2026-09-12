@@ -733,3 +733,22 @@
 .watchlistPage__listItem {
   padding: 8px 12px !important;
 }
+
+/* Reduced motion — W-11 */
+@media (prefers-reduced-motion: reduce) {
+  .watchlistPage__priceCell--up,
+  .watchlistPage__priceCell--down {
+    animation: none !important;
+  }
+  .watchlistPage__slideOver,
+  .watchlistPage__slideOverOverlay {
+    animation: none !important;
+  }
+}
+
+/* Touch — rowActions always visible when hover not available (W-06) */
+@media (hover: none) {
+  .watchlistPage__rowActions {
+    opacity: 1 !important;
+  }
+}

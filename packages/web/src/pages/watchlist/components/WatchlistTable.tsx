@@ -1,7 +1,10 @@
-import { createElement, MouseEvent, useState, useMemo, useEffect } from "react";
+import { createElement, MouseEvent, useState, useMemo, useEffect, ChangeEvent, FormEvent, useCallback } from "react";
 import { useWatchlist } from "./WatchlistContext";
-import { WatchlistItem, Holding, MergedData } from "../WatchlistTypes";
+import { MergedData } from "../WatchlistTypes";
 import { useI18n } from "../../../context/LangContext.js";
+import { coreApiAdapter } from "../../../adapters/coreApiAdapter.js";
+import { createColumnHelper, useReactTable, getCoreRowModel, getSortedRowModel, getFilteredRowModel, getPaginationRowModel, flexRender } from "@tanstack/react-table";
+import { FixedSizeList as List } from "react-window";
 
 const PAGE_SIZE_OPTIONS = [50, 100, 200];
 
@@ -10,13 +13,20 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
     activeItems, selectedType, selectedId,
     technicalsMap, realtimeFeed, priceHistoryRef, priceFlashMap,
     activeSymbolDetail, setActiveSymbolDetail, visibleColumns,
-    removeSymbol
+    holdings, trackedSymbols, portfolioNav,
+    removeSymbol, setSuccessMsg, setVisibleSymbols
   } = useWatchlist();
 
   const { t } = useI18n();
 
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
+  const [removeConfirm, setRemoveConfirm] = useState<string | null>(null);
+  const [priceAlertDialog, setPriceAlertDialog] = useState<{ open: boolean; symbol: string; condition: "ABOVE" | "BELOW"; target_price: string; cooldown_seconds: string; error: string; submitting: boolean }>({ open: false, symbol: "", condition: "ABOVE", target_price: "", cooldown_seconds: "300", error: "", submitting: false });
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [sorting, setSorting] = useState<{ id: string; desc: boolean } | null>(null);
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
 
   // Reset to first page whenever the active list changes.
   const listKey = `${selectedType}:${selectedId}`;
@@ -24,14 +34,11 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
     setPage(0);
   }, [listKey]);
 
-  const pagedItems = useMemo(() => {
-    const start = page * pageSize;
-    return activeItems.slice(start, start + pageSize);
-  }, [activeItems, page, pageSize]);
+  useEffect(() => { setPage(0); }, [globalFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(activeItems.length / pageSize));
+  // P2-2 TanStack derives filteredSortedItems/pagedItems below
 
-  const getMergedData = (symbol: string): MergedData => {
+  const getMergedData = useCallback((symbol: string): MergedData => {
     const staticData = technicalsMap[symbol] || {};
     const streamingData = (realtimeFeed?.quotesBySymbol?.[symbol] || {}) as any;
 
@@ -47,42 +54,66 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
       price_change_pct: changePct,
       volume,
     };
+  }, [technicalsMap, realtimeFeed]);
+
+  const api = coreApiAdapter as unknown as {
+    createPriceAlert: (payload: Record<string, unknown>) => Promise<unknown>;
+  };
+
+  const handlePriceAlertSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const tp = Number(priceAlertDialog.target_price);
+    if (!Number.isFinite(tp) || tp <= 0) {
+      setPriceAlertDialog(prev => ({ ...prev, error: t("watchlist.dialog.target_required", { defaultValue: "Giá mục tiêu là bắt buộc và phải > 0." }) }));
+      return;
+    }
+    setPriceAlertDialog(prev => ({ ...prev, submitting: true, error: "" }));
+    try {
+      await api.createPriceAlert({
+        symbol: priceAlertDialog.symbol,
+        condition: priceAlertDialog.condition,
+        target_price: tp,
+        cooldown_seconds: Number(priceAlertDialog.cooldown_seconds) || 300,
+        is_active: true,
+      });
+      setPriceAlertDialog({ open: false, symbol: "", condition: "ABOVE", target_price: "", cooldown_seconds: "300", error: "", submitting: false });
+      setSuccessMsg(t("watchlist.dialog.create_success", { defaultValue: "Đã tạo cảnh báo giá." }));
+    } catch (err) {
+      setPriceAlertDialog(prev => ({ ...prev, error: (err as Error).message || t("watchlist.dialog.create_error", { defaultValue: "Không thể tạo cảnh báo." }), submitting: false }));
+    }
   };
 
   const renderSparkline = (symbol: string) => {
     const history = priceHistoryRef.current[symbol] || [];
     
-    // Gradient Sparkline with area fill
+    // Not enough history → show placeholder instead of fake path (W-01)
     if (history.length < 2) {
-      const merged = getMergedData(symbol);
-      const change = Number(merged.price_change_pct || 0);
-      const isUp = change >= 0;
-      const color = isUp ? "#10b981" : "#f43f5e";
-      const strokeColor = isUp ? "#34d399" : "#fb7185";
-      const path = isUp ? "M 5,20 Q 25,12 45,18 T 85,5" : "M 5,5 Q 25,18 45,12 T 85,20";
-      const areaPath = `${path} L 85,25 L 5,25 Z`;
-
       return createElement(
-        "svg",
-        { className: "watchlistPage__sparklineSvg", viewBox: "0 0 90 25", preserveAspectRatio: "none", style: { display: "block", width: "100%", height: "30px" } },
-        createElement(
-          "defs",
-          null,
-          createElement(
-            "linearGradient",
-            { id: `grad-${symbol}`, x1: "0", x2: "0", y1: "0", y2: "1" },
-            createElement("stop", { offset: "0%", stopColor: color, stopOpacity: 0.4 }),
-            createElement("stop", { offset: "100%", stopColor: color, stopOpacity: 0.0 })
-          )
-        ),
-        createElement("path", { d: areaPath, fill: `url(#grad-${symbol})` }),
-        createElement("path", { className: "fill-none stroke-[1.5]", d: path, stroke: strokeColor })
+        "span",
+        {
+          style: {
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "100%",
+            height: "30px",
+            fontSize: "0.7rem",
+            color: "var(--text-muted, #94a3b8)",
+            background: "rgba(148,163,184,0.06)",
+            borderRadius: "6px",
+            border: "1px dashed rgba(148,163,184,0.15)"
+          },
+          "aria-label": t("watchlist.table.trend_no_data", { defaultValue: "Chưa đủ dữ liệu xu hướng" }),
+          title: history.join(" → ")
+        },
+        "—"
       );
     }
 
     const min = Math.min(...history);
     const max = Math.max(...history);
-    const range = max - min || 1;
+    const floor = max * 0.002; // 0.2% floor to avoid flat-line zigzag (W-10)
+    const range = Math.max(max - min, floor) || 1;
 
     let pathD = `M 5,${20 - ((history[0] - min) / range) * 15}`;
     for (let i = 1; i < history.length; i++) {
@@ -102,7 +133,8 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
 
     return createElement(
       "svg",
-      { className: "watchlistPage__sparklineSvg", viewBox: "0 0 90 25", preserveAspectRatio: "none", style: { display: "block", width: "100%", height: "30px" } },
+      { className: "watchlistPage__sparklineSvg", viewBox: "0 0 90 25", preserveAspectRatio: "none", style: { display: "block", width: "100%", height: "30px" }, role: "img", "aria-label": `${symbol} ${history.join(" → ")}` },
+      createElement("title", null, history.join(" → ")),
       createElement(
         "defs",
         null,
@@ -125,6 +157,7 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
     };
     const handleAlert = (ev: MouseEvent) => {
       ev.stopPropagation();
+      setPriceAlertDialog({ open: true, symbol, condition: "ABOVE", target_price: "", cooldown_seconds: "300", error: "", submitting: false });
     };
     const handleTrade = (ev: MouseEvent) => {
       ev.stopPropagation();
@@ -132,7 +165,7 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
     };
     const handleRemove = (ev: MouseEvent) => {
       ev.stopPropagation();
-      if (selectedId) removeSymbol(selectedId, symbol);
+      setRemoveConfirm(symbol);
     };
 
     return createElement(
@@ -140,26 +173,164 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
       { className: "watchlistPage__rowActions" },
       createElement("button", {
         className: "watchlistPage__rowActionBtn watchlistPage__rowActionBtn--chart",
-        title: t("watchlist.table.view_chart", { defaultValue: "Bi\u1EBFu \u0111\u1ED3" }),
+        title: t("watchlist.table.view_chart", { defaultValue: "Biểu đồ" }),
+        "aria-label": `${t("watchlist.table.view_chart", { defaultValue: "Biểu đồ" })} ${symbol}`,
         onClick: handleChart
       }, "\uD83D\uDCCA"),
       createElement("button", {
         className: "watchlistPage__rowActionBtn watchlistPage__rowActionBtn--alert",
-        title: t("watchlist.table.set_alert", { defaultValue: "T\u1EA1o c\u1EA3nh b\u00E1o gi\u00E1" }),
+        title: t("watchlist.table.set_alert", { defaultValue: "Tạo cảnh báo giá" }),
+        "aria-label": `${t("watchlist.table.set_alert", { defaultValue: "Tạo cảnh báo giá" })} ${symbol}`,
         onClick: handleAlert
       }, "\u26A0\uFE0F"),
       createElement("button", {
         className: "watchlistPage__rowActionBtn watchlistPage__rowActionBtn--trade",
-        title: t("watchlist.table.view_detail", { defaultValue: "Xem chi ti\u1EBFt" }),
+        title: t("watchlist.table.view_detail", { defaultValue: "Xem chi tiết" }),
+        "aria-label": `${t("watchlist.table.view_detail", { defaultValue: "Xem chi tiết" })} ${symbol}`,
         onClick: handleTrade
       }, "\uD83D\uDCC8"),
       createElement("button", {
         className: "watchlistPage__rowActionBtn watchlistPage__rowActionBtn--remove",
-        title: t("watchlist.table.delete", { defaultValue: "X\u00F3a" }),
-        onClick: handleRemove
+        title: t("watchlist.table.delete", { defaultValue: "Xóa" }),
+        "aria-label": `${t("watchlist.table.delete", { defaultValue: "Xóa" })} ${symbol}`,
+        onClick: handleRemove,
+        "data-testid": `watchlist-remove-${symbol}`
       }, "\u2715")
     );
   };
+
+  // P2-2 TanStack wiring thật — 1 PR (getRowModel + FixedSizeList khi rows>100)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const tanStackColumns = useMemo(() => {
+    const helper = createColumnHelper<any>();
+    const cols: any[] = [];
+    cols.push(helper.display({
+      id: "select",
+      header: ({ table }: any) => createElement("input", { type: "checkbox", checked: table.getIsAllPageRowsSelected(), indeterminate: table.getIsSomePageRowsSelected(), onChange: table.getToggleAllPageRowsSelectedHandler(), "data-testid": "watchlist-select-all", "aria-label": t("watchlist.table.select_all", { defaultValue: "Chọn tất cả" }) }),
+      cell: ({ row }: any) => createElement("input", { type: "checkbox", checked: row.getIsSelected(), onChange: row.getToggleSelectedHandler(), "data-testid": `watchlist-select-${row.original.symbol}`, "aria-label": `Chọn ${row.original.symbol}`, onClick: (e: any) => e.stopPropagation() }),
+      enableSorting: false,
+    }));
+    cols.push(helper.accessor("symbol" as any, {
+      header: () => t("watchlist.table.symbol", { defaultValue: "Mã" }),
+      cell: (info: any) => {
+        const sym = info.getValue();
+        const isActive = sym === activeSymbolDetail;
+        return createElement("span", { style: { fontFamily: "monospace", fontWeight: 700, color: isActive ? "var(--accent-cyan, #22d3ee)" : "var(--text-primary, #f1f5f9)" } }, sym);
+      },
+      enableSorting: true,
+    }));
+    cols.push(helper.accessor((row: any) => {
+      const m = getMergedData(row.symbol);
+      return m.price ?? 0;
+    }, {
+      id: "price",
+      header: () => t("watchlist.table.price", { defaultValue: "Giá hiện tại" }),
+      cell: ({ row }: any) => {
+        const m = getMergedData(row.original.symbol);
+        const pct = Number(m.price_change_pct || 0);
+        const isUp = pct > 0, isDown = pct < 0;
+        const flash = priceFlashMap[row.original.symbol] ? `watchlistPage__priceCell--${priceFlashMap[row.original.symbol]}` : "";
+        return createElement("span", { className: `watchlistPage__priceCell ${flash}`, style: { fontFamily: "monospace", fontWeight: 600, color: isUp ? "#10b981" : isDown ? "#f43f5e" : "var(--text-primary, #f1f5f9)" } }, m.price !== undefined ? Number(m.price).toLocaleString() : "—");
+      },
+      enableSorting: true,
+    }));
+    cols.push(helper.accessor((row: any) => Number(getMergedData(row.symbol).price_change_pct || 0), {
+      id: "change",
+      header: () => t("watchlist.table.change", { defaultValue: "% Thay đổi" }),
+      cell: ({ row }: any) => {
+        const m = getMergedData(row.original.symbol);
+        const pct = Number(m.price_change_pct || 0);
+        const isUp = pct > 0, isDown = pct < 0;
+        return createElement("span", { style: { fontFamily: "monospace", color: isUp ? "#10b981" : isDown ? "#f43f5e" : "var(--text-muted, #94a3b8)" } }, pct !== 0 ? `${isUp ? "+" : ""}${pct.toFixed(2)}%` : "0.00%");
+      },
+      enableSorting: true,
+    }));
+    if (selectedType === "watchlist") {
+      if (visibleColumns.rsi) cols.push(helper.accessor((row: any) => technicalsMap[row.symbol]?.rsi_14 ?? -999, { id: "rsi", header: () => t("watchlist.column.rsi", { defaultValue: "RSI(14)" }), cell: ({ row }: any) => { const v = technicalsMap[row.original.symbol]?.rsi_14; return v !== undefined && v !== null ? Number(v).toFixed(1) : "—"; }, enableSorting: true }));
+      if (visibleColumns.rvol) cols.push(helper.accessor((row: any) => technicalsMap[row.symbol]?.rvol ?? -999, { id: "rvol", header: () => t("watchlist.column.rvol", { defaultValue: "RVOL" }), cell: ({ row }: any) => { const v = technicalsMap[row.original.symbol]?.rvol; return v !== undefined && v !== null ? Number(v).toFixed(2) : "—"; }, enableSorting: true }));
+      if (visibleColumns.ma20Dist) cols.push(helper.accessor((row: any) => technicalsMap[row.symbol]?.ma20_distance_pct ?? -999, { id: "ma20", header: () => t("watchlist.column.ma20_dist", { defaultValue: "% Cách MA20" }), cell: ({ row }: any) => { const v = technicalsMap[row.original.symbol]?.ma20_distance_pct; if (v === undefined || v === null) return "—"; return createElement("span", { style: { fontFamily: "monospace", color: Number(v) >= 0 ? "#10b981" : "#f43f5e" } }, `${Number(v).toFixed(1)}%`); }, enableSorting: true }));
+      if (visibleColumns.bias) cols.push(helper.accessor((row: any) => technicalsMap[row.symbol]?.bias_label ?? "", { id: "bias", header: () => t("watchlist.column.bias", { defaultValue: "Định hướng" }), cell: ({ row }: any) => technicalsMap[row.original.symbol]?.bias_label || t("watchlist.table.neutral", { defaultValue: "Trung tính" }), enableSorting: true }));
+    } else if (selectedType === "holds") {
+      cols.push(helper.accessor((row: any) => Number(row.quantity || 0), { id: "quantity", header: () => t("watchlist.table.quantity", { defaultValue: "Số lượng" }), cell: ({ row }: any) => Number(row.original.quantity || 0).toLocaleString(), enableSorting: true }));
+      cols.push(helper.accessor((row: any) => Number(row.avg_cost || 0), { id: "avg_cost", header: () => t("watchlist.table.avg_cost", { defaultValue: "Giá vốn TB" }), cell: ({ row }: any) => Math.round(Number(row.original.avg_cost || 0)).toLocaleString(), enableSorting: true }));
+      cols.push(helper.accessor((row: any) => Number(row.market_value || 0), { id: "market_value", header: () => t("watchlist.table.market_value", { defaultValue: "Giá trị TT" }), cell: ({ row }: any) => Math.round(Number(row.original.market_value || 0)).toLocaleString(), enableSorting: true }));
+      cols.push(helper.display({ id: "weight", header: () => t("watchlist.table.weight", { defaultValue: "Tỷ trọng" }), cell: ({ row }: any) => { const nav = portfolioNav ?? holdings.reduce((acc: number, h: any) => acc + Number(h.market_value || 0), 0); const mv = Number(row.original.market_value || 0); return nav > 0 ? `${((mv / nav) * 100).toFixed(1)}%` : "—"; } }));
+      cols.push(helper.accessor((row: any) => Number(row.unrealized_pnl || 0), { id: "pnl", header: () => t("watchlist.table.pnl", { defaultValue: "Lãi / Lỗ" }), cell: ({ row }: any) => { const pnl = Number(row.original.unrealized_pnl || 0); return createElement("span", { style: { fontFamily: "monospace", color: pnl > 0 ? "#10b981" : pnl < 0 ? "#f43f5e" : "var(--text-muted, #94a3b8)" } }, pnl !== 0 ? `${pnl > 0 ? "+" : ""}${Math.round(pnl).toLocaleString()}` : "0"); }, enableSorting: true }));
+      cols.push(helper.accessor((row: any) => Number(row.unrealized_pnl_pct || 0), { id: "pnl_pct", header: () => t("watchlist.table.pnl_pct", { defaultValue: "% Lãi / Lỗ" }), cell: ({ row }: any) => { const pct = Number(row.original.unrealized_pnl_pct || 0); return createElement("span", { style: { fontFamily: "monospace", color: pct > 0 ? "#10b981" : pct < 0 ? "#f43f5e" : "var(--text-muted, #94a3b8)" } }, pct !== 0 ? `${pct > 0 ? "+" : ""}${pct.toFixed(2)}%` : "0.00%"); }, enableSorting: true }));
+    } else if (selectedType === "tracked") {
+      cols.push(helper.accessor("company_name" as any, { header: () => t("watchlist.table.company_name", { defaultValue: "Tên doanh nghiệp" }), cell: ({ row }: any) => { const r = row.original; const m = technicalsMap[r.symbol] || {}; return createElement("div", { style: { display: "flex", flexDirection: "column" } }, createElement("span", { style: { fontWeight: 700, color: "var(--text-primary, #f1f5f9)", fontSize: "0.85rem" } }, m.company_name || r.company_name || "—"), createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)" } }, m.industry || r.industry || "—")); } }));
+      cols.push(helper.display({ id: "limit", header: () => t("watchlist.table.limit", { defaultValue: "Ngưỡng giám sát" }), cell: ({ row }: any) => { const sym = row.original.symbol; const raw = row.original.whale_alert_threshold_million ?? trackedSymbols.find((t: any) => t.symbol === sym)?.whale_alert_threshold_million; return raw != null ? `${Number(raw).toFixed(1)}M` : t("watchlist.table.default_threshold", { defaultValue: "Mặc định" }); } }));
+    } else {
+      cols.push(helper.accessor("company_name" as any, { header: () => t("watchlist.table.company_name", { defaultValue: "Tên doanh nghiệp" }), cell: ({ row }: any) => { const r = row.original; const m = technicalsMap[r.symbol] || {}; return createElement("div", { style: { display: "flex", flexDirection: "column" } }, createElement("span", { style: { fontWeight: 700, color: "var(--text-primary, #f1f5f9)", fontSize: "0.85rem" } }, m.company_name || r.company_name || "—"), createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)" } }, m.industry || r.industry || "—")); } }));
+      if (visibleColumns.rsi) cols.push(helper.accessor((row: any) => technicalsMap[row.symbol]?.rsi_14 ?? -999, { id: "rsi", header: () => t("watchlist.column.rsi"), cell: ({ row }: any) => { const v = technicalsMap[row.original.symbol]?.rsi_14; return v !== undefined && v !== null ? Number(v).toFixed(1) : "—"; } }));
+      if (visibleColumns.rvol) cols.push(helper.accessor((row: any) => technicalsMap[row.symbol]?.rvol ?? -999, { id: "rvol", header: () => t("watchlist.column.rvol"), cell: ({ row }: any) => { const v = technicalsMap[row.original.symbol]?.rvol; return v !== undefined && v !== null ? Number(v).toFixed(2) : "—"; } }));
+    }
+    cols.push(helper.display({ id: "action", header: () => t("watchlist.table.quick_action", { defaultValue: "Hành động" }), cell: ({ row }: any) => renderActions(row.original.symbol), enableSorting: false }));
+    cols.push(helper.display({ id: "trend", header: () => t("watchlist.table.trend", { defaultValue: "Xu hướng" }), cell: ({ row }: any) => renderSparkline(row.original.symbol), enableSorting: false }));
+    return cols;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedType, visibleColumns, t, technicalsMap, realtimeFeed, priceHistoryRef, priceFlashMap, activeSymbolDetail, holdings, trackedSymbols, density]);
+
+  const tanStackTable = useReactTable({
+    data: activeItems as any[],
+    columns: tanStackColumns as any,
+    state: {
+      sorting: sorting ? ([sorting] as any) : [],
+      globalFilter,
+      pagination: { pageIndex: page, pageSize },
+      rowSelection,
+    } as any,
+    onSortingChange: (updater: any) => {
+      const next = typeof updater === "function" ? updater(sorting ? [sorting] : []) : updater;
+      setSorting(next[0] ?? null);
+    },
+    onGlobalFilterChange: setGlobalFilter,
+    onPaginationChange: (updater: any) => {
+      const next = typeof updater === "function" ? updater({ pageIndex: page, pageSize }) : updater;
+      setPage(next.pageIndex);
+      setPageSize(next.pageSize);
+    },
+    onRowSelectionChange: setRowSelection as any,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getRowId: (row: any) => row.symbol,
+    globalFilterFn: (row: any, _columnId: string, filterValue: string) => {
+      const q = String(filterValue).toLowerCase();
+      const sym = String(row.original.symbol ?? "").toLowerCase();
+      const name = String(technicalsMap[row.original.symbol]?.company_name ?? row.original.company_name ?? "").toLowerCase();
+      const ind = String(technicalsMap[row.original.symbol]?.industry ?? row.original.industry ?? "").toLowerCase();
+      return sym.includes(q) || name.includes(q) || ind.includes(q);
+    },
+  });
+
+  const selectedCount = tanStackTable.getSelectedRowModel().rows.length;
+  const handleBulkDelete = () => {
+    if (selectedCount === 0 || !selectedId) return;
+    setBulkDeleteConfirmOpen(true);
+  };
+  const confirmBulkDelete = async () => {
+    const rows = tanStackTable.getSelectedRowModel().rows;
+    if (rows.length === 0 || !selectedId) return;
+    setBulkDeleteConfirmOpen(false);
+    for (const r of rows) {
+      const sym = (r.original as any).symbol;
+      try { await removeSymbol(selectedId, sym); } catch {}
+    }
+    setRowSelection({});
+  };
+
+  // Derived from TanStack for visible-subs and pagination (P2-1, P2-2)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const filteredSortedItems = useMemo(() => tanStackTable.getFilteredRowModel().rows.map((r: any) => r.original), [tanStackTable.getFilteredRowModel().rows]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const pagedItems = useMemo(() => tanStackTable.getPaginationRowModel().rows.map((r: any) => r.original), [tanStackTable.getPaginationRowModel().rows]);
+  const totalPages = tanStackTable.getPageCount() || 1;
+  useEffect(() => {
+    const syms = pagedItems.map((item: unknown) => String((item as Record<string, unknown>).symbol ?? "")).filter(Boolean);
+    setVisibleSymbols(syms);
+  }, [pagedItems, setVisibleSymbols]);
 
   const renderTableHeader = () => {
     const thStyle = {
@@ -171,62 +342,28 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
       letterSpacing: "0.05em",
       borderBottom: "1px solid rgba(80, 120, 168, 0.15)"
     };
-
-    if (selectedType === "holds") {
-      return createElement(
-        "tr",
-        null,
-        createElement("th", { style: thStyle }, t("watchlist.table.symbol", { defaultValue: "Mã" })),
-        createElement("th", { style: thStyle }, t("watchlist.table.price", { defaultValue: "Giá hiện tại" })),
-        createElement("th", { style: thStyle }, t("watchlist.table.change", { defaultValue: "% Thay đổi" })),
-        createElement("th", { style: { ...thStyle, textAlign: "right" } }, t("watchlist.table.quantity", { defaultValue: "Số lượng" })),
-        createElement("th", { style: { ...thStyle, textAlign: "right" } }, t("watchlist.table.avg_cost", { defaultValue: "Giá vốn TB" })),
-        createElement("th", { style: { ...thStyle, textAlign: "right" } }, t("watchlist.table.market_value", { defaultValue: "Giá trị TT" })),
-        createElement("th", { style: { ...thStyle, textAlign: "right" } }, t("watchlist.table.pnl", { defaultValue: "Lãi / Lỗ" })),
-        createElement("th", { style: { ...thStyle, textAlign: "right" } }, t("watchlist.table.pnl_pct", { defaultValue: "% Lãi / Lỗ" })),
-        createElement("th", { style: { ...thStyle, textAlign: "center", width: "90px" } }, t("watchlist.table.quick_action", { defaultValue: "Hành động" })),
-        createElement("th", { style: { ...thStyle, textAlign: "center", width: "100px" } }, t("watchlist.table.trend", { defaultValue: "Xu hướng" }))
-      );
-    } else if (selectedType === "tracked") {
-      return createElement(
-        "tr",
-        null,
-        createElement("th", { style: thStyle }, t("watchlist.table.symbol", { defaultValue: "Mã" })),
-        createElement("th", { style: thStyle }, t("watchlist.table.company_name", { defaultValue: "Tên doanh nghiệp" })),
-        createElement("th", { style: thStyle }, t("watchlist.table.price", { defaultValue: "Giá hiện tại" })),
-        createElement("th", { style: thStyle }, t("watchlist.table.change", { defaultValue: "% Thay đổi" })),
-        createElement("th", { style: { ...thStyle, textAlign: "right", paddingRight: "32px" } }, t("watchlist.table.limit", { defaultValue: "Ngưỡng giám sát" })),
-        createElement("th", { style: { ...thStyle, textAlign: "center", width: "90px" } }, t("watchlist.table.quick_action", { defaultValue: "Hành động" })),
-        createElement("th", { style: { ...thStyle, textAlign: "center", width: "100px" } }, t("watchlist.table.trend", { defaultValue: "Xu hướng" }))
-      );
-    } else if (selectedType === "watchlist") {
-      return createElement(
-        "tr",
-        null,
-        createElement("th", { style: thStyle }, t("watchlist.table.symbol", { defaultValue: "Mã" })),
-        createElement("th", { style: thStyle }, t("watchlist.table.price", { defaultValue: "Giá hiện tại" })),
-        createElement("th", { style: thStyle }, t("watchlist.table.change", { defaultValue: "% Thay đổi" })),
-        visibleColumns.rsi && createElement("th", { style: thStyle }, t("watchlist.column.rsi", { defaultValue: "RSI(14)" })),
-        visibleColumns.rvol && createElement("th", { style: thStyle }, t("watchlist.column.rvol", { defaultValue: "RVOL" })),
-        visibleColumns.ma20Dist && createElement("th", { style: thStyle }, t("watchlist.column.ma20_dist", { defaultValue: "% Cách MA20" })),
-        visibleColumns.bias && createElement("th", { style: thStyle }, t("watchlist.column.bias", { defaultValue: "Định hướng" })),
-        createElement("th", { style: { ...thStyle, textAlign: "center", width: "90px" } }, t("watchlist.table.quick_action", { defaultValue: "Hành động" })),
-        createElement("th", { style: { ...thStyle, textAlign: "center", width: "100px" } }, t("watchlist.table.trend", { defaultValue: "Xu hướng" }))
-      );
-    } else {
-      return createElement(
-        "tr",
-        null,
-        createElement("th", { style: thStyle }, t("watchlist.table.symbol", { defaultValue: "Mã" })),
-        createElement("th", { style: thStyle }, t("watchlist.table.company_name", { defaultValue: "Tên doanh nghiệp" })),
-        createElement("th", { style: thStyle }, t("watchlist.table.price", { defaultValue: "Giá hiện tại" })),
-        createElement("th", { style: thStyle }, t("watchlist.table.change", { defaultValue: "% Thay đổi" })),
-        createElement("th", { style: thStyle }, t("watchlist.column.rsi", { defaultValue: "RSI(14)" })),
-        createElement("th", { style: thStyle }, t("watchlist.column.rvol", { defaultValue: "RVOL" })),
-        createElement("th", { style: { ...thStyle, textAlign: "center" } }, t("watchlist.table.quick_action", { defaultValue: "Hành động nhanh" })),
-        createElement("th", { style: { ...thStyle, textAlign: "center", width: "100px" } }, t("watchlist.table.trend", { defaultValue: "Xu hướng" }))
-      );
-    }
+    return tanStackTable.getHeaderGroups().map(headerGroup =>
+      createElement("tr", { key: headerGroup.id },
+        headerGroup.headers.map(header => {
+          const canSort = header.column.getCanSort();
+          const sorted = header.column.getIsSorted();
+          const isSelect = header.id === "select";
+          return createElement("th", {
+            key: header.id,
+            colSpan: header.colSpan,
+            style: {
+              ...thStyle,
+              cursor: canSort ? "pointer" : undefined,
+              userSelect: canSort ? "none" as const : undefined,
+              width: isSelect ? "40px" : header.id === "trend" ? "100px" : header.id === "action" ? "90px" : undefined,
+              textAlign: isSelect || header.id === "action" || header.id === "trend" ? "center" as const : undefined,
+            },
+            onClick: header.column.getToggleSortingHandler(),
+            title: canSort ? t("watchlist.table.sort", { defaultValue: "Sắp xếp" }) : undefined,
+          }, header.isPlaceholder ? null : createElement("div", { style: { display: "flex", alignItems: "center", gap: "4px", justifyContent: isSelect ? "center" : "flex-start" } }, flexRender(header.column.columnDef.header, header.getContext()), sorted ? (sorted === "asc" ? " ↑" : " ↓") : null));
+        })
+      )
+    );
   };
 
   const handleRowClick = (symbol: string) => {
@@ -234,247 +371,262 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
   };
 
   const renderTableBody = () => {
+    const rows = tanStackTable.getPaginationRowModel().rows;
     const tdPadding = density === "compact" ? "6px 12px" : "12px 16px";
-
-    if (pagedItems.length === 0) {
-      return createElement(
-        "tr",
-        null,
-        createElement(
-          "td",
-          { colSpan: 10, style: { padding: "2rem", textAlign: "center", color: "var(--text-muted, #94a3b8)" } },
-          t("watchlist.table.empty", { defaultValue: "Danh sách trống." })
-        )
-      );
+    if (rows.length === 0) {
+      return createElement("tr", null, createElement("td", {colSpan: tanStackTable.getAllColumns().length, style:{padding:"2rem", textAlign:"center", color:"var(--text-muted, #94a3b8)"}}, t("watchlist.table.empty",{defaultValue:"Danh sách trống."})));
     }
-
-    return pagedItems.map(item => {
-      const symbol = (item as WatchlistItem).symbol;
-      const merged = getMergedData(symbol);
-      const changePct = Number(merged.price_change_pct || 0);
-      const isUp = changePct > 0;
-      const isDown = changePct < 0;
-
-      const flashState = priceFlashMap[symbol];
-      const flashClass = flashState ? `watchlistPage__priceCell--${flashState}` : "";
-      
-      const isActiveRow = symbol === activeSymbolDetail;
+    if (rows.length >100) {
+      const rowHeight = density==="compact"?36:48;
+      const height = Math.min(400, rows.length * rowHeight);
+      return createElement(List as any, {
+        height,
+        itemCount: rows.length,
+        itemSize: rowHeight,
+        width: "100%",
+        itemData: rows,
+        outerElementType: (props: any) => createElement("tbody", {...props, style:{...props.style, background:"transparent"}}),
+        children: ({index, style, data}: any) => {
+        const row: any = data[index];
+        const symbol = row.original.symbol;
+        const isActive = symbol === activeSymbolDetail;
+        const isSelected = row.getIsSelected();
+        const rowStyle = {
+          display: "table",
+          tableLayout: "fixed" as const,
+          width: "100%",
+          background: isActive ? "rgba(0, 180, 216, 0.08)" : isSelected ? "rgba(34,211,238,0.06)" : "transparent",
+          borderLeft: isActive ? "2px solid var(--accent-cyan, #22d3ee)" : "2px solid transparent",
+          borderBottom: "1px solid rgba(80, 120, 168, 0.15)",
+          cursor: "pointer",
+          ...style,
+        };
+        return createElement("tr", {key: row.id, style: rowStyle, onClick:()=>handleRowClick(symbol), className: isActive ? "watchlistPage__row--active" : "", "data-testid":`watchlist-row-${symbol}`}, row.getVisibleCells().map((cell:any)=> createElement("td", {key: cell.id, style:{padding: tdPadding}}, flexRender(cell.column.columnDef.cell, cell.getContext()))));
+        },
+      });
+    }
+    return rows.map((row: any) => {
+      const symbol = row.original.symbol;
+      const isActive = symbol === activeSymbolDetail;
+      const isSelected = row.getIsSelected();
       const rowStyle = {
-        background: isActiveRow ? "rgba(0, 180, 216, 0.08)" : "transparent",
-        borderLeft: isActiveRow ? "2px solid var(--accent-cyan, #22d3ee)" : "2px solid transparent",
+        background: isActive ? "rgba(0, 180, 216, 0.08)" : isSelected ? "rgba(34,211,238,0.06)" : "transparent",
+        borderLeft: isActive ? "2px solid var(--accent-cyan, #22d3ee)" : "2px solid transparent",
         borderBottom: "1px solid rgba(80, 120, 168, 0.15)",
         cursor: "pointer",
         transition: "all 0.15s ease"
       };
-      const rowClass = `hover:bg-slate-800/20${isActiveRow ? " watchlistPage__row--active" : ""}`;
-
-      if (selectedType === "holds") {
-        const h = item as Holding;
-        const qty = Number(h.quantity || 0);
-        const avgCost = Number(h.avg_cost || 0);
-        const marketValue = Number(h.market_value || 0);
-        const pnl = Number(h.unrealized_pnl || 0);
-        const pnlPct = Number(h.unrealized_pnl_pct || 0);
-
-        return createElement(
-          "tr",
-          { key: symbol, style: rowStyle, onClick: () => handleRowClick(symbol), className: rowClass },
-          createElement(
-            "td",
-            { style: { padding: tdPadding, fontFamily: "monospace", fontWeight: 700, color: isActiveRow ? "var(--accent-cyan, #22d3ee)" : "var(--text-primary, #f1f5f9)" } },
-            symbol
-          ),
-          createElement(
-            "td",
-            { 
-              className: `watchlistPage__priceCell ${flashClass}`, 
-              style: { 
-                padding: tdPadding, 
-                fontFamily: "monospace", 
-                fontWeight: 600, 
-                color: isUp ? "#10b981" : isDown ? "#f43f5e" : "var(--text-primary, #f1f5f9)" 
-              } 
-            },
-            merged.price !== undefined ? Number(merged.price).toLocaleString() : "—"
-          ),
-          createElement(
-            "td",
-            { style: { padding: tdPadding, fontFamily: "monospace", color: isUp ? "#10b981" : isDown ? "#f43f5e" : "var(--text-muted, #94a3b8)" } },
-            changePct !== 0 ? `${isUp ? "+" : ""}${changePct.toFixed(2)}%` : "0.00%"
-          ),
-          createElement("td", { style: { padding: tdPadding, fontFamily: "monospace", textAlign: "right", color: "var(--text-primary, #f1f5f9)" } }, qty.toLocaleString()),
-          createElement("td", { style: { padding: tdPadding, fontFamily: "monospace", textAlign: "right", color: "var(--text-primary, #f1f5f9)" } }, Math.round(avgCost).toLocaleString()),
-          createElement("td", { style: { padding: tdPadding, fontFamily: "monospace", textAlign: "right", color: "var(--text-primary, #f1f5f9)" } }, Math.round(marketValue).toLocaleString()),
-          createElement(
-            "td",
-            { style: { padding: tdPadding, fontFamily: "monospace", textAlign: "right", color: pnl > 0 ? "#10b981" : pnl < 0 ? "#f43f5e" : "var(--text-muted, #94a3b8)" } },
-            pnl !== 0 ? `${pnl > 0 ? "+" : ""}${Math.round(pnl).toLocaleString()}` : "0"
-          ),
-          createElement(
-            "td",
-            { style: { padding: tdPadding, fontFamily: "monospace", textAlign: "right", color: pnlPct > 0 ? "#10b981" : pnlPct < 0 ? "#f43f5e" : "var(--text-muted, #94a3b8)" } },
-            pnlPct !== 0 ? `${pnlPct > 0 ? "+" : ""}${pnlPct.toFixed(2)}%` : "0.00%"
-          ),
-          createElement(
-            "td",
-            { style: { padding: tdPadding, textAlign: "center" } },
-            renderActions(symbol)
-          ),
-          createElement(
-            "td",
-            { style: { padding: "4px", textAlign: "center", verticalAlign: "middle" } },
-            renderSparkline(symbol)
-          )
-        );
-
-      } else if (selectedType === "watchlist") {
-        const rsiValue = merged.rsi_14 !== undefined && merged.rsi_14 !== null ? Number(merged.rsi_14).toFixed(1) : "—";
-        const rvolValue = merged.rvol !== undefined && merged.rvol !== null ? Number(merged.rvol).toFixed(2) : "—";
-        const ma20Dist = merged.ma20_distance_pct !== undefined && merged.ma20_distance_pct !== null ? `${Number(merged.ma20_distance_pct).toFixed(1)}%` : "—";
-
-        return createElement(
-          "tr",
-          { key: symbol, style: rowStyle, onClick: () => handleRowClick(symbol), className: rowClass },
-          createElement(
-            "td",
-            { style: { padding: tdPadding, fontFamily: "monospace", fontWeight: 700, color: isActiveRow ? "var(--accent-cyan, #22d3ee)" : "var(--text-primary, #f1f5f9)" } },
-            symbol
-          ),
-          createElement(
-            "td",
-            { 
-              className: `watchlistPage__priceCell ${flashClass}`, 
-              style: { 
-                padding: tdPadding, 
-                fontFamily: "monospace", 
-                fontWeight: 600, 
-                color: isUp ? "#10b981" : isDown ? "#f43f5e" : "var(--text-primary, #f1f5f9)" 
-              } 
-            },
-            merged.price !== undefined ? Number(merged.price).toLocaleString() : "—"
-          ),
-          createElement(
-            "td",
-            { style: { padding: tdPadding, fontFamily: "monospace", color: isUp ? "#10b981" : isDown ? "#f43f5e" : "var(--text-muted, #94a3b8)" } },
-            changePct !== 0 ? `${isUp ? "+" : ""}${changePct.toFixed(2)}%` : "0.00%"
-          ),
-          visibleColumns.rsi && createElement("td", { style: { padding: tdPadding, fontFamily: "monospace", color: "var(--text-primary, #f1f5f9)" } }, rsiValue),
-          visibleColumns.rvol && createElement("td", { style: { padding: tdPadding, fontFamily: "monospace", color: "var(--text-primary, #f1f5f9)" } }, rvolValue),
-          visibleColumns.ma20Dist && createElement(
-            "td",
-            { style: { padding: tdPadding, fontFamily: "monospace", color: Number(merged.ma20_distance_pct) >= 0 ? "#10b981" : "#f43f5e" } },
-            ma20Dist
-          ),
-          visibleColumns.bias && createElement(
-            "td",
-            { style: { padding: tdPadding, fontSize: "0.8rem", color: "var(--text-muted, #94a3b8)" } },
-            merged.bias_label || t("watchlist.table.neutral", { defaultValue: "Trung tính" })
-          ),
-          createElement(
-            "td",
-            { style: { padding: tdPadding, textAlign: "center" } },
-            renderActions(symbol)
-          ),
-          createElement(
-            "td",
-            { style: { padding: "4px", textAlign: "center", verticalAlign: "middle" } },
-            renderSparkline(symbol)
-          )
-        );
-      }
-      
-      // Fallback for group and tracked
-      return createElement(
-        "tr",
-        { key: symbol, style: rowStyle, onClick: () => handleRowClick(symbol), className: rowClass },
-        createElement(
-          "td",
-          { style: { padding: tdPadding, fontFamily: "monospace", fontWeight: 700, color: isActiveRow ? "var(--accent-cyan, #22d3ee)" : "var(--text-primary, #f1f5f9)" } },
-          symbol
-        ),
-        createElement(
-          "td",
-          { style: { padding: tdPadding } },
-          createElement(
-            "div",
-            { style: { display: "flex", flexDirection: "column" } },
-            createElement("span", { style: { fontWeight: 700, color: "var(--text-primary, #f1f5f9)", fontSize: "0.85rem" } }, merged.company_name || (item as any).company_name || "—"),
-            createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)" } }, merged.industry || (item as any).industry || "—")
-          )
-        ),
-        createElement(
-          "td",
-          { 
-            className: `watchlistPage__priceCell ${flashClass}`, 
-            style: { 
-              padding: tdPadding, 
-              fontFamily: "monospace", 
-              fontWeight: 600, 
-              color: isUp ? "#10b981" : isDown ? "#f43f5e" : "var(--text-primary, #f1f5f9)" 
-            } 
-          },
-          merged.price !== undefined ? Number(merged.price).toLocaleString() : "—"
-        ),
-        createElement(
-          "td",
-          { style: { padding: tdPadding, fontFamily: "monospace", color: isUp ? "#10b981" : isDown ? "#f43f5e" : "var(--text-muted, #94a3b8)" } },
-          changePct !== 0 ? `${isUp ? "+" : ""}${changePct.toFixed(2)}%` : "0.00%"
-        ),
-        createElement(
-          "td",
-          { 
-            style: { padding: tdPadding, color: "var(--text-muted, #94a3b8)", fontSize: "0.85rem" }, 
-            colSpan: selectedType === "tracked" ? 1 : 2 
-          },
-          "—"
-        ),
-        createElement(
-          "td",
-          { style: { padding: tdPadding, textAlign: "center" } },
-          renderActions(symbol)
-        ),
-        createElement(
-          "td",
-          { style: { padding: "4px", textAlign: "center", verticalAlign: "middle" } },
-          renderSparkline(symbol)
-        )
-      );
+      return createElement("tr", {key: row.id, style: rowStyle, onClick:()=>handleRowClick(symbol), className: `hover:bg-slate-800/20${isActive ? " watchlistPage__row--active" : isSelected ? " watchlistPage__row--selected" : ""}`, "data-testid":`watchlist-row-${symbol}`}, row.getVisibleCells().map((cell:any)=> createElement("td", {key: cell.id, style:{padding: tdPadding}}, flexRender(cell.column.columnDef.cell, cell.getContext()))));
     });
   };
 
   return createElement(
     "div",
-    { 
-      className: "watchlistPage__tableWrapper", 
-      style: { 
-        overflowX: "auto", 
-        border: "1px solid rgba(80, 120, 168, 0.15)", 
-        borderRadius: "8px", 
-        background: "rgba(15, 23, 42, 0.15)",
-        width: "100%"
-      } 
-    },
+    { style: { display: "flex", flexDirection: "column", gap: "10px", width: "100%" } },
     createElement(
-      "table",
+      "div",
+      { style: { display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px" } },
+      createElement("input", {
+        type: "search",
+        placeholder: t("watchlist.table.search_placeholder", { defaultValue: "Tìm mã, tên DN..." }),
+        value: globalFilter,
+        onChange: (e: ChangeEvent<HTMLInputElement>) => setGlobalFilter(e.target.value),
+        style: {
+          padding: "8px 12px", fontSize: "0.8rem", width: "240px",
+          background: "rgba(2,11,35,0.4)", border: "1px solid rgba(80,120,168,0.15)",
+          borderRadius: "8px", color: "#f1f5f9"
+        },
+        "data-testid": "watchlist-search",
+        "aria-label": t("watchlist.table.search_placeholder", { defaultValue: "Tìm mã, tên DN..." })
+      }),
+      filteredSortedItems.length !== activeItems.length && createElement(
+        "span",
+        { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)" } },
+        `${filteredSortedItems.length} / ${activeItems.length}`
+      )
+    ),
+    selectedCount > 0 && createElement(
+      "div",
+      {
+        style: {
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "8px 12px", border: "1px solid rgba(34,211,238,0.25)",
+          borderRadius: "8px", background: "rgba(34,211,238,0.08)"
+        },
+        "data-testid": "watchlist-bulk-bar"
+      },
+      createElement("span", { style: { fontSize: "0.8rem", fontWeight: 600, color: "#22d3ee" } }, t("watchlist.table.bulk_selected", { defaultValue: `Đã chọn ${selectedCount} mã` })),
+      createElement(
+        "div",
+        { style: { display: "flex", gap: "8px" } },
+        createElement("button", {
+          type: "button",
+          onClick: handleBulkDelete,
+          style: { padding: "6px 12px", borderRadius: "6px", border: "1px solid rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.12)", color: "#f87171", cursor: "pointer", fontWeight: 600, fontSize: "0.8rem" },
+          "data-testid": "watchlist-bulk-delete"
+        }, t("watchlist.table.bulk_delete", { defaultValue: `Xóa ${selectedCount} mã` })),
+        createElement("button", {
+          type: "button",
+          onClick: () => setRowSelection({}),
+          style: { padding: "6px 12px", borderRadius: "6px", border: "1px solid rgba(80,120,168,0.25)", background: "rgba(255,255,255,0.06)", color: "#94a3b8", cursor: "pointer", fontWeight: 600, fontSize: "0.8rem" }
+        }, t("common.clear", { defaultValue: "Bỏ chọn" }))
+      )
+    ),
+    createElement(
+      "div",
       { 
-        className: `watchlistPage__table w-full ${density === "compact" ? "watchlistPage__table--compact" : ""}`,
-        style: { width: "100%", borderCollapse: "collapse", textAlign: "left" }
+        className: "watchlistPage__tableWrapper", 
+        style: { 
+          overflowX: "auto", 
+          border: "1px solid rgba(80, 120, 168, 0.15)", 
+          borderRadius: "8px", 
+          background: "rgba(15, 23, 42, 0.15)",
+          width: "100%"
+        } 
       },
       createElement(
-        "thead",
-        { style: { background: "rgba(8, 23, 52, 0.5)", position: "sticky", top: 0, zIndex: 10 } },
-        renderTableHeader()
+        "table",
+        { 
+          className: `watchlistPage__table w-full ${density === "compact" ? "watchlistPage__table--compact" : ""}`,
+          style: { width: "100%", borderCollapse: "collapse", textAlign: "left" },
+          role: "grid",
+          "aria-label": t("watchlist.table.aria_grid", { defaultValue: "Bảng danh mục theo dõi" })
+        },
+        createElement(
+          "thead",
+          { style: { background: "rgba(8, 23, 52, 0.5)", position: "sticky", top: 0, zIndex: 10 } },
+          renderTableHeader()
+        ),
+      createElement(
+        "tbody",
+        { style: { background: "transparent" } },
+        renderTableBody()
+      )
       ),
-    createElement(
-      "tbody",
-      { style: { background: "transparent" } },
-      renderTableBody()
-    )
+      filteredSortedItems.length > pageSize && createElement(WatchlistTablePager, {
+        page, pageSize, totalPages, totalItems: filteredSortedItems.length,
+        onPageChange: setPage, onPageSizeChange: (s: number) => { setPageSize(s); setPage(0); },
+      })
     ),
-    activeItems.length > pageSize && createElement(WatchlistTablePager, {
-      page, pageSize, totalPages, totalItems: activeItems.length,
-      onPageChange: setPage, onPageSizeChange: (s: number) => { setPageSize(s); setPage(0); },
-    })
+    // Remove confirm dialog (W-03)
+    removeConfirm && createElement(
+      "div",
+      {
+        style: { position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" },
+        onClick: () => setRemoveConfirm(null),
+        role: "presentation",
+        "data-testid": "watchlist-remove-dialog"
+      },
+      createElement(
+        "div",
+        {
+          style: { background: "rgba(15,23,42,0.98)", border: "1px solid rgba(80,120,168,0.3)", borderRadius: "12px", padding: "20px", minWidth: "320px", maxWidth: "420px", display: "flex", flexDirection: "column", gap: "16px" },
+          onClick: (e: MouseEvent) => e.stopPropagation(),
+          role: "dialog", "aria-modal": "true", "aria-label": t("watchlist.table.delete_confirm_title", { defaultValue: "Xác nhận xóa" })
+        },
+        createElement("h3", { style: { margin: 0, fontSize: "1rem", fontWeight: 700, color: "#f1f5f9" } }, t("watchlist.table.delete_confirm_title", { defaultValue: "Xác nhận xóa" })),
+        createElement("p", { style: { margin: 0, fontSize: "0.85rem", color: "#94a3b8" } }, t("watchlist.table.delete_confirm", { defaultValue: `Xóa mã ${removeConfirm} khỏi danh sách?` })),
+        createElement(
+          "div",
+          { style: { display: "flex", justifyContent: "flex-end", gap: "10px" } },
+          createElement("button", { type: "button", onClick: () => setRemoveConfirm(null), style: { padding: "8px 16px", borderRadius: "8px", border: "1px solid rgba(80,120,168,0.3)", background: "rgba(255,255,255,0.06)", color: "#f1f5f9", cursor: "pointer", fontWeight: 600 }, "data-testid": "watchlist-remove-cancel" }, t("common.cancel", { defaultValue: "Hủy" })),
+          createElement("button", { type: "button", onClick: () => { const s = removeConfirm; setRemoveConfirm(null); if (s && selectedId) removeSymbol(selectedId, s); }, style: { padding: "8px 16px", borderRadius: "8px", border: "none", background: "#ef4444", color: "#fff", cursor: "pointer", fontWeight: 700 }, "data-testid": "watchlist-remove-confirm" }, t("common.delete", { defaultValue: "Xóa" }))
+        )
+      )
+    ),
+    // Bulk delete confirm — F1 fix (Dialog, not window.confirm)
+    bulkDeleteConfirmOpen && createElement(
+      "div",
+      {
+        style: { position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" },
+        onClick: () => setBulkDeleteConfirmOpen(false),
+        role: "presentation",
+        "data-testid": "watchlist-bulk-delete-dialog"
+      },
+      createElement(
+        "div",
+        {
+          style: { background: "rgba(15,23,42,0.98)", border: "1px solid rgba(80,120,168,0.3)", borderRadius: "12px", padding: "20px", minWidth: "320px", maxWidth: "420px", display: "flex", flexDirection: "column", gap: "16px" },
+          onClick: (e: MouseEvent) => e.stopPropagation(),
+          role: "dialog", "aria-modal": "true", "aria-label": t("watchlist.table.bulk_delete_confirm_title", { defaultValue: "Xác nhận xóa hàng loạt" })
+        },
+        createElement("h3", { style: { margin: 0, fontSize: "1rem", fontWeight: 700, color: "#f1f5f9" } }, t("watchlist.table.bulk_delete_confirm_title", { defaultValue: "Xác nhận xóa hàng loạt" })),
+        createElement("p", { style: { margin: 0, fontSize: "0.85rem", color: "#94a3b8" } }, t("watchlist.table.bulk_delete_confirm", { defaultValue: `Xóa ${selectedCount} mã đã chọn?` })),
+        createElement(
+          "div",
+          { style: { display: "flex", justifyContent: "flex-end", gap: "10px" } },
+          createElement("button", { type: "button", onClick: () => setBulkDeleteConfirmOpen(false), style: { padding: "8px 16px", borderRadius: "8px", border: "1px solid rgba(80,120,168,0.3)", background: "rgba(255,255,255,0.06)", color: "#f1f5f9", cursor: "pointer", fontWeight: 600 }, "data-testid": "watchlist-bulk-delete-cancel" }, t("common.cancel", { defaultValue: "Hủy" })),
+          createElement("button", { type: "button", onClick: confirmBulkDelete, style: { padding: "8px 16px", borderRadius: "8px", border: "none", background: "#ef4444", color: "#fff", cursor: "pointer", fontWeight: 700 }, "data-testid": "watchlist-bulk-delete-confirm" }, t("common.delete", { defaultValue: "Xóa" }))
+        )
+      )
+    ),
+    // Price alert inline dialog (V-06)
+    priceAlertDialog.open && createElement(
+      "div",
+      {
+        style: { position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" },
+        onClick: () => setPriceAlertDialog(prev => ({ ...prev, open: false, error: "" })),
+        role: "presentation",
+        "data-testid": "watchlist-pricealert-dialog"
+      },
+      createElement(
+        "form",
+        {
+          style: { background: "rgba(15,23,42,0.98)", border: "1px solid rgba(80,120,168,0.3)", borderRadius: "12px", padding: "20px", minWidth: "340px", maxWidth: "420px", display: "flex", flexDirection: "column", gap: "14px" },
+          onClick: (e: MouseEvent) => e.stopPropagation(),
+          onSubmit: handlePriceAlertSubmit,
+          role: "dialog", "aria-modal": "true", "aria-label": t("watchlist.dialog.create_title", { defaultValue: "Tạo cảnh báo giá" })
+        },
+        createElement("h3", { style: { margin: 0, fontSize: "1rem", fontWeight: 700, color: "#f1f5f9" } }, `${t("watchlist.dialog.create_title", { defaultValue: "Tạo cảnh báo giá" })} — ${priceAlertDialog.symbol}`),
+        priceAlertDialog.error && createElement("div", { style: { padding: "8px 12px", background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "8px", color: "#f87171", fontSize: "0.8rem" } }, priceAlertDialog.error),
+        createElement(
+          "label",
+          { style: { display: "flex", flexDirection: "column", gap: "6px", fontSize: "0.8rem", color: "#94a3b8", fontWeight: 600 } },
+          t("watchlist.table.condition", { defaultValue: "Điều kiện" }),
+          createElement(
+            "select",
+            {
+              value: priceAlertDialog.condition,
+              onChange: (e: ChangeEvent<HTMLSelectElement>) => setPriceAlertDialog(prev => ({ ...prev, condition: e.target.value as "ABOVE" | "BELOW" })),
+              style: { padding: "8px 12px", borderRadius: "8px", border: "1px solid rgba(80,120,168,0.3)", background: "rgba(2,11,35,0.6)", color: "#f1f5f9", fontSize: "0.85rem" }
+            },
+            createElement("option", { value: "ABOVE" }, t("watchlist.dialog.condition_above", { defaultValue: "Vượt lên trên" })),
+            createElement("option", { value: "BELOW" }, t("watchlist.dialog.condition_below", { defaultValue: "Rơi xuống dưới" }))
+          )
+        ),
+        createElement(
+          "label",
+          { style: { display: "flex", flexDirection: "column", gap: "6px", fontSize: "0.8rem", color: "#94a3b8", fontWeight: 600 } },
+          t("watchlist.dialog.target_price", { defaultValue: "Giá mục tiêu" }),
+          createElement("input", {
+            type: "number", step: "100", min: "1000",
+            value: priceAlertDialog.target_price,
+            onChange: (e: ChangeEvent<HTMLInputElement>) => setPriceAlertDialog(prev => ({ ...prev, target_price: e.target.value })),
+            placeholder: "15000",
+            style: { padding: "8px 12px", borderRadius: "8px", border: "1px solid rgba(80,120,168,0.3)", background: "rgba(2,11,35,0.6)", color: "#f1f5f9", fontSize: "0.85rem" },
+            "data-testid": "watchlist-pricealert-target",
+            autoFocus: true
+          })
+        ),
+        createElement(
+          "label",
+          { style: { display: "flex", flexDirection: "column", gap: "6px", fontSize: "0.8rem", color: "#94a3b8", fontWeight: 600 } },
+          t("watchlist.table.cooldown", { defaultValue: "Cooldown (giây)" }),
+          createElement("input", {
+            type: "number", step: "60", min: "0",
+            value: priceAlertDialog.cooldown_seconds,
+            onChange: (e: ChangeEvent<HTMLInputElement>) => setPriceAlertDialog(prev => ({ ...prev, cooldown_seconds: e.target.value })),
+            style: { padding: "8px 12px", borderRadius: "8px", border: "1px solid rgba(80,120,168,0.3)", background: "rgba(2,11,35,0.6)", color: "#f1f5f9", fontSize: "0.85rem" }
+          })
+        ),
+        createElement(
+          "div",
+          { style: { display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "4px" } },
+          createElement("button", { type: "button", onClick: () => setPriceAlertDialog(prev => ({ ...prev, open: false, error: "" })), style: { padding: "8px 16px", borderRadius: "8px", border: "1px solid rgba(80,120,168,0.3)", background: "rgba(255,255,255,0.06)", color: "#f1f5f9", cursor: "pointer", fontWeight: 600 }, "data-testid": "watchlist-pricealert-cancel" }, t("common.cancel", { defaultValue: "Hủy" })),
+          createElement("button", { type: "submit", disabled: priceAlertDialog.submitting, style: { padding: "8px 16px", borderRadius: "8px", border: "none", background: priceAlertDialog.submitting ? "#64748b" : "#0ea5e9", color: "#fff", cursor: priceAlertDialog.submitting ? "not-allowed" : "pointer", fontWeight: 700, opacity: priceAlertDialog.submitting ? 0.7 : 1 }, "data-testid": "watchlist-pricealert-submit" }, priceAlertDialog.submitting ? t("common.saving", { defaultValue: "Đang lưu..." }) : t("watchlist.dialog.save", { defaultValue: "Tạo cảnh báo" }))
+        )
+      )
+    )
   );
 }
 
@@ -561,7 +713,7 @@ function WatchlistTablePager({
             cursor: "pointer",
           },
         },
-        PAGE_SIZE_OPTIONS.map(opt =>
+        PAGE_SIZE_OPTIONS.map((opt: number) =>
           createElement("option", { key: opt, value: opt }, `${opt} / trang`)
         )
       )
