@@ -333,7 +333,11 @@ export function normalizePollSymbolCandidates(symbols, quotesBySymbol, wsHealthy
   const fresh = [];
   let hasOverThreshold = false;
 
-  (symbols || []).forEach((symbol) => {
+  const filteredSymbols = (symbols || []).filter((s) => {
+    const v = String(s || "").toLowerCase();
+    return v !== "market_discovery" && v !== "market_discovery_event";
+  });
+  filteredSymbols.forEach((symbol) => {
     const normalizedSymbol = normalizeSymbol(symbol);
     const quote = getQuoteBySymbol(normalizedQuotes, normalizedSymbol);
     const isMissing = !isValidQuotePrice(quote.current_price);
@@ -1018,7 +1022,7 @@ export default function useRealtimeFeedCore({
             nextWs.send(JSON.stringify({ event_type: 'ping' }));
           }
         }, 25000);
-        // Start heartbeat timeout check (10s without message → reconnect)
+        // Start heartbeat timeout check (30s without message → reconnect, gated offhours)
         startHeartbeatTimeoutCheck();
       };
 
@@ -1028,11 +1032,11 @@ export default function useRealtimeFeedCore({
         }
         heartbeatTimeoutTimerRef.current = setTimeout(() => {
           if (destroyed || nextWs !== ws) return;
-          // No message received within 10s timeout → force reconnect
+          // No message received within 30s timeout → force reconnect (was 10s, too aggressive offhours)
           if (ws && ws.readyState === WebSocket.OPEN) {
             ws.close(4000, 'heartbeat_timeout');
           }
-        }, 10000);
+        }, 30000);
       };
 
       nextWs.onmessage = (event) => {

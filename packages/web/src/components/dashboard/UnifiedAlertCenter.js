@@ -6,61 +6,11 @@
  */
 import { createElement, useMemo, useState } from "react";
 import { Bell, Filter, X, ChevronLeft, ChevronRight, Flame } from "lucide-react";
+import { useI18n } from "../../context/LangContext.js";
 
 const e = createElement;
 
-const I18N = {
-  vi: {
-    "alert.title": "Cảnh báo",
-    "alert.empty": "Không có cảnh báo nào.",
-    "alert.unread": "chưa đọc",
-    "alert.source.whale": "Cá mập",
-    "alert.source.dark_flow": "Dòng tối",
-    "alert.source.price_shock": "Sốc giá",
-    "alert.source.stale_quote": "Báo giá cũ",
-    "alert.source.system": "Hệ thống",
-    "alert.severity.critical": "Nghiêm trọng",
-    "alert.severity.high": "Cao",
-    "alert.severity.medium": "Trung bình",
-    "alert.severity.low": "Thấp",
-    "alert.severity.all": "Tất cả",
-    "alert.markRead": "Đánh dấu đã đọc",
-    "alert.clearFilters": "Xóa bộ lọc",
-    "alert.prevPage": "Trang trước",
-    "alert.nextPage": "Trang sau",
-  },
-  en: {
-    "alert.title": "Alerts",
-    "alert.empty": "No alerts.",
-    "alert.unread": "unread",
-    "alert.source.whale": "Whale",
-    "alert.source.dark_flow": "Dark Flow",
-    "alert.source.price_shock": "Price Shock",
-    "alert.source.stale_quote": "Stale Quote",
-    "alert.source.system": "System",
-    "alert.severity.critical": "Critical",
-    "alert.severity.high": "High",
-    "alert.severity.medium": "Medium",
-    "alert.severity.low": "Low",
-    "alert.severity.all": "All",
-    "alert.markRead": "Mark as read",
-    "alert.clearFilters": "Clear filters",
-    "alert.prevPage": "Previous page",
-    "alert.nextPage": "Next page",
-  },
-};
 
-function resolveLocale() {
-  const browserLang = (typeof document !== "undefined" && document.documentElement?.lang) ||
-    (typeof navigator !== "undefined" ? navigator.language : "") || "vi";
-  return String(browserLang).toLowerCase().startsWith("en") ? "en" : "vi";
-}
-
-function createTranslator(locale = "vi") {
-  const lang = locale === "en" ? "en" : "vi";
-  const dict = I18N[lang];
-  return (key) => dict[key] || I18N.vi[key] || key;
-}
 
 function sourceLabel(source, t) {
   const map = {
@@ -147,7 +97,7 @@ export function UnifiedAlertCenter({
   selectedSymbol,
   onSelectSymbol,
 }) {
-  const t = createTranslator(resolveLocale());
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState("alerts");
 
   const safeAlerts = useMemo(() => (Array.isArray(alerts) ? alerts : []), [alerts]);

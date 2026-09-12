@@ -159,7 +159,7 @@ export function useCoreDashboardData({ portfolioId, enabled = true } = {}) {
           holdings,
           trackedSymbols,
           watchlists,
-          watchlistGroups: [],
+          watchlistGroups,
         });
 
         let technicals = EMPTY_ARRAY;

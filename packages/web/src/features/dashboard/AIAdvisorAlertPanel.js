@@ -1,70 +1,11 @@
 import { useState, useEffect, useCallback, createElement } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { RotateCw, AlertTriangle, TrendingUp, TrendingDown, Minus, Activity } from "lucide-react";
+import { useI18n } from "../../context/LangContext.js";
 
 const e = createElement;
 
-const I18N = {
-  vi: {
-    "aiAdvisor.panel.title": "Trung Tâm Tín Hiệu AI Advisor",
-    "aiAdvisor.panel.refresh": "Làm mới",
-    "aiAdvisor.panel.loading": "Đang tải...",
-    "aiAdvisor.panel.loadError": "Không thể tải danh sách cảnh báo AI.",
-    "aiAdvisor.panel.initialLoading": "Đang phân tích dữ liệu dòng tiền và RSI...",
-    "aiAdvisor.panel.empty": "Chưa ghi nhận tín hiệu cảnh báo AI nào trong phiên hiện tại.",
-    "aiAdvisor.severity.critical": "Cực kỳ khẩn cấp",
-    "aiAdvisor.severity.high": "Khẩn cấp",
-    "aiAdvisor.severity.medium": "Trung bình",
-    "aiAdvisor.severity.low": "Thấp",
-    "aiAdvisor.metric.moneyFlow": "Dòng tiền:",
-    "aiAdvisor.metric.trend": "Xu hướng:",
-    "aiAdvisor.metric.rsi": "RSI Hiện Tại:",
-    "aiAdvisor.trend.buy": "MUA",
-    "aiAdvisor.trend.sell": "BÁN",
-    "aiAdvisor.trend.neutral": "TRUNG LẬP",
-    "aiAdvisor.unit.vnd": "VND",
-    "aiAdvisor.unit.billion": "tỷ",
-    "aiAdvisor.unit.million": "triệu",
-  },
-  en: {
-    "aiAdvisor.panel.title": "AI Advisor Signal Center",
-    "aiAdvisor.panel.refresh": "Refresh",
-    "aiAdvisor.panel.loading": "Loading...",
-    "aiAdvisor.panel.loadError": "Unable to load AI alerts.",
-    "aiAdvisor.panel.initialLoading": "Analyzing money flow and RSI signals...",
-    "aiAdvisor.panel.empty": "No AI alerts were detected in this trading session.",
-    "aiAdvisor.severity.critical": "Critical",
-    "aiAdvisor.severity.high": "High",
-    "aiAdvisor.severity.medium": "Medium",
-    "aiAdvisor.severity.low": "Low",
-    "aiAdvisor.metric.moneyFlow": "Money flow:",
-    "aiAdvisor.metric.trend": "Direction:",
-    "aiAdvisor.metric.rsi": "Current RSI:",
-    "aiAdvisor.trend.buy": "BUY",
-    "aiAdvisor.trend.sell": "SELL",
-    "aiAdvisor.trend.neutral": "NEUTRAL",
-    "aiAdvisor.unit.vnd": "VND",
-    "aiAdvisor.unit.billion": "billion",
-    "aiAdvisor.unit.million": "million",
-  },
-};
 
-export function resolveAiAdvisorLocale() {
-  const browserLang =
-    (typeof document !== "undefined" && document.documentElement?.lang) ||
-    (typeof navigator !== "undefined" ? navigator.language : "") ||
-    "vi";
-  return String(browserLang).toLowerCase().startsWith("en") ? "en" : "vi";
-}
-
-export function createAiAdvisorTranslator(locale = "vi") {
-  const language = locale === "en" ? "en" : "vi";
-  const dict = I18N[language];
-  return {
-    language,
-    t: (key) => dict[key] || I18N.vi[key] || key,
-  };
-}
 
 function getSeverityIcon(severity) {
   switch (severity) {
@@ -102,10 +43,11 @@ function getTrendColor(direction) {
   }
 }
 
-export function AIAdvisorAlertPanel({ className = "" }) {
-  const { t, language } = createAiAdvisorTranslator(resolveAiAdvisorLocale());
-  const [alerts, setAlerts] = useState([]);
-  const [loading, setLoading] = useState(false);
+export function AIAdvisorAlertPanel({ className = "", holdings: _holdings, technicals: _technicals, analytics: _analytics, alerts: propAlerts, loading: propLoading, selectedSession: _selectedSession, selectedSymbol: _selectedSymbol, onSelectSession: _onSelectSession, onSelectSymbol: _onSelectSymbol }) {
+  const { t, locale } = useI18n();
+  const language = locale;
+  const [alerts, setAlerts] = useState(propAlerts ?? []);
+  const [loading, setLoading] = useState(propLoading ?? false);
   const [error, setError] = useState(null);
 
   const fetchFeed = useCallback(async () => {

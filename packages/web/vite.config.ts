@@ -46,5 +46,14 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (id.includes("node_modules/echarts") || id.includes("echarts-for-react")) return "echarts";
+          if (id.includes("src/components/dashboard/") || id.includes("src/features/dashboard/")) return "dashboard";
+          if (id.includes("node_modules/react") || id.includes("node_modules/react-dom") || id.includes("node_modules/react-router")) return "react-vendor";
+        },
+      },
+    },
   },
 });
