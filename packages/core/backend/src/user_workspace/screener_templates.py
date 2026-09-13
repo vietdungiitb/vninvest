@@ -1,6 +1,6 @@
 """Pre-built Screener templates (S2.5).
 
-Static catalog of 10 ready-to-apply screening templates. Each template references
+Static catalog of 12 ready-to-apply screening templates. Each template references
 only allowed screener fields (see user_workspace.screener_helpers._SCREENER_ALLOWED_FIELDS)
 and uses the same {field, op, value, logic} rule shape as ScreenerRule.rules_json.
 
@@ -101,6 +101,26 @@ SCREENER_TEMPLATES = [
         "rules_json": [
             {"field": "pe_ratio", "op": "gt", "value": 0, "logic": "AND"},
             {"field": "pe_ratio", "op": "lt", "value": 15, "logic": "AND"},
+        ],
+    },
+    {
+        "id": "volume_breakout",
+        "name_key": "screener.templates.volume_breakout.name",
+        "desc_key": "screener.templates.volume_breakout.desc",
+        "category": "technical",
+        "rules_json": [
+            {"field": "volume_rvol", "op": "gt", "value": 2.5, "logic": "AND"},
+            {"field": "price_vs_sma20_pct", "op": "gt", "value": 5, "logic": "AND"},
+        ],
+    },
+    {
+        "id": "profit_growth",
+        "name_key": "screener.templates.profit_growth.name",
+        "desc_key": "screener.templates.profit_growth.desc",
+        "category": "fundamental",
+        "rules_json": [
+            {"field": "eps_growth_yoy", "op": "gt", "value": 20, "logic": "AND"},
+            {"field": "revenue_growth_yoy", "op": "gt", "value": 15, "logic": "AND"},
         ],
     },
 ]

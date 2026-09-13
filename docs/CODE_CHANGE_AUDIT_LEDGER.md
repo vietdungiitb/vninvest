@@ -5,6 +5,24 @@
 
 ---
 
+## Entry 79: P2.0+P2.1 Screener — 12 templates + URL share (code)
+
+- **Date**: 2026-09-13
+- **Scope**: P2 scope theo `docs/IMPLEMENTATION_PLAN_SCREENER_P2_20260913.md` §10 (P2.0 12 templates + P2.1 URL share D8). Không đụng P1 contract, không đổi công thức.
+- **Files**:
+  - `screener_templates.py:1,106-128` — **12 templates** (trước 10, S2.5): thêm `volume_breakout` (technical, `volume_rvol>2.5 AND price_vs_sma20_pct>5`) + `profit_growth` (fundamental, `eps_growth_yoy>20 AND revenue_growth_yoy>15`). Chỉ dùng field trong `_SCREENER_ALLOWED_FIELDS` (screener_helpers.py:5-29).
+  - `vi.js:2495` + `en.js:2497` — thêm `screener.templates.volume_breakout/profit_growth` name/desc VI/EN (full dấu).
+  - `docs/IMPLEMENTATION_PLAN_SCREENER_P2_20260913.md` **MỚI** — plan P2 chi tiết (§0 D8-D14 7 quyết định, §1 hiệu chỉnh, §2-§7 7 items P2.1-P2.7, §8 thứ tự 5-7 ngày, §9 gates, §10 out-of-scope P3) theo mẫu P1 (Entry 72).
+  - `ScreenerPage.tsx:1,140-152,310-431,443-485,688` — **P2.1 URL share (D8)**: `import {useSearchParams} from 'react-router-dom'`, `const [searchParams,setSearchParams]=useSearchParams()`, `hasAppliedUrlRef`, `syncUrl(rule,params)` (`rule,run,sort,order,page,limit` → `setSearchParams` replace), `useEffect` apply URL sau khi `rules` load (validate `rid`, `sort/order/page/limit`, `run=1` → `runWithParams` deferred, `?rule=9999` → toast), `runWithParams` 3 nhánh (`completed`/`unknown`/`200`) đều `syncUrl(rule,params)` sau `setResults`. D8: `replace:true` tránh spam history.
+- **Validation**:
+  - `npm --prefix packages/web run build` → 33.83s PASS (ScreenerPage 49.91k, +1k cho URL share).
+  - `npm run test:components -- src/components/screener` → **7 files 37 passed** (không regression, polling test 7 vẫn pass; URL share cần Router nhưng không có test render ScreenerPage nên không vỡ).
+  - `manage.py test user_workspace` → BE không đụng (templates chỉ thêm catalog, không migration).
+- **Next**: P2.2 React Query cho screener (1d) — `useTenantAdminQuery(['screener','rules'])` stale 30s, `tenant-changed` invalidation (đã có `QueryProvider`), giữ `runWithParams` state cho 202 polling.
+- **Residual**: P2.2-P2.7 chưa làm (history server, lịch quét, watchlist/alert, cột persist, mobile/a11y, evidence P2). `ScreenerPage` `useSearchParams` cần `BrowserRouter` (đã có `main.tsx`), test render `ScreenerPage` tương lai cần `MemoryRouter` wrapper.
+
+---
+
 ## Entry 78: P1.6 Screener — audit full + fixes tồn đọng (code)
 
 - **Date**: 2026-09-13

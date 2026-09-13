@@ -2492,6 +2492,8 @@ const vi = {
       high_dividend: { name: 'Cổ tức cao', desc: 'Tỷ suất cổ tức > 5% — thu nhập thụ động hấp dẫn.' },
       small_cap_growth: { name: 'Small Cap tăng trưởng', desc: 'Vốn hóa < 10.000 tỷ và doanh thu tăng > 15% YoY.' },
       value_pe: { name: 'Định giá P/E thấp', desc: 'P/E dương và < 15 — cổ phiếu định giá rẻ.' },
+      volume_breakout: { name: 'Bứt phá khối lượng', desc: 'RVOL > 2.5 và giá trên SMA20 > 5% — dòng tiền mạnh đẩy giá bứt phá.' },
+      profit_growth: { name: 'Tăng trưởng lợi nhuận', desc: 'EPS tăng > 20% YoY và doanh thu tăng > 15% YoY — doanh nghiệp tăng trưởng kép.' },
     },
     columnsBtn: 'Cột',
     export: {

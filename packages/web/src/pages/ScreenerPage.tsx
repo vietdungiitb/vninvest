@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { coreApiAdapter } from '../adapters/coreApiAdapter.js';
 import { useI18n } from '../context/LangContext.js';
 import { useConfirm } from '../components/ConfirmModal.js';
@@ -142,6 +143,8 @@ export function ScreenerPage() {
   const [jobStatus, setJobStatus] = useState<{ status: string; scanned?: number; total?: number } | null>(null);
   const pollRef = React.useRef<number | null>(null);
   const mountedRef = React.useRef(true);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const hasAppliedUrlRef = React.useRef(false);
 
   const clearPoll = useCallback(() => {
     if (pollRef.current != null) { window.clearInterval(pollRef.current); pollRef.current = null; }
@@ -174,6 +177,19 @@ export function ScreenerPage() {
       .then((d: any) => setTemplates(Array.isArray(d) ? d : (d.templates || [])))
       .catch(() => setTemplates([]));
   }, []);
+
+  // P2.1 URL share (?rule=&run=&sort=&order=&page=&limit=) — D8
+  const syncUrl = useCallback((rule: Rule | null, params: ScanParams | null) => {
+    if (!rule || !params) return;
+    const next = new URLSearchParams();
+    next.set('rule', String(rule.id));
+    next.set('run', '1');
+    if (params.sort) next.set('sort', params.sort);
+    if (params.order) next.set('order', params.order);
+    if (params.page) next.set('page', String(params.page));
+    if (params.limit && params.limit !== DEFAULT_SCAN_PARAMS.limit) next.set('limit', String(params.limit));
+    setSearchParams(next, { replace: true });
+  }, [setSearchParams]);
 
   const handleSave = async (formData: Rule) => {
     try {
@@ -340,6 +356,7 @@ export function ScreenerPage() {
                 setScanParams(params);
                 setActiveRule(rule);
                 setResults(finalData);
+                syncUrl(rule, params);
                 if (!opts?.keepResults) saveHistoryEntry(rule.id ?? null, rule.name, finalData);
               } catch {
                 if (mountedRef.current) setError(t('screener.errors.runRuleFailed'));
@@ -364,6 +381,7 @@ export function ScreenerPage() {
                 setScanParams(params);
                 setActiveRule(rule);
                 setResults(fallback);
+                syncUrl(rule, params);
                 if (!opts?.keepResults) saveHistoryEntry(rule.id ?? null, rule.name, fallback);
               } catch {
                 if (mountedRef.current) setError(t('screener.errors.runRuleFailed'));
@@ -398,6 +416,7 @@ export function ScreenerPage() {
       setScanParams(params);
       setActiveRule(rule);
       setResults(data);
+      syncUrl(rule, params);
       if (!opts?.keepResults) saveHistoryEntry(rule.id ?? null, rule.name, data);
     } catch (err: unknown) {
       const errResp = err as { response?: { status?: number; data?: { detail?: string; retry_after?: number } } };
@@ -430,6 +449,44 @@ export function ScreenerPage() {
     setJobStatus(null);
     setRunning(null);
   };
+
+  // P2.1: apply URL on first load after rules fetched (D8)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (hasAppliedUrlRef.current || loading || rules.length === 0) return;
+    const ruleIdStr = searchParams.get('rule');
+    if (!ruleIdStr) return;
+    const rid = parseInt(ruleIdStr, 10);
+    if (!Number.isInteger(rid)) return;
+    const found = rules.find((r) => r.id === rid);
+    if (!found) {
+      setError(t('screener.errors.loadRulesFailed') + ` (rule ${rid} không tồn tại)`);
+      hasAppliedUrlRef.current = true;
+      return;
+    }
+    hasAppliedUrlRef.current = true;
+    const sort = searchParams.get('sort') || DEFAULT_SCAN_PARAMS.sort;
+    const order = (searchParams.get('order') as ScanParams['order']) || DEFAULT_SCAN_PARAMS.order;
+    const pageStr = searchParams.get('page');
+    const limitStr = searchParams.get('limit');
+    const page = pageStr ? parseInt(pageStr, 10) : DEFAULT_SCAN_PARAMS.page;
+    const limit = limitStr ? parseInt(limitStr, 10) : DEFAULT_SCAN_PARAMS.limit;
+    const params: ScanParams = {
+      sort: sort || DEFAULT_SCAN_PARAMS.sort,
+      order: order === 'asc' || order === 'desc' ? order : DEFAULT_SCAN_PARAMS.order,
+      page: Number.isInteger(page) && page >= 1 ? page : 1,
+      limit: [10, 25, 50, 100, 2000].includes(limit) ? limit : DEFAULT_SCAN_PARAMS.limit,
+      include_ai: DEFAULT_SCAN_PARAMS.include_ai,
+    };
+    if (searchParams.get('run') === '1') {
+      setTimeout(() => runWithParams(found, params), 0);
+    } else {
+      setActiveRule(found);
+      setScanParams(params);
+      setEditing(found);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rules, loading, searchParams, t]);
 
   // P1.1: export fetches the full set (limit=2000) independent of the pager.
   const fetchAllRows = useCallback(async (): Promise<Array<Record<string, unknown>>> => {

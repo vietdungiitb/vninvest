@@ -2494,6 +2494,8 @@ const en = {
       high_dividend: { name: 'High Dividend', desc: 'Dividend yield > 5% — attractive passive income.' },
       small_cap_growth: { name: 'Small Cap Growth', desc: 'Market cap < 10,000B and revenue growth > 15% YoY.' },
       value_pe: { name: 'Low P/E Value', desc: 'Positive P/E and < 15 — undervalued stocks.' },
+      volume_breakout: { name: 'Volume Breakout', desc: 'RVOL > 2.5 and price above SMA20 > 5% — strong money flow breakout.' },
+      profit_growth: { name: 'Profit Growth', desc: 'EPS growth > 20% YoY and revenue growth > 15% YoY — dual earnings momentum.' },
     },
     columnsBtn: 'Columns',
     export: {
