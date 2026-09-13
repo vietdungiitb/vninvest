@@ -5,6 +5,28 @@
 
 ---
 
+## Entry 71: P0.7 Screener — tests T1/T4/T5 + fix `NotFound` + evidence ảnh (code — P0 DONE)
+
+- **Date**: 2026-09-13
+- **Scope**: P0.7 theo plan §9. T2/T3 đã xong sớm trong P0.2 (Entry 68) / P0.3–P0.4 (Entries 69–70).
+- **Files**:
+  - MỚI `.../screener/__tests__/screenerHistoryStore.component.test.ts` (T1, 4 tests: BUY win/loss, SELL đảo chiều, ưu tiên `currentPrices`, bỏ qua thiếu exit/close rỗng).
+  - MỚI `.../screener/__tests__/ScreenerResultsTable.component.test.tsx` (T4, 3 tests: paging 25 cố định 26 rows → 2 trang + prev/next; sort click ▲/▼ đúng thứ tự; picker toggle ẩn/hiện cột — mock `LangContext` theo mẫu TenantAdmin).
+  - MỚI `packages/core/backend/src/user_workspace/test_screener_rule_run.py` (T5, 6 tests: matched + metadata fresh; field vô nguồn → 0 matched + `missing_fields/counts`; else-branch zeros match; stale flag `days_old=5`; inactive vắng list + detail 404 nhưng run 200 + delete 204; create field lạ/value string → 400; mock `get_company_financials_response`, fixture `SymbolSnapshot/SessionFacts/DailyPrice` + tenant theo mẫu `tests.py`).
+  - FIX `portfolio_analytics_views.py`: thêm `from rest_framework.exceptions import NotFound` — **bug latent tiền tồn**: `_get_rule` và run view đã `raise NotFound` nhưng chưa import (mọi request rule-không-tồn-tại crash `NameError` thay vì 404); T5 detail-404 phát hiện ra.
+  - MỚI `packages/web/tests/visual/screener-p0.spec.ts` (chromium, dùng `auth.setup.ts` có sẵn): assert heading VI + 2 nút template + 3 screenshots.
+  - Evidence `docs/evidence/screener-p0/`: `ui-screener-{top,templates,full}.png` (build production mới `ScreenerPage-BRr8D4Ho.js`, HTTP 200) + `export-vi.{csv,xlsx}` (Entry 68).
+- **Validation (R7.1–R7.3)**:
+  - `npx vitest run src/components/screener` → **26/26 pass** (5 files).
+  - `manage.py test user_workspace` → **22 tests: 21 pass + 1 error pre-existing** (holdings route, Entry 65) — 6 tests mới pass hết, không regression, không network (mock vnbroker).
+  - `npm run build` → pass (`ScreenerPage-*.js` 44.29k; xlsx nằm lazy chunk riêng nhờ dynamic import).
+  - Jest không ảnh hưởng: config ignore `*.component.test.*` (verify: `jest src/components/screener` → 0 match).
+  - E2E: auth.setup ban đầu fail do (1) password dev-DB lệch với `auth.setup.ts` → đã reset `testuser` về `TestPass123!` (dev-DB local, không commit); (2) rate-limit login 60s sau nhiều lần thử sai → chờ TTL rồi pass.
+- **P0 DONE**: P0.1–P0.7 đóng hết (Entries 65–71). DoD plan §11 đạt: tsc 0, eslint scope 0 errors (warnings 5→3), vitest screener 26/26, pytest user_workspace xanh (trừ 1 pre-existing), build pass, smoke `/screener` 200 + ảnh VI.
+- **Next**: P1 performance (F1/F6/F7/F8) — cần quyết định kiến trúc riêng (celery + cache + sort/phân trang server).
+
+---
+
 ## Entry 70: P0.4 Screener — template "Chạy thử" + "Lưu thành rule" dedupe (code)
 
 - **Date**: 2026-09-13
