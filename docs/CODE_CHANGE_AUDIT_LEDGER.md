@@ -5,6 +5,19 @@
 
 ---
 
+## Entry 66: P0.5 Screener — i18n full dấu block screener (code)
+
+- **Date**: 2026-09-13
+- **Scope**: P0.5 theo plan §6 (F10). Sweep `vi.js:2360-2533`, value-only (không thêm/bớt key).
+- **Files**: `packages/web/src/i18n/vi.js` (8 edits).
+- **Sửa**: `conditionsLabel` → 'Điều kiện lọc (VÀ / HOẶC / KHÔNG)' (khớp engine AND/OR/NOT, C2); `aiScore` Điểm AI; `avgVol20`/`rangePos`/group(8)/`columnsBtn` 'Cột' (audit F10); `whaleSell` Bán; `marketCap/divYield/deRatio` full dấu; `ai` buy/sell/hold/standAside (Bán/Giữ/Đứng ngoài) + `risk` low/medium (Thấp/Trung bình — `ScreenerScoreCard` dùng); toàn block `history:` (title/empty/runAt/matches/topPicks/winRate/wins/evaluated/noTrades/refreshPrices/refreshing/backtestNote/trades/symbol/entry/exit/result/win — `Thua` giữ nguyên vì đúng chính tả).
+- **Giữ nguyên có chủ đích**: thuật ngữ Anh (`MACD Hist`, `Bollinger Width %`, `Whale Intensity`, `Dark Flow Strength`, `EPS growth %`...) để đồng nhất với sub-block `fields:`; `templates.title` đọc lại bằng UTF-8 đã đúng 'Mẫu lọc có sẵn' (mojibake trước đó chỉ là artifact console cp1252, không phải file).
+- **Validation (R5.1–R5.3)**: script UTF-8 quét 27 mẫu thiếu dấu → NONE; mojibake → OK; parity key VI/EN cấp block → NONE/NONE; `npx tsc --noEmit` exit 0; `npx eslint src/i18n/vi.js --max-warnings 0` exit 0.
+- **Next**: P0.1 (BE flow-facts) theo plan §10.
+- **Residual**: keys mới §8 của plan để P0.2/P0.3/P0.4 thêm (VI+EN cùng lúc).
+
+---
+
 ## Entry 65: P0.6 Screener — xóa adapter chết + gộp registry + `is_active` (code)
 
 - **Date**: 2026-09-13
