@@ -1,5 +1,10 @@
 // i18next-scanner configuration for VNInvest @vninvest/web
 // Scans source files for i18n t() calls and generates a translation key inventory
+// DEPRECATED: This ESM config is kept for reference. The active config is
+// `i18next-scanner.config.cjs` (CommonJS) because `npx i18next-scanner` loads
+// config via `require()` and would wrap ESM `export default` as `{default: ...}`,
+// causing `TypeError: Cannot read properties of undefined (reading 'map')` (F-I18N-15).
+// `package.json` script `i18n:scan` now points to the .cjs file.
 
 export default {
   input: [

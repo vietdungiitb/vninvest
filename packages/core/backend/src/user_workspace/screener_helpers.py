@@ -360,8 +360,8 @@ def _screener_build_technical(symbol, close, volume, history_list, financials=No
     bollinger_width = _safe_round(_compute_bollinger_width(closes))
     vwap = _safe_round(_compute_vwap(closes, volumes))
     mfi_14 = _safe_round(_compute_mfi(highs, lows, closes, volumes))
-    
-        # Fundamental metrics — prefer pre-computed (from cached vnbroker financials); else derive from financials
+
+    # Fundamental metrics — prefer pre-computed (from cached vnbroker financials); else derive from financials
     if fundamental_metrics:
         pe_ratio = fundamental_metrics.get('pe_ratio')
         market_cap = fundamental_metrics.get('market_cap')

@@ -137,18 +137,23 @@ export function ScreenerPage() {
   // P1.1: active server-scan context for pager/sort/export callbacks.
   const [scanParams, setScanParams] = useState<ScanParams>(DEFAULT_SCAN_PARAMS);
   const [activeRule, setActiveRule] = useState<Rule | null>(null);
-  // P1.4: async job polling (D1, Entry 77)
+  // P1.4: async job polling (D1, Entry 77) — F-FE-03 fix: single timeout + mounted guard + poll ngay
   const [jobInfo, setJobInfo] = useState<{ job_id: string; rule: Rule } | null>(null);
   const [jobStatus, setJobStatus] = useState<{ status: string; scanned?: number; total?: number } | null>(null);
   const pollRef = React.useRef<number | null>(null);
-  const pollTimeoutRef = React.useRef<number | null>(null);
+  const mountedRef = React.useRef(true);
 
   const clearPoll = useCallback(() => {
     if (pollRef.current != null) { window.clearInterval(pollRef.current); pollRef.current = null; }
-    if (pollTimeoutRef.current != null) { window.clearTimeout(pollTimeoutRef.current); pollTimeoutRef.current = null; }
   }, []);
 
-  useEffect(() => () => clearPoll(), [clearPoll]);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      clearPoll();
+    };
+  }, [clearPoll]);
 
   const loadRules = useCallback(async () => {
     setLoading(true);
@@ -319,68 +324,75 @@ export function ScreenerPage() {
         const job_id: string = data.job_id;
         setJobInfo({ job_id, rule });
         setJobStatus({ status: 'queued', scanned: 0, total: data.total ?? 0 });
-        // Poll every 1.5s
+        // Poll every 1.5s — single 90s guard (elapsed inside interval), immediate first poll, mounted guard (F-FE-03)
         let elapsed = 0;
         const poll = async () => {
+          if (!mountedRef.current) return;
           try {
             const st: any = await (coreApiAdapter as any).getScreenerRunStatus(String(rule.id), job_id);
+            if (!mountedRef.current) return;
             setJobStatus(st);
             if (st.status === 'completed') {
               clearPoll();
-              // Fetch actual results via sync cache hit (plan §5c)
               try {
                 const finalData: any = await coreApiAdapter.runScreenerRule(String(rule.id), params);
+                if (!mountedRef.current) return;
                 setScanParams(params);
                 setActiveRule(rule);
                 setResults(finalData);
                 if (!opts?.keepResults) saveHistoryEntry(rule.id ?? null, rule.name, finalData);
               } catch {
-                setError(t('screener.errors.runRuleFailed'));
+                if (mountedRef.current) setError(t('screener.errors.runRuleFailed'));
               } finally {
-                setRunning(null);
-                setJobInfo(null);
+                if (mountedRef.current) {
+                  setRunning(null);
+                  setJobInfo(null);
+                }
               }
             } else if (st.status === 'failed') {
               clearPoll();
-              setError(st.error || t('screener.errors.runRuleFailed'));
-              setRunning(null);
-              setJobInfo(null);
+              if (mountedRef.current) {
+                setError(st.error || t('screener.errors.runRuleFailed'));
+                setRunning(null);
+                setJobInfo(null);
+              }
             } else if (st.status === 'unknown') {
-              // Fallback to sync per plan §5f
               clearPoll();
               try {
                 const fallback: any = await coreApiAdapter.runScreenerRule(String(rule.id), params);
+                if (!mountedRef.current) return;
                 setScanParams(params);
                 setActiveRule(rule);
                 setResults(fallback);
                 if (!opts?.keepResults) saveHistoryEntry(rule.id ?? null, rule.name, fallback);
               } catch {
-                setError(t('screener.errors.runRuleFailed'));
+                if (mountedRef.current) setError(t('screener.errors.runRuleFailed'));
               } finally {
-                setRunning(null);
-                setJobInfo(null);
+                if (mountedRef.current) {
+                  setRunning(null);
+                  setJobInfo(null);
+                }
               }
             }
           } catch (e: unknown) {
-            // poll error → keep trying until timeout
+            if (!mountedRef.current) return;
             const errResp = e as { response?: { data?: { detail?: string } } };
             if (errResp?.response?.data?.detail) setError(errResp.response.data.detail);
           }
           elapsed += 1500;
           if (elapsed >= 90000) {
             clearPoll();
-            setError(t('screener.errors.runTimeout' as any, { defaultValue: 'Quét quá thời gian, vui lòng thử lại.' } as any));
-            setRunning(null);
+            if (mountedRef.current) {
+              setError(t('screener.errors.runTimeout' as any, { defaultValue: 'Quét quá thời gian, vui lòng thử lại.' } as any));
+              setRunning(null);
+            }
           }
         };
         pollRef.current = window.setInterval(poll, 1500) as unknown as number;
-        // also set timeout guard
-        pollTimeoutRef.current = window.setTimeout(() => {
-          clearPoll();
-          setError(t('screener.errors.runTimeout' as any, { defaultValue: 'Quét quá thời gian, vui lòng thử lại.' } as any));
-          setRunning(null);
-        }, 90000) as unknown as number;
-        // initial poll after 1.5s (no immediate)
+        // Immediate first poll after 300ms so queued UI doesn't idle 1.5s
+        window.setTimeout(() => {
+          if (mountedRef.current && pollRef.current != null) void poll();
+        }, 300);
         return;
       }
       setScanParams(params);

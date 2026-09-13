@@ -80,6 +80,8 @@ export interface ScreenerResult {
   pages?: number;
   sort?: string;
   order?: "asc" | "desc";
+  // P1.3: calendar-day price window actually used (Entry 75, tested via window_days 35/88)
+  window_days?: number;
 }
 
 // NOTE (P0.6): runtime registries live ONLY in ./screener.ts (single source).

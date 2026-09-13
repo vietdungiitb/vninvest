@@ -5,6 +5,34 @@
 
 ---
 
+## Entry 78: P1.6 Screener — audit full + fixes tồn đọng (code)
+
+- **Date**: 2026-09-13
+- **Scope**: Audit toàn bộ `/screener` P0+P1.1–P1.5 theo khung AGENTS.md (grep toàn repo, trace 3 luồng, 10 CONTRADICTIONS, 15 findings). Xử lý tồn đọng P1.6 để đóng DoD P1 (Entry 77 Next). Không đổi công thức, không đụng history/lịch (P2).
+- **Audit**: `docs/AUDIT_SCREENER_P1_FULL_20260913.md` (A–G, 5 findings đầu file, file:line cho mọi khẳng định, quality gates). Phát hiện chính: F-I18N-15 scanner gãy, F-TYPE-02 thiếu `window_days` trong type, F-FE-03 poll double 90s + thiếu mounted guard, F-BE-04 throttle `sys.argv` brittle + F-SEC-11 status 60/min + job_id validation, evidence P1.6 chưa có, F1 polling test thiếu.
+- **Files**:
+  - `packages/web/i18next-scanner.config.cjs` **MỚI** — CJS `module.exports` cho scanner 4.6 (tránh ESM `export default` bị `require` wrap `{default:...}` → `TypeError input.map` F-I18N-15). `packages/web/.gitignore` + `i18next-scanner.config.js` thêm deprecation note. `package.json:26` `i18n:scan` → `--config i18next-scanner.config.cjs`, output `src/i18n/*.json` gitignore. Validation: `npm run i18n:scan` exit 0 (trước fail).
+  - `packages/web/src/types/screener.ts:183` + `screener.d.ts:83` — thêm `window_days?: number` (P1.3 additive, dùng trong `test_screener_lookback.py:108,174`, BE `portfolio_analytics_views.py:1881`). `tsc` vẫn pass, FE typed.
+  - `packages/core/backend/src/user_workspace/portfolio_analytics_views.py:1-11` — xóa `import os, sys` (chỉ dùng cho throttle cũ). `:10` `from django.conf import settings`. `ScreenerRunThrottle` (1469-1480) đổi `rate` → `get_rate()` check `settings.TESTING or settings.DEBUG` (F-BE-04), bỏ `sys.argv`. **MỚI** `ScreenerStatusThrottle` (1482-1490) `60/min` (F-SEC-11: status poll 1.5s=40/min >30/min). `PortfolioScreenerRuleRunStatusView:1912` đổi `throttle_classes` → `ScreenerStatusThrottle` + thêm `re.fullmatch(r"[0-9a-fA-F]{32}", job_id)` 400 (F-SEC-11 cache-key injection).
+  - `packages/core/backend/src/user_workspace/test_screener_async_run.py:150-175` — `test_status_unknown` dùng hex `a*32` (thay `nonexistent123` → 400 sau validation) + **MỚI** `test_status_invalid_job_id_format` 400, `test_throttle_rate_limit` patch `get_rate` thay `rate` (F-BE-04).
+  - `packages/web/src/pages/ScreenerPage.tsx:140-151,324-390` — F-FE-03: `pollRef` + `mountedRef` + `clearPoll` chỉ clear interval, `useEffect` set `mounted true/false`, `runWithParams` poll `elapsed` single guard (bỏ `pollTimeoutRef` double 90s), mỗi `setJobStatus/setResults/setError/setRunning` guard `if (!mountedRef.current) return`, `window.setTimeout 300ms` poll ngay (không idle 1.5s). `ScreenerPage-Brw0wXnZ.js` 48.87k.
+  - `packages/web/src/components/screener/__tests__/ScreenerPolling.component.test.tsx` **MỚI** (7 tests, P1.6 F1): adapter `runScreenerRule` querystring + `getScreenerRunStatus` URL + bare `/run/` legacy + fail-fast + `toServerSortKey` + polling copy + progress math (thay thế full-page integration flaky, manual evidence bù).
+  - `packages/core/backend/src/user_workspace/screener_helpers.py:364` — sửa indent comment `        #` → `    #` (style, không runtime).
+  - `docs/evidence/screener-p1/README.md` **MỚI** — evidence tối thiểu P1.6 (R6.3): verify index qua migration (5 query, USING INDEX, không migration mới), thời gian scan trước/sau (P0 1.2s→P1 0.45s miss→0.02s hit, async 202), cache hit/miss log, async/throttle log, checklist U1-U5/F1/E2E, `EXPLAIN` placeholder + reproduce steps (cần staging DB 1200 mã để bổ sung ảnh).
+  - `docs/AUDIT_SCREENER_P1_FULL_20260913.md` **MỚI** — báo cáo audit A–G (architecture map 26 files, 3 luồng trace, 10 CONTRADICTIONS, 15 findings, gates, 6 questions, đánh giá).
+- **Validation**:
+  - `npm run i18n:scan` → exit 0 (trước `TypeError input.map`).
+  - `npx tsc --noEmit` (qua `npm run build` tsc) → exit 0; `ScreenerResult` có `window_days` typed.
+  - `manage.py test user_workspace.test_screener_async_run+scan_cache+scan_params+lookback -v 2` → **22 tests OK** (21 cũ +1 mới `invalid_job_id`).
+  - `manage.py test user_workspace --verbosity 1` → **44 tests: 43 pass +1 pre-existing** `holdings` (thêm 1 so với 43, không regression).
+  - `npm run test:components` → **25 files 106 passed** (trước 24/99, thêm 7 polling).
+  - `npm run lint` → 0 errors (3545 warnings baseline).
+  - `npm run build` → 31.94s PASS (ScreenerPage 48.87k).
+- **Next**: Push 2 commits P1.2+P1.4/P1.5 (`05a2c4dd` + `5377ec85`) + commit này lên `origin/dev`; bổ sung ảnh async-progress thật khi có staging 1200 mã (E2E `screener-p0.spec.ts` mở rộng); P2 (URL share, React Query, backtest v2, lịch quét) theo plan §10.
+- **Residual**: Cache payload size guard (F-BE-06, 2.4MB >1MB memcached) + progress per-200 (F-BE-05) để P2 (chấp nhận UX nhảy 0→100% hiện tại); `F-CSS-01` inline rgba vs `soc.module.css` tokens để P2; `F-FE-12` import `screener.d.ts` type-only giữ nguyên (đúng Entry 65).
+
+---
+
 ## Entry 77: P1.4+1.5 Screener — celery async + status + throttle + FE polling (code)
 
 - **Date**: 2026-09-13

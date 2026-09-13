@@ -7,8 +7,6 @@ with real computed data from Transaction + SymbolSnapshot + DailyPrice.
 All views require IsAuthenticated and scoped to request.user portfolios.
 Performance note: small portfolios only — no pagination/caching at this stage.
 """
-import os
-import sys
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
@@ -1462,14 +1460,31 @@ def _parse_scan_params(request):
 
 
 
+from django.conf import settings
+
 from rest_framework.throttling import UserRateThrottle
 
-_DEV_MODE_THR = os.environ.get('DJANGO_DEBUG', '').strip().lower() in ('1', 'true', 'yes')
 
 class ScreenerRunThrottle(UserRateThrottle):
-    """P1.5: rate-limit run endpoint (D5). Dev bypass via DJANGO_DEBUG."""
+    """P1.5: rate-limit run endpoint (D5). Bypass in TESTING/DEBUG via settings (F-BE-04)."""
+
     scope = 'screener_run'
-    rate = '999999/day' if _DEV_MODE_THR or 'test' in sys.argv else '30/min'
+
+    def get_rate(self):
+        if getattr(settings, 'TESTING', False) or getattr(settings, 'DEBUG', False):
+            return '999999/day'
+        return '30/min'
+
+
+class ScreenerStatusThrottle(UserRateThrottle):
+    """P1.5 + F-SEC-11: status polling needs higher budget (40/min at 1.5s interval > 30/min)."""
+
+    scope = 'screener_status'
+
+    def get_rate(self):
+        if getattr(settings, 'TESTING', False) or getattr(settings, 'DEBUG', False):
+            return '999999/day'
+        return '60/min'
 
 def _scan_sort_value(item, sort):
     if sort == 'ai_score':
@@ -1893,8 +1908,9 @@ class PortfolioScreenerRuleRunView(APIView):
 
 class PortfolioScreenerRuleRunStatusView(APIView):
     """GET /screener/rules/<pk>/run/status/?job_id=... — P1.4 job polling."""
+
     permission_classes = [permissions.IsAuthenticated]
-    throttle_classes = [ScreenerRunThrottle]
+    throttle_classes = [ScreenerStatusThrottle]
 
     def get(self, request, pk):
         from user_workspace.models import ScreenerRule
@@ -1913,6 +1929,12 @@ class PortfolioScreenerRuleRunStatusView(APIView):
         if not job_id:
             from rest_framework.response import Response
             return Response({"detail": "Thiếu tham số job_id."}, status=400)
+        # F-SEC-11: validate job_id format (uuid hex 32 chars) to avoid cache-key injection
+        import re as _re
+
+        if not _re.fullmatch(r"[0-9a-fA-F]{32}", str(job_id)):
+            from rest_framework.response import Response
+            return Response({"detail": "job_id không hợp lệ."}, status=400)
 
         job_key = _screener_job_key(job_id)
         payload = _cache.get(job_key)

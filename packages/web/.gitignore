@@ -1,2 +1,6 @@
 
 tests/visual/.auth/
+# i18next-scanner output (we use vi.js/en.js hand-maintained, not JSON)
+src/i18n/*.json
+src/i18n/vi.json
+src/i18n/en.json

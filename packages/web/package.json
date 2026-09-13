@@ -23,7 +23,7 @@
     "capture:baseline": "node ./scripts/capture-baseline.mjs",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
-    "i18n:scan": "npx i18next-scanner --config i18next-scanner.config.js",
+    "i18n:scan": "npx i18next-scanner --config i18next-scanner.config.cjs",
     "prepare": "husky"
   },
   "exports": {

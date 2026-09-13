@@ -148,20 +148,26 @@ class ScreenerAsyncRunTestCase(TestCase):
         self.assertEqual(resp2.json()["matched_count"], 0)
 
     def test_status_unknown_for_missing_job(self):
-        resp = self.client.get(STATUS_URL.format(pk=self.rule.pk) + "?job_id=nonexistent123")
+        # F-SEC-11: job_id is now validated as 32-char hex; use a hex that was never queued
+        resp = self.client.get(STATUS_URL.format(pk=self.rule.pk) + "?job_id=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["status"], "unknown")
 
+    def test_status_invalid_job_id_format(self):
+        resp = self.client.get(STATUS_URL.format(pk=self.rule.pk) + "?job_id=not-hex!!!")
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("job_id", resp.json()["detail"])
+
     def test_throttle_rate_limit(self):
-        # R5.1: override rate 3/min → 4th request → 429
+        # R5.1: override rate 3/min → 4th request → 429 (F-BE-04: throttle now uses get_rate())
         from user_workspace.portfolio_analytics_views import ScreenerRunThrottle
         from django.core.cache import cache as throttle_cache
 
         throttle_cache.clear()
         dj_cache.clear()
         # Create fresh rule to avoid cache hit bypassing throttle? Throttle runs before cache check, so still counts.
-        # Patch rate to 3/min for this test
-        with mock.patch.object(ScreenerRunThrottle, "rate", "3/min"):
+        # Patch get_rate to 3/min for this test (F-BE-04: rate is now dynamic via settings)
+        with mock.patch.object(ScreenerRunThrottle, "get_rate", return_value="3/min"):
             # Need to clear throttle cache between tests — DRF stores in cache with key throttle_*
             # Use same client, 4 rapid posts
             for i in range(3):
