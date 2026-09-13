@@ -1,5 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { useTenantAdminQuery, TENANT_ADMIN_QUERY_SCOPE } from './tenant-admin/useTenantAdminQuery.js';
 import { coreApiAdapter } from '../adapters/coreApiAdapter.js';
 import { useI18n } from '../context/LangContext.js';
 import { useConfirm } from '../components/ConfirmModal.js';
@@ -121,8 +123,15 @@ function RuleEditor({ initial, onSave, onCancel }: RuleEditorProps) {
 export function ScreenerPage() {
   const { t, formatNumber } = useI18n();
   const confirm = useConfirm();
-  const [rules, setRules] = useState<Rule[]>([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
+  const { data: rulesData, isLoading: loading, error: rulesError } = useTenantAdminQuery<Rule[]>(
+    ['screener', 'rules'],
+    '/screener/rules/',
+    {
+      queryFn: () => coreApiAdapter.getScreenerRules().then((d: any) => (Array.isArray(d) ? d : d.results || [])),
+    },
+  );
+  const rules: Rule[] = useMemo(() => (rulesData as Rule[] | undefined) ?? [], [rulesData]);
   const [editing, setEditing] = useState<Rule | 'new' | null>(null);
   const [running, setRunning] = useState<number | null>(null);
   const [results, setResults] = useState<ScreenerResult | null>(null);
@@ -158,19 +167,9 @@ export function ScreenerPage() {
     };
   }, [clearPoll]);
 
-  const loadRules = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await coreApiAdapter.getScreenerRules();
-      setRules(Array.isArray(data) ? data : data.results || []);
-    } catch {
-      setError(t('screener.errors.loadRulesFailed'));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => { loadRules(); }, [loadRules]);
+  useEffect(() => {
+    if (rulesError) setError(t('screener.errors.loadRulesFailed'));
+  }, [rulesError, t]);
 
   useEffect(() => {
     coreApiAdapter.getScreenerTemplates()
@@ -199,7 +198,8 @@ export function ScreenerPage() {
         await coreApiAdapter.updateScreenerRule(String((editing as Rule).id), formData);
       }
       setEditing(null);
-      await loadRules();
+      const tenantId = typeof window !== 'undefined' ? window.localStorage.getItem('tenant_id') : null;
+      queryClient.invalidateQueries({ queryKey: [TENANT_ADMIN_QUERY_SCOPE, tenantId ?? 'none', 'screener', 'rules'] });
     } catch (err: unknown) {
       const errResp = err as { response?: { data?: { detail?: string } } };
       setError(errResp?.response?.data?.detail || t('screener.errors.saveRuleFailed'));
@@ -215,7 +215,8 @@ export function ScreenerPage() {
     if (!confirmed) return;
     try {
       await coreApiAdapter.deleteScreenerRule(String(id));
-      setRules((prev) => prev.filter((r) => r.id !== id));
+      const tenantId = typeof window !== 'undefined' ? window.localStorage.getItem('tenant_id') : null;
+      queryClient.invalidateQueries({ queryKey: [TENANT_ADMIN_QUERY_SCOPE, tenantId ?? 'none', 'screener', 'rules'] });
       if (results?.rule_id === id) setResults(null);
     } catch {
       setError(t('screener.errors.deleteRuleFailed'));
@@ -310,7 +311,8 @@ export function ScreenerPage() {
       }
       const name = uniqueRuleName(t(tmpl.name_key), rules);
       await coreApiAdapter.createScreenerRule({ name, rules_json: candidate, is_active: true });
-      await loadRules();
+      const tenantId2 = typeof window !== 'undefined' ? window.localStorage.getItem('tenant_id') : null;
+      queryClient.invalidateQueries({ queryKey: [TENANT_ADMIN_QUERY_SCOPE, tenantId2 ?? 'none', 'screener', 'rules'] });
       setNotice(t('screener.saveRuleSuccess', { name, defaultValue: `Đã lưu rule '${name}'.` }));
     } catch (err: unknown) {
       const errResp = err as { response?: { data?: { detail?: string } } };
@@ -318,7 +320,7 @@ export function ScreenerPage() {
     } finally {
       setSavingId(null);
     }
-  }, [t, rules, confirm, loadRules]);
+  }, [t, rules, confirm, queryClient]);
 
   // P1.1: server-driven scan params (D2/D3 defaults). Page turns keep the
   // current table on screen (keepResults) and skip history spam.
