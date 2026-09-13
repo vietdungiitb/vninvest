@@ -1468,6 +1468,188 @@ def _scan_sort_value(item, sort):
     return item.get(sort)
 
 
+# P1.2: Django-cache TTL for full scan results (D4, Entry 73).
+_SCAN_CACHE_TTL = 14400  # overridden by settings.SCREENER_SCAN_CACHE_TTL
+
+
+def _scan_cache_key(user_id, rule, session_date, include_ai):
+    """Cache key WITHOUT sort/order (Option B, Entry 76): one entry serves all
+    sorts/pages; updated_at auto-invalidates on rule edit, session_date on new session."""
+    updated_ts = int(rule.updated_at.timestamp()) if getattr(rule, "updated_at", None) else 0
+    return (
+        f"screener:scan:{user_id}:{rule.id}:{updated_ts}:"
+        f"{session_date.isoformat()}:{int(bool(include_ai))}"
+    )
+
+
+def _compute_scan(conditions, session_date, include_ai):
+    """P1.2: full scan compute extracted from PortfolioScreenerRuleRunView.post
+    (P1.4 will reuse it from the celery task). Returns
+    (matched_unsorted, total_scanned, missing_counts_dict, window_days)."""
+    from market_serving.models import SymbolSnapshot, SessionFacts
+    from market_data.models import DailyPrice
+    from market_data.models import StockProfile
+    from market_data.vnbroker_adapter import get_company_financials_response
+    from user_workspace.screener_helpers import (
+        _screener_build_technical, _apply_screener_condition, _compute_fundamental_metrics,
+        _required_lookback_days, _lookback_calendar_days,
+    )
+    from user_workspace.ai_advisory_helpers import compute_ai_advisory
+    from django.core.cache import cache as _fin_cache
+    from datetime import timedelta
+    from collections import defaultdict, Counter
+
+    # P1.3: dynamic window from the rule's condition fields (D7 clamp [35, 90])
+    # instead of a fixed 90 calendar days.
+    window_days = _lookback_calendar_days(_required_lookback_days(conditions))
+
+    # P1.3: trim columns — _screener_build_technical only reads
+    # symbol/date/close/volume/high/low (deferred fields stay untouched;
+    # touching them later would add queries — see U3).
+    snapshots = SymbolSnapshot.objects.filter(session_date=session_date).only(
+        'symbol', 'session_date', 'price', 'volume')
+    symbols = [s.symbol for s in snapshots]
+
+    facts_list = SessionFacts.objects.filter(session_date=session_date).only(
+        'symbol', 'session_date', 'dark_flow_score', 'cvd_normalized',
+        'total_buy_volume', 'total_sell_volume', 'whale_net_flow',
+        'buy_strength', 'institutional_strength')
+    facts_map = {f.symbol: f for f in facts_list}
+
+    # Bulk-read outstanding shares (canonical profile source) for market_cap derivation
+    profile_map = {
+        p['symbol']: p
+        for p in StockProfile.objects.filter(symbol__in=symbols).values('symbol', 'outstanding_shares')
+    }
+
+    lookback_date = session_date - timedelta(days=window_days)
+    prices = DailyPrice.objects.filter(
+        symbol__in=symbols, date__gte=lookback_date).only(
+        'symbol', 'date', 'close', 'volume', 'high', 'low').order_by('symbol', 'date')
+
+    history_map = defaultdict(list)
+    for p in prices:
+        history_map[p.symbol].append(p)
+
+    # P1.3: pre-warm financials with ONE cache roundtrip (key format verified:
+    # vnbroker_adapter caches `stock_financials:{SYMBOL}` 12h). Misses fall
+    # through to the adapter (which re-caches). SSOT/TTL unchanged.
+    _fin_cached = _fin_cache.get_many([f"stock_financials:{s.upper()}" for s in symbols])
+
+    # P0.1: fields referenced by this rule's conditions — used to report
+    # per-field missing-data coverage (Q2 badge).
+    cond_list = conditions if isinstance(conditions, list) else []
+    cond_fields = {c.get('field') for c in cond_list if isinstance(c, dict) and c.get('field')}
+    missing_counts = Counter()
+
+    matched = []
+    for snap in snapshots:
+        sym = snap.symbol
+        hist = history_map[sym]
+        # SSOT: fundamentals come from the canonical vnbroker adapter (cached 12h);
+        # P1.3 serves cache hits from the pre-warmed batch above.
+        _fin_hit = _fin_cached.get(f"stock_financials:{sym.upper()}")
+        if isinstance(_fin_hit, dict):
+            financials = _fin_hit.get('financials', {})
+        else:
+            financials = get_company_financials_response(sym).get('financials', {})
+        os_shares = profile_map.get(sym, {}).get('outstanding_shares')
+        fundamental_metrics = _compute_fundamental_metrics(
+            financials,
+            float(snap.price) if snap.price is not None else None,
+            os_shares,
+        )
+        tech = _screener_build_technical(sym, snap.price, snap.volume, hist, fundamental_metrics=fundamental_metrics)
+
+        facts = facts_map.get(sym)
+        flow_facts = {}
+        if facts:
+            flow_facts = {
+                'dark_flow_strength': facts.dark_flow_score,
+                'dark_flow_avg_strength': facts.dark_flow_score,
+                'dark_flow_max_strength': facts.dark_flow_score,
+                'dark_flow_signal_count': 1 if facts.dark_flow_score > 0 else 0,
+                'dark_flow_cvd': facts.cvd_normalized,
+
+                'whale_buy_value': facts.total_buy_volume * float(snap.price),
+                'whale_sell_value': facts.total_sell_volume * float(snap.price),
+                'whale_net_value': facts.whale_net_flow,
+                'whale_total_value': (facts.total_buy_volume + facts.total_sell_volume) * float(snap.price),
+                'whale_buy_pct': facts.buy_strength * 100,
+                'whale_sell_pct': (1 - facts.buy_strength) * 100,
+                'whale_intensity': facts.institutional_strength,
+            }
+        else:
+            # P0.1: same shape as the facts branch (deliberate zeros), so
+            # every allowlisted field is always present in the row (R1.1).
+            flow_facts = {
+                'dark_flow_strength': 0.0,
+                'dark_flow_avg_strength': 0.0,
+                'dark_flow_max_strength': 0.0,
+                'dark_flow_signal_count': 0,
+                'dark_flow_cvd': 0.0,
+                'whale_buy_value': 0.0,
+                'whale_sell_value': 0.0,
+                'whale_net_value': 0.0,
+                'whale_total_value': 0.0,
+                'whale_buy_pct': 0.0,
+                'whale_sell_pct': 0.0,
+                'whale_intensity': 0.0,
+            }
+        # P0.1: fields with no source are explicit None (never match —
+        # _apply_screener_condition(None) is False) and surface via
+        # missing_fields/missing_counts below (Q2 "thiếu dữ liệu" badge).
+        for no_src_field in _FLOW_FIELDS_NO_SOURCE:
+            flow_facts[no_src_field] = None
+
+        row = {
+            'symbol': sym,
+            'date': session_date.isoformat(),
+            **tech,
+            **flow_facts,
+        }
+
+        # AI advisory (S3.1) — fallback None nếu lỗi, không crash scan.
+        # P1.1: include_ai=0 skips the compute entirely (D6).
+        if include_ai:
+            try:
+                row['ai_advisory'] = compute_ai_advisory(row)
+            except Exception:
+                row['ai_advisory'] = None
+        else:
+            row['ai_advisory'] = None
+
+        # Evaluate conditions with AND/OR/NOT logic
+        if conditions:
+            # First condition always applies (no logic operator)
+            first_cond = conditions[0]
+            result = _apply_screener_condition(row.get(first_cond['field']), first_cond['op'], first_cond['value'])
+
+            # Process remaining conditions with their logic operators
+            for cond in conditions[1:]:
+                cond_result = _apply_screener_condition(row.get(cond['field']), cond['op'], cond['value'])
+                logic = cond.get('logic', 'AND')
+                if logic == 'AND':
+                    result = result and cond_result
+                elif logic == 'OR':
+                    result = result or cond_result
+                elif logic == 'NOT':
+                    result = result and (not cond_result)
+
+            if result:
+                matched.append(row)
+        else:
+            # No conditions means match all
+            matched.append(row)
+
+        # P0.1: count symbols missing each condition field (evaluated for
+        # every scanned row, not just matched — coverage denominator below).
+        for f in cond_fields:
+            if row.get(f) is None:
+                missing_counts[f] += 1
+    return matched, len(symbols), dict(missing_counts), window_days
+
+
 class PortfolioScreenerRuleRunView(APIView):
     """POST /api/portfolio/screener/rules/<pk>/run/"""
     # P0.6 deviation (see IMPLEMENTATION_PLAN_SCREENER_P0_20260913.md §1.3):
@@ -1526,156 +1708,27 @@ class PortfolioScreenerRuleRunView(APIView):
         days_old = (today - session_date).days if session_date else 0
         is_stale = days_old > 0
 
-        # P1.3: dynamic window from the rule's condition fields (D7 clamp [35, 90])
-        # instead of a fixed 90 calendar days.
-        window_days = _lookback_calendar_days(_required_lookback_days(conditions))
-
-        # P1.3: trim columns — _screener_build_technical only reads
-        # symbol/date/close/volume/high/low (deferred fields stay untouched;
-        # touching them later would add queries — see U3).
-        snapshots = SymbolSnapshot.objects.filter(session_date=session_date).only(
-            'symbol', 'session_date', 'price', 'volume')
-        symbols = [s.symbol for s in snapshots]
-
-        facts_list = SessionFacts.objects.filter(session_date=session_date).only(
-            'symbol', 'session_date', 'dark_flow_score', 'cvd_normalized',
-            'total_buy_volume', 'total_sell_volume', 'whale_net_flow',
-            'buy_strength', 'institutional_strength')
-        facts_map = {f.symbol: f for f in facts_list}
-
-        # Bulk-read outstanding shares (canonical profile source) for market_cap derivation
-        profile_map = {
-            p['symbol']: p
-            for p in StockProfile.objects.filter(symbol__in=symbols).values('symbol', 'outstanding_shares')
-        }
-
-        lookback_date = session_date - timedelta(days=window_days)
-        prices = DailyPrice.objects.filter(
-            symbol__in=symbols, date__gte=lookback_date).only(
-            'symbol', 'date', 'close', 'volume', 'high', 'low').order_by('symbol', 'date')
-
-        history_map = defaultdict(list)
-        for p in prices:
-            history_map[p.symbol].append(p)
-
-        # P1.3: pre-warm financials with ONE cache roundtrip (key format verified:
-        # vnbroker_adapter caches `stock_financials:{SYMBOL}` 12h). Misses fall
-        # through to the adapter (which re-caches). SSOT/TTL unchanged.
+        # P1.2: result cache (Option B) — key has no sort/order; sorting and
+        # paging apply to the cached full list below. TTL from settings (D4).
         from django.core.cache import cache as _scan_cache
-        _fin_cached = _scan_cache.get_many([f"stock_financials:{s.upper()}" for s in symbols])
-
-        # P0.1: fields referenced by this rule's conditions — used to report
-        # per-field missing-data coverage (Q2 badge).
-        from collections import Counter
-        cond_list = conditions if isinstance(conditions, list) else []
-        cond_fields = {c.get('field') for c in cond_list if isinstance(c, dict) and c.get('field')}
-        missing_counts = Counter()
-
-        matched = []
-        for snap in snapshots:
-            sym = snap.symbol
-            hist = history_map[sym]
-            # SSOT: fundamentals come from the canonical vnbroker adapter (cached 12h);
-            # P1.3 serves cache hits from the pre-warmed batch above.
-            _fin_hit = _fin_cached.get(f"stock_financials:{sym.upper()}")
-            if isinstance(_fin_hit, dict):
-                financials = _fin_hit.get('financials', {})
-            else:
-                financials = get_company_financials_response(sym).get('financials', {})
-            os_shares = profile_map.get(sym, {}).get('outstanding_shares')
-            fundamental_metrics = _compute_fundamental_metrics(
-                financials,
-                float(snap.price) if snap.price is not None else None,
-                os_shares,
-            )
-            tech = _screener_build_technical(sym, snap.price, snap.volume, hist, fundamental_metrics=fundamental_metrics)
-            
-            facts = facts_map.get(sym)
-            flow_facts = {}
-            if facts:
-                flow_facts = {
-                    'dark_flow_strength': facts.dark_flow_score,
-                    'dark_flow_avg_strength': facts.dark_flow_score,
-                    'dark_flow_max_strength': facts.dark_flow_score,
-                    'dark_flow_signal_count': 1 if facts.dark_flow_score > 0 else 0,
-                    'dark_flow_cvd': facts.cvd_normalized,
-
-                    'whale_buy_value': facts.total_buy_volume * float(snap.price),
-                    'whale_sell_value': facts.total_sell_volume * float(snap.price),
-                    'whale_net_value': facts.whale_net_flow,
-                    'whale_total_value': (facts.total_buy_volume + facts.total_sell_volume) * float(snap.price),
-                    'whale_buy_pct': facts.buy_strength * 100,
-                    'whale_sell_pct': (1 - facts.buy_strength) * 100,
-                    'whale_intensity': facts.institutional_strength,
-                }
-            else:
-                # P0.1: same shape as the facts branch (deliberate zeros), so
-                # every allowlisted field is always present in the row (R1.1).
-                flow_facts = {
-                    'dark_flow_strength': 0.0,
-                    'dark_flow_avg_strength': 0.0,
-                    'dark_flow_max_strength': 0.0,
-                    'dark_flow_signal_count': 0,
-                    'dark_flow_cvd': 0.0,
-                    'whale_buy_value': 0.0,
-                    'whale_sell_value': 0.0,
-                    'whale_net_value': 0.0,
-                    'whale_total_value': 0.0,
-                    'whale_buy_pct': 0.0,
-                    'whale_sell_pct': 0.0,
-                    'whale_intensity': 0.0,
-                }
-            # P0.1: fields with no source are explicit None (never match —
-            # _apply_screener_condition(None) is False) and surface via
-            # missing_fields/missing_counts below (Q2 "thiếu dữ liệu" badge).
-            for no_src_field in _FLOW_FIELDS_NO_SOURCE:
-                flow_facts[no_src_field] = None
-                
-            row = {
-                'symbol': sym,
-                'date': session_date.isoformat(),
-                **tech,
-                **flow_facts,
-            }
-
-            # AI advisory (S3.1) — fallback None nếu lỗi, không crash scan.
-            # P1.1: include_ai=0 skips the compute entirely (D6).
-            if include_ai:
-                try:
-                    row['ai_advisory'] = compute_ai_advisory(row)
-                except Exception:
-                    row['ai_advisory'] = None
-            else:
-                row['ai_advisory'] = None
-            
-            # Evaluate conditions with AND/OR/NOT logic
-            if conditions:
-                # First condition always applies (no logic operator)
-                first_cond = conditions[0]
-                result = _apply_screener_condition(row.get(first_cond['field']), first_cond['op'], first_cond['value'])
-                
-                # Process remaining conditions with their logic operators
-                for cond in conditions[1:]:
-                    cond_result = _apply_screener_condition(row.get(cond['field']), cond['op'], cond['value'])
-                    logic = cond.get('logic', 'AND')
-                    if logic == 'AND':
-                        result = result and cond_result
-                    elif logic == 'OR':
-                        result = result or cond_result
-                    elif logic == 'NOT':
-                        result = result and (not cond_result)
-                
-                if result:
-                    matched.append(row)
-            else:
-                # No conditions means match all
-                matched.append(row)
-
-            # P0.1: count symbols missing each condition field (evaluated for
-            # every scanned row, not just matched — coverage denominator below).
-            for f in cond_fields:
-                if row.get(f) is None:
-                    missing_counts[f] += 1
+        from django.conf import settings as _scan_settings
+        from user_workspace.screener_helpers import _required_lookback_days, _lookback_calendar_days
+        _scan_ttl = getattr(_scan_settings, "SCREENER_SCAN_CACHE_TTL", _SCAN_CACHE_TTL)
+        scan_cache_key = _scan_cache_key(request.user.id, rule, session_date, include_ai)
+        cached_scan = _scan_cache.get(scan_cache_key)
+        if isinstance(cached_scan, dict) and "matched" in cached_scan:
+            matched = cached_scan["matched"]
+            total_scanned = cached_scan.get("total_scanned", len(matched))
+            missing_counts = cached_scan.get("missing_counts", {})
+            window_days = _lookback_calendar_days(_required_lookback_days(conditions))
+        else:
+            matched, total_scanned, missing_counts, window_days = _compute_scan(
+                conditions, session_date, include_ai)
+            _scan_cache.set(scan_cache_key, {
+                "matched": matched,
+                "total_scanned": total_scanned,
+                "missing_counts": dict(missing_counts),
+            }, timeout=_scan_ttl)
 
         if has_scan_params:
             # P1.1: server sort (None always last, both directions) + paging.
@@ -1690,7 +1743,7 @@ class PortfolioScreenerRuleRunView(APIView):
         payload = {
             'rule_id': rule.id,
             'rule_name': rule.name,
-            'total_scanned': len(symbols),
+            'total_scanned': total_scanned,
             'matched_count': len(matched),
             'matched': matched,
             # P0.1 additions (additive only — the 5 legacy keys above unchanged).

@@ -5,6 +5,30 @@
 
 ---
 
+## Entry 76: P1.2 Screener — cache scan Option B + U2 + audit fixes (code)
+
+- **Date**: 2026-09-13
+- **Scope**: P1.2 theo plan §3 (F1, D4). Audit trước code (5 findings CONFIRMED: F1 duplicate `_fin_cache`, F2 duplicate `Counter`, F3 `len(symbols)` bug, F4 dirty `GAP_ANALYSIS` + `playwright-report`, F5 U2 missing; C2 `.only()` vs `.values()`; C3 `include_ai=0+ai_score` 400) → quyết định giữ Option B (Entry 76 Q1-Q3).
+- **Quyết định Option B** (user confirm): key **KHÔNG** `sort/order` — 1 entry `(user, rule_id, updated_at, session_date, include_ai)` cho mọi sort/page → hit-rate cao, sort `O(n log n)` trên <100 matched post-cache rẻ, tránh 14× entries (`7 sorts × 2 orders`). Update plan §3 D4 + §3(a)(b) + §4(c) `.only()`.
+- **Files**:
+  - `portfolio_analytics_views.py:1471-1482` — `_SCAN_CACHE_TTL=14400` + `_scan_cache_key(user_id, rule, session_date, include_ai)` (Option B, `updated_ts=int(updated_at.timestamp())`); `1485-1652` `_compute_scan(conditions, session_date, include_ai)` extract toàn pipeline (window động, `.only()` trim, `get_many` financials, facts, AI, conditions, missing_counts) return `(matched, total_scanned, missing_counts, window_days)` — P1.4 sẽ reuse từ celery task.
+  - `portfolio_analytics_views.py:1713-1733` — `post()` cache `get/set` (key Option B, `_scan_ttl=getattr(settings.SCREENER_SCAN_CACHE_TTL,14400)`, hit → `matched/total_scanned/missing_counts` + recompute `window_days`, miss → `_compute_scan` → `cache.set` unsorted), sort `None` cuối sau cache (`valued+noval`), legacy no-params giữ `close desc`.
+  - **Fix F1/F2**: xóa duplicate `from django.core.cache import cache as _fin_cache` `:1537` và `from collections import Counter` `:1542` (lúc extract script để lại).
+  - **Fix F3**: `payload total_scanned: len(symbols)` → `total_scanned` (symbols nằm trong `_compute_scan`, post không còn scope) — bug lộ khi `manage.py test` `NameError: symbols` 7 errors → sau fix `OK 10/10`.
+  - `test_screener_scan_cache.py` **MỚI** U2 (5 tests, P1.6 U2): `miss→3 calls, hit→0`, `different sort hits same cache` (Option B), `include_ai separates` (`1→3 calls, 0→3 calls, 0 lại→0`), `rule_edit invalidates` (`future updated_at` → 0 matched), `new_session recomputes` (new `SymbolSnapshot` date → new `session_date`).
+  - `test_screener_rule_run.py:8,43` + `test_screener_lookback.py:8,57` + `test_screener_scan_params.py:8,22` — thêm `dj_cache.clear()` trong `setUp` để cô lập locmem cache giữa TestCase (fix `FAIL test_run_no_source_field_reported_missing` khi chạy full suite 37 tests).
+  - `docs/IMPLEMENTATION_PLAN_SCREENER_P1_20260913.md:14,51-53,71` — update D4 Option B + §3(a)(b) key/value unsorted + §4(c) `.only()` (plan cũ `.values()`).
+  - **Restore F4**: `git restore` `packages/web/docs/GAP_ANALYSIS_DATAOPS_LEGACY_VS_SAAS_NATIVE.md` (346 lines, `f75f9a03`) + `packages/web/playwright-report/index.html` (working-tree accident, không commit).
+- **Validation (R2.1–R2.3 + Option B)**:
+  - `manage.py test user_workspace.test_screener_scan_cache -v 2` → **5/5 PASS** (miss/hit, Option B, include_ai, edit, new session).
+  - `manage.py test user_workspace.test_screener_rule_run + scan_params + lookback + scan_cache -v 2` → **16/16 PASS**.
+  - `manage.py test user_workspace` → **37 tests: 36 pass + 1 pre-existing** `test_core_v1_workspace_portfolio_analytics_routes_match_legacy_contracts` (`httpx.UnsupportedProtocol` holdings legacy proxy, đã biết Entry 65) — không regression, `test_run_no_source_field_reported_missing` đã PASS sau `dj_cache.clear()` (trước fix FAIL khi full suite).
+  - `npx tsc --noEmit` → exit 0; `npx eslint src/components/screener/ src/pages/ScreenerPage.tsx src/types/screener.ts` → 0 errors, 3 warnings baseline; `npm run build` → 49.13s PASS (ScreenerPage 45.61k).
+- **Next**: P1.4 (celery run dài + status endpoint, tách `execute_screener_scan` reuse `_compute_scan`) theo plan §8.
+- **Residual**: P1.4 chưa có snapshot rule trong task (cần hash conditions nếu muốn chống lệch), `ScreenerRuleRunTestCase` đã clear cache nhưng chưa có test cho `updated_at` cùng giây (plan note throttle D5); `i18n:scan` vẫn fail config `input.map` (không block P1.2, để P1.6).
+
+---
+
 ## Entry 75: P1.3 Screener — batch financials + window động + trim cột (code)
 
 - **Date**: 2026-09-13

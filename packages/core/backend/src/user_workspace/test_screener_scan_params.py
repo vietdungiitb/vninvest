@@ -6,6 +6,7 @@ from datetime import date, timedelta
 from unittest import mock
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache as dj_cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -21,6 +22,7 @@ RUN_URL = "/core/v1/screener/rules/{pk}/run/"
 
 class ScreenerScanParamsTestCase(TestCase):
     def setUp(self):
+        dj_cache.clear()
         self.user = User.objects.create_user(
             username="screener-p1-user", email="p1@test.local", password="pass123"
         )

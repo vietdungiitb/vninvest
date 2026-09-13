@@ -6,6 +6,7 @@ from datetime import date, timedelta
 from unittest import mock
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache as dj_cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -55,6 +56,7 @@ class LookbackUnitTestCase(TestCase):
 
 class LookbackRunTestCase(TestCase):
     def setUp(self):
+        dj_cache.clear()
         self.user = User.objects.create_user(
             username="screener-p13-user", email="p13@test.local", password="pass123"
         )

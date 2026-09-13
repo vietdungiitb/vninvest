@@ -7,6 +7,7 @@ from datetime import date, timedelta
 from unittest import mock
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache as dj_cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -41,6 +42,7 @@ def make_history(symbol, session_date, base=10.0, days=25, step=0.5):
 
 class ScreenerRuleRunTestCase(TestCase):
     def setUp(self):
+        dj_cache.clear()
         self.user = User.objects.create_user(
             username="screener-run-user", email="run@test.local", password="pass123"
         )
