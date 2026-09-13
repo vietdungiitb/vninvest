@@ -2378,6 +2378,9 @@ const vi = {
     noMatchedSymbols: 'Không có mã nào khớp điều kiện.',
     staleBanner: 'Dữ liệu phiên {date} — cũ {days} ngày',
     missingDataBadge: 'Thiếu dữ liệu ({missing}/{total} mã)',
+    previewBanner: 'Kết quả chạy thử — chưa lưu thành rule',
+    duplicateRuleConfirm: "Đã có rule '{name}' cấu hình giống hệt. Tiếp tục với rule này?",
+    saveRuleSuccess: "Đã lưu rule '{name}'.",
     columns: {
       symbol: 'Mã',
       price: 'Giá',
@@ -2471,7 +2474,8 @@ const vi = {
     },
     templates: {
       title: 'Mẫu lọc có sẵn',
-      apply: 'Áp dụng',
+      preview: 'Chạy thử',
+      saveAsRule: 'Lưu thành rule',
       category: {
         technical: 'Kỹ thuật',
         whale: 'Cá voi',

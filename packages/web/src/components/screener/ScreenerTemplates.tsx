@@ -5,7 +5,9 @@ import type { ScreenerTemplate, ScreenerTemplateCategory } from "../../types/scr
 interface ScreenerTemplatesProps {
   templates: ScreenerTemplate[];
   applyingId: string | null;
-  onApply: (template: ScreenerTemplate) => void;
+  savingId: string | null;
+  onPreview: (template: ScreenerTemplate) => void;
+  onSave: (template: ScreenerTemplate) => void;
 }
 
 const CATEGORY_COLORS: Record<ScreenerTemplateCategory, { bg: string; border: string; text: string }> = {
@@ -15,7 +17,7 @@ const CATEGORY_COLORS: Record<ScreenerTemplateCategory, { bg: string; border: st
   fundamental: { bg: "rgba(74,222,128,0.15)", border: "rgba(74,222,128,0.35)", text: "#4ade80" },
 };
 
-export function ScreenerTemplates({ templates, applyingId, onApply }: ScreenerTemplatesProps) {
+export function ScreenerTemplates({ templates, applyingId, savingId, onPreview, onSave }: ScreenerTemplatesProps) {
   const { t } = useI18n();
 
   if (!templates.length) return null;
@@ -85,24 +87,50 @@ export function ScreenerTemplates({ templates, applyingId, onApply }: ScreenerTe
           createElement("p", { style: { margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--text-primary, #f1f5f9)" } }, t(tmpl.name_key)),
           createElement("p", { style: { margin: 0, fontSize: "12px", color: "var(--text-muted, #94a3b8)", lineHeight: 1.4, minHeight: "34px" } }, t(tmpl.desc_key)),
           createElement(
-            "button",
-            {
-              type: "button",
-              disabled: applyingId === tmpl.id,
-              onClick: () => onApply(tmpl),
-              style: {
-                padding: "6px 12px",
-                background: applyingId === tmpl.id ? "rgba(34,211,238,0.3)" : "var(--accent-cyan, #06b6d4)",
-                color: "#fff",
-                fontSize: "12px",
-                borderRadius: "6px",
-                border: "none",
-                cursor: applyingId === tmpl.id ? "not-allowed" : "pointer",
-                fontWeight: 500,
-                opacity: applyingId === tmpl.id ? 0.7 : 1,
+            "div",
+            { style: { display: "flex", gap: "8px" } },
+            createElement(
+              "button",
+              {
+                type: "button",
+                disabled: applyingId === tmpl.id || savingId === tmpl.id,
+                onClick: () => onPreview(tmpl),
+                style: {
+                  flex: 1,
+                  padding: "6px 12px",
+                  background: applyingId === tmpl.id ? "rgba(34,211,238,0.3)" : "var(--accent-cyan, #06b6d4)",
+                  color: "#fff",
+                  fontSize: "12px",
+                  borderRadius: "6px",
+                  border: "none",
+                  cursor: applyingId === tmpl.id ? "not-allowed" : "pointer",
+                  fontWeight: 500,
+                  opacity: applyingId === tmpl.id ? 0.7 : 1,
+                },
               },
-            },
-            applyingId === tmpl.id ? t("screener.running") : t("screener.templates.apply"),
+              applyingId === tmpl.id ? t("screener.running") : t("screener.templates.preview"),
+            ),
+            createElement(
+              "button",
+              {
+                type: "button",
+                disabled: applyingId === tmpl.id || savingId === tmpl.id,
+                onClick: () => onSave(tmpl),
+                style: {
+                  flex: 1,
+                  padding: "6px 12px",
+                  background: "rgba(15,23,42,0.6)",
+                  border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
+                  color: "var(--text-primary, #f1f5f9)",
+                  fontSize: "12px",
+                  borderRadius: "6px",
+                  cursor: savingId === tmpl.id ? "not-allowed" : "pointer",
+                  fontWeight: 500,
+                  opacity: savingId === tmpl.id ? 0.7 : 1,
+                },
+              },
+              savingId === tmpl.id ? t("screener.running") : t("screener.templates.saveAsRule"),
+            ),
           ),
         ),
       ),

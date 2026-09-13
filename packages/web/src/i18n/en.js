@@ -2380,6 +2380,9 @@ const en = {
     noMatchedSymbols: 'No symbols matched the conditions.',
     staleBanner: 'Session data {date} — {days} days old',
     missingDataBadge: 'Missing data ({missing}/{total} symbols)',
+    previewBanner: 'Preview run — not saved as a rule',
+    duplicateRuleConfirm: "Rule '{name}' has identical config. Continue with this rule?",
+    saveRuleSuccess: "Saved rule '{name}'.",
     columns: {
       symbol: 'Symbol',
       price: 'Price',
@@ -2473,7 +2476,8 @@ const en = {
     },
     templates: {
       title: 'Pre-built Templates',
-      apply: 'Apply',
+      preview: 'Preview',
+      saveAsRule: 'Save as rule',
       category: {
         technical: 'Technical',
         whale: 'Whale',

@@ -5,6 +5,23 @@
 
 ---
 
+## Entry 70: P0.4 Screener — template "Chạy thử" + "Lưu thành rule" dedupe (code)
+
+- **Date**: 2026-09-13
+- **Scope**: P0.4 theo plan §5 (F5). Không đổi BE (dựa deviation Entry 65: run cho phép inactive).
+- **Files**:
+  - MỚI `packages/web/src/components/screener/screenerRuleDedupe.ts`: `canonicalRules` (key-order ổn định, number 6 decimals, GIỮ thứ tự conditions vì logic left-assoc) + `findDuplicateRule` + `uniqueRuleName` (` (2)`, ` (3)`…, case-insensitive).
+  - `packages/web/src/components/screener/ScreenerTemplates.tsx`: mỗi card 2 nút — `templates.preview` (cyan) + `templates.saveAsRule` (ghost); props `savingId/onPreview/onSave`.
+  - `packages/web/src/pages/ScreenerPage.tsx`: `handlePreviewTemplate` (dedupe → trùng thì confirm dùng rule cũ; chưa có → xóa rule thử cũ + tạo `is_active=False` tên `[Thử] …` → run → banner preview) + `handleSaveTemplate` (trùng config → confirm mở rule cũ trong editor; trùng tên → auto-suffix; tạo `is_active=True` + notice success, KHÔNG auto-run) + refactor `handleRun`/preview dùng chung `saveHistoryEntry` + clear `previewInfo` khi chạy thường; const `DISMISS_LABEL/DOT_SEPARATOR` dọn sạch `jsx-no-literals`.
+  - `packages/web/src/i18n/vi.js` + `en.js`: `templates.apply` chết → thay bằng `templates.{preview,saveAsRule}`; thêm `previewBanner/duplicateRuleConfirm/saveRuleSuccess` (9/10 keys §8).
+  - MỚI `.../__tests__/screenerRuleDedupe.component.test.ts` (7 tests — T3 nửa còn lại).
+- **Deviation khỏi plan §8 (có lý do)**: BỎ key `duplicateNameSuffix` — hậu tố ` (n)` phải machine-parseable để tăng dần, i18n hóa dễ vỡ; `"(2)"` locale-neutral, không giá trị người dùng.
+- **Validation (R4.1–R4.3)**: vitest screener → **19/19 pass** (7 export + 6 validation + 6 dedupe — canonical ổn định/khác value/khác thứ tự, dup tìm/bỏ, suffix tăng dần); `tsc` exit 0; eslint scope → 0 errors, warnings **giảm 5 → 3** (dọn 2 pre-existing `✕`/`·` + 0 mới); BE không đụng.
+- **Next**: P0.7 (T1 buildTrades + T4 component table + T5 BE run-view) — T2/T3 đã xong sớm trong P0.2/P0.3/P0.4.
+- **Residual**: kiểm thử tay flow thử/lưu/dedupe trên UI + screenshot để nghiệm thu cuối P0.
+
+---
+
 ## Entry 69: P0.3 Screener — picker thật + giữ rỗng + validate miền (code)
 
 - **Date**: 2026-09-13

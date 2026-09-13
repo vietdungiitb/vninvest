@@ -4,6 +4,7 @@ import { useI18n } from '../context/LangContext.js';
 import { useConfirm } from '../components/ConfirmModal.js';
 import { ScreenerFilterBuilder } from '../components/screener/ScreenerFilterBuilder.js';
 import { validateConditionValue } from '../components/screener/screenerValidation.js';
+import { findDuplicateRule, uniqueRuleName } from '../components/screener/screenerRuleDedupe.js';
 import { ScreenerResultsTable } from '../components/screener/ScreenerResultsTable.js';
 import { ScreenerTemplates } from '../components/screener/ScreenerTemplates.js';
 import { ScreenerHistory } from '../components/screener/ScreenerHistory.js';
@@ -11,6 +12,10 @@ import { loadScreenerRuns, saveScreenerRun, type ScreenerRunEntry } from '../com
 import type { ScreenerCondition, ScreenerRule, ScreenerResult, ScreenerRow, ScreenerTemplate } from '../types/screener.d.ts';
 
 type Rule = ScreenerRule;
+
+// Module-level (not JSX literals) so react/jsx-no-literals stays clean.
+const DISMISS_LABEL = "✕";
+const DOT_SEPARATOR = " · ";
 
 
 interface RuleEditorProps {
@@ -113,6 +118,11 @@ export function ScreenerPage() {
   const [error, setError] = useState('');
   const [templates, setTemplates] = useState<ScreenerTemplate[]>([]);
   const [applyingId, setApplyingId] = useState<string | null>(null);
+  // P0.4: template preview (unsaved run) + save-as-rule with dedupe (R4.1/R4.2)
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [notice, setNotice] = useState('');
+  const [previewRuleId, setPreviewRuleId] = useState<number | null>(null);
+  const [previewInfo, setPreviewInfo] = useState<{ ruleName: string } | null>(null);
 
   const loadRules = useCallback(async () => {
     setLoading(true);
@@ -165,58 +175,113 @@ export function ScreenerPage() {
     }
   };
 
-  const handleApplyTemplate = useCallback(async (tmpl: ScreenerTemplate) => {
+  const saveHistoryEntry = useCallback((ruleId: number | null, ruleName: string, data: ScreenerResult) => {
+    const entry: ScreenerRunEntry = {
+      id: `${ruleId ?? 'r'}-${Date.now()}`,
+      ruleId,
+      ruleName,
+      timestamp: Date.now(),
+      rows: (data.matched || []).map((r: ScreenerRow) => ({
+        symbol: r.symbol,
+        close: r.close,
+        action: r.ai_advisory?.strategy_action ?? null,
+        score: r.ai_advisory?.ai_score_0_100 ?? null,
+      })),
+    };
+    setHistory(saveScreenerRun(entry));
+  }, []);
+
+  // P0.4 "Chạy thử": run without saving to the rule list (R4.1). Reuses an
+  // identical existing rule (with confirm) or a hidden is_active=False rule;
+  // the previous preview rule is deleted first so at most one exists.
+  const handlePreviewTemplate = useCallback(async (tmpl: ScreenerTemplate) => {
     setApplyingId(tmpl.id);
     setError('');
+    setNotice('');
     try {
-      const created = await coreApiAdapter.createScreenerRule({
-        name: t(tmpl.name_key),
-        rules_json: tmpl.rules_json,
-      });
-      const data = await coreApiAdapter.runScreenerRule(String(created.id));
+      const candidate = tmpl.rules_json;
+      const dup = findDuplicateRule(rules, candidate);
+      let ruleId: number | null;
+      let ruleName: string;
+      if (dup?.id != null) {
+        const ok = await confirm({
+          title: t('screener.templates.preview'),
+          message: t('screener.duplicateRuleConfirm', {
+            name: dup.name,
+            defaultValue: `Đã có rule '${dup.name}' cấu hình giống hệt. Tiếp tục với rule này?`,
+          }),
+          variant: "default",
+        });
+        if (!ok) return;
+        ruleId = dup.id;
+        ruleName = dup.name;
+      } else {
+        if (previewRuleId != null) {
+          try { await coreApiAdapter.deleteScreenerRule(String(previewRuleId)); } catch { /* already gone */ }
+        }
+        const created = await coreApiAdapter.createScreenerRule({
+          name: `[Thử] ${t(tmpl.name_key)}`,
+          rules_json: candidate,
+          is_active: false,
+        });
+        ruleId = created.id ?? null;
+        ruleName = created.name || t(tmpl.name_key);
+        setPreviewRuleId(ruleId);
+      }
+      const data = await coreApiAdapter.runScreenerRule(String(ruleId));
       setResults(data);
-      const entry: ScreenerRunEntry = {
-        id: `${created.id}-${Date.now()}`,
-        ruleId: created.id ?? null,
-        ruleName: created.name || t(tmpl.name_key),
-        timestamp: Date.now(),
-        rows: (data.matched || []).map((r: ScreenerRow) => ({
-          symbol: r.symbol,
-          close: r.close,
-          action: r.ai_advisory?.strategy_action ?? null,
-          score: r.ai_advisory?.ai_score_0_100 ?? null,
-        })),
-      };
-      setHistory(saveScreenerRun(entry));
-      await loadRules();
+      setPreviewInfo({ ruleName });
+      saveHistoryEntry(ruleId, ruleName, data);
     } catch (err: unknown) {
       const errResp = err as { response?: { data?: { detail?: string } } };
       setError(errResp?.response?.data?.detail || t('screener.errors.runRuleFailed'));
     } finally {
       setApplyingId(null);
     }
-  }, [t, loadRules]);
+  }, [t, rules, previewRuleId, confirm, saveHistoryEntry]);
+
+  // P0.4 "Lưu thành rule": dedupe by config, suffix on name clash, no auto-run (R4.2).
+  const handleSaveTemplate = useCallback(async (tmpl: ScreenerTemplate) => {
+    setSavingId(tmpl.id);
+    setError('');
+    setNotice('');
+    try {
+      const candidate = tmpl.rules_json;
+      const dup = findDuplicateRule(rules, candidate);
+      if (dup) {
+        const ok = await confirm({
+          title: t('screener.templates.saveAsRule'),
+          message: t('screener.duplicateRuleConfirm', {
+            name: dup.name,
+            defaultValue: `Đã có rule '${dup.name}' cấu hình giống hệt. Tiếp tục với rule này?`,
+          }),
+          variant: "default",
+        });
+        if (!ok) return;
+        setEditing(dup);
+        return;
+      }
+      const name = uniqueRuleName(t(tmpl.name_key), rules);
+      await coreApiAdapter.createScreenerRule({ name, rules_json: candidate, is_active: true });
+      await loadRules();
+      setNotice(t('screener.saveRuleSuccess', { name, defaultValue: `Đã lưu rule '${name}'.` }));
+    } catch (err: unknown) {
+      const errResp = err as { response?: { data?: { detail?: string } } };
+      setError(errResp?.response?.data?.detail || t('screener.errors.saveRuleFailed'));
+    } finally {
+      setSavingId(null);
+    }
+  }, [t, rules, confirm, loadRules]);
 
   const handleRun = async (rule: Rule) => {
     setRunning(rule.id ?? null);
     setResults(null);
+    setPreviewInfo(null);
     setError('');
     try {
       const data = await coreApiAdapter.runScreenerRule(String(rule.id));
       setResults(data);
-      const entry: ScreenerRunEntry = {
-        id: `${rule.id ?? 'r'}-${Date.now()}`,
-        ruleId: rule.id ?? null,
-        ruleName: rule.name,
-        timestamp: Date.now(),
-        rows: (data.matched || []).map((r: ScreenerRow) => ({
-          symbol: r.symbol,
-          close: r.close,
-          action: r.ai_advisory?.strategy_action ?? null,
-          score: r.ai_advisory?.ai_score_0_100 ?? null,
-        })),
-      };
-      setHistory(saveScreenerRun(entry));
+      saveHistoryEntry(rule.id ?? null, rule.name, data);
     } catch (err: unknown) {
       const errResp = err as { response?: { data?: { detail?: string } } };
       setError(errResp?.response?.data?.detail || t('screener.errors.runRuleFailed'));
@@ -263,7 +328,23 @@ export function ScreenerPage() {
             onClick={() => setError('')}
             style={{ color: '#fca5a5', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}
           >
-            ✕
+            {DISMISS_LABEL}
+          </button>
+        </div>
+      )}
+
+      {notice && (
+        <div style={{
+          background: 'rgba(74,222,128,0.12)', border: '1px solid rgba(74,222,128,0.4)',
+          color: '#86efac', fontSize: '14px', padding: '12px 16px', borderRadius: '8px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <span>{notice}</span>
+          <button
+            onClick={() => setNotice('')}
+            style={{ color: '#86efac', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}
+          >
+            {DISMISS_LABEL}
           </button>
         </div>
       )}
@@ -305,7 +386,7 @@ export function ScreenerPage() {
                   <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary, #f1f5f9)' }}>{rule.name}</p>
                   <p style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)', marginTop: '2px' }}>
                     {Array.isArray(rule.rules_json) ? formatNumber(rule.rules_json.length) : '?'} {t('screener.conditionsCount')}
-                    {' · '}
+                    {DOT_SEPARATOR}
                     {Array.isArray(rule.rules_json) ? rule.rules_json.map((c) => {
                       const logic = c.logic ? ` ${c.logic} ` : '';
                       return `${logic}${c.field} ${c.op} ${c.value}`;
@@ -362,8 +443,24 @@ export function ScreenerPage() {
         </div>
       )}
 
+      {results && previewInfo && (
+        <div style={{
+          background: 'rgba(34,211,238,0.10)', border: '1px solid rgba(34,211,238,0.35)',
+          color: '#67e8f9', fontSize: '13px', padding: '10px 16px', borderRadius: '8px',
+        }}>
+          {t('screener.previewBanner', { defaultValue: 'Kết quả chạy thử — chưa lưu thành rule' })}
+          {DOT_SEPARATOR}
+          {previewInfo.ruleName}
+        </div>
+      )}
       {results && <ScreenerResultsTable results={results} />}
-      <ScreenerTemplates templates={templates} applyingId={applyingId} onApply={handleApplyTemplate} />
+      <ScreenerTemplates
+        templates={templates}
+        applyingId={applyingId}
+        savingId={savingId}
+        onPreview={handlePreviewTemplate}
+        onSave={handleSaveTemplate}
+      />
       <ScreenerHistory runs={history} />
     </div>
   );
