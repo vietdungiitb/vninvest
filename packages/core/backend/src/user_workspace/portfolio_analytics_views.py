@@ -1318,6 +1318,10 @@ class PortfolioScreenerRuleDetailView(APIView):
 
     def get(self, request, pk):
         rule = self._get_rule(request, pk)
+        # P0.6: inactive rules (template previews) are hidden from detail view;
+        # PUT/DELETE still work so previews can be promoted or cleaned up.
+        if not rule.is_active:
+            raise NotFound('Bộ lọc không tồn tại.')
         from user_workspace.serializers import ScreenerRuleSerializer
         return Response(ScreenerRuleSerializer(rule).data)
 
@@ -1364,6 +1368,9 @@ class PortfolioAIAdvisorySymbolStatsView(APIView):
 
 class PortfolioScreenerRuleRunView(APIView):
     """POST /api/portfolio/screener/rules/<pk>/run/"""
+    # P0.6 deviation (see IMPLEMENTATION_PLAN_SCREENER_P0_20260913.md §1.3):
+    # run intentionally ALLOWS inactive rules so template previews (P0.4,
+    # stored as is_active=False) can execute without appearing in list/detail.
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):

@@ -5,6 +5,58 @@
 
 ---
 
+## Entry 65: P0.6 Screener — xóa adapter chết + gộp registry + `is_active` (code)
+
+- **Date**: 2026-09-13
+- **Scope**: P0.6 theo `IMPLEMENTATION_PLAN_SCREENER_P0_20260913.md` §7 (F11/F12-nhỏ). Verify-then-delete + single-source registry + list/detail lọc `is_active`, run cho phép inactive (deviation §1.3 có ghi comment trong code).
+- **Verify trước xóa (R6.1)**:
+  - FE: `grep runScreener\(|getScreenerResults\(|getAdmin*|...` → 0 caller ngoài `screener.js`; `grep adapters/core/screener` → chỉ `coreApiAdapter.js:23` import; `grep AdminScreener|GlobalScreener` → chỉ trong `screener.js`.
+  - BE: `grep portfolio/admin/screener|portfolio/screener` trong `src` → chỉ docstring `portfolio_analytics_views.py:1305,1366` + route thật `/core/v1/screener/...` (`user_workspace/urls.py:78-81`, mount `core/v1/` tại `vninvest_core/urls.py:45`). Route `/portfolio/screener/*`, `/portfolio/admin/screener/*` KHÔNG TỒN TẠI → cả 11 methods chết.
+- **Files**:
+  - XÓA `packages/web/src/adapters/core/screener.js` (48 dòng, toàn bộ 11 methods chết).
+  - `packages/web/src/adapters/coreApiAdapter.js` −9 dòng (import `:23`, khởi tạo `:82-87`, spread `...screenerClient`).
+  - `packages/web/src/types/screener.d.ts` −93/+2 dòng: xóa `const SCREENER_FIELD_GROUPS/OP_OPTIONS/LOGIC_OPTIONS/ScreenerFieldKey`, giữ interfaces; `screener.ts` là single source (verify: 5 file import `.d.ts` đều `import type`, duy nhất `ScreenerFilterBuilder.tsx:4` import runtime từ `screener.ts`).
+  - `packages/core/backend/src/user_workspace/views.py`: list GET lọc `is_active=True`.
+  - `packages/core/backend/src/user_workspace/portfolio_analytics_views.py`: detail-GET 404 khi inactive (PUT/DELETE giữ nguyên để promote/cleanup); run view thêm comment deviation cho phép inactive (preview P0.4).
+- **Validation (R6.2)**:
+  - `npx tsc --noEmit` (packages/web) → exit 0.
+  - `npx eslint src/components/screener/ src/pages/ScreenerPage.tsx src/types/screener.ts src/adapters/coreApiAdapter.js --max-warnings 0` → 0 errors, đúng 5 warnings pre-existing (`jsx-no-literals`, audit §E).
+  - `manage.py test user_workspace` → 16 tests, 15 pass + 1 error **pre-existing** (`test_core_v1_workspace_portfolio_analytics_routes_match_legacy_contracts`, holdings route — verify bằng stash: fail cả khi chưa sửa).
+  - Env test local: `DJANGO_DEBUG=true`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_SECRET_KEY` + cài `lxml` vào `.venv` (Sprint 5 thêm requirements nhưng venv chưa có).
+- **Next**: P0.5 (i18n) theo plan §10.
+- **Residual**: R6.3 (test BE list-vs-run inactive) để P0.7 T5.
+
+---
+
+## Entry 64: Chốt 6 câu hỏi mục F Screener — quyết định triển khai P0-P3 (decision, no code)
+
+- **Date**: 2026-09-13
+- **Scope**: User chốt cả 6 câu hỏi mục F của `AUDIT_SCREENER_COMMERCIAL_GRADE_20260913.md` — khóa scope trước khi thực thi P0. Không sửa code.
+- **Quyết định (đã cập nhật bảng vào audit doc §F)**:
+  - **Q1 Universe = toàn bộ 3 sàn** (HOSE+HNX+UPCoM ~1200 mã) → P1 bắt buộc batch/celery + phân trang/sort server, không giới hạn số mã/scan.
+  - **Q2 Whale/Dark = hiển thị "thiếu dữ liệu"** (badge —) cho field facts-rỗng, KHÔNG ẩn cột → P0.1 bắt buộc badge thiếu dữ liệu cho mọi field flow-facts.
+  - **Q3 Công thức = nội bộ + tư liệu công thức** (nội bộ là chuẩn dùng, ghi chú tooltip/doc để đối soán) → P0-P2 dùng bản nội bộ, P3 mới calibrate vendor.
+  - **Q4 Export = cả hai** (CSV BOM mặc định + nút Export Excel riêng `.xlsx` thật qua SheetJS) → P0.2 làm cả 2 path.
+  - **Q5 History/backtest = server theo user+tenant** (bảng `screener_run_history`) + quota → P2.5 server-side history.
+  - **Q6 Lịch = có lịch + alert** (user đặt lịch sau đóng phiên + thông báo mã mới khớp; phân biệt user-schedule vs SOC global) → P2.4 celery schedule user-scoped.
+- **Next**: Thực thi P0 correctness (F2/F3/F4/F5/F10/F11/F12-nhỏ + tests) theo thứ tự audit §G.
+- **Validation**: Không chạy gates (decision-only).
+
+---
+
+## Entry 63: AUDIT Screener `/screener` — commercial-grade gap analysis (audit, no code)
+
+- **Date**: 2026-09-13
+- **Scope**: Audit chi tiết tính năng + giao diện Screener theo khung AGENTS.md (read-only: grep/glob/read + reproduce qua live `localhost:200` + quality gates). Không sửa code.
+- **Report**: `docs/AUDIT_SCREENER_COMMERCIAL_GRADE_20260913.md` (A–I: architecture map, traced flow tạo rule→run→export, 6 contradictions, 12 findings, gates, 6 câu hỏi, plan P0–P3 + parity table).
+- **Top 5**: F1 scan đồng bộ gọi financials từng mã (`portfolio_analytics_views.py:1427`) · F2 field whale/dark cho phép nhưng không populate khi thiếu facts (`:1454-1463`) → lọc 0 kết quả im lặng · F3 export header key thô + `.xlsx` giả (`ScreenerExport.tsx:23,39,109-113`) · F4 field-picker noop (`ScreenerFilterBuilder.tsx:193`) + validation unreachable (`ScreenerPage.tsx:31-34`) · F5 apply-template spam rule (`ScreenerPage.tsx:155-185`).
+- **Validation**: eslint scoped 0 errors/5 warnings · `tsc --noEmit` exit 0 · i18n keys đủ 2 ngôn ngữ (nợ dấu vi.js) · **0 test** cho user-screener (gap lớn nhất) · live `GET /screener → 200`, templates endpoint yêu cầu auth đúng.
+- **Summary**: Nền tảng tốt (30+ field, templates, AI score, tenant-scope) nhưng chưa chuẩn thương mại — fix P0 correctness trước (F2/F3/F4/F5/i18n/adapter chết), rồi P1 performance (phân trang server, cache, celery), P2 UX (URL state, RQ, alert/lịch/watchlist, backtest v2).
+- **Residual**: Chờ trả lời 6 câu hỏi mục F (universe, facts coverage, chuẩn công thức, định dạng Excel, persist history, lịch quét) trước khi vào P0.
+- **Next**: P0-1 populate flow-facts + staleness badge · P0-2 sửa export · P0-3 picker/validation · P0-4 template preview · P0-5 i18n dấu · P0-6 dọn adapter chết + `is_active` · P0-7 tests.
+
+---
+
 ## Entry 62: UI-1→UI-3 Watchlist — pager + sidebar + data hiển thị (code) — LGTM Entry 61
 
 - **Date**: 2026-09-13

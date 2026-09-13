@@ -20,7 +20,6 @@ import { createAuthClient } from "./core/auth.js";
 import { createMarketClient } from "./core/market.js";
 import { createWorkspaceClient } from "./core/workspace.js";
 import { createCommercialClient } from "./core/commercial.js";
-import { createScreenerClient } from "./core/screener.js";
 import { createAdvisoryClient } from "./core/advisory.js";
 import { createCrawlClient } from "./core/crawl.js";
 import { createDnseClient } from "./core/dnse.js";
@@ -79,13 +78,6 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     corePost: transport.corePost,
   });
 
-  const screenerClient = createScreenerClient({
-    coreGet: transport.coreGet,
-    corePost: transport.corePost,
-    corePut: transport.corePut,
-    coreDelete: transport.coreDelete,
-  });
-
   const advisoryClient = createAdvisoryClient({
     coreGet: transport.coreGet,
     corePost: transport.corePost,
@@ -142,7 +134,6 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     ...marketClient,
     ...workspaceClient,
     ...commercialClient,
-    ...screenerClient,
     ...advisoryClient,
     ...crawlClient,
     ...dnseClient,

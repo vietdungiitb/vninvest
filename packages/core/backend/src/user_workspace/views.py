@@ -462,11 +462,12 @@ class ScreenerRuleListCreateAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
 
     def get(self, request):
+        # P0.6: list only active rules (inactive = template previews, see P0.4).
         tenant = getattr(request, 'tenant', None)
         if tenant:
-            rules = ScreenerRule.objects.filter(user=request.user, tenant=tenant)
+            rules = ScreenerRule.objects.filter(user=request.user, tenant=tenant, is_active=True)
         else:
-            rules = ScreenerRule.objects.filter(user=request.user)
+            rules = ScreenerRule.objects.filter(user=request.user, is_active=True)
         return Response(ScreenerRuleSerializer(rules, many=True).data)
 
     def post(self, request):
