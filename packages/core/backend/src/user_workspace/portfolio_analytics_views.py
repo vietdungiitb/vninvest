@@ -1495,7 +1495,10 @@ class PortfolioScreenerRuleRunView(APIView):
 
         from market_serving.models import SymbolSnapshot, SessionFacts
         from market_data.models import DailyPrice
-        from user_workspace.screener_helpers import _screener_build_technical, _apply_screener_condition, _compute_fundamental_metrics
+        from user_workspace.screener_helpers import (
+            _screener_build_technical, _apply_screener_condition, _compute_fundamental_metrics,
+            _required_lookback_days, _lookback_calendar_days,
+        )
         from user_workspace.ai_advisory_helpers import compute_ai_advisory
         from market_data.models import StockProfile
         from market_data.vnbroker_adapter import get_company_financials_response
@@ -1523,24 +1526,43 @@ class PortfolioScreenerRuleRunView(APIView):
         days_old = (today - session_date).days if session_date else 0
         is_stale = days_old > 0
 
-        snapshots = SymbolSnapshot.objects.filter(session_date=session_date)
+        # P1.3: dynamic window from the rule's condition fields (D7 clamp [35, 90])
+        # instead of a fixed 90 calendar days.
+        window_days = _lookback_calendar_days(_required_lookback_days(conditions))
+
+        # P1.3: trim columns — _screener_build_technical only reads
+        # symbol/date/close/volume/high/low (deferred fields stay untouched;
+        # touching them later would add queries — see U3).
+        snapshots = SymbolSnapshot.objects.filter(session_date=session_date).only(
+            'symbol', 'session_date', 'price', 'volume')
         symbols = [s.symbol for s in snapshots]
-        
-        facts_list = SessionFacts.objects.filter(session_date=session_date)
+
+        facts_list = SessionFacts.objects.filter(session_date=session_date).only(
+            'symbol', 'session_date', 'dark_flow_score', 'cvd_normalized',
+            'total_buy_volume', 'total_sell_volume', 'whale_net_flow',
+            'buy_strength', 'institutional_strength')
         facts_map = {f.symbol: f for f in facts_list}
-        
+
         # Bulk-read outstanding shares (canonical profile source) for market_cap derivation
         profile_map = {
             p['symbol']: p
             for p in StockProfile.objects.filter(symbol__in=symbols).values('symbol', 'outstanding_shares')
         }
-        
-        lookback_date = session_date - timedelta(days=90)
-        prices = DailyPrice.objects.filter(symbol__in=symbols, date__gte=lookback_date).order_by('symbol', 'date')
-        
+
+        lookback_date = session_date - timedelta(days=window_days)
+        prices = DailyPrice.objects.filter(
+            symbol__in=symbols, date__gte=lookback_date).only(
+            'symbol', 'date', 'close', 'volume', 'high', 'low').order_by('symbol', 'date')
+
         history_map = defaultdict(list)
         for p in prices:
             history_map[p.symbol].append(p)
+
+        # P1.3: pre-warm financials with ONE cache roundtrip (key format verified:
+        # vnbroker_adapter caches `stock_financials:{SYMBOL}` 12h). Misses fall
+        # through to the adapter (which re-caches). SSOT/TTL unchanged.
+        from django.core.cache import cache as _scan_cache
+        _fin_cached = _scan_cache.get_many([f"stock_financials:{s.upper()}" for s in symbols])
 
         # P0.1: fields referenced by this rule's conditions — used to report
         # per-field missing-data coverage (Q2 badge).
@@ -1553,8 +1575,13 @@ class PortfolioScreenerRuleRunView(APIView):
         for snap in snapshots:
             sym = snap.symbol
             hist = history_map[sym]
-            # SSOT: fundamentals come from the canonical vnbroker adapter (cached 12h)
-            financials = get_company_financials_response(sym).get('financials', {})
+            # SSOT: fundamentals come from the canonical vnbroker adapter (cached 12h);
+            # P1.3 serves cache hits from the pre-warmed batch above.
+            _fin_hit = _fin_cached.get(f"stock_financials:{sym.upper()}")
+            if isinstance(_fin_hit, dict):
+                financials = _fin_hit.get('financials', {})
+            else:
+                financials = get_company_financials_response(sym).get('financials', {})
             os_shares = profile_map.get(sym, {}).get('outstanding_shares')
             fundamental_metrics = _compute_fundamental_metrics(
                 financials,
@@ -1672,6 +1699,8 @@ class PortfolioScreenerRuleRunView(APIView):
             'days_old': days_old,
             'missing_fields': sorted(missing_counts),
             'missing_counts': dict(missing_counts),
+            # P1.3: calendar-day price window actually used (R3.1 evidence).
+            'window_days': window_days,
         }
         if has_scan_params:
             # P1.1 meta (additive). pages min 1 so clients never divide by zero.

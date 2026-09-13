@@ -408,3 +408,76 @@ def _screener_build_technical(symbol, close, volume, history_list, financials=No
         'revenue_growth_yoy': revenue_growth_yoy,
         'debt_to_equity': debt_to_equity,
     }
+
+
+# P1.3: minimum TRADING days of history per condition field, derived from the
+# indicator implementations above (SMA50 family: 55, MACD: >=35 closes,
+# 52-period range: 55, 20-day family: 20-25). Fields that never read price
+# history (whale/dark/fundamental/symbol/date/ai) need only a small bonus
+# window for the always-computed tech dict; truly unknown fields stay at the
+# conservative 55 (plan §4 D7 refinement, Entry 75).
+_REQUIRED_LOOKBACK_DAYS = {
+    'sma50': 55,
+    'sma20_vs_sma50_pct': 55,
+    'price_vs_sma50_pct': 55,
+    'range_position_pct': 55,
+    'macd_hist': 40,
+    'sma20': 25,
+    'price_vs_sma20_pct': 25,
+    'bollinger_width': 25,
+    'vwap': 25,
+    'mfi_14': 25,
+    'avg_volume_20': 25,
+    'momentum_20d_pct': 22,
+    'rsi_14': 20,
+    'stochastic_k': 20,
+    'stochastic_d': 20,
+    'atr_14': 20,
+    'adx_14': 20,
+    'volume_rvol': 20,
+    'close': 20,
+    'volume': 20,
+}
+_HISTORY_FREE_FIELDS = frozenset({
+    'symbol', 'date', 'ai_score',
+    'whale_buy_value', 'whale_sell_value', 'whale_unknown_value',
+    'whale_total_value', 'whale_net_value', 'whale_buy_pct',
+    'whale_sell_pct', 'whale_unknown_pct', 'whale_trade_count',
+    'whale_whale_value', 'whale_shark_value', 'whale_small_value',
+    'whale_intensity',
+    'dark_flow_strength', 'dark_flow_avg_strength', 'dark_flow_max_strength',
+    'dark_flow_signal_count', 'dark_flow_cvd',
+    'pe_ratio', 'market_cap', 'dividend_yield',
+    'eps_growth_yoy', 'revenue_growth_yoy', 'debt_to_equity',
+})
+_DEFAULT_LOOKBACK_DAYS = 55
+_HISTORY_FREE_LOOKBACK_DAYS = 25
+_EMPTY_RULE_LOOKBACK_DAYS = 75
+
+# D7 (Entry 73): calendar window clamp [35, 90].
+_MIN_WINDOW_DAYS = 35
+_MAX_WINDOW_DAYS = 90
+
+
+def _required_lookback_days(conditions):
+    """Max trading-day lookback needed by a rule's condition fields."""
+    if not isinstance(conditions, list) or len(conditions) == 0:
+        return _EMPTY_RULE_LOOKBACK_DAYS
+    need = 0
+    for cond in conditions:
+        if not isinstance(cond, dict):
+            continue
+        field = cond.get('field')
+        if field in _REQUIRED_LOOKBACK_DAYS:
+            need = max(need, _REQUIRED_LOOKBACK_DAYS[field])
+        elif field in _HISTORY_FREE_FIELDS:
+            need = max(need, _HISTORY_FREE_LOOKBACK_DAYS)
+        else:
+            need = max(need, _DEFAULT_LOOKBACK_DAYS)
+    return need or _EMPTY_RULE_LOOKBACK_DAYS
+
+
+def _lookback_calendar_days(trading_days):
+    """Trading days -> calendar days (weekends/holidays), clamped [35, 90]."""
+    import math
+    return max(_MIN_WINDOW_DAYS, min(_MAX_WINDOW_DAYS, int(math.ceil(trading_days * 1.5)) + 5))

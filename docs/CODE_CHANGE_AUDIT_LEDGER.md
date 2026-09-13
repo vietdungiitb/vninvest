@@ -5,6 +5,23 @@
 
 ---
 
+## Entry 75: P1.3 Screener — batch financials + window động + trim cột (code)
+
+- **Date**: 2026-09-13
+- **Scope**: P1.3 theo plan §4 (F1/F8). Thuần BE, không đổi response shape ngoài thêm `window_days`, không đụng FE (tsc/eslint giữ nguyên Entry 74).
+- **Verify trước code**: key cache `stock_financials:{SYMBOL}` + value `{symbol, financials, note}` + TTL 12h (`vnbroker_adapter.py:1181-1204`) — khớp giả định plan; MACD cần ≥35 nến (`_compute_macd_hist:224-225`), range-52 cần 55 (`_screener_build_technical:340`), helper chỉ đọc `p.close/volume/high/low` (`:316-319`) nên `.only()` an toàn.
+- **Files** (`portfolio_analytics_views.py` + `screener_helpers.py`):
+  - Helper mới: `_REQUIRED_LOOKBACK_DAYS` + `_required_lookback_days(conditions)` + `_lookback_calendar_days` (D7 clamp [35,90], empty → 75td → 90).
+  - **Refinement nhỏ vs plan (có lý do)**: field history-free đã biết (whale/dark/fundamental/symbol/date/ai) → 25td thay vì 55 của "field lạ" — chúng không bao giờ đọc `hist` nên 55 chỉ phí rows (template `whale_accumulation` hưởng lợi trực tiếp); field **thật sự lạ** giữ 55, rule rỗng giữ 75.
+  - Run view: `window_days` động thay 90 cố định; `.only()` trim snapshots/facts/prices (profile đã `values`); pre-warm `cache.get_many` 1 roundtrip + miss mới gọi adapter (SSOT/TTL 12h giữ nguyên, guard `isinstance dict`); response thêm `window_days` (additive).
+- **Validation (R3.1–R3.3)**:
+  - MỚI `test_screener_lookback.py` (U3, 5 tests): bảng lookback từng nhóm + clamp; rule RSI → `window_days=35` + matched + `rsi_14` đủ + determinism 2 runs; rule SMA50 → 88; batch: cold 4 adapter calls → warm (seeded) **0 calls**, matched bằng nhau.
+  - `manage.py test user_workspace` → **32 tests: 31 pass + 1 pre-existing** (holdings).
+- **Next**: P1.2 (cache scan) theo plan §8.
+- **Residual**: EXPLAIN + đo rows thực tế trên dev-DB lớn để P1.6 (fixture test nhỏ, chưa đo % giảm).
+
+---
+
 ## Entry 74: P1.1 Screener — sort/phân trang server + FE adopt (code)
 
 - **Date**: 2026-09-13
