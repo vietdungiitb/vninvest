@@ -1,12 +1,20 @@
 import { createElement, useCallback } from "react";
+import { useI18n } from "../../context/LangContext.js";
 import type { ScreenerResult } from "../../types/screener.d.ts";
+import {
+  buildCSV,
+  buildSheetAOA,
+  buildSheetColWidths,
+  buildExportFilename,
+  type ExportColumn,
+} from "./screenerExportUtils.js";
 
 interface ScreenerExportProps {
   results: ScreenerResult;
-  visibleColumns?: Array<{ key: string; labelKey: string }>;
+  visibleColumns?: ExportColumn[];
 }
 
-const DEFAULT_COLUMNS = [
+const DEFAULT_COLUMNS: ExportColumn[] = [
   { key: "symbol", labelKey: "screener.columns.symbol" },
   { key: "close", labelKey: "screener.columns.price" },
   { key: "rsi_14", labelKey: "screener.columns.rsi14" },
@@ -18,74 +26,6 @@ const DEFAULT_COLUMNS = [
   { key: "momentum_20d_pct", labelKey: "screener.columns.momentum20d" },
   { key: "date", labelKey: "screener.columns.date" },
 ];
-
-function toCSV(results: ScreenerResult, columns: Array<{ key: string; labelKey: string }>): string {
-  const headers = columns.map((c) => c.labelKey).join(",");
-  const rows = results.matched.map((row) =>
-    columns
-      .map((c) => {
-        const val = (row as any)[c.key];
-        if (val === null || val === undefined) return "";
-        if (typeof val === "number") return val.toFixed(2);
-        return `"${String(val).replace(/"/g, '""')}"`;
-      })
-      .join(",")
-  );
-  return [headers, ...rows].join("\n");
-}
-
-function toExcel(results: ScreenerResult, columns: Array<{ key: string; labelKey: string }>): string {
-  const headerRow = columns
-    .map((c) => `<Cell ss:StyleID="Header"><Data ss:Type="String">${c.labelKey}</Data></Cell>`)
-    .join("");
-  const dataRows = results.matched
-    .map(
-      (row) =>
-        "<Row>" +
-        columns
-          .map((c) => {
-            const val = (row as any)[c.key];
-            if (val === null || val === undefined) return '<Cell><Data ss:Type="String"></Data></Cell>';
-            if (typeof val === "number")
-              return `<Cell><Data ss:Type="Number">${val.toFixed(2)}</Data></Cell>`;
-            return `<Cell><Data ss:Type="String">${String(val).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</Data></Cell>`;
-          })
-          .join("") +
-        "</Row>"
-    )
-    .join("");
-
-  return `<?xml version="1.0"?>
-<?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
-  xmlns:o="urn:schemas-microsoft-com:office:office"
-  xmlns:x="urn:schemas-microsoft-com:office:excel"
-  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
-  <Styles>
-    <Style ss:ID="Default" ss:Name="Normal">
-      <Alignment ss:Vertical="Bottom"/>
-      <Borders/>
-      <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="11" ss:Color="#000000"/>
-      <Interior/>
-      <NumberFormat/>
-      <Protection/>
-    </Style>
-    <Style ss:ID="Header">
-      <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="11" ss:Color="#FFFFFF" ss:Bold="1"/>
-      <Interior ss:Color="#1e293b" ss:Pattern="Solid"/>
-      <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
-    </Style>
-  </Styles>
-  <Worksheet ss:Name="Screener Results">
-    <Table ss:ExpandedColumnCount="${columns.length}" ss:ExpandedRowCount="${results.matched.length + 1}" x:FullColumns="1" x:FullRows="1">
-      <Row>
-        ${headerRow}
-      </Row>
-      ${dataRows}
-    </Table>
-  </Worksheet>
-</Workbook>`;
-}
 
 function downloadFile(content: string, filename: string, mimeType: string) {
   const blob = new Blob([content], { type: mimeType });
@@ -100,54 +40,48 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 }
 
 export function ScreenerExport({ results, visibleColumns = DEFAULT_COLUMNS }: ScreenerExportProps) {
-  const handleExportCSV = useCallback(() => {
-    const csv = toCSV(results, visibleColumns);
-    const dateStr = new Date().toISOString().split("T")[0];
-    downloadFile(csv, `screener-results-${dateStr}.csv`, "text/csv");
-  }, [results, visibleColumns]);
+  const { t } = useI18n();
+  const resolveLabel = useCallback((labelKey: string) => t(labelKey), [t]);
 
-  const handleExportExcel = useCallback(() => {
-    const xml = toExcel(results, visibleColumns);
-    const dateStr = new Date().toISOString().split("T")[0];
-    downloadFile(xml, `screener-results-${dateStr}.xlsx`, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-  }, [results, visibleColumns]);
+  const handleExportCSV = useCallback(() => {
+    const csv = buildCSV(results.matched as Array<Record<string, unknown>>, visibleColumns, resolveLabel);
+    downloadFile(csv, buildExportFilename(results.rule_name, "csv"), "text/csv;charset=utf-8");
+  }, [results, visibleColumns, resolveLabel]);
+
+  const handleExportExcel = useCallback(async () => {
+    // P0.2 (Q4): real .xlsx via SheetJS, lazy-loaded so the sheet chunk
+    // stays out of the initial bundle.
+    const XLSX = await import("xlsx");
+    const aoa = buildSheetAOA(results.matched as Array<Record<string, unknown>>, visibleColumns, resolveLabel);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = buildSheetColWidths(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Screener");
+    XLSX.writeFile(wb, buildExportFilename(results.rule_name, "xlsx"));
+  }, [results, visibleColumns, resolveLabel]);
+
+  const btnStyle = {
+    padding: "6px 12px",
+    background: "rgba(15,23,42,0.6)",
+    border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
+    borderRadius: "6px",
+    color: "var(--text-primary, #f1f5f9)",
+    fontSize: "12px",
+    cursor: "pointer",
+  };
 
   return createElement(
     "div",
     { style: { display: "flex", gap: "8px" } },
     createElement(
       "button",
-      {
-        type: "button",
-        onClick: handleExportCSV,
-        style: {
-          padding: "6px 12px",
-          background: "rgba(15,23,42,0.6)",
-          border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
-          borderRadius: "6px",
-          color: "var(--text-primary, #f1f5f9)",
-          fontSize: "12px",
-          cursor: "pointer",
-        },
-      },
-      "CSV",
+      { type: "button", onClick: handleExportCSV, style: btnStyle },
+      t("screener.export.csv", { defaultValue: "CSV" }),
     ),
     createElement(
       "button",
-      {
-        type: "button",
-        onClick: handleExportExcel,
-        style: {
-          padding: "6px 12px",
-          background: "rgba(15,23,42,0.6)",
-          border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
-          borderRadius: "6px",
-          color: "var(--text-primary, #f1f5f9)",
-          fontSize: "12px",
-          cursor: "pointer",
-        },
-      },
-      "Excel",
+      { type: "button", onClick: handleExportExcel, style: btnStyle },
+      t("screener.export.excel", { defaultValue: "Excel (.xlsx)" }),
     ),
   );
 }

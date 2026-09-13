@@ -5,6 +5,26 @@
 
 ---
 
+## Entry 68: P0.2 Screener — export label dịch + CSV BOM + `.xlsx` thật (code)
+
+- **Date**: 2026-09-13
+- **Scope**: P0.2 theo plan §3 (F3, Q4 = cả hai). Xóa export XML-giả-`.xlsx`, tách helper test được.
+- **Files**:
+  - `packages/web/package.json` + lock: thêm `xlsx@^0.18.5` (Apache-2.0; repo dùng `--legacy-peer-deps`).
+  - MỚI `packages/web/src/components/screener/screenerExportUtils.ts`: `escapeCSVCell/formatExportCell/buildCSV` (BOM `\uFEFF` explicit escape — R2.2), `buildSheetAOA/buildSheetColWidths` (number giữ numeric — R2.3), `slugifyRuleName/buildExportFilename` (`screener-{slug}-{date}.csv/.xlsx`).
+  - `packages/web/src/components/screener/ScreenerExport.tsx` viết lại: dùng `useI18n().t` resolve `labelKey` (fallback = key — R2.1), CSV mime `text/csv;charset=utf-8`, Excel **dynamic `import("xlsx")`** (lazy chunk, không phình bundle đầu) + `aoa_to_sheet/!cols/writeFile` → `.xlsx` thật; nút dùng keys mới.
+  - `packages/web/src/i18n/vi.js` + `en.js`: thêm `screener.export.{csv,excel}` (4/10 keys §8; còn `preview/saveAsRule/duplicate*/valueRange` để P0.3–P0.4).
+  - MỚI `packages/web/src/components/screener/__tests__/screenerExportUtils.component.test.ts` (7 tests — đặt tên `.component.test.ts` theo quy ước vitest của repo vì `vitest.config.ts` include chỉ pattern đó; Sprint 7 đã làm tương tự).
+- **Validation (R2.1–R2.4)**:
+  - `npx vitest run src/components/screener` → **7/7 pass** (BOM, header dịch, quote/escape, null→`""`, fallback key, aoa numeric, widths cap 40, slug VI, filename pattern). Lưu ý: lần chạy đầu 2 fail do test strip BOM sai (lỗi test, đã sửa — code đúng từ đầu).
+  - `npx tsc --noEmit` → exit 0; eslint 4 files mới/sửa → 0 errors/warnings.
+  - Evidence sinh từ **chính code đã ship** (esbuild bundle utils + node gen): `docs/evidence/screener-p0/export-vi.csv` (BOM YES, header `"Mã","Giá","RSI(14)","Whale Mua %","Ngày"`) + `export-vi.xlsx` (round-trip: ref A1:E4, A1=`Mã`, B2 type `n` = 28500 — số thật, mở Excel không cảnh báo định dạng).
+  - Export 0 matched → chỉ dòng header (case `buildCSV([], ...)` trong test).
+- **Next**: P0.3 (builder + validation) theo plan §10.
+- **Residual**: screenshot nút Excel trên UI thật để P0.7/nghiệm thu cuối P0 (cần BE run data).
+
+---
+
 ## Entry 67: P0.1 Screener — flow-facts đầy đủ + metadata thiếu/staleness (code)
 
 - **Date**: 2026-09-13

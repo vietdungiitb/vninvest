@@ -2492,6 +2492,10 @@ const en = {
       value_pe: { name: 'Low P/E Value', desc: 'Positive P/E and < 15 — undervalued stocks.' },
     },
     columnsBtn: 'Columns',
+    export: {
+      csv: 'CSV',
+      excel: 'Excel (.xlsx)',
+    },
     ai: {
       buy: 'Buy',
       sell: 'Sell',

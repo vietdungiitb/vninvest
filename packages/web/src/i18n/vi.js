@@ -2490,6 +2490,10 @@ const vi = {
       value_pe: { name: 'Định giá P/E thấp', desc: 'P/E dương và < 15 — cổ phiếu định giá rẻ.' },
     },
     columnsBtn: 'Cột',
+    export: {
+      csv: 'CSV',
+      excel: 'Excel (.xlsx)',
+    },
     ai: {
       buy: 'Mua',
       sell: 'Bán',
