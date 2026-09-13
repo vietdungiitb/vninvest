@@ -576,6 +576,12 @@ export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, c
       return corePost(url, {});
     },
 
+    getScreenerRunStatus(ruleId, jobId) {
+      if (!ruleId) throw new Error("ruleId is required for getScreenerRunStatus");
+      if (!jobId) throw new Error("jobId is required for getScreenerRunStatus");
+      return coreGet(`/screener/rules/${encodeURIComponent(ruleId)}/run/status/?job_id=${encodeURIComponent(jobId)}`);
+    },
+
     getScreenerTemplates() {
       return coreGet("/screener/templates/");
     },

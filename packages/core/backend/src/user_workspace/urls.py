@@ -25,6 +25,7 @@ from .portfolio_analytics_views import (
     PortfolioWhaleBacktestStatsView,
     PortfolioScreenerRuleDetailView,
     PortfolioScreenerRuleRunView,
+    PortfolioScreenerRuleRunStatusView,
     PortfolioAIAdvisoryListView,
     PortfolioAIAdvisorySymbolStatsView,
     ScreenerTemplatesView,
@@ -78,5 +79,6 @@ urlpatterns += [
     path('screener/rules/', ScreenerRuleListCreateAPIView.as_view(), name='screener-rules-list'),
     path('screener/rules/<int:pk>/', PortfolioScreenerRuleDetailView.as_view(), name='screener-rule-detail'),
     path('screener/rules/<int:pk>/run/', PortfolioScreenerRuleRunView.as_view(), name='screener-rule-run'),
+    path('screener/rules/<int:pk>/run/status/', PortfolioScreenerRuleRunStatusView.as_view(), name='screener-rule-run-status'),
     path('screener/templates/', ScreenerTemplatesView.as_view(), name='screener-templates'),
 ]

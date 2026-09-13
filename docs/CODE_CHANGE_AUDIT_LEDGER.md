@@ -5,6 +5,31 @@
 
 ---
 
+## Entry 77: P1.4+1.5 Screener — celery async + status + throttle + FE polling (code)
+
+- **Date**: 2026-09-13
+- **Scope**: P1.4 (§5, F1, D1) + P1.5 (D5) theo plan. BE async branch + task snapshot + pending cap + rate-limit + FE polling. Không đổi công thức, không đụng history/lịch (P2).
+- **Files**:
+  - **MỚI** `user_workspace/screener_tasks.py` — `run_screener_scan_task(user_id, tenant_id, rule_id, rule_snapshot{rules_json, updated_at_ts}, session_date_iso, include_ai, job_id)` (bind, `manual_on_demand`): parse snapshot → `_compute_scan` → set scan-key Option B (`_scan_cache_key`) UNSORTED + job `completed` với `result_meta{matched_count, total_scanned, window_days, session_date}`; `failed` on exception; `finally` remove khỏi `screener:jobs:{user_id}` set.
+  - `vninvest_core/queue_policy.py:129` — thêm `user_workspace.screener_tasks.run_screener_scan_task` vào `manual_operations.task_routes` → queue `manual_on_demand` (không queue mới, không beat).
+  - `user_workspace/portfolio_analytics_views.py`:
+    - `:10-11` `import os, sys`; `:1465-1476` `ScreenerRunThrottle(UserRateThrottle)` `scope='screener_run'` `rate='999999/day' if _DEV_MODE_THR or 'test' in sys.argv else '30/min'` (D5); `permission_classes + throttle_classes` cho `PortfolioScreenerRuleRunView` và `PortfolioScreenerRuleRunStatusView`.
+    - `:1478-1510` helpers P1.4: `_SCREENER_SYNC_SYMBOL_LIMIT_DEFAULT=800`, `_SCREENER_JOB_TTL=3600`, `_SCREENER_MAX_PENDING=3`, `_screener_job_key`, `_screener_jobs_set_key`, `_get_pending_jobs`, `_add/remove_pending_job`.
+    - `PortfolioScreenerRuleRunView.post:1756-1830` — cache hit → sync ngay (kể cả universe lớn); miss → `_universe_cnt = SymbolSnapshot.filter(session_date).count()` + `_force_async = query_params async==1` → `_should_async = force or cnt>sync_limit (getattr SCREENER_SYNC_SYMBOL_LIMIT)` → nếu async: check `pending>=3` → `429 {detail, retry_after:60}`; else `uuid` job, `cache.set queued`, `_add_pending`, `run_screener_scan_task.delay(...)` (snapshot `rules_json` + `updated_at_ts`), trả `202 {status:queued, job_id, poll_url:/core/v1/screener/rules/<id>/run/status/?job_id=}`; nếu sync → `_compute_scan` → `cache.set` + sort/paging như cũ (legacy close desc giữ).
+    - **MỚI** `PortfolioScreenerRuleRunStatusView:1874-1905` — `GET ?job_id=` → verify rule ownership (tenant), `cache.get job_key` → `unknown` nếu None (FE fallback sync §5f), 404 nếu rule_id mismatch, else trả payload (`queued/running/completed/failed`).
+  - `user_workspace/urls.py:27,81` — import `PortfolioScreenerRuleRunStatusView`, thêm `path('screener/rules/<int:pk>/run/status/', ...)`.
+  - `packages/web/src/adapters/core/workspace.js:567-582` — `runScreenerRule(ruleId, params)` giữ querystring; **MỚI** `getScreenerRunStatus(ruleId, jobId)` `GET /screener/rules/.../run/status/?job_id=`.
+  - `packages/web/src/adapters/coreApiAdapter.d.ts:121-122`, `src/declarations.d.ts:38-39` — thêm `getScreenerRunStatus`.
+  - `packages/web/src/pages/ScreenerPage.tsx:139-150` — `jobInfo/jobStatus` + `pollRef/pollTimeoutRef` + `clearPoll` + `useEffect` cleanup; `:305-407` `runWithParams` detect `data.status===queued` → setJobInfo → `setInterval poll 1.5s` + `setTimeout 90s` → `GET status` → `completed` → fetch sync `runScreenerRule` (cache hit) → `setResults` + history; `failed/unknown` + fallback sync; `429` → `retry_after`; `isQueued` flag để `finally` không clear `running` sớm; `:411-418` `handleCancelPoll` (clearPoll + null); `:596-630` UI polling (nền xanh `rgba(59,130,246,0.12)`, `Đang quét trên hàng đợi… ${scanned}/${total}`, progress bar, nút `Hủy` → note `Chỉ dừng theo dõi, tác vụ vẫn chạy`).
+- **Validation**:
+  - **MỚI** `test_screener_async_run.py` U4+U5 (6 tests, P1.6 U4/U5): `large_universe 202→completed` (override `SCREENER_SYNC_SYMBOL_LIMIT=1`, universe 3 → 202, poll `completed`, `matched_count 3`, sync sau hit 0 adapter calls); `force_async ?async=1` → 202; `pending_cap 429` (seed 3 pending → 429 + retry_after); `snapshot_not_drift` (snapshot close>0 → 3, edit rule close>999999 → status vẫn 3, sync sau 0); `unknown` + `throttle_rate_limit` (patch `ScreenerRunThrottle.rate='3/min'` → 4th 429).
+  - `manage.py test user_workspace.test_screener_async_run -v 2` → **6/6 PASS**; `manage.py test user_workspace` → **43 tests: 42 pass + 1 pre-existing** `holdings` (thêm 6 so với 37, không regression).
+  - `npx tsc --noEmit` → exit 0; `npx eslint src/components/screener/ src/pages/ScreenerPage.tsx src/types/screener.ts` → 0 errors 3 warnings baseline; `npm run build` → 30.56s PASS (ScreenerPage 48.81k vs 45.61k P1.2 — thêm polling logic).
+- **Next**: P1.6 (EXPLAIN + evidence) + FE component test cho polling (F1 header + 202 progress) + P1.4 E2E manual trên universe thật (~1200 mã, đo thời gian).
+- **Residual**: `ScreenerRunThrottle` dùng `sys.argv` check `test` — dev bypass đúng nhưng override rate phải patch trong test (đã làm); `i18n:scan` vẫn fail config; `ScreenerServerPaging.component.test.tsx` chưa cover 202 polling (để P1.6 F1).
+
+---
+
 ## Entry 76: P1.2 Screener — cache scan Option B + U2 + audit fixes (code)
 
 - **Date**: 2026-09-13

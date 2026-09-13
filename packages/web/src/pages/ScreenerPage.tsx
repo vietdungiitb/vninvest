@@ -137,6 +137,18 @@ export function ScreenerPage() {
   // P1.1: active server-scan context for pager/sort/export callbacks.
   const [scanParams, setScanParams] = useState<ScanParams>(DEFAULT_SCAN_PARAMS);
   const [activeRule, setActiveRule] = useState<Rule | null>(null);
+  // P1.4: async job polling (D1, Entry 77)
+  const [jobInfo, setJobInfo] = useState<{ job_id: string; rule: Rule } | null>(null);
+  const [jobStatus, setJobStatus] = useState<{ status: string; scanned?: number; total?: number } | null>(null);
+  const pollRef = React.useRef<number | null>(null);
+  const pollTimeoutRef = React.useRef<number | null>(null);
+
+  const clearPoll = useCallback(() => {
+    if (pollRef.current != null) { window.clearInterval(pollRef.current); pollRef.current = null; }
+    if (pollTimeoutRef.current != null) { window.clearTimeout(pollTimeoutRef.current); pollTimeoutRef.current = null; }
+  }, []);
+
+  useEffect(() => () => clearPoll(), [clearPoll]);
 
   const loadRules = useCallback(async () => {
     setLoading(true);
@@ -289,22 +301,104 @@ export function ScreenerPage() {
 
   // P1.1: server-driven scan params (D2/D3 defaults). Page turns keep the
   // current table on screen (keepResults) and skip history spam.
+  // P1.4: handles 202 queued → polling 1.5s, timeout 90s, cancel stops poll only.
   const runWithParams = async (rule: Rule, params: ScanParams, opts?: { keepResults?: boolean }) => {
+    clearPoll();
     setRunning(rule.id ?? null);
     if (!opts?.keepResults) setResults(null);
     setPreviewInfo(null);
     setError('');
+    setJobInfo(null);
+    setJobStatus(null);
+    let isQueued = false;
     try {
-      const data = await coreApiAdapter.runScreenerRule(String(rule.id), params);
+      const data: any = await coreApiAdapter.runScreenerRule(String(rule.id), params);
+      // 202 queued path (P1.4)
+      if (data && data.status === 'queued' && data.job_id) {
+        isQueued = true;
+        const job_id: string = data.job_id;
+        setJobInfo({ job_id, rule });
+        setJobStatus({ status: 'queued', scanned: 0, total: data.total ?? 0 });
+        // Poll every 1.5s
+        let elapsed = 0;
+        const poll = async () => {
+          try {
+            const st: any = await (coreApiAdapter as any).getScreenerRunStatus(String(rule.id), job_id);
+            setJobStatus(st);
+            if (st.status === 'completed') {
+              clearPoll();
+              // Fetch actual results via sync cache hit (plan §5c)
+              try {
+                const finalData: any = await coreApiAdapter.runScreenerRule(String(rule.id), params);
+                setScanParams(params);
+                setActiveRule(rule);
+                setResults(finalData);
+                if (!opts?.keepResults) saveHistoryEntry(rule.id ?? null, rule.name, finalData);
+              } catch {
+                setError(t('screener.errors.runRuleFailed'));
+              } finally {
+                setRunning(null);
+                setJobInfo(null);
+              }
+            } else if (st.status === 'failed') {
+              clearPoll();
+              setError(st.error || t('screener.errors.runRuleFailed'));
+              setRunning(null);
+              setJobInfo(null);
+            } else if (st.status === 'unknown') {
+              // Fallback to sync per plan §5f
+              clearPoll();
+              try {
+                const fallback: any = await coreApiAdapter.runScreenerRule(String(rule.id), params);
+                setScanParams(params);
+                setActiveRule(rule);
+                setResults(fallback);
+                if (!opts?.keepResults) saveHistoryEntry(rule.id ?? null, rule.name, fallback);
+              } catch {
+                setError(t('screener.errors.runRuleFailed'));
+              } finally {
+                setRunning(null);
+                setJobInfo(null);
+              }
+            }
+          } catch (e: unknown) {
+            // poll error → keep trying until timeout
+            const errResp = e as { response?: { data?: { detail?: string } } };
+            if (errResp?.response?.data?.detail) setError(errResp.response.data.detail);
+          }
+          elapsed += 1500;
+          if (elapsed >= 90000) {
+            clearPoll();
+            setError(t('screener.errors.runTimeout' as any, { defaultValue: 'Quét quá thời gian, vui lòng thử lại.' } as any));
+            setRunning(null);
+          }
+        };
+        pollRef.current = window.setInterval(poll, 1500) as unknown as number;
+        // also set timeout guard
+        pollTimeoutRef.current = window.setTimeout(() => {
+          clearPoll();
+          setError(t('screener.errors.runTimeout' as any, { defaultValue: 'Quét quá thời gian, vui lòng thử lại.' } as any));
+          setRunning(null);
+        }, 90000) as unknown as number;
+        // initial poll after 1.5s (no immediate)
+        return;
+      }
       setScanParams(params);
       setActiveRule(rule);
       setResults(data);
       if (!opts?.keepResults) saveHistoryEntry(rule.id ?? null, rule.name, data);
     } catch (err: unknown) {
-      const errResp = err as { response?: { data?: { detail?: string } } };
-      setError(errResp?.response?.data?.detail || t('screener.errors.runRuleFailed'));
+      const errResp = err as { response?: { status?: number; data?: { detail?: string; retry_after?: number } } };
+      const status = (err as any)?.response?.status;
+      if (status === 429) {
+        const retry = errResp?.response?.data?.retry_after ?? 60;
+        setError(errResp?.response?.data?.detail || `Quá nhiều yêu cầu. Thử lại sau ${retry}s.`);
+      } else {
+        const detail = (errResp as any)?.response?.data?.detail;
+        setError(detail || t('screener.errors.runRuleFailed'));
+      }
     } finally {
-      setRunning(null);
+      if (!isQueued) setRunning(null);
     }
   };
 
@@ -316,6 +410,13 @@ export function ScreenerPage() {
 
   const handleServerSort = (sort: string, order: "asc" | "desc") => {
     if (activeRule) runWithParams(activeRule, { ...scanParams, sort, order, page: 1 });
+  };
+
+  const handleCancelPoll = () => {
+    clearPoll();
+    setJobInfo(null);
+    setJobStatus(null);
+    setRunning(null);
   };
 
   // P1.1: export fetches the full set (limit=2000) independent of the pager.
@@ -490,6 +591,40 @@ export function ScreenerPage() {
           {t('screener.previewBanner', { defaultValue: 'Kết quả chạy thử — chưa lưu thành rule' })}
           {DOT_SEPARATOR}
           {previewInfo.ruleName}
+        </div>
+      )}
+      {jobInfo && jobStatus && (
+        <div style={{
+          background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.35)',
+          color: '#93c5fd', fontSize: '13px', padding: '12px 16px', borderRadius: '8px',
+          display: 'flex', flexDirection: 'column', gap: '8px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+            <span>
+              {t('screener.jobQueued' as any, { defaultValue: 'Đang quét trên hàng đợi…' } as any)}
+              {jobStatus.total ? ` ${jobStatus.scanned ?? 0}/${jobStatus.total} mã` : ''}
+              {jobStatus.status === 'running' ? ` · ${t('screener.jobRunning' as any, { defaultValue: 'đang xử lý' } as any)}` : ''}
+            </span>
+            <button
+              onClick={handleCancelPoll}
+              style={{
+                padding: '4px 10px', background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(59,130,246,0.35)',
+                color: '#93c5fd', fontSize: '12px', borderRadius: '6px', cursor: 'pointer',
+              }}
+            >
+              {t('common.cancel' as any)}
+            </button>
+          </div>
+          <div style={{ width: '100%', height: '6px', background: 'rgba(59,130,246,0.2)', borderRadius: '3px', overflow: 'hidden' }}>
+            <div style={{
+              width: jobStatus.total ? `${Math.min(100, ((jobStatus.scanned ?? 0) / jobStatus.total) * 100)}%` : '30%',
+              height: '100%', background: '#3b82f6', transition: 'width 0.5s',
+              animation: jobStatus.status === 'queued' ? 'pulse 1.5s infinite' : undefined,
+            }} />
+          </div>
+          <span style={{ fontSize: '11px', color: 'rgba(147,197,253,0.8)' }}>
+            {t('screener.jobCancelNote' as any, { defaultValue: 'Chỉ dừng theo dõi, tác vụ vẫn chạy trên hàng đợi.' } as any)}
+          </span>
         </div>
       )}
       {results && (

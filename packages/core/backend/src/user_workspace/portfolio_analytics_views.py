@@ -7,6 +7,8 @@ with real computed data from Transaction + SymbolSnapshot + DailyPrice.
 All views require IsAuthenticated and scoped to request.user portfolios.
 Performance note: small portfolios only — no pagination/caching at this stage.
 """
+import os
+import sys
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
@@ -1459,6 +1461,16 @@ def _parse_scan_params(request):
     return has_params, sort, order, page, limit, include_ai, None
 
 
+
+from rest_framework.throttling import UserRateThrottle
+
+_DEV_MODE_THR = os.environ.get('DJANGO_DEBUG', '').strip().lower() in ('1', 'true', 'yes')
+
+class ScreenerRunThrottle(UserRateThrottle):
+    """P1.5: rate-limit run endpoint (D5). Dev bypass via DJANGO_DEBUG."""
+    scope = 'screener_run'
+    rate = '999999/day' if _DEV_MODE_THR or 'test' in sys.argv else '30/min'
+
 def _scan_sort_value(item, sort):
     if sort == 'ai_score':
         adv = item.get('ai_advisory') or {}
@@ -1470,6 +1482,44 @@ def _scan_sort_value(item, sort):
 
 # P1.2: Django-cache TTL for full scan results (D4, Entry 73).
 _SCAN_CACHE_TTL = 14400  # overridden by settings.SCREENER_SCAN_CACHE_TTL
+
+# P1.4: async threshold + job helpers (D1, Entry 77)
+_SCREENER_SYNC_SYMBOL_LIMIT_DEFAULT = 800
+_SCREENER_JOB_TTL = 3600
+_SCREENER_MAX_PENDING = 3
+
+
+def _screener_job_key(job_id: str) -> str:
+    return f"screener:job:{job_id}"
+
+
+def _screener_jobs_set_key(user_id: int) -> str:
+    return f"screener:jobs:{user_id}"
+
+
+def _get_pending_jobs(cache_obj, user_id: int):
+    raw = cache_obj.get(_screener_jobs_set_key(user_id))
+    if isinstance(raw, set):
+        return set(raw)
+    if isinstance(raw, list):
+        return set(raw)
+    return set()
+
+
+def _add_pending_job(cache_obj, user_id: int, job_id: str):
+    key = _screener_jobs_set_key(user_id)
+    pending = _get_pending_jobs(cache_obj, user_id)
+    pending.add(job_id)
+    cache_obj.set(key, pending, timeout=_SCREENER_JOB_TTL)
+
+
+def _remove_pending_job(cache_obj, user_id: int, job_id: str):
+    key = _screener_jobs_set_key(user_id)
+    pending = _get_pending_jobs(cache_obj, user_id)
+    if job_id in pending:
+        pending.remove(job_id)
+        cache_obj.set(key, pending, timeout=_SCREENER_JOB_TTL)
+
 
 
 def _scan_cache_key(user_id, rule, session_date, include_ai):
@@ -1656,6 +1706,7 @@ class PortfolioScreenerRuleRunView(APIView):
     # run intentionally ALLOWS inactive rules so template previews (P0.4,
     # stored as is_active=False) can execute without appearing in list/detail.
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScreenerRunThrottle]
 
     def post(self, request, pk):
         from user_workspace.models import ScreenerRule
@@ -1722,6 +1773,80 @@ class PortfolioScreenerRuleRunView(APIView):
             missing_counts = cached_scan.get("missing_counts", {})
             window_days = _lookback_calendar_days(_required_lookback_days(conditions))
         else:
+            # P1.4: async branch — cache miss + large universe or ?async=1 → 202 queued
+            from django.core.cache import cache as _job_cache
+            from django.conf import settings as _job_settings
+            import uuid
+            _sync_limit = getattr(_job_settings, "SCREENER_SYNC_SYMBOL_LIMIT", _SCREENER_SYNC_SYMBOL_LIMIT_DEFAULT)
+            # Universe size check (cheap count, not full scan)
+            try:
+                from market_serving.models import SymbolSnapshot as _SnapForCount
+                _universe_cnt = _SnapForCount.objects.filter(session_date=session_date).count()
+            except Exception:
+                _universe_cnt = 0
+            # ?async=1 forces async even for small universe (query param or JSON body)
+            _force_async = False
+            try:
+                if request.query_params.get("async") == "1":
+                    _force_async = True
+                elif isinstance(request.data, dict) and str(request.data.get("async")) == "1":
+                    _force_async = True
+            except Exception:
+                pass
+            _should_async = _force_async or (_universe_cnt > _sync_limit)
+            if _should_async:
+                # Pending cap D5
+                _pending = _get_pending_jobs(_job_cache, request.user.id)
+                if len(_pending) >= _SCREENER_MAX_PENDING:
+                    from rest_framework.response import Response as _R429
+                    return _R429(
+                        {"detail": "Quá nhiều tác vụ đang chờ. Vui lòng thử lại sau.", "retry_after": 60},
+                        status=429,
+                    )
+                _job_id = uuid.uuid4().hex
+                _job_key = _screener_job_key(_job_id)
+                # Snapshot rule to avoid drift if user edits mid-run
+                try:
+                    _updated_ts = int(rule.updated_at.timestamp()) if getattr(rule, "updated_at", None) else 0
+                except Exception:
+                    _updated_ts = 0
+                _snapshot = {"rules_json": conditions, "updated_at_ts": _updated_ts}
+                # Queue job
+                _job_cache.set(
+                    _job_key,
+                    {"status": "queued", "scanned": 0, "total": _universe_cnt, "job_id": _job_id, "rule_id": rule.id},
+                    timeout=_SCREENER_JOB_TTL,
+                )
+                _add_pending_job(_job_cache, request.user.id, _job_id)
+                # Delay task (ALWAYS_EAGER → runs sync in test, but we still return 202)
+                try:
+                    from user_workspace.screener_tasks import run_screener_scan_task
+
+                    # tenant_id for task (optional, not used for compute but for audit)
+                    _tenant_id = getattr(rule, "tenant_id", None)
+                    if _tenant_id is None:
+                        _t = getattr(rule, "tenant", None)
+                        _tenant_id = getattr(_t, "id", None) if _t else None
+                    run_screener_scan_task.delay(
+                        request.user.id,
+                        _tenant_id,
+                        rule.id,
+                        _snapshot,
+                        session_date.isoformat(),
+                        int(bool(include_ai)),
+                        _job_id,
+                    )
+                except Exception as exc:
+                    # If delay fails, mark failed and fallback to sync? For now return 500-like
+                    _job_cache.set(_job_key, {"status": "failed", "error": str(exc), "job_id": _job_id}, timeout=_SCREENER_JOB_TTL)
+                    _remove_pending_job(_job_cache, request.user.id, _job_id)
+                    from rest_framework.response import Response as _R500
+                    return _R500({"detail": f"Không thể tạo tác vụ quét: {exc}"}, status=500)
+                poll_url = f"/core/v1/screener/rules/{rule.id}/run/status/?job_id={_job_id}"
+                from rest_framework.response import Response as _R202
+
+                return _R202({"status": "queued", "job_id": _job_id, "poll_url": poll_url}, status=202)
+            # Sync path (small universe or not forced)
             matched, total_scanned, missing_counts, window_days = _compute_scan(
                 conditions, session_date, include_ai)
             _scan_cache.set(scan_cache_key, {
@@ -1762,6 +1887,45 @@ class PortfolioScreenerRuleRunView(APIView):
             start = (page - 1) * limit
             payload['matched'] = matched[start:start + limit]
             payload.update({'page': page, 'limit': limit, 'pages': pages, 'sort': sort, 'order': order})
+        return Response(payload)
+
+
+
+class PortfolioScreenerRuleRunStatusView(APIView):
+    """GET /screener/rules/<pk>/run/status/?job_id=... — P1.4 job polling."""
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScreenerRunThrottle]
+
+    def get(self, request, pk):
+        from user_workspace.models import ScreenerRule
+        from django.core.cache import cache as _cache
+
+        tenant = getattr(request, "tenant", None)
+        try:
+            if tenant:
+                rule = ScreenerRule.objects.get(pk=pk, user=request.user, tenant=tenant)
+            else:
+                rule = ScreenerRule.objects.get(pk=pk, user=request.user)
+        except ScreenerRule.DoesNotExist:
+            raise NotFound("Bộ lọc không tồn tại.")
+
+        job_id = request.query_params.get("job_id")
+        if not job_id:
+            from rest_framework.response import Response
+            return Response({"detail": "Thiếu tham số job_id."}, status=400)
+
+        job_key = _screener_job_key(job_id)
+        payload = _cache.get(job_key)
+        if payload is None:
+            # Unknown / expired — FE fallback to sync per plan §5f
+            from rest_framework.response import Response
+            return Response({"status": "unknown", "job_id": job_id}, status=200)
+        # Optional ownership check: job should belong to this user (stored rule_id check)
+        # If payload has rule_id, ensure it matches requested pk
+        if isinstance(payload, dict) and "rule_id" in payload and int(payload["rule_id"]) != int(pk):
+            from rest_framework.response import Response
+            return Response({"detail": "Tác vụ không thuộc bộ lọc này."}, status=404)
+        from rest_framework.response import Response
         return Response(payload)
 
 

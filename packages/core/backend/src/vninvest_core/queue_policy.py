@@ -132,6 +132,7 @@ QUEUE_DOMAIN_MATRIX = {
             'service_ops.cleanup_market_data_parity_snapshots',
             'service_ops.monitor_market_data_parity_retention_health',
             'service_ops.reconcile_stale_running_service_run_logs',
+            'user_workspace.screener_tasks.run_screener_scan_task',
         ),
         'periodic_tasks': (
             'manual_refresh_task',

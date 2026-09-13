@@ -36,6 +36,7 @@ declare module "./adapters/coreApiAdapter" {
     updateScreenerRule: (id: string, data: any) => Promise<any>;
     deleteScreenerRule: (id: string) => Promise<any>;
     runScreenerRule: (id: string, params?: Record<string, string | number>) => Promise<any>;
+    getScreenerRunStatus: (id: string, jobId: string) => Promise<any>;
 
     // Support
     listSupportTickets: (params: any) => Promise<any>;
