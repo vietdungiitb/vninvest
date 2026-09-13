@@ -118,7 +118,7 @@ export interface CoreApiAdapter {
   createScreenerRule: (data: any) => Promise<any>;
   updateScreenerRule: (id: string, data: any) => Promise<any>;
   deleteScreenerRule: (id: string) => Promise<any>;
-  runScreenerRule: (id: string) => Promise<any>;
+  runScreenerRule: (id: string, params?: Record<string, string | number>) => Promise<any>;
   
   // Advisory
   createAdvisorySession: (data: any) => Promise<any>;

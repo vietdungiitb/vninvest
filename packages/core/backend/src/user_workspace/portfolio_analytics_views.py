@@ -1375,6 +1375,98 @@ _FLOW_FIELDS_NO_SOURCE = (
     'whale_whale_value', 'whale_shark_value', 'whale_small_value',
 )
 
+# P1.1: server-side sort/paging contract (IMPLEMENTATION_PLAN_SCREENER_P1_20260913.md §2).
+# D2/D3 (Entry 73): default sort=ai_score/desc; limit enum includes 2000 for export.
+# NOTE (minor plan extension, logged Entry 74): sortable set covers every numeric
+# table column (+symbol/date) so the P0 table keeps full-column sorting via server.
+_SORTABLE_FIELDS = ('ai_score', 'symbol', 'date', 'close', 'rsi_14', 'sma20', 'sma50',
+                    'price_vs_sma20_pct', 'price_vs_sma50_pct', 'sma20_vs_sma50_pct',
+                    'momentum_20d_pct', 'macd_hist', 'volume_rvol', 'avg_volume_20',
+                    'range_position_pct', 'stochastic_k', 'stochastic_d', 'atr_14',
+                    'adx_14', 'bollinger_width', 'vwap', 'mfi_14', 'pe_ratio',
+                    'market_cap', 'dividend_yield', 'eps_growth_yoy', 'revenue_growth_yoy',
+                    'debt_to_equity')
+_PAGE_LIMITS = (10, 25, 50, 100, 2000)
+_DEFAULT_SORT = 'ai_score'
+_DEFAULT_ORDER = 'desc'
+_DEFAULT_PAGE = 1
+_DEFAULT_LIMIT = 25
+
+
+def _parse_scan_params(request):
+    """Parse optional P1.1 scan params (querystring first, JSON body fallback).
+
+    Returns (has_params, sort, order, page, limit, include_ai, error_response).
+    error_response is a DRF Response (400) when validation fails, else None.
+    """
+    from rest_framework.response import Response as _Response
+    from rest_framework import status as _status
+
+    def _bad(msg):
+        return _Response({'detail': msg}, status=_status.HTTP_400_BAD_REQUEST)
+
+    qp = request.query_params
+    body = request.data if isinstance(request.data, dict) else {}
+
+    def _param(name):
+        v = qp.get(name, None)
+        return body.get(name, v) if v is None else v
+
+    raw = {k: _param(k) for k in ('sort', 'order', 'page', 'limit', 'include_ai')}
+    has_params = any(v is not None for v in raw.values())
+
+    sort, order, page, limit, include_ai = _DEFAULT_SORT, _DEFAULT_ORDER, _DEFAULT_PAGE, _DEFAULT_LIMIT, True
+    if not has_params:
+        return has_params, sort, order, page, limit, include_ai, None
+
+    if raw['sort'] is not None:
+        sort = str(raw['sort'])
+        if sort not in _SORTABLE_FIELDS:
+            return has_params, sort, order, page, limit, include_ai, _bad(
+                f'Sort "{sort}" không hợp lệ. Cho phép: {", ".join(_SORTABLE_FIELDS)}.')
+    if raw['order'] is not None:
+        order = str(raw['order']).lower()
+        if order not in ('asc', 'desc'):
+            return has_params, sort, order, page, limit, include_ai, _bad(
+                'Order phải là "asc" hoặc "desc".')
+    if raw['page'] is not None:
+        try:
+            page = int(raw['page'])
+        except (TypeError, ValueError):
+            return has_params, sort, order, page, limit, include_ai, _bad('Page phải là số nguyên ≥ 1.')
+        if page < 1:
+            return has_params, sort, order, page, limit, include_ai, _bad('Page phải là số nguyên ≥ 1.')
+    if raw['limit'] is not None:
+        try:
+            limit = int(raw['limit'])
+        except (TypeError, ValueError):
+            limit = -1
+        if limit not in _PAGE_LIMITS:
+            return has_params, sort, order, page, limit, include_ai, _bad(
+                f'Limit phải thuộc {list(_PAGE_LIMITS)}.')
+    if raw['include_ai'] is not None:
+        s = str(raw['include_ai']).lower()
+        if s in ('1', 'true'):
+            include_ai = True
+        elif s in ('0', 'false'):
+            include_ai = False
+        else:
+            return has_params, sort, order, page, limit, include_ai, _bad(
+                'include_ai phải là 0 hoặc 1.')
+    if not include_ai and sort == 'ai_score':
+        return has_params, sort, order, page, limit, include_ai, _bad(
+            'include_ai=0 không dùng được với sort=ai_score (không có điểm AI để xếp hạng).')
+    return has_params, sort, order, page, limit, include_ai, None
+
+
+def _scan_sort_value(item, sort):
+    if sort == 'ai_score':
+        adv = item.get('ai_advisory') or {}
+        return adv.get('ai_score_0_100')
+    if sort == 'symbol':
+        return str(item.get('symbol') or '')
+    return item.get(sort)
+
 
 class PortfolioScreenerRuleRunView(APIView):
     """POST /api/portfolio/screener/rules/<pk>/run/"""
@@ -1395,7 +1487,12 @@ class PortfolioScreenerRuleRunView(APIView):
             raise NotFound('Bộ lọc không tồn tại.')
 
         conditions = rule.rules_json
-        
+
+        # P1.1: validate scan params BEFORE any heavy work (fail fast on 400).
+        has_scan_params, sort, order, page, limit, include_ai, param_error = _parse_scan_params(request)
+        if param_error is not None:
+            return param_error
+
         from market_serving.models import SymbolSnapshot, SessionFacts
         from market_data.models import DailyPrice
         from user_workspace.screener_helpers import _screener_build_technical, _apply_screener_condition, _compute_fundamental_metrics
@@ -1404,16 +1501,19 @@ class PortfolioScreenerRuleRunView(APIView):
         from market_data.vnbroker_adapter import get_company_financials_response
         from datetime import date, timedelta
         from collections import defaultdict
-        
+
         latest_snap = SymbolSnapshot.objects.order_by('-session_date').first()
         if not latest_snap:
-            return Response({
+            payload = {
                 'rule_id': rule.id,
                 'rule_name': rule.name,
                 'total_scanned': 0,
                 'matched_count': 0,
                 'matched': [],
-            })
+            }
+            if has_scan_params:
+                payload.update({'page': page, 'limit': limit, 'pages': 1, 'sort': sort, 'order': order})
+            return Response(payload)
         
         session_date = latest_snap.session_date
 
@@ -1511,10 +1611,14 @@ class PortfolioScreenerRuleRunView(APIView):
                 **flow_facts,
             }
 
-            # AI advisory (S3.1) — fallback None nếu lỗi, không crash scan
-            try:
-                row['ai_advisory'] = compute_ai_advisory(row)
-            except Exception:
+            # AI advisory (S3.1) — fallback None nếu lỗi, không crash scan.
+            # P1.1: include_ai=0 skips the compute entirely (D6).
+            if include_ai:
+                try:
+                    row['ai_advisory'] = compute_ai_advisory(row)
+                except Exception:
+                    row['ai_advisory'] = None
+            else:
                 row['ai_advisory'] = None
             
             # Evaluate conditions with AND/OR/NOT logic
@@ -1546,9 +1650,17 @@ class PortfolioScreenerRuleRunView(APIView):
                 if row.get(f) is None:
                     missing_counts[f] += 1
 
-        matched.sort(key=lambda item: item.get('close') or 0, reverse=True)
+        if has_scan_params:
+            # P1.1: server sort (None always last, both directions) + paging.
+            valued = [r for r in matched if _scan_sort_value(r, sort) is not None]
+            noval = [r for r in matched if _scan_sort_value(r, sort) is None]
+            valued.sort(key=lambda item: _scan_sort_value(item, sort), reverse=(order == 'desc'))
+            matched = valued + noval
+        else:
+            # Legacy path (no params): exact P0 behavior — close desc, full list.
+            matched.sort(key=lambda item: item.get('close') or 0, reverse=True)
 
-        return Response({
+        payload = {
             'rule_id': rule.id,
             'rule_name': rule.name,
             'total_scanned': len(symbols),
@@ -1560,7 +1672,15 @@ class PortfolioScreenerRuleRunView(APIView):
             'days_old': days_old,
             'missing_fields': sorted(missing_counts),
             'missing_counts': dict(missing_counts),
-        })
+        }
+        if has_scan_params:
+            # P1.1 meta (additive). pages min 1 so clients never divide by zero.
+            pages = (len(matched) + limit - 1) // limit if limit > 0 else 1
+            pages = max(pages, 1)
+            start = (page - 1) * limit
+            payload['matched'] = matched[start:start + limit]
+            payload.update({'page': page, 'limit': limit, 'pages': pages, 'sort': sort, 'order': order})
+        return Response(payload)
 
 
 class ScreenerTemplatesView(APIView):

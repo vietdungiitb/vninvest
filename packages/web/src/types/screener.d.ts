@@ -74,6 +74,12 @@ export interface ScreenerResult {
   days_old?: number;
   missing_fields?: string[];
   missing_counts?: Record<string, number>;
+  // P1.1 server paging meta (present only when scan params were sent)
+  page?: number;
+  limit?: number;
+  pages?: number;
+  sort?: string;
+  order?: "asc" | "desc";
 }
 
 // NOTE (P0.6): runtime registries live ONLY in ./screener.ts (single source).

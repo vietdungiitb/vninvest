@@ -1,4 +1,4 @@
-import { createElement, useCallback } from "react";
+import { createElement, useCallback, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import type { ScreenerResult } from "../../types/screener.d.ts";
 import {
@@ -12,6 +12,8 @@ import {
 interface ScreenerExportProps {
   results: ScreenerResult;
   visibleColumns?: ExportColumn[];
+  /** P1.1: full-set fetcher (server paging); falls back to the current rows. */
+  fetchAllRows?: () => Promise<Array<Record<string, unknown>>>;
 }
 
 const DEFAULT_COLUMNS: ExportColumn[] = [
@@ -39,26 +41,46 @@ function downloadFile(content: string, filename: string, mimeType: string) {
   URL.revokeObjectURL(url);
 }
 
-export function ScreenerExport({ results, visibleColumns = DEFAULT_COLUMNS }: ScreenerExportProps) {
+export function ScreenerExport({ results, visibleColumns = DEFAULT_COLUMNS, fetchAllRows }: ScreenerExportProps) {
   const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
   const resolveLabel = useCallback((labelKey: string) => t(labelKey), [t]);
 
-  const handleExportCSV = useCallback(() => {
-    const csv = buildCSV(results.matched as Array<Record<string, unknown>>, visibleColumns, resolveLabel);
-    downloadFile(csv, buildExportFilename(results.rule_name, "csv"), "text/csv;charset=utf-8");
-  }, [results, visibleColumns, resolveLabel]);
+  const resolveRows = useCallback(async (): Promise<Array<Record<string, unknown>>> => {
+    if (fetchAllRows) return fetchAllRows();
+    return results.matched as Array<Record<string, unknown>>;
+  }, [fetchAllRows, results]);
+
+  const handleExportCSV = useCallback(async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const rows = await resolveRows();
+      const csv = buildCSV(rows, visibleColumns, resolveLabel);
+      downloadFile(csv, buildExportFilename(results.rule_name, "csv"), "text/csv;charset=utf-8");
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, resolveRows, visibleColumns, resolveLabel, results.rule_name]);
 
   const handleExportExcel = useCallback(async () => {
-    // P0.2 (Q4): real .xlsx via SheetJS, lazy-loaded so the sheet chunk
-    // stays out of the initial bundle.
-    const XLSX = await import("xlsx");
-    const aoa = buildSheetAOA(results.matched as Array<Record<string, unknown>>, visibleColumns, resolveLabel);
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws["!cols"] = buildSheetColWidths(aoa);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Screener");
-    XLSX.writeFile(wb, buildExportFilename(results.rule_name, "xlsx"));
-  }, [results, visibleColumns, resolveLabel]);
+    if (busy) return;
+    setBusy(true);
+    try {
+      // P0.2 (Q4): real .xlsx via SheetJS, lazy-loaded so the sheet chunk
+      // stays out of the initial bundle.
+      const XLSX = await import("xlsx");
+      const rows = await resolveRows();
+      const aoa = buildSheetAOA(rows, visibleColumns, resolveLabel);
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws["!cols"] = buildSheetColWidths(aoa);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Screener");
+      XLSX.writeFile(wb, buildExportFilename(results.rule_name, "xlsx"));
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, resolveRows, visibleColumns, resolveLabel, results.rule_name]);
 
   const btnStyle = {
     padding: "6px 12px",
@@ -67,7 +89,8 @@ export function ScreenerExport({ results, visibleColumns = DEFAULT_COLUMNS }: Sc
     borderRadius: "6px",
     color: "var(--text-primary, #f1f5f9)",
     fontSize: "12px",
-    cursor: "pointer",
+    cursor: busy ? "wait" : "pointer",
+    opacity: busy ? 0.6 : 1,
   };
 
   return createElement(
@@ -75,12 +98,12 @@ export function ScreenerExport({ results, visibleColumns = DEFAULT_COLUMNS }: Sc
     { style: { display: "flex", gap: "8px" } },
     createElement(
       "button",
-      { type: "button", onClick: handleExportCSV, style: btnStyle },
+      { type: "button", onClick: handleExportCSV, disabled: busy, style: btnStyle },
       t("screener.export.csv", { defaultValue: "CSV" }),
     ),
     createElement(
       "button",
-      { type: "button", onClick: handleExportExcel, style: btnStyle },
+      { type: "button", onClick: handleExportExcel, disabled: busy, style: btnStyle },
       t("screener.export.excel", { defaultValue: "Excel (.xlsx)" }),
     ),
   );

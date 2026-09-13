@@ -17,6 +17,17 @@ type Rule = ScreenerRule;
 const DISMISS_LABEL = "✕";
 const DOT_SEPARATOR = " · ";
 
+// P1.1 server scan params (D2/D3, Entry 73).
+export interface ScanParams {
+  sort: string;
+  order: "asc" | "desc";
+  page: number;
+  limit: number;
+  include_ai: number;
+  [key: string]: string | number;
+}
+const DEFAULT_SCAN_PARAMS: ScanParams = { sort: "ai_score", order: "desc", page: 1, limit: 25, include_ai: 1 };
+
 
 interface RuleEditorProps {
   initial: Rule | null;
@@ -123,6 +134,9 @@ export function ScreenerPage() {
   const [notice, setNotice] = useState('');
   const [previewRuleId, setPreviewRuleId] = useState<number | null>(null);
   const [previewInfo, setPreviewInfo] = useState<{ ruleName: string } | null>(null);
+  // P1.1: active server-scan context for pager/sort/export callbacks.
+  const [scanParams, setScanParams] = useState<ScanParams>(DEFAULT_SCAN_PARAMS);
+  const [activeRule, setActiveRule] = useState<Rule | null>(null);
 
   const loadRules = useCallback(async () => {
     setLoading(true);
@@ -273,15 +287,19 @@ export function ScreenerPage() {
     }
   }, [t, rules, confirm, loadRules]);
 
-  const handleRun = async (rule: Rule) => {
+  // P1.1: server-driven scan params (D2/D3 defaults). Page turns keep the
+  // current table on screen (keepResults) and skip history spam.
+  const runWithParams = async (rule: Rule, params: ScanParams, opts?: { keepResults?: boolean }) => {
     setRunning(rule.id ?? null);
-    setResults(null);
+    if (!opts?.keepResults) setResults(null);
     setPreviewInfo(null);
     setError('');
     try {
-      const data = await coreApiAdapter.runScreenerRule(String(rule.id));
+      const data = await coreApiAdapter.runScreenerRule(String(rule.id), params);
+      setScanParams(params);
+      setActiveRule(rule);
       setResults(data);
-      saveHistoryEntry(rule.id ?? null, rule.name, data);
+      if (!opts?.keepResults) saveHistoryEntry(rule.id ?? null, rule.name, data);
     } catch (err: unknown) {
       const errResp = err as { response?: { data?: { detail?: string } } };
       setError(errResp?.response?.data?.detail || t('screener.errors.runRuleFailed'));
@@ -289,6 +307,27 @@ export function ScreenerPage() {
       setRunning(null);
     }
   };
+
+  const handleRun = (rule: Rule) => runWithParams(rule, { ...DEFAULT_SCAN_PARAMS });
+
+  const handleServerPage = (page: number) => {
+    if (activeRule) runWithParams(activeRule, { ...scanParams, page }, { keepResults: true });
+  };
+
+  const handleServerSort = (sort: string, order: "asc" | "desc") => {
+    if (activeRule) runWithParams(activeRule, { ...scanParams, sort, order, page: 1 });
+  };
+
+  // P1.1: export fetches the full set (limit=2000) independent of the pager.
+  const fetchAllRows = useCallback(async (): Promise<Array<Record<string, unknown>>> => {
+    if (!activeRule) return (results?.matched ?? []) as Array<Record<string, unknown>>;
+    const data = await coreApiAdapter.runScreenerRule(String(activeRule.id), {
+      ...scanParams,
+      page: 1,
+      limit: 2000,
+    });
+    return (data.matched ?? []) as Array<Record<string, unknown>>;
+  }, [activeRule, scanParams, results]);
 
   const pageStyle: React.CSSProperties = {
     padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px',
@@ -453,7 +492,26 @@ export function ScreenerPage() {
           {previewInfo.ruleName}
         </div>
       )}
-      {results && <ScreenerResultsTable results={results} />}
+      {results && (
+        <ScreenerResultsTable
+          results={results}
+          serverMeta={
+            results.page != null
+              ? {
+                  page: results.page,
+                  limit: results.limit ?? scanParams.limit,
+                  pages: results.pages ?? 1,
+                  sort: results.sort ?? scanParams.sort,
+                  order: results.order ?? scanParams.order,
+                }
+              : null
+          }
+          busy={running !== null}
+          onServerPage={handleServerPage}
+          onServerSort={handleServerSort}
+          fetchAllRows={fetchAllRows}
+        />
+      )}
       <ScreenerTemplates
         templates={templates}
         applyingId={applyingId}

@@ -5,6 +5,42 @@
 
 ---
 
+## Entry 74: P1.1 Screener — sort/phân trang server + FE adopt (code)
+
+- **Date**: 2026-09-13
+- **Scope**: P1.1 theo plan §2 (F6/F7, D2/D3 — Entry 73 giữ mặc định).
+- **BE** (`portfolio_analytics_views.py`): helper module-level `_parse_scan_params` (querystring trước, JSON body fallback; fail-fast 400 trước compute đắt) + `_scan_sort_value`; sort enum mở rộng (xem deviation), `order asc/desc`, `page ≥ 1`, `limit ∈ {10,25,50,100,2000}` (2000 = export, D3), `include_ai 0/1` (+ cấm `sort=ai_score` khi 0); sort None-cuối 2 chiều; `include_ai=0` bỏ qua `compute_ai_advisory`; response thêm `page/limit/pages/sort/order` (additive, `pages` min 1); **legacy no-params giữ nguyên P0** (close desc, full list, không meta — R1.3).
+- **Deviation nhỏ khỏi plan §2(a) (có lý do)**: enum sort mở rộng từ 7 key lên toàn bộ cột số của bảng + `symbol/date` (comparator generic sẵn có, None-cuối giữ nguyên) để table P0 giữ đủ tính năng sort mọi cột qua server; R1.2 (400 với `sort=foo`) vẫn giữ.
+- **FE**: `workspace.js runScreenerRule(ruleId, params)` ghép querystring; 2 `.d.ts` (`coreApiAdapter.d.ts:121`, `declarations.d.ts:38`) thêm `params?` (đây là nguyên nhân lỗi tsc "Expected 1 arguments" — adapter thật đã 2 params); `ScreenerPage` thêm `ScanParams/activeRule/runWithParams` (page-turn giữ bảng cũ + không spam history, sort reset page 1) + `fetchAllRows` (export `limit=2000` độc lập pager); `ScreenerResultsTable` server mode (`serverMeta/busy/onServerPage/onServerSort`, sort mới desc/symbol asc, indicator từ meta, fallback client khi thiếu meta); `ScreenerExport` async + busy (dùng `fetchAllRows` khi có); types `ScreenerResult` +5 key optional (cả `.ts`/`.d.ts`).
+- **Validation (R1.1–R1.3)**:
+  - MỚI `test_screener_scan_params.py` (U1, 5 tests): sort close asc + meta pages=2, page-2 momentum, 8 case 400, `include_ai=0` advisory None, legacy shape (không meta + close desc + đủ key P0).
+  - MỚI `ScreenerServerPaging.component.test.tsx` (F1 một nửa, 4 tests): map key, render-as-is + pager meta, next→page 2, header→sort desc, indicator ▼.
+  - `npx vitest run src/components/screener` → **30/30**; `tsc` exit 0; eslint scope 0 errors, đúng 3 warnings baseline; `manage.py test user_workspace` → **27 tests: 26 pass + 1 pre-existing** (holdings).
+- **Next**: P1.3 (batch financials + window động) theo plan §8.
+- **Residual**: 202/async (P1.4) + throttle (P1.5) + EXPLAIN/evidence (P1.6).
+
+---
+
+## Entry 73: Chốt 7 tham số P1 §0 — giữ toàn bộ mặc định (decision, no code)
+
+- **Date**: 2026-09-13
+- **Scope**: User chốt cả 7 quyết định §0 của `IMPLEMENTATION_PLAN_SCREENER_P1_20260913.md` (Entry 72) — giữ mặc định hết, không đổi cái nào.
+- **Quyết định**: D1 ngưỡng sync/async 800 mã · D2 sort default `ai_score desc` · D3 `page=1&limit=25`, limit ∈ {10,25,50,100} · D4 TTL cache 4h · D5 throttle prod 30/min + tối đa 3 job pending/user, dev bypass · D6 AI full sync/async, `include_ai=0` bỏ qua + cấm `sort=ai_score` (400) · D7 window clamp [35,90] lịch.
+- **Next**: Thực thi P1 theo thứ tự plan §8 (P1.1 → P1.3 → P1.2 → P1.4 → P1.5 → P1.6).
+- **Validation**: Không chạy gates (decision-only).
+
+---
+
+## Entry 72: PLAN Screener P1 performance (plan, no code)
+
+- **Date**: 2026-09-13
+- **Scope**: Lập plan P1 theo cấu trúc plan P0 (`IMPLEMENTATION_PLAN_SCREENER_P0_20260913.md`), sau khi user chọn "Lập plan P1". Không sửa code.
+- **Report**: `docs/IMPLEMENTATION_PLAN_SCREENER_P1_20260913.md` (§0–10): 7 quyết định chờ chốt D1–D7 (ngưỡng sync/async 800, default sort ai_score, page/limit, cache TTL 4h, throttle 30/min + 3 pending jobs, AI policy, window động) + 7 hiệu chỉnh audit↔code (§1: financials đã cache 12h — P1 batch bằng `get_many`; index DB đã đủ — P1 chỉ EXPLAIN-verify; queue đích `manual_on_demand` có sẵn, không queue mới) + 6 items P1.1–P1.6 (sort/paging server, cache scan, batch financials + window động + trim cột, celery + status endpoint, throttle, tests + evidence) + gates + out-of-scope P2/P3.
+- **Key design**: contract additive-only (params optional, no-params → shape P0); snapshot rule trong task chống lệch; job-state qua Django cache (không lộ celery result backend); cache key chứa `updated_at` nên auto-invalidate; `TESTING ALWAYS_EAGER` giúp test async-flow xác định.
+- **Next**: user chốt/khóa D1–D7 (kiểu Entry 64) → thực thi P1.1 → P1.6.
+
+---
+
 ## Entry 71: P0.7 Screener — tests T1/T4/T5 + fix `NotFound` + evidence ảnh (code — P0 DONE)
 
 - **Date**: 2026-09-13

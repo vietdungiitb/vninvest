@@ -564,9 +564,16 @@ export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, c
       return coreDelete(`/screener/rules/${encodeURIComponent(ruleId)}/`);
     },
 
-    runScreenerRule(ruleId) {
+    // P1.1: optional server scan params {sort, order, page, limit, include_ai}
+    // are sent as querystring (POST body stays {}).
+    runScreenerRule(ruleId, params = {}) {
       if (!ruleId) throw new Error("ruleId is required for runScreenerRule");
-      return corePost(`/screener/rules/${encodeURIComponent(ruleId)}/run/`, {});
+      const qs = Object.entries(params)
+        .filter(([, v]) => v !== undefined && v !== null)
+        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+        .join("&");
+      const url = `/screener/rules/${encodeURIComponent(ruleId)}/run/${qs ? `?${qs}` : ""}`;
+      return corePost(url, {});
     },
 
     getScreenerTemplates() {

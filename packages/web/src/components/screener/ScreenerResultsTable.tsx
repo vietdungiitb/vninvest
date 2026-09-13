@@ -83,11 +83,43 @@ function getCellStyle(val: any, key: keyof ScreenerRow): CSSProperties {
   }
 }
 
-export function ScreenerResultsTable({ results }: { results: ScreenerResult }) {
+export interface ServerPagingMeta {
+  page: number;
+  limit: number;
+  pages: number;
+  sort: string;
+  order: "asc" | "desc";
+}
+
+interface ScreenerResultsTableProps {
+  results: ScreenerResult;
+  /** P1.1: present when the response carries server paging meta — pager/sort drive the server. */
+  serverMeta?: ServerPagingMeta | null;
+  busy?: boolean;
+  onServerPage?: (page: number) => void;
+  onServerSort?: (sort: string, order: "asc" | "desc") => void;
+  /** P1.1: full-set fetcher for export (limit=2000); falls back to the current rows. */
+  fetchAllRows?: () => Promise<Array<Record<string, unknown>>>;
+}
+
+/** Table column key -> server sort param (P1.1 _SORTABLE_FIELDS). */
+export function toServerSortKey(key: keyof ScreenerRow): string {
+  return key === "ai_advisory" ? "ai_score" : String(key);
+}
+
+export function ScreenerResultsTable({
+  results,
+  serverMeta = null,
+  busy = false,
+  onServerPage,
+  onServerSort,
+  fetchAllRows,
+}: ScreenerResultsTableProps) {
   const { t, formatNumber } = useI18n();
   const [sortKey, setSortKey] = useState<keyof ScreenerRow | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
+  const serverMode = serverMeta != null;
   const [showPicker, setShowPicker] = useState(false);
   const [visible, setVisible] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
@@ -98,9 +130,14 @@ export function ScreenerResultsTable({ results }: { results: ScreenerResult }) {
   useEffect(() => { setCurrentPage(1); }, [results]);
 
   const visibleColumns = useMemo(() => COLUMNS.filter((c) => visible[c.key]), [visible]);
-  const totalPages = Math.max(1, Math.ceil(results.matched.length / PAGE_SIZE));
+  const totalPages = serverMode
+    ? Math.max(1, serverMeta.pages)
+    : Math.max(1, Math.ceil(results.matched.length / PAGE_SIZE));
+  const effectivePage = serverMode ? serverMeta.page : currentPage;
 
   const sorted = useMemo(() => {
+    // P1.1 server mode: rows arrive sorted+paged — render as-is.
+    if (serverMode) return results.matched;
     if (!sortKey) return results.matched;
     const data = [...results.matched];
     data.sort((a, b) => {
@@ -115,21 +152,32 @@ export function ScreenerResultsTable({ results }: { results: ScreenerResult }) {
       return sortDir === "asc" ? cmp : -cmp;
     });
     return data;
-  }, [results.matched, sortKey, sortDir]);
+  }, [results.matched, sortKey, sortDir, serverMode]);
 
   const pageRows = useMemo(() => {
+    if (serverMode) return sorted;
     const start = (currentPage - 1) * PAGE_SIZE;
     return sorted.slice(start, start + PAGE_SIZE);
-  }, [sorted, currentPage]);
+  }, [sorted, currentPage, serverMode]);
 
   const handleSort = useCallback((key: keyof ScreenerRow) => {
+    if (serverMode && onServerSort) {
+      const serverKey = toServerSortKey(key);
+      // Same key -> toggle; new key -> desc (symbol asc) + reset to page 1 (page-side).
+      if (serverMeta && serverMeta.sort === serverKey) {
+        onServerSort(serverKey, serverMeta.order === "asc" ? "desc" : "asc");
+      } else {
+        onServerSort(serverKey, serverKey === "symbol" ? "asc" : "desc");
+      }
+      return;
+    }
     if (sortKey === key) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
       setSortKey(key);
       setSortDir("asc");
     }
-  }, [sortKey]);
+  }, [sortKey, serverMode, serverMeta, onServerSort]);
 
   const groupedColumns = useMemo(() => {
     return GROUP_ORDER.map((g) => ({
@@ -165,7 +213,7 @@ export function ScreenerResultsTable({ results }: { results: ScreenerResult }) {
       createElement(
         "div",
         { style: { display: "flex", alignItems: "center", gap: "8px" } },
-        createElement(ScreenerExport, { results, visibleColumns: visibleForExport }),
+        createElement(ScreenerExport, { results, visibleColumns: visibleForExport, fetchAllRows }),
         createElement(
           "button",
           {
@@ -280,7 +328,11 @@ export function ScreenerResultsTable({ results }: { results: ScreenerResult }) {
                         "span",
                         { style: { display: "inline-flex", alignItems: "center", gap: "4px" } },
                         t(col.labelKey),
-                        sortKey === col.key ? (sortDir === "asc" ? " ▲" : " ▼") : "",
+                        serverMode && serverMeta
+                          ? (serverMeta.sort === toServerSortKey(col.key)
+                              ? (serverMeta.order === "asc" ? " ▲" : " ▼")
+                              : "")
+                          : (sortKey === col.key ? (sortDir === "asc" ? " ▲" : " ▼") : ""),
                       ),
                     ),
                   ),
@@ -329,20 +381,24 @@ export function ScreenerResultsTable({ results }: { results: ScreenerResult }) {
                 "button",
                 {
                   type: "button",
-                  onClick: () => setCurrentPage((p) => Math.max(1, p - 1)),
-                  disabled: currentPage <= 1,
-                  style: { padding: "6px 12px", background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", borderRadius: "6px", color: "var(--text-primary, #f1f5f9)", cursor: currentPage <= 1 ? "not-allowed" : "pointer", opacity: currentPage <= 1 ? 0.5 : 1 },
+                  onClick: () => serverMode && onServerPage
+                    ? onServerPage(Math.max(1, effectivePage - 1))
+                    : setCurrentPage((p) => Math.max(1, p - 1)),
+                  disabled: busy || effectivePage <= 1,
+                  style: { padding: "6px 12px", background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", borderRadius: "6px", color: "var(--text-primary, #f1f5f9)", cursor: busy || effectivePage <= 1 ? "not-allowed" : "pointer", opacity: busy || effectivePage <= 1 ? 0.5 : 1 },
                 },
                 t("common.prev"),
               ),
-              createElement("span", { style: { color: "var(--text-muted, #94a3b8)", fontSize: "12px" } }, currentPage + " / " + totalPages),
+              createElement("span", { style: { color: "var(--text-muted, #94a3b8)", fontSize: "12px" } }, effectivePage + " / " + totalPages),
               createElement(
                 "button",
                 {
                   type: "button",
-                  onClick: () => setCurrentPage((p) => Math.min(totalPages, p + 1)),
-                  disabled: currentPage >= totalPages,
-                  style: { padding: "6px 12px", background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", borderRadius: "6px", color: "var(--text-primary, #f1f5f9)", cursor: currentPage >= totalPages ? "not-allowed" : "pointer", opacity: currentPage >= totalPages ? 0.5 : 1 },
+                  onClick: () => serverMode && onServerPage
+                    ? onServerPage(Math.min(totalPages, effectivePage + 1))
+                    : setCurrentPage((p) => Math.min(totalPages, p + 1)),
+                  disabled: busy || effectivePage >= totalPages,
+                  style: { padding: "6px 12px", background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", borderRadius: "6px", color: "var(--text-primary, #f1f5f9)", cursor: busy || effectivePage >= totalPages ? "not-allowed" : "pointer", opacity: busy || effectivePage >= totalPages ? 0.5 : 1 },
                 },
                 t("common.next"),
               ),
