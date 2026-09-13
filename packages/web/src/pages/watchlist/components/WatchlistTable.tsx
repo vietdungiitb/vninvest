@@ -6,7 +6,7 @@ import { coreApiAdapter } from "../../../adapters/coreApiAdapter.js";
 import { createColumnHelper, useReactTable, getCoreRowModel, getSortedRowModel, getFilteredRowModel, getPaginationRowModel, flexRender } from "@tanstack/react-table";
 import { FixedSizeList as List } from "react-window";
 
-const PAGE_SIZE_OPTIONS = [50, 100, 200];
+const PAGE_SIZE_OPTIONS = [10, 15, 20, 50];
 
 export function WatchlistTable({ density }: { density: "compact" | "comfortable" }) {
   const { 
