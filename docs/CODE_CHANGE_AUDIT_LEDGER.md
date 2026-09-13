@@ -5,6 +5,23 @@
 
 ---
 
+## Entry 67: P0.1 Screener — flow-facts đầy đủ + metadata thiếu/staleness (code)
+
+- **Date**: 2026-09-13
+- **Scope**: P0.1 theo plan §2 (F2, Q2 = badge "thiếu dữ liệu"). BE + types + 2 keys + UI banner/badge.
+- **Files**:
+  - `packages/core/backend/src/user_workspace/portfolio_analytics_views.py`: const `_FLOW_FIELDS_NO_SOURCE` (6 field vô nguồn — `SessionFacts` không có cột tương ứng, verified `models.py:69-112`); nhánh `else` populate thêm 5 field = 0.0 (`whale_buy/sell/total_value`, `whale_buy/sell_pct`) đồng shape nhánh facts (R1.1); cả 2 nhánh gán 6 field vô nguồn = `None`; giữ nguyên `_apply_screener_condition(None) → False`; đếm `missing_counts` cho field trong conditions trên toàn bộ rows đã quét; response thêm `session_date/is_stale/days_old/missing_fields/missing_counts` (5 key cũ giữ nguyên — R1.4); `is_stale = session_date < today`.
+  - `packages/web/src/types/screener.ts` + `screener.d.ts`: `ScreenerResult` thêm 5 field optional (tương thích response cũ thiếu key).
+  - `packages/web/src/i18n/vi.js` + `en.js`: thêm `screener.staleBanner`, `screener.missingDataBadge` (2/10 keys §8 của plan; 8 còn lại để P0.2–P0.4).
+  - `packages/web/src/components/screener/ScreenerResultsTable.tsx`: banner vàng khi `is_stale` + pills cyan mỗi field trong `missing_fields` (`{field}: Thiếu dữ liệu (x/y mã)`, title = tên field).
+- **Validation (R1.1–R1.4)**:
+  - `npx tsc --noEmit` → exit 0; eslint scope → 0 errors, đúng 5 warnings pre-existing.
+  - `manage.py test user_workspace` → 16 tests, 15 pass + 1 error pre-existing (holdings route, đã verify bằng stash ở Entry 65) — không regression.
+- **Next**: P0.2 (export + dep `xlsx`) theo plan §10.
+- **Residual**: test BE case thiếu-facts/stale + component banner để P0.7 T4/T5.
+
+---
+
 ## Entry 66: P0.5 Screener — i18n full dấu block screener (code)
 
 - **Date**: 2026-09-13

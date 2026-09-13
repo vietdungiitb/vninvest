@@ -67,6 +67,12 @@ export interface ScreenerResult {
   total_scanned: number;
   rule_name: string;
   rule_id: number;
+  // P0.1 additions (optional — older cached responses lack them)
+  session_date?: string;
+  is_stale?: boolean;
+  days_old?: number;
+  missing_fields?: string[];
+  missing_counts?: Record<string, number>;
 }
 
 // NOTE (P0.6): runtime registries live ONLY in ./screener.ts (single source).

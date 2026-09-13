@@ -1366,6 +1366,15 @@ class PortfolioAIAdvisorySymbolStatsView(APIView):
         return Response({'stats': []})
 
 
+# P0.1: allowlisted flow fields with NO SessionFacts source (see market_serving
+# models SessionFacts: only cvd/strengths/whale_net_flow/dark_score/buy-sell
+# volumes exist). Always None -> never match; reported via missing_fields (Q2).
+_FLOW_FIELDS_NO_SOURCE = (
+    'whale_unknown_value', 'whale_unknown_pct', 'whale_trade_count',
+    'whale_whale_value', 'whale_shark_value', 'whale_small_value',
+)
+
+
 class PortfolioScreenerRuleRunView(APIView):
     """POST /api/portfolio/screener/rules/<pk>/run/"""
     # P0.6 deviation (see IMPLEMENTATION_PLAN_SCREENER_P0_20260913.md §1.3):
@@ -1406,7 +1415,13 @@ class PortfolioScreenerRuleRunView(APIView):
             })
         
         session_date = latest_snap.session_date
-        
+
+        # P0.1: staleness metadata for the UI banner (weekends/holidays scan
+        # the last available session — never silently).
+        today = date.today()
+        days_old = (today - session_date).days if session_date else 0
+        is_stale = days_old > 0
+
         snapshots = SymbolSnapshot.objects.filter(session_date=session_date)
         symbols = [s.symbol for s in snapshots]
         
@@ -1425,7 +1440,14 @@ class PortfolioScreenerRuleRunView(APIView):
         history_map = defaultdict(list)
         for p in prices:
             history_map[p.symbol].append(p)
-            
+
+        # P0.1: fields referenced by this rule's conditions — used to report
+        # per-field missing-data coverage (Q2 badge).
+        from collections import Counter
+        cond_list = conditions if isinstance(conditions, list) else []
+        cond_fields = {c.get('field') for c in cond_list if isinstance(c, dict) and c.get('field')}
+        missing_counts = Counter()
+
         matched = []
         for snap in snapshots:
             sym = snap.symbol
@@ -1449,7 +1471,7 @@ class PortfolioScreenerRuleRunView(APIView):
                     'dark_flow_max_strength': facts.dark_flow_score,
                     'dark_flow_signal_count': 1 if facts.dark_flow_score > 0 else 0,
                     'dark_flow_cvd': facts.cvd_normalized,
-                    
+
                     'whale_buy_value': facts.total_buy_volume * float(snap.price),
                     'whale_sell_value': facts.total_sell_volume * float(snap.price),
                     'whale_net_value': facts.whale_net_flow,
@@ -1459,15 +1481,27 @@ class PortfolioScreenerRuleRunView(APIView):
                     'whale_intensity': facts.institutional_strength,
                 }
             else:
+                # P0.1: same shape as the facts branch (deliberate zeros), so
+                # every allowlisted field is always present in the row (R1.1).
                 flow_facts = {
                     'dark_flow_strength': 0.0,
                     'dark_flow_avg_strength': 0.0,
                     'dark_flow_max_strength': 0.0,
                     'dark_flow_signal_count': 0,
                     'dark_flow_cvd': 0.0,
+                    'whale_buy_value': 0.0,
+                    'whale_sell_value': 0.0,
                     'whale_net_value': 0.0,
+                    'whale_total_value': 0.0,
+                    'whale_buy_pct': 0.0,
+                    'whale_sell_pct': 0.0,
                     'whale_intensity': 0.0,
                 }
+            # P0.1: fields with no source are explicit None (never match —
+            # _apply_screener_condition(None) is False) and surface via
+            # missing_fields/missing_counts below (Q2 "thiếu dữ liệu" badge).
+            for no_src_field in _FLOW_FIELDS_NO_SOURCE:
+                flow_facts[no_src_field] = None
                 
             row = {
                 'symbol': sym,
@@ -1504,15 +1538,27 @@ class PortfolioScreenerRuleRunView(APIView):
             else:
                 # No conditions means match all
                 matched.append(row)
-                
+
+            # P0.1: count symbols missing each condition field (evaluated for
+            # every scanned row, not just matched — coverage denominator below).
+            for f in cond_fields:
+                if row.get(f) is None:
+                    missing_counts[f] += 1
+
         matched.sort(key=lambda item: item.get('close') or 0, reverse=True)
-        
+
         return Response({
             'rule_id': rule.id,
             'rule_name': rule.name,
             'total_scanned': len(symbols),
             'matched_count': len(matched),
             'matched': matched,
+            # P0.1 additions (additive only — the 5 legacy keys above unchanged).
+            'session_date': session_date.isoformat(),
+            'is_stale': is_stale,
+            'days_old': days_old,
+            'missing_fields': sorted(missing_counts),
+            'missing_counts': dict(missing_counts),
         })
 
 

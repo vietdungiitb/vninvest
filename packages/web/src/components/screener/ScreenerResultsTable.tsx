@@ -177,6 +177,47 @@ export function ScreenerResultsTable({ results }: { results: ScreenerResult }) {
         ),
       ),
     ),
+    results.is_stale &&
+      createElement(
+        "div",
+        {
+          style: {
+            marginBottom: "12px", padding: "10px 14px", fontSize: "12px",
+            background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.4)",
+            borderRadius: "8px", color: "#fcd34d",
+          },
+        },
+        t("screener.staleBanner", {
+          date: results.session_date ?? "—",
+          days: formatNumber(results.days_old ?? 0),
+          defaultValue: `Dữ liệu phiên ${results.session_date ?? "—"} — cũ ${results.days_old ?? 0} ngày`,
+        }),
+      ),
+    results.missing_fields && results.missing_fields.length > 0 &&
+      createElement(
+        "div",
+        { style: { display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "12px" } },
+        results.missing_fields.map((f) =>
+          createElement(
+            "span",
+            {
+              key: f,
+              title: f,
+              style: {
+                fontSize: "11px", padding: "2px 10px", borderRadius: "999px",
+                background: "rgba(34,211,238,0.12)", border: "1px solid rgba(34,211,238,0.35)",
+                color: "#67e8f9",
+              },
+            },
+            `${f}: ` +
+              t("screener.missingDataBadge", {
+                missing: formatNumber(results.missing_counts?.[f] ?? 0),
+                total: formatNumber(results.total_scanned),
+                defaultValue: `Thiếu dữ liệu (${results.missing_counts?.[f] ?? 0}/${results.total_scanned} mã)`,
+              }),
+          ),
+        ),
+      ),
     results.matched.length === 0
       ? createElement("p", { style: { color: "var(--text-muted, #94a3b8)", fontSize: "14px", textAlign: "center", padding: "24px 0" } }, t("screener.noMatchedSymbols"))
       : createElement(

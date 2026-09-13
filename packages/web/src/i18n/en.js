@@ -2378,6 +2378,8 @@ const en = {
     matched: 'matched',
     scannedSymbols: 'symbols scanned',
     noMatchedSymbols: 'No symbols matched the conditions.',
+    staleBanner: 'Session data {date} — {days} days old',
+    missingDataBadge: 'Missing data ({missing}/{total} symbols)',
     columns: {
       symbol: 'Symbol',
       price: 'Price',

@@ -2376,6 +2376,8 @@ const vi = {
     matched: 'khớp',
     scannedSymbols: 'mã được quét',
     noMatchedSymbols: 'Không có mã nào khớp điều kiện.',
+    staleBanner: 'Dữ liệu phiên {date} — cũ {days} ngày',
+    missingDataBadge: 'Thiếu dữ liệu ({missing}/{total} mã)',
     columns: {
       symbol: 'Mã',
       price: 'Giá',

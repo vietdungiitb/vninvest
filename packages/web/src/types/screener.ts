@@ -144,6 +144,12 @@ export type ScreenerResult = {
   total_scanned: number;
   rule_name: string;
   rule_id: number;
+  // P0.1 additions (optional — older cached responses lack them)
+  session_date?: string;
+  is_stale?: boolean;
+  days_old?: number;
+  missing_fields?: string[];
+  missing_counts?: Record<string, number>;
 };
 
 export type ScreenerFieldKey = keyof typeof SCREENER_FIELD_GROUPS[keyof typeof SCREENER_FIELD_GROUPS]["fields"];
