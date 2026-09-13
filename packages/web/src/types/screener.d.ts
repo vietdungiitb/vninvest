@@ -1,7 +1,8 @@
 export interface ScreenerCondition {
   field: string;
   op: 'lt' | 'lte' | 'gt' | 'gte' | 'eq';
-  value: number;
+  // P0.3: "" = user cleared the input (kept until save so valueRequired fires)
+  value: number | '';
   logic?: 'AND' | 'OR' | 'NOT';  // Logic to combine with next condition
 }
 

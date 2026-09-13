@@ -2,6 +2,7 @@ import { createElement, useCallback, ChangeEvent } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import type { ScreenerCondition } from "../../types/screener.d.ts";
 import { SCREENER_FIELD_GROUPS, OP_OPTIONS, LOGIC_OPTIONS } from "../../types/screener.ts";
+import { getFieldSpec } from "./screenerValidation.js";
 
 interface ScreenerFilterBuilderProps {
   conditions: ScreenerCondition[];
@@ -25,6 +26,24 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
     if (conditions.length <= 1) return;
     onChange(conditions.filter((_, i) => i !== index));
   }, [conditions, onChange]);
+
+  // P0.3 (F4): picker checkboxes really add/remove conditions (R3.3).
+  const togglePickerField = useCallback((fieldKey: string) => {
+    const idx = conditions.findIndex((c) => c.field === fieldKey);
+    if (idx >= 0) {
+      if (conditions.length <= 1) return;
+      onChange(conditions.filter((_, i) => i !== idx));
+      return;
+    }
+    if (conditions.length >= maxConditions) return;
+    const spec = getFieldSpec(fieldKey);
+    onChange([...conditions, {
+      field: fieldKey,
+      op: spec?.defaultOp ?? "gt",
+      value: spec?.defaultValue ?? 0,
+      logic: "AND",
+    }]);
+  }, [conditions, onChange, maxConditions]);
 
   const renderCondition = (cond: ScreenerCondition, index: number) => {
     
@@ -110,7 +129,8 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
           type: "number",
           step: "any",
           value: cond.value,
-          onChange: (e: ChangeEvent<HTMLInputElement>) => updateCondition(index, "value", parseFloat(e.target.value) || 0),
+          // P0.3: keep "" when cleared so save-time valueRequired fires (R3.1)
+          onChange: (e: ChangeEvent<HTMLInputElement>) => updateCondition(index, "value", e.target.value === "" ? "" : Number(e.target.value)),
           placeholder: t("screener.valuePlaceholder"),
           style: {
             width: "100px",
@@ -190,7 +210,7 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
                 createElement("input", {
                   type: "checkbox",
                   checked: conditions.some(c => c.field === fieldKey),
-                  onChange: () => {},
+                  onChange: () => togglePickerField(fieldKey),
                   style: { width: "16px", height: "16px", accentColor: "var(--accent-cyan, #06b6d4)" },
                 }),
                 t("screener.fields." + field.key)

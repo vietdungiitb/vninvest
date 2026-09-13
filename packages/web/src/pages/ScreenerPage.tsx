@@ -3,6 +3,7 @@ import { coreApiAdapter } from '../adapters/coreApiAdapter.js';
 import { useI18n } from '../context/LangContext.js';
 import { useConfirm } from '../components/ConfirmModal.js';
 import { ScreenerFilterBuilder } from '../components/screener/ScreenerFilterBuilder.js';
+import { validateConditionValue } from '../components/screener/screenerValidation.js';
 import { ScreenerResultsTable } from '../components/screener/ScreenerResultsTable.js';
 import { ScreenerTemplates } from '../components/screener/ScreenerTemplates.js';
 import { ScreenerHistory } from '../components/screener/ScreenerHistory.js';
@@ -28,9 +29,21 @@ function RuleEditor({ initial, onSave, onCancel }: RuleEditorProps) {
 
   const handleSave = () => {
     if (!name.trim()) { setErr(t('screener.errors.nameRequired')); return; }
+    // P0.3: domain validation per field (R3.2); "" kept by the builder so
+    // valueRequired/valueNumber are reachable again (R3.1).
     for (const c of conds) {
-      if (c.value === null || c.value === undefined) { setErr(t('screener.errors.valueRequired')); return; }
-      if (isNaN(Number(c.value))) { setErr(t('screener.errors.valueNumber')); return; }
+      const verr = validateConditionValue(c.field, c.value);
+      if (verr?.kind === "required") { setErr(t('screener.errors.valueRequired')); return; }
+      if (verr?.kind === "number") { setErr(t('screener.errors.valueNumber')); return; }
+      if (verr?.kind === "range") {
+        setErr(t('screener.errors.valueRange', {
+          field: c.field,
+          min: verr.min ?? "−∞",
+          max: verr.max ?? "+∞",
+          defaultValue: `Giá trị ${c.field} phải trong khoảng ${verr.min ?? "−∞"}–${verr.max ?? "+∞"}`,
+        }));
+        return;
+      }
     }
     setErr('');
     onSave({ name: name.trim(), rules_json: conds.map((c) => ({ ...c, value: Number(c.value) })) });

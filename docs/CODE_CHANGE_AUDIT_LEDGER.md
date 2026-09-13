@@ -5,6 +5,25 @@
 
 ---
 
+## Entry 69: P0.3 Screener — picker thật + giữ rỗng + validate miền (code)
+
+- **Date**: 2026-09-13
+- **Scope**: P0.3 theo plan §4 (F4). Builder + RuleEditor + registry + 1 key lỗi.
+- **Files**:
+  - `packages/web/src/types/screener.ts`: `ScreenerFieldSpec` (`defaultOp/defaultValue/min?/max?`) + registry gõ `Record<string, ScreenerFieldGroup>` (bỏ `as const`); `ScreenerCondition.value: number | ""`; `ScreenerOp/ScreenerLogic` types; `ScreenerFieldKey = string` (đã verify 0 usage).
+  - `packages/web/src/types/screener.d.ts`: `ScreenerCondition.value: number | ''` đồng bộ.
+  - MỚI `packages/web/src/components/screener/screenerValidation.ts`: `getFieldSpec` + `validateConditionValue` (required/number/range; field ngoài registry chỉ check finite — BE là lưới cuối).
+  - `packages/web/src/components/screener/ScreenerFilterBuilder.tsx`: input giữ `""` khi xóa (R3.1); `togglePickerField` — check thêm condition (op/value mặc định từ spec), uncheck xóa (giữ quy tắc ≥1 condition, ≤max).
+  - `packages/web/src/pages/ScreenerPage.tsx`: `RuleEditor.handleSave` chạy helper → `valueRequired/valueNumber` reachable lại + `valueRange` (`{field}/{min}/{max}`).
+  - `packages/web/src/i18n/vi.js` + `en.js`: thêm `screener.errors.valueRange` (6/10 keys §8).
+  - MỚI `.../__tests__/screenerValidation.component.test.ts` (6 tests — T3 một nửa; dedupe test để P0.4).
+- **Miền đã khóa**: RSI/Stoch/MFI/ADX + buy/sell/range pct: 0–100; volume/rvol/avgVol/close/atr/bollWidth/vwap/pe/marketCap/divYield/debt: ≥ 0; dark CVD: −1–1; còn lại: finite.
+- **Validation (R3.1–R3.4)**: vitest screener → **13/13 pass** (7 export + 6 validation); `tsc` exit 0; eslint scope → 0 errors, đúng 5 warnings pre-existing (lệch dòng do thêm import); BE không đụng → không chạy lại pytest (giữ baseline Entry 67).
+- **Next**: P0.4 (template preview + dedupe) theo plan §10.
+- **Residual**: screenshot lỗi rỗng/range trên UI thật để nghiệm thu cuối P0.
+
+---
+
 ## Entry 68: P0.2 Screener — export label dịch + CSV BOM + `.xlsx` thật (code)
 
 - **Date**: 2026-09-13

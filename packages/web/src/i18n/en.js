@@ -2533,6 +2533,7 @@ const en = {
       nameRequired: 'Rule name is required.',
       valueRequired: 'Condition value is required.',
       valueNumber: 'Condition value must be numeric.',
+      valueRange: 'Value for {field} must be between {min}–{max}',
       loadRulesFailed: 'Failed to load rule list.',
       saveRuleFailed: 'Failed to save rule.',
       deleteRuleFailed: 'Failed to delete rule.',

@@ -2531,6 +2531,7 @@ const vi = {
       nameRequired: 'Tên rule không được để trống.',
       valueRequired: 'Giá trị điều kiện không được để trống.',
       valueNumber: 'Giá trị điều kiện phải là số.',
+      valueRange: 'Giá trị {field} phải trong khoảng {min}–{max}',
       loadRulesFailed: 'Không tải được danh sách rule.',
       saveRuleFailed: 'Lưu rule thất bại.',
       deleteRuleFailed: 'Xóa rule thất bại.',
