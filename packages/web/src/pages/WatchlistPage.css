@@ -23,7 +23,7 @@
 
 .watchlistPage__layout {
   display: grid;
-  grid-template-columns: minmax(240px, 22%) 1fr; /* P2-2 token variant — 240px fallback via 22% */
+  grid-template-columns: minmax(264px, 22%) 1fr;
   gap: var(--sp-5, 1.25rem);
   width: 100%;
   align-items: stretch;
@@ -655,11 +655,10 @@
 /* === Row Action Buttons (hover-to-reveal) === */
 .watchlistPage__rowActions {
   display: flex;
-  gap: 2px;
+  gap: 4px;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  transition: opacity 0.15s ease;
+  opacity: 1;
 }
 
 .watchlistPage__table tr:hover .watchlistPage__rowActions,
@@ -671,8 +670,8 @@
   background: none;
   border: 1px solid transparent;
   color: var(--text-muted, #94a3b8);
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: 4px;
   cursor: pointer;
   display: flex;

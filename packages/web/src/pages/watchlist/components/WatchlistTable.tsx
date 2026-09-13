@@ -241,7 +241,8 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
         const m = getMergedData(row.original.symbol);
         const pct = Number(m.price_change_pct || 0);
         const isUp = pct > 0, isDown = pct < 0;
-        return createElement("span", { style: { fontFamily: "monospace", color: isUp ? "#10b981" : isDown ? "#f43f5e" : "var(--text-muted, #94a3b8)" } }, pct !== 0 ? `${isUp ? "+" : ""}${pct.toFixed(2)}%` : "0.00%");
+        const showWarn = Math.abs(pct) > 15;
+        return createElement("span", { style: { fontFamily: "monospace", color: isUp ? "#10b981" : isDown ? "#f43f5e" : "var(--text-muted, #94a3b8)" }, title: showWarn ? "Biến động vượt trần — kiểm tra nguồn" : undefined }, pct !== 0 ? `${isUp ? "+" : ""}${pct.toFixed(2)}%${showWarn ? " ⚠️" : ""}` : "0.00%");
       },
       enableSorting: true,
     }));
@@ -258,10 +259,10 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
       cols.push(helper.accessor((row: any) => Number(row.unrealized_pnl || 0), { id: "pnl", header: () => t("watchlist.table.pnl", { defaultValue: "Lãi / Lỗ" }), cell: ({ row }: any) => { const pnl = Number(row.original.unrealized_pnl || 0); return createElement("span", { style: { fontFamily: "monospace", color: pnl > 0 ? "#10b981" : pnl < 0 ? "#f43f5e" : "var(--text-muted, #94a3b8)" } }, pnl !== 0 ? `${pnl > 0 ? "+" : ""}${Math.round(pnl).toLocaleString()}` : "0"); }, enableSorting: true }));
       cols.push(helper.accessor((row: any) => Number(row.unrealized_pnl_pct || 0), { id: "pnl_pct", header: () => t("watchlist.table.pnl_pct", { defaultValue: "% Lãi / Lỗ" }), cell: ({ row }: any) => { const pct = Number(row.original.unrealized_pnl_pct || 0); return createElement("span", { style: { fontFamily: "monospace", color: pct > 0 ? "#10b981" : pct < 0 ? "#f43f5e" : "var(--text-muted, #94a3b8)" } }, pct !== 0 ? `${pct > 0 ? "+" : ""}${pct.toFixed(2)}%` : "0.00%"); }, enableSorting: true }));
     } else if (selectedType === "tracked") {
-      cols.push(helper.accessor("company_name" as any, { header: () => t("watchlist.table.company_name", { defaultValue: "Tên doanh nghiệp" }), cell: ({ row }: any) => { const r = row.original; const m = technicalsMap[r.symbol] || {}; return createElement("div", { style: { display: "flex", flexDirection: "column" } }, createElement("span", { style: { fontWeight: 700, color: "var(--text-primary, #f1f5f9)", fontSize: "0.85rem" } }, m.company_name || r.company_name || "—"), createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)" } }, m.industry || r.industry || "—")); } }));
-      cols.push(helper.display({ id: "limit", header: () => t("watchlist.table.limit", { defaultValue: "Ngưỡng giám sát" }), cell: ({ row }: any) => { const sym = row.original.symbol; const raw = row.original.whale_alert_threshold_million ?? trackedSymbols.find((t: any) => t.symbol === sym)?.whale_alert_threshold_million; return raw != null ? `${Number(raw).toFixed(1)}M` : t("watchlist.table.default_threshold", { defaultValue: "Mặc định" }); } }));
+      cols.push(helper.accessor("company_name" as any, { header: () => t("watchlist.table.company_name", { defaultValue: "Tên doanh nghiệp" }), cell: ({ row }: any) => { const r = row.original; const m = technicalsMap[r.symbol] || {}; const name = m.company_name || r.company_name || "—"; const ind = m.industry || r.industry || ""; const indDisplay = ind && ind !== "Khác" ? ind : ""; return createElement("div", { style: { display: "flex", flexDirection: "column" } }, createElement("span", { style: { fontWeight: 700, color: "var(--text-primary, #f1f5f9)", fontSize: "0.85rem", whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis", maxWidth: "220px" } }, name), indDisplay ? createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)" } }, indDisplay) : null); } }));
+      cols.push(helper.display({ id: "limit", header: () => t("watchlist.table.limit", { defaultValue: "Ngưỡng giám sát" }) + " (tr/tỷ)", cell: ({ row }: any) => { const sym = row.original.symbol; const raw = row.original.whale_alert_threshold_million ?? trackedSymbols.find((t: any) => t.symbol === sym)?.whale_alert_threshold_million; if (raw == null) return t("watchlist.table.default_threshold", { defaultValue: "Mặc định" }); const v = Number(raw); if (v >= 1000) return `${(v/1000).toLocaleString("vi-VN", {minimumFractionDigits:1, maximumFractionDigits:1})} tỷ`; return `${v.toLocaleString("vi-VN", {minimumFractionDigits:1, maximumFractionDigits:1})} tr`; } }));
     } else {
-      cols.push(helper.accessor("company_name" as any, { header: () => t("watchlist.table.company_name", { defaultValue: "Tên doanh nghiệp" }), cell: ({ row }: any) => { const r = row.original; const m = technicalsMap[r.symbol] || {}; return createElement("div", { style: { display: "flex", flexDirection: "column" } }, createElement("span", { style: { fontWeight: 700, color: "var(--text-primary, #f1f5f9)", fontSize: "0.85rem" } }, m.company_name || r.company_name || "—"), createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)" } }, m.industry || r.industry || "—")); } }));
+      cols.push(helper.accessor("company_name" as any, { header: () => t("watchlist.table.company_name", { defaultValue: "Tên doanh nghiệp" }), cell: ({ row }: any) => { const r = row.original; const m = technicalsMap[r.symbol] || {}; const name = m.company_name || r.company_name || "—"; const ind = m.industry || r.industry || ""; const indDisplay = ind && ind !== "Khác" ? ind : ""; return createElement("div", { style: { display: "flex", flexDirection: "column" } }, createElement("span", { style: { fontWeight: 700, color: "var(--text-primary, #f1f5f9)", fontSize: "0.85rem", whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis", maxWidth: "220px" } }, name), indDisplay ? createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)" } }, indDisplay) : null); } }));
       if (visibleColumns.rsi) cols.push(helper.accessor((row: any) => technicalsMap[row.symbol]?.rsi_14 ?? -999, { id: "rsi", header: () => t("watchlist.column.rsi"), cell: ({ row }: any) => { const v = technicalsMap[row.original.symbol]?.rsi_14; return v !== undefined && v !== null ? Number(v).toFixed(1) : "—"; } }));
       if (visibleColumns.rvol) cols.push(helper.accessor((row: any) => technicalsMap[row.symbol]?.rvol ?? -999, { id: "rvol", header: () => t("watchlist.column.rvol"), cell: ({ row }: any) => { const v = technicalsMap[row.original.symbol]?.rvol; return v !== undefined && v !== null ? Number(v).toFixed(2) : "—"; } }));
     }
@@ -422,7 +423,7 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
 
   return createElement(
     "div",
-    { style: { display: "flex", flexDirection: "column", gap: "10px", width: "100%" } },
+    { style: { display: "flex", flexDirection: "column", gap: "10px", width: "100%", minWidth: 0, overflowX: "hidden" } },
     createElement(
       "div",
       { style: { display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px" } },
@@ -488,7 +489,7 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
         "table",
         { 
           className: `watchlistPage__table w-full ${density === "compact" ? "watchlistPage__table--compact" : ""}`,
-          style: { width: "100%", borderCollapse: "collapse", textAlign: "left" },
+          style: { width: "100%", minWidth: "900px", borderCollapse: "collapse", textAlign: "left", tableLayout: "fixed" as const },
           role: "grid",
           "aria-label": t("watchlist.table.aria_grid", { defaultValue: "Bảng danh mục theo dõi" })
         },
@@ -503,7 +504,7 @@ export function WatchlistTable({ density }: { density: "compact" | "comfortable"
         renderTableBody()
       )
       ),
-      filteredSortedItems.length > pageSize && createElement(WatchlistTablePager, {
+      createElement(WatchlistTablePager, {
         page, pageSize, totalPages, totalItems: filteredSortedItems.length,
         onPageChange: setPage, onPageSizeChange: (s: number) => { setPageSize(s); setPage(0); },
       })
@@ -679,6 +680,11 @@ function WatchlistTablePager({
         flexWrap: "wrap",
         padding: "12px 16px",
         borderTop: "1px solid rgba(80, 120, 168, 0.15)",
+        position: "sticky" as const,
+        bottom: 0,
+        background: "rgba(15, 23, 42, 0.95)",
+        backdropFilter: "blur(8px)",
+        zIndex: 5,
       },
     },
     createElement(

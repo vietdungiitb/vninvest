@@ -314,18 +314,26 @@ export function WatchlistSidebar() {
       })
     ),
 
+    watchlists.length === 0 && createElement(
+      "div",
+      { style: { padding: "12px", border: "1px dashed rgba(80,120,168,0.25)", borderRadius: "8px", background: "rgba(148,163,184,0.06)", display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", textAlign: "center" } },
+      createElement("span", { style: { fontSize: "1.25rem" } }, "📋"),
+      createElement("p", { style: { margin: 0, fontSize: "0.8rem", color: "var(--text-muted, #94a3b8)", lineHeight: 1.4 } }, t("watchlist.sidebar.empty_title", { defaultValue: "Chưa có danh sách — tạo để nhóm mã theo chiến lược" })),
+      createElement("button", { type: "button", onClick: () => { const el = document.querySelector('.watchlistPage__sidebarAction input') as HTMLInputElement; el?.focus(); }, style: { padding: "6px 12px", borderRadius: "6px", border: "1px solid rgba(34,211,238,0.3)", background: "rgba(34,211,238,0.1)", color: "var(--accent-cyan, #22d3ee)", cursor: "pointer", fontSize: "0.8rem", fontWeight: 600 } }, t("watchlist.sidebar.empty_cta", { defaultValue: "Tạo danh sách" }))
+    ),
     // Create New Watchlist Form
     createElement(
       "form",
       { 
         className: "watchlistPage__sidebarAction", 
-        style: { display: "flex", flexDirection: "column", gap: "8px", marginTop: "0.5rem" },
+        style: { display: "flex", flexDirection: "row", gap: "8px", marginTop: "0.5rem", alignItems: "center" },
         onSubmit: handleCreateWatchlist 
       },
       createElement("input", {
         className: "watchlistPage__input",
         style: {
-          width: "100%",
+          flex: 1,
+          minWidth: 0,
           padding: "8px 12px",
           fontSize: "0.8rem",
           background: "rgba(2, 11, 35, 0.4)",
@@ -344,19 +352,20 @@ export function WatchlistSidebar() {
           type: "submit", 
           className: styles.actionBtn,
           style: {
-            width: "100%",
             padding: "8px 12px",
-            fontSize: "0.8rem",
+            fontSize: "0.85rem",
             fontWeight: 700,
-            background: "rgba(255, 255, 255, 0.08)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
+            background: "rgba(34, 211, 238, 0.15)",
+            border: "1px solid rgba(34, 211, 238, 0.35)",
             borderRadius: "6px",
-            color: "var(--text-primary, #f1f5f9)",
+            color: "var(--accent-cyan, #22d3ee)",
             cursor: "pointer",
-            transition: "all 0.15s ease"
+            transition: "all 0.15s ease",
+            whiteSpace: "nowrap" as const,
+            flexShrink: 0
           }
         },
-        t("watchlist.sidebar.create_list", { defaultValue: "Tạo danh sách" })
+        "+"
       )
     ),
 
@@ -412,8 +421,9 @@ export function WatchlistSidebar() {
             className: `watchlistPage__listItem ${isGroupActive ? "watchlistPage__listItem--active" : ""}`,
             style: {
               display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              gap: "4px",
               padding: "10px 14px",
               borderRadius: "8px",
               cursor: "pointer",
@@ -435,36 +445,19 @@ export function WatchlistSidebar() {
               style: { 
                 fontSize: "0.85rem", 
                 fontWeight: 600, 
-                color: isGroupActive ? "var(--accent-cyan, #22d3ee)" : "var(--text-primary, #f1f5f9)" 
+                color: isGroupActive ? "var(--accent-cyan, #22d3ee)" : "var(--text-primary, #f1f5f9)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                maxWidth: "100%"
               } 
             },
-                createElement(
-                  "span",
-                  { style: { display: "inline-flex", alignItems: "center", gap: "6px" } },
-                  `🌐 ${group.name}`,
-                  createElement(
-                    "span",
-                    {
-                      className: "watchlistPage__badge watchlistPage__badge--system",
-                      style: {
-                        fontSize: "0.6rem",
-                        fontWeight: 700,
-                        padding: "1px 6px",
-                        borderRadius: "999px",
-                        background: "rgba(148, 163, 184, 0.15)",
-                        color: "var(--text-muted, #94a3b8)",
-                        border: "1px solid rgba(148, 163, 184, 0.35)",
-                        whiteSpace: "nowrap",
-                      },
-                    },
-                    t("watchlist.sidebar.badge_system", { defaultValue: "Hệ thống" })
-                  )
-                )
+            `🌐 ${group.name}`
           ),
           createElement(
             "span",
-            { className: "watchlistPage__listItemCount text-xs" },
-            `${symbolsList.length} ${t("watchlist.sidebar.count_suffix", { defaultValue: "mã" })}`
+            { style: { fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", display: "flex", alignItems: "center", gap: "6px" } },
+            `• ${symbolsList.length} ${t("watchlist.sidebar.count_suffix", { defaultValue: "mã" })} • ${t("watchlist.sidebar.badge_system", { defaultValue: "Hệ thống" })}`
           )
         );
       })

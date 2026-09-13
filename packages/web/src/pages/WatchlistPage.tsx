@@ -43,9 +43,9 @@ function WatchlistPageContent({ autoLoad = true }: WatchlistPageProps) {
   return createElement(
     ShellPageChrome,
     {
-      eyebrow: t("watchlist.eyebrow", { defaultValue: "Rada Thi Tr\u01B0\u1EDDng" }),
+      eyebrow: undefined,
       title: t("watchlist.title", { defaultValue: "Danh M\u00DAc Theo D\u00F5i" }),
-      description: t("watchlist.description", { defaultValue: "Theo d\u00F5i bi\u1EBFn \u0111\u1ED9ng gi\u00E1 c\u1ED5 phi\u1EBFu, rsi, rvol v\u00E0 xu h\u01B0\u1EDBng th\u1ECB tr\u01B0\u1EDDng." }),
+      description: undefined,
     },
     createElement(
       "div",

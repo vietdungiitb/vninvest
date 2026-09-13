@@ -206,69 +206,28 @@ export function WatchlistMainWorkspace() {
             className: "watchlistPage__title",
             style: {
               margin: 0,
-              fontSize: "1.5rem",
+              fontSize: "1.25rem",
               fontWeight: 700,
               color: "var(--text-primary, #f1f5f9)",
               display: "flex",
               alignItems: "center",
-              gap: "8px"
+              gap: "8px",
+              whiteSpace: "nowrap" as const,
+              overflow: "hidden",
+              textOverflow: "ellipsis"
             }
           },
-          getListTitle(),
-          createElement(
-            "span",
-            { 
-              className: "text-xs",
-              style: {
-                background: "rgba(255, 255, 255, 0.08)",
-                color: "var(--text-muted, #94a3b8)",
-                padding: "2px 8px",
-                borderRadius: "9999px",
-                fontWeight: 600
-              }
-            },
-            `${activeItems.length} ${t("watchlist.sidebar.count_suffix", { defaultValue: "mã" })}`
-          )
-        ),
-        createElement(
-          "p",
-          { 
-            className: "watchlistPage__status",
-            style: { margin: 0, fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", display: "flex", alignItems: "center", gap: "8px" }
-          },
+          `${getListTitle()} [${activeItems.length} ${t("watchlist.sidebar.count_suffix", { defaultValue: "mã" })}]`,
+          createElement("span", { style: { opacity: 0.3, fontWeight: 400 } }, "•"),
           realtimeFeed?.realtimeStatus === "CONNECTED"
-            ? createElement(
-                "span",
-                { style: { display: "flex", alignItems: "center", gap: "6px" } },
-                createElement("span", {
-                  style: {
-                    width: "8px",
-                    height: "8px",
-                    borderRadius: "50%",
-                    background: "#10b981",
-                    boxShadow: "0 0 8px rgba(16, 185, 129, 0.5)",
-                    display: "inline-block"
-                  }
-                }),
-                t("watchlist.main.streaming_live", { defaultValue: "Streaming Live" })
-              )
-            : createElement(
-                "span",
-                { style: { display: "flex", alignItems: "center", gap: "6px" } },
-                createElement("span", {
-                  style: {
-                    width: "8px",
-                    height: "8px",
-                    borderRadius: "50%",
-                    background: "#64748b",
-                    display: "inline-block"
-                  }
-                }),
-                t("watchlist.main.offline", { defaultValue: "Offline" })
-              ),
-          createElement("span", { style: { opacity: 0.3 } }, "|"),
-          createElement("span", null, `${t("watchlist.main.last_updated", { defaultValue: "Cập nhật lúc" })}: ${new Date().toLocaleTimeString()}`)
-        )
+            ? createElement("span", { style: { display: "flex", alignItems: "center", gap: "6px", fontSize: "0.8rem", fontWeight: 600, color: "#10b981" } }, createElement("span", { style: { width: "8px", height: "8px", borderRadius: "50%", background: "#10b981", boxShadow: "0 0 8px rgba(16, 185, 129, 0.5)", display: "inline-block" } }), "Live")
+            : realtimeFeed?.realtimeStatus === "polling"
+              ? createElement("span", { style: { display: "flex", alignItems: "center", gap: "6px", fontSize: "0.8rem", fontWeight: 600, color: "#f59e0b" } }, createElement("span", { style: { width: "8px", height: "8px", borderRadius: "50%", background: "#f59e0b", display: "inline-block" } }), t("watchlist.main.reconnecting", { defaultValue: "đang kết nối lại…" }))
+              : createElement("span", { style: { display: "flex", alignItems: "center", gap: "6px", fontSize: "0.8rem", color: "var(--text-muted, #94a3b8)" } }, createElement("span", { style: { width: "8px", height: "8px", borderRadius: "50%", background: "#64748b", display: "inline-block" } }), t("watchlist.main.offline", { defaultValue: "Offline" })),
+          createElement("span", { style: { opacity: 0.3, fontWeight: 400 } }, "•"),
+          createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted, #94a3b8)", fontWeight: 400 } }, `${t("watchlist.main.last_updated", { defaultValue: "Cập nhật lúc" })}: ${new Date().toLocaleTimeString("vi-VN", { hour12: false })}`)
+        ),
+
       )
     ),
 
@@ -359,7 +318,10 @@ export function WatchlistMainWorkspace() {
             {
               className: `px-2 py-1.5 text-xs transition-colors ${density === 'compact' ? 'bg-slate-800 text-slate-100' : 'text-slate-400'}`,
               style: { border: "none", cursor: "pointer", display: "flex", alignItems: "center", background: density === "compact" ? "rgba(255,255,255,0.08)" : "transparent", padding: "6px 10px" },
-              onClick: () => setDensity("compact")
+              onClick: () => setDensity("compact"),
+              title: "Chế độ xem: gọn",
+              "aria-label": "Chế độ xem: gọn",
+              "aria-pressed": density === "compact"
             },
             createElement("svg", {
               width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round"
@@ -370,7 +332,10 @@ export function WatchlistMainWorkspace() {
             {
               className: `px-2 py-1.5 text-xs transition-colors ${density === 'comfortable' ? 'bg-slate-800 text-slate-100' : 'text-slate-400'}`,
               style: { border: "none", cursor: "pointer", display: "flex", alignItems: "center", background: density === "comfortable" ? "rgba(255,255,255,0.08)" : "transparent", padding: "6px 10px", borderLeft: "1px solid rgba(80, 120, 168, 0.15)" },
-              onClick: () => setDensity("comfortable")
+              onClick: () => setDensity("comfortable"),
+              title: "Chế độ xem: rộng",
+              "aria-label": "Chế độ xem: rộng",
+              "aria-pressed": density === "comfortable"
             },
             createElement("svg", {
               width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round"

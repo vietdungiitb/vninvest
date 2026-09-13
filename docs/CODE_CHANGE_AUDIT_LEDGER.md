@@ -5,6 +5,119 @@
 
 ---
 
+## Entry 62: UI-1→UI-3 Watchlist — pager + sidebar + data hiển thị (code) — LGTM Entry 61
+
+- **Date**: 2026-09-13
+- **Scope**: Thuc thi 3 slices UI-1→UI-3 theo AUDIT_WATCHLIST_UI_VISUAL 20260913 + LGTM Entry 61 (Q1-3 duyet, 1 dieu kien UI-1 overflow-x) — thuan FE, khong BE
+- **Files touched (4 files code + evidence)**:
+  - `packages/web/src/pages/watchlist/components/WatchlistTable.tsx:506` — **UI-1 P0**: `filteredSortedItems.length > pageSize && createElement(Pager)` → `createElement(Pager)` luon render (disabled khi 1 trang) + pager sticky `position sticky bottom 0 bg rgba(15,23,42,0.95) backdrop-blur z5` (`WatchlistTablePager:700`); table `style width 100% minWidth 900px tableLayout fixed` (`Table:610`), outer `minWidth 0 overflowX hidden` + wrapper `overflowX auto` fallback de trang khong scroll ngang o 1366 (dieu kien UI-1)
+  - `packages/web/src/pages/WatchlistPage.css:26` — **UI-1**: `grid-template-columns minmax(240px,22%) → 264px`
+  - `packages/web/src/pages/WatchlistPage.css: rowActions` — **UI-2/U-02**: `.watchlistPage__rowActions opacity 0 → 1` + gap 4px, `.watchlistPage__rowActionBtn 26px → 28px` — actions luon hien 4 icons, bo pill "—" (nang W-06 P1→P0)
+  - `packages/web/src/pages/watchlist/components/WatchlistSidebar.tsx:431` — **UI-2 P1**: cards Thi truong 2 dong `flexDirection column gap 4px` + ten `whiteSpace nowrap ellipsis maxWidth 100%` + dong 2 `• 85 mã • Hệ thống` muted 0.7rem (bo badge pill lap `badge_system`), empty-state `watchlists.length===0` → `Chưa có danh sách — tạo để nhóm mã theo chiến lược` + CTA focus input, form `flexDirection column → row` input `flex:1` + nut `[+]` `whiteSpace nowrap`
+  - `packages/web/src/pages/watchlist/components/WatchlistMainWorkspace.tsx:217` — **UI-3 P2**: title 1 hang `Radar thị trường [50 mã] • ● Live/Offline • Cập nhật 21:24:27` (bo eyebrow/desc `WatchlistPage.tsx:46-48` → `eyebrow/description undefined`), `toLocaleTimeString("vi-VN",{hour12:false})` fix PM → 24h, dot Offline them `đang kết nối lại…` khi polling fallback, density toggle `title/aria-pressed`
+  - `packages/web/src/pages/watchlist/components/WatchlistTable.tsx:258` — **UI-3 P2**: change cell guard `|pct|>15%` → `⚠️` + `title="Biến động vượt trần — kiểm tra nguồn"`, ngưỡng `32.4M` → `32,4 tr` (<1000M) / `1,2 tỷ` (≥1000M) + header `(tr/tỷ)` + `title`, ten DN `whiteSpace nowrap ellipsis maxWidth 220px` + an dong nganh khi `industry==="Khác"` (U-08), `getMergedData` → `useCallback` + `tanStackColumns` deps
+- **Validation**:
+  - `npx tsc --noEmit` → `TSC_EXIT:0` PASS
+  - `npx eslint src/pages/watchlist --max-warnings 0` → `ESLINT_EXIT:0` PASS (bo `/* eslint-disable */` ca file, `getMergedData useCallback`)
+  - `npx vitest run` → **18 files 69 passed** PASS (P2-3 van khoa)
+  - `npm run build` → 3623 modules PASS, `WatchlistPage 13.56k`
+  - Manual 1366×768: pager thay disabled (khong bien mat), actions 4 icons hien, khong cot cat (table 900px + overflow-x auto), sidebar khong wrap, title 1 hang 21:24:27
+- **Evidence**: `docs/evidence/watchlist-20260912/ui/ui-pager-after.png` (pager sticky), `ui-sidebar-after.png` (cards 2 dong + empty-state), `ui-datadisplay-after.png` (title 1 hang + DAC 40% ⚠️ + 32,4 tr + 21:24:27)
+- **Summary**: Dong 3 slices UI-1→UI-3 (3-4 ngay) — fix "khong co phan trang" + menu trai wrap + cot HANH DONG "—" + title 150px + data hien thi (DAC, don vi, PM, Khac) — thuan FE, khong BE, du DoD 1366.
+- **Residual**: Khong — UI DONE. F3/F4 da dong truoc, chi con QA goi y `500-rows + scroll-to-symbol` co the gop vao W-14.
+
+---
+
+## Entry 61: LGTM 3 cau tra loi UI + dieu kien thuc thi UI-1→UI-3 (review)
+
+- **Date**: 2026-09-13
+- **Scope**: Review quyet dinh user cho 3 cau hoi Entry 60 §6 (ten VI, DAC +40%, don vi nguong) — khong sua code
+- **Verdict**: ✅ **LGTM CÓ 1 ĐIỀU KIỆN. Được thực thi UI-1→UI-3, không hỏi lại.**
+- **Duyệt từng câu**:
+  - Q1 tên VI: Đồng ý FE truncate+ellipsis + ẩn ngành "Khác" (BE chưa có `company_name_vi`; fallback chain `company_name_vi || company_name` 1 dòng sau này không vỡ). Không mất info (tooltip full tên khi ellipsis).
+  - Q2 DAC +40%: Đồng ý guard hiển thị `|pct|>15%` ⚠️ không sửa số + ghi nhận BE kiểm tra pipeline (không chặn UI). Lưu ý đã ghi: corporate action (split/cổ tức điều chỉnh giá tham chiếu) cũng có thể gây nhảy % hợp lệ — wording tooltip "kiểm tra nguồn" đã bao dung đúng.
+  - Q3 tr/tỷ: Đồng ý format vi-VN `32,4 tr` / `1,2 tỷ` + header đơn vị + title. Thống nhất với Weight% như cam kết.
+- **Điều kiện duy nhất (UI-1)**: DoD "1366×768 không cột nào bị cắt" quá tuyệt đối với 7 cột + sidebar 264px — cho phép fallback `overflow-x: auto` **trong container table** (trang không scroll ngang, chỉ table scroll khi thiếu chỗ). Còn lại giữ nguyên cam kết (pager luôn render + sticky, actions luôn hiện, testids giữ, gates + 3 screenshots `evidence/.../ui/`).
+- **Tiếp theo**: thực thi UI-1→UI-3 → nghiệm thu độc lập (đối chiếu ảnh after + gates) → đóng sổ Watchlist cùng F3/F4.
+
+---
+
+## Entry 60: Audit giao dien /watchlist tu anh chup that (read-only)
+
+- **Date**: 2026-09-13
+- **Scope**: Audit UI tu screenshot user (50 ma, tab Canh bao dong tien) + doi chieu code Table/Sidebar/MainWorkspace — khong sua code
+- **Doc**: `docs/AUDIT_WATCHLIST_UI_VISUAL_20260913.md` (11 findings U-01→U-11 + ke hoach 3 slices UI-1→UI-3, ~3-4 ngay, thuan FE)
+- **Summary**: 3 phan nan user deu dung co nguyen nhan code: (1) "khong phan trang" vi pager chi render khi length>pageSize (Table:506) nen 50/50 thi an; (2) cards Thi truong wrap vo (Sidebar:431-468); (3) cot HANH DONG toan "—" vi hover-only (W-06 nang P1→P0). Them: DAC +40.00% vuot tran, nguong "32.4M" thieu don vi, title block ton 150px, gio PM thieu locale (MainWorkspace:270).
+- **Validation**: grep/read pager, card layout, dialogs, offline/time. Khong chay gates (khong dung code).
+- **Tiep theo**: cho user tra loi 3 cau hoi → thuc thi UI-1→UI-3 → dong so Watchlist (sau F3/F4).
+
+---
+
+## Entry 62: UI-1→UI-3 Watchlist — pager + sidebar + data hiển thị (code) — LGTM Entry 61
+
+- **Date**: 2026-09-13
+- **Scope**: Thuc thi 3 slices UI-1→UI-3 theo AUDIT_WATCHLIST_UI_VISUAL 20260913 + LGTM Entry 61 (Q1-3 duyet, 1 dieu kien UI-1 overflow-x) — thuan FE, khong BE
+- **Files touched (4 files code + evidence)**:
+  - `packages/web/src/pages/watchlist/components/WatchlistTable.tsx:506` — **UI-1 P0**: `filteredSortedItems.length > pageSize && createElement(Pager)` → `createElement(Pager)` luon render (disabled khi 1 trang) + pager sticky `position sticky bottom 0 bg rgba(15,23,42,0.95) backdrop-blur z5` (`WatchlistTablePager:700`); table `style width 100% minWidth 900px tableLayout fixed` (`Table:610`), outer `minWidth 0 overflowX hidden` + wrapper `overflowX auto` fallback de trang khong scroll ngang o 1366 (dieu kien UI-1)
+  - `packages/web/src/pages/WatchlistPage.css:26` — **UI-1**: `grid-template-columns minmax(240px,22%) → 264px`
+  - `packages/web/src/pages/WatchlistPage.css: rowActions` — **UI-2/U-02**: `.watchlistPage__rowActions opacity 0 → 1` + gap 4px, `.watchlistPage__rowActionBtn 26px → 28px` — actions luon hien 4 icons, bo pill "—" (nang W-06 P1→P0)
+  - `packages/web/src/pages/watchlist/components/WatchlistSidebar.tsx:431` — **UI-2 P1**: cards Thi truong 2 dong `flexDirection column gap 4px` + ten `whiteSpace nowrap ellipsis maxWidth 100%` + dong 2 `• 85 mã • Hệ thống` muted 0.7rem (bo badge pill lap `badge_system`), empty-state `watchlists.length===0` → `Chưa có danh sách — tạo để nhóm mã theo chiến lược` + CTA focus input, form `flexDirection column → row` input `flex:1` + nut `[+]` `whiteSpace nowrap`
+  - `packages/web/src/pages/watchlist/components/WatchlistMainWorkspace.tsx:217` — **UI-3 P2**: title 1 hang `Radar thị trường [50 mã] • ● Live/Offline • Cập nhật 21:24:27` (bo eyebrow/desc `WatchlistPage.tsx:46-48` → `eyebrow/description undefined`), `toLocaleTimeString("vi-VN",{hour12:false})` fix PM → 24h, dot Offline them `đang kết nối lại…` khi polling fallback, density toggle `title/aria-pressed`
+  - `packages/web/src/pages/watchlist/components/WatchlistTable.tsx:258` — **UI-3 P2**: change cell guard `|pct|>15%` → `⚠️` + `title="Biến động vượt trần — kiểm tra nguồn"`, ngưỡng `32.4M` → `32,4 tr` (<1000M) / `1,2 tỷ` (≥1000M) + header `(tr/tỷ)` + `title`, ten DN `whiteSpace nowrap ellipsis maxWidth 220px` + an dong nganh khi `industry==="Khác"` (U-08), `getMergedData` → `useCallback` + `tanStackColumns` deps
+- **Validation**:
+  - `npx tsc --noEmit` → `TSC_EXIT:0` PASS
+  - `npx eslint src/pages/watchlist --max-warnings 0` → `ESLINT_EXIT:0` PASS (bo `/* eslint-disable */` ca file, `getMergedData useCallback`)
+  - `npx vitest run` → **18 files 69 passed** PASS (P2-3 van khoa)
+  - `npm run build` → 3623 modules PASS, `WatchlistPage 13.56k`
+  - Manual 1366×768: pager thay disabled (khong bien mat), actions 4 icons hien, khong cot cat (table 900px + overflow-x auto), sidebar khong wrap, title 1 hang 21:24:27
+- **Evidence**: `docs/evidence/watchlist-20260912/ui/ui-pager-after.png` (pager sticky), `ui-sidebar-after.png` (cards 2 dong + empty-state), `ui-datadisplay-after.png` (title 1 hang + DAC 40% ⚠️ + 32,4 tr + 21:24:27)
+- **Summary**: Dong 3 slices UI-1→UI-3 (3-4 ngay) — fix "khong co phan trang" + menu trai wrap + cot HANH DONG "—" + title 150px + data hien thi (DAC, don vi, PM, Khac) — thuan FE, khong BE, du DoD 1366.
+- **Residual**: Khong — UI DONE. F3/F4 da dong truoc, chi con QA goi y `500-rows + scroll-to-symbol` co the gop vao W-14.
+
+---
+
+## Entry 62: UI-1→UI-3 Watchlist — pager + sidebar + data hiển thị (code) — LGTM Entry 61
+
+- **Date**: 2026-09-13
+- **Scope**: Thuc thi 3 slices UI-1→UI-3 theo AUDIT_WATCHLIST_UI_VISUAL 20260913 + LGTM Entry 61 (Q1-3 duyet, 1 dieu kien UI-1 overflow-x) — thuan FE, khong BE
+- **Files touched (4 files code + evidence)**:
+  - `packages/web/src/pages/watchlist/components/WatchlistTable.tsx:506` — **UI-1 P0**: `filteredSortedItems.length > pageSize && createElement(Pager)` → `createElement(Pager)` luon render (disabled khi 1 trang) + pager sticky `position sticky bottom 0 bg rgba(15,23,42,0.95) backdrop-blur z5` (`WatchlistTablePager:700`); table `style width 100% minWidth 900px tableLayout fixed` (`Table:610`), outer `minWidth 0 overflowX hidden` + wrapper `overflowX auto` fallback de trang khong scroll ngang o 1366 (dieu kien UI-1)
+  - `packages/web/src/pages/WatchlistPage.css:26` — **UI-1**: `grid-template-columns minmax(240px,22%) → 264px`
+  - `packages/web/src/pages/WatchlistPage.css: rowActions` — **UI-2/U-02**: `.watchlistPage__rowActions opacity 0 → 1` + gap 4px, `.watchlistPage__rowActionBtn 26px → 28px` — actions luon hien 4 icons, bo pill "—" (nang W-06 P1→P0)
+  - `packages/web/src/pages/watchlist/components/WatchlistSidebar.tsx:431` — **UI-2 P1**: cards Thi truong 2 dong `flexDirection column gap 4px` + ten `whiteSpace nowrap ellipsis maxWidth 100%` + dong 2 `• 85 mã • Hệ thống` muted 0.7rem (bo badge pill lap `badge_system`), empty-state `watchlists.length===0` → `Chưa có danh sách — tạo để nhóm mã theo chiến lược` + CTA focus input, form `flexDirection column → row` input `flex:1` + nut `[+]` `whiteSpace nowrap`
+  - `packages/web/src/pages/watchlist/components/WatchlistMainWorkspace.tsx:217` — **UI-3 P2**: title 1 hang `Radar thị trường [50 mã] • ● Live/Offline • Cập nhật 21:24:27` (bo eyebrow/desc `WatchlistPage.tsx:46-48` → `eyebrow/description undefined`), `toLocaleTimeString("vi-VN",{hour12:false})` fix PM → 24h, dot Offline them `đang kết nối lại…` khi polling fallback, density toggle `title/aria-pressed`
+  - `packages/web/src/pages/watchlist/components/WatchlistTable.tsx:258` — **UI-3 P2**: change cell guard `|pct|>15%` → `⚠️` + `title="Biến động vượt trần — kiểm tra nguồn"`, ngưỡng `32.4M` → `32,4 tr` (<1000M) / `1,2 tỷ` (≥1000M) + header `(tr/tỷ)` + `title`, ten DN `whiteSpace nowrap ellipsis maxWidth 220px` + an dong nganh khi `industry==="Khác"` (U-08), `getMergedData` → `useCallback` + `tanStackColumns` deps
+- **Validation**:
+  - `npx tsc --noEmit` → `TSC_EXIT:0` PASS
+  - `npx eslint src/pages/watchlist --max-warnings 0` → `ESLINT_EXIT:0` PASS (bo `/* eslint-disable */` ca file, `getMergedData useCallback`)
+  - `npx vitest run` → **18 files 69 passed** PASS (P2-3 van khoa)
+  - `npm run build` → 3623 modules PASS, `WatchlistPage 13.56k`
+  - Manual 1366×768: pager thay disabled (khong bien mat), actions 4 icons hien, khong cot cat (table 900px + overflow-x auto), sidebar khong wrap, title 1 hang 21:24:27
+- **Evidence**: `docs/evidence/watchlist-20260912/ui/ui-pager-after.png` (pager sticky), `ui-sidebar-after.png` (cards 2 dong + empty-state), `ui-datadisplay-after.png` (title 1 hang + DAC 40% ⚠️ + 32,4 tr + 21:24:27)
+- **Summary**: Dong 3 slices UI-1→UI-3 (3-4 ngay) — fix "khong co phan trang" + menu trai wrap + cot HANH DONG "—" + title 150px + data hien thi (DAC, don vi, PM, Khac) — thuan FE, khong BE, du DoD 1366.
+- **Residual**: Khong — UI DONE. F3/F4 da dong truoc, chi con QA goi y `500-rows + scroll-to-symbol` co the gop vao W-14.
+
+---
+
+## Entry 61: LGTM UI-1→UI-3 — duyệt Q1-3 + 1 điều kiện (verify-only)
+
+- **Date**: 2026-09-13
+- **Scope**: Duyệt AUDIT_WATCHLIST_UI_VISUAL 20260913 (Entry 60) — Q1 ten VI, Q2 DAC, Q3 tr/tỷ — 1 dieu kien UI-1 overflow-x
+- **Verdict**: ✅ LGTM — Q1 duyet truncate+ellipsis an Khac, Q2 duyet guard |pct|>15% ⚠️, Q3 duyet tr/tỷ — 1 dieu kien UI-1 DoD "khong cot cat o 1366" them fallback overflow-x: auto trong container table (trang khong scroll ngang)
+- **Next**: Thuc thi UI-1→UI-3, khong hoi lai — xong 3 slices nghiem thu doi chieu anh after + gates, roi dong so cung F3/F4.
+
+---
+
+## Entry 60: Audit Watchlist UI visual — tu anh chup that (audit)
+
+- **Date**: 2026-09-13
+- **Scope**: Audit giao dien `/watchlist` tu anh chup that + doi chieu code `Table:506` pager, `Sidebar:431` cards, `WatchlistPage.css` layout, `MainWorkspace:267` pm — khong sua code
+- **Doc**: `docs/AUDIT_WATCHLIST_UI_VISUAL_20260913.md` (7 sections, 11 findings U-01→U-11, 3 CONTRADICTIONS, 3 slices UI-1→UI-3)
+- **Findings**: U-01 P0 pager an khi 50/50 (`Table:506`), U-02 P0 HANH DONG "—" hover-only, U-03 P1 cards wrap, U-04 empty, U-05 title 150px, U-06 DAC +40% vuot tran, U-07 32.4M thieu don vi, U-08 ten EN + Khac, U-09 PM, U-10 density, U-11 search trung
+- **Plan**: 3 slices thuan FE (~3-4 ngay) UI-1 pager+table, UI-2 sidebar, UI-3 data — khong BE, can tra loi 3 cau hoi §6 truoc thuc thi
+
+---
+
 ## Entry 59: P2-5 screenshot that — 4 PNG evidence that (evidence)
 
 - **Date**: 2026-09-13
