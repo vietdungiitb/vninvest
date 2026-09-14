@@ -254,17 +254,23 @@ export function SocDataOpsMonitorSection() {
   };
 
   if (loading.coverage && queueTiers.length === 0) {
-    return createElement("p", { className: styles.emptyState }, t("soc.dataops.loading"));
+    return createElement("div", { className: styles.inventorySkeletonGrid, "aria-busy": "true" },
+      Array.from({ length: 4 }).map((_, i) =>
+        createElement("div", { key: i, className: styles.inventorySkeletonCard }),
+      ),
+    );
   }
 
-  const oneHourData = observability?.fail_rates?.window_1h || {
+  const oneHourWindow = observability?.fail_rates?.window_1h;
+  const twentyFourHourWindow = observability?.fail_rates?.window_24h;
+  const oneHourData = oneHourWindow || {
     fail_rate_pct: 0,
     failed_runs: 0,
     total_runs: 0,
     degraded_rate_pct: 0,
     partial_runs: 0,
   };
-  const twentyFourHourData = observability?.fail_rates?.window_24h || {
+  const twentyFourHourData = twentyFourHourWindow || {
     fail_rate_pct: 0,
     failed_runs: 0,
     total_runs: 0,
@@ -326,13 +332,13 @@ export function SocDataOpsMonitorSection() {
               { className: styles.metricGrid,  },
               renderMetricCard(
                 t("soc.dataops.fail_rate_1h"),
-                `${(oneHourData.fail_rate_pct || 0).toFixed(2)}%`,
-                 (oneHourData.fail_rate_pct || 0) > 10 ? toneColor("danger") : toneColor("success")
+                oneHourWindow ? `${(oneHourData.fail_rate_pct || 0).toFixed(2)}%` : "—",
+                 oneHourWindow && (oneHourData.fail_rate_pct || 0) > 10 ? toneColor("danger") : toneColor("success")
               ),
               renderMetricCard(
                 t("soc.dataops.fail_rate_24h"),
-                `${(twentyFourHourData.fail_rate_pct || 0).toFixed(2)}%`,
-                 (twentyFourHourData.fail_rate_pct || 0) > 5 ? toneColor("warning") : toneColor("success")
+                twentyFourHourWindow ? `${(twentyFourHourData.fail_rate_pct || 0).toFixed(2)}%` : "—",
+                 twentyFourHourWindow && (twentyFourHourData.fail_rate_pct || 0) > 5 ? toneColor("warning") : toneColor("success")
               )
             ),
 
@@ -414,7 +420,7 @@ export function SocDataOpsMonitorSection() {
                           "div",
                           { },
                           t("soc.dataops.starvation_last_progress_seconds", {
-                            seconds: item.seconds_since_last_progress ?? "-",
+                            seconds: item.seconds_since_last_progress != null ? String(item.seconds_since_last_progress) : "-",
                             threshold: item.threshold_seconds,
                           })
                         )
@@ -535,9 +541,17 @@ export function SocDataOpsMonitorSection() {
         ? createElement(
             "div",
             { },
-            createElement(
-              "table",
-              { className: styles.coverageTable },
+            (() => {
+              const grandTotal = coverage.datasets.reduce(
+                (sum, ds) => sum + COVERAGE_STATE_ORDER.reduce((s, stateKey) => s + ((ds as any)[stateKey] || 0), 0),
+                0,
+              );
+              if (grandTotal === 0) {
+                return createElement("p", { className: styles.emptyState }, t("soc.dataops.no_coverage_data"));
+              }
+              return createElement(
+                "table",
+                { className: styles.coverageTable },
               createElement(
                 "thead",
                 null,
@@ -576,7 +590,8 @@ export function SocDataOpsMonitorSection() {
                   );
                 })
               )
-            )
+            );
+            })()
           )
         : createElement("p", { className: styles.emptyState }, t("soc.dataops.no_coverage_data"))
     ),

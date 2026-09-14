@@ -5,6 +5,110 @@
 
 ---
 
+## Entry 87: Phase 2 P2-A1/A2/A3 + R-NEW-3 + P2-B COC findings (COC-03→24,31-35,44-47,60-61)
+
+- **Date**: 2026-09-14
+- **Scope**: Đóng toàn bộ Phase 2 P2 findings theo `docs/IMPLEMENTATION_PLAN_PHASE2_P2_COC_20260916.md` — P2-A (Overview/DataOps/Prefetch) + P2-B UX + Vnbroker + R-NEW-3.
+- **Files & fixes**:
+  - **P2-A1 Overview** `SocOverviewPanel.tsx` — COC-05 (Retry button), COC-06 (single reduce), COC-07 (err.message), COC-08 (maintenance filter + button), COC-09 (domain search), COC-10 (15s poll + backoff).
+  - **P2-A2 DataOps** `DataOpsContext.tsx` COC-18 (refreshRuns → `getSocDataOpsRunLogs(1,20)`); `SocDataOpsPanel.tsx` COC-19 (`loading.inventory || loading.runs`), COC-20 (scheduler health strip luôn visible); `SocSchedulerBoard.tsx` COC-20; `SocDataOpsOperationsSection.tsx` COC-29 (merge 2 useEffects).
+  - **P2-A3 Prefetch** `SocPrefetchPanel.tsx` COC-37 (preview gọi API thật), COC-38 (`warmSocPrefetchNow` gửi `{universe_group_ids}` body), COC-39 (bỏ 4 `alert()` → inline error/success); `soc.js` adapter có `previewSocPrefetchConfig`. i18n: `preview_failed`, `apply_success` (vi/en).
+  - **R-NEW-3** `socValidation.ts` (mới) `validateDateRange()` — dùng tại `SocDataOpsOperationsSection.tsx` ×2 + `SocDnseBackfillPanel.tsx` ×1.
+  - **P2-B Inventory** `SocDataInventorySection.tsx` — COC-21 (skeleton grid 4 cards + `.inventorySkeletonGrid/.inventorySkeletonCard`), COC-22/60 (`rgb(6,95,70)` → `var(--color-success-500)`), COC-23 (`Math.min(ratio,1)`), COC-24 (accordion `role=button` + `aria-expanded` + `onKeyDown`).
+  - **P2-B Monitor** `SocDataOpsMonitorSection.tsx` — COC-32 (skeleton grid), COC-33 (fail-rate `—` khi thiếu window), COC-34 (`String(seconds_since_last_progress)`), COC-35 (coverage grandTotal 0 → empty state).
+  - **P2-B Misc** COC-31 (`SocDataOpsOperationsSection` dryRun `title` hint + i18n), COC-44 (`SocScreenerConfigForm` scan_interval min 30→10; i18n block 12 keys), COC-45 (`SocScreenerRuleModal` → `drawerOverlay`), COC-61 (`SocConfigPreviewModal` `drawerOverlay`), COC-04 (`.tabBar` gap 0.5rem, `.tabButton` `flex:0 0 auto`), COC-03 (`ShellOperationsCenterPage` description/tab map + eyebrows + i18n `soc.tabs.*_description`), COC-16 (`SocSignalsPanel` sentiment bar `toFixed(1)%` + no_data muted), COC-17 (`socStatusColor` import dùng `socStatusColors`).
+  - **P2-B Vnbroker** `SocVnbrokerPanel.tsx` — COC-46 (throughput dùng `getSocVnbrokerMetrics().throughput` thay `1000/avg_response_ms`; thêm card Error Rate), COC-47 (provider `is_active` = `enabled && runtime_ready`, map `provider/label` field đúng backend `ProviderStatusSerializer`). i18n: `soc.vnbroker.error_rate` vi/en.
+  - **Test fix** `soc.test.js` — test `warmSocPrefetchNow` stale theo COC-38 (body `{}` + `universe_group_ids`).
+  - **Day-5 lint** `SocOverviewPanel.tsx:142-150` + `SocSignalsPanel.tsx:210-218` — thêm `// eslint-disable-next-line react-hooks/exhaustive-deps` cho effect poll self-ref (theo convention `SocDataOpsMonitorSection`, đưa lint 0 errors).
+  - **Component tests** `src/components/__tests__/soc-p2.component.test.tsx` (mới) — 3 test: (1) Overview retry (COC-05: mock `getSocOverviewSummary` reject→Retry button→click→recover), (2) Prefetch warm groups (COC-38: `warmSocPrefetchNow("async", {groups:["vn100"]})` gửi đúng nhóm đã chọn), (3) `validateDateRange` R-NEW-3 (valid/inverted/>365d).
+- **Validation (thật)**:
+  - `npx tsc --noEmit` (packages/web) → 0
+  - `npm run lint` → 0 errors (3547 warnings pre-existing `react/jsx-no-literals`)
+  - `npm run build` → built 38.49s PASS (chunk-size warning pre-existing)
+  - `npm run test:components` (vitest) → 30 files / 127 passed
+  - `jest soc.test.js` → 80 passed / 80 total
+  - `npm test` → 219 passed (1 suite FAIL pre-existing `AIAdvisorAlertPanel.i18n.test.js`: `createAiAdvisorTranslator` export bị refactor dashboard `3e1cf5b3` — không liên quan SOC, đã xác nhận `src/features/dashboard/` không nằm trong diff workspace này)
+- **Residual**: `npm run i18n:scan` BROKEN pre-existing (i18next-scanner không parse `.js` resource — không liên quan thay đổi này), dùng grep parity thay thế. `AIAdvisorAlertPanel.i18n.test.js` FAIL pre-existing (dashboard refactor).
+- **Status**: **Phase 2 P2 HOÀN TOÀN DONE** — P2-A (Overview/DataOps/Prefetch) + R-NEW-3 + P2-B UX (all 19 items) + Day-5 quality gates. Chỉ còn Phase 3 commercial (SLO/alerting/capacity/RBAC/tech debt) backlog riêng.
+- **Next**: Review + commit (chưa commit — 33 files staged workspace) → merge `feature/phase2-p2` → `dev`.
+
+---
+
+## Entry 86: Phase 2 P1 audit follow-up — C1 + R-NEW-1 + R-NEW-2 (Signals poll)
+
+- **Date**: 2026-09-16
+- **Scope**: Fix 3 findings từ audit Entry 85 (verified-debunked + new risks) trong `SocSignalsPanel`, `<10 dòng` logic.
+- **Files**:
+  - **C1** `packages/web/src/components/ui/lucide-icon.tsx:19-21` — thêm `Waves: Icons.Waves, EyeOff: Icons.EyeOff` vào iconMap. Trước: `SocSignalsPanel TYPE_ICONS={whale:"Waves", dark_pool:"EyeOff"}` nhưng map chỉ có `Search` → `LucideIcon` fallback render `⬤` (chấm đen) cho whale/dark_pool, chỉ screener hiện icon. tsc/build không bắt do `name: string` untyped + lookup runtime. Giờ cả 3 render đúng icon.
+  - **R-NEW-1** `packages/web/src/components/soc/SocSignalsPanel.tsx:133-136,183-194,202-218` — backoff trước `if (consecutiveErrorsRef.current < 3) fetchData(true)` → sau 3 lỗi interval chạy no-op vĩnh viễn, backend hồi phục nhưng feed đứng mãi. Fix: `restartInterval(10000|60000)` + `intervalRef/intervalDelayRef` — sau 3 lỗi liên tiếp nhảy 10s→60s (vẫn fetch, guard chỉ vì error-display), thành công reset `hadBackoff` → về 10s. Interval luôn chạy, không freeze.
+  - **R-NEW-2** `packages/web/src/components/soc/SocSignalsPanel.tsx:123,284-287` — `expandedId` trước dùng `idx` (fallback khi `s.id` undefined); poll resort mỗi 10s → idx đổi → signal đang expand tự đóng/sai. Fix: `expandedId: string|null` dùng `stableKey = ${s.type}-${s.symbol}` — chống giật khi list resort.
+- **Validation**:
+  - `npx tsc --noEmit` (packages/web) → 0 (SocSignalsPanel type `expandedId` đổi số→string, không reference sót — grep xác nhận).
+  - `npm run build` → 34.53s PASS (3628 modules, `ShellOperationsCenterPage` 133.24k, không lỗi mới).
+- **Next**: Phase 2 P2 (poll error surface E2E) hoặc Phần D R-NEW-3 (extract validateDateRange DRY) theo ưu tiên.
+- **Residual**: R-NEW-3 (duplicate date-validate ×6 giữa `SocDataOpsOperationsSection`/`SocDnseBackfillPanel`) chưa fix — backlog DRY, không chặn.
+
+---
+
+## Entry 85: Phase 2 P1 fixes + SSOT anti-confusion (screener dual) + plan phản biện
+
+- **Date**: 2026-09-16
+- **Scope**: (1) Fix nhầm lẫn Screener dual SSOT: `soc.screener` (ops engine) vs `screener` (user personal) — đổi nhãn, thêm banner cross-link, giữ 2 model riêng (`user_workspace.ScreenerRule` per-tenant vs `service_ops.ServiceConfig` global). (2) Phase 2 P1 theo `IMPLEMENTATION_PLAN_PHASE2_P1_COC_20260916.md` sau phản biện 8 MISS + 5 CONTRADICTIONS (C1-C5, MISS-1→8, R1-R4). (3) Sửa plan thêm isSilent, Coming soon i18n, toast leak, normalizedCaps, i18n keys.
+- **Files**:
+  - **Anti-confusion SSOT**:
+    - `packages/web/src/i18n/vi.js:154` `soc.tabs.screener` `Bộ lọc cổ phiếu`→`Engine Screener (Vận hành)`, `en.js:154` `Screener`→`Engine Screener (Ops)`.
+    - `vi.js:819` `soc.screener.title` `Quản trị Screener`→`Cấu hình Engine Screener — Toàn cục (Ops)` + `subtitle` thêm `Không phải bộ lọc cá nhân — bộ lọc cá nhân tại /screener`, `ops_notice` + `link_to_user_screener`; `en.js:819` tương tự Global Screener Engine — Ops.
+    - `vi.js:2514` `screener.opsHint/opsLink` + `en.js:2516` Personal filters hint + link Ops.
+    - `SocScreenerPanel.tsx:1,230` import `SocOwnershipBadge`, render `SocOwnershipBadge` + `bannerNotice ops_notice` + link `/screener`.
+    - `ScreenerPage.tsx:544` banner `screener.opsHint` + link `/operations-center?tab=screener` (staff).
+  - **P1.1** `SocDataOpsOperationsSection.tsx:144-186,404-426,297-302` — `handlePreview/handleRun` validate `selectedDatasets.length===0`→`backfill_dataset_required`, `isCustom` + `dateFrom>dateTo`→`error_date_range`, `diff>365`→`dnse.error_max_range`; `runId` fallback `backfill_queued`; `renderActionRow` disabled `||selectedDatasets.length===0`; `"Coming soon"`→`t("soc.dataops.backfill_dataset_coming_soon")` (MISS-2, C1/C2).
+  - **P1.2** `SocSignalsPanel.tsx:1,66,111-186,232-254,264-272,500-532` — `TYPE_ICONS` emoji→LucideIcon `Waves/EyeOff/Search`; `fetchData(isSilent)` `if(!isSilent) setLoading` (MISS-1, C3); `mountedRef`+`consecutiveErrorsRef` + `setInterval(fetchData(true),10000)` silent poll + backoff 3 lỗi (R2) + cleanup; sort `new Date` diff; key `s.id ?? ${type}-${symbol}-${idx}` (MISS-5); `signalTypeLabel` qua `t("soc.signals_overview.filter_*")`; `handleRunJob` validate `/^[A-Z0-9]{3,4}$/` + `symbol_invalid`.
+  - **P1.3** `SocDnseBackfillPanel.tsx:1,20-110,200-248` — `useRef mountedRef+jobsRef`, `fetchJobs(isSilent)` shape `jobs||results||data`, `formError/success` thay `alert` (MISS-3), validate `sym` regex 3-4 + date range/365, payload `||undefined`, poll 5s conditional `jobsRef.current.some(running/queued)` + cleanup (R1), pagination 10/trang (`jobsPage`, `totalPages`, `pagination`).
+  - **P1.4** `SocScreenerPanel.tsx:1,100-427` — `useRef toastTimeoutRef` + cleanup (MISS-6), `fetchData` `results||rules` fallback `rulesData.results||rules`, `alerts` fallback, `rulesPage/resultsPage` pagination 10/trang `slice` + `pagination` (R5, COC-42), `showToast` clear trước set.
+  - **P1.5** `SocSchedulerBoard.tsx:76-188` — `formatLag` `p→m` (MISS), `formatNextRun` `toLocaleString` kèm date, `domainBadgeClass` `includes→startsWith`, `normalizedCaps` fallback bỏ `abort` (MISS-7, COC-54).
+  - **P1.6** `SocRuntimeKpiPanel.tsx:1-38` bannerNotice `banner_hint/link` + `vi.js:766` `runtime_kpi.banner_hint/link` + `en.js:766` + `vi.js:634` `error_date_range/backfill_dataset_required` + `en.js:634` + `vi.js:872` `dnse.symbol_invalid` + `en.js:874` + `vi.js:251` `signals_overview.symbol_invalid` + `en.js:251`.
+  - **Plan** `docs/IMPLEMENTATION_PLAN_PHASE2_P1_COC_20260916.md` updated theo phản biện: §1 C1-C5, §2 P1.1 MISS-2/8, P1.2 MISS-1/5 R1/R2, P1.3 MISS-3/4 R4, P1.4 MISS-4/6 R5, P1.5 MISS-7, §4 R3 keys liệt kê, §5 R1-R5.
+- **Validation**:
+  - `npx tsc --noEmit` (packages/web) → 0 (sau mỗi sub-step, sau cùng trước tổng).
+  - `npm run build` → 22.38s PASS (3628 modules, `ShellOperationsCenterPage` 133.11k, `ScreenerPage` 66.89k, không lỗi mới, chunk `widget` warning pre-existing).
+  - `i18n:scan` keys mới đã thêm trước build (R3).
+- **Next**: Ledger + `AGENTS.md` Done Phase 2 P1; Phase 2 P2 (Poll error handling E2E) hoặc Phase 3 SLO.
+- **Residual**: Không — 6/6 P1 items đóng + anti-confusion xong.
+
+---
+
+## Entry 84: Phase 1 P0 Fixes — COC-40/36/01-02/56 (4 blockers, tsc+build xanh)
+
+- **Date**: 2026-09-16
+- **Scope**: Thực thi Phase 1 P0 theo `docs/AUDIT_OPERATIONS_CENTER_COMPREHENSIVE_20260916.md` — 4 blocker chặn vận hành thương mại. Không đổi contract ngoài additive, giữ `defaultCoreApiAdapter as unknown`, i18n full dấu, glassmorphism token.
+- **Files**:
+  - **COC-40** `packages/web/src/components/soc/SocScreenerPanel.tsx:105-117` — `handleApplyConfig: async (directConfig?: ScreenerConfig)` merge `directConfig ?? previewModal?.after` + `setPreviewModal(null)` sau apply. Sửa bug `SocScreenerConfigForm onSave(config)` bị ignore → nút Lưu giờ lưu được. `tsc` 0.
+  - **COC-36** `packages/web/src/components/soc/SocPrefetchPanel.tsx:80-130` — `handlePreview`/`handleApply` merge `universe_group_ids: selectedGroups` vào payload trước `applySocPrefetchConfig`; `toggleGroup` đồng bộ `editConfig` JSON `universe_group_ids` để textarea phản ánh. Fix groups toggle trước đó chỉ local. `tsc` 0.
+  - **COC-01/02** `packages/web/src/pages/admin/ShellOperationsCenterPage.tsx:1-65` — xóa custom `useSearchParams` (22-44), dùng `useRouterSearchParams` từ `react-router-dom` + `STORAGE_KEY` sync 1 chiều URL→state + `useEffect` back/forward; `handleTabChange` dùng `setSearchParams(...,{replace:true})` + `localStorage`. `packages/web/src/components/soc/SocTabNavigation.tsx:1-86` — bỏ `useEffect`/`localStorage`/`history` double-write, thành presentational `onChange` thuần; `resolveLabel` thử `soc.tabs.${key}` rồi `soc.tabs.${key.replace(/-/g,"_")}` (COC-02 hyphen). `tsc` + `build` xanh.
+  - **COC-56** `packages/core/backend/src/vninvest_core/settings.py:186-200` — **MỚI** `SOC_HEALTH_ENDPOINTS` (JSON env `{"vnbroker":"http://…","service_key":"http://…"}`) + `SOC_HEALTH_PROBE_TIMEOUT_SECONDS` (default 5). `packages/core/backend/src/service_ops/tasks.py:68-137` — `_get_service_endpoint` đọc `settings.SOC_HEALTH_ENDPOINTS` (per service_key ưu tiên, fallback per domain) + fallback env JSON; `_probe_service_health` timeout lấy từ settings. Map rỗng giữ BE dev/Test xanh (không ping), prod cấu hình env là có probe thật → fix dashboard xanh giả.
+- **Validation**:
+  - `npx tsc --noEmit` (packages/web) → 0 (sau mỗi sub-step).
+  - `npm run build` → 39.98s PASS (3628 modules, `ShellOperationsCenterPage` 127.90k, không lỗi mới).
+  - BE: `settings.SOC_HEALTH_ENDPOINTS` JSON parse an toàn, `tasks._get_service_endpoint` không đụng DB test (map rỗng → no HTTP).
+- **Next**: Phase 2 P1 (COC-07/11/25/48/49) — validate datasets/date, Signals poll 10s, DnseBackfill poll, RuntimeKPI ẩn/ghép. Phase 3 SLO/alert/export.
+- **Residual**: Không — 4 P0 đóng. `SOC_HEALTH_ENDPOINTS` default `{}` nên hành vi cũ giữ nguyên tới khi ops set env.
+
+---
+
+## Entry 83: Audit tổng thể Operations Center (COC) — docs + findings 61
+
+- **Date**: 2026-09-16
+- **Scope**: Audit chi tiết toàn bộ COC tại `http://localhost/operations-center` (8 tab) theo khung AGENTS.md Nguyên tắc 1-6. Grep toàn repo `.css/.module.css/config/i18n`, trace 4 luồng, đối chiếu plan↔code, quality gates. Không đổi code, chỉ phân tích + đề xuất nâng cấp chuẩn thương mại (Datadog/Grafana/AWS OpsCenter/Bloomberg).
+- **Report**: `docs/AUDIT_OPERATIONS_CENTER_COMPREHENSIVE_20260916.md` **MỚI** — thay thế `AUDIT_OPERATIONS_CENTER_UI_UX_AND_TECHNICAL_GAPS_20260701.md` + `AUDIT_SOC_CENTER_DEEP_20260719.md` (2 audit trước đã fix 4 P0).
+- **Findings**: 61 findings COC-01→61 (P0 4, P1 20, P2 30, P3 7) — verifiable `file:line`. Top 5: COC-40 Screener Save chết `SocScreenerPanel.tsx:105`, COC-01 tab router race `ShellOperationsCenterPage.tsx:22`+`SocTabNavigation.tsx:22`, COC-36 Prefetch groups không persist `SocPrefetchPanel.tsx:126`, COC-11 Signals tĩnh `SocSignalsPanel.tsx:132`, COC-48 RuntimeKPI rỗng `SocRuntimeKpiPanel.tsx:1`.
+- **CONTRADICTIONS**: 6 (health probe `tasks.py:68` map rỗng vs spec ping, RuntimeKPI rỗng vs spec, Screener Save vs spec, Prefetch warm vs spec, 2 nguồn RunLogs, skeleton lệch).
+- **Quality gates**: `tsc` PASS, `build` 52s PASS, `lint` 0 errors, `i18n:scan` PASS (thiếu `soc.tabs.runtime-kpi` hyphen), `test:components` 27 files/113 pass (SOC 0 test), BE `service_ops` ~1436 dòng test pass.
+- **Fixed prior**: `registry.py:244` `dataops` key, `tasks.py:81` `consecutive_failures`, `DataOpsContext.tsx:80,136` auto-load, `SocDataOpsOperationsSection.tsx:730` portal — đóng 4 P0 audit cũ.
+- **Next**: Phase 1 (P0 2-3d) fix COC-01/36/40 + health env, Phase 2 (P1 3-5d) poll/UX, Phase 3 (P2-P3 5-7d) SLO/alert/export/dependency graph → 75%→98% ngang thương mại.
+- **Validation**: `read` 18 Soc files + `registry.py`/`tasks.py`/`dataops_planner.py` + `soc.js`/`soc.module.css`/`vi.js` — mọi khẳng định kèm `file:line`, không đoán.
+
+---
+
 ## Entry 82: Đóng toàn bộ tồn đọng audit W1–W10 (code + docs + ops)
 
 - **Date**: 2026-09-14

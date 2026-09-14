@@ -28,12 +28,14 @@ export function SocPrefetchPanel() {
   const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [inlineError, setInlineError] = useState("");
+  const [inlineSuccess, setInlineSuccess] = useState("");
   const [config, setConfig] = useState<PrefetchConfig | null>(null);
   const [cacheStatus, setCacheStatus] = useState<PrefetchCacheStatus | null>(null);
   const [universeGroups, setUniverseGroups] = useState<any[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [editConfig, setEditConfig] = useState("");
-  const [previewModal, setPreviewModal] = useState<{ before: Record<string, unknown>; after: Record<string, unknown> } | null>(null);
+  const [previewModal, setPreviewModal] = useState<{ before: Record<string, unknown>; after: Record<string, unknown>; preview?: unknown } | null>(null);
   const [applying, setApplying] = useState(false);
 
   const fetchData = async () => {
@@ -77,56 +79,82 @@ export function SocPrefetchPanel() {
     setEditConfig(JSON.stringify(config || {}, null, 2));
   };
 
-  const handlePreview = () => {
+  const handlePreview = async () => {
+    setInlineError(""); setInlineSuccess("");
+    let parsed: PrefetchConfig;
     try {
-      const parsed = JSON.parse(editConfig) as PrefetchConfig;
-      setPreviewModal({ before: config || {}, after: parsed });
+      parsed = { ...(JSON.parse(editConfig) as PrefetchConfig), universe_group_ids: selectedGroups } as PrefetchConfig;
     } catch {
-      alert(t("soc.prefetch.invalid_json"));
+      setInlineError(t("soc.prefetch.invalid_json"));
+      return;
+    }
+    try {
+      const adapter = defaultCoreApiAdapter as unknown as { previewSocPrefetchConfig: (cfg: PrefetchConfig) => Promise<unknown> };
+      if (typeof adapter.previewSocPrefetchConfig === "function") {
+        const preview = await adapter.previewSocPrefetchConfig(parsed);
+        setPreviewModal({ before: config || {}, after: parsed, preview });
+      } else {
+        setPreviewModal({ before: config || {}, after: parsed });
+      }
+    } catch (err) {
+      setInlineError(err instanceof Error ? err.message : t("soc.prefetch.preview_failed", { defaultValue: "Preview failed." }));
     }
   };
 
   const handleApply = async () => {
+    setInlineError(""); setInlineSuccess("");
     try {
-      const parsed = JSON.parse(editConfig) as PrefetchConfig;
+      const parsed = { ...(JSON.parse(editConfig) as PrefetchConfig), universe_group_ids: selectedGroups } as PrefetchConfig;
       setApplying(true);
       const adapter = defaultCoreApiAdapter as unknown as { applySocPrefetchConfig: (cfg: PrefetchConfig) => Promise<void> };
       await adapter.applySocPrefetchConfig(parsed);
       setPreviewModal(null);
+      setInlineSuccess(t("soc.prefetch.apply_success", { defaultValue: "Applied successfully." }));
       await fetchData();
     } catch (err) {
-      alert(`Error: ${err instanceof Error ? err.message : "Apply failed."}`);
+      setInlineError(err instanceof Error ? err.message : "Apply failed.");
     } finally {
       setApplying(false);
     }
   };
 
   const handleWarmNow = async () => {
+    setInlineError(""); setInlineSuccess("");
     try {
-      const adapter = defaultCoreApiAdapter as unknown as { warmSocPrefetchNow: (mode: string) => Promise<void> };
-      await adapter.warmSocPrefetchNow("async");
-      alert(t("soc.prefetch.warm_success"));
+      const adapter = defaultCoreApiAdapter as unknown as { warmSocPrefetchNow: (mode: string, opts?: Record<string, unknown>) => Promise<void> };
+      await adapter.warmSocPrefetchNow("async", { groups: selectedGroups });
+      setInlineSuccess(t("soc.prefetch.warm_success"));
     } catch (err) {
-      alert(`Error: ${err instanceof Error ? err.message : "Warm failed."}`);
+      setInlineError(err instanceof Error ? err.message : "Warm failed.");
     }
   };
 
   const handlePurgeCache = async () => {
     if (!window.confirm(t("soc.prefetch.purge_confirm"))) return;
+    setInlineError(""); setInlineSuccess("");
     try {
       const adapter = defaultCoreApiAdapter as unknown as { purgeSocPrefetchCache: () => Promise<void> };
       await adapter.purgeSocPrefetchCache();
-      alert(t("soc.prefetch.purge_success"));
+      setInlineSuccess(t("soc.prefetch.purge_success"));
       await fetchData();
     } catch (err) {
-      alert(`Error: ${err instanceof Error ? err.message : "Purge failed."}`);
+      setInlineError(err instanceof Error ? err.message : "Purge failed.");
     }
   };
 
   const toggleGroup = (groupId: string) => {
-    setSelectedGroups((prev) =>
-      prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId]
-    );
+    setSelectedGroups((prev) => {
+      const next = prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId];
+      // keep editConfig in sync so textarea reflects universe_group_ids (COC-36)
+      try {
+        const parsed = JSON.parse(editConfig) as PrefetchConfig;
+        (parsed as Record<string, unknown>).universe_group_ids = next;
+        setEditConfig(JSON.stringify(parsed, null, 2));
+      } catch {
+        // ignore JSON parse errors — merge will happen on preview/apply
+      }
+      return next;
+    });
   };
 
   const renderMetricCard = (label: string, value: string | number, color?: string) => {
@@ -154,6 +182,8 @@ export function SocPrefetchPanel() {
           : createElement(
               "div",
               null,
+              inlineError ? createElement("div", { className: styles.inlineError, style: { marginBottom: "0.75rem" } }, inlineError) : null,
+              inlineSuccess ? createElement("div", { className: styles.inlineSuccess, style: { marginBottom: "0.75rem" } }, inlineSuccess) : null,
               createElement("div", { className: styles.sectionGrid },
                 createElement(
                   "div",

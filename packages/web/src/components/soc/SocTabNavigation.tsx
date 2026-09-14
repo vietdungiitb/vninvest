@@ -1,4 +1,4 @@
-import { createElement, useCallback, useEffect, useRef } from "react";
+import { createElement } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { LucideIcon } from "../ui/lucide-icon.js";
 import styles from "./soc.module.css";
@@ -14,54 +14,19 @@ interface SocTabNavigationProps {
   onChange: (key: string) => void;
 }
 
-const STORAGE_KEY = "soc_active_tab";
-
 export function SocTabNavigation({ tabs, activeTab, onChange }: SocTabNavigationProps) {
   const { t } = useI18n();
-  const syncedRef = useRef(false);
 
   const resolveLabel = (tabKey: string): string => {
-    const i18nKey = `soc.tabs.${tabKey}`;
-    const translated = t(i18nKey);
-    if (translated && translated !== i18nKey) return translated;
-    return tabKey.charAt(0).toUpperCase() + tabKey.slice(1).replace(/_/g, " ");
+    // COC-02: support both hyphen and underscore keys (e.g. runtime-kpi vs runtime_kpi)
+    const directKey = `soc.tabs.${tabKey}`;
+    const direct = t(directKey);
+    if (direct && direct !== directKey) return direct;
+    const underscoreKey = `soc.tabs.${tabKey.replace(/-/g, "_")}`;
+    const underscored = t(underscoreKey);
+    if (underscored && underscored !== underscoreKey) return underscored;
+    return tabKey.charAt(0).toUpperCase() + tabKey.slice(1).replace(/[-_]/g, " ");
   };
-
-  const handleTabChange = useCallback((key: string) => {
-    onChange(key);
-    try {
-      localStorage.setItem(STORAGE_KEY, key);
-    } catch { /* noop */ }
-    const url = new URL(window.location.href);
-    if (key) {
-      url.searchParams.set("tab", key);
-    } else {
-      url.searchParams.delete("tab");
-    }
-    window.history.replaceState(null, "", url.toString());
-  }, [onChange]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tabParam = params.get("tab");
-    let resolved: string | null = null;
-
-    if (tabParam && tabs.some((t) => t.key === tabParam)) {
-      resolved = tabParam;
-    } else if (!syncedRef.current) {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved && tabs.some((t) => t.key === saved)) {
-          resolved = saved;
-        }
-      } catch { /* noop */ }
-    }
-
-    if (resolved && resolved !== activeTab) {
-      syncedRef.current = true;
-      handleTabChange(resolved);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return createElement(
     "nav",
@@ -74,7 +39,7 @@ export function SocTabNavigation({ tabs, activeTab, onChange }: SocTabNavigation
           role: "tab",
           "aria-selected": activeTab === tab.key,
           className: `${styles.tabButton} ${activeTab === tab.key ? styles.tabButtonActive : ""}`,
-          onClick: () => handleTabChange(tab.key),
+          onClick: () => onChange(tab.key),
         },
         tab.icon
           ? createElement(LucideIcon, { name: tab.icon, className: styles.tabIcon })

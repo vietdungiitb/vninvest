@@ -66,7 +66,7 @@ const DataOpsContext = createContext<DataOpsContextValue | null>(null);
 
 const adapter = defaultCoreApiAdapter as unknown as {
   getSocDataOpsInventory: () => Promise<InventoryData>;
-  getSocBackfillRuns: (params?: { status?: string; limit?: number }) => Promise<{ runs?: BackfillRun[] }>;
+  getSocDataOpsRunLogs: (page: number, pageSize: number) => Promise<{ results?: BackfillRun[]; next?: string | null }>;
   getSocDataOpsCoverage: () => Promise<CoverageData>;
   runSocDataOpsPlanner: (payload: Record<string, unknown>) => Promise<{ run_id?: string }>;
   abortSocDataOpsPlannerRun: (runId: string) => Promise<void>;
@@ -98,8 +98,8 @@ export function DataOpsProvider({ children }: { children: React.ReactNode }) {
     setLoading((prev) => ({ ...prev, runs: true }));
     setContextError(null);
     try {
-      const data = await adapter.getSocBackfillRuns({ limit: 20 });
-      setRuns(data.runs || []);
+      const data = await adapter.getSocDataOpsRunLogs(1, 20);
+      setRuns(data.results || []);
     } catch (err: unknown) {
       setContextError(err && typeof err === 'object' && 'message' in err ? String((err as Error).message) : 'Không thể tải backfill runs.');
     }

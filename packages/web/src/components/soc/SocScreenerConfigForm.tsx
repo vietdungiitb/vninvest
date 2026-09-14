@@ -47,8 +47,8 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (config.scan_interval_seconds < 30) {
-      newErrors.scan_interval_seconds = t("soc.screener.config.scan_interval_min", { min: 30 });
+    if (config.scan_interval_seconds < 10) {
+      newErrors.scan_interval_seconds = t("soc.screener.config.scan_interval_min", { min: 10 });
     }
     if (config.max_symbols_per_scan < 1 || config.max_symbols_per_scan > 5000) {
       newErrors.max_symbols_per_scan = t("soc.screener.config.max_symbols_range", { min: 1, max: 5000 });
@@ -111,7 +111,7 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
     createElement("div", { className: styles.sectionCard },
       createElement("div", { className: styles.sectionCardTitle }, t("soc.screener.config_title")),
       createElement("div", { },
-        field("scan_interval_seconds", t("soc.screener.config.scan_interval"), 30),
+        field("scan_interval_seconds", t("soc.screener.config.scan_interval"), 10),
         field("max_symbols_per_scan", t("soc.screener.config.max_symbols"), 1, 5000),
         field("alert_cooldown_seconds", t("soc.screener.config.alert_cooldown"), 60),
         field("max_alerts_per_symbol_per_hour", t("soc.screener.config.max_alerts_per_symbol"), 1),

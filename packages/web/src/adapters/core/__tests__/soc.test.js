@@ -273,9 +273,14 @@ describe("SOC adapter", () => {
       expect(corePost).toHaveBeenCalledWith("/operator/soc/prefetch/purge-cache/");
     });
 
-    it("warmSocPrefetchNow calls corePost with mode", async () => {
+    it("warmSocPrefetchNow calls corePost with mode and body", async () => {
       await soc.warmSocPrefetchNow("sync");
-      expect(corePost).toHaveBeenCalledWith("/operator/soc/prefetch/warm-now/?mode=sync");
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/prefetch/warm-now/?mode=sync", {});
+    });
+
+    it("warmSocPrefetchNow includes universe_group_ids when provided", async () => {
+      await soc.warmSocPrefetchNow("sync", { groups: ["vn100"] });
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/prefetch/warm-now/?mode=sync", { universe_group_ids: ["vn100"] });
     });
 
     it("getSocPrefetchUniverseGroups / Schedule / Metrics call coreGet", async () => {

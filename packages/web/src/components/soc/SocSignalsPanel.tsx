@@ -1,7 +1,8 @@
-import { createElement, useEffect, useState, useMemo, type ReactNode } from "react";
+import { createElement, useEffect, useState, useMemo, useRef, type ReactNode } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
-import { toneColor } from "./socStatusColors.js";
+import { toneColor, statusColor as socStatusColor } from "./socStatusColors.js";
+import { LucideIcon } from "../ui/lucide-icon.js";
 import styles from "./soc.module.css";
 
 interface RecentSignal {
@@ -63,9 +64,9 @@ interface MaterializationStatus {
 type SubTab = "overview" | "job-console" | "materialization";
 
 const TYPE_ICONS: Record<string, string> = {
-  whale: "\uD83D\uDC19",
-  dark_pool: "\uD83C\uDF0A",
-  screener: "\uD83D\uDD0D",
+  whale: "Waves",
+  dark_pool: "EyeOff",
+  screener: "Search",
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -119,7 +120,7 @@ export function SocSignalsPanel() {
 
   const [typeFilter, setTypeFilter] = useState("all");
   const [symbolFilter, setSymbolFilter] = useState("");
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [subTab, setSubTab] = useState<SubTab>("overview");
 
   const [jobDomain, setJobDomain] = useState("whale");
@@ -129,8 +130,13 @@ export function SocSignalsPanel() {
 
   const filterTypes = ["all", "whale", "dark_pool", "screener"];
 
-  const fetchData = async () => {
-    setLoading(true);
+  const mountedRef = useRef(true);
+  const consecutiveErrorsRef = useRef(0);
+  const intervalRef = useRef<number | null>(null);
+  const intervalDelayRef = useRef(10000);
+
+  const fetchData = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const adapter = defaultCoreApiAdapter as unknown as {
         getSocSignalPerformanceMetrics: () => Promise<PerformanceMetrics>;
@@ -164,24 +170,52 @@ export function SocSignalsPanel() {
       }));
 
       const merged = [...whaleList, ...darkPoolList, ...screenerList].sort((a, b) => {
-        const da = a.detected_at || "";
-        const db = b.detected_at || "";
-        return db.localeCompare(da);
+        const da = a.detected_at ? new Date(a.detected_at).getTime() : 0;
+        const db = b.detected_at ? new Date(b.detected_at).getTime() : 0;
+        return db - da;
       });
 
+      if (!mountedRef.current) return;
       setSignals(merged);
       setMetrics(perfMetrics);
       setMaterialization(matStatus);
       setError("");
+      const hadBackoff = consecutiveErrorsRef.current >= 3;
+      consecutiveErrorsRef.current = 0;
+      if (hadBackoff) restartInterval(10000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Cannot load signal data.");
+      if (!mountedRef.current) return;
+      consecutiveErrorsRef.current += 1;
+      // R2: after 3 consecutive poll failures, slow 10s → 60s
+      if (consecutiveErrorsRef.current >= 3 && intervalDelayRef.current === 10000) {
+        restartInterval(60000);
+      }
+      // R2: after 3 consecutive poll failures, stop spamming error toast
+      if (!isSilent || consecutiveErrorsRef.current >= 3) {
+        setError(err instanceof Error ? err.message : "Cannot load signal data.");
+      }
     } finally {
-      setLoading(false);
+      if (!isSilent && mountedRef.current) setLoading(false);
     }
   };
 
+  const restartInterval = (delayMs: number) => {
+    if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
+    intervalDelayRef.current = delayMs;
+    intervalRef.current = window.setInterval(() => {
+      fetchData(true);
+    }, delayMs);
+  };
+
   useEffect(() => {
-    fetchData();
+    mountedRef.current = true;
+    fetchData(false);
+    restartInterval(10000);
+    return () => {
+      mountedRef.current = false;
+      if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredSignals = useMemo(() => {
@@ -210,14 +244,19 @@ export function SocSignalsPanel() {
   const neutPct = totalSentiment > 0 ? ((sentiment.neutral || 0) / totalSentiment) * 100 : 0;
 
   const handleRunJob = async () => {
-    if (!jobSymbol.trim()) return;
+    const sym = jobSymbol.trim().toUpperCase();
+    if (!sym) return;
+    if (!/^[A-Z0-9]{3,4}$/.test(sym)) {
+      setJobStatus(t("soc.signals_overview.symbol_invalid", { defaultValue: "Mã không hợp lệ (3-4 ký tự A-Z0-9)" }));
+      return;
+    }
     setJobLoading(true);
     setJobStatus(null);
     try {
       const adapter = defaultCoreApiAdapter as unknown as {
         runSocSignalJob: (domain: string, symbol: string) => Promise<{ status?: string; run_log_id?: string; message?: string }>;
       };
-      const result = await adapter.runSocSignalJob(jobDomain, jobSymbol.trim().toUpperCase());
+      const result = await adapter.runSocSignalJob(jobDomain, sym);
       setJobStatus(result.status || result.message || t("soc.signals_overview.job_queued"));
     } catch (err) {
       setJobStatus(err instanceof Error ? err.message : "Job failed.");
@@ -227,9 +266,9 @@ export function SocSignalsPanel() {
   };
 
   const signalTypeLabel = (type: string): string => {
-    if (type === "whale") return "Whale";
-    if (type === "dark_pool") return "Dark Pool";
-    if (type === "screener") return "Screener";
+    if (type === "whale") return t("soc.signals_overview.filter_whale");
+    if (type === "dark_pool") return t("soc.signals_overview.filter_dark_pool");
+    if (type === "screener") return t("soc.signals_overview.filter_screener");
     return type;
   };
 
@@ -241,15 +280,16 @@ export function SocSignalsPanel() {
     );
 
   // ─── Signal row ────────────────────────────────────────────────────────
-  const renderSignalRow = (s: RecentSignal) => {
-    const isExpanded = expandedId === (s.id ?? 0);
+  const renderSignalRow = (s: RecentSignal, idx: number) => {
+    const stableKey = `${s.type}-${s.symbol}`;
+    const isExpanded = expandedId === stableKey;
     const action = getActionLabel(s.action);
-    const handleClick = () => setExpandedId(isExpanded ? null : (s.id ?? 0));
+    const handleClick = () => setExpandedId(isExpanded ? null : stableKey);
     const metaJson = s.metadata ? JSON.stringify(s.metadata, null, 2) : null;
 
     return createElement(
       "div",
-      { key: `${s.type}-${s.id ?? s.symbol}-${s.detected_at}` },
+      { key: `${s.type}-${s.id ?? stableKey}-${s.detected_at}-${idx}` },
       createElement(
         "div",
         {
@@ -259,7 +299,7 @@ export function SocSignalsPanel() {
         createElement("div", {
           className: styles.signalIcon,
           style: { background: TYPE_BG[s.type] ?? "transparent", color: TYPE_COLORS[s.type] },
-        }, TYPE_ICONS[s.type] || ""),
+        }, createElement(LucideIcon, { name: TYPE_ICONS[s.type] || "Activity", className: "h-3.5 w-3.5" })),
         createElement("div", { className: styles.signalSymbol }, s.symbol),
         createElement("div", { className: `${styles.signalLabel} ${action.cls}` }, action.text),
         createElement("div", { className: styles.signalVolume },
@@ -300,29 +340,29 @@ export function SocSignalsPanel() {
         totalSentiment === 0
           ? createElement("div", {
               className: styles.sentimentSegment,
-              
+              style: { width: "100%", background: "rgba(148, 163, 184, 0.15)", color: "var(--color-text-muted, #94a3b8)" },
             }, t("soc.signals_overview.no_data"))
           : [
               sentiment.bullish != null && sentiment.bullish > 0
                 ? createElement("div", {
                     key: "bull",
                     className: styles.sentimentSegment,
-                    style: { width: `${bullPct}%`, background: "rgba(52, 211, 153, 0.35)", color: toneColor("success") },
-                  }, `${sentiment.bullish}`)
+                    style: { width: `${bullPct.toFixed(1)}%`, background: "rgba(52, 211, 153, 0.35)", color: toneColor("success") },
+                  }, `${bullPct.toFixed(1)}%`)
                 : null,
               sentiment.neutral != null && sentiment.neutral > 0
                 ? createElement("div", {
                     key: "neut",
                     className: styles.sentimentSegment,
-                    style: { width: `${neutPct}%`, background: "rgba(148, 163, 184, 0.25)", color: "var(--color-text-muted, #94a3b8)" },
-                  }, `${sentiment.neutral}`)
+                    style: { width: `${neutPct.toFixed(1)}%`, background: "rgba(148, 163, 184, 0.25)", color: "var(--color-text-muted, #94a3b8)" },
+                  }, `${neutPct.toFixed(1)}%`)
                 : null,
               sentiment.bearish != null && sentiment.bearish > 0
                 ? createElement("div", {
                     key: "bear",
                     className: styles.sentimentSegment,
-                    style: { width: `${bearPct}%`, background: "rgba(239, 68, 68, 0.35)", color: toneColor("danger") },
-                  }, `${sentiment.bearish}`)
+                    style: { width: `${bearPct.toFixed(1)}%`, background: "rgba(239, 68, 68, 0.35)", color: toneColor("danger") },
+                  }, `${bearPct.toFixed(1)}%`)
                 : null,
             ].filter(Boolean)
       ),
@@ -390,11 +430,7 @@ export function SocSignalsPanel() {
     if (services.length === 0) {
       return createElement("p", { className: styles.emptyState }, t("soc.signals_overview.no_materialization"));
     }
-    const statusColor = (st: string): string =>
-      st === "success" || st === "completed" ? "var(--color-success-500, #34d399)"
-      : st === "running" ? "var(--accent-cyan, #06b6d4)"
-      : st === "failed" ? toneColor("danger")
-      : "var(--color-text-muted, #94a3b8)";
+    const getStatusColor = (st: string): string => socStatusColor(st);
     const summaryChildren: ReactNode[] = [];
     if (materialization.unified_alerts_available != null) {
       summaryChildren.push(
@@ -427,7 +463,7 @@ export function SocSignalsPanel() {
                   )
                 : null,
             ),
-            createElement("div", { className: styles.matCardStatus, style: { color: statusColor(svc.status) } },
+            createElement("div", { className: styles.matCardStatus, style: { color: getStatusColor(svc.status) } },
               svc.status ? svc.status.toUpperCase() : "—",
             ),
           ),
@@ -506,7 +542,7 @@ export function SocSignalsPanel() {
                 filteredSignals.length === 0
                   ? renderRadarEmptyState()
                   : createElement("div", { className: styles.signalFeed },
-                      ...filteredSignals.slice(0, 50).map(renderSignalRow),
+                      ...filteredSignals.slice(0, 50).map((s, idx) => renderSignalRow(s, idx)),
                     ),
               ),
               // ── Right: Sub-tabs ────────────────────────────────────────

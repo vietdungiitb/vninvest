@@ -1,5 +1,6 @@
 import { createElement, useState, ChangeEvent, MouseEvent } from "react";
 import { useI18n } from "../../context/LangContext.js";
+import styles from "./soc.module.css";
 
 export interface SocScreenerRuleModalProps {
   mode: "create" | "edit";
@@ -33,10 +34,10 @@ function SocScreenerRuleModal({ mode, initial, onConfirm, onCancel, loading }: S
   const handleSubmit = async () => { if (!validate()) return; await onConfirm({ name: name.trim(), type, enabled, threshold: JSON.parse(threshold), value: JSON.parse(value) }); };
   const handleCancel = () => { onCancel(); };
 
-  const overlayStyle = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "1rem" };
+  const overlayStyle = { display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", zIndex: 110 };
   const modalStyle = { background: "var(--bg-panel, #0f172a)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", borderRadius: "12px", padding: "1.5rem", width: "100%", maxWidth: "480px", maxHeight: "90vh", overflow: "auto", boxShadow: "0 20px 40px rgba(0,0,0,0.4)" };
 
-  return createElement("div", { style: overlayStyle, onClick: handleCancel },
+  return createElement("div", { className: styles.drawerOverlay, style: overlayStyle, onClick: handleCancel },
     createElement("div", { style: modalStyle, onClick: (e: MouseEvent) => e.stopPropagation() },
       createElement("h2", { }, mode === "create" ? t("soc.screener.add_rule") : t("soc.screener.edit_rule")),
       createElement("div", { },

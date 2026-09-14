@@ -259,8 +259,14 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
       return corePost("/operator/soc/prefetch/purge-cache/");
     },
 
-    warmSocPrefetchNow(mode = 'async') {
-      return corePost(`/operator/soc/prefetch/warm-now/?mode=${encodeURIComponent(mode)}`);
+    previewSocPrefetchConfig(config) {
+      return corePost("/operator/soc/prefetch/config/preview/", { config_payload: config });
+    },
+
+    warmSocPrefetchNow(mode = 'async', opts = {}) {
+      const groups = opts.groups || opts.universe_group_ids;
+      const body = groups && groups.length ? { universe_group_ids: groups } : {};
+      return corePost(`/operator/soc/prefetch/warm-now/?mode=${encodeURIComponent(mode)}`, body);
     },
 
     getSocPrefetchUniverseGroups() {

@@ -1,9 +1,10 @@
-import { createElement, useEffect, useState } from "react";
+import { createElement, useEffect, useState, useRef } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { ShellPanel } from "../../components/ShellPageTemplate.js";
 import { SocConfigPreviewModal } from "./SocConfigPreviewModal.js";
 import { SocScreenerRuleModal } from "./SocScreenerRuleModal.js";
 import { SocScreenerConfigForm } from "./SocScreenerConfigForm.js";
+import { SocOwnershipBadge } from "./SocOwnershipBadge.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
 import { toneColor } from "./socStatusColors.js";
@@ -68,6 +69,10 @@ export function SocScreenerPanel() {
   const [scanning, setScanning] = useState(false);
   const [ruleModal, setRuleModal] = useState<{ mode: "create" | "edit"; rule?: ScreenerRule } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const toastTimeoutRef = useRef<number | null>(null);
+  const [rulesPage, setRulesPage] = useState(1);
+  const [resultsPage, setResultsPage] = useState(1);
+  const pageSize = 10;
 
   const fetchData = async () => {
     setLoading(true);
@@ -81,9 +86,12 @@ export function SocScreenerPanel() {
       ]);
 
       setConfig(cfg);
-      setRules(rulesData.rules || []);
-      setResults(resultsData.symbols_matched || []);
-      setAlerts(alertsData.alerts || []);
+      const rulesList = (rulesData as any).results || (rulesData as any).rules || [];
+      setRules(rulesList);
+      const resultsList = (resultsData as any).results || (resultsData as any).symbols_matched || [];
+      setResults(resultsList);
+      const alertsList = (alertsData as any).results || (alertsData as any).alerts || [];
+      setAlerts(alertsList);
       setMetrics(m);
       setError("");
     } catch (err) {
@@ -97,17 +105,26 @@ export function SocScreenerPanel() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current != null) window.clearTimeout(toastTimeoutRef.current);
+    };
+  }, []);
+
   const showToast = (message: string, type: "success" | "error" = "success") => {
+    if (toastTimeoutRef.current != null) window.clearTimeout(toastTimeoutRef.current);
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    toastTimeoutRef.current = window.setTimeout(() => setToast(null), 3000) as unknown as number;
   };
 
-  const handleApplyConfig = async () => {
-    if (!previewModal) return;
+  const handleApplyConfig = async (directConfig?: ScreenerConfig) => {
+    const payload = (directConfig ?? previewModal?.after) as ScreenerConfig | undefined;
+    if (!payload) return;
     try {
       setApplying(true);
-      await defaultCoreApiAdapter.applySocScreenerConfig(previewModal.after as ScreenerConfig);
+      await defaultCoreApiAdapter.applySocScreenerConfig(payload);
       showToast(t("soc.screener.config_saved"), "success");
+      setPreviewModal(null);
       await fetchData();
     } catch (err) {
       showToast(err instanceof Error ? err.message : t("soc.screener.apply_failed"), "error");
@@ -210,6 +227,17 @@ export function SocScreenerPanel() {
         : createElement(
             "div",
             null,
+            createElement(SocOwnershipBadge, { team: "core", writable: true, accessLevel: "service_ops" }),
+            createElement(
+              "div",
+              { className: styles.bannerNotice, style: { marginBottom: "0.75rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", flexWrap: "wrap" } },
+              createElement("span", null, t("soc.screener.ops_notice")),
+              createElement(
+                "a",
+                { href: "/screener", style: { color: "var(--accent-cyan, #06b6d4)", textDecoration: "underline", fontWeight: 600, whiteSpace: "nowrap" } },
+                t("soc.screener.link_to_user_screener"),
+              ),
+            ),
             createElement("div", { className: styles.sectionCard },
               createElement("div", { className: styles.sectionCardTitle }, t("soc.screener.config_title")),
               createElement(SocScreenerConfigForm, {
@@ -240,7 +268,7 @@ export function SocScreenerPanel() {
                   ),
                 ),
                 createElement("tbody", null,
-                  rules.map((rule) =>
+                  rules.slice((rulesPage - 1) * pageSize, rulesPage * pageSize).map((rule) =>
                     createElement("tr", { key: rule.id },
                       createElement("td", { }, rule.name),
                       createElement("td", { }, rule.type),
@@ -271,6 +299,13 @@ export function SocScreenerPanel() {
                   ),
                 ),
               ),
+              rules.length > pageSize ? createElement(
+                "div",
+                { className: styles.pagination, style: { marginTop: "0.75rem" } },
+                createElement("button", { className: styles.pageBtn, disabled: rulesPage <= 1, onClick: () => setRulesPage((p) => Math.max(1, p - 1)) }, t("soc.actions.prev")),
+                createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted)" } }, t("soc.actions.page", { page: rulesPage })),
+                createElement("button", { className: styles.pageBtn, disabled: rulesPage * pageSize >= rules.length, onClick: () => setRulesPage((p) => p + 1) }, t("soc.actions.next")),
+              ) : null,
             ),
             createElement("div", { className: styles.sectionCard,  },
               createElement("div", { className: styles.sectionCardTitle }, t("soc.screener.manual_scan_title")),
@@ -314,7 +349,7 @@ export function SocScreenerPanel() {
                   : createElement(
                       "div",
                       { },
-                      results.slice(0, 20).map((r) =>
+                      results.slice((resultsPage - 1) * pageSize, resultsPage * pageSize).map((r) =>
                         createElement(
                           "div",
                           {
@@ -327,6 +362,13 @@ export function SocScreenerPanel() {
                           ),
                         ),
                       ),
+                      results.length > pageSize ? createElement(
+                        "div",
+                        { className: styles.pagination, style: { marginTop: "0.5rem" } },
+                        createElement("button", { className: styles.pageBtn, disabled: resultsPage <= 1, onClick: () => setResultsPage((p) => Math.max(1, p - 1)) }, t("soc.actions.prev")),
+                        createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted)" } }, t("soc.actions.page", { page: resultsPage })),
+                        createElement("button", { className: styles.pageBtn, disabled: resultsPage * pageSize >= results.length, onClick: () => setResultsPage((p) => p + 1) }, t("soc.actions.next")),
+                      ) : null,
                     ),
               ),
               createElement(

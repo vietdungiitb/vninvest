@@ -17,6 +17,12 @@ export function SocRuntimeKpiPanel() {
       },
       createElement(
         "div",
+        { className: styles.bannerNotice, style: { marginBottom: "0.75rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", flexWrap: "wrap" } },
+        createElement("span", null, t("soc.runtime_kpi.banner_hint")),
+        createElement("a", { href: "/admin/core/usage", style: { color: "var(--accent-cyan, #06b6d4)", fontWeight: 600, textDecoration: "underline", whiteSpace: "nowrap" } }, t("soc.runtime_kpi.banner_link")),
+      ),
+      createElement(
+        "div",
         { className: styles.emptyState,  },
         createElement(
           "svg",

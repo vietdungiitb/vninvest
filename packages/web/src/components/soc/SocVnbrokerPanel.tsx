@@ -35,9 +35,12 @@ interface VnbrokerHealth {
 }
 
 interface VnbrokerProvider {
-  key: string;
-  name: string;
-  status: string;
+  provider: string;
+  label: string;
+  enabled: boolean;
+  in_active_cycle?: boolean;
+  runtime_ready?: boolean;
+  runtime_gate?: string;
   [key: string]: unknown;
 }
 
@@ -56,6 +59,7 @@ const vnbrokerAdapter = defaultCoreApiAdapter as unknown as {
   getSocVnbrokerProviders: () => Promise<{ providers?: VnbrokerProvider[] }>;
   getSocVnbrokerBenchmarkLatest: () => Promise<{ results?: BenchmarkResult[] }>;
   getSocVnbrokerCircuitBreaker: () => Promise<{ status?: string; tripped?: boolean; tripped_at?: string | null }>;
+  getSocVnbrokerMetrics: () => Promise<{ throughput: number; error_rate: number }>;
   applySocVnbrokerConfig: (cfg: VnbrokerConfig) => Promise<void>;
   previewSocVnbrokerConfig: (cfg: VnbrokerConfig) => Promise<{
     change_summary?: string[];
@@ -85,6 +89,7 @@ export function SocVnbrokerPanel() {
   const [previewResults, setPreviewResults] = useState<{ changeSummary?: string[]; impactWarnings?: string[]; validationErrors?: string[] } | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
+  const [metrics, setMetrics] = useState<{ throughput: number; error_rate: number } | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -103,6 +108,7 @@ export function SocVnbrokerPanel() {
       setProviders(prov.providers || []);
       setBenchmarkResults(bench.results || []);
       setCircuitBreaker(cb);
+      vnbrokerAdapter.getSocVnbrokerMetrics().then(setMetrics).catch(() => setMetrics(null));
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Cannot load vnbroker data.");
@@ -305,7 +311,8 @@ export function SocVnbrokerPanel() {
                     renderMetricCard(t("soc.health.status_critical"), health?.provider_health?.critical ?? 0, toneColor("danger")),
                   ),
                   createElement("div", { className: styles.metricGrid,  },
-                    renderMetricCard(t("soc.vnbroker.throughput"), `${health?.avg_response_ms ? (1000 / health.avg_response_ms).toFixed(1) : 0}/s`, "var(--accent-cyan, #06b6d4)"),
+                    renderMetricCard(t("soc.vnbroker.throughput"), `${(metrics?.throughput ?? 0).toFixed(1)}/s`, "var(--accent-cyan, #06b6d4)"),
+                    renderMetricCard(t("soc.vnbroker.error_rate"), `${metrics?.error_rate ?? 0}%`, toneColor(metrics && metrics.error_rate > 0 ? "danger" : "success")),
                     renderMetricCard(t("soc.vnbroker.avg_latency"), `${health?.avg_response_ms ?? 0}ms`, toneColor("warning")),
                   ),
                 ),
@@ -324,7 +331,7 @@ export function SocVnbrokerPanel() {
                       
                     },
                     createElement("option", { value: "all" }, t("soc.vnbroker.all_providers")),
-                    providers.map((p) => createElement("option", { key: p.key, value: p.key }, p.name)),
+                    providers.map((p) => createElement("option", { key: p.provider, value: p.provider }, p.label)),
                   ),
                   createElement(
                     "button",
@@ -413,13 +420,13 @@ export function SocVnbrokerPanel() {
                   { },
                   providers.map((p) =>
                     createElement(SocServiceHealthCard, {
-                      key: p.key,
+                      key: p.provider,
                       service: {
-                        service_key: p.key,
-                        name: p.name,
+                        service_key: p.provider,
+                        name: p.label,
                         domain: "vnbroker",
-                        status: p.status,
-                        is_active: p.status !== "unhealthy",
+                        status: p.runtime_ready ? "healthy" : (p.enabled ? "degraded" : "unknown"),
+                        is_active: Boolean(p.enabled && p.runtime_ready),
                         avg_response_ms: health?.avg_response_ms,
                       },
                     }),

@@ -8,6 +8,7 @@ import { SocOwnershipBadge } from "./SocOwnershipBadge.js";
 import { SocStatusBadge } from "./SocStatusBadge.js";
 import { useSymbolGroups } from "../../hooks/useSymbolGroups.js";
 import { CUSTOM_GROUP_KEY, DEFAULT_SYMBOL_GROUP } from "../../constants/marketGroups.js";
+import { validateDateRange } from "./socValidation.js";
 import styles from "./soc.module.css";
 
 interface RunLogEntry {
@@ -119,11 +120,8 @@ export function SocDataOpsOperationsSection() {
 
   useEffect(() => {
     actions.refreshRuns();
-  }, [actions]);
-
-  useEffect(() => {
     fetchRunLogs(runLogsPage, runLogsPageSize);
-  }, [runLogsPage, runLogsPageSize, fetchRunLogs]);
+  }, [actions, runLogsPage, runLogsPageSize, fetchRunLogs]);
 
   const isCustom = selectedGroup === CUSTOM_GROUP_KEY;
 
@@ -142,9 +140,17 @@ export function SocDataOpsOperationsSection() {
   }), [selectedDatasets, isCustom, selectedGroup, customSymbols, dateFrom, dateTo, mode, dryRun, executionMode, reason]);
 
   const handlePreview = async () => {
+    if (selectedDatasets.length === 0) {
+      setError(t("soc.dataops.backfill_dataset_required"));
+      return;
+    }
     if (isCustom && !customSymbols.trim()) {
       setError(t("soc.dataops.backfill_custom_symbols_required"));
       return;
+    }
+    {
+      const dateErr = validateDateRange(dateFrom, dateTo, t);
+      if (dateErr) { setError(dateErr); return; }
     }
     setError(""); setSuccess(""); setPreview(null);
     setPreviewing(true);
@@ -162,6 +168,10 @@ export function SocDataOpsOperationsSection() {
   };
 
   const handleRun = async () => {
+    if (selectedDatasets.length === 0) {
+      setError(t("soc.dataops.backfill_dataset_required"));
+      return;
+    }
     if (!reason.trim()) {
       setError(t("soc.dataops.backfill_reason_required"));
       return;
@@ -170,11 +180,19 @@ export function SocDataOpsOperationsSection() {
       setError(t("soc.dataops.backfill_custom_symbols_required"));
       return;
     }
+    {
+      const dateErr = validateDateRange(dateFrom, dateTo, t);
+      if (dateErr) { setError(dateErr); return; }
+    }
     setError(""); setSuccess("");
     setSubmitting(true);
     try {
       const runId = await actions.triggerBackfill(buildPayload());
-      setSuccess(t("soc.dataops.backfill_queued_with_run", { run_id: runId }));
+      if (runId) {
+        setSuccess(t("soc.dataops.backfill_queued_with_run", { run_id: runId }));
+      } else {
+        setSuccess(t("soc.dataops.backfill_queued"));
+      }
       setPreview(null);
       fetchRunLogs(1, runLogsPageSize);
       setRunLogsPage(1);
@@ -264,7 +282,7 @@ export function SocDataOpsOperationsSection() {
                 ? createElement(
                     "span",
                     { className: styles.opsCheckboxComing },
-                    "Coming soon",
+                    t("soc.dataops.backfill_dataset_coming_soon"),
                   )
                 : createElement(
                     "span",
@@ -393,7 +411,7 @@ export function SocDataOpsOperationsSection() {
   const renderDryRunCheckbox = () =>
     createElement(
       "label",
-      { className: styles.opsDryRunRow },
+      { className: styles.opsDryRunRow, title: t("soc.dataops.backfill_dry_run_hint") },
       createElement("input", {
         type: "checkbox", checked: dryRun,
         onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDryRun(e.target.checked),
@@ -410,7 +428,7 @@ export function SocDataOpsOperationsSection() {
         {
           className: styles.runBtn,
           onClick: handleRun,
-          disabled: submitting || previewing || !!activeRun,
+          disabled: submitting || previewing || !!activeRun || selectedDatasets.length === 0,
         },
         submitting ? t("soc.dataops.planner_run_loading") : t("soc.dataops.backfill_run"),
       ),
@@ -419,7 +437,7 @@ export function SocDataOpsOperationsSection() {
         {
           className: styles.actionBtn,
           onClick: handlePreview,
-          disabled: previewing || submitting,
+          disabled: previewing || submitting || selectedDatasets.length === 0,
           
         },
         previewing ? t("soc.dataops.planner_preview_loading") : t("soc.dataops.planner_preview"),

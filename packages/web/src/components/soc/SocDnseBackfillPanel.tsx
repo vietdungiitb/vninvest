@@ -1,7 +1,8 @@
-import { createElement, useEffect, useState } from "react";
+import { createElement, useEffect, useState, useRef } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { ShellPanel } from "../../components/ShellPageTemplate.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { validateDateRange } from "./socValidation.js";
 import { getStatusBadgeStyle } from "./socStatusColors.js";
 import styles from "./soc.module.css";
 
@@ -21,54 +22,89 @@ export function SocDnseBackfillPanel() {
   const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
+  const [success, setSuccess] = useState("");
   const [jobs, setJobs] = useState<BackfillJob[]>([]);
   const [symbol, setSymbol] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [jobsPage, setJobsPage] = useState(1);
+  const jobsPageSize = 10;
+  const mountedRef = useRef(true);
+  const jobsRef = useRef<BackfillJob[]>([]);
 
-  const fetchJobs = async () => {
-    setLoading(true);
+  const fetchJobs = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const adapter = defaultCoreApiAdapter as unknown as {
-        getDnseBackfillJobs: () => Promise<{ jobs?: BackfillJob[] }>;
+        getDnseBackfillJobs: () => Promise<{ jobs?: BackfillJob[]; results?: BackfillJob[]; data?: BackfillJob[] }>;
       };
       const data = await adapter.getDnseBackfillJobs();
-      setJobs(data.jobs || []);
+      const list = (data as any).jobs || (data as any).results || (data as any).data || [];
+      if (!mountedRef.current) return;
+      setJobs(list);
       setError("");
     } catch (err) {
+      if (!mountedRef.current) return;
       setError(err instanceof Error ? err.message : "Cannot load DNSE backfill jobs.");
     } finally {
-      setLoading(false);
+      if (!isSilent && mountedRef.current) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchJobs();
+    jobsRef.current = jobs;
+  }, [jobs]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    fetchJobs(false);
+    const id = window.setInterval(() => {
+      if (jobsRef.current.some((j) => j.status === "running" || j.status === "queued")) {
+        fetchJobs(true);
+      }
+    }, 5000);
+    return () => {
+      mountedRef.current = false;
+      window.clearInterval(id);
+    };
   }, []);
 
   const handleSubmit = async () => {
-    if (!symbol.trim()) {
-      alert(t("soc.dnse.symbol_required"));
+    const sym = symbol.trim().toUpperCase();
+    if (!sym) {
+      setFormError(t("soc.dnse.symbol_required"));
       return;
     }
+    if (!/^[A-Z0-9]{3,4}$/.test(sym)) {
+      setFormError(t("soc.dnse.symbol_invalid", { defaultValue: "Mã không hợp lệ (3-4 ký tự A-Z0-9, VD: VCB, FPT)" }));
+      return;
+    }
+    {
+      const dateErr = validateDateRange(dateFrom, dateTo, t);
+      if (dateErr) { setFormError(dateErr); return; }
+    }
+    setFormError("");
+    setSuccess("");
     setSubmitting(true);
     try {
       const adapter = defaultCoreApiAdapter as unknown as {
         triggerDnseBackfill: (payload: Record<string, unknown>) => Promise<void>;
       };
       await adapter.triggerDnseBackfill({
-        symbol: symbol.toUpperCase(),
-        date_from: dateFrom,
-        date_to: dateTo,
+        symbol: sym,
+        date_from: dateFrom || undefined,
+        date_to: dateTo || undefined,
       });
-      alert(t("soc.dnse.backfill_started"));
+      setSuccess(t("soc.dnse.backfill_started"));
       setSymbol("");
       setDateFrom("");
       setDateTo("");
-      await fetchJobs();
+      await fetchJobs(false);
+      setJobsPage(1);
     } catch (err) {
-      alert(`Error: ${err instanceof Error ? err.message : "Backfill failed."}`);
+      setFormError(err instanceof Error ? err.message : "Backfill failed.");
     } finally {
       setSubmitting(false);
     }
@@ -90,6 +126,8 @@ export function SocDnseBackfillPanel() {
           : createElement(
               "div",
               null,
+              formError ? createElement("div", { className: styles.inlineError, style: { marginBottom: "0.75rem" } }, formError) : null,
+              success ? createElement("div", { className: styles.inlineSuccess, style: { marginBottom: "0.75rem" } }, success) : null,
               createElement(
                 "div",
                 { className: styles.sectionCard },
@@ -167,10 +205,14 @@ export function SocDnseBackfillPanel() {
                 createElement("div", { className: styles.sectionCardTitle }, t("soc.dnse.recent_jobs")),
                 jobs.length === 0
                   ? createElement("p", { className: styles.emptyState }, t("soc.dnse.no_jobs"))
-                  : createElement(
+                  : (() => {
+                      const totalPages = Math.max(1, Math.ceil(jobs.length / jobsPageSize));
+                      const safePage = Math.min(jobsPage, totalPages);
+                      const paged = jobs.slice((safePage - 1) * jobsPageSize, safePage * jobsPageSize);
+                      return createElement(
                       "div",
                       { },
-                      jobs.slice(0, 15).map((job) =>
+                      paged.map((job) =>
                         createElement(
                           "div",
                           {
@@ -197,7 +239,15 @@ export function SocDnseBackfillPanel() {
                             : null,
                         ),
                       ),
-                    ),
+                      totalPages > 1 ? createElement(
+                        "div",
+                        { className: styles.pagination, style: { marginTop: "0.75rem" } },
+                        createElement("button", { className: styles.pageBtn, disabled: safePage <= 1, onClick: () => setJobsPage((p) => Math.max(1, p - 1)) }, t("soc.actions.prev")),
+                        createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted)" } }, t("soc.actions.page", { page: safePage })),
+                        createElement("button", { className: styles.pageBtn, disabled: safePage >= totalPages, onClick: () => setJobsPage((p) => p + 1) }, t("soc.actions.next")),
+                      ) : null,
+                    );
+                    })(),
               ),
             ),
     ),

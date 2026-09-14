@@ -1,4 +1,5 @@
-import { createElement, useState, useCallback } from "react";
+import { createElement, useState, useCallback, useEffect } from "react";
+import { useSearchParams as useRouterSearchParams } from "react-router-dom";
 import { useI18n } from "../../context/LangContext.js";
 import { ShellPageChrome } from "../../components/ShellPageTemplate.js";
 import { SocTabNavigation } from "../../components/soc/SocTabNavigation.js";
@@ -19,29 +20,7 @@ interface ShellOperationsCenterPageProps {
   initialSnapshot?: Record<string, unknown> | null;
 }
 
-function useSearchParams() {
-  const [params, setParams] = useState(() => new URLSearchParams(
-    typeof window !== "undefined" ? window.location.search : "",
-  ));
-  const updateParams = useCallback((key: string, value: string) => {
-    const next = new URLSearchParams(
-      typeof window !== "undefined" ? window.location.search : "",
-    );
-    if (value) {
-      next.set(key, value);
-    } else {
-      next.delete(key);
-    }
-    if (typeof window !== "undefined") {
-      const newUrl = next.toString()
-        ? `${window.location.pathname}?${next.toString()}`
-        : window.location.pathname;
-      window.history.replaceState(null, "", newUrl);
-    }
-    setParams(next);
-  }, []);
-  return [params, updateParams] as const;
-}
+const STORAGE_KEY = "soc_active_tab";
 
 const SOC_TABS = [
   { key: "overview", icon: "BookOpen" },
@@ -56,14 +35,38 @@ const SOC_TABS = [
 
 export function ShellOperationsCenterPage(_props: ShellOperationsCenterPageProps) {
   const { t } = useI18n();
-  const [searchParams, setSearchParam] = useSearchParams();
-  const tabFromUrl = searchParams.get("tab") || "overview";
-  const [activeTab, setActiveTab] = useState(tabFromUrl);
+  const [searchParams, setSearchParams] = useRouterSearchParams();
+
+  const getInitialTab = () => {
+    const urlTab = searchParams.get("tab");
+    if (urlTab && SOC_TABS.some((tb) => tb.key === urlTab)) return urlTab;
+    try {
+      const saved = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+      if (saved && SOC_TABS.some((tb) => tb.key === saved)) return saved;
+    } catch { /* noop */ }
+    return "overview";
+  };
+
+  const [activeTab, setActiveTab] = useState(getInitialTab);
+
+  useEffect(() => {
+    const urlTab = searchParams.get("tab");
+    if (urlTab && urlTab !== activeTab && SOC_TABS.some((tb) => tb.key === urlTab)) {
+      setActiveTab(urlTab);
+    }
+  }, [searchParams, activeTab]);
 
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab);
-    setSearchParam("tab", tab);
-  }, [setSearchParam]);
+    try {
+      localStorage.setItem(STORAGE_KEY, tab);
+    } catch { /* noop */ }
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", tab);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -88,12 +91,22 @@ export function ShellOperationsCenterPage(_props: ShellOperationsCenterPageProps
     }
   };
 
+  const TAB_DESCRIPTIONS: Record<string, string> = {
+    overview: "soc.tabs.overview_description",
+    signals: "soc.tabs.signals_description",
+    dataops: "soc.tabs.dataops_description",
+    prefetch: "soc.tabs.prefetch_description",
+    screener: "soc.tabs.screener_description",
+    vnbroker: "soc.tabs.vnbroker_description",
+    "runtime-kpi": "soc.tabs.runtime_kpi_description",
+    "dnse-backfill": "soc.tabs.dnse_backfill_description",
+  };
+
   return createElement(
     ShellPageChrome,
     {
-      eyebrow: t("soc.pages.breadcrumb_operations"),
       title: t("soc.pages.soc_page_title"),
-      description: undefined,
+      description: t(TAB_DESCRIPTIONS[activeTab] || TAB_DESCRIPTIONS.overview),
     },
     createElement(SocTabNavigation, {
       tabs: SOC_TABS,

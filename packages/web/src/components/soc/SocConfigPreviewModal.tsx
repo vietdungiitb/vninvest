@@ -19,6 +19,7 @@ export function SocConfigPreviewModal({ before, after, changeSummary, impactWarn
   return createElement(
     "div",
     {
+      className: styles.drawerOverlay,
       onClick: onCancel,
     },
     createElement(

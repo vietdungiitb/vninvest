@@ -64,6 +64,17 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - **7.5 Hook test**: coverage hook qua 7.3. 
 - **Kết quả**: `vitest run` 6 files / 16 tests PASS (5 mới). Lint + build + tsc đều xanh. Sprint 6 DoD giờ đạt đầy đủ (A2/A3/A4 từ audit Sprint6 đã đóng).
 
+### Done (2026-09-16) — Phase 1 P0 Fixes (COC audit)
+- **Entry 84**: 4 P0 blocker COC — `SocScreenerPanel handleApplyConfig` (directConfig merge), `SocPrefetchPanel selectedGroups persist` (merge `universe_group_ids`), `ShellOperationsCenterPage+SocTabNavigation` tab router race + hyphen i18n, BE `SOC_HEALTH_ENDPOINTS`/`SOC_HEALTH_PROBE_TIMEOUT_SECONDS` env. tsc 0 + build 39.98s PASS.
+
+### Done (2026-09-14) — Phase 2 P2 (P2-A1/A2/A3 + P2-B UX + R-NEW-3) — Entry 87
+- **P2-A1 Overview** (`SocOverviewPanel`): COC-05 Retry button, COC-06 single reduce, COC-07 err.message, COC-08 maintenance filter+button, COC-09 domain search, COC-10 15s poll + backoff.
+- **P2-A2 DataOps**: COC-18 `DataOpsContext.refreshRuns` → `getSocDataOpsRunLogs(1,20)`; COC-19 `SocDataOpsPanel` loading tổng; COC-20 scheduler health strip luôn hiển thị; COC-29 merge 2 useEffects.
+- **P2-A3 Prefetch**: COC-37 preview gọi API thật (`previewSocPrefetchConfig`), COC-38 `warmSocPrefetchNow` gửi `{universe_group_ids}`, COC-39 bỏ 4 `alert()` → inline error/success. i18n `preview_failed`/`apply_success`.
+- **R-NEW-3**: `socValidation.ts validateDateRange()` — dùng tại OperationsSection ×2 + DnseBackfillPanel ×1.
+- **P2-B**: COC-21/22/23/24 skeleton+token+ratio+accordion a11y (Inventory), COC-32/33/34/35 skeleton+fail-rate dash+String()+empty state (Monitor), COC-31 dryRun hint, COC-44 scan_interval min 30→10, COC-45/61 drawer overlay, COC-04 tab bar flex, COC-03 tab description map, COC-16 sentiment bar `toFixed(1)%`, COC-17 `socStatusColor` shared, COC-46 throughput qua `getSocVnbrokerMetrics` + Error Rate card, COC-47 provider `is_active = enabled && runtime_ready` map đúng field backend.
+- **Tests**: soc.test.js updated cho COC-38 body — 80/80 pass. tsc 0 + build 31.21s PASS. **Day-5**: lint 0 errors (2 exhaustive-deps section đã thêm eslint-disable theo convention), vitest 127 tests (mới `soc-p2.component.test.tsx`: Overview retry, Prefetch warm groups, validateDateRange), build 38.49s PASS. Ledger Entry 87. **Phase 2 P2 HOÀN TOÀN DONE** — còn Phase 3 commercial backlog riêng.
+
 ## Key Decisions & Metrics
 - Local `vninvestcharts/` component tree (~745 files, -102k lines) replaced by npm package `vninvestcharts-widget` ^1.2.5
 - New adapter file: `packages/web/src/adapters/chartAdapter.js` — bridges core API → chart bar format

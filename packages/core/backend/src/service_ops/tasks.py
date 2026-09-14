@@ -62,20 +62,41 @@ except ImportError:
 
 
 CONSECUTIVE_FAILURE_COUNTER: dict[str, int] = {}
-PROBE_TIMEOUT_SECONDS = 8
+PROBE_TIMEOUT_SECONDS = 8  # fallback; real timeout is settings.SOC_HEALTH_PROBE_TIMEOUT_SECONDS (COC-56)
 
 
 def _get_service_endpoint(service: ServiceDefinition) -> str | None:
-    """Resolve the external endpoint for a service based on its domain/service_key."""
-    domain_endpoint_map = {
-        'vnbroker': None,
-        'prefetch': None,
-        'dataops': None,
-        'signals': None,
-        'screener': None,
-        'matrix': None,
-    }
-    return domain_endpoint_map.get(service.domain)
+    """Resolve the external endpoint for a service based on its domain/service_key.
+
+    COC-56: reads SOC_HEALTH_ENDPOINTS env JSON (via settings) so operators can
+    configure real HTTP probes per domain or per service_key without code change.
+    Example: {"vnbroker":"http://vnbroker:8080/health","vnbroker_quote":"http://..."}
+    Empty map = no HTTP probe (DB-only, keeps dev/Test green).
+    """
+    try:
+        from django.conf import settings
+        raw = getattr(settings, "SOC_HEALTH_ENDPOINTS", {}) or {}
+        if isinstance(raw, dict):
+            # per service_key wins over per domain
+            ep = raw.get(service.service_key) or raw.get(service.domain)
+            if ep:
+                return str(ep).strip() or None
+        # fallback: direct env JSON (when settings not yet loaded in tests)
+        import json as _j
+        import os as _os
+        env_raw = _os.environ.get("SOC_HEALTH_ENDPOINTS", "")
+        if env_raw:
+            try:
+                env_map = _j.loads(env_raw)
+                if isinstance(env_map, dict):
+                    ep = env_map.get(service.service_key) or env_map.get(service.domain)
+                    if ep:
+                        return str(ep).strip() or None
+            except _j.JSONDecodeError:
+                pass
+    except Exception:
+        pass
+    return None
 
 
 def _probe_service_health(service: ServiceDefinition) -> dict:
@@ -99,8 +120,14 @@ def _probe_service_health(service: ServiceDefinition) -> dict:
     endpoint = _get_service_endpoint(service)
     if endpoint:
         try:
+            # COC-56: timeout via settings, fallback to PROBE_TIMEOUT_SECONDS
+            try:
+                from django.conf import settings as _probe_settings
+                _timeout = int(getattr(_probe_settings, "SOC_HEALTH_PROBE_TIMEOUT_SECONDS", PROBE_TIMEOUT_SECONDS) or PROBE_TIMEOUT_SECONDS)
+            except Exception:
+                _timeout = PROBE_TIMEOUT_SECONDS
             if _httpx_get is not None:
-                resp = _httpx_get(endpoint, timeout=PROBE_TIMEOUT_SECONDS)
+                resp = _httpx_get(endpoint, timeout=_timeout)
                 detail['endpoint_status'] = resp.status_code
                 if resp.status_code >= 500:
                     degraded_reasons.append(f'endpoint returned {resp.status_code}')

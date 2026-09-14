@@ -16,6 +16,8 @@ const iconMap: Record<string, ComponentType<React.SVGProps<SVGSVGElement>>> = {
   ArrowUpDown: Icons.ArrowUpDown,
   Briefcase: Icons.Briefcase,
   Whale: Icons.Activity,
+  Waves: Icons.Waves,
+  EyeOff: Icons.EyeOff,
   Brain: Icons.Brain,
   Rocket: Icons.Rocket,
   MessageCircle: Icons.MessageCircle,

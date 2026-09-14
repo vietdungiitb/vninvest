@@ -183,6 +183,17 @@ ADVERTISING_ADMIN_ENABLED = os.environ.get(
     'ADVERTISING_ADMIN_ENABLED', 'true'
 ).strip().lower() in ('1', 'true', 'yes')
 
+# COC-56: SOC health probe endpoints (P0) — allows real HTTP probing per domain/service_key.
+# Example: SOC_HEALTH_ENDPOINTS='{"vnbroker":"http://vnbroker:8080/health","prefetch":"http://prefetch:8080/health"}'
+# or per service_key: '{"vnbroker_quote":"http://..."}'. Empty = no HTTP probe (DB-only, legacy).
+import json as _json_health
+try:
+    _raw_health_endpoints = _json_health.loads(os.environ.get('SOC_HEALTH_ENDPOINTS', '{}') or '{}')
+    SOC_HEALTH_ENDPOINTS = _raw_health_endpoints if isinstance(_raw_health_endpoints, dict) else {}
+except _json_health.JSONDecodeError:
+    SOC_HEALTH_ENDPOINTS = {}
+SOC_HEALTH_PROBE_TIMEOUT_SECONDS = int(os.environ.get('SOC_HEALTH_PROBE_TIMEOUT_SECONDS', '5') or '5')
+
 # Stripe Billing Integration
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')

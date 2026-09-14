@@ -49,7 +49,11 @@ export function SocDataInventorySection() {
   }, [queueTiersLoading, queueTiers.length, queueTiersError, t]);
 
   if (loading.inventory) {
-    return createElement("p", { className: styles.emptyState }, t("soc.dataops.loading"));
+    return createElement("div", { className: styles.inventorySkeletonGrid, "aria-busy": "true" },
+      Array.from({ length: 4 }).map((_, i) =>
+        createElement("div", { key: i, className: styles.inventorySkeletonCard }),
+      ),
+    );
   }
 
   if (!inventory) {
@@ -88,7 +92,7 @@ export function SocDataInventorySection() {
                 key: dt.name,
                 className: styles.dataTypeCard,
                 style: dt.total_rows > 0
-                  ? { borderColor: "rgb(6, 95, 70)", background: "rgba(6, 95, 70, 0.08)" }
+                  ? { borderColor: "var(--color-success-500, #34d399)", background: "rgba(16, 185, 129, 0.08)" }
                   : {},
                 title: `${dt.total_rows.toLocaleString()} ${t("soc.dataops.label_rows")} \u2022 ${dt.symbols} ${t("soc.dataops.label_symbols")}`,
               },
@@ -153,7 +157,7 @@ export function SocDataInventorySection() {
                         createElement(
                           "span",
                           { className: styles.coverageRatioTrack },
-                          createElement("span", { className: styles.coverageRatioFill, style: { width: `${ratio * 100}%`, background: ratioColor } }),
+                          createElement("span", { className: styles.coverageRatioFill, style: { width: `${Math.min(ratio, 1) * 100}%`, background: ratioColor } }),
                         ),
                       ),
                     ),
@@ -185,7 +189,16 @@ export function SocDataInventorySection() {
                 createElement("div", { key: tier.tier, className: styles.accordion },
                   createElement("div", {
                     className: styles.accordionHeader,
+                    role: "button",
+                    tabIndex: 0,
+                    "aria-expanded": queueTiersExpanded === tier.tier,
                     onClick: () => setQueueTiersExpanded(queueTiersExpanded === tier.tier ? null : tier.tier),
+                    onKeyDown: (e: React.KeyboardEvent) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setQueueTiersExpanded(queueTiersExpanded === tier.tier ? null : tier.tier);
+                      }
+                    },
                   },
                     createElement("span", { }, tier.tier),
                     createElement("span", { },

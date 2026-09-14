@@ -78,10 +78,10 @@ function formatLag(seconds?: number) {
   const s = Math.round(seconds);
   if (s < 60) return `${s}s`;
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}p ${s % 60}s`;
+  if (m < 60) return `${m}m ${s % 60}s`;
   const h = Math.floor(m / 60);
   const rem = m % 60;
-  if (h < 24) return rem > 0 ? `${h}h ${rem}p` : `${h}h`;
+  if (h < 24) return rem > 0 ? `${h}h ${rem}m` : `${h}h`;
   const d = Math.floor(h / 24);
   const rh = h % 24;
   return rh > 0 ? `${d} ng\xE0y ${rh}h` : `${d} ng\xE0y`;
@@ -91,7 +91,7 @@ function formatNextRun(dateStr?: string) {
   if (!dateStr) return "—";
   try {
     const d = new Date(dateStr);
-    return d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    return d.toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
   } catch {
     return dateStr;
   }
@@ -99,10 +99,10 @@ function formatNextRun(dateStr?: string) {
 
 function domainBadgeClass(domain: string): string {
   const d = domain.toLowerCase();
-  if (d.includes("platform")) return styles.schedulerDomainBadgePlatform;
-  if (d.includes("dataops") || d.includes("data")) return styles.schedulerDomainBadgeDataops;
-  if (d.includes("material")) return styles.schedulerDomainBadgeMaterialization;
-  if (d.includes("prefetch")) return styles.schedulerDomainBadgePrefetch;
+  if (d.startsWith("platform")) return styles.schedulerDomainBadgePlatform;
+  if (d.startsWith("dataops") || d.startsWith("data")) return styles.schedulerDomainBadgeDataops;
+  if (d.startsWith("material")) return styles.schedulerDomainBadgeMaterialization;
+  if (d.startsWith("prefetch")) return styles.schedulerDomainBadgePrefetch;
   return styles.schedulerDomainBadgePlatform;
 }
 
@@ -185,7 +185,8 @@ function JobActionButtons({
     if (mode === "platform_managed") {
       return [];
     }
-    return ["enable", "disable", "run_now", "abort"];
+    // COC-54: don't grant abort by default — only if capabilities explicitly allow it
+    return ["enable", "disable", "run_now"];
   })();
 
   const isRunning = job.is_inflight;
@@ -503,8 +504,8 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
     "div",
     { className: styles.schedulerWrap },
 
-    // Health strip (hidden in embedded mode)
-    !embedded && createElement(SchedulerHealthStrip, { health, t }),
+    // Health strip — always visible (COC-20: DataOps embedded needs strip)
+    createElement(SchedulerHealthStrip, { health, t }),
 
     // Action banner
     actionBanner && createElement(

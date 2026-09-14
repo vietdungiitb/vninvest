@@ -562,6 +562,16 @@ export function ScreenerPage() {
           </button>
         )}
       </div>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap',
+        background: 'rgba(0,180,216,0.08)', border: '1px solid rgba(0,180,216,0.18)',
+        color: '#00b4d8', padding: '10px 14px', borderRadius: '8px', fontSize: '12px',
+      }}>
+        <span>{t('screener.opsHint')}</span>
+        <a href="/operations-center?tab=screener" style={{ color: '#06b6d4', fontWeight: 600, textDecoration: 'underline', whiteSpace: 'nowrap' }}>
+          {t('screener.opsLink')}
+        </a>
+      </div>
 
       {error && (
         <div style={{

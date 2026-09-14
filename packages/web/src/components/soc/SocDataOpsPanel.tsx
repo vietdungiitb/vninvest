@@ -82,7 +82,7 @@ function DataOpsContent() {
       case "scheduler":
         title = t("soc.scheduler.board_title");
         subtitle = t("soc.dataops.scheduler_section_desc", { defaultValue: "Trạng thái kích hoạt và nhịp điệu của các tác vụ hệ thống." });
-        content = createElement(SocSchedulerBoard, { hideHeaderTitle: true });
+        content = createElement(SocSchedulerBoard, { domain: "dataops" });
         break;
       case "config":
         title = t("soc.dataops.subtab.config");
@@ -100,7 +100,7 @@ function DataOpsContent() {
     );
   };
 
-  const isLoading = loading.inventory && loading.runs;
+  const isLoading = loading.inventory || loading.runs;
 
   return createElement(
     "div",

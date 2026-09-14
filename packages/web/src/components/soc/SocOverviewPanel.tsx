@@ -1,4 +1,4 @@
-import { createElement, useEffect, useState, useMemo } from "react";
+import { createElement, useEffect, useState, useMemo, useRef } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { toneColor, getStatusBadgeStyle } from "./socStatusColors.js";
@@ -99,25 +99,55 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
+  const mountedRef = useRef(true);
+  const consecutiveErrorsRef = useRef(0);
+  const intervalRef = useRef<number | null>(null);
+  const intervalDelayRef = useRef(15000);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const adapter = defaultCoreApiAdapter as unknown as {
         getSocOverviewSummary: () => Promise<OverviewData>;
       };
       const result = await adapter.getSocOverviewSummary();
+      if (!mountedRef.current) return;
       setData(result);
       setError("");
+      const hadBackoff = consecutiveErrorsRef.current >= 3;
+      consecutiveErrorsRef.current = 0;
+      if (hadBackoff) restartInterval(15000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Cannot load overview data.");
+      if (!mountedRef.current) return;
+      consecutiveErrorsRef.current += 1;
+      if (consecutiveErrorsRef.current >= 3 && intervalDelayRef.current === 15000) {
+        restartInterval(60000);
+      }
+      if (!isSilent || consecutiveErrorsRef.current >= 3) {
+        setError(err instanceof Error ? err.message : "Cannot load overview data.");
+      }
     } finally {
-      setLoading(false);
+      if (!isSilent && mountedRef.current) setLoading(false);
     }
   };
 
+  const restartInterval = (delayMs: number) => {
+    if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
+    intervalDelayRef.current = delayMs;
+    intervalRef.current = window.setInterval(() => {
+      fetchData(true);
+    }, delayMs);
+  };
+
   useEffect(() => {
-    fetchData();
+    mountedRef.current = true;
+    fetchData(false);
+    restartInterval(15000);
+    return () => {
+      mountedRef.current = false;
+      if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const services = useMemo(() => data?.services ?? [], [data]);
@@ -125,7 +155,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     return services.filter((s) => {
-      if (q && !s.service_key.toLowerCase().includes(q) && !s.name.toLowerCase().includes(q)) {
+      if (q && !s.service_key.toLowerCase().includes(q) && !s.name.toLowerCase().includes(q) && !s.domain?.toLowerCase().includes(q)) {
         return false;
       }
       if (statusFilter === "healthy") return s.is_active && s.status === "healthy";
@@ -133,6 +163,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
       if (statusFilter === "critical") {
         return s.is_active && (s.status === "unhealthy" || s.status === "critical");
       }
+      if (statusFilter === "maintenance") return s.is_active && s.status === "maintenance";
       if (statusFilter === "disabled") return !s.is_active;
       return true;
     });
@@ -147,19 +178,23 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
   }, [safePage, page]);
 
   const stats = useMemo(() => {
-    const total = services.length;
-    const healthy = services.filter((s) => s.is_active && s.status === "healthy").length;
-    const degraded = services.filter((s) => s.is_active && s.status === "degraded").length;
-    const critical = services.filter(
-      (s) => s.is_active && (s.status === "unhealthy" || s.status === "critical"),
-    ).length;
-    const unknown = services.filter(
-      (s) =>
-        s.is_active &&
-        !["healthy", "degraded", "unhealthy", "critical", "maintenance"].includes(s.status),
-    ).length;
-    const disabled = services.filter((s) => !s.is_active).length;
-    return { total, healthy, degraded, critical, unknown, disabled };
+    return services.reduce(
+      (acc, s) => {
+        acc.total += 1;
+        if (!s.is_active) {
+          acc.disabled += 1;
+          return acc;
+        }
+        if (s.status === "healthy") acc.healthy += 1;
+        else if (s.status === "degraded") acc.degraded += 1;
+        else if (s.status === "unhealthy" || s.status === "critical") acc.critical += 1;
+        else if (s.status === "maintenance") {
+          // maintenance has its own filter but not a metric card; keep unknown 0 for it
+        } else acc.unknown += 1;
+        return acc;
+      },
+      { total: 0, healthy: 0, degraded: 0, critical: 0, unknown: 0, disabled: 0 },
+    );
   }, [services]);
 
   const handleToggle = async (service: ServiceItem) => {
@@ -170,9 +205,9 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
         updateSocService: (key: string, payload: Record<string, unknown>) => Promise<unknown>;
       };
       await adapter.updateSocService(service.service_key, { is_active: !service.is_active });
-      await fetchData();
-    } catch {
-      setError("Failed to toggle service.");
+      await fetchData(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("soc.overview.error_toggle_failed", { defaultValue: "Failed to toggle service." }));
     } finally {
       setActionLoading((prev) => ({ ...prev, [key]: false }));
     }
@@ -186,9 +221,9 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
         triggerSocServiceHealthCheck: (key: string) => Promise<unknown>;
       };
       await adapter.triggerSocServiceHealthCheck(service.service_key);
-      await fetchData();
-    } catch {
-      setError("Failed to trigger health check.");
+      await fetchData(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("soc.overview.error_health_check_failed", { defaultValue: "Failed to trigger health check." }));
     } finally {
       setActionLoading((prev) => ({ ...prev, [key]: false }));
     }
@@ -213,6 +248,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
     { key: "healthy", label: t("soc.overview.filter_healthy") },
     { key: "degraded", label: t("soc.overview.filter_degraded") },
     { key: "critical", label: t("soc.overview.filter_critical") },
+    { key: "maintenance", label: t("soc.overview.filter_maintenance") },
     { key: "disabled", label: t("soc.overview.filter_disabled") },
   ];
 
@@ -271,6 +307,12 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
   if (error) {
     return createElement("div", { className: styles.glassPanel },
       createElement("div", { className: styles.inlineError }, error),
+      createElement("button", {
+        className: styles.actionBtn,
+        "aria-label": t("soc.overview.retry", { defaultValue: "Retry" }),
+        style: { marginTop: "0.75rem" },
+        onClick: () => fetchData(false),
+      }, t("soc.overview.retry", { defaultValue: "Thử lại" })),
     );
   }
 
