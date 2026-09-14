@@ -1,3 +1,10 @@
+// DEPRECATED (W9, 2026-09-14): this runtime SSR gate is retired.
+// It imports TS/TSX + .css through plain node ESM, which fails with
+// ERR_UNKNOWN_FILE_EXTENSION without a TS loader (no tsx/vite-node in deps).
+// Replacement coverage (all green): `npm run check:shell` now runs
+// check:dom-landmarks + check:tokens + check:stock-detail-shell, plus
+// `tsc --noEmit`, `npm run build`, vitest and Playwright visual specs.
+// Kept for archaeology via `npm run check:shell:legacy` (expected BROKEN).
 import React, { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 

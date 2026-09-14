@@ -1,12 +1,14 @@
 import { test, expect } from '@playwright/test';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Repo-root evidence dir regardless of cwd (vitest/vite run from packages/web).
-const EVIDENCE = path.resolve(__dirname, '../../../docs/evidence/screener-p0');
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const EVIDENCE = path.resolve(HERE, '../../../../docs/evidence/screener-p0');
 
 // P0 acceptance screenshots (VI locale default).
 test('screener P0: page renders with template actions', async ({ page }) => {
-  await page.goto('/screener', { waitUntil: 'networkidle' });
+  await page.goto('/screener', { waitUntil: 'domcontentloaded' });
 
   // P0.5: Vietnamese title with full diacritics
   await expect(page.getByRole('heading', { name: 'Screener cổ phiếu' })).toBeVisible({ timeout: 15000 });

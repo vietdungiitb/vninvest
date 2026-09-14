@@ -637,6 +637,16 @@ export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, c
       return coreGet("/screener/schedules/alerts/");
     },
 
+    // W8 P3 preset cộng đồng — public catalog + fork + share toggle (via updateScreenerRule {is_public})
+    getScreenerPublicRules() {
+      return coreGet("/screener/rules/public/");
+    },
+
+    forkScreenerRule(ruleId) {
+      if (!ruleId) throw new Error("ruleId is required for forkScreenerRule");
+      return corePost(`/screener/rules/${encodeURIComponent(ruleId)}/fork/`, {});
+    },
+
     // ─── AI Command Center API ───────────────────────────────────────────────
 
     getAICommandCenterConfig() {

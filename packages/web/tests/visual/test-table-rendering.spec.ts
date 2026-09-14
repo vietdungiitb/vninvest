@@ -142,7 +142,7 @@ test('Debug CTG click DOM inspect', async ({ page }) => {
     localStorage.clear();
     sessionStorage.clear();
   });
-  await page.goto('/login', { waitUntil: 'networkidle' });
+  await page.goto('/login', { waitUntil: 'domcontentloaded' });
 
   const emailInput = page.locator('#auth-login-username, input[placeholder*="tên đăng nhập"]').first();
   await emailInput.fill('testuser@vninvest.vn');

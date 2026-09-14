@@ -5,6 +5,36 @@
 
 ---
 
+## Entry 82: Đóng toàn bộ tồn đọng audit W1–W10 (code + docs + ops)
+
+- **Date**: 2026-09-14
+- **Scope**: Thực thi audit "các công việc bị ngắt quãng" (10 findings W1–W10).
+  Audit-first theo khung AGENTS.md (grep toàn repo, trace, CONTRADICTIONS C1–C5).
+  Không đổi P0/P1/P2 contract ngoài các mục ghi rõ (MFI window fix, additive flags).
+- **Files**:
+  - **W4**: merge `main`→`dev` (`a006c6bb`, push `origin/dev`): `.env.saas-prod.example`, `compose.prod.env.example`, `docs/SAAS_API_CORS_DYNAMIC_WHITELIST_CONFIGURATION_20260614.md`, `tests/test_cors_dynamic.py`.
+  - **W1**: `packages/web/src/context/PortfolioContext.js` — bootstrap `withBootstrapTimeout` 15s fail-open (fail-safe `setAuthStateReady(true)`); `tests/visual/auth.setup.ts` — guard spinner-hidden 20s; 10 visual specs `networkidle`→`domcontentloaded` (`screener-p0/p1`, `watchlist`, `login`, `advertising-admin`, `dashboard-ui-fixes`, `tenant-admin`, `test-click-ctg`, `test-table-rendering`, `stock-detail-workstation`); `screener-p0.spec.ts` fix `__dirname` ESM → `fileURLToPath` pattern.
+  - **W3**: không đổi code (worker đã có task+ENV) — evidence `docs/evidence/screener-p2/w3-mailpit-live-verify.md` **MỚI** (task thật matched 20/20 → mailpit subject/recipient đúng, VERDICT PASS, đã dọn DB+mailpit).
+  - **W5**: `frontend/src/components/soc/VnbrokerPanel.jsx` — cherry-pick option dark style (2 dòng); drop `stash@{1}` (2026-07-10, còn lại superseded: trademark→DB model, App routes→cleanup).
+  - **W2**: `vninvest_core/queue_policy.py` — QUEUE_NAMES + `screener`, domain `screener_scans` (task+beat auto-route qua SCHEDULER_QUEUE_MAP, `settings.py` không cần sửa); `user_workspace/tasks.py` — **fix bug pre-existing**: re-export `run_screener_scan_task`/`screener_scheduled_run` (autodiscover chỉ load `<app>.tasks`, beat gửi 5m/lần nhưng worker báo unregistered); `screener_tasks.py` docstring; `docker-compose.dev.yml` — service **MỚI** `core-worker-screener` (queue `screener`, EMAIL mailpit).
+  - **W6**: `compat/__init__.py` + `compat/urls.py` — tickets `COMPAT-001` (whale legacy→native, target 2026-10-15) + `COMPAT-002` (sunset, 2026-11-30).
+  - **W7**: `WatchlistContext.tsx` — **MỚI** `mergeHoldingsBySymbol` (export, gộp mọi portfolio, avg_cost bình quân gia quyền, recompute pnl%) + `fetchAllPortfoliosNav` (export, cộng dồn NAV) + dùng ở cả RQ queryFn và `loadAllLists`; test **MỚI** `WatchlistMultiPortfolio.component.test.ts` (5 tests).
+  - **W8**: `screener_helpers.py` — fix bug MFI (loop toàn history → `range(max(1,len-window),len)`) + **MỚI** `build_scan_cache_value` (F-BE-06, truncate top-500 khi >1MB + flags); `models.py` `ScreenerRule.is_public` + migration **0016**; `serializers.py` (+`is_public`, `owner_username`); `views.py` — **MỚI** `ScreenerPublicRuleListAPIView` + `ScreenerRuleForkAPIView` (tenant-scope, fork "(bản sao)"); `urls.py` (`public/`, `<pk>/fork/`); tests **MỚI** `test_screener_indicators.py` (9 pins) + `test_screener_community.py` (5); `ScreenerCommunity.tsx` **MỚI** + `ScreenerPage.tsx` (fork flows, share toggle, methodology footnote) + `screener.ts`/`.d.ts` types + `workspace.js`/`.d.ts`/`declarations.d.ts` adapter + `vi.js`/`en.js` (`community` 12 keys + `methodologyNote`); test **MỚI** `ScreenerCommunity.component.test.tsx` (4); `docs/SCREENER_METHODOLOGY_20260914.md` **MỚI**; `portfolio_analytics_views.py` — đọc/ghi cache qua helper + `matched_count`/`truncated`/`total_matched` additive, page-vượt-topN → recompute.
+  - **W9**: `package.json` — `check:shell` → gate thay thế (dom-landmarks+tokens+stock-detail-shell), `check:shell:legacy` giữ script cũ; `scripts/check-shell.mjs` header DEPRECATED; E2E evidence mới `docs/evidence/screener-p{0,1}/` (5 pass + 1 skip); `test_screener_scan_cache.py` +2 tests guard.
+  - **W10**: `AGENTS.md` (progress W1–W10, fix C2 ledger path `docs/`), `docs/evidence/screener-p2/README.md` (§5 email residual → DONE).
+- **Validation**:
+  - `git push origin dev` (W4 merge) OK.
+  - E2E `--project=chromium screener-p1+p0` vs vite dev (proxy→docker api): **5 pass + 1 skip** (`no saved rules`, hợp lệ) — trước 1/4 pass.
+  - Mailpit live: PASS (xem evidence W3).
+  - Worker screener live: consume queue `screener`, `succeeded {schedules_due: 0}`; `celery inspect` 6 nodes, 1 consume `screener`.
+  - BE: `user_workspace` 68 tests → 67 pass + 1 pre-existing holdings `httpx.UnsupportedProtocol` (đã ghi Entry 80).
+  - FE: `npx tsc --noEmit` 0; `npm run build` 52s PASS; eslint changed-files 0 errors; vitest screener+watchlist 12 files/56 pass; `npm run check:shell` exit 0; `i18n:scan` exit 0 (chỉ keys W8).
+  - Docker: image rebuild + `core-worker-screener` + `core-beat` recreated (beat mới route đúng queue).
+- **Next**: P3 còn lại có lý do (methodology §5: realtime intraday, đa khung, preset khối ngoại); Lighthouse manual; F-BE-05 progress per-200 hoãn (cần hook compute loop); `COMPAT-001` trước 2026-10-15.
+- **Residual**: Không — mọi W1–W10 có deliverable hoặc quyết định hoãn ghi rõ lý do.
+
+---
+
 ## Entry 81: Screener remaining — email channel + E2E + evidence thật (code)
 
 - **Date**: 2026-09-14

@@ -10,6 +10,9 @@ QUEUE_NAMES = (
     'enrichment_offhours',
     'analytics_heavy',
     'manual_on_demand',
+    # W2: dedicated queue for screener scans — previously shared manual_on_demand
+    # where backfill floods (LLEN=7672) starved screener jobs (Entry 81 residual).
+    'screener',
 )
 
 
@@ -132,7 +135,6 @@ QUEUE_DOMAIN_MATRIX = {
             'service_ops.cleanup_market_data_parity_snapshots',
             'service_ops.monitor_market_data_parity_retention_health',
             'service_ops.reconcile_stale_running_service_run_logs',
-            'user_workspace.screener_tasks.run_screener_scan_task',
         ),
         'periodic_tasks': (
             'manual_refresh_task',
@@ -140,6 +142,18 @@ QUEUE_DOMAIN_MATRIX = {
             'market-data-parity-snapshot-retention-cleanup-hourly',
             'market-data-parity-retention-health-monitor-2h',
             'reconcile-stale-running-service-run-logs-5m',
+        ),
+    },
+    # W2: screener scans on their own queue (P3, allowed post-P2).
+    # Beat 'screener-scheduled-run-5m' resolves via SCHEDULER_QUEUE_MAP → 'screener'.
+    'screener_scans': {
+        'queue': 'screener',
+        'task_routes': (
+            'user_workspace.screener_tasks.run_screener_scan_task',
+            'user_workspace.screener_tasks.screener_scheduled_run',
+        ),
+        'periodic_tasks': (
+            'screener-scheduled-run-5m',
         ),
     },
 }

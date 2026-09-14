@@ -21,5 +21,10 @@ setup('authenticate testuser', async ({ page }) => {
 
   await page.waitForURL('**/dashboard', { timeout: 15000 });
 
+  // W1 guard: bootstrap (PortfolioContext) must release the auth gate.
+  // Previously a hanging syncAuthState/fetchPortfolios left the
+  // "Đang xác thực tài khoản..." spinner forever on stored-state reload.
+  await expect(page.getByText('Đang xác thực tài khoản...')).toBeHidden({ timeout: 20000 });
+
   await page.context().storageState({ path: authFile });
 });

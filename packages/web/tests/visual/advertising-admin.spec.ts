@@ -17,7 +17,7 @@ async function ensureAdminSession(page: import('@playwright/test').Page) {
   });
   if (hasToken) return;
 
-  await page.goto('/login', { waitUntil: 'networkidle' });
+  await page.goto('/login', { waitUntil: 'domcontentloaded' });
   const emailInput = page
     .locator('input#auth-login-username, input[type="text"], input[name="username"], input[type="email"]')
     .first();
@@ -43,18 +43,18 @@ test.describe('Advertising & Trademark Admin', () => {
   });
 
   test('renders the advertising admin page with tabs', async ({ page }) => {
-    await page.goto('/admin/advertising', { waitUntil: 'networkidle' });
+    await page.goto('/admin/advertising', { waitUntil: 'domcontentloaded' });
     await expect(page.getByText('advertising.title')).toBeVisible();
   });
 
   test('campaigns tab shows the create button and table', async ({ page }) => {
-    await page.goto('/admin/advertising', { waitUntil: 'networkidle' });
+    await page.goto('/admin/advertising', { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: 'advertising.tabs.campaigns' }).click();
     await expect(page.getByRole('button', { name: 'advertising.campaign.create' })).toBeVisible();
   });
 
   test('trademark settings tab allows toggling and saving', async ({ page }) => {
-    await page.goto('/admin/advertising', { waitUntil: 'networkidle' });
+    await page.goto('/admin/advertising', { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: 'advertising.tabs.settings' }).click();
     await expect(page.getByText('advertising.trademark.title')).toBeVisible();
 

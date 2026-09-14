@@ -130,6 +130,8 @@ export interface CoreApiAdapter {
   deleteScreenerSchedule: (id: string | number) => Promise<any>;
   runScreenerScheduleNow: (id: string | number) => Promise<any>;
   getScreenerScheduleAlerts: () => Promise<any>;
+  getScreenerPublicRules: () => Promise<any>;
+  forkScreenerRule: (id: string | number) => Promise<any>;
   
   // Advisory
   createAdvisorySession: (data: any) => Promise<any>;

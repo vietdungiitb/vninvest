@@ -484,3 +484,63 @@ class ScreenerRuleListCreateAPIView(APIView):
         rule = serializer.save(user=request.user, tenant=tenant)
         return Response(ScreenerRuleSerializer(rule).data, status=status.HTTP_201_CREATED)
 
+
+class ScreenerPublicRuleListAPIView(APIView):
+    """W8 P3 preset cộng đồng: GET /screener/rules/public/.
+
+    Catalog các rule đang chia sẻ (is_public=True, is_active=True) trong cùng
+    tenant — user nào cũng xem được, kể cả rule của người khác. Tenant isolation:
+    không tenant → chỉ rule public của chính mình (fail-closed cross-tenant).
+    """
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
+
+    def get(self, request):
+        tenant = getattr(request, 'tenant', None)
+        if tenant:
+            rules = ScreenerRule.objects.filter(
+                tenant=tenant, is_public=True, is_active=True
+            ).select_related('user').order_by('-updated_at')[:100]
+        else:
+            rules = ScreenerRule.objects.filter(
+                user=request.user, is_public=True, is_active=True
+            ).select_related('user').order_by('-updated_at')[:100]
+        return Response(ScreenerRuleSerializer(rules, many=True).data)
+
+
+class ScreenerRuleForkAPIView(APIView):
+    """W8 P3 preset cộng đồng: POST /screener/rules/<pk>/fork/.
+
+    Sao chép 1 rule public (cùng tenant) hoặc rule của chính mình thành rule
+    riêng (is_public=False). Tên "X (bản sao)", giữ nguyên rules_json đã validate.
+    """
+    permission_classes = [permissions.IsAuthenticated, TenantScopePermission]
+
+    def post(self, request, pk):
+        from django.db.models import Q
+        tenant = getattr(request, 'tenant', None)
+        try:
+            if tenant:
+                src = ScreenerRule.objects.get(
+                    Q(is_public=True) | Q(user=request.user),
+                    pk=pk, tenant=tenant, is_active=True,
+                )
+            else:
+                src = ScreenerRule.objects.get(pk=pk, user=request.user, is_active=True)
+        except ScreenerRule.DoesNotExist:
+            raise NotFound('Bộ lọc không tồn tại hoặc chưa được chia sẻ.')
+
+        ok, err = _validate_screener_rules(src.rules_json)
+        if not ok:
+            return Response({'detail': f'Bộ lọc gốc không hợp lệ: {err}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        name = str(src.name or 'Bộ lọc')[:90]
+        copy = ScreenerRule.objects.create(
+            user=request.user,
+            tenant=tenant,
+            name=f'{name} (bản sao)',
+            rules_json=src.rules_json,
+            is_active=True,
+            is_public=False,
+        )
+        return Response(ScreenerRuleSerializer(copy).data, status=status.HTTP_201_CREATED)
+

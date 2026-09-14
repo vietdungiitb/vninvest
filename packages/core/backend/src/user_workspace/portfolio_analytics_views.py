@@ -1782,10 +1782,19 @@ class PortfolioScreenerRuleRunView(APIView):
         _scan_ttl = getattr(_scan_settings, "SCREENER_SCAN_CACHE_TTL", _SCAN_CACHE_TTL)
         scan_cache_key = _scan_cache_key(request.user.id, rule, session_date, include_ai)
         cached_scan = _scan_cache.get(scan_cache_key)
-        if isinstance(cached_scan, dict) and "matched" in cached_scan:
+        _cache_hit = isinstance(cached_scan, dict) and "matched" in cached_scan
+        if _cache_hit and cached_scan.get("truncated") and has_scan_params:
+            _cached_rows = cached_scan.get("matched") or []
+            if (page - 1) * limit >= len(_cached_rows):
+                # F-BE-06: page beyond cached top-N → recompute instead of
+                # returning a short page.
+                _cache_hit = False
+        _truncated_total = None
+        if _cache_hit:
             matched = cached_scan["matched"]
             total_scanned = cached_scan.get("total_scanned", len(matched))
             missing_counts = cached_scan.get("missing_counts", {})
+            _truncated_total = cached_scan.get("total_matched")
             window_days = _lookback_calendar_days(_required_lookback_days(conditions))
         else:
             # P1.4: async branch — cache miss + large universe or ?async=1 → 202 queued
@@ -1864,11 +1873,11 @@ class PortfolioScreenerRuleRunView(APIView):
             # Sync path (small universe or not forced)
             matched, total_scanned, missing_counts, window_days = _compute_scan(
                 conditions, session_date, include_ai)
-            _scan_cache.set(scan_cache_key, {
-                "matched": matched,
-                "total_scanned": total_scanned,
-                "missing_counts": dict(missing_counts),
-            }, timeout=_scan_ttl)
+            # F-BE-06: size-guarded cache write (top-N + truncated flag when >1MB).
+            from user_workspace.screener_helpers import build_scan_cache_value
+            _scan_cache.set(scan_cache_key, build_scan_cache_value(
+                matched, total_scanned, missing_counts,
+            ), timeout=_scan_ttl)
 
         if has_scan_params:
             # P1.1: server sort (None always last, both directions) + paging.
@@ -1884,7 +1893,8 @@ class PortfolioScreenerRuleRunView(APIView):
             'rule_id': rule.id,
             'rule_name': rule.name,
             'total_scanned': total_scanned,
-            'matched_count': len(matched),
+            # F-BE-06: truncated cache reports the true total, not the top-N length.
+            'matched_count': _truncated_total or len(matched),
             'matched': matched,
             # P0.1 additions (additive only — the 5 legacy keys above unchanged).
             'session_date': session_date.isoformat(),
@@ -1895,6 +1905,11 @@ class PortfolioScreenerRuleRunView(APIView):
             # P1.3: calendar-day price window actually used (R3.1 evidence).
             'window_days': window_days,
         }
+        if _truncated_total:
+            # F-BE-06 (additive): cache held top-N only; FE paginates cached
+            # rows, deeper pages trigger recompute server-side.
+            payload['truncated'] = True
+            payload['total_matched'] = _truncated_total
         if has_scan_params:
             # P1.1 meta (additive). pages min 1 so clients never divide by zero.
             pages = (len(matched) + limit - 1) // limit if limit > 0 else 1

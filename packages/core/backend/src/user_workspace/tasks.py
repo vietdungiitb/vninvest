@@ -246,3 +246,15 @@ def reconcile_dnse_transactions_task(self, user_id: int, days_back: int = 7):
                 continue
 
     return {"ok": True, "synced_count": len(sync_results)}
+
+
+# W2 FIX: register screener tasks with the celery app.
+# `celery.app.autodiscover_tasks()` only imports `<app>.tasks`, so the
+# `@shared_task`s in `screener_tasks.py` were NEVER registered in workers —
+# beat sent `screener_scheduled_run` every 5m but workers rejected it with
+# "Received unregistered task" (same for `run_screener_scan_task.delay`
+# from run-now). Re-export here so autodiscovery picks them up.
+from .screener_tasks import (  # noqa: E402,F401
+    run_screener_scan_task,
+    screener_scheduled_run,
+)

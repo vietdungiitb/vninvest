@@ -120,6 +120,10 @@ export type ScreenerRule = {
   id?: number;
   name: string;
   rules_json: ScreenerCondition[];
+  is_active?: boolean;
+  // W8 P3 preset cộng đồng (kept in sync with screener.d.ts).
+  is_public?: boolean;
+  owner_username?: string | null;
   created_at?: string;
   updated_at?: string;
 };

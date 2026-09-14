@@ -12,6 +12,7 @@ import { ScreenerResultsTable } from '../components/screener/ScreenerResultsTabl
 import { ScreenerTemplates } from '../components/screener/ScreenerTemplates.js';
 import { ScreenerHistory } from '../components/screener/ScreenerHistory.js';
 import { ScreenerSchedulePanel } from '../components/screener/ScreenerSchedulePanel.js';
+import { ScreenerCommunity } from '../components/screener/ScreenerCommunity.js';
 import { loadScreenerRuns, saveScreenerRun, type ScreenerRunEntry } from '../components/screener/screenerHistoryStore.js';
 import type { ScreenerCondition, ScreenerRule, ScreenerResult, ScreenerRow, ScreenerTemplate } from '../types/screener.d.ts';
 
@@ -207,8 +208,25 @@ export function ScreenerPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    const confirmed = await confirm({
+  // W8 P3 preset cộng đồng: bật/tắt chia sẻ rule với tenant (PUT partial is_public).
+  const handleShare = async (rule: Rule) => {
+    if (rule.id == null) return;
+    try {
+      await coreApiAdapter.updateScreenerRule(String(rule.id), { is_public: !rule.is_public });
+      const tenantId = typeof window !== 'undefined' ? window.localStorage.getItem('tenant_id') : null;
+      queryClient.invalidateQueries({ queryKey: [TENANT_ADMIN_QUERY_SCOPE, tenantId ?? 'none', 'screener', 'rules'] });
+      queryClient.invalidateQueries({ queryKey: [TENANT_ADMIN_QUERY_SCOPE, tenantId ?? 'none', 'screener', 'public'] });
+      setNotice(
+        rule.is_public
+          ? t('screener.community.unshared', { name: rule.name, defaultValue: `Đã ngừng chia sẻ '${rule.name}'.` })
+          : t('screener.community.shared', { name: rule.name, defaultValue: `Đã chia sẻ '${rule.name}' với cộng đồng tenant.` }),
+      );
+    } catch {
+      setError(t('screener.errors.saveRuleFailed'));
+    }
+  };
+
+  const handleDelete = async (id: number) => {    const confirmed = await confirm({
       title: t("screener.deleteRuleTitle"),
       message: t("screener.deleteRuleConfirm"),
       variant: "destructive",
@@ -445,6 +463,15 @@ export function ScreenerPage() {
 
   const handleRun = (rule: Rule) => runWithParams(rule, { ...DEFAULT_SCAN_PARAMS });
 
+  // W8 P3 preset cộng đồng: fork flows (component đã fork + invalidate).
+  const handleFork = useCallback(async (created: Rule) => {
+    setNotice(t('screener.community.forked', { name: created?.name ?? '', defaultValue: `Đã lưu bản sao '${created?.name ?? ''}'.` }));
+  }, [t]);
+  const handleForkRun = (created: Rule) => {
+    setNotice('');
+    return runWithParams(created, { ...DEFAULT_SCAN_PARAMS });
+  };
+
   const handleServerPage = (page: number) => {
     if (activeRule) runWithParams(activeRule, { ...scanParams, page }, { keepResults: true });
   };
@@ -646,6 +673,21 @@ export function ScreenerPage() {
                     {t('common.edit')}
                   </button>
                   <button
+                    onClick={() => handleShare(rule)}
+                    title={t('screener.community.shareHint', { defaultValue: 'Chia sẻ bộ lọc này với mọi thành viên trong tenant' })}
+                    style={{
+                      padding: '6px 12px',
+                      background: rule.is_public ? 'rgba(34,211,238,0.2)' : 'rgba(15,23,42,0.6)',
+                      border: rule.is_public ? '1px solid rgba(34,211,238,0.4)' : '1px solid var(--border-default, rgba(80, 120, 168, 0.28))',
+                      color: rule.is_public ? '#22d3ee' : 'var(--text-secondary, #94a3b8)',
+                      fontSize: '12px', borderRadius: '8px', cursor: 'pointer',
+                    }}
+                  >
+                    {rule.is_public
+                      ? t('screener.community.unshare', { defaultValue: 'Hủy chia sẻ' })
+                      : t('screener.community.share', { defaultValue: 'Chia sẻ' })}
+                  </button>
+                  <button
                     onClick={() => handleDelete(rule.id!)}
                     style={{
                       padding: '6px 12px', background: 'rgba(239,68,68,0.15)',
@@ -735,6 +777,10 @@ export function ScreenerPage() {
       />
       <ScreenerHistory runs={history} />
       <ScreenerSchedulePanel rules={rules} />
+      <ScreenerCommunity onForkRun={handleForkRun} onFork={handleFork} />
+      <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted, #94a3b8)', lineHeight: 1.5 }}>
+        {t('screener.methodologyNote')}
+      </p>
     </div>
   );
 }

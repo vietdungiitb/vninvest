@@ -16,6 +16,7 @@ from identity_access.models import CoreTenant
 from market_data.models import DailyPrice
 from market_serving.models import SymbolSnapshot
 from user_workspace.models import ScreenerRule
+from user_workspace.screener_helpers import build_scan_cache_value
 
 User = get_user_model()
 
@@ -156,3 +157,34 @@ class ScreenerScanCacheTestCase(TestCase):
         self.assertEqual(resp2.status_code, 200)
         self.assertEqual(m2.call_count, 3)
         self.assertEqual(resp2.json()["session_date"], new_date.isoformat())
+
+
+class ScanCacheGuardTestCase(TestCase):
+    """F-BE-06: oversized scan payloads truncate to top-N with explicit flags."""
+
+    def test_small_result_not_truncated(self):
+        rows = [{"symbol": "AAA", "close": 20.0, "ai_advisory": {"ai_score_0_100": 80}}]
+        value = build_scan_cache_value(rows, 1, {})
+        self.assertFalse(value["truncated"])
+        self.assertNotIn("total_matched", value)
+        self.assertEqual(value["matched"], rows)
+
+    def test_oversized_result_truncates_to_top_n_by_ai_score(self):
+        rows = [
+            {
+                "symbol": f"S{i:04d}",
+                "close": float(i),
+                "note": "x" * 2000,  # inflate payload past the byte cap
+                "ai_advisory": {"ai_score_0_100": i},
+            }
+            for i in range(30)
+        ]
+        value = build_scan_cache_value(rows, 30, {}, max_bytes=10_000, max_rows=5)
+        self.assertTrue(value["truncated"])
+        self.assertEqual(value["total_matched"], 30)
+        self.assertEqual(len(value["matched"]), 5)
+        # Top-5 by ai_score desc
+        self.assertEqual(
+            [r["symbol"] for r in value["matched"]],
+            ["S0029", "S0028", "S0027", "S0026", "S0025"],
+        )

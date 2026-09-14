@@ -1,6 +1,71 @@
+import json
+
 import numpy as np
 from decimal import Decimal
 from django.utils import timezone
+
+# F-BE-06: bound scan-cache payload (memcached default 1MB/item; a full
+# 1200-symbol matched list with AI advisory reaches ~2.4MB and the write
+# silently fails). Tunable via Django settings SCREENER_SCAN_CACHE_MAX_BYTES /
+# SCREENER_SCAN_CACHE_MAX_ROWS.
+SCAN_CACHE_MAX_BYTES_DEFAULT = 1_000_000
+SCAN_CACHE_MAX_ROWS_DEFAULT = 500
+
+
+def _scan_row_rank_key(row):
+    """Rank for truncation: AI score desc, then close desc (legacy default)."""
+    try:
+        adv = row.get('ai_advisory') or {}
+        score = adv.get('ai_score_0_100')
+    except Exception:
+        score = None
+    try:
+        close = float(row.get('close') or 0)
+    except Exception:
+        close = 0
+    has_score = 1 if isinstance(score, (int, float)) else 0
+    return (has_score, float(score) if has_score else 0.0, close)
+
+
+def build_scan_cache_value(matched, total_scanned, missing_counts, max_bytes=None, max_rows=None):
+    """Build the Option-B scan cache value with size guard (F-BE-06).
+
+    Small results → today's shape + truncated False. Oversized results →
+    top-N rows by AI score + truncated True + total_matched so readers can
+    report the true count and treat out-of-range pages as cache miss.
+    """
+    if max_bytes is None:
+        try:
+            from django.conf import settings as _s
+            max_bytes = int(getattr(_s, 'SCREENER_SCAN_CACHE_MAX_BYTES', SCAN_CACHE_MAX_BYTES_DEFAULT))
+        except Exception:
+            max_bytes = SCAN_CACHE_MAX_BYTES_DEFAULT
+    if max_rows is None:
+        try:
+            from django.conf import settings as _s2
+            max_rows = int(getattr(_s2, 'SCREENER_SCAN_CACHE_MAX_ROWS', SCAN_CACHE_MAX_ROWS_DEFAULT))
+        except Exception:
+            max_rows = SCAN_CACHE_MAX_ROWS_DEFAULT
+    value = {
+        'matched': matched,
+        'total_scanned': total_scanned,
+        'missing_counts': dict(missing_counts or {}),
+        'truncated': False,
+    }
+    try:
+        size = len(json.dumps(value, default=str))
+    except Exception:
+        size = 0
+    if size <= max_bytes:
+        return value
+    top = sorted(matched, key=_scan_row_rank_key, reverse=True)[:max_rows]
+    return {
+        'matched': top,
+        'total_scanned': total_scanned,
+        'missing_counts': dict(missing_counts or {}),
+        'truncated': True,
+        'total_matched': len(matched),
+    }
 
 _SCREENER_ALLOWED_FIELDS = {
     # Price & Volume
@@ -200,16 +265,20 @@ def _compute_vwap(closes, volumes, window=20):
     return pv_sum / vol_sum
 
 def _compute_mfi(highs, lows, closes, volumes, window=14):
-    """Compute Money Flow Index (MFI)."""
+    """Compute Money Flow Index (MFI) over the last `window` periods (standard)."""
     if len(closes) <= window:
         return None
-    
+
     typical_prices = [(h + l + c) / 3 for h, l, c in zip(highs, lows, closes)]
     money_flows = [tp * v for tp, v in zip(typical_prices, volumes)]
-    
+
+    # W8 FIX: only the last `window` money-flow comparisons count (standard
+    # MFI-14). Previously the loop ran over the ENTIRE history, so with a 90d
+    # lookback the value silently depended on data length, not `window`.
+    start = max(1, len(typical_prices) - window)
     positive_flow = 0
     negative_flow = 0
-    for i in range(1, len(typical_prices)):
+    for i in range(start, len(typical_prices)):
         if typical_prices[i] > typical_prices[i - 1]:
             positive_flow += money_flows[i]
         elif typical_prices[i] < typical_prices[i - 1]:

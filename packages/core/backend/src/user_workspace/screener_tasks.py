@@ -4,7 +4,7 @@ screener_tasks.py — P1.4 celery task cho scan dài (Entry 77).
 - Input snapshot rule để không lệch nếu user sửa rule giữa chừng (plan §5a).
 - Progress mỗi 200 mã qua Django cache job_key.
 - Xong → cache scan-key P1.2 + job completed (không nhúng full matched vào job — FE fetch lại via POST sync hit).
-- Route vào manual_on_demand (queue_policy).
+- Route vào screener (queue_policy, W2 tách khỏi manual_on_demand).
 """
 from __future__ import annotations
 
@@ -97,14 +97,11 @@ def run_screener_scan_task(
             scan_ttl = 14400
 
         try:
+            from user_workspace.screener_helpers import build_scan_cache_value
             scan_key = _scan_cache_key(user_id, rule_stub, session_date, bool(include_ai))
             dj_cache.set(
                 scan_key,
-                {
-                    "matched": matched,
-                    "total_scanned": total_scanned,
-                    "missing_counts": dict(missing_counts),
-                },
+                build_scan_cache_value(matched, total_scanned, missing_counts),
                 timeout=scan_ttl,
             )
         except Exception:

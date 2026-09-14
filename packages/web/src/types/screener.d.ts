@@ -10,6 +10,10 @@ export interface ScreenerRule {
   id?: number;
   name: string;
   rules_json: ScreenerCondition[];
+  is_active?: boolean;
+  // W8 P3 preset cộng đồng: shared catalog flag + owner display name.
+  is_public?: boolean;
+  owner_username?: string | null;
   created_at?: string;
   updated_at?: string;
 }

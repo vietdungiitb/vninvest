@@ -43,6 +43,19 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
   - F4/F5 (skeleton + toast): Skeleton có trong mọi loading state; toast đồng nhất (success/error) trong mutation handlers.
   - `useTenantAdminQuery` mở rộng hỗ trợ `queryFn` custom (cho multi-endpoint). tsc PASS.
 
+### Done (2026-09-14) — Đóng toàn bộ tồn đọng (audit W1–W10)
+- **W4**: Merge `main`→`dev` (CORS dynamic + prod env example + test), push `origin/dev`. Hết diverge.
+- **W1**: Fix treo bootstrap E2E — `PortfolioContext` bootstrap timeout 15s fail-open (fail-safe `authStateReady`), `auth.setup.ts` guard spinner, toàn bộ visual spec `networkidle`→`domcontentloaded`, fix `__dirname` ESM trong `screener-p0.spec.ts`. E2E chromium: **5 pass + 1 skip hợp lệ** (trước 1/4 pass).
+- **W3**: Verify live email schedule — worker đã có code+ENV (không cần rebuild). Task thật matched 20/20 → mailpit nhận đúng subject/recipient (**PASS**, evidence `docs/evidence/screener-p2/w3-mailpit-live-verify.md`, đã dọn DB + mailpit).
+- **W5**: Stash `temp-stash-before-merge-to-enterprise` (2026-07-10, 14 files) — cherry-pick 1 hunk còn giá trị (VnbrokerPanel option dark style), còn lại đã superseded (trademark→DB model, App routes→cleanup, AGENTS cũ). Đã drop.
+- **W2**: Queue `screener` riêng + worker `core-worker-screener` (queue_policy domain mới, beat auto-route qua SCHEDULER_QUEUE_MAP). **Phát hiện + fix bug pre-existing**: `screener_tasks` chưa từng được autodiscover (beat gửi 5m/lần nhưng worker báo unregistered) — re-export trong `user_workspace/tasks.py`. Live proof: worker consume + `succeeded {schedules_due: 0}`. BE 17 tests OK.
+- **W6**: Compat tickets — `COMPAT-001` (whale legacy→native, target 2026-10-15) + `COMPAT-002` (sunset, 2026-11-30) trong `compat/__init__.py` + `urls.py`.
+- **W7**: Watchlist multi-portfolio — gộp holdings mọi portfolio (merge theo symbol, avg_cost bình quân gia quyền, recompute pnl%) + cộng dồn NAV. 5 tests mới pass, tsc xanh.
+- **W8**: P3 — fix bug MFI (cộng dồn toàn history → đúng window-14) + 9 pins công thức; preset cộng đồng (`is_public` + migration 0016, catalog public tenant-scope, fork, share toggle, i18n VI/EN): BE 5 + FE 4 tests pass; `docs/SCREENER_METHODOLOGY_20260914.md` + disclaimer UI. Còn backlog có lý do: realtime intraday, đa khung, preset khối ngoại (xem methodology §5).
+- **W9**: `npm run check:shell` trỏ lại gate thay thế (dom-landmarks + tokens + stock-detail-shell, PASS, exit 0); script cũ gắn DEPRECATED (`check:shell:legacy`). F-BE-06 cache guard (truncate top-500 + flags, 2 unit tests). E2E evidence mới trong `docs/evidence/screener-p{0,1}/`. Lighthouse chưa cài — để manual. F-BE-05 progress per-200 hoãn (cần hook trong compute loop, lợi ích thấp so với poll hiện tại).
+- **W10 (entry này)**: AGENTS.md + README + ledger đồng bộ; fix C2 (ledger path `docs/`).
+- Quality gates: FE `tsc` 0, `build` 52s PASS, eslint 0 errors, vitest screener+watchlist 12 files/56 pass; BE `user_workspace` 68 tests (67 pass + 1 pre-existing holdings `httpx.UnsupportedProtocol` đã ghi từ Entry 80).
+
 ### Done (2026-07-18) — Sprint 7: Quality Gates & Tests
 - **7.1 Lint**: `npm run lint` (sửa script `--ext` → flat config). Exit 0. Sửa 1 error `react-hooks/exhaustive-deps` trong AuditLogsPage (wrap `logs` trong useMemo). Chỉ còn warnings (pre-existing).
 - **7.2 Build**: `npm run build` (tsc + vite) exit 0. Chỉ chunk-size warning (pre-existing).
@@ -100,7 +113,7 @@ ranh giới web↔core hoặc web↔widget PHẢI tham chiếu CẢ HAI bên).
 8. Ngôn ngữ báo cáo: Tiếng Việt.
 
 === 1. ĐỌC TRƯỚC (bắt buộc) ===
-- AGENTS.md, CODE_CHANGE_AUDIT_LEDGER.md
+- AGENTS.md, docs/CODE_CHANGE_AUDIT_LEDGER.md
 - docs/ [các file context cần đọc]
 - [tên plan / spec / review cần đối chiếu, ví dụ RUN_SPEC_AUDIT_*, RUN_CODE_REVIEW_*]
 
@@ -157,4 +170,4 @@ Không deviation khỏi cấu trúc đầu ra (mục 4). Thiếu section = kết
 
 ### Ghi chú ledger
 
-Sau mọi thay đổi mã nguồn hoặc kết luận audit quan trọng, PHẢI cập nhật `CODE_CHANGE_AUDIT_LEDGER.md` (root) theo quy ước现存 của dự án.
+Sau mọi thay đổi mã nguồn hoặc kết luận audit quan trọng, PHẢI cập nhật `docs/CODE_CHANGE_AUDIT_LEDGER.md` (root) theo quy ước现存 của dự án.

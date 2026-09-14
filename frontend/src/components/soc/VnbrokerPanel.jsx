@@ -445,7 +445,7 @@ const VnbrokerPanel = ({ t }) => {
               onChange={(e) => setField('preferred_provider', e.target.value)}
               className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none"
             >
-              {selectableProviders.map((p) => <option key={p} value={p}>{p.toUpperCase()}</option>)}
+              {selectableProviders.map((p) => <option key={p} value={p} style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>{p.toUpperCase()}</option>)}
             </select>
           </div>
           <div>
@@ -711,7 +711,7 @@ const VnbrokerPanel = ({ t }) => {
             onChange={(e) => setBenchmarkProvider(e.target.value)}
             className="rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none"
           >
-            {selectableProviders.map((p) => <option key={p} value={p}>{p.toUpperCase()}</option>)}
+            {selectableProviders.map((p) => <option key={p} value={p} style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>{p.toUpperCase()}</option>)}
           </select>
           <button
             onClick={handleBenchmark}

@@ -39,7 +39,11 @@ from .portfolio_analytics_views import (
 )
 
 # Screener views
-from .views import ScreenerRuleListCreateAPIView
+from .views import (
+    ScreenerRuleListCreateAPIView,
+    ScreenerPublicRuleListAPIView,
+    ScreenerRuleForkAPIView,
+)
 
 urlpatterns = [
     # Native workspace paths (core/v1/ namespace)
@@ -84,6 +88,9 @@ urlpatterns = [
 # Screener endpoints
 urlpatterns += [
     path('screener/rules/', ScreenerRuleListCreateAPIView.as_view(), name='screener-rules-list'),
+    # W8 preset cộng đồng (static route trước <int:pk> để rõ ràng).
+    path('screener/rules/public/', ScreenerPublicRuleListAPIView.as_view(), name='screener-rules-public'),
+    path('screener/rules/<int:pk>/fork/', ScreenerRuleForkAPIView.as_view(), name='screener-rule-fork'),
     path('screener/rules/<int:pk>/', PortfolioScreenerRuleDetailView.as_view(), name='screener-rule-detail'),
     path('screener/rules/<int:pk>/run/', PortfolioScreenerRuleRunView.as_view(), name='screener-rule-run'),
     path('screener/rules/<int:pk>/run/status/', PortfolioScreenerRuleRunStatusView.as_view(), name='screener-rule-run-status'),

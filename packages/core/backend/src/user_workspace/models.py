@@ -520,6 +520,8 @@ class ScreenerRule(models.Model):
     name = models.CharField(max_length=100, verbose_name='Tên bộ lọc')
     rules_json = models.JSONField(verbose_name='Luật lọc (JSON)')
     is_active = models.BooleanField(default=True, verbose_name='Kích hoạt')
+    # W8 P3 preset cộng đồng: rule public trong cùng tenant hiện ở catalog chung.
+    is_public = models.BooleanField(default=False, db_index=True, verbose_name='Chia sẻ cộng đồng')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

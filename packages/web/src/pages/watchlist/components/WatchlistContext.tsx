@@ -16,6 +16,74 @@ function readTenantId(): string | null {
   try { return localStorage.getItem("tenant_id"); } catch { return null; }
 }
 
+// W7 (DoR-2 DONE): merge holdings across ALL portfolios instead of portfolios[0].
+// Sums quantity/market_value/unrealized_pnl per symbol (case-insensitive) and
+// recomputes avg_cost as quantity-weighted average so Weight% (Weight% =
+// market_value / Σ NAV, see WatchlistTable weight column) stays consistent.
+// Exported for unit test (WatchlistMultiPortfolio.component.test.ts).
+export function mergeHoldingsBySymbol(lists: Holding[][]): Holding[] {
+  const bySymbol = new Map<string, Holding>();
+  for (const list of lists) {
+    for (const h of list) {
+      const sym = String((h as Holding)?.symbol || "").toUpperCase();
+      if (!sym) continue;
+      const qty = Number(h.quantity || 0);
+      const mv = Number(h.market_value || 0);
+      const pnl = Number(h.unrealized_pnl || 0);
+      const prev = bySymbol.get(sym);
+      if (!prev) {
+        bySymbol.set(sym, { ...h, symbol: sym, quantity: qty, market_value: mv, unrealized_pnl: pnl });
+      } else {
+        const prevQty = Number(prev.quantity || 0);
+        const nextQty = prevQty + qty;
+        const nextCost = Number(prev.avg_cost || 0) * prevQty + Number(h.avg_cost || 0) * qty;
+        bySymbol.set(sym, {
+          ...prev,
+          ...h,
+          symbol: sym,
+          quantity: nextQty,
+          market_value: Number(prev.market_value || 0) + mv,
+          unrealized_pnl: Number(prev.unrealized_pnl || 0) + pnl,
+          avg_cost: nextQty > 0 ? nextCost / nextQty : Number(prev.avg_cost || 0),
+        });
+      }
+    }
+  }
+  return [...bySymbol.values()].map((h) => {
+    const qty = Number(h.quantity || 0);
+    const cost = Number(h.avg_cost || 0) * qty;
+    const mv = Number(h.market_value || 0);
+    return { ...h, unrealized_pnl_pct: cost > 0 ? ((mv - cost) / cost) * 100 : h.unrealized_pnl_pct };
+  });
+}
+
+function normalizeHoldingsList(res: unknown): Holding[] {
+  const arr = Array.isArray(res) ? (res as Holding[]) : (((res as Record<string, unknown>)?.results as Holding[]) ?? []);
+  return arr as Holding[];
+}
+
+function parseNavValue(summaryRes: unknown): number | null {
+  const r = summaryRes as Record<string, unknown> | null | undefined;
+  const raw = r?.nav ?? r?.net_asset_value ?? r?.total_value ?? (r?.data as Record<string, unknown> | undefined)?.nav ?? (r?.results as Record<string, unknown> | undefined)?.nav;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+// W7 (DoR-2 DONE): aggregate NAV across ALL portfolios (sum of per-portfolio
+// summaries). Falls back to null → table uses Σ holdings market_value.
+// Exported for unit test.
+export async function fetchAllPortfoliosNav(apiClient: any, portfolios: { id: string | number }[]): Promise<number | null> {
+  if (!apiClient?.getPortfolioSummary) return null;
+  const settled = await Promise.allSettled(portfolios.map((p) => apiClient.getPortfolioSummary(p.id)));
+  let total = 0;
+  for (const s of settled) {
+    if (s.status !== "fulfilled") continue;
+    const nav = parseNavValue(s.value);
+    if (nav !== null) total += nav;
+  }
+  return total > 0 ? total : null;
+}
+
 const VisibleColumnsSchema = z.object({ rsi: z.boolean(), rvol: z.boolean(), ma20Dist: z.boolean(), bias: z.boolean() }).partial();
 
 interface WatchlistContextType {
@@ -167,28 +235,30 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
       if (portfoliosRes.status === "fulfilled") {
         const portfoliosResVal = portfoliosRes.value as unknown;
         const portfolios = Array.isArray(portfoliosResVal) ? (portfoliosResVal as { id: string | number }[]) : (((portfoliosResVal as Record<string, unknown>)?.results as { id: string | number }[]) ?? []);
-        // TODO MULTI-PORTFOLIO (DoR-2): Sprint 1 chỉ lấy portfolios[0], future slice gộp tất cả holdings
+        // W7 (DoR-2 DONE): fetch holdings for ALL portfolios, merge by symbol.
         // NOTE LIMIT 120 (DoR-4): Sprint 1 giữ slice(0,120), 3.1 mới visible subs 50
         if (portfolios.length > 0) {
           try {
-            const holdingsRes = await api.getPortfolioHoldings(portfolios[0].id);
-            holdingsList = Array.isArray(holdingsRes) ? (holdingsRes as Holding[]) : (((holdingsRes as Record<string, unknown>)?.results as Holding[]) ?? []);
+            const settled = await Promise.allSettled(
+              portfolios.map(async (p) => normalizeHoldingsList(await api.getPortfolioHoldings(p.id)))
+            );
+            const lists = settled
+              .filter((s): s is PromiseFulfilledResult<Holding[]> => s.status === "fulfilled")
+              .map((s) => s.value);
+            holdingsList = mergeHoldingsBySymbol(lists);
           } catch (err) {
             console.warn("Lỗi tải holdings:", (err as Error).message);
           }
         }
       }
       let nav: number | null = null;
-      // P2-5 BE NAV — fetch portfolio summary for Weight% (if available)
+      // P2-5 BE NAV — aggregate summary NAV across ALL portfolios for Weight% (W7)
       if (portfoliosRes.status === "fulfilled") {
         const portfoliosResVal2 = portfoliosRes.value as unknown;
         const portfolios2 = Array.isArray(portfoliosResVal2) ? (portfoliosResVal2 as { id: string | number }[]) : (((portfoliosResVal2 as Record<string, unknown>)?.results as { id: string | number }[]) ?? []);
         if (portfolios2.length > 0) {
           try {
-            const summaryRes: any = await (api as any).getPortfolioSummary?.(portfolios2[0].id);
-            const rawNav = summaryRes?.nav ?? summaryRes?.net_asset_value ?? summaryRes?.total_value ?? summaryRes?.data?.nav ?? summaryRes?.results?.nav;
-            const parsed = Number(rawNav);
-            if (Number.isFinite(parsed) && parsed > 0) nav = parsed;
+            nav = await fetchAllPortfoliosNav(api, portfolios2);
           } catch {}
         }
       }
@@ -265,16 +335,20 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
       }
       setLegacyGroups(groupsList);
 
-      // Process holdings (depends on portfolios)
-      // TODO MULTI-PORTFOLIO (DoR-2): Sprint 1 chỉ lấy portfolios[0]
+      // Process holdings — W7 (DoR-2 DONE): merge across ALL portfolios
       let holdingsList: Holding[] = [];
       if (portfoliosResult.status === 'fulfilled') {
         const portfoliosRes = portfoliosResult.value;
         const portfolios = Array.isArray(portfoliosRes) ? portfoliosRes : (portfoliosRes?.results ?? []);
         if (portfolios.length > 0) {
           try {
-            const holdingsRes = await api.getPortfolioHoldings(portfolios[0].id);
-            holdingsList = Array.isArray(holdingsRes) ? holdingsRes : (holdingsRes?.results ?? []);
+            const settled = await Promise.allSettled(
+              portfolios.map(async (p: { id: string | number }) => normalizeHoldingsList(await api.getPortfolioHoldings(p.id)))
+            );
+            const lists = settled
+              .filter((s): s is PromiseFulfilledResult<Holding[]> => s.status === 'fulfilled')
+              .map((s) => s.value);
+            holdingsList = mergeHoldingsBySymbol(lists);
           } catch (err) {
             console.warn("Lỗi tải holdings:", (err as Error).message);
           }
@@ -282,15 +356,13 @@ export const WatchlistProvider: React.FC<{ children: ReactNode }> = ({ children 
       }
       setHoldings(holdingsList);
       let nav: number | null = null;
+      // W7: aggregate NAV across ALL portfolios for Weight%
       if (portfoliosResult.status === 'fulfilled') {
         const pr = portfoliosResult.value as any;
         const portfolios2 = Array.isArray(pr) ? pr : (pr?.results ?? []);
         if (portfolios2.length > 0) {
           try {
-            const summaryRes: any = await (api as any).getPortfolioSummary?.(portfolios2[0].id);
-            const rawNav = summaryRes?.nav ?? summaryRes?.net_asset_value ?? summaryRes?.total_value ?? summaryRes?.data?.nav;
-            const parsed = Number(rawNav);
-            if (Number.isFinite(parsed) && parsed > 0) nav = parsed;
+            nav = await fetchAllPortfoliosNav(api, portfolios2);
           } catch {}
         }
       }

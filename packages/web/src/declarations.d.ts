@@ -47,6 +47,8 @@ declare module "./adapters/coreApiAdapter" {
     deleteScreenerSchedule: (id: string | number) => Promise<any>;
     runScreenerScheduleNow: (id: string | number) => Promise<any>;
     getScreenerScheduleAlerts: () => Promise<any>;
+    getScreenerPublicRules: () => Promise<any>;
+    forkScreenerRule: (id: string | number) => Promise<any>;
 
     // Support
     listSupportTickets: (params: any) => Promise<any>;

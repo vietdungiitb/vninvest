@@ -24,7 +24,7 @@ test.describe('Stock Detail Workstation', () => {
     
     // Navigate to stock detail page
     await page.goto('/stocks/FPT');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   });
 
   test.describe('Desktop Layout (>768px)', () => {
@@ -98,7 +98,7 @@ test.describe('Stock Detail Workstation', () => {
       
       // Change symbol via URL
       await page.goto('/stocks/VCB');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       
       // Verify data updated
       await expect(page.locator('.ob-widget')).toBeVisible();
@@ -203,7 +203,7 @@ test.describe('Stock Detail Workstation', () => {
     test('mobile tabs have proper ARIA attributes', async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 });
       await page.reload();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       
       const tabList = page.locator('[role="tablist"]');
       await expect(tabList).toHaveAttribute('aria-label', 'Chế độ xem Workstation');
@@ -240,7 +240,7 @@ test.describe('Stock Detail Workstation', () => {
       // Enable reduced motion
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.reload();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       
       // Animations should be disabled
       const orderBook = page.locator('.ob-widget');
@@ -257,7 +257,7 @@ test.describe('Stock Detail Workstation', () => {
       });
       
       await page.goto('/stocks/FPT');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       
       await expect(page.locator('.ws-desktop')).toBeVisible();
     });
@@ -268,7 +268,7 @@ test.describe('Stock Detail Workstation', () => {
       });
       
       await page.goto('/stocks/FPT');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       
       await expect(page.locator('.ws-desktop')).toBeVisible();
     });
@@ -280,7 +280,7 @@ test.describe('Stock Detail Workstation', () => {
       });
       
       await page.goto('/stocks/FPT');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       
       await expect(page.locator('.ws-legacy')).toBeVisible();
       await expect(page.locator('.ws-desktop')).not.toBeVisible();
@@ -292,7 +292,7 @@ test.describe('Stock Detail Workstation', () => {
       // Start at desktop
       await page.setViewportSize({ width: 1024, height: 768 });
       await page.goto('/stocks/FPT');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await expect(page.locator('.ws-desktop')).toBeVisible();
       
       // Resize to mobile
@@ -306,7 +306,7 @@ test.describe('Stock Detail Workstation', () => {
       // Start at mobile
       await page.setViewportSize({ width: 375, height: 667 });
       await page.goto('/stocks/FPT');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await expect(page.locator('.ws-mobile')).toBeVisible();
       
       // Resize to desktop
@@ -327,7 +327,7 @@ test.describe('Visual Regression', () => {
     });
     
     await page.goto('/stocks/FPT');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(1000); // Allow animations to settle
     
     await expect(page).toHaveScreenshot('stock-detail-workstation-desktop.png', {
@@ -343,7 +343,7 @@ test.describe('Visual Regression', () => {
     
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/stocks/FPT');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(1000);
     
     await expect(page).toHaveScreenshot('stock-detail-workstation-mobile.png', {

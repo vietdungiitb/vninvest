@@ -30,8 +30,13 @@
 
 - BE `test_screener_schedule.py` 4 tests: crud, invalid (400), run-now enqueue, beat due + alerts — **PASS**.
 - FE `ScreenerSchedulePanel` 2 tests: create + list/toggle/run/delete + alerts — **PASS**.
-- Beat `screener_scheduled_run` 5m → queue `manual_on_demand` (settings + queue_policy route có sẵn `manual_*`).
-- Email channel: residual (in_app cache 7d `screener:sched_alerts:{user}`).
+- Beat `screener_scheduled_run` 5m → queue `screener` riêng từ W2 (worker
+  `core-worker-screener`; trước đó chung `manual_on_demand`).
+  `SCHEDULER_QUEUE_MAP` auto-route qua `queue_policy.screener_scans`.
+- Email channel: **DONE live-verified (W3, 2026-09-14)** — task thật
+  `matched=20/20` → mailpit nhận đúng subject `[Screener] … +20 mã mới` +
+  recipient `testuser@vninvest.vn`; xem `w3-mailpit-live-verify.md`.
+  In-app alerts cache 7d `screener:sched_alerts:{user}` giữ nguyên.
 
 ## 6. P2.5 — Row actions + column persist
 

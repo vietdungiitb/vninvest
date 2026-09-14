@@ -23,7 +23,7 @@ for (const viewport of VIEWPORTS) {
 
     for (const route of ROUTES) {
       test(`${route.name} - visual match`, async ({ page }) => {
-        await page.goto(route.path, { waitUntil: 'networkidle' });
+        await page.goto(route.path, { waitUntil: 'domcontentloaded' });
         await page.waitForTimeout(1000);
         await page.addStyleTag({
           content: `

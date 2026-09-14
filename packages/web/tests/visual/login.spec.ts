@@ -10,7 +10,7 @@ test.describe('Login Flow', () => {
   });
 
   test('displays login form with all required fields', async ({ page }) => {
-    await page.goto('/login', { waitUntil: 'networkidle' });
+    await page.goto('/login', { waitUntil: 'domcontentloaded' });
 
     const emailInput = page.locator('input#auth-login-username, input[type="text"], input[name="username"], input[type="email"]').first();
     await expect(emailInput).toBeVisible();
@@ -23,7 +23,7 @@ test.describe('Login Flow', () => {
   });
 
   test('shows error on invalid credentials', async ({ page }) => {
-    await page.goto('/login', { waitUntil: 'networkidle' });
+    await page.goto('/login', { waitUntil: 'domcontentloaded' });
 
     const emailInput = page.locator('input#auth-login-username, input[type="text"], input[name="username"], input[type="email"]').first();
     await emailInput.fill('invalid@example.com');
@@ -37,7 +37,7 @@ test.describe('Login Flow', () => {
   });
 
   test('redirects to dashboard after successful login and stores token', async ({ page }) => {
-    await page.goto('/login', { waitUntil: 'networkidle' });
+    await page.goto('/login', { waitUntil: 'domcontentloaded' });
 
     const emailInput = page.locator('input#auth-login-username, input[type="text"], input[name="username"], input[type="email"]').first();
     await emailInput.fill('testuser@vninvest.vn');
@@ -60,7 +60,7 @@ test.describe('Login Flow', () => {
   });
 
   test('persists session and auto-redirects when token exists', async ({ page }) => {
-    await page.goto('/login', { waitUntil: 'networkidle' });
+    await page.goto('/login', { waitUntil: 'domcontentloaded' });
 
     const hasToken = await page.evaluate(() => {
       return !!(localStorage.getItem('auth_access_token') || sessionStorage.getItem('auth_access_token'));

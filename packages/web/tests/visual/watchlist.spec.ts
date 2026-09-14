@@ -2,14 +2,14 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Watchlist CRUD', () => {
   test('displays watchlist page with empty state or existing items', async ({ page }) => {
-    await page.goto('/watchlist', { waitUntil: 'networkidle' });
+    await page.goto('/watchlist', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('[data-testid="watchlist-search"], [data-testid="watchlist-skeleton"], table').first()).toBeVisible({ timeout: 10000 });
     const pageLoaded = await page.locator('body').textContent();
     expect(pageLoaded!.length).toBeGreaterThan(0);
   });
 
   test('allows adding a symbol to watchlist', async ({ page }) => {
-    await page.goto('/watchlist', { waitUntil: 'networkidle' });
+    await page.goto('/watchlist', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('[data-testid="watchlist-add-input"], [data-testid="watchlist-search"]').first()).toBeVisible({ timeout: 10000 });
     const addInput = page.locator('[data-testid="watchlist-add-input"]');
     if (await addInput.isVisible()) {
@@ -26,7 +26,7 @@ test.describe('Watchlist CRUD', () => {
   });
 
   test('displays symbols in the watchlist', async ({ page }) => {
-    await page.goto('/watchlist', { waitUntil: 'networkidle' });
+    await page.goto('/watchlist', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('[data-testid="watchlist-search"], table').first()).toBeVisible({ timeout: 10000 });
     const rows = page.locator('[data-testid^="watchlist-row-"]');
     const count = await rows.count();
@@ -39,7 +39,7 @@ test.describe('Watchlist CRUD', () => {
   });
 
   test('allows removing a symbol from watchlist', async ({ page }) => {
-    await page.goto('/watchlist', { waitUntil: 'networkidle' });
+    await page.goto('/watchlist', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('[data-testid="watchlist-search"], table').first()).toBeVisible({ timeout: 10000 });
     const removeButton = page.locator('[data-testid^="watchlist-remove-"]').first();
     if (await removeButton.isVisible().catch(() => false)) {
@@ -52,7 +52,7 @@ test.describe('Watchlist CRUD', () => {
   });
 
   test('bulk bar appears when selecting rows', async ({ page }) => {
-    await page.goto('/watchlist', { waitUntil: 'networkidle' });
+    await page.goto('/watchlist', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('[data-testid="watchlist-search"], table').first()).toBeVisible({ timeout: 10000 });
     const selectAll = page.locator('[data-testid="watchlist-select-all"]');
     if (await selectAll.isVisible()) {

@@ -245,6 +245,20 @@ export function PortfolioProvider({ children }) {
   }, []);
 
   // Load initial data
+  // W1 FIX (E2E bootstrap hang): bound bootstrap by timeout so a hanging
+  // API (stored-state reload with slow backend) can never leave
+  // `authStateReady=false` forever ("Đang xác thực tài khoản..." spinner).
+  // Fail-open: release the gate, ProtectedRoute redirects to /login if needed.
+  const BOOTSTRAP_TIMEOUT_MS = 15000;
+  const withBootstrapTimeout = useCallback((promise, label) => {
+    let timer = null;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`Bootstrap timeout: ${label}`)), BOOTSTRAP_TIMEOUT_MS);
+    });
+    return Promise.race([promise, timeout]).finally(() => {
+      if (timer) clearTimeout(timer);
+    });
+  }, []);
   useEffect(() => {
     let cancelled = false;
 
@@ -256,17 +270,19 @@ export function PortfolioProvider({ children }) {
 
       setAuthStateReady(false);
 
-      const ok = await syncAuthState();
-      if (!ok || cancelled) {
+      try {
+        const ok = await withBootstrapTimeout(syncAuthState(), 'syncAuthState');
+        if (!ok || cancelled) {
+          return;
+        }
+
+        await withBootstrapTimeout(fetchPortfolios(), 'fetchPortfolios');
+      } catch (error) {
+        console.error('Bootstrap failed:', error?.message || error);
+      } finally {
         if (!cancelled) {
           setAuthStateReady(true);
         }
-        return;
-      }
-
-      await fetchPortfolios();
-      if (!cancelled) {
-        setAuthStateReady(true);
       }
     };
 
@@ -275,7 +291,7 @@ export function PortfolioProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, accessToken, syncAuthState, fetchPortfolios]);
+  }, [isAuthenticated, accessToken, syncAuthState, fetchPortfolios, withBootstrapTimeout]);
 
   const switchTenant = useCallback((tenantId) => {
     if (typeof window !== "undefined" && window.localStorage) {
