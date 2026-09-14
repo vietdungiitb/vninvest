@@ -609,6 +609,34 @@ export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, c
       return coreDelete("/screener/history/");
     },
 
+    // P2.4: schedules (Q6, D11)
+    getScreenerSchedules() {
+      return coreGet("/screener/schedules/");
+    },
+
+    createScreenerSchedule(data) {
+      return corePost("/screener/schedules/", data);
+    },
+
+    updateScreenerSchedule(scheduleId, data) {
+      if (!scheduleId) throw new Error("scheduleId is required for updateScreenerSchedule");
+      return corePut(`/screener/schedules/${encodeURIComponent(scheduleId)}/`, data);
+    },
+
+    deleteScreenerSchedule(scheduleId) {
+      if (!scheduleId) throw new Error("scheduleId is required for deleteScreenerSchedule");
+      return coreDelete(`/screener/schedules/${encodeURIComponent(scheduleId)}/`);
+    },
+
+    runScreenerScheduleNow(scheduleId) {
+      if (!scheduleId) throw new Error("scheduleId is required for runScreenerScheduleNow");
+      return corePost(`/screener/schedules/${encodeURIComponent(scheduleId)}/run-now/`, {});
+    },
+
+    getScreenerScheduleAlerts() {
+      return coreGet("/screener/schedules/alerts/");
+    },
+
     // ─── AI Command Center API ───────────────────────────────────────────────
 
     getAICommandCenterConfig() {

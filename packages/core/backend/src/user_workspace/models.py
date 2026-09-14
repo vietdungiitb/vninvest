@@ -584,6 +584,83 @@ class ScreenerRunHistory(models.Model):
         return f'{self.rule_name} {self.run_at:%Y-%m-%d %H:%M} ({self.matched_count}/{self.total_scanned})'
 
 
+def _compute_next_run(run_time, weekdays):
+    """Next datetime (Asia/Ho_Chi_Minh naive→aware) matching run_time + weekdays."""
+    from datetime import datetime, timedelta, time as _time
+    from django.utils import timezone
+
+    now = timezone.now()
+    if not weekdays:
+        weekdays = [0, 1, 2, 3, 4]
+    hh = run_time.hour if isinstance(run_time, _time) else 18
+    mm = run_time.minute if isinstance(run_time, _time) else 0
+    for delta in range(0, 8):
+        day = now + timedelta(days=delta)
+        if day.weekday() not in weekdays:
+            continue
+        cand = day.replace(hour=hh, minute=mm, second=0, microsecond=0)
+        if cand > now:
+            return cand
+    return now + timedelta(days=1)
+
+
+class ScreenerSchedule(models.Model):
+    """
+    P2.4: Lịch quét định kỳ per-user (Q6, D11).
+    run_time + weekdays (preset, không cron tự do để tránh dep croniter).
+    Beat task `screener_scheduled_run` (5m) check next_run_at <= now.
+    """
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='screener_schedules',
+        verbose_name='Người dùng',
+    )
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant',
+        on_delete=models.CASCADE,
+        related_name='screener_schedules',
+        null=False,
+        blank=True,
+        verbose_name='Tenant',
+    )
+    name = models.CharField(max_length=100, verbose_name='Tên lịch')
+    rule_ids = models.JSONField(default=list, verbose_name='Rule IDs [int]')
+    run_time = models.TimeField(verbose_name='Giờ chạy (ICT)')
+    weekdays = models.JSONField(default=list, verbose_name='Ngày trong tuần [0=Mon..6=Sun]')
+    is_active = models.BooleanField(default=True, db_index=True, verbose_name='Kích hoạt')
+    notify_channels = models.JSONField(default=list, verbose_name='Kênh TB [in_app,email]')
+
+    def save(self, *args, **kwargs):
+        from datetime import time as _time
+
+        if self.run_time is None:
+            self.run_time = _time(18, 0)
+        if not self.weekdays:
+            self.weekdays = [0, 1, 2, 3, 4]
+        if not self.notify_channels:
+            self.notify_channels = ['in_app']
+        if self.next_run_at is None and self.is_active:
+            self.next_run_at = _compute_next_run(self.run_time, self.weekdays)
+        super().save(*args, **kwargs)
+    last_run_at = models.DateTimeField(null=True, blank=True, verbose_name='Chạy cuối')
+    next_run_at = models.DateTimeField(null=True, blank=True, db_index=True, verbose_name='Chạy tiếp')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Lịch quét screener'
+        verbose_name_plural = 'Lịch quét screener'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'tenant', 'is_active']),
+            models.Index(fields=['is_active', 'next_run_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.name} {self.run_time} {self.weekdays} ({self.user.username})'
+
+
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 
@@ -594,6 +671,8 @@ from django.dispatch import receiver
 @receiver(pre_save, sender=PriceAlert)
 @receiver(pre_save, sender=SubAccount)
 @receiver(pre_save, sender=ScreenerRule)
+@receiver(pre_save, sender=ScreenerRunHistory)
+@receiver(pre_save, sender=ScreenerSchedule)
 def resolve_tenant_for_user_workspace_models(sender, instance, **kwargs):
     if getattr(instance, 'tenant_id', None):
         return

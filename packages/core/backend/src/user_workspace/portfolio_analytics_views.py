@@ -2010,6 +2010,243 @@ class PortfolioScreenerRuleRunStatusView(APIView):
         return Response(payload)
 
 
+def _validate_schedule_payload(data):
+    """Validate P2.4 schedule payload. Returns (ok, cleaned|error)."""
+    if not isinstance(data, dict):
+        return False, 'Payload phải là object.'
+    name = str(data.get('name', '')).strip()
+    if not name:
+        return False, 'Tên lịch không được để trống.'
+    rule_ids = data.get('rule_ids', [])
+    if not isinstance(rule_ids, list) or not rule_ids:
+        return False, 'rule_ids phải là list không rỗng.'
+    try:
+        rule_ids = [int(r) for r in rule_ids]
+    except (TypeError, ValueError):
+        return False, 'rule_ids phải là list số nguyên.'
+    run_time_raw = str(data.get('run_time', '18:00')).strip()
+    try:
+        from datetime import datetime as _dt
+
+        run_time = _dt.strptime(run_time_raw, '%H:%M').time()
+    except (TypeError, ValueError):
+        return False, 'run_time phải dạng HH:MM (VD: 18:00).'
+    weekdays = data.get('weekdays', [0, 1, 2, 3, 4])
+    if not isinstance(weekdays, list) or not all(isinstance(w, int) and 0 <= w <= 6 for w in weekdays):
+        return False, 'weekdays phải là list số 0-6 (0=Mon).'
+    channels = data.get('notify_channels', ['in_app'])
+    if not isinstance(channels, list) or not all(c in ('in_app', 'email') for c in channels):
+        return False, "notify_channels chỉ gồm 'in_app', 'email'."
+    return True, {'name': name[:100], 'rule_ids': rule_ids, 'run_time': run_time, 'weekdays': weekdays, 'notify_channels': channels or ['in_app']}
+
+
+def _schedule_to_dict(s):
+    return {
+        'id': s.id,
+        'name': s.name,
+        'rule_ids': s.rule_ids,
+        'run_time': s.run_time.strftime('%H:%M') if s.run_time else None,
+        'weekdays': s.weekdays,
+        'is_active': s.is_active,
+        'notify_channels': s.notify_channels,
+        'last_run_at': s.last_run_at.isoformat() if s.last_run_at else None,
+        'next_run_at': s.next_run_at.isoformat() if s.next_run_at else None,
+    }
+
+
+class ScreenerScheduleListCreateView(APIView):
+    """P2.4: GET/POST /screener/schedules/"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from user_workspace.models import ScreenerSchedule
+
+        tenant = getattr(request, 'tenant', None)
+        qs = ScreenerSchedule.objects.filter(user=request.user)
+        if tenant:
+            qs = qs.filter(tenant=tenant)
+        return Response([_schedule_to_dict(s) for s in qs.order_by('-created_at')])
+
+    def post(self, request):
+        from user_workspace.models import ScreenerRule, ScreenerSchedule
+
+        tenant = getattr(request, 'tenant', None)
+        ok, cleaned = _validate_schedule_payload(request.data if isinstance(request.data, dict) else {})
+        if not ok:
+            return Response({'detail': cleaned}, status=400)
+        # Rule IDs must exist for this user
+        existing = set(
+            ScreenerRule.objects.filter(user=request.user, pk__in=cleaned['rule_ids']).values_list('pk', flat=True)
+        )
+        missing = [r for r in cleaned['rule_ids'] if r not in existing]
+        if missing:
+            return Response({'detail': f'Rule không tồn tại: {missing}'}, status=400)
+        # Tenant fallback like history
+        tenant_for = tenant
+        if tenant_for is None:
+            try:
+                from identity_access.models import CoreTenant
+
+                tenant_for = CoreTenant.objects.filter(owner_user=request.user).first()
+            except Exception:
+                tenant_for = None
+        if tenant_for is None:
+            return Response({'detail': 'Không xác định tenant.'}, status=400)
+        s = ScreenerSchedule.objects.create(
+            user=request.user,
+            tenant=tenant_for,
+            name=cleaned['name'],
+            rule_ids=cleaned['rule_ids'],
+            run_time=cleaned['run_time'],
+            weekdays=cleaned['weekdays'],
+            notify_channels=cleaned['notify_channels'],
+        )
+        return Response(_schedule_to_dict(s), status=201)
+
+
+class ScreenerScheduleDetailView(APIView):
+    """P2.4: GET/PUT/DELETE /screener/schedules/<id>/"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _get(self, request, pk):
+        from user_workspace.models import ScreenerSchedule
+
+        tenant = getattr(request, 'tenant', None)
+        try:
+            if tenant:
+                return ScreenerSchedule.objects.get(pk=pk, user=request.user, tenant=tenant)
+            return ScreenerSchedule.objects.get(pk=pk, user=request.user)
+        except ScreenerSchedule.DoesNotExist:
+            raise NotFound('Lịch không tồn tại.')
+
+    def get(self, request, pk):
+        return Response(_schedule_to_dict(self._get(request, pk)))
+
+    def put(self, request, pk):
+        s = self._get(request, pk)
+        data = request.data if isinstance(request.data, dict) else {}
+        # Partial update: name/rule_ids/run_time/weekdays/is_active/notify_channels
+        if 'name' in data:
+            name = str(data['name']).strip()
+            if not name:
+                return Response({'detail': 'Tên lịch không được để trống.'}, status=400)
+            s.name = name[:100]
+        if 'rule_ids' in data or 'run_time' in data or 'weekdays' in data or 'notify_channels' in data:
+            merged = {
+                'name': s.name,
+                'rule_ids': data.get('rule_ids', s.rule_ids),
+                'run_time': data.get('run_time', s.run_time.strftime('%H:%M') if s.run_time else '18:00'),
+                'weekdays': data.get('weekdays', s.weekdays),
+                'notify_channels': data.get('notify_channels', s.notify_channels),
+            }
+            ok, cleaned = _validate_schedule_payload(merged)
+            if not ok:
+                return Response({'detail': cleaned}, status=400)
+            s.rule_ids, s.run_time, s.weekdays, s.notify_channels = (
+                cleaned['rule_ids'],
+                cleaned['run_time'],
+                cleaned['weekdays'],
+                cleaned['notify_channels'],
+            )
+            # Recompute next run when timing changes
+            try:
+                from user_workspace.models import _compute_next_run
+
+                s.next_run_at = _compute_next_run(s.run_time, s.weekdays)
+            except Exception:
+                pass
+        if 'is_active' in data:
+            s.is_active = bool(data['is_active'])
+        s.save()
+        return Response(_schedule_to_dict(s))
+
+    def delete(self, request, pk):
+        self._get(request, pk).delete()
+        return Response(status=204)
+
+
+class ScreenerScheduleRunNowView(APIView):
+    """P2.4: POST /screener/schedules/<id>/run-now/ — enqueue task per rule."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        from user_workspace.models import ScreenerRule
+
+        tenant = getattr(request, 'tenant', None)
+        try:
+            from user_workspace.models import ScreenerSchedule
+
+            if tenant:
+                sched = ScreenerSchedule.objects.get(pk=pk, user=request.user, tenant=tenant)
+            else:
+                sched = ScreenerSchedule.objects.get(pk=pk, user=request.user)
+        except Exception:
+            raise NotFound('Lịch không tồn tại.')
+        # Latest session for snapshot
+        from datetime import date as _date
+
+        try:
+            from market_serving.models import SymbolSnapshot as _Snap
+
+            _latest = _Snap.objects.order_by('-session_date').first()
+            session_iso = _latest.session_date.isoformat() if _latest and _latest.session_date else _date.today().isoformat()
+        except Exception:
+            session_iso = _date.today().isoformat()
+        import uuid as _uuid
+
+        from user_workspace.screener_tasks import run_screener_scan_task
+
+        job_ids = []
+        for rid in (sched.rule_ids or []):
+            try:
+                rule = ScreenerRule.objects.filter(pk=int(rid), user=request.user).first()
+                if rule is None:
+                    continue
+                try:
+                    uts = int(rule.updated_at.timestamp()) if getattr(rule, 'updated_at', None) else 0
+                except Exception:
+                    uts = 0
+                jid = _uuid.uuid4().hex
+                run_screener_scan_task.delay(
+                    request.user.id,
+                    getattr(rule, 'tenant_id', None),
+                    rule.id,
+                    {"rules_json": rule.rules_json, "updated_at_ts": uts},
+                    session_iso,
+                    1,
+                    jid,
+                )
+                job_ids.append({'rule_id': rule.id, 'job_id': jid})
+            except Exception:
+                continue
+        # Update last_run_at
+        try:
+            from django.utils import timezone as _tz
+
+            sched.last_run_at = _tz.now()
+            sched.save(update_fields=['last_run_at'])
+        except Exception:
+            pass
+        return Response({'scheduled': sched.id, 'jobs': job_ids})
+
+
+class ScreenerScheduleAlertsView(APIView):
+    """P2.4: GET /screener/schedules/alerts/ — in_app new_symbols alerts (cache 7d)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from django.core.cache import cache as _cache
+
+        alerts = _cache.get(f"screener:sched_alerts:{request.user.id}") or []
+        if not isinstance(alerts, list):
+            alerts = []
+        return Response({'count': len(alerts), 'results': alerts[:50]})
+
+
 class ScreenerTemplatesView(APIView):
     """GET /screener/templates/ — pre-built screener template catalog (S2.5)."""
 

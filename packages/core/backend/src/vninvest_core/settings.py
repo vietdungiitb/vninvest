@@ -647,6 +647,12 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(hour=0, minute=0),
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('reset-daily-token-budgets-0000', 'manual_on_demand')},
     },
+    # === P2.4: screener scheduled run — every 5 minutes (Q6, D11) ===
+    'screener-scheduled-run-5m': {
+        'task': 'user_workspace.screener_tasks.screener_scheduled_run',
+        'schedule': 300.0,
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('screener-scheduled-run-5m', 'manual_on_demand')},
+    },
 }
 
 LOGGING = {

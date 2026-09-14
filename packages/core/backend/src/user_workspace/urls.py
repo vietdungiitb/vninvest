@@ -32,6 +32,10 @@ from .portfolio_analytics_views import (
     ScreenerHistoryListView,
     ScreenerHistoryDetailView,
     ScreenerHistoryBacktestView,
+    ScreenerScheduleListCreateView,
+    ScreenerScheduleDetailView,
+    ScreenerScheduleRunNowView,
+    ScreenerScheduleAlertsView,
 )
 
 # Screener views
@@ -87,4 +91,8 @@ urlpatterns += [
     path('screener/history/', ScreenerHistoryListView.as_view(), name='screener-history-list'),
     path('screener/history/<int:pk>/', ScreenerHistoryDetailView.as_view(), name='screener-history-detail'),
     path('screener/history/<int:pk>/backtest/', ScreenerHistoryBacktestView.as_view(), name='screener-history-backtest'),
+    path('screener/schedules/', ScreenerScheduleListCreateView.as_view(), name='screener-schedule-list'),
+    path('screener/schedules/alerts/', ScreenerScheduleAlertsView.as_view(), name='screener-schedule-alerts'),
+    path('screener/schedules/<int:pk>/', ScreenerScheduleDetailView.as_view(), name='screener-schedule-detail'),
+    path('screener/schedules/<int:pk>/run-now/', ScreenerScheduleRunNowView.as_view(), name='screener-schedule-run-now'),
 ]

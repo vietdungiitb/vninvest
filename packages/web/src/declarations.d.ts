@@ -41,6 +41,12 @@ declare module "./adapters/coreApiAdapter" {
     getScreenerHistoryBacktest: (historyId: string | number, horizon?: number) => Promise<any>;
     deleteScreenerHistory: (historyId: string | number) => Promise<any>;
     clearScreenerHistory: () => Promise<any>;
+    getScreenerSchedules: () => Promise<any>;
+    createScreenerSchedule: (data: any) => Promise<any>;
+    updateScreenerSchedule: (id: string | number, data: any) => Promise<any>;
+    deleteScreenerSchedule: (id: string | number) => Promise<any>;
+    runScreenerScheduleNow: (id: string | number) => Promise<any>;
+    getScreenerScheduleAlerts: () => Promise<any>;
 
     // Support
     listSupportTickets: (params: any) => Promise<any>;

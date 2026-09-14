@@ -108,6 +108,73 @@ def run_screener_scan_task(
         except Exception:
             logger.exception("screener task: set scan_key failed")
 
+        # P2.4: create server history (same shape as sync path) + new_symbols alert
+        try:
+            from django.contrib.auth import get_user_model as _get_user
+            from user_workspace.models import ScreenerRule as _Rule, ScreenerRunHistory as _Hist
+
+            _user = _get_user().objects.filter(pk=user_id).first()
+            _rule = _Rule.objects.filter(pk=rule_id).first()
+            _tenant = getattr(_rule, 'tenant', None) if _rule else None
+            if tenant_id and _rule is None:
+                pass
+            prev_symbols = set()
+            if _rule is not None:
+                _prev = (
+                    _Hist.objects.filter(user_id=user_id, rule_id=rule_id)
+                    .order_by('-run_at')
+                    .first()
+                )
+                if _prev and isinstance(_prev.matched, list):
+                    prev_symbols = {str(r.get('symbol')) for r in _prev.matched if isinstance(r, dict) and r.get('symbol')}
+            new_symbols = sorted({str(r.get('symbol')) for r in matched if r.get('symbol')} - prev_symbols)
+            if _user is not None and _tenant is not None:
+                _rows = []
+                for r in matched[:100]:
+                    _adv = r.get('ai_advisory') or {}
+                    _rows.append(
+                        {
+                            'symbol': r.get('symbol'),
+                            'close': r.get('close'),
+                            'action': _adv.get('strategy_action'),
+                            'score': _adv.get('ai_score_0_100'),
+                        }
+                    )
+                _Hist.objects.create(
+                    user=_user,
+                    tenant=_tenant,
+                    rule=_rule,
+                    rule_name=getattr(_rule, 'name', f'rule-{rule_id}'),
+                    matched_count=len(matched),
+                    total_scanned=total_scanned,
+                    window_days=window_days,
+                    session_date=session_date,
+                    matched=_rows,
+                    params={'sort': 'ai_score', 'order': 'desc', 'include_ai': int(bool(include_ai)), 'via': 'task'},
+                )
+                if new_symbols:
+                    _alerts_key = f"screener:sched_alerts:{user_id}"
+                    try:
+                        _alerts = dj_cache.get(_alerts_key) or []
+                        if not isinstance(_alerts, list):
+                            _alerts = []
+                        _alerts.insert(
+                            0,
+                            {
+                                'rule_id': rule_id,
+                                'rule_name': getattr(_rule, 'name', f'rule-{rule_id}'),
+                                'run_at': session_date.isoformat(),
+                                'new_symbols': new_symbols[:50],
+                                'matched_count': len(matched),
+                                'job_id': job_id,
+                            },
+                        )
+                        dj_cache.set(_alerts_key, _alerts[:50], timeout=7 * 24 * 3600)
+                    except Exception:
+                        logger.exception("screener task: push sched alert failed")
+        except Exception:
+            logger.exception("screener task: create history/alert failed")
+
         # Mark completed with result_meta (no full matched — FE will fetch via sync hit)
         _set_job(
             {
@@ -141,3 +208,67 @@ def run_screener_scan_task(
                 dj_cache.set(jobs_set_key, raw, timeout=3600)
         except Exception:
             pass
+
+
+@shared_task(name="user_workspace.screener_tasks.screener_scheduled_run", bind=True, max_retries=0)
+def screener_scheduled_run(self):
+    """P2.4 beat (5m): run due ScreenerSchedule entries (next_run_at <= now).
+
+    For each due schedule: enqueue run_screener_scan_task per rule (snapshot),
+    update last_run_at/next_run_at. Email channel is a residual (in_app only).
+    """
+    from django.utils import timezone
+
+    from user_workspace.models import ScreenerRule, ScreenerSchedule, _compute_next_run
+
+    now = timezone.now()
+    from django.db.models import Q as _Q
+
+    due = list(ScreenerSchedule.objects.filter(is_active=True).filter(_Q(next_run_at__lte=now) | _Q(next_run_at__isnull=True)))
+    ran = 0
+    for sched in due:
+        try:
+            rule_ids = sched.rule_ids if isinstance(sched.rule_ids, list) else []
+            # Latest session date for snapshot
+            try:
+                from market_serving.models import SymbolSnapshot as _Snap
+
+                _latest = _Snap.objects.order_by('-session_date').first()
+                _session_iso = _latest.session_date.isoformat() if _latest and _latest.session_date else now.date().isoformat()
+            except Exception:
+                _session_iso = now.date().isoformat()
+            for rid in rule_ids:
+                try:
+                    rule = ScreenerRule.objects.filter(pk=int(rid), user=sched.user).first()
+                    if rule is None:
+                        continue
+                    try:
+                        _uts = int(rule.updated_at.timestamp()) if getattr(rule, 'updated_at', None) else 0
+                    except Exception:
+                        _uts = 0
+                    import uuid as _uuid
+
+                    _jid = _uuid.uuid4().hex
+                    run_screener_scan_task.delay(
+                        sched.user_id,
+                        sched.tenant_id,
+                        rule.id,
+                        {"rules_json": rule.rules_json, "updated_at_ts": _uts},
+                        _session_iso,
+                        1,
+                        _jid,
+                    )
+                    ran += 1
+                except Exception:
+                    logger.exception("screener scheduled: enqueue rule %s failed", rid)
+            sched.last_run_at = now
+            try:
+                sched.next_run_at = _compute_next_run(sched.run_time, sched.weekdays)
+            except Exception:
+                from datetime import timedelta as _td
+
+                sched.next_run_at = now + _td(days=1)
+            sched.save(update_fields=['last_run_at', 'next_run_at'])
+        except Exception:
+            logger.exception("screener scheduled: schedule %s failed", getattr(sched, 'id', '?'))
+    return {"ok": True, "schedules_due": len(due), "jobs_enqueued": ran}

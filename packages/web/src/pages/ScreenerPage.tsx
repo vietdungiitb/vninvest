@@ -11,6 +11,7 @@ import { findDuplicateRule, uniqueRuleName } from '../components/screener/screen
 import { ScreenerResultsTable } from '../components/screener/ScreenerResultsTable.js';
 import { ScreenerTemplates } from '../components/screener/ScreenerTemplates.js';
 import { ScreenerHistory } from '../components/screener/ScreenerHistory.js';
+import { ScreenerSchedulePanel } from '../components/screener/ScreenerSchedulePanel.js';
 import { loadScreenerRuns, saveScreenerRun, type ScreenerRunEntry } from '../components/screener/screenerHistoryStore.js';
 import type { ScreenerCondition, ScreenerRule, ScreenerResult, ScreenerRow, ScreenerTemplate } from '../types/screener.d.ts';
 
@@ -733,6 +734,7 @@ export function ScreenerPage() {
         onSave={handleSaveTemplate}
       />
       <ScreenerHistory runs={history} />
+      <ScreenerSchedulePanel rules={rules} />
     </div>
   );
 }
