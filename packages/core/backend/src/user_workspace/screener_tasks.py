@@ -26,6 +26,7 @@ def run_screener_scan_task(
     session_date_iso: str,
     include_ai: int,
     job_id: str,
+    schedule_id=None,
 ):
     """Execute scan synchronously (or via worker) and populate caches.
 
@@ -33,6 +34,7 @@ def run_screener_scan_task(
     session_date_iso: "YYYY-MM-DD"
     include_ai: 0/1
     job_id: uuid4 string for status tracking
+    schedule_id: optional ScreenerSchedule pk (P2.4 email channel)
     """
     from datetime import date as date_cls
 
@@ -172,6 +174,30 @@ def run_screener_scan_task(
                         dj_cache.set(_alerts_key, _alerts[:50], timeout=7 * 24 * 3600)
                     except Exception:
                         logger.exception("screener task: push sched alert failed")
+                    # P2.4 email channel (Q6): send when schedule has email + new symbols
+                    try:
+                        from user_workspace.models import ScreenerSchedule as _Sched
+
+                        _sched = _Sched.objects.filter(pk=schedule_id).first() if schedule_id else None
+                        _channels = (_sched.notify_channels if _sched and isinstance(_sched.notify_channels, list) else [])
+                        if new_symbols and 'email' in _channels and _user is not None and getattr(_user, 'email', None):
+                            from django.core.mail import send_mail
+
+                            _rule_name = getattr(_rule, 'name', f'rule-{rule_id}')
+                            send_mail(
+                                subject=f"[Screener] {_rule_name}: +{len(new_symbols)} mã mới ({session_date.isoformat()})",
+                                message=(
+                                    f"Bộ lọc '{_rule_name}' có {len(new_symbols)} mã mới khớp "
+                                    f"trong phiên {session_date.isoformat()}:\n"
+                                    + "\n".join(f"- {s}" for s in new_symbols[:50])
+                                    + f"\n\nTổng khớp: {len(matched)}/{total_scanned}."
+                                ),
+                                from_email=None,
+                                recipient_list=[_user.email],
+                                fail_silently=False,
+                            )
+                    except Exception:
+                        logger.exception("screener task: send schedule email failed")
         except Exception:
             logger.exception("screener task: create history/alert failed")
 
@@ -257,6 +283,7 @@ def screener_scheduled_run(self):
                         _session_iso,
                         1,
                         _jid,
+                        sched.id,
                     )
                     ran += 1
                 except Exception:

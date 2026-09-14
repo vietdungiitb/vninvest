@@ -1,0 +1,105 @@
+"""P2 evidence — API-level transcript against docker dev (http://localhost:8001).
+
+Exercises: login → rules → run sync → run ?async=1 → poll status → history list/backtest
+→ schedule CRUD → run-now → alerts. Saves transcript to api-transcript.md next to this file.
+"""
+import json
+import time
+import urllib.request
+
+BASE = "http://localhost:8001/core/v1"
+OUT = []
+
+
+def log(msg):
+    print(msg, flush=True)
+    OUT.append(msg)
+
+
+def req(method, path, token=None, body=None):
+    data = json.dumps(body).encode() if body is not None else None
+    r = urllib.request.Request(BASE + path, data=data, method=method, headers={"Content-Type": "application/json"})
+    if token:
+        r.add_header("Authorization", f"Bearer {token}")
+    try:
+        with urllib.request.urlopen(r, timeout=60) as resp:
+            return resp.status, json.loads(resp.read().decode() or "{}")
+    except urllib.error.HTTPError as e:
+        try:
+            payload = json.loads(e.read().decode() or "{}")
+        except Exception:
+            payload = {}
+        return e.code, payload
+
+
+import urllib.error  # noqa: E402  (kept after def for readability in evidence script)
+
+t0 = time.time()
+st, tok = req("POST", "/auth/token/", body={"username": "testuser@vninvest.vn", "password": "TestPass123!"})
+access = (tok.get("data") or {}).get("access", "")
+log(f"1. login -> {st} (access {'OK' if access else 'MISSING'})")
+
+st, rules = req("GET", "/screener/rules/", token=access)
+items = rules if isinstance(rules, list) else rules.get("results", [])
+log(f"2. list rules -> {st} count={len(items)}")
+if not items:
+    st, created = req("POST", "/screener/rules/", token=access, body={"name": "Evidence RSI", "rules_json": [{"field": "rsi_14", "op": "lt", "value": 30, "logic": "AND"}]})
+    log(f"   create rule -> {st} id={(created or {}).get('id')}")
+    st, rules = req("GET", "/screener/rules/", token=access)
+    items = rules if isinstance(rules, list) else rules.get("results", [])
+rule_id = items[0]["id"]
+log(f"   using rule_id={rule_id} name={items[0].get('name')}")
+
+st, run = req("POST", f"/screener/rules/{rule_id}/run/?sort=close&order=asc&page=1&limit=10", token=access, body={})
+log(f"3. sync run -> {st} matched={run.get('matched_count')} scanned={run.get('total_scanned')} window={run.get('window_days')} pages={run.get('pages')}")
+
+# NOTE (D1): cache hit forces sync — use a FRESH rule so ?async=1 sees a cache miss -> 202
+st, fresh = req("POST", "/screener/rules/", token=access, body={"name": "Evidence Async", "rules_json": [{"field": "momentum_20d_pct", "op": "gt", "value": 5, "logic": "AND"}]})
+fresh_id = (fresh or {}).get("id", rule_id)
+st, run202 = req("POST", f"/screener/rules/{fresh_id}/run/?async=1", token=access, body={})
+log(f"4. async run (fresh rule, miss) -> {st} status={run202.get('status')} job={str(run202.get('job_id'))[:8]}...")
+job_id = run202.get("job_id", "")
+for i in range(10):
+    if not job_id:
+        break
+    st, status = req("GET", f"/screener/rules/{fresh_id}/run/status/?job_id={job_id}", token=access)
+    log(f"   poll[{i}] -> {st} status={status.get('status')}")
+    if status.get("status") in ("completed", "failed", "unknown"):
+        if status.get("status") == "completed":
+            log(f"   result_meta={status.get('result_meta')}")
+        break
+    time.sleep(2)
+if job_id:
+    req("DELETE", f"/screener/rules/{fresh_id}/", token=access)
+    log("   cleanup fresh rule")
+
+st, hist = req("GET", "/screener/history/?limit=5", token=access)
+log(f"5. history list -> {st} count={hist.get('count')}")
+hid = (hist.get("results") or [{}])[0].get("id")
+if hid:
+    st, bt = req("GET", f"/screener/history/{hid}/backtest/?horizon=5", token=access)
+    log(f"   backtest -> {st} winRate={bt.get('winRate')} evaluated={bt.get('evaluated')}")
+
+st, sched = req("POST", "/screener/schedules/", token=access, body={"name": "Evidence evening", "rule_ids": [rule_id], "run_time": "18:00", "weekdays": [0, 1, 2, 3, 4], "notify_channels": ["in_app"]})
+sid = (sched or {}).get("id")
+log(f"6. create schedule -> {st} id={sid}")
+if sid:
+    st, rn = req("POST", f"/screener/schedules/{sid}/run-now/", token=access, body={})
+    log(f"   run-now -> {st} jobs={rn.get('jobs')}")
+    st, alerts = req("GET", "/screener/schedules/alerts/", token=access)
+    log(f"   alerts -> {st} count={alerts.get('count')}")
+    st, tmp = req("DELETE", f"/screener/schedules/{sid}/", token=access)
+    log(f"   delete schedule -> {st} (cleanup)")
+
+st, templates = req("GET", "/screener/templates/", token=access)
+titems = templates.get("templates", []) if isinstance(templates, dict) else []
+log(f"7. templates -> {st} count={len(titems)} ids={[t.get('id') for t in titems][:12]}")
+
+log(f"DONE in {time.time() - t0:.1f}s")
+
+with open("api-transcript.md", "w", encoding="utf-8") as f:
+    f.write("# API transcript — screener P1/P2 on docker dev\n\n")
+    f.write("> Generated by `api_transcript.py` against `http://localhost:8001` (testuser).\n\n```\n")
+    f.write("\n".join(OUT))
+    f.write("\n```\n")
+print("wrote api-transcript.md")

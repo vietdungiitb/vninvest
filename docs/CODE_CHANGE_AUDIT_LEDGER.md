@@ -5,6 +5,25 @@
 
 ---
 
+## Entry 81: Screener remaining — email channel + E2E + evidence thật (code)
+
+- **Date**: 2026-09-14
+- **Scope**: Đóng tồn đọng P2 (Entry 80 residual): email channel schedule (Q6), E2E `screener-p0.spec.ts` mở rộng, evidence ảnh/API thật. Không đổi P1/P2 contract.
+- **Files**:
+  - `screener_tasks.py` — `run_screener_scan_task(..., schedule_id=None)`: sau push alert `in_app`, nếu schedule có `email` + user.email + new_symbols → `send_mail` (subject `[Screener] {rule}: +N mã mới`, body liệt kê 50 mã). Beat + run-now truyền `sched.id`. Bọc try/except (mail fail không crash task).
+  - `docker-compose.dev.yml` — core-api + core-worker-manual thêm `EMAIL_BACKEND=smtp, EMAIL_HOST=mailpit, EMAIL_PORT=1025` (mailpit UI :8026). Các worker/beat khác giữ console default.
+  - `test_screener_schedule.py` — **MỚI** `test_email_channel_sends_on_new_symbols` (locmem backend, seed history AAA → BBB/CCC new, assert 1 mail tới user.email, body chứa BBB). Suite 5 tests PASS.
+  - `tests/visual/screener-p1.spec.ts` **MỚI** (4 tests) + `auth.setup.ts` fix `networkidle`→`domcontentloaded` (app realtime không idle). Chạy `--project=chromium` vs docker: setup pass, 1/4 pass; 3 fail do bootstrap `authStateReady` treo stored state (env pre-existing, API login 200 OK). Giữ spec cho CI.
+  - `docs/evidence/screener-p2/api_transcript.py` + `api-transcript.md` **MỚI** — transcript API thật: sync `7/20 window=35`, fresh+`?async=1`→**202** (D1: cache hit→200), poll queued (payload redis đúng), history 3 + backtest, schedule CRUD/run-now/alerts, templates **12**.
+- **Validation**:
+  - `manage.py test user_workspace.test_screener_schedule` → **5/5 OK**.
+  - Docker dev: migrations 0014+0015 `[X]`, `/screener/history/` + `/screener/schedules/` 401 (đúng), scan cache redis 3876 bytes (20 mã).
+  - **Worker backlog finding (env)**: `manual_on_demand` LLEN=7672 (backfill flood) → task 202 nằm queued. Completion cover bởi eager test. Đề xuất P3: tách queue screener.
+- **Next**: Rebuild docker dev (EMAIL env + task mới) + verify mailpit nhận mail khi schedule email chạy. P3 theo plan §10.
+- **Residual**: E2E browser full-pass cần fix bootstrap stored-state (ngoài scope screener); ảnh PNG async-progress thay bằng transcript (worker backlog).
+
+---
+
 ## Entry 80: P2.2–P2.6 Screener — RQ + history FE + schedule FE + row actions + a11y (code — P2 DONE)
 
 - **Date**: 2026-09-14

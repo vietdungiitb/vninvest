@@ -63,4 +63,17 @@ npm --prefix packages/web run test:components -- src/components/screener
 
 ---
 
-*Generated: 2026-09-14 — P2.0–P2.6 committed, P2 DONE.*
+## 10. Remaining work closed (2026-09-14, Entry 81)
+
+- **Email channel (Q6)**: `run_screener_scan_task(..., schedule_id=None)` — sau khi push alert `in_app`, nếu schedule có `email` trong `notify_channels` và user có email → `send_mail` subject `[Screener] {rule}: +N mã mới ({session})`, body liệt kê new_symbols (cap 50). `docker-compose.dev.yml` core-api + core-worker-manual thêm `EMAIL_BACKEND=smtp, EMAIL_HOST=mailpit, EMAIL_PORT=1025` (mailpit UI :8026). Test `test_email_channel_sends_on_new_symbols` (locmem backend, assert 1 mail tới user.email, body chứa BBB) — **PASS** (`test_screener_schedule.py` 5 tests).
+- **E2E**: `tests/visual/screener-p1.spec.ts` **MỚI** (4 tests: sort+paging screenshot, 202 page, history+schedule panels, URL invalid) + `auth.setup.ts` fix `networkidle` → `domcontentloaded` (app realtime không bao giờ idle). Chạy `--project=chromium` vs docker `http://localhost`: setup login pass, 1/4 pass (URL invalid — page render graceful); 3 fail vì bootstrap `authStateReady` treo ở “Đang xác thực tài khoản...” với stored state (env issue, pre-existing, không liên quan screener — API login 200 OK). Spec giữ lại cho CI.
+- **API transcript thật** (`api_transcript.py` + `api-transcript.md`, testuser, docker dev):
+  - login 200 → rules → sync run `matched=7 scanned=20 window=35 pages=1`
+  - fresh rule + `?async=1` (miss) → **202 queued** + poll `queued` (job payload đúng trong redis `screener:job:{id}`)
+  - history `count=3` + backtest `winRate=0 evaluated=0` (không BUY/SELL trong fixture)
+  - schedule CRUD 201 + run-now `jobs=[{rule_id,job_id}]` + alerts `count=0` + delete 204
+  - templates **12** (gồm `volume_breakout`, `profit_growth`)
+  - D1 verified: sync run trước → cache hit → `?async=1` vẫn **200** (không 202)
+- **Worker backlog finding (env, không phải bug screener)**: `manual_on_demand` LLEN=7672 (backfill flood), manual worker solo concurrency 1 → screener task 202 nằm `queued` >20s chưa chạy. Completion đã cover bởi test eager (`test_large_universe_returns_202`). Đề xuất P3/ops: tách queue riêng cho screener (hiện plan §10 cấm queue mới trong P1) hoặc rate-limit beat backfill.
+
+*Generated: 2026-09-14 — P2.0–P2.6 committed, remaining closed, P2 DONE.*

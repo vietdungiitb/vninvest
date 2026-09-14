@@ -79,6 +79,46 @@ class ScreenerScheduleTestCase(TestCase):
         self.assertEqual(len(run.json()["jobs"]), 1)
         self.assertEqual(run.json()["jobs"][0]["rule_id"], self.rule.id)
 
+    def test_email_channel_sends_on_new_symbols(self):
+        from datetime import date, timedelta
+
+        from django.core import mail
+        from django.test import override_settings
+        from market_data.models import DailyPrice
+        from market_serving.models import SymbolSnapshot
+
+        session_date = date.today()
+        for sym in ("AAA", "BBB", "CCC"):
+            SymbolSnapshot.objects.create(symbol=sym, session_date=session_date, price=20.0, volume=500000)
+            for d in range(25):
+                day = session_date - timedelta(days=25 - d)
+                DailyPrice.objects.create(symbol=sym, date=day, open=10, high=11, low=9, close=10 + d * 0.2, volume=100000)
+
+        # Seed previous history with only AAA so BBB/CCC are "new"
+        from user_workspace.models import ScreenerRunHistory
+
+        ScreenerRunHistory.objects.create(
+            user=self.user, tenant=self.tenant, rule=self.rule, rule_name=self.rule.name,
+            matched_count=1, total_scanned=3, window_days=35, session_date=session_date,
+            matched=[{"symbol": "AAA", "close": 20, "action": None, "score": None}], params={},
+        )
+        sched = ScreenerSchedule.objects.create(
+            user=self.user, tenant=self.tenant, name="Mail", rule_ids=[self.rule.id],
+            run_time="18:00", weekdays=[0, 1, 2, 3, 4], notify_channels=["in_app", "email"],
+        )
+        from user_workspace.screener_tasks import run_screener_scan_task
+
+        with mock.patch("market_data.vnbroker_adapter.get_company_financials_response", return_value={"financials": {}}):
+            with override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
+                run_screener_scan_task(
+                    self.user.id, self.tenant.id, self.rule.id,
+                    {"rules_json": self.rule.rules_json, "updated_at_ts": 0},
+                    session_date.isoformat(), 1, "e" * 32, sched.id,
+                )
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("BBB", mail.outbox[0].body)
+        self.assertEqual(mail.outbox[0].to, [self.user.email])
+
     def test_beat_due_and_alerts(self):
         from datetime import timedelta
 

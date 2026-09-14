@@ -2218,6 +2218,7 @@ class ScreenerScheduleRunNowView(APIView):
                     session_iso,
                     1,
                     jid,
+                    sched.id,
                 )
                 job_ids.append({'rule_id': rule.id, 'job_id': jid})
             except Exception:

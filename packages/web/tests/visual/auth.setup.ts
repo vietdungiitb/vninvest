@@ -3,12 +3,13 @@ import { test as setup, expect } from '@playwright/test';
 const authFile = 'tests/visual/.auth/user.json';
 
 setup('authenticate testuser', async ({ page }) => {
-  await page.goto('/login', { waitUntil: 'networkidle' });
+  // NOTE: app keeps realtime polling/WS open, so 'networkidle' never fires — use domcontentloaded
+  await page.goto('/login', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => {
     localStorage.clear();
     sessionStorage.clear();
   });
-  await page.goto('/login', { waitUntil: 'networkidle' });
+  await page.goto('/login', { waitUntil: 'domcontentloaded' });
 
   const emailInput = page
     .locator('input#auth-login-username, input[type="text"], input[name="username"], input[type="email"]')
