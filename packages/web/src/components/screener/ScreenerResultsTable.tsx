@@ -1,8 +1,23 @@
 import { createElement, useState, useMemo, useEffect, useCallback, type CSSProperties, type MouseEvent } from "react";
 import { useI18n } from "../../context/LangContext.js";
+import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import type { ScreenerRow, ScreenerResult } from "../../types/screener.d.ts";
 import { ScreenerExport } from "./ScreenerExport.js";
 import { ScreenerScoreCard } from "./ScreenerScoreCard.js";
+
+const COLUMNS_STORAGE_KEY = "vninvest_screener_columns_v1";
+
+function loadColumnVisibility(): Record<string, boolean> | null {
+  try {
+    const raw = typeof window !== "undefined" ? window.localStorage.getItem(COLUMNS_STORAGE_KEY) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed as Record<string, boolean>;
+  } catch {
+    return null;
+  }
+}
 
 type Format = "number" | "pct" | "ratio" | "string" | "date" | "ai";
 
@@ -124,8 +139,62 @@ export function ScreenerResultsTable({
   const [visible, setVisible] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
     for (const c of COLUMNS) init[c.key] = c.visibleByDefault;
+    // P2.5: persist column visibility (D13, localStorage)
+    const saved = loadColumnVisibility();
+    if (saved) {
+      for (const c of COLUMNS) {
+        if (typeof saved[c.key] === "boolean") init[c.key] = saved[c.key];
+      }
+    }
     return init;
   });
+  const [rowNotice, setRowNotice] = useState("");
+  const [alertForm, setAlertForm] = useState<{ symbol: string; condition: string; price: string } | null>(null);
+
+  const toggleColumn = useCallback((key: string) => {
+    setVisible((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      try {
+        if (typeof window !== "undefined") window.localStorage.setItem(COLUMNS_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore quota */
+      }
+      return next;
+    });
+  }, []);
+
+  const handleAddToWatchlist = useCallback(async (symbol: string) => {
+    setRowNotice("");
+    try {
+      const wl: any = await coreApiAdapter.getWatchlists();
+      const list = Array.isArray(wl) ? wl : wl?.results || [];
+      if (list.length === 0) {
+        setRowNotice(t("screener.rowActions.noWatchlist" as any, { defaultValue: "Chưa có watchlist nào — hãy tạo watchlist trước." } as any));
+        return;
+      }
+      await coreApiAdapter.addWatchlistItem(String(list[0].id), symbol);
+      setRowNotice(t("screener.rowActions.addedToWatchlist" as any, { defaultValue: `Đã thêm ${symbol} vào watchlist.` } as any));
+    } catch {
+      setRowNotice(t("screener.errors.runRuleFailed"));
+    }
+  }, [t]);
+
+  const handleCreateAlert = useCallback(async () => {
+    if (!alertForm) return;
+    setRowNotice("");
+    const price = parseFloat(alertForm.price);
+    if (!Number.isFinite(price) || price <= 0) {
+      setRowNotice(t("screener.errors.valueNumber"));
+      return;
+    }
+    try {
+      await coreApiAdapter.createPriceAlert({ symbol: alertForm.symbol, condition: alertForm.condition, target_price: price, cooldown_seconds: 300, is_active: true });
+      setRowNotice(t("screener.rowActions.alertCreated" as any, { defaultValue: `Đã tạo cảnh báo giá cho ${alertForm.symbol}.` } as any));
+      setAlertForm(null);
+    } catch {
+      setRowNotice(t("screener.errors.runRuleFailed"));
+    }
+  }, [alertForm, t]);
 
   useEffect(() => { setCurrentPage(1); }, [results]);
 
@@ -287,7 +356,7 @@ export function ScreenerResultsTable({
                       createElement("input", {
                         type: "checkbox",
                         checked: !!visible[c.key],
-                        onChange: () => setVisible((prev) => ({ ...prev, [c.key]: !prev[c.key] })),
+                        onChange: () => toggleColumn(String(c.key)),
                         style: { width: "16px", height: "16px", accentColor: "var(--accent-cyan, #06b6d4)" },
                       }),
                       t(c.labelKey),
@@ -295,6 +364,45 @@ export function ScreenerResultsTable({
                   ),
                 ),
               ),
+            ),
+          rowNotice &&
+            createElement(
+              "div",
+              { style: { marginBottom: "8px", fontSize: "12px", color: "#86efac", background: "rgba(74,222,128,0.12)", border: "1px solid rgba(74,222,128,0.4)", borderRadius: "8px", padding: "8px 12px" } },
+              rowNotice
+            ),
+          alertForm &&
+            createElement(
+              "div",
+              { style: { marginBottom: "8px", padding: "10px 12px", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", borderRadius: "8px", background: "rgba(15,23,42,0.5)", display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", fontSize: "12px", color: "var(--text-secondary, #94a3b8)" } },
+              createElement("span", { style: { fontWeight: 600, color: "var(--text-primary, #f1f5f9)" } }, alertForm.symbol),
+              createElement(
+                "select",
+                {
+                  value: alertForm.condition,
+                  onChange: (e: any) => setAlertForm({ ...alertForm, condition: e.target.value }),
+                  style: { background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-primary, #f1f5f9)", borderRadius: "6px", padding: "4px 8px" },
+                },
+                createElement("option", { value: "ABOVE" }, "Giá vượt quá"),
+                createElement("option", { value: "BELOW" }, "Giá giảm dưới")
+              ),
+              createElement("input", {
+                type: "number",
+                value: alertForm.price,
+                onChange: (e: any) => setAlertForm({ ...alertForm, price: e.target.value }),
+                placeholder: "Giá mục tiêu",
+                style: { width: "120px", background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-primary, #f1f5f9)", borderRadius: "6px", padding: "4px 8px" },
+              }),
+              createElement(
+                "button",
+                { type: "button", onClick: () => { void handleCreateAlert(); }, style: { padding: "4px 12px", background: "var(--accent-cyan, #06b6d4)", color: "#fff", borderRadius: "6px", border: "none", cursor: "pointer", fontWeight: 600 } },
+                t("screener.saveRule")
+              ),
+              createElement(
+                "button",
+                { type: "button", onClick: () => setAlertForm(null), style: { padding: "4px 12px", background: "none", color: "var(--text-secondary, #94a3b8)", borderRadius: "6px", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", cursor: "pointer" } },
+                t("common.cancel")
+              )
             ),
           createElement(
             "div",
@@ -308,12 +416,19 @@ export function ScreenerResultsTable({
                 createElement(
                   "tr",
                   { style: { color: "var(--text-muted, #94a3b8)", borderBottom: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))" } },
-                  visibleColumns.map((col) =>
+                  ...visibleColumns.map((col) =>
                     createElement(
                       "th",
                       {
                         key: String(col.key),
                         onClick: () => handleSort(col.key),
+                        onKeyDown: (e: any) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleSort(col.key); } },
+                        tabIndex: 0,
+                        role: "columnheader",
+                        "aria-sort": (serverMode && serverMeta ? serverMeta.sort === toServerSortKey(col.key) : sortKey === col.key)
+                          ? ((serverMode && serverMeta ? serverMeta.order : sortDir) === "asc" ? "ascending" : "descending")
+                          : "none",
+                        "aria-label": `${t(col.labelKey)} — sắp xếp`,
                         style: {
                           paddingBottom: "8px",
                           paddingRight: "16px",
@@ -336,6 +451,11 @@ export function ScreenerResultsTable({
                       ),
                     ),
                   ),
+                  createElement(
+                    "th",
+                    { key: "__actions", style: { paddingBottom: "8px", textAlign: "right", fontWeight: 500, whiteSpace: "nowrap" } },
+                    t("screener.rowActions.title" as any, { defaultValue: "Thao tác" } as any)
+                  ),
                 ),
               ),
               createElement(
@@ -350,7 +470,7 @@ export function ScreenerResultsTable({
                       onMouseEnter: (e: MouseEvent<HTMLTableRowElement>) => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; },
                       onMouseLeave: (e: MouseEvent<HTMLTableRowElement>) => { e.currentTarget.style.background = "transparent"; },
                     },
-                    visibleColumns.map((col) =>
+                    ...visibleColumns.map((col) =>
                       createElement(
                         "td",
                         {
@@ -368,6 +488,31 @@ export function ScreenerResultsTable({
                             : formatValue(row[col.key], col.format),
                       ),
                     ),
+                    // P2.5: row actions — watchlist + alert (D12)
+                    createElement(
+                      "td",
+                      { key: "__actions", style: { padding: "8px 0", textAlign: "right", whiteSpace: "nowrap" } },
+                      createElement(
+                        "button",
+                        {
+                          type: "button",
+                          title: t("screener.rowActions.addToWatchlist" as any, { defaultValue: "Thêm vào watchlist" } as any),
+                          onClick: () => { void handleAddToWatchlist(row.symbol); },
+                          style: { fontSize: "12px", color: "#4ade80", background: "none", border: "1px solid rgba(74,222,128,0.3)", borderRadius: "6px", padding: "2px 8px", cursor: "pointer", marginRight: "4px" },
+                        },
+                        "+ WL"
+                      ),
+                      createElement(
+                        "button",
+                        {
+                          type: "button",
+                          title: t("screener.rowActions.createAlert" as any, { defaultValue: "Tạo cảnh báo giá" } as any),
+                          onClick: () => setAlertForm({ symbol: row.symbol, condition: "ABOVE", price: row.close != null ? String(row.close) : "" }),
+                          style: { fontSize: "12px", color: "#fbbf24", background: "none", border: "1px solid rgba(251,191,36,0.3)", borderRadius: "6px", padding: "2px 8px", cursor: "pointer" },
+                        },
+                        "+ Alert"
+                      )
+                    ),
                   ),
                 ),
               ),
@@ -381,6 +526,7 @@ export function ScreenerResultsTable({
                 "button",
                 {
                   type: "button",
+                  "aria-label": "Previous page",
                   onClick: () => serverMode && onServerPage
                     ? onServerPage(Math.max(1, effectivePage - 1))
                     : setCurrentPage((p) => Math.max(1, p - 1)),
@@ -394,6 +540,7 @@ export function ScreenerResultsTable({
                 "button",
                 {
                   type: "button",
+                  "aria-label": "Next page",
                   onClick: () => serverMode && onServerPage
                     ? onServerPage(Math.min(totalPages, effectivePage + 1))
                     : setCurrentPage((p) => Math.min(totalPages, p + 1)),

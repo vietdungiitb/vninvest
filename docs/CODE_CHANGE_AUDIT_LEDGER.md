@@ -5,6 +5,27 @@
 
 ---
 
+## Entry 80: P2.2–P2.6 Screener — RQ + history FE + schedule FE + row actions + a11y (code — P2 DONE)
+
+- **Date**: 2026-09-14
+- **Scope**: Hoàn thiện P2 còn lại theo `docs/IMPLEMENTATION_PLAN_SCREENER_P2_20260913.md` (P2.2 RQ đã commit `670e6617`, P2.3 BE đã commit `7133d76e`, P2.4 BE đã commit `8db11e0a`; entry này: P2.3 FE + P2.4 FE + P2.5 + P2.6 + evidence). Không đổi P1 contract/công thức.
+- **Files**:
+  - `ScreenerHistory.tsx` — `useTenantAdminQuery(['screener','history'])` server + fallback localStorage, `toEntry` map, per-run Backtest (server 5d) + delete, `saveHistoryEntry` invalidates server query (`ScreenerPage.tsx`).
+  - `ScreenerSchedulePanel.tsx` **MỚI** — RQ list/alerts, create (name+rule+time, T2-T6 preset), toggle/run-now/delete, alerts banner `+N mã mới`; wired vào `ScreenerPage` dưới History.
+  - `workspace.js` + `.d.ts` + `declarations.d.ts` — `getScreenerHistory/backtest/delete/clear` + `get/create/update/delete/run-now/alerts` schedule (6 methods).
+  - `screenerHistoryStore.ts` — `ScreenerRunEntry.serverId?`.
+  - `ScreenerResultsTable.tsx` — P2.5: `loadColumnVisibility` + `toggleColumn` persist `localStorage vninvest_screener_columns_v1` (D13), actions col `+WL` (first watchlist, empty notice) + `+Alert` (inline form ABOVE/BELOW + price prefill close → `createPriceAlert`); P2.6: `th role=columnheader aria-sort tabIndex onKeyDown`, pager `aria-label` Prev/Next.
+  - Tests: `ScreenerSchedulePanel.component.test.tsx` 2 + `ScreenerRowActions.component.test.tsx` 5 (P2.5 persist/actions/a11y).
+  - `docs/evidence/screener-p2/README.md` **MỚI** — DoD evidence P2 (R2.x + gates + reproduce).
+- **Validation**:
+  - `manage.py test user_workspace` → **53 tests: 52 pass + 1 pre-existing** holdings.
+  - `npm run test:components` → **27 files 113 passed** (screener 44: 30 cũ + polling 7 + schedule 2 + rowActions 5).
+  - `npm run lint` → 0 errors (3546 warnings baseline); `npm run build` → PASS; `npm run i18n:scan` → exit 0.
+- **Next**: Push + rebuild docker dev + smoke `/screener` (URL share, history server, schedule, +WL/+Alert). P3 (calibrate vendor Q3, preset cộng đồng, realtime intraday) theo plan §10.
+- **Residual**: Email channel schedule (in_app only, cache 7d); E2E `screener-p0.spec.ts` mở rộng chưa làm; ảnh async-progress thật cần universe 1200 staging.
+
+---
+
 ## Entry 79: P2.0+P2.1 Screener — 12 templates + URL share (code)
 
 - **Date**: 2026-09-13
