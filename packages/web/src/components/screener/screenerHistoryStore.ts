@@ -12,6 +12,7 @@ export interface HistoryRow {
 
 export interface ScreenerRunEntry {
   id: string;
+  serverId?: number;
   ruleId: number | null;
   ruleName: string;
   timestamp: number;

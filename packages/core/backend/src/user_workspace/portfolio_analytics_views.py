@@ -1902,6 +1902,65 @@ class PortfolioScreenerRuleRunView(APIView):
             start = (page - 1) * limit
             payload['matched'] = matched[start:start + limit]
             payload.update({'page': page, 'limit': limit, 'pages': pages, 'sort': sort, 'order': order})
+        # P2.3: create history entry (BE, D10 quota 100/user) — Q5
+        try:
+            from user_workspace.models import ScreenerRunHistory
+
+            # Use full matched (pre-paging, already sorted) for history, truncated to 100 rows
+            history_source = matched  # full sorted list
+            history_rows = []
+            for r in history_source[:100]:
+                adv = r.get('ai_advisory') or {}
+                history_rows.append(
+                    {
+                        'symbol': r.get('symbol'),
+                        'close': r.get('close'),
+                        'action': adv.get('strategy_action'),
+                        'score': adv.get('ai_score_0_100'),
+                    }
+                )
+            # Tenant fallback: request.tenant may be None in tests (no TenantResolutionMiddleware)
+            tenant_for_history = tenant or getattr(rule, 'tenant', None)
+            if tenant_for_history is None:
+                # Last resort: user's primary tenant
+                try:
+                    from identity_access.models import CoreTenant
+
+                    tenant_for_history = CoreTenant.objects.filter(owner_user=request.user).first()
+                except Exception:
+                    tenant_for_history = None
+            # If still None, skip history (avoid IntegrityError) — tenant is required
+            if tenant_for_history is not None:
+                ScreenerRunHistory.objects.create(
+                    user=request.user,
+                    tenant=tenant_for_history,
+                    rule=rule,
+                    rule_name=rule.name,
+                    matched_count=len(history_source),
+                    total_scanned=total_scanned,
+                    window_days=window_days,
+                    session_date=session_date,
+                    matched=history_rows,
+                    params={
+                        'sort': sort,
+                        'order': order,
+                        'page': page,
+                        'limit': limit,
+                        'include_ai': int(bool(include_ai)),
+                    }
+                    if has_scan_params
+                    else {},
+                )
+                # Enforce quota 100 per user+tenant
+                qs = ScreenerRunHistory.objects.filter(user=request.user, tenant=tenant_for_history)
+                if qs.count() > 100:
+                    oldest_ids = list(qs.order_by('-run_at').values_list('id', flat=True)[100:])
+                    if oldest_ids:
+                        ScreenerRunHistory.objects.filter(id__in=oldest_ids).delete()
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).exception("Failed to create screener history")
         return Response(payload)
 
 
@@ -1958,4 +2017,175 @@ class ScreenerTemplatesView(APIView):
         from .screener_templates import SCREENER_TEMPLATES
 
         return Response({'templates': SCREENER_TEMPLATES})
+
+
+class ScreenerHistoryListView(APIView):
+    """P2.3: GET /screener/history/?rule_id=&page=&limit= — list + DELETE clear all."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from user_workspace.models import ScreenerRunHistory
+
+        tenant = getattr(request, 'tenant', None)
+        qs = ScreenerRunHistory.objects.filter(user=request.user)
+        if tenant:
+            qs = qs.filter(tenant=tenant)
+        rule_id = request.query_params.get('rule_id')
+        if rule_id:
+            try:
+                qs = qs.filter(rule_id=int(rule_id))
+            except (TypeError, ValueError):
+                pass
+        # Pagination: page/limit, default 1/20
+        try:
+            page = int(request.query_params.get('page', '1'))
+            limit = int(request.query_params.get('limit', '20'))
+        except (TypeError, ValueError):
+            page, limit = 1, 20
+        page = max(1, page)
+        limit = max(1, min(limit, 100))
+        total = qs.count()
+        pages = (total + limit - 1) // limit if limit else 1
+        start = (page - 1) * limit
+        items = qs.order_by('-run_at')[start : start + limit]
+        data = [
+            {
+                'id': h.id,
+                'rule_id': h.rule_id,
+                'rule_name': h.rule_name,
+                'run_at': h.run_at.isoformat() if h.run_at else None,
+                'matched_count': h.matched_count,
+                'total_scanned': h.total_scanned,
+                'window_days': h.window_days,
+                'session_date': h.session_date.isoformat() if h.session_date else None,
+                'matched': h.matched,
+                'params': h.params,
+            }
+            for h in items
+        ]
+        return Response({'count': total, 'page': page, 'limit': limit, 'pages': pages, 'results': data})
+
+    def delete(self, request):
+        from user_workspace.models import ScreenerRunHistory
+
+        tenant = getattr(request, 'tenant', None)
+        qs = ScreenerRunHistory.objects.filter(user=request.user)
+        if tenant:
+            qs = qs.filter(tenant=tenant)
+        deleted, _ = qs.delete()
+        return Response({'deleted': deleted})
+
+
+class ScreenerHistoryDetailView(APIView):
+    """P2.3: GET/DELETE /screener/history/<id>/"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        from user_workspace.models import ScreenerRunHistory
+
+        tenant = getattr(request, 'tenant', None)
+        try:
+            if tenant:
+                h = ScreenerRunHistory.objects.get(pk=pk, user=request.user, tenant=tenant)
+            else:
+                h = ScreenerRunHistory.objects.get(pk=pk, user=request.user)
+        except ScreenerRunHistory.DoesNotExist:
+            raise NotFound('Lịch sử không tồn tại.')
+        return Response(
+            {
+                'id': h.id,
+                'rule_id': h.rule_id,
+                'rule_name': h.rule_name,
+                'run_at': h.run_at.isoformat() if h.run_at else None,
+                'matched_count': h.matched_count,
+                'total_scanned': h.total_scanned,
+                'window_days': h.window_days,
+                'session_date': h.session_date.isoformat() if h.session_date else None,
+                'matched': h.matched,
+                'params': h.params,
+            }
+        )
+
+    def delete(self, request, pk):
+        from user_workspace.models import ScreenerRunHistory
+
+        tenant = getattr(request, 'tenant', None)
+        try:
+            if tenant:
+                h = ScreenerRunHistory.objects.get(pk=pk, user=request.user, tenant=tenant)
+            else:
+                h = ScreenerRunHistory.objects.get(pk=pk, user=request.user)
+        except ScreenerRunHistory.DoesNotExist:
+            raise NotFound('Lịch sử không tồn tại.')
+        h.delete()
+        return Response(status=204)
+
+
+class ScreenerHistoryBacktestView(APIView):
+    """P2.3: GET /screener/history/<id>/backtest/?horizon=5 — server backtest v2."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        from user_workspace.models import ScreenerRunHistory
+        from market_data.models import DailyPrice
+        from datetime import timedelta
+
+        tenant = getattr(request, 'tenant', None)
+        try:
+            if tenant:
+                h = ScreenerRunHistory.objects.get(pk=pk, user=request.user, tenant=tenant)
+            else:
+                h = ScreenerRunHistory.objects.get(pk=pk, user=request.user)
+        except ScreenerRunHistory.DoesNotExist:
+            raise NotFound('Lịch sử không tồn tại.')
+        # horizon: 5 or 20 days (default 5)
+        try:
+            horizon = int(request.query_params.get('horizon', '5'))
+        except (TypeError, ValueError):
+            horizon = 5
+        horizon = max(1, min(horizon, 60))
+        # Build trades like screenerHistoryStore.buildTrades but server-side from DailyPrice
+        matched = h.matched or []
+        # Only BUY/SELL with close
+        candidates = [r for r in matched if r.get('action') in ('BUY', 'SELL') and r.get('close') is not None and r.get('symbol')]
+        if not candidates:
+            return Response({'winRate': 0, 'wins': 0, 'losses': 0, 'evaluated': 0, 'trades': [], 'horizon': horizon})
+        # For each candidate, find exit price after horizon trading days from run_at date
+        # Use DailyPrice: for symbol, date > run_at.date, order by date, take horizon-th
+        run_date = h.run_at.date() if h.run_at else None
+        trades = []
+        wins = 0
+        for row in candidates:
+            sym = row['symbol']
+            entry = float(row['close'])
+            action = row['action']
+            # Find exit: DailyPrice for symbol where date > run_date, limit horizon, take last
+            qs = DailyPrice.objects.filter(symbol=sym)
+            if run_date:
+                qs = qs.filter(date__gt=run_date)
+            qs = qs.order_by('date')[:horizon]
+            closes = list(qs.values_list('close', flat=True))
+            if not closes:
+                continue
+            exit_price = float(closes[-1])
+            win = (exit_price > entry) if action == 'BUY' else (exit_price < entry)
+            if win:
+                wins += 1
+            trades.append({'symbol': sym, 'action': action, 'entry': entry, 'exit': exit_price, 'win': win})
+        evaluated = len(trades)
+        losses = evaluated - wins
+        win_rate = (wins / evaluated * 100) if evaluated else 0
+        return Response(
+            {
+                'winRate': round(win_rate, 2),
+                'wins': wins,
+                'losses': losses,
+                'evaluated': evaluated,
+                'trades': trades[:15],
+                'horizon': horizon,
+            }
+        )
 

@@ -120,6 +120,10 @@ export interface CoreApiAdapter {
   deleteScreenerRule: (id: string) => Promise<any>;
   runScreenerRule: (id: string, params?: Record<string, string | number>) => Promise<any>;
   getScreenerRunStatus: (id: string, jobId: string) => Promise<any>;
+  getScreenerHistory: (params?: Record<string, string | number>) => Promise<any>;
+  getScreenerHistoryBacktest: (historyId: string | number, horizon?: number) => Promise<any>;
+  deleteScreenerHistory: (historyId: string | number) => Promise<any>;
+  clearScreenerHistory: () => Promise<any>;
   
   // Advisory
   createAdvisorySession: (data: any) => Promise<any>;

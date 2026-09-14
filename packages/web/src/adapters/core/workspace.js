@@ -586,6 +586,29 @@ export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, c
       return coreGet("/screener/templates/");
     },
 
+    // P2.3: server history (Q5, D10) — fallback to localStorage when unavailable
+    getScreenerHistory(params = {}) {
+      const qs = Object.entries(params)
+        .filter(([, v]) => v !== undefined && v !== null && v !== "")
+        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+        .join("&");
+      return coreGet(`/screener/history/${qs ? `?${qs}` : ""}`);
+    },
+
+    getScreenerHistoryBacktest(historyId, horizon = 5) {
+      if (!historyId) throw new Error("historyId is required for getScreenerHistoryBacktest");
+      return coreGet(`/screener/history/${encodeURIComponent(historyId)}/backtest/?horizon=${encodeURIComponent(String(horizon))}`);
+    },
+
+    deleteScreenerHistory(historyId) {
+      if (!historyId) throw new Error("historyId is required for deleteScreenerHistory");
+      return coreDelete(`/screener/history/${encodeURIComponent(historyId)}/`);
+    },
+
+    clearScreenerHistory() {
+      return coreDelete("/screener/history/");
+    },
+
     // ─── AI Command Center API ───────────────────────────────────────────────
 
     getAICommandCenterConfig() {

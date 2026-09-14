@@ -237,7 +237,14 @@ export function ScreenerPage() {
       })),
     };
     setHistory(saveScreenerRun(entry));
-  }, []);
+    // P2.3: BE auto-creates ScreenerRunHistory on run — invalidate server list
+    try {
+      const tenantId = typeof window !== 'undefined' ? window.localStorage.getItem('tenant_id') : null;
+      queryClient.invalidateQueries({ queryKey: [TENANT_ADMIN_QUERY_SCOPE, tenantId ?? 'none', 'screener', 'history'] });
+    } catch {
+      /* ignore */
+    }
+  }, [queryClient]);
 
   // P0.4 "Chạy thử": run without saving to the rule list (R4.1). Reuses an
   // identical existing rule (with confirm) or a hidden is_active=False rule;

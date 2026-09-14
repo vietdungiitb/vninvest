@@ -29,6 +29,9 @@ from .portfolio_analytics_views import (
     PortfolioAIAdvisoryListView,
     PortfolioAIAdvisorySymbolStatsView,
     ScreenerTemplatesView,
+    ScreenerHistoryListView,
+    ScreenerHistoryDetailView,
+    ScreenerHistoryBacktestView,
 )
 
 # Screener views
@@ -81,4 +84,7 @@ urlpatterns += [
     path('screener/rules/<int:pk>/run/', PortfolioScreenerRuleRunView.as_view(), name='screener-rule-run'),
     path('screener/rules/<int:pk>/run/status/', PortfolioScreenerRuleRunStatusView.as_view(), name='screener-rule-run-status'),
     path('screener/templates/', ScreenerTemplatesView.as_view(), name='screener-templates'),
+    path('screener/history/', ScreenerHistoryListView.as_view(), name='screener-history-list'),
+    path('screener/history/<int:pk>/', ScreenerHistoryDetailView.as_view(), name='screener-history-detail'),
+    path('screener/history/<int:pk>/backtest/', ScreenerHistoryBacktestView.as_view(), name='screener-history-backtest'),
 ]

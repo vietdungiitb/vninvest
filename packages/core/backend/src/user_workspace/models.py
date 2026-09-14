@@ -532,6 +532,58 @@ class ScreenerRule(models.Model):
         return f'{self.name} ({self.user.username})'
 
 
+class ScreenerRunHistory(models.Model):
+    """
+    P2.3: Lịch sử chạy screener per-user (Q5, D10).
+    Lưu mỗi lần POST /screener/rules/<id>/run/ 200 (kể cả 202→completed, lưu sau khi task xong).
+    BE giữ 100/user, FE localStorage giữ 20 gần nhất (fallback).
+    """
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='screener_run_histories',
+        verbose_name='Người dùng',
+    )
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant',
+        on_delete=models.CASCADE,
+        related_name='screener_run_histories',
+        null=False,
+        blank=True,
+        verbose_name='Tenant',
+    )
+    rule = models.ForeignKey(
+        ScreenerRule,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='run_histories',
+        verbose_name='Rule',
+    )
+    rule_name = models.CharField(max_length=100, verbose_name='Tên rule lúc chạy')
+    run_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Thời gian chạy')
+    matched_count = models.IntegerField(verbose_name='Số mã khớp')
+    total_scanned = models.IntegerField(verbose_name='Tổng quét')
+    window_days = models.IntegerField(null=True, blank=True, verbose_name='Window days')
+    session_date = models.DateField(null=True, blank=True, verbose_name='Phiên')
+    # matched: List[HistoryRow] {symbol, close, action, score} — như localStorage
+    matched = models.JSONField(default=list, verbose_name='Matched rows (HistoryRow[])')
+    params = models.JSONField(default=dict, verbose_name='Scan params {sort,order,page,limit,include_ai}')
+
+    class Meta:
+        verbose_name = 'Lịch sử chạy screener'
+        verbose_name_plural = 'Lịch sử chạy screener'
+        ordering = ['-run_at']
+        indexes = [
+            models.Index(fields=['user', 'tenant', '-run_at']),
+            models.Index(fields=['rule', '-run_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.rule_name} {self.run_at:%Y-%m-%d %H:%M} ({self.matched_count}/{self.total_scanned})'
+
+
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 

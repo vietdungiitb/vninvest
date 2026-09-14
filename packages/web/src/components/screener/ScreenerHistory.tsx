@@ -1,6 +1,8 @@
 import { createElement, useState, useMemo, type CSSProperties } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
+import { useTenantAdminQuery, TENANT_ADMIN_QUERY_SCOPE } from "../../pages/tenant-admin/useTenantAdminQuery.js";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   type ScreenerRunEntry,
   type HistoryAction,
@@ -9,6 +11,27 @@ import {
 
 interface ScreenerHistoryProps {
   runs: ScreenerRunEntry[];
+}
+
+interface ServerHistoryItem {
+  id: number;
+  rule_id: number | null;
+  rule_name: string;
+  run_at: string | null;
+  matched_count: number;
+  total_scanned: number;
+  matched: Array<{ symbol: string; close: number | null; action: HistoryAction; score: number | null }>;
+}
+
+function toEntry(h: ServerHistoryItem): ScreenerRunEntry {
+  return {
+    id: `srv-${h.id}`,
+    serverId: h.id,
+    ruleId: h.rule_id,
+    ruleName: h.rule_name,
+    timestamp: h.run_at ? new Date(h.run_at).getTime() : Date.now(),
+    rows: Array.isArray(h.matched) ? h.matched : [],
+  };
 }
 
 const ACTION_COLORS: Record<string, string> = {
@@ -37,11 +60,26 @@ function actionBadge(t: (k: string) => string, action: HistoryAction) {
   );
 }
 
-export function ScreenerHistory({ runs }: ScreenerHistoryProps) {
+export function ScreenerHistory({ runs: fallbackRuns }: ScreenerHistoryProps) {
   const { t, formatNumber } = useI18n();
+  const queryClient = useQueryClient();
   const [currentPrices, setCurrentPrices] = useState<Record<string, number | null> | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [serverBacktest, setServerBacktest] = useState<Record<number, { winRate: number; wins: number; losses: number; evaluated: number }>>({});
 
+  // P2.3: server history (Q5) with localStorage fallback
+  const { data: serverData } = useTenantAdminQuery<{ results?: ServerHistoryItem[] }>(
+    ['screener', 'history'],
+    '/screener/history/?limit=20',
+    {
+      queryFn: () => (coreApiAdapter as any).getScreenerHistory({ limit: 20 }).catch(() => ({ results: [] })),
+    },
+  );
+  const runs = useMemo(() => {
+    const srv = (serverData as any)?.results;
+    if (Array.isArray(srv) && srv.length > 0) return srv.map(toEntry);
+    return fallbackRuns;
+  }, [serverData, fallbackRuns]);
   const distinctSymbols = useMemo(() => {
     const set = new Set<string>();
     runs.forEach((r) =>
@@ -79,6 +117,28 @@ export function ScreenerHistory({ runs }: ScreenerHistoryProps) {
     );
     setCurrentPrices(map);
     setRefreshing(false);
+  };
+
+  // P2.3: server backtest v2 (horizon 5d) per run — falls back to client buildTrades
+  const fetchServerBacktest = async (entry: ScreenerRunEntry) => {
+    if (entry.serverId == null || serverBacktest[entry.serverId]) return;
+    try {
+      const res: any = await (coreApiAdapter as any).getScreenerHistoryBacktest(entry.serverId, 5);
+      setServerBacktest((prev) => ({ ...prev, [entry.serverId as number]: { winRate: res.winRate ?? 0, wins: res.wins ?? 0, losses: res.losses ?? 0, evaluated: res.evaluated ?? 0 } }));
+    } catch {
+      /* keep client-side */
+    }
+  };
+
+  const handleDeleteRun = async (entry: ScreenerRunEntry) => {
+    if (entry.serverId == null) return;
+    try {
+      await (coreApiAdapter as any).deleteScreenerHistory(entry.serverId);
+      const tenantId = typeof window !== 'undefined' ? window.localStorage.getItem('tenant_id') : null;
+      queryClient.invalidateQueries({ queryKey: [TENANT_ADMIN_QUERY_SCOPE, tenantId ?? 'none', 'screener', 'history'] });
+    } catch {
+      /* ignore */
+    }
   };
 
   if (runs.length === 0) {
@@ -224,9 +284,38 @@ export function ScreenerHistory({ runs }: ScreenerHistoryProps) {
             { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", flexWrap: "wrap" } },
             createElement("span", { style: { fontSize: "13px", color: "var(--text-primary, #f1f5f9)", fontWeight: 600 } }, run.ruleName),
             createElement(
-              "span",
-              { style: { fontSize: "11px", color: "var(--text-muted, #94a3b8)" } },
-              `${t("screener.history.runAt")}: ${new Date(run.timestamp).toLocaleString()} · ${formatNumber(run.rows.length)} ${t("screener.history.matches")}`
+              "div",
+              { style: { display: "flex", alignItems: "center", gap: "8px" } },
+              createElement(
+                "span",
+                { style: { fontSize: "11px", color: "var(--text-muted, #94a3b8)" } },
+                `${t("screener.history.runAt")}: ${new Date(run.timestamp).toLocaleString()} · ${formatNumber(run.rows.length)} ${t("screener.history.matches")}` +
+                  (run.serverId != null && serverBacktest[run.serverId]
+                    ? ` · Win ${formatNumber(Math.round(serverBacktest[run.serverId].winRate))}% (server)`
+                    : "")
+              ),
+              run.serverId != null &&
+                createElement(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => { void fetchServerBacktest(run); },
+                    title: "Backtest server (5d)",
+                    style: { fontSize: "11px", color: "var(--accent-cyan, #06b6d4)", background: "none", border: "none", cursor: "pointer" },
+                  },
+                  "Backtest"
+                ),
+              run.serverId != null &&
+                createElement(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => { void handleDeleteRun(run); },
+                    title: "Xóa",
+                    style: { fontSize: "11px", color: "#f87171", background: "none", border: "none", cursor: "pointer" },
+                  },
+                  "✕"
+                )
             )
           ),
           createElement(
