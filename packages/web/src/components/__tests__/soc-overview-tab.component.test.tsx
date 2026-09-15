@@ -135,3 +135,109 @@ describe("SocOverviewPanel — PR-1 W1 toggle confirm", () => {
     await waitFor(() => expect(adapterMocks.updateSocService).toHaveBeenCalledWith("svc_healthy", { is_active: false, change_reason: "bao tri dinh ky" }));
   });
 });
+
+describe("SocOverviewPanel — PR-2 W7 domain strip", () => {
+  beforeEach(() => {
+    adapterMocks.getSocOverviewSummary.mockReset();
+    adapterMocks.getSocSloOverview.mockReset();
+  });
+  afterEach(() => cleanup());
+
+  it("shows domain pills from by_domain and filters on click", async () => {
+    adapterMocks.getSocOverviewSummary.mockResolvedValue({
+      services: [
+        { service_key: "svc_a", name: "A SVC", domain: "vnbroker", status: "healthy", is_active: true },
+        { service_key: "svc_b", name: "B SVC", domain: "prefetch", status: "healthy", is_active: true },
+      ],
+      by_domain: {
+        vnbroker: { total: 1, healthy: 1, degraded: 0, unhealthy: 0, unknown: 0, maintenance: 0 },
+        prefetch: { total: 1, healthy: 1, degraded: 0, unhealthy: 0, unknown: 0, maintenance: 0 },
+      },
+    } as any);
+    adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] });
+    render(<SocOverviewPanel />);
+    await waitFor(() => expect(screen.getByText("A SVC")).toBeTruthy());
+    expect(screen.getByText("soc.overview.domain_all")).toBeTruthy();
+    const vnbrokerPill = screen.getByText("vnbroker 1/1");
+    fireEvent.click(vnbrokerPill);
+    await waitFor(() => expect(screen.getByText("A SVC")).toBeTruthy());
+    expect(screen.queryByText("B SVC")).toBeNull();
+  });
+});
+
+describe("SocOverviewPanel — PR-2 W10 pagination range", () => {
+  beforeEach(() => {
+    adapterMocks.getSocOverviewSummary.mockReset();
+    adapterMocks.getSocSloOverview.mockReset();
+  });
+  afterEach(() => cleanup());
+
+  it("shows showing_range 1–9 / 10 and paginates to second page", async () => {
+    const many = Array.from({ length: 10 }, (_, i) => ({
+      service_key: `svc_${i}`,
+      name: `SVC ${i}`,
+      domain: "vnbroker",
+      status: "healthy",
+      is_active: true,
+    }));
+    adapterMocks.getSocOverviewSummary.mockResolvedValue({ services: many } as any);
+    adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] });
+    render(<SocOverviewPanel />);
+    await waitFor(() => expect(screen.getByText("SVC 0")).toBeTruthy());
+    expect(screen.getByText("soc.overview.showing_range")).toBeTruthy();
+    fireEvent.click(screen.getByText("soc.overview.next_page"));
+    await waitFor(() => expect(screen.getByText("SVC 9")).toBeTruthy());
+    expect(screen.queryByText("SVC 0")).toBeNull();
+  });
+});
+
+describe("SocOverviewPanel — PR-2 W5 empty filtered", () => {
+  beforeEach(() => {
+    adapterMocks.getSocOverviewSummary.mockReset();
+    adapterMocks.getSocSloOverview.mockReset();
+  });
+  afterEach(() => cleanup());
+
+  it("shows empty_filtered when search has no match", async () => {
+    adapterMocks.getSocOverviewSummary.mockResolvedValue({
+      services: [{ service_key: "svc_a", name: "A SVC", domain: "vnbroker", status: "healthy", is_active: true }],
+    } as any);
+    adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] });
+    render(<SocOverviewPanel />);
+    await waitFor(() => expect(screen.getByText("A SVC")).toBeTruthy());
+    const input = document.querySelector('input[placeholder="soc.overview.search_placeholder"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "zzz_no_match" } });
+    await waitFor(() => expect(screen.getByText("soc.overview.empty_filtered")).toBeTruthy(), { timeout: 1000 });
+  });
+});
+
+describe("SocOverviewPanel — PR-2 W11 burn per budget", () => {
+  beforeEach(() => {
+    adapterMocks.getSocOverviewSummary.mockReset();
+    adapterMocks.getSocSloOverview.mockReset();
+  });
+  afterEach(() => cleanup());
+
+  it("burn badge red when budget <20% and hidden when disabled", async () => {
+    adapterMocks.getSocOverviewSummary.mockResolvedValue({
+      services: [
+        { service_key: "svc_low_budget", name: "Low Budget SVC", domain: "vnbroker", status: "healthy", is_active: true },
+        { service_key: "svc_disabled", name: "Disabled SVC", domain: "vnbroker", status: "healthy", is_active: false },
+      ],
+    } as any);
+    adapterMocks.getSocSloOverview.mockResolvedValue({
+      services: [
+        { service_key: "svc_low_budget", uptime_30d: 0.99, burn_rate_1h: 5, error_budget_remaining: 0.1, slo_target: 0.999 },
+        { service_key: "svc_disabled", uptime_30d: 0.99, burn_rate_1h: 5, error_budget_remaining: 0.1, slo_target: 0.999 },
+      ],
+    } as any);
+    render(<SocOverviewPanel />);
+    await waitFor(() => expect(screen.getByText("Low Budget SVC")).toBeTruthy());
+    // burn badge for low budget should be red (color var)
+    const lowBudgetCard = screen.getByText("Low Budget SVC").closest("div")?.parentElement?.parentElement;
+    expect(lowBudgetCard?.textContent).toContain("soc.slo.burn_rate_label");
+    // disabled service should not have SLO badges
+    const disabledCard = screen.getByText("Disabled SVC").closest("div")?.parentElement?.parentElement;
+    expect(disabledCard?.textContent).not.toContain("soc.slo.burn_rate_label");
+  });
+});

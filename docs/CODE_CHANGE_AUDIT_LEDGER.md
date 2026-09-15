@@ -5,6 +5,44 @@
 
 ---
 
+## Entry 94: PR-2 P1 Parity Thương Mại SOC Overview Tab — error non-blocking + domain strip + local time + debounce/sort + pagination + burn budget + domain map + visibility + a11y (W6–W14)
+
+- **Date**: 2026-09-16
+- **Scope**: Thực thi PR-2 P1 theo `docs/IMPLEMENTATION_PLAN_SOC_OVERVIEW_TAB_20260916.md` §3 W6–W14 (parity Grafana/Datadog). Không đổi contract BE (chỉ FE), `SocOverviewPanel.tsx` + `socTime.ts` mới + i18n đã có 22 keys + tests 4 mới (tổng 8 FE cho overview). Tiếp nối PR-1 W1–W5 đã merge `d39f9fed`.
+- **Files & fixes**:
+  - **W6 Error non-blocking** (`SocOverviewPanel.tsx:356`): đổi `if(error)` → `if(error && !data)` return toàn panel; thêm banner `error && data` (`:560`) `inlineError` + `Retry` giữ `bar/metric/grid/pagination`. Giữ SLO banner riêng `sloError` (`:538`).
+  - **W7 Domain strip** (`SocOverviewPanel.tsx:27` + `:470`): `OverviewData` thêm `by_domain?: Record<string,{total,healthy...}>`; thêm state `domainFilter: string|null` (`:117`); render strip pills `domain healthy/total` trước toolbar (`:486`), click → `setDomainFilter`, `aria-pressed`, dùng `data.by_domain` BE `overview.py:296`; `filtered` thêm `domainFilter` check (`:215`); i18n `domain_all`.
+  - **W8 Thời gian local+relative** (`socTime.ts` **MỚI** + `SocOverviewPanel.tsx:734`): `formatLastCheck(iso,localeTag,t)` dùng `Intl.DateTimeFormat` local + diff `just_now/<60s, minutes, hours, days` với keys `time_*` (`vi.js:238`); thay `split("T")[1].slice(0,8)` (`:737`) → `formatLastCheck` + `title=ISO`. Xóa `grep split("T")[1]` theo §7.
+  - **W9 Debounce+highlight+sort** (`SocOverviewPanel.tsx:200`): thêm `debouncedSearch` 300ms (`useEffect` + cleanup, `:191`), `filtered` dùng `debouncedSearch`; helper `highlightMatch(text,query)` bôi `<mark>` với `background var(--soc-c-fbbf24)` 1 inline duy nhất (`:111`); thêm `sortBy` state `name|status|latency` (`:118`) + `<select>` trong toolbar (`:520`), severity order `critical<degraded<maintenance<unknown<healthy`, disabled cuối; i18n `sort_*`.
+  - **W10 Pagination pageSize+numbers** (`SocOverviewPanel.tsx:228`): thêm `pageSize` state `9` (`:119`) + `<select>` 9/18/36 (`:770`), tính `from/to` + `showing_range` (`:790`), numbered buttons cửa sổ 5 trang `adjStart..end` (`:800`), `page_of` giữ, nút `aria-label` + `aria-current`; reset `page=1` khi `debouncedSearch/status/domain/sort/pageSize` đổi (`:239`).
+  - **W11 Burn theo budget** (`SocOverviewPanel.tsx:685`): thay ngưỡng cứng `burn_rate>1/>0.5` bằng `error_budget_remaining` (`budget>0.5 xanh, >0.2 vàng, <0.2 đỏ, null muted`) đã normalize theo `slo_target` (C4); ẩn toàn bộ SLO badges khi `!is_active` (`:686` `if(!service.is_active) return null`).
+  - **W12 DOMAIN_TAB_MAP** (`SocOverviewPanel.tsx:50`): thêm `platform:"overview", data_ingest:"dataops", realtime:"signals", cache:"prefetch", analytics:"runtime-kpi", matrix:"dataops"`; `handleConfigure` fallback `??"overview"` (`:295`) và luôn hiện nút (`hasConfig=true`, xóa ẩn).
+  - **W13 Visibility+jitter** (`SocOverviewPanel.tsx:177`): `restartInterval` jitter `+random(0,3000)` (`:180`); thêm `visibilitychange` listener (`:200`) ẩn → clear, hiện → `fetchData(true)` + restart; giữ backoff 60s sau 3 lỗi.
+  - **W14 A11y** (`SocOverviewPanel.tsx:376` + `:462` + `:634`): root `glassPanel` `role="region" aria-label={overview_title}` (`:376`); `overviewMetricGrid` `role="list"` + cards `role="listitem"` (`:462`); `servicesGrid` `role="list"` + cards `role="listitem"` (`:634`); `filterBtn` `aria-pressed` (`:535`), `overviewHealthBar` `role="img"` + `health_bar_label` (`:408`), pagination `role="navigation"` + `aria-label`/`aria-current` (`:770`). Không đổi `createElement`→JSX (Đ3).
+  - **CSS**: `soc.tokens.css` đã có `22d3ee` (W3), `soc.components.css` đã có bar 6 + `enableBtn/disableBtn` (PR-1); W9 highlight dùng inline duy nhất, không thêm CSS mới.
+- **Tests**:
+  - FE `soc-overview-tab.component.test.tsx` **+4 mới** (tổng 8): domain strip `by_domain` 2 pills → click filter, pagination `showing_range` 1–9/10 + sang trang 2, empty filter `empty_filtered` sau debounce, burn `budget 0.1→red` + ẩn khi `is_active=false` (đã có 4 PR-1: maintenance, bar 6, SLO fail, toggle).
+  - Tổng `vitest` `31 files 138 passed` (trước 30/130 + PR-1 4 = 31/138).
+- **Validation (thật)**:
+  - `npx tsc --noEmit` → **0** (đã xóa `ITEMS_PER_PAGE` unused).
+  - `python manage.py test service_ops.tests.test_soc_api_overview --keepdb` → `Ran 29 OK` (giữ 3 mới PR-1).
+  - `npx vitest run soc-overview-tab + soc-p2` → `16 passed` (8+8), full `31/138`.
+  - `npm run build` → **40.56s PASS** (PR-2, không lỗi mới).
+  - `npm run lint` → **0 errors, 3547 warnings** (baseline).
+  - `grep` `split("T")[1]` → rỗng; `catch(()=>({services:[]}))` → rỗng; `rgba(239` → rỗng (W5).
+- **Docs**: Plan `docs/IMPLEMENTATION_PLAN_SOC_OVERVIEW_TAB_20260916.md` §0 Đ1–Đ5 đã đính chính trước code; §4 22 keys đã thêm PR-1; §5 12 tests (4 BE +8 FE) đủ.
+- **Status**: **PR-2 P1 DONE (W6–W14)** — error non-blocking, domain strip, local time, debounce/sort, pagination, burn budget, domain map, visibility, a11y. Đóng F-OV-02,05,06,07,09,10,11,13,14,16,17,19, C2, C4, C6 (phần). Còn backlog §8 (SSE, ETag, donut global, JSX, P3) ngoài scope 2 PR.
+- **Next**: Không còn việc overview trong 2 PR. Backlog P2-full/P3 tách epic riêng. Ledger đủ 2 entries PR-1/PR-2 theo §7.
+- **Checklist §7 PR-2** (tự audit):
+  - [x] Error khi đã có data → banner + giữ grid; Retry.
+  - [x] Domain pills lọc đúng; search debounce không giật; sort/latency đúng; pagination range/pageSize đúng.
+  - [x] Thời gian local+relative, tooltip ISO.
+  - [x] Tab ẩn 1 phút → không poll; hiện → fetch ngay.
+  - [x] Burn theo budget, ẩn khi disabled.
+  - [x] `npx tsc 0`, `build PASS`, `lint 0`, `vitest 16/138`, `service_ops 29 OK`, `grep` 3 pattern rỗng.
+
+---
+
 ## Entry 93: PR-1 P0 Hotfix SOC Overview Tab — toggle audit + bar 6 segment + maintenance metric + SLO split + token/i18n (W1–W5)
 
 - **Date**: 2026-09-16

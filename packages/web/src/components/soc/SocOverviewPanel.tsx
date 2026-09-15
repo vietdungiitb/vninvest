@@ -3,6 +3,7 @@ import { useI18n } from "../../context/LangContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { getStatusBadgeStyle } from "./socStatusColors.js";
 import { LucideIcon } from "../ui/lucide-icon.js";
+import { formatLastCheck } from "./socTime.js";
 import styles from "./soc.module.css";
 
 interface ServiceItem {
@@ -27,6 +28,7 @@ interface SloRow {
 interface OverviewData {
   services: ServiceItem[];
   total?: number;
+  by_domain?: Record<string, { total: number; healthy: number; degraded: number; unhealthy: number; unknown: number; maintenance: number }>;
 }
 
 interface SloOverviewData {
@@ -36,8 +38,6 @@ interface SloOverviewData {
 interface SocOverviewPanelProps {
   onChangeTab?: (tab: string) => void;
 }
-
-const ITEMS_PER_PAGE = 9;
 
 const STATUS_LABEL_MAP: Record<string, string> = {
   healthy: "soc.health.status_healthy",
@@ -55,6 +55,12 @@ const DOMAIN_TAB_MAP: Record<string, string> = {
   dataops: "dataops",
   "runtime-kpi": "runtime-kpi",
   "dnse-backfill": "dnse-backfill",
+  platform: "overview",
+  data_ingest: "dataops",
+  realtime: "signals",
+  cache: "prefetch",
+  analytics: "runtime-kpi",
+  matrix: "dataops",
 };
 
 const METRIC_DEFS = [
@@ -107,16 +113,38 @@ const METRIC_ICON_BG: Record<string, string> = {
   disabled: "rgba(100,116,139,0.08)",
 };
 
+function highlightMatch(text: string, query: string) {
+  if (!query) return text;
+  const q = query.toLowerCase().trim();
+  if (!q) return text;
+  const idx = text.toLowerCase().indexOf(q);
+  if (idx === -1) return text;
+  const before = text.slice(0, idx);
+  const match = text.slice(idx, idx + q.length);
+  const after = text.slice(idx + q.length);
+  return createElement(
+    "span",
+    null,
+    before,
+    createElement("mark", { style: { background: "var(--soc-c-fbbf24)", color: "#000", padding: "0 2px", borderRadius: "2px" } }, match),
+    after,
+  );
+}
+
 export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
-  const { t } = useI18n();
+  const { t, localeTag } = useI18n() as unknown as { t: (k: string, o?: any) => string; localeTag: string };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [sloError, setSloError] = useState("");
   const [data, setData] = useState<OverviewData | null>(null);
   const [sloMap, setSloMap] = useState<Record<string, SloRow>>({});
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [domainFilter, setDomainFilter] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"name" | "status" | "latency">("name");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(9);
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
   const [confirmToggle, setConfirmToggle] = useState<ServiceItem | null>(null);
   const [toggleReason, setToggleReason] = useState("");
@@ -177,9 +205,10 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
   const restartInterval = (delayMs: number) => {
     if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
     intervalDelayRef.current = delayMs;
+    const jittered = delayMs + Math.floor(Math.random() * 3000);
     intervalRef.current = window.setInterval(() => {
       fetchData(true);
-    }, delayMs);
+    }, jittered);
   };
 
   useEffect(() => {
@@ -193,11 +222,33 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // W9 debounce search 300ms
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebouncedSearch(search), 300);
+    return () => window.clearTimeout(id);
+  }, [search]);
+
+  // W13 visibility pause/resume + jitter handled in restartInterval
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.hidden) {
+        if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
+      } else {
+        fetchData(true);
+        restartInterval(intervalDelayRef.current);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const services = useMemo(() => data?.services ?? [], [data]);
 
   const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    return services.filter((s) => {
+    const q = debouncedSearch.toLowerCase().trim();
+    let result = services.filter((s) => {
+      if (domainFilter && s.domain !== domainFilter) return false;
       if (q && !s.service_key.toLowerCase().includes(q) && !s.name.toLowerCase().includes(q) && !s.domain?.toLowerCase().includes(q)) {
         return false;
       }
@@ -210,15 +261,35 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
       if (statusFilter === "disabled") return !s.is_active;
       return true;
     });
-  }, [services, search, statusFilter]);
+    if (sortBy === "name") {
+      result = [...result].sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortBy === "status") {
+      const order: Record<string, number> = { unhealthy: 0, critical: 0, degraded: 1, maintenance: 2, unknown: 3, healthy: 4 };
+      result = [...result].sort((a, b) => {
+        if (!a.is_active && b.is_active) return 1;
+        if (a.is_active && !b.is_active) return -1;
+        const ao = order[a.status] ?? 5;
+        const bo = order[b.status] ?? 5;
+        if (ao !== bo) return ao - bo;
+        return a.name.localeCompare(b.name);
+      });
+    } else if (sortBy === "latency") {
+      result = [...result].sort((a, b) => (b.avg_response_ms ?? -1) - (a.avg_response_ms ?? -1));
+    }
+    return result;
+  }, [services, debouncedSearch, statusFilter, domainFilter, sortBy]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
-  const paginated = filtered.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
+  const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   useEffect(() => {
     if (safePage !== page) setPage(safePage);
   }, [safePage, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter, domainFilter, sortBy, pageSize]);
 
   const stats = useMemo(() => {
     return services.reduce(
@@ -279,9 +350,10 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
   };
 
   const handleConfigure = (service: ServiceItem) => {
+    // W12: fallback to overview when domain not in map (comment để lần sau thêm domain chỉ thêm 1 dòng map)
     const domain = service.config_domain || service.domain;
-    const tab = DOMAIN_TAB_MAP[domain] || null;
-    if (tab && onChangeTab) {
+    const tab = DOMAIN_TAB_MAP[domain] ?? "overview";
+    if (onChangeTab) {
       onChangeTab(tab);
     }
   };
@@ -353,7 +425,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
     );
   }
 
-  if (error) {
+  if (error && !data) {
     return createElement("div", { className: styles.glassPanel },
       createElement("div", { className: styles.inlineError }, error),
       createElement("button", {
@@ -375,7 +447,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
 
   return createElement(
     "div",
-    { className: styles.glassPanel },
+    { className: styles.glassPanel, role: "region", "aria-label": t("soc.overview.overview_title") },
 
     /* ── 1. Page Header ── */
     createElement(
@@ -461,7 +533,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
     /* ── 3. Metric Cards ── */
     createElement(
       "div",
-      { className: styles.overviewMetricGrid },
+      { className: styles.overviewMetricGrid, role: "list" },
       ...METRIC_DEFS.map((def) => {
         const value = stats[def.key as keyof typeof stats];
         const color = METRIC_COLORS[def.key];
@@ -470,6 +542,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
           {
             key: def.key,
             className: styles.overviewMetricCard,
+            role: "listitem",
             style: { borderLeftColor: METRIC_BORDER_COLORS[def.key] },
           },
           createElement(
@@ -501,6 +574,42 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
       }),
     ),
 
+    /* ── Domain Strip (W7) ── */
+    (() => {
+      const byDomain = (data as any)?.by_domain as Record<string, any> | undefined;
+      if (!byDomain || Object.keys(byDomain).length === 0) return null;
+      const domains = Object.keys(byDomain).sort();
+      return createElement(
+        "div",
+        { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.75rem" } },
+        createElement(
+          "button",
+          {
+            className: `${styles.filterBtn} ${domainFilter === null ? styles.filterBtnActive : styles.filterBtnInactive}`,
+            "aria-pressed": domainFilter === null,
+            onClick: () => setDomainFilter(null),
+          },
+          t("soc.overview.domain_all"),
+        ),
+        ...domains.map((d: string) => {
+          const row = byDomain[d];
+          const healthy = row.healthy ?? 0;
+          const total = row.total ?? 0;
+          const active = domainFilter === d;
+          return createElement(
+            "button",
+            {
+              key: d,
+              className: `${styles.filterBtn} ${active ? styles.filterBtnActive : styles.filterBtnInactive}`,
+              "aria-pressed": active,
+              onClick: () => setDomainFilter(active ? null : d),
+            },
+            `${d} ${healthy}/${total}`,
+          );
+        }),
+      );
+    })(),
+
     /* ── 4. Toolbar ── */
     createElement(
       "div",
@@ -512,9 +621,26 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
         value: search,
         onChange: (e: { target: { value: string } }) => {
           setSearch(e.target.value);
-          setPage(1);
         },
       }),
+      createElement(
+        "div",
+        { style: { display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" } },
+        createElement("label", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } }, t("soc.overview.sort_label")),
+        createElement(
+          "select",
+          {
+            value: sortBy,
+            onChange: (e: { target: { value: string } }) => setSortBy(e.target.value as any),
+            className: styles.searchInput,
+            style: { width: "auto", minWidth: "130px" },
+            "aria-label": t("soc.overview.sort_label"),
+          },
+          createElement("option", { value: "name" }, t("soc.overview.sort_name")),
+          createElement("option", { value: "status" }, t("soc.overview.sort_status")),
+          createElement("option", { value: "latency" }, t("soc.overview.sort_latency")),
+        ),
+      ),
       createElement(
         "div",
         null,
@@ -524,9 +650,9 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
             {
               key: btn.key,
               className: `${styles.filterBtn} ${statusFilter === btn.key ? styles.filterBtnActive : styles.filterBtnInactive}`,
+              "aria-pressed": statusFilter === btn.key,
               onClick: () => {
                 setStatusFilter(btn.key);
-                setPage(1);
               },
             },
             btn.label,
@@ -534,6 +660,16 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
         ),
       ),
     ),
+
+    /* ── Error Banner (W6 non-blocking) ── */
+    error && data
+      ? createElement(
+          "div",
+          { className: styles.inlineError, style: { marginBottom: "0.75rem", display: "flex", alignItems: "center", justifyContent: "space-between" } },
+          createElement("span", null, error),
+          createElement("button", { className: styles.actionBtn, onClick: () => fetchData(false) }, t("soc.overview.retry")),
+        )
+      : null,
 
     /* ── SLO Error Banner (W4) ── */
     sloError
@@ -557,20 +693,21 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
         )
       : createElement(
           "div",
-          { className: styles.servicesGrid },
+          { className: styles.servicesGrid, role: "list" },
           ...paginated.map((service) => {
             const statusLabel = getStatusLabel(service.status, service.is_active);
             const toggleKey = `toggle-${service.service_key}`;
             const healthKey = `health-${service.service_key}`;
             const isLoadingToggle = actionLoading[toggleKey];
             const isLoadingHealth = actionLoading[healthKey];
-            const hasConfig = !!DOMAIN_TAB_MAP[service.config_domain || service.domain];
+            const hasConfig = true; // W12 always show, fallback handled in handleConfigure
 
             return createElement(
               "div",
               {
                 key: service.service_key,
                 className: `${styles.overviewServiceCard} ${!service.is_active ? styles.overviewServiceCardInactive : ""}`,
+                role: "listitem",
               },
 
               /* Header row: name + badge */
@@ -580,7 +717,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                 createElement(
                   "div",
                   { className: styles.overviewServiceInfo },
-                  createElement("h4", { className: styles.overviewServiceName }, service.name),
+                  createElement("h4", { className: styles.overviewServiceName }, highlightMatch(service.name, debouncedSearch) as any),
                   createElement(
                     "p",
                     { className: styles.overviewServiceKey },
@@ -599,17 +736,21 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                     statusLabel,
                   ),
                   (() => {
+                    if (!service.is_active) return null;
                     const slo = sloMap[service.service_key];
                     if (!slo || slo.uptime_30d == null) return null;
                     const uptimePct = (slo.uptime_30d * 100).toFixed(2);
                     const budgetPct = slo.error_budget_remaining != null
                       ? `${(slo.error_budget_remaining * 100).toFixed(1)}%`
                       : "—";
-                    const burnColor = (slo.burn_rate_1h ?? 0) > 1
-                      ? "var(--soc-c-f87171)"
-                      : (slo.burn_rate_1h ?? 0) > 0.5
-                        ? "var(--soc-c-fbbf24)"
-                        : "var(--soc-c-34d399)";
+                    const budget = slo.error_budget_remaining;
+                    const burnColor = budget == null
+                      ? "var(--soc-c-94a3b8)"
+                      : budget > 0.5
+                        ? "var(--soc-c-34d399)"
+                        : budget > 0.2
+                          ? "var(--soc-c-fbbf24)"
+                          : "var(--soc-c-f87171)";
                     return createElement(
                       "div",
                       { className: styles.sloBadges },
@@ -647,13 +788,10 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                   "div",
                   { className: styles.overviewStatItem },
                   createElement("span", { className: styles.overviewStatLabel }, t("soc.health.last_check_label")),
-                  createElement(
-                    "span",
-                    { className: styles.overviewStatValue },
-                    service.last_check_at
-                      ? service.last_check_at.split("T")[1]?.slice(0, 8) || "—"
-                      : "—",
-                  ),
+                  (() => {
+                    const { display, title } = formatLastCheck(service.last_check_at, localeTag, t);
+                    return createElement("span", { className: styles.overviewStatValue, title }, display);
+                  })(),
                 ),
               ),
 
@@ -700,36 +838,84 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
           }),
         ),
 
-    /* ── 6. Pagination ── */
-    totalPages > 1
-      ? createElement(
-          "div",
-          { className: styles.pagination },
-          createElement(
-            "button",
-            {
-              className: styles.pageBtn,
-              disabled: safePage <= 1,
-              onClick: () => setPage(safePage - 1),
-            },
-            t("soc.overview.prev_page"),
-          ),
-          createElement(
-            "span",
-            null,
-            t("soc.overview.page_of", { page: String(safePage), total: String(totalPages) }),
-          ),
-          createElement(
-            "button",
-            {
-              className: styles.pageBtn,
-              disabled: safePage >= totalPages,
-              onClick: () => setPage(safePage + 1),
-            },
-            t("soc.overview.next_page"),
-          ),
-        )
-      : null,
+    /* ── 6. Pagination (W10) ── */
+    createElement(
+      "div",
+      { style: { display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "1rem" } },
+      createElement(
+        "div",
+        { style: { display: "flex", alignItems: "center", gap: "0.5rem", justifyContent: "center", flexWrap: "wrap" } },
+        createElement("label", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } }, t("soc.overview.page_size_label")),
+        createElement(
+          "select",
+          {
+            value: String(pageSize),
+            onChange: (e: any) => setPageSize(Number(e.target.value)),
+            className: styles.searchInput,
+            style: { width: "auto", minWidth: "70px" },
+            "aria-label": t("soc.overview.page_size_label"),
+          },
+          createElement("option", { value: "9" }, "9"),
+          createElement("option", { value: "18" }, "18"),
+          createElement("option", { value: "36" }, "36"),
+        ),
+        createElement(
+          "span",
+          { style: { fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "0.5rem" } },
+          t("soc.overview.showing_range", {
+            from: String(filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1),
+            to: String(Math.min(safePage * pageSize, filtered.length)),
+            total: String(filtered.length),
+          }),
+        ),
+      ),
+      totalPages > 1
+        ? createElement(
+            "div",
+            { className: styles.pagination, role: "navigation", "aria-label": t("soc.overview.page_of", { page: String(safePage), total: String(totalPages) }) },
+            createElement(
+              "button",
+              {
+                className: styles.pageBtn,
+                disabled: safePage <= 1,
+                "aria-label": t("soc.overview.prev_page"),
+                onClick: () => setPage(safePage - 1),
+              },
+              t("soc.overview.prev_page"),
+            ),
+            ...(() => {
+              const pages: number[] = [];
+              const start = Math.max(1, safePage - 2);
+              const end = Math.min(totalPages, start + 4);
+              const adjStart = Math.max(1, end - 4);
+              for (let p = adjStart; p <= end; p++) pages.push(p);
+              return pages.map((p) =>
+                createElement(
+                  "button",
+                  {
+                    key: p,
+                    className: `${styles.pageBtn} ${p === safePage ? styles.filterBtnActive : ""}`,
+                    "aria-label": `Page ${p}`,
+                    "aria-current": p === safePage ? "page" : undefined,
+                    onClick: () => setPage(p),
+                  },
+                  String(p),
+                ),
+              );
+            })(),
+            createElement(
+              "button",
+              {
+                className: styles.pageBtn,
+                disabled: safePage >= totalPages,
+                "aria-label": t("soc.overview.next_page"),
+                onClick: () => setPage(safePage + 1),
+              },
+              t("soc.overview.next_page"),
+            ),
+          )
+        : null,
+    ),
 
     /* ── Toggle Confirm Modal (W1) ── */
     confirmToggle
