@@ -327,6 +327,7 @@ class ConfigChangeAudit(models.Model):
         ('preview', 'Preview Generated'),
         ('rollback', 'Config Rolled Back'),
         ('force_apply', 'Force Applied'),
+        ('toggle', 'Service Toggled'),
     ]
 
     service = models.ForeignKey(

@@ -436,6 +436,62 @@ class OverviewAdminActionTestCase(OverviewApiBaseTestCase):
         # Total count should include inactive
         self.assertGreaterEqual(payload['summary']['total'], 2)
 
+    def test_toggle_creates_audit_with_reason(self):
+        """PATCH with change_reason creates ConfigChangeAudit action='toggle'."""
+        ConfigChangeAudit.objects.filter(service=self.vnbroker_service, action='toggle').delete()
+        reason = 'bao tri dinh ky theo ticket OPS-123'
+        response = self.client.patch(
+            f'/api/soc/services/{self.vnbroker_service.service_key}/',
+            {'is_active': False, 'change_reason': reason},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        audit = ConfigChangeAudit.objects.filter(service=self.vnbroker_service, action='toggle').order_by('-timestamp').first()
+        self.assertIsNotNone(audit)
+        self.assertEqual(audit.change_summary, reason)
+        self.assertEqual(audit.actor, self.user.username)
+        # restore
+        self.client.patch(
+            f'/api/soc/services/{self.vnbroker_service.service_key}/',
+            {'is_active': True, 'change_reason': 'restore'},
+            format='json',
+        )
+
+    def test_toggle_without_reason_still_200(self):
+        """PATCH without change_reason keeps backward compat and still 200."""
+        response = self.client.patch(
+            f'/api/soc/services/{self.vnbroker_service.service_key}/',
+            {'is_active': False},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # second toggle back without reason as well
+        response = self.client.patch(
+            f'/api/soc/services/{self.vnbroker_service.service_key}/',
+            {'is_active': True},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_overview_summary_counts_maintenance(self):
+        """Overview summary and by_domain must count maintenance status."""
+        maint_service = ServiceDefinition.objects.create(
+            service_key='test_maintenance_service',
+            name='Test Maintenance Service',
+            domain='platform',
+            is_active=True,
+        )
+        ServiceHealth.objects.update_or_create(
+            service=maint_service,
+            defaults={'status': 'maintenance', 'consecutive_failures': 0, 'detail': {}},
+        )
+        response = self.client.get('/api/soc/overview/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertGreaterEqual(payload['summary']['maintenance'], 1)
+        self.assertIn('platform', payload['by_domain'])
+        self.assertGreaterEqual(payload['by_domain']['platform']['maintenance'], 1)
+
 
 class OverviewSloTestCase(OverviewApiBaseTestCase):
     def setUp(self):

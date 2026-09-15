@@ -311,6 +311,29 @@
   background: linear-gradient(90deg, var(--soc-c-ef4444), var(--soc-c-f87171));
 }
 
+.overviewHealthBarSegmentMaintenance {
+  background: linear-gradient(90deg, var(--soc-c-06b6d4), var(--soc-c-22d3ee));
+}
+
+.overviewHealthBarSegmentUnknown {
+  background: var(--soc-c-94a3b8);
+}
+
+.overviewHealthBarSegmentDisabled {
+  background: var(--soc-c-64748b);
+  opacity: 0.6;
+}
+
+/* Overview action enable/disable (W5 CSP) */
+.enableBtn {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--soc-c-34d399);
+}
+.disableBtn {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--soc-c-f87171);
+}
+
 /* Overview Metric Cards */
 .overviewMetricGrid {
   display: grid;

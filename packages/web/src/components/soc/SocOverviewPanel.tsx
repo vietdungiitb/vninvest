@@ -1,7 +1,7 @@
 import { createElement, useEffect, useState, useMemo, useRef } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
-import { toneColor, getStatusBadgeStyle } from "./socStatusColors.js";
+import { getStatusBadgeStyle } from "./socStatusColors.js";
 import { LucideIcon } from "../ui/lucide-icon.js";
 import styles from "./soc.module.css";
 
@@ -62,6 +62,7 @@ const METRIC_DEFS = [
   { key: "healthy", icon: "CheckCircle", colorVar: "--soc-c-34d399" },
   { key: "degraded", icon: "AlertTriangle", colorVar: "--soc-c-fbbf24" },
   { key: "critical", icon: "XCircle", colorVar: "--soc-c-f87171" },
+  { key: "maintenance", icon: "Wrench", colorVar: "--soc-c-22d3ee" },
   { key: "unknown", icon: "HelpCircle", colorVar: "--soc-c-94a3b8" },
   { key: "disabled", icon: "PowerOff", colorVar: "--soc-c-64748b" },
 ] as const;
@@ -71,6 +72,7 @@ const METRIC_LABEL_KEYS: Record<string, string> = {
   healthy: "soc.overview.healthy_count",
   degraded: "soc.overview.degraded_count",
   critical: "soc.overview.critical_count",
+  maintenance: "soc.overview.maintenance_count",
   unknown: "soc.overview.unknown_count",
   disabled: "soc.overview.disabled_count",
 };
@@ -80,6 +82,7 @@ const METRIC_COLORS: Record<string, string> = {
   healthy: "#34d399",
   degraded: "#fbbf24",
   critical: "#f87171",
+  maintenance: "var(--soc-c-22d3ee)",
   unknown: "#94a3b8",
   disabled: "#64748b",
 };
@@ -89,6 +92,7 @@ const METRIC_BORDER_COLORS: Record<string, string> = {
   healthy: "rgba(52,211,153,0.6)",
   degraded: "rgba(251,191,36,0.6)",
   critical: "rgba(248,113,113,0.6)",
+  maintenance: "color-mix(in srgb, var(--soc-c-22d3ee) 60%, transparent)",
   unknown: "rgba(148,163,184,0.4)",
   disabled: "rgba(100,116,139,0.4)",
 };
@@ -98,6 +102,7 @@ const METRIC_ICON_BG: Record<string, string> = {
   healthy: "rgba(52,211,153,0.12)",
   degraded: "rgba(251,191,36,0.12)",
   critical: "rgba(248,113,113,0.12)",
+  maintenance: "color-mix(in srgb, var(--soc-c-22d3ee) 12%, transparent)",
   unknown: "rgba(148,163,184,0.08)",
   disabled: "rgba(100,116,139,0.08)",
 };
@@ -106,37 +111,50 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
   const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [sloError, setSloError] = useState("");
   const [data, setData] = useState<OverviewData | null>(null);
   const [sloMap, setSloMap] = useState<Record<string, SloRow>>({});
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
+  const [confirmToggle, setConfirmToggle] = useState<ServiceItem | null>(null);
+  const [toggleReason, setToggleReason] = useState("");
   const mountedRef = useRef(true);
   const consecutiveErrorsRef = useRef(0);
   const intervalRef = useRef<number | null>(null);
   const intervalDelayRef = useRef(15000);
 
-  const fetchData = async (isSilent = false) => {
-    if (!isSilent) setLoading(true);
+  const fetchSlo = async () => {
     try {
-      const overviewAdapter = defaultCoreApiAdapter as unknown as {
-        getSocOverviewSummary: () => Promise<OverviewData>;
-      };
       const sloAdapter = defaultCoreApiAdapter as unknown as {
         getSocSloOverview: () => Promise<SloOverviewData>;
       };
-      const [overviewResult, sloResult] = await Promise.all([
-        overviewAdapter.getSocOverviewSummary(),
-        sloAdapter.getSocSloOverview().catch(() => ({ services: [] })),
-      ]);
+      const sloResult = await sloAdapter.getSocSloOverview();
       if (!mountedRef.current) return;
-      setData(overviewResult);
       const map: Record<string, SloRow> = {};
       for (const row of sloResult.services ?? []) {
         map[row.service_key] = row;
       }
       setSloMap(map);
+      setSloError("");
+    } catch (err) {
+      if (!mountedRef.current) return;
+      setSloError(err instanceof Error ? err.message : t("soc.overview.slo_load_failed", { defaultValue: "Failed to load SLO data." }));
+      setSloMap({});
+    }
+  };
+
+  const fetchData = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
+    if (!isSilent) setSloError("");
+    try {
+      const overviewAdapter = defaultCoreApiAdapter as unknown as {
+        getSocOverviewSummary: () => Promise<OverviewData>;
+      };
+      const overviewResult = await overviewAdapter.getSocOverviewSummary();
+      if (!mountedRef.current) return;
+      setData(overviewResult);
       setError("");
       const hadBackoff = consecutiveErrorsRef.current >= 3;
       consecutiveErrorsRef.current = 0;
@@ -153,6 +171,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
     } finally {
       if (!isSilent && mountedRef.current) setLoading(false);
     }
+    await fetchSlo();
   };
 
   const restartInterval = (delayMs: number) => {
@@ -212,24 +231,30 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
         if (s.status === "healthy") acc.healthy += 1;
         else if (s.status === "degraded") acc.degraded += 1;
         else if (s.status === "unhealthy" || s.status === "critical") acc.critical += 1;
-        else if (s.status === "maintenance") {
-          // maintenance has its own filter but not a metric card; keep unknown 0 for it
-        } else acc.unknown += 1;
+        else if (s.status === "maintenance") acc.maintenance += 1;
+        else acc.unknown += 1;
         return acc;
       },
-      { total: 0, healthy: 0, degraded: 0, critical: 0, unknown: 0, disabled: 0 },
+      { total: 0, healthy: 0, degraded: 0, critical: 0, maintenance: 0, unknown: 0, disabled: 0 },
     );
   }, [services]);
 
-  const handleToggle = async (service: ServiceItem) => {
+  const handleToggle = (service: ServiceItem) => {
+    setConfirmToggle(service);
+    setToggleReason("");
+  };
+
+  const handleConfirmToggle = async (service: ServiceItem, reason: string) => {
     const key = `toggle-${service.service_key}`;
     setActionLoading((prev) => ({ ...prev, [key]: true }));
     try {
       const adapter = defaultCoreApiAdapter as unknown as {
         updateSocService: (key: string, payload: Record<string, unknown>) => Promise<unknown>;
       };
-      await adapter.updateSocService(service.service_key, { is_active: !service.is_active });
+      await adapter.updateSocService(service.service_key, { is_active: !service.is_active, change_reason: reason });
       await fetchData(true);
+      setConfirmToggle(null);
+      setToggleReason("");
     } catch (err) {
       setError(err instanceof Error ? err.message : t("soc.overview.error_toggle_failed", { defaultValue: "Failed to toggle service." }));
     } finally {
@@ -300,7 +325,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
       createElement(
         "div",
         { className: styles.overviewMetricGrid },
-        ...Array.from({ length: 6 }, (_, i) =>
+        ...Array.from({ length: 7 }, (_, i) =>
           createElement("div", {
             key: i,
             className: `${styles.skeleton} ${styles.overviewSkeletonMetric}`,
@@ -344,6 +369,9 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
   const healthyPct = (stats.healthy / total) * 100;
   const degradedPct = (stats.degraded / total) * 100;
   const criticalPct = (stats.critical / total) * 100;
+  const maintenancePct = (stats.maintenance / total) * 100;
+  const unknownPct = (stats.unknown / total) * 100;
+  const disabledPct = (stats.disabled / total) * 100;
 
   return createElement(
     "div",
@@ -375,23 +403,57 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
     /* ── 2. Health Ratio Bar ── */
     createElement(
       "div",
-      { className: styles.overviewHealthBar },
+      {
+        className: styles.overviewHealthBar,
+        role: "img",
+        "aria-label": t("soc.overview.health_bar_label", { healthy: String(stats.healthy), total: String(stats.total) }),
+      },
       healthyPct > 0
         ? createElement("div", {
             className: `${styles.overviewHealthBarSegment} ${styles.overviewHealthBarSegmentHealthy}`,
             style: { width: `${healthyPct}%` },
+            title: `${t("soc.overview.filter_healthy")}: ${stats.healthy}`,
+            "aria-label": `${t("soc.overview.filter_healthy")}: ${stats.healthy}`,
           })
         : null,
       degradedPct > 0
         ? createElement("div", {
             className: `${styles.overviewHealthBarSegment} ${styles.overviewHealthBarSegmentDegraded}`,
             style: { width: `${degradedPct}%` },
+            title: `${t("soc.overview.filter_degraded")}: ${stats.degraded}`,
+            "aria-label": `${t("soc.overview.filter_degraded")}: ${stats.degraded}`,
           })
         : null,
       criticalPct > 0
         ? createElement("div", {
             className: `${styles.overviewHealthBarSegment} ${styles.overviewHealthBarSegmentCritical}`,
             style: { width: `${criticalPct}%` },
+            title: `${t("soc.overview.filter_critical")}: ${stats.critical}`,
+            "aria-label": `${t("soc.overview.filter_critical")}: ${stats.critical}`,
+          })
+        : null,
+      maintenancePct > 0
+        ? createElement("div", {
+            className: `${styles.overviewHealthBarSegment} ${styles.overviewHealthBarSegmentMaintenance}`,
+            style: { width: `${maintenancePct}%` },
+            title: `${t("soc.overview.filter_maintenance")}: ${stats.maintenance}`,
+            "aria-label": `${t("soc.overview.filter_maintenance")}: ${stats.maintenance}`,
+          })
+        : null,
+      unknownPct > 0
+        ? createElement("div", {
+            className: `${styles.overviewHealthBarSegment} ${styles.overviewHealthBarSegmentUnknown}`,
+            style: { width: `${unknownPct}%` },
+            title: `${t("soc.overview.unknown_count")}: ${stats.unknown}`,
+            "aria-label": `${t("soc.overview.unknown_count")}: ${stats.unknown}`,
+          })
+        : null,
+      disabledPct > 0
+        ? createElement("div", {
+            className: `${styles.overviewHealthBarSegment} ${styles.overviewHealthBarSegmentDisabled}`,
+            style: { width: `${disabledPct}%` },
+            title: `${t("soc.overview.filter_disabled")}: ${stats.disabled}`,
+            "aria-label": `${t("soc.overview.filter_disabled")}: ${stats.disabled}`,
           })
         : null,
     ),
@@ -473,6 +535,16 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
       ),
     ),
 
+    /* ── SLO Error Banner (W4) ── */
+    sloError
+      ? createElement(
+          "div",
+          { className: styles.inlineError, style: { marginBottom: "0.75rem", display: "flex", alignItems: "center", justifyContent: "space-between" } },
+          createElement("span", null, sloError),
+          createElement("button", { className: styles.actionBtn, onClick: () => fetchSlo() }, t("soc.overview.retry_slo")),
+        )
+      : null,
+
     /* ── 5. Services Grid ── */
     paginated.length === 0
       ? createElement(
@@ -480,7 +552,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
           { className: styles.emptyState },
           createElement(LucideIcon, { name: "Inbox", className: "h-8 w-8" }),
           createElement("p", { style: { margin: "0.5rem 0 0", color: "var(--text-muted)" } },
-            t("soc.overview.filter_all") + " — " + t("soc.health.unknown_value"),
+            t("soc.overview.empty_filtered"),
           ),
         )
       : createElement(
@@ -592,13 +664,9 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                 createElement(
                   "button",
                   {
-                    className: styles.actionBtn,
+                    className: `${styles.actionBtn} ${service.is_active ? styles.disableBtn : styles.enableBtn}`,
                     disabled: isLoadingToggle,
                     onClick: () => handleToggle(service),
-                    style: {
-                      background: service.is_active ? "rgba(239, 68, 68, 0.15)" : "rgba(34, 197, 94, 0.15)",
-                      color: service.is_active ? toneColor("danger") : toneColor("success"),
-                    },
                   },
                   isLoadingToggle
                     ? t("soc.overview.loading_text")
@@ -659,6 +727,51 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
               onClick: () => setPage(safePage + 1),
             },
             t("soc.overview.next_page"),
+          ),
+        )
+      : null,
+
+    /* ── Toggle Confirm Modal (W1) ── */
+    confirmToggle
+      ? createElement(
+          "div",
+          { className: styles.schedulerModalOverlay, onClick: () => { setConfirmToggle(null); setToggleReason(""); } },
+          createElement(
+            "div",
+            { className: styles.schedulerModalCard, onClick: (e: any) => e.stopPropagation() },
+            createElement("h3", { className: styles.schedulerModalTitle }, t("soc.overview.toggle_title")),
+            createElement(
+              "p",
+              { className: styles.schedulerModalBody },
+              t(confirmToggle.is_active ? "soc.overview.toggle_confirm_disable" : "soc.overview.toggle_confirm_enable", { name: confirmToggle.name }),
+            ),
+            createElement("label", { className: styles.schedulerModalField }, t("soc.overview.toggle_reason_label")),
+            createElement("textarea", {
+              className: styles.schedulerModalTextarea,
+              rows: 2,
+              placeholder: t("soc.overview.toggle_reason_placeholder"),
+              value: toggleReason,
+              onChange: (e: any) => setToggleReason(e.target.value),
+            }),
+            createElement(
+              "div",
+              { className: styles.schedulerModalActions },
+              createElement(
+                "button",
+                { type: "button", onClick: () => { setConfirmToggle(null); setToggleReason(""); }, className: styles.schedulerModalCancel },
+                t("common.cancel", { defaultValue: "Hủy" }),
+              ),
+              createElement(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => confirmToggle && handleConfirmToggle(confirmToggle, toggleReason),
+                  disabled: !toggleReason.trim() || !!actionLoading[`toggle-${confirmToggle.service_key}`],
+                  className: styles.schedulerModalProceed,
+                },
+                actionLoading[`toggle-${confirmToggle.service_key}`] ? t("soc.overview.loading_text") : t("common.confirm", { defaultValue: "Xác nhận" }),
+              ),
+            ),
           ),
         )
       : null,

@@ -427,8 +427,27 @@ class ServiceDetailView(SOCBaseView):
                 http_status=status.HTTP_400_BAD_REQUEST,
             )
 
+        change_reason = str(request.data.get('change_reason', '') or '').strip()
+        previous_is_active = service.is_active
         service.is_active = is_active
         service.save(update_fields=['is_active', 'updated_at'])
+
+        # Audit toggle — optional reason, backward compatible when empty
+        try:
+            from ..models import ConfigChangeAudit
+            summary = change_reason or ('Bật dịch vụ {}'.format(service.service_key) if is_active else 'Tắt dịch vụ {}'.format(service.service_key))
+            ConfigChangeAudit.objects.create(
+                service=service,
+                action='toggle',
+                actor=getattr(request.user, 'username', 'api') or 'api',
+                actor_ip=request.META.get('REMOTE_ADDR', ''),
+                before_snapshot={'is_active': previous_is_active},
+                after_snapshot={'is_active': is_active},
+                change_summary=summary,
+                request_id=self.get_request_id(request),
+            )
+        except Exception:
+            pass
 
         return Response(_serialize_service_detail(service))
 

@@ -5,6 +5,48 @@
 
 ---
 
+## Entry 93: PR-1 P0 Hotfix SOC Overview Tab — toggle audit + bar 6 segment + maintenance metric + SLO split + token/i18n (W1–W5)
+
+- **Date**: 2026-09-16
+- **Scope**: Thực thi PR-1 P0 theo `docs/IMPLEMENTATION_PLAN_SOC_OVERVIEW_TAB_20260916.md` §2 W1–W5 (đính chính Đ1–Đ5 đã đọc). Không đổi contract BE (chỉ thêm `change_reason` optional + audit), FE `SocOverviewPanel.tsx` + BE `overview.py` + i18n 22 keys + CSS tokens + tests bắt buộc.
+- **Files & fixes**:
+  - **W1 Toggle confirm + audit** (`SocOverviewPanel.tsx:242` + `overview.py:408` + `models.py:325`):
+    - FE thêm state `confirmToggle: ServiceItem|null` + `toggleReason` (`SocOverviewPanel.tsx:114`); `handleToggle` → `setConfirmToggle(service)` thay vì gọi API ngay; modal copy `SocSchedulerBoard.tsx:238` dùng `schedulerModalOverlay/Card/Title/Body/Field/Textarea/Actions` (`SocOverviewPanel.tsx:760`); `handleConfirmToggle` gọi `updateSocService(key,{is_active:!is_active, change_reason:reason})`, nút `disabled` khi `!reason.trim()` (`W1` Đ3).
+    - BE `ServiceDetailView.patch:408` đọc `change_reason = str(request.data.get('change_reason','')).strip()` (optional, backward compat), sau `save` tạo `ConfigChangeAudit(action='toggle', actor, change_summary=reason or 'Bật/Tắt dịch vụ {key}', request_id)` (`overview.py:430`). Model `ConfigChangeAudit.ACTION_CHOICES` thêm `('toggle','Service Toggled')` (`models.py:330`).
+    - i18n `toggle_title/toggle_confirm_disable/toggle_confirm_enable/toggle_reason_label/toggle_reason_placeholder/toggle_success` (§4) cả `vi.js:223` + `en.js:223`.
+  - **W2 Health bar 6 segment** (`SocOverviewPanel.tsx:368` + `soc.components.css:313`):
+    - Tính thêm `maintenancePct/unknownPct/disabledPct` (`:372`); render 6 segment theo thứ tự `healthy→degraded→critical→maintenance→unknown→disabled` (`:401`), mỗi segment `title`+`aria-label`, `role="img"` + `health_bar_label` (`:403`). CSS thêm `.overviewHealthBarSegmentMaintenance` (gradient `06b6d4→22d3ee`), `.overviewHealthBarSegmentUnknown` (solid `94a3b8`), `.overviewHealthBarSegmentDisabled` (solid `64748b` + `opacity .6`) + `.enableBtn/.disableBtn` (W5).
+  - **W3 Maintenance metric** (`SocOverviewPanel.tsx:60`):
+    - `METRIC_DEFS` thêm `{key:"maintenance", icon:"Wrench", colorVar:"--soc-c-22d3ee"}` sau `critical`; `METRIC_LABEL_KEYS/COLORS/BORDER/ICON_BG` thêm `maintenance` dùng `color-mix` với token (không hard-code `rgba`, C5); `stats.reduce` sửa `else if(maintenance) acc.maintenance++` (`:234`) + initial `maintenance:0`; skeleton `length 6→7` (`:328`). i18n `maintenance_count` (`vi.js:221` `Bảo trì`, `en.js:221` `Maintenance`).
+  - **W4 Tách lỗi SLO** (`SocOverviewPanel.tsx:131`):
+    - Thêm `sloError` state (`:108`) + `fetchSlo()` riêng (`:131`): SLO fail → `setSloError(message)` + `setSloMap({})`, không throw; overview fail vẫn `setError` như cũ. `fetchData` gọi `overview` riêng rồi `await fetchSlo()` (`:165`). Render banner SLO riêng trước grid (`:538`): `inlineError` + nút `retry_slo` gọi `fetchSlo()`. Khi `sloError` thì badges ẩn nhưng grid vẫn hiện. i18n `slo_load_failed/retry_slo`.
+  - **W5 Token + i18n tồn đọng** (`soc.tokens.css:12` + `SocOverviewPanel.tsx:657` + `vi.js:222`):
+    - Token thêm `--soc-c-64748b: #64748b` (`soc.tokens.css:12`) dùng cho `disabled` (thay hard-code `#64748b`); nút toggle inline `style background/color` (`:657`) → 2 class `enableBtn/disableBtn` (`soc.components.css:324`) dùng `rgba` translucide + token (đóng F-OV-20 CSP); empty state `filter_all + unknown_value` concat (`:545`) → `t("soc.overview.empty_filtered")` (`vi.js:222` `Không có dịch vụ nào khớp bộ lọc hiện tại`, `en.js:222` `No services match the current filter`).
+    - Toàn bộ 22 keys §4 đã thêm cả VI/EN (gồm 10 cho PR-1 + 12 dự cho PR-2: `domain_all/showing_range/page_size_label/sort_*/health_bar_label/time_*`).
+- **Tests**:
+  - BE `service_ops/tests/test_soc_api_overview.py:440` **3 mới** (W1+W3): `test_toggle_creates_audit_with_reason` (PATCH kèm `change_reason` → `200` + `ConfigChangeAudit(action='toggle')` tồn tại), `test_toggle_without_reason_still_200` (không reason vẫn `200` backward compat), `test_overview_summary_counts_maintenance` (tạo `ServiceHealth status=maintenance` → `GET overview` `summary.maintenance>=1` + `by_domain`).
+  - FE `packages/web/src/components/__tests__/soc-overview-tab.component.test.tsx` **MỚI** (4 tests PR-1): maintenance card `1` + unknown `0`, bar 6 segment tổng width ≈100%, SLO fail banner + grid còn nguyên + retry phục hồi, toggle modal hiện/disable khi trống/hủy không gọi API/xác nhận gọi với `change_reason`.
+- **Validation (thật)**:
+  - `npx tsc --noEmit` (packages/web) → **0** (đã fix `toneColor` unused).
+  - `python manage.py test service_ops.tests.test_soc_api_overview --keepdb` → `Ran 29 tests OK` (trước 26, +3 mới).
+  - `npx vitest run src/components/__tests__/soc-overview-tab.component.test.tsx src/components/__tests__/soc-p2.component.test.tsx` → `Test Files 2 passed, Tests 12 passed` (4 mới + 8 cũ).
+  - `npm run build` → **48.01s PASS** (đã chạy, không lỗi mới).
+  - `npm run lint` → **0 errors, 3547 warnings** (baseline `jsx-no-literals`, không mới).
+  - `npm run i18n:scan` → exit 0, không thiếu `soc.overview.*` (22 keys đã thêm).
+  - `grep -n "rgba(239" SocOverviewPanel.tsx` → rỗng (đã token hóa); `grep -n "catch(() => ({ services: [] }))"` → rỗng (đã tách SLO).
+- **Docs**: `docs/AUDIT_SOC_OVERVIEW_TAB_20260916.md` (Entry 92) là nguồn; `docs/IMPLEMENTATION_PLAN_SOC_OVERVIEW_TAB_20260916.md` §0-§8 là spec bàn giao.
+- **Status**: **PR-1 P0 DONE (W1–W5)** — toggle audit, bar 6, maintenance metric, SLO split, token/i18n. Đóng F-OV-01 (FE phần), F-OV-03, F-OV-04, F-OV-08, C3/C5, F-OV-20/F-OV-17. Còn PR-2 P1 (W6–W14) theo plan.
+- **Next**: PR-2 P1 (2 ngày) — error non-blocking, domain strip, local+relative time, debounce/sort, pagination, burn theo budget, domain map, visibility+jitter, a11y.
+- **Checklist §7 PR-1** (tự audit):
+  - [x] Toggle modal lý do bắt buộc; audit row `action='toggle'`; non-staff `403` (test có sẵn xanh).
+  - [x] Bar đủ 6 màu khi đủ trạng thái; tổng ≈100%; `total=0` không NaN.
+  - [x] Số metric Bảo trì == filter Bảo trì.
+  - [x] SLO sập → banner riêng, grid còn nguyên; Retry SLO phục hồi.
+  - [ ] Overview sập lần đầu → error toàn panel + Retry; sập khi đã có data → banner + giữ grid (thuộc **PR-2 W6**, chưa làm trong PR-1 — để P1).
+  - [x] `npx tsc --noEmit` 0; `npm run build` PASS 48.01s; `npm run lint` 0 errors; `vitest` 12 passed; `service_ops` 29 OK; `i18n:scan` 0.
+
+---
+
 ## Entry 91: XÓA NỢ BE 19 TEST PRE-EXISTING — service_ops 17 + market_serving 2 (toàn bộ backlog COMPAT/P3 còn lại)
 
 - **Date**: 2026-09-15
@@ -41,6 +83,21 @@
   - `python manage.py check` → 0 issues.
 - **Residual (ngoài scope)**: FE `AIAdvisorAlertPanel.i18n.test.js` FAIL pre-existing (không liên quan BE); docs `GAP_ANALYSIS_DATAOPS_LEGACY_VS_SAAS_NATIVE.md` đã stale.
 - **Next**: Không còn test BE đỏ. Còn backlog FE nếu cần: `AIAdvisorAlertPanel` i18n test, Lighthouse manual.
+
+---
+
+## Entry 92: AUDIT SOC Overview Tab — `http://localhost/operations-center?tab=overview` (chi tiết, chuẩn AGENTS.md)
+
+- **Date**: 2026-09-16
+- **Scope**: Audit chi tiết tab `overview` theo khung AGENTS.md Nguyên tắc 1-6 (grep toàn repo `.css/.module.css/config/i18n`, trace `SocOverviewPanel.tsx:105` → `soc.js:33` → `overview.py:271` → `ServiceHealth`, CONTRADICTIONS C1-C6, quality gates). Không sửa code, chỉ phân tích + đề xuất nâng cấp chuẩn thương mại (Datadog/Grafana/AWS OpsCenter).
+- **Report**: `docs/AUDIT_SOC_OVERVIEW_TAB_20260916.md` **MỚI** — thay thế phần overview trong `AUDIT_OPERATIONS_CENTER_COMPREHENSIVE_20260916.md` (61 findings). Báo cáo A-G đầy đủ, mọi khẳng định kèm `file:line`.
+- **Findings**: 20 findings F-OV-01→20 (P0 3, P1 8, P2 7, P3 2) — verifiable `file:line`. Top 5: F-OV-01 toggle không RBAC/confirm `SocOverviewPanel.tsx:224`+`overview.py:408`, F-OV-03 bar thiếu `unknown/disabled/maintenance` `SocOverviewPanel.tsx:378`, F-OV-08 nuốt lỗi SLO `SocOverviewPanel.tsx:131`, F-OV-04 maintenance không đếm `SocOverviewPanel.tsx:215`, F-OV-13 chỉ polling 15s không realtime `SocOverviewPanel.tsx:169`.
+- **CONTRADICTIONS**: 6 (bar vs BE summary, SLO 2 endpoint không atomic, maintenance metric, burn ngưỡng cứng, token drift, filter vs metric).
+- **Quality gates**: `tsc` 0, `build` 28-38s PASS, `lint` 0 errors (3547 warn), `i18n:scan` PASS (đã fix `cjs`), BE `301 OK` (Entry 91), FE `soc-p2` 3 tests nhưng **thiếu test overview** (metric/maintenance/bar không bị bắt) — gates pass nhưng không chứng minh đúng.
+- **Đánh giá**: 6.5/10 — đủ nội bộ, chưa đạt chuẩn thương mại. Không blocker để giữ tab, nhưng P0 phải fix trước mở rộng.
+- **Lộ trình**: P0 0.5 ngày (RBAC+bar+maintenance+sloError+token), P1 2 ngày (domain strip, relative time, debounce, pagination, tests), P2 3 ngày (SSE+visibility+a11y+ETag), P3 nice-to-have (export, dependency graph, maintenance window).
+- **Next**: P0 hotfix 1 PR (F-OV-01/03/04/08), sau đó P1.
+- **Validation**: `read` 6 file SOC + `overview.py` + `soc.js`/`soc.tokens.css`/`vi.js` + `docker ps` healthy + `GET /health 200` — mọi khẳng định kèm `file:line`.
 
 ---
 
@@ -2433,3 +2490,14 @@
   - `node scripts/check-shell.mjs` → ❌ BROKEN `ERR_UNKNOWN_FILE_EXTENSION .css/.tsx` (pre-existing, không block)
 - **Residual**: Pilot-0 snapshots 24 + `test:a11y` axe 6 viewport + `check:shell` vite-node fix — để follow-up riêng, không block merge P0→P2
 - **Next**: Merge `feature/ui-unified-p0` `8ab45260` → `dev` — **HOÀN TOÀN DONE** (P0→P4 code DONE, P4 visual snapshots CODE READY)
+
+---
+
+## Entry 93: Kế hoạch thực hiện SOC Overview Tab — bàn giao đội code (2 PR, tự audit không hỏi lại)
+
+- **Date**: 2026-09-16
+- **Scope**: Chuyển audit `docs/AUDIT_SOC_OVERVIEW_TAB_20260916.md` (20 findings, 6 contradictions) thành plan khả thi: PR-1 P0 (W1–W5) + PR-2 P1 (W6–W14), khóa 5 quyết định không hỏi lại, 22 i18n keys VI/EN, 12 tests (4 BE + 8 FE), checklist tự audit copy-paste.
+- **Report**: `docs/IMPLEMENTATION_PLAN_SOC_OVERVIEW_TAB_20260916.md` **MỚI** (§0–§8).
+- **Đính chính audit quan trọng (§0)**: F-OV-01 sai phần BE — `base.py:38` đã `IsAdminUser`, test 403 có sẵn (`test_soc_api_overview.py:374-380`) → PR-1 chỉ làm FE confirm + BE audit toggle. F-OV-15 SSE hoãn (endpoint không tồn tại). JSX full hoãn (rủi ro). Throttle 120/min an toàn (32/phút 4 tab).
+- **Validation**: `read` SocOverviewPanel 666 dòng + overview.py + base.py + settings throttle + ConfirmModal/useConfirm + SchedulerBoard modal + vi/en i18n + soc-p2 tests + css tokens — mọi quyết định có `file:line`.
+- **Next**: Đội code làm PR-1 trước (W1→W5 + tests + ledger entry), sau đó PR-2.
