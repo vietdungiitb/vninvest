@@ -193,6 +193,10 @@ try:
 except _json_health.JSONDecodeError:
     SOC_HEALTH_ENDPOINTS = {}
 SOC_HEALTH_PROBE_TIMEOUT_SECONDS = int(os.environ.get('SOC_HEALTH_PROBE_TIMEOUT_SECONDS', '5') or '5')
+# Phase 3 Step 5: SLO alert dedup cooldown (hours). Prevents alert storms on repeated degradation status.
+SOC_ALERT_COOLDOWN_HOURS = int(os.environ.get('SOC_ALERT_COOLDOWN_HOURS', '4') or '4')
+# Phase 3 Step 3: default SLO availability target (99.9%).
+SOC_SLO_TARGET = float(os.environ.get('SOC_SLO_TARGET', '0.999') or '0.999')
 
 # Stripe Billing Integration
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')

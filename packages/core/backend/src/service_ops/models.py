@@ -123,18 +123,59 @@ class ServiceHealth(models.Model):
     consecutive_failures = models.IntegerField(default=0)
     avg_response_ms = models.FloatField(null=True, blank=True)
 
+    # SLO / SLI
+    slo_target = models.FloatField(default=0.999, help_text='Target uptime ratio (e.g. 0.999 = 99.9%)')
+    uptime_30d = models.FloatField(null=True, blank=True, help_text='Actual uptime % over last 30 days')
+    burn_rate_1h = models.FloatField(null=True, blank=True, help_text='Error budget burn rate over last 1 hour')
+    error_budget_remaining = models.FloatField(null=True, blank=True, help_text='Remaining error budget ratio (0-1)')
+
     # Detail
     detail = models.JSONField(default=dict)
 
     class Meta:
         indexes = [
             models.Index(fields=['status']),
+            models.Index(fields=['uptime_30d']),
         ]
         verbose_name = 'Service Health'
         verbose_name_plural = 'Service Health Records'
 
     def __str__(self):
         return f'{self.service.service_key}: {self.status}'
+
+
+class ServiceHealthCheckLog(models.Model):
+    """Timestamped log of each health probe — enables rolling-window uptime computation."""
+
+    STATUS_CHOICES = [
+        ('healthy', 'Healthy'),
+        ('degraded', 'Degraded'),
+        ('unhealthy', 'Unhealthy'),
+        ('unknown', 'Unknown'),
+        ('maintenance', 'Maintenance'),
+    ]
+
+    service = models.ForeignKey(
+        ServiceDefinition,
+        on_delete=models.CASCADE,
+        related_name='health_check_logs',
+        db_index=True,
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='unknown')
+    response_ms = models.FloatField(null=True, blank=True)
+    checked_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-checked_at']
+        indexes = [
+            models.Index(fields=['service', 'checked_at']),
+            models.Index(fields=['service', 'status']),
+        ]
+        verbose_name = 'Service Health Check Log'
+        verbose_name_plural = 'Service Health Check Logs'
+
+    def __str__(self):
+        return f'{self.service.service_key}: {self.status} @ {self.checked_at}'
 
 
 class ServiceRunLog(models.Model):

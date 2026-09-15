@@ -43,6 +43,26 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
       return coreGet("/operator/soc/health-status/");
     },
 
+    getSocSloOverview() {
+      return coreGet("/operator/soc/overview/slo-overview/");
+    },
+
+    exportSocConfigAudits(params = {}) {
+      const qs = new URLSearchParams();
+      if (params.service_key) qs.set("service_key", params.service_key);
+      if (params.limit) qs.set("limit", String(params.limit));
+      const query = qs.toString();
+      return coreGet(`/operator/soc/overview/export/audits/${query ? `?${query}` : ""}`);
+    },
+
+    exportSocRunLogs(params = {}) {
+      const qs = new URLSearchParams();
+      if (params.service_key) qs.set("service_key", params.service_key);
+      if (params.limit) qs.set("limit", String(params.limit));
+      const query = qs.toString();
+      return coreGet(`/operator/soc/overview/export/run-logs/${query ? `?${query}` : ""}`);
+    },
+
     getSocServiceDetail(serviceKey) {
       if (!serviceKey) throw new Error("serviceKey is required for getSocServiceDetail");
       return coreGet(`/operator/soc/services/${encodeURIComponent(serviceKey)}/`);

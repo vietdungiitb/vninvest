@@ -2,10 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
 import { SocOverviewPanel } from "../soc/SocOverviewPanel.js";
 import { SocPrefetchPanel } from "../soc/SocPrefetchPanel.js";
+import { SocRuntimeKpiPanel } from "../soc/SocRuntimeKpiPanel.js";
 import { validateDateRange } from "../soc/socValidation.js";
 
 const adapterMocks = vi.hoisted(() => ({
   getSocOverviewSummary: vi.fn(),
+  getSocSloOverview: vi.fn(),
   getSocPrefetchConfig: vi.fn(),
   getSocPrefetchCacheStatus: vi.fn(),
   getSocPrefetchUniverseGroups: vi.fn(),
@@ -15,6 +17,7 @@ const adapterMocks = vi.hoisted(() => ({
 vi.mock("../../adapters/coreApiAdapter.js", () => ({
   defaultCoreApiAdapter: {
     getSocOverviewSummary: adapterMocks.getSocOverviewSummary,
+    getSocSloOverview: adapterMocks.getSocSloOverview,
     getSocPrefetchConfig: adapterMocks.getSocPrefetchConfig,
     getSocPrefetchCacheStatus: adapterMocks.getSocPrefetchCacheStatus,
     getSocPrefetchUniverseGroups: adapterMocks.getSocPrefetchUniverseGroups,
@@ -29,6 +32,7 @@ vi.mock("../soc/SocSchedulerBoard.js", () => ({
 describe("SocOverviewPanel retry (COC-05)", () => {
   beforeEach(() => {
     adapterMocks.getSocOverviewSummary.mockReset();
+    adapterMocks.getSocSloOverview.mockReset();
   });
 
   afterEach(() => cleanup());
@@ -40,6 +44,7 @@ describe("SocOverviewPanel retry (COC-05)", () => {
         services: [{ service_key: "vnbroker_quote", name: "VNBroker Quote", domain: "vnbroker", status: "healthy", is_active: true }],
         total: 1,
       });
+    adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] });
 
     render(<SocOverviewPanel />);
 
@@ -54,6 +59,79 @@ describe("SocOverviewPanel retry (COC-05)", () => {
     });
     expect(screen.getByText("VNBroker Quote")).toBeTruthy();
     expect(adapterMocks.getSocOverviewSummary).toHaveBeenCalledTimes(2);
+  });
+
+  it("renders SLO badges when SLO overview data is present", async () => {
+    adapterMocks.getSocOverviewSummary.mockResolvedValue({
+      services: [{ service_key: "vnbroker_quote", name: "VNBroker Quote", domain: "vnbroker", status: "healthy", is_active: true }],
+      total: 1,
+    });
+    adapterMocks.getSocSloOverview.mockResolvedValue({
+      services: [
+        { service_key: "vnbroker_quote", uptime_30d: 0.98765, burn_rate_1h: 0.25, error_budget_remaining: 0.88, slo_target: 0.999 },
+      ],
+    });
+
+    render(<SocOverviewPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText("soc.slo.uptime_label 98.77%")).toBeTruthy();
+    });
+    expect(screen.getByText("soc.slo.burn_rate_label 0.25")).toBeTruthy();
+    expect(screen.getByText("soc.slo.budget_label 88.0%")).toBeTruthy();
+  });
+});
+
+describe("SocRuntimeKpiPanel burn-rate sparkline (Phase 3 Step 4c)", () => {
+  beforeEach(() => {
+    adapterMocks.getSocSloOverview.mockReset();
+  });
+
+  afterEach(() => cleanup());
+
+  it("renders per-service sparkline bars with SLO data", async () => {
+    adapterMocks.getSocSloOverview.mockResolvedValue({
+      services: [
+        {
+          service_key: "vnbroker_quote",
+          name: "VNBroker Quote",
+          domain: "vnbroker",
+          status: "healthy",
+          is_active: true,
+          slo_target: 0.999,
+          uptime_30d: 0.9875,
+          burn_rate_1h: 0.25,
+          error_budget_remaining: 0.88,
+          last_check_at: "2026-09-15T09:00:00+07:00",
+          recent_checks_24h: [
+            { hour: "2026-09-14T10:00:00+07:00", checks: 2, failed: 0 },
+            { hour: "2026-09-15T09:00:00+07:00", checks: 2, failed: 1 },
+          ],
+        },
+      ],
+    });
+
+    render(<SocRuntimeKpiPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText("VNBroker Quote")).toBeTruthy();
+    });
+    const sparkline = screen.getByRole("img", {
+      name: /soc.slo.spark_heading VNBroker Quote/,
+    });
+    expect(sparkline).toBeTruthy();
+    expect(sparkline.querySelectorAll('[data-testid^="spark-bar-"]').length).toBe(2);
+    expect(screen.getByText("soc.slo.spark_failed_summary")).toBeTruthy();
+  });
+
+  it("shows empty state when no SLO data exists (cold start)", async () => {
+    adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] });
+
+    render(<SocRuntimeKpiPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText("soc.slo.spark_empty")).toBeTruthy();
+    });
   });
 });
 

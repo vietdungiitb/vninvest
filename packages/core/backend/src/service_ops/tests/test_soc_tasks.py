@@ -17,7 +17,7 @@ from market_data.vnbroker_adapter import (
 )
 from service_ops.matrix_coordinator import MatrixCoordinator, generate_cycle_id
 from service_ops.models import ScrapeMatrixCell
-from service_ops.models import ServiceConfig, ServiceHealth, ServiceRunLog
+from service_ops.models import ServiceConfig, ServiceHealth, ServiceHealthCheckLog, ServiceRunLog
 from service_ops.models import MarketDataParitySnapshot
 from service_ops.registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, ensure_service_registry, get_registered_service
 from service_ops.tasks import (
@@ -47,6 +47,103 @@ class ServiceOpsTasksTestCase(TestCase):
         self.assertGreater(result['checked_services'], 0)
         self.assertTrue(ServiceHealth.objects.exists())
         self.assertEqual(result['status_breakdown']['healthy'], ServiceHealth.objects.filter(status='healthy').count())
+
+    def test_health_check_all_services_logs_slo_history(self):
+        health_check_all_services.run()
+
+        from service_ops.models import ServiceHealthCheckLog
+
+        self.assertTrue(ServiceHealthCheckLog.objects.exists())
+        for health in ServiceHealth.objects.all():
+            self.assertIsNotNone(health.uptime_30d)
+            self.assertIsNotNone(health.slo_target)
+            log_count = ServiceHealthCheckLog.objects.filter(service=health.service).count()
+            self.assertGreaterEqual(log_count, 1)
+
+    def test_compute_service_slo_with_healthy_history(self):
+        from service_ops.models import ServiceHealthCheckLog
+        from service_ops.tasks import _compute_service_slo
+
+        service = get_registered_service('vnbroker_quote')
+        for _ in range(10):
+            ServiceHealthCheckLog.objects.create(service=service, status='healthy', response_ms=120)
+
+        slo = _compute_service_slo(service, 'healthy')
+
+        self.assertEqual(slo['slo_target'], 0.999)
+        self.assertIsNotNone(slo['uptime_30d'])
+        self.assertEqual(slo['uptime_30d'], 1.0)
+        self.assertIsNotNone(slo['burn_rate_1h'])
+        self.assertGreaterEqual(slo['error_budget_remaining'], 0.0)
+        self.assertLessEqual(slo['error_budget_remaining'], 1.0)
+
+    def test_compute_service_slo_excludes_maintenance(self):
+        from service_ops.models import ServiceHealthCheckLog
+        from service_ops.tasks import _compute_service_slo
+
+        service = get_registered_service('vnbroker_quote')
+        for _ in range(6):
+            ServiceHealthCheckLog.objects.create(service=service, status='healthy', response_ms=100)
+        for _ in range(4):
+            ServiceHealthCheckLog.objects.create(service=service, status='maintenance', response_ms=None)
+
+        slo = _compute_service_slo(service, 'healthy')
+
+        self.assertEqual(slo['uptime_30d'], 1.0)
+
+    def test_compute_service_slo_reflects_failures(self):
+        from service_ops.models import ServiceHealthCheckLog
+        from service_ops.tasks import _compute_service_slo
+
+        service = get_registered_service('vnbroker_quote')
+        for _ in range(8):
+            ServiceHealthCheckLog.objects.create(service=service, status='healthy', response_ms=100)
+        for _ in range(2):
+            ServiceHealthCheckLog.objects.create(service=service, status='unhealthy', response_ms=None)
+
+        slo = _compute_service_slo(service, 'unhealthy')
+
+        self.assertLess(slo['uptime_30d'], 1.0)
+        self.assertGreater(slo['burn_rate_1h'], 0.0)
+        self.assertLess(slo['error_budget_remaining'], 1.0)
+
+    def test_upsert_service_health_alert_creates_on_degradation(self):
+        from signal_intelligence.models import UnifiedAlert
+        from service_ops.tasks import _upsert_service_health_alert
+
+        result = _upsert_service_health_alert(
+            'vnbroker_quote', 'healthy', 'unhealthy',
+            {'avg_response_ms': None, 'probe_error': 'TIMEOUT'},
+        )
+
+        self.assertTrue(result['alert_emitted'])
+        self.assertTrue(UnifiedAlert.objects.filter(source_ref=result['alert_source_ref']).exists())
+        alert = UnifiedAlert.objects.get(alert_id=result['alert_id'])
+        self.assertEqual(alert.alert_type, UnifiedAlert.AlertTypeChoices.SYSTEM)
+        self.assertEqual(alert.symbol, 'vnbroker_quote')
+
+    def test_upsert_service_health_alert_dedup_on_cooldown(self):
+        from signal_intelligence.models import UnifiedAlert
+        from service_ops.tasks import _upsert_service_health_alert
+
+        first = _upsert_service_health_alert('vnbroker_quote', 'healthy', 'unhealthy', {})
+        second = _upsert_service_health_alert('vnbroker_quote', 'healthy', 'unhealthy', {})
+
+        self.assertTrue(first['alert_emitted'])
+        self.assertFalse(second['alert_emitted'])
+        self.assertEqual(second['reason'], 'cooldown')
+        self.assertEqual(UnifiedAlert.objects.filter(source_ref=first['alert_source_ref']).count(), 1)
+
+    def test_upsert_service_health_alert_clears_on_recovery(self):
+        from signal_intelligence.models import UnifiedAlert
+        from service_ops.tasks import _upsert_service_health_alert
+
+        _upsert_service_health_alert('vnbroker_quote', 'healthy', 'unhealthy', {})
+        result = _upsert_service_health_alert('vnbroker_quote', 'unhealthy', 'healthy', {})
+
+        self.assertFalse(result['alert_emitted'])
+        self.assertEqual(result['reason'], 'recovery')
+        self.assertFalse(UnifiedAlert.objects.filter(source_ref=result['alert_source_ref']).exists())
 
     @patch('service_ops.tasks.materialize_whale_feed_aggregate.run', return_value={'status': 'ok', 'created': 2})
     def test_whale_materialization_task_updates_run_log(self, whale_run):

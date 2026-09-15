@@ -164,6 +164,81 @@ export function SocDataOpsMonitorSection() {
   const [error, setError] = useState("");
   const [gapsPage, setGapsPage] = useState(1);
   const [matrixExpanded, setMatrixExpanded] = useState(false);
+  const [exportingAudits, setExportingAudits] = useState(false);
+  const [exportingRuns, setExportingRuns] = useState(false);
+
+  const triggerCsvDownload = (rows: Array<Record<string, unknown>>, columns: Array<{ key: string; label: string }>, filename: string) => {
+    const headers = columns.map((c) => `"${c.label.replace(/"/g, '""')}"`).join(",");
+    const lines = rows.map((row) =>
+      columns
+        .map((c) => {
+          const value = row[c.key];
+          if (value === null || value === undefined) return "";
+          const stringValue = typeof value === "object" ? JSON.stringify(value) : String(value);
+          return `"${stringValue.replace(/"/g, '""')}"`;
+        })
+        .join(","),
+    );
+    const csv = "\uFEFF" + [headers, ...lines].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportAudits = async () => {
+    setExportingAudits(true);
+    try {
+      const adapter = defaultCoreApiAdapter as unknown as {
+        exportSocConfigAudits: (params?: Record<string, unknown>) => Promise<Array<Record<string, unknown>>>;
+      };
+      const rows = await adapter.exportSocConfigAudits();
+      const dateStr = new Date().toISOString().split("T")[0];
+      triggerCsvDownload(rows, [
+        { key: "service_key", label: t("soc.export.col_service") },
+        { key: "action", label: t("soc.export.col_action") },
+        { key: "actor", label: t("soc.export.col_actor") },
+        { key: "actor_ip", label: t("soc.export.col_actor_ip") },
+        { key: "change_summary", label: t("soc.export.col_summary") },
+        { key: "timestamp", label: t("soc.export.col_timestamp") },
+        { key: "request_id", label: t("soc.export.col_request_id") },
+      ], `soc-config-audits-${dateStr}.csv`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("soc.export.error_failed"));
+    } finally {
+      setExportingAudits(false);
+    }
+  };
+
+  const handleExportRunLogs = async () => {
+    setExportingRuns(true);
+    try {
+      const adapter = defaultCoreApiAdapter as unknown as {
+        exportSocRunLogs: (params?: Record<string, unknown>) => Promise<Array<Record<string, unknown>>>;
+      };
+      const rows = await adapter.exportSocRunLogs();
+      const dateStr = new Date().toISOString().split("T")[0];
+      triggerCsvDownload(rows, [
+        { key: "service_key", label: t("soc.export.col_service") },
+        { key: "status", label: t("soc.export.col_status") },
+        { key: "started_at", label: t("soc.export.col_started_at") },
+        { key: "finished_at", label: t("soc.export.col_finished_at") },
+        { key: "duration_seconds", label: t("soc.export.col_duration") },
+        { key: "input_summary", label: t("soc.export.col_input") },
+        { key: "output_summary", label: t("soc.export.col_output") },
+        { key: "error_detail", label: t("soc.export.col_error") },
+      ], `soc-run-logs-${dateStr}.csv`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("soc.export.error_failed"));
+    } finally {
+      setExportingRuns(false);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -318,7 +393,29 @@ export function SocDataOpsMonitorSection() {
             "span",
             { },
             `${t("soc.dataops.observability_updated_at")}: ${new Date(observability.updated_at).toLocaleString()}`
+          ),
+        createElement(
+          "div",
+          { style: { display: "flex", gap: "0.5rem", marginTop: "0.5rem", flexWrap: "wrap" as const } },
+          createElement(
+            "button",
+            {
+              className: styles.actionBtn,
+              disabled: exportingAudits,
+              onClick: () => handleExportAudits(),
+            },
+            exportingAudits ? t("soc.export.exporting") : t("soc.export.export_config_audits")
+          ),
+          createElement(
+            "button",
+            {
+              className: styles.actionBtn,
+              disabled: exportingRuns,
+              onClick: () => handleExportRunLogs(),
+            },
+            exportingRuns ? t("soc.export.exporting") : t("soc.export.export_run_logs")
           )
+        )
       ),
       createElement("p", { }, t("soc.dataops.observability_description")),
 

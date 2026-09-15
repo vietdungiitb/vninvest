@@ -53,6 +53,7 @@ class ServiceHealthSerializer(serializers.ModelSerializer):
             'id', 'service', 'service_key', 'status',
             'last_check_at', 'last_success_at',
             'consecutive_failures', 'avg_response_ms', 'detail',
+            'slo_target', 'uptime_30d', 'burn_rate_1h', 'error_budget_remaining',
         ]
         read_only_fields = ['id', 'last_check_at']
 

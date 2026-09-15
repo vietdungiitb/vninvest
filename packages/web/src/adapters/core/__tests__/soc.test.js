@@ -35,6 +35,21 @@ describe("SOC adapter", () => {
       expect(coreGet).toHaveBeenCalledWith("/operator/soc/health-status/");
     });
 
+    it("getSocSloOverview calls coreGet", async () => {
+      await soc.getSocSloOverview();
+      expect(coreGet).toHaveBeenCalledWith("/operator/soc/overview/slo-overview/");
+    });
+
+    it("exportSocConfigAudits calls coreGet with params", async () => {
+      await soc.exportSocConfigAudits({ service_key: "vnbroker", limit: 100 });
+      expect(coreGet).toHaveBeenCalledWith("/operator/soc/overview/export/audits/?service_key=vnbroker&limit=100");
+    });
+
+    it("exportSocRunLogs calls coreGet with params", async () => {
+      await soc.exportSocRunLogs({ limit: 50 });
+      expect(coreGet).toHaveBeenCalledWith("/operator/soc/overview/export/run-logs/?limit=50");
+    });
+
     it("getSocServiceDetail calls coreGet with serviceKey", async () => {
       await soc.getSocServiceDetail("crawl-scheduler");
       expect(coreGet).toHaveBeenCalledWith("/operator/soc/services/crawl-scheduler/");

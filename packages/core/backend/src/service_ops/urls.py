@@ -18,6 +18,9 @@ from .views import dataops, matrix, overview, prefetch, screener, signals, symbo
 urlpatterns = [
   path('overview/', overview.OverviewSummaryView.as_view(), name='soc_overview_summary'),
   path('overview/health-status/', overview.HealthStatusView.as_view(), name='soc_health_status'),
+  path('overview/slo-overview/', overview.SloOverviewView.as_view(), name='soc_slo_overview'),
+  path('overview/export/audits/', overview.SocExportConfigAuditsView.as_view(), name='soc_export_config_audits'),
+  path('overview/export/run-logs/', overview.SocExportRunLogsView.as_view(), name='soc_export_run_logs'),
   path('overview/<str:service_key>/config/', overview.ServiceCurrentConfigView.as_view(), name='soc_service_config'),
   path('overview/<str:service_key>/config/reset/', overview.ServiceCurrentConfigView.as_view(), name='soc_service_config_reset'),
   path('overview/<str:service_key>/health/', overview.ServiceHealthView.as_view(), name='soc_service_health'),

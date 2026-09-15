@@ -16,9 +16,21 @@ interface ServiceItem {
   config_domain?: string;
 }
 
+interface SloRow {
+  service_key: string;
+  uptime_30d: number | null;
+  burn_rate_1h: number | null;
+  error_budget_remaining: number | null;
+  slo_target: number;
+}
+
 interface OverviewData {
   services: ServiceItem[];
   total?: number;
+}
+
+interface SloOverviewData {
+  services: SloRow[];
 }
 
 interface SocOverviewPanelProps {
@@ -95,6 +107,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [data, setData] = useState<OverviewData | null>(null);
+  const [sloMap, setSloMap] = useState<Record<string, SloRow>>({});
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -107,12 +120,23 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
   const fetchData = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     try {
-      const adapter = defaultCoreApiAdapter as unknown as {
+      const overviewAdapter = defaultCoreApiAdapter as unknown as {
         getSocOverviewSummary: () => Promise<OverviewData>;
       };
-      const result = await adapter.getSocOverviewSummary();
+      const sloAdapter = defaultCoreApiAdapter as unknown as {
+        getSocSloOverview: () => Promise<SloOverviewData>;
+      };
+      const [overviewResult, sloResult] = await Promise.all([
+        overviewAdapter.getSocOverviewSummary(),
+        sloAdapter.getSocSloOverview().catch(() => ({ services: [] })),
+      ]);
       if (!mountedRef.current) return;
-      setData(result);
+      setData(overviewResult);
+      const map: Record<string, SloRow> = {};
+      for (const row of sloResult.services ?? []) {
+        map[row.service_key] = row;
+      }
+      setSloMap(map);
       setError("");
       const hadBackoff = consecutiveErrorsRef.current >= 3;
       consecutiveErrorsRef.current = 0;
@@ -492,12 +516,42 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                   ),
                 ),
                 createElement(
-                  "span",
-                  {
-                    className: styles.statusBadge,
-                    style: { ...getStatusBadgeStyle(service.status) },
-                  },
-                  statusLabel,
+                  "div",
+                  { className: styles.overviewServiceBadges },
+                  createElement(
+                    "span",
+                    {
+                      className: styles.statusBadge,
+                      style: { ...getStatusBadgeStyle(service.status) },
+                    },
+                    statusLabel,
+                  ),
+                  (() => {
+                    const slo = sloMap[service.service_key];
+                    if (!slo || slo.uptime_30d == null) return null;
+                    const uptimePct = (slo.uptime_30d * 100).toFixed(2);
+                    const budgetPct = slo.error_budget_remaining != null
+                      ? `${(slo.error_budget_remaining * 100).toFixed(1)}%`
+                      : "—";
+                    const burnColor = (slo.burn_rate_1h ?? 0) > 1
+                      ? "var(--soc-c-f87171)"
+                      : (slo.burn_rate_1h ?? 0) > 0.5
+                        ? "var(--soc-c-fbbf24)"
+                        : "var(--soc-c-34d399)";
+                    return createElement(
+                      "div",
+                      { className: styles.sloBadges },
+                      createElement("span", { className: styles.sloBadge, title: t("soc.slo.uptime_30d_tooltip") },
+                        `${t("soc.slo.uptime_label")} ${uptimePct}%`,
+                      ),
+                      createElement("span", { className: styles.sloBadge, title: t("soc.slo.burn_rate_tooltip") },
+                        createElement("span", { style: { color: burnColor } }, `${t("soc.slo.burn_rate_label")} ${(slo.burn_rate_1h ?? 0).toFixed(2)}`),
+                      ),
+                      createElement("span", { className: styles.sloBadge, title: t("soc.slo.error_budget_tooltip") },
+                        `${t("soc.slo.budget_label")} ${budgetPct}`,
+                      ),
+                    );
+                  })(),
                 ),
               ),
 

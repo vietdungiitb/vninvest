@@ -1,7 +1,11 @@
 """SOC overview endpoints aligned with the documented summary and service contracts."""
 
+from datetime import timedelta
+
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, extend_schema
+from django.db.models import Count, Q
+from django.db.models.functions import TruncHour
 from django.utils import timezone
 from rest_framework import serializers, status
 from rest_framework.response import Response
@@ -12,6 +16,7 @@ from ..models import (
     ServiceConfig,
     ServiceDefinition,
     ServiceHealth,
+    ServiceHealthCheckLog,
     ServiceRunLog,
 )
 from ..ownership import get_ownership_matrix
@@ -957,3 +962,201 @@ class ChangeAuditListView(SOCBaseView):
         if page is not None:
             return self.get_paginated_response(ConfigChangeAuditSerializer(page, many=True).data)
         return Response(ConfigChangeAuditSerializer(queryset, many=True).data)
+
+
+class SloRowSerializer(serializers.Serializer):
+    service_key = serializers.CharField()
+    name = serializers.CharField()
+    domain = serializers.CharField()
+    status = serializers.CharField()
+    is_active = serializers.BooleanField()
+    slo_target = serializers.FloatField()
+    uptime_30d = serializers.FloatField(allow_null=True)
+    burn_rate_1h = serializers.FloatField(allow_null=True)
+    error_budget_remaining = serializers.FloatField(allow_null=True)
+    last_check_at = serializers.DateTimeField(allow_null=True)
+    recent_checks_24h = serializers.ListField(
+        child=serializers.DictField(),
+        required=False,
+    )
+
+
+class SloOverviewResponseSerializer(serializers.Serializer):
+    services = SloRowSerializer(many=True)
+    total = serializers.IntegerField()
+    generated_at = serializers.DateTimeField()
+
+
+class ConfigAuditExportRowSerializer(serializers.Serializer):
+    service_key = serializers.CharField()
+    action = serializers.CharField()
+    actor = serializers.CharField()
+    actor_ip = serializers.CharField(allow_null=True)
+    change_summary = serializers.CharField()
+    timestamp = serializers.DateTimeField()
+    request_id = serializers.CharField()
+
+
+class RunLogExportRowSerializer(serializers.Serializer):
+    service_key = serializers.CharField()
+    status = serializers.CharField()
+    started_at = serializers.DateTimeField(allow_null=True)
+    finished_at = serializers.DateTimeField(allow_null=True)
+    duration_seconds = serializers.FloatField(allow_null=True)
+    input_summary = serializers.JSONField()
+    output_summary = serializers.JSONField()
+    error_detail = serializers.CharField()
+
+
+@extend_schema(
+    summary='Lấy tổng quan SLO/SLI của SOC',
+    description='Trả về uptime 30 ngày, burn rate 1 giờ và error budget còn lại cho từng service.',
+    responses={
+        200: SloOverviewResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
+class SloOverviewView(SOCBaseView):
+    """GET SOC SLO/SLI overview across all services."""
+
+    def get(self, request):
+        services = ServiceDefinition.objects.order_by('service_key')
+        hour_cutoff = timezone.now() - timedelta(hours=24)
+        rows = []
+        for service in services:
+            health = ServiceHealth.objects.filter(service=service).first()
+            recent_buckets = (
+                ServiceHealthCheckLog.objects
+                .filter(service=service, checked_at__gte=hour_cutoff)
+                .exclude(status__in=['maintenance', 'unknown'])
+                .annotate(bucket=TruncHour('checked_at'))
+                .values('bucket')
+                .annotate(
+                    checks=Count('id'),
+                    failed=Count('id', filter=Q(status__in=['unhealthy', 'degraded'])),
+                )
+                .order_by('bucket')
+            )
+            rows.append({
+                'service_key': service.service_key,
+                'name': service.name,
+                'domain': service.domain,
+                'status': health.status if health else 'unknown',
+                'is_active': service.is_active,
+                'slo_target': health.slo_target if health else 0.999,
+                'uptime_30d': health.uptime_30d if health else None,
+                'burn_rate_1h': health.burn_rate_1h if health else None,
+                'error_budget_remaining': health.error_budget_remaining if health else None,
+                'last_check_at': health.last_check_at if health else None,
+                'recent_checks_24h': [
+                    {'hour': bucket['bucket'].isoformat(), 'checks': bucket['checks'], 'failed': bucket['failed']}
+                    for bucket in recent_buckets
+                ],
+            })
+        return Response({
+            'services': rows,
+            'total': len(rows),
+            'generated_at': timezone.now(),
+        })
+
+
+@extend_schema(
+    summary='Xuất danh sách config audit ra CSV',
+    description='Trả về tối đa 500 dòng ConfigChangeAudit mới nhất, hỗ trợ filter theo `service_key` (domain).',
+    parameters=[
+        OpenApiParameter(
+            name='service_key',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description='Filter theo service key / domain.',
+            required=False,
+        ),
+        OpenApiParameter(
+            name='limit',
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description='Số dòng tối đa (mặc định 500).',
+            required=False,
+        ),
+    ],
+    responses={
+        200: ConfigAuditExportRowSerializer(many=True),
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
+class SocExportConfigAuditsView(SOCBaseView):
+    """GET last N ConfigChangeAudit rows for CSV export."""
+
+    def get(self, request):
+        limit = min(int(request.query_params.get('limit', 500) or 500), 5000)
+        service_key = str(request.query_params.get('service_key', '') or '').strip()
+        queryset = ConfigChangeAudit.objects.select_related('service').order_by('-timestamp')
+        if service_key:
+            queryset = queryset.filter(service__service_key=service_key)
+        rows = queryset[:limit]
+        payload = [
+            {
+                'service_key': row.service.service_key,
+                'action': row.action,
+                'actor': row.actor,
+                'actor_ip': str(row.actor_ip) if row.actor_ip else None,
+                'change_summary': row.change_summary,
+                'timestamp': row.timestamp,
+                'request_id': row.request_id,
+            }
+            for row in rows
+        ]
+        return Response(payload)
+
+
+@extend_schema(
+    summary='Xuất danh sách run logs ra CSV',
+    description='Trả về tối đa 500 dòng ServiceRunLog mới nhất, hỗ trợ filter theo `service_key` (domain).',
+    parameters=[
+        OpenApiParameter(
+            name='service_key',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description='Filter theo service key / domain.',
+            required=False,
+        ),
+        OpenApiParameter(
+            name='limit',
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description='Số dòng tối đa (mặc định 500).',
+            required=False,
+        ),
+    ],
+    responses={
+        200: RunLogExportRowSerializer(many=True),
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
+class SocExportRunLogsView(SOCBaseView):
+    """GET last N ServiceRunLog rows for CSV export."""
+
+    def get(self, request):
+        limit = min(int(request.query_params.get('limit', 500) or 500), 5000)
+        service_key = str(request.query_params.get('service_key', '') or '').strip()
+        queryset = ServiceRunLog.objects.select_related('service').order_by('-started_at')
+        if service_key:
+            queryset = queryset.filter(service__service_key=service_key)
+        rows = queryset[:limit]
+        payload = [
+            {
+                'service_key': row.service.service_key,
+                'status': row.status,
+                'started_at': row.started_at,
+                'finished_at': row.finished_at,
+                'duration_seconds': row.duration_seconds,
+                'input_summary': row.input_summary,
+                'output_summary': row.output_summary,
+                'error_detail': row.error_detail,
+            }
+            for row in rows
+        ]
+        return Response(payload)

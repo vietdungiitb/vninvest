@@ -5,6 +5,35 @@
 
 ---
 
+## Entry 88: Phase 3 SOC Commercial HOÀN TẤT — SLO/SLI + Alerting + Export CSV + CSS split + Sparkline 4c
+
+- **Date**: 2026-09-15
+- **Scope**: Đóng toàn bộ Phase 3 theo `docs/IMPLEMENTATION_PLAN_PHASE3_SOC_COMMERCIAL_20260916.md` (SLO/SLI + Alerting + Export + CSS split) — gồm tiếp nối onboarding từ audit `docs/AUDIT_DANG_DO_VA_PHASE3_CONTINUATION_20260915.md` (phát hiện chỉ còn Step 4c thiếu).
+- **Files & fixes**:
+  - **Step 1 CSS split** (`soc.module.css` 2405 dòng → 3 file): `soc.tokens.css` **MỚI** (43 dòng — `:root` tokens `--soc-*`), `soc.components.css` **MỚI** (2715 dòng — toàn bộ component rules), `soc.module.css` còn 3 dòng `@import` re-export (mọi import cũ giữ nguyên). Verified: build đúng, class băm `_tabBar_x27r0_1` + token `--soc-c-34d399` resolve.
+  - **Step 2 SLO Model**: `service_ops/models.py:126-129` (`slo_target`/`uptime_30d`/`burn_rate_1h`/`error_budget_remaining`) + `models.py:147-172` `ServiceHealthCheckLog` (FK service, status, response_ms, checked_at, indexes) + migration **MỚI** `0012_add_slo_fields_and_health_check_log.py`. `makemigrations --check` sạch.
+  - **Step 3 SLO Computation**: `service_ops/tasks.py:362` `_compute_service_slo()` (uptime 30d exclude `maintenance`, burn-rate 1h + sample-rate normalization, error budget) + hook vào `health_check_all_services` cả 2 nhánh (`tasks.py:493,530`) + `overview.py:1011` `SloOverviewView` + URL `overview/slo-overview/`. **Deviation C1/C2**: compute tại probe, view đọc cache (ghi chú plan C1-C3).
+  - **Step 4 SLO Frontend**: `soc.js:46` `getSocSloOverview()`; `SocOverviewPanel.tsx:516-552` SLO badges (uptime/burn-rate/budget, màu theo burn rate, `.sloBadges`); **Step 4c MỚI trong entry này**: `SocRuntimeKpiPanel.tsx` viết lại từ stub "coming soon" → render per-service **burn-rate sparkline 24h** (fetch `getSocSloOverview`, bar ratio = failed/checks theo giờ, màu green/yellow/red, loading/error+Retry/empty cold-start, `data-testid=spark-bar-*`); BE `overview.py:1014-1045` aggregation `recent_checks_24h` (TruncHour + Count, exclude `maintenance/unknown`, `failed = unhealthy|degraded`); CSS `.sparkRow/.sparkMeta/.sparkName/.kpiBadge/.sparkBarTrack/.sparkBar/...` (soc.components.css:2717+); i18n `soc.slo.spark_*` vi/en.
+  - **Step 5 Alerting**: `tasks.py:422-474` `_upsert_service_health_alert()` (generic SYSTEM alert trên transition `healthy→degraded/unhealthy`, severity MEDIUM/HIGH theo status, dedup `source_ref` + `SOC_ALERT_COOLDOWN_HOURS` default 4h, xoá khi recovery) + hook probe + `detail['last_alert']`; settings `SOC_ALERT_COOLDOWN_HOURS` + `SOC_SLO_TARGET` (`settings.py:197-200`).
+  - **Step 6 Export CSV**: `overview.py:1071` `SocExportConfigAuditsView` + `overview.py:1144` `SocExportRunLogsView` (limit ≤5000, filter `service_key`) + URLs `overview/export/audits/` + `overview/export/run-logs/` + `soc.js:50-64` `exportSocConfigAudits/exportSocRunLogs` + FE buttons trong `SocDataOpsMonitorSection.tsx:167-236` (CSV blob client-side BOM UTF-8, col headers lấy i18n) + i18n `soc.export.*`.
+- **Tests**:
+  - BE `service_ops`: `test_slo_overview*` (3 — aggregation checks/failed, exclude maintenance, empty) + `test_export_*` (4) + `test_soc_tasks.py` SLO compute/alert (7). `python manage.py test test_soc_api_overview.OverviewSloTestCase + OverviewExportTestCase` → **7/7 OK**.
+  - FE: `soc.test.js` +3 (getSocSloOverview, export params) → **83/83**; `soc-p2.component.test.tsx` +2 (RuntimeKpi sparkline data + cold-start) → **8/8**.
+- **Validation (thật)**:
+  - `npx tsc --noEmit` → 0
+  - `npm run build` → 28.21s PASS
+  - `npm run lint` → 0 errors (3547 warnings pre-existing)
+  - `npm test` (jest) → 222 passed; **1 suite FAIL pre-existing** `AIAdvisorAlertPanel.i18n.test.js` (dashboard refactor, Entry 87 residual — không liên quan)
+  - `npx vitest run` → 30 files / 130 passed
+  - BE `service_ops` → 290 tests (15F + 2E + 1 skip) — **cùng đúng 17 lỗi tại HEAD sạch** (reproduce bằng git worktree `0c1d0044`, bằng chứng trong continuation doc §5) → pre-existing, không do Phase 3; 11+3 test mới Phase 3 đều pass
+  - `makemigrations --check` → No changes detected
+- **Docs**: `docs/AUDIT_DANG_DO_VA_PHASE3_CONTINUATION_20260915.md` **MỚI** (audit dang dở + kế hoạch A/B/C); `docs/IMPLEMENTATION_PLAN_PHASE3_SOC_COMMERCIAL_20260916.md` (plan).
+- **Status**: **Phase 3 SOC Commercial HOÀN TẤT (6/6 steps)** — SLO/SLI badges + burn-rate sparkline + auto alerting + export CSV + CSS split. Mục tiêu 92%→98% reachable.
+- **Next**: COMPAT-001 (whale legacy→native, hạn **2026-10-15**) — cutover `market_serving/urls.py` + FE adapter switch. Sau đó COMPAT-002 sunset. Backlog: 17 test BE pre-existing (F-3 openapi `cookieAuth` assert `test_soc_api_domain.py:694`, F-4 scheduler timing/vnbroker bridge), Screener P3.
+- **Residual**: 17 lỗi BE pre-existing (không thuộc Phase 3); `AIAdvisorAlertPanel.i18n.test.js` FAIL pre-existing; `i18n:scan` broken pre-existing.
+
+---
+
 ## Entry 87: Phase 2 P2-A1/A2/A3 + R-NEW-3 + P2-B COC findings (COC-03→24,31-35,44-47,60-61)
 
 - **Date**: 2026-09-14

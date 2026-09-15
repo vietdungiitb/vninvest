@@ -1,0 +1,42 @@
+/* SOC Operations Center — Design Tokens */
+/* ─── SOC Operations Center Design Tokens ─────────────────────── */
+
+/* Color tokens (theme audit follow-up): value-preserving. */
+:root {
+  --soc-rgb-5078a8: 80 120 168;
+  --soc-c-94a3b8: #94a3b8;
+  --soc-c-f1f5f9: #f1f5f9;
+  --soc-rgb-1e293b: 30 41 59;
+  --soc-c-22d3ee: #22d3ee;
+  --soc-rgb-00b4d8: 0 180 216;
+  --soc-rgb-081734: 8 23 52;
+  --soc-rgb-0f172a: 15 23 42;
+  --soc-rgb-020b23: 2 11 35;
+  --soc-c-67e8f9: #67e8f9;
+  --soc-rgb-64748b: 100 116 139;
+  --soc-c-cbd5e1: #cbd5e1;
+  --soc-rgb-94a3b8: 148 163 184;
+  --soc-rgb-ef4444: 239 68 68;
+  --soc-c-f87171: #f87171;
+  --soc-rgb-10b981: 16 185 129;
+  --soc-c-34d399: #34d399;
+  --soc-rgb-34d399: 52 211 153;
+  --soc-c-06b6d4: #06b6d4;
+  --soc-rgb-f59e0b: 245 158 11;
+  --soc-c-fbbf24: #fbbf24;
+  --soc-c-00b4d8: #00b4d8;
+  --soc-c-48cae4: #48cae4;
+  --soc-c-10b981: #10b981;
+  --soc-c-f59e0b: #f59e0b;
+  --soc-c-ef4444: #ef4444;
+  --soc-rgb-000000: 0 0 0;
+  --soc-c-0b1528: #0b1528;
+  --soc-rgb-fbbf24: 251 191 36;
+  --soc-rgb-f97316: 249 115 22;
+  --soc-rgb-2dd4bf: 45 212 191;
+  --soc-c-5eead4: #5eead4;
+  --soc-rgb-ffbf4d: 255 191 77;
+  --soc-rgb-22d3ee: 34 211 238;
+  --soc-c-60a5fa: #60a5fa;
+  --soc-c-ffffff: #ffffff;
+}

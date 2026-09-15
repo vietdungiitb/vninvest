@@ -1,11 +1,21 @@
 """Focused overview contract tests for the spec-aligned SOC overview endpoints."""
 
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from service_ops.models import ConfigChangeAudit, ServiceConfig, ServiceDefinition, ServiceHealth, ServiceRunLog
+from service_ops.models import (
+    ConfigChangeAudit,
+    ServiceConfig,
+    ServiceDefinition,
+    ServiceHealth,
+    ServiceHealthCheckLog,
+    ServiceRunLog,
+)
 from service_ops.registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, ensure_service_registry, get_registered_service
 
 User = get_user_model()
@@ -425,3 +435,142 @@ class OverviewAdminActionTestCase(OverviewApiBaseTestCase):
 
         # Total count should include inactive
         self.assertGreaterEqual(payload['summary']['total'], 2)
+
+
+class OverviewSloTestCase(OverviewApiBaseTestCase):
+    def setUp(self):
+        super().setUp()
+        self.now = timezone.now()
+
+    def test_slo_overview_returns_recent_checks_24h_aggregation(self):
+        ServiceHealthCheckLog.objects.bulk_create([
+            ServiceHealthCheckLog(service=self.vnbroker_service, status='healthy', response_ms=120)
+            for _ in range(2)
+        ])
+        ServiceHealthCheckLog.objects.create(
+            service=self.vnbroker_service,
+            status='unhealthy',
+            response_ms=None,
+        )
+
+        response = self.client.get('/api/soc/overview/slo-overview/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        row = next(r for r in payload['services'] if r['service_key'] == self.vnbroker_service.service_key)
+        self.assertIn('recent_checks_24h', row)
+        self.assertGreaterEqual(len(row['recent_checks_24h']), 1)
+
+        bucket = row['recent_checks_24h'][0]
+        self.assertIn('hour', bucket)
+        self.assertIn('checks', bucket)
+        self.assertIn('failed', bucket)
+        self.assertEqual(sum(b['failed'] for b in row['recent_checks_24h']), 1)
+        self.assertEqual(sum(b['checks'] for b in row['recent_checks_24h']), 3)
+
+    def test_slo_overview_excludes_maintenance_from_recent_checks(self):
+        ServiceHealthCheckLog.objects.create(service=self.vnbroker_service, status='healthy', response_ms=100)
+        ServiceHealthCheckLog.objects.create(service=self.vnbroker_service, status='maintenance', response_ms=None)
+
+        response = self.client.get('/api/soc/overview/slo-overview/')
+
+        payload = response.json()
+        row = next(r for r in payload['services'] if r['service_key'] == self.vnbroker_service.service_key)
+        self.assertGreaterEqual(len(row['recent_checks_24h']), 1)
+        self.assertEqual(
+            sum(b['checks'] for b in row['recent_checks_24h']),
+            1,
+        )
+
+    def test_slo_overview_empty_recent_checks_when_no_logs(self):
+        response = self.client.get('/api/soc/overview/slo-overview/')
+
+        payload = response.json()
+        row = next(r for r in payload['services'] if r['service_key'] == self.vnbroker_service.service_key)
+        self.assertEqual(row['recent_checks_24h'], [])
+
+
+class OverviewExportTestCase(OverviewApiBaseTestCase):
+    def setUp(self):
+        super().setUp()
+        for idx in range(3):
+            ConfigChangeAudit.objects.create(
+                service=self.vnbroker_service,
+                action='apply',
+                actor=self.user.username,
+                before_snapshot={'timeout': {'connect': 5.0}},
+                after_snapshot={'timeout': {'connect': 8.0}},
+                change_summary=f'export audit seed {idx}',
+                request_id=f'req-export-audit-{idx}',
+            )
+            ServiceRunLog.objects.create(
+                service=self.vnbroker_service,
+                status='succeeded',
+                input_summary={'datasets': [f'ds-{idx}']},
+                output_summary={'rows': idx},
+                duration_seconds=1.5 + idx,
+            )
+
+    def test_export_config_audits_returns_last_audits(self):
+        response = self.client.get('/api/soc/overview/export/audits/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertIsInstance(payload, list)
+        self.assertGreaterEqual(len(payload), 3)
+        serialized = payload[0]
+        self.assertIn('service_key', serialized)
+        self.assertIn('action', serialized)
+        self.assertIn('actor', serialized)
+        self.assertIn('change_summary', serialized)
+        self.assertIn('timestamp', serialized)
+        self.assertIn('request_id', serialized)
+        self.assertEqual(serialized['service_key'], self.vnbroker_service.service_key)
+
+    def test_export_config_audits_filters_by_service_key(self):
+        other = ServiceDefinition.objects.create(
+            service_key='export_other_service',
+            name='Export Other Service',
+            domain='platform',
+        )
+        ConfigChangeAudit.objects.create(
+            service=other,
+            action='apply',
+            actor='someone',
+            change_summary='other service audit',
+            request_id='req-export-other',
+        )
+
+        self.assertEqual(
+            ConfigChangeAudit.objects.filter(service=self.vnbroker_service).count(), 3
+        )
+        response = self.client.get(
+            f'/api/soc/overview/export/audits/?service_key={other.service_key}'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(len(payload), 1)
+        self.assertEqual(payload[0]['service_key'], other.service_key)
+
+    def test_export_run_logs_returns_last_run_logs(self):
+        response = self.client.get('/api/soc/overview/export/run-logs/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertIsInstance(payload, list)
+        self.assertGreaterEqual(len(payload), 3)
+        serialized = payload[0]
+        self.assertIn('service_key', serialized)
+        self.assertIn('status', serialized)
+        self.assertIn('started_at', serialized)
+        self.assertIn('finished_at', serialized)
+        self.assertIn('duration_seconds', serialized)
+
+    def test_export_run_logs_respects_limit(self):
+        response = self.client.get('/api/soc/overview/export/run-logs/?limit=2')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertIsInstance(payload, list)
+        self.assertEqual(len(payload), 2)

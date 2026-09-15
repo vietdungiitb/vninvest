@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 from time import perf_counter
 
 from celery import current_app, shared_task
@@ -29,7 +30,8 @@ from .dataops_market_data import (
     select_market_data_queue_tier_symbols,
 )
 from .matrix_coordinator import MatrixCoordinator, normalize_provider_list, normalize_symbol_group_ids
-from .models import ScrapeMatrix, ServiceConfig, ServiceDefinition, ServiceHealth, ServiceRunLog
+from .models import ScrapeMatrix, ServiceConfig, ServiceDefinition, ServiceHealth, ServiceHealthCheckLog, ServiceRunLog
+from signal_intelligence.models import UnifiedAlert
 from .registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, ensure_service_registry, get_registered_service
 
 
@@ -357,6 +359,122 @@ def _fetch_symbols_from_provider(symbols: list[str], provider: str) -> dict:
     }
 
 
+def _compute_service_slo(service: ServiceDefinition, current_status: str) -> dict:
+    """Compute SLO/SLI window stats from ServiceHealthCheckLog history.
+
+    Returns:
+        {
+            'slo_target': float,              # default 0.999 (99.9%)
+            'uptime_30d': float | None,       # success ratio over last 30 days
+            'burn_rate_1h': float | None,     # failures per hour vs allowed budget per hour
+            'error_budget_remaining': float | None,  # 1 - (failures / allowed)
+        }
+    """
+    try:
+        from django.conf import settings as _settings
+        slo_target = float(getattr(_settings, 'SOC_SLO_TARGET', 0.999) or 0.999)
+    except Exception:
+        slo_target = 0.999
+
+    now = timezone.now()
+    window_days = 30
+    cutoff = now - timedelta(days=window_days)
+
+    # 30-day window
+    uptime_30d = None
+    logs_30d = (ServiceHealthCheckLog.objects
+                .filter(service=service, checked_at__gte=cutoff)
+                .order_by('checked_at'))
+    total_30d = logs_30d.count()
+    if total_30d:
+        ok_30d = logs_30d.exclude(status__in=['healthy', 'degraded']).count()
+        healthy_count = logs_30d.filter(status='healthy').count()
+        # degraded counts toward SLI success (service responsive); healthy strictly
+        success_30d = healthy_count
+        total_probing = total_30d - logs_30d.filter(status='maintenance').count()
+        if total_probing:
+            uptime_30d = round(success_30d / total_probing, 6)
+
+    # 1-hour burn rate: budget consumed by failures in last hour vs allowed per hour
+    burn_rate_1h = None
+    error_budget_remaining = None
+    hour_cutoff = now - timedelta(hours=1)
+    logs_1h = (ServiceHealthCheckLog.objects
+               .filter(service=service, checked_at__gte=hour_cutoff)
+               .exclude(status__in=['maintenance', 'unknown']))
+    total_1h = logs_1h.count()
+    if total_1h:
+        failed_1h = logs_1h.exclude(status='healthy').count()
+        allowed_failures_per_hour = max(1 - slo_target, 1e-9)
+        # normalize by observed sample rate so sparse checks don't inflate
+        observed_per_hour = logs_30d.count() / max(window_days * 24, 1.0) if logs_30d.count() else 1.0
+        sample_rate = max(observed_per_hour, 1.0)
+        expected_failures_per_hour = allowed_failures_per_hour * sample_rate
+        burn_rate_1h = round(failed_1h / max(expected_failures_per_hour, 1e-9), 6)
+        error_budget_remaining = round(1.0 - (failed_1h / max(total_1h, 1)), 6)
+
+    return {
+        'slo_target': slo_target,
+        'uptime_30d': uptime_30d,
+        'burn_rate_1h': burn_rate_1h,
+        'error_budget_remaining': error_budget_remaining,
+    }
+
+
+def _upsert_service_health_alert(service_key: str, old_status: str, new_status: str, health_data: dict) -> dict:
+    """Create a UnifiedAlert on status degradation; dedup via source_ref + SOC_ALERT_COOLDOWN_HOURS."""
+    from django.conf import settings as _settings
+
+    now_value = timezone.now()
+    cooldown_hours = int(getattr(_settings, 'SOC_ALERT_COOLDOWN_HOURS', 4) or 4)
+    source_ref = f"service_health:{service_key}:{now_value.date().isoformat()}"
+
+    is_degraded = new_status in ('unhealthy', 'degraded') and old_status == 'healthy'
+    is_recovery = old_status in ('unhealthy', 'degraded') and new_status == 'healthy'
+
+    if is_recovery:
+        UnifiedAlert.objects.filter(source_ref=source_ref, alert_type=UnifiedAlert.AlertTypeChoices.SYSTEM).delete()
+        return {'alert_emitted': False, 'alert_source_ref': source_ref, 'reason': 'recovery'}
+
+    if not is_degraded:
+        return {'alert_emitted': False, 'alert_source_ref': source_ref, 'reason': 'no_transition'}
+
+    existing = UnifiedAlert.objects.filter(
+        source_ref=source_ref,
+        alert_type=UnifiedAlert.AlertTypeChoices.SYSTEM,
+        triggered_at__gte=now_value - timedelta(hours=cooldown_hours),
+    ).first()
+    if existing:
+        return {'alert_emitted': False, 'alert_source_ref': source_ref, 'reason': 'cooldown'}
+
+    severity = UnifiedAlert.SeverityChoices.HIGH if new_status == 'unhealthy' else UnifiedAlert.SeverityChoices.MEDIUM
+    confidence = 0.95 if new_status == 'unhealthy' else 0.85
+    body = f"Dịch vụ {service_key} chuyển từ '{old_status}' sang '{new_status}'."
+
+    alert = UnifiedAlert.objects.create(
+        alert_type=UnifiedAlert.AlertTypeChoices.SYSTEM,
+        symbol=service_key,
+        severity=severity,
+        confidence=confidence,
+        freshness_state='stale',
+        title=f"Dịch vụ {service_key} suy giảm sức khỏe",
+        body=body,
+        value=None,
+        direction=UnifiedAlert.DirectionChoices.NEUTRAL,
+        session_date=now_value.date(),
+        triggered_at=now_value,
+        source_ref=source_ref,
+        metadata={
+            'source': 'service_ops.health_check_all_services',
+            'old_status': old_status,
+            'new_status': new_status,
+            'avg_response_ms': health_data.get('avg_response_ms'),
+        },
+        evidence=health_data,
+    )
+    return {'alert_emitted': True, 'alert_source_ref': source_ref, 'alert_id': str(alert.alert_id)}
+
+
 @shared_task(bind=True, name='service_ops.health_check_all_services')
 def health_check_all_services(self):
     ensure_service_registry()
@@ -372,11 +490,31 @@ def health_check_all_services(self):
 
     for service in ServiceDefinition.objects.filter(is_active=True).order_by('service_key'):
         existing_health = ServiceHealth.objects.filter(service=service).first()
+        old_status = existing_health.status if existing_health else 'unknown'
         try:
             probe_result = _probe_service_health(service)
             status_value = probe_result.get('status', 'unknown')
             consecutive_failures = 0 if status_value == 'healthy' else ((existing_health.consecutive_failures if existing_health else 0) + 1)
             last_success_at = timezone.now() if status_value == 'healthy' else (existing_health.last_success_at if existing_health else None)
+            ServiceHealthCheckLog.objects.create(
+                service=service,
+                status=status_value,
+                response_ms=probe_result.get('response_ms'),
+            )
+            slo = _compute_service_slo(service, status_value)
+            alert_result = _upsert_service_health_alert(
+                service.service_key, old_status, status_value,
+                {'avg_response_ms': probe_result.get('response_ms'), 'probe_detail': probe_result.get('detail', {})},
+            )
+            detail_payload = dict(probe_result.get('detail', {}))
+            if alert_result.get('alert_id'):
+                detail_payload['last_alert'] = {
+                    'id': alert_result['alert_id'],
+                    'source_ref': alert_result.get('alert_source_ref', ''),
+                    'old_status': old_status,
+                    'new_status': status_value,
+                    'triggered_at': timezone.now().isoformat(),
+                }
             ServiceHealth.objects.update_or_create(
                 service=service,
                 defaults={
@@ -384,13 +522,40 @@ def health_check_all_services(self):
                     'last_success_at': last_success_at,
                     'consecutive_failures': consecutive_failures,
                     'avg_response_ms': probe_result.get('response_ms'),
-                    'detail': probe_result.get('detail', {}),
+                    'detail': detail_payload,
+                    'slo_target': slo.get('slo_target'),
+                    'uptime_30d': slo.get('uptime_30d'),
+                    'burn_rate_1h': slo.get('burn_rate_1h'),
+                    'error_budget_remaining': slo.get('error_budget_remaining'),
                 },
             )
             status_breakdown[status_value] = status_breakdown.get(status_value, 0) + 1
         except Exception as exc:
             logger.exception('health_check_all_services: probe failed for %s', service.service_key)
             failures = (existing_health.consecutive_failures if existing_health else 0) + 1
+            ServiceHealthCheckLog.objects.create(
+                service=service,
+                status='unhealthy',
+                response_ms=None,
+            )
+            slo = _compute_service_slo(service, 'unhealthy')
+            alert_result = _upsert_service_health_alert(
+                service.service_key, old_status, 'unhealthy',
+                {'avg_response_ms': None, 'probe_error': str(exc)},
+            )
+            detail_payload = {
+                'source': 'service_ops.tasks',
+                'service_key': service.service_key,
+                'error': str(exc),
+            }
+            if alert_result.get('alert_id'):
+                detail_payload['last_alert'] = {
+                    'id': alert_result['alert_id'],
+                    'source_ref': alert_result.get('alert_source_ref', ''),
+                    'old_status': old_status,
+                    'new_status': 'unhealthy',
+                    'triggered_at': timezone.now().isoformat(),
+                }
             ServiceHealth.objects.update_or_create(
                 service=service,
                 defaults={
@@ -398,11 +563,11 @@ def health_check_all_services(self):
                     'last_success_at': existing_health.last_success_at if existing_health else None,
                     'consecutive_failures': failures,
                     'avg_response_ms': None,
-                    'detail': {
-                        'source': 'service_ops.tasks',
-                        'service_key': service.service_key,
-                        'error': str(exc),
-                    },
+                    'detail': detail_payload,
+                    'slo_target': slo.get('slo_target'),
+                    'uptime_30d': slo.get('uptime_30d'),
+                    'burn_rate_1h': slo.get('burn_rate_1h'),
+                    'error_budget_remaining': slo.get('error_budget_remaining'),
                 },
             )
             status_breakdown['unhealthy'] += 1
