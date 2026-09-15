@@ -279,6 +279,30 @@ describe("SocOverviewPanel — UI polish W-U5 domain pills + row labels", () => 
   });
 });
 
+describe("SocOverviewPanel — UI polish uniform card zones", () => {
+  beforeEach(() => {
+    adapterMocks.getSocOverviewSummary.mockReset();
+    adapterMocks.getSocSloOverview.mockReset();
+  });
+  afterEach(() => cleanup());
+
+  it("every card has its own full-width SLO zone (placeholder when no SLO data)", async () => {
+    adapterMocks.getSocOverviewSummary.mockResolvedValue({ services: baseServices } as any);
+    adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] });
+    const { container } = render(<SocOverviewPanel />);
+    await waitFor(() => expect(screen.getByText("Maintenance SVC")).toBeTruthy());
+    const cards = container.querySelectorAll('[class*="overviewServiceCard"]');
+    expect(cards.length).toBe(6);
+    cards.forEach((card) => {
+      // SLO zone must be a direct child of the card (not nested in header)
+      const zones = Array.from(card.children).filter((el) =>
+        (el.getAttribute("class") || "").includes("sloBadges"),
+      );
+      expect(zones.length).toBe(1);
+    });
+  });
+});
+
 describe("SocOverviewPanel — PR-2 W11 burn per budget", () => {
   beforeEach(() => {
     adapterMocks.getSocOverviewSummary.mockReset();

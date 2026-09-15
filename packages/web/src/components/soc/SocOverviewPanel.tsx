@@ -765,7 +765,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                 role: "listitem",
               },
 
-              /* Header row: name + badge */
+              /* Header row: name + status badge (fixed height zones) */
               createElement(
                 "div",
                 { className: styles.overviewServiceHeader },
@@ -790,38 +790,40 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                     },
                     statusLabel,
                   ),
-                  (() => {
-                    if (!service.is_active) return null;
-                    const slo = sloMap[service.service_key];
-                    if (!slo || slo.uptime_30d == null) return null;
-                    const uptimePct = (slo.uptime_30d * 100).toFixed(2);
-                    const budgetPct = slo.error_budget_remaining != null
-                      ? `${(slo.error_budget_remaining * 100).toFixed(1)}%`
-                      : "—";
-                    const budget = slo.error_budget_remaining;
-                    const burnColor = budget == null
-                      ? "var(--soc-c-94a3b8)"
-                      : budget > 0.5
-                        ? "var(--soc-c-34d399)"
-                        : budget > 0.2
-                          ? "var(--soc-c-fbbf24)"
-                          : "var(--soc-c-f87171)";
-                    return createElement(
-                      "div",
-                      { className: styles.sloBadges },
-                      createElement("span", { className: styles.sloBadge, title: t("soc.slo.uptime_30d_tooltip") },
-                        `${t("soc.slo.uptime_label")} ${uptimePct}%`,
-                      ),
-                      createElement("span", { className: styles.sloBadge, title: t("soc.slo.burn_rate_tooltip") },
-                        createElement("span", { style: { color: burnColor } }, `${t("soc.slo.burn_rate_label")} ${(slo.burn_rate_1h ?? 0).toFixed(2)}`),
-                      ),
-                      createElement("span", { className: styles.sloBadge, title: t("soc.slo.error_budget_tooltip") },
-                        `${t("soc.slo.budget_label")} ${budgetPct}`,
-                      ),
-                    );
-                  })(),
                 ),
               ),
+
+              /* SLO row: full-width, fixed 2-row height so all cards align */
+              (() => {
+                if (!service.is_active) return createElement("div", { className: styles.sloBadges });
+                const slo = sloMap[service.service_key];
+                if (!slo || slo.uptime_30d == null) return createElement("div", { className: styles.sloBadges });
+                const uptimePct = (slo.uptime_30d * 100).toFixed(2);
+                const budgetPct = slo.error_budget_remaining != null
+                  ? `${(slo.error_budget_remaining * 100).toFixed(1)}%`
+                  : "—";
+                const budget = slo.error_budget_remaining;
+                const burnColor = budget == null
+                  ? "var(--soc-c-94a3b8)"
+                  : budget > 0.5
+                    ? "var(--soc-c-34d399)"
+                    : budget > 0.2
+                      ? "var(--soc-c-fbbf24)"
+                      : "var(--soc-c-f87171)";
+                return createElement(
+                  "div",
+                  { className: styles.sloBadges },
+                  createElement("span", { className: styles.sloBadge, title: t("soc.slo.uptime_30d_tooltip") },
+                    `${t("soc.slo.uptime_label")} ${uptimePct}%`,
+                  ),
+                  createElement("span", { className: styles.sloBadge, title: t("soc.slo.burn_rate_tooltip") },
+                    createElement("span", { style: { color: burnColor } }, `${t("soc.slo.burn_rate_label")} ${(slo.burn_rate_1h ?? 0).toFixed(2)}`),
+                  ),
+                  createElement("span", { className: styles.sloBadge, title: t("soc.slo.error_budget_tooltip") },
+                    `${t("soc.slo.budget_label")} ${budgetPct}`,
+                  ),
+                );
+              })(),
 
               /* Stats row: latency + last check */
               createElement(

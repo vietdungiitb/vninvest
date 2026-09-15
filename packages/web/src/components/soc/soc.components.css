@@ -465,8 +465,10 @@
   flex-direction: row;
   flex-wrap: wrap;
   gap: 0.25rem;
-  align-items: center;
-  justify-content: flex-end;
+  align-items: flex-start;
+  align-content: flex-start;
+  justify-content: flex-start;
+  min-height: 48px;
 }
 
 .sloBadge {
@@ -500,6 +502,9 @@
   color: var(--text-muted, var(--soc-c-94a3b8));
   font-family: "Menlo", "Consolas", monospace;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .overviewServiceStats {
@@ -531,6 +536,8 @@
   display: flex;
   gap: 0.4rem;
   flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 0.75rem;
 }
 
 /* Overview Skeleton */
