@@ -27,7 +27,7 @@ urlpatterns = [
     path('realtime/price-board/<str:symbol>/', RealtimePriceBoardView.as_view(), name='realtime-price-board'),
     path('realtime/breadth/<str:symbol>/', RealtimeBreadthView.as_view(), name='realtime-breadth'),
     path('realtime/whale-feed/<str:symbol>/', RealtimeWhaleFeedView.as_view(), name='realtime-whale-feed'),
-    # COMPAT-001: whale-feed-aggregate cutover từ legacy_views → native_views
+    # COMPAT-001/002: whale-feed-aggregate (native_views, contract từ core signal tables)
     path('realtime/whale-feed-aggregate/<str:symbol>/', RealtimeWhaleFeedAggregateView.as_view(), name='realtime-whale-feed-aggregate'),
     path('realtime/symbol-investigation/<str:symbol>/', RealtimeSymbolInvestigationView.as_view(), name='realtime-symbol-investigation'),
     path('realtime/rvol/<str:symbol>/', RealtimeRvolView.as_view(), name='realtime-rvol'),

@@ -25,6 +25,11 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - **React 19 peer-dep TDZ fix**: `vninvestcharts-widget` ^1.2.5 declares `peerDependencies: react ^19.0.0` nhưng app là React 18.3.1. Static import trong `VNStockChartPanel.js` gây TDZ `Cannot access 'N' before initialization` lúc load `StockDetailPage`. Quyết định ban đầu: lazy-load widget qua dynamic `import()` trong `useEffect` (Option B) để giữ React 18 — vì sợ recharts v2 peer-dep không hỗ trợ React 19. Tuy nhiên, `recharts@2.15.4` đã chính thức hỗ trợ `^19.0.0`. **Đã upgrade lên React 19**: `react@19.2.7`, `react-dom@19.2.7`, `@types/react@19.2.17`, `@types/react-dom@19.2.3`. `react-test-renderer` removed, `AuthPages.test.js` rewritten to RTL. Widget vẫn lazy-load as async chunk. tsc + build pass.
 - **SOC DataOps gap analysis — ALL 20 gaps CLOSED**: P0 #1–5, P1 #6–11, P2 #12–16, P3 #17–20 đều đã implement (Inventory/Operations/Monitor/Config sections). `docs/GAP_ANALYSIS_DATAOPS_LEGACY_VS_SAAS_NATIVE.md` đã stale → đánh dấu hoàn thành.
 
+### Done (2026-09-15) — COMPAT-002 DONE (Entry 90) — xoá legacy_views.py
+- **Relocate toàn bộ**: 3 class `RealtimeUnifiedAlertsView` / `RealtimeWhaleFeedAggregateView` / `RealtimeWhaleCampaignsView` (1317 dòng) từ `legacy_views.py` → `market_serving/native_views.py` (1531 dòng, 13 class). Xoá `legacy_views.py`. Import gộp + bỏ `User`/`default_groups` dead.
+- **Verified**: ast.parse OK, `manage.py check` 0 issues, grep sạch (không còn import legacy), market_serving `Ran 11 tests` chỉ 2 failures SessionFacts pre-existing (reproduce HEAD sạch).
+- **Cả 2 ticket COMPAT đã ĐÓNG trước hạn**: COMPAT-001 (2026-10-15) + COMPAT-002 (2026-11-30). Ledger Entry 89 + 90.
+
 ### Done (2026-09-15) — COMPAT-001 DONE (Entry 89)
 - **Cutover route**: `market_serving/urls.py` bỏ import `legacy_views`; `realtime/whale-feed-aggregate/<symbol>/` → `native_views.RealtimeWhaleFeedAggregateView` (re-export, name mới `realtime-whale-feed-aggregate`, namespace `market_serving`). Contract giữ nguyên — view vốn đọc core signal tables (`WhaleAlertCanonical`).
 - **FE adapter switch**: `coreAdapter.js getWhaleAnalyticsSnapshotEndpoint` → native `/workspace/whale-analytics/{symbol}/` (path cũ `/whale-feed-aggregate/` 404 không tồn tại).

@@ -5,6 +5,26 @@
 
 ---
 
+## Entry 90: COMPAT-002 DONE (trước hạn) — xoá legacy_views.py, relocate toàn bộ body class vào native_views.py
+
+- **Date**: 2026-09-15
+- **Scope**: Đóng ticket compat `COMPAT-002` (sunset, hạn 2026-11-30) — loại bỏ legacy shim cuối cùng của market_serving để không còn `legacy_views.py` trong repo.
+- **Files & fixes**:
+  - `market_serving/legacy_views.py` **ĐÃ XOÁ** (1317 dòng): toàn bộ 3 class `RealtimeUnifiedAlertsView` (base unified-alerts), `RealtimeWhaleFeedAggregateView` (aggregate), `RealtimeWhaleCampaignsView` (campaigns, vốn không router) đã relocate vào `market_serving/native_views.py` (file giờ 1531 dòng, 13 class).
+  - `market_serving/native_views.py`: header mới + import gộp đủ `base64/hashlib/json/logging/datetime/timedelta/status/Prefetch` + `logger`; bỏ dòng re-export `from .legacy_views import ...` (COMPAT-001). Bỏ import dead `User` (django.contrib.auth) và `market_data.default_groups` (chỉ dùng bởi module legacy cũ, không được class nào tham chiếu).
+  - `market_serving/urls.py`: comment cập nhật COMPAT-001/002.
+  - `compat/__init__.py` + `compat/urls.py`: đánh dấu COMPAT-002 **DONE 2026-09-15** — "Không còn route/import legacy nào trong repo".
+- **Validation (thật)**:
+  - `python -c "ast.parse(...)"` → OK (13 class, MRO Aggregate→UnifiedAlerts, Campaigns→Aggregate giữ nguyên).
+  - `python manage.py check` → System check identified no issues.
+  - Grep toàn backend: không còn `import legacy_views` (chỉ comment/doc nhắc lịch sử).
+  - `python manage.py test market_serving --keepdb` → `Ran 11 tests`, chỉ 2 failures `SessionFactsCvdViewTestCase` = **pre-existing tại HEAD sạch** (đã reproduce Entry 89 worktree, không liên quan).
+- **Docs**: ledger Entry 89 (COMPAT-001) + Entry 90 (COMPAT-002); `AGENTS.md` Progress.
+- **Status**: **CẢ HAI TICKET COMPAT ĐÃ ĐÓNG trước hạn định** (COMPAT-001 2026-10-15, COMPAT-002 2026-11-30).
+- **Residual** (ngoài scope): 17 lỗi BE `service_ops` + 2 lỗi `market_serving` SessionFacts pre-existing; `AIAdvisorAlertPanel.i18n.test.js` FAIL pre-existing FE.
+
+---
+
 ## Entry 89: COMPAT-001 DONE — whale-feed-aggregate cutover legacy_views → native_views + FE adapter switch
 
 - **Date**: 2026-09-15
