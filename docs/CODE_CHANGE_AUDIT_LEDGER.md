@@ -5,6 +5,58 @@
 
 ---
 
+## Entry 106: Fix F-P2A-A (audit Entry 105) — poll-diff highlight cộng dồn qua nhiều poll
+
+- **Date**: 2026-09-16
+- **Scope**: Áp finding INFO F-P2A-A từ phản biện độc lập Entry 105: `setNewUids(arrivals)` replace mỗi poll trong khi `unread` cộng dồn → sau 2 poll có arrival, badge "2 mới" nhưng chỉ row poll gần nhất được highlight. F-P2A-B (không escape `\r`) giữ nguyên — accepted (BE không trả CR thực tế).
+- **Fix**: `SocSignalsPanel.tsx:344` → `setNewUids((prev) => [...prev, ...arrivals])` — highlight toàn bộ arrival chưa đọc, khớp `unread` tích lũy. `markAllRead`/reset filter vẫn xóa cả list.
+- **Tests**: mở rộng case W2.1 poll-diff thành **2 poll liên tiếp**: poll1 arrival id 3 (HPG) → badge "1 mới" + 1 highlight; poll2 thêm id 4 (SSI) → badge **"2 mới"** + **2 highlight**; click "2 mới" → sạch cả badge + title `(2)` + highlight. → file signals **24/24** pass.
+- **Validation (thật)**: `tsc --noEmit` 0; `vitest run` signals 24/24; `npm run build` **PASS 30.19s** (eval-widget/chunk warning pre-existing).
+- **Next**: commit P2a (Entry 104 + 106) → BRD workshop → P2b → SSE epic.
+
+---
+
+## Entry 105: Phản biện độc lập P2a Signals (Entry 104) — PASS, không blocker, 2 finding INFO
+
+- **Date**: 2026-09-16
+- **Scope**: Xác minh độc lập toàn bộ claim Entry 104 (P2a) — BE `signals.py` diff (W2.4 honest metrics + W2.5 `SignalsFeedExportView`), FE `SocSignalsPanel.tsx` (W2.1 poll-diff + W2.5 CSV), adapter `soc.js`, test 4 phía, i18n VI/EN. **Chạy lại gates thật, không tin log cũ**.
+- **File count**: `git status` = **đúng 11 file** như claim (ledger, BE test/urls/views/signals, FE adapter test/adapter/component test/panel/CSS, en.js, vi.js) ✓
+- **Kết quả gates (chạy độc lập, khớp claim)**:
+  - `npx tsc --noEmit` → **0 error** ✓
+  - `npx vitest run` → **32 files / 166 pass** ✓ (bao gồm signals component 24/24; claim "166/166" khớp)
+  - jest `soc.test.js` → **86/86 pass** ✓; full jest 226 pass, 1 suite FAIL pre-existing `AIAdvisorAlertPanel.i18n.test.js` (dashboard, không thuộc signals — như baseline AGENTS.md)
+  - BE `python manage.py test service_ops.tests.test_soc_api_signals` → **Ran 31 / OK** ✓ (khớp claim 31, +2 export)
+  - `npm run build` → **PASS 39.93s** (claim ghi 26.56s — cùng PASS, thời gian biến thiên, không phải chênh lệch chất lượng)
+  - eslint 4 file thay đổi → **exit 0, 0 error** ✓
+  - i18n → **VI+EN đồng bộ +2 keys** (`new_items_suffix`, `export_csv`) qua diff ✓
+- **Code review đối chiếu plan**:
+  - **W2.4 honest metrics**: `false_positive_rate/whale_detection_accuracy/dark_pool_detection_accuracy` → `required=False, allow_null=True` (`signals.py:104,288-290,651,678,1153,1158`); summary không-data trả `fpr=None` (`:651,678`); `last_scan_at` dùng `_latest_signal_scan_at()` từ run log thật (`signals.py:446-452,701,781`) — hết bịa `timezone.now()`; `min_signal_count` bỏ khỏi dark pool payload (`:779`); `active_rules` → `rules_seen_session` đếm rule thực tế trong session (`:839-843`); whale-test trả `{smoke:true, note:"…stub…"}` (`:761-765`) — đóng F-SG-14/F-NI-02 ✓
+  - **W2.1 poll-diff**: `signalUid` key ổn định (`id:{type}:{id}` / fallback `k:{type}-{symbol}-{detected_at}`) (`:107-110`); `fetchFeed` diff qua `prevUidsRef` → `setNewUids` + `setUnread +=` (`:340-348`); badge "N mới" + `<title>(N)` blink + restore (`:493-511,1235-1239`); filter/type đổi reset baseline tránh "mới" giả (`:480-482,1254`) ✓
+  - **W2.5 export**: BE `SignalsFeedExportView` (`signals.py:582-621`: `FEED_EXPORT_LIMIT=5000`, type map whale/dark_pool/screener→UnifiedAlert type, tái dùng `_parse_recent_params`/`_apply_recent_filters`, `truncated`); route `signals/feed/export/` (`urls.py:90`); FE `exportSocSignalFeed` → `/operator/soc/signals/feed/export/` (`soc.js:385-387`) + `buildSignalsRecentQuery` thêm `type` (`:35`); panel `handleExportFeed` Blob `text/csv;charset=utf-8` download `signals-feed-YYYY-MM-DD.csv` (`SocSignalsPanel.tsx:700-725`); `buildSignalsCsv` RFC 4180 esc `"`,`,`, `\n` (`:113-120`) ✓
+- **Findings mới (INFO, không blocker)**:
+  - **F-P2A-A (INFO, UX nhỏ)**: `setNewUids(arrivals)` **replace** mỗi poll trong khi `setUnread` **cộng dồn** (`SocSignalsPanel.tsx:344-345`) → nếu 2 poll liên tiếp có arrival, badge "2 mới" nhưng chỉ hàng của poll gần nhất được highlight; hàng poll trước mất highlight dù vẫn tính unread. Đề xuất: `setNewUids(prev => [...prev, ...arrivals])` để highlight mọi arrival chưa đọc. Không phải blocker (badge + title dùng `unread` nên số liệu đúng).
+  - **F-P2A-B (INFO, tối thiểu)**: `buildSignalsCsv` không escape `\r` (RFC 4180 khuyến nghị wrap cả CR) — nhưng dữ liệu BE (id/symbol/type/severity/direction/date/value/title) không chứa CR thực tế; chấp nhận được.
+- **Verdict (độc lập)**: **PASS** — P2a (Entry 104) thực thi đúng plan: W2.4 trung thực hóa metrics, W2.1 poll-diff đầy đủ, W2.5 export CSV đúng contract BE↔FE. Tất cả 6 gates chạy lại đều khớp (tsc/vitest/jest/BE/build/lint), i18n parity đủ, file count chuẩn. Không blocker, 2 INFO mang tính ghi nhận. **Ready để commit/merge.**
+- **Next (theo plan)**: P2a xong → commit P2a → BRD workshop (team vs user inbox) → P2b → SSE epic.
+
+---
+
+## Entry 104: P2a Signals — W2.4 honest metrics (BE) + W2.1 poll-diff (FE) + W2.5 feed export CSV (BE+FE)
+
+- **Date**: 2026-09-16
+- **Scope**: P2a theo `docs/IMPLEMENTATION_PLAN_SOC_SIGNALS_COMMERCIAL_20260916.md` §4. Dồn F-SG-14 (accuracy 100/FPR 0) + F-NI-02 (last_scan_at stub) vào W2.4. Thứ tự: W2.4 BE → W2.1 FE → W2.5 BE+FE.
+- **Files & fixes**:
+  - **W2.4 honest metrics (BE)**: `SignalsPerformanceMetricsResponseSerializer` — `accuracy/false_positive_rate/whale_detection_accuracy/dark_pool_detection_accuracy` → **nullable** (`allow_null`); `_compute_signals_sentiment` về **1 query** (dùng `Q` + `aggregate` 3 count, không 3 truy vấn — F-NI-01: cùng class latency); `false_positive_rate: null`, `*_detection_accuracy: null` (không còn bịa 100/0 — F-SG-14); `last_scan_at` lấy thật từ run log mới nhất (`_latest_signal_scan_at()` đọc `ServiceRunLog.latest_detection_job_run_log_id`/created như materialization); bỏ `min_signal_count` khỏi payload dark pool (BE không cấu hình); screener `active_rules` đổi thành `rules_seen_session` (trung thực: chỉ đếm rules đã chạy trong session); whale-test endpoint → **nhãn rõ stub**: `{smoke: true, detection_possible: true|false, note: "...stub..."}`.
+  - **W2.1 poll-diff (FE)**: `signalUid()` key ổn định (`id:{type}:{id}` fallback `k:{type}-{symbol}-{detected_at}`); `fetchFeed` giữ snapshot `prevUidsRef`, chênh lệch giữa 2 poll cùng filter → highlight `.signalRowNew` (viền+đổ sáng cyan) + badge **"N mới"** trong header feed + `<title>(N) ...` blink (restore khi đọc hết/đổi filter/unmount qua `titleSavedRef`); nút badge `markAllRead`; **đổi filter = xem mới** → reset snapshot + badge (tránh báo "mới" giả); type-filter click cũng reset baseline đồng bộ khi set filter.
+  - **W2.5 feed export CSV (BE+FE)**: BE `SignalsFeedExportView` `GET /api/soc/signals/feed/export/` (`FEED_EXPORT_LIMIT=5000`, filter `type` whale/dark_pool/screener + tái dùng `_apply_recent_filters`/`_parse_recent_params` cho symbol/severity/direction; trả `{session_date, columns[9], rows, count, truncated}` theo serializer `SignalsFeedExportResponseSerializer`); FE adapter `exportSocSignalFeed(params)` (`buildSignalsRecentQuery` cộng `type`); panel nút **Xuất CSV** trong header feed → `buildSignalsCsv()` (RFC 4180: escape `"`, `,`, `\n`) → Blob `text/csv;charset=utf-8` download `signals-feed-YYYY-MM-DD.csv` (pattern overview Step 6); `{exporting, exportError}` inline.
+  - i18n +2 keys mỗi locale: `new_items_suffix` ("mới"/"new"), `export_csv` ("Xuất CSV"/"Export CSV"). This để hiển thị lý do export hỏng.
+- **Tests**: BE `test_soc_api_signals` +3 (whale-test đã có smoke từ Entry 102 → +2 export: `feed_export_returns_columns_rows_and_count` 3 rows {VCI,SSI,VNM}, `feed_export_filters_by_type_and_symbol`) → **Ran 31 OK**; FE signal component +4 (buildSignalsCsv RFC4180; poll-diff fake-timers advance 20s → arrival highlight + badge "1 mới" + title (1) → click clear; export blob download + params + revoke) → file **24/24**; adapter jest +1 (export URL `?type=whale&symbol=VCI`) → **166/166**.
+- **Validation (thật)**: `tsc --noEmit` 0; `vitest run` OK (bao gồm signals 24/24); jest `soc.test.js` 166/166; `npm run build` **PASS 26.56s** (chỉ eval-widget + chunk-size warning pre-existing); lint 0 errors (3547 warn baseline); BE `Ran 31 OK`.
+- **Deviations (có lý do)**: (1) W2.1 test drive bằng fake-timers advance poll thay vì filter-change — vì đổi filter được thiết kế là "xem mới" (reset baseline), arrival hợp lệ chỉ đến qua 1 interval tick; (2) export giới hạn 5000 row BE, `truncated=true` phía sau (FE CSV cho session hiện tại, không stream phân trang).
+- **Next**: P2a xong → BRD workshop (team vs user inbox) → P2b → SSE epic. Toàn bộ P0/P1/P2a complete dopingu từ Entry 100/102.
+
+---
+
 ## Entry 103: Phản biện độc lập P1 Signals (Entry 102) — PASS, không blocker, 2 finding INFO
 
 - **Date**: 2026-09-16

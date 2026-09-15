@@ -344,6 +344,8 @@ const en = {
       test_button: 'Run test',
       retention_preview: 'Preview impact',
       smoke_label: 'Smoke result — the test endpoint currently returns a stub; see W2.4 honest metrics.',
+      new_items_suffix: 'new',
+      export_csv: 'Export CSV',
     },
     dataops: {
       title: 'Market data operations',

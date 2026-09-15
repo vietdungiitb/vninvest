@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from "vitest";
-import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
-import { mapRecentItem, signalKey, SocSignalsPanel } from "../soc/SocSignalsPanel.js";
+import { render, screen, fireEvent, cleanup, act, waitFor } from "@testing-library/react";
+import { mapRecentItem, signalKey, buildSignalsCsv, SocSignalsPanel } from "../soc/SocSignalsPanel.js";
 
 const mocks = vi.hoisted(() => ({
   getSocSignalMetrics: vi.fn(),
@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   getSocSignalRetention: vi.fn(),
   testSocWhaleDetection: vi.fn(),
   previewSocSignalRetention: vi.fn(),
+  exportSocSignalFeed: vi.fn(),
 }));
 
 vi.mock("../../adapters/coreApiAdapter.js", () => ({
@@ -37,6 +38,7 @@ vi.mock("../../adapters/coreApiAdapter.js", () => ({
     getSocSignalRetention: mocks.getSocSignalRetention,
     testSocWhaleDetection: mocks.testSocWhaleDetection,
     previewSocSignalRetention: mocks.previewSocSignalRetention,
+    exportSocSignalFeed: mocks.exportSocSignalFeed,
   },
 }));
 
@@ -398,6 +400,125 @@ describe("SocSignalsPanel — W1.3 config/detection/retention subtabs", () => {
     expect(jobSelect).toBeTruthy();
     const options = Array.from(jobSelect!.querySelectorAll("option")).map((o) => o.getAttribute("value"));
     expect(options).toEqual(["whale", "dark_pool"]);
+  });
+});
+
+describe("buildSignalsCsv — W2.5", () => {
+  it("renders header + rows with RFC4180 escaping", () => {
+    const csv = buildSignalsCsv(
+      ["id", "symbol", "title"],
+      [[1, "VCI", "plain"], [2, "SSI", 'has "quote", comma']],
+    );
+    expect(csv).toBe('id,symbol,title\n1,VCI,plain\n2,SSI,"has ""quote"", comma"');
+  });
+});
+
+describe("SocSignalsPanel — W2.1 poll-diff", () => {
+  it("highlights arrivals, shows unread badge + title, clears on click", async () => {
+    vi.useFakeTimers();
+    try {
+      const { container } = render(<SocSignalsPanel />);
+      await act(async () => undefined);
+      expect(screen.getAllByText("VCI").length).toBeGreaterThan(0);
+      // poll 15s sắp tới trả thêm id 3 → arrival mới
+      mocks.getSocWhaleRecent.mockResolvedValue({
+        recent: [
+          ...whaleFixture.recent,
+          {
+            id: 3,
+            symbol: "HPG",
+            severity: "low",
+            metadata: {},
+            session_date: "2026-09-16",
+            value: 100,
+            side: "buy",
+            timestamp: "2026-09-16T09:02:00Z",
+            title: "Whale HPG",
+          },
+        ],
+        total_today: 2,
+        total_filtered: 2,
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(20000);
+      });
+      expect(screen.getByText("1 mới")).toBeTruthy();
+      expect(document.title).toContain("(1)");
+      expect(container.querySelectorAll('[class*="signalRowNew"]')).toHaveLength(1);
+      // poll 2: thêm id 4 → unread tích lũy 2, cả 2 row đều highlight (F-P2A-A)
+      mocks.getSocWhaleRecent.mockResolvedValue({
+        recent: [
+          ...whaleFixture.recent,
+          {
+            id: 3,
+            symbol: "HPG",
+            severity: "low",
+            metadata: {},
+            session_date: "2026-09-16",
+            value: 100,
+            side: "buy",
+            timestamp: "2026-09-16T09:02:00Z",
+            title: "Whale HPG",
+          },
+          {
+            id: 4,
+            symbol: "SSI",
+            severity: "high",
+            metadata: {},
+            session_date: "2026-09-16",
+            value: 5,
+            side: "sell",
+            timestamp: "2026-09-16T09:03:00Z",
+            title: "Whale SSI",
+          },
+        ],
+        total_today: 3,
+        total_filtered: 3,
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(20000);
+      });
+      expect(screen.getByText("2 mới")).toBeTruthy();
+      expect(document.title).toContain("(2)");
+      expect(container.querySelectorAll('[class*="signalRowNew"]')).toHaveLength(2);
+      fireEvent.click(screen.getByText("2 mới"));
+      expect(screen.queryByText("2 mới")).toBeNull();
+      expect(document.title).not.toContain("(2)");
+      expect(container.querySelectorAll('[class*="signalRowNew"]')).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("SocSignalsPanel — W2.5 export CSV", () => {
+  it("export button downloads CSV blob with current filters", async () => {
+    const createObjectURL = vi.fn(() => "blob:mock-csv");
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
+    try {
+      mocks.exportSocSignalFeed.mockResolvedValue({
+        columns: ["id", "symbol", "title"],
+        rows: [[1, "VCI", "Whale buy detected"]],
+        count: 1,
+        truncated: false,
+      });
+      render(<SocSignalsPanel />);
+      await screen.findAllByText("VCI");
+      fireEvent.click(screen.getByText("Xuất CSV"));
+      await waitFor(() => expect(createObjectURL).toHaveBeenCalledTimes(1));
+      expect(mocks.exportSocSignalFeed).toHaveBeenCalledWith({
+        type: undefined,
+        symbol: undefined,
+        severity: undefined,
+        direction: undefined,
+      });
+      const blob = createObjectURL.mock.calls[0][0] as Blob;
+      expect(await blob.text()).toBe("id,symbol,title\n1,VCI,Whale buy detected");
+      expect(revokeObjectURL).toHaveBeenCalledWith("blob:mock-csv");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 

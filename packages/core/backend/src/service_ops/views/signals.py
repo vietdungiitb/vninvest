@@ -101,7 +101,7 @@ class SignalsSummaryResponseSerializer(serializers.Serializer):
     signal_alerts = serializers.IntegerField()
     order_flow_events = serializers.IntegerField()
     detection_rate = serializers.FloatField()
-    false_positive_rate = serializers.FloatField()
+    false_positive_rate = serializers.FloatField(required=False, allow_null=True)
     avg_signal_latency_ms = serializers.FloatField()
     sentiment = serializers.JSONField(required=False)
     last_triggered_at = serializers.DateTimeField(required=False, allow_null=True)
@@ -112,7 +112,7 @@ class SignalsWhaleResponseSerializer(serializers.Serializer):
     threshold_vnd = serializers.IntegerField()
     top_pct = serializers.FloatField()
     min_volume = serializers.IntegerField()
-    last_scan_at = serializers.DateTimeField()
+    last_scan_at = serializers.DateTimeField(required=False, allow_null=True)
     active_monitors = serializers.IntegerField()
 
 
@@ -156,8 +156,7 @@ class SignalsDarkPoolResponseSerializer(serializers.Serializer):
     enabled = serializers.BooleanField()
     threshold_vnd = serializers.IntegerField()
     block_ratio_min = serializers.FloatField()
-    min_signal_count = serializers.IntegerField()
-    last_scan_at = serializers.DateTimeField()
+    last_scan_at = serializers.DateTimeField(required=False, allow_null=True)
 
 
 class SignalsDarkPoolRecentResponseSerializer(serializers.Serializer):
@@ -168,6 +167,14 @@ class SignalsDarkPoolRecentResponseSerializer(serializers.Serializer):
     page_size = serializers.IntegerField(required=False)
 
 
+class SignalsFeedExportResponseSerializer(serializers.Serializer):
+    session_date = serializers.DateField(required=False, allow_null=True)
+    columns = serializers.ListField(child=serializers.CharField())
+    rows = serializers.JSONField()
+    count = serializers.IntegerField()
+    truncated = serializers.BooleanField()
+
+
 class SignalsWhaleTestRequestSerializer(serializers.Serializer):
     symbol = serializers.CharField(required=False, allow_blank=True)
 
@@ -176,12 +183,14 @@ class SignalsWhaleTestResponseSerializer(serializers.Serializer):
     symbol = serializers.CharField()
     test_result = serializers.CharField()
     detection_possible = serializers.BooleanField()
+    smoke = serializers.BooleanField(required=False)
+    note = serializers.CharField(required=False, allow_blank=True)
 
 
 class SignalsScreenerResponseSerializer(serializers.Serializer):
     enabled = serializers.BooleanField()
     scan_interval_seconds = serializers.IntegerField()
-    active_rules = serializers.IntegerField()
+    rules_seen_session = serializers.IntegerField()
     last_scan_at = serializers.DateTimeField(required=False, allow_null=True)
 
 
@@ -275,12 +284,12 @@ class SignalsJobStatusResponseSerializer(serializers.Serializer):
 
 
 class SignalsPerformanceMetricsResponseSerializer(serializers.Serializer):
-    whale_detection_accuracy = serializers.FloatField()
-    dark_pool_detection_accuracy = serializers.FloatField()
+    whale_detection_accuracy = serializers.FloatField(required=False, allow_null=True)
+    dark_pool_detection_accuracy = serializers.FloatField(required=False, allow_null=True)
     avg_detection_latency_ms = serializers.FloatField()
     avg_signal_latency_ms = serializers.FloatField()
     detection_rate = serializers.FloatField()
-    false_positive_rate = serializers.FloatField()
+    false_positive_rate = serializers.FloatField(required=False, allow_null=True)
     total_signals_processed = serializers.IntegerField()
     sentiment = serializers.JSONField(required=False)
 
@@ -430,6 +439,14 @@ def _get_latest_signal_job_run() -> ServiceRunLog | None:
     return ServiceRunLog.objects.filter(service=service).order_by('-started_at', '-pk').first()
 
 
+def _latest_signal_scan_at():
+    """W2.4: last_scan_at trung thực từ run log gần nhất (None khi chưa từng chạy)."""
+    run_log = _get_latest_signal_job_run()
+    if run_log is None:
+        return None
+    return run_log.finished_at or run_log.started_at
+
+
 def _materializer_status(service_key: str) -> dict:
     service = get_registered_service(service_key)
     run_log = ServiceRunLog.objects.filter(service=service).order_by('-started_at', '-pk').first()
@@ -559,6 +576,58 @@ class SignalsOwnershipView(SOCBaseView):
         return Response(_build_signals_ownership_payload())
 
 
+FEED_EXPORT_LIMIT = 5000
+FEED_EXPORT_TYPE_MAP = {
+    'whale': UnifiedAlert.AlertTypeChoices.WHALE,
+    'dark_pool': UnifiedAlert.AlertTypeChoices.DARK_FLOW,
+    'screener': UnifiedAlert.AlertTypeChoices.SIGNAL,
+}
+
+
+@extend_schema(
+    summary='Xuất feed Signals',
+    description='Trả về rows JSON của session hiện tại (tối đa 5000) để FE dựng CSV client-side.',
+    responses={
+        200: SignalsFeedExportResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+)
+class SignalsFeedExportView(SOCBaseView):
+    """GET /api/soc/signals/feed/export/"""
+
+    def get(self, request):
+        session_date = _latest_signal_session_date()
+        queryset = UnifiedAlert.objects.filter(session_date=session_date) if session_date else UnifiedAlert.objects.none()
+        alert_type = FEED_EXPORT_TYPE_MAP.get((request.query_params.get('type') or '').strip().lower())
+        if alert_type:
+            queryset = queryset.filter(alert_type=alert_type)
+        queryset = _apply_recent_filters(queryset, _parse_recent_params(request))
+        count = queryset.count()
+        columns = ['id', 'symbol', 'type', 'severity', 'direction', 'session_date', 'triggered_at', 'value', 'title']
+        rows = [
+            [
+                alert.pk,
+                alert.symbol,
+                alert.alert_type,
+                alert.severity,
+                alert.direction,
+                alert.session_date.isoformat() if alert.session_date else None,
+                alert.triggered_at.isoformat() if alert.triggered_at else None,
+                str(alert.value) if alert.value is not None else None,
+                alert.title,
+            ]
+            for alert in queryset.order_by('-triggered_at', '-pk')[:FEED_EXPORT_LIMIT]
+        ]
+        return Response({
+            'session_date': session_date.isoformat() if session_date else None,
+            'columns': columns,
+            'rows': rows,
+            'count': count,
+            'truncated': count > FEED_EXPORT_LIMIT,
+        })
+
+
 @extend_schema(
     summary='Lấy summary Signals',
     description='Trả về snapshot tổng hợp alert/event của session tín hiệu gần nhất.',
@@ -582,7 +651,7 @@ class SignalsSummaryView(SOCBaseView):
                 'signal_alerts': 0,
                 'order_flow_events': 0,
                 'detection_rate': 0.0,
-                'false_positive_rate': 0.0,
+                'false_positive_rate': None,
                 'avg_signal_latency_ms': 0.0,
                 'sentiment': {'bullish': 0, 'bearish': 0, 'neutral': 0},
                 'last_triggered_at': None,
@@ -607,7 +676,7 @@ class SignalsSummaryView(SOCBaseView):
             'signal_alerts': signal_alerts,
             'order_flow_events': order_flow_events,
             'detection_rate': round((active_alerts / order_flow_events) * 100.0, 2) if order_flow_events else 0.0,
-            'false_positive_rate': 0.0,
+            'false_positive_rate': None,
             'avg_signal_latency_ms': _compute_avg_signal_latency_ms(events),
             'sentiment': _compute_signals_sentiment(alerts),
             'last_triggered_at': last_triggered_at.isoformat() if last_triggered_at else None,
@@ -629,12 +698,13 @@ class SignalsWhaleView(SOCBaseView):
     def get(self, request):
         """Whale detection settings."""
         config = _get_signals_domain_config()
+        scan_at = _latest_signal_scan_at()
         return Response({
             'enabled': config.whale_enabled,
             'threshold_vnd': config.whale_threshold_vnd,
             'top_pct': config.whale_top_pct,
             'min_volume': config.whale_threshold_vnd,
-            'last_scan_at': timezone.now().isoformat(),
+            'last_scan_at': scan_at.isoformat() if scan_at else None,
             'active_monitors': OrderFlowEvent.objects.filter(
                 session_date=_latest_signal_session_date(),
                 signal_type=OrderFlowEvent.SignalTypeChoices.WHALE_BUY,
@@ -688,6 +758,8 @@ class SignalsWhaleTestView(SOCBaseView):
             'symbol': symbol,
             'test_result': 'success',
             'detection_possible': True,
+            'smoke': True,
+            'note': 'Endpoint kiểm tra hiện trả stub — chưa chạy detection thật (xem W2.4 honest metrics).',
         })
 
 
@@ -706,12 +778,12 @@ class SignalsDarkPoolView(SOCBaseView):
     def get(self, request):
         """Dark pool detection settings."""
         config = _get_signals_domain_config()
+        scan_at = _latest_signal_scan_at()
         return Response({
             'enabled': config.dark_pool_enabled,
             'threshold_vnd': config.dark_pool_threshold_vnd,
             'block_ratio_min': config.dark_pool_block_ratio_min,
-            'min_signal_count': config.dark_pool_threshold_vnd,
-            'last_scan_at': timezone.now().isoformat(),
+            'last_scan_at': scan_at.isoformat() if scan_at else None,
         })
 
 
@@ -764,14 +836,14 @@ class SignalsScreenerView(SOCBaseView):
             alert_type=UnifiedAlert.AlertTypeChoices.SIGNAL,
             session_date=session_date,
         ) if session_date else UnifiedAlert.objects.none()
-        active_rules = len({
+        rules_seen_session = len({
             alert.metadata.get('rule_name') or alert.metadata.get('rule') or alert.title
             for alert in recent_signal_alerts[:50]
         })
         return Response({
             'enabled': config.screener_signal_enabled,
             'scan_interval_seconds': config.detection_task_interval_seconds,
-            'active_rules': active_rules,
+            'rules_seen_session': rules_seen_session,
             'last_scan_at': latest_signal.triggered_at.isoformat() if latest_signal else None,
         })
 
@@ -1078,12 +1150,12 @@ class SignalsPerformanceMetricsView(SOCBaseView):
         detection_rate = round((active_alerts / total_signals_processed) * 100.0, 2) if total_signals_processed else 0.0
         avg_latency_ms = _compute_avg_signal_latency_ms(events)
         return Response({
-            'whale_detection_accuracy': 100.0 - 0.0,
-            'dark_pool_detection_accuracy': 100.0 - 0.0,
+            'whale_detection_accuracy': None,
+            'dark_pool_detection_accuracy': None,
             'avg_detection_latency_ms': avg_latency_ms,
             'avg_signal_latency_ms': avg_latency_ms,
             'detection_rate': detection_rate,
-            'false_positive_rate': 0.0,
+            'false_positive_rate': None,
             'total_signals_processed': total_signals_processed,
             'sentiment': _compute_signals_sentiment(alerts),
         })

@@ -29,10 +29,12 @@ const normalizeVnbrokerHealth = (payload) => {
 };
 
 // W1.1: query paging/filter cho 3 recent endpoints (page/page_size/symbol/severity/direction).
+// W2.5: thêm type cho feed export.
 const buildSignalsRecentQuery = (params = {}) => {
   const qs = new URLSearchParams();
   if (params.page) qs.set("page", String(params.page));
   if (params.page_size) qs.set("page_size", String(params.page_size));
+  if (params.type) qs.set("type", params.type);
   if (params.symbol) qs.set("symbol", params.symbol);
   if (params.severity) qs.set("severity", params.severity);
   if (params.direction) qs.set("direction", params.direction);
@@ -378,6 +380,10 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
 
     getSocSignalMaterialization() {
       return coreGet("/operator/soc/signals/materialization/");
+    },
+
+    exportSocSignalFeed(params = {}) {
+      return coreGet(`/operator/soc/signals/feed/export/${buildSignalsRecentQuery(params)}`);
     },
 
     // ─── Screener ──────────────────────────────────────────────────────────

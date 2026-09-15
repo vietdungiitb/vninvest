@@ -87,6 +87,7 @@ urlpatterns = [
     path('signals/jobs/run/', signals.SignalsJobRunView.as_view(), name='soc_signals_jobs_run'),
     path('signals/jobs/status/', signals.SignalsJobStatusView.as_view(), name='soc_signals_jobs_status'),
     path('signals/performance-metrics/', signals.SignalsPerformanceMetricsView.as_view(), name='soc_signals_metrics'),
+    path('signals/feed/export/', signals.SignalsFeedExportView.as_view(), name='soc_signals_feed_export'),
 
     # Screener domain (9)
     path('screener/config/', screener.ScreenerConfigView.as_view(), name='soc_screener_config'),

@@ -933,6 +933,11 @@
 .signalRowExpanded {
   border-color: rgba(var(--soc-rgb-00b4d8) / 0.25);
 }
+/* W2.1: tín hiệu mới từ poll-diff */
+.signalRowNew {
+  border-color: rgba(var(--soc-rgb-00b4d8) / 0.5);
+  background: rgba(var(--soc-rgb-00b4d8) / 0.08);
+}
 
 .signalIcon {
   width: 26px;

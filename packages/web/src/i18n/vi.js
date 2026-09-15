@@ -344,6 +344,8 @@ const vi = {
       test_button: 'Chạy thử',
       retention_preview: 'Xem ảnh hưởng',
       smoke_label: 'Kết quả smoke — endpoint kiểm tra hiện trả stub, xem W2.4 honest metrics.',
+      new_items_suffix: 'mới',
+      export_csv: 'Xuất CSV',
     },
     dataops: {
       title: 'Điều phối dữ liệu thị trường',

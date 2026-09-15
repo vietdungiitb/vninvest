@@ -222,7 +222,7 @@ class SignalsApiContractTestCase(SignalsApiBaseTestCase):
         self.assertEqual(whale_response.json()['active_monitors'], 1)
         self.assertEqual(whale_recent_response.json()['total_today'], 1)
         self.assertEqual(dark_recent_response.json()['total_today'], 1)
-        self.assertEqual(screener_response.json()['active_rules'], 1)
+        self.assertEqual(screener_response.json()['rules_seen_session'], 1)
         self.assertEqual(screener_recent_response.json()['total_today'], 1)
         self.assertEqual(performance_response.json()['total_signals_processed'], 3)
         self.assertEqual(ownership_response.json()['mode'], 'bridge-write')
@@ -464,6 +464,67 @@ class SignalsP1PagingTestCase(SignalsApiBaseTestCase):
     def test_invalid_filter_values_ignored(self):
         data = self.client.get('/api/soc/signals/whale/recent/?severity=bogus&direction=bogus').json()
         self.assertEqual(data['total_filtered'], 5)
+
+
+class SignalsP2AHonestMetricsTestCase(SignalsApiBaseTestCase):
+    """P2a W2.4: số liệu trung thực — null thay vì số giả, last_scan từ run log."""
+
+    def test_accuracy_and_fpr_are_null_until_ack_data_exists(self):
+        performance = self.client.get('/api/soc/signals/performance-metrics/').json()
+        self.assertIsNone(performance['whale_detection_accuracy'])
+        self.assertIsNone(performance['dark_pool_detection_accuracy'])
+        self.assertIsNone(performance['false_positive_rate'])
+        summary = self.client.get('/api/soc/signals/summary/').json()
+        self.assertIsNone(summary['false_positive_rate'])
+        # số liệu thật vẫn còn
+        self.assertEqual(performance['total_signals_processed'], 3)
+        self.assertEqual(summary['detection_rate'], 100.0)
+
+    def test_last_scan_at_none_without_run_log(self):
+        self.assertIsNone(self.client.get('/api/soc/signals/whale/').json()['last_scan_at'])
+        self.assertIsNone(self.client.get('/api/soc/signals/dark-pool/').json()['last_scan_at'])
+
+    @patch('service_ops.views.signals.run_signals_detection_workflow.delay')
+    def test_last_scan_at_follows_latest_run_log(self, workflow_delay):
+        workflow_delay.return_value = Mock(id='signals-honest-task')
+        self.client.post('/api/soc/signals/jobs/run/', {'domain': 'whale', 'symbol': 'VCI'}, format='json')
+        self.assertIsNotNone(self.client.get('/api/soc/signals/whale/').json()['last_scan_at'])
+        self.assertIsNotNone(self.client.get('/api/soc/signals/dark-pool/').json()['last_scan_at'])
+
+    def test_dark_pool_drops_fake_min_signal_count(self):
+        payload = self.client.get('/api/soc/signals/dark-pool/').json()
+        self.assertNotIn('min_signal_count', payload)
+        self.assertIn('threshold_vnd', payload)
+
+    def test_screener_reports_rules_seen_session(self):
+        payload = self.client.get('/api/soc/signals/screener/').json()
+        self.assertEqual(payload['rules_seen_session'], 1)
+        self.assertNotIn('active_rules', payload)
+
+    def test_whale_test_endpoint_labels_smoke(self):
+        payload = self.client.post('/api/soc/signals/whale/test/', {'symbol': 'VNM'}, format='json').json()
+        self.assertTrue(payload['smoke'])
+        self.assertIn('note', payload)
+
+    def test_feed_export_returns_columns_rows_and_count(self):
+        payload = self.client.get('/api/soc/signals/feed/export/').json()
+        self.assertEqual(
+            payload['columns'],
+            ['id', 'symbol', 'type', 'severity', 'direction', 'session_date', 'triggered_at', 'value', 'title'],
+        )
+        self.assertEqual(payload['count'], 3)
+        self.assertFalse(payload['truncated'])
+        self.assertEqual(len(payload['rows']), 3)
+        symbols = {row[1] for row in payload['rows']}
+        self.assertEqual(symbols, {'VCI', 'SSI', 'VNM'})
+
+    def test_feed_export_filters_by_type_and_symbol(self):
+        whale = self.client.get('/api/soc/signals/feed/export/?type=whale').json()
+        self.assertEqual(whale['count'], 1)
+        self.assertEqual(whale['rows'][0][1], 'VCI')
+        symbol = self.client.get('/api/soc/signals/feed/export/?symbol=ssi').json()
+        self.assertEqual(symbol['count'], 1)
+        self.assertEqual(symbol['rows'][0][1], 'SSI')
 
 
 class SignalsAuthenticationTestCase(TestCase):

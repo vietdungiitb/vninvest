@@ -54,9 +54,17 @@ interface RecentEnvelope {
 interface RecentQuery {
   page?: number;
   page_size?: number;
+  type?: string;
   symbol?: string;
   severity?: string;
   direction?: string;
+}
+
+interface FeedExportPayload {
+  columns?: string[];
+  rows?: unknown[][];
+  count?: number;
+  truncated?: boolean;
 }
 
 function toNumberOrUndefined(v: number | string | null | undefined): number | undefined {
@@ -93,6 +101,22 @@ function pickRecentList(res: RecentEnvelope | null | undefined): RecentRawItem[]
 export function signalKey(s: RecentSignal, idx: number): string {
   if (s.id != null) return `${s.type}-${s.id}`;
   return `${s.type}-${s.symbol}-${s.detected_at}-${idx}`;
+}
+
+/** W2.1: uid ổn định để diff poll (không phụ thuộc idx phân trang). */
+export function signalUid(s: RecentSignal): string {
+  if (s.id != null) return `id:${s.type}:${s.id}`;
+  return `k:${s.type}-${s.symbol}-${s.detected_at}`;
+}
+
+/** W2.5: dựng CSV từ rows JSON của feed export (RFC 4180 tối thiểu). */
+export function buildSignalsCsv(columns: string[], rows: unknown[][]): string {
+  const esc = (v: unknown): string => {
+    if (v == null) return "";
+    const s = String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return [columns.join(","), ...rows.map((r) => columns.map((_, i) => esc(r[i])).join(","))].join("\n");
 }
 
 const TERMINAL_JOB_STATUSES = new Set(["success", "partial", "failed", "skipped"]);
@@ -239,6 +263,16 @@ export function SocSignalsPanel() {
   const [testResult, setTestResult] = useState<{ symbol?: string; test_result?: string; detection_possible?: boolean } | null>(null);
   const [retentionPreview, setRetentionPreview] = useState<SignalTabData<{ valid?: boolean; errors?: string[]; retention_days?: Record<string, unknown>; impact?: Record<string, unknown> }>>(emptyTab());
 
+  // W2.1 poll-diff: tín hiệu mới từ poll + badge chưa đọc
+  const [newUids, setNewUids] = useState<string[]>([]);
+  const [unread, setUnread] = useState(0);
+  const prevUidsRef = useRef<Set<string>>(new Set());
+  const prevTitleRef = useRef("");
+  const titleSavedRef = useRef(false);
+  // W2.5 export CSV
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
+
   const filterTypes = ["all", "whale", "dark_pool", "screener"];
 
   const mountedRef = useRef(true);
@@ -265,6 +299,7 @@ export function SocSignalsPanel() {
     getSocSignalRetention: () => Promise<Record<string, unknown>>;
     testSocWhaleDetection: (symbol?: string) => Promise<{ symbol?: string; test_result?: string; detection_possible?: boolean }>;
     previewSocSignalRetention: (config?: Record<string, unknown>) => Promise<{ valid?: boolean; errors?: string[]; retention_days?: Record<string, unknown>; impact?: Record<string, unknown> }>;
+    exportSocSignalFeed: (params?: RecentQuery) => Promise<FeedExportPayload>;
   };
 
   const getAdapter = () => defaultCoreApiAdapter as unknown as SocSignalsAdapter;
@@ -301,6 +336,17 @@ export function SocSignalsPanel() {
       setSignals(merged);
       setMetrics(summary);
       setFeedError("");
+      // W2.1: diff với snapshot poll trước — chỉ tính khi đã có snapshot (bỏ qua lần đầu)
+      const uids = merged.map(signalUid);
+      if (prevUidsRef.current.size > 0) {
+        const arrivals = uids.filter((id) => !prevUidsRef.current.has(id));
+        if (arrivals.length > 0 && mountedRef.current) {
+          // F-P2A-A: cộng dồn nhiều poll (unread tích lũy cùng số row highlight)
+          setNewUids((prev) => [...prev, ...arrivals]);
+          setUnread((u) => u + arrivals.length);
+        }
+      }
+      prevUidsRef.current = new Set(uids);
     } catch (err) {
       if (!mountedRef.current) return;
       setFeedError(err instanceof Error ? err.message : "Cannot load signal feed.");
@@ -407,6 +453,12 @@ export function SocSignalsPanel() {
       document.removeEventListener("visibilitychange", onVisibility);
       if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
       stopJobPoll();
+      // W2.1: unmount trả lại title gốc
+      if (titleSavedRef.current && typeof document !== "undefined") {
+        document.title = prevTitleRef.current;
+        prevTitleRef.current = "";
+        titleSavedRef.current = false;
+      }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -418,6 +470,7 @@ export function SocSignalsPanel() {
   }, [symbolFilter]);
 
   // W1.1: filter đổi → reset page + fetch lại feed với query BE
+  // W2.1: đổi filter coi như xem mới — reset snapshot poll-diff, tránh báo "mới" giả
   useEffect(() => {
     if (isFirstFilterRun.current) {
       isFirstFilterRun.current = false;
@@ -425,6 +478,9 @@ export function SocSignalsPanel() {
     }
     setPage(1);
     setExpandedId(null);
+    prevUidsRef.current = new Set();
+    setNewUids([]);
+    setUnread(0);
     void fetchFeed({
       symbol: debouncedSymbol || undefined,
       severity: severityFilter !== "all" ? severityFilter : undefined,
@@ -433,6 +489,27 @@ export function SocSignalsPanel() {
     restartInterval(intervalDelayRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSymbol, severityFilter, directionFilter]);
+
+  // W2.1: badge chưa đọc lên <title>, trả lại khi đã đọc hết
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (unread > 0) {
+      if (!titleSavedRef.current) {
+        prevTitleRef.current = document.title;
+        titleSavedRef.current = true;
+      }
+      document.title = `(${unread}) ${prevTitleRef.current}`;
+    } else if (titleSavedRef.current) {
+      document.title = prevTitleRef.current;
+      prevTitleRef.current = "";
+      titleSavedRef.current = false;
+    }
+  }, [unread]);
+
+  const markAllRead = () => {
+    setNewUids([]);
+    setUnread(0);
+  };
 
   const errMsg = (err: unknown, fallback: string): string => (err instanceof Error ? err.message : fallback);
 
@@ -620,10 +697,39 @@ export function SocSignalsPanel() {
       createElement("div", { className: styles.metricValue, style: { color, fontSize: "1rem" } }, String(value)),
     );
 
+  // W2.5: xuất CSV feed qua blob client-side (pattern overview Step 6)
+  const handleExportFeed = async () => {
+    setExporting(true);
+    setExportError("");
+    try {
+      const payload = await getAdapter().exportSocSignalFeed({
+        type: typeFilter !== "all" ? typeFilter : undefined,
+        symbol: debouncedSymbol || undefined,
+        severity: severityFilter !== "all" ? severityFilter : undefined,
+        direction: directionFilter !== "all" ? directionFilter : undefined,
+      });
+      const csv = buildSignalsCsv(payload.columns ?? [], payload.rows ?? []);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `signals-feed-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      if (mountedRef.current) setExportError(errMsg(err, "Export failed."));
+    } finally {
+      if (mountedRef.current) setExporting(false);
+    }
+  };
+
   // ─── Signal row ────────────────────────────────────────────────────────
   const renderSignalRow = (s: RecentSignal, idx: number) => {
     const key = signalKey(s, idx);
     const isExpanded = expandedId === key;
+    const isNew = newUids.includes(signalUid(s));
     const action = getActionLabel(s.action);
     const handleClick = () => setExpandedId(isExpanded ? null : key);
     const handleKeyDown = (e: { key: string; preventDefault: () => void }) => {
@@ -641,7 +747,7 @@ export function SocSignalsPanel() {
       createElement(
         "div",
         {
-          className: `${styles.signalRow} ${isExpanded ? styles.signalRowExpanded : ""}`,
+          className: `${styles.signalRow} ${isExpanded ? styles.signalRowExpanded : ""} ${isNew ? styles.signalRowNew : ""}`,
           onClick: handleClick,
           onKeyDown: handleKeyDown,
           role: "button",
@@ -1122,18 +1228,31 @@ export function SocSignalsPanel() {
             createElement("div", { className: styles.signalsTwoCol },
               // ── Left: Live signal feed ──────────────────────────────────
               createElement("div", { className: styles.feedCard },
-                createElement("div", { },
+                createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" } },
                   createElement("h3", { },
                     t("soc.signals_overview.live_feed"),
                   ),
-                  null,
+                  createElement("div", { style: { display: "flex", alignItems: "center", gap: "0.5rem" } },
+                    unread > 0
+                      ? createElement("button", {
+                          className: `${styles.filterBtn} ${styles.filterBtnActive}`,
+                          onClick: markAllRead,
+                        }, `${unread} ${t("soc.signals_overview.new_items_suffix", { defaultValue: "mới" })}`)
+                      : null,
+                    createElement("button", {
+                      className: styles.pageBtn,
+                      disabled: exporting,
+                      onClick: () => { void handleExportFeed(); },
+                    }, t("soc.signals_overview.export_csv", { defaultValue: "Xuất CSV" })),
+                  ),
                 ),
+                exportError ? createElement("div", { className: styles.inlineError }, exportError) : null,
                 createElement("div", { className: styles.signalFeedFilterBar },
                   ...filterTypes.map((ft) =>
                     createElement("button", {
                       key: ft,
                       className: `${styles.filterBtn} ${typeFilter === ft ? styles.filterBtnActive : styles.filterBtnInactive}`,
-                      onClick: () => { setTypeFilter(ft); setExpandedId(null); setPage(1); },
+                      onClick: () => { setTypeFilter(ft); setExpandedId(null); setPage(1); prevUidsRef.current = new Set(signals.map(signalUid)); setNewUids([]); setUnread(0); },
                     }, ft === "all" ? t("soc.signals_overview.filter_all") : signalTypeLabel(ft)),
                   ),
                   createElement("label", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } },

@@ -348,6 +348,11 @@ describe("SOC adapter", () => {
         config_payload: { intraday_tick_retention_days: 7 },
       });
     });
+
+    it("exportSocSignalFeed calls feed export with type and filters", async () => {
+      await soc.exportSocSignalFeed({ type: "whale", symbol: "VCI" });
+      expect(coreGet).toHaveBeenCalledWith("/operator/soc/signals/feed/export/?type=whale&symbol=VCI");
+    });
   });
 
   // ─── Screener ────────────────────────────────────────────────────────────
