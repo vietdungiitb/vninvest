@@ -28,6 +28,7 @@ interface SloRow {
 interface OverviewData {
   services: ServiceItem[];
   total?: number;
+  generated_at?: string;
   by_domain?: Record<string, { total: number; healthy: number; degraded: number; unhealthy: number; unknown: number; maintenance: number }>;
 }
 
@@ -469,6 +470,25 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
           healthy: String(stats.healthy),
           total: String(stats.total),
         }),
+        data?.generated_at
+          ? createElement(
+              "span",
+              { style: { color: "var(--text-muted)", fontWeight: 400 } },
+              `· ${t("soc.overview.hero_updated_at", {
+                time: (() => {
+                  try {
+                    return new Intl.DateTimeFormat(localeTag, {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    }).format(new Date(data.generated_at as string));
+                  } catch {
+                    return String(data.generated_at);
+                  }
+                })(),
+              })}`,
+            )
+          : null,
       ),
     ),
 
@@ -530,6 +550,25 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
         : null,
     ),
 
+    /* ── 2b. Health Bar Legend (W-U8) ── */
+    createElement(
+      "div",
+      { className: styles.overviewLegend },
+      ...(["healthy", "degraded", "critical", "maintenance", "unknown", "disabled"] as const)
+        .filter((key) => stats[key] > 0)
+        .map((key) =>
+          createElement(
+            "span",
+            { key, className: styles.overviewLegendItem },
+            createElement("span", {
+              className: styles.overviewLegendDot,
+              style: { background: METRIC_COLORS[key] },
+            }),
+            `${t(METRIC_LABEL_KEYS[key])}: ${stats[key]}`,
+          ),
+        ),
+    ),
+
     /* ── 3. Metric Cards ── */
     createElement(
       "div",
@@ -569,6 +608,15 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
               { className: styles.overviewMetricValue, style: { color } },
               String(value),
             ),
+            def.key === "total"
+              ? null
+              : createElement(
+                  "div",
+                  { className: styles.overviewMetricLabel },
+                  t("soc.overview.metric_share", {
+                    pct: String(total > 0 ? Math.round((value / total) * 100) : 0),
+                  }),
+                ),
           ),
         );
       }),
@@ -581,11 +629,12 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
       const domains = Object.keys(byDomain).sort();
       return createElement(
         "div",
-        { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.75rem" } },
+        { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.75rem", alignItems: "center" } },
+        createElement("span", { className: styles.filterRowLabel }, t("soc.overview.filter_by_domain")),
         createElement(
           "button",
           {
-            className: `${styles.filterBtn} ${domainFilter === null ? styles.filterBtnActive : styles.filterBtnInactive}`,
+            className: `${styles.domainPill} ${domainFilter === null ? styles.filterBtnActive : ""}`,
             "aria-pressed": domainFilter === null,
             onClick: () => setDomainFilter(null),
           },
@@ -600,7 +649,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
             "button",
             {
               key: d,
-              className: `${styles.filterBtn} ${active ? styles.filterBtnActive : styles.filterBtnInactive}`,
+              className: `${styles.domainPill} ${active ? styles.filterBtnActive : ""}`,
               "aria-pressed": active,
               onClick: () => setDomainFilter(active ? null : d),
             },
@@ -610,40 +659,46 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
       );
     })(),
 
-    /* ── 4. Toolbar ── */
+    /* ── 4. Toolbar (W-U6: 2 rows) ── */
     createElement(
       "div",
       { className: styles.toolbar },
-      createElement("input", {
-        className: styles.searchInput,
-        type: "text",
-        placeholder: t("soc.overview.search_placeholder"),
-        value: search,
-        onChange: (e: { target: { value: string } }) => {
-          setSearch(e.target.value);
-        },
-      }),
       createElement(
         "div",
-        { style: { display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" } },
-        createElement("label", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } }, t("soc.overview.sort_label")),
-        createElement(
-          "select",
-          {
-            value: sortBy,
-            onChange: (e: { target: { value: string } }) => setSortBy(e.target.value as any),
-            className: styles.searchInput,
-            style: { width: "auto", minWidth: "130px" },
-            "aria-label": t("soc.overview.sort_label"),
+        { className: styles.toolbarRow },
+        createElement("input", {
+          className: styles.searchInput,
+          type: "text",
+          placeholder: t("soc.overview.search_placeholder"),
+          value: search,
+          style: { flex: "1", minWidth: "200px", width: "auto" },
+          onChange: (e: { target: { value: string } }) => {
+            setSearch(e.target.value);
           },
-          createElement("option", { value: "name" }, t("soc.overview.sort_name")),
-          createElement("option", { value: "status" }, t("soc.overview.sort_status")),
-          createElement("option", { value: "latency" }, t("soc.overview.sort_latency")),
+        }),
+        createElement(
+          "div",
+          { style: { display: "flex", alignItems: "center", gap: "0.5rem" } },
+          createElement("label", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } }, t("soc.overview.sort_label")),
+          createElement(
+            "select",
+            {
+              value: sortBy,
+              onChange: (e: { target: { value: string } }) => setSortBy(e.target.value as any),
+              className: styles.searchInput,
+              style: { width: "auto", minWidth: "130px" },
+              "aria-label": t("soc.overview.sort_label"),
+            },
+            createElement("option", { value: "name" }, t("soc.overview.sort_name")),
+            createElement("option", { value: "status" }, t("soc.overview.sort_status")),
+            createElement("option", { value: "latency" }, t("soc.overview.sort_latency")),
+          ),
         ),
       ),
       createElement(
         "div",
-        null,
+        { className: styles.toolbarRow },
+        createElement("span", { className: styles.filterRowLabel }, t("soc.overview.filter_by_status")),
         ...filterButtons.map((btn) =>
           createElement(
             "button",
@@ -717,7 +772,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                 createElement(
                   "div",
                   { className: styles.overviewServiceInfo },
-                  createElement("h4", { className: styles.overviewServiceName }, highlightMatch(service.name, debouncedSearch) as any),
+                  createElement("h4", { className: styles.overviewServiceName, title: service.name }, highlightMatch(service.name, debouncedSearch) as any),
                   createElement(
                     "p",
                     { className: styles.overviewServiceKey },

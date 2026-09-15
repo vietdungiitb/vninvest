@@ -5,6 +5,17 @@
 
 ---
 
+## Entry 95: AUDIT UI/UX SOC Overview Tab từ screenshot runtime + kế hoạch hiệu chỉnh (1 PR polish)
+
+- **Date**: 2026-09-16
+- **Scope**: Audit cân đối layout + UX từ ảnh chụp docker dev (27 services all-healthy) đối chiếu code. Không sửa code.
+- **Report**: `docs/AUDIT_SOC_OVERVIEW_UI_UX_20260916.md` **MỚI** — 8 findings U-01→U-08 (P0 2, P1 4, P2 2) + 2 verify V-01/V-02, plan 8 work-items W-U1→U8 + 4 i18n keys + 3 tests + gates + visual checklist.
+- **Top vấn đề**: U-01 metric grid `repeat(3,1fr)` (`soc.components.css:338`) với 7 cards → orphan "Đã tắt" 1 mình 1 hàng (thấy rõ trên ảnh). U-02 tên service cụt (`:476-484` + `SocOverviewPanel.tsx:720` thiếu `title`). U-03 SLO chips xếp dọc lãng phí. U-05 2 hàng lọc dùng chung `filterBtn` gây nhầm. U-06 `.toolbarRow` có sẵn (`:561`) nhưng không dùng.
+- **Giữ nguyên**: theme, grid 3×3, phân cấp nút, pagination, a11y PR-2.
+- **Next**: 1 PR polish CSS-first (~0.5–1 ngày) theo §2, visual verify trên stack dev đang chạy ở 1920/1366/390.
+
+---
+
 ## Entry 94: PR-2 P1 Parity Thương Mại SOC Overview Tab — error non-blocking + domain strip + local time + debounce/sort + pagination + burn budget + domain map + visibility + a11y (W6–W14)
 
 - **Date**: 2026-09-16

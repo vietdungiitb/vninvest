@@ -211,6 +211,74 @@ describe("SocOverviewPanel — PR-2 W5 empty filtered", () => {
   });
 });
 
+describe("SocOverviewPanel — UI polish W-U2 name title", () => {
+  beforeEach(() => {
+    adapterMocks.getSocOverviewSummary.mockReset();
+    adapterMocks.getSocSloOverview.mockReset();
+  });
+  afterEach(() => cleanup());
+
+  it("long service name has full title tooltip", async () => {
+    const longName = "Daily Prefetch Orchestrator With Very Long Name";
+    adapterMocks.getSocOverviewSummary.mockResolvedValue({
+      services: [{ service_key: "svc_long", name: longName, domain: "prefetch", status: "healthy", is_active: true }],
+    } as any);
+    adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] });
+    const { container } = render(<SocOverviewPanel />);
+    await waitFor(() => expect(screen.getByText(longName, { exact: false })).toBeTruthy());
+    const h4 = container.querySelector('h4[class*="overviewServiceName"]') as HTMLElement;
+    expect(h4).toBeTruthy();
+    expect(h4.getAttribute("title")).toBe(longName);
+  });
+});
+
+describe("SocOverviewPanel — UI polish W-U4 metric share + W-U7 freshness", () => {
+  beforeEach(() => {
+    adapterMocks.getSocOverviewSummary.mockReset();
+    adapterMocks.getSocSloOverview.mockReset();
+  });
+  afterEach(() => cleanup());
+
+  it("metric cards show share caption and hero shows updated time", async () => {
+    adapterMocks.getSocOverviewSummary.mockResolvedValue({
+      services: baseServices,
+      generated_at: "2026-09-16T09:00:00Z",
+    } as any);
+    adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] });
+    render(<SocOverviewPanel />);
+    await waitFor(() => expect(screen.getByText("Maintenance SVC")).toBeTruthy());
+    // 6 status cards each render metric_share caption
+    expect(screen.getAllByText("soc.overview.metric_share").length).toBe(6);
+    expect(screen.getAllByText((_c, el) => el?.tagName === "SPAN" && (el?.textContent?.includes("soc.overview.hero_updated_at") ?? false)).length).toBe(1);
+  });
+});
+
+describe("SocOverviewPanel — UI polish W-U5 domain pills + row labels", () => {
+  beforeEach(() => {
+    adapterMocks.getSocOverviewSummary.mockReset();
+    adapterMocks.getSocSloOverview.mockReset();
+  });
+  afterEach(() => cleanup());
+
+  it("domain pills use distinct class and both filter rows have labels", async () => {
+    adapterMocks.getSocOverviewSummary.mockResolvedValue({
+      services: [
+        { service_key: "svc_a", name: "A SVC", domain: "vnbroker", status: "healthy", is_active: true },
+      ],
+      by_domain: {
+        vnbroker: { total: 1, healthy: 1, degraded: 0, unhealthy: 0, unknown: 0, maintenance: 0 },
+      },
+    } as any);
+    adapterMocks.getSocSloOverview.mockResolvedValue({ services: [] });
+    const { container } = render(<SocOverviewPanel />);
+    await waitFor(() => expect(screen.getByText("A SVC")).toBeTruthy());
+    expect(screen.getByText("soc.overview.filter_by_domain")).toBeTruthy();
+    expect(screen.getByText("soc.overview.filter_by_status")).toBeTruthy();
+    const pills = container.querySelectorAll('[class*="domainPill"]');
+    expect(pills.length).toBe(2); // domain_all + vnbroker
+  });
+});
+
 describe("SocOverviewPanel — PR-2 W11 burn per budget", () => {
   beforeEach(() => {
     adapterMocks.getSocOverviewSummary.mockReset();

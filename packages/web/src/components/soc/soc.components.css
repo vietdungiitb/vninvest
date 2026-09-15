@@ -337,15 +337,9 @@
 /* Overview Metric Cards */
 .overviewMetricGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 0.85rem;
   margin-bottom: 1.25rem;
-}
-
-@media (max-width: 768px) {
-  .overviewMetricGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 
 @media (max-width: 480px) {
@@ -455,9 +449,11 @@
 
 .sloBadges {
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  align-items: flex-end;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .sloBadge {
@@ -478,9 +474,12 @@
   font-weight: 600;
   color: var(--text-primary, var(--soc-c-f1f5f9));
   margin: 0;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+  min-height: 2.2em;
+  line-height: 1.1;
 }
 
 .overviewServiceKey {
@@ -606,6 +605,60 @@
 .filterBtnInactive:hover {
   color: var(--text-primary, var(--soc-c-f1f5f9));
   background: rgba(var(--soc-rgb-1e293b) / 0.7);
+}
+
+/* Filter row label (W-U5: distinguish filter dimensions) */
+.filterRowLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  margin-right: 0.25rem;
+  white-space: nowrap;
+}
+
+/* Domain pills (W-U5: distinct from status filterBtn) */
+.domainPill {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: "Menlo", "Consolas", monospace;
+  cursor: pointer;
+  border: 1px solid rgba(var(--soc-rgb-5078a8) / 0.25);
+  background: transparent;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  transition: all 0.15s;
+}
+
+.domainPill:hover {
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  border-color: rgba(var(--soc-rgb-5078a8) / 0.5);
+}
+
+/* Health bar legend (W-U8) */
+.overviewLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.9rem;
+  margin: -0.6rem 0 1.25rem;
+}
+
+.overviewLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  font-variant-numeric: tabular-nums;
+}
+
+.overviewLegendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 /* Search Input */
