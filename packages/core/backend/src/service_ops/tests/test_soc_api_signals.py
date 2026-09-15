@@ -316,6 +316,156 @@ class SignalsApiContractTestCase(SignalsApiBaseTestCase):
         workflow_delay.assert_called_once()
 
 
+class SignalsP0ContractTestCase(SignalsApiBaseTestCase):
+    """P0 Entry 100: recent envelope + sentiment + job status-by-id + domain whitelist."""
+
+    def test_recent_envelope_has_p0_fields(self):
+        for path in (
+            '/api/soc/signals/whale/recent/',
+            '/api/soc/signals/dark-pool/recent/',
+            '/api/soc/signals/screener/recent/',
+        ):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            data = response.json()
+            self.assertIn('recent', data)
+            self.assertIn('total_today', data)
+            self.assertGreaterEqual(len(data['recent']), 1)
+            item = data['recent'][0]
+            for field in ('id', 'symbol', 'severity', 'metadata', 'session_date', 'side', 'timestamp', 'title'):
+                self.assertIn(field, item, f'{path} thiếu field {field}')
+
+    def test_summary_and_performance_include_sentiment(self):
+        summary = self.client.get('/api/soc/signals/summary/')
+        performance = self.client.get('/api/soc/signals/performance-metrics/')
+        self.assertEqual(summary.status_code, status.HTTP_200_OK)
+        self.assertEqual(performance.status_code, status.HTTP_200_OK)
+        for payload in (summary.json(), performance.json()):
+            self.assertIn('sentiment', payload)
+            sentiment = payload['sentiment']
+            self.assertEqual(set(sentiment.keys()), {'bullish', 'bearish', 'neutral'})
+        # Fixture: VCI buy + VNM buy = 2 bullish, SSI sell = 1 bearish
+        self.assertEqual(summary.json()['sentiment'], {'bullish': 2, 'bearish': 1, 'neutral': 0})
+
+    @patch('service_ops.views.signals.run_signals_detection_workflow.delay')
+    def test_job_status_respects_run_log_id(self, workflow_delay):
+        workflow_delay.return_value = Mock(id='signals-p0-task')
+        run_res = self.client.post(
+            '/api/soc/signals/jobs/run/', {'domain': 'whale', 'symbol': 'VCI'}, format='json'
+        )
+        self.assertEqual(run_res.status_code, status.HTTP_202_ACCEPTED)
+        run_log_id = run_res.json()['run_log_id']
+        status_res = self.client.get(f'/api/soc/signals/jobs/status/?run_log_id={run_log_id}')
+        self.assertEqual(status_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(status_res.json()['run_log_id'], run_log_id)
+        # run_log_id không hợp lệ → fallback latest, không 500
+        fallback_res = self.client.get('/api/soc/signals/jobs/status/?run_log_id=999999')
+        self.assertEqual(fallback_res.status_code, status.HTTP_200_OK)
+
+    def test_job_run_rejects_unknown_domain(self):
+        response = self.client.post(
+            '/api/soc/signals/jobs/run/', {'domain': 'intruder', 'symbol': 'VCI'}, format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json()['code'], 'INVALID_SIGNAL_DOMAIN')
+
+    @patch('service_ops.views.signals.run_signals_detection_workflow.delay')
+    def test_job_run_normalizes_dark_pool_to_dark_flow(self, workflow_delay):
+        workflow_delay.return_value = Mock(id='signals-dark-task')
+        response = self.client.post(
+            '/api/soc/signals/jobs/run/', {'domain': 'dark_pool', 'symbol': 'SSI'}, format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(response.json()['domain'], 'dark_flow')
+        _, kwargs = workflow_delay.call_args
+        self.assertEqual(kwargs['domain'], 'dark_flow')
+
+    def test_job_run_rejects_screener_with_manual_scan_hint(self):
+        response = self.client.post(
+            '/api/soc/signals/jobs/run/', {'domain': 'screener', 'symbol': 'VNM'}, format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json()['code'], 'SCREENER_USE_MANUAL_SCAN')
+
+    def test_materialization_preview_dark_pool_runs_unified_branch(self):
+        response = self.client.post(
+            '/api/soc/signals/materialization/preview/',
+            {'domain': 'dark_pool', 'symbol': 'SSI'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        plan = {item['service_key']: item for item in response.json()['execution_plan']}
+        self.assertTrue(plan['signal_unified_alert_materializer']['will_run'])
+
+
+class SignalsP1PagingTestCase(SignalsApiBaseTestCase):
+    """P1 W1.1: page/page_size + total_filtered + symbol/severity/direction."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        now = timezone.now()
+        session_date = now.date()
+        extra = [
+            ('FPT', UnifiedAlert.SeverityChoices.HIGH, UnifiedAlert.DirectionChoices.BUY, 10),
+            ('MWG', UnifiedAlert.SeverityChoices.LOW, UnifiedAlert.DirectionChoices.SELL, 12),
+            ('VCB', UnifiedAlert.SeverityChoices.MEDIUM, UnifiedAlert.DirectionChoices.NEUTRAL, 14),
+            ('HPG', UnifiedAlert.SeverityChoices.HIGH, UnifiedAlert.DirectionChoices.SELL, 16),
+        ]
+        for symbol, severity, direction, minutes_ago in extra:
+            UnifiedAlert.objects.create(
+                alert_type=UnifiedAlert.AlertTypeChoices.WHALE,
+                symbol=symbol,
+                severity=severity,
+                title=f'Whale {symbol}',
+                body='',
+                value=Decimal('100000000.00'),
+                direction=direction,
+                session_date=session_date,
+                triggered_at=now - timedelta(minutes=minutes_ago),
+                source_ref=f'signals-paging-{symbol}',
+                metadata={},
+            )
+
+    def test_default_paging_backward_compat(self):
+        data = self.client.get('/api/soc/signals/whale/recent/').json()
+        self.assertEqual(data['page'], 1)
+        self.assertEqual(data['page_size'], 20)
+        self.assertEqual(data['total_today'], 5)
+        self.assertEqual(data['total_filtered'], 5)
+        self.assertEqual(len(data['recent']), 5)
+
+    def test_page_two_returns_remaining(self):
+        data = self.client.get('/api/soc/signals/whale/recent/?page=2&page_size=2').json()
+        self.assertEqual(data['page'], 2)
+        self.assertEqual(len(data['recent']), 2)
+        self.assertEqual(data['total_filtered'], 5)
+        self.assertEqual(data['total_today'], 5)
+
+    def test_page_size_clamped_to_max(self):
+        data = self.client.get('/api/soc/signals/whale/recent/?page_size=500').json()
+        self.assertEqual(data['page_size'], 100)
+
+    def test_symbol_filter(self):
+        data = self.client.get('/api/soc/signals/whale/recent/?symbol=fpt').json()
+        self.assertEqual(data['total_filtered'], 1)
+        self.assertEqual(data['total_today'], 5)
+        self.assertEqual(data['recent'][0]['symbol'], 'FPT')
+
+    def test_severity_and_direction_filters(self):
+        high = self.client.get('/api/soc/signals/whale/recent/?severity=high').json()
+        self.assertEqual(high['total_filtered'], 3)
+        sell = self.client.get('/api/soc/signals/whale/recent/?direction=sell').json()
+        self.assertEqual(sell['total_filtered'], 2)
+        combo = self.client.get('/api/soc/signals/whale/recent/?severity=high&direction=sell').json()
+        self.assertEqual(combo['total_filtered'], 1)
+        self.assertEqual(combo['recent'][0]['symbol'], 'HPG')
+
+    def test_invalid_filter_values_ignored(self):
+        data = self.client.get('/api/soc/signals/whale/recent/?severity=bogus&direction=bogus').json()
+        self.assertEqual(data['total_filtered'], 5)
+
+
 class SignalsAuthenticationTestCase(TestCase):
     def setUp(self):
         self.client = APIClient()

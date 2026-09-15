@@ -2,6 +2,7 @@ import { createElement, useEffect, useState, useMemo, useRef, type ReactNode } f
 import { useI18n } from "../../context/LangContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { toneColor, statusColor as socStatusColor } from "./socStatusColors.js";
+import { formatLastCheck } from "./socTime.js";
 import { LucideIcon } from "../ui/lucide-icon.js";
 import styles from "./soc.module.css";
 
@@ -14,6 +15,7 @@ interface RecentSignal {
   price?: number;
   detected_at: string;
   metadata?: Record<string, unknown>;
+  session_date?: string | null;
   whale_volume?: number;
   total_volume?: number;
   strength?: string;
@@ -24,6 +26,86 @@ interface RecentSignal {
   severity?: string;
 }
 
+/** Raw item BE trả về: {recent:[{id,symbol,severity,metadata,session_date,value,side,timestamp,title,...}]} */
+interface RecentRawItem {
+  id?: number;
+  symbol: string;
+  side?: string;
+  timestamp?: string;
+  value?: number | string | null;
+  order_value_vnd?: number | string | null;
+  matched_value_vnd?: number | string | null;
+  severity?: string;
+  metadata?: Record<string, unknown>;
+  session_date?: string | null;
+  title?: string;
+}
+
+interface RecentEnvelope {
+  recent?: RecentRawItem[];
+  results?: RecentSignal[];
+  data?: RecentSignal[];
+  total_today?: number;
+  total_filtered?: number;
+  page?: number;
+  page_size?: number;
+}
+
+interface RecentQuery {
+  page?: number;
+  page_size?: number;
+  symbol?: string;
+  severity?: string;
+  direction?: string;
+}
+
+function toNumberOrUndefined(v: number | string | null | undefined): number | undefined {
+  if (v == null || v === "") return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/** W0.1 mapper: BE canonical → FE RecentSignal (timestamp→detected_at, side→action, value→volume). */
+export function mapRecentItem(raw: RecentRawItem, type: RecentSignal["type"]): RecentSignal {
+  return {
+    id: raw.id,
+    symbol: raw.symbol,
+    type,
+    action: raw.side,
+    volume: toNumberOrUndefined(raw.value ?? raw.order_value_vnd ?? raw.matched_value_vnd),
+    price: undefined,
+    detected_at: raw.timestamp ?? "",
+    metadata: raw.metadata ?? {},
+    session_date: raw.session_date ?? null,
+    severity: raw.severity,
+  };
+}
+
+function pickRecentList(res: RecentEnvelope | null | undefined): RecentRawItem[] {
+  if (!res) return [];
+  return (res.recent as RecentRawItem[] | undefined)
+    ?? (res.results as unknown as RecentRawItem[] | undefined)
+    ?? (res.data as unknown as RecentRawItem[] | undefined)
+    ?? [];
+}
+
+/** Key expand duy nhất mỗi tín hiệu: ưu tiên id, fallback symbol+detected_at+idx. */
+export function signalKey(s: RecentSignal, idx: number): string {
+  if (s.id != null) return `${s.type}-${s.id}`;
+  return `${s.type}-${s.symbol}-${s.detected_at}-${idx}`;
+}
+
+const TERMINAL_JOB_STATUSES = new Set(["success", "partial", "failed", "skipped"]);
+
+/** W1.4: tiến độ started→finished cho mat card (dùng CSS matCardBar có sẵn). */
+export function matProgress(status: string | undefined | null): { pct: number; active: boolean } {
+  const s = (status || "").toLowerCase();
+  if (s === "success" || s === "partial" || s === "healthy") return { pct: 100, active: false };
+  if (s === "failed") return { pct: 100, active: false };
+  if (s === "running" || s === "queued") return { pct: 50, active: true };
+  return { pct: 0, active: false };
+}
+
 interface PerformanceMetrics {
   signals_today?: number;
   whale_signals?: number;
@@ -31,6 +113,12 @@ interface PerformanceMetrics {
   screener_alerts?: number;
   detection_rate?: number;
   avg_latency_ms?: number;
+  // W0.2: summary/ canonical keys (FE đọc summary, không đọc performance cho counts)
+  active_alerts?: number;
+  whale_alerts?: number;
+  dark_flow_alerts?: number;
+  signal_alerts?: number;
+  avg_signal_latency_ms?: number;
   sentiment?: {
     bullish?: number;
     bearish?: number;
@@ -61,7 +149,24 @@ interface MaterializationStatus {
   latest_detection_job_run_log_id?: number | null;
 }
 
-type SubTab = "overview" | "job-console" | "materialization";
+type SubTab = "overview" | "job-console" | "materialization" | "config" | "detection" | "retention";
+
+interface SignalTabData<T> {
+  loading: boolean;
+  loaded: boolean;
+  error: string;
+  data: T | null;
+}
+
+interface SignalOwnership {
+  can_apply?: boolean;
+  write_block_reason?: string;
+  owner_team?: string;
+  writer?: string;
+  write_surface?: string;
+  mode?: string;
+  [k: string]: unknown;
+}
 
 const TYPE_ICONS: Record<string, string> = {
   whale: "Waves",
@@ -81,18 +186,6 @@ const TYPE_BG: Record<string, string> = {
   screener: "rgba(245, 158, 11, 0.2)",
 };
 
-function formatTime(iso: string): string {
-  if (!iso) return "";
-  try {
-    const p = iso.split("T");
-    if (p.length < 2) return iso.slice(0, 5);
-    const time = p[1].slice(0, 5);
-    return time;
-  } catch {
-    return iso.slice(0, 5);
-  }
-}
-
 function formatVolume(v: number | undefined | null): string {
   if (v == null) return "";
   if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + "M";
@@ -109,10 +202,11 @@ function getActionLabel(action: string | undefined): { cls: string; text: string
 }
 
 export function SocSignalsPanel() {
-  const { t } = useI18n();
+  const { t, localeTag } = useI18n() as unknown as { t: (k: string, o?: any) => string; localeTag: string };
 
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [feedError, setFeedError] = useState("");
+  const [matError, setMatError] = useState("");
 
   const [signals, setSignals] = useState<RecentSignal[]>([]);
   const [metrics, setMetrics] = useState<PerformanceMetrics | null>(null);
@@ -120,54 +214,82 @@ export function SocSignalsPanel() {
 
   const [typeFilter, setTypeFilter] = useState("all");
   const [symbolFilter, setSymbolFilter] = useState("");
+  const [debouncedSymbol, setDebouncedSymbol] = useState("");
+  const [severityFilter, setSeverityFilter] = useState("all");
+  const [directionFilter, setDirectionFilter] = useState("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [subTab, setSubTab] = useState<SubTab>("overview");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const [jobDomain, setJobDomain] = useState("whale");
   const [jobSymbol, setJobSymbol] = useState("");
   const [jobLoading, setJobLoading] = useState(false);
+  const [jobPolling, setJobPolling] = useState(false);
+  const [jobRunId, setJobRunId] = useState<number | null>(null);
   const [jobStatus, setJobStatus] = useState<string | null>(null);
+
+  // W1.3: lazy data cho 3 subtabs mới (chỉ fetch khi mở tab — tiết kiệm req)
+  const emptyTab = <T,>(): SignalTabData<T> => ({ loading: false, loaded: false, error: "", data: null });
+  const [configTab, setConfigTab] = useState<SignalTabData<{ config: Record<string, unknown>; ownership: SignalOwnership }>>(emptyTab());
+  const [detectionTab, setDetectionTab] = useState<SignalTabData<{ whale: Record<string, unknown>; dark: Record<string, unknown>; screener: Record<string, unknown> }>>(emptyTab());
+  const [retentionTab, setRetentionTab] = useState<SignalTabData<Record<string, unknown>>>(emptyTab());
+  const [testSymbol, setTestSymbol] = useState("VNM");
+  const [testLoading, setTestLoading] = useState(false);
+  const [testResult, setTestResult] = useState<{ symbol?: string; test_result?: string; detection_possible?: boolean } | null>(null);
+  const [retentionPreview, setRetentionPreview] = useState<SignalTabData<{ valid?: boolean; errors?: string[]; retention_days?: Record<string, unknown>; impact?: Record<string, unknown> }>>(emptyTab());
 
   const filterTypes = ["all", "whale", "dark_pool", "screener"];
 
   const mountedRef = useRef(true);
   const consecutiveErrorsRef = useRef(0);
   const intervalRef = useRef<number | null>(null);
-  const intervalDelayRef = useRef(10000);
+  const intervalDelayRef = useRef(15000); // W1.5: 10s->15s
+  const jobPollRef = useRef<number | null>(null);
+  const jobDeadlineRef = useRef(0);
+  const isFirstFilterRun = useRef(true);
 
-  const fetchData = async (isSilent = false) => {
-    if (!isSilent) setLoading(true);
+  type SocSignalsAdapter = {
+    getSocSignalMetrics: () => Promise<PerformanceMetrics>;
+    getSocWhaleRecent: (params?: RecentQuery) => Promise<RecentEnvelope>;
+    getSocDarkPoolRecent: (params?: RecentQuery) => Promise<RecentEnvelope>;
+    getSocScreenerRecent: (params?: RecentQuery) => Promise<RecentEnvelope>;
+    getSocSignalMaterialization: () => Promise<MaterializationStatus>;
+    runSocSignalJob: (domain: string, symbol: string) => Promise<{ status?: string; run_log_id?: number; message?: string }>;
+    getSocSignalJobStatus: (runLogId: number) => Promise<{ status?: string; run_log_id?: number; error_detail?: string }>;
+    getSocSignalConfig: () => Promise<{ config?: Record<string, unknown>; config_payload?: Record<string, unknown>; ownership?: SignalOwnership; note?: string }>;
+    getSocSignalOwnership: () => Promise<SignalOwnership>;
+    getSocWhaleDetection: () => Promise<Record<string, unknown>>;
+    getSocDarkPoolDetection: () => Promise<Record<string, unknown>>;
+    getSocScreenerDetection: () => Promise<Record<string, unknown>>;
+    getSocSignalRetention: () => Promise<Record<string, unknown>>;
+    testSocWhaleDetection: (symbol?: string) => Promise<{ symbol?: string; test_result?: string; detection_possible?: boolean }>;
+    previewSocSignalRetention: (config?: Record<string, unknown>) => Promise<{ valid?: boolean; errors?: string[]; retention_days?: Record<string, unknown>; impact?: Record<string, unknown> }>;
+  };
+
+  const getAdapter = () => defaultCoreApiAdapter as unknown as SocSignalsAdapter;
+
+  // W0.3: feed (summary + 3 recents) tách khỏi materialization — 1 section lỗi không sập tab.
+  // W1.1: gửi filter xuống BE (page_size=100 để gộp 3 nguồn rồi phân trang client).
+  const fetchFeed = async (query?: RecentQuery) => {
+    const adapter = getAdapter();
+    const q: RecentQuery = {
+      page_size: 100,
+      ...(query?.symbol ? { symbol: query.symbol } : {}),
+      ...(query?.severity ? { severity: query.severity } : {}),
+      ...(query?.direction ? { direction: query.direction } : {}),
+    };
     try {
-      const adapter = defaultCoreApiAdapter as unknown as {
-        getSocSignalPerformanceMetrics: () => Promise<PerformanceMetrics>;
-        getSocWhaleRecent: () => Promise<{ results?: RecentSignal[]; data?: RecentSignal[] }>;
-        getSocDarkPoolRecent: () => Promise<{ results?: RecentSignal[]; data?: RecentSignal[] }>;
-        getSocScreenerRecent: () => Promise<{ results?: RecentSignal[]; data?: RecentSignal[] }>;
-        getSocSignalMaterialization: () => Promise<MaterializationStatus>;
-      };
-
-      const [perfMetrics, whaleRes, darkPoolRes, screenerRes, matStatus] = await Promise.all([
-        adapter.getSocSignalPerformanceMetrics(),
-        adapter.getSocWhaleRecent(),
-        adapter.getSocDarkPoolRecent(),
-        adapter.getSocScreenerRecent(),
-        adapter.getSocSignalMaterialization(),
+      const [summary, whaleRes, darkPoolRes, screenerRes] = await Promise.all([
+        adapter.getSocSignalMetrics(),
+        adapter.getSocWhaleRecent(q),
+        adapter.getSocDarkPoolRecent(q),
+        adapter.getSocScreenerRecent(q),
       ]);
 
-      const whaleList: RecentSignal[] = (whaleRes?.results || whaleRes?.data || []).map((s: { id?: number; symbol: string; action?: string; volume?: number; detected_at: string; metadata?: Record<string, unknown> }) => ({
-        ...s,
-        type: "whale" as const,
-      }));
-
-      const darkPoolList: RecentSignal[] = (darkPoolRes?.results || darkPoolRes?.data || []).map((s: { id?: number; symbol: string; action?: string; volume?: number; detected_at: string; metadata?: Record<string, unknown> }) => ({
-        ...s,
-        type: "dark_pool" as const,
-      }));
-
-      const screenerList: RecentSignal[] = (screenerRes?.results || screenerRes?.data || []).map((s: { id?: number; symbol: string; action?: string; volume?: number; detected_at: string; metadata?: Record<string, unknown> }) => ({
-        ...s,
-        type: "screener" as const,
-      }));
+      const whaleList = pickRecentList(whaleRes).map((s) => mapRecentItem(s, "whale"));
+      const darkPoolList = pickRecentList(darkPoolRes).map((s) => mapRecentItem(s, "dark_pool"));
+      const screenerList = pickRecentList(screenerRes).map((s) => mapRecentItem(s, "screener"));
 
       const merged = [...whaleList, ...darkPoolList, ...screenerList].sort((a, b) => {
         const da = a.detected_at ? new Date(a.detected_at).getTime() : 0;
@@ -177,63 +299,223 @@ export function SocSignalsPanel() {
 
       if (!mountedRef.current) return;
       setSignals(merged);
-      setMetrics(perfMetrics);
-      setMaterialization(matStatus);
-      setError("");
-      const hadBackoff = consecutiveErrorsRef.current >= 3;
-      consecutiveErrorsRef.current = 0;
-      if (hadBackoff) restartInterval(10000);
+      setMetrics(summary);
+      setFeedError("");
     } catch (err) {
       if (!mountedRef.current) return;
+      setFeedError(err instanceof Error ? err.message : "Cannot load signal feed.");
+      throw err;
+    }
+  };
+
+  const fetchMaterialization = async () => {
+    try {
+      const matStatus = await getAdapter().getSocSignalMaterialization();
+      if (!mountedRef.current) return;
+      setMaterialization(matStatus);
+      setMatError("");
+    } catch (err) {
+      if (!mountedRef.current) return;
+      setMatError(err instanceof Error ? err.message : "Cannot load materialization.");
+      throw err;
+    }
+  };
+
+  const notePollResult = (ok: boolean) => {
+    if (ok) {
+      const hadBackoff = consecutiveErrorsRef.current >= 3;
+      consecutiveErrorsRef.current = 0;
+      if (hadBackoff) restartInterval(15000);
+    } else {
       consecutiveErrorsRef.current += 1;
-      // R2: after 3 consecutive poll failures, slow 10s → 60s
-      if (consecutiveErrorsRef.current >= 3 && intervalDelayRef.current === 10000) {
+      // R2: after 3 consecutive poll failures, slow 15s → 60s
+      if (consecutiveErrorsRef.current >= 3 && intervalDelayRef.current === 15000) {
         restartInterval(60000);
       }
-      // R2: after 3 consecutive poll failures, stop spamming error toast
-      if (!isSilent || consecutiveErrorsRef.current >= 3) {
-        setError(err instanceof Error ? err.message : "Cannot load signal data.");
-      }
-    } finally {
-      if (!isSilent && mountedRef.current) setLoading(false);
     }
+  };
+
+  const fetchData = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
+    let ok = true;
+    try {
+      await fetchFeed();
+    } catch {
+      ok = false;
+    }
+    try {
+      await fetchMaterialization();
+    } catch {
+      ok = false;
+    }
+    if (!mountedRef.current) return;
+    // R2: silent poll chỉ hiện banner section, không spam; backoff sau 3 lỗi liên tiếp
+    if (!isSilent || !ok) notePollResult(ok);
+    if (!isSilent) setLoading(false);
+  };
+
+  const pollOnce = async () => {
+    let ok = true;
+    try {
+      await fetchFeed();
+    } catch {
+      ok = false;
+    }
+    try {
+      await fetchMaterialization();
+    } catch {
+      ok = false;
+    }
+    if (!mountedRef.current) return;
+    notePollResult(ok);
   };
 
   const restartInterval = (delayMs: number) => {
     if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
+    // W1.5-gọn cho P0: jitter 0–3s tránh 5 req dồn cùng lúc
+    const jittered = delayMs + Math.floor(Math.random() * 3000);
     intervalDelayRef.current = delayMs;
     intervalRef.current = window.setInterval(() => {
-      fetchData(true);
-    }, delayMs);
+      void pollOnce();
+    }, jittered);
+  };
+
+  const stopJobPoll = () => {
+    if (jobPollRef.current !== null) {
+      window.clearInterval(jobPollRef.current);
+      jobPollRef.current = null;
+    }
+    if (mountedRef.current) setJobPolling(false);
   };
 
   useEffect(() => {
     mountedRef.current = true;
-    fetchData(false);
-    restartInterval(10000);
+    void fetchData(false);
+    restartInterval(15000);
+    // W0.4: tab ẩn → pause poll nền, hiện → fetch ngay (pattern overview W13)
+    const onVisibility = () => {
+      if (document.hidden) {
+        if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
+      } else {
+        void pollOnce();
+        restartInterval(intervalDelayRef.current);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       mountedRef.current = false;
+      document.removeEventListener("visibilitychange", onVisibility);
       if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
+      stopJobPoll();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // W1.1: debounce 300ms cho ô tìm mã (pattern overview W9)
+  useEffect(() => {
+    const h = window.setTimeout(() => setDebouncedSymbol(symbolFilter.trim().toUpperCase()), 300);
+    return () => window.clearTimeout(h);
+  }, [symbolFilter]);
+
+  // W1.1: filter đổi → reset page + fetch lại feed với query BE
+  useEffect(() => {
+    if (isFirstFilterRun.current) {
+      isFirstFilterRun.current = false;
+      return;
+    }
+    setPage(1);
+    setExpandedId(null);
+    void fetchFeed({
+      symbol: debouncedSymbol || undefined,
+      severity: severityFilter !== "all" ? severityFilter : undefined,
+      direction: directionFilter !== "all" ? directionFilter : undefined,
+    }).then(() => notePollResult(true)).catch(() => notePollResult(false));
+    restartInterval(intervalDelayRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSymbol, severityFilter, directionFilter]);
+
+  const errMsg = (err: unknown, fallback: string): string => (err instanceof Error ? err.message : fallback);
+
+  // W1.3: lazy-load 3 subtabs khi mở lần đầu (không cộng req vào poll chính)
+  useEffect(() => {
+    if (subTab === "config" && !configTab.loaded && !configTab.loading) {
+      setConfigTab((s) => ({ ...s, loading: true }));
+      const adapter = getAdapter();
+      Promise.all([adapter.getSocSignalConfig(), adapter.getSocSignalOwnership()])
+        .then(([cfg, ownership]) => {
+          if (!mountedRef.current) return;
+          setConfigTab({
+            loading: false,
+            loaded: true,
+            error: "",
+            data: { config: cfg.config ?? cfg.config_payload ?? {}, ownership: (cfg.ownership as SignalOwnership) ?? ownership },
+          });
+        })
+        .catch((err) => {
+          if (!mountedRef.current) return;
+          setConfigTab({ loading: false, loaded: false, error: errMsg(err, "Cannot load signal config."), data: null });
+        });
+    }
+    if (subTab === "detection" && !detectionTab.loaded && !detectionTab.loading) {
+      setDetectionTab((s) => ({ ...s, loading: true }));
+      const adapter = getAdapter();
+      Promise.all([adapter.getSocWhaleDetection(), adapter.getSocDarkPoolDetection(), adapter.getSocScreenerDetection()])
+        .then(([whale, dark, screener]) => {
+          if (!mountedRef.current) return;
+          setDetectionTab({ loading: false, loaded: true, error: "", data: { whale, dark, screener } });
+        })
+        .catch((err) => {
+          if (!mountedRef.current) return;
+          setDetectionTab({ loading: false, loaded: false, error: errMsg(err, "Cannot load detection settings."), data: null });
+        });
+    }
+    if (subTab === "retention" && !retentionTab.loaded && !retentionTab.loading) {
+      setRetentionTab((s) => ({ ...s, loading: true }));
+      getAdapter().getSocSignalRetention()
+        .then((policy) => {
+          if (!mountedRef.current) return;
+          setRetentionTab({ loading: false, loaded: true, error: "", data: policy });
+        })
+        .catch((err) => {
+          if (!mountedRef.current) return;
+          setRetentionTab({ loading: false, loaded: false, error: errMsg(err, "Cannot load retention policy."), data: null });
+        });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subTab]);
 
   const filteredSignals = useMemo(() => {
     const q = symbolFilter.trim().toUpperCase();
     return signals.filter((s) => {
       if (typeFilter !== "all" && s.type !== typeFilter) return false;
       if (q && !s.symbol.toUpperCase().includes(q)) return false;
+      // W1.1: lọc client thêm 1 lớp (BE đã lọc qua query — dự phòng khi envelope cũ)
+      if (severityFilter !== "all" && (s.severity || "").toLowerCase() !== severityFilter) return false;
+      if (directionFilter !== "all" && (s.action || "").toLowerCase() !== directionFilter) return false;
       return true;
     });
-  }, [signals, typeFilter, symbolFilter]);
+  }, [signals, typeFilter, symbolFilter, severityFilter, directionFilter]);
+
+  // W1.1: phân trang client trên feed đã gộp 3 nguồn (BE paging theo từng nguồn, không gộp được)
+  const totalPages = Math.max(1, Math.ceil(filteredSignals.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const pagedSignals = useMemo(() => {
+    const start = (safePage - 1) * pageSize;
+    return filteredSignals.slice(start, start + pageSize);
+  }, [filteredSignals, safePage, pageSize]);
+  const pageFrom = filteredSignals.length === 0 ? 0 : (safePage - 1) * pageSize + 1;
+  const pageTo = Math.min(safePage * pageSize, filteredSignals.length);
 
   const stats = useMemo(() => {
-    const total = metrics?.signals_today ?? signals.length;
-    const whaleCount = metrics?.whale_signals ?? signals.filter((s) => s.type === "whale").length;
-    const darkPoolCount = metrics?.dark_pool_signals ?? signals.filter((s) => s.type === "dark_pool").length;
-    const screenerCount = metrics?.screener_alerts ?? signals.filter((s) => s.type === "screener").length;
+    // W0.2: counts lấy từ summary/ canonical (active/whale/dark_flow/signal_alerts),
+    // không đọc performance (BE không có 4 keys này — F-SG-04).
+    const total = metrics?.active_alerts ?? metrics?.signals_today ?? signals.length;
+    const whaleCount = metrics?.whale_alerts ?? metrics?.whale_signals ?? signals.filter((s) => s.type === "whale").length;
+    const darkPoolCount = metrics?.dark_flow_alerts ?? metrics?.dark_pool_signals ?? signals.filter((s) => s.type === "dark_pool").length;
+    const screenerCount = metrics?.signal_alerts ?? metrics?.screener_alerts ?? signals.filter((s) => s.type === "screener").length;
     const detectionRate = metrics?.detection_rate ?? null;
-    const avgLatency = metrics?.avg_latency_ms ?? null;
+    // W0.2: BE key chuẩn là avg_signal_latency_ms (F-SG-03).
+    const avgLatency = metrics?.avg_signal_latency_ms ?? metrics?.avg_latency_ms ?? null;
     return { total, whaleCount, darkPoolCount, screenerCount, detectionRate, avgLatency };
   }, [signals, metrics]);
 
@@ -251,17 +533,60 @@ export function SocSignalsPanel() {
       return;
     }
     setJobLoading(true);
+    setJobPolling(false);
     setJobStatus(null);
+    setJobRunId(null);
+    stopJobPoll();
     try {
-      const adapter = defaultCoreApiAdapter as unknown as {
-        runSocSignalJob: (domain: string, symbol: string) => Promise<{ status?: string; run_log_id?: string; message?: string }>;
-      };
+      const adapter = getAdapter();
       const result = await adapter.runSocSignalJob(jobDomain, sym);
-      setJobStatus(result.status || result.message || t("soc.signals_overview.job_queued"));
+      const runId = result.run_log_id ?? null;
+      setJobRunId(runId);
+      if (runId == null) {
+        setJobStatus(result.status || result.message || t("soc.signals_overview.job_queued"));
+        return;
+      }
+      // W0.4: poll status theo run_log_id 3s/lần đến terminal, timeout 5 phút.
+      setJobPolling(true);
+      setJobStatus(t("soc.signals_overview.job_polling", { defaultValue: "Đang theo dõi job..." }));
+      jobDeadlineRef.current = Date.now() + 5 * 60 * 1000;
+      const checkOnce = async (): Promise<boolean> => {
+        if (!mountedRef.current) return true;
+        if (Date.now() > jobDeadlineRef.current) {
+          if (mountedRef.current) setJobStatus(t("soc.signals_overview.job_timeout", { defaultValue: "Job quá 5 phút chưa xong — kiểm tra lại sau." }));
+          return true;
+        }
+        try {
+          const st = await adapter.getSocSignalJobStatus(runId);
+          if (!mountedRef.current) return true;
+          const s = (st.status || "").toLowerCase();
+          if (TERMINAL_JOB_STATUSES.has(s)) {
+            setJobStatus(s === "failed" ? (st.error_detail || `Job ${s}`) : `Job ${s} (run #${runId})`);
+            return true;
+          }
+          setJobStatus(t("soc.signals_overview.job_polling", { defaultValue: "Đang theo dõi job..." }) + ` (${st.status || "queued"})`);
+          return false;
+        } catch (err) {
+          if (!mountedRef.current) return true;
+          setJobStatus(err instanceof Error ? err.message : "Job failed.");
+          return true;
+        }
+      };
+      const done = await checkOnce();
+      if (!done && mountedRef.current) {
+        jobPollRef.current = window.setInterval(() => {
+          void (async () => {
+            const finished = await checkOnce();
+            if (finished) stopJobPoll();
+          })();
+        }, 3000);
+      } else {
+        stopJobPoll();
+      }
     } catch (err) {
       setJobStatus(err instanceof Error ? err.message : "Job failed.");
     } finally {
-      setJobLoading(false);
+      if (mountedRef.current) setJobLoading(false);
     }
   };
 
@@ -270,6 +595,22 @@ export function SocSignalsPanel() {
     if (type === "dark_pool") return t("soc.signals_overview.filter_dark_pool");
     if (type === "screener") return t("soc.signals_overview.filter_screener");
     return type;
+  };
+
+  // W1.4: từ mat card nhảy sang job console xem đúng run_log_id
+  const handleViewJobStatus = async (runId: number) => {
+    setSubTab("job-console");
+    setJobRunId(runId);
+    setJobStatus(t("soc.signals_overview.job_polling", { defaultValue: "Đang theo dõi job..." }));
+    try {
+      const st = await getAdapter().getSocSignalJobStatus(runId);
+      if (!mountedRef.current) return;
+      const s = (st.status || "").toLowerCase();
+      setJobStatus(s === "failed" ? (st.error_detail || `Job ${s}`) : `Job ${s || "unknown"} (run #${runId})`);
+    } catch (err) {
+      if (!mountedRef.current) return;
+      setJobStatus(err instanceof Error ? err.message : "Job failed.");
+    }
   };
 
   // ─── Stat card ─────────────────────────────────────────────────────────
@@ -281,20 +622,31 @@ export function SocSignalsPanel() {
 
   // ─── Signal row ────────────────────────────────────────────────────────
   const renderSignalRow = (s: RecentSignal, idx: number) => {
-    const stableKey = `${s.type}-${s.symbol}`;
-    const isExpanded = expandedId === stableKey;
+    const key = signalKey(s, idx);
+    const isExpanded = expandedId === key;
     const action = getActionLabel(s.action);
-    const handleClick = () => setExpandedId(isExpanded ? null : stableKey);
+    const handleClick = () => setExpandedId(isExpanded ? null : key);
+    const handleKeyDown = (e: { key: string; preventDefault: () => void }) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        handleClick();
+      }
+    };
     const metaJson = s.metadata ? JSON.stringify(s.metadata, null, 2) : null;
+    const when = formatLastCheck(s.detected_at, localeTag, t);
 
     return createElement(
       "div",
-      { key: `${s.type}-${s.id ?? stableKey}-${s.detected_at}-${idx}` },
+      { key },
       createElement(
         "div",
         {
           className: `${styles.signalRow} ${isExpanded ? styles.signalRowExpanded : ""}`,
           onClick: handleClick,
+          onKeyDown: handleKeyDown,
+          role: "button",
+          tabIndex: 0,
+          "aria-expanded": isExpanded,
         },
         createElement("div", {
           className: styles.signalIcon,
@@ -305,8 +657,8 @@ export function SocSignalsPanel() {
         createElement("div", { className: styles.signalVolume },
           s.volume != null ? formatVolume(s.volume) : "",
         ),
-        createElement("div", { className: styles.signalTime },
-          formatTime(s.detected_at),
+        createElement("div", { className: styles.signalTime, title: when.title },
+          when.display,
         ),
       ),
       isExpanded && metaJson
@@ -380,6 +732,149 @@ export function SocSignalsPanel() {
     );
   };
 
+  // ─── W1.3 helpers: đọc-only config/detection/retention ──────────────────
+  const formatConfigValue = (v: unknown): string => {
+    if (v == null) return "—";
+    if (Array.isArray(v)) return v.length ? v.map(String).join(", ") : "—";
+    if (typeof v === "object") return JSON.stringify(v);
+    return String(v);
+  };
+
+  const renderKVCard = (title: string, obj: Record<string, unknown> | null | undefined, keyPrefix: string) =>
+    createElement("div", { className: styles.matCard, key: keyPrefix },
+      createElement("div", { className: styles.matCardLabel }, title),
+      ...Object.entries(obj ?? {}).map(([k, v]) =>
+        createElement("div", { key: k }, `${k}: ${formatConfigValue(v)}`),
+      ),
+    );
+
+  const renderConfigTab = () => {
+    if (configTab.loading) {
+      return createElement("p", { className: styles.emptyState }, t("soc.pages.status_loading"));
+    }
+    if (configTab.error && !configTab.data) {
+      return createElement("div", { className: styles.inlineError }, configTab.error);
+    }
+    const cfg = configTab.data?.config ?? {};
+    const own = configTab.data?.ownership ?? {};
+    return createElement("div", null,
+      configTab.error ? createElement("div", { className: styles.inlineError }, configTab.error) : null,
+      createElement("div", { className: styles.matGrid },
+        renderKVCard(t("soc.signals_overview.config_tab"), cfg, "cfg"),
+        renderKVCard("ownership", {
+          mode: own.mode,
+          can_apply: own.can_apply,
+          owner_team: own.owner_team,
+          writer: own.writer,
+          write_surface: own.write_surface,
+          write_block_reason: own.write_block_reason,
+        }, "own"),
+      ),
+      createElement("div", { }, t("soc.signals_overview.bridge_write_note", { defaultValue: "SOC chỉ đọc — ghi cấu hình qua service chủ sở hữu (bridge-write)." })),
+    );
+  };
+
+  const handleTestWhale = async () => {
+    const sym = testSymbol.trim().toUpperCase() || "VNM";
+    setTestLoading(true);
+    setTestResult(null);
+    try {
+      const res = await getAdapter().testSocWhaleDetection(sym);
+      if (mountedRef.current) setTestResult(res);
+    } catch (err) {
+      if (!mountedRef.current) return;
+      setTestResult({ symbol: sym, test_result: errMsg(err, "failed") });
+    } finally {
+      if (mountedRef.current) setTestLoading(false);
+    }
+  };
+
+  const renderDetectionTab = () => {
+    if (detectionTab.loading) {
+      return createElement("p", { className: styles.emptyState }, t("soc.pages.status_loading"));
+    }
+    if (detectionTab.error && !detectionTab.data) {
+      return createElement("div", { className: styles.inlineError }, detectionTab.error);
+    }
+    return createElement("div", null,
+      detectionTab.error ? createElement("div", { className: styles.inlineError }, detectionTab.error) : null,
+      createElement("div", { className: styles.matGrid },
+        renderKVCard(signalTypeLabel("whale"), detectionTab.data?.whale, "det-whale"),
+        renderKVCard(signalTypeLabel("dark_pool"), detectionTab.data?.dark, "det-dark"),
+        renderKVCard(signalTypeLabel("screener"), detectionTab.data?.screener, "det-screener"),
+      ),
+      createElement("div", { className: styles.jobInputRow },
+        createElement("input", {
+          className: styles.searchInput,
+          type: "text",
+          placeholder: t("soc.signals_overview.symbol_placeholder"),
+          value: testSymbol,
+          onChange: (e: { target: { value: string } }) => setTestSymbol(e.target.value.toUpperCase()),
+        }),
+        createElement("button", {
+          className: styles.runBtn,
+          disabled: testLoading,
+          onClick: () => { void handleTestWhale(); },
+        }, testLoading
+          ? t("soc.signals_overview.job_running")
+          : t("soc.signals_overview.test_button", { defaultValue: "Chạy thử" })),
+      ),
+      testResult
+        ? createElement("div", { },
+            `test_result: ${formatConfigValue(testResult.test_result)}, detection_possible: ${formatConfigValue(testResult.detection_possible)}, symbol: ${formatConfigValue(testResult.symbol)}`,
+          )
+        : null,
+      createElement("div", { },
+        t("soc.signals_overview.smoke_label", { defaultValue: "Kết quả smoke — endpoint kiểm tra hiện trả stub, xem W2.4 honest metrics." }),
+      ),
+    );
+  };
+
+  const handlePreviewRetention = async () => {
+    setRetentionPreview((s) => ({ ...s, loading: true }));
+    try {
+      const res = await getAdapter().previewSocSignalRetention({});
+      if (!mountedRef.current) return;
+      setRetentionPreview({ loading: false, loaded: true, error: "", data: res });
+    } catch (err) {
+      if (!mountedRef.current) return;
+      setRetentionPreview({ loading: false, loaded: false, error: errMsg(err, "Preview failed."), data: null });
+    }
+  };
+
+  const renderRetentionTab = () => {
+    if (retentionTab.loading) {
+      return createElement("p", { className: styles.emptyState }, t("soc.pages.status_loading"));
+    }
+    if (retentionTab.error && !retentionTab.data) {
+      return createElement("div", { className: styles.inlineError }, retentionTab.error);
+    }
+    const preview = retentionPreview.data;
+    return createElement("div", null,
+      retentionTab.error ? createElement("div", { className: styles.inlineError }, retentionTab.error) : null,
+      createElement("div", { className: styles.matGrid },
+        renderKVCard(t("soc.signals_overview.retention_tab"), retentionTab.data ?? {}, "ret"),
+      ),
+      createElement("div", { className: styles.jobInputRow },
+        createElement("button", {
+          className: styles.runBtn,
+          disabled: retentionPreview.loading,
+          onClick: () => { void handlePreviewRetention(); },
+        }, retentionPreview.loading
+          ? t("soc.signals_overview.job_running")
+          : t("soc.signals_overview.retention_preview", { defaultValue: "Xem ảnh hưởng" })),
+      ),
+      retentionPreview.error ? createElement("div", { className: styles.inlineError }, retentionPreview.error) : null,
+      preview
+        ? createElement("div", { className: styles.matGrid },
+            renderKVCard("retention_days", preview.retention_days, "pv-days"),
+            renderKVCard("impact", preview.impact, "pv-impact"),
+          )
+        : null,
+      createElement("div", { }, t("soc.signals_overview.bridge_write_note", { defaultValue: "SOC chỉ đọc — ghi cấu hình qua service chủ sở hữu (bridge-write)." })),
+    );
+  };
+
   // ─── Job console tab ───────────────────────────────────────────────────
   const renderJobConsoleTab = () =>
     createElement("div", null,
@@ -389,9 +884,8 @@ export function SocSignalsPanel() {
           value: jobDomain,
           onChange: (e: { target: { value: string } }) => setJobDomain(e.target.value),
         },
-          createElement("option", { value: "whale" }, "Whale Detection"),
-          createElement("option", { value: "dark_pool" }, "Dark Pool"),
-          createElement("option", { value: "screener" }, "Screener"),
+          createElement("option", { value: "whale" }, signalTypeLabel("whale")),
+          createElement("option", { value: "dark_pool" }, signalTypeLabel("dark_pool")),
         ),
         createElement("input", {
           className: styles.searchInput,
@@ -399,14 +893,14 @@ export function SocSignalsPanel() {
           placeholder: t("soc.signals_overview.symbol_placeholder"),
           value: jobSymbol,
           onChange: (e: { target: { value: string } }) => setJobSymbol(e.target.value.toUpperCase()),
-          
+
         }),
         createElement("button", {
           className: styles.runBtn,
-          disabled: jobLoading || !jobSymbol.trim(),
+          disabled: jobLoading || jobPolling || !jobSymbol.trim(),
           onClick: handleRunJob,
         },
-          jobLoading
+          jobLoading || jobPolling
             ? t("soc.signals_overview.job_running")
             : t("soc.signals_overview.run_job"),
         ),
@@ -414,6 +908,11 @@ export function SocSignalsPanel() {
       createElement("div", { },
         t("soc.signals_overview.job_console_hint"),
       ),
+      jobRunId != null
+        ? createElement("div", { },
+            t("soc.signals_overview.job_run_id", { defaultValue: "Run #{id}", id: String(jobRunId) }),
+          )
+        : null,
       jobStatus
         ? (jobStatus.includes("fail") || jobStatus.includes("error") || jobStatus.includes("l\u1ed7i")
             ? createElement("div", { className: styles.inlineError,  }, jobStatus)
@@ -423,6 +922,15 @@ export function SocSignalsPanel() {
 
   // ─── Materialization tab ───────────────────────────────────────────────
   const renderMaterializationTab = () => {
+    const matErrLabel = matError
+      ? `${t("soc.signals_overview.materialization_error", { defaultValue: "Không tải được trạng thái vật chất hóa." })} ${matError}`
+      : "";
+    if (matError && !materialization) {
+      return createElement("div", null,
+        createElement("div", { className: styles.inlineError }, matErrLabel),
+        createElement("p", { className: styles.emptyState }, t("soc.signals_overview.no_materialization")),
+      );
+    }
     if (!materialization) {
       return createElement("p", { className: styles.emptyState }, t("soc.signals_overview.no_materialization"));
     }
@@ -446,29 +954,77 @@ export function SocSignalsPanel() {
         ),
       );
     }
+    if (materialization.latest_detection_job_run_log_id != null) {
+      const latestId = materialization.latest_detection_job_run_log_id;
+      summaryChildren.push(
+        createElement("span", { key: "runlog" },
+          createElement("button", {
+            className: styles.pageBtn,
+            onClick: () => { void handleViewJobStatus(latestId); },
+          }, t("soc.signals_overview.job_run_id", { defaultValue: "Run #{id}", id: String(latestId) })),
+        ),
+      );
+    }
+    const execPlan = materialization.execution_plan || [];
     return createElement("div", null,
+      matError ? createElement("div", { className: styles.inlineError }, matErrLabel) : null,
       createElement("div", { className: styles.matGrid },
-        ...services.map((svc: MaterializationService) =>
-          createElement("div", { className: styles.matCard, key: svc.service_key },
+        ...services.map((svc: MaterializationService) => {
+          const finished = svc.last_finished_at
+            ? formatLastCheck(svc.last_finished_at, localeTag, t)
+            : null;
+          const started = svc.last_started_at
+            ? formatLastCheck(svc.last_started_at, localeTag, t)
+            : null;
+          const progress = matProgress(svc.status);
+          return createElement("div", { className: styles.matCard, key: svc.service_key },
             createElement("div", null,
               createElement("div", { className: styles.matCardLabel }, svc.service_key),
-              svc.last_finished_at
-                ? createElement("div", { },
-                    svc.last_finished_at.split("T")[0],
+              started
+                ? createElement("div", { title: started.title },
+                    started.display,
+                  )
+                : null,
+              finished
+                ? createElement("div", { title: finished.title },
+                    finished.display,
                   )
                 : null,
               svc.run_log_id != null
                 ? createElement("div", { },
-                    `Log #${svc.run_log_id}`,
+                    t("soc.signals_overview.job_run_id", { defaultValue: "Run #{id}", id: String(svc.run_log_id) }),
+                    " ",
+                    createElement("button", {
+                      className: styles.pageBtn,
+                      onClick: () => { void handleViewJobStatus(svc.run_log_id as number); },
+                    }, t("soc.signals_overview.job_view", { defaultValue: "Xem job" })),
                   )
                 : null,
+              createElement("div", { className: styles.matCardBar },
+                createElement("div", {
+                  className: styles.matCardBarFill,
+                  style: { width: `${progress.pct}%`, background: getStatusColor(svc.status) },
+                }),
+              ),
             ),
             createElement("div", { className: styles.matCardStatus, style: { color: getStatusColor(svc.status) } },
               svc.status ? svc.status.toUpperCase() : "—",
             ),
-          ),
-        ),
+          );
+        }),
       ),
+      execPlan.length > 0
+        ? createElement("div", null,
+            createElement("h4", null, t("soc.signals_overview.execution_plan", { defaultValue: "Kế hoạch thực thi" })),
+            ...execPlan.map((p: MaterializationExecPlan) =>
+              createElement("div", { key: p.service_key },
+                `${p.service_key}: ${p.will_run
+                  ? t("soc.signals_overview.will_run", { defaultValue: "sẽ chạy" })
+                  : t("soc.signals_overview.will_skip", { defaultValue: "bỏ qua" })}${p.symbol ? ` (${p.symbol})` : ""}`,
+              ),
+            ),
+          )
+        : null,
       summaryChildren.length > 0
         ? createElement("div", { },
             ...summaryChildren,
@@ -482,23 +1038,78 @@ export function SocSignalsPanel() {
     overview: renderOverviewTab,
     "job-console": renderJobConsoleTab,
     materialization: renderMaterializationTab,
+    config: renderConfigTab,
+    detection: renderDetectionTab,
+    retention: renderRetentionTab,
   };
 
   const subTabKeys: { key: SubTab; label: string }[] = [
     { key: "overview", label: t("soc.signals_overview.overview") },
     { key: "job-console", label: t("soc.signals_overview.job_console") },
     { key: "materialization", label: t("soc.signals_overview.materialization") },
+    { key: "config", label: t("soc.signals_overview.config_tab", { defaultValue: "Cấu hình" }) },
+    { key: "detection", label: t("soc.signals_overview.detection_tab", { defaultValue: "Phát hiện" }) },
+    { key: "retention", label: t("soc.signals_overview.retention_tab", { defaultValue: "Lưu trữ" }) },
   ];
 
+  // ─── Feed pagination (W1.1: reuse pattern overview W10) ─────────────────
+  const renderFeedPagination = () => {
+    if (filteredSignals.length === 0) return null;
+    const win = 5;
+    let start = Math.max(1, safePage - Math.floor(win / 2));
+    const end = Math.min(totalPages, start + win - 1);
+    start = Math.max(1, end - win + 1);
+    const numbers: number[] = [];
+    for (let p = start; p <= end; p += 1) numbers.push(p);
+    return createElement("div", null,
+      createElement("div", { className: styles.pagination, role: "navigation" },
+        createElement("button", {
+          className: styles.pageBtn,
+          disabled: safePage <= 1,
+          "aria-label": "Previous page",
+          onClick: () => setPage(safePage - 1),
+        }, "‹"),
+        ...numbers.map((p) =>
+          createElement("button", {
+            key: p,
+            className: `${styles.pageBtn} ${p === safePage ? styles.filterBtnActive : ""}`,
+            "aria-label": `Page ${p}`,
+            "aria-current": p === safePage ? "page" : undefined,
+            onClick: () => setPage(p),
+          }, String(p)),
+        ),
+        createElement("button", {
+          className: styles.pageBtn,
+          disabled: safePage >= totalPages,
+          "aria-label": "Next page",
+          onClick: () => setPage(safePage + 1),
+        }, "›"),
+        createElement("label", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } },
+          t("soc.overview.page_size_label"),
+        ),
+        createElement("select", {
+          className: styles.jobDomainSelect,
+          value: String(pageSize),
+          "aria-label": t("soc.overview.page_size_label"),
+          onChange: (e: { target: { value: string } }) => { setPageSize(Number(e.target.value) || 20); setPage(1); },
+        },
+          ...[20, 50, 100].map((n) => createElement("option", { key: n, value: String(n) }, String(n))),
+        ),
+      ),
+      createElement("div", { style: { fontSize: "0.7rem", color: "var(--text-muted)", textAlign: "center" } },
+        t("soc.overview.showing_range", { from: String(pageFrom), to: String(pageTo), total: String(filteredSignals.length) }),
+      ),
+    );
+  };
+
   // ─── Main render ──────────────────────────────────────────────────────
+  const showInitialLoading = loading && signals.length === 0 && !feedError && !materialization && !matError;
   return createElement(
     "div",
     { className: styles.glassPanel },
-    loading
+    showInitialLoading
       ? createElement("p", { className: styles.emptyState }, t("soc.pages.status_loading"))
-      : error
-        ? createElement("div", { className: styles.inlineError }, error)
-        : createElement("div", null,
+      : createElement("div", null,
             // ── Stats row ─────────────────────────────────────────────────
             createElement("div", { className: styles.metricGrid },
               statCard(t("soc.signals_overview.total_alerts"), stats.total, "#f1f5f9"),
@@ -522,11 +1133,41 @@ export function SocSignalsPanel() {
                     createElement("button", {
                       key: ft,
                       className: `${styles.filterBtn} ${typeFilter === ft ? styles.filterBtnActive : styles.filterBtnInactive}`,
-                      onClick: () => { setTypeFilter(ft); setExpandedId(null); },
+                      onClick: () => { setTypeFilter(ft); setExpandedId(null); setPage(1); },
                     }, ft === "all" ? t("soc.signals_overview.filter_all") : signalTypeLabel(ft)),
                   ),
+                  createElement("label", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } },
+                    t("soc.signals_overview.severity_label", { defaultValue: "Mức độ" }),
+                  ),
+                  createElement("select", {
+                    className: styles.jobDomainSelect,
+                    value: severityFilter,
+                    "aria-label": t("soc.signals_overview.severity_label", { defaultValue: "Mức độ" }),
+                    onChange: (e: { target: { value: string } }) => { setSeverityFilter(e.target.value); setPage(1); },
+                  },
+                    createElement("option", { value: "all" }, t("soc.signals_overview.severity_all", { defaultValue: "Mọi mức" })),
+                    ...["critical", "high", "medium", "low"].map((sev) =>
+                      createElement("option", { key: sev, value: sev }, sev.toUpperCase()),
+                    ),
+                  ),
+                  createElement("label", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } },
+                    t("soc.signals_overview.direction_label", { defaultValue: "Hướng" }),
+                  ),
+                  createElement("select", {
+                    className: styles.jobDomainSelect,
+                    value: directionFilter,
+                    "aria-label": t("soc.signals_overview.direction_label", { defaultValue: "Hướng" }),
+                    onChange: (e: { target: { value: string } }) => { setDirectionFilter(e.target.value); setPage(1); },
+                  },
+                    createElement("option", { value: "all" }, t("soc.signals_overview.direction_all", { defaultValue: "Mọi hướng" })),
+                    createElement("option", { value: "buy" }, t("soc.signals_overview.direction_buy", { defaultValue: "Mua" })),
+                    createElement("option", { value: "sell" }, t("soc.signals_overview.direction_sell", { defaultValue: "Bán" })),
+                    createElement("option", { value: "neutral" }, t("soc.signals_overview.direction_neutral", { defaultValue: "Trung lập" })),
+                  ),
                   createElement("div", { className: styles.searchWrapper,  },
-                    createElement("span", { className: styles.searchIcon }, "\uD83D\uDD0D"),
+                    createElement("span", { className: styles.searchIcon },
+                      createElement(LucideIcon, { name: "Search", className: "h-3.5 w-3.5" }),
+                    ),
                     createElement("input", {
                       className: styles.searchInputWithIcon,
                       type: "text",
@@ -539,18 +1180,30 @@ export function SocSignalsPanel() {
                     }),
                   ),
                 ),
-                filteredSignals.length === 0
+                filteredSignals.length === 0 && !feedError
                   ? renderRadarEmptyState()
-                  : createElement("div", { className: styles.signalFeed },
-                      ...filteredSignals.slice(0, 50).map((s, idx) => renderSignalRow(s, idx)),
+                  : createElement("div", null,
+                      feedError
+                        ? createElement("div", { className: styles.inlineError }, `${t("soc.signals_overview.feed_error", { defaultValue: "Không tải được luồng tín hiệu." })} ${feedError}`)
+                        : null,
+                      filteredSignals.length === 0
+                        ? renderRadarEmptyState()
+                        : createElement("div", null,
+                            createElement("div", { className: styles.signalFeed },
+                              ...pagedSignals.map((s, idx) => renderSignalRow(s, (safePage - 1) * pageSize + idx)),
+                            ),
+                            renderFeedPagination(),
+                          ),
                     ),
               ),
               // ── Right: Sub-tabs ────────────────────────────────────────
               createElement("div", { className: styles.controlCard },
-                createElement("div", { className: styles.subTabBar },
+                createElement("div", { className: styles.subTabBar, role: "tablist" },
                   ...subTabKeys.map((st) =>
                     createElement("button", {
                       key: st.key,
+                      role: "tab",
+                      "aria-selected": subTab === st.key,
                       className: `${styles.subTabBtn} ${subTab === st.key ? styles.subTabBtnActive : ""}`,
                       onClick: () => setSubTab(st.key),
                     }, st.label),

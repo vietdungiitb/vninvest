@@ -103,6 +103,7 @@ class SignalsSummaryResponseSerializer(serializers.Serializer):
     detection_rate = serializers.FloatField()
     false_positive_rate = serializers.FloatField()
     avg_signal_latency_ms = serializers.FloatField()
+    sentiment = serializers.JSONField(required=False)
     last_triggered_at = serializers.DateTimeField(required=False, allow_null=True)
 
 
@@ -116,7 +117,11 @@ class SignalsWhaleResponseSerializer(serializers.Serializer):
 
 
 class SignalsRecentAlertSerializer(serializers.Serializer):
+    id = serializers.IntegerField(required=False)
     symbol = serializers.CharField()
+    severity = serializers.CharField(required=False, allow_blank=True)
+    metadata = serializers.JSONField(required=False)
+    session_date = serializers.DateField(required=False, allow_null=True)
     value = serializers.JSONField()
     side = serializers.CharField()
     timestamp = serializers.DateTimeField()
@@ -134,11 +139,17 @@ class SignalsDarkPoolRecentItemSerializer(SignalsRecentAlertSerializer):
 class SignalsRecentResponseSerializer(serializers.Serializer):
     recent = SignalsRecentAlertSerializer(many=True)
     total_today = serializers.IntegerField()
+    total_filtered = serializers.IntegerField(required=False)
+    page = serializers.IntegerField(required=False)
+    page_size = serializers.IntegerField(required=False)
 
 
 class SignalsWhaleRecentResponseSerializer(serializers.Serializer):
     recent = SignalsWhaleRecentItemSerializer(many=True)
     total_today = serializers.IntegerField()
+    total_filtered = serializers.IntegerField(required=False)
+    page = serializers.IntegerField(required=False)
+    page_size = serializers.IntegerField(required=False)
 
 
 class SignalsDarkPoolResponseSerializer(serializers.Serializer):
@@ -152,6 +163,9 @@ class SignalsDarkPoolResponseSerializer(serializers.Serializer):
 class SignalsDarkPoolRecentResponseSerializer(serializers.Serializer):
     recent = SignalsDarkPoolRecentItemSerializer(many=True)
     total_today = serializers.IntegerField()
+    total_filtered = serializers.IntegerField(required=False)
+    page = serializers.IntegerField(required=False)
+    page_size = serializers.IntegerField(required=False)
 
 
 class SignalsWhaleTestRequestSerializer(serializers.Serializer):
@@ -268,6 +282,7 @@ class SignalsPerformanceMetricsResponseSerializer(serializers.Serializer):
     detection_rate = serializers.FloatField()
     false_positive_rate = serializers.FloatField()
     total_signals_processed = serializers.IntegerField()
+    sentiment = serializers.JSONField(required=False)
 
 
 def _get_signals_domain_config() -> SignalServicesDomainConfig:
@@ -310,13 +325,88 @@ def _compute_avg_signal_latency_ms(events) -> float:
     return round(sum(latencies) / len(latencies), 2)
 
 
+def _compute_signals_sentiment(alerts) -> dict:
+    """Đếm sentiment theo direction: buy→bullish, sell→bearish, còn lại→neutral (1 query)."""
+    from django.db.models import Count, Q
+    agg = alerts.aggregate(
+        bullish=Count('pk', filter=Q(direction=UnifiedAlert.DirectionChoices.BUY)),
+        bearish=Count('pk', filter=Q(direction=UnifiedAlert.DirectionChoices.SELL)),
+        total=Count('pk'),
+    )
+    bullish = agg['bullish'] or 0
+    bearish = agg['bearish'] or 0
+    total = agg['total'] or 0
+    return {'bullish': bullish, 'bearish': bearish, 'neutral': max(total - bullish - bearish, 0)}
+
+
 def _serialize_recent_alert(alert: UnifiedAlert) -> dict:
     return {
+        'id': alert.pk,
         'symbol': alert.symbol,
+        'severity': alert.severity,
+        'metadata': alert.metadata or {},
+        'session_date': alert.session_date.isoformat() if alert.session_date else None,
         'value': alert.value,
         'side': alert.direction or UnifiedAlert.DirectionChoices.NEUTRAL,
         'timestamp': alert.triggered_at.isoformat(),
         'title': alert.title,
+    }
+
+
+RECENT_PAGE_DEFAULT = 20
+RECENT_PAGE_MAX = 100
+
+
+def _parse_recent_params(request) -> dict:
+    """W1.1: paging + filter cho 3 recent views (additive, backward compat)."""
+    try:
+        page = int(request.query_params.get('page', 1))
+    except (TypeError, ValueError):
+        page = 1
+    try:
+        page_size = int(request.query_params.get('page_size', RECENT_PAGE_DEFAULT))
+    except (TypeError, ValueError):
+        page_size = RECENT_PAGE_DEFAULT
+    page = max(page, 1)
+    page_size = min(max(page_size, 1), RECENT_PAGE_MAX)
+    symbol = (request.query_params.get('symbol') or '').strip().upper() or None
+    severity = (request.query_params.get('severity') or '').strip().lower() or None
+    if severity not in {c.value for c in UnifiedAlert.SeverityChoices}:
+        severity = None
+    direction = (request.query_params.get('direction') or '').strip().lower() or None
+    if direction not in {c.value for c in UnifiedAlert.DirectionChoices}:
+        direction = None
+    return {'page': page, 'page_size': page_size, 'symbol': symbol, 'severity': severity, 'direction': direction}
+
+
+def _apply_recent_filters(queryset, params: dict):
+    if params['symbol']:
+        queryset = queryset.filter(symbol__icontains=params['symbol'])
+    if params['severity']:
+        queryset = queryset.filter(severity=params['severity'])
+    if params['direction']:
+        queryset = queryset.filter(direction=params['direction'])
+    return queryset
+
+
+def _build_recent_response(queryset, params: dict, serialize_extra=None) -> dict:
+    total_today = queryset.count()
+    filtered = _apply_recent_filters(queryset, params)
+    total_filtered = filtered.count()
+    start = (params['page'] - 1) * params['page_size']
+    items = list(filtered.order_by('-triggered_at', '-pk')[start:start + params['page_size']])
+    recent = []
+    for alert in items:
+        item = _serialize_recent_alert(alert)
+        if serialize_extra:
+            item.update(serialize_extra(alert))
+        recent.append(item)
+    return {
+        'recent': recent,
+        'total_today': total_today,
+        'total_filtered': total_filtered,
+        'page': params['page'],
+        'page_size': params['page_size'],
     }
 
 
@@ -353,6 +443,9 @@ def _materializer_status(service_key: str) -> dict:
 
 
 def _build_materialization_execution_plan(domain: str = 'all', symbol: str | None = None) -> list[dict]:
+    # W1.3: FE gọi domain 'dark_pool', task dùng 'dark_flow' — chuẩn hoá 1 tên.
+    if domain == 'dark_pool':
+        domain = 'dark_flow'
     return [
         {
             'service_key': 'signal_whale_canonical_pipeline',
@@ -491,6 +584,7 @@ class SignalsSummaryView(SOCBaseView):
                 'detection_rate': 0.0,
                 'false_positive_rate': 0.0,
                 'avg_signal_latency_ms': 0.0,
+                'sentiment': {'bullish': 0, 'bearish': 0, 'neutral': 0},
                 'last_triggered_at': None,
             })
 
@@ -515,6 +609,7 @@ class SignalsSummaryView(SOCBaseView):
             'detection_rate': round((active_alerts / order_flow_events) * 100.0, 2) if order_flow_events else 0.0,
             'false_positive_rate': 0.0,
             'avg_signal_latency_ms': _compute_avg_signal_latency_ms(events),
+            'sentiment': _compute_signals_sentiment(alerts),
             'last_triggered_at': last_triggered_at.isoformat() if last_triggered_at else None,
         })
 
@@ -565,17 +660,11 @@ class SignalsWhaleRecentView(SOCBaseView):
         queryset = UnifiedAlert.objects.filter(
             alert_type=UnifiedAlert.AlertTypeChoices.WHALE,
             session_date=session_date,
-        ).order_by('-triggered_at', '-pk') if session_date else UnifiedAlert.objects.none()
-        return Response({
-            'recent': [
-                {
-                    **_serialize_recent_alert(alert),
-                    'order_value_vnd': alert.value,
-                }
-                for alert in queryset[:20]
-            ],
-            'total_today': queryset.count(),
-        })
+        ) if session_date else UnifiedAlert.objects.none()
+        params = _parse_recent_params(request)
+        return Response(_build_recent_response(
+            queryset, params, lambda alert: {'order_value_vnd': alert.value},
+        ))
 
 
 @extend_schema(
@@ -644,17 +733,11 @@ class SignalsDarkPoolRecentView(SOCBaseView):
         queryset = UnifiedAlert.objects.filter(
             alert_type=UnifiedAlert.AlertTypeChoices.DARK_FLOW,
             session_date=session_date,
-        ).order_by('-triggered_at', '-pk') if session_date else UnifiedAlert.objects.none()
-        return Response({
-            'recent': [
-                {
-                    **_serialize_recent_alert(alert),
-                    'matched_value_vnd': alert.value,
-                }
-                for alert in queryset[:20]
-            ],
-            'total_today': queryset.count(),
-        })
+        ) if session_date else UnifiedAlert.objects.none()
+        params = _parse_recent_params(request)
+        return Response(_build_recent_response(
+            queryset, params, lambda alert: {'matched_value_vnd': alert.value},
+        ))
 
 
 @extend_schema(
@@ -711,11 +794,9 @@ class SignalsScreenerRecentView(SOCBaseView):
         queryset = UnifiedAlert.objects.filter(
             alert_type=UnifiedAlert.AlertTypeChoices.SIGNAL,
             session_date=session_date,
-        ).order_by('-triggered_at', '-pk') if session_date else UnifiedAlert.objects.none()
-        return Response({
-            'recent': [_serialize_recent_alert(alert) for alert in queryset[:20]],
-            'total_today': queryset.count(),
-        })
+        ) if session_date else UnifiedAlert.objects.none()
+        params = _parse_recent_params(request)
+        return Response(_build_recent_response(queryset, params))
 
 
 @extend_schema(
@@ -888,8 +969,29 @@ class SignalsUniverseUpdateView(SOCBaseView):
 class SignalsJobRunView(SOCBaseView):
     """POST /api/soc/signals/jobs/run/"""
 
+    allowed_domains = {'all', 'whale', 'dark_pool', 'dark_flow', 'screener', 'session_facts'}
+
     def post(self, request):
         domain = request.data.get('domain', 'all')
+        if isinstance(domain, str):
+            domain = domain.strip().lower() or 'all'
+        else:
+            domain = 'all'
+        if domain not in self.allowed_domains:
+            return Response({
+                'detail': f"Domain '{domain}' không hỗ trợ. Cho phép: {sorted(self.allowed_domains)}.",
+                'code': 'INVALID_SIGNAL_DOMAIN',
+            }, status=status.HTTP_400_BAD_REQUEST)
+        # W1.3: task workflow không có nhánh screener (chỉ whale/session_facts/dark_flow).
+        # Chạy screener ở đây sẽ success rỗng — từ chối trung thực, hướng sang screener manual-scan.
+        if domain == 'screener':
+            return Response({
+                'detail': 'Screener chạy qua POST /api/soc/screener/manual-scan/, không qua signals job.',
+                'code': 'SCREENER_USE_MANUAL_SCAN',
+            }, status=status.HTTP_400_BAD_REQUEST)
+        # W1.3: alias FE 'dark_pool' → task 'dark_flow' (cùng pipeline).
+        if domain == 'dark_pool':
+            domain = 'dark_flow'
         symbol = request.data.get('symbol')
         if isinstance(symbol, str):
             symbol = symbol.strip().upper() or None
@@ -931,7 +1033,16 @@ class SignalsJobStatusView(SOCBaseView):
     """GET /api/soc/signals/jobs/status/"""
 
     def get(self, request):
-        run_log = _get_latest_signal_job_run()
+        run_log = None
+        run_log_id = request.query_params.get('run_log_id')
+        if run_log_id:
+            try:
+                service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['signals'])
+                run_log = ServiceRunLog.objects.filter(service=service, pk=int(run_log_id)).first()
+            except (ValueError, TypeError):
+                run_log = None
+        if run_log is None:
+            run_log = _get_latest_signal_job_run()
         return Response({
             'service_key': SOC_DOMAIN_PRIMARY_SERVICE_KEYS['signals'],
             'status': run_log.status if run_log is not None else 'idle',
@@ -965,12 +1076,14 @@ class SignalsPerformanceMetricsView(SOCBaseView):
         total_signals_processed = events.count()
         active_alerts = alerts.count()
         detection_rate = round((active_alerts / total_signals_processed) * 100.0, 2) if total_signals_processed else 0.0
+        avg_latency_ms = _compute_avg_signal_latency_ms(events)
         return Response({
             'whale_detection_accuracy': 100.0 - 0.0,
             'dark_pool_detection_accuracy': 100.0 - 0.0,
-            'avg_detection_latency_ms': _compute_avg_signal_latency_ms(events),
-            'avg_signal_latency_ms': _compute_avg_signal_latency_ms(events),
+            'avg_detection_latency_ms': avg_latency_ms,
+            'avg_signal_latency_ms': avg_latency_ms,
             'detection_rate': detection_rate,
             'false_positive_rate': 0.0,
             'total_signals_processed': total_signals_processed,
+            'sentiment': _compute_signals_sentiment(alerts),
         })

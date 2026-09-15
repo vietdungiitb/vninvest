@@ -28,6 +28,18 @@ const normalizeVnbrokerHealth = (payload) => {
   };
 };
 
+// W1.1: query paging/filter cho 3 recent endpoints (page/page_size/symbol/severity/direction).
+const buildSignalsRecentQuery = (params = {}) => {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.page_size) qs.set("page_size", String(params.page_size));
+  if (params.symbol) qs.set("symbol", params.symbol);
+  if (params.severity) qs.set("severity", params.severity);
+  if (params.direction) qs.set("direction", params.direction);
+  const query = qs.toString();
+  return query ? `?${query}` : "";
+};
+
 export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDelete }) {
   return {
     // ─── Overview ──────────────────────────────────────────────────────────
@@ -326,6 +338,14 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
       return coreGet("/operator/soc/signals/retention-policy/");
     },
 
+    previewSocSignalRetention(config) {
+      return corePost("/operator/soc/signals/retention-policy/preview/", { config_payload: config || {} });
+    },
+
+    testSocWhaleDetection(symbol) {
+      return corePost("/operator/soc/signals/whale/test/", symbol ? { symbol } : {});
+    },
+
     getSocSignalMetrics() {
       return coreGet("/operator/soc/signals/summary/");
     },
@@ -335,16 +355,16 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
       return coreGet("/operator/soc/signals/performance-metrics/");
     },
 
-    getSocWhaleRecent() {
-      return coreGet("/operator/soc/signals/whale/recent/");
+    getSocWhaleRecent(params = {}) {
+      return coreGet(`/operator/soc/signals/whale/recent/${buildSignalsRecentQuery(params)}`);
     },
 
-    getSocDarkPoolRecent() {
-      return coreGet("/operator/soc/signals/dark-pool/recent/");
+    getSocDarkPoolRecent(params = {}) {
+      return coreGet(`/operator/soc/signals/dark-pool/recent/${buildSignalsRecentQuery(params)}`);
     },
 
-    getSocScreenerRecent() {
-      return coreGet("/operator/soc/signals/screener/recent/");
+    getSocScreenerRecent(params = {}) {
+      return coreGet(`/operator/soc/signals/screener/recent/${buildSignalsRecentQuery(params)}`);
     },
 
     runSocSignalJob(domain, symbol) {

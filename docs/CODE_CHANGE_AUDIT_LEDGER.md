@@ -5,6 +5,147 @@
 
 ---
 
+## Entry 103: Phản biện độc lập P1 Signals (Entry 102) — PASS, không blocker, 2 finding INFO
+
+- **Date**: 2026-09-16
+- **Scope**: Xác minh độc lập toàn bộ claim Entry 102 (P1) — code review BE `signals.py` diff +173/+39, FE `SocSignalsPanel.tsx` (1219 dòng), adapter `soc.js`, test 4 phía, i18n, CSS. **Chạy lại tất cả gates thật, không tin log cũ**.
+- **Kết quả gates (chạy độc lập, khớp claim)**:
+  - `npx tsc --noEmit` → **0 error** ✓
+  - `npx vitest run` → **32 files / 163 pass** ✓ (khớp claim 32/163)
+  - jest adapter → **85/85 pass** ✓ (khớp claim 85/85)
+  - BE `python manage.py test service_ops.tests.test_soc_api_signals` → **Ran 23 / OK** ✓ (khớp claim 23)
+  - `npm run build` → **PASS 34.40s** (khớp claim, chỉ chunk-size + eval(widget) warning pre-existing)
+  - eslint 4 file thay đổi → **0 error** ✓
+  - `i18n:scan` → **diff sạch +23/−5 per locale** (scan không thêm key lạ; xác nhận `__STRING_NOT_TRANSLATED__` không vào file, keys khác là no-op) ✓
+  - component test `soc-signals-tab.component.test.tsx` = **21 it()** ✓ (khớp claim file 21/21)
+- **Code review đối chiếu plan → đóng findings**:
+  - F-SG-13 paging: BE `_parse_recent_params` (page/page_size default 20/max 100, symbol/severity/direction, giá trị lạ → bỏ) + `_build_recent_response` (`recent/total_today/total_filtered/page/page_size`) — verify `signals.py:227-260`; FE `buildSignalsRecentQuery` (`soc.js:32-41`) + `fetchFeed` gửi `page_size=100` + filter, phân trang client (`SocSignalsPanel.tsx:274-309, 487-507, 1056-1103`) — **thiết kế client-paging có lý do (3 nguồn gộp), BE paging đầy đủ cho API consumers** ✓
+  - F-SG-10/21 progress: `matProgress()` export `success/healthy→100, running/queued→50 active, failed→100, idle→0` (`SocSignalsPanel.tsx:101-107`) + `.matCardBarFill` (`.matCardBar` parent 4px tại `soc.components.css:1130-1142`) ✓
+  - F-SG-12 time: row dùng `formatLastCheck` (`display`+`title` ISO tooltip) (`SocSignalsPanel.tsx:636, 660-661`) ✓
+  - F-SG-17 a11y subTab: `role=tablist` + `role=tab` + `aria-selected` (`SocSignalsPanel.tsx:1201-1210`) ✓
+  - F-SG-18/C5 dead keys: 5 keys (`title/expand_meta/performance/domain/symbol_required`) đã xoá khỏi cả VI+EN, grep toàn `src/` không còn ref ✓
+  - F-SG-09 API chết: adapter + test/preview post (`soc.test.js:343-350`), 3 subtabs lazy-fetch (chỉ fetch khi mở tab → không cộng req poll) ✓
+  - W1.3 domain: BE từ chối `screener` 400 `SCREENER_USE_MANUAL_SCAN` (`signals.py:987-991`) vì task `run_signals_detection_workflow` chỉ có nhánh `whale/session_facts/dark_flow` (không screener) (`tasks.py:693-732`) — **khớp 3 điều kiện Entry 100 (total_filtered, whitelist/task-branch mismatch, smoke label)** ✓
+  - W0.4 `visibilitychange` pause + W1.5 15s jitter (`SocSignalsPanel.tsx:391-412, 373-381`) — req count giữ nguyên 5req/15s ✓
+  - smoke label: `renderDetectionTab` liệt kê `smoke_label` ("Kết quả smoke — endpoint kiểm tra hiện trả stub, xem W2.4 honest metrics") ✓
+- **Findings mới (INFO, không blocker)**:
+  - **F-P1-A (INFO, YAGNI/semantic)**: `matProgress('failed')` trả `{pct:100, active:false}` — thanh đầy cho trạng thái lỗi dễ gây hiểu nhầm "hoàn thành 100%" thay vì "thất bại". Có thể dùng pct 100 + màu đỏ (đã dùng `socStatusColor` đỏ) nên chấp nhận được; đề xuất cân nhắc đổi thành 100 → chấp nhận vì màu sắc đã phân biệt.
+  - **F-P1-B (INFO, limitation có lý do)**: client-paging trên feed gộp: mỗi nguồn BE trả tối đa 100, gộp 3 nguồn → 300, client page 20/50/100 → nếu >100/nguồn sẽ thiếu dữ liệu page sau. Đã là deviation có lý do ghi ở Entry 102; không ảnh hưởng API consumers.
+- **Verdict (độc lập)**: **PASS** — P1 (Entry 102) đóng đúng F-SG-09/10/11/12/13/17/18 + C5 + 1 phần F-SG-16 theo đúng plan. Tất cả claim gates đều khớp số liệu thật tôi chạy lại. Không blocker, 2 INFO chỉ mang tính ghi nhận. **Ready để commit/merge.**
+- **Next (theo plan)**: P2a (W2.4 honest metrics + W2.1 poll-diff + W2.5 export) → BRD workshop team vs user inbox → P2b → SSE epic. F-SG-14 + F-NI-02 dồn W2.4.
+
+---
+
+## Entry 102: P1 Signals — parity vận hành (W1.1 → W1.4 → W1.2 → W1.3 → W1.5, GO P1 verification)
+
+- **Date**: 2026-09-16
+- **Scope**: Thực thi P1 theo `docs/IMPLEMENTATION_PLAN_SOC_SIGNALS_COMMERCIAL_20260916.md` §3 + 3 điều kiện verification Entry 100 (BE `total_filtered`, whitelist/task-branch mismatch, nhãn smoke). Thứ tự verification: W1.1 → W1.4 → W1.2 → W1.3 → W1.5. Đóng F-SG-09/10/11/12/13/17/18, C5 + 1 phần F-SG-16.
+- **Files & fixes**:
+  - **W1.1 paging+filter (F-SG-13)**: BE `_parse_recent_params` (`page/page_size` default 20/max 100, `symbol/severity/direction`, giá trị lạ → bỏ qua) + `_build_recent_response` (`recent/total_today/total_filtered/page/page_size`) cho cả 3 recents; serializer +4 fields optional. FE: adapter `buildSignalsRecentQuery` (URL trần giữ nguyên khi không params); panel gửi `page_size=100` + filter xuống BE, phân trang client trên feed gộp (pageSize 20/50/100, numbers cửa sổ 5, range tái dùng `soc.overview.*`), filter severity/direction + search debounce 300ms (2 lớp BE+client); `.signalFeed` max-height 560px + scroll.
+  - **W1.4 materialization (F-SG-10)**: `matProgress()` export (success/healthy→100, running/queued→50, idle→0) vẽ `.matCardBarFill` có sẵn; `last_started_at` + finished qua `formatLastCheck`; run id → nút `job_view` nhảy sang job console fetch đúng run (`handleViewJobStatus`).
+  - **W1.2 time+a11y+i18n (F-SG-12/17/18, C5)**: xoá `formatTime`, row dùng `formatLastCheck` (local+relative+tooltip ISO); 🔍 → `LucideIcon Search`; subTab `role=tablist/tab + aria-selected`; xoá 5 keys chết (`title/expand_meta/performance/domain/symbol_required`) khỏi VI+EN.
+  - **W1.3 API chết (F-SG-09)**: adapter +`testSocWhaleDetection`/`previewSocSignalRetention`; 3 subtabs lazy-fetch (không cộng req vào poll): **Cấu hình** (config KV + ownership box + `bridge_write_note`), **Phát hiện** (3 cards + Chạy thử + `smoke_label`), **Lưu trữ** (policy + Preview impact + lock note). BE `dark_pool→dark_flow` normalize (job run + execution plan preview); `screener` job → 400 `SCREENER_USE_MANUAL_SCAN` (task không có nhánh screener — từ chối trung thực thay vì success rỗng); job console bỏ option screener.
+  - **W1.5 poll gọn (F-SG-11)**: feed poll 10s→15s (giữ jitter 0–3s + visibility pause P0). 5 req/15s = 20/phút (trước 30).
+  - i18n +23/-5 mỗi locale (severity_*/direction_* 7, job_view 1, 7 keys W1.3; scan diff sạch).
+- **Tests**: BE +9 (6 paging: default/page2/clamp/filter/combo/invalid + 3 domain: normalize/screener-400/preview-branch) → `Ran 23 OK`; FE signals +10 (pagination 20→5→25, severity filter + BE param, debounce 300ms, progress+job-link, time/a11y, 4×W1.3) → file 21/21; adapter jest +2 (params URL + test/preview) → 85/85.
+- **Validation (thật)**: `tsc` 0; full vitest **32 files/163 pass**; `build` **52.65s PASS**; lint 0 errors (3547 warn baseline).
+- **Deviations (có lý do)**: (1) FE phân trang client thay vì server-page (3 nguồn gộp không page chung được; BE paging vẫn đầy đủ cho API consumers); (2) `screener` bị từ chối ở job run (thay vì whitelist P0) vì task không có nhánh — FE bỏ option tương ứng; (3) field labels config/detection/retention dùng literal BE (tránh +10 i18n keys, operator đọc được).
+- **Next**: P2a (W2.4 honest + W2.1 poll-diff + W2.5 export, 2d) → BRD workshop (team vs user inbox) → P2b → SSE epic. F-SG-14 (accuracy 100/FPR 0/whale-test stub) + F-NI-02 dồn W2.4.
+
+---
+
+## Entry 101: Fix verification findings độc lập P0 (F-NI-01/03/04) + 1 test khóa
+
+- **Date**: 2026-09-16
+- **Scope**: Fix 3/4 findings từ verification độc lập Entry 100 (F-NI-02 accuracy cứng thuộc W2.4 P2a, không làm). Không đổi contract/behavior.
+- **Files & fixes**:
+  - **F-NI-01** (P3 dead key): `SocSignalsPanel.tsx` mat tab dùng `t("soc.signals_overview.materialization_error")` prefix cho cả 2 banner `matError` (trước chỉ raw string) — key hết dead.
+  - **F-NI-03** (INFO 6 queries/cycle): `_compute_signals_sentiment()` 3×`count()` → 1×`aggregate(Count pk filter=Q(direction))` (`signals.py:319`).
+  - **F-NI-04** (INFO 2 DB reads): `SignalsPerformanceMetricsView` tính `_compute_avg_signal_latency_ms(events)` 1 lần vào `avg_latency_ms`, dùng chung cho cả 2 keys.
+  - **Tests**: `soc-signals-tab.component.test.tsx` +1 (mat-500 → banner đúng key VI + feed vẫn sống) → 11 tests.
+- **Validation (thật)**: `tsc` 0; BE `Ran 14 OK`; vitest file 11/11 + full **32/153 pass**; lint 0 errors (3547 warn baseline).
+- **Next**: GO P1 theo khuyến nghị verification (W1.1 BE `total_filtered` → W1.4 → W1.2 → W1.3 + nhãn smoke cho whale/test → W1.5). Whitelist/task-branch mismatch (`dark_pool/screener` success rỗng) xử lý ở W1.3.
+
+---
+
+## Entry 100: P0 Signals — feed sống lại đúng số (W0.1→W0.4, GO P0 2d có điều kiện Entry 99)
+
+- **Date**: 2026-09-16
+- **Scope**: Thực thi P0 theo `docs/IMPLEMENTATION_PLAN_SOC_SIGNALS_COMMERCIAL_20260916.md` + điều kiện phản biện Entry 99 (W0.1 tách BE/FE, W0.2 không tăng req, W0.4 thêm `visibilitychange` pause, contract test `recent`). Đóng F-SG-01→06, F-SG-08, F-SG-20, C1→C4 + 1 phần F-SG-16 (whitelist).
+- **Files**:
+  - BE `packages/core/backend/src/service_ops/views/signals.py` (+44/-6): `_serialize_recent_alert` thêm `id/severity/metadata/session_date` (additive); `SignalsRecentAlertSerializer` +4 fields optional; `_compute_signals_sentiment()` mới (buy→bullish, sell→bearish, còn lại→neutral) + `sentiment` vào cả `SignalsSummary` và `SignalsPerformanceMetrics` (cả nhánh session rỗng); `SignalsJobRunView` whitelist domain `{all,whale,dark_pool,dark_flow,screener,session_facts}` → 400 `INVALID_SIGNAL_DOMAIN`; `SignalsJobStatusView` tôn trọng `?run_log_id=` (fallback latest).
+  - FE `packages/web/src/components/soc/SocSignalsPanel.tsx` (+384/-76): `mapRecentItem()` export (`timestamp→detected_at`, `side→action`, `Number(value ?? order_value_vnd ?? matched_value_vnd)→volume`) + `pickRecentList()` đọc `recent` (fallback `results|data`); stats đọc `summary/` canonical (`active/whale/dark_flow/signal_alerts`, `avg_signal_latency_ms`) — giữ 5 req, không tăng 5→6; `feedError/matError` tách section (1 API lỗi không sập tab); `signalKey()` export (`type-id`, fallback `symbol-detected_at-idx`) + row keyboard (`role=button`, Enter/Space); job console poll `getSocSignalJobStatus(run_log_id)` 3s đến terminal (`success/partial/failed/skipped`), timeout 5 phút, hiện run id; domain select dùng i18n; materialization render `execution_plan` (will_run/bỏ qua + symbol) + giờ đầy đủ qua `socTime.formatLastCheck` + run id (đóng F-SG-10/21); feed poll jitter 0–3s + `visibilitychange` pause (pattern overview W13).
+  - i18n `vi.js/en.js` +8/+8 keys (`feed_error/materialization_error/job_polling/job_timeout/job_run_id/execution_plan/will_run/will_skip`).
+  - Tests: BE `test_soc_api_signals.py` +4 (`SignalsP0ContractTestCase`: envelope 3 recents đủ 8 fields, sentiment cả 2 endpoints = `{bullish:2,bearish:1,neutral:0}` trên fixture, status-by-id + fallback, domain lạ → 400); FE `soc-signals-tab.component.test.tsx` **MỚI** 10 tests (mapper 3 mẫu + fallback value, signalKey, feed render counts từ summary 30/10/12/8 + latency 123.4ms, expand độc lập 2×VCI, feed-500 isolation giữ mat, execution plan, job poll đến success, backward compat thiếu run_log_id).
+- **Validation (thật)**: `npx tsc --noEmit` **0**; `manage.py test service_ops.tests.test_soc_api_signals --keepdb` **Ran 14 OK** (10 cũ + 4 mới); `npx vitest run` **32 files / 152 pass** (mới +10, không regression); `npm run build` **32.11s PASS**; `npm run lint` **0 errors** (3547 warnings = baseline); `i18n:scan` diff sạch (đúng 8 keys P0).
+- **Deviations so với plan (có lý do)**: (1) sentiment thêm vào CẢ summary + performance (thay vì chỉ performance) để FE thay counts bằng summary mà giữ 5 req; (2) F-SG-16 whitelist làm luôn ở P0 (~10 dòng) thay vì P2; (3) F-SG-17 keyboard + F-SG-23 domain i18n + F-SG-21 giờ đầy đủ làm gọn trong P0 vì chạm cùng dòng render.
+- **Next**: P1 (4d, có điều kiện Entry 99: BE thêm `total_filtered` cho paging + ghi rõ whale/test stub) → P2a (2d) → BRD workshop → P2b.
+
+---
+
+## Entry 99: PHẢN BIỆN ĐỘC LẬP — Audit & Kế hoạch tab Signals (F-SG-01→20, C1→C6, P0/P1/P2)
+
+- **Date**: 2026-09-16
+- **Scope**: Phản biện độc lập 2 files `docs/AUDIT_SOC_SIGNALS_TAB_20260916.md` (20 findings, 6 contradictions, 4.5/10) + `docs/IMPLEMENTATION_PLAN_SOC_SIGNALS_COMMERCIAL_20260916.md` (P0 1.5d + P1 4d + P2 6d). Tuân AGENTS.md Nguyên tắc 1-6, B1-B6, mọi phán quyết kèm `file:line`, không đoán, đã đọc lại 3 file cốt lõi 566+976 dòng + `soc.js:305` + `models.py` + `delivery_service.py` + `test_soc_api_signals.py` + `settings.py:259`.
+- **Files**: `docs/AUDIT_SOC_SIGNALS_TAB_INDEPENDENT_REVIEW_20260916.md` **MỚI** — báo cáo phản biện A-G, verification matrix 20 findings + 6 contradictions + 4 findings bổ sung + critique P0/P1/P2 chi tiết, kèm evidence `file:line`.
+- **Kết quả chính**:
+  - **17/20 CONFIRMED**, 3 **NUANCE/PARTIALLY** (F-SG-02 volume mapper, F-SG-09 đếm 8→6, F-SG-16 nâng P2→P1), 0 REFUTED. Audit gốc **đúng 85-90%**, xếp hạng 4.5/10 hợp lý.
+  - **C1→C6 CONFIRMED** toàn bộ (envelope, counts/sentiment, item fields, run_log_id, i18n chết, doc stale).
+  - **Bổ sung 4 findings** mới: F-SG-21 `last_scan_at` chỉ `YYYY-MM-DD` (`SocSignalsPanel.tsx:455`), F-SG-22 `matCardBar` CSS chết, F-SG-23 job domain select cứng EN, F-SG-24 thiếu `signals` throttle riêng.
+  - **P0**: khả thi nhưng **1.5d hơi chặt → đề xuất 2d** (tách W0.1 BE/FE, W0.2 không tăng req, W0.4 thêm `visibilitychange` pause, thêm contract test `recent`). W0.1 mapper `value→volume` là đủ, không cần BE thêm `volume`.
+  - **P1**: 4d **vừa đủ** nếu bổ sung `total_filtered` cho paging (BE hiện chỉ `total_today`), và ghi rõ `whale/test` stub sẽ gắn nhãn “smoke” (F-SG-14).
+  - **P2**: 6d **thiếu** → thực tế 7-8d; W2.2 ack/mute trong SOC **thiếu BRD** user-scope vs team-scope (`delivery_service.acknowledge_delivery` là user-scope, SOC operator ack thay mặt user sai mô hình) và `ACTION_CHOICES` thiếu `request` cho rule-change-request; đề xuất tách **P2a (W2.4 honest + W2.1 poll-diff + W2.5 export, 2d)** và **P2b (W2.2+W2.3 triage, 4-5d epic BRD riêng)**.
+- **Khuyến nghị GO/NO-GO**: **GO P0 (2d, có điều kiện) → GO P1 (4d, có điều kiện) → HOLD P2.2/W2.3** cho đến BRD workshop, chỉ làm P2a trước. Thứ tự: P0 2d → P1 4d → P2a 2d → BRD → P2b 4-5d → SSE epic.
+- **Validation**: `read` 3 file cốt lõi + `grep` toàn repo `.css/i18n/tests/urls/models` + `docker ps` healthy + `settings.py:259` bucket riêng; mọi phán quyết có `file:line`, không đoán.
+
+---
+
+## Entry 98: AUDIT tab Signals + Kế hoạch nâng cấp chuẩn thương mại (P0/P1/P2)
+
+- **Date**: 2026-09-16
+- **Scope**: Audit toàn diện `?tab=signals` theo khung AGENTS.md (A–G, mọi khẳng định `file:line`) + plan nâng cấp BE+FE+UX. Không sửa code.
+- **Reports**: `docs/AUDIT_SOC_SIGNALS_TAB_20260916.md` **MỚI** (20 findings F-SG-01→20 P0 6/P1 7/P2 7, 6 contradictions, gates, benchmark Bloomberg/Datadog/Grafana/PagerDuty/TradingView) + `docs/IMPLEMENTATION_PLAN_SOC_SIGNALS_COMMERCIAL_20260916.md` **MỚI** (P0 1.5d / P1 4d / P2 6d+, WBS + nghiệm thu + tests + DoD).
+- **Top findings**: F-SG-01 feed rỗng vĩnh viễn (FE đọc `results|data`, BE trả `recent`); F-SG-02 item thiếu field (mù giờ/volume); F-SG-03 latency luôn "—" (sai key); F-SG-04 counts không tồn tại (tổng ≤60 sai); F-SG-05 sentiment chết; F-SG-06 1 API lỗi sập cả tab; F-SG-08 job fire-and-forget; F-SG-09 8 API + `whale/test/` chết; F-SG-14 số liệu giả (accuracy 100, FPR 0, `last_scan_at=now()`); F-SG-19 AlertCenter ack/mute đầy đủ nhưng SOC không dùng (2 mặt song song).
+- **Đánh giá**: **4.5/10** — khung render được nhưng feed lõi rỗng + 6 ô số chết → chưa đạt nội bộ. Không blocker hạ tầng (21 endpoints + engine ack/mute đã có).
+- **Validation**: read panel 566 dòng + signals.py 976 dòng + adapter + models + delivery engine + AlertCenter urls/views + i18n + CSS + tests; `tsc 0` chạy lại khi audit; grep 0 caller jobStatus/8 fns.
+- **Next**: P0 (W0.1→W0.4) trước — feed sống lại đúng số; rồi P1, P2 theo plan.
+
+---
+
+## Entry 97: Fix cao thấp card + metric 1 hàng — uniform service cards & 7 fixed columns (b8636403 + 8aed6804)
+
+- **Date**: 2026-09-16
+- **Scope**: 2 fix UI từ screenshot runtime (không đổi logic/contract).
+  1. Metric orphan "Đã tắt" rớt hàng 2 (`auto-fit` không đảm bảo) → `repeat(7, 1fr)` cố định desktop + thu gọn card (padding 0.6/0.75rem, icon 32px, value 1.15rem, gap 0.6rem); breakpoints 1280px→4 cột, 768px→2, 480px→1 (commit `8aed6804`, CSS-only).
+  2. Card cao thấp không đều (tên 1–2 dòng + chips SLO gói 1–3 hàng tùy card) → tách SLO thành hàng riêng full-width (`SocOverviewPanel.tsx`, SLO IIFE ra khỏi `overviewServiceBadges`), zone giữ chỗ kể cả khi không có SLO; `.sloBadges` `justify-start + min-height:48px` (2 hàng cố định); `.overviewServiceKey` ellipsis 1 dòng; `.overviewServiceActions` `margin-top:auto + padding-top` pin nút đáy (commit `b8636403`).
+- **Cấu trúc card sau fix (cao độ xác định)**: header (tên 2 dòng + status) → key 1 dòng → SLO 2 hàng → stats 1 hàng → actions pin đáy.
+- **Tests**: +1 structural (mỗi card có đúng 1 `.sloBadges` là con trực tiếp) → `vitest` 2 files **20/20 pass**; `tsc 0`.
+- **Validation (thật)**: docker `-FrontendOnly` build PASS (tsc+vite trong image), `core-api healthy`, `No queue drift`, smoke API+Frontend OK.
+- **Next**: Bạn reload `http://localhost/operations-center?tab=overview` (hard refresh Ctrl+F5 tránh cache CSS cũ) kiểm tra 7 metric 1 hàng + cards đều nhau.
+
+---
+
+## Entry 96: UI Polish SOC Overview Tab — thực thi W-U1→U8 (commit 26885d43, docker dev FrontendOnly)
+
+- **Date**: 2026-09-16
+- **Scope**: Thực thi `docs/AUDIT_SOC_OVERVIEW_UI_UX_20260916.md` §2 (Entry 95). V-01/V-02 xác minh **không bug** (labels dùng i18n `SocOverviewPanel.tsx:778-790`, `showing_range` render from–to `:865-869`) → bỏ qua, không hotfix.
+- **Files & fixes** (commit `26885d43` trên `dev`, 7 files +328/-40):
+  - **W-U1** `soc.components.css:338` `.overviewMetricGrid` `repeat(3,1fr)` → `repeat(auto-fit, minmax(160px, 1fr))`, xóa media 768px, giữ 480px 1 cột — hết orphan "Đã tắt".
+  - **W-U2** `.overviewServiceName` → 2-line clamp + `min-height:2.2em`; `h4` thêm `title=service.name` (`SocOverviewPanel.tsx:720`).
+  - **W-U3** `.sloBadges` column → `row wrap justify-end` — 3 chips 1 hàng.
+  - **W-U4** metric caption `metric_share` `{pct}%` cho 6 card trạng thái (bỏ qua `total`).
+  - **W-U5** `.domainPill` mới (pill mono outline) thay `filterBtn` cho strip domain + nhãn `filter_by_domain/filter_by_status` (`.filterRowLabel`).
+  - **W-U6** toolbar 2 hàng dùng `.toolbarRow` có sẵn: hàng 1 search (flex:1) + sort; hàng 2 nhãn + status filters.
+  - **W-U7** `OverviewData.generated_at` + hero badge append `hero_updated_at` (giờ local từ `generated_at` BE `overview.py:320`).
+  - **W-U8** `.overviewLegend/.overviewLegendItem/.overviewLegendDot` + render legend 6 status (chỉ hiện >0).
+  - i18n 4 keys VI/EN (`vi.js/en.js` +4/+4, diff sạch — `i18n:scan` không thêm key nào cho overview).
+- **Tests**: `soc-overview-tab` +3 (title tooltip, 6×metric_share + hero freshness, domainPill×2 + labels) → tổng file 11 tests; `vitest` 2 files **19/19 pass**.
+- **Validation (thật)**: `tsc 0` (kể cả sau hook eslint--fix/prettier của commit), `vitest 19/19`, `lint 0 errors`, `build 32.16s PASS`, docker `-FrontendOnly` build 32.39s PASS → `soc-DZiBk1PZ.css` mới, `core-api healthy`, `No queue drift`, smoke API+Frontend OK.
+- **Status**: **U-01→U-08 DONE**. Còn backlog §8 plan overview (SSE/ETag/JSX/P3) + backlog §5 audit UI (không có — đã làm hết).
+- **Next**: Bạn kiểm tra trực quan `http://localhost/operations-center?tab=overview` ở 1920/1366/390 theo checklist §4 audit UI.
+
+---
+
 ## Entry 95: AUDIT UI/UX SOC Overview Tab từ screenshot runtime + kế hoạch hiệu chỉnh (1 PR polish)
 
 - **Date**: 2026-09-16

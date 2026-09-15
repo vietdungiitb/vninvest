@@ -330,6 +330,24 @@ describe("SOC adapter", () => {
       const result = await soc.getSocSignalConfig();
       expect(result.config).toEqual({ window: 60 });
     });
+
+    it("recent endpoints accept paging/filter params and keep bare URLs by default", async () => {
+      await soc.getSocWhaleRecent();
+      expect(coreGet).toHaveBeenCalledWith("/operator/soc/signals/whale/recent/");
+      await soc.getSocDarkPoolRecent({ page_size: 100, severity: "high" });
+      expect(coreGet).toHaveBeenCalledWith("/operator/soc/signals/dark-pool/recent/?page_size=100&severity=high");
+      await soc.getSocScreenerRecent({ page: 2, symbol: "VCI", direction: "buy" });
+      expect(coreGet).toHaveBeenCalledWith("/operator/soc/signals/screener/recent/?page=2&symbol=VCI&direction=buy");
+    });
+
+    it("testSocWhaleDetection posts symbol and previewSocSignalRetention posts payload", async () => {
+      await soc.testSocWhaleDetection("VNM");
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/signals/whale/test/", { symbol: "VNM" });
+      await soc.previewSocSignalRetention({ intraday_tick_retention_days: 7 });
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/signals/retention-policy/preview/", {
+        config_payload: { intraday_tick_retention_days: 7 },
+      });
+    });
   });
 
   // ─── Screener ────────────────────────────────────────────────────────────
