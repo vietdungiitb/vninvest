@@ -15,10 +15,11 @@ urlpatterns = [
 ]
 
 # Migration tracking (W6 — ticket + target date + owner required per route):
-# - [COMPAT-001 | target 2026-10-15 | owner BE] market_serving:legacy_views.RealtimeWhaleFeedAggregateView
-#   (market_serving/legacy_views.py:409, routed at market_serving/urls.py:30)
-#   -> market_serving native view alias. Status IN PROGRESS: view already reads
-#   core signal tables (WhaleAlertCanonical); left = cutover route name + FE adapter.
+# - [DONE 2026-09-15] market_serving:legacy_views.RealtimeWhaleFeedAggregateView
+#   (routed tại market_serving/urls.py:31) -> native_views.RealtimeWhaleFeedAggregateView
+#   (name 'market_serving:realtime-whale-feed-aggregate'); FE adapter
+#   getWhaleAnalyticsSnapshotEndpoint -> /workspace/whale-analytics/. Còn lại:
+#   relocate class body + xoá legacy_views.py -> gom vào COMPAT-002.
 # - [DONE] user_workspace:legacy_views.* -> user_workspace native workspace/* (watchlists)
 # - [DONE] market_data:legacy_views.* -> market_data native stock_mgmt_native_views
 # - [COMPAT-002 | target 2026-11-30 | owner BE] compat app sunset after COMPAT-001.

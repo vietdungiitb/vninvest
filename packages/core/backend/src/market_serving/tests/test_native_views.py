@@ -7,6 +7,8 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from django.urls import reverse
+
 from market_data.models import IntradayTick
 from market_serving.models import SessionFacts
 
@@ -146,3 +148,76 @@ class SessionFactsCvdViewTestCase(TestCase):
         self.assertEqual(payload['cvd_series'], [])
         self.assertEqual(payload['data_status'], 'missing_cvd_buckets')
         self.assertEqual(payload['_source'], 'no-data')
+
+
+class RealtimeWhaleFeedAggregateCompatTest(TestCase):
+    """COMPAT-001: whale-feed-aggregate route served từ native namespace."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(
+            username='whale-feed-native-reader',
+            email='whale-feed-native-reader@test.local',
+            password='pass123',
+        )
+
+    def setUp(self):
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def _create_whale_event(self):
+        from signal_intelligence.models import UnifiedAlert, WhaleAlertCanonical
+
+        alert = UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.WHALE,
+            symbol='VCI',
+            severity=UnifiedAlert.SeverityChoices.HIGH,
+            title='Whale buy VCI',
+            value='1480000000.00',
+            direction=UnifiedAlert.DirectionChoices.BUY,
+            session_date=timezone.localdate(),
+            triggered_at=timezone.now(),
+            source_ref='COMPAT001-TEST-VCI',
+        )
+        return WhaleAlertCanonical.objects.create(
+            alert=alert,
+            symbol='VCI',
+            session_date=timezone.localdate(),
+            side=WhaleAlertCanonical.SideChoices.BUY,
+            price='18100.00',
+            volume=82000,
+            matched_value=1480000000,
+            executed_at=timezone.now(),
+        )
+
+    def test_aggregate_route_resolves_via_native_name(self):
+        url = reverse('market_serving:realtime-whale-feed-aggregate', kwargs={'symbol': 'VCI'})
+        self.assertEqual(url, '/core/v1/realtime/whale-feed-aggregate/VCI/')
+
+    def test_aggregate_route_serves_native_contract(self):
+        self._create_whale_event()
+
+        response = self.client.get('/core/v1/realtime/whale-feed-aggregate/VCI/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertTrue(payload['results'])
+        first = payload['results'][0]
+        self.assertEqual(first['symbol'], 'VCI')
+        self.assertEqual(first['side'], 'buy')
+        self.assertEqual(first['matched_value'], 1480000000.0)
+        self.assertFalse(payload['has_more'])
+        self.assertIn('next_cursor', payload)
+        self.assertEqual(payload['source'], 'canonical_event_store')
+        self.assertIn('meta', payload)
+        self.assertIn('entitlements', payload)
+
+    def test_aggregate_route_returns_empty_for_unknown_symbol(self):
+        self._create_whale_event()
+
+        response = self.client.get('/core/v1/realtime/whale-feed-aggregate/AAA/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['results'], [])
+        self.assertFalse(payload['has_more'])

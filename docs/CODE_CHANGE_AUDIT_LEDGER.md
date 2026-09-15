@@ -5,6 +5,26 @@
 
 ---
 
+## Entry 89: COMPAT-001 DONE — whale-feed-aggregate cutover legacy_views → native_views + FE adapter switch
+
+- **Date**: 2026-09-15
+- **Scope**: Đóng ticket compat `COMPAT-001` (hạn 2026-10-15) — cutover route `market_serving` whale-feed-aggregate ra khỏi namespace `legacy_views` sang native; điều hướng FE adapter còn lại hết legacy.
+- **Files & fixes**:
+  - BE `market_serving/native_views.py`: re-export `RealtimeWhaleFeedAggregateView` từ `legacy_views` dưới namespace native (comment COMPAT-001, ghi nhận relocation vật lý gom vào COMPAT-002). View vốn đã đọc core signal tables (`WhaleAlertCanonical`) — không đổi contract.
+  - BE `market_serving/urls.py`: bỏ `from . import legacy_views`; route `realtime/whale-feed-aggregate/<symbol>/` import từ `native_views` + đổi name `whale-feed-aggregate` → `realtime-whale-feed-aggregate` (vẫn mounted tại `core/v1/`, namespace `market_serving`).
+  - BE `compat/__init__.py` + `compat/urls.py`: đánh dấu COMPAT-001 **DONE 2026-09-15**; upgrade COMPAT-002 desc gồm relocate class body + xoá `legacy_views.py` (gồm `RealtimeWhaleCampaignsView` không được route ở đâu cả).
+  - FE `adapters/core/coreAdapter.js:119` `getWhaleAnalyticsSnapshotEndpoint`: legacy path `/whale-feed-aggregate/{symbol}/` (404 — không tồn tại BE route không-prefix) → native `/workspace/whale-analytics/{symbol}/`.
+  - FE `adapters/coreApiAdapter.test.js`: +1 test `createCoreWhaleAnalyticsSnapshotClient` xác nhận URL native `/workspace/whale-analytics/TPB/` + không chứa `whale-feed-aggregate`.
+  - BE `market_serving/tests/test_native_views.py`: +`RealtimeWhaleFeedAggregateCompatTest` (3 tests) — reverse name namespaced, contract dữ liệu (results/side/matched_value/has_more/next_cursor/source/meta/entitlements), empty cho symbol lạ.
+- **Validation (thật)**:
+  - BE `python manage.py test market_serving` → 3 test COMPAT-001 mới **PASS**; `Ran 11 tests` (2 failures = `SessionFactsCvdViewTestCase` — **reproduced giống hệt tại worktree HEAD sạch 592c2dc0**, pre-existing, không liên quan COMPAT-001).
+  - FE `npx tsc --noEmit` → 0; `npm run build` → PASS 1m4s; `npm run lint` → 0 errors (3547 warnings); `npx jest src/adapters/coreApiAdapter.test.js` → **52/52** (gồm test COMPAT-001 mới); `npx vitest run` → 30 files / 130 pass.
+- **Docs**: cập nhật `docs/CODE_CHANGE_AUDIT_LEDGER.md`; `AGENTS.md` Progress.
+- **Status**: **COMPAT-001 DONE** trước hạn 2026-10-15. Còn lại COMPAT-002 (sunset 2026-11-30): relocate body class + xoá `legacy_views.py`.
+- **Residual** (ngoài scope): 17 lỗi BE `service_ops` pre-existing; 2 lỗi `market_serving` SessionFacts pre-existing; `AIAdvisorAlertPanel.i18n.test.js` FAIL pre-existing FE.
+
+---
+
 ## Entry 88: Phase 3 SOC Commercial HOÀN TẤT — SLO/SLI + Alerting + Export CSV + CSS split + Sparkline 4c
 
 - **Date**: 2026-09-15

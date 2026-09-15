@@ -6,6 +6,7 @@
  */
 import { jest, describe, test, expect, beforeEach, afterEach } from "@jest/globals";
 import { CoreApiRequestError, authTokenStorage, coreApiAdapter, createCoreApiAdapter } from "./coreApiAdapter.js";
+import { createCoreWhaleAnalyticsSnapshotClient } from "./core/coreAdapter.js";
 
 describe("coreApiAdapter", () => {
   let fetchMock;
@@ -341,6 +342,25 @@ describe("coreApiAdapter", () => {
 
   test("getWhaleAnalyticsSnapshot throws on missing symbol", () => {
     expect(() => coreApiAdapter.getWhaleAnalyticsSnapshot("")).toThrow("symbol is required");
+  });
+
+  test("createCoreWhaleAnalyticsSnapshotClient (COMPAT-001) hits native /workspace/whale-analytics/", async () => {
+    const payload = { symbol: "TPB", timeframe: "1d", bubble_series: [], flow_series: { cvd: [] } };
+    mockOkResponse(payload);
+
+    const client = createCoreWhaleAnalyticsSnapshotClient({});
+    const result = await client.getWhaleAnalyticsSnapshot({
+      symbol: "tpb",
+      timeframe: "1d",
+      includeBaseline: true,
+    });
+    expect(result).toEqual(payload);
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("/workspace/whale-analytics/TPB/");
+    expect(url).not.toContain("whale-feed-aggregate");
+    expect(url).toContain("timeframe=1d");
+    expect(url).toContain("include_baseline=1");
   });
 
   test("getPortfolioHoldings calls /core/v1/workspace/portfolios/{id}/holdings/", async () => {

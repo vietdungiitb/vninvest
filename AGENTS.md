@@ -25,6 +25,12 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - **React 19 peer-dep TDZ fix**: `vninvestcharts-widget` ^1.2.5 declares `peerDependencies: react ^19.0.0` nhưng app là React 18.3.1. Static import trong `VNStockChartPanel.js` gây TDZ `Cannot access 'N' before initialization` lúc load `StockDetailPage`. Quyết định ban đầu: lazy-load widget qua dynamic `import()` trong `useEffect` (Option B) để giữ React 18 — vì sợ recharts v2 peer-dep không hỗ trợ React 19. Tuy nhiên, `recharts@2.15.4` đã chính thức hỗ trợ `^19.0.0`. **Đã upgrade lên React 19**: `react@19.2.7`, `react-dom@19.2.7`, `@types/react@19.2.17`, `@types/react-dom@19.2.3`. `react-test-renderer` removed, `AuthPages.test.js` rewritten to RTL. Widget vẫn lazy-load as async chunk. tsc + build pass.
 - **SOC DataOps gap analysis — ALL 20 gaps CLOSED**: P0 #1–5, P1 #6–11, P2 #12–16, P3 #17–20 đều đã implement (Inventory/Operations/Monitor/Config sections). `docs/GAP_ANALYSIS_DATAOPS_LEGACY_VS_SAAS_NATIVE.md` đã stale → đánh dấu hoàn thành.
 
+### Done (2026-09-15) — COMPAT-001 DONE (Entry 89)
+- **Cutover route**: `market_serving/urls.py` bỏ import `legacy_views`; `realtime/whale-feed-aggregate/<symbol>/` → `native_views.RealtimeWhaleFeedAggregateView` (re-export, name mới `realtime-whale-feed-aggregate`, namespace `market_serving`). Contract giữ nguyên — view vốn đọc core signal tables (`WhaleAlertCanonical`).
+- **FE adapter switch**: `coreAdapter.js getWhaleAnalyticsSnapshotEndpoint` → native `/workspace/whale-analytics/{symbol}/` (path cũ `/whale-feed-aggregate/` 404 không tồn tại).
+- **Tests**: BE `RealtimeWhaleFeedAggregateCompatTest` 3 tests PASS (reverse namespaced + contract + empty); FE +1 jest test; gates xanh (tsc 0, build 1m4s PASS, lint 0 errors, jest adapter 52/52, vitest 30/130). 2 lỗi market_serving SessionFacts + 17 lỗi service_ops pre-existing (reproduce HEAD sạch).
+- **Còn lại**: COMPAT-002 (sunset 2026-11-30) — relocate body class vào native_views.py + xoá legacy_views.py. Ledger Entry 89.
+
 ### Done (2026-09-15) — Phase 3 SOC Commercial HOÀN TẤT (Entry 88)
 - **Step 1 CSS split**: `soc.module.css` 2405 dòng → `soc.tokens.css` (43) + `soc.components.css` (2715) + module re-export 3 dòng `@import`. Build verified (class băm + token resolve).
 - **Step 2 SLO Model**: `ServiceHealth` +`slo_target/uptime_30d/burn_rate_1h/error_budget_remaining` + `ServiceHealthCheckLog` model + migration `0012`.

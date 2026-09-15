@@ -120,8 +120,9 @@ export const coreAdapter = {
     const normalizedSymbol = String(options.symbol || "").trim().toUpperCase();
     const coreBase = resolveCoreBaseUrl(env);
 
+    // COMPAT-001: legacy /whale-feed-aggregate/ (404) cutover → native workspace route.
     return appendQuery(
-      `${coreBase}/whale-feed-aggregate/${encodeURIComponent(normalizedSymbol)}/`,
+      `${coreBase}/workspace/whale-analytics/${encodeURIComponent(normalizedSymbol)}/`,
       {
         timeframe: options.timeframe,
         compact: options.compact === false ? 0 : 1,

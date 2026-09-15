@@ -19,6 +19,12 @@ from rest_framework.throttling import UserRateThrottle
 from market_data.models import IntradayTick
 from .models import SymbolSnapshot
 
+# COMPAT-001: whale-feed aggregate contract served from core signal tables
+# (WhaleAlertCanonical). Re-homed under the native namespace so the route no
+# longer imports from legacy_views.py. Physical relocation of the class body
+# into this module + legacy_views.py removal happen under COMPAT-002.
+from .legacy_views import RealtimeWhaleFeedAggregateView
+
 
 class RealtimeDataThrottle(UserRateThrottle):
     """Independent bucket for realtime ticker polling — does not share the global 'user' quota."""
