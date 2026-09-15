@@ -240,7 +240,7 @@ class SchedulerJobActionS03ExecutionTests(TestCase):
         run_log.refresh_from_db()
         self.assertEqual(run_log.status, 'failed')
         self.assertIn('Bị abort bởi operator', run_log.error_detail)
-        revoke_mock.assert_called_once_with('abort-backfill-task-id', terminate=True, signal='SIGTERM')
+        revoke_mock.assert_called_once_with('abort-backfill-task-id', terminate=True, signal='SIGKILL')
 
         exec_run.refresh_from_db()
         self.assertEqual(exec_run.status, 'aborted')

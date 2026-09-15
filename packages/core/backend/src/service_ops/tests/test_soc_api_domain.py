@@ -266,7 +266,7 @@ class VnbrokerDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(health_path['get']['summary'], 'Lấy health snapshot VNBroker')
         self.assertEqual(test_connection_path['post']['summary'], 'Kiểm tra kết nối provider VNBroker')
         self.assertIn('requestBody', test_connection_path['post'])
-        self.assertEqual(config_path['get']['security'], [{'CorePATBearer': []}])
+        self.assertEqual(config_path['get']['security'], [{'CorePATBearer': []}, {'cookieAuth': []}])
 
 
 class PrefetchDomainApiTestCase(SOCAdminApiTestCase):
@@ -416,7 +416,7 @@ class PrefetchDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(groups_path['get']['summary'], 'Lấy universe groups Prefetch')
         self.assertEqual(schedule_path['get']['summary'], 'Lấy task schedule Prefetch')
         self.assertEqual(ownership_path['get']['summary'], 'Lấy ownership Prefetch')
-        self.assertEqual(config_path['get']['security'], [{'CorePATBearer': []}])
+        self.assertEqual(config_path['get']['security'], [{'CorePATBearer': []}, {'cookieAuth': []}])
 
 
 class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
@@ -558,7 +558,7 @@ class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(rules_run_path['post']['summary'], 'Queue rules run Screener')
         self.assertIn('requestBody', rules_run_path['post'])
         self.assertEqual(ownership_path['get']['summary'], 'Lấy ownership Screener')
-        self.assertEqual(config_path['get']['security'], [{'CorePATBearer': []}])
+        self.assertEqual(config_path['get']['security'], [{'CorePATBearer': []}, {'cookieAuth': []}])
 
 
 class MatrixDomainApiTestCase(SOCAdminApiTestCase):
@@ -631,7 +631,7 @@ class MatrixDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(monitor_path['get']['summary'], 'Lấy matrix monitor')
         monitor_parameters = {parameter['name'] for parameter in monitor_path['get']['parameters']}
         self.assertIn('cycle_id', monitor_parameters)
-        self.assertEqual(start_path['post']['security'], [{'CorePATBearer': []}])
+        self.assertEqual(start_path['post']['security'], [{'CorePATBearer': []}, {'cookieAuth': []}])
 
 
 class OverviewDomainApiTestCase(SOCAdminApiTestCase):
@@ -691,7 +691,7 @@ class OverviewDomainApiTestCase(SOCAdminApiTestCase):
         service_parameters = {parameter['name'] for parameter in services_path['get']['parameters']}
         self.assertIn('page', service_parameters)
         self.assertIn('page_size', service_parameters)
-        self.assertEqual(health_check_path['post']['security'], [{'CorePATBearer': []}])
+        self.assertEqual(health_check_path['post']['security'], [{'CorePATBearer': []}, {'cookieAuth': []}])
 
 
 class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
@@ -712,13 +712,13 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(runtime_config_path['get']['summary'], 'Lấy runtime config DataOps market-data')
         self.assertEqual(runtime_config_path['post']['summary'], 'Apply runtime config DataOps market-data')
         self.assertIn('requestBody', runtime_config_path['post'])
-        self.assertEqual(runtime_config_path['get']['security'], [{'CorePATBearer': []}])
+        self.assertEqual(runtime_config_path['get']['security'], [{'CorePATBearer': []}, {'cookieAuth': []}])
         self.assertEqual(observability_path['get']['summary'], 'Lấy observability summary DataOps market-data')
-        self.assertEqual(observability_path['get']['security'], [{'CorePATBearer': []}])
+        self.assertEqual(observability_path['get']['security'], [{'CorePATBearer': []}, {'cookieAuth': []}])
         self.assertEqual(planner_preview_path['post']['summary'], 'Preview planner DataOps market-data')
         self.assertIn('requestBody', planner_preview_path['post'])
         self.assertEqual(registry_summary_path['get']['summary'], 'Lấy summary global symbol matrix foundation')
-        self.assertEqual(registry_summary_path['get']['security'], [{'CorePATBearer': []}])
+        self.assertEqual(registry_summary_path['get']['security'], [{'CorePATBearer': []}, {'cookieAuth': []}])
         self.assertEqual(registry_detail_path['get']['summary'], 'Lấy detail một symbol trong global symbol matrix')
         self.assertEqual(registry_reconcile_path['post']['summary'], 'Preview drift reconcile cho global symbol matrix')
         self.assertIn('requestBody', registry_reconcile_path['post'])
@@ -1222,11 +1222,11 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         self.assertAlmostEqual(first_point['fresh_or_warm_parity'], 1.0)
 
     def test_run_logs_endpoint_returns_paginated_market_data_parent_runs(self):
-        matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+        dataops_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['dataops'])
         history_service = get_registered_service('vnbroker_history')
 
         queued_log = ServiceRunLog.objects.create(
-            service=matrix_service,
+            service=dataops_service,
             status='queued',
             input_summary={
                 'mode': 'missing_only',
@@ -1240,7 +1240,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
             output_summary={},
         )
         success_log = ServiceRunLog.objects.create(
-            service=matrix_service,
+            service=dataops_service,
             status='success',
             input_summary={
                 'mode': 'missing_only',
@@ -1415,11 +1415,11 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
             queue='manual_on_demand',
         )
 
-    @patch('service_ops.views.dataops.current_app.control.revoke')
+    @patch('service_ops.views.dataops_planner.current_app.control.revoke')
     def test_planner_run_abort_endpoint_revokes_queued_task_and_marks_run_skipped(self, revoke_mock):
-        matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
+        dataops_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['dataops'])
         run_log = ServiceRunLog.objects.create(
-            service=matrix_service,
+            service=dataops_service,
             status='queued',
             celery_task_id='celery-task-queued-123',
             input_summary={

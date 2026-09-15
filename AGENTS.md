@@ -25,9 +25,15 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - **React 19 peer-dep TDZ fix**: `vninvestcharts-widget` ^1.2.5 declares `peerDependencies: react ^19.0.0` nhưng app là React 18.3.1. Static import trong `VNStockChartPanel.js` gây TDZ `Cannot access 'N' before initialization` lúc load `StockDetailPage`. Quyết định ban đầu: lazy-load widget qua dynamic `import()` trong `useEffect` (Option B) để giữ React 18 — vì sợ recharts v2 peer-dep không hỗ trợ React 19. Tuy nhiên, `recharts@2.15.4` đã chính thức hỗ trợ `^19.0.0`. **Đã upgrade lên React 19**: `react@19.2.7`, `react-dom@19.2.7`, `@types/react@19.2.17`, `@types/react-dom@19.2.3`. `react-test-renderer` removed, `AuthPages.test.js` rewritten to RTL. Widget vẫn lazy-load as async chunk. tsc + build pass.
 - **SOC DataOps gap analysis — ALL 20 gaps CLOSED**: P0 #1–5, P1 #6–11, P2 #12–16, P3 #17–20 đều đã implement (Inventory/Operations/Monitor/Config sections). `docs/GAP_ANALYSIS_DATAOPS_LEGACY_VS_SAAS_NATIVE.md` đã stale → đánh dấu hoàn thành.
 
+### Done (2026-09-15) — XÓA NỢ BE 19 TEST PRE-EXISTING (Entry 91) — service_ops 17 + market_serving 2
+- **Toàn bộ backlog BE đỏ đã XÓA**: `service_ops` 290 tests + `market_serving` 11 tests → `Ran 301 OK (skipped=1)` (trước 17F+2E service_ops + 2F market_serving). 8 nhóm fix:
+  1. OpenAPI `security` SessionAuth → `[CorePATBearer, cookieAuth]` (7 tests), 2. BackfillRunNow patch `BackfillService` + symbols upper, 3. Abort `SIGKILL`, 4. Cache bleed `scheduler:inflight` delete, 5. DataOps `service_key` matrix→dataops + revoke patch `dataops_planner`, 6. vnbroker batch `fetch_price_board_snapshots_batch` + `symbols_by_exchange` fallback, 7. Scheduler recovery `post_recovery_cooldown` (400s/1200s, dispatched 0), 8. CVD `SessionFactsCvdView` 404→200 empty (`_build_empty_cvd_payload` + `_source no-data`) + URL slash fix.
+- **Verified**: `manage.py check` 0, `npx tsc --noEmit` 0, gộp 301 tests PASS. Ledger Entry 91.
+- **Còn COMPAT-002**: đã ĐÓNG trước hạn (2026-11-30) — `legacy_views.py` đã xoá, relocate vào `native_views`. Toàn bộ COMPAT (001+002) đã đóng.
+
 ### Done (2026-09-15) — COMPAT-002 DONE (Entry 90) — xoá legacy_views.py
 - **Relocate toàn bộ**: 3 class `RealtimeUnifiedAlertsView` / `RealtimeWhaleFeedAggregateView` / `RealtimeWhaleCampaignsView` (1317 dòng) từ `legacy_views.py` → `market_serving/native_views.py` (1531 dòng, 13 class). Xoá `legacy_views.py`. Import gộp + bỏ `User`/`default_groups` dead.
-- **Verified**: ast.parse OK, `manage.py check` 0 issues, grep sạch (không còn import legacy), market_serving `Ran 11 tests` chỉ 2 failures SessionFacts pre-existing (reproduce HEAD sạch).
+- **Verified**: ast.parse OK, `manage.py check` 0 issues, grep sạch (không còn import legacy), market_serving `Ran 11 tests OK` (đã fix 2 SessionFacts CVD 404→200 ở Entry 91).
 - **Cả 2 ticket COMPAT đã ĐÓNG trước hạn**: COMPAT-001 (2026-10-15) + COMPAT-002 (2026-11-30). Ledger Entry 89 + 90.
 
 ### Done (2026-09-15) — COMPAT-001 DONE (Entry 89)

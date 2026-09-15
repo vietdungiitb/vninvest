@@ -183,7 +183,7 @@ class SignalsApiContractTestCase(SignalsApiBaseTestCase):
         self.assertEqual(job_run_path['post']['summary'], 'Queue detection job Signals')
         self.assertIn('requestBody', job_run_path['post'])
         self.assertEqual(performance_path['get']['summary'], 'Lấy performance metrics Signals')
-        self.assertEqual(config_path['get']['security'], [{'CorePATBearer': []}])
+        self.assertEqual(config_path['get']['security'], [{'CorePATBearer': []}, {'cookieAuth': []}])
 
     def test_summary_aggregates_alerts_and_events_from_current_session(self):
         response = self.client.get('/api/soc/signals/summary/')

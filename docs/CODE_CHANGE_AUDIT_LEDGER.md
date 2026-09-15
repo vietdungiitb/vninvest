@@ -5,6 +5,45 @@
 
 ---
 
+## Entry 91: XÓA NỢ BE 19 TEST PRE-EXISTING — service_ops 17 + market_serving 2 (toàn bộ backlog COMPAT/P3 còn lại)
+
+- **Date**: 2026-09-15
+- **Scope**: Khắc phục **toàn bộ 19 lỗi BE pre-existing** đã tồn đọng qua nhiều entry (Entry 88 ghi 17 service_ops + Entry 90 ghi 2 market_serving SessionFacts — đều đã reproduce tại HEAD sạch). Sau fix: `service_ops` 290 tests + `market_serving` 11 tests + gộp 301 tests **đều PASS (0 failures)**.
+- **Root causes (per nhóm)**:
+  1. **OpenAPI schema `security` (7 tests)** — `SESSION_AUTH` (SessionAuthentication) được thêm ở `f6de2db1` vào `DEFAULT_AUTHENTICATION_CLASSES` → drf-spectacular tự sinh thêm `cookieAuth` cho mọi operation. Schema hiện thực là `[{'CorePATBearer': []}, {'cookieAuth': []}]`, nhưng 7 asserts còn so với `[{CorePATBearer}]` đơn. Quyết định: giữ `SessionAuthentication` (cần cho `ops_audit` session flows + Browsable API) và cập nhật 7 asserts sang 2-scheme — phản ánh đúng contract runtime.
+     - `service_ops/tests/test_soc_api_domain.py` (6 vị trí: vnbroker/prefetch/screener/matrix/overview/dataops×3) `replaceAll` `[{CorePATBearer}]` → `[{CorePATBearer},{cookieAuth}]`.
+     - `service_ops/tests/test_soc_api_signals.py:186` cùng thay đổi.
+  2. **BackfillRunNow symbols normalize (1, `test_scheduler_b07`)** — view giờ qua `BackfillService.trigger_backfill` (`service_ops/services/backfill_service.py:3 from data_ingest.tasks import backfill_daily_prices` binding) nên patch `data_ingest.tasks.backfill_daily_prices` không còn intercept. Chuyển patch target sang `service_ops.services.backfill_service.backfill_daily_prices`; đồng thời sửa trích `call_args` fragile (NoneType subscript) → assert `passed_symbols == ['VCB','FPT']` tường minh.
+  3. **Abort signal (1, `test_scheduler_action`)** — `scheduler.py:615` cố ý dùng `SIGKILL` (abort cứng queue-tier), test còn expect `SIGTERM`. Đổi expect sang `SIGKILL` (giữ intent CATALOG service_key mapping của test).
+  4. **Cache bleed inflight (1, `test_scheduler_s04`)** — `test_inflight_is_false_when_no_running_logs` fail khi chạy trong suite vì `scheduler.py:581` `run_now` ghi `cache.set('scheduler:inflight:...')` vào LocMemCache chung process (không bị rollback giữa tests). `build_scheduler_catalog` tại S04-ext đọc lại cache marker → `is_inflight` True. Fix: xóa `scheduler:inflight:...` + `scheduler:manual_run:...` trong test trước khi gọi catalog.
+  5. **DataOps run-logs + planner abort (2, `test_soc_api_domain`)** — endpoint `DataOpsRunLogsView`/`DataOpsPlannerRunAbortView` lọc `service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['dataops']='backfill_daily_prices'`, nhưng test tạo `ServiceRunLog` bằng `['matrix']='matrix_cycle_coordinator'` → lọc ra 0 dòng → `count 0 !=2`, `404 !=200`. Đổi test sang `get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['dataops'])`; đồng thời sửa patch target `current_app.control.revoke` từ `service_ops.views.dataops` → `service_ops.views.dataops_planner` (đúng module chứa view).
+  6. **vnbroker adapter bridge (2, `test_soc_tasks`)**:
+     - `fetch_price_board_snapshot` giờ dùng `fetch_price_board_snapshots_batch(symbols, source=...)` (batch `Quote.fetch_multiple`). Test cũ mock `fetch_realtime_price` per-symbol → mock mismatch `TypeError: 'Mock' not iterable`. Viết lại test mock `fetch_price_board_snapshots_batch` trả `{'ACB': {...}}` và assert `source='KBS'` propagation.
+     - `fetch_listing_symbols` giờ ưu tiên `listing_client.symbols_by_exchange('HOSE')` trước, fallback `all_symbols()` khi exception. Test chỉ mock `all_symbols` → thực tế `symbols_by_exchange` trả Mock (không raise) → không vào fallback → `all_symbols` called 0 lần. Fix: đặt `listing_client.symbols_by_exchange.side_effect = RuntimeError` để kích hoạt fallback, giữ nguyên asserts `listing_class(source='KBS')` + `all_symbols`.
+  7. **Scheduler recovery `queue-tier` (3, `test_soc_tasks`)** — `tasks.py:1031 post_recovery_cooldown` (không dispatch ngay sau recovery, đợi beat tiếp theo) và `QUEUE_TIER_ORPHAN_GRACE_SECONDS=300`, `stale_after = poll(30s)*6 → 900s`. Tests còn expect `elapsed 90s` đã là orphan và `dispatched_runs 1` ngay lập tức:
+     - `orphaned_inflight` 90s <300 → không phải orphan → `dispatched 0 !=1`. Fix `timedelta(seconds=90)` → `400` (>300) + đổi expect `dispatched 0`/`planner not called` (recovery xong, cooldown).
+     - `stale_child_runs_with_parent` + `stale_inflight` 1200s >900 → stale branch nhưng dispatch vẫn bị `post_recovery_cooldown` chặn → đổi `dispatched 1` → `0`, `planner assert_called_once` → `assertFalse(called)`, giữ nguyên asserts recovery (parent/child failed, ingest failed, `recovery_action`).
+  8. **CVD chart empty payload (2, `market_serving`)** — `SessionFactsCvdView.get` tại `market_serving/views.py:374/398` đã đổi từ `200 empty payload` (`_build_empty_cvd_payload` + `_source no-data`) sang `raise NotFound` (404). Tests cũ expect `200 bucket_count 0 data_status missing_* _source no-data`; `views.py` còn helper `_build_empty_cvd_payload` chết không dùng. Đồng thời tests thiếu trailing slash trước `?window=` (→ 301 APPEND_SLASH). Fix view: trả `Response(empty_payload_with_source, status=200)` cho cả 2 nhánh (facts None → `missing_session_facts`, buckets empty → `missing_cvd_buckets`), + `empty_payload['_source']='no-data'`; fix tests thêm `/` trước `?window=`.
+- **Files changed (8)**:
+  - `service_ops/tests/test_soc_api_domain.py` — openapi 7 + run-logs matrix→dataops + planner abort matrix→dataops + revoke patch module.
+  - `service_ops/tests/test_soc_api_signals.py` — openapi 1.
+  - `service_ops/tests/test_scheduler_b07.py` — BackfillRunNow patch target + symbols upper assert.
+  - `service_ops/tests/test_scheduler_action.py` — SIGKILL.
+  - `service_ops/tests/test_scheduler_s04.py` — cache delete.
+  - `service_ops/tests/test_soc_tasks.py` — vnbroker 2 + scheduler 3 (post_recovery, grace seconds).
+  - `market_serving/views.py` — CVD empty 200 restore.
+  - `market_serving/tests/test_native_views.py` — CVD URL trailing slash fix.
+- **Validation (thật)**:
+  - `python manage.py test service_ops --keepdb` → `Ran 290 tests in 86.98s OK (skipped=1)` (trước 15 failures +2 errors).
+  - `python manage.py test market_serving --keepdb` → `Ran 11 tests OK` (trước 2 failures SessionFactsCvd).
+  - `python manage.py test service_ops market_serving --keepdb` → `Ran 301 tests OK (skipped=1)` — **toàn bộ backlog BE 19 lỗi đã XÓA**.
+  - `npx tsc --noEmit` → 0 (FE không đổi, vẫn lazy widget React 19).
+  - `python manage.py check` → 0 issues.
+- **Residual (ngoài scope)**: FE `AIAdvisorAlertPanel.i18n.test.js` FAIL pre-existing (không liên quan BE); docs `GAP_ANALYSIS_DATAOPS_LEGACY_VS_SAAS_NATIVE.md` đã stale.
+- **Next**: Không còn test BE đỏ. Còn backlog FE nếu cần: `AIAdvisorAlertPanel` i18n test, Lighthouse manual.
+
+---
+
 ## Entry 90: COMPAT-002 DONE (trước hạn) — xoá legacy_views.py, relocate toàn bộ body class vào native_views.py
 
 - **Date**: 2026-09-15

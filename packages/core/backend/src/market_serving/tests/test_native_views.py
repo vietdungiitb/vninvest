@@ -111,7 +111,7 @@ class SessionFactsCvdViewTestCase(TestCase):
         self.client.force_authenticate(user=self.user)
 
     def test_returns_empty_payload_when_session_facts_missing(self):
-        response = self.client.get('/core/v1/session-facts/VCB/cvd?window=30m&trade_date=2026-05-15')
+        response = self.client.get('/core/v1/session-facts/VCB/cvd/?window=30m&trade_date=2026-05-15')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         payload = response.json()
@@ -138,7 +138,7 @@ class SessionFactsCvdViewTestCase(TestCase):
             stale=False,
         )
 
-        response = self.client.get('/core/v1/session-facts/VCB/cvd?window=30m')
+        response = self.client.get('/core/v1/session-facts/VCB/cvd/?window=30m')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         payload = response.json()

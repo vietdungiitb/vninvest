@@ -859,7 +859,7 @@ class ServiceOpsTasksTestCase(TestCase):
             },
             output_summary={},
         )
-        ServiceRunLog.objects.filter(pk=run_log.id).update(started_at=timezone.now() - timedelta(seconds=90))
+        ServiceRunLog.objects.filter(pk=run_log.id).update(started_at=timezone.now() - timedelta(seconds=400))
         planner_run_mock.return_value = {
             'run_id': 'md-run-hot',
             'service_run_log_id': 30,
@@ -869,8 +869,9 @@ class ServiceOpsTasksTestCase(TestCase):
         result = run_market_data_queue_tier_scheduler.run()
 
         run_log.refresh_from_db()
-        self.assertEqual(result['dispatched_runs'], 1)
-        planner_run_mock.assert_called_once()
+        # Recovery marks the orphan as failed; dispatch is deferred to next beat (post_recovery_cooldown)
+        self.assertEqual(result['dispatched_runs'], 0)
+        self.assertFalse(planner_run_mock.called)
         is_task_live_mock.assert_called_once_with('orphan-task-1')
         self.assertEqual(run_log.status, 'failed')
         self.assertEqual(run_log.output_summary['recovery_action'], 'queue_tier_missing_worker_task')
@@ -979,8 +980,9 @@ class ServiceOpsTasksTestCase(TestCase):
         parent_run_log.refresh_from_db()
         child_run_log.refresh_from_db()
         ingest_run.refresh_from_db()
-        self.assertEqual(result['dispatched_runs'], 1)
-        planner_run_mock.assert_called_once()
+        # Stale recovery marks parent/child as failed; dispatch deferred to next beat
+        self.assertEqual(result['dispatched_runs'], 0)
+        self.assertFalse(planner_run_mock.called)
         is_task_live_mock.assert_called_once_with('orphan-task-3')
         self.assertEqual(parent_run_log.status, 'failed')
         self.assertEqual(parent_run_log.output_summary['recovery_action'], 'queue_tier_stale_inflight_recovered')
@@ -1026,8 +1028,9 @@ class ServiceOpsTasksTestCase(TestCase):
         result = run_market_data_queue_tier_scheduler.run()
 
         run_log.refresh_from_db()
-        self.assertEqual(result['dispatched_runs'], 1)
-        planner_run_mock.assert_called_once()
+        # Stale recovery marks run as failed; dispatch deferred to next beat
+        self.assertEqual(result['dispatched_runs'], 0)
+        self.assertFalse(planner_run_mock.called)
         self.assertEqual(run_log.status, 'failed')
         self.assertEqual(run_log.output_summary['recovery_action'], 'queue_tier_stale_inflight_recovered')
         self.assertEqual(run_log.output_summary['queue_tier'], 'hot_user_demand')
@@ -1136,27 +1139,33 @@ class VnbrokerAdapterTaskBridgeTestCase(TestCase):
         self.assertEqual(result['symbol'], 'ACB')
         self.assertEqual(result['source'], 'KBS')
 
-    @patch('market_data.vnbroker_adapter.fetch_realtime_price')
-    @patch('market_data.vnbroker_adapter.import_module')
-    def test_fetch_price_board_snapshot_passes_explicit_source(self, import_module_mock, fetch_realtime_price_mock):
-        import_module_mock.return_value = SimpleNamespace(Quote=Mock())
-        fetch_realtime_price_mock.return_value = {
-            'symbol': 'ACB',
-            'close': 12.3,
-            'volume': 4567,
-            'fetched_at': '2026-05-14T00:00:00+00:00',
-            'source': 'KBS',
+    @patch('market_data.vnbroker_adapter.fetch_price_board_snapshots_batch')
+    def test_fetch_price_board_snapshot_passes_explicit_source(self, fetch_batch_mock):
+        fetch_batch_mock.return_value = {
+            'ACB': {
+                'symbol': 'ACB',
+                'close': 12.3,
+                'open': 12.0,
+                'high': 12.5,
+                'low': 11.9,
+                'volume': 4567,
+                'fetched_at': '2026-05-14T00:00:00+00:00',
+                'source': 'KBS',
+            }
         }
 
         result = fetch_price_board_snapshot(['ACB'], source='KBS')
 
-        import_module_mock.assert_called_once_with('vnbroker.explorer.kbs.quote')
-        fetch_realtime_price_mock.assert_called_once_with('ACB', source='KBS')
+        fetch_batch_mock.assert_called_once_with(['ACB'], source='KBS')
         self.assertEqual(result[0]['source'], 'KBS')
+        self.assertEqual(result[0]['symbol'], 'ACB')
 
     @patch('market_data.vnbroker_adapter._load_listing_adapter_class')
     def test_fetch_listing_symbols_uses_requested_source_listing_adapter(self, load_listing_adapter_class_mock):
         listing_client = Mock()
+        # Adapter now prefers symbols_by_exchange('HOSE') first; force fallback path
+        # to all_symbols() so existing assertion keeps validating source propagation.
+        listing_client.symbols_by_exchange.side_effect = RuntimeError('symbols_by_exchange not available in test')
         listing_client.all_symbols.return_value = pd.DataFrame([
             {'symbol': 'acb', 'organ_name': 'Ngân hàng ACB'},
             {'symbol': 'vnm', 'organ_name': 'Vinamilk'},

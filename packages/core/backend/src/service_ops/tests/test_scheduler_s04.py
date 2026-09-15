@@ -150,7 +150,12 @@ class SchedulerCatalogInflightEnrichmentTests(TestCase):
 
     def test_inflight_is_false_when_no_running_logs(self):
         """build_scheduler_catalog marks is_inflight=False when no running ServiceRunLog."""
+        from django.core.cache import cache as _test_cache
         from service_ops.scheduler_catalog import build_scheduler_catalog
+        # Clear LocMem cache bleed from earlier run_now tests (run_now writes
+        # scheduler:inflight:{job_key} even with mocked broker).
+        _test_cache.delete('scheduler:inflight:market-data-queue-tier-scheduler-30s')
+        _test_cache.delete('scheduler:manual_run:market-data-queue-tier-scheduler-30s')
         schedule = {
             'market-data-queue-tier-scheduler-30s': {
                 'task': 'service_ops.run_market_data_queue_tier_scheduler',

@@ -100,7 +100,7 @@ class BackfillRunNowViewTest(TestCase):
         mock_result.id = 'b07-task-id'
         mock_task.apply_async.return_value = mock_result
 
-        with patch('data_ingest.tasks.backfill_daily_prices', mock_task):
+        with patch('service_ops.services.backfill_service.backfill_daily_prices', mock_task):
             resp = self._post({'mode': 'repair_missing', 'days': 30, 'symbols': ['VCB']})
 
         self.assertEqual(resp.status_code, 202)
@@ -113,7 +113,7 @@ class BackfillRunNowViewTest(TestCase):
         mock_task = MagicMock()
         mock_task.apply_async.return_value = MagicMock(id='deep-id')
 
-        with patch('data_ingest.tasks.backfill_daily_prices', mock_task):
+        with patch('service_ops.services.backfill_service.backfill_daily_prices', mock_task):
             resp = self._post({'mode': 'deep_bootstrap', 'days': 365})
 
         self.assertEqual(resp.status_code, 202)
@@ -123,13 +123,18 @@ class BackfillRunNowViewTest(TestCase):
         mock_task = MagicMock()
         mock_task.apply_async.return_value = MagicMock(id='norm-id')
 
-        with patch('data_ingest.tasks.backfill_daily_prices', mock_task):
+        with patch('service_ops.services.backfill_service.backfill_daily_prices', mock_task):
             resp = self._post({'mode': 'targeted_symbol_repair', 'symbols': ['vcb', 'fpt']})
 
         self.assertEqual(resp.status_code, 202)
+        self.assertIsNotNone(mock_task.apply_async.call_args, 'backfill_daily_prices.apply_async should be called')
         call_kwargs = mock_task.apply_async.call_args
-        passed_symbols = call_kwargs.kwargs.get('kwargs', {}).get('symbols') or \
-                         call_kwargs[1].get('kwargs', {}).get('symbols') or \
-                         call_kwargs[0][0].get('kwargs', {}).get('symbols') if call_kwargs[0] else None
-        # Just verify no crash and response is valid
+        # apply_async(kwargs={...}) — symbols should be uppercased via view normalisation
+        kwargs_payload = None
+        if call_kwargs.kwargs and 'kwargs' in call_kwargs.kwargs:
+            kwargs_payload = call_kwargs.kwargs['kwargs']
+        elif len(call_kwargs.args) > 0 and isinstance(call_kwargs.args[0], dict):
+            kwargs_payload = call_kwargs.args[0].get('kwargs')
+        passed_symbols = (kwargs_payload or {}).get('symbols')
+        self.assertEqual(passed_symbols, ['VCB', 'FPT'])
         self.assertIn('task_id', resp.json())
