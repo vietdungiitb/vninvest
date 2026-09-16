@@ -2788,5 +2788,5 @@
 - **F5 LOW — idle timeout**: BE thêm `stream_start` + `if time.time()-stream_start>3600: break` (1h).
 - **F2 MEDIUM — PAT leak ?token=**: Giữ fallback `?token=` cho EventSource (bắt buộc), đã có `withCredentials` + HTTPS; ghi chú F2 trong `buildStreamQuery` + BE `initial` redact cần log; khuyến nghị token stream TTL ngắn riêng (backlog).
 - **F6/F7/F8 INFO/LOW**: Test tautology `?token` và `soc.test.js` builder song song + optimistic metric — chấp nhận, đã bổ sung test `since` và `watchdog`/`since` ở FE (hook 8/8) và BE 13/13; `soc.js` builder giữ nguyên (W7).
-- **Tests**: BE `test_soc_signals_stream` 12→13 (+ `test_since_query_param_resumes`); FE `useSignalStream` 6→8 (+ `watchdog 35s` + `since=99`); panel stream 3/3 giữ; suite BE `service_ops` 55 OK, FE `vitest 34/186`, `jest 230`, `tsc 0`, `build 43s PASS`.
+- **Tests**: BE `test_soc_signals_stream` 12→13 (+ `test_since_query_param_resumes`); FE `useSignalStream` 6→8 (+ `watchdog 35s` + `since=99`); panel stream 3/3 giữ; suite BE `service_ops` 56 OK, FE `vitest 34/186`, `jest 230`, `tsc 0`, `build 43s PASS`.
 - **Next**: P2c audit fix DONE — F1/F3/F4 đóng, F2/F5–F8 backlog có lý do. Toàn bộ Signals P0/P1/P2a/P2b/P2c hoàn tất.
