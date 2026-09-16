@@ -3,6 +3,8 @@
 > **Ngày**: 2026-09-16 · **Nguồn**: `docs/AUDIT_SOC_SIGNALS_TAB_20260916.md` (20 findings F-SG-01→20, 6 contradictions)
 > **Benchmark**: Bloomberg alerts / Datadog Monitors (ack–mute–escalate) / Grafana OnCall (ack/resolve/silence) / PagerDuty / TradingView webhooks
 > **Nguyên tắc**: Không đổi contract BE hiện hữu (chỉ **thêm** fields/params optional); FE theo BE canonical; mỗi work-item có nghiệm thu + tests; sau mỗi item `tsc` + test file; cuối PR `build + lint + i18n:scan`.
+>
+> **Status**: P0 ✅ · P1 ✅ · P2a ✅ (Entry 104–106) · **P2b ✅ (Entry 107–108 — W2.2 triage + W2.3 rules, verify 2026-09-16)** · P2c ⏸ SSE (epic riêng).
 
 ---
 
@@ -76,6 +78,42 @@
 ### W2.5 — Export + routing (điều kiện)
 - Export CSV feed (pattern overview Step 6: BE view limit ≤5000 + FE blob); routing webhook/email: **phụ thuộc TenantAdminWebhooks** — liên team, tách ticket.
 
+> **Trạng thái P2 (2026-09-16, Entry 104-106)**: W2.4 ✅, W2.1 poll-diff ✅, W2.5 export ✅. Còn lại theo Phase P2b + P2c bên dưới.
+
+## Phase P2b — Triage ack/mute + rule management (6–8 ngày, 2 PR, tách theo W-item)
+
+### W2.2 — Ack/Mute trong SOC (F-SG-19) — giá trị thương mại lớn nhất còn lại
+- **BE** tách file mới `service_ops/views/signals_triage.py` (giữ `signals.py` khỏi phình):
+  - `SignalsDeliveriesView` — `GET /signals/deliveries/`: deliveries của `request.user`, filter `delivery_state/symbol`, page; serializer tái dùng `UserAlertDeliveryStateSerializer` (`signal_intelligence/views.py:110`).
+  - `SignalsDeliveryAckView` — `POST /signals/deliveries/{delivery_id}/ack/`: gọi `delivery_service.acknowledge_delivery` (`delivery_service.py:170`) — transition guard (new→ack, seen→ack; ack/muted không chuyển lại).
+  - `SignalsDeliveryMuteView` — `POST /signals/deliveries/mute/`: `{symbol|alert_family, mute_minutes, reason}` → `delivery_service.upsert_user_alert_preference` (`delivery_service.py:175`).
+  - Scope quyết định: **deliveries của SOC operator user** (ISOC theo plan gốc, audit actor = username) — triage toàn cục mọi end-user là epic riêng, không nhồi PR này. Reuse guard tests từ `test_delivery_service.py:48,76-93`.
+- **FE** `SocSignalsPanel.tsx`:
+  - Cột trạng thái delivery (new/seen/ack/muted badge màu) — fetch `/deliveries/` song song, **không nhồi vào recent envelope** (giữ contract recent bất biến).
+  - Nút **Ack** (single + bulk via checkbox) + **Mute** (modal lý do + thời hạn, reuse pattern overview W1); filter "Chưa ack" (`unacked_only`); `seen` tự đánh khi expand row.
+  - i18n: `ack/mute/muted_until/unacked_only/mark_seen/ack_reason/delivery_state_*`.
+- **Tests**: BE transition guards 4 state + mute upsert (reuse test_delivery_service patterns); FE ack flow + mute modal + unacked filter (vitest).
+
+### W2.3 — Rule management + precision (Bloomberg/Datadog rules)
+- **BE** `service_ops/models.py:322` `ConfigChangeAudit.ACTION_CHOICES` **thêm `('request', 'Change Requested')`** (giữ immutable trail: yêu cầu đổi rule ghi audit, **không apply trực tiếp** — tôn trọng ownership bridge-write).
+  - `SignalsRuleRequestView` — `POST /signals/rules/request/`: `{rule_key, threshold?/cooldown_s?/enabled?}` → validate + tạo `ConfigChangeAudit(action='request', before/after_snapshot, change_summary)`, trả `{request_id, pending: true}`.
+  - `SignalsRuleFeedbackView` — `POST /signals/rules/feedback/`: `{alert_id, signal: up|down, reason?}` → chuyển delivery `acknowledged`→`suppressed` (thumbs down) qua service layer + ghi `suppression_reason`.
+  - `SignalsRulePerformanceView` — `GET /signals/rules/performance/`: precision/recall **proxy** per rule từ deliveries (ack = positive, muted/suppressed = negative), hit-rate + alert_count + top noisy (Datadog "noisiest monitors"); không đủ data → `null` + UI "—" (hồi W2.4 pattern).
+- **FE** subtab "Rules": bảng rule (threshold/cooldown/enabled) + nút "Gửi yêu cầu đổi" (preview → request, hiện `request_id` + "chờ owner"); hit-rate/precision per rule + top noisy; thumbs up/down per row.
+  - i18n: `rule_enable/rule_disable/rule_request_sent/precision/noisy_rules/feedback_thanks/rule_state_*`.
+- **Tests**: BE ConfigChangeAudit request tạo + ownership guard (chỉ user có scope, hành động là request không phải apply); FE rule table + feedback + request flow.
+
+## Phase P2c — SSE realtime stream (epic tách PR, sau P2b)
+
+> **Tiền đề**: chưa có SSE nào trong codebase — chỉ stream CSV (`identity_access/views_usage.py:251`). SSE là pattern **mới của project**, module riêng + test stream riêng.
+
+### W2.1-long — `/operator/soc/signals/stream/`
+- **BE** module mới `service_ops/streams.py`:
+  - `SignalsStreamView` — `StreamingHttpResponse(content_type='text/event-stream')`; nguồn sự kiện: `UnifiedAlert` mới theo session (poll DB hoặc signal/receiver khi `_upsert_*`); `event: signal`, `data: {id, type, symbol, severity, direction, detected_at, title}`; heartbeat comment `: ping` 15s; `retry: 3000`; filter theo query `type/severity/symbol` per connection; auth như `SOCBaseView`.
+  - Boundary: 1 connection/operator tab, giới hạn query tối đa, timeout idle; test bằng test client stream + generator.
+- **FE** hook `useSignalStream` (`src/hooks/`): EventSource, reconnect backoff 1s→30s, heartbeat watchdog, **thay poll-diff (W2.1) khi stream active, fallback poll nếu stream fail** (graceful degradation giữ FE poll), highlight/badge/title-blink giữ nguyên (nút badge + `.signalRowNew` reuse).
+- i18n: `stream_reconnecting/stream_audio_toggle`.
+
 ## i18n keys thêm (VI+EN, theo phase)
 
 P0: `feed_error/materialization_error` (tái dùng pattern), `job_polling/job_timeout/job_run_id`. P1: `severity_all/severity_label/direction_buy/direction_sell/direction_neutral`, `config_tab/detection_tab/retention_tab`, `bridge_write_note/test_button/test_result`, `page_size_label/sort_label` (tái dùng overview nếu share được), `no_job_history`. P2: `ack/mute/muted_until/unacked_only/mark_seen`, `rule_enable/rule_disable/rule_request_sent`, `precision/noisy_rules/feedback_thanks`, `export_csv`.
@@ -89,7 +127,7 @@ P0: `feed_error/materialization_error` (tái dùng pattern), `job_polling/job_ti
 
 ## Thứ tự + ước lượng
 
-P0 (1.5d): W0.1 → W0.2 → W0.3 → W0.4 → gates → ledger. P1 (4d): W1.1 → W1.3 → W1.4 → W1.2 → W1.5 → gates → ledger. P2 (6d+): W2.4 → W2.1 (poll-diff) → W2.2 → W2.3 → W2.5 → SSE epic riêng.
+P0 (1.5d): W0.1 → W0.2 → W0.3 → W0.4 → gates → ledger. P1 (4d): W1.1 → W1.3 → W1.4 → W1.2 → W1.5 → gates → ledger. P2a (2d, ✅ Entry 104-106): W2.4 → W2.1 (poll-diff) → W2.5 export. **P2b (✅ Entry 107-108)**: W2.2 ack/mute → W2.3 rule management → gates → ledger. **P2c (epic riêng, 4–5d, next)**: SSE stream BE → useSignalStream FE → fallback poll → gates → ledger.
 
 ## Không làm (có lý do)
 

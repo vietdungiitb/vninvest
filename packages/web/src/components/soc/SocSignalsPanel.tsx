@@ -67,6 +67,100 @@ interface FeedExportPayload {
   truncated?: boolean;
 }
 
+// ─── W2.2 triage: delivery của operator (BE signals_triage.py, không nhồi recent envelope) ─
+interface SignalDelivery {
+  delivery_id: string;
+  alert_id?: string;
+  delivery_state: string;
+  symbol?: string;
+  alert_type?: string;
+  severity?: string;
+  title?: string;
+  triggered_at?: string | null;
+  transitioned?: boolean;
+}
+
+interface DeliveriesEnvelope {
+  results?: SignalDelivery[];
+  data?: SignalDelivery[];
+}
+
+// ─── W2.3 rules: config rows + precision proxy per rule ─────────────────
+interface SignalRule {
+  rule_key: string;
+  alert_family: string;
+  label?: string;
+  kind: string;
+  enabled: boolean | null;
+  value?: unknown;
+  alert_count?: number;
+  acked?: number;
+  muted?: number;
+  suppressed?: number;
+  precision_proxy?: number | null;
+  hit_rate?: number | null;
+}
+
+interface RulesListResponse {
+  rules?: SignalRule[];
+  generated_at?: string;
+}
+
+interface RulePerformanceResponse {
+  overall?: {
+    alert_count?: number;
+    acked?: number;
+    muted?: number;
+    suppressed?: number;
+    precision_proxy?: number | null;
+    hit_rate?: number | null;
+  };
+  by_family?: Array<{ alert_family: string; alert_count?: number; acked?: number; muted?: number; suppressed?: number; precision_proxy?: number | null; hit_rate?: number | null }>;
+  top_noisy?: SignalRule[];
+  generated_at?: string;
+}
+
+interface RuleRequestResponse {
+  request_id?: string;
+  pending?: boolean;
+  rule_key?: string;
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+  note?: string;
+}
+
+/** W2.2: FE feed type → BE AlertTypeChoices (signal_intelligence/models.py:16-19). */
+export function feedTypeToAlertType(feedType: string): string {
+  if (feedType === "dark_pool") return "dark_flow";
+  if (feedType === "screener") return "signal";
+  return "whale";
+}
+
+/** W2.2: join delivery ↔ feed row theo (symbol, alert_type, triggered_at). */
+export function deliveryKeyForSignal(s: RecentSignal): string {
+  return `${(s.symbol || "").toUpperCase()}|${feedTypeToAlertType(s.type)}|${s.detected_at || ""}`;
+}
+
+export function deliveryKeyForDelivery(d: SignalDelivery): string {
+  return `${(d.symbol || "").toUpperCase()}|${(d.alert_type || "").toLowerCase()}|${d.triggered_at || ""}`;
+}
+
+export function buildDeliveryMap(deliveries: SignalDelivery[]): Map<string, SignalDelivery> {
+  const m = new Map<string, SignalDelivery>();
+  for (const d of deliveries ?? []) {
+    if (!d?.delivery_id) continue;
+    const k = deliveryKeyForDelivery(d);
+    if (!m.has(k)) m.set(k, d);
+  }
+  return m;
+}
+
+export function pickDeliveries(res: DeliveriesEnvelope | SignalDelivery[] | null | undefined): SignalDelivery[] {
+  if (!res) return [];
+  if (Array.isArray(res)) return res;
+  return res.results ?? res.data ?? [];
+}
+
 function toNumberOrUndefined(v: number | string | null | undefined): number | undefined {
   if (v == null || v === "") return undefined;
   const n = Number(v);
@@ -173,7 +267,7 @@ interface MaterializationStatus {
   latest_detection_job_run_log_id?: number | null;
 }
 
-type SubTab = "overview" | "job-console" | "materialization" | "config" | "detection" | "retention";
+type SubTab = "overview" | "job-console" | "materialization" | "config" | "detection" | "retention" | "rules";
 
 interface SignalTabData<T> {
   loading: boolean;
@@ -272,6 +366,31 @@ export function SocSignalsPanel() {
   // W2.5 export CSV
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState("");
+  // W2.2 triage ack/mute (deliveries của operator, fetch song song — không nhồi recent)
+  const [deliveries, setDeliveries] = useState<SignalDelivery[]>([]);
+  const [triageError, setTriageError] = useState("");
+  const [triageMsg, setTriageMsg] = useState("");
+  const [unackedOnly, setUnackedOnly] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [acking, setAcking] = useState(false);
+  const [muteTarget, setMuteTarget] = useState<SignalDelivery | null>(null);
+  const [muteMinutes, setMuteMinutes] = useState("60");
+  const [muteReason, setMuteReason] = useState("");
+  const [muteSaving, setMuteSaving] = useState(false);
+
+  // W2.3 rule management: lazy data (chỉ fetch khi mở subtab Rules)
+  const [rulesTab, setRulesTab] = useState<SignalTabData<{ rules: SignalRule[] }>>(emptyTab());
+  const [rulesPerf, setRulesPerf] = useState<SignalTabData<RulePerformanceResponse>>(emptyTab());
+  const [ruleModal, setRuleModal] = useState<SignalRule | null>(null);
+  const [ruleEnabled, setRuleEnabled] = useState(true);
+  const [ruleThreshold, setRuleThreshold] = useState("");
+  const [ruleCooldown, setRuleCooldown] = useState("");
+  const [ruleRatio, setRuleRatio] = useState("");
+  const [ruleReason, setRuleReason] = useState("");
+  const [ruleSaving, setRuleSaving] = useState(false);
+  const [ruleResult, setRuleResult] = useState<RuleRequestResponse | null>(null);
+  const [ruleMsg, setRuleMsg] = useState("");
+  const [feedbackBusy, setFeedbackBusy] = useState("");
 
   const filterTypes = ["all", "whale", "dark_pool", "screener"];
 
@@ -300,6 +419,14 @@ export function SocSignalsPanel() {
     testSocWhaleDetection: (symbol?: string) => Promise<{ symbol?: string; test_result?: string; detection_possible?: boolean }>;
     previewSocSignalRetention: (config?: Record<string, unknown>) => Promise<{ valid?: boolean; errors?: string[]; retention_days?: Record<string, unknown>; impact?: Record<string, unknown> }>;
     exportSocSignalFeed: (params?: RecentQuery) => Promise<FeedExportPayload>;
+    getSocSignalDeliveries: (params?: { page?: number; page_size?: number; delivery_state?: string; symbol?: string; unacked_only?: boolean }) => Promise<DeliveriesEnvelope | SignalDelivery[]>;
+    markSocSignalDeliverySeen: (deliveryId: string) => Promise<SignalDelivery>;
+    ackSocSignalDelivery: (deliveryId: string) => Promise<SignalDelivery>;
+    muteSocSignalDeliveries: (payload: { symbol?: string; alert_family?: string; mute_minutes?: number; cooldown_seconds?: number; reason?: string }) => Promise<{ symbol?: string; alert_family?: string; mute_until?: string | null }>;
+    getSocSignalRules: () => Promise<RulesListResponse>;
+    getSocSignalRulesPerformance: () => Promise<RulePerformanceResponse>;
+    requestSocSignalRuleChange: (payload: Record<string, unknown>) => Promise<RuleRequestResponse>;
+    feedbackSocSignalRule: (payload: { alert_id: string; signal: "up" | "down"; reason?: string }) => Promise<SignalDelivery & { signal?: string; feedback_reason?: string }>;
   };
 
   const getAdapter = () => defaultCoreApiAdapter as unknown as SocSignalsAdapter;
@@ -367,6 +494,37 @@ export function SocSignalsPanel() {
     }
   };
 
+  // W2.2: deliveries fetch riêng — lỗi triage không sập feed/mat (auxiliary, không tính poll ok).
+  const fetchDeliveries = async () => {
+    try {
+      const res = await getAdapter().getSocSignalDeliveries({ page_size: 100 });
+      if (!mountedRef.current) return;
+      setDeliveries(pickDeliveries(res));
+      setTriageError("");
+    } catch (err) {
+      if (!mountedRef.current) return;
+      setTriageError(err instanceof Error ? err.message : "Cannot load deliveries.");
+    }
+  };
+
+  // W2.3: fetch rules list + performance (lazy theo subtab, không cộng req vào poll).
+  const fetchRulesTab = async () => {
+    setRulesTab((s) => ({ ...s, loading: true }));
+    try {
+      const [list, perf] = await Promise.all([
+        getAdapter().getSocSignalRules(),
+        getAdapter().getSocSignalRulesPerformance(),
+      ]);
+      if (!mountedRef.current) return;
+      setRulesTab({ loading: false, loaded: true, error: "", data: { rules: list.rules ?? [] } });
+      setRulesPerf({ loading: false, loaded: true, error: "", data: perf });
+    } catch (err) {
+      if (!mountedRef.current) return;
+      setRulesTab({ loading: false, loaded: false, error: errMsg(err, "Cannot load signal rules."), data: null });
+      setRulesPerf({ loading: false, loaded: false, error: "", data: null });
+    }
+  };
+
   const notePollResult = (ok: boolean) => {
     if (ok) {
       const hadBackoff = consecutiveErrorsRef.current >= 3;
@@ -394,6 +552,7 @@ export function SocSignalsPanel() {
     } catch {
       ok = false;
     }
+    await fetchDeliveries();
     if (!mountedRef.current) return;
     // R2: silent poll chỉ hiện banner section, không spam; backoff sau 3 lỗi liên tiếp
     if (!isSilent || !ok) notePollResult(ok);
@@ -412,6 +571,7 @@ export function SocSignalsPanel() {
     } catch {
       ok = false;
     }
+    await fetchDeliveries();
     if (!mountedRef.current) return;
     notePollResult(ok);
   };
@@ -478,6 +638,7 @@ export function SocSignalsPanel() {
     }
     setPage(1);
     setExpandedId(null);
+    setSelectedIds([]);
     prevUidsRef.current = new Set();
     setNewUids([]);
     setUnread(0);
@@ -558,8 +719,181 @@ export function SocSignalsPanel() {
           setRetentionTab({ loading: false, loaded: false, error: errMsg(err, "Cannot load retention policy."), data: null });
         });
     }
+    // W2.3: rules list + performance — lazy, không cộng vào poll chính (1 lần cho mỗi session)
+    if (subTab === "rules" && !rulesTab.loaded && !rulesTab.loading) {
+      void fetchRulesTab();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subTab]);
+
+  // ─── W2.2 triage: join deliveries ↔ feed + ack/mute handlers ──────────────
+  const deliveryMap = useMemo(() => buildDeliveryMap(deliveries), [deliveries]);
+  const deliveryFor = (s: RecentSignal): SignalDelivery | undefined => deliveryMap.get(deliveryKeyForSignal(s));
+
+  const deliveryBadgeCls = (state: string): string => {
+    const s = (state || "").toLowerCase();
+    if (s === "acknowledged") return styles.signalLabelBuy;
+    if (s === "muted" || s === "suppressed") return styles.signalLabelSell;
+    return styles.signalLabelNeutral;
+  };
+
+  const deliveryStateLabel = (state: string): string =>
+    t(`soc.signals_overview.delivery_state_${(state || "new").toLowerCase()}`, { defaultValue: state || "new" });
+
+  const applyDeliveryUpdate = (updated: SignalDelivery | null | undefined, fallback: SignalDelivery) => {
+    const next = { ...fallback, ...(updated ?? {}) };
+    if (!mountedRef.current) return;
+    setDeliveries((prev) => prev.map((x) => (x.delivery_id === next.delivery_id ? next : x)));
+  };
+
+  // seen tự đánh khi expand row (BE transition guard new→seen)
+  const markSeen = async (d: SignalDelivery) => {
+    try {
+      const updated = await getAdapter().markSocSignalDeliverySeen(d.delivery_id);
+      applyDeliveryUpdate(updated, { ...d, delivery_state: "seen" });
+    } catch {
+      // silent — badge giữ "Mới", không spam banner poll
+    }
+  };
+
+  const triageFailMsg = (err: unknown): string =>
+    `${t("soc.signals_overview.triage_failed", { defaultValue: "Thao tác triage thất bại." })} ${errMsg(err, "")}`.trim();
+
+  const handleAckOne = async (d: SignalDelivery) => {
+    setAcking(true);
+    setTriageMsg("");
+    try {
+      const updated = await getAdapter().ackSocSignalDelivery(d.delivery_id);
+      applyDeliveryUpdate(updated, { ...d, delivery_state: "acknowledged" });
+      setSelectedIds((prev) => prev.filter((id) => id !== d.delivery_id));
+      if (mountedRef.current) setTriageMsg(t("soc.signals_overview.triage_ack_done", { n: 1, defaultValue: "Đã ghi nhận 1 tín hiệu." }));
+    } catch (err) {
+      if (mountedRef.current) setTriageMsg(triageFailMsg(err));
+    } finally {
+      if (mountedRef.current) setAcking(false);
+    }
+  };
+
+  const handleAckSelected = async () => {
+    const targets = deliveries.filter((d) => selectedIds.includes(d.delivery_id) && d.delivery_state !== "acknowledged");
+    if (targets.length === 0) return;
+    setAcking(true);
+    setTriageMsg("");
+    let done = 0;
+    for (const d of targets) {
+      try {
+        const updated = await getAdapter().ackSocSignalDelivery(d.delivery_id);
+        applyDeliveryUpdate(updated, { ...d, delivery_state: "acknowledged" });
+        done += 1;
+      } catch {
+        // tiếp tục bulk — tổng kết cuối
+      }
+    }
+    if (!mountedRef.current) return;
+    setSelectedIds([]);
+    setTriageMsg(done === targets.length
+      ? t("soc.signals_overview.triage_ack_done", { n: done, defaultValue: `Đã ghi nhận ${done} tín hiệu.` })
+      : `${t("soc.signals_overview.triage_failed", { defaultValue: "Thao tác triage thất bại." })} (${done}/${targets.length})`);
+    setAcking(false);
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const handleMuteSubmit = async () => {
+    if (!muteTarget) return;
+    const minutes = Number(muteMinutes) || 0;
+    setMuteSaving(true);
+    try {
+      await getAdapter().muteSocSignalDeliveries({
+        symbol: muteTarget.symbol || "",
+        alert_family: muteTarget.alert_type || "",
+        mute_minutes: minutes,
+        reason: muteReason.trim(),
+      });
+      if (!mountedRef.current) return;
+      setTriageMsg(t("soc.signals_overview.triage_mute_done", {
+        symbol: muteTarget.symbol || "",
+        defaultValue: `Đã tắt tiếng ${muteTarget.symbol || ""}.`,
+      }));
+      setMuteTarget(null);
+      setMuteReason("");
+      void fetchDeliveries();
+    } catch (err) {
+      if (mountedRef.current) setTriageMsg(triageFailMsg(err));
+    } finally {
+      if (mountedRef.current) setMuteSaving(false);
+    }
+  };
+
+  // ─── W2.3 feedback thumbs on feed row (precision) ───────────────────────
+  const handleSignalFeedback = async (d: SignalDelivery, signal: "up" | "down") => {
+    if (!d.alert_id || feedbackBusy) return;
+    setFeedbackBusy(d.delivery_id);
+    setTriageMsg("");
+    try {
+      const updated = await getAdapter().feedbackSocSignalRule({
+        alert_id: d.alert_id,
+        signal,
+        reason: signal === "down" ? "precision feedback: inaccurate" : "",
+      });
+      applyDeliveryUpdate(updated, {
+        ...d,
+        delivery_state: signal === "up" ? "acknowledged" : "suppressed",
+      });
+      setSelectedIds((prev) => prev.filter((id) => id !== d.delivery_id));
+      if (mountedRef.current) {
+        setTriageMsg(t("soc.signals_overview.feedback_thanks", { defaultValue: "Đã ghi phản hồi." }));
+      }
+    } catch (err) {
+      if (mountedRef.current) setTriageMsg(triageFailMsg(err));
+    } finally {
+      if (mountedRef.current) setFeedbackBusy("");
+    }
+  };
+
+  // ─── W2.3 rule change request modal ─────────────────────────────────────
+  const openRuleModal = (rule: SignalRule) => {
+    setRuleResult(null);
+    setRuleMsg("");
+    setRuleEnabled(rule.enabled !== false);
+    setRuleThreshold(rule.value != null ? String(rule.value) : "");
+    setRuleCooldown(rule.value != null ? String(rule.value) : "");
+    setRuleRatio(rule.value != null ? String(rule.value) : "");
+    setRuleReason("");
+    setRuleModal(rule);
+  };
+
+  const handleRuleRequestSubmit = async () => {
+    if (!ruleModal) return;
+    setRuleSaving(true);
+    setRuleMsg("");
+    const ruleKey = ruleModal.rule_key;
+    const payload: Record<string, unknown> = {
+      rule_key: ruleKey,
+      change_reason: ruleReason.trim() || "SOC request",
+    };
+    if (ruleModal.kind === "enabled") payload.enabled = ruleEnabled;
+    if (ruleModal.kind === "threshold") payload.threshold_vnd = Number(ruleThreshold) || 0;
+    if (ruleModal.kind === "cooldown") payload.cooldown_seconds = Number(ruleCooldown) || 0;
+    if (ruleModal.kind === "ratio") {
+      payload[ruleKey === "whale_top_pct" ? "top_pct" : "block_ratio_min"] = Number(ruleRatio) || 0;
+    }
+    try {
+      const res = await getAdapter().requestSocSignalRuleChange(payload);
+      if (!mountedRef.current) return;
+      setRuleResult(res);
+      setRuleMsg(t("soc.signals_overview.rule_request_sent", { defaultValue: "Đã gửi yêu cầu đổi rule. Owner sẽ duyệt (bridge-write)." }));
+      setRuleModal(null);
+    } catch (err) {
+      if (mountedRef.current) {
+        setRuleMsg(`${t("soc.signals_overview.rule_request_failed", { defaultValue: "Gửi yêu cầu thất bại." })} ${errMsg(err, "")}`.trim());
+      }
+    } finally {
+      if (mountedRef.current) setRuleSaving(false);
+    }
+  };
 
   const filteredSignals = useMemo(() => {
     const q = symbolFilter.trim().toUpperCase();
@@ -569,9 +903,14 @@ export function SocSignalsPanel() {
       // W1.1: lọc client thêm 1 lớp (BE đã lọc qua query — dự phòng khi envelope cũ)
       if (severityFilter !== "all" && (s.severity || "").toLowerCase() !== severityFilter) return false;
       if (directionFilter !== "all" && (s.action || "").toLowerCase() !== directionFilter) return false;
+      // W2.2: "Chưa ack" — ẩn row đã acknowledged, giữ new/seen/muted + row chưa có delivery
+      if (unackedOnly) {
+        const d = deliveryMap.get(deliveryKeyForSignal(s));
+        if (d && d.delivery_state === "acknowledged") return false;
+      }
       return true;
     });
-  }, [signals, typeFilter, symbolFilter, severityFilter, directionFilter]);
+  }, [signals, typeFilter, symbolFilter, severityFilter, directionFilter, deliveryMap, unackedOnly]);
 
   // W1.1: phân trang client trên feed đã gộp 3 nguồn (BE paging theo từng nguồn, không gộp được)
   const totalPages = Math.max(1, Math.ceil(filteredSignals.length / pageSize));
@@ -731,7 +1070,17 @@ export function SocSignalsPanel() {
     const isExpanded = expandedId === key;
     const isNew = newUids.includes(signalUid(s));
     const action = getActionLabel(s.action);
-    const handleClick = () => setExpandedId(isExpanded ? null : key);
+    // W2.2: delivery join theo (symbol, alert_type, triggered_at) — row không khớp thì không badge
+    const delivery = deliveryFor(s);
+    const selectable = !!delivery && delivery.delivery_state !== "acknowledged";
+    const handleClick = () => {
+      const willExpand = !isExpanded;
+      setExpandedId(isExpanded ? null : key);
+      // W2.2: seen tự đánh khi expand row (chỉ khi còn new)
+      if (willExpand && delivery && delivery.delivery_state === "new" && delivery.delivery_id) {
+        void markSeen(delivery);
+      }
+    };
     const handleKeyDown = (e: { key: string; preventDefault: () => void }) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
@@ -754,6 +1103,15 @@ export function SocSignalsPanel() {
           tabIndex: 0,
           "aria-expanded": isExpanded,
         },
+        selectable
+          ? createElement("input", {
+              type: "checkbox",
+              checked: selectedIds.includes(delivery.delivery_id),
+              "aria-label": `${t("soc.signals_overview.triage_ack", { defaultValue: "Đã nhận" })} ${s.symbol}`,
+              onClick: (e: { stopPropagation: () => void }) => e.stopPropagation(),
+              onChange: () => toggleSelect(delivery.delivery_id),
+            })
+          : null,
         createElement("div", {
           className: styles.signalIcon,
           style: { background: TYPE_BG[s.type] ?? "transparent", color: TYPE_COLORS[s.type] },
@@ -766,9 +1124,63 @@ export function SocSignalsPanel() {
         createElement("div", { className: styles.signalTime, title: when.title },
           when.display,
         ),
+        // W2.2: cột trạng thái delivery
+        delivery
+          ? createElement("div", {
+              className: `${styles.signalLabel} ${deliveryBadgeCls(delivery.delivery_state)}`,
+              title: deliveryStateLabel(delivery.delivery_state),
+            }, deliveryStateLabel(delivery.delivery_state))
+          : null,
       ),
       isExpanded && metaJson
-        ? createElement("div", { className: styles.signalMeta }, metaJson)
+        ? createElement("div", { className: styles.signalMeta },
+            metaJson,
+            // W2.2: Ack single + Mute trong chi tiết expand
+            delivery
+              ? createElement("div", { style: { display: "flex", gap: "0.5rem", marginTop: "0.5rem", flexWrap: "wrap" } },
+                  delivery.delivery_state !== "acknowledged" && delivery.delivery_state !== "suppressed"
+                    ? createElement("button", {
+                        className: styles.runBtn,
+                        disabled: acking,
+                        onClick: (e: { stopPropagation: () => void }) => {
+                          e.stopPropagation();
+                          void handleAckOne(delivery);
+                        },
+                      }, t("soc.signals_overview.triage_ack", { defaultValue: "Đã nhận" }))
+                    : null,
+                  delivery.delivery_state !== "acknowledged" && delivery.delivery_state !== "suppressed" && delivery.alert_id
+                    ? createElement("button", {
+                        className: styles.pageBtn,
+                        disabled: feedbackBusy === delivery.delivery_id,
+                        title: t("soc.signals_overview.feedback_up", { defaultValue: "Chính xác" }),
+                        onClick: (e: { stopPropagation: () => void }) => {
+                          e.stopPropagation();
+                          void handleSignalFeedback(delivery, "up");
+                        },
+                      }, t("soc.signals_overview.feedback_up", { defaultValue: "Chính xác" }))
+                    : null,
+                  delivery.delivery_state !== "muted" && delivery.delivery_state !== "suppressed" && delivery.alert_id
+                    ? createElement("button", {
+                        className: styles.pageBtn,
+                        disabled: feedbackBusy === delivery.delivery_id,
+                        title: t("soc.signals_overview.feedback_down", { defaultValue: "Không chính xác" }),
+                        onClick: (e: { stopPropagation: () => void }) => {
+                          e.stopPropagation();
+                          void handleSignalFeedback(delivery, "down");
+                        },
+                      }, t("soc.signals_overview.feedback_down", { defaultValue: "Không chính xác" }))
+                    : null,
+                  createElement("button", {
+                    className: styles.pageBtn,
+                    onClick: (e: { stopPropagation: () => void }) => {
+                      e.stopPropagation();
+                      setMuteReason("");
+                      setMuteTarget(delivery);
+                    },
+                  }, t("soc.signals_overview.triage_mute", { defaultValue: "Tắt tiếng" })),
+                )
+              : null,
+          )
         : null,
     );
   };
@@ -1140,6 +1552,213 @@ export function SocSignalsPanel() {
   };
 
   // ─── Sub-tab content map ──────────────────────────────────────────────
+  // ─── W2.3 Rules subtab: config rows + precision metrics + request modal ─
+  const fmtPct = (v: number | null | undefined): string => {
+    if (v == null || Number.isNaN(Number(v))) return t("soc.signals_overview.rules_insufficient_data", { defaultValue: "chưa đủ dữ liệu" });
+    return `${Math.round(Number(v) * 100)}%`;
+  };
+
+  const ruleKindLabel = (kind: string) => {
+    const map: Record<string, string> = {
+      enabled: t("soc.signals_overview.rule_enable", { defaultValue: "Bật" }),
+      threshold: "threshold_vnd",
+      cooldown: "cooldown_seconds",
+      ratio: "top_pct / block_ratio_min",
+    };
+    return map[kind] ?? kind;
+  };
+
+  const renderRuleModal = () => {
+    if (!ruleModal) return null;
+    const close = () => {
+      if (!ruleSaving) setRuleModal(null);
+    };
+    const inputs: Array<ReturnType<typeof createElement>> = [];
+    if (ruleModal.kind === "enabled") {
+      inputs.push(
+        createElement("label", { key: "en", className: styles.schedulerModalField, htmlFor: "rule-enabled" },
+          t("soc.signals_overview.rule_state_enabled", { defaultValue: "Bật" })),
+        createElement("select", {
+          key: "en-sel",
+          id: "rule-enabled",
+          className: styles.jobDomainSelect,
+          value: ruleEnabled ? "1" : "0",
+          onChange: (e: { target: { value: string } }) => setRuleEnabled(e.target.value === "1"),
+        },
+          createElement("option", { value: "1" }, t("soc.signals_overview.rule_enable", { defaultValue: "Bật" })),
+          createElement("option", { value: "0" }, t("soc.signals_overview.rule_disable", { defaultValue: "Tắt" })),
+        ),
+      );
+    } else if (ruleModal.kind === "threshold") {
+      inputs.push(
+        createElement("label", { key: "th", className: styles.schedulerModalField, htmlFor: "rule-threshold" }, "threshold_vnd"),
+        createElement("input", {
+          key: "th-in",
+          id: "rule-threshold",
+          className: styles.schedulerModalInput,
+          type: "number",
+          min: 0,
+          value: ruleThreshold,
+          onChange: (e: { target: { value: string } }) => setRuleThreshold(e.target.value),
+        }),
+      );
+    } else if (ruleModal.kind === "cooldown") {
+      inputs.push(
+        createElement("label", { key: "cd", className: styles.schedulerModalField, htmlFor: "rule-cooldown" }, "cooldown_seconds"),
+        createElement("input", {
+          key: "cd-in",
+          id: "rule-cooldown",
+          className: styles.schedulerModalInput,
+          type: "number",
+          min: 0,
+          value: ruleCooldown,
+          onChange: (e: { target: { value: string } }) => setRuleCooldown(e.target.value),
+        }),
+      );
+    } else if (ruleModal.kind === "ratio") {
+      inputs.push(
+        createElement("label", { key: "rt", className: styles.schedulerModalField, htmlFor: "rule-ratio" },
+          `${ruleModal.rule_key === "whale_top_pct" ? "top_pct" : "block_ratio_min"} (0–1)`),
+        createElement("input", {
+          key: "rt-in",
+          id: "rule-ratio",
+          className: styles.schedulerModalInput,
+          type: "number",
+          min: 0,
+          max: 1,
+          step: 0.01,
+          value: ruleRatio,
+          onChange: (e: { target: { value: string } }) => setRuleRatio(e.target.value),
+        }),
+      );
+    }
+    inputs.push(
+      createElement("label", { key: "rs", className: styles.schedulerModalField, htmlFor: "rule-reason" },
+        t("soc.signals_overview.rule_change_reason", { defaultValue: "Lý do" })),
+      createElement("textarea", {
+        key: "rs-ta",
+        id: "rule-reason",
+        className: styles.schedulerModalTextarea,
+        rows: 2,
+        placeholder: t("soc.signals_overview.rule_reason_placeholder", { defaultValue: "VD: Ngưỡng lớn gây nhiễu..." }),
+        value: ruleReason,
+        onChange: (e: { target: { value: string } }) => setRuleReason(e.target.value),
+      }),
+    );
+    return createElement("div", { className: styles.schedulerModalOverlay, onClick: close },
+      createElement("div", {
+        className: styles.schedulerModalCard,
+        role: "dialog",
+        "aria-label": t("soc.signals_overview.rule_request", { defaultValue: "Gửi yêu cầu đổi" }),
+        onClick: (e: { stopPropagation: () => void }) => e.stopPropagation(),
+      },
+        createElement("h3", { className: styles.schedulerModalTitle },
+          `${t("soc.signals_overview.rule_preview", { defaultValue: "Xem trước thay đổi" })} — ${ruleModal.label || ruleModal.rule_key}`),
+        createElement("p", { className: styles.schedulerModalBody },
+          `${ruleModal.alert_family} · ${ruleKindLabel(ruleModal.kind)} · ${ruleModal.enabled === true ? t("soc.signals_overview.rule_enabled", { defaultValue: "Đang bật" }) : t("soc.signals_overview.rule_disabled", { defaultValue: "Đang tắt" })}${
+            ruleModal.value != null ? ` · ${String(ruleModal.value)}` : ""
+          }`),
+        ...inputs,
+        ruleResult
+          ? createElement("p", { className: styles.triageNote },
+              `${t("soc.signals_overview.rule_request_sent", { defaultValue: "Đã gửi yêu cầu đổi rule. Owner sẽ duyệt (bridge-write)." })}${ruleResult.request_id ? ` [${ruleResult.request_id}]` : ""}`)
+          : null,
+        createElement("div", { className: styles.schedulerModalActions },
+          createElement("button", { type: "button", onClick: close, className: styles.schedulerModalCancel },
+            t("common.cancel")),
+          createElement("button", {
+            type: "button",
+            disabled: ruleSaving,
+            onClick: () => { void handleRuleRequestSubmit(); },
+            className: styles.schedulerModalProceed,
+          }, t("soc.signals_overview.rule_request", { defaultValue: "Gửi yêu cầu đổi" })),
+        ),
+      ),
+    );
+  };
+
+  const renderRulesTab = () => {
+    if (rulesTab.loading) {
+      return createElement("p", { className: styles.loadingText }, t("soc.pages.status_loading"));
+    }
+    const rules = rulesTab.data?.rules ?? [];
+    const perf = rulesPerf.data;
+    return createElement("div", null,
+      rulesTab.error
+        ? createElement("div", { className: styles.inlineError }, rulesTab.error)
+        : null,
+      rulesPerf.error
+        ? createElement("div", { className: styles.inlineError }, rulesPerf.error)
+        : null,
+      createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" } },
+        createElement("h4", {},
+          t("soc.signals_overview.rules_tab", { defaultValue: "Rules" })),
+        createElement("button", {
+          className: styles.runBtn,
+          onClick: () => { void fetchRulesTab(); },
+        }, t("soc.signals_overview.rules_refresh", { defaultValue: "Làm mới" })),
+      ),
+      createElement("p", { className: styles.triageNote },
+        t("soc.signals_overview.rules_note", { defaultValue: "SOC không áp dụng rule trực tiếp — gửi yêu cầu, owner duyệt (bridge-write)." })),
+      ruleMsg
+        ? createElement("p", { className: styles.triageNote }, ruleMsg)
+        : null,
+      renderRuleModal(),
+      perf?.overall
+        ? createElement("div", { className: styles.metricGrid },
+            statCard(t("soc.signals_overview.alert_count", { defaultValue: "Số tín hiệu" }), perf.overall.alert_count ?? 0, "#f1f5f9"),
+            statCard(t("soc.signals_overview.overall_precision", { defaultValue: "Precision tổng" }), fmtPct(perf.overall.precision_proxy), toneColor("success")),
+            statCard(t("soc.signals_overview.hit_rate", { defaultValue: "Tỷ lệ phản hồi" }), fmtPct(perf.overall.hit_rate), toneColor("warning")),
+          )
+        : null,
+      perf?.top_noisy && perf.top_noisy.length > 0
+        ? createElement("div", { className: styles.matCard, style: { marginTop: "0.75rem" } },
+            createElement("h4", {}, t("soc.signals_overview.noisy_rules", { defaultValue: "Rule hay báo nhiều nhất" })),
+            ...perf.top_noisy.map((rule) =>
+              createElement("div", {
+                key: rule.rule_key,
+                style: { display: "flex", justifyContent: "space-between", gap: "0.5rem", padding: "0.25rem 0" },
+              },
+                createElement("span", {}, rule.label || rule.rule_key),
+                createElement("span", {}, `${rule.alert_count ?? 0} · p=${fmtPct(rule.precision_proxy)}`),
+              )),
+          )
+        : null,
+      createElement("div", { className: styles.matCard, style: { marginTop: "0.75rem" } },
+        rules.length === 0
+          ? createElement("p", { className: styles.emptyState }, t("soc.signals_overview.no_data"))
+          : rules.map((rule) =>
+              createElement("div", {
+                key: rule.rule_key,
+                className: styles.rulesRow,
+              },
+                createElement("div", { style: { flex: 1, minWidth: 0 } },
+                  createElement("div", { style: { display: "flex", alignItems: "baseline", gap: "0.5rem", flexWrap: "wrap" } },
+                    createElement("strong", {}, rule.label || rule.rule_key),
+                    createElement("span", { className: styles.signalLabel, style: { fontSize: "0.72rem", opacity: 0.7 } },
+                      `${rule.alert_family} · ${rule.kind}`),
+                  ),
+                  createElement("div", { style: { display: "flex", gap: "0.75rem", flexWrap: "wrap", marginTop: "0.25rem" } },
+                    createElement("span", { className: styles.triageNote },
+                      `${t("soc.signals_overview.rule_state_enabled", { defaultValue: "Bật" })}: ${rule.enabled ? t("soc.signals_overview.rule_enabled", { defaultValue: "Đang bật" }) : t("soc.signals_overview.rule_disabled", { defaultValue: "Đang tắt" }) }`),
+                    createElement("span", { className: styles.triageNote },
+                      `${t("soc.signals_overview.rule_value", { defaultValue: "Giá trị" })}: ${rule.value != null ? String(rule.value) : "—"}`),
+                    createElement("span", { className: styles.triageNote },
+                      `${t("soc.signals_overview.alert_count", { defaultValue: "Số tín hiệu" })}: ${rule.alert_count ?? 0}`),
+                    createElement("span", { className: styles.triageNote },
+                      `${t("soc.signals_overview.precision", { defaultValue: "Độ chính xác" })}: ${fmtPct(rule.precision_proxy)}`),
+                    createElement("span", { className: styles.triageNote },
+                      `${t("soc.signals_overview.hit_rate", { defaultValue: "Tỷ lệ phản hồi" })}: ${fmtPct(rule.hit_rate)}`),
+                  ),
+                ),
+                createElement("button", {
+                  className: styles.runBtn,
+                  onClick: () => openRuleModal(rule),
+                }, t("soc.signals_overview.rule_request", { defaultValue: "Gửi yêu cầu đổi" })),
+              )),
+      ),
+    );
+  };
   const subTabContent: Record<SubTab, () => ReturnType<typeof createElement>> = {
     overview: renderOverviewTab,
     "job-console": renderJobConsoleTab,
@@ -1147,6 +1766,7 @@ export function SocSignalsPanel() {
     config: renderConfigTab,
     detection: renderDetectionTab,
     retention: renderRetentionTab,
+    rules: renderRulesTab,
   };
 
   const subTabKeys: { key: SubTab; label: string }[] = [
@@ -1156,6 +1776,7 @@ export function SocSignalsPanel() {
     { key: "config", label: t("soc.signals_overview.config_tab", { defaultValue: "Cấu hình" }) },
     { key: "detection", label: t("soc.signals_overview.detection_tab", { defaultValue: "Phát hiện" }) },
     { key: "retention", label: t("soc.signals_overview.retention_tab", { defaultValue: "Lưu trữ" }) },
+    { key: "rules", label: t("soc.signals_overview.rules_tab", { defaultValue: "Rules" }) },
   ];
 
   // ─── Feed pagination (W1.1: reuse pattern overview W10) ─────────────────
@@ -1208,6 +1829,60 @@ export function SocSignalsPanel() {
     );
   };
 
+  // ─── W2.2 Mute modal (reuse pattern schedulerModal — lý do + thời hạn) ─────
+  const renderMuteModal = () => {
+    if (!muteTarget) return null;
+    const close = () => {
+      if (!muteSaving) {
+        setMuteTarget(null);
+        setMuteReason("");
+      }
+    };
+    return createElement("div", { className: styles.schedulerModalOverlay, onClick: close },
+      createElement("div", {
+        className: styles.schedulerModalCard,
+        role: "dialog",
+        "aria-label": t("soc.signals_overview.triage_mute_title", { defaultValue: "Tắt tiếng tín hiệu" }),
+        onClick: (e: { stopPropagation: () => void }) => e.stopPropagation(),
+      },
+        createElement("h3", { className: styles.schedulerModalTitle },
+          t("soc.signals_overview.triage_mute_title", { defaultValue: "Tắt tiếng tín hiệu" })),
+        createElement("p", { className: styles.schedulerModalBody },
+          `${muteTarget.symbol || ""}${muteTarget.alert_type ? ` — ${muteTarget.alert_type}` : ""}`),
+        createElement("label", { className: styles.schedulerModalField },
+          t("soc.signals_overview.triage_mute_minutes", { defaultValue: "Thời hạn (phút)" })),
+        createElement("select", {
+          className: styles.jobDomainSelect,
+          value: muteMinutes,
+          onChange: (e: { target: { value: string } }) => setMuteMinutes(e.target.value),
+        },
+          ...["15", "30", "60", "120", "240", "1440"].map((m) =>
+            createElement("option", { key: m, value: m }, m === "1440" ? "24h" : `${m}m`)),
+        ),
+        createElement("label", { className: styles.schedulerModalField },
+          t("soc.signals_overview.triage_mute_reason", { defaultValue: "Lý do" })),
+        createElement("textarea", {
+          className: styles.schedulerModalTextarea,
+          rows: 2,
+          placeholder: t("soc.signals_overview.triage_mute_reason_placeholder", { defaultValue: "VD: Nhiễu trong phiên ATC..." }),
+          value: muteReason,
+          onChange: (e: { target: { value: string } }) => setMuteReason(e.target.value),
+        }),
+        createElement("div", { className: styles.schedulerModalActions },
+          createElement("button", { type: "button", onClick: close, className: styles.schedulerModalCancel },
+            t("common.cancel")),
+          createElement("button", {
+            type: "button",
+            disabled: muteSaving,
+            onClick: () => { void handleMuteSubmit(); },
+            className: styles.schedulerModalProceed,
+          }, t("soc.signals_overview.triage_mute_submit", { defaultValue: "Xác nhận tắt tiếng" })),
+        ),
+      ),
+    );
+  };
+
+
   // ─── Main render ──────────────────────────────────────────────────────
   const showInitialLoading = loading && signals.length === 0 && !feedError && !materialization && !matError;
   return createElement(
@@ -1252,7 +1927,7 @@ export function SocSignalsPanel() {
                     createElement("button", {
                       key: ft,
                       className: `${styles.filterBtn} ${typeFilter === ft ? styles.filterBtnActive : styles.filterBtnInactive}`,
-                      onClick: () => { setTypeFilter(ft); setExpandedId(null); setPage(1); prevUidsRef.current = new Set(signals.map(signalUid)); setNewUids([]); setUnread(0); },
+                      onClick: () => { setTypeFilter(ft); setExpandedId(null); setPage(1); setSelectedIds([]); prevUidsRef.current = new Set(signals.map(signalUid)); setNewUids([]); setUnread(0); },
                     }, ft === "all" ? t("soc.signals_overview.filter_all") : signalTypeLabel(ft)),
                   ),
                   createElement("label", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } },
@@ -1298,7 +1973,26 @@ export function SocSignalsPanel() {
                       },
                     }),
                   ),
+                  // W2.2: filter "Chưa ack" + bulk Ack đã chọn
+                  createElement("button", {
+                    className: `${styles.filterBtn} ${unackedOnly ? styles.filterBtnActive : styles.filterBtnInactive}`,
+                    "aria-pressed": unackedOnly,
+                    onClick: () => { setUnackedOnly((v) => !v); setPage(1); },
+                  }, t("soc.signals_overview.triage_unacked_only", { defaultValue: "Chưa ack" })),
+                  selectedIds.length > 0
+                    ? createElement("button", {
+                        className: styles.runBtn,
+                        disabled: acking,
+                        onClick: () => { void handleAckSelected(); },
+                      }, t("soc.signals_overview.triage_ack_selected", { n: selectedIds.length, defaultValue: `Đã nhận (${selectedIds.length})` }))
+                    : null,
                 ),
+                triageError ? createElement("div", { className: styles.inlineError }, triageError) : null,
+                triageMsg
+                  ? (triageMsg.includes("thất bại") || triageMsg.includes("failed")
+                      ? createElement("div", { className: styles.inlineError }, triageMsg)
+                      : createElement("div", { className: styles.inlineSuccess }, triageMsg))
+                  : null,
                 filteredSignals.length === 0 && !feedError
                   ? renderRadarEmptyState()
                   : createElement("div", null,
@@ -1334,5 +2028,6 @@ export function SocSignalsPanel() {
               ),
             ),
           ),
+    renderMuteModal(),
   );
 }

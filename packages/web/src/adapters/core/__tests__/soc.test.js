@@ -353,6 +353,45 @@ describe("SOC adapter", () => {
       await soc.exportSocSignalFeed({ type: "whale", symbol: "VCI" });
       expect(coreGet).toHaveBeenCalledWith("/operator/soc/signals/feed/export/?type=whale&symbol=VCI");
     });
+
+    it("triage: deliveries/seen/ack/mute hit the right endpoints", async () => {
+      await soc.getSocSignalDeliveries({ page_size: 100, unacked_only: true });
+      expect(coreGet).toHaveBeenCalledWith("/operator/soc/signals/deliveries/?page_size=100&unacked_only=true");
+      await soc.markSocSignalDeliverySeen("d-1");
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/signals/deliveries/d-1/seen/", {});
+      await soc.ackSocSignalDelivery("d-1");
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/signals/deliveries/d-1/ack/", {});
+      await soc.muteSocSignalDeliveries({ symbol: "VCI", mute_minutes: 60, reason: "noise" });
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/signals/deliveries/mute/", {
+        symbol: "VCI",
+        mute_minutes: 60,
+        reason: "noise",
+      });
+    });
+
+    it("triage: seen/ack throw without deliveryId", () => {
+      expect(() => soc.markSocSignalDeliverySeen()).toThrow("deliveryId");
+      expect(() => soc.ackSocSignalDelivery()).toThrow("deliveryId");
+    });
+
+    it("W2.3 rules: list/performance GET + request/feedback POST hit right endpoints", async () => {
+      await soc.getSocSignalRules();
+      expect(coreGet).toHaveBeenCalledWith("/operator/soc/signals/rules/");
+      await soc.getSocSignalRulesPerformance();
+      expect(coreGet).toHaveBeenCalledWith("/operator/soc/signals/rules/performance/");
+      await soc.requestSocSignalRuleChange({ rule_key: "whale_threshold_vnd", threshold_vnd: 500000000, change_reason: "noise" });
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/signals/rules/request/", {
+        rule_key: "whale_threshold_vnd",
+        threshold_vnd: 500000000,
+        change_reason: "noise",
+      });
+      await soc.feedbackSocSignalRule({ alert_id: "a-1", signal: "down", reason: "inaccurate" });
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/signals/rules/feedback/", {
+        alert_id: "a-1",
+        signal: "down",
+        reason: "inaccurate",
+      });
+    });
   });
 
   // ─── Screener ────────────────────────────────────────────────────────────

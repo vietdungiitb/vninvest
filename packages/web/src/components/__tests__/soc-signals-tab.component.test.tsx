@@ -19,6 +19,14 @@ const mocks = vi.hoisted(() => ({
   testSocWhaleDetection: vi.fn(),
   previewSocSignalRetention: vi.fn(),
   exportSocSignalFeed: vi.fn(),
+  getSocSignalDeliveries: vi.fn(),
+  markSocSignalDeliverySeen: vi.fn(),
+  ackSocSignalDelivery: vi.fn(),
+  muteSocSignalDeliveries: vi.fn(),
+  getSocSignalRules: vi.fn(),
+  getSocSignalRulesPerformance: vi.fn(),
+  requestSocSignalRuleChange: vi.fn(),
+  feedbackSocSignalRule: vi.fn(),
 }));
 
 vi.mock("../../adapters/coreApiAdapter.js", () => ({
@@ -39,6 +47,14 @@ vi.mock("../../adapters/coreApiAdapter.js", () => ({
     testSocWhaleDetection: mocks.testSocWhaleDetection,
     previewSocSignalRetention: mocks.previewSocSignalRetention,
     exportSocSignalFeed: mocks.exportSocSignalFeed,
+    getSocSignalDeliveries: mocks.getSocSignalDeliveries,
+    markSocSignalDeliverySeen: mocks.markSocSignalDeliverySeen,
+    ackSocSignalDelivery: mocks.ackSocSignalDelivery,
+    muteSocSignalDeliveries: mocks.muteSocSignalDeliveries,
+    getSocSignalRules: mocks.getSocSignalRules,
+    getSocSignalRulesPerformance: mocks.getSocSignalRulesPerformance,
+    requestSocSignalRuleChange: mocks.requestSocSignalRuleChange,
+    feedbackSocSignalRule: mocks.feedbackSocSignalRule,
   },
 }));
 
@@ -121,6 +137,11 @@ function mockFeedOk() {
   mocks.getSocDarkPoolRecent.mockResolvedValue(darkFixture);
   mocks.getSocScreenerRecent.mockResolvedValue(screenerFixture);
   mocks.getSocSignalMaterialization.mockResolvedValue(matFixture);
+  mocks.getSocSignalDeliveries.mockResolvedValue({ results: [] });
+  mocks.getSocSignalRules.mockResolvedValue({ rules: [], generated_at: "2026-09-16T09:00:00Z" });
+  mocks.getSocSignalRulesPerformance.mockResolvedValue({ overall: null, by_family: [], top_noisy: [] });
+  mocks.requestSocSignalRuleChange.mockResolvedValue({ request_id: "REQ-1", pending: true });
+  mocks.feedbackSocSignalRule.mockResolvedValue({ delivery_id: "d-1", alert_id: "a-1", delivery_state: "acknowledged" });
 }
 
 beforeEach(() => {
@@ -340,8 +361,9 @@ describe("SocSignalsPanel — W1.2 time + a11y", () => {
     const tablist = container.querySelector('[role="tablist"]');
     expect(tablist).toBeTruthy();
     const tabs = container.querySelectorAll('[role="tab"]');
-    expect(tabs.length).toBe(6);
+    expect(tabs.length).toBe(7);
     expect(tabs[0].getAttribute("aria-selected")).toBe("true");
+    expect(tabs[6].textContent).toBe("Rules");
   });
 });
 
@@ -568,4 +590,213 @@ describe("SocSignalsPanel — W0.4 job polling", () => {
 
 afterAll(() => {
   vi.useRealTimers();
+});
+
+describe("SocSignalsPanel — W2.2 triage ack/mute", () => {
+  const whaleDelivery = {
+    delivery_id: "d-whale-1",
+    alert_id: "a-1",
+    delivery_state: "new",
+    symbol: "VCI",
+    alert_type: "whale",
+    severity: "high",
+    title: "Whale buy detected",
+    triggered_at: "2026-09-16T09:00:00Z",
+  };
+  const darkDeliveryAcked = {
+    delivery_id: "d-dark-2",
+    alert_id: "a-2",
+    delivery_state: "acknowledged",
+    symbol: "VCI",
+    alert_type: "dark_flow",
+    severity: "medium",
+    title: "Dark pool trade",
+    triggered_at: "2026-09-16T08:55:00Z",
+  };
+
+  function mockTriageOk() {
+    mocks.getSocSignalDeliveries.mockResolvedValue({ results: [whaleDelivery, darkDeliveryAcked] });
+    mocks.markSocSignalDeliverySeen.mockResolvedValue({ ...whaleDelivery, delivery_state: "seen" });
+    mocks.ackSocSignalDelivery.mockImplementation((id: string) =>
+      Promise.resolve({ ...(id === "d-dark-2" ? darkDeliveryAcked : whaleDelivery), delivery_state: "acknowledged" }),
+    );
+    mocks.muteSocSignalDeliveries.mockResolvedValue({ symbol: "VCI", mute_until: "2026-09-16T10:00:00Z" });
+  }
+
+  it("renders delivery badge for matched row, none for unmatched shape", async () => {
+    mockTriageOk();
+    render(<SocSignalsPanel />);
+    await screen.findAllByText("VCI");
+    // whale row khớp (new), dark row khớp (acknowledged) — t() test-env trả defaultValue = raw state
+    expect(await screen.findByText("new")).toBeTruthy();
+    expect(screen.getByText("acknowledged")).toBeTruthy();
+  });
+
+  it("expand new row → markSeen called, badge chuyển seen", async () => {
+    mockTriageOk();
+    render(<SocSignalsPanel />);
+    const vciCells = await screen.findAllByText("VCI");
+    const rows = vciCells.map((el) => el.parentElement as HTMLElement);
+    await act(async () => {
+      fireEvent.click(rows[0]);
+    });
+    expect(mocks.markSocSignalDeliverySeen).toHaveBeenCalledWith("d-whale-1");
+    expect(await screen.findByText("seen")).toBeTruthy();
+  });
+
+  it("ack flow: nút Đã nhận trong expand → ack + badge acknowledged + message", async () => {
+    mockTriageOk();
+    render(<SocSignalsPanel />);
+    const vciCells = await screen.findAllByText("VCI");
+    fireEvent.click((vciCells[0].parentElement as HTMLElement));
+    await act(async () => {
+      fireEvent.click(screen.getByText("Đã nhận"));
+    });
+    expect(mocks.ackSocSignalDelivery).toHaveBeenCalledWith("d-whale-1");
+    expect(await screen.findByText("Đã ghi nhận 1 tín hiệu.")).toBeTruthy();
+  });
+
+  it("bulk ack: checkbox + nút Đã nhận (n)", async () => {
+    mockTriageOk();
+    render(<SocSignalsPanel />);
+    await screen.findAllByText("VCI");
+    fireEvent.click(screen.getByLabelText("Đã nhận VCI"));
+    await act(async () => {
+      fireEvent.click(screen.getByText("Đã nhận (1)"));
+    });
+    expect(mocks.ackSocSignalDelivery).toHaveBeenCalledWith("d-whale-1");
+  });
+
+  it("unacked filter ẩn row đã acknowledged, giữ row new", async () => {
+    mockTriageOk();
+    render(<SocSignalsPanel />);
+    expect((await screen.findAllByText("VCI")).length).toBe(2);
+    fireEvent.click(screen.getByText("Chưa ack"));
+    await waitFor(() => {
+      expect(screen.getAllByText("VCI").length).toBe(1);
+    });
+  });
+
+  it("mute modal: mở từ expand, submit gửi symbol/family/minutes/reason", async () => {
+    mockTriageOk();
+    render(<SocSignalsPanel />);
+    const vciCells = await screen.findAllByText("VCI");
+    fireEvent.click((vciCells[0].parentElement as HTMLElement));
+    fireEvent.click(await screen.findByText("Tắt tiếng"));
+    expect(await screen.findByText("Tắt tiếng tín hiệu")).toBeTruthy();
+    fireEvent.change(screen.getByPlaceholderText("VD: Nhiễu trong phiên ATC..."), {
+      target: { value: "Nhiễu ATC" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText("Xác nhận tắt tiếng"));
+    });
+    expect(mocks.muteSocSignalDeliveries).toHaveBeenCalledWith({
+      symbol: "VCI",
+      alert_family: "whale",
+      mute_minutes: 60,
+      reason: "Nhiễu ATC",
+    });
+    expect(await screen.findByText("Đã tắt tiếng VCI.")).toBeTruthy();
+  });
+});
+
+describe("SocSignalsPanel — W2.3 rules + precision", () => {
+  const rulesFixture = {
+    rules: [
+      { rule_key: "whale_threshold_vnd", alert_family: "whale", label: "Whale threshold", kind: "threshold", enabled: true, value: 500000000, alert_count: 10, precision_proxy: 0.75, hit_rate: 0.6 },
+      { rule_key: "dark_pool_block_ratio_min", alert_family: "dark_pool", label: "Dark pool ratio", kind: "ratio", enabled: true, value: 0.3, alert_count: 4, precision_proxy: null, hit_rate: null },
+    ],
+    generated_at: "2026-09-16T09:00:00Z",
+  };
+  const perfFixture = {
+    overall: { alert_count: 14, acked: 10, muted: 2, suppressed: 2, precision_proxy: 0.714, hit_rate: 0.857 },
+    top_noisy: [{ rule_key: "whale_threshold_vnd", label: "Whale threshold", alert_count: 10, precision_proxy: 0.5 }],
+    by_family: [],
+    generated_at: "2026-09-16T09:00:00Z",
+  };
+
+  it("rules tab lazily fetches list + performance and renders rows + overall", async () => {
+    mocks.getSocSignalRules.mockResolvedValue(rulesFixture);
+    mocks.getSocSignalRulesPerformance.mockResolvedValue(perfFixture);
+    render(<SocSignalsPanel />);
+    await screen.findAllByText("VCI");
+    expect(mocks.getSocSignalRules).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText("Rules"));
+    expect((await screen.findAllByText("Whale threshold")).length).toBeGreaterThanOrEqual(1);
+    expect(mocks.getSocSignalRules).toHaveBeenCalledTimes(1);
+    expect(mocks.getSocSignalRulesPerformance).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Dark pool ratio")).toBeTruthy();
+    // overall precision + hit rate (proxy, làm tròn %)
+    expect(screen.getByText("71%")).toBeTruthy();
+    expect(screen.getByText("86%")).toBeTruthy();
+    // top noisy line
+    expect(screen.getAllByText(/p=50%/)).toHaveLength(1);
+  });
+
+  it("request modal sends payload per kind + bridge-write note", async () => {
+    mocks.getSocSignalRules.mockResolvedValue(rulesFixture);
+    mocks.getSocSignalRulesPerformance.mockResolvedValue(perfFixture);
+    mocks.requestSocSignalRuleChange.mockResolvedValue({ request_id: "REQ-9", pending: true });
+    render(<SocSignalsPanel />);
+    await screen.findAllByText("VCI");
+    fireEvent.click(screen.getByText("Rules"));
+    await screen.findAllByText("Whale threshold");
+    // row button (2 rows đều label giống submit modal → chọn row đầu)
+    fireEvent.click(screen.getAllByText("Gửi yêu cầu đổi")[0]);
+    expect(await screen.findByText(/Xem trước thay đổi/)).toBeTruthy();
+    fireEvent.change(screen.getByPlaceholderText(/Ngưỡng lớn gây nhiễu/), {
+      target: { value: "Ngưỡng quá cao" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getAllByText("Gửi yêu cầu đổi")[0] as HTMLElement);
+    });
+    expect(mocks.requestSocSignalRuleChange).toHaveBeenCalledWith({
+      rule_key: "whale_threshold_vnd",
+      threshold_vnd: 500000000,
+      change_reason: "Ngưỡng quá cao",
+    });
+    expect((await screen.findAllByText(/bridge-write/)).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("feedback thumbs on expanded row: up → acknowledged, down → suppressed", async () => {
+    const dNew = {
+      delivery_id: "d-w1",
+      alert_id: "a-w1",
+      delivery_state: "new",
+      symbol: "VCI",
+      alert_type: "whale",
+      severity: "high",
+      triggered_at: "2026-09-16T09:00:00Z",
+    };
+    const dAcked = {
+      delivery_id: "d-d1",
+      alert_id: "a-d1",
+      delivery_state: "acknowledged",
+      symbol: "VCI",
+      alert_type: "dark_flow",
+      severity: "medium",
+      triggered_at: "2026-09-16T08:55:00Z",
+    };
+    mocks.getSocSignalDeliveries.mockResolvedValue({ results: [dNew, dAcked] });
+    mocks.feedbackSocSignalRule.mockImplementation((p: { signal: string }) =>
+      Promise.resolve({
+        ...(p.signal === "up" ? dNew : dAcked),
+        delivery_state: p.signal === "up" ? "acknowledged" : "suppressed",
+      }),
+    );
+    render(<SocSignalsPanel />);
+    const vciCells = await screen.findAllByText("VCI");
+    fireEvent.click(vciCells[0].parentElement as HTMLElement);
+    await act(async () => {
+      fireEvent.click(screen.getByText("Chính xác"));
+    });
+    expect(mocks.feedbackSocSignalRule).toHaveBeenCalledWith({ alert_id: "a-w1", signal: "up", reason: "" });
+    expect(await screen.findByText("Đã ghi phản hồi.")).toBeTruthy();
+    // expand row 2 → down (row đã acknowledged vẫn hiện nút down cho precision feedback)
+    fireEvent.click(vciCells[1].parentElement as HTMLElement);
+    await act(async () => {
+      fireEvent.click(screen.getByText("Không chính xác"));
+    });
+    expect(mocks.feedbackSocSignalRule).toHaveBeenCalledWith(expect.objectContaining({ alert_id: "a-d1", signal: "down" }));
+  });
 });

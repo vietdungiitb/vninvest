@@ -386,6 +386,49 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
       return coreGet(`/operator/soc/signals/feed/export/${buildSignalsRecentQuery(params)}`);
     },
 
+    // ─── Signals triage W2.2 (ack/mute trên deliveries của operator) ────────
+    getSocSignalDeliveries(params = {}) {
+      const qs = new URLSearchParams();
+      if (params.page) qs.set("page", String(params.page));
+      if (params.page_size) qs.set("page_size", String(params.page_size));
+      if (params.delivery_state) qs.set("delivery_state", params.delivery_state);
+      if (params.symbol) qs.set("symbol", params.symbol);
+      if (params.unacked_only) qs.set("unacked_only", "true");
+      const query = qs.toString();
+      return coreGet(`/operator/soc/signals/deliveries/${query ? `?${query}` : ""}`);
+    },
+
+    markSocSignalDeliverySeen(deliveryId) {
+      if (!deliveryId) throw new Error("deliveryId is required for markSocSignalDeliverySeen");
+      return corePost(`/operator/soc/signals/deliveries/${encodeURIComponent(deliveryId)}/seen/`, {});
+    },
+
+    ackSocSignalDelivery(deliveryId) {
+      if (!deliveryId) throw new Error("deliveryId is required for ackSocSignalDelivery");
+      return corePost(`/operator/soc/signals/deliveries/${encodeURIComponent(deliveryId)}/ack/`, {});
+    },
+
+    muteSocSignalDeliveries(payload = {}) {
+      return corePost("/operator/soc/signals/deliveries/mute/", payload);
+    },
+
+    // ─── Signals rules W2.3 (rule management + precision, bridge-write request) ──
+    getSocSignalRules() {
+      return coreGet("/operator/soc/signals/rules/");
+    },
+
+    getSocSignalRulesPerformance() {
+      return coreGet("/operator/soc/signals/rules/performance/");
+    },
+
+    requestSocSignalRuleChange(payload = {}) {
+      return corePost("/operator/soc/signals/rules/request/", payload);
+    },
+
+    feedbackSocSignalRule(payload = {}) {
+      return corePost("/operator/soc/signals/rules/feedback/", payload);
+    },
+
     // ─── Screener ──────────────────────────────────────────────────────────
     getSocScreenerConfig() {
       return coreGet("/operator/soc/screener/config/").then(normalizeConfigEnvelope);

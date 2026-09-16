@@ -2743,6 +2743,45 @@
   background: rgba(245, 158, 11, 0.3);
 }
 
+/* W2.3 signal rules subtab */
+.schedulerModalInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  background: rgba(var(--soc-rgb-0f172a) / 0.4);
+  border: 1px solid rgba(var(--soc-rgb-5078a8) / 0.2);
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  margin-bottom: 1rem;
+}
+
+.schedulerModalInput:focus {
+  outline: none;
+  border-color: rgba(var(--soc-rgb-00b4d8) / 0.5);
+}
+
+.loadingText {
+  padding: 0.75rem;
+  color: var(--text-secondary, var(--soc-c-cbd5e1));
+  font-size: 0.8rem;
+}
+
+.triageNote {
+  color: var(--text-secondary, var(--soc-c-cbd5e1));
+  font-size: 0.72rem;
+  margin: 0;
+}
+
+.rulesRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-top: 1px solid rgba(var(--soc-rgb-5078a8) / 0.12);
+}
+
 /* History draw header */
 .schedulerDrawerHeader {
   display: flex;

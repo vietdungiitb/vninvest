@@ -2743,3 +2743,24 @@
 - **Đính chính audit quan trọng (§0)**: F-OV-01 sai phần BE — `base.py:38` đã `IsAdminUser`, test 403 có sẵn (`test_soc_api_overview.py:374-380`) → PR-1 chỉ làm FE confirm + BE audit toggle. F-OV-15 SSE hoãn (endpoint không tồn tại). JSX full hoãn (rủi ro). Throttle 120/min an toàn (32/phút 4 tab).
 - **Validation**: `read` SocOverviewPanel 666 dòng + overview.py + base.py + settings throttle + ConfirmModal/useConfirm + SchedulerBoard modal + vi/en i18n + soc-p2 tests + css tokens — mọi quyết định có `file:line`.
 - **Next**: Đội code làm PR-1 trước (W1→W5 + tests + ledger entry), sau đó PR-2.
+
+---
+
+## Entry 107: Signals W2.2 — triage deliveries (ack/mute/seen) BE+FE
+
+- **Date**: 2026-09-16
+- **Scope**: Triage tín hiệu trên deliveries của operator theo `docs/IMPLEMENTATION_PLAN_SOC_SIGNALS_COMMERCIAL_20260916.md` W2.2.
+- **BE**: `service_ops/views/signals_triage.py` **MỚI** — `SignalsDeliveryListView` (trả `UserAlertDeliveryState`, nguồn bơm `delivery_service.signal_delivered`), `SignalsDeliveryAckView` (gọi `acknowledge_delivery`), `SignalsDeliverySeenView`, `SignalsDeliveryMuteView` (upsert `AlertCenterMutePreference` + đổi state muted); wire `urls.py` (`signals/deliveries/`, `…/ack/`, `…/seen/`, `…/mute/`); engine `signal_intelligence/delivery_service.py` (output ring stores + transition helper + mute). **Sửa lỗi shape cũ**: `_serialize_delivery_with_context` đổi từ envelope `{data:[…]}` → list thẳng, FE đọc qua `pickDeliveries` (hỗ trợ cả 2).
+- **FE**: `SocSignalsPanel.tsx` — cột badge state delivery, `fetchDeliveries` tách riêng khỏi poll feed (lỗi triage không sập feed), select checkbox + Ack bulk, Ack single + Mute modal trong expand (reuse `schedulerModal*` styles), bộ lọc "Chưa ack", `markSocSignalDeliverySeen` khi expand row new. Adapter `soc.js` +5 fns; i18n `triage_*`/`delivery_state_*` (VI/EN).
+- **Tests**: BE `test_soc_signals_triage.py` 4 tests PASS; FE vitest signals 30/30 + jest adapter 88/88.
+- **Validation**: `manage.py check` 0; `tsc --noEmit` 0; `npm run build` PASS; eslint 0 errors.
+
+## Entry 108: Signals W2.3 — rule management + precision (bridge-write request) BE+FE
+
+- **Date**: 2026-09-16
+- **Scope**: Rules tab + precision proxy + feedback thumbs theo plan W2.3 (SOC chỉ gửi yêu cầu, owner duyệt — bridge-write).
+- **BE**: `service_ops/models.py:325-332` thêm `('request', 'Change Requested')` vào `ConfigChangeAudit.ACTION_CHOICES` + migration `0013_configchangeaudit_rule_request_action.py`. `service_ops/views/signals_rules.py` **MỚI** — `RULE_SPECS` (8 keys whale/dark_pool/screener × enabled/threshold/cooldown/ratio), `RULE_KEYS`, `RULE_FIELD_MAP`, `METRIC_ALERT_FAMILIES`; `_rule_metric_builder` (agg delivery per alert family: delivered/acked/muted/suppressed + `precision_proxy`=acked/responded, `hit_rate`=responded/delivered, null khi thiếu data); `_build_rule_rows`; serializers + 4 views: `SignalsRuleListView` (GET `signals/rules/`), `SignalsRuleRequestView` (POST `signals/rules/request/` — validate qua `SignalServicesDomainConfig.validate()`, ghi `ConfigChangeAudit(action='request')`, trả request_id+pending), `SignalsRuleFeedbackView` (POST `signals/rules/feedback/` — up→acknowledge, down→suppressed+reason, ghi `feedback_signal/reason` vào metadata), `SignalsRulePerformanceView` (GET `signals/rules/performance/` — overall + by_family + top_noisy 5). Wire `urls.py` thêm import + 4 routes.
+- **FE**: Adapter `soc.js` +4 fns (`getSocSignalRules`, `getSocSignalRulesPerformance`, `requestSocSignalRuleChange`, `feedbackSocSignalRule`). `SocSignalsPanel.tsx` — SubTab `"rules"` lazy-load (1 lần/session, không cộng poll), `renderRulesTab` (bảng rule: label/family/kind/enabled/value/alert_count/precision/hit_rate + bản overall + top noisy + Refresh + modal request theo kind: enabled/threshold/cooldown/ratio + lý do), `renderRuleModal` (reuse `schedulerModal*`, input số/thời hạn), feedback thumbs `Chính xác`/`Không chính xác` trên feed expand (dùng `delivery.alert_id`, up→acknowledged, down→suppressed). i18n W2.3 ~26 keys VI/EN; CSS `schedulerModalInput`/`rulesRow`/`triageNote`/`loadingText` thêm vào `soc.components.css`.
+- **Tests**: BE `test_soc_signals_rules.py` 8 tests PASS (đã fix unique `(user_id,alert_id)` + bỏ helper lỏng) + suite signals (rules+triage+api+delivery) **47 OK**; FE vitest signals 33/33 (thêm 3 tests W2.3) + jest adapter 89/89.
+- **Validation**: `manage.py check` 0; `makemigrations --check` sạch; `tsc --noEmit` 0; `npm run build` PASS 53s; eslint 0 errors; `npm test` 229 pass (1 pre-existing AIAdvisorAlertPanel); vitest 32 files/175 pass.
+- **Next**: W2.4/P2c SSE + re-review plan; **lưu ý**: toàn bộ W2.2+W2.3 chưa commit (8 M + 5 ??) — hỏi user trước khi commit.
