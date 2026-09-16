@@ -200,6 +200,16 @@
   line-height: 1.2;
 }
 
+.overviewStreamDot {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  color: var(--text-muted, var(--soc-c-64748b));
+  white-space: nowrap;
+  margin-bottom: 0.35rem;
+}
+
 .overviewDescription {
   margin: 0 0 0.75rem;
   font-size: 0.85rem;

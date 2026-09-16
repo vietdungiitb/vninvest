@@ -12,12 +12,13 @@ Hierarchy:
 """
 from django.urls import path
 
-from .views import dataops, matrix, overview, prefetch, screener, signals, signals_rules, signals_stream, signals_triage, symbol_groups, vnbroker
+from .views import dataops, matrix, overview, overview_stream, prefetch, screener, signals, signals_rules, signals_stream, signals_triage, symbol_groups, vnbroker
 
 # Overview endpoints (12)
 urlpatterns = [
-  path('overview/', overview.OverviewSummaryView.as_view(), name='soc_overview_summary'),
-  path('overview/health-status/', overview.HealthStatusView.as_view(), name='soc_health_status'),
+path('overview/', overview.OverviewSummaryView.as_view(), name='soc_overview_summary'),
+path('overview/health-status/', overview.HealthStatusView.as_view(), name='soc_health_status'),
+path('overview/stream/', overview_stream.OverviewStreamView.as_view(), name='soc_overview_stream'),
   path('overview/slo-overview/', overview.SloOverviewView.as_view(), name='soc_slo_overview'),
   path('overview/export/audits/', overview.SocExportConfigAuditsView.as_view(), name='soc_export_config_audits'),
   path('overview/export/run-logs/', overview.SocExportRunLogsView.as_view(), name='soc_export_run_logs'),

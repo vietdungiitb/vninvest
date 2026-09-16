@@ -4,6 +4,7 @@ import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { getStatusBadgeStyle } from "./socStatusColors.js";
 import { LucideIcon } from "../ui/lucide-icon.js";
 import { formatLastCheck } from "./socTime.js";
+import { useOverviewStream } from "../../hooks/useOverviewStream.js";
 import styles from "./soc.module.css";
 
 interface ServiceItem {
@@ -153,6 +154,9 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
   const consecutiveErrorsRef = useRef(0);
   const intervalRef = useRef<number | null>(null);
   const intervalDelayRef = useRef(15000);
+  const streamOpenRef = useRef(false);
+  const [streamStatus, setStreamStatus] = useState<"idle" | "connecting" | "open" | "error" | "closed">("idle");
+  const [isDocVisible, setIsDocVisible] = useState(typeof document !== "undefined" ? !document.hidden : true);
 
   const fetchSlo = async () => {
     try {
@@ -208,9 +212,36 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
     intervalDelayRef.current = delayMs;
     const jittered = delayMs + Math.floor(Math.random() * 3000);
     intervalRef.current = window.setInterval(() => {
-      fetchData(true);
+      // Overview P3: khi stream SSE mở → chỉ refresh SLO (overview đã realtime qua stream)
+      if (streamOpenRef.current) {
+        fetchSlo();
+      } else {
+        fetchData(true);
+      }
     }, jittered);
   };
+
+  // Overview P3 (F-OV-14/15): SSE realtime stream — snapshot thay cho overview GET khi stream mở
+  const streamEnabled = isDocVisible && typeof window !== "undefined" && typeof (window as unknown as { EventSource?: unknown }).EventSource !== "undefined" && !loading;
+  const { status: liveStreamStatus, reconnectAttempt: liveStreamReconnectAttempt } = useOverviewStream({
+    enabled: streamEnabled,
+    onSnapshot: (snap) => {
+      if (!mountedRef.current) return;
+      consecutiveErrorsRef.current = 0;
+      setData(snap as unknown as OverviewData);
+      setError("");
+    },
+  });
+
+  // stream mở → interval chỉ refresh SLO (hạn chế duplicate overview GET); đóng/lỗi → full poll
+  useEffect(() => {
+    streamOpenRef.current = liveStreamStatus === "open";
+    if (liveStreamStatus === "open" && intervalRef.current === null && isDocVisible && !document.hidden) {
+      restartInterval(intervalDelayRef.current);
+    }
+    setStreamStatus(liveStreamStatus);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveStreamStatus, isDocVisible]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -229,16 +260,20 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
     return () => window.clearTimeout(id);
   }, [search]);
 
-  // W13 visibility pause/resume + jitter handled in restartInterval
+  // W13 visibility pause/resume + jitter handled in restartInterval + Overview P3 stream
   useEffect(() => {
     const onVisibility = () => {
-      if (document.hidden) {
+      const hidden = document.hidden;
+      setIsDocVisible(!hidden);
+      if (hidden) {
         if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
+        intervalRef.current = null;
       } else {
         fetchData(true);
         restartInterval(intervalDelayRef.current);
       }
     };
+    if (document.hidden) onVisibility();
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -461,6 +496,25 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
         "SOC",
       ),
       createElement("h2", { className: styles.overviewTitle }, t("soc.overview.overview_title")),
+      // Overview P3 (F-OV-14/15): SSE status dot — Live / Connecting / Reconnecting / Polling
+      (() => {
+        const dotColor = streamStatus === "open" ? "#10b981" : streamStatus === "connecting" ? "#f59e0b" : streamStatus === "error" ? "#ef4444" : "#94a3b8";
+        const label = streamStatus === "open"
+          ? t("soc.signals_overview.stream_live", { defaultValue: "Trực tiếp" })
+          : streamStatus === "connecting"
+            ? t("soc.signals_overview.stream_connecting", { defaultValue: "Đang kết nối..." })
+            : streamStatus === "error"
+              ? `${t("soc.signals_overview.stream_reconnecting", { defaultValue: "Đang kết nối lại..." })}${liveStreamReconnectAttempt > 0 ? ` (${liveStreamReconnectAttempt})` : ""}`
+              : t("soc.signals_overview.stream_polling", { defaultValue: "Polling" });
+        return createElement("span", {
+          title: label,
+          "aria-label": label,
+          className: styles.overviewStreamDot,
+        },
+          createElement("span", { style: { width: "6px", height: "6px", borderRadius: "50%", background: dotColor, display: "inline-block", flexShrink: 0 } }),
+          label,
+        );
+      })(),
       createElement("p", { className: styles.overviewDescription }, t("soc.overview.overview_description")),
       createElement(
         "div",

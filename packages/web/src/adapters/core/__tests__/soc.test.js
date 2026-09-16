@@ -40,6 +40,10 @@ describe("SOC adapter", () => {
       expect(coreGet).toHaveBeenCalledWith("/operator/soc/overview/slo-overview/");
     });
 
+    it("P3 SSE: getSocOverviewStreamUrl returns stream path", async () => {
+      expect(soc.getSocOverviewStreamUrl()).toBe("/operator/soc/overview/stream/");
+    });
+
     it("exportSocConfigAudits calls coreGet with params", async () => {
       await soc.exportSocConfigAudits({ service_key: "vnbroker", limit: 100 });
       expect(coreGet).toHaveBeenCalledWith("/operator/soc/overview/export/audits/?service_key=vnbroker&limit=100");

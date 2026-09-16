@@ -2802,3 +2802,27 @@
   - `npx tsc --noEmit` **0**, `npm run build` **PASS 46.79s** (chunk warning pre-existing `widget 2,218k`), `npx eslint` 7 file DataOps 0 errors, `npx vitest run soc-p2 + soc-overview` **20/20** (validateDateRange + overview), `npx jest src/adapters/core/__tests__/soc.test.js` **90/90** (bao phủ toàn bộ DataOps adapter endpoints queue-tiers/coverage/observability/run-logs/planner/runtime-config/inventory/scheduler/backfill), `python manage.py check` 0 (DJANGO_DEBUG=true)
 - **Kết luận**: DataOps **95%+ parity giữ nguyên**, không regression sau migration + React 19 upgrade + Signals P2c. Không cần code change.
 - **Next**: Overview P3 epic (SSE/ETag/donut) tách riêng khi có yêu cầu.
+
+---
+
+## Entry 112: Overview P3 SSE health stream — BE + FE realtime (F-OV-14/15)
+
+- **Date**: 2026-09-16
+- **Scope**: Thay REST poll 15s bằng SSE `GET /operator/soc/overview/stream/` trong Overview tab — snapshot thay đổi khi health status đổi (F-OV-14/15), fallback poll SLO vẫn chạy 30s khi stream mở, interval poll full 15s khi stream closed/error. Mirror Signals P2c pattern exactly.
+- **BE** (`packages/core/backend`):
+  - `service_ops/views/overview_stream.py` (193 dòng): `OverviewStreamView(SOCBaseView)` — `_build_overview_snapshot()` same payload as `OverviewSummaryView.get`, `_snapshot_signature()` status/active/last_check/avg_response diff (không dùng generated_at — tránh emit mỗi 3s), emit `event: overview` chỉ khi snapshot thay đổi, `:ping` heartbeat 15s, idle 1h, `?max_loops=` cho test, `?token=` fallback auth (F2), poll DB 3s, throttle `SOCStreamThrottle` scope `soc_stream` (60/min). Import `_sse_format` + `SOCStreamThrottle` từ `signals_stream.py` (không duplicate).
+  - `service_ops/urls.py`: thêm route `path('overview/stream/', ...)` + import `overview_stream`.
+  - `service_ops/tests/test_soc_overview_stream.py` (138 dòng): 9 tests — auth 401/403, content-type `text/event-stream`, `retry:3000`, snapshot services trong payload, chỉ emit 1 lần khi không đổi (dedup), heartbeat `: ping`, changed status emit mới (2 events: initial + updated), inactive service, query token auth.
+- **FE** (`packages/web`):
+  - `hooks/useOverviewStream.ts` (199 dòng): `EventSource` + `event: overview` listener + `onmessage` fallback + `reconnectAttempt` backoff 1s→30s + heartbeat watchdog 35s. Export `OverviewStreamSnapshot` type + `getOverviewStreamUrl()` helper.
+  - `SocOverviewPanel.tsx`: import `useOverviewStream`; `streamOpenRef` hiện tại → interval callback chỉ fetchSlo khi open (không duplicate overview GET); `isDocVisible` state驱动 stream `enabled`; SSE `onSnapshot` → `setData` + clear error + reset backoff. Status dot trong header (Live/Connecting/Reconnecting/Polling) — reuse `soc.signals_overview.stream_*` i18n keys.
+  - `soc.components.css`: `.overviewStreamDot` class (inline-flex, 0.7rem, muted).
+  - `adapters/core/soc.js`: thêm `getSocOverviewStreamUrl()` method.
+- **Tests**:
+  - `test_soc_overview_stream.py`: **9/9 PASS**
+  - `soc-overview-stream.component.test.tsx`: **2/2 PASS** — Live indicator khi SSE open, fallback Polling khi chưa mở, snapshot mới cập nhật data
+  - `soc.test.js`: **91/91** (+1 `getSocOverviewStreamUrl` test)
+  - vitest soc suite: **5/5 files, 58/58** (+2 stream component tests)
+- **Gates (thật)**: `npx tsc --noEmit` **0**; `npm run build` **PASS 33.32s**; `npm run lint` **0 errors** (3549 warnings pre-existing); BE `service_ops` **348 tests OK (skipped=1)**; `manage.py check` **0**
+- **Kết luận**: Overview tab giờ có SSE realtime — health dashboard auto-refresh khi status đổi, không cần poll 15s full payload. Interval vẫn chạy để refresh SLO data (stream không chứa SLO). Offline/hidden tab → stream pause + fallback 15s poll.
+- **Next**: Overview P3 còn lại — ETag/304, donut global HealthStatusView, export history CSV, dependency graph, maintenance scheduler (theo `docs/IMPLEMENTATION_PLAN_SOC_OVERVIEW_TAB_20260916.md` §8 backlog).

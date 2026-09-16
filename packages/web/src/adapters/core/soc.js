@@ -433,6 +433,10 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
       return `/operator/soc/signals/stream/${buildSignalsRecentQuery(params)}`;
     },
 
+    getSocOverviewStreamUrl() {
+      return "/operator/soc/overview/stream/";
+    },
+
     // ─── Screener ──────────────────────────────────────────────────────────
     getSocScreenerConfig() {
       return coreGet("/operator/soc/screener/config/").then(normalizeConfigEnvelope);
