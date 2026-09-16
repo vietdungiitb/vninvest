@@ -111,6 +111,16 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - **Audit fix P2c Entry 110**: F1 watchdog treo (HIGH) → `scheduleReconnect` trực tiếp, F3 `since` param, F4 throttle riêng, F5 idle, F2 token comment. BE 13 OK, hook 8/8, vitest 34/186, build 43s, tsc 0.
 - **Validation tổng**: `manage.py check` 0, BE `service_ops` 56 OK (api 31 + stream 13 + triage 4 + rules 8), FE `vitest 34/186`, `jest 230`, `tsc 0`, `build PASS`. **Toàn bộ Signals P0/P1/P2a/P2b/P2c HOÀN TẤT** — đạt chuẩn thương mại Bloomberg/Datadog/Grafana (realtime, triage, rule, precision, feedback, SSE).
 
+### Done (2026-09-16) — Overview P3 SSE health stream + Đóng Signals tag (Entry 111-112)
+- **Signals đóng** (Entry 110 fix + tag): D1 doc fix `55→56` (AGENTS+ledger, commit `5d5fbbce`), D2 force-move tag **`soc-signals-v1.0` → `5d5fbbce`** (trước `ff44e840`), D3 leftover tests → backlog test-tech.
+- **DataOps B (Entry 111, commit `d672dc41`)**: maintenance + build verification sau migration widget. Verified thật: grep `vninvestcharts` trong `src/components/soc/*DataOps*` **0 hit**, eslint 7 file DataOps **0 errors**, tsc 0, build PASS 46.79s, vitest soc-p2+overview 20/20, `jest soc.test.js` **90/90** (bao phủ DataOps adapter endpoints), `manage.py check` 0. Đính chính claim sai "vitest 34/186 bao phủ DataOps" trong Entry 111.
+- **Overview P3 (Entry 112, commit `954a696e`) — SSE health stream (F-OV-14/15)**:
+  - BE `overview_stream.py`: `OverviewStreamView` — snapshot diff status (signature không gồm `generated_at` → chỉ emit khi health đổi), `event: overview`, `:ping` 15s, idle 1h, `max_loops` test, `?token=` fallback, throttle `soc_stream` 60/min, poll DB 3s. Import `_sse_format`+`SOCStreamThrottle` từ `signals_stream.py` (no duplicate). Route `overview/stream/` + tests **9/9**.
+  - FE `useOverviewStream.ts`: EventSource `event: overview` + onmessage fallback + backoff 1s→30s + watchdog 35s. `SocOverviewPanel.tsx`: `streamOpenRef` → interval chỉ fetchSlo khi open (không duplicate overview GET), `isDocVisible` → stream enabled, `onSnapshot` setData+clear error; status dot header (Live/Connecting/Reconnecting/Polling, reuse `soc.signals_overview.stream_*` keys). `soc.js` + `getSocOverviewStreamUrl()`.
+  - Tests: vitest `soc-overview-stream.component.test.tsx` **2/2** (Live indicator + fallback Polling), `soc.test.js` **91/91** (+1), vitest soc **5 files/58/58**, BE** service_ops` 348 OK (skipped=1).
+  - Gates: tsc 0, build PASS 33.32s, lint 0 errors (3549 warn pre-existing), `manage.py check` 0.
+- **PR-1 + PR-2 Overview đã DONE từ trước** (docs `AUDIT_SOC_OVERVIEW_UI_UX_20260916.md`: PR-1 `d39f9fed` + PR-2 `25c26c96` merged) — không làm lại W1-W14. P3 backlog §8 còn: ETag/304, donut global HealthStatusView, export history CSV, dependency graph, maintenance scheduler; JSX migration hoãn (Đ3 audit).
+
 ## Key Decisions & Metrics
 - Local `vninvestcharts/` component tree (~745 files, -102k lines) replaced by npm package `vninvestcharts-widget` ^1.2.5
 - New adapter file: `packages/web/src/adapters/chartAdapter.js` — bridges core API → chart bar format
