@@ -23,22 +23,24 @@ export interface UseSignalStreamOptions {
   onStatusChange?: (s: SignalStreamStatus) => void;
 }
 
-function buildStreamQuery(query: UseSignalStreamOptions["query"]): string {
+function buildStreamQuery(query: UseSignalStreamOptions["query"], lastId?: number | null): string {
   const qs = new URLSearchParams();
   if (query?.type) qs.set("type", query.type);
   if (query?.symbol) qs.set("symbol", query.symbol);
   if (query?.severity) qs.set("severity", query.severity);
   if (query?.direction) qs.set("direction", query.direction);
+  if (lastId != null) qs.set("since", String(lastId));
   // EventSource không gửi được Authorization header → fallback token qua query
+  // Lưu ý F2: token trong URL có thể lộ qua log/history — đã có withCredentials + khuyến nghị HTTPS + redact log
   const token = typeof window !== "undefined" ? getBrowserStorageToken("access_token") : null;
   if (token) qs.set("token", token);
   const s = qs.toString();
   return s ? `?${s}` : "";
 }
 
-export function getSignalStreamUrl(query: UseSignalStreamOptions["query"] = {}): string {
+export function getSignalStreamUrl(query: UseSignalStreamOptions["query"] = {}, lastId?: number | null): string {
   const base = resolveCoreApiBase();
-  return `${base}/operator/soc/signals/stream/${buildStreamQuery(query)}`;
+  return `${base}/operator/soc/signals/stream/${buildStreamQuery(query, lastId)}`;
 }
 
 export function useSignalStream(options: UseSignalStreamOptions): { status: SignalStreamStatus; reconnectAttempt: number } {
@@ -50,6 +52,7 @@ export function useSignalStream(options: UseSignalStreamOptions): { status: Sign
   const reconnectTimerRef = useRef<number | null>(null);
   const heartbeatTimerRef = useRef<number | null>(null);
   const attemptRef = useRef(0);
+  const lastIdRef = useRef<number | null>(null);
   const onSignalRef = useRef(onSignal);
   const onStatusChangeRef = useRef(onStatusChange);
 
@@ -67,21 +70,15 @@ export function useSignalStream(options: UseSignalStreamOptions): { status: Sign
     }
   }, []);
 
-  const resetHeartbeat = useCallback(() => {
-    clearHeartbeat();
-    // 35s không có ping/event → coi như chết, đóng để trigger reconnect
-    heartbeatTimerRef.current = window.setTimeout(() => {
-      if (esRef.current) {
-        try { esRef.current.close(); } catch {}
-        // onerror sẽ handle reconnect
-      }
-    }, 35000);
-  }, [clearHeartbeat]);
-
   const updateStatus = useCallback((s: SignalStreamStatus) => {
     setStatus(s);
     onStatusChangeRef.current?.(s);
   }, []);
+
+  // F3: khi filter đổi, reset since để không bỏ lỡ với lastId cũ
+  useEffect(() => {
+    lastIdRef.current = null;
+  }, [query?.type, query?.symbol, query?.severity, query?.direction]);
 
   useEffect(() => {
     if (!enabled) {
@@ -108,16 +105,43 @@ export function useSignalStream(options: UseSignalStreamOptions): { status: Sign
 
     let cancelled = false;
 
+    const scheduleReconnect = () => {
+      if (cancelled) return;
+      clearHeartbeat();
+      if (esRef.current) {
+        try { esRef.current.close(); } catch {}
+        esRef.current = null;
+      }
+      updateStatus("error");
+      const nextAttempt = attemptRef.current + 1;
+      attemptRef.current = nextAttempt;
+      setReconnectAttempt(nextAttempt);
+      const delay = Math.min(1000 * Math.pow(2, nextAttempt - 1), 30000);
+      if (reconnectTimerRef.current !== null) window.clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = window.setTimeout(() => {
+        if (!cancelled) connect();
+      }, delay);
+    };
+
+    const resetHeartbeatWithReconnect = () => {
+      clearHeartbeat();
+      heartbeatTimerRef.current = window.setTimeout(() => {
+        // F1 fix: close() không fire onerror → phải tự schedule reconnect
+        scheduleReconnect();
+      }, 35000);
+    };
+
     const connect = () => {
       if (cancelled) return;
       updateStatus("connecting");
-      const url = getSignalStreamUrl(query);
+      const url = getSignalStreamUrl(query, lastIdRef.current);
       let es: EventSource;
       try {
         // withCredentials để gửi cookie session nếu có
         es = new window.EventSource(url, { withCredentials: true } as unknown as EventSourceInit);
       } catch {
         updateStatus("error");
+        scheduleReconnect();
         return;
       }
       esRef.current = es;
@@ -127,12 +151,12 @@ export function useSignalStream(options: UseSignalStreamOptions): { status: Sign
         attemptRef.current = 0;
         setReconnectAttempt(0);
         updateStatus("open");
-        resetHeartbeat();
+        resetHeartbeatWithReconnect();
       };
 
       const handleSignal = (e: MessageEvent) => {
         if (cancelled) return;
-        resetHeartbeat();
+        resetHeartbeatWithReconnect();
         const raw = (e as MessageEvent).data;
         if (!raw) return;
         try {
@@ -149,6 +173,7 @@ export function useSignalStream(options: UseSignalStreamOptions): { status: Sign
             metadata: (data.metadata as Record<string, unknown>) ?? {},
             session_date: (data.session_date as string | null) ?? null,
           };
+          if (sig.id != null) lastIdRef.current = sig.id;
           if (sig.symbol) onSignalRef.current(sig);
         } catch {
           // ignore parse error
@@ -160,24 +185,12 @@ export function useSignalStream(options: UseSignalStreamOptions): { status: Sign
 
       // Fallback onmessage (nếu server gửi không có event name)
       es.onmessage = (e: MessageEvent) => {
-        resetHeartbeat();
+        resetHeartbeatWithReconnect();
         handleSignal(e);
       };
 
       es.onerror = () => {
-        clearHeartbeat();
-        try { es.close(); } catch {}
-        if (cancelled) return;
-        esRef.current = null;
-        updateStatus("error");
-        const nextAttempt = attemptRef.current + 1;
-        attemptRef.current = nextAttempt;
-        setReconnectAttempt(nextAttempt);
-        const delay = Math.min(1000 * Math.pow(2, nextAttempt - 1), 30000);
-        if (reconnectTimerRef.current !== null) window.clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = window.setTimeout(() => {
-          if (!cancelled) connect();
-        }, delay);
+        scheduleReconnect();
       };
     };
 
@@ -197,7 +210,7 @@ export function useSignalStream(options: UseSignalStreamOptions): { status: Sign
       updateStatus("closed");
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, query?.type, query?.severity, query?.direction, query?.symbol, resetHeartbeat, clearHeartbeat, updateStatus]);
+  }, [enabled, query?.type, query?.severity, query?.direction, query?.symbol]);
 
   return { status, reconnectAttempt };
 }

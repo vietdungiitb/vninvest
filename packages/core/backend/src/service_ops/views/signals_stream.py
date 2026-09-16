@@ -22,13 +22,19 @@ import time
 from django.db import close_old_connections
 from django.db.models import Max
 from django.http import StreamingHttpResponse
-from django.utils import timezone
+from rest_framework.throttling import UserRateThrottle
 from drf_spectacular.utils import extend_schema
 
 from signal_intelligence.models import UnifiedAlert
 
 from .base import SOCBaseView
 from .signals import _latest_signal_session_date, _serialize_recent_alert
+
+
+class SOCStreamThrottle(UserRateThrottle):
+    """Throttle riêng cho SSE stream — 60/min, không tiêu quota soc_operator_read."""
+
+    scope = "soc_stream"
 
 
 # Query param → alert_type mapping (FE type → BE alert_type)
@@ -101,8 +107,8 @@ class SignalsStreamView(SOCBaseView):
     Poll DB 3s cho UnifiedAlert mới (id > last_id).
     """
 
-    # Streaming giữ 1 worker kết nối dài — miễn throttle để không tiêu quota 120/min
-    throttle_classes = []
+    # F4 fix: throttle riêng soc_stream 60/min thay vì [] (tránh mở N kết nối vô hạn)
+    throttle_classes = [SOCStreamThrottle]
 
     def initial(self, request, *args, **kwargs):
         # EventSource không gửi được Authorization header → hỗ trợ ?token=
@@ -127,7 +133,6 @@ class SignalsStreamView(SOCBaseView):
         params = _parse_stream_params(request)
 
         # TESTING: cho phép giới hạn vòng lặp / thời gian để test không treo
-        import os
         import sys
 
         testing = "test" in sys.argv
@@ -147,6 +152,9 @@ class SignalsStreamView(SOCBaseView):
                     raw_last = request.headers.get("Last-Event-ID")
                 except Exception:
                     raw_last = None
+            # F3: hỗ trợ ?since=<last_id> cho reconnect manual (EventSource mới không gửi Last-Event-ID)
+            if raw_last is None or str(raw_last).strip() == "":
+                raw_last = request.query_params.get("since") or request.query_params.get("last_id")
             if raw_last is None or str(raw_last).strip() == "":
                 # Không có Last-Event-ID → bắt đầu từ max hiện tại (tránh flood lịch sử)
                 try:
@@ -161,11 +169,15 @@ class SignalsStreamView(SOCBaseView):
                     last_id = 0
 
             last_heartbeat = time.time()
+            stream_start = time.time()
             loop_count = 0
             # Poll DB 3s, heartbeat comment 15s
             while True:
                 loop_count += 1
                 if max_loops is not None and loop_count > max_loops:
+                    break
+                # F5: idle timeout 1h — tránh giữ worker vô hạn khi operator rời bàn
+                if not testing and time.time() - stream_start > 3600:
                     break
 
                 try:

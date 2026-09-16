@@ -155,4 +155,33 @@ describe("useSignalStream — P2c SSE hook", () => {
     expect(instances.length).toBe(2);
     expect(getByTestId("status").textContent).toBe("connecting");
   });
+
+  it("F1: watchdog 35s không ping → tự đóng và reconnect", async () => {
+    const onSignal = vi.fn();
+    const { getByTestId } = render(<TestComponent enabled onSignal={onSignal} />);
+    const es = instances[0] as unknown as MockEventSource & { triggerOpen: () => void };
+    await act(async () => { es.triggerOpen(); });
+    expect(getByTestId("status").textContent).toBe("open");
+    // 35s không có event → watchdog phải trigger reconnect
+    await act(async () => { await vi.advanceTimersByTimeAsync(35000); });
+    // Sau watchdog, status phải là error và đã schedule reconnect
+    expect(getByTestId("status").textContent).toBe("error");
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(instances.length).toBe(2);
+  });
+
+  it("F3: reconnect giữ lastId qua ?since=", async () => {
+    const onSignal = vi.fn();
+    render(<TestComponent enabled onSignal={onSignal} />);
+    const es1 = instances[0] as unknown as MockEventSource & { triggerOpen: () => void; triggerSignal: (d: Record<string, unknown>) => void; triggerError: () => void };
+    await act(async () => { es1.triggerOpen(); });
+    await act(async () => {
+      es1.triggerSignal({ id: 99, symbol: "VCI", type: "whale", severity: "high", direction: "buy", detected_at: "2026-09-16T09:00:00Z", title: "t", value: 1 });
+    });
+    // Gây lỗi để reconnect
+    await act(async () => { es1.triggerError(); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    const secondUrl = instances[1]?.url ?? "";
+    expect(secondUrl).toContain("since=99");
+  });
 });

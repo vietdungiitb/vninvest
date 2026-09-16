@@ -154,6 +154,19 @@ class SignalsStreamContractTestCase(SignalsStreamBaseTestCase):
         # Có thể không có event nào, chỉ retry+ping
         self.assertNotIn('"symbol": "VCI"', content)
 
+    def test_since_query_param_resumes(self):
+        # F3: reconnect manual dùng ?since= phải hoạt động như Last-Event-ID
+        max_id = UnifiedAlert.objects.order_by('-pk').first().pk
+        # since = max_id → không có mới
+        rsp = self.client.get(f'/api/soc/signals/stream/?since={max_id}&max_loops=2')
+        content = _read_stream_content(rsp)
+        self.assertNotIn('"symbol": "VCI"', content)
+        # since = 0 → replay tất cả
+        rsp2 = self.client.get('/api/soc/signals/stream/?since=0&max_loops=2')
+        content2 = _read_stream_content(rsp2)
+        self.assertIn('"symbol": "VCI"', content2)
+        self.assertIn('"symbol": "SSI"', content2)
+
     def test_query_token_fallback_auth(self):
         # Tạo PAT cho admin user (dùng CorePATCredential)
         from identity_access.models import CoreTenant, CorePATCredential

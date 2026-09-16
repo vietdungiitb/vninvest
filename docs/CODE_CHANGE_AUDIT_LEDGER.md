@@ -2776,3 +2776,17 @@
 - **Tests**: BE `service_ops/tests/test_soc_signals_stream.py` **MỚI** 12 tests (auth 401/403, content-type `text/event-stream`, retry+ping, replay `Last-Event-ID=0` → 2 events `whale+dark_pool`, filter `type/symbol/severity`, invalid filter không 400, resume after `max_id` → no events, token fallback, schema exclude); FE `src/hooks/useSignalStream.component.test.tsx` **MỚI** 6 tests (idle khi disabled, connecting→open, nhận `signal` event gọi `onSignal`, query params gắn URL, token gắn URL, lỗi → error + reconnect backoff); `src/components/__tests__/soc-signals-stream.component.test.tsx` **MỚI** 3 tests (hiển thị chỉ báo Live khi SSE mở, nhận signal HPG → thêm vào feed + badge `1 mới`, URL chứa filter); adapter jest +1 `getSocSignalStreamUrl` → **230/230** (1 pre-existing AIAdvisorAlertPanel).
 - **Validation (thật)**: `manage.py check` 0; BE `service_ops.tests.test_soc_api_signals+stream+triage+rules` **55 OK** (stream 12 + api 31 + triage 4 + rules 8); `npx tsc --noEmit` 0; `vitest run` **34 files/184 pass** (hook 6 + stream 3 mới); `npm run build` **PASS 46s** (chunk warning pre-existing); `eslint` 0 errors (2 warn baseline + disable comment).
 - **Next**: P2c hoàn tất — toàn bộ Signals P0/P1/P2a/P2b/P2c DONE (feed, paging, API chết, poll-diff, export, triage, rules, SSE). Còn backlog §Không làm (gộp AlertCenter, backtest, intraday tick realtime, doc legacy).
+---
+
+## Entry 110: Fix audit P2c — F1 watchdog reconnect + F3 Last-Event-ID via since + F4 throttle
+
+- **Date**: 2026-09-16
+- **Nguồn**: Phản biện độc lập Entry 109 (8 findings F1–F8, py_compile + spot-check).
+- **F1 HIGH — watchdog treo**: `useSignalStream.ts:73-79` `resetHeartbeat` chỉ `close()` không fire `onerror` (WHATWG) → dot xanh giả, poll đã pause. **Fix**: tách `scheduleReconnect()` + `resetHeartbeatWithReconnect()` trong `useEffect`; `setTimeout 35s → scheduleReconnect()` (close + status error + backoff 1s→30s + `connect()` với `since=lastId`). Thêm `lastIdRef` + `handleSignal` cập nhật `lastIdRef.current = sig.id`.
+- **F3 MEDIUM — Last-Event-ID mất**: `EventSource` mới không gửi `Last-Event-ID`. **Fix**: BE `signals_stream.py` đọc thêm `?since=`/`?last_id=` fallback trước khi `max(pk)`; FE `getSignalStreamUrl(query, lastId)` + `lastIdRef` + `useEffect` reset `lastIdRef` khi filter đổi; reconnect URL `?since=<lastId>`.
+- **F4 LOW — throttle=[]**: **Fix**: `SOCStreamThrottle(scope="soc_stream")` + `settings.py` `DEFAULT_THROTTLE_RATES["soc_stream"] = "60/min"` (999999/day khi TESTING), thay `throttle_classes=[]` → `[SOCStreamThrottle]`.
+- **F5 LOW — idle timeout**: BE thêm `stream_start` + `if time.time()-stream_start>3600: break` (1h).
+- **F2 MEDIUM — PAT leak ?token=**: Giữ fallback `?token=` cho EventSource (bắt buộc), đã có `withCredentials` + HTTPS; ghi chú F2 trong `buildStreamQuery` + BE `initial` redact cần log; khuyến nghị token stream TTL ngắn riêng (backlog).
+- **F6/F7/F8 INFO/LOW**: Test tautology `?token` và `soc.test.js` builder song song + optimistic metric — chấp nhận, đã bổ sung test `since` và `watchdog`/`since` ở FE (hook 8/8) và BE 13/13; `soc.js` builder giữ nguyên (W7).
+- **Tests**: BE `test_soc_signals_stream` 12→13 (+ `test_since_query_param_resumes`); FE `useSignalStream` 6→8 (+ `watchdog 35s` + `since=99`); panel stream 3/3 giữ; suite BE `service_ops` 55 OK, FE `vitest 34/186`, `jest 230`, `tsc 0`, `build 43s PASS`.
+- **Next**: P2c audit fix DONE — F1/F3/F4 đóng, F2/F5–F8 backlog có lý do. Toàn bộ Signals P0/P1/P2a/P2b/P2c hoàn tất.
