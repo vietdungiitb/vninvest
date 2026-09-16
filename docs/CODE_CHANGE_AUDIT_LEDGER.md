@@ -2790,3 +2790,15 @@
 - **F6/F7/F8 INFO/LOW**: Test tautology `?token` và `soc.test.js` builder song song + optimistic metric — chấp nhận, đã bổ sung test `since` và `watchdog`/`since` ở FE (hook 8/8) và BE 13/13; `soc.js` builder giữ nguyên (W7).
 - **Tests**: BE `test_soc_signals_stream` 12→13 (+ `test_since_query_param_resumes`); FE `useSignalStream` 6→8 (+ `watchdog 35s` + `since=99`); panel stream 3/3 giữ; suite BE `service_ops` 56 OK, FE `vitest 34/186`, `jest 230`, `tsc 0`, `build 43s PASS`.
 - **Next**: P2c audit fix DONE — F1/F3/F4 đóng, F2/F5–F8 backlog có lý do. Toàn bộ Signals P0/P1/P2a/P2b/P2c hoàn tất.
+---
+
+## Entry 111: DataOps B — Build verification sau migration vninvestcharts-widget (maintenance)
+
+- **Date**: 2026-09-16
+- **Scope**: Maintenance + build verification cho SOC DataOps tab sau khi thay local `vninvestcharts` component (745 files, -102k) bằng npm `vninvestcharts-widget` ^1.2.5 — theo AGENTS Goal. Không đổi logic DataOps, chỉ xác minh parity và gates vẫn xanh.
+- **Verify**:
+  - `packages/web/src/types/vninvestcharts-widget.d.ts` 44 dòng OK, `package.json` `vninvestcharts-widget ^1.2.5` + `react 19.2.7` + `recharts 2.15.4` peerDep ^19 OK
+  - `SocDataInventorySection.tsx` (dynamic data types grid + coverage table 6 cols + queue accordion + year bar) + `SocDataOpsOperationsSection.tsx` (Planner Console) + `SocDataOpsPanel.tsx` + `SocDataOpsMonitorSection` + `SocDataOpsConfigSection` — grep `vninvestcharts` 0 hit trong `src/components/soc/*DataOps*` (không còn import local), chỉ `WatchlistDetailPanel` dùng widget lazy như đã fix
+  - `npx tsc --noEmit` **0**, `npm run build` **PASS 46.79s** (chunk warning pre-existing `widget 2,218k`), `npx eslint` 7 file DataOps 0 errors, `npx vitest run soc-p2 + soc-overview` **20/20** (validateDateRange + overview), `npx jest src/adapters/core/__tests__/soc.test.js` **90/90** (bao phủ toàn bộ DataOps adapter endpoints queue-tiers/coverage/observability/run-logs/planner/runtime-config/inventory/scheduler/backfill), `python manage.py check` 0 (DJANGO_DEBUG=true)
+- **Kết luận**: DataOps **95%+ parity giữ nguyên**, không regression sau migration + React 19 upgrade + Signals P2c. Không cần code change.
+- **Next**: Overview P3 epic (SSE/ETag/donut) tách riêng khi có yêu cầu.
