@@ -12,7 +12,7 @@ Hierarchy:
 """
 from django.urls import path
 
-from .views import dataops, matrix, overview, prefetch, screener, signals, symbol_groups, vnbroker
+from .views import dataops, matrix, overview, prefetch, screener, signals, signals_rules, signals_triage, symbol_groups, vnbroker
 
 # Overview endpoints (12)
 urlpatterns = [
@@ -88,6 +88,14 @@ urlpatterns = [
     path('signals/jobs/status/', signals.SignalsJobStatusView.as_view(), name='soc_signals_jobs_status'),
     path('signals/performance-metrics/', signals.SignalsPerformanceMetricsView.as_view(), name='soc_signals_metrics'),
     path('signals/feed/export/', signals.SignalsFeedExportView.as_view(), name='soc_signals_feed_export'),
+    path('signals/deliveries/', signals_triage.SignalsDeliveriesView.as_view(), name='soc_signals_deliveries'),
+    path('signals/deliveries/mute/', signals_triage.SignalsDeliveryMuteView.as_view(), name='soc_signals_delivery_mute'),
+    path('signals/deliveries/<uuid:delivery_id>/seen/', signals_triage.SignalsDeliverySeenView.as_view(), name='soc_signals_delivery_seen'),
+    path('signals/deliveries/<uuid:delivery_id>/ack/', signals_triage.SignalsDeliveryAckView.as_view(), name='soc_signals_delivery_ack'),
+    path('signals/rules/', signals_rules.SignalsRuleListView.as_view(), name='soc_signals_rules'),
+    path('signals/rules/request/', signals_rules.SignalsRuleRequestView.as_view(), name='soc_signals_rule_request'),
+    path('signals/rules/feedback/', signals_rules.SignalsRuleFeedbackView.as_view(), name='soc_signals_rule_feedback'),
+    path('signals/rules/performance/', signals_rules.SignalsRulePerformanceView.as_view(), name='soc_signals_rule_performance'),
 
     # Screener domain (9)
     path('screener/config/', screener.ScreenerConfigView.as_view(), name='soc_screener_config'),

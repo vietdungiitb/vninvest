@@ -328,6 +328,7 @@ class ConfigChangeAudit(models.Model):
         ('rollback', 'Config Rolled Back'),
         ('force_apply', 'Force Applied'),
         ('toggle', 'Service Toggled'),
+        ('request', 'Change Requested'),
     ]
 
     service = models.ForeignKey(
