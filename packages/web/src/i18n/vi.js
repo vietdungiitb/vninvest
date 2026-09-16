@@ -392,6 +392,12 @@ const vi = {
       feedback_thanks: 'Đã ghi phản hồi.',
       feedback_up: 'Chính xác',
       feedback_down: 'Không chính xác',
+      // P2c SSE stream
+      stream_live: 'Trực tiếp',
+      stream_connecting: 'Đang kết nối...',
+      stream_reconnecting: 'Đang kết nối lại...',
+      stream_polling: 'Polling',
+      stream_retry_in: 'Thử lại sau {sec}s',
     },
     dataops: {
       title: 'Điều phối dữ liệu thị trường',

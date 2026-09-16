@@ -392,6 +392,12 @@ const en = {
       feedback_thanks: 'Feedback recorded.',
       feedback_up: 'Accurate',
       feedback_down: 'Inaccurate',
+      // P2c SSE stream
+      stream_live: 'Live',
+      stream_connecting: 'Connecting...',
+      stream_reconnecting: 'Reconnecting...',
+      stream_polling: 'Polling',
+      stream_retry_in: 'Retrying in {sec}s',
     },
     dataops: {
       title: 'Market data operations',

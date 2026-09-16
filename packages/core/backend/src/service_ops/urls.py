@@ -12,7 +12,7 @@ Hierarchy:
 """
 from django.urls import path
 
-from .views import dataops, matrix, overview, prefetch, screener, signals, signals_rules, signals_triage, symbol_groups, vnbroker
+from .views import dataops, matrix, overview, prefetch, screener, signals, signals_rules, signals_stream, signals_triage, symbol_groups, vnbroker
 
 # Overview endpoints (12)
 urlpatterns = [
@@ -88,6 +88,7 @@ urlpatterns = [
     path('signals/jobs/status/', signals.SignalsJobStatusView.as_view(), name='soc_signals_jobs_status'),
     path('signals/performance-metrics/', signals.SignalsPerformanceMetricsView.as_view(), name='soc_signals_metrics'),
     path('signals/feed/export/', signals.SignalsFeedExportView.as_view(), name='soc_signals_feed_export'),
+    path('signals/stream/', signals_stream.SignalsStreamView.as_view(), name='soc_signals_stream'),
     path('signals/deliveries/', signals_triage.SignalsDeliveriesView.as_view(), name='soc_signals_deliveries'),
     path('signals/deliveries/mute/', signals_triage.SignalsDeliveryMuteView.as_view(), name='soc_signals_delivery_mute'),
     path('signals/deliveries/<uuid:delivery_id>/seen/', signals_triage.SignalsDeliverySeenView.as_view(), name='soc_signals_delivery_seen'),

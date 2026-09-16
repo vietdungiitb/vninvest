@@ -4,7 +4,7 @@
 > **Benchmark**: Bloomberg alerts / Datadog Monitors (ack–mute–escalate) / Grafana OnCall (ack/resolve/silence) / PagerDuty / TradingView webhooks
 > **Nguyên tắc**: Không đổi contract BE hiện hữu (chỉ **thêm** fields/params optional); FE theo BE canonical; mỗi work-item có nghiệm thu + tests; sau mỗi item `tsc` + test file; cuối PR `build + lint + i18n:scan`.
 >
-> **Status**: P0 ✅ · P1 ✅ · P2a ✅ (Entry 104–106) · **P2b ✅ (Entry 107–108 — W2.2 triage + W2.3 rules, verify 2026-09-16)** · P2c ⏸ SSE (epic riêng).
+> **Status**: P0 ✅ · P1 ✅ · P2a ✅ (Entry 104–106) · **P2b ✅ (Entry 107–108 — W2.2 triage + W2.3 rules, verify 2026-09-16)** · **P2c ✅ (Entry 109 — W2.1-long SSE realtime, verify 2026-09-16)**.
 
 ---
 
@@ -127,7 +127,7 @@ P0: `feed_error/materialization_error` (tái dùng pattern), `job_polling/job_ti
 
 ## Thứ tự + ước lượng
 
-P0 (1.5d): W0.1 → W0.2 → W0.3 → W0.4 → gates → ledger. P1 (4d): W1.1 → W1.3 → W1.4 → W1.2 → W1.5 → gates → ledger. P2a (2d, ✅ Entry 104-106): W2.4 → W2.1 (poll-diff) → W2.5 export. **P2b (✅ Entry 107-108)**: W2.2 ack/mute → W2.3 rule management → gates → ledger. **P2c (epic riêng, 4–5d, next)**: SSE stream BE → useSignalStream FE → fallback poll → gates → ledger.
+P0 (1.5d): W0.1 → W0.2 → W0.3 → W0.4 → gates → ledger. P1 (4d): W1.1 → W1.3 → W1.4 → W1.2 → W1.5 → gates → ledger. P2a (2d, ✅ Entry 104-106): W2.4 → W2.1 (poll-diff) → W2.5 export. **P2b (✅ Entry 107-108)**: W2.2 ack/mute → W2.3 rule management → gates → ledger. **P2c (✅ Entry 109, 2d)**: SSE stream BE → useSignalStream FE → fallback poll → gates → ledger.
 
 ## Không làm (có lý do)
 

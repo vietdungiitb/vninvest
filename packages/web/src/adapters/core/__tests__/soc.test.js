@@ -392,6 +392,13 @@ describe("SOC adapter", () => {
         reason: "inaccurate",
       });
     });
+
+    it("P2c SSE: getSocSignalStreamUrl builds path with query", () => {
+      expect(soc.getSocSignalStreamUrl({ type: "whale", symbol: "VCI" })).toBe(
+        "/operator/soc/signals/stream/?type=whale&symbol=VCI",
+      );
+      expect(soc.getSocSignalStreamUrl({})).toBe("/operator/soc/signals/stream/");
+    });
   });
 
   // ─── Screener ────────────────────────────────────────────────────────────

@@ -1,9 +1,10 @@
-import { createElement, useEffect, useState, useMemo, useRef, type ReactNode } from "react";
+import { createElement, useCallback, useEffect, useState, useMemo, useRef, type ReactNode } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { toneColor, statusColor as socStatusColor } from "./socStatusColors.js";
 import { formatLastCheck } from "./socTime.js";
 import { LucideIcon } from "../ui/lucide-icon.js";
+import { useSignalStream } from "../../hooks/useSignalStream.js";
 import styles from "./soc.module.css";
 
 interface RecentSignal {
@@ -392,6 +393,65 @@ export function SocSignalsPanel() {
   const [ruleMsg, setRuleMsg] = useState("");
   const [feedbackBusy, setFeedbackBusy] = useState("");
 
+  // P2c SSE: realtime stream state
+  const [isDocVisible, setIsDocVisible] = useState(typeof document !== "undefined" ? !document.hidden : true);
+  const streamQuery = useMemo(() => ({
+    type: typeFilter !== "all" ? typeFilter : undefined,
+    symbol: debouncedSymbol || undefined,
+    severity: severityFilter !== "all" ? severityFilter : undefined,
+    direction: directionFilter !== "all" ? directionFilter : undefined,
+  }), [typeFilter, debouncedSymbol, severityFilter, directionFilter]);
+
+  const handleStreamSignal = useCallback((incoming: { id?: number; symbol: string; type: string; severity?: string; direction?: string; detected_at: string; title?: string; value?: number | string | null; metadata?: Record<string, unknown>; session_date?: string | null }) => {
+    const mapped: RecentSignal = {
+      id: incoming.id,
+      symbol: incoming.symbol,
+      type: incoming.type === "dark_flow" ? "dark_pool" : incoming.type === "signal" ? "screener" : incoming.type as RecentSignal["type"],
+      action: incoming.direction,
+      volume: incoming.value != null ? Number(incoming.value) : undefined,
+      detected_at: incoming.detected_at || "",
+      metadata: incoming.metadata ?? {},
+      session_date: incoming.session_date ?? null,
+      severity: incoming.severity,
+    };
+    if (!mapped.symbol || !mapped.detected_at) return;
+    const uid = signalUid(mapped);
+    // Avoid duplicate (đã có qua poll hoặc SSE trước đó) — check sync qua prevUidsRef
+    if (prevUidsRef.current.has(uid)) return;
+    prevUidsRef.current.add(uid);
+    setSignals((prev) => {
+      if (prev.some((s) => s.id != null && mapped.id != null ? s.id === mapped.id : signalUid(s) === uid)) return prev;
+      const next = [mapped, ...prev].sort((a, b) => {
+        const da = a.detected_at ? new Date(a.detected_at).getTime() : 0;
+        const db = b.detected_at ? new Date(b.detected_at).getTime() : 0;
+        return db - da;
+      });
+      return next;
+    });
+    // Reuse W2.1 highlight/badge logic cho SSE arrival (giữ đồng nhất với poll-diff)
+    setNewUids((prev) => prev.includes(uid) ? prev : [...prev, uid]);
+    setUnread((u) => u + 1);
+    // Optimistic metrics bump (giữ counts gần đúng khi SSE thay poll)
+    setMetrics((prev) => {
+      if (!prev) return prev;
+      const t = mapped.type;
+      return {
+        ...prev,
+        active_alerts: (prev.active_alerts ?? 0) + 1,
+        whale_alerts: t === "whale" ? (prev.whale_alerts ?? 0) + 1 : prev.whale_alerts,
+        dark_flow_alerts: t === "dark_pool" ? (prev.dark_flow_alerts ?? 0) + 1 : prev.dark_flow_alerts,
+        signal_alerts: t === "screener" ? (prev.signal_alerts ?? 0) + 1 : prev.signal_alerts,
+      };
+    });
+  }, []);
+
+  const streamEnabled = isDocVisible && typeof window !== "undefined" && typeof (window as unknown as { EventSource?: unknown }).EventSource !== "undefined";
+  const { status: streamStatus, reconnectAttempt: streamReconnectAttempt } = useSignalStream({
+    enabled: streamEnabled,
+    query: streamQuery,
+    onSignal: handleStreamSignal,
+  });
+
   const filterTypes = ["all", "whale", "dark_pool", "screener"];
 
   const mountedRef = useRef(true);
@@ -600,7 +660,9 @@ export function SocSignalsPanel() {
     restartInterval(15000);
     // W0.4: tab ẩn → pause poll nền, hiện → fetch ngay (pattern overview W13)
     const onVisibility = () => {
-      if (document.hidden) {
+      const hidden = document.hidden;
+      setIsDocVisible(!hidden);
+      if (hidden) {
         if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
       } else {
         void pollOnce();
@@ -622,6 +684,23 @@ export function SocSignalsPanel() {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // P2c: SSE mở → tạm dừng poll interval (tiết kiệm quota 120/min), fallback khi SSE lỗi
+  useEffect(() => {
+    if (streamStatus === "open") {
+      if (intervalRef.current !== null) {
+        window.clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    } else if (streamStatus === "error" || streamStatus === "closed") {
+      // Chỉ fallback khi tab đang hiển thị và chưa có interval
+      if (isDocVisible && intervalRef.current === null) {
+        void pollOnce();
+        restartInterval(intervalDelayRef.current);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [streamStatus, isDocVisible]);
 
   // W1.1: debounce 300ms cho ô tìm mã (pattern overview W9)
   useEffect(() => {
@@ -1904,8 +1983,29 @@ export function SocSignalsPanel() {
               // ── Left: Live signal feed ──────────────────────────────────
               createElement("div", { className: styles.feedCard },
                 createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" } },
-                  createElement("h3", { },
-                    t("soc.signals_overview.live_feed"),
+                  createElement("div", { style: { display: "flex", alignItems: "center", gap: "0.5rem" } },
+                    createElement("h3", { },
+                      t("soc.signals_overview.live_feed"),
+                    ),
+                    // P2c: SSE status dot — Live (green) / Connecting (amber) / Reconnecting (red) / Polling (muted)
+                    (() => {
+                      const dotColor = streamStatus === "open" ? "#10b981" : streamStatus === "connecting" ? "#f59e0b" : streamStatus === "error" ? "#ef4444" : "#94a3b8";
+                      const label = streamStatus === "open"
+                        ? t("soc.signals_overview.stream_live", { defaultValue: "Trực tiếp" })
+                        : streamStatus === "connecting"
+                          ? t("soc.signals_overview.stream_connecting", { defaultValue: "Đang kết nối..." })
+                          : streamStatus === "error"
+                            ? `${t("soc.signals_overview.stream_reconnecting", { defaultValue: "Đang kết nối lại..." })}${streamReconnectAttempt > 0 ? ` (${streamReconnectAttempt})` : ""}`
+                            : t("soc.signals_overview.stream_polling", { defaultValue: "Polling" });
+                      return createElement("span", {
+                        title: label,
+                        style: { display: "inline-flex", alignItems: "center", gap: "0.25rem", fontSize: "0.7rem", color: "var(--text-muted)", whiteSpace: "nowrap" },
+                        "aria-label": label,
+                      },
+                        createElement("span", { style: { width: "6px", height: "6px", borderRadius: "50%", background: dotColor, display: "inline-block", flexShrink: 0 } }),
+                        label,
+                      );
+                    })(),
                   ),
                   createElement("div", { style: { display: "flex", alignItems: "center", gap: "0.5rem" } },
                     unread > 0
