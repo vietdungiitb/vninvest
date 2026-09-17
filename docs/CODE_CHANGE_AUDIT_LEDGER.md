@@ -5,6 +5,24 @@
 
 ---
 
+## Entry 108: Phản biện `AUDIT_LICH_CHAY_SCHEDULER_20260917` — sai 3 claim, F-S02 sai nền; ROOT CAUSE THẬT = 5 PeriodicTask bị disable thủ công trong DB
+
+- **Date**: 2026-09-17
+- **Scope**: Tra cứu + điều tra runtime (KHÔNG sửa code). Audit "Lịch chạy dataops — F-S01..F-S05 + P0/P1/P2" chẩn đoán sai; reproduce-first tìm root cause thật.
+- **File phản biện**: `docs/AUDIT_PHAN_BIEN_SCHEDULER_20260917.md`. **File root cause**: `docs/ROOT_CAUSE_SCHEDULER_DATAOPS_20260917.md`.
+- **Root cause (bằng chứng docker + DB + log, không suy luận)**:
+  1. `docker logs core-beat` ~1h: dispatch đều mọi job (flush-pat 10s, outbox 30s, unified 2m, reconcile 5m, health 60s, screener), **0 lần** `queue-tier-scheduler-30s` / `ingest-price-board-60s` / `warm-intraday-5m` / `prefetch-shards`.
+  2. DB `django_celery_beat_periodictask` query trực tiếp: 5 job **`enabled=False`** — `market-data-queue-tier-scheduler-30s` (count 1528), `ingest-price-board-60s` (764), `warm-intraday-realtime-5m` (153), `schedule-realtime-prefetch-shards` (15277), `ingest-daily-prices-1705` (0, **đúng thiết kế** `settings.py:612` enabled=False). Các job khác enabled=True, last_run_at đầy đủ, date_changed liên tục (beat touch — không dùng để định ngày).
+  3. Beat dùng **DatabaseScheduler** (`entrypoint.sh:43`) → đọc DB, không đọc settings. Row disabled → không dispatch → `last_run_at` NULL → catalog `_freshness_state` `missing` (`scheduler_catalog.py:253-261`) → UI "Thiếu dữ liệu —".
+  4. Queue-tier có service_key → S04-ext đọc `ServiceRunLog.finished_at` cũ (09:35 UTC) → lag ~3h51m → "Quá hạn" (`scheduler_catalog.py:453-458`).
+  5. `grep enabled=False` src: chỉ `views/scheduler.py:486` (action endpoint ghi ConfigChangeAudit) + tests — KHÔNG có auto-disable; ConfigChangeAudit 0 dòng scheduler → **disable thủ công**, không audit trail.
+- **Verdict từng finding audit**: F-S01 hiện tượng đúng nhưng gốc rễ sai (không "scheduler đứng" — beat/worker SỐNG, chỉ job bị disable); F-S02 **SAI** (ingest-daily-1705 disabled by design; ingest-price-board disabled trong DB không phải code); F-S03 nửa đúng; **F-S04 ĐÚNG** (next_run_at chỉ interval, cron luôn "—"); F-S05 đúng sự kiện sai mức độ.
+- **Không làm (plan audit sai)**: JobActionButtons.tsx không tồn tại, capability run_now đã có sẵn (`scheduler_catalog.py:36`), SSE/retry/backoff không liên quan.
+- **Đề xuất (chưa thực thi)**: re-enable 4 job bằng SQL/UI (giữ nguyên ingest-daily-1705); mở rộng `sync_scheduler_queues` (`:15`) để auto tạo radius rows + sync enabled từ settings; alert khi job enabled=False kéo dài; F-S04 tính next-fire từ crontab.
+- **Next**: chờ user: (a) re-enable 4 job + verify freshness khôi phục, (b) hoặc implement D2/D3 nâng cấp.
+
+---
+
 ## Entry 107: P0 hotfix DataOps Monitor UI (audit `AUDIT_DATAOPS_GIAMSAT_UI_20260917`) — F-G01/G02/G03/F-V06
 
 - **Date**: 2026-09-17

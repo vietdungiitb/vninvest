@@ -64,7 +64,7 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
 
     createElement(
       "div",
-      { className: styles.metricGrid,  },
+      { className: styles.metricGrid, style: { gap: "1rem", marginBottom: "0.25rem" } },
       renderMetricCard(t("soc.dataops.anomaly_promotion_backlog"), promotionCount, promotionCount > 50 ? "var(--accent-amber)" : toneColor("success")),
       renderMetricCard(
         t("soc.dataops.anomaly_repair_age"),
@@ -87,10 +87,10 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
         ),
         createElement(
           "div",
-          { },
+          { className: styles.coverageTableWrap },
           createElement(
             "table",
-            { },
+            { className: styles.coverageTable },
             createElement(
               "thead",
               null,
@@ -138,10 +138,10 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
         ),
         createElement(
           "div",
-          { },
+          { className: styles.coverageTableWrap },
           createElement(
             "table",
-            { },
+            { className: styles.coverageTable },
             createElement(
               "thead",
               null,

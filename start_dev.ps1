@@ -10,8 +10,8 @@
       3. Kiểm tra drift hàng đợi Celery native
 
         Truy cập sau khi chạy:
-        - App:       http://localhost/operations-center
-        - Admin:     http://localhost/admin
+        - App:       http://localhost:8080/operations-center  (hoặc http://127.0.0.1:8080 — tránh wslrelay ::1)
+        - Admin:     http://localhost:8080/admin
         - API:       http://localhost:8001/core/v1/health
             - Mailpit:   http://localhost:8026 (MAILPIT_UI_PORT)
             - Core API log: docker compose logs -f core-api
@@ -359,8 +359,8 @@ Write-Host "============================================================" -Foreg
 Write-Host " Stack native đã sẵn sàng!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "  App        -> http://localhost/operations-center"
-Write-Host "  Admin      -> http://localhost/admin"
+Write-Host "  App        -> http://localhost:8080/operations-center  (http://127.0.0.1:8080 nếu localhost RESET)"
+Write-Host "  Admin      -> http://localhost:8080/admin"
 Write-Host "  API        -> http://localhost:8001/core/v1/health"
 Write-Host "  Mailpit    -> http://localhost:8026"
 Write-Host ""
@@ -386,12 +386,15 @@ try {
 }
 
 try {
-    $frontendResp = Invoke-WebRequest -Uri "http://localhost" -UseBasicParsing -TimeoutSec 15
+    $frontendResp = Invoke-WebRequest -Uri "http://127.0.0.1:8080" -UseBasicParsing -TimeoutSec 15
     if ($frontendResp.StatusCode -ge 200 -and $frontendResp.StatusCode -lt 500) {
         $frontendOk = $true
     }
 } catch {
-    $frontendOk = $false
+    try {
+        $frontendResp = Invoke-WebRequest -Uri "http://localhost:8080" -UseBasicParsing -TimeoutSec 15
+        if ($frontendResp.StatusCode -ge 200 -and $frontendResp.StatusCode -lt 500) { $frontendOk = $true }
+    } catch { $frontendOk = $false }
 }
 
 Write-Host ("  Core API health : " + ($(if ($backendOk) { "OK" } else { "FAIL" })))

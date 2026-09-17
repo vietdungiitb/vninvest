@@ -19,6 +19,9 @@ if [ "${ROLE}" = "api" ]; then
 
     echo "[entrypoint] Collecting static files..."
     python src/manage.py collectstatic --noinput --clear || true
+
+    echo "[entrypoint] Repairing beat schedule (re-enable 4 critical jobs)..."
+    python src/manage.py repair_beat_schedule || echo "[entrypoint] WARN: repair_beat_schedule failed, continuing"
 fi
 
 case "${ROLE}" in
@@ -37,6 +40,8 @@ case "${ROLE}" in
     exec celery -A vninvest_core worker --loglevel="${CELERY_LOG_LEVEL:-INFO}" --pool="${WORKER_POOL}" --concurrency="${WORKER_CONCURRENCY}" --queues="${WORKER_QUEUES}" --without-heartbeat --without-gossip --without-mingle
     ;;
   beat)
+    echo "[entrypoint] Repairing beat schedule (re-enable 4 critical jobs)..."
+    python src/manage.py repair_beat_schedule || echo "[entrypoint] WARN: repair_beat_schedule failed, continuing"
     echo "[entrypoint] Starting Celery beat..."
     exec celery -A vninvest_core beat \
         --loglevel="${CELERY_LOG_LEVEL:-INFO}" \

@@ -71,14 +71,14 @@ export function SocRetentionHealthPanel({ retentionHealth }: SocRetentionHealthP
     { className: styles.sectionCard },
     createElement(
       "div",
-      { },
+      { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.75rem", marginBottom: "0.25rem" } },
       createElement(
         "div",
-        null,
-        createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.retention_health")),
+        { style: { flex: 1, minWidth: 0 } },
+        createElement("div", { className: styles.sectionCardTitle, style: { marginBottom: "0.35rem" } }, t("soc.dataops.retention_health")),
         createElement(
           "p",
-          { },
+          { style: { margin: 0, color: "var(--text-secondary, #94a3b8)", fontSize: "0.82rem", lineHeight: "1.5" } },
           t("soc.dataops.retention_deleted_line", {
             deleted: retentionHealth.latest_run?.deleted_rows || 0,
             retained: retentionHealth.latest_run?.retained_rows || 0,
@@ -94,6 +94,8 @@ export function SocRetentionHealthPanel({ retentionHealth }: SocRetentionHealthP
             color: statusColors.text,
             fontSize: "0.7rem",
             fontWeight: 600,
+            whiteSpace: "nowrap" as const,
+            flexShrink: 0,
           },
         },
         statusColors.label
@@ -102,10 +104,10 @@ export function SocRetentionHealthPanel({ retentionHealth }: SocRetentionHealthP
 
     createElement(
       "div",
-      { className: styles.metricGrid,  },
+      { className: styles.metricGrid, style: { gap: "1rem", marginBottom: "0.25rem" } },
       createElement(
         "div",
-        { className: styles.metricCard },
+        { className: styles.metricCard, style: { padding: "0.85rem 1rem" } },
         createElement("div", { className: styles.metricLabel }, t("soc.dataops.retention_deleted")),
         createElement(
           "div",
@@ -115,7 +117,7 @@ export function SocRetentionHealthPanel({ retentionHealth }: SocRetentionHealthP
       ),
       createElement(
         "div",
-        { className: styles.metricCard },
+        { className: styles.metricCard, style: { padding: "0.85rem 1rem" } },
         createElement("div", { className: styles.metricLabel }, t("soc.dataops.retention_days")),
         createElement(
           "div",
@@ -127,17 +129,17 @@ export function SocRetentionHealthPanel({ retentionHealth }: SocRetentionHealthP
 
     createElement(
       "div",
-      { },
+      { style: { display: "flex", flexDirection: "column", gap: "0.45rem", lineHeight: "1.65", marginTop: "0.85rem", padding: "0.75rem", background: "rgba(15,23,42,0.22)", borderRadius: "8px", border: "1px solid rgba(80,120,168,0.10)" } },
       createElement(
         "p",
-        { },
+        { style: { margin: 0, color: "var(--text-secondary, #e2e8f0)", fontSize: "0.82rem", fontWeight: 500 } },
         t("soc.dataops.retention_policy_line", {
           days: retentionHealth.retention_days || 0,
         })
       ),
       createElement(
         "p",
-        { },
+        { style: { margin: 0, color: "var(--text-secondary, #cbd5e1)", fontSize: "0.80rem" } },
         t("soc.dataops.retention_trend_line", {
           delta: retentionDeletedDelta > 0 ? `+${retentionDeletedDelta}` : `${retentionDeletedDelta}`,
           average: (retentionTrend.average_deleted_rows || 0).toFixed(2),
@@ -145,7 +147,7 @@ export function SocRetentionHealthPanel({ retentionHealth }: SocRetentionHealthP
       ),
       createElement(
         "p",
-        { },
+        { style: { margin: 0, color: "var(--text-secondary, #cbd5e1)", fontSize: "0.80rem" } },
         t("soc.dataops.retention_retained_delta_line", {
           delta: retentionRetainedDelta > 0 ? `+${retentionRetainedDelta}` : `${retentionRetainedDelta}`,
         })
@@ -154,11 +156,11 @@ export function SocRetentionHealthPanel({ retentionHealth }: SocRetentionHealthP
 
     createElement(
       "div",
-      { },
+      { style: { display: "flex", flexDirection: "column", gap: "0.6rem", marginTop: "0.85rem", padding: "0.75rem", background: "rgba(15,23,42,0.18)", borderRadius: "8px", border: "1px solid rgba(80,120,168,0.08)" } },
       createElement(
         "div",
-        { },
-        createElement("p", { }, t("soc.dataops.retention_chart_title")),
+        { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem" } },
+        createElement("p", { style: { margin: 0, fontSize: "0.82rem", fontWeight: 600, color: "var(--text-primary, #f1f5f9)" } }, t("soc.dataops.retention_chart_title")),
         createElement(
           "span",
           {
@@ -176,6 +178,7 @@ export function SocRetentionHealthPanel({ retentionHealth }: SocRetentionHealthP
       createElement(
         "div",
         {
+            style: { display: "flex", alignItems: "flex-end", gap: "4px", height: "72px", padding: "0.5rem", background: "rgba(15,23,42,0.35)", borderRadius: "6px", border: "1px solid rgba(80,120,168,0.10)" },
           },
         retentionBars.map((historyPoint, index) => {
           const deletedRows = historyPoint.deleted_rows || 0;
