@@ -44,20 +44,26 @@ class RepairBeatScheduleTest(TestCase):
         self.assertEqual(pt.queue, "realtime_prefetch")
         self.assertIsNotNone(pt.interval)
 
-    def test_keep_ingest_daily_prices_disabled(self):
-        # Ensure it stays disabled even if someone enabled it
+    def test_ingest_daily_prices_manually_enabled_stays_enabled(self):
+        """Manual enable of ingest-daily-prices-1705 is NOT auto-disabled (by design — only 4 critical auto-enable)."""
         pt = PeriodicTask.objects.get(name="ingest-daily-prices-1705")
         original = pt.enabled
         pt.enabled = True
         pt.save(update_fields=["enabled"])
         call_command("repair_beat_schedule", stdout=StringIO())
-        # Command does not auto-disable, but should not re-enable if it was disabled by design?
-        # Actually it should leave it as is (enabled True) and warn, but our logic keeps it as is
-        # So we check it remains True (not auto-disabled)
+        # Code warns but leaves as is (enabled True) — does not auto-disable
         self.assertTrue(PeriodicTask.objects.get(name="ingest-daily-prices-1705").enabled)
-        # Restore
+        # Restore by design disabled
         pt.enabled = original
         pt.save(update_fields=["enabled"])
+        self.assertFalse(PeriodicTask.objects.get(name="ingest-daily-prices-1705").enabled)
+
+    def test_ingest_daily_prices_disabled_stays_disabled(self):
+        """By design disabled stays disabled after reconcile (no auto-enable)."""
+        pt = PeriodicTask.objects.get(name="ingest-daily-prices-1705")
+        self.assertFalse(pt.enabled)
+        call_command("repair_beat_schedule", stdout=StringIO())
+        self.assertFalse(PeriodicTask.objects.get(name="ingest-daily-prices-1705").enabled)
 
     def test_idempotent_second_run_no_changes(self):
         # Ensure DB is populated first

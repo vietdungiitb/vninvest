@@ -11,12 +11,12 @@
 - **Scope**: Thực thi `IMPLEMENTATION_PLAN_SCHEDULER_SELF_HEAL_20260917.md` 6 slices — chuyển `repair_beat_schedule` startup-only → tự phục hồi mọi hoàn cảnh + UI nói thật cron.
 - **Files (6 slices):**
   - S1 `repair_beat_schedule` v2 `beat_reconcile.py:1` shared `reconcile_beat_schedule(dry_run)` + `management/commands/repair_beat_schedule.py:17` `--dry-run` + `IntervalSchedule/CrontabSchedule` `get_or_create` `queue = options['queue']` (F-A1) + `CrontabSchedule` `timezone Asia/Ho_Chi_Minh` (F-A4) + `ingest-daily-prices-1705` giữ `False` (R1.3).
-  - S2 `service_ops/tasks.py:reconcile_beat_schedule_ssot` `queue manual_on_demand` `acks_late` + `settings.py:383` `reconcile-beat-schedule-5m` `300.0` + `logger.warning` khi fix.
+  - S2 `service_ops/tasks.py:reconcile_beat_schedule_ssot` `queue manual_on_demand` `acks_late` + `settings.py:523` `reconcile-beat-schedule-5m` `300.0` + `logger.warning` khi fix.
   - S3 `vninvest_core/management/commands/check_scheduler_queue_drift.py` `ENABLED_DRIFT`/`MISSING_ROW` + `docker-compose.dev.yml:396` giữ `5m` (không 30s).
-  - S4 `scheduler_catalog.py:483` `CrontabSchedule.schedule.remaining_estimate(last_run_at)` `timezone Asia/Ho_Chi_Minh` `last_run None → now+remaining` (F-A4) — `daily-backfill 17:05` hiện `Tomorrow 17:05` thay `—`.
+  - S4 `scheduler_catalog.py:498` `CrontabSchedule.schedule.remaining_estimate(timezone.now())` `timezone Asia/Ho_Chi_Minh` `now+remaining` (F-A4/F-CRIT-1) — `daily-backfill 17:05` hiện `2026-09-20 03:00 ICT` thay `—`/`2026-09-16` quá khứ.
   - S5 `SocSchedulerBoard.tsx:14` `trigger_type?: string` + `formatNextRun(dateStr, triggerType):90` `t("soc.scheduler.not_scheduled")` `cron_tooltip` `vi.js/en.js:1139` `not_scheduled/cron_tooltip`.
   - S6 Docs: `AUDIT_LICH_CHAY` ERRATA F-S02 sai + `ROOT_CAUSE` trạng thái `471bb89b` + `CODE_CHANGE_AUDIT_LEDGER` Entry này + `AGENTS.md` Progress.
-- **Gates:** `manage.py check` 0, `repair --dry-run` 0, `celery inspect registered` có `reconcile`, `test_scheduler_catalog` cron `next_run` ISO, `tsc 0` `build PASS` `grep not_scheduled vi/en` 1, `docker compose config` `5m`, `service_ops.tests.test_scheduler_catalog` 34 OK.
+- **Gates:** `manage.py check` 0, `repair --dry-run` 0, `celery inspect registered` có `reconcile` (qua `core-worker`), `test_scheduler_catalog` 34 OK + `test_repair_beat_schedule` 6 OK (5 +1 `test_ingest_daily_prices_disabled_stays_disabled` fix C4) + `test_drift_enabled_missing` 3 OK = **43 OK**, `tsc 0` `build PASS 42.72s` `grep not_scheduled vi/en` 1, `docker compose config` `5m`, `CrontabSchedule` 21 rows `Asia/Ho_Chi_Minh`.
 - **E2E:** `repair --dry-run` 0, disable 1 critical → `reconcile` 5m bật lại, UI `Lịch chạy` cron hiện ngày giờ, `Quá hạn` hết đỏ, `beat` `queue-tier 30s` `ingest 60s` đều đặn `30s/60s` (verified `docker logs beat --tail 50 | grep queue-tier`).
 - **Commit:** `471bb89b` → `7cf9b7a1` (Entry 107) → `471bb89b` self-heal 6 slices (this entry, hash sẽ cập nhật sau push) — worktree dirty 6 files, `git diff --stat` 6 files, `npx tsc --noEmit` 0, `npm run build` 42.72s.
 
