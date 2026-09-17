@@ -46,20 +46,37 @@ export function SocMatrixScrapeMonitor() {
         getSocMatrixMonitor: (cycleId?: string) => Promise<{ cycles?: MatrixCycle[] }>;
         getSocMatrixProviders: () => Promise<{ providers?: MatrixProvider[] }>;
       };
-      const [monitor, prov] = await Promise.all([
+      const results = await Promise.allSettled([
         adapter.getSocMatrixMonitor(),
         adapter.getSocMatrixProviders(),
       ]);
-      const nextCycles = monitor.cycles || [];
-      const nextProviders = prov.providers || [];
-      setCycles(nextCycles);
-      setProviders(nextProviders);
-      monitorCache.cycles = nextCycles;
-      monitorCache.providers = nextProviders;
-      monitorCache.lastFetched = Date.now();
-      setError("");
+      const monitorResult = results[0];
+      const provResult = results[1];
+      let hasError = false;
+      if (monitorResult.status === "fulfilled") {
+        const nextCycles = monitorResult.value.cycles || [];
+        setCycles(nextCycles);
+        monitorCache.cycles = nextCycles;
+        monitorCache.lastFetched = Date.now();
+      } else {
+        hasError = true;
+      }
+      if (provResult.status === "fulfilled") {
+        const nextProviders = (provResult.value as { providers?: MatrixProvider[] }).providers || [];
+        setProviders(nextProviders);
+        monitorCache.providers = nextProviders;
+        monitorCache.lastFetched = Date.now();
+      } else {
+        hasError = true;
+      }
+      if (hasError) {
+        const firstErr = monitorResult.status === "rejected" ? monitorResult.reason : (provResult as PromiseRejectedResult).reason;
+        setError(firstErr instanceof Error ? firstErr.message : t("soc.dataops.error_load_monitor"));
+      } else {
+        setError("");
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Cannot load matrix monitor data.");
+      setError(err instanceof Error ? err.message : t("soc.dataops.error_load_monitor"));
     } finally {
       if (!isSilent) setLoading(false);
     }
@@ -70,6 +87,7 @@ export function SocMatrixScrapeMonitor() {
     fetchData(hasCache);
     const interval = setInterval(() => fetchData(true), 10000);
     return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAbort = async (cycleId: string) => {
@@ -115,9 +133,14 @@ export function SocMatrixScrapeMonitor() {
     ),
     loading
       ? createElement("p", { className: styles.emptyState }, t("soc.matrix.loading"))
-      : error
-        ? createElement("div", { className: styles.inlineError }, error)
-        : createElement(
+      : createElement(
+            "div",
+            null,
+            error ? createElement("div", { className: styles.inlineError, style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" } },
+              createElement("span", null, error),
+              createElement("button", { className: styles.actionBtn, onClick: () => fetchData(false), style: { fontSize: "0.7rem" } }, t("soc.overview.retry"))
+            ) : null,
+            createElement(
             "div",
             { },
             createElement(
@@ -207,6 +230,7 @@ export function SocMatrixScrapeMonitor() {
                   ),
                 )
               : null,
+          ),
           ),
   );
 }

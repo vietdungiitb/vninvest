@@ -273,7 +273,14 @@ export function SocScreenerPanel() {
                       createElement("td", { }, rule.name),
                       createElement("td", { }, rule.type),
                       createElement("td", { },
-                        rule.enabled ? "\u2705" : "\u274C",
+                        createElement("span", {
+                          className: styles.statusBadge,
+                          style: {
+                            background: rule.enabled ? "rgba(16,185,129,0.12)" : "rgba(100,116,139,0.12)",
+                            color: rule.enabled ? "var(--soc-c-34d399)" : "var(--soc-c-94a3b8)",
+                            fontSize: "0.68rem",
+                          },
+                        }, rule.enabled ? "Bật" : "Tắt"),
                       ),
                       createElement("td", { },
                         createElement(

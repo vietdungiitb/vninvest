@@ -403,6 +403,10 @@ describe("SOC adapter", () => {
       );
       expect(soc.getSocSignalStreamUrl({})).toBe("/operator/soc/signals/stream/");
     });
+
+    it("P1-1 DataOps SSE: getSocDataOpsStreamUrl builds path", () => {
+      expect(soc.getSocDataOpsStreamUrl()).toBe("/operator/soc/dataops/stream/");
+    });
   });
 
   // ─── Screener ────────────────────────────────────────────────────────────

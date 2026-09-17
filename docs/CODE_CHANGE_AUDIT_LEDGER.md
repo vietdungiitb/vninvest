@@ -5,6 +5,27 @@
 
 ---
 
+## Entry 107: P0 hotfix DataOps Monitor UI (audit `AUDIT_DATAOPS_GIAMSAT_UI_20260917`) — F-G01/G02/G03/F-V06
+
+- **Date**: 2026-09-17
+- **Scope**: Phản biện độc lập + P0 hotfix từ audit `docs/AUDIT_DATAOPS_GIAMSAT_UI_20260917.md` (7 ảnh 15:00) — xoá `Queue tier chưa đặt tên` ×8 và raw keys `soc.matrix.title`/`anomaly_guard_desc`.
+- **Điểm phản biện quan trọng nhất — CONTRADICTION F-G01 (audit sai root cause)**:
+  - Audit tuyên bố "`vi.js:793` thiếu namespace `soc.matrix`" và đề xuất "thêm 5 keys `soc.matrix.*`". **Cả hai đều sai**.
+  - Thực tế: namespace `soc.matrix` TỒN TẠI đủ 9 key ở `vi.js:798-808`/`en.js:798-808` (consumer `SocMatrixScrapeMonitor.tsx`), nhưng bị **DUPLICATE KEY SHADOWING**: block `soc.matrix` thứ 2 (commit cũ `8c10e013` 2026-06-16) nằm ở `vi.js:1050-1093`/`en.js:1050-1093` với bộ key khác (monitor_title/active_cycle/idle_hint/job_*), **0 consumer** trong toàn repo (grep xác nhận). JS object literal → key sau (1050) đè key trước (798) → 6 key (`title/recent_cycles/no_cycles/abort/abort_confirm/cycle_started`) rơi vào fallback → render raw.
+- **Fix**:
+  1. **F-G01** — Xoá block duplicate `soc.matrix` dead tại `vi.js:1050-1093` + `en.js:1050-1093` → `soc.matrix` resolve về block 798 đủ 9 key. **0 key mới cần thêm** (ngược đề xuất audit "thêm 5 keys").
+  2. **F-G02** — Thêm 3 key thiếu thật: `anomaly_guard_desc`, `no_critical_gaps`, `no_hot_breach` vào `soc.dataops` (`vi.js`/`en.js`) — consumer `SocAnomalyGuardPanel.tsx:61,123,174`.
+  3. **F-G03** — `TIER_LABEL_KEYS` (`SocDataOpsMonitorSection.tsx:104-108`) map sai: `hot/warm/cold/recovery` → đổi thành `hot_user_demand/warm_liquid_market/cold_full_market/recovery_backlog` khớp BE `dataops_market_data.py:29-34`. i18n keys `tier_*` **đã có sẵn** (audit đề xuất thêm 4 keys mới: sai).
+  4. **F-V06** — starvation khi `seconds_since_last_progress == null` (BE `dataops_market_data.py:783` `is_starved = None or > threshold` → STARVED đỏ vĩnh viễn): FE `SocDataOpsMonitorSection.tsx` xử lý `neverRun` → badge xám "Chưa có lần chạy" (`starved_never_run` i18n mới VI/EN, ko đổi BE) + progress bar xám + hero count `starved_tiers` loại item null.
+- **Finder (độc lập)**:
+  - Audit F-G02 ghi nhầm consumer line `:702` (thật: `SocAnomalyGuardPanel.tsx:61,123,174`), F-G03 ghi "thêm 4 keys" (thật: đã có sẵn, chỉ đổi map).
+  - F-G04 (Reconnecting) chưa xác minh độc lập — giữ P1 ngoài scope hotfix.
+  - Test `soc-monitor.component.test.tsx:102` assert raw `soc.matrix.recent_cycles` (không có LangProvider → t() trả key) — tiếp tục pass, không cần sửa.
+- **Validation (thật)**: `npx tsc --noEmit` **0**; vitest `soc-monitor.component.test.tsx` **5/5 pass**; `npm run build` **PASS 37.40s** (chunk warning pre-existing). grep confirm chỉ còn **1** `matrix:` block mỗi locale.
+- **Next**: P1 polish theo audit G (b) Reconnecting/Live dot, (c) parity note, (d) gộp backlog hero — chờ backlog riêng.
+
+---
+
 ## Entry 106: Fix F-P2A-A (audit Entry 105) — poll-diff highlight cộng dồn qua nhiều poll
 
 - **Date**: 2026-09-16

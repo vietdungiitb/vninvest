@@ -221,7 +221,7 @@ def aggregate_api_call_rollup(self):
 
     batch = list(events_qs.values(
         'id', 'tenant_id', 'ip_address', 'metadata', 'occurred_at',
-        'resource_type', 'action', 'status_code',
+        'resource_type', 'action',
     )[:ROLLUP_BATCH_SIZE])
     if not batch:
         return {'status': 'ok', 'processed': 0, 'watermark': last_id}
@@ -260,7 +260,7 @@ def aggregate_api_call_rollup(self):
                     tenant_id=tenant_id,
                     occurred_at__gte=occ_start,
                     occurred_at__lt=occ_end,
-                ).values('ip_address', 'metadata', 'resource_type', 'action', 'status_code')
+                ).values('ip_address', 'metadata', 'resource_type', 'action')
 
                 agg = {}
                 for ev in window_events:

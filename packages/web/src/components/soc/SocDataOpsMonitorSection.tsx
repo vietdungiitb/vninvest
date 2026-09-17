@@ -1,4 +1,4 @@
-import { createElement, useEffect, useState } from "react";
+import { createElement, useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { useDataOps } from "./DataOpsContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
@@ -6,6 +6,7 @@ import { SocMatrixScrapeMonitor } from "./SocMatrixScrapeMonitor.js";
 import { SocParityGatesPanel } from "./SocParityGatesPanel.js";
 import { SocRetentionHealthPanel } from "./SocRetentionHealthPanel.js";
 import { SocAnomalyGuardPanel } from "./SocAnomalyGuardPanel.js";
+import { useDataOpsStream } from "../../hooks/useDataOpsStream.js";
 import { toneColor } from "./socStatusColors.js";
 import styles from "./soc.module.css";
 
@@ -14,6 +15,7 @@ interface QueueTier {
   symbol_count: number;
   cadence: string;
   active_symbols: string[];
+  examples: string[];
   [key: string]: unknown;
 }
 
@@ -100,10 +102,10 @@ const FRESHNESS_LABEL_KEYS: Record<string, string> = {
 };
 
 const TIER_LABEL_KEYS: Record<string, string> = {
-  hot: "soc.dataops.tier_hot_user_demand",
-  warm: "soc.dataops.tier_warm_liquid_market",
-  cold: "soc.dataops.tier_cold_full_market",
-  recovery: "soc.dataops.tier_recovery_backlog",
+  hot_user_demand: "soc.dataops.tier_hot_user_demand",
+  warm_liquid_market: "soc.dataops.tier_warm_liquid_market",
+  cold_full_market: "soc.dataops.tier_cold_full_market",
+  recovery_backlog: "soc.dataops.tier_recovery_backlog",
 };
 
 const ACTION_LABEL_KEYS: Record<string, string> = {
@@ -157,15 +159,23 @@ function renderPagination(page: number, hasMore: boolean, onPrev: () => void, on
 export function SocDataOpsMonitorSection() {
   const { t } = useI18n();
   const { state, actions } = useDataOps();
-  const { coverage: rawCoverage, loading } = state;
-  const coverage = rawCoverage as CoverageData | null;
+  const { coverage: rawCoverage, loading, errors } = state as unknown as { coverage: CoverageData | null; loading: Record<string, boolean>; errors: Record<string, string | null> };
+  const [streamCoverage, setStreamCoverage] = useState<CoverageData | null>(null);
+  const coverage = (streamCoverage || rawCoverage) as CoverageData | null;
+  const coverageContextError = (errors as Record<string, string | null>)?.coverage || null;
   const [queueTiers, setQueueTiers] = useState<QueueTier[]>([]);
   const [observability, setObservability] = useState<ObservabilityData | null>(null);
-  const [error, setError] = useState("");
+  const [queueTiersError, setQueueTiersError] = useState("");
+  const [observabilityError, setObservabilityError] = useState("");
   const [gapsPage, setGapsPage] = useState(1);
-  const [matrixExpanded, setMatrixExpanded] = useState(false);
+  const [gapsDatasetFilter, setGapsDatasetFilter] = useState("all");
+  const [gapsFreshnessFilter, setGapsFreshnessFilter] = useState("all");
+  const [matrixExpanded, setMatrixExpanded] = useState(true);
   const [exportingAudits, setExportingAudits] = useState(false);
   const [exportingRuns, setExportingRuns] = useState(false);
+  const [streamStatusLabel, setStreamStatusLabel] = useState("");
+  const [isDocVisible, setIsDocVisible] = useState(typeof document !== "undefined" ? !document.hidden : true);
+  const streamOpenRef = useRef(false);
 
   const triggerCsvDownload = (rows: Array<Record<string, unknown>>, columns: Array<{ key: string; label: string }>, filename: string) => {
     const headers = columns.map((c) => `"${c.label.replace(/"/g, '""')}"`).join(",");
@@ -197,7 +207,7 @@ export function SocDataOpsMonitorSection() {
       const adapter = defaultCoreApiAdapter as unknown as {
         exportSocConfigAudits: (params?: Record<string, unknown>) => Promise<Array<Record<string, unknown>>>;
       };
-      const rows = await adapter.exportSocConfigAudits();
+      const rows = await adapter.exportSocConfigAudits({ service_key: "backfill_daily_prices", limit: 5000 });
       const dateStr = new Date().toISOString().split("T")[0];
       triggerCsvDownload(rows, [
         { key: "service_key", label: t("soc.export.col_service") },
@@ -208,8 +218,9 @@ export function SocDataOpsMonitorSection() {
         { key: "timestamp", label: t("soc.export.col_timestamp") },
         { key: "request_id", label: t("soc.export.col_request_id") },
       ], `soc-config-audits-${dateStr}.csv`);
+      setObservabilityError("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("soc.export.error_failed"));
+      setObservabilityError(err instanceof Error ? err.message : t("soc.export.error_failed"));
     } finally {
       setExportingAudits(false);
     }
@@ -221,7 +232,7 @@ export function SocDataOpsMonitorSection() {
       const adapter = defaultCoreApiAdapter as unknown as {
         exportSocRunLogs: (params?: Record<string, unknown>) => Promise<Array<Record<string, unknown>>>;
       };
-      const rows = await adapter.exportSocRunLogs();
+      const rows = await adapter.exportSocRunLogs({ service_key: "backfill_daily_prices", limit: 5000 });
       const dateStr = new Date().toISOString().split("T")[0];
       triggerCsvDownload(rows, [
         { key: "service_key", label: t("soc.export.col_service") },
@@ -234,32 +245,98 @@ export function SocDataOpsMonitorSection() {
         { key: "error_detail", label: t("soc.export.col_error") },
       ], `soc-run-logs-${dateStr}.csv`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("soc.export.error_failed"));
+      setObservabilityError(err instanceof Error ? err.message : t("soc.export.error_failed"));
     } finally {
       setExportingRuns(false);
     }
   };
 
+  const fetchQueueTiers = async (isSilent = false) => {
+    try {
+      const adapter = defaultCoreApiAdapter as unknown as {
+        getSocDataOpsQueueTiers: () => Promise<{ tiers?: QueueTier[] }>;
+      };
+      const tiers = await adapter.getSocDataOpsQueueTiers();
+      setQueueTiers(tiers.tiers || []);
+      setQueueTiersError("");
+    } catch (err) {
+      if (!isSilent) setQueueTiersError(err instanceof Error ? err.message : t("soc.dataops.error_load_queue_tiers"));
+    }
+  };
+
+  const fetchObservability = async (isSilent = false) => {
+    try {
+      const adapter = defaultCoreApiAdapter as unknown as {
+        getSocDataOpsObservability: () => Promise<ObservabilityData>;
+      };
+      const obs = await adapter.getSocDataOpsObservability();
+      setObservability(obs);
+      setObservabilityError("");
+    } catch (err) {
+      if (!isSilent) setObservabilityError(err instanceof Error ? err.message : t("soc.dataops.error_load_monitor"));
+    }
+  };
+
+  const retryQueueTiers = () => fetchQueueTiers(false);
+  const retryObservability = () => {
+    fetchObservability(false);
+    actions.refreshCoverage();
+  };
+
+  const handleStreamSnapshot = useCallback((snap: import("../../hooks/useDataOpsStream.js").DataOpsStreamSnapshot) => {
+    if ((snap as unknown as { observability: ObservabilityData }).observability) {
+      setObservability((snap as unknown as { observability: ObservabilityData }).observability);
+      setObservabilityError("");
+    }
+    if ((snap as unknown as { coverage: CoverageData }).coverage) {
+      setStreamCoverage((snap as unknown as { coverage: CoverageData }).coverage);
+    }
+    if ((snap as unknown as { queue_tiers: { tiers: QueueTier[] } }).queue_tiers?.tiers) {
+      setQueueTiers((snap as unknown as { queue_tiers: { tiers: QueueTier[] } }).queue_tiers.tiers);
+      setQueueTiersError("");
+    }
+  }, []);
+
+  const streamEnabled = isDocVisible;
+  useDataOpsStream({
+    enabled: streamEnabled,
+    onSnapshot: handleStreamSnapshot as unknown as (snap: import("../../hooks/useDataOpsStream.js").DataOpsStreamSnapshot) => void,
+    onStatusChange: useCallback((s: string) => {
+      streamOpenRef.current = s === "open";
+      if (s === "open") setStreamStatusLabel("Live");
+      else if (s === "connecting") setStreamStatusLabel("Connecting");
+      else if (s === "error") setStreamStatusLabel("Reconnecting");
+      else setStreamStatusLabel("Polling");
+    }, []),
+  });
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const adapter = defaultCoreApiAdapter as unknown as {
-          getSocDataOpsQueueTiers: () => Promise<{ tiers?: QueueTier[] }>;
-          getSocDataOpsObservability: () => Promise<ObservabilityData>;
-        };
-        const [tiers, obs] = await Promise.all([
-          adapter.getSocDataOpsQueueTiers(),
-          adapter.getSocDataOpsObservability(),
-        ]);
-        setQueueTiers(tiers.tiers || []);
-        setObservability(obs);
-        actions.refreshCoverage();
-        setError("");
-      } catch (err) {
-        setError(err instanceof Error ? err.message : t("soc.dataops.error_load_monitor"));
-      }
+    const onVis = () => setIsDocVisible(!document.hidden);
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const fetchData = async (isSilent = false) => {
+      if (streamOpenRef.current) return;
+      await Promise.allSettled([fetchQueueTiers(isSilent), fetchObservability(isSilent)]);
+      if (!isSilent) actions.refreshCoverage();
     };
-    fetchData();
+    fetchData(false);
+    const jitter = Math.random() * 3000;
+    interval = setInterval(() => {
+      if (document.hidden || streamOpenRef.current) return;
+      fetchData(true);
+    }, 30000 + jitter);
+    const onVisibility = () => {
+      if (!document.hidden && !streamOpenRef.current) fetchData(true);
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      if (interval) clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -356,8 +433,21 @@ export function SocDataOpsMonitorSection() {
   return createElement(
     "div",
     { },
-    error ? createElement("div", { className: styles.inlineError }, error) : null,
+    queueTiersError ? createElement("div", { className: styles.inlineError, style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem" } },
+      createElement("span", null, queueTiersError),
+      createElement("button", { className: styles.actionBtn, onClick: retryQueueTiers, style: { fontSize: "0.7rem" } }, t("soc.overview.retry"))
+    ) : null,
+    observabilityError ? createElement("div", { className: styles.inlineError, style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem", marginTop: queueTiersError ? "0.5rem" : undefined } },
+      createElement("span", null, observabilityError),
+      createElement("button", { className: styles.actionBtn, onClick: retryObservability, style: { fontSize: "0.7rem" } }, t("soc.overview.retry"))
+    ) : null,
     renderActiveRunBanner(),
+
+    // Stream status indicator (Live/Polling) — realtime <5s vs poll 30s
+    streamStatusLabel ? createElement("div", { style: { display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.68rem", color: "var(--text-muted)", marginBottom: "0.5rem" } },
+      createElement("span", { style: { width: "6px", height: "6px", borderRadius: "999px", background: streamStatusLabel === "Live" ? "var(--soc-c-34d399)" : streamStatusLabel === "Connecting" ? "var(--soc-c-fbbf24)" : "var(--soc-c-94a3b8)", display: "inline-block" } }),
+      createElement("span", null, streamStatusLabel === "Live" ? `${t("soc.dataops.stream_live") || "Live"} · ${t("soc.dataops.stream_realtime") || "Realtime 5s"}` : streamStatusLabel)
+    ) : null,
 
     // Matrix Monitor Section
     createElement(
@@ -379,6 +469,14 @@ export function SocDataOpsMonitorSection() {
       ),
       matrixExpanded ? createElement(SocMatrixScrapeMonitor) : null
     ),
+
+    // Hero 4 — commercial (Backlog | Fail 1h | Fail 24h | Starved)
+    observability ? createElement("div", { className: styles.metricGrid, style: { marginBottom: "1rem" } },
+      renderMetricCard((t as unknown as (k: string, o?: Record<string, unknown>) => string)("soc.dataops.backlog_total", { defaultValue: "Backlog" }), String((observability.backlog?.by_dataset || []).reduce((s: number, r: { backlog_count: number }) => s + (r.backlog_count || 0), 0)), toneColor("warning")),
+      renderMetricCard(t("soc.dataops.fail_rate_1h"), oneHourWindow ? `${(oneHourData.fail_rate_pct || 0).toFixed(1)}%` : "—", oneHourWindow && (oneHourData.fail_rate_pct || 0) > 10 ? toneColor("danger") : toneColor("success")),
+      renderMetricCard(t("soc.dataops.fail_rate_24h"), twentyFourHourWindow ? `${(twentyFourHourData.fail_rate_pct || 0).toFixed(1)}%` : "—", twentyFourHourWindow && (twentyFourHourData.fail_rate_pct || 0) > 5 ? toneColor("warning") : toneColor("success")),
+      renderMetricCard((t as unknown as (k: string, o?: Record<string, unknown>) => string)("soc.dataops.starved_tiers", { defaultValue: "Starved tiers" }), String((observability.starvation || []).filter((s) => s.is_starved && s.seconds_since_last_progress != null).length), (observability.starvation || []).some((s) => s.is_starved && s.seconds_since_last_progress != null) ? toneColor("danger") : toneColor("success")),
+    ) : null,
 
     // Observability Section
     createElement(
@@ -504,36 +602,55 @@ export function SocDataOpsMonitorSection() {
                   { },
                   (observability.starvation || []).map((item) => {
                     const isStarved = !!item.is_starved;
+                    const neverRun = item.seconds_since_last_progress == null;
+                    const pct = item.seconds_since_last_progress != null ? Math.min((item.seconds_since_last_progress / Math.max(item.threshold_seconds,1))*100, 100) : 0;
+                    const badgeLabel = neverRun
+                      ? t("soc.dataops.starved_never_run")
+                      : isStarved ? t("soc.dataops.starved_yes") : t("soc.dataops.starved_no");
+                    const badgeColor = neverRun
+                      ? "var(--text-muted)"
+                      : isStarved ? toneColor("danger") : toneColor("success");
+                    const badgeBg = neverRun
+                      ? "rgba(148, 163, 184, 0.15)"
+                      : isStarved ? "rgba(239, 68, 68, 0.15)" : "rgba(16, 185, 129, 0.15)";
                     return createElement(
                       "div",
                       {
                         key: item.tier,
+                        style: { display: "flex", flexDirection: "column", gap: "0.35rem", padding: "0.6rem", border: "1px solid var(--border-default, rgba(80,120,168,0.12))", borderRadius: "8px", background: "rgba(15,23,42,0.2)" },
                         },
                       createElement(
                         "div",
-                        null,
-                        createElement("div", { }, t(TIER_LABEL_KEYS[item.tier] || "soc.dataops.unknown_tier")),
+                        { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem" } },
                         createElement(
                           "div",
-                          { },
-                          t("soc.dataops.starvation_last_progress_seconds", {
-                            seconds: item.seconds_since_last_progress != null ? String(item.seconds_since_last_progress) : "-",
-                            threshold: item.threshold_seconds,
-                          })
+                          null,
+                          createElement("div", { style: { fontWeight: 600, fontSize: "0.78rem" } }, t(TIER_LABEL_KEYS[item.tier] || "soc.dataops.unknown_tier")),
+                          createElement(
+                            "div",
+                            { style: { fontSize: "0.68rem", color: "var(--text-muted)" } },
+                            t("soc.dataops.starvation_last_progress_seconds", {
+                              seconds: item.seconds_since_last_progress != null ? String(item.seconds_since_last_progress) : "-",
+                              threshold: item.threshold_seconds,
+                            })
+                          )
+                        ),
+                        createElement(
+                          "span",
+                          {
+                            className: styles.statusBadge,
+                            style: {
+                              background: badgeBg,
+                              color: badgeColor,
+                              fontSize: "0.6rem",
+                              fontWeight: 600,
+                            },
+                          },
+                          badgeLabel
                         )
                       ),
-                      createElement(
-                        "span",
-                        {
-                          className: styles.statusBadge,
-                          style: {
-                            background: isStarved ? "rgba(239, 68, 68, 0.15)" : "rgba(16, 185, 129, 0.15)",
-                            color: isStarved ? toneColor("danger") : toneColor("success"),
-                            fontSize: "0.6rem",
-                            fontWeight: 600,
-                          },
-                        },
-                        isStarved ? t("soc.dataops.starved_yes") : t("soc.dataops.starved_no")
+                      createElement("div", { style: { height: "4px", borderRadius: "999px", background: "rgba(30,41,59,0.5)", overflow: "hidden" } },
+                        createElement("div", { style: { height: "100%", width: `${pct}%`, background: neverRun ? "var(--soc-c-94a3b8, #94a3b8)" : isStarved ? "var(--soc-c-f87171)" : "var(--soc-c-34d399)", transition: "width 0.3s ease" } })
                       )
                     );
                   }),
@@ -592,7 +709,12 @@ export function SocDataOpsMonitorSection() {
               )
             )
           )
-        : createElement("p", { className: styles.emptyState }, t("soc.dataops.no_observability"))
+        : observabilityError
+          ? createElement("div", { className: styles.inlineError, style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem" } },
+              createElement("span", null, observabilityError),
+              createElement("button", { className: styles.actionBtn, onClick: retryObservability, style: { fontSize: "0.7rem" } }, t("soc.overview.retry"))
+            )
+          : createElement("p", { className: styles.emptyState }, t("soc.dataops.no_observability"))
     ),
 
     // Parity Gates Panel
@@ -633,6 +755,12 @@ export function SocDataOpsMonitorSection() {
           )
       ),
       createElement("p", { }, t("soc.dataops.coverage_description")),
+      coverageContextError
+        ? createElement("div", { className: styles.inlineError, style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" } },
+            createElement("span", null, coverageContextError),
+            createElement("button", { className: styles.actionBtn, onClick: () => actions.refreshCoverage(), style: { fontSize: "0.7rem" } }, t("soc.overview.retry"))
+          )
+        : null,
 
       Array.isArray(coverage?.datasets) && coverage.datasets.length > 0
         ? createElement(
@@ -677,9 +805,29 @@ export function SocDataOpsMonitorSection() {
                     createElement("td", { }, t(DATASET_LABEL_KEYS[ds.dataset] || "soc.dataops.dataset_unknown")),
                     COVERAGE_STATE_ORDER.map((stateKey) => {
                       const count = (ds as any)[stateKey] || 0;
+                      const ratio = total > 0 ? count / total : 0;
+                      // Color by freshness semantics + ratio (replaces hard-code count>100/20)
+                      const isBadState = stateKey === "missing" || stateKey === "error";
+                      const isWarnState = stateKey === "stale" || stateKey === "unknown";
+                      let bg: string;
+                      let col: string | undefined;
+                      if (count === 0) {
+                        bg = "transparent";
+                        col = undefined;
+                      } else if (isBadState) {
+                        bg = ratio > 0.3 ? "rgba(239,68,68,0.22)" : ratio > 0.05 ? "rgba(245,158,11,0.18)" : "rgba(239,68,68,0.08)";
+                        col = ratio > 0.2 ? "var(--soc-c-f87171)" : "var(--soc-c-fbbf24)";
+                      } else if (isWarnState) {
+                        bg = ratio > 0.2 ? "rgba(245,158,11,0.18)" : "rgba(245,158,11,0.06)";
+                        col = "var(--soc-c-fbbf24)";
+                      } else {
+                        // fresh/warm — higher ratio is good (green), but low count muted
+                        bg = ratio > 0.5 ? "rgba(34,211,238,0.14)" : ratio > 0.15 ? "rgba(52,211,153,0.12)" : "rgba(34,211,238,0.06)";
+                        col = "var(--soc-c-34d399)";
+                      }
                       return createElement(
                         "td",
-                        { key: stateKey, },
+                        { key: stateKey, title: total > 0 ? `${count} / ${total} (${(ratio * 100).toFixed(1)}%)` : undefined, style: { background: bg, color: count > 0 ? col : undefined, fontWeight: ratio > 0.2 ? 700 : 400, textAlign: "center" as const } },
                         count > 0 ? count.toLocaleString() : "—"
                       );
                     }),
@@ -693,12 +841,45 @@ export function SocDataOpsMonitorSection() {
         : createElement("p", { className: styles.emptyState }, t("soc.dataops.no_coverage_data"))
     ),
 
-    // Top Gaps Section (Paginated List)
+    // Top Gaps Section (Paginated List + filters)
     coverage?.top_gaps && coverage.top_gaps.length > 0
-      ? createElement(
+      ? (() => {
+          const filteredGaps = coverage.top_gaps.filter((g) => {
+            const dsMatch = gapsDatasetFilter === "all" || g.dataset === gapsDatasetFilter;
+            const freshMatch = gapsFreshnessFilter === "all" || g.freshness_state === gapsFreshnessFilter;
+            return dsMatch && freshMatch;
+          });
+          const hasFilter = gapsDatasetFilter !== "all" || gapsFreshnessFilter !== "all";
+          return createElement(
           "div",
           { className: styles.sectionCard },
           createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.coverage_gaps_title")),
+          createElement("div", { style: { display: "flex", gap: "0.5rem", marginBottom: "0.6rem", flexWrap: "wrap" as const, alignItems: "center" } },
+            createElement("select", {
+              value: gapsDatasetFilter,
+              onChange: (e: React.ChangeEvent<HTMLSelectElement>) => { setGapsDatasetFilter((e.target as HTMLSelectElement).value); setGapsPage(1); },
+              className: styles.actionBtn,
+              style: { fontSize: "0.7rem", padding: "0.3rem 0.5rem" },
+            },
+              createElement("option", { value: "all" }, t("soc.dataops.filter_all_datasets") || "All datasets"),
+              ...Array.from(new Set(coverage.top_gaps.map((g) => g.dataset))).map((ds) =>
+                createElement("option", { key: ds, value: ds }, t(DATASET_LABEL_KEYS[ds] || ds))
+              )
+            ),
+            createElement("select", {
+              value: gapsFreshnessFilter,
+              onChange: (e: React.ChangeEvent<HTMLSelectElement>) => { setGapsFreshnessFilter((e.target as HTMLSelectElement).value); setGapsPage(1); },
+              className: styles.actionBtn,
+              style: { fontSize: "0.7rem", padding: "0.3rem 0.5rem" },
+            },
+              createElement("option", { value: "all" }, t("soc.dataops.filter_all_freshness") || "All states"),
+              ...COVERAGE_STATE_ORDER.filter((s) => s !== "fresh" && s !== "warm").map((s) =>
+                createElement("option", { key: s, value: s }, t(FRESHNESS_LABEL_KEYS[s] || s))
+              )
+            ),
+            hasFilter ? createElement("button", { className: styles.actionBtn, onClick: () => { setGapsDatasetFilter("all"); setGapsFreshnessFilter("all"); setGapsPage(1); }, style: { fontSize: "0.65rem" } }, t("soc.actions.clear_filter") || "Clear") : null,
+            createElement("span", { style: { fontSize: "0.65rem", color: "var(--text-muted)", marginLeft: "auto" } }, `${filteredGaps.length} / ${coverage.top_gaps.length}`)
+          ),
           createElement(
             "div",
             { },
@@ -720,10 +901,12 @@ export function SocDataOpsMonitorSection() {
               createElement(
                 "tbody",
                 null,
-                coverage.top_gaps.slice((gapsPage - 1) * 20, gapsPage * 20).map((gap, i) =>
+                filteredGaps.length === 0
+                  ? createElement("tr", null, createElement("td", { colSpan: 4, style: { textAlign: "center" as const, color: "var(--text-muted)", fontSize: "0.72rem", padding: "0.8rem" } }, t("soc.dataops.no_coverage_data")))
+                  : filteredGaps.slice((gapsPage - 1) * 20, gapsPage * 20).map((gap, i) =>
                   createElement(
                     "tr",
-                    { key: i, },
+                    { key: `${gap.symbol}-${gap.dataset}-${i}`, },
                     createElement("td", { }, gap.symbol),
                     createElement("td", { }, t(DATASET_LABEL_KEYS[gap.dataset] || "soc.dataops.dataset_unknown")),
                     createElement(
@@ -752,16 +935,17 @@ export function SocDataOpsMonitorSection() {
               )
             )
           ),
-          coverage.top_gaps.length > 20
+          filteredGaps.length > 20
             ? renderPagination(
                 gapsPage,
-                gapsPage * 20 < coverage.top_gaps.length,
+                gapsPage * 20 < filteredGaps.length,
                 () => setGapsPage((p) => Math.max(1, p - 1)),
                 () => setGapsPage((p) => p + 1),
                 t
               )
             : null
-        )
+        );
+        })()
       : null,
 
     // Queue Tiers Section
@@ -786,11 +970,11 @@ export function SocDataOpsMonitorSection() {
                   { },
                   `${tier.symbol_count} ${t("soc.dataops.tier_symbols")} \u2022 Cadence: ${tier.cadence || "N/A"}`
                 ),
-                tier.active_symbols?.length > 0
+                ((tier as unknown as { examples?: string[] }).examples || tier.active_symbols || []).length > 0
                   ? createElement(
                       "div",
                       { },
-                      `${t("soc.dataops.tier_examples")}: ${tier.active_symbols.slice(0, 5).join(", ")}`
+                      `${t("soc.dataops.tier_examples")}: ${((tier as unknown as { examples?: string[] }).examples || tier.active_symbols || []).slice(0, 5).join(", ")}`
                     )
                   : null
               )

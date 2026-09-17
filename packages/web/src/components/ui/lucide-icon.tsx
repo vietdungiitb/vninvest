@@ -57,6 +57,7 @@ const iconMap: Record<string, ComponentType<React.SVGProps<SVGSVGElement>>> = {
   LineChart: Icons.LineChart,
   Layers: Icons.Layers,
   ClipboardList: Icons.ClipboardList,
+  AlertTriangle: Icons.AlertTriangle,
 };
 
 export function LucideIcon({ name, className = 'h-5 w-5' }: LucideIconProps) {

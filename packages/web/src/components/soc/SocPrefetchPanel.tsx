@@ -192,17 +192,20 @@ export function SocPrefetchPanel() {
                   createElement(
                     "div",
                     { },
-                    universeGroups.map((group) =>
-                      createElement(
+                    universeGroups.map((group) => {
+                      const active = selectedGroups.includes(group.id);
+                      return createElement(
                         "button",
                         {
                           key: group.id,
                           onClick: () => toggleGroup(group.id),
-                          className: `${styles.filterBtn} ${selectedGroups.includes(group.id) ? styles.filterBtnActive : styles.filterBtnInactive}`,
+                          className: `${styles.filterBtn} ${active ? styles.filterBtnActive : styles.filterBtnInactive}`,
+                          style: { display: "inline-flex", alignItems: "center", gap: "0.35rem" },
                         },
-                        `${selectedGroups.includes(group.id) ? "\u2705" : "\u2B1C"} ${group.name || group.id}`,
-                      ),
-                    ),
+                        active ? createElement("span", { style: { width: "8px", height: "8px", borderRadius: "50%", background: "var(--soc-c-34d399)", display: "inline-block" } }) : createElement("span", { style: { width: "8px", height: "8px", borderRadius: "50%", border: "1px solid var(--soc-c-94a3b8)", display: "inline-block" } }),
+                        group.name || group.id,
+                      );
+                    }),
                   ),
                   createElement("div", { },
                     t("soc.prefetch.groups_summary", { count: selectedGroups.length, total: universeGroups.length }),

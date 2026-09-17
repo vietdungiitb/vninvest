@@ -6,15 +6,13 @@
 
 Docker needs GitHub PAT to clone private vnbroker dependency during image build.
 
-**Option A: PowerShell (Recommended)**
+**Option A: PowerShell (Recommended) — use repo canonical entrypoint**
 ```powershell
 cd "c:\Mujoco Projects\vninvest"
-
-# Export token to current session
-$env:VNBROKER_GITHUB_TOKEN = "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"
-
-# Start full stack
-docker compose -f docker-compose.dev.yml --env-file compose.dev.env up -d --build
+.\start_dev.ps1                 # canonical: --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml
+# Hoặc thủ công (tương đương):
+# $env:VNBROKER_GITHUB_TOKEN = "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"
+# docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ```
 
 **Option B: Using Helper Script**
@@ -26,33 +24,35 @@ docker compose -f docker-compose.dev.yml --env-file compose.dev.env up -d --buil
 
 Check container status:
 ```powershell
-docker compose -f docker-compose.dev.yml ps
+docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml ps
 ```
 
 Follow logs:
 ```powershell
-docker compose -f docker-compose.dev.yml logs -f
+docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs -f
 ```
 
 Or specific service (e.g., core-api):
 ```powershell
-docker compose -f docker-compose.dev.yml logs -f core-api
+docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs -f core-api
 ```
 
-### 3. Expected Services
+### 3. Expected Services (saas-native — không còn backend legacy)
 
 Once fully started, you should see:
 
 ```
-NAME                               STATUS
-vninvest-dev-frontend             Up (healthy)
-vninvest-dev-backend-legacy        Up (healthy)
-vninvest-dev-core-api              Up (healthy)
-vninvest-dev-db                    Up (healthy)
-vninvest-dev-redis                 Up (healthy)
-vninvest-dev-core-worker           Up
-vninvest-dev-celery-worker         Up
-vninvest-dev-celery-beat           Up
+NAME                                      STATUS
+vninvest-dev-frontend                     Up (healthy) 0.0.0.0:80->80
+vninvest-dev-core-api                     Up (healthy) 127.0.0.1:8001->8100
+vninvest-dev-core-db                      Up (healthy) 127.0.0.1:5433->5432
+vninvest-dev-core-redis                   Up (healthy) 127.0.0.1:6380->6379
+vninvest-dev-mailpit                      Up             0.0.0.0:8026->8025, 0.0.0.0:1026->1025
+vninvest-dev-core-worker                  Up
+vninvest-dev-core-worker-realtime-*       Up
+vninvest-dev-core-worker-analytics        Up
+vninvest-dev-core-worker-screener         Up
+vninvest-dev-core-beat                    Up
 ...
 ```
 
@@ -61,95 +61,67 @@ vninvest-dev-celery-beat           Up
 Once stack is up:
 
 ```powershell
-# Frontend health
-curl http://localhost
+# Frontend — force IPv4 if localhost timeout via ::1
+curl http://127.0.0.1/                 # or http://localhost:80/
+curl http://127.0.0.1/api/health      # via nginx proxy to core-api
 
-# Backend legacy health
-curl http://localhost:8000/api/health/
+# Core API direct (dev mapping)
+curl http://127.0.0.1:8001/core/v1/health
 
-# Core API health
-curl http://localhost:8001/health/
+# Redis (service name core-redis, container vninvest-dev-core-redis)
+docker exec vninvest-dev-core-redis redis-cli ping
 
-# Redis
-docker exec vninvest-dev-redis redis-cli ping
-
-# PostgreSQL - verify both vninvest and core_db databases
-docker exec -it vninvest-dev-db psql -U postgres -d vninvest -c "SELECT 1"
-docker exec -it vninvest-dev-db psql -U postgres -d core_db -c "SELECT 1"
+# PostgreSQL — single DB vninvest_core (saas-native, không còn vninvest legacy)
+docker exec vninvest-dev-core-db psql -U vninvest -d vninvest_core -c "SELECT 1"
 ```
 
-### 4a. Dual Database Setup (core_db & vninvest)
+### 4a. Single Database (saas-native dev)
 
-As of P2-T01, the system uses **two PostgreSQL databases**:
-
-- **vninvest**: Legacy schema, used by backend (port 8000)
-- **core_db**: Core SaaS schema, exclusively used by core-api (port 8001)
+- **vninvest_core**: Single DB saas-native, used by core-api. `CORE_DATABASE_URL postgresql://vninvest:devpassword@core-db:5432/vninvest_core` (`docker-compose.dev.yml:75`, `compose.dev.env:10`).
 
 **Verification:**
 ```powershell
-# List all databases
-docker exec vninvest-dev-db psql -U postgres -l | grep -E "core_db|vninvest"
-
-# Should show:
-#  core_db    | postgres | UTF8     | C       | C            | 
-#  vninvest   | postgres | UTF8     | C       | C            |
-
-# Verify core-api is connected to core_db
-docker exec vninvest-dev-core-api python /app/src/manage.py shell -c \
-  "from django.db import connections; print('Connected to:', connections.databases['default']['NAME'])"
-
-# Should output: Connected to: core_db
+docker exec vninvest-dev-core-db psql -U vninvest -d vninvest_core -c "SELECT 1"
+docker exec vninvest-dev-core-db psql -U vninvest -l | Select-String vninvest_core
+docker exec vninvest-dev-core-api python src/manage.py shell -c "from django.db import connections; print(connections.databases['default']['NAME'])"
+# Should output: vninvest_core
 ```
 
-**Data Initialization:**
-- `core_db` is auto-created by Docker entrypoint script (`init-core-db.sql`)
-- Core tables (identity_access, commercial, user_workspace, etc.) are created via Django migrations
-- Historical data from vninvest is optionally copied via `scripts/copy_core_tables.sh` for testing/validation
-
-### 5. Setup Admin User & Test Auth
-
-Once Django migrations complete:
+### 5. Setup Admin User & Test Auth (saas-native)
 
 ```powershell
-cd backend
-$env:VNBROKER_GITHUB_TOKEN = "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"
-
-# Docker exec into backend container
-docker exec -it vninvest-dev-backend-legacy bash
-
-# Inside container:
-python setup_dev_auth.py   # Create admin + default tenant
+docker exec vninvest-dev-core-api python src/manage.py createsuperuser
+# hoặc seed dev data
+docker exec vninvest-dev-core-api python src/manage.py shell -c "from identity_access.models import CoreTenant; print(CoreTenant.objects.count())"
 ```
 
-### 6. Test API Endpoints
+### 6. Test API Endpoints (saas-native dev)
 
 ```powershell
-# Get auth token
-curl -X POST http://localhost:8000/api/auth/token/ `
-  -H "Content-Type: application/json" `
-  -d '{"username":"admin","password":"test@123456"}'
+# Core API health
+curl http://127.0.0.1:8001/core/v1/health
+curl http://127.0.0.1/api/health
 
-# Use token to fetch portfolios
-curl http://localhost:8000/api/portfolios/ `
-  -H "Authorization: Bearer YOUR_TOKEN_HERE"
+# Get auth token (saas-native)
+curl -X POST http://127.0.0.1:8001/core/v1/auth/login/ -H "Content-Type: application/json" -d '{"username":"admin","password":"test@123456"}'
 ```
 
 ## Troubleshooting
 
 ### Issue: "VNBROKER_GITHUB_TOKEN is missing a value"
 
-**Solution**: Export the token in your PowerShell session BEFORE running docker compose:
+**Solution**: Export the token in your PowerShell session BEFORE running docker compose (prefer `.\start_dev.ps1` which auto-uses `gh auth token`):
 
 ```powershell
 $env:VNBROKER_GITHUB_TOKEN = "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"
-docker compose -f docker-compose.dev.yml --env-file compose.dev.env up -d --build
+docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ```
 
 ### Issue: Core-API Build Fails
 
 Check logs:
 ```powershell
-docker compose -f docker-compose.dev.yml logs core-api
+docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs core-api
 ```
 
 Common reasons:
@@ -161,8 +133,8 @@ Common reasons:
 
 Check service logs:
 ```powershell
-docker compose -f docker-compose.dev.yml logs backend-legacy
-docker compose -f docker-compose.dev.yml logs core-api
+docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs core-api
+docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs core-worker
 ```
 
 Common issues:
@@ -170,22 +142,15 @@ Common issues:
 - Redis not ready
 - Port already in use
 
-### Issue: Core-API Cannot Connect to core_db
+### Issue: Core-API Cannot Connect to vninvest_core
 
-**Symptoms**: Core-API logs show `DatabaseError` or `FATAL: database "core_db" does not exist`
-
-**Root Cause**: Docker entrypoint script did not auto-create core_db on first stack start
+**Symptoms**: Core-API logs show `DatabaseError` or `FATAL: database "vninvest_core" does not exist`
 
 **Solution**:
 ```powershell
-# Manual database creation
-docker exec vninvest-dev-db psql -U postgres -c "CREATE DATABASE core_db;"
-
-# Verify
-docker exec vninvest-dev-db psql -U postgres -l | grep core_db
-
-# Restart core-api container
-docker compose -f docker-compose.dev.yml restart core-api
+docker exec vninvest-dev-core-db psql -U vninvest -d postgres -c "CREATE DATABASE vninvest_core OWNER vninvest;"
+docker exec vninvest-dev-core-db psql -U vninvest -l | Select-String vninvest_core
+docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml restart core-api
 ```
 
 **Prevention**: For next fresh stack:
@@ -193,41 +158,26 @@ docker compose -f docker-compose.dev.yml restart core-api
 2. Verify mount path is `/docker-entrypoint-initdb.d/01-init-core-db.sql` (leading 01- ensures execution order)
 3. Tear down and rebuild with `docker compose down -v` before next `up -d --build`
 
-### Issue: core_db Tables Empty or Missing Data
+### Issue: frontend http://localhost timeout nhưng http://127.0.0.1 OK
 
-**Scenario**: Migrations ran but tables have no data from vninvest
+**Root Cause**: Docker Desktop Windows NAT resolves `localhost` -> `::1` (IPv6) gây `CLOSE_WAIT`; nginx listen `80` vẫn OK nhưng host IPv6 path bị treo.
 
-**Optional Data Copy** (for dev/testing):
-```powershell
-# Copy historical data from vninvest to core_db (pg_dump approach)
-docker cp scripts/copy_core_tables.sh vninvest-dev-db:/tmp/copy_core_tables.sh
-docker exec vninvest-dev-db bash /tmp/copy_core_tables.sh
-
-# Verify copy succeeded
-docker exec vninvest-dev-db psql -U postgres -d core_db -c \
-  "SELECT COUNT(*) as total_records FROM 
-   (SELECT COUNT(*) as c FROM user_workspace_portfolio
-    UNION ALL SELECT COUNT(*) FROM user_workspace_watchlist
-    UNION ALL SELECT COUNT(*) FROM signal_intelligence_whalealertcanonical) t"
-```
-
-**Note**: Production deploys do NOT copy legacy data; core_db starts fresh per tenant isolation design.
+**Fix**: dùng `http://127.0.0.1/` hoặc `http://127.0.0.1:80/` thay `localhost`, hoặc đổi `FRONTEND_PORT` trong `compose.dev.env` sang `8080`.
 
 ### Clean Up Everything
 
 ```powershell
-docker compose -f docker-compose.dev.yml down -v
-docker system prune -f
-docker volume prune -f
+docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml down
+docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml down -v  # xóa volumes
 ```
 
-## Notes
+## Notes (saas-native)
 
-- **Frontend**: nginx:1.27-alpine (port 80)
-- **Backend Legacy**: python:3.11-slim (port 8000, auto-migrate on start)
-- **Core API**: python:3.13-slim (port 8001)
-- **Database**: PostgreSQL 15 (port 5432, internal only)
-- **Redis**: Redis 7 (port 6379, internal only)
-- **Workers**: Celery workers + beat scheduler
+- **Frontend**: nginx:1.27-alpine (`${FRONTEND_PORT:-80}:80`, `compose.dev.env:8`)
+- **Core API**: python:3.13-slim (`127.0.0.1:8001:8100` dev, `8100` prod)
+- **Database**: postgres:16-alpine (`127.0.0.1:5433:5432` dev)
+- **Redis**: redis:7-alpine (`127.0.0.1:6380:6379` dev, DB 3)
+- **Mailpit**: axllent/mailpit (`${MAILPIT_UI_PORT:-8026}:8025`, `${MAILPIT_SMTP_PORT:-1026}:1025`)
+- **Workers**: 7 dedicated queues (celery, enrichment_offhours, manual_on_demand, analytics_heavy, realtime_prefetch/stream, screener)
 
-All services are connected via internal Docker network. Frontend/Backend/Core API ports are exposed to host.
+All services on `vninvest-dev_vninvest_network`. Canonical start: `.\start_dev.ps1` (`--env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml`).

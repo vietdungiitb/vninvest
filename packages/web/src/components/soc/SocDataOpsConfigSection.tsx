@@ -50,31 +50,34 @@ function computeChangeSummary(before: RuntimeConfig, after: RuntimeConfig): stri
 
 function computeImpactWarnings(before: RuntimeConfig, after: RuntimeConfig): string[] {
   const warnings: string[] = [];
-  
-  if (before.decay_days !== undefined && after.decay_days !== undefined && after.decay_days !== before.decay_days) {
-    warnings.push(`Thay đổi số ngày phân rã (decay_days): ${before.decay_days} \u2192 ${after.decay_days}`);
-  }
-  if (before.parity_snapshot_retention_days !== undefined && after.parity_snapshot_retention_days !== undefined && after.parity_snapshot_retention_days !== before.parity_snapshot_retention_days) {
-    warnings.push(`Thay đổi ngày lưu trữ parity snapshot: ${before.parity_snapshot_retention_days} \u2192 ${after.parity_snapshot_retention_days}`);
-  }
-
-  const queues = ["hot_user_demand", "warm_liquid_market", "cold_full_market", "recovery_backlog"];
-  for (const q of queues) {
-    const bQ = before[q] as Record<string, unknown> | undefined;
-    const aQ = after[q] as Record<string, unknown> | undefined;
-    if (bQ && aQ) {
-      if (aQ.poll_interval_seconds !== undefined && bQ.poll_interval_seconds !== undefined && aQ.poll_interval_seconds !== bQ.poll_interval_seconds) {
-        warnings.push(`Thay đổi chu kỳ quét của ${q} (poll_interval_seconds): ${bQ.poll_interval_seconds}s \u2192 ${aQ.poll_interval_seconds}s`);
-      }
-      if (aQ.max_batch_size !== undefined && bQ.max_batch_size !== undefined && aQ.max_batch_size !== bQ.max_batch_size) {
-        warnings.push(`Thay đổi kích thước batch của ${q} (max_batch_size): ${bQ.max_batch_size} \u2192 ${aQ.max_batch_size}`);
-      }
-      if (aQ.max_dispatch_per_cycle !== undefined && bQ.max_dispatch_per_cycle !== undefined && aQ.max_dispatch_per_cycle !== bQ.max_dispatch_per_cycle) {
-        warnings.push(`Thay đổi số lượng phát hành của ${q} (max_dispatch_per_cycle): ${bQ.max_dispatch_per_cycle} \u2192 ${aQ.max_dispatch_per_cycle}`);
+  const allKeys = new Set([...Object.keys(before || {}), ...Object.keys(after || {})]);
+  const sensitiveKeys = new Set(["poll_interval_seconds", "max_batch_size", "max_dispatch_per_cycle", "decay_days", "parity_snapshot_retention_days", "retention_days"]);
+  for (const key of allKeys) {
+    const bVal = before?.[key];
+    const aVal = after?.[key];
+    const bStr = typeof bVal === "object" ? JSON.stringify(bVal) : String(bVal ?? "");
+    const aStr = typeof aVal === "object" ? JSON.stringify(aVal) : String(aVal ?? "");
+    if (bStr === aStr) continue;
+    // Top-level sensitive keys
+    if (sensitiveKeys.has(key)) {
+      warnings.push(`Thay đổi ${key}: ${String(bVal ?? "—").slice(0, 60)} → ${String(aVal ?? "—").slice(0, 60)}`);
+      continue;
+    }
+    // Queue-level keys (nested)
+    const bQ = before[key] as Record<string, unknown> | undefined;
+    const aQ = after[key] as Record<string, unknown> | undefined;
+    if (bQ && aQ && typeof bQ === "object" && typeof aQ === "object") {
+      for (const sk of sensitiveKeys) {
+        if (sk in bQ || sk in aQ) {
+          const bv = (bQ as Record<string, unknown>)[sk];
+          const av = (aQ as Record<string, unknown>)[sk];
+          if (String(bv) !== String(av) && (bv !== undefined || av !== undefined)) {
+            warnings.push(`Thay đổi ${key}.${sk}: ${String(bv ?? "—")} → ${String(av ?? "—")}`);
+          }
+        }
       }
     }
   }
-
   return warnings;
 }
 
@@ -96,32 +99,48 @@ export function SocDataOpsConfigSection() {
   const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
   const [auditHasMore, setAuditHasMore] = useState(false);
 
-  const fetchConfig = useCallback(async () => {
+  const fetchConfigOnly = useCallback(async () => {
     setLoading(true);
     try {
       const adapter = defaultCoreApiAdapter as unknown as {
         getSocDataOpsRuntimeConfig: () => Promise<RuntimeEnvelope>;
-        getSocDataOpsRuntimeConfigAudit: (page: number) => Promise<{ results?: AuditEntry[]; next?: string | null }>;
       };
-      const [envelopeData, auditData] = await Promise.all([
-        adapter.getSocDataOpsRuntimeConfig(),
-        adapter.getSocDataOpsRuntimeConfigAudit(auditPage),
-      ]);
+      const envelopeData = await adapter.getSocDataOpsRuntimeConfig();
       setEnvelope(envelopeData);
-      setEditConfig(JSON.stringify(envelopeData.config || {}, null, 2));
-      setAuditTrail(auditData.results || []);
-      setAuditHasMore(!!auditData.next);
+      setEditConfig((prev) => {
+        if (prev && prev.trim()) {
+          try { JSON.parse(prev); return prev; } catch { /* fallthrough */ }
+        }
+        return JSON.stringify(envelopeData.config || {}, null, 2);
+      });
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Cannot load config data.");
     } finally {
       setLoading(false);
     }
-  }, [auditPage]);
+  }, []);
+
+  const fetchAuditOnly = useCallback(async (page: number) => {
+    try {
+      const adapter = defaultCoreApiAdapter as unknown as {
+        getSocDataOpsRuntimeConfigAudit: (page: number) => Promise<{ results?: AuditEntry[]; next?: string | null }>;
+      };
+      const auditData = await adapter.getSocDataOpsRuntimeConfigAudit(page);
+      setAuditTrail(auditData.results || []);
+      setAuditHasMore(!!auditData.next);
+    } catch {
+      // keep previous audit data
+    }
+  }, []);
 
   useEffect(() => {
-    fetchConfig();
-  }, [fetchConfig]);
+    fetchConfigOnly();
+  }, [fetchConfigOnly]);
+
+  useEffect(() => {
+    fetchAuditOnly(auditPage);
+  }, [fetchAuditOnly, auditPage]);
 
   const handlePreview = async () => {
     try {

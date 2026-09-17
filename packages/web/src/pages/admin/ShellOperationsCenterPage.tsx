@@ -108,6 +108,13 @@ export function ShellOperationsCenterPage(_props: ShellOperationsCenterPageProps
       title: t("soc.pages.soc_page_title"),
       description: t(TAB_DESCRIPTIONS[activeTab] || TAB_DESCRIPTIONS.overview),
     },
+    createElement(
+      "div",
+      { style: { display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" } },
+      createElement("span", { style: { fontSize: "0.68rem", letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--accent-cyan, #22d3ee)" } }, "OPERATIONS CENTER"),
+      createElement("span", { style: { width: "6px", height: "6px", borderRadius: "50%", background: "#10b981", boxShadow: "0 0 0 4px rgba(16,185,129,0.15)", display: "inline-block" } }),
+      createElement("span", { style: { fontSize: "0.68rem", color: "var(--text-muted, #94a3b8)" } }, "LIVE"),
+    ),
     createElement(SocTabNavigation, {
       tabs: SOC_TABS,
       activeTab,

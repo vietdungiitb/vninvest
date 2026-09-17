@@ -336,9 +336,17 @@ class TenantQuotaMiddleware:
                 'auth_source': 'pat',
                 'duration_ms': int(duration_ms or 0),
             }
-            cache_client = getattr(cache, '_cache', None)
-            if cache_client is not None:
-                cache_client.rpush('pat_audit_queue', json.dumps(entry, default=str))
+            try:
+                redis_client = cache._cache.get_client(write=True)
+                redis_client.rpush('pat_audit_queue', json.dumps(entry, default=str))
+            except Exception:
+                # Fallback for LocMemCache in tests (no redis)
+                try:
+                    cache_client = getattr(cache, '_cache', None)
+                    if cache_client is not None and hasattr(cache_client, 'rpush'):
+                        cache_client.rpush('pat_audit_queue', json.dumps(entry, default=str))
+                except Exception:
+                    pass
         except Exception:
             logger.warning('TenantQuotaMiddleware: failed to enqueue PAT audit entry')
 

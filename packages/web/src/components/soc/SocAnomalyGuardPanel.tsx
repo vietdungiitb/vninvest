@@ -1,5 +1,6 @@
 import { createElement } from "react";
 import { useI18n } from "../../context/LangContext.js";
+import { LucideIcon } from "../ui/lucide-icon.js";
 import { toneColor } from "./socStatusColors.js";
 import styles from "./soc.module.css";
 
@@ -53,8 +54,9 @@ export function SocAnomalyGuardPanel({ anomalyGuard }: SocAnomalyGuardPanelProps
         null,
         createElement(
           "h3",
-          { className: styles.sectionCardTitle,  },
-          `⚠️ ${t("soc.dataops.anomaly_guard")}`
+          { className: styles.sectionCardTitle, style: { display: "flex", alignItems: "center", gap: "0.4rem" } },
+          createElement(LucideIcon, { name: "AlertTriangle", className: "h-4 w-4 text-amber-400" }),
+          t("soc.dataops.anomaly_guard")
         ),
         createElement("p", { }, t("soc.dataops.anomaly_guard_desc"))
       )

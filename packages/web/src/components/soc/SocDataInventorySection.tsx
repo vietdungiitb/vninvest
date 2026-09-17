@@ -10,6 +10,7 @@ interface QueueTierData {
   symbol_count: number;
   cadence: string;
   active_symbols: string[];
+  examples: string[];
   [key: string]: unknown;
 }
 
@@ -161,7 +162,7 @@ export function SocDataInventorySection() {
                         ),
                       ),
                     ),
-                    createElement("td", { style: { color: g.calendar_days != null && g.calendar_days < 30 ? "var(--color-warning-500, #fbbf24)" : "var(--text-muted, #94a3b8)", fontWeight: g.calendar_days != null && g.calendar_days < 30 ? 700 : 400 } },
+                    createElement("td", { style: { color: g.calendar_days != null && g.calendar_days < 30 ? "var(--color-warning-500, #fbbf24)" : "var(--text-muted, #94a3b8)", fontWeight: g.calendar_days != null && g.calendar_days < 30 ? 700 : 400 }, title: g.calendar_days != null && g.calendar_days < 30 ? t("soc.dataops.calendar_days_warning") : undefined },
                       g.calendar_days != null ? `${g.calendar_days.toLocaleString()} ngày${g.calendar_days < 30 ? ' \u26A0' : ''}` : t("soc.dataops.fallback_na"),
                     ),
                     createElement("td", { style: { fontWeight: 600 } }, g.total_rows.toLocaleString()),
@@ -180,6 +181,14 @@ export function SocDataInventorySection() {
       ? createElement("div", { className: styles.sectionCard },
           createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.queue_tiers")),
           createElement("div", { className: styles.inlineError }, queueTiersError),
+          createElement("button", {
+            className: styles.actionBtn,
+            onClick: () => {
+              setQueueTiersError(null);
+              setQueueTiersLoading(false);
+            },
+            style: { marginTop: "0.5rem" },
+          }, t("soc.overview.retry")),
         )
       : queueTiers.length > 0
         ? createElement("div", { className: styles.sectionCard },
@@ -210,13 +219,13 @@ export function SocDataInventorySection() {
                         createElement("div", { },
                           `${t("soc.dataops.label_cadence")} ${tier.cadence || t("soc.dataops.fallback_na")} \u2022 ${t("soc.dataops.label_active")} ${tier.symbol_count} ${t("soc.dataops.label_symbols")}`,
                         ),
-                        tier.active_symbols?.length > 0
+                        ((tier as unknown as { examples?: string[] }).examples || tier.active_symbols || []).length > 0
                           ? createElement("div", { },
-                              tier.active_symbols.slice(0, 10).map((sym) =>
+                              ((tier as unknown as { examples?: string[] }).examples || tier.active_symbols || []).slice(0, 10).map((sym) =>
                                 createElement("span", { key: sym, className: styles.statusBadge,  }, sym),
                               ),
-                              tier.active_symbols.length > 10
-                                ? createElement("span", { }, `+${tier.active_symbols.length - 10} ${t("soc.dataops.overflow_more")}`)
+                              ((tier as unknown as { examples?: string[] }).examples || tier.active_symbols || []).length > 10
+                                ? createElement("span", { }, `+${((tier as unknown as { examples?: string[] }).examples || tier.active_symbols || []).length - 10} ${t("soc.dataops.overflow_more")}`)
                                 : null,
                             )
                           : createElement("span", { }, t("soc.dataops.empty_examples")),

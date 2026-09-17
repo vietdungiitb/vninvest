@@ -79,6 +79,27 @@ def _build_market_data_write_denied_response(view: SOCBaseView, request) -> Resp
 
 def _get_request_symbols(request) -> list[str] | None:
     symbols = request.data.get('symbols')
+    if isinstance(symbols, list) and symbols:
+        return list(symbols)
+    # Support FE `symbol_group` (e.g. "vn100") — resolve to member symbols
+    # to avoid blast-radius fallback to entire universe when symbols=None
+    group = str(request.data.get('symbol_group') or '').strip()
+    if group:
+        try:
+            from market_data.vnbroker_adapter import fetch_symbol_group_members
+            members = fetch_symbol_group_members(group)
+            if members:
+                return list(members)
+        except Exception:
+            pass
+        # Also try cached symbol group members as fallback
+        try:
+            from service_ops.models import CustomSymbolGroup
+            cg = CustomSymbolGroup.objects.filter(group_id=group, is_active=True).first()
+            if cg and cg.symbols:
+                return list(cg.symbols)
+        except Exception:
+            pass
     return list(symbols) if isinstance(symbols, list) else None
 
 

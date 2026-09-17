@@ -6,16 +6,33 @@ import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { SocCustomGroupManager } from "./SocCustomGroupManager.js";
 import { SocOwnershipBadge } from "./SocOwnershipBadge.js";
 import { SocStatusBadge } from "./SocStatusBadge.js";
+import { LucideIcon } from "../ui/lucide-icon.js";
 import { useSymbolGroups } from "../../hooks/useSymbolGroups.js";
 import { CUSTOM_GROUP_KEY, DEFAULT_SYMBOL_GROUP } from "../../constants/marketGroups.js";
 import { validateDateRange } from "./socValidation.js";
+import { formatLastCheck } from "./socTime.js";
 import styles from "./soc.module.css";
 
 interface RunLogEntry {
   run_id: string;
-  dataset: string;
+  service_run_log_id?: number;
   status: string;
+  mode?: string;
+  reason?: string;
+  execution_mode?: string;
   started_at: string;
+  finished_at?: string | null;
+  duration_seconds?: number;
+  summary?: {
+    planned_items?: number;
+    skipped_items?: number;
+    inserted?: number;
+    updated?: number;
+    skipped_existing?: number;
+    failed?: number;
+    repaired_conflicts?: number;
+  };
+  dataset?: string;
   message?: string;
   planned?: number;
   inserted?: number;
@@ -50,7 +67,7 @@ const DATASETS_WITH_METADATA = [
   { key: "dark_flow", supported: false },
 ];
 
-const MODE_OPTIONS = ["missing_only", "force_refresh"];
+const MODE_OPTIONS = ["missing_only", "strict_fresh"];
 const EXEC_OPTIONS = ["async", "sync"];
 const PREVIEW_PAGE_SIZE = 8;
 
@@ -61,7 +78,7 @@ const adapter = defaultCoreApiAdapter as unknown as {
 };
 
 export function SocDataOpsOperationsSection() {
-  const { t } = useI18n();
+  const { t, localeTag } = useI18n() as unknown as { t: (k: string, o?: unknown) => string; localeTag: string };
   const { state, actions } = useDataOps();
   const { runs } = state;
 
@@ -81,6 +98,7 @@ export function SocDataOpsOperationsSection() {
   const [mode, setMode] = useState("missing_only");
   const [executionMode, setExecutionMode] = useState("async");
   const [dryRun, setDryRun] = useState(false);
+  const [forceRefresh, setForceRefresh] = useState(false);
   const [reason, setReason] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
@@ -97,7 +115,6 @@ export function SocDataOpsOperationsSection() {
 
   // Drawer Custom Group State
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isPreviewDrawerOpen, setIsPreviewDrawerOpen] = useState(false);
 
   const fetchRunLogs = useCallback(async (page: number, pageSize: number) => {
     setRunLogsLoading(true);
@@ -119,9 +136,8 @@ export function SocDataOpsOperationsSection() {
   };
 
   useEffect(() => {
-    actions.refreshRuns();
     fetchRunLogs(runLogsPage, runLogsPageSize);
-  }, [actions, runLogsPage, runLogsPageSize, fetchRunLogs]);
+  }, [runLogsPage, runLogsPageSize, fetchRunLogs]);
 
   const isCustom = selectedGroup === CUSTOM_GROUP_KEY;
 
@@ -131,13 +147,12 @@ export function SocDataOpsOperationsSection() {
       ? { symbols: customSymbols.split(/[\n,;]+/).map((s) => s.trim()).filter(Boolean) }
       : { symbol_group: selectedGroup }
     ),
-    date_from: dateFrom || undefined,
-    date_to: dateTo || undefined,
     mode,
-    dry_run: dryRun,
+    force_refresh: forceRefresh,
+    ...(dateTo ? { reference_trade_date: dateTo } : {}),
     execution_mode: executionMode,
     reason: reason.trim() || "ops_soc",
-  }), [selectedDatasets, isCustom, selectedGroup, customSymbols, dateFrom, dateTo, mode, dryRun, executionMode, reason]);
+  }), [selectedDatasets, isCustom, selectedGroup, customSymbols, dateTo, mode, forceRefresh, executionMode, reason]);
 
   const handlePreview = async () => {
     if (selectedDatasets.length === 0) {
@@ -159,7 +174,8 @@ export function SocDataOpsOperationsSection() {
     try {
       const result = await adapter.previewSocDataOpsPlanner(buildPayload());
       setPreview(result);
-      setIsPreviewDrawerOpen(true);
+      setPlannedExpanded(true);
+      setSkippedExpanded(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("soc.dataops.preview_failed"));
     } finally {
@@ -168,6 +184,10 @@ export function SocDataOpsOperationsSection() {
   };
 
   const handleRun = async () => {
+    if (dryRun) {
+      setError(t("soc.dataops.backfill_dry_run_blocked"));
+      return;
+    }
     if (selectedDatasets.length === 0) {
       setError(t("soc.dataops.backfill_dataset_required"));
       return;
@@ -267,6 +287,7 @@ export function SocDataOpsOperationsSection() {
                     cursor: ds.supported ? "pointer" : "not-allowed",
                     opacity: ds.supported ? 1 : 0.5,
                   },
+                  title: !ds.supported ? t(`soc.dataops.dataset_field_${ds.key}`) + " — " + t("soc.dataops.backfill_dataset_coming_soon") : t(`soc.dataops.dataset_field_${ds.key}`),
                 },
             createElement("input", {
               type: "checkbox",
@@ -410,13 +431,26 @@ export function SocDataOpsOperationsSection() {
 
   const renderDryRunCheckbox = () =>
     createElement(
-      "label",
-      { className: styles.opsDryRunRow, title: t("soc.dataops.backfill_dry_run_hint") },
-      createElement("input", {
-        type: "checkbox", checked: dryRun,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDryRun(e.target.checked),
-        }),
-      t("soc.dataops.backfill_dry_run"),
+      "div",
+      { style: { display: "flex", flexDirection: "column", gap: "0.4rem" } },
+      createElement(
+        "label",
+        { className: styles.opsDryRunRow, title: t("soc.dataops.backfill_dry_run_hint") },
+        createElement("input", {
+          type: "checkbox", checked: dryRun,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDryRun(e.target.checked),
+          }),
+        t("soc.dataops.backfill_dry_run"),
+      ),
+      createElement(
+        "label",
+        { className: styles.opsDryRunRow, title: t("soc.dataops.planner_force_refresh_hint") },
+        createElement("input", {
+          type: "checkbox", checked: forceRefresh,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) => setForceRefresh(e.target.checked),
+          }),
+        t("soc.dataops.planner_force_refresh"),
+      ),
     );
 
   const renderActionRow = () =>
@@ -601,8 +635,8 @@ export function SocDataOpsOperationsSection() {
       { className: styles.sectionCard },
       createElement(
         "div",
-        { },
-        createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.run_logs")),
+        { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" } },
+        createElement("div", { className: styles.sectionCardTitle, style: { margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" } }, createElement(LucideIcon, { name: "Clock", className: "h-4 w-4" }), t("soc.dataops.run_logs"), createElement("span", { style: { fontSize: "0.68rem", fontWeight: 400, color: "var(--text-muted)" } }, `· ${runLogs.length} runs`)),
         createElement(
           "div",
           { },
@@ -635,43 +669,62 @@ export function SocDataOpsOperationsSection() {
           ? createElement("p", { className: styles.emptyState }, t("soc.dataops.no_run_logs"))
           : createElement(
               "div",
-              { style: { display: "flex", flexDirection: "column", gap: "0.35rem" } },
-              runLogs.map((log, i) =>
-                createElement(
+              { className: styles.opsTimeline, style: { display: "flex", flexDirection: "column", gap: "0.5rem", position: "relative", paddingLeft: "0.5rem", borderLeft: "1px solid var(--border-default, rgba(80,120,168,0.12))" } },
+              runLogs.map((log, i) => {
+                const summary = (log.summary as Record<string, number>) || {};
+                const planned = summary.planned_items ?? (log as Record<string, unknown>).planned as number | undefined;
+                const inserted = summary.inserted ?? log.inserted;
+                const updated = summary.updated ?? log.updated;
+                const skipped = summary.skipped_existing ?? log.skipped_existing;
+                const failed = summary.failed ?? log.failed;
+                const hasStats = planned != null || inserted != null || updated != null || skipped != null || failed != null;
+                const timeInfo = (() => {
+                  try {
+                    return formatLastCheck(log.started_at, localeTag || "vi-VN", t);
+                  } catch {
+                    return { display: log.started_at?.slice(0, 19) || "—", title: log.started_at || "" };
+                  }
+                })();
+                const duration = log.duration_seconds != null ? `${Number(log.duration_seconds).toFixed(1)}s` : log.finished_at ? "—" : "";
+                return createElement(
                   "div",
                   {
                     key: log.run_id || i,
                     className: styles.opsRunLogCard,
-                    },
+                    style: { borderLeft: `3px solid ${log.status === "success" ? "var(--soc-c-34d399)" : log.status === "failed" ? "var(--soc-c-f87171)" : log.status === "running" || log.status === "queued" ? "var(--soc-c-22d3ee)" : "var(--soc-c-94a3b8)"}` },
+                  },
                   createElement(
                     "div",
                     { className: styles.opsRunLogRow },
-                    createElement("span", { style: { fontWeight: 600 } }, log.dataset ? t(`soc.dataops.dataset_${log.dataset}`) || log.dataset : "—"),
+                    createElement("span", { style: { fontWeight: 700, fontFamily: "Menlo, monospace", fontSize: "0.78rem" } }, log.run_id || `run-${i}`),
                     createElement(SocStatusBadge, {
                       status: log.status,
-                      label: log.status ? t(`soc.dataops.run_status_${log.status}`) || log.status : "—",
-                      dot: false,
+                      label: log.status ? t(`soc.dataops.run_status_${log.status}`) || log.status : t("soc.dataops.run_status_unknown"),
+                      dot: true,
                     }),
+                    createElement("span", { style: { fontSize: "0.68rem", color: "var(--text-muted)", marginLeft: "0.35rem" } }, log.mode ? t(`soc.dataops.backfill_mode_${log.mode}`) || log.mode : ""),
+                    log.execution_mode ? createElement("span", { style: { fontSize: "0.65rem", padding: "0.1rem 0.35rem", borderRadius: "4px", background: "rgba(148,163,184,0.12)", color: "var(--soc-c-94a3b8)" } }, log.execution_mode) : null,
                   ),
-                  (log.planned != null || log.inserted != null || log.updated != null || log.skipped_existing != null || log.failed != null)
+                  createElement(
+                    "div",
+                    { className: styles.opsRunLogMeta, style: { display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "center" } },
+                    createElement("span", { title: (timeInfo as { title: string }).title, style: { fontSize: "0.7rem" } }, (timeInfo as { display: string }).display),
+                    duration ? createElement("span", { style: { fontSize: "0.68rem", color: "var(--text-muted)" } }, `· ${duration}`) : null,
+                    log.reason ? createElement("span", { style: { fontSize: "0.68rem", color: "var(--soc-c-94a3b8)", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, title: String(log.reason) }, String(log.reason)) : null,
+                  ),
+                  hasStats
                     ? createElement(
                         "div",
                         { className: styles.opsRunLogStats },
-                        log.planned != null ? createElement("span", { className: styles.opsRunLogStat }, `${t("soc.dataops.backfill_planned")}: ${log.planned}`) : null,
-                        log.inserted != null ? createElement("span", { className: styles.opsRunLogStat }, `${t("soc.dataops.backfill_inserted")}: ${log.inserted}`) : null,
-                        log.updated != null ? createElement("span", { className: styles.opsRunLogStat }, `${t("soc.dataops.backfill_updated")}: ${log.updated}`) : null,
-                        log.skipped_existing != null ? createElement("span", { className: styles.opsRunLogStat }, `${t("soc.dataops.backfill_skipped")}: ${log.skipped_existing}`) : null,
-                        log.failed != null ? createElement("span", { className: styles.opsRunLogStat }, `${t("soc.dataops.backfill_failed")}: ${log.failed}`) : null,
+                        planned != null ? createElement("span", { className: styles.opsRunLogStat }, `Planned ${planned}`) : null,
+                        inserted != null ? createElement("span", { className: styles.opsRunLogStat }, `Inserted ${inserted}`) : null,
+                        updated != null ? createElement("span", { className: styles.opsRunLogStat }, `Updated ${updated}`) : null,
+                        skipped != null ? createElement("span", { className: styles.opsRunLogStat }, `Skipped ${skipped}`) : null,
+                        failed != null ? createElement("span", { className: styles.opsRunLogStat, style: { color: Number(failed) > 0 ? "var(--soc-c-f87171)" : undefined } }, `Failed ${failed}`) : null,
                       )
                     : null,
-                  createElement(
-                    "div",
-                    { className: styles.opsRunLogMeta },
-                    createElement("span", null, log.started_at?.split("T").join(" ")?.slice(0, 19) || "—"),
-                    log.message ? createElement("span", null, log.message) : null,
-                  ),
-                ),
-              ),
+                );
+              }),
               createElement(
                 "div",
                 { },
@@ -706,7 +759,7 @@ export function SocDataOpsOperationsSection() {
 
   return createElement(
     "div",
-    { },
+    { style: { display: "flex", flexDirection: "column", gap: "1.25rem" } },
     createElement(
       "div",
       { },
@@ -715,33 +768,40 @@ export function SocDataOpsOperationsSection() {
       createElement(
         "div",
         { className: styles.sectionCard },
-        createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.backfill_form_title")),
+        createElement("div", { className: styles.sectionCardTitle, style: { display: "flex", alignItems: "center", gap: "0.5rem" } }, createElement(LucideIcon, { name: "Rocket", className: "h-4 w-4" }), t("soc.dataops.backfill_form_title"), createElement("span", { style: { fontSize: "0.68rem", fontWeight: 400, color: "var(--text-muted)", marginLeft: "0.5rem" } }, t("soc.dataops.backfill_context_purpose", { defaultValue: "Bổ sung dữ liệu thiếu" })) ),
         createElement(
           "div",
           { className: styles.opsFormGrid },
-          // Left: Dataset checkboxes
+          // Row 1 — Nhóm mã dàn đều full width (1 cột lớn) — fix "thu gọn cột 1, cột 2 trống vô duyên"
+          createElement(
+            "div",
+            { style: { gridColumn: "1 / -1" } },
+            createElement("div", { className: styles.opsSectionHeader }, createElement(LucideIcon, { name: "Users", className: "h-3.5 w-3.5" }), t("soc.dataops.backfill_symbol_group")),
+            renderSymbolGroupSelect(),
+          ),
+          // Row 2 — 2 cột đều: trái Datasets, phải Execution
           createElement(
             "div",
             { className: styles.opsFormLeft },
-            createElement("div", { className: styles.opsSectionHeader }, t("soc.dataops.backfill_datasets")),
+            createElement("div", { className: styles.opsSectionHeader }, createElement(LucideIcon, { name: "Layers", className: "h-3.5 w-3.5" }), t("soc.dataops.backfill_datasets")),
             renderDatasetCheckboxes(),
           ),
-          // Right: Config fields
           createElement(
             "div",
             { className: styles.opsFormRight },
-            createElement("div", { className: styles.opsSectionHeader }, t("soc.dataops.backfill_symbol_group")),
-            renderSymbolGroupSelect(),
-            createElement("hr", { className: styles.opsSeparator }),
+            createElement("div", { className: styles.opsSectionHeader }, createElement(LucideIcon, { name: "Settings", className: "h-3.5 w-3.5" }), t("soc.dataops.ops_section_execution", { defaultValue: "Cấu hình thực thi" } as unknown as string)),
             renderDateModeRow(),
+            createElement("div", { style: { height: "0.6rem" } }),
             renderReasonInput(),
+            createElement("div", { style: { height: "0.5rem" } }),
             renderDryRunCheckbox(),
           ),
         ),
-        error ? createElement("div", { className: styles.inlineError }, error) : null,
+        error ? createElement("div", { className: styles.inlineError, style: { marginTop: "0.75rem" } }, error) : null,
         success ? createElement("div", { className: styles.inlineSuccess }, success) : null,
         renderActionRow(),
         renderActiveRunBanner(),
+        preview ? createElement("div", { style: { marginTop: "1rem", borderTop: "1px solid var(--border-default, rgba(80,120,168,0.15))", paddingTop: "1rem" } }, renderPreviewResults()) : null,
       ),
     renderRunLogsSection(),
     // Custom Group Drawer
@@ -773,35 +833,7 @@ export function SocDataOpsOperationsSection() {
           document.body
         )
       : null,
-    // Preview Planner Drawer
-    isPreviewDrawerOpen && typeof document !== "undefined" && preview
-      ? createPortal(
-          createElement(
-            "div",
-            { },
-            createElement("div", { className: styles.drawerOverlay, onClick: () => setIsPreviewDrawerOpen(false) }),
-            createElement(
-              "div",
-              { className: [styles.drawerContent, styles.opsPreviewDrawer].join(" ") },
-              createElement(
-                "div",
-                { className: styles.opsDrawerHeader },
-                createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.planner_preview_summary")),
-                createElement(
-                  "button",
-                  {
-                    onClick: () => setIsPreviewDrawerOpen(false),
-                    className: styles.opsDrawerClose,
-                  },
-                  "\u2715",
-                ),
-              ),
-              renderPreviewResults(),
-            ),
-          ),
-          document.body
-        )
-      : null,
+    // Preview inline (was drawer) — now rendered above inside sectionCard
   );
 }
 

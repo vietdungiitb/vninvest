@@ -159,7 +159,19 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
 
     // ─── DataOps Market-Data Runtime ───────────────────────────────────────
     getSocDataOpsQueueTiers() {
-      return coreGet("/operator/scraping/dataops/queue-tiers/");
+      return coreGet("/operator/scraping/dataops/queue-tiers/").then((data) => {
+        if (data && Array.isArray(data.tiers)) {
+          return {
+            ...data,
+            tiers: data.tiers.map((t) => ({
+              ...t,
+              examples: t.examples || t.active_symbols || [],
+              active_symbols: t.active_symbols || t.examples || [],
+            })),
+          };
+        }
+        return data;
+      });
     },
 
     getSocDataOpsCoverage() {
@@ -435,6 +447,10 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
 
     getSocOverviewStreamUrl() {
       return "/operator/soc/overview/stream/";
+    },
+
+    getSocDataOpsStreamUrl() {
+      return "/operator/soc/dataops/stream/";
     },
 
     // ─── Screener ──────────────────────────────────────────────────────────

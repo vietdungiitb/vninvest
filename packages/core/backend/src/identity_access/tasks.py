@@ -466,14 +466,16 @@ def flush_pat_audit_log(self):
     from django.core.cache import cache
     from identity_access.models import CorePATCredential, CoreTenant, PATAuditLog
 
-    cache_client = getattr(cache, '_cache', None)
-    if cache_client is None:
-        return {'status': 'skipped', 'reason': 'no_cache_client'}
+    try:
+        redis_client = cache._cache.get_client(write=True)
+    except Exception as exc:
+        logger.error('flush_pat_audit_log: failed to get redis connection: %s', exc, exc_info=True)
+        return {'status': 'error', 'reason': str(exc)}
 
     pending = []
     try:
         for _ in range(PAT_AUDIT_FLUSH_BATCH):
-            raw = cache_client.lpop(PAT_AUDIT_QUEUE_KEY)
+            raw = redis_client.lpop(PAT_AUDIT_QUEUE_KEY)
             if not raw:
                 break
             if isinstance(raw, bytes):
@@ -520,7 +522,7 @@ def flush_pat_audit_log(self):
             logger.error('flush_pat_audit_log: bulk_create failed: %s', exc, exc_info=True)
             # Re-queue the failed entries for the next attempt
             for obj in objects:
-                cache_client.rpush(PAT_AUDIT_QUEUE_KEY, json.dumps({
+                redis_client.rpush(PAT_AUDIT_QUEUE_KEY, json.dumps({
                     'pat_pk': obj.pat_id,
                     'tenant_pk': obj.tenant_id,
                     'ip_address': obj.ip_address or '',

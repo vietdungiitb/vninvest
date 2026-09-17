@@ -46,6 +46,7 @@ interface DataOpsState {
   coverage: CoverageData | null;
   loading: Record<string, boolean>;
   error: string | null;
+  errors: Record<string, string | null>;
 }
 
 interface DataOpsActions {
@@ -79,15 +80,20 @@ export function DataOpsProvider({ children }: { children: React.ReactNode }) {
   const [coverage, setCoverage] = useState<CoverageData | null>(null);
   const [loading, setLoading] = useState<Record<string, boolean>>({ inventory: true, runs: true, coverage: true });
   const [contextError, setContextError] = useState<string | null>(null);
+  const [contextErrors, setContextErrors] = useState<Record<string, string | null>>({ inventory: null, runs: null, coverage: null });
 
   const refreshInventory = useCallback(async () => {
     setLoading((prev) => ({ ...prev, inventory: true }));
+    setContextErrors((prev) => ({ ...prev, inventory: null }));
     setContextError(null);
     try {
       const data = await adapter.getSocDataOpsInventory();
       setInventory(data);
+      setContextErrors((prev) => ({ ...prev, inventory: null }));
     } catch (err: unknown) {
-      setContextError(err && typeof err === 'object' && 'message' in err ? String((err as Error).message) : 'Không thể tải dữ liệu DataOps Inventory.');
+      const msg = err && typeof err === 'object' && 'message' in err ? String((err as Error).message) : 'Không thể tải dữ liệu DataOps Inventory.';
+      setContextError(msg);
+      setContextErrors((prev) => ({ ...prev, inventory: msg }));
     }
     finally {
       setLoading((prev) => ({ ...prev, inventory: false }));
@@ -96,12 +102,16 @@ export function DataOpsProvider({ children }: { children: React.ReactNode }) {
 
   const refreshRuns = useCallback(async () => {
     setLoading((prev) => ({ ...prev, runs: true }));
+    setContextErrors((prev) => ({ ...prev, runs: null }));
     setContextError(null);
     try {
       const data = await adapter.getSocDataOpsRunLogs(1, 20);
       setRuns(data.results || []);
+      setContextErrors((prev) => ({ ...prev, runs: null }));
     } catch (err: unknown) {
-      setContextError(err && typeof err === 'object' && 'message' in err ? String((err as Error).message) : 'Không thể tải backfill runs.');
+      const msg = err && typeof err === 'object' && 'message' in err ? String((err as Error).message) : 'Không thể tải backfill runs.';
+      setContextError(msg);
+      setContextErrors((prev) => ({ ...prev, runs: msg }));
     }
     finally {
       setLoading((prev) => ({ ...prev, runs: false }));
@@ -110,12 +120,16 @@ export function DataOpsProvider({ children }: { children: React.ReactNode }) {
 
   const refreshCoverage = useCallback(async () => {
     setLoading((prev) => ({ ...prev, coverage: true }));
+    setContextErrors((prev) => ({ ...prev, coverage: null }));
     setContextError(null);
     try {
       const data = await adapter.getSocDataOpsCoverage();
       setCoverage(data);
+      setContextErrors((prev) => ({ ...prev, coverage: null }));
     } catch (err: unknown) {
-      setContextError(err && typeof err === 'object' && 'message' in err ? String((err as Error).message) : 'Không thể tải coverage.');
+      const msg = err && typeof err === 'object' && 'message' in err ? String((err as Error).message) : 'Không thể tải coverage.';
+      setContextError(msg);
+      setContextErrors((prev) => ({ ...prev, coverage: msg }));
     }
     finally {
       setLoading((prev) => ({ ...prev, coverage: false }));
@@ -149,9 +163,9 @@ export function DataOpsProvider({ children }: { children: React.ReactNode }) {
   }), [setActiveSubTab, refreshInventory, refreshRuns, refreshCoverage, triggerBackfill, abortRun]);
 
   const value = useMemo<DataOpsContextValue>(() => ({
-    state: { activeSubTab, runs, inventory, coverage, loading, error: contextError },
+    state: { activeSubTab, runs, inventory, coverage, loading, error: contextError, errors: contextErrors },
     actions,
-  }), [activeSubTab, runs, inventory, coverage, loading, contextError, actions]);
+  }), [activeSubTab, runs, inventory, coverage, loading, contextError, contextErrors, actions]);
 
   return createElement(DataOpsContext.Provider, { value }, children);
 }

@@ -56,6 +56,10 @@ services:
   mailpit:
     container_name: vninvest-dev-mailpit
     image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1026}:1025"
+      - "${MAILPIT_UI_PORT:-8026}:8025"
     networks:
       - vninvest_network
 

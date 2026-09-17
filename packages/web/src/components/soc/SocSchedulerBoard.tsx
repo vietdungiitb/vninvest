@@ -431,6 +431,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
   const [confirmModal, setConfirmModal] = useState<{ job: SchedulerJob; action: string } | null>(null);
   const [historyJob, setHistoryJob] = useState<string | null>(null);
   const [actionBanner, setActionBanner] = useState<{ type: "success" | "error"; msg: string; requestId?: string } | null>(null);
+  const [showAllDomains, setShowAllDomains] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -455,8 +456,19 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
 
   useEffect(() => {
     load();
-    const interval = setInterval(load, 60000);
-    return () => clearInterval(interval);
+    const jitter = Math.random() * 3000;
+    const interval = setInterval(() => {
+      if (document.hidden) return;
+      load();
+    }, 60000 + jitter);
+    const onVisibility = () => {
+      if (!document.hidden) load();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [load]);
 
   const executeAction = useCallback(async (jobKey: string, action: string, reason: string) => {
@@ -494,11 +506,13 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
   }, [executeAction]);
 
   const embedded = domainProp != null;
-  const activeDomainFilter = embedded ? domainProp : domainFilter;
+  const effectiveDomainFilter = embedded && !showAllDomains ? domainProp : domainFilter;
+  const activeDomainFilter = embedded && !showAllDomains ? domainProp as string : effectiveDomainFilter;
 
   const filteredJobs = plan?.jobs?.filter(
     (j) => activeDomainFilter === "all" || j.domain === activeDomainFilter
   ) ?? [];
+  const totalJobs = plan?.jobs?.length ?? 0;
 
   return createElement(
     "div",
@@ -529,6 +543,23 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
           "p",
           { className: styles.schedulerTimestamp },
           `${t("soc.scheduler.board_generated_at")}: ${new Date(plan.generated_at).toLocaleString("vi-VN")}`
+        ),
+        plan && createElement(
+          "p",
+          { className: styles.schedulerTimestamp, style: { fontSize: "0.7rem", opacity: 0.85 } },
+          embedded
+            ? `${t("soc.scheduler.filter_count", { filtered: filteredJobs.length, total: totalJobs })} — ${showAllDomains ? t("soc.scheduler.filter_all_domains") : domainProp}`
+            : `${t("soc.scheduler.health_total")}: ${totalJobs}`
+        ),
+        embedded && totalJobs > 0 && createElement(
+          "button",
+          {
+            type: "button",
+            onClick: () => setShowAllDomains((v) => !v),
+            className: styles.pageBtnSmall,
+            style: { marginTop: "0.25rem", fontSize: "0.7rem" },
+          },
+          showAllDomains ? `${t("soc.scheduler.filter_show_dataops_only")} (${filteredJobs.length})` : `${t("soc.scheduler.filter_show_all")} (${totalJobs})`
         )
       ),
       createElement(

@@ -1,8 +1,38 @@
 /* SOC Operations Center — Design Tokens */
 /* ─── SOC Operations Center Design Tokens ─────────────────────── */
+/* Commercial shell: semantic tokens for Bloomberg/Datadog/Grafana parity */
 
-/* Color tokens (theme audit follow-up): value-preserving. */
 :root {
+  /* Semantic surfaces (commercial) */
+  --text-primary: var(--soc-c-f1f5f9);
+  --text-secondary: var(--soc-c-94a3b8);
+  --text-muted: var(--soc-c-94a3b8);
+  --border-default: rgba(var(--soc-rgb-5078a8) / 0.15);
+  --border-strong: rgba(var(--soc-rgb-5078a8) / 0.25);
+  --bg-panel: rgba(var(--soc-rgb-081734) / 0.4);
+  --bg-panel-soft: rgba(var(--soc-rgb-0f172a) / 0.3);
+  --bg-input: rgba(var(--soc-rgb-020b23) / 0.6);
+  --accent-cyan: var(--soc-c-22d3ee);
+  --accent-shell: #00b4d8;
+  /* Spacing / radius / shadow / font */
+  --sp-xs: 0.25rem;
+  --sp-sm: 0.5rem;
+  --sp-md: 0.75rem;
+  --sp-lg: 1rem;
+  --sp-xl: 1.5rem;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-pill: 999px;
+  --shadow-sm: 0 2px 8px rgba(var(--soc-rgb-000000) / 0.15);
+  --shadow-md: 0 8px 20px rgba(var(--soc-rgb-000000) / 0.2);
+  --font-sans:
+    ui-sans-system, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  --fs-xs: 0.68rem;
+  --fs-sm: 0.75rem;
+  --fs-md: 0.85rem;
+  --fs-lg: 1rem;
+  /* Legacy color tokens (value-preserving): */
   --soc-rgb-5078a8: 80 120 168;
   --soc-c-94a3b8: #94a3b8;
   --soc-c-f1f5f9: #f1f5f9;

@@ -1,3 +1,5 @@
+// @deprecated — Orphan (F17). Not imported anywhere (grep 0 hit).
+// Kept for reference until P2 cleanup removes it. Use SocDataOpsOperationsSection as canonical.
 import { createElement, useCallback, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { useDataOps } from "./DataOpsContext.js";
@@ -67,6 +69,7 @@ export function SocDataOpsPlannerConsole() {
   const buildPayload = useCallback(() => ({
     datasets: selectedDatasets,
     symbols: symbols.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean),
+    mode: "missing_only",
     execution_mode: executionMode,
     reason: reason.trim() || "ops_soc",
     force_refresh: forceRefresh,

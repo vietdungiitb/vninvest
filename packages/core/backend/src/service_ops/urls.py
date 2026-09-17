@@ -12,7 +12,7 @@ Hierarchy:
 """
 from django.urls import path
 
-from .views import dataops, matrix, overview, overview_stream, prefetch, screener, signals, signals_rules, signals_stream, signals_triage, symbol_groups, vnbroker
+from .views import dataops, dataops_stream, matrix, overview, overview_stream, prefetch, screener, signals, signals_rules, signals_stream, signals_triage, symbol_groups, vnbroker
 
 # Overview endpoints (12)
 urlpatterns = [
@@ -135,6 +135,7 @@ path('overview/stream/', overview_stream.OverviewStreamView.as_view(), name='soc
     path('dataops/runtime-config/', dataops.DataOpsRuntimeConfigView.as_view(), name='soc_dataops_runtime_config'),
     path('dataops/runtime-config/preview/', dataops.DataOpsRuntimeConfigPreviewView.as_view(), name='soc_dataops_runtime_config_preview'),
     path('dataops/runtime-config/audit/', dataops.DataOpsRuntimeConfigAuditView.as_view(), name='soc_dataops_runtime_config_audit'),
+    path('dataops/stream/', dataops_stream.DataOpsStreamView.as_view(), name='soc_dataops_stream'),
     path('dataops/inventory/', dataops.DataOpsInventoryView.as_view(), name='soc_dataops_inventory'),
 
     # Backfill Progress API (B03)
