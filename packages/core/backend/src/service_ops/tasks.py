@@ -1304,6 +1304,21 @@ def _upsert_retention_health_alert(retention_health: dict) -> dict:
     }
 
 
+@shared_task(name='service_ops.reconcile_beat_schedule_ssot', queue='manual_on_demand', acks_late=True, max_retries=0)
+def reconcile_beat_schedule_ssot():
+    """
+    Beat self-heal: reconcile PeriodicTask with CELERY_BEAT_SCHEDULE every 5m.
+    Calls shared logic from beat_reconcile.py (same as repair_beat_schedule command).
+    """
+    import logging
+    from service_ops.beat_reconcile import reconcile_beat_schedule
+    logger = logging.getLogger(__name__)
+    result = reconcile_beat_schedule(dry_run=False)
+    if result["re_enabled"] or result["created"] or result["queue_fixed"]:
+        logger.warning("[reconcile_beat_schedule_ssot] Fixed %s", result)
+    return result
+
+
 @shared_task(bind=True, name='service_ops.monitor_market_data_parity_retention_health', queue='manual_on_demand')
 def monitor_market_data_parity_retention_health_task(self):
     ensure_service_registry()

@@ -1139,6 +1139,8 @@ const vi = {
       status_degraded: 'Suy giảm',
       status_stale: 'Quá hạn',
       status_unknown: 'Không rõ',
+      not_scheduled: 'Chưa chạy',
+      cron_tooltip: 'Lịch cron: {label}',
       freshness_fresh: 'Tươi mới',
       freshness_warm: 'Còn ấm',
       freshness_stale: 'Quá hạn',

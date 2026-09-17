@@ -480,13 +480,31 @@ def build_scheduler_catalog(
             _job_warm_seconds,
         )
 
-        # next_run_at: estimated from last_run_at + interval (best effort for interval jobs)
+        # next_run_at: for interval: last_run_at + interval; for cron: use CrontabSchedule remaining_estimate with ICT tz
         next_run_at: str | None = None
-        if periodic_task is not None and last_run_at is not None:
+        if periodic_task is not None:
             sched_val = schedule_def.get('schedule')
-            if isinstance(sched_val, (int, float)) and sched_val > 0:
+            # Interval jobs: last_run + interval
+            if isinstance(sched_val, (int, float)) and sched_val > 0 and last_run_at is not None:
                 try:
                     estimated_next = last_run_at + timedelta(seconds=float(sched_val))
+                    next_run_at = estimated_next.isoformat()
+                except Exception:
+                    pass
+            # Cron jobs: use DB crontab's schedule (has timezone Asia/Ho_Chi_Minh) — always from now, not last_run (F-CRIT-1: last_run+remaining gives past when last_run stale)
+            elif periodic_task.crontab is not None:
+                try:
+                    crontab_schedule = periodic_task.crontab.schedule
+                    remaining = crontab_schedule.remaining_estimate(timezone.now())
+                    estimated_next = timezone.now() + remaining
+                    next_run_at = estimated_next.isoformat()
+                except Exception:
+                    pass
+            # Fallback: if DB has no crontab but settings has crontab object
+            elif sched_val is not None and hasattr(sched_val, "remaining_estimate"):
+                try:
+                    remaining = sched_val.remaining_estimate(timezone.now())
+                    estimated_next = timezone.now() + remaining
                     next_run_at = estimated_next.isoformat()
                 except Exception:
                     pass

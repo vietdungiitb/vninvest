@@ -121,6 +121,16 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
   - Gates: tsc 0, build PASS 33.32s, lint 0 errors (3549 warn pre-existing), `manage.py check` 0.
 - **PR-1 + PR-2 Overview đã DONE từ trước** (docs `AUDIT_SOC_OVERVIEW_UI_UX_20260916.md`: PR-1 `d39f9fed` + PR-2 `25c26c96` merged) — không làm lại W1-W14. P3 backlog §8 còn: ETag/304, donut global HealthStatusView, export history CSV, dependency graph, maintenance scheduler; JSX migration hoãn (Đ3 audit).
 
+### Done (2026-09-17) — Scheduler Self-Heal + Realtime Sync P1 (Entry 113-114) — 6 slices
+- **Root cause chốt:** 5 jobs `enabled=False` trong `django_celery_beat_periodictask` (4 realtime + 1 by design `ingest-daily-prices-1705`) vs `CELERY_BEAT_SCHEDULE` `enabled=True` → `DatabaseScheduler` `entrypoint.sh:43` đọc DB không sync → `QUÁ HẠN 3h26m` `lag` `Thiếu dữ liệu` `MISSING 1.533` (bằng chứng `ROOT_CAUSE_SCHEDULER_DATAOPS_20260917.md` Entry 108).
+- **Slice 1 `repair_beat_schedule` v2:** `beat_reconcile.py:1` shared `reconcile_beat_schedule(dry_run)` + `management/commands/repair_beat_schedule.py:17` `--dry-run` + `IntervalSchedule/CrontabSchedule` `get_or_create` `queue = options['queue']` (F-A1) + `CrontabSchedule` `timezone Asia/Ho_Chi_Minh` (F-A4) + `ingest-daily-prices-1705` giữ `False`.
+- **Slice 2 Beat task 5m:** `service_ops/tasks.py:reconcile_beat_schedule_ssot` `queue manual_on_demand` `acks_late` + `settings.py:383` `reconcile-beat-schedule-5m` `300.0` `logger.warning` khi có fix.
+- **Slice 3 Drift-check:** `vninvest_core/management/commands/check_scheduler_queue_drift.py` `ENABLED_DRIFT`/`MISSING_ROW` + `docker-compose.dev.yml:396` giữ `5m` (không 30s).
+- **Slice 4 `next_run_at` cron:** `scheduler_catalog.py:483` `CrontabSchedule.schedule.remaining_estimate(last_run_at)` `timezone Asia/Ho_Chi_Minh` `last_run None → now+remaining` (F-A4) — `daily-backfill 17:05` hiện `Tomorrow 17:05` thay `—`.
+- **Slice 5 FE:** `SocSchedulerBoard.tsx:14` `trigger_type?: string` + `formatNextRun(dateStr, triggerType):90` `t("soc.scheduler.not_scheduled")` `cron_tooltip` `vi.js/en.js:1139` `not_scheduled/cron_tooltip`.
+- **Gates:** `manage.py check` 0, `repair --dry-run` 0, `celery inspect registered` có `reconcile`, `test_scheduler_catalog` cron `next_run` ISO, `tsc 0` `build PASS` `grep not_scheduled vi/en` 1, `docker compose config` `5m`.
+- **E2E:** `repair --dry-run` 0, disable 1 critical → `reconcile` 5m bật lại, UI `Lịch chạy` cron hiện ngày giờ, `Quá hạn` hết đỏ, `beat` `queue-tier 30s` `ingest 60s` đều đặn `30s/60s`.
+
 ## Key Decisions & Metrics
 - Local `vninvestcharts/` component tree (~745 files, -102k lines) replaced by npm package `vninvestcharts-widget` ^1.2.5
 - New adapter file: `packages/web/src/adapters/chartAdapter.js` — bridges core API → chart bar format

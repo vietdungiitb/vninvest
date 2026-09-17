@@ -1,5 +1,7 @@
 # AUDIT TÍNH NĂNG LỊCH CHẠY `operations-center?tab=dataops` — ẢNH `Bảng điều khiển lịch chạy` 20:26 17/09/2026
 
+> **ERRATA 17/09 — ROOT CAUSE THẬT (Entry 108, đã chứng minh runtime, không suy luận):** Audit gốc chẩn đoán `F-S02` (“2 ingest chết do thiếu `next_run_at`/worker chết”) **SAI** — thực tế 4 job `enabled=False` thủ công trong `django_celery_beat_periodictask` (`market-data-queue-tier-scheduler-30s`, `ingest-price-board-60s`, `warm-intraday-5m`, `schedule-realtime-prefetch-shards`) làm thủ công, `DatabaseScheduler` `entrypoint.sh:43` đọc DB không sync từ `settings.py` → không dispatch. `ingest-daily-prices-1705` `enabled=False` là **by design** `settings.py:612` (không phải bug). `F-S04` (cron `—`) **GIỮ NGUYÊN** đúng. `F-S05` (thiếu SSE) xuống **P3** ngoài scope self-heal. Xem `docs/ROOT_CAUSE_SCHEDULER_DATAOPS_20260917.md` + `IMPLEMENTATION_PLAN_SCHEDULER_SELF_HEAL_20260917.md`.
+
 **Phạm vi:** `packages/web/src/components/soc/SocSchedulerBoard.tsx:424` (Lịch chạy) + `SocDataOpsPanel.tsx:13` (tab DataOps) + `adapters/core/soc.js:252` (`getSocSchedulerPlan/Health/JobHistory`) + `vninvest_core/settings.py:536` (`CELERY_BEAT_SCHEDULE`) + `service_ops/dataops_market_data.py:269,711` + `market_data/global_symbol_coverage.py:506` + `soc.module.css` (liên quan `packages/web` React/Vite ↔ `packages/core` Django)
 
 **Nguyên tắc:** AGENTS.md Nguyên tắc 1-6 — mọi khẳng định `file:line`, `grep` toàn repo `.css/.module.css/config/i18n`, quality gates `lint/type-check/i18n/test`.

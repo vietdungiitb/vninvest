@@ -97,4 +97,9 @@ WHERE name IN (
 
 ---
 
-*Điều tra kết thúc — bằng chứng đầy đủ. Entry ledger sẽ ghi theo file này.*
+## E. TRẠNG THÁI FIX (cập nhật 17/09 21:00 — sau `471bb89b`)
+
+- **Đã deploy `471bb89b` (startup-only):** `entrypoint.sh:24,44` `repair_beat_schedule` re-enable 4 jobs lúc `api`/`beat` restart → beat log `Re-enabled 4` `20:47:29` + `Sending due task queue-tier 30s` `20:49:55` `price-board 60s` `20:50:26` → `PeriodicTask` 4 `enabled=True` `last_run` đang cập nhật.
+- **Còn lại self-heal (plan `IMPLEMENTATION_PLAN_SCHEDULER_SELF_HEAL_20260917.md` 6 slices):** S1 v2 (tạo `Interval/Crontab` FK + queue đúng), S2 beat task 5m, S3 drift-check, S4 cron `next_run_at` ICT, S5 FE `trigger_type`, S6 docs — để đóng gap “disable giữa phiên” (hiện chỉ startup) và UI `—` cron.
+
+*Điều tra kết thúc — bằng chứng đầy đủ. Entry ledger 108 đã ghi; Entry 109 sẽ ghi sau khi xong 6 slices self-heal.*

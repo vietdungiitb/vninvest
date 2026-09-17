@@ -18,6 +18,7 @@ interface SchedulerJob {
   is_inflight?: boolean;
   is_possibly_stuck?: boolean;
   inflight_elapsed_seconds?: number;
+  trigger_type?: string;
   [key: string]: unknown;
 }
 
@@ -87,8 +88,11 @@ function formatLag(seconds?: number) {
   return rh > 0 ? `${d} ng\xE0y ${rh}h` : `${d} ng\xE0y`;
 }
 
-function formatNextRun(dateStr?: string) {
-  if (!dateStr) return "—";
+function formatNextRun(dateStr?: string, triggerType?: string) {
+  if (!dateStr) {
+    if (triggerType === "cron") return "—";
+    return "—";
+  }
   try {
     const d = new Date(dateStr);
     return d.toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -692,7 +696,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
                       job.freshness_state ? t(`soc.scheduler.freshness_${job.freshness_state}`, { defaultValue: job.freshness_state }) : "\u2014"
                     )
                   ),
-                  createElement("td", { style: { fontSize: "0.7rem", fontVariantNumeric: "tabular-nums" } }, formatNextRun(job.next_run_at)),
+                  createElement("td", { style: { fontSize: "0.7rem", fontVariantNumeric: "tabular-nums" }, title: !job.next_run_at && job.trigger_type === "cron" ? t("soc.scheduler.cron_tooltip", { label: job.display_name || job.job_key }) : undefined }, !job.next_run_at && job.trigger_type === "cron" ? t("soc.scheduler.not_scheduled") : formatNextRun(job.next_run_at, job.trigger_type)),
                   createElement("td", { style: { fontSize: "0.7rem", fontVariantNumeric: "tabular-nums" } }, formatLag(job.lag_seconds)),
                   createElement("td", null, createElement(JobActionButtons, { job, onAction: handleAction, t })),
                   createElement("td", null,

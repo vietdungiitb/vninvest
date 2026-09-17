@@ -1139,6 +1139,8 @@ const en = {
       status_degraded: 'Degraded',
       status_stale: 'Stale',
       status_unknown: 'Unknown',
+      not_scheduled: 'Not scheduled',
+      cron_tooltip: 'Cron: {label}',
       freshness_fresh: 'Fresh',
       freshness_warm: 'Warm',
       freshness_stale: 'Stale',

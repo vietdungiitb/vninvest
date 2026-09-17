@@ -520,6 +520,12 @@ CELERY_BEAT_SCHEDULE = {
             )
         },
     },
+    'reconcile-beat-schedule-5m': {
+        'task': 'service_ops.reconcile_beat_schedule_ssot',
+        'schedule': 300.0,
+        'options': {'queue': 'manual_on_demand'},
+        'kwargs': {},
+    },
     # === Task thăm dò sức khỏe hệ thống dịch vụ SOC ===
     'service-ops-health-check-60s': {
         'task': 'service_ops.health_check_all_services',
