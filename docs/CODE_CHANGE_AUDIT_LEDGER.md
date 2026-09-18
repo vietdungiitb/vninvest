@@ -3016,4 +3016,88 @@
 - **Ghi chú kỹ thuật**: 409 error shape xác minh bằng test thật → `err.status === 409 || err.code === CONFIG_CONFLICT`; `esInstances[0]` flake 1 lần ở `soc-overview-stream` (pass khi chạy riêng, không phải regression); vitest jsdom "Not implemented: navigation" harmless; lint-staged pre-commit tự auto-stage (`git add` warning harmless).
 - **Còn lại (C8 docs)**: AGENTS.md sync (entry này). Toàn bộ audit findings CFG-01→CFG-11 + contradictions C1-C6 ĐÓNG.
 - **Ledger**: Entry 121.
+---
+
+## Entry 122: AUDIT UI/UX Cấu hình DataOps — bố trí (không sửa code, reproduce-first)
+
+- **Date**: 2026-09-18
+- **Scope**: Audit SocDataOpsConfigSection.tsx:642 (1-card wall 6 nhóm) + SocQueueTierFieldSet.tsx:126 (label đuôi lặp) + soc.components.css:920 + ảnh UI. Benchmark Datadog/Grafana.
+- **File audit**: docs/AUDIT_DATAOPS_CONFIG_UI_20260918.md MỚI — A-G + wireframe.
+- **Điểm**: 4.2/10 — chức năng đủ (C1-C8) nhưng bố cục 1-card + preset chìm + action không sticky + audit filter sơ sài → rời rạc.
+- **Findings chính**: UI-01 BLOCKER 1-card wall (642) → tách 3 cards; UI-02 BLOCKER label lặp 36 từ (126) → label thuần + subtitle; UI-03 HIGH preset giữa titles không card (672) → segmented + tooltip; UI-04 HIGH 3 nút cùng actionBtn (724) → primary/ghost/sticky; UI-05 HIGH double border sectionCard lồng (112); UI-07 HIGH audit filter không label (750). Tổng 12 UI findings (P0 4 + P1 5 + P2 3).
+- **Hướng industrially**: 3 cards + tierCard riêng (icon+subtitle) + sticky footer + audit toolbar grid 160/160/1fr — không đổi BE, chỉ tsx/css/vi.js keys.
+- **Gates**: tsc 0, build 46.47s, i18n scan 0 (kế thừa Entry 121). Audit UI chỉ css/tsx.
+---
+
+## Entry 123: PLAN Tái bố trí UI Cấu hình DataOps (không sửa code, lập kế hoạch)
+
+- **Date**: 2026-09-18
+- **Scope**: Lập docs/IMPLEMENTATION_PLAN_DATAOPS_CONFIG_UI_20260918.md MỚI từ audit docs/AUDIT_DATAOPS_CONFIG_UI_20260918.md Entry 122 (12 UI findings, điểm 4.2/10). Chuyển 1-card wall → 3-card + tierCard + sticky bar + toolbar grid — chuẩn Datadog/Grafana, không rời rạc.
+- **File plan**: docs/IMPLEMENTATION_PLAN_DATAOPS_CONFIG_UI_20260918.md — 0 Bối cảnh + 1 Wireframe + 2 Slices U1→U5 (P0 3 + P1 1 + P2 1) + 3 Thứ tự & Gate + 4 Verify E2E (1920/900/480) + 5 Rủi ro + 6 Ngoài scope + 7 Checklist.
+- **Slices**: U1 (P0) Tách 1-card thành 3 cards + Header Meta (UI-01/UI-10) → U2 (P0) Tier card + label thuần + preset segmented + tooltip/confirm (UI-02/03/05) → U3 (P0) Action bar hierarchy + sticky + reason * (UI-04/06) → U4 (P1) Audit toolbar grid 160/160/1fr + table + responsive 2col@900 (UI-07/08/09/12) → U5 ledger.
+- **Gates**: Mỗi slice tsc 0 + build PASS; cuối vitest soc 90+ + manual breakpoints. Không đổi BE, chỉ tsx/css/vi.js keys.
+---
+
+## Entry 124: PHẢN BIỆN + VÁ Plan Tái bố trí UI Config (SH.1-6) — không sửa code
+
+- **Date**: 2026-09-18
+- **Scope**: Nhận phản biện Entry 123 (5 vấn đề SH.1-5, 13 findings) cho `docs/IMPLEMENTATION_PLAN_DATAOPS_CONFIG_UI_20260918.md`. Vá plan rev1 để gate/review không thất bại.
+- **File phản biện**: (nhận trong chat) — plan đúng hướng 1-card→3-card nhưng 3 contradictions + 4 risk.
+- **Vá plan**:
+  - **SH.1 (ERROR P0)**: U1.3 thêm `.configPageStack {display:flex; flex-direction:column; gap:1.25rem}` — root `SocDataOpsConfigSection.tsx:596-598` rỗng và `ShellPageTemplate.js:83` `.panel` không flex nên card dính nhau. Audit grep thêm `.configPageStack`.
+  - **SH.2 (ERROR P0)**: U1/U4 test spec dùng `getByText` tiếng Việt — harness không `LangProvider` trả key thô (`SocDataOpsConfigSection.component.test.tsx:188,204`) → đổi sang `getByText("soc.dataops.global_config")` hoặc bọc `LangProvider`.
+  - **SH.3 (ERROR P0)**: U4.4 đổi `.sectionGrid` base → ảnh hưởng `SocScreenerPanel.tsx:349`/`Prefetch:187`/`Vnbroker:217` — tách class mới `.configTierGrid` (`repeat 2,1fr`) scoped.
+  - **SH.4 (GAP P1)**: U2.2 emoji 🔥→ `LucideIcon` (`Zap`/`Waves`/`Snowflake`/`RefreshCw`) + whitelist `lucide-icon.tsx:12-71` + `Files` slice.
+  - **SH.5**: U2.4/U3 2-3 keys → 4 keys (`global_config_help`, `queue_tiers_help`, `preset_tooltip`, `preset_confirm` + `chars_remaining`).
+  - **SH.6 (ERROR P1)**: U3.1 hardcode "Còn {n} ký tự" → `t("soc.dataops.chars_remaining")` + `vi.js` key.
+  - **SH.7/8**: U2.3 dirty so với `readForm(envelope.config)` không phải `DEFAULTS` để tránh false dirty; selected state cho preset.
+- **Gates**: Plan-only — `tsc 0`, `build 46.47s`, `vitest 12/90` kế thừa Entry 121. Phản biện đúng 3/3 contradictions, plan rev1 implementable, không blocker.
+---
+
+## Entry 125: AUDIT UI DataOps Config rev1 (implementation) — 2026-09-18
+
+- **Date**: 2026-09-18
+- **Scope**: Audit `SocDataOpsConfigSection.tsx:935` sau U1–U4 rev1 (HEAD 41b3326b, 7 file M + 2 docs ??). Reproduce-first: tsc 0, build PASS 31.50s, vitest config 16/16. Chưa commit.
+- **File audit**: (tạo trong chat) — rev1 audit implementation.
+- **Findings chính**:
+  - **F1 ERROR** — `last_updated` duplicate: header eyebrow `Section:646` + Card A `685-691` cùng hiển thị → trái plan U1.2 move lên header.
+  - **F2 ERROR** — Eyebrow `646` nối `${display}: ${title}` → lộ ISO `2026-09-18T07:00:00Z` trong text; title phải ở attribute.
+  - **F3 ERROR** — `change_reason` gắn `*` + `aria-required` `740,757` nhưng `handleApply 422-453` không validate → required dối trá.
+  - **G1 GAP** — `diffTableWrap max-height 320` không tồn tại — grep 0 hit; `soc.components.css:997-1002` chỉ margin/border/overflow → sticky header chết.
+  - **G2 GAP** — `Đặt lại mặc định` dùng `filterBtnInactive 769`, không danger; `SH.10` recommend `.actionBtnDanger` bị bỏ qua.
+- **Verdict**: Implementable, không blocker, nhưng 3 ERROR + 2 GAP phải sửa trước khi commit. Ưu tiên F1→F2→F3→G1→G2.
+
+
+---
+
+## Entry 126: AUDIT UI DataOps Config rev2 (fix Entry 125) — 2026-09-18
+
+- **Date**: 2026-09-18
+- **Scope**: Verify 5 fix Entry 125 trong code sau rev2. Reproduce-first toàn bộ gates.
+- **File audit**: (tạo trong chat) — rev2 verification.
+- **Kết quả verification**:
+  - **F1** ✅ FIXED — Card A giữ duy nhất `691-695` (text=display, title=ISO); header eyebrow `648-653` chỉ "SOC / DataOps", không copy.
+  - **F2** ✅ FIXED — Không còn `display: title` nối; ISO chỉ ở `title="..." 694`.
+  - **F3** ✅ FIXED — `handleApply` guard `422-428` (`setError(change_reason_required)` + focus `#change_reason`) + i18n `vi:749/en:749` — `*`/`aria-required` hợp lệ.
+  - **G1** ✅ FIXED — `soc.components.css:1007-1013` `overflow:auto; max-height:320px` → sticky `1015-1017` hoạt động.
+  - **G2** ✅ FIXED — `Section:775` `${actionBtn} ${actionBtnDanger}`; `.actionBtnDanger 651-659` bg `rgba(239,68,68,0.12)` + border + hover.
+- **Gates reproduce**: `tsc --noEmit` 0 ✓, `npm run build` PASS 36.01s ✓, `test:components` 40/40 · 213 PASS ✓, `vitest config` 16/16 ✓. Không còn claim sai. Rev2 sạch, không blocker. Tiếp theo: commit + ledger + AGENTS.
+
+
+---
+
+## Entry 127: IMPLEMENT UI DataOps Config — Tái bố trí (U1–U4 rev2) — 2026-09-18
+
+- **Date**: 2026-09-18
+- **Scope**: Thực thi `docs/IMPLEMENTATION_PLAN_DATAOPS_CONFIG_UI_20260918.md` rev1 (Entry 123) đã vá SH.1-6 (Entry 124) + fix Entry 125 (F1-F3, G1-G2). Tách 1-card wall → 3-card + tierCard + sticky bar + toolbar grid — chuẩn công nghiệp, không rời rạc.
+- **Files**:
+  - `SocDataOpsConfigSection.tsx:935→991` — `configPageStack` flex gap 1.25rem (SH.1), Header `glassPanel configHeaderMeta` + `SOC / DataOps` eyebrow (Lucide Settings2), 3 cards: Card A globals + `global_config_help` + `last_updated` duy nhất, Card B `configTierGrid 2×2 @900 1fr` scoped (SH.3), Card C `stickyActionBar` + `fieldRequired *` + `chars_remaining` + `stickyActionButtons` primary/ghost/danger, Card D audit `auditToolbarGrid 160/160/1fr` + labels + `diffTableWrap` max-height 320.
+  - `SocQueueTierFieldSet.tsx:141→` — `tierCard` `081734/0.2 + top 00b4d8` + `tierCardHeader` `LucideIcon Zap/Waves/Snowflake/RefreshCw` (whitelist `ui/lucide-icon.tsx:61-62` + `+Snowflake/Settings2`) + `tierSubtitle poll·batch` + label thuần `t(f.labelKey)` (bỏ `— ${label}`) + `fieldGrid 1fr`.
+  - `soc.components.css:3293→3408` — `.configPageStack`, `.configHeaderMeta`, `.configEyebrow`, `.tierCard`, `.tierSubtitle`, `.configTierGrid`, `.stickyActionBar`, `.auditToolbarGrid`, `.actionBtnDanger`, `.diffTableWrap` max-height 320.
+  - `ui/lucide-icon.tsx:71` — thêm `Snowflake: Icons.Snowflake`, `Settings2: Icons.Settings2` + props `size/style`.
+  - `i18n/vi.js:668-673, en.js:668-673` — 6 keys: `preset_tooltip`, `preset_confirm`, `global_config_help`, `queue_tiers_help`, `reason_section_help`, `chars_remaining`.
+  - `SocDataOpsConfigSection.component.test.tsx:470` — fix `change_reason_required` guard (set reason `test reason` trước apply) + `last_updated` Card A.
+- **Gates**: `tsc --noEmit` 0, `npm run build` PASS 30.64s (rev2) → 31.50s/36.01s re-run, `vitest` 40/40 · 213 PASS (config 16/16), `jest soc.test` 92/92. SH.1-6, F1-F3, G1-G2 đóng.
+- **Còn lại**: Commit gộp UI workstream (2 docs audit/plan + code rev1+rev2) + AGENTS.md sync (entry này). Không chạm BE.
+
 

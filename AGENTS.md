@@ -143,6 +143,14 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - **Contradictions**: C1/C2/C3/C6 CONFIRMED; C4 PARTIAL; **C5 REFUTED** (apply/audit cùng key `dataops_config.py:83,185`).
 - **Gates**: `npx tsc --noEmit` = 0, `manage.py check` = 0. Verdict: plan implementable, không blocker, phải sửa R1-R5 trước khi code.
 
+### Done (2026-09-18) — DataOps Config UI Tái bố trí U1–U4 rev2 (Entry 127)
+
+- **U1** `configPageStack` flex gap 1.25rem (`soc.components.css`) — tách 1 `sectionCard` wall thành Header `glassPanel configHeaderMeta` (SOC/DataOps eyebrow + `SocOwnershipBadge` + `lockedFieldList` chips) + 3 cards: Globals + Tiers + Reason/Action — fix `SH.1` wrapper missing.
+- **U2** `SocQueueTierFieldSet.tsx` `tierCard` `081734/0.2` + `tierCardHeader` `LucideIcon Zap/Waves/Snowflake/RefreshCw` (`ui/lucide-icon.tsx` whitelist) + `tierSubtitle poll·batch` + label thuần `t(f.labelKey)` (bỏ `— ${label}` 36 từ) — fix `UI-02`.
+- **U3** `SocDataOpsConfigSection.tsx` `stickyActionBar {sticky bottom 0 blur}` + `stickyActionButtons` flex-end + primary `Xem trước` `10b981`, ghost `Đặt lại`, danger `Đặt lại mặc định` `actionBtnDanger` (`soc.components.css`); `change_reason` `*` + `maxLength 200` + `chars_remaining` i18n + `t("soc.dataops.change_reason_required")` guard `handleApply 422` + focus — fix `F3`/`UI-04/06`.
+- **U4** `auditToolbarGrid 160/160/1fr` (`soc.components.css`) với `filterRowLabel` + `configTierGrid 2×2 @900 1fr` scoped (không động `sectionGrid` shared `SH.3`) + `diffTableWrap max-height 320 overflow:auto` + `diffTableHeader sticky` — fix `G1`/`UI-07/09`.
+- **Gates**: `tsc 0`, `build PASS 30.64s` (rev2 31.50/36.01), `vitest 40/40 213 PASS` (config 16/16), `jest 92/92`. Ledger Entry 127.
+
 ### Done (2026-09-18) — IMPLEMENT DataOps Config Commercial C1→C7 (Entry 121)
 - **Thực thi** `docs/IMPLEMENTATION_PLAN_DATAOPS_CONFIG_COMMERCIAL_20260918.md` (vá R1-R5). Config SOC đạt chuẩn thương mại. Commits:
   - **C1** `ecbf6995` form per-field thay textarea (CFG-01/11), `SocQueueTierFieldSet.tsx` 4 fieldset.

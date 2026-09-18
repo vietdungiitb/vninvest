@@ -1,5 +1,6 @@
 import { createElement } from "react";
 import { useI18n } from "../../context/LangContext.js";
+import { LucideIcon } from "../ui/lucide-icon.js";
 import styles from "./soc.module.css";
 
 export interface QueueTierConfig {
@@ -109,10 +110,25 @@ export function SocQueueTierFieldSet(props: SocQueueTierFieldSetProps) {
     },
   ];
 
+  const tierIconMap: Record<string, { name: string; color: string }> = {
+    hot_user_demand: { name: "Zap", color: "#f59e0b" },
+    warm_liquid_market: { name: "Waves", color: "#22d3ee" },
+    cold_full_market: { name: "Snowflake", color: "#94a3b8" },
+    recovery_backlog: { name: "RefreshCw", color: "#a855f7" },
+  };
+  const iconInfo = tierIconMap[tierKey] || { name: "Layers", color: "#94a3b8" };
+  const subtitle = `${config?.poll_interval_seconds ?? "-"}s \u00B7 batch ${config?.max_batch_size ?? "-"}`;
+
   return createElement(
     "div",
-    { className: styles.sectionCard },
-    createElement("div", { className: styles.sectionCardTitle }, label),
+    { className: styles.tierCard },
+    createElement(
+      "div",
+      { className: styles.tierCardHeader },
+      createElement(LucideIcon, { name: iconInfo.name as never, size: 16, className: styles.tierIcon, style: { color: iconInfo.color } } as never),
+      createElement("div", { className: styles.sectionCardTitle, style: { marginBottom: 0 } }, label),
+    ),
+    createElement("p", { className: styles.tierSubtitle }, subtitle),
     createElement(
       "div",
       { className: styles.fieldGrid },
@@ -123,7 +139,7 @@ export function SocQueueTierFieldSet(props: SocQueueTierFieldSetProps) {
         return createElement(NumberInput, {
           key: f.field,
           id: fullKey,
-          label: `${t(f.labelKey)} \u2014 ${label}`,
+          label: t(f.labelKey),
           value: config?.[f.field],
           min: fieldSchema?.min ?? f.min,
           max: fieldSchema?.max ?? f.max,

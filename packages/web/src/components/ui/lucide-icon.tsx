@@ -58,14 +58,16 @@ const iconMap: Record<string, ComponentType<React.SVGProps<SVGSVGElement>>> = {
   Layers: Icons.Layers,
   ClipboardList: Icons.ClipboardList,
   AlertTriangle: Icons.AlertTriangle,
+  Snowflake: Icons.Snowflake,
+  Settings2: Icons.Settings2,
 };
 
-export function LucideIcon({ name, className = 'h-5 w-5' }: LucideIconProps) {
+export function LucideIcon({ name, className = 'h-5 w-5', size, style }: LucideIconProps & { size?: number; style?: React.CSSProperties }) {
   const Icon = iconMap[name];
   if (!Icon) {
-    return e('span', { className }, '⬤');
+    return e('span', { className, style }, '⬤');
   }
-  return e(Icon, { className });
+  return e(Icon, { className, width: size, height: size, style } as React.SVGProps<SVGSVGElement>);
 }
 
 export default LucideIcon;

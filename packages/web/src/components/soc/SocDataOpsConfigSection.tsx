@@ -6,6 +6,7 @@ import { SocWriteGuardBanner } from "./SocWriteGuardBanner.js";
 import { NumberInput, SocQueueTierFieldSet, type QueueTierConfig } from "./SocQueueTierFieldSet.js";
 import { diffObjects, type DiffRow } from "../../lib/diffUtil.js";
 import { formatLastCheck } from "./socTime.js";
+import { LucideIcon } from "../ui/lucide-icon.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { DataOpsContext } from "./DataOpsContext.js";
 import styles from "./soc.module.css";
@@ -351,6 +352,11 @@ export function SocDataOpsConfigSection() {
   };
 
   const applyPreset = (presetKey: keyof typeof PRESET_TIERS) => {
+    const isDirty = JSON.stringify(form) !== JSON.stringify(readForm(envelope?.config));
+    if (isDirty) {
+      const ok = typeof window !== "undefined" ? window.confirm(t("soc.dataops.preset_confirm")) : true;
+      if (!ok) return;
+    }
     const tier = PRESET_TIERS[presetKey];
     setForm((prev) => {
       const next = { ...prev };
@@ -360,7 +366,6 @@ export function SocDataOpsConfigSection() {
       return next;
     });
     setFormErrors({});
-    setChangeReason("");
   };
 
   const handleReset = () => {
@@ -415,6 +420,12 @@ export function SocDataOpsConfigSection() {
   };
 
   const handleApply = async () => {
+    if (!changeReason.trim()) {
+      setError(t("soc.dataops.change_reason_required"));
+      const target = document.querySelector('#change_reason') as HTMLTextAreaElement | null;
+      target?.focus();
+      return;
+    }
     setApplying(true);
     try {
       const adapter = defaultCoreApiAdapter as unknown as {
@@ -593,9 +604,14 @@ export function SocDataOpsConfigSection() {
     return createElement("p", { className: styles.emptyState }, t("soc.dataops.loading"));
   }
 
+  const isBalanced = JSON.stringify(form) === JSON.stringify({ ...DEFAULTS, hot_user_demand: PRESET_TIERS.balanced, warm_liquid_market: PRESET_TIERS.balanced, cold_full_market: PRESET_TIERS.balanced, recovery_backlog: PRESET_TIERS.balanced });
+  const isSaving = JSON.stringify(form.hot_user_demand) === JSON.stringify(PRESET_TIERS.saving) && TIER_KEYS.every((k) => JSON.stringify(form[k]) === JSON.stringify(PRESET_TIERS.saving));
+  const isPerformance = JSON.stringify(form.hot_user_demand) === JSON.stringify(PRESET_TIERS.performance) && TIER_KEYS.every((k) => JSON.stringify(form[k]) === JSON.stringify(PRESET_TIERS.performance));
+  const selectedPreset = isPerformance ? "performance" : isSaving ? "saving" : isBalanced ? "balanced" : null as string | null;
+
   return createElement(
     "div",
-    { },
+    { className: styles.configPageStack },
     error ? createElement("div", { className: styles.inlineError, role: "alert" }, error) : null,
     success ? createElement("div", { className: styles.inlineSuccess, role: "status" }, success) : null,
     conflict
@@ -623,33 +639,26 @@ export function SocDataOpsConfigSection() {
         )
       : null,
 
-    ownership
-      ? createElement(SocOwnershipBadge, {
-          team: ownership.owner_team,
-          writable: ownership.can_apply,
-          accessLevel: ownership.mode,
-        })
-      : null,
-
-    ownership?.write_block_reason
-      ? createElement(SocWriteGuardBanner, {
-          owner: ownership.owner_team,
-          writer: ownership.writer || ownership.owner_team,
-          surface: ownership.write_surface,
-        })
-      : null,
-
     createElement(
       "div",
-      { className: styles.sectionCard },
-      createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.config_editor")),
-      envelope?.updated_at
-        ? createElement(
-            "p",
-            { className: styles.helpText, title: formatLastCheck(envelope.updated_at, localeTag, t).title },
-            `${t("soc.dataops.last_updated")}: ${formatLastCheck(envelope.updated_at, localeTag, t).display}`,
-          )
-        : null,
+      { className: styles.glassPanel + " " + styles.configHeaderMeta },
+      createElement(
+        "div",
+        { className: styles.configHeaderTopRow },
+        createElement(
+          "div",
+          { className: styles.configEyebrow },
+          createElement(LucideIcon, { name: "Settings2", size: 14 }),
+          " SOC / DataOps",
+        ),
+        ownership
+          ? createElement(SocOwnershipBadge, {
+              team: ownership.owner_team,
+              writable: ownership.can_apply,
+              accessLevel: ownership.mode,
+            })
+          : null,
+      ),
       ownership?.locked_fields && ownership.locked_fields.length > 0
         ? createElement(
             "div",
@@ -665,7 +674,27 @@ export function SocDataOpsConfigSection() {
             ),
           )
         : null,
+      ownership?.write_block_reason
+        ? createElement(SocWriteGuardBanner, {
+            owner: ownership.owner_team,
+            writer: ownership.writer || ownership.owner_team,
+            surface: ownership.write_surface,
+          })
+        : null,
+    ),
+
+    createElement(
+      "div",
+      { className: styles.sectionCard },
       createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.global_config")),
+      createElement("p", { className: styles.helpText }, t("soc.dataops.global_config_help")),
+      envelope?.updated_at
+        ? createElement(
+            "p",
+            { className: styles.helpText, title: formatLastCheck(envelope.updated_at, localeTag, t).title },
+            `${t("soc.dataops.last_updated")}: ${formatLastCheck(envelope.updated_at, localeTag, t).display}`,
+          )
+        : null,
       globals,
       createElement(
         "div",
@@ -677,17 +706,24 @@ export function SocDataOpsConfigSection() {
             {
               key: presetKey,
               type: "button",
-              className: styles.presetButton,
+              title: t("soc.dataops.preset_tooltip"),
+              className: presetKey === selectedPreset ? styles.filterBtnActive : styles.filterBtnInactive,
               onClick: () => applyPreset(presetKey),
             },
             t(`soc.dataops.preset_${presetKey}`),
           ),
         ),
       ),
+    ),
+
+    createElement(
+      "div",
+      { className: styles.sectionCard },
       createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.queue_tiers_config")),
+      createElement("p", { className: styles.helpText }, t("soc.dataops.queue_tiers_help")),
       createElement(
         "div",
-        { className: styles.sectionGrid },
+        { className: styles.configTierGrid },
         TIER_KEYS.map((tierKey) =>
           createElement(SocQueueTierFieldSet, {
             key: tierKey,
@@ -702,9 +738,16 @@ export function SocDataOpsConfigSection() {
           }),
         ),
       ),
+    ),
+
+    createElement(
+      "div",
+      { className: styles.sectionCard },
+      createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.change_reason") + " ", createElement("span", { className: styles.fieldRequired }, "*")),
+      createElement("p", { className: styles.helpText }, t("soc.dataops.reason_section_help")),
       createElement(
         "div",
-        { },
+        { className: styles.stickyActionBar },
         createElement("div", { className: styles.fieldRow },
           createElement("label", { className: styles.fieldLabel, htmlFor: "change_reason" }, t("soc.dataops.change_reason")),
           createElement(
@@ -713,28 +756,35 @@ export function SocDataOpsConfigSection() {
               id: "change_reason",
               className: styles.fieldInput,
               rows: 2,
+              maxLength: 200,
               placeholder: t("soc.dataops.change_reason_placeholder"),
               value: changeReason,
               "aria-label": t("soc.dataops.change_reason"),
+              "aria-required": true,
               onChange: (event) => setChangeReason((event.target as HTMLTextAreaElement).value),
             },
             null,
           ),
+          createElement("p", { className: styles.helpText }, t("soc.dataops.chars_remaining", { count: 200 - changeReason.length, max: 200 })),
         ),
         createElement(
-          "button",
-          { onClick: handlePreview, className: styles.actionBtn },
-          t("soc.actions.preview"),
-        ),
-        createElement(
-          "button",
-          { onClick: handleReset, className: styles.actionBtn },
-          t("soc.actions.reset"),
-        ),
-        createElement(
-          "button",
-          { onClick: handleResetDefaults, className: styles.actionBtn },
-          t("soc.dataops.reset_defaults"),
+          "div",
+          { className: styles.stickyActionButtons },
+          createElement(
+            "button",
+            { type: "button", onClick: handleResetDefaults, className: `${styles.actionBtn} ${styles.actionBtnDanger}` },
+            t("soc.dataops.reset_defaults"),
+          ),
+          createElement(
+            "button",
+            { type: "button", onClick: handleReset, className: styles.filterBtnInactive },
+            t("soc.actions.reset"),
+          ),
+          createElement(
+            "button",
+            { type: "button", onClick: handlePreview, className: styles.actionBtn, style: { background: "rgba(22,215,160,0.2)", color: "var(--accent-emerald, #10b981)", fontWeight: 700 } as unknown as Record<string,string>, disabled: envelope?.ownership?.can_apply === false },
+            t("soc.actions.preview"),
+          ),
         ),
       ),
     ),
@@ -747,33 +797,42 @@ export function SocDataOpsConfigSection() {
       createElement("p", { className: styles.helpText }, `${t("soc.dataops.audit_total")}: ${auditTotal}`),
       createElement(
         "div",
-        { className: styles.auditFilters },
-        createElement(
-          "select",
-          {
-            value: auditActorFilter,
-            onChange: (event) => setAuditActorFilter((event.target as HTMLSelectElement).value),
-            className: styles.fieldInput,
-            "aria-label": t("soc.dataops.audit_filter_actor"),
-          },
-          createElement("option", { value: "" }, t("soc.dataops.audit_filter_all")),
-          auditActors.map((actor) => createElement("option", { key: actor, value: actor }, actor)),
+        { className: styles.auditToolbarGrid },
+        createElement("div", { className: styles.fieldRow },
+          createElement("label", { className: styles.fieldLabel }, t("soc.dataops.audit_filter_actor")),
+          createElement(
+            "select",
+            {
+              value: auditActorFilter,
+              onChange: (event) => setAuditActorFilter((event.target as HTMLSelectElement).value),
+              className: styles.fieldInput,
+              "aria-label": t("soc.dataops.audit_filter_actor"),
+            },
+            createElement("option", { value: "" }, t("soc.dataops.audit_filter_all")),
+            auditActors.map((actor) => createElement("option", { key: actor, value: actor }, actor)),
+          ),
         ),
-        createElement("input", {
-          type: "date",
-          value: auditFromDate,
-          onChange: (event) => setAuditFromDate((event.target as HTMLInputElement).value),
-          className: styles.fieldInput,
-          "aria-label": t("soc.dataops.audit_filter_from"),
-        }),
-        createElement("input", {
-          type: "search",
-          value: auditSearch,
-          onChange: (event) => setAuditSearch((event.target as HTMLInputElement).value),
-          placeholder: t("soc.dataops.audit_filter_search"),
-          className: styles.fieldInput,
-          "aria-label": t("soc.dataops.audit_filter_search"),
-        }),
+        createElement("div", { className: styles.fieldRow },
+          createElement("label", { className: styles.fieldLabel }, t("soc.dataops.audit_filter_from")),
+          createElement("input", {
+            type: "date",
+            value: auditFromDate,
+            onChange: (event) => setAuditFromDate((event.target as HTMLInputElement).value),
+            className: styles.fieldInput,
+            "aria-label": t("soc.dataops.audit_filter_from"),
+          }),
+        ),
+        createElement("div", { className: styles.fieldRow },
+          createElement("label", { className: styles.fieldLabel }, t("soc.dataops.audit_filter_search")),
+          createElement("input", {
+            type: "search",
+            value: auditSearch,
+            onChange: (event) => setAuditSearch((event.target as HTMLInputElement).value),
+            placeholder: t("soc.dataops.audit_filter_search"),
+            className: styles.fieldInput,
+            "aria-label": t("soc.dataops.audit_filter_search"),
+          }),
+        ),
       ),
       filteredAudit.length === 0
         ? createElement("p", { className: styles.emptyState }, t("soc.dataops.audit_empty"))

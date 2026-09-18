@@ -648,6 +648,16 @@
   opacity: 0.5;
 }
 
+.actionBtnDanger {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--soc-c-f87171);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.actionBtnDanger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.2);
+}
+
 /* Filter Button */
 .filterBtn {
   padding: 0.35rem 0.75rem;
@@ -998,7 +1008,8 @@
   margin: 0.75rem 0;
   border: 1px solid var(--border-default, rgba(var(--soc-rgb-5078a8) / 0.2));
   border-radius: 8px;
-  overflow: hidden;
+  overflow: auto;
+  max-height: 320px;
 }
 
 .diffTableHeader {
@@ -3290,4 +3301,119 @@
   border-radius: 8px;
   background: rgba(239, 68, 68, 0.12);
   color: var(--danger, #f87171);
+}
+
+/* U1 — config page stack (3 cards) */
+.configPageStack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.configHeaderMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.configHeaderTopRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.configEyebrow {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--soc-c-22d3ee);
+}
+
+/* U2 — tier card */
+.tierCard {
+  background: rgba(var(--soc-rgb-081734) / 0.2);
+  border: 1px solid rgba(var(--soc-rgb-5078a8) / 0.08);
+  border-top: 2px solid rgba(var(--soc-rgb-00b4d8) / 0.25);
+  border-radius: 10px;
+  padding: 0.85rem;
+}
+
+.tierSubtitle {
+  margin: 0.15rem 0 0.6rem;
+  font-size: 0.68rem;
+  color: var(--soc-c-94a3b8);
+  font-variant-numeric: tabular-nums;
+}
+
+.tierCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.15rem;
+}
+
+.tierIcon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--soc-c-22d3ee);
+}
+
+/* U2 — tier grid scoped (avoid .sectionGrid shared) */
+.configTierGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .configTierGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* U3 — sticky action bar */
+.stickyActionBar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid rgba(var(--soc-rgb-5078a8) / 0.15);
+  background: rgba(var(--soc-rgb-081734) / 0.85);
+  backdrop-filter: blur(8px);
+}
+
+.stickyActionButtons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.fieldRequired {
+  color: var(--soc-c-f87171);
+  margin-left: 0.15rem;
+  font-weight: 700;
+}
+
+/* U4 — audit toolbar grid */
+.auditToolbarGrid {
+  display: grid;
+  grid-template-columns: 160px 160px 1fr;
+  gap: 0.5rem;
+  align-items: end;
+  margin: 0.5rem 0 0.75rem;
+}
+
+@media (max-width: 700px) {
+  .auditToolbarGrid {
+    grid-template-columns: 1fr;
+  }
 }

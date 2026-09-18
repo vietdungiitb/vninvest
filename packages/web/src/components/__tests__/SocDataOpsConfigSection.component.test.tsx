@@ -300,6 +300,7 @@ describe("SocDataOpsConfigSection lock & revert (C5 — CFG-05 write / CFG-07)",
       expect(container.querySelector('[data-field="decay_days"]')).toBeTruthy();
     });
     fireEvent.change(field(container, "decay_days"), { target: { value: "14" } });
+    fireEvent.change(screen.getByLabelText("soc.dataops.change_reason"), { target: { value: "test reason" } });
     fireEvent.click(screen.getByRole("button", { name: "soc.actions.preview" }));
     await waitFor(() => {
       expect(screen.getByText("soc.config_preview.confirm_apply")).toBeTruthy();
@@ -312,7 +313,7 @@ describe("SocDataOpsConfigSection lock & revert (C5 — CFG-05 write / CFG-07)",
     const [config, opts] = adapterMocks.applySocDataOpsRuntimeConfig.mock.calls[0];
     expect(config.decay_days).toBe(14);
     expect(opts.expected_updated_at).toBe("2026-09-18T07:00:00Z");
-    expect(opts.change_reason).toBe("");
+    expect(opts.change_reason).toBe("test reason");
     expect(screen.getByText("soc.dataops.reload_compare")).toBeTruthy();
 
     adapterMocks.getSocDataOpsRuntimeConfig.mockResolvedValue({
