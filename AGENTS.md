@@ -151,6 +151,15 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - **U4** `auditToolbarGrid 160/160/1fr` (`soc.components.css`) với `filterRowLabel` + `configTierGrid 2×2 @900 1fr` scoped (không động `sectionGrid` shared `SH.3`) + `diffTableWrap max-height 320 overflow:auto` + `diffTableHeader sticky` — fix `G1`/`UI-07/09`.
 - **Gates**: `tsc 0`, `build PASS 30.64s` (rev2 31.50/36.01), `vitest 40/40 213 PASS` (config 16/16), `jest 92/92`. Ledger Entry 127.
 
+### Done (2026-09-18) — Signals UI Tái cấu trúc S1–S5 (Entry 129)
+
+- **S1** `SocSignalsPanel.tsx:1146` `severityDot` `socStatusColor` + `signalPrice` — row giàu `APF SELL ●high 616.2M` (giữ `Waves` icon, `volume`, `time`).
+- **S2** `SocSignalsPanel.tsx:2112` 7 tabs giữ `overview/job-console/materialization/config/detection/retention/rules` + `LucideIcon BarChart3/ServerCog/...` + `tabCountBadge` (`filteredSignals`, `materialization.services`, `rules`) — không gộp để giữ 33 tests.
+- **S3** `SocSignalsPanel.tsx:1332` `renderKVCard` → `kvTableWrap`/`kvTable` `kvKey/kvVal` — `Cấu hình`/`Phát hiện`/`Lưu trữ` không raw `JSON.stringify`.
+- **S4** `SocSignalsPanel.tsx:1111` `statCard` icon `Waves/EyeOff/Search/Percent/Clock` + `signalFeedFilterBar` 2 hàng `grid 140px 140px 1fr auto` — metric + filter không cramped.
+- **S5** `SocSignalsPanel.tsx:1280` `Top 5` + `signalsTwoCol minmax(380 1.6fr) sticky top12` — overview giàu, right sticky.
+- **Gates**: `tsc 0`, `build PASS 43.17s`, `vitest 40/40 213 PASS` (signals 33, overview-stream 2). Ledger Entry 129.
+
 ### Done (2026-09-18) — IMPLEMENT DataOps Config Commercial C1→C7 (Entry 121)
 - **Thực thi** `docs/IMPLEMENTATION_PLAN_DATAOPS_CONFIG_COMMERCIAL_20260918.md` (vá R1-R5). Config SOC đạt chuẩn thương mại. Commits:
   - **C1** `ecbf6995` form per-field thay textarea (CFG-01/11), `SocQueueTierFieldSet.tsx` 4 fieldset.

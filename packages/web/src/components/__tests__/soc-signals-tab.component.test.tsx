@@ -377,7 +377,8 @@ describe("SocSignalsPanel — W1.3 config/detection/retention subtabs", () => {
     render(<SocSignalsPanel />);
     await screen.findAllByText("VCI");
     fireEvent.click(screen.getByText("Cấu hình"));
-    expect(await screen.findByText(/whale_threshold_vnd: 500000000/)).toBeTruthy();
+    expect(await screen.findByText("whale_threshold_vnd")).toBeTruthy();
+    expect(await screen.findByText("500000000")).toBeTruthy();
     expect(screen.getByText(/locked by owner/)).toBeTruthy();
     expect(screen.getByText(/SOC chỉ đọc/)).toBeTruthy();
     expect(mocks.getSocSignalConfig).toHaveBeenCalledTimes(1);
@@ -391,7 +392,8 @@ describe("SocSignalsPanel — W1.3 config/detection/retention subtabs", () => {
     render(<SocSignalsPanel />);
     await screen.findAllByText("VCI");
     fireEvent.click(screen.getByText("Phát hiện"));
-    expect(await screen.findByText(/threshold_vnd: 500000000/)).toBeTruthy();
+    expect(await screen.findByText("threshold_vnd")).toBeTruthy();
+    expect(await screen.findByText("500000000")).toBeTruthy();
     expect(screen.getByText(/Kết quả smoke/)).toBeTruthy();
     fireEvent.click(screen.getByText("Chạy thử"));
     expect(mocks.testSocWhaleDetection).toHaveBeenCalledWith("VNM");
@@ -408,10 +410,12 @@ describe("SocSignalsPanel — W1.3 config/detection/retention subtabs", () => {
     render(<SocSignalsPanel />);
     await screen.findAllByText("VCI");
     fireEvent.click(screen.getByText("Lưu trữ"));
-    expect(await screen.findByText(/intraday_tick_days: 7/)).toBeTruthy();
+    expect(await screen.findByText("intraday_tick_days")).toBeTruthy();
+    expect((await screen.findAllByText("7")).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByText("Xem ảnh hưởng"));
     expect(mocks.previewSocSignalRetention).toHaveBeenCalledWith({});
-    expect(await screen.findByText(/alerts_in_scope: 30/)).toBeTruthy();
+    expect(await screen.findByText("alerts_in_scope")).toBeTruthy();
+    expect((await screen.findAllByText("30")).length).toBeGreaterThan(0);
   });
 
   it("job console offers only whale + dark_pool (screener rejected by BE)", async () => {

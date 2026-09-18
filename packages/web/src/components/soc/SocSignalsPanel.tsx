@@ -1197,9 +1197,20 @@ export function SocSignalsPanel() {
         }, createElement(LucideIcon, { name: TYPE_ICONS[s.type] || "Activity", className: "h-3.5 w-3.5" })),
         createElement("div", { className: styles.signalSymbol }, s.symbol),
         createElement("div", { className: `${styles.signalLabel} ${action.cls}` }, action.text),
+        s.severity
+          ? createElement("span", {
+              className: styles.severityDot,
+              style: { background: socStatusColor(s.severity) || (s.severity.toLowerCase()==="high" ? "#f59e0b" : s.severity.toLowerCase()==="critical" ? "#ef4444" : "#22d3ee") },
+              title: s.severity,
+              "aria-label": s.severity,
+            })
+          : null,
         createElement("div", { className: styles.signalVolume },
           s.volume != null ? formatVolume(s.volume) : "",
         ),
+        s.price != null
+          ? createElement("div", { className: styles.signalPrice, title: String(s.price) }, typeof s.price === "number" ? s.price.toLocaleString() + "₫" : String(s.price))
+          : null,
         createElement("div", { className: styles.signalTime, title: when.title },
           when.display,
         ),
@@ -1338,10 +1349,23 @@ export function SocSignalsPanel() {
   };
 
   const renderKVCard = (title: string, obj: Record<string, unknown> | null | undefined, keyPrefix: string) =>
-    createElement("div", { className: styles.matCard, key: keyPrefix },
-      createElement("div", { className: styles.matCardLabel }, title),
-      ...Object.entries(obj ?? {}).map(([k, v]) =>
-        createElement("div", { key: k }, `${k}: ${formatConfigValue(v)}`),
+    createElement("div", { className: styles.kvTableWrap, key: keyPrefix },
+      createElement("div", { className: styles.matCardLabel, style: { padding: "0.5rem 0.6rem", borderBottom: "1px solid rgba(var(--soc-rgb-5078a8)/0.12)" } }, title),
+      createElement("table", { className: styles.kvTable },
+        createElement("thead", null,
+          createElement("tr", null,
+            createElement("th", { className: styles.kvKey }, "Trường"),
+            createElement("th", { className: styles.kvVal }, "Giá trị"),
+          ),
+        ),
+        createElement("tbody", null,
+          ...Object.entries(obj ?? {}).map(([k, v]) =>
+            createElement("tr", { key: k },
+              createElement("td", { className: styles.kvKey }, k),
+              createElement("td", { className: styles.kvVal, title: String(v ?? "") }, formatConfigValue(v)),
+            ),
+          ),
+        ),
       ),
     );
 
@@ -2112,15 +2136,34 @@ export function SocSignalsPanel() {
               // ── Right: Sub-tabs ────────────────────────────────────────
               createElement("div", { className: styles.controlCard },
                 createElement("div", { className: styles.subTabBar, role: "tablist" },
-                  ...subTabKeys.map((st) =>
-                    createElement("button", {
+                  ...subTabKeys.map((st) => {
+                    const iconMap: Record<string,string> = {
+                      overview: "BarChart3",
+                      "job-console": "ServerCog",
+                      materialization: "Activity",
+                      config: "SlidersHorizontal",
+                      detection: "Search",
+                      retention: "Clock",
+                      rules: "ListChecks",
+                    };
+                    const countMap: Record<string, number|undefined> = {
+                      overview: filteredSignals.length,
+                      "job-console": undefined,
+                      materialization: materialization?.services?.length,
+                      config: Object.keys(configTab.data?.config ?? {}).length || undefined,
+                      detection: detectionTab.data ? 3 : undefined,
+                      retention: retentionTab.data ? 1 : undefined,
+                      rules: rulesTab.data?.rules?.length,
+                    };
+                    const cnt = countMap[st.key];
+                    return createElement("button", {
                       key: st.key,
                       role: "tab",
                       "aria-selected": subTab === st.key,
                       className: `${styles.subTabBtn} ${subTab === st.key ? styles.subTabBtnActive : ""}`,
                       onClick: () => setSubTab(st.key),
-                    }, st.label),
-                  ),
+                    }, createElement(LucideIcon, { name: iconMap[st.key] as never, className: "h-3.5 w-3.5" }), st.label, cnt != null ? createElement("span", { className: styles.tabCountBadge }, String(cnt)) : null);
+                  }),
                 ),
                 createElement("div", { },
                   subTabContent[subTab](),

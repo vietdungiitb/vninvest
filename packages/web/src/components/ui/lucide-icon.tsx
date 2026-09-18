@@ -60,6 +60,7 @@ const iconMap: Record<string, ComponentType<React.SVGProps<SVGSVGElement>>> = {
   AlertTriangle: Icons.AlertTriangle,
   Snowflake: Icons.Snowflake,
   Settings2: Icons.Settings2,
+  Percent: Icons.Percent,
 };
 
 export function LucideIcon({ name, className = 'h-5 w-5', size, style }: LucideIconProps & { size?: number; style?: React.CSSProperties }) {

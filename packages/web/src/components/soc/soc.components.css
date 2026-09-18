@@ -3417,3 +3417,68 @@
     grid-template-columns: 1fr;
   }
 }
+
+.tabCountBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: rgba(var(--soc-rgb-5078a8) / 0.15);
+  color: var(--text-muted, #94a3b8);
+  margin-left: 0.25rem;
+}
+
+.severityDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.signalPrice {
+  font-size: 0.7rem;
+  color: var(--text-muted, #94a3b8);
+  font-variant-numeric: tabular-nums;
+}
+
+/* S3 KVTable commercial */
+.kvTableWrap {
+  border: 1px solid rgba(var(--soc-rgb-5078a8) / 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(var(--soc-rgb-0f172a) / 0.25);
+}
+.kvTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+.kvTable th {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted, #94a3b8);
+  border-bottom: 1px solid rgba(var(--soc-rgb-5078a8) / 0.15);
+  background: rgba(var(--soc-rgb-0f172a) / 0.4);
+}
+.kvTable td {
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid rgba(var(--soc-rgb-5078a8) / 0.08);
+  vertical-align: top;
+}
+.kvKey {
+  color: var(--text-muted, #94a3b8);
+  font-weight: 600;
+  width: 38%;
+  word-break: break-all;
+}
+.kvVal {
+  color: var(--text-primary, #f1f5f9);
+  font-family: Menlo, Consolas, monospace;
+  word-break: break-all;
+}

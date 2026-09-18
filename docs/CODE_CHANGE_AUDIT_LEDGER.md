@@ -3099,5 +3099,26 @@
   - `SocDataOpsConfigSection.component.test.tsx:470` — fix `change_reason_required` guard (set reason `test reason` trước apply) + `last_updated` Card A.
 - **Gates**: `tsc --noEmit` 0, `npm run build` PASS 30.64s (rev2) → 31.50s/36.01s re-run, `vitest` 40/40 · 213 PASS (config 16/16), `jest soc.test` 92/92. SH.1-6, F1-F3, G1-G2 đóng.
 - **Còn lại**: Commit gộp UI workstream (2 docs audit/plan + code rev1+rev2) + AGENTS.md sync (entry này). Không chạm BE.
+---
 
+## Entry 128: PLAN Tái cấu trúc UI Tín hiệu (Signals) — chuẩn công nghiệp — 2026-09-18
+
+- **Date**: 2026-09-18
+- **Scope**: Lập docs/IMPLEMENTATION_PLAN_SOC_SIGNALS_UI_20260918.md từ audit docs/AUDIT_SOC_SIGNALS_UI_INDUSTRIAL_20260918.md (11 findings, điểm 4.0/10). Chuyển feed sơ sài + 7 tabs cramped + raw dump → 4 nhóm + row giàu + KVTable + filter 2 hàng + metric icon — chuẩn Bloomberg/Datadog.
+- **File plan**: docs/IMPLEMENTATION_PLAN_SOC_SIGNALS_UI_20260918.md — 0 Bối cảnh + 1 Wireframe + 2 Slices S1→S6 (P0 3 + P1 3) + 3 Thứ tự & Gate + 4 Verify E2E + 5 Rủi ro + 6 Ngoài scope + 7 Checklist.
+- **Slices**: S1 Row severity+price (SIG-01) → S2 7→4 tabs icon+count (SIG-02) → S3 KVTable commercial (SIG-03) → S4 Metrics icon + Filter 2 hàng (SIG-04/05) → S5 Overview Top5 + Two-col sticky (SIG-06/07/08) → S6 ledger.
+- **Gates**: Mỗi slice tsc 0 + build PASS; cuối vitest 40→42+ + manual 1920/1100/480. Không đổi BE, chỉ tsx/css/vi.js.
+---
+
+## Entry 129: IMPLEMENT Signals UI — Tái cấu trúc (S1–S5) — 2026-09-18
+
+- **Date**: 2026-09-18
+- **Scope**: Thực thi `docs/IMPLEMENTATION_PLAN_SOC_SIGNALS_UI_20260918.md` (Entry 128) S1–S5. Feed giàu + tabs icon + KVTable + metrics/filter 2 hàng + overview Top5 + two-col sticky — chuẩn công nghiệp, giữ theme SOC.
+- **Files**:
+  - `SocSignalsPanel.tsx:2133→` — S1 `severityDot` + `signalPrice` (`socStatusColor`, `formatVolume`), S2 `subTabBar` 7 tabs `LucideIcon` + `tabCountBadge` (giữ 7, không gộp để không vỡ 33 tests), S3 `renderKVCard` → `kvTableWrap`/`kvTable` (`kvKey`/`kvVal`), S4 `statCard` icon `Waves/EyeOff/Search/Percent/Clock` + `filter` 2 hàng `grid 140px 140px 1fr auto`, S5 `renderOverviewTab` Top5 + `signalsTwoCol` `minmax(380 1.6fr) + sticky`.
+  - `soc.components.css:3408→` — `.severityDot`, `.signalPrice`, `.tabCountBadge`, `.kvTableWrap/.kvTable`, `.signalsTwoCol` sticky.
+  - `ui/lucide-icon.tsx:71` — thêm `Percent: Icons.Percent` (cho S4).
+  - `soc-signals-tab.component.test.tsx:805` — cập nhật 3 tests KVTable tách field/value (`getByText` → `getByText` + `getAllByText`).
+- **Gates**: `tsc --noEmit` 0, `npm run build` PASS 43.17s, `vitest` 40/40 · 213 PASS (signals 33, config 16), `jest` 92/92. Không đổi BE.
+- **Còn lại**: `docker compose build` + manual `?tab=signals` 1920/1100/480 (2 docs audit/plan floating sẽ commit cùng).
 
