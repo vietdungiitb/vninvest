@@ -32,10 +32,16 @@ class QueueTierRuntimeConfig:
         errors: list[str] = []
         if self.poll_interval_seconds < 10:
             errors.append(f'{field_prefix}.poll_interval_seconds phải >= 10 giây')
+        if self.poll_interval_seconds > 3600:
+            errors.append(f'{field_prefix}.poll_interval_seconds phải <= 3600 giây (1 giờ)')
         if self.max_batch_size < 1:
             errors.append(f'{field_prefix}.max_batch_size phải >= 1')
+        if self.max_batch_size > 500:
+            errors.append(f'{field_prefix}.max_batch_size phải <= 500')
         if self.max_dispatch_per_cycle < 1:
             errors.append(f'{field_prefix}.max_dispatch_per_cycle phải >= 1')
+        if self.max_dispatch_per_cycle > 1000:
+            errors.append(f'{field_prefix}.max_dispatch_per_cycle phải <= 1000')
         return errors
 
     def to_dict(self) -> dict[str, int]:
@@ -113,12 +119,25 @@ class MarketDataRuntimeConfig:
         errors: list[str] = []
         if self.decay_days < 1:
             errors.append('decay_days phải >= 1')
+        if self.decay_days > 365:
+            errors.append('decay_days phải <= 365')
         if self.parity_snapshot_retention_days < 1:
             errors.append('parity_snapshot_retention_days phải >= 1')
-        errors.extend(self.hot_user_demand.validate('hot_user_demand'))
-        errors.extend(self.warm_liquid_market.validate('warm_liquid_market'))
-        errors.extend(self.cold_full_market.validate('cold_full_market'))
-        errors.extend(self.recovery_backlog.validate('recovery_backlog'))
+        if self.parity_snapshot_retention_days > 365:
+            errors.append('parity_snapshot_retention_days phải <= 365')
+        tiers = (
+            ('hot_user_demand', self.hot_user_demand),
+            ('warm_liquid_market', self.warm_liquid_market),
+            ('cold_full_market', self.cold_full_market),
+            ('recovery_backlog', self.recovery_backlog),
+        )
+        for field_prefix, tier in tiers:
+            errors.extend(tier.validate(field_prefix))
+            if tier.max_dispatch_per_cycle > tier.max_batch_size * 2:
+                errors.append(
+                    f'{field_prefix}.max_dispatch_per_cycle không nên vượt quá '
+                    f'{tier.max_batch_size * 2} (= max_batch_size × 2, hiện {tier.max_dispatch_per_cycle})'
+                )
         return errors
 
     def to_dict(self) -> dict[str, Any]:
