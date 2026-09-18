@@ -611,6 +611,7 @@ def _fetch_and_upsert_bucket(
     days: int,
     inter_symbol_delay: float = 0.12,
     plan_items: list[dict] | None = None,
+    progress_callback=None,
 ) -> dict:
     """
     Fetch daily history for a bucket of symbols using a single provider and
@@ -627,6 +628,7 @@ def _fetch_and_upsert_bucket(
     total_retries_used = 0
     latencies_ms: list[float] = []
     failed_count = 0
+    processed_count = 0
 
     for plan_item in normalized_plan_items:
         symbol = str(plan_item.get('symbol') or '').strip().upper()
@@ -682,6 +684,20 @@ def _fetch_and_upsert_bucket(
             logger.warning('backfill [%s] %s failed: %s', normalized_provider, symbol, exc)
             failed.append(symbol)
             failed_count += 1
+        finally:
+            processed_count += 1
+            if progress_callback is not None and processed_count % 50 == 0:
+                try:
+                    progress_callback(
+                        normalized_provider,
+                        processed_count,
+                        inserted,
+                        updated,
+                        skipped_existing,
+                        len(failed),
+                    )
+                except Exception:
+                    logger.exception('backfill progress callback failed [%s]', normalized_provider)
 
     return {
         'inserted': inserted,
@@ -1410,6 +1426,13 @@ def _backfill_daily_prices_impl(
     # B01: Run log lifecycle management
     service_run_log = None
     _task_id = celery_task_id or getattr(self.request, 'id', '') or ''
+    logger.info(
+        'backfill_daily_prices start: job_key=%s task_id=%s celery_task_id=%s run_log_id=%s',
+        _scheduler_job_key,
+        getattr(self.request, 'id', None),
+        celery_task_id,
+        service_run_log_id,
+    )
     _b08_cleanup_result = _b08_finalize_stale_running_runs(_scheduler_job_key)
     if _b08_cleanup_result.get('stale_run_logs') or _b08_cleanup_result.get('stale_backfill_runs'):
         logger.warning(
@@ -1418,6 +1441,18 @@ def _backfill_daily_prices_impl(
             _b08_cleanup_result.get('stale_run_logs', 0),
             _b08_cleanup_result.get('stale_backfill_runs', 0),
         )
+    if _scheduler_job_key and service_run_log_id is None and _task_id:
+        try:
+            from django.core.cache import cache
+            if not cache.add(f'scheduler:inflight:{_scheduler_job_key}', _task_id, timeout=7200):
+                logger.warning(
+                    'backfill_daily_prices dedup skip: job_key=%s task_id=%s already inflight',
+                    _scheduler_job_key,
+                    _task_id,
+                )
+                return {'status': 'skipped_dedup', 'job_key': _scheduler_job_key}
+        except Exception:
+            logger.exception('backfill_daily_prices dedup guard failed; proceeding')
     try:
         from service_ops.models import ServiceRunLog
         from service_ops.tasks import _mark_run_log_finished, _mark_run_log_running
@@ -1449,9 +1484,13 @@ def _backfill_daily_prices_impl(
                         },
                     )
                 except Exception:
-                    pass
+                    logger.exception(
+                        'backfill_daily_prices failed to create ServiceRunLog: job_key=%s service_key=%s',
+                        _scheduler_job_key,
+                        _service_key,
+                    )
     except Exception:
-        pass
+        logger.exception('backfill_daily_prices run-log bootstrap failed: job_key=%s', _scheduler_job_key)
     if plan_items is None and symbols is None:
         symbols = _get_default_global_registry_symbols()
 
@@ -1498,6 +1537,7 @@ def _backfill_daily_prices_impl(
             planned_symbols_count=len(plan_items),
         )
     except Exception:
+        logger.exception('backfill_daily_prices failed to create BackfillExecutionRun: job_key=%s', _scheduler_job_key)
         _exec_run = None
 
     # Store exec_run ref on request so on_failure handler can access it
@@ -1572,6 +1612,33 @@ def _backfill_daily_prices_impl(
         except Exception:
             _batch_rows = {}
 
+    _hb_last: dict[str, tuple[int, int, int, int, int]] = {}
+
+    def _bucket_progress(_provider, processed, inserted, updated, skipped, failed):
+        if _exec_run is None:
+            return
+        prev = _hb_last.get(_provider, (0, 0, 0, 0, 0))
+        d_failed = int(failed) - prev[4]
+        d_completed = max(int(processed) - prev[0] - d_failed, 0)
+        d_inserted = int(inserted) - prev[1]
+        d_updated = int(updated) - prev[2]
+        d_skipped = int(skipped) - prev[3]
+        _hb_last[_provider] = (int(processed), int(inserted), int(updated), int(skipped), int(failed))
+        if not any((d_completed, d_failed, d_inserted, d_updated, d_skipped)):
+            return
+        try:
+            from django.db.models import F
+            from service_ops.models import BackfillExecutionRun
+            BackfillExecutionRun.objects.filter(pk=_exec_run.pk).update(
+                completed_symbols_count=F('completed_symbols_count') + d_completed,
+                failed_symbols_count=F('failed_symbols_count') + d_failed,
+                inserted_rows=F('inserted_rows') + d_inserted,
+                updated_rows=F('updated_rows') + d_updated,
+                skipped_existing_rows=F('skipped_existing_rows') + d_skipped,
+            )
+        except Exception:
+            logger.exception('backfill heartbeat update failed [%s]', _provider)
+
     if workers <= 1 or len(non_empty_buckets) <= 1:
         for provider, bucket in non_empty_buckets:
             result = _fetch_and_upsert_bucket(
@@ -1580,6 +1647,7 @@ def _backfill_daily_prices_impl(
                 days,
                 _PROVIDER_INTER_SYMBOL_DELAY.get(provider.upper(), _DEFAULT_INTER_SYMBOL_DELAY),
                 bucket,
+                progress_callback=_bucket_progress,
             )
             total_inserted += int(result.get('inserted') or 0)
             total_updated += int(result.get('updated') or 0)
@@ -1615,6 +1683,7 @@ def _backfill_daily_prices_impl(
                     days,
                     _PROVIDER_INTER_SYMBOL_DELAY.get(provider.upper(), _DEFAULT_INTER_SYMBOL_DELAY),
                     bucket,
+                    progress_callback=_bucket_progress,
                 ): provider
                 for provider, bucket in buckets.items()
                 if bucket
@@ -1721,7 +1790,23 @@ def _backfill_daily_prices_impl(
                 'finished_at', 'summary',
             ])
         except Exception:
-            pass
+            logger.exception('backfill_daily_prices failed to finalize BackfillExecutionRun: run=%s', _exec_run.pk)
+    try:
+        _affected_symbols = sorted({
+            str(item.get('symbol') or '').strip().upper()
+            for item in (plan_items or [])
+            if isinstance(item, dict) and item.get('symbol')
+        })
+        if _affected_symbols:
+            _coverage_rows = _refresh_coverage_for_symbols(_affected_symbols)
+            result['coverage_refreshed'] = _coverage_rows
+            logger.info(
+                'backfill_daily_prices coverage refreshed: symbols=%s rows=%s',
+                len(_affected_symbols),
+                _coverage_rows,
+            )
+    except Exception:
+        logger.exception('backfill_daily_prices coverage refresh failed')
     # B01: transition run log to success/partial and clear inflight cache marker.
     if service_run_log is not None:
         try:
@@ -2701,6 +2786,13 @@ def synthesize_intraday_bars_from_ticks(self, *, symbol: str, trade_date: str) -
             result.get('updated', 0),
             result.get('skipped', 0),
         )
+        try:
+            result['coverage_refreshed'] = _refresh_coverage_for_symbols([symbol_upper])
+        except Exception:
+            logger.exception(
+                'synthesize_intraday_bars_from_ticks: coverage refresh failed symbol=%s date=%s',
+                symbol_upper, trade_date,
+            )
         return result
     except Exception as exc:
         logger.error(

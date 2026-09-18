@@ -62,6 +62,30 @@ interface SocSchedulerBoardProps {
 const RISKY_ACTIONS = new Set(["disable", "abort"]);
 const DOMAIN_FILTER_OPTIONS = ["all", "market_data", "signals", "whale", "platform", "maintenance"];
 
+const OVERDUE_24H_SECONDS = 24 * 60 * 60;
+const WEEKLY_FRESHNESS_SECONDS = 7 * 24 * 60 * 60;
+
+function isWeeklyCron(job: SchedulerJob): boolean {
+  if (job.trigger_type !== "cron") return false;
+  const key = job.job_key.toLowerCase();
+  if (key.includes("deep-history") || key.includes("weekly")) return true;
+  return Array.isArray(job.capabilities) && job.capabilities.includes("weekly");
+}
+
+function isPossiblyWeeklyIdle(job: SchedulerJob): boolean {
+  if (!isWeeklyCron(job) || !job.next_run_at) return false;
+  const remainingSeconds = (new Date(job.next_run_at).getTime() - Date.now()) / 1000;
+  return remainingSeconds >= 0 && remainingSeconds < WEEKLY_FRESHNESS_SECONDS;
+}
+
+// "overdue beyond 24h" = chronically behind; weekly cron jobs idling inside
+// their weekly window are expected behaviour, not degradation.
+function isOverdueBeyond24h(job: SchedulerJob): boolean {
+  const lag = job.lag_seconds;
+  if (lag == null || lag <= OVERDUE_24H_SECONDS) return false;
+  return !isPossiblyWeeklyIdle(job);
+}
+
 const getStatusStyles = (status: string) => getStatusBadgeStyle(status);
 
 const getFreshnessColor = (freshness?: string) => {
@@ -436,6 +460,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
   const [historyJob, setHistoryJob] = useState<string | null>(null);
   const [actionBanner, setActionBanner] = useState<{ type: "success" | "error"; msg: string; requestId?: string } | null>(null);
   const [showAllDomains, setShowAllDomains] = useState(false);
+  const [overdueUnder24hOnly, setOverdueUnder24hOnly] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -514,7 +539,8 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
   const activeDomainFilter = embedded && !showAllDomains ? domainProp as string : effectiveDomainFilter;
 
   const filteredJobs = plan?.jobs?.filter(
-    (j) => activeDomainFilter === "all" || j.domain === activeDomainFilter
+    (j) => (activeDomainFilter === "all" || j.domain === activeDomainFilter)
+      && (!overdueUnder24hOnly || j.lag_seconds == null || j.lag_seconds <= OVERDUE_24H_SECONDS)
   ) ?? [];
   const totalJobs = plan?.jobs?.length ?? 0;
 
@@ -586,6 +612,17 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
           "button",
           {
             type: "button",
+            onClick: () => setOverdueUnder24hOnly((v) => !v),
+            className: styles.pageBtnSmall,
+            style: { marginRight: "0.35rem", opacity: overdueUnder24hOnly ? 1 : 0.75 },
+            "aria-pressed": overdueUnder24hOnly,
+          },
+          t("soc.scheduler.filter_overdue_24h")
+        ),
+        createElement(
+          "button",
+          {
+            type: "button",
             onClick: load,
             disabled: loading,
             className: styles.pageBtnSmall,
@@ -633,8 +670,15 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
                 )
               )
             : filteredJobs.map((job) => {
-                const statusStyles = getStatusStyles(job.status);
+                const overdueBeyond24h = isOverdueBeyond24h(job);
+                const statusStyles = job.status === "degraded" && overdueBeyond24h
+                  ? getStatusBadgeStyle("danger")
+                  : getStatusStyles(job.status);
                 const freshnessColor = getFreshnessColor(job.freshness_state);
+                const lagSeconds = job.lag_seconds;
+                const isPriceBoardJob = job.job_key.includes("price-board");
+                const slaWarning = isPriceBoardJob && lagSeconds != null && lagSeconds > 90;
+                const slaCritical = isPriceBoardJob && lagSeconds != null && lagSeconds > 180;
 
                 return createElement(
                   "tr",
@@ -663,7 +707,11 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
                     null,
                     createElement(
                       "span",
-                      { className: styles.schedulerStatusBadge, style: statusStyles },
+                      {
+                        className: styles.schedulerStatusBadge,
+                        style: statusStyles,
+                        title: job.status === "degraded" && overdueBeyond24h ? t("soc.scheduler.tooltip_overdue_beyond_24h") : undefined,
+                      },
                       t(`soc.scheduler.status_${job.status}`, { defaultValue: job.status })
                     ),
                     (job.is_inflight || job.is_possibly_stuck) && createElement(
@@ -697,7 +745,14 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
                     )
                   ),
                   createElement("td", { style: { fontSize: "0.7rem", fontVariantNumeric: "tabular-nums" }, title: !job.next_run_at && job.trigger_type === "cron" ? t("soc.scheduler.cron_tooltip", { label: job.display_name || job.job_key }) : undefined }, !job.next_run_at && job.trigger_type === "cron" ? t("soc.scheduler.not_scheduled") : formatNextRun(job.next_run_at, job.trigger_type)),
-                  createElement("td", { style: { fontSize: "0.7rem", fontVariantNumeric: "tabular-nums" } }, formatLag(job.lag_seconds)),
+                  createElement("td", {
+                    style: {
+                      fontSize: "0.7rem",
+                      fontVariantNumeric: "tabular-nums",
+                      color: slaCritical ? toneColor("danger") : slaWarning ? toneColor("warning") : undefined,
+                      fontWeight: slaCritical ? 700 : undefined,
+                    },
+                  }, formatLag(job.lag_seconds)),
                   createElement("td", null, createElement(JobActionButtons, { job, onAction: handleAction, t })),
                   createElement("td", null,
                     createElement(

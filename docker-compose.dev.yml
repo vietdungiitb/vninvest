@@ -116,7 +116,7 @@ services:
       VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
       REDIS_URL: redis://core-redis:6379/3
       CELERY_BROKER_URL: redis://core-redis:6379/3
-      CELERY_QUEUES: ${CELERY_QUEUES_BACKFILL:-celery,enrichment_offhours,manual_on_demand,analytics_heavy}
+      CELERY_QUEUES: ${CELERY_QUEUES_BACKFILL:-celery,manual_on_demand,analytics_heavy}
       CELERY_POOL: solo
       CELERY_CONCURRENCY: "1"
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:-devpassword}@core-db:5432/vninvest_core
@@ -285,7 +285,7 @@ services:
       CELERY_BROKER_URL: redis://core-redis:6379/3
       CELERY_QUEUES: enrichment_offhours
       CELERY_CONCURRENCY: "1"
-      CELERY_POOL: solo
+      CELERY_POOL: prefork
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:-devpassword}@core-db:5432/vninvest_core
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:-}
@@ -395,11 +395,12 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "python src/manage.py check_scheduler_queue_drift --warn-only"]
       interval: 5m
-      timeout: 30s
+      timeout: 60s
       retries: 3
+      start_period: 60s
     networks:
       - vninvest_network
-    mem_limit: ${CORE_BEAT_MEM_LIMIT:-128m}
+    mem_limit: ${CORE_BEAT_MEM_LIMIT:-256m}
     cpus: ${CORE_BEAT_CPUS:-0.25}
 
   frontend:

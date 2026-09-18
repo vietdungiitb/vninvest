@@ -14,6 +14,30 @@ interface QueueTierData {
   [key: string]: unknown;
 }
 
+const ICT_TIME_ZONE = "Asia/Ho_Chi_Minh";
+const SESSION_CLOSE_MINUTES = 17 * 60 + 5;
+
+function ictDateString(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: ICT_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function ictMinutesOfDay(date: Date): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: ICT_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+  const minute = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+  return hour * 60 + minute;
+}
+
 function MetricCard({ label, value, color }: { label: string; value: string | number; color?: string }) {
   return createElement("div", { className: styles.metricCard },
     createElement("div", { className: styles.metricLabel }, label),
@@ -24,7 +48,7 @@ function MetricCard({ label, value, color }: { label: string; value: string | nu
 export function SocDataInventorySection() {
   const { t } = useI18n();
   const { state, actions } = useDataOps();
-  const { inventory, loading } = state;
+  const { inventory, loading, coverage } = state;
   const [queueTiers, setQueueTiers] = useState<QueueTierData[]>([]);
   const [queueTiersExpanded, setQueueTiersExpanded] = useState<string | null>(null);
   const [queueTiersLoading, setQueueTiersLoading] = useState(false);
@@ -67,6 +91,28 @@ export function SocDataInventorySection() {
   const dataTypes = inventory.data_types || [];
   const maxYearRows = years.length > 0 ? Math.max(...years.map((y) => y.rows)) : 1;
 
+  const now = new Date();
+  const todayIct = ictDateString(now);
+  const sessionClosed = ictMinutesOfDay(now) >= SESSION_CLOSE_MINUTES;
+  const latestDate = s.latest_date ?? null;
+  const pendingSession = latestDate != null && latestDate < todayIct && !sessionClosed;
+  const latestCaption = pendingSession
+    ? t("soc.dataops.awaiting_session_close")
+    : t("soc.dataops.latest_complete", { date: latestDate ?? t("soc.dataops.fallback_na") });
+
+  const coverageDatasets = ((coverage as { datasets?: Record<string, unknown>[] } | null)?.datasets) || [];
+  const dailyPricesCoverage = coverageDatasets.find((d) => d.dataset === "daily_prices");
+  let dailyPricesRatio: number | null = null;
+  if (dailyPricesCoverage) {
+    const healthy = Number(dailyPricesCoverage.fresh || 0) + Number(dailyPricesCoverage.warm || 0);
+    const total = healthy
+      + Number(dailyPricesCoverage.stale || 0)
+      + Number(dailyPricesCoverage.missing || 0)
+      + Number(dailyPricesCoverage.error || 0);
+    if (total > 0) dailyPricesRatio = healthy / total;
+  }
+  const showCoverageWarning = dailyPricesRatio != null && dailyPricesRatio < 0.8;
+
   const coverageColor = (covered: number, total: number): string => {
     if (total === 0) return toneColor("danger");
     const ratio = covered / total;
@@ -83,6 +129,20 @@ export function SocDataInventorySection() {
       MetricCard({ label: t("soc.dataops.earliest_date"), value: s.earliest_date ?? t("soc.dataops.fallback_na"), color: toneColor("warning") }),
       MetricCard({ label: t("soc.dataops.latest_date"), value: s.latest_date ?? t("soc.dataops.fallback_na"), color: toneColor("danger") }),
     ),
+
+    createElement("div", {
+      className: pendingSession ? styles.inventoryCaptionPending : styles.inventoryCaption,
+      role: "status",
+    }, latestCaption),
+
+    showCoverageWarning
+      ? createElement("div", { className: styles.coverageWarningBanner, role: "status" },
+          `\u26A0 ${t("soc.dataops.coverage_warning", {
+            dataset: "daily_prices",
+            ratio: ((dailyPricesRatio ?? 0) * 100).toFixed(1),
+          })}`,
+        )
+      : null,
 
     dataTypes.length > 0
       ? createElement("div", { className: styles.sectionCard },

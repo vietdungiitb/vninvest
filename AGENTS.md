@@ -121,6 +121,28 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
   - Gates: tsc 0, build PASS 33.32s, lint 0 errors (3549 warn pre-existing), `manage.py check` 0.
 - **PR-1 + PR-2 Overview đã DONE từ trước** (docs `AUDIT_SOC_OVERVIEW_UI_UX_20260916.md`: PR-1 `d39f9fed` + PR-2 `25c26c96` merged) — không làm lại W1-W14. P3 backlog §8 còn: ETag/304, donut global HealthStatusView, export history CSV, dependency graph, maintenance scheduler; JSX migration hoãn (Đ3 audit).
 
+### Done (2026-09-18) — DataOps Realtime Sync Fix — Slices A–F (Entry 115-118)
+- **Thực thi** `docs/IMPLEMENTATION_PLAN_DATAOPS_REALTIME_SYNC_FIX_20260918.md` (Entry 117) từ audit Entry 115 + phản biện Entry 116. Sửa root cause **beat crash-loop = OOM** (`docker events` oom→die 137; `docker stats` 127.6/128MiB) trước triệu chứng.
+- **A Beat**: `docker-compose.dev.yml` healthcheck `timeout 30→60s` + `start_period 60s`, `mem_limit 128m→${CORE_BEAT_MEM_LIMIT:-256m}` → `RestartCount=0` stable.
+- **B Queue**: consumer `enrichment_offhours` còn **1** (bỏ khỏi `core-worker`, line 119); dedup `cache.add('scheduler:inflight:{job_key}',task_id,7200)` chỉ cho beat path (`tasks.py:1444-1455`) → operator `run_now` không bị chặn.
+- **C Coverage F-COVER-01**: hook `_refresh_coverage_for_symbols(affected_symbols)` sau finalize `BackfillExecutionRun` (`tasks.py:1775`).
+- **D Heartbeat**: `progress_callback` mỗi 50 symbols (`tasks.py:689`) → `F()` heartbeat (`tasks.py:1617-1640`); `core-worker-enrichment` `solo→prefork`; `except: pass`→`logger.exception`.
+- **E Tz+bars C2/F-BAR-01**: `scheduler_catalog.py` `remaining_estimate(_now_local ICT)` → `next_run=2026-09-18T17:04:59+07:00`; coverage refresh cuối `synthesize_intraday_bars_from_ticks`.
+- **F UI**: caption `latest_complete`/`awaiting_session_close` (17:05 ICT) + banner coverage <80% (`SocDataInventorySection.tsx`); DEGRADED chỉ >24h + toggle filter + SLA price-board (`SocSchedulerBoard.tsx`); i18n `soc.dataops.*`/`soc.scheduler.*`; CSS `.inventoryCaption/.coverageWarningBanner`.
+- **Gates**: BE `manage.py check` 0; `test_scheduler_catalog` **35 OK** + `test_repair_beat_schedule` 6 + `test_drift_enabled_missing` 3 + `test_dataops_backfill_fixes` 6 OK; `test_soc_tasks` 6 FAIL **pre-existing**. FE `tsc 0` + `build PASS 53.00s` + vitest soc **8 files/67** (+4 mới). `docker compose config` OK.
+- **E2E live**: EOD không 3 run/5'; coverage `2026-09-17`; bar MAX `2026-09-18 02:19 UTC`, Jun–Aug=0; heartbeat 60 symbols `0→60`; reconcile 1071 symbols ok=1071. **Còn**: rebuild image để persist (đang dùng `docker cp`) + UI manual.
+
+### Done (2026-09-18) — Audit + PHẢN BIỆN DataOps Config (Entry 119-120)
+- **Entry 119**: Audit `docs/AUDIT_DATAOPS_CONFIG_20260918.md` (điểm 3.5/10) + kế hoạch `docs/IMPLEMENTATION_PLAN_DATAOPS_CONFIG_COMMERCIAL_20260918.md` (8 slices C1→C8).
+- **Entry 120 phản biện độc lập** `docs/PHAN_BIEN_AUDIT_DATAOPS_CONFIG_20260918.md`: audit chỉ ~55-65% chính xác — phần FE/UX đúng nhưng phần BE + benchmark sai.
+- **R1**: Audit CFG-04 sai — BE **đã có** `change_summary` (`dataops_config.py:161`), `count` (`:164`), `service_key` (`:158`), `action`/`before_snapshot`/`after_snapshot` (`models.py:340,344,345` + `mixins.py:83,86,87`); chỉ FE không render.
+- **R2**: Benchmark CFG-01 sai — `SocVnbrokerPanel.tsx:223` cũng là raw `textarea`; chỉ `SocScreenerConfigForm.tsx:99` có form per-field.
+- **R3**: Plan C5.5 nhồi before/after vào `change_summary` là thừa/sai (2 field đã tồn tại).
+- **R4**: Plan C5.1/C5.4 đặt `expected_updated_at`/`change_reason` trong wrapper, BE đọc top-level (`mixins.py:77`) → silent fail.
+- **R5**: Audit có 2 bảng số hiệu CFG xung đột + CFG-02 cite `alert` sai (`135,167`).
+- **Contradictions**: C1/C2/C3/C6 CONFIRMED; C4 PARTIAL; **C5 REFUTED** (apply/audit cùng key `dataops_config.py:83,185`).
+- **Gates**: `npx tsc --noEmit` = 0, `manage.py check` = 0. Verdict: plan implementable, không blocker, phải sửa R1-R5 trước khi code.
+
 ### Done (2026-09-17) — Scheduler Self-Heal + Realtime Sync P1 (Entry 113-114) — 6 slices
 - **Root cause chốt:** 5 jobs `enabled=False` trong `django_celery_beat_periodictask` (4 realtime + 1 by design `ingest-daily-prices-1705`) vs `CELERY_BEAT_SCHEDULE` `enabled=True` → `DatabaseScheduler` `entrypoint.sh:43` đọc DB không sync → `QUÁ HẠN 3h26m` `lag` `Thiếu dữ liệu` `MISSING 1.533` (bằng chứng `ROOT_CAUSE_SCHEDULER_DATAOPS_20260917.md` Entry 108).
 - **Slice 1 `repair_beat_schedule` v2:** `beat_reconcile.py:1` shared `reconcile_beat_schedule(dry_run)` + `management/commands/repair_beat_schedule.py:17` `--dry-run` + `IntervalSchedule/CrontabSchedule` `get_or_create` `queue = options['queue']` (F-A1) + `CrontabSchedule` `timezone Asia/Ho_Chi_Minh` (F-A4) + `ingest-daily-prices-1705` giữ `False`.

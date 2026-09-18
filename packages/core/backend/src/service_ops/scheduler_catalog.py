@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 from datetime import timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.utils import timezone
@@ -495,11 +496,13 @@ def build_scheduler_catalog(
             elif periodic_task.crontab is not None:
                 try:
                     crontab_schedule = periodic_task.crontab.schedule
-                    remaining = crontab_schedule.remaining_estimate(timezone.now())
-                    estimated_next = timezone.now() + remaining
+                    _cron_tz = getattr(crontab_schedule, 'tz', None) or ZoneInfo('Asia/Ho_Chi_Minh')
+                    _now_local = timezone.now().astimezone(_cron_tz)
+                    remaining = crontab_schedule.remaining_estimate(_now_local)
+                    estimated_next = _now_local + remaining
                     next_run_at = estimated_next.isoformat()
                 except Exception:
-                    pass
+                    logger.exception('scheduler_catalog: crontab remaining_estimate failed for %s', job_key)
             # Fallback: if DB has no crontab but settings has crontab object
             elif sched_val is not None and hasattr(sched_val, "remaining_estimate"):
                 try:

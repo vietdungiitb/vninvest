@@ -588,6 +588,31 @@
   margin-bottom: 1.25rem;
 }
 
+.inventoryCaption {
+  margin: -0.75rem 0 0.25rem;
+  font-size: 0.72rem;
+  color: var(--text-muted, #94a3b8);
+}
+
+.inventoryCaptionPending {
+  composes: inventoryCaption;
+  color: var(--color-warning-500, #fbbf24);
+  font-weight: 600;
+}
+
+.coverageWarningBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-warning-500, #fbbf24);
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
 /* Toolbar */
 .toolbar {
   display: flex;

@@ -2882,3 +2882,119 @@
 - **Gates (thật)**: `npx tsc --noEmit` **0**; `npm run build` **PASS 33.32s**; `npm run lint` **0 errors** (3549 warnings pre-existing); BE `service_ops` **348 tests OK (skipped=1)**; `manage.py check` **0**
 - **Kết luận**: Overview tab giờ có SSE realtime — health dashboard auto-refresh khi status đổi, không cần poll 15s full payload. Interval vẫn chạy để refresh SLO data (stream không chứa SLO). Offline/hidden tab → stream pause + fallback 15s poll.
 - **Next**: Overview P3 còn lại — ETag/304, donut global HealthStatusView, export history CSV, dependency graph, maintenance scheduler (theo `docs/IMPLEMENTATION_PLAN_SOC_OVERVIEW_TAB_20260916.md` §8 backlog).
+---
+---
+
+## Entry 115: AUDIT DataOps Realtime Sync — 2026-09-18 (không sửa code, reproduce-first)
+
+- **Date**: 2026-09-18
+- **Scope**: Audit độc lập "tự động backfill có đồng bộ chính xác với thị trường thời gian thực?" từ 2 ảnh runtime Bảng điều khiển lịch chạy DEGRADED 14/14 + Dữ liệu vận hành 4.5M sau start_dev.ps1 ec594e4c. Tuân khung AGENTS.md 6 nguyên tắc + B1-B6.
+- **File audit**: docs/AUDIT_DATAOPS_REALTIME_SYNC_20260918.md MỚI — A-G + phụ lục reproduce (6 script audit_check*.py).
+- **Bằng chứng reproduce (DB/log thật, không suy luận)**:
+  - market_data_dailyprice:4514097 distinct 1898 MAX 2026-09-17 1059 vs 2026-09-18 0 (audit_check.py:12) — 0 ngày 18 là đúng (chưa đóng phiên).
+  - GlobalSymbolCoverage:daily_prices latest 2026-09-16 08:00 freshness fresh (audit_check6.py:25) lệch 1 ngày so DB → F-COVER-01.
+  - BackfillExecutionRun 211/210 running 22:49/22:40 planned 1942 completed 0 + docker logs core-worker 06:04:19 APG 264 → 06:04:37 Read timed out CTG125001 → F-BACK-01.
+  - PeriodicTask:queue-tier last 23:05:02 lag 1.0m, ingest last 23:04:25 lag 1.6m (audit_check6.py) vs ảnh 05:51 9m28s/8m59s → transient sau restart.
+  - market_data_intraday_bar MAX 2026-05-22 40474 (audit_check6.py) → F-BAR-01 chết 4 tháng.
+  - EXCEPT 16→17 151 missing CCA,EID... registry 1942 → F-DATA-01 54.5%.
+  - beat logs 06:02:55/06:03:25/06:04:02 queue-tier 30s đều — đã hồi.
+- **Verdict**: CHƯA đồng bộ hoàn toàn chính xác — realtime (price-board 60s, queue-tier 30s) đã khỏe sau self-heal Entry 114, nhưng EOD parity F-COVER-01 + F-DATA-01 + F-BAR-01 khiến DEGRADED 14 trong ảnh là thật (không phải false alarm).
+- **Ưu tiên fix**: P0 F-BACK-01+F-COVER-01 (heartbeat + recompute hook) 1d → P1 F-BAR-01+F-DATA-01 2d → P2 F-SCHED-01+F-REAL-01 1d. Không sửa code trong entry này.
+- **Gates**: manage.py check 0, No queue drift, core-api healthy, beat/worker Up, tsc 0 (kế thừa Entry 114). Audit này chỉ ghi tài liệu.
+
+---
+
+## Entry 116: PHẢN BIỆN độc lập Entry 115 — DataOps Realtime Sync (không sửa code, reproduce-first)
+
+- **Date**: 2026-09-18
+- **Scope**: Phản biện độc lập `docs/AUDIT_DATAOPS_REALTIME_SYNC_20260918.md` (Entry 115) — verify/reproduce từng finding bằng code `file:line` + DB/log live; đưa verdict CONFIRMED/PARTIAL/REFUTED.
+- **File phản biện**: `docs/PHAN_BIEN_AUDIT_DATAOPS_REALTIME_SYNC_20260918.md` MỚI.
+- **Verdict**:
+  - **F-BACK-01 → PARTIAL**: CONFIRMED counter không flush giữa run (`tasks.py:1700-1748` chỉ ghi cuối); **REFUTED "treo vô hạn"** — run 208 hoàn tất sau 7h09m (`completed=1942, inserted=281172`), B08 auto-close stale >2h (`tasks.py:1316-1379`). Defect mới: `time_limit=11400` (`tasks.py:1755`) không thực thi trên `--pool=solo`.
+  - **F-COVER-01 → CONFIRMED** (root cause refined): `_backfill_daily_prices_impl` KHÔNG gọi `_refresh_coverage_for_symbols`; refresh chỉ có ở `tasks.py:1257` (ingest) + `771,898`. Hook đúng = sau `tasks.py:1726`.
+  - **F-DATA-01 → CONFIRMED** (~54.5%; missing ~151).
+  - **F-BAR-01 → REFUTED-as-stated/PARTIAL**: `market_data_intraday_bar` TƯƠI tới `2026-09-17 07:59 UTC` 40474 rows; "MAX=2026-05-22" là field của `GlobalSymbolCoverage:intraday_bars` (audit_check6.py không có query intraday_bar). Gap thật: Jun–Aug = 0 rows.
+  - **F-SCHED-01 → CONFIRMED** + bổ sung: runs 210/211/212 mang kwargs beat (`triggered_by=beat_schedule` sinh tại `tasks.py:1432-1450`); nghi **beat crash-loop** (RestartCount=17, ~5–6 phút/lần, ExitCode=0, OOMKilled=false, mem 128m) + `last_run_at=None` → dispatch lặp EOD toàn thị trường.
+  - **C2 → CONFIRMED effect, REFUTED cause**: DB crontab id=21 = `5 17 * * *` ICT (đúng); "5 10 *" là artifact sai hàng. Bug thật ở `scheduler_catalog.py:498` `remaining_estimate(timezone.now())` + `now+remaining` → `2026-09-18 17:05 UTC` = `2026-09-19 00:05 ICT` (đúng UI).
+- **CONTRADICTIONS mới**: (P1) audit gán runs 210/211 cho `run_market_data_queue_tier_scheduler` — SAI, planner path `global_symbol_planner.py:136` không truyền `_scheduler_job_key` → `job_key=''` (không thể có `daily-backfill-prices-1700`); grep xác nhận chỉ `tasks.py:1779,1899` + `scheduler.py:555` (kèm `service_run_log_id` → nhánh `tasks.py:1425`) truyền job key. (P4) đọc sai crontab.
+- **Findings MỚI**: **R-NEW-01 HIGH** beat crash-loop; **R-NEW-02 HIGH** 2 worker cùng consume `enrichment_offhours` → 2 backfill chạy song song (210/211 chồng lấn); **R-NEW-03 MEDIUM** `time_limit` không enforce; **R-NEW-04 MEDIUM** 210/212 dùng chung `celery_task_id=80c6e118-…` (nghi redelivery ~62'≈3600s, nhưng `acks_late` chỉ có ở `service_ops/tasks.py:1307`); **R-NEW-05 LOW** nhiều `except: pass` (`tasks.py:1451,1723,1745`).
+- **Ưu tiên sửa lại**: P0 beat crash-loop + dedup job_key + tách worker offhours → P1 coverage hook + heartbeat → P1 tz `scheduler_catalog.py:498` + gap Jun–Aug → P2 F-DATA-01 alert <80%.
+- **Kết luận**: Audit gốc đúng **kết quả** ("chưa đồng bộ hoàn toàn chính xác") nhưng **sai phần lớn cơ chế nhân quả** (attribution runs, nguồn F-BAR-01, crontab C2) và **thiếu root cause lớn nhất** (beat crash-loop). Không sửa code trong entry này.
+- **Gates**: reproduce-only (docker exec/logs/psql + read code); không đổi runtime. `manage.py check`/tsc kế thừa Entry 114 (không chạy lại vì không sửa code).
+---
+---
+
+## Entry 117: PLAN DataOps Realtime Sync Fix — 2026-09-18 (không sửa code, lập kế hoạch)
+
+- **Date**: 2026-09-18
+- **Scope**: Lập `docs/IMPLEMENTATION_PLAN_DATAOPS_REALTIME_SYNC_FIX_20260918.md` MỚI — hợp nhất `AUDIT_DATAOPS_REALTIME_SYNC_20260918.md` (Entry 115) + phản biện `PHAN_BIEN_AUDIT_DATAOPS_REALTIME_SYNC_20260918.md` (Entry 116) thành kế hoạch 7 slices bàn giao không cần hỏi lại.
+- **File plan**: `docs/IMPLEMENTATION_PLAN_DATAOPS_REALTIME_SYNC_FIX_20260918.md` — 0 Bối cảnh + 1 Kiến trúc đích + 2 Slices A-G + 3 Thứ tự & Gate + 4 Verify E2E + 5 Rủi ro + 6 Phạm vi ngoài + 7 Bàn giao checklist.
+- **Slices**:
+  - **A Beat crash-loop R-NEW-01 (P0)**: fix healthcheck/mem 256m, last_run_at, RestartCount ổn định 15m.
+  - **B Queue dedup R-NEW-02/F-SCHED-01 (P0)**: tách 1 consumer enrichment_offhours (core-worker bỏ queue đó) + cache.add inflight + bind task_id, acks_late.
+  - **C Coverage F-COVER-01 (P0/P1)**: hook _refresh_coverage_for_symbols sau tasks.py:1726 (affected_symbols only).
+  - **D Heartbeat/time_limit F-BACK-01/R-NEW-03-05 (P1)**: flush mỗi 50 symbols/30s, prefork cho EOD, except pass→logger.exception.
+  - **E Tz+Bars C2/F-BAR-01 (P1)**: scheduler_catalog.py:498 localtime(ICT) → 17:05 ICT, gap Jun–Aug 0 rows điều tra/xóa coverage stale.
+  - **F Observability F-DATA-01/F-REAL-01/F-PTIME-01/F-DEG-01 (P2)**: caption latest_complete + next 17:05, DEGRADED >24h, alert coverage <80%, SLA 90s.
+  - **G Ledger/docs**: Entry 118→ sau mỗi slice + AGENTS.md sync.
+- **Verdict kế hoạch**: Sửa đúng root cause beat crash-loop (thiếu trong audit gốc) trước khi sửa triệu chứng coverage/heartbeat; tz bug là BE không phải FE; bar table tươi nhưng coverage stale — gap thật Jun–Aug.
+- **Gates**: Plan-only — không chạy manage.py/tsc (không sửa code). Đội code tự chạy gates mỗi slice theo §3.
+
+---
+
+## Entry 118: DataOps Realtime Sync Fix — Slices A–F (beat mem, queue dedup, coverage hook, heartbeat, tz, UI) — 2026-09-18
+
+- **Date**: 2026-09-18
+- **Scope**: Thực thi `docs/IMPLEMENTATION_PLAN_DATAOPS_REALTIME_SYNC_FIX_20260918.md` (Entry 117) slices A–F; G = entry này. Sửa root cause beat crash-loop (OOM) trước, rồi queue dedup, coverage hook, heartbeat, tz, UI observability.
+- **Files (theo slice)**:
+  - **A Beat (R-NEW-01 P0)**: `docker-compose.dev.yml` healthcheck `timeout 30s→60s` + `start_period: 60s`; `mem_limit 128m→${CORE_BEAT_MEM_LIMIT:-256m}`. Root cause = OOM (`docker events` oom→die 137; `docker stats` 127.6MiB/128MiB).
+  - **B Queue (R-NEW-02/F-SCHED-01 P0)**: `docker-compose.dev.yml:119` `CELERY_QUEUES` bỏ `enrichment_offhours` (`celery,manual_on_demand,analytics_heavy`); `_backfill_daily_prices_impl` (`data_ingest/tasks.py:1444-1455`) dedup `cache.add('scheduler:inflight:{job_key}', task_id, 7200)` chỉ cho beat path (`_scheduler_job_key` và `service_run_log_id is None`) → operator `run_now` không bị chặn; `_b01_clear_inflight_cache` clear ở mọi terminal state.
+  - **C Coverage (F-COVER-01 P0/P1)**: hook `_refresh_coverage_for_symbols(affected_symbols)` sau finalize `BackfillExecutionRun` (`tasks.py:1775`) + `result['coverage_refreshed']`; try/except không làm fail run.
+  - **D Heartbeat/time_limit (F-BACK-01/R-NEW-03-05 P1)**: `progress_callback` trong `_fetch_and_upsert_bucket` (`tasks.py:689` mỗi 50 symbols) → heartbeat `F()` (`tasks.py:1617-1640`); `core-worker-enrichment` pool `solo→prefork`; `except: pass` → `logger.exception` (4 sites).
+  - **E Tz+Bars (C2/F-BAR-01 P1)**: `scheduler_catalog.py` `remaining_estimate` dùng `_now_local` ICT — verify nhân quả: truyền UTC cho delta sai (next sang ngày kế); truyền ICT local cho `17:04:59 ICT`. Test `test_cron_next_run_uses_crontab_timezone` (không mock `timezone.now` vì celery internal không dùng clock patch). Coverage refresh cuối `synthesize_intraday_bars_from_ticks` (`tasks.py:2756`) + test.
+  - **F Observability (F-DATA-01/F-DEG-01 P2)**: `vi.js/en.js` keys `soc.dataops.latest_complete|awaiting_session_close|coverage_warning`, `soc.scheduler.filter_overdue_24h|tooltip_overdue_beyond_24h`; `SocDataInventorySection.tsx` caption session-close 17:05 ICT + banner coverage <80%; `SocSchedulerBoard.tsx` DEGRADED chỉ >24h + toggle "quá hạn <24h" + SLA lag price-board (>90s warn/>180s danger); `soc.components.css` `.inventoryCaption/.inventoryCaptionPending/.coverageWarningBanner`.
+- **Gates:**
+  - BE `manage.py check` 0; gate cuối `service_ops.tests.test_scheduler_catalog` **35 OK** + `test_repair_beat_schedule` **6 OK** + `test_drift_enabled_missing` **3 OK** + `test_dataops_backfill_fixes` **6 OK** + `test_soc_tasks` **6 FAIL pre-existing** (5 queue-tier + 1 parity; reproduce trên image cũ).
+  - FE `npx tsc --noEmit` **0**; `npm run build` **PASS 53.00s** (chỉ chunk-size warning pre-existing); vitest soc **8 files / 67 PASS** (+4 mới: `soc-inventory-caption` 3 + `soc-scheduler-degraded` 1).
+  - `docker compose config` **OK**; `grep enrichment_offhours` → **1 consumer** (line 286).
+- **E2E (live, `docker cp` + restart `core-worker`/`core-worker-enrichment`):**
+  - Beat `RestartCount=0`, `Status=running`.
+  - EOD `daily-backfill-prices-1700`: 3 run gần nhất `01:30 UTC success` / `23:42 partial` / `22:49 partial` — không 3 run cách 5 phút.
+  - Coverage `daily_prices`: `latest_complete_trade_date=2026-09-17`, `updated_at=2026-09-18 01:59 UTC`.
+  - Tz `next_run=2026-09-18T17:04:59+07:00` (trigger cron).
+  - Bar `market_data_intraday_bar` MAX `2026-09-18 02:19 UTC`, Jun–Aug = 0.
+  - Heartbeat: dispatch 60 symbols → `completed_symbols_count 0→60`, status success, monotonic (trước Entry 118 bị kẹt 0).
+  - Reconciliation một lần `refresh_global_symbol_coverage` 1071 symbols: ok=1071 err=0 → `intraday_bars` nonnull 1071 (was 960 stale `2026-05-22`).
+- **Fix stale-image (không phải regression)**: gate plan trỏ `service_ops.tests.test_repair_beat_schedule` / `test_drift_enabled_missing` báo `ModuleNotFoundError` vì container chạy image cũ thiếu file → `docker cp` test files + `beat_reconcile.py` + `check_scheduler_queue_drift.py` → 9 OK.
+- **Ghi chú kỹ thuật**: `BackfillExecutionRun` dùng `started_at` (không `created_at`) và không có `celery_task_id` (ở `service_run_log`); bảng bar = `market_data_intraday_bar`; `GlobalSymbolCoverage` không có field `symbol` (key `registry__symbol` + `dataset`); Postgres `ORDER BY DESC` đẩy NULL lên đầu → phải filter/`Max`.
+- **Còn lại (G persistence + UI manual)**: rebuild image để persist code (container hiện nhận code qua `docker cp`, không bind mount) + xác nhận UI `?tab=dataops` caption / `?tab=scheduler` DEGRADED.
+---
+
+## Entry 119: AUDIT DataOps Config — SOC Cấu hình (không sửa code, reproduce-first)
+
+- **Date**: 2026-09-18
+- **Scope**: Audit `SocDataOpsConfigSection.tsx:1` (331 dòng, raw textarea) + `SocConfigPreviewModal.tsx:1` + `domain_configs/market_data.py:1` + `dataops_config.py:1` + `soc.js:232-245` + `DataOpsContext.tsx:1` + ảnh UI cấu hình. Benchmark VNBroker 454 dòng.
+- **File audit**: `docs/AUDIT_DATAOPS_CONFIG_20260918.md` MỚI — A-G + phụ lục VNBroker vs DataOps.
+- **Điểm**: 3.5/10 — đọc/ghi/preview/audit chạy nhưng sơ sài, thiếu form/thao tác thương mại.
+- **Verdict findings**: CFG-01 ERROR textarea 14 field (232) không form; CFG-02 ERROR alert 172,187 blocking; CFG-03 GAP diff slice 80 (36) + before/after thô; CFG-04 GAP audit chỉ actor•HH:MM:SS 281 không before/after/filter/export; CFG-05 GAP Sửa label sai + không revert/lý do bắt buộc; CFG-06 GAP validate chỉ min 112 không max/cross; CFG-07 RISK no optimistic lock (last-write-wins); CFG-08 RISK locked_fields chỉ join 228 không disable; CFG-09 GAP path /scraping vs /soc 240 vs 236 không nhất quán; CFG-10 GAP không context/stream; CFG-11 GAP i18n hint dead 630.
+- **Contradictions**: C1 preview /soc vs apply /scraping; C2 DataOpsContext không có config; C4 impact chỉ sensitiveKeys; C5 audit filter service_key=matrix lệch.
+- **Kế hoạch**: `docs/IMPLEMENTATION_PLAN_DATAOPS_CONFIG_COMMERCIAL_20260918.md` MỚI — 8 slices C1→C8 (P0 form/diff/audit → P1 validate/lock/schema → P2 context/preset) — bàn giao không hỏi lại. Gates tsc 0 build 53s vitest 8/67 + 6 mới, BE 12 tests.
+
+## Entry 120: PHẢN BIỆN ĐỘC LẬP — Audit + Kế hoạch DataOps Config (không sửa code, reproduce-first)
+
+- **Date**: 2026-09-18
+- **Scope**: Phản biện `docs/AUDIT_DATAOPS_CONFIG_20260918.md` (Entry 119) + `docs/IMPLEMENTATION_PLAN_DATAOPS_CONFIG_COMMERCIAL_20260918.md` theo khung AGENTS.md. Verify toàn bộ claim bằng grep/read; chạy lại gate `npx tsc --noEmit` (packages/web) = 0 + `manage.py check` = 0.
+- **File phản biện**: `docs/PHAN_BIEN_AUDIT_DATAOPS_CONFIG_20260918.md` MỚI — A-G + verdict từng CFG/C + findings R1-R11.
+- **Điểm audit gốc ~55-65% chính xác**: phần FE/UX đúng; phần BE + benchmark sai.
+- **Findings phản biện chính**:
+  - **R1 (ERROR)** — Audit CFG-04 sai: BE **đã có** `change_summary` (`dataops_config.py:161`), `count` (`:164`), `service_key` (`:158`); DB có `action`/`before_snapshot`/`after_snapshot` (`models.py:340,344,345`) + handler ghi (`mixins.py:83,86,87`). Chỉ FE không render.
+  - **R2 (ERROR)** — Benchmark CFG-01 sai: `SocVnbrokerPanel.tsx:223` cũng là raw `textarea`; chỉ `SocScreenerConfigForm.tsx:99` có form per-field. Audit tự mâu thuẫn (dòng 145 vs 190).
+  - **R3 (ERROR)** — Plan C5.5 đề xuất nhồi before/after vào `change_summary` (no migration) là thừa/sai — 2 field `before_snapshot`/`after_snapshot` tồn tại sẵn.
+  - **R4 (GAP)** — Plan C5.1/C5.4: `expected_updated_at`/`change_reason` BE đọc **top-level** (`mixins.py:77`), FE gửi trong wrapper (`soc.js:237`) → lock/reason silent fail.
+  - **R5 (ERROR)** — Audit có 2 bảng số hiệu CFG xung đột (Tóm tắt dòng 27-31 vs bảng D dòng 147-151); CFG-02 cite `alert` sai (`135,167` không phải alert).
+  - **R6-R11**: `_build_default_config_payloads` bỏ sót dataops/matrix (`registry.py:278-284`); `soc.actions.reset` chưa tồn tại (`vi.js:169-182`); plan C6 thiếu đăng ký URL schema; C4.2 (hard 400) mâu thuẫn C2.2/C7.3/E2E (soft warning); gate FE "+6" thực là 7; i18n nhiều key đã có (K5).
+- **Contradictions xác nhận**: C1 (path /soc vs /scraping) CONFIRMED, C2 CONFIRMED, C3 CONFIRMED, C4 PARTIAL, **C5 REFUTED** (apply/audit cùng key `dataops_config.py:83,185`; cite `dataops_base.py:58` sai), C6 CONFIRMED.
+- **Verdict**: Audit dùng được nhưng phải đính chính; plan **implementable, không blocker**, phải sửa R1-R5 trước khi code. Gates: `tsc 0`, `manage.py check 0`; config FE 0 test, BE chưa có `test_dataops_config*`.
+- **Vá plan (R1-R5, chỉ docs, không sửa code)**: `docs/IMPLEMENTATION_PLAN_DATAOPS_CONFIG_COMMERCIAL_20260918.md` — (R1) C3.1 chỉ thêm `action`/`before_snapshot`/`after_snapshot`/`request_id`, bỏ thêm lại `change_summary`; (R2) C1 thêm mẫu `SocScreenerConfigForm.tsx:99`, loại `SocVnbrokerPanel`; (R3) C5.5 + §5 bỏ hack nhồi before/after vào `change_summary`; (R4) C5.1/C5.4 gửi `expected_updated_at`/`change_reason` **top-level** (`mixins.py:77`); (R5) §0 thêm bảng số hiệu CFG chuẩn (theo Bảng D audit) + sửa cite `alert 173,187`.
+- **Bàn giao**: plan sẵn sàng cho đội code (files untracked, chờ commit). Ledger Entry 120.
+

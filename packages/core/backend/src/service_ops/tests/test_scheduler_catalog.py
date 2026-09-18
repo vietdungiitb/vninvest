@@ -306,6 +306,46 @@ class SchedulerCatalogUnitTests(TestCase):
         self.assertGreaterEqual(job['lag_seconds'], 2 * 24 * 3600)
         self.assertLess(job['lag_seconds'], (2 * 24 * 3600) + 60)
 
+    def test_cron_next_run_uses_crontab_timezone(self):
+        from datetime import datetime
+
+        from django_celery_beat.models import CrontabSchedule, PeriodicTask
+
+        crontab, _ = CrontabSchedule.objects.get_or_create(
+            minute='5',
+            hour='17',
+            day_of_week='*',
+            day_of_month='*',
+            month_of_year='*',
+            timezone='Asia/Ho_Chi_Minh',
+        )
+        PeriodicTask.objects.update_or_create(
+            name='daily-backfill-prices-1700',
+            defaults={
+                'task': 'data_ingest.tasks.backfill_daily_prices',
+                'crontab': crontab,
+                'enabled': True,
+                'queue': 'enrichment_offhours',
+            },
+        )
+
+        schedule_map = {
+            'daily-backfill-prices-1700': {
+                'task': 'data_ingest.tasks.backfill_daily_prices',
+                'schedule': 'cron(hour=17, minute=5)',
+                'options': {'queue': 'enrichment_offhours'},
+            },
+        }
+
+        catalog = build_scheduler_catalog(schedule_map=schedule_map)
+        job = next(j for j in catalog if j['job_key'] == 'daily-backfill-prices-1700')
+
+        self.assertIsNotNone(job['next_run_at'])
+        next_run = datetime.fromisoformat(job['next_run_at'])
+        self.assertEqual(next_run.utcoffset(), timedelta(hours=7))
+        self.assertEqual(next_run.hour, 17)
+        self.assertIn(next_run.minute, (4, 5))
+
 
 
 class SchedulerHealthSummaryUnitTests(TestCase):
