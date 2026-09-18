@@ -154,6 +154,34 @@ class DataOpsRuntimeConfigPreviewView(SOCBaseView):
             'ownership': _build_market_data_ownership_payload(),
         })
 
+class DataOpsRuntimeConfigSchemaFieldSerializer(serializers.Serializer):
+    key = serializers.CharField()
+    type = serializers.CharField()
+    min = serializers.IntegerField(allow_null=True, required=False)
+    max = serializers.IntegerField(allow_null=True, required=False)
+    default = serializers.IntegerField(allow_null=True, required=False)
+    help = serializers.CharField(allow_blank=True, required=False)
+
+class DataOpsRuntimeConfigSchemaResponseSerializer(serializers.Serializer):
+    fields = DataOpsRuntimeConfigSchemaFieldSerializer(many=True)
+
+@extend_schema(
+    summary='Schema runtime config DataOps market-data',
+    description=(
+        'Trả về mô tả từng trường config (key, type, min, max, default, help) — '
+        'frontend render form động theo schema này, fallback hard-code khi 404.'
+    ),
+    responses={
+        200: DataOpsRuntimeConfigSchemaResponseSerializer,
+        401: OpenApiTypes.OBJECT,
+    },
+)
+class DataOpsRuntimeConfigSchemaView(SOCBaseView):
+    """GET /api/soc/dataops/runtime-config/schema/ — form schema (C6 — CFG-09)."""
+
+    def get(self, request):
+        return Response({'fields': MarketDataRuntimeConfig.get_schema()})
+
 class DataOpsRuntimeConfigAuditSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     service_key = serializers.CharField()

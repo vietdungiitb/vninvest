@@ -32,6 +32,8 @@ urlpatterns = [
     path('dataops/queue-tiers/', dataops.DataOpsQueueTiersView.as_view(), name='dataops_queue_tiers'),
     path('dataops/observability/', dataops.DataOpsObservabilityView.as_view(), name='dataops_observability'),
     path('dataops/runtime-config/', dataops.DataOpsRuntimeConfigView.as_view(), name='dataops_runtime_config'),
+    path('dataops/runtime-config/schema/', dataops.DataOpsRuntimeConfigSchemaView.as_view(),
+         name='dataops_runtime_config_schema'),
     # === B03 — Backfill Progress API ===
     path('dataops/backfill/runs/', dataops.BackfillRunListView.as_view(), name='backfill_run_list'),
     path('dataops/backfill/runs/<str:run_id>/', dataops.BackfillRunDetailView.as_view(), name='backfill_run_detail'),

@@ -149,3 +149,30 @@ class MarketDataRuntimeConfig:
             'cold_full_market': self.cold_full_market.to_dict(),
             'recovery_backlog': self.recovery_backlog.to_dict(),
         }
+
+    @classmethod
+    def get_schema(cls) -> list[dict[str, Any]]:
+        """Schema động (C6 — CFG-09): defaults & bounds khớp từng trường, FE render form theo đây."""
+        defaults = cls()
+        tier_bounds = [
+            ('hot_user_demand', defaults.hot_user_demand),
+            ('warm_liquid_market', defaults.warm_liquid_market),
+            ('cold_full_market', defaults.cold_full_market),
+            ('recovery_backlog', defaults.recovery_backlog),
+        ]
+        fields: list[dict[str, Any]] = [
+            {'key': 'decay_days', 'type': 'int', 'min': 1, 'max': 365, 'default': defaults.decay_days,
+             'help': 'Số ngày giữ dữ liệu thị trường tươi cho phân tích chuỗi khoảng giá.'},
+            {'key': 'parity_snapshot_retention_days', 'type': 'int', 'min': 1, 'max': 365, 'default': defaults.parity_snapshot_retention_days,
+             'help': 'Số ngày giữ snapshot cross-check giữa core và nhà môi giới.'},
+        ]
+        for tier_key, tier in tier_bounds:
+            fields.extend([
+                {'key': f'{tier_key}.poll_interval_seconds', 'type': 'int', 'min': 10, 'max': 3600,
+                 'default': tier.poll_interval_seconds, 'help': 'Chu kỳ quét (giây) cho tầng này.'},
+                {'key': f'{tier_key}.max_batch_size', 'type': 'int', 'min': 1, 'max': 500,
+                 'default': tier.max_batch_size, 'help': 'Số tối đa symbols mỗi chu kỳ.'},
+                {'key': f'{tier_key}.max_dispatch_per_cycle', 'type': 'int', 'min': 1, 'max': 1000,
+                 'default': tier.max_dispatch_per_cycle, 'help': 'Số lệnh điều phối tối đa mỗi chu kỳ (không quá 2× batch).'},
+            ])
+        return fields

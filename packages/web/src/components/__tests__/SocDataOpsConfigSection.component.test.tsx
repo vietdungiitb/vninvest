@@ -5,6 +5,7 @@ import { SocDataOpsConfigSection } from "../soc/SocDataOpsConfigSection.js";
 const adapterMocks = vi.hoisted(() => ({
   getSocDataOpsRuntimeConfig: vi.fn(),
   getSocDataOpsRuntimeConfigAudit: vi.fn(),
+  getSocDataOpsRuntimeConfigSchema: vi.fn(),
   previewSocDataOpsRuntimeConfig: vi.fn(),
   applySocDataOpsRuntimeConfig: vi.fn(),
   exportSocConfigAudits: vi.fn(),
@@ -30,6 +31,7 @@ function setup() {
     updated_at: "2026-09-18T07:00:00Z",
   });
   adapterMocks.getSocDataOpsRuntimeConfigAudit.mockResolvedValue({ results: [], next: null });
+  adapterMocks.getSocDataOpsRuntimeConfigSchema.mockResolvedValue({ fields: [] });
 }
 
 const field = (container: HTMLElement, id: string) => {
@@ -320,5 +322,58 @@ describe("SocDataOpsConfigSection lock & revert (C5 — CFG-05 write / CFG-07)",
     await waitFor(() => {
       expect(screen.getByText("soc.config_preview.changes")).toBeTruthy();
     });
+  });
+});
+
+describe("SocDataOpsConfigSection write guard per-field + schema (C6 — CFG-08/CFG-09)", () => {
+  beforeEach(() => {
+    adapterMocks.getSocDataOpsRuntimeConfig.mockReset();
+    adapterMocks.getSocDataOpsRuntimeConfigAudit.mockReset();
+    adapterMocks.getSocDataOpsRuntimeConfigSchema.mockReset();
+    adapterMocks.previewSocDataOpsRuntimeConfig.mockReset();
+    adapterMocks.applySocDataOpsRuntimeConfig.mockReset();
+    adapterMocks.exportSocConfigAudits.mockReset();
+    adapterMocks.getSocDataOpsRuntimeConfig.mockResolvedValue({
+      config: baseConfig,
+      ownership: {
+        owner_team: "BIDV",
+        can_apply: true,
+        mode: "rw",
+        locked_fields: ["decay_days", "hot_user_demand.poll_interval_seconds"],
+      },
+      updated_at: "2026-09-18T07:00:00Z",
+    });
+    adapterMocks.getSocDataOpsRuntimeConfigAudit.mockResolvedValue({ results: [], next: null });
+    adapterMocks.getSocDataOpsRuntimeConfigSchema.mockResolvedValue({
+      fields: [
+        { key: "decay_days", type: "int", min: 1, max: 365, default: 7, help: "decay help" },
+        { key: "hot_user_demand.poll_interval_seconds", type: "int", min: 10, max: 3600, default: 30, help: "poll help" },
+      ],
+    });
+  });
+
+  afterEach(() => cleanup());
+
+  it("disables + locks locked fields, shows per-field badge chips, others stay editable", async () => {
+    const { container } = render(<SocDataOpsConfigSection />);
+    await waitFor(() => {
+      expect(container.querySelector('[data-locked="decay_days"]')).toBeTruthy();
+    });
+    expect(field(container, "decay_days").disabled).toBe(true);
+    expect(container.querySelector('label[for="decay_days"] [role="img"]')).toBeTruthy();
+    expect(field(container, "hot_user_demand.poll_interval_seconds").disabled).toBe(true);
+    expect(field(container, "parity_snapshot_retention_days").disabled).toBe(false);
+    expect(container.querySelector('[data-locked="hot_user_demand.poll_interval_seconds"]')).toBeTruthy();
+  });
+
+  it("renders bounds from schema when present (C6.4 fallback hard-coded otherwise)", async () => {
+    const { container } = render(<SocDataOpsConfigSection />);
+    await waitFor(() => {
+      expect(container.querySelector('[data-field="decay_days"]')).toBeTruthy();
+    });
+    const decayInput = field(container, "decay_days");
+    expect(decayInput.max).toBe("365");
+    const hotPoll = field(container, "hot_user_demand.poll_interval_seconds");
+    expect(hotPoll.min).toBe("10");
   });
 });

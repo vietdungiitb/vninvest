@@ -220,8 +220,18 @@ describe("SOC adapter", () => {
       await soc.getSocDataOpsRuntimeConfig();
       expect(coreGet).toHaveBeenCalledWith("/operator/scraping/dataops/runtime-config/");
 
+      await soc.getSocDataOpsRuntimeConfigSchema();
+      expect(coreGet).toHaveBeenCalledWith("/operator/scraping/dataops/runtime-config/schema/");
+
       await soc.applySocDataOpsRuntimeConfig({ batch: 50 });
       expect(corePost).toHaveBeenCalledWith("/operator/scraping/dataops/runtime-config/", { config_payload: { batch: 50 } });
+
+      await soc.applySocDataOpsRuntimeConfig({ batch: 50 }, { expected_updated_at: "2026-09-18T07:00:00Z", change_reason: "test" });
+      expect(corePost).toHaveBeenCalledWith("/operator/scraping/dataops/runtime-config/", {
+        config_payload: { batch: 50 },
+        expected_updated_at: "2026-09-18T07:00:00Z",
+        change_reason: "test",
+      });
 
       await soc.previewSocDataOpsRuntimeConfig({ batch: 50 });
       expect(corePost).toHaveBeenCalledWith("/operator/soc/dataops/runtime-config/preview/", { config_payload: { batch: 50 } });

@@ -18,15 +18,29 @@ export interface NumberInputProps {
   help?: string;
   error?: string;
   disabled?: boolean;
+  locked?: boolean;
+  lockReason?: string;
   onChange: (value: number) => void;
 }
 
 export function NumberInput(props: NumberInputProps) {
-  const { id, label, value, min, max, unit, help, error, disabled, onChange } = props;
+  const { id, label, value, min, max, unit, help, error, disabled, locked, lockReason, onChange } = props;
+  const lockText = lockReason || "";
   return createElement(
     "div",
-    { className: styles.fieldRow },
-    createElement("label", { className: styles.fieldLabel, htmlFor: id }, label),
+    { className: styles.fieldRow, ...(locked ? { "aria-disabled": true } : {}) },
+    createElement(
+      "label",
+      { className: styles.fieldLabel, htmlFor: id },
+      label,
+      locked
+        ? createElement(
+            "span",
+            { className: styles.fieldLockIcon, title: lockText, role: "img", "aria-label": lockText },
+            "\u{1F512}",
+          )
+        : null,
+    ),
     createElement(
       "div",
       { className: styles.fieldInputWrap },
@@ -60,12 +74,13 @@ interface SocQueueTierFieldSetProps {
   errors: Record<string, string>;
   lockedFields: string[];
   disabled?: boolean;
+  schema?: Record<string, { min?: number; max?: number; help?: string }>;
   onChange: (tierKey: string, field: keyof QueueTierConfig, value: number) => void;
 }
 
 export function SocQueueTierFieldSet(props: SocQueueTierFieldSetProps) {
   const { t } = useI18n();
-  const { tierKey, label, config, errors, lockedFields, disabled, onChange } = props;
+  const { tierKey, label, config, errors, lockedFields, disabled, schema, onChange } = props;
 
   const fields: { field: keyof QueueTierConfig; labelKey: string; min: number; max: number; unitKey: string; helpKey: string }[] = [
     {
@@ -101,21 +116,26 @@ export function SocQueueTierFieldSet(props: SocQueueTierFieldSetProps) {
     createElement(
       "div",
       { className: styles.fieldGrid },
-      fields.map((f) =>
-        createElement(NumberInput, {
+      fields.map((f) => {
+        const fullKey = `${tierKey}.${f.field}`;
+        const tierLocked = lockedFields.includes(fullKey) || lockedFields.includes(tierKey);
+        const fieldSchema = schema?.[fullKey];
+        return createElement(NumberInput, {
           key: f.field,
-          id: `${tierKey}.${f.field}`,
+          id: fullKey,
           label: `${t(f.labelKey)} \u2014 ${label}`,
           value: config?.[f.field],
-          min: f.min,
-          max: f.max,
+          min: fieldSchema?.min ?? f.min,
+          max: fieldSchema?.max ?? f.max,
           unit: t(f.unitKey),
-          help: t(f.helpKey),
-          error: errors[`${tierKey}.${f.field}`],
-          disabled: disabled || lockedFields.includes(`${tierKey}.${f.field}`) || lockedFields.includes(tierKey),
+          help: fieldSchema?.help ?? t(f.helpKey),
+          error: errors[fullKey],
+          disabled: disabled || tierLocked,
+          locked: tierLocked,
+          lockReason: tierLocked ? t("soc.badge.write_block_reason", { reason: t(f.labelKey) }) : undefined,
           onChange: (value) => onChange(tierKey, f.field, value),
-        }),
-      ),
+        });
+      }),
     ),
   );
 }

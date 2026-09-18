@@ -232,6 +232,9 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
     getSocDataOpsRuntimeConfig() {
       return coreGet("/operator/scraping/dataops/runtime-config/");
     },
+    getSocDataOpsRuntimeConfigSchema() {
+      return coreGet("/operator/scraping/dataops/runtime-config/schema/");
+    },
 
     applySocDataOpsRuntimeConfig(config, opts = {}) {
       return corePost("/operator/scraping/dataops/runtime-config/", {

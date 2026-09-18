@@ -128,6 +128,7 @@ const vi = {
       access: 'Quyền: {level}',
       unknown_team: 'Không rõ',
       access_level: 'Mức truy cập',
+      write_block_reason: 'Bị khóa ghi theo quyền sở hữu: {reason}',
     },
     tab: {
       overview: 'Tổng quan',

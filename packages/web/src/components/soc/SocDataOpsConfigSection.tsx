@@ -43,6 +43,15 @@ interface AuditEntry {
   [key: string]: unknown;
 }
 
+interface SchemaField {
+  key: string;
+  type?: string;
+  min?: number;
+  max?: number;
+  default?: number;
+  help?: string;
+}
+
 type TierKey = "hot_user_demand" | "warm_liquid_market" | "cold_full_market" | "recovery_backlog";
 
 type FormState = {
@@ -175,6 +184,31 @@ export function SocDataOpsConfigSection() {
   const [exportingAudits, setExportingAudits] = useState(false);
   const [changeReason, setChangeReason] = useState("");
   const [conflict, setConflict] = useState(false);
+  const [schemaFields, setSchemaFields] = useState<Record<string, SchemaField>>({});
+
+  useEffect(() => {
+    const applySchema = async () => {
+      try {
+        const adapter = defaultCoreApiAdapter as unknown as {
+          getSocDataOpsRuntimeConfigSchema: () => Promise<{ fields?: SchemaField[] }>;
+        };
+        const data = await adapter.getSocDataOpsRuntimeConfigSchema();
+        const map: Record<string, SchemaField> = {};
+        (data?.fields || []).forEach((f) => {
+          if (f && f.key) map[f.key] = f;
+        });
+        setSchemaFields(map);
+      } catch {
+        setSchemaFields({});
+      }
+    };
+    applySchema();
+  }, []);
+
+  const lockedFieldReason = useCallback(
+    (key: string) => t("soc.badge.write_block_reason", { reason: schemaFields[key]?.help || key }),
+    [schemaFields, t],
+  );
 
   const fetchConfigOnly = useCallback(async () => {
     setLoading(true);
@@ -473,24 +507,30 @@ export function SocDataOpsConfigSection() {
       id: "decay_days",
       label: t("soc.dataops.field_decay_days"),
       value: form.decay_days,
-      min: GLOBAL_FIELD_RANGES.decay_days.min,
-      max: GLOBAL_FIELD_RANGES.decay_days.max,
+      min: schemaFields["decay_days"]?.min ?? GLOBAL_FIELD_RANGES.decay_days.min,
+      max: schemaFields["decay_days"]?.max ?? GLOBAL_FIELD_RANGES.decay_days.max,
       unit: t("soc.dataops.unit_days"),
-      help: t("soc.dataops.field_decay_days_help"),
+      help: schemaFields["decay_days"]?.help ?? t("soc.dataops.field_decay_days_help"),
       error: formErrors.decay_days,
       disabled: lockedFields.includes("decay_days"),
+      locked: lockedFields.includes("decay_days"),
+      lockReason: lockedFields.includes("decay_days") ? lockedFieldReason("decay_days") : undefined,
       onChange: (value) => updateGlobalField("decay_days", value),
     }),
     createElement(NumberInput, {
       id: "parity_snapshot_retention_days",
       label: t("soc.dataops.field_parity_retention_days"),
       value: form.parity_snapshot_retention_days,
-      min: GLOBAL_FIELD_RANGES.parity_snapshot_retention_days.min,
-      max: GLOBAL_FIELD_RANGES.parity_snapshot_retention_days.max,
+      min: schemaFields["parity_snapshot_retention_days"]?.min ?? GLOBAL_FIELD_RANGES.parity_snapshot_retention_days.min,
+      max: schemaFields["parity_snapshot_retention_days"]?.max ?? GLOBAL_FIELD_RANGES.parity_snapshot_retention_days.max,
       unit: t("soc.dataops.unit_days"),
-      help: t("soc.dataops.field_parity_retention_days_help"),
+      help: schemaFields["parity_snapshot_retention_days"]?.help ?? t("soc.dataops.field_parity_retention_days_help"),
       error: formErrors.parity_snapshot_retention_days,
       disabled: lockedFields.includes("parity_snapshot_retention_days"),
+      locked: lockedFields.includes("parity_snapshot_retention_days"),
+      lockReason: lockedFields.includes("parity_snapshot_retention_days")
+        ? lockedFieldReason("parity_snapshot_retention_days")
+        : undefined,
       onChange: (value) => updateGlobalField("parity_snapshot_retention_days", value),
     }),
   );
@@ -542,9 +582,17 @@ export function SocDataOpsConfigSection() {
         : null,
       ownership?.locked_fields && ownership.locked_fields.length > 0
         ? createElement(
-            "p",
-            { className: styles.helpText },
-            `${t("soc.dataops.locked_fields")}: ${ownership.locked_fields.join(", ")}`,
+            "div",
+            { className: styles.lockedFieldList },
+            createElement("span", { className: styles.lockedFieldListLabel }, `${t("soc.dataops.locked_fields")}:`),
+            ownership.locked_fields.map((fieldKey) =>
+              createElement(
+                "span",
+                { key: fieldKey, className: styles.lockedFieldBadge, title: lockedFieldReason(fieldKey), "data-locked": fieldKey },
+                "\u{1F512} ",
+                fieldKey,
+              ),
+            ),
           )
         : null,
       createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.global_config")),
@@ -562,6 +610,7 @@ export function SocDataOpsConfigSection() {
             errors: formErrors,
             lockedFields,
             disabled: envelope?.ownership?.can_apply === false,
+            schema: schemaFields,
             onChange: updateTierField,
           }),
         ),

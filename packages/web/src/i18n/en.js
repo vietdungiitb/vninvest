@@ -128,6 +128,7 @@ const en = {
       access: 'Access: {level}',
       unknown_team: 'Unknown',
       access_level: 'Access Level',
+      write_block_reason: 'Write locked by ownership: {reason}',
     },
     tab: {
       overview: 'Overview',

@@ -3208,6 +3208,47 @@
   text-decoration: none;
 }
 
+.fieldLockIcon {
+  display: inline-block;
+  margin-left: 0.4rem;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: help;
+  vertical-align: middle;
+}
+
+.lockedFieldList {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.lockedFieldListLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--warning, #fbbf24);
+  margin-right: 0.25rem;
+}
+
+.lockedFieldBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: var(--warning, #fbbf24);
+  cursor: help;
+}
+
 .conflictBanner {
   display: flex;
   flex-wrap: wrap;
