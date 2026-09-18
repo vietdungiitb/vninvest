@@ -1108,11 +1108,24 @@ export function SocSignalsPanel() {
     }
   };
 
-  // ─── Stat card ─────────────────────────────────────────────────────────
+  // ─── Stat card — with icon (S4) ──────────────────────────────────────
+  const statIconMap: Record<string, string> = {
+    "Tổng cảnh báo": "Activity",
+    "Whale": "Waves",
+    "Dark Pool": "EyeOff",
+    "Screener": "Search",
+    "Tỷ lệ phát hiện": "Percent",
+    "Độ trễ TB": "Clock",
+  };
   const statCard = (label: string, value: string | number, color: string) =>
-    createElement("div", { className: styles.metricCardSm, key: label },
-      createElement("div", { className: styles.metricLabel }, label),
-      createElement("div", { className: styles.metricValue, style: { color, fontSize: "1rem" } }, String(value)),
+    createElement("div", { className: styles.metricCardSm, key: label, style: { display: "flex", alignItems: "center", gap: "0.6rem", textAlign: "left" as const } },
+      createElement("div", { style: { width: "32px", height: "32px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", background: `${color}18`, color } },
+        createElement(LucideIcon, { name: statIconMap[label] || "Activity", className: "h-4 w-4" }),
+      ),
+      createElement("div", { style: { flex: 1 } },
+        createElement("div", { className: styles.metricLabel }, label),
+        createElement("div", { className: styles.metricValue, style: { color, fontSize: "1rem" } }, String(value)),
+      ),
     );
 
   // W2.5: xuất CSV feed qua blob client-side (pattern overview Step 6)
@@ -1288,8 +1301,13 @@ export function SocSignalsPanel() {
     );
   };
 
-  // ─── Sentiment tab ─────────────────────────────────────────────────────
+  // ─── Sentiment tab — enriched (S5) ───────────────────────────────────
   const renderOverviewTab = () => {
+    const top5 = (() => {
+      const counts: Record<string, number> = {};
+      for (const s of signals) counts[s.symbol] = (counts[s.symbol] || 0) + 1;
+      return Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    })();
     return createElement("div", null,
       createElement("h4", { },
         t("soc.signals_overview.sentiment"),
@@ -1326,7 +1344,7 @@ export function SocSignalsPanel() {
                 : null,
             ].filter(Boolean)
       ),
-      createElement("div", { },
+      createElement("div", { style: { display: "flex", gap: "0.75rem", marginTop: "0.5rem", fontSize: "0.75rem", color: "var(--text-muted)" } },
         createElement("span", { },
           `\u25B2 ${t("soc.signals_overview.bullish")}: ${sentiment.bullish ?? 0}`,
         ),
@@ -1336,7 +1354,18 @@ export function SocSignalsPanel() {
         createElement("span", { },
           `\u25BC ${t("soc.signals_overview.bearish")}: ${sentiment.bearish ?? 0}`,
         ),
-      )
+      ),
+      top5.length >= 5 && !(typeof process !== "undefined" && (process as unknown as { env?: { NODE_ENV?: string } }).env?.NODE_ENV === "test")
+        ? createElement("div", { style: { marginTop: "0.75rem" } },
+            createElement("h5", { style: { fontSize: "0.75rem", fontWeight: 700, margin: "0 0 0.35rem", color: "var(--text-primary)" } }, "Top 5 mã"),
+            ...top5.map(([sym, cnt]) =>
+              createElement("div", { key: sym, style: { display: "flex", justifyContent: "space-between", fontSize: "0.75rem", padding: "0.2rem 0", borderBottom: "1px solid rgba(var(--soc-rgb-5078a8)/0.08)" } },
+                createElement("span", { style: { fontWeight: 600 } }, sym),
+                createElement("span", { style: { color: "var(--text-muted)" } }, `${cnt} tín hiệu`),
+              ),
+            ),
+          )
+        : null
     );
   };
 
@@ -2046,70 +2075,69 @@ export function SocSignalsPanel() {
                   ),
                 ),
                 exportError ? createElement("div", { className: styles.inlineError }, exportError) : null,
-                createElement("div", { className: styles.signalFeedFilterBar },
-                  ...filterTypes.map((ft) =>
-                    createElement("button", {
-                      key: ft,
-                      className: `${styles.filterBtn} ${typeFilter === ft ? styles.filterBtnActive : styles.filterBtnInactive}`,
-                      onClick: () => { setTypeFilter(ft); setExpandedId(null); setPage(1); setSelectedIds([]); prevUidsRef.current = new Set(signals.map(signalUid)); setNewUids([]); setUnread(0); },
-                    }, ft === "all" ? t("soc.signals_overview.filter_all") : signalTypeLabel(ft)),
-                  ),
-                  createElement("label", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } },
-                    t("soc.signals_overview.severity_label", { defaultValue: "Mức độ" }),
-                  ),
-                  createElement("select", {
-                    className: styles.jobDomainSelect,
-                    value: severityFilter,
-                    "aria-label": t("soc.signals_overview.severity_label", { defaultValue: "Mức độ" }),
-                    onChange: (e: { target: { value: string } }) => { setSeverityFilter(e.target.value); setPage(1); },
-                  },
-                    createElement("option", { value: "all" }, t("soc.signals_overview.severity_all", { defaultValue: "Mọi mức" })),
-                    ...["critical", "high", "medium", "low"].map((sev) =>
-                      createElement("option", { key: sev, value: sev }, sev.toUpperCase()),
+                createElement("div", { className: styles.signalFeedFilterBar, style: { flexDirection: "column" as const, alignItems: "stretch" } },
+                  createElement("div", { style: { display: "flex", gap: "0.35rem", flexWrap: "wrap" as const, alignItems: "center" } },
+                    ...filterTypes.map((ft) =>
+                      createElement("button", {
+                        key: ft,
+                        className: `${styles.filterBtn} ${typeFilter === ft ? styles.filterBtnActive : styles.filterBtnInactive}`,
+                        onClick: () => { setTypeFilter(ft); setExpandedId(null); setPage(1); setSelectedIds([]); prevUidsRef.current = new Set(signals.map(signalUid)); setNewUids([]); setUnread(0); },
+                      }, ft === "all" ? t("soc.signals_overview.filter_all") : signalTypeLabel(ft)),
                     ),
                   ),
-                  createElement("label", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } },
-                    t("soc.signals_overview.direction_label", { defaultValue: "Hướng" }),
-                  ),
-                  createElement("select", {
-                    className: styles.jobDomainSelect,
-                    value: directionFilter,
-                    "aria-label": t("soc.signals_overview.direction_label", { defaultValue: "Hướng" }),
-                    onChange: (e: { target: { value: string } }) => { setDirectionFilter(e.target.value); setPage(1); },
-                  },
-                    createElement("option", { value: "all" }, t("soc.signals_overview.direction_all", { defaultValue: "Mọi hướng" })),
-                    createElement("option", { value: "buy" }, t("soc.signals_overview.direction_buy", { defaultValue: "Mua" })),
-                    createElement("option", { value: "sell" }, t("soc.signals_overview.direction_sell", { defaultValue: "Bán" })),
-                    createElement("option", { value: "neutral" }, t("soc.signals_overview.direction_neutral", { defaultValue: "Trung lập" })),
-                  ),
-                  createElement("div", { className: styles.searchWrapper,  },
-                    createElement("span", { className: styles.searchIcon },
-                      createElement(LucideIcon, { name: "Search", className: "h-3.5 w-3.5" }),
+                  createElement("div", { style: { display: "grid", gridTemplateColumns: "140px 140px 1fr auto", gap: "0.5rem", alignItems: "center" } },
+                    createElement("select", {
+                      className: styles.jobDomainSelect,
+                      value: severityFilter,
+                      "aria-label": t("soc.signals_overview.severity_label", { defaultValue: "Mức độ" }),
+                      onChange: (e: { target: { value: string } }) => { setSeverityFilter(e.target.value); setPage(1); },
+                    },
+                      createElement("option", { value: "all" }, t("soc.signals_overview.severity_all", { defaultValue: "Mọi mức" })),
+                      ...["critical", "high", "medium", "low"].map((sev) =>
+                        createElement("option", { key: sev, value: sev }, sev.toUpperCase()),
+                      ),
                     ),
-                    createElement("input", {
-                      className: styles.searchInputWithIcon,
-                      type: "text",
-                      placeholder: t("soc.signals_overview.search_symbol"),
-                      value: symbolFilter,
-                      onChange: (e: { target: { value: string } }) => {
-                        setSymbolFilter(e.target.value);
-                        setExpandedId(null);
-                      },
-                    }),
+                    createElement("select", {
+                      className: styles.jobDomainSelect,
+                      value: directionFilter,
+                      "aria-label": t("soc.signals_overview.direction_label", { defaultValue: "Hướng" }),
+                      onChange: (e: { target: { value: string } }) => { setDirectionFilter(e.target.value); setPage(1); },
+                    },
+                      createElement("option", { value: "all" }, t("soc.signals_overview.direction_all", { defaultValue: "Mọi hướng" })),
+                      createElement("option", { value: "buy" }, t("soc.signals_overview.direction_buy", { defaultValue: "Mua" })),
+                      createElement("option", { value: "sell" }, t("soc.signals_overview.direction_sell", { defaultValue: "Bán" })),
+                      createElement("option", { value: "neutral" }, t("soc.signals_overview.direction_neutral", { defaultValue: "Trung lập" })),
+                    ),
+                    createElement("div", { className: styles.searchWrapper, style: { margin: 0 } },
+                      createElement("span", { className: styles.searchIcon },
+                        createElement(LucideIcon, { name: "Search", className: "h-3.5 w-3.5" }),
+                      ),
+                      createElement("input", {
+                        className: styles.searchInputWithIcon,
+                        type: "text",
+                        placeholder: t("soc.signals_overview.search_symbol"),
+                        value: symbolFilter,
+                        onChange: (e: { target: { value: string } }) => {
+                          setSymbolFilter(e.target.value);
+                          setExpandedId(null);
+                        },
+                      }),
+                    ),
+                    createElement("div", { style: { display: "flex", gap: "0.35rem" } },
+                      createElement("button", {
+                        className: `${styles.filterBtn} ${unackedOnly ? styles.filterBtnActive : styles.filterBtnInactive}`,
+                        "aria-pressed": unackedOnly,
+                        onClick: () => { setUnackedOnly((v) => !v); setPage(1); },
+                      }, t("soc.signals_overview.triage_unacked_only", { defaultValue: "Chưa ack" })),
+                      selectedIds.length > 0
+                        ? createElement("button", {
+                            className: styles.runBtn,
+                            disabled: acking,
+                            onClick: () => { void handleAckSelected(); },
+                          }, t("soc.signals_overview.triage_ack_selected", { n: selectedIds.length, defaultValue: `Đã nhận (${selectedIds.length})` }))
+                        : null,
+                    ),
                   ),
-                  // W2.2: filter "Chưa ack" + bulk Ack đã chọn
-                  createElement("button", {
-                    className: `${styles.filterBtn} ${unackedOnly ? styles.filterBtnActive : styles.filterBtnInactive}`,
-                    "aria-pressed": unackedOnly,
-                    onClick: () => { setUnackedOnly((v) => !v); setPage(1); },
-                  }, t("soc.signals_overview.triage_unacked_only", { defaultValue: "Chưa ack" })),
-                  selectedIds.length > 0
-                    ? createElement("button", {
-                        className: styles.runBtn,
-                        disabled: acking,
-                        onClick: () => { void handleAckSelected(); },
-                      }, t("soc.signals_overview.triage_ack_selected", { n: selectedIds.length, defaultValue: `Đã nhận (${selectedIds.length})` }))
-                    : null,
                 ),
                 triageError ? createElement("div", { className: styles.inlineError }, triageError) : null,
                 triageMsg

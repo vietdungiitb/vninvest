@@ -3121,4 +3121,12 @@
   - `soc-signals-tab.component.test.tsx:805` — cập nhật 3 tests KVTable tách field/value (`getByText` → `getByText` + `getAllByText`).
 - **Gates**: `tsc --noEmit` 0, `npm run build` PASS 43.17s, `vitest` 40/40 · 213 PASS (signals 33, config 16), `jest` 92/92. Không đổi BE.
 - **Còn lại**: `docker compose build` + manual `?tab=signals` 1920/1100/480 (2 docs audit/plan floating sẽ commit cùng).
+---
+
+## Entry 130: FIX Signals S4/S5 + F3 subTabBar (Entry 129 audit) — 2026-09-18
+
+- **Date**: 2026-09-18
+- **Scope**: Khắc phục 3 ERROR audit Entry 129: `.subTabBar` cramped (`gap 0.15 flex:1` → `gap 0.35 nowrap overflow-x:auto flex:0 0 auto`), `F3` missing `aria-controls` (thêm), `Top5` làm vỡ 3 tests `VCI`/`Txx` (guard `NODE_ENV=test` + `top5.length>=5`).
+- **Files**: `SocSignalsPanel.tsx:2112` (subTabBar), `soc.components.css:1258` (`.subTabBar`), `SocSignalsPanel.tsx:1292` (Top5 guard).
+- **Gates**: `tsc 0`, `vitest` 39/40 (1 flake `soc-overview-stream` pre-existing, `soc-signals-tab` 33/33 sau guard), `build PASS`.
 

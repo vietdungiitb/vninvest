@@ -1126,9 +1126,14 @@
 /* Two-column layout */
 .signalsTwoCol {
   display: grid;
-  grid-template-columns: 3fr 2fr;
-  gap: 1.25rem;
+  grid-template-columns: minmax(380px, 1.6fr) minmax(420px, 1fr);
+  gap: 1rem;
   margin-top: 0;
+  align-items: start;
+}
+.signalsTwoCol > .controlCard {
+  position: sticky;
+  top: 12px;
 }
 @media (max-width: 1100px) {
   .signalsTwoCol {
@@ -1249,21 +1254,27 @@
   margin-bottom: 0.75rem;
 }
 
-/* Right column sub-tabs */
+/* Right column sub-tabs — fix cramped (F3) */
 .subTabBar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.15rem;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
   margin-bottom: 0.75rem;
   border-radius: 8px;
   background: rgba(var(--soc-rgb-0f172a) / 0.3);
-  padding: 0.15rem;
+  padding: 0.2rem;
   flex-shrink: 0;
   max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.subTabBar::-webkit-scrollbar {
+  display: none;
 }
 
 .subTabBtn {
-  flex: 1;
+  flex: 0 0 auto;
   padding: 0.35rem 0.5rem;
   border-radius: 6px;
   font-size: 0.7rem;
