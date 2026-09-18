@@ -313,14 +313,14 @@ Bấm "Hiệu năng" → hot 15/100/100 fill → Preview → 3 warnings
 
 ## 7. BÀN GIAO CHECKLIST
 
-- [ ] C1 14 inputs + 4 fieldset + Đặt lại mặc định + tsc 0 + build PASS
-- [ ] C2 0 `alert()`, DiffTable highlight, inlineError `role=alert`
-- [ ] C3 audit `change_summary` + `formatLastCheck` + filter + Xuất CSV + Hoàn tác
-- [ ] C4 `validate()` max + cross-check + 4 BE tests
-- [ ] C5 `409 CONFIG_CONFLICT` + `expected_updated_at` + revert
-- [ ] C6 per-field `locked_fields` disable + `GET schema 200` + fallback
-- [ ] C7 `DataOpsContext config` + `Last updated` + 3 presets
-- [ ] C8 ledger Entry 120+ + `AGENTS.md` sync + `i18n:scan` 0 + `vitest` + `manage.py check` 0
+- [x] C1 14 inputs + 4 fieldset + Đặt lại mặc định + tsc 0 + build PASS
+- [x] C2 0 `alert()`, DiffTable highlight, inlineError `role=alert`
+- [x] C3 audit `change_summary` + `formatLastCheck` + filter + Xuất CSV + Hoàn tác
+- [x] C4 `validate()` max + cross-check + 4 BE tests
+- [x] C5 `409 CONFIG_CONFLICT` + `expected_updated_at` + revert
+- [x] C6 per-field `locked_fields` disable + `GET schema 200` + fallback
+- [x] C7 `DataOpsContext config` + `Last updated` + 3 presets
+- [x] C8 ledger Entry 120+ + `AGENTS.md` sync + `i18n:scan` 0 + `vitest` + `manage.py check` 0
 
 **File plan:** `docs/IMPLEMENTATION_PLAN_DATAOPS_CONFIG_COMMERCIAL_20260918.md` (file này).
 **Audit:** `docs/AUDIT_DATAOPS_CONFIG_20260918.md`.

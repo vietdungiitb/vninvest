@@ -143,6 +143,18 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - **Contradictions**: C1/C2/C3/C6 CONFIRMED; C4 PARTIAL; **C5 REFUTED** (apply/audit cùng key `dataops_config.py:83,185`).
 - **Gates**: `npx tsc --noEmit` = 0, `manage.py check` = 0. Verdict: plan implementable, không blocker, phải sửa R1-R5 trước khi code.
 
+### Done (2026-09-18) — IMPLEMENT DataOps Config Commercial C1→C7 (Entry 121)
+- **Thực thi** `docs/IMPLEMENTATION_PLAN_DATAOPS_CONFIG_COMMERCIAL_20260918.md` (vá R1-R5). Config SOC đạt chuẩn thương mại. Commits:
+  - **C1** `ecbf6995` form per-field thay textarea (CFG-01/11), `SocQueueTierFieldSet.tsx` 4 fieldset.
+  - **C2** `b24d3886` 0 `alert()`, `SocConfigPreviewModal` diff 3-col, inline error.
+  - **C3** `a25aab29` audit `action|before|after|request_id` + filter + CSV export + revert.
+  - **C4** `96c9d5b5` validate max-bound + cross-field (BE 4 tests).
+  - **C5** `ce968ce8` optimistic lock 409 `CONFIG_CONFLICT` + `expected_updated_at` + audit `rollback` (BE `test_dataops_config_conflict` 3 tests).
+  - **C6** `a4f70798` `GET /dataops/runtime-config/schema/` cả 2 namespace + `NumberInput.locked` 🔒 per-field (CFG-08/09).
+  - **C7** `8c37c598` `DataOpsContext` config + SWR 30s + 3 presets (Tiết kiệm/Cân bằng/Hiệu năng) + freshness banner `new_update_note`.
+- **Gates**: BE 12 tests config OK (`check` 0); FE `tsc` 0, `build PASS 46.47s`, vitest `12 files / 90 PASS` (+4 C7), jest `soc.test 92/92`, `i18n:scan` exit 0. Toàn bộ CFG-01→11 + contradictions C1-C6 ĐÓNG.
+- **Còn lại**: C8 ledger + AGENTS (entry này). Ledger Entry 121.
+
 ### Done (2026-09-17) — Scheduler Self-Heal + Realtime Sync P1 (Entry 113-114) — 6 slices
 - **Root cause chốt:** 5 jobs `enabled=False` trong `django_celery_beat_periodictask` (4 realtime + 1 by design `ingest-daily-prices-1705`) vs `CELERY_BEAT_SCHEDULE` `enabled=True` → `DatabaseScheduler` `entrypoint.sh:43` đọc DB không sync → `QUÁ HẠN 3h26m` `lag` `Thiếu dữ liệu` `MISSING 1.533` (bằng chứng `ROOT_CAUSE_SCHEDULER_DATAOPS_20260917.md` Entry 108).
 - **Slice 1 `repair_beat_schedule` v2:** `beat_reconcile.py:1` shared `reconcile_beat_schedule(dry_run)` + `management/commands/repair_beat_schedule.py:17` `--dry-run` + `IntervalSchedule/CrontabSchedule` `get_or_create` `queue = options['queue']` (F-A1) + `CrontabSchedule` `timezone Asia/Ho_Chi_Minh` (F-A4) + `ingest-daily-prices-1705` giữ `False`.
