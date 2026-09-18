@@ -993,6 +993,96 @@
   color: var(--soc-c-f87171);
 }
 
+/* Config diff table (C2 — CFG-03) */
+.diffTableWrap {
+  margin: 0.75rem 0;
+  border: 1px solid var(--border-default, rgba(var(--soc-rgb-5078a8) / 0.2));
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.diffTableHeader {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: rgba(var(--soc-rgb-1e293b) / 0.9);
+  color: var(--soc-c-cbd5e1);
+  border-bottom: 1px solid
+    var(--border-default, rgba(var(--soc-rgb-5078a8) / 0.2));
+}
+
+.diffTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+}
+
+.diffTable th {
+  text-align: left;
+  padding: 0.4rem 0.75rem;
+  color: var(--soc-c-94a3b8);
+  font-weight: 600;
+  border-bottom: 1px solid
+    var(--border-default, rgba(var(--soc-rgb-5078a8) / 0.15));
+}
+
+.diffTable td {
+  padding: 0.4rem 0.75rem;
+  color: var(--soc-c-f1f5f9);
+  border-bottom: 1px solid rgba(var(--soc-rgb-5078a8) / 0.08);
+  vertical-align: top;
+}
+
+.diffCellKey {
+  font-family: "Menlo", "Consolas", monospace;
+  color: var(--soc-c-67e8f9);
+}
+
+.diffBefore {
+  color: var(--soc-c-f87171);
+}
+
+.diffAfter {
+  color: var(--soc-c-34d399);
+}
+
+.impactBadge {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.impactInvalid {
+  background: rgba(var(--soc-rgb-ef4444) / 0.18);
+  color: var(--soc-c-f87171);
+}
+
+.impactRisk {
+  background: rgba(var(--soc-rgb-f59e0b) / 0.18);
+  color: var(--soc-c-fbbf24);
+}
+
+/* JSON before/after diff highlight */
+.diffJsonGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.jsonLineBefore {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.jsonLineAfter {
+  background: rgba(22, 215, 160, 0.15);
+}
+
 /* Empty State — commercial: icon + title + CTA */
 .emptyState {
   text-align: center;

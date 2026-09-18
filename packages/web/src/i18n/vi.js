@@ -191,6 +191,11 @@ const vi = {
       validation_errors: 'Lỗi kiểm tra',
       confirm_apply: 'Xác nhận áp dụng',
       impact_warnings: 'Cảnh báo tác động',
+      col_field: 'Trường',
+      col_before_after: 'Trước → Sau',
+      col_impact: 'Tác động',
+      impact_invalid: 'Không hợp lệ',
+      impact_runtime_risk: 'Ảnh hưởng runtime',
     },
     overview: {
       overview_title: 'Tổng quan hệ thống',

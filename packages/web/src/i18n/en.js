@@ -191,6 +191,11 @@ const en = {
       validation_errors: 'Validation errors',
       confirm_apply: 'Confirm apply',
       impact_warnings: 'Impact warnings',
+      col_field: 'Field',
+      col_before_after: 'Before \u2192 After',
+      col_impact: 'Impact',
+      impact_invalid: 'Invalid',
+      impact_runtime_risk: 'Runtime risk',
     },
     overview: {
       overview_title: 'System Overview',

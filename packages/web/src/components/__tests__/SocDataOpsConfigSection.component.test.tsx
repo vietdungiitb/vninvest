@@ -88,4 +88,45 @@ describe("SocDataOpsConfigSection form (C1 — CFG-01)", () => {
       expect(field(container, "decay_days").value).toBe("7");
     });
   });
+
+  it("opens the preview modal with a diff table and validation errors for an invalid field (C2)", async () => {
+    adapterMocks.previewSocDataOpsRuntimeConfig.mockResolvedValue({
+      is_valid: false,
+      validation_errors: ["hot_user_demand.poll_interval_seconds phải >= 10"],
+    });
+    const { container } = render(<SocDataOpsConfigSection />);
+    await waitFor(() => {
+      expect(container.querySelector('[data-field="hot_user_demand.poll_interval_seconds"]')).toBeTruthy();
+    });
+    fireEvent.change(field(container, "hot_user_demand.poll_interval_seconds"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "soc.actions.preview" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText((content) => typeof content === "string" && content.includes("phải >= 10")),
+      ).toBeTruthy();
+    });
+    expect(adapterMocks.previewSocDataOpsRuntimeConfig).toHaveBeenCalledTimes(1);
+    const cellTexts = Array.from(container.querySelectorAll("table td")).map((c) => c.textContent || "");
+    expect(cellTexts.some((x) => x.includes("hot_user_demand.poll_interval_seconds"))).toBe(true);
+    expect(screen.getByText("soc.config_preview.impact_invalid")).toBeTruthy();
+  });
+
+  it("shows only the changed tier field with runtime-risk impact when cadence changes (C2)", async () => {
+    adapterMocks.previewSocDataOpsRuntimeConfig.mockResolvedValue({ is_valid: true, validation_errors: [] });
+    const { container } = render(<SocDataOpsConfigSection />);
+    await waitFor(() => {
+      expect(container.querySelector('[data-field="warm_liquid_market.poll_interval_seconds"]')).toBeTruthy();
+    });
+    fireEvent.change(field(container, "warm_liquid_market.poll_interval_seconds"), { target: { value: "180" } });
+    fireEvent.click(screen.getByRole("button", { name: "soc.actions.preview" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("soc.config_preview.changes")).toBeTruthy();
+    });
+    const cellTexts = Array.from(container.querySelectorAll("table td")).map((c) => c.textContent || "");
+    expect(cellTexts.some((x) => x.includes("warm_liquid_market.poll_interval_seconds"))).toBe(true);
+    expect(screen.getByText("soc.config_preview.impact_runtime_risk")).toBeTruthy();
+    expect(screen.queryByText("soc.config_preview.impact_invalid")).toBeNull();
+  });
 });

@@ -4,6 +4,7 @@ import { SocConfigPreviewModal } from "./SocConfigPreviewModal.js";
 import { SocOwnershipBadge } from "./SocOwnershipBadge.js";
 import { SocWriteGuardBanner } from "./SocWriteGuardBanner.js";
 import { NumberInput, SocQueueTierFieldSet, type QueueTierConfig } from "./SocQueueTierFieldSet.js";
+import { diffObjects, type DiffRow } from "../../lib/diffUtil.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import styles from "./soc.module.css";
 
@@ -112,52 +113,6 @@ function toPayload(form: FormState): RuntimeConfig {
   };
 }
 
-function computeChangeSummary(before: RuntimeConfig, after: RuntimeConfig): string[] {
-  const changes: string[] = [];
-  const allKeys = new Set([...Object.keys(before || {}), ...Object.keys(after || {})]);
-  for (const key of allKeys) {
-    const bVal = before?.[key];
-    const aVal = after?.[key];
-    const bStr = typeof bVal === "object" ? JSON.stringify(bVal) : String(bVal ?? "");
-    const aStr = typeof aVal === "object" ? JSON.stringify(aVal) : String(aVal ?? "");
-    if (bStr !== aStr) {
-      changes.push(`\u2022 ${key}: ${bStr.slice(0, 80)} \u2192 ${aStr.slice(0, 80)}`);
-    }
-  }
-  return changes;
-}
-
-function computeImpactWarnings(before: RuntimeConfig, after: RuntimeConfig): string[] {
-  const warnings: string[] = [];
-  const allKeys = new Set([...Object.keys(before || {}), ...Object.keys(after || {})]);
-  const sensitiveKeys = new Set(["poll_interval_seconds", "max_batch_size", "max_dispatch_per_cycle", "decay_days", "parity_snapshot_retention_days"]);
-  for (const key of allKeys) {
-    const bVal = before?.[key];
-    const aVal = after?.[key];
-    const bStr = typeof bVal === "object" ? JSON.stringify(bVal) : String(bVal ?? "");
-    const aStr = typeof aVal === "object" ? JSON.stringify(aVal) : String(aVal ?? "");
-    if (bStr === aStr) continue;
-    if (sensitiveKeys.has(key)) {
-      warnings.push(`Thay đổi ${key}: ${String(bVal ?? "—").slice(0, 60)} → ${String(aVal ?? "—").slice(0, 60)}`);
-      continue;
-    }
-    const bQ = before[key] as Record<string, unknown> | undefined;
-    const aQ = after[key] as Record<string, unknown> | undefined;
-    if (bQ && aQ && typeof bQ === "object" && typeof aQ === "object") {
-      for (const sk of sensitiveKeys) {
-        if (sk in bQ || sk in aQ) {
-          const bv = (bQ as Record<string, unknown>)[sk];
-          const av = (aQ as Record<string, unknown>)[sk];
-          if (String(bv) !== String(av) && (bv !== undefined || av !== undefined)) {
-            warnings.push(`Thay đổi ${key}.${sk}: ${String(bv ?? "—")} → ${String(av ?? "—")}`);
-          }
-        }
-      }
-    }
-  }
-  return warnings;
-}
-
 export function SocDataOpsConfigSection() {
   const { t } = useI18n();
   const [envelope, setEnvelope] = useState<RuntimeEnvelope | null>(null);
@@ -169,7 +124,7 @@ export function SocDataOpsConfigSection() {
   const [previewModal, setPreviewModal] = useState<{
     before: RuntimeConfig;
     after: RuntimeConfig;
-    changeSummary: string[];
+    diff: DiffRow[];
     impactWarnings: string[];
     validationErrors?: string[];
   } | null>(null);
@@ -293,15 +248,18 @@ export function SocDataOpsConfigSection() {
   const handlePreview = async () => {
     const errs = validateForm(form);
     setFormErrors(errs);
-    if (Object.keys(errs).length > 0) {
-      setError(t("soc.dataops.fix_errors"));
-      return;
+    const firstErrorKey = Object.keys(errs)[0];
+    if (firstErrorKey) {
+      const target = document.querySelector(`[data-field="${firstErrorKey}"]`) as HTMLInputElement | null;
+      target?.focus();
     }
     setError("");
     const before = readForm(envelope?.config);
     const payload = toPayload(form);
-    const changeSummary = computeChangeSummary(before, payload);
-    const impactWarnings = computeImpactWarnings(before, payload);
+    const diff = diffObjects(before, payload);
+    const impactWarnings = diff
+      .filter((row) => row.impact !== "none")
+      .map((row) => `${row.key}: ${row.before} \u2192 ${row.after}`);
 
     const adapter = defaultCoreApiAdapter as unknown as {
       previewSocDataOpsRuntimeConfig: (cfg: RuntimeConfig) => Promise<{
@@ -321,7 +279,7 @@ export function SocDataOpsConfigSection() {
       validationErrors = [err instanceof Error ? err.message : t("soc.dataops.preview_failed")];
     }
 
-    setPreviewModal({ before, after: payload, changeSummary, impactWarnings, validationErrors });
+    setPreviewModal({ before, after: payload, diff, impactWarnings, validationErrors });
   };
 
   const handleApply = async () => {
@@ -506,7 +464,7 @@ export function SocDataOpsConfigSection() {
       ? createElement(SocConfigPreviewModal, {
           before: previewModal.before,
           after: previewModal.after,
-          changeSummary: previewModal.changeSummary,
+          diff: previewModal.diff,
           impactWarnings: previewModal.impactWarnings,
           validationErrors: previewModal.validationErrors,
           onConfirm: handleApply,
