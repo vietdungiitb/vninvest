@@ -3249,6 +3249,36 @@
   cursor: help;
 }
 
+.presetRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.presetLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted, #94a3b8);
+}
+
+.presetButton {
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--accent, #38bdf8);
+  background: rgba(56, 189, 248, 0.12);
+  color: var(--accent, #38bdf8);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.presetButton:hover {
+  background: rgba(56, 189, 248, 0.24);
+}
+
 .conflictBanner {
   display: flex;
   flex-wrap: wrap;

@@ -1,4 +1,4 @@
-import { createElement, useCallback, useEffect, useState } from "react";
+import { createElement, useCallback, useContext, useEffect, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { SocConfigPreviewModal } from "./SocConfigPreviewModal.js";
 import { SocOwnershipBadge } from "./SocOwnershipBadge.js";
@@ -7,6 +7,7 @@ import { NumberInput, SocQueueTierFieldSet, type QueueTierConfig } from "./SocQu
 import { diffObjects, type DiffRow } from "../../lib/diffUtil.js";
 import { formatLastCheck } from "./socTime.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { DataOpsContext } from "./DataOpsContext.js";
 import styles from "./soc.module.css";
 
 interface RuntimeConfig {
@@ -64,6 +65,14 @@ type FormState = {
 };
 
 const TIER_KEYS: TierKey[] = ["hot_user_demand", "warm_liquid_market", "cold_full_market", "recovery_backlog"];
+
+const PRESET_TIERS: Record<"saving" | "balanced" | "performance", QueueTierConfig> = {
+  saving: { poll_interval_seconds: 60, max_batch_size: 30, max_dispatch_per_cycle: 30 },
+  balanced: { poll_interval_seconds: 30, max_batch_size: 50, max_dispatch_per_cycle: 50 },
+  performance: { poll_interval_seconds: 15, max_batch_size: 100, max_dispatch_per_cycle: 100 },
+};
+
+const PRESET_KEYS: Array<keyof typeof PRESET_TIERS> = ["saving", "balanced", "performance"];
 
 const TIER_LABEL_KEYS: Record<TierKey, string> = {
   hot_user_demand: "soc.dataops.tier_hot_user_demand",
@@ -185,6 +194,8 @@ export function SocDataOpsConfigSection() {
   const [changeReason, setChangeReason] = useState("");
   const [conflict, setConflict] = useState(false);
   const [schemaFields, setSchemaFields] = useState<Record<string, SchemaField>>({});
+  const [staleNote, setStaleNote] = useState(false);
+  const dataOpsCtx = useContext(DataOpsContext);
 
   useEffect(() => {
     const applySchema = async () => {
@@ -248,8 +259,36 @@ export function SocDataOpsConfigSection() {
   }, []);
 
   useEffect(() => {
-    fetchConfigOnly();
-  }, [fetchConfigOnly]);
+    if (dataOpsCtx) {
+      dataOpsCtx.actions.refreshConfig();
+    } else {
+      fetchConfigOnly();
+    }
+  }, [dataOpsCtx, fetchConfigOnly]);
+
+  useEffect(() => {
+    const fresh = dataOpsCtx?.state.config ?? null;
+    if (!fresh) return;
+    setEnvelope((prev) => {
+      const prevUpdated = prev?.updated_at ?? null;
+      const unchanged = prevUpdated && fresh.updated_at && prevUpdated === fresh.updated_at;
+      if (prev && !unchanged) {
+        const dirty = JSON.stringify(form) !== JSON.stringify(DEFAULTS) || changeReason !== "";
+        if (dirty) {
+          setStaleNote(true);
+          setAuditPage(1);
+          setError("");
+        } else if (JSON.stringify(form) === JSON.stringify(DEFAULTS) && changeReason === "") {
+          setForm(readForm(fresh.config));
+        }
+      }
+      if (!prev) {
+        if (JSON.stringify(form) === JSON.stringify(DEFAULTS)) setForm(readForm(fresh.config));
+        setLoading(false);
+      }
+      return fresh;
+    });
+  }, [dataOpsCtx?.state.config]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchAuditOnly(auditPage);
@@ -309,6 +348,19 @@ export function SocDataOpsConfigSection() {
       }
       return next;
     });
+  };
+
+  const applyPreset = (presetKey: keyof typeof PRESET_TIERS) => {
+    const tier = PRESET_TIERS[presetKey];
+    setForm((prev) => {
+      const next = { ...prev };
+      TIER_KEYS.forEach((tierKey) => {
+        next[tierKey] = { ...tier };
+      });
+      return next;
+    });
+    setFormErrors({});
+    setChangeReason("");
   };
 
   const handleReset = () => {
@@ -377,6 +429,7 @@ export function SocDataOpsConfigSection() {
       setForm(readForm(result.config));
       setFormErrors({});
       setConflict(false);
+      setStaleNote(false);
       setChangeReason("");
       setError("");
       setSuccess(t("soc.dataops.apply_success"));
@@ -414,6 +467,7 @@ export function SocDataOpsConfigSection() {
         .map((row) => `${row.key}: ${row.before} \u2192 ${row.after}`);
       setPreviewModal({ before, after, diff, impactWarnings, validationErrors: [] });
       setConflict(false);
+      setStaleNote(false);
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : t("soc.dataops.config_load_failed"));
@@ -556,6 +610,18 @@ export function SocDataOpsConfigSection() {
           ),
         )
       : null,
+    staleNote
+      ? createElement(
+          "div",
+          { className: styles.conflictBanner, role: "status" },
+          t("soc.dataops.new_update_note"),
+          createElement(
+            "button",
+            { className: styles.actionBtn, onClick: handleReloadCompare },
+            t("soc.dataops.reload_compare"),
+          ),
+        )
+      : null,
 
     ownership
       ? createElement(SocOwnershipBadge, {
@@ -578,7 +644,11 @@ export function SocDataOpsConfigSection() {
       { className: styles.sectionCard },
       createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.config_editor")),
       envelope?.updated_at
-        ? createElement("p", { className: styles.helpText }, `${t("soc.dataops.last_updated")}: ${envelope.updated_at}`)
+        ? createElement(
+            "p",
+            { className: styles.helpText, title: formatLastCheck(envelope.updated_at, localeTag, t).title },
+            `${t("soc.dataops.last_updated")}: ${formatLastCheck(envelope.updated_at, localeTag, t).display}`,
+          )
         : null,
       ownership?.locked_fields && ownership.locked_fields.length > 0
         ? createElement(
@@ -597,6 +667,23 @@ export function SocDataOpsConfigSection() {
         : null,
       createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.global_config")),
       globals,
+      createElement(
+        "div",
+        { className: styles.presetRow },
+        createElement("span", { className: styles.presetLabel }, t("soc.dataops.preset_label")),
+        PRESET_KEYS.map((presetKey) =>
+          createElement(
+            "button",
+            {
+              key: presetKey,
+              type: "button",
+              className: styles.presetButton,
+              onClick: () => applyPreset(presetKey),
+            },
+            t(`soc.dataops.preset_${presetKey}`),
+          ),
+        ),
+      ),
       createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.queue_tiers_config")),
       createElement(
         "div",

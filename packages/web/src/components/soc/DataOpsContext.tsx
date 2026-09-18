@@ -37,13 +37,19 @@ interface CoverageData {
   [key: string]: unknown;
 }
 
-
+export interface DataOpsRuntimeConfigEnvelope {
+  config: Record<string, unknown>;
+  ownership: Record<string, unknown> | null;
+  updated_at: string | null;
+}
 
 interface DataOpsState {
   activeSubTab: string;
   runs: BackfillRun[];
   inventory: InventoryData | null;
   coverage: CoverageData | null;
+  config: DataOpsRuntimeConfigEnvelope | null;
+  configUpdatedAt: string | null;
   loading: Record<string, boolean>;
   error: string | null;
   errors: Record<string, string | null>;
@@ -54,6 +60,7 @@ interface DataOpsActions {
   refreshInventory: () => Promise<void>;
   refreshRuns: () => Promise<void>;
   refreshCoverage: () => Promise<void>;
+  refreshConfig: () => Promise<void>;
   triggerBackfill: (payload: Record<string, unknown>) => Promise<string>;
   abortRun: (runId: string) => Promise<void>;
 }
@@ -65,10 +72,13 @@ interface DataOpsContextValue {
 
 const DataOpsContext = createContext<DataOpsContextValue | null>(null);
 
+export { DataOpsContext };
+
 const adapter = defaultCoreApiAdapter as unknown as {
   getSocDataOpsInventory: () => Promise<InventoryData>;
   getSocDataOpsRunLogs: (page: number, pageSize: number) => Promise<{ results?: BackfillRun[]; next?: string | null }>;
   getSocDataOpsCoverage: () => Promise<CoverageData>;
+  getSocDataOpsRuntimeConfig: () => Promise<DataOpsRuntimeConfigEnvelope>;
   runSocDataOpsPlanner: (payload: Record<string, unknown>) => Promise<{ run_id?: string }>;
   abortSocDataOpsPlannerRun: (runId: string) => Promise<void>;
 };
@@ -78,6 +88,8 @@ export function DataOpsProvider({ children }: { children: React.ReactNode }) {
   const [runs, setRuns] = useState<BackfillRun[]>([]);
   const [inventory, setInventory] = useState<InventoryData | null>(null);
   const [coverage, setCoverage] = useState<CoverageData | null>(null);
+  const [config, setConfig] = useState<DataOpsRuntimeConfigEnvelope | null>(null);
+  const configUpdatedAt = config?.updated_at ?? null;
   const [loading, setLoading] = useState<Record<string, boolean>>({ inventory: true, runs: true, coverage: true });
   const [contextError, setContextError] = useState<string | null>(null);
   const [contextErrors, setContextErrors] = useState<Record<string, string | null>>({ inventory: null, runs: null, coverage: null });
@@ -136,6 +148,15 @@ export function DataOpsProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const refreshConfig = useCallback(async () => {
+    try {
+      const data = await adapter.getSocDataOpsRuntimeConfig();
+      setConfig(data);
+    } catch {
+      // keep last known config; Section báo banner riêng khi cần
+    }
+  }, []);
+
   const triggerBackfill = useCallback(async (payload: Record<string, unknown>): Promise<string> => {
     const result = await adapter.runSocDataOpsPlanner(payload);
     await refreshRuns();
@@ -151,21 +172,25 @@ export function DataOpsProvider({ children }: { children: React.ReactNode }) {
     refreshInventory();
     refreshRuns();
     refreshCoverage();
-  }, [refreshInventory, refreshRuns, refreshCoverage]);
+    refreshConfig();
+    const configPoll = setInterval(refreshConfig, 30000);
+    return () => clearInterval(configPoll);
+  }, [refreshInventory, refreshRuns, refreshCoverage, refreshConfig]);
 
   const actions = useMemo<DataOpsActions>(() => ({
     setActiveSubTab,
     refreshInventory,
     refreshRuns,
     refreshCoverage,
+    refreshConfig,
     triggerBackfill,
     abortRun
-  }), [setActiveSubTab, refreshInventory, refreshRuns, refreshCoverage, triggerBackfill, abortRun]);
+  }), [setActiveSubTab, refreshInventory, refreshRuns, refreshCoverage, refreshConfig, triggerBackfill, abortRun]);
 
   const value = useMemo<DataOpsContextValue>(() => ({
-    state: { activeSubTab, runs, inventory, coverage, loading, error: contextError, errors: contextErrors },
+    state: { activeSubTab, runs, inventory, coverage, config, configUpdatedAt, loading, error: contextError, errors: contextErrors },
     actions,
-  }), [activeSubTab, runs, inventory, coverage, loading, contextError, contextErrors, actions]);
+  }), [activeSubTab, runs, inventory, coverage, config, configUpdatedAt, loading, contextError, contextErrors, actions]);
 
   return createElement(DataOpsContext.Provider, { value }, children);
 }

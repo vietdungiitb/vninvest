@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
+import { createElement } from "react";
 import { SocDataOpsConfigSection } from "../soc/SocDataOpsConfigSection.js";
+import { DataOpsContext, type DataOpsContextValue } from "../soc/DataOpsContext.js";
 
 const adapterMocks = vi.hoisted(() => ({
   getSocDataOpsRuntimeConfig: vi.fn(),
@@ -375,5 +377,94 @@ describe("SocDataOpsConfigSection write guard per-field + schema (C6 — CFG-08/
     expect(decayInput.max).toBe("365");
     const hotPoll = field(container, "hot_user_demand.poll_interval_seconds");
     expect(hotPoll.min).toBe("10");
+  });
+});
+
+describe("SocDataOpsConfigSection presets + freshness (C7 — CFG-10)", () => {
+  function ConfigHarness({ envelope }: { envelope: unknown }) {
+    const ctxValue = {
+      state: {
+        activeSubTab: "inventory",
+        runs: [],
+        inventory: null,
+        coverage: null,
+        config: envelope,
+        configUpdatedAt: (envelope as { updated_at?: string | null } | null)?.updated_at ?? null,
+        loading: {},
+        error: null,
+        errors: {},
+      },
+      actions: {
+        setActiveSubTab: () => {},
+        refreshInventory: async () => {},
+        refreshRuns: async () => {},
+        refreshCoverage: async () => {},
+        refreshConfig: async () => {},
+        triggerBackfill: async () => "",
+        abortRun: async () => {},
+      },
+    } as DataOpsContextValue;
+    return createElement(
+      DataOpsContext.Provider,
+      { value: ctxValue },
+      createElement(SocDataOpsConfigSection, null),
+    );
+  }
+
+  beforeEach(() => {
+    adapterMocks.getSocDataOpsRuntimeConfig.mockReset();
+    adapterMocks.getSocDataOpsRuntimeConfigAudit.mockReset();
+    adapterMocks.getSocDataOpsRuntimeConfigSchema.mockReset();
+    adapterMocks.previewSocDataOpsRuntimeConfig.mockReset();
+    adapterMocks.applySocDataOpsRuntimeConfig.mockReset();
+    adapterMocks.exportSocConfigAudits.mockReset();
+    setup();
+  });
+
+  afterEach(() => cleanup());
+
+  it("fills all tier fields via preset buttons (C7.3)", async () => {
+    const { container } = render(<SocDataOpsConfigSection />);
+    await waitFor(() => {
+      expect(container.querySelector('[data-field="hot_user_demand.poll_interval_seconds"]')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "soc.dataops.preset_performance" }));
+    expect(field(container, "hot_user_demand.poll_interval_seconds").value).toBe("15");
+    expect(field(container, "warm_liquid_market.poll_interval_seconds").value).toBe("15");
+    expect(field(container, "cold_full_market.max_batch_size").value).toBe("100");
+    expect(field(container, "recovery_backlog.max_dispatch_per_cycle").value).toBe("100");
+  });
+
+  it("shows new-update banner without overwriting a dirty form (C7.2)", async () => {
+    const envelopeA = {
+      config: baseConfig,
+      ownership: { owner_team: "BIDV", can_apply: true, mode: "rw", locked_fields: [] },
+      updated_at: "2026-09-18T07:00:00Z",
+    };
+    const { container, rerender } = render(createElement(ConfigHarness, { envelope: envelopeA }));
+    await waitFor(() => {
+      expect(container.querySelector('[data-field="decay_days"]')).toBeTruthy();
+    });
+    fireEvent.change(field(container, "decay_days"), { target: { value: "14" } });
+
+    const envelopeB = {
+      config: { ...baseConfig, decay_days: 21 },
+      ownership: { owner_team: "BIDV", can_apply: true, mode: "rw", locked_fields: [] },
+      updated_at: "2026-09-18T08:00:00Z",
+    };
+    rerender(createElement(ConfigHarness, { envelope: envelopeB }));
+
+    await waitFor(() => {
+      expect(screen.getByText("soc.dataops.new_update_note")).toBeTruthy();
+    });
+    expect(field(container, "decay_days").value).toBe("14");
+  });
+
+  it("renders last-updated in local time (C7.4)", async () => {
+    const { container } = render(<SocDataOpsConfigSection />);
+    await waitFor(() => {
+      expect(container.querySelector('[data-field="decay_days"]')).toBeTruthy();
+    });
+    expect(screen.getByText(/soc\.dataops\.last_updated/)).toBeTruthy();
   });
 });
