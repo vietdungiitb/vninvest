@@ -917,6 +917,82 @@
   margin: 0.5rem 0;
 }
 
+/* Config field grid (C1 — per-field controls) */
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem 1rem;
+}
+
+.fieldRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.fieldLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--soc-c-cbd5e1);
+}
+
+.fieldInputWrap {
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+}
+
+.fieldInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.8rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-default, rgba(var(--soc-rgb-5078a8) / 0.28));
+  background: rgba(var(--soc-rgb-020b23) / 0.6);
+  color: var(--soc-c-f1f5f9);
+  outline: none;
+}
+
+.fieldInput:focus {
+  border-color: var(--accent-cyan, var(--soc-c-22d3ee));
+}
+
+.fieldInput:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fieldInputError {
+  border-color: var(--accent-red, var(--soc-c-f87171));
+}
+
+.fieldUnit {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.45rem;
+  font-size: 0.7rem;
+  border-radius: 6px;
+  background: rgba(var(--soc-rgb-64748b) / 0.15);
+  color: var(--soc-c-94a3b8);
+  white-space: nowrap;
+}
+
+.helpText {
+  margin: 0;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: var(--soc-c-94a3b8);
+}
+
+.fieldError {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--soc-c-f87171);
+}
+
 /* Empty State — commercial: icon + title + CTA */
 .emptyState {
   text-align: center;
