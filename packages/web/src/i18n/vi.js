@@ -657,6 +657,8 @@ const vi = {
       audit_diff_before: 'Trước',
       audit_diff_after: 'Sau',
       revert_success: 'Đã hoàn tác cấu hình.',
+      change_reason_revert: 'Hoàn tác về cấu hình đã lưu trước đó',
+      reload_compare: 'Tải lại & so sánh',
       total_symbols: 'Tổng mã hoạt động',
       last_updated: 'Cập nhật lần cuối',
       decay_days: 'Số ngày decay',

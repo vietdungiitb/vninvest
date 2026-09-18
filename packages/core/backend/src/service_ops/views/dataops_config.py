@@ -84,6 +84,7 @@ class DataOpsRuntimeConfigView(SOCBaseView, ConfigApplyMixin):
             domain=DATAOPS_MARKET_DATA_DOMAIN,
             config_payload=request.data.get('config_payload', {}),
             config_class=MarketDataRuntimeConfig,
+            audit_action=request.data.get('audit_action', 'apply'),
         )
         if isinstance(result, Response):
             return result

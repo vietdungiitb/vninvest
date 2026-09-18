@@ -657,6 +657,8 @@ const en = {
       audit_diff_before: 'Before',
       audit_diff_after: 'After',
       revert_success: 'Configuration reverted.',
+      change_reason_revert: 'Revert to the previously saved configuration',
+      reload_compare: 'Reload and compare',
       total_symbols: 'Active symbols',
       last_updated: 'Last updated',
       decay_days: 'Decay days',

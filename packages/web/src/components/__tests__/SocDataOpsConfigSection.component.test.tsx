@@ -234,3 +234,91 @@ describe("SocDataOpsConfigSection audit (C3 — CFG-04/CFG-05 read)", () => {
     URL.revokeObjectURL = originalRevoke;
   });
 });
+
+describe("SocDataOpsConfigSection lock & revert (C5 — CFG-05 write / CFG-07)", () => {
+  beforeEach(() => {
+    adapterMocks.getSocDataOpsRuntimeConfig.mockReset();
+    adapterMocks.getSocDataOpsRuntimeConfigAudit.mockReset();
+    adapterMocks.previewSocDataOpsRuntimeConfig.mockReset();
+    adapterMocks.applySocDataOpsRuntimeConfig.mockReset();
+    adapterMocks.exportSocConfigAudits.mockReset();
+    adapterMocks.getSocDataOpsRuntimeConfig.mockResolvedValue({
+      config: baseConfig,
+      ownership: { owner_team: "BIDV", can_apply: true, mode: "rw", locked_fields: [] },
+      updated_at: "2026-09-18T07:00:00Z",
+    });
+    adapterMocks.getSocDataOpsRuntimeConfigAudit.mockResolvedValue({
+      results: auditEntries,
+      next: null,
+      count: 2,
+    });
+    adapterMocks.applySocDataOpsRuntimeConfig.mockResolvedValue({
+      config: baseConfig,
+      ownership: { owner_team: "BIDV", can_apply: true, mode: "rw", locked_fields: [] },
+      updated_at: "2026-09-18T09:00:00Z",
+    });
+  });
+
+  afterEach(() => cleanup());
+
+  it("reverts an audit row via apply with rollback action + expected_updated_at", async () => {
+    render(<SocDataOpsConfigSection />);
+    await waitFor(() => {
+      expect(screen.getByText("tang hot tier")).toBeTruthy();
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    fireEvent.click(screen.getAllByRole("button", { name: "soc.dataops.revert" })[1]);
+
+    await waitFor(() => {
+      expect(adapterMocks.applySocDataOpsRuntimeConfig).toHaveBeenCalledTimes(1);
+    });
+    const [config, opts] = adapterMocks.applySocDataOpsRuntimeConfig.mock.calls[0];
+    expect(config).toEqual({ decay_days: 9 });
+    expect(opts.audit_action).toBe("rollback");
+    expect(opts.expected_updated_at).toBe("2026-09-18T07:00:00Z");
+    expect(adapterMocks.getSocDataOpsRuntimeConfigAudit).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByText("soc.dataops.revert_success")).toBeTruthy();
+    });
+    vi.restoreAllMocks();
+  });
+
+  it("sends expected_updated_at + change_reason then shows conflict banner and reload-compare on 409", async () => {
+    adapterMocks.previewSocDataOpsRuntimeConfig.mockResolvedValue({ is_valid: true, validation_errors: [] });
+    adapterMocks.applySocDataOpsRuntimeConfig.mockRejectedValue(
+      Object.assign(new Error("Core API request error 409 ...: Cấu hình đã được cập nhật bởi người khác"), {
+        status: 409,
+        code: "CONFIG_CONFLICT",
+      }),
+    );
+    const { container } = render(<SocDataOpsConfigSection />);
+    await waitFor(() => {
+      expect(container.querySelector('[data-field="decay_days"]')).toBeTruthy();
+    });
+    fireEvent.change(field(container, "decay_days"), { target: { value: "14" } });
+    fireEvent.click(screen.getByRole("button", { name: "soc.actions.preview" }));
+    await waitFor(() => {
+      expect(screen.getByText("soc.config_preview.confirm_apply")).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "soc.config_preview.confirm_apply" }));
+
+    await waitFor(() => {
+      expect(adapterMocks.applySocDataOpsRuntimeConfig).toHaveBeenCalledTimes(1);
+    });
+    const [config, opts] = adapterMocks.applySocDataOpsRuntimeConfig.mock.calls[0];
+    expect(config.decay_days).toBe(14);
+    expect(opts.expected_updated_at).toBe("2026-09-18T07:00:00Z");
+    expect(opts.change_reason).toBe("");
+    expect(screen.getByText("soc.dataops.reload_compare")).toBeTruthy();
+
+    adapterMocks.getSocDataOpsRuntimeConfig.mockResolvedValue({
+      config: { ...baseConfig, decay_days: 14 },
+      ownership: { owner_team: "BIDV", can_apply: true, mode: "rw", locked_fields: [] },
+      updated_at: "2026-09-18T08:00:00Z",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "soc.dataops.reload_compare" }));
+    await waitFor(() => {
+      expect(screen.getByText("soc.config_preview.changes")).toBeTruthy();
+    });
+  });
+});

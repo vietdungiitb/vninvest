@@ -173,6 +173,8 @@ export function SocDataOpsConfigSection() {
   const [auditSearch, setAuditSearch] = useState("");
   const [auditExpandedId, setAuditExpandedId] = useState<number | null>(null);
   const [exportingAudits, setExportingAudits] = useState(false);
+  const [changeReason, setChangeReason] = useState("");
+  const [conflict, setConflict] = useState(false);
 
   const fetchConfigOnly = useCallback(async () => {
     setLoading(true);
@@ -329,18 +331,58 @@ export function SocDataOpsConfigSection() {
   const handleApply = async () => {
     setApplying(true);
     try {
-      const adapter = defaultCoreApiAdapter as unknown as { applySocDataOpsRuntimeConfig: (cfg: RuntimeConfig) => Promise<RuntimeEnvelope> };
-      const result = await adapter.applySocDataOpsRuntimeConfig(toPayload(form));
+      const adapter = defaultCoreApiAdapter as unknown as {
+        applySocDataOpsRuntimeConfig: (cfg: RuntimeConfig, opts?: Record<string, unknown>) => Promise<RuntimeEnvelope>;
+      };
+      const result = await adapter.applySocDataOpsRuntimeConfig(toPayload(form), {
+        expected_updated_at: envelope?.updated_at || undefined,
+        change_reason: changeReason,
+      });
       setPreviewModal(null);
       setEnvelope(result);
       setForm(readForm(result.config));
       setFormErrors({});
+      setConflict(false);
+      setChangeReason("");
       setError("");
       setSuccess(t("soc.dataops.apply_success"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("soc.dataops.apply_failed"));
+      const errWithMeta = err as { status?: number; code?: string } | null;
+      if (errWithMeta && (errWithMeta.status === 409 || errWithMeta.code === "CONFIG_CONFLICT")) {
+        setConflict(true);
+        setError(err instanceof Error ? err.message : t("soc.dataops.conflict_error"));
+      } else {
+        setConflict(false);
+        setError(err instanceof Error ? err.message : t("soc.dataops.apply_failed"));
+      }
     } finally {
       setApplying(false);
+    }
+  };
+
+  const handleReloadCompare = async () => {
+    try {
+      const adapter = defaultCoreApiAdapter as unknown as {
+        getSocDataOpsRuntimeConfig: () => Promise<RuntimeEnvelope>;
+      };
+      const fresh = await adapter.getSocDataOpsRuntimeConfig();
+      setEnvelope(fresh);
+      setForm((prev) => {
+        const loaded = readForm(fresh.config);
+        const isUntouched = JSON.stringify(prev) === JSON.stringify(DEFAULTS);
+        return isUntouched ? loaded : prev;
+      });
+      const before = fresh.config;
+      const after = toPayload(form);
+      const diff = diffObjects(before, after);
+      const impactWarnings = diff
+        .filter((row) => row.impact !== "none")
+        .map((row) => `${row.key}: ${row.before} \u2192 ${row.after}`);
+      setPreviewModal({ before, after, diff, impactWarnings, validationErrors: [] });
+      setConflict(false);
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("soc.dataops.config_load_failed"));
     }
   };
 
@@ -350,18 +392,29 @@ export function SocDataOpsConfigSection() {
     setApplying(true);
     try {
       const adapter = defaultCoreApiAdapter as unknown as {
-        applySocDataOpsRuntimeConfig: (cfg: RuntimeConfig) => Promise<RuntimeEnvelope>;
+        applySocDataOpsRuntimeConfig: (cfg: RuntimeConfig, opts?: Record<string, unknown>) => Promise<RuntimeEnvelope>;
       };
-      const result = await adapter.applySocDataOpsRuntimeConfig(entry.before_snapshot);
+      const result = await adapter.applySocDataOpsRuntimeConfig(entry.before_snapshot, {
+        expected_updated_at: envelope?.updated_at || undefined,
+        change_reason: t("soc.dataops.change_reason_revert"),
+        audit_action: "rollback",
+      });
       setPreviewModal(null);
       setEnvelope(result);
       setForm(readForm(result.config));
       setFormErrors({});
+      setChangeReason("");
       setError("");
       setSuccess(t("soc.dataops.revert_success"));
       await fetchAuditOnly(auditPage);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("soc.dataops.apply_failed"));
+      const errWithMeta = err as { status?: number; code?: string } | null;
+      if (errWithMeta && (errWithMeta.status === 409 || errWithMeta.code === "CONFIG_CONFLICT")) {
+        setConflict(true);
+        setError(err instanceof Error ? err.message : t("soc.dataops.conflict_error"));
+      } else {
+        setError(err instanceof Error ? err.message : t("soc.dataops.apply_failed"));
+      }
     } finally {
       setApplying(false);
     }
@@ -451,6 +504,18 @@ export function SocDataOpsConfigSection() {
     { },
     error ? createElement("div", { className: styles.inlineError, role: "alert" }, error) : null,
     success ? createElement("div", { className: styles.inlineSuccess, role: "status" }, success) : null,
+    conflict
+      ? createElement(
+          "div",
+          { className: styles.conflictBanner, role: "alert" },
+          t("soc.dataops.conflict_error"),
+          createElement(
+            "button",
+            { className: styles.actionBtn, onClick: handleReloadCompare },
+            t("soc.dataops.reload_compare"),
+          ),
+        )
+      : null,
 
     ownership
       ? createElement(SocOwnershipBadge, {
@@ -504,6 +569,22 @@ export function SocDataOpsConfigSection() {
       createElement(
         "div",
         { },
+        createElement("div", { className: styles.fieldRow },
+          createElement("label", { className: styles.fieldLabel, htmlFor: "change_reason" }, t("soc.dataops.change_reason")),
+          createElement(
+            "textarea",
+            {
+              id: "change_reason",
+              className: styles.fieldInput,
+              rows: 2,
+              placeholder: t("soc.dataops.change_reason_placeholder"),
+              value: changeReason,
+              "aria-label": t("soc.dataops.change_reason"),
+              onChange: (event) => setChangeReason((event.target as HTMLTextAreaElement).value),
+            },
+            null,
+          ),
+        ),
         createElement(
           "button",
           { onClick: handlePreview, className: styles.actionBtn },

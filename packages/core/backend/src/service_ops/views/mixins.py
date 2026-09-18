@@ -26,6 +26,7 @@ class ConfigApplyMixin:
         domain: str,
         config_payload: dict,
         config_class,  # e.g., VnbrokerDomainConfig
+        audit_action: str = 'apply',
     ) -> 'Response | tuple':
         """
         Áp dụng config cho service. Trả Response hoặc (service, config_obj).
@@ -50,6 +51,31 @@ class ConfigApplyMixin:
                 detail=block_reason or f"Domain '{domain}' không có quyền ghi.",
                 http_status=status.HTTP_403_FORBIDDEN,
             )
+
+        # Optimistic concurrency check (C5 — CFG-07): top-level `expected_updated_at`
+        expected_updated_at = request.data.get('expected_updated_at', None)
+        if expected_updated_at:
+            current_svc_config = ServiceConfig.objects.filter(service=service, is_current=True).first()
+            current_applied_at = (
+                current_svc_config.applied_at.isoformat()
+                if current_svc_config is not None and current_svc_config.applied_at
+                else None
+            )
+            if current_applied_at != expected_updated_at:
+                return self.error_response(
+                    request,
+                    code='CONFIG_CONFLICT',
+                    detail=(
+                        f'Cấu hình đã được cập nhật bởi người khác lúc '
+                        f'{current_applied_at or "(chưa có bản ghi)"}. Vui lòng tải lại và so sánh.'
+                    ),
+                    http_status=status.HTTP_409_CONFLICT,
+                    field_errors={
+                        'expected_updated_at': expected_updated_at,
+                        'current_config': current_svc_config.config_payload if current_svc_config else None,
+                        'updated_at': current_applied_at,
+                    },
+                )
 
         # Validate config
         config_obj = config_class.from_dict(config_payload)
@@ -80,7 +106,7 @@ class ConfigApplyMixin:
                 # Audit trail
                 ConfigChangeAudit.objects.create(
                     service=service,
-                    action='apply',
+                    action=audit_action,
                     actor=getattr(request.user, 'username', 'api'),
                     actor_ip=request.META.get('REMOTE_ADDR', ''),
                     before_snapshot=previous_payload,
