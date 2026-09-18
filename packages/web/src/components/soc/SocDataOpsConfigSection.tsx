@@ -5,6 +5,7 @@ import { SocOwnershipBadge } from "./SocOwnershipBadge.js";
 import { SocWriteGuardBanner } from "./SocWriteGuardBanner.js";
 import { NumberInput, SocQueueTierFieldSet, type QueueTierConfig } from "./SocQueueTierFieldSet.js";
 import { diffObjects, type DiffRow } from "../../lib/diffUtil.js";
+import { formatLastCheck } from "./socTime.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import styles from "./soc.module.css";
 
@@ -29,9 +30,16 @@ interface RuntimeEnvelope {
 }
 
 interface AuditEntry {
+  id?: number;
   actor?: string;
   action?: string;
+  actor_ip?: string;
+  service_key?: string;
   timestamp?: string;
+  change_summary?: string;
+  before_snapshot?: RuntimeConfig | null;
+  after_snapshot?: RuntimeConfig | null;
+  request_id?: string;
   [key: string]: unknown;
 }
 
@@ -113,8 +121,35 @@ function toPayload(form: FormState): RuntimeConfig {
   };
 }
 
+function csvEscape(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  const text = typeof value === "object" ? JSON.stringify(value) : String(value);
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function downloadCsv(
+  rows: Array<Record<string, unknown>>,
+  columns: Array<{ key: string; label: string }>,
+  filename: string,
+) {
+  const header = columns.map((col) => csvEscape(col.label)).join(",");
+  const body = rows.map((row) => columns.map((col) => csvEscape(row[col.key])).join(",")).join("\n");
+  const blob = new Blob(["\uFEFF" + header + "\n" + body], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}
+
 export function SocDataOpsConfigSection() {
-  const { t } = useI18n();
+  const { t, localeTag } = useI18n() as unknown as {
+    t: (key: string, opts?: Record<string, unknown>) => string;
+    localeTag: string;
+  };
   const [envelope, setEnvelope] = useState<RuntimeEnvelope | null>(null);
   const [form, setForm] = useState<FormState>(DEFAULTS);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -132,6 +167,12 @@ export function SocDataOpsConfigSection() {
   const [auditPage, setAuditPage] = useState(1);
   const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
   const [auditHasMore, setAuditHasMore] = useState(false);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditActorFilter, setAuditActorFilter] = useState("");
+  const [auditFromDate, setAuditFromDate] = useState("");
+  const [auditSearch, setAuditSearch] = useState("");
+  const [auditExpandedId, setAuditExpandedId] = useState<number | null>(null);
+  const [exportingAudits, setExportingAudits] = useState(false);
 
   const fetchConfigOnly = useCallback(async () => {
     setLoading(true);
@@ -157,11 +198,14 @@ export function SocDataOpsConfigSection() {
   const fetchAuditOnly = useCallback(async (page: number) => {
     try {
       const adapter = defaultCoreApiAdapter as unknown as {
-        getSocDataOpsRuntimeConfigAudit: (page: number) => Promise<{ results?: AuditEntry[]; next?: string | null }>;
+        getSocDataOpsRuntimeConfigAudit: (
+          page: number,
+        ) => Promise<{ results?: AuditEntry[]; next?: string | null; count?: number }>;
       };
       const auditData = await adapter.getSocDataOpsRuntimeConfigAudit(page);
       setAuditTrail(auditData.results || []);
       setAuditHasMore(!!auditData.next);
+      setAuditTotal(typeof auditData.count === "number" ? auditData.count : (auditData.results || []).length);
     } catch {
       // keep previous audit data
     }
@@ -300,6 +344,74 @@ export function SocDataOpsConfigSection() {
     }
   };
 
+  const handleRevert = async (entry: AuditEntry) => {
+    if (!entry.before_snapshot) return;
+    if (typeof window !== "undefined" && !window.confirm(t("soc.dataops.revert_confirm"))) return;
+    setApplying(true);
+    try {
+      const adapter = defaultCoreApiAdapter as unknown as {
+        applySocDataOpsRuntimeConfig: (cfg: RuntimeConfig) => Promise<RuntimeEnvelope>;
+      };
+      const result = await adapter.applySocDataOpsRuntimeConfig(entry.before_snapshot);
+      setPreviewModal(null);
+      setEnvelope(result);
+      setForm(readForm(result.config));
+      setFormErrors({});
+      setError("");
+      setSuccess(t("soc.dataops.revert_success"));
+      await fetchAuditOnly(auditPage);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("soc.dataops.apply_failed"));
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const handleExportAudits = async () => {
+    setExportingAudits(true);
+    try {
+      const adapter = defaultCoreApiAdapter as unknown as {
+        exportSocConfigAudits: (params?: Record<string, unknown>) => Promise<Array<Record<string, unknown>>>;
+      };
+      const rows = await adapter.exportSocConfigAudits({
+        service_key: "matrix_cycle_coordinator",
+        limit: 50,
+      });
+      const dateStr = new Date().toISOString().split("T")[0];
+      downloadCsv(
+        rows,
+        [
+          { key: "service_key", label: t("soc.export.col_service") },
+          { key: "action", label: t("soc.export.col_action") },
+          { key: "actor", label: t("soc.export.col_actor") },
+          { key: "actor_ip", label: t("soc.export.col_actor_ip") },
+          { key: "change_summary", label: t("soc.export.col_summary") },
+          { key: "timestamp", label: t("soc.export.col_timestamp") },
+          { key: "request_id", label: t("soc.export.col_request_id") },
+        ],
+        `soc-config-audits-${dateStr}.csv`,
+      );
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("soc.export.error_failed"));
+    } finally {
+      setExportingAudits(false);
+    }
+  };
+
+  const auditActors = Array.from(
+    new Set(auditTrail.map((entry) => entry.actor).filter((actor): actor is string => !!actor)),
+  ).sort();
+
+  const filteredAudit = auditTrail.filter((entry) => {
+    if (auditActorFilter && (entry.actor || "") !== auditActorFilter) return false;
+    if (auditFromDate && String(entry.timestamp || "") < auditFromDate) return false;
+    if (auditSearch && !String(entry.change_summary || "").toLowerCase().includes(auditSearch.trim().toLowerCase())) {
+      return false;
+    }
+    return true;
+  });
+
   const ownership = envelope?.ownership;
   const globals = createElement(
     "div",
@@ -410,55 +522,185 @@ export function SocDataOpsConfigSection() {
       ),
     ),
 
-    auditTrail.length > 0
-      ? createElement(
-          "div",
-          { className: styles.sectionCard },
-          createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.audit_trail")),
-          createElement(
+    createElement(
+      "div",
+      { className: styles.sectionCard },
+      createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.audit_title")),
+      createElement("p", { className: styles.helpText }, t("soc.dataops.audit_description")),
+      createElement("p", { className: styles.helpText }, `${t("soc.dataops.audit_total")}: ${auditTotal}`),
+      createElement(
+        "div",
+        { className: styles.auditFilters },
+        createElement(
+          "select",
+          {
+            value: auditActorFilter,
+            onChange: (event) => setAuditActorFilter((event.target as HTMLSelectElement).value),
+            className: styles.fieldInput,
+            "aria-label": t("soc.dataops.audit_filter_actor"),
+          },
+          createElement("option", { value: "" }, t("soc.dataops.audit_filter_all")),
+          auditActors.map((actor) => createElement("option", { key: actor, value: actor }, actor)),
+        ),
+        createElement("input", {
+          type: "date",
+          value: auditFromDate,
+          onChange: (event) => setAuditFromDate((event.target as HTMLInputElement).value),
+          className: styles.fieldInput,
+          "aria-label": t("soc.dataops.audit_filter_from"),
+        }),
+        createElement("input", {
+          type: "search",
+          value: auditSearch,
+          onChange: (event) => setAuditSearch((event.target as HTMLInputElement).value),
+          placeholder: t("soc.dataops.audit_filter_search"),
+          className: styles.fieldInput,
+          "aria-label": t("soc.dataops.audit_filter_search"),
+        }),
+      ),
+      filteredAudit.length === 0
+        ? createElement("p", { className: styles.emptyState }, t("soc.dataops.audit_empty"))
+        : createElement(
             "div",
-            { },
-            auditTrail.map((entry, i) =>
+            { className: styles.diffTableWrap },
+            createElement(
+              "table",
+              { className: styles.diffTable },
               createElement(
-                "div",
-                { key: i },
-                createElement("span", { }, entry.actor || "system"),
-                ` \u2022 ${entry.action || "config_change"}`,
-                createElement("span", { },
-                  entry.timestamp?.split("T")[1]?.slice(0, 8) || "",
+                "thead",
+                null,
+                createElement(
+                  "tr",
+                  null,
+                  createElement("th", { className: styles.diffTableHeader }, t("soc.dataops.audit_actor")),
+                  createElement("th", { className: styles.diffTableHeader }, t("soc.dataops.audit_timestamp")),
+                  createElement("th", { className: styles.diffTableHeader }, t("soc.dataops.audit_change_summary")),
+                  createElement("th", { className: styles.diffTableHeader }, t("soc.dataops.audit_diff")),
+                  createElement("th", { className: styles.diffTableHeader }, t("soc.actions.actions")),
                 ),
+              ),
+              createElement(
+                "tbody",
+                null,
+                filteredAudit.map((entry) => {
+                  const id = typeof entry.id === "number" ? entry.id : undefined;
+                  const expanded = id !== undefined && auditExpandedId === id;
+                  const diffRows = expanded ? diffObjects(entry.before_snapshot || {}, entry.after_snapshot || {}) : [];
+                  const when = formatLastCheck(entry.timestamp, localeTag || "vi-VN", t);
+                  const rowKey = `audit-${id ?? entry.timestamp ?? ""}`;
+                  const row = createElement(
+                    "tr",
+                    { key: rowKey },
+                    createElement("td", null, entry.actor || "system"),
+                    createElement("td", { title: when.title }, when.display),
+                    createElement("td", null, entry.change_summary || "\u2014"),
+                    createElement(
+                      "td",
+                      null,
+                      createElement(
+                        "button",
+                        {
+                          className: styles.linkBtn,
+                          disabled: id === undefined,
+                          "aria-expanded": expanded,
+                          onClick: () => setAuditExpandedId(expanded ? null : (id ?? null)),
+                        },
+                        t(expanded ? "soc.dataops.audit_hide" : "soc.dataops.audit_view"),
+                      ),
+                    ),
+                    createElement(
+                      "td",
+                      null,
+                      createElement(
+                        "button",
+                        {
+                          className: styles.actionBtn,
+                          disabled: ownership?.can_apply === false || !entry.before_snapshot || applying,
+                          onClick: () => handleRevert(entry),
+                        },
+                        t("soc.dataops.revert"),
+                      ),
+                    ),
+                  );
+                  if (!expanded) return row;
+                  const detail = createElement(
+                    "tr",
+                    { key: `${rowKey}-diff` },
+                    createElement(
+                      "td",
+                      { colSpan: 5 },
+                      diffRows.length === 0
+                        ? "\u2014"
+                        : createElement(
+                            "table",
+                            { className: styles.diffTable },
+                            createElement(
+                              "thead",
+                              null,
+                              createElement(
+                                "tr",
+                                null,
+                                createElement("th", { className: styles.diffTableHeader }, t("soc.dataops.audit_diff_field")),
+                                createElement("th", { className: styles.diffTableHeader }, t("soc.dataops.audit_diff_before")),
+                                createElement("th", { className: styles.diffTableHeader }, t("soc.dataops.audit_diff_after")),
+                              ),
+                            ),
+                            createElement(
+                              "tbody",
+                              null,
+                              diffRows.map((rowItem) =>
+                                createElement(
+                                  "tr",
+                                  { key: rowItem.key },
+                                  createElement("td", { className: styles.diffCellKey }, rowItem.key),
+                                  createElement("td", { className: styles.diffBefore }, JSON.stringify(rowItem.before)),
+                                  createElement("td", { className: styles.diffAfter }, JSON.stringify(rowItem.after)),
+                                ),
+                              ),
+                            ),
+                          ),
+                    ),
+                  );
+                  return [row, detail];
+                }),
               ),
             ),
           ),
-          createElement(
-            "div",
-            { },
-            createElement(
-              "button",
-              {
-                onClick: () => setAuditPage((p) => Math.max(1, p - 1)),
-                disabled: auditPage <= 1,
-                className: styles.actionBtn,
-              },
-              "\u25C0 " + t("soc.actions.prev"),
-            ),
-            createElement(
-              "span",
-              { },
-              t("soc.actions.page", { page: auditPage }),
-            ),
-            createElement(
-              "button",
-              {
-                onClick: () => setAuditPage((p) => p + 1),
-                disabled: !auditHasMore,
-                className: styles.actionBtn,
-              },
-              t("soc.actions.next") + " \u25B6",
-            ),
-          ),
-        )
-      : null,
+      createElement(
+        "div",
+        { className: styles.auditPager },
+        createElement(
+          "button",
+          {
+            onClick: () => setAuditPage((p) => Math.max(1, p - 1)),
+            disabled: auditPage <= 1,
+            className: styles.actionBtn,
+            "aria-label": t("soc.dataops.audit_previous"),
+          },
+          "\u25C0 " + t("soc.dataops.audit_previous"),
+        ),
+        createElement("span", null, `${t("soc.dataops.audit_page")} ${auditPage}`),
+        createElement(
+          "button",
+          {
+            onClick: () => setAuditPage((p) => p + 1),
+            disabled: !auditHasMore,
+            className: styles.actionBtn,
+            "aria-label": t("soc.dataops.audit_next"),
+          },
+          t("soc.dataops.audit_next") + " \u25B6",
+        ),
+        createElement(
+          "button",
+          {
+            onClick: handleExportAudits,
+            disabled: exportingAudits,
+            className: styles.actionBtn,
+          },
+          exportingAudits ? t("soc.export.exporting") : t("soc.export.export_config_audits"),
+        ),
+      ),
+    ),
 
     previewModal
       ? createElement(SocConfigPreviewModal, {

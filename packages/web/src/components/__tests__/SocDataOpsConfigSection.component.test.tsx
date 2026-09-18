@@ -7,6 +7,7 @@ const adapterMocks = vi.hoisted(() => ({
   getSocDataOpsRuntimeConfigAudit: vi.fn(),
   previewSocDataOpsRuntimeConfig: vi.fn(),
   applySocDataOpsRuntimeConfig: vi.fn(),
+  exportSocConfigAudits: vi.fn(),
 }));
 
 vi.mock("../../adapters/coreApiAdapter.js", () => ({
@@ -43,6 +44,7 @@ describe("SocDataOpsConfigSection form (C1 — CFG-01)", () => {
     adapterMocks.getSocDataOpsRuntimeConfigAudit.mockReset();
     adapterMocks.previewSocDataOpsRuntimeConfig.mockReset();
     adapterMocks.applySocDataOpsRuntimeConfig.mockReset();
+    adapterMocks.exportSocConfigAudits.mockReset();
     setup();
   });
 
@@ -128,5 +130,107 @@ describe("SocDataOpsConfigSection form (C1 — CFG-01)", () => {
     expect(cellTexts.some((x) => x.includes("warm_liquid_market.poll_interval_seconds"))).toBe(true);
     expect(screen.getByText("soc.config_preview.impact_runtime_risk")).toBeTruthy();
     expect(screen.queryByText("soc.config_preview.impact_invalid")).toBeNull();
+  });
+});
+
+const auditEntries = [
+  {
+    id: 2,
+    actor: "alice",
+    action: "apply",
+    timestamp: "2026-09-18T07:00:00Z",
+    change_summary: "tang hot tier",
+    before_snapshot: { decay_days: 7 },
+    after_snapshot: { decay_days: 9 },
+  },
+  {
+    id: 1,
+    actor: "bob",
+    action: "apply",
+    timestamp: "2026-09-17T07:00:00Z",
+    change_summary: "giam warm tier",
+    before_snapshot: { decay_days: 9 },
+    after_snapshot: { decay_days: 7 },
+  },
+];
+
+describe("SocDataOpsConfigSection audit (C3 — CFG-04/CFG-05 read)", () => {
+  beforeEach(() => {
+    adapterMocks.getSocDataOpsRuntimeConfig.mockReset();
+    adapterMocks.getSocDataOpsRuntimeConfigAudit.mockReset();
+    adapterMocks.previewSocDataOpsRuntimeConfig.mockReset();
+    adapterMocks.applySocDataOpsRuntimeConfig.mockReset();
+    adapterMocks.exportSocConfigAudits.mockReset();
+    adapterMocks.getSocDataOpsRuntimeConfig.mockResolvedValue({
+      config: baseConfig,
+      ownership: { owner_team: "BIDV", can_apply: true, mode: "rw", locked_fields: [] },
+      updated_at: "2026-09-18T07:00:00Z",
+    });
+    adapterMocks.getSocDataOpsRuntimeConfigAudit.mockResolvedValue({
+      results: auditEntries,
+      next: null,
+      count: 2,
+    });
+  });
+
+  afterEach(() => cleanup());
+
+  it("renders actor, local timestamp, summary and expands before/after diff", async () => {
+    const { container } = render(<SocDataOpsConfigSection />);
+    await waitFor(() => {
+      expect(screen.getByText("tang hot tier")).toBeTruthy();
+    });
+    expect(screen.getAllByText("alice").length).toBeGreaterThan(0);
+    expect(screen.getByText("soc.dataops.audit_total: 2")).toBeTruthy();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "soc.dataops.audit_view" })[0]);
+    await waitFor(() => {
+      expect(screen.getByText("decay_days")).toBeTruthy();
+    });
+    const cells = Array.from(container.querySelectorAll("td")).map((cell) => cell.textContent || "");
+    expect(cells.some((cell) => cell.includes("9"))).toBe(true);
+    expect(cells.some((cell) => cell.includes("7"))).toBe(true);
+  });
+
+  it("filters audit rows by summary search", async () => {
+    render(<SocDataOpsConfigSection />);
+    await waitFor(() => {
+      expect(screen.getByText("tang hot tier")).toBeTruthy();
+    });
+    fireEvent.change(screen.getByLabelText("soc.dataops.audit_filter_search"), {
+      target: { value: "giam" },
+    });
+    await waitFor(() => {
+      expect(screen.queryByText("tang hot tier")).toBeNull();
+    });
+    expect(screen.getByText("giam warm tier")).toBeTruthy();
+  });
+
+  it("exports config audits via adapter with matrix service key", async () => {
+    adapterMocks.exportSocConfigAudits.mockResolvedValue([
+      { service_key: "matrix_cycle_coordinator", action: "apply", actor: "alice" },
+    ]);
+    const createObjectUrl = vi.fn(() => "blob:audit");
+    const revokeObjectUrl = vi.fn();
+    const originalCreate = URL.createObjectURL;
+    const originalRevoke = URL.revokeObjectURL;
+    (URL as unknown as { createObjectURL: typeof createObjectUrl }).createObjectURL = createObjectUrl;
+    (URL as unknown as { revokeObjectURL: typeof revokeObjectUrl }).revokeObjectURL = revokeObjectUrl;
+
+    render(<SocDataOpsConfigSection />);
+    await waitFor(() => {
+      expect(screen.getByText("tang hot tier")).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "soc.export.export_config_audits" }));
+
+    await waitFor(() => {
+      expect(adapterMocks.exportSocConfigAudits).toHaveBeenCalledWith({
+        service_key: "matrix_cycle_coordinator",
+        limit: 50,
+      });
+    });
+
+    URL.createObjectURL = originalCreate;
+    URL.revokeObjectURL = originalRevoke;
   });
 });

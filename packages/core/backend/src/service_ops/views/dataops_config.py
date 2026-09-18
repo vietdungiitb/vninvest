@@ -156,9 +156,14 @@ class DataOpsRuntimeConfigPreviewView(SOCBaseView):
 class DataOpsRuntimeConfigAuditSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     service_key = serializers.CharField()
+    action = serializers.CharField(allow_null=True)
     actor = serializers.CharField(allow_null=True)
+    actor_ip = serializers.CharField(allow_null=True, required=False)
     timestamp = serializers.DateTimeField(allow_null=True)
     change_summary = serializers.CharField(allow_blank=True, allow_null=True)
+    before_snapshot = serializers.JSONField(allow_null=True)
+    after_snapshot = serializers.JSONField(allow_null=True)
+    request_id = serializers.CharField(allow_blank=True, allow_null=True, required=False)
 
 class DataOpsRuntimeConfigAuditResponseSerializer(serializers.Serializer):
     count = serializers.IntegerField()
@@ -191,9 +196,14 @@ class DataOpsRuntimeConfigAuditView(SOCBaseView):
             {
                 'id': audit.id,
                 'service_key': audit.service.service_key if audit.service else service_key,
+                'action': audit.action,
                 'actor': audit.actor,
+                'actor_ip': audit.actor_ip,
                 'timestamp': audit.timestamp.isoformat() if audit.timestamp else None,
                 'change_summary': audit.change_summary,
+                'before_snapshot': audit.before_snapshot,
+                'after_snapshot': audit.after_snapshot,
+                'request_id': audit.request_id,
             }
             for audit in page
         ]

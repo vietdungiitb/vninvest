@@ -3171,3 +3171,39 @@
     animation: none !important;
   }
 }
+
+/* Config audit trail (C3 — CFG-04/CFG-05) */
+.auditFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.auditFilters .fieldInput {
+  min-width: 10rem;
+}
+
+.auditPager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.linkBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent, #5078a8);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.linkBtn:disabled {
+  color: var(--text-muted, #94a3b8);
+  cursor: not-allowed;
+  text-decoration: none;
+}
