@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, createElement, FormEvent, ChangeEvent
 import styles from "./aiSettings.module.css";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
+import { useConfirm } from "./ConfirmModal.js";
 import { PROVIDER_MODELS, PROVIDER_OPTIONS } from "../shared/providerModels.js";
 
 const e = createElement;
@@ -35,6 +36,7 @@ interface AIAgentFederationPanelProps {
 
 export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPanelProps) {
   const { t } = useI18n();
+  const confirm = useConfirm();
   const [agents, setAgents] = useState<AgentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -96,8 +98,13 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
       .finally(() => { setSaving(false); });
   };
 
-  const handleDelete = (id: number) => {
-    if (!confirm(t("agentFederation.confirmDelete"))) return;
+  const handleDelete = async (id: number) => {
+    const ok = await confirm({
+      title: t("common.delete"),
+      message: t("agentFederation.confirmDelete"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     agentClient.deleteAIAgent(id)
       .then(() => {
         setNotice(t("agentFederation.deleted"));

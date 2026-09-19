@@ -51,6 +51,7 @@ export default [
     rules: {
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'no-alert': 'error',
       'react/react-in-jsx-scope': 'off',
       'react/prop-types': 'off',
       'react-hooks/exhaustive-deps': 'error',
@@ -92,6 +93,7 @@ export default [
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'no-alert': 'error',
       'react/react-in-jsx-scope': 'off',
       'react/prop-types': 'off',
       'react-hooks/exhaustive-deps': 'error',

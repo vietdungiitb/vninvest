@@ -3,6 +3,7 @@ import styles from "./aiSettings.module.css";
 
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
+import { useConfirm } from "./ConfirmModal.js";
 
 const e = createElement;
 
@@ -29,6 +30,7 @@ function formatSyncTime(iso?: string | null): string {
 
 export function DNSECredentialsSection({ className = "" }: { className?: string }) {
   const { t } = useI18n();
+  const confirm = useConfirm();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [credential, setCredential] = useState<DnseCredentialState | null>(null);
@@ -86,7 +88,12 @@ export function DNSECredentialsSection({ className = "" }: { className?: string 
   }
 
   async function handleDelete() {
-    if (typeof window !== "undefined" && !window.confirm(t("settings.dnseDeleteBtn") + "?")) return;
+    const ok = await confirm({
+      title: t("settings.dnseDeleteBtn"),
+      message: t("settings.dnseDeleteBtn") + "?",
+      variant: "destructive",
+    });
+    if (!ok) return;
     setDeleting(true);
     setError(null);
     setMsg(null);

@@ -1,5 +1,6 @@
 import { createElement, useEffect, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
+import { useConfirm } from "../../components/ConfirmModal.js";
 import { ShellPanel } from "../../components/ShellPageTemplate.js";
 import { SocSchedulerBoard } from "./SocSchedulerBoard.js";
 import { SocConfigPreviewModal } from "./SocConfigPreviewModal.js";
@@ -26,6 +27,7 @@ interface PrefetchCacheStatus {
 
 export function SocPrefetchPanel() {
   const { t } = useI18n();
+  const confirm = useConfirm();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [inlineError, setInlineError] = useState("");
@@ -130,7 +132,12 @@ export function SocPrefetchPanel() {
   };
 
   const handlePurgeCache = async () => {
-    if (!window.confirm(t("soc.prefetch.purge_confirm"))) return;
+    const ok = await confirm({
+      title: t("common.confirmTitle"),
+      message: t("soc.prefetch.purge_confirm"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     setInlineError(""); setInlineSuccess("");
     try {
       const adapter = defaultCoreApiAdapter as unknown as { purgeSocPrefetchCache: () => Promise<void> };

@@ -4,6 +4,11 @@ import { DNSECredentialsSection } from "./DNSECredentialsSection";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import * as LangContext from "../context/LangContext.js";
 
+vi.mock("./ConfirmModal.js", () => ({
+  useConfirm: () => () => Promise.resolve(true),
+  ConfirmProvider: ({ children }) => children,
+}));
+
 const i18nValue = {
   locale: "vi",
   localeTag: "vi-VN",
@@ -27,7 +32,6 @@ beforeEach(() => {
   vi.spyOn(coreApiAdapter, "updateDNSEConfig").mockResolvedValue({ ok: true });
   vi.spyOn(coreApiAdapter, "deleteDNSEConfig").mockResolvedValue({ ok: true });
   vi.spyOn(LangContext, "useI18n").mockReturnValue(i18nValue);
-  window.confirm = vi.fn(() => true);
 });
 
 afterEach(() => {

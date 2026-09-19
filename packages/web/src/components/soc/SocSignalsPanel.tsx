@@ -1475,7 +1475,10 @@ export function SocSignalsPanel() {
           )
         : null,
       createElement("div", { },
-        t("soc.signals_overview.smoke_label", { defaultValue: "Kết quả smoke — endpoint kiểm tra hiện trả stub, xem W2.4 honest metrics." }),
+        createElement("span", { className: styles.betaBadge }, t("common.beta")),
+        createElement("span", { },
+          t("soc.signals_overview.smoke_label", { defaultValue: "Kết quả smoke — endpoint kiểm tra hiện trả stub, xem W2.4 honest metrics." }),
+        ),
       ),
     );
   };

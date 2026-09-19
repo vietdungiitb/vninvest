@@ -1,6 +1,8 @@
 import styles from "../../components/ShellPageTemplate.module.css";
 import { Fragment, useState, useEffect, createElement } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { useToast } from "../../components/ShellToast.js";
+import { useConfirm } from "../../components/ConfirmModal.js";
 import {
   ShellPageChrome,
   ShellPanel,
@@ -68,6 +70,8 @@ const mailApi = coreApiAdapter as unknown as {
 };
 
 export function ShellMailConfigPage() {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [configs, setConfigs] = useState<MailConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -105,23 +109,28 @@ export function ShellMailConfigPage() {
       await mailApi.activateOperatorMailConfig(id);
       fetchConfigs();
     } catch (err) {
-      alert("Lỗi khi kích hoạt: " + (err instanceof Error ? err.message : String(err)));
+      toast.error("Lỗi khi kích hoạt: " + (err instanceof Error ? err.message : String(err)));
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa cấu hình này?")) return;
+    const ok = await confirm({
+      title: 'Xóa cấu hình mail',
+      message: 'Bạn có chắc chắn muốn xóa cấu hình này?',
+      variant: 'destructive',
+    });
+    if (!ok) return;
     try {
       await mailApi.deleteOperatorMailConfig(id);
       fetchConfigs();
     } catch (err) {
-      alert("Lỗi khi xóa: " + (err instanceof Error ? err.message : String(err)));
+      toast.error("Lỗi khi xóa: " + (err instanceof Error ? err.message : String(err)));
     }
   };
 
   const handleTestConnection = async (config: MailConfig) => {
     if (!testEmail) {
-      alert("Vui lòng nhập email nhận test.");
+      toast.warning("Vui lòng nhập email nhận test.");
       return;
     }
     setTestLoading(true);

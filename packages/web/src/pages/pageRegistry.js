@@ -1,7 +1,9 @@
 import styles from "../components/ShellPageTemplate.module.css";
 import { createElement, useEffect, useRef, useState } from "react";
+import { useI18n } from "../context/LangContext.js";
 function createDeferredPageComponent(loadComponent, routeId) {
   function DeferredPageComponent(props) {
+    const { t } = useI18n();
     const [resolvedComponent, setResolvedComponent] = useState(null);
     const [loadError, setLoadError] = useState("");
     const mountedRef = useRef(null);
@@ -18,7 +20,7 @@ function createDeferredPageComponent(loadComponent, routeId) {
         .catch((error) => {
           if (mountedRef.current) {
             setResolvedComponent(null);
-            setLoadError(error instanceof Error ? error.message : "Không thể tải trang shell.");
+            setLoadError(error instanceof Error ? error.message : t("shellFallback.loadErrorDefault"));
           }
         });
 
@@ -38,7 +40,7 @@ function createDeferredPageComponent(loadComponent, routeId) {
           className: `${styles.panel}`,
           role: "alert",
         },
-        createElement("h2", { className: `${styles.panelTitle}` }, "Không thể tải trang"),
+        createElement("h2", { className: `${styles.panelTitle}` }, t("shellFallback.loadFailedTitle")),
         createElement("p", { className: `${styles.panelSubtitle}` }, `Route ${routeId}: ${loadError}`),
       );
     }
@@ -153,8 +155,8 @@ function createDeferredPageComponent(loadComponent, routeId) {
             )
           )
         ),
-        createElement("div", { className: "loading-text" }, "Đang tải trang"),
-        createElement("div", { className: "loading-subtext" }, `Route ${routeId} đang được nạp động.`)
+        createElement("div", { className: "loading-text" }, t("shellFallback.loadingTitle")),
+        createElement("div", { className: "loading-subtext" }, t("shellFallback.loadingSub", { route: routeId }))
       )
     );
   }

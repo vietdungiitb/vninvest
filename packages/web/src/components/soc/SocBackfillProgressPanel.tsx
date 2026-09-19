@@ -1,5 +1,6 @@
 import { createElement, useCallback, useEffect, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
+import { useConfirm } from "../../components/ConfirmModal.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { statusColor, getStatusBadgeStyle } from "./socStatusColors.js";
 import styles from "./soc.module.css";
@@ -18,6 +19,7 @@ interface BackfillRun {
 
 export function SocBackfillProgressPanel() {
   const { t } = useI18n();
+  const confirm = useConfirm();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [runs, setRuns] = useState<BackfillRun[]>([]);
@@ -68,7 +70,12 @@ export function SocBackfillProgressPanel() {
   };
 
   const handleAbort = async (runId: string) => {
-    if (!window.confirm(t("soc.backfill.abort_confirm"))) return;
+    const ok = await confirm({
+      title: t("common.confirmTitle"),
+      message: t("soc.backfill.abort_confirm"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     try {
       const adapter = defaultCoreApiAdapter as unknown as { abortSocDataOpsPlannerRun: (runId: string) => Promise<void> };
       await adapter.abortSocDataOpsPlannerRun(runId);

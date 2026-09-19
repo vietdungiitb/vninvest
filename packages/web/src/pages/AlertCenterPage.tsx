@@ -9,6 +9,7 @@ import { ShellPageChrome, ShellPanel, ShellMetric } from "../components/ShellPag
 import soc from "../components/soc/soc.module.css";
 import { useAlertCenterData } from "../hooks/useAlertCenterData.js";
 import { useAlertCenterRealtime } from "../hooks/useAlertCenterRealtime.js";
+import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useAlertCenterFilters } from "../hooks/useAlertCenterFilters.ts";
 import { useAlertCenterActions } from "../hooks/useAlertCenterActions.ts";
 import { FilterBar } from "../components/alert-center/FilterBar.js";
@@ -19,7 +20,10 @@ import { DetailDrawer } from "../components/alert-center/DetailDrawer.js";
 const DEFAULT_ENV: Record<string, unknown> = {};
 
 interface AlertItem {
-  alert_id: string | number;
+  matched_value?: unknown;
+  alert_id?: string | number;
+  event_id?: string | number;
+  ts?: string;
   symbol?: string;
   value?: unknown;
   triggered_at?: string;
@@ -88,6 +92,46 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [expandedEvidence, setExpandedEvidence] = useState<Record<string, boolean>>({});
 
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const lane = sp.get("lane");
+      if (lane === "main" || lane === "ai") filters.setLane(lane);
+      const symbol = (sp.get("symbol") || "").trim().toUpperCase();
+      if (symbol) {
+        filters.setSymbolDraft(symbol);
+        filters.setAppliedSymbol(symbol);
+      }
+      const sev = (sp.get("severity") || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+      for (const s of sev) filters.toggleSeverity(s);
+      const fam = (sp.get("family") || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+      for (const f of fam) filters.toggleFamily(f);
+      const tf = sp.get("timeframe");
+      if (tf === "5m" || tf === "15m" || tf === "1h" || tf === "session" || tf === "5d") filters.setTimeframe(tf);
+      const sd = sp.get("session_date");
+      if (sd && /^\d{4}-\d{2}-\d{2}$/.test(sd)) filters.setSessionDate(sd);
+    } catch {
+      // ignore malformed share URLs
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams();
+      if (filters.lane) sp.set("lane", filters.lane);
+      if (filters.appliedSymbol) sp.set("symbol", filters.appliedSymbol);
+      if (filters.severityFilter.length) sp.set("severity", filters.severityFilter.join(","));
+      if (filters.familyFilter.length) sp.set("family", filters.familyFilter.join(","));
+      if (filters.timeframe) sp.set("timeframe", filters.timeframe);
+      if (filters.sessionDate) sp.set("session_date", filters.sessionDate);
+      const qs = sp.toString();
+      window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+    } catch {
+      // ignore history errors (non-browser env)
+    }
+  }, [filters.lane, filters.appliedSymbol, filters.severityFilter, filters.familyFilter, filters.timeframe, filters.sessionDate]);
+
   const { loading, error, payload, summary, symbolStats, refetch } = useAlertCenterData({
     env,
     lane: filters.lane,
@@ -100,15 +144,19 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
   });
 
   const { realtimeAlerts, realtimeStatus } = useAlertCenterRealtime({ enabled: autoRefresh });
-  const actions = useAlertCenterActions(refetch);
+  const actions = useAlertCenterActions(refetch, filters.lane);
+
+  const [extraAlerts, setExtraAlerts] = useState<AlertItem[]>([]);
+  const [feedNextUrl, setFeedNextUrl] = useState<string | null>(null);
 
   const alerts = useMemo(() => {
     const rawAlerts = (payload as Record<string, unknown>)?.results ?? [];
     const restAlerts = Array.isArray(rawAlerts) ? rawAlerts : [];
-    if (!realtimeAlerts.length) return restAlerts;
+    const base = [...restAlerts, ...extraAlerts];
+    if (!realtimeAlerts.length) return base;
     const byId = new Map();
-    for (const item of restAlerts) {
-      const key = item?.alert_id ?? item?.event_id;
+    for (const item of base) {
+      const key = (item as AlertItem)?.alert_id ?? (item as AlertItem)?.event_id;
       if (key != null) byId.set(String(key), item);
     }
     for (const item of realtimeAlerts) {
@@ -116,15 +164,49 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
       if (key != null) byId.set(String(key), item);
     }
     return Array.from(byId.values());
-  }, [payload, realtimeAlerts]);
+  }, [payload, extraAlerts, realtimeAlerts]);
+
+  function extractFeedCursor(next: unknown): string | null {
+    if (typeof next !== "string" || !next) return null;
+    if (next.indexOf("cursor=") < 0) return next;
+    try {
+      return new URL(next, window.location.origin).searchParams.get("cursor");
+    } catch {
+      return null;
+    }
+  }
+
+  useEffect(() => {
+    setExtraAlerts([]);
+    setFeedNextUrl(null);
+  }, [filters.lane, filters.appliedSymbol, filters.sessionDate, filters.timeframe, filters.severityFilter, filters.familyFilter]);
+
+  const handleLoadMore = useCallback(async () => {
+    const cursor = extractFeedCursor(feedNextUrl ?? (payload as Record<string, unknown>)?.next);
+    if (!cursor) return;
+    const params: Record<string, unknown> = {
+      symbol: filters.appliedSymbol || undefined,
+      session_date: filters.sessionDate || undefined,
+      timeframe: filters.timeframe || undefined,
+      ...(filters.severityFilter.length ? { severity: filters.severityFilter.join(",") } : {}),
+      ...(filters.familyFilter.length ? { alert_family: filters.familyFilter.join(",") } : {}),
+      cursor,
+    };
+    const res = (filters.lane === "ai"
+      ? await coreApiAdapter.getAIAlertsFeed(params)
+      : await coreApiAdapter.getAlertCenterFeed(params)) as unknown as { results?: unknown[]; next?: string | null };
+    const more = Array.isArray(res?.results) ? (res.results as AlertItem[]) : [];
+    if (more.length) setExtraAlerts((prev) => [...prev, ...more]);
+    setFeedNextUrl(typeof res?.next === "string" ? res.next : null);
+  }, [feedNextUrl, payload, filters.lane, filters.appliedSymbol, filters.sessionDate, filters.timeframe, filters.severityFilter, filters.familyFilter]);
 
   const sortedAlerts = useMemo(() => {
     const sorted = [...alerts].sort((a: AlertItem, b: AlertItem) => {
       if (filters.sorting === "largestValue") {
-        return Number(b?.value || 0) - Number(a?.value || 0);
+        return Number(b?.value ?? b?.matched_value ?? 0) - Number(a?.value ?? a?.matched_value ?? 0);
       }
-      const timeA = a?.triggered_at ? new Date(a.triggered_at).getTime() : 0;
-      const timeB = b?.triggered_at ? new Date(b.triggered_at).getTime() : 0;
+      const timeA = a?.triggered_at ? new Date(a.triggered_at).getTime() : (a?.ts ? new Date(a.ts).getTime() : 0);
+      const timeB = b?.triggered_at ? new Date(b.triggered_at).getTime() : (b?.ts ? new Date(b.ts).getTime() : 0);
       return timeB - timeA;
     });
     return sorted;
@@ -197,9 +279,32 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
     activePageStats * ITEMS_PER_PAGE_STATS,
   ), [aggregatedSymbols, activePageStats]);
 
-  useEffect(() => {
-    filters.setPageStats(1);
-  }, [filters]);
+  const handleExportCsv = useCallback(() => {
+    const cols = ["alert_id", "alert_type", "alert_family", "lane", "symbol", "severity", "direction", "value", "session_date", "triggered_at", "title", "body"];
+    const esc = (v: unknown) => {
+      const s = v == null ? "" : String(v);
+      return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const lines = [cols.join(",")];
+    for (const a of displayAlerts as AlertItem[]) {
+      lines.push(cols.map((c) => {
+        if (c === "lane") return esc(filters.lane);
+        if (c === "alert_family") return esc(a.alert_family ?? a.alert_type ?? "");
+        return esc((a as Record<string, unknown>)[c]);
+      }).join(","));
+    }
+    const blob = new Blob([lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const d = new Date();
+    const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+    link.href = url;
+    link.download = `alert-center-${stamp}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [displayAlerts, filters.lane]);
 
   const triggerRefresh = useCallback(() => {
     setIsRefreshing(true);
@@ -231,7 +336,9 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
   const metrics = [
     { label: t("alertCenter.summary.total"), value: String(summaryData?.total ?? alerts.length) },
     { label: t("alertCenter.summary.highCritical"), value: String(highSeverityCount) },
-    { label: t("alertCenter.summary.aiSuggest"), value: String(aiSuggestCount) },
+    ...(filters.lane === "ai"
+      ? [{ label: t("alertCenter.summary.aiSuggest"), value: String(aiSuggestCount) }]
+      : []),
     { label: t("alertCenter.summary.unseen"), value: String(summaryData?.unseen ?? 0) },
   ];
 
@@ -250,9 +357,11 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
     >
       <FilterBar
         lane={filters.lane}
-        onLaneChange={(val) => { filters.setLane(val); actions.closeDetail(); }}
+        onLaneChange={(val) => { filters.setLane(val); filters.resetStatsPage(); filters.setSessionDate(""); actions.closeDetail(); }}
         timeframe={filters.timeframe}
-        onTimeframeChange={filters.setTimeframe}
+        onTimeframeChange={(val) => { filters.setTimeframe(val); filters.resetStatsPage(); }}
+        sessionDate={filters.sessionDate}
+        onSessionDateChange={(val) => { filters.setSessionDate(val); filters.resetStatsPage(); }}
         symbolDraft={filters.symbolDraft}
         onSymbolDraftChange={filters.setSymbolDraft}
         onSymbolApply={filters.applySymbol}
@@ -277,6 +386,21 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
           subtitle={t("alertCenter.feedShowing", { count: alerts.length })}
           actions={
             <div className={`${soc.signalFeedFilterBar}`} style={{ marginBottom: 0 }}>
+              <button
+                type="button"
+                className={`${soc.filterBtn} ${soc.filterBtnInactive}`}
+                disabled={!feedNextUrl && !(payload as Record<string, unknown>)?.next}
+                onClick={handleLoadMore}
+              >
+                {t("alertCenter.loadMore")}
+              </button>
+              <button
+                type="button"
+                className={`${soc.filterBtn} ${soc.filterBtnInactive}`}
+                onClick={handleExportCsv}
+              >
+                {t("alertCenter.exportCsv")}
+              </button>
               {[
                 { value: "latest", labelKey: "alertCenter.sortLatest" },
                 { value: "largestValue", labelKey: "alertCenter.sortLargest" },
@@ -303,6 +427,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
             ) : displayAlerts.length === 0 ? (
               <div className={`${soc.emptyState}`}>{t("alertCenter.empty")}</div>
             ) : (
+              <div aria-live="polite" aria-busy={loading || isRefreshing}>
               <VirtualFeedList
                 height={460}
                 width="100%"
@@ -312,7 +437,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
               >
                 {({ index, style }: { index: number; style: React.CSSProperties }) => (
                   <AlertCard
-                    key={displayAlerts[index].alert_id}
+                    key={displayAlerts[index].alert_id ?? displayAlerts[index].event_id}
                     alert={displayAlerts[index] as any}
                     lane={filters.lane}
                     busyAlertId={actions.busyAlertId}
@@ -327,6 +452,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
                   />
                 )}
               </VirtualFeedList>
+              </div>
             )}
           </PageErrorBoundary>
         </ShellPanel>

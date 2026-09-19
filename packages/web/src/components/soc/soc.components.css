@@ -2404,6 +2404,20 @@
   font-style: italic;
 }
 
+.betaBadge {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent-amber, #fbbf24);
+  border: 1px solid var(--accent-amber, #f59e0b);
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+
 /* Toolbar (run logs) */
 .opsToolbarRow {
   display: flex;
@@ -3218,7 +3232,7 @@
   background: none;
   border: none;
   padding: 0;
-  color: var(--accent, #5078a8);
+  color: var(--accent-cyan, #06b6d4);
   font: inherit;
   cursor: pointer;
   text-decoration: underline;

@@ -29,6 +29,15 @@ vi.mock("../soc/SocSchedulerBoard.js", () => ({
   SocSchedulerBoard: () => null,
 }));
 
+vi.mock("../../components/ShellToast.js", () => ({
+  useToast: () => ({ success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() }),
+}));
+
+vi.mock("../../components/ConfirmModal.js", () => ({
+  useConfirm: () => () => Promise.resolve(true),
+  ConfirmProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 describe("SocOverviewPanel retry (COC-05)", () => {
   beforeEach(() => {
     adapterMocks.getSocOverviewSummary.mockReset();

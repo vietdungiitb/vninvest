@@ -84,9 +84,12 @@ export function createMarketClient({ coreGet, corePost }) {
      * @param {string} alertId
      * @returns {Promise<object>}
      */
-    getAlertCenterEventDetail(alertId) {
+    getAlertCenterEventDetail(alertId, params = {}) {
       if (!alertId) throw new Error("alertId is required for getAlertCenterEventDetail");
-      return coreGet(`/signals/alert-center/events/${encodeURIComponent(alertId)}`);
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+      ).toString();
+      return coreGet(`/signals/alert-center/events/${encodeURIComponent(alertId)}${query ? `?${query}` : ""}`);
     },
 
     /**
@@ -108,9 +111,12 @@ export function createMarketClient({ coreGet, corePost }) {
      * @param {string} alertId
      * @returns {Promise<object>}
      */
-    acknowledgeAlertCenterEvent(alertId) {
+    acknowledgeAlertCenterEvent(alertId, params = {}) {
       if (!alertId) throw new Error("alertId is required for acknowledgeAlertCenterEvent");
-      return corePost(`/signals/alert-center/events/${encodeURIComponent(alertId)}/ack`);
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
+      ).toString();
+      return corePost(`/signals/alert-center/events/${encodeURIComponent(alertId)}/ack${query ? `?${query}` : ""}`);
     },
 
     /**

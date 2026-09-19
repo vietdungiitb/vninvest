@@ -235,10 +235,15 @@ function mergeQuote(prev, update) {
   };
 }
 
-function normalizeAlert(payload) {
-  const normalizedTs = normalizeEventTimestamp(readEventField(payload, 'ts') || payload.ts || payload.created_at);
+export function normalizeAlert(payload) {
+  const data = payload.data || {};
+  const normalizedTs = normalizeEventTimestamp(readEventField(payload, 'ts') || data.triggered_at || payload.ts || payload.created_at);
   return {
     event_id: readEventField(payload, 'event_id'),
+    alert_id: readEventField(payload, 'event_id'),
+    triggered_at: readEventField(payload, 'triggered_at') ?? data.triggered_at ?? null,
+    direction: readEventField(payload, 'direction') ?? data.direction ?? null,
+    value: readEventField(payload, 'matched_value') ?? data.matched_value ?? null,
     contract_version: readEventField(payload, 'contract_version') ?? payload.contract_version,
     config_version: readEventField(payload, 'config_version'),
     source: readEventField(payload, 'source') ?? payload.source,

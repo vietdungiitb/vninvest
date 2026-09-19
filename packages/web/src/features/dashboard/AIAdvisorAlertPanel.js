@@ -2,8 +2,18 @@ import { useState, useEffect, useCallback, createElement } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { RotateCw, AlertTriangle, TrendingUp, TrendingDown, Minus, Activity } from "lucide-react";
 import { useI18n } from "../../context/LangContext.js";
+import { createTranslator, normalizeLocale } from "../../i18n/index.js";
 
 const e = createElement;
+
+/**
+ * Standalone translator for AIAdvisor strings (used by jest i18n tests).
+ * Shares behavior with the app `t()` (vi default, fallback to key).
+ */
+export function createAiAdvisorTranslator(locale) {
+  const language = normalizeLocale(locale);
+  return { language, t: createTranslator(language) };
+}
 
 
 

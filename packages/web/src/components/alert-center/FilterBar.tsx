@@ -21,14 +21,7 @@ const SEVERITY_OPTIONS = [
   { value: "low", labelKey: "alertCenter.sevLow" },
 ];
 
-const FAMILY_OPTIONS = [
-  { value: "whale", labelKey: "alertCenter.famWhale" },
-  { value: "dark_flow", labelKey: "alertCenter.famDarkFlow" },
-  { value: "price_shock", labelKey: "alertCenter.famPriceShock" },
-  { value: "signal", labelKey: "alertCenter.famSignal" },
-  { value: "system", labelKey: "alertCenter.famSystem" },
-  { value: "ai_suggest", labelKey: "alertCenter.famAiSuggest" },
-];
+
 
 interface FilterBarProps {
   lane: string;
@@ -38,6 +31,8 @@ interface FilterBarProps {
   symbolDraft: string;
   onSymbolDraftChange: (val: string) => void;
   onSymbolApply: (e: React.FormEvent) => void;
+  sessionDate: string;
+  onSessionDateChange: (val: string) => void;
   severityFilter: string[];
   onToggleSeverity: (val: string) => void;
   familyFilter: string[];
@@ -50,6 +45,19 @@ interface FilterBarProps {
 export function FilterBar(props: FilterBarProps) {
   const { t } = useI18n();
   const hasActiveFilters = props.severityFilter.length > 0 || props.familyFilter.length > 0;
+  const familyOptions = props.lane === "ai"
+    ? [
+        { value: "ai_suggest", labelKey: "alertCenter.famAiSuggest" },
+        { value: "ai_alert", labelKey: "alertCenter.famAiAlert" },
+      ]
+    : [
+        { value: "whale", labelKey: "alertCenter.famWhale" },
+        { value: "dark_flow", labelKey: "alertCenter.famDarkFlow" },
+        { value: "price_shock", labelKey: "alertCenter.famPriceShock" },
+        { value: "signal", labelKey: "alertCenter.famSignal" },
+        { value: "system", labelKey: "alertCenter.famSystem" },
+        { value: "stale_quote", labelKey: "alertCenter.famStaleQuote" },
+      ];
 
   return (
     <>
@@ -90,6 +98,14 @@ export function FilterBar(props: FilterBarProps) {
           </button>
         </div>
 
+        <input
+          type="date"
+          className={`${soc.searchInputWithIcon}`}
+          value={props.sessionDate}
+          aria-label={t("alertCenter.sessionDate")}
+          onChange={e => props.onSessionDateChange(e.target.value)}
+          style={{ maxWidth: 170 }}
+        />
         <form className={`${soc.searchWrapper}`} onSubmit={props.onSymbolApply}>
           <span className={soc.searchIcon}>⌕</span>
           <input
@@ -117,7 +133,7 @@ export function FilterBar(props: FilterBarProps) {
         ))}
         <div className={`${soc.separator}`} style={{ width: 1, alignSelf: "stretch", margin: "0 4px" }} />
         <span className={`${soc.opsLabel}`}>{t("alertCenter.family")}</span>
-        {FAMILY_OPTIONS.map(f => (
+        {familyOptions.map(f => (
           <button
             key={f.value}
             type="button"

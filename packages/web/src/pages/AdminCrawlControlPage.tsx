@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { defaultCoreApiAdapter } from '../adapters/coreApiAdapter.js';
+import { useToast } from '../components/ShellToast.js';
+import { useConfirm } from '../components/ConfirmModal.js';
 
 interface CrawlJob {
   id: number;
@@ -39,6 +41,8 @@ function StatusPill({ status }: StatusPillProps) {
 
 export default function AdminCrawlControlPage() {
   const api = defaultCoreApiAdapter as any;
+  const toast = useToast();
+  const confirm = useConfirm();
   const [jobs, setJobs] = useState<CrawlJob[]>([]);
   const [runs, setRuns] = useState<CrawlRun[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,18 +101,23 @@ export default function AdminCrawlControlPage() {
       fetchAll();
     } catch (e: unknown) {
       const err = e as { detail?: string; message?: string };
-      alert(err?.detail || err?.message || 'Lỗi: Không thể khởi chạy job');
+      toast.error(err?.detail || err?.message || 'Lỗi: Không thể khởi chạy job');
     }
   };
 
   const handleStop = async (id: number) => {
-    if (!window.confirm('Bạn có chắc chắn muốn ép dừng (hard stop) job này?')) return;
+    const ok = await confirm({
+      title: 'Ép dừng job',
+      message: 'Bạn có chắc chắn muốn ép dừng (hard stop) job này?',
+      variant: 'destructive',
+    });
+    if (!ok) return;
     try {
       await api.stopAdminCrawlJob(id);
       fetchAll();
     } catch (e: unknown) {
       const err = e as { detail?: string; message?: string };
-      alert(err?.detail || err?.message || 'Lỗi: Không thể dừng job. Có thể job không hoạt động?');
+      toast.error(err?.detail || err?.message || 'Lỗi: Không thể dừng job. Có thể job không hoạt động?');
     }
   };
 

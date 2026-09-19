@@ -15,6 +15,7 @@ export function DetailDrawer(props: DetailDrawerProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const { activeDetail, onClose } = props;
+  const drawerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (activeDetail) {
@@ -25,7 +26,26 @@ export function DetailDrawer(props: DetailDrawerProps) {
   useEffect(() => {
     if (!activeDetail) return;
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const root = drawerRef.current;
+      if (!root) return;
+      const items = Array.from(
+        root.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+      ).filter((el) => !el.hasAttribute("disabled"));
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
@@ -36,14 +56,16 @@ export function DetailDrawer(props: DetailDrawerProps) {
   return (
     <div className={`${soc.drawerOverlay}`} onClick={props.onClose}>
       <aside
+        ref={drawerRef as any}
         className={`${soc.drawerContent}`}
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
+        aria-labelledby="alert-center-detail-title"
         aria-label={String(props.activeAlertId)}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>
+          <h3 id="alert-center-detail-title" style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>
             {t("alertCenter.detailTitle", { id: props.activeAlertId })}
           </h3>
           <button
@@ -94,8 +116,19 @@ export function DetailDrawer(props: DetailDrawerProps) {
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <div>{t("alertCenter.detailTotal")}: <strong>{String((props.activeContext.total as number) || 0)}</strong></div>
               <div>{t("alertCenter.detailUnseen")}: <strong style={{ color: "var(--accent-amber)" }}>{String((props.activeContext.unseen as number) || 0)}</strong></div>
-              <div>{t("alertCenter.detailAvgSeverity")}: <strong>{String(props.activeContext.average_severity || "medium")}</strong></div>
-              <div>{t("alertCenter.detailThreshold")}: <strong>{String(props.activeContext.threshold_strategy || "default")}</strong></div>
+              <div>{t((props.activeContext.in_delivery_scope ? "alertCenter.detailInScope" : "alertCenter.detailNotInScope") as any)}</div>
+              <div>
+                <span style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>
+                  {t("alertCenter.detailRecentEvents")}
+                </span>
+                <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 12 }}>
+                  {((props.activeContext.recent_events as any[]) || []).slice(0, 5).map((ev: any) => (
+                    <li key={String(ev.alert_id || ev.event_id || ev.symbol)}>
+                      {String(ev.symbol || "")} {String(ev.severity || "")} {ev.triggered_at ? new Date(String(ev.triggered_at)).toLocaleString("vi-VN") : ""}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </div>
         )}

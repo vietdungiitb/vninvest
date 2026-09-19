@@ -1,6 +1,7 @@
 import { createElement, useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useI18n } from "../../context/LangContext.js";
+import { useConfirm } from "../../components/ConfirmModal.js";
 import { useDataOps } from "./DataOpsContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { SocCustomGroupManager } from "./SocCustomGroupManager.js";
@@ -79,6 +80,7 @@ const adapter = defaultCoreApiAdapter as unknown as {
 
 export function SocDataOpsOperationsSection() {
   const { t, localeTag } = useI18n() as unknown as { t: (k: string, o?: unknown) => string; localeTag: string };
+  const confirm = useConfirm();
   const { state, actions } = useDataOps();
   const { runs } = state;
 
@@ -224,7 +226,12 @@ export function SocDataOpsOperationsSection() {
   };
 
   const handleAbort = async (runId: string) => {
-    if (!window.confirm(t("soc.dataops.abort_confirm"))) return;
+    const ok = await confirm({
+      title: t("common.confirmTitle"),
+      message: t("soc.dataops.abort_confirm"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     try {
       await actions.abortRun(runId);
       fetchRunLogs(1, runLogsPageSize);
@@ -234,7 +241,12 @@ export function SocDataOpsOperationsSection() {
   };
 
   const handlePurgeLogs = async () => {
-    if (!window.confirm(t("soc.dataops.purge_logs_confirm"))) return;
+    const ok = await confirm({
+      title: t("common.confirmTitle"),
+      message: t("soc.dataops.purge_logs_confirm"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     try {
       await adapter.purgeSocDataOpsRunLogs(50);
       await fetchRunLogs(1, runLogsPageSize);

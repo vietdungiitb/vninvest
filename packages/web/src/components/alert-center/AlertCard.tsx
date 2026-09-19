@@ -102,7 +102,15 @@ export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
   const familyKey = FAMILY_LABELS[alert.alert_family || ""];
 
   return (
-    <article className={`${soc.feedCard} ${String(borderClass)}`.trim()} style={style}>
+    <article
+      className={`${soc.feedCard} ${String(borderClass)}`.trim()}
+      style={style}
+      tabIndex={0}
+      aria-label={`${alert.symbol || ""} ${alert.title || t("alertCenter.cardTitle")}`.trim()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && e.target === e.currentTarget) handleLoadDetail(alert);
+      }}
+    >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
         <div style={{ display: "flex", gap: 10, flex: 1, minWidth: 0 }}>
           <div className={`${soc.signalIcon} ${severityBadgeClass || soc.statusBadgeInfo}`}>
@@ -128,7 +136,7 @@ export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
           <div className={`${soc.signalVolume}`} style={{ fontSize: "0.82rem", fontWeight: 700 }}>
-            {formatAlertValue(alert.value)} VND
+            {formatAlertValue(alert.value ?? (alert as any).matched_value)} {t("alertCenter.currency")}
           </div>
           <div className={`${soc.signalLabel} ${directionClass}`.trim()}>
             {directionArrow} {alert.direction || "—"}
@@ -155,7 +163,7 @@ export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
         border: "1px solid rgba(80,120,168,0.08)",
       }}>
         <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>
-          {t("alertCenter.labelConfidence")}: {alert.confidence != null ? `${alert.confidence}%` : "—"}
+          {t("alertCenter.labelConfidence")}: {alert.confidence != null ? `${Math.round(Number(alert.confidence) * 100)}%` : "—"}
         </span>
         <span><strong>{t("alertCenter.labelFreshness")}:</strong> {alert.freshness_state || "—"}</span>
         <span><strong>{t("alertCenter.labelSession")}:</strong> {alert.session_date || "—"}</span>

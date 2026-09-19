@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import useRealtimeFeedCore from "./useRealtimeFeedCore.js";
 
 /**
@@ -19,6 +19,31 @@ export function useAlertCenterRealtime({ enabled = true, maxAlerts = 50 } = {}) 
     maxAlerts,
     enabled,
   });
+
+  const knownIdsRef = useRef(null);
+  useEffect(() => {
+    const ids = new Set();
+    for (const item of [...(feed.alerts || []), ...(feed.darkFlowAlerts || [])]) {
+      const key = item?.event_id || `${item?.symbol || "NA"}-${item?.ts || "NA"}`;
+      ids.add(String(key));
+    }
+    if (knownIdsRef.current === null) {
+      knownIdsRef.current = ids;
+      return;
+    }
+    const prev = knownIdsRef.current;
+    for (const item of [...(feed.alerts || []), ...(feed.darkFlowAlerts || [])]) {
+      const key = String(item?.event_id || `${item?.symbol || "NA"}-${item?.ts || "NA"}`);
+      if (!prev.has(key)) {
+        prev.add(key);
+        try {
+          window.dispatchEvent(new CustomEvent("alert-center-new", { detail: item }));
+        } catch (_) {
+          // ignore dispatch errors (non-browser env)
+        }
+      }
+    }
+  }, [feed.alerts, feed.darkFlowAlerts]);
 
   const realtimeAlerts = useMemo(() => {
     const merged = [...(feed.alerts || []), ...(feed.darkFlowAlerts || [])];

@@ -1,4 +1,4 @@
-import { createElement, useState, useEffect } from 'react';
+import { createElement, Fragment, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -9,6 +9,8 @@ import { useI18n } from '@/context/LangContext.js';
 import { cn } from '@/lib/utils';
 import { Search, Bell, LogOut, User, Settings } from 'lucide-react';
 import { isNewLayoutEnabled } from '@/lib/runtimeConfig';
+import { useCoreQuery } from '@/hooks/useCoreQuery.ts';
+import { coreApiAdapter } from '@/adapters/coreApiAdapter.js';
 
 interface UserIdentity {
   id: string | null;
@@ -28,7 +30,38 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpen }: HeaderProps) {
-  const { userIdentity = {} as UserIdentity, logout } = usePortfolio();
+  const { userIdentity = {} as UserIdentity, logout, isAuthenticated } = usePortfolio();
+  const [toasts, setToasts] = useState<Array<{ id: string; title?: string; symbol?: string }>>([]);
+  const summaryQ = useCoreQuery(['alert-center-summary-global'], {
+    enabled: !!isAuthenticated,
+    refetchInterval: isAuthenticated ? 30000 : false,
+    queryFn: () => coreApiAdapter.getAlertCenterSummary({ timeframe: 'session' }) as Promise<unknown>,
+  });
+  const unseenCount = Number((summaryQ.data as any)?.unseen || 0);
+
+  useEffect(() => {
+    function onNewAlert(ev: Event) {
+      const detail = (ev as CustomEvent)?.detail as any;
+      const id = String(detail?.alert_id ?? detail?.event_id ?? Date.now());
+      setToasts((prev) => [...prev.slice(-2), { id, title: detail?.title, symbol: detail?.symbol }]);
+      try {
+        const audio = new Audio('/sounds/alert.mp3');
+        const played = audio.play();
+        if (played && typeof (played as Promise<void>).catch === 'function') {
+          (played as Promise<void>).catch(() => {});
+        }
+      } catch {
+        // no sound asset — silent
+      }
+      window.setTimeout(() => {
+        setToasts((prev) => prev.filter((n) => n.id !== id));
+      }, 5000);
+    }
+    window.addEventListener('alert-center-new', onNewAlert as EventListener);
+    return () => window.removeEventListener('alert-center-new', onNewAlert as EventListener);
+  }, []);
+
+  const dismissToast = (id: string) => setToasts((prev) => prev.filter((n) => n.id !== id));
   const { t, locale, setLanguage } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
@@ -66,7 +99,26 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
       .slice(0, 2);
   };
 
+  const toastLayer = toasts.length > 0 && e(
+    'div',
+    { style: { position: 'fixed', right: 16, bottom: 16, zIndex: 100, display: 'flex', flexDirection: 'column', gap: 8 } },
+    ...toasts.map((n) => e(
+      'div',
+      {
+        key: n.id,
+        role: 'status',
+        onClick: () => { dismissToast(n.id); navigate('/alert-center'); },
+        style: { cursor: 'pointer', minWidth: 260, maxWidth: 340, background: 'rgba(2,11,35,0.95)', border: '1px solid rgba(80,120,168,0.25)', borderRadius: 10, padding: '10px 12px' },
+      },
+      e('div', { style: { fontSize: 12, fontWeight: 800, color: 'var(--text-primary)' } }, t('alertCenter.newAlert')),
+      e('div', { style: { fontSize: 12, color: 'var(--text-secondary)' } }, `${n.symbol || ''} ${n.title || ''}`.trim()),
+    ))
+  );
+
   return e(
+    Fragment,
+    null,
+    e(
     'header',
     {
       className: cn(
@@ -177,13 +229,14 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
               variant: 'ghost',
               size: 'icon',
               className: 'relative',
-              'aria-label': t('layout.notifications') || 'Notifications'
+              'aria-label': t('layout.notifications') || 'Notifications',
+              onClick: () => navigate('/alert-center')
             },
             e(Bell, { className: 'h-5 w-5' }),
-            e(
+            unseenCount > 0 && e(
               'span',
-              { className: 'absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-[10px] font-bold rounded-full flex items-center justify-center' },
-              '3'
+              { className: 'absolute -top-1 -right-1 min-w-4 h-4 px-0.5 bg-rose-500 text-[10px] font-bold rounded-full flex items-center justify-center' },
+              unseenCount > 99 ? '99+' : String(unseenCount)
             )
           )
         ),
@@ -195,7 +248,7 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
           e(DropdownMenuItem, { className: 'py-2 text-slate-400 text-center' }, 'No new notifications'),
           e(DropdownMenuSeparator, null),
           e(DropdownMenuItem, { asChild: true, className: 'text-center' },
-            e(Button, { variant: 'link', className: 'w-full justify-center' }, 'View all')
+            e(Button, { variant: 'link', className: 'w-full justify-center', onClick: () => navigate('/alert-center') }, t('alertCenter.viewAlert'))
           )
         )
       ),
@@ -257,7 +310,8 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
           )
         )
       )
-    )
+    )),
+    toastLayer,
   );
 }
 

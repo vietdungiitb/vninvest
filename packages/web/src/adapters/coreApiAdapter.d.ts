@@ -219,8 +219,8 @@ export interface CoreApiAdapter {
     total_alerts_in_scope: number;
     pagination: { page: number; page_size: number; total_pages: number; total_symbols: number };
   }>;
-  getAlertCenterEventDetail: (alertId: string | number) => Promise<Record<string, unknown>>;
-  getAlertCenterSymbolContext: (symbol: string) => Promise<{
+  getAlertCenterEventDetail: (alertId: string | number, params?: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  getAlertCenterSymbolContext: (symbol: string, params?: Record<string, unknown>) => Promise<{
     symbol: string;
     lane: string;
     total: number;
@@ -228,7 +228,7 @@ export interface CoreApiAdapter {
     in_delivery_scope: boolean;
     recent_events: Record<string, unknown>[];
   }>;
-  acknowledgeAlertCenterEvent: (alertId: string | number) => Promise<Record<string, unknown>>;
+  acknowledgeAlertCenterEvent: (alertId: string | number, params?: Record<string, unknown>) => Promise<Record<string, unknown>>;
   muteAlertCenterPreference: (payload: {
     symbol?: string;
     alert_family?: string;

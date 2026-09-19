@@ -1,6 +1,8 @@
 import { createElement, FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
+import { useToast } from "../components/ShellToast.js";
+import { useConfirm } from "../components/ConfirmModal.js";
 import DNSEConnectionPanel from "../components/DNSEConnectionPanel.js";
 import { ShellPageChrome } from "../components/ShellPageTemplate.js";
 import "./PortfoliosPage.css";
@@ -57,6 +59,8 @@ function usePortfolios() {
 
 export function PortfoliosPage({ className = "" }: PortfoliosPageProps) {
   const { portfolios, loading, error, reload } = usePortfolios();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [newCurrency, setNewCurrency] = useState("VND");
@@ -80,12 +84,17 @@ export function PortfoliosPage({ className = "" }: PortfoliosPageProps) {
   }
 
   async function handleDelete(id: string | number) {
-    if (!window.confirm("Xóa danh mục này?")) return;
+    const ok = await confirm({
+      title: 'Xóa danh mục',
+      message: 'Xóa danh mục này?',
+      variant: 'destructive',
+    });
+    if (!ok) return;
     try {
       await (coreApiAdapter as any).deletePortfolio(id);
       await reload();
     } catch (err: unknown) {
-      window.alert(err && typeof err === 'object' && 'message' in err ? (err as Error).message : "Không thể xóa danh mục.");
+      toast.error(err && typeof err === 'object' && 'message' in err ? (err as Error).message : "Không thể xóa danh mục.");
     }
   }
 

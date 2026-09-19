@@ -257,6 +257,8 @@ REST_FRAMEWORK = {
         'realtime_data': '999999/day' if TESTING else '120/min',
         # Independent SOC operator read bucket — does not consume 'user' quota
         'soc_operator_read': '999999/day' if TESTING else '120/min',
+        # Alert-center signals bucket (D6) — per-view throttle on signal_intelligence alert views.
+        'signals': '999999/day' if TESTING else '60/min',
         # Independent SOC stream bucket — SSE long-lived fallback, 60/min connect limit (F4)
         'soc_stream': '999999/day' if TESTING else '60/min',
         # Independent auth-bootstrap bucket — /auth/me/ and capabilities must never

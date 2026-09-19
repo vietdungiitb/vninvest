@@ -55,6 +55,15 @@ vi.mock("../soc/DataOpsContext.js", () => ({
   DataOpsProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
+vi.mock("../../components/ShellToast.js", () => ({
+  useToast: () => ({ success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() }),
+}));
+
+vi.mock("../../components/ConfirmModal.js", () => ({
+  useConfirm: () => () => Promise.resolve(true),
+  ConfirmProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 describe("SocDataOpsMonitorSection — P0 fixes", () => {
   beforeEach(() => {
     vi.clearAllMocks();

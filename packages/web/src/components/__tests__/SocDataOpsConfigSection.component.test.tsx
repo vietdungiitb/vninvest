@@ -17,6 +17,15 @@ vi.mock("../../adapters/coreApiAdapter.js", () => ({
   defaultCoreApiAdapter: adapterMocks,
 }));
 
+vi.mock("../../components/ShellToast.js", () => ({
+  useToast: () => ({ success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() }),
+}));
+
+vi.mock("../../components/ConfirmModal.js", () => ({
+  useConfirm: () => () => Promise.resolve(true),
+  ConfirmProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 const baseConfig = {
   decay_days: 7,
   parity_snapshot_retention_days: 30,

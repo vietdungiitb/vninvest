@@ -5,6 +5,66 @@
 
 ---
 
+## Entry 118: Fix audit-UI findings F-04→F-08 + locks (no-alert, route-contract, ts-imports) — DoD xanh
+
+- **Date**: 2026-09-19
+- **Scope**: Thực thi khuyến nghị từ phản biện `AUDIT_UI_COMMERCIAL_SYSTEM_20260919.md` (Entry 117). F-01/F-02/F-03 đã stale (xanh sẵn ở working tree) — không sửa thêm. Không động BE.
+- **Files chính**:
+  - Routes: `main.tsx` +2 routes (`vip/local-control`, `whale-alerts` — orphan thứ 2 tự phát hiện qua contract test: sidebar `sidebaritems.ts:25` link `/whale-alerts` nhưng router không có → wildcard nuốt về `/dashboard`); test mới `route-catalog-contract.component.test.ts` (catalog→router, hỗ trợ `externalEntry` opt-out).
+  - Toast/Confirm: 13 files — `SocMatrixScrapeMonitor` (3), `SocVnbrokerPanel` (6), `AdminCrawlControlPage` (2+1 confirm), `ShellMailConfigPage` (3), `PortfoliosPage` (2), + 7 điểm audit bỏ sót: `DNSECredentialsSection`, `SocBackfillProgressPanel`, `SocCustomGroupManager`, `SocDataOpsConfigSection` (preset async + revert), `SocDataOpsOperationsSection` (abort + purge), `SocPrefetchPanel`, `AIAgentFederationPanel` (bắt bởi rule `no-alert` mới).
+  - Locks: `eslint.config.js` `no-alert: error` (JS+TS); `scripts/check-ts-import-ext.mjs` + `package.json:check:ts-imports` (chỉ fail import treo thật — `.js`→`.ts` sibling là convention ESM hợp lệ, 219 usages, build PASS).
+  - Token: `soc.components.css:3221` `var(--accent,#5078a8)` → `var(--accent-cyan,#06b6d4)` (đồng nhất link SOC); `check:tokens` PASS.
+  - Beta: `.betaBadge` + `common.beta` + badge trước `smoke_label` (`SocSignalsPanel.tsx:1477`); unsupported datasets đã disabled đúng — giữ nguyên (disabled-by-design).
+  - i18n fallback: `shellFallback` (6 keys VI/EN) — `pageRegistry.js` (loading/error) + `main.tsx` (`MissingPageComponent`, `verifyingAccount`); parity VI=EN.
+  - Tests: mock `ShellToast`/`ConfirmModal` trong 4 component suites (DNSE, ConfigSection, monitor, p2); route-contract 2 tests mới.
+- **Gates (output thật)**: tsc 0; build PASS 32.25s; eslint 0 errors / 3559 warnings (= baseline Entry 116); vitest **47 files / 231 PASS** (46/229 + route-contract 2); jest **17 suites / 235 PASS**; `check:shell` PASS (landmarks+tokens+stock-detail); `check:ts-imports` PASS; `i18n:scan` exit 0 + parity; `check:vip` FAIL pre-existing (`ERR_UNKNOWN_FILE_EXTENSION .css` trong `check-vip-local-control.mjs` — loader node, không liên quan diff này, chưa từng xanh).
+- **Ghi chú numbering**: ledger tái sử dụng số theo thread (116/117/118 đã tồn tại ở thread DataOps cũ bên dưới); Entry 117 (audit-UI, renumber từ 116 trùng) + Entry 118 này tạo thread top mạch lạc 116 impl → 117 audit → 118 fix.
+- **Next**: commit (Entry 116 Alert Center + Entry 118 này — đang uncommitted, cần user chốt); E2E browser 1 phiên (auth→VIP/capability→payment) để đóng verdict commercial-ready hoàn toàn.
+
+---
+
+## Entry 116: Thực thi IMPLEMENTATION_PLAN_ALERT_CENTER (18 slices P0/P1/P2 + D1-D6) — DoD xanh toàn bộ
+
+- **Date**: 2026-09-19
+- **Scope**: Chốt F1-F4 + vá C1-C7 từ `PHAN_BIEN_IMPLEMENTATION_PLAN_ALERT_CENTER_20260918.md` (Entry 115), thực thi Phase 1 (B4/B1/A2/B3/B2/E1/P3-07) + Phase 2 (C1/C2/C3/C4/C5) + Phase 3 (D1-D6). Verification: `docs/AUDIT_ALERT_CENTER_VERIFICATION_20260919.md`.
+- **Files chính**:
+  - BE `signal_intelligence/`: `delivery_service.py:67-68` none(); `views.py` multi-select + lane 3 views + Coalesce + cache 10s + `SignalRateThrottle` 10 views + log latency; `settings.py` scope `signals` 60/min; `tests/test_alert_center_api.py` 5→12 tests (severity/family/cursor/lane/no-watchlist/coalesce/throttle).
+  - FE: `useAlertCenterFilters.ts` resetStatsPage+setSessionDate/setAppliedSymbol; `useAlertCenterData.js` → 3×`useCoreQuery` (mới `useCoreQuery.ts` scope core-user); `AlertCenterPage.tsx` (xóa effect, sort/key fallback, lane, load-more+cursor, aiSuggest conditional, URL sync, CSV); `useAlertCenterActions.ts` (lane+event_id); `market.js`+d.ts params; `useRealtimeFeedCore.js` normalizeAlert (+export) ; `useAlertCenterRealtime.js` dispatch event; `FilterBar.tsx` family theo lane + date input; `DetailDrawer.tsx` (field thật+a11y) ; `AlertCard.tsx` (currency/confidence+Enter); `Header.tsx` (badge unseen+toast+sound); `vi/en.js` +13 keys; `AIAdvisorAlertPanel.js` += `createAiAdvisorTranslator` (fix suite FAIL pre-existing).
+  - Tests FE mới: page 7 cases, drawer 2, normalize 2, coreQuery 1, tiers 1, filterbar 3 (16 tests, 6 files).
+- **Deviations vs plan (có lý do)**: D2 replaceState thay pushState (tránh spam history); E1 test assert keys (không LangProvider trong vitest); `normalizeAlert` export named; throttle test patch `THROTTLE_RATES` trực tiếp (bind lúc import); import `.ts` giữ convention repo (fix build fail `useCoreQuery.js`).
+- **Gates (output thật)**: tsc 0; build PASS 19.37s; jest **17/17 suites, 235/235**; vitest **46 files/229** (40/213→+6/+16); lint 0 errors (3549→3559 warn pre-existing rule); i18n:scan exit 0 + parity 13 keys; BE **62 OK** (55→+7); check 0.
+- **Manual còn lại**: video live-top/AI-drawer/pagination/bell-toast/share-URL/CSV-Excel/axe/query-count/61-phút (cơ chế đã chứng minh bằng tests).
+- **Next**: user review manual + merge; epic Create Alert vẫn tách BRD riêng (ngoài scope plan §5).
+
+---
+## Entry 117: Audit toàn bộ giao diện theo tiêu chuẩn phần mềm thương mại
+
+- **Date**: 2026-09-19
+- **Scope**: `packages/web` UI routes, page registry, adapters, i18n, SOC realtime surfaces và backend system-check prerequisite. Không sửa runtime code.
+- **Report**: `docs/AUDIT_UI_COMMERCIAL_SYSTEM_20260919.md`.
+- **Findings chính**: production build BLOCKER do `useAlertCenterData.js:3` import `useCoreQuery.js` trong khi file thực là `useCoreQuery.ts`; ESLint HIGH tại `Header.tsx:315`; component suite fail SSE overview 1/228 test; VIP route catalog không được đăng ký trong `main.tsx`; token gate fail hard-coded `#5078a8`; còn native `alert()` và user-facing stub/coming-soon copy.
+- **Gates**: `tsc --noEmit` pass; build fail; lint fail 1 error + 3552 warnings; component tests 227/228 pass; shell gate fail token check; stock-detail shell pass; i18n scan không ghi nhận blocker; Django check chưa chạy vì thiếu `DJANGO_ALLOWED_HOSTS` explicit.
+- **Verdict**: **Chưa commercial-ready**, cần đóng F-01/F-02 trước mọi release, sau đó xác minh F-03 bằng browser/E2E và chạy lại toàn bộ quality gates.
+
+---
+
+## Entry 115: Phản biện độc lập `IMPLEMENTATION_PLAN_ALERT_CENTER_20260918.md` — 7 contradictions (1 BLOCKER + 2 HIGH), verdict implementable sau vá
+
+- **Date**: 2026-09-19
+- **Scope**: Audit toàn văn plan 693 dòng vs codebase thật tại HEAD `4ace7c42` (KHÔNG sửa code). File phản biện: `docs/PHAN_BIEN_IMPLEMENTATION_PLAN_ALERT_CENTER_20260918.md` (khung A-G + 5 findings đầu file, mọi claim kèm `file:line`).
+- **Kết quả verify chính**:
+  - Đúng ~85%: B4 leak `delivery_service.py:67-68`, B1 filter `views.py:141-178`, B3 hard lane `:530/:555/:584` + adapters `market.js:87-114`, A2 effect `AlertCenterPage.tsx:200-202`, E1 drawer `:97-98`/card `:131/:158`/filterbar `:24-31`/i18n blocks `vi:5272`/`en:5256`, B2 `normalizeAlert:238-257`, thứ tự P0-6>P0-3>P0-2>P0-5>P0-4>P3-07.
+  - **F-PLAN-01 BLOCKER**: test B1/B3 gọi `_create_alert(severity=...)` nhưng helper `test_alert_center_api.py:23-39` không có param → `TypeError`; plan không yêu cầu sửa helper → thêm `severity='high'` default trước khi code.
+  - **F-PLAN-02 HIGH**: gate `jest 17/17 PASS` (`plan:53,665`) sai baseline — thực tế **17 suites / 232 tests pass / 1 suite FAIL** `AIAdvisorAlertPanel.i18n.test.js` (`SyntaxError: no export 'createAiAdvisorTranslator'`, pre-existing ngoài scope) → DoD-2 không đạt được nếu không fix hoặc ghi nhận ngoại lệ.
+  - **F-PLAN-03 HIGH**: AC D6 "61 req/phút → 429" vô căn cứ — views 0 `throttle_classes`, `soc_operator_read` 120/min (`settings.py:259`) không áp cho alert-center, default `user` 1000/hour → D6 phải là task thêm scope mới.
+  - **F-PLAN-04/05 MEDIUM**: E1 "8 keys" nhưng liệt kê 9 + `i18n:scan` auto-add khiến AC grep-parity không thể đỏ; FAMILY MAP `stale_quote` OR top-level (`plan:39`) vs code B1 AND bên trong; test P3-07 assert `'0.00'` sai kiểu (runtime dict → float `0.0`).
+  - **F-PLAN-06/07 LOW**: A2 vs C5 cùng tạo `AlertCenterPage.component.test.tsx` → gộp; `QUERY_STRING=` trong POST hợp lệ nhưng nên inline `?lane=ai`.
+- **Gates chạy thật**: `manage.py test signal_intelligence` **55 OK (28.2s)**; `manage.py check` 0; `tsc` PASS (qua build); `npm run build` **PASS 31.34s**; `test:components` **40 files/213 PASS**; `lint` **0 errors, 3549 warnings**; `i18n:scan` exit 0 (auto-add, tree i18n sạch).
+- **Verdict**: implementable sau vá C1-C7 theo thứ tự helper → DoD jest → throttle D6 → MAP/assert/keys → gộp test; giữ nguyên thứ tự slice plan.
+- **Next**: chờ user chốt F1-F4 trong report (đặc biệt: fix suite jest pre-existing hay chấp nhận baseline đỏ; scope throttle D6).
+
+---
+
 ## Entry 114: Scheduler Self-Heal + Realtime Sync P1 — 6 slices (repair v2 + beat 5m + drift-check + cron next_run + FE trigger_type)
 
 - **Date**: 2026-09-17

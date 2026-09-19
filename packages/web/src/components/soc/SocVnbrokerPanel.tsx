@@ -1,5 +1,7 @@
 import { createElement, useEffect, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
+import { useToast } from "../../components/ShellToast.js";
+import { useConfirm } from "../../components/ConfirmModal.js";
 import { ShellPanel } from "../../components/ShellPageTemplate.js";
 import { SocConfigPreviewModal } from "./SocConfigPreviewModal.js";
 import { SocServiceHealthCard } from "./SocServiceHealthCard.js";
@@ -72,6 +74,8 @@ const vnbrokerAdapter = defaultCoreApiAdapter as unknown as {
 
 export function SocVnbrokerPanel() {
   const { t } = useI18n();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [config, setConfig] = useState<VnbrokerConfig | null>(null);
@@ -133,7 +137,7 @@ export function SocVnbrokerPanel() {
       });
       setPreviewModal({ before: config || {}, after: parsed });
     } catch (err) {
-      alert(`Error: ${err instanceof Error ? err.message : t("soc.vnbroker.invalid_json")}`);
+      toast.error(err instanceof Error ? err.message : t("soc.vnbroker.invalid_json"));
     } finally {
       setPreviewing(false);
     }
@@ -148,7 +152,7 @@ export function SocVnbrokerPanel() {
       setPreviewResults(null);
       await fetchData();
     } catch (err) {
-      alert(`Error: ${err instanceof Error ? err.message : "Apply failed."}`);
+      toast.error(err instanceof Error ? err.message : "Apply failed.");
     } finally {
       setApplying(false);
     }
@@ -161,19 +165,24 @@ export function SocVnbrokerPanel() {
       const result = await vnbrokerAdapter.runSocVnbrokerBenchmark(payload);
       setBenchmarkResults(result.results || []);
     } catch (err) {
-      alert(`Error: ${err instanceof Error ? err.message : "Benchmark failed."}`);
+      toast.error(err instanceof Error ? err.message : "Benchmark failed.");
     } finally {
       setBenchmarkLoading(false);
     }
   };
 
   const handleResetToDefaults = async () => {
-    if (!window.confirm(t("soc.vnbroker.reset_confirm"))) return;
+    const ok = await confirm({
+      title: t("soc.vnbroker.reset_title"),
+      message: t("soc.vnbroker.reset_confirm"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     try {
       await vnbrokerAdapter.applySocVnbrokerConfig({});
       await fetchData();
     } catch (err) {
-      alert(`Error: ${err instanceof Error ? err.message : "Reset failed."}`);
+      toast.error(err instanceof Error ? err.message : "Reset failed.");
     }
   };
 
@@ -181,9 +190,9 @@ export function SocVnbrokerPanel() {
     setTestingConnection(true);
     try {
       await vnbrokerAdapter.testSocVnbrokerConnection();
-      alert(t("soc.vnbroker.connection_success"));
+      toast.success(t("soc.vnbroker.connection_success"));
     } catch (err) {
-      alert(`Error: ${err instanceof Error ? err.message : "Connection test failed."}`);
+      toast.error(err instanceof Error ? err.message : "Connection test failed.");
     } finally {
       setTestingConnection(false);
     }

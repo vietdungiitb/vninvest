@@ -1,5 +1,7 @@
 import { createElement, useEffect, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
+import { useToast } from "../../components/ShellToast.js";
+import { useConfirm } from "../../components/ConfirmModal.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { statusColor, getStatusBadgeStyle } from "./socStatusColors.js";
 import styles from "./soc.module.css";
@@ -34,6 +36,8 @@ const monitorCache: ScrapeMonitorCache = {
 
 export function SocMatrixScrapeMonitor() {
   const { t } = useI18n();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [loading, setLoading] = useState(!monitorCache.lastFetched);
   const [error, setError] = useState("");
   const [cycles, setCycles] = useState<MatrixCycle[]>(monitorCache.cycles);
@@ -91,13 +95,18 @@ export function SocMatrixScrapeMonitor() {
   }, []);
 
   const handleAbort = async (cycleId: string) => {
-    if (!window.confirm(t("soc.matrix.abort_confirm"))) return;
+    const ok = await confirm({
+      title: t("soc.matrix.abort_title"),
+      message: t("soc.matrix.abort_confirm"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     try {
       const adapter = defaultCoreApiAdapter as unknown as { abortSocMatrixCycle: (id: string) => Promise<void> };
       await adapter.abortSocMatrixCycle(cycleId);
       await fetchData();
     } catch (err) {
-      alert(`Error: ${err instanceof Error ? err.message : "Abort failed."}`);
+      toast.error(err instanceof Error ? err.message : "Abort failed.");
     }
   };
 
@@ -105,10 +114,10 @@ export function SocMatrixScrapeMonitor() {
     try {
       const adapter = defaultCoreApiAdapter as unknown as { startSocMatrixCycle: (payload: Record<string, unknown>) => Promise<void> };
       await adapter.startSocMatrixCycle({});
-      alert(t("soc.matrix.cycle_started"));
+      toast.success(t("soc.matrix.cycle_started"));
       await fetchData();
     } catch (err) {
-      alert(`Error: ${err instanceof Error ? err.message : "Start failed."}`);
+      toast.error(err instanceof Error ? err.message : "Start failed.");
     }
   };
 

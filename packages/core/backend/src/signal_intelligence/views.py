@@ -1,5 +1,9 @@
+import logging
+import time
+
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
 from drf_spectacular.utils import extend_schema, extend_schema_view
+from django.core.cache import cache
 from django.db.models import Case, Count, DecimalField, IntegerField, Max, Q, Sum, Value, When
 from django.db.models.functions import Coalesce
 from datetime import timedelta
@@ -7,7 +11,28 @@ from django.utils import timezone
 from rest_framework import generics, permissions, serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
+
+logger = logging.getLogger(__name__)
+
+
+class SignalRateThrottle(UserRateThrottle):
+    scope = 'signals'
+
+
+def _alert_scope_cache_key(prefix, user, params, lane, extra=''):
+    return 'alert-center:%s:%s:%s:%s:%s:%s:%s:%s:%s' % (
+        prefix,
+        getattr(user, 'pk', 'anon'),
+        lane,
+        params.get('symbol') or '',
+        params.get('severity') or '',
+        params.get('alert_family') or '',
+        params.get('timeframe') or '',
+        params.get('session_date') or '',
+        extra,
+    )
 
 from vninvest_core.pagination import AlertCursorPagination, OrderFlowCursorPagination
 
@@ -161,21 +186,24 @@ def _apply_common_alert_filters(qs, params, *, lane: str):
     if alert_type:
         qs = qs.filter(alert_type=alert_type)
     if alert_family:
-        normalized_family = str(alert_family).strip().lower()
-        if normalized_family == 'price_shock':
-            qs = qs.filter(
-                Q(alert_type=UnifiedAlert.AlertTypeChoices.SIGNAL)
-                & Q(source_ref__startswith='market_anomaly:')
-            )
-        elif normalized_family == 'stale_quote':
-            qs = qs.filter(
-                Q(alert_type=UnifiedAlert.AlertTypeChoices.SYSTEM)
-                & (Q(source_ref__startswith='stale_quote:') | Q(freshness_state='stale'))
-            )
-        else:
-            qs = qs.filter(alert_type=normalized_family)
+        parts = [p.strip().lower() for p in str(alert_family).split(',') if p.strip()]
+        if parts:
+            q_or = Q()
+            for val in parts:
+                if val == 'price_shock':
+                    q_or |= Q(alert_type=UnifiedAlert.AlertTypeChoices.SIGNAL) & Q(source_ref__startswith='market_anomaly:')
+                elif val == 'stale_quote':
+                    q_or |= (Q(alert_type=UnifiedAlert.AlertTypeChoices.SYSTEM) & (Q(source_ref__startswith='stale_quote:') | Q(freshness_state='stale')))
+                else:
+                    q_or |= Q(alert_type=val)
+            qs = qs.filter(q_or)
+
     if severity:
-        qs = qs.filter(severity=severity)
+        parts = [p.strip().lower() for p in str(severity).split(',') if p.strip()]
+        if len(parts) == 1:
+            qs = qs.filter(severity=parts[0])
+        elif len(parts) > 1:
+            qs = qs.filter(severity__in=parts)
     if session_date:
         qs = qs.filter(session_date=session_date)
 
@@ -241,7 +269,7 @@ def _build_symbol_stats_payload(qs, *, lane: str, page: int, page_size: int) -> 
                 | Q(direction=''),
                 distinct=True,
             ),
-            total_value=Sum('value'),
+            total_value=Coalesce(Sum('value'), Value(0), output_field=DecimalField(max_digits=24, decimal_places=2)),
             latest_triggered_at=Max('triggered_at'),
             critical_count=Count('id', filter=Q(severity=UnifiedAlert.SeverityChoices.CRITICAL), distinct=True),
             high_count=Count('id', filter=Q(severity=UnifiedAlert.SeverityChoices.HIGH), distinct=True),
@@ -317,15 +345,27 @@ class AlertFeedBaseListView(generics.ListAPIView):
 
 
 class UserScopedAlertFeedBaseView(AlertFeedBaseListView):
+    throttle_classes = [SignalRateThrottle]
+
     def get_queryset(self):
         qs = super().get_queryset()
         return delivery_service.apply_user_delivery_policy(user=self.request.user, queryset=qs)
 
     def list(self, request, *args, **kwargs):
+        start = time.monotonic()
         response = super().list(request, *args, **kwargs)
         page = getattr(self, 'page', None)
         if page is not None:
             delivery_service.sync_user_delivery_rows(user=request.user, alerts=list(page))
+        try:
+            count = len((response.data or {}).get('results', []))
+        except Exception:
+            count = -1
+        logger.info(
+            'alert-center.feed latency=%.3fs results=%s user=%s lane=%s',
+            time.monotonic() - start, count, getattr(request.user, 'pk', 'anon'),
+            request.query_params.get('lane') or 'feed',
+        )
         return response
 
 
@@ -392,6 +432,7 @@ class AIAlertsFeedView(UserScopedAlertFeedBaseView):
 
 class _BaseAlertSummaryView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [SignalRateThrottle]
     lane = 'main'
 
     def get_scoped_queryset(self, request):
@@ -400,7 +441,16 @@ class _BaseAlertSummaryView(APIView):
         return delivery_service.apply_user_delivery_policy(user=request.user, queryset=qs)
 
     def get(self, request):
-        payload = _build_summary_payload(self.get_scoped_queryset(request), lane=self.lane, user=request.user)
+        start = time.monotonic()
+        cache_key = _alert_scope_cache_key('summary', request.user, request.query_params, self.lane)
+        payload = cache.get(cache_key)
+        if payload is None:
+            payload = _build_summary_payload(self.get_scoped_queryset(request), lane=self.lane, user=request.user)
+            cache.set(cache_key, payload, 10)
+        logger.info(
+            'alert-center.summary latency=%.3fs total=%s user=%s lane=%s',
+            time.monotonic() - start, (payload or {}).get('total'), getattr(request.user, 'pk', 'anon'), self.lane,
+        )
         return Response(payload)
 
 
@@ -444,6 +494,7 @@ class AIAlertsSummaryView(_BaseAlertSummaryView):
 
 class _BaseAlertSymbolStatsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [SignalRateThrottle]
     lane = 'main'
 
     def get_scoped_queryset(self, request):
@@ -452,6 +503,7 @@ class _BaseAlertSymbolStatsView(APIView):
         return delivery_service.apply_user_delivery_policy(user=request.user, queryset=qs)
 
     def get(self, request):
+        start = time.monotonic()
         try:
             page = int(request.query_params.get('page') or 1)
         except (TypeError, ValueError):
@@ -461,11 +513,22 @@ class _BaseAlertSymbolStatsView(APIView):
         except (TypeError, ValueError):
             page_size = 20
 
-        payload = _build_symbol_stats_payload(
-            self.get_scoped_queryset(request),
-            lane=self.lane,
-            page=page,
-            page_size=page_size,
+        cache_key = _alert_scope_cache_key(
+            'symbol-stats', request.user, request.query_params, self.lane, '%s:%s' % (page, page_size),
+        )
+        payload = cache.get(cache_key)
+        if payload is None:
+            payload = _build_symbol_stats_payload(
+                self.get_scoped_queryset(request),
+                lane=self.lane,
+                page=page,
+                page_size=page_size,
+            )
+            cache.set(cache_key, payload, 10)
+        logger.info(
+            'alert-center.symbol-stats latency=%.3fs count=%s user=%s lane=%s',
+            time.monotonic() - start, (payload or {}).get('total_alerts_in_scope'),
+            getattr(request.user, 'pk', 'anon'), self.lane,
         )
         return Response(payload)
 
@@ -524,10 +587,14 @@ class AIAlertsSymbolStatsView(_BaseAlertSymbolStatsView):
 )
 class AlertCenterEventDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [SignalRateThrottle]
 
     def get(self, request, alert_id):
         qs = UnifiedAlert.objects.all().select_related('whale_detail').order_by('-triggered_at')
-        qs = _apply_common_alert_filters(qs, request.query_params, lane='main')
+        lane = str(request.query_params.get('lane') or 'main').strip().lower()
+        if lane not in ('main', 'ai'):
+            lane = 'main'
+        qs = _apply_common_alert_filters(qs, request.query_params, lane=lane)
         qs = delivery_service.apply_user_delivery_policy(user=request.user, queryset=qs)
         alert = qs.filter(alert_id=alert_id).first()
         if alert is None:
@@ -548,18 +615,22 @@ class AlertCenterEventDetailView(APIView):
 )
 class AlertCenterSymbolContextView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [SignalRateThrottle]
 
     def get(self, request, symbol):
         symbol = (symbol or '').upper()
         qs = UnifiedAlert.objects.all().select_related('whale_detail').order_by('-triggered_at')
-        qs = _apply_common_alert_filters(qs, request.query_params, lane='main')
+        lane = str(request.query_params.get('lane') or 'main').strip().lower()
+        if lane not in ('main', 'ai'):
+            lane = 'main'
+        qs = _apply_common_alert_filters(qs, request.query_params, lane=lane)
         qs = qs.filter(symbol=symbol)
         scoped_qs = delivery_service.apply_user_delivery_policy(user=request.user, queryset=qs)
         recent_alerts = list(scoped_qs[:10])
-        summary = _build_summary_payload(scoped_qs, lane='main')
+        summary = _build_summary_payload(scoped_qs, lane=lane)
         payload = {
             'symbol': symbol,
-            'lane': 'main',
+            'lane': lane,
             'total': summary['total'],
             'unseen': summary['unseen'],
             'in_delivery_scope': summary['total'] > 0,
@@ -578,10 +649,14 @@ class AlertCenterSymbolContextView(APIView):
 )
 class AlertCenterAcknowledgeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [SignalRateThrottle]
 
     def post(self, request, alert_id):
         qs = UnifiedAlert.objects.all().order_by('-triggered_at')
-        qs = _apply_common_alert_filters(qs, request.query_params, lane='main')
+        lane = str(request.query_params.get('lane') or 'main').strip().lower()
+        if lane not in ('main', 'ai'):
+            lane = 'main'
+        qs = _apply_common_alert_filters(qs, request.query_params, lane=lane)
         qs = delivery_service.apply_user_delivery_policy(user=request.user, queryset=qs)
         alert = qs.filter(alert_id=alert_id).first()
         if alert is None:
@@ -602,6 +677,7 @@ class AlertCenterAcknowledgeView(APIView):
 )
 class AlertCenterMutePreferenceView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [SignalRateThrottle]
 
     def post(self, request):
         serializer = AlertCenterMutePreferenceRequestSerializer(data=request.data)

@@ -1,5 +1,6 @@
 import { createElement, useCallback, useContext, useEffect, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
+import { useConfirm } from "../../components/ConfirmModal.js";
 import { SocConfigPreviewModal } from "./SocConfigPreviewModal.js";
 import { SocOwnershipBadge } from "./SocOwnershipBadge.js";
 import { SocWriteGuardBanner } from "./SocWriteGuardBanner.js";
@@ -169,6 +170,7 @@ export function SocDataOpsConfigSection() {
     t: (key: string, opts?: Record<string, unknown>) => string;
     localeTag: string;
   };
+  const confirm = useConfirm();
   const [envelope, setEnvelope] = useState<RuntimeEnvelope | null>(null);
   const [form, setForm] = useState<FormState>(DEFAULTS);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -351,10 +353,13 @@ export function SocDataOpsConfigSection() {
     });
   };
 
-  const applyPreset = (presetKey: keyof typeof PRESET_TIERS) => {
+  const applyPreset = async (presetKey: keyof typeof PRESET_TIERS) => {
     const isDirty = JSON.stringify(form) !== JSON.stringify(readForm(envelope?.config));
     if (isDirty) {
-      const ok = typeof window !== "undefined" ? window.confirm(t("soc.dataops.preset_confirm")) : true;
+      const ok = await confirm({
+        title: t("soc.dataops.confirm"),
+        message: t("soc.dataops.preset_confirm"),
+      });
       if (!ok) return;
     }
     const tier = PRESET_TIERS[presetKey];
@@ -487,7 +492,12 @@ export function SocDataOpsConfigSection() {
 
   const handleRevert = async (entry: AuditEntry) => {
     if (!entry.before_snapshot) return;
-    if (typeof window !== "undefined" && !window.confirm(t("soc.dataops.revert_confirm"))) return;
+    const ok = await confirm({
+      title: t("common.confirmTitle"),
+      message: t("soc.dataops.revert_confirm"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     setApplying(true);
     try {
       const adapter = defaultCoreApiAdapter as unknown as {

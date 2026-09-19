@@ -1,5 +1,6 @@
 import { createElement, useCallback, useEffect, useState } from "react";
 import { useI18n } from "../../context/LangContext.js";
+import { useConfirm } from "../../components/ConfirmModal.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import styles from "./soc.module.css";
 
@@ -17,6 +18,7 @@ interface SocCustomGroupManagerProps {
 
 export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManagerProps) {
   const { t } = useI18n();
+  const confirm = useConfirm();
 
   const [groups, setGroups] = useState<SymbolGroup[]>([]);
   const [loading, setLoading] = useState(false);
@@ -98,7 +100,12 @@ export function SocCustomGroupManager({ onGroupsChanged }: SocCustomGroupManager
   };
 
   const handleDelete = async (slug: string) => {
-    if (!window.confirm(t("soc.dataops.custom_group_delete_confirm"))) return;
+    const ok = await confirm({
+      title: t("soc.dataops.group_manager_delete"),
+      message: t("soc.dataops.custom_group_delete_confirm"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     setError(""); setSuccess("");
     try {
       await adapter.deleteSocSymbolGroup(slug);

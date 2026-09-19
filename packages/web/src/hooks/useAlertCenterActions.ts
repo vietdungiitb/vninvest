@@ -2,14 +2,15 @@ import { useState, useCallback } from "react";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 
 interface AlertActionItem {
-  alert_id: string | number;
+  alert_id?: string | number;
+  event_id?: string | number;
   symbol?: string;
   alert_family?: string;
   alert_type?: string;
   [key: string]: unknown;
 }
 
-export function useAlertCenterActions(refetch: () => void) {
+export function useAlertCenterActions(refetch: () => void, lane: string = "main") {
   const [activeAlertId, setActiveAlertId] = useState<string | number>("");
   const [activeDetail, setActiveDetail] = useState<unknown>(null);
   const [activeContext, setActiveContext] = useState<unknown>(null);
@@ -19,15 +20,17 @@ export function useAlertCenterActions(refetch: () => void) {
   const [optimisticMuted, setOptimisticMuted] = useState<Record<string, boolean>>({});
 
   const handleLoadDetail = useCallback(async (alert: AlertActionItem) => {
-    if (!alert?.alert_id || !alert?.symbol) return;
+    const id = (alert as any)?.alert_id ?? (alert as any)?.event_id;
+    const sym = (alert as any)?.symbol;
+    if (!id || !sym) return;
     setActionError("");
-    setBusyAlertId(alert.alert_id);
+    setBusyAlertId(id as string | number);
     try {
       const [detail, context] = await Promise.all([
-        coreApiAdapter.getAlertCenterEventDetail(alert.alert_id),
-        coreApiAdapter.getAlertCenterSymbolContext(alert.symbol),
+        coreApiAdapter.getAlertCenterEventDetail(id, { lane }),
+        coreApiAdapter.getAlertCenterSymbolContext(sym, { lane }),
       ]);
-      setActiveAlertId(alert.alert_id);
+      setActiveAlertId(id as string | number);
       setActiveDetail(detail || null);
       setActiveContext(context || null);
     } catch (err: unknown) {
@@ -38,19 +41,20 @@ export function useAlertCenterActions(refetch: () => void) {
     } finally {
       setBusyAlertId("");
     }
-  }, []);
+  }, [lane]);
 
   const handleAcknowledge = useCallback(async (alert: AlertActionItem) => {
-    if (!alert?.alert_id) return;
-    const id = String(alert.alert_id);
+    const id = (alert as any)?.alert_id ?? (alert as any)?.event_id;
+    if (!id) return;
+    const idStr = String(id);
     setActionError("");
-    setBusyAlertId(alert.alert_id);
-    setOptimisticAck(prev => ({ ...prev, [id]: true }));
+    setBusyAlertId(id as string | number);
+    setOptimisticAck(prev => ({ ...prev, [idStr]: true }));
     try {
-      await coreApiAdapter.acknowledgeAlertCenterEvent(alert.alert_id);
+      await coreApiAdapter.acknowledgeAlertCenterEvent(id, { lane });
       refetch();
     } catch (err: unknown) {
-      setOptimisticAck(prev => { const n = { ...prev }; delete n[id]; return n; });
+      setOptimisticAck(prev => { const n = { ...prev }; delete n[idStr]; return n; });
       setActionError(
         (err && typeof err === "object" && "message" in err ? (err as Error).message : "") ||
         "Không thể xác nhận alert.",
@@ -58,7 +62,7 @@ export function useAlertCenterActions(refetch: () => void) {
     } finally {
       setBusyAlertId("");
     }
-  }, [refetch]);
+  }, [lane, refetch]);
 
   const handleMute = useCallback(async (alert: AlertActionItem) => {
     if (!alert?.symbol) return;

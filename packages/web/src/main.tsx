@@ -2,7 +2,7 @@ import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { PortfolioProvider } from './context/PortfolioContext.js';
-import { LangProvider } from './context/LangContext.js';
+import { LangProvider, useI18n } from './context/LangContext.js';
 import { RealtimeProvider } from './context/RealtimeContext.js';
 import { ToastProvider } from './components/ShellToast.js';
 import { ConfirmProvider } from './components/ConfirmModal.js';
@@ -31,13 +31,19 @@ function resolvePageComponent(routeId: string) {
   const component = getPageComponent(registryId);
   if (!component) {
     console.warn(`Could not resolve page component for registryId: ${registryId}`);
-    return () => createElement('div', null, `Page ${registryId} not found`);
+    return () => createElement(MissingPageComponent, { registryId });
   }
   return component;
 }
 
+function MissingPageComponent({ registryId }: { registryId: string }) {
+  const { t } = useI18n();
+  return createElement('div', null, t('shellFallback.pageNotFound', { route: registryId }));
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, authStateReady } = usePortfolio();
+  const { t } = useI18n();
   const location = useLocation();
 
   if (!authStateReady) {
@@ -46,7 +52,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       {
         className: 'min-h-screen flex items-center justify-center bg-slate-950 text-slate-100 font-sans',
       },
-      createElement('p', null, 'Đang xác thực tài khoản...')
+      createElement('p', null, t('shellFallback.verifyingAccount'))
     );
   }
 
@@ -118,6 +124,8 @@ function App() {
           createElement(Route, { path: 'roles', element: createElement(resolvePageComponent('tenant-admin-roles')) }),
         ),
         createElement(Route, { path: 'alert-center', element: createElement(resolvePageComponent('alert-center')) }),
+        createElement(Route, { path: 'whale-alerts', element: createElement(resolvePageComponent('whale-alerts')) }),
+        createElement(Route, { path: 'vip/local-control', element: createElement(resolvePageComponent('vip-local-control')) }),
         createElement(Route, { path: 'commercial/billing', element: createElement(resolvePageComponent('commercial-billing-center')) }),
         createElement(Route, { path: 'commercial/payment-return', element: createElement(resolvePageComponent('commercial-payment-return')) }),
       ),
