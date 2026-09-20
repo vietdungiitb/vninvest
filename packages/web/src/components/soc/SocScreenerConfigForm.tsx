@@ -127,7 +127,7 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
   };
 
   const field = (key: keyof typeof config, label: string, min?: number, max?: number) =>
-    createElement("div", { },
+    createElement("div", { className: styles.screenerField },
       createElement("label", { }, label),
       createElement("input", {
         type: "number",
@@ -137,13 +137,13 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
         max: max,
         style: { ...inputStyle, borderColor: errors[key as string] ? "var(--accent-red)" : "var(--border-default, rgba(80, 120, 168, 0.28))" },
       }),
-      errors[key as string] && createElement("p", { }, errors[key as string])
+      errors[key as string] && createElement("p", { className: styles.screenerFieldError }, errors[key as string])
     );
 
   return createElement("div", null,
     createElement("div", { className: styles.sectionCard },
       createElement("div", { className: styles.sectionCardTitle }, t("soc.screener.config_title")),
-      createElement("div", { },
+      createElement("div", { className: styles.screenerFormGrid },
         field("scan_interval_seconds", t("soc.screener.config.scan_interval"), 10),
         field("max_symbols_per_scan", t("soc.screener.config.max_symbols"), 1, 5000),
         field("alert_cooldown_seconds", t("soc.screener.config.alert_cooldown"), 30),
@@ -159,24 +159,24 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
         JSON.stringify(resolveScreenerConfigSource(props.initialConfig), null, 2)
       ),
     ),
-    createElement("div", { },
+    createElement("div", { className: styles.screenerActionsBar },
       createElement("button", {
         onClick: handleReset,
-        className: styles.actionBtn,
+        className: `${styles.actionBtn} ${styles.actionBtnGhost}`,
         
       },
       t("soc.screener.config.reset")
       ),
       createElement("button", {
         onClick: onCancel,
-        className: styles.actionBtn,
+        className: `${styles.actionBtn} ${styles.actionBtnGhost}`,
         
       },
       t("common.cancel")
       ),
       onPreview ? createElement("button", {
         onClick: handlePreview,
-        className: styles.actionBtn,
+        className: `${styles.actionBtn} ${styles.actionBtnGhost}`,
         
       },
       t("soc.screener.config.preview")
@@ -184,7 +184,7 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
       createElement("button", {
         onClick: handleSave,
         disabled: loading,
-        className: styles.actionBtn,
+        className: `${styles.actionBtn} ${styles.actionBtnPrimary}`,
         
       },
       loading ? t("common.saving") : t("common.save")

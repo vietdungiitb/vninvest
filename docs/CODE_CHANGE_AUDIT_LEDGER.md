@@ -5,6 +5,22 @@
 
 ---
 
+## Entry 136: Polish UI tab Screener SOC (UI-PRO, FE-only, chưa commit)
+
+- **Date**: 2026-09-20
+- **Scope**: user feedback screenshot ("thiếu chuyên nghiệp") — 4 lỗi visual: header bảng dính chùm (table không padding), nút như text thường (`actionBtn` base trong suốt), rows phẳng không timestamp + trùng tên mã (`VRE: ... VRE:`), form thưa.
+- **Fix (tái dùng pattern chuẩn, không phát minh)**:
+  - CSS `soc.components.css` += section Screener: `.actionBtnPrimary` (cyan solid) / `.actionBtnGhost`, `.screenerFormGrid` (auto-fit minmax 210px), `.screenerField`, `.screenerActionsBar` (flex-end), `.scanRow`, `.screenerFeed(Row)` + `.screenerSymbolChip` + `.screenerFeedMsg` (ellipsis) + `.screenerTime` (tabular).
+  - Panel: bảng rules → `coverageTableWrap`+`coverageTable` (giống Inventory/Monitor), nút Thêm primary + marginLeft auto, Sửa/Xóa ghost + gap, results/alerts → feed rows (chip + msg + time), manual-scan → `scanRow` + nút primary (bỏ inline style xanh lá).
+  - Form: fields vào grid, label/error classes, buttons bar (Lưu primary, còn lại ghost).
+  - Helper export `formatScreenerAlertMessage` (strip prefix `SYMBOL:` case-insensitive, giữ message đã sạch) + unit test (RED `is not a function` → GREEN).
+  - Sửa 2 lỗi ngoặc do lồng div mới (tsc TS1109) — đã xác minh bằng đếm diff + tsc.
+- **Gates**: tsc 0; vitest full **51 files/254 pass** (+1 test mới); eslint touched 0; `npm run build` **PASS 40.49s**. Không đụng BE → không chạy lại BE tests.
+- **Còn lại**: user Ctrl+F5 kiểm tra visual; commit khi duyệt (cây đang dirty UI-PRO + Entry 136).
+- **Verify live (2026-09-20)**: user báo không thấy đổi → nguyên nhân: image frontend cũ (build trước UI-PRO). Chạy `.\start_dev.ps1 -FrontendOnly` rebuild xong; xác minh server phục vụ đúng bundle mới (lazy chunk `ShellOperationsCenterPage-BKg9eWIB.js` chứa `scan_completed/screenerFeedRow/actionBtnPrimary`, CSS `soc-FZNx9RYO.css` chứa đủ 7 class mới). Không service worker. Kết luận: browser giữ chunk cũ — cần đóng tab + Ctrl+Shift+R (không phải lỗi code).
+
+---
+
 ## Entry 135: Fix final — SC-04/07/09/10/11 + SC-12/13/14/15 (đóng toàn bộ audit SOC screener)
 
 - **Date**: 2026-09-20
@@ -20,6 +36,7 @@
 - **Fix regression wave-2**: header bảng dùng `t("soc.screener.rule_type")` (string) trong khi key đã thành object → chuyển `rule_type_label`.
 - **Gates**: tsc 0; jest soc **93/93**; vitest full **51 files/253 pass**; eslint soc 0 lỗi; BE `check` 0 + SOC screener **32 OK** (gồm 10 tests mới: 4 manual-scan + 3 results + 5 CRUD trừ 2 thay thế... nets: manual-scan ×4, results ×3, CRUD ×5); `npm run build` **PASS 36.56s**.
 - **Toàn bộ audit SOC screener (SC-01→SC-15) + UE-01→UE-06 ĐÓNG**. Còn backlog ngoài audit: realtime intraday/đa khung (W8), RC2 phiên T6, chuẩn hóa ledger.
+- **Deploy dev (2026-09-20)**: `.\start_dev.ps1` full build+up — core-api healthy ngay check 1, `check_scheduler_queue_drift` no drift, smoke API+frontend OK, `screener_bridge.py` live trong container + `manage.py check` 0 issues. Manual verify UI: Ctrl+F5 `http://localhost:8080/operations-center?tab=screener`.
 
 ---
 

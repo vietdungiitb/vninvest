@@ -1161,10 +1161,9 @@
 
 .signalFeedHeader {
   display: grid;
-  grid-template-columns: 20px 26px 72px 78px 60px 92px minmax(
-      160px,
-      1fr
-    ) 100px 96px 96px;
+  grid-template-columns:
+    20px 26px 72px 78px 60px 92px minmax(160px, 1fr)
+    100px 96px 96px;
   gap: 0.5rem;
   align-items: center;
   padding: 0 0.75rem 0.35rem;
@@ -1177,10 +1176,9 @@
 
 .signalRow {
   display: grid;
-  grid-template-columns: 20px 26px 72px 78px 60px 92px minmax(
-      160px,
-      1fr
-    ) 100px 96px 96px;
+  grid-template-columns:
+    20px 26px 72px 78px 60px 92px minmax(160px, 1fr)
+    100px 96px 96px;
   gap: 0.5rem;
   align-items: center;
   padding: 0.5rem 0.75rem;
@@ -3671,4 +3669,102 @@
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
   white-space: nowrap;
+}
+
+/* Screener tab polish (UI-PRO): button hierarchy, form grid, feed rows.
+   Reuses coverageTable for the rules table — no new table pattern. */
+.actionBtnPrimary {
+  background: var(--accent-cyan, #06b6d4);
+  color: #fff;
+  border: 1px solid transparent;
+}
+.actionBtnPrimary:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+.actionBtnGhost {
+  background: rgba(var(--soc-rgb-1e293b) / 0.5);
+  color: var(--text-secondary, var(--soc-c-94a3b8));
+  border: 1px solid var(--border-default, rgba(var(--soc-rgb-5078a8) / 0.15));
+}
+.actionBtnGhost:hover:not(:disabled) {
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  border-color: rgba(var(--soc-rgb-5078a8) / 0.3);
+}
+
+.screenerFormGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.screenerField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+}
+.screenerField label {
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  font-weight: 600;
+}
+.screenerFieldError {
+  color: var(--accent-red, #f87171);
+  font-size: 0.7rem;
+  margin: 0;
+}
+.screenerActionsBar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+.scanRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.scanRow input {
+  flex: 1;
+  min-width: 0;
+}
+
+.screenerFeed {
+  display: flex;
+  flex-direction: column;
+}
+.screenerFeedRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.1rem;
+  border-bottom: 1px solid rgba(var(--soc-rgb-5078a8) / 0.08);
+  font-size: 0.78rem;
+}
+.screenerFeedRow:last-child {
+  border-bottom: none;
+}
+.screenerSymbolChip {
+  font-weight: 800;
+  color: var(--accent-cyan, var(--soc-c-22d3ee));
+  background: rgba(var(--soc-rgb-00b4d8) / 0.12);
+  border: 1px solid rgba(var(--soc-rgb-00b4d8) / 0.25);
+  border-radius: 6px;
+  padding: 0.1rem 0.45rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.screenerFeedMsg {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.screenerTime {
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  font-size: 0.7rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }

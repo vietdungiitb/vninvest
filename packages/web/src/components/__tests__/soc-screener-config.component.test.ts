@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { mergeScreenerConfigPayload } from "../soc/SocScreenerPanel.js";
 import { formatScreenerTimestamp } from "../soc/SocScreenerPanel.js";
+import { formatScreenerAlertMessage } from "../soc/SocScreenerPanel.js";
 import { resolveScreenerConfigSource } from "../soc/SocScreenerConfigForm.js";
 
 // SC-02: saving the 5-field form must not wipe rules/flags.
@@ -49,5 +50,13 @@ describe("SocScreenerPanel config helpers (SC-02/SC-05)", () => {
     expect(formatScreenerTimestamp("2026-09-20")).toBe("2026-09-20");
     expect(formatScreenerTimestamp(null)).toBe("");
     expect(formatScreenerTimestamp(undefined)).toBe("");
+  });
+
+  it("UI-PRO: alert message strips duplicated leading symbol", () => {
+    expect(formatScreenerAlertMessage("VRE", "VRE: something")).toBe("something");
+    expect(formatScreenerAlertMessage("VRE", "vre: something")).toBe("something");
+    expect(formatScreenerAlertMessage("VRE", "Biến động VRE: 1.18")).toBe("Biến động VRE: 1.18");
+    expect(formatScreenerAlertMessage("VRE", null)).toBe("");
+    expect(formatScreenerAlertMessage("", "plain")).toBe("plain");
   });
 });

@@ -79,6 +79,19 @@ export function formatScreenerTimestamp(ts: unknown): string {
   return timePart ? `${datePart} ${timePart}` : datePart;
 }
 
+/**
+ * UI-PRO: feed rows render the symbol as a chip, so a message that already
+ * starts with "SYMBOL:" must not be prefixed again (was "VRE: ... VRE: ...").
+ */
+export function formatScreenerAlertMessage(symbol: unknown, message: unknown): string {
+  const text = typeof message === "string" ? message : "";
+  const sym = typeof symbol === "string" ? symbol.trim() : "";
+  if (!sym) return text;
+  const prefix = `${sym.toUpperCase()}:`;
+  if (text.toUpperCase().startsWith(prefix)) return text.slice(prefix.length).trim();
+  return text;
+}
+
 export function SocScreenerPanel() {
   const { t } = useI18n();
   const confirm = useConfirm();
@@ -324,13 +337,14 @@ export function SocScreenerPanel() {
                 t("soc.screener.rules_title"),
                 createElement(
                   "button",
-                  { onClick: handleOpenCreateRule, className: styles.actionBtn, disabled: !canWrite, },
+                  { onClick: handleOpenCreateRule, className: `${styles.actionBtn} ${styles.actionBtnPrimary}`, disabled: !canWrite, style: { marginLeft: "auto" } },
                   t("soc.screener.add_rule")
                 ),
               ),
+              createElement("div", { className: styles.coverageTableWrap },
               createElement(
                 "table",
-                { },
+                { className: styles.coverageTable },
                 createElement("thead", null,
                   createElement("tr", null,
                     createElement("th", { }, t("soc.screener.rule_name")),
@@ -358,12 +372,15 @@ export function SocScreenerPanel() {
                           },
                         }, rule.enabled ? t("soc.screener.rule_active") : t("soc.screener.rule_inactive")),
                       ),
-                      createElement("td", { },
+                      createElement("td", { style: { whiteSpace: "nowrap" } },
+                        createElement(
+                          "span",
+                          { style: { display: "inline-flex", gap: "0.375rem" } },
                         createElement(
                           "button",
                           {
                             onClick: () => handleOpenEditRule(rule),
-                            className: styles.actionBtn,
+                            className: `${styles.actionBtn} ${styles.actionBtnGhost}`,
                             disabled: !canWrite,
                             
                           },
@@ -373,16 +390,18 @@ export function SocScreenerPanel() {
                           "button",
                           {
                             onClick: () => handleDeleteRule(rule.id),
-                            className: styles.actionBtn,
+                            className: `${styles.actionBtn} ${styles.actionBtnGhost}`,
                             disabled: !canWrite,
                             
                           },
                           t("soc.actions.delete"),
                         ),
+                        ),
                       ),
                     ),
                   ),
                 ),
+              ),
               ),
               rules.length > pageSize ? createElement(
                 "div",
@@ -396,7 +415,7 @@ export function SocScreenerPanel() {
               createElement("div", { className: styles.sectionCardTitle }, t("soc.screener.manual_scan_title")),
               createElement(
                 "div",
-                { },
+                { className: styles.scanRow },
                 createElement(
                   "input",
                   {
@@ -413,11 +432,10 @@ export function SocScreenerPanel() {
                   {
                     onClick: handleManualScan,
                     disabled: scanning,
-                    className: styles.actionBtn,
+                    className: `${styles.actionBtn} ${styles.actionBtnPrimary}`,
                     style: {
-                      background: "rgba(16, 185, 129, 0.15)",
-                      color: "var(--color-success-500, #34d399)",
                       cursor: scanning ? "not-allowed" : "pointer",
+                      whiteSpace: "nowrap",
                     },
                   },
                   scanning ? t("soc.screener.scanning") : t("soc.screener.run_scan"),
@@ -433,17 +451,18 @@ export function SocScreenerPanel() {
                   ? createElement("p", { className: styles.emptyState }, t("soc.screener.no_results"))
                   : createElement(
                       "div",
-                      { },
+                      { className: styles.screenerFeed },
                       results.slice((resultsPage - 1) * pageSize, resultsPage * pageSize).map((r) =>
                         createElement(
                           "div",
                           {
                             key: r.id,
+                            className: styles.screenerFeedRow,
                             },
-                          createElement("span", { }, r.symbol),
-                          ` \u2022 ${r.rule_name}`,
-                          // SC-14: date + HH:MM (not time-only).
-                          createElement("span", { },
+                          createElement("span", { className: styles.screenerSymbolChip }, r.symbol),
+                          createElement("span", { className: styles.screenerFeedMsg },
+                            formatScreenerAlertMessage(r.symbol, r.rule_name)),
+                          createElement("span", { className: styles.screenerTime },
                             formatScreenerTimestamp(r.timestamp) || "",
                           ),
                         ),
@@ -465,15 +484,20 @@ export function SocScreenerPanel() {
                   ? createElement("p", { className: styles.emptyState }, t("soc.screener.no_alerts"))
                   : createElement(
                       "div",
-                      { },
+                      { className: styles.screenerFeed },
                       alerts.slice(0, 10).map((a) =>
                         createElement(
                           "div",
                           {
                             key: a.id,
+                            className: styles.screenerFeedRow,
                             },
-                          createElement("span", { }, a.symbol),
-                          `: ${a.message}`,
+                          createElement("span", { className: styles.screenerSymbolChip }, a.symbol),
+                          createElement("span", { className: styles.screenerFeedMsg },
+                            formatScreenerAlertMessage(a.symbol, a.message)),
+                          createElement("span", { className: styles.screenerTime },
+                            formatScreenerTimestamp(a.timestamp) || "",
+                          ),
                         ),
                       ),
                     ),
