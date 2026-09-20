@@ -487,14 +487,65 @@ class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(rules[0]['id'], 'rule-price-change')
         self.assertEqual(rules[0]['threshold'], 5)
 
-    def test_results_and_history_use_runtime_signal_alerts(self):
-        results_response = self.client.get('/api/soc/screener/results/')
+    def test_results_empty_without_completed_runs(self):
+        # SC-04/SC-10: /results/ reflects real manual-scan run logs, not the
+        # signal feed — with no completed runs it reports honest zeros.
+        response = self.client.get('/api/soc/screener/results/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertIsNone(data['scan_id'])
+        self.assertEqual(data['symbols_scanned'], 0)
+        self.assertEqual(data['alerts_triggered'], 0)
+        self.assertEqual(data['symbols_matched'], [])
+        self.assertEqual(data['scan_duration_ms'], 0)
+
+    def test_results_reflect_latest_completed_run(self):
+        from datetime import date, timedelta
+        from unittest import mock as _mock
+
+        from market_data.models import DailyPrice
+        from market_serving.models import SymbolSnapshot
+
+        session = date.today()
+        SymbolSnapshot.objects.create(symbol='VCI', session_date=session, price=20.0, volume=500000)
+        for i in range(40):
+            close = 10.0 + i * 0.25
+            DailyPrice.objects.create(
+                symbol='VCI', date=session - timedelta(days=40 - i),
+                open=close - 0.2, high=close + 0.3, low=close - 0.4,
+                close=close, volume=100000,
+            )
+        rule_resp = self.client.post(
+            '/api/soc/screener/rules/',
+            {'name': 'Close GT', 'type': 'custom',
+             'value': [{'field': 'close', 'op': 'gt', 'value': 5, 'logic': 'AND'}]},
+            format='json',
+        )
+        self.assertEqual(rule_resp.status_code, status.HTTP_201_CREATED)
+        with _mock.patch(
+            'market_data.vnbroker_adapter.get_company_financials_response',
+            return_value={'financials': {}},
+        ):
+            scan_resp = self.client.post(
+                '/api/soc/screener/manual-scan/', {'symbols': ['VCI']}, format='json')
+        self.assertEqual(scan_resp.status_code, status.HTTP_200_OK)
+
+        response = self.client.get('/api/soc/screener/results/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['scan_id'], scan_resp.json()['scan_id'])
+        self.assertEqual(data['symbols_scanned'], 1)
+        self.assertEqual(data['alerts_triggered'], 1)
+        self.assertGreaterEqual(data['scan_duration_ms'], 0)
+        self.assertEqual(len(data['symbols_matched']), 1)
+        self.assertEqual(data['symbols_matched'][0]['symbol'], 'VCI')
+        self.assertEqual(data['symbols_matched'][0]['rule_name'], 'Close GT')
+
+    def test_history_still_uses_runtime_signal_alerts(self):
         history_response = self.client.get('/api/soc/screener/alert-history/')
 
-        self.assertEqual(results_response.status_code, status.HTTP_200_OK)
         self.assertEqual(history_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(results_response.json()['alerts_triggered'], 1)
-        self.assertEqual(results_response.json()['symbols_matched'][0]['symbol'], 'VCI')
         self.assertEqual(history_response.json()['count'], 1)
         self.assertEqual(history_response.json()['results'][0]['symbol'], 'VCI')
 

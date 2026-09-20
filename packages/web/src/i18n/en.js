@@ -1134,6 +1134,7 @@ const en = {
       threshold_json: 'Threshold (JSON)',
       value_json: 'Value (JSON)',
       enabled: 'Enabled',
+      read_only: 'Read-only mode — contact an operator to write.',
       rules_empty: 'No screener rules configured yet.',
       alerts_empty: 'No alerts.',
       rule_add: 'Add rule',
@@ -1172,6 +1173,7 @@ const en = {
         retention_min: 'Retention must be at least {min} hours.',
         advanced: 'Advanced config (JSON)',
         reset: 'Reset to defaults',
+        preview: 'Preview',
       },
     },
     dnse: {

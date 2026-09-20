@@ -1129,6 +1129,7 @@ const vi = {
       threshold_json: 'Ngưỡng (JSON)',
       value_json: 'Giá trị (JSON)',
       enabled: 'Kích hoạt',
+      read_only: 'Chế độ chỉ đọc — liên hệ operator để ghi.',
       config: 'Cấu hình',
       rules: 'Luật screener',
       rules_empty: 'Chưa có luật nào.',
@@ -1172,6 +1173,7 @@ const vi = {
         retention_min: 'Thời gian lưu phải từ {min} giờ trở lên.',
         advanced: 'Cấu hình nâng cao (JSON)',
         reset: 'Khôi phục mặc định',
+        preview: 'Xem trước',
       },
     },
     dnse: {

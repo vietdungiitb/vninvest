@@ -23,6 +23,8 @@ const SOC_SCREENER_KEYS = [
   "soc.screener.threshold_json",
   "soc.screener.value_json",
   "soc.screener.enabled",
+  "soc.screener.read_only",
+  "soc.screener.config.preview",
   "soc.screener.rule_type_label",
   "soc.screener.rule_type.price_change_pct",
   "soc.screener.rule_type.volume_spike_ratio",

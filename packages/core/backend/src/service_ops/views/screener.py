@@ -113,6 +113,7 @@ class ScreenerResultsResponseSerializer(serializers.Serializer):
     symbols_scanned = serializers.IntegerField()
     alerts_triggered = serializers.IntegerField()
     symbols_matched = ScreenerAlertSerializer(many=True)
+    scan_duration_ms = serializers.IntegerField(required=False)
 
 
 class ScreenerAlertHistoryResponseSerializer(serializers.Serializer):
@@ -212,6 +213,48 @@ def _build_screener_ownership_payload() -> dict:
     payload = matrix.to_response_dict('screener')
     payload['write_block_reason'] = matrix.get_write_block_reason('screener')
     return payload
+
+
+def _audit_screener_rule_change(request, request_id, action, before_rules, after_rules):
+    """SC-11: audit trail for global rule mutations (mirrors ConfigApplyMixin)."""
+    from ..models import ConfigChangeAudit
+
+    service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['screener'])
+    summary = request.data.get('change_reason', action) if isinstance(request.data, dict) else action
+    ConfigChangeAudit.objects.create(
+        service=service,
+        action=action,
+        actor=getattr(request.user, 'username', 'api'),
+        actor_ip=request.META.get('REMOTE_ADDR', ''),
+        before_snapshot={'rules': before_rules},
+        after_snapshot={'rules': after_rules},
+        change_summary=summary,
+        request_id=request_id,
+    )
+
+
+def _deny_screener_write_unless_owner(view, request):
+    """SC-07: enforce ownership matrix on rule CRUD. Returns 403 or None."""
+    matrix = build_ownership_matrix_from_db()
+    if matrix.is_domain_writable('screener'):
+        return None
+    block_reason = matrix.get_write_block_reason('screener')
+    return view.error_response(
+        request,
+        code='OWNERSHIP_WRITE_DENIED',
+        detail=block_reason or "Domain 'screener' không có quyền ghi.",
+        http_status=status.HTTP_403_FORBIDDEN,
+    )
+
+
+def _normalize_screener_rule_type(raw_type):
+    """SC-11: blank/missing type becomes 'custom'; unknown types rejected."""
+    from ..domain_configs.screener import VALID_RULE_TYPES
+
+    rule_type = (raw_type or '').strip() or 'custom'
+    if rule_type not in VALID_RULE_TYPES:
+        return None
+    return rule_type
 
 
 def _save_screener_rules_config(request, updated_rules: list) -> None:
@@ -347,24 +390,37 @@ class ScreenerRulesView(SOCBaseView):
 
     def post(self, request):
         """Add new screening rule and persist to ServiceConfig."""
+        denied = _deny_screener_write_unless_owner(self, request)
+        if denied is not None:
+            return denied
         serializer = ScreenerRuleCreateRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        rule_type = _normalize_screener_rule_type(serializer.validated_data.get('type'))
+        if rule_type is None:
+            return Response(
+                {'detail': f"Rule type '{serializer.validated_data.get('type')}' không hợp lệ.",
+                 'code': 'INVALID_RULE_TYPE'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         rule_id = f'rule_{uuid.uuid4().hex[:12]}'
         now = timezone.now()
         new_rule = {
             'id': rule_id,
-            'name': serializer.validated_data.get('name') or serializer.validated_data.get('type') or rule_id,
-            'type': serializer.validated_data.get('type', 'custom'),
+            'name': serializer.validated_data.get('name') or rule_type or rule_id,
+            'type': rule_type,
             'threshold': serializer.validated_data.get('threshold'),
             'value': serializer.validated_data.get('value'),
             'enabled': serializer.validated_data.get('enabled', True),
         }
 
         config = _get_screener_config()
-        updated_rules = list(config.rules) + [new_rule]
+        before_rules = list(config.rules)
+        updated_rules = before_rules + [new_rule]
         _save_screener_rules_config(request, updated_rules)
+        _audit_screener_rule_change(
+            request, self.get_request_id(request), 'rule_create', before_rules, updated_rules)
 
         return Response({
             'rule_id': rule_id,
@@ -394,6 +450,9 @@ class ScreenerRuleUpdateView(SOCBaseView):
 
     def put(self, request, rule_id):
         """Update an existing screening rule by rule_id."""
+        denied = _deny_screener_write_unless_owner(self, request)
+        if denied is not None:
+            return denied
         serializer = ScreenerRuleUpdateRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -411,11 +470,19 @@ class ScreenerRuleUpdateView(SOCBaseView):
             )
 
         existing = dict(rules[target_index])
+        before_rules = list(rules)
         data = serializer.validated_data
         if 'name' in data:
             existing['name'] = data['name']
         if 'type' in data:
-            existing['type'] = data['type']
+            rule_type = _normalize_screener_rule_type(data['type'])
+            if rule_type is None:
+                return Response(
+                    {'detail': f"Rule type '{data['type']}' không hợp lệ.",
+                     'code': 'INVALID_RULE_TYPE'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            existing['type'] = rule_type
         if 'threshold' in data:
             existing['threshold'] = data['threshold']
         if 'value' in data:
@@ -425,6 +492,8 @@ class ScreenerRuleUpdateView(SOCBaseView):
         rules[target_index] = existing
 
         _save_screener_rules_config(request, rules)
+        _audit_screener_rule_change(
+            request, self.get_request_id(request), 'rule_update', before_rules, list(rules))
 
         return Response({
             'rule_id': rule_id,
@@ -452,6 +521,9 @@ class ScreenerRuleDeleteView(SOCBaseView):
 
     def delete(self, request, rule_id):
         """Delete a screening rule by rule_id."""
+        denied = _deny_screener_write_unless_owner(self, request)
+        if denied is not None:
+            return denied
         config = _get_screener_config()
         rules = list(config.rules)
         original_len = len(rules)
@@ -464,12 +536,19 @@ class ScreenerRuleDeleteView(SOCBaseView):
             )
 
         _save_screener_rules_config(request, updated_rules)
+        _audit_screener_rule_change(
+            request, self.get_request_id(request), 'rule_delete', rules, updated_rules)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @extend_schema(
     summary='Lấy kết quả scan Screener',
-    description='Trả về latest scan results dựa trên signal alerts gần nhất của Screener.',
+    description=(
+        'Kết quả của lần manual scan thành công gần nhất (run log '
+        'screener_scan_dispatcher): số mã quét/mã khớp thật + thời gian quét '
+        'thật từ duration. Trả zeros trung thực khi chưa có lần chạy nào — '
+        'không còn mượn signal feed.'
+    ),
     responses={
         200: ScreenerResultsResponseSerializer,
         401: OpenApiTypes.OBJECT,
@@ -480,16 +559,52 @@ class ScreenerResultsView(SOCBaseView):
     """GET /api/soc/screener/results/"""
 
     def get(self, request):
-        """Latest scan results."""
-        alerts = list(_get_recent_signal_alerts(limit=20))
-        symbols_matched = [_serialize_signal_alert(alert) for alert in alerts]
-        latest_timestamp = alerts[0].triggered_at.isoformat() if alerts else None
+        """Latest completed manual scan results (SC-04/SC-10)."""
+        try:
+            dispatcher_service = get_registered_service('screener_scan_dispatcher')
+        except ServiceDefinition.DoesNotExist:
+            dispatcher_service = None
+        log = None
+        if dispatcher_service is not None:
+            log = ServiceRunLog.objects.filter(
+                service=dispatcher_service, status='success'
+            ).order_by('-started_at').first()
+        if log is None:
+            return Response({
+                'scan_id': None,
+                'timestamp': None,
+                'symbols_scanned': 0,
+                'alerts_triggered': 0,
+                'symbols_matched': [],
+                'scan_duration_ms': 0,
+            })
+        out = log.output_summary if isinstance(log.output_summary, dict) else {}
+        sample = out.get('matched_sample') or []
+        if not isinstance(sample, list):
+            sample = []
+        session_date = out.get('session_date')
+        symbols_matched = [
+            {
+                'id': f"{m.get('symbol', 'symbol')}-{index}",
+                'symbol': m.get('symbol'),
+                'rule': m.get('rule_name') or 'rule',
+                'rule_name': m.get('rule_name') or 'rule',
+                'value': m.get('close'),
+                'message': f"{m.get('rule_name') or 'rule'}: {m.get('close')}",
+                'timestamp': session_date,
+            }
+            for index, m in enumerate(sample[:20])
+            if isinstance(m, dict)
+        ]
+        duration_ms = int((log.duration_seconds or 0.0) * 1000)
+        finished = log.finished_at or log.started_at
         return Response({
-            'scan_id': alerts[0].source_ref if alerts and alerts[0].source_ref else None,
-            'timestamp': latest_timestamp,
-            'symbols_scanned': len({alert.symbol for alert in alerts}),
-            'alerts_triggered': len(alerts),
+            'scan_id': f'scan_{log.id}',
+            'timestamp': finished.isoformat() if finished else None,
+            'symbols_scanned': int(out.get('symbols_scanned') or 0),
+            'alerts_triggered': int(out.get('matched_count') or 0),
             'symbols_matched': symbols_matched,
+            'scan_duration_ms': duration_ms,
         })
 
 
@@ -576,6 +691,8 @@ class ScreenerManualScanView(SOCBaseView):
             'symbols_scanned': result['symbols_scanned'],
             'rules_evaluated': result['rules_evaluated'],
             'session_date': result['session_date'],
+            # SC-10: capped sample so /results/ can serve real scan rows.
+            'matched_sample': result['matched'][:20],
         }
         run_log.finished_at = timezone.now()
         if run_log.started_at:

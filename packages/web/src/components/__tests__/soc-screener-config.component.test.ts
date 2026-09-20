@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { mergeScreenerConfigPayload } from "../soc/SocScreenerPanel.js";
+import { formatScreenerTimestamp } from "../soc/SocScreenerPanel.js";
 import { resolveScreenerConfigSource } from "../soc/SocScreenerConfigForm.js";
 
 // SC-02: saving the 5-field form must not wipe rules/flags.
@@ -41,5 +42,12 @@ describe("SocScreenerPanel config helpers (SC-02/SC-05)", () => {
   it("SC-05: source falls back to flat payload", () => {
     const src = resolveScreenerConfigSource({ scan_interval_seconds: 90 } as any);
     expect(src.scan_interval_seconds).toBe(90);
+  });
+
+  it("SC-14: timestamp formats date + HH:MM, tolerates plain dates", () => {
+    expect(formatScreenerTimestamp("2026-09-20T14:05:33")).toBe("2026-09-20 14:05");
+    expect(formatScreenerTimestamp("2026-09-20")).toBe("2026-09-20");
+    expect(formatScreenerTimestamp(null)).toBe("");
+    expect(formatScreenerTimestamp(undefined)).toBe("");
   });
 });

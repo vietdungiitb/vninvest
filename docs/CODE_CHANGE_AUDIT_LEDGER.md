@@ -5,6 +5,24 @@
 
 ---
 
+## Entry 135: Fix final — SC-04/07/09/10/11 + SC-12/13/14/15 (đóng toàn bộ audit SOC screener)
+
+- **Date**: 2026-09-20
+- **Scope**: user duyệt "làm nốt". TDD RED→GREEN; BE + FE.
+- **SC-04+SC-10 (P1/P2) results trung thực**: `ScreenerResultsView.get` đọc run log `success` gần nhất của `screener_scan_dispatcher` (thay vì mượn signal feed): `scan_id/timestamp` từ log, `symbols_scanned` + `alerts_triggered` thật, `scan_duration_ms` từ `duration_seconds`, `symbols_matched` từ `matched_sample` (cap 20, lưu thêm trong output_summary của manual-scan). Chưa có lần chạy → zeros trung thực (không fake). Serializer + description cập nhật. Tests viết lại: empty-zeros, reflect-run (fixtures snapshot+40d prices+mock financials), history giữ signal-feed.
+- **SC-07 (P1) ownership**: `_deny_screener_write_unless_owner` (tái dùng matrix, envelope lỗi `OWNERSHIP_WRITE_DENIED` giống mixin) gắn vào POST/PUT/DELETE rules; FE fetch ownership trong `fetchData` → badge `writable: canWrite` (bỏ hardcode true) + disable nút thêm/sửa/xóa + guard toast `read_only` (key mới vi/en).
+- **SC-11 (P2) validate + audit**: `_normalize_screener_rule_type` (blank→`custom`, lạ→400 `INVALID_RULE_TYPE`) ở POST/PUT; `_audit_screener_rule_change` (`rule_create/update/delete`, before/after rules snapshot, mirror ConfigApplyMixin) ở cả 3 path. Tests: reject type ×2, audit ×2, 403 read-only ×3 (dùng pattern `OwnershipRecord update_or_create` như signals).
+- **SC-09 (P2) preview sống lại**: form thêm prop `onPreview` + nút `config.preview` (key mới); panel `handlePreviewConfig` mở modal before(=source hiện tại)/after(=merged) — `onConfirm` dùng sẵn `previewModal.after`. Hết dead code.
+- **SC-12 (P3)**: cooldown min 60→30 đúng BE (validate + input min).
+- **SC-13 (P3)**: `savingRule` state → modal `loading` (bỏ hardcode false).
+- **SC-14 (P3)**: `formatScreenerTimestamp` export (ISO→`date HH:MM`, plain date giữ nguyên) + unit test; thay time-only `split("T")[1]`.
+- **SC-15 (P3)**: rules table empty-state row dùng `rules_empty` (đã tồn tại mà chưa dùng).
+- **Fix regression wave-2**: header bảng dùng `t("soc.screener.rule_type")` (string) trong khi key đã thành object → chuyển `rule_type_label`.
+- **Gates**: tsc 0; jest soc **93/93**; vitest full **51 files/253 pass**; eslint soc 0 lỗi; BE `check` 0 + SOC screener **32 OK** (gồm 10 tests mới: 4 manual-scan + 3 results + 5 CRUD trừ 2 thay thế... nets: manual-scan ×4, results ×3, CRUD ×5); `npm run build` **PASS 36.56s**.
+- **Toàn bộ audit SOC screener (SC-01→SC-15) + UE-01→UE-06 ĐÓNG**. Còn backlog ngoài audit: realtime intraday/đa khung (W8), RC2 phiên T6, chuẩn hóa ledger.
+
+---
+
 ## Entry 134: Fix wave 2 — SC-03 bridge + SC-06/08 + UE-04/05/06 (TDD, full gates)
 
 - **Date**: 2026-09-20

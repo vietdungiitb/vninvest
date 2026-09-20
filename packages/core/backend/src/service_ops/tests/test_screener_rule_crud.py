@@ -6,11 +6,14 @@ Coverage:
   - PUT  /api/soc/screener/rules/<id>/     → 200 (update) / 404 (not found)
   - DELETE /api/soc/screener/rules/<id>/delete/ → 204 (delete) / 404 (not found)
 """
+import json
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from service_ops.models import ConfigChangeAudit, OwnershipRecord
 from service_ops.registry import ensure_service_registry
 
 User = get_user_model()
@@ -139,3 +142,81 @@ class ScreenerRuleCRUDTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         data = response.json()
         self.assertEqual(data['code'], 'RULE_NOT_FOUND')
+
+    # ---------------------------------------------------------------
+    # SC-11: type validation — only VALID_RULE_TYPES accepted
+    # ---------------------------------------------------------------
+
+    def test_create_rule_rejects_invalid_type(self):
+        response = self.client.post('/api/soc/screener/rules/', {
+            'name': 'Bad', 'type': 'not_a_type', 'value': [],
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json()['code'], 'INVALID_RULE_TYPE')
+
+    def test_update_rule_rejects_invalid_type(self):
+        rule_id = self._create_rule('Type Guard')
+        response = self.client.put(
+            f'/api/soc/screener/rules/{rule_id}/', {'type': 'nope'}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json()['code'], 'INVALID_RULE_TYPE')
+
+    # ---------------------------------------------------------------
+    # SC-11: audit trail for rule mutations
+    # ---------------------------------------------------------------
+
+    def test_rule_create_writes_audit_trail(self):
+        rule_id = self._create_rule('Audited')
+
+        audit = ConfigChangeAudit.objects.filter(action='rule_create').order_by('-id').first()
+        self.assertIsNotNone(audit)
+        self.assertIn(rule_id, json.dumps(audit.after_snapshot))
+
+    def test_rule_delete_writes_audit_trail(self):
+        rule_id = self._create_rule('Gone')
+        self.client.delete(f'/api/soc/screener/rules/{rule_id}/delete/')
+
+        audit = ConfigChangeAudit.objects.filter(action='rule_delete').order_by('-id').first()
+        self.assertIsNotNone(audit)
+        self.assertNotIn(rule_id, json.dumps(audit.after_snapshot))
+
+    # ---------------------------------------------------------------
+    # SC-07: ownership enforcement on rule CRUD
+    # ---------------------------------------------------------------
+
+    def _make_read_only(self):
+        OwnershipRecord.objects.update_or_create(
+            domain='screener',
+            defaults={
+                'owner_team': 'core',
+                'write_mode': 'read-only',
+                'write_surface': '',
+                'locked_fields': [],
+                'compatibility_domains': [],
+            },
+        )
+
+    def test_rule_crud_blocked_when_read_only(self):
+        self._make_read_only()
+
+        create_resp = self.client.post('/api/soc/screener/rules/', {
+            'name': 'Nope', 'type': 'custom', 'value': [],
+        }, format='json')
+        self.assertEqual(create_resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(create_resp.json()['code'], 'OWNERSHIP_WRITE_DENIED')
+
+        # Seed a rule while writable, then block update/delete.
+        OwnershipRecord.objects.filter(domain='screener').delete()
+        rule_id = self._create_rule('Locked')
+        self._make_read_only()
+
+        put_resp = self.client.put(
+            f'/api/soc/screener/rules/{rule_id}/', {'name': 'X'}, format='json')
+        self.assertEqual(put_resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(put_resp.json()['code'], 'OWNERSHIP_WRITE_DENIED')
+
+        del_resp = self.client.delete(f'/api/soc/screener/rules/{rule_id}/delete/')
+        self.assertEqual(del_resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(del_resp.json()['code'], 'OWNERSHIP_WRITE_DENIED')

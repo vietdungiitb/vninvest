@@ -23,6 +23,15 @@ interface SocScreenerConfigFormProps {
   }) => Promise<void>;
   onCancel: () => void;
   loading?: boolean;
+  // SC-09: optional preview hook — when provided, a Preview button opens the
+  // before/after modal instead of applying directly.
+  onPreview?: (config: {
+    scan_interval_seconds?: number;
+    max_symbols_per_scan?: number;
+    alert_cooldown_seconds?: number;
+    max_alerts_per_symbol_per_hour?: number;
+    result_retention_hours?: number;
+  }) => void;
 }
 
 /**
@@ -39,7 +48,7 @@ export function resolveScreenerConfigSource(initialConfig: unknown): Record<stri
 
 function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
   const { t } = useI18n();
-  const { initialConfig, onSave, onCancel, loading = false } = props;
+  const { initialConfig, onSave, onCancel, loading = false, onPreview } = props;
   const source = resolveScreenerConfigSource(initialConfig);
 
   const [config, setConfig] = useState({
@@ -71,8 +80,9 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
     if (config.max_symbols_per_scan < 1 || config.max_symbols_per_scan > 5000) {
       newErrors.max_symbols_per_scan = t("soc.screener.config.max_symbols_range", { min: 1, max: 5000 });
     }
-    if (config.alert_cooldown_seconds < 60) {
-      newErrors.alert_cooldown_seconds = t("soc.screener.config.alert_cooldown_min", { min: 60 });
+    // SC-12: BE minimum is 30 (domain_configs/screener.py) — was wrongly 60.
+    if (config.alert_cooldown_seconds < 30) {
+      newErrors.alert_cooldown_seconds = t("soc.screener.config.alert_cooldown_min", { min: 30 });
     }
     if (config.max_alerts_per_symbol_per_hour < 1) {
       newErrors.max_alerts_per_symbol_per_hour = t("soc.screener.config.alerts_per_symbol_min", { min: 1 });
@@ -87,6 +97,11 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
   const handleSave = async () => {
     if (!validate()) return;
     await onSave(config);
+  };
+
+  const handlePreview = () => {
+    if (!validate() || !onPreview) return;
+    onPreview(config);
   };
 
   const handleReset = () => {
@@ -131,7 +146,7 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
       createElement("div", { },
         field("scan_interval_seconds", t("soc.screener.config.scan_interval"), 10),
         field("max_symbols_per_scan", t("soc.screener.config.max_symbols"), 1, 5000),
-        field("alert_cooldown_seconds", t("soc.screener.config.alert_cooldown"), 60),
+        field("alert_cooldown_seconds", t("soc.screener.config.alert_cooldown"), 30),
         field("max_alerts_per_symbol_per_hour", t("soc.screener.config.max_alerts_per_symbol"), 1),
         field("result_retention_hours", t("soc.screener.config.retention_hours"), 1),
       ),
@@ -159,6 +174,13 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
       },
       t("common.cancel")
       ),
+      onPreview ? createElement("button", {
+        onClick: handlePreview,
+        className: styles.actionBtn,
+        
+      },
+      t("soc.screener.config.preview")
+      ) : null,
       createElement("button", {
         onClick: handleSave,
         disabled: loading,

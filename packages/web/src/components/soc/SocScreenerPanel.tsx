@@ -3,7 +3,7 @@ import { useI18n } from "../../context/LangContext.js";
 import { ShellPanel } from "../../components/ShellPageTemplate.js";
 import { SocConfigPreviewModal } from "./SocConfigPreviewModal.js";
 import { SocScreenerRuleModal } from "./SocScreenerRuleModal.js";
-import { SocScreenerConfigForm } from "./SocScreenerConfigForm.js";
+import { SocScreenerConfigForm, resolveScreenerConfigSource } from "./SocScreenerConfigForm.js";
 import { SocOwnershipBadge } from "./SocOwnershipBadge.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
@@ -68,6 +68,17 @@ export function mergeScreenerConfigPayload(
   return { ...base, ...edited };
 }
 
+/**
+ * SC-14: results timestamps may be full ISO (signal era) or plain session
+ * dates (run-log era) — render date + HH:MM instead of time-only.
+ */
+export function formatScreenerTimestamp(ts: unknown): string {
+  if (typeof ts !== "string" || !ts) return "";
+  const datePart = ts.split("T")[0];
+  const timePart = ts.split("T")[1]?.slice(0, 5);
+  return timePart ? `${datePart} ${timePart}` : datePart;
+}
+
 export function SocScreenerPanel() {
   const { t } = useI18n();
   const confirm = useConfirm();
@@ -82,6 +93,9 @@ export function SocScreenerPanel() {
   const [applying, setApplying] = useState(false);
   const [manualSymbols, setManualSymbols] = useState("");
   const [scanning, setScanning] = useState(false);
+  const [savingRule, setSavingRule] = useState(false);
+  // SC-07: write capability from the ownership endpoint (default open until loaded).
+  const [canWrite, setCanWrite] = useState(true);
   const [ruleModal, setRuleModal] = useState<{ mode: "create" | "edit"; rule?: ScreenerRule } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
@@ -92,12 +106,13 @@ export function SocScreenerPanel() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [cfg, rulesData, resultsData, alertsData, m] = await Promise.all([
+      const [cfg, rulesData, resultsData, alertsData, m, ownership] = await Promise.all([
         defaultCoreApiAdapter.getSocScreenerConfig(),
         defaultCoreApiAdapter.getSocScreenerRules(),
         defaultCoreApiAdapter.getSocScreenerResults(),
         defaultCoreApiAdapter.getSocScreenerAlerts(),
         defaultCoreApiAdapter.getSocScreenerMetrics(),
+        defaultCoreApiAdapter.getSocScreenerOwnership().catch(() => null),
       ]);
 
       setConfig(cfg);
@@ -108,6 +123,10 @@ export function SocScreenerPanel() {
       const alertsList = (alertsData as any).results || (alertsData as any).alerts || [];
       setAlerts(alertsList);
       setMetrics(m);
+      // SC-07: ownership endpoint drives the badge + write buttons.
+      if (ownership && typeof (ownership as any).can_apply === "boolean") {
+        setCanWrite((ownership as any).can_apply);
+      }
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Cannot load screener data.");
@@ -148,6 +167,15 @@ export function SocScreenerPanel() {
     } finally {
       setApplying(false);
     }
+  };
+
+  // SC-09: open the before/after preview instead of applying blindly.
+  const handlePreviewConfig = (directConfig?: ScreenerConfig) => {
+    if (!directConfig) return;
+    setPreviewModal({
+      before: resolveScreenerConfigSource(config) as Record<string, unknown>,
+      after: mergeScreenerConfigPayload(config, directConfig as Record<string, unknown>),
+    });
   };
 
   const handleManualScan = async () => {
@@ -193,6 +221,11 @@ export function SocScreenerPanel() {
   };
 
   const handleRuleConfirm = async (rule: { name: string; type: string; enabled: boolean; threshold?: unknown; value?: unknown }) => {
+    if (!canWrite) {
+      showToast(t("soc.screener.read_only"), "error");
+      return;
+    }
+    setSavingRule(true);
     try {
       if (ruleModal?.mode === "create") {
         await defaultCoreApiAdapter.createSocScreenerRule({
@@ -215,10 +248,16 @@ export function SocScreenerPanel() {
       await fetchData();
     } catch (err) {
       showToast(err instanceof Error ? err.message : t("soc.screener.rule_save_failed"), "error");
+    } finally {
+      setSavingRule(false);
     }
   };
 
   const handleDeleteRule = async (ruleId: string) => {
+    if (!canWrite) {
+      showToast(t("soc.screener.read_only"), "error");
+      return;
+    }
     const confirmed = await confirm({
       title: t("soc.screener.delete_rule_title"),
       message: t("soc.screener.delete_rule_confirm"),
@@ -259,7 +298,7 @@ export function SocScreenerPanel() {
         : createElement(
             "div",
             null,
-            createElement(SocOwnershipBadge, { team: "core", writable: true, accessLevel: "service_ops" }),
+            createElement(SocOwnershipBadge, { team: "core", writable: canWrite, accessLevel: "service_ops" }),
             createElement(
               "div",
               { className: styles.bannerNotice, style: { marginBottom: "0.75rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", flexWrap: "wrap" } },
@@ -275,6 +314,7 @@ export function SocScreenerPanel() {
               createElement(SocScreenerConfigForm, {
                 initialConfig: config || {},
                 onSave: handleApplyConfig,
+                onPreview: handlePreviewConfig,
                 onCancel: () => {},
                 loading: applying,
               }),
@@ -284,7 +324,7 @@ export function SocScreenerPanel() {
                 t("soc.screener.rules_title"),
                 createElement(
                   "button",
-                  { onClick: handleOpenCreateRule, className: styles.actionBtn,  },
+                  { onClick: handleOpenCreateRule, className: styles.actionBtn, disabled: !canWrite, },
                   t("soc.screener.add_rule")
                 ),
               ),
@@ -294,13 +334,17 @@ export function SocScreenerPanel() {
                 createElement("thead", null,
                   createElement("tr", null,
                     createElement("th", { }, t("soc.screener.rule_name")),
-                    createElement("th", { }, t("soc.screener.rule_type")),
+                    createElement("th", { }, t("soc.screener.rule_type_label")),
                     createElement("th", { }, t("soc.screener.rule_enabled")),
                     createElement("th", { }, t("soc.actions.actions")),
                   ),
                 ),
                 createElement("tbody", null,
-                  rules.slice((rulesPage - 1) * pageSize, rulesPage * pageSize).map((rule) =>
+                  // SC-15: empty state instead of a bare header-only table.
+                  rules.length === 0
+                    ? createElement("tr", { key: "empty" },
+                        createElement("td", { colSpan: 4 }, t("soc.screener.rules_empty")))
+                    : rules.slice((rulesPage - 1) * pageSize, rulesPage * pageSize).map((rule) =>
                     createElement("tr", { key: rule.id },
                       createElement("td", { }, rule.name),
                       createElement("td", { }, rule.type),
@@ -320,6 +364,7 @@ export function SocScreenerPanel() {
                           {
                             onClick: () => handleOpenEditRule(rule),
                             className: styles.actionBtn,
+                            disabled: !canWrite,
                             
                           },
                           t("soc.actions.edit"),
@@ -329,6 +374,7 @@ export function SocScreenerPanel() {
                           {
                             onClick: () => handleDeleteRule(rule.id),
                             className: styles.actionBtn,
+                            disabled: !canWrite,
                             
                           },
                           t("soc.actions.delete"),
@@ -396,8 +442,9 @@ export function SocScreenerPanel() {
                             },
                           createElement("span", { }, r.symbol),
                           ` \u2022 ${r.rule_name}`,
+                          // SC-14: date + HH:MM (not time-only).
                           createElement("span", { },
-                            r.timestamp?.split("T")[1]?.slice(0, 8) || "",
+                            formatScreenerTimestamp(r.timestamp) || "",
                           ),
                         ),
                       ),
@@ -447,13 +494,13 @@ export function SocScreenerPanel() {
           loading: applying,
         })
       : null,
-    ruleModal
+      ruleModal
       ? createElement(SocScreenerRuleModal, {
           mode: ruleModal.mode,
           initial: ruleModal.rule,
           onConfirm: handleRuleConfirm,
           onCancel: () => setRuleModal(null),
-          loading: false,
+          loading: savingRule,
         })
       : null,
     toast
