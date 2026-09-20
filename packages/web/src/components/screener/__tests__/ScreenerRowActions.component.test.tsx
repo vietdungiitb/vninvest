@@ -57,14 +57,14 @@ describe("ScreenerResultsTable row actions + persist (P2.5)", () => {
     renderTable();
     fireEvent.click(screen.getAllByText("+ WL")[0]);
     await waitFor(() => expect(mocks.addWatchlistItem).toHaveBeenCalledWith("7", "AAA"));
-    expect(screen.getByText("Đã thêm AAA vào watchlist.", { exact: false })).toBeTruthy();
+    expect(screen.getByText("screener.rowActions.addedToWatchlist", { exact: false })).toBeTruthy();
   });
 
   it("+WL with no watchlist shows notice", async () => {
     mocks.getWatchlists.mockResolvedValue([]);
     renderTable();
     fireEvent.click(screen.getAllByText("+ WL")[0]);
-    await waitFor(() => expect(screen.getByText("Chưa có watchlist", { exact: false })).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("screener.rowActions.noWatchlist", { exact: false })).toBeTruthy());
   });
 
   it("+Alert opens form and creates price alert", async () => {
@@ -75,7 +75,7 @@ describe("ScreenerResultsTable row actions + persist (P2.5)", () => {
     const priceInput = document.querySelector('input[type="number"]') as HTMLInputElement;
     expect(priceInput).toBeTruthy();
     expect(priceInput.value).toBe("20");
-    fireEvent.click(screen.getByText("screener.saveRule"));
+    fireEvent.click(screen.getByText("screener.rowActions.createAlertSubmit"));
     await waitFor(() => expect(mocks.createPriceAlert).toHaveBeenCalled());
     const payload = mocks.createPriceAlert.mock.calls[0][0];
     expect(payload.symbol).toBe("AAA");

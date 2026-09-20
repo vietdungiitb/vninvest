@@ -429,7 +429,7 @@ export function ScreenerPage() {
           if (elapsed >= 90000) {
             clearPoll();
             if (mountedRef.current) {
-              setError(t('screener.errors.runTimeout' as any, { defaultValue: 'Quét quá thời gian, vui lòng thử lại.' } as any));
+              setError(t('screener.errors.runTimeout'));
               setRunning(null);
             }
           }
@@ -732,9 +732,9 @@ export function ScreenerPage() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
             <span>
-              {t('screener.jobQueued' as any, { defaultValue: 'Đang quét trên hàng đợi…' } as any)}
+              {t('screener.jobQueued')}
               {jobStatus.total ? ` ${jobStatus.scanned ?? 0}/${jobStatus.total} mã` : ''}
-              {jobStatus.status === 'running' ? ` · ${t('screener.jobRunning' as any, { defaultValue: 'đang xử lý' } as any)}` : ''}
+              {jobStatus.status === 'running' ? ` · ${t('screener.jobRunning')}` : ''}
             </span>
             <button
               onClick={handleCancelPoll}
@@ -754,7 +754,7 @@ export function ScreenerPage() {
             }} />
           </div>
           <span style={{ fontSize: '11px', color: 'rgba(147,197,253,0.8)' }}>
-            {t('screener.jobCancelNote' as any, { defaultValue: 'Chỉ dừng theo dõi, tác vụ vẫn chạy trên hàng đợi.' } as any)}
+            {t('screener.jobCancelNote')}
           </span>
         </div>
       )}

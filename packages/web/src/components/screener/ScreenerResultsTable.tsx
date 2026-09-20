@@ -169,11 +169,11 @@ export function ScreenerResultsTable({
       const wl: any = await coreApiAdapter.getWatchlists();
       const list = Array.isArray(wl) ? wl : wl?.results || [];
       if (list.length === 0) {
-        setRowNotice(t("screener.rowActions.noWatchlist" as any, { defaultValue: "Chưa có watchlist nào — hãy tạo watchlist trước." } as any));
+        setRowNotice(t("screener.rowActions.noWatchlist"));
         return;
       }
       await coreApiAdapter.addWatchlistItem(String(list[0].id), symbol);
-      setRowNotice(t("screener.rowActions.addedToWatchlist" as any, { defaultValue: `Đã thêm ${symbol} vào watchlist.` } as any));
+        setRowNotice(t("screener.rowActions.addedToWatchlist", { symbol }));
     } catch {
       setRowNotice(t("screener.errors.runRuleFailed"));
     }
@@ -189,7 +189,7 @@ export function ScreenerResultsTable({
     }
     try {
       await coreApiAdapter.createPriceAlert({ symbol: alertForm.symbol, condition: alertForm.condition, target_price: price, cooldown_seconds: 300, is_active: true });
-      setRowNotice(t("screener.rowActions.alertCreated" as any, { defaultValue: `Đã tạo cảnh báo giá cho ${alertForm.symbol}.` } as any));
+        setRowNotice(t("screener.rowActions.alertCreated", { symbol: alertForm.symbol }));
       setAlertForm(null);
     } catch {
       setRowNotice(t("screener.errors.runRuleFailed"));
@@ -383,20 +383,20 @@ export function ScreenerResultsTable({
                   onChange: (e: any) => setAlertForm({ ...alertForm, condition: e.target.value }),
                   style: { background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-primary, #f1f5f9)", borderRadius: "6px", padding: "4px 8px" },
                 },
-                createElement("option", { value: "ABOVE" }, "Giá vượt quá"),
-                createElement("option", { value: "BELOW" }, "Giá giảm dưới")
+                createElement("option", { value: "ABOVE" }, t("screener.rowActions.alertAbove")),
+                createElement("option", { value: "BELOW" }, t("screener.rowActions.alertBelow"))
               ),
               createElement("input", {
                 type: "number",
                 value: alertForm.price,
                 onChange: (e: any) => setAlertForm({ ...alertForm, price: e.target.value }),
-                placeholder: "Giá mục tiêu",
+                placeholder: t("screener.rowActions.pricePlaceholder"),
                 style: { width: "120px", background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-primary, #f1f5f9)", borderRadius: "6px", padding: "4px 8px" },
               }),
               createElement(
                 "button",
                 { type: "button", onClick: () => { void handleCreateAlert(); }, style: { padding: "4px 12px", background: "var(--accent-cyan, #06b6d4)", color: "#fff", borderRadius: "6px", border: "none", cursor: "pointer", fontWeight: 600 } },
-                t("screener.saveRule")
+                t("screener.rowActions.createAlertSubmit")
               ),
               createElement(
                 "button",
@@ -454,7 +454,7 @@ export function ScreenerResultsTable({
                   createElement(
                     "th",
                     { key: "__actions", style: { paddingBottom: "8px", textAlign: "right", fontWeight: 500, whiteSpace: "nowrap" } },
-                    t("screener.rowActions.title" as any, { defaultValue: "Thao tác" } as any)
+                    t("screener.rowActions.title")
                   ),
                 ),
               ),
@@ -496,7 +496,7 @@ export function ScreenerResultsTable({
                         "button",
                         {
                           type: "button",
-                          title: t("screener.rowActions.addToWatchlist" as any, { defaultValue: "Thêm vào watchlist" } as any),
+                          title: t("screener.rowActions.addToWatchlist"),
                           onClick: () => { void handleAddToWatchlist(row.symbol); },
                           style: { fontSize: "12px", color: "#4ade80", background: "none", border: "1px solid rgba(74,222,128,0.3)", borderRadius: "6px", padding: "2px 8px", cursor: "pointer", marginRight: "4px" },
                         },
@@ -506,7 +506,7 @@ export function ScreenerResultsTable({
                         "button",
                         {
                           type: "button",
-                          title: t("screener.rowActions.createAlert" as any, { defaultValue: "Tạo cảnh báo giá" } as any),
+                          title: t("screener.rowActions.createAlert"),
                           onClick: () => setAlertForm({ symbol: row.symbol, condition: "ABOVE", price: row.close != null ? String(row.close) : "" }),
                           style: { fontSize: "12px", color: "#fbbf24", background: "none", border: "1px solid rgba(251,191,36,0.3)", borderRadius: "6px", padding: "2px 8px", cursor: "pointer" },
                         },

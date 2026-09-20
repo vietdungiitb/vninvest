@@ -445,10 +445,17 @@ describe("SOC adapter", () => {
       expect(result.results[0].symbol).toBe("VCI");
     });
 
-    it("getSocScreenerAlerts maps alerts", async () => {
-      coreGet.mockResolvedValue({ alerts: [{ symbol: "VCI", rule: "Volume Spike", timestamp: "T1", value: "2x" }] });
+    it("getSocScreenerAlerts maps paginated results (BE contract)", async () => {
+      coreGet.mockResolvedValue({ count: 1, next: null, previous: null, results: [{ symbol: "VCI", rule: "Volume Spike", timestamp: "T1", value: "2x" }] });
       const result = await soc.getSocScreenerAlerts();
+      expect(result.results).toHaveLength(1);
       expect(result.results[0].message).toBe("Volume Spike: 2x");
+    });
+
+    it("getSocScreenerAlerts returns empty list when no result key", async () => {
+      coreGet.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
+      const result = await soc.getSocScreenerAlerts();
+      expect(result.results).toEqual([]);
     });
 
     it("manualSocScreenerScan calls corePost", async () => {

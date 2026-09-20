@@ -150,6 +150,11 @@ class ScreenerManualScanResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
     created_at = serializers.DateTimeField()
     run_log_id = serializers.IntegerField()
+    session_date = serializers.CharField(required=False, allow_null=True)
+    symbols_scanned = serializers.IntegerField(required=False)
+    matched = serializers.ListField(child=serializers.JSONField(), required=False)
+    rules_evaluated = serializers.IntegerField(required=False)
+    rules_skipped = serializers.ListField(child=serializers.JSONField(), required=False)
 
 
 class ScreenerOwnershipResponseSerializer(serializers.Serializer):
@@ -511,11 +516,15 @@ class ScreenerAlertHistoryView(SOCBaseView):
 
 
 @extend_schema(
-    summary='Queue manual scan Screener',
-    description='Queue một manual scan cho danh sách symbol được chỉ định.',
+    summary='Run manual scan Screener',
+    description=(
+        'Đánh giá đồng bộ các global rule đang bật (điều kiện trong rule '
+        '`value`, định dạng user-engine) trên các symbol chỉ định bằng đúng '
+        'data layer của /screener. Ghi ServiceRunLog success/failed để truy vết.'
+    ),
     request=ScreenerManualScanRequestSerializer,
     responses={
-        202: ScreenerManualScanResponseSerializer,
+        200: ScreenerManualScanResponseSerializer,
         400: OpenApiTypes.OBJECT,
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
@@ -526,30 +535,71 @@ class ScreenerManualScanView(SOCBaseView):
     """POST /api/soc/screener/manual-scan/"""
 
     def post(self, request):
-        """Trigger manual screener scan."""
+        """Run a synchronous manual scan over enabled global rules."""
+        from ..screener_bridge import evaluate_global_screener
+
         symbols = request.data.get('symbols', [])
+        if not isinstance(symbols, list) or not [s for s in symbols if str(s).strip()]:
+            return Response(
+                {'detail': 'symbols phải là list không rỗng.', 'code': 'SYMBOLS_REQUIRED'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         dispatcher_service = get_registered_service('screener_scan_dispatcher')
         run_log = ServiceRunLog.objects.create(
             service=dispatcher_service,
-            status='queued',
+            status='running',
             input_summary={
                 'symbols': symbols,
                 'requested_by': getattr(request.user, 'username', 'api'),
             },
             output_summary={},
         )
+        try:
+            config = _get_screener_config()
+            result = evaluate_global_screener(symbols, config.rules)
+        except Exception as exc:
+            run_log.status = 'failed'
+            run_log.error_detail = str(exc)[:2000]
+            run_log.finished_at = timezone.now()
+            if run_log.started_at:
+                run_log.duration_seconds = max(
+                    (run_log.finished_at - run_log.started_at).total_seconds(), 0.0
+                )
+            run_log.save(update_fields=['status', 'error_detail', 'finished_at', 'duration_seconds'])
+            return Response(
+                {'detail': f'Quét thất bại: {exc}', 'code': 'SCAN_FAILED'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        run_log.status = 'success'
+        run_log.output_summary = {
+            'matched_count': len(result['matched']),
+            'symbols_scanned': result['symbols_scanned'],
+            'rules_evaluated': result['rules_evaluated'],
+            'session_date': result['session_date'],
+        }
+        run_log.finished_at = timezone.now()
+        if run_log.started_at:
+            run_log.duration_seconds = max(
+                (run_log.finished_at - run_log.started_at).total_seconds(), 0.0
+            )
+        run_log.save(update_fields=['status', 'output_summary', 'finished_at', 'duration_seconds'])
         return Response({
             'scan_id': f'scan_{run_log.id}',
-            'symbols_count': len(symbols),
-            'status': 'queued',
+            'symbols_count': len(result['symbols_requested']),
+            'status': 'completed',
             'created_at': run_log.started_at.isoformat(),
             'run_log_id': run_log.id,
-        }, status=status.HTTP_202_ACCEPTED)
+            'session_date': result['session_date'],
+            'symbols_scanned': result['symbols_scanned'],
+            'matched': result['matched'],
+            'rules_evaluated': result['rules_evaluated'],
+            'rules_skipped': result['rules_skipped'],
+        }, status=status.HTTP_200_OK)
 
 
 @extend_schema(
-    summary='Queue rules run Screener',
-    description='Spec-compatible alias của manual scan cho Screener.',
+    summary='Run rules Screener',
+    description='Spec-compatible alias của manual scan cho Screener (đánh giá đồng bộ).',
     request=ScreenerManualScanRequestSerializer,
     responses={
         202: ScreenerManualScanResponseSerializer,

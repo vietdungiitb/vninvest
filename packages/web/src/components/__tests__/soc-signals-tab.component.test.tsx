@@ -235,7 +235,7 @@ describe("SocSignalsPanel — P0 feed + stats", () => {
     expect(await screen.findByText(/feed boom/)).toBeTruthy();
     // chuyển sang tab materialization — services vẫn render
     fireEvent.click(screen.getByText("soc.signals_overview.materialization"));
-    expect(await screen.findByText("signal_whale_canonical_pipeline")).toBeTruthy();
+    expect((await screen.findAllByText("signal_whale_canonical_pipeline")).length).toBe(2);
   });
 
   it("mat 500 → banner dùng key materialization_error, feed vẫn sống (F-NI-01)", async () => {
@@ -251,7 +251,7 @@ describe("SocSignalsPanel — P0 feed + stats", () => {
   it("materialization renders execution plan + full time + run id (F-SG-10/21)", async () => {
     render(<SocSignalsPanel />);
     fireEvent.click(await screen.findByText("soc.signals_overview.materialization"));
-    expect(await screen.findByText("signal_whale_canonical_pipeline")).toBeTruthy();
+    expect((await screen.findAllByText("signal_whale_canonical_pipeline")).length).toBe(2);
     expect(screen.getByText("Kế hoạch thực thi")).toBeTruthy();
     // không còn cắt ngày YYYY-MM-DD trần
     expect(screen.queryByText("2026-09-16")).toBeNull();
@@ -261,7 +261,7 @@ describe("SocSignalsPanel — P0 feed + stats", () => {
     mocks.getSocSignalJobStatus.mockResolvedValue({ status: "success", run_log_id: 7 });
     const { container } = render(<SocSignalsPanel />);
     fireEvent.click(await screen.findByText("soc.signals_overview.materialization"));
-    await screen.findByText("signal_whale_canonical_pipeline");
+    await screen.findAllByText("signal_whale_canonical_pipeline");
     const fill = container.querySelector('[class*="matCardBarFill"]') as HTMLElement | null;
     expect(fill).toBeTruthy();
     expect(fill!.style.width).toBe("100%");
@@ -378,26 +378,29 @@ describe("SocSignalsPanel — W1.3 config/detection/retention subtabs", () => {
     await screen.findAllByText("VCI");
     fireEvent.click(screen.getByText("Cấu hình"));
     expect(await screen.findByText("whale_threshold_vnd")).toBeTruthy();
-    expect(await screen.findByText("500000000")).toBeTruthy();
+    expect(await screen.findByText("500.000.000")).toBeTruthy();
     expect(screen.getByText(/locked by owner/)).toBeTruthy();
     expect(screen.getByText(/SOC chỉ đọc/)).toBeTruthy();
     expect(mocks.getSocSignalConfig).toHaveBeenCalledTimes(1);
   });
 
   it("detection tab renders 3 cards + test button shows result with smoke label", async () => {
-    mocks.getSocWhaleDetection.mockResolvedValue({ enabled: true, threshold_vnd: 500000000 });
+    mocks.getSocWhaleDetection.mockResolvedValue({ enabled: true, threshold_vnd: 500000000, top_pct: 0.1 });
     mocks.getSocDarkPoolDetection.mockResolvedValue({ enabled: false });
     mocks.getSocScreenerDetection.mockResolvedValue({ enabled: true, active_rules: 3 });
     mocks.testSocWhaleDetection.mockResolvedValue({ symbol: "VNM", test_result: "success", detection_possible: true });
     render(<SocSignalsPanel />);
     await screen.findAllByText("VCI");
     fireEvent.click(screen.getByText("Phát hiện"));
-    expect(await screen.findByText("threshold_vnd")).toBeTruthy();
-    expect(await screen.findByText("500000000")).toBeTruthy();
+    expect(await screen.findByText("Ngưỡng (VNĐ)")).toBeTruthy();
+    expect(await screen.findByText("500.000.000 ₫")).toBeTruthy();
+    expect(screen.getByText("Top %")).toBeTruthy();
+    expect(screen.getByText("10%")).toBeTruthy();
+    expect(screen.getAllByText("Đang bật").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Kết quả smoke/)).toBeTruthy();
     fireEvent.click(screen.getByText("Chạy thử"));
     expect(mocks.testSocWhaleDetection).toHaveBeenCalledWith("VNM");
-    expect(await screen.findByText(/test_result: success/)).toBeTruthy();
+    expect(await screen.findByText("Thành công")).toBeTruthy();
   });
 
   it("retention tab renders policy + preview shows impact", async () => {
@@ -422,7 +425,10 @@ describe("SocSignalsPanel — W1.3 config/detection/retention subtabs", () => {
     const { container } = render(<SocSignalsPanel />);
     await screen.findAllByText("VCI");
     fireEvent.click(screen.getByText("soc.signals_overview.job_console"));
-    const jobSelect = container.querySelector('select:not([aria-label])') as HTMLSelectElement | null;
+    const selects = Array.from(container.querySelectorAll("select"));
+    const jobSelect = selects.find((s) =>
+      Array.from(s.querySelectorAll("option")).some((o) => o.getAttribute("value") === "whale"),
+    ) as HTMLSelectElement | null;
     expect(jobSelect).toBeTruthy();
     const options = Array.from(jobSelect!.querySelectorAll("option")).map((o) => o.getAttribute("value"));
     expect(options).toEqual(["whale", "dark_pool"]);
@@ -733,8 +739,8 @@ describe("SocSignalsPanel — W2.3 rules + precision", () => {
     // overall precision + hit rate (proxy, làm tròn %)
     expect(screen.getByText("71%")).toBeTruthy();
     expect(screen.getByText("86%")).toBeTruthy();
-    // top noisy line
-    expect(screen.getAllByText(/p=50%/)).toHaveLength(1);
+    // top noisy table row
+    expect(screen.getAllByText("50%")).toHaveLength(1);
   });
 
   it("request modal sends payload per kind + bridge-write note", async () => {

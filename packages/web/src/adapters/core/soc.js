@@ -493,12 +493,14 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
     },
 
     getSocScreenerAlerts() {
+      // SC-01: BE returns DRF paginated {count, next, previous, results: [...]} —
+      // there is no `alerts` key. Map `results` so the Alerts card is not empty.
       return coreGet("/operator/soc/screener/alert-history/").then((data) => ({
         ...data,
-        results: (data.alerts || []).map((alert, index) => ({
+        results: ((data.results || data.alerts) || []).map((alert, index) => ({
           id: alert.id || `alert-${index}`,
           symbol: alert.symbol,
-          message: `${alert.rule || 'rule'}: ${alert.value ?? ''}`.trim(),
+          message: `${alert.rule || alert.rule_name || 'rule'}: ${alert.value ?? ''}`.trim(),
           timestamp: alert.timestamp,
         })),
       }));

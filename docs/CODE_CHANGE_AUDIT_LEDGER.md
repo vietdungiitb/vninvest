@@ -5,6 +5,183 @@
 
 ---
 
+## Entry 134: Fix wave 2 — SC-03 bridge + SC-06/08 + UE-04/05/06 (TDD, full gates)
+
+- **Date**: 2026-09-20
+- **Scope**: user duyệt "làm đợt 2". TDD RED→GREEN; không commit giữa chừng (gom 1 commit cuối theo yêu cầu "commit toàn bộ").
+- **SC-03 (P0) manual-scan no-op → đánh giá thật**: evidence semantics từ 2026-05 (`IMPLEMENTATION_PLAN_SOC_CONFIG_UI_20260516.md` § modal + `..._TEST_PROTOCOL_20260516.md:36,151`: rule `value` = conditions array `[{field,op,value}]` định dạng user-engine, `type` chỉ là nhãn) — không bịa semantics.
+  - Mới `service_ops/screener_bridge.py`: `extract_rule_conditions` (value → threshold fallback, validate qua user `_validate_screener_rules`, skip `disabled`/`no-conditions`/`invalid-conditions`) + `evaluate_global_screener` (chuẩn hóa symbols upper/dedupe/cap 50, partition rules TRƯỚC khi check data để báo misconfig cả khi không có snapshot, reuse `_compute_scan([], session, False)` match-all + `_eval_conditions` AND/OR/NOT, `include_ai=False`).
+  - `ScreenerManualScanView.post`: 400 khi symbols rỗng; tạo log `running` → đánh giá → log `success` (+output_summary/finished/duration) / `failed` (+error_detail); trả 200 `{completed, matched[], rules_evaluated, rules_skipped[], session_date}`; alias `rules/run/` kế thừa. OpenAPI summary/description + response serializer cập nhật.
+  - FE `handleManualScan`: toast `scan_completed` (`{matched}/{scanned} mã, {rules} luật`) khi completed, fallback `scan_queued`.
+  - BE tests viết lại theo contract mới (RED `202 != 200` trước fix): evaluates-match-2-symbols + run_log success, empty-universe completes, 400 empty symbols, skip no-conditions, alias evaluates, schema summaries.
+  - Đính chính: test skips lộ bug bridge (early-return no-data nuốt `rules_skipped`) → đã restructure partition-first.
+- **SC-06 (P1) + SC-08 (P2)**: +19 keys SOC vi/en (`loading/add_rule/edit_rule/results_title/alerts_title/config_saved/apply_failed/scan_completed/scan_failed/rule_saved/rule_save_failed/delete_rule_title/rule_deleted/delete_failed/placeholders/invalid_json/threshold_json/value_json/enabled`) + `rule_type` string → object 9 options (modal label chuyển `rule_type_label`, đã grep chỉ modal dùng); panel `Bật/Tắt` → `t(rule_active/rule_inactive)`.
+- **UE-04**: nút tạo alert giá dùng key riêng `rowActions.createAlertSubmit` (kèm `alertAbove/alertBelow/pricePlaceholder` thay hardcode).
+- **UE-05**: +job (`jobQueued/jobRunning/jobCancelNote`, `errors.runTimeout`) + `schedule.*` (13 keys) + `rowActions.*` (6 keys, `{symbol}` interpolation, bỏ `as any`) vi/en; call sites ScreenerPage/ResultsTable dùng keys.
+- **UE-06**: SchedulePanel — weekday picker (7 nút, default T2-T6), channel checkboxes (in_app/email, BE đã live-verify W3), validate ≥1 ngày; hiển thị weekdays theo locale (Intl), rule_ids → tên, `next_run_at` format thay ISO thô; mọi chuỗi cứng → keys.
+- **Tests**: translator `soc-screener-i18n` (30 asserts incl. interpolation) + mở rộng `screenerI18nKeys` (schedule/rowActions/interpolation); SchedulePanel test cập nhật key-based + thêm UE-06 payload test (phát hiện thiếu `clearAllMocks` → đã thêm `beforeEach`); RowActions alert-submit key assert.
+- **Gates**: tsc 0; jest soc **93/93**; vitest full **51 files/252 pass** (flaky overview-stream lần này pass); eslint touched 0 errors/5 warnings pre-existing; BE `manage.py check` 0 + SOC screener **25 OK**; `npm run build` **PASS exit 0**.
+- **Còn lại**: SC-04 (metrics), SC-07 (ownership), SC-09/10/11, SC-12-15 — đợt sau.
+- **Ghi chú toàn vẹn ledger**: các entry phiên này ban đầu đánh số 126-129 nhưng số đã có ở tail (125-130 append 2026-09-18, ngoài thứ tự newest-first) + head đã có 2 Entry 125 trùng nhau từ trước — đã renumber 131-134 để unique. Cần 1 đợt chuẩn hóa ledger riêng.
+
+---
+
+## Entry 133: Fix wave 1 — UE-01/02/03 + SC-01/02/05 (TDD RED→GREEN, không commit)
+
+- **Date**: 2026-09-20
+- **Scope**: user duyệt "fix đi" sau Entry 127. TDD: test RED trước (mock sai shape + key thiếu + helper chưa tồn tại), fix tối thiểu, GREEN, không commit (quy ước repo: agent không commit khi chưa được yêu cầu rõ — lệch bước checkpoint-commit của skill TDD, ghi nhận).
+- **Fix**:
+  - UE-01: `ScreenerFilterBuilder.tsx:81` bỏ `.toLowerCase()` (`screener.logic.AND/OR/NOT` đúng dict); + key `screener.fieldPicker` vi/en.
+  - UE-02: `ScreenerHistory.tsx:48-61` map `STAND_ASIDE`→`standAside` + export `actionBadge` để test. Đính chính audit: path này hiện chỉ reachable với BUY/SELL qua UI (filter :325, trades BUY/SELL) nên bug là **latent**, không visible — giữ fix dạng hardening.
+  - UE-03: + key `screener.deleteRuleTitle` vi (`Xóa rule?`)/en (`Delete rule?`).
+  - SC-01 (P0): `soc.js:495-505` map `(data.results || data.alerts)` + message fallback `rule_name`; jest mock sửa đúng shape paginated `{count,results}` + thêm case empty.
+  - SC-02 (P0): `SocScreenerPanel.tsx` thêm `mergeScreenerConfigPayload` (giữ nguyên `rules`/`enabled`/`publish_to_redis` từ `config_payload` hiện tại, 5 scalar edit đè lên) + dùng trong `handleApplyConfig`.
+  - SC-05 (P1): `SocScreenerConfigForm.tsx` thêm `resolveScreenerConfigSource` (đọc `config_payload`/`config` trước, flat fallback) + dùng cho state/effect/advanced-JSON; nới prop type nhận envelope.
+  - Infra test: `vitest.config.ts` mirror alias `@/@lib/@components` từ `vite.config.ts` (sửa lỗi resolve `@/lib/utils` khi import panel trong test).
+- **Tests mới**: `screenerI18nKeys.component.test.ts` (8 translator asserts vi/en), `screenerRawKeyBugs.component.test.tsx` (render FilterBuilder + History + direct actionBadge), `soc-screener-config.component.test.ts` (4 pure asserts merge/resolver). RED xác nhận trước fix (6 fail + 4 TypeError + 1 jest fail); GREEN sau fix.
+- **Gates**: tsc 0; jest `soc.test.js` **93/93**; vitest new **14/14**; full vitest **49/50 files, 244/245** (1 fail `soc-overview-stream` = flaky pre-existing, pass isolated 2/2); eslint scoped 0 errors (touched files sạch); BE SOC screener **22 OK**; `npm run build` **PASS 44.11s**.
+- **Còn lại**: SC-03 (wire manual-scan → engine, cần adapter schema), SC-06 (18 keys SOC tab), UE-04/05/06, SC-04/07-15 — đợt sau khi duyệt.
+
+---
+
+## Entry 132: Re-audit codebase screener hiện có (`user_workspace` + `/screener`) + quyết định KEEP tab SOC
+
+- **Date**: 2026-09-20
+- **Scope**: NGHIÊN CỨU (không sửa code). Re-audit engine thật theo yêu cầu: models/tasks/views/urls/helpers/templates/settings/queue_policy/worker (BE) ↔ ScreenerPage + 12 components + workspace adapter + types + i18n (FE). Báo cáo: `docs/AUDIT_SCREENER_ENGINE_20260920.md`.
+- **Kết luận engine**: THẬT và chạy được — 14 routes (urls.py:90-104), 3 models + tenant isolation, run sync/async (202+poll 1.5s/90s, cap 3 pending, throttle 30/60-min), cache 1MB/top-500, history quota 100 + backtest server, schedules + beat 5m + queue `screener` + worker riêng (live-proof W2), email channel live-verify (W3). Sort keys FE ⊆ BE (28/28, không 400); field registry FE ⊆ BE allowlist (save không 400).
+- **Findings chính**: UE-01 (P1) dropdown VÀ/HOẶC/KHÔNG + `fieldPicker` hiện raw key (lowercase ≠ dict AND/OR/NOT); UE-02 badge STAND_ASIDE raw key (`stand_aside` ≠ `standAside`); UE-03 title modal xóa rule raw key (`deleteRuleTitle` thiếu); UE-04 nút tạo alert giá nhãn sai "Lưu rule"; UE-05 ~13 key chỉ sống bằng defaultValue VI + SchedulePanel hardcode VI (EN hiện tiếng Việt); UE-06 schedule không bật được email từ UI (BE đã sẵn); UE-07 6 field allowlist no-source never-match; UE-08 6 field có nguồn FE không offer; UE-09/10 perf nhỏ + type-debt casts. Không data-loss, không tenant-leak (fork/public/schedule đều fail-closed đúng).
+- **Quyết định sản phẩm (user 2026-09-20)**: **KEEP tab SOC screener** — giữ làm mặt quản trị engine, không gộp vào `/screener`. Hướng SC-03: wire SOC manual-scan → engine này qua adapter chuyển đổi schema (global `type/threshold` → user `{field,op,value,logic}`).
+- **Gates**: BE 9 modules **Ran 54 OK (59.6s)**; FE vitest screener **10 files/48 pass (28.7s)**; eslint scoped **0 errors/6 warnings** (pre-existing nhẹ); tsc 0 (cùng ngày, cây không đổi); `manage.py check` 0.
+- **Còn lại**: fix UE-01..UE-06 (sửa 3 dòng case + thêm keys 2 locale + schedule email/weekdays UI) khi user duyệt; SC-01/02/03 SOC tab vẫn mở.
+
+---
+
+## Entry 131: Audit — SocScreenerPanel/`tab=screener` end-to-end (BE→FE contract + UX + i18n)
+
+- **Date**: 2026-09-20
+- **Scope**: NGHIÊN CỨU + PHÂN TÍCH (không sửa code). Đối chiếu `SocScreenerPanel.tsx`/`SocScreenerConfigForm.tsx`/`SocScreenerRuleModal.tsx` ↔ `adapters/core/soc.js` ↔ BE `views/screener.py`/`domain_configs/screener.py`/`registry.py`/`tasks.py`. Báo cáo: `docs/AUDIT_SOC_SCREENER_TAB_20260920.md`.
+- **5 findings nghiêm trọng nhất**:
+  1. **SC-01 P0** — Alerts card luôn rỗng: adapter đọc `data.alerts` (soc.js:498) nhưng BE trả paginated `data.results` (screener.py:509); jest mock sai shape (soc.test.js:449) che bug.
+  2. **SC-02 P0** — Save config = XOÁ HẾT rules: form gửi 5 scalar → BE `from_dict` thiếu `rules` → default `[]` → apply ghi đè (data loss).
+  3. **SC-03 P0** — Manual scan no-op: tạo `ServiceRunLog(queued)` cho `screener_scan_dispatcher` nhưng không dispatch task, không consumer; recovery chỉ đánh failed sau grace. Engine global chưa có task (registry-only); engine thật chỉ ở `user_workspace` (screener cá nhân).
+  4. **SC-06 P1** — 18 i18n key + 9 subkey `rule_type.*` thiếu ở cả 2 locale → UI hiện raw key (`soc.screener.loading`, dropdown `rule_type.*`).
+  5. **SC-04 P1** — Metrics lừa dối: `scan_duration_ms` BE không trả → avg luôn 0; `rules_hit_rate = alerts/distinct_matched` → có thể >100%.
+- **Còn khác**: SC-05 form luôn hiện defaults (đọc envelope thay vì `config_payload`); SC-07 rule CRUD bỏ qua ownership matrix + ConfigChangeAudit; SC-08 hardcode "Bật/Tắt"; SC-09 `SocConfigPreviewModal` dead code; SC-11 không validate rule type; SC-10 results/metrics derive từ `UnifiedAlert` feed (không gắn run); SC-12–15 (min cooldown 60 vs 30, modal loading hardcode, time-only timestamp, thiếu empty-state).
+- **Gates**: FE `tsc` 0; jest soc `-t "Screener"` 12 pass; BE `ScreenerDomainApiTestCase`+`test_screener_rule_crud`+`test_soc_domain_configs` 22 OK; `manage.py check` 0.
+- **Còn lại (đề xuất)**: fix P0 SC-01/02/03 trước (quyết định engine theo câu hỏi F1/F2 trong docs), P1 SC-06 i18n 27 key + SC-05 + SC-07, P2/P3 còn lại; bổ sung test BE assert config apply giữ rules + manual scan dispatch thật + FE assert shape paginated. Chờ user duyệt trước khi code.
+
+---
+
+## Entry 125: Fix RC1-phần-2 triệt để — SSE flush incremental (`SSEStreamingHttpResponse`)
+
+- **Date**: 2026-09-20
+- **Scope**: Browser treo CONNECTING vĩnh viễn dù đã fix 406. Đo live: stream hữu hạn ra đủ body lúc xong (3.3s = 1 sleep), stream vô hạn 0 byte sau 20s/12s (direct + nginx).
+- **Root cause (đọc code framework, không đoán)**: Django `StreamingHttpResponse.__aiter__` tiêu thụ sync iterator bằng `await sync_to_async(list)(...)` — `list()` toàn bộ generator trước chunk đầu. Generator vô hạn → không bao giờ xong. Negative control: plain response + slow-finite gen → timeout 10s + đúng warning của Django ("must consume synchronous iterators...").
+- **Fix**: `base.SSEStreamingHttpResponse` override `__aiter__` — mỗi `next()` trong threadpool (`thread_sensitive=False`, không block loop/thread đơn), encode utf-8, yield ngay; `finally` close iterator (disconnect sạch). Sync `__iter__` giữ nguyên → test client cũ không ảnh hưởng. Cả 2 views chuyển sang class mới (DRF 3.18 không có async dispatch nên không dùng async view — rủi ro cao hơn nhiều).
+- **Tests**: `SignalsStreamFlushTestCase` (isinstance + infinite-gen first-chunk <10s) + overview isinstance. Suite 2 files **28/28 OK**.
+- **Deploy + live verify (2026-09-20)**: `start_dev.ps1` rebuild core-runtime (COPY src mới) → stack up, core-api healthy, no drift, smoke OK. Đo live qua đúng path browser (nginx `:8080`): infinite stream **first-byte 0.44s** (trước: 0 byte/20s) + body đủ `retry/id/event:signal/data` (VCI whale thật). Dot browser sẽ chuyển xanh khi `onopen` nhận headers.
+- **Còn lại**: user Ctrl+F5 kiểm tra dot xanh; chốt quyết định sản phẩm RC2 (feed cuối tuần).
+
+---
+
+## Entry 124: Fix input Job Console cao ~220px (flex-basis rơi nhầm trục dọc) + cân hàng
+
+- **Date**: 2026-09-20
+- **Scope**: Screenshot Job Console: ô Mã CK cao bất thường, hàng vỡ. Root cause: rule `.jobInputRow .searchInput { flex: 1 1 220px }` (Entry 123) áp cả khi input nằm trong `.jobField` (flex-direction: column) → flex-basis 220px rơi vào trục dọc = chiều cao input. Đúng cho input là con trực tiếp của row (tab Phát hiện), sai cho input lồng trong field (Job Console).
+- **Fix**: selector thu hẹp `.jobInputRow > .searchInput`; thêm `.jobField .searchInput { flex: none; width: 100% }` + `.jobFieldGrow { flex: 1 1 220px }` cho field Mã CK giãn cân hàng (field Nguồn + nút Chạy job giữ kích thước nội dung).
+- **Gates**: tsc 0; vitest signals-tab 33/33; frontend rebuild + recreate, smoke API+FE OK.
+- **Ghi chú "Đang kết nối..." trong cùng screenshot**: đã audit live — server path OK (curl qua nginx 200 + stream body đủ), core-api stable 0 restart/no-OOM, không có reconnect storm trong log, BE đã gửi `X-Accel-Buffering: no`; khả năng cao tab browser giữ bundle/state cũ hoặc chụp đúng lúc handshake (first-byte vài giây do registry bootstrap). Yêu cầu user Ctrl+F5 + chụp lại nếu còn tái hiện, kèm trạng thái dot (bonus: mở DevTools Network xem request stream).
+
+---
+
+## Entry 123: Polish subtab bar full-width + Detection KV human-readable (font/size/màu)
+
+- **Date**: 2026-09-20
+- **Scope**: Feedback screenshot tab Phát hiện — sub-tabs dồn trái + KV table raw monospaced. FE only.
+- **Thay đổi**:
+  - `.subTabBtn` → `flex: 1 1 0 + min-width: fit-content`, nội dung căn giữa → 7 tabs dàn đều full-width, màn hẹp tự cuộn ngang (chỉ dùng ở SocSignalsPanel, không ảnh hưởng nơi khác).
+  - `renderKVCard` thêm opts `{label, format}` + cột số `.kvNum` (mono/tabular/canh phải); font mặc định trả về sans theo theme (trước mono toàn bảng).
+  - Detection cards dùng label/format riêng: `Ngưỡng (VNĐ)`, `Top %`, `KL tối thiểu (VNĐ)` (= `whale_threshold_vnd`, xác minh BE `signals.py:706`), `Tỷ lệ block tối thiểu`, `Trạng thái` badge Bật/Tắt, `Quét gần nhất` (giờ local + relative), `Chu kỳ quét` (`60 giây`), `Monitor đang chạy`, `Rule đã thấy/phiên`; key lạ fallback prettify snake_case.
+  - `.jobInputRow .searchInput` (`width:100%` → `flex:1 1 220px`) — input VNM và nút Chạy thử về cùng hàng.
+  - i18n +6 keys `det_*` parity VI/EN 1:1 (scan exit 0, 0 removals).
+- **Tests**: detection test assert label/giá trị mới (`Ngưỡng (VNĐ)`, `500.000.000 ₫`, `Top %`, `10%`, badge `Đang bật`).
+- **Gates (output thật)**: tsc 0; vitest signals 36/36; full `__tests__` 92/92 (1 lần fail giữa chừng = flaky SSE overview pre-existing, rerun pass); build PASS 28.84s; lint 0 errors/3559 (= baseline).
+- **Còn lại**: rebuild frontend để xem trên docker dev.
+
+---
+
+## Entry 122: Refactor 7 Signals subtabs lên chuẩn thương mại (fix Z0 container + format + labels + badges)
+
+- **Date**: 2026-09-20
+- **Scope**: Audit từng subtab (Tổng quan / Job Console / Vật chất hóa / Cấu hình / Phát hiện / Lưu trữ / Rules) theo tiêu chuẩn commercial quốc tế + theme hệ thống; refactor FE only (không đổi BE contract).
+- **Root cause screenshot (Z0)**: danh sách rules bọc trong `.matCard` (flex ngang, không wrap) → 8 rules bị ép thành 8 cột, chữ vỡ từng từ. `.rulesRow` có border-top (thiết kế cho stack dọc) nhưng parent ép ngang. Fix: container mới `.rulesList` (flex dọc) — 1 class, triệt để.
+- **Files chính**:
+  - `SocSignalsPanel.tsx`: helpers `ruleFamilyLabel`/`ruleKindLabel(kind,ruleKey)`/`formatRuleValue` (threshold→`50.000.000 ₫`, ratio→`10%`, cooldown→`300 giây`, enabled→badge màu); rows viết lại (chip family/kind + badge Bật/Tắt + meta label:value); top_noisy → bảng 3 cột có header; `formatConfigValue` format số grouping locale; detection test result → badge + rows (bỏ raw `test_result: success`); job console labels + `job_screener_note` (đóng F8); ownership/retention preview titles i18n; materialization execPlan/summary có cấu trúc + separators; tab badge ẩn khi = 0; Top5 i18n (`top_symbols`, `top_signals_count`).
+  - `soc.components.css`: `.matGrid` responsive 2-col (`auto-fit minmax(320px,1fr)`); `.rulesList/.rulesRowInfo/.ruleMetaItem/.ruleMetaValue`; `.noisyGrid/.noisyHeader/.noisyCell/.noisyNum`; `.jobField/.jobFieldLabel`; `.jobInputRow` wrap + align-end.
+  - `vi.js/en.js`: +18 keys `signals_overview.*` parity 1:1 (scanner backfill thêm keys lẻ tính năng khác, 0 removals).
+  - Tests: cập nhật 8 assertions theo UI mới (số grouping, badge Thành công, noisy table, execPlan card+row, select aria-label) — assert mạnh hơn cũ.
+- **Gates (output thật)**: tsc 0; vitest signals 36/36; full `__tests__` 13 files/92 pass (1 lần fail là flaky SSE overview pre-existing, rerun pass, component khác không liên quan diff); build PASS 44.64s; lint 0 errors/3559 warnings (= baseline); i18n:scan exit 0.
+- **Còn lại**: E2E browser visual 1 phiên; quyết định sản phẩm RC2 (feed cuối tuần).
+
+---
+
+## Entry 121: Fix RC1 — SSE 406 với browser thật (EventStreamRenderer) + regression tests
+
+- **Date**: 2026-09-20
+- **Scope**: Subpage Signals báo "Đang kết nối lại..." vĩnh viễn + feed trống. Truy vết reproduce-first trên stack dev live.
+- **Root cause (bằng chứng live)**:
+  - RC1: `GET .../signals/stream/?token=...` → **406** lặp lại trong access log; curl với `Accept: text/event-stream` (header EventSource thật) → 406 `{"detail":"Could not satisfy the request Accept header.","code":"NOT_ACCEPTABLE"}`, không header → 200. DRF `APIView.initial()` content negotiation fail trước `get()` vì `SOCBaseView` chỉ có JSON/Browsable renderer. `overview/stream/` cũng 406. Toàn bộ 13+6 tests cũ dùng `*/*` nên không phát hiện.
+  - RC2: feed trống là đúng-filter hiệu ứng cuối tuần — session mới nhất T7 09-19 chỉ có 1 alert, T6 09-18 có 739 (`_latest_signal_session_date()` = max date). Không phải mất dữ liệu; cần quyết định sản phẩm (giữ vs fallback phiên có dữ liệu).
+- **Files chính**:
+  - BE `service_ops/views/base.py`: thêm `EventStreamRenderer` (`media_type='text/event-stream'`, render() JSON-bytes cho error envelope).
+  - BE `service_ops/views/signals_stream.py` + `overview_stream.py`: `renderer_classes = [EventStreamRenderer]` (+ comment RC1).
+  - Tests: 2 tests signals stream + 1 test overview stream với `HTTP_ACCEPT='text/event-stream'` (200 + content-type + retry/signal content).
+- **Gates**: BE `test_soc_signals_stream + test_soc_overview_stream` **25/25 OK** local venv; system check 0 issues.
+- **Deploy + live verify (2026-09-20)**: `start_dev.ps1` full rebuild (core-runtime COPY src mới, frontend cached) → stack up, core-api healthy, `No queue drift`, smoke API+FE OK. Curl live với `Accept: text/event-stream`: signals stream **200** (trước 406) + body `retry:3000/id:/event:signal/data:{VCI whale...}`; overview stream **200** (trước 406). RC1 đóng hoàn toàn trên môi trường thật.
+- **Còn lại**: chốt quyết định sản phẩm RC2 (giữ max-session vs fallback phiên có dữ liệu).
+
+---
+
+## Entry 120: Fix triệt để findings re-audit Signals 1-col (F1–F5) — badge, tone, i18n, CSS chết, a11y
+
+- **Date**: 2026-09-19
+- **Scope**: Fix toàn bộ findings từ re-audit layout 1 cột + feed 10 cột (SocSignalsPanel). Không đổi layout/grid đã chốt.
+- **Files chính**:
+  - F1 `SocSignalsPanel.tsx:4,1237-1246`: badge severity dùng `...getStatusBadgeStyle(s.severity)` thay `${socStatusColor(...)||"#22d3ee"}22` (invalid CSS — `statusColor()` trả `var(...)`, append `22` thành declaration rác, nền pill không bao giờ render; fallback `||` cũng unreachable).
+  - F2 `socStatusColors.ts:33-69`: `statusTone` thêm `high→warning`, `medium→info`, `low→muted` (BE chỉ gửi 4 mức critical/high/medium/low — `models.py:25-26`; đã grep 17 call sites, không caller nào dựa vào mapping cũ high/medium/low→neutral).
+  - F3 `vi.js:367-374` + `en.js:367-374`: thêm 8 keys `signals_overview.col_*` (symbol/type/direction/severity/title/value/time/state), parity VI/EN 1:1 — header không còn phụ thuộc `defaultValue` TV.
+  - F4 `soc.components.css`: xoá `.signalPrice` + `.severityDot` chết (grep 0 tham chiếu tsx/ts); giữ `.signalsTwoCol` theo comment legacy.
+  - F5 `SocSignalsPanel.tsx:1163-1178`: header `aria-hidden` → `role="row"` + `role="columnheader"` từng span.
+- **Không sửa (có lý do)**: F0 flaky SSE test (qua isolation 2/2, component khác, không liên quan diff); F6 price column (mapper luôn `price: undefined` — xoá đúng, 0 info loss).
+- **Gates (output thật)**: tsc 0; vitest `__tests__` **13 files / 92 PASS**; build PASS 20.52s; eslint 4 files changed 0 errors.
+- **Next**: merge khi user chốt; E2E browser vẫn backlog.
+
+---
+
+## Entry 119: Phản biện độc lập Entry 118 (fix audit-UI) — verify lại toàn bộ claim trên HEAD `2f355431`, PASS không blocker
+
+- **Date**: 2026-09-19
+- **Scope**: Verify độc lập tổng kết Entry 118 (routes, Toast/Confirm migration, locks, gates, commit/push). Chạy lại mọi gate thật trên `HEAD == origin/dev == 2f355431`, không tin số liệu cũ.
+- **Xác nhận đúng (bằng chứng file:line + lệnh chạy lại)**:
+  - Commit/push: `git show --stat HEAD` = đúng 57 files, `+2948/-197`; `git rev-parse HEAD` = `git rev-parse origin/dev` = `2f355431` — push thật, không phải claim suông.
+  - `tsc --noEmit` → 0 lỗi; `npm run build` → PASS 29.45s (chunk-size warning pre-existing, không phải lỗi).
+  - `npm run lint` → **0 errors / 3559 warnings** (đúng baseline claim).
+  - `npm run test:components` → **47 files / 231 tests PASS** (khớp claim).
+  - `npm test -- --runInBand` → **17 suites / 235 tests PASS** (khớp claim).
+  - `npm run check:shell` → dom-landmarks PASS, **check:tokens PASS (68 allowlisted hex, 0 violations)** — xác nhận `soc.components.css:3221` đã đổi khỏi `#5078a8`; stock-detail-shell PASS.
+  - `npm run check:ts-imports` → PASS (guard mới hoạt động, không phải no-op).
+  - `npm run check:vip` → **vẫn FAIL** với đúng lỗi `ERR_UNKNOWN_FILE_EXTENSION .css` như claim — xác nhận đây là pre-existing loader issue, không phải regression từ Entry 118.
+  - Routes: `main.tsx:127-128` có cả `whale-alerts` và `vip/local-control`; `route-catalog-contract.component.test.ts` là test thật (regex parse `main.tsx` runtime source qua `?raw`, không phải test giả định) — đúng cơ chế "tự phát hiện orphan qua contract test".
+  - `eslint.config.js:54,96` có `'no-alert': 'error'` ở cả 2 block (JS+TS) — khớp claim lock.
+  - Grep toàn `packages/web/src` cho `\balert\(` / `\bwindow\.alert\(`/`\bwindow\.confirm\(` → **0 kết quả còn sót**; toàn bộ 29 match còn lại đều là `await confirm({...})` (ConfirmModal hook hợp lệ) — xác nhận native `alert()`/`window.confirm()` đã bị loại bỏ hoàn toàn khỏi codebase, không chỉ 23 điểm audit liệt kê.
+  - i18n: `shellFallback` tồn tại đủ 6 keys ở cả `vi.js:21-27` và `en.js:21-27`, parity 1:1 (không thiếu key nào phía EN).
+  - Beta badge: `SocSignalsPanel.tsx:1478` render `t("common.beta")` qua `styles.betaBadge` trước `smoke_label` — đúng vị trí claim.
+- **Không phát hiện sai lệch nào giữa claim và code/gate thật.** Đây là lần đầu trong thread audit-UI mà toàn bộ số liệu báo cáo khớp 100% khi verify độc lập (khác Entry 115/117 đều có ít nhất 1 finding sai).
+- **Verdict**: Entry 118 đã đóng đúng F-04/F-06/F-08 + hạ F-05 xuống thực tế PASS. `check:vip` là nợ kỹ thuật riêng biệt (loader Node không parse `.css` trong script kiểm tra, không phải regression, không chặn release UI chính). Verdict tổng thể của audit-UI: **commercial-ready về mặt build/lint/test/token/route-contract**; phần còn thiếu để đóng verdict hoàn toàn là 1 phiên E2E browser thật (auth → VIP/capability → payment) — đúng như Entry 118 tự nhận, không phải điểm bị bỏ sót.
+- **Next**: (a) fix `check:vip` loader (mock/stub import CSS trong script kiểm tra, hoặc dùng cùng cơ chế transform như vitest) khi có capacity — không blocker; (b) lên lịch phiên E2E Playwright thật cho auth/VIP/payment.
+
+---
+
 ## Entry 118: Fix audit-UI findings F-04→F-08 + locks (no-alert, route-contract, ts-imports) — DoD xanh
 
 - **Date**: 2026-09-19

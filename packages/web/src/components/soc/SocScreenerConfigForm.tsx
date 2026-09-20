@@ -9,6 +9,10 @@ interface SocScreenerConfigFormProps {
     alert_cooldown_seconds?: number;
     max_alerts_per_symbol_per_hour?: number;
     result_retention_hours?: number;
+    // SC-05: the panel passes the normalized envelope `{...payload, config,
+    // config_payload}` — real fields live under `config_payload` (alias `config`).
+    config_payload?: Record<string, unknown>;
+    config?: Record<string, unknown>;
   };
   onSave: (config: {
     scan_interval_seconds?: number;
@@ -21,27 +25,41 @@ interface SocScreenerConfigFormProps {
   loading?: boolean;
 }
 
+/**
+ * SC-05: resolve the editable config source. The panel passes the normalized
+ * envelope `{...payload, config, config_payload}` where the real fields live
+ * under `config_payload` (alias `config`); a flat payload is used as-is.
+ */
+export function resolveScreenerConfigSource(initialConfig: unknown): Record<string, unknown> {
+  const env = (initialConfig ?? {}) as Record<string, unknown>;
+  const nested = (env.config_payload ?? env.config) as unknown;
+  if (nested && typeof nested === "object") return nested as Record<string, unknown>;
+  return env;
+}
+
 function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
   const { t } = useI18n();
   const { initialConfig, onSave, onCancel, loading = false } = props;
+  const source = resolveScreenerConfigSource(initialConfig);
 
   const [config, setConfig] = useState({
-    scan_interval_seconds: initialConfig.scan_interval_seconds ?? 60,
-    max_symbols_per_scan: initialConfig.max_symbols_per_scan ?? 2000,
-    alert_cooldown_seconds: initialConfig.alert_cooldown_seconds ?? 300,
-    max_alerts_per_symbol_per_hour: initialConfig.max_alerts_per_symbol_per_hour ?? 5,
-    result_retention_hours: initialConfig.result_retention_hours ?? 24,
+    scan_interval_seconds: (source.scan_interval_seconds as number | undefined) ?? 60,
+    max_symbols_per_scan: (source.max_symbols_per_scan as number | undefined) ?? 2000,
+    alert_cooldown_seconds: (source.alert_cooldown_seconds as number | undefined) ?? 300,
+    max_alerts_per_symbol_per_hour: (source.max_alerts_per_symbol_per_hour as number | undefined) ?? 5,
+    result_retention_hours: (source.result_retention_hours as number | undefined) ?? 24,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    const next = resolveScreenerConfigSource(initialConfig);
     setConfig({
-      scan_interval_seconds: initialConfig.scan_interval_seconds ?? 60,
-      max_symbols_per_scan: initialConfig.max_symbols_per_scan ?? 2000,
-      alert_cooldown_seconds: initialConfig.alert_cooldown_seconds ?? 300,
-      max_alerts_per_symbol_per_hour: initialConfig.max_alerts_per_symbol_per_hour ?? 5,
-      result_retention_hours: initialConfig.result_retention_hours ?? 24,
+      scan_interval_seconds: (next.scan_interval_seconds as number | undefined) ?? 60,
+      max_symbols_per_scan: (next.max_symbols_per_scan as number | undefined) ?? 2000,
+      alert_cooldown_seconds: (next.alert_cooldown_seconds as number | undefined) ?? 300,
+      max_alerts_per_symbol_per_hour: (next.max_alerts_per_symbol_per_hour as number | undefined) ?? 5,
+      result_retention_hours: (next.result_retention_hours as number | undefined) ?? 24,
     });
   }, [initialConfig]);
 
@@ -123,7 +141,7 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
         t("soc.screener.config.advanced")
       ),
       createElement("div", { className: styles.configEditor,  },
-        JSON.stringify(props.initialConfig, null, 2)
+        JSON.stringify(resolveScreenerConfigSource(props.initialConfig), null, 2)
       ),
     ),
     createElement("div", { },

@@ -78,7 +78,7 @@ export function ScreenerFilterBuilder({ conditions, onChange, maxConditions = 20
             minWidth: "70px",
           }
         },
-        LOGIC_OPTIONS.map((o) => createElement("option", { key: o.value, value: o.value }, t("screener.logic." + o.value.toLowerCase())))
+        LOGIC_OPTIONS.map((o) => createElement("option", { key: o.value, value: o.value }, t("screener.logic." + o.value)))
       ),
       index === 0 && createElement("span", { style: { width: "70px", color: "var(--text-muted, #94a3b8)", fontSize: "12px" } }, "\u2014"),
       createElement(

@@ -101,6 +101,70 @@ class SignalsStreamContractTestCase(SignalsStreamBaseTestCase):
         self.assertEqual(rsp['Cache-Control'], 'no-cache')
         self.assertIn('X-Accel-Buffering', rsp)
 
+    def test_eventsource_accept_header_returns_200_not_406(self):
+        # RC1 regression: browser EventSource thật luôn gửi
+        # `Accept: text/event-stream`. DRF content negotiation mặc định
+        # (JSONRenderer/BrowsableAPIRenderer) trả 406 trước khi get() chạy,
+        # gây reconnect loop vô hạn — trong khi test client (`*/*`) vẫn 200
+        # nên toàn bộ suite cũ không phát hiện được.
+        rsp = self.client.get(
+            '/api/soc/signals/stream/?max_loops=1',
+            HTTP_ACCEPT='text/event-stream',
+        )
+        self.assertEqual(rsp.status_code, status.HTTP_200_OK)
+        self.assertEqual(rsp['Content-Type'], 'text/event-stream')
+        content = _read_stream_content(rsp)
+        self.assertIn('retry: 3000', content)
+
+    def test_eventsource_accept_header_with_since_replay(self):
+        rsp = self.client.get(
+            '/api/soc/signals/stream/?since=0&max_loops=2',
+            HTTP_ACCEPT='text/event-stream',
+        )
+        self.assertEqual(rsp.status_code, status.HTTP_200_OK)
+        content = _read_stream_content(rsp)
+        self.assertIn('event: signal', content)
+        self.assertIn('"symbol": "VCI"', content)
+
+
+class SignalsStreamFlushTestCase(SignalsStreamBaseTestCase):
+    """RC1-phần-2: infinite stream phải flush incremental, không buffer đến khi xong.
+
+    Django `StreamingHttpResponse.__aiter__` tiêu thụ sync iterator bằng
+    `sync_to_async(list)` — generator vô hạn không bao giờ xong → 0 byte.
+    `SSEStreamingHttpResponse` override `__aiter__` để yield từng chunk.
+    """
+
+    def test_response_uses_flush_streaming_class(self):
+        from service_ops.views.base import SSEStreamingHttpResponse
+
+        rsp = self.client.get('/api/soc/signals/stream/?max_loops=1')
+        self.assertEqual(rsp.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(rsp, SSEStreamingHttpResponse)
+
+    def test_async_iteration_yields_first_chunk_without_consuming_all(self):
+        import asyncio
+        import time
+        from contextlib import aclosing
+
+        from service_ops.views.base import SSEStreamingHttpResponse
+
+        def infinite():
+            yield 'retry: 3000\n\n'
+            while True:
+                time.sleep(30)
+                yield ': ping\n\n'
+
+        async def first_chunk():
+            async with aclosing(SSEStreamingHttpResponse(infinite()).__aiter__()) as it:
+                async for chunk in it:
+                    return chunk
+            return None
+
+        # Code cũ (list toàn bộ generator) sẽ treo đến timeout 10s rồi fail.
+        first = asyncio.run(asyncio.wait_for(first_chunk(), timeout=10))
+        self.assertEqual(first, b'retry: 3000\n\n')
+
     def test_retry_and_ping_present(self):
         rsp = self.client.get('/api/soc/signals/stream/?max_loops=2')
         content = _read_stream_content(rsp)

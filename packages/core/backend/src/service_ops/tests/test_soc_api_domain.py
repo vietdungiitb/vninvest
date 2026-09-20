@@ -498,21 +498,94 @@ class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(history_response.json()['count'], 1)
         self.assertEqual(history_response.json()['results'][0]['symbol'], 'VCI')
 
-    def test_manual_scan_creates_dispatch_run_log(self):
-        response = self.client.post(
-            '/api/soc/screener/manual-scan/',
-            {'symbols': ['VCI', 'SSI']},
+    def test_manual_scan_evaluates_global_rules(self):
+        # SC-03 bridge: manual scan really evaluates enabled global rules
+        # (conditions array in rule `value`, user-engine format) against
+        # latest snapshots instead of queueing a log nobody consumes.
+        from datetime import date, timedelta
+
+        from unittest import mock as _mock
+
+        from market_data.models import DailyPrice
+        from market_serving.models import SymbolSnapshot
+
+        session = date.today()
+        for sym in ('VCI', 'SSI'):
+            SymbolSnapshot.objects.create(symbol=sym, session_date=session, price=20.0, volume=500000)
+            for i in range(40):
+                close = 10.0 + i * 0.25
+                DailyPrice.objects.create(
+                    symbol=sym,
+                    date=session - timedelta(days=40 - i),
+                    open=close - 0.2,
+                    high=close + 0.3,
+                    low=close - 0.4,
+                    close=close,
+                    volume=100000,
+                )
+        rule_resp = self.client.post(
+            '/api/soc/screener/rules/',
+            {'name': 'Close GT', 'type': 'custom',
+             'value': [{'field': 'close', 'op': 'gt', 'value': 5, 'logic': 'AND'}]},
             format='json',
         )
+        self.assertEqual(rule_resp.status_code, status.HTTP_201_CREATED)
 
-        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
-        self.assertEqual(response.json()['status'], 'queued')
-        self.assertTrue(
-            ServiceRunLog.objects.filter(
-                service__service_key='screener_scan_dispatcher',
-                status='queued',
-            ).exists()
+        with _mock.patch(
+            'market_data.vnbroker_adapter.get_company_financials_response',
+            return_value={'financials': {}},
+        ):
+            response = self.client.post(
+                '/api/soc/screener/manual-scan/',
+                {'symbols': ['VCI', 'SSI']},
+                format='json',
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['status'], 'completed')
+        self.assertEqual(data['symbols_count'], 2)
+        self.assertEqual(data['rules_evaluated'], 1)
+        self.assertEqual(data['rules_skipped'], [])
+        matched_symbols = sorted(m['symbol'] for m in data['matched'])
+        self.assertEqual(matched_symbols, ['SSI', 'VCI'])
+        run_log = ServiceRunLog.objects.get(pk=data['run_log_id'])
+        self.assertEqual(run_log.status, 'success')
+        self.assertEqual(run_log.output_summary['matched_count'], 2)
+
+    def test_manual_scan_empty_universe_completes_without_data(self):
+        response = self.client.post(
+            '/api/soc/screener/manual-scan/',
+            {'symbols': ['VCI']},
+            format='json',
         )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['status'], 'completed')
+        self.assertEqual(data['matched'], [])
+        self.assertIsNone(data['session_date'])
+
+    def test_manual_scan_rejects_empty_symbols(self):
+        response = self.client.post('/api/soc/screener/manual-scan/', {'symbols': []}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_manual_scan_skips_rule_without_conditions(self):
+        self.client.post(
+            '/api/soc/screener/rules/',
+            {'name': 'NoConds', 'type': 'custom', 'value': {}},
+            format='json',
+        )
+        response = self.client.post(
+            '/api/soc/screener/manual-scan/',
+            {'symbols': ['VCI']},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['status'], 'completed')
+        self.assertEqual(data['rules_evaluated'], 0)
+        self.assertEqual(len(data['rules_skipped']), 1)
+        self.assertEqual(data['rules_skipped'][0]['reason'], 'no-conditions')
 
     def test_screener_ownership_endpoint_returns_native_write_status(self):
         response = self.client.get('/api/soc/screener/ownership/')
@@ -521,15 +594,15 @@ class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(response.json()['domain'], 'screener')
         self.assertTrue(response.json()['can_apply'])
 
-    def test_rules_run_alias_queues_manual_scan(self):
+    def test_rules_run_alias_evaluates_like_manual_scan(self):
         response = self.client.post(
             '/api/soc/screener/rules/run/',
             {'symbols': ['VCI']},
             format='json',
         )
 
-        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
-        self.assertEqual(response.json()['status'], 'queued')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()['status'], 'completed')
 
     def test_screener_routes_appear_in_openapi_schema(self):
         response = self.client.get('/core/v1/schema/')
@@ -553,9 +626,9 @@ class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
         self.assertIn('requestBody', rules_path['post'])
         self.assertEqual(results_path['get']['summary'], 'Lấy kết quả scan Screener')
         self.assertEqual(history_path['get']['summary'], 'Lấy alert history Screener')
-        self.assertEqual(manual_scan_path['post']['summary'], 'Queue manual scan Screener')
+        self.assertEqual(manual_scan_path['post']['summary'], 'Run manual scan Screener')
         self.assertIn('requestBody', manual_scan_path['post'])
-        self.assertEqual(rules_run_path['post']['summary'], 'Queue rules run Screener')
+        self.assertEqual(rules_run_path['post']['summary'], 'Run rules Screener')
         self.assertIn('requestBody', rules_run_path['post'])
         self.assertEqual(ownership_path['get']['summary'], 'Lấy ownership Screener')
         self.assertEqual(config_path['get']['security'], [{'CorePATBearer': []}, {'cookieAuth': []}])

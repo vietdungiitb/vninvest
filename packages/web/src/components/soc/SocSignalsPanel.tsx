@@ -1,7 +1,7 @@
 import { createElement, useCallback, useEffect, useState, useMemo, useRef, type ReactNode } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
-import { toneColor, statusColor as socStatusColor } from "./socStatusColors.js";
+import { toneColor, statusColor as socStatusColor, getStatusBadgeStyle } from "./socStatusColors.js";
 import { formatLastCheck } from "./socTime.js";
 import { LucideIcon } from "../ui/lucide-icon.js";
 import { useSignalStream } from "../../hooks/useSignalStream.js";
@@ -25,6 +25,7 @@ interface RecentSignal {
   significance?: string;
   rule_name?: string;
   severity?: string;
+  title?: string;
 }
 
 /** Raw item BE trả về: {recent:[{id,symbol,severity,metadata,session_date,value,side,timestamp,title,...}]} */
@@ -41,6 +42,7 @@ interface RecentRawItem {
   session_date?: string | null;
   title?: string;
 }
+
 
 interface RecentEnvelope {
   recent?: RecentRawItem[];
@@ -181,6 +183,7 @@ export function mapRecentItem(raw: RecentRawItem, type: RecentSignal["type"]): R
     metadata: raw.metadata ?? {},
     session_date: raw.session_date ?? null,
     severity: raw.severity,
+    title: raw.title,
   };
 }
 
@@ -1157,6 +1160,22 @@ export function SocSignalsPanel() {
   };
 
   // ─── Signal row ────────────────────────────────────────────────────────
+  // ─── Header hàng cột cho luồng tín hiệu (đối chiếu cột trong renderSignalRow) ─
+  // Dùng role row/columnheader (thay vì aria-hidden) để screen reader vẫn đọc được ngữ cảnh cột.
+  const renderFeedColumnHeader = () =>
+    createElement("div", { className: styles.signalFeedHeader, role: "row" },
+      createElement("span", { role: "columnheader" }),
+      createElement("span", { role: "columnheader" }),
+      createElement("span", { role: "columnheader" }, t("soc.signals_overview.col_symbol", { defaultValue: "Mã" })),
+      createElement("span", { role: "columnheader" }, t("soc.signals_overview.col_type", { defaultValue: "Nguồn" })),
+      createElement("span", { role: "columnheader" }, t("soc.signals_overview.col_direction", { defaultValue: "Hướng" })),
+      createElement("span", { role: "columnheader" }, t("soc.signals_overview.col_severity", { defaultValue: "Mức độ" })),
+      createElement("span", { role: "columnheader" }, t("soc.signals_overview.col_title", { defaultValue: "Mô tả tín hiệu" })),
+      createElement("span", { role: "columnheader", style: { textAlign: "right" as const } }, t("soc.signals_overview.col_value", { defaultValue: "Giá trị" })),
+      createElement("span", { role: "columnheader", style: { textAlign: "right" as const } }, t("soc.signals_overview.col_time", { defaultValue: "Thời gian" })),
+      createElement("span", { role: "columnheader" }, t("soc.signals_overview.col_state", { defaultValue: "Xử lý" })),
+    );
+
   const renderSignalRow = (s: RecentSignal, idx: number) => {
     const key = signalKey(s, idx);
     const isExpanded = expandedId === key;
@@ -1195,6 +1214,7 @@ export function SocSignalsPanel() {
           tabIndex: 0,
           "aria-expanded": isExpanded,
         },
+        // Cột 1: checkbox chọn hàng loạt — luôn giữ ô để không lệch lưới cột
         selectable
           ? createElement("input", {
               type: "checkbox",
@@ -1203,37 +1223,45 @@ export function SocSignalsPanel() {
               onClick: (e: { stopPropagation: () => void }) => e.stopPropagation(),
               onChange: () => toggleSelect(delivery.delivery_id),
             })
-          : null,
+          : createElement("span", null),
+        // Cột 2: icon loại tín hiệu
         createElement("div", {
           className: styles.signalIcon,
           style: { background: TYPE_BG[s.type] ?? "transparent", color: TYPE_COLORS[s.type] },
         }, createElement(LucideIcon, { name: TYPE_ICONS[s.type] || "Activity", className: "h-3.5 w-3.5" })),
+        // Cột 3: mã CK
         createElement("div", { className: styles.signalSymbol }, s.symbol),
+        // Cột 4: loại nguồn (Whale/Dark Pool/Screener) — trước đây chỉ có icon, giờ thêm chữ
+        createElement("div", { className: styles.signalTypeLabel, title: signalTypeLabel(s.type) }, signalTypeLabel(s.type)),
+        // Cột 5: hướng lệnh
         createElement("div", { className: `${styles.signalLabel} ${action.cls}` }, action.text),
+        // Cột 6: mức độ nghiêm trọng — badge có chữ, không chỉ chấm màu
         s.severity
           ? createElement("span", {
-              className: styles.severityDot,
-              style: { background: socStatusColor(s.severity) || (s.severity.toLowerCase()==="high" ? "#f59e0b" : s.severity.toLowerCase()==="critical" ? "#ef4444" : "#22d3ee") },
+              className: styles.signalSeverityBadge,
+              style: {
+                ...getStatusBadgeStyle(s.severity),
+              },
               title: s.severity,
-              "aria-label": s.severity,
-            })
-          : null,
-        createElement("div", { className: styles.signalVolume },
-          s.volume != null ? formatVolume(s.volume) : "",
+            }, s.severity)
+          : createElement("span", { className: styles.signalSeverityBadge, style: { color: "var(--text-muted, #94a3b8)" } }, "\u2014"),
+        // Cột 7: mô tả/tên rule để đánh giá nhanh không cần mở rộng row
+        createElement("div", { className: styles.signalTitle, title: s.title || "" }, s.title || "\u2014"),
+        // Cột 8: giá trị (KL/giá trị lệnh)
+        createElement("div", { className: styles.signalVolume, title: s.volume != null ? String(s.volume) : "" },
+          s.volume != null ? formatVolume(s.volume) : "\u2014",
         ),
-        s.price != null
-          ? createElement("div", { className: styles.signalPrice, title: String(s.price) }, typeof s.price === "number" ? s.price.toLocaleString() + "₫" : String(s.price))
-          : null,
+        // Cột 9: thời gian phát hiện
         createElement("div", { className: styles.signalTime, title: when.title },
           when.display,
         ),
-        // W2.2: cột trạng thái delivery
+        // Cột 10: trạng thái xử lý (delivery)
         delivery
           ? createElement("div", {
               className: `${styles.signalLabel} ${deliveryBadgeCls(delivery.delivery_state)}`,
               title: deliveryStateLabel(delivery.delivery_state),
             }, deliveryStateLabel(delivery.delivery_state))
-          : null,
+          : createElement("div", { className: styles.signalLabel, style: { opacity: 0.5 } }, "\u2014"),
       ),
       isExpanded && metaJson
         ? createElement("div", { className: styles.signalMeta },
@@ -1357,11 +1385,13 @@ export function SocSignalsPanel() {
       ),
       top5.length >= 5 && !(typeof process !== "undefined" && (process as unknown as { env?: { NODE_ENV?: string } }).env?.NODE_ENV === "test")
         ? createElement("div", { style: { marginTop: "0.75rem" } },
-            createElement("h5", { style: { fontSize: "0.75rem", fontWeight: 700, margin: "0 0 0.35rem", color: "var(--text-primary)" } }, "Top 5 mã"),
+            createElement("h5", { style: { fontSize: "0.75rem", fontWeight: 700, margin: "0 0 0.35rem", color: "var(--text-primary)" } },
+              t("soc.signals_overview.top_symbols", { defaultValue: "Top 5 mã" })),
             ...top5.map(([sym, cnt]) =>
               createElement("div", { key: sym, style: { display: "flex", justifyContent: "space-between", fontSize: "0.75rem", padding: "0.2rem 0", borderBottom: "1px solid rgba(var(--soc-rgb-5078a8)/0.08)" } },
                 createElement("span", { style: { fontWeight: 600 } }, sym),
-                createElement("span", { style: { color: "var(--text-muted)" } }, `${cnt} tín hiệu`),
+                createElement("span", { style: { color: "var(--text-muted)" } },
+                  t("soc.signals_overview.top_signals_count", { cnt, defaultValue: `${cnt} tín hiệu` })),
               ),
             ),
           )
@@ -1374,29 +1404,86 @@ export function SocSignalsPanel() {
     if (v == null) return "—";
     if (Array.isArray(v)) return v.length ? v.map(String).join(", ") : "—";
     if (typeof v === "object") return JSON.stringify(v);
+    if (typeof v === "number" && Number.isFinite(v)) return v.toLocaleString(localeTag || "vi-VN");
     return String(v);
   };
 
-  const renderKVCard = (title: string, obj: Record<string, unknown> | null | undefined, keyPrefix: string) =>
+  interface KVCardOpts {
+    label?: (key: string) => string;
+    format?: (key: string, value: unknown) => ReactNode;
+  }
+
+  const renderKVCard = (title: string, obj: Record<string, unknown> | null | undefined, keyPrefix: string, opts?: KVCardOpts) =>
     createElement("div", { className: styles.kvTableWrap, key: keyPrefix },
       createElement("div", { className: styles.matCardLabel, style: { padding: "0.5rem 0.6rem", borderBottom: "1px solid rgba(var(--soc-rgb-5078a8)/0.12)" } }, title),
       createElement("table", { className: styles.kvTable },
         createElement("thead", null,
           createElement("tr", null,
             createElement("th", { className: styles.kvKey }, "Trường"),
-            createElement("th", { className: styles.kvVal }, "Giá trị"),
+            createElement("th", { className: `${styles.kvVal} ${styles.kvNum}` }, "Giá trị"),
           ),
         ),
         createElement("tbody", null,
-          ...Object.entries(obj ?? {}).map(([k, v]) =>
-            createElement("tr", { key: k },
-              createElement("td", { className: styles.kvKey }, k),
-              createElement("td", { className: styles.kvVal, title: String(v ?? "") }, formatConfigValue(v)),
-            ),
-          ),
+          ...Object.entries(obj ?? {}).map(([k, v]) => {
+            const cell = opts?.format ? opts.format(k, v) : formatConfigValue(v);
+            const numeric = typeof v === "number" && Number.isFinite(v);
+            return createElement("tr", { key: k },
+              createElement("td", { className: styles.kvKey, title: k }, opts?.label ? opts.label(k) : k),
+              createElement("td", {
+                className: `${styles.kvVal}${numeric ? ` ${styles.kvNum}` : ""}`,
+                title: typeof cell === "string" ? cell : String(v ?? ""),
+              }, cell as ReactNode),
+            );
+          }),
         ),
       ),
     );
+
+  const detectionFieldLabel = (key: string): string => {
+    const map: Record<string, string> = {
+      enabled: t("soc.signals_overview.det_status", { defaultValue: "Trạng thái" }),
+      threshold_vnd: t("soc.signals_overview.rule_kind_threshold", { defaultValue: "Ngưỡng (VNĐ)" }),
+      top_pct: t("soc.signals_overview.rule_kind_top_pct", { defaultValue: "Top %" }),
+      min_volume: t("soc.signals_overview.det_min_volume", { defaultValue: "KL tối thiểu (VNĐ)" }),
+      block_ratio_min: t("soc.signals_overview.rule_kind_block_ratio", { defaultValue: "Tỷ lệ block tối thiểu" }),
+      last_scan_at: t("soc.signals_overview.det_last_scan", { defaultValue: "Quét gần nhất" }),
+      active_monitors: t("soc.signals_overview.det_monitors", { defaultValue: "Monitor đang chạy" }),
+      scan_interval_seconds: t("soc.signals_overview.det_interval", { defaultValue: "Chu kỳ quét" }),
+      rules_seen_session: t("soc.signals_overview.det_rules_seen", { defaultValue: "Rule đã thấy/phiên" }),
+    };
+    if (map[key] != null) return map[key];
+    return key.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+  };
+
+  const formatDetectionValue = (key: string, v: unknown): ReactNode => {
+    if (v == null || v === "") return "—";
+    const tag = localeTag || "vi-VN";
+    if (key === "enabled") {
+      const on = v === true || String(v).toLowerCase() === "true";
+      return createElement("span", {
+        className: styles.kvBadge,
+        style: on
+          ? { ...getStatusBadgeStyle("success") }
+          : { color: "var(--text-muted, #94a3b8)", background: "rgba(148, 163, 184, 0.15)" },
+      }, on
+        ? t("soc.signals_overview.rule_enabled", { defaultValue: "Đang bật" })
+        : t("soc.signals_overview.rule_disabled", { defaultValue: "Đang tắt" }));
+    }
+    const n = typeof v === "number" ? v : Number(v);
+    if (typeof v === "number" && Number.isFinite(n)) {
+      if (key === "threshold_vnd" || key === "min_volume") return `${n.toLocaleString(tag)} ₫`;
+      if (key === "top_pct" || key === "block_ratio_min") return `${Math.round(n * 100)}%`;
+      if (key === "scan_interval_seconds") {
+        return `${n.toLocaleString(tag)} ${t("soc.signals_overview.rule_seconds", { defaultValue: "giây" })}`;
+      }
+      return n.toLocaleString(tag);
+    }
+    if (key === "last_scan_at" && typeof v === "string") {
+      const when = formatLastCheck(v, localeTag, t);
+      return createElement("span", { title: when.title }, when.display);
+    }
+    return formatConfigValue(v);
+  };
 
   const renderConfigTab = () => {
     if (configTab.loading) {
@@ -1411,7 +1498,7 @@ export function SocSignalsPanel() {
       configTab.error ? createElement("div", { className: styles.inlineError }, configTab.error) : null,
       createElement("div", { className: styles.matGrid },
         renderKVCard(t("soc.signals_overview.config_tab"), cfg, "cfg"),
-        renderKVCard("ownership", {
+        renderKVCard(t("soc.signals_overview.config_ownership_title", { defaultValue: "Quyền sở hữu" }), {
           mode: own.mode,
           can_apply: own.can_apply,
           owner_team: own.owner_team,
@@ -1449,9 +1536,12 @@ export function SocSignalsPanel() {
     return createElement("div", null,
       detectionTab.error ? createElement("div", { className: styles.inlineError }, detectionTab.error) : null,
       createElement("div", { className: styles.matGrid },
-        renderKVCard(signalTypeLabel("whale"), detectionTab.data?.whale, "det-whale"),
-        renderKVCard(signalTypeLabel("dark_pool"), detectionTab.data?.dark, "det-dark"),
-        renderKVCard(signalTypeLabel("screener"), detectionTab.data?.screener, "det-screener"),
+        renderKVCard(signalTypeLabel("whale"), detectionTab.data?.whale, "det-whale",
+          { label: detectionFieldLabel, format: formatDetectionValue }),
+        renderKVCard(signalTypeLabel("dark_pool"), detectionTab.data?.dark, "det-dark",
+          { label: detectionFieldLabel, format: formatDetectionValue }),
+        renderKVCard(signalTypeLabel("screener"), detectionTab.data?.screener, "det-screener",
+          { label: detectionFieldLabel, format: formatDetectionValue }),
       ),
       createElement("div", { className: styles.jobInputRow },
         createElement("input", {
@@ -1470,8 +1560,26 @@ export function SocSignalsPanel() {
           : t("soc.signals_overview.test_button", { defaultValue: "Chạy thử" })),
       ),
       testResult
-        ? createElement("div", { },
-            `test_result: ${formatConfigValue(testResult.test_result)}, detection_possible: ${formatConfigValue(testResult.detection_possible)}, symbol: ${formatConfigValue(testResult.symbol)}`,
+        ? createElement("div", { className: styles.matCard, style: { display: "block", marginTop: "0.5rem" } },
+            createElement("div", { style: { display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" } },
+              createElement("span", {
+                className: styles.signalLabel,
+                style: { ...getStatusBadgeStyle(String(testResult.test_result ?? "")), fontSize: "0.72rem" },
+              }, String(testResult.test_result ?? "").toLowerCase() === "success"
+                ? t("soc.signals_overview.test_success", { defaultValue: "Thành công" })
+                : t("soc.signals_overview.test_failed", { defaultValue: "Thất bại" })),
+              createElement("span", { className: styles.ruleMetaItem },
+                `${t("soc.signals_overview.symbol_placeholder")}: `,
+                createElement("span", { className: styles.ruleMetaValue }, String(testResult.symbol ?? testSymbol.trim().toUpperCase()))),
+              testResult.detection_possible != null
+                ? createElement("span", { className: styles.ruleMetaItem },
+                    `${t("soc.signals_overview.test_detection_possible", { defaultValue: "Có thể phát hiện" })}: `,
+                    createElement("span", { className: styles.ruleMetaValue },
+                      testResult.detection_possible === true || String(testResult.detection_possible).toLowerCase() === "true"
+                        ? t("soc.signals_overview.test_yes", { defaultValue: "Có" })
+                        : t("soc.signals_overview.test_no", { defaultValue: "Không" })))
+                : null,
+            ),
           )
         : null,
       createElement("div", { },
@@ -1520,8 +1628,8 @@ export function SocSignalsPanel() {
       retentionPreview.error ? createElement("div", { className: styles.inlineError }, retentionPreview.error) : null,
       preview
         ? createElement("div", { className: styles.matGrid },
-            renderKVCard("retention_days", preview.retention_days, "pv-days"),
-            renderKVCard("impact", preview.impact, "pv-impact"),
+            renderKVCard(t("soc.signals_overview.retention_days_title", { defaultValue: "Số ngày lưu" }), preview.retention_days, "pv-days"),
+            renderKVCard(t("soc.signals_overview.retention_impact_title", { defaultValue: "Ảnh hưởng" }), preview.impact, "pv-impact"),
           )
         : null,
       createElement("div", { }, t("soc.signals_overview.bridge_write_note", { defaultValue: "SOC chỉ đọc — ghi cấu hình qua service chủ sở hữu (bridge-write)." })),
@@ -1531,23 +1639,31 @@ export function SocSignalsPanel() {
   // ─── Job console tab ───────────────────────────────────────────────────
   const renderJobConsoleTab = () =>
     createElement("div", null,
-      createElement("div", { className: styles.jobInputRow },
-        createElement("select", {
-          className: styles.jobDomainSelect,
-          value: jobDomain,
-          onChange: (e: { target: { value: string } }) => setJobDomain(e.target.value),
-        },
-          createElement("option", { value: "whale" }, signalTypeLabel("whale")),
-          createElement("option", { value: "dark_pool" }, signalTypeLabel("dark_pool")),
+      createElement("div", { className: styles.jobInputRow, style: { alignItems: "flex-end", flexWrap: "wrap" } },
+        createElement("div", { className: styles.jobField },
+          createElement("span", { className: styles.jobFieldLabel }, t("soc.signals_overview.job_domain_label", { defaultValue: "Nguồn tín hiệu" })),
+          createElement("select", {
+            className: styles.jobDomainSelect,
+            value: jobDomain,
+            "aria-label": t("soc.signals_overview.job_domain_label", { defaultValue: "Nguồn tín hiệu" }),
+            onChange: (e: { target: { value: string } }) => setJobDomain(e.target.value),
+          },
+            createElement("option", { value: "whale" }, signalTypeLabel("whale")),
+            createElement("option", { value: "dark_pool" }, signalTypeLabel("dark_pool")),
+          ),
         ),
-        createElement("input", {
-          className: styles.searchInput,
-          type: "text",
-          placeholder: t("soc.signals_overview.symbol_placeholder"),
-          value: jobSymbol,
-          onChange: (e: { target: { value: string } }) => setJobSymbol(e.target.value.toUpperCase()),
+        createElement("div", { className: `${styles.jobField} ${styles.jobFieldGrow}` },
+          createElement("span", { className: styles.jobFieldLabel }, t("soc.signals_overview.job_symbol_label", { defaultValue: "Mã cổ phiếu" })),
+          createElement("input", {
+            className: styles.searchInput,
+            type: "text",
+            placeholder: t("soc.signals_overview.symbol_placeholder"),
+            "aria-label": t("soc.signals_overview.job_symbol_label", { defaultValue: "Mã cổ phiếu" }),
+            value: jobSymbol,
+            onChange: (e: { target: { value: string } }) => setJobSymbol(e.target.value.toUpperCase()),
 
-        }),
+          }),
+        ),
         createElement("button", {
           className: styles.runBtn,
           disabled: jobLoading || jobPolling || !jobSymbol.trim(),
@@ -1558,8 +1674,11 @@ export function SocSignalsPanel() {
             : t("soc.signals_overview.run_job"),
         ),
       ),
-      createElement("div", { },
+      createElement("div", { className: styles.triageNote },
         t("soc.signals_overview.job_console_hint"),
+      ),
+      createElement("div", { className: styles.triageNote, style: { marginTop: "0.25rem" } },
+        t("soc.signals_overview.job_screener_note", { defaultValue: "Screener không chạy ở đây — dùng Bộ lọc → Quét thủ công." }),
       ),
       jobRunId != null
         ? createElement("div", { },
@@ -1667,20 +1786,31 @@ export function SocSignalsPanel() {
         }),
       ),
       execPlan.length > 0
-        ? createElement("div", null,
+        ? createElement("div", { className: styles.matCard, style: { display: "block", marginTop: "0.75rem" } },
             createElement("h4", null, t("soc.signals_overview.execution_plan", { defaultValue: "Kế hoạch thực thi" })),
-            ...execPlan.map((p: MaterializationExecPlan) =>
-              createElement("div", { key: p.service_key },
-                `${p.service_key}: ${p.will_run
-                  ? t("soc.signals_overview.will_run", { defaultValue: "sẽ chạy" })
-                  : t("soc.signals_overview.will_skip", { defaultValue: "bỏ qua" })}${p.symbol ? ` (${p.symbol})` : ""}`,
+            ...execPlan.map((p: MaterializationExecPlan, i: number) =>
+              createElement("div", {
+                key: p.service_key,
+                style: {
+                  display: "flex", gap: "0.5rem", alignItems: "baseline",
+                  padding: "0.3rem 0", fontSize: "0.75rem",
+                  borderTop: i === 0 ? "none" : "1px solid rgba(var(--soc-rgb-5078a8) / 0.12)",
+                },
+              },
+                createElement("strong", {}, p.service_key),
+                createElement("span", { style: { color: p.will_run ? toneColor("success") : "var(--text-muted)" } },
+                  `${p.will_run
+                    ? t("soc.signals_overview.will_run", { defaultValue: "sẽ chạy" })
+                    : t("soc.signals_overview.will_skip", { defaultValue: "bỏ qua" })}${p.symbol ? ` (${p.symbol})` : ""}`),
               ),
             ),
           )
         : null,
       summaryChildren.length > 0
-        ? createElement("div", { },
-            ...summaryChildren,
+        ? createElement("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.5rem", fontSize: "0.75rem", color: "var(--text-muted)" } },
+            ...summaryChildren.flatMap((child, i) => i === 0
+              ? [child]
+              : [createElement("span", { key: `sep-${i}`, style: { opacity: 0.5 } }, "·"), child]),
           )
         : null,
     );
@@ -1693,14 +1823,42 @@ export function SocSignalsPanel() {
     return `${Math.round(Number(v) * 100)}%`;
   };
 
-  const ruleKindLabel = (kind: string) => {
+  const ruleKindLabel = (kind: string, ruleKey?: string) => {
     const map: Record<string, string> = {
       enabled: t("soc.signals_overview.rule_enable", { defaultValue: "Bật" }),
-      threshold: "threshold_vnd",
-      cooldown: "cooldown_seconds",
-      ratio: "top_pct / block_ratio_min",
+      threshold: t("soc.signals_overview.rule_kind_threshold", { defaultValue: "Ngưỡng (VNĐ)" }),
+      cooldown: t("soc.signals_overview.rule_kind_cooldown", { defaultValue: "Cooldown" }),
+      ratio: ruleKey === "whale_top_pct"
+        ? t("soc.signals_overview.rule_kind_top_pct", { defaultValue: "Top %" })
+        : t("soc.signals_overview.rule_kind_block_ratio", { defaultValue: "Tỷ lệ block tối thiểu" }),
     };
     return map[kind] ?? kind;
+  };
+
+  const ruleFamilyLabel = (family: string): string => {
+    if (family === "whale") return t("soc.signals_overview.filter_whale");
+    if (family === "dark_flow") return t("soc.signals_overview.filter_dark_pool");
+    if (family === "signal") return t("soc.signals_overview.filter_screener");
+    return family;
+  };
+
+  const formatRuleValue = (rule: SignalRule): string => {
+    const v = rule.value;
+    if (v == null) return "—";
+    if (rule.kind === "enabled") {
+      return rule.enabled
+        ? t("soc.signals_overview.rule_enabled", { defaultValue: "Đang bật" })
+        : t("soc.signals_overview.rule_disabled", { defaultValue: "Đang tắt" });
+    }
+    const n = Number(v);
+    if (!Number.isFinite(n)) return String(v);
+    const tag = localeTag || "vi-VN";
+    if (rule.kind === "threshold") return `${n.toLocaleString(tag)} ₫`;
+    if (rule.kind === "ratio") return `${Math.round(n * 100)}%`;
+    if (rule.kind === "cooldown") {
+      return `${n.toLocaleString(tag)} ${t("soc.signals_overview.rule_seconds", { defaultValue: "giây" })}`;
+    }
+    return n.toLocaleString(tag);
   };
 
   const renderRuleModal = () => {
@@ -1726,7 +1884,8 @@ export function SocSignalsPanel() {
       );
     } else if (ruleModal.kind === "threshold") {
       inputs.push(
-        createElement("label", { key: "th", className: styles.schedulerModalField, htmlFor: "rule-threshold" }, "threshold_vnd"),
+        createElement("label", { key: "th", className: styles.schedulerModalField, htmlFor: "rule-threshold" },
+          t("soc.signals_overview.rule_kind_threshold", { defaultValue: "Ngưỡng (VNĐ)" })),
         createElement("input", {
           key: "th-in",
           id: "rule-threshold",
@@ -1739,7 +1898,8 @@ export function SocSignalsPanel() {
       );
     } else if (ruleModal.kind === "cooldown") {
       inputs.push(
-        createElement("label", { key: "cd", className: styles.schedulerModalField, htmlFor: "rule-cooldown" }, "cooldown_seconds"),
+        createElement("label", { key: "cd", className: styles.schedulerModalField, htmlFor: "rule-cooldown" },
+          t("soc.signals_overview.rule_kind_cooldown", { defaultValue: "Cooldown" })),
         createElement("input", {
           key: "cd-in",
           id: "rule-cooldown",
@@ -1790,7 +1950,7 @@ export function SocSignalsPanel() {
         createElement("h3", { className: styles.schedulerModalTitle },
           `${t("soc.signals_overview.rule_preview", { defaultValue: "Xem trước thay đổi" })} — ${ruleModal.label || ruleModal.rule_key}`),
         createElement("p", { className: styles.schedulerModalBody },
-          `${ruleModal.alert_family} · ${ruleKindLabel(ruleModal.kind)} · ${ruleModal.enabled === true ? t("soc.signals_overview.rule_enabled", { defaultValue: "Đang bật" }) : t("soc.signals_overview.rule_disabled", { defaultValue: "Đang tắt" })}${
+          `${ruleModal.alert_family} · ${ruleKindLabel(ruleModal.kind, ruleModal.rule_key)} · ${ruleModal.enabled === true ? t("soc.signals_overview.rule_enabled", { defaultValue: "Đang bật" }) : t("soc.signals_overview.rule_disabled", { defaultValue: "Đang tắt" })}${
             ruleModal.value != null ? ` · ${String(ruleModal.value)}` : ""
           }`),
         ...inputs,
@@ -1847,50 +2007,59 @@ export function SocSignalsPanel() {
           )
         : null,
       perf?.top_noisy && perf.top_noisy.length > 0
-        ? createElement("div", { className: styles.matCard, style: { marginTop: "0.75rem" } },
+        ? createElement("div", { className: styles.matCard, style: { display: "block", marginTop: "0.75rem" } },
             createElement("h4", {}, t("soc.signals_overview.noisy_rules", { defaultValue: "Rule hay báo nhiều nhất" })),
-            ...perf.top_noisy.map((rule) =>
-              createElement("div", {
-                key: rule.rule_key,
-                style: { display: "flex", justifyContent: "space-between", gap: "0.5rem", padding: "0.25rem 0" },
-              },
-                createElement("span", {}, rule.label || rule.rule_key),
-                createElement("span", {}, `${rule.alert_count ?? 0} · p=${fmtPct(rule.precision_proxy)}`),
-              )),
+            createElement("div", { className: styles.noisyGrid },
+              createElement("span", { className: styles.noisyHeader }, t("soc.signals_overview.noisy_col_rule", { defaultValue: "Rule" })),
+              createElement("span", { className: `${styles.noisyHeader} ${styles.noisyNum}` }, t("soc.signals_overview.alert_count", { defaultValue: "Số tín hiệu" })),
+              createElement("span", { className: `${styles.noisyHeader} ${styles.noisyNum}` }, t("soc.signals_overview.precision", { defaultValue: "Độ chính xác" })),
+              ...perf.top_noisy.flatMap((rule) => [
+                createElement("span", { key: `${rule.rule_key}-label`, className: styles.noisyCell, title: rule.label || rule.rule_key }, rule.label || rule.rule_key),
+                createElement("span", { key: `${rule.rule_key}-count`, className: `${styles.noisyCell} ${styles.noisyNum}` }, String(rule.alert_count ?? 0)),
+                createElement("span", { key: `${rule.rule_key}-prec`, className: `${styles.noisyCell} ${styles.noisyNum}` }, fmtPct(rule.precision_proxy)),
+              ]),
+            ),
           )
         : null,
-      createElement("div", { className: styles.matCard, style: { marginTop: "0.75rem" } },
+      createElement("div", { className: styles.rulesList, style: { marginTop: "0.75rem" } },
         rules.length === 0
           ? createElement("p", { className: styles.emptyState }, t("soc.signals_overview.no_data"))
-          : rules.map((rule) =>
-              createElement("div", {
+          : rules.map((rule) => {
+              const enabledColor = rule.enabled ? toneColor("success") : "var(--text-muted, #94a3b8)";
+              const ruleMeta = (label: string, value: string) =>
+                createElement("span", { key: label, className: styles.ruleMetaItem },
+                  `${label}: `,
+                  createElement("span", { className: styles.ruleMetaValue }, value));
+              return createElement("div", {
                 key: rule.rule_key,
                 className: styles.rulesRow,
               },
-                createElement("div", { style: { flex: 1, minWidth: 0 } },
+                createElement("div", { className: styles.rulesRowInfo },
                   createElement("div", { style: { display: "flex", alignItems: "baseline", gap: "0.5rem", flexWrap: "wrap" } },
                     createElement("strong", {}, rule.label || rule.rule_key),
                     createElement("span", { className: styles.signalLabel, style: { fontSize: "0.72rem", opacity: 0.7 } },
-                      `${rule.alert_family} · ${rule.kind}`),
+                      ruleFamilyLabel(rule.alert_family)),
+                    createElement("span", { className: styles.signalLabel, style: { fontSize: "0.72rem", opacity: 0.7 } },
+                      ruleKindLabel(rule.kind, rule.rule_key)),
+                    createElement("span", { style: { fontSize: "0.72rem", fontWeight: 700, color: enabledColor } },
+                      rule.enabled
+                        ? t("soc.signals_overview.rule_enabled", { defaultValue: "Đang bật" })
+                        : t("soc.signals_overview.rule_disabled", { defaultValue: "Đang tắt" })),
                   ),
                   createElement("div", { style: { display: "flex", gap: "0.75rem", flexWrap: "wrap", marginTop: "0.25rem" } },
-                    createElement("span", { className: styles.triageNote },
-                      `${t("soc.signals_overview.rule_state_enabled", { defaultValue: "Bật" })}: ${rule.enabled ? t("soc.signals_overview.rule_enabled", { defaultValue: "Đang bật" }) : t("soc.signals_overview.rule_disabled", { defaultValue: "Đang tắt" }) }`),
-                    createElement("span", { className: styles.triageNote },
-                      `${t("soc.signals_overview.rule_value", { defaultValue: "Giá trị" })}: ${rule.value != null ? String(rule.value) : "—"}`),
-                    createElement("span", { className: styles.triageNote },
-                      `${t("soc.signals_overview.alert_count", { defaultValue: "Số tín hiệu" })}: ${rule.alert_count ?? 0}`),
-                    createElement("span", { className: styles.triageNote },
-                      `${t("soc.signals_overview.precision", { defaultValue: "Độ chính xác" })}: ${fmtPct(rule.precision_proxy)}`),
-                    createElement("span", { className: styles.triageNote },
-                      `${t("soc.signals_overview.hit_rate", { defaultValue: "Tỷ lệ phản hồi" })}: ${fmtPct(rule.hit_rate)}`),
+                    ruleMeta(t("soc.signals_overview.rule_value", { defaultValue: "Giá trị" }), formatRuleValue(rule)),
+                    ruleMeta(t("soc.signals_overview.alert_count", { defaultValue: "Số tín hiệu" }), String(rule.alert_count ?? 0)),
+                    ruleMeta(t("soc.signals_overview.precision", { defaultValue: "Độ chính xác" }), fmtPct(rule.precision_proxy)),
+                    ruleMeta(t("soc.signals_overview.hit_rate", { defaultValue: "Tỷ lệ phản hồi" }), fmtPct(rule.hit_rate)),
                   ),
                 ),
                 createElement("button", {
                   className: styles.runBtn,
+                  style: { flexShrink: 0 },
                   onClick: () => openRuleModal(rule),
                 }, t("soc.signals_overview.rule_request", { defaultValue: "Gửi yêu cầu đổi" })),
-              )),
+              );
+            }),
       ),
     );
   };
@@ -2035,8 +2204,8 @@ export function SocSignalsPanel() {
               statCard(t("soc.signals_overview.detection_rate"), stats.detectionRate != null ? `${stats.detectionRate}%` : "\u2014", toneColor("success")),
               statCard(t("soc.signals_overview.avg_latency"), stats.avgLatency != null ? `${stats.avgLatency}ms` : "\u2014", "var(--accent-cyan, #06b6d4)"),
             ),
-            createElement("div", { className: styles.signalsTwoCol },
-              // ── Left: Live signal feed ──────────────────────────────────
+            createElement("div", { className: styles.signalsStack },
+              // ── Live signal feed (full width) ───────────────────────────
               createElement("div", { className: styles.feedCard },
                 createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" } },
                   createElement("div", { style: { display: "flex", alignItems: "center", gap: "0.5rem" } },
@@ -2157,6 +2326,7 @@ export function SocSignalsPanel() {
                       filteredSignals.length === 0
                         ? renderRadarEmptyState()
                         : createElement("div", null,
+                            renderFeedColumnHeader(),
                             createElement("div", { className: styles.signalFeed },
                               ...pagedSignals.map((s, idx) => renderSignalRow(s, (safePage - 1) * pageSize + idx)),
                             ),
@@ -2164,7 +2334,7 @@ export function SocSignalsPanel() {
                           ),
                     ),
               ),
-              // ── Right: Sub-tabs ────────────────────────────────────────
+              // ── Details & controls (full width, below feed) ─────────────
               createElement("div", { className: styles.controlCard },
                 createElement("div", { className: styles.subTabBar, role: "tablist" },
                   ...subTabKeys.map((st) => {
@@ -2187,13 +2357,14 @@ export function SocSignalsPanel() {
                       rules: rulesTab.data?.rules?.length,
                     };
                     const cnt = countMap[st.key];
+                    const showBadge = cnt != null && cnt > 0;
                     return createElement("button", {
                       key: st.key,
                       role: "tab",
                       "aria-selected": subTab === st.key,
                       className: `${styles.subTabBtn} ${subTab === st.key ? styles.subTabBtnActive : ""}`,
                       onClick: () => setSubTab(st.key),
-                    }, createElement(LucideIcon, { name: iconMap[st.key] as never, className: "h-3.5 w-3.5" }), st.label, cnt != null ? createElement("span", { className: styles.tabCountBadge }, String(cnt)) : null);
+                    }, createElement(LucideIcon, { name: iconMap[st.key] as never, className: "h-3.5 w-3.5" }), st.label, showBadge ? createElement("span", { className: styles.tabCountBadge }, String(cnt)) : null);
                   }),
                 ),
                 createElement("div", { },

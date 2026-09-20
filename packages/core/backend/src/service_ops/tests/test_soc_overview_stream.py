@@ -80,6 +80,27 @@ class OverviewStreamContractTestCase(OverviewStreamBaseTestCase):
         self.assertEqual(rsp['Cache-Control'], 'no-cache')
         self.assertIn('X-Accel-Buffering', rsp)
 
+    def test_eventsource_accept_header_returns_200_not_406(self):
+        # RC1 regression (chung với signals stream): browser EventSource thật
+        # gửi `Accept: text/event-stream`, DRF mặc định trả 406.
+        rsp = self.client.get(
+            '/api/soc/overview/stream/?max_loops=1',
+            HTTP_ACCEPT='text/event-stream',
+        )
+        self.assertEqual(rsp.status_code, status.HTTP_200_OK)
+        self.assertEqual(rsp['Content-Type'], 'text/event-stream')
+        content = _read_stream_content(rsp)
+        self.assertIn('retry: 3000', content)
+
+    def test_response_uses_flush_streaming_class(self):
+        # RC1-phần-2: xem SignalsStreamFlushTestCase (sync generator + sleep
+        # bị Django `list()` toàn bộ → infinite stream 0 byte).
+        from service_ops.views.base import SSEStreamingHttpResponse
+
+        rsp = self.client.get('/api/soc/overview/stream/?max_loops=1')
+        self.assertEqual(rsp.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(rsp, SSEStreamingHttpResponse)
+
     def test_retry_and_overview_event_present(self):
         rsp = self.client.get('/api/soc/overview/stream/?max_loops=2')
         content = _read_stream_content(rsp)

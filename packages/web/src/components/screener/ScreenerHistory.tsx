@@ -41,9 +41,11 @@ const ACTION_COLORS: Record<string, string> = {
   STAND_ASIDE: "#94a3b8",
 };
 
-function actionBadge(t: (k: string) => string, action: HistoryAction) {
+export function actionBadge(t: (k: string) => string, action: HistoryAction) {
   if (!action) return null;
   const color = ACTION_COLORS[action] || "#94a3b8";
+  // UE-02: dict key is camelCase standAside (not snake_case stand_aside).
+  const actionKey = action === "STAND_ASIDE" ? "standAside" : action.toLowerCase();
   return createElement(
     "span",
     {
@@ -56,7 +58,7 @@ function actionBadge(t: (k: string) => string, action: HistoryAction) {
         fontWeight: 600,
       },
     },
-    t(`screener.ai.${action.toLowerCase()}`)
+    t(`screener.ai.${actionKey}`)
   );
 }
 

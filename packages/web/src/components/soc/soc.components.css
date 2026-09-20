@@ -1124,6 +1124,7 @@
 
 /* Responsive */
 /* Two-column layout */
+/* Two-column layout (legacy — kept for reference, no longer used by SocSignalsPanel) */
 .signalsTwoCol {
   display: grid;
   grid-template-columns: minmax(380px, 1.6fr) minmax(420px, 1fr);
@@ -1141,19 +1142,47 @@
   }
 }
 
+/* Single-column stack: feed on top, details/controls below, both full width */
+.signalsStack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 0;
+}
+
 /* Signal row */
 .signalFeed {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  max-height: 560px;
+  max-height: 640px;
   overflow-y: auto;
 }
 
-.signalRow {
-  display: flex;
-  align-items: center;
+.signalFeedHeader {
+  display: grid;
+  grid-template-columns: 20px 26px 72px 78px 60px 92px minmax(
+      160px,
+      1fr
+    ) 100px 96px 96px;
   gap: 0.5rem;
+  align-items: center;
+  padding: 0 0.75rem 0.35rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+}
+
+.signalRow {
+  display: grid;
+  grid-template-columns: 20px 26px 72px 78px 60px 92px minmax(
+      160px,
+      1fr
+    ) 100px 96px 96px;
+  gap: 0.5rem;
+  align-items: center;
   padding: 0.5rem 0.75rem;
   border-radius: 8px;
   background: rgba(var(--soc-rgb-0f172a) / 0.25);
@@ -1174,6 +1203,17 @@
   background: rgba(var(--soc-rgb-00b4d8) / 0.08);
 }
 
+@media (max-width: 900px) {
+  .signalFeedHeader {
+    display: none;
+  }
+  .signalRow {
+    display: flex;
+    flex-wrap: wrap;
+    row-gap: 0.35rem;
+  }
+}
+
 .signalIcon {
   width: 26px;
   height: 26px;
@@ -1191,6 +1231,22 @@
   font-size: 0.8rem;
   min-width: 58px;
   font-variant-numeric: tabular-nums;
+}
+
+.signalTypeLabel {
+  font-size: 0.7rem;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.signalTitle {
+  font-size: 0.75rem;
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .signalLabel {
@@ -1214,11 +1270,24 @@
   color: var(--soc-c-94a3b8);
 }
 
+.signalSeverityBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  width: fit-content;
+}
+
 .signalVolume {
   font-size: 0.75rem;
   color: var(--text-muted, var(--soc-c-94a3b8));
   font-variant-numeric: tabular-nums;
-  margin-left: auto;
+  text-align: right;
 }
 
 .signalTime {
@@ -1274,7 +1343,13 @@
 }
 
 .subTabBtn {
-  flex: 0 0 auto;
+  flex: 1 1 0;
+  min-width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  white-space: nowrap;
   padding: 0.35rem 0.5rem;
   border-radius: 6px;
   font-size: 0.7rem;
@@ -1316,6 +1391,19 @@
   display: flex;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.jobInputRow > .searchInput {
+  width: auto;
+  flex: 1 1 220px;
+}
+.jobField .searchInput {
+  flex: none;
+  width: 100%;
+}
+.jobInputRow .runBtn {
+  flex-shrink: 0;
 }
 
 .jobDomainSelect {
@@ -1354,6 +1442,7 @@
 /* Materialization cards */
 .matGrid {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 0.5rem;
 }
 .matCard {
@@ -3043,6 +3132,82 @@
   gap: 0.75rem;
   padding: 0.6rem 0;
   border-top: 1px solid rgba(var(--soc-rgb-5078a8) / 0.12);
+  flex-wrap: wrap;
+}
+
+/* Vertical rules list — container cho các .rulesRow (không dùng .matCard ngang) */
+.rulesList {
+  padding: 0.25rem 0.75rem 0.5rem;
+  border-radius: 8px;
+  background: rgba(var(--soc-rgb-0f172a) / 0.25);
+  border: 1px solid var(--border-default, rgba(var(--soc-rgb-5078a8) / 0.1));
+  display: flex;
+  flex-direction: column;
+}
+.rulesList > .rulesRow:first-child {
+  border-top: none;
+}
+.rulesRowInfo {
+  flex: 1;
+  min-width: 240px;
+}
+.ruleMetaItem {
+  font-size: 0.72rem;
+  color: var(--text-secondary, var(--soc-c-cbd5e1));
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ruleMetaValue {
+  font-weight: 700;
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+}
+
+/* Mini-table cho top noisy rules: Rule | Tín hiệu | Precision */
+.noisyGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  column-gap: 0.75rem;
+  row-gap: 0.25rem;
+  align-items: baseline;
+}
+.noisyHeader {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid rgba(var(--soc-rgb-5078a8) / 0.12);
+}
+.noisyCell {
+  font-size: 0.75rem;
+  padding: 0.25rem 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.noisyNum {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Labeled field cho job console / form inline */
+.jobField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 140px;
+}
+.jobFieldGrow {
+  flex: 1 1 220px;
+}
+.jobFieldLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-muted, var(--soc-c-94a3b8));
 }
 
 /* History draw header */
@@ -3455,19 +3620,6 @@
   margin-left: 0.25rem;
 }
 
-.severityDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
-  flex-shrink: 0;
-}
-.signalPrice {
-  font-size: 0.7rem;
-  color: var(--text-muted, #94a3b8);
-  font-variant-numeric: tabular-nums;
-}
-
 /* S3 KVTable commercial */
 .kvTableWrap {
   border: 1px solid rgba(var(--soc-rgb-5078a8) / 0.15);
@@ -3504,6 +3656,19 @@
 }
 .kvVal {
   color: var(--text-primary, #f1f5f9);
+  word-break: break-word;
+}
+.kvNum {
   font-family: Menlo, Consolas, monospace;
-  word-break: break-all;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.kvBadge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  white-space: nowrap;
 }

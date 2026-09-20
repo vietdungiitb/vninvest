@@ -21,13 +21,12 @@ import time
 
 from django.db import close_old_connections
 from django.db.models import Max
-from django.http import StreamingHttpResponse
 from rest_framework.throttling import UserRateThrottle
 from drf_spectacular.utils import extend_schema
 
 from signal_intelligence.models import UnifiedAlert
 
-from .base import SOCBaseView
+from .base import SOCBaseView, EventStreamRenderer, SSEStreamingHttpResponse
 from .signals import _latest_signal_session_date, _serialize_recent_alert
 
 
@@ -109,6 +108,9 @@ class SignalsStreamView(SOCBaseView):
 
     # F4 fix: throttle riêng soc_stream 60/min thay vì [] (tránh mở N kết nối vô hạn)
     throttle_classes = [SOCStreamThrottle]
+    # RC1 fix: chấp nhận Accept: text/event-stream của EventSource thật.
+    # Không có renderer này, DRF content negotiation trả 406 trước khi get() chạy.
+    renderer_classes = [EventStreamRenderer]
 
     def initial(self, request, *args, **kwargs):
         # EventSource không gửi được Authorization header → hỗ trợ ?token=
@@ -248,7 +250,7 @@ class SignalsStreamView(SOCBaseView):
                 except Exception:
                     break
 
-        response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+        response = SSEStreamingHttpResponse(event_stream(), content_type="text/event-stream")
         response["Cache-Control"] = "no-cache"
         response["X-Accel-Buffering"] = "no"
         response["Connection"] = "keep-alive"

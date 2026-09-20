@@ -27,7 +27,25 @@ interface AlertItem {
 }
 
 export function ScreenerSchedulePanel({ rules }: { rules: Rule[] }) {
-  const { t } = useI18n();
+  const { t, localeTag } = useI18n() as { t: (k: string, o?: any) => string; localeTag?: string };
+  const tag = localeTag || "vi-VN";
+  const dayLabel = (wd: number) => {
+    try {
+      // 2026-01-05 is a Monday; +wd days gives the matching weekday name.
+      return new Intl.DateTimeFormat(tag, { weekday: "short" }).format(new Date(2026, 0, 5 + wd));
+    } catch {
+      return `T${wd + 1}`;
+    }
+  };
+  const fmtDateTime = (iso: string | null) => {
+    if (!iso) return "—";
+    try {
+      return new Date(iso).toLocaleString(tag);
+    } catch {
+      return iso;
+    }
+  };
+  const ruleName = (id: number) => rules.find((r) => r.id === id)?.name ?? `#${id}`;
   const queryClient = useQueryClient();
   const { data: schedData } = useTenantAdminQuery<Schedule[]>(
     ['screener', 'schedules'],
@@ -44,8 +62,19 @@ export function ScreenerSchedulePanel({ rules }: { rules: Rule[] }) {
   const [name, setName] = useState("");
   const [runTime, setRunTime] = useState("18:00");
   const [ruleId, setRuleId] = useState<string>("");
+  // UE-06: selectable run days (default Mon–Fri) + notify channels (default in-app).
+  const [weekdays, setWeekdays] = useState<number[]>([0, 1, 2, 3, 4]);
+  const [channels, setChannels] = useState<string[]>(["in_app"]);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
+
+  const toggleWeekday = (wd: number) => {
+    setWeekdays((prev) => (prev.includes(wd) ? prev.filter((d) => d !== wd) : [...prev, wd].sort()));
+  };
+
+  const toggleChannel = (ch: string) => {
+    setChannels((prev) => (prev.includes(ch) ? prev.filter((c) => c !== ch) : [...prev, ch]));
+  };
 
   const invalidate = () => {
     const tenantId = typeof window !== 'undefined' ? window.localStorage.getItem('tenant_id') : null;
@@ -54,16 +83,17 @@ export function ScreenerSchedulePanel({ rules }: { rules: Rule[] }) {
   };
 
   const handleCreate = async () => {
-    if (!name.trim() || !ruleId) { setErr("Tên và rule là bắt buộc."); return; }
+    if (!name.trim() || !ruleId) { setErr(t("screener.schedule.errorRequired")); return; }
+    if (weekdays.length === 0) { setErr(t("screener.schedule.weekdaysRequired")); return; }
     setSaving(true);
     setErr("");
     try {
-      await (coreApiAdapter as any).createScreenerSchedule({ name: name.trim(), rule_ids: [parseInt(ruleId, 10)], run_time: runTime, weekdays: [0, 1, 2, 3, 4], notify_channels: ["in_app"] });
+      await (coreApiAdapter as any).createScreenerSchedule({ name: name.trim(), rule_ids: [parseInt(ruleId, 10)], run_time: runTime, weekdays, notify_channels: channels.length ? channels : ["in_app"] });
       setName("");
       setRuleId("");
       invalidate();
     } catch (e: any) {
-      setErr(e?.response?.data?.detail || "Tạo lịch thất bại.");
+      setErr(e?.response?.data?.detail || t("screener.schedule.createFailed"));
     } finally {
       setSaving(false);
     }
@@ -93,7 +123,7 @@ export function ScreenerSchedulePanel({ rules }: { rules: Rule[] }) {
   return createElement(
     "div",
     { style: { background: "var(--bg-panel, #0f172a)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", borderRadius: "12px", padding: "20px", display: "flex", flexDirection: "column", gap: "12px" } },
-    createElement("h2", { style: { fontSize: "16px", fontWeight: 600, color: "var(--text-primary, #f1f5f9)", margin: 0 } }, t("screener.schedule.title" as any, { defaultValue: "Lịch quét tự động" } as any)),
+    createElement("h2", { style: { fontSize: "16px", fontWeight: 600, color: "var(--text-primary, #f1f5f9)", margin: 0 } }, t("screener.schedule.title")),
     alerts.length > 0 &&
       createElement(
         "div",
@@ -110,7 +140,7 @@ export function ScreenerSchedulePanel({ rules }: { rules: Rule[] }) {
       "div",
       { style: { display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" } },
       createElement("input", {
-        value: name, onChange: (e: any) => setName(e.target.value), placeholder: "Tên lịch (VD: Chiều T2-T6)",
+        value: name, onChange: (e: any) => setName(e.target.value), placeholder: t("screener.schedule.namePlaceholder"),
         style: { flex: "1", minWidth: "160px", background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-primary, #f1f5f9)", fontSize: "13px", borderRadius: "6px", padding: "6px 10px", outline: "none" },
       }),
       createElement(
@@ -119,7 +149,7 @@ export function ScreenerSchedulePanel({ rules }: { rules: Rule[] }) {
           value: ruleId, onChange: (e: any) => setRuleId(e.target.value),
           style: { background: "rgba(15,23,42,0.6)", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", color: "var(--text-primary, #f1f5f9)", fontSize: "13px", borderRadius: "6px", padding: "6px 10px" },
         },
-        createElement("option", { value: "" }, "— Rule —"),
+        createElement("option", { value: "" }, t("screener.schedule.ruleOption")),
         ...rules.filter((r) => r.id != null).map((r) => createElement("option", { key: r.id, value: String(r.id) }, r.name))
       ),
       createElement("input", {
@@ -132,7 +162,42 @@ export function ScreenerSchedulePanel({ rules }: { rules: Rule[] }) {
           type: "button", onClick: () => { void handleCreate(); }, disabled: saving,
           style: { padding: "6px 14px", background: "var(--accent-cyan, #06b6d4)", color: "#fff", fontSize: "13px", borderRadius: "8px", border: "none", cursor: saving ? "wait" : "pointer", fontWeight: 600, opacity: saving ? 0.6 : 1 },
         },
-        t("screener.schedule.create" as any, { defaultValue: "+ Tạo lịch" } as any)
+        t("screener.schedule.create")
+      )
+    ),
+    // UE-06: run-day picker + notify channels.
+    createElement(
+      "div",
+      { style: { display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" } },
+      createElement("span", { style: { fontSize: "12px", color: "var(--text-muted, #94a3b8)" } }, t("screener.schedule.weekdaysLabel")),
+      createElement(
+        "div",
+        { style: { display: "flex", gap: "4px" } },
+        ...[0, 1, 2, 3, 4, 5, 6].map((wd) => {
+          const on = weekdays.includes(wd);
+          return createElement(
+            "button",
+            {
+              key: wd, type: "button", onClick: () => toggleWeekday(wd), title: dayLabel(wd),
+              style: {
+                fontSize: "11px", padding: "3px 8px", borderRadius: "6px", cursor: "pointer",
+                background: on ? "rgba(34,211,238,0.2)" : "rgba(15,23,42,0.6)",
+                border: on ? "1px solid rgba(34,211,238,0.4)" : "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
+                color: on ? "#22d3ee" : "var(--text-secondary, #94a3b8)",
+              },
+            },
+            dayLabel(wd)
+          );
+        })
+      ),
+      createElement("span", { style: { fontSize: "12px", color: "var(--text-muted, #94a3b8)" } }, t("screener.schedule.channelsLabel")),
+      ...(["in_app", "email"] as const).map((ch) =>
+        createElement(
+          "label",
+          { key: ch, style: { display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "var(--text-secondary, #94a3b8)", cursor: "pointer" } },
+          createElement("input", { type: "checkbox", checked: channels.includes(ch), onChange: () => toggleChannel(ch) }),
+          t(ch === "in_app" ? "screener.schedule.channelInApp" : "screener.schedule.channelEmail")
+        )
       )
     ),
     err && createElement("p", { style: { color: "#fca5a5", fontSize: "12px", margin: 0 } }, err),
@@ -143,18 +208,18 @@ export function ScreenerSchedulePanel({ rules }: { rules: Rule[] }) {
         createElement(
           "div",
           { style: { display: "flex", flexDirection: "column", gap: "2px" } },
-          createElement("span", { style: { fontSize: "13px", color: "var(--text-primary, #f1f5f9)", fontWeight: 600 } }, `${s.name} · ${s.run_time ?? "?"} · T2-T6`),
-          createElement("span", { style: { fontSize: "11px", color: "var(--text-muted, #94a3b8)" } }, `Rules: ${(s.rule_ids || []).join(", ")} · Tiếp: ${s.next_run_at ?? "—"} · ${s.is_active ? "Bật" : "Tắt"}`)
+          createElement("span", { style: { fontSize: "13px", color: "var(--text-primary, #f1f5f9)", fontWeight: 600 } }, `${s.name} · ${s.run_time ?? "?"} · ${(s.weekdays || []).map(dayLabel).join(" ")}`),
+          createElement("span", { style: { fontSize: "11px", color: "var(--text-muted, #94a3b8)" } }, `${t("screener.schedule.rulesLabel")}: ${(s.rule_ids || []).map(ruleName).join(", ")} · ${t("screener.schedule.nextRun")}: ${fmtDateTime(s.next_run_at)} · ${s.is_active ? t("screener.schedule.enable") : t("screener.schedule.disable")}`)
         ),
         createElement(
           "div",
           { style: { display: "flex", gap: "6px" } },
-          createElement("button", { type: "button", onClick: () => { void handleRunNow(s); }, style: { fontSize: "12px", color: "#4ade80", background: "none", border: "1px solid rgba(74,222,128,0.3)", borderRadius: "6px", padding: "4px 10px", cursor: "pointer" } }, "Chạy ngay"),
-          createElement("button", { type: "button", onClick: () => { void handleToggle(s); }, style: { fontSize: "12px", color: "var(--text-secondary, #94a3b8)", background: "none", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", borderRadius: "6px", padding: "4px 10px", cursor: "pointer" } }, s.is_active ? "Tắt" : "Bật"),
-          createElement("button", { type: "button", onClick: () => { void handleDelete(s); }, style: { fontSize: "12px", color: "#f87171", background: "none", border: "none", cursor: "pointer" } }, "✕")
+          createElement("button", { type: "button", onClick: () => { void handleRunNow(s); }, style: { fontSize: "12px", color: "#4ade80", background: "none", border: "1px solid rgba(74,222,128,0.3)", borderRadius: "6px", padding: "4px 10px", cursor: "pointer" } }, t("screener.schedule.runNow")),
+          createElement("button", { type: "button", onClick: () => { void handleToggle(s); }, style: { fontSize: "12px", color: "var(--text-secondary, #94a3b8)", background: "none", border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))", borderRadius: "6px", padding: "4px 10px", cursor: "pointer" } }, s.is_active ? t("screener.schedule.disable") : t("screener.schedule.enable")),
+          createElement("button", { type: "button", title: t("screener.schedule.deleteTitle"), onClick: () => { void handleDelete(s); }, style: { fontSize: "12px", color: "#f87171", background: "none", border: "none", cursor: "pointer" } }, "✕")
         )
       )
     ),
-    schedules.length === 0 && createElement("p", { style: { fontSize: "12px", color: "var(--text-muted, #94a3b8)", margin: 0 } }, t("screener.schedule.empty" as any, { defaultValue: "Chưa có lịch nào. Tạo lịch để tự quét sau đóng phiên." } as any))
+    schedules.length === 0 && createElement("p", { style: { fontSize: "12px", color: "var(--text-muted, #94a3b8)", margin: 0 } }, t("screener.schedule.empty"))
   );
 }

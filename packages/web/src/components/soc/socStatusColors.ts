@@ -44,12 +44,14 @@ export function statusTone(status: string | undefined): StatusTone {
     case "pending":
     case "warm":
     case "info":
+    case "medium":
       return "info";
     case "partial":
     case "degraded":
     case "stale":
     case "blocked":
     case "maintenance":
+    case "high":
       return "warning";
     case "failed":
     case "error":
@@ -62,6 +64,7 @@ export function statusTone(status: string | undefined): StatusTone {
     case "disabled":
     case "unknown":
     case "idle":
+    case "low":
       return "muted";
     default:
       return "neutral";

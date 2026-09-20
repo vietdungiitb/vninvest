@@ -21,12 +21,11 @@ không cần merge. Poll DB 3s, chỉ emit khi signature đổi.
 import time
 
 from django.db import close_old_connections
-from django.http import StreamingHttpResponse
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 
 from ..models import ServiceDefinition, ServiceHealth
-from .base import SOCBaseView
+from .base import SOCBaseView, EventStreamRenderer, SSEStreamingHttpResponse
 from .signals_stream import SOCStreamThrottle, _sse_format
 
 
@@ -112,6 +111,8 @@ class OverviewStreamView(SOCBaseView):
     """
 
     throttle_classes = [SOCStreamThrottle]
+    # RC1 fix: chấp nhận Accept: text/event-stream của EventSource thật (xem base.EventStreamRenderer).
+    renderer_classes = [EventStreamRenderer]
 
     def initial(self, request, *args, **kwargs):
         token = request.query_params.get('token') or request.GET.get('token')
@@ -186,7 +187,7 @@ class OverviewStreamView(SOCBaseView):
                 except Exception:
                     break
 
-        response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+        response = SSEStreamingHttpResponse(event_stream(), content_type='text/event-stream')
         response['Cache-Control'] = 'no-cache'
         response['X-Accel-Buffering'] = 'no'
         response['Connection'] = 'keep-alive'

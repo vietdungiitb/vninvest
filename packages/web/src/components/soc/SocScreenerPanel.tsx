@@ -53,6 +53,21 @@ interface ScreenerMetrics {
   rules_hit_rate?: number;
 }
 
+/**
+ * SC-02: merge edited scalars over the currently stored payload so a Save
+ * from the 5-field form does not wipe `rules` (BE `from_dict` defaults
+ * missing keys) nor reset flags like `enabled`/`publish_to_redis`.
+ */
+export function mergeScreenerConfigPayload(
+  currentEnvelope: unknown,
+  edited: Record<string, unknown>,
+): Record<string, unknown> {
+  const env = (currentEnvelope ?? {}) as Record<string, any>;
+  const nested = env.config_payload ?? env.config;
+  const base = nested && typeof nested === "object" ? nested : {};
+  return { ...base, ...edited };
+}
+
 export function SocScreenerPanel() {
   const { t } = useI18n();
   const confirm = useConfirm();
@@ -122,7 +137,9 @@ export function SocScreenerPanel() {
     if (!payload) return;
     try {
       setApplying(true);
-      await defaultCoreApiAdapter.applySocScreenerConfig(payload);
+      // SC-02: preserve stored rules/flags — the form only edits 5 scalars.
+      const merged = mergeScreenerConfigPayload(config, payload as Record<string, unknown>);
+      await defaultCoreApiAdapter.applySocScreenerConfig(merged as ScreenerConfig);
       showToast(t("soc.screener.config_saved"), "success");
       setPreviewModal(null);
       await fetchData();
@@ -141,8 +158,23 @@ export function SocScreenerPanel() {
     setScanning(true);
     try {
       const symbols = manualSymbols.split(",").map((s) => s.trim()).filter(Boolean);
-      await defaultCoreApiAdapter.manualSocScreenerScan(symbols);
-      showToast(t("soc.screener.scan_queued"), "success");
+      // SC-03: the endpoint evaluates synchronously and returns real results.
+      const data = (await defaultCoreApiAdapter.manualSocScreenerScan(symbols)) as {
+        status?: string; matched?: unknown[]; symbols_scanned?: number; rules_evaluated?: number;
+      } | undefined;
+      if (data && data.status === "completed") {
+        const matched = Array.isArray(data.matched) ? data.matched.length : 0;
+        showToast(
+          t("soc.screener.scan_completed", {
+            matched,
+            scanned: data.symbols_scanned ?? symbols.length,
+            rules: data.rules_evaluated ?? 0,
+          }),
+          "success",
+        );
+      } else {
+        showToast(t("soc.screener.scan_queued"), "success");
+      }
       setManualSymbols("");
       await fetchData();
     } catch (err) {
@@ -280,7 +312,7 @@ export function SocScreenerPanel() {
                             color: rule.enabled ? "var(--soc-c-34d399)" : "var(--soc-c-94a3b8)",
                             fontSize: "0.68rem",
                           },
-                        }, rule.enabled ? "Bật" : "Tắt"),
+                        }, rule.enabled ? t("soc.screener.rule_active") : t("soc.screener.rule_inactive")),
                       ),
                       createElement("td", { },
                         createElement(
