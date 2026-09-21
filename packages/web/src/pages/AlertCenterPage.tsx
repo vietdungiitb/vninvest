@@ -307,7 +307,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
   }, [sortedAlerts, actions.optimisticAck, actions.optimisticMuted]);
 
   const getRowHeight = useCallback(
-    (index: number) => rowHeights.current.get(index) ?? 280,
+    (index: number) => rowHeights.current.get(index) ?? 170,
     [],
   );
   const handleCardHeight = useCallback((index: number, height: number) => {
@@ -318,14 +318,14 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
     }
   }, []);
 
-  // Polish: chiều cao feed = nội dung thật, kẹp 220–560px để cân cột stats (8 dòng).
+  // Polish: chiều cao feed = nội dung thật, kẹp 220–640px để cân cột stats (8 dòng).
   const feedListHeight = useMemo(() => {
     void heightTick;
     let total = 0;
     for (let i = 0; i < displayAlerts.length; i++) {
-      total += rowHeights.current.get(i) ?? 190;
+      total += rowHeights.current.get(i) ?? 160;
     }
-    return Math.max(220, Math.min(560, total));
+    return Math.max(220, Math.min(640, total));
   }, [displayAlerts, heightTick]);
 
   // S3.1: đánh dấu đã xem toàn bộ alert đang hiển thị (batch ack, tối đa 50).
@@ -631,7 +631,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
         </div>
       )}
 
-      <div className={`${soc.opsLayoutContainer}`}>
+      <div className={`${styles.acOpsLayout}`}>
         <div className={`${soc.opsLeftCol}`}>
         <ShellPanel
           title={t("alertCenter.feedTitle")}

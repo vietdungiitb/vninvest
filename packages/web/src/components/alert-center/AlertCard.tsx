@@ -141,11 +141,21 @@ export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
   const [showMore, setShowMore] = useState(false);
   const rootRef = useRef<HTMLElement | null>(null);
 
-  // S1.6: báo chiều cao thật cho VariableSizeList (jsdom offsetHeight=0 → bỏ qua, giữ 280).
+  // S1.6: báo chiều cao thật cho VariableSizeList (jsdom offsetHeight=0 → bỏ qua, giữ ước lượng).
+  // ResizeObserver để bắt font-load/wrap đổi sau lần đo đầu.
   useLayoutEffect(() => {
     if (!onHeight || index < 0) return;
-    const h = rootRef.current?.offsetHeight ?? 0;
-    if (h > 0) onHeight(index, h);
+    const el = rootRef.current;
+    if (!el) return;
+    const report = () => {
+      const h = el.offsetHeight ?? 0;
+      if (h > 0) onHeight(index, h);
+    };
+    report();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(report);
+    ro.observe(el);
+    return () => ro.disconnect();
   });
 
   const severity = alert.severity || "medium";
@@ -167,7 +177,7 @@ export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
   return (
     <article
       ref={rootRef as any}
-      className={`${soc.feedCard} ${String(borderClass)}`.trim()}
+      className={`${soc.feedCard} ${styles.acFeedCard} ${String(borderClass)}`.trim()}
       style={style}
       tabIndex={0}
       aria-label={`${alert.symbol || ""} ${title}`.trim()}
@@ -175,13 +185,13 @@ export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
         if (e.key === "Enter" && e.target === e.currentTarget) handleLoadDetail(alert);
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 6 }}>
         <div style={{ display: "flex", gap: 10, flex: 1, minWidth: 0 }}>
           <div className={`${soc.signalIcon} ${severityBadgeClass || soc.statusBadgeInfo}`}>
             {severity === "critical" ? "⚠" : severity === "high" ? "⚡" : "ℹ"}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
               <span className={`${soc.signalSymbol}`}>{alert.symbol || "—"}</span>
               <span className={`${soc.statusBadge} ${severityBadgeClass || ""}`.trim()}>
                 {t(`alertCenter.sev${severityCap}` as any)}
@@ -189,16 +199,16 @@ export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
               <span className={`${soc.statusBadge} ${soc.statusBadgeInfo}`}>
                 {freshnessLabel(alert.freshness_state, t)}
               </span>
+              <span
+                style={{ fontSize: 11, color: "var(--text-muted)" }}
+                title={familyEnKey ? `Lane ${alert.lane || lane} · ${t(familyEnKey as any)}` : `Lane ${alert.lane || lane}`}
+              >
+                {familyKey ? t(familyKey as any) : alert.alert_family || alert.alert_type || "—"}
+              </span>
             </div>
-            <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.3 }}>
+            <h3 style={{ margin: 0, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.3 }}>
               {title}
             </h3>
-            <div
-              style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}
-              title={familyEnKey ? `Lane ${alert.lane || lane} · ${t(familyEnKey as any)}` : `Lane ${alert.lane || lane}`}
-            >
-              {familyKey ? t(familyKey as any) : alert.alert_family || alert.alert_type || "—"}
-            </div>
           </div>
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -212,12 +222,12 @@ export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
       </div>
 
       {showSummary && (
-        <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text-secondary)", margin: "8px 0" }}>
+        <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--text-secondary)", margin: "6px 0" }}>
           {summary}
         </p>
       )}
       {!showSummary && !summary.trim() && (
-        <p style={{ fontSize: 12, lineHeight: 1.5, color: "var(--text-muted)", margin: "8px 0" }}>
+        <p style={{ fontSize: 12, lineHeight: 1.4, color: "var(--text-muted)", margin: "6px 0" }}>
           {t("alertCenter.cardNoSummary")}
         </p>
       )}
@@ -231,7 +241,7 @@ export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
       <div style={{
         display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 12px",
         fontSize: "0.73rem", color: "var(--text-muted)",
-        marginBottom: showMore ? 10 : 8,
+        marginBottom: showMore ? 8 : 6,
       }}>
         <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>
           {formatSessionDate(alert.session_date)} · {compactTime} · {t("alertCenter.labelConfidence")}: {alert.confidence != null ? `${Math.round(Number(alert.confidence) * 100)}%` : "—"}

@@ -146,6 +146,27 @@
   outline-offset: 2px;
 }
 
+/* 12. Layout riêng cho AlertCenter (polish — 2 cột cân nhau, ưu tiên bảng stats) */
+.acOpsLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+@media (max-width: 1024px) {
+  .acOpsLayout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 13. Card gọn (polish — padding/gap chặt hơn soc.feedCard để quét nhiều mã) */
+.acFeedCard {
+  padding: 10px 12px;
+}
+.acFeedCard h3 {
+  font-size: 13px;
+}
+
 /* 6. Light theme variants — keep for strength/evidence */
 [data-theme="light"] .acStrengthBar {
   background: rgba(0, 0, 0, 0.08);
