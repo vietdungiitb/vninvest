@@ -167,6 +167,16 @@
   font-size: 13px;
 }
 
+/* 14. Link mã cổ phiếu trong card feed → /stocks/:symbol */
+.acSymbolLink {
+  color: inherit;
+  text-decoration: none;
+}
+.acSymbolLink:hover {
+  text-decoration: underline;
+  color: var(--accent-cyan, #22d3ee);
+}
+
 /* 6. Light theme variants — keep for strength/evidence */
 [data-theme="light"] .acStrengthBar {
   background: rgba(0, 0, 0, 0.08);

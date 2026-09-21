@@ -192,7 +192,14 @@ export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
-              <span className={`${soc.signalSymbol}`}>{alert.symbol || "—"}</span>
+              <a
+                href={`/stocks/${alert.symbol || ""}`}
+                className={`${soc.signalSymbol} ${styles.acSymbolLink}`}
+                title={t("alertCenter.openStockWorkspace") as string}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {alert.symbol || "—"}
+              </a>
               <span className={`${soc.statusBadge} ${severityBadgeClass || ""}`.trim()}>
                 {t(`alertCenter.sev${severityCap}` as any)}
               </span>

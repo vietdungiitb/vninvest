@@ -84,4 +84,11 @@ describe("AlertCard (Slice 1.2 + 3.1)", () => {
     );
     expect(screen.getByText("alertCenter.whaleFill")).toBeTruthy();
   });
+
+  it("symbol la hyperlink toi /stocks/:symbol", () => {
+    const { container } = render(<AlertCard {...baseProps()} />);
+    const link = container.querySelector('a[href="/stocks/VBB"]');
+    expect(link).toBeTruthy();
+    expect(link?.textContent).toContain("VBB");
+  });
 });
