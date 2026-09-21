@@ -2173,6 +2173,9 @@ const vi = {
     connectPaper: 'Kết nối Paper Trading',
     updatedAt: 'Cập nhật',
     stale: 'Dữ liệu cũ',
+    breadthUpTip: 'Tăng: {count} mã',
+    breadthFlatTip: 'Không đổi: {count} mã',
+    breadthDownTip: 'Giảm: {count} mã',
   },
   heatmap: {
     title: 'Bản đồ danh mục',
@@ -2245,6 +2248,9 @@ const vi = {
       emptyTitle: 'Chưa có tín hiệu trong phiên này',
       viewPrevSession: 'Xem tín hiệu phiên trước',
       runAnalysis: 'Chạy phân tích',
+      lastScan: 'Lần quét gần nhất {time} · 0 tín hiệu',
+      noScan: 'Chưa có lượt quét',
+      comingSoon: 'Sắp có',
     },
     severity: {
       critical: 'Cực kỳ khẩn cấp',

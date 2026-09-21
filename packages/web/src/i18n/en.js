@@ -2178,6 +2178,9 @@ const en = {
     connectPaper: 'Connect paper trading',
     updatedAt: 'Updated',
     stale: 'Stale data',
+    breadthUpTip: 'Up: {count} symbols',
+    breadthFlatTip: 'Flat: {count} symbols',
+    breadthDownTip: 'Down: {count} symbols',
   },
   heatmap: {
     title: 'Portfolio Heatmap',
@@ -2250,6 +2253,9 @@ const en = {
       emptyTitle: 'No signals in this session yet',
       viewPrevSession: 'View previous session',
       runAnalysis: 'Run analysis',
+      lastScan: 'Last scan {time} · 0 signals',
+      noScan: 'No scan yet',
+      comingSoon: 'Coming soon',
     },
     severity: {
       critical: 'Critical',
