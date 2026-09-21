@@ -40,9 +40,8 @@ def materialize_symbol_snapshot(self):
     try:
         return materialize_symbol_snapshot_from_vnbroker()
     except Exception as exc:
+        # Slice F (QueueRecovery, audit C-1): CẤM mass-stale toàn bảng (xem vnbroker_materializer).
         logger.error("materialize_symbol_snapshot failed: %s", exc)
-        from market_serving.models import SymbolSnapshot
-        SymbolSnapshot.objects.update(stale=True)
         raise self.retry(exc=exc)
 
 

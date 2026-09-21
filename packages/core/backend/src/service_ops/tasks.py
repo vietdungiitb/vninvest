@@ -824,7 +824,10 @@ def _get_redis_queue_depth(queue_name: str) -> int:
         broker_url = getattr(settings, 'CELERY_BROKER_URL', None) or getattr(settings, 'REDIS_URL', None)
         if not broker_url:
             return 0
-        client = redis_module.from_url(broker_url)
+        # Slice G: timeout ngắn — helper này chạy trong loop scheduler 30s và request
+        # observability; Redis ốm không được treo caller hàng chục giây.
+        client = redis_module.from_url(
+            broker_url, socket_connect_timeout=2, socket_timeout=2)
         return int(client.llen(queue_name) or 0)
     except Exception as exc:
         logger.debug('_get_redis_queue_depth failed for queue=%s: %s', queue_name, exc)
@@ -862,8 +865,13 @@ def _is_celery_task_live(task_id: str | None) -> bool | None:
         # Check the raw Redis queue lists before concluding the task is an orphan.
         if _task_in_redis_queue(normalized_task_id, (
             'realtime_prefetch',
+            # Slice D (QueueRecovery): queue mới phải có mặt ở đây, nếu không task
+            # ở queue mới bị coi là orphan (false-negative). Giữ đồng bộ với QUEUE_NAMES.
+            'realtime_scheduler',
             'manual_on_demand',
             'enrichment_offhours',
+            # Slice E (QueueRecovery): queue EOD riêng.
+            'enrichment_eod',
             'analytics_heavy',
             'celery',
         )):

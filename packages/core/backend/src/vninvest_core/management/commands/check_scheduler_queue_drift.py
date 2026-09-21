@@ -7,11 +7,14 @@ from django_celery_beat.models import PeriodicTask
 from vninvest_core.queue_policy import SCHEDULER_QUEUE_MAP
 
 
+# Slice F (QueueRecovery): đồng bộ với service_ops.beat_reconcile.CRITICAL_JOBS —
+# materialize-symbol-snapshot-60s được bảo vệ khỏi tắt lặng lẽ.
 CRITICAL_JOBS = [
     "market-data-queue-tier-scheduler-30s",
     "ingest-price-board-60s",
     "warm-intraday-realtime-5m",
     "schedule-realtime-prefetch-shards",
+    "materialize-symbol-snapshot-60s",
 ]
 
 class Command(BaseCommand):

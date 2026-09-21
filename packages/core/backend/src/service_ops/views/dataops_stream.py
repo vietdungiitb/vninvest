@@ -54,10 +54,14 @@ def _dataops_signature(snap: dict) -> str:
         tiers = snap.get("queue_tiers") or {}
         backlog = obs.get("backlog") or {}
         fail_rates = obs.get("fail_rates") or {}
+        # Slice G (QueueRecovery, audit C-4): hash cả queue_depths — nếu không, SSE không emit
+        # khi depth đổi và card Depth đứng im trong khi stream mở.
+        queue_depths = obs.get("queue_depths") or {}
         # hash relevant parts
         parts = [
             json.dumps(backlog, sort_keys=True, default=str),
             json.dumps(fail_rates, sort_keys=True, default=str),
+            json.dumps(queue_depths, sort_keys=True, default=str),
             json.dumps(cov.get("datasets") or [], sort_keys=True, default=str),
             json.dumps([g.get("freshness_state") for g in (cov.get("top_gaps") or [])[:5]], sort_keys=True),
             json.dumps(tiers.get("tiers") or [], sort_keys=True, default=str),

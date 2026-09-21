@@ -420,9 +420,13 @@ class ServiceOpsTasksTestCase(TestCase):
         self.assertEqual(warm_call['symbols'], ['FPT', 'HPG', 'TPB', 'VCB'])
         self.assertEqual(warm_call['planner_queue'], 'realtime_prefetch')
 
+    # Meta-audit fix: mock live Redis depth — backpressure guard đọc LLEN thật nên test
+    # phụ thuộc trạng thái hạ tầng (manual_on_demand > 20 → skip recovery → 1 != 2).
+    # Unit test này kiểm dispatch logic, không kiểm infra.
+    @patch('service_ops.tasks._get_redis_queue_depth', return_value=0)
     @patch('service_ops.dataops_market_data.fetch_listing_symbols', return_value=[])
     @patch('service_ops.tasks.create_global_planner_run')
-    def test_market_data_queue_tier_scheduler_dispatches_due_tiers_with_runtime_policy(self, planner_run_mock, fetch_listing_symbols_mock):
+    def test_market_data_queue_tier_scheduler_dispatches_due_tiers_with_runtime_policy(self, planner_run_mock, fetch_listing_symbols_mock, queue_depth_mock):
         GlobalSymbolRegistry.objects.bulk_create([
             GlobalSymbolRegistry(
                 symbol='FPT',

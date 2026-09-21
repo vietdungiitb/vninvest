@@ -325,6 +325,7 @@ def compute_session_facts_for_all_active(session_date: date | None = None, symbo
     upserted = 0
     skipped = 0
     errors = 0
+    upserted_symbols: list[str] = []
 
     for symbol in symbols:
         try:
@@ -374,14 +375,31 @@ def compute_session_facts_for_all_active(session_date: date | None = None, symbo
                     for bucket_row in bucket_rows
                 ])
             upserted += 1
+            upserted_symbols.append(symbol)
 
         except Exception as exc:
             logger.error('compute_session_facts_for_all_active: %s/%s failed: %s', symbol, target_date, exc)
             errors += 1
 
+    # Slice C follow-up (phát hiện verify Slice A): SessionFacts materializer trước đây KHÔNG
+    # refresh GlobalSymbolCoverage → coverage session_facts mãi missing dù facts đã có.
+    # Refresh theo symbol đã upsert (fail-open từng symbol, không chặn kết quả chính).
+    coverage_refreshed = 0
+    if upserted_symbols:
+        try:
+            from market_data.global_symbol_coverage import refresh_global_symbol_coverage
+            for upserted_symbol in upserted_symbols:
+                try:
+                    refresh_global_symbol_coverage(upserted_symbol, reference_trade_date=target_date)
+                    coverage_refreshed += 1
+                except Exception:
+                    logger.exception('compute_session_facts_for_all_active: coverage refresh failed for %s', upserted_symbol)
+        except Exception:
+            logger.exception('compute_session_facts_for_all_active: coverage refresh import failed')
+
     logger.info(
-        'compute_session_facts_for_all_active: date=%s upserted=%d skipped=%d errors=%d',
-        target_date, upserted, skipped, errors,
+        'compute_session_facts_for_all_active: date=%s upserted=%d skipped=%d errors=%d coverage_refreshed=%d',
+        target_date, upserted, skipped, errors, coverage_refreshed,
     )
     return {
         'status': 'ok' if errors == 0 else 'partial',
@@ -391,4 +409,5 @@ def compute_session_facts_for_all_active(session_date: date | None = None, symbo
         'upserted': upserted,
         'skipped': skipped,
         'errors': errors,
+        'coverage_refreshed': coverage_refreshed,
     }

@@ -41,7 +41,8 @@ class RepairBeatScheduleTest(TestCase):
         call_command("repair_beat_schedule", stdout=StringIO())
         pt = PeriodicTask.objects.get(name="schedule-realtime-prefetch-shards")
         self.assertTrue(pt.enabled)
-        self.assertEqual(pt.queue, "realtime_prefetch")
+        # Slice D (QueueRecovery): heartbeat 3s sang queue riêng realtime_scheduler.
+        self.assertEqual(pt.queue, "realtime_scheduler")
         self.assertIsNotNone(pt.interval)
 
     def test_ingest_daily_prices_manually_enabled_stays_enabled(self):

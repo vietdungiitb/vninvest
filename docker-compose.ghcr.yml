@@ -120,7 +120,8 @@ services:
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:?CSRF_TRUSTED_ORIGINS must be set}
       FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
       CELERY_CONCURRENCY: ${CELERY_CONCURRENCY:-2}
-      CELERY_QUEUES: ${CELERY_QUEUES_BACKFILL:-celery,enrichment_offhours,manual_on_demand,analytics_heavy}
+      # Slice E (QueueRecovery): kèm enrichment_eod (daily-backfill tách marathon).
+      CELERY_QUEUES: ${CELERY_QUEUES_BACKFILL:-celery,enrichment_offhours,enrichment_eod,manual_on_demand,analytics_heavy}
     command: ["worker"]
     depends_on:
       core-api:
@@ -146,7 +147,8 @@ services:
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:?CSRF_TRUSTED_ORIGINS must be set}
       FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
       CELERY_CONCURRENCY: ${CELERY_CONCURRENCY_REALTIME:-2}
-      CELERY_QUEUES: ${CELERY_QUEUES_REALTIME:-realtime_prefetch,realtime_stream}
+      # Slice D (QueueRecovery): kèm realtime_scheduler (heartbeat 3s tách queue).
+      CELERY_QUEUES: ${CELERY_QUEUES_REALTIME:-realtime_prefetch,realtime_scheduler,realtime_stream}
     command: ["worker"]
     depends_on:
       core-api:
@@ -169,12 +171,15 @@ services:
       - |
         while true; do
           TS=$$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          DEPTH=$$(redis-cli -h core-redis -n 3 LLEN realtime_prefetch 2>/dev/null || echo -1)
           THRESHOLD=$${QUEUE_MONITOR_REALTIME_THRESHOLD:-500}
-          echo "[$$TS] realtime_prefetch_depth=$$DEPTH threshold=$$THRESHOLD"
-          if [ "$$DEPTH" -ge "$$THRESHOLD" ]; then
-            echo "[$$TS] ALERT realtime_prefetch backlog high depth=$$DEPTH threshold=$$THRESHOLD"
-          fi
+          # Slice G (QueueRecovery, audit F5): theo dõi mọi queue (không chỉ realtime_prefetch).
+          for Q in realtime_prefetch realtime_scheduler enrichment_offhours enrichment_eod manual_on_demand analytics_heavy celery screener; do
+            DEPTH=$$(redis-cli -h core-redis -n 3 LLEN $$Q 2>/dev/null || echo -1)
+            echo "[$$TS] queue_depth queue=$$Q depth=$$DEPTH threshold=$$THRESHOLD"
+            if [ "$$DEPTH" -ge "$$THRESHOLD" ]; then
+              echo "[$$TS] ALERT queue=$$Q backlog high depth=$$DEPTH threshold=$$THRESHOLD"
+            fi
+          done
           sleep $${QUEUE_MONITOR_INTERVAL_SECONDS:-300}
         done
     healthcheck:

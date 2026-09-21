@@ -451,10 +451,15 @@ CELERY_BEAT_SCHEDULE = {
         'options': {'queue': SCHEDULER_QUEUE_MAP['auto-deprovision-stale']},
     },
     # === Materializer tasks (market_serving) ===
+    # Corrective live-measured: full snapshot run đo được 7+ phút (3100 DailyPrice queries
+    # + 1551 update_or_create) > interval 60s → tự flood. Interval env-tunable default 300s
+    # + bulk rewrite ở vnbroker_materializer (2 batch queries + 1 bulk upsert). Tên job giữ
+    # nguyên để không vỡ contract (beat_reconcile đồng bộ interval số).
     'materialize-symbol-snapshot-60s': {
         'task': 'market_serving.materializers.materialize_symbol_snapshot',
-        'schedule': 60.0,  # every 60 seconds
+        'schedule': float(os.getenv('SNAPSHOT_INTERVAL_SECONDS', '300') or 300),
         'options': {'queue': SCHEDULER_QUEUE_MAP['materialize-symbol-snapshot-60s']},
+        'expire_seconds': int(os.getenv('SNAPSHOT_EXPIRE_SECONDS', '600') or 600),
     },
     'materialize-pre-open-snapshots-20m': {
         'task': 'market_serving.materializers.materialize_pre_open_snapshots',
@@ -473,10 +478,14 @@ CELERY_BEAT_SCHEDULE = {
     },
     
     # === Native SaaS realtime prefetch (replaces legacy portfolio prefetch) ===
+    # Slice B (QueueRecovery): expire_seconds = per-message TTL (giây) mà beat_reconcile.py
+    # đồng bộ vào PeriodicTask.expire_seconds (django-celery-beat 2.9+: worker discard tin quá hạn
+    # lúc pop — broker list vẫn tích trong downtime nhưng drain tức thì sau restart, không thực thi cũ).
     'schedule-realtime-prefetch-shards': {
         'task': 'market_serving.realtime_prefetch.schedule_realtime_prefetch_shards',
         'schedule': 3.0,  # every 3 seconds (main scheduler)
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('schedule-realtime-prefetch-shards', 'realtime_prefetch')},
+        'expire_seconds': int(os.getenv('REALTIME_SCHEDULER_EXPIRE_SECONDS', '30') or 30),
     },
     
     # === Ops/Admin tasks ===
@@ -544,10 +553,14 @@ CELERY_BEAT_SCHEDULE = {
 
     # === C1: Native ingest — price board every 60s ===
     # Replaces legacy-worker as sole SymbolSnapshot update source.
+    # Corrective live-measured: full run đo được 144s > 60s (tự flood). Interval env-tunable,
+    # default 180s + coverage xoay vòng 1/3 (full refresh ~9 phút). Đổi tên job giữ nguyên để
+    # không vỡ contract (beat_reconcile đồng bộ interval số, xem beat_reconcile.py).
     'ingest-price-board-60s': {
         'task': 'data_ingest.tasks.fetch_and_upsert_price_board',
-        'schedule': 60.0,
-        'options': {'queue': SCHEDULER_QUEUE_MAP.get('ingest-price-board-60s', 'realtime_prefetch')},
+        'schedule': float(os.getenv('PRICE_BOARD_INTERVAL_SECONDS', '180') or 180),
+        'options': {'queue': SCHEDULER_QUEUE_MAP.get('ingest-price-board-60s', 'enrichment_eod')},
+        'expire_seconds': int(os.getenv('PRICE_BOARD_EXPIRE_SECONDS', '300') or 300),
     },
 
     # === C2: Native intraday tick hydration — every 5 minutes ===
@@ -559,10 +572,13 @@ CELERY_BEAT_SCHEDULE = {
     # for the current session was only filled by the weekly DNSE backfill.
     # schedule_realtime_prefetch_shards also enqueues this with throttling
     # as belt-and-suspenders (see realtime_prefetch.py hydrate leg).
+    # Corrective v4: beat warm (full→hot-only sau Slice C) vẫn đẻ 2 chunk/5 phút trong khi
+    # hydrate-leg đã cover hot/10 phút — trùng lặp. Interval env-tunable (reconcile sync số).
     'warm-intraday-realtime-5m': {
         'task': 'data_ingest.tasks.warm_intraday_universe',
-        'schedule': 300.0,  # every 5 minutes
+        'schedule': float(os.getenv('WARM_INTRADAY_BEAT_INTERVAL_SECONDS', '300') or 300),
         'options': {'queue': SCHEDULER_QUEUE_MAP.get('warm-intraday-realtime-5m', 'realtime_prefetch')},
+        'expire_seconds': int(os.getenv('WARM_INTRADAY_EXPIRE_SECONDS', '600') or 600),
     },
 
     # === Daily OHLCV backfill — after HOSE close (17:00 ICT = UTC+7) ===

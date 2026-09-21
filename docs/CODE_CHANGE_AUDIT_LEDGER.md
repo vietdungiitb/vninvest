@@ -5,6 +5,270 @@
 
 ---
 
+## Entry 150: Fix OOM-loop manual worker + prefetch mem + verify close-out (2026-09-21)
+
+- **Date**: 2026-09-21
+- **Scope**: Phát hiện qua `docker events`: `core-worker-manual` OOM-loop (exit 137 mỗi ~20s, RestartCount 52→69).
+  Root cause: corrective-v4 đặt prefork ×2 trong `mem_limit 128m` (mỗi slot Django ~100-150MB).
+  Cùng lỗi ở prefetch worker (prefork ×5 trong 512m, đầy 99.8%).
+- **Fix (`docker-compose.dev.yml`)**: manual revert solo/1 (batch đã dời đi, demand nhẹ) + mem 128m→256m;
+  prefetch mem 512m→1g (giữ ×5). `config --quiet` EXIT=0.
+- **Phát hiện thêm**: manual process cũ bị wedged consumer (0 received/6 phút dù running) — restart thì
+  drain 48→0 trong 3 phút (58 completions). Restart=0, OOM=false sau fix.
+- **Verify close-out**: container test_soc_tasks 38/38 OK; DB beat rows đúng 6 jobs (scheduler/exp30,
+  price-board→eod/180s/exp300, warm→prefetch/600s, backfill→eod, snapshot→eod/300s/exp600);
+  LLEN prefetch/scheduler/manual/eod = 0; SessionFacts 21/09 = 68 rows (tăng); snapshot 21/09 = 781;
+  FE bundle deployed có `queue_depth_title`.
+- **Còn lại**: queue `celery` commercial ~900 (flush tasks, drain chậm, pre-existing + deploy artifact) —
+  ngoài phạm vi market-data DoD, follow-up riêng. Code CHƯA commit (toàn bộ working tree trên branch `dev`,
+  xem git status) — phải commit trước khi close task.
+- **Lưu ý commit**: 6 keys i18n `queue_depth_*` (vi/en) đã bị cuốn vào commit `3f7e2d48` của session khác
+  (22:43, shared working tree) — không còn trong diff này nhưng nội dung đúng trong HEAD. Không rewrite history.
+
+---
+
+## Entry 149: Verify meta-audit + fix test_soc_tasks 1-fail live (2026-09-21)
+
+- **Date**: 2026-09-21
+- **Scope**: Verify độc lập từng claim meta-audit (§J + Entry 148) bằng lệnh/read trên container dev +
+  package thật; fix nguyên nhân gốc của 1 fail; sửa collision số Entry (xem cuối).
+- **Verify**:
+  - Erratum 1 ĐÚNG cả hai bản: 1.0.2 có `process_match_types` (def `:142`, map `:174/:179`, call `:430`
+    trong `intraday_to_df`) — lệch 1 dòng so với số §J (từ 2.0.0), không đổi kết luận.
+  - Erratum 2 ĐÚNG mechanism + đào sâu thêm 1 lớp: skip vì `recovery_backlog → manual_on_demand`
+    depth 141-155 > max 20; depth này do **corrective-v4 QueueRecovery** (batch 150-340s/run sang manual).
+    Test env-dependent (đọc LLEN live; local fail-open 0 ⇒ pass).
+  - Ghi chú C-2 ĐÚNG toàn bộ trên 1.0.2: `foreign_trade True`, `dnse.websocket` ModuleNotFoundError,
+    `price_depth` signature khớp 2.0.0.
+- **Fix (code + test + compose)**:
+  - `queue_policy.py`: batch (snapshot + price-board) manual → `enrichment_eod` (worker rảnh ~23h/ngày);
+    settings fallback → `enrichment_eod`; test slice_d cập nhật asserts.
+  - `test_soc_tasks.py`: mock `_get_redis_queue_depth → 0` trong test dispatch (deterministic).
+  - `docker-compose.dev.yml`: eod concurrency 1→3 (đo live 3.6 slot demand); api +=
+    `WARM_INTRADAY_BEAT_INTERVAL_SECONDS=600` (chống repair flap 600↔300 tùy container chạy).
+  - Sửa `docker-compose.dev.yml:361-362` comment vỡ làm hỏng parse YAML (`config --quiet` EXIT=0 sau sửa).
+- **Gates**: local 43 tests OK (slice_d 5 + soc_tasks 38); **container 38/38 OK** (trước đó Ran 38 FAILED 1
+  đúng như meta-audit); repair DB queues đúng (`enrichment_eod` cho 2 batch); live manual 67→34 drain,
+  eod 0, prefetch 0.
+- **Baseline test chốt**: 38/38 OK cả local + container. "6F"/"37/1" là trạng thái infra từng thời điểm.
+- **Ledger hygiene**: các entry audit 138/139/140 (dòng cũ) trùng số với Slice A/B/C → renumber → 146/147/148
+  (giữ nguyên nội dung + thứ tự newest-first). Entry này là 149.
+
+---
+
+## Entry 148: PHẢN BIỆN AUDIT — Market Data Sync Gap (meta-audit, 2026-09-21)
+- *(Renumbered từ Entry 140 — trùng số với Slice C. Nội dung giữ nguyên.)*
+
+- **Date**: 2026-09-21
+- **Scope**: Audit lại phản biện của Entry 139. Đã verify từng claim bằng lệnh/read (không mặc nhiên tin).
+  Errata ghi vào §J của `docs/AUDIT_MARKET_DATA_SYNC_GAP_20260921.md`.
+- **Phản biện ĐÚNG (audit gốc sai)**: (C-1) container `core-api` chạy **vnbroker 1.0.2**, KHÔNG có
+  `vnbroker.api.stream` (`ModuleNotFoundError`); (C-2) drift 3 chiều `requirements.txt:29` v1.1.0 ≠ `.venv` 2.0.0 ≠
+  container 1.0.2; (C-3) `Stream` là **polling 1s** (`explorer/vci/stream.py:4-8`), fallback chỉ vci/kbs
+  (`api/stream.py:146`); (C-4) `get_all_indices()` metadata-only + VCI intraday từ chối index
+  (`explorer/vci/quote.py:585-586`); (C-5) `foreign_trade()` tồn tại (`api/trading.py:127`, cả 1.0.2);
+  (C-6) `company.events()` có ở dnse:258/kbs:580/tcbs:374/vci:304 + `dnse/client.py:408`; (C-7) TTL 300 là tape cache
+  (`vnbroker_adapter.py:856`), comment `models.py:170` không nói stream; (C-8) matchType mapped
+  (`vci/const.py:50-55`) + lưu (`adapter:134`, `models.py:187`). F-AUD-02/03/05/06 xác nhận.
+- **Phản biện SAI/mức quá cao**: (F-AUD-04) `intraday_to_df` gọi `process_match_types`
+  (`core/utils/transform.py:429`, chuẩn hoá `b/B/s/S/BU/SD→Buy/Sell` `:173-180`) ⇒ side inference **hoạt động**,
+  hạ mức; (C-5 test) phản biện ghi "38/38 OK" cũng sai — reproduce live container **2 lần = Ran 38, FAILED (1)**
+  (`test_market_data_queue_tier_scheduler_...dispatches_due_tiers`, `dispatched_runs 1 != 2`); (C-2 cite)
+  phản biện lặp lại version trap khi cite `connector/dnse/websocket.py` (2.0.0-only).
+- **Kết quả**: audit gốc đúng ~75% (project-side), sai mảng package-side. Verdict: implementable CÓ ĐIỀU KIỆN —
+  blocker: chốt version vnbroker + rebuild verify; viết lại MDG-05/H1.2; hoãn H1.1/H1.5.
+- **Baseline test đính chính**: `test_soc_tasks` = **37 pass / 1 fail** (không phải 6F, không phải 38/38);
+  cần điều tra nguyên nhân (nghi runtime policy/Redis state).
+
+---
+
+## Entry 147: AUDIT — Market Data Sync Gap vs thị trường thực (2026-09-21)
+- *(Renumbered từ Entry 139 — trùng số với Slice B. Nội dung bên dưới giữ nguyên.)*
+
+- **Date**: 2026-09-21
+- **Scope**: Audit read-only subsystem `market_data` + `market_serving` + data-ingest, đối chiếu dữ liệu
+  thị trường chứng khoán VN cần cho vận hành realtime. Báo cáo: `docs/AUDIT_MARKET_DATA_SYNC_GAP_20260921.md` (khung §4 + roadmap Phase 0/1/2).
+- **Phát hiện chính**: (1) `quote.price_depth()` order book **đã có trong gói `vnbroker` 2.0.0**
+  (`vnbroker/api/quote.py:188`) nhưng dự án dùng mock `RealtimeDepthChartView` (`native_views.py:327`);
+  (2) `Stream` + `TickData(bid/ask)` (`stream.py:82,42-45`) chưa dùng — realtime thực chất là polling nến 1D
+  (`vnbroker_adapter.py:408-413`); (3) `is_adjusted` không bao giờ set `True` → lịch sử chưa điều chỉnh corporate
+  actions (`models.py:80`); (4) chưa lưu index value dù provider có `common/indices.py:27`; (5) chưa có
+  phái sinh/CW/bond dù `listing.py:138,162,174`; (6) **khối ngoại không có nguồn** (grep foreign/room=0).
+- **Findings**: MDG-01..MDG-12 (3 HIGH: order book mock, corporate actions, realtime polling; MED/LOW còn lại).
+- **Kết luận**: phần lớn gap là **thiếu tích hợp**, không thiếu nguồn (trừ khối ngoại). Roadmap: P0
+  corporate actions + order book; P1 streaming tick + index; P2 khối ngoại/phái sinh/calendar.
+- **Gates**: audit read-only, không đổi code. Chưa đo coverage live (xem §F câu hỏi).
+
+---
+
+## Entry 146: AUDIT — QueueRecovery implementation vs plan Rev.2 (2026-09-21)
+- *(Renumbered từ Entry 138 — trùng số với Slice A. Nội dung bên dưới giữ nguyên.)*
+
+- **Date**: 2026-09-21
+- **Scope**: Re-audit độc lập code đội code đã implement theo `IMPLEMENTATION_PLAN_REALTIME_QUEUE_RECOVERY_20260921.md` (Rev.2).
+  Báo cáo đầy đủ: `docs/AUDIT_REALTIME_QUEUE_RECOVERY_IMPLEMENTATION_20260921.md` (khung AGENTS.md §4).
+- **Trạng thái code**: TOÀN BỘ uncommitted (27 file, head `f41ec45f`), 0 commit/ledger/PR theo slice.
+- **Kết quả**: 8/8 slice khớp plan Rev.2; 9/9 finding lần 1 ĐÓNG có test (C-1..C-4, F1, F3, F4, F5, F6).
+  `test_soc_tasks` 6 FAIL = đúng baseline pre-existing; không tăng.
+- **Findings mới**: Q-1 (HIGH, isolation EOD không đạt ở prod/ghcr — chỉ thêm queue vào worker marathon,
+  `docker-compose.prod.yml:146`/`ghcr.yml:124`); Q-2 (HIGH, traceability=0); Q-3 (MED, rotation full ~60' ≠ docstring "9'");
+  Q-4 (MED, test rotation rỗng nghĩa); Q-5 (MED, prefork 5 × mem 512m nguy cơ OOM); Q-6..Q-10 (LOW).
+- **Gates (đã chạy thật)**: BE 39 test slice mới OK; `test_realtime_prefetch`/`test_tasks`/`test_repair_beat_schedule`/
+  `test_scheduler_catalog`/`test_drift_enabled_missing` OK; `test_soc_tasks` 6F pre-existing; `manage.py check` 0.
+  FE `tsc` 0, `build` PASS 48.00s, eslint 0, `i18n:scan` exit 0 (+6 key), vitest queue-depth 2/2, jest `soc.test.js` 94/94.
+  Live: worker `realtime-scheduler` + `enrichment-eod` up; depth `realtime_prefetch=162`, các queue khác ~0.
+- **Verdict**: impl chất lượng cao, không blocker kỹ thuật; KHÔNG merge nguyên cây — phải xử lý Q-1 + Q-2 trước, kèm Q-3/Q-4/Q-5.
+
+---
+
+## Entry 145: QueueRecovery Slice H — deploy, live-verify DoD, đóng plan
+
+- **Date**: 2026-09-21 (đêm, ngoài phiên — load test giả lập phiên bằng override tạm, đã xóa)
+- **Scope**: rebuild image + recreate stack (2 worker mới), reconcile, purge cuối, load-test 4 vòng,
+  dọn override/backup, ledger + AGENTS.
+- **Deploy**: `up -d --build` ×6 (mỗi vòng corrective), `repair_beat_schedule` (entrypoint + tay) —
+  DB: scheduler→`realtime_scheduler`/exp30, price-board→manual/180s/exp300, warm→prefetch/600s/exp600,
+  daily-backfill→`enrichment_eod`, snapshot→manual/300s/exp600 + enabled, warm-beat→600s.
+- **Live-verify DoD (load test gate-TẮT, giả lập phiên)**:
+  - Vòng 1-3 (chưa đủ fix): +140 → +20 → +14/phút — mỗi vòng đo ra 1 root cause mới
+    (env pacing đặt nhầm worker; warm chunk 200-540s; price-board/snapshot 150-340s).
+  - Vòng cuối: LLEN 0/0/0/0 trong 15 phút, 201 completions (~13/phút) — arrival ≈ drain. ĐẠT.
+  - Gate BẬT lại (off-hours): scheduler 395 `skipped_offhours` / 0 fan-out trong 20 phút — weekend an toàn.
+  - SessionFacts 20→568 rows (09:20, 17:53, 18:429, 21:66); snapshot 21/09: 0→781 rows;
+    coverage price_board 0→114 fresh+343 warm; session_facts 0→66 fresh.
+  - Observability API live trả `queue_depths` đủ 9 queue; FE bundle deployed chứa `queue_depth_title`.
+- **Gates**: BE sweep 112 tests OK (7 file slice mới + repair/drift/catalog/tasks/realtime/warm/facts/snapshot);
+  `test_soc_tasks` 38/38 OK local (6 fail pre-existing không tái hiện); `manage.py check` 0;
+  FE tsc 0, build PASS 40s, lint 0, jest soc 94/94, vitest queue-depth 2/2, i18n:scan 0.
+- **Dọn dẹp**: xóa `docker-compose.loadtest.yml`, Redis bak keys, `measure_*.py`, `C:\Windows\Temp\q*.txt`.
+- **Còn lại (trung thực, ngoài phiên không verify được)**: EOD backfill 5 phiên success liên tiếp;
+  snapshot 3 phiên mới nhất = today (mới 1 sample 781 rows); celery queue 406 (flush thương mại,
+  đang tự drain -10/3 phút, pre-existing + deploy artifact — follow-up riêng, không chặn DoD);
+  Decimal precision khiến snapshot luôn `updated` thay vì `skipped` (pre-existing cosmetic);
+  `run_global_market_data_planner` 400s+ thỉnh thoảng vào fast lane (follow-up: expire/cadence).
+- **Toàn bộ plan Rev.2 (A–H) + corrective v1–v4 DONE.** File compose canonical đã chốt theo Q2 audit.
+
+---
+
+## Entry 144: QueueRecovery Slice G — queue_depths observability + SOC UI
+
+- **Date**: 2026-09-21
+- **Scope (BE+FE)**: `dataops_market_data.py` += `_read_broker_queue_depths()` (1 client Redis, timeout 2s,
+  fail-open) gắn vào summary; `_dataops_signature` hash thêm `queue_depths` (audit C-4);
+  `service_ops/tasks.py` `_get_redis_queue_depth` thêm socket timeout (bảo vệ loop 30s);
+  FE `SocDataOpsMonitorSection` += Queue-Depth card (banner đỏ ≥200, bảng màu theo ngưỡng) + 6 keys vi/en;
+  monitor script dev+ghcr theo dõi 7 queue (audit F5).
+- **Gates**: BE slice-g 3/3; FE tsc 0, jest 94/94 (+1 passthrough), vitest mới 2/2, lint 0, i18n:scan 0.
+- **Verify live**: API trả đủ 9 queue (`realtime_prefetch: 0, realtime_scheduler: 0, ...`);
+  bundle deployed chứa key mới.
+
+---
+
+## Entry 143: QueueRecovery Slice F — snapshot hồi sinh + bỏ mass-stale
+
+- **Date**: 2026-09-21
+- **Scope**: `CRITICAL_JOBS` += `materialize-symbol-snapshot-60s` (cả `beat_reconcile.py` + drift-check);
+  xóa mass-stale toàn bảng ở cả 2 chỗ (audit C-1: `vnbroker_materializer.py:299-303` +
+  `materializers.py:42-46`); OPS re-enable job (Slice A).
+- **Corrective (đo live)**: snapshot full run 7+ phút (3100 DailyPrice queries + 1551
+  update_or_create > interval 60s) → bulk rewrite (2 batch queries + 1 bulk upsert) + interval 300s env.
+- **Gates**: slice-f 3/3 (re-enable, drift-flag, lists-sync) + snapshot-bulk 3/3 (insert/skip/update/no-stale);
+  grep `update(stale=True)` toàn market_serving = 0.
+- **Verify live**: snapshot 21/09 = 781 rows (từ 0); reconcile tự bật lại khi tắt tay.
+
+---
+
+## Entry 142: QueueRecovery Slice E — cô lập enrichment (PA1)
+
+- **Date**: 2026-09-21
+- **Scope**: queue `enrichment_eod` + domain riêng cho `daily-backfill-prices-1700` (rời marathon);
+  worker `core-worker-enrichment-eod` mới (MAX_TASKS=1); enrichment mem 512m→1g + MAX_TASKS=4;
+  entrypoint `--max-tasks-per-child` env-tunable; prod/ghcr/root/core compose sync.
+- **Gates**: slice-e 4/4; compose dev `config` OK + 3 file YAML parse OK; ремонт reconcile no-op đúng.
+- **Verify live**: worker eod lên, daily-backfill route `enrichment_eod`; OOM weekend không tái diễn
+  (cần quan sát 14 ngày — ghi nhận).
+
+---
+
+## Entry 141: QueueRecovery Slice D — tách queue realtime_scheduler
+
+- **Date**: 2026-09-21
+- **Scope**: queue `realtime_scheduler` + domain riêng cho heartbeat 3s; worker nhẹ mới (dev, 256m);
+  prod/ghcr gộp queue, root single-worker multi-queue, core harness sync list (Q2 audit);
+  orphan-check tuple += queue mới (audit F3).
+- **Corrective (đo live)**: price-board + snapshot là batch provider-bound 150-340s → chuyển sang
+  `manual_on_demand` (worker rảnh) + manual worker prefork 2; warm beat 5→10 phút (trùng hydrate-leg).
+- **Gates**: slice-d 5/5; existing `test_create_missing_job` cập nhật queue mới (audit E dự báo đúng).
+- **Verify live**: `realtime_scheduler` LLEN=0 ổn định; beat row queue đúng sau reconcile.
+
+---
+
+## Entry 140: QueueRecovery Slice C — warm chunking + coverage session-facts
+
+- **Date**: 2026-09-21
+- **Scope**: `warm_intraday_universe` chunk-30 + self-continuation (countdown 30s) + per-symbol timeout 8s
+  (15→8 sau đo live) + circuit breaker skip-24h sau 3 fails + coverage rotation 1/3;
+  beat path mặc định hot-only (63-chunk bất tận → 2 chunk); hydrate warm cap 150→90, hourly;
+  session-facts materializer refresh coverage (phát hiện verify Slice A).
+- **Gates**: slice-c 9/9 + facts 2/2 (bound 30×8=240 < 600 FR-03 giữ); regression warm cũ fix 2 (keyword call).
+- **Verify live**: chunk 30 symbols/204s + continuation, timeouts ghi nhận, coverage_refreshed=30.
+
+---
+
+## Entry 139: QueueRecovery Slice B — expires + dedup-guard + time-limit
+
+- **Date**: 2026-09-21
+- **Scope**: `expire_seconds` (30/300/600) vào 3 beat entries + `beat_reconcile` sync ra DB
+  (django-celery-beat 2.9 `expire_seconds` column đã tồn tại); scheduler-task duplicate-guard
+  cache-based (window 1s, không dùng `sent_at` theo F4) + soft/hard limit 45/60s; reconcile sync interval số.
+- **Gates**: slice-b 8/8 + dedup 3/3 (test_realtime_prefetch 14/14).
+- **Verify live**: worker discard "revoked/expired" tasks khi pop (log); dedup `skipped_duplicate` xen kẽ;
+  DB `expire_seconds` đúng 3 jobs.
+
+---
+
+## Entry 138: QueueRecovery Slice A — gỡ nghẽn khẩn (OPS)
+
+- **Date**: 2026-09-21 ~11:05 ICT
+- **Scope (không code)**: baseline LLEN=77.267/SessionFacts=20/snapshot latest 17/09/job disabled →
+  stop beat → COPY backup → DEL → start beat → re-enable snapshot → backfill session-facts 17/18/21 +
+  price-board now → restart worker kẹt giant task (solo worker nuốt task tiền-purge, inspect im lặng).
+- **Kết quả**: SessionFacts 20→515 (17:53, 18:429, 21:13); snapshot job received; LLEN về ~100.
+  Stability <200 dài hạn KHÔNG đạt pre-deploy (bệnh nền) → chuyển cho B–G + verify sau deploy.
+- **Minh chứng**: log `compute_session_facts_for_all_active ... upserted=429 errors=0`,
+  `materialize_session_facts ... succeeded in 0.77s`.
+
+---
+
+## Entry 137: Plan Rev.2 — QueueRecovery ap audit/phản biện (doc-only, chưa code)
+
+- **Date**: 2026-09-21
+- **Scope**: `docs/IMPLEMENTATION_PLAN_REALTIME_QUEUE_RECOVERY_20260921.md` Rev.1 → Rev.2 sau audit/phản biện độc lập
+  (khung AGENTS.md §4). Audit verify R1–R11 đúng file:line, 7/8 slice khớp code, implementable, không blocker.
+- **Verify lại từng claim audit (read/grep, không trust)**:
+  - C-1 CONFIRMED: `vnbroker_materializer.py:299-303` mass-stale thứ 2 (chạy trước `materializers.py:42-46`) →
+    Slice F giờ sửa cả 2 chỗ.
+  - C-2 CONFIRMED (60×20s=1200s > FR-03) → Slice C: chunk **30** + timeout **15s** (worst 450s < 600s).
+  - C-3 hiệu chỉnh cơ chế: `expires` do worker enforce lúc pop (không GC broker list) → Slice B acceptance viết lại
+    (đo drain sau restart, không đo trong downtime) + guard cache-based `last_run` thay `sent_at`.
+  - C-4 CONFIRMED (`_dataops_signature` tại `dataops_stream.py:50-67` thiếu depth; FE skip-poll khi stream mở
+    `SocDataOpsMonitorSection.tsx:319-341`) → Slice G: thêm `queue_depths` vào signature + xử lý stream-open.
+  - F1 CONFIRMED (beat warm không plan_items → fallback toàn registry `tasks.py:888-892`+`:105-113`) →
+    Slice C redesign: task tự chunk + self-continuation (1 change fix cả 2 path), GIỮ beat entry (Q1).
+  - F2 CONFIRMED + chốt canonical (Q2): dev=`docker-compose.dev.yml`, prod=`prod/ghcr.yml`,
+    root `docker-compose.yml` (1 worker chỉ ăn `celery`) legacy/minimal, `packages/core/docker-compose.core.yml`
+    harness độc lập → Slice D ma trận compose, cấm đồng bộ mù. F6 line-refs sửa (`QUEUE_NAMES` `:6-16`, mem `:302`).
+  - F3 CONFIRMED (`service_ops/tasks.py:863-869` hardcode 5 queue; full-scan `:808` O(n) pre-existing giữ nguyên) →
+    Slice D thêm queue mới; phát hiện thêm `_get_redis_queue_depth` tại `:818` → Slice G reuse, không viết client mới.
+  - E CONFIRMED đúng dòng (`test_repair_beat_schedule.py:44`, `test_scheduler_catalog.py:37,42`,
+    `test_soc_tasks.py:357,421,512,650` là field `planner_queue` → review không sửa mù) → Slice H checklist tường minh.
+  - Q3: repo chưa có `task_time_limit` nào → Slice B/C thêm soft+hard limit env-tunable.
+- **Gates**: doc-only — không chạy tsc/build/pytest (chưa động code); `git status` chỉ 2 file đổi
+  (plan + ledger). Mọi file:line trích trong plan đã read/grep xác nhận tồn tại.
+- **Còn lại**: đội code nhận slice theo plan Rev.2 (ma trận mục 4); Slice A làm được ngay hôm nay.
+
+---
+
 ## Entry 136: Polish UI tab Screener SOC (UI-PRO, FE-only, chưa commit)
 
 - **Date**: 2026-09-20
@@ -3445,4 +3709,59 @@
   - F6/F7/C3: tooltip theo đúng nhánh công thức; R1.3 tách 3 vùng lỗi render; phối hợp `vi.js` S5/S6.
 - **Files**: `docs/IMPLEMENTATION_PLAN_ALERT_CENTER_SIGNALS_FIX_20260920.md` (mới + rev audit). Không đổi code.
 - **Gates**: doc-only — không chạy tsc/build; `grep` xác minh toàn bộ file:line viện dẫn.
+---
+
+## Entry 134: PHẢN BIỆN audit UI Trung tâm cảnh báo (whale-alerts) — không sửa code
+
+- **Date**: 2026-09-21
+- **Scope**: Đối chiếu báo cáo audit screenshot-only với `AlertCenterPage.tsx`, `AlertCard.tsx`, `FilterBar.tsx`, `StatsPanel.tsx`, `StatsTable.tsx`, `MuteModal.tsx`, hooks AlertCenter, i18n `alertCenter`, `signal_intelligence/{serializers,views,materializers}.py`, CSS SOC.
+- **Kết luận**: báo cáo đúng hướng UX/density/copy, nhưng lạm dụng P0 và có nhiều claim sai hoặc lỗi thời so với code hiện tại.
+- **CONFIRMED đáng giữ**: trùng `title`/`summary` vì whale `body=''` và serializer fallback; nhiều định dạng số/ngày từ hai pipeline format; header stats dùng độ dài trang hiện tại thay cho tổng; timestamp `executed_at`/`triggered_at` cần đối chiếu payload thô.
+- **REFUTED / LỖI THỜI**: filter đã có active/inactive + nút xóa; feed đã dùng `FixedSizeList`; bảng đã sticky header/tabular-nums/hover/link; mute mở modal 15/30/60/240; marker evidence đổi ▼/▶; skeleton/empty/retry/banner lỗi và nhiều phần a11y đã có.
+- **Finding mới từ phản biện**: `StatsPanel.tsx:31` dùng `soc.panel`, nhưng quét toàn thư mục SOC không thấy định nghĩa `.panel`; đây có thể mới là nguyên nhân cột thống kê mất khung card.
+- **Gates**: doc-only — không chạy tsc/build/test; mọi claim chính đã gắn `file:line`.
+---
+
+## Entry 135: GHI FILE phản biện audit whale-alerts — không sửa code
+
+- **Date**: 2026-09-21
+- **Scope**: Ghi kết luận Entry 134 thành `docs/PHAN_BIEN_AUDIT_WHALE_ALERTS_20260921.md`.
+- **File**: `docs/PHAN_BIEN_AUDIT_WHALE_ALERTS_20260921.md` mới — phương pháp, phán quyết, contradictions, verdict #1–#26 + mục E, đánh giá đề xuất mục 2, sprint lại, câu hỏi mở.
+- **Gates**: doc-only — không chạy tsc/build/test; không đổi code.
+---
+
+## Entry 136: PLAN remediation UI whale-alerts từ phản biện audit — không sửa code
+
+- **Date**: 2026-09-21
+- **Scope**: Lập `docs/IMPLEMENTATION_PLAN_WHALE_ALERTS_UI_REMEDIATION_20260921.md` từ `docs/PHAN_BIEN_AUDIT_WHALE_ALERTS_20260921.md` (Entry 134–135).
+- **Nội dung**: Step 1 P0 data (stats tổng, dedupe title/summary, timestamp ICT, format VND/ngày, `soc.panel`, virtual clipping) → Step 2 filter/toolbar/search → Step 3 card/bảng/realtime + expose whale price/volume cộng thêm → Step 4 token/i18n/a11y; mỗi slice có yêu cầu, acceptance, checklist thẩm định, minh chứng bàn giao.
+- **Gates**: doc-only — mỗi sub-step `npx tsc --noEmit`, cuối step `npm run build`; Slice 3.2 thêm `manage.py check` + test `signal_intelligence`.
+---
+
+## Entry 138: COMMIT/PUSH remediation UI whale-alerts — 2026-09-21
+
+- **Commit**: `3f7e2d48` trên branch `dev`, đã push `origin/dev` (`f41ec45f..3f7e2d48`).
+- **Scope commit**: 23 files workstream Entry 137 (FE alert-center + hook + i18n + CSS, BE serializer/test, contract v1.2.0, 2 docs audit/plan, 4 test files mới).
+- **Cố ý ngoài commit**: `CODE_CHANGE_AUDIT_LEDGER.md` (đang chứa Entry 150 của workstream queue-recovery chưa commit), toàn bộ file queue-recovery/Market-data khác, `vi.js/en.js` giữ nguyên block `queue_depth_*` của họ trong working tree.
+- **Verify sau hook**: `npx tsc --noEmit` OK trên nội dung đã commit.
+---
+
+## Entry 137: IMPLEMENT remediation UI whale-alerts (Step 1–4) — 2026-09-21
+
+- **Date**: 2026-09-21
+- **Scope**: Thực thi `docs/IMPLEMENTATION_PLAN_WHALE_ALERTS_UI_REMEDIATION_20260921.md` toàn bộ 4 steps.
+- **Files FE**:
+  - `utils/alertCenterFormat.ts` mới + test 6 cases: `formatVnd`/`formatVndCompact`/`formatTimeICT`/`formatDateICT`/`formatDateTimeICT`/`formatSessionDate`/`formatAgo` pin `Asia/Ho_Chi_Minh`, `normalizeAlertText`/`isDuplicateSummary` cầu nối `,đ` vs `.VND`.
+  - `AlertCenterPage.tsx`: header stats tổng scope, subtitle `Hiển thị X/Y`, `VariableSizeList` + cache chiều cao card, SSE buffer + pill `newAlerts`, banner stale >60p, date thắng preset + hint, KPI total/highCritical click-to-filter, mark-all-read batch ≤50, stats sort + 20/trang.
+  - `AlertCard.tsx`: ẩn summary trùng title, meta gọn + Xem thêm/Thu gọn, evidence trong vùng mở rộng, pill hướng inline-block, dòng whale fill, tooltip family gốc, báo chiều cao cho list.
+  - `FilterBar.tsx`: count severity từ summary, `aria-pressed` mọi toggle, `vSeparator` dọc, toolbar 3 hàng, hint date, search mở rộng.
+  - `StatsPanel.tsx`: tổng scope + `Trang X/Y`, nút xóa search; `StatsTable.tsx`: giờ ICT + relative, Mua/Bán một dòng, sort count/value/time, tổng compact + tooltip đầy đủ.
+  - `DetailDrawer.tsx`: giờ ICT, session `dd/MM/yyyy`, dòng giá/khối lượng whale khi có.
+  - `soc.components.css`: thêm `.panel/.panelHeader/.panelTitle` (S1.5 — class từng thiếu), `.vSeparator`; `AlertCenterPage.module.css`: `.acBuySellOneLine/.acSearchGrow/.acNewPill/.acClickableMetric/.acPageTokens`.
+  - i18n VI+EN: 26 keys alertCenter mới + relabel family Việt (giữ gốc ở tooltip), subtitle mới, `liveWs` Trực tiếp/Live, `btnMute` Tắt tiếng…/Mute….
+- **Files BE**: `serializers.py` thêm `whale_detail` nested cộng thêm (non-whale null); `test_alert_center_api.py` +1 test; `unified-alert.contract.json` v1.2.0.
+- **Tests mới/sửa**: format 6, AlertCard 5, StatsPanel 2, FilterBar +2, page (pagination 20/trang, pill SSE, mark-all-read, stale banner).
+- **Gates**: `tsc` 0; `build PASS 20.83s`; `vitest 57/290`; `jest 17/237`; `lint 0 errors`; `i18n:scan` exit 0 (diff locale chỉ key slice này); `manage.py check` 0; `test_alert_center_api 13 OK`; `signal_intelligence 71 OK`.
+- **Deviations**: family counts trên chip chỉ severity (summary BE không có family breakdown — không đổi BE); KPI unseen/AI không click (thiếu filter BE); type-scale H1 giữ shell system.
+
 

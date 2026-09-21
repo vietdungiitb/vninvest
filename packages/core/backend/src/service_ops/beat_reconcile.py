@@ -15,11 +15,15 @@ from django_celery_beat.models import CrontabSchedule, IntervalSchedule, Periodi
 
 logger = logging.getLogger(__name__)
 
+# Slice F (QueueRecovery): materialize-symbol-snapshot-60s được reconcile bảo vệ —
+# job này từng bị tắt lặng lẽ (enabled=False, dừng từ 17/09) mà reconcile bỏ qua.
+# Giữ đồng bộ 2 danh sách (đây + check_scheduler_queue_drift.CRITICAL_JOBS).
 CRITICAL_JOBS = [
     "market-data-queue-tier-scheduler-30s",
     "ingest-price-board-60s",
     "warm-intraday-realtime-5m",
     "schedule-realtime-prefetch-shards",
+    "materialize-symbol-snapshot-60s",
 ]
 
 def reconcile_beat_schedule(dry_run: bool = False) -> dict:
@@ -89,6 +93,11 @@ def reconcile_beat_schedule(dry_run: bool = False) -> dict:
                     queue = "celery"
 
             kwargs = schedule_def.get("kwargs") or {}
+            expire_seconds = schedule_def.get("expire_seconds")
+            try:
+                expire_seconds = int(expire_seconds) if expire_seconds is not None else None
+            except (TypeError, ValueError):
+                expire_seconds = None
             PeriodicTask.objects.create(
                 name=job_key,
                 task=schedule_def.get("task", ""),
@@ -98,6 +107,7 @@ def reconcile_beat_schedule(dry_run: bool = False) -> dict:
                 enabled=bool(desired_enabled),
                 kwargs=json.dumps(kwargs) if kwargs else "{}",
                 args="[]",
+                expire_seconds=expire_seconds,
             )
             created.append(job_key)
             continue
@@ -110,6 +120,28 @@ def reconcile_beat_schedule(dry_run: bool = False) -> dict:
                 pt.enabled = True
                 pt.save(update_fields=["enabled"])
                 re_enabled.append(job_key)
+
+        # Corrective live-measured: đồng bộ interval số (vd price-board 60→180s).
+        # Chỉ xử lý schedule số (interval); crontab giữ nguyên. Reconcile trước đây không
+        # đụng interval nên đổi settings không lan xuống DB.
+        desired_schedule = schedule_def.get("schedule")
+        if isinstance(desired_schedule, (int, float)) and desired_schedule > 0:
+            try:
+                current_every = None
+                if pt.interval is not None:
+                    current_every = int(getattr(pt.interval, "every", 0) or 0)
+                if current_every != int(desired_schedule):
+                    if dry_run:
+                        queue_fixed.append(
+                            f"{job_key}: interval {current_every}s -> {int(desired_schedule)}s")
+                    else:
+                        new_interval, _ = IntervalSchedule.objects.get_or_create(
+                            every=int(desired_schedule), period="seconds")
+                        pt.interval = new_interval
+                        pt.save(update_fields=["interval"])
+                        queue_fixed.append(f"{job_key}: interval -> {int(desired_schedule)}s")
+            except Exception as e:
+                logger.warning("[reconcile] Failed to sync interval for %s: %s", job_key, e)
 
         # Fix queue
         desired_queue = (schedule_def.get("options") or {}).get("queue")
@@ -126,6 +158,20 @@ def reconcile_beat_schedule(dry_run: bool = False) -> dict:
                 pt.queue = desired_queue
                 pt.save(update_fields=["queue"])
                 queue_fixed.append(f"{job_key}: -> {desired_queue}")
+
+        # Slice B (QueueRecovery): sync per-message TTL into PeriodicTask.expire_seconds.
+        desired_expire = schedule_def.get("expire_seconds")
+        try:
+            desired_expire = int(desired_expire) if desired_expire is not None else None
+        except (TypeError, ValueError):
+            desired_expire = None
+        if desired_expire is not None and pt.expire_seconds != desired_expire:
+            if dry_run:
+                queue_fixed.append(f"{job_key}: expire_seconds {pt.expire_seconds} -> {desired_expire}")
+            else:
+                pt.expire_seconds = desired_expire
+                pt.save(update_fields=["expire_seconds"])
+                queue_fixed.append(f"{job_key}: expire_seconds -> {desired_expire}")
 
         # Fix crontab timezone
         try:

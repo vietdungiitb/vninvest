@@ -46,6 +46,8 @@ interface ObservabilityData {
     };
   };
   parity_gates?: any;
+  // Slice G (QueueRecovery): độ sâu broker queue từ observability endpoint.
+  queue_depths?: Record<string, number>;
   parity_history?: any;
   retention_health?: any;
   starvation?: Array<{
@@ -127,6 +129,16 @@ const ACTION_LABEL_KEYS: Record<string, string> = {
 };
 
 const COVERAGE_STATE_ORDER = ["fresh", "warm", "stale", "missing", "error", "unknown"];
+
+// Slice G (QueueRecovery): ngưỡng đỏ khớp queue-drain-monitor (docker-compose threshold 200).
+const QUEUE_DEPTH_ALERT_THRESHOLD = 200;
+const QUEUE_DEPTH_WARN_THRESHOLD = 50;
+
+function queueDepthTone(depth: number): string {
+  if (depth >= QUEUE_DEPTH_ALERT_THRESHOLD) return toneColor("danger");
+  if (depth >= QUEUE_DEPTH_WARN_THRESHOLD) return toneColor("warning");
+  return toneColor("success");
+}
 
 function renderPagination(page: number, hasMore: boolean, onPrev: () => void, onNext: () => void, t: (key: string, vars?: Record<string, unknown>) => string) {
   return createElement(
@@ -716,6 +728,59 @@ export function SocDataOpsMonitorSection() {
             )
           : createElement("p", { className: styles.emptyState }, t("soc.dataops.no_observability"))
     ),
+
+    // Queue Depth Panel — Slice G (QueueRecovery): độ sâu broker queue realtime.
+    // Backend: build_market_data_observability_summary().queue_depths (fail-open {} khi Redis ốm).
+    (() => {
+      const depths = observability?.queue_depths;
+      if (!depths || typeof depths !== "object") return null;
+      const entries = Object.entries(depths).sort((a, b) => b[1] - a[1]);
+      if (entries.length === 0) {
+        return createElement("div", { className: styles.sectionCard },
+          createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.queue_depth_title")),
+          createElement("p", { className: styles.emptyState }, t("soc.dataops.no_queue_depth_data"))
+        );
+      }
+      const breached = entries.filter(([, d]) => d >= QUEUE_DEPTH_ALERT_THRESHOLD);
+      return createElement("div", { className: styles.sectionCard },
+        createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.queue_depth_title")),
+        createElement("p", null, t("soc.dataops.queue_depth_desc")),
+        breached.length > 0
+          ? createElement("div", { className: styles.coverageWarningBanner, role: "status" },
+              breached.map(([q, d]) =>
+                createElement("div", { key: q },
+                  `\u26A0 ${t("soc.dataops.queue_depth_alert", {
+                    queue: q, depth: d.toLocaleString(), threshold: QUEUE_DEPTH_ALERT_THRESHOLD,
+                  })}`
+                )
+              )
+            )
+          : null,
+        createElement("div", { className: styles.coverageTableWrap },
+          createElement("table", { className: styles.coverageTable },
+            createElement("thead", null,
+              createElement("tr", null,
+                createElement("th", null, t("soc.dataops.queue_depth_queue")),
+                createElement("th", null, t("soc.dataops.queue_depth_count"))
+              )
+            ),
+            createElement("tbody", null,
+              entries.map(([q, d]) =>
+                createElement("tr", { key: q },
+                  createElement("td", { style: { fontWeight: 600 } }, q),
+                  createElement("td", {
+                    style: {
+                      fontWeight: d >= QUEUE_DEPTH_WARN_THRESHOLD ? 700 : 400,
+                      color: queueDepthTone(d),
+                    },
+                  }, d.toLocaleString())
+                )
+              )
+            )
+          )
+        )
+      );
+    })(),
 
     // Parity Gates Panel
     observability?.parity_gates

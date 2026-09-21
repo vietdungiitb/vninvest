@@ -708,6 +708,34 @@ def _build_anomaly_guard() -> dict:
     }
 
 
+def _read_broker_queue_depths() -> dict[str, int]:
+    """Slice G (QueueRecovery): LLEN mọi queue broker (fail-open → {} khi Redis unreachable).
+
+    Reuse service_ops.tasks._get_redis_queue_depth (đã tồn tại, fail-open return 0).
+    Deferred import để tránh circular import ở module load time.
+    """
+    try:
+        import redis as redis_module
+        from django.conf import settings as dj_settings
+        from vninvest_core.queue_policy import QUEUE_NAMES
+        broker_url = (getattr(dj_settings, 'CELERY_BROKER_URL', None)
+                      or getattr(dj_settings, 'REDIS_URL', None))
+        if not broker_url:
+            return {}
+        # 1 client duy nhất + timeout ngắn: Redis ốm không được treo request observability.
+        client = redis_module.from_url(
+            broker_url, socket_connect_timeout=2, socket_timeout=2)
+    except Exception:
+        return {}
+    depths: dict[str, int] = {}
+    for queue_name in QUEUE_NAMES:
+        try:
+            depths[str(queue_name)] = int(client.llen(str(queue_name)) or 0)
+        except Exception:
+            depths[str(queue_name)] = 0
+    return depths
+
+
 def build_market_data_observability_summary() -> dict[str, object]:
     config, _ = get_market_data_runtime_config()
     matrix_service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['matrix'])
@@ -846,6 +874,8 @@ def build_market_data_observability_summary() -> dict[str, object]:
             'by_dataset': backlog_by_dataset,
             'by_tier': backlog_by_tier,
         },
+        # Slice G (QueueRecovery): độ sâu broker queue — nguồn cho card Monitor UI + SSE signature.
+        'queue_depths': _read_broker_queue_depths(),
         'fail_rates': fail_rates,
         'parity_gates': parity_gates,
         'parity_history': parity_history,

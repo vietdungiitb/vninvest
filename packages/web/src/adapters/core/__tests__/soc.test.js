@@ -162,6 +162,15 @@ describe("SOC adapter", () => {
       expect(coreGet).toHaveBeenCalledWith("/operator/scraping/dataops/observability/");
     });
 
+    // Slice G (QueueRecovery): queue_depths đi qua adapter nguyên vẹn
+    it("getSocDataOpsObservability passes queue_depths through", async () => {
+      coreGet.mockResolvedValueOnce({
+        queue_depths: { realtime_prefetch: 5000, celery: 3 },
+      });
+      const data = await soc.getSocDataOpsObservability();
+      expect(data.queue_depths).toEqual({ realtime_prefetch: 5000, celery: 3 });
+    });
+
     it("getSocDataOpsRunLogs calls coreGet with page", async () => {
       await soc.getSocDataOpsRunLogs(5);
       expect(coreGet).toHaveBeenCalledWith("/operator/scraping/dataops/run-logs/?page=5&page_size=20");

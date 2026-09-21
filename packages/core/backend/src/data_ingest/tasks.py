@@ -7,8 +7,9 @@ send_email_verification_token: async email send for email verification (registra
 send_password_reset_email: async email send for password reset.
 """
 import logging
+import os
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError, as_completed
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Optional
@@ -94,6 +95,58 @@ _INTRADAY_PAGE_SIZE_BY_DEPTH_TIER = {
 }
 _B08_STALE_RUNNING_TTL_SECONDS = 2 * 60 * 60
 _B08_STALE_GRACE_SECONDS = 10 * 60
+# Slice C (QueueRecovery) — warm chunking bounds (FR-03: mọi warm-task ≤ 10 phút).
+# Số học bắt buộc: MAX_SYMBOLS × PER_SYMBOL_TIMEOUT < 600s (mặc định 30 × 15 = 450s).
+# Corrective live-measured v2: timeout 15→8s. Healthy tape fetch 1-3s; failing symbols
+# burn full timeout mỗi pass (đo live: 13/30 timeout × 15s = 195s/chunk). 30×8=240s + DB <
+# 600s (FR-03, bound test giữ nguyên). Hot hydrate 2 chunk/10 phút ≈ 8 phút việc/10 phút.
+_DEFAULT_WARM_MAX_SYMBOLS_PER_TASK = 30
+_DEFAULT_WARM_PER_SYMBOL_TIMEOUT_SECONDS = 8
+_DEFAULT_WARM_CHUNK_TIME_LIMIT_MARGIN_SECONDS = 120
+
+
+def _read_int_env(name: str, default: int) -> int:
+    try:
+        value = os.getenv(name)
+        if value is not None:
+            return int(value)
+    except (TypeError, ValueError):
+        pass
+    return default
+
+
+# Corrective live-measured v3: circuit breaker per symbol — ~40% symbols (derivatives/
+# bonds/delisted như 41B5*, ABR) fail MỌI pass, mỗi lần burn full timeout (8s) rồi lại fail
+# pass sau. 3 fails liên tiếp → skip 24h (reset khi success). Tiết kiệm ~40% slot warm.
+_CIRCUIT_FAIL_THRESHOLD = 3
+_CIRCUIT_SKIP_TIMEOUT_SECONDS = 24 * 3600
+
+
+def _circuit_key(symbol: str) -> str:
+    return f'warm:circuit:{str(symbol or "").upper()}'
+
+
+def _circuit_open(symbol: str) -> bool:
+    try:
+        from django.core.cache import cache as _cache
+        fails = int(_cache.get(_circuit_key(symbol)) or 0)
+        return fails >= _read_int_env(
+            'WARM_CIRCUIT_FAIL_THRESHOLD', _CIRCUIT_FAIL_THRESHOLD)
+    except Exception:
+        return False
+
+
+def _circuit_record(symbol: str, ok: bool) -> None:
+    try:
+        from django.core.cache import cache as _cache
+        key = _circuit_key(symbol)
+        if ok:
+            _cache.delete(key)
+        else:
+            fails = int(_cache.get(key) or 0) + 1
+            _cache.set(key, fails, timeout=_CIRCUIT_SKIP_TIMEOUT_SECONDS)
+    except Exception:
+        pass
 
 
 def _normalize_symbols(symbols: list[str] | None) -> list[str]:
@@ -108,6 +161,19 @@ def _get_default_global_registry_symbols() -> list[str]:
     return list(
         GlobalSymbolRegistry.objects
         .filter(is_active=True)
+        .order_by('symbol')
+        .values_list('symbol', flat=True)
+    )
+
+
+def _get_hot_registry_symbols() -> list[str]:
+    """Hot-tier symbols (corrective live-measured): beat warm path mặc định chỉ hydrate
+    50 mã hot (~2 chunk) thay vì toàn registry ~1942 (~63 chunk bất tận)."""
+    from market_data.models import GlobalSymbolRegistry
+
+    return list(
+        GlobalSymbolRegistry.objects
+        .filter(is_active=True, current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.HOT)
         .order_by('symbol')
         .values_list('symbol', flat=True)
     )
@@ -173,6 +239,23 @@ def _build_intraday_symbol_plan(plan_items: list[dict] | None, default_page_size
             ),
         })
     return symbol_plan
+
+
+def _select_coverage_rotation(symbols: list[str], parts: int = 3) -> list[str]:
+    """Chọn 1/phần symbols để refresh coverage theo vòng quay (corrective live-measured).
+
+    Full refresh 1942 symbols tốn hàng chục giây, trong khi price-board chạy mỗi 60s
+    (đo live: 144s/run → tự flood chính mình). Xoay vòng: mỗi run refresh 1/3 (~650),
+    full refresh sau ~3 chu kỳ (~9 phút với interval mới 180s). Deterministic theo phút
+    hiện tại để các worker/retry không lệch pha. parts<=1 → full (dùng cho run-now tay).
+    """
+    normalized = _normalize_symbols(symbols)
+    parts = max(int(parts or 1), 1)
+    if parts <= 1 or not normalized:
+        return normalized
+    from django.utils import timezone as _tz
+    slot = (_tz.now().minute // max(60 // parts, 1)) % parts if parts <= 60 else 0
+    return [s for i, s in enumerate(normalized) if i % parts == slot]
 
 
 def _refresh_coverage_for_symbols(
@@ -318,7 +401,30 @@ def _build_intraday_bar_payloads(symbol: str, normalized_trades: list[dict], tim
     return bars_by_key
 
 
-def _hydrate_intraday_symbols(symbol_plan: list[dict[str, int | str]], target_datasets: list[str], page_size: int = 50) -> dict:
+def _fetch_tape_with_timeout(symbol: str, symbol_page_size: int, timeout_seconds: int | None) -> dict:
+    """Fetch tape với per-symbol timeout (Slice C). Timeout → orphan thread tự thoát khi
+    provider xong (chỉ network+Redis, không ORM) — main flow đi tiếp, symbol vào failed để bù sau."""
+    if not timeout_seconds or timeout_seconds <= 0:
+        return fetch_intraday_tape(symbol, page_size=symbol_page_size)
+    executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix=f'warm-tape-{symbol}')
+    future = executor.submit(fetch_intraday_tape, symbol, page_size=symbol_page_size)
+    try:
+        return future.result(timeout=timeout_seconds)
+    except FuturesTimeoutError:
+        logger.warning(
+            'warm_intraday_universe [%s] per-symbol timeout after %ss — skipping, will retry next cycle',
+            symbol, timeout_seconds,
+        )
+        executor.shutdown(wait=False, cancel_futures=True)
+        return {'trades': [], 'source': 'timeout', 'stale': True, '_timed_out': True}
+
+
+def _hydrate_intraday_symbols(
+    symbol_plan: list[dict[str, int | str]],
+    target_datasets: list[str],
+    page_size: int = 50,
+    per_symbol_timeout_seconds: int | None = None,
+) -> dict:
     from market_data.models import IntradayBar, IntradayTick
 
     target_dataset_set = set(target_datasets or _INTRADAY_PLAN_DATASETS)
@@ -327,14 +433,25 @@ def _hydrate_intraday_symbols(symbol_plan: list[dict[str, int | str]], target_da
     sources: list[str] = []
     warmed_up_count = 0
     failed_symbols: list[str] = []
+    timed_out_symbols: list[str] = []
+    skipped_circuit = 0
 
     for plan_item in symbol_plan:
         symbol = str(plan_item.get('symbol') or '').strip().upper()
         if not symbol:
             continue
+        # Corrective v3: circuit breaker — symbol fail 3 pass liên tiếp thì skip 24h.
+        if _circuit_open(symbol):
+            skipped_circuit += 1
+            continue
         symbol_page_size = max(int(plan_item.get('page_size') or page_size), 1)
         try:
-            tape_result = fetch_intraday_tape(symbol, page_size=symbol_page_size)
+            tape_result = _fetch_tape_with_timeout(symbol, symbol_page_size, per_symbol_timeout_seconds)
+            if tape_result.get('_timed_out'):
+                timed_out_symbols.append(symbol)
+                failed_symbols.append(symbol)
+                _circuit_record(symbol, False)
+                continue
             raw_trades = list(tape_result.get('trades') or [])
             source = str(tape_result.get('source') or '').strip()
             if source and source not in sources:
@@ -352,6 +469,7 @@ def _hydrate_intraday_symbols(symbol_plan: list[dict[str, int | str]], target_da
                 continue
 
             warmed_up_count += 1
+            _circuit_record(symbol, True)
 
             if 'intraday_ticks' in target_dataset_set:
                 tick_counts['planned_items'] += 1
@@ -423,6 +541,7 @@ def _hydrate_intraday_symbols(symbol_plan: list[dict[str, int | str]], target_da
         except Exception as exc:
             logger.warning('warm_intraday_universe [%s] failed: %s', symbol, exc)
             failed_symbols.append(symbol)
+            _circuit_record(symbol, False)
 
     return {
         'status': 'ok',
@@ -434,6 +553,8 @@ def _hydrate_intraday_symbols(symbol_plan: list[dict[str, int | str]], target_da
         'skipped_existing': tick_counts['skipped_existing'] + bar_counts['skipped_existing'],
         'failed': failed_symbols,
         'failed_count': len(failed_symbols),
+        'timed_out_symbols': timed_out_symbols,
+        'skipped_circuit': skipped_circuit,
         'repaired_conflicts': 0,
         'tick_counts': tick_counts,
         'bar_counts': bar_counts,
@@ -784,7 +905,14 @@ def fetch_and_upsert_price_board(
         skipped_existing = int(result.get('skipped_existing') or 0)
         failed_count = int(result.get('failed_count') or 0)
         planned_items = len(plan_items or [])
-        coverage_refreshed_symbols = _refresh_coverage_for_symbols(symbols)
+        # Corrective live-measured: full refresh 1942 symbols/run khiến task 144s > interval 60s
+        # (tự flood). Xoay vòng 1/3 mỗi run định kỳ; run tay (plan_items explicit) refresh full.
+        if plan_items:
+            coverage_refreshed_symbols = _refresh_coverage_for_symbols(symbols)
+        else:
+            rotation_parts = _read_int_env('PRICE_BOARD_COVERAGE_ROTATION_PARTS', 3)
+            coverage_refreshed_symbols = _refresh_coverage_for_symbols(
+                _select_coverage_rotation(symbols, parts=rotation_parts))
 
         if run:
             run.state = (
@@ -853,15 +981,29 @@ def fetch_and_upsert_price_board(
         raise self.retry(exc=exc)
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=30)
+@shared_task(bind=True, max_retries=3, default_retry_delay=30, soft_time_limit=900, time_limit=1200)
 def warm_intraday_universe(
     self,
     plan_items: list[dict] | None = None,
     service_run_log_id: int | None = None,
     page_size: int = 50,
+    max_symbols: int | None = None,
+    offset: int = 0,
+    hot_only: bool | None = None,
 ):
     """
     Warm native intraday cache and hydrate canonical intraday rows.
+
+    Slice C (QueueRecovery): chunk-aware — mỗi task chỉ xử lý tối đa `max_symbols`
+    symbols (default 30) rồi tự enqueue continuation cho phần còn lại. Bound số học:
+    max_symbols × per-symbol-timeout (30 × 15s = 450s) + DB < 600s (FR-03).
+    Fix cả 2 path: hydrate-leg (có plan_items) và beat trực tiếp (fallback registry).
+    Backstop time_limit 900/1200s chỉ giết task kẹt thật (DB wedge), không thay bound trên.
+
+    Corrective live-measured: path beat trực tiếp (plan_items=None) mặc định HOT-ONLY —
+    fallback toàn registry ~1942 symbols/5 phút sinh chuỗi 63 chunk bất tận (đo live: LLEN
+    tăng 20/phút, drain ≈ 0). Beat là caller duy nhất không plan; caller explicit truyền
+    plan_items (không ảnh hưởng) hoặc hot_only=False để ép full.
     """
     from data_ingest.models import IngestJob, IngestRun
 
@@ -889,7 +1031,12 @@ def warm_intraday_universe(
     target_datasets = _extract_intraday_datasets_from_plan_items(plan_items)
 
     if not symbols:
-        symbols = _get_default_global_registry_symbols()
+        # Corrective live-measured: beat path (không plan) mặc định hot-only.
+        # hot_only=True/False explicit luôn thắng; None + có plan_items → giữ plan.
+        if hot_only is False:
+            symbols = _get_default_global_registry_symbols()
+        else:
+            symbols = _get_hot_registry_symbols()
 
     if not symbols:
         if service_run_log is not None:
@@ -900,18 +1047,45 @@ def warm_intraday_universe(
             )
         return {'status': 'skipped', 'reason': 'no_symbols'}
 
+    # Slice C (QueueRecovery): chunk-aware slicing — bound mọi task ≤ FR-03.
+    chunk_size = max(int(max_symbols or _read_int_env(
+        'WARM_INTRADAY_MAX_SYMBOLS_PER_TASK', _DEFAULT_WARM_MAX_SYMBOLS_PER_TASK)), 1)
+    per_symbol_timeout = _read_int_env(
+        'WARM_INTRADAY_PER_SYMBOL_TIMEOUT_SECONDS', _DEFAULT_WARM_PER_SYMBOL_TIMEOUT_SECONDS)
+    safe_offset = max(int(offset or 0), 0)
+    if safe_offset >= len(symbols):
+        return {'status': 'skipped', 'reason': 'chunk_complete', 'symbols_total': len(symbols)}
+    active_symbols = symbols[safe_offset:safe_offset + chunk_size]
+    remaining = len(symbols) - safe_offset - len(active_symbols)
+    active_set = set(active_symbols)
+    active_plan_items = [
+        item for item in (plan_items or [])
+        if isinstance(item, dict) and str(item.get('symbol') or '').strip().upper() in active_set
+    ]
+
     try:
-        symbol_plan = _build_intraday_symbol_plan(plan_items, page_size)
+        symbol_plan = _build_intraday_symbol_plan(active_plan_items or None, page_size)
         if not symbol_plan:
-            symbol_plan = [{'symbol': symbol, 'page_size': max(int(page_size or 50), 1)} for symbol in symbols]
+            symbol_plan = [{'symbol': symbol, 'page_size': max(int(page_size or 50), 1)} for symbol in active_symbols]
 
         run = IngestRun.objects.create(
             job=job,
             state=IngestRun.StateChoices.RUNNING,
         )
         _attach_ingest_run_to_service_run_log(service_run_log, run)
-        result = _hydrate_intraday_symbols(symbol_plan, target_datasets, page_size=page_size)
-        coverage_refreshed_symbols = _refresh_coverage_for_symbols(symbols)
+        result = _hydrate_intraday_symbols(
+            symbol_plan, target_datasets, page_size=page_size,
+            per_symbol_timeout_seconds=per_symbol_timeout,
+        )
+        # Corrective live-measured: full coverage refresh 30 symbols/chunk tốn ~1-3s/symbol
+        # (~90s), đẩy chunk vượt bound. Run định kỳ (không plan explicit) xoay vòng 1/3 như
+        # price-board (full sau ~3 pass); run explicit (plan_items) refresh full (rẻ + đúng ý đồ).
+        if plan_items:
+            coverage_refreshed_symbols = _refresh_coverage_for_symbols(active_symbols)
+        else:
+            warm_rotation_parts = _read_int_env('WARM_COVERAGE_ROTATION_PARTS', 3)
+            coverage_refreshed_symbols = _refresh_coverage_for_symbols(
+                _select_coverage_rotation(active_symbols, parts=warm_rotation_parts))
 
         total_upserted = int(result.get('inserted') or 0) + int(result.get('updated') or 0)
         total_skipped = int(result.get('skipped_existing') or 0)
@@ -923,14 +1097,50 @@ def warm_intraday_universe(
         )
         run.rows_upserted = total_upserted
         run.rows_skipped = total_skipped
+        # Slice C (QueueRecovery): self-continuation cho phần còn lại — cùng queue,
+        # không service_run_log riêng (tránh spam log), parent log ghi flag continuation.
+        continuation_enqueued = False
+        if remaining > 0:
+            try:
+                same_queue = ((getattr(self.request, 'delivery_info', None) or {}).get('routing_key')
+                              or 'realtime_prefetch')
+            except Exception:
+                same_queue = 'realtime_prefetch'
+            try:
+                # Corrective live-measured: continuation DELAY (countdown) để chunk nhường slot
+                # cho shard/materialize xen kẽ — chuỗi 65 chunk back-to-back sẽ chiếm slot hàng giờ.
+                chunk_countdown = _read_int_env('WARM_CHUNK_COUNTDOWN_SECONDS', 30)
+                warm_intraday_universe.apply_async(
+                    kwargs={
+                        'plan_items': plan_items,
+                        'page_size': page_size,
+                        'max_symbols': chunk_size,
+                        'offset': safe_offset + len(active_symbols),
+                        'service_run_log_id': None,
+                        'hot_only': hot_only,
+                    },
+                    queue=same_queue,
+                    countdown=max(int(chunk_countdown), 0),
+                )
+                continuation_enqueued = True
+            except Exception as exc:
+                logger.warning('warm_intraday_universe: continuation enqueue failed: %s', exc)
+
         run.meta = {
-            'symbols_count': len(symbols),
+            'symbols_count': len(active_symbols),
+            'symbols_total': len(symbols),
             'page_size': page_size,
             'symbol_plan': list(symbol_plan),
             'target_datasets': list(target_datasets),
             'tick_counts': dict(result.get('tick_counts') or {}),
             'bar_counts': dict(result.get('bar_counts') or {}),
             'failed': list(result.get('failed') or []),
+            'chunk': {
+                'offset': safe_offset,
+                'max_symbols': chunk_size,
+                'remaining': remaining,
+                'continuation_enqueued': continuation_enqueued,
+            },
         }
         run.finished_at = now()
         run.save(update_fields=['state', 'rows_upserted', 'rows_skipped', 'meta', 'finished_at'])
@@ -945,8 +1155,15 @@ def warm_intraday_universe(
                 service_run_log,
                 status_value=service_run_status,
                 output_summary={
-                    'planned_items': len(plan_items or []),
-                    'symbols_count': len(symbols),
+                    'planned_items': len(active_plan_items or active_symbols),
+                    'symbols_count': len(active_symbols),
+                    'symbols_total': len(symbols),
+                    'chunk': {
+                        'offset': safe_offset,
+                        'max_symbols': chunk_size,
+                        'remaining': remaining,
+                        'continuation_enqueued': continuation_enqueued,
+                    },
                     'coverage_refreshed_symbols': coverage_refreshed_symbols,
                     'target_datasets': list(target_datasets),
                     'warmed_up_count': int(result.get('warmed_up_count') or 0),
@@ -963,14 +1180,22 @@ def warm_intraday_universe(
             )
 
         logger.info(
-            'warm_intraday_universe (native): warmed %d / %d symbols, inserted=%d updated=%d skipped_existing=%d',
+            'warm_intraday_universe (native): warmed %d / %d symbols (chunk offset=%d remaining=%d), inserted=%d updated=%d skipped_existing=%d',
             int(result.get('warmed_up_count', 0)),
             int(result.get('symbols_count', 0)),
+            safe_offset,
+            remaining,
             int(result.get('inserted', 0)),
             int(result.get('updated', 0)),
             int(result.get('skipped_existing', 0)),
         )
         result['coverage_refreshed_symbols'] = coverage_refreshed_symbols
+        result['chunk'] = {
+            'offset': safe_offset,
+            'max_symbols': chunk_size,
+            'remaining': remaining,
+            'continuation_enqueued': continuation_enqueued,
+        }
         return result
     except Exception as exc:
         logger.error('warm_intraday_universe failed: %s', exc, exc_info=True)

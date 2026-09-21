@@ -36,8 +36,16 @@ case "${ROLE}" in
     WORKER_QUEUES="${CELERY_QUEUES:-celery}"
     WORKER_CONCURRENCY="${CELERY_CONCURRENCY:-2}"
     WORKER_POOL="${CELERY_POOL:-prefork}"
-    echo "[entrypoint] Starting Celery worker on queue(s): ${WORKER_QUEUES}..."
-    exec celery -A vninvest_core worker --loglevel="${CELERY_LOG_LEVEL:-INFO}" --pool="${WORKER_POOL}" --concurrency="${WORKER_CONCURRENCY}" --queues="${WORKER_QUEUES}" --without-heartbeat --without-gossip --without-mingle
+    # Slice E (QueueRecovery): recycle worker chống leak/OOM tích lũy ở job marathon
+    # (deep-history/pre5y ăn RAM theo thời gian). 0 = tắt recycle (giữ hành vi cũ).
+    WORKER_MAX_TASKS="${CELERY_MAX_TASKS_PER_CHILD:-0}"
+    echo "[entrypoint] Starting Celery worker on queue(s): ${WORKER_QUEUES} (max-tasks-per-child: ${WORKER_MAX_TASKS})..."
+    # shellcheck disable=SC2086
+    if [ "${WORKER_MAX_TASKS}" -gt 0 ] 2>/dev/null; then
+      exec celery -A vninvest_core worker --loglevel="${CELERY_LOG_LEVEL:-INFO}" --pool="${WORKER_POOL}" --concurrency="${WORKER_CONCURRENCY}" --queues="${WORKER_QUEUES}" --max-tasks-per-child="${WORKER_MAX_TASKS}" --without-heartbeat --without-gossip --without-mingle
+    else
+      exec celery -A vninvest_core worker --loglevel="${CELERY_LOG_LEVEL:-INFO}" --pool="${WORKER_POOL}" --concurrency="${WORKER_CONCURRENCY}" --queues="${WORKER_QUEUES}" --without-heartbeat --without-gossip --without-mingle
+    fi
     ;;
   beat)
     echo "[entrypoint] Repairing beat schedule (re-enable 4 critical jobs)..."

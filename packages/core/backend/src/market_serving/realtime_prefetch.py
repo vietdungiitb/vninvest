@@ -45,6 +45,26 @@ DEFAULT_WARM_HYDRATE_INTERVAL_SECONDS = 900  # 15 minutes — warm symbols
 
 REALTIME_HYDRATE_LAST_ENQUEUE_PREFIX = 'realtime:hydrate:last_enqueue'
 
+# Slice B (QueueRecovery): duplicate-guard — khi worker xả backlog sau downtime, hàng loạt
+# tin scheduler tồn cùng chạy 1 lúc sẽ fan-out trùng lặp. Key này đánh dấu lần chạy `ok` gần nhất;
+# tin nào thấy run trước đó < 1 chu kỳ thì skip (không enqueue gì thêm).
+REALTIME_SCHEDULER_LAST_RUN_CACHE_KEY = 'realtime:scheduler:last_run'
+# Corrective live-measured: window phải NHỎ HƠN chu kỳ tick (3s) — window=3s skip nhầm ~50% tick
+# steady-state (jitter), làm scheduler rớt còn ~6s. Window=1s chỉ bắt burst thật.
+DEFAULT_SCHEDULER_DEDUP_SECONDS = 1
+DEFAULT_SCHEDULER_SOFT_TIME_LIMIT = 45
+DEFAULT_SCHEDULER_HARD_TIME_LIMIT = 60
+# Corrective live-measured: shard per-symbol timeout — quote API phải nhanh; provider treo
+# (KBS retry/DNSE SSL) thì skip, không ôm slot. Shard warm ~315 symbols/task nên mỗi symbol
+# chậm đều thành task khổng lồ (đo live: shard tới 229s, drain 1.1/phút vs arrival 100/phút).
+DEFAULT_SHARD_PER_SYMBOL_TIMEOUT_SECONDS = 5
+# Corrective live-measured: chỉ enqueue shard/hydrate trong phiên (HOSE T2–T6 08:30–15:30 ICT).
+# Scheduler chạy 24/7 trong khi thị trường đóng cửa là nguồn tích lũy backlog cuối tuần (76k tin).
+DEFAULT_SESSION_ONLY = True
+DEFAULT_SESSION_DAYS = '0,1,2,3,4'  # Thứ 2–Thứ 6 (Python weekday)
+DEFAULT_SESSION_START_MINUTES = 8 * 60 + 30
+DEFAULT_SESSION_END_MINUTES = 15 * 60 + 30
+
 
 def _read_int_env(name: str, default: int) -> int:
     """Read integer from environment, with fallback."""
@@ -108,6 +128,56 @@ def _stable_shard_id(symbol: str, shard_count: int) -> int:
         return 0
     total = sum(ord(ch) for ch in str(symbol or '').upper())
     return int(total % shard_count)
+
+
+def _in_trading_session(now=None) -> bool:
+    """True khi đang trong phiên cần realtime (T2–T6, 08:30–15:30 ICT mặc định).
+
+    Corrective live-measured: scheduler/beat chạy 24/7 nhưng enqueue shard/hydrate ngoài phiên
+    chỉ đốt provider + tích backlog (nguồn 76k tin cuối tuần). Env-tunable toàn bộ.
+    """
+    from zoneinfo import ZoneInfo
+
+    session_only_raw = os.getenv('TICKER_PREFETCH_SESSION_ONLY')
+    if session_only_raw is None:
+        session_only = bool(DEFAULT_SESSION_ONLY)
+    else:
+        session_only = str(session_only_raw).strip().lower() in {'true', '1', 'yes'}
+    if not session_only:
+        return True
+    try:
+        tz = ZoneInfo(os.getenv('TICKER_PREFETCH_SESSION_TZ', 'Asia/Ho_Chi_Minh'))
+        local_now = (now or timezone.now()).astimezone(tz)
+        days_raw = os.getenv('TICKER_PREFETCH_SESSION_DAYS', DEFAULT_SESSION_DAYS)
+        active_days = {int(x.strip()) for x in str(days_raw).split(',') if x.strip().lstrip('-').isdigit()}
+        if local_now.weekday() not in active_days:
+            return False
+        minutes = local_now.hour * 60 + local_now.minute
+        start = _read_int_env('TICKER_PREFETCH_SESSION_START_MINUTES', DEFAULT_SESSION_START_MINUTES)
+        end = _read_int_env('TICKER_PREFETCH_SESSION_END_MINUTES', DEFAULT_SESSION_END_MINUTES)
+        return start <= minutes <= end
+    except Exception as ex:
+        logger.warning('session-gate check failed (fail-open): %s', ex)
+        return True
+
+
+def _fetch_with_timeout(fetch_fn, symbol: str, timeout_seconds: int | None, **kwargs):
+    """Chạy fetch_fn(symbol, **kwargs) với timeout (thread helper, orphan tự thoát).
+
+    fetch_fn phải không chạm Django ORM (chỉ network/cache) — orphan thread an toàn.
+    Timeout → (None, True); tắt timeout (None/<=0) → gọi trực tiếp đồng bộ.
+    """
+    if not timeout_seconds or timeout_seconds <= 0:
+        return fetch_fn(symbol, **kwargs), False
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+    executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix=f'shard-fetch-{symbol}')
+    future = executor.submit(fetch_fn, symbol, **kwargs)
+    try:
+        return future.result(timeout=timeout_seconds), False
+    except FuturesTimeoutError:
+        logger.warning('shard fetch [%s] timeout after %ss — skipping', symbol, timeout_seconds)
+        executor.shutdown(wait=False, cancel_futures=True)
+        return None, True
 
 
 def _collect_universe_symbols() -> dict:
@@ -223,6 +293,8 @@ def _snapshot_is_stale(refresh_seconds: int) -> bool:
     bind=True,
     name='market_serving.realtime_prefetch.schedule_realtime_prefetch_shards',
     queue=REALTIME_PREFETCH_QUEUE,
+    soft_time_limit=_read_int_env('REALTIME_SCHEDULER_SOFT_LIMIT', DEFAULT_SCHEDULER_SOFT_TIME_LIMIT),
+    time_limit=_read_int_env('REALTIME_SCHEDULER_HARD_LIMIT', DEFAULT_SCHEDULER_HARD_TIME_LIMIT),
 )
 def schedule_realtime_prefetch_shards(self) -> dict:
     """
@@ -231,7 +303,7 @@ def schedule_realtime_prefetch_shards(self) -> dict:
     """
     topology = _get_topology()
     lock_key = 'lock:realtime_prefetch_scheduler'
-    
+
     if not _acquire_lock(lock_key, timeout_seconds=10):
         _increment_prefetch_metric('scheduler_lock_skipped_total')
         return {
@@ -239,7 +311,28 @@ def schedule_realtime_prefetch_shards(self) -> dict:
             'reason': 'scheduler_lock_held',
             'generated_at': timezone.now().isoformat(),
         }
-    
+
+    # Slice B (QueueRecovery) duplicate-guard: bỏ qua tin tồn kho khi 1 run khác
+    # vừa xong trong cùng chu kỳ (xả backlog sau downtime). Fail-open: lỗi cache → chạy tiếp.
+    try:
+        dedup_seconds = max(_read_int_env('REALTIME_SCHEDULER_DEDUP_SECONDS', DEFAULT_SCHEDULER_DEDUP_SECONDS), 1)
+        last_run_raw = cache.get(REALTIME_SCHEDULER_LAST_RUN_CACHE_KEY)
+        if last_run_raw:
+            last_run_dt = datetime.fromisoformat(str(last_run_raw))
+            if timezone.is_naive(last_run_dt):
+                last_run_dt = timezone.make_aware(last_run_dt, timezone.get_current_timezone())
+            age_seconds = (timezone.now() - last_run_dt).total_seconds()
+            if age_seconds < dedup_seconds:
+                _increment_prefetch_metric('scheduler_dedup_skipped_total')
+                return {
+                    'status': 'skipped_duplicate',
+                    'reason': 'previous_run_within_interval',
+                    'age_seconds': round(age_seconds, 2),
+                    'generated_at': timezone.now().isoformat(),
+                }
+    except Exception as ex:
+        logger.warning('schedule_realtime_prefetch_shards: dedup-guard failed (fail-open): %s', ex)
+
     try:
         refresh_seconds = topology['universe_refresh_seconds']
         
@@ -256,7 +349,22 @@ def schedule_realtime_prefetch_shards(self) -> dict:
                 'reason': 'universe_snapshot_missing',
                 'generated_at': timezone.now().isoformat(),
             }
-        
+
+        # Corrective live-measured: ngoài phiên không enqueue shard/hydrate — snapshot vẫn
+        # refresh (rẻ) để vào phiên có universe mới, nhưng không đốt provider/tích backlog.
+        if not _in_trading_session():
+            _increment_prefetch_metric('scheduler_offhours_skipped_total')
+            try:
+                cache.set(REALTIME_SCHEDULER_LAST_RUN_CACHE_KEY, timezone.now().isoformat(), timeout=120)
+            except Exception:
+                pass
+            return {
+                'status': 'skipped_offhours',
+                'reason': 'outside_trading_session',
+                'snapshot_totals': snapshot.get('totals'),
+                'generated_at': timezone.now().isoformat(),
+            }
+
         # Enqueue shard jobs
         now_epoch = int(timezone.now().timestamp())
         enqueued = []
@@ -302,18 +410,27 @@ def schedule_realtime_prefetch_shards(self) -> dict:
         # materialize-session-facts-5m tasks will pick up fresh rows automatically.
         # Deferred import avoids circular dependency at module load time.
         hydrate_enqueued: list[dict] = []
+        # Corrective live-measured: hydrate leg có flag RIÊNG, tách khỏi prefetch tier flags —
+        # tắt warm prefetch (cache) không được giết warm hydrate (DB ticks). Warm hydrate cap
+        # top-N theo priority (snapshot list đã sort) vì full 1892 symbols/pass là bất khả thi.
+        _hydrate_warm_enabled = os.getenv('REALTIME_HYDRATE_WARM_ENABLED', 'true').lower() in {'true', '1', 'yes'}
+        # Corrective live-measured: cap 90 (3 chunk) — 150 sinh 5 chunk × ~300s ≈ 25 phút
+        # chiếm slot mỗi giờ, không còn chỗ cho shard/materialize.
+        _hydrate_warm_cap = max(_read_int_env('REALTIME_HYDRATE_WARM_MAX_SYMBOLS', 90), 1)
         _hydrate_tier_map = {
             'hot': _read_int_env('REALTIME_HOT_HYDRATE_INTERVAL_SECONDS', DEFAULT_HOT_HYDRATE_INTERVAL_SECONDS),
             'warm': _read_int_env('REALTIME_WARM_HYDRATE_INTERVAL_SECONDS', DEFAULT_WARM_HYDRATE_INTERVAL_SECONDS),
         }
         for _htier, _hinterval in _hydrate_tier_map.items():
-            if _htier == 'warm' and not topology['enable_warm_tier']:
+            if _htier == 'warm' and not _hydrate_warm_enabled:
                 continue
             _hydrate_key = f'{REALTIME_HYDRATE_LAST_ENQUEUE_PREFIX}:{_htier}'
             _last_hydrate = int(cache.get(_hydrate_key) or 0)
             if now_epoch - _last_hydrate < _hinterval:
                 continue
             _tier_symbols = cache.get(f'{REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY}:{_htier}') or []
+            if _htier == 'warm':
+                _tier_symbols = list(_tier_symbols)[:_hydrate_warm_cap]
             if not _tier_symbols:
                 continue
             try:
@@ -338,6 +455,10 @@ def schedule_realtime_prefetch_shards(self) -> dict:
 
         _increment_prefetch_metric('scheduler_runs_total')
         _increment_prefetch_metric('scheduler_enqueued_total', amount=len(enqueued))
+        try:
+            cache.set(REALTIME_SCHEDULER_LAST_RUN_CACHE_KEY, timezone.now().isoformat(), timeout=120)
+        except Exception:
+            pass
 
         return {
             'status': 'ok',
@@ -406,10 +527,33 @@ def prefetch_realtime_ticker_shard(self, tier: str, shard_id: int) -> dict:
     fetched = 0
     errors = 0
     broadcast_count = 0
-    
+    timed_out = 0
+    skipped_circuit = 0
+    shard_timeout = _read_int_env(
+        'TICKER_SHARD_PER_SYMBOL_TIMEOUT_SECONDS', DEFAULT_SHARD_PER_SYMBOL_TIMEOUT_SECONDS)
+    # Corrective v3: reuse circuit breaker từ data_ingest (single source of truth).
+    try:
+        from data_ingest.tasks import _circuit_open as _ckt_open, _circuit_record as _ckt_record
+    except Exception:
+        _ckt_open = lambda symbol: False  # noqa: E731
+        _ckt_record = lambda symbol, ok: None  # noqa: E731
+
     for symbol in shard_symbols:
         try:
-            ticker = fetch_realtime_price(symbol)
+            if _ckt_open(symbol):
+                skipped_circuit += 1
+                continue
+            # Corrective live-measured: quote API treo (KBS retry/DNSE SSL) từng làm shard
+            # tới 229s. Timeout 5s/symbol → shard warm ~315 symbols bounded, slot xoay vòng.
+            ticker, was_timeout = _fetch_with_timeout(
+                fetch_realtime_price, symbol, shard_timeout)
+            if was_timeout:
+                timed_out += 1
+                errors += 1
+                _ckt_record(symbol, False)
+                continue
+            if not ticker:
+                continue
             if ticker:
                 symbol_upper = ticker.get('symbol', symbol)
                 close = ticker.get('close')
@@ -422,6 +566,7 @@ def prefetch_realtime_ticker_shard(self, tier: str, shard_id: int) -> dict:
                 cache_key = f'realtime:ticker:{symbol}'
                 cache.set(cache_key, ticker, timeout=300)  # 5-min TTL
                 fetched += 1
+                _ckt_record(symbol, True)
                 
                 # Compute change values and broadcast to WebSocket
                 if close is not None:
@@ -461,6 +606,8 @@ def prefetch_realtime_ticker_shard(self, tier: str, shard_id: int) -> dict:
         'fetched': fetched,
         'broadcast': broadcast_count,
         'errors': errors,
+        'timed_out': timed_out,
+        'skipped_circuit': skipped_circuit,
         'total': len(shard_symbols),
     }
 

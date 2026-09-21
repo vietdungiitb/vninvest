@@ -9,6 +9,32 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - Build verification: npx tsc --noEmit sau mỗi sub-step, npm run build cuối mỗi step.
 
 ## Progress
+### Done (2026-09-21) — QueueRecovery A–H + corrective v1–v4 (Entry 138-145)
+- **Root cause chốt**: queue `realtime_prefetch` ngập 77k (heartbeat 3s + shard fan-out + giant warm 1900 symbols
+  trên worker solo) + worker enrichment OOM cuối tuần → session_facts chết từ 09/09, snapshot dừng 17/09,
+  backfill EOD fail 3 ngày PENDING. Plan: `docs/IMPLEMENTATION_PLAN_REALTIME_QUEUE_RECOVERY_20260921.md` (Rev.2
+  sau audit/phản biện — 10/10 claim verify đúng).
+- **A (OPS)**: purge 77k (có backup), re-enable snapshot, bù session-facts 17/18/21 → 20→515 rows.
+- **B**: `expire_seconds` 3 beat entries + reconcile sync (DB column sẵn có) + dedup-guard cache + time-limit 45/60s.
+- **C**: warm chunk-30 + self-continuation (countdown 30s) + timeout 8s + circuit breaker skip-24h + coverage
+  rotation + beat path hot-only + session-facts refresh coverage.
+- **D**: queue `realtime_scheduler` + worker mới; price-board/snapshot batch chậm → `manual_on_demand` (manual ×2).
+- **E (PA1)**: queue `enrichment_eod` + worker riêng cho daily-backfill; enrichment mem 1g + max-tasks-per-child.
+- **F**: snapshot vào CRITICAL_JOBS (2 file sync) + bỏ mass-stale 2 chỗ + bulk rewrite (7 phút → ~1 phút).
+- **G**: `queue_depths` vào observability + SSE signature + SOC Monitor card + i18n + monitor 7 queue.
+- **Corrective live-measured** (load test giả lập phiên, drain 1.1/phút vs arrival 100/phút lúc đầu):
+  session-gate ngoài phiên, shard timeout 5s, prefetch prefork ×5, pacing hot 20s + tắt warm/cold prefetch,
+  hydrate tách flag + cap, price-board 180s + snapshot 300s + warm-beat 600s (reconcile sync interval số).
+- **DoD live**: LLEN prefetch 0/0/0/0 (15 phút, 201 completions), scheduler 0; SessionFacts 568 rows;
+  snapshot 21/09 = 781 rows; coverage price_board 0→114 fresh+343 warm; observability API đủ 9 queue;
+  FE bundle deployed có UI mới. Gates: BE sweep 112 OK, `test_soc_tasks` 38/38 local, tsc 0, build 40s PASS,
+  lint 0, jest 94/94, vitest 2/2, i18n:scan 0.
+- **Còn follow-up (ngoài phiên, trung thực)**: EOD 5 phiên success, snapshot 3 phiên, OOM 14 ngày,
+  celery queue commercial (đang tự drain), Decimal skip quirk, planner-task 400s thỉnh thoảng.
+- **Key Decisions & Metrics (bổ sung)**: queues mới `realtime_scheduler`/`enrichment_eod` (9 queues);
+  worker mới `realtime-scheduler` (256m) + `enrichment-eod` (1g); prefetch prefork ×5; manual ×2;
+  dev pacing: hot shard 20s, warm/cold prefetch OFF, hydrate hot 10m/warm hourly top-90.
+
 ### Done
 - Gap analysis hoàn chỉnh: Legacy DataOpsPanel.jsx vs packages/web SOC components. ~45-50% parity overall, ~20 feature gaps. Lưu tại docs/GAP_ANALYSIS_DATAOPS_LEGACY_VS_SAAS_NATIVE.md.
 - Consolidated implementation plan: docs/IMPLEMENTATION_PLAN_SOC_DATAOPS_FINAL_20260625.md.

@@ -566,8 +566,13 @@ class DataIngestBackfillTaskTests(TestCase):
 
     @patch('data_ingest.tasks.fetch_intraday_tape')
     def test_warm_intraday_universe_defaults_to_global_symbol_registry_when_symbols_missing(self, fetch_intraday_tape_mock):
-        GlobalSymbolRegistry.objects.create(symbol='ACB', is_active=True)
-        GlobalSymbolRegistry.objects.create(symbol='FPT', is_active=True)
+        # Corrective (hot-only default): fallback không plan → chỉ HOT tier.
+        GlobalSymbolRegistry.objects.create(
+            symbol='ACB', is_active=True,
+            current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.HOT)
+        GlobalSymbolRegistry.objects.create(
+            symbol='FPT', is_active=True,
+            current_priority_tier=GlobalSymbolRegistry.PriorityTierChoices.HOT)
 
         fetch_intraday_tape_mock.return_value = {
             'symbol': 'ACB',

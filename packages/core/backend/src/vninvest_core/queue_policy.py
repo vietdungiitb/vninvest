@@ -6,8 +6,14 @@ from kombu import Exchange, Queue
 QUEUE_NAMES = (
     'celery',
     'realtime_prefetch',
+    # Slice D (QueueRecovery): scheduler heartbeat 3s ra queue riêng để không bao giờ
+    # chôn materialize/ingest (77k backlog 2026-09-21). Worker riêng, nhẹ.
+    'realtime_scheduler',
     'realtime_stream',
     'enrichment_offhours',
+    # Slice E (QueueRecovery, PA1): daily-backfill EOD 17:05 ra worker riêng để marathon
+    # cuối tuần (deep-history 8h / pre5y 12h) không bao giờ chặn PENDING.
+    'enrichment_eod',
     'analytics_heavy',
     'manual_on_demand',
     # W2: dedicated queue for screener scans — previously shared manual_on_demand
@@ -58,23 +64,31 @@ QUEUE_DOMAIN_MATRIX = {
             'process-outbox-events-30s',
         ),
     },
+    # Slice D (QueueRecovery): tách heartbeat scheduler khỏi materialize/ingest.
+    'market_serving_scheduler': {
+        'queue': 'realtime_scheduler',
+        'task_routes': (
+            'market_serving.realtime_prefetch.schedule_realtime_prefetch_shards',
+        ),
+        'periodic_tasks': (
+            'schedule-realtime-prefetch-shards',
+        ),
+    },
+    # Corrective live-measured v4: price-board + snapshot là batch PROVIDER-BOUND chậm
+    # (đo live 150-340s/run) — để trên realtime_prefetch chúng chiếm slot của shard nhanh
+    # (8-17s). Chuyển sang manual_on_demand (worker rảnh, LLEN=0 thường trực).
+    # Session-facts (vài giây) + warm chunk (bounded) + shard ở lại fast lane.
     'market_serving_realtime': {
         'queue': 'realtime_prefetch',
         'task_routes': (
-            'market_serving.materializers.materialize_symbol_snapshot',
             'market_serving.materializers.materialize_session_facts',
-            # C1: native ingest — price board every 60s
-            'data_ingest.tasks.fetch_and_upsert_price_board',
             # C2: native intraday tick hydration — same SSOT universe, persists to IntradayTick
             'data_ingest.tasks.warm_intraday_universe',
         ),
         'periodic_tasks': (
-            'materialize-symbol-snapshot-60s',
             'materialize-session-facts-5m',
             'materialize-symbol-snapshot-30s',
             'materialize-bucket-facts-5m',
-            # C1: native ingest — fetch price board every 60s
-            'ingest-price-board-60s',
             # C2: native intraday hydrate — today's ticks every 5 minutes
             'warm-intraday-realtime-5m',
         ),
@@ -101,21 +115,39 @@ QUEUE_DOMAIN_MATRIX = {
             'run_stream_consumer_batch',
         ),
     },
+    # Slice E (QueueRecovery, PA1): daily-backfill EOD tách khỏi marathon cuối tuần.
+    # Meta-audit fix (Entry 141B): worker này RẢNH ~23h/ngày nên kiêm slow-batch lane —
+    # price-board + snapshot là batch provider-bound chậm (đo live 150-340s/run); để trên
+    # manual_on_demand chúng đẩy depth > 20 → backpressure guard skip tier recovery_backlog
+    # vĩnh viễn (test_soc_tasks 1 fail live). enrichment_eod không tier nào map làm skip-guard.
+    'offhours_eod': {
+        'queue': 'enrichment_eod',
+        'task_routes': (
+            # Daily OHLCV backfill after market close — worker riêng, không chia slot marathon
+            'data_ingest.tasks.backfill_daily_prices',
+            # Slow-batch lane: provider-bound chậm, cách ly khỏi fast lane lẫn manual lane.
+            'market_serving.materializers.materialize_symbol_snapshot',
+            'data_ingest.tasks.fetch_and_upsert_price_board',
+        ),
+        'periodic_tasks': (
+            'daily-backfill-prices-1700',
+            'materialize-symbol-snapshot-60s',
+            'ingest-price-board-60s',
+        ),
+    },
     'offhours_enrichment': {
         'queue': 'enrichment_offhours',
         'task_routes': (
             'enrich_*',
             'market_serving.materializers.materialize_pre_open_snapshots',
-            # Daily OHLCV backfill after market close
-            'data_ingest.tasks.backfill_daily_prices',
             # Pre-5-year historical OHLCV backfill to market inception
             'data_ingest.tasks.backfill_pre5y_to_market_inception',
         ),
         'periodic_tasks': (
             'enrich_history_bars',
             'materialize-pre-open-snapshots-20m',
-            # Daily price backfill at 17:00 ICT (after HOSE close)
-            'daily-backfill-prices-1700',
+            # Slice E: daily-backfill-prices-1700 đã chuyển sang domain offhours_eod (trên) —
+            # cấm để lại ở đây (build_scheduler_queue_map: domain sau ghi đè domain trước).
             # Deep history bootstrap: Sun 03:00 ICT (5 years) — gap-fill for all active symbols
             'deep-history-bootstrap-weekly',
             # Pre-5-year historical backfill — complements deep-history 5-year job
@@ -135,6 +167,8 @@ QUEUE_DOMAIN_MATRIX = {
             'service_ops.cleanup_market_data_parity_snapshots',
             'service_ops.monitor_market_data_parity_retention_health',
             'service_ops.reconcile_stale_running_service_run_logs',
+            # Meta-audit fix: batch chậm đã chuyển sang offhours_eod — cấm để lại ở đây
+            # (manual depth > 20 kích backpressure guard, skip tier recovery_backlog vĩnh viễn).
         ),
         'periodic_tasks': (
             'manual_refresh_task',

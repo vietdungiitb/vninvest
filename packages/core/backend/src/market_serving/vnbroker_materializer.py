@@ -183,6 +183,20 @@ def materialize_symbol_snapshot_from_vnbroker(symbols: list[str] | None = None):
         # Sử dụng batch fetch để tối ưu hóa hiệu năng và tránh 429 Too Many Requests.
         from market_data.vnbroker_adapter import fetch_price_board_snapshots_batch
         live_snapshots = fetch_price_board_snapshots_batch(target_symbols)
+        # Corrective live-measured: batch DailyPrice yesterday+today (2 queries) thay vì
+        # 2 queries/symbol (~3100 queries → 7+ phút/task, tự flood beat 60s).
+        _dp_yesterday = {
+            row['symbol']: row
+            for row in DailyPrice.objects.filter(
+                symbol__in=target_symbols, date=yesterday
+            ).values('symbol', 'close')
+        }
+        _dp_today = {
+            row['symbol']: row
+            for row in DailyPrice.objects.filter(
+                symbol__in=target_symbols, date=today
+            ).values('symbol', 'open', 'high', 'low', 'close', 'volume')
+        }
         live_prices: dict[str, dict] = {}
         for sym in target_symbols:
             live = live_snapshots.get(sym)
@@ -197,16 +211,15 @@ def materialize_symbol_snapshot_from_vnbroker(symbols: list[str] | None = None):
         logger.info('live_prices fetched via adapter: %d/%d', len(live_prices), len(target_symbols))
 
 
+        # Corrective live-measured: collect rồi bulk upsert 1 lần (thay update_or_create
+        # từng dòng ~1551 round-trip). Dùng prefetched maps ở trên — 0 query trong loop.
+        _to_upsert: list = []
         for symbol in target_symbols:
             try:
                 # Reference price: yesterday's canonical close (for ceiling/floor)
-                yesterday_price = DailyPrice.objects.filter(
-                    symbol=symbol, date=yesterday
-                ).first()
+                yesterday_price = _dp_yesterday.get(symbol)
                 # Today's DailyPrice used only as fallback if vnbroker fetch failed
-                today_db_price = DailyPrice.objects.filter(
-                    symbol=symbol, date=today
-                ).first()
+                today_db_price = _dp_today.get(symbol)
 
                 # Live price: prefer vnbroker realtime, fall back to DB snapshot
                 live = live_prices.get(symbol)
@@ -217,20 +230,20 @@ def materialize_symbol_snapshot_from_vnbroker(symbols: list[str] | None = None):
                     live_high = live['high']
                     live_low = live['low']
                 elif today_db_price:
-                    live_close = today_db_price.close
-                    live_volume = today_db_price.volume
-                    live_open = today_db_price.open if today_db_price.open else today_db_price.close
-                    live_high = today_db_price.high if today_db_price.high else today_db_price.close
-                    live_low = today_db_price.low if today_db_price.low else today_db_price.close
+                    live_close = today_db_price['close']
+                    live_volume = today_db_price['volume']
+                    live_open = today_db_price['open'] or today_db_price['close']
+                    live_high = today_db_price['high'] or today_db_price['close']
+                    live_low = today_db_price['low'] or today_db_price['close']
                 else:
                     logger.debug(f"No price data for {symbol} today — skipping")
                     continue
 
                 # Reference price for change/ceiling/floor calculations
                 if yesterday_price:
-                    reference_price = yesterday_price.close
+                    reference_price = yesterday_price['close']
                 elif today_db_price:
-                    reference_price = today_db_price.close
+                    reference_price = today_db_price['close']
                 else:
                     reference_price = live_close
 
@@ -261,11 +274,8 @@ def materialize_symbol_snapshot_from_vnbroker(symbols: list[str] | None = None):
                     skipped_existing += 1
                     continue
 
-                SymbolSnapshot.objects.update_or_create(
-                    symbol=symbol,
-                    session_date=today,
-                    defaults=snapshot_defaults,
-                )
+                _to_upsert.append(SymbolSnapshot(
+                    symbol=symbol, session_date=today, **snapshot_defaults))
                 if existing is None:
                     inserted += 1
                 else:
@@ -275,6 +285,20 @@ def materialize_symbol_snapshot_from_vnbroker(symbols: list[str] | None = None):
                 logger.warning(f"Failed to materialize {symbol}: {e}")
                 failed.append(symbol)
                 continue
+
+        # Corrective live-measured: 1 bulk upsert thay ~1551 update_or_create round-trip.
+        if _to_upsert:
+            SymbolSnapshot.objects.bulk_create(
+                _to_upsert,
+                batch_size=500,
+                update_conflicts=True,
+                update_fields=[
+                    'price', 'price_change', 'price_change_pct', 'volume',
+                    'reference_price', 'ceiling', 'floor', 'open', 'high', 'low',
+                    'market_status', 'source', 'stale',
+                ],
+                unique_fields=['symbol', 'session_date'],
+            )
 
         logger.info(
             'materialize_symbol_snapshot (vnbroker): upserted %d snapshots (inserted=%d updated=%d skipped_existing=%d live=%d)',
@@ -297,7 +321,8 @@ def materialize_symbol_snapshot_from_vnbroker(symbols: list[str] | None = None):
         }
     
     except Exception as e:
+        # Slice F (QueueRecovery, audit C-1): CẤM mass-stale toàn bảng — 1 lỗi provider
+        # không được đánh stale 1551 symbols khỏe mạnh. Chi tiết per-symbol đã có trong
+        # `failed` list của result path (xem :274-277). Giữ nguyên raise để retry.
         logger.error(f"vnbroker materialize failed: {e}")
-        from market_serving.models import SymbolSnapshot
-        SymbolSnapshot.objects.update(stale=True)
         raise
