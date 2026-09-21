@@ -224,3 +224,22 @@ class AlertCenterAPITests(TestCase):
         self.assertEqual(r2.json()['total'], 0)
         r3 = self.client.get('/core/v1/signals/alert-center/feed')
         self.assertEqual(len(r3.json()['results']), 1)
+
+    def test_whale_detail_exposed_additively(self):
+        from signal_intelligence.models import WhaleAlertCanonical
+        now = timezone.now()
+        whale = self._create_alert(alert_type='whale', source_ref='whale-detail-1', symbol='VCI')
+        WhaleAlertCanonical.objects.create(
+            alert=whale, symbol='VCI', session_date=now.date(), side='buy',
+            price=Decimal('49000'), volume=12000, matched_value=588000000,
+            executed_at=now,
+        )
+        self._create_alert(alert_type='signal', source_ref='signal-no-whale', symbol='VCI')
+        res = self.client.get('/core/v1/signals/alert-center/feed')
+        self.assertEqual(res.status_code, 200)
+        by_id = {item['alert_id']: item for item in res.json()['results']}
+        wd = by_id[str(whale.alert_id)]['whale_detail']
+        self.assertIsNotNone(wd)
+        self.assertEqual(str(wd['price']), '49000.00')
+        self.assertEqual(wd['volume'], 12000)
+        self.assertEqual(by_id[[k for k in by_id if k != str(whale.alert_id)][0]]['whale_detail'], None)

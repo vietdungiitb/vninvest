@@ -11,8 +11,20 @@ export function useAlertCenterFilters() {
   const [sorting, setSorting] = useState<"latest" | "largestValue">("latest");
   const [searchTermStats, setSearchTermStats] = useState("");
   const [pageStats, setPageStats] = useState(1);
+  const [statsSort, setStatsSortState] = useState<{ key: "count" | "value" | "time"; dir: "asc" | "desc" }>({
+    key: "count",
+    dir: "desc",
+  });
 
   const resetStatsPage = useCallback(() => setPageStats(1), []);
+  const cycleStatsSort = useCallback((key: "count" | "value" | "time") => {
+    setStatsSortState((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === "desc" ? "asc" : "desc" }
+        : { key, dir: "desc" },
+    );
+    setPageStats(1);
+  }, []);
   const toggleSeverity = useCallback((val: string) => {
     setSeverityFilter(prev => prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]);
     setPageStats(1);
@@ -35,9 +47,11 @@ export function useAlertCenterFilters() {
   return {
     lane, setLane, symbolDraft, setSymbolDraft, appliedSymbol,
     sessionDate, timeframe, setTimeframe,
-    severityFilter, familyFilter, sorting, setSorting,
+    severityFilter, setSeverityFilter, familyFilter, setFamilyFilter,
+    sorting, setSorting,
     searchTermStats, setSearchTermStats,
     pageStats, setPageStats, resetStatsPage,
+    statsSort, cycleStatsSort,
     toggleSeverity, toggleFamily, clearFilters, applySymbol,
     setAppliedSymbol, setSessionDate,
   };

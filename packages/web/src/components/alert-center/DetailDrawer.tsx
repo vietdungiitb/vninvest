@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useI18n } from "../../context/LangContext.js";
 import soc from "../soc/soc.module.css";
+import { formatDateTimeICT, formatSessionDate, formatVnd } from "../../utils/alertCenterFormat.js";
 
 interface DetailDrawerProps {
   activeAlertId: string | number;
@@ -13,15 +14,12 @@ interface DetailDrawerProps {
 
 function fmtDetailValue(v: unknown): string {
   if (v == null || v === "") return "—";
-  const n = Number(v);
-  return Number.isFinite(n) ? n.toLocaleString("vi-VN") : String(v);
+  return formatVnd(v);
 }
 
 function fmtDetailTime(v: unknown): string {
   if (!v) return "—";
-  const d = new Date(String(v));
-  if (Number.isNaN(d.getTime())) return String(v);
-  return d.toLocaleString("vi-VN");
+  return formatDateTimeICT(v);
 }
 
 export function DetailDrawer(props: DetailDrawerProps) {
@@ -138,8 +136,14 @@ export function DetailDrawer(props: DetailDrawerProps) {
               <div>{t("alertCenter.detailSeverity")}: <strong>{String(props.activeDetail?.severity || "—")}</strong></div>
               <div>{t("alertCenter.detailConfidence")}: <strong>{props.activeDetail?.confidence != null ? `${Math.round(Number(props.activeDetail.confidence) * 100)}%` : "—"}</strong></div>
               <div>{t("alertCenter.detailValue")}: <strong>{fmtDetailValue(props.activeDetail?.value)}</strong></div>
+              {(props.activeDetail as any)?.whale_detail?.price != null && (
+                <div>{t("alertCenter.detailPrice")}: <strong>{formatVnd((props.activeDetail as any).whale_detail.price)} VND</strong></div>
+              )}
+              {(props.activeDetail as any)?.whale_detail?.volume != null && (
+                <div>{t("alertCenter.detailVolume")}: <strong>{formatVnd((props.activeDetail as any).whale_detail.volume)}</strong></div>
+              )}
               <div>{t("alertCenter.detailDirection")}: <strong>{String(props.activeDetail?.direction || "—")}</strong></div>
-              <div>{t("alertCenter.labelSession")}: <strong>{String(props.activeDetail?.session_date || "—")}</strong></div>
+              <div>{t("alertCenter.labelSession")}: <strong>{formatSessionDate(props.activeDetail?.session_date)}</strong></div>
               <div>{t("alertCenter.detailTriggered")}: <strong>{fmtDetailTime(props.activeDetail?.triggered_at)}</strong></div>
               <div>{t("alertCenter.detailSourceRef")}: <strong style={{ wordBreak: "break-all" }}>{String(props.activeDetail?.source_ref || "—")}</strong></div>
               {props.activeDetail?.executed_at != null && String(props.activeDetail.executed_at) !== "" && (
@@ -181,7 +185,7 @@ export function DetailDrawer(props: DetailDrawerProps) {
                 <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 12 }}>
                   {((props.activeContext.recent_events as any[]) || []).slice(0, 5).map((ev: any) => (
                     <li key={String(ev.alert_id || ev.event_id || ev.symbol)}>
-                      {String(ev.symbol || "")} {String(ev.severity || "")} {ev.triggered_at ? new Date(String(ev.triggered_at)).toLocaleString("vi-VN") : ""}
+                      {String(ev.symbol || "")} {String(ev.severity || "")} {ev.triggered_at ? formatDateTimeICT(ev.triggered_at) : ""}
                     </li>
                   ))}
                 </ul>

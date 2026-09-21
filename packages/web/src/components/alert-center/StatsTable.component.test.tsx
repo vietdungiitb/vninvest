@@ -22,24 +22,46 @@ describe("StatsTable (S4)", () => {
 
   it("map freq enum + hien neutral + latestTime", () => {
     const { container } = render(
-      <StatsTable rows={[row()]} formatAlertValue={(v) => String(v)} />
+      <StatsTable
+        rows={[row()]}
+        formatAlertValue={(v) => String(v)}
+        sortKey="count"
+        sortDir="desc"
+        onSortChange={() => {}}
+      />
     );
     expect(screen.getByText("alertCenter.freqHigh")).toBeTruthy();
     expect(container.textContent).toContain("1");
-    expect(container.textContent).toContain("alertCenter.labelOther");
+    // neutral chi hien so + tooltip (one-line B/S), khong con nhan rieng
+    const bsCell = container.querySelector('[title*="alertCenter.labelOther"]');
+    expect(bsCell).toBeTruthy();
     expect(container.textContent).not.toContain("—");
   });
 
   it("freq low + latestTime 0 → '—'", () => {
     const { container } = render(
-      <StatsTable rows={[row({ freq: "low", latestTime: 0 })]} formatAlertValue={(v) => String(v)} />
+      <StatsTable
+        rows={[row({ freq: "low", latestTime: 0 })]}
+        formatAlertValue={(v) => String(v)}
+        sortKey="count"
+        sortDir="desc"
+        onSortChange={() => {}}
+      />
     );
     expect(screen.getByText("alertCenter.freqLow")).toBeTruthy();
     expect(container.textContent).toContain("—");
   });
 
   it("rows rong → statsEmpty", () => {
-    render(<StatsTable rows={[]} formatAlertValue={(v) => String(v)} />);
+    render(
+      <StatsTable
+        rows={[]}
+        formatAlertValue={(v) => String(v)}
+        sortKey="count"
+        sortDir="desc"
+        onSortChange={() => {}}
+      />
+    );
     expect(screen.getByText("alertCenter.statsEmpty")).toBeTruthy();
   });
 });

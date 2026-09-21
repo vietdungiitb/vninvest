@@ -138,27 +138,30 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
     expect(html.indexOf("BBB")).toBeLessThan(html.indexOf("AAA"));
   });
 
-  it("5. pagination stats giu trang 2 (A2 regression)", async () => {
+  it("5. pagination stats giu trang 2 (A2 regression, 20/trang)", async () => {
+    const sym = (i: number) => `A${String(i).padStart(2, "0")}`;
     dataState.current = () =>
       baseData({
         symbolStats: {
-          symbols: Array.from({ length: 16 }, (_, i) => statsRow(`S${i}`, i)),
-          total_alerts_in_scope: 16,
-          pagination: { page: 1, page_size: 200, total_pages: 1, total_symbols: 16 },
+          symbols: Array.from({ length: 24 }, (_, i) => statsRow(sym(i), i)),
+          total_alerts_in_scope: 24,
+          pagination: { page: 1, page_size: 200, total_pages: 1, total_symbols: 24 },
         },
       });
     render(<AlertCenterPage />);
-    expect(screen.getByText("S0")).toBeTruthy();
-    expect(screen.queryByText("S8")).toBeNull();
+    expect(screen.getByText("A00")).toBeTruthy();
+    expect(screen.queryByText("A20")).toBeNull();
+    // header hien tong scope, khong phai do dai trang
+    expect(screen.getByText("alertCenter.statsTotal")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "›" }));
-    await waitFor(() => expect(screen.getByText("S8")).toBeTruthy(), { timeout: 700 });
-    expect(screen.queryByText("S0")).toBeNull();
+    await waitFor(() => expect(screen.getByText("A20")).toBeTruthy(), { timeout: 700 });
+    expect(screen.queryByText("A00")).toBeNull();
     await new Promise((r) => setTimeout(r, 700));
-    expect(screen.getByText("S8")).toBeTruthy();
-    expect(screen.queryByText("S0")).toBeNull();
+    expect(screen.getByText("A20")).toBeTruthy();
+    expect(screen.queryByText("A00")).toBeNull();
   });
 
-  it("6. S7 SSE prepend cung key alert_id, khong trung REST", async () => {
+  it("6. S7 SSE vao buffer + pill, bam moi merge (S3.4)", async () => {
     const { act } = await import("@testing-library/react");
     dataState.current = () =>
       baseData({
@@ -176,13 +179,17 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
         triggered_at: future, freshness_state: "fresh", alert_family: "whale",
         body: "Body", value: 5000, direction: "buy", confidence: 0.9, evidence: {},
       });
-      // trùng alert_id REST → không duplicate
+      // trùng alert_id REST → không duplicate (ngay cả trong buffer)
       streamState.onItem({
         alert_id: "id-AAA", symbol: "AAA", title: "Dup", severity: "high",
         triggered_at: future, freshness_state: "fresh", alert_family: "whale",
         body: "Body", value: 1, direction: "buy", confidence: 0.9, evidence: {},
       });
     });
+    // chua merge: list giu nguyen, hien pill
+    expect(screen.queryByText("Sse one")).toBeNull();
+    expect(screen.getByRole("button", { name: "alertCenter.newAlerts" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "alertCenter.newAlerts" }));
     const html = document.body.innerHTML;
     expect(html.indexOf("Sse one")).toBeGreaterThan(-1);
     // SSE mới nhất (future) sort lên trước
@@ -290,6 +297,61 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
     render(<AlertCenterPage />);
     expect(screen.getByRole("button", { name: "alertCenter.btnAck" })).toBeTruthy();
     window.history.replaceState(null, "", "/");
+  });
+
+  it("15. S3 mute modal gui duration + reason", async () => {
+    dataState.current = () =>
+      baseData({
+        payload: {
+          results: [alertFixture("AAA", "2026-09-18T01:00:00Z")],
+          next: null,
+          previous: null,
+        },
+      });
+    render(<AlertCenterPage />);
+    fireEvent.click(screen.getByRole("button", { name: "alertCenter.btnMute" }));
+    expect(screen.getByText(/alertCenter.muteTitle/)).toBeTruthy();
+    const reason = document.querySelector('input[maxlength="200"]') as HTMLInputElement;
+    fireEvent.change(reason, { target: { value: "on-nghe" } });
+    fireEvent.click(screen.getByRole("button", { name: "alertCenter.muteConfirm" }));
+    await waitFor(() =>
+      expect(adapterMocks.muteAlertCenterPreference).toHaveBeenCalledWith(
+        expect.objectContaining({ symbol: "AAA", mute_minutes: 30, metadata: { reason: "on-nghe" } })
+      )
+    );
+  });
+
+  it("16. mark-all-read batch ack + refetch", async () => {
+    const refetch = vi.fn().mockResolvedValue([]);
+    dataState.current = () =>
+      baseData({
+        refetch,
+        payload: {
+          results: [
+            alertFixture("AAA", "2026-09-18T01:00:00Z"),
+            alertFixture("BBB", "2026-09-18T02:00:00Z"),
+          ],
+          next: null,
+          previous: null,
+        },
+      });
+    render(<AlertCenterPage />);
+    fireEvent.click(screen.getByRole("button", { name: "alertCenter.markAllRead" }));
+    await waitFor(() => expect(adapterMocks.acknowledgeAlertCenterEvent).toHaveBeenCalledTimes(2));
+    expect(adapterMocks.acknowledgeAlertCenterEvent).toHaveBeenCalledWith(
+      "id-AAA", expect.objectContaining({ lane: "main" })
+    );
+    await waitFor(() => expect(refetch).toHaveBeenCalled());
+  });
+
+  it("17. stale banner khi alert moi nhat qua 60 phut", () => {
+    const old = new Date(Date.now() - 2 * 3600_000).toISOString();
+    dataState.current = () =>
+      baseData({
+        payload: { results: [alertFixture("AAA", old)], next: null, previous: null },
+      });
+    render(<AlertCenterPage />);
+    expect(screen.getByText("alertCenter.staleBanner")).toBeTruthy();
   });
 
   it("15. S3 mute modal gui duration + reason", async () => {

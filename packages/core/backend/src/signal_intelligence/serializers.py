@@ -3,18 +3,34 @@ from rest_framework import serializers
 from .models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical
 
 
+class WhaleAlertCanonicalSerializer(serializers.ModelSerializer):
+    alert_id = serializers.UUIDField(source='alert.alert_id', read_only=True)
+    severity = serializers.CharField(source='alert.severity', read_only=True)
+
+    class Meta:
+        model = WhaleAlertCanonical
+        fields = [
+            'alert_id', 'symbol', 'session_date', 'side', 'price',
+            'volume', 'matched_value', 'is_dark_flow', 'order_id', 'executed_at',
+            'severity',
+        ]
+
+
 class UnifiedAlertSerializer(serializers.ModelSerializer):
     lane = serializers.SerializerMethodField()
     alert_family = serializers.SerializerMethodField()
     summary = serializers.SerializerMethodField()
     executed_at = serializers.SerializerMethodField()
+    # S3.2 additive: expose canonical whale fill (price/volume) cho feed/detail.
+    # Non-whale alerts render null — không đổi field hiện có.
+    whale_detail = WhaleAlertCanonicalSerializer(read_only=True)
 
     class Meta:
         model = UnifiedAlert
         fields = [
             'alert_id', 'alert_type', 'alert_family', 'lane', 'symbol', 'severity', 'confidence', 'freshness_state',
             'title', 'body', 'value', 'direction', 'session_date', 'triggered_at',
-            'source_ref', 'metadata', 'evidence', 'summary', 'executed_at',
+            'source_ref', 'metadata', 'evidence', 'summary', 'executed_at', 'whale_detail',
         ]
 
     def get_lane(self, obj):
@@ -49,19 +65,6 @@ class UnifiedAlertSerializer(serializers.ModelSerializer):
             return obj.whale_detail.executed_at.isoformat()
         except WhaleAlertCanonical.DoesNotExist:
             return None
-
-
-class WhaleAlertCanonicalSerializer(serializers.ModelSerializer):
-    alert_id = serializers.UUIDField(source='alert.alert_id', read_only=True)
-    severity = serializers.CharField(source='alert.severity', read_only=True)
-
-    class Meta:
-        model = WhaleAlertCanonical
-        fields = [
-            'alert_id', 'symbol', 'session_date', 'side', 'price',
-            'volume', 'matched_value', 'is_dark_flow', 'order_id', 'executed_at',
-            'severity',
-        ]
 
 
 class OrderFlowEventSerializer(serializers.ModelSerializer):

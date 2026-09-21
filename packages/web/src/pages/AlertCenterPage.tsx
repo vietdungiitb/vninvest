@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { FixedSizeList } from "react-window";
-const VirtualFeedList = FixedSizeList as any;
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { VariableSizeList } from "react-window";
+const VirtualFeedList = VariableSizeList as any;
 import { useI18n } from "../context/LangContext.js";
 import { PageErrorBoundary } from "../components/PageErrorBoundary.js";
 import { ShellSkeleton } from "../components/ShellSkeleton.js";
 import styles from "./AlertCenterPage.module.css";
 import { ShellPageChrome, ShellPanel, ShellMetric } from "../components/ShellPageTemplate.js";
 import soc from "../components/soc/soc.module.css";
+import { formatAgo, formatDateTimeICT, formatVnd } from "../utils/alertCenterFormat.js";
 import { useAlertCenterData } from "../hooks/useAlertCenterData.js";
 import { useAlertCenterStream, type AlertCenterStreamItem } from "../hooks/useAlertCenterStream.js";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
@@ -31,6 +32,13 @@ interface AlertItem {
   alert_family?: string;
   alert_type?: string;
   severity?: string;
+  whale_detail?: {
+    price?: unknown;
+    volume?: unknown;
+    matched_value?: unknown;
+    side?: string;
+    executed_at?: string;
+  } | null;
   [key: string]: unknown;
 }
 
@@ -66,20 +74,12 @@ interface AlertCenterPageProps {
 }
 
 function formatAlertValue(value: unknown): string {
-  if (value == null || value === "") return "—";
-  const numericValue = Number(value);
-  return Number.isFinite(numericValue) ? numericValue.toLocaleString("vi-VN") : String(value);
+  return formatVnd(value);
 }
 
 function formatAlertTimestamp(value: unknown): string {
   if (!value) return "—";
-  const timestamp = new Date(String(value));
-  if (Number.isNaN(timestamp.getTime())) return String(value);
-  return (
-    timestamp.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) +
-    " " +
-    timestamp.toLocaleDateString("vi-VN")
-  );
+  return formatDateTimeICT(value);
 }
 
 function normalizeSymbol(value: unknown): string {
@@ -87,7 +87,7 @@ function normalizeSymbol(value: unknown): string {
 }
 
 export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCenterPageProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const filters = useAlertCenterFilters();
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -152,6 +152,8 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
   // S7: SSE user-scoped thay WS global — cùng key alert_id với REST nên merge an toàn.
   // (useAlertCenterRealtime vẫn giữ cho DashboardPage dùng.)
   const [sseAlerts, setSseAlerts] = useState<AlertItem[]>([]);
+  // S3.4: alert mới vào buffer + pill, không đẩy list khi user đang đọc.
+  const [pendingAlerts, setPendingAlerts] = useState<AlertItem[]>([]);
   const [isDocVisible, setIsDocVisible] = useState(
     typeof document !== "undefined" ? !document.hidden : true,
   );
@@ -163,11 +165,24 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
   }, []);
   const handleStreamItem = useCallback((incoming: AlertCenterStreamItem) => {
     const item = incoming as unknown as AlertItem;
+    setPendingAlerts((prev) => {
+      if (prev.some((p) => String(p.alert_id) === String(item.alert_id))) return prev;
+      return [...prev, item].slice(-50);
+    });
     setSseAlerts((prev) => {
       if (prev.some((p) => String(p.alert_id) === String(item.alert_id))) return prev;
-      return [item, ...prev].slice(0, 50);
+      return prev;
     });
   }, []);
+  const mergePendingAlerts = useCallback(() => {
+    if (!pendingAlerts.length) return;
+    setSseAlerts((prev) => {
+      const seen = new Set(prev.map((p) => String(p.alert_id)));
+      const fresh = pendingAlerts.filter((p) => !seen.has(String(p.alert_id)));
+      return [...fresh, ...prev].slice(0, 50);
+    });
+    setPendingAlerts([]);
+  }, [pendingAlerts]);
   const streamQuery = useMemo(() => ({
     lane: filters.lane || undefined,
     symbol: filters.appliedSymbol || undefined,
@@ -185,6 +200,11 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
   const [extraAlerts, setExtraAlerts] = useState<AlertItem[]>([]);
   const [feedNextUrl, setFeedNextUrl] = useState<string | null>(null);
   const [muteTarget, setMuteTarget] = useState<AlertItem | null>(null);
+  const [markingAll, setMarkingAll] = useState(false);
+
+  // S1.6: cache chiều cao thật từng card cho VariableSizeList.
+  const listRef = useRef<any>(null);
+  const rowHeights = useRef(new Map<number, number>());
 
   // S7: feed = REST (+ load-more) + SSE prepend, dedupe cùng key alert_id.
   // WS lane S2 đã gỡ (SSE cùng shape serializer nên merge an toàn).
@@ -229,6 +249,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
   useEffect(() => {
     setExtraAlerts([]);
     setFeedNextUrl(null);
+    setPendingAlerts([]);
   }, [filters.lane, filters.appliedSymbol, filters.sessionDate, filters.timeframe, filters.severityFilter, filters.familyFilter]);
 
   const handleLoadMore = useCallback(async () => {
@@ -283,6 +304,44 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
     });
   }, [sortedAlerts, actions.optimisticAck, actions.optimisticMuted]);
 
+  const getRowHeight = useCallback(
+    (index: number) => rowHeights.current.get(index) ?? 280,
+    [],
+  );
+  const handleCardHeight = useCallback((index: number, height: number) => {
+    if (height > 0 && rowHeights.current.get(index) !== height) {
+      rowHeights.current.set(index, height);
+      listRef.current?.resetAfterIndex(index);
+    }
+  }, []);
+
+  // S3.1: đánh dấu đã xem toàn bộ alert đang hiển thị (batch ack, tối đa 50).
+  const handleMarkAllRead = useCallback(async () => {
+    const targets = displayAlerts
+      .filter((a: AlertItem) => !a.acknowledged && (a.alert_id ?? a.event_id))
+      .slice(0, 50);
+    if (!targets.length || markingAll) return;
+    setMarkingAll(true);
+    try {
+      await Promise.allSettled(
+        targets.map((a: AlertItem) => {
+          const id = (a.alert_id ?? a.event_id) as string | number;
+          return coreApiAdapter.acknowledgeAlertCenterEvent(id, { lane: filters.lane });
+        }),
+      );
+      await refetch();
+    } finally {
+      setMarkingAll(false);
+    }
+  }, [displayAlerts, filters.lane, markingAll, refetch]);
+
+  // S3.4: banner dữ liệu chậm — alert mới nhất quá 60 phút.
+  const latestAlertTs = useMemo(() => displayAlerts.reduce((m: number, a: AlertItem) => {
+    const ts = a?.triggered_at ? new Date(a.triggered_at).getTime() : 0;
+    return Number.isFinite(ts) ? Math.max(m, ts) : m;
+  }, 0), [displayAlerts]);
+  const isDataStale = latestAlertTs > 0 && Date.now() - latestAlertTs > 60 * 60 * 1000;
+
   const aggregatedSymbols = useMemo(() => {
     const symbolStatsPayload = symbolStats as unknown as SymbolStatsPayload;
     const rawSymbolRows = Array.isArray(symbolStatsPayload?.symbols) ? symbolStatsPayload.symbols : [];
@@ -326,13 +385,30 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
     (alert: AlertItem) => alert?.alert_family === "ai_suggest" || alert?.alert_type === "ai_suggest",
   ).length;
 
-  const ITEMS_PER_PAGE_STATS = 8;
+  const ITEMS_PER_PAGE_STATS = 20;
   const totalPagesStats = Math.ceil(aggregatedSymbols.length / ITEMS_PER_PAGE_STATS) || 1;
   const activePageStats = Math.min(filters.pageStats, totalPagesStats);
-  const paginatedSymbols = useMemo(() => aggregatedSymbols.slice(
+  const sortedSymbols = useMemo(() => {
+    const arr = [...aggregatedSymbols];
+    const dir = filters.statsSort.dir === "desc" ? -1 : 1;
+    const val = (r: Record<string, unknown>) => {
+      if (filters.statsSort.key === "value") return Number(r.totalValue || 0);
+      if (filters.statsSort.key === "time") return Number(r.latestTime || 0);
+      return Number(r.count || 0);
+    };
+    arr.sort((a, b) => {
+      const diff = (val(a as unknown as Record<string, unknown>) - val(b as unknown as Record<string, unknown>)) * dir;
+      if (diff !== 0) return diff;
+      return String((a as unknown as Record<string, unknown>).symbol || "").localeCompare(
+        String((b as unknown as Record<string, unknown>).symbol || ""),
+      );
+    });
+    return arr;
+  }, [aggregatedSymbols, filters.statsSort]);
+  const paginatedSymbols = useMemo(() => sortedSymbols.slice(
     (activePageStats - 1) * ITEMS_PER_PAGE_STATS,
     activePageStats * ITEMS_PER_PAGE_STATS,
-  ), [aggregatedSymbols, activePageStats]);
+  ), [sortedSymbols, activePageStats]);
 
   const handleExportCsv = useCallback(() => {
     // S5: BOM UTF-8 (Excel đọc đúng dấu) + cắt 5000 dòng, đồng chuẩn Signals
@@ -395,14 +471,73 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
     </div>
   );
 
-  const metrics = [
-    { label: t("alertCenter.summary.total"), value: String(summaryData?.total ?? alerts.length) },
-    { label: t("alertCenter.summary.highCritical"), value: String(highSeverityCount) },
+  interface MetricDef {
+    key: string;
+    label: string;
+    value: string;
+    onClick?: () => void;
+    hint: string;
+  }
+  const metrics: MetricDef[] = [
+    {
+      key: "total",
+      label: t("alertCenter.summary.total"),
+      value: String(summaryData?.total ?? alerts.length),
+      onClick: () => { filters.setSeverityFilter([]); filters.resetStatsPage(); },
+      hint: t("alertCenter.metricTotalHint"),
+    },
+    {
+      key: "highCritical",
+      label: t("alertCenter.summary.highCritical"),
+      value: String(highSeverityCount),
+      onClick: () => {
+        const hc = ["high", "critical"];
+        if (hc.every((s) => filters.severityFilter.includes(s))) {
+          filters.setSeverityFilter(filters.severityFilter.filter((s) => !hc.includes(s)));
+        } else {
+          filters.setSeverityFilter(Array.from(new Set([...filters.severityFilter, ...hc])));
+        }
+        filters.resetStatsPage();
+      },
+      hint: t("alertCenter.metricFilterHint"),
+    },
     ...(filters.lane === "ai"
-      ? [{ label: t("alertCenter.summary.aiSuggest"), value: String(aiSuggestCount) }]
+      ? [{
+        key: "aiSuggest",
+        label: t("alertCenter.summary.aiSuggest"),
+        value: String(aiSuggestCount),
+        hint: t("alertCenter.metricStaticHint"),
+      }]
       : []),
-    { label: t("alertCenter.summary.unseen"), value: String(summaryData?.unseen ?? 0) },
+    {
+      key: "unseen",
+      label: t("alertCenter.summary.unseen"),
+      value: String(summaryData?.unseen ?? 0),
+      hint: t("alertCenter.metricStaticHint"),
+    },
   ];
+
+  const renderMetric = (m: MetricDef) => {
+    if (!m.onClick) {
+      return <ShellMetric key={m.label} label={m.label} value={m.value} />;
+    }
+    return (
+      <div
+        key={m.label}
+        role="button"
+        tabIndex={0}
+        title={String(m.hint)}
+        aria-label={`${m.label}: ${m.value}. ${m.hint}`}
+        className={styles.acClickableMetric}
+        onClick={m.onClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); m.onClick?.(); }
+        }}
+      >
+        <ShellMetric label={m.label} value={m.value} />
+      </div>
+    );
+  };
 
   return (
     <ShellPageChrome
@@ -410,12 +545,10 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
       title={t("alertCenter.title")}
       description={t("alertCenter.subtitle")}
       badge={liveBadge}
-      metrics={metrics.map((m) => (
-        <ShellMetric key={m.label} label={m.label} value={m.value} />
-      ))}
+      metrics={metrics.map((m) => renderMetric(m))}
       notice={!autoRefresh ? t("alertCenter.paused") : undefined}
       error={error && displayAlerts.length === 0 && !isInitialLoading ? error : undefined}
-      className={className}
+      className={`${className} ${styles.acPageTokens}`.trim()}
     >
       <FilterBar
         lane={filters.lane}
@@ -423,11 +556,23 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
         timeframe={filters.timeframe}
         onTimeframeChange={(val) => { filters.setTimeframe(val); filters.resetStatsPage(); }}
         sessionDate={filters.sessionDate}
-        onSessionDateChange={(val) => { filters.setSessionDate(val); filters.resetStatsPage(); }}
+        onSessionDateChange={(val) => {
+          filters.setSessionDate(val);
+          // S2.2: ngày cụ thể thắng preset — ép timeframe về session để backend
+          // chỉ lọc theo session_date, tránh AND nhầm với cutoff preset.
+          if (val) filters.setTimeframe("session");
+          filters.resetStatsPage();
+        }}
         symbolDraft={filters.symbolDraft}
         onSymbolDraftChange={filters.setSymbolDraft}
         onSymbolApply={filters.applySymbol}
         severityFilter={filters.severityFilter}
+        severityCounts={{
+          critical: Number(summaryData?.by_severity?.critical || 0),
+          high: Number(summaryData?.by_severity?.high || 0),
+          medium: Number(summaryData?.by_severity?.medium || 0),
+          low: Number(summaryData?.by_severity?.low || 0),
+        }}
         onToggleSeverity={filters.toggleSeverity}
         familyFilter={filters.familyFilter}
         onToggleFamily={filters.toggleFamily}
@@ -449,14 +594,34 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
           </button>
         </div>
       )}
+      {isDataStale && (
+        <div className={`${soc.bannerError}`} role="status" style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <span>{t("alertCenter.staleBanner", {
+            time: formatDateTimeICT(latestAlertTs),
+            ago: formatAgo(latestAlertTs, locale),
+          })}</span>
+        </div>
+      )}
 
       <div className={`${soc.opsLayoutContainer}`}>
         <div className={`${soc.opsLeftCol}`}>
         <ShellPanel
           title={t("alertCenter.feedTitle")}
-          subtitle={t("alertCenter.feedShowing", { count: alerts.length })}
+          subtitle={t("alertCenter.feedShowingTotal", {
+            count: displayAlerts.length,
+            total: Number(summaryData?.total ?? displayAlerts.length),
+          })}
           actions={
             <div className={`${soc.signalFeedFilterBar}`} style={{ marginBottom: 0 }}>
+              <button
+                type="button"
+                className={`${soc.filterBtn} ${soc.filterBtnInactive}`}
+                disabled={markingAll || !displayAlerts.some((a: AlertItem) => !a.acknowledged)}
+                onClick={handleMarkAllRead}
+                title={t("alertCenter.markAllRead")}
+              >
+                {markingAll ? t("alertCenter.pendingAck") : t("alertCenter.markAllRead")}
+              </button>
               <button
                 type="button"
                 className={`${soc.filterBtn} ${soc.filterBtnInactive}`}
@@ -515,11 +680,21 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
                   <span>{feedError}</span>
                 </div>
               )}
+              {pendingAlerts.length > 0 && (
+                <button
+                  type="button"
+                  className={styles.acNewPill}
+                  onClick={mergePendingAlerts}
+                >
+                  {t("alertCenter.newAlerts", { count: pendingAlerts.length })}
+                </button>
+              )}
               <VirtualFeedList
+                ref={listRef}
                 height={460}
                 width="100%"
                 itemCount={displayAlerts.length}
-                itemSize={280}
+                itemSize={getRowHeight}
                 className={`${styles.acScrollable}`}
               >
                 {({ index, style }: { index: number; style: React.CSSProperties }) => (
@@ -536,6 +711,8 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
                     handleMuteRequest={openMuteModal as any}
                     formatAlertValue={formatAlertValue}
                     formatAlertTimestamp={formatAlertTimestamp}
+                    index={index}
+                    onHeight={handleCardHeight}
                     style={{ ...style, overflow: "hidden", animationDelay: `${(index % 20) * 50}ms` }}
                   />
                 )}
@@ -549,12 +726,20 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
         <div className={`${soc.opsRightCol}`}>
           <StatsPanel
             rows={paginatedSymbols as any}
+            totalSymbols={Number(
+              (symbolStats as unknown as SymbolStatsPayload)?.pagination?.total_symbols
+              ?? aggregatedSymbols.length,
+            )}
             searchTerm={filters.searchTermStats}
             onSearchChange={filters.setSearchTermStats}
             formatAlertValue={formatAlertValue}
             page={activePageStats}
+            pageSize={ITEMS_PER_PAGE_STATS}
             totalPages={totalPagesStats}
             onPageChange={filters.setPageStats}
+            sortKey={filters.statsSort.key}
+            sortDir={filters.statsSort.dir}
+            onSortChange={filters.cycleStatsSort}
           />
         </div>
       </div>

@@ -2505,6 +2505,37 @@
   vertical-align: middle;
 }
 
+/* Panel (S1.5 — StatsPanel dùng soc.panel nhưng class từng thiếu định nghĩa) */
+.panel {
+  background: rgba(var(--soc-rgb-0f172a) / 0.2);
+  border: 1px solid var(--border-default, rgba(var(--soc-rgb-5078a8) / 0.15));
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.panelHeader {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.panelTitle {
+  margin: 0;
+  font-size: 21px;
+}
+
+/* Vertical divider between filter groups (S2 — .separator là border-top ngang) */
+.vSeparator {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border-default, rgba(var(--soc-rgb-5078a8) / 0.18));
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
 /* Toolbar (run logs) */
 .opsToolbarRow {
   display: flex;

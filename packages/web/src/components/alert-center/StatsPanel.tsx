@@ -16,12 +16,17 @@ interface SymbolStatsRow {
 
 interface StatsPanelProps {
   rows: SymbolStatsRow[];
+  totalSymbols: number;
   searchTerm: string;
   onSearchChange: (val: string) => void;
   formatAlertValue: (val: unknown) => string;
   page: number;
+  pageSize: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  sortKey: "count" | "value" | "time";
+  sortDir: "asc" | "desc";
+  onSortChange: (key: "count" | "value" | "time") => void;
 }
 
 export function StatsPanel(props: StatsPanelProps) {
@@ -31,9 +36,14 @@ export function StatsPanel(props: StatsPanelProps) {
     <div className={`${soc.panel}`}>
       <div className={`${soc.panelHeader}`}>
         <h2 className={soc.panelTitle}>{t("alertCenter.statsTitle")}</h2>
-        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          {props.rows.length} {t("alertCenter.colSymbol")}
-        </span>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
+            {t("alertCenter.statsTotal", { total: props.totalSymbols })}
+          </span>
+          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+            {t("alertCenter.statsPageInfo", { page: props.page, total: props.totalPages, perPage: props.pageSize })}
+          </span>
+        </div>
       </div>
 
       <div className={`${soc.searchWrapper}`} style={{ marginBottom: 12 }}>
@@ -46,9 +56,29 @@ export function StatsPanel(props: StatsPanelProps) {
           placeholder={t("alertCenter.statsSearch")}
           onChange={e => props.onSearchChange(e.target.value.toUpperCase())}
         />
+        {props.searchTerm && (
+          <button
+            type="button"
+            aria-label={t("alertCenter.clearFilter")}
+            title={t("alertCenter.clearFilter")}
+            onClick={() => props.onSearchChange("")}
+            style={{
+              position: "absolute", right: 6, background: "transparent", border: "none",
+              color: "var(--text-muted)", cursor: "pointer", fontSize: "0.85rem", lineHeight: 1,
+            }}
+          >
+            ×
+          </button>
+        )}
       </div>
 
-      <StatsTable rows={props.rows} formatAlertValue={props.formatAlertValue} />
+      <StatsTable
+        rows={props.rows}
+        formatAlertValue={props.formatAlertValue}
+        sortKey={props.sortKey}
+        sortDir={props.sortDir}
+        onSortChange={props.onSortChange}
+      />
 
       {props.totalPages > 1 && (
         <div className={`${soc.pagination}`}>

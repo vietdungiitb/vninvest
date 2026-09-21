@@ -99,6 +99,53 @@
   animation: acSpin 0.8s linear infinite;
 }
 
+/* 7. AlertCenter local tokens (S4 — chốt radius dùng riêng cho page) */
+.acPageTokens {
+  --ac-r-sm: 8px;
+  --ac-r-md: 12px;
+  --ac-r-pill: 999px;
+}
+
+/* 8. Buy/Sell one-line cell (S3.3 — nhãn + số cùng 1 dòng, không vỡ) */
+.acBuySellOneLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-size: 0.7rem;
+}
+
+/* 9. Search input mở rộng trong toolbar (S2 — searchWrapper SOC chỉ 160px) */
+.acSearchGrow {
+  max-width: 250px;
+}
+
+/* 10. Pill cảnh báo mới (S3.4 — buffer SSE, không đẩy list) */
+.acNewPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 6px 12px;
+  border-radius: var(--ac-r-pill, 999px);
+  border: 1px solid rgba(var(--soc-rgb-00b4d8) / 0.4);
+  background: rgba(var(--soc-rgb-00b4d8) / 0.15);
+  color: var(--accent-cyan, var(--soc-c-22d3ee));
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* 11. KPI bấm để lọc (S4.3 — chỉ total/highCritical) */
+.acClickableMetric {
+  cursor: pointer;
+  border-radius: 20px;
+}
+.acClickableMetric:focus-visible {
+  outline: 2px solid var(--accent-cyan, #22d3ee);
+  outline-offset: 2px;
+}
+
 /* 6. Light theme variants — keep for strength/evidence */
 [data-theme="light"] .acStrengthBar {
   background: rgba(0, 0, 0, 0.08);

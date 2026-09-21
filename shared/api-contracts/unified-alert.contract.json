@@ -1,6 +1,6 @@
 {
   "contract_name": "unified-alert",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Unified alert item — canonical model cho tất cả alert types (whale, dark_flow, signal, system).",
   "last_updated": "2026-07-19",
   "schema": {
@@ -97,6 +97,10 @@
       "metadata": {
         "type": ["object", "null"],
         "description": "Dữ liệu bổ sung tùy loại alert (key-value)"
+      },
+      "whale_detail": {
+        "type": ["object", "null"],
+        "description": "Chi tiết khớp lệnh canonical cho whale alert (price/volume/matched_value/side/executed_at); null với non-whale. Cộng thêm từ S3.2, không đổi field hiện có."
       }
     }
   },
@@ -133,9 +137,25 @@
     "executed_at": "2026-05-03T14:43:01+07:00",
     "source_ref": "whale-order-uuid-12345",
     "evidence": { "price": 125000, "volume": 148000, "matched_value": 18500000000 },
-    "metadata": { "price": 125000, "volume": 148000 }
+    "metadata": { "price": 125000, "volume": 148000 },
+    "whale_detail": {
+      "symbol": "FPT",
+      "session_date": "2026-05-03",
+      "side": "buy",
+      "price": "125000.00",
+      "volume": 148000,
+      "matched_value": 18500000000,
+      "is_dark_flow": false,
+      "order_id": "",
+      "executed_at": "2026-05-03T14:43:01+07:00"
+    }
   },
   "changelog": [
+    {
+      "version": "1.2.0",
+      "date": "2026-09-21",
+      "changes": "Bổ sung whale_detail (cộng thêm, nullable) để feed/detail expose giá/khối lượng khớp lệnh whale (S3.2)."
+    },
     {
       "version": "1.0.0",
       "date": "2026-05-03",

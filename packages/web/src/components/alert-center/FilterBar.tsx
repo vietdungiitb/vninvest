@@ -1,5 +1,6 @@
 import { useI18n } from "../../context/LangContext.js";
 import soc from "../soc/soc.module.css";
+import styles from "../../pages/AlertCenterPage.module.css";
 
 const LANE_OPTIONS = [
   { value: "main", label: "alertCenter.laneMain" },
@@ -34,6 +35,7 @@ interface FilterBarProps {
   sessionDate: string;
   onSessionDateChange: (val: string) => void;
   severityFilter: string[];
+  severityCounts?: Record<string, number>;
   onToggleSeverity: (val: string) => void;
   familyFilter: string[];
   onToggleFamily: (val: string) => void;
@@ -45,18 +47,19 @@ interface FilterBarProps {
 export function FilterBar(props: FilterBarProps) {
   const { t } = useI18n();
   const hasActiveFilters = props.severityFilter.length > 0 || props.familyFilter.length > 0;
+  const counts = props.severityCounts || {};
   const familyOptions = props.lane === "ai"
     ? [
-        { value: "ai_suggest", labelKey: "alertCenter.famAiSuggest" },
-        { value: "ai_alert", labelKey: "alertCenter.famAiAlert" },
+        { value: "ai_suggest", labelKey: "alertCenter.famAiSuggest", enKey: "alertCenter.famAiSuggestEn" },
+        { value: "ai_alert", labelKey: "alertCenter.famAiAlert", enKey: "alertCenter.famAiAlertEn" },
       ]
     : [
-        { value: "whale", labelKey: "alertCenter.famWhale" },
-        { value: "dark_flow", labelKey: "alertCenter.famDarkFlow" },
-        { value: "price_shock", labelKey: "alertCenter.famPriceShock" },
-        { value: "signal", labelKey: "alertCenter.famSignal" },
-        { value: "system", labelKey: "alertCenter.famSystem" },
-        { value: "stale_quote", labelKey: "alertCenter.famStaleQuote" },
+        { value: "whale", labelKey: "alertCenter.famWhale", enKey: "alertCenter.famWhaleEn" },
+        { value: "dark_flow", labelKey: "alertCenter.famDarkFlow", enKey: "alertCenter.famDarkFlowEn" },
+        { value: "price_shock", labelKey: "alertCenter.famPriceShock", enKey: "alertCenter.famPriceShockEn" },
+        { value: "signal", labelKey: "alertCenter.famSignal", enKey: "alertCenter.famSignalEn" },
+        { value: "system", labelKey: "alertCenter.famSystem", enKey: "alertCenter.famSystemEn" },
+        { value: "stale_quote", labelKey: "alertCenter.famStaleQuote", enKey: "alertCenter.famStaleQuoteEn" },
       ];
 
   return (
@@ -68,17 +71,19 @@ export function FilterBar(props: FilterBarProps) {
               <button
                 key={o.value}
                 type="button"
+                aria-pressed={props.lane === o.value}
                 className={`${soc.subTabBtn} ${props.lane === o.value ? soc.subTabBtnActive : ""}`}
                 onClick={() => props.onLaneChange(o.value)}
               >
                 {t(o.label)}
               </button>
             ))}
-            <div className={`${soc.separator}`} style={{ width: 1, alignSelf: "stretch" }} />
+            <div className={`${soc.vSeparator}`} aria-hidden="true" />
             {WINDOW_OPTIONS.map(o => (
               <button
                 key={o.value}
                 type="button"
+                aria-pressed={props.timeframe === o.value}
                 className={`${soc.subTabBtn} ${props.timeframe === o.value ? soc.subTabBtnActive : ""}`}
                 onClick={() => props.onTimeframeChange(o.value)}
               >
@@ -98,51 +103,71 @@ export function FilterBar(props: FilterBarProps) {
           </button>
         </div>
 
-        <input
-          type="date"
-          className={`${soc.searchInputWithIcon}`}
-          value={props.sessionDate}
-          aria-label={t("alertCenter.sessionDate")}
-          onChange={e => props.onSessionDateChange(e.target.value)}
-          style={{ maxWidth: 170 }}
-        />
-        <form className={`${soc.searchWrapper}`} onSubmit={props.onSymbolApply}>
-          <span className={soc.searchIcon}>⌕</span>
+        <div className={`${soc.toolbarRow}`} style={{ justifyContent: "flex-start" }}>
           <input
-            type="text"
-            className={soc.searchInputWithIcon}
-            value={props.symbolDraft}
-            maxLength={10}
-            placeholder={t("alertCenter.filterSymbol")}
-            onChange={e => props.onSymbolDraftChange(e.target.value.toUpperCase())}
+            type="date"
+            className={`${soc.searchInputWithIcon}`}
+            value={props.sessionDate}
+            aria-label={t("alertCenter.sessionDate")}
+            onChange={e => props.onSessionDateChange(e.target.value)}
+            style={{ maxWidth: 170 }}
           />
-        </form>
+          <form className={`${soc.searchWrapper} ${styles.acSearchGrow}`} onSubmit={props.onSymbolApply}>
+            <span className={soc.searchIcon}>⌕</span>
+            <input
+              type="text"
+              className={soc.searchInputWithIcon}
+              value={props.symbolDraft}
+              maxLength={10}
+              placeholder={t("alertCenter.filterSymbol")}
+              aria-label={t("alertCenter.filterSymbol")}
+              onChange={e => props.onSymbolDraftChange(e.target.value.toUpperCase())}
+            />
+          </form>
+          {props.sessionDate && (
+            <span style={{ fontSize: "0.72rem", color: "var(--accent-amber, #fbbf24)" }}>
+              {t("alertCenter.dateOverridesTimeframe")}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className={`${soc.toolbarRow}`} style={{ marginBottom: 12 }}>
         <span className={`${soc.opsLabel}`}>{t("alertCenter.severity")}</span>
-        {SEVERITY_OPTIONS.map(s => (
-          <button
-            key={s.value}
-            type="button"
-            className={`${soc.filterBtn} ${props.severityFilter.includes(s.value) ? soc.filterBtnActive : soc.filterBtnInactive}`}
-            onClick={() => props.onToggleSeverity(s.value)}
-          >
-            {t(s.labelKey)}
-          </button>
-        ))}
-        <div className={`${soc.separator}`} style={{ width: 1, alignSelf: "stretch", margin: "0 4px" }} />
+        {SEVERITY_OPTIONS.map(s => {
+          const active = props.severityFilter.includes(s.value);
+          return (
+            <button
+              key={s.value}
+              type="button"
+              aria-pressed={active}
+              className={`${soc.filterBtn} ${active ? soc.filterBtnActive : soc.filterBtnInactive}`}
+              onClick={() => props.onToggleSeverity(s.value)}
+            >
+              {t(s.labelKey)}
+              <span className="chip-count" style={{ opacity: 0.7, fontVariantNumeric: "tabular-nums" }}>
+                {" "}{counts[s.value] ?? 0}
+              </span>
+            </button>
+          );
+        })}
+        <div className={`${soc.vSeparator}`} aria-hidden="true" />
         <span className={`${soc.opsLabel}`}>{t("alertCenter.family")}</span>
-        {familyOptions.map(f => (
-          <button
-            key={f.value}
-            type="button"
-            className={`${soc.filterBtn} ${props.familyFilter.includes(f.value) ? soc.filterBtnActive : soc.filterBtnInactive}`}
-            onClick={() => props.onToggleFamily(f.value)}
-          >
-            {t(f.labelKey)}
-          </button>
-        ))}
+        {familyOptions.map(f => {
+          const active = props.familyFilter.includes(f.value);
+          return (
+            <button
+              key={f.value}
+              type="button"
+              aria-pressed={active}
+              title={t(f.enKey as any) as string}
+              className={`${soc.filterBtn} ${active ? soc.filterBtnActive : soc.filterBtnInactive}`}
+              onClick={() => props.onToggleFamily(f.value)}
+            >
+              {t(f.labelKey)}
+            </button>
+          );
+        })}
         {hasActiveFilters && (
           <button
             type="button"

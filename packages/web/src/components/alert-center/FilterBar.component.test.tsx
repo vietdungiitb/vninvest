@@ -58,4 +58,26 @@ describe("FilterBar lane options (C4)", () => {
     fireEvent.change(input, { target: { value: "2026-09-18" } });
     expect(onSessionDateChange).toHaveBeenCalledWith("2026-09-18");
   });
+
+  it("S2 chips co aria-pressed + severity count", () => {
+    render(
+      <FilterBar
+        {...baseProps({
+          severityFilter: ["high"],
+          severityCounts: { critical: 1, high: 2, medium: 3, low: 4 },
+        })}
+      />
+    );
+    const highBtn = screen.getByText("alertCenter.sevHigh").closest("button")!;
+    expect(highBtn.getAttribute("aria-pressed")).toBe("true");
+    expect(highBtn.textContent).toContain("2");
+    const lowBtn = screen.getByText("alertCenter.sevLow").closest("button")!;
+    expect(lowBtn.getAttribute("aria-pressed")).toBe("false");
+    expect(lowBtn.textContent).toContain("4");
+  });
+
+  it("S2 date hint khi co sessionDate", () => {
+    render(<FilterBar {...baseProps({ sessionDate: "2026-09-18" })} />);
+    expect(screen.getByText("alertCenter.dateOverridesTimeframe")).toBeTruthy();
+  });
 });
