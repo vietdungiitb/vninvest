@@ -138,7 +138,7 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
     expect(html.indexOf("BBB")).toBeLessThan(html.indexOf("AAA"));
   });
 
-  it("5. pagination stats giu trang 2 (A2 regression, 20/trang)", async () => {
+  it("5. pagination stats giu trang 2 (A2 regression, 8/trang)", async () => {
     const sym = (i: number) => `A${String(i).padStart(2, "0")}`;
     dataState.current = () =>
       baseData({
@@ -150,14 +150,14 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
       });
     render(<AlertCenterPage />);
     expect(screen.getByText("A00")).toBeTruthy();
-    expect(screen.queryByText("A20")).toBeNull();
+    expect(screen.queryByText("A08")).toBeNull();
     // header hien tong scope, khong phai do dai trang
     expect(screen.getByText("alertCenter.statsTotal")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "›" }));
-    await waitFor(() => expect(screen.getByText("A20")).toBeTruthy(), { timeout: 700 });
+    await waitFor(() => expect(screen.getByText("A08")).toBeTruthy(), { timeout: 700 });
     expect(screen.queryByText("A00")).toBeNull();
     await new Promise((r) => setTimeout(r, 700));
-    expect(screen.getByText("A20")).toBeTruthy();
+    expect(screen.getByText("A08")).toBeTruthy();
     expect(screen.queryByText("A00")).toBeNull();
   });
 

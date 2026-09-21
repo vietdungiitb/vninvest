@@ -205,6 +205,8 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
   // S1.6: cache chiều cao thật từng card cho VariableSizeList.
   const listRef = useRef<any>(null);
   const rowHeights = useRef(new Map<number, number>());
+  // Polish: feed co giãn theo nội dung để cân với cột stats, không để panel rỗng.
+  const [heightTick, setHeightTick] = useState(0);
 
   // S7: feed = REST (+ load-more) + SSE prepend, dedupe cùng key alert_id.
   // WS lane S2 đã gỡ (SSE cùng shape serializer nên merge an toàn).
@@ -312,8 +314,19 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
     if (height > 0 && rowHeights.current.get(index) !== height) {
       rowHeights.current.set(index, height);
       listRef.current?.resetAfterIndex(index);
+      setHeightTick((tick) => tick + 1);
     }
   }, []);
+
+  // Polish: chiều cao feed = nội dung thật, kẹp 220–560px để cân cột stats (8 dòng).
+  const feedListHeight = useMemo(() => {
+    void heightTick;
+    let total = 0;
+    for (let i = 0; i < displayAlerts.length; i++) {
+      total += rowHeights.current.get(i) ?? 190;
+    }
+    return Math.max(220, Math.min(560, total));
+  }, [displayAlerts, heightTick]);
 
   // S3.1: đánh dấu đã xem toàn bộ alert đang hiển thị (batch ack, tối đa 50).
   const handleMarkAllRead = useCallback(async () => {
@@ -378,6 +391,10 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
   }, [symbolStats, filters.searchTermStats]);
 
   const summaryData = summary as unknown as AlertSummary;
+  const totalSymbolsInScope = Number(
+    (symbolStats as unknown as SymbolStatsPayload)?.pagination?.total_symbols
+    ?? aggregatedSymbols.length,
+  );
   const highSeverityCount =
     Number(summaryData?.by_severity?.high || 0) +
     Number(summaryData?.by_severity?.critical || 0);
@@ -385,7 +402,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
     (alert: AlertItem) => alert?.alert_family === "ai_suggest" || alert?.alert_type === "ai_suggest",
   ).length;
 
-  const ITEMS_PER_PAGE_STATS = 20;
+  const ITEMS_PER_PAGE_STATS = 8;
   const totalPagesStats = Math.ceil(aggregatedSymbols.length / ITEMS_PER_PAGE_STATS) || 1;
   const activePageStats = Math.min(filters.pageStats, totalPagesStats);
   const sortedSymbols = useMemo(() => {
@@ -514,6 +531,17 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
       label: t("alertCenter.summary.unseen"),
       value: String(summaryData?.unseen ?? 0),
       hint: t("alertCenter.metricStaticHint"),
+    },
+    {
+      key: "symbols",
+      label: t("alertCenter.metricSymbols"),
+      value: String(totalSymbolsInScope),
+      onClick: () => {
+        filters.setSymbolDraft("");
+        filters.setAppliedSymbol("");
+        filters.resetStatsPage();
+      },
+      hint: t("alertCenter.metricSymbolHint"),
     },
   ];
 
@@ -691,7 +719,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
               )}
               <VirtualFeedList
                 ref={listRef}
-                height={460}
+                height={feedListHeight}
                 width="100%"
                 itemCount={displayAlerts.length}
                 itemSize={getRowHeight}
@@ -726,10 +754,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
         <div className={`${soc.opsRightCol}`}>
           <StatsPanel
             rows={paginatedSymbols as any}
-            totalSymbols={Number(
-              (symbolStats as unknown as SymbolStatsPayload)?.pagination?.total_symbols
-              ?? aggregatedSymbols.length,
-            )}
+            totalSymbols={totalSymbolsInScope}
             searchTerm={filters.searchTermStats}
             onSearchChange={filters.setSearchTermStats}
             formatAlertValue={formatAlertValue}
