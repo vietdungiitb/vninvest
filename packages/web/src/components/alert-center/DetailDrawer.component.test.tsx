@@ -44,4 +44,28 @@ describe("DetailDrawer (E1)", () => {
     );
     expect(screen.getByText("alertCenter.detailNotInScope")).toBeTruthy();
   });
+
+  it("S3 render du truong phap y + badge seen", () => {
+    const { container } = render(
+      <DetailDrawer
+        activeAlertId="z"
+        activeDetail={{
+          title: "T", summary: "S", severity: "high", confidence: 0.9,
+          value: 2500000000, direction: "buy", session_date: "2026-09-18",
+          triggered_at: "2026-09-18T10:30:00Z", source_ref: "demo:alert-center:x",
+          executed_at: "2026-09-18T10:31:00Z",
+          evidence: { matched_value: 1 }, metadata: { source: "seed" },
+        }}
+        activeContext={{ symbol: "VCI", total: 1, unseen: 0, in_delivery_scope: true, recent_events: [] }}
+        appliedSymbol="VCI"
+        seen
+        onClose={vi.fn()}
+      />
+    );
+    expect(screen.getByText("alertCenter.detailForensics")).toBeTruthy();
+    expect(screen.getByText("alertCenter.seenBadge")).toBeTruthy();
+    expect(container.textContent).toContain("demo:alert-center:x");
+    expect(container.textContent).toContain("90%");
+    expect(container.textContent).toContain("matched_value");
+  });
 });

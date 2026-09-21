@@ -56,6 +56,7 @@ class AlertCenterFeedCursorPagination(AlertCursorPagination):
     ordering = ('type_priority', '-triggered_at', '-pk')
 
 from . import delivery_service
+from .sse import AlertCenterStreamEventRenderer, AlertCenterStreamingHttpResponse, sse_format
 from .models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical
 from .serializers import OrderFlowEventSerializer, UnifiedAlertSerializer
 from vninvest_core.exceptions import NotFoundErrorException, ValidationErrorException
@@ -705,6 +706,169 @@ class AlertCenterMutePreferenceView(APIView):
                 'cooldown_seconds': preference.cooldown_seconds,
             }
         )
+
+
+class AlertCenterStreamThrottle(UserRateThrottle):
+    """Throttle riêng cho SSE alert-center — 60/min, không tiêu quota signals."""
+
+    scope = 'alert_center_stream'
+
+
+_STREAM_ALERT_FAMILIES = frozenset({
+    'whale', 'dark_flow', 'signal', 'system', 'price_shock', 'stale_quote',
+    'ai_alert', 'ai_suggest',
+})
+
+
+@extend_schema(exclude=True)
+class AlertCenterStreamView(APIView):
+    """GET /core/v1/signals/alert-center/stream/ — SSE user-scoped (S7).
+
+    Copy contract signals_stream (retry 3000, :ping 15s, Last-Event-ID/since,
+    ?token= fallback, poll DB 3s, idle 1h, max_loops cho test) nhưng:
+    - scope theo delivery policy của user hiện tại (watchlist/tracked/holdings),
+    - filter lane/symbol/severity/alert_family phía server,
+    - event name `alert-center`, payload full UnifiedAlertSerializer shape
+      (cùng key space alert_id với REST → FE dedupe an toàn).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [AlertCenterStreamThrottle]
+    renderer_classes = [AlertCenterStreamEventRenderer]
+
+    def initial(self, request, *args, **kwargs):
+        # EventSource không gửi được Authorization header → hỗ trợ ?token=
+        token = request.query_params.get('token') or request.GET.get('token')
+        if token and not request.META.get('HTTP_AUTHORIZATION'):
+            request.META['HTTP_AUTHORIZATION'] = f'Bearer {token}'
+            try:
+                from identity_access.authentication import CorePATAuthentication
+
+                pat_auth = CorePATAuthentication()
+                user_auth = pat_auth.authenticate(request)
+                if user_auth is not None:
+                    request.user, request.auth = user_auth
+            except Exception:
+                pass
+        return super().initial(request, *args, **kwargs)
+
+    def get(self, request):
+        import sys
+
+        testing = 'test' in sys.argv
+        max_loops = int(request.query_params.get('max_loops') or 0) or None
+        lane = str(request.query_params.get('lane') or 'main').strip().lower()
+        if lane not in ('main', 'ai'):
+            lane = 'main'
+        severity = (request.query_params.get('severity') or '').strip().lower() or None
+        if severity and severity not in {c.value for c in UnifiedAlert.SeverityChoices}:
+            severity = None
+        alert_family = (request.query_params.get('alert_family') or '').strip().lower() or None
+        if alert_family and alert_family not in _STREAM_ALERT_FAMILIES:
+            alert_family = None
+        filter_params = {
+            'symbol': (request.query_params.get('symbol') or '').strip().upper() or None,
+            'severity': severity,
+            'alert_family': alert_family,
+        }
+
+        def event_stream():
+            yield sse_format(retry=3000)
+            raw_last = request.META.get('HTTP_LAST_EVENT_ID')
+            if raw_last is None and hasattr(request, 'headers'):
+                try:
+                    raw_last = request.headers.get('Last-Event-ID')
+                except Exception:
+                    raw_last = None
+            if raw_last is None or str(raw_last).strip() == '':
+                raw_last = request.query_params.get('since') or request.query_params.get('last_id')
+            if raw_last is None or str(raw_last).strip() == '':
+                try:
+                    agg = UnifiedAlert.objects.aggregate(max_id=Max('pk'))
+                    last_id = agg['max_id'] or 0
+                except Exception:
+                    last_id = 0
+            else:
+                try:
+                    last_id = int(str(raw_last).strip())
+                except (TypeError, ValueError):
+                    last_id = 0
+
+            last_heartbeat = time.time()
+            stream_start = time.time()
+            loop_count = 0
+            while True:
+                loop_count += 1
+                if max_loops is not None and loop_count > max_loops:
+                    break
+                if not testing and time.time() - stream_start > 3600:
+                    break
+                try:
+                    from django.db import close_old_connections
+
+                    close_old_connections()
+                    qs = UnifiedAlert.objects.all().select_related('whale_detail')
+                    qs = _apply_common_alert_filters(qs, filter_params, lane=lane)
+                    qs = delivery_service.apply_user_delivery_policy(user=request.user, queryset=qs)
+                    qs = qs.filter(pk__gt=last_id).order_by('triggered_at', 'pk')[:50]
+
+                    alerts = list(qs)
+                    if alerts:
+                        for alert in alerts:
+                            try:
+                                s = UnifiedAlertSerializer(alert).data
+                                data = {
+                                    'id': alert.pk,
+                                    'alert_id': str(s.get('alert_id')),
+                                    'type': s.get('alert_family'),
+                                    'lane': s.get('lane'),
+                                    'symbol': s.get('symbol'),
+                                    'severity': s.get('severity'),
+                                    'confidence': s.get('confidence'),
+                                    'freshness_state': s.get('freshness_state'),
+                                    'title': s.get('title'),
+                                    'body': s.get('body'),
+                                    'value': s.get('value'),
+                                    'direction': s.get('direction'),
+                                    'session_date': s.get('session_date'),
+                                    'triggered_at': s.get('triggered_at'),
+                                    'detected_at': s.get('triggered_at'),
+                                    'source_ref': s.get('source_ref'),
+                                    'metadata': s.get('metadata') or {},
+                                    'evidence': s.get('evidence') or {},
+                                    'summary': s.get('summary'),
+                                    'executed_at': s.get('executed_at'),
+                                }
+                                yield sse_format(event='alert-center', data=data, sse_id=str(alert.pk))
+                                last_id = max(last_id, alert.pk)
+                            except Exception:
+                                continue
+                        last_heartbeat = time.time()
+                    else:
+                        if testing or time.time() - last_heartbeat >= 15:
+                            yield sse_format(comment='ping')
+                            last_heartbeat = time.time()
+                except GeneratorExit:
+                    break
+                except Exception:
+                    try:
+                        yield sse_format(comment='ping')
+                    except GeneratorExit:
+                        break
+                    pass
+
+                if testing and max_loops is not None:
+                    continue
+                try:
+                    time.sleep(3)
+                except Exception:
+                    break
+
+        response = AlertCenterStreamingHttpResponse(event_stream(), content_type='text/event-stream')
+        response['Cache-Control'] = 'no-cache'
+        response['X-Accel-Buffering'] = 'no'
+        response['Connection'] = 'keep-alive'
+        return response
 
 
 @extend_schema_view(

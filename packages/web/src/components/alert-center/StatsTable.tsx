@@ -19,18 +19,26 @@ interface StatsTableProps {
   formatAlertValue: (val: unknown) => string;
 }
 
+// S4: map theo enum key (explosive/high/medium/low) — không theo chuỗi Việt để đúng cả 2 locale
 const FREQ_SOC_MAP: Record<string, string> = {
-  "Bùng nổ": soc.statusBadgeDanger,
-  "Cao": soc.statusBadgeWarning,
-  "Trung bình": soc.statusBadgeInfo,
-  "Thấp": "",
+  explosive: soc.statusBadgeDanger,
+  high: soc.statusBadgeWarning,
+  medium: soc.statusBadgeInfo,
+  low: "",
 };
 
 function freqLabelKey(freq: string): string {
-  if (freq === "Bùng nổ") return "alertCenter.freqExplosive";
-  if (freq === "Cao") return "alertCenter.freqHigh";
-  if (freq === "Trung bình") return "alertCenter.freqMedium";
+  if (freq === "explosive") return "alertCenter.freqExplosive";
+  if (freq === "high") return "alertCenter.freqHigh";
+  if (freq === "medium") return "alertCenter.freqMedium";
   return "alertCenter.freqLow";
+}
+
+function fmtLatest(ts: number): string {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("vi-VN");
 }
 
 export function StatsTable(props: StatsTableProps) {
@@ -71,6 +79,9 @@ export function StatsTable(props: StatsTableProps) {
                   >
                     {item.symbol}
                   </a>
+                  <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 2 }}>
+                    {fmtLatest(item.latestTime)}
+                  </div>
                 </td>
                 <td style={{ fontVariantNumeric: "tabular-nums" }}>
                   {t("alertCenter.times", { count: item.count })}
@@ -97,6 +108,7 @@ export function StatsTable(props: StatsTableProps) {
                     <div className={`${styles.acStrengthText}`}>
                       <span style={{ color: "var(--soc-c-34d399, #34d399)" }}>{t("alertCenter.buyShort")}: {item.buyCount}</span>
                       <span style={{ color: "var(--soc-c-f87171, #f87171)" }}>{t("alertCenter.sellShort")}: {item.sellCount}</span>
+                      <span style={{ color: "var(--text-muted)" }}>{t("alertCenter.labelOther")}: {item.neutralCount}</span>
                     </div>
                   </div>
                 </td>

@@ -10,7 +10,7 @@ import styles from "./soc.module.css";
 interface RecentSignal {
   id?: number;
   symbol: string;
-  type: "whale" | "dark_pool" | "screener";
+  type: "whale" | "dark_pool" | "screener" | "system" | "ai";
   action?: "buy" | "sell" | string;
   volume?: number;
   price?: number;
@@ -240,6 +240,9 @@ interface PerformanceMetrics {
   whale_alerts?: number;
   dark_flow_alerts?: number;
   signal_alerts?: number;
+  system_alerts?: number;
+  ai_alerts?: number;
+  session_date?: string | null;
   avg_signal_latency_ms?: number;
   sentiment?: {
     bullish?: number;
@@ -406,6 +409,7 @@ export function SocSignalsPanel() {
   }), [typeFilter, debouncedSymbol, severityFilter, directionFilter]);
 
   const handleStreamSignal = useCallback((incoming: { id?: number; symbol: string; type: string; severity?: string; direction?: string; detected_at: string; title?: string; value?: number | string | null; metadata?: Record<string, unknown>; session_date?: string | null }) => {
+    // S6: system/ai đi thẳng (BE đã map đúng, không dồn vào whale)
     const mapped: RecentSignal = {
       id: incoming.id,
       symbol: incoming.symbol,
@@ -444,6 +448,8 @@ export function SocSignalsPanel() {
         whale_alerts: t === "whale" ? (prev.whale_alerts ?? 0) + 1 : prev.whale_alerts,
         dark_flow_alerts: t === "dark_pool" ? (prev.dark_flow_alerts ?? 0) + 1 : prev.dark_flow_alerts,
         signal_alerts: t === "screener" ? (prev.signal_alerts ?? 0) + 1 : prev.signal_alerts,
+        system_alerts: t === "system" ? (prev.system_alerts ?? 0) + 1 : prev.system_alerts,
+        ai_alerts: t === "ai" ? (prev.ai_alerts ?? 0) + 1 : prev.ai_alerts,
       };
     });
   }, []);
@@ -1011,10 +1017,14 @@ export function SocSignalsPanel() {
     const whaleCount = metrics?.whale_alerts ?? metrics?.whale_signals ?? signals.filter((s) => s.type === "whale").length;
     const darkPoolCount = metrics?.dark_flow_alerts ?? metrics?.dark_pool_signals ?? signals.filter((s) => s.type === "dark_pool").length;
     const screenerCount = metrics?.signal_alerts ?? metrics?.screener_alerts ?? signals.filter((s) => s.type === "screener").length;
+    // S6: system + ai (BE mới trả — cộng khớp với TỔNG)
+    const systemCount = metrics?.system_alerts ?? signals.filter((s) => s.type === "system").length;
+    const aiCount = metrics?.ai_alerts ?? signals.filter((s) => s.type === "ai").length;
+    const sessionDate = metrics?.session_date ?? null;
     const detectionRate = metrics?.detection_rate ?? null;
     // W0.2: BE key chuẩn là avg_signal_latency_ms (F-SG-03).
     const avgLatency = metrics?.avg_signal_latency_ms ?? metrics?.avg_latency_ms ?? null;
-    return { total, whaleCount, darkPoolCount, screenerCount, detectionRate, avgLatency };
+    return { total, whaleCount, darkPoolCount, screenerCount, systemCount, aiCount, sessionDate, detectionRate, avgLatency };
   }, [signals, metrics]);
 
   const sentiment = metrics?.sentiment ?? { bullish: 0, bearish: 0, neutral: 0 };
@@ -1117,11 +1127,13 @@ export function SocSignalsPanel() {
     "Whale": "Waves",
     "Dark Pool": "EyeOff",
     "Screener": "Search",
+    "System": "Bell",
+    "AI": "Cpu",
     "Tỷ lệ phát hiện": "Percent",
     "Độ trễ TB": "Clock",
   };
-  const statCard = (label: string, value: string | number, color: string) =>
-    createElement("div", { className: styles.metricCardSm, key: label, style: { display: "flex", alignItems: "center", gap: "0.6rem", textAlign: "left" as const } },
+  const statCard = (label: string, value: string | number, color: string, hint?: string) =>
+    createElement("div", { className: styles.metricCardSm, key: label, title: hint, style: { display: "flex", alignItems: "center", gap: "0.6rem", textAlign: "left" as const } },
       createElement("div", { style: { width: "32px", height: "32px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", background: `${color}18`, color } },
         createElement(LucideIcon, { name: statIconMap[label] || "Activity", className: "h-4 w-4" }),
       ),
@@ -2201,9 +2213,17 @@ export function SocSignalsPanel() {
               statCard(t("soc.signals_overview.whale_count"), stats.whaleCount, "var(--accent-cyan, #06b6d4)"),
               statCard(t("soc.signals_overview.dark_pool_count"), stats.darkPoolCount, "#a78bfa"),
               statCard(t("soc.signals_overview.screener_count"), stats.screenerCount, toneColor("warning")),
-              statCard(t("soc.signals_overview.detection_rate"), stats.detectionRate != null ? `${stats.detectionRate}%` : "\u2014", toneColor("success")),
-              statCard(t("soc.signals_overview.avg_latency"), stats.avgLatency != null ? `${stats.avgLatency}ms` : "\u2014", "var(--accent-cyan, #06b6d4)"),
+              // S6: thẻ System + AI để TỔNG cộng khớp (trước đây thiếu)
+              statCard(t("soc.signals_overview.system_count"), stats.systemCount, "#f59e0b"),
+              statCard(t("soc.signals_overview.ai_count"), stats.aiCount, "#38bdf8"),
+              statCard(t("soc.signals_overview.detection_rate"), stats.detectionRate != null ? `${stats.detectionRate}%` : "\u2014", toneColor("success"), t("soc.signals_overview.detection_rate_hint")),
+              statCard(t("soc.signals_overview.avg_latency"), stats.avgLatency != null ? `${stats.avgLatency}ms` : "\u2014", "var(--accent-cyan, #06b6d4)", t("soc.signals_overview.avg_latency_hint")),
             ),
+            // S6: phiên đang đọc (trước đây im lặng khi rơi vào phiên cũ)
+            stats.sessionDate
+              ? createElement("div", { style: { fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.5rem" } },
+                `${t("soc.signals_overview.session_reading")}: ${stats.sessionDate}`)
+              : null,
             createElement("div", { className: styles.signalsStack },
               // ── Live signal feed (full width) ───────────────────────────
               createElement("div", { className: styles.feedCard },

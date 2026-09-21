@@ -7,7 +7,21 @@ interface DetailDrawerProps {
   activeDetail: Record<string, unknown> | null;
   activeContext: Record<string, unknown> | null;
   appliedSymbol: string;
+  seen?: boolean;
   onClose: () => void;
+}
+
+function fmtDetailValue(v: unknown): string {
+  if (v == null || v === "") return "—";
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toLocaleString("vi-VN") : String(v);
+}
+
+function fmtDetailTime(v: unknown): string {
+  if (!v) return "—";
+  const d = new Date(String(v));
+  if (Number.isNaN(d.getTime())) return String(v);
+  return d.toLocaleString("vi-VN");
 }
 
 export function DetailDrawer(props: DetailDrawerProps) {
@@ -68,6 +82,12 @@ export function DetailDrawer(props: DetailDrawerProps) {
           <h3 id="alert-center-detail-title" style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>
             {t("alertCenter.detailTitle", { id: props.activeAlertId })}
           </h3>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {props.seen && (
+            <span className={`${soc.statusBadge} ${soc.statusBadgeInfo}`}>
+              {t("alertCenter.seenBadge")}
+            </span>
+          )}
           <button
             ref={closeRef}
             type="button"
@@ -82,6 +102,7 @@ export function DetailDrawer(props: DetailDrawerProps) {
           >
             ✕
           </button>
+          </div>
         </div>
 
         <div className={`${soc.sectionCard}`} style={{ marginBottom: 12 }}>
@@ -107,6 +128,42 @@ export function DetailDrawer(props: DetailDrawerProps) {
             </div>
           </div>
         </div>
+
+        {props.activeContext && (
+          <div className={`${soc.sectionCard}`} style={{ marginBottom: 12 }}>
+            <h4 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, textTransform: "uppercase", color: "var(--text-muted)" }}>
+              {t("alertCenter.detailForensics")}
+            </h4>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
+              <div>{t("alertCenter.detailSeverity")}: <strong>{String(props.activeDetail?.severity || "—")}</strong></div>
+              <div>{t("alertCenter.detailConfidence")}: <strong>{props.activeDetail?.confidence != null ? `${Math.round(Number(props.activeDetail.confidence) * 100)}%` : "—"}</strong></div>
+              <div>{t("alertCenter.detailValue")}: <strong>{fmtDetailValue(props.activeDetail?.value)}</strong></div>
+              <div>{t("alertCenter.detailDirection")}: <strong>{String(props.activeDetail?.direction || "—")}</strong></div>
+              <div>{t("alertCenter.labelSession")}: <strong>{String(props.activeDetail?.session_date || "—")}</strong></div>
+              <div>{t("alertCenter.detailTriggered")}: <strong>{fmtDetailTime(props.activeDetail?.triggered_at)}</strong></div>
+              <div>{t("alertCenter.detailSourceRef")}: <strong style={{ wordBreak: "break-all" }}>{String(props.activeDetail?.source_ref || "—")}</strong></div>
+              {props.activeDetail?.executed_at != null && String(props.activeDetail.executed_at) !== "" && (
+                <div>{t("alertCenter.labelExecuted")}: <strong>{fmtDetailTime(props.activeDetail.executed_at)}</strong></div>
+              )}
+              <div>
+                <span style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>
+                  {t("alertCenter.detailEvidence")}
+                </span>
+                <pre style={{ margin: "4px 0 0", padding: 8, fontSize: 11, overflow: "auto", background: "rgba(2,11,35,0.3)", borderRadius: 8 }}>
+                  {JSON.stringify(props.activeDetail?.evidence ?? {}, null, 2)}
+                </pre>
+              </div>
+              <div>
+                <span style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>
+                  {t("alertCenter.detailMetadata")}
+                </span>
+                <pre style={{ margin: "4px 0 0", padding: 8, fontSize: 11, overflow: "auto", background: "rgba(2,11,35,0.3)", borderRadius: 8 }}>
+                  {JSON.stringify(props.activeDetail?.metadata ?? {}, null, 2)}
+                </pre>
+              </div>
+            </div>
+          </div>
+        )}
 
         {props.activeContext && (
           <div className={`${soc.sectionCard}`}>

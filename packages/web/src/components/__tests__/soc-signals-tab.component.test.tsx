@@ -216,6 +216,20 @@ describe("SocSignalsPanel — P0 feed + stats", () => {
     expect(screen.getByText("▲ soc.signals_overview.bullish: 2")).toBeTruthy();
   });
 
+  it("S6 summary co system/ai → the System + AI + phien dang doc", async () => {
+    mocks.getSocSignalMetrics.mockResolvedValue({
+      ...summaryFixture,
+      active_alerts: 33,
+      system_alerts: 2,
+      ai_alerts: 1,
+    });
+    render(<SocSignalsPanel />);
+    expect(await screen.findByText("soc.signals_overview.system_count")).toBeTruthy();
+    expect(screen.getByText("soc.signals_overview.ai_count")).toBeTruthy();
+    expect(screen.getByText(/soc.signals_overview.session_reading/)).toBeTruthy();
+    expect(screen.getByText(/2026-09-16/)).toBeTruthy();
+  });
+
   it("expands two same-symbol rows independently", async () => {
     render(<SocSignalsPanel />);
     const vciCells = await screen.findAllByText("VCI");

@@ -18,6 +18,8 @@ export function useAlertCenterActions(refetch: () => void, lane: string = "main"
   const [busyAlertId, setBusyAlertId] = useState<string | number>("");
   const [optimisticAck, setOptimisticAck] = useState<Record<string, boolean>>({});
   const [optimisticMuted, setOptimisticMuted] = useState<Record<string, boolean>>({});
+  // S3: seen optimistic local (BE AlertCenter chưa có endpoint seen — không gọi BE)
+  const [seenAlerts, setSeenAlerts] = useState<Record<string, boolean>>({});
 
   const handleLoadDetail = useCallback(async (alert: AlertActionItem) => {
     const id = (alert as any)?.alert_id ?? (alert as any)?.event_id;
@@ -33,6 +35,7 @@ export function useAlertCenterActions(refetch: () => void, lane: string = "main"
       setActiveAlertId(id as string | number);
       setActiveDetail(detail || null);
       setActiveContext(context || null);
+      setSeenAlerts(prev => ({ ...prev, [String(id)]: true }));
     } catch (err: unknown) {
       setActionError(
         (err && typeof err === "object" && "message" in err ? (err as Error).message : "") ||
@@ -88,13 +91,44 @@ export function useAlertCenterActions(refetch: () => void, lane: string = "main"
     }
   }, [refetch]);
 
+  // S3: mute có tùy chọn duration + reason (reason đi vào metadata theo contract BE)
+  const handleMuteWithOptions = useCallback(async (
+    alert: AlertActionItem, opts: { mute_minutes: number; reason?: string },
+  ) => {
+    if (!alert?.symbol) return;
+    const sym = String(alert.symbol).trim().toUpperCase();
+    const minutes = Number(opts?.mute_minutes) > 0 ? Number(opts.mute_minutes) : 30;
+    setActionError("");
+    setBusyAlertId(alert.alert_id || alert.symbol);
+    setOptimisticMuted(prev => ({ ...prev, [sym]: true }));
+    try {
+      await coreApiAdapter.muteAlertCenterPreference({
+        symbol: alert.symbol,
+        alert_family: alert.alert_family || alert.alert_type || "",
+        mute_minutes: minutes,
+        ...((opts?.reason || "").trim() ? { metadata: { reason: (opts.reason as string).trim() } } : {}),
+      });
+      refetch();
+    } catch (err: unknown) {
+      setOptimisticMuted(prev => { const n = { ...prev }; delete n[sym]; return n; });
+      setActionError(
+        (err && typeof err === "object" && "message" in err ? (err as Error).message : "") ||
+        "Không thể tắt tiếng cảnh báo mã.",
+      );
+    } finally {
+      setBusyAlertId("");
+    }
+  }, [refetch]);
+
   const closeDetail = useCallback(() => {
+    setActiveAlertId("");
     setActiveDetail(null);
+    setActiveContext(null);
   }, []);
 
   return {
     activeAlertId, activeDetail, activeContext,
-    actionError, busyAlertId, optimisticAck, optimisticMuted,
-    handleLoadDetail, handleAcknowledge, handleMute, closeDetail,
+    actionError, busyAlertId, optimisticAck, optimisticMuted, seenAlerts,
+    handleLoadDetail, handleAcknowledge, handleMute, handleMuteWithOptions, closeDetail,
   };
 }

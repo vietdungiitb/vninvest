@@ -99,6 +99,8 @@ class SignalsSummaryResponseSerializer(serializers.Serializer):
     whale_alerts = serializers.IntegerField()
     dark_flow_alerts = serializers.IntegerField()
     signal_alerts = serializers.IntegerField()
+    system_alerts = serializers.IntegerField()
+    ai_alerts = serializers.IntegerField()
     order_flow_events = serializers.IntegerField()
     detection_rate = serializers.FloatField()
     false_positive_rate = serializers.FloatField(required=False, allow_null=True)
@@ -649,6 +651,8 @@ class SignalsSummaryView(SOCBaseView):
                 'whale_alerts': 0,
                 'dark_flow_alerts': 0,
                 'signal_alerts': 0,
+                'system_alerts': 0,
+                'ai_alerts': 0,
                 'order_flow_events': 0,
                 'detection_rate': 0.0,
                 'false_positive_rate': None,
@@ -664,6 +668,11 @@ class SignalsSummaryView(SOCBaseView):
         whale_alerts = alerts.filter(alert_type=UnifiedAlert.AlertTypeChoices.WHALE).count()
         dark_flow_alerts = alerts.filter(alert_type=UnifiedAlert.AlertTypeChoices.DARK_FLOW).count()
         signal_alerts = alerts.filter(alert_type=UnifiedAlert.AlertTypeChoices.SIGNAL).count()
+        # S6: đếm nốt system + ai để thẻ TỔNG cộng khớp (trước đây thiếu → TỔNG 1 vs 3 số 0)
+        system_alerts = alerts.filter(alert_type=UnifiedAlert.AlertTypeChoices.SYSTEM).count()
+        ai_alerts = alerts.filter(
+            alert_type__in=(UnifiedAlert.AlertTypeChoices.AI_ALERT, UnifiedAlert.AlertTypeChoices.AI_SUGGEST),
+        ).count()
         last_alert = alerts.order_by('-triggered_at').values_list('triggered_at', flat=True).first()
         last_event = events.order_by('-triggered_at').values_list('triggered_at', flat=True).first()
         last_triggered_at = max(filter(None, [last_alert, last_event]), default=None)
@@ -674,6 +683,8 @@ class SignalsSummaryView(SOCBaseView):
             'whale_alerts': whale_alerts,
             'dark_flow_alerts': dark_flow_alerts,
             'signal_alerts': signal_alerts,
+            'system_alerts': system_alerts,
+            'ai_alerts': ai_alerts,
             'order_flow_events': order_flow_events,
             'detection_rate': round((active_alerts / order_flow_events) * 100.0, 2) if order_flow_events else 0.0,
             'false_positive_rate': None,

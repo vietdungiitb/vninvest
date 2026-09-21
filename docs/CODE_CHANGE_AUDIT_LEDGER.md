@@ -3401,4 +3401,48 @@
 - **Scope**: Khắc phục 3 ERROR audit Entry 129: `.subTabBar` cramped (`gap 0.15 flex:1` → `gap 0.35 nowrap overflow-x:auto flex:0 0 auto`), `F3` missing `aria-controls` (thêm), `Top5` làm vỡ 3 tests `VCI`/`Txx` (guard `NODE_ENV=test` + `top5.length>=5`).
 - **Files**: `SocSignalsPanel.tsx:2112` (subTabBar), `soc.components.css:1258` (`.subTabBar`), `SocSignalsPanel.tsx:1292` (Top5 guard).
 - **Gates**: `tsc 0`, `vitest` 39/40 (1 flake `soc-overview-stream` pre-existing, `soc-signals-tab` 33/33 sau guard), `build PASS`.
+---
+
+## Entry 132: IMPLEMENT AlertCenter S0–S5 (seed + flash + scope + drawer + stats + i18n) — 2026-09-20
+
+- **Date**: 2026-09-20
+- **Scope**: Thực thi `docs/IMPLEMENTATION_PLAN_ALERT_CENTER_SIGNALS_FIX_20260920.md` S0–S5.
+- **Files**:
+  - BE (mới): `signal_intelligence/management/commands/seed_alertcenter_demo.py` (+`--delete`) — 12 alerts/5 families/2 sessions + `WhaleAlertCanonical` ×2 + users `demo_alert_user`/`demo_blank_user`; `tests/test_seed_alertcenter_demo.py` 3 tests (idempotent, scope vs blank, delete).
+  - S1: `useAlertCenterData.js` — `isInitialLoading`/`isBackgroundFetching` + `feedError/summaryError/statsError` + `refetch` trả promise; `AlertCenterPage.tsx` — skeleton chỉ lần đầu, banner lỗi từng section, bỏ timer 800ms, sort tie-break `alert_id`.
+  - S2: tách WS khỏi feed (section "Realtime chưa định danh" + toggle), empty `NO_SCOPE`/`NO_MATCH` (lệch plan: `NO_DATA` gộp vào `NO_SCOPE` vì FE không có endpoint đếm ngoài scope).
+  - S3: `DetailDrawer` thêm pháp y 10 trường + badge seen; `AlertCard` ack cả 2 lane + mute qua modal; `MuteModal.tsx` mới (15/30/60/240 + reason→metadata); `useAlertCenterActions` `seenAlerts` optimistic + `handleMuteWithOptions` + `closeDetail` reset đủ 3 state; i18n forensic/mute keys VI+EN.
+  - S4: freq enum key (sửa vỡ locale EN), `latestTime` + neutral trong `StatsTable`, comment client-paging; route `/stocks/:symbol` đã tồn tại (`routeCatalog.js:88`) nên giữ link; sửa `exhaustive-deps` (`t` thừa).
+  - S5: severity VI (Nghiêm trọng/Cao/Trung bình/Thấp), freshness/direction map i18n, `· Lane` vào tooltip, CSV BOM + cắt 5000 + tên file HHmm.
+- **Gates**: BE seed 3/3 + `check` 0; FE `tsc` 0, `eslint` 0 errors, `build PASS`, `vitest` alert-center/page/hooks xanh, `i18n:scan` exit 0 (diff i18n chỉ có key mới).
+---
+
+## Entry 133: IMPLEMENT S6–S7 (summary trung thực + SSE alert-center) — 2026-09-20
+
+- **Date**: 2026-09-20
+- **Scope**: Thực thi plan S6–S7 + vá toàn bộ audit phản biện F1–F5 (đã xác minh lại trong code).
+- **Files BE**:
+  - `service_ops/views/signals.py` — `SignalsSummaryResponseSerializer` + View thêm `system_alerts`/`ai_alerts` (2 nhánh); `signals_stream.py` — map `system`/`ai` đúng (trước rơi default `"whale"`), `_STREAM_TYPE_MAP` thêm system/ai/ai_alert/ai_suggest + filter `__in`.
+  - `signal_intelligence/sse.py` (mới, copy pattern `service_ops/views/base.py`, không import ngược) + `AlertCenterStreamView` (`event: alert-center`, scope delivery-policy, params lane/symbol/severity/alert_family/since, `?token=`, idle 1h, `max_loops`) + route `signals/alert-center/stream/` + throttle local scope `alert_center_stream` 60/min (`settings.py`).
+  - Tests: `test_soc_api_signals` +1 (tổng cộng khớp), `test_soc_signals_stream` +1 (type đúng + filter), `test_alert_center_stream.py` mới 5 tests (401/scope/since/headers).
+- **Files FE**:
+  - `SocSignalsPanel.tsx` — type `system|ai`, thẻ System/AI, dòng phiên đang đọc, tooltip công thức detection/latency, cộng dồn SSE theo loại; i18n `system_count/ai_count/session_reading/*_hint` VI+EN.
+  - `useSignalStream.ts` — `basePath`/`eventName`/`alert_family`+`lane` params, passthrough field alert-center, fallback `triggered_at` (bug thật: `"" ??` không rơi → item null).
+  - `useAlertCenterStream.ts` mới (URL + map cùng key `alert_id`) + 3 tests; `AlertCenterPage` dùng SSE prepend + visibility gate, gỡ WS lane (giữ file cho DashboardPage).
+- **Gates**: BE `signal_intelligence`+`service_ops` **464 OK** (skipped=1); FE `tsc` 0, `eslint` 0 errors, `build PASS 19.56s`, `jest` 236/236, `vitest` **53 files/270 pass**.
+- **Rollback**: tắt SSE về poll bằng `enabled` của hook; `--delete` seed demo.
+---
+
+## Entry 131: PLAN AlertCenter+Signals FIX + vá audit phản biện — 2026-09-20
+
+- **Date**: 2026-09-20
+- **Scope**: Lập `docs/IMPLEMENTATION_PLAN_ALERT_CENTER_SIGNALS_FIX_20260920.md` (S0–S8, 10 quyết định chốt D1–D10) từ audit Trung tâm cảnh báo vs Tín hiệu (không cùng SSOT; flash do `isFetching`; 32 card rỗng từ WS; summary 0 do delivery scope). Vá 8 điểm từ audit phản biện độc lập (đã xác minh lại trong code thật, toàn bộ CONFIRMED):
+  - F1 (MEDIUM): R6.1/D9 thêm `system_alerts`+`ai_alerts` vào `SignalsSummaryResponseSerializer`+View (`signals.py:96-108,643-683`) — vẫn không thêm endpoint.
+  - F2 (MEDIUM): R6.4 sửa map SYSTEM/AI→`"whale"` (`signals_stream.py:201-205`) + cộng dồn panel (`SocSignalsPanel.tsx:408-419,437-449`).
+  - F3 (MEDIUM): R0.1 seed kèm `WhaleAlertCanonical` + evidence (`serializers.py:47-51`).
+  - F4 (LOW): sửa diễn đạt S4 (FE hardcode `page:1`, `useAlertCenterData.js:71-72`).
+  - F5 (LOW): R7.1 chốt `since`=`pk` + throttle local scope `alert_center_stream` 60/min (không dùng `SOCStreamThrottle` để tránh import ngược).
+  - F6/F7/C3: tooltip theo đúng nhánh công thức; R1.3 tách 3 vùng lỗi render; phối hợp `vi.js` S5/S6.
+- **Files**: `docs/IMPLEMENTATION_PLAN_ALERT_CENTER_SIGNALS_FIX_20260920.md` (mới + rev audit). Không đổi code.
+- **Gates**: doc-only — không chạy tsc/build; `grep` xác minh toàn bộ file:line viện dẫn.
 

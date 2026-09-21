@@ -261,6 +261,8 @@ REST_FRAMEWORK = {
         'signals': '999999/day' if TESTING else '60/min',
         # Independent SOC stream bucket — SSE long-lived fallback, 60/min connect limit (F4)
         'soc_stream': '999999/day' if TESTING else '60/min',
+        # Independent alert-center stream bucket — user-scoped SSE (S7), mirrors soc_stream
+        'alert_center_stream': '999999/day' if TESTING else '60/min',
         # Independent auth-bootstrap bucket — /auth/me/ and capabilities must never
         # be blocked by operational polling exhausting the global 'user' bucket
         'auth_bootstrap': '999999/day' if TESTING else '60/min',

@@ -8,7 +8,7 @@ import styles from "./AlertCenterPage.module.css";
 import { ShellPageChrome, ShellPanel, ShellMetric } from "../components/ShellPageTemplate.js";
 import soc from "../components/soc/soc.module.css";
 import { useAlertCenterData } from "../hooks/useAlertCenterData.js";
-import { useAlertCenterRealtime } from "../hooks/useAlertCenterRealtime.js";
+import { useAlertCenterStream, type AlertCenterStreamItem } from "../hooks/useAlertCenterStream.js";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useAlertCenterFilters } from "../hooks/useAlertCenterFilters.ts";
 import { useAlertCenterActions } from "../hooks/useAlertCenterActions.ts";
@@ -16,6 +16,7 @@ import { FilterBar } from "../components/alert-center/FilterBar.js";
 import { AlertCard } from "../components/alert-center/AlertCard.js";
 import { StatsPanel } from "../components/alert-center/StatsPanel.js";
 import { DetailDrawer } from "../components/alert-center/DetailDrawer.js";
+import { MuteModal } from "../components/alert-center/MuteModal.js";
 
 const DEFAULT_ENV: Record<string, unknown> = {};
 
@@ -132,7 +133,10 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
     }
   }, [filters.lane, filters.appliedSymbol, filters.severityFilter, filters.familyFilter, filters.timeframe, filters.sessionDate]);
 
-  const { loading, error, payload, summary, symbolStats, refetch } = useAlertCenterData({
+  const {
+    error, payload, summary, symbolStats, refetch,
+    isInitialLoading, isBackgroundFetching, feedError, summaryError, statsError,
+  } = useAlertCenterData({
     env,
     lane: filters.lane,
     symbol: filters.appliedSymbol,
@@ -143,28 +147,74 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
     autoRefresh,
   });
 
-  const { realtimeAlerts, realtimeStatus } = useAlertCenterRealtime({ enabled: autoRefresh });
   const actions = useAlertCenterActions(refetch, filters.lane);
+
+  // S7: SSE user-scoped thay WS global — cùng key alert_id với REST nên merge an toàn.
+  // (useAlertCenterRealtime vẫn giữ cho DashboardPage dùng.)
+  const [sseAlerts, setSseAlerts] = useState<AlertItem[]>([]);
+  const [isDocVisible, setIsDocVisible] = useState(
+    typeof document !== "undefined" ? !document.hidden : true,
+  );
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const onVis = () => setIsDocVisible(!document.hidden);
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+  const handleStreamItem = useCallback((incoming: AlertCenterStreamItem) => {
+    const item = incoming as unknown as AlertItem;
+    setSseAlerts((prev) => {
+      if (prev.some((p) => String(p.alert_id) === String(item.alert_id))) return prev;
+      return [item, ...prev].slice(0, 50);
+    });
+  }, []);
+  const streamQuery = useMemo(() => ({
+    lane: filters.lane || undefined,
+    symbol: filters.appliedSymbol || undefined,
+  }), [filters.lane, filters.appliedSymbol]);
+  const streamEnabled = autoRefresh && isDocVisible
+    && typeof window !== "undefined"
+    && typeof (window as unknown as { EventSource?: unknown }).EventSource !== "undefined";
+  const { status: streamStatus } = useAlertCenterStream({
+    enabled: streamEnabled,
+    query: streamQuery,
+    onItem: handleStreamItem,
+  });
+  const realtimeStatus = streamStatus === "open" ? "live" : "polling";
 
   const [extraAlerts, setExtraAlerts] = useState<AlertItem[]>([]);
   const [feedNextUrl, setFeedNextUrl] = useState<string | null>(null);
+  const [muteTarget, setMuteTarget] = useState<AlertItem | null>(null);
 
+  // S7: feed = REST (+ load-more) + SSE prepend, dedupe cùng key alert_id.
+  // WS lane S2 đã gỡ (SSE cùng shape serializer nên merge an toàn).
   const alerts = useMemo(() => {
     const rawAlerts = (payload as Record<string, unknown>)?.results ?? [];
     const restAlerts = Array.isArray(rawAlerts) ? rawAlerts : [];
     const base = [...restAlerts, ...extraAlerts];
-    if (!realtimeAlerts.length) return base;
-    const byId = new Map();
+    if (!sseAlerts.length) return base;
+    const byId = new Map<string, AlertItem>();
     for (const item of base) {
       const key = (item as AlertItem)?.alert_id ?? (item as AlertItem)?.event_id;
-      if (key != null) byId.set(String(key), item);
+      if (key != null) byId.set(String(key), item as AlertItem);
     }
-    for (const item of realtimeAlerts) {
-      const key = item?.alert_id ?? item?.event_id;
-      if (key != null) byId.set(String(key), item);
+    for (const item of sseAlerts) {
+      const key = (item as AlertItem)?.alert_id;
+      if (key != null && !byId.has(String(key))) byId.set(String(key), item as AlertItem);
     }
     return Array.from(byId.values());
-  }, [payload, extraAlerts, realtimeAlerts]);
+  }, [payload, extraAlerts, sseAlerts]);
+
+  // S2: phân biệt NO_SCOPE (không lọc + tổng bằng 0) vs NO_MATCH (có lọc).
+  // NO_DATA gộp vào NO_SCOPE vì FE không có endpoint đếm ngoài scope để phân biệt.
+  const hasActiveFilters = Boolean(
+    filters.appliedSymbol || filters.sessionDate || filters.timeframe !== "session"
+    || filters.severityFilter.length || filters.familyFilter.length,
+  );
+  const scopeTotalsZero = Number((summary as unknown as AlertSummary)?.total ?? 0) === 0
+    && Number(((symbolStats as unknown as SymbolStatsPayload)?.pagination?.total_symbols) ?? 0) === 0;
+  const feedEmptyKey = hasActiveFilters ? "alertCenter.emptyNoMatch"
+    : scopeTotalsZero ? "alertCenter.emptyNoScope" : "alertCenter.empty";
 
   function extractFeedCursor(next: unknown): string | null {
     if (typeof next !== "string" || !next) return null;
@@ -203,11 +253,15 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
   const sortedAlerts = useMemo(() => {
     const sorted = [...alerts].sort((a: AlertItem, b: AlertItem) => {
       if (filters.sorting === "largestValue") {
-        return Number(b?.value ?? b?.matched_value ?? 0) - Number(a?.value ?? a?.matched_value ?? 0);
+        const diff = Number(b?.value ?? b?.matched_value ?? 0) - Number(a?.value ?? a?.matched_value ?? 0);
+        if (diff !== 0) return diff;
+      } else {
+        const timeA = a?.triggered_at ? new Date(a.triggered_at).getTime() : (a?.ts ? new Date(a.ts).getTime() : 0);
+        const timeB = b?.triggered_at ? new Date(b.triggered_at).getTime() : (b?.ts ? new Date(b.ts).getTime() : 0);
+        if (timeB !== timeA) return timeB - timeA;
       }
-      const timeA = a?.triggered_at ? new Date(a.triggered_at).getTime() : (a?.ts ? new Date(a.ts).getTime() : 0);
-      const timeB = b?.triggered_at ? new Date(b.triggered_at).getTime() : (b?.ts ? new Date(b.ts).getTime() : 0);
-      return timeB - timeA;
+      // S1: tie-break ổn định để poll nền không đảo thứ tự card bằng nhau
+      return String(b?.alert_id ?? b?.event_id ?? "").localeCompare(String(a?.alert_id ?? a?.event_id ?? ""));
     });
     return sorted;
   }, [alerts, filters.sorting]);
@@ -250,18 +304,19 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
           latestTime: item?.latest_triggered_at ? new Date(item.latest_triggered_at as string).getTime() : 0,
           familiesList: "",
         };
-        let freq = t("alertCenter.freqLow");
+        // S4: freq lưu enum key (không lưu chuỗi Việt) để StatsTable map đúng cả 2 locale
+        let freq = "low";
         const c = mapped.count as number;
-        if (c >= 8) freq = t("alertCenter.freqExplosive");
-        else if (c >= 4) freq = t("alertCenter.freqHigh");
-        else if (c >= 2) freq = t("alertCenter.freqMedium");
+        if (c >= 8) freq = "explosive";
+        else if (c >= 4) freq = "high";
+        else if (c >= 2) freq = "medium";
         return { ...mapped, freq };
       })
       .filter((item: Record<string, unknown>) => {
         if (!filters.searchTermStats) return true;
         return (item.symbol as string).includes(filters.searchTermStats.trim().toUpperCase());
       });
-  }, [symbolStats, filters.searchTermStats, t]);
+  }, [symbolStats, filters.searchTermStats]);
 
   const summaryData = summary as unknown as AlertSummary;
   const highSeverityCount =
@@ -280,24 +335,26 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
   ), [aggregatedSymbols, activePageStats]);
 
   const handleExportCsv = useCallback(() => {
+    // S5: BOM UTF-8 (Excel đọc đúng dấu) + cắt 5000 dòng, đồng chuẩn Signals
     const cols = ["alert_id", "alert_type", "alert_family", "lane", "symbol", "severity", "direction", "value", "session_date", "triggered_at", "title", "body"];
     const esc = (v: unknown) => {
       const s = v == null ? "" : String(v);
       return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
     const lines = [cols.join(",")];
-    for (const a of displayAlerts as AlertItem[]) {
+    for (const a of (displayAlerts as AlertItem[]).slice(0, 5000)) {
       lines.push(cols.map((c) => {
         if (c === "lane") return esc(filters.lane);
         if (c === "alert_family") return esc(a.alert_family ?? a.alert_type ?? "");
         return esc((a as Record<string, unknown>)[c]);
       }).join(","));
     }
-    const blob = new Blob([lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     const d = new Date();
-    const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+    const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`
+      + `-${String(d.getHours()).padStart(2, "0")}${String(d.getMinutes()).padStart(2, "0")}`;
     link.href = url;
     link.download = `alert-center-${stamp}.csv`;
     document.body.appendChild(link);
@@ -308,13 +365,18 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
 
   const triggerRefresh = useCallback(() => {
     setIsRefreshing(true);
-    refetch();
-    setTimeout(() => setIsRefreshing(false), 800);
+    Promise.resolve(refetch()).finally(() => setIsRefreshing(false));
   }, [refetch]);
 
   const toggleEvidence = useCallback((id: string) => {
     setExpandedEvidence(prev => ({ ...prev, [id]: !prev[id] }));
   }, []);
+
+  const openMuteModal = useCallback((alert: AlertItem) => setMuteTarget(alert), []);
+  const confirmMuteModal = useCallback((opts: { mute_minutes: number; reason: string }) => {
+    if (!muteTarget) return;
+    void actions.handleMuteWithOptions(muteTarget, opts).then(() => setMuteTarget(null));
+  }, [muteTarget, actions]);
 
   const liveBadge = (
     <div
@@ -352,7 +414,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
         <ShellMetric key={m.label} label={m.label} value={m.value} />
       ))}
       notice={!autoRefresh ? t("alertCenter.paused") : undefined}
-      error={error && !loading ? error : undefined}
+      error={error && displayAlerts.length === 0 && !isInitialLoading ? error : undefined}
       className={className}
     >
       <FilterBar
@@ -370,7 +432,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
         familyFilter={filters.familyFilter}
         onToggleFamily={filters.toggleFamily}
         onClearFilters={filters.clearFilters}
-        isRefreshing={isRefreshing}
+        isRefreshing={isRefreshing || Boolean(isBackgroundFetching)}
         onRefresh={triggerRefresh}
       />
 
@@ -379,8 +441,17 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
           <span>{actions.actionError}</span>
         </div>
       )}
+      {(summaryError || statsError) && (
+        <div className={`${soc.bannerError}`} role="alert" style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <span>{summaryError || statsError}</span>
+          <button type="button" className={`${soc.filterBtn} ${soc.filterBtnInactive}`} onClick={triggerRefresh}>
+            {t("alertCenter.retry")}
+          </button>
+        </div>
+      )}
 
       <div className={`${soc.opsLayoutContainer}`}>
+        <div className={`${soc.opsLeftCol}`}>
         <ShellPanel
           title={t("alertCenter.feedTitle")}
           subtitle={t("alertCenter.feedShowing", { count: alerts.length })}
@@ -422,12 +493,28 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
             retryLabel={t("alertCenter.retry")}
             onRetry={triggerRefresh}
           >
-            {loading && !isRefreshing ? (
+            {isInitialLoading && displayAlerts.length === 0 ? (
               <ShellSkeleton variant="card" count={5} anim="shimmer" />
+            ) : feedError && displayAlerts.length === 0 ? (
+              <div className={`${soc.emptyState}`} role="alert">
+                <p>{feedError}</p>
+                <button
+                  type="button"
+                  className={`${soc.filterBtn} ${soc.filterBtnInactive}`}
+                  onClick={triggerRefresh}
+                >
+                  {t("alertCenter.retry")}
+                </button>
+              </div>
             ) : displayAlerts.length === 0 ? (
-              <div className={`${soc.emptyState}`}>{t("alertCenter.empty")}</div>
+              <div className={`${soc.emptyState}`}>{t(feedEmptyKey as any)}</div>
             ) : (
-              <div aria-live="polite" aria-busy={loading || isRefreshing}>
+              <div aria-live="polite" aria-busy={Boolean(isBackgroundFetching) || isRefreshing}>
+              {feedError && (
+                <div className={`${soc.bannerError}`} role="alert" style={{ marginBottom: 8 }}>
+                  <span>{feedError}</span>
+                </div>
+              )}
               <VirtualFeedList
                 height={460}
                 width="100%"
@@ -446,6 +533,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
                     handleLoadDetail={actions.handleLoadDetail as any}
                     handleAcknowledge={actions.handleAcknowledge as any}
                     handleMuteSymbol={actions.handleMute as any}
+                    handleMuteRequest={openMuteModal as any}
                     formatAlertValue={formatAlertValue}
                     formatAlertTimestamp={formatAlertTimestamp}
                     style={{ ...style, overflow: "hidden", animationDelay: `${(index % 20) * 50}ms` }}
@@ -456,6 +544,7 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
             )}
           </PageErrorBoundary>
         </ShellPanel>
+        </div>
 
         <div className={`${soc.opsRightCol}`}>
           <StatsPanel
@@ -475,7 +564,14 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
         activeDetail={actions.activeDetail as Record<string, unknown> | null}
         activeContext={actions.activeContext as Record<string, unknown> | null}
         appliedSymbol={filters.appliedSymbol}
+        seen={Boolean(actions.seenAlerts[String(actions.activeAlertId)])}
         onClose={actions.closeDetail}
+      />
+      <MuteModal
+        alert={muteTarget as any}
+        busy={Boolean(actions.busyAlertId)}
+        onConfirm={confirmMuteModal}
+        onClose={() => setMuteTarget(null)}
       />
     </ShellPageChrome>
   );

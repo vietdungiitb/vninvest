@@ -36,6 +36,7 @@ interface AlertCardProps {
   handleLoadDetail: (alert: AlertItem) => void;
   handleAcknowledge: (alert: AlertItem) => void;
   handleMuteSymbol: (alert: AlertItem) => void;
+  handleMuteRequest?: (alert: AlertItem) => void;
   formatAlertValue: (val: unknown) => string;
   formatAlertTimestamp: (val: unknown) => string;
   style?: React.CSSProperties;
@@ -71,6 +72,23 @@ function getDirectionArrow(dir: string): string {
   return "—";
 }
 
+// S5: map freshness/direction thô sang nhãn i18n
+function freshnessLabel(fs: unknown, t: (key: string) => string): string {
+  const s = String(fs || "").toLowerCase();
+  if (s === "fresh") return t("alertCenter.freshFresh");
+  if (s === "stale") return t("alertCenter.freshStale");
+  return "—";
+}
+
+function directionLabel(dir: unknown, t: (key: string) => string): string {
+  const d = String(dir || "").toLowerCase();
+  if (!d || d === "—") return "—";
+  if (d.includes("buy") || d === "mua") return t("alertCenter.labelBuy");
+  if (d.includes("sell") || d === "bán") return t("alertCenter.labelSell");
+  if (d.includes("neutral")) return t("alertCenter.labelOther");
+  return String(dir);
+}
+
 function renderEvidenceList(evidence: Record<string, unknown>, t: (key: string) => string) {
   const entries = Object.entries(evidence || {}).filter(([, value]) => value != null && value !== "");
   if (entries.length === 0) {
@@ -91,7 +109,7 @@ function renderEvidenceList(evidence: Record<string, unknown>, t: (key: string) 
 
 export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
   const { t } = useI18n();
-  const { alert, lane, busyAlertId, isEvidenceExpanded, toggleEvidence, handleLoadDetail, handleAcknowledge, handleMuteSymbol, formatAlertValue, formatAlertTimestamp, style } = props;
+  const { alert, lane, busyAlertId, isEvidenceExpanded, toggleEvidence, handleLoadDetail, handleAcknowledge, handleMuteSymbol, handleMuteRequest, formatAlertValue, formatAlertTimestamp, style } = props;
 
   const severity = alert.severity || "medium";
   const severityCap = severity.charAt(0).toUpperCase() + severity.slice(1);
@@ -123,14 +141,17 @@ export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
                 {t(`alertCenter.sev${severityCap}` as any)}
               </span>
               <span className={`${soc.statusBadge} ${soc.statusBadgeInfo}`}>
-                {alert.freshness_state || "—"}
+                {freshnessLabel(alert.freshness_state, t)}
               </span>
             </div>
             <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.3 }}>
               {alert.title || t("alertCenter.cardTitle")}
             </h3>
-            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
-              {familyKey ? t(familyKey as any) : alert.alert_family || alert.alert_type || "—"} · Lane {alert.lane || lane}
+            <div
+              style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}
+              title={`Lane ${alert.lane || lane}`}
+            >
+              {familyKey ? t(familyKey as any) : alert.alert_family || alert.alert_type || "—"}
             </div>
           </div>
         </div>
@@ -139,7 +160,7 @@ export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
             {formatAlertValue(alert.value ?? (alert as any).matched_value)} {t("alertCenter.currency")}
           </div>
           <div className={`${soc.signalLabel} ${directionClass}`.trim()}>
-            {directionArrow} {alert.direction || "—"}
+            {directionArrow} {directionLabel(alert.direction, t)}
           </div>
         </div>
       </div>
@@ -165,7 +186,7 @@ export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
         <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>
           {t("alertCenter.labelConfidence")}: {alert.confidence != null ? `${Math.round(Number(alert.confidence) * 100)}%` : "—"}
         </span>
-        <span><strong>{t("alertCenter.labelFreshness")}:</strong> {alert.freshness_state || "—"}</span>
+        <span><strong>{t("alertCenter.labelFreshness")}:</strong> {freshnessLabel(alert.freshness_state, t)}</span>
         <span><strong>{t("alertCenter.labelSession")}:</strong> {alert.session_date || "—"}</span>
         <span><strong>{alert.executed_at ? t("alertCenter.labelExecuted") : t("alertCenter.labelTime")}:</strong> {alert.executed_at ? formatAlertTimestamp(alert.executed_at) : formatAlertTimestamp(alert.triggered_at)}</span>
       </div>
@@ -196,21 +217,20 @@ export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
         >
           {busyAlertId === alert.alert_id ? t("alertCenter.btnDetailLoading") : t("alertCenter.btnDetail")}
         </button>
-        {lane === "main" && (
-          <button
-            type="button"
-            className={`${soc.filterBtn} ${soc.filterBtnInactive}`}
-            disabled={busyAlertId === alert.alert_id}
-            onClick={() => handleAcknowledge(alert)}
-          >
-            {t("alertCenter.btnAck")}
-          </button>
-        )}
+        {/* S3: ack khả dụng cả 2 lane (BE hỗ trợ ?lane=main|ai) */}
+        <button
+          type="button"
+          className={`${soc.filterBtn} ${soc.filterBtnInactive}`}
+          disabled={busyAlertId === alert.alert_id}
+          onClick={() => handleAcknowledge(alert)}
+        >
+          {t("alertCenter.btnAck")}
+        </button>
         <button
           type="button"
           className={`${soc.filterBtn} ${soc.filterBtnInactive}`}
           disabled={busyAlertId === (alert.alert_id || alert.symbol)}
-          onClick={() => handleMuteSymbol(alert)}
+          onClick={() => (handleMuteRequest ? handleMuteRequest(alert) : handleMuteSymbol(alert))}
         >
           {t("alertCenter.btnMute")}
         </button>

@@ -62,6 +62,8 @@ export function useAlertCenterData({ _env = DEFAULT_ENV, lane = "main", symbol =
     },
   );
 
+  // S4: client paging 8/trang trên snapshot 200 — BE có page/page_size nhưng dataset
+  // symbol <200 nên luôn fetch page 1 một lần, chia trang ở AlertCenterPage (đủ cho màn hình này).
   const statsQ = useCoreQuery(
     ["alert-center-stats", lane, symbol, sessionDate, timeframe, severityKey, familyKey, refreshKey],
     {
@@ -88,10 +90,21 @@ export function useAlertCenterData({ _env = DEFAULT_ENV, lane = "main", symbol =
   const summaryObj = summaryQ.data || {};
   const statsObj = statsQ.data || {};
 
-  const isLoading = feedQ.isLoading || summaryQ.isLoading || statsQ.isLoading
-    || feedQ.isFetching || summaryQ.isFetching || statsQ.isFetching;
-  const firstError = feedQ.error || summaryQ.error || statsQ.error;
-  const error = firstError ? (firstError.message ? firstError.message : "Không thể tải alert center từ core API.") : "";
+  // S1: tách skeleton lần đầu khỏi poll nền — TanStack v5 isLoading chỉ true ở
+  // lần fetch đầu (isPending && isFetching); isFetching true ở mọi poll nền.
+  const hasAnyData = Boolean(feedQ.data || summaryQ.data || statsQ.data);
+  const isInitialLoading = (feedQ.isLoading || summaryQ.isLoading || statsQ.isLoading) && !hasAnyData;
+  const isBackgroundFetching = (feedQ.isFetching || summaryQ.isFetching || statsQ.isFetching)
+    && !isInitialLoading;
+  const feedError = feedQ.error
+    ? (feedQ.error.message ? feedQ.error.message : "Không thể tải bảng tin cảnh báo.") : "";
+  const summaryError = summaryQ.error
+    ? (summaryQ.error.message ? summaryQ.error.message : "Không thể tải tổng hợp cảnh báo.") : "";
+  const statsError = statsQ.error
+    ? (statsQ.error.message ? statsQ.error.message : "Không thể tải thống kê theo mã.") : "";
+  const firstError = feedError || summaryError || statsError;
+  const error = firstError;
+  const isLoading = isInitialLoading || isBackgroundFetching;
 
   const data = feedQ.data || summaryQ.data || statsQ.data;
   const state = data
@@ -127,10 +140,13 @@ export function useAlertCenterData({ _env = DEFAULT_ENV, lane = "main", symbol =
     : { ...INITIAL_STATE, loading: isLoading, error: error };
 
   const refetch = () => {
-    feedQ.refetch();
-    summaryQ.refetch();
-    statsQ.refetch();
+    const out = [feedQ.refetch(), summaryQ.refetch(), statsQ.refetch()];
+    return Promise.allSettled(out);
   };
 
-  return { ...state, refetch };
+  return {
+    ...state, refetch,
+    isInitialLoading, isBackgroundFetching,
+    feedError, summaryError, statsError,
+  };
 }

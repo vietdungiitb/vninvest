@@ -191,6 +191,32 @@ class SignalsStreamFlushTestCase(SignalsStreamBaseTestCase):
         self.assertIn('"symbol": "VCI"', content)
         self.assertNotIn('"symbol": "SSI"', content)
 
+    def test_s6_system_and_ai_types_mapped_correctly(self):
+        now = timezone.now()
+        UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.SYSTEM,
+            symbol='CMN', severity=UnifiedAlert.SeverityChoices.MEDIUM,
+            title='Bang gia cham', freshness_state='stale',
+            session_date=now.date(), triggered_at=now,
+            source_ref='stream-s6-system',
+        )
+        UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.AI_ALERT,
+            symbol='FPT', severity=UnifiedAlert.SeverityChoices.HIGH,
+            title='AI canh bao', session_date=now.date(), triggered_at=now,
+            source_ref='stream-s6-ai',
+        )
+        rsp = self.client.get('/api/soc/signals/stream/?since=0&max_loops=2')
+        content = _read_stream_content(rsp)
+        self.assertIn('"type": "system"', content)
+        self.assertIn('"type": "ai"', content)
+        # system/ai KHÔNG còn đội lốt whale (chỉ còn đúng 1 whale VCI)
+        self.assertEqual(content.count('"type": "whale"'), 1)
+        rsp_sys = self.client.get('/api/soc/signals/stream/?type=system&since=0&max_loops=2')
+        content_sys = _read_stream_content(rsp_sys)
+        self.assertIn('"symbol": "CMN"', content_sys)
+        self.assertNotIn('"symbol": "VCI"', content_sys)
+
     def test_filter_by_symbol(self):
         rsp = self.client.get('/api/soc/signals/stream/?symbol=vci&max_loops=2', HTTP_LAST_EVENT_ID='0')
         content = _read_stream_content(rsp)

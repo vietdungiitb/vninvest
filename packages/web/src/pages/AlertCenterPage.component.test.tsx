@@ -3,11 +3,12 @@ import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/re
 import { AlertCenterPage } from "./AlertCenterPage.js";
 
 const dataState = vi.hoisted(() => ({ current: null as any }));
-const realtimeState = vi.hoisted(() => ({ alerts: [] as any[], status: "live" }));
+const streamState = vi.hoisted(() => ({ items: [] as any[], status: "open", onItem: null as any }));
 const adapterMocks = vi.hoisted(() => ({
   getAlertCenterEventDetail: vi.fn(),
   getAlertCenterSymbolContext: vi.fn(),
   acknowledgeAlertCenterEvent: vi.fn(),
+  muteAlertCenterPreference: vi.fn().mockResolvedValue({}),
   getAlertCenterFeed: vi.fn(),
   getAIAlertsFeed: vi.fn(),
 }));
@@ -16,11 +17,11 @@ vi.mock("../hooks/useAlertCenterData.js", () => ({
   useAlertCenterData: () => dataState.current(),
 }));
 
-vi.mock("../hooks/useAlertCenterRealtime.js", () => ({
-  useAlertCenterRealtime: () => ({
-    realtimeAlerts: realtimeState.alerts,
-    realtimeStatus: realtimeState.status,
-  }),
+vi.mock("../hooks/useAlertCenterStream.js", () => ({
+  useAlertCenterStream: ({ onItem }: any) => {
+    streamState.onItem = onItem;
+    return { status: streamState.status, reconnectAttempt: 0 };
+  },
 }));
 
 vi.mock("../adapters/coreApiAdapter.js", () => ({
@@ -28,6 +29,7 @@ vi.mock("../adapters/coreApiAdapter.js", () => ({
     getAlertCenterEventDetail: adapterMocks.getAlertCenterEventDetail,
     getAlertCenterSymbolContext: adapterMocks.getAlertCenterSymbolContext,
     acknowledgeAlertCenterEvent: adapterMocks.acknowledgeAlertCenterEvent,
+    muteAlertCenterPreference: adapterMocks.muteAlertCenterPreference,
     getAlertCenterFeed: adapterMocks.getAlertCenterFeed,
     getAIAlertsFeed: adapterMocks.getAIAlertsFeed,
   },
@@ -35,6 +37,7 @@ vi.mock("../adapters/coreApiAdapter.js", () => ({
     getAlertCenterEventDetail: adapterMocks.getAlertCenterEventDetail,
     getAlertCenterSymbolContext: adapterMocks.getAlertCenterSymbolContext,
     acknowledgeAlertCenterEvent: adapterMocks.acknowledgeAlertCenterEvent,
+    muteAlertCenterPreference: adapterMocks.muteAlertCenterPreference,
     getAlertCenterFeed: adapterMocks.getAlertCenterFeed,
     getAIAlertsFeed: adapterMocks.getAIAlertsFeed,
   },
@@ -85,17 +88,18 @@ function statsRow(sym: string, i: number) {
 
 describe("AlertCenterPage (C5 + A2 pagination)", () => {
   beforeEach(() => {
-    realtimeState.alerts = [];
-    realtimeState.status = "live";
+    streamState.items = [];
+    streamState.status = "open";
     vi.clearAllMocks();
   });
 
   afterEach(() => cleanup());
 
   it("1. loading → skeleton, khong empty", () => {
-    dataState.current = () => baseData({ loading: true });
+    dataState.current = () => baseData({ isInitialLoading: true });
     const { container } = render(<AlertCenterPage />);
-    expect(screen.queryByText("alertCenter.empty")).toBeNull();
+    expect(screen.queryByText("alertCenter.emptyNoScope")).toBeNull();
+    expect(screen.queryByText("alertCenter.emptyNoMatch")).toBeNull();
     expect(container.querySelector('[style*="shellShimmer"]')).toBeTruthy();
   });
 
@@ -108,10 +112,10 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
-  it("3. empty → text alertCenter.empty", () => {
+  it("3. empty → text alertCenter.emptyNoScope (S2, khong loc)", () => {
     dataState.current = () => baseData({});
     render(<AlertCenterPage />);
-    expect(screen.getByText("alertCenter.empty")).toBeTruthy();
+    expect(screen.getByText("alertCenter.emptyNoScope")).toBeTruthy();
   });
 
   it("4. feed 3 items → 3 cards, newest-first", () => {
@@ -154,9 +158,8 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
     expect(screen.queryByText("S0")).toBeNull();
   });
 
-  it("6. WS realtime merge len TOP feed", () => {
-    const future = new Date(Date.now() + 3600_000).toISOString();
-    realtimeState.alerts = [{ alert_id: "live-1", symbol: "LIVE1", title: "Live", severity: "high", triggered_at: future, freshness_state: "fresh", alert_type: "whale", evidence: {} }];
+  it("6. S7 SSE prepend cung key alert_id, khong trung REST", async () => {
+    const { act } = await import("@testing-library/react");
     dataState.current = () =>
       baseData({
         payload: {
@@ -166,9 +169,25 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
         },
       });
     render(<AlertCenterPage />);
+    const future = new Date(Date.now() + 3600_000).toISOString();
+    await act(async () => {
+      streamState.onItem({
+        alert_id: "sse-1", symbol: "SSE1", title: "Sse one", severity: "high",
+        triggered_at: future, freshness_state: "fresh", alert_family: "whale",
+        body: "Body", value: 5000, direction: "buy", confidence: 0.9, evidence: {},
+      });
+      // trùng alert_id REST → không duplicate
+      streamState.onItem({
+        alert_id: "id-AAA", symbol: "AAA", title: "Dup", severity: "high",
+        triggered_at: future, freshness_state: "fresh", alert_family: "whale",
+        body: "Body", value: 1, direction: "buy", confidence: 0.9, evidence: {},
+      });
+    });
     const html = document.body.innerHTML;
-    expect(html.indexOf("LIVE1")).toBeGreaterThan(-1);
-    expect(html.indexOf("LIVE1")).toBeLessThan(html.indexOf("AAA"));
+    expect(html.indexOf("Sse one")).toBeGreaterThan(-1);
+    // SSE mới nhất (future) sort lên trước
+    expect(html.indexOf("Sse one")).toBeLessThan(html.indexOf("Title BBB"));
+    expect(screen.queryByText("Dup")).toBeNull();
   });
 
   it("7. load-more append extra + cursor (C3)", async () => {
@@ -193,5 +212,105 @@ describe("AlertCenterPage (C5 + A2 pagination)", () => {
       expect.objectContaining({ cursor: "abc" })
     );
     await waitFor(() => expect(screen.getByText("EXTRA")).toBeTruthy());
+  });
+
+  it("8. S1 poll nen khong unmount list (khong skeleton)", () => {
+    dataState.current = () =>
+      baseData({
+        isInitialLoading: false,
+        isBackgroundFetching: true,
+        payload: {
+          results: [alertFixture("AAA", "2026-09-18T01:00:00Z")],
+          next: null,
+          previous: null,
+        },
+      });
+    const { container } = render(<AlertCenterPage />);
+    expect(screen.getByText("Title AAA")).toBeTruthy();
+    expect(container.querySelector('[style*="shellShimmer"]')).toBeNull();
+  });
+
+  it("9. S1 feedError + rong → hop loi + retry", async () => {
+    const refetch = vi.fn().mockResolvedValue([]);
+    dataState.current = () =>
+      baseData({ isInitialLoading: false, feedError: "feed boom", refetch });
+    render(<AlertCenterPage />);
+    expect(screen.getByText("feed boom")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "alertCenter.retry" }));
+    await waitFor(() => expect(refetch).toHaveBeenCalledTimes(1));
+  });
+
+  it("10. S1 feedError + co data → banner inline, list van hien", () => {
+    dataState.current = () =>
+      baseData({
+        isInitialLoading: false,
+        feedError: "feed boom",
+        payload: {
+          results: [alertFixture("AAA", "2026-09-18T01:00:00Z")],
+          next: null,
+          previous: null,
+        },
+      });
+    render(<AlertCenterPage />);
+    expect(screen.getByText("Title AAA")).toBeTruthy();
+    expect(screen.getByText("feed boom")).toBeTruthy();
+  });
+
+  it("11. S2 NO_SCOPE khi tong 0 + khong loc", () => {
+    dataState.current = () => baseData({});
+    render(<AlertCenterPage />);
+    expect(screen.getByText("alertCenter.emptyNoScope")).toBeTruthy();
+  });
+
+  it("12. S7 SSE badge live theo stream status", () => {
+    streamState.status = "connecting";
+    dataState.current = () => baseData({});
+    render(<AlertCenterPage />);
+    expect(screen.getByText("alertCenter.livePolling")).toBeTruthy();
+  });
+
+  it("13. S2 NO_MATCH khi co loc tren URL", () => {
+    window.history.replaceState(null, "", "/?severity=high");
+    dataState.current = () => baseData({});
+    render(<AlertCenterPage />);
+    expect(screen.getByText("alertCenter.emptyNoMatch")).toBeTruthy();
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("14. S3 ack hien ca lane ai", () => {
+    window.history.replaceState(null, "", "/?lane=ai");
+    dataState.current = () =>
+      baseData({
+        payload: {
+          results: [alertFixture("AAA", "2026-09-18T01:00:00Z")],
+          next: null,
+          previous: null,
+        },
+      });
+    render(<AlertCenterPage />);
+    expect(screen.getByRole("button", { name: "alertCenter.btnAck" })).toBeTruthy();
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("15. S3 mute modal gui duration + reason", async () => {
+    dataState.current = () =>
+      baseData({
+        payload: {
+          results: [alertFixture("AAA", "2026-09-18T01:00:00Z")],
+          next: null,
+          previous: null,
+        },
+      });
+    render(<AlertCenterPage />);
+    fireEvent.click(screen.getByRole("button", { name: "alertCenter.btnMute" }));
+    expect(screen.getByText(/alertCenter.muteTitle/)).toBeTruthy();
+    const reason = document.querySelector('input[maxlength="200"]') as HTMLInputElement;
+    fireEvent.change(reason, { target: { value: "on-nghe" } });
+    fireEvent.click(screen.getByRole("button", { name: "alertCenter.muteConfirm" }));
+    await waitFor(() =>
+      expect(adapterMocks.muteAlertCenterPreference).toHaveBeenCalledWith(
+        expect.objectContaining({ symbol: "AAA", mute_minutes: 30, metadata: { reason: "on-nghe" } })
+      )
+    );
   });
 });

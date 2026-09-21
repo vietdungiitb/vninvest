@@ -36,13 +36,21 @@ class SOCStreamThrottle(UserRateThrottle):
     scope = "soc_stream"
 
 
-# Query param → alert_type mapping (FE type → BE alert_type)
+# Query param → alert_type mapping (FE type → BE alert_type).
+# S6: thêm system + ai (ai = cả ai_alert và ai_suggest).
 _STREAM_TYPE_MAP = {
     "whale": UnifiedAlert.AlertTypeChoices.WHALE,
     "dark_pool": UnifiedAlert.AlertTypeChoices.DARK_FLOW,
     "dark_flow": UnifiedAlert.AlertTypeChoices.DARK_FLOW,
     "screener": UnifiedAlert.AlertTypeChoices.SIGNAL,
     "signal": UnifiedAlert.AlertTypeChoices.SIGNAL,
+    "system": UnifiedAlert.AlertTypeChoices.SYSTEM,
+    "ai": (
+        UnifiedAlert.AlertTypeChoices.AI_ALERT,
+        UnifiedAlert.AlertTypeChoices.AI_SUGGEST,
+    ),
+    "ai_alert": UnifiedAlert.AlertTypeChoices.AI_ALERT,
+    "ai_suggest": UnifiedAlert.AlertTypeChoices.AI_SUGGEST,
 }
 
 _VALID_SEVERITIES = {c.value for c in UnifiedAlert.SeverityChoices}
@@ -89,7 +97,10 @@ def _parse_stream_params(request) -> dict:
 
 def _apply_stream_filters(qs, params: dict):
     if params["alert_type"]:
-        qs = qs.filter(alert_type=params["alert_type"])
+        if isinstance(params["alert_type"], (tuple, list)):
+            qs = qs.filter(alert_type__in=params["alert_type"])
+        else:
+            qs = qs.filter(alert_type=params["alert_type"])
     if params["severity"]:
         qs = qs.filter(severity=params["severity"])
     if params["direction"]:
@@ -197,12 +208,20 @@ class SignalsStreamView(SOCBaseView):
                         for alert in alerts:
                             try:
                                 base = _serialize_recent_alert(alert)
-                                # Map alert_type → FE type
+                                # S6: map alert_type → FE type đầy đủ (trước đây SYSTEM/AI
+                                # rơi vào default "whale", thổi phồng thẻ whale realtime)
                                 fe_type = "whale"
                                 if alert.alert_type == UnifiedAlert.AlertTypeChoices.DARK_FLOW:
                                     fe_type = "dark_pool"
                                 elif alert.alert_type == UnifiedAlert.AlertTypeChoices.SIGNAL:
                                     fe_type = "screener"
+                                elif alert.alert_type == UnifiedAlert.AlertTypeChoices.SYSTEM:
+                                    fe_type = "system"
+                                elif alert.alert_type in (
+                                    UnifiedAlert.AlertTypeChoices.AI_ALERT,
+                                    UnifiedAlert.AlertTypeChoices.AI_SUGGEST,
+                                ):
+                                    fe_type = "ai"
                                 data = {
                                     "id": base.get("id"),
                                     "type": fe_type,

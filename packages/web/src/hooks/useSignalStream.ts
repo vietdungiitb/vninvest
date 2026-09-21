@@ -14,13 +14,27 @@ export interface SignalStreamSignal {
   value?: number | string | null;
   metadata?: Record<string, unknown>;
   session_date?: string | null;
+  // S7 passthrough (alert-center payload đầy đủ; signals stream không có → undefined)
+  alert_id?: string;
+  lane?: string;
+  body?: string;
+  summary?: string;
+  confidence?: number | null;
+  freshness_state?: string;
+  source_ref?: string;
+  evidence?: Record<string, unknown>;
+  executed_at?: string | null;
 }
 
 export interface UseSignalStreamOptions {
   enabled: boolean;
-  query?: { type?: string; severity?: string; direction?: string; symbol?: string };
+  query?: { type?: string; severity?: string; direction?: string; symbol?: string; alert_family?: string; lane?: string };
   onSignal: (sig: SignalStreamSignal) => void;
   onStatusChange?: (s: SignalStreamStatus) => void;
+  // S7: cho phép stream endpoint khác (mặc định giữ Signals để không vỡ caller cũ)
+  basePath?: string;
+  // S7: tên event SSE (mặc định "signal"; alert-center dùng "alert-center")
+  eventName?: string;
 }
 
 function buildStreamQuery(query: UseSignalStreamOptions["query"], lastId?: number | null): string {
@@ -29,6 +43,9 @@ function buildStreamQuery(query: UseSignalStreamOptions["query"], lastId?: numbe
   if (query?.symbol) qs.set("symbol", query.symbol);
   if (query?.severity) qs.set("severity", query.severity);
   if (query?.direction) qs.set("direction", query.direction);
+  // S7: alert-center dùng alert_family + lane thay cho direction/type
+  if (query?.alert_family) qs.set("alert_family", query.alert_family);
+  if (query?.lane) qs.set("lane", query.lane);
   if (lastId != null) qs.set("since", String(lastId));
   // EventSource không gửi được Authorization header → fallback token qua query
   // Lưu ý F2: token trong URL có thể lộ qua log/history — đã có withCredentials + khuyến nghị HTTPS + redact log
@@ -38,13 +55,17 @@ function buildStreamQuery(query: UseSignalStreamOptions["query"], lastId?: numbe
   return s ? `?${s}` : "";
 }
 
-export function getSignalStreamUrl(query: UseSignalStreamOptions["query"] = {}, lastId?: number | null): string {
+export function getSignalStreamUrl(query: UseSignalStreamOptions["query"] = {}, lastId?: number | null, basePath?: string): string {
   const base = resolveCoreApiBase();
-  return `${base}/operator/soc/signals/stream/${buildStreamQuery(query, lastId)}`;
+  return `${base}${basePath ?? "/operator/soc/signals/stream/"}${buildStreamQuery(query, lastId)}`;
 }
 
 export function useSignalStream(options: UseSignalStreamOptions): { status: SignalStreamStatus; reconnectAttempt: number } {
-  const { enabled, query, onSignal, onStatusChange } = options;
+  const { enabled, query, onSignal, onStatusChange, basePath, eventName } = options;
+  const eventNameRef = useRef(eventName ?? "signal");
+  useEffect(() => {
+    eventNameRef.current = eventName ?? "signal";
+  }, [eventName]);
   const [status, setStatus] = useState<SignalStreamStatus>("idle");
   const [reconnectAttempt, setReconnectAttempt] = useState(0);
 
@@ -78,7 +99,7 @@ export function useSignalStream(options: UseSignalStreamOptions): { status: Sign
   // F3: khi filter đổi, reset since để không bỏ lỡ với lastId cũ
   useEffect(() => {
     lastIdRef.current = null;
-  }, [query?.type, query?.symbol, query?.severity, query?.direction]);
+  }, [query?.type, query?.symbol, query?.severity, query?.direction, query?.alert_family, query?.lane]);
 
   useEffect(() => {
     if (!enabled) {
@@ -134,7 +155,7 @@ export function useSignalStream(options: UseSignalStreamOptions): { status: Sign
     const connect = () => {
       if (cancelled) return;
       updateStatus("connecting");
-      const url = getSignalStreamUrl(query, lastIdRef.current);
+      const url = getSignalStreamUrl(query, lastIdRef.current, basePath);
       let es: EventSource;
       try {
         // withCredentials để gửi cookie session nếu có
@@ -167,11 +188,22 @@ export function useSignalStream(options: UseSignalStreamOptions): { status: Sign
             type: String(data.type ?? "whale"),
             severity: data.severity != null ? String(data.severity) : undefined,
             direction: data.direction != null ? String(data.direction) : undefined,
-            detected_at: String(data.detected_at ?? data.timestamp ?? ""),
+            // S7: alert-center gửi detected_at (=triggered_at); chấp nhận cả triggered_at/timestamp
+            detected_at: String(data.detected_at ?? data.triggered_at ?? data.timestamp ?? ""),
             title: data.title != null ? String(data.title) : undefined,
             value: (data.value as number | string | null) ?? null,
             metadata: (data.metadata as Record<string, unknown>) ?? {},
             session_date: (data.session_date as string | null) ?? null,
+            // S7 passthrough cho alert-center (giữ undefined khi stream không có)
+            alert_id: data.alert_id != null ? String(data.alert_id) : undefined,
+            lane: data.lane != null ? String(data.lane) : undefined,
+            body: data.body != null ? String(data.body) : undefined,
+            summary: data.summary != null ? String(data.summary) : undefined,
+            confidence: data.confidence != null ? Number(data.confidence) : undefined,
+            freshness_state: data.freshness_state != null ? String(data.freshness_state) : undefined,
+            source_ref: data.source_ref != null ? String(data.source_ref) : undefined,
+            evidence: (data.evidence as Record<string, unknown>) ?? undefined,
+            executed_at: (data.executed_at as string | null) ?? undefined,
           };
           if (sig.id != null) lastIdRef.current = sig.id;
           if (sig.symbol) onSignalRef.current(sig);
@@ -180,8 +212,8 @@ export function useSignalStream(options: UseSignalStreamOptions): { status: Sign
         }
       };
 
-      // Plan spec: event: signal
-      es.addEventListener("signal", handleSignal as EventListener);
+      // Plan spec: event: signal (hoặc eventName tùy stream)
+      es.addEventListener(eventNameRef.current, handleSignal as EventListener);
 
       // Fallback onmessage (nếu server gửi không có event name)
       es.onmessage = (e: MessageEvent) => {
@@ -210,7 +242,7 @@ export function useSignalStream(options: UseSignalStreamOptions): { status: Sign
       updateStatus("closed");
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, query?.type, query?.severity, query?.direction, query?.symbol]);
+  }, [enabled, query?.type, query?.severity, query?.direction, query?.symbol, query?.alert_family, query?.lane, basePath]);
 
   return { status, reconnectAttempt };
 }

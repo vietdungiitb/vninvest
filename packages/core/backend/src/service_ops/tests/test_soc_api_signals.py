@@ -198,6 +198,36 @@ class SignalsApiContractTestCase(SignalsApiBaseTestCase):
         self.assertEqual(data['detection_rate'], 100.0)
         self.assertIsNotNone(data['last_triggered_at'])
 
+    def test_s6_summary_counts_system_and_ai(self):
+        now = timezone.now()
+        UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.SYSTEM,
+            symbol='CMN',
+            severity=UnifiedAlert.SeverityChoices.MEDIUM,
+            title='Bang gia cham CMN',
+            freshness_state='stale',
+            session_date=now.date(),
+            triggered_at=now,
+            source_ref='signals-s6-system',
+        )
+        UnifiedAlert.objects.create(
+            alert_type=UnifiedAlert.AlertTypeChoices.AI_ALERT,
+            symbol='VCI',
+            severity=UnifiedAlert.SeverityChoices.HIGH,
+            title='AI canh bao VCI',
+            session_date=now.date(),
+            triggered_at=now,
+            source_ref='signals-s6-ai',
+        )
+        data = self.client.get('/api/soc/signals/summary/').json()
+        self.assertEqual(data['system_alerts'], 1)
+        self.assertEqual(data['ai_alerts'], 1)
+        self.assertEqual(
+            data['active_alerts'],
+            data['whale_alerts'] + data['dark_flow_alerts'] + data['signal_alerts']
+            + data['system_alerts'] + data['ai_alerts'],
+        )
+
     def test_runtime_read_endpoints_return_current_payloads(self):
         whale_response = self.client.get('/api/soc/signals/whale/')
         whale_recent_response = self.client.get('/api/soc/signals/whale/recent/')
