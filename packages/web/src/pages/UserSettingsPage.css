@@ -1,0 +1,219 @@
+/* UserSettingsPage — commercial form styling (dark default, light via [data-theme="light"]).
+   Quy ước theme hệ thống: token var(--color-*) + override light từng component. */
+
+.core-user-settings-page {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  color: var(--color-text-primary, #f1f5f9);
+}
+
+.core-user-settings-page .core-page-header {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.core-user-settings-page .core-page-header h1 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  color: var(--color-text-primary, #f1f5f9);
+}
+
+.core-user-settings-page .core-user-id {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary, #94a3b8);
+}
+
+.core-settings-form,
+.core-settings-password {
+  background: var(--color-bg-panel, #0f172a);
+  border: 1px solid var(--color-border-primary, #1e293b);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
+.core-settings-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem 1rem;
+  align-items: end;
+}
+
+.core-settings-password h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 1rem;
+  color: var(--color-text-primary, #f1f5f9);
+}
+
+.core-settings-password .core-settings-form {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.core-settings-form > label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-secondary, #94a3b8);
+  min-width: 0;
+}
+
+.core-settings-form > label:has(> input[name="avatar_url"]),
+.core-settings-form > img,
+.core-settings-form > button,
+.core-settings-form > .core-error,
+.core-settings-form > .core-success {
+  grid-column: 1 / -1;
+}
+
+.core-settings-form > img {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-border-secondary, #334155);
+}
+
+.core-settings-form input,
+.core-settings-form select {
+  background: var(--color-bg-input, #0f172a);
+  border: 1px solid var(--color-border-secondary, #334155);
+  border-radius: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.85rem;
+  color: var(--color-text-primary, #f1f5f9);
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.core-settings-form input::placeholder {
+  color: var(--color-text-muted, #64748b);
+}
+
+.core-settings-form input:focus,
+.core-settings-form select:focus {
+  border-color: var(--color-border-focus, #06b6d4);
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+}
+
+.core-settings-form button[type="submit"] {
+  justify-self: start;
+  background: linear-gradient(135deg, #22d3ee, #0891b2);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: none;
+  border-radius: 0.65rem;
+  padding: 0.65rem 1.5rem;
+  cursor: pointer;
+  box-shadow: 0 8px 20px -6px rgba(6, 182, 212, 0.5);
+  transition:
+    filter 0.15s,
+    transform 0.1s;
+}
+
+.core-settings-form button[type="submit"]:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.core-settings-form button[type="submit"]:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.core-settings-form button[type="submit"]:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.core-user-settings-page .core-error {
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.6rem;
+  font-size: 0.8rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: var(--color-danger-400, #f87171);
+}
+
+.core-user-settings-page .core-success {
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.6rem;
+  font-size: 0.8rem;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: var(--color-success-400, #34d399);
+}
+
+.core-user-settings-page .core-loading {
+  color: var(--color-text-secondary, #94a3b8);
+}
+
+.core-user-settings-page .core-divider {
+  border: none;
+  border-top: 1px solid var(--color-border-primary, #1e293b);
+  margin: 0.25rem 0;
+}
+
+@media (max-width: 640px) {
+  .core-settings-form {
+    grid-template-columns: 1fr;
+  }
+  .core-settings-form button[type="submit"] {
+    justify-self: stretch;
+  }
+}
+
+/* Light theme — nền sáng, chữ đậm, viền slate */
+[data-theme="light"] .core-user-settings-page {
+  color: #0f172a;
+}
+
+[data-theme="light"] .core-user-settings-page .core-page-header h1,
+[data-theme="light"] .core-settings-password h2 {
+  color: #0f172a;
+}
+
+[data-theme="light"] .core-user-settings-page .core-user-id {
+  color: #64748b;
+}
+
+[data-theme="light"] .core-settings-form,
+[data-theme="light"] .core-settings-password {
+  background: #fff;
+  border-color: #e2e8f0;
+  box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.08);
+}
+
+[data-theme="light"] .core-settings-form > label {
+  color: #475569;
+}
+
+[data-theme="light"] .core-settings-form input,
+[data-theme="light"] .core-settings-form select {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+[data-theme="light"] .core-settings-form input::placeholder {
+  color: #94a3b8;
+}
+
+[data-theme="light"] .core-user-settings-page .core-divider {
+  border-top-color: #e2e8f0;
+}

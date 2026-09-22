@@ -3,6 +3,7 @@ import { createElement, ChangeEvent, FormEvent, SyntheticEvent, useCallback, use
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
 import { DNSECredentialsSection } from "../components/DNSECredentialsSection.js";
+import "./UserSettingsPage.css";
 
 const e = createElement;
 
