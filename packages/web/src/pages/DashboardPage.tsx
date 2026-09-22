@@ -11,6 +11,7 @@ import { CoreDashboardPositionDeck } from "../components/dashboard/CoreDashboard
 import { usePortfolio } from "../context/PortfolioContext.js";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useAlertCenterSnapshot } from "../hooks/useAlertCenterSnapshot.js";
+import { dedupAndSortAlerts } from "../utils/alertDedup.js";
 import { collectUniqueSortedSymbols } from "../utils/dashboardSymbols.js";
 import { PageErrorBoundary } from "../components/PageErrorBoundary.js";
 
@@ -156,6 +157,8 @@ export function DashboardPage({
   }, [fetchDigest]);
 
   // --- Historical Alert Snapshot ---
+  // F3: scope cùng phiên mới nhất như Alert Center (trước đây không timeframe
+  // nên whale đa phiên lấn hết 20 slot, đẩy cảnh báo mới nhất ra ngoài).
   const {
     alerts: snapshotAlerts,
     loading: snapshotLoading,
@@ -165,7 +168,7 @@ export function DashboardPage({
     goToNextPage,
     goToPrevPage,
     loadInitial,
-  } = useAlertCenterSnapshot({ page_size: 20 });
+  } = useAlertCenterSnapshot({ page_size: 20, timeframe: "session" });
 
   useEffect(() => {
     if (resolvedPortfolioId && enabled) {
@@ -242,21 +245,14 @@ export function DashboardPage({
     });
   }, [heatmapSymbols, holdings, trackedSymbols, mergedQuotes]);
 
-  // Merge realtime alerts + prop alerts + historical snapshot alerts
+  // Merge realtime alerts + prop alerts + historical snapshot alerts.
+  // F2: dedup + sort mới-nhất-trước bằng util dùng chung (trước đây giữ nguyên
+  // thứ tự merge nên whale cũ nằm trên shock mới).
   const mergedAlerts = React.useMemo(() => {
     const feedAlerts = realtimeFeed?.alerts || [];
     const feedDarkFlow = realtimeFeed?.darkFlowAlerts || [];
     const allAlerts: AlertItem[] = [...feedAlerts, ...feedDarkFlow, ...(globalRealtimeAlerts || []), ...(alerts || []), ...snapshotAlerts];
-    const unique: AlertItem[] = [];
-    const seen = new Set<string>();
-    allAlerts.forEach((a) => {
-      const key = (a as any)?.alert_id || (a as any)?.event_id || a?.id || `${a?.symbol}-${a?.ts || a?.timestamp}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        unique.push(a);
-      }
-    });
-    return unique;
+    return dedupAndSortAlerts(allAlerts) as AlertItem[];
   }, [alerts, realtimeFeed?.alerts, realtimeFeed?.darkFlowAlerts, globalRealtimeAlerts, snapshotAlerts]);
 
   // Alert pagination state for UnifiedAlertCenter
@@ -336,12 +332,13 @@ export function DashboardPage({
         <PageErrorBoundary>
           {showSkeleton
             ? <LoadingSkeleton rows={1} />
-            : <SmartStatsHeader
+              : <SmartStatsHeader
                 summary={summary}
                 analytics={analytics}
                 holdings={holdings}
                 loading={loading}
                 realtimeBreadth={resolvedBreadth}
+                updatedAt={(summary as any)?.updated_at ?? null}
                 onRefresh={refresh}
               />
           }
@@ -388,6 +385,8 @@ export function DashboardPage({
                   onSelectSession={setSelectedSession}
                   selectedSymbol={selectedSymbol}
                   onSelectSymbol={setSelectedSymbol}
+                  scopeCount={heatmapSymbols.length}
+                  scopeUpdatedAt={(summary as any)?.updated_at ?? null}
                 />
             }
           </PageErrorBoundary>

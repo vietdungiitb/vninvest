@@ -45,7 +45,7 @@ export function createMarketClient({ coreGet, corePost }) {
 
     /**
      * List alert-center feed (main lane) with optional filters.
-     * @param {object} [params] - Filters: symbol, alert_family, severity, session_date, cursor, page_size
+     * @param {object} [params] - Filters: symbol, alert_family, severity, session_date, timeframe, order, cursor, page_size
      * @returns {Promise<{results: object[], next: string|null, previous: string|null}>}
      */
     getAlertCenterFeed(params = {}) {

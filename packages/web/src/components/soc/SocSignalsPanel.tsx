@@ -1188,6 +1188,61 @@ export function SocSignalsPanel() {
       createElement("span", { role: "columnheader" }, t("soc.signals_overview.col_state", { defaultValue: "Xử lý" })),
     );
 
+  // ─── Mô tả tín hiệu giàu thông tin: chấm severity + mã in đậm + giá trị tô màu theo hướng.
+  // Tách title dạng "Cá mập mua SJS: 634,052,153đ" thành [tiền tố mờ][MÃ đậm][giá trị màu hướng].
+  const renderSignalDesc = (s: RecentSignal) => {
+    const raw = s.title || "";
+    if (!raw) {
+      return createElement("div", { className: styles.signalTitle, style: { opacity: 0.5 } }, "\u2014");
+    }
+    const sym = s.symbol || "";
+    let before = raw;
+    let rest = "";
+    const at = sym ? raw.indexOf(sym) : -1;
+    if (at >= 0) {
+      before = raw.slice(0, at);
+      rest = raw.slice(at + sym.length);
+    }
+    // Giá trị ở cuối chuỗi: BẮT BUỘC có đơn vị (đ/VND/M/K/B/%) hoặc dấu phân cách
+    // (,/.) — vd "1,047M VND", "634,052,153đ". Số trơn ("Whale 1") không tính.
+    const pickAmount = (text: string): string => {
+      const withUnit = text.match(/([\d.,]+\s*(?:đ|VND|M\s*VND|M|K|B|%))\s*$/);
+      if (withUnit && withUnit[1].trim()) return withUnit[1];
+      const grouped = text.match(/(\d[\d.,]*[.,]\d[\d.,]*)\s*$/);
+      if (grouped && grouped[1].trim()) return grouped[1];
+      return "";
+    };
+    // Chỉ fallback sang raw khi không tách được mã (tránh tách nhầm số trong tiền tố)
+    const amount = pickAmount(rest) || (at < 0 ? pickAmount(raw) : "");
+    let mid = rest;
+    if (amount) {
+      mid = (at >= 0 ? rest : raw).slice(0, (at >= 0 ? rest : raw).lastIndexOf(amount));
+      if (at < 0) before = "";
+    } else if (at < 0) {
+      before = raw;
+      mid = "";
+    }
+    const a = (s.action || "").toLowerCase();
+    const amountColor = a === "buy" || a === "b" || a === "accumulate"
+      ? toneColor("success")
+      : a === "sell" || a === "s" || a === "distribute"
+        ? toneColor("danger")
+        : "var(--text-muted, #94a3b8)";
+    return createElement("div", { className: styles.signalDesc, title: raw },
+      createElement("span", {
+        className: styles.signalSevDot,
+        style: { background: socStatusColor(s.severity) },
+        title: s.severity || "",
+      }),
+      createElement("span", { className: styles.signalDescText },
+        before || null,
+        at >= 0 ? createElement("span", { className: styles.signalDescSymbol }, sym) : null,
+        mid || null,
+        amount ? createElement("span", { className: styles.signalDescAmount, style: { color: amountColor } }, amount) : null,
+      ),
+    );
+  };
+
   const renderSignalRow = (s: RecentSignal, idx: number) => {
     const key = signalKey(s, idx);
     const isExpanded = expandedId === key;
@@ -1257,8 +1312,8 @@ export function SocSignalsPanel() {
               title: s.severity,
             }, s.severity)
           : createElement("span", { className: styles.signalSeverityBadge, style: { color: "var(--text-muted, #94a3b8)" } }, "\u2014"),
-        // Cột 7: mô tả/tên rule để đánh giá nhanh không cần mở rộng row
-        createElement("div", { className: styles.signalTitle, title: s.title || "" }, s.title || "\u2014"),
+        // Cột 7: mô tả giàu thông tin (severity dot + mã đậm + giá trị màu hướng)
+        renderSignalDesc(s),
         // Cột 8: giá trị (KL/giá trị lệnh)
         createElement("div", { className: styles.signalVolume, title: s.volume != null ? String(s.volume) : "" },
           s.volume != null ? formatVolume(s.volume) : "\u2014",
@@ -2346,8 +2401,9 @@ export function SocSignalsPanel() {
                       filteredSignals.length === 0
                         ? renderRadarEmptyState()
                         : createElement("div", null,
-                            renderFeedColumnHeader(),
                             createElement("div", { className: styles.signalFeed },
+                              // Header sticky TRONG scroll-container để trục cột khớp rows tuyệt đối
+                              renderFeedColumnHeader(),
                               ...pagedSignals.map((s, idx) => renderSignalRow(s, (safePage - 1) * pageSize + idx)),
                             ),
                             renderFeedPagination(),

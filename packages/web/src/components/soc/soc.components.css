@@ -1160,26 +1160,35 @@
   overflow-y: auto;
 }
 
+/* Live signal feed grid — header và row CHUNG một template để trục cột luôn khớp.
+   Header nằm TRONG .signalFeed (sticky) nên chia sẻ đúng scrollbar với rows,
+   tránh lệch cột phải như khi header đứng ngoài scroll-container. */
 .signalFeedHeader {
   display: grid;
   grid-template-columns:
-    20px 26px 72px 78px 60px 92px minmax(160px, 1fr)
-    100px 96px 96px;
+    18px 28px 84px 88px 68px 96px minmax(180px, 1fr)
+    92px 176px 110px;
   gap: 0.5rem;
   align-items: center;
-  padding: 0 0.75rem 0.35rem;
+  padding: 0.35rem 0.75rem;
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--text-muted, var(--soc-c-94a3b8));
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(var(--soc-rgb-0f172a) / 0.96);
+  border-bottom: 1px solid rgba(var(--soc-rgb-5078a8) / 0.15);
+  border-radius: 8px 8px 0 0;
 }
 
 .signalRow {
   display: grid;
   grid-template-columns:
-    20px 26px 72px 78px 60px 92px minmax(160px, 1fr)
-    100px 96px 96px;
+    18px 28px 84px 88px 68px 96px minmax(180px, 1fr)
+    92px 176px 110px;
   gap: 0.5rem;
   align-items: center;
   padding: 0.5rem 0.75rem;
@@ -1246,6 +1255,38 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Mô tả tín hiệu giàu thông tin: chấm severity + mã in đậm + giá trị tô màu theo hướng */
+.signalDesc {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  font-size: 0.75rem;
+  overflow: hidden;
+}
+.signalSevDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.signalDescText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  color: var(--text-muted, var(--soc-c-94a3b8));
+}
+.signalDescSymbol {
+  font-weight: 700;
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+}
+.signalDescAmount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .signalLabel {
@@ -1287,13 +1328,16 @@
   color: var(--text-muted, var(--soc-c-94a3b8));
   font-variant-numeric: tabular-nums;
   text-align: right;
+  white-space: nowrap;
 }
 
 .signalTime {
   font-size: 0.7rem;
   color: var(--text-muted, var(--soc-c-94a3b8));
   white-space: nowrap;
-  min-width: 52px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
   text-align: right;
 }
 

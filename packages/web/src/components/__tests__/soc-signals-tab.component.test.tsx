@@ -824,3 +824,55 @@ describe("SocSignalsPanel — W2.3 rules + precision", () => {
     expect(mocks.feedbackSocSignalRule).toHaveBeenCalledWith(expect.objectContaining({ alert_id: "a-d1", signal: "down" }));
   });
 });
+
+describe("signal desc repolish — cột Mô tả giàu thông tin", () => {
+  it("tách mã in đậm + giá trị cuối màu theo hướng + chấm severity", async () => {
+    mocks.getSocWhaleRecent.mockResolvedValue({
+      recent: [
+        {
+          id: 9,
+          symbol: "SJS",
+          severity: "medium",
+          metadata: {},
+          session_date: "2026-09-22",
+          value: 634052153,
+          side: "buy",
+          timestamp: "2026-09-22T08:36:00Z",
+          title: "Cá mập mua SJS: 634,052,153đ",
+        },
+      ],
+      total_today: 1,
+    });
+    const { container } = render(<SocSignalsPanel />);
+    // Mã xuất hiện 2 nơi: cột Mã + span in đậm trong Mô tả
+    expect(await screen.findAllByText("SJS")).toHaveLength(2);
+    const descSymbol = container.querySelector('[class*="signalDescSymbol"]');
+    expect(descSymbol?.textContent).toBe("SJS");
+    const amount = container.querySelector('[class*="signalDescAmount"]') as HTMLElement | null;
+    expect(amount?.textContent).toBe("634,052,153đ");
+    expect(amount?.style?.color).toBeTruthy();
+    expect(container.querySelector('[class*="signalSevDot"]')).toBeTruthy();
+  });
+
+  it("không tách số trơn trong title (tránh đụng nút phân trang)", async () => {
+    mocks.getSocWhaleRecent.mockResolvedValue({
+      recent: [
+        {
+          id: 10,
+          symbol: "T01",
+          severity: "low",
+          metadata: {},
+          session_date: "2026-09-22",
+          value: null,
+          side: "neutral",
+          timestamp: "2026-09-22T08:36:00Z",
+          title: "Whale 1",
+        },
+      ],
+      total_today: 1,
+    });
+    const { container } = render(<SocSignalsPanel />);
+    await screen.findByText("T01");
+    expect(container.querySelector('[class*="signalDescAmount"]')).toBeNull();
+  });
+});

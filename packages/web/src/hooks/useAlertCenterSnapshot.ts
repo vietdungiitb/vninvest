@@ -6,6 +6,7 @@ export interface AlertFeedParams {
   severity?: string;
   alert_family?: string;
   session_date?: string;
+  timeframe?: string;
   page_size?: number;
   cursor?: string;
 }
@@ -39,7 +40,7 @@ export function useAlertCenterSnapshot(initialParams: AlertFeedParams = {}) {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Deconstruct primitive values from initialParams to avoid callback dependency invalidation
-  const { symbol, severity, alert_family, session_date, page_size } = initialParams;
+  const { symbol, severity, alert_family, session_date, timeframe, page_size } = initialParams;
 
   const fetchFeed = useCallback(async (params: AlertFeedParams, silent = false) => {
     if (!silent) setLoading(true);
@@ -65,8 +66,8 @@ export function useAlertCenterSnapshot(initialParams: AlertFeedParams = {}) {
 
   const loadInitial = useCallback(() => {
     setCursorHistory([]);
-    fetchFeed({ symbol, severity, alert_family, session_date, page_size });
-  }, [fetchFeed, symbol, severity, alert_family, session_date, page_size]);
+    fetchFeed({ symbol, severity, alert_family, session_date, timeframe, page_size });
+  }, [fetchFeed, symbol, severity, alert_family, session_date, timeframe, page_size]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -77,18 +78,18 @@ export function useAlertCenterSnapshot(initialParams: AlertFeedParams = {}) {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(() => {
       if (mountedRef.current) {
-        fetchFeed({ symbol, severity, alert_family, session_date, page_size }, true);
+        fetchFeed({ symbol, severity, alert_family, session_date, timeframe, page_size }, true);
       }
     }, POLL_INTERVAL);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [fetchFeed, symbol, severity, alert_family, session_date, page_size]);
+  }, [fetchFeed, symbol, severity, alert_family, session_date, timeframe, page_size]);
 
   const goToNextPage = useCallback(() => {
     if (nextCursor) {
       setCursorHistory(prev => [...prev, nextCursor]);
-      fetchFeed({ symbol, severity, alert_family, session_date, page_size, cursor: nextCursor });
+      fetchFeed({ symbol, severity, alert_family, session_date, timeframe, page_size, cursor: nextCursor });
     }
-  }, [nextCursor, fetchFeed, symbol, severity, alert_family, session_date, page_size]);
+  }, [nextCursor, fetchFeed, symbol, severity, alert_family, session_date, timeframe, page_size]);
 
   const goToPrevPage = useCallback(() => {
     if (cursorHistory.length === 0) return;
@@ -96,8 +97,8 @@ export function useAlertCenterSnapshot(initialParams: AlertFeedParams = {}) {
     prevCursors.pop();
     setCursorHistory(prevCursors);
     const prevCursor = prevCursors.length > 0 ? prevCursors[prevCursors.length - 1] : undefined;
-    fetchFeed({ symbol, severity, alert_family, session_date, page_size, cursor: prevCursor });
-  }, [cursorHistory, fetchFeed, symbol, severity, alert_family, session_date, page_size]);
+    fetchFeed({ symbol, severity, alert_family, session_date, timeframe, page_size, cursor: prevCursor });
+  }, [cursorHistory, fetchFeed, symbol, severity, alert_family, session_date, timeframe, page_size]);
 
   return {
     alerts,

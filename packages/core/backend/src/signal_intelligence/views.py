@@ -52,8 +52,16 @@ def _type_priority_annotation():
 
 
 class AlertCenterFeedCursorPagination(AlertCursorPagination):
-    """Cursor pagination for alert center feed ordered by type priority then recency."""
-    ordering = ('type_priority', '-triggered_at', '-pk')
+    """Cursor pagination for alert center feed ordered by recency (matches default queryset)."""
+    ordering = ('-triggered_at', '-pk')
+
+    def get_ordering(self, request, queryset, view=None):
+        # DRF cursor pagination tự order_by lại queryset nên phải đọc ?order= ở đây,
+        # khớp với annotation type_priority mà AlertCenterFeedView gắn ở mode priority.
+        order = (request.query_params.get('order') or 'recent').strip().lower()
+        if order == 'priority':
+            return ('type_priority', '-triggered_at', '-pk')
+        return super().get_ordering(request, queryset, view)
 
 from . import delivery_service
 from .sse import AlertCenterStreamEventRenderer, AlertCenterStreamingHttpResponse, sse_format
@@ -384,6 +392,8 @@ class UserScopedAlertFeedBaseView(AlertFeedBaseListView):
             OpenApiParameter(name='severity', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
             OpenApiParameter(name='session_date', type=OpenApiTypes.DATE, location=OpenApiParameter.QUERY, required=False),
             OpenApiParameter(name='timeframe', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
+            OpenApiParameter(name='order', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False,
+                             description='recent (mặc định, mới nhất trước) | priority (whale/dark_flow trước)'),
             OpenApiParameter(name='cursor', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
             OpenApiParameter(name='page_size', type=OpenApiTypes.INT, location=OpenApiParameter.QUERY, required=False),
         ],
@@ -394,12 +404,16 @@ class AlertCenterFeedView(UserScopedAlertFeedBaseView):
     pagination_class = AlertCenterFeedCursorPagination
 
     def get_queryset(self):
-        qs = (
-            UnifiedAlert.objects
-            .select_related('whale_detail')
-            .annotate(type_priority=_type_priority_annotation())
-            .order_by('type_priority', '-triggered_at', '-pk')
-        )
+        # F1: mặc định recency-first để màn hình nào cũng thấy cảnh báo mới nhất.
+        # ?order=priority giữ hành vi cũ (whale/dark_flow trước) cho ai cần.
+        order = (self.request.query_params.get('order') or 'recent').strip().lower()
+        qs = UnifiedAlert.objects.select_related('whale_detail')
+        if order == 'priority':
+            qs = qs.annotate(type_priority=_type_priority_annotation()).order_by(
+                'type_priority', '-triggered_at', '-pk'
+            )
+        else:
+            qs = qs.order_by('-triggered_at', '-pk')
         qs = _apply_common_alert_filters(qs, self.request.query_params, lane='main')
         return delivery_service.apply_user_delivery_policy(user=self.request.user, queryset=qs)
 

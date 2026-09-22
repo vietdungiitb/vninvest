@@ -177,6 +177,29 @@ class AlertCenterAPITests(TestCase):
         self.assertIsNotNone(symbols[0].get('total_value'))
         self.assertEqual(symbols[0].get('total_value'), 0)
 
+    def test_feed_default_orders_by_recency_not_type_priority(self):
+        # F1: shock mới phải đứng trước whale cũ (trước đây whale luôn trước).
+        old = self._create_alert(alert_type='whale', source_ref='ord-whale-old', symbol='VCI')
+        new = self._create_alert(alert_type='signal', source_ref='market_anomaly:ord-new', symbol='VCI')
+        UnifiedAlert.objects.filter(pk=old.pk).update(triggered_at=timezone.now() - timedelta(hours=5))
+        UnifiedAlert.objects.filter(pk=new.pk).update(triggered_at=timezone.now())
+        res = self.client.get('/core/v1/signals/alert-center/feed')
+        self.assertEqual(res.status_code, 200)
+        results = res.json()['results']
+        self.assertEqual(results[0]['alert_type'], 'signal')
+        self.assertEqual(results[1]['alert_type'], 'whale')
+
+    def test_feed_order_priority_keeps_legacy_type_first(self):
+        old = self._create_alert(alert_type='whale', source_ref='ord-p-whale-old', symbol='VCI')
+        new = self._create_alert(alert_type='signal', source_ref='market_anomaly:ord-p-new', symbol='VCI')
+        UnifiedAlert.objects.filter(pk=old.pk).update(triggered_at=timezone.now() - timedelta(hours=5))
+        UnifiedAlert.objects.filter(pk=new.pk).update(triggered_at=timezone.now())
+        res = self.client.get('/core/v1/signals/alert-center/feed', {'order': 'priority'})
+        self.assertEqual(res.status_code, 200)
+        results = res.json()['results']
+        self.assertEqual(results[0]['alert_type'], 'whale')
+        self.assertEqual(results[1]['alert_type'], 'signal')
+
     def test_cursor_pagination_ordering_annotated(self):
         self._create_alert(alert_type='whale', source_ref='cur-whale-1', symbol='VCI')
         self._create_alert(alert_type='whale', source_ref='cur-whale-2', symbol='VCI')
