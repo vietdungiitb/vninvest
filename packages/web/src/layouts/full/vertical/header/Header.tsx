@@ -294,12 +294,12 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
           e(
             DropdownMenuItem,
             { asChild: true },
-            e(Button, { variant: 'ghost', className: 'w-full justify-start gap-2' }, e(User, { className: 'h-4 w-4' }), t('layout.profile') || 'Profile')
+            e(Button, { variant: 'ghost', className: 'w-full justify-start gap-2', onClick: () => navigate('/settings') }, e(User, { className: 'h-4 w-4' }), t('layout.profile') || 'Profile')
           ),
           e(
             DropdownMenuItem,
             { asChild: true },
-            e(Button, { variant: 'ghost', className: 'w-full justify-start gap-2' }, e(Settings, { className: 'h-4 w-4' }), t('layout.settings') || 'Settings')
+            e(Button, { variant: 'ghost', className: 'w-full justify-start gap-2', onClick: () => navigate('/settings') }, e(Settings, { className: 'h-4 w-4' }), t('layout.settings') || 'Settings')
           ),
           e(DropdownMenuSeparator, null),
           e(

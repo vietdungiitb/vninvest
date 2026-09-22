@@ -126,11 +126,24 @@ export function createAuthClient({ coreGet, corePost, corePatch, persistTokens, 
 
     /**
      * Update the authenticated user's profile.
-     * @param {{ display_name?: string, language?: string, theme?: string, whale_alert_threshold?: number }} data
+     * @param {{ display_name?: string, avatar_url?: string, language?: string, theme?: string, whale_alert_threshold?: number }} data
      * @returns {Promise<object>}
      */
     updateUserProfile(data) {
       return corePatch("/identity/profile/", data);
+    },
+
+    /**
+     * Change the authenticated user's password (verifies current password).
+     * @param {{ current_password: string, new_password: string, new_password_confirm: string }} data
+     * @returns {Promise<object>}
+     */
+    changeUserPassword(data) {
+      return corePost("/auth/password-change/", {
+        current_password: String(data?.current_password || ""),
+        new_password: String(data?.new_password || ""),
+        new_password_confirm: String(data?.new_password_confirm || ""),
+      });
     },
   };
 }

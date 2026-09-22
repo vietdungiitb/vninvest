@@ -491,6 +491,7 @@ class UserProfile(models.Model):
         verbose_name='Tenant',
     )
     display_name = models.CharField(max_length=120, blank=True, verbose_name='Tên hiển thị')
+    avatar_url = models.URLField(max_length=500, blank=True, default='', verbose_name='Ảnh đại diện (URL)')
     language = models.CharField(
         max_length=8,
         choices=LanguageChoices.choices,

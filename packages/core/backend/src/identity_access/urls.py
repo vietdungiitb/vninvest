@@ -53,6 +53,7 @@ urlpatterns = [
     path('auth/resend-verification/', views_auth.resend_email_verification_view, name='auth-resend-verification'),
     path('auth/password-reset/', views_auth.password_reset_request_view, name='auth-password-reset'),
     path('auth/password-reset/confirm/', views_auth.password_reset_confirm_view, name='auth-password-reset-confirm'),
+    path('auth/password-change/', views_auth.password_change_view, name='auth-password-change'),
     path('auth/token/refresh/', views_auth.refresh_token_view, name='auth-token-refresh'),
 
     # SSO endpoints

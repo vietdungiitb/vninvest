@@ -134,6 +134,20 @@ function App() {
   );
 }
 
+// Áp theme đã lưu trước first paint để không nháy dark khi user chọn light.
+try {
+  if (typeof document !== 'undefined' && typeof window !== 'undefined') {
+    const storedTheme = window.localStorage.getItem('vninvest-theme');
+    if (storedTheme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  }
+} catch {
+  // private mode — bỏ qua
+}
+
 const container = document.getElementById('root');
 if (container) {
   const root = createRoot(container);

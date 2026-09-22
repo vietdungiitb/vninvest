@@ -38,6 +38,7 @@ export interface CoreApiAdapter {
   refreshAuthToken: (refreshToken: string) => Promise<any>;
   getUserProfile: () => Promise<any>;
   updateUserProfile: (data: any) => Promise<any>;
+  changeUserPassword: (data: { current_password: string; new_password: string; new_password_confirm: string }) => Promise<any>;
   getTenantLifecycle: () => Promise<any>;
   
   // Market

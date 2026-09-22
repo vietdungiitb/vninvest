@@ -270,6 +270,7 @@ class UserProfileView(APIView):
             'username': user.username,
             'email': user.email,
             'display_name': profile.display_name,
+            'avatar_url': profile.avatar_url,
             'language': profile.language,
             'theme': profile.theme,
             'whale_alert_threshold': str(profile.whale_alert_threshold),
@@ -286,7 +287,7 @@ class UserProfileView(APIView):
                 'display_name': request.user.get_full_name() or request.user.username,
             },
         )
-        allowed_fields = {'display_name', 'language', 'theme', 'whale_alert_threshold', 'preferences'}
+        allowed_fields = {'display_name', 'avatar_url', 'language', 'theme', 'whale_alert_threshold', 'preferences'}
         update_fields = []
         for field in allowed_fields:
             if field in request.data:
@@ -299,6 +300,7 @@ class UserProfileView(APIView):
             'username': request.user.username,
             'email': request.user.email,
             'display_name': profile.display_name,
+            'avatar_url': profile.avatar_url,
             'language': profile.language,
             'theme': profile.theme,
             'whale_alert_threshold': str(profile.whale_alert_threshold),
