@@ -58,6 +58,7 @@ path('overview/stream/', overview_stream.OverviewStreamView.as_view(), name='soc
     # Prefetch domain (7)
     path('prefetch/config/', prefetch.PrefetchConfigView.as_view(), name='soc_prefetch_config'),
     path('prefetch/config/apply/', prefetch.PrefetchConfigView.as_view(), name='soc_prefetch_config_apply'),
+    path('prefetch/config/preview/', prefetch.PrefetchConfigPreviewView.as_view(), name='soc_prefetch_preview'),
     path('prefetch/config/profiles/', prefetch.PrefetchProfilesView.as_view(), name='soc_prefetch_profiles'),
     path('prefetch/cache-status/', prefetch.PrefetchCacheStatusView.as_view(), name='soc_prefetch_cache'),
     path('prefetch/purge-cache/', prefetch.PrefetchPurgeCacheView.as_view(), name='soc_prefetch_purge'),

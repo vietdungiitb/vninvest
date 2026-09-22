@@ -3,6 +3,7 @@ Prefetch Domain Views (8 endpoints) — runtime config and scheduling surface.
 
 GET /api/soc/prefetch/config/ — get current config
 POST /api/soc/prefetch/config/ — apply config
+POST /api/soc/prefetch/config/preview/ — preview config (validate + diff)
 GET /api/soc/prefetch/config/profiles/ — list 6 time profiles
 GET /api/soc/prefetch/cache-status/ — cache performance
 POST /api/soc/prefetch/purge-cache/ — force purge
@@ -76,6 +77,9 @@ class PrefetchCacheStatusResponseSerializer(serializers.Serializer):
     cache_misses = serializers.IntegerField()
     hit_ratio = serializers.FloatField()
     last_prefetch_at = serializers.DateTimeField()
+    ttl_seconds = serializers.IntegerField(required=False)
+    ttl_minutes = serializers.FloatField(required=False)
+    cache_ttl_seconds = serializers.IntegerField(required=False)
 
 
 class PrefetchPurgeCacheRequestSerializer(serializers.Serializer):
@@ -256,6 +260,70 @@ class PrefetchConfigView(SOCBaseView, ConfigApplyMixin):
         )
 
 
+class PrefetchConfigPreviewResponseSerializer(serializers.Serializer):
+    valid = serializers.BooleanField()
+    errors = serializers.ListField(child=serializers.CharField(), required=False)
+    config_payload = PrefetchConfigPayloadSerializer(required=False)
+    change_summary = serializers.ListField(child=serializers.CharField(), required=False)
+    impact = serializers.DictField(required=False)
+
+
+class PrefetchConfigPreviewView(SOCBaseView):
+    """POST /api/soc/prefetch/config/preview/"""
+
+    @extend_schema(
+        summary='Xem trước config Prefetch',
+        description='Validate và preview config Prefetch trước khi apply, bao gồm change summary và impact.',
+        request=PrefetchConfigRequestSerializer,
+        responses={
+            200: PrefetchConfigPreviewResponseSerializer,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+    )
+    def post(self, request):
+        """Preview config before apply (F-1: mirror VnbrokerConfigPreviewView)."""
+        config_payload = request.data.get('config_payload', {})
+        if not isinstance(config_payload, dict):
+            return Response({
+                'valid': False,
+                'errors': ['config_payload phải là object.'],
+                'change_summary': [],
+                'impact': {},
+            })
+        current = _get_prefetch_config()
+        current_dict = current.to_dict()
+        try:
+            projected = PrefetchTimePolicyConfig.from_dict({**current_dict, **config_payload})
+        except Exception as exc:
+            return Response({
+                'valid': False,
+                'errors': [str(exc)],
+                'change_summary': [],
+                'impact': {},
+            })
+        errors = projected.validate()
+        projected_dict = projected.to_dict()
+        change_summary = [
+            key for key in projected_dict
+            if current_dict.get(key) != projected_dict.get(key)
+        ]
+        return Response({
+            'valid': len(errors) == 0,
+            'errors': errors,
+            'config_payload': projected_dict,
+            'change_summary': change_summary,
+            'impact': {
+                'profile_changed': 'active_profile' in change_summary,
+                'ttl_changed': 'cache_ttl_seconds' in change_summary,
+                'universe_changed': 'universe_group_ids' in change_summary,
+                'schedule_changed': any(
+                    key.endswith('_interval_seconds') for key in change_summary
+                ),
+            },
+        })
+
+
 class PrefetchProfilesView(SOCBaseView):
     """GET /api/soc/prefetch/config/profiles/"""
 
@@ -297,6 +365,11 @@ class PrefetchCacheStatusView(SOCBaseView):
     )
     def get(self, request):
         """Cache performance stats."""
+        # F-2: TTL deriva từ live config (trước đây FE luôn hiển thị 0 min
+        # vì response không có ttl_minutes). Counters vẫn là snapshot tĩnh
+        # (follow-up: wire Redis thật — xem F-4).
+        config = _get_prefetch_config()
+        ttl_seconds = int(config.cache_ttl_seconds or 0)
         return Response({
             'redis': {
                 'connected': True,
@@ -307,6 +380,9 @@ class PrefetchCacheStatusView(SOCBaseView):
             'cache_misses': 3421,
             'hit_ratio': 0.816,
             'last_prefetch_at': timezone.now().isoformat(),
+            'ttl_seconds': ttl_seconds,
+            'ttl_minutes': round(ttl_seconds / 60, 1) if ttl_seconds else 0,
+            'cache_ttl_seconds': ttl_seconds,
         })
 
 
@@ -351,6 +427,13 @@ class PrefetchWarmNowView(SOCBaseView):
     def post(self, request):
         service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['prefetch'])
         config = _get_prefetch_config()
+        # F-3: tôn trọng universe_group_ids do FE gửi (trước đây luôn dùng
+        # config, khiến toggle nhóm ở UI không có tác dụng).
+        requested_groups = request.data.get('universe_group_ids', None)
+        if isinstance(requested_groups, list) and requested_groups:
+            groups = [str(g) for g in requested_groups]
+        else:
+            groups = config.universe_group_ids
         run_log = ServiceRunLog.objects.create(
             service=service,
             status='queued',
@@ -358,7 +441,7 @@ class PrefetchWarmNowView(SOCBaseView):
                 'trigger': 'warm_now',
                 'requested_by': getattr(request.user, 'username', 'api'),
                 'active_profile': config.active_profile,
-                'universe_group_ids': config.universe_group_ids,
+                'universe_group_ids': groups,
             },
             output_summary={},
         )
@@ -366,7 +449,7 @@ class PrefetchWarmNowView(SOCBaseView):
             'status': 'queued',
             'run_log_id': run_log.id,
             'active_profile': config.active_profile,
-            'groups': config.universe_group_ids,
+            'groups': groups,
             'requested_at': run_log.started_at.isoformat(),
         }, status=status.HTTP_202_ACCEPTED)
 

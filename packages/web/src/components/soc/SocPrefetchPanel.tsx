@@ -9,7 +9,20 @@ import { toneColor } from "./socStatusColors.js";
 import styles from "./soc.module.css";
 
 interface PrefetchConfig {
+  active_profile?: string;
+  pre_open_interval_seconds?: number;
+  market_open_interval_seconds?: number;
+  lunch_break_interval_seconds?: number;
+  pre_close_interval_seconds?: number;
+  post_close_interval_seconds?: number;
+  offhours_interval_seconds?: number;
   batch_size?: number;
+  max_concurrent_workers?: number;
+  universe_group_ids?: string[];
+  cache_ttl_seconds?: number;
+  enabled?: boolean;
+  skip_non_trading_days?: boolean;
+  batch_size_legacy?: number;
   symbol_limit?: number;
   max_retries?: number;
   rate_limit_cooldown?: number;
@@ -36,8 +49,16 @@ export function SocPrefetchPanel() {
   const [cacheStatus, setCacheStatus] = useState<PrefetchCacheStatus | null>(null);
   const [universeGroups, setUniverseGroups] = useState<any[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [universeMode, setUniverseMode] = useState("");
+  const [hintGroupIds, setHintGroupIds] = useState<string[]>([]);
   const [editConfig, setEditConfig] = useState("");
-  const [previewModal, setPreviewModal] = useState<{ before: Record<string, unknown>; after: Record<string, unknown>; preview?: unknown } | null>(null);
+  const [previewModal, setPreviewModal] = useState<{
+    before: Record<string, unknown>;
+    after: Record<string, unknown>;
+    preview?: unknown;
+    validationErrors?: string[];
+    changeSummary?: string[];
+  } | null>(null);
   const [applying, setApplying] = useState(false);
 
   const fetchData = async () => {
@@ -46,7 +67,7 @@ export function SocPrefetchPanel() {
       const adapter = defaultCoreApiAdapter as unknown as {
         getSocPrefetchConfig: () => Promise<PrefetchConfig>;
         getSocPrefetchCacheStatus: () => Promise<PrefetchCacheStatus>;
-        getSocPrefetchUniverseGroups: () => Promise<{ groups?: any[] }>;
+        getSocPrefetchUniverseGroups: () => Promise<{ groups?: any[]; universe_mode?: string; hint_group_ids?: string[] }>;
       };
 
       const [cfg, cache, groups] = await Promise.all([
@@ -56,15 +77,19 @@ export function SocPrefetchPanel() {
       ]);
 
       setConfig(cfg);
-      setEditConfig(JSON.stringify(cfg || {}, null, 2));
       setCacheStatus(cache);
       const groupsList = groups.groups || [];
       setUniverseGroups(groupsList);
-      setSelectedGroups((prev) => {
-        if (prev.length > 0) return prev;
-        const initial = groupsList.filter((g: any) => g.selected).map((g: any) => g.id);
-        return initial.length > 0 ? initial : groupsList.map((g: any) => g.id).slice(0, 2);
-      });
+      setUniverseMode(groups.universe_mode || "");
+      setHintGroupIds(Array.isArray(groups.hint_group_ids) ? groups.hint_group_ids : []);
+      // P0-3: reconcile universe_group_ids vào textarea ngay từ lần tải đầu,
+      // tránh mâu thuẫn "Đã chọn 2/4 nhóm" nhưng JSON vẫn `"universe_group_ids": []`.
+      const flagged = groupsList.filter((g: any) => g.selected).map((g: any) => g.id);
+      const initial = selectedGroups.length > 0
+        ? selectedGroups
+        : (flagged.length > 0 ? flagged : groupsList.map((g: any) => g.id).slice(0, 2));
+      setSelectedGroups(initial);
+      setEditConfig(JSON.stringify({ ...(cfg as Record<string, unknown> || {}), universe_group_ids: initial }, null, 2));
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Cannot load prefetch data.");
@@ -75,10 +100,11 @@ export function SocPrefetchPanel() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleEditConfig = () => {
-    setEditConfig(JSON.stringify(config || {}, null, 2));
+    setEditConfig(JSON.stringify({ ...(config as Record<string, unknown> || {}), universe_group_ids: selectedGroups }, null, 2));
   };
 
   const handlePreview = async () => {
@@ -93,8 +119,17 @@ export function SocPrefetchPanel() {
     try {
       const adapter = defaultCoreApiAdapter as unknown as { previewSocPrefetchConfig: (cfg: PrefetchConfig) => Promise<unknown> };
       if (typeof adapter.previewSocPrefetchConfig === "function") {
-        const preview = await adapter.previewSocPrefetchConfig(parsed);
-        setPreviewModal({ before: config || {}, after: parsed, preview });
+        const preview = (await adapter.previewSocPrefetchConfig(parsed)) as {
+          errors?: unknown;
+          change_summary?: unknown;
+        } | null;
+        const validationErrors = Array.isArray(preview?.errors)
+          ? (preview.errors as unknown[]).map((e) => String(e))
+          : [];
+        const changeSummary = Array.isArray(preview?.change_summary)
+          ? (preview.change_summary as unknown[]).map((c) => String(c))
+          : [];
+        setPreviewModal({ before: config || {}, after: parsed, preview, validationErrors, changeSummary });
       } else {
         setPreviewModal({ before: config || {}, after: parsed });
       }
@@ -217,6 +252,15 @@ export function SocPrefetchPanel() {
                   createElement("div", { },
                     t("soc.prefetch.groups_summary", { count: selectedGroups.length, total: universeGroups.length }),
                   ),
+                  createElement("div", { },
+                    t("soc.prefetch.universe_groups_hint"),
+                  ),
+                  universeMode === "registry_first"
+                    ? createElement("div", { }, t("soc.prefetch.universe_groups_registry_first"))
+                    : null,
+                  hintGroupIds.length > 0
+                    ? createElement("div", { }, `${t("soc.prefetch.hint_group_ids_label")}: ${hintGroupIds.join(", ")}`)
+                    : null,
                 ),
                 createElement(
                   "div",
@@ -275,6 +319,8 @@ export function SocPrefetchPanel() {
       ? createElement(SocConfigPreviewModal, {
           before: previewModal.before,
           after: previewModal.after,
+          changeSummary: previewModal.changeSummary,
+          validationErrors: previewModal.validationErrors,
           onConfirm: handleApply,
           onCancel: () => setPreviewModal(null),
           loading: applying,

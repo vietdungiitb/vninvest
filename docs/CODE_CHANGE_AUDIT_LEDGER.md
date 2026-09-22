@@ -3746,6 +3746,36 @@
 - **Verify sau hook**: `npx tsc --noEmit` OK trên nội dung đã commit.
 ---
 
+## Entry 139: DEPLOY dev stack sau commit 3f7e2d48 — 2026-09-21
+
+- **Lệnh**: `.\start_dev.ps1` full build + up.
+- **Kết quả**: frontend vite build PASS trong docker (AlertCenterPage chunk mới `Cd9nrjB`), core-api healthy check 1/24, `No queue drift detected`, smoke core-api + frontend OK.
+- **Truy cập**: App `http://localhost:8080`, API `http://localhost:8001/core/v1/health`.
+---
+
+## Entry 140: POLISH cân 2 cột alert-center + fixup i18n — 2026-09-21
+
+- **Polish (`30441130`)**: stats 8 dòng/trang, feed co giãn 220–560px theo nội dung thật, KPI thứ 4 Số mã (bấm xóa lọc mã). Gates: tsc 0, vitest alert-center 39/39, build PASS, full vitest 57/290.
+- **Sự cố i18n**: `npm run i18n:scan` ở session này đã tự ghi key của workstream khác (dashboard-audit/aiAdvisor) vào `vi.js/en.js`; review diff bị cắt ngắn nên lọt vào commit. Đã phát hiện khi test `AIAdvisorAlertPanel.i18n` của họ fail.
+- **Khắc phục**: xác minh component committed của họ (`UnifiedAlertCenter.js`, `SmartStatsHeader.js`, `PortfolioHeatmap.js`, `AIAdvisorAlertPanel.js`) đúng là dùng các key đó → KHÔNG revert; chỉ revert các key scanner thêm mà không ai dùng. Suýt xóa nhầm key chưa commit của họ (`lastScan/noScan/comingSoon`, `breadth*`) bằng `checkout HEAD` — đã khôi phục nguyên văn và verify test họ xanh (3/3).
+- **Fixup (`523a9418`, đã push)**: `fix(i18n): restore dashboard/aiAdvisor keys clobbered by alert-center cleanup`.
+- **Bài học**: (1) không bao giờ `checkout HEAD -- <shared-file>` khi có session khác cùng làm việc — diff từng hunk; (2) `i18n:scan` có tác dụng phụ ghi file, chỉ chạy khi cần và luôn review FULL diff (`git diff`, không truncate); (3) test của workstream khác fail sau khi mình chạm file chung = tín hiệu revert sai, phải dừng và đối chiếu component của họ.
+---
+
+## Entry 141: POLISH card gọn + cân cột (8a27c372) — 2026-09-21
+
+- **Vấn đề từ ảnh**: card trái cao + rỗng nhiều; cột trái rộng thừa, cột phải hẹp làm badge `BÙNG NỔ`/`TRUNG BÌNH` và chữ xuống dòng.
+- **Fix**: gộp dòng family vào hàng badge (bớt 1 dòng/card), card padding 10/12 + gap chặt, `ResizeObserver` đo lại chiều cao khi font/wrap đổi, fallback row 170; layout riêng `acOpsLayout 1.05fr/1fr`; `statusBadge` thêm `nowrap`; feed tối đa 640px.
+- **Gates**: tsc 0, vitest alert-center 36/36. Commit `8a27c372` đã push `origin/dev`; rebuild frontend dev xong.
+---
+
+## Entry 142: Hyperlink mã CP trong card feed (845a21dd) — 2026-09-21
+
+- **Yêu cầu**: bấm tên mã trong card feed → trang chi tiết `/stocks/:symbol`.
+- **Fix**: symbol trong `AlertCard.tsx` thành `<a href="/stocks/{symbol}">` + tooltip `openStockWorkspace` + hover cyan; class `.acSymbolLink` mới.
+- **Gates**: tsc 0, vitest AlertCard 6/6. Commit `845a21dd` đã push; rebuild frontend dev xong.
+---
+
 ## Entry 137: IMPLEMENT remediation UI whale-alerts (Step 1–4) — 2026-09-21
 
 - **Date**: 2026-09-21
@@ -3764,4 +3794,132 @@
 - **Gates**: `tsc` 0; `build PASS 20.83s`; `vitest 57/290`; `jest 17/237`; `lint 0 errors`; `i18n:scan` exit 0 (diff locale chỉ key slice này); `manage.py check` 0; `test_alert_center_api 13 OK`; `signal_intelligence 71 OK`.
 - **Deviations**: family counts trên chip chỉ severity (summary BE không có family breakdown — không đổi BE); KPI unseen/AI không click (thiếu filter BE); type-scale H1 giữ shell system.
 
+---
 
+## Entry 151: Dashboard audit-fix plan S0–S6 bàn giao đội code (2026-09-21)
+
+- **Date**: 2026-09-21
+- **Scope**: Từ audit ảnh Image 1 (35 điểm) + báo cáo phản biện (F1–F9, C1–C7). Chốt 7 locked decisions (L1–L7): SSOT `packages/web`, giữ grid `1fr 1.5fr 1fr` + breakpoint, giữ tên `Bản đồ danh mục` + subtitle scope, title AI rút `Tín hiệu AI`, date `14/12/24` = stale-artifact待S0.3, treemap ECharts-only (cấm d3), 1 util `formatMarket.js` vi-VN.
+- **Plan**: `docs/IMPLEMENTATION_PLAN_DASHBOARD_AUDIT_FIX_20260921.md` — 7 slices S0 baseline → S1 P0 truncation/sign/date → S2 alert filter+card 88–110px → S3 treemap màu liên tục ±7% + legend → S4 grid/scroll/radius/type → S5 breadth/AI-empty/header → S6 tests+gates+docs. Mỗi slice có files khóa (file:line), steps, DoD đo được, minh chứng png/log bắt buộc, phản biện nghiệm thu. Ngoài danh sách §8 thì dừng.
+- **Tests khóa**: `formatMarket` ≥12 cases + `alert-card-compact` + `heatmap-scale` mới; sửa 1 assert title trong `AIAdvisorAlertPanel.i18n.test.js:8`; giữ xanh `DashboardPage.breadth-dedup`.
+- **Gates**: `npx tsc --noEmit` 0 mỗi sub-step; `npm run build` cuối S4+S6; `lint` 0 errors; `i18n:scan` exit 0; vitest/jest dashboard pass; `check:shell` pass.
+- **Chưa code**: entry này chỉ bàn giao plan, chưa sửa UI. Đội code thực thi S0→S6 theo thứ tự, S1–S3 song song được sau S0 (chung `formatMarket.js` do S1 làm trước).
+
+---
+
+## Entry 152: Dashboard audit-fix S0–S6 implemented (2026-09-21)
+
+- **Date**: 2026-09-21
+- **Scope**: Thực thi `docs/IMPLEMENTATION_PLAN_DASHBOARD_AUDIT_FIX_20260921.md` trên SSOT `packages/web`.
+  S0: route `/dashboard` (`routeCatalog.js:47-52`) xác nhận; `14/12/24` = STALE-ARTIFACT (0 hit source).
+- **S1**: MỚI `utils/formatMarket.js` (compact vi-VN/tooltip/date/sign); symbol `alert-sym flex:none`
+  (`UnifiedAlertCenter.js:374`); title AI `Tín hiệu AI`/`AI signals` + nút `btn-nowrap`; dayPL sign-0 xám
+  (`.pill[data-sign]`) + CTA rỗng; `Cập nhật HH:mm` + badge stale 15p (`SmartStatsHeader.js`).
+- **S2**: Filter `.seg` 1 hàng có nhãn+count, zero mờ; card `p-3` head 1 dòng (mã+chip trung tính+compact+time)
+  + meta gộp (dir/value/conf/phiên `dd/MM/yyyy`); badge unread tooltip + `Xem tất cả →` (`/alert-center`
+  `routeCatalog.js:77-78`); hard-code VI → `alert.*` keys + `formatVNDCompact`.
+- **S3**: Thang màu liên tục ECharts-only kẹp ±7% (`heatColorContinuous`/`textOnHeat`, 0% nền trầm+viền vàng);
+  gating nhãn theo share + gom `Khác (n mã)`; legend gradient + scope line (`scopeCount/scopeUpdatedAt`
+  từ `DashboardPage.tsx`); click bỏ qua node gom; tooltip sign-color mới.
+- **S4**: Grid giữ `1fr 1.5fr 1fr` + breakpoints 2/1 cột; lane `height:100%` + grid clamp + `panel-body`
+  scroll-fade; scrollbar 8px; radius 12px lane; `.panel-title` 600/16px sentence-case ×3 panel.
+- **S5**: Breadth `▲·■·▼` + tooltip từng đoạn + aria; AI empty gọn (title/last-scan/CTA, prev-session
+  disabled `Sắp có` vì BE chưa xác minh param); header shell OUT-OF-SCOPE (`s5-header-scope.md`).
+- **Tests**: MỚI `formatMarket` 13 + `heatmap-scale` 6 + `alert-card-compact` 5; sửa 1 assert title
+  `AIAdvisorAlertPanel.i18n.test.js:8`; giữ xanh breadth-dedup.
+- **Gates**: `tsc` 0; vitest 29/29 (4 files); jest i18n 3/3 (fail đầu do jest cache cũ, `--no-cache` PASS);
+  adapter jest 52 pass; eslint 0 errors (37 warn pre-existing); `i18n:scan` exit 0 (diff chỉ keys slice);
+  `build PASS 35.34s`; `check:shell` PASS. Evidence `docs/evidence/dashboard-fix/s0+s5` (.png thay bằng
+  test assertions — không có browser trong môi trường này).
+- **Còn lại**: `frontend/` ModernDashboard chưa sync (S7 ngoài phạm vi); whale-alerts page chưa đồng bộ
+  chip trung tính; E2E visual Playwright chưa chạy.
+
+---
+
+## Entry 153: Dashboard follow-up theo ảnh mới — full-height + anti-blank list + notMerge (2026-09-22)
+
+- **Date**: 2026-09-22
+- **Scope**: User báo ảnh mới: lane Cảnh báo trống dù counts=20, cột chưa full-height, treemap màu cũ.
+  Trace: strings trong ảnh (`${f.label} (${count})` chỉ tồn tại ở working tree) → app chạy code mới;
+  repro test 20 backend alerts render đủ 20 card → logic list vô can, nguyên nhân là bundle/viewSTATE
+  lệch thời điểm (HMR/merge ECharts giữ màu cũ) hoặc filter upstream — xử lý phòng thủ thay vì đoán.
+- **Fix**:
+  - Grid `clamp(560px, 100dvh-260px, 960px)` (`index.css`) — 2 cột Cảnh báo/Heatmap full khung chuẩn.
+  - Counter `Hiển thị X/Y` (`alert.showing`) khóa bất biến counts===cards khi filter=all.
+  - Empty-state 4 nhánh: loading / lỗi (`alert.loadError`+`retryHint`) / bị lọc hết
+    (`alert.filteredEmpty` + nút Xóa bộ lọc) / rỗng thật — không bao giờ trắng trơn.
+  - `UnifiedAlertCenter` nhận thêm props `loading`/`error` (DashboardPage đã truyền, trước đây bị bỏ qua).
+  - Heatmap `notMerge: true` — ép setOption toàn phần, diệt màu cũ do merge/HMR.
+  - i18n VI+EN: `alert.showing/filteredEmpty/loadingList/loadError/retryHint`.
+- **Tests**: +3 (counter, diagnostic+reset filter, loading) trong `alert-card-compact`; giữ repro 20/20.
+- **Gates**: `tsc` 0; vitest 33/33 (5 files); eslint 0 errors; `build PASS 46.47s`
+  (chunk `dashboard-Ci1j3WSw.js` mới). Chưa chạy lại jest/i18n:scan (không đổi logic dịch ngoài keys mới).
+- **Còn lại**: user cần hard-refresh (Ctrl+Shift+R) 1 lần để xóa màu treemap cũ do cache/HMR;
+  nếu list vẫn trắng sau deploy mới thì chụp console errors + báo lại (khi đó là lỗi data upstream).
+
+---
+
+## Entry 154: Dashboard vivid palette + height fallback (2026-09-22)
+
+- **Date**: 2026-09-22
+- **Scope**: User feedback ảnh #4: treemap bản trầm "mờ", cột chưa full-height, cards vẫn trắng.
+  Xác minh: ảnh đã có S3 (dark scale, gom nhóm, legend) nhưng thiếu counter Entry 153 → bundle user
+  cũ hơn tree 1 nhịp (HMR giữ state filter cũ cũng giải thích list trắng: kẹt ở mức 0 match).
+- **Fix**:
+  - Palette tươi sáng (`PortfolioHeatmap.js:HEAT_STOPS` 7 stops vivid `#991b1b→#f59e0b→#15803d`,
+    0% amber vivid + viền `#92400e`); chữ `fontWeight:800` + `textBorder` đen 45% giữ contrast
+    trên nền sáng; legend gradient đồng bộ.
+  - Grid thêm `height:720px` fallback trước `clamp()` (browser không hỗ trợ dvh rớt cả dòng →
+    grid auto theo content = lane lùn) + `min-height:560px` grid/lane.
+  - Test `heatmap-scale` cập nhật (0% amber, textOn amber/xanh nhạt → chữ đậm).
+- **Gates**: `tsc` 0; vitest 33/33 (5 files); `build PASS 32.04s` (chunk `dashboard-CR4Enb49.js` mới).
+- **Còn lại**: user BẮT BUỘC hard-refresh (Ctrl+Shift+R) hoặc restart dev server — ảnh cũ thiếu cả
+  counter Entry 153 chứng tỏ browser đang giữ bundle cũ; sau refresh sẽ thấy counter `Hiển thị X/Y`
+  + (nếu filter kẹt) diagnostic + nút Xóa bộ lọc. Nếu sau refresh list vẫn trắng mà counter ghi
+  `Hiển thị 0/20` thì   chụp lại + mở console gửi errors.
+
+---
+
+## Entry 155: Deploy frontend dev — start_dev.ps1 -FrontendOnly (2026-09-22)
+
+- **Date**: 2026-09-22
+- **Scope**: Rebuild image `vninvest-dev-frontend` từ working tree (Entry 152–154: vivid palette,
+  height fallback, counter/diagnostic) + recreate container.
+- **Kết quả**: docker build PASS (`tsc` + vite 33.78s, chunk `dashboard-CR4Enb49.js`);
+  core-api healthy; `check_scheduler_queue_drift` no drift; smoke core-api OK + frontend OK.
+- **Lưu ý**: user hard-refresh (Ctrl+Shift+R) để nhận bundle mới (hash chunk đã đổi nên
+  browser không dùng cache cũ được, trừ khi giữ tab từ HMR cũ — reload là chắc chắn).
+
+---
+
+## Entry 156: ROOT CAUSE alert lane trắng — scrollbar width đè list còn 8px (2026-09-22)
+
+- **Date**: 2026-09-22
+- **Triệu chứng (ảnh user)**: counter `Hiển thị 20/20` nhưng list trắng trơn, chỉ còn sọc viền cam.
+- **Reproduce-first (đúng Nguyên tắc 6)**: Playwright probe mock 20 alerts → 20 `.alert-card`
+  trong DOM nhưng mỗi card là sợi mảnh; đo `.core-alert-list` rộng đúng **8px**.
+- **Root cause**: rule scrollbar của chính S1.5 —
+  `.dashboard-triad-lane .panel-scrollbar { width:8px }` specificity (0,2,0) đè
+  `.panel-body { width:100% }` (0,1,0). `width:8px` vốn chỉ dành cho pseudo-element
+  `::-webkit-scrollbar` nhưng grouped selector vô tình match luôn element thật có class
+  `.panel-scrollbar` (chính là list). Đã chứng minh bằng CASCADE dump + thí nghiệm inline
+  (inline `width:100%` → 275px thắng ngay).
+- **Fix (`index.css`)**: tách rule — `width/height:8px` chỉ cho `::-webkit-scrollbar`
+  pseudo; element `.panel-scrollbar` chỉ giữ `scrollbar-width:thin` (Firefox, không ảnh
+  hưởng layout). Giữ `width:100%;min-width:0` ở `.panel-body`.
+- **Overlap AI/deck (ảnh 2)**: probe đo overlapY=0 ở desktop; ở breakpoint 2 cột (user zoom)
+  grid height cố định + lane min-height ép tràn đè deck → cho grid `height:auto` khi
+  ≤1279px (lane giữ min-height để cuộn nội bộ).
+- **Verify đo được**: desktop 20 cards × ~125px, list scroll 2642/363; 2-col 1100px:
+  20 cards × 100px, listW 450, lane 540, overlap 0 — Playwright 3/3 PASS
+  (`dashboard-alert-probe.spec.ts`, có assert widths + overlap).
+- **Deploy**: `start_dev.ps1 -FrontendOnly` rebuild (tsc+vite PASS) + recreate frontend;
+  core-api healthy, no queue drift, smoke OK.
+- **Bài học**: grouped selector lẫn pseudo-element với element thật là lỗi cascade kinh điển —
+  từ nay rule scrollbar test bằng probe đo `getBoundingClientRect` (mẫu trong
+  `dashboard-css-probe.spec.ts`), không review bằng mắt.
+
+
+| 157 | 2026-09-22 | soc | SocPrefetchPanel audit+rebuttal (P0-1..P0-4, P1-1, GAP A/B, C1-C8) | add docs/PHAN_BIEN_AUDIT_SOC_PREFETCH_PANEL_20260922.md | docs/PHAN_BIEN_AUDIT_SOC_PREFETCH_PANEL_20260922.md | v0 | Active |
+| 158 | 2026-09-22 | soc | SocPrefetchPanel implement F-1..F-3/F-5 (preview endpoint + live TTL + warm-now groups + FE wiring) | packages/core/backend/src/service_ops/views/prefetch.py, urls.py, tests/test_soc_api_domain.py; packages/web/src/adapters/core/soc.js, __tests__/soc.test.js, components/soc/SocPrefetchPanel.tsx | implements docs/PHAN_BIEN_AUDIT_SOC_PREFETCH_PANEL_20260922.md (F-1,F-2,F-3; F-4 counters van tinh/follow-up Redis that; F-5 khong doi path vi ca 2 route da map cung view) | v1 | Active |
+| 159 | 2026-09-22 | soc | DoD close SocPrefetchPanel implement: independent verify F-1/F-2/F-3 done, F-4 partial (TTL live, counters static follow-up Redis), F-5 no-op giu path (ca 2 route cung map 1 view) | prefetch.py L271/296-324/383-385/432, urls.py L61, soc.js L308-321, SocPrefetchPanel.tsx L120-134/318-323, tests test_soc_api_domain.py L393-451 + soc.test.js L309-340 | phan bien doc PHAN_BIEN_AUDIT_SOC_PREFETCH_PANEL_20260922.md | v1 | Closed |

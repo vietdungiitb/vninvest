@@ -306,6 +306,25 @@ describe("SOC adapter", () => {
       expect(result.size_mb).toBe(128);
     });
 
+    it("getSocPrefetchCacheStatus prefers live ttl_minutes, falls back to cache_ttl_seconds", async () => {
+      coreGet.mockResolvedValue({ hit_ratio: 0.816, redis: { memory_usage_mb: 125 }, ttl_minutes: 0.4, ttl_seconds: 25, cache_ttl_seconds: 25 });
+      const live = await soc.getSocPrefetchCacheStatus();
+      expect(live.ttl_minutes).toBe(0.4);
+      expect(live.ttl_seconds).toBe(25);
+
+      coreGet.mockResolvedValue({ hit_ratio: 0.5, redis: { memory_usage_mb: 10 }, cache_ttl_seconds: 30 });
+      const fallback = await soc.getSocPrefetchCacheStatus();
+      expect(fallback.ttl_minutes).toBe(0.5);
+    });
+
+    it("previewSocPrefetchConfig posts config_payload to preview endpoint", async () => {
+      corePost.mockResolvedValue({ valid: true, errors: [], change_summary: ["batch_size"] });
+      const result = await soc.previewSocPrefetchConfig({ batch_size: 40 });
+      expect(corePost).toHaveBeenCalledWith("/operator/soc/prefetch/config/preview/", { config_payload: { batch_size: 40 } });
+      expect(result.valid).toBe(true);
+      expect(result.change_summary).toEqual(["batch_size"]);
+    });
+
     it("purgeSocPrefetchCache calls corePost", async () => {
       await soc.purgeSocPrefetchCache();
       expect(corePost).toHaveBeenCalledWith("/operator/soc/prefetch/purge-cache/");

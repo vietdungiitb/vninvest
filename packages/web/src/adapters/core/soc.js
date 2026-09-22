@@ -303,7 +303,12 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
         ...data,
         hit_rate: Number(((data.hit_ratio || 0) * 100).toFixed(1)),
         size_mb: data.redis?.memory_usage_mb || 0,
-        ttl_minutes: data.redis?.ttl_minutes || 0,
+        // F-2: BE giờ trả ttl_minutes/ttl_seconds/cache_ttl_seconds live từ
+        // config (trước đây chỉ đọc redis.ttl_minutes không tồn tại → 0 min).
+        ttl_minutes: data.ttl_minutes ?? data.redis?.ttl_minutes ?? (
+          data.cache_ttl_seconds != null ? Number((data.cache_ttl_seconds / 60).toFixed(1)) : 0
+        ),
+        ttl_seconds: data.ttl_seconds ?? data.cache_ttl_seconds ?? 0,
       }));
     },
 

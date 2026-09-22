@@ -390,6 +390,66 @@ class PrefetchDomainApiTestCase(SOCAdminApiTestCase):
             ).exists()
         )
 
+    def test_prefetch_config_preview_validates_and_diffs(self):
+        # F-1: preview endpoint tồn tại, validate + trả change_summary/impact.
+        response = self.client.post(
+            '/api/soc/prefetch/config/preview/',
+            {'config_payload': {'batch_size': 40, 'cache_ttl_seconds': 30}},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertTrue(payload['valid'])
+        self.assertEqual(payload['errors'], [])
+        self.assertEqual(payload['config_payload']['batch_size'], 40)
+        self.assertIn('batch_size', payload['change_summary'])
+        self.assertIn('cache_ttl_seconds', payload['change_summary'])
+        self.assertTrue(payload['impact']['ttl_changed'])
+        self.assertFalse(payload['impact']['profile_changed'])
+
+    def test_prefetch_config_preview_rejects_invalid(self):
+        response = self.client.post(
+            '/api/soc/prefetch/config/preview/',
+            {'config_payload': {'active_profile': 'no_such_profile', 'batch_size': 0}},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertFalse(payload['valid'])
+        self.assertTrue(len(payload['errors']) > 0)
+
+    def test_prefetch_warm_now_honours_requested_groups(self):
+        # F-3: universe_group_ids trong body được dùng thay config.
+        response = self.client.post(
+            '/api/soc/prefetch/warm-now/',
+            {'universe_group_ids': ['hot_user_demand']},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(response.json()['groups'], ['hot_user_demand'])
+        self.assertTrue(
+            ServiceRunLog.objects.filter(
+                service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['prefetch'],
+                status='queued',
+                input_summary__trigger='warm_now',
+                input_summary__universe_group_ids=['hot_user_demand'],
+            ).exists()
+        )
+
+    def test_prefetch_cache_status_exposes_live_ttl(self):
+        # F-2: ttl_minutes/ttl_seconds/cache_ttl_seconds khớp live config.
+        response = self.client.get('/api/soc/prefetch/cache-status/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload['cache_ttl_seconds'], 25)
+        self.assertEqual(payload['ttl_seconds'], 25)
+        self.assertAlmostEqual(payload['ttl_minutes'], round(25 / 60, 1))
+        self.assertGreater(payload['ttl_minutes'], 0)
+
     def test_prefetch_routes_appear_in_openapi_schema(self):
         response = self.client.get('/core/v1/schema/')
 
@@ -397,6 +457,7 @@ class PrefetchDomainApiTestCase(SOCAdminApiTestCase):
         schema = _load_openapi_schema(response)
 
         config_path = schema['paths']['/api/soc/prefetch/config/']
+        preview_path = schema['paths']['/api/soc/prefetch/config/preview/']
         profiles_path = schema['paths']['/api/soc/prefetch/config/profiles/']
         cache_status_path = schema['paths']['/api/soc/prefetch/cache-status/']
         purge_cache_path = schema['paths']['/api/soc/prefetch/purge-cache/']
@@ -408,6 +469,8 @@ class PrefetchDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(config_path['get']['summary'], 'Lấy runtime config Prefetch')
         self.assertEqual(config_path['post']['summary'], 'Apply runtime config Prefetch')
         self.assertIn('requestBody', config_path['post'])
+        self.assertEqual(preview_path['post']['summary'], 'Xem trước config Prefetch')
+        self.assertIn('requestBody', preview_path['post'])
         self.assertEqual(profiles_path['get']['summary'], 'Lấy profile thời gian Prefetch')
         self.assertEqual(cache_status_path['get']['summary'], 'Lấy cache status Prefetch')
         self.assertEqual(purge_cache_path['post']['summary'], 'Purge cache Prefetch')
