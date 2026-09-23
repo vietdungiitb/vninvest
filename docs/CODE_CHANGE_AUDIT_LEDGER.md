@@ -26,6 +26,25 @@ nội dung giữ nguyên. Tiền lệ Entry 149.)*
 
 ---
 
+## Entry 165: Phase A5 tune batch + Phase B SSI opt-in + gates xanh (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Thực thi `IMPLEMENTATION_PLAN_VNBROKER_V34_UPGRADE_20260923.md` Rev.1 Phase A5 + B.
+- **A5**: đo `fetch_multiple` KBS 20 mã ở 8/16/32 → 6.9s/9.3s/16.2s (concurrency cao bị
+  throttle nên chậm hơn); chốt `max_concurrency=8` trong `fetch_price_board_snapshots_batch`;
+  live qua adapter 10 mã/5.5s closes thật.
+- **B**: SSI vào `_SUPPORTED_PROVIDER_SOURCES` + alias `SSIQuote` (DNSE giữ quirk) + gate key
+  env (thiếu → fallback + warning, intraday candidates lọc); daily giữ nguyên; verified
+  signatures/intervals (30m có) + client hỗ trợ SSI tại tag v3.4.0; live gate không-key → fallback
+  không crash. B3 wiring views để follow-up.
+- **Tests**: `market_data.tests.test_vnbroker_ssi_optin` 8/8 mới; tổng lượt cuối 61 OK (skip 2
+  live-gated); `check` 0. FE không đụng (bỏ qua tsc/build).
+  Evidence: `docs/evidence/broker-config/v34-smoke/bench_a5.py` + `phase-a5-b.md`.
+- **Còn lại**: Phase C/D; screenshots tay; rebuild image dev để nhận A5/B (code chưa live
+  trong container — image build trước A5).
+
+---
+
 ## Entry 164: Rebuild image dev + smoke container v3.4.0 — đóng Phase A (2026-09-23)
 
 - **Date**: 2026-09-23

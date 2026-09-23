@@ -19,10 +19,28 @@ from .models import VnbrokerRuntimeConfig
 
 logger = logging.getLogger(__name__)
 
-_SUPPORTED_PROVIDER_SOURCES = ('VCI', 'KBS', 'DNSE')
+_SUPPORTED_PROVIDER_SOURCES = ('VCI', 'KBS', 'DNSE', 'SSI')
 _DAILY_HISTORY_ALLOWED_SOURCES = ('VCI', 'KBS')
 _DAILY_HISTORY_FALLBACK_SOURCE = 'VCI'
 _DAILY_HISTORY_DISABLED_WARN_CODE = 'DNSE_DAILY_OHLCV_DISABLED'
+
+# Phase B (v34 upgrade): SSI cần key ngay cả khi xem giá (khác VCI/KBS keyless).
+# Thiếu key → bỏ SSI khỏi candidates (self-heal, khớp AUTO credential-aware của lib).
+_SSI_KEY_ENVS = ('VNBROKER_BROKER_SSI_API_KEY', 'VNBROKER_BROKER_SSI_API_SECRET')
+
+# Class name khác biệt theo provider (mặc định 'Quote').
+_QUOTE_CLASS_ALIASES = {'SSI': 'SSIQuote'}
+
+
+def _ssi_keys_available() -> bool:
+    import os
+    return all(os.environ.get(name, '').strip() for name in _SSI_KEY_ENVS)
+
+
+def _provider_available(source: str) -> bool:
+    if str(source or '').strip().upper() == 'SSI':
+        return _ssi_keys_available()
+    return True
 
 class VnbrokerAdapterError(Exception):
     """Base error for vnbroker adapter."""
@@ -97,8 +115,12 @@ def _build_intraday_source_candidates(preferred_source: str | None) -> list[str]
     normalized_preferred_source = _normalize_supported_source(preferred_source, fallback_to_config=False)
     for source in [normalized_preferred_source, *_INTRADAY_FALLBACK_SOURCES]:
         source_code = str(source or '').strip().upper()
-        if source_code and source_code not in candidates:
-            candidates.append(source_code)
+        if not source_code or source_code in candidates:
+            continue
+        if not _provider_available(source_code):
+            logger.info('Bỏ qua SSI trong intraday candidates (thiếu key).')
+            continue
+        candidates.append(source_code)
     return candidates
 
 
@@ -266,7 +288,20 @@ def _normalize_supported_source(source: str | None, *, fallback_to_config: bool 
 
 
 def _resolve_realtime_source(source: str | None) -> str:
-    return _normalize_supported_source(source, fallback_to_config=True)
+    resolved = _normalize_supported_source(source, fallback_to_config=True)
+    if resolved and not _provider_available(resolved):
+        requested = str(source or '').strip().upper()
+        logger.warning(
+            'SSI chưa có key (%s) — fallback sang provider mặc định thay vì lỗi.',
+            ','.join(_SSI_KEY_ENVS),
+        )
+        fallback_config_source = _normalize_supported_source(None, fallback_to_config=True)
+        if _provider_available(fallback_config_source):
+            return fallback_config_source
+        # config cũng trỏ SSI thiếu key (hiếm) → VCI cứng
+        logger.warning('Configured source %s unavailable; defaulting to VCI.', requested)
+        return VnbrokerRuntimeConfig.SourceChoices.VCI
+    return resolved
 
 
 def _resolve_daily_history_source(source: str | None) -> str:
@@ -308,9 +343,10 @@ def _load_quote_class(source: str):
         raise VnbrokerAdapterError('Realtime source is required.')
 
     module_name = f'vnbroker.explorer.{normalized_source.lower()}.quote'
+    class_name = _QUOTE_CLASS_ALIASES.get(normalized_source, 'Quote')
     try:
         module = import_module(module_name)
-        quote_class = getattr(module, 'Quote')
+        quote_class = getattr(module, class_name)
     except Exception as exc:
         raise VnbrokerAdapterError(
             f'Unsupported realtime source for vnbroker adapter: {normalized_source}'
@@ -482,6 +518,10 @@ def fetch_price_board_snapshots_batch(symbols: list[str], *, source: str | None 
     if not cleaned_symbols:
         return {}
 
+    # A5 (v34 upgrade, đo thật 2026-09-23 với vnbroker 3.4.0/KBS/20 mã):
+    # max_concurrency 8 → 6.9s, 16 → 9.3s, 32 → 16.2s — concurrency cao bị upstream
+    # throttle nên CHẬM hơn. Chốt 8 (thấp hơn default lib KBS 16 / VCI 24).
+    # Evidence: docs/evidence/broker-config/v34-smoke/bench_a5.py
     try:
         raw_res = quote_class.fetch_multiple(
             symbols=cleaned_symbols,
@@ -489,6 +529,7 @@ def fetch_price_board_snapshots_batch(symbols: list[str], *, source: str | None 
             end=today.isoformat(),
             interval='1D',
             show_log=False,
+            max_concurrency=8,
         )
         if asyncio.iscoroutine(raw_res):
             from asgiref.sync import async_to_sync
