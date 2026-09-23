@@ -69,3 +69,40 @@ class ServiceOpsCenterCapabilityTests(TestCase):
         self.assertIn('operations-center', payload['navigation']['visible_routes'])
         self.assertNotIn('admin-ops', payload['navigation']['visible_routes'])
         self.assertTrue(payload['surfaces']['show_operations_center'])
+
+    def test_menu_20260922_staff_navigation_covers_all_menu_paths(self):
+        navigation = _build_navigation(self.user, self.tenant)
+
+        for route in (
+            'dashboard', 'watchlist', 'screener', 'support', 'settings', 'upgrade',
+            'ai-advisory', 'whale-alerts', 'alert-center', 'transactions', 'portfolios',
+            'operations-center', 'operations-center-mail-config', 'ai-command-center',
+            'admin-crawl-control', 'tenant-admin', 'commercial-billing-center',
+            'advertising-admin',
+        ):
+            self.assertIn(route, navigation['visible_routes'])
+        self.assertIn('admin', navigation['visible_groups'])
+
+    def test_menu_20260922_free_plan_navigation_is_limited(self):
+        free_user = User.objects.create_user(
+            username='freeuser',
+            email='freeuser@localhost',
+            password='freepass123',
+        )
+        free_tenant = CoreTenant.objects.create(
+            owner_user=free_user,
+            tenant_code='vni-free',
+            display_name='VNI Free',
+            plan=CoreTenant.PlanChoices.FREE,
+            status=CoreTenant.StatusChoices.ACTIVE,
+        )
+        navigation = _build_navigation(free_user, free_tenant)
+
+        for route in ('dashboard', 'watchlist', 'screener', 'support', 'settings', 'upgrade'):
+            self.assertIn(route, navigation['visible_routes'])
+        for route in (
+            'ai-advisory', 'whale-alerts', 'alert-center', 'transactions', 'portfolios',
+            'operations-center', 'admin-crawl-control', 'tenant-admin',
+        ):
+            self.assertNotIn(route, navigation['visible_routes'])
+        self.assertNotIn('admin', navigation['visible_groups'])

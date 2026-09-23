@@ -1,0 +1,24 @@
+
+> @vninvest/web@0.1.0 check:shell
+> npm run check:dom-landmarks && npm run check:tokens && npm run check:stock-detail-shell
+
+
+> @vninvest/web@0.1.0 check:dom-landmarks
+> node ./scripts/check-dom-landmarks.mjs
+
+Γ£ô ShellPageChrome renders <div> not <main>
+Γ£ô ShellPageChrome has region + aria-labelledby
+Γ£ô FullLayout has exactly one <main> element (frame)
+Γ£ô FullLayout main has overflow-auto (page-level scroll owner)
+check:dom-landmarks ΓÇö PASS (static gate; runtime DOM on 4 routes is planned Playwright at P4 ΓÇö see IMPLEMENTATION_PLAN ┬º5)
+
+> @vninvest/web@0.1.0 check:tokens
+> node ./scripts/check-tokens.mjs
+
+Γ£ù check:tokens ΓÇö hard hex outside allowlist:
+  src\pages\UserSettingsPage.css: #334155
+  src\pages\UserSettingsPage.css: #334155
+  src\pages\UserSettingsPage.css: #0891b2
+  src\pages\UserSettingsPage.css: #475569
+  src\pages\UserSettingsPage.css: #f8fafc
+Allowlist: status/chart/private only ΓÇö migrate hard hex to var(--token)

@@ -9,6 +9,17 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - Build verification: npx tsc --noEmit sau mỗi sub-step, npm run build cuối mỗi step.
 
 ## Progress
+### Done (2026-09-23) — Main menu thu gọn sát code (Entry 166)
+- **Menu đích**: 5 nhóm / 13 mục + 1 flag — Thị trường (Tổng quan/Radar/Screener), Tài sản (Sổ giao dịch/Danh mục),
+  Tín hiệu & AI (Trung tâm cảnh báo/AI Advisory/Trung tâm AI), Tài khoản (Nâng cấp/Hỗ trợ/Cài đặt),
+  Quản trị staff-only (SOC/Kiểm soát cào/Thành viên/Quảng cáo).
+- **Hết trùng**: group≠item (Thị trường/Tài sản/Sổ giao dịch), xóa mục Whale Alerts (`/whale-alerts`→`/alert-center`
+  redirect giữ query/hash; `/ai-command-center`→`/settings/ai`), `UserConfig`→`Cài đặt/Settings`, BE nav + routeCatalog
+  đồng bộ (whale deprecated, +16 entries tenant-admin external), xóa 3 file `(1).tsx` stale.
+- **Gates**: tsc 0, lint 0 errors, build 27.39s PASS, vitest 63/382, jest 17/239, BE capabilities 5/5, i18n:scan 0,
+  test menu mới 6/6. `check:shell` FAIL pre-existing (tokens `UserSettingsPage.css`, file ngoài change).
+  Visual QA TC-01..07 PENDING. Plan + evidence: `docs/IMPLEMENTATION_PLAN_MAIN_MENU_20260922.md`,
+  `docs/evidence/main-menu-20260922/`.
 ### Done (2026-09-21) — QueueRecovery A–H + corrective v1–v4 (Entry 138-145)
 - **Root cause chốt**: queue `realtime_prefetch` ngập 77k (heartbeat 3s + shard fan-out + giant warm 1900 symbols
   trên worker solo) + worker enrichment OOM cuối tuần → session_facts chết từ 09/09, snapshot dừng 17/09,

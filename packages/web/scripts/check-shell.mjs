@@ -1,4 +1,7 @@
 // DEPRECATED (W9, 2026-09-14): this runtime SSR gate is retired.
+// NOTE (menu 2026-09-22): asserts below pin Shell* pages, but production
+// router remaps to core-* (main.tsx resolvePageComponent). Do NOT use this
+// script for menu acceptance; gate F-04 is route-catalog-contract test.
 // It imports TS/TSX + .css through plain node ESM, which fails with
 // ERR_UNKNOWN_FILE_EXTENSION without a TS loader (no tsx/vite-node in deps).
 // Replacement coverage (all green): `npm run check:shell` now runs

@@ -1,0 +1,165 @@
+Creating test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+Found 5 test(s).
+Operations to perform:
+  Synchronize unmigrated apps: channels, corsheaders, django_prometheus, drf_spectacular, drf_spectacular_sidecar, messages, rest_framework, staticfiles, vninvest_core
+  Apply all migrations: admin, advertising, advisory, ai_agents, ai_analytics, auth, commercial, contenttypes, data_ingest, django_celery_beat, identity_access, market_data, market_serving, ops_audit, service_ops, sessions, signal_intelligence, support, tenant_lifecycle, user_workspace
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying auth.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying identity_access.0001_initial... OK
+  Applying identity_access.0002_userprofile... OK
+  Applying identity_access.0003_alter_coretenant_plan... OK
+  Applying identity_access.0004_tenantmember_tenantinvite... OK
+  Applying identity_access.0005_dnse_credential... OK
+  Applying identity_access.0006_corepatcredential_is_human_session... OK
+  Applying identity_access.0007_canonicalize_service_account_scope_codes... OK
+  Applying identity_access.0008_outboxevent_processedevent_and_more... OK
+  Applying identity_access.0009_emailverificationtoken... OK
+  Applying identity_access.0010_systemmailconfig_oauth2_and_test_fields... OK
+  Applying identity_access.0011_enforce_tenant_not_null_real... OK
+  Applying advertising.0001_initial... OK
+  Applying advertising.0002_trademarkconfig... OK
+  Applying advisory.0001_initial... OK
+  Applying advisory.0002_add_advisory_session_component... OK
+  Applying advisory.0003_useraicredential... OK
+  Applying advisory.0004_migrate_userprofile_preferences... OK
+  Applying advisory.0005_aiauditlog... OK
+  Applying advisory.0006_add_structured_output... OK
+  Applying ai_agents.0001_initial... OK
+  Applying ai_analytics.0001_initial... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying identity_access.0012_add_stripe_fields_to_coretenant... OK
+  Applying commercial.0001_initial... OK
+  Applying commercial.0002_invoice_status_past_due... OK
+  Applying commercial.0003_vnpayipnlog_paymenttransaction... OK
+  Applying commercial.0004_quotahistory... OK
+  Applying commercial.0005_add_invoice_line_items... OK
+  Applying commercial.0006_paymenttransaction_plan... OK
+  Applying commercial.0007_alter_paymenttransaction_plan... OK
+  Applying data_ingest.0001_initial... OK
+  Applying data_ingest.0002_rename_data_ingest_job_id_idx_data_ingest_job_id_4d6b96_idx_and_more... OK
+  Applying django_celery_beat.0001_initial... OK
+  Applying django_celery_beat.0002_auto_20161118_0346... OK
+  Applying django_celery_beat.0003_auto_20161209_0049... OK
+  Applying django_celery_beat.0004_auto_20170221_0000... OK
+  Applying django_celery_beat.0005_add_solarschedule_events_choices... OK
+  Applying django_celery_beat.0006_auto_20180322_0932... OK
+  Applying django_celery_beat.0007_auto_20180521_0826... OK
+  Applying django_celery_beat.0008_auto_20180914_1922... OK
+  Applying django_celery_beat.0006_auto_20180210_1226... OK
+  Applying django_celery_beat.0006_periodictask_priority... OK
+  Applying django_celery_beat.0009_periodictask_headers... OK
+  Applying django_celery_beat.0010_auto_20190429_0326... OK
+  Applying django_celery_beat.0011_auto_20190508_0153... OK
+  Applying django_celery_beat.0012_periodictask_expire_seconds... OK
+  Applying django_celery_beat.0013_auto_20200609_0727... OK
+  Applying django_celery_beat.0014_remove_clockedschedule_enabled... OK
+  Applying django_celery_beat.0015_edit_solarschedule_events_choices... OK
+  Applying django_celery_beat.0016_alter_crontabschedule_timezone... OK
+  Applying django_celery_beat.0017_alter_crontabschedule_month_of_year... OK
+  Applying django_celery_beat.0018_improve_crontab_helptext... OK
+  Applying django_celery_beat.0019_alter_periodictasks_options... OK
+  Applying identity_access.0013_tenantssoconfig_and_more... OK
+  Applying identity_access.0014_usage_alert_config... OK
+  Applying identity_access.0015_add_scheduled_report_models... OK
+  Applying identity_access.0016_login_attempt... OK
+  Applying identity_access.0017_add_webhook_models... OK
+  Applying identity_access.0018_rename_core_login_attempt_tenant_created_42aec0_idx_core_login__tenant__0e42d1_idx_and_more... OK
+  Applying identity_access.0019_coretenant_max_active_pats... OK
+  Applying identity_access.0020_patauditlog... OK
+  Applying identity_access.0021_tenantsettings... OK
+  Applying identity_access.0022_pat_issued_for_member... OK
+  Applying identity_access.0023_pat_issued_for_member_set_null... OK
+  Applying identity_access.0024_tenantcustomrole... OK
+  Applying identity_access.0025_tenantinvite_custom_role... OK
+  Applying identity_access.0026_userprofile_avatar_url... OK
+  Applying market_data.0001_initial... OK
+  Applying market_data.0002_intradaybar_intradaytick_and_more... OK
+  Applying market_data.0003_globalsymbolregistry_globalsymbolcoverage_and_more... OK
+  Applying market_data.0004_add_gap_score_fields... OK
+  Applying market_data.0005_add_stock_fundamental... OK
+  Applying market_data.0006_remove_stockfundamental... OK
+  Applying signal_intelligence.0001_initial... OK
+  Applying signal_intelligence.0002_orderflow_event... OK
+  Applying signal_intelligence.0003_unifiedalert_source_ref_nonempty_unique... OK
+  Applying market_serving.0001_initial... OK
+  Applying market_serving.0002_add_high_low_open_to_symbol_snapshot... OK
+  Applying market_serving.0003_add_snapshot_quote_columns_and_backfill... OK
+  Applying market_serving.0004_add_session_facts_series_by_window... OK
+  Applying market_serving.0005_session_facts_bucket_table... OK
+  Applying market_serving.0006_rename_sessionfactsbucket_indexes... OK
+  Applying market_serving.0007_sessionfactsbucket_strength_fields... OK
+  Applying ops_audit.0001_initial... OK
+  Applying ops_audit.0002_phase3_parity_models... OK
+  Applying ops_audit.0003_delete_paritylog_delete_parityphasecheckpoint_and_more... OK
+  Applying ops_audit.0004_auditevent_pat_id... OK
+  Applying ops_audit.0005_api_call_rollup... OK
+  Applying user_workspace.0001_initial... OK
+  Applying user_workspace.0002_add_subaccount... OK
+  Applying user_workspace.0003_dnse_lightspeed_credential_v2... OK
+  Applying user_workspace.0004_add_tenant_fk_and_pricealert... OK
+  Applying user_workspace.0005_backfill_portfolio_tenant...Portfolio tenant backfill complete: 0 updated, 0 orphaned
+ OK
+  Applying user_workspace.0006_backfill_watchlist_tenant...Watchlist tenant backfill complete: 0 updated, 0 orphaned
+ OK
+  Applying user_workspace.0007_add_tenant_fk_transaction_subaccount... OK
+  Applying user_workspace.0008_backfill_transaction_subaccount_tenant...backfill_transaction_tenant: No transactions to update
+backfill_subaccount_tenant: No subaccounts to update
+ OK
+  Applying user_workspace.0009_trackedsymbol_and_price_alert_cooldown... OK
+  Applying user_workspace.0010_remove_subaccount_user_ws_subaccount_tenant_user_idx_and_more... OK
+  Applying user_workspace.0011_enforce_tenant_not_null... OK
+  Applying user_workspace.0012_enforce_tenant_not_null_real... OK
+  Applying user_workspace.0013_screenerrule... OK
+  Applying service_ops.0001_initial... OK
+  Applying service_ops.0002_add_scrape_matrix_models... OK
+  Applying service_ops.0003_add_custom_symbol_group... OK
+  Applying service_ops.0004_add_market_data_parity_snapshot... OK
+  Applying service_ops.0005_add_dataops_domain_choice... OK
+  Applying service_ops.0006_add_backfill_execution_models... OK
+  Applying service_ops.0007_rename_svc_beb_run_state_idx_service_ops_run_id_0c8c61_idx_and_more... OK
+  Applying service_ops.0008_add_cached_symbol_group... OK
+  Applying service_ops.0009_cachedsymbolgroup_group_type_color_display_order... OK
+  Applying service_ops.0010_cachedsymbolgroupmember... OK
+  Applying service_ops.0011_delete_default_watchlists... OK
+  Applying service_ops.0012_add_slo_fields_and_health_check_log... OK
+  Applying service_ops.0013_configchangeaudit_rule_request_action... OK
+  Applying sessions.0001_initial... OK
+  Applying signal_intelligence.0004_unifiedalert_read_model_fields... OK
+  Applying signal_intelligence.0005_advisorysignalevent_marketanomalyevent_and_more... OK
+  Applying support.0001_initial... OK
+  Applying tenant_lifecycle.0001_initial... OK
+  Applying user_workspace.0014_screenerrunhistory... OK
+  Applying user_workspace.0015_screenerschedule... OK
+test_capability_bootstrap_includes_operations_center_route (identity_access.tests.test_capabilities_soc.ServiceOpsCenterCapabilityTests.test_capability_bootstrap_includes_operations_center_route) ... ok
+test_internal_admin_includes_service_ops_center_ability (identity_access.tests.test_capabilities_soc.ServiceOpsCenterCapabilityTests.test_internal_admin_includes_service_ops_center_ability) ... ok
+test_internal_admin_navigation_includes_operations_center_route (identity_access.tests.test_capabilities_soc.ServiceOpsCenterCapabilityTests.test_internal_admin_navigation_includes_operations_center_route) ... ok
+test_menu_20260922_free_plan_navigation_is_limited (identity_access.tests.test_capabilities_soc.ServiceOpsCenterCapabilityTests.test_menu_20260922_free_plan_navigation_is_limited) ... ok
+test_menu_20260922_staff_navigation_covers_all_menu_paths (identity_access.tests.test_capabilities_soc.ServiceOpsCenterCapabilityTests.test_menu_20260922_staff_navigation_covers_all_menu_paths) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 4.540s
+
+OK
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+  Applying user_workspace.0016_screenerrule_is_public... OK
+System check identified no issues (0 silenced).

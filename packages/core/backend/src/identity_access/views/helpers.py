@@ -177,15 +177,24 @@ def _build_abilities(user, tenant: CoreTenant) -> list:
 
 
 def _build_navigation(user, tenant: CoreTenant) -> dict:
+    # Menu 2026-09-22: đồng bộ với FE sidebaritems.ts (5 nhóm / 13 mục + flag).
+    # 'whale-alerts' giữ để tương thích client cũ (FE redirect về 'alert-center').
     groups = ['workspace', 'signals', 'system']
-    routes = ['dashboard', 'watchlist', 'support', 'settings']
+    routes = ['dashboard', 'watchlist', 'screener', 'support', 'settings', 'upgrade']
 
     if tenant.plan != CoreTenant.PlanChoices.FREE:
-        routes.extend(['ai-advisory', 'whale-alerts', 'transactions', 'portfolios'])
+        routes.extend(['ai-advisory', 'whale-alerts', 'alert-center', 'transactions', 'portfolios'])
 
     if user.is_staff or user.is_superuser:
         groups.append('admin')
-        routes.extend(['operations-center', 'operations-center-mail-config', 'ai-command-center'])
+        routes.extend([
+            'operations-center',
+            'operations-center-mail-config',
+            'ai-command-center',
+            'admin-crawl-control',
+            'tenant-admin',
+            'commercial-billing-center',
+        ])
         if getattr(settings, 'ADVERTISING_ADMIN_ENABLED', True):
             routes.append('advertising-admin')
 

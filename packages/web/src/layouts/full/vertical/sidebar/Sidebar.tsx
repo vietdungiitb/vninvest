@@ -25,10 +25,11 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed = false, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
-  const { userTenants = [] as Tenant[], activeTenantId, switchTenant } = usePortfolio();
+  const { userTenants = [] as Tenant[], activeTenantId, switchTenant, userIdentity } = usePortfolio() as any;
   const { t } = useI18n();
   const location = useLocation();
   const newLayout = isNewLayoutEnabled();
+  const isStaff = Boolean((userIdentity as any)?.isStaff || (userIdentity as any)?.isSuperuser);
 
   const handleTenantChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     switchTenant(e.target.value);
@@ -121,7 +122,11 @@ export function Sidebar({ collapsed = false, onToggle, mobileOpen, onMobileClose
         className: 'flex-1 overflow-y-auto p-4 space-y-1',
         role: 'menubar'
       },
-      sidebarItems.map((group) => e(
+      sidebarItems.map((group) => {
+        if ((group as any).staffOnly && !isStaff) return null;
+        const visibleItems = group.items.filter((item) => !(item as any).staffOnly || isStaff);
+        if (visibleItems.length === 0) return null;
+        return e(
         'div',
         { key: group.group },
         (newLayout || !collapsed || mobileOpen) && e(
@@ -132,7 +137,7 @@ export function Sidebar({ collapsed = false, onToggle, mobileOpen, onMobileClose
         e(
           'div',
           { role: 'menu' },
-          group.items.map((item) => {
+          visibleItems.map((item) => {
             const isActive = isActivePath(location.pathname, item.path);
             return e(
               'a',
@@ -160,7 +165,8 @@ export function Sidebar({ collapsed = false, onToggle, mobileOpen, onMobileClose
             );
           })
         )
-      ))
+      );
+      })
     ),
     // Profile Block (bottom)
     (newLayout || !collapsed || mobileOpen) && e(

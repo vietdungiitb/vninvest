@@ -18,11 +18,11 @@ export const sidebarItems: NavGroup[] = [
       { labelKey: 'layout.nav.portfolios', path: '/portfolios', icon: 'Briefcase' },
     ],
   },
-  // Signals group
+  // Signals group — single Alert Center entry (legacy alias redirects to /alert-center)
   {
     group: 'layout.nav.group.signals',
     items: [
-      { labelKey: 'layout.nav.whaleAlerts', path: '/whale-alerts', icon: 'Whale' },
+      { labelKey: 'layout.nav.alertCenter', path: '/alert-center', icon: 'Bell' },
       { labelKey: 'layout.nav.aiAdvisory', path: '/ai-advisory', icon: 'Brain' },
     ],
   },
@@ -36,16 +36,16 @@ export const sidebarItems: NavGroup[] = [
       { labelKey: 'layout.nav.aiCommandCenter', path: '/settings/ai', icon: 'Cpu' },
     ],
   },
-  // Admin group (conditional)
+  // Admin group (conditional, staff-only — filtered in Sidebar.tsx via userIdentity)
   {
     group: 'layout.nav.group.admin',
+    staffOnly: true,
     items: [
-      { labelKey: 'layout.nav.soc', path: '/operations-center', icon: 'Wrench' },
-      { labelKey: 'layout.nav.adminCrawlControl', path: '/admin-crawl-control', icon: 'RefreshCw' },
-      { labelKey: 'layout.nav.alertCenter', path: '/alert-center', icon: 'Bell' },
-      { labelKey: 'layout.nav.tenantAdmin', path: '/tenant-admin', icon: 'Building2' },
+      { labelKey: 'layout.nav.soc', path: '/operations-center', icon: 'Wrench', staffOnly: true },
+      { labelKey: 'layout.nav.adminCrawlControl', path: '/admin-crawl-control', icon: 'RefreshCw', staffOnly: true },
+      { labelKey: 'layout.nav.tenantAdmin', path: '/tenant-admin', icon: 'Building2', staffOnly: true },
       ...(import.meta.env.VITE_FEATURE_ADVERTISING_ADMIN !== 'false'
-        ? [{ labelKey: 'layout.nav.advertisingAdmin', path: '/admin/advertising', icon: 'Megaphone' }]
+        ? [{ labelKey: 'layout.nav.advertisingAdmin', path: '/admin/advertising', icon: 'Megaphone', staffOnly: true }]
         : []),
     ],
   },

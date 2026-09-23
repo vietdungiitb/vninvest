@@ -41,6 +41,23 @@ function MissingPageComponent({ registryId }: { registryId: string }) {
   return createElement('div', null, t('shellFallback.pageNotFound', { route: registryId }));
 }
 
+// Menu 2026-09-22: redirect giữ query/hash cho URL cũ (whale-alerts, ai-command-center).
+// Đặt TRƯỚC route gốc, dùng replace để không tạo vòng lặp lịch sử.
+function RedirectPreserveQuery({ to }: { to: string }) {
+  const location = useLocation();
+  const target = `${to}${location.search || ''}${location.hash || ''}`;
+  return createElement(Navigate, { to: target, replace: true });
+}
+
+function WhaleAlertsRedirect() {
+  const location = useLocation();
+  const suffix = location.pathname.startsWith('/whale-alerts/')
+    ? location.pathname.slice('/whale-alerts'.length)
+    : '';
+  const target = `/alert-center${suffix}${location.search || ''}${location.hash || ''}`;
+  return createElement(Navigate, { to: target, replace: true });
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, authStateReady } = usePortfolio();
   const { t } = useI18n();
@@ -98,7 +115,7 @@ function App() {
         createElement(Route, { path: 'settings/ai', element: createElement(resolvePageComponent('ai-command-center')) }),
         createElement(Route, { path: 'settings/ai/agents', element: createElement(resolvePageComponent('ai-agent-federation')) }),
         createElement(Route, { path: 'settings/ai/usage', element: createElement(resolvePageComponent('ai-usage-analytics')) }),
-        createElement(Route, { path: 'ai-command-center', element: createElement(resolvePageComponent('shell-ai-command-center')) }),
+        createElement(Route, { path: 'ai-command-center', element: createElement(RedirectPreserveQuery, { to: '/settings/ai' }) }),
         createElement(Route, { path: 'operations-center', element: createElement(resolvePageComponent('operations-center')) }),
         createElement(Route, { path: 'operations-center/mail-config', element: createElement(resolvePageComponent('operations-center-mail-config')) }),
         ...(isAdvertisingAdminEnabled()
@@ -124,7 +141,8 @@ function App() {
           createElement(Route, { path: 'roles', element: createElement(resolvePageComponent('tenant-admin-roles')) }),
         ),
         createElement(Route, { path: 'alert-center', element: createElement(resolvePageComponent('alert-center')) }),
-        createElement(Route, { path: 'whale-alerts', element: createElement(resolvePageComponent('whale-alerts')) }),
+        createElement(Route, { path: 'whale-alerts', element: createElement(WhaleAlertsRedirect) }),
+        createElement(Route, { path: 'whale-alerts/*', element: createElement(WhaleAlertsRedirect) }),
         createElement(Route, { path: 'vip/local-control', element: createElement(resolvePageComponent('vip-local-control')) }),
         createElement(Route, { path: 'commercial/billing', element: createElement(resolvePageComponent('commercial-billing-center')) }),
         createElement(Route, { path: 'commercial/payment-return', element: createElement(resolvePageComponent('commercial-payment-return')) }),
