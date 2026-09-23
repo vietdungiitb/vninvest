@@ -1033,6 +1033,76 @@
   font-size: 0.72rem;
 }
 
+/* Shared data table (admin/users & panels cần bảng đọc được) */
+.socDataTableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-default, rgba(var(--soc-rgb-5078a8) / 0.15));
+  border-radius: var(--r-md, 8px);
+}
+
+.socDataTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm, 0.75rem);
+  min-width: 760px;
+}
+
+.socDataTable th {
+  text-align: left;
+  padding: var(--sp-sm, 0.5rem) var(--sp-md, 0.75rem);
+  color: var(--soc-c-94a3b8);
+  font-weight: 700;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid
+    var(--border-strong, rgba(var(--soc-rgb-5078a8) / 0.25));
+  background: var(--bg-panel-soft, rgba(var(--soc-rgb-0f172a) / 0.3));
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+}
+
+.socDataTable td {
+  padding: var(--sp-sm, 0.5rem) var(--sp-md, 0.75rem);
+  color: var(--text-primary, var(--soc-c-f1f5f9));
+  border-bottom: 1px solid rgba(var(--soc-rgb-5078a8) / 0.08);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.socDataTable tbody tr:hover td {
+  background: rgba(var(--soc-rgb-5078a8) / 0.08);
+}
+
+.socDataTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.socDataTable td.socDataCellWrap {
+  white-space: normal;
+  min-width: 220px;
+}
+
+/* Badge tones (kế thừa .statusBadge) */
+.statusBadgeOk {
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.statusBadgeOff {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--soc-c-94a3b8);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.statusBadgeInfo {
+  background: rgba(var(--soc-rgb-00b4d8) / 0.12);
+  color: var(--soc-c-67e8f9);
+  border: 1px solid rgba(var(--soc-rgb-00b4d8) / 0.35);
+}
+
 .diffTable th {
   text-align: left;
   padding: 0.4rem 0.75rem;

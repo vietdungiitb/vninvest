@@ -47,31 +47,49 @@ describe("SocUsersPanel (A2)", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders user table from mock", async () => {
+  it("renders user table with badges and count", async () => {
     render(<SocUsersPanel />);
     await waitFor(() => {
       expect(screen.getByText("vietdung")).toBeTruthy();
     });
     expect(screen.getByText("tenant_vietdung")).toBeTruthy();
     const table = document.querySelector("table") as HTMLElement;
+    expect(table).toBeTruthy();
     expect(within(table).getByText("pro")).toBeTruthy();
+    expect(document.body.textContent).toContain("soc.users.bulk_title");
   });
 
-  it("lock button calls set-active with reason", async () => {
+  it("lock opens reason modal and confirms with reason", async () => {
     render(<SocUsersPanel />);
     await waitFor(() => {
       expect(screen.getByText("soc.users.lock_btn")).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText("soc.users.lock_btn"));
+    await waitFor(() => {
+      expect(screen.getByText("soc.users.lock_confirm")).toBeTruthy();
     });
     const reasonInput = document.querySelector(
       'input[placeholder="soc.users.reason_ph"]') as HTMLInputElement;
     fireEvent.change(reasonInput, { target: { value: "vi phạm chính sách" } });
     await act(async () => {
-      fireEvent.click(screen.getByText("soc.users.lock_btn"));
+      fireEvent.click(screen.getByText("soc.users.lock_confirm"));
     });
     await waitFor(() => {
       expect(adapterMocks.setSocUserActive).toHaveBeenCalledWith(
         7, { is_active: false, reason: "vi phạm chính sách" });
     });
+  });
+
+  it("shows pagination total and exports CSV without crash", async () => {
+    adapterMocks.getSocUsers.mockResolvedValue({ results: rows, count: 42 });
+    const createSpy = vi.spyOn(document, "createElement");
+    render(<SocUsersPanel />);
+    await waitFor(() => {
+      expect(document.body.textContent).toContain("soc.users.page_of");
+    });
+    fireEvent.click(screen.getByText("soc.users.export_csv"));
+    expect(createSpy).toHaveBeenCalledWith("a");
+    createSpy.mockRestore();
   });
 
   it("plan modal submits correct body", async () => {

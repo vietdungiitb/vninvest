@@ -434,6 +434,16 @@ export const routeCatalog = Object.freeze([
     status: "baseline",
   },
   {
+    id: "admin-users",
+    path: "/admin/users",
+    titleKey: "routes.adminUsers",
+    group: "admin",
+    buildTargets: ["saas", "vip"],
+    requiredCapabilities: ["admin.operator.read"],
+    adapter: "core",
+    status: "core",
+  },
+  {
     id: "vip-local-control",
     path: "/vip/local-control",
     titleKey: "routes.vipLocalControl",

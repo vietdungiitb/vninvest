@@ -93,21 +93,35 @@ describe("TenantKeysPage", () => {
     });
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText("tenantKeys.createAction")).toBeTruthy();
+      expect(screen.getAllByText("tenantKeys.createAction").length).toBeGreaterThan(0);
     });
+    const createBtn = screen.getAllByRole("button", { name: "tenantKeys.createAction" })[0];
     await act(async () => {
-      fireEvent.click(screen.getByText("tenantKeys.createAction"));
-    });
-    const nameInput = document.querySelector('input:not([type="datetime-local"])') as HTMLInputElement;
-    await act(async () => {
-      fireEvent.change(nameInput, { target: { value: "mykey" } });
-      const buttons = screen.getAllByText("tenantKeys.createAction");
-      fireEvent.click(buttons[buttons.length - 1]);
+      fireEvent.click(createBtn);
     });
     await waitFor(() => {
-      expect(screen.getByText("vni_pro_abcdef")).toBeTruthy();
+      const el = document.querySelector('input[name="display_name"]');
+      if (!el) throw new Error("input not yet");
+      expect(el).toBeTruthy();
     });
-    expect(screen.getByText("tenantKeys.secretOnceWarning")).toBeTruthy();
+    const nameInput = document.querySelector('input[name="display_name"]') as HTMLInputElement;
+    expect(nameInput).toBeTruthy();
+    await act(async () => {
+      fireEvent.change(nameInput, { target: { value: "mykey" } });
+    });
+    const innerBtn = document.querySelector("button.bg-emerald-600") as HTMLButtonElement;
+    expect(innerBtn).toBeTruthy();
+    await act(async () => {
+      fireEvent.click(innerBtn);
+    });
+    await waitFor(() => {
+      expect(defaultCoreApiAdapter.corePost).toHaveBeenCalled();
+    }, { timeout: 3000 });
+    await waitFor(() => {
+      const body = document.body.textContent || "";
+      expect(body).toContain("vni_pro_abcdef");
+    }, { timeout: 3000 });
+    expect(document.body.textContent).toContain("tenantKeys.secretOnceWarning");
   });
 
   it("revokes key after confirm", async () => {

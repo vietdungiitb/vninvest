@@ -152,72 +152,102 @@ export function TenantKeysPage() {
       title={t("tenantKeys.title")}
       description={t("tenantKeys.description")}
     >
-      <ShellPanel>
-        <button type="button" onClick={() => setShowCreate((v) => !v)}>
-          {t("tenantKeys.createAction")}
-        </button>
-
+      <ShellPanel
+        title={t("tenantKeys.createAction")}
+        subtitle="Scopes mặc định market:read,signals:read — có thể thu hẹp khi tạo."
+        actions={
+          <button
+            type="button"
+            onClick={() => setShowCreate((v) => !v)}
+            className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900"
+          >
+            {showCreate ? t("common.cancel") : t("tenantKeys.createAction")}
+          </button>
+        }
+      >
         {showCreate && (
-          <div>
-            <ShellField label={t("tenantKeys.fieldName")} name="display_name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/30">
+            <ShellField label={t("tenantKeys.fieldName")} name="display_name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="my-service" />
             <ShellField label={t("tenantKeys.fieldScopes")} name="scope_codes" value={scopeCodes} onChange={(e) => setScopeCodes(e.target.value)} />
             <ShellField label={t("tenantKeys.fieldExpires")} name="expires_at" type="datetime-local" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
             <ShellField label={t("tenantKeys.fieldCidr")} name="cidr" value={cidrBlocks} onChange={(e) => setCidrBlocks(e.target.value)} />
-            <button type="button" onClick={doCreate} disabled={createMutation.isPending}>
+            <button
+              type="button"
+              onClick={doCreate}
+              disabled={createMutation.isPending}
+              className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+            >
               {t("tenantKeys.createAction")}
             </button>
           </div>
         )}
 
         {freshSecret && (
-          <div role="alert">
-            <p>{t("tenantKeys.secretOnceWarning")}</p>
-            <code>{freshSecret}</code>
-            <button type="button" onClick={copySecret}>
+          <div role="alert" className="rounded-2xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">{t("tenantKeys.secretOnceWarning")}</p>
+            <code className="mt-2 block break-all rounded-lg bg-slate-900 p-3 font-mono text-xs text-emerald-300">{freshSecret}</code>
+            <button
+              type="button"
+              onClick={copySecret}
+              className="mt-2 rounded-full border border-slate-300 bg-white px-4 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800"
+            >
               {copied ? t("tenantKeys.copiedAction") : t("tenantKeys.copyAction")}
             </button>
           </div>
         )}
 
         {keys.length === 0 ? (
-          <ShellEmptyState description={t("tenantKeys.emptyState")} />
+          <ShellEmptyState
+            description={t("tenantKeys.emptyState")}
+            ctaLabel={t("tenantKeys.createAction")}
+            ctaOnClick={() => setShowCreate(true)}
+          />
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>{t("tenantKeys.colName")}</th>
-                <th>{t("tenantKeys.colPrefix")}</th>
-                <th>{t("tenantKeys.colScopes")}</th>
-                <th>{t("tenantKeys.colExpires")}</th>
-                <th>{t("tenantKeys.colLastUsed")}</th>
-                <th>{t("tenantKeys.colCalls")}</th>
-                <th>{t("tenantKeys.colActions")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {keys.map((k) => {
-                const id = k.pat_id || k.id || "";
-                return (
-                  <tr key={id}>
-                    <td>{k.label}</td>
-                    <td>{k.token_prefix}</td>
-                    <td>{(k.scope_codes || k.scopes || []).join(", ")}</td>
-                    <td>{k.expires_at || "—"}</td>
-                    <td>{k.last_used_at || "—"}</td>
-                    <td>{callsById[id] ?? "—"}</td>
-                    <td>
-                      <button type="button" onClick={() => doRotate(id)}>
-                        {t("tenantKeys.rotateAction")}
-                      </button>
-                      <button type="button" onClick={() => doRevoke(id)}>
-                        {t("tenantKeys.revokeAction")}
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500 dark:bg-slate-800/50">
+                <tr>
+                  <th className="px-4 py-2">{t("tenantKeys.colName")}</th>
+                  <th className="px-4 py-2">{t("tenantKeys.colPrefix")}</th>
+                  <th className="px-4 py-2">{t("tenantKeys.colScopes")}</th>
+                  <th className="px-4 py-2">{t("tenantKeys.colExpires")}</th>
+                  <th className="px-4 py-2">{t("tenantKeys.colLastUsed")}</th>
+                  <th className="px-4 py-2 text-right">{t("tenantKeys.colCalls")}</th>
+                  <th className="px-4 py-2 text-right">{t("tenantKeys.colActions")}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                {keys.map((k) => {
+                  const id = k.pat_id || k.id || "";
+                  const scopes = (k.scope_codes || k.scopes || []);
+                  return (
+                    <tr key={id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                      <td className="px-4 py-2 font-medium">{k.label}</td>
+                      <td className="px-4 py-2 font-mono text-xs">{k.token_prefix}</td>
+                      <td className="px-4 py-2">
+                        <span className="inline-flex flex-wrap gap-1">
+                          {scopes.map((s) => (
+                            <span key={s} className="rounded-full bg-slate-100 px-2 py-0.5 text-xs dark:bg-slate-800">{s}</span>
+                          ))}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-xs">{k.expires_at || "—"}</td>
+                      <td className="px-4 py-2 text-xs">{k.last_used_at || "—"}</td>
+                      <td className="px-4 py-2 text-right font-semibold">{callsById[id] ?? "—"}</td>
+                      <td className="px-4 py-2 text-right">
+                        <button type="button" onClick={() => doRotate(id)} className="mr-2 text-xs font-semibold text-amber-600 hover:underline dark:text-amber-400">
+                          {t("tenantKeys.rotateAction")}
+                        </button>
+                        <button type="button" onClick={() => doRevoke(id)} className="text-xs font-semibold text-rose-600 hover:underline dark:text-rose-400">
+                          {t("tenantKeys.revokeAction")}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </ShellPanel>
     </ShellPageChrome>

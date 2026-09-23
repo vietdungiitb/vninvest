@@ -123,6 +123,7 @@ function App() {
         ...(isAdvertisingAdminEnabled()
           ? [createElement(Route, { path: 'admin/advertising', element: createElement(resolvePageComponent('advertising-admin')) })]
           : []),
+        createElement(Route, { path: 'admin/users', element: createElement(resolvePageComponent('admin-users')) }),
         createElement(Route, { path: 'stocks/:symbol', element: createElement(resolvePageComponent('core-stock-detail')) }),
         createElement(Route, { path: 'tenant-admin', element: createElement(TenantAdminLayout) },
           createElement(Route, { index: true, element: createElement(Navigate, { to: '/tenant-admin/home', replace: true }) }),

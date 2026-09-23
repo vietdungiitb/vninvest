@@ -53,6 +53,7 @@ export const sidebarItems: NavGroup[] = [
       { labelKey: 'layout.nav.soc', path: '/operations-center', icon: 'Wrench', staffOnly: true },
       { labelKey: 'layout.nav.adminCrawlControl', path: '/admin-crawl-control', icon: 'RefreshCw', staffOnly: true },
       { labelKey: 'layout.nav.tenantAdmin', path: '/tenant-admin', icon: 'Building2', staffOnly: true },
+      { labelKey: 'layout.nav.adminUsers', path: '/admin/users', icon: 'User', staffOnly: true },
       ...(import.meta.env.VITE_FEATURE_ADVERTISING_ADMIN !== 'false'
         ? [{ labelKey: 'layout.nav.advertisingAdmin', path: '/admin/advertising', icon: 'Megaphone', staffOnly: true }]
         : []),

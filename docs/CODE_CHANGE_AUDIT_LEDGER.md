@@ -5,6 +5,42 @@
 
 ---
 
+## Entry 176: Polish Tenant SOC UI + move Users to Admin (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Thực thi audit `docs/AUDIT_UI_TENANT_SOC_20260923.md` (3 ảnh 2026-09-23):
+  P0 dời "Người dùng" khỏi SOC (9→8 tabs, ẩn overflow) → `/admin/users` (AdminUsersPage
+  wrapper SocUsersPanel, menu Quản trị staffOnly, routeCatalog + navigationCatalog,
+  `ShellOperationsCenterPage.tsx:35/89` xóa tab). P1 Users panel: dataTable CSS
+  (`.socDataTable`, sticky header, hover), badges, reason modal thay input lạc lõng,
+  subtitle count (U3), pagination đúng (page/total), CSV export, rate limit; Keys:
+  empty CTA trong ShellEmptyState, scopes badge, secret highlight amber; Usage: quota
+  `-1→Không giới hạn`, segmented tabs, metric cards 2×2, empty copy riêng (G1-G4).
+  Theme: reuse `soc.tokens.css` + `soc.module.css` tokens (không hardcode).
+  i18n VI/EN `broker.*` + `soc.tabs/users`.
+- **Gates**: `tsc` 0; `build` 26.46s PASS; eslint 0 errors; vitest 19/19
+  (soc-users 4 + menu-contract 8 + tenant 7); `manage.py check` 0; BE SocUsers 8/8.
+  `i18n:scan` 0 (verify runtime).
+- **Thành phần bổ sung hữu ích**: export CSV Users, quota unlimited label, lịch sử
+  usage phân tab, CTA tạo key trong empty state, badges plan/active/staff để scan nhanh.
+
+---
+
+## Entry 175: PLAN refactor Tenant Admin → Admin Console staff-only (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Lập plan refactor (không code): 8 trang AdminCore* orphan (có registry,
+  không route/catalog/menu, dead links /admin/core/*) + BE thiếu billing/usage
+  aggregate + audit-log flaw + chưa có staff-switch. Kết quả:
+  `docs/IMPLEMENTATION_PLAN_TENANT_ADMIN_REFACTOR_20260923.md`.
+- **Nội dung**: IA đích `/admin/*` (không thêm tab SOC); ma trận phân quyền 7 actor;
+  8 slices R0-R7 (StaffRoute+wire, tenants paginate, 3 fleet endpoints, switch token ký TTL 30m, hardening, đóng);
+  10 tiêu chí phản biện; out-of-scope显式.
+- **Gates**: 2 subagent audit (FE AdminCore + BE endpoints) + đọc trực tiếp
+  sidebaritems/main.tsx/operator.js + git log Entries 171-174; doc-only.
+
+---
+
 ## Entry 174: Rebuild dev nhận code F1/A2/B+A + live-verify (2026-09-23)
 
 - **Date**: 2026-09-23
@@ -81,7 +117,27 @@
 
 ---
 
-## Entry 170: PHẢN BIỆN plan Tenant Self-Service B+A + bổ sung A2 Users SOC (2026-09-23)
+## Entry 176: AUDIT mô hình User+Tenant + PLAN thống nhất theo chuẩn SaaS (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Audit chi tiết user+tenant BE/FE + benchmark WorkOS/Clerk/Auth0 +
+  mô hình thống nhất + lộ trình nâng cấp. Không đổi code. Kết quả:
+  `docs/AUDIT_USER_TENANT_MANAGEMENT_MODEL_20260923.md` +
+  `docs/IMPLEMENTATION_PLAN_USER_TENANT_UNIFICATION_20260923.md`.
+- **9 findings**: OneToOne+auto-tenant vỡ org; billing owner-centric; active-org gãy FE;
+  invite cụt+route mở; dual-owner/role rách; PAT lifecycle rách; resolution bất đồng;
+  SSO thiếu JIT; profile/billing UX rời.
+- **Target chốt**: Identity tách access; Org (`kind` personal|team)顶层; Membership
+  status; active-org server-validate; invite accept route; billing/keys theo org+chủ;
+  route guard; SOC Users A2 + staff-switch A3 backlog.
+- **Thứ tự**: Phase 0 (guard+F1+A2) → B+A → Phase 1 (membership/context) →
+  Phase 2 (ownership/billing) → Phase 3 (keys/SSO/audit) → Phase 4 (UX polish).
+- **Gates**: 2 subagent audit + websearch live + spot-verify (OneToOne, accept-absence,
+  switchTenant, Settings-gate); doc-only.
+
+---
+
+## Entry 177: PHẢN BIỆN plan Tenant Self-Service B+A + bổ sung A2 Users SOC (2026-09-23)
 
 - **Date**: 2026-09-23
 - **Scope**: Audit + phản biện độc lập plan B+A (Entry 169) + bổ sung phụ lục A2.
@@ -105,7 +161,7 @@
 
 ---
 
-## Entry 169: PLAN Tenant Self-Service B+A — user thường có API key cá nhân + usage (2026-09-23)
+## Entry 178: PLAN Tenant Self-Service B+A — user thường có API key cá nhân + usage (2026-09-23)
 
 - **Date**: 2026-09-23
 - **Scope**: Lập kế hoạch thực hiện (không code) theo quyết định B+A của user:
@@ -121,7 +177,7 @@
 
 ---
 
-## Entry 168: AUDIT tenant management + API key với user thường → doc-only, 1 blocker + 5 gap (2026-09-23)
+## Entry 179: AUDIT tenant management + API key với user thường → doc-only, 1 blocker + 5 gap (2026-09-23)
 
 - **Date**: 2026-09-23
 - **Scope**: Trace tenant-management + API key từ login → route/menu → BE permission cho user
@@ -4396,6 +4452,8 @@ nội dung giữ nguyên. Tiền lệ Entry 149.)*
 | 165 | 2026-09-22 | account | Polish trang settings: stylesheet rieng UserSettingsPage.css (card, form grid, input focus, nut gradient, banner loi/thanh cong) + [data-theme=light] overrides theo quy uoc theme | packages/web/src/pages/UserSettingsPage.css (new), UserSettingsPage.tsx (import) | audit settings xau | v0 | Active |
 | 166 | 2026-09-23 | menu | Thu gon main menu sat code (5 nhom/13 muc+flag): nhan VI/EN het trung (Thi truong/Tai san/So giao dich/Cai dat), xoa muc Whale Alerts trung AlertCenter (redirect giu query), admin staffOnly filter, BE nav + catalog dong bo, xoa 3 file (1).tsx stale | sidebaritems.ts, Sidebar.tsx, navigation.ts, main.tsx (RedirectPreserveQuery+WhaleAlertsRedirect), routeCatalog.js (+16 entries, whale deprecated), i18n/vi.js+en.js (12 dong), helpers.py _build_navigation, test_capabilities_soc.py (+2), __tests__/main-menu-contract.component.test.tsx (new, 6 tests) | docs/IMPLEMENTATION_PLAN_MAIN_MENU_20260922.md + docs/evidence/main-menu-20260922/ (gates: tsc 0, lint 0 err, build 27.39s PASS, vitest 63/382, jest 17/239, BE 5/5; check:shell FAIL pre-existing tokens UserSettingsPage.css; visual QA TC-01..07 PENDING) | v0 | Active |
 | 167 | 2026-09-23 | menu | HOTFIX admin mat menu Quan tri: UserProfileView GET/PATCH thieu is_staff/is_superuser -> syncAuthState luon map isStaff=false -> filter staffOnly an nhom voi ca staff that (lo contract latent, S2 lam lo ra; SupportPage staff actions cung dinh). FE giu nguyen (mapping da ho tro ca 2 key). BE capabilities 7/7 OK (3 cu + 2 nav + 2 profile moi). Rebuild dev, verify is_staff co trong container | identity_access/views_tenant.py (GET+PATCH), tests/test_capabilities_soc.py (UserProfileStaffFlagsTests) | commit a0283215, push dev; start_dev.ps1 rebuild healthy, no drift | v0 | Active |
-| 168 | 2026-09-23 | tenant | AUDIT tenant management + API key voi user thuong: menu an (staffOnly) nhung chuc nang KHONG khoa (dang ky auto tao tenant, BE cap toan bo tenant-admin ability moi user co tenant, owner wildcard, route /tenant-admin/* chi guard auth). F1 HIGH webhook detail thieu _require_tenant_permission (viewer PATCH/DELETE duoc); F2 MED billing 500 non-owner; F3 LOW issue_pat legacy 500; F4 LOW audit-log khong token; F5 MED /operations-center va /settings/ai khong staff-guard. Doc-only, cho user quyet huong A (self-service) / B (staff-only) | docs/AUDIT_TENANT_APIKEY_NORMAL_USER_20260923.md | audit doc (khong doi code); file:line verify truc tiep | v0 | Active |
-| 169 | 2026-09-23 | tenant | PLAN Tenant Self-Service B+A: /tenant/keys + /tenant/usage cho moi user co tenant, giu /tenant-admin staffOnly. Personal key = CorePATCredential san co (khong migration, prefix personal: reserved, scope C SA, cross-user 404). FE hook tenant-self, registry, catalog, sidebar requiresTenant, i18n tenantKeys. Kem sua F1 webhook + 19 test cases + acceptance A1-A9 + phan bien R1-R8 | docs/IMPLEMENTATION_PLAN_TENANT_SELF_SERVICE_20260923.md | plan doc (khong doi code); research BE+FE file:line | v0 | Active |
-| 170 | 2026-09-23 | tenant | PHAN BIEN plan B+A: APPROVE co dieu kien, 8 must-fix (C1 tenant_member query fallback; C2 webhook GET cung thieu; C3 quota copy-logic + pin shape; C4 navigationCatalog zero consumer; C5 prefix vni_; C6 import tu views/helpers; C7 mark_rotating kep + 401; C8 S1 them views_tenant + summary 403). Bo sung A2 Users SOC staff-only (11 tests). Khong doi code | docs/PHAN_BIEN_TENANT_SELF_SERVICE_20260923.md + plan (va C1-C8 + phu luc A2) | 2 subagent + verify truc tiep file:line | v0 | Active |
+| 179 | 2026-09-23 | tenant | AUDIT tenant management + API key voi user thuong: menu an (staffOnly) nhung chuc nang KHONG khoa (dang ky auto tao tenant, BE cap toan bo tenant-admin ability moi user co tenant, owner wildcard, route /tenant-admin/* chi guard auth). F1 HIGH webhook detail thieu _require_tenant_permission (viewer PATCH/DELETE duoc); F2 MED billing 500 non-owner; F3 LOW issue_pat legacy 500; F4 LOW audit-log khong token; F5 MED /operations-center va /settings/ai khong staff-guard. Doc-only, cho user quyet huong A (self-service) / B (staff-only) | docs/AUDIT_TENANT_APIKEY_NORMAL_USER_20260923.md | audit doc (khong doi code); file:line verify truc tiep | v0 | Active |
+| 178 | 2026-09-23 | tenant | PLAN Tenant Self-Service B+A: /tenant/keys + /tenant/usage cho moi user co tenant, giu /tenant-admin staffOnly. Personal key = CorePATCredential san co (khong migration, prefix personal: reserved, scope C SA, cross-user 404). FE hook tenant-self, registry, catalog, sidebar requiresTenant, i18n tenantKeys. Kem sua F1 webhook + 19 test cases + acceptance A1-A9 + phan bien R1-R8 | docs/IMPLEMENTATION_PLAN_TENANT_SELF_SERVICE_20260923.md | plan doc (khong doi code); research BE+FE file:line | v0 | Active |
+| 177 | 2026-09-23 | tenant | PHAN BIEN plan B+A: APPROVE co dieu kien, 8 must-fix (C1 tenant_member query fallback; C2 webhook GET cung thieu; C3 quota copy-logic + pin shape; C4 navigationCatalog zero consumer; C5 prefix vni_; C6 import tu views/helpers; C7 mark_rotating kep + 401; C8 S1 them views_tenant + summary 403). Bo sung A2 Users SOC staff-only (11 tests). Khong doi code | docs/PHAN_BIEN_TENANT_SELF_SERVICE_20260923.md + plan (va C1-C8 + phu luc A2) | 2 subagent + verify truc tiep file:line | v0 | Active |
+| 176 | 2026-09-23 | tenant | AUDIT mo hinh User+Tenant + PLAN thong nhat chuan SaaS: 9 findings (OneToOne+auto-tenant vo org; billing owner-centric; active-org gay FE; invite cut+route mo; dual-owner/role rach; PAT lifecycle rach; resolution bat dong; SSO thieu JIT; UX roi). Target: Identity tach access, Org kind personal/team, membership status, active-org validate, billing/keys theo org+chu, route guard. Thu tu Phase0(A2) -> B+A -> Ph1-4 | docs/AUDIT_USER_TENANT_MANAGEMENT_MODEL_20260923.md + docs/IMPLEMENTATION_PLAN_USER_TENANT_UNIFICATION_20260923.md | 2 subagent + benchmark live + spot-verify; doc-only | v0 | Active |
+| 175 | 2026-09-23 | tenant | PLAN refactor Tenant Admin thanh Admin Console staff-only: 8 trang AdminCore* orphan (registry co, route/catalog/menu khong, dead links) + BE thieu billing/usage aggregate + audit-log flaw + chua staff-switch. IA /admin/* (khong tab SOC); ma tran 7 actor; 8 slices R0-R7 (StaffRoute+wire, tenants paginate, 3 fleet endpoints, switch token ky TTL30m, hardening, dong); 10 tieu chi phan bien | docs/IMPLEMENTATION_PLAN_TENANT_ADMIN_REFACTOR_20260923.md | 2 subagent + doc truc tiep + git log 171-174; doc-only | v0 | Active |
