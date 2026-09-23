@@ -1355,3 +1355,41 @@ def monitor_market_data_parity_retention_health_task(self):
     }
     _mark_run_log_finished(run_log, status_value='success', output_summary=output_summary)
     return output_summary
+
+
+@shared_task(name="service_ops.test_system_broker_connection_task", bind=True, max_retries=0)
+def test_system_broker_connection_task(self, provider: str):
+    """B2.3: test-connection system credential read-only trong worker.
+
+    Cập nhật SystemBrokerCredential.last_check {ok, latency_ms, at, error} (không secret)
+    + is_verified/last_verified_at khi ok. ssi/tcbs → not_supported_yet (Đợt 3).
+    """
+    from time import perf_counter
+
+    from identity_access.models import SystemBrokerCredential
+    from user_workspace.broker import dnse as dnse_schema
+
+    provider = str(provider or '').strip().lower()
+    cred = SystemBrokerCredential.objects.filter(provider=provider).first()
+    if cred is None:
+        return {'ok': False, 'error': 'credential_not_configured'}
+    if provider != 'dnse':
+        return {'ok': False, 'error': 'not_supported_yet'}
+
+    started = perf_counter()
+    result = dnse_schema.test_connection(cred.get_secrets())
+    latency_ms = round((perf_counter() - started) * 1000, 1)
+    check = {
+        'ok': bool(result.get('ok')),
+        'latency_ms': latency_ms,
+        'at': timezone.now().isoformat(),
+        'error': str(result.get('error', ''))[:300],
+    }
+    cred.last_check = check
+    if check['ok']:
+        cred.is_verified = True
+        cred.last_verified_at = timezone.now()
+    else:
+        cred.is_verified = False
+    cred.save(update_fields=['last_check', 'is_verified', 'last_verified_at', 'updated_at'])
+    return {**result, 'latency_ms': latency_ms}

@@ -11,6 +11,7 @@ import { SocVnbrokerPanel } from "../../components/soc/SocVnbrokerPanel.js";
 import { SocDataOpsPanel } from "../../components/soc/SocDataOpsPanel.js";
 import { SocRuntimeKpiPanel } from "../../components/soc/SocRuntimeKpiPanel.js";
 import { SocDnseBackfillPanel } from "../../components/soc/SocDnseBackfillPanel.js";
+import { SocBrokerPanel } from "../../components/soc/SocBrokerPanel.js";
 
 interface ShellOperationsCenterPageProps {
   env?: Record<string, unknown>;
@@ -29,6 +30,7 @@ const SOC_TABS = [
   { key: "prefetch", icon: "Zap" },
   { key: "screener", icon: "Search" },
   { key: "vnbroker", icon: "LineChart" },
+  { key: "broker", icon: "Building2" },
   { key: "runtime-kpi", icon: "BarChart3" },
   { key: "dnse-backfill", icon: "RefreshCw" },
 ];
@@ -80,6 +82,8 @@ export function ShellOperationsCenterPage(_props: ShellOperationsCenterPageProps
         return createElement(SocScreenerPanel);
       case "vnbroker":
         return createElement(SocVnbrokerPanel);
+      case "broker":
+        return createElement(SocBrokerPanel);
       case "dataops":
         return createElement(SocDataOpsPanel);
       case "runtime-kpi":
@@ -98,6 +102,7 @@ export function ShellOperationsCenterPage(_props: ShellOperationsCenterPageProps
     prefetch: "soc.tabs.prefetch_description",
     screener: "soc.tabs.screener_description",
     vnbroker: "soc.tabs.vnbroker_description",
+    broker: "soc.tabs.broker_description",
     "runtime-kpi": "soc.tabs.runtime_kpi_description",
     "dnse-backfill": "soc.tabs.dnse_backfill_description",
   };

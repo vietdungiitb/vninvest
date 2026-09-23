@@ -26,6 +26,28 @@ nội dung giữ nguyên. Tiền lệ Entry 149.)*
 
 ---
 
+## Entry 160: Thực thi Đợt 2 quản lý cấu hình broker (B2.1–B2.4) + gates xanh (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Thực thi plan Rev.1 — Đợt 2 (mức hệ thống).
+  B2.1 `service_ops/domain_configs/broker.py` (registry typed, validate, D4 mapping, kill-switch,
+  quiet-hours) + 8 tests; B2.2 `identity_access.SystemBrokerCredential` (+`last_check`) +
+  migration `0027` + `get_system_broker_secrets()` purpose-gate + 4 tests;
+  B2.3 SOC `views/broker.py` (7 views, SOCBaseView=IsAdminUser) + 8 routes + system test job +
+  `soc.js` 9 methods + `SocBrokerPanel.tsx` (config/preview/audit+CSV/health/credentials) +
+  tab `broker` icon `Building2` + i18n VI/EN + 11 BE + 3 FE tests;
+  B2.4 `service_ops/broker_runtime.py` + backfill system ưu tiên credential mới (fallback cũ) +
+  fan-out tôn trọng quiet-hours + 7 tests.
+- **Deviations** (`docs/evidence/broker-config/dot2/README.md`): tái dùng `ServiceConfig`
+  versioned (không model mới), `domain='platform'` (khỏi migration choice), `last_check`
+  thêm vào 0027 trước apply, test-connection async + poll chung, screenshots tay khi rebuild image.
+- **Gates**: BE 50 mới + hồi quy backfill 21 = OK; `check` 0, `makemigrations` sạch;
+  FE `tsc` 0, eslint 0, `build` 34.70s PASS, vitest 3/3, i18n verify grep đủ keys.
+  Chưa commit (chờ lệnh).
+- **Còn lại**: Đợt 3 (SSI/TCBS schema + bump vnbroker@v3.3.0 SHA 541d7f22).
+
+---
+
 ## Entry 159: Thực thi Đợt 1 quản lý cấu hình broker (B1.1–B1.3) + gates xanh (2026-09-23)
 
 - **Date**: 2026-09-23

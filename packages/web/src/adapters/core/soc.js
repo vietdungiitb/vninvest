@@ -139,6 +139,50 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
       return coreGet("/operator/soc/vnbroker/circuit-breaker-status/");
     },
 
+    // ─── Broker system config (B2.3) ─────────────────────────────────────
+    getSocBrokerConfig() {
+      return coreGet("/operator/soc/broker/config/");
+    },
+
+    applySocBrokerConfig(config, changeReason = "") {
+      return corePost("/operator/soc/broker/config/apply/", {
+        config_payload: config,
+        change_reason: changeReason,
+      });
+    },
+
+    previewSocBrokerConfig(config) {
+      return corePost("/operator/soc/broker/config/preview/", { config_payload: config });
+    },
+
+    getSocBrokerAudit(limit = 50) {
+      return coreGet(`/operator/soc/broker/audit/?limit=${limit}`);
+    },
+
+    getSocBrokerHealth() {
+      return coreGet("/operator/soc/broker/health/");
+    },
+
+    getSocBrokerCredentials() {
+      return coreGet("/operator/soc/broker/credentials/");
+    },
+
+    saveSocBrokerCredential(provider, secrets, purposes) {
+      return corePost("/operator/soc/broker/credentials/", {
+        provider,
+        secrets,
+        allowed_purposes: purposes,
+      });
+    },
+
+    deleteSocBrokerCredential(provider) {
+      return coreDelete(`/operator/soc/broker/credentials/${encodeURIComponent(provider)}/`);
+    },
+
+    testSocBrokerConnection(provider) {
+      return corePost("/operator/soc/broker/test-connection/", { provider });
+    },
+
     getSocVnbrokerMetrics() {
       return this.getSocVnbrokerHealth().then((health) => {
         const latency = Number(health.avg_response_ms || 0);

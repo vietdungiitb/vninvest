@@ -2445,20 +2445,27 @@ def backfill_intraday_tick_system(self, *, symbol: str, trade_date: str) -> dict
     """
     from market_data.models import IntradayTick
     from market_data.vnbroker_adapter import fetch_intraday_tape_history, DnseRateLimitError
-    from identity_access.models import get_system_provider_credentials
 
     symbol_upper = str(symbol or '').strip().upper()
     if not symbol_upper or not trade_date:
         return {'status': 'error', 'reason': 'symbol và trade_date là bắt buộc'}
 
-    # §14.4: Abort khi không có system provider credentials
-    creds = get_system_provider_credentials()
-    if creds is None:
-        logger.warning('backfill_intraday_tick_system: no system provider credentials — abort. symbol=%s date=%s',
-                       symbol_upper, trade_date)
-        return {'status': 'aborted', 'reason': 'no_system_credentials', 'symbol': symbol_upper, 'date': trade_date}
+    # §14.4: Abort khi không có system provider credentials.
+    # B2.4: đọc SystemBrokerCredential (purpose backfill) trước, fallback cách cũ (admin staff).
+    from identity_access.models import get_system_broker_secrets, get_system_provider_credentials
 
-    api_key, api_secret = creds  # không log
+    api_key = api_secret = None
+    system_secrets = get_system_broker_secrets('dnse', 'backfill')
+    if system_secrets:
+        api_key = system_secrets.get('client_id')
+        api_secret = system_secrets.get('client_secret')
+    if not api_key or not api_secret:
+        creds = get_system_provider_credentials()
+        if creds is None:
+            logger.warning('backfill_intraday_tick_system: no system provider credentials — abort. symbol=%s date=%s',
+                           symbol_upper, trade_date)
+            return {'status': 'aborted', 'reason': 'no_system_credentials', 'symbol': symbol_upper, 'date': trade_date}
+        api_key, api_secret = creds  # không log
 
     # §14.5: Presence check trước bulk_create using fast range query
     try:

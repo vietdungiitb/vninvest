@@ -33,6 +33,9 @@ logger = logging.getLogger(__name__)
 
 @shared_task(name="user_workspace.reconcile_all_dnse_transactions_task")
 def reconcile_all_dnse_transactions_task():
+    from service_ops.broker_runtime import in_quiet_hours
+    if in_quiet_hours():
+        return {"ok": True, "triggered_count": 0, "skipped": "quiet_hours"}
     user_ids = list(DNSECredential.objects.filter(is_active=True).values_list("user_id", flat=True))
     for user_id in user_ids:
         reconcile_dnse_transactions_task.delay(user_id)
@@ -41,6 +44,9 @@ def reconcile_all_dnse_transactions_task():
 
 @shared_task(name="user_workspace.sync_all_dnse_balances_task")
 def sync_all_dnse_balances_task():
+    from service_ops.broker_runtime import in_quiet_hours
+    if in_quiet_hours():
+        return {"ok": True, "triggered_count": 0, "skipped": "quiet_hours"}
     user_ids = list(DNSECredential.objects.filter(is_active=True).values_list("user_id", flat=True))
     for user_id in user_ids:
         sync_dnse_balances_task.delay(user_id)

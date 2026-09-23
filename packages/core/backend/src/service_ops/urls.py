@@ -12,7 +12,7 @@ Hierarchy:
 """
 from django.urls import path
 
-from .views import dataops, dataops_stream, matrix, overview, overview_stream, prefetch, screener, signals, signals_rules, signals_stream, signals_triage, symbol_groups, vnbroker
+from .views import broker, dataops, dataops_stream, matrix, overview, overview_stream, prefetch, screener, signals, signals_rules, signals_stream, signals_triage, symbol_groups, vnbroker
 
 # Overview endpoints (12)
 urlpatterns = [
@@ -54,6 +54,16 @@ path('overview/stream/', overview_stream.OverviewStreamView.as_view(), name='soc
     path('vnbroker/benchmark/', vnbroker.VnbrokerBenchmarkView.as_view(), name='soc_vnbroker_benchmark'),
     path('vnbroker/ownership/', vnbroker.VnbrokerOwnershipView.as_view(), name='soc_vnbroker_ownership'),
     path('vnbroker/circuit-breaker-status/', vnbroker.VnbrokerCircuitBreakerView.as_view(), name='soc_vnbroker_cb'),
+
+    # Broker system config domain (B2.3) — registry + system credentials + health
+    path('broker/config/', broker.BrokerConfigView.as_view(), name='soc_broker_config'),
+    path('broker/config/apply/', broker.BrokerConfigView.as_view(), name='soc_broker_config_apply'),
+    path('broker/config/preview/', broker.BrokerConfigPreviewView.as_view(), name='soc_broker_preview'),
+    path('broker/audit/', broker.BrokerAuditView.as_view(), name='soc_broker_audit'),
+    path('broker/health/', broker.BrokerHealthView.as_view(), name='soc_broker_health'),
+    path('broker/credentials/', broker.BrokerCredentialsView.as_view(), name='soc_broker_credentials'),
+    path('broker/credentials/<str:provider>/', broker.BrokerCredentialDeleteView.as_view(), name='soc_broker_credential_delete'),
+    path('broker/test-connection/', broker.BrokerTestConnectionView.as_view(), name='soc_broker_test'),
 
     # Prefetch domain (7)
     path('prefetch/config/', prefetch.PrefetchConfigView.as_view(), name='soc_prefetch_config'),

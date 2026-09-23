@@ -940,6 +940,83 @@ class UserDNSECredential(models.Model):
         return _decrypt_credential(bytes(self.api_secret_encrypted))
 
 
+class SystemBrokerCredential(models.Model):
+    """B2.2: Credential hệ thống cho brokerage (1 row/provider) — staff-only.
+
+    Thay thế cách nhờ credential DNSE của admin (`get_system_provider_credentials`).
+    Secret lưu Fernet JSON bytes (cùng key DNSE_CREDENTIAL_FERNET_KEY).
+    Staff-gate enforce ở view layer + test (model không biết request).
+    """
+
+    class ProviderChoices(models.TextChoices):
+        DNSE = 'dnse', 'DNSE'
+        SSI = 'ssi', 'SSI'
+        TCBS = 'tcbs', 'TCBS'
+
+    provider = models.CharField(
+        max_length=16, unique=True, choices=ProviderChoices.choices,
+        db_index=True, verbose_name='Broker provider',
+    )
+    secrets_cipher = models.BinaryField(verbose_name='Secrets JSON (Fernet-encrypted)')
+    allowed_purposes = models.JSONField(
+        default=list, blank=True, verbose_name='Purpose được phép (backfill/snapshot/signal)')
+    is_verified = models.BooleanField(default=False, verbose_name='Đã xác minh kết nối')
+    last_verified_at = models.DateTimeField(null=True, blank=True, verbose_name='Xác minh lần cuối')
+    last_check = models.JSONField(
+        default=dict, blank=True,
+        verbose_name='Kết quả kiểm tra gần nhất {ok, latency_ms, at, error} (không chứa secret)')
+    updated_by = models.CharField(max_length=150, blank=True, default='', verbose_name='Staff cập nhật cuối')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'System Broker Credential'
+        verbose_name_plural = 'System Broker Credentials'
+
+    def __str__(self) -> str:
+        return f'SystemBrokerCredential({self.provider})'
+
+    def set_secrets(self, secrets: dict) -> None:
+        import json
+        self.secrets_cipher = _encrypt_credential(json.dumps(secrets or {}))
+
+    def get_secrets(self) -> dict:
+        import json
+        try:
+            data = json.loads(_decrypt_credential(bytes(self.secrets_cipher or b'')))
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+
+    def masked_preview(self) -> dict:
+        preview: dict = {}
+        for key, value in self.get_secrets().items():
+            text = str(value or '')
+            preview[key] = (text[:4] + '****') if text else ''
+        return preview
+
+
+def get_system_broker_secrets(provider: str, purpose: str) -> dict | None:
+    """B2.2: Lấy secrets hệ thống cho (provider, purpose).
+
+    Trả về None khi: chưa cấu hình, purpose không được phép, hoặc giải mã lỗi.
+    Không log secret. Thay thế dần `get_system_provider_credentials()`.
+    """
+    provider = str(provider or '').strip().lower()
+    purpose = str(purpose or '').strip().lower()
+    try:
+        cred = SystemBrokerCredential.objects.filter(provider=provider).first()
+    except Exception:
+        return None
+    if cred is None:
+        return None
+    allowed = cred.allowed_purposes or []
+    if purpose and purpose not in allowed:
+        return None
+    secrets = cred.get_secrets()
+    return secrets or None
+
+
 def get_system_provider_credentials() -> 'tuple[str, str] | None':
     """
     Trả về (client_id, client_secret) của admin system provider từ
