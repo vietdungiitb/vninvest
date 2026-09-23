@@ -5,6 +5,28 @@
 
 ---
 
+## Entry 168: AUDIT tenant management + API key với user thường → doc-only, 1 blocker + 5 gap (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Trace tenant-management + API key từ login → route/menu → BE permission cho user
+  non-staff/non-superuser. Không đổi code. Kết quả: `docs/AUDIT_TENANT_APIKEY_NORMAL_USER_20260923.md`.
+- **Kết luận chính**: Menu bị ẩn (staffOnly `sidebaritems.ts:46`, filter `Sidebar.tsx:126-127`)
+  nhưng **chức năng không khóa** — đăng ký auto tạo tenant (`views/register.py:120-126`),
+  BE cấp toàn bộ tenant-admin ability cho mọi user có tenant (`views/helpers.py:113-135`),
+  owner = wildcard (`resolve_tenant.py:25,218`), route `/tenant-admin/*` chỉ guard auth
+  (`main.tsx:61-82,125-142`, `TenantAdminLayout.tsx:82`). User thường gõ thẳng URL → UI mở + API trả 200.
+- **F1 HIGH (blocker)**: `views_webhooks.py:68-92` WebhookConfigDetailView GET/PATCH/DELETE thiếu
+  `_require_tenant_permission` (list/create `:40,:47` có) → member viewer PATCH/DELETE webhook config.
+- **F2 MED**: `commercial/views.py:37-63` billing chỉ `IsAuthenticated` + `owner_user` → member 500 thay vì 403.
+- **F3 LOW**: `views_tenant.py:225-245` `issue_pat` function thuần (không DRF) → 500.
+- **F4 LOW**: `ops_audit/views.py` PartnerAuditLogsView không check token, catalog không có `audit:*`.
+- **F5 MED**: `/operations-center`, `/admin-crawl-control`, `/admin/advertising`, `/settings/ai/*` cũng không staff-guard.
+- **CONTRADICTION**: menu staffOnly vs BE tenant self-service (helpers.py:113 comment) —
+  chờ user quyết định hướng A (self-service) hay B (staff-only thật).
+- **Gates**: đọc file thật kèm line (không grep suy luận); không chạy test/build (doc-only).
+
+---
+
 ## Entry 157: PHẢN BIỆN độc lập plan broker config Entry 154 — 5 contradiction, verdict implementable (2026-09-23)
 *(Đánh lại số từ 155 → 157 vì trùng Entry 155 cũ "Deploy frontend dev" ngày 2026-09-22 ở cuối file;
 nội dung giữ nguyên. Tiền lệ Entry 149.)*
@@ -23,6 +45,19 @@ nội dung giữ nguyên. Tiền lệ Entry 149.)*
   Kèm 4 gap nhỏ (G1-G4) + 3 câu hỏi làm rõ.
 - **Verdict**: IMPLEMENTABLE — Đợt 1–2 không blocker; Đợt 3 có 3 blocker nhỏ (C1–C3). Không đổi D1–D5, không đổi kiến trúc.
 - **Gates**: đọc file thật với line (không grep suy luận); không chạy test/build (plan là tài liệu, chưa có code — đúng bản chất Entry 154).
+
+---
+
+## Entry 167: Rebuild dev nhận code A5/B/C/D + live-verify (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: `.\start_dev.ps1` full build + up sau các commit A5/B/C/D (dcc55e7a, 320958d2).
+  Stack healthy, no queue drift.
+- **Verify live**: sources gồm SSI (`VCI/KBS/DNSE/SSI`); adapters đủ 3 lane;
+  `GET broker/retail/gold/?source=sjc` → 12 rows (SJC 142.5/145.5M ngày 23/09) + cache hit
+  lần 2 (lưu ý: response trả phẳng `{ok,rows}`, không bọc `data` — khớp views_dnse, FE đọc đúng path);
+  login vietdung/pro + `broker/providers/` đủ 3 lane.
+- **Gates**: start_dev smoke (API + frontend OK).
 
 ---
 
@@ -4231,3 +4266,4 @@ nội dung giữ nguyên. Tiền lệ Entry 149.)*
 | 165 | 2026-09-22 | account | Polish trang settings: stylesheet rieng UserSettingsPage.css (card, form grid, input focus, nut gradient, banner loi/thanh cong) + [data-theme=light] overrides theo quy uoc theme | packages/web/src/pages/UserSettingsPage.css (new), UserSettingsPage.tsx (import) | audit settings xau | v0 | Active |
 | 166 | 2026-09-23 | menu | Thu gon main menu sat code (5 nhom/13 muc+flag): nhan VI/EN het trung (Thi truong/Tai san/So giao dich/Cai dat), xoa muc Whale Alerts trung AlertCenter (redirect giu query), admin staffOnly filter, BE nav + catalog dong bo, xoa 3 file (1).tsx stale | sidebaritems.ts, Sidebar.tsx, navigation.ts, main.tsx (RedirectPreserveQuery+WhaleAlertsRedirect), routeCatalog.js (+16 entries, whale deprecated), i18n/vi.js+en.js (12 dong), helpers.py _build_navigation, test_capabilities_soc.py (+2), __tests__/main-menu-contract.component.test.tsx (new, 6 tests) | docs/IMPLEMENTATION_PLAN_MAIN_MENU_20260922.md + docs/evidence/main-menu-20260922/ (gates: tsc 0, lint 0 err, build 27.39s PASS, vitest 63/382, jest 17/239, BE 5/5; check:shell FAIL pre-existing tokens UserSettingsPage.css; visual QA TC-01..07 PENDING) | v0 | Active |
 | 167 | 2026-09-23 | menu | HOTFIX admin mat menu Quan tri: UserProfileView GET/PATCH thieu is_staff/is_superuser -> syncAuthState luon map isStaff=false -> filter staffOnly an nhom voi ca staff that (lo contract latent, S2 lam lo ra; SupportPage staff actions cung dinh). FE giu nguyen (mapping da ho tro ca 2 key). BE capabilities 7/7 OK (3 cu + 2 nav + 2 profile moi). Rebuild dev, verify is_staff co trong container | identity_access/views_tenant.py (GET+PATCH), tests/test_capabilities_soc.py (UserProfileStaffFlagsTests) | commit a0283215, push dev; start_dev.ps1 rebuild healthy, no drift | v0 | Active |
+| 168 | 2026-09-23 | tenant | AUDIT tenant management + API key voi user thuong: menu an (staffOnly) nhung chuc nang KHONG khoa (dang ky auto tao tenant, BE cap toan bo tenant-admin ability moi user co tenant, owner wildcard, route /tenant-admin/* chi guard auth). F1 HIGH webhook detail thieu _require_tenant_permission (viewer PATCH/DELETE duoc); F2 MED billing 500 non-owner; F3 LOW issue_pat legacy 500; F4 LOW audit-log khong token; F5 MED /operations-center va /settings/ai khong staff-guard. Doc-only, cho user quyet huong A (self-service) / B (staff-only) | docs/AUDIT_TENANT_APIKEY_NORMAL_USER_20260923.md | audit doc (khong doi code); file:line verify truc tiep | v0 | Active |
