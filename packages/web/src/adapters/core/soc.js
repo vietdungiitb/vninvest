@@ -139,6 +139,24 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
       return coreGet("/operator/soc/vnbroker/circuit-breaker-status/");
     },
 
+    // ─── Operator users (A2) ─────────────────────────────────────────
+    getSocUsers(params = {}) {
+      const qs = new URLSearchParams();
+      for (const [k, v] of Object.entries(params || {})) {
+        if (v !== undefined && v !== null && String(v) !== "") qs.set(k, String(v));
+      }
+      const suffix = qs.toString();
+      return coreGet(`/operator/soc/users/${suffix ? `?${suffix}` : ""}`);
+    },
+
+    setSocUserActive(userId, body) {
+      return corePost(`/operator/soc/users/${encodeURIComponent(userId)}/set-active/`, body);
+    },
+
+    setSocUserPlan(userId, body) {
+      return corePost(`/operator/soc/users/${encodeURIComponent(userId)}/set-plan/`, body);
+    },
+
     // ─── Broker system config (B2.3) ─────────────────────────────────────
     getSocBrokerConfig() {
       return coreGet("/operator/soc/broker/config/");

@@ -12,7 +12,7 @@ Hierarchy:
 """
 from django.urls import path
 
-from .views import broker, dataops, dataops_stream, matrix, overview, overview_stream, prefetch, screener, signals, signals_rules, signals_stream, signals_triage, symbol_groups, vnbroker
+from .views import broker, dataops, dataops_stream, matrix, overview, overview_stream, prefetch, screener, signals, signals_rules, signals_stream, signals_triage, symbol_groups, users, vnbroker
 
 # Overview endpoints (12)
 urlpatterns = [
@@ -64,6 +64,11 @@ path('overview/stream/', overview_stream.OverviewStreamView.as_view(), name='soc
     path('broker/credentials/', broker.BrokerCredentialsView.as_view(), name='soc_broker_credentials'),
     path('broker/credentials/<str:provider>/', broker.BrokerCredentialDeleteView.as_view(), name='soc_broker_credential_delete'),
     path('broker/test-connection/', broker.BrokerTestConnectionView.as_view(), name='soc_broker_test'),
+
+    # Operator users domain (A2) — quản trị users toàn hệ thống, staff-only
+    path('users/', users.SocUsersView.as_view(), name='soc_users_list'),
+    path('users/<int:user_id>/set-active/', users.SocUserSetActiveView.as_view(), name='soc_users_set_active'),
+    path('users/<int:user_id>/set-plan/', users.SocUserSetPlanView.as_view(), name='soc_users_set_plan'),
 
     # Prefetch domain (7)
     path('prefetch/config/', prefetch.PrefetchConfigView.as_view(), name='soc_prefetch_config'),

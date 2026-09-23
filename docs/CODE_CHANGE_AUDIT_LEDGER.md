@@ -5,6 +5,78 @@
 
 ---
 
+## Entry 172: A2 SOC Users tab — quản trị users toàn hệ thống (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Thực thi phụ lục A2 plan Tenant Self-Service (staff-only, không đụng B+A/abilities/migration).
+  BE `service_ops/views/users.py` (list search/filter/paginate + set-active/set-plan guards +
+  AuditEvent) + 3 routes + 8 tests; FE `SocUsersPanel` (filter/table/lock-unlock/plan modal/CSV
+  theo mẫu SocBrokerPanel) + tab `users` icon `User` sẵn whitelist + adapter soc.js + i18n
+  soc.users.* VI/EN + 3 vitest.
+- **Gates**: BE 8/8 (403 non-staff, search/filter, audit metadata, self-lock/superuser-lock chặn,
+  N+1 hằng số 9 queries); FE 3/3; `tsc` 0; eslint 0; `check` 0.
+  Evidence: `docs/evidence/soc-users-20260923/` (ghi sau khi chụp screenshot tay).
+
+---
+
+## Entry 171: F1 hotfix webhook detail permission + tests (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Hotfix tách riêng (vuln thật): `WebhookConfigDetailView` get/patch/delete thêm
+  `_require_tenant_permission` (read/write) sau `require_pat_scopes_or_human_session`
+  (`views_webhooks.py:68-92`), mirror ListCreateView. Tests mới 6/6
+  (`test_webhook_detail_permissions.py`: viewer GET/PATCH/DELETE → 403, owner → 200/204).
+- **Ghi chú audit**: serializer không expose `secret` (chỉ url/events/headers) — rủi ro là
+  đọc/sửa/xoá cấu hình trái phép (kể cả headers có thể chứa token), không phải lộ HMAC secret.
+- **Gates**: 6 tests OK. Đã push riêng `30ab7347`.
+
+---
+
+## Entry 170: Phản biện plan Tenant Self-Service B+A + spec bổ sung quản trị users (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Audit độc lập `docs/IMPLEMENTATION_PLAN_TENANT_SELF_SERVICE_20260923.md` (Entry 169)
+  + spec bổ sung màn quản trị users native (Plan A2) theo yêu cầu. Không đổi code.
+- **Kết quả** (`docs/PHAN_BIEN_TENANT_SELF_SERVICE_20260923.md`): plan ~93% chính xác —
+  register/auth/models/serializers/urls/middleware-quota/FE shell/catalog/menu/abilities/i18n
+  đều khớp file:line. F1 webhook XÁC NHẬN thật (DetailView thiếu permission cả GET).
+- **8 điểm**: C1 MUST-FIX (`request.tenant_member` không tồn tại — middleware chỉ set
+  tenant/tenant_role; sửa helper query theo tenant+user); C2 F1 thêm test GET + giữ fix;
+  C3 quota là method class → copy-logic, cấm import; C4 catalog không thấy consumer → S0
+  xác định thật trước khi thêm; C5 fixture test 12 cần tenant sạch; C6 path types/;
+  C7/C8 ghi nhận (đúng/không sao).
+- **Bổ sung Plan A2** (§D): `GET /api/soc/users/` (search/filter/paginate, staff-only,
+  N+1 assert) + set-active/set-plan (chặn tự khóa, chặn khóa superuser, AuditEvent) +
+  tab SOC Users (icon User sẵn có) + i18n + 11 tests + DoD. Không migration, không đụng B+A.
+- **Verdict**: APPROVE B+A có điều kiện (C1–C4) + APPROVE A2. 2 câu hỏi không blocker (§E).
+- **Gates**: đọc/grep thật, không chạy test (audit tĩnh).
+
+---
+
+## Entry 170: PHẢN BIỆN plan Tenant Self-Service B+A + bổ sung A2 Users SOC (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Audit + phản biện độc lập plan B+A (Entry 169) + bổ sung phụ lục A2.
+  Không đổi code. Kết quả: `docs/PHAN_BIEN_TENANT_SELF_SERVICE_20260923.md`;
+  plan vá 8 must-fix (C1-C8) + phụ lục A2 trong
+  `docs/IMPLEMENTATION_PLAN_TENANT_SELF_SERVICE_20260923.md`.
+- **Verdict**: APPROVE CÓ ĐIỀU KIỆN. 8 must-fix: C1 `_personal_member`
+  (middleware không set `tenant_member` — query fallback); C2 F1 webhook cả GET
+  (không chỉ PATCH/DELETE) + test GET→403; C3 quota là instance method (copy-logic,
+  cấm import) + pin shape quotas; C4 navigationCatalog zero consumer (S0 verify);
+  C5 prefix `vni_` (không `vniv_`); C6 import TENANT_PERMISSION_CLASSES từ
+  `views/helpers.py:18`; C7 `mark_rotating` kép + revoked Bearer assert 401;
+  C8 S1 thêm `views_tenant.py` (D2) + summary no-tenant chốt 403.
+- **A2** (màn Users SOC staff-only): `service_ops/views/users.py` kế thừa SOCBaseView +
+  list/search/filter/paginate `StandardPageNumberPagination` + set-active (chặn tự khoá,
+  khoá superuser, reason bắt buộc) + set-plan (tenant sở hữu) — write ghi AuditEvent
+  (reason vào metadata). FE tab `users` + `SocUsersPanel` + adapter soc.js + ~25 keys.
+  11 tests (8 BE + 3 FE). Không đụng B+A/abilities/migration.
+- **Gates**: 2 subagent research + verify trực tiếp file:line (middleware grep,
+  navigationCatalog grep, models prefix); doc-only.
+
+---
+
 ## Entry 169: PLAN Tenant Self-Service B+A — user thường có API key cá nhân + usage (2026-09-23)
 
 - **Date**: 2026-09-23
@@ -4298,3 +4370,4 @@ nội dung giữ nguyên. Tiền lệ Entry 149.)*
 | 167 | 2026-09-23 | menu | HOTFIX admin mat menu Quan tri: UserProfileView GET/PATCH thieu is_staff/is_superuser -> syncAuthState luon map isStaff=false -> filter staffOnly an nhom voi ca staff that (lo contract latent, S2 lam lo ra; SupportPage staff actions cung dinh). FE giu nguyen (mapping da ho tro ca 2 key). BE capabilities 7/7 OK (3 cu + 2 nav + 2 profile moi). Rebuild dev, verify is_staff co trong container | identity_access/views_tenant.py (GET+PATCH), tests/test_capabilities_soc.py (UserProfileStaffFlagsTests) | commit a0283215, push dev; start_dev.ps1 rebuild healthy, no drift | v0 | Active |
 | 168 | 2026-09-23 | tenant | AUDIT tenant management + API key voi user thuong: menu an (staffOnly) nhung chuc nang KHONG khoa (dang ky auto tao tenant, BE cap toan bo tenant-admin ability moi user co tenant, owner wildcard, route /tenant-admin/* chi guard auth). F1 HIGH webhook detail thieu _require_tenant_permission (viewer PATCH/DELETE duoc); F2 MED billing 500 non-owner; F3 LOW issue_pat legacy 500; F4 LOW audit-log khong token; F5 MED /operations-center va /settings/ai khong staff-guard. Doc-only, cho user quyet huong A (self-service) / B (staff-only) | docs/AUDIT_TENANT_APIKEY_NORMAL_USER_20260923.md | audit doc (khong doi code); file:line verify truc tiep | v0 | Active |
 | 169 | 2026-09-23 | tenant | PLAN Tenant Self-Service B+A: /tenant/keys + /tenant/usage cho moi user co tenant, giu /tenant-admin staffOnly. Personal key = CorePATCredential san co (khong migration, prefix personal: reserved, scope C SA, cross-user 404). FE hook tenant-self, registry, catalog, sidebar requiresTenant, i18n tenantKeys. Kem sua F1 webhook + 19 test cases + acceptance A1-A9 + phan bien R1-R8 | docs/IMPLEMENTATION_PLAN_TENANT_SELF_SERVICE_20260923.md | plan doc (khong doi code); research BE+FE file:line | v0 | Active |
+| 170 | 2026-09-23 | tenant | PHAN BIEN plan B+A: APPROVE co dieu kien, 8 must-fix (C1 tenant_member query fallback; C2 webhook GET cung thieu; C3 quota copy-logic + pin shape; C4 navigationCatalog zero consumer; C5 prefix vni_; C6 import tu views/helpers; C7 mark_rotating kep + 401; C8 S1 them views_tenant + summary 403). Bo sung A2 Users SOC staff-only (11 tests). Khong doi code | docs/PHAN_BIEN_TENANT_SELF_SERVICE_20260923.md + plan (va C1-C8 + phu luc A2) | 2 subagent + verify truc tiep file:line | v0 | Active |
