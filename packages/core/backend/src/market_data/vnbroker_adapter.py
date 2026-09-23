@@ -436,6 +436,18 @@ def _slice_listing_symbols(symbols: list[str], symbol_group_id: str) -> list[str
     return symbols
 
 
+def _pick_latest_bar(frame: pd.DataFrame):
+    """Chọn bar mới nhất theo cột 'time'; fallback iloc[0] khi thiếu/không parse được."""
+    try:
+        if 'time' in frame.columns:
+            ts = pd.to_datetime(frame['time'], errors='coerce')
+            if ts.notna().any():
+                return frame.loc[ts.idxmax()]
+    except Exception:  # noqa: BLE001 — fallback an toàn
+        pass
+    return frame.iloc[0]
+
+
 def _fetch_realtime_price_with_quote_class(symbol_upper: str, source: str, quote_class) -> dict[str, Any] | None:
     from datetime import date as dt_date
 
@@ -450,7 +462,9 @@ def _fetch_realtime_price_with_quote_class(symbol_upper: str, source: str, quote
     if frame is None or frame.empty:
         return None
 
-    row = frame.iloc[0]
+    # VCI trả ascending (iloc[0] = cũ nhất), KBS trả descending — không đoán thứ tự,
+    # luôn chọn bar mới nhất theo cột 'time' (fix stale-row phát hiện khi điều tra VCI 400).
+    row = _pick_latest_bar(frame)
     return {
         'symbol': symbol_upper,
         'close': float(row['close']),

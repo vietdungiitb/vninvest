@@ -5,6 +5,22 @@
 
 ---
 
+## Entry 169: PLAN Tenant Self-Service B+A — user thường có API key cá nhân + usage (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Lập kế hoạch thực hiện (không code) theo quyết định B+A của user:
+  self-service `/tenant/keys` + `/tenant/usage` cho mọi user có tenant, giữ nguyên
+  `/tenant-admin/*` staffOnly. Kết quả: `docs/IMPLEMENTATION_PLAN_TENANT_SELF_SERVICE_20260923.md`.
+- **Thiết kế chốt**: personal key = CorePATCredential sẵn có (không migration) —
+  `is_human_session=False` + `issued_for_member` + default SA + label prefix reserved `personal:`;
+  endpoint personal không cần role token (own-data); scope ⊆ SA; cross-user → 404.
+  FE: hook `useTenantSelfQuery` (scope `tenant-self`), registry `tenant-keys/tenant-usage`,
+  sidebar group mới flag `requiresTenant`, icon Key whitelist +1 dòng, i18n `tenantKeys.*`.
+  Kèm sửa F1 webhook + 19 test cases liệt kê + acceptance A1-A9 + checklist phản biện R1-R8.
+- **Gates**: doc-only (không chạy test/build).
+
+---
+
 ## Entry 168: AUDIT tenant management + API key với user thường → doc-only, 1 blocker + 5 gap (2026-09-23)
 
 - **Date**: 2026-09-23
@@ -45,6 +61,20 @@ nội dung giữ nguyên. Tiền lệ Entry 149.)*
   Kèm 4 gap nhỏ (G1-G4) + 3 câu hỏi làm rõ.
 - **Verdict**: IMPLEMENTABLE — Đợt 1–2 không blocker; Đợt 3 có 3 blocker nhỏ (C1–C3). Không đổi D1–D5, không đổi kiến trúc.
 - **Gates**: đọc file thật với line (không grep suy luận); không chạy test/build (plan là tài liệu, chưa có code — đúng bản chất Entry 154).
+
+---
+
+## Entry 168: Điều tra VCI 400 (transient) + fix stale-row realtime (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Việc #3 — VCI 400 làm realtime default-VCI None.
+- **Kết luận 400**: transient upstream (400 lúc 14:58/17:5x, 200 lúc 19:31+ cùng calls);
+  URL/endpoint trùng hệt v1.1.0, KBS cùng máy tốt → không phải regression v3.4.0, không đổi code.
+- **Fix kèm**: phát hiện realtime VCI trả bar cũ (frame ascending + `iloc[0]`; KBS descending
+  nên đúng tình cờ; cả 2 lib version đều không sort) → `_pick_latest_bar()` chọn max `time`.
+  Live: VCI SSI ra đúng bar 23/09 (20850). Tests mới 5/5; hồi quy adapter 18/18.
+  Evidence: `docs/evidence/broker-config/v34-smoke/vci-400-investigation.md`.
+- **Gates**: 23 tests OK, `check` 0.
 
 ---
 
@@ -4267,3 +4297,4 @@ nội dung giữ nguyên. Tiền lệ Entry 149.)*
 | 166 | 2026-09-23 | menu | Thu gon main menu sat code (5 nhom/13 muc+flag): nhan VI/EN het trung (Thi truong/Tai san/So giao dich/Cai dat), xoa muc Whale Alerts trung AlertCenter (redirect giu query), admin staffOnly filter, BE nav + catalog dong bo, xoa 3 file (1).tsx stale | sidebaritems.ts, Sidebar.tsx, navigation.ts, main.tsx (RedirectPreserveQuery+WhaleAlertsRedirect), routeCatalog.js (+16 entries, whale deprecated), i18n/vi.js+en.js (12 dong), helpers.py _build_navigation, test_capabilities_soc.py (+2), __tests__/main-menu-contract.component.test.tsx (new, 6 tests) | docs/IMPLEMENTATION_PLAN_MAIN_MENU_20260922.md + docs/evidence/main-menu-20260922/ (gates: tsc 0, lint 0 err, build 27.39s PASS, vitest 63/382, jest 17/239, BE 5/5; check:shell FAIL pre-existing tokens UserSettingsPage.css; visual QA TC-01..07 PENDING) | v0 | Active |
 | 167 | 2026-09-23 | menu | HOTFIX admin mat menu Quan tri: UserProfileView GET/PATCH thieu is_staff/is_superuser -> syncAuthState luon map isStaff=false -> filter staffOnly an nhom voi ca staff that (lo contract latent, S2 lam lo ra; SupportPage staff actions cung dinh). FE giu nguyen (mapping da ho tro ca 2 key). BE capabilities 7/7 OK (3 cu + 2 nav + 2 profile moi). Rebuild dev, verify is_staff co trong container | identity_access/views_tenant.py (GET+PATCH), tests/test_capabilities_soc.py (UserProfileStaffFlagsTests) | commit a0283215, push dev; start_dev.ps1 rebuild healthy, no drift | v0 | Active |
 | 168 | 2026-09-23 | tenant | AUDIT tenant management + API key voi user thuong: menu an (staffOnly) nhung chuc nang KHONG khoa (dang ky auto tao tenant, BE cap toan bo tenant-admin ability moi user co tenant, owner wildcard, route /tenant-admin/* chi guard auth). F1 HIGH webhook detail thieu _require_tenant_permission (viewer PATCH/DELETE duoc); F2 MED billing 500 non-owner; F3 LOW issue_pat legacy 500; F4 LOW audit-log khong token; F5 MED /operations-center va /settings/ai khong staff-guard. Doc-only, cho user quyet huong A (self-service) / B (staff-only) | docs/AUDIT_TENANT_APIKEY_NORMAL_USER_20260923.md | audit doc (khong doi code); file:line verify truc tiep | v0 | Active |
+| 169 | 2026-09-23 | tenant | PLAN Tenant Self-Service B+A: /tenant/keys + /tenant/usage cho moi user co tenant, giu /tenant-admin staffOnly. Personal key = CorePATCredential san co (khong migration, prefix personal: reserved, scope C SA, cross-user 404). FE hook tenant-self, registry, catalog, sidebar requiresTenant, i18n tenantKeys. Kem sua F1 webhook + 19 test cases + acceptance A1-A9 + phan bien R1-R8 | docs/IMPLEMENTATION_PLAN_TENANT_SELF_SERVICE_20260923.md | plan doc (khong doi code); research BE+FE file:line | v0 | Active |
