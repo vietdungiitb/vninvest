@@ -285,17 +285,17 @@ export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, c
     // ─── DNSE LightSpeed API Broker Integration ───────────────────────────────
 
     /**
-     * Lấy trạng thái cấu hình DNSE LightSpeed của user hiện tại.
-     * @returns {Promise<{ is_configured: boolean, data?: object }>}
+     * Lấy trạng thái cấu hình DNSE LightSpeed của user hiện tại (B1.2: store UserBrokerConfig mới).
+     * @returns {Promise<{ is_configured: boolean, status?: string, preview?: object, last_verified_at?: string|null }>}
      */
     getDNSEConfig() {
       return coreGet("/broker/dnse/config/");
     },
 
     /**
-     * Cập nhật DNSE LightSpeed credential (client_id + client_secret).
+     * Cập nhật DNSE LightSpeed credential (client_id + client_secret) — B1.2 backend mới.
      * @param {{ client_id: string, client_secret: string, is_active?: boolean }} data
-     * @returns {Promise<{ ok: boolean }>}
+     * @returns {Promise<{ ok: boolean, is_configured: boolean, preview?: object }>}
      */
     updateDNSEConfig(data) {
       if (!data.client_id || !data.client_secret) {

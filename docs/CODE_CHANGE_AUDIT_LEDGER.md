@@ -5,6 +5,163 @@
 
 ---
 
+## Entry 157: PHẢN BIỆN độc lập plan broker config Entry 154 — 5 contradiction, verdict implementable (2026-09-23)
+*(Đánh lại số từ 155 → 157 vì trùng Entry 155 cũ "Deploy frontend dev" ngày 2026-09-22 ở cuối file;
+nội dung giữ nguyên. Tiền lệ Entry 149.)*
+
+- **Date**: 2026-09-23
+- **Scope**: Đối chiếu từng `file:line` của `docs/IMPLEMENTATION_PLAN_BROKER_CONFIG_20260923.md` (Entry 154)
+  với code thật (vninvest + external `C:\Mujoco Projects\vnbroker`). Không đổi code. Kết quả:
+  `docs/PHAN_BIEN_BROKER_CONFIG_20260923.md`.
+- **Verified ~95%**: models/urls/tasks/views DNSE, ConfigChangeAudit, domain_configs vnbroker, provider_catalog,
+  lucide whitelist, i18n, adapter FE, SOC tabs; SSI/TCBS/DNSE client thật bên vnbroker (method, signature, market-only auth).
+- **5 contradiction (sửa trước khi giao đội code)**: C1 B3.3 pin `TCBSBrokerClient.get_accounts` — method không tồn
+  tại (chỉ `get_account_list`/`list_accounts`/`get_balance`); C2 B3.1 `SSIBrokerClient(api_key, api_secret)` positional
+  → nhầm thành `client_id, api_key` (phải keyword); C3 prereq "tag ≥v3.2.0" không tồn tại trên GitHub (chỉ
+  v1.1.0/v3.4.0-core/internal-core-1.0.0) — phải tạo tag v3.3.0 trước; C4 `icon: "Landmark"` không có trong whitelist
+  `lucide-icon.tsx` → fallback `⬤`; C5 `docs/SSI_USAGE_GUIDE.md:8-29` không tồn tại trong vninvest (chỉ ở vnbroker repo).
+  Kèm 4 gap nhỏ (G1-G4) + 3 câu hỏi làm rõ.
+- **Verdict**: IMPLEMENTABLE — Đợt 1–2 không blocker; Đợt 3 có 3 blocker nhỏ (C1–C3). Không đổi D1–D5, không đổi kiến trúc.
+- **Gates**: đọc file thật với line (không grep suy luận); không chạy test/build (plan là tài liệu, chưa có code — đúng bản chất Entry 154).
+
+---
+
+## Entry 159: Thực thi Đợt 1 quản lý cấu hình broker (B1.1–B1.3) + gates xanh (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Thực thi `IMPLEMENTATION_PLAN_BROKER_CONFIG_20260923.md` Rev.1 — Đợt 1.
+  B1.1 `UserBrokerConfig` + helpers + mask (`models.py`, `broker/{__init__,base}.py`) + migration
+  `0017` (create + data-migrate 2 store DNSE, reverse theo marker) + 6 tests;
+  B1.2 `broker/dnse.py` schema/test-connection + `views_broker.py` (6 endpoints) + `urls.py` +
+  `test_broker_connection_task` + 14 tests + chuyển ruột `views_dnse` sang store mới (helper
+  `_get_dnse_secrets`, mirror ghi cũ cho tasks sync); B1.3 `adapters/core/broker.js` +
+  `BrokerSettingsSection.tsx` (tiles/form-schema/test poll) + `broker.*` i18n VI/EN +
+  mount vào `UserSettingsPage` + 4 vitest + panel DNSE chuyển shape mới.
+- **Deviations** (chi tiết `docs/evidence/broker-config/dot1/README.md`): route `broker/dnse/config/`
+  cũ XÓA (trùng path generic, first-match shadow) — view mới phục vụ; test BE ở package root
+  (không có `tests/`); sửa 1 bug UX thật (loadDetail nuốt msg test-ok); SSI `client_id` non-secret.
+- **Gates**: BE 20 mới + hồi quy 15 (identity DNSE) + 21 (backfill) + 10 (workspace) = 66 OK;
+  `check` 0, `makemigrations --check` sạch, migrate scratch forward→reverse→forward OK;
+  FE `tsc` 0, eslint 7 file 0, `build` 49.46s PASS, vitest 4/4, i18n diff chỉ block broker
+  (0 key thiếu). Chưa commit (đợi Đợt 2/3 hoặc lệnh riêng).
+- **Còn lại**: Đợt 2 (registry + SOC tab), Đợt 3 (SSI/TCBS + bump vnbroker@v3.3.0);
+  screenshots tay khi rebuild image dev (container đang chạy image cũ).
+
+---
+
+## Entry 158: Áp dụng phản biện vào plan broker config Rev.1 + xác minh bổ sung (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Sửa `docs/IMPLEMENTATION_PLAN_BROKER_CONFIG_20260923.md` thành Rev.1 theo Entry 157;
+  xác minh độc lập lại toàn bộ C1–C5 bằng đọc file thật. Không đổi code nguồn.
+- **Verify**: C1 ĐÚNG (`tcbs/client.py` không có `get_accounts`; có `get_account_list:122`,
+  `list_accounts:147`, `get_balance:151`) → plan pin sang `authenticate/get_account_list/get_balance`;
+  C2 ĐÚNG (`ssi/client.py:69-73` `__init__(client_id, api_key, api_secret, …)`) → plan bắt keyword args;
+  C3 ĐÃ LỖI THỜI MỘT PHẦN: tag `v3.3.0` nay ĐÃ tồn tại trên GitHub (`541d7f22`, verified chứa lane SSI
+  qua `git ls-tree`, `git ls-remote` khớp) → prereq Rev.1 = bump `@v3.3.0` ghim SHA, bỏ yêu cầu tạo tag;
+  C4 ĐÚNG (whitelist `ui/lucide-icon.tsx` không có `Landmark`, fallback `⬤` ở `:66-70`) → dùng
+  `Building2` có sẵn (`:29`); C5 ĐÚNG (`Test-Path vninvest/docs/SSI_USAGE_GUIDE.md` = False) →
+  trỏ path repo ngoài + vendor guide.
+- **Sửa thêm**: M1 path requirements đầy đủ, M2 `PortfoliosPage:104`, M3 SOC tabs `:25-34`,
+  G1 path quiet-hours `user_workspace/tasks.py:34-47`, G2 gate = kế thừa `SOCBaseView`
+  (`views/base.py:99-102` `[IsAuthenticated, IsAdminUser]`), G3 B1.3.5 liệt kê switch adapter trong
+  `DNSEConnectionPanel`, G4 custody warn-thay-block, secret-scan + grep audit chuyển Select-String,
+  trả lời F-Q1–Q3 chốt trong plan (Q3 hết hiệu lực nhờ tag v3.3.0).
+- **Trừ nợ**: sửa 2 ký tự Trung lẫn trong doc (audit + plan) khi viết; ledger hết trùng số (155→157).
+- **Kết quả**: plan Rev.1 đủ bàn giao đội code không hỏi lại. D1–D5, kiến trúc giữ nguyên.
+- **Gates**: đọc file thật + `git ls-remote`/`ls-tree` verify tag; không chạy test/build (chỉ sửa tài liệu).
+
+---
+
+## Entry 154: Kế hoạch thực thi quản lý cấu hình broker 3 đợt bàn giao đội code (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Implementation plan chi tiết từ đề xuất Entry 153 — chỉ cấu hình SSI/TCBS/DNSE
+  (user + system), 12 slices B1.1–B3.3, đủ yêu cầu/DoD/audit/tests để đội code làm không hỏi lại.
+  Không đổi code.
+- **Nội dung** (`docs/IMPLEMENTATION_PLAN_BROKER_CONFIG_20260923.md`): chốt 5 quyết định D1–D5
+  (gộp store + alias 1 release, system cred qua SOC staff-only, kill-switch/quiet-hours Đợt 2,
+  purpose mapping DNSE/SSI/TCBS, nghiệm thu từng đợt); Đợt 1 UserBrokerConfig+migrate+schema DNSE
+  async+FE khối Môi giới (4 slices); Đợt 2 registry versioned+system credential+SOC tab+runtime
+  (4 slices); Đợt 3 SSI/TCBS schema+test+tiles+contract tests (3 slices + prereq bump vnbroker);
+  10 tiêu chí phản biện, evidence pack 4 loại/đợt, rollback từng rủi ro.
+- **Mẫu theo**: format slice DoD + tiêu chí audit copy-paste như plan DataOps Config (Entry 121);
+  file:line đã verify (models/urls/views/panels/adapters/tests/SOC tabs/package scripts).
+- **Gates**: nghiên cứu + viết plan — không chạy test/build (không đổi code).
+
+---
+
+## Entry 153: Đề xuất quản lý cấu hình broker 2 mức (user + system) chờ phê duyệt (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Nghiên cứu + đề xuất tính năng quản lý **cấu hình** broker SSI/TCBS/DNSE
+  (chỉ config — chưa trade/sync/realtime), theo yêu cầu phân kỳ. Không đổi code.
+- **Khảo sát**: `VnbrokerRuntimeConfig` (`market_data/models.py:96-132`), SOC domain config typed
+  (`service_ops/domain_configs/vnbroker.py`), `provider_catalog.py:9-37` (credential_mode/env),
+  2 store DNSE (`user_workspace/models.py:393` vs `identity_access/models.py:882`),
+  system provider qua admin (`models.py:943-960`), config audit snapshots
+  (`service_ops/models.py:344-347`), panel mẫu (`SocVnbrokerPanel.tsx:1-90`),
+  surface vnbroker (`config.py`, `source_router.py:28-42`, `broker/security/credentials.py`,
+  SSI guide env `VNBROKER_BROKER_SSI_*`).
+- **Đề xuất** (`docs/DE_XUAT_QUAN_LY_CAU_HINH_BROKER_20260923.md`): Mức user — `UserBrokerConfig`
+  đa-broker gộp 2 store DNSE + schema/test-connection động + FE khối Môi giới;
+  mức system — `BrokerProviderRegistry` (routing/timeout/rate-limit/purpose/kill-switch) +
+  `SystemBrokerCredential` staff-only + SOC tab Broker + mapping purpose (DNSE backfill,
+  SSI market-only snapshot, TCBS dự phòng); ma trận field 3 broker; 6 quy tắc bảo mật;
+  3 đợt (4-5 / 5-6 / 6-8 ngày) kèm DoD.
+- **Chờ phê duyệt**: 5 quyết định (§8: gộp store, SOC vs env, kill-switch/quiet-hours,
+  purpose mapping, nghiệm thu từng đợt hay liên tục).
+- **Gates**: nghiên cứu tĩnh — không chạy test/build (không đổi code).
+
+---
+
+## Entry 152: Audit quản lý broker + kế hoạch Broker Hub SSI/TCBS/DNSE chờ phê duyệt (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Audit tĩnh 2 chiều (vninvest × vnbroker v3.x) + kế hoạch xây tính năng quản lý broker
+  user-level & system-level, tham chiếu TradingView. Không đổi code.
+- **Audit** (`docs/AUDIT_BROKER_MANAGEMENT_20260923.md`): 5 findings đầu — F1 view gọi Celery task
+  đồng bộ trong request (`views_dnse.py:144,174,204`), F2 lệnh tiền thật không audit/plan-gate/hạn mức
+  (`views_dnse.py:214-255`, `ops_audit` 0 hit), F3 TCBS/SSI 0 dòng tích hợp (chỉ DNSE),
+  F4 hai store credential DNSE song song, F5 order ticket FE thô + hardcode VI.
+  5 contradictions + quality gates (tsc 0, eslint 3 file DNSE 0 errors).
+- **Kế hoạch** (`docs/IMPLEMENTATION_PLAN_BROKER_MANAGEMENT_20260923.md`): Broker Hub 2 tầng theo mô hình
+  TradingView (Trading Panel/Account Manager/Order Ticket/Paper), ma trận auth 3 broker, roadmap
+  G0 hardening (~5 ngày) → P1 SSI (~10-12 ngày) → P2 TCBS (~8-10 ngày) → P3 thương mại hóa
+  (~12-15 ngày) → S1 SOC Broker Ops song song; monetization FREE xem+paper / PRO trade+FCO.
+- **Chờ phê duyệt**: 6 quyết định (§10 plan: tiền thật, plan-gate, thứ tự SSI/TCBS, vault, paper, G0+P1).
+- **Gates**: audit tĩnh — không chạy test/build (không đổi code); tsc/eslint targeted đã chạy trong audit.
+
+---
+
+## Entry 151: Nghiên cứu vnbroker — điểm nâng cấp vs v1.1.0 + kế hoạch tiêu thụ bản GitHub mới (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Nghiên cứu tĩnh codebase `C:\Mujoco Projects\vnbroker` so với pin `vnbroker@v1.1.0`
+  trong `packages/core/backend/requirements.txt:29`. Diff `v1.1.0..HEAD` (34 commits,
+  328 files, +45453/-4804) + đối chiếu doc ↔ code + trace surface adapter
+  (`market_data/vnbroker_adapter.py`, `user_workspace/dnse_adapter.py`, `vnbroker_dnse_compat.py`).
+  Không chạy test/live. Không đổi code.
+- **Kết luận**: local đã ở `3.3.0` (`vnbroker/pyproject.toml:7`) + `v3.4-dev` (`dbcd81a`:
+  price-unit matrix, registry merge, HealthStore persistent, Binance crypto, mypy baseline);
+  nhưng GitHub chỉ có tag `v1.1.0`/`v3.4.0-core`/`internal-core-1.0.0`, `origin/main` kẹt ở
+  `c97f4d4`, lệch `origin/dev` 216 files — **chưa thể bump an toàn**. Breaking chính:
+  bỏ `AUTO/MSN/FMP/GATEWAY` (`common/client.py:38-39`), `stock()` mất tham số auth,
+  `fx/crypto/world_index` NotImplemented (trừ `crypto/BINANCE` ở dev), SSI scaffold thay bằng
+  native FastConnect v3, thêm deps `websockets>=12`/`cryptography`. Giá trị lớn nhất:
+  TCBS quote/listing rewrite, kwargs-filtering, InstrumentType, DNSE Company/Finance/WS,
+  SSI native, Retail SJC/BTMC/VCB, Unified UI. Rủi ro nhất: DNSE compat đổi ngầm +
+  trùng 2 lớp normalize price-unit + 2 lớp failover.
+- **Kế hoạch**: Phase 0 đóng băng commit (`38eec3a` trước, `dbcd81a` sau) + baseline tests;
+  Phase 1 release hygiene phía vnbroker (đồng bộ version, tag `v3.2.0/v3.3.0/v3.4.0` + Release notes);
+  Phase 2 PR theo chặng trong vninvest (bump SHA tag → adapter tương thích → opt-in Retail/SSI/crypto);
+  Phase 3 gates + live smoke + staging + rollback 1 dòng về `@v1.1.0`.
+- **Doc đầy đủ**: `docs/NGHIEN_CUU_VNBROKER_NANG_CAP_20260923.md` (hiện trạng, §2 A–E,
+  CONTRADICTIONS 5 mục, ma trận adapter, checklist Phase 0–3, 5 câu hỏi chốt).
+- **Gates**: nghiên cứu tĩnh — không chạy `tsc`/`build`/tests (không đổi code).
+
+---
+
 ## Entry 150: Fix OOM-loop manual worker + prefetch mem + verify close-out (2026-09-21)
 
 - **Date**: 2026-09-21

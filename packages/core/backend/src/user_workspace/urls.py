@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_dnse
+from . import views, views_dnse, views_broker
 
 # C4: Real portfolio analytics views (replaces stubs)
 from .portfolio_analytics_views import (
@@ -74,8 +74,17 @@ urlpatterns = [
     path('portfolio/subaccounts/<int:pk>/', views.SubAccountDetailAPIView.as_view(), name='subaccount-detail'),
     path('portfolio/subaccounts/<int:pk>/transactions/', views.SubAccountTransactionsAPIView.as_view(), name='subaccount-transactions'),
 
-    # Broker Integration (DNSE) — Native Core Implementation
-    path('broker/dnse/config/', views_dnse.dnse_config_api, name='dnse-broker-config'),
+    # Broker config đa-nhà (B1.2) — đặt TRƯỚC legacy DNSE để `broker/dnse/config/`
+    # do view mới phục vụ (store UserBrokerConfig). DNSE đầy đủ, ssi/tcbs khung not_supported_yet.
+    path('broker/providers/', views_broker.broker_providers_api, name='broker-providers'),
+    path('broker/config-schema/<str:provider>/', views_broker.broker_config_schema_api, name='broker-config-schema'),
+    path('broker/<str:provider>/config/', views_broker.broker_config_api, name='broker-config'),
+    path('broker/<str:provider>/test-connection/', views_broker.broker_test_connection_api, name='broker-test-connection'),
+    path('broker/<str:provider>/status/', views_broker.broker_config_api, name='broker-status'),
+    path('broker/jobs/<str:job_id>/', views_broker.broker_job_status_api, name='broker-job-status'),
+
+    # Broker Integration (DNSE) — Native Core Implementation (legacy, giữ 7 routes còn lại;
+    # riêng config đã chuyển sang view mới ở trên — xóa route cũ để khỏi shadow)
     path('broker/dnse/sync-accounts/', views_dnse.dnse_sync_accounts_api, name='dnse-broker-sync-accounts'),
     path('broker/dnse/sync-balances/', views_dnse.dnse_sync_balances_api, name='dnse-broker-sync-balances'),
     path('broker/dnse/reconcile-transactions/', views_dnse.dnse_reconcile_transactions_api, name='dnse-broker-reconcile-transactions'),
@@ -83,6 +92,14 @@ urlpatterns = [
     path('broker/dnse/create-trading-token/', views_dnse.dnse_create_trading_token_api, name='dnse-broker-create-trading-token'),
     path('broker/dnse/place-order/', views_dnse.dnse_place_order_api, name='dnse-broker-place-order'),
     path('broker/dnse/token-status/', views_dnse.dnse_token_status_api, name='dnse-broker-token-status'),
+
+    # Broker config đa-nhà (B1.2) — DNSE đầy đủ, ssi/tcbs khung not_supported_yet
+    path('broker/providers/', views_broker.broker_providers_api, name='broker-providers'),
+    path('broker/config-schema/<str:provider>/', views_broker.broker_config_schema_api, name='broker-config-schema'),
+    path('broker/<str:provider>/config/', views_broker.broker_config_api, name='broker-config'),
+    path('broker/<str:provider>/test-connection/', views_broker.broker_test_connection_api, name='broker-test-connection'),
+    path('broker/<str:provider>/status/', views_broker.broker_config_api, name='broker-status'),
+    path('broker/jobs/<str:job_id>/', views_broker.broker_job_status_api, name='broker-job-status'),
 ]
 
 # Screener endpoints

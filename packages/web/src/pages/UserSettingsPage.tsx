@@ -2,7 +2,7 @@ import { createElement, ChangeEvent, FormEvent, SyntheticEvent, useCallback, use
 
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import { useI18n } from "../context/LangContext.js";
-import { DNSECredentialsSection } from "../components/DNSECredentialsSection.js";
+import { BrokerSettingsSection } from "../components/BrokerSettingsSection.js";
 import "./UserSettingsPage.css";
 
 const e = createElement;
@@ -250,6 +250,6 @@ export function UserSettingsPage({ className = "" }: UserSettingsPageProps) {
       )
     ),
     e("hr", { className: "core-divider" }),
-    e(DNSECredentialsSection, { className: "core-dnse-block" })
+    e(BrokerSettingsSection, { className: "core-dnse-block" })
   );
 }

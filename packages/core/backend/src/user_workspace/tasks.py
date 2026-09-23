@@ -258,3 +258,34 @@ from .screener_tasks import (  # noqa: E402,F401
     run_screener_scan_task,
     screener_scheduled_run,
 )
+
+
+@shared_task(name="user_workspace.test_broker_connection_task", bind=True, max_retries=0)
+def test_broker_connection_task(self, config_id: int):
+    """B1.2: test-connection broker read-only trong worker (không I/O trong request).
+
+    Nhận config_id (không nhận secret — đọc từ DB). Cập nhật status/last_verified_at/last_error.
+    """
+    from .broker import dnse as dnse_schema
+    from .models import UserBrokerConfig
+
+    try:
+        config = UserBrokerConfig.objects.select_related('user').get(id=config_id)
+    except UserBrokerConfig.DoesNotExist:
+        return {'ok': False, 'error': 'config_not_found'}
+
+    secrets = config.get_secrets()
+    if config.provider == 'dnse':
+        result = dnse_schema.test_connection(secrets)
+    else:
+        result = {'ok': False, 'error': 'not_supported_yet'}
+
+    if result.get('ok'):
+        config.status = UserBrokerConfig.StatusChoices.CONNECTED
+        config.last_verified_at = timezone.now()
+        config.last_error = ''
+    else:
+        config.status = UserBrokerConfig.StatusChoices.ERROR
+        config.last_error = str(result.get('error', 'unknown'))[:500]
+    config.save(update_fields=['status', 'last_verified_at', 'last_error', 'updated_at'])
+    return result

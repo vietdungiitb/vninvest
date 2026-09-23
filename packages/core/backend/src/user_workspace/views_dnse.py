@@ -14,9 +14,9 @@ from django.utils import timezone
 from .dnse_adapter import (
     DNSEAdapterError,
     DNSECredentialMissingError,
-    bootstrap_dnse_session,
+    DNSEVnbrokerUnavailableError,
 )
-from .models import DNSECredential, SubAccount
+from .models import DNSECredential, SubAccount, get_user_broker_config, set_user_broker_secrets
 from .serializers import SubAccountSerializer
 from .tasks import (
     reconcile_dnse_transactions_task,
@@ -45,86 +45,54 @@ def _extract_trading_token(result):
     return ""
 
 
+def _get_dnse_secrets(user):
+    """B1.2.5: đọc secrets DNSE từ store mới (UserBrokerConfig) trước, fallback store cũ.
+
+    Trả về (client_id, client_secret) hoặc (None, None). Không log secret.
+    """
+    config = get_user_broker_config(user, 'dnse')
+    if config is not None:
+        secrets = config.get_secrets()
+        client_id = str(secrets.get('client_id', '') or '').strip()
+        client_secret = str(secrets.get('client_secret', '') or '').strip()
+        if client_id and client_secret:
+            return client_id, client_secret
+    credential = DNSECredential.objects.filter(user=user).first()
+    if credential and credential.has_credentials():
+        return credential.get_client_id(), credential.get_client_secret()
+    return None, None
+
+
+def _has_dnse_credentials(user) -> bool:
+    client_id, client_secret = _get_dnse_secrets(user)
+    return bool(client_id and client_secret)
+
+
 def _get_active_dnse_client(user):
-    credential = DNSECredential.objects.filter(user=user, is_active=True).first()
-    if not credential or not credential.has_credentials():
+    from .vnbroker_dnse_compat import build_dnse_client
+
+    client_id, client_secret = _get_dnse_secrets(user)
+    if not client_id or not client_secret:
         raise DNSECredentialMissingError(
             "DNSE LightSpeed credential chưa được thiết lập. Cấu hình Client ID và Client Secret trước."
         )
 
-    session = bootstrap_dnse_session(credential)
-    client = session.get("session")
-    if client is None:
-        raise DNSEAdapterError("Không thể khởi tạo phiên DNSE LightSpeed API.")
-    return client
+    try:
+        return build_dnse_client(client_id=client_id, client_secret=client_secret)
+    except ImportError as exc:
+        raise DNSEVnbrokerUnavailableError(
+            "vnbroker DNSE connector chưa khả dụng. "
+            "Cài đặt vnbroker >= phiên bản hỗ trợ LightSpeed API trước khi kích hoạt DNSE sync."
+        ) from exc
+    except Exception as exc:
+        raise DNSEAdapterError(
+            "Không thể khởi tạo phiên DNSE LightSpeed API. Kiểm tra Client ID/Secret và kết nối mạng."
+        ) from exc
 
 
-@api_view(['GET', 'POST', 'DELETE'])
-@permission_classes([IsAuthenticated])
-def dnse_config_api(request):
-    """
-    GET: Lấy trạng thái cấu hình DNSE LightSpeed API hiện tại của user.
-    POST: Cập nhật Client ID và Client Secret.
-    DELETE: Xoá credential DNSE LightSpeed API của user.
-
-    Lưu ý: chỉ nhận client_id và client_secret (LightSpeed API credentials),
-    không nhận username/password tài khoản cá nhân DNSE.
-    """
-    user = request.user
-
-    if request.method == 'DELETE':
-        credential = DNSECredential.objects.filter(user=user).first()
-        if credential:
-            credential.client_id_cipher = ''
-            credential.client_secret_cipher = ''
-            credential.is_active = False
-            credential.save()
-        return Response({
-            "ok": True,
-            "message": "Đã xoá DNSE LightSpeed credential thành công.",
-        })
-
-    if request.method == 'GET':
-        credential = DNSECredential.objects.filter(user=user).first()
-        if not credential or not credential.has_credentials():
-            return Response({
-                "is_configured": False,
-                "message": "Chưa cấu hình DNSE LightSpeed API. Vui lòng cung cấp Client ID và Client Secret.",
-            })
-        client_id_preview = ""
-        raw_id = credential.get_client_id()
-        if raw_id:
-            client_id_preview = raw_id[:4] + "****"
-        return Response({
-            "is_configured": True,
-            "data": {
-                "client_id_preview": client_id_preview,
-                "is_active": credential.is_active,
-                "last_sync_at": credential.last_sync_at,
-            },
-        })
-
-    # POST
-    data = request.data
-    client_id = str(data.get('client_id', '')).strip()
-    client_secret = str(data.get('client_secret', '')).strip()
-
-    if not client_id or not client_secret:
-        return Response({
-            "ok": False,
-            "error": "Yêu cầu cung cấp client_id và client_secret từ trang quản lý DNSE LightSpeed API.",
-        }, status=status.HTTP_400_BAD_REQUEST)
-
-    credential, _ = DNSECredential.objects.get_or_create(user=user)
-    credential.set_client_id(client_id)
-    credential.set_client_secret(client_secret)
-    credential.is_active = bool(data.get('is_active', True))
-    credential.save()
-
-    return Response({
-        "ok": True,
-        "message": "Cập nhật DNSE LightSpeed credential thành công.",
-    })
+# NOTE (B1.2): dnse_config_api cũ đã chuyển thành views_broker.broker_config_api
+# (route `broker/<provider>/config/`, store UserBrokerConfig). Xóa để khỏi 2 nguồn.
+# Giữ lại sync/OTP/order views (đọc secrets qua _get_dnse_secrets → store mới trước).
 
 
 @api_view(['POST'])
@@ -134,8 +102,7 @@ def dnse_sync_accounts_api(request):
     Kích hoạt tác vụ đồng bộ tiểu khoản từ DNSE LightSpeed API.
     """
     user = request.user
-    credential = DNSECredential.objects.filter(user=user, is_active=True).first()
-    if not credential or not credential.has_credentials():
+    if not _has_dnse_credentials(user):
         return Response({
             "ok": False,
             "error": "DNSE LightSpeed credential chưa được thiết lập. Cấu hình Client ID và Client Secret trước.",
@@ -164,8 +131,7 @@ def dnse_sync_balances_api(request):
     Kích hoạt tác vụ đồng bộ số dư/NAV từ DNSE cho các tiểu khoản đã liên kết.
     """
     user = request.user
-    credential = DNSECredential.objects.filter(user=user, is_active=True).first()
-    if not credential or not credential.has_credentials():
+    if not _has_dnse_credentials(user):
         raise ValidationErrorException(
             detail="DNSE LightSpeed credential chưa được thiết lập. Cấu hình Client ID và Client Secret trước.",
             code="validation_error"
@@ -188,8 +154,7 @@ def dnse_reconcile_transactions_api(request):
     Kích hoạt đối soát giao dịch DNSE cho các tiểu khoản đã liên kết.
     """
     user = request.user
-    credential = DNSECredential.objects.filter(user=user, is_active=True).first()
-    if not credential or not credential.has_credentials():
+    if not _has_dnse_credentials(user):
         raise ValidationErrorException(
             detail="DNSE LightSpeed credential chưa được thiết lập. Cấu hình Client ID và Client Secret trước.",
             code="validation_error"
@@ -323,16 +288,20 @@ def dnse_token_status_api(request):
     Kiểm tra trạng thái phiên giao dịch DNSE LightSpeed API.
     """
     user = request.user
-    credential = DNSECredential.objects.filter(user=user, is_active=True).first()
-    if not credential or not credential.has_credentials():
+    config = get_user_broker_config(user, 'dnse')
+    secrets_ok = bool(config and config.has_secrets())
+    if not secrets_ok:
+        credential = DNSECredential.objects.filter(user=user, is_active=True).first()
+        secrets_ok = bool(credential and credential.has_credentials())
+    if not secrets_ok:
         return Response({
             "is_configured": False,
             "message": "DNSE LightSpeed credential chưa được cấu hình.",
         })
     return Response({
         "is_configured": True,
-        "is_active": credential.is_active,
-        "last_sync_at": credential.last_sync_at,
+        "is_active": True,
+        "last_sync_at": config.last_verified_at if config else None,
         "broker": "DNSE",
         "auth_method": "LightSpeed_OAuth2",
     })

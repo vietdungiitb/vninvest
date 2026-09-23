@@ -394,6 +394,10 @@ class DNSECredential(models.Model):
     """
     SFI-DNSE: Lưu trữ thông tin xác thực DNSE LightSpeed API của người dùng.
 
+    DEPRECATED (B1.1): read-only kể từ broker-config Đợt 1 — nguồn thật là `UserBrokerConfig`
+    (provider='dnse'). Không tạo row mới ở code mới; sẽ drop sau 1 release.
+    Xem `docs/IMPLEMENTATION_PLAN_BROKER_CONFIG_20260923.md`.
+
     Auth flow chuẩn: POST /v2/authentication/token với client_id + client_secret
     → nhận access_token (Bearer), cache ngắn hạn trong Redis.
 
@@ -443,6 +447,112 @@ class DNSECredential(models.Model):
     def has_credentials(self) -> bool:
         """Kiểm tra đã cấu hình đủ client_id và client_secret chưa."""
         return bool(self.client_id_cipher and self.client_secret_cipher)
+
+
+class UserBrokerConfig(models.Model):
+    """
+    B1.1: Store cấu hình broker ĐA NHÀ (dnse/ssi/tcbs) duy nhất cho mỗi người dùng.
+
+    Gộp 2 store DNSE song song (user_workspace.DNSECredential + identity_access.UserDNSECredential)
+    — 2 bảng cũ giữ lại read-only 1 release (xem DEPRECATED bên dưới), mọi đọc/ghi mới đi qua đây.
+
+    Toàn bộ secret lưu trong `secrets_cipher` (dict → JSON → Fernet qua
+    vninvest_core.utils.encryption, key dẫn xuất từ SECRET_KEY). Response/API KHÔNG BAO GIỜ
+    trả secret — chỉ preview mask (xem broker/base.py).
+    """
+
+    class ProviderChoices(models.TextChoices):
+        DNSE = 'dnse', 'DNSE'
+        SSI = 'ssi', 'SSI'
+        TCBS = 'tcbs', 'TCBS'
+
+    class StatusChoices(models.TextChoices):
+        NEVER_CONNECTED = 'never_connected', 'Chưa kết nối'
+        CONNECTED = 'connected', 'Đã kết nối'
+        EXPIRED = 'expired', 'Hết hạn phiên'
+        ERROR = 'error', 'Lỗi'
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='broker_configs',
+        verbose_name='Người dùng',
+        db_index=True,
+    )
+    provider = models.CharField(
+        max_length=16,
+        choices=ProviderChoices.choices,
+        db_index=True,
+        verbose_name='Nhà môi giới',
+    )
+    label = models.CharField(
+        max_length=100,
+        default='Mặc định',
+        verbose_name='Tên gợi nhớ',
+    )
+    secrets_cipher = models.TextField(blank=True, default='', verbose_name='Secrets (Fernet-encrypted JSON)')
+    prefs = models.JSONField(default=dict, blank=True, verbose_name='Tùy chọn (tài khoản mặc định, sync, notify)')
+    status = models.CharField(
+        max_length=20,
+        choices=StatusChoices.choices,
+        default=StatusChoices.NEVER_CONNECTED,
+        db_index=True,
+        verbose_name='Trạng thái kết nối',
+    )
+    last_verified_at = models.DateTimeField(null=True, blank=True, verbose_name='Xác minh lần cuối')
+    last_error = models.TextField(blank=True, default='', verbose_name='Lỗi gần nhất')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Cấu hình Broker người dùng'
+        verbose_name_plural = 'Cấu hình Broker người dùng'
+        unique_together = [('user', 'provider', 'label')]
+
+    def __str__(self):
+        return f"UserBrokerConfig({self.user.username}/{self.provider}/{self.label})"
+
+    # ── Secrets helpers (Fernet JSON dict) ──────────────────────────────
+    def set_secrets(self, secrets: dict) -> None:
+        import json
+        from vninvest_core.utils.encryption import encrypt_string
+        self.secrets_cipher = encrypt_string(json.dumps(secrets or {}))
+
+    def get_secrets(self) -> dict:
+        import json
+        from vninvest_core.utils.encryption import decrypt_string
+        raw = decrypt_string(self.secrets_cipher)
+        if not raw:
+            return {}
+        try:
+            data = json.loads(raw)
+            return data if isinstance(data, dict) else {}
+        except (ValueError, TypeError):
+            return {}
+
+    def has_secrets(self) -> bool:
+        return bool(self.get_secrets())
+
+    def masked_preview(self) -> dict:
+        """Preview an toàn cho response: secret → ****, non-secret giữ nguyên."""
+        from .broker import mask_secrets_preview  # noqa: PLC0415 (tránh circular import)
+        return mask_secrets_preview(self.provider, self.get_secrets())
+
+
+def get_user_broker_config(user, provider: str, label: str = 'Mặc định'):
+    """Lấy config broker của user (None nếu chưa có). Dùng chung cho mọi view."""
+    return UserBrokerConfig.objects.filter(user=user, provider=provider, label=label).first()
+
+
+def set_user_broker_secrets(user, provider: str, secrets: dict, label: str = 'Mặc định'):
+    """Tạo/cập nhật secrets (Fernet) cho config broker của user. Không log secret."""
+    config, _ = UserBrokerConfig.objects.get_or_create(
+        user=user, provider=provider, label=label,
+        defaults={'status': UserBrokerConfig.StatusChoices.NEVER_CONNECTED},
+    )
+    config.set_secrets(secrets)
+    config.save(update_fields=['secrets_cipher', 'updated_at'])
+    return config
 
 
 class AccountSnapshot(models.Model):

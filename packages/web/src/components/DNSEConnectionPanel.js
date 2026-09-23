@@ -250,9 +250,9 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
           "div",
           { className: "dnse-panel__status dnse-panel__status--connected" },
           e("span", { className: "dnse-panel__status-dot" }),
-          `Đã kết nối — Client ID: ${status?.data?.client_id_preview ?? "****"}`,
-          status?.data?.last_sync_at
-            ? e("span", { className: "dnse-panel__sync-time" }, ` | Đồng bộ lần cuối: ${status.data.last_sync_at}`)
+          `Đã kết nối — Client ID: ${status?.preview?.client_id ?? "****"}`,
+          status?.last_verified_at
+            ? e("span", { className: "dnse-panel__sync-time" }, ` | Đồng bộ lần cuối: ${status.last_verified_at}`)
             : null
         )
       : e(

@@ -23,6 +23,7 @@ import { createCommercialClient } from "./core/commercial.js";
 import { createAdvisoryClient } from "./core/advisory.js";
 import { createCrawlClient } from "./core/crawl.js";
 import { createDnseClient } from "./core/dnse.js";
+import { createBrokerClient } from "./core/broker.js";
 import { createOperatorClient } from "./core/operator.js";
 import { createMiscClient } from "./core/misc.js";
 import { createSocClient } from "./core/soc.js";
@@ -95,6 +96,12 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     coreDelete: transport.coreDelete,
   });
 
+  const brokerClient = createBrokerClient({
+    coreGet: transport.coreGet,
+    corePost: transport.corePost,
+    coreDelete: transport.coreDelete,
+  });
+
   const operatorClient = createOperatorClient({
     coreGet: transport.coreGet,
     corePost: transport.corePost,
@@ -137,6 +144,7 @@ export function createCoreApiAdapter({ env = {}, getToken, getRefreshToken, setT
     ...advisoryClient,
     ...crawlClient,
     ...dnseClient,
+    ...brokerClient,
     ...operatorClient,
     ...miscClient,
     ...socClient,

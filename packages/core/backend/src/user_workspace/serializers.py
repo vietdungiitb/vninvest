@@ -62,7 +62,7 @@ class SubAccountSerializer(serializers.ModelSerializer):
 class DNSECredentialSerializer(serializers.ModelSerializer):
     """
     Read-only serializer — không expose client_id/secret ciphertext.
-    Write path qua views_dnse.dnse_config_api (set_client_id/set_client_secret).
+    Write path qua views_broker.broker_config_api (B1.2, store UserBrokerConfig).
     """
     is_configured = serializers.SerializerMethodField()
 
