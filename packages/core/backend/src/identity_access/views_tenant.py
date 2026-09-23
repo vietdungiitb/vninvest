@@ -269,6 +269,8 @@ class UserProfileView(APIView):
         return Response({
             'username': user.username,
             'email': user.email,
+            'is_staff': bool(user.is_staff),
+            'is_superuser': bool(user.is_superuser),
             'display_name': profile.display_name,
             'avatar_url': profile.avatar_url,
             'language': profile.language,
@@ -299,6 +301,8 @@ class UserProfileView(APIView):
         return Response({
             'username': request.user.username,
             'email': request.user.email,
+            'is_staff': bool(request.user.is_staff),
+            'is_superuser': bool(request.user.is_superuser),
             'display_name': profile.display_name,
             'avatar_url': profile.avatar_url,
             'language': profile.language,
