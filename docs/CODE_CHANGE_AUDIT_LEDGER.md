@@ -26,6 +26,23 @@ nội dung giữ nguyên. Tiền lệ Entry 149.)*
 
 ---
 
+## Entry 164: Rebuild image dev + smoke container v3.4.0 — đóng Phase A (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Hoàn tất S4/S5 Phase A (Entry 163) sau khi Docker Desktop hồi phục (engine 500
+  trước đó — restart Docker Desktop, volumes giữ data).
+- **Rebuild**: `.\start_dev.ps1` full build + up — stack healthy (core-api healthy, no queue drift,
+  API + frontend health OK). Image mới: `pip show vnbroker` = **3.4.0**,
+  `api.{company,financial,news}` import OK. Migrations `0017/0018/0027` applied trên dev DB.
+- **S5 container non-empty PASS**: realtime KBS (SSI close 20850), company FPT (overview keys),
+  financials FPT (3 keys), listing KBS (1521), news KBS (1 row), DNSE live key thật → 0 rows
+  graceful (tape endpoint, không crash). Login vietdung/pro OK; `GET broker/providers/` live
+  trả đủ 3 lane (dnse/ssi/tcbs).
+- **Còn mở**: VCI upstream 400 (pre-existing, Phase B failover); screenshots tay; Phase A5/B/C/D.
+- **Gates**: container import + smoke assert non-empty (C2/C3 Entry 162).
+
+---
+
 ## Entry 163: Thực thi Phase A nâng cấp vnbroker v3.4.0 — S2+S3 xong, S4 blocked hạ tầng (2026-09-23)
 
 - **Date**: 2026-09-23
