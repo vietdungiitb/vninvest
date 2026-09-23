@@ -20,6 +20,10 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
   test menu mới 6/6. `check:shell` FAIL pre-existing (tokens `UserSettingsPage.css`, file ngoài change).
   Visual QA TC-01..07 PENDING. Plan + evidence: `docs/IMPLEMENTATION_PLAN_MAIN_MENU_20260922.md`,
   `docs/evidence/main-menu-20260922/`.
+- **HOTFIX Entry 167**: admin mất menu Quản trị — `UserProfileView` thiếu `is_staff/is_superuser` nên
+  `syncAuthState` luôn map `isStaff=false`, filter staffOnly ẩn nhóm với cả staff thật (lỗi contract latent
+  từ trước, S2 làm lộ ra; `SupportPage` staff actions cũng dính). Fix BE GET+PATCH, FE giữ nguyên.
+  BE 7/7 OK, commit `a0283215` pushed, dev rebuild healthy. User chỉ cần reload trang.
 ### Done (2026-09-21) — QueueRecovery A–H + corrective v1–v4 (Entry 138-145)
 - **Root cause chốt**: queue `realtime_prefetch` ngập 77k (heartbeat 3s + shard fan-out + giant warm 1900 symbols
   trên worker solo) + worker enrichment OOM cuối tuần → session_facts chết từ 09/09, snapshot dừng 17/09,
