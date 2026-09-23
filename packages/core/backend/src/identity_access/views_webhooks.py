@@ -67,6 +67,7 @@ class WebhookConfigDetailView(generics.GenericAPIView):
 
     def get(self, request, config_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'webhook:read')
         config = self._get_config(request, config_id)
         if config is None:
             return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -74,6 +75,7 @@ class WebhookConfigDetailView(generics.GenericAPIView):
 
     def patch(self, request, config_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'webhook:write')
         config = self._get_config(request, config_id)
         if config is None:
             return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -85,6 +87,7 @@ class WebhookConfigDetailView(generics.GenericAPIView):
 
     def delete(self, request, config_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
+        _require_tenant_permission(request, 'webhook:write')
         config = self._get_config(request, config_id)
         if config is None:
             return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
