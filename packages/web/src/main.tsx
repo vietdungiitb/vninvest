@@ -111,6 +111,8 @@ function App() {
         createElement(Route, { path: 'upgrade', element: createElement(resolvePageComponent('upgrade')) }),
         createElement(Route, { path: 'admin-crawl-control', element: createElement(resolvePageComponent('admin-crawl-control')) }),
         createElement(Route, { path: 'support', element: createElement(resolvePageComponent('support')) }),
+        createElement(Route, { path: 'tenant/keys', element: createElement(resolvePageComponent('tenant-keys')) }),
+        createElement(Route, { path: 'tenant/usage', element: createElement(resolvePageComponent('tenant-usage')) }),
         createElement(Route, { path: 'settings', element: createElement(resolvePageComponent('settings')) }),
         createElement(Route, { path: 'settings/ai', element: createElement(resolvePageComponent('ai-command-center')) }),
         createElement(Route, { path: 'settings/ai/agents', element: createElement(resolvePageComponent('ai-agent-federation')) }),

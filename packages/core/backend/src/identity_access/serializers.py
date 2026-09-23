@@ -545,3 +545,49 @@ class TenantCustomRoleSerializer(serializers.ModelSerializer):
             )
         return value
 
+
+class PersonalPATIssueSerializer(serializers.Serializer):
+    """Issue API key cá nhân — như PartnerPATIssueSerializer nhưng BE tự resolve
+    default SA (không nhận service_account_id) + expires phải tương lai."""
+
+    scope_codes = serializers.ListField(child=serializers.CharField(), required=False, allow_empty=True)
+    scopes = serializers.ListField(child=serializers.CharField(), required=False, allow_empty=True)
+    expires_at = serializers.DateTimeField(required=False, allow_null=True)
+    display_name = serializers.CharField(required=False, allow_blank=True)
+    label = serializers.CharField(required=False, allow_blank=True)
+    audit_reason = serializers.CharField(required=False, allow_blank=True)
+    allowed_cidr_blocks = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        allow_empty=True,
+        help_text='Danh sách dải IP CIDR được phép truy cập (ví dụ: ["192.168.1.0/24", "10.0.0.0/8"])'
+    )
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        scope_codes = attrs.get('scope_codes')
+        scopes = attrs.get('scopes')
+        if scope_codes is None:
+            attrs['scope_codes'] = list(scopes or [])
+        if scopes is None:
+            attrs['scopes'] = list(attrs['scope_codes'])
+
+        # Validate CIDR blocks
+        cidr_blocks = attrs.get('allowed_cidr_blocks', [])
+        for block in cidr_blocks:
+            try:
+                ipaddress.ip_network(block, strict=False)
+            except ValueError:
+                raise serializers.ValidationError({
+                    'allowed_cidr_blocks': [f"Dải IP '{block}' không đúng định dạng CIDR."]
+                })
+
+        expires_at = attrs.get('expires_at')
+        if expires_at is not None:
+            from django.utils import timezone
+            if expires_at <= timezone.now():
+                raise serializers.ValidationError({
+                    'expires_at': ['Thời điểm hết hạn phải trong tương lai.']
+                })
+        return attrs
+

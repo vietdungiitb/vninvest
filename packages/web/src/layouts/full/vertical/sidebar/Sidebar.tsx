@@ -124,7 +124,11 @@ export function Sidebar({ collapsed = false, onToggle, mobileOpen, onMobileClose
       },
       sidebarItems.map((group) => {
         if ((group as any).staffOnly && !isStaff) return null;
-        const visibleItems = group.items.filter((item) => !(item as any).staffOnly || isStaff);
+        const hasTenant = (userTenants?.length ?? 0) > 0;
+        if ((group as any).requiresTenant && !hasTenant) return null;
+        const visibleItems = group.items.filter((item) =>
+          (!(item as any).staffOnly || isStaff)
+          && (!(item as any).requiresTenant || hasTenant));
         if (visibleItems.length === 0) return null;
         return e(
         'div',

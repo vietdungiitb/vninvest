@@ -9,6 +9,7 @@ These paths mirror the frontend api/client.js partner/* calls.
 from django.urls import path
 
 from . import views_dashboard
+from . import views_personal
 from . import views_alert_config
 from . import views_forecast
 from . import views_usage_trend
@@ -56,6 +57,18 @@ urlpatterns = [
     path('partner/pats/<str:pat_id>/revoke/', views.partner_revoke_pat, name='partner-pat-revoke'),
     path('partner/pats/<str:pat_id>/usage/', views.partner_pat_usage, name='partner-pat-usage'),
     path('partner/pats/<str:pat_id>/usage', views.partner_pat_usage, name='partner-pat-usage-noslash'),
+
+    # Personal API keys self-service (B+A S1) — own-data, mọi role có tenant
+    path('partner/me/keys/', views_personal.personal_keys_list_create, name='partner-me-keys'),
+    path('partner/me/keys', views_personal.personal_keys_list_create, name='partner-me-keys-noslash'),
+    path('partner/me/keys/usage-summary/', views_personal.personal_keys_usage_summary, name='partner-me-keys-usage'),
+    path('partner/me/keys/usage-summary', views_personal.personal_keys_usage_summary, name='partner-me-keys-usage-noslash'),
+    path('partner/me/keys/<str:key_id>/rotate/', views_personal.personal_keys_rotate, name='partner-me-keys-rotate'),
+    path('partner/me/keys/<str:key_id>/rotate', views_personal.personal_keys_rotate, name='partner-me-keys-rotate-noslash'),
+    path('partner/me/keys/<str:key_id>/revoke/', views_personal.personal_keys_revoke, name='partner-me-keys-revoke'),
+    path('partner/me/keys/<str:key_id>/revoke', views_personal.personal_keys_revoke, name='partner-me-keys-revoke-noslash'),
+    path('partner/me/summary/', views_personal.personal_summary, name='partner-me-summary'),
+    path('partner/me/summary', views_personal.personal_summary, name='partner-me-summary-noslash'),
 
     # SSO Configuration
     path('partner/sso/', PartnerSSOConfigView.as_view(), name='partner-sso-config'),

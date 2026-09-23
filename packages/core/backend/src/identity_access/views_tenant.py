@@ -57,6 +57,17 @@ def _require_partner_scope(request, required_scope: str) -> None:
     require_pat_scopes_or_human_session(request, required_scope)
 
 
+def _reject_personal_prefix(*, label: str, audit_reason: str) -> None:
+    """D2 (B+A): tiền tố `personal:` do endpoint personal tự gắn — admin endpoints từ chối."""
+    field_errors = {}
+    if str(label or '').strip().startswith('personal:'):
+        field_errors['display_name'] = ['Tiền tố personal: dành riêng cho API key cá nhân.']
+    if str(audit_reason or '').strip().startswith('personal:'):
+        field_errors['audit_reason'] = ['Tiền tố personal: dành riêng cho API key cá nhân.']
+    if field_errors:
+        raise ValidationError(field_errors)
+
+
 def _reject_human_session_markers(*, label: str, audit_reason: str) -> None:
     stripped_label = str(label or '').strip()
     stripped_audit_reason = str(audit_reason or '').strip()
@@ -233,6 +244,7 @@ def issue_pat(request, service_account_id):
     label = str(request.data.get('display_name') or request.data.get('label') or '').strip()
     audit_reason = str(request.data.get('audit_reason', '')).strip()
     _reject_human_session_markers(label=label, audit_reason=audit_reason)
+    _reject_personal_prefix(label=label, audit_reason=audit_reason)
     scopes = _validate_requested_pat_scopes(request, sa, scopes)
 
     credential, raw_token = CorePATCredential.issue_for_service_account(
@@ -335,6 +347,7 @@ def partner_issue_pat(request):
     audit_reason = serializer.validated_data.get('audit_reason', '')
     allowed_cidr_blocks = serializer.validated_data.get('allowed_cidr_blocks', [])
     _reject_human_session_markers(label=label, audit_reason=audit_reason)
+    _reject_personal_prefix(label=label, audit_reason=audit_reason)
     scopes = _validate_requested_pat_scopes(request, sa, scopes)
 
     credential, raw_token = CorePATCredential.issue_for_service_account(
@@ -376,6 +389,7 @@ def partner_rotate_pat(request, pat_id):
     audit_reason = serializer.validated_data.get('audit_reason', '') or 'rotated_by_tenant_admin'
     allowed_cidr_blocks = serializer.validated_data.get('allowed_cidr_blocks', old_pat.allowed_cidr_blocks or [])
     _reject_human_session_markers(label=label, audit_reason=audit_reason)
+    _reject_personal_prefix(label=label, audit_reason=audit_reason)
     scopes = _validate_requested_pat_scopes(request, sa, scopes)
     grace_until = old_pat.mark_rotating(
         grace_period_seconds=serializer.validated_data.get('grace_period_seconds', 3600),

@@ -36,6 +36,15 @@ export const sidebarItems: NavGroup[] = [
       { labelKey: 'layout.nav.aiCommandCenter', path: '/settings/ai', icon: 'Cpu' },
     ],
   },
+  // Tenant self-service group (B+A — mọi user có tenant, không cần staff)
+  {
+    group: 'layout.nav.group.tenantSelf',
+    requiresTenant: true,
+    items: [
+      { labelKey: 'layout.nav.tenantKeys', path: '/tenant/keys', icon: 'Key', requiresTenant: true },
+      { labelKey: 'layout.nav.tenantUsageSummary', path: '/tenant/usage', icon: 'Activity', requiresTenant: true },
+    ],
+  },
   // Admin group (conditional, staff-only — filtered in Sidebar.tsx via userIdentity)
   {
     group: 'layout.nav.group.admin',

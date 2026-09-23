@@ -33,6 +33,7 @@ const iconMap: Record<string, ComponentType<React.SVGProps<SVGSVGElement>>> = {
   X: Icons.X,
   LogOut: Icons.LogOut,
   User: Icons.User,
+  Key: Icons.Key,
   Globe: Icons.Globe,
   Moon: Icons.Moon,
   Sun: Icons.Sun,

@@ -5,6 +5,23 @@
 
 ---
 
+## Entry 173: Thực thi B+A S0–S7 personal keys + usage (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Thực thi plan Entry 169 sau phản biện Entry 170 (C1–C8 đã áp).
+  BE `views_personal.py` (6 endpoints, C1 query member trực tiếp, C3 copy quota, C6 import
+  từ helpers, C8 403 middleware) + `PersonalPATIssueSerializer` (expires tương lai) + mount
+  partner_urls +noslash + D2 prefix reject 3 hàm admin + C7 keyword rotate + 401 revoked;
+  FE `pages/tenant/` (hook scope tenant-self, registry/route/catalog/nav, sidebar requiresTenant,
+  icon Key, 2 pages, i18n VI/EN) + menu contract +2 tests.
+- **Gates**: BE 14 personal + hồi quy liên quan OK; FE tenant 7 + menu 8; `tsc` 0 (đã sửa en.js
+  vỡ brace do chèn block + Shell props đúng type); `build` 42.90s PASS; eslint 0 errors;
+  i18n verify runtime đủ keys. Full identity_access 265: 1 error PRE-EXISTING (mock test cũ).
+  Evidence: `docs/evidence/tenant-self-service-20260923/`.
+- **Còn lại**: screenshots tay (A9), rebuild image dev để live-verify.
+
+---
+
 ## Entry 172: A2 SOC Users tab — quản trị users toàn hệ thống (2026-09-23)
 
 - **Date**: 2026-09-23

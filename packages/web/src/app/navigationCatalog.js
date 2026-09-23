@@ -32,10 +32,17 @@ export const navigationCatalog = Object.freeze([
     items: ["operations-center", "operations-center-mail-config", "advertising-admin"],
   },
   {
+    id: "tenant",
+    labelKey: "layout.nav.group.tenantSelf",
+    buildTargets: ALL_BUILD_TARGETS,
+    requiredCapabilities: ["tenant.self.read"],
+    items: ["tenant-keys", "tenant-usage"],
+  },
+  {
     id: "vip-local",
     labelKey: "navigation.vipLocal",
     buildTargets: ["vip"],
-    requiredCapabilities: ["vip.local_control.read"],
+    requiredCapabilities: ["vip.local.read"],
     items: ["vip-local-control"],
   },
 ]);

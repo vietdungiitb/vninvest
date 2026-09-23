@@ -100,4 +100,21 @@ describe("main menu contract (menu 2026-09-22)", () => {
     const missing = allPaths().filter((path) => !catalogPaths.has(path));
     expect(missing).toEqual([]);
   });
+
+  it("shows tenant self-service group for non-staff with tenant", () => {
+    mockPortfolio({
+      userTenants: [{ tenant_id: "t1", display_name: "T1", plan: "pro" }],
+    });
+    renderSidebar();
+    expect(screen.getByText("layout.nav.group.tenantSelf")).toBeTruthy();
+    expect(screen.getByText("layout.nav.tenantKeys")).toBeTruthy();
+    expect(screen.getByText("layout.nav.tenantUsageSummary")).toBeTruthy();
+  });
+
+  it("hides tenant self-service group when user has no tenant", () => {
+    mockPortfolio({ userTenants: [] });
+    renderSidebar();
+    expect(screen.queryByText("layout.nav.group.tenantSelf")).toBeNull();
+    expect(screen.queryByText("layout.nav.tenantKeys")).toBeNull();
+  });
 });
