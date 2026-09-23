@@ -5,6 +5,17 @@
 
 ---
 
+## Entry 174: Rebuild dev nhận code F1/A2/B+A + live-verify (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: `.\start_dev.ps1` full build + up sau các commit F1/A2/B+A. Stack healthy,
+  no queue drift, API + frontend OK.
+- **Verify live**: `views_personal` + SOC `views.users` import OK trong container;
+  login vietdung/pro OK; `GET partner/me/keys/` live (rỗng đúng vì chưa tạo key).
+- **Gates**: start_dev smoke (API + frontend OK).
+
+---
+
 ## Entry 173: Thực thi B+A S0–S7 personal keys + usage (2026-09-23)
 
 - **Date**: 2026-09-23
