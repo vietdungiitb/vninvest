@@ -22,13 +22,13 @@ class BrokerProvidersApiTests(TestCase):
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 
-    def test_providers_lists_dnse_supported_ssi_tcbs_pending(self):
+    def test_providers_lists_all_three_supported(self):
         resp = self.client.get(f'{BASE}/providers/')
         self.assertEqual(resp.status_code, 200)
         by_id = {p['id']: p for p in resp.json()['providers']}
         self.assertEqual(set(by_id), {'dnse', 'ssi', 'tcbs'})
-        self.assertEqual(by_id['ssi']['status'], 'not_supported_yet')
-        self.assertEqual(by_id['tcbs']['status'], 'not_supported_yet')
+        self.assertEqual(by_id['ssi']['status'], 'never_connected')
+        self.assertEqual(by_id['tcbs']['status'], 'never_connected')
         self.assertEqual(by_id['dnse']['status'], 'never_connected')
 
     def test_schema_dnse_shape(self):
@@ -38,9 +38,13 @@ class BrokerProvidersApiTests(TestCase):
         self.assertTrue(fields['client_id']['required'] and fields['client_id']['secret'])
         self.assertTrue(fields['client_secret']['required'] and fields['client_secret']['secret'])
 
-    def test_schema_ssi_not_supported_yet(self):
-        resp = self.client.get(f'{BASE}/config-schema/ssi/')
-        self.assertEqual(resp.status_code, 400)
+    def test_schema_ssi_tcbs_shapes(self):
+        for provider, required_key in (('ssi', 'api_key'), ('tcbs', 'api_key')):
+            resp = self.client.get(f'{BASE}/config-schema/{provider}/')
+            self.assertEqual(resp.status_code, 200, provider)
+            fields = {f['key']: f for f in resp.json()['fields']}
+            self.assertTrue(fields[required_key]['required'])
+            self.assertTrue(fields[required_key]['secret'])
 
     def test_unknown_provider_404(self):
         resp = self.client.get(f'{BASE}/config-schema/xyz/')
@@ -74,6 +78,31 @@ class BrokerConfigCrudTests(TestCase):
         # mirror sang store cũ để tasks sync còn chạy (transitional)
         legacy = DNSECredential.objects.get(user=self.user)
         self.assertTrue(legacy.has_credentials())
+
+    def test_post_ssi_valid_masks_and_stores(self):
+        resp = self.client.post(
+            f'{BASE}/ssi/config/',
+            {'api_key': 'AK1', 'api_secret': 'AS1', 'client_id': 'C1'}, format='json')
+        self.assertEqual(resp.status_code, 200)
+        body = json.dumps(resp.json())
+        self.assertNotIn('AK1', body)
+        self.assertNotIn('AS1', body)
+        cfg = UserBrokerConfig.objects.get(user=self.user, provider='ssi')
+        self.assertEqual(cfg.get_secrets()['client_id'], 'C1')
+
+    def test_post_ssi_missing_required_400(self):
+        resp = self.client.post(
+            f'{BASE}/ssi/config/', {'api_key': 'AK1'}, format='json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('api_secret', str(resp.content))
+
+    def test_post_tcbs_valid(self):
+        resp = self.client.post(
+            f'{BASE}/tcbs/config/',
+            {'api_key': 'TK1', 'custody_code': '105C123'}, format='json')
+        self.assertEqual(resp.status_code, 200)
+        cfg = UserBrokerConfig.objects.get(user=self.user, provider='tcbs')
+        self.assertEqual(cfg.get_secrets()['custody_code'], '105C123')
 
     def test_get_and_delete(self):
         self.client.post(
@@ -169,10 +198,68 @@ class BrokerConnectionTaskTests(TestCase):
         self.assertEqual(cfg.status, 'error')
         self.assertNotIn('BADSEC', cfg.last_error)
 
-    def test_task_unsupported_provider(self):
-        user = User.objects.create_user(username='btask2', password='x')
+    def test_task_ssi_success_marks_connected(self):
+        import sys
+        import types
+        from unittest.mock import MagicMock
+        user = User.objects.create_user(username='btaskssi', password='x')
         from user_workspace.models import set_user_broker_secrets
-        cfg = set_user_broker_secrets(user, 'ssi', {'api_key': 'k'})
-        from user_workspace.tasks import test_broker_connection_task
-        result = test_broker_connection_task.run(cfg.id)
-        self.assertEqual(result, {'ok': False, 'error': 'not_supported_yet'})
+        cfg = set_user_broker_secrets(
+            user, 'ssi', {'api_key': 'K', 'api_secret': 'S'})
+        client = MagicMock()
+        client.get_account_list.return_value = [{'account_no': '1'}]
+        factory = MagicMock(return_value=client)
+        saved = {}
+        for name in ('vnbroker', 'vnbroker.broker', 'vnbroker.broker.ssi',
+                     'vnbroker.broker.ssi.client'):
+            saved[name] = sys.modules.get(name)
+            mod = types.ModuleType(name)
+            mod.__path__ = []
+            sys.modules[name] = mod
+        sys.modules['vnbroker.broker.ssi.client'].SSIBrokerClient = factory
+        try:
+            from user_workspace.tasks import test_broker_connection_task
+            result = test_broker_connection_task.run(cfg.id)
+        finally:
+            for name, mod in saved.items():
+                if mod is None:
+                    sys.modules.pop(name, None)
+                else:
+                    sys.modules[name] = mod
+        self.assertTrue(result['ok'])
+        _, kwargs = factory.call_args
+        self.assertEqual(kwargs.get('api_key'), 'K')
+        self.assertEqual(kwargs.get('api_secret'), 'S')
+        cfg.refresh_from_db()
+        self.assertEqual(cfg.status, 'connected')
+        self.assertIsNotNone(cfg.last_verified_at)
+
+    def test_task_tcbs_unverified_not_error(self):
+        import sys
+        import types
+        from unittest.mock import MagicMock
+        user = User.objects.create_user(username='btasktcbs', password='x')
+        from user_workspace.models import set_user_broker_secrets
+        cfg = set_user_broker_secrets(user, 'tcbs', {'api_key': 'TK'})
+        saved = {}
+        for name in ('vnbroker', 'vnbroker.broker', 'vnbroker.broker.tcbs',
+                     'vnbroker.broker.tcbs.client'):
+            saved[name] = sys.modules.get(name)
+            mod = types.ModuleType(name)
+            mod.__path__ = []
+            sys.modules[name] = mod
+        sys.modules['vnbroker.broker.tcbs.client'].TCBSBrokerClient = MagicMock()
+        try:
+            from user_workspace.tasks import test_broker_connection_task
+            result = test_broker_connection_task.run(cfg.id)
+        finally:
+            for name, mod in saved.items():
+                if mod is None:
+                    sys.modules.pop(name, None)
+                else:
+                    sys.modules[name] = mod
+        self.assertFalse(result['ok'])
+        self.assertTrue(result.get('unverified'))
+        cfg.refresh_from_db()
+        self.assertEqual(cfg.status, 'unverified')
+        self.assertEqual(cfg.last_error, '')

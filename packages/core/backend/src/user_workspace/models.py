@@ -469,6 +469,7 @@ class UserBrokerConfig(models.Model):
     class StatusChoices(models.TextChoices):
         NEVER_CONNECTED = 'never_connected', 'Chưa kết nối'
         CONNECTED = 'connected', 'Đã kết nối'
+        UNVERIFIED = 'unverified', 'Chờ xác minh (thiếu OTP)'
         EXPIRED = 'expired', 'Hết hạn phiên'
         ERROR = 'error', 'Lỗi'
 

@@ -18,7 +18,7 @@ from vninvest_core.exceptions import (
     ValidationErrorException,
 )
 
-from .broker import dnse as dnse_schema
+from .broker import SCHEMAS
 from .broker.base import mask_secrets_preview
 from .models import (
     DNSECredential,
@@ -29,7 +29,7 @@ from .models import (
 from .tasks import test_broker_connection_task
 
 SUPPORTED_PROVIDERS = ('dnse', 'ssi', 'tcbs')
-FULLY_SUPPORTED = frozenset({'dnse'})
+FULLY_SUPPORTED = frozenset({'dnse', 'ssi', 'tcbs'})
 
 TEST_CONN_LIMIT = 5
 TEST_CONN_WINDOW_SECONDS = 60
@@ -108,9 +108,7 @@ def broker_providers_api(request):
 def broker_config_schema_api(request, provider):
     """Schema form động cho từng broker."""
     normalized = _require_provider(provider)
-    if normalized == 'dnse':
-        return Response(dnse_schema.get_schema())
-    raise ValidationErrorException(detail='Chưa hỗ trợ.', code='not_supported_yet')  # pragma: no cover
+    return Response(SCHEMAS[normalized].get_schema())
 
 
 @api_view(['GET', 'POST', 'DELETE'])
@@ -134,13 +132,15 @@ def broker_config_api(request, provider):
     if request.method == 'GET':
         return Response(_serialize_config(get_user_broker_config(user, normalized)))
 
-    # POST
+    # POST — validate theo schema từng provider, chỉ lưu field trong schema
     data = request.data if isinstance(request.data, dict) else {}
-    secrets = {
-        'client_id': str(data.get('client_id', '') or '').strip(),
-        'client_secret': str(data.get('client_secret', '') or '').strip(),
-    }
-    errors = dnse_schema.validate_secrets(secrets) if normalized == 'dnse' else {}
+    schema = SCHEMAS[normalized].get_schema()
+    secrets = {}
+    for field in schema['fields']:
+        key = field['key']
+        value = data.get(key, '')
+        secrets[key] = str(value or '').strip()
+    errors = SCHEMAS[normalized].validate_secrets(secrets)
     if errors:
         raise ValidationErrorException(detail=errors, code='validation_error')
 

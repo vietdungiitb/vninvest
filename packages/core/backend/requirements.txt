@@ -25,8 +25,8 @@ daphne>=4.0,<5.0
 # Gmail API provider support
 google-auth>=2.0,<3.0
 google-api-python-client>=2.0,<3.0
-# DNSE LightSpeed broker connector (private git source via env-driven token)
-vnbroker @ git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/vietdungiitb/vnbroker.git@v1.1.0
+# DNSE LightSpeed broker connector + SSI/TCBS broker lanes (B3.0: v3.4.0 ghim SHA)
+vnbroker @ git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/vietdungiitb/vnbroker.git@1ff04e609b940f672d44bb88e9f006b721fd1262
 
 # Stripe Billing Integration
 stripe>=7.0,<8.0

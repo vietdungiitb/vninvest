@@ -38,8 +38,8 @@ beforeEach(() => {
     .mockResolvedValue({
       providers: [
         { id: "dnse", status: "never_connected", is_configured: false },
-        { id: "ssi", status: "not_supported_yet", is_configured: false },
-        { id: "tcbs", status: "not_supported_yet", is_configured: false },
+        { id: "ssi", status: "never_connected", is_configured: false },
+        { id: "tcbs", status: "never_connected", is_configured: false },
       ],
     });
   vi.spyOn(coreApiAdapter as unknown as Record<string, (...a: never[]) => Promise<unknown>>, "getBrokerSchema")
@@ -74,10 +74,38 @@ async function renderSection() {
 }
 
 describe("BrokerSettingsSection", () => {
-  it("renders 3 broker tiles with SSI/TCBS marked coming soon", async () => {
+  it("renders 3 broker tiles, all selectable (B3: no more coming-soon)", async () => {
     await renderSection();
+    await waitFor(() => {
+      expect(screen.getByText("broker.name_ssi")).toBeTruthy();
+    });
     expect(screen.getByText("broker.name_dnse")).toBeTruthy();
-    expect(screen.getAllByTitle("broker.tile_coming_soon")).toHaveLength(2);
+    expect(screen.getByText("broker.name_tcbs")).toBeTruthy();
+    expect(screen.queryAllByTitle("broker.tile_coming_soon")).toHaveLength(0);
+  });
+
+  it("switches to SSI tile and renders its schema fields", async () => {
+    const ssiSchema = {
+      provider: "ssi",
+      test_connection_kind: "market_only",
+      fields: [
+        { key: "api_key", type: "password", required: true, secret: true, label_i18n: "broker.ssi.api_key" },
+        { key: "api_secret", type: "password", required: true, secret: true, label_i18n: "broker.ssi.api_secret" },
+      ],
+    };
+    const adapter = coreApiAdapter as unknown as Record<string, (...a: never[]) => Promise<unknown>>;
+    (adapter.getBrokerSchema as ReturnType<typeof vi.fn>).mockImplementation(async (provider: string) =>
+      provider === "ssi" ? ssiSchema : schemaDnse,
+    );
+    (adapter.getBrokerConfig as ReturnType<typeof vi.fn>).mockResolvedValue({ is_configured: false });
+    await renderSection();
+    await act(async () => {
+      fireEvent.click(screen.getByText("broker.name_ssi"));
+    });
+    await waitFor(() => {
+      expect(document.querySelector('input[name="api_key"]')).toBeTruthy();
+      expect(document.querySelector('input[name="api_secret"]')).toBeTruthy();
+    });
   });
 
   it("blocks save with inline error when required fields are empty", async () => {

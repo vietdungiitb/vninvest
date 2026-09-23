@@ -22,6 +22,8 @@ def mask_value(value: Any) -> str:
     text = str(value or '')
     if not text:
         return ''
+    if len(text) <= PREVIEW_VISIBLE_CHARS:
+        return '****'  # secret ngắn: che toàn bộ (khỏi lộ nguyên văn)
     return text[:PREVIEW_VISIBLE_CHARS] + '****'
 
 

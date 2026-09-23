@@ -282,13 +282,24 @@ def test_broker_connection_task(self, config_id: int):
 
     secrets = config.get_secrets()
     if config.provider == 'dnse':
+        from .broker import dnse as dnse_schema
         result = dnse_schema.test_connection(secrets)
+    elif config.provider == 'ssi':
+        from .broker import ssi as ssi_schema
+        result = ssi_schema.test_connection(secrets)
+    elif config.provider == 'tcbs':
+        from .broker import tcbs as tcbs_schema
+        result = tcbs_schema.test_connection(secrets)
     else:
         result = {'ok': False, 'error': 'not_supported_yet'}
 
     if result.get('ok'):
         config.status = UserBrokerConfig.StatusChoices.CONNECTED
         config.last_verified_at = timezone.now()
+        config.last_error = ''
+    elif result.get('unverified'):
+        # B3.2: TCBS thiếu OTP — trạng thái chờ, KHÔNG phải lỗi
+        config.status = UserBrokerConfig.StatusChoices.UNVERIFIED
         config.last_error = ''
     else:
         config.status = UserBrokerConfig.StatusChoices.ERROR

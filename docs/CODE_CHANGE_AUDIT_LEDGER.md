@@ -26,6 +26,27 @@ nội dung giữ nguyên. Tiền lệ Entry 149.)*
 
 ---
 
+## Entry 161: Thực thi Đợt 3 quản lý cấu hình broker (B3.0–B3.3) + gates xanh (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Thực thi plan Rev.1 — Đợt 3 (SSI/TCBS).
+  B3.0 pin `vnbroker@v1.1.0` → `@v3.4.0` SHA `1ff04e60` (tag đã có khi thực thi; verify
+  signatures SSI/TCBS tại tag khớp; local venv có bản 2.0.0 hỏng → code lazy-import + tests stub);
+  B3.1 `broker/ssi.py` (market-only, keyword args bắt buộc) + tests;
+  B3.2 `broker/tcbs.py` (unverified-flow, custody warn-not-block) + status `unverified` +
+  migration `0018` + tests; B3.3 mở providers API/task 3 lane + tiles FE + system creds dùng chung +
+  contract tests (stub kwargs/method/unverified + live-gated) + i18n SSI/TCBS/unverified.
+- **Deviations** (`docs/evidence/broker-config/dot3/README.md`): pin v3.4.0 thay v3.3.0;
+  `mask_value` che toàn bộ secret ≤4 ký tự (test bắt lộ `AK1`); fix race mock providers ở test tiles;
+  bug nuốt msg (Đợt 1) đã lock.
+- **Gates**: BE 60 OK (skip 2 live-gated); `check` 0, `makemigrations` sạch; FE `tsc` 0,
+  eslint 0, `build` 27.77s PASS, vitest 8/8; secret-scan 0 leak thật.
+  Chưa commit (chờ lệnh).
+- **Hoàn tất**: cả 3 đợt broker-config (B1+B2+B3). Tiếp theo (ngoài phạm vi): rebuild image dev
+  để live-verify UI + jobs trên DB thật; pha Broker Hub (trade/sync) theo plan Entry 152.
+
+---
+
 ## Entry 160: Thực thi Đợt 2 quản lý cấu hình broker (B2.1–B2.4) + gates xanh (2026-09-23)
 
 - **Date**: 2026-09-23
