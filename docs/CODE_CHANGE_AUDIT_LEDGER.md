@@ -26,6 +26,23 @@ nội dung giữ nguyên. Tiền lệ Entry 149.)*
 
 ---
 
+## Entry 166: Phase C/D v34 (adapter hợp nhất + retail endpoint) — ĐÓNG DoD plan (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Thực thi Phase C + D1 `IMPLEMENTATION_PLAN_VNBROKER_V34_UPGRADE_20260923.md` Rev.1;
+  đánh dấu DoD hoàn tất (D2 hoãn có lý do).
+- **C**: `user_workspace/broker/adapters.py` mới — interface `BrokerAdapter` + DTO chuẩn +
+  Dnse/Ssi/Tcbs adapters (read-only, lazy import, mapping phòng thủ, kwargs bắt buộc SSI) +
+  factory + 7 tests. Bug test hạ được: stub có điều kiện rò rỉ khi lane thật đã import
+  trong cùng process → unconditional (lẻ xanh + gộp xanh).
+- **D1**: `GET broker/retail/gold/` + `broker/retail/exchange-rate/` (auth, cache 1h,
+  lỗi map 400, không secret) + 5 tests. **D2 hoãn**: screener universe là feature độc lập.
+- **Gates**: gộp một lượt `Ran 119 tests OK (skip 2)`; `check` 0; FE không đụng.
+  Evidence: `docs/evidence/broker-config/v34-smoke/phase-c-d.md`.
+- **Plan DoD**: tất cả checkboxes §10 đánh dấu xong.
+
+---
+
 ## Entry 165: Phase A5 tune batch + Phase B SSI opt-in + gates xanh (2026-09-23)
 
 - **Date**: 2026-09-23

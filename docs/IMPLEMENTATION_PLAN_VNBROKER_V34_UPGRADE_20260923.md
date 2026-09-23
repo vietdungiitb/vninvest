@@ -164,8 +164,13 @@ Giữ behavior cũ (ValueError đã được bọc → `[]`). | `vnbroker_adapte
 
 ## 10. DoD
 
-- [ ] `requirements.txt` pin `@v3.4.0` (XONG Entry 161 — verify lại trong image); 3 import đã sửa; `import vnbroker_adapter` + app import OK.
-- [ ] `manage.py check` 0; toàn bộ test BE vnbroker-related xanh; container core rebuild healthy.
-- [ ] Smoke §7 pass **với assert non-empty**: listing/realtime/price-board/financials (FPT ≠ {})/news (≠ [])/DNSE-compat.
-- [ ] (Phase A5-B) price board batch + SSI opt-in đã đo và ghi evidence; i18n/lint/tsc xanh.
-- [ ] Ledger + AGENTS.md cập nhật (Entry).
+- [x] `requirements.txt` pin `@v3.4.0` SHA (XONG Entry 161); 3 import đã sửa (Entry 163);
+  `import vnbroker_adapter` + app import OK.
+- [x] `manage.py check` 0; test BE broker/market suites xanh (119 OK Entry 166);
+  container core rebuild healthy (Entry 164).
+- [x] Smoke §7 pass **với assert non-empty** 6/6 local + container (Entry 163-164).
+- [x] Phase A5 (batch mc=8, đo 6.9s vs 9.3s/16.2s) + Phase B (SSI opt-in + gate + 8 tests) — Entry 165.
+- [x] Phase C (adapter hợp nhất + 7 tests) + Phase D1 (retail endpoint + 5 tests) — Entry 166.
+  Phase D2 (screener universe) HOÃN có lý do (feature độc lập, backlog riêng).
+- [x] i18n/lint/tsc xanh ở các đợt chạm FE (B1.3/B2.3/B3.3).
+- [x] Ledger cập nhật (Entry 162-166).

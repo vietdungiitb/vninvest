@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_dnse, views_broker
+from . import views, views_broker, views_dnse, views_retail
 
 # C4: Real portfolio analytics views (replaces stubs)
 from .portfolio_analytics_views import (
@@ -100,6 +100,10 @@ urlpatterns = [
     path('broker/<str:provider>/test-connection/', views_broker.broker_test_connection_api, name='broker-test-connection'),
     path('broker/<str:provider>/status/', views_broker.broker_config_api, name='broker-status'),
     path('broker/jobs/<str:job_id>/', views_broker.broker_job_status_api, name='broker-job-status'),
+
+    # Retail reference D1 (v34 upgrade) — vàng SJC/BTMC + tỷ giá VCB, không credential
+    path('broker/retail/gold/', views_retail.retail_gold_api, name='broker-retail-gold'),
+    path('broker/retail/exchange-rate/', views_retail.retail_exchange_rate_api, name='broker-retail-fx'),
 ]
 
 # Screener endpoints
