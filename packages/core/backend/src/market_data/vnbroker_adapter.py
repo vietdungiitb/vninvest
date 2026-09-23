@@ -985,7 +985,7 @@ def fetch_company_info(symbol: str, source: str = 'KBS') -> dict:
     """
     symbol_upper = symbol.upper()
     try:
-        from vnbroker import Company
+        from vnbroker.api.company import Company
         company = Company(symbol=symbol_upper, source=source)
         
         # 1. overview
@@ -1062,7 +1062,7 @@ def fetch_company_financials(symbol: str, source: str = 'KBS') -> dict:
     """
     symbol_upper = symbol.upper()
     try:
-        from vnbroker import Finance
+        from vnbroker.api.financial import Finance
         finance = Finance(symbol=symbol_upper, source=source)
         
         # 1. ratios

@@ -2189,7 +2189,7 @@ class StockManagementNewsView(APIView):
 
         news_list = []
         try:
-            from vnbroker import News
+            from vnbroker.api.news import News
             kbs_news = News(source='KBS').by_symbol(symbol)
             if kbs_news is not None and isinstance(kbs_news, pd.DataFrame) and not kbs_news.empty:
                 kbs_news = kbs_news.where(pd.notnull(kbs_news), None)

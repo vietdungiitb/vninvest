@@ -1,0 +1,11 @@
+fetch_intraday_tape_history failed: symbol=HPG date=2026-09-22
+fetch_intraday_tape_history failed: symbol=HPG date=2026-09-22
+
+==== SMOKE SUMMARY ====
+[PASS] realtime SSI (VCI/KBS, non-empty) :: SSI close=20850.0 source=KBS
+[PASS] company FPT overview (api.company, non-empty) :: overview keys=['address', 'as_of_date', 'auditor', 'branches', 'business_code', 'business_model']
+[PASS] financials FPT (api.financial, non-empty) :: keys=['balance_sheet', 'income_statement', 'ratio']
+[PASS] news SSI KBS (api.news, non-empty) :: rows=1 cols=['news_id', 'source', 'source_article_id', 'symbol', 'title']
+[PASS] DNSE guard thi?u key ? [] :: empty-keys ? [] (guard OK)
+[PASS] DNSE live 2026-09-22 (n?u c? key) :: rows=0 (empty ch?p nh?n ???c ngo?i phi?n/kh?ng d? li?u)
+TOTAL 6 / FAIL 0

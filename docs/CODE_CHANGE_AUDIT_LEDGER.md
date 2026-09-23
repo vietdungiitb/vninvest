@@ -26,6 +26,53 @@ nội dung giữ nguyên. Tiền lệ Entry 149.)*
 
 ---
 
+## Entry 163: Thực thi Phase A nâng cấp vnbroker v3.4.0 — S2+S3 xong, S4 blocked hạ tầng (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Thực thi `IMPLEMENTATION_PLAN_VNBROKER_V34_UPGRADE_20260923.md` Rev.1 sau phản biện
+  Entry 162. Không đụng DB/migration.
+- **S2 xong**: 3 import `vnbroker_adapter.py:988` → `api.company`, `:1065` → `api.financial`,
+  `stock_mgmt_native_views.py:2192` → `api.news` (constructors nhận kwargs cũ — verify tại tag).
+  S3 guard DNSE đã thử rồi **revert** (12 tests `test_vnbroker_adapter_history` đỏ vì contract
+  key-None-vẫn-tiến tới DNSEQuote; ValueError vốn đã được bọc → `[]`) — 18/18 xanh lại.
+- **G1 xong**: `.venv` local cài thẳng từ GitHub `@1ff04e60` → `vnbroker 3.4.0` (thay bản 2.0.0 hỏng);
+  verify `api.*` + lanes import OK, top-level Company/Finance/News vắng mặt (đúng break).
+- **S5 smoke local với v3.4.0 thật — 6/6 PASS, assert non-empty**
+  (`docs/evidence/broker-config/v34-smoke/smoke_v34.py` + `smoke_v34_results.log`):
+  realtime KBS, company FPT, financials FPT, news KBS, DNSE thiếu key → [], DNSE live key thật → 0 rows
+  không crash. Phát hiện thêm: VCI upstream 400 cả ngày quá khứ (so URL/endpoint trùng v1.1.0 →
+  lỗi upstream, không phải regression; adapter single-source nên realtime-default-VCI None,
+  KBS vẫn tốt — pre-existing).
+- **S4 BLOCKED**: Docker Desktop Linux engine 500 mọi API route (thử lại 2 lần cách nhau) —
+  không rebuild/verify image được. Atomic S2+S4 giữ bằng construction (image bake source lúc build);
+  rebuild + smoke container + reinstall note khi daemon hồi phục.
+- **Gates**: `check` 0; adapter 18/18; news route live 1/1; contract live-gated 6/6;
+  broker suites 75 OK (Đợt 3, chạy lại trên v3.4.0 thật).
+- **Còn lại**: rebuild image + smoke container (S4/S5-container) khi Docker hồi phục; Phase A5/B/C/D
+  để pha sau.
+
+---
+
+## Entry 162: Phản biện plan nâng cấp vnbroker v3.4.0 — APPROVE Phase A có điều kiện (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Audit độc lập `docs/IMPLEMENTATION_PLAN_VNBROKER_V34_UPGRADE_20260923.md`
+  bằng đọc file thật + `git show v3.4.0:` + quét toàn bộ usage vnbroker trong BE (16 hits).
+  Không đổi code.
+- **Kết quả** (`docs/PHAN_BIEN_VNBROKER_V34_UPGRADE_20260923.md`): plan ~90% chính xác —
+  diff stats, 3 import break + path mới, compat matrix, quirks, deps, rollback đều đúng
+  (kể cả tự bác nghi ngờ `fetch_multiple` classmethod còn nguyên).
+- **5 vấn đề**: C1 tiền đề stale (requirements đã `@v3.4.0` từ Entry 161 → S1/B1 xong, Phase A
+  chỉ còn S2+S4+S5); C2 evidence venv yếu (`.venv` cài 3.1.0, HEAD là dev — phải smoke lại
+  trên image mới); C3 lỗi câm lặng không crash (adapter try/except trả rỗng → smoke assert
+  non-empty; S2+S4 atomic 1 commit); C4 Phase B thiếu ma trận interval/key/failover;
+  C5 wording "tag public" sai (repo private).
+- **Verdict**: APPROVE Phase A có 4 điều kiện (Rev.1 plan, atomic S2+S4, smoke non-empty,
+  verify version image + reinstall venv). Rủi ro THẤP, không blocker.
+- **Gates**: đọc file + tag, không chạy code (venv local sai version).
+
+---
+
 ## Entry 161: Thực thi Đợt 3 quản lý cấu hình broker (B3.0–B3.3) + gates xanh (2026-09-23)
 
 - **Date**: 2026-09-23
