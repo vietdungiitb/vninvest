@@ -73,10 +73,19 @@ export function AIAdvisorAlertPanel({ className = "", holdings: _holdings, techn
       } else {
         setAlerts([]);
       }
+      // S5.2 — lastScanAt từ getAIAlertsFeed response nếu BE trả (last_scan_at / meta.last_scan_at),
+      // không bịa API: nếu không có field thì dùng Date.now() (giờ fetch), null → "Chưa có lượt quét"
+      const apiLastScan = res?.last_scan_at ?? res?.meta?.last_scan_at ?? res?.latest_scan_at ?? null;
+      if (apiLastScan) {
+        const ts = new Date(apiLastScan).getTime();
+        setLastScanAt(Number.isFinite(ts) ? ts : Date.now());
+      } else {
+        setLastScanAt(Date.now());
+      }
     } catch (err) {
       setError(err?.message || t("aiAdvisor.panel.loadError"));
+      // giữ lastScanAt hiện tại (null → "Chưa có lượt quét") để empty desc hiển thị noScan
     } finally {
-      setLastScanAt(Date.now());
       setLoading(false);
     }
   }, [t]);
@@ -122,11 +131,12 @@ export function AIAdvisorAlertPanel({ className = "", holdings: _holdings, techn
 
   return e(
     "div",
-    { className: `dashboard-triad-lane flex flex-col ${className}` },
+    { className: `flex flex-col h-full min-h-0 ${className}` },
+    // S4.3 — One card layer: lane already is card, inner wrapper transparent; dialog overlay keeps floating
     // Header
     e(
       "div",
-      { className: "flex items-center justify-between mb-4 pb-3 border-b border-slate-800/50" },
+      { className: "panel-head flex items-center justify-between mb-4 pb-3 border-b border-slate-800/50" },
       e("h3", { className: "panel-title text-base font-semibold text-slate-100 flex items-center gap-2" },
         e(Activity, { className: "h-5 w-5 text-cyan-400" }),
         t("aiAdvisor.panel.title")
@@ -162,14 +172,13 @@ export function AIAdvisorAlertPanel({ className = "", holdings: _holdings, techn
       e(RotateCw, { className: "h-5 w-5 animate-spin mr-2 text-cyan-400" }),
       t("aiAdvisor.panel.initialLoading")
     ),
-    // Empty state — gọn (≤240px) + lý do + mốc quét + CTA (audit #31)
+    // Empty state — gọn (≤240px) + lý do + mốc quét + CTA (S5.2: icon 32px + title + desc lastScan + 2 CTA)
     !loading && alerts.length === 0 && !error && e(
       "div",
-      { className: "flex flex-col items-center justify-center flex-1 text-center px-4 py-6" },
+      { className: "flex flex-col items-center justify-center flex-1 text-center px-4 py-6 max-h-[240px]" },
       e(Activity, { className: "h-8 w-8 text-slate-700/50 mb-2", "aria-hidden": true }),
       e("p", { className: "text-sm font-semibold text-slate-300" }, t("aiAdvisor.panel.emptyTitle")),
       e("p", { className: "mt-1 text-xs text-slate-500 tabular-nums" }, lastScanAt ? t("aiAdvisor.panel.lastScan", { time: new Date(lastScanAt).toLocaleTimeString(language === "en" ? "en-US" : "vi-VN", { hour: "2-digit", minute: "2-digit" }) }) : t("aiAdvisor.panel.noScan")),
-      e("p", { className: "mt-1 text-xs text-slate-500" }, t("aiAdvisor.panel.empty")),
       e(
         "div",
         { className: "mt-3 flex items-center gap-2" },
@@ -193,10 +202,10 @@ export function AIAdvisorAlertPanel({ className = "", holdings: _holdings, techn
         )
       )
     ),
-    // Alert list
+    // S4.2 — Alert list delegated scroll: panel-body flex:1 min-h-0 overflow:auto + mask
     e(
       "div",
-      { className: "flex-1 overflow-y-auto space-y-3 panel-scrollbar" },
+      { className: "panel-body space-y-3 panel-scrollbar px-1" },
       alerts.map((alert) => {
         const glowClass = getPulseGlowClass(alert);
         const rsi = alert?.metadata?.rsi || alert?.evidence?.rsi || alert?.evidence?.rsi_at_signal;

@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { RotateCw } from "lucide-react";
 import { useI18n } from "../../context/LangContext.js";
-import { signOf, formatUpdateTime } from "../../utils/formatMarket.js";
+import { signOf, formatUpdateTime, formatTimeAgo } from "../../utils/formatMarket.js";
 import "./SmartStatsHeader.css";
 
 const e = createElement;
@@ -39,9 +39,11 @@ export function SmartStatsHeader({
 
   const updatedTs = updatedAt ? new Date(updatedAt).getTime() : Date.now();
   const isStale = Boolean(updatedAt) && Number.isFinite(updatedTs) && (Date.now() - updatedTs > STALE_AFTER_MS);
-  // Khi updatedAt null: hiển thị giờ render kèm chú thích — không gắn badge stale
-  // để tránh báo sai (nguồn giờ thật là summary.updated_at của BE khi có).
-  const updatedLabel = `${t("smartStats.updatedAt")}: ${formatUpdateTime(Number.isFinite(updatedTs) ? updatedTs : Date.now())}`;
+  // S5.1 — relative time "cập nhật Xs trước" dùng shared formatTimeAgo (chuyển từ UnifiedAlertCenter timeAgo)
+  // absolute vẫn giữ trong title để tooltip giờ chính xác; khi updatedAt null dùng giờ render, không gắn stale.
+  const absoluteTime = formatUpdateTime(Number.isFinite(updatedTs) ? updatedTs : Date.now());
+  const relativeTime = formatTimeAgo(Number.isFinite(updatedTs) ? updatedTs : Date.now());
+  const updatedLabel = `${t("smartStats.updatedAt")} ${relativeTime}`;
 
   const breadthTotal = (realtimeBreadth?.up || 0) + (realtimeBreadth?.down || 0) + (realtimeBreadth?.flat || 0);
 
@@ -131,7 +133,7 @@ export function SmartStatsHeader({
       ),
       e(
         "div",
-        { className: "flex items-center gap-6" },
+        { className: "flex items-center gap-4" },
         e(
           "div",
           { className: "flex flex-col items-end" },
@@ -141,36 +143,40 @@ export function SmartStatsHeader({
             { className: "flex items-center gap-1" },
             e(
               "div",
-              { className: "flex h-1.5 w-32 rounded-full overflow-hidden bg-slate-800", role: "img", "aria-label": `${realtimeBreadth?.up || 0}/${realtimeBreadth?.flat || 0}/${realtimeBreadth?.down || 0}` },
+              {
+                className: "flex h-1.5 w-32 rounded-full overflow-hidden bg-slate-800",
+                role: "img",
+                "aria-label": `${t("smartStats.breadthUpTip", { count: realtimeBreadth?.up || 0 })} · ${t("smartStats.breadthFlatTip", { count: realtimeBreadth?.flat || 0 })} · ${t("smartStats.breadthDownTip", { count: realtimeBreadth?.down || 0 })}`,
+              },
               e("div", { className: "bg-emerald-500 h-full transition-all duration-500", title: t("smartStats.breadthUpTip", { count: realtimeBreadth?.up || 0 }), style: { width: `${((realtimeBreadth?.up || 0) / (breadthTotal || 1)) * 100}%` } }),
               e("div", { className: "bg-slate-600 h-full transition-all duration-500", title: t("smartStats.breadthFlatTip", { count: realtimeBreadth?.flat || 0 }), style: { width: `${((realtimeBreadth?.flat || 0) / (breadthTotal || 1)) * 100}%` } }),
               e("div", { className: "bg-rose-500 h-full transition-all duration-500", title: t("smartStats.breadthDownTip", { count: realtimeBreadth?.down || 0 }), style: { width: `${((realtimeBreadth?.down || 0) / (breadthTotal || 1)) * 100}%` } })
             ),
-            e("span", { className: "text-[10px] font-bold text-slate-300 ml-1 tabular-nums" }, `▲ ${realtimeBreadth?.up || 0} · ■ ${realtimeBreadth?.flat || 0} · ▼ ${realtimeBreadth?.down || 0}`)
+            e("span", { className: "text-[10px] font-bold text-slate-300 ml-1 tabular-nums", title: `${t("smartStats.breadthUpTip", { count: realtimeBreadth?.up || 0 })} · ${t("smartStats.breadthFlatTip", { count: realtimeBreadth?.flat || 0 })} · ${t("smartStats.breadthDownTip", { count: realtimeBreadth?.down || 0 })}` }, `▲ ${realtimeBreadth?.up || 0} · ■ ${realtimeBreadth?.flat || 0} · ▼ ${realtimeBreadth?.down || 0}`)
           ),
           e(
             "div",
             { className: "mt-1 flex items-center justify-end gap-2 text-[10px] text-slate-500" },
-            e("span", { className: "tabular-nums" }, updatedLabel),
+            e("span", { className: "tabular-nums", title: `${t("smartStats.updatedAt")}: ${absoluteTime}` }, updatedLabel),
             isStale && e(
               "span",
               { className: "rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-px font-bold text-amber-300" },
               t("smartStats.stale")
             )
-          ),
+          )
+        ),
+        e(
+          "div",
+          { className: "flex items-center border-l border-slate-800 pl-4" },
           e(
-            "div",
-            { className: "flex items-center gap-3 border-l border-slate-800 pl-4" },
-            e(
-              "button",
-              {
-                onClick: () => onRefresh?.(),
-                className: "rounded-lg p-1.5 text-slate-400 transition-all hover:bg-slate-800 hover:text-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950",
-                title: `${t("smartStats.refreshBtn")} · ${updatedLabel}`,
-                "aria-label": t("smartStats.refreshBtn"),
-              },
-              e(RotateCw, { className: "h-5 w-5" })
-            )
+            "button",
+            {
+              onClick: () => onRefresh?.(),
+              className: "rounded-lg p-1.5 text-slate-400 transition-all hover:bg-slate-800 hover:text-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950",
+              title: `${t("smartStats.refreshBtn")} · ${updatedLabel} (${absoluteTime})`,
+              "aria-label": t("smartStats.refreshBtn"),
+            },
+            e(RotateCw, { className: "h-5 w-5" })
           )
         )
       )

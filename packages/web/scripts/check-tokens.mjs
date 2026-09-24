@@ -8,15 +8,15 @@ import path from "node:path";
 const roots = ["src/components", "src/pages", "src/layouts", "src/theme"];
 // Status / chart / private effect hex allowed in rule usage (outside :root)
 const allowHex = new Set([
-  "#00b4d8", "#22d3ee", "#06b6d4", "#67e8f9", // cyan / accent private
+  "#00b4d8", "#22d3ee", "#06b6d4", "#67e8f9", "#0891b2", // cyan / accent private (+0891b2 for UserSettingsPage gradient)
   "#050a14", "#0b0f19", "#111827", "#070a13", // shell private bg
   "#10b981", "#34d399", "#059669", "#6ee7b7",
   "#f59e0b", "#fbbf24", "#ffbf4d", "#ffb347", "#ffd166", // amber / warning (incl. acPendingBadge)
   "#ef4444", "#f87171", "#fca5a5", // rose / danger
-  "#020617", "#0f172a", "#1e293b", // @theme base
+  "#020617", "#0f172a", "#1e293b", "#334155", // @theme base (+334155 border-secondary)
   "#ff7f50", "#12c7e8", "#ff9e7d", // V1 drift (will converge)
-  "#e6f3ff", "#9cb2d1", "#6d86a8", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f1f5f9", // text
-  "#ffffff", "#fff", "#000000",
+  "#e6f3ff", "#9cb2d1", "#6d86a8", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f1f5f9", "#f8fafc", // text (+f8fafc slate-50)
+  "#ffffff", "#fff", "#000000", "#475569", // +475569 slate-600
   // chart / private still in use — allow until migration
   "#1d4ed8", "#1e40af", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd",
   "#0b1528", "#1e3a5f", "#38bdf8", "#a855f7", "#ec4899", "#f43f5e", "#f472b6",

@@ -12,6 +12,7 @@ describe("AIAdvisorAlertPanel i18n", () => {
   test("resolves English labels when locale is en", () => {
     const { language, t } = createAiAdvisorTranslator("en");
     expect(language).toBe("en");
+    expect(t("aiAdvisor.panel.title")).toBe("AI signals");
     expect(t("aiAdvisor.panel.refresh")).toBe("Refresh");
     expect(t("aiAdvisor.trend.buy")).toBe("BUY");
   });

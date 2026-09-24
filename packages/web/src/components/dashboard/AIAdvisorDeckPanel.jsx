@@ -83,7 +83,7 @@ export default function AIAdvisorDeckPanel({
     <div className="h-full overflow-y-auto panel-scrollbar p-6">
       {isHoldingsScope ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-          <div className="flex flex-col items-center justify-center p-6 bg-slate-900/40 border border-slate-800 rounded-2xl relative overflow-hidden">
+          <div className="flex flex-col items-center justify-center p-6 bg-slate-900/40 border border-slate-800 rounded-xl relative overflow-hidden">
             <div className="absolute top-0 right-0 p-3 opacity-10 text-4xl">🤖</div>
             <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-6">
               {t('modernDeck.aiHealthScoreTitle', 'Portfolio Health Score')}

@@ -265,26 +265,26 @@
      BENTO BOX LAYOUT - Commercial Grade Dashboard Styles
      ========================================================================== */
 
-  /* Bento Card wrapper for triad panels — P1-3 token variant (value-preserving) */
+  /* S4.1+S4.2 — Triad lane single card layer, clamp height, responsive grid */
   .dashboard-triad-lane {
     background: var(--bg-panel-soft, rgba(30, 41, 59, 0.4));
     border: 1px solid var(--border-default, rgba(51, 65, 85, 0.6));
-    border-radius: var(--r-lg, 0.75rem);
-    padding: 1rem;
+    border-radius: var(--r-lg, 0.75rem); /* 12px = rounded-xl */
+    padding: 1rem; /* 16px within 16-20 allowed */
     box-shadow: var(--shadow-panel, 0 10px 15px -3px rgba(0, 0, 0, 0.3));
-    height: 100%;
-    min-height: 560px;
+    height: clamp(480px, calc(100dvh - var(--dash-chrome, 320px)), 720px);
+    min-height: 0;
     min-width: 0;
     overflow: hidden;
     display: flex;
     flex-direction: column;
   }
 
-  /* Bento Card for full-width deck — P1-3 token variant */
+  /* Bento Card for full-width deck — S4.5 radius unified 12px */
   .dashboard-full-width-deck {
     background: var(--bg-panel-soft, rgba(30, 41, 59, 0.4));
     border: 1px solid var(--border-default, rgba(51, 65, 85, 0.6));
-    border-radius: 1rem;
+    border-radius: 0.75rem; /* S4.5: 12px rounded-xl unified */
     padding: 1.25rem;
     box-shadow:
       0 10px 15px -3px rgba(0, 0, 0, 0.3),
@@ -294,32 +294,23 @@
     overflow: auto;
   }
 
-  /* Grid layout for triad — full viewport height cho 2 cột Cảnh báo/Heatmap.
-     Dòng height đầu là fallback khi browser không hỗ trợ dvh (khai báo clamp
-     rớt cả dòng → grid auto theo content, lane lùn). */
+  /* S4.1 — Grid responsive: 1fr 1.5fr 1fr ≥1280px; 1279px→1fr 1fr (AI span 2); 1099px→1fr gap 16px */
   .dashboard-triad-grid {
     display: grid;
     grid-template-columns: 1fr 1.5fr 1fr;
-    gap: 1rem; /* gap-4 */
-    height: 720px;
-    height: clamp(560px, calc(100dvh - var(--dash-chrome, 260px)), 960px);
-    min-height: 560px;
+    gap: 1rem; /* 16px */
     min-width: 0;
   }
 
-  /* ≤1159px (2 cột / stack): grid height:auto để các hàng xếp tự nhiên —
-     giữ height cố định + lane min-height sẽ ép tràn và đè lên deck bên dưới.
-     Mặc định 3 cột tới 1159px để viewport 1280 (HD 100%) vẫn đủ 3 lane. */
-  @media (max-width: 1159px) {
+  /* Keep min-width:0 every lane (S4.1) */
+  .dashboard-triad-grid > .dashboard-triad-lane,
+  .dashboard-triad-grid > .core-dashboard-slot {
+    min-width: 0;
+  }
+
+  @media (max-width: 1279px) {
     .dashboard-triad-grid {
       grid-template-columns: 1fr 1fr;
-      height: auto;
-      min-height: 0;
-    }
-    .dashboard-triad-grid > .dashboard-triad-lane {
-      height: auto;
-      min-height: 480px;
-      max-height: calc(100dvh - 260px);
     }
     .dashboard-triad-grid > .core-dashboard-slot--ai {
       grid-column: 1 / -1;
@@ -352,13 +343,32 @@
     border: 1px solid rgb(138 148 166 / 0.25);
   }
 
-  /* Dashboard audit fix — type scale thống nhất (audit #35) */
-  .panel-title {
+  /* S4.5 — Type scale thống nhất: panel 16px/600 sentence-case, label 12px/500, body 14px */
+  .panel-title,
+  .panel-head h2 {
     font-weight: 600;
+    font-size: 16px;
+    line-height: 1.3;
     text-transform: none;
     letter-spacing: normal;
     margin: 0;
     min-width: 0;
+  }
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+  .panel-label {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+  .panel-body-text {
+    font-size: 14px;
+    line-height: 1.5;
   }
 
   /* Dashboard audit fix — nút không xuống dòng (audit #30) */
@@ -401,9 +411,7 @@
     display: none;
   }
 
-  /* Dashboard audit fix — scrollbar mảnh thống nhất (audit #6).
-     width:100% + min-width:0: flex-item trong lane column ĐÃ ĐO thực tế chỉ
-     rộng 8px (không stretch) khiến card co thành sợi — ép full width. */
+  /* S4.2+S4.4 — Scroll delegation: lane overflow hidden, panel-body flex:1 scroll + mask fade */
   .panel-body {
     flex: 1;
     width: 100%;
@@ -412,20 +420,27 @@
     overflow: auto;
     mask-image: linear-gradient(#000 calc(100% - 24px), transparent);
   }
-  /* Chỉ pseudo-element scrollbar mới được width 8px — KHÔNG áp width lên
-     element thật (bug Entry 156: `.dashboard-triad-lane .panel-scrollbar`
-     specificity 0,2,0 đã đè width:100% của .panel-body, ép list còn 8px). */
-  .dashboard-triad-lane::-webkit-scrollbar,
+  /* S4.4 — Scrollbar thin unified 8px #2a3550 */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #2a3550 transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2a3550;
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  /* Panel body scrollbar inherits unified palette */
   .panel-body::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
-  .dashboard-triad-lane .panel-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: #2a3550 transparent;
-  }
-  .dashboard-triad-lane .panel-scrollbar::-webkit-scrollbar-thumb,
-  .dashboard-triad-lane::-webkit-scrollbar-thumb,
   .panel-body::-webkit-scrollbar-thumb {
     background: #2a3550;
     border-radius: 8px;
@@ -492,15 +507,15 @@
     --heat-neutral: #f59e0b; /* amber-500 */
   }
 
-  /* Scrollbar for panels */
+  /* S4.4 — Scrollbar for panels thin unified 8px #2a3550 */
   .panel-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: rgba(51, 65, 85, 0.6) transparent;
+    scrollbar-color: #2a3550 transparent;
   }
 
   .panel-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
 
   .panel-scrollbar::-webkit-scrollbar-track {
@@ -508,12 +523,12 @@
   }
 
   .panel-scrollbar::-webkit-scrollbar-thumb {
-    background-color: rgba(51, 65, 85, 0.6);
-    border-radius: 3px;
+    background-color: #2a3550;
+    border-radius: 8px;
   }
 
   .panel-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(51, 65, 85, 0.9);
+    background-color: #364760;
   }
 
   /* Card hover effects */
@@ -535,5 +550,28 @@
     ring-color: var(--color-accent-primary);
     ring-offset: 2px;
     ring-offset-color: var(--color-bg-primary);
+  }
+
+  /* Dashboard audit S3 — Heatmap legend gradient 5 stops trầm (L6: #eab308 chỉ viền, không fill) */
+  .heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 10px;
+    font-weight: 500;
+    color: #64748b;
+  }
+  .heatmap-legend-bar {
+    height: 6px;
+    flex: 1;
+    border-radius: 9999px;
+    background: linear-gradient(
+      to right,
+      #7f1d1d,
+      #5b2228,
+      #2f3747,
+      #14532d,
+      #166534
+    );
   }
 }

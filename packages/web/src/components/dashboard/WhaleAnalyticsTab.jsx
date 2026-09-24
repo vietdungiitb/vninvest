@@ -124,8 +124,8 @@ export default function WhaleAnalyticsTab({
       {/* Chart area */}
       <div className="flex-1 overflow-hidden min-h-[300px]">
         <div className="relative group flex-1 min-h-[300px]">
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-1000" />
-          <div className="relative bg-slate-900/40 rounded-2xl border border-slate-800/60 shadow-2xl overflow-hidden h-full">
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 rounded-xl blur opacity-30 group-hover:opacity-50 transition duration-1000" />
+          <div className="relative bg-slate-900/40 rounded-xl border border-slate-800/60 shadow-2xl overflow-hidden h-full">
             <FactsFirstWhaleBubbleChart
               symbol={symbol}
               timeframe={timeframe}

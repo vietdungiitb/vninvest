@@ -5,9 +5,9 @@
  * Updated with Bento Card styling and commercial-grade spacing.
  */
 import { createElement, useMemo, useState } from "react";
-import { Bell, Filter, X, ChevronLeft, ChevronRight, Flame } from "lucide-react";
+import { Bell, Filter, X, ChevronLeft, ChevronRight, Flame, Waves } from "lucide-react";
 import { useI18n } from "../../context/LangContext.js";
-import { formatVNDCompact, formatFullVND, formatSessionDate } from "../../utils/formatMarket.js";
+import { formatVNDCompact, formatFullVND, formatSessionDate, formatTimeAgo } from "../../utils/formatMarket.js";
 
 const e = createElement;
 
@@ -25,33 +25,27 @@ function sourceLabel(source, t) {
 }
 
 function severityCardStyles(severity, isRead) {
+  // S5.4 — severity chỉ ở viền trái, nền trung tính (bỏ bg màu riêng trừ left border)
   if (isRead) {
     return "border-slate-800/80 bg-slate-900/30 border-l-2 border-l-slate-700 opacity-60 hover:opacity-100";
   }
   switch (severity) {
     case "critical":
-      return "border-slate-700/60 bg-red-950/10 border-l-4 border-l-red-500 hover:bg-red-950/20";
+      return "border-slate-700/60 bg-slate-800/30 border-l-4 border-l-red-500 hover:bg-slate-800/40";
     case "high":
-      return "border-slate-700/60 bg-orange-950/10 border-l-4 border-l-orange-500 hover:bg-orange-950/20";
+      return "border-slate-700/60 bg-slate-800/30 border-l-4 border-l-orange-500 hover:bg-slate-800/40";
     case "medium":
-      return "border-slate-700/60 bg-yellow-950/10 border-l-4 border-l-yellow-600 hover:bg-yellow-950/20";
+      return "border-slate-700/60 bg-slate-800/30 border-l-4 border-l-yellow-600 hover:bg-slate-800/40";
     case "low":
-      return "border-slate-700/60 bg-emerald-950/10 border-l-4 border-l-emerald-600 hover:bg-emerald-950/20";
+      return "border-slate-700/60 bg-slate-800/30 border-l-4 border-l-emerald-600 hover:bg-slate-800/40";
     default:
       return "border-slate-700/60 bg-slate-800/30 border-l-4 border-l-slate-500 hover:bg-slate-800/40";
   }
 }
 
+// S5.1 — timeAgo chuyển vào formatMarket.js shared util (formatTimeAgo); giữ alias local để không đụng code cũ
 function timeAgo(ts) {
-  if (!ts) return "";
-  const diff = Date.now() - new Date(ts).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Vừa xong";
-  if (mins < 60) return `${mins} phút trước`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} giờ trước`;
-  const days = Math.floor(hours / 24);
-  return `${days} ngày trước`;
+  return formatTimeAgo(ts);
 }
 
 function formatExecutionTime(isoString) {
@@ -175,11 +169,12 @@ export function UnifiedAlertCenter({
 
   return e(
     "div",
-    { className: `dashboard-triad-lane flex flex-col ${className}` },
+    { className: `flex flex-col h-full min-h-0 ${className}` },
+    // S4.3 — One card layer: lane already is card, inner wrapper transparent (no bg/border/padding lane)
     // Header with title, unread count, and filter controls
     e(
       "div",
-      { className: "flex flex-col gap-3 mb-4 pb-3 border-b border-slate-800/50" },
+      { className: "panel-head flex flex-col gap-3 mb-4 pb-3 border-b border-slate-800/50" },
       // Row 1: Title & Clear Filters button
       e(
         "div",
@@ -415,8 +410,8 @@ export function UnifiedAlertCenter({
                 e(
                   "div",
                   { className: "alert-head flex-1 items-center gap-2" },
-                  e("span", { className: "alert-sym font-semibold text-slate-100 text-sm" }, alert.symbol || "—"),
-                  e("span", { className: "text-[10px] px-2 py-0.5 rounded border bg-slate-800 text-slate-300 border-slate-700/50 whitespace-nowrap flex-shrink-0" }, sourceLabel(alert.alert_family || alert.alert_type || alert.source, t)),
+                  e("span", { className: "alert-sym font-semibold text-slate-100 text-sm", style: { flex: "none" } }, alert.symbol || "—"),
+                  e("span", { className: "inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded border bg-slate-800 text-slate-300 border-slate-700/50 whitespace-nowrap flex-shrink-0" }, e(Waves, { className: "h-3 w-3 text-slate-400", "aria-hidden": true }), sourceLabel(alert.alert_family || alert.alert_type || alert.source, t)),
                   alert.value != null && Number(alert.value) > 0 && e(
                     "span",
                     { className: "desc text-[11px] font-bold text-slate-200", title: formatFullVND(alert.value) },

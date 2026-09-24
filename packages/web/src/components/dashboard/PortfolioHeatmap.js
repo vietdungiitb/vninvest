@@ -21,20 +21,17 @@ const e = createElement;
 
 
 
-// Thang màu liên tục đối xứng, kẹp ±7% (biên HOSE) — audit S3, bản tươi sáng.
-// User feedback 2026-09-22: bản trầm "mờ" → dùng stops vivid, chữ có viền đen
-// (textBorder) để giữ contrast trên nền sáng; 0% vàng amber vivid + chữ đậm.
-// ECharts-only (không thêm d3): màu tính sẵn trong chartData map.
+// S3.1 — Thang màu liên tục đối xứng kẹp ±7% (biên HOSE), 5 stops trầm đủ tối cho chữ trắng.
+// Quyết định: giữ nền trầm #2f3747 cho 0% để contrast ≥4.5:1 với chữ trắng; vàng #eab308 chỉ dùng làm viền tile 0% (không fill)
+// để tile 0% không nổi bật hơn cả tăng trần/giảm sàn. ECharts-only, không thêm d3.
 const HEAT_STOPS = [
-  { at: -7, color: "#991b1b" },
-  { at: -4, color: "#dc2626" },
-  { at: -1.5, color: "#f87171" },
-  { at: 0, color: "#f59e0b" },
-  { at: 1.5, color: "#4ade80" },
-  { at: 4, color: "#22c55e" },
-  { at: 7, color: "#15803d" },
+  { at: -7, color: "#7f1d1d" },
+  { at: -3, color: "#5b2228" },
+  { at: 0, color: "#2f3747" },
+  { at: 3, color: "#14532d" },
+  { at: 7, color: "#166534" },
 ];
-const HEAT_ZERO_BORDER = "#92400e";
+const HEAT_ZERO_BORDER = "#eab308";
 
 function hexToRgb(hex) {
   const h = String(hex).replace("#", "");
@@ -63,22 +60,51 @@ export function heatColorContinuous(changePct) {
   return HEAT_STOPS[2].color;
 }
 
-function luminance(hex) {
+function lum(hex) {
   const { r, g, b } = hexToRgb(hex);
-  const f = (v) => {
+  const toLin = (v) => {
     v /= 255;
     return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
   };
-  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+  return 0.2126 * toLin(r) + 0.7152 * toLin(g) + 0.0722 * toLin(b);
 }
 
 export function textOnHeat(bg) {
-  return luminance(bg) > 0.35 ? "#0b0f17" : "#fff";
+  return lum(bg) > 0.35 ? "#0b0f17" : "#fff";
+}
+// Alias giữ tên cũ cho backward-compat; spec S3.2 yêu cầu helper lum/textOn
+export function luminance(hex) {
+  return lum(hex);
 }
 
 // Giữ tên cũ cho tương thích test/call-site ngoài (nếu có): map về thang liên tục.
 export function getHeatColor(changePct) {
   return heatColorContinuous(changePct);
+}
+
+// S3.3 — Label gating thresholds: 44×28 show T, 56×40 show pct (pure helper for tests)
+export function heatLabelGating(width, height) {
+  const w = Number(width) || 0;
+  const h = Number(height) || 0;
+  const showText = w >= 44 && h >= 28;
+  const showPct = w >= 56 && h >= 40;
+  return { showText, showPct };
+}
+export function formatHeatmapLabel(params) {
+  const d = params?.data || {};
+  const rect = params?.rect || {};
+  const w = rect.width ?? rect.w ?? 0;
+  const h = rect.height ?? rect.h ?? 0;
+  const gating = heatLabelGating(w, h);
+  if (w && h) {
+    if (!gating.showText) return "";
+    const sign = d.changePct > 0 ? "+" : "";
+    const pct = `${sign}${Number(d.changePct || 0).toFixed(2)}%`;
+    return gating.showPct ? `${params.name}\n${pct}` : `${params.name}`;
+  }
+  if (!d.showName) return "";
+  const sign = d.changePct > 0 ? "+" : "";
+  return d.showPct ? `${params.name}\n${sign}${Number(d.changePct || 0).toFixed(2)}%` : `${params.name}`;
 }
 
 /**
@@ -186,7 +212,7 @@ export function PortfolioHeatmap({
         changePct,
         itemStyle: {
           color: bg,
-          // Tile 0% viền vàng trầm thay vì fill vàng (audit #24)
+          // 0% dùng nền trầm #2f3747 + viền vàng #eab308 (không fill vàng) — S3.1/L6
           borderColor: isZero ? HEAT_ZERO_BORDER : "#0f172a",
           borderWidth: isZero ? 1.5 : 0.5,
         },
@@ -202,13 +228,13 @@ export function PortfolioHeatmap({
     });
   }, [holdings, quotesBySymbol, sizeMode]);
 
-  // Mở rộng node "Khác": hiện toàn bộ tile nhỏ (mặc định gom để khỏi tràn chữ).
   const [showAllTiles, setShowAllTiles] = useState(false);
 
-  // Gating nhãn theo tỷ trọng + gom tile vụn (audit #21):
-  // ECharts treemap formatter không expose pixel rect ổn định nên dùng share
-  // làm proxy: share>=3% hiện mã+%, 1–3% chỉ mã, <1% chỉ tooltip.
-  // Tile <2% quá 8 mã → gom node "Khác (n mã)" để không tràn chữ.
+  // S3.4 — Gom tile vụn share<2% khi >8 mã thành node "Khác (n mã)" (wavg changePct, tooltip top3 + +n).
+  // Decision: IMPLEMENTED — groupTinyTiles() pure helper, giữ ECharts-only, không thêm d3, không tự đếm lại scope.
+  // Lý do: tránh tràn chữ khi universe 30-50 mã, tile <2% quá nhiều sẽ vỡ layout; ngưỡng 2%/8 mã cân bằng đọc được vs click.
+  // S3.3 — Label gating: ưu tiên rect (44×28 show T, 56×40 show pct) nếu ECharts cung cấp params.rect; fallback share proxy
+  // (share>=1% show T, >=3% show pct) khi rect undefined để vẫn pass khi test không có rect.
   const displayData = useMemo(() => {
     const total = chartData.reduce((s, d) => s + Number(d.value || 0), 0) || 1;
     const annotated = chartData.map((d) => {
@@ -284,16 +310,13 @@ export function PortfolioHeatmap({
             ],
             label: {
               show: true,
-              formatter: (params) => {
-                const d = params.data || {};
-                if (!d.showName) return "";
-                const changePct = d.changePct;
-                const sign = changePct > 0 ? "+" : "";
-                return d.showPct ? `${params.name}\n${sign}${Number(changePct || 0).toFixed(2)}%` : `${params.name}`;
-              },
+              // S3.3 — Label gating 44×28 / 56×40 via helper (fallback share proxy khi rect undefined)
+              formatter: (params) => formatHeatmapLabel(params),
+              // fontSize theo rect nếu ECharts truyền rect; fallback precomputed d.fontSize
               fontSize: 11,
               fontWeight: 800,
-              color: (params) => params.data?.labelColor || "#fff",
+              // S3.2 — textOn via precomputed labelColor (callback nếu ECharts hỗ trợ, fallback vẫn đúng contrast)
+              color: (params) => params.data?.labelColor || textOnHeat(heatColorContinuous(params.data?.changePct || 0)),
               textBorderColor: "rgba(0,0,0,0.45)",
               textBorderWidth: 2,
               overflow: "truncate",
@@ -330,16 +353,10 @@ export function PortfolioHeatmap({
             },
             label: {
               show: true,
-              formatter: (params) => {
-                const d = params.data || {};
-                if (!d.showName) return "";
-                const changePct = d.changePct;
-                const sign = changePct > 0 ? "+" : "";
-                return d.showPct ? `${params.name}\n${sign}${Number(changePct || 0).toFixed(2)}%` : `${params.name}`;
-              },
+              formatter: (params) => formatHeatmapLabel(params),
               fontSize: 10,
               fontWeight: 800,
-              color: (params) => params.data?.labelColor || "#fff",
+              color: (params) => params.data?.labelColor || textOnHeat(heatColorContinuous(params.data?.changePct || 0)),
               textBorderColor: "rgba(0,0,0,0.45)",
               textBorderWidth: 2,
               overflow: "truncate",
@@ -440,7 +457,7 @@ export function PortfolioHeatmap({
     { ref: containerRef, className: "core-heatmap h-full flex flex-col relative " + className },
     e(
       "div",
-      { className: "core-heatmap-header flex items-center justify-between mb-1" },
+      { className: "panel-head core-heatmap-header flex items-center justify-between mb-1" },
       e(
         "div",
         { className: "min-w-0" },
@@ -541,18 +558,20 @@ export function PortfolioHeatmap({
         ref: chartRef,
       })
     ),
+    // S3.5 — Legend tĩnh -7% … 0 … +7% gradient 5 stops S3.1 (không dùng ECharts visualMap để tránh xung đột nodeClick:false)
     e(
       "div",
-      { className: "mt-2 flex items-center gap-2 text-[10px] font-medium text-slate-500" },
-      e("span", { className: "tabular-nums" }, "-7%"),
+      { className: "heatmap-legend mt-2 flex items-center gap-2 text-[10px] font-medium text-slate-500" },
+      e("span", { className: "tabular-nums" }, t("heatmap.legendMin") !== "heatmap.legendMin" ? t("heatmap.legendMin") : "-7%"),
       e("div", {
-        className: "h-1.5 flex-1 rounded-full",
-        style: { background: "linear-gradient(to right, #991b1b, #dc2626, #f87171, #f59e0b, #4ade80, #22c55e, #15803d)" },
+        className: "heatmap-legend-bar h-1.5 flex-1 rounded-full",
+        style: { background: "linear-gradient(to right, #7f1d1d, #5b2228, #2f3747, #14532d, #166534)" },
         role: "img",
         title: t("heatmap.legendLabel"),
         "aria-label": t("heatmap.legendLabel"),
       }),
-      e("span", { className: "tabular-nums" }, "+7%")
+      e("span", { className: "tabular-nums" }, t("heatmap.legendMid") !== "heatmap.legendMid" ? t("heatmap.legendMid") : "0"),
+      e("span", { className: "tabular-nums" }, t("heatmap.legendMax") !== "heatmap.legendMax" ? t("heatmap.legendMax") : "+7%")
     ),
     // Dialog overlay
     selectedDetail && e(

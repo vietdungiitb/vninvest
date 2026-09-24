@@ -52,7 +52,7 @@ export default function OptimizationModal({ onClose, holdings, technicals, analy
             </div>
 
             {/* Score Comparison */}
-            <div className="flex items-center gap-4 bg-slate-950/50 p-3 rounded-2xl border border-slate-800/50">
+            <div className="flex items-center gap-4 bg-slate-950/50 p-3 rounded-xl border border-slate-800/50">
               <div className="flex flex-col items-center">
                 <span className="text-[9px] text-slate-500 uppercase">Hiện tại</span>
                 <span className="text-lg font-black text-slate-400">{currentScore}</span>
@@ -82,7 +82,7 @@ export default function OptimizationModal({ onClose, holdings, technicals, analy
               <p className="text-sm text-slate-500 italic">Danh mục của bạn đang ở trạng thái cân bằng lý tưởng.</p>
             </div>
           ) : recommendations.map((rec) => (
-            <div key={rec.symbol} className="bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden group hover:border-slate-700 transition-all">
+            <div key={rec.symbol} className="bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden group hover:border-slate-700 transition-all">
               <div className="flex items-center p-4 gap-4">
                 <input 
                   type="checkbox" 
