@@ -200,6 +200,12 @@ class TenantInviteAcceptView(APIView):
         if user.email.lower().strip() != invite.invited_email.lower().strip():
             raise PermissionErrorException('Email does not match invited email')
 
+        # H0.3b: invite cũ role=owner (tạo trước blacklist) không được accept —
+        # chuyển chủ sở hữu là flow riêng có xác nhận.
+        if invite.role == TenantMember.RoleChoices.OWNER:
+            raise PermissionErrorException(
+                'Invite owner đã bị vô hiệu. Chuyển chủ sở hữu dùng flow riêng.')
+
         # Enforce member limit per plan
         PLAN_MEMBER_LIMITS = {
             'free': 3, 'starter': 5, 'pro': 25,

@@ -2,11 +2,15 @@
 
 GET /api/soc/billing/overview/ — MRR/ARR/plan-mix/trials/failed/revenue-6m
 GET /api/soc/billing/invoices/ — cross-tenant invoice list (filter + paginate)
+GET /api/soc/billing/invoices/?format=csv — stream CSV toàn bộ filter (R8.3)
 Không migration. Nguồn: commercial.Subscription/Invoice + CoreTenant.
+CSV không bao giờ chứa secret/token (chỉ số liệu hóa đơn công khai nội bộ).
 """
+import csv
 from datetime import date, timedelta
 
 from django.db.models import Count, Q, Sum
+from django.http import StreamingHttpResponse
 from rest_framework.response import Response
 
 from commercial.models import Invoice, Subscription
@@ -79,15 +83,19 @@ class BillingOverviewView(SOCBaseView):
 
 
 class BillingInvoiceListView(SOCBaseView):
-    def get(self, request):
+    COLUMNS = ['invoice_number', 'status', 'amount_due', 'currency',
+               'period_start', 'period_end', 'paid_at', 'tenant_code',
+               'tenant_name', 'tenant_plan', 'created_at']
+    CSV_MAX_ROWS = 5000
+
+    def _filtered_qs(self, request):
         qs = Invoice.objects.select_related('tenant').order_by('-created_at')
         status_filter = (request.query_params.get('status') or '').strip()
         plan_filter = (request.query_params.get('plan') or '').strip()
         search = (request.query_params.get('search') or '').strip()
         if status_filter:
             if status_filter not in VALID_INVOICE_STATUSES:
-                return Response({'detail': 'Trạng thái hóa đơn không hợp lệ.'},
-                                status=400)
+                return None
             qs = qs.filter(status=status_filter)
         if plan_filter:
             qs = qs.filter(tenant__plan=plan_filter)
@@ -97,9 +105,23 @@ class BillingInvoiceListView(SOCBaseView):
                 | Q(tenant__tenant_code__icontains=search)
                 | Q(tenant__display_name__icontains=search)
             )
+        return qs
+
+    def get(self, request):
+        qs = self._filtered_qs(request)
+        if qs is None:
+            return Response({'detail': 'Trạng thái hóa đơn không hợp lệ.'},
+                            status=400)
+        if (request.query_params.get('download') or '').strip() == 'csv':
+            return self._csv_response(qs)
         paginator = StandardPageNumberPagination()
         page = paginator.paginate_queryset(qs, request)
-        rows = [{
+        rows = [self._serialize(inv) for inv in page]
+        return paginator.get_paginated_response(rows)
+
+    @staticmethod
+    def _serialize(inv) -> dict:
+        return {
             'id': inv.id,
             'invoice_number': inv.invoice_number,
             'status': inv.status,
@@ -113,5 +135,21 @@ class BillingInvoiceListView(SOCBaseView):
             'tenant_name': inv.tenant.display_name,
             'tenant_plan': inv.tenant.plan,
             'created_at': inv.created_at.isoformat(),
-        } for inv in page]
-        return paginator.get_paginated_response(rows)
+        }
+
+    def _csv_response(self, qs):
+        class _Echo:
+            def write(self, value):
+                return value
+
+        writer = csv.writer(_Echo())
+
+        def gen():
+            yield writer.writerow(self.COLUMNS)
+            for inv in qs[:self.CSV_MAX_ROWS].iterator(chunk_size=1000):
+                row = self._serialize(inv)
+                yield writer.writerow([row.get(c, '') or '' for c in self.COLUMNS])
+
+        resp = StreamingHttpResponse(gen(), content_type='text/csv')
+        resp['Content-Disposition'] = 'attachment; filename="soc-invoices.csv"'
+        return resp

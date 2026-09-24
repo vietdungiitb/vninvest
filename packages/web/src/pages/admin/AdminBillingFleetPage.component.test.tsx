@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, waitFor, cleanup } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, cleanup } from "@testing-library/react";
 import { createElement } from "react";
 import { MemoryRouter } from "react-router-dom";
 import * as LangContext from "../../context/LangContext.js";
@@ -67,5 +67,42 @@ describe("AdminBillingFleetPage (R2 tenant-admin-refactor)", () => {
     });
     expect(defaultCoreApiAdapter.getSocBillingOverview).not.toHaveBeenCalled();
     expect(defaultCoreApiAdapter.getSocBillingInvoices).not.toHaveBeenCalled();
+  });
+
+  it("export button downloads CSV with download=csv", async () => {
+    (defaultCoreApiAdapter.getSocBillingOverview as ReturnType<typeof vi.fn>).mockResolvedValue({
+      mrr: 0, arr: 0, plan_mix: [], trials_active: 0, invoices_failed_30d: 0, revenue_6m: [],
+    });
+    (defaultCoreApiAdapter.getSocBillingInvoices as ReturnType<typeof vi.fn>).mockResolvedValue({
+      count: 0, next: null, previous: null, results: [],
+    });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      blob: () => Promise.resolve(new Blob(["a,b"], { type: "text/csv" })),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const origCreate = document.createElement.bind(document);
+    const createSpy = vi.spyOn(document, "createElement");
+    const clickSpy = vi.fn();
+    createSpy.mockImplementation(((tag: string) => {
+      if (tag === "a") {
+        return { href: "", download: "", click: clickSpy } as unknown as HTMLElement;
+      }
+      return (origCreate as typeof document.createElement).call(document, tag as any);
+    }) as typeof document.createElement);
+    renderPage(true);
+    await waitFor(() => {
+      expect(screen.getByText("adminBillingFleet.export")).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText("adminBillingFleet.export"));
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+    const url = String(fetchMock.mock.calls[0][0]);
+    expect(url).toContain("/operator/soc/billing/invoices/");
+    expect(url).toContain("download=csv");
+    expect(clickSpy).toHaveBeenCalled();
+    vi.unstubAllGlobals();
+    createSpy.mockRestore();
   });
 });

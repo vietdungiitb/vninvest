@@ -86,3 +86,33 @@ class SocStaffSwitchTests(TestCase):
         resp = client.get('/core/v1/partner/tenant/',
                           HTTP_X_STAFF_SWITCH='forged-token')
         self.assertEqual(resp.status_code, 403)
+
+    def test_superuser_switch_is_stripped_and_invalid_not_bypassed(self):
+        # F1: superuser gửi switch-header phải qua nhánh switch (không bypass),
+        # strip đặc quyền → SOC 403; token hỏng → 403 cứng.
+        su = User.objects.create_superuser(
+            username='sw_su', email='su@test.com', password='x')
+        su_client = APIClient()
+        su_client.force_authenticate(user=su)
+        resp = su_client.post(
+            SWITCH, {'tenant_id': self.target.public_id, 'reason': 'ho tro'},
+            format='json')
+        self.assertEqual(resp.status_code, 200)
+        token = resp.json()['token']
+        client = APIClient()
+        self.assertTrue(client.login(username='sw_su', password='x'))
+        resp = client.get('/api/soc/users/', HTTP_X_STAFF_SWITCH=token)
+        self.assertEqual(resp.status_code, 403)
+        resp = client.get('/api/soc/users/', HTTP_X_STAFF_SWITCH='forged-token')
+        self.assertEqual(resp.status_code, 403)
+
+    def test_switched_session_cannot_reach_staff_endpoints(self):
+        # H0.1: phiên xem hộ bị strip staff → SOC/operator 403 dù có header switch.
+        token = self._issue().json()['token']
+        client = APIClient()
+        self.assertTrue(client.login(username='sw_staff', password='x'))
+        resp = client.get('/api/soc/users/', HTTP_X_STAFF_SWITCH=token)
+        self.assertEqual(resp.status_code, 403)
+        resp = client.get('/core/v1/operator/tenants/',
+                          HTTP_X_STAFF_SWITCH=token)
+        self.assertEqual(resp.status_code, 403)

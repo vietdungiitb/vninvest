@@ -80,3 +80,16 @@ class SocBillingFleetTests(TestCase):
         self.assertEqual(len(body['results']), 1)
         resp = self.staff_client.get(f'{INVOICES}?status=nope')
         self.assertEqual(resp.status_code, 400)
+
+    def test_invoices_csv_export(self):
+        resp = self.staff_client.get(f'{INVOICES}?download=csv&status=paid')
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('text/csv', resp['Content-Type'])
+        content = b''.join(resp.streaming_content).decode('utf-8')
+        lines = content.strip().splitlines()
+        self.assertTrue(lines[0].startswith('invoice_number,'))
+        self.assertEqual(len(lines), 3)  # header + 2 paid
+        self.assertIn('INV-R2-0', content)
+        self.assertNotIn('secret', content.lower())
+        resp = self.plain_client.get(f'{INVOICES}?download=csv')
+        self.assertEqual(resp.status_code, 403)

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { defaultCoreApiAdapter } from '../../adapters/coreApiAdapter.js';
+import { downloadSocCsv } from './socCsv.js';
 import { useI18n } from '../../context/LangContext.js';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 
@@ -24,6 +25,7 @@ export function AdminUsageFleetPage() {
   const [overview, setOverview] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<any>(null);
+  const [exporting, setExporting] = useState(false);
 
   const load = useCallback(async () => {
     if (!isStaffGate) return;
@@ -55,8 +57,29 @@ export function AdminUsageFleetPage() {
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8">
       <div>
         <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Admin / Usage</p>
-        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">{t('adminUsageFleet.title')}</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">{t('adminUsageFleet.description')}</p>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-950 dark:text-white">{t('adminUsageFleet.title')}</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('adminUsageFleet.description')}</p>
+          </div>
+          <button
+            type="button"
+            disabled={exporting}
+            onClick={async () => {
+              setExporting(true);
+              try {
+                await downloadSocCsv('/operator/soc/usage/export/', { days: 30 }, 'soc-usage.csv');
+              } catch (err: any) {
+                setError(err?.message || t('adminUsageFleet.errorGeneric'));
+              } finally {
+                setExporting(false);
+              }
+            }}
+            className="rounded-full border px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
+          >
+            {t('adminUsageFleet.export')}
+          </button>
+        </div>
       </div>
       {error ? <p className="text-sm text-rose-600">{String(error?.message || error)}</p> : null}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

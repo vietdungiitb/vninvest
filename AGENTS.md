@@ -9,6 +9,24 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - Build verification: npx tsc --noEmit sau mỗi sub-step, npm run build cuối mỗi step.
 
 ## Progress
+### Done (2026-09-24) — Tenant Admin R0–R8 + H0 hotfix + audit fixes (Entry 182/184/186)
+- **R0–R7**: StaffRoute/TenantRoute, 9 routes + 8 catalog + menu Tenant/Billing/Usage/Audit,
+  3 fleet pages, banner xem hộ, tenants paginate, billing/usage/audit endpoints,
+  staff-switch, hardening. Gates: tsc 0, build PASS, lint 0 err, vitest R 26/26,
+  BE 22/22, check 0. Evidence `docs/evidence/tenant-admin-refactor/gates.md`.
+- **H0**: switch strip-staff (SOC 403), crawl StaffRoute, invite blacklist owner, dead links 0.
+- **R8**: analytics growth/cohorts/alerts + export CSV 3 endpoints + `/admin/analytics`.
+- **Audit fixes (Conditional Approve)**: superuser switch strip + test 403;
+  conversion Invoice-paid distinct + overlap test; billing CSV [:5000];
+  export filters đủ (billing +plan, audit +from/to); accept chặn invite owner cũ;
+  C5 REJECTED (frontend/ legacy không ship).
+- **Gates cuối**: tsc 0, build PASS, lint 0 err, vitest 36/36 R-slices,
+  BE switch 9 + invite 3 + analytics 7 + billing/audit/usage, check 0, i18n:scan 0.
+  Evidence `docs/evidence/tenant-admin-refactor/h0-r8.md`.
+### Done (2026-09-24) — Dashboard Audit Fix S0–S6 (Entry 152 + S6 refinement 185)
+- **Slices**: S0 route+STALE + S1 formatMarket/symbol/title/sign/date + S2 filter `.seg`/card `p-3` + S3 heatmap ±7%/gating/legend + S4 grid/clamp/scroll + S5 breadth/AI-empty/header OUT-OF-SCOPE.
+- **Tests S6**: `formatMarket` 17 + `alert-card-compact` 10 (flex:none/height/filter) + `heatmap-scale` 14 (clamp/textOn/gating 44×28/56×40) + `AIAdvisor i18n` title `Tín hiệu AI`/`AI signals` (3/3) + `breadth-dedup` 5/5.
+- **Gates**: tsc 0, build 28.90s PASS, lint 0 err (3853 warn), i18n:scan 0 + rg 0, vitest dashboard 25/25 (S6 46/46), jest 17/17 239/239, check:shell PASS (allowlist +4). Evidence `docs/evidence/dashboard-fix/s6-gates.md`.
 ### Done (2026-09-23) — Main menu thu gọn sát code (Entry 166)
 - **Menu đích**: 5 nhóm / 13 mục + 1 flag — Thị trường (Tổng quan/Radar/Screener), Tài sản (Sổ giao dịch/Danh mục),
   Tín hiệu & AI (Trung tâm cảnh báo/AI Advisory/Trung tâm AI), Tài khoản (Nâng cấp/Hỗ trợ/Cài đặt),

@@ -52,13 +52,9 @@ class TenantResolutionMiddleware:
             # print(f"[TenantResolutionMiddleware] Unauthenticated user")
             return self.get_response(request)
 
-        if getattr(user, 'is_superuser', False):
-            # Superusers bypass tenant resolution but we still try to set context
-            self._resolve_superuser_tenant(request, user)
-            return self.get_response(request)
-
-        # R5 staff-switch: staff "xem hộ" tenant qua header X-Staff-Switch
-        # (token ký TTL 30m, role ép viewer, có audit lúc cấp).
+        # R5 staff-switch (kể cả superuser): header X-Staff-Switch được xử lý
+        # TRƯỚC mọi bypass — phiên xem hộ luôn ép viewer + strip đặc quyền,
+        # token hỏng/hết hạn → 403 cứng (không rơi qua bypass).
         switch_token = request.META.get('HTTP_X_STAFF_SWITCH', '').strip()
         if switch_token:
             if self._resolve_staff_switch(request, user, switch_token):
@@ -70,6 +66,11 @@ class TenantResolutionMiddleware:
                 },
                 status=403,
             )
+
+        if getattr(user, 'is_superuser', False):
+            # Superusers bypass tenant resolution but we still try to set context
+            self._resolve_superuser_tenant(request, user)
+            return self.get_response(request)
 
         # Machine PATs are bound to their issuing tenant; reject cross-tenant
         # header attempts with a dedicated error code (human session PATs may switch).
@@ -157,6 +158,11 @@ class TenantResolutionMiddleware:
         request.tenant = tenant
         request.tenant_role = 'viewer'
         request.staff_switch = True
+        # H0.1: strip đặc quyền staff trên request — phiên xem hộ là viewer
+        # thuần túy, không được qua lớp guard IsAdminUser ở SOC/operator
+        # (mirror apply_pat_user_privileges). Request-scoped, không persist DB.
+        user.is_staff = False
+        user.is_superuser = False
         return True
 
     def _get_user_from_pat(self, request):

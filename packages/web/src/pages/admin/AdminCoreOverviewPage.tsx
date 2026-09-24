@@ -151,7 +151,7 @@ export function AdminCoreOverviewPage() {
               {'Mở trung tâm crawl'}
             </Link>
             <Link
-              to="/admin/runtime/jobs"
+              to="/admin/jobs"
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
               {'Xem jobs'}

@@ -58,6 +58,7 @@ export const sidebarItems: NavGroup[] = [
       { labelKey: 'layout.nav.adminBilling', path: '/admin/billing', icon: 'TrendingUp', staffOnly: true },
       { labelKey: 'layout.nav.adminUsage', path: '/admin/usage', icon: 'Activity', staffOnly: true },
       { labelKey: 'layout.nav.adminAudit', path: '/admin/audit', icon: 'ClipboardList', staffOnly: true },
+      { labelKey: 'layout.nav.adminAnalytics', path: '/admin/analytics', icon: 'LineChart', staffOnly: true },
       ...(import.meta.env.VITE_FEATURE_ADVERTISING_ADMIN !== 'false'
         ? [{ labelKey: 'layout.nav.advertisingAdmin', path: '/admin/advertising', icon: 'Megaphone', staffOnly: true }]
         : []),

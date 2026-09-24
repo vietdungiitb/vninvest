@@ -70,3 +70,13 @@ class SocAuditEventsTests(TestCase):
         body = self.staff_client.get(f'{BASE}?page=2&page_size=2').json()
         self.assertEqual(body['count'], 3)
         self.assertEqual(len(body['results']), 1)
+
+    def test_csv_export(self):
+        resp = self.staff_client.get(f'{BASE}?download=csv&action=update')
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('text/csv', resp['Content-Type'])
+        content = b''.join(resp.streaming_content).decode('utf-8')
+        lines = content.strip().splitlines()
+        self.assertTrue(lines[0].startswith('event_id,'))
+        self.assertEqual(len(lines), 3)  # header + 2 update
+        self.assertNotIn('secret', content.lower())

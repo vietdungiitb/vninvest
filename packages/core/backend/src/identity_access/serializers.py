@@ -331,6 +331,14 @@ class TenantInviteCreateSerializer(serializers.Serializer):
         help_text='Optional custom role public_id to assign on accept.',
     )
 
+    def validate_role(self, value):
+        # H0.3: cấm invite role=owner qua lời mời (leo đặc quyền).
+        # Chuyển chủ sở hữu là flow riêng có xác nhận (ngoài scope).
+        if value == TenantMember.RoleChoices.OWNER:
+            raise serializers.ValidationError(
+                'Không thể mời với vai trò owner. Chuyển chủ sở hữu dùng flow riêng.')
+        return value
+
 
 class TenantSSOConfigSerializer(serializers.ModelSerializer):
     """Serializer for Tenant SSO Configuration."""

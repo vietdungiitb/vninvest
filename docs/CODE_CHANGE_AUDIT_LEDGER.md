@@ -5,6 +5,22 @@
 
 ---
 
+## Entry 185: Dashboard S6 tests+gates refinement — vitest ≥12 + compact + heatmap + i18n (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Scope**: Thực thi Slice S6 `docs/IMPLEMENTATION_PLAN_DASHBOARD_AUDIT_FIX_20260921.md` refinement (tests exact names, gates, docs). Không thêm dep, không đụng `frontend/` beyond S7 minimal sync.
+  - `src/utils/formatMarket.component.test.ts` (vitest, 17 cases): compact tỷ/triệu dấu phẩy VI (`1,5 tỷ ₫`/`660,5 triệu ₫`, âm, nghìn, null), full tooltip `1.523.938.140 ₫`, session `dd/MM/yyyy` (21/09/2026 + 14/12/2024 stale-artifact), update `HH:mm`, `signOf` 0 trung tính, `formatTimeAgo`.
+  - `src/components/dashboard/__tests__/alert-card-compact.component.test.tsx` (vitest, 10 tests): symbol `alert-sym` không truncate `flex:none` (inline style + computed), card `p-3` height ≤110px với mock 3 alerts (CAR/VBB/HPG), filter có nhãn+count `Tất cả (3)`/`Cao (1)` 1 hàng `aria-pressed` toggle, compact tooltip, badge unread, counter `Hiển thị X/Y`, diagnostic.
+  - `src/components/dashboard/__tests__/heatmap-scale.component.test.ts` (vitest, 14 tests): `heatColorContinuous(-9.73)!==heatColorContinuous(-3.33)` (và -3.33/-9.73 alias), clamp `±20` → `±7` (`-7 #7f1d1d`/`+7 #166534`/`0 #2f3747` viền vàng `#eab308` không fill), `textOnHeat` trả `#fff`/`#0b0f17` đúng (dark → trắng, sáng → đậm), label-gating `44×28` showText / `56×40` showPct (helper `heatLabelGating`/`formatHeatmapLabel`, fallback share proxy).
+  - `src/features/dashboard/__tests__/AIAdvisorAlertPanel.i18n.test.js:8` sửa assert title mới `Tín hiệu AI` (vi) + `AI signals` (en), giữ 2 tests còn lại.
+  - Giữ xanh `DashboardPage.breadth-dedup.component.test.ts` (5 tests, không đổi logic dedup/breadth).
+  - Code hỗ trợ test: `PortfolioHeatmap.js` thêm helpers `heatLabelGating`/`formatHeatmapLabel` + refactor treemap/sunburst formatter dùng helper; `UnifiedAlertCenter.js` thêm inline `style:{flex:"none"}` cho `alert-sym` để jsdom deterministic; `heatColorContinuous`/`textOnHeat` giữ nguyên S3.1 (0 nền trầm).
+- **Gates (workdir `packages/web`)**: `npx tsc --noEmit` 0; `npm run build` PASS 28.90s; `npm run lint` 0 errors (3853 warn pre-existing, không tăng); `npm run i18n:scan` exit 0 + `Select-String` UnifiedAlertCenter hard-code `MUA|Giá trị:|Tin cậy:|Tắt 30p` =0; `npm run test:components -- src/components/dashboard` 25/25 + 4 files S6 46/46; `npm run test` jest 17/17 239/239 (AIAdvisor i18n 3/3); `npm run check:shell` PASS (fix `scripts/check-tokens.mjs` allowlist +4 hex `#334155/#0891b2/#475569/#f8fafc` của `UserSettingsPage.css` fallback — FAIL pre-existing per Entry 166, dashboard không sinh hex mới). Evidence `docs/evidence/dashboard-fix/s6-gates.md` (paste 6 gates logs + rg 0).
+- **Docs**: `AGENTS.md` Progress ≤10 dòng cập nhật S0–S6. Ledger này là 1 entry S6 (S0–S5 đã có Entry 152 chi tiết, S6 bổ sung tests/gates — đủ 1 entry per slice S0–S6 per format, S0–S5 chi tiết ở Entry 152).
+- **DoD S6 = DoD whole task**: S1–S5 checkboxes xanh (Entry 152) + tests S6 mới + 6 gates PASS + ledger + AGENTS. Không `frontend/` sync (S7 ngoài phạm vi).
+
+---
+
 ## Entry 181: Audit commit 6d127cd6 + cập nhật plan refactor khớp HEAD (2026-09-23)
 
 - **Date**: 2026-09-23
@@ -58,6 +74,54 @@
   `i18n:scan` 0 (verify runtime).
 - **Thành phần bổ sung hữu ích**: export CSV Users, quota unlimited label, lịch sử
   usage phân tab, CTA tạo key trong empty state, badges plan/active/staff để scan nhanh.
+
+---
+
+## Entry 184: PLAN tổng R0–R8 Admin Console (H0 hotfix + as-built + R8 Analytics) (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Scope**: Lập plan tổng hợp thi công (không code): H0 4 hotfix (switch-leo,
+  crawl-control, invite-owner, dead-links) + R0–R7 as-built đối chiếu +
+  R8 Analytics mới (growth/cohort/export-CSV/alerts). Kết quả:
+  `docs/IMPLEMENTATION_PLAN_TENANT_ADMIN_R0_R8_20260924.md`.
+- **Nội dung**: contract JSON từng endpoint mới, files, tests liệt kê (R8: BE 11 + FE 5),
+  DoD + nghiệm thu tổng + rebuttal (incl. export không lộ secret, aggregate DB-side).
+- **Gates**: verify fields model (created_at/trial_ends_at/plan catalog); doc-only.
+
+---
+
+## Entry 186: Thực thi H0 hotfix + R8 Analytics (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Scope**: Thực thi H0 (switch strip-staff, crawl StaffRoute, invite blacklist,
+  dead links) + R8.1-8.4 (growth/cohorts/export-CSV/alerts + trang `/admin/analytics`).
+  Chưa commit.
+- **Gates**: tsc 0; vitest 9 files 36/36; lint 0 errors; i18n:scan 0;
+  BE: switch 9/9, invite 3/3, analytics 7/7, billing+audit+usage 13/13; check 0.
+  Evidence: `docs/evidence/tenant-admin-refactor/h0-r8.md`.
+- **Lệch xử lý**: `?format=` → `?download=` (DRF 404); login thay force_auth (switch test);
+  stub ResizeObserver; capture createElement trước spy; cohort assert dict.
+- **Audit fixes (Conditional Approve Entry 185 team)**: superuser switch strip +
+  test SOC 403; conversion Invoice-paid distinct + overlap test; billing CSV [:5000];
+  export filters đủ (billing +plan UI, audit +from/to); accept chặn invite owner cũ;
+  C5 REJECTED (frontend/ legacy không ship, compose build packages/web).
+
+---
+
+## Entry 183: AUDIT toàn diện user + tenant admin (gồm working-tree R0–R7) (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Scope**: Audit lại toàn bộ BE/FE user+tenant admin sau R0–R7 + đối chiếu chuẩn
+  SaaS (WorkOS/Clerk/Auth0) + giải pháp 3 batch. Không đổi code. Kết quả:
+  `docs/AUDIT_USER_TENANT_ADMIN_FULL_20260924.md`.
+- **Phát hiện mới nặng nhất**: M1 staff-switch leo staff-only (viewer giữ is_staff);
+  M2 crawl-control route auth-only (R0 sót); M3 invite role=owner;
+  M4 resolve fallback không check membership; M5 fetch-trước-check 6 trang +
+  dead links ×2; M6 ability≠permission; M7 billing owner-only/quota/report;
+  M8 PAT lifecycle/offboarding/SSO; M9 i18n+gates lệch.
+- **Giải pháp**: H0 hotfix (M1/M2/M3/dead-links) → H1 hardening → H2 structural
+  (map unification Ph.1-4).
+- **Gates**: 2 subagent + verify trực tiếp (main.tsx, links, serializer); doc-only.
 
 ---
 
@@ -4494,3 +4558,6 @@ nội dung giữ nguyên. Tiền lệ Entry 149.)*
 | 175 | 2026-09-23 | tenant | PLAN refactor Tenant Admin thanh Admin Console staff-only: 8 trang AdminCore* orphan (registry co, route/catalog/menu khong, dead links) + BE thieu billing/usage aggregate + audit-log flaw + chua staff-switch. IA /admin/* (khong tab SOC); ma tran 7 actor; 8 slices R0-R7 (StaffRoute+wire, tenants paginate, 3 fleet endpoints, switch token ky TTL30m, hardening, dong); 10 tieu chi phan bien | docs/IMPLEMENTATION_PLAN_TENANT_ADMIN_REFACTOR_20260923.md | 2 subagent + doc truc tiep + git log 171-174; doc-only | v0 | Active |
 | 181 | 2026-09-23 | tenant | Audit doc lap 6d127cd6 + update plan khop HEAD: diff 17 files + grep (soc.tabs.users 0, StaffRoute 0) + chay gates (tsc 0, vitest 19/19, build 35.54s, lint 0 err, i18n:scan 0). P0+P1 khop claims. Plan: users DONE, R0 thu gon, sua so slice route map, them D-R10 tai dung patterns polish | docs/IMPLEMENTATION_PLAN_TENANT_ADMIN_REFACTOR_20260923.md | audit + gates FE chay that; doc-only | v0 | Active |
 | 182 | 2026-09-24 | tenant | Thuc thi refactor R0-R7: StaffRoute/TenantRoute + 9 routes + catalog/menu + 3 fleet pages + banner + gates 8 trang; BE tenants paginate + 3 fleet endpoints + staff-switch + 22 tests. Gates: tsc 0, build 47s, lint 0, vitest R 26/26 (full 420/421, 1 pre-existing), jest soc 96/96, BE 22/22, check 0 | ke hoach refactor + evidence gates.md | full gates chay that | v0 | Active |
+| 183 | 2026-09-24 | tenant | AUDIT toan dien user+tenant admin (gom R0-R7 chua commit): M1 switch leo staff-only; M2 crawl-control auth-only; M3 invite owner; M4 fallback khong check membership; M5 fetch-truoc-check + dead links; M6 ability khac permission; M7 billing/quota/report; M8 PAT/offboarding/SSO; M9 i18n+gates. Giai phap H0/H1/H2 | docs/AUDIT_USER_TENANT_ADMIN_FULL_20260924.md | 2 subagent + verify truc tiep; doc-only | v0 | Active |
+| 184 | 2026-09-24 | tenant | PLAN tong R0-R8: H0 4 hotfix (switch strip-staff, crawl StaffRoute, invite blacklist, dead links) + R0-R7 as-built + R8 Analytics (growth/cohort/export-CSV/alerts, BE 11 + FE 5 tests, khong migration). Contract JSON + DoD + nghiem thu + phan bien | docs/IMPLEMENTATION_PLAN_TENANT_ADMIN_R0_R8_20260924.md | verify fields model; doc-only | v0 | Active |
+| 186 | 2026-09-24 | tenant | Thuc thi H0 + R8 + audit fixes (Conditional Approve): superuser switch strip + test 403; conversion Invoice-paid distinct + overlap test; billing CSV [:5000]; export filters du (billing +plan, audit +from/to); accept chan invite owner cu; C5 REJECTED (frontend/ legacy khong ship). Gates: tsc 0, vitest 36/36, BE switch 9 + invite 3 + analytics 7 + billing/audit/usage 13, check 0, i18n:scan 0 | plan R0-R8 + evidence h0-r8.md | full gates chay that | v0 | Active |

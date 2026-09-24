@@ -64,3 +64,14 @@ class SocUsageFleetTests(TestCase):
         self.assertEqual(near[0]['tenant_code'], 'use_t_0')
         self.assertEqual(near[0]['meter'], 'api_calls')
         self.assertEqual(near[0]['used_pct'], 90.0)
+
+    def test_export_csv(self):
+        resp = self.staff_client.get('/api/soc/usage/export/?days=7')
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('text/csv', resp['Content-Type'])
+        content = b''.join(resp.streaming_content).decode('utf-8')
+        self.assertIn('top_tenants', content)
+        self.assertIn('use_t_2', content)
+        self.assertIn('quotas_near_limit', content)
+        resp = self.plain_client.get('/api/soc/usage/export/')
+        self.assertEqual(resp.status_code, 403)

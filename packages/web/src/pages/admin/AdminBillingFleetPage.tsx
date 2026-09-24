@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { defaultCoreApiAdapter } from '../../adapters/coreApiAdapter.js';
+import { downloadSocCsv } from './socCsv.js';
 import { useI18n } from '../../context/LangContext.js';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 
@@ -28,9 +29,23 @@ export function AdminBillingFleetPage() {
   const [hasPrev, setHasPrev] = useState(false);
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState('');
+  const [plan, setPlan] = useState('');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<any>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const doExport = async () => {
+    setExporting(true);
+    try {
+      await downloadSocCsv('/operator/soc/billing/invoices/',
+        { status, plan, search }, 'soc-invoices.csv');
+    } catch (err: any) {
+      setError(err?.message || t('adminBillingFleet.errorGeneric'));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const load = useCallback(async () => {
     if (!isStaffGate) return;
@@ -43,7 +58,7 @@ export function AdminBillingFleetPage() {
       };
       const [ov, inv] = await Promise.all([
         api.getSocBillingOverview(),
-        api.getSocBillingInvoices({ page, status: status || undefined, search: search || undefined }),
+        api.getSocBillingInvoices({ page, status: status || undefined, plan: plan || undefined, search: search || undefined }),
       ]);
       setOverview(ov || null);
       setInvoices(inv?.results || []);
@@ -57,7 +72,7 @@ export function AdminBillingFleetPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, status, search, t, isStaffGate]);
+  }, [page, status, plan, search, t, isStaffGate]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -99,8 +114,15 @@ export function AdminBillingFleetPage() {
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
+          <select value={plan} onChange={(e) => { setPlan(e.target.value); setPage(1); }} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950">
+            <option value="">{t('adminBillingFleet.filterPlanAll')}</option>
+            {['free', 'starter', 'pro', 'enterprise', 'custom', 'internal'].map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('adminBillingFleet.searchPh')} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950" />
           <button type="button" onClick={() => setPage(1)} className="rounded-full border px-3 py-1.5 text-xs font-semibold">{t('adminBillingFleet.apply')}</button>
+          <button type="button" disabled={exporting} onClick={doExport} className="rounded-full border px-3 py-1.5 text-xs font-semibold disabled:opacity-40">{t('adminBillingFleet.export')}</button>
         </div>
         {invoices.length > 0 ? (
           <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">

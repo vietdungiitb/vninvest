@@ -12,7 +12,7 @@ Hierarchy:
 """
 from django.urls import path
 
-from .views import (audit, billing, broker, dataops, dataops_stream, matrix, overview,
+from .views import (analytics, audit, billing, broker, dataops, dataops_stream, matrix, overview,
 overview_stream, prefetch, screener, signals, signals_rules, signals_stream, signals_triage, staff, symbol_groups, usage, users, vnbroker)
 
 # Overview endpoints (12)
@@ -77,12 +77,18 @@ path('overview/stream/', overview_stream.OverviewStreamView.as_view(), name='soc
 
     # Usage fleet domain (R3 refactor) — tổng hợp cross-tenant, staff-only
     path('usage/overview/', usage.UsageOverviewView.as_view(), name='soc_usage_overview'),
+    path('usage/export/', usage.UsageExportView.as_view(), name='soc_usage_export'),
 
     # Audit events domain (R4 refactor) — viewer cross-tenant, staff-only
     path('audit-events/', audit.AuditEventsView.as_view(), name='soc_audit_events'),
 
     # Staff-switch domain (R5 refactor) — staff xem hộ tenant, staff-only
     path('staff/switch/', staff.StaffSwitchView.as_view(), name='soc_staff_switch'),
+
+    # Analytics fleet domain (R8) — tăng trưởng/cohort/export/cảnh báo, staff-only
+    path('analytics/growth/', analytics.AnalyticsGrowthView.as_view(), name='soc_analytics_growth'),
+    path('analytics/cohorts/', analytics.AnalyticsCohortsView.as_view(), name='soc_analytics_cohorts'),
+    path('analytics/alerts/', analytics.AnalyticsAlertsView.as_view(), name='soc_analytics_alerts'),
 
     # Prefetch domain (7)
     path('prefetch/config/', prefetch.PrefetchConfigView.as_view(), name='soc_prefetch_config'),

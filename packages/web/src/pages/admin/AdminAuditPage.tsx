@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { defaultCoreApiAdapter } from '../../adapters/coreApiAdapter.js';
+import { downloadSocCsv } from './socCsv.js';
 import { useI18n } from '../../context/LangContext.js';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 
@@ -24,6 +25,7 @@ export function AdminAuditPage() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<any>(null);
+  const [exporting, setExporting] = useState(false);
 
   const load = useCallback(async () => {
     if (!isStaffGate) return;
@@ -79,6 +81,25 @@ export function AdminAuditPage() {
           <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950" />
           <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="rounded-xl border px-3 py-1.5 text-sm dark:bg-slate-950" />
           <button type="button" onClick={() => setPage(1)} className="rounded-full border px-3 py-1.5 text-xs font-semibold">{t('adminAudit.apply')}</button>
+          <button
+            type="button"
+            disabled={exporting}
+            onClick={async () => {
+              setExporting(true);
+              try {
+                await downloadSocCsv('/operator/soc/audit-events/',
+                  { tenant_id: tenantId, actor, action, resource_type: resourceType,
+                    from: dateFrom, to: dateTo }, 'soc-audit-events.csv');
+              } catch (err: any) {
+                setError(err?.message || t('adminAudit.errorGeneric'));
+              } finally {
+                setExporting(false);
+              }
+            }}
+            className="rounded-full border px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
+          >
+            {t('adminAudit.export')}
+          </button>
         </div>
         {rows.length > 0 ? (
           <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">

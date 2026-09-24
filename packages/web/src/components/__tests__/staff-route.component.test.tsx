@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { createElement } from "react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
+// @ts-expect-error vite ?raw import — resolved by vitest/vite, no type declaration needed
+import mainSource from "../../main.tsx?raw";
 
 vi.mock("@/context/PortfolioContext.js", () => ({ usePortfolio: vi.fn() }));
 vi.mock("@/components/ShellToast.js", () => ({
@@ -85,4 +87,24 @@ describe("TenantRoute (R0 tenant-admin-refactor)", () => {
     expect(screen.queryByText("SELF-KEYS")).toBeNull();
     expect(screen.getByText("DASHBOARD")).toBeTruthy();
   });
+});
+
+describe("StaffRoute wiring (H0.2 tenant-admin-refactor)", () => {
+  const src = mainSource as unknown as string;
+  const staffRoutes = [
+    "admin-crawl-control",
+    "operations-center",
+    "admin/users",
+    "admin/tenants",
+    "admin/billing",
+    "admin/usage",
+    "admin/audit",
+  ];
+  for (const p of staffRoutes) {
+    it(`wraps /${p} with StaffRoute`, () => {
+      expect(src).toContain(
+        `path: '${p}', element: createElement(StaffRoute`,
+      );
+    });
+  }
 });

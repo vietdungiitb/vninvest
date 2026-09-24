@@ -474,6 +474,16 @@ export const routeCatalog = Object.freeze([
     status: "core",
   },
   {
+    id: "admin-analytics",
+    path: "/admin/analytics",
+    titleKey: "routes.adminAnalytics",
+    group: "admin",
+    buildTargets: ["saas", "vip"],
+    requiredCapabilities: ["admin.operator.read"],
+    adapter: "core",
+    status: "core",
+  },
+  {
     id: "admin-tenants",
     path: "/admin/tenants",
     titleKey: "routes.adminTenants",

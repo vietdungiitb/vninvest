@@ -191,6 +191,19 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
       return corePost("/operator/soc/staff/switch/", body);
     },
 
+    // ─── Analytics fleet (R8) ──────────────────────────────────
+    getSocAnalyticsGrowth(days = 30) {
+      return coreGet(`/operator/soc/analytics/growth/?days=${days}`);
+    },
+
+    getSocAnalyticsCohorts() {
+      return coreGet("/operator/soc/analytics/cohorts/");
+    },
+
+    getSocAnalyticsAlerts() {
+      return coreGet("/operator/soc/analytics/alerts/");
+    },
+
     // ─── Broker system config (B2.3) ─────────────────────────────────────
     getSocBrokerConfig() {
       return coreGet("/operator/soc/broker/config/");
