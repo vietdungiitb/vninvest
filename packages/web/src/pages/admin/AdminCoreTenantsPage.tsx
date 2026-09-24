@@ -8,7 +8,7 @@ import { adminToneClasses } from './adminTone.js';
 import { AdminPanel, AdminMetricCard, AdminValueRow } from './adminUi.js';
 
 export function AdminCoreTenantsPage() {
-  const { t } = useI18n();
+  const { t, localeTag } = useI18n();
   const { tenantId } = useParams<{ tenantId: string }>();
   // R0 defense-in-depth: route đã bọc StaffRoute, page tự chặn + không fetch.
   const { userIdentity } = usePortfolio() as any;
@@ -93,7 +93,7 @@ export function AdminCoreTenantsPage() {
   const selectedSecurity = detail?.security_summary || null;
   const recentActions = detail?.recent_operator_actions || [];
   const lastFetchedLabel = lastFetched
-    ? lastFetched.toLocaleString()
+    ? lastFetched.toLocaleString(localeTag)
     : null;
 
   const submitFilters = (event: React.FormEvent) => {

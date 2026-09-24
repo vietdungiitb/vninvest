@@ -232,9 +232,9 @@ export function AdminCorePATsPage() {
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
           >
             <option value="">{t('adminCoreTenants.filterAll')}</option>
-            <option value="active">active</option>
-            <option value="rotating">rotating</option>
-            <option value="revoked">revoked</option>
+            <option value="active">{t('adminCoreTenants.filterActive')}</option>
+            <option value="rotating">{t('adminCoreTenants.optRotating')}</option>
+            <option value="revoked">{t('adminCoreTenants.optRevoked')}</option>
           </select>
         </label>
         <label className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
@@ -260,9 +260,9 @@ export function AdminCorePATsPage() {
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
           >
             <option value="">{t('adminCoreTenants.filterAll')}</option>
-            <option value="normal">normal</option>
-            <option value="warning">warning</option>
-            <option value="critical">critical</option>
+            <option value="normal">{t('adminCoreTenants.optNormal')}</option>
+            <option value="warning">{t('adminCoreTenants.optWarning')}</option>
+            <option value="critical">{t('adminCoreTenants.optCritical')}</option>
           </select>
         </label>
         <label className="space-y-2 text-sm text-slate-600 dark:text-slate-300">

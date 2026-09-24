@@ -6,10 +6,10 @@ import { useI18n } from '../../context/LangContext.js';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 import { AdminPageHeader, AdminMetricCard, AdminEmptyState } from './adminUi.js';
 
-const fmtVND = (v: any) => new Intl.NumberFormat('vi-VN').format(Number(v || 0));
+const fmtVND = (v: any, localeTag = 'vi-VN') => new Intl.NumberFormat(localeTag).format(Number(v || 0));
 
 export function AdminBillingFleetPage() {
-  const { t } = useI18n();
+  const { t, localeTag } = useI18n();
   // R0 defense-in-depth: route đã bọc StaffRoute, page tự chặn + không fetch.
   const { userIdentity } = usePortfolio() as any;
   const isStaffGate = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
@@ -81,7 +81,7 @@ export function AdminBillingFleetPage() {
       />
       {error ? <p className="text-sm text-rose-600">{String(error?.message || error)}</p> : null}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <AdminMetricCard label={t('adminBillingFleet.mrr')} value={`${fmtVND(overview?.mrr)}đ`} detail={t('adminBillingFleet.arrDetail', { v: fmtVND(overview?.arr) })} />
+        <AdminMetricCard label={t('adminBillingFleet.mrr')} value={`${fmtVND(overview?.mrr, localeTag)}đ`} detail={t('adminBillingFleet.arrDetail', { v: fmtVND(overview?.arr, localeTag) })} />
         <AdminMetricCard label={t('adminBillingFleet.trials')} value={String(overview?.trials_active ?? '—')} />
         <AdminMetricCard label={t('adminBillingFleet.failed')} value={String(overview?.invoices_failed_30d ?? '—')} />
         <AdminMetricCard label={t('adminBillingFleet.plans')} value={String((overview?.plan_mix || []).length)} detail={(overview?.plan_mix || []).map((p: any) => `${p.plan}:${p.count}`).join(' · ')} />
@@ -92,7 +92,7 @@ export function AdminBillingFleetPage() {
           {(overview?.revenue_6m || []).map((r: any) => (
             <div key={r.month} className="rounded-xl bg-slate-50 p-2 text-center dark:bg-slate-950/60">
               <p className="text-[11px] text-slate-500">{r.month}</p>
-              <p className="text-sm font-semibold">{fmtVND(r.total)}</p>
+              <p className="text-sm font-semibold">{fmtVND(r.total, localeTag)}</p>
             </div>
           ))}
         </div>
@@ -129,7 +129,7 @@ export function AdminBillingFleetPage() {
                 <tr key={inv.id}>
                   <td className="px-3 py-2 font-mono text-xs">{inv.invoice_number}</td>
                   <td className="px-3 py-2"><Link className="text-blue-600 hover:underline" to={`/admin/tenants/${inv.tenant_id}/billing`}>{inv.tenant_name || inv.tenant_code}</Link></td>
-                  <td className="px-3 py-2">{fmtVND(inv.amount_due)} {inv.currency}</td>
+                  <td className="px-3 py-2">{fmtVND(inv.amount_due, localeTag)} {inv.currency}</td>
                   <td className="px-3 py-2">{inv.status}</td>
                   <td className="px-3 py-2">{inv.paid_at || '—'}</td>
                 </tr>

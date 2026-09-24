@@ -13,20 +13,20 @@ function formatDateTime(value: any) {
   return value || '—';
 }
 
-function formatCurrency(value: any) {
+function formatCurrency(value: any, localeTag = 'vi-VN') {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return '—';
   }
 
-  return new Intl.NumberFormat('vi-VN', {
+  return new Intl.NumberFormat(localeTag, {
     style: 'currency',
-    currency: 'USD',
+    currency: 'VND',
     maximumFractionDigits: 2,
   }).format(Number(value));
 }
 
 export function AdminCoreBillingPage() {
-  const { t } = useI18n();
+  const { t, localeTag } = useI18n();
   const { tenantId } = useParams<{ tenantId: string }>();
   const [tenantDetail, setTenantDetail] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -186,7 +186,7 @@ export function AdminCoreBillingPage() {
               <AdminMetricCard card={{ label: t('adminCoreBilling.cardCurrentPeriod'), value: commercialSummary.current_period_start ? `${formatDateTime(commercialSummary.current_period_start)} → ${formatDateTime(commercialSummary.current_period_end)}` : '—' }} />
               <AdminMetricCard card={{ label: t('adminCoreBilling.cardNextInvoice'), value: renewalLabel }} />
               <AdminMetricCard card={{ label: t('adminCoreBilling.cardUsageRisk'), value: currentUsageRisk, status: currentUsageRisk }} />
-              <AdminMetricCard card={{ label: t('adminCoreBilling.cardCreditBalance'), value: formatCurrency(commercialSummary.credit_balance || 0) }} />
+              <AdminMetricCard card={{ label: t('adminCoreBilling.cardCreditBalance'), value: formatCurrency(commercialSummary.credit_balance || 0, localeTag) }} />
             </div>
           ) : (
             <p className="text-sm text-slate-500 dark:text-slate-400">{loading ? t('adminCoreBilling.subscriptionLoading') : t('adminCoreBilling.subscriptionEmpty')}</p>
@@ -215,8 +215,8 @@ export function AdminCoreBillingPage() {
                     </span>
                   </div>
                   <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                    <AdminValueRow label={t('adminCoreBilling.meterConsumed')} value={formatCurrency(meter.consumed_amount)} />
-                    <AdminValueRow label={t('adminCoreBilling.meterRemaining')} value={formatCurrency(meter.remaining_amount)} />
+                    <AdminValueRow label={t('adminCoreBilling.meterConsumed')} value={formatCurrency(meter.consumed_amount, localeTag)} />
+                    <AdminValueRow label={t('adminCoreBilling.meterRemaining')} value={formatCurrency(meter.remaining_amount, localeTag)} />
                     <AdminValueRow label={t('adminCoreBilling.meterReset')} value={formatDateTime(meter.reset_at)} />
                   </div>
                 </div>

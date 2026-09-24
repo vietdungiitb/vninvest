@@ -9,6 +9,24 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - Build verification: npx tsc --noEmit sau mỗi sub-step, npm run build cuối mỗi step.
 
 ## Progress
+### Done (2026-09-24) — Darkflow value fix 840x Option A (Entry 194)
+- **Root cause**: `tasks.py` dark branch `volume = sum(buy_count)` (số đếm tick) vào
+  `volume_at_signal` (ngữ nghĩa cổ phiếu) → materializer `price × volume` = 2.1M
+  thay vì `buy_value` 1.767B (DGW: 45700×46, chứng minh số học).
+- **Fix**: engine thêm `buy_volume`/window; tasks dùng buy VWAP + tổng shares
+  (đồng nhất 2 nhánh whale); test mới T-F1/T-F2 (pre-fix FAIL `10 != 10000` đã verify).
+- **Recompute 1 lần (Entry 195)**: `recompute_dark_flow_values` (windows/ticks/estimate,
+  idempotent, dry-run) + materialize sync; test T-F3a/T-F3b. Gates 22 OK.
+  Chạy live: `docker exec core-api python src/manage.py recompute_dark_flow_values --dry-run` trước.
+- **Còn lại (không làm)**: `whale_engine.py` chết (0 caller, sai contract).
+- **Gates**: BE 22 tests OK, `manage.py check` 0 (trong test run).
+### Done (2026-09-24) — Phản biện độc lập session 24/09 (Entry 193)
+- Audit 9 commits Entries 182–192: claims đúng substance; 12 contradictions wording
+  (script path `packages/web/`, số đếm động, EN options hardcode PATs/SA,
+  `localeTag` thiếu 3 trang, ledger header-vs-row, trùng số 186, 9 commits,
+  7+1 toneClasses, prefix Admin, 32 keys, contrast chưa đo, gates nặng chưa re-run).
+- Gates re-run: tsc 0, check-admin-spa-routes PASS 14/11. Fix đề xuất F-A..F-F.
+  Evidence `docs/PHAN_BIEN_SESSION_20260924.md`.
 ### Done (2026-09-24) — Admin UI Slice 5 F5-full core i18n (Entry 192)
 - **F5-full**: i18n toàn bộ 8 trang AdminCore* (~290 keys vi/en: 5 namespaces mới
   `adminCore{Billing,Usage,Overview,Jobs,AuditTrace}` + mở rộng `adminCoreTenants`);

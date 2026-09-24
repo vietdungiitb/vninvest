@@ -13,7 +13,7 @@ function formatDateTime(value: any) {
   return value || '—';
 }
 
-function formatNumber(value: any) {
+function formatNumber(value: any, localeTag = 'vi-VN') {
   if (value === null || value === undefined) {
     return '—';
   }
@@ -22,7 +22,7 @@ function formatNumber(value: any) {
     return '∞';
   }
 
-  return new Intl.NumberFormat('vi-VN').format(value);
+  return new Intl.NumberFormat(localeTag).format(value);
 }
 
 function UsageBar({ consumedAmount, entitledAmount, riskState }: { consumedAmount: number; entitledAmount: number; riskState: string }) {
@@ -41,7 +41,7 @@ function UsageBar({ consumedAmount, entitledAmount, riskState }: { consumedAmoun
 }
 
 export function AdminCoreUsagePage() {
-  const { t } = useI18n();
+  const { t, localeTag } = useI18n();
   const { tenantId } = useParams<{ tenantId: string }>();
   const [tenantDetail, setTenantDetail] = useState<any>(null);
   const [meters, setMeters] = useState<any[]>([]);
@@ -182,7 +182,7 @@ export function AdminCoreUsagePage() {
             <AdminMetricCard card={{ label: t('adminCoreUsage.cardTenant'), value: tenantSummary.display_name || tenantSummary.tenant_code || tenantId, detail: tenantSummary.tenant_code || tenantId }} />
             <AdminMetricCard card={{ label: t('adminCoreUsage.cardPlan'), value: commercialSummary?.plan_code || tenantSummary.plan_code || '—', detail: commercialSummary?.billing_cycle || '—' }} />
             <AdminMetricCard card={{ label: t('adminCoreUsage.cardUsageRisk'), value: usageRisk, status: usageRisk }} />
-            <AdminMetricCard card={{ label: t('adminCoreUsage.cardRemaining'), value: formatNumber(totalRemaining), detail: t('adminCoreUsage.cardRemainingDetail', { critical: criticalCount, warning: warningCount }) }} />
+            <AdminMetricCard card={{ label: t('adminCoreUsage.cardRemaining'), value: formatNumber(totalRemaining, localeTag), detail: t('adminCoreUsage.cardRemainingDetail', { critical: criticalCount, warning: warningCount }) }} />
           </div>
         ) : (
           <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -200,7 +200,7 @@ export function AdminCoreUsagePage() {
             <AdminMetricCard card={{ label: t('adminCoreUsage.cardTotalMeters'), value: String(meters.length), detail: t('adminCoreUsage.cardDetailSnapshot') }} />
             <AdminMetricCard card={{ label: t('adminCoreUsage.cardWarnings'), value: String(warningCount), status: 'warning' }} />
             <AdminMetricCard card={{ label: t('adminCoreUsage.cardCritical'), value: String(criticalCount), status: 'critical' }} />
-            <AdminMetricCard card={{ label: t('adminCoreUsage.cardRemainingCapacity'), value: formatNumber(totalRemaining) }} />
+            <AdminMetricCard card={{ label: t('adminCoreUsage.cardRemainingCapacity'), value: formatNumber(totalRemaining, localeTag) }} />
           </div>
         ) : (
           <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -241,8 +241,8 @@ export function AdminCoreUsagePage() {
                             </p>
                           </div>
                         </td>
-                        <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">{formatNumber(meter.consumed_amount)}</td>
-                        <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">{formatNumber(meter.remaining_amount)}</td>
+                        <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">{formatNumber(meter.consumed_amount, localeTag)}</td>
+                        <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">{formatNumber(meter.remaining_amount, localeTag)}</td>
                         <td className="px-4 py-4">
                           <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(meter.risk_state)}`}>
                             {meter.risk_state}
@@ -285,12 +285,12 @@ export function AdminCoreUsagePage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
                   <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreUsage.statConsumed')}</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{formatNumber(selectedMeter.consumed_amount)}</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{formatNumber(selectedMeter.consumed_amount, localeTag)}</p>
                   <UsageBar consumedAmount={selectedMeter.consumed_amount} entitledAmount={selectedMeter.entitled_amount} riskState={selectedMeter.risk_state} />
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
                   <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreUsage.statRemaining')}</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{formatNumber(selectedMeter.remaining_amount)}</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{formatNumber(selectedMeter.remaining_amount, localeTag)}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
                   <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreUsage.statRisk')}</p>
@@ -306,8 +306,8 @@ export function AdminCoreUsagePage() {
                 <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{t('adminCoreUsage.propertiesTitle')}</h3>
                 <AdminValueRow label={t('adminCoreUsage.propUnit')} value={selectedMeter.unit} />
                 <AdminValueRow label={t('adminCoreUsage.propAggregationWindow')} value={selectedMeter.aggregation_window} />
-                <AdminValueRow label={t('adminCoreUsage.propEntitledAmount')} value={formatNumber(selectedMeter.entitled_amount)} />
-                <AdminValueRow label={t('adminCoreUsage.propOverageAmount')} value={formatNumber(selectedMeter.overage_amount)} />
+                <AdminValueRow label={t('adminCoreUsage.propEntitledAmount')} value={formatNumber(selectedMeter.entitled_amount, localeTag)} />
+                <AdminValueRow label={t('adminCoreUsage.propOverageAmount')} value={formatNumber(selectedMeter.overage_amount, localeTag)} />
                 <AdminValueRow label={t('adminCoreUsage.propResetAt')} value={formatDateTime(selectedMeter.reset_at)} />
                 <AdminValueRow label={t('adminCoreUsage.propPeriodStart')} value={formatDateTime(selectedMeter.period_start)} />
                 <AdminValueRow label={t('adminCoreUsage.propPeriodEnd')} value={formatDateTime(selectedMeter.period_end)} />
