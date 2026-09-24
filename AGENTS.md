@@ -9,6 +9,17 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - Build verification: npx tsc --noEmit sau mỗi sub-step, npm run build cuối mỗi step.
 
 ## Progress
+### Done (2026-09-24) — Admin fleet 404 fix nginx (Entry 187, Option B)
+- **Root cause**: `packages/web/docker/nginx.conf` `location ^~ /admin/` proxy toàn bộ `/admin/*`
+  (trừ `/admin/core/`) sang Django → 14 SPA routes R0–R8 404 `catch_all_view` (staff) / 302 login
+  (anonymous). Reproduce: curl `/admin/users` → 302 `Log in | VNInvest Admin`.
+- **Fix**: whitelist 10 prefix `^~` (users/tenants/billing/usage/audit/audit-trace/analytics/overview/
+  jobs/advertising) trước block generic, pattern `try_files /index.html` như `/admin/core/`.
+  Không đụng BE; Django admin (`/admin/login/`…) giữ nguyên.
+- **Regression gate**: `scripts/check-admin-spa-routes.mjs` (14 catalog paths ↔ 11 SPA locations,
+  nối vào `check:shell`) — đóng GAP test tầng routing triển khai.
+- **Gates**: tsc 0, `check:shell` PASS, rebuild frontend image + `up -d`, curl live 14/14 SPA 200,
+  `/admin/login/` vẫn Django 200. Visual QA staff login PENDING (user).
 ### Done (2026-09-24) — Tenant Admin R0–R8 + H0 hotfix + audit fixes (Entry 182/184/186)
 - **R0–R7**: StaffRoute/TenantRoute, 9 routes + 8 catalog + menu Tenant/Billing/Usage/Audit,
   3 fleet pages, banner xem hộ, tenants paginate, billing/usage/audit endpoints,
