@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { useI18n } from '../../context/LangContext.js';
 
@@ -63,8 +64,9 @@ function ValueRow({ label, value }: { label: string; value: any }) {
 export function AdminCoreServiceAccountsPage() {
   const { t } = useI18n();
   const { tenantId } = useParams<{ tenantId: string }>();
-  const canCreate = true;
-  const canUpdate = true;
+  // R6: read-only ở phase này — không hardcode quyền (BE chưa có endpoint write).
+  const canCreate = false;
+  const canUpdate = false;
   const tenantIdStr = tenantId || '';
   const [tenantDetail, setTenantDetail] = useState<any>(null);
   const [summaryCards, setSummaryCards] = useState<any[]>([]);
@@ -169,6 +171,13 @@ export function AdminCoreServiceAccountsPage() {
     setRefreshTick((current) => current + 1);
   };
 
+  // R0 defense-in-depth: route đã bọc StaffRoute, page tự chặn thêm.
+  const { userIdentity } = usePortfolio() as any;
+  const isStaffGate = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
+  if (!isStaffGate) {
+    return (<p>{t('common.noPermission')}</p>);
+  }
+
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8">
       <section className="overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-6 py-6 text-white shadow-2xl shadow-slate-950/30">
@@ -186,13 +195,13 @@ export function AdminCoreServiceAccountsPage() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Link
-              to={`/admin/core/tenants/${tenantId}`}
+              to={`/admin/tenants/${tenantId}`}
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
               {t('adminCoreTenants.saBackToTenant')}
             </Link>
             <Link
-              to="/admin/core/tenants"
+              to="/admin/tenants"
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
               {t('adminCoreTenants.saBackToRegistry')}
@@ -322,6 +331,7 @@ export function AdminCoreServiceAccountsPage() {
           <button
             type="button"
             disabled={!canCreate}
+            title={t('adminCoreTenants.saCreateNote')}
             onClick={() => setActionNote(t('adminCoreTenants.saCreateNote'))}
             className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-400 dark:text-emerald-200 dark:disabled:border-slate-700 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500"
           >
@@ -427,6 +437,7 @@ export function AdminCoreServiceAccountsPage() {
             <button
               type="button"
               disabled={!canUpdate || !selectedServiceAccount}
+              title={t('adminCoreTenants.saEditNote')}
               onClick={() => setActionNote(t('adminCoreTenants.saEditNote'))}
               className="rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-400 dark:text-amber-200 dark:disabled:border-slate-700 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500"
             >

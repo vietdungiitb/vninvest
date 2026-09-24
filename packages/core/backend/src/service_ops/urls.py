@@ -12,7 +12,8 @@ Hierarchy:
 """
 from django.urls import path
 
-from .views import broker, dataops, dataops_stream, matrix, overview, overview_stream, prefetch, screener, signals, signals_rules, signals_stream, signals_triage, symbol_groups, users, vnbroker
+from .views import (audit, billing, broker, dataops, dataops_stream, matrix, overview,
+overview_stream, prefetch, screener, signals, signals_rules, signals_stream, signals_triage, staff, symbol_groups, usage, users, vnbroker)
 
 # Overview endpoints (12)
 urlpatterns = [
@@ -69,6 +70,19 @@ path('overview/stream/', overview_stream.OverviewStreamView.as_view(), name='soc
     path('users/', users.SocUsersView.as_view(), name='soc_users_list'),
     path('users/<int:user_id>/set-active/', users.SocUserSetActiveView.as_view(), name='soc_users_set_active'),
     path('users/<int:user_id>/set-plan/', users.SocUserSetPlanView.as_view(), name='soc_users_set_plan'),
+
+    # Billing fleet domain (R2 refactor) — tổng hợp cross-tenant, staff-only
+    path('billing/overview/', billing.BillingOverviewView.as_view(), name='soc_billing_overview'),
+    path('billing/invoices/', billing.BillingInvoiceListView.as_view(), name='soc_billing_invoices'),
+
+    # Usage fleet domain (R3 refactor) — tổng hợp cross-tenant, staff-only
+    path('usage/overview/', usage.UsageOverviewView.as_view(), name='soc_usage_overview'),
+
+    # Audit events domain (R4 refactor) — viewer cross-tenant, staff-only
+    path('audit-events/', audit.AuditEventsView.as_view(), name='soc_audit_events'),
+
+    # Staff-switch domain (R5 refactor) — staff xem hộ tenant, staff-only
+    path('staff/switch/', staff.StaffSwitchView.as_view(), name='soc_staff_switch'),
 
     # Prefetch domain (7)
     path('prefetch/config/', prefetch.PrefetchConfigView.as_view(), name='soc_prefetch_config'),

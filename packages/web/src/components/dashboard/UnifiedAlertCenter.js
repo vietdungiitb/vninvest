@@ -7,6 +7,7 @@
 import { createElement, useMemo, useState } from "react";
 import { Bell, Filter, X, ChevronLeft, ChevronRight, Flame } from "lucide-react";
 import { useI18n } from "../../context/LangContext.js";
+import { formatVNDCompact, formatFullVND, formatSessionDate } from "../../utils/formatMarket.js";
 
 const e = createElement;
 
@@ -96,6 +97,8 @@ export function UnifiedAlertCenter({
   onSelectSession,
   selectedSymbol,
   onSelectSymbol,
+  loading = false,
+  error = null,
 }) {
   const { t } = useI18n();
   const [activeTab, setActiveTab] = useState("alerts");
@@ -184,14 +187,18 @@ export function UnifiedAlertCenter({
         e(
           "div",
           { className: "flex items-center gap-3" },
-          e("h3", { className: "text-base font-bold text-slate-100 flex items-center gap-2" },
+          e("h3", { className: "panel-title text-base font-semibold text-slate-100 flex items-center gap-2" },
             e(Bell, { className: "h-5 w-5 text-cyan-400" }),
             t("alert.title")
           ),
           unreadAlertCount > 0 &&
-            e("span", { className: "inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30" }, unreadAlertCount)
+            e("span", { className: "inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30", title: t("alert.unreadTooltip", { count: unreadAlertCount }) }, unreadAlertCount)
         ),
-        hasActiveFilters && e(
+        e(
+          "div",
+          { className: "flex items-center gap-2" },
+          e("a", { href: "/alert-center", className: "text-[11px] font-bold text-cyan-400 hover:text-cyan-300 whitespace-nowrap" }, `${t("alert.viewAll")} →`),
+          hasActiveFilters && e(
           "button",
           {
             onClick: () => {
@@ -204,12 +211,13 @@ export function UnifiedAlertCenter({
           },
           e(X, { className: "h-3 w-3" }),
           t("alert.clearFilters")
+          )
         )
       ),
-      // Row 2: Severity pills
+      // Row 2: Severity pills — 1 hàng cuộn ngang, có nhãn + count (audit #14)
       e(
         "div",
-        { className: "flex flex-wrap items-center gap-1.5 w-full" },
+        { className: "seg items-center gap-1.5 w-full", role: "group", "aria-label": t("alert.title") },
         severityFilters.map((f) => {
           const isActive = severityFilter === f.value;
           const count = severityCounts[f.value] || 0;
@@ -223,27 +231,66 @@ export function UnifiedAlertCenter({
               },
               className: `flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap ${
                 isActive ? f.activeClass : f.inactiveClass
-              }`,
+              }${!isActive && count === 0 ? " opacity-40" : ""}`,
               "aria-pressed": isActive,
-              title: f.label,
+              title: `${f.label} (${count})`,
             },
             e(f.icon, { className: `h-3.5 w-3.5 ${f.iconClass}` }),
-            count > 0 ? `(${count})` : ""
+            `${f.label} (${count})`
           );
         })
       )
     ),
-    // Alert list
+    // Counter Hiển thị X/Y — khóa bất biến counts===cards khi filter=all
     e(
       "div",
-      { className: "flex-1 overflow-y-auto core-alert-list space-y-2 panel-scrollbar" },
+      { className: "px-1 pb-1 text-[11px] text-slate-500 tabular-nums" },
+      t("alert.showing", { shown: filteredAlerts.length, total: safeAlerts.length })
+    ),
+    // Alert list — không bao giờ trắng trơn: loading / lỗi / bị lọc hết / rỗng thật
+    e(
+      "div",
+      { className: "panel-body core-alert-list space-y-2 panel-scrollbar px-1" },
       filteredAlerts.length === 0
-        ? e(
+        ? loading && safeAlerts.length === 0
+          ? e(
             "div",
             { className: "flex flex-col items-center justify-center h-full text-center px-4 py-8" },
-            e(Bell, { className: "h-12 w-12 text-slate-700/50 mb-3" }),
-            e("p", { className: "text-slate-500 text-sm" }, t("alert.empty"))
+            e(Bell, { className: "h-8 w-8 text-slate-700/50 mb-2 animate-pulse" }),
+            e("p", { className: "text-slate-400 text-sm" }, t("alert.loadingList"))
           )
+          : error && safeAlerts.length === 0
+            ? e(
+              "div",
+              { className: "flex flex-col items-center justify-center h-full text-center px-4 py-8" },
+              e("p", { className: "text-rose-400 text-sm font-semibold" }, t("alert.loadError")),
+              e("p", { className: "mt-1 text-xs text-slate-500" }, typeof error === "string" ? error : t("alert.retryHint"))
+            )
+            : safeAlerts.length > 0
+              ? e(
+                "div",
+                { className: "flex flex-col items-center justify-center h-full text-center px-4 py-8" },
+                e(Bell, { className: "h-8 w-8 text-slate-700/50 mb-2" }),
+                e("p", { className: "text-slate-300 text-sm font-semibold" }, t("alert.filteredEmpty", { total: safeAlerts.length })),
+                e(
+                  "button",
+                  {
+                    onClick: () => {
+                      setSeverityFilter?.("all");
+                      onSeverityFilterChange?.("all");
+                      setSourceFilter?.("all");
+                    },
+                    className: "mt-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-bold text-cyan-300 transition-all hover:bg-cyan-500/20",
+                  },
+                  t("alert.clearFilters")
+                )
+              )
+              : e(
+                "div",
+                { className: "flex flex-col items-center justify-center h-full text-center px-4 py-8" },
+                e(Bell, { className: "h-12 w-12 text-slate-700/50 mb-3" }),
+                e("p", { className: "text-slate-500 text-sm" }, t("alert.empty"))
+              )
         : filteredAlerts.map((alert) => {
             const alertId = alert.alert_id || alert.id;
             const isUnread = !readAlertIds.has(alertId);
@@ -263,26 +310,22 @@ export function UnifiedAlertCenter({
                         : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
                     }`,
                   },
-                  isUp ? "↑ MUA" : "↓ BÁN"
+                  isUp ? `↑ ${t("alert.dirBuy")}` : `↓ ${t("alert.dirSell")}`
                 )
               );
             }
 
             if (alert.value != null && Number(alert.value) > 0) {
               const val = Number(alert.value);
-              const formattedVal = val >= 1e9
-                ? `${(val / 1e9).toFixed(1)} tỷ`
-                : val >= 1e6
-                ? `${(val / 1e6).toFixed(1)} triệu`
-                : val.toLocaleString("vi-VN");
               metadataChips.push(
                 e(
                   "span",
                   {
                     key: "val",
                     className: "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700/50",
+                    title: formatFullVND(val),
                   },
-                  `Giá trị: ${formattedVal}`
+                  `${t("alert.valLabel")}: ${formatVNDCompact(val)}`
                 )
               );
             }
@@ -297,7 +340,7 @@ export function UnifiedAlertCenter({
                     key: "conf",
                     className: "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-cyan-950/20 text-cyan-400 border border-cyan-500/10",
                   },
-                  `Tin cậy: ${confPct}%`
+                  `${t("alert.confLabel")}: ${confPct}%`
                 )
               );
             }
@@ -309,8 +352,9 @@ export function UnifiedAlertCenter({
                   {
                     key: "session",
                     className: "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-400 border border-slate-700/30",
+                    title: String(alert.session_date),
                   },
-                  `Phiên: ${alert.session_date}`
+                  `${t("alert.sessionLabel")}: ${formatSessionDate(alert.session_date)}`
                 )
               );
             }
@@ -346,7 +390,7 @@ export function UnifiedAlertCenter({
                     },
                     className: "px-2 py-0.5 text-[10px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700/50 rounded transition-all",
                   },
-                  `Tắt 30p`
+                  t("alert.mute30m")
                 )
               );
             }
@@ -361,33 +405,33 @@ export function UnifiedAlertCenter({
                   if (alert.symbol) onSelectSymbol?.(alert.symbol);
                   if (alertId && markAlertAsRead) markAlertAsRead(alertId);
                 },
-                className: `p-4 rounded-xl border cursor-pointer transition-all ${
+                className: `alert-card p-3 rounded-xl border cursor-pointer transition-all ${
                   severityCardStyles(alert.severity, !isUnread)
                 }`,
               },
               e(
                 "div",
-                { className: "flex items-start justify-between gap-3 mb-2" },
+                { className: "alert-head flex items-start justify-between gap-3 mb-1.5" },
                 e(
                   "div",
-                  { className: "flex items-center gap-2.5 flex-1 min-w-0" },
-                  e("span", { className: "font-semibold text-slate-100 text-sm truncate" }, alert.symbol || "—"),
-                  e("span", { className: `text-[10px] px-2 py-0.5 rounded border ${
-                    alert.severity === 'critical' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                    alert.severity === 'high' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
-                    alert.severity === 'medium' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
-                    'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                  } whitespace-nowrap flex-shrink-0` }, sourceLabel(alert.alert_family || alert.alert_type || alert.source, t))
+                  { className: "alert-head flex-1 items-center gap-2" },
+                  e("span", { className: "alert-sym font-semibold text-slate-100 text-sm" }, alert.symbol || "—"),
+                  e("span", { className: "text-[10px] px-2 py-0.5 rounded border bg-slate-800 text-slate-300 border-slate-700/50 whitespace-nowrap flex-shrink-0" }, sourceLabel(alert.alert_family || alert.alert_type || alert.source, t)),
+                  alert.value != null && Number(alert.value) > 0 && e(
+                    "span",
+                    { className: "desc text-[11px] font-bold text-slate-200", title: formatFullVND(alert.value) },
+                    `· ${formatVNDCompact(alert.value)}`
+                  )
                 ),
-                e("span", { className: "text-xs text-slate-500 whitespace-nowrap flex-shrink-0" },
+                e("span", { className: "time text-xs text-slate-500 whitespace-nowrap flex-shrink-0" },
                   alert.executed_at
                     ? formatExecutionTime(alert.executed_at) + " • " + timeAgo(alert.triggered_at || alert.ts || alert.timestamp)
                     : timeAgo(alert.triggered_at || alert.ts || alert.timestamp)
                 )
               ),
-              (alert.body || alert.message || alert.summary) && e("p", { className: "text-xs text-slate-300 leading-relaxed mb-2" }, alert.body || alert.message || alert.summary),
+              (alert.body || alert.message || alert.summary) && e("p", { className: "desc text-xs text-slate-300 leading-relaxed mb-1.5" }, alert.body || alert.message || alert.summary),
               // Metadata chips strip
-              metadataChips.length > 0 && e("div", { className: "flex flex-wrap gap-1.5 mt-2" }, metadataChips),
+              metadataChips.length > 0 && e("div", { className: "flex flex-wrap gap-1 mt-1.5" }, metadataChips),
               // Actions strip
               actionsRow
             );

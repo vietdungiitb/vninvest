@@ -10,6 +10,7 @@ import { QueryProvider } from './providers/QueryProvider.js';
 import { getPageComponent } from './pages/pageRegistry.js';
 import { AppShell } from './layouts/AppShell';
 import { TenantAdminLayout } from './components/TenantAdminLayout.js';
+import { StaffRoute, TenantRoute } from './components/StaffRoute.js';
 import './index.css';
 
 // Feature flag for gradual rollout of the Advertising & Trademark admin page.
@@ -111,21 +112,33 @@ function App() {
         createElement(Route, { path: 'upgrade', element: createElement(resolvePageComponent('upgrade')) }),
         createElement(Route, { path: 'admin-crawl-control', element: createElement(resolvePageComponent('admin-crawl-control')) }),
         createElement(Route, { path: 'support', element: createElement(resolvePageComponent('support')) }),
-        createElement(Route, { path: 'tenant/keys', element: createElement(resolvePageComponent('tenant-keys')) }),
-        createElement(Route, { path: 'tenant/usage', element: createElement(resolvePageComponent('tenant-usage')) }),
+        createElement(Route, { path: 'tenant/keys', element: createElement(TenantRoute, null, createElement(resolvePageComponent('tenant-keys'))) }),
+        createElement(Route, { path: 'tenant/usage', element: createElement(TenantRoute, null, createElement(resolvePageComponent('tenant-usage'))) }),
         createElement(Route, { path: 'settings', element: createElement(resolvePageComponent('settings')) }),
         createElement(Route, { path: 'settings/ai', element: createElement(resolvePageComponent('ai-command-center')) }),
         createElement(Route, { path: 'settings/ai/agents', element: createElement(resolvePageComponent('ai-agent-federation')) }),
         createElement(Route, { path: 'settings/ai/usage', element: createElement(resolvePageComponent('ai-usage-analytics')) }),
         createElement(Route, { path: 'ai-command-center', element: createElement(RedirectPreserveQuery, { to: '/settings/ai' }) }),
-        createElement(Route, { path: 'operations-center', element: createElement(resolvePageComponent('operations-center')) }),
-        createElement(Route, { path: 'operations-center/mail-config', element: createElement(resolvePageComponent('operations-center-mail-config')) }),
+        createElement(Route, { path: 'operations-center', element: createElement(StaffRoute, null, createElement(resolvePageComponent('operations-center'))) }),
+        createElement(Route, { path: 'operations-center/mail-config', element: createElement(StaffRoute, null, createElement(resolvePageComponent('operations-center-mail-config'))) }),
         ...(isAdvertisingAdminEnabled()
-          ? [createElement(Route, { path: 'admin/advertising', element: createElement(resolvePageComponent('advertising-admin')) })]
+          ? [createElement(Route, { path: 'admin/advertising', element: createElement(StaffRoute, null, createElement(resolvePageComponent('advertising-admin'))) })]
           : []),
-        createElement(Route, { path: 'admin/users', element: createElement(resolvePageComponent('admin-users')) }),
+        createElement(Route, { path: 'admin/users', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-users'))) }),
+        createElement(Route, { path: 'admin/billing', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-billing'))) }),
+        createElement(Route, { path: 'admin/usage', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-usage'))) }),
+        createElement(Route, { path: 'admin/audit', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-audit'))) }),
+        createElement(Route, { path: 'admin/tenants', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-core-tenants'))) }),
+        createElement(Route, { path: 'admin/tenants/:tenantId', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-core-tenants'))) }),
+        createElement(Route, { path: 'admin/tenants/:tenantId/service-accounts', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-core-service-accounts'))) }),
+        createElement(Route, { path: 'admin/tenants/:tenantId/pats', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-core-pats'))) }),
+        createElement(Route, { path: 'admin/tenants/:tenantId/usage', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-core-usage'))) }),
+        createElement(Route, { path: 'admin/tenants/:tenantId/billing', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-core-billing'))) }),
+        createElement(Route, { path: 'admin/overview', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-core-overview'))) }),
+        createElement(Route, { path: 'admin/jobs', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-core-jobs'))) }),
+        createElement(Route, { path: 'admin/audit-trace', element: createElement(StaffRoute, null, createElement(resolvePageComponent('admin-core-audit-trace'))) }),
         createElement(Route, { path: 'stocks/:symbol', element: createElement(resolvePageComponent('core-stock-detail')) }),
-        createElement(Route, { path: 'tenant-admin', element: createElement(TenantAdminLayout) },
+        createElement(Route, { path: 'tenant-admin', element: createElement(TenantRoute, null, createElement(TenantAdminLayout)) },
           createElement(Route, { index: true, element: createElement(Navigate, { to: '/tenant-admin/home', replace: true }) }),
           createElement(Route, { path: 'home', element: createElement(resolvePageComponent('tenant-admin-home')) }),
           createElement(Route, { path: 'members', element: createElement(resolvePageComponent('tenant-admin-members')) }),

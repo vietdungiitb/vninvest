@@ -5,6 +5,41 @@
 
 ---
 
+## Entry 181: Audit commit 6d127cd6 + cập nhật plan refactor khớp HEAD (2026-09-23)
+
+- **Date**: 2026-09-23
+- **Scope**: Audit độc lập commit team (Users ra `/admin/users` + polish P1) rồi cập
+  nhật `docs/IMPLEMENTATION_PLAN_TENANT_ADMIN_REFACTOR_20260923.md` cho sát HEAD.
+  Không đổi code (chỉ docs).
+- **Verify**: diff full 17 files + grep (`soc.tabs.users` 0 hit, `StaffRoute` 0 hit);
+  chạy lại gates — `tsc` 0, vitest 4 files/19 PASS, `vite build` 35.54s PASS,
+  `eslint` 0 errors, `i18n:scan` exit 0 (không dirty). BE không chạy (commit không đụng BE).
+  Kết luận P0+P1 khớp claims.
+- **Plan update**: trạng thái HEAD + `/admin/users` DONE; R0 thu gọn (StaffRoute +
+  6 orphans + links + gates, users đã xong); route map sửa số slice (R2/R3/R4);
+  thêm D-R10 tái dùng patterns polish (dataTable/badge/page_of/empty/secret-amber);
+  ghi audit verification.
+- **Gates**: audit+gates FE chạy thật; doc-only.
+
+---
+
+## Entry 182: Thực thi refactor Tenant Admin R0–R7 — Admin Console staff-only (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Scope**: Thực thi `docs/IMPLEMENTATION_PLAN_TENANT_ADMIN_REFACTOR_20260923.md`
+  R0–R7 tới DoD. BE: tenants paginate + billing/usage/audit fleet endpoints +
+  staff-switch (view + middleware `X-Staff-Switch`) + 22 tests mới.
+  FE: StaffRoute/TenantRoute + 9 routes + 8 catalog + menu Tenant/Billing/Usage/Audit +
+  3 fleet pages + banner xem hộ + gates 8 trang + bỏ hardcode + 26 tests mới.
+- **Gates**: tsc 0; build 47.18s PASS; lint 0 errors; vitest R 26/26, full 420/421
+  (1 fail pre-existing `useAlertCenterSnapshot`, ngoài scope); jest soc 96/96;
+  BE 22/22; check 0; i18n:scan 0.
+  Evidence: `docs/evidence/tenant-admin-refactor/gates.md`.
+- **Lệch plan**: `/tenant-admin` bọc TenantRoute (không StaffRoute) — giữ owner tự quản;
+  modal switch sửa prefix qua adapter; test switch dùng `client.login`.
+
+---
+
 ## Entry 176: Polish Tenant SOC UI + move Users to Admin (2026-09-23)
 
 - **Date**: 2026-09-23
@@ -117,7 +152,7 @@
 
 ---
 
-## Entry 176: AUDIT mô hình User+Tenant + PLAN thống nhất theo chuẩn SaaS (2026-09-23)
+## Entry 180: AUDIT mô hình User+Tenant + PLAN thống nhất theo chuẩn SaaS (2026-09-23)
 
 - **Date**: 2026-09-23
 - **Scope**: Audit chi tiết user+tenant BE/FE + benchmark WorkOS/Clerk/Auth0 +
@@ -4455,5 +4490,7 @@ nội dung giữ nguyên. Tiền lệ Entry 149.)*
 | 179 | 2026-09-23 | tenant | AUDIT tenant management + API key voi user thuong: menu an (staffOnly) nhung chuc nang KHONG khoa (dang ky auto tao tenant, BE cap toan bo tenant-admin ability moi user co tenant, owner wildcard, route /tenant-admin/* chi guard auth). F1 HIGH webhook detail thieu _require_tenant_permission (viewer PATCH/DELETE duoc); F2 MED billing 500 non-owner; F3 LOW issue_pat legacy 500; F4 LOW audit-log khong token; F5 MED /operations-center va /settings/ai khong staff-guard. Doc-only, cho user quyet huong A (self-service) / B (staff-only) | docs/AUDIT_TENANT_APIKEY_NORMAL_USER_20260923.md | audit doc (khong doi code); file:line verify truc tiep | v0 | Active |
 | 178 | 2026-09-23 | tenant | PLAN Tenant Self-Service B+A: /tenant/keys + /tenant/usage cho moi user co tenant, giu /tenant-admin staffOnly. Personal key = CorePATCredential san co (khong migration, prefix personal: reserved, scope C SA, cross-user 404). FE hook tenant-self, registry, catalog, sidebar requiresTenant, i18n tenantKeys. Kem sua F1 webhook + 19 test cases + acceptance A1-A9 + phan bien R1-R8 | docs/IMPLEMENTATION_PLAN_TENANT_SELF_SERVICE_20260923.md | plan doc (khong doi code); research BE+FE file:line | v0 | Active |
 | 177 | 2026-09-23 | tenant | PHAN BIEN plan B+A: APPROVE co dieu kien, 8 must-fix (C1 tenant_member query fallback; C2 webhook GET cung thieu; C3 quota copy-logic + pin shape; C4 navigationCatalog zero consumer; C5 prefix vni_; C6 import tu views/helpers; C7 mark_rotating kep + 401; C8 S1 them views_tenant + summary 403). Bo sung A2 Users SOC staff-only (11 tests). Khong doi code | docs/PHAN_BIEN_TENANT_SELF_SERVICE_20260923.md + plan (va C1-C8 + phu luc A2) | 2 subagent + verify truc tiep file:line | v0 | Active |
-| 176 | 2026-09-23 | tenant | AUDIT mo hinh User+Tenant + PLAN thong nhat chuan SaaS: 9 findings (OneToOne+auto-tenant vo org; billing owner-centric; active-org gay FE; invite cut+route mo; dual-owner/role rach; PAT lifecycle rach; resolution bat dong; SSO thieu JIT; UX roi). Target: Identity tach access, Org kind personal/team, membership status, active-org validate, billing/keys theo org+chu, route guard. Thu tu Phase0(A2) -> B+A -> Ph1-4 | docs/AUDIT_USER_TENANT_MANAGEMENT_MODEL_20260923.md + docs/IMPLEMENTATION_PLAN_USER_TENANT_UNIFICATION_20260923.md | 2 subagent + benchmark live + spot-verify; doc-only | v0 | Active |
+| 180 | 2026-09-23 | tenant | AUDIT mo hinh User+Tenant + PLAN thong nhat chuan SaaS: 9 findings (OneToOne+auto-tenant vo org; billing owner-centric; active-org gay FE; invite cut+route mo; dual-owner/role rach; PAT lifecycle rach; resolution bat dong; SSO thieu JIT; UX roi). Target: Identity tach access, Org kind personal/team, membership status, active-org validate, billing/keys theo org+chu, route guard. Thu tu Phase0(A2) -> B+A -> Ph1-4 | docs/AUDIT_USER_TENANT_MANAGEMENT_MODEL_20260923.md + docs/IMPLEMENTATION_PLAN_USER_TENANT_UNIFICATION_20260923.md | 2 subagent + benchmark live + spot-verify; doc-only | v0 | Active |
 | 175 | 2026-09-23 | tenant | PLAN refactor Tenant Admin thanh Admin Console staff-only: 8 trang AdminCore* orphan (registry co, route/catalog/menu khong, dead links) + BE thieu billing/usage aggregate + audit-log flaw + chua staff-switch. IA /admin/* (khong tab SOC); ma tran 7 actor; 8 slices R0-R7 (StaffRoute+wire, tenants paginate, 3 fleet endpoints, switch token ky TTL30m, hardening, dong); 10 tieu chi phan bien | docs/IMPLEMENTATION_PLAN_TENANT_ADMIN_REFACTOR_20260923.md | 2 subagent + doc truc tiep + git log 171-174; doc-only | v0 | Active |
+| 181 | 2026-09-23 | tenant | Audit doc lap 6d127cd6 + update plan khop HEAD: diff 17 files + grep (soc.tabs.users 0, StaffRoute 0) + chay gates (tsc 0, vitest 19/19, build 35.54s, lint 0 err, i18n:scan 0). P0+P1 khop claims. Plan: users DONE, R0 thu gon, sua so slice route map, them D-R10 tai dung patterns polish | docs/IMPLEMENTATION_PLAN_TENANT_ADMIN_REFACTOR_20260923.md | audit + gates FE chay that; doc-only | v0 | Active |
+| 182 | 2026-09-24 | tenant | Thuc thi refactor R0-R7: StaffRoute/TenantRoute + 9 routes + catalog/menu + 3 fleet pages + banner + gates 8 trang; BE tenants paginate + 3 fleet endpoints + staff-switch + 22 tests. Gates: tsc 0, build 47s, lint 0, vitest R 26/26 (full 420/421, 1 pre-existing), jest soc 96/96, BE 22/22, check 0 | ke hoach refactor + evidence gates.md | full gates chay that | v0 | Active |

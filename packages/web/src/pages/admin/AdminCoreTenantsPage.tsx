@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { usePortfolio } from '../../context/PortfolioContext.js';
+import { defaultCoreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { useI18n } from '../../context/LangContext.js';
 
@@ -62,6 +64,9 @@ function ValueRow({ label, value }: { label: string; value: any }) {
 export function AdminCoreTenantsPage() {
   const { t } = useI18n();
   const { tenantId } = useParams<{ tenantId: string }>();
+  // R0 defense-in-depth: route đã bọc StaffRoute, page tự chặn + không fetch.
+  const { userIdentity } = usePortfolio() as any;
+  const isStaffGate = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
   const [searchDraft, setSearchDraft] = useState('');
   const [statusDraft, setStatusDraft] = useState('');
   const [search, setSearch] = useState('');
@@ -72,16 +77,31 @@ export function AdminCoreTenantsPage() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState<any>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
+  // R1 pagination (BE StandardPageNumberPagination, default 20/trang).
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasNext, setHasNext] = useState(false);
+  const [hasPrev, setHasPrev] = useState(false);
+  // R1 staff-switch (endpoint R5 /api/soc/staff/switch/).
+  const [switchTarget, setSwitchTarget] = useState<any>(null);
+  const [switchReason, setSwitchReason] = useState('');
+  const [switchBusy, setSwitchBusy] = useState(false);
+  const [switchMsg, setSwitchMsg] = useState<any>(null);
 
   const loadRegistry = useCallback(async () => {
+    if (!isStaffGate) return;
     setLoadingRegistry(true);
     setError(null);
     try {
       const response = await (coreApiAdapter as unknown as { getCoreOperatorTenants: (params: any) => Promise<any> }).getCoreOperatorTenants({
         search: search || undefined,
         status: status || undefined,
+        page,
       });
       setRegistry(response || null);
+      setTotalCount(Number(response?.count || 0));
+      setHasNext(Boolean(response?.next));
+      setHasPrev(Boolean(response?.previous));
       setLastFetched(new Date());
     } catch (err: any) {
       setError(err?.response?.status === 403
@@ -90,13 +110,14 @@ export function AdminCoreTenantsPage() {
     } finally {
       setLoadingRegistry(false);
     }
-  }, [search, status, t]);
+  }, [search, status, page, t, isStaffGate]);
 
   const loadDetail = useCallback(async () => {
     if (!tenantId) {
       setDetail(null);
       return;
     }
+    if (!isStaffGate) return;
 
     setLoadingDetail(true);
     try {
@@ -109,7 +130,7 @@ export function AdminCoreTenantsPage() {
     } finally {
       setLoadingDetail(false);
     }
-  }, [tenantId, t]);
+  }, [tenantId, t, isStaffGate]);
 
   useEffect(() => {
     loadRegistry();
@@ -133,6 +154,7 @@ export function AdminCoreTenantsPage() {
     event.preventDefault();
     setSearch(searchDraft.trim());
     setStatus(statusDraft.trim());
+    setPage(1);
   };
 
   const clearFilters = () => {
@@ -140,7 +162,45 @@ export function AdminCoreTenantsPage() {
     setStatusDraft('');
     setSearch('');
     setStatus('');
+    setPage(1);
   };
+
+  const doSwitch = async () => {
+    if (!switchTarget || switchBusy) return;
+    const reason = switchReason.trim();
+    if (reason.length < 5) {
+      setSwitchMsg(t('adminCoreTenants.switchError'));
+      return;
+    }
+    setSwitchBusy(true);
+    setSwitchMsg(null);
+    try {
+      // R5: endpoint staff-switch qua soc adapter (/operator/soc/ prefix).
+      const api = defaultCoreApiAdapter as unknown as {
+        staffSwitch: (b: any) => Promise<any>;
+      };
+      const res = await api.staffSwitch({ tenant_id: switchTarget.id, reason });
+      try {
+        window.sessionStorage.setItem('staff_switch', JSON.stringify({
+          token: res?.token || null,
+          tenant: res?.tenant || { id: switchTarget.id },
+          expires_at: res?.expires_at || null,
+        }));
+      } catch { /* private mode — token vẫn hiển thị 1 lần */ }
+      setSwitchMsg(t('adminCoreTenants.switchSuccess'));
+      setSwitchTarget(null);
+      setSwitchReason('');
+    } catch {
+      setSwitchMsg(t('adminCoreTenants.switchError'));
+    } finally {
+      setSwitchBusy(false);
+    }
+  };
+
+  // R0: chặn render khi không staff (fetch đã skip ở trên).
+  if (!isStaffGate) {
+    return (<p>{t('common.noPermission')}</p>);
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8">
@@ -159,7 +219,7 @@ export function AdminCoreTenantsPage() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Link
-              to="/admin/core/overview"
+              to="/admin/overview"
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
               {t('adminCoreTenants.backToOverview')}
@@ -292,7 +352,7 @@ export function AdminCoreTenantsPage() {
                         </td>
                         <td className="px-4 py-4 text-right">
                           <Link
-                            to={`/admin/core/tenants/${tenantRow.id}`}
+                            to={`/admin/tenants/${tenantRow.id}`}
                             className="text-sm font-semibold text-blue-600 hover:underline dark:text-blue-300"
                           >
                             {t('adminCoreTenants.columnViewDetail')}
@@ -309,6 +369,31 @@ export function AdminCoreTenantsPage() {
             {loadingRegistry ? t('adminCoreTenants.loading') : t('adminCoreTenants.noTenants')}
             </p>
           )}
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              disabled={!hasPrev || loadingRegistry}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold disabled:opacity-40 dark:border-slate-700"
+            >
+              {t('adminCoreTenants.prevPage')}
+            </button>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {t('adminCoreTenants.pageOf', {
+                page,
+                pages: Math.max(1, Math.ceil(totalCount / 20)),
+                total: totalCount,
+              })}
+            </span>
+            <button
+              type="button"
+              disabled={!hasNext || loadingRegistry}
+              onClick={() => setPage((p) => p + 1)}
+              className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold disabled:opacity-40 dark:border-slate-700"
+            >
+              {t('adminCoreTenants.nextPage')}
+            </button>
+          </div>
         </Panel>
 
         <Panel
@@ -325,29 +410,36 @@ export function AdminCoreTenantsPage() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Link
-                      to={`/admin/core/tenants/${selectedTenant.id}/service-accounts`}
+                      to={`/admin/tenants/${selectedTenant.id}/service-accounts`}
                       className="rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-500/15 dark:text-blue-200"
                     >
                       {t('adminCoreTenants.viewServiceAccounts')}
                     </Link>
                     <Link
-                      to={`/admin/core/tenants/${selectedTenant.id}/pats`}
+                      to={`/admin/tenants/${selectedTenant.id}/pats`}
                       className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-700 transition-colors hover:bg-cyan-500/15 dark:text-cyan-200"
                     >
                       {t('adminCoreTenants.viewPATs')}
                     </Link>
                     <Link
-                      to={`/admin/core/tenants/${selectedTenant.id}/usage`}
+                      to={`/admin/tenants/${selectedTenant.id}/usage`}
                       className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-500/15 dark:text-emerald-200"
                     >
                       {t('adminCoreTenants.viewUsage')}
                     </Link>
                     <Link
-                      to={`/admin/core/tenants/${selectedTenant.id}/billing`}
+                      to={`/admin/tenants/${selectedTenant.id}/billing`}
                       className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-700 transition-colors hover:bg-violet-500/15 dark:text-violet-200"
                     >
                       {t('adminCoreTenants.viewBilling')}
                     </Link>
+                    <button
+                      type="button"
+                      onClick={() => { setSwitchReason(''); setSwitchMsg(null); setSwitchTarget(selectedTenant); }}
+                      className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-500/15 dark:text-amber-200"
+                    >
+                      {t('adminCoreTenants.switchAction')}
+                    </button>
                   </div>
                 </div>
                 <ValueRow label="Status" value={selectedTenant.status} />
@@ -402,6 +494,38 @@ export function AdminCoreTenantsPage() {
           )}
         </Panel>
       </div>
+      {switchTarget ? (
+        <div className="mt-4 rounded-3xl border border-amber-500/30 bg-white p-5 shadow-sm dark:border-amber-800 dark:bg-slate-900">
+          <h3 className="text-base font-semibold text-slate-950 dark:text-white">
+            {t('adminCoreTenants.switchTitle', { name: switchTarget.display_name || switchTarget.tenant_code || switchTarget.id })}
+          </h3>
+          <input
+            type="text"
+            value={switchReason}
+            onChange={(e) => setSwitchReason(e.target.value)}
+            placeholder={t('adminCoreTenants.switchReasonPh')}
+            className="mt-3 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"
+          />
+          {switchMsg ? <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{switchMsg}</p> : null}
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              disabled={switchBusy}
+              onClick={doSwitch}
+              className="rounded-full bg-amber-500 px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+            >
+              {t('adminCoreTenants.switchSubmit')}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setSwitchTarget(null); setSwitchReason(''); setSwitchMsg(null); }}
+              className="rounded-full border border-slate-300 px-4 py-1.5 text-xs font-semibold dark:border-slate-700"
+            >
+              {t('adminCoreTenants.switchCancel')}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

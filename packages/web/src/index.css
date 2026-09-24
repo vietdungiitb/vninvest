@@ -269,12 +269,13 @@
   .dashboard-triad-lane {
     background: var(--bg-panel-soft, rgba(30, 41, 59, 0.4));
     border: 1px solid var(--border-default, rgba(51, 65, 85, 0.6));
-    border-radius: var(--r-lg, 1rem);
-    padding: var(--sp-5, 1.25rem);
+    border-radius: var(--r-lg, 0.75rem);
+    padding: 1rem;
     box-shadow: var(--shadow-panel, 0 10px 15px -3px rgba(0, 0, 0, 0.3));
-    height: 580px;
+    height: 100%;
+    min-height: 560px;
     min-width: 0;
-    overflow: auto;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
   }
@@ -293,13 +294,141 @@
     overflow: auto;
   }
 
-  /* Grid layout for triad */
+  /* Grid layout for triad — full viewport height cho 2 cột Cảnh báo/Heatmap.
+     Dòng height đầu là fallback khi browser không hỗ trợ dvh (khai báo clamp
+     rớt cả dòng → grid auto theo content, lane lùn). */
   .dashboard-triad-grid {
     display: grid;
     grid-template-columns: 1fr 1.5fr 1fr;
     gap: 1rem; /* gap-4 */
-    height: 580px;
+    height: 720px;
+    height: clamp(560px, calc(100dvh - var(--dash-chrome, 260px)), 960px);
+    min-height: 560px;
     min-width: 0;
+  }
+
+  /* ≤1159px (2 cột / stack): grid height:auto để các hàng xếp tự nhiên —
+     giữ height cố định + lane min-height sẽ ép tràn và đè lên deck bên dưới.
+     Mặc định 3 cột tới 1159px để viewport 1280 (HD 100%) vẫn đủ 3 lane. */
+  @media (max-width: 1159px) {
+    .dashboard-triad-grid {
+      grid-template-columns: 1fr 1fr;
+      height: auto;
+      min-height: 0;
+    }
+    .dashboard-triad-grid > .dashboard-triad-lane {
+      height: auto;
+      min-height: 480px;
+      max-height: calc(100dvh - 260px);
+    }
+    .dashboard-triad-grid > .core-dashboard-slot--ai {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 1099px) {
+    .dashboard-triad-grid {
+      grid-template-columns: 1fr;
+    }
+    .dashboard-triad-grid > .core-dashboard-slot--ai {
+      grid-column: auto;
+    }
+  }
+
+  /* Dashboard audit fix — sign-aware pill (audit #10): 0 = trung tính */
+  .pill[data-sign="1"] {
+    background-color: rgb(16 185 129 / 0.2);
+    color: #34d399;
+    border: 1px solid rgb(16 185 129 / 0.3);
+  }
+  .pill[data-sign="-1"] {
+    background-color: rgb(244 63 94 / 0.2);
+    color: #fb7185;
+    border: 1px solid rgb(244 63 94 / 0.3);
+  }
+  .pill[data-sign="0"] {
+    background-color: rgb(138 148 166 / 0.12);
+    color: #8a94a6;
+    border: 1px solid rgb(138 148 166 / 0.25);
+  }
+
+  /* Dashboard audit fix — type scale thống nhất (audit #35) */
+  .panel-title {
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: normal;
+    margin: 0;
+    min-width: 0;
+  }
+
+  /* Dashboard audit fix — nút không xuống dòng (audit #30) */
+  .btn-nowrap {
+    white-space: nowrap;
+    flex: none;
+  }
+
+  /* Dashboard audit fix — mã CP không truncate (audit #13) */
+  .alert-sym {
+    flex: none;
+  }
+  .alert-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .alert-head .desc {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .alert-head .time {
+    margin-left: auto;
+    flex: none;
+  }
+
+  /* Dashboard audit fix — segmented 1 hàng cuộn ngang (audit #14) */
+  .seg {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 4px;
+    scrollbar-width: none;
+    max-width: 100%;
+  }
+  .seg::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Dashboard audit fix — scrollbar mảnh thống nhất (audit #6).
+     width:100% + min-width:0: flex-item trong lane column ĐÃ ĐO thực tế chỉ
+     rộng 8px (không stretch) khiến card co thành sợi — ép full width. */
+  .panel-body {
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    mask-image: linear-gradient(#000 calc(100% - 24px), transparent);
+  }
+  /* Chỉ pseudo-element scrollbar mới được width 8px — KHÔNG áp width lên
+     element thật (bug Entry 156: `.dashboard-triad-lane .panel-scrollbar`
+     specificity 0,2,0 đã đè width:100% của .panel-body, ép list còn 8px). */
+  .dashboard-triad-lane::-webkit-scrollbar,
+  .panel-body::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .dashboard-triad-lane .panel-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #2a3550 transparent;
+  }
+  .dashboard-triad-lane .panel-scrollbar::-webkit-scrollbar-thumb,
+  .dashboard-triad-lane::-webkit-scrollbar-thumb,
+  .panel-body::-webkit-scrollbar-thumb {
+    background: #2a3550;
+    border-radius: 8px;
   }
 
   /* Stats header slot */

@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 
 from identity_access.models import CorePATCredential, CoreServiceAccount, CoreTenant
 from ops_audit.models import AuditEvent
+from vninvest_core.pagination import StandardPageNumberPagination
 
 
 def _envelope(data, summary_cards=None, object_label='operator_response'):
@@ -193,9 +194,17 @@ class OperatorTenantListView(APIView):
         if status_filter:
             qs = qs.filter(status=status_filter)
 
-        items = [_serialize_tenant(t) for t in qs]
         cards = _build_summary_cards()
-        return Response(_envelope(items, summary_cards=cards, object_label='operator_tenant_list'))
+        # R1: paginate (StandardPageNumberPagination, ?page=&page_size=, max 100),
+        # giữ summary_cards trong envelope.
+        paginator = StandardPageNumberPagination()
+        page = paginator.paginate_queryset(qs, request)
+        items = [_serialize_tenant(t) for t in page]
+        payload = _envelope(items, summary_cards=cards, object_label='operator_tenant_list')
+        payload['count'] = paginator.page.paginator.count
+        payload['next'] = paginator.get_next_link()
+        payload['previous'] = paginator.get_previous_link()
+        return Response(payload)
 
 
 class OperatorTenantDetailView(APIView):

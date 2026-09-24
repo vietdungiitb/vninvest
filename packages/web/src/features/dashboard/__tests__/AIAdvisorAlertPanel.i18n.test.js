@@ -5,7 +5,7 @@ describe("AIAdvisorAlertPanel i18n", () => {
   test("resolves Vietnamese labels by default", () => {
     const { language, t } = createAiAdvisorTranslator();
     expect(language).toBe("vi");
-    expect(t("aiAdvisor.panel.title")).toBe("Trung Tâm Tín Hiệu AI Advisor");
+    expect(t("aiAdvisor.panel.title")).toBe("Tín hiệu AI");
     expect(t("aiAdvisor.metric.rsi")).toBe("RSI Hiện Tại:");
   });
 

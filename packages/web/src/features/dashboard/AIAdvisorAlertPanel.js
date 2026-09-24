@@ -59,6 +59,7 @@ export function AIAdvisorAlertPanel({ className = "", holdings: _holdings, techn
   const [alerts, setAlerts] = useState(propAlerts ?? []);
   const [loading, setLoading] = useState(propLoading ?? false);
   const [error, setError] = useState(null);
+  const [lastScanAt, setLastScanAt] = useState(null);
 
   const fetchFeed = useCallback(async () => {
     setLoading(true);
@@ -75,6 +76,7 @@ export function AIAdvisorAlertPanel({ className = "", holdings: _holdings, techn
     } catch (err) {
       setError(err?.message || t("aiAdvisor.panel.loadError"));
     } finally {
+      setLastScanAt(Date.now());
       setLoading(false);
     }
   }, [t]);
@@ -125,7 +127,7 @@ export function AIAdvisorAlertPanel({ className = "", holdings: _holdings, techn
     e(
       "div",
       { className: "flex items-center justify-between mb-4 pb-3 border-b border-slate-800/50" },
-      e("h3", { className: "text-base font-bold text-slate-100 flex items-center gap-2" },
+      e("h3", { className: "panel-title text-base font-semibold text-slate-100 flex items-center gap-2" },
         e(Activity, { className: "h-5 w-5 text-cyan-400" }),
         t("aiAdvisor.panel.title")
       ),
@@ -134,7 +136,7 @@ export function AIAdvisorAlertPanel({ className = "", holdings: _holdings, techn
         {
           onClick: fetchFeed,
           disabled: loading,
-          className: `flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+          className: `btn-nowrap flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
             loading
               ? "bg-slate-800/50 text-slate-500 cursor-not-allowed"
               : "bg-slate-800/50 text-slate-300 hover:bg-cyan-500/20 hover:text-cyan-400 border border-slate-800/50"
@@ -160,12 +162,36 @@ export function AIAdvisorAlertPanel({ className = "", holdings: _holdings, techn
       e(RotateCw, { className: "h-5 w-5 animate-spin mr-2 text-cyan-400" }),
       t("aiAdvisor.panel.initialLoading")
     ),
-    // Empty state
+    // Empty state — gọn (≤240px) + lý do + mốc quét + CTA (audit #31)
     !loading && alerts.length === 0 && !error && e(
       "div",
-      { className: "flex flex-col items-center justify-center flex-1 text-center px-4 py-8" },
-      e(Activity, { className: "h-12 w-12 text-slate-700/50 mb-3" }),
-      e("p", { className: "text-slate-500 text-sm" }, t("aiAdvisor.panel.empty"))
+      { className: "flex flex-col items-center justify-center flex-1 text-center px-4 py-6" },
+      e(Activity, { className: "h-8 w-8 text-slate-700/50 mb-2", "aria-hidden": true }),
+      e("p", { className: "text-sm font-semibold text-slate-300" }, t("aiAdvisor.panel.emptyTitle")),
+      e("p", { className: "mt-1 text-xs text-slate-500 tabular-nums" }, lastScanAt ? t("aiAdvisor.panel.lastScan", { time: new Date(lastScanAt).toLocaleTimeString(language === "en" ? "en-US" : "vi-VN", { hour: "2-digit", minute: "2-digit" }) }) : t("aiAdvisor.panel.noScan")),
+      e("p", { className: "mt-1 text-xs text-slate-500" }, t("aiAdvisor.panel.empty")),
+      e(
+        "div",
+        { className: "mt-3 flex items-center gap-2" },
+        // BE chưa xác minh param session cho getAIAlertsFeed → disabled + tooltip, không bịa behavior
+        e(
+          "button",
+          {
+            disabled: true,
+            title: t("aiAdvisor.panel.comingSoon"),
+            className: "rounded-lg border border-slate-700/60 px-3 py-1.5 text-xs font-bold text-slate-500 cursor-not-allowed",
+          },
+          t("aiAdvisor.panel.viewPrevSession")
+        ),
+        e(
+          "button",
+          {
+            onClick: fetchFeed,
+            className: "btn-nowrap rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-bold text-cyan-300 transition-all hover:bg-cyan-500/20",
+          },
+          t("aiAdvisor.panel.runAnalysis")
+        )
+      )
     ),
     // Alert list
     e(

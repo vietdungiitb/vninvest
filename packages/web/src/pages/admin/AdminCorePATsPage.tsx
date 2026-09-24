@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { useI18n } from '../../context/LangContext.js';
 
@@ -62,9 +63,10 @@ function ValueRow({ label, value }: { label: string; value: any }) {
 
 export function AdminCorePATsPage() {
   const { tenantId } = useParams<{ tenantId: string }>();
-  const canIssue = true;
-  const canRotate = true;
-  const canRevoke = true;
+  // R6: read-only ở phase này — không hardcode quyền (BE chưa có endpoint write).
+  const canIssue = false;
+  const canRotate = false;
+  const canRevoke = false;
   const tenantIdStr = tenantId || '';
   const [tenantDetail, setTenantDetail] = useState<any>(null);
   const [serviceAccounts, setServiceAccounts] = useState<any[]>([]);
@@ -176,6 +178,13 @@ export function AdminCorePATsPage() {
     setRefreshTick((current) => current + 1);
   };
 
+  // R0 defense-in-depth: route đã bọc StaffRoute, page tự chặn thêm.
+  const { userIdentity } = usePortfolio() as any;
+  const isStaffGate = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
+  if (!isStaffGate) {
+    return (<p>{t('common.noPermission')}</p>);
+  }
+
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8">
       <section className="overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-6 py-6 text-white shadow-2xl shadow-slate-950/30">
@@ -193,19 +202,19 @@ export function AdminCorePATsPage() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Link
-              to={`/admin/core/tenants/${tenantId}`}
+              to={`/admin/tenants/${tenantId}`}
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
               {t('adminCoreTenants.patBackToTenant')}
             </Link>
             <Link
-              to={`/admin/core/tenants/${tenantId}/service-accounts`}
+              to={`/admin/tenants/${tenantId}/service-accounts`}
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
               {t('adminCoreTenants.patBackToServiceAccounts')}
             </Link>
             <Link
-              to="/admin/core/tenants"
+              to="/admin/tenants"
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
               {t('adminCoreTenants.patBackToRegistry')}
@@ -340,6 +349,7 @@ export function AdminCorePATsPage() {
           <button
             type="button"
             disabled={!canIssue}
+            title={t('adminCoreTenants.patIssueNote')}
             onClick={() => setActionNote(t('adminCoreTenants.patIssueNote'))}
             className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-400 dark:text-emerald-200 dark:disabled:border-slate-700 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500"
           >
@@ -348,6 +358,7 @@ export function AdminCorePATsPage() {
           <button
             type="button"
             disabled={!canRotate || !selectedToken}
+            title={t('adminCoreTenants.patRotateNote')}
             onClick={() => setActionNote(t('adminCoreTenants.patRotateNote'))}
             className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-700 transition-colors hover:bg-cyan-500/15 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-400 dark:text-cyan-200 dark:disabled:border-slate-700 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500"
           >
@@ -356,6 +367,7 @@ export function AdminCorePATsPage() {
           <button
             type="button"
             disabled={!canRevoke || !selectedToken}
+            title={t('adminCoreTenants.patRevokeNote')}
             onClick={() => setActionNote(t('adminCoreTenants.patRevokeNote'))}
             className="rounded-full border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-700 transition-colors hover:bg-rose-500/15 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-400 dark:text-rose-200 dark:disabled:border-slate-700 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500"
           >

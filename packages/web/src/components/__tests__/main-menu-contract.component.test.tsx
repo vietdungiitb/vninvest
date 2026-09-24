@@ -74,6 +74,11 @@ describe("main menu contract (menu 2026-09-22)", () => {
     expect(screen.queryByText("layout.nav.group.admin")).toBeNull();
     expect(screen.queryByText("layout.nav.soc")).toBeNull();
     expect(screen.queryByText("layout.nav.tenantAdmin")).toBeNull();
+    expect(screen.queryByText("layout.nav.adminUsers")).toBeNull();
+    expect(screen.queryByText("layout.nav.adminTenants")).toBeNull();
+    expect(screen.queryByText("layout.nav.adminBilling")).toBeNull();
+    expect(screen.queryByText("layout.nav.adminUsage")).toBeNull();
+    expect(screen.queryByText("layout.nav.adminAudit")).toBeNull();
     expect(screen.getByText("layout.nav.dashboard")).toBeTruthy();
   });
 
@@ -84,6 +89,11 @@ describe("main menu contract (menu 2026-09-22)", () => {
     expect(screen.getByText("layout.nav.soc")).toBeTruthy();
     expect(screen.getByText("layout.nav.adminCrawlControl")).toBeTruthy();
     expect(screen.getByText("layout.nav.tenantAdmin")).toBeTruthy();
+    expect(screen.getByText("layout.nav.adminUsers")).toBeTruthy();
+    expect(screen.getByText("layout.nav.adminTenants")).toBeTruthy();
+    expect(screen.getByText("layout.nav.adminBilling")).toBeTruthy();
+    expect(screen.getByText("layout.nav.adminUsage")).toBeTruthy();
+    expect(screen.getByText("layout.nav.adminAudit")).toBeTruthy();
   });
 
   it("matches nested paths via isActivePath", () => {

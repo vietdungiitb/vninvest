@@ -2,6 +2,7 @@ import { createElement, useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './vertical/sidebar/Sidebar';
 import { Header } from './vertical/header/Header';
+import { StaffSwitchBanner } from '../../components/StaffSwitchBanner.js';
 import { isNewLayoutEnabled } from '../../lib/runtimeConfig';
 import { cn } from '@/lib/utils';
 
@@ -82,6 +83,8 @@ export function FullLayout() {
         sidebarCollapsed: newLayout ? false : sidebarCollapsed,
         mobileSidebarOpen
       }),
+      // R5 staff-switch banner (chỉ hiện khi có phiên xem hộ)
+      e(StaffSwitchBanner),
       // Main Content
       e(
         'main',

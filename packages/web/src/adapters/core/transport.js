@@ -337,6 +337,19 @@ export function createCoreTransport(env = {}, options = {}) {
       headers["X-Tenant-ID"] = storedTenantId;
     }
 
+    // R5 staff-switch: token xem hộ (TTL 30m, role viewer ở BE).
+    try {
+      const rawSwitch = getBrowserSessionStorage("staff_switch");
+      if (rawSwitch) {
+        const parsed = JSON.parse(rawSwitch);
+        if (parsed && parsed.token) {
+          headers["X-Staff-Switch"] = parsed.token;
+        }
+      }
+    } catch {
+      /* private mode hoặc JSON hỏng — bỏ qua header switch */
+    }
+
     const response = await fetch(`${base}${path}`, {
       ...init,
       headers,

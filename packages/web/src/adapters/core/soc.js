@@ -157,6 +157,40 @@ export function createSocClient({ coreGet, corePost, corePut, corePatch, coreDel
       return corePost(`/operator/soc/users/${encodeURIComponent(userId)}/set-plan/`, body);
     },
 
+    // ─── Billing fleet (R2 refactor) ─────────────────────────────
+    getSocBillingOverview() {
+      return coreGet("/operator/soc/billing/overview/");
+    },
+
+    getSocBillingInvoices(params = {}) {
+      const qs = new URLSearchParams();
+      for (const [k, v] of Object.entries(params || {})) {
+        if (v !== undefined && v !== null && String(v) !== "") qs.set(k, String(v));
+      }
+      const suffix = qs.toString();
+      return coreGet(`/operator/soc/billing/invoices/${suffix ? `?${suffix}` : ""}`);
+    },
+
+    // ─── Usage fleet (R3 refactor) ───────────────────────────────
+    getSocUsageOverview() {
+      return coreGet("/operator/soc/usage/overview/");
+    },
+
+    // ─── Audit events (R4 refactor) ────────────────────────────
+    getSocAuditEvents(params = {}) {
+      const qs = new URLSearchParams();
+      for (const [k, v] of Object.entries(params || {})) {
+        if (v !== undefined && v !== null && String(v) !== "") qs.set(k, String(v));
+      }
+      const suffix = qs.toString();
+      return coreGet(`/operator/soc/audit-events/${suffix ? `?${suffix}` : ""}`);
+    },
+
+    // ─── Staff switch (R5 refactor) ────────────────────────────
+    staffSwitch(body) {
+      return corePost("/operator/soc/staff/switch/", body);
+    },
+
     // ─── Broker system config (B2.3) ─────────────────────────────────────
     getSocBrokerConfig() {
       return coreGet("/operator/soc/broker/config/");

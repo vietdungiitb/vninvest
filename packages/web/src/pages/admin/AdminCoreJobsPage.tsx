@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
 
 const DEFAULT_LIMIT = 25;
@@ -212,6 +213,13 @@ export function AdminCoreJobsPage() {
     setCursor({ startingAfter: '', endingBefore: prevCursor });
   };
 
+  // R0 defense-in-depth: route đã bọc StaffRoute, page tự chặn thêm.
+  const { userIdentity } = usePortfolio() as any;
+  const isStaffGate = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
+  if (!isStaffGate) {
+    return (<p>Không đủ quyền truy cập.</p>);
+  }
+
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8">
       <section className="overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-6 py-6 text-white shadow-2xl shadow-slate-950/30">
@@ -229,13 +237,13 @@ export function AdminCoreJobsPage() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Link
-              to="/admin/core/overview"
+              to="/admin/overview"
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
               Quay lại tổng quan
             </Link>
             <Link
-              to="/admin/core/audit/requests"
+              to="/admin/audit-trace"
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
               Mở audit trace

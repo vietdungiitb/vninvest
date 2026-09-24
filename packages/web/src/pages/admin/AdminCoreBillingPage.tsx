@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
 
 function toneClasses(status: any) {
@@ -130,6 +131,13 @@ export function AdminCoreBillingPage() {
     setRefreshTick((current) => current + 1);
   };
 
+  // R0 defense-in-depth: route đã bọc StaffRoute, page tự chặn thêm.
+  const { userIdentity } = usePortfolio() as any;
+  const isStaffGate = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
+  if (!isStaffGate) {
+    return (<p>Không đủ quyền truy cập.</p>);
+  }
+
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8">
       <section className="overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-6 py-6 text-white shadow-2xl shadow-slate-950/30">
@@ -147,19 +155,19 @@ export function AdminCoreBillingPage() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Link
-              to={`/admin/core/tenants/${tenantId}`}
+              to={`/admin/tenants/${tenantId}`}
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
               {'Quay lại tenant'}
             </Link>
             <Link
-              to={`/admin/core/tenants/${tenantId}/usage`}
+              to={`/admin/tenants/${tenantId}/usage`}
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
               {'Xem usage'}
             </Link>
             <Link
-              to={`/admin/core/tenants/${tenantId}/service-accounts`}
+              to={`/admin/tenants/${tenantId}/service-accounts`}
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
               {'Xem service accounts'}

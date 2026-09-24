@@ -30,6 +30,22 @@ interface AlertFeedResponse {
 
 const POLL_INTERVAL = 15000;
 
+/**
+ * BE trả `next` là URL đầy đủ (?cursor=...), nhưng query feed chỉ nhận token
+ * cursor trần — gửi nguyên URL gây 404 "Invalid cursor" khi bấm Trang sau.
+ * (AlertCenterPage.extractFeedCursor làm việc tương tự.)
+ */
+export function extractFeedCursor(next: unknown): string | null {
+  if (typeof next !== "string" || !next) return null;
+  if (next.indexOf("cursor=") < 0) return next;
+  try {
+    const base = typeof window !== "undefined" ? window.location.origin : "http://localhost";
+    return new URL(next, base).searchParams.get("cursor");
+  } catch {
+    return next;
+  }
+}
+
 export function useAlertCenterSnapshot(initialParams: AlertFeedParams = {}) {
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -49,7 +65,7 @@ export function useAlertCenterSnapshot(initialParams: AlertFeedParams = {}) {
       const data = await (coreApiAdapter as any).getAlertCenterFeed(params) as AlertFeedResponse;
       if (mountedRef.current) {
         setAlerts(data.results || []);
-        setNextCursor(data.next);
+        setNextCursor(extractFeedCursor(data.next));
       }
       return data;
     } catch (err) {
@@ -78,11 +94,14 @@ export function useAlertCenterSnapshot(initialParams: AlertFeedParams = {}) {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(() => {
       if (mountedRef.current) {
-        fetchFeed({ symbol, severity, alert_family, session_date, timeframe, page_size }, true);
+        // Poll đúng trang user đang xem — trước đây luôn fetch trang 1 nên vừa
+        // ghi đè nội dung trang 2+ vừa làm cursor history lệch.
+        const currentCursor = cursorHistory.length > 0 ? cursorHistory[cursorHistory.length - 1] : undefined;
+        fetchFeed({ symbol, severity, alert_family, session_date, timeframe, page_size, cursor: currentCursor }, true);
       }
     }, POLL_INTERVAL);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [fetchFeed, symbol, severity, alert_family, session_date, timeframe, page_size]);
+  }, [fetchFeed, symbol, severity, alert_family, session_date, timeframe, page_size, cursorHistory]);
 
   const goToNextPage = useCallback(() => {
     if (nextCursor) {

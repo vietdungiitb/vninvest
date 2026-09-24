@@ -57,6 +57,20 @@ class TenantResolutionMiddleware:
             self._resolve_superuser_tenant(request, user)
             return self.get_response(request)
 
+        # R5 staff-switch: staff "xem hộ" tenant qua header X-Staff-Switch
+        # (token ký TTL 30m, role ép viewer, có audit lúc cấp).
+        switch_token = request.META.get('HTTP_X_STAFF_SWITCH', '').strip()
+        if switch_token:
+            if self._resolve_staff_switch(request, user, switch_token):
+                return self.get_response(request)
+            return JsonResponse(
+                {
+                    'error': 'staff_switch_invalid',
+                    'detail': 'Phiên xem hộ không hợp lệ hoặc đã hết hạn.',
+                },
+                status=403,
+            )
+
         # Machine PATs are bound to their issuing tenant; reject cross-tenant
         # header attempts with a dedicated error code (human session PATs may switch).
         credential = getattr(request, 'auth', None)
@@ -108,6 +122,42 @@ class TenantResolutionMiddleware:
         if re.search(r'/invites/[^/]+/(accept|cancel)/?$', path):
             return True
         return False
+
+    def _resolve_staff_switch(self, request, user, switch_token: str) -> bool:
+        """R5: validate X-Staff-Switch → gán tenant target + role viewer.
+
+        Trả True nếu áp dụng thành công, False nếu token hỏng/hết hạn/không
+        đủ điều kiện (caller trả 403 staff_switch_invalid).
+        """
+        try:
+            from service_ops.views.staff import verify_staff_switch
+            staff_id, tenant_public_id = verify_staff_switch(switch_token)
+        except Exception:
+            return False
+        if int(staff_id) != int(user.id):
+            return False
+        if not (getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False)):
+            return False
+        # Machine PAT không được dùng phiên xem hộ (staff-only human flow).
+        credential = getattr(request, 'auth', None)
+        if credential is not None:
+            try:
+                from identity_access.models import CorePATCredential
+                if isinstance(credential, CorePATCredential) and not credential.is_human_session:
+                    return False
+            except Exception:
+                return False
+        try:
+            from identity_access.models import CoreTenant
+            tenant = CoreTenant.objects.get(public_id=tenant_public_id)
+        except Exception:
+            return False
+        if tenant.status != CoreTenant.StatusChoices.ACTIVE:
+            return False
+        request.tenant = tenant
+        request.tenant_role = 'viewer'
+        request.staff_switch = True
+        return True
 
     def _get_user_from_pat(self, request):
         """Extract user from PAT token in Authorization header."""

@@ -73,6 +73,25 @@ describe("useAlertCenterSnapshot pagination (F06 verification)", () => {
     await waitFor(() => expect(result.current.hasPrevPage).toBe(false));
   });
 
+  it("bóc token cursor từ next URL đầy đủ của BE (fix 404 Invalid cursor)", async () => {
+    // BE trả next là URL đầy đủ (?cursor=...), hook phải gửi token trần
+    mockFeed.getAlertCenterFeed
+      .mockResolvedValueOnce(mockResponse([{ id: "1" }], "https://localhost/core/v1/signals/alert-center/feed?page_size=20&cursor=c2abc"))
+      .mockResolvedValueOnce(mockResponse([{ id: "2" }], null));
+
+    const { result } = renderHook(() => useAlertCenterSnapshot({ page_size: 20 }));
+    act(() => {
+      result.current.loadInitial();
+    });
+    await waitFor(() => expect(mockFeed.getAlertCenterFeed).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      result.current.goToNextPage();
+    });
+    await waitFor(() => expect(mockFeed.getAlertCenterFeed).toHaveBeenCalledTimes(2));
+    expect(mockFeed.getAlertCenterFeed).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: "c2abc" }));
+  });
+
   it("không gọi fetch khi history rỗng", async () => {
     mockFeed.getAlertCenterFeed.mockResolvedValue(mockResponse([], null));
     const { result } = renderHook(() => useAlertCenterSnapshot({ page_size: 10 }));
