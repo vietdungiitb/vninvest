@@ -3,6 +3,7 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recha
 import { defaultCoreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { useI18n } from '../../context/LangContext.js';
 import { usePortfolio } from '../../context/PortfolioContext.js';
+import { AdminPageHeader, AdminEmptyState } from './adminUi.js';
 
 export function AdminAnalyticsPage() {
   const { t } = useI18n();
@@ -58,11 +59,11 @@ export function AdminAnalyticsPage() {
   }));
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8">
-      <div>
-        <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{t('adminAnalytics.eyebrow')}</p>
-        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">{t('adminAnalytics.title')}</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">{t('adminAnalytics.description')}</p>
-      </div>
+      <AdminPageHeader
+        eyebrow={t('adminAnalytics.eyebrow')}
+        title={t('adminAnalytics.title')}
+        description={t('adminAnalytics.description')}
+      />
       {error ? <p className="text-sm text-rose-600">{String(error?.message || error)}</p> : null}
       <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-3 flex items-center justify-between gap-2">
@@ -96,7 +97,7 @@ export function AdminAnalyticsPage() {
             </ResponsiveContainer>
           </div>
         ) : (
-          <p className="text-sm text-slate-500">{loading ? t('adminAnalytics.loading') : t('adminAnalytics.empty')}</p>
+          <AdminEmptyState>{loading ? t('adminAnalytics.loading') : t('adminAnalytics.empty')}</AdminEmptyState>
         )}
       </div>
       <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
@@ -142,7 +143,7 @@ export function AdminAnalyticsPage() {
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-sm text-slate-500">{loading ? t('adminAnalytics.loading') : t('adminAnalytics.alertsEmpty')}</p>
+          <AdminEmptyState>{loading ? t('adminAnalytics.loading') : t('adminAnalytics.alertsEmpty')}</AdminEmptyState>
         )}
       </div>
     </div>

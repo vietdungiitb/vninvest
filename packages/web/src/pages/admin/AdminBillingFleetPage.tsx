@@ -4,16 +4,7 @@ import { defaultCoreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { downloadSocCsv } from './socCsv.js';
 import { useI18n } from '../../context/LangContext.js';
 import { usePortfolio } from '../../context/PortfolioContext.js';
-
-function MetricCard({ label, value, detail }: { label: string; value: string; detail?: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{value}</p>
-      {detail ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{detail}</p> : null}
-    </div>
-  );
-}
+import { AdminPageHeader, AdminMetricCard, AdminEmptyState } from './adminUi.js';
 
 const fmtVND = (v: any) => new Intl.NumberFormat('vi-VN').format(Number(v || 0));
 
@@ -83,17 +74,17 @@ export function AdminBillingFleetPage() {
   const totalPages = Math.max(1, Math.ceil(count / 20));
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8">
-      <div>
-        <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{t('adminBillingFleet.eyebrow')}</p>
-        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">{t('adminBillingFleet.title')}</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">{t('adminBillingFleet.description')}</p>
-      </div>
+      <AdminPageHeader
+        eyebrow={t('adminBillingFleet.eyebrow')}
+        title={t('adminBillingFleet.title')}
+        description={t('adminBillingFleet.description')}
+      />
       {error ? <p className="text-sm text-rose-600">{String(error?.message || error)}</p> : null}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label={t('adminBillingFleet.mrr')} value={`${fmtVND(overview?.mrr)}đ`} detail={t('adminBillingFleet.arrDetail', { v: fmtVND(overview?.arr) })} />
-        <MetricCard label={t('adminBillingFleet.trials')} value={String(overview?.trials_active ?? '—')} />
-        <MetricCard label={t('adminBillingFleet.failed')} value={String(overview?.invoices_failed_30d ?? '—')} />
-        <MetricCard label={t('adminBillingFleet.plans')} value={String((overview?.plan_mix || []).length)} detail={(overview?.plan_mix || []).map((p: any) => `${p.plan}:${p.count}`).join(' · ')} />
+        <AdminMetricCard label={t('adminBillingFleet.mrr')} value={`${fmtVND(overview?.mrr)}đ`} detail={t('adminBillingFleet.arrDetail', { v: fmtVND(overview?.arr) })} />
+        <AdminMetricCard label={t('adminBillingFleet.trials')} value={String(overview?.trials_active ?? '—')} />
+        <AdminMetricCard label={t('adminBillingFleet.failed')} value={String(overview?.invoices_failed_30d ?? '—')} />
+        <AdminMetricCard label={t('adminBillingFleet.plans')} value={String((overview?.plan_mix || []).length)} detail={(overview?.plan_mix || []).map((p: any) => `${p.plan}:${p.count}`).join(' · ')} />
       </div>
       <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
         <h2 className="text-base font-semibold">{t('adminBillingFleet.revenueTitle')}</h2>
@@ -146,7 +137,7 @@ export function AdminBillingFleetPage() {
             </tbody>
           </table>
         ) : (
-          <p className="text-sm text-slate-500">{loading ? t('adminBillingFleet.loading') : t('adminBillingFleet.empty')}</p>
+          <AdminEmptyState>{loading ? t('adminBillingFleet.loading') : t('adminBillingFleet.empty')}</AdminEmptyState>
         )}
         <div className="mt-3 flex items-center justify-between">
           <button type="button" disabled={!hasPrev || loading} onClick={() => setPage((p) => Math.max(1, p - 1))} className="rounded-full border px-3 py-1 text-xs font-semibold disabled:opacity-40">‹</button>

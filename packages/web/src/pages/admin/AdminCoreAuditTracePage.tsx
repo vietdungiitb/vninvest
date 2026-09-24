@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { adminToneClasses } from './adminTone.js';
+import { AdminPanel, AdminMetricCard, AdminValueRow } from './adminUi.js';
 
 const DEFAULT_LIMIT = 25;
 const DEFAULT_FILTERS = {
@@ -42,49 +43,6 @@ function stringifyValue(value: any) {
   }
 
   return String(value);
-}
-
-function Panel({ title, description, actions, children }: { title: string; description?: string | null; actions?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900">
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-semibold text-slate-950 dark:text-white">{title}</h2>
-          {description ? <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p> : null}
-        </div>
-        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function MetricCard({ card }: { card: any }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{card.label}</p>
-      <div className="mt-2 flex items-end justify-between gap-3">
-        <div>
-          <p className="text-2xl font-semibold text-slate-950 dark:text-white">{card.value}</p>
-          {card.detail ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{card.detail}</p> : null}
-        </div>
-        {card.status ? (
-          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(card.status)}`}>
-            {card.status}
-          </span>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function ValueRow({ label, value }: { label: string; value: any }) {
-  return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-200 py-3 last:border-0 dark:border-slate-800">
-      <span className="text-sm text-slate-500 dark:text-slate-400">{label}</span>
-      <span className="max-w-[60%] text-right text-sm font-semibold text-slate-950 dark:text-white">{value}</span>
-    </div>
-  );
 }
 
 function DetailBlock({ title, children }: { title: string; children: React.ReactNode }) {
@@ -396,14 +354,14 @@ export function AdminCoreAuditTracePage() {
         </div>
       </form>
 
-      <Panel
+      <AdminPanel
         title="Tổng hợp audit trace"
         description="Các audit log current-code operator đang hiển thị theo chụp nhanh hiện tại."
       >
         {summaryCards.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {summaryCards.map((card: any) => (
-              <MetricCard key={card.key} card={card} />
+              <AdminMetricCard key={card.key} card={card} />
             ))}
           </div>
         ) : (
@@ -411,10 +369,10 @@ export function AdminCoreAuditTracePage() {
             {loading ? 'Đang tải summary…' : 'Chưa có dữ liệu tổng hợp audit trace.'}
           </p>
         )}
-      </Panel>
+      </AdminPanel>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <Panel
+        <AdminPanel
           title="Bảng audit trace"
           description="Các bản ghi audit được xếp theo snapshot hiện tại và có detail fetch riêng."
           actions={(
@@ -491,9 +449,9 @@ export function AdminCoreAuditTracePage() {
               {loading ? 'Đang tải audit trace…' : 'Không có audit trace phù hợp bộ lọc.'}
             </div>
           )}
-        </Panel>
+        </AdminPanel>
 
-        <Panel
+        <AdminPanel
           title="Chi tiết audit trace"
           description="Bản ghi đã chọn và source record đi kèm để truy vết operator."
         >
@@ -525,17 +483,17 @@ export function AdminCoreAuditTracePage() {
               ) : null}
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <ValueRow label="Mã yêu cầu" value={selectedRequest.request_id} />
-                <ValueRow label="Loại audit" value={kindLabel(selectedRequest.kind)} />
-                <ValueRow label="Hành động" value={selectedRequest.action || selectedRequest.event || '—'} />
-                <ValueRow label="Actor" value={selectedRequest.actor || '—'} />
-                <ValueRow label="Lý do" value={selectedRequest.reason || '—'} />
-                <ValueRow label="Thời điểm" value={(selectedRequest.created_at || selectedRequest.timestamp) || '—'} />
+                <AdminValueRow label="Mã yêu cầu" value={selectedRequest.request_id} />
+                <AdminValueRow label="Loại audit" value={kindLabel(selectedRequest.kind)} />
+                <AdminValueRow label="Hành động" value={selectedRequest.action || selectedRequest.event || '—'} />
+                <AdminValueRow label="Actor" value={selectedRequest.actor || '—'} />
+                <AdminValueRow label="Lý do" value={selectedRequest.reason || '—'} />
+                <AdminValueRow label="Thời điểm" value={(selectedRequest.created_at || selectedRequest.timestamp) || '—'} />
               </div>
 
               {selectedRequest.kind === 'system_ai_settings' ? (
                 <DetailBlock title="Chi tiết AI settings">
-                  <ValueRow label="Settings ID" value={String(selectedRequest.settings_id ?? '—')} />
+                  <AdminValueRow label="Settings ID" value={String(selectedRequest.settings_id ?? '—')} />
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.before_json)}</pre>
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.after_json)}</pre>
                 </DetailBlock>
@@ -543,10 +501,10 @@ export function AdminCoreAuditTracePage() {
 
               {selectedRequest.kind === 'whale_config' ? (
                 <DetailBlock title="Chi tiết Whale config">
-                  <ValueRow label="Draft ID" value={String(selectedRequest.draft_id ?? '—')} />
-                  <ValueRow label="Version ID" value={String(selectedRequest.version_id ?? '—')} />
-                  <ValueRow label="Rollout ID" value={String(selectedRequest.rollout_id ?? '—')} />
-                  <ValueRow label="Ticket ref" value={selectedRequest.ticket_ref || '—'} />
+                  <AdminValueRow label="Draft ID" value={String(selectedRequest.draft_id ?? '—')} />
+                  <AdminValueRow label="Version ID" value={String(selectedRequest.version_id ?? '—')} />
+                  <AdminValueRow label="Rollout ID" value={String(selectedRequest.rollout_id ?? '—')} />
+                  <AdminValueRow label="Ticket ref" value={selectedRequest.ticket_ref || '—'} />
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.before_json)}</pre>
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.after_json)}</pre>
                 </DetailBlock>
@@ -554,9 +512,9 @@ export function AdminCoreAuditTracePage() {
 
               {selectedRequest.kind === 'advisory' ? (
                 <DetailBlock title="Chi tiết Advisory">
-                  <ValueRow label="Mã cổ phiếu" value={selectedRequest.symbol || '—'} />
-                  <ValueRow label="Actor ID" value={selectedRequest.actor_id || '—'} />
-                  <ValueRow label="User ID" value={String(selectedRequest.user_id ?? '—')} />
+                  <AdminValueRow label="Mã cổ phiếu" value={selectedRequest.symbol || '—'} />
+                  <AdminValueRow label="Actor ID" value={selectedRequest.actor_id || '—'} />
+                  <AdminValueRow label="User ID" value={String(selectedRequest.user_id ?? '—')} />
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.before_state_json)}</pre>
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.after_state_json)}</pre>
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.metadata_json)}</pre>
@@ -565,10 +523,10 @@ export function AdminCoreAuditTracePage() {
 
               {selectedRequest.kind === 'crawl_audit' ? (
                 <DetailBlock title="Chi tiết crawl audit">
-                  <ValueRow label="Event" value={selectedRequest.event || '—'} />
-                  <ValueRow label="Run ID" value={String(selectedRequest.run_id ?? '—')} />
-                  <ValueRow label="Job ID" value={String(selectedRequest.job_id ?? '—')} />
-                  <ValueRow label="Mã dịch vụ" value={selectedRequest.service_code || '—'} />
+                  <AdminValueRow label="Event" value={selectedRequest.event || '—'} />
+                  <AdminValueRow label="Run ID" value={String(selectedRequest.run_id ?? '—')} />
+                  <AdminValueRow label="Job ID" value={String(selectedRequest.job_id ?? '—')} />
+                  <AdminValueRow label="Mã dịch vụ" value={selectedRequest.service_code || '—'} />
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.payload)}</pre>
                 </DetailBlock>
               ) : null}
@@ -582,7 +540,7 @@ export function AdminCoreAuditTracePage() {
               {loading || detailLoading ? 'Đang tải chi tiết audit trace…' : 'Chọn một audit trace trong bảng bên trái để mở chi tiết.'}
             </div>
           )}
-        </Panel>
+        </AdminPanel>
       </div>
     </div>
   );

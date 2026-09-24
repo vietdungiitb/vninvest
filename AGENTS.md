@@ -9,6 +9,13 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - Build verification: npx tsc --noEmit sau mỗi sub-step, npm run build cuối mỗi step.
 
 ## Progress
+### Done (2026-09-24) — Admin UI Slice 3 F4+F6 shared kit (Entry 190)
+- **F4**: `pages/admin/adminUi.tsx` mới (Header/Panel/MetricCard/ValueRow/EmptyState);
+  migrate 12 trang fleet+core, xoá locals trùng (`Panel`/`MetricCard`/`ValueRow`/`KeyValue`);
+  MetricCard dual-props (`card` object + flat) nên call sites giữ nguyên.
+  Ngoại lệ có chủ ý: SOC glass, crawl gray, advertising violet, tenant shell.
+- **F6**: xoá dup keys `vi.js`/`en.js` (`adminAudit×2`, `adminAnalytics×2`, `adminUsage×2`).
+- **Gates**: tsc 0, build 24s PASS, check:shell PASS, eslint 0 err, vitest admin 6/15.
 ### Done (2026-09-24) — Admin UI Slice 2 F3+F5 i18n + honest states (Entry 189)
 - **F3**: xoá mock jobs/runs bịa sẵn ở crawl (API rỗng/lỗi → empty/error state trung thực + nút
   Thử lại); poll 5s guard `document.hidden`; bỏ `console.error` + emoji empty-state.

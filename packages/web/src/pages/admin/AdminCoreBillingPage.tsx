@@ -3,49 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { adminToneClasses } from './adminTone.js';
-
-function Panel({ title, description, actions, children }: { title: string; description?: string | null; actions?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900">
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-semibold text-slate-950 dark:text-white">{title}</h2>
-          {description ? <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p> : null}
-        </div>
-        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function MetricCard({ card }: { card: any }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{card.label}</p>
-      <div className="mt-2 flex items-end justify-between gap-3">
-        <div>
-          <p className="text-2xl font-semibold text-slate-950 dark:text-white">{card.value}</p>
-          {card.detail ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{card.detail}</p> : null}
-        </div>
-        {card.status ? (
-          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(card.status)}`}>
-            {card.status}
-          </span>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function ValueRow({ label, value }: { label: string; value: any }) {
-  return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-200 py-3 last:border-0 dark:border-slate-800">
-      <span className="text-sm text-slate-500 dark:text-slate-400">{label}</span>
-      <span className="text-sm font-semibold text-slate-950 dark:text-white">{value}</span>
-    </div>
-  );
-}
+import { AdminPanel, AdminMetricCard, AdminValueRow } from './adminUi.js';
 
 function formatDateTime(value: any) {
   if (!value) {
@@ -177,7 +135,7 @@ export function AdminCoreBillingPage() {
         </div>
       ) : null}
 
-      <Panel
+      <AdminPanel
         title={'Thông tin tenant'}
         description={'Bối cảnh tenant operator đang được điều tra cho thanh toán.'}
         actions={(
@@ -188,45 +146,45 @@ export function AdminCoreBillingPage() {
       >
         {tenantSummary ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <MetricCard card={{ label: 'Tenant', value: tenantSummary.display_name || tenantSummary.tenant_code || tenantId, detail: tenantSummary.tenant_code || tenantId }} />
-            <MetricCard card={{ label: 'Plan', value: commercialSummary?.plan_code || tenantSummary.plan_code || '—', detail: commercialSummary?.billing_cycle || '—' }} />
-            <MetricCard card={{ label: 'Invoice state', value: commercialSummary?.invoice_state || tenantSummary.invoice_state || '—', status: commercialSummary?.invoice_state || tenantSummary.invoice_state }} />
-            <MetricCard card={{ label: 'Rủi ro sử dụng', value: currentUsageRisk, status: currentUsageRisk }} />
+            <AdminMetricCard card={{ label: 'Tenant', value: tenantSummary.display_name || tenantSummary.tenant_code || tenantId, detail: tenantSummary.tenant_code || tenantId }} />
+            <AdminMetricCard card={{ label: 'Plan', value: commercialSummary?.plan_code || tenantSummary.plan_code || '—', detail: commercialSummary?.billing_cycle || '—' }} />
+            <AdminMetricCard card={{ label: 'Invoice state', value: commercialSummary?.invoice_state || tenantSummary.invoice_state || '—', status: commercialSummary?.invoice_state || tenantSummary.invoice_state }} />
+            <AdminMetricCard card={{ label: 'Rủi ro sử dụng', value: currentUsageRisk, status: currentUsageRisk }} />
           </div>
         ) : (
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {loading ? 'Đang tải thông tin tenant…' : 'Chưa có thông tin tenant.'}
           </p>
         )}
-      </Panel>
+      </AdminPanel>
 
-      <Panel
+      <AdminPanel
         title={'Tổng hợp billing'}
         description={'Dữ liệu subscription và billing posture từ current-code operator snapshot.'}
       >
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <MetricCard card={{ label: 'Billing cycle', value: commercialSummary?.billing_cycle || '—' }} />
-          <MetricCard card={{ label: 'Invoice state', value: commercialSummary?.invoice_state || '—', status: commercialSummary?.invoice_state }} />
-          <MetricCard card={{ label: 'Next invoice', value: renewalLabel, detail: 'Current snapshot' }} />
-          <MetricCard card={{ label: 'Critical meters', value: String(pastDueMeterCount), status: pastDueMeterCount > 0 ? 'critical' : 'normal' }} />
+          <AdminMetricCard card={{ label: 'Billing cycle', value: commercialSummary?.billing_cycle || '—' }} />
+          <AdminMetricCard card={{ label: 'Invoice state', value: commercialSummary?.invoice_state || '—', status: commercialSummary?.invoice_state }} />
+          <AdminMetricCard card={{ label: 'Next invoice', value: renewalLabel, detail: 'Current snapshot' }} />
+          <AdminMetricCard card={{ label: 'Critical meters', value: String(pastDueMeterCount), status: pastDueMeterCount > 0 ? 'critical' : 'normal' }} />
         </div>
-      </Panel>
+      </AdminPanel>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
-        <Panel
+        <AdminPanel
           title={'Subscription summary'}
           description={'Trạng thái subscription và chu kỳ hiện tại của tenant operator.'}
         >
           {commercialSummary ? (
             <div className="grid gap-3 sm:grid-cols-2">
-              <MetricCard card={{ label: 'Plan', value: commercialSummary.plan_code || '—' }} />
-              <MetricCard card={{ label: 'Status', value: tenantSummary?.status || '—', status: tenantSummary?.status }} />
-              <MetricCard card={{ label: 'Billing cycle', value: commercialSummary.billing_cycle || '—' }} />
-              <MetricCard card={{ label: 'Invoice state', value: commercialSummary.invoice_state || '—', status: commercialSummary.invoice_state }} />
-              <MetricCard card={{ label: 'Current period', value: commercialSummary.current_period_start ? `${formatDateTime(commercialSummary.current_period_start)} → ${formatDateTime(commercialSummary.current_period_end)}` : '—' }} />
-              <MetricCard card={{ label: 'Next invoice', value: renewalLabel }} />
-              <MetricCard card={{ label: 'Usage risk', value: currentUsageRisk, status: currentUsageRisk }} />
-              <MetricCard card={{ label: 'Credit balance', value: formatCurrency(commercialSummary.credit_balance || 0) }} />
+              <AdminMetricCard card={{ label: 'Plan', value: commercialSummary.plan_code || '—' }} />
+              <AdminMetricCard card={{ label: 'Status', value: tenantSummary?.status || '—', status: tenantSummary?.status }} />
+              <AdminMetricCard card={{ label: 'Billing cycle', value: commercialSummary.billing_cycle || '—' }} />
+              <AdminMetricCard card={{ label: 'Invoice state', value: commercialSummary.invoice_state || '—', status: commercialSummary.invoice_state }} />
+              <AdminMetricCard card={{ label: 'Current period', value: commercialSummary.current_period_start ? `${formatDateTime(commercialSummary.current_period_start)} → ${formatDateTime(commercialSummary.current_period_end)}` : '—' }} />
+              <AdminMetricCard card={{ label: 'Next invoice', value: renewalLabel }} />
+              <AdminMetricCard card={{ label: 'Usage risk', value: currentUsageRisk, status: currentUsageRisk }} />
+              <AdminMetricCard card={{ label: 'Credit balance', value: formatCurrency(commercialSummary.credit_balance || 0) }} />
             </div>
           ) : (
             <p className="text-sm text-slate-500 dark:text-slate-400">{loading ? 'Đang tải subscription…' : 'Chưa có dữ liệu subscription.'}</p>
@@ -235,9 +193,9 @@ export function AdminCoreBillingPage() {
           <div className="mt-5 rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
             {'Màn hình này phản ánh current-code commercial snapshot. Invoice table đầy đủ sẽ xuất hiện khi operator commercial wrapper được mở thêm.'}
           </div>
-        </Panel>
+        </AdminPanel>
 
-        <Panel
+        <AdminPanel
           title={'Usage context'}
           description={'Meter posture ảnh hưởng trực tiếp đến billing state.'}
         >
@@ -255,9 +213,9 @@ export function AdminCoreBillingPage() {
                     </span>
                   </div>
                   <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                    <ValueRow label="Dùng" value={formatCurrency(meter.consumed_amount)} />
-                    <ValueRow label="Còn lại" value={formatCurrency(meter.remaining_amount)} />
-                    <ValueRow label="Hết hạn" value={formatDateTime(meter.reset_at)} />
+                    <AdminValueRow label="Dùng" value={formatCurrency(meter.consumed_amount)} />
+                    <AdminValueRow label="Còn lại" value={formatCurrency(meter.remaining_amount)} />
+                    <AdminValueRow label="Hết hạn" value={formatDateTime(meter.reset_at)} />
                   </div>
                 </div>
               ))}
@@ -265,7 +223,7 @@ export function AdminCoreBillingPage() {
           ) : (
             <p className="text-sm text-slate-500 dark:text-slate-400">{loading ? 'Đang tải usage context…' : 'Chưa có usage context.'}</p>
           )}
-        </Panel>
+        </AdminPanel>
       </div>
     </div>
   );

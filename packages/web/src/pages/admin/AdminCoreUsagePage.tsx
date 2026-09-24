@@ -3,49 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { adminToneClasses } from './adminTone.js';
-
-function Panel({ title, description, actions, children }: { title: string; description?: string | null; actions?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900">
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-semibold text-slate-950 dark:text-white">{title}</h2>
-          {description ? <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p> : null}
-        </div>
-        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function MetricCard({ card }: { card: any }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{card.label}</p>
-      <div className="mt-2 flex items-end justify-between gap-3">
-        <div>
-          <p className="text-2xl font-semibold text-slate-950 dark:text-white">{card.value}</p>
-          {card.detail ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{card.detail}</p> : null}
-        </div>
-        {card.status ? (
-          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(card.status)}`}>
-            {card.status}
-          </span>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function ValueRow({ label, value }: { label: string; value: any }) {
-  return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-200 py-3 last:border-0 dark:border-slate-800">
-      <span className="text-sm text-slate-500 dark:text-slate-400">{label}</span>
-      <span className="text-sm font-semibold text-slate-950 dark:text-white">{value}</span>
-    </div>
-  );
-}
+import { AdminPanel, AdminMetricCard, AdminValueRow } from './adminUi.js';
 
 function formatDateTime(value: any) {
   if (!value) {
@@ -208,7 +166,7 @@ export function AdminCoreUsagePage() {
         </div>
       ) : null}
 
-      <Panel
+      <AdminPanel
         title={'Thông tin tenant'}
         description={'Bối cảnh tenant operator đang được điều tra cho usage/quota.'}
         actions={(
@@ -219,38 +177,38 @@ export function AdminCoreUsagePage() {
       >
         {tenantSummary ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <MetricCard card={{ label: 'Tenant', value: tenantSummary.display_name || tenantSummary.tenant_code || tenantId, detail: tenantSummary.tenant_code || tenantId }} />
-            <MetricCard card={{ label: 'Plan', value: commercialSummary?.plan_code || tenantSummary.plan_code || '—', detail: commercialSummary?.billing_cycle || '—' }} />
-            <MetricCard card={{ label: 'Rủi ro sử dụng', value: usageRisk, status: usageRisk }} />
-            <MetricCard card={{ label: 'Còn lại', value: formatNumber(totalRemaining), detail: `${criticalCount} critical / ${warningCount} warning` }} />
+            <AdminMetricCard card={{ label: 'Tenant', value: tenantSummary.display_name || tenantSummary.tenant_code || tenantId, detail: tenantSummary.tenant_code || tenantId }} />
+            <AdminMetricCard card={{ label: 'Plan', value: commercialSummary?.plan_code || tenantSummary.plan_code || '—', detail: commercialSummary?.billing_cycle || '—' }} />
+            <AdminMetricCard card={{ label: 'Rủi ro sử dụng', value: usageRisk, status: usageRisk }} />
+            <AdminMetricCard card={{ label: 'Còn lại', value: formatNumber(totalRemaining), detail: `${criticalCount} critical / ${warningCount} warning` }} />
           </div>
         ) : (
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {loading ? 'Đang tải thông tin tenant…' : 'Chưa có thông tin tenant.'}
           </p>
         )}
-      </Panel>
+      </AdminPanel>
 
-      <Panel
+      <AdminPanel
         title={'Tổng hợp quota'}
         description={'Các meter hiện có trong current-code tenant snapshot.'}
       >
         {meters.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <MetricCard card={{ label: 'Tổng meter', value: String(meters.length), detail: 'Current snapshot' }} />
-            <MetricCard card={{ label: 'Cảnh báo', value: String(warningCount), status: 'warning' }} />
-            <MetricCard card={{ label: 'Nguy cấp', value: String(criticalCount), status: 'critical' }} />
-            <MetricCard card={{ label: 'Dung lượng còn lại', value: formatNumber(totalRemaining) }} />
+            <AdminMetricCard card={{ label: 'Tổng meter', value: String(meters.length), detail: 'Current snapshot' }} />
+            <AdminMetricCard card={{ label: 'Cảnh báo', value: String(warningCount), status: 'warning' }} />
+            <AdminMetricCard card={{ label: 'Nguy cấp', value: String(criticalCount), status: 'critical' }} />
+            <AdminMetricCard card={{ label: 'Dung lượng còn lại', value: formatNumber(totalRemaining) }} />
           </div>
         ) : (
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {loading ? 'Đang tải summary…' : 'Chưa có dữ liệu usage.'}
           </p>
         )}
-      </Panel>
+      </AdminPanel>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <Panel
+        <AdminPanel
           title={'Meter usage'}
           description={'Biểu đồ thanh và số liệu quota cho từng meter.'}
         >
@@ -309,9 +267,9 @@ export function AdminCoreUsagePage() {
               {loading ? 'Đang tải usage…' : 'Không có meter usage phù hợp.'}
             </div>
           )}
-        </Panel>
+        </AdminPanel>
 
-        <Panel
+        <AdminPanel
           title={'Chi tiết meter'}
           description={'Quota, hard-stop và lịch reset của meter đang chọn.'}
         >
@@ -344,14 +302,14 @@ export function AdminCoreUsagePage() {
 
               <div>
                 <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Thuộc tính chính</h3>
-                <ValueRow label="Unit" value={selectedMeter.unit} />
-                <ValueRow label="Aggregation window" value={selectedMeter.aggregation_window} />
-                <ValueRow label="Entitled amount" value={formatNumber(selectedMeter.entitled_amount)} />
-                <ValueRow label="Overage amount" value={formatNumber(selectedMeter.overage_amount)} />
-                <ValueRow label="Reset at" value={formatDateTime(selectedMeter.reset_at)} />
-                <ValueRow label="Period start" value={formatDateTime(selectedMeter.period_start)} />
-                <ValueRow label="Period end" value={formatDateTime(selectedMeter.period_end)} />
-                <ValueRow label="Projected exhaustion" value={selectedMeter.projected_exhaustion_at ? formatDateTime(selectedMeter.projected_exhaustion_at) : '—'} />
+                <AdminValueRow label="Unit" value={selectedMeter.unit} />
+                <AdminValueRow label="Aggregation window" value={selectedMeter.aggregation_window} />
+                <AdminValueRow label="Entitled amount" value={formatNumber(selectedMeter.entitled_amount)} />
+                <AdminValueRow label="Overage amount" value={formatNumber(selectedMeter.overage_amount)} />
+                <AdminValueRow label="Reset at" value={formatDateTime(selectedMeter.reset_at)} />
+                <AdminValueRow label="Period start" value={formatDateTime(selectedMeter.period_start)} />
+                <AdminValueRow label="Period end" value={formatDateTime(selectedMeter.period_end)} />
+                <AdminValueRow label="Projected exhaustion" value={selectedMeter.projected_exhaustion_at ? formatDateTime(selectedMeter.projected_exhaustion_at) : '—'} />
               </div>
 
               <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
@@ -363,7 +321,7 @@ export function AdminCoreUsagePage() {
               {loading ? 'Đang tải chi tiết meter…' : 'Chọn một meter trong bảng bên trái để mở chi tiết.'}
             </div>
           )}
-        </Panel>
+        </AdminPanel>
       </div>
     </div>
   );

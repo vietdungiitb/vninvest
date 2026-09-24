@@ -3,25 +3,7 @@ import { Link } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { adminToneClasses } from './adminTone.js';
-
-function MetricCard({ card }: { card: any }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{card.label}</p>
-      <div className="mt-2 flex items-end justify-between gap-3">
-        <div>
-          <p className="text-2xl font-semibold text-slate-950 dark:text-white">{card.value}</p>
-          {card.detail ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{card.detail}</p> : null}
-        </div>
-        {card.status ? (
-          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(card.status)}`}>
-            {card.status}
-          </span>
-        ) : null}
-      </div>
-    </div>
-  );
-}
+import { AdminPanel, AdminMetricCard, AdminValueRow } from './adminUi.js';
 
 function HealthCard({ component }: { component: any }) {
   const healthy = Boolean(component?.healthy);
@@ -37,29 +19,6 @@ function HealthCard({ component }: { component: any }) {
           {healthy ? 'Healthy' : component.status}
         </span>
       </div>
-    </div>
-  );
-}
-
-function Panel({ title, description, children }: { title: string; description?: string | null; children: React.ReactNode }) {
-  return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-semibold text-slate-950 dark:text-white">{title}</h2>
-          {description ? <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p> : null}
-        </div>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function KeyValue({ label, value }: { label: string; value: any }) {
-  return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-200 py-3 last:border-0 dark:border-slate-800">
-      <span className="text-sm text-slate-500 dark:text-slate-400">{label}</span>
-      <span className="text-sm font-semibold text-slate-950 dark:text-white">{value}</span>
     </div>
   );
 }
@@ -173,14 +132,14 @@ export function AdminCoreOverviewPage() {
         </div>
       ) : null}
 
-      <Panel
+      <AdminPanel
         title={'Tổng hợp điều hành'}
         description={'Các chỉ số chính từ chụp nhanh platform overview.'}
       >
         {summaryCards.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {summaryCards.map((card: any) => (
-              <MetricCard key={card.key} card={card} />
+              <AdminMetricCard key={card.key} card={card} />
             ))}
           </div>
         ) : (
@@ -188,9 +147,9 @@ export function AdminCoreOverviewPage() {
             {'Chưa có dữ liệu tổng hợp.'}
           </p>
         )}
-      </Panel>
+      </AdminPanel>
 
-      <Panel
+      <AdminPanel
         title={'Sức khỏe runtime'}
         description={'Sự thật vận hành từ health snapshot và các thành phần nền tảng.'}
       >
@@ -214,31 +173,31 @@ export function AdminCoreOverviewPage() {
             </p>
           )}
         </div>
-      </Panel>
+      </AdminPanel>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel
+        <AdminPanel
           title={'Phân rã trạng thái'}
           description={'Các thành phần đang suy giảm và độ bao phủ của snapshot.'}
         >
-          <KeyValue label={'Trạng thái tổng thể'} value={overallStatus} />
-          <KeyValue label={'Thành phần khỏe'} value={String(health?.healthy_component_count ?? overview?.sections?.health?.healthy_component_count ?? '—')} />
-          <KeyValue label={'Thành phần suy giảm'} value={String(health?.degraded_component_count ?? overview?.sections?.health?.degraded_component_count ?? degradedComponents.length)} />
-          <KeyValue label={'Danh sách suy giảm'} value={degradedComponents.length > 0 ? degradedComponents.join(', ') : '—'} />
-        </Panel>
+          <AdminValueRow label={'Trạng thái tổng thể'} value={overallStatus} />
+          <AdminValueRow label={'Thành phần khỏe'} value={String(health?.healthy_component_count ?? overview?.sections?.health?.healthy_component_count ?? '—')} />
+          <AdminValueRow label={'Thành phần suy giảm'} value={String(health?.degraded_component_count ?? overview?.sections?.health?.degraded_component_count ?? degradedComponents.length)} />
+          <AdminValueRow label={'Danh sách suy giảm'} value={degradedComponents.length > 0 ? degradedComponents.join(', ') : '—'} />
+        </AdminPanel>
 
-        <Panel
+        <AdminPanel
           title={'Chụp nhanh nguồn dữ liệu'}
           description={'Các nguồn điều phối đang nuôi tổng quan nền tảng.'}
         >
-          <KeyValue label={'Core service'} value={sources?.service?.status || '—'} />
-          <KeyValue label={'Realtime layer'} value={sources?.realtime?.redis_ok ? 'OK' : (sources?.realtime?.channel_layer_type || '—')} />
-          <KeyValue label={'Streams layer'} value={sources?.streams?.redis_ok ? 'OK' : 'Degraded'} />
-          <KeyValue label={'Prefetch layer'} value={sources?.prefetch?.status || '—'} />
-          <KeyValue label={'Market observability'} value={sources?.market_observability?.overall?.http_requests ?? runtimeKpi?.market_observability?.overall?.http_requests ?? '—'} />
-          <KeyValue label={'Celery'} value={sources?.admin_runtime_kpi?.celery?.alive ? 'Alive' : (runtimeKpi?.celery?.alive ? 'Alive' : '—')} />
-          <KeyValue label={'AI runtime'} value={aiRuntime?.rollout_state?.ready ? 'Ready' : (runtimeKpi?.ai_runtime?.rollout_state?.ready ? 'Ready' : '—')} />
-        </Panel>
+          <AdminValueRow label={'Core service'} value={sources?.service?.status || '—'} />
+          <AdminValueRow label={'Realtime layer'} value={sources?.realtime?.redis_ok ? 'OK' : (sources?.realtime?.channel_layer_type || '—')} />
+          <AdminValueRow label={'Streams layer'} value={sources?.streams?.redis_ok ? 'OK' : 'Degraded'} />
+          <AdminValueRow label={'Prefetch layer'} value={sources?.prefetch?.status || '—'} />
+          <AdminValueRow label={'Market observability'} value={sources?.market_observability?.overall?.http_requests ?? runtimeKpi?.market_observability?.overall?.http_requests ?? '—'} />
+          <AdminValueRow label={'Celery'} value={sources?.admin_runtime_kpi?.celery?.alive ? 'Alive' : (runtimeKpi?.celery?.alive ? 'Alive' : '—')} />
+          <AdminValueRow label={'AI runtime'} value={aiRuntime?.rollout_state?.ready ? 'Ready' : (runtimeKpi?.ai_runtime?.rollout_state?.ready ? 'Ready' : '—')} />
+        </AdminPanel>
       </div>
     </div>
   );

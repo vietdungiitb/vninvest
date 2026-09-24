@@ -5,48 +5,7 @@ import { defaultCoreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { useI18n } from '../../context/LangContext.js';
 import { adminToneClasses } from './adminTone.js';
-
-function Panel({ title, description, children }: { title: string; description?: string | null; children: React.ReactNode }) {
-  return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-semibold text-slate-950 dark:text-white">{title}</h2>
-          {description ? <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p> : null}
-        </div>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function MetricCard({ card }: { card: any }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{card.label}</p>
-      <div className="mt-2 flex items-end justify-between gap-3">
-        <div>
-          <p className="text-2xl font-semibold text-slate-950 dark:text-white">{card.value}</p>
-          {card.detail ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{card.detail}</p> : null}
-        </div>
-        {card.status ? (
-          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(card.status)}`}>
-            {card.status}
-          </span>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function ValueRow({ label, value }: { label: string; value: any }) {
-  return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-200 py-3 last:border-0 dark:border-slate-800">
-      <span className="text-sm text-slate-500 dark:text-slate-400">{label}</span>
-      <span className="text-sm font-semibold text-slate-950 dark:text-white">{value}</span>
-    </div>
-  );
-}
+import { AdminPanel, AdminMetricCard, AdminValueRow } from './adminUi.js';
 
 export function AdminCoreTenantsPage() {
   const { t } = useI18n();
@@ -277,14 +236,14 @@ export function AdminCoreTenantsPage() {
         </div>
       </form>
 
-      <Panel
+      <AdminPanel
         title={t('adminCoreTenants.summaryTitle')}
         description={t('adminCoreTenants.summaryDescription')}
       >
         {summaryCards.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {summaryCards.map((card: any) => (
-              <MetricCard key={card.key} card={card} />
+              <AdminMetricCard key={card.key} card={card} />
             ))}
           </div>
         ) : (
@@ -292,10 +251,10 @@ export function AdminCoreTenantsPage() {
             {t('adminCoreTenants.noSummaryData')}
           </p>
         )}
-      </Panel>
+      </AdminPanel>
 
       <div className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
-        <Panel
+        <AdminPanel
           title={t('adminCoreTenants.registryTitle')}
           description={t('adminCoreTenants.registryDescription')}
         >
@@ -381,9 +340,9 @@ export function AdminCoreTenantsPage() {
               {t('adminCoreTenants.nextPage')}
             </button>
           </div>
-        </Panel>
+        </AdminPanel>
 
-        <Panel
+        <AdminPanel
           title={t('adminCoreTenants.detailTitle')}
           description={t('adminCoreTenants.detailDescription')}
         >
@@ -429,25 +388,25 @@ export function AdminCoreTenantsPage() {
                     </button>
                   </div>
                 </div>
-                <ValueRow label="Status" value={selectedTenant.status} />
-                <ValueRow label="Plan" value={selectedTenant.plan_code} />
-                <ValueRow label="Suspension" value={selectedTenant.suspension_state} />
-                <ValueRow label="Usage risk" value={selectedTenant.current_usage_risk} />
-                <ValueRow label="Invoice state" value={selectedTenant.invoice_state} />
+                <AdminValueRow label="Status" value={selectedTenant.status} />
+                <AdminValueRow label="Plan" value={selectedTenant.plan_code} />
+                <AdminValueRow label="Suspension" value={selectedTenant.suspension_state} />
+                <AdminValueRow label="Usage risk" value={selectedTenant.current_usage_risk} />
+                <AdminValueRow label="Invoice state" value={selectedTenant.invoice_state} />
 
                 <div>
                   <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.commercialInfo')}</h3>
-                  <ValueRow label="Billing cycle" value={selectedCommercial?.billing_cycle || '—'} />
-                  <ValueRow label="Next invoice" value={selectedCommercial?.next_invoice_date || '—'} />
+                  <AdminValueRow label="Billing cycle" value={selectedCommercial?.billing_cycle || '—'} />
+                  <AdminValueRow label="Next invoice" value={selectedCommercial?.next_invoice_date || '—'} />
                 </div>
 
                 <div>
                   <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.securityInfo')}</h3>
-                  <ValueRow label="Service accounts" value={String(selectedSecurity?.service_account_count ?? '—')} />
-                  <ValueRow label="Active PATs" value={String(selectedSecurity?.active_pat_count ?? '—')} />
-                  <ValueRow label="Rotations due" value={String(selectedSecurity?.rotations_due_count ?? '—')} />
-                  <ValueRow label="Anomaly state" value={selectedSecurity?.anomaly_state || '—'} />
-                  <ValueRow label="Latest PAT use" value={selectedSecurity?.latest_pat_last_used_at || '—'} />
+                  <AdminValueRow label="Service accounts" value={String(selectedSecurity?.service_account_count ?? '—')} />
+                  <AdminValueRow label="Active PATs" value={String(selectedSecurity?.active_pat_count ?? '—')} />
+                  <AdminValueRow label="Rotations due" value={String(selectedSecurity?.rotations_due_count ?? '—')} />
+                  <AdminValueRow label="Anomaly state" value={selectedSecurity?.anomaly_state || '—'} />
+                  <AdminValueRow label="Latest PAT use" value={selectedSecurity?.latest_pat_last_used_at || '—'} />
                 </div>
 
                 <div>
@@ -479,7 +438,7 @@ export function AdminCoreTenantsPage() {
               {t('adminCoreTenants.noDetail')}
             </div>
           )}
-        </Panel>
+        </AdminPanel>
       </div>
       {switchTarget ? (
         <div className="mt-4 rounded-3xl border border-amber-500/30 bg-white p-5 shadow-sm dark:border-amber-800 dark:bg-slate-900">

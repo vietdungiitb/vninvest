@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { adminToneClasses } from './adminTone.js';
+import { AdminPanel, AdminMetricCard, AdminValueRow } from './adminUi.js';
 
 const DEFAULT_LIMIT = 25;
 const DEFAULT_FILTERS = {
@@ -29,49 +30,6 @@ function formatPercentValue(value: any) {
     return '—';
   }
   return `${numeric.toFixed(1)}%`;
-}
-
-function Panel({ title, description, actions, children }: { title: string; description?: string | null; actions?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900">
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-semibold text-slate-950 dark:text-white">{title}</h2>
-          {description ? <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p> : null}
-        </div>
-        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function MetricCard({ card }: { card: any }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{card.label}</p>
-      <div className="mt-2 flex items-end justify-between gap-3">
-        <div>
-          <p className="text-2xl font-semibold text-slate-950 dark:text-white">{card.value}</p>
-          {card.detail ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{card.detail}</p> : null}
-        </div>
-        {card.status ? (
-          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(card.status)}`}>
-            {card.status}
-          </span>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function ValueRow({ label, value }: { label: string; value: any }) {
-  return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-200 py-3 last:border-0 dark:border-slate-800">
-      <span className="text-sm text-slate-500 dark:text-slate-400">{label}</span>
-      <span className="max-w-[60%] text-right text-sm font-semibold text-slate-950 dark:text-white">{value}</span>
-    </div>
-  );
 }
 
 function DetailBlock({ title, children }: { title: string; children: React.ReactNode }) {
@@ -319,14 +277,14 @@ export function AdminCoreJobsPage() {
         </div>
       </form>
 
-      <Panel
+      <AdminPanel
         title="Tổng hợp jobs"
         description="Các chụp nhanh current-code operator jobs đang hiển thị."
       >
         {summaryCards.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {summaryCards.map((card: any) => (
-              <MetricCard key={card.key} card={card} />
+              <AdminMetricCard key={card.key} card={card} />
             ))}
           </div>
         ) : (
@@ -334,10 +292,10 @@ export function AdminCoreJobsPage() {
             {loading ? 'Đang tải summary…' : 'Chưa có dữ liệu tổng hợp jobs.'}
           </p>
         )}
-      </Panel>
+      </AdminPanel>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <Panel
+        <AdminPanel
           title="Bảng jobs"
           description="Các dòng SignalServiceRun và CrawlRun được sắp theo snapshot hiện tại."
           actions={(
@@ -419,9 +377,9 @@ export function AdminCoreJobsPage() {
               {loading ? 'Đang tải bảng jobs…' : 'Không có job phù hợp bộ lọc.'}
             </div>
           )}
-        </Panel>
+        </AdminPanel>
 
-        <Panel
+        <AdminPanel
           title="Chi tiết job"
           description="Bản ghi đã chọn, read-only, không có write action ở slice CA-07 này."
         >
@@ -443,36 +401,36 @@ export function AdminCoreJobsPage() {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <ValueRow label="Mã yêu cầu" value={selectedJob.request_id} />
-                <ValueRow label="Nguồn model" value={selectedJob.source_model} />
-                <ValueRow label="Tóm tắt" value={selectedJob.summary} />
-                <ValueRow label="Trạng thái" value={selectedJob.status_display || selectedJob.status || '—'} />
-                <ValueRow label="Tạo lúc" value={selectedJob.created_at || '—'} />
-                <ValueRow label="Cập nhật lúc" value={selectedJob.updated_at || '—'} />
-                <ValueRow label="Bắt đầu" value={selectedJob.started_at || '—'} />
-                <ValueRow label="Kết thúc" value={selectedJob.finished_at || '—'} />
+                <AdminValueRow label="Mã yêu cầu" value={selectedJob.request_id} />
+                <AdminValueRow label="Nguồn model" value={selectedJob.source_model} />
+                <AdminValueRow label="Tóm tắt" value={selectedJob.summary} />
+                <AdminValueRow label="Trạng thái" value={selectedJob.status_display || selectedJob.status || '—'} />
+                <AdminValueRow label="Tạo lúc" value={selectedJob.created_at || '—'} />
+                <AdminValueRow label="Cập nhật lúc" value={selectedJob.updated_at || '—'} />
+                <AdminValueRow label="Bắt đầu" value={selectedJob.started_at || '—'} />
+                <AdminValueRow label="Kết thúc" value={selectedJob.finished_at || '—'} />
               </div>
 
               {selectedJob.kind === 'signal_run' ? (
                 <DetailBlock title="Chi tiết signal">
-                  <ValueRow label="Miền dịch vụ" value={selectedJob.service_domain_display || selectedJob.service_domain || '—'} />
-                  <ValueRow label="Loại chạy" value={selectedJob.run_type_display || selectedJob.run_type || '—'} />
-                  <ValueRow label="Task ID" value={selectedJob.task_id || '—'} />
-                  <ValueRow label="Người tạo" value={selectedJob.created_by_username || '—'} />
-                  <ValueRow label="Tiến độ" value={formatPercentValue(selectedJob.progress_pct)} />
-                  <ValueRow label="Đã xử lý" value={String(selectedJob.processed_items ?? '—')} />
-                  <ValueRow label="Đã lưu" value={String(selectedJob.stored_items ?? '—')} />
-                  <ValueRow label="Đã lỗi" value={String(selectedJob.failed_items ?? '—')} />
+                  <AdminValueRow label="Miền dịch vụ" value={selectedJob.service_domain_display || selectedJob.service_domain || '—'} />
+                  <AdminValueRow label="Loại chạy" value={selectedJob.run_type_display || selectedJob.run_type || '—'} />
+                  <AdminValueRow label="Task ID" value={selectedJob.task_id || '—'} />
+                  <AdminValueRow label="Người tạo" value={selectedJob.created_by_username || '—'} />
+                  <AdminValueRow label="Tiến độ" value={formatPercentValue(selectedJob.progress_pct)} />
+                  <AdminValueRow label="Đã xử lý" value={String(selectedJob.processed_items ?? '—')} />
+                  <AdminValueRow label="Đã lưu" value={String(selectedJob.stored_items ?? '—')} />
+                  <AdminValueRow label="Đã lỗi" value={String(selectedJob.failed_items ?? '—')} />
                 </DetailBlock>
               ) : null}
 
               {selectedJob.kind === 'crawl_run' ? (
                 <DetailBlock title="Chi tiết crawl">
-                  <ValueRow label="Mã dịch vụ" value={selectedJob.service_code || '—'} />
-                  <ValueRow label="Mô tả job" value={selectedJob.job_description || '—'} />
-                  <ValueRow label="Loại kích hoạt" value={selectedJob.trigger_type_display || selectedJob.trigger_type || '—'} />
-                  <ValueRow label="Job ID" value={String(selectedJob.job_id ?? '—')} />
-                  <ValueRow label="Task ID" value={selectedJob.task_id || '—'} />
+                  <AdminValueRow label="Mã dịch vụ" value={selectedJob.service_code || '—'} />
+                  <AdminValueRow label="Mô tả job" value={selectedJob.job_description || '—'} />
+                  <AdminValueRow label="Loại kích hoạt" value={selectedJob.trigger_type_display || selectedJob.trigger_type || '—'} />
+                  <AdminValueRow label="Job ID" value={String(selectedJob.job_id ?? '—')} />
+                  <AdminValueRow label="Task ID" value={selectedJob.task_id || '—'} />
                 </DetailBlock>
               ) : null}
 
@@ -492,7 +450,7 @@ export function AdminCoreJobsPage() {
               {loading ? 'Đang tải chi tiết job…' : 'Chọn một job trong bảng bên trái để mở chi tiết.'}
             </div>
           )}
-        </Panel>
+        </AdminPanel>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { defaultCoreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { downloadSocCsv } from './socCsv.js';
 import { useI18n } from '../../context/LangContext.js';
 import { usePortfolio } from '../../context/PortfolioContext.js';
+import { AdminPageHeader, AdminEmptyState } from './adminUi.js';
 
 const ACTIONS = ['create', 'update', 'delete', 'access', 'auth', 'revoke'];
 
@@ -63,11 +64,11 @@ export function AdminAuditPage() {
   const openRow = rows.find((r: any) => r.event_id === openId) || null;
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8">
-      <div>
-        <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{t('adminAudit.eyebrow')}</p>
-        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">{t('adminAudit.title')}</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">{t('adminAudit.description')}</p>
-      </div>
+      <AdminPageHeader
+        eyebrow={t('adminAudit.eyebrow')}
+        title={t('adminAudit.title')}
+        description={t('adminAudit.description')}
+      />
       {error ? <p className="text-sm text-rose-600">{String(error?.message || error)}</p> : null}
       <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -127,7 +128,7 @@ export function AdminAuditPage() {
             </tbody>
           </table>
         ) : (
-          <p className="text-sm text-slate-500">{loading ? t('adminAudit.loading') : t('adminAudit.empty')}</p>
+          <AdminEmptyState>{loading ? t('adminAudit.loading') : t('adminAudit.empty')}</AdminEmptyState>
         )}
         {openRow ? (
           <pre className="mt-3 overflow-x-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-200">{JSON.stringify(openRow, null, 2)}</pre>

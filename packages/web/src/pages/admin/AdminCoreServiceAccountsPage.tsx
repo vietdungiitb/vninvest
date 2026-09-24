@@ -4,49 +4,7 @@ import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { useI18n } from '../../context/LangContext.js';
 import { adminToneClasses } from './adminTone.js';
-
-function Panel({ title, description, actions, children }: { title: string; description?: string | null; actions?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900">
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-semibold text-slate-950 dark:text-white">{title}</h2>
-          {description ? <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p> : null}
-        </div>
-        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function MetricCard({ card }: { card: any }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{card.label}</p>
-      <div className="mt-2 flex items-end justify-between gap-3">
-        <div>
-          <p className="text-2xl font-semibold text-slate-950 dark:text-white">{card.value}</p>
-          {card.detail ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{card.detail}</p> : null}
-        </div>
-        {card.status ? (
-          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(card.status)}`}>
-            {card.status}
-          </span>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function ValueRow({ label, value }: { label: string; value: any }) {
-  return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-200 py-3 last:border-0 dark:border-slate-800">
-      <span className="text-sm text-slate-500 dark:text-slate-400">{label}</span>
-      <span className="text-sm font-semibold text-slate-950 dark:text-white">{value}</span>
-    </div>
-  );
-}
+import { AdminPanel, AdminMetricCard, AdminValueRow } from './adminUi.js';
 
 export function AdminCoreServiceAccountsPage() {
   const { t } = useI18n();
@@ -217,7 +175,7 @@ export function AdminCoreServiceAccountsPage() {
         </div>
       ) : null}
 
-      <Panel
+      <AdminPanel
         title={t('adminCoreTenants.saTenantInfo')}
         description={t('adminCoreTenants.saTenantDescription')}
         actions={(
@@ -228,17 +186,17 @@ export function AdminCoreServiceAccountsPage() {
       >
         {tenantSummary ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <MetricCard card={{ label: 'Tenant', value: tenantSummary.display_name || tenantSummary.tenant_code || tenantId, detail: tenantSummary.tenant_code || tenantId }} />
-            <MetricCard card={{ label: 'Plan', value: commercialSummary?.plan_code || tenantSummary.plan_code || '—', detail: commercialSummary?.billing_cycle || '—' }} />
-            <MetricCard card={{ label: 'Status', value: tenantSummary.status || '—', status: tenantSummary.status }} />
-            <MetricCard card={{ label: 'Security', value: securitySummary?.anomaly_state || '—', status: securitySummary?.anomaly_state }} />
+            <AdminMetricCard card={{ label: 'Tenant', value: tenantSummary.display_name || tenantSummary.tenant_code || tenantId, detail: tenantSummary.tenant_code || tenantId }} />
+            <AdminMetricCard card={{ label: 'Plan', value: commercialSummary?.plan_code || tenantSummary.plan_code || '—', detail: commercialSummary?.billing_cycle || '—' }} />
+            <AdminMetricCard card={{ label: 'Status', value: tenantSummary.status || '—', status: tenantSummary.status }} />
+            <AdminMetricCard card={{ label: 'Security', value: securitySummary?.anomaly_state || '—', status: securitySummary?.anomaly_state }} />
           </div>
         ) : (
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {loading ? t('adminCoreTenants.loading') : t('adminCoreTenants.saTenantInfo')}
           </p>
         )}
-      </Panel>
+      </AdminPanel>
 
       <form
         onSubmit={submitFilters}
@@ -327,14 +285,14 @@ export function AdminCoreServiceAccountsPage() {
         </div>
       </form>
 
-      <Panel
+      <AdminPanel
         title={t('adminCoreTenants.saSummaryTitle')}
         description={t('adminCoreTenants.saSummaryDescription')}
       >
         {summaryCards.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {summaryCards.map((card: any) => (
-              <MetricCard key={card.key} card={card} />
+              <AdminMetricCard key={card.key} card={card} />
             ))}
           </div>
         ) : (
@@ -342,10 +300,10 @@ export function AdminCoreServiceAccountsPage() {
             {loading ? t('adminCoreTenants.loading') : t('adminCoreTenants.noSummaryData')}
           </p>
         )}
-      </Panel>
+      </AdminPanel>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <Panel
+        <AdminPanel
           title={t('adminCoreTenants.saRegistryTitle')}
           description={t('adminCoreTenants.saRegistryDescription')}
           actions={loading ? <span className="text-xs text-slate-500 dark:text-slate-400">{t('adminCoreTenants.loading')}</span> : null}
@@ -415,9 +373,9 @@ export function AdminCoreServiceAccountsPage() {
               {loading ? t('adminCoreTenants.loading') : t('adminCoreTenants.saNoItems')}
             </div>
           )}
-        </Panel>
+        </AdminPanel>
 
-        <Panel
+        <AdminPanel
           title={t('adminCoreTenants.saDetailTitle')}
           description={t('adminCoreTenants.saDetailDescription')}
           actions={(
@@ -460,11 +418,11 @@ export function AdminCoreServiceAccountsPage() {
 
               <div>
                 <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.saProperties')}</h3>
-                <ValueRow label={t('adminCoreTenants.saPolicyBundle')} value={Array.isArray(selectedServiceAccount.policy_ids) && selectedServiceAccount.policy_ids.length > 0 ? selectedServiceAccount.policy_ids.join(', ') : '—'} />
-                <ValueRow label={t('adminCoreTenants.saLatestPatUsed')} value={selectedServiceAccount.latest_pat_last_used_at || '—'} />
-                <ValueRow label={t('adminCoreTenants.saLastOperatorAction')} value={selectedServiceAccount.last_operator_action_at || '—'} />
-                <ValueRow label={t('adminCoreTenants.saCreatedAt')} value={selectedServiceAccount.created_at || '—'} />
-                <ValueRow label={t('adminCoreTenants.saUpdatedAt')} value={selectedServiceAccount.updated_at || '—'} />
+                <AdminValueRow label={t('adminCoreTenants.saPolicyBundle')} value={Array.isArray(selectedServiceAccount.policy_ids) && selectedServiceAccount.policy_ids.length > 0 ? selectedServiceAccount.policy_ids.join(', ') : '—'} />
+                <AdminValueRow label={t('adminCoreTenants.saLatestPatUsed')} value={selectedServiceAccount.latest_pat_last_used_at || '—'} />
+                <AdminValueRow label={t('adminCoreTenants.saLastOperatorAction')} value={selectedServiceAccount.last_operator_action_at || '—'} />
+                <AdminValueRow label={t('adminCoreTenants.saCreatedAt')} value={selectedServiceAccount.created_at || '—'} />
+                <AdminValueRow label={t('adminCoreTenants.saUpdatedAt')} value={selectedServiceAccount.updated_at || '—'} />
               </div>
 
               <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
@@ -476,7 +434,7 @@ export function AdminCoreServiceAccountsPage() {
               {loading ? t('adminCoreTenants.loading') : t('adminCoreTenants.saNoDetail')}
             </div>
           )}
-        </Panel>
+        </AdminPanel>
       </div>
     </div>
   );
