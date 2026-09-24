@@ -195,7 +195,17 @@ def detect_and_store_global_whale_alerts(
             dark_windows = detect_dark_flow_windows(df)
             if dark_windows:
                 max_intensity = max(w['intensity'] for w in dark_windows)
-                last_price    = float(df['price'].iloc[-1]) if not df.empty else 0.0
+                # F1-darkflow-value: price/volume PHẢI cùng đơn vị với 2 nhánh
+                # whale ở trên (giá VWAP + tổng khối lượng cổ phiếu) để
+                # materializer tính matched_value = price × volume ra đúng tổng
+                # giá trị mua của windows. Trước đây volume = tổng buy_count
+                # (số đếm tick) khiến alert chỉ hiển thị vài triệu đồng.
+                total_buy_value = float(sum(w['buy_value'] for w in dark_windows))
+                total_buy_volume = int(sum(w.get('buy_volume', 0) for w in dark_windows))
+                if total_buy_volume > 0:
+                    dark_vwap = total_buy_value / total_buy_volume
+                else:
+                    dark_vwap = float(df['price'].iloc[-1]) if not df.empty else 0.0
                 _upsert_order_flow_event(
                     source_ref   = f'tick_session:{sym}:{session_date}:dark_flow',
                     symbol       = sym,
@@ -205,8 +215,8 @@ def detect_and_store_global_whale_alerts(
                     strength     = max_intensity,
                     whale_intensity = max_intensity,
                     cvd          = final_cvd,
-                    price        = last_price,
-                    volume       = int(sum(w['buy_count'] for w in dark_windows)),
+                    price        = dark_vwap,
+                    volume       = total_buy_volume,
                     triggered_at = triggered_at,
                     metadata     = {
                         'source':           'pandas_dark_flow_window',

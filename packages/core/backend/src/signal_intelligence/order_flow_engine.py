@@ -301,11 +301,17 @@ def detect_dark_flow_windows(
         if price_cv > price_cv_max:
             continue
 
-        buy_value = float(group.loc[group['side'] == 'BUY', 'value'].sum())
+        buy_ticks = group.loc[group['side'] == 'BUY']
+        buy_value = float(buy_ticks['value'].sum())
+        # F1-darkflow-value: tổng khối lượng MUA (cổ phiếu) của window — dùng để
+        # tính VWAP và matched_value ở tầng tasks/materializers. Đơn vị PHẢI là
+        # cổ phiếu (không phải số đếm tick) để nhất quán với volume_at_signal.
+        buy_volume = int(buy_ticks['volume'].sum())
         dark_flow_signals.append({
             'window_ts':   window_ts.isoformat() if hasattr(window_ts, 'isoformat') else str(window_ts),
             'total_value': round(total_value, 2),
             'buy_value':   round(buy_value, 2),
+            'buy_volume':  buy_volume,
             'buy_ratio':   round(buy_ratio, 4),
             'price_cv':    round(price_cv, 6),
             'tick_count':  total_count,
