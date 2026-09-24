@@ -153,7 +153,7 @@ export function AdminCoreTenantsPage() {
       <section className="overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-6 py-6 text-white shadow-2xl shadow-slate-950/30">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Central Operator Admin</p>
+            <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{t('adminCoreTenants.heroEyebrow')}</p>
             <div>
               <h1 className="text-3xl font-semibold tracking-tight">
                 {t('adminCoreTenants.title')}
@@ -388,25 +388,25 @@ export function AdminCoreTenantsPage() {
                     </button>
                   </div>
                 </div>
-                <AdminValueRow label="Status" value={selectedTenant.status} />
-                <AdminValueRow label="Plan" value={selectedTenant.plan_code} />
-                <AdminValueRow label="Suspension" value={selectedTenant.suspension_state} />
-                <AdminValueRow label="Usage risk" value={selectedTenant.current_usage_risk} />
-                <AdminValueRow label="Invoice state" value={selectedTenant.invoice_state} />
+                <AdminValueRow label={t('adminCoreTenants.detailStatus')} value={selectedTenant.status} />
+                <AdminValueRow label={t('adminCoreTenants.detailPlan')} value={selectedTenant.plan_code} />
+                <AdminValueRow label={t('adminCoreTenants.detailSuspension')} value={selectedTenant.suspension_state} />
+                <AdminValueRow label={t('adminCoreTenants.detailUsageRisk')} value={selectedTenant.current_usage_risk} />
+                <AdminValueRow label={t('adminCoreTenants.detailInvoiceState')} value={selectedTenant.invoice_state} />
 
                 <div>
                   <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.commercialInfo')}</h3>
-                  <AdminValueRow label="Billing cycle" value={selectedCommercial?.billing_cycle || '—'} />
-                  <AdminValueRow label="Next invoice" value={selectedCommercial?.next_invoice_date || '—'} />
+                  <AdminValueRow label={t('adminCoreTenants.detailBillingCycle')} value={selectedCommercial?.billing_cycle || '—'} />
+                  <AdminValueRow label={t('adminCoreTenants.detailNextInvoice')} value={selectedCommercial?.next_invoice_date || '—'} />
                 </div>
 
                 <div>
                   <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.securityInfo')}</h3>
-                  <AdminValueRow label="Service accounts" value={String(selectedSecurity?.service_account_count ?? '—')} />
-                  <AdminValueRow label="Active PATs" value={String(selectedSecurity?.active_pat_count ?? '—')} />
-                  <AdminValueRow label="Rotations due" value={String(selectedSecurity?.rotations_due_count ?? '—')} />
-                  <AdminValueRow label="Anomaly state" value={selectedSecurity?.anomaly_state || '—'} />
-                  <AdminValueRow label="Latest PAT use" value={selectedSecurity?.latest_pat_last_used_at || '—'} />
+                  <AdminValueRow label={t('adminCoreTenants.detailServiceAccounts')} value={String(selectedSecurity?.service_account_count ?? '—')} />
+                  <AdminValueRow label={t('adminCoreTenants.detailActivePats')} value={String(selectedSecurity?.active_pat_count ?? '—')} />
+                  <AdminValueRow label={t('adminCoreTenants.detailRotationsDue')} value={String(selectedSecurity?.rotations_due_count ?? '—')} />
+                  <AdminValueRow label={t('adminCoreTenants.detailAnomalyState')} value={selectedSecurity?.anomaly_state || '—'} />
+                  <AdminValueRow label={t('adminCoreTenants.detailLatestPatUse')} value={selectedSecurity?.latest_pat_last_used_at || '—'} />
                 </div>
 
                 <div>

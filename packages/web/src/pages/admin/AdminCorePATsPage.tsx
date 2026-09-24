@@ -77,8 +77,8 @@ export function AdminCorePATsPage() {
       } catch (nextError: any) {
         if (!cancelled) {
           setError(nextError?.response?.status === 404
-            ? 'Không tìm thấy tenant operator cần xem PAT.'
-            : 'Không tải được sổ đăng ký PAT của tenant operator.');
+            ? t('adminCoreTenants.patErrorNotFound')
+            : t('adminCoreTenants.patErrorGeneric'));
         }
       } finally {
         if (!cancelled) {
@@ -92,7 +92,7 @@ export function AdminCorePATsPage() {
     return () => {
       cancelled = true;
     };
-  }, [filters, refreshTick, tenantId, tenantIdStr]);
+  }, [filters, refreshTick, tenantId, tenantIdStr, t]);
 
   const selectedToken = tokens.find((item: any) => item.id === selectedTokenId) || null;
   const serviceAccountMap = new Map(serviceAccounts.map((item: any) => [item.id, item]));
@@ -135,7 +135,7 @@ export function AdminCorePATsPage() {
       <section className="overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-6 py-6 text-white shadow-2xl shadow-slate-950/30">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Central Operator Admin</p>
+            <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{t('adminCoreTenants.heroEyebrow')}</p>
             <div>
               <h1 className="text-3xl font-semibold tracking-tight">
                 {t('adminCoreTenants.patTitle')}
@@ -193,20 +193,20 @@ export function AdminCorePATsPage() {
         description={t('adminCoreTenants.patTenantDescription')}
         actions={(
           <span className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300">
-            {loading ? 'Đang đồng bộ…' : headerTenantLabel}
+            {loading ? t('adminCoreTenants.patSyncing') : headerTenantLabel}
           </span>
         )}
       >
         {tenantSummary ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <AdminMetricCard card={{ label: 'Tenant', value: tenantSummary.display_name || tenantSummary.tenant_code || tenantId, detail: tenantSummary.tenant_code || tenantId }} />
-            <AdminMetricCard card={{ label: 'Plan', value: commercialSummary?.plan_code || tenantSummary.plan_code || '—', detail: commercialSummary?.billing_cycle || '—' }} />
-            <AdminMetricCard card={{ label: 'Trạng thái', value: tenantSummary.status || '—', status: tenantSummary.status }} />
-            <AdminMetricCard card={{ label: 'Bảo mật', value: securitySummary?.anomaly_state || '—', status: securitySummary?.anomaly_state }} />
+            <AdminMetricCard card={{ label: t('adminCoreTenants.patCardTenant'), value: tenantSummary.display_name || tenantSummary.tenant_code || tenantId, detail: tenantSummary.tenant_code || tenantId }} />
+            <AdminMetricCard card={{ label: t('adminCoreTenants.patCardPlan'), value: commercialSummary?.plan_code || tenantSummary.plan_code || '—', detail: commercialSummary?.billing_cycle || '—' }} />
+            <AdminMetricCard card={{ label: t('adminCoreTenants.patCardStatus'), value: tenantSummary.status || '—', status: tenantSummary.status }} />
+            <AdminMetricCard card={{ label: t('adminCoreTenants.patCardSecurity'), value: securitySummary?.anomaly_state || '—', status: securitySummary?.anomaly_state }} />
           </div>
         ) : (
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {loading ? 'Đang tải thông tin tenant…' : 'Chưa có thông tin tenant.'}
+            {loading ? t('adminCoreTenants.patLoadingTenantInfo') : t('adminCoreTenants.patNoTenantInfo')}
           </p>
         )}
       </AdminPanel>
@@ -369,7 +369,7 @@ export function AdminCorePATsPage() {
                             <p className="font-mono text-sm font-semibold text-slate-950 dark:text-white">{token.token_prefix}</p>
                             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{token.id}</p>
                             <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                              {Array.isArray(token.scope_codes) && token.scope_codes.length > 0 ? token.scope_codes.join(', ') : 'Không có scope'}
+                              {Array.isArray(token.scope_codes) && token.scope_codes.length > 0 ? token.scope_codes.join(', ') : t('adminCoreTenants.patNoScope')}
                             </p>
                           </div>
                         </td>
@@ -468,9 +468,9 @@ export function AdminCorePATsPage() {
                 <AdminValueRow label={t('adminCoreTenants.patLastIp')} value={selectedToken.last_ip || '—'} />
                 <AdminValueRow label={t('adminCoreTenants.patLastIpCountry')} value={selectedToken.last_used_ip_country || '—'} />
                 <AdminValueRow label={t('adminCoreTenants.patLastAuditRequest')} value={selectedToken.last_audit_request_id || '—'} />
-                <AdminValueRow label="Revoked at" value={selectedToken.revoked_at || '—'} />
-                <AdminValueRow label="Created at" value={selectedToken.created_at || '—'} />
-                <AdminValueRow label="Updated at" value={selectedToken.updated_at || '—'} />
+                <AdminValueRow label={t('adminCoreTenants.patRevokedAt')} value={selectedToken.revoked_at || '—'} />
+                <AdminValueRow label={t('adminCoreTenants.patCreatedAt')} value={selectedToken.created_at || '—'} />
+                <AdminValueRow label={t('adminCoreTenants.patUpdatedAt')} value={selectedToken.updated_at || '—'} />
               </div>
 
               <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">

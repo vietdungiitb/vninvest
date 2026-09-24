@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
+import { useI18n } from '../../context/LangContext.js';
 import { adminToneClasses } from './adminTone.js';
 import { AdminPanel, AdminMetricCard, AdminValueRow } from './adminUi.js';
 
@@ -16,19 +17,19 @@ const DEFAULT_FILTERS = {
   serviceCode: '',
 };
 
-function kindLabel(kind: any) {
+function kindLabel(kind: any, t: (key: string) => string) {
   const normalized = String(kind || '').toLowerCase();
   if (normalized === 'system_ai_settings') {
-    return 'Cấu hình AI';
+    return t('adminCoreAuditTrace.kindAiSettings');
   }
   if (normalized === 'whale_config') {
-    return 'Cấu hình Whale';
+    return t('adminCoreAuditTrace.kindWhaleConfig');
   }
   if (normalized === 'advisory') {
-    return 'Advisory';
+    return t('adminCoreAuditTrace.kindAdvisory');
   }
   if (normalized === 'crawl_audit') {
-    return 'Crawl';
+    return t('adminCoreAuditTrace.kindCrawlAudit');
   }
   return kind || '—';
 }
@@ -55,6 +56,7 @@ function DetailBlock({ title, children }: { title: string; children: React.React
 }
 
 export function AdminCoreAuditTracePage() {
+  const { t, localeTag } = useI18n();
   const [snapshot, setSnapshot] = useState<any>(null);
   const [detail, setDetail] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -116,12 +118,12 @@ export function AdminCoreAuditTracePage() {
       setDetail(null);
     } catch (nextError: any) {
       setError(nextError?.response?.status === 403
-        ? 'Không đủ quyền để xem audit trace operator.'
-        : 'Không tải được audit trace operator.');
+        ? t('adminCoreAuditTrace.errorNoPermission')
+        : t('adminCoreAuditTrace.errorGeneric'));
     } finally {
       setLoading(false);
     }
-  }, [cursor.endingBefore, cursor.startingAfter, filters.action, filters.actor, filters.kind, filters.reason, filters.search, filters.serviceCode, filters.symbol]);
+  }, [cursor.endingBefore, cursor.startingAfter, filters.action, filters.actor, filters.kind, filters.reason, filters.search, filters.serviceCode, filters.symbol, t]);
 
   useEffect(() => {
     loadAuditRequests();
@@ -147,8 +149,8 @@ export function AdminCoreAuditTracePage() {
       } catch (nextError: any) {
         if (!cancelled) {
           setDetailError(nextError?.response?.status === 404
-            ? 'Không tìm thấy audit trace đã chọn.'
-            : 'Không tải được chi tiết audit trace.');
+            ? t('adminCoreAuditTrace.errorDetailNotFound')
+            : t('adminCoreAuditTrace.errorDetailGeneric'));
           setDetail(null);
         }
       } finally {
@@ -163,7 +165,7 @@ export function AdminCoreAuditTracePage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedRequestId, refreshTick]);
+  }, [selectedRequestId, refreshTick, t]);
 
   const summaryCards = Array.isArray(snapshot?.summary_cards) ? snapshot.summary_cards : [];
   const rows = Array.isArray(snapshot?.data) ? snapshot.data : [];
@@ -173,7 +175,7 @@ export function AdminCoreAuditTracePage() {
   const nextCursor = snapshot?.next_cursor || '';
   const prevCursor = snapshot?.prev_cursor || '';
   const lastFetchedLabel = lastFetched
-    ? lastFetched.toLocaleString()
+    ? lastFetched.toLocaleString(localeTag)
     : null;
 
   const submitFilters = (event: React.FormEvent) => {
@@ -210,7 +212,7 @@ export function AdminCoreAuditTracePage() {
   const { userIdentity } = usePortfolio() as any;
   const isStaffGate = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
   if (!isStaffGate) {
-    return (<p>Không đủ quyền truy cập.</p>);
+    return (<p>{t('common.noPermission')}</p>);
   }
 
   return (
@@ -218,13 +220,13 @@ export function AdminCoreAuditTracePage() {
       <section className="overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-6 py-6 text-white shadow-2xl shadow-slate-950/30">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Central Operator Admin</p>
+            <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{t('adminCoreTenants.heroEyebrow')}</p>
             <div>
               <h1 className="text-3xl font-semibold tracking-tight">
-                Truy vết audit
+                {t('adminCoreAuditTrace.heroTitle')}
               </h1>
               <p className="mt-2 max-w-3xl text-sm text-slate-300">
-                Xem các audit log current-code operator theo chụp nhanh hiện tại, có panel chi tiết và source record cho từng bản ghi.
+                {t('adminCoreAuditTrace.heroDescription')}
               </p>
             </div>
           </div>
@@ -233,13 +235,13 @@ export function AdminCoreAuditTracePage() {
               to="/admin/overview"
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
-              Quay lại tổng quan
+              {t('adminCoreAuditTrace.backToOverview')}
             </Link>
             <Link
               to="/admin/jobs"
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
-              Mở jobs
+              {t('adminCoreAuditTrace.openJobs')}
             </Link>
             <button
               type="button"
@@ -247,7 +249,7 @@ export function AdminCoreAuditTracePage() {
               className="rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-950 transition-colors hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={loading || detailLoading}
             >
-              {loading || detailLoading ? 'Đang tải…' : 'Làm mới'}
+              {loading || detailLoading ? t('adminCoreAuditTrace.loading') : t('adminCoreAuditTrace.refresh')}
             </button>
           </div>
         </div>
@@ -255,7 +257,7 @@ export function AdminCoreAuditTracePage() {
 
       {lastFetchedLabel ? (
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          {`Đã chụp lúc ${lastFetchedLabel}`}
+          {t('adminCoreTenants.snapshotAt', { time: lastFetchedLabel })}
         </p>
       ) : null}
 
@@ -270,7 +272,7 @@ export function AdminCoreAuditTracePage() {
         className="grid gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900 md:grid-cols-3"
       >
         <label className="space-y-2 text-sm text-slate-600 dark:text-slate-300 md:col-span-2">
-          <span>Tìm audit trace</span>
+          <span>{t('adminCoreAuditTrace.filterSearch')}</span>
           <input
             value={filtersDraft.search}
             onChange={(event: React.ChangeEvent<HTMLInputElement>) => setFiltersDraft((current) => ({ ...current, search: event.target.value }))}
@@ -279,61 +281,61 @@ export function AdminCoreAuditTracePage() {
           />
         </label>
         <label className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-          <span>Loại audit</span>
+          <span>{t('adminCoreAuditTrace.filterKind')}</span>
           <select
             value={filtersDraft.kind}
             onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setFiltersDraft((current) => ({ ...current, kind: event.target.value }))}
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
           >
-            <option value="">Tất cả</option>
-            <option value="system_ai_settings">Cấu hình AI</option>
-            <option value="whale_config">Cấu hình Whale</option>
-            <option value="advisory">Advisory</option>
-            <option value="crawl_audit">Crawl</option>
+            <option value="">{t('adminCoreAuditTrace.filterAll')}</option>
+            <option value="system_ai_settings">{t('adminCoreAuditTrace.kindAiSettings')}</option>
+            <option value="whale_config">{t('adminCoreAuditTrace.kindWhaleConfig')}</option>
+            <option value="advisory">{t('adminCoreAuditTrace.kindAdvisory')}</option>
+            <option value="crawl_audit">{t('adminCoreAuditTrace.kindCrawlAudit')}</option>
           </select>
         </label>
         <label className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-          <span>Hành động</span>
+          <span>{t('adminCoreAuditTrace.filterAction')}</span>
           <input
             value={filtersDraft.action}
             onChange={(event: React.ChangeEvent<HTMLInputElement>) => setFiltersDraft((current) => ({ ...current, action: event.target.value }))}
-            placeholder="update_settings, apply, run_started"
+            placeholder={t('adminCoreAuditTrace.filterActionPh')}
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
           />
         </label>
         <label className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-          <span>Người thực hiện</span>
+          <span>{t('adminCoreAuditTrace.filterActor')}</span>
           <input
             value={filtersDraft.actor}
             onChange={(event: React.ChangeEvent<HTMLInputElement>) => setFiltersDraft((current) => ({ ...current, actor: event.target.value }))}
-            placeholder="operator-admin"
+            placeholder={t('adminCoreAuditTrace.filterActorPh')}
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
           />
         </label>
         <label className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-          <span>Lý do</span>
+          <span>{t('adminCoreAuditTrace.filterReason')}</span>
           <input
             value={filtersDraft.reason}
             onChange={(event: React.ChangeEvent<HTMLInputElement>) => setFiltersDraft((current) => ({ ...current, reason: event.target.value }))}
-            placeholder="Cập nhật cấu hình"
+            placeholder={t('adminCoreAuditTrace.filterReasonPh')}
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
           />
         </label>
         <label className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-          <span>Mã cổ phiếu</span>
+          <span>{t('adminCoreAuditTrace.filterSymbol')}</span>
           <input
             value={filtersDraft.symbol}
             onChange={(event: React.ChangeEvent<HTMLInputElement>) => setFiltersDraft((current) => ({ ...current, symbol: event.target.value }))}
-            placeholder="VNM"
+            placeholder={t('adminCoreAuditTrace.filterSymbolPh')}
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
           />
         </label>
         <label className="space-y-2 text-sm text-slate-600 dark:text-slate-300 md:col-span-2">
-          <span>Mã dịch vụ crawl</span>
+          <span>{t('adminCoreAuditTrace.filterServiceCode')}</span>
           <input
             value={filtersDraft.serviceCode}
             onChange={(event: React.ChangeEvent<HTMLInputElement>) => setFiltersDraft((current) => ({ ...current, serviceCode: event.target.value }))}
-            placeholder="crawl_alpha"
+            placeholder={t('adminCoreAuditTrace.filterServiceCodePh')}
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
           />
         </label>
@@ -342,21 +344,21 @@ export function AdminCoreAuditTracePage() {
             type="submit"
             className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
           >
-            Áp dụng bộ lọc
+            {t('adminCoreAuditTrace.applyFilters')}
           </button>
           <button
             type="button"
             onClick={clearFilters}
             className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
           >
-            Xóa bộ lọc
+            {t('adminCoreAuditTrace.clearFilters')}
           </button>
         </div>
       </form>
 
       <AdminPanel
-        title="Tổng hợp audit trace"
-        description="Các audit log current-code operator đang hiển thị theo chụp nhanh hiện tại."
+        title={t('adminCoreAuditTrace.summaryTitle')}
+        description={t('adminCoreAuditTrace.summaryDescription')}
       >
         {summaryCards.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -366,15 +368,15 @@ export function AdminCoreAuditTracePage() {
           </div>
         ) : (
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {loading ? 'Đang tải summary…' : 'Chưa có dữ liệu tổng hợp audit trace.'}
+            {loading ? t('adminCoreAuditTrace.summaryLoading') : t('adminCoreAuditTrace.summaryEmpty')}
           </p>
         )}
       </AdminPanel>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <AdminPanel
-          title="Bảng audit trace"
-          description="Các bản ghi audit được xếp theo snapshot hiện tại và có detail fetch riêng."
+          title={t('adminCoreAuditTrace.tableTitle')}
+          description={t('adminCoreAuditTrace.tableDescription')}
           actions={(
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -383,7 +385,7 @@ export function AdminCoreAuditTracePage() {
                 disabled={!prevCursor || loading}
                 className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
-                Trang trước
+                {t('adminCoreAuditTrace.prevPage')}
               </button>
               <button
                 type="button"
@@ -391,7 +393,7 @@ export function AdminCoreAuditTracePage() {
                 disabled={!hasMore || loading}
                 className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
-                Trang sau
+                {t('adminCoreAuditTrace.nextPage')}
               </button>
             </div>
           )}
@@ -401,11 +403,11 @@ export function AdminCoreAuditTracePage() {
               <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                 <thead className="bg-slate-50 dark:bg-slate-950/60">
                   <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                    <th className="px-4 py-3">Loại</th>
-                    <th className="px-4 py-3">Hành động</th>
-                    <th className="px-4 py-3">Actor</th>
-                    <th className="px-4 py-3">Tóm tắt</th>
-                    <th className="px-4 py-3">Thời điểm</th>
+                    <th className="px-4 py-3">{t('adminCoreAuditTrace.thKind')}</th>
+                    <th className="px-4 py-3">{t('adminCoreAuditTrace.thAction')}</th>
+                    <th className="px-4 py-3">{t('adminCoreAuditTrace.thActor')}</th>
+                    <th className="px-4 py-3">{t('adminCoreAuditTrace.thSummary')}</th>
+                    <th className="px-4 py-3">{t('adminCoreAuditTrace.thTime')}</th>
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
@@ -416,7 +418,7 @@ export function AdminCoreAuditTracePage() {
                       <tr key={row.id} className={isSelected ? 'bg-blue-50/60 dark:bg-blue-950/20' : ''}>
                         <td className="px-4 py-4">
                           <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(row.kind)}`}>
-                            {kindLabel(row.kind)}
+                            {kindLabel(row.kind, t)}
                           </span>
                           <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{row.request_id}</p>
                         </td>
@@ -435,7 +437,7 @@ export function AdminCoreAuditTracePage() {
                             onClick={() => setSelectedRequestId(row.id)}
                             className="text-sm font-semibold text-blue-600 hover:underline dark:text-blue-300"
                           >
-                            Xem chi tiết
+                            {t('adminCoreAuditTrace.viewDetail')}
                           </button>
                         </td>
                       </tr>
@@ -446,14 +448,14 @@ export function AdminCoreAuditTracePage() {
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-              {loading ? 'Đang tải audit trace…' : 'Không có audit trace phù hợp bộ lọc.'}
+              {loading ? t('adminCoreAuditTrace.tableLoading') : t('adminCoreAuditTrace.tableEmpty')}
             </div>
           )}
         </AdminPanel>
 
         <AdminPanel
-          title="Chi tiết audit trace"
-          description="Bản ghi đã chọn và source record đi kèm để truy vết operator."
+          title={t('adminCoreAuditTrace.detailTitle')}
+          description={t('adminCoreAuditTrace.detailDescription')}
         >
           {detailError ? (
             <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
@@ -470,7 +472,7 @@ export function AdminCoreAuditTracePage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(selectedRequest.kind)}`}>
-                    {kindLabel(selectedRequest.kind)}
+                    {kindLabel(selectedRequest.kind, t)}
                   </span>
                   <span className="inline-flex rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
                     {selectedRequest.source_model}
@@ -479,42 +481,42 @@ export function AdminCoreAuditTracePage() {
               </div>
 
               {detailLoading ? (
-                <p className="text-sm text-slate-500 dark:text-slate-400">Đang tải chi tiết audit trace…</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{t('adminCoreAuditTrace.detailLoading')}</p>
               ) : null}
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <AdminValueRow label="Mã yêu cầu" value={selectedRequest.request_id} />
-                <AdminValueRow label="Loại audit" value={kindLabel(selectedRequest.kind)} />
-                <AdminValueRow label="Hành động" value={selectedRequest.action || selectedRequest.event || '—'} />
-                <AdminValueRow label="Actor" value={selectedRequest.actor || '—'} />
-                <AdminValueRow label="Lý do" value={selectedRequest.reason || '—'} />
-                <AdminValueRow label="Thời điểm" value={(selectedRequest.created_at || selectedRequest.timestamp) || '—'} />
+                <AdminValueRow label={t('adminCoreAuditTrace.rowRequestId')} value={selectedRequest.request_id} />
+                <AdminValueRow label={t('adminCoreAuditTrace.rowKind')} value={kindLabel(selectedRequest.kind, t)} />
+                <AdminValueRow label={t('adminCoreAuditTrace.rowAction')} value={selectedRequest.action || selectedRequest.event || '—'} />
+                <AdminValueRow label={t('adminCoreAuditTrace.rowActor')} value={selectedRequest.actor || '—'} />
+                <AdminValueRow label={t('adminCoreAuditTrace.rowReason')} value={selectedRequest.reason || '—'} />
+                <AdminValueRow label={t('adminCoreAuditTrace.rowTime')} value={(selectedRequest.created_at || selectedRequest.timestamp) || '—'} />
               </div>
 
               {selectedRequest.kind === 'system_ai_settings' ? (
-                <DetailBlock title="Chi tiết AI settings">
-                  <AdminValueRow label="Settings ID" value={String(selectedRequest.settings_id ?? '—')} />
+                <DetailBlock title={t('adminCoreAuditTrace.detailAiSettingsTitle')}>
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowSettingsId')} value={String(selectedRequest.settings_id ?? '—')} />
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.before_json)}</pre>
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.after_json)}</pre>
                 </DetailBlock>
               ) : null}
 
               {selectedRequest.kind === 'whale_config' ? (
-                <DetailBlock title="Chi tiết Whale config">
-                  <AdminValueRow label="Draft ID" value={String(selectedRequest.draft_id ?? '—')} />
-                  <AdminValueRow label="Version ID" value={String(selectedRequest.version_id ?? '—')} />
-                  <AdminValueRow label="Rollout ID" value={String(selectedRequest.rollout_id ?? '—')} />
-                  <AdminValueRow label="Ticket ref" value={selectedRequest.ticket_ref || '—'} />
+                <DetailBlock title={t('adminCoreAuditTrace.detailWhaleTitle')}>
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowDraftId')} value={String(selectedRequest.draft_id ?? '—')} />
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowVersionId')} value={String(selectedRequest.version_id ?? '—')} />
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowRolloutId')} value={String(selectedRequest.rollout_id ?? '—')} />
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowTicketRef')} value={selectedRequest.ticket_ref || '—'} />
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.before_json)}</pre>
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.after_json)}</pre>
                 </DetailBlock>
               ) : null}
 
               {selectedRequest.kind === 'advisory' ? (
-                <DetailBlock title="Chi tiết Advisory">
-                  <AdminValueRow label="Mã cổ phiếu" value={selectedRequest.symbol || '—'} />
-                  <AdminValueRow label="Actor ID" value={selectedRequest.actor_id || '—'} />
-                  <AdminValueRow label="User ID" value={String(selectedRequest.user_id ?? '—')} />
+                <DetailBlock title={t('adminCoreAuditTrace.detailAdvisoryTitle')}>
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowSymbol')} value={selectedRequest.symbol || '—'} />
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowActorId')} value={selectedRequest.actor_id || '—'} />
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowUserId')} value={String(selectedRequest.user_id ?? '—')} />
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.before_state_json)}</pre>
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.after_state_json)}</pre>
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.metadata_json)}</pre>
@@ -522,22 +524,22 @@ export function AdminCoreAuditTracePage() {
               ) : null}
 
               {selectedRequest.kind === 'crawl_audit' ? (
-                <DetailBlock title="Chi tiết crawl audit">
-                  <AdminValueRow label="Event" value={selectedRequest.event || '—'} />
-                  <AdminValueRow label="Run ID" value={String(selectedRequest.run_id ?? '—')} />
-                  <AdminValueRow label="Job ID" value={String(selectedRequest.job_id ?? '—')} />
-                  <AdminValueRow label="Mã dịch vụ" value={selectedRequest.service_code || '—'} />
+                <DetailBlock title={t('adminCoreAuditTrace.detailCrawlTitle')}>
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowEvent')} value={selectedRequest.event || '—'} />
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowRunId')} value={String(selectedRequest.run_id ?? '—')} />
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowJobId')} value={String(selectedRequest.job_id ?? '—')} />
+                  <AdminValueRow label={t('adminCoreAuditTrace.rowServiceCode')} value={selectedRequest.service_code || '—'} />
                   <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(selectedRequest.payload)}</pre>
                 </DetailBlock>
               ) : null}
 
-              <DetailBlock title="Source record">
+              <DetailBlock title={t('adminCoreAuditTrace.detailSourceTitle')}>
                 <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{stringifyValue(sourceRecord)}</pre>
               </DetailBlock>
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-              {loading || detailLoading ? 'Đang tải chi tiết audit trace…' : 'Chọn một audit trace trong bảng bên trái để mở chi tiết.'}
+              {loading || detailLoading ? t('adminCoreAuditTrace.detailLoading') : t('adminCoreAuditTrace.detailEmpty')}
             </div>
           )}
         </AdminPanel>

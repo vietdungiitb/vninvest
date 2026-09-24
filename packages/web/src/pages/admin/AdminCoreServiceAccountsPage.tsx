@@ -128,7 +128,7 @@ export function AdminCoreServiceAccountsPage() {
       <section className="overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-6 py-6 text-white shadow-2xl shadow-slate-950/30">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Central Operator Admin</p>
+            <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{t('adminCoreTenants.heroEyebrow')}</p>
             <div>
               <h1 className="text-3xl font-semibold tracking-tight">
                 {t('adminCoreTenants.saTitle')}
@@ -220,7 +220,7 @@ export function AdminCoreServiceAccountsPage() {
           >
             <option value="">{t('adminCoreTenants.filterAll')}</option>
             <option value="active">{t('adminCoreTenants.filterActive')}</option>
-            <option value="pending_approval">Pending approval</option>
+            <option value="pending_approval">{t('adminCoreTenants.saStatusPendingApproval')}</option>
             <option value="disabled">Disabled</option>
           </select>
         </label>

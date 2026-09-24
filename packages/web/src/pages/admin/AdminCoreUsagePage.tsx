@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
+import { useI18n } from '../../context/LangContext.js';
 import { adminToneClasses } from './adminTone.js';
 import { AdminPanel, AdminMetricCard, AdminValueRow } from './adminUi.js';
 
@@ -40,6 +41,7 @@ function UsageBar({ consumedAmount, entitledAmount, riskState }: { consumedAmoun
 }
 
 export function AdminCoreUsagePage() {
+  const { t } = useI18n();
   const { tenantId } = useParams<{ tenantId: string }>();
   const [tenantDetail, setTenantDetail] = useState<any>(null);
   const [meters, setMeters] = useState<any[]>([]);
@@ -72,8 +74,8 @@ export function AdminCoreUsagePage() {
       } catch (nextError: any) {
         if (!cancelled) {
           setError(nextError?.response?.status === 404
-            ? 'Không tìm thấy tenant operator cần xem usage.'
-            : 'Không tải được dữ liệu usage của tenant operator.');
+            ? t('adminCoreUsage.errorNotFound')
+            : t('adminCoreUsage.errorGeneric'));
         }
       } finally {
         if (!cancelled) {
@@ -87,7 +89,7 @@ export function AdminCoreUsagePage() {
     return () => {
       cancelled = true;
     };
-  }, [refreshTick, tenantId]);
+  }, [refreshTick, tenantId, t]);
 
   const selectedMeter = meters.find((item: any) => item.meter_code === selectedMeterCode) || null;
   const tenantSummary = tenantDetail?.tenant || null;
@@ -111,7 +113,7 @@ export function AdminCoreUsagePage() {
   const { userIdentity } = usePortfolio() as any;
   const isStaffGate = Boolean(userIdentity?.isStaff || userIdentity?.isSuperuser);
   if (!isStaffGate) {
-    return (<p>Không đủ quyền truy cập.</p>);
+    return (<p>{t('common.noPermission')}</p>);
   }
 
   return (
@@ -119,13 +121,13 @@ export function AdminCoreUsagePage() {
       <section className="overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-6 py-6 text-white shadow-2xl shadow-slate-950/30">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Central Operator Admin</p>
+            <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{t('adminCoreTenants.heroEyebrow')}</p>
             <div>
               <h1 className="text-3xl font-semibold tracking-tight">
-                {'Sử dụng và quota theo tenant'}
+                {t('adminCoreUsage.heroTitle')}
               </h1>
               <p className="mt-2 max-w-3xl text-sm text-slate-300">
-                {'Xem meter consumption, quota posture và cảnh báo quota từ current-code operator snapshot của tenant.'}
+                {t('adminCoreUsage.heroDescription')}
               </p>
             </div>
           </div>
@@ -134,19 +136,19 @@ export function AdminCoreUsagePage() {
               to={`/admin/tenants/${tenantId}`}
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
-              {'Quay lại tenant'}
+              {t('adminCoreUsage.backToTenant')}
             </Link>
             <Link
               to={`/admin/tenants/${tenantId}/pats`}
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
-              {'Xem PATs'}
+              {t('adminCoreUsage.viewPats')}
             </Link>
             <Link
               to={`/admin/tenants/${tenantId}/billing`}
               className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
-              {'Xem thanh toán'}
+              {t('adminCoreUsage.viewBilling')}
             </Link>
             <button
               type="button"
@@ -154,7 +156,7 @@ export function AdminCoreUsagePage() {
               className="rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-950 transition-colors hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={loading}
             >
-              {loading ? 'Đang tải…' : 'Làm mới'}
+              {loading ? t('adminCoreUsage.loading') : t('adminCoreUsage.refresh')}
             </button>
           </div>
         </div>
@@ -167,61 +169,61 @@ export function AdminCoreUsagePage() {
       ) : null}
 
       <AdminPanel
-        title={'Thông tin tenant'}
-        description={'Bối cảnh tenant operator đang được điều tra cho usage/quota.'}
+        title={t('adminCoreUsage.tenantInfoTitle')}
+        description={t('adminCoreUsage.tenantInfoDescription')}
         actions={(
           <span className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300">
-            {loading ? 'Đang đồng bộ…' : tenantSummary?.display_name || tenantId}
+            {loading ? t('adminCoreUsage.syncing') : tenantSummary?.display_name || tenantId}
           </span>
         )}
       >
         {tenantSummary ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <AdminMetricCard card={{ label: 'Tenant', value: tenantSummary.display_name || tenantSummary.tenant_code || tenantId, detail: tenantSummary.tenant_code || tenantId }} />
-            <AdminMetricCard card={{ label: 'Plan', value: commercialSummary?.plan_code || tenantSummary.plan_code || '—', detail: commercialSummary?.billing_cycle || '—' }} />
-            <AdminMetricCard card={{ label: 'Rủi ro sử dụng', value: usageRisk, status: usageRisk }} />
-            <AdminMetricCard card={{ label: 'Còn lại', value: formatNumber(totalRemaining), detail: `${criticalCount} critical / ${warningCount} warning` }} />
+            <AdminMetricCard card={{ label: t('adminCoreUsage.cardTenant'), value: tenantSummary.display_name || tenantSummary.tenant_code || tenantId, detail: tenantSummary.tenant_code || tenantId }} />
+            <AdminMetricCard card={{ label: t('adminCoreUsage.cardPlan'), value: commercialSummary?.plan_code || tenantSummary.plan_code || '—', detail: commercialSummary?.billing_cycle || '—' }} />
+            <AdminMetricCard card={{ label: t('adminCoreUsage.cardUsageRisk'), value: usageRisk, status: usageRisk }} />
+            <AdminMetricCard card={{ label: t('adminCoreUsage.cardRemaining'), value: formatNumber(totalRemaining), detail: t('adminCoreUsage.cardRemainingDetail', { critical: criticalCount, warning: warningCount }) }} />
           </div>
         ) : (
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {loading ? 'Đang tải thông tin tenant…' : 'Chưa có thông tin tenant.'}
+            {loading ? t('adminCoreUsage.tenantInfoLoading') : t('adminCoreUsage.tenantInfoEmpty')}
           </p>
         )}
       </AdminPanel>
 
       <AdminPanel
-        title={'Tổng hợp quota'}
-        description={'Các meter hiện có trong current-code tenant snapshot.'}
+        title={t('adminCoreUsage.quotaSummaryTitle')}
+        description={t('adminCoreUsage.quotaSummaryDescription')}
       >
         {meters.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <AdminMetricCard card={{ label: 'Tổng meter', value: String(meters.length), detail: 'Current snapshot' }} />
-            <AdminMetricCard card={{ label: 'Cảnh báo', value: String(warningCount), status: 'warning' }} />
-            <AdminMetricCard card={{ label: 'Nguy cấp', value: String(criticalCount), status: 'critical' }} />
-            <AdminMetricCard card={{ label: 'Dung lượng còn lại', value: formatNumber(totalRemaining) }} />
+            <AdminMetricCard card={{ label: t('adminCoreUsage.cardTotalMeters'), value: String(meters.length), detail: t('adminCoreUsage.cardDetailSnapshot') }} />
+            <AdminMetricCard card={{ label: t('adminCoreUsage.cardWarnings'), value: String(warningCount), status: 'warning' }} />
+            <AdminMetricCard card={{ label: t('adminCoreUsage.cardCritical'), value: String(criticalCount), status: 'critical' }} />
+            <AdminMetricCard card={{ label: t('adminCoreUsage.cardRemainingCapacity'), value: formatNumber(totalRemaining) }} />
           </div>
         ) : (
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {loading ? 'Đang tải summary…' : 'Chưa có dữ liệu usage.'}
+            {loading ? t('adminCoreUsage.summaryLoading') : t('adminCoreUsage.summaryEmpty')}
           </p>
         )}
       </AdminPanel>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <AdminPanel
-          title={'Meter usage'}
-          description={'Biểu đồ thanh và số liệu quota cho từng meter.'}
+          title={t('adminCoreUsage.meterUsageTitle')}
+          description={t('adminCoreUsage.meterUsageDescription')}
         >
           {meters.length > 0 ? (
             <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
               <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                 <thead className="bg-slate-50 dark:bg-slate-950/60">
                   <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                    <th className="px-4 py-3">Meter</th>
-                    <th className="px-4 py-3">Đã dùng</th>
-                    <th className="px-4 py-3">Còn lại</th>
-                    <th className="px-4 py-3">Rủi ro</th>
-                    <th className="px-4 py-3">Cập nhật</th>
+                    <th className="px-4 py-3">{t('adminCoreUsage.thMeter')}</th>
+                    <th className="px-4 py-3">{t('adminCoreUsage.thConsumed')}</th>
+                    <th className="px-4 py-3">{t('adminCoreUsage.thRemaining')}</th>
+                    <th className="px-4 py-3">{t('adminCoreUsage.thRisk')}</th>
+                    <th className="px-4 py-3">{t('adminCoreUsage.thUpdated')}</th>
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
@@ -253,7 +255,7 @@ export function AdminCoreUsagePage() {
                             onClick={() => setSelectedMeterCode(meter.meter_code)}
                             className="text-sm font-semibold text-blue-600 hover:underline dark:text-blue-300"
                           >
-                            {'Xem chi tiết'}
+                            {t('adminCoreUsage.viewDetail')}
                           </button>
                         </td>
                       </tr>
@@ -264,14 +266,14 @@ export function AdminCoreUsagePage() {
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-              {loading ? 'Đang tải usage…' : 'Không có meter usage phù hợp.'}
+              {loading ? t('adminCoreUsage.meterUsageLoading') : t('adminCoreUsage.meterUsageEmpty')}
             </div>
           )}
         </AdminPanel>
 
         <AdminPanel
-          title={'Chi tiết meter'}
-          description={'Quota, hard-stop và lịch reset của meter đang chọn.'}
+          title={t('adminCoreUsage.meterDetailTitle')}
+          description={t('adminCoreUsage.meterDetailDescription')}
         >
           {selectedMeter ? (
             <div className="space-y-5">
@@ -282,43 +284,43 @@ export function AdminCoreUsagePage() {
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Đã dùng</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreUsage.statConsumed')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{formatNumber(selectedMeter.consumed_amount)}</p>
                   <UsageBar consumedAmount={selectedMeter.consumed_amount} entitledAmount={selectedMeter.entitled_amount} riskState={selectedMeter.risk_state} />
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Còn lại</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreUsage.statRemaining')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{formatNumber(selectedMeter.remaining_amount)}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Rủi ro</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreUsage.statRisk')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{selectedMeter.risk_state}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Hard-stop</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{selectedMeter.hard_stop ? 'Có' : 'Không'}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreUsage.statHardStop')}</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{selectedMeter.hard_stop ? t('adminCoreUsage.hardStopYes') : t('adminCoreUsage.hardStopNo')}</p>
                 </div>
               </div>
 
               <div>
-                <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Thuộc tính chính</h3>
-                <AdminValueRow label="Unit" value={selectedMeter.unit} />
-                <AdminValueRow label="Aggregation window" value={selectedMeter.aggregation_window} />
-                <AdminValueRow label="Entitled amount" value={formatNumber(selectedMeter.entitled_amount)} />
-                <AdminValueRow label="Overage amount" value={formatNumber(selectedMeter.overage_amount)} />
-                <AdminValueRow label="Reset at" value={formatDateTime(selectedMeter.reset_at)} />
-                <AdminValueRow label="Period start" value={formatDateTime(selectedMeter.period_start)} />
-                <AdminValueRow label="Period end" value={formatDateTime(selectedMeter.period_end)} />
-                <AdminValueRow label="Projected exhaustion" value={selectedMeter.projected_exhaustion_at ? formatDateTime(selectedMeter.projected_exhaustion_at) : '—'} />
+                <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{t('adminCoreUsage.propertiesTitle')}</h3>
+                <AdminValueRow label={t('adminCoreUsage.propUnit')} value={selectedMeter.unit} />
+                <AdminValueRow label={t('adminCoreUsage.propAggregationWindow')} value={selectedMeter.aggregation_window} />
+                <AdminValueRow label={t('adminCoreUsage.propEntitledAmount')} value={formatNumber(selectedMeter.entitled_amount)} />
+                <AdminValueRow label={t('adminCoreUsage.propOverageAmount')} value={formatNumber(selectedMeter.overage_amount)} />
+                <AdminValueRow label={t('adminCoreUsage.propResetAt')} value={formatDateTime(selectedMeter.reset_at)} />
+                <AdminValueRow label={t('adminCoreUsage.propPeriodStart')} value={formatDateTime(selectedMeter.period_start)} />
+                <AdminValueRow label={t('adminCoreUsage.propPeriodEnd')} value={formatDateTime(selectedMeter.period_end)} />
+                <AdminValueRow label={t('adminCoreUsage.propProjectedExhaustion')} value={selectedMeter.projected_exhaustion_at ? formatDateTime(selectedMeter.projected_exhaustion_at) : '—'} />
               </div>
 
               <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                {'Màn hình này dùng current-code tenant snapshot, chưa cần commercial-side endpoint riêng. Meter detail phản ánh usage/quota thật của tenant operator.'}
+                {t('adminCoreUsage.meterDetailNote')}
               </div>
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-              {loading ? 'Đang tải chi tiết meter…' : 'Chọn một meter trong bảng bên trái để mở chi tiết.'}
+              {loading ? t('adminCoreUsage.meterDetailLoading') : t('adminCoreUsage.meterDetailEmpty')}
             </div>
           )}
         </AdminPanel>

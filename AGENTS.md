@@ -9,6 +9,14 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - Build verification: npx tsc --noEmit sau mỗi sub-step, npm run build cuối mỗi step.
 
 ## Progress
+### Done (2026-09-24) — Admin UI Slice 5 F5-full core i18n (Entry 192)
+- **F5-full**: i18n toàn bộ 8 trang AdminCore* (~290 keys vi/en: 5 namespaces mới
+  `adminCore{Billing,Usage,Overview,Jobs,AuditTrace}` + mở rộng `adminCoreTenants`);
+  parity script 0 lệch (phát hiện + bù 4 keys VI thiếu pre-existing);
+  `heroEyebrow`/`snapshotAt`/`common.noPermission` dùng chung;
+  `kindLabel`/`toLocaleString` theo locale; poll Overview guard `document.hidden`.
+- **Fix kèm**: 7 lỗi `exhaustive-deps` (`t` vào dep arrays — đổi ngôn ngữ refetch đúng).
+- **Gates**: tsc 0, build 34s PASS, check:shell PASS, eslint 0 err, vitest 9 files/26 tests.
 ### Done (2026-09-24) — Admin UI Slice 4 F7 cleanup (Entry 191)
 - Xoá `.Mui*` chết trong `TenantAdminLayout` (0 JSX usage, 0 dep); crawl cards responsive
   (`h-auto min-h-[380px] lg:h-[500px]`); xoá dead key `advertising.tabs.reports` vi/en.
