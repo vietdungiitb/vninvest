@@ -59,7 +59,7 @@ export function AdminAnalyticsPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8">
       <div>
-        <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Admin / Analytics</p>
+        <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{t('adminAnalytics.eyebrow')}</p>
         <h1 className="text-2xl font-bold text-slate-950 dark:text-white">{t('adminAnalytics.title')}</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">{t('adminAnalytics.description')}</p>
       </div>

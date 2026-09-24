@@ -9,6 +9,14 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - Build verification: npx tsc --noEmit sau mỗi sub-step, npm run build cuối mỗi step.
 
 ## Progress
+### Done (2026-09-24) — Admin UI Slice 2 F3+F5 i18n + honest states (Entry 189)
+- **F3**: xoá mock jobs/runs bịa sẵn ở crawl (API rỗng/lỗi → empty/error state trung thực + nút
+  Thử lại); poll 5s guard `document.hidden`; bỏ `console.error` + emoji empty-state.
+- **F5**: `adminCrawl` 30 keys vi/en (title khớp menu `Kiểm soát cào dữ liệu`, time theo `localeTag`);
+  eyebrows 4 trang fleet chuyển EN hardcode → `t()` VI.
+- **Còn lại (chưa làm)**: F4 bộ Admin UI chung, F6/F7 dọn (dup keys, Mui chết, v.v.).
+- **Gates**: tsc 0, build 33s PASS, check:shell PASS, eslint 0 err, vitest 5 files/20 tests,
+  i18n:scan sạch (không chêm key lạ).
 ### Done (2026-09-24) — Admin UI Slice 1 F1+F2 readability (Entry 188)
 - **F1**: `pages/admin/adminTone.ts` shared (union keywords cả 8 files incl. `pending_approval`,
   light+`dark:` pairs, contrast pills 1.3→4.5+); xoá 8 `toneClasses` local + `kindTone` Jobs;

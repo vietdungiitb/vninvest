@@ -56,7 +56,7 @@ export function AdminUsageFleetPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8">
       <div>
-        <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Admin / Usage</p>
+        <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{t('adminUsageFleet.eyebrow')}</p>
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-slate-950 dark:text-white">{t('adminUsageFleet.title')}</h1>
