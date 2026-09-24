@@ -5633,7 +5633,6 @@ const en = {
     tabs: {
       overview: 'Overview',
       campaigns: 'Campaigns',
-      reports: 'Reports',
       settings: 'Settings',
     },
     summary: {

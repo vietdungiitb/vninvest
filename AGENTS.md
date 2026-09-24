@@ -9,6 +9,12 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - Build verification: npx tsc --noEmit sau mỗi sub-step, npm run build cuối mỗi step.
 
 ## Progress
+### Done (2026-09-24) — Admin UI Slice 4 F7 cleanup (Entry 191)
+- Xoá `.Mui*` chết trong `TenantAdminLayout` (0 JSX usage, 0 dep); crawl cards responsive
+  (`h-auto min-h-[380px] lg:h-[500px]`); xoá dead key `advertising.tabs.reports` vi/en.
+- **Còn lại**: F5-full — ~120 chuỗi VI hardcode trong 8 trang AdminCore* (chỉ 1 namespace
+  `adminCoreTenants` tồn tại) → slice riêng.
+- **Gates**: tsc 0, build 42s PASS, check:shell PASS, vitest tenant+staff 4/22.
 ### Done (2026-09-24) — Admin UI Slice 3 F4+F6 shared kit (Entry 190)
 - **F4**: `pages/admin/adminUi.tsx` mới (Header/Panel/MetricCard/ValueRow/EmptyState);
   migrate 12 trang fleet+core, xoá locals trùng (`Panel`/`MetricCard`/`ValueRow`/`KeyValue`);

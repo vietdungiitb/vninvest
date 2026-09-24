@@ -5649,7 +5649,6 @@ const vi = {
     tabs: {
       overview: 'Tổng quan',
       campaigns: 'Chiến dịch',
-      reports: 'Báo cáo',
       settings: 'Cấu hình',
     },
     summary: {

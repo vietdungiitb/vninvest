@@ -26,19 +26,16 @@ const LAYOUT_CSS = `
   }
 }
 
-.shellPage table,
-.shellPage .MuiTable-root {
+.shellPage table {
   display: block;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 @media (max-width: 768px) {
-  .shellPage thead,
-  .shellPage .MuiTableHead-root {
+  .shellPage thead {
     display: none;
   }
-  .shellPage tbody tr,
-  .shellPage .MuiTableBody-root .MuiTableRow-root {
+  .shellPage tbody tr {
     display: flex;
     flex-direction: column;
     border: 1px solid var(--border-shell);
@@ -48,8 +45,7 @@ const LAYOUT_CSS = `
     background: var(--bg-shell-surface);
   }
   .shellPage td,
-  .shellPage th,
-  .shellPage .MuiTableCell-root {
+  .shellPage th {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -71,8 +67,7 @@ const LAYOUT_CSS = `
   .shellPage [role="button"],
   .shellPage input,
   .shellPage select,
-  .shellPage textarea,
-  .shellPage .MuiButtonBase-root {
+  .shellPage textarea {
     min-height: 44px;
     min-width: 44px;
   }

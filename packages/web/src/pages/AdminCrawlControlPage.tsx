@@ -153,7 +153,7 @@ export default function AdminCrawlControlPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col h-[500px]">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col h-auto min-h-[380px] lg:h-[500px]">
           <div className="flex justify-between items-center mb-4 border-b border-gray-100 dark:border-gray-700 pb-2">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('adminCrawl.jobsTitle')}</h2>
           </div>
@@ -229,7 +229,7 @@ export default function AdminCrawlControlPage() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col h-[500px]">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col h-auto min-h-[380px] lg:h-[500px]">
           <div className="flex justify-between items-center mb-4 border-b border-gray-100 dark:border-gray-700 pb-2">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('adminCrawl.runsTitle')}</h2>
             <button onClick={fetchAll} className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-colors">
