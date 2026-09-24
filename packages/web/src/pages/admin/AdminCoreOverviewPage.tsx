@@ -2,20 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
-
-function toneClasses(status: any) {
-  const normalized = String(status || '').toLowerCase();
-  if (normalized === 'healthy') {
-    return 'border-emerald-500/25 bg-emerald-500/10 text-emerald-200';
-  }
-  if (normalized === 'warning') {
-    return 'border-amber-500/25 bg-amber-500/10 text-amber-200';
-  }
-  if (normalized === 'critical' || normalized === 'degraded') {
-    return 'border-rose-500/25 bg-rose-500/10 text-rose-200';
-  }
-  return 'border-slate-700 bg-slate-900/70 text-slate-200';
-}
+import { adminToneClasses } from './adminTone.js';
 
 function MetricCard({ card }: { card: any }) {
   return (
@@ -27,7 +14,7 @@ function MetricCard({ card }: { card: any }) {
           {card.detail ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{card.detail}</p> : null}
         </div>
         {card.status ? (
-          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(card.status)}`}>
+          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(card.status)}`}>
             {card.status}
           </span>
         ) : null}
@@ -46,7 +33,7 @@ function HealthCard({ component }: { component: any }) {
           <p className="text-sm font-semibold text-slate-950 dark:text-white">{component.label}</p>
           {component.detail ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{typeof component.detail === 'string' ? component.detail : JSON.stringify(component.detail)}</p> : null}
         </div>
-        <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(status)}`}>
+        <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(status)}`}>
           {healthy ? 'Healthy' : component.status}
         </span>
       </div>
@@ -208,7 +195,7 @@ export function AdminCoreOverviewPage() {
         description={'Sự thật vận hành từ health snapshot và các thành phần nền tảng.'}
       >
         <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
-          <span className={`rounded-full border px-3 py-1 font-semibold ${toneClasses(overallStatus)}`}>
+          <span className={`rounded-full border px-3 py-1 font-semibold ${adminToneClasses(overallStatus)}`}>
             {overallStatus}
           </span>
           <span className="text-slate-500 dark:text-slate-400">

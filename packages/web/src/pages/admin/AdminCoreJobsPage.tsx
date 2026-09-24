@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
+import { adminToneClasses } from './adminTone.js';
 
 const DEFAULT_LIMIT = 25;
 const DEFAULT_FILTERS = {
@@ -11,34 +12,6 @@ const DEFAULT_FILTERS = {
   serviceDomain: '',
   serviceCode: '',
 };
-
-function toneClasses(status: any) {
-  const normalized = String(status || '').toLowerCase();
-  if (normalized === 'running') {
-    return 'border-sky-500/30 bg-sky-500/10 text-sky-200';
-  }
-  if (normalized === 'queued') {
-    return 'border-amber-500/30 bg-amber-500/10 text-amber-200';
-  }
-  if (normalized === 'completed' || normalized === 'success') {
-    return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200';
-  }
-  if (normalized === 'failed' || normalized === 'cancelled') {
-    return 'border-rose-500/30 bg-rose-500/10 text-rose-200';
-  }
-  return 'border-slate-700 bg-slate-900/70 text-slate-200';
-}
-
-function kindTone(kind: any) {
-  const normalized = String(kind || '').toLowerCase();
-  if (normalized === 'signal_run') {
-    return 'border-cyan-500/30 bg-cyan-500/10 text-cyan-200';
-  }
-  if (normalized === 'crawl_run') {
-    return 'border-violet-500/30 bg-violet-500/10 text-violet-200';
-  }
-  return 'border-slate-700 bg-slate-900/70 text-slate-200';
-}
 
 function kindLabel(kind: any) {
   if (kind === 'signal_run') {
@@ -83,7 +56,7 @@ function MetricCard({ card }: { card: any }) {
           {card.detail ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{card.detail}</p> : null}
         </div>
         {card.status ? (
-          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(card.status)}`}>
+          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(card.status)}`}>
             {card.status}
           </span>
         ) : null}
@@ -406,13 +379,13 @@ export function AdminCoreJobsPage() {
                     return (
                       <tr key={job.id} className={isSelected ? 'bg-blue-50/60 dark:bg-blue-950/20' : ''}>
                         <td className="px-4 py-4">
-                          <div className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${kindTone(job.kind)}`}>
+                          <div className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(job.kind)}`}>
                             {kindLabel(job.kind)}
                           </div>
                           <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{job.request_id}</p>
                         </td>
                         <td className="px-4 py-4">
-                          <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(job.status_category || job.status)}`}>
+                          <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(job.status_category || job.status)}`}>
                             {job.status_display || job.status || '—'}
                           </span>
                         </td>
@@ -460,10 +433,10 @@ export function AdminCoreJobsPage() {
                   <p className="text-sm text-slate-500 dark:text-slate-400">{selectedJob.request_id}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${kindTone(selectedJob.kind)}`}>
+                  <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(selectedJob.kind)}`}>
                     {kindLabel(selectedJob.kind)}
                   </span>
-                  <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(selectedJob.status_category || selectedJob.status)}`}>
+                  <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(selectedJob.status_category || selectedJob.status)}`}>
                     {selectedJob.status_display || selectedJob.status || '—'}
                   </span>
                 </div>

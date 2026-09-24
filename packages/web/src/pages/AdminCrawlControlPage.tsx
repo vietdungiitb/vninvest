@@ -133,7 +133,7 @@ export default function AdminCrawlControlPage() {
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-gray-200 dark:border-gray-800 pb-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Trung tâm Điều khiển Dịch vụ Nền</h1>
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Trung tâm Điều khiển Dịch vụ Nền</h1>
           <p className="mt-1 text-sm text-slate-400">Quản lý tập trung các tiến trình nền tự động</p>
         </div>
       </div>

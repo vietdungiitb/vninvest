@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
+import { adminToneClasses } from './adminTone.js';
 
 const DEFAULT_LIMIT = 25;
 const DEFAULT_FILTERS = {
@@ -13,23 +14,6 @@ const DEFAULT_FILTERS = {
   symbol: '',
   serviceCode: '',
 };
-
-function toneClasses(kind: any) {
-  const normalized = String(kind || '').toLowerCase();
-  if (normalized === 'system_ai_settings') {
-    return 'border-cyan-500/30 bg-cyan-500/10 text-cyan-200';
-  }
-  if (normalized === 'whale_config') {
-    return 'border-violet-500/30 bg-violet-500/10 text-violet-200';
-  }
-  if (normalized === 'advisory') {
-    return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200';
-  }
-  if (normalized === 'crawl_audit') {
-    return 'border-amber-500/30 bg-amber-500/10 text-amber-200';
-  }
-  return 'border-slate-700 bg-slate-900/70 text-slate-200';
-}
 
 function kindLabel(kind: any) {
   const normalized = String(kind || '').toLowerCase();
@@ -85,7 +69,7 @@ function MetricCard({ card }: { card: any }) {
           {card.detail ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{card.detail}</p> : null}
         </div>
         {card.status ? (
-          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(card.status)}`}>
+          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(card.status)}`}>
             {card.status}
           </span>
         ) : null}
@@ -473,7 +457,7 @@ export function AdminCoreAuditTracePage() {
                     return (
                       <tr key={row.id} className={isSelected ? 'bg-blue-50/60 dark:bg-blue-950/20' : ''}>
                         <td className="px-4 py-4">
-                          <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(row.kind)}`}>
+                          <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(row.kind)}`}>
                             {kindLabel(row.kind)}
                           </span>
                           <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{row.request_id}</p>
@@ -527,7 +511,7 @@ export function AdminCoreAuditTracePage() {
                   <p className="text-sm text-slate-500 dark:text-slate-400">{selectedRequest.request_id}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(selectedRequest.kind)}`}>
+                  <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(selectedRequest.kind)}`}>
                     {kindLabel(selectedRequest.kind)}
                   </span>
                   <span className="inline-flex rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">

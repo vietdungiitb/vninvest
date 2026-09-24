@@ -3,6 +3,15 @@
 @import "tailwind-sidebar/styles.css";
 @import "simplebar/dist/simplebar.min.css";
 
+/* App theme binding (Slice 1 — F2): dark is the default, light opts in via
+   `<html data-theme="light">` (see main.tsx boot + UserSettingsPage).
+   Tailwind v4 `dark:` defaults to OS prefers-color-scheme, which desyncs page
+   cards from the fixed-dark shell/sidebar and ignores the app toggle.
+   This binds `dark:` to the app theme instead: dark styles apply unless the
+   user explicitly chose light. Behavior change: OS-light users now see the
+   dark theme by default (consistent with shell), until they pick light. */
+@custom-variant dark (&:where(:root:not([data-theme="light"]) *, :root:not([data-theme="light"])));
+
 @theme {
   /* VNInvest Color Palette - Dark Mode Default */
   --color-primary-50: #ecfeff;

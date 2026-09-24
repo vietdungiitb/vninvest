@@ -3,20 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext.js';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
 import { useI18n } from '../../context/LangContext.js';
-
-function toneClasses(status: any) {
-  const normalized = String(status || '').toLowerCase();
-  if (normalized === 'active' || normalized === 'healthy' || normalized === 'normal') {
-    return 'border-emerald-500/25 bg-emerald-500/10 text-emerald-200';
-  }
-  if (normalized === 'warning' || normalized === 'rotating') {
-    return 'border-amber-500/25 bg-amber-500/10 text-amber-200';
-  }
-  if (normalized === 'critical' || normalized === 'revoked' || normalized === 'suspended' || normalized === 'disabled') {
-    return 'border-rose-500/25 bg-rose-500/10 text-rose-200';
-  }
-  return 'border-slate-700 bg-slate-900/70 text-slate-200';
-}
+import { adminToneClasses } from './adminTone.js';
 
 function Panel({ title, description, actions, children }: { title: string; description?: string | null; actions?: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -43,7 +30,7 @@ function MetricCard({ card }: { card: any }) {
           {card.detail ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{card.detail}</p> : null}
         </div>
         {card.status ? (
-          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(card.status)}`}>
+          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(card.status)}`}>
             {card.status}
           </span>
         ) : null}
@@ -432,7 +419,7 @@ export function AdminCorePATsPage() {
                           {serviceAccount?.name || token.service_account_id}
                         </td>
                         <td className="px-4 py-4">
-                          <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(token.status)}`}>
+                          <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(token.status)}`}>
                             {token.status}
                           </span>
                         </td>
@@ -440,7 +427,7 @@ export function AdminCorePATsPage() {
                           {token.expires_at || '—'}
                         </td>
                         <td className="px-4 py-4">
-                          <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(token.anomaly_state)}`}>
+                          <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${adminToneClasses(token.anomaly_state)}`}>
                             {token.anomaly_state}
                           </span>
                         </td>

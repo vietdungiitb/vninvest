@@ -9,6 +9,15 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - Build verification: npx tsc --noEmit sau mỗi sub-step, npm run build cuối mỗi step.
 
 ## Progress
+### Done (2026-09-24) — Admin UI Slice 1 F1+F2 readability (Entry 188)
+- **F1**: `pages/admin/adminTone.ts` shared (union keywords cả 8 files incl. `pending_approval`,
+  light+`dark:` pairs, contrast pills 1.3→4.5+); xoá 8 `toneClasses` local + `kindTone` Jobs;
+  crawl H1 `text-slate-100`→`slate-950/dark:white`. Vitest admin 6 files/15 tests PASS.
+- **F2**: `@custom-variant dark` trong `index.css` bind theo `data-theme` (bỏ OS
+  prefers-color-scheme) — verify trong dist CSS (`:root:not([data-theme=light])`).
+  Behavior change: OS-sáng mặc định thấy dark (đồng nhất shell) trừ khi user đã chọn light.
+- **Còn lại (chưa làm)**: F3 mock data crawl, F4 bộ Admin UI chung, F5 i18n pass, F6/F7 dọn.
+- **Gates**: tsc 0, build 56s PASS, check:shell PASS, eslint 0 err.
 ### Done (2026-09-24) — Admin fleet 404 fix nginx (Entry 187, Option B)
 - **Root cause**: `packages/web/docker/nginx.conf` `location ^~ /admin/` proxy toàn bộ `/admin/*`
   (trừ `/admin/core/`) sang Django → 14 SPA routes R0–R8 404 `catch_all_view` (staff) / 302 login
