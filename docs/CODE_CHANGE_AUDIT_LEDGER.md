@@ -147,6 +147,15 @@
 
 ---
 
+## Entry 222: Commit+push origin/dev + start_dev BLOCKED (Docker stall) (2026-09-25)
+
+- **Commit+push DONE**: `91d16f73` → `origin/dev` (142 paths; excluded junk `packages/core/backend/%SystemDrive%/`; vite-dev.log removed). Covers Entries 197–221 + companion AI CC/admin sessions.
+- **start_dev BLOCKED (environment, không phải code)**: `docker run` treo mọi image (kể cả `redis echo`), `docker build` trivial treo >3 phút, `docker compose build` 60 phút không ra image, BuildKit không activity, background launch chết im. Dev stack cũ vẫn healthy (api 200, frontend 200).
+- **Không restart Docker unilaterally** (sẽ kill stack 20h đang healthy + công việc khác). Recovery: restart Docker Desktop → `./start_dev.ps1` (full build: backend deps mới python3-saml/xmlsec1 + frontend CSS Waves) → verify api/frontend health → login smoke.
+- Evidence: lệnh + output trong entry này (không file riêng).
+
+---
+
 ## Entry 221: Waves 2–5 DONE — DoD (2026-09-25)
 
 - **W2**: SOC TSX tokenize 9 files + fontSize scale + 20 raw buttons → Button (ghost/sm, giữ className/handlers) · vitest soc 28/28.
@@ -5010,4 +5019,5 @@ nội dung giữ nguyên. Tiền lệ Entry 149.)*
 | 204 | 2026-09-25 | ui | Wave 1 DONE: palette light + contrast 11 ratios PASS; light blocks 4 files (dark untouched); purple tokens; 10px->r-md x6; tabBar/tabButton spacing (50 off-grid con lai follow-up); extend fs-3xl/4xl + map 5 sizes; fix check-tokens strip root[data-theme]. Gates: tsc 0, build 36.16s, check:shell PASS, eslint 0, theme-verify E2E PASS (wire CI), dist dark+light verify, W1-shots | tokens.css x2, aiSettings + ShellPageTemplate css, soc.components.css, check-tokens.mjs, theme-verify.spec.ts, web-ci.yml, evidence design-token/W1-* | gates chay that | v0 | Active |
 | 205 | 2026-09-25 | ui | i18n recovery 47 keys: checkout nham xoa uncommitted AI CC; authoritative script 165 refs -> 47 missing vi+en; restore +107/-1 (verified sources + 12 prose reconstructed + DEPRECATED comments + Resets->Reset). Gates: 0 missing, vitest AI CC 26/26, full 465/466, tsc 0 | vi.js+en.js, find-missing-final.mjs, evidence design-token/I18N-RECOVERY.md | gates chay that | v0 | Active |
 | 206 | 2026-09-25 | ui | Waves 2-5 DONE DoD: SOC TSX + buttons Button convert; W3 files + PositionDeck; W4 pages/admin/toast + visual QA authed (dark perfect, light surfaces good, chrome follow-up); W5 polish + rescan 0 + full gates (tsc 0, build 59.90s, lint 3515 baseline, vitest 465/466, check:shell PASS). Follow-ups: SignalsPanel, 50 off-grid, fallbacks, chrome, 12 prose | ~35 files FE, evidence design-token/W* | gates chay that + screenshots xem that | v0 | Active |
+| 207 | 2026-09-25 | ops | Commit+push 91d16f73 -> origin/dev (142 paths, tru junk %SystemDrive%); start_dev BLOCKED: docker run/build treo (BuildKit stall, 60p khong image) — dev stack cu healthy, khong restart Docker unilateral. Recovery: restart Docker Desktop -> ./start_dev.ps1 -> verify | git log/push output + curl health | commit+push that, build blocked env | v0 | Active |
 | 201 | 2026-09-24 | frontend | Enterprise UI Consistency Audit (Phase 1 doc-only): 5 group anti-pattern scan (typography drift, hardcoded hex 71 files, non-8pt-grid spacing, radius mismatch, component inconsistency). 20 ERR-IDs (ERR-01..ERR-20), Executive Matrix + 12 Actionable Tickets + 3-Wave Rollout Plan. Critical finding: Tailwind `@theme` `--radius-sm/md/lg` (4/6/8px) MISMATCH `theme/tokens.css` `--r-sm/md/lg` (6/8/12px) — 100% project radius inconsistency. Doc-only; no code changed. | docs/UI_CONSISTENCY_AUDIT_20260924.md (new) + theme/tokens.css, index.css, soc.tokens.css, 86 files scanned | 3 subagent scan (tokens / TSX / CSS), static analysis only | v0 | Active |
