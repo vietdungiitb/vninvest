@@ -792,7 +792,7 @@ export function SocDataOpsConfigSection() {
           ),
           createElement(
             "button",
-            { type: "button", onClick: handlePreview, className: styles.actionBtn, style: { background: "rgba(22,215,160,0.2)", color: "var(--accent-emerald, #10b981)", fontWeight: 700 } as unknown as Record<string,string>, disabled: envelope?.ownership?.can_apply === false },
+            { type: "button", onClick: handlePreview, className: styles.actionBtn, style: { background: "rgba(var(--soc-rgb-16d7a0) / 0.2)", color: "var(--accent-emerald, #10b981)", fontWeight: 700 } as unknown as Record<string,string>, disabled: envelope?.ownership?.can_apply === false },
             t("soc.actions.preview"),
           ),
         ),

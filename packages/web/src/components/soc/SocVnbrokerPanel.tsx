@@ -274,9 +274,9 @@ export function SocVnbrokerPanel() {
                       {
                         className: styles.statusBadge,
                         style: {
-                          background: circuitBreaker?.tripped ? "rgba(239, 68, 68, 0.15)" : "rgba(52, 211, 153, 0.15)",
+                          background: circuitBreaker?.tripped ? "rgba(var(--soc-rgb-ef4444) / 0.15)" : "rgba(var(--soc-rgb-34d399) / 0.15)",
                           color: circuitBreaker?.tripped ? toneColor("danger") : "var(--color-success-500, #34d399)",
-                          fontSize: "0.7rem",
+                          fontSize: "var(--fs-xs)",
                           padding: "0.2rem 0.5rem",
                           borderRadius: "4px",
                           fontWeight: 600,
@@ -301,7 +301,7 @@ export function SocVnbrokerPanel() {
                       disabled: testingConnection,
                       className: styles.actionBtn,
                       style: {
-                        background: "rgba(56, 189, 248, 0.15)",
+                        background: "rgba(var(--soc-rgb-38bdf8) / 0.15)",
                         color: "var(--accent-cyan, #06b6d4)",
                         cursor: testingConnection ? "not-allowed" : "pointer",
                         width: "100%",
@@ -349,7 +349,7 @@ export function SocVnbrokerPanel() {
                       disabled: benchmarkLoading,
                       className: styles.actionBtn,
                       style: {
-                        background: "rgba(16, 185, 129, 0.15)",
+                        background: "rgba(var(--soc-rgb-10b981) / 0.15)",
                         color: "var(--color-success-500, #34d399)",
                         cursor: benchmarkLoading ? "not-allowed" : "pointer",
                       },
@@ -391,7 +391,7 @@ export function SocVnbrokerPanel() {
                                     color: successColor,
                                     padding: "0.2rem 0.5rem",
                                     borderRadius: "4px",
-                                    fontSize: "0.7rem",
+                                    fontSize: "var(--fs-xs)",
                                     fontWeight: 600,
                                   },
                                 },
@@ -405,11 +405,11 @@ export function SocVnbrokerPanel() {
                                 "span",
                                 {
                                   style: {
-                                    background: r.rate_limit_pct > 5 ? "rgba(239, 68, 68, 0.15)" : "transparent",
+                                    background: r.rate_limit_pct > 5 ? "rgba(var(--soc-rgb-ef4444) / 0.15)" : "transparent",
                                     color: rateLimitColor,
                                     padding: r.rate_limit_pct > 5 ? "0.2rem 0.5rem" : "0",
                                     borderRadius: "4px",
-                                    fontSize: "0.7rem",
+                                    fontSize: "var(--fs-xs)",
                                     fontWeight: r.rate_limit_pct > 5 ? 600 : 400,
                                   },
                                 },

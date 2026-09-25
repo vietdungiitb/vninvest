@@ -31,6 +31,8 @@ _CORE_APPS = frozenset({
     'token_blacklist',
     'django_celery_beat',
     'advertising',
+    'ai_agents',
+    'ai_analytics',
 })
 
 

@@ -25,6 +25,7 @@ daphne>=4.0,<5.0
 # Gmail API provider support
 google-auth>=2.0,<3.0
 google-api-python-client>=2.0,<3.0
+# google-genai>=1.0  # F6b pending — add only if proxy OpenAI-compat C2 test FAILS
 # DNSE LightSpeed broker connector + SSI/TCBS broker lanes (B3.0: v3.4.0 ghim SHA)
 vnbroker @ git+https://x-access-token:${VNBROKER_GITHUB_TOKEN}@github.com/vietdungiitb/vnbroker.git@1ff04e609b940f672d44bb88e9f006b721fd1262
 
@@ -33,3 +34,5 @@ stripe>=7.0,<8.0
 
 # SAML 2.0 SSO support (XML parsing for AuthnRequest/Response/Metadata)
 lxml>=5.0,<6.0
+# BL-01: real SAML signature verification (strict mode, BL-01b integration)
+python3-saml>=1.15,<2.0

@@ -90,7 +90,7 @@ export function AdminCoreBillingPage() {
       <section className="overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-6 py-6 text-white shadow-2xl shadow-slate-950/30">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{t('adminCoreTenants.heroEyebrow')}</p>
+            <p className="text-[var(--fs-2xs)] uppercase tracking-[0.24em] text-slate-400">{t('adminCoreTenants.heroEyebrow')}</p>
             <div>
               <h1 className="text-3xl font-semibold tracking-tight">
                 {t('adminCoreBilling.heroTitle')}

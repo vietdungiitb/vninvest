@@ -5,18 +5,27 @@ export interface ProviderModelOption {
 
 export const PROVIDER_MODELS: Record<string, ProviderModelOption[]> = {
   openai: [
-    { key: "gpt-4o-mini", label: "gpt-4o-mini" },
+    { key: "gpt-4.1", label: "gpt-4.1" },
+    { key: "gpt-4.1-mini", label: "gpt-4.1-mini" },
     { key: "gpt-4o", label: "gpt-4o" },
+    { key: "gpt-4o-mini", label: "gpt-4o-mini" },
+    { key: "o3", label: "o3" },
+    { key: "o3-mini", label: "o3-mini" },
     { key: "gpt-3.5-turbo", label: "gpt-3.5-turbo" },
     { key: "custom", label: "Mô hình tùy chỉnh..." }
   ],
   gemini: [
+    { key: "gemini-3.8-flash", label: "gemini-3.8-flash" },
+    { key: "gemini-2.5-pro", label: "gemini-2.5-pro" },
+    { key: "gemini-2.5-flash", label: "gemini-2.5-flash" },
     { key: "gemini-1.5-flash", label: "gemini-1.5-flash" },
     { key: "gemini-1.5-pro", label: "gemini-1.5-pro" },
     { key: "gemini-pro", label: "gemini-pro" },
     { key: "custom", label: "Mô hình tùy chỉnh..." }
   ],
   claude: [
+    { key: "claude-opus-4", label: "claude-opus-4" },
+    { key: "claude-sonnet-4", label: "claude-sonnet-4" },
     { key: "claude-3-5-sonnet", label: "claude-3-5-sonnet" },
     { key: "claude-3-haiku", label: "claude-3-haiku" },
     { key: "custom", label: "Mô hình tùy chỉnh..." }

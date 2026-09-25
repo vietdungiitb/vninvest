@@ -1,0 +1,18 @@
+# BL-16: coverage config — report-only until pre-existing failures fixed (see gates.md).
+[run]
+source = src
+omit =
+    */migrations/*
+    */tests/*
+    */test_*.py
+    src/vninvest_core/wsgi.py
+    src/vninvest_core/asgi.py
+    manage.py
+[report]
+show_missing = True
+skip_covered = False
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError

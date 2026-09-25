@@ -1,4 +1,5 @@
 import { createElement, useState, useEffect } from "react";
+import { Button } from "../ui/button.js";
 import { useI18n } from "../../context/LangContext.js";
 import styles from "./soc.module.css";
 
@@ -118,11 +119,11 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
   const inputStyle: React.CSSProperties = {
     width: "100%",
     padding: "0.5rem",
-    background: "rgba(15,23,42,0.6)",
+    background: "rgba(var(--soc-rgb-0f172a) / 0.6)",
     border: "1px solid var(--border-default, rgba(80, 120, 168, 0.28))",
-    borderRadius: "6px",
+    borderRadius: "var(--r-sm, 6px)",
     color: "var(--text-primary, #f1f5f9)",
-    fontSize: "0.875rem",
+    fontSize: "var(--fs-md)",
     outline: "none",
   };
 
@@ -160,31 +161,39 @@ function SocScreenerConfigForm(props: SocScreenerConfigFormProps) {
       ),
     ),
     createElement("div", { className: styles.screenerActionsBar },
-      createElement("button", {
-        onClick: handleReset,
-        className: `${styles.actionBtn} ${styles.actionBtnGhost}`,
+        createElement(Button, {
+          onClick: handleReset,
+          variant: "ghost",
+          size: "sm",
+          className: `${styles.actionBtn} ${styles.actionBtnGhost}`,
         
       },
       t("soc.screener.config.reset")
       ),
-      createElement("button", {
-        onClick: onCancel,
-        className: `${styles.actionBtn} ${styles.actionBtnGhost}`,
+        createElement(Button, {
+          onClick: onCancel,
+          variant: "ghost",
+          size: "sm",
+          className: `${styles.actionBtn} ${styles.actionBtnGhost}`,
         
       },
       t("common.cancel")
       ),
-      onPreview ? createElement("button", {
-        onClick: handlePreview,
-        className: `${styles.actionBtn} ${styles.actionBtnGhost}`,
+        onPreview ? createElement(Button, {
+          onClick: handlePreview,
+          variant: "ghost",
+          size: "sm",
+          className: `${styles.actionBtn} ${styles.actionBtnGhost}`,
         
       },
       t("soc.screener.config.preview")
       ) : null,
-      createElement("button", {
-        onClick: handleSave,
-        disabled: loading,
-        className: `${styles.actionBtn} ${styles.actionBtnPrimary}`,
+        createElement(Button, {
+          onClick: handleSave,
+          disabled: loading,
+          variant: "default",
+          size: "sm",
+          className: `${styles.actionBtn} ${styles.actionBtnPrimary}`,
         
       },
       loading ? t("common.saving") : t("common.save")

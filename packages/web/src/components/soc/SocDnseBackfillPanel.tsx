@@ -1,4 +1,5 @@
 import { createElement, useEffect, useState, useRef } from "react";
+import { Button } from "../ui/button.js";
 import { useI18n } from "../../context/LangContext.js";
 import { ShellPanel } from "../../components/ShellPageTemplate.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
@@ -191,7 +192,7 @@ export function SocDnseBackfillPanel() {
                     className: styles.actionBtn,
                     style: {
                       marginTop: "0.75rem",
-                      background: "rgba(16, 185, 129, 0.2)",
+                      background: "rgba(var(--soc-rgb-10b981) / 0.2)",
                       color: "var(--color-success-500, #34d399)",
                        cursor: submitting ? "not-allowed" : "pointer",
                     },
@@ -242,9 +243,9 @@ export function SocDnseBackfillPanel() {
                       totalPages > 1 ? createElement(
                         "div",
                         { className: styles.pagination, style: { marginTop: "0.75rem" } },
-                        createElement("button", { className: styles.pageBtn, disabled: safePage <= 1, onClick: () => setJobsPage((p) => Math.max(1, p - 1)) }, t("soc.actions.prev")),
-                        createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted)" } }, t("soc.actions.page", { page: safePage })),
-                        createElement("button", { className: styles.pageBtn, disabled: safePage >= totalPages, onClick: () => setJobsPage((p) => p + 1) }, t("soc.actions.next")),
+                        createElement(Button, { className: styles.pageBtn, variant: "ghost", size: "sm", disabled: safePage <= 1, onClick: () => setJobsPage((p) => Math.max(1, p - 1)) }, t("soc.actions.prev")),
+                        createElement("span", { style: { fontSize: "var(--fs-sm)", color: "var(--text-muted)" } }, t("soc.actions.page", { page: safePage })),
+                        createElement(Button, { className: styles.pageBtn, variant: "ghost", size: "sm", disabled: safePage >= totalPages, onClick: () => setJobsPage((p) => p + 1) }, t("soc.actions.next")),
                       ) : null,
                     );
                     })(),

@@ -4,6 +4,14 @@ import { AIUsageDashboard } from "./AIUsageDashboard";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import * as LangContext from "../context/LangContext.js";
 
+if (typeof globalThis.ResizeObserver === "undefined") {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
+
 const aggregate = {
   total_requests: 10,
   total_tokens_in: 100,
@@ -29,6 +37,19 @@ const i18nValue = {
 
 beforeEach(() => {
   vi.spyOn(coreApiAdapter, "getAIUsageAggregate").mockResolvedValue(aggregate);
+  vi.spyOn(coreApiAdapter, "getAIUsageSummary").mockResolvedValue({
+    results: [
+      {
+        date: "2024-01-01",
+        action: "chat",
+        total_requests: 1,
+        total_tokens_in: 100,
+        total_tokens_out: 50,
+        total_cost: "0.01",
+        avg_latency_ms: 200,
+      },
+    ],
+  });
   vi.spyOn(coreApiAdapter, "getAIUsageRecords").mockResolvedValue({
     results: [
       {
@@ -59,9 +80,9 @@ describe("AIUsageDashboard", () => {
       render(createElement(AIUsageDashboard, {}));
     });
     await waitFor(() => {
-      expect(screen.getByText("usage.title")).toBeTruthy();
+      expect(screen.getByText("aiUsageAnalytics.title")).toBeTruthy();
     });
-    expect(screen.getByText("usage.requests")).toBeTruthy();
+    expect(screen.getByText("aiUsageAnalytics.totalRequests")).toBeTruthy();
     expect(coreApiAdapter.getAIUsageRecords).toHaveBeenCalled();
   });
 
@@ -71,7 +92,7 @@ describe("AIUsageDashboard", () => {
       render(createElement(AIUsageDashboard, {}));
     });
     await waitFor(() => {
-      expect(screen.getByText("usage.showing")).toBeTruthy();
+      expect(screen.getByText("aiUsageAnalytics.showing")).toBeTruthy();
     });
     expect(coreApiAdapter.getAIUsageRecords).toHaveBeenCalled();
   });
@@ -81,16 +102,44 @@ describe("AIUsageDashboard", () => {
       render(createElement(AIUsageDashboard, {}));
     });
     await waitFor(() => {
-      expect(screen.getByText("usage.title")).toBeTruthy();
+      expect(screen.getByText("aiUsageAnalytics.title")).toBeTruthy();
     });
 
     const callsBefore = coreApiAdapter.getAIUsageRecords.mock.calls.length;
     await act(async () => {
-      fireEvent.click(screen.getByText("usage.exportCsv"));
+      fireEvent.click(screen.getByText("aiUsageAnalytics.exportCsv"));
     });
 
     await waitFor(() => {
       expect(coreApiAdapter.getAIUsageRecords.mock.calls.length).toBeGreaterThan(callsBefore);
     });
+  });
+
+  it("passes model/status filter params to records API (F2)", async () => {
+    await act(async () => {
+      render(createElement(AIUsageDashboard, {}));
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("filter-model")).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("filter-status"), { target: { value: "success" } });
+    });
+
+    await waitFor(() => {
+      const lastCall = coreApiAdapter.getAIUsageRecords.mock.calls.at(-1);
+      expect(lastCall[0]).toMatchObject({ status: "success" });
+    });
+  });
+
+  it("renders usage chart from summary API (F1)", async () => {
+    await act(async () => {
+      render(createElement(AIUsageDashboard, {}));
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("usage-chart")).toBeTruthy();
+    });
+    expect(coreApiAdapter.getAIUsageSummary).toHaveBeenCalled();
   });
 });

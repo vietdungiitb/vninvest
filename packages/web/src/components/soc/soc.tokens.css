@@ -64,10 +64,67 @@
   --soc-c-0b1528: #0b1528;
   --soc-rgb-fbbf24: 251 191 36;
   --soc-rgb-f97316: 249 115 22;
+  --soc-rgb-d97706: 217 119 6;
   --soc-rgb-2dd4bf: 45 212 191;
   --soc-c-5eead4: #5eead4;
   --soc-rgb-ffbf4d: 255 191 77;
   --soc-rgb-22d3ee: 34 211 238;
   --soc-c-60a5fa: #60a5fa;
+  --soc-rgb-38bdf8: 56 189 248;
   --soc-c-ffffff: #ffffff;
+  /* W1-2: purple token (was hardcoded #a855f7 in tierIconMap) */
+  --accent-purple: #a855f7;
+  --accent-purple-rgb: 168 85 247;
+}
+
+/* W1-0/W1-1: light theme overrides (contrast verified, see docs/evidence/design-token/W1-0-palette.md) */
+:root[data-theme="light"] {
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --border-default: rgba(15, 23, 42, 0.12);
+  --border-strong: rgba(15, 23, 42, 0.2);
+  --bg-panel: #ffffff;
+  --bg-panel-soft: #f8fafc;
+  --bg-input: #f1f5f9;
+  --accent-cyan: #0e7490;
+  --accent-purple: #7e22ce;
+  --accent-purple-rgb: 126 34 206;
+  --shadow-card: 0 2px 8px rgba(15, 23, 42, 0.08);
+  --shadow-pop: 0 8px 24px rgba(15, 23, 42, 0.12);
+  /* legacy bg aliases → light surfaces */
+  --soc-rgb-081734: 248 250 252;
+  --soc-rgb-0f172a: 241 245 249;
+  --soc-rgb-020b23: 255 255 255;
+  --soc-c-0b1528: #f1f5f9;
+  /* legacy text aliases → dark text */
+  --soc-c-f1f5f9: #0f172a;
+  --soc-c-ffffff: #0f172a;
+  --soc-c-cbd5e1: #475569;
+  /* legacy accent aliases → deep variants */
+  --soc-c-22d3ee: #0e7490;
+  --soc-rgb-22d3ee: 14 116 144;
+  --soc-rgb-00b4d8: 0 144 196;
+  --soc-c-00b4d8: #0090c4;
+  --soc-c-06b6d4: #0e7490;
+  --soc-c-48cae4: #0e7490;
+  --soc-c-67e8f9: #0e7490;
+  --soc-c-34d399: #047857;
+  --soc-rgb-34d399: 4 120 87;
+  --soc-c-10b981: #047857;
+  --soc-rgb-10b981: 4 120 87;
+  --soc-c-fbbf24: #b45309;
+  --soc-rgb-fbbf24: 180 83 9;
+  --soc-c-f59e0b: #b45309;
+  --soc-rgb-f59e0b: 180 83 9;
+  --soc-rgb-d97706: 180 83 9;
+  --soc-c-f87171: #dc2626;
+  --soc-rgb-ef4444: 220 38 38;
+  --soc-c-ef4444: #dc2626;
+  --soc-rgb-f97316: 234 88 12;
+  --soc-rgb-2dd4bf: 13 148 136;
+  --soc-c-5eead4: #0f766e;
+  --soc-rgb-ffbf4d: 217 119 6;
+  --soc-c-60a5fa: #2563eb;
+  --soc-rgb-1e293b: 226 232 240;
 }

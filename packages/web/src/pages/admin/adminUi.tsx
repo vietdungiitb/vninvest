@@ -27,7 +27,7 @@ export function AdminPageHeader({ eyebrow, title, description, actions }: {
   );
   return (
     <div>
-      {eyebrow ? <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{eyebrow}</p> : null}
+      {eyebrow ? <p className="text-[var(--fs-2xs)] uppercase tracking-[0.24em] text-slate-400">{eyebrow}</p> : null}
       {actions ? (
         <div className="flex items-center justify-between gap-3">
           <div>{body}</div>
@@ -69,7 +69,7 @@ export function AdminMetricCard(props: Metric & { card?: Metric }) {
   const { label, value, detail, status } = props.card ?? props;
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/5 dark:border-slate-800 dark:bg-slate-900">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="text-[var(--fs-2xs)] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{label}</p>
       <div className="mt-2 flex items-end justify-between gap-3">
         <div>
           <p className="text-2xl font-semibold text-slate-950 dark:text-white">{value}</p>

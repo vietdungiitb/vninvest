@@ -4,21 +4,34 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from identity_access.permissions import IsCoreOperator
-
 from .models import AIUsageRecord, AIUsageSummary
 from .serializers import AIUsageRecordSerializer, AIUsageSummarySerializer
 
 
 class AIUsageRecordListView(APIView):
-    permission_classes = [permissions.IsAuthenticated, IsCoreOperator]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _base_queryset(self, request):
+        queryset = AIUsageRecord.objects.all()
+        if not request.user.is_staff and not request.user.is_superuser:
+            queryset = queryset.filter(user=request.user)
+        return queryset
 
     def get(self, request):
-        queryset = AIUsageRecord.objects.all()
+        queryset = self._base_queryset(request)
 
         action = request.query_params.get('action', '').strip()
         if action:
             queryset = queryset.filter(action=action)
+
+        # F2: server-side model / status filters
+        model_filter = request.query_params.get('model', '').strip()
+        if model_filter:
+            queryset = queryset.filter(model=model_filter)
+
+        status_filter = request.query_params.get('status', '').strip()
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
 
         days = request.query_params.get('days', '').strip()
         if days:
@@ -29,7 +42,7 @@ class AIUsageRecordListView(APIView):
                 pass
 
         user_id = request.query_params.get('user_id', '').strip()
-        if user_id:
+        if user_id and (request.user.is_staff or request.user.is_superuser):
             queryset = queryset.filter(user_id=user_id)
 
         try:
@@ -56,15 +69,17 @@ class AIUsageRecordListView(APIView):
         serializer = AIUsageRecordSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        serializer.save(user=request.user if request.user.is_authenticated else None)
+        serializer.save(user=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class AIUsageSummaryView(APIView):
-    permission_classes = [permissions.IsAuthenticated, IsCoreOperator]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         queryset = AIUsageSummary.objects.all()
+        if not request.user.is_staff and not request.user.is_superuser:
+            queryset = queryset.filter(user=request.user)
 
         days = request.query_params.get('days', '').strip()
         if days:
@@ -83,10 +98,12 @@ class AIUsageSummaryView(APIView):
 
 
 class AIUsageAggregateView(APIView):
-    permission_classes = [permissions.IsAuthenticated, IsCoreOperator]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         queryset = AIUsageRecord.objects.all()
+        if not request.user.is_staff and not request.user.is_superuser:
+            queryset = queryset.filter(user=request.user)
 
         days = request.query_params.get('days', '').strip()
         if days:

@@ -1,4 +1,5 @@
 import { createElement, useEffect, useState } from "react";
+import { Button } from "../ui/button.js";
 import { useI18n } from "../../context/LangContext.js";
 import { useToast } from "../../components/ShellToast.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
@@ -147,7 +148,7 @@ export function SocMatrixScrapeMonitor() {
             null,
             error ? createElement("div", { className: styles.inlineError, style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" } },
               createElement("span", null, error),
-              createElement("button", { className: styles.actionBtn, onClick: () => fetchData(false), style: { fontSize: "0.7rem" } }, t("soc.overview.retry"))
+              createElement(Button, { className: styles.actionBtn, variant: "ghost", size: "sm", onClick: () => fetchData(false), style: { fontSize: "var(--fs-xs)" } }, t("soc.overview.retry"))
             ) : null,
             createElement(
             "div",

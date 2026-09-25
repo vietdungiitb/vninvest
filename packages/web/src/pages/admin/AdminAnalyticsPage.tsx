@@ -86,10 +86,10 @@ export function AdminAnalyticsPage() {
           <div style={{ width: '100%', height: 280 }}>
             <ResponsiveContainer>
               <BarChart data={rows}>
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} interval={Math.ceil(rows.length / 10)} />
-                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 12 }} interval={Math.ceil(rows.length / 10)} />
+                <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
                 <Tooltip />
-                <Bar dataKey="signups" name={t('adminAnalytics.sSignups')} fill="#3b82f6" />
+                <Bar dataKey="signups" name={t('adminAnalytics.sSignups')} fill="var(--accent-blue)" />
                 <Bar dataKey="trials" name={t('adminAnalytics.sTrials')} fill="#22c55e" />
                 <Bar dataKey="paid" name={t('adminAnalytics.sPaid')} fill="#a855f7" />
                 <Bar dataKey="churned" name={t('adminAnalytics.sChurned')} fill="#f43f5e" />
@@ -104,19 +104,19 @@ export function AdminAnalyticsPage() {
         <h2 className="text-base font-semibold">{t('adminAnalytics.cohortTitle')}</h2>
         <div className="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-950/60">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{t('adminAnalytics.trialActive')}</p>
+            <p className="text-[var(--fs-2xs)] uppercase tracking-[0.2em] text-slate-500">{t('adminAnalytics.trialActive')}</p>
             <p className="mt-1 text-2xl font-semibold">{cohort?.trial_active ?? '—'}</p>
           </div>
           <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-950/60">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{t('adminAnalytics.converted')}</p>
+            <p className="text-[var(--fs-2xs)] uppercase tracking-[0.2em] text-slate-500">{t('adminAnalytics.converted')}</p>
             <p className="mt-1 text-2xl font-semibold">{cohort?.converted_paid ?? '—'}</p>
           </div>
           <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-950/60">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{t('adminAnalytics.conversion')}</p>
+            <p className="text-[var(--fs-2xs)] uppercase tracking-[0.2em] text-slate-500">{t('adminAnalytics.conversion')}</p>
             <p className="mt-1 text-2xl font-semibold">{cohort ? `${(cohort.conversion_rate * 100).toFixed(1)}%` : '—'}</p>
           </div>
           <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-950/60">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{t('adminAnalytics.migration')}</p>
+            <p className="text-[var(--fs-2xs)] uppercase tracking-[0.2em] text-slate-500">{t('adminAnalytics.migration')}</p>
             <p className="mt-1 text-sm font-semibold">↑ {cohort?.upgrades_30d ?? '—'} · ↓ {cohort?.downgrades_30d ?? '—'}</p>
           </div>
         </div>

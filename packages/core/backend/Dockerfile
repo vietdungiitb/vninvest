@@ -14,9 +14,9 @@ FROM python:${PYTHON_VERSION}-slim AS builder
 
 WORKDIR /build
 
-# Install build deps
+# Install build deps (BL-01: libxmlsec1-dev + pkg-config for python3-saml)
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc libpq-dev git \
+    && apt-get install -y --no-install-recommends gcc libpq-dev git pkg-config libxmlsec1-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -41,9 +41,9 @@ FROM python:${PYTHON_VERSION}-slim AS runtime
 
 WORKDIR /app
 
-# Runtime deps (libpq for psycopg2)
+# Runtime deps (libpq for psycopg2, xmlsec1 for SAML verification — BL-01)
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libpq5 curl \
+    && apt-get install -y --no-install-recommends libpq5 curl xmlsec1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from builder

@@ -91,7 +91,7 @@ export function AdminBillingFleetPage() {
         <div className="mt-3 grid grid-cols-3 gap-2 md:grid-cols-6">
           {(overview?.revenue_6m || []).map((r: any) => (
             <div key={r.month} className="rounded-xl bg-slate-50 p-2 text-center dark:bg-slate-950/60">
-              <p className="text-[11px] text-slate-500">{r.month}</p>
+              <p className="text-[var(--fs-2xs)] text-slate-500">{r.month}</p>
               <p className="text-sm font-semibold">{fmtVND(r.total, localeTag)}</p>
             </div>
           ))}

@@ -257,7 +257,7 @@ services:
 
   # ── Prometheus ───────────────────────────────────────────────────────────────
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.7.0@sha256:29c1e0b48ad816750245dea3d65ac3ce57dda30547e67b1e9a5176e2953cc4dc
     container_name: vninvest-prometheus
     restart: unless-stopped
     command:
@@ -277,7 +277,7 @@ services:
 
   # ── Grafana ──────────────────────────────────────────────────────────────────
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:12.2.0@sha256:74144189b38447facf737dfd0f3906e42e0776212bf575dc3334c3609183adf7
     container_name: vninvest-grafana
     restart: unless-stopped
     environment:

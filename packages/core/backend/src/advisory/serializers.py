@@ -14,12 +14,28 @@ SENSITIVE_KEY_PATTERNS = re.compile(
     r'(sk-proj-|sk-ant-|AIza|ghp_|gho_|ghu_|sk-)[A-Za-z0-9_-]{20,}'
 )
 
+# Key names that are actually secrets — NOT budget fields like max_tokens / tokens_per_day
+_SENSITIVE_KEY_TOKEN = re.compile(
+    r'(?:^|_)(?:api_key|access_token|refresh_token|auth_token|bearer_token|id_token|token)(?:$|_)',
+    re.IGNORECASE,
+)
+
+
+def _is_sensitive_key(key: str) -> bool:
+    key_l = key.lower()
+    if any(p in key_l for p in ('api_key', 'secret', 'credential')):
+        return True
+    # 'token' alone matches access_token etc., but not max_tokens / tokens_per_day
+    if _SENSITIVE_KEY_TOKEN.search(key_l) and 'max_token' not in key_l and 'tokens_per' not in key_l:
+        return True
+    return False
+
 
 def sanitize_sensitive_fields(data: dict) -> dict:
     """Mask sensitive fields in audit snapshots before persisting."""
     sanitized = {}
     for key, value in data.items():
-        if any(pattern in key.lower() for pattern in ['api_key', 'secret', 'credential', 'token']):
+        if _is_sensitive_key(key):
             sanitized[key] = _mask_sensitive_value(str(value))
         elif isinstance(value, dict):
             sanitized[key] = sanitize_sensitive_fields(value)

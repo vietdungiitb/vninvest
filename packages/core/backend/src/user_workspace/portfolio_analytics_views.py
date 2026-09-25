@@ -444,6 +444,7 @@ class PortfolioAICommandCenterView(APIView):
         except UserAICredential.DoesNotExist:
             user_cred = None
 
+        api_key_masked = ''
         if user_cred:
             provider = user_cred.ai_provider or 'openai'
             model = user_cred.ai_model or config.ai_model
@@ -451,6 +452,14 @@ class PortfolioAICommandCenterView(APIView):
             custom_endpoint = user_cred.custom_endpoint or ''
             fallback_remaining = user_cred.fallback_quota_remaining
             fallback_date = user_cred.fallback_quota_date
+            if api_key_configured:
+                # F4: expose only last4 mask — never full key in response body
+                try:
+                    from identity_access.security import decrypt_user_api_key
+                    plain_key = decrypt_user_api_key(user_cred.encrypted_api_key)
+                    api_key_masked = f'••••••••{plain_key[-4:]}' if len(plain_key) >= 4 else '••••••••'
+                except Exception:
+                    api_key_masked = '••••••••'
         else:
             # Fallback to legacy preferences
             from identity_access.models import UserProfile
@@ -466,27 +475,72 @@ class PortfolioAICommandCenterView(APIView):
             custom_endpoint = ''
             fallback_remaining = 0
             fallback_date = None
+            if api_key_configured:
+                try:
+                    raw = str(prefs.get('api_key', '') or '')
+                    try:
+                        from identity_access.security import decrypt_user_api_key
+                        plain_key = decrypt_user_api_key(raw)
+                    except Exception:
+                        plain_key = raw
+                    api_key_masked = f'••••••••{plain_key[-4:]}' if len(plain_key) >= 4 else '••••••••'
+                except Exception:
+                    api_key_masked = '••••••••'
 
         ai_ready = api_key_configured or (provider == 'openclaw') or (provider == 'local')
         from django.conf import settings as django_settings
         fallback_quota_max = getattr(django_settings, 'AI_FALLBACK_DAILY_QUOTA', 5)
+
+        # Per-user policy prefer (Slice C): user field > system metadata/config
+        sys_refresh = int(metadata.get('advisory_refresh_interval_hours', 24))
+        sys_max_auto = int(metadata.get('advisory_max_auto_refreshes_per_day', 24))
+        sys_max_tokens = int(config.max_tokens)
+        sys_temp = float(config.temperature)
+        sys_prompt = metadata.get('ai_prompt_config') or prompt_config
+        if user_cred:
+            advisory_refresh = (
+                user_cred.refresh_interval_hours
+                if user_cred.refresh_interval_hours is not None else sys_refresh
+            )
+            advisory_max_auto = (
+                user_cred.max_auto_refreshes_per_day
+                if user_cred.max_auto_refreshes_per_day is not None else sys_max_auto
+            )
+            advisory_max_tokens = (
+                user_cred.max_tokens_per_day
+                if user_cred.max_tokens_per_day is not None else sys_max_tokens
+            )
+            advisory_temp = (
+                user_cred.temperature
+                if user_cred.temperature is not None else sys_temp
+            )
+            advisory_prompt = user_cred.prompt_config or sys_prompt
+        else:
+            advisory_refresh = sys_refresh
+            advisory_max_auto = sys_max_auto
+            advisory_max_tokens = sys_max_tokens
+            advisory_temp = sys_temp
+            advisory_prompt = sys_prompt
 
         response_data = {
             'ai_provider': provider,
             'ai_model': model,
             'ai_api_key': '',
             'ai_api_key_configured': api_key_configured,
+            'ai_api_key_masked': api_key_masked,
+            'system_prompt_template': config.prompt_template or '',
             'custom_endpoint': custom_endpoint,
             'effective_ai_source': metadata.get('effective_ai_source') or 'command_center',
             'effective_ai_provider': provider,
             'effective_ai_model': model or 'Chưa cấu hình',
             'ai_ready': ai_ready,
             'ai_config_message': metadata.get('ai_config_message') or 'AI Command Center đang phản ánh cấu hình hiệu lực của hệ thống.',
-            'ai_prompt_config': prompt_config,
-            'advisory_refresh_interval_hours': int(metadata.get('advisory_refresh_interval_hours', 24)),
-            'advisory_max_auto_refreshes_per_day': int(metadata.get('advisory_max_auto_refreshes_per_day', 24)),
-            'advisory_max_tokens_per_day': config.max_tokens,
-            'temperature': float(config.temperature),
+            'ai_prompt_config': advisory_prompt,
+            'ai_prompt_config_history': list(user_cred.prompt_config_history or []) if user_cred else [],
+            'advisory_refresh_interval_hours': int(advisory_refresh),
+            'advisory_max_auto_refreshes_per_day': int(advisory_max_auto),
+            'advisory_max_tokens_per_day': int(advisory_max_tokens),
+            'temperature': float(advisory_temp),
             'fallback_quota_remaining': fallback_remaining,
             'fallback_quota_max': fallback_quota_max,
             'fallback_quota_reset': fallback_date,
@@ -514,10 +568,30 @@ class PortfolioAICommandCenterView(APIView):
         payload = request.data if isinstance(request.data, dict) else {}
         metadata = dict(config.metadata or {})
 
-        # Save to UserAICredential (BYOK SSOT)
+        # Save to UserAICredential (BYOK SSOT) — per-user policy lives here only (Slice C)
         user_cred = self._get_or_create_user_credential(request.user)
 
-        # Capture before-state for audit log
+        # Resolve current effective policy (user > system) for audit before-snapshot
+        sys_refresh = int(metadata.get('advisory_refresh_interval_hours', 24))
+        sys_max_auto = int(metadata.get('advisory_max_auto_refreshes_per_day', 24))
+        sys_max_tokens = int(config.max_tokens)
+        sys_temp = float(config.temperature)
+        before_refresh = (
+            user_cred.refresh_interval_hours
+            if user_cred.refresh_interval_hours is not None else sys_refresh
+        )
+        before_max_auto = (
+            user_cred.max_auto_refreshes_per_day
+            if user_cred.max_auto_refreshes_per_day is not None else sys_max_auto
+        )
+        before_max_tokens = (
+            user_cred.max_tokens_per_day
+            if user_cred.max_tokens_per_day is not None else sys_max_tokens
+        )
+        before_temp = (
+            user_cred.temperature if user_cred.temperature is not None else sys_temp
+        )
+
         from advisory.serializers import sanitize_sensitive_fields
         before_snapshot = sanitize_sensitive_fields({
             'ai_provider': user_cred.ai_provider or '',
@@ -525,69 +599,75 @@ class PortfolioAICommandCenterView(APIView):
             'custom_endpoint': user_cred.custom_endpoint or '',
             'effective_ai_source': metadata.get('effective_ai_source') or 'command_center',
             'ai_ready': bool(user_cred.encrypted_api_key) or user_cred.ai_provider in ('openclaw', 'local'),
-            'advisory_refresh_interval_hours': int(metadata.get('advisory_refresh_interval_hours', 24)),
-            'advisory_max_auto_refreshes_per_day': int(metadata.get('advisory_max_auto_refreshes_per_day', 24)),
-            'advisory_max_tokens_per_day': config.max_tokens,
+            'advisory_refresh_interval_hours': int(before_refresh),
+            'advisory_max_auto_refreshes_per_day': int(before_max_auto),
+            'advisory_max_tokens_per_day': int(before_max_tokens),
+            'temperature': float(before_temp),
         })
 
         if 'ai_provider' in payload:
             user_cred.ai_provider = str(payload.get('ai_provider') or 'openai').strip().lower()
-            metadata['ai_provider'] = user_cred.ai_provider
 
         if 'ai_api_key' in payload:
             api_key = str(payload.get('ai_api_key') or '').strip()
             if api_key:
                 from identity_access.security import encrypt_user_api_key
                 user_cred.encrypted_api_key = encrypt_user_api_key(api_key)
-                metadata['ai_api_key_configured'] = True
             else:
-                # Only clear if provider is not local/openclaw
+                # F4 clear: drop stored key for BYOK providers; keep local/openclaw as-is
                 if user_cred.ai_provider not in ('local', 'openclaw'):
                     user_cred.encrypted_api_key = ''
-                    metadata['ai_api_key_configured'] = False
 
         if 'ai_model' in payload:
-            model_val = str(payload.get('ai_model') or '').strip()
-            user_cred.ai_model = model_val
-            config.ai_model = model_val
+            user_cred.ai_model = str(payload.get('ai_model') or '').strip()
 
         if 'custom_endpoint' in payload:
             user_cred.custom_endpoint = str(payload.get('custom_endpoint') or '').strip()
 
-        user_cred.save()
-
-        # Also save prompt config and other metadata to SystemAISettings
+        # Per-user advisory config — write UserAICredential only, never SystemAISettings
+        # F7: JSON append history on every effective prompt_config change
+        prompt_config_changed = False
         if 'ai_prompt_config' in payload:
-            metadata['ai_prompt_config'] = payload.get('ai_prompt_config')
+            pc = payload.get('ai_prompt_config')
+            new_pc = pc if isinstance(pc, dict) else {}
+            old_pc = user_cred.prompt_config if isinstance(user_cred.prompt_config, dict) else {}
+            if new_pc != old_pc:
+                prompt_config_changed = True
+                user_cred.prompt_config = new_pc
 
         if 'advisory_refresh_interval_hours' in payload:
             try:
-                metadata['advisory_refresh_interval_hours'] = int(payload.get('advisory_refresh_interval_hours'))
+                user_cred.refresh_interval_hours = int(payload.get('advisory_refresh_interval_hours'))
             except (TypeError, ValueError):
                 pass
 
         if 'advisory_max_auto_refreshes_per_day' in payload:
             try:
-                metadata['advisory_max_auto_refreshes_per_day'] = int(payload.get('advisory_max_auto_refreshes_per_day'))
+                user_cred.max_auto_refreshes_per_day = int(payload.get('advisory_max_auto_refreshes_per_day'))
             except (TypeError, ValueError):
                 pass
 
         if 'advisory_max_tokens_per_day' in payload:
             try:
-                config.max_tokens = int(payload.get('advisory_max_tokens_per_day'))
+                user_cred.max_tokens_per_day = int(payload.get('advisory_max_tokens_per_day'))
             except (TypeError, ValueError):
                 pass
 
         if 'temperature' in payload:
             try:
-                config.temperature = min(1.0, max(0.0, float(payload.get('temperature'))))
+                user_cred.temperature = min(1.0, max(0.0, float(payload.get('temperature'))))
             except (TypeError, ValueError):
                 pass
 
-        config.metadata = metadata
-        config.save()
+        user_cred.save()
 
-        # Create audit log
+        # F7: append history AFTER save so entry sees final prompt_config
+        if prompt_config_changed:
+            from advisory.advisory_helpers import _append_prompt_config_history
+            _append_prompt_config_history(user_cred, user_cred.prompt_config, source='save')
+            user_cred.save(update_fields=['prompt_config_history', 'updated_at'])
+
+        # Create audit log — after reflects user rows (C.1.6)
         from advisory.models import AIAuditLog
         after_snapshot = sanitize_sensitive_fields({
             'ai_provider': user_cred.ai_provider or '',
@@ -595,13 +675,28 @@ class PortfolioAICommandCenterView(APIView):
             'custom_endpoint': user_cred.custom_endpoint or '',
             'effective_ai_source': metadata.get('effective_ai_source') or 'command_center',
             'ai_ready': bool(user_cred.encrypted_api_key) or user_cred.ai_provider in ('openclaw', 'local'),
-            'advisory_refresh_interval_hours': int(metadata.get('advisory_refresh_interval_hours', 24)),
-            'advisory_max_auto_refreshes_per_day': int(metadata.get('advisory_max_auto_refreshes_per_day', 24)),
-            'advisory_max_tokens_per_day': config.max_tokens,
-            'temperature': float(config.temperature),
+            'advisory_refresh_interval_hours': int(
+                user_cred.refresh_interval_hours
+                if user_cred.refresh_interval_hours is not None else sys_refresh
+            ),
+            'advisory_max_auto_refreshes_per_day': int(
+                user_cred.max_auto_refreshes_per_day
+                if user_cred.max_auto_refreshes_per_day is not None else sys_max_auto
+            ),
+            'advisory_max_tokens_per_day': int(
+                user_cred.max_tokens_per_day
+                if user_cred.max_tokens_per_day is not None else sys_max_tokens
+            ),
+            'temperature': float(
+                user_cred.temperature if user_cred.temperature is not None else sys_temp
+            ),
         })
         diff_parts = []
-        for field in ['ai_provider', 'ai_model', 'effective_ai_source', 'custom_endpoint']:
+        for field in [
+            'ai_provider', 'ai_model', 'effective_ai_source', 'custom_endpoint',
+            'advisory_refresh_interval_hours', 'advisory_max_auto_refreshes_per_day',
+            'advisory_max_tokens_per_day', 'temperature',
+        ]:
             bv = str(before_snapshot.get(field, ''))
             av = str(after_snapshot.get(field, ''))
             if bv != av:
@@ -616,32 +711,110 @@ class PortfolioAICommandCenterView(APIView):
         )
 
         provider = user_cred.ai_provider or 'openai'
+        model = user_cred.ai_model or config.ai_model
         api_key_configured = bool(user_cred.encrypted_api_key)
         ai_ready = api_key_configured or (provider in ('openclaw', 'local'))
         from django.conf import settings as django_settings
         fallback_quota_max = getattr(django_settings, 'AI_FALLBACK_DAILY_QUOTA', 5)
+        api_key_masked = ''
+        if api_key_configured:
+            try:
+                from identity_access.security import decrypt_user_api_key
+                plain_key = decrypt_user_api_key(user_cred.encrypted_api_key)
+                api_key_masked = f'••••••••{plain_key[-4:]}' if len(plain_key) >= 4 else '••••••••'
+            except Exception:
+                api_key_masked = '••••••••'
 
         response_data = {
             'ai_provider': provider,
-            'ai_model': config.ai_model,
+            'ai_model': model,
             'ai_api_key': '',
             'ai_api_key_configured': api_key_configured,
+            'ai_api_key_masked': api_key_masked,
+            'system_prompt_template': config.prompt_template or '',
             'custom_endpoint': user_cred.custom_endpoint or '',
             'effective_ai_source': metadata.get('effective_ai_source') or 'command_center',
             'effective_ai_provider': provider,
-            'effective_ai_model': config.ai_model or 'Chưa cấu hình',
+            'effective_ai_model': model or 'Chưa cấu hình',
             'ai_ready': ai_ready,
             'ai_config_message': metadata.get('ai_config_message') or 'Cấu hình AI Command Center đã được cập nhật thành công.',
-            'ai_prompt_config': metadata.get('ai_prompt_config'),
-            'advisory_refresh_interval_hours': int(metadata.get('advisory_refresh_interval_hours', 24)),
-            'advisory_max_auto_refreshes_per_day': int(metadata.get('advisory_max_auto_refreshes_per_day', 24)),
-            'advisory_max_tokens_per_day': config.max_tokens,
-            'temperature': float(config.temperature),
+            'ai_prompt_config': user_cred.prompt_config or metadata.get('ai_prompt_config'),
+            'ai_prompt_config_history': list(user_cred.prompt_config_history or []),
+            'advisory_refresh_interval_hours': int(
+                user_cred.refresh_interval_hours
+                if user_cred.refresh_interval_hours is not None else sys_refresh
+            ),
+            'advisory_max_auto_refreshes_per_day': int(
+                user_cred.max_auto_refreshes_per_day
+                if user_cred.max_auto_refreshes_per_day is not None else sys_max_auto
+            ),
+            'advisory_max_tokens_per_day': int(
+                user_cred.max_tokens_per_day
+                if user_cred.max_tokens_per_day is not None else sys_max_tokens
+            ),
+            'temperature': float(
+                user_cred.temperature if user_cred.temperature is not None else sys_temp
+            ),
             'fallback_quota_remaining': user_cred.fallback_quota_remaining,
             'fallback_quota_max': fallback_quota_max,
             'fallback_quota_reset': user_cred.fallback_quota_date,
         }
         return Response(response_data)
+
+
+class PortfolioAICommandCenterPromptConfigRollbackView(APIView):
+    """POST /workspace/ai-command-center/prompt-config/rollback/ — F7 F-AC7.
+
+    Body: {"version": int} — restore that snapshot into prompt_config and
+    append a history entry with source='rollback'. Full config returned in
+    history[i].config so GET alone is enough to inspect any version.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from advisory.models import SystemAISettings, UserAICredential
+        from advisory.advisory_helpers import _append_prompt_config_history
+        from vninvest_core.exceptions import ValidationErrorException
+
+        payload = request.data if isinstance(request.data, dict) else {}
+        try:
+            version = int(payload.get('version'))
+        except (TypeError, ValueError):
+            raise ValidationErrorException(detail='version must be an integer')
+
+        try:
+            user_cred = UserAICredential.objects.get(user=request.user)
+        except UserAICredential.DoesNotExist:
+            raise ValidationErrorException(detail='No prompt config history for this user')
+
+        history = list(user_cred.prompt_config_history or [])
+        match = next((h for h in history if int(h.get('version', -1)) == version), None)
+        if not match:
+            raise ValidationErrorException(detail=f'Prompt config version {version} not found')
+
+        restored = match.get('config') if isinstance(match.get('config'), dict) else {}
+        user_cred.prompt_config = restored
+        _append_prompt_config_history(user_cred, restored, source='rollback')
+        user_cred.save(update_fields=['prompt_config', 'prompt_config_history', 'updated_at'])
+
+        from advisory.models import AIAuditLog
+        from advisory.serializers import sanitize_sensitive_fields
+        AIAuditLog.objects.create(
+            action=AIAuditLog.ActionChoices.UPDATE_SETTINGS,
+            actor=request.user.username,
+            reason=f'Rollback prompt config về version {version} (source=rollback).',
+            before_json=sanitize_sensitive_fields({'prompt_config': None}),
+            after_json=sanitize_sensitive_fields({'prompt_config_version': version}),
+            diff_summary=f'prompt_config rollback → v{version}',
+        )
+
+        config = SystemAISettings.objects.filter(is_active=True).order_by('-updated_at').first()
+        metadata = dict(config.metadata) if config else {}
+        return Response({
+            'ai_prompt_config': user_cred.prompt_config or metadata.get('ai_prompt_config'),
+            'ai_prompt_config_history': list(user_cred.prompt_config_history or []),
+            'rolled_back_to': version,
+        })
 
 
 class PortfolioAICommandCenterTestView(APIView):

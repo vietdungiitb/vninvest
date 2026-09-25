@@ -24,6 +24,12 @@ class RequestTraceMiddleware:
     def __call__(self, request):
         request_id = request.META.get('HTTP_X_REQUEST_ID', '').strip() or str(uuid.uuid4())
         request.META['X_REQUEST_ID'] = request_id
+        # BL-15: propagate to JSON log formatter (stdlib ContextVar, no dep).
+        try:
+            from vninvest_core.json_logging import request_id_var
+            request_id_var.set(request_id)
+        except Exception:
+            pass
         started_at = time.perf_counter()
         response = self.get_response(request)
         self._record_access_event(request, response, request_id, started_at)

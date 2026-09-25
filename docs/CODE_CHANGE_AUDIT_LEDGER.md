@@ -5,6 +5,434 @@
 
 ---
 
+## Entry 212: B2 backlog complete + B4 handover tick — audit 4-bước (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Scope**: Hoàn tất Bước B2 (thiếu BL-15→BL-24 do file cut 109 dòng) + B4 checklist tick + phản biện đối chiếu DAG; **doc-only**, không đổi code runtime.
+- **Code/docs**:
+  - `docs/BACKLOG_AUDIT_CONSOLIDATED_20260924.md`: finish BL-14 DoD; **+BL-15…BL-24 + BL-17b** (JSON logging, coverage, MFA/rotation, DR drill, warnings, tracing, headers/editorial, read-replica, service split, K8s, product scoring); bảng phân bố P0 11 / P1 6+1 / P2 3 / P3 4 = 24 ID; **fix 3 phụ thuộc ngược** vs plan DAG (BL-02/03/05 không còn khai depend on BL-11/14/13).
+  - `docs/IMPLEMENTATION_PLAN_AUDIT_BACKLOG_20260924.md` §8: standing procedure giữ 6 ô implementer; **tick tổng B4** 4/4 handover.
+  - `docs/evidence/audit-bl/README.md` (new): mẫu gates.md.
+- **Phản biện**: ledger row 198 claim "P1 7" ≠ schedule plan 6 primary + BL-17b — đã ghi chú trong backlog (không phẳng số marketing); summary row 198 vs detailed Entry 198 Slice A numbering conflict → Entry này đóng B4, giữ 198 summary.
+- **Gates**: grep `^### BL-` = 25 header (24 ID + 17b); 3 file tồn tại; Test-Path evidence = True.
+- **Evidence**: `docs/evidence/audit-bl/README.md`.
+- **Next**: đội code nhận W1 (BL-06/07/08/09/10 + khởi động BL-01/04) theo §2; F6b/F9/manual E2E AI CC vẫn open.
+
+---
+
+## Entry 213: Enterprise UI Consistency Audit — full scan 3 agents (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Scope**: Full `packages/web/src` — pages, components, layouts, SOC, admin, tenant, auth, workspace, dashboard. **Doc-only**, no code changed.
+- **Method**: 3 parallel subagent scans (shared/SOC/layout; workspace/dashboard; admin/tenant/auth) + independent review of theme SSOT (`theme/tokens.css`, `index.css` `@theme`, `theme.module.css`).
+- **Docs**:
+  - `docs/DESIGN_TOKEN_AUDIT_20260924.md` (new): 5 anti-pattern groups × ~122 findings; Executive Matrix (ERR-01..ERR-65); 8 sample tickets with full Current→Target diff + AC-1..AC-4; 5-Wave Rollout Plan (Foundation→Pages→Edge).
+  - Supersedes/extends `docs/UI_CONSISTENCY_AUDIT_20260924.md` (Entry 201) — earlier scan covered 86 files / 20 ERR-IDs; this scan covers 100+ files / 122 findings / 65 ERR-IDs.
+- **Top findings**:
+  - **A Typography (~35)**: `font-size: 34px` (ShellPageTemplate), `28px` (aiSettings), `24px`, `21px`, `15px` outside scale; `text-[10px]` in 3 admin pages; `fontSize:"0.68rem"/"0.7rem"` in 6 SOC files.
+  - **B Color (~40)**: hardcoded `#10b981`, `#22d3ee`, `#f59e0b`, `#00b4d8`, `#4ade80` in inline `style={{}}`; `rgba(...)` instead of CSS vars; `#a855f7` (purple) not in token system.
+  - **C Spacing (~20)**: `gap: 0.35rem/0.4rem/18px`, `padding: 6px/20px`, `fontSize: "0.6rem"` off 8pt grid.
+  - **D Components (~15)**: ~12 raw `<button>` with `createElement` across SOC instead of `<Button>`; 5 different border-radius in ShellPageTemplate; `border-radius: 10px` x18 in aiSettings.
+  - **E Dark mode (~12)**: `:root` dark palette (`#0b0f19`, `#111827`) in `aiSettings.module.css`, `ShellPageTemplate.module.css`, `soc.tokens.css` — **breaks completely on `data-theme="light"`**.
+- **Architectural Rationale**: Wave 1 (`:root` dual-theme) before all else — systemic; Wave 2 SOC (most findings); Wave 3 Dashboard; Wave 4 Pages; Wave 5 Polish. All CSS/styling-only, zero business logic touched.
+- **Gates**: static analysis only (no build required). Verified `grep "#[0-9a-fA-F]{3}"` patterns across 100+ files; 0 false-positive tokens (all hex in tokens.css/index.css excluded).
+- **Evidence**: `docs/DESIGN_TOKEN_AUDIT_20260924.md`.
+- **Next**: Wave 1 implementation (`aiSettings.module.css` + `ShellPageTemplate.module.css` + `soc.tokens.css` `:root` dual-theme) — see Wave 1 tickets in report.
+
+---
+
+## Entry 211: AI CC Slice F — F8 Shell form extract (shared AICommandCenterForm) (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Plan**: `docs/IMPLEMENTATION_PLAN_AI_COMMAND_CENTER_SSAOT_20260924.md` Slice F F8.
+- **Scope**: Extract shared `AICommandCenterForm` so SaaS `AICommandCenterPage` + `ShellAiCommandCenterPage` both mount the same field set — F-AC8 0 field drift.
+- **Code**:
+  - **NEW** `components/AICommandCenterForm.tsx`: `AISettings`/`PromptConfigHistoryEntry`/`AICommandCenterTransport`; export `AI_CC_FORM_FIELD_TESTIDS` (8); full field load/save/test/clear-key + prompt-config drawer; props `t`/`localeTag` override, callbacks, `showRefreshButton`/`showPromptConfigButton`; local banner only when parent does not pass `onNotice`/`onError`.
+  - **REWRITE** `AICommandCenterPage.tsx`: uses form + `adapterTransport` (coreApiAdapter); overview/policy/quota/system-prompt/history/audit/event-gate stay at page; page banners own display.
+  - **REWRITE** `ShellAiCommandCenterPage.tsx`: drops local form; imports form + `createTranslator("vi")` (`shellT`); `fetchImpl` transport `/core/v1/workspace/ai-command-center/`; `showRefreshButton=false`, `showPromptConfigButton=false`.
+  - **NEW** `ai-cc-form-parity.component.test.ts`: checklist + render + source-contract (both import form; shell no `handleSaveSettings`).
+  - `declarations.d.ts` += `rollbackAICommandCenterPromptConfig`, `testAICommandCenterConnection`.
+- **Tests**: vitest 3 files / **17 PASS** (parity 3 + page 8 + contract 6). Red pre-fix: 3 failures (duplicate banner ×2 + wrong `__dirname` path) → fixed.
+- **Gates**: tsc 0, build PASS 32.88s, eslint 0 errors (19 shell `jsx-no-literals` warnings pre-existing pattern), vitest 17/17, i18n:scan 0 (pollution 0, no new keys), hardcode 0, check:shell 0.
+- **Evidence**: `docs/evidence/ai-cc/F8/gates.md`.
+- **Still open**: F9 routing; F6b blocked proxy C2; manual E2E §3.3 + banner visual PENDING (user).
+- **Next**: F9 backlog / F6b (if proxy) / manual sign-off. F8 DONE (211).
+
+---
+
+## Entry 210: AI CC Slice F — F7 Prompt config history + rollback (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Plan**: `docs/IMPLEMENTATION_PLAN_AI_COMMAND_CENTER_SSAOT_20260924.md` Slice F F7.
+- **Scope**: Prompt config version history (JSON append on save, cap 20) + rollback endpoint (F-AC7 rollback GET old).
+- **Code**:
+  - BE `advisory/models.py`: `UserAICredential.prompt_config_history` JSONField + migration `0009`.
+  - BE `advisory/advisory_helpers.py`: `PROMPT_CONFIG_HISTORY_LIMIT=20` + `_append_prompt_config_history`.
+  - BE `user_workspace/portfolio_analytics_views.py`: PUT detects `ai_prompt_config` change → append `{version, config, saved_at, source:save}`; GET/PUT response `ai_prompt_config_history`; `PortfolioAICommandCenterPromptConfigRollbackView` POST `{version}` → restore + `source=rollback` + `AIAuditLog`.
+  - BE `urls.py`: `workspace/ai-command-center/prompt-config/rollback/`.
+  - FE `workspace.js`: `rollbackAICommandCenterPromptConfig(version)`.
+  - FE `AICommandCenterPage.tsx`: history ShellPanel list + Restore button + notice.
+  - i18n `aiCommandCenter.promptHistory*` ×8 VI+EN; contract smoke += `ai_prompt_config_history`.
+- **Tests**: new `tests/test_ai_cc_prompt_history.py` (7: append, no-dup, GET old, rollback, cap, invalid-400, isolation); regression isolation+mgmt → **45 OK**.
+- **Gates**: check 0, makemigrations clean, tsc 0, build PASS 20.11s, eslint 0, vitest 2 files/14 PASS, i18n:scan 0, hardcode 0, check:shell 0.
+- **Evidence**: `docs/evidence/ai-cc/F7/gates.md`.
+- **Still open**: F8 shell extract; F9 routing; F6b blocked proxy C2; manual E2E §3.3 + banner visual PENDING (user).
+- **Next**: F8 backlog / manual sign-off. F7 DONE (210).
+
+---
+
+## Entry 209: AI CC Slice F — F3 Budget soft/hard (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Plan**: `docs/IMPLEMENTATION_PLAN_AI_COMMAND_CENTER_SSAOT_20260924.md` Slice F F3.
+- **Scope**: Soft warning 80% + hard block 100% of effective daily token budget on advisory refresh (BE); per-user `UserAICredential.max_tokens_per_day` preferred over system `ADVISORY_TOKEN_BUDGET`; FE surfaces soft warning in `AIAdvisoryWarningBanner`.
+- **Code**:
+  - BE `advisory/views.py`: `_resolve_advisory_token_budget` + `_advisory_budget_state` helpers; `AdvisoryRefreshView` hard 429 (`budget_hard_exceeded`, `budget_source`) + soft 201 (`budget_soft_warning`, `budget{}`); audit metadata += budget fields.
+  - FE `useStockDetailPageModel.js` pass budget flags; `StockDetailTabs.js` forward; `AIAdvisoryWarningBanner.js` show soft warning + `localeTag` date.
+  - i18n `aiAdvisoryWarning.budgetSoftWarning` VI+EN.
+- **Tests**: new `tests/test_advisory_budget.py` (8: resolve unit ×4, hard API, soft API, below-soft, system fallback hard+soft); regression `test_advisory_api_routes` + `test_ai_management_center` → **46 OK**.
+- **Gates**: `manage.py check` 0; `makemigrations --check` clean; tsc 0; build PASS 28.09s; eslint 0 errors (3 pre-existing warnings); vitest 3 files/16 PASS; i18n:scan 0; hardcode 0.
+- **Evidence**: `docs/evidence/ai-cc/F3/gates.md`.
+- **Still open**: F7 version history; F8 shell extract; F9 routing; F6b blocked proxy C2; manual E2E §3.3 + banner visual PENDING (user).
+- **Next**: F7 or F8 backlog / manual sign-off. F3 DONE (209).
+
+---
+
+## Entry 208: AI CC F-C6 polish — strip `t()||"fallback"` + localeTag date (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Plan**: `docs/IMPLEMENTATION_PLAN_AI_COMMAND_CENTER_SSAOT_20260924.md` Slice A A.1b / audit `AUDIT_AI_COMMAND_CENTER_SSOT_20260924.md` F-C6.
+- **Scope**: Close open **F-C6** — remove ineffective `t("aiCommandCenter.*") || "VI hardcode"` on keys guaranteed in `vi.js`/`en.js`.
+- **Code**:
+  - `AICommandCenterPage.tsx`: **72** replacements → bare `t(...)`.
+  - `AIAgentFederationPage.tsx` + `AIUsageAnalyticsPage.tsx`: **1** each (`backToHub`).
+  - Bonus: `useI18n()` → `{ t, localeTag }`; `fallback_quota_reset` `toLocaleDateString("vi-VN")` → `localeTag`.
+- **Grep proof**: 0 remaining `t("aiCommandCenter.*")||` across 3 files; 0 hardcode `vi-VN` date in CC page.
+- **Gates**: tsc 0; build PASS 49.73s; eslint 0; vitest **5 files/26 PASS**; i18n:scan 0; hardcode TOTAL_HITS=0.
+- **Evidence**: `docs/evidence/ai-cc/F-C6/gates.md`.
+- **Still open**: A-AC3 manual screenshot; F3/F7–F9 backlog; F6b blocked proxy C2; manual E2E §3.3.
+- **Next**: manual sign-off §3.3 or F6b when `GEMINI_API_KEY` available. F-C6 CLOSED (208).
+
+---
+
+## Entry 216: P1 DONE + P2 DONE + P3/BL-24 proposal (2026-09-24)
+
+- **BL-12**: `ci-critical.spec.ts` 6 tests backend-tolerant (6/6 xanh 15.2s, negative-test đỏ-đúng) + job `e2e-critical` hard-gate trong web-ci.yml. Còn 3 green runs CI post-push.
+- **BL-15**: JSON logging stdlib-only (formatter + ContextVar + middleware 2 dòng + LOGGING json-prod/text-dev), 5 tests OK, prod live probe ra JSON.
+- **BL-13**: k6-via-docker BLOCKED (Docker Desktop stall, 3 timeout) → fallback sampler `smoke-fallback.ps1`: p95 ≤70ms, 0 fail qua nginx; phát hiện phụ `/api/*` direct-API → 502 proxy (đúng thiết kế); baseline pg conns 143.
+- **BL-16**: `.coveragerc` + CI coverage job (report-only) + baseline touched-modules **89%** (90 tests OK); pre-existing failures verify HEAD (envelope/PAT tests) → global fail-under follow-up; FE provider blocked (npm arborist).
+- **BL-14**: xóa 2 `legacy_views.py` + whole `compat/` (grep còn 1 comment lịch sử); proxy thêm `Deprecation/Sunset 31-12-2026`; proxy tests 5 OK; traffic 7d follow-up với lệnh exact.
+- **BL-17**: MFA grep 0-hit 2 phía (absent Fact) → accepted-risk + roadmap TOTP; `SECURITY_SECRET_ROTATION_20260924.md` (cadence + ma trận 6 secrets).
+- **BL-18**: baseline warnings **3515** (2 runs ổn định) + CI no-increase gate. **BL-19**: defer tracing + unlock criteria. **BL-20**: xóa bullet trùng + errata 7.3/7.53.
+- **BL-24/P3**: telemetry catalog proposal + `P3-UNLOCK.md` (ngưỡng số + deny-list).
+- Gates vòng: tsc 0, check 0, sqlite restore. Evidence `docs/evidence/audit-bl/BL-{12,13,14,15,16,17,18,19,20,24}/gates.md` + `P3-UNLOCK.md`.
+
+---
+
+## Entry 215: W1 P0 còn lại — BL-02/03/05/11 DONE (2026-09-24)
+
+- **BL-02**: `AUTH_PASSWORD_VALIDATORS` (min 10 + common + numeric + similarity, always on) + prod cookie/transport secure-by-default (`env_validation.prod_cookie_security_settings`, explicit insecure → raise; deviation ghi rõ thay vì required-env để khỏi sập prod). New `test_auth_security.py` 9 tests. Gates: **46 tests OK** (register/password không regression), prod boot check 0, insecure override exit 1 đúng message.
+- **BL-03**: proxy whitelist headers (`FORWARD_HEADERS` + `LEGACY_PROXY_EXTRA_HEADERS`), bỏ forward content-length, `verify=True` (+CA bundle env), response pass-list (no Set-Cookie). New `test_legacy_proxy_scope.py` 5 tests OK.
+- **BL-05**: 5 Django services prod → `@pgbouncer:6432` + `CONN_MAX_AGE=0`, api depends_on pooler healthy, `infra/pgbouncer/RUNBOOK.md` (bypass <10p). `config --quiet` exit 0. Còn soak 24h + drill post-deploy.
+- **BL-11**: `scripts/preflight_prod_env.py` 7/7 PASS, wired vào `core-api.yml` (no secrets in logs).
+- Gates vòng: tsc 0, check 0, sqlite restore. Evidence `docs/evidence/audit-bl/BL-{02,03,05,11}/gates.md`. **P0 code-side HOÀN TẤT** (BL-01b/BL-04-prod/BL-10-live/BL-05-soak cần access/window riêng).
+
+---
+
+## Entry 214: W1 BL-01 partial + BL-04 partial (2026-09-24)
+
+- **BL-01 (fail-closed, chưa real crypto)**: `saml_service.py` default strict ở prod (noop chỉ DEBUG/test/explicit), unknown → strict, strict đòi Signature + cert (unsigned → `SAMLSignatureError`); +`python3-saml` requirements + `libxmlsec1-dev/pkg-config` builder + `xmlsec1` runtime Dockerfile; new `test_saml_signature_mode.py` 7 tests. Gates: **48 tests OK** (7 mới + 41 cũ), check 0, tsc 0. Còn BL-01b: real OneLogin verify + image build (blocked token secret).
+- **BL-04 (data-plane, chưa prod drill)**: new `infra/backup/pg-backup.sh` (Fc/Z6/sha256/retention 30/alert) + `README.md`; drill dev thật: dump 151MB/232s + restore 142s, migrations 142=nguồn, users 4 rows, đã cleanup; RTO dev ~6.2 phút, RPO policy ≤24h. Còn: cron prod + app-plane drill + lặp hàng tháng.
+- Evidence `docs/evidence/audit-bl/BL-{01,04}/gates.md`.
+
+---
+
+## Entry 221: Waves 2–5 DONE — DoD (2026-09-25)
+
+- **W2**: SOC TSX tokenize 9 files + fontSize scale + 20 raw buttons → Button (ghost/sm, giữ className/handlers) · vitest soc 28/28.
+- **W3**: SOC còn lại + dashboard (Vnbroker/Matrix/Parity/Dnse/Scheduler/Screener/ConfigForm/EmptyState/PositionDeck) + phát hiện quy tắc "non-SOC file chỉ dùng theme tokens".
+- **W4**: Billing/Payment/Screener/Admin/Toast visual QA authed (W2+W4 shots dark+light đã xem — dark hoàn hảo, light surfaces tốt, page chrome follow-up).
+- **W5**: polish + rescan (text-[]/raw-button/hex/fs lạ = 0 ngoài scope) + full gates: tsc 0, build 59.90s, lint 3515 = baseline, vitest 465/466 (1 flaky cũ), check:shell PASS.
+- Follow-ups (không blocker): SignalsPanel 24 buttons, ~50 off-grid soc spacing, var() fallbacks, page-chrome light, prose 12 i18n keys.
+- Evidence `docs/evidence/design-token/W2-W3-gates.md`, `W4-shots/`, `W2-shots/`, `W5-gates.md`.
+
+---
+
+## Entry 220: i18n recovery — 47 wiped keys restored (2026-09-25)
+
+- **Root cause**: `git checkout -- src/i18n/` sau check:shell để dọn scanner noise đã xóa nhầm ~54 dòng uncommitted AI CC (Entries 198–211). Scanner log "Added ..." là nhiễu (verify keys đã tồn tại).
+- **Assessment**: script đánh giá runtime từng key (`find-missing-final.mjs`, giữ lại): 165 referenced → 47 missing cả vi+en (parity giữ nguyên nên tests vẫn xanh — che giấu lỗi).
+- **Restore (+107/-1)**: nguồn VERIFIED (F/E-gates tables, EN_KEYS/TRANSLATIONS trong tests, B-gates, banner defaultValue) + 12 keys RECONSTRUCTED prose (tabs/backToHub/promptHistory×8/actions/loading — keys đúng, prose chờ owner duyệt) + 2 DEPRECATED comments + fix EN `fallbackQuotaReset` Resets→Reset.
+- Gates: 0 missing vi+en · vitest AI CC 5 files 26/26 · full 465/466 (1 flaky cũ) · tsc 0 · i18n:scan exit 0. Evidence `docs/evidence/design-token/I18N-RECOVERY.md`.
+
+---
+
+## Entry 219: Wave 1 DONE — dual-theme foundation (2026-09-25)
+
+- **W1-0**: palette light + contrast calc (11 ratios, min 4.76 PASS) + quyết định giữ alias (C3).
+- **W1-1**: `[data-theme="light"]` blocks cho theme/tokens + soc/tokens + aiSettings + ShellPageTemplate (dark untouched).
+- **W1-2**: `--accent-purple(-rgb)` 2 token files. **W1-3**: 6×10px→r-md. **W1-4**: tabBar/tabButton spacing (50 off-grid còn lại → follow-up). **W1-5**: extend `--fs-3xl/4xl`, map 34/28/24/21/15px (fallbacks giữ giá trị).
+- **Gate fix**: check-tokens.mjs strip `:root[data-theme]` definitions.
+- Gates: tsc 0, build 36.16s PASS, check:shell PASS (no i18n pollution), eslint touched 0, theme-verify spec PASS (giữ làm CI gate — đã wire vào e2e-critical), dist dark+light verify, screenshots W1-shots (login không dùng theme vars — page-level thuộc Waves 2–5).
+- Evidence `docs/evidence/design-token/W1-gates.md` + `W1-0-palette.md` + `W1-shots/`.
+
+---
+
+## Entry 218: Phản biện Design Token Audit + kế hoạch Waves chi tiết (2026-09-24)
+
+- **Phản biện** `docs/DESIGN_TOKEN_AUDIT_20260924.md`: CONFIRMED claims số liệu (34px:72, 28px:91, 21px:2642, text-[10px]×12, dotColor:501, #a855f7:117, :root 3 files, 0 light-override, data-theme mech); **C1** Wave 1 thiếu light target (SSOT cũng dark-only) → thêm W1-0 blocker; **C2** `soc/ui/Button` KHÔNG TỒN TẠI → sửa target `components/ui/button.tsx` + map danger→destructive; **C3** alias value-preserving có chủ ý; **C4** 51 occurrences/12 files; **C5** severity inflation; **C6** W1-5 nhầm scope + gates thiếu; **C7** trùng Entry 213 (renumber W1→217) + chưa có commit nào từ `df8f2ddf` (claim commit-push sai trên tree này).
+- **Kế hoạch** `docs/IMPLEMENTATION_PLAN_DESIGN_TOKEN_WAVES_20260924.md`: W1-0→W1-5 chi tiết (scope file:line, AC đo được, evidence gates.md + screenshots) + khung Waves 2–5 (sửa target Button, mapping tables, visual QA) + RACI + deny-list. Evidence `docs/evidence/design-token/R0-REVIEW.md`.
+
+---
+
+## Entry 217: W1 implement BL-06/07/08/09 + BL-10 partial (2026-09-24)
+
+- **BL-06**: `tests/test_workstation_endpoints.py:34` stale `legacy_views` import → merged into native import (`RealtimeWhaleFeedAggregateView` ở `native_views.py:792`); CI gate mới trong `core-api.yml` (fail khi có `legacy_views import` ở src/tests). Verify: import OK qua `django.setup`, `manage.py check` 0, gate local PASS.
+- **BL-07**: xóa `signal_intelligence/services/whale_engine.py` (unimportable, 0 refs src+tests). Verify grep 0 + siblings `ast.parse` OK + check 0.
+- **BL-08**: gộp 2 gán `LEGACY_BACKEND_URL` (`settings.py:130`+`:144`) thành 1 tại `:131` (giữ strip-slash, default `''` — không đổi behavior vì bản cũ effective đã là `''`). Grep còn 1 hit + check 0.
+- **BL-09**: baseline `npm audit` 18 vulns (1L/5M/12H) + `pip-audit` 46 vulns/12 pkgs; FIXED pip venv 26.0.1→26.2.1 + ghim digest prom `v3.7.0`/`grafana 12.2.0` tại 6 chỗ (3 compose), `config --quiet` exit 0; còn lại risk-accept + ticket W2 (Django 5.2.16, DRF 3.17.2, cryptography 50, axios/rrd/xlsx). Cadence scan hàng tháng (DevOps).
+- **BL-10 PARTIAL/BLOCKED**: DNS `saas.edusuccess.vn`→`14.225.208.68` (Fact); HTTPS timeout từ máy dev (exit 28) → live headers + topology verdict cần host có access, giữ OPEN.
+- **Gates W1**: tsc 0, build PASS 41.64s, `manage.py check` 0. `core_dev.sqlite3` chạm nhầm đã restore. Evidence `docs/evidence/audit-bl/BL-{06,07,08,09,10}/gates.md`.
+- **Next**: BL-01/BL-04 (W1 còn lại) → W2.
+
+---
+
+## Entry 207: AI CC Slice F — Competitive upgrade F1/F2/F4/F5/F6 subset (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Plan**: `docs/IMPLEMENTATION_PLAN_AI_COMMAND_CENTER_SSAOT_20260924.md` Rev.3 Slice F.
+- **Scope**: F1 real usage chart (recharts), F2 model/status filters (FE+BE), F4 masked API key + clear button, F5 system prompt template viewer, F6 provider catalog 2025–26 (openai gpt-4.1/o3, gemini-2.5, claude-4). Accent-color defer from E verified already present (`aiSettings.module.css:467,474,891`).
+- **Code**:
+  - BE `portfolio_analytics_views.py`: GET/PUT `+= ai_api_key_masked` (decrypt last4) + `system_prompt_template`; `ai_api_key` still `''`; clear guard local/openclaw preserved.
+  - BE `ai_analytics/views.py`: query params `model` + `status` filters on list.
+  - FE `AIUsageDashboard.tsx`: `buildChartData` from `getAIUsageSummary`, filter bar, recharts BarChart (`createElement` + ComponentType casts), export CSV applies filters.
+  - FE `AICommandCenterPage.tsx`: mask row + `handleClearApiKey`, system prompt read-only panel.
+  - FE `providerModels.ts`: +gpt-4.1/4.1-mini/o3/o3-mini, +gemini-2.5-pro/flash, +claude-opus-4/sonnet-4.
+  - i18n +7 `aiCommandCenter.*` + +6 `aiUsageAnalytics.*` (vi+en).
+  - CSS `.chartWrap` / `.filterBar`.
+  - BE tests: `AIUsageModelStatusFilterTests` (3), mask/system_prompt/clear asserts in `test_ai_management_center`.
+  - FE tests: chart + filter + mask/clear/template + contract smoke BE keys + parity re-run.
+- **Deferred/blocked**: F3 budget, F7 history, F8 shell extract, F9 routing; **F6b blocked** proxy C2; F-C6 polish open.
+- **Gates**: tsc 0; build PASS 18.80s; eslint 0 (touched); vitest **5 files/26 PASS**; i18n:scan 0; hardcode TOTAL_HITS=0; placeholder 0; BE check 0; makemigrations clean; BE **42 tests OK**.
+- **Evidence**: `docs/evidence/ai-cc/F/gates.md`.
+- **Next**: F6b when proxy C2 available; manual E2E §3.3 screenshots PENDING (user). A–E+G+F(subset) DONE.
+
+---
+
+## Entry 206: AI CC Slice G — Hardening/CI: i18n parity + contract smoke + check:shell (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Plan**: `docs/IMPLEMENTATION_PLAN_AI_COMMAND_CENTER_SSAOT_20260924.md` Rev.3 Slice G.
+- **G.1 i18n parity (G-AC1)**: `src/components/__tests__/ai-cc-i18n-parity.component.test.ts` —
+  load `vi.js`+`en.js`, assert key sets **equal** for `aiCommandCenter|aiAgentFederation|aiUsageAnalytics`.
+- **G.2 contract smoke (G-AC2)**: `src/components/__tests__/ai-cc-contract-smoke.component.test.ts` —
+  fixture FE↔BE: CC GET/PUT/test keys, usage record/aggregate, agent fields; 6 assertions.
+- **G.3 check:shell**: `package.json:12` += `npm run i18n:scan` (item 3).
+- **Gates**: tsc 0; build PASS 30.34s; eslint 0 (G tests); vitest **5 files/19 PASS** (G-only 2/10);
+  i18n:scan 0; `check:shell` exit 0; hardcode TOTAL_HITS=0; placeholder 0.
+- **Evidence**: `docs/evidence/ai-cc/G/gates.md`.
+- **Next**: Slice F (F6b conditional proxy C2) / manual E2E §3.3. Slice E DONE (205), G DONE (206).
+
+## Entry 205: AI CC Slice E — i18n hardcode (4 components) + EN RTL tests (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Plan**: `docs/IMPLEMENTATION_PLAN_AI_COMMAND_CENTER_SSAOT_20260924.md` Rev.3 Slice E.
+- **Scope**: i18n toàn bộ hardcode VI trong 4 component AI CC + `localeTag` cho dates + EN RTL test.
+  Defer E.1 item 3 (accent-color) + item 4 (API-key mask) → F; `ShellAiCommandCenterPage.tsx` out of scope (separate).
+- **Code**:
+  - `AIUsageDashboard.tsx`: `TABLE_HEADER_KEYS`/`CSV_HEADER_KEYS`/`PERIOD_KEYS`/`toCsv(localeTag)`; pagination keys; **bugfix** `e("thead", null, e("tr", null, …))` (previously `tr` was props — headers never rendered as children).
+  - `AIAgentFederationPanel.tsx`: `placeholderName`/`placeholderCapabilities` + `yes`/`no` via `t()`.
+  - `AIAuditLogsPanel.tsx`: `actionOptions` from keys, `actorPlaceholder`, `auditShowing`, `reasonPrefix`, `toLocaleString(localeTag)`, deps `+= t`.
+  - `AIAdvisoryPromptConfigDrawer.js:351`: `promptDrawerFooter`.
+  - **i18n +9** `aiCommandCenter.*` (actionAll/actionUpdateSettings/actionTestSuccess/actionTestFailed/actorPlaceholder/loadError/auditShowing/reasonPrefix/promptDrawerFooter) + **`aiAgentFederation.yes|no`** + **`aiUsageAnalytics.prev|next|pageOf|perPage`** (+loading/actions/exporting/empty keys parity). vi+en.
+  - New test `AISliceE.i18n.component.test.js` (EN locale, mock `useI18n` + `ConfirmModal.js`) — E-AC1/2/3.
+  - New `scripts/slice-e-hardcode-scan.mjs` (UTF-8-safe node scanner).
+- **Gates**: tsc 0; build PASS 19.30s; eslint 0 (touched + scan); vitest **3 files/9 PASS** (Slice E 3/3); i18n:scan 0; hardcode scan `TOTAL_HITS=0`; placeholder 0.
+- **Evidence**: `docs/evidence/ai-cc/E/gates.md` (E-AC1…E-AC5 PASS; manual VI/EN screenshots PENDING).
+- **Next**: Slice G → F. F6b awaits proxy test C2.
+
+## Entry 204: AI CC Slice B rest + F6a — hub nav/anchors/back-link + Gemini 3.8 Flash catalog (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Plan**: `docs/IMPLEMENTATION_PLAN_AI_COMMAND_CENTER_SSAOT_20260924.md` Rev.3 Slice B (rest) + F6a.
+- **B rest** (SSOT nav hub):
+  - `AICommandCenterPage.tsx`: `hubNav` 5 tabs — in-page hash `#overview`/`#runtime`/`#audit`
+    + route links `/settings/ai/agents`, `/settings/ai/usage`; active state via `location`
+    (`useLocation`); section anchors wrap Overview/Runtime/Audit.
+  - `AIAgentFederationPage.tsx` + `AIUsageAnalyticsPage.tsx`: back-link `hubBackLink` → `/settings/ai`.
+  - i18n +6 keys `aiCommandCenter.tabOverview|tabRuntime|tabAudit|tabAgents|tabUsage|backToHub`
+    (vi+en); CSS `hubNav`/`hubNavLink`/`hubNavLinkActive`/`hubBackLink` in `aiSettings.module.css`.
+  - Test fix: `AICommandCenterPage.component.test.js` wrap `MemoryRouter` (page uses `useLocation`).
+- **F6a** (catalog only, per audit C1–C5):
+  - FE `providerModels.ts`: `PROVIDER_MODELS.gemini` += `{ key: "gemini-3.8-flash" }`.
+  - BE `advisory/models.py` `ModelChoices.GEMINI_38_FLASH` + migration
+    `0008_systemaisettings_gemini_38_flash.py` (AlterField **chỉ** `SystemAISettings.ai_model`;
+    C1: `UserAICredential.ai_model` no choices → skip).
+  - `requirements.txt`: comment marker `# google-genai>=1.0  # F6b pending` (C5 — no dep yet).
+- **Gates**: tsc 0; build PASS 52s; eslint 0 err (touched); vitest AICommandCenter+AIUsage
+  **2 files/9 PASS**; i18n:scan exit 0 (0 placeholder in `.js`; scanner writes gitignored `.json`);
+  BE `check` 0; `makemigrations --check` clean; grep old ns 0-hit.
+- **Evidence**: `docs/evidence/ai-cc/B/gates.md` (B-AC1…5 + F-AC6a…d PASS).
+- **Next**: Slice E (i18n hardcode + polish U-01…U-08) → G → F. F6b awaits proxy test C2.
+
+---
+
+## Entry 203: AI CC Plan Rev.3 — F6a/F6b split after independent F6 audit (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Plan**: `docs/IMPLEMENTATION_PLAN_AI_COMMAND_CENTER_SSAOT_20260924.md` → **Rev.3**
+- **Audit**: `docs/AUDIT_F6_GEMINI_38_FLASH_20260924.md` — 5/5 F6 conclusions CORRECT;
+  findings C1–C5 incorporated into plan §F6.
+- **Doc-only** (no code):
+  - **F6a APPROVED**: catalog `gemini-3.8-flash` FE `providerModels.ts` + BE
+    `SystemAISettings.ModelChoices` + migration **chỉ** SystemAISettings AlterField
+    (C1: `UserAICredential.ai_model` no choices → no migration). ~0.5d, LOW risk.
+    **KHÔNG** add `google-genai` at F6a (C5 premature dep; optional comment marker).
+  - **F6b CONDITIONAL**: blocked on proxy test C2
+    (`POST .../v1beta/openai/chat/completions` body `model=gemini-3.8-flash`).
+    200 OK → F6b deferred/deprecate; fail → implement `gemini_client.py` with
+    **C4** explicit param map (`topP`/`maxOutputTokens`, drop `frequency_penalty`) +
+    **C3** centralized `get_ai_client(provider)` factory + add `google-genai` only then.
+- **Also**: plan risk §5 + milestone M7 + file inventory updated; AGENTS.md Entry 203.
+- **Evidence**: audit doc itself (gates F6a listed, not yet run — pre-implementation).
+- **Next**: B rest (nav hub/link) → E → G → F (F6a can ship early parallel; F6b awaits C2).
+
+---
+
+## Entry 202: Slice C — AI CC multi-tenant config plane (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Plan**: `docs/IMPLEMENTATION_PLAN_AI_COMMAND_CENTER_SSAOT_20260924.md` Slice C
+  (closes F-C5 from audit `docs/AUDIT_AI_COMMAND_CENTER_SSOT_20260924.md`).
+- **C.1 Model** (`advisory/models.py` + migration `0007`): `UserAICredential` +5 fields
+  `temperature`/`max_tokens_per_day`/`refresh_interval_hours`/
+  `max_auto_refreshes_per_day` (nullable = system default) + `prompt_config` JSON.
+  Lazy default — no mass backfill.
+- **C.3 GET** (`portfolio_analytics_views.py`): prefer user field → fallback system
+  metadata/config for temperature, max_tokens, refresh, max_auto, prompt_config.
+- **C.4 PUT**: **only** writes `UserAICredential` for all per-user policy fields;
+  **stops** writing `SystemAISettings.temperature`/`max_tokens`/`metadata`/`ai_model`
+  from user payload (was global write — multi-tenant leak).
+- **Sanitize fix** (`advisory/serializers.py`): `'token' in key` matched
+  `advisory_max_tokens_per_day` → masked audit values to `••••••••`. Precise
+  `_SENSITIVE_KEY_TOKEN` + exclude `max_token*`/`tokens_per*`.
+- **Tests** `tests/test_ai_cc_config_isolation.py` **8/8 OK** (C-AC1…5, lazy, leak, audit).
+  Regression: `test_ai_management_center`+`test_ai_audit_logs` **53/53 OK**;
+  advisory suite **8/8 OK**. Total 69 BE OK.
+- **Gates**: `manage.py check` 0; `makemigrations --check` clean.
+- **Evidence**: `docs/evidence/ai-cc/C/gates.md` (C-AC1…7 PASS).
+- **Next**: B rest (nav hub/link) → E → G → F.
+
+---
+
+## Entry 201: Slice B.4 — AI CC i18n namespace migration (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Plan**: `docs/IMPLEMENTATION_PLAN_AI_COMMAND_CENTER_SSAOT_20260924.md` §B.4
+  (closes F-C2 from audit `docs/AUDIT_AI_COMMAND_CENTER_SSOT_20260924.md`).
+- **Changes**:
+  - `AIUsageDashboard.tsx` + `.component.test.js`: all `t("usage.*")` → `t("aiUsageAnalytics.*")`.
+  - `AIAgentFederationPanel.tsx`: all `t("agentFederation.*")` → `t("aiAgentFederation.*")`
+    with mapping (`loadError→errorLoad`, `confirmDelete→deleteConfirm`, `type→agentType`,
+    `active→isActive`, `empty→noAgents`, `edit/delete→editAgent/deleteAgent`).
+  - `vi.js`/`en.js`: +6 keys total into target namespaces
+    (`aiUsageAnalytics.exporting|exportCsv|empty|showing` +
+     `aiAgentFederation.loading|actions`).
+  - Old blocks `usage:`/`agentFederation:` **kept** with DEPRECATED comment
+    (F-C7: delete after grep 0-hit + 1 sprint).
+- **Grep proof**: `t("usage.` / `t("agentFederation.` / `agentFederation.` in
+  `packages/web/src` = **0 hit**.
+- **Gates**: `npx tsc --noEmit` 0; `vitest AIUsageDashboard` **3/3 PASS**;
+  `npm run i18n:scan` exit 0.
+- **Evidence**: `docs/evidence/ai-cc/B4/gates.md` (B-AC4/B-AC5 PASS).
+- **Next**: Slice C (BE UserAICredential 5 fields + GET/PUT self-scope).
+
+---
+
+## Entry 200: Slice D — AI CC security self-scope + agent ownership (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Plan**: `docs/IMPLEMENTATION_PLAN_AI_COMMAND_CENTER_SSAOT_20260924.md` Slice D
+  (closes F-C3 + F-C4 from audit `docs/AUDIT_AI_COMMAND_CENTER_SSOT_20260924.md`).
+- **D1 Usage self-scope** (`ai_analytics/views.py`):
+  - Bỏ `IsCoreOperator` trên 3 views → `[IsAuthenticated]`.
+  - Non-staff: `filter(user=request.user)` cho Record/Summary/Aggregate;
+    `user_id` query param chỉ staff/superuser.
+  - Staff: all users + optional `user_id`.
+  - POST luôn `save(user=request.user)`.
+  - SOC impact: chỉ `ai_analytics` — `ops_audit`/`signal_intelligence/admin_views` giữ staff.
+- **D2 Agent ownership** (`ai_agents/views.py` + `models.py` + migration `0002`):
+  - GET list: staff→all; else `created_by=request.user`.
+  - GET detail other → 404; PATCH/DELETE other → 403 (staff bypass).
+  - Model: bỏ `unique=True` global → `UniqueConstraint(name, created_by)`
+    `unique_agent_name_per_creator`.
+- **Latent bug fix** `vninvest_core/db_router.py`: thêm `ai_agents` + `ai_analytics`
+  vào `_CORE_APPS` — trước đó `db_for_write` RuntimeError mọi write (POST agent 500
+  production + test seed fail).
+- **Tests** `ai_analytics.tests` (10) + `ai_agents.tests` (12) = **22/22 OK**;
+  `manage.py check` 0; `makemigrations ai_agents --check` clean.
+- **Evidence**: `docs/evidence/ai-cc/D/gates.md` (D-AC1…8 PASS).
+- **Known non-blocker**: local `migrate` post_migrate hook fail
+  `service_ops_servicehealth.slo_target` (pre-existing DB drift, unrelated).
+
+---
+
+## Entry 199: Plan IC-SSOT Rev.2 — đóng F-C1 stale; map F-C2…F-C5 OPEN (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Scope**: Doc-only revision plan sau audit độc lập `docs/AUDIT_AI_COMMAND_CENTER_SSOT_20260924.md`.
+  Đóng **F-C1** (plan stale — Slice A items đã DONE Entry 198); map **F-C2…F-C5** vào plan.
+- **Plan Rev.2** `docs/IMPLEMENTATION_PLAN_AI_COMMAND_CENTER_SSAOT_20260924.md`:
+  - Slice A → **DONE** (trừ F-C6 `||` polish + A-AC3 screenshot).
+  - Slice B.4 namespace → **P0 blocker** (F-C2): call sites still `usage.*`/`agentFederation.*`.
+  - Slice D → **security-critical OPEN** (F-C3 IsCoreOperator `ai_analytics:14,64,86`;
+    F-C4 ownership `ai_agents:13,54,61`).
+  - Slice C → **NOT STARTED** (F-C5: 5 field missing; GET still SystemAISettings `:488-489`).
+  - **Order Rev.2:** A ✅ → **D → B.4 → C → B rest → E → G → F**.
+- **Gates**: n/a (docs only). Audit answers embedded (SOC: only `ai_analytics` changes;
+  catalog target keys already exist `vi.js:5214,5242`).
+- **Next implement**: Slice D (BE) then B.4 (FE namespace).
+
+---
+
+## Entry 198: Slice A — AI CC P0 i18n + policy sync + quota guard (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Plan**: `docs/IMPLEMENTATION_PLAN_AI_COMMAND_CENTER_SSAOT_20260924.md` Slice A
+  (findings E-01, E-02, E-06, G-10, R-02).
+- **Changes**:
+  - `src/i18n/vi.js` +3 keys in `aiCommandCenter`: `eyebrow`/`overview`/`fallbackReset`.
+  - `src/i18n/en.js` +3 keys: `Settings`/`Overview`/`Resets`.
+  - `AICommandCenterPage.tsx`: after save sync `refreshIntervalDisplay` + `maxAutoRefreshes`
+    from `nextData`; quota block uses `quotaRemaining`/`quotaMax` (no `!`).
+  - `AICommandCenterPage.component.test.js`: mock `t` via TRANSLATIONS map (not bare key);
+    +3 tests (translated eyebrow/overview no raw keys, missing quota remaining no-crash,
+    policy display updates after save); existing asserts use VI strings.
+- **Gates**: `npx tsc --noEmit` 0; `vitest AICommandCenterPage` **6/6 PASS**;
+  `npm run i18n:scan` exit 0. Lint/G3 build recorded in evidence if run same session.
+  - vi.js aiCommandCenter: eyebrow=Cài đặt, overview=Tổng quan, fallbackReset=Đặt lại
+  - en.js aiCommandCenter: eyebrow=Settings, overview=Overview, fallbackReset=Resets
+
+---
+
+## Entry 197: Plan IC-SSOT-20260924 issued — AI Command Center SSOT + P0 fix (2026-09-24)
+
+- **Date**: 2026-09-24
+- **Scope**: Ban hành kế hoạch thực hiện đầy đủ (requirements, AC, phản biện, evidence,
+  milestones) cho AI Command Center `/settings/ai` — đóng audit session 2026-09-24.
+  **Doc-only** (no code change in this entry).
+- **Plan**: `docs/IMPLEMENTATION_PLAN_AI_COMMAND_CENTER_SSAOT_20260924.md`
+  - Findings map: E-01…E-06 (P0 i18n/permission/config bleed), G-01…G-12 (SSOT gaps),
+    U-01…U-10 (hardcode/UI), R-01…R-06 (risk), C-1…C-9 (plan↔code contradictions).
+  - Slices order **A→B→C→D→E→G→F**; DOD gates G1–G10; evidence path
+    `docs/evidence/ai-cc/<slice>/`.
+  - Slice A (next): 3 i18n keys `aiCommandCenter.eyebrow|overview|fallbackReset`,
+    policy display sync after save, quota `!` → safe, test mock `t` with TRANSLATIONS map.
+- **Approve**: user reply `1` (2026-09-24) — plan status APPROVED.
+- **DoD this entry**: plan file written + ledger entry + AGENTS Progress line (if needed).
+
+---
+
 ## Entry 185: Dashboard S6 tests+gates refinement — vitest ≥12 + compact + heatmap + i18n (2026-09-24)
 
 - **Date**: 2026-09-24
@@ -4572,3 +5000,14 @@ nội dung giữ nguyên. Tiền lệ Entry 149.)*
 | 194 | 2026-09-24 | signals | FIX Darkflow value 840x (Option A): tasks.py dark branch volume = tong buy_count (so dem tick) -> price x count = vai trieu; doi sang buy VWAP + tong shares (dong nhat 2 nhanh whale), engine them buy_volume/window. Test moi test_order_flow_dark_value (T-F1 value=buy_value, T-F2 sell-dominated skip). Gates: 20 tests OK (18 cu + 2 moi); pre-fix T-F1 FAIL 10 != 10000 (dang ky). Audit findings kem: whale_engine.py chet (0 caller, sai contract), du lieu dark cu sai gia tri (chua backfill) | order_flow_engine.py, tasks.py, tests/test_order_flow_dark_value.py (new) | BE test chay that + arithmetic proof 2102200/46=45700 | v0 | Active |
 | 195 | 2026-09-24 | signals | Recompute 1 lan dark cu (Entry 194 follow-up): management command recompute_dark_flow_values (windows buy_volume / ticks BUY / estimate shares, idempotent flag, dry-run/force/limit/symbol, auto materialize). Test T-F3a estimate + T-F3b ticks. Gates: 22 tests OK | management/commands/recompute_dark_flow_values.py (new), tests/test_order_flow_dark_value.py | BE test chay that | v0 | Active |
 | 196 | 2026-09-24 | admin | Consolidation Entries 187-195: i18n EN options + localeTag/number-locale (PATs/SA/Tenants/Billing/Usage), contrast gate script + check:shell, ledger row 185 alias, C8 wording fix, Billing USD->VND. Gates: tsc 0, build 51.85s, lint 0, i18n:scan 0, check:shell PASS | packages/web/src/i18n/vi.js+en.js, src/pages/admin/{AdminCore*,AdminBillingFleet}, src/i18n/index.js, package.json, scripts/check-contrast.mjs (new), AGENTS.md, docs/CODE_CHANGE_AUDIT_LEDGER.md | gates chay that | v0 | Active |
+| 197 | 2026-09-24 | audit | Audit hop nhat 3 lop (L1 revised + L2 phan bien doc lap + L3 hoi dong 10 vai tro 18 sections): 9 corrections (CACHES Redis settings.py:347-354, ShellToast:106, compat rong + 2 legacy_views sot, stale import test_workstation_endpoints.py:34, PgBouncer chet prod.yml:446-477 vs :91, mobile scaffold ton tai, 3 dump tay, whale_engine SyntaxError, score 7.3/7.53). Findings moi nang nhat: SAML verify stub (saml_service.py:318-333, High), thieu AUTH_PASSWORD_VALIDATORS + SESSION/SECURE flags (Med). Scorecard moi 69.1/100 (11 dimensions, Product/Business N/A). Gates: tsc EXIT 0 re-run; vitest/eslint/BE chua re-run | docs/COMPREHENSIVE_AUDIT_CONSOLIDATED_20260924.md (new) | audit doc-only (grep/read truc tiep, khong chay code) | v0 | Active |
+| 198 | 2026-09-24 | audit | Quy trinh 4 buoc audit -> backlog -> ke hoach: B1 kiem ke findings (SEC-A..H, R-01..R-10, C1..C9) tu audit hop nhat; B2 phan ra 24 items BL-01..BL-24 (P0 11 + P1 7 + P2 3 + P3 3) moi item co Yeu cau/DoD/Phan bien/Minh chung/Uoc luong/Vai tro/Phu thuoc; B3 ke hoach pha (DAG, gates W/P0/P1/P2, RACI, deny-list microservices/Kafka/K8s/Next.js/GraphQL/NFT); B4 checklist ban giao tu-tick. Doc-only, doi code lam theo khong can hoi lai | docs/BACKLOG_AUDIT_CONSOLIDATED_20260924.md (new), docs/IMPLEMENTATION_PLAN_AUDIT_BACKLOG_20260924.md (new) | doc-only (bam audit hop nhat, khong doi code) | v0 | Active |
+| 199 | 2026-09-24 | audit | W1 implement BL-06/07/08/09 + BL-10 partial: sua stale import + CI grep-gate; xoa whale_engine.py; gop LEGACY_BACKEND_URL 1 hit; baseline npm 18 + pip-audit 46 vulns, fix pip venv + ghim digest prom/grafana 6 cho (config exit 0), con lai accept + ticket W2; BL-10 DNS fact + HTTPS timeout (blocked, giu OPEN). Gates: tsc 0, build 41.64s PASS, check 0; sqlite cham nham restored | core-api.yml, settings.py, test_workstation_endpoints.py, whale_engine.py (del), 3 compose yml, evidence BL-06..10/gates.md | gates chay that (tsc/build/check/curl/digests) | v0 | Active |
+| 200 | 2026-09-24 | audit | W1 BL-01 partial + BL-04 partial: SAML fail-closed (strict default prod, unsigned reject, deps+Dockerfile, 7 tests moi, 48 tests OK) — con BL-01b real crypto + image build; backup script + drill dev that (dump 151MB/232s, restore 142s, verify 142/4 rows, cleanup) — con cron prod + app-plane drill. Gates: check 0, tsc 0 | saml_service.py, requirements.txt, Dockerfile, test_saml_signature_mode.py (new), infra/backup/ (new), evidence BL-01/04/gates.md | BE tests chay that + drill live dev | v0 | Active |
+| 201 | 2026-09-24 | audit | W1 P0 code-side DONE (BL-02/03/05/11): password validators + cookie fail-closed (46 tests OK, prod boot/reject verify); proxy whitelist+TLS+response scope (5 tests OK); prod 5 services qua pgbouncer:6432 + runbook (config exit 0, soak post-deploy); preflight 7/7 + CI wire. Gates: tsc 0, check 0 | settings.py, env_validation.py, legacy_proxy.py, docker-compose.prod.yml, core-api.yml, preflight script, tests moi, evidence BL-02/03/05/11 | gates chay that | v0 | Active |
+| 202 | 2026-09-24 | audit | P1 DONE + P2 DONE + P3/BL-24 proposal: E2E CI job + spec 6/6; JSON logging 5 tests + live probe; smoke fallback p95<=70ms (k6 blocked docker stall) + baseline conns 143; coverage BE 89% touched + CI report-only (pre-existing verify HEAD, FE provider blocked npm); xoa legacy_views+compat + proxy Deprecation headers; MFA absent + rotation runbook; warnings baseline 3515 + CI budget; tracing defer; errata audit cu; telemetry proposal + P3 unlock. Gates: tsc 0, check 0 | ci-critical.spec.ts, web-ci.yml, json_logging.py, middleware, settings LOGGING, smoke-fallback.ps1, .coveragerc, core-api.yml, legacy_proxy.py, rotation doc, evidence BL-12..20/24 + P3-UNLOCK | gates chay that (tests/E2E/lint/coverage/smoke) | v0 | Active |
+| 203 | 2026-09-24 | audit | Phan bien Design Token Audit + plan Waves: CONFIRMED so lieu (34px:72, 28px:91, 21px:2642, text-10px x12, dotColor:501, a855f7:117, :root 3 files, 0 light override); C1 thieu light target (SSOT dark-only) -> W1-0 blocker; C2 soc/ui/Button KHONG TON TAI -> target ui/button.tsx + danger->destructive; C3 alias co chu y; C4 51 occ/12 files; C5 severity inflation; C6 W1-5 nham scope; C7 trung Entry 213 (renumber W1->217) + chua commit tu df8f2ddf. Plan W1-0..W1-5 + Waves 2-5 + RACI + deny-list | IMPLEMENTATION_PLAN_DESIGN_TOKEN_WAVES + evidence design-token/R0-REVIEW.md | doc-only (grep/read verify) | v0 | Active |
+| 204 | 2026-09-25 | ui | Wave 1 DONE: palette light + contrast 11 ratios PASS; light blocks 4 files (dark untouched); purple tokens; 10px->r-md x6; tabBar/tabButton spacing (50 off-grid con lai follow-up); extend fs-3xl/4xl + map 5 sizes; fix check-tokens strip root[data-theme]. Gates: tsc 0, build 36.16s, check:shell PASS, eslint 0, theme-verify E2E PASS (wire CI), dist dark+light verify, W1-shots | tokens.css x2, aiSettings + ShellPageTemplate css, soc.components.css, check-tokens.mjs, theme-verify.spec.ts, web-ci.yml, evidence design-token/W1-* | gates chay that | v0 | Active |
+| 205 | 2026-09-25 | ui | i18n recovery 47 keys: checkout nham xoa uncommitted AI CC; authoritative script 165 refs -> 47 missing vi+en; restore +107/-1 (verified sources + 12 prose reconstructed + DEPRECATED comments + Resets->Reset). Gates: 0 missing, vitest AI CC 26/26, full 465/466, tsc 0 | vi.js+en.js, find-missing-final.mjs, evidence design-token/I18N-RECOVERY.md | gates chay that | v0 | Active |
+| 206 | 2026-09-25 | ui | Waves 2-5 DONE DoD: SOC TSX + buttons Button convert; W3 files + PositionDeck; W4 pages/admin/toast + visual QA authed (dark perfect, light surfaces good, chrome follow-up); W5 polish + rescan 0 + full gates (tsc 0, build 59.90s, lint 3515 baseline, vitest 465/466, check:shell PASS). Follow-ups: SignalsPanel, 50 off-grid, fallbacks, chrome, 12 prose | ~35 files FE, evidence design-token/W* | gates chay that + screenshots xem that | v0 | Active |
+| 201 | 2026-09-24 | frontend | Enterprise UI Consistency Audit (Phase 1 doc-only): 5 group anti-pattern scan (typography drift, hardcoded hex 71 files, non-8pt-grid spacing, radius mismatch, component inconsistency). 20 ERR-IDs (ERR-01..ERR-20), Executive Matrix + 12 Actionable Tickets + 3-Wave Rollout Plan. Critical finding: Tailwind `@theme` `--radius-sm/md/lg` (4/6/8px) MISMATCH `theme/tokens.css` `--r-sm/md/lg` (6/8/12px) — 100% project radius inconsistency. Doc-only; no code changed. | docs/UI_CONSISTENCY_AUDIT_20260924.md (new) + theme/tokens.css, index.css, soc.tokens.css, 86 files scanned | 3 subagent scan (tokens / TSX / CSS), static analysis only | v0 | Active |

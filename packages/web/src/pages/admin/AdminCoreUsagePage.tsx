@@ -121,7 +121,7 @@ export function AdminCoreUsagePage() {
       <section className="overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-6 py-6 text-white shadow-2xl shadow-slate-950/30">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{t('adminCoreTenants.heroEyebrow')}</p>
+            <p className="text-[var(--fs-2xs)] uppercase tracking-[0.24em] text-slate-400">{t('adminCoreTenants.heroEyebrow')}</p>
             <div>
               <h1 className="text-3xl font-semibold tracking-tight">
                 {t('adminCoreUsage.heroTitle')}
@@ -284,20 +284,20 @@ export function AdminCoreUsagePage() {
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreUsage.statConsumed')}</p>
+                  <p className="text-[var(--fs-2xs)] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreUsage.statConsumed')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{formatNumber(selectedMeter.consumed_amount, localeTag)}</p>
                   <UsageBar consumedAmount={selectedMeter.consumed_amount} entitledAmount={selectedMeter.entitled_amount} riskState={selectedMeter.risk_state} />
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreUsage.statRemaining')}</p>
+                  <p className="text-[var(--fs-2xs)] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreUsage.statRemaining')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{formatNumber(selectedMeter.remaining_amount, localeTag)}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreUsage.statRisk')}</p>
+                  <p className="text-[var(--fs-2xs)] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreUsage.statRisk')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{selectedMeter.risk_state}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreUsage.statHardStop')}</p>
+                  <p className="text-[var(--fs-2xs)] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreUsage.statHardStop')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{selectedMeter.hard_stop ? t('adminCoreUsage.hardStopYes') : t('adminCoreUsage.hardStopNo')}</p>
                 </div>
               </div>

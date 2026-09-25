@@ -6,13 +6,6 @@ const e = createElement;
 
 const AUDIT_PAGE_SIZE = 10;
 
-const ACTION_OPTIONS = [
-  { value: '', label: 'Tất cả hành động' },
-  { value: 'update_settings', label: 'Cập nhật cấu hình' },
-  { value: 'test_connection_success', label: 'Test kết nối thành công' },
-  { value: 'test_connection_failed', label: 'Test kết nối thất bại' },
-];
-
 interface AuditLogEntry {
   id: number;
   action: string;
@@ -29,7 +22,7 @@ interface AIAuditLogsPanelProps {
 }
 
 export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
-  useI18n();
+  const { t, localeTag } = useI18n();
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -61,11 +54,11 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
       setLogs(data.results || []);
       setTotal(data.total || 0);
     } catch (err: unknown) {
-      setError((err && typeof err === 'object' && 'message' in err ? (err as Error).message : '') || 'Không tải được audit logs.');
+      setError((err && typeof err === 'object' && 'message' in err ? (err as Error).message : '') || t('aiCommandCenter.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [page, filterAction, filterActor, filterDateFrom, filterDateTo, refreshKey]);
+  }, [page, filterAction, filterActor, filterDateFrom, filterDateTo, refreshKey, t]);
 
   useEffect(() => {
     loadLogs();
@@ -103,14 +96,21 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
     return 'border-slate-700 bg-slate-800/40 text-slate-400';
   };
 
+  const actionOptions = [
+    { value: '', label: t('aiCommandCenter.actionAll') },
+    { value: 'update_settings', label: t('aiCommandCenter.actionUpdateSettings') },
+    { value: 'test_connection_success', label: t('aiCommandCenter.actionTestSuccess') },
+    { value: 'test_connection_failed', label: t('aiCommandCenter.actionTestFailed') },
+  ];
+
   const actionLabel = (action: string) => {
-    const opt = ACTION_OPTIONS.find(o => o.value === action);
+    const opt = actionOptions.find(o => o.value === action);
     return opt ? opt.label : action;
   };
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
-    return d.toLocaleString('vi-VN');
+    return d.toLocaleString(localeTag);
   };
 
   return e("div", { className: "space-y-4" }, [
@@ -118,29 +118,29 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
     e("div", { key: "filters", className: "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 rounded-lg border border-slate-800 bg-slate-900/40 p-4" }, [
       // Action filter
       e("div", { key: "filter-action" },
-        e("label", { className: "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, "Hành động"),
+        e("label", { className: "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, t("aiCommandCenter.action")),
         e("select", {
           value: filterAction,
           onChange: (ev: any) => setFilterAction(ev.target.value),
           className: "w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-cyan-500"
-        }, ACTION_OPTIONS.map(opt =>
+        }, actionOptions.map(opt =>
           e("option", { key: opt.value, value: opt.value }, opt.label)
         ))
       ),
       // Actor filter
       e("div", { key: "filter-actor" },
-        e("label", { className: "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, "Người thực hiện"),
+        e("label", { className: "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, t("aiCommandCenter.actor")),
         e("input", {
           type: "text",
           value: filterActor,
           onChange: (ev: any) => setFilterActor(ev.target.value),
           className: "w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-cyan-500",
-          placeholder: "VD: admin"
+          placeholder: t("aiCommandCenter.actorPlaceholder")
         })
       ),
       // Date from
       e("div", { key: "filter-date-from" },
-        e("label", { className: "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, "Từ ngày"),
+        e("label", { className: "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, t("aiCommandCenter.fromDate")),
         e("input", {
           type: "date",
           value: filterDateFrom,
@@ -150,7 +150,7 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
       ),
       // Date to
       e("div", { key: "filter-date-to" },
-        e("label", { className: "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, "Đến ngày"),
+        e("label", { className: "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, t("aiCommandCenter.toDate")),
         e("input", {
           type: "date",
           value: filterDateTo,
@@ -165,18 +165,18 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
           onClick: applyFilters,
           disabled: loading,
           className: "rounded-md border border-cyan-700 bg-cyan-900/30 px-3 py-1.5 text-xs font-semibold text-cyan-200 hover:bg-cyan-800/40 disabled:opacity-50"
-        }, "Áp dụng bộ lọc"),
+        }, t("aiCommandCenter.applyFilter")),
         e("button", {
           type: "button",
           onClick: resetFilters,
           className: "rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200"
-        }, "Xóa bộ lọc")
+        }, t("aiCommandCenter.resetFilter"))
       )
     ]),
 
     // Loading
     loading
-      ? e("div", { key: "loading", className: "text-center py-6 text-sm text-slate-500" }, "Đang tải audit logs...")
+      ? e("div", { key: "loading", className: "text-center py-6 text-sm text-slate-500" }, t("aiCommandCenter.loading"))
       : null,
 
     // Error
@@ -186,7 +186,7 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
 
     // Log list
     !loading && !error && logs.length === 0
-      ? e("div", { key: "empty", className: "text-center py-6 text-sm text-slate-500" }, "Chưa có bản ghi audit nào.")
+      ? e("div", { key: "empty", className: "text-center py-6 text-sm text-slate-500" }, t("aiCommandCenter.noLogs"))
       : null,
 
     !loading
@@ -221,14 +221,14 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
                     e("div", { className: "grid grid-cols-1 gap-2 p-3 sm:grid-cols-2" }, [
                       // Before
                       e("div", { key: "before" },
-                        e("h4", { className: "mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, "Trước"),
+                        e("h4", { className: "mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, t("aiCommandCenter.before")),
                         e("pre", {
                           className: "max-h-48 overflow-auto rounded bg-slate-950 p-2 text-[10px] leading-relaxed text-slate-300"
                         }, JSON.stringify(log.before_json, null, 2))
                       ),
                       // After
                       e("div", { key: "after" },
-                        e("h4", { className: "mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, "Sau"),
+                        e("h4", { className: "mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500" }, t("aiCommandCenter.after")),
                         e("pre", {
                           className: "max-h-48 overflow-auto rounded bg-slate-950 p-2 text-[10px] leading-relaxed text-slate-300"
                         }, JSON.stringify(log.after_json, null, 2))
@@ -236,7 +236,7 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
                     ]),
                     log.reason
                       ? e("div", { key: "reason", className: "border-t border-slate-800 px-3 py-2 text-xs text-slate-500" },
-                          `Lý do: ${log.reason}`
+                          `${t("aiCommandCenter.reasonPrefix")} ${log.reason}`
                         )
                       : null
                   )
@@ -249,20 +249,23 @@ export function AIAuditLogsPanel({ refreshKey = 0 }: AIAuditLogsPanelProps) {
     // Pagination
     total > AUDIT_PAGE_SIZE
       ? e("div", { key: "pagination", className: "flex items-center justify-between px-1 py-2 text-xs text-slate-400" }, [
-          e("span", null, `${total} bản ghi — Trang ${page}/${totalPages}`),
+          e("span", null, t("aiCommandCenter.auditShowing")
+            .replace("{total}", String(total))
+            .replace("{page}", String(page))
+            .replace("{totalPages}", String(totalPages))),
           e("div", { className: "flex gap-2" },
             e("button", {
               type: "button",
               onClick: () => setPage(p => Math.max(1, p - 1)),
               disabled: page <= 1,
               className: "rounded border border-slate-700 px-2 py-1 text-xs hover:bg-slate-800/50 disabled:opacity-30 disabled:cursor-not-allowed"
-            }, "Trước"),
+            }, t("aiCommandCenter.previous")),
             e("button", {
               type: "button",
               onClick: () => setPage(p => Math.min(totalPages, p + 1)),
               disabled: page >= totalPages,
               className: "rounded border border-slate-700 px-2 py-1 text-xs hover:bg-slate-800/50 disabled:opacity-30 disabled:cursor-not-allowed"
-            }, "Sau")
+            }, t("aiCommandCenter.next"))
           )
         ])
       : null

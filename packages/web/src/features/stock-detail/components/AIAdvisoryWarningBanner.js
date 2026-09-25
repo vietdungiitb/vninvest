@@ -10,11 +10,15 @@ export function AIAdvisoryWarningBanner({
   fallbackRemaining,
   fallbackQuotaMax,
   fallbackQuotaReset,
+  budgetSoftWarning,
+  budget,
   onConfigure,
 }) {
-  const { t } = useI18n();
+  const { t, localeTag } = useI18n();
 
-  if (!personalKeyFailed && !usingSystemFallback) return null;
+  const showBudgetWarning = Boolean(budgetSoftWarning) && budget && budget.token_budget > 0;
+
+  if (!personalKeyFailed && !usingSystemFallback && !showBudgetWarning) return null;
 
   const exhausted =
     typeof fallbackRemaining === "number" &&
@@ -22,9 +26,11 @@ export function AIAdvisoryWarningBanner({
     fallbackQuotaMax > 0 &&
     fallbackRemaining <= 0;
 
+  const isAmber = exhausted || showBudgetWarning;
+
   return e("div", {
     className: `rounded-lg border p-3 text-xs ${
-      exhausted
+      isAmber
         ? "border-rose-700/60 bg-rose-950/30 text-rose-300"
         : "border-amber-700/60 bg-amber-950/30 text-amber-200"
     }`,
@@ -34,9 +40,19 @@ export function AIAdvisoryWarningBanner({
       key: "heading",
       className: "mb-1 flex items-center gap-1.5 font-semibold",
     }, [
-      e("span", { key: "icon" }, exhausted ? "🔴" : "🟡"),
+      e("span", { key: "icon" }, isAmber ? "🔴" : "🟡"),
       t("aiAdvisoryWarning.heading", { defaultValue: "AI Connection Status" }),
     ]),
+    showBudgetWarning
+      ? e("p", { key: "bw", className: "mb-1 font-semibold" },
+          t("aiAdvisoryWarning.budgetSoftWarning", {
+            used: budget.tokens_used,
+            max: budget.token_budget,
+            pct: budget.pct_used,
+            defaultValue: `Token budget ${budget.pct_used}% used (${budget.tokens_used}/${budget.token_budget}). Approaching daily limit.`,
+          })
+        )
+      : null,
     personalKeyFailed
       ? e("p", { key: "pf", className: "mb-1" }, [
           t("aiAdvisoryWarning.personalKeyFailed", { defaultValue: "Personal API Key failed or unavailable." }),
@@ -66,7 +82,7 @@ export function AIAdvisoryWarningBanner({
       : null,
     fallbackQuotaReset
       ? e("p", { key: "qr", className: "text-[10px] opacity-60" },
-          t("aiAdvisoryWarning.fallbackQuotaReset", { date: new Date(fallbackQuotaReset).toLocaleDateString("vi-VN"), defaultValue: `Resets: ${new Date(fallbackQuotaReset).toLocaleDateString("vi-VN")}` })
+          t("aiAdvisoryWarning.fallbackQuotaReset", { date: new Date(fallbackQuotaReset).toLocaleDateString(localeTag), defaultValue: `Resets: ${new Date(fallbackQuotaReset).toLocaleDateString(localeTag)}` })
         )
       : null,
     onConfigure

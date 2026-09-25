@@ -52,6 +52,36 @@ def _get_default_prompt_config() -> dict:
     return config
 
 
+# F7: hard cap — older entries drop off the front
+PROMPT_CONFIG_HISTORY_LIMIT = 20
+
+
+def _append_prompt_config_history(user_cred, config, *, source: str = "save") -> list:
+    """
+    Append one snapshot to UserAICredential.prompt_config_history (F7).
+    Mutates user_cred.prompt_config_history in place; caller must save().
+    """
+    from django.utils import timezone
+
+    history = list(getattr(user_cred, "prompt_config_history", None) or [])
+    next_version = 1
+    if history:
+        try:
+            next_version = int(history[-1].get("version") or 0) + 1
+        except (TypeError, ValueError, AttributeError):
+            next_version = len(history) + 1
+    entry = {
+        "version": next_version,
+        "config": config if isinstance(config, dict) else {},
+        "saved_at": timezone.now().isoformat(),
+        "source": source,
+    }
+    history.append(entry)
+    history = history[-PROMPT_CONFIG_HISTORY_LIMIT:]
+    user_cred.prompt_config_history = history
+    return history
+
+
 def _parse_prompt_config(raw_config: dict | None) -> dict:
     """
     Parse and validate raw client configuration against canonical prompt_config v2 defaults.

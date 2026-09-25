@@ -12,7 +12,7 @@ TESTING = 'test' in sys.argv or any('test' in arg for arg in sys.argv)
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
-from .env_validation import validate_production_settings, get_frontend_url
+from .env_validation import validate_production_settings, get_frontend_url, prod_cookie_security_settings
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -41,8 +41,23 @@ if not DEBUG:
         )
     del _pat_pepper
 
+# BL-02: Password strength — Django validators, always on (incl. dev).
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 10}},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+]
+
 # C4 Fix: Validate all required environment variables in production
 validate_production_settings(DEBUG)
+
+# BL-02: Session/cookie/transport security — secure-by-default in prod,
+# explicit insecure values rejected (fail-closed). Dev keeps Django defaults.
+if not DEBUG:
+    globals().update(prod_cookie_security_settings())
+else:
+    SESSION_COOKIE_AGE = int(os.environ.get('DJANGO_SESSION_COOKIE_AGE', '1209600') or '1209600')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -127,7 +142,8 @@ DATABASES = {
 }
 
 # SFI-B1.4: Legacy backend URL — core-api transparent proxy forwards unmatched /api/* here.
-LEGACY_BACKEND_URL = os.environ.get('LEGACY_BACKEND_URL', 'http://backend:8000')
+# Single source of truth (BL-08: merged duplicate assignment); may be empty (proxy then 502s).
+LEGACY_BACKEND_URL = os.environ.get('LEGACY_BACKEND_URL', '').strip().rstrip('/')
 
 # Legacy read-only connection for materializers (cutover period).
 # Set LEGACY_DATABASE_URL in env; if absent, materializers run in degraded/skip mode.
@@ -137,10 +153,6 @@ if _legacy_db_url:
         **dj_database_url.parse(_legacy_db_url),
         'CONN_MAX_AGE': int(os.environ.get('LEGACY_DB_CONN_MAX_AGE', '30')),
     }
-
-# Transitional admin bridge: core-api can delegate selected operator writes
-# to the legacy backend so existing SSOT helpers stay authoritative.
-LEGACY_BACKEND_URL = os.environ.get('LEGACY_BACKEND_URL', '').strip().rstrip('/')
 
 # SM-P2.1: CoreRouter — routes core model writes to 'default'; blocks writes to legacy_readonly.
 DATABASE_ROUTERS = ['vninvest_core.db_router.CoreRouter']
@@ -698,17 +710,30 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
+# BL-15: resolve log format safely (unknown values fall back, never crash boot).
+_LOG_FORMAT = os.environ.get('LOG_FORMAT', '').strip().lower()
+if _LOG_FORMAT not in ('json', 'text'):
+    _LOG_FORMAT = 'text' if DEBUG else 'json'
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'json': {'()': 'vninvest_core.json_logging.JsonFormatter'},
+        'text': {'format': '[{asctime}] {levelname} {name}: {message}', 'style': '{'},
+    },
     'handlers': {
-        'console': {'class': 'logging.StreamHandler'},
+        # BL-15: JSON in prod (default), plain text in dev unless overridden.
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': _LOG_FORMAT,
+        },
     },
     'root': {
         'handlers': ['console'],
         'level': 'WARNING',
     },
 }
+del _LOG_FORMAT
 
 # SM-P5.3: Sentry error tracking.
 _sentry_dsn = os.environ.get('SENTRY_DSN', '')

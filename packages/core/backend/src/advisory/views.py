@@ -126,6 +126,54 @@ def _record_manual_trigger_audit(*, request, tenant: CoreTenant | None, symbol: 
         logger.error(f'Audit log write failed: {e}')
 
 
+def _resolve_advisory_token_budget(user) -> tuple[int, str]:
+    """
+    F3: resolve effective daily token budget for user.
+    Prefer UserAICredential.max_tokens_per_day (per-user override, Slice C);
+    fallback to system ADVISORY_TOKEN_BUDGET.
+    Returns (budget, source) where source is 'user' | 'system'.
+    """
+    system_budget = int(getattr(django_settings, 'ADVISORY_TOKEN_BUDGET', 2000))
+    try:
+        from .models import UserAICredential
+        cred = UserAICredential.objects.filter(user=user).first()
+        if cred is not None and cred.max_tokens_per_day is not None:
+            user_budget = int(cred.max_tokens_per_day)
+            if user_budget > 0:
+                return user_budget, 'user'
+    except Exception:
+        logger.exception('resolve user token budget failed; falling back to system')
+    return max(1, system_budget), 'system'
+
+
+def _advisory_budget_state(user, session_date: _date) -> dict:
+    """
+    F3: compute today's token usage vs effective budget.
+    soft_warning when used >= 80% of budget (and < budget);
+    hard_exceeded when used >= budget (block trigger).
+    """
+    budget, source = _resolve_advisory_token_budget(user)
+    total_tokens = sum(
+        AdvisorySession.objects
+        .filter(user=user, session_date=session_date)
+        .values_list('tokens_used', flat=True)
+    )
+    soft_threshold = int(budget * 0.8)
+    remaining = max(0, int(budget) - int(total_tokens))
+    soft_warning = budget > 0 and int(total_tokens) >= soft_threshold and int(total_tokens) < budget
+    hard_exceeded = int(total_tokens) >= budget
+    return {
+        'tokens_used': int(total_tokens),
+        'token_budget': int(budget),
+        'budget_source': source,
+        'remaining': remaining,
+        'pct_used': round((int(total_tokens) / budget) * 100, 1) if budget > 0 else 0.0,
+        'soft_threshold': soft_threshold,
+        'soft_warning': soft_warning,
+        'hard_exceeded': hard_exceeded,
+    }
+
+
 class AdvisoryLatestView(APIView):
     """Return the latest generated advisory for a symbol on a session date."""
     permission_classes = [permissions.IsAuthenticated]
@@ -225,15 +273,9 @@ class AdvisoryRefreshView(APIView):
                     status=status.HTTP_429_TOO_MANY_REQUESTS,
                 )
 
-        # SFI-B5: Token budget check — block request if today's sessions have exceeded budget.
-        token_budget = getattr(django_settings, 'ADVISORY_TOKEN_BUDGET', 2000)
-        tokens_used_today = (
-            AdvisorySession.objects
-            .filter(user=request.user, session_date=session_date)
-            .values_list('tokens_used', flat=True)
-        )
-        total_tokens = sum(tokens_used_today)
-        if total_tokens >= token_budget:
+        # F3: Token budget check — hard block at 100%; soft warning at 80% rides on 201.
+        budget_state = _advisory_budget_state(request.user, session_date_obj)
+        if budget_state['hard_exceeded']:
             _record_manual_trigger_audit(
                 request=request,
                 tenant=tenant,
@@ -244,17 +286,21 @@ class AdvisoryRefreshView(APIView):
                     'job_key': 'advisory_refresh',
                     'decision': 'blocked',
                     'reason': 'token_budget',
-                    'tokens_used': total_tokens,
-                    'token_budget': token_budget,
+                    'tokens_used': budget_state['tokens_used'],
+                    'token_budget': budget_state['token_budget'],
+                    'budget_source': budget_state['budget_source'],
                     'priority_tier': priority_tier,
                     'tenant_plan': tenant.plan,
                 },
             )
             return Response(
                 {
-                    'detail': f'Token budget ({token_budget}) đã được sử dụng hết trong ngày hôm nay.',
-                    'tokens_used': total_tokens,
-                    'token_budget': token_budget,
+                    'detail': f'Token budget ({budget_state["token_budget"]}) đã được sử dụng hết trong ngày hôm nay.',
+                    'tokens_used': budget_state['tokens_used'],
+                    'token_budget': budget_state['token_budget'],
+                    'budget_source': budget_state['budget_source'],
+                    'budget_hard_exceeded': True,
+                    'budget_soft_warning': False,
                 },
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
@@ -443,6 +489,10 @@ class AdvisoryRefreshView(APIView):
             'quota_used_after': quota_record.api_calls_used,
             'quota_limit': quota_limit,
             'cooldown_seconds': cooldown_seconds,
+            'budget_soft_warning': budget_state['soft_warning'],
+            'budget_tokens_used': budget_state['tokens_used'],
+            'budget_token_budget': budget_state['token_budget'],
+            'budget_source': budget_state['budget_source'],
         }
         _record_manual_trigger_audit(
             request=request,
@@ -459,6 +509,16 @@ class AdvisoryRefreshView(APIView):
 
         response_data = AdvisoryRecordSerializer(record).data
         response_data['task_id'] = str(record.advisory_id)
+        # F3: soft 80% warning on accepted (201) responses.
+        response_data['budget_soft_warning'] = bool(budget_state['soft_warning'])
+        response_data['budget'] = {
+            'tokens_used': budget_state['tokens_used'],
+            'token_budget': budget_state['token_budget'],
+            'budget_source': budget_state['budget_source'],
+            'remaining': budget_state['remaining'],
+            'pct_used': budget_state['pct_used'],
+            'soft_threshold': budget_state['soft_threshold'],
+        }
         response_data['manual_trigger'] = {
             'job_key': 'advisory_refresh',
             'priority_tier': priority_tier,

@@ -2,16 +2,23 @@
 SAML 2.0 Service — AuthnRequest, Response parsing, SP Metadata.
 
 Uses lxml for XML manipulation (pure Python, zero native deps).
-Signature verification defaults to noop (log warning). Set env var
-SAML_SIGNATURE_VERIFICATION_MODE=strict to raise SAMLSignatureError
-when an assertion carries a Signature element and idp_x509_cert is
-configured — requires installing python3-saml + xmlsec1 natively.
+Signature verification defaults to strict outside DEBUG/test (fail-closed,
+BL-01): unsigned responses are rejected; signed responses require
+python3-saml + xmlsec1 for real cryptographic verification (BL-01b follow-up).
+Set SAML_SIGNATURE_VERIFICATION_MODE=noop explicitly only for local dev.
 
-Deviation from plan Step 5.1: python3-saml was not added due to
-native xmlsec1 dependency issues on Windows dev environments.
-lxml-based implementation handles 95% of protocol (AuthnRequest,
-Response parsing, Conditions, SubjectConfirmation, Metadata).
+Deviation history (plan Step 5.1): python3-saml was initially skipped due to
+native xmlsec1 dependency issues on Windows dev environments (BL-01 adds it to
+requirements + Dockerfile; real cryptographic verification is BL-01b).
+lxml-based implementation handles protocol parsing (AuthnRequest, Response,
+Conditions, SubjectConfirmation, Metadata).
 """
+
+import base64
+import logging
+import os
+import sys
+import uuid
 import base64
 import logging
 import os
@@ -36,7 +43,24 @@ SAML_ATTR_NAME = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'
 SAML_ATTR_GROUPS = 'http://schemas.xmlsoap.org/claims/Group'
 
 SIGNATURE_MODES = ('noop', 'strict')
-_DEFAULT_SIGNATURE_MODE = os.environ.get('SAML_SIGNATURE_VERIFICATION_MODE', 'noop').strip().lower()
+
+
+def _is_debug_or_test() -> bool:
+    """True in local dev (DJANGO_DEBUG) or under a test runner (BL-01)."""
+    if os.environ.get('DJANGO_DEBUG', 'false').strip().lower() in ('1', 'true', 'yes'):
+        return True
+    return 'test' in sys.argv or any('test' in arg for arg in sys.argv)
+
+
+def _default_signature_mode() -> str:
+    """Fail-closed default (BL-01): strict in prod, noop only for dev/test."""
+    raw = os.environ.get('SAML_SIGNATURE_VERIFICATION_MODE', '').strip().lower()
+    if raw in SIGNATURE_MODES:
+        return raw
+    if raw:
+        logger.warning('Unknown SAML_SIGNATURE_VERIFICATION_MODE=%s — failing closed to strict', raw)
+        return 'strict'
+    return 'noop' if _is_debug_or_test() else 'strict'
 
 
 class SAMLRequestError(Exception):
@@ -79,10 +103,10 @@ class SAMLService:
         self.idp_sso_url = idp_sso_url
         self.idp_x509_cert = idp_x509_cert
         self.clock_skew = timedelta(seconds=clock_skew_seconds)
-        self.signature_mode = (signature_mode or _DEFAULT_SIGNATURE_MODE).strip().lower()
+        self.signature_mode = (signature_mode or _default_signature_mode()).strip().lower()
         if self.signature_mode not in SIGNATURE_MODES:
-            logger.warning('Unknown SAML_SIGNATURE_VERIFICATION_MODE=%s, falling back to noop', self.signature_mode)
-            self.signature_mode = 'noop'
+            logger.warning('Unknown signature_mode=%s — failing closed to strict', signature_mode)
+            self.signature_mode = 'strict'
 
     @classmethod
     def from_config(cls, sso_config, signature_mode: str = '') -> 'SAMLService':
@@ -255,9 +279,19 @@ class SAMLService:
                 except (ValueError, TypeError):
                     pass
 
-        # ── Signature verification hook ──
+        # ── Signature verification hook (BL-01 fail-closed) ──
+        # Strict mode requires a Signature element AND a configured IdP cert.
+        # Real cryptographic verification lands in BL-01b; until then strict
+        # rejects everything unsigned/unverifiable instead of passing through.
         signature_el = assertion_el.find(f'.//{{{DS_NS}}}Signature')
-        if signature_el is not None and self.idp_x509_cert:
+        if self.signature_mode == 'strict':
+            if signature_el is None or not self.idp_x509_cert:
+                raise SAMLSignatureError(
+                    'Strict mode: SAML Response must carry a Signature element '
+                    'and idp_x509_cert must be configured.'
+                )
+            self._verify_signature(assertion_el)
+        elif signature_el is not None and self.idp_x509_cert:
             self._verify_signature(assertion_el)
 
         # ── Extract attributes ──
@@ -312,12 +346,11 @@ class SAMLService:
         """Verify XML signature on a SAML element.
 
         Behavior depends on self.signature_mode:
-        - 'noop' (default): log warning, pass through.
-        - 'strict': raise SAMLSignatureError when a Signature element is
-          present and idp_x509_cert is configured. Requires installing
-          python3-saml + xmlsec1 for real cryptographic verification.
-          In strict mode without those libs, the error is unconditional
-          to prevent silent spoofing.
+        - 'noop' (dev/test only): log warning, pass through.
+        - 'strict' (prod default, BL-01): raise SAMLSignatureError unless the
+          assertion is signed AND verified. Real cryptographic verification
+          via python3-saml + xmlsec1 is BL-01b; until then strict raises
+          unconditionally to prevent silent spoofing.
         """
         if self.signature_mode == 'noop':
             logger.warning(

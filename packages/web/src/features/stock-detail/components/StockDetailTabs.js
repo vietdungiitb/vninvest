@@ -95,6 +95,8 @@ export function StockDetailTabs({
         usingSystemFallback: advisory?.using_system_fallback,
         fallbackRemaining: advisory?.fallback_quota_remaining,
         fallbackQuotaMax: 5,
+        budgetSoftWarning: advisory?.budget_soft_warning,
+        budget: advisory?.budget,
         onConfigure: onOpenConfigDrawer,
       }),
       // AI Advisory Card at top of Transactions tab

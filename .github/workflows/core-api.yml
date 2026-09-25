@@ -59,7 +59,18 @@ jobs:
           cache-dependency-path: packages/core/backend/requirements.txt
 
       - name: Install dependencies
-        run: pip install -r requirements.txt pytest pytest-django
+        run: pip install -r requirements.txt pytest pytest-django coverage
+
+      - name: Guard — no legacy_views imports (BL-06)
+        run: |
+          if grep -rn "legacy_views import\|from .*legacy_views import" src tests --include="*.py"; then
+            echo "::error::stale legacy_views import detected (BL-06 gate)"
+            exit 1
+          fi
+          echo "BL-06 gate PASS: no legacy_views imports in src/tests"
+
+      - name: Preflight prod env matrix (BL-11)
+        run: python scripts/preflight_prod_env.py
 
       - name: Run tests
         env:
@@ -70,6 +81,75 @@ jobs:
           CORS_ALLOWED_ORIGINS: http://localhost:3000
           DJANGO_DEBUG: "true"
         run: python manage.py test --keepdb --failfast
+
+  coverage:
+    name: Coverage report (BL-16, report-only)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: vninvest_core_test
+          POSTGRES_USER: vninvest
+          POSTGRES_PASSWORD: testpassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vninvest"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: packages/core/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: packages/core/backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest pytest-django coverage
+
+      # Report-only: global --fail-under lands after pre-existing failures
+      # (exception-envelope + PAT middleware tests) are fixed. Touched-module
+      # baseline (2026-09-24, local): 89% over 90 green tests, see
+      # docs/evidence/audit-bl/BL-16/gates.md.
+      - name: Coverage report
+        env:
+          CORE_DATABASE_URL: postgresql://vninvest:testpassword@localhost:5432/vninvest_core_test
+          REDIS_URL: redis://localhost:6379/1
+          DJANGO_SECRET_KEY: test-secret-key-ci-not-for-production
+          DJANGO_ALLOWED_HOSTS: localhost
+          CORS_ALLOWED_ORIGINS: http://localhost:3000
+          DJANGO_DEBUG: "true"
+        run: |
+          coverage run manage.py test --keepdb || true
+          coverage report || true
+          coverage xml -o coverage.xml || true
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: be-coverage-report
+          path: packages/core/backend/coverage.xml
+          retention-days: 7
 
   build:
     name: Build & push Docker image

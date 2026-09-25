@@ -99,9 +99,9 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
               {
                 className: styles.statusBadge,
                 style: {
-                  background: hasPassed ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
+                  background: hasPassed ? "rgba(var(--soc-rgb-10b981) / 0.15)" : "rgba(var(--soc-rgb-ef4444) / 0.15)",
                   color: hasPassed ? toneColor("success") : toneColor("danger"),
-                  fontSize: "0.65rem",
+                  fontSize: "var(--fs-xs)",
                   fontWeight: 600,
                 },
               },
@@ -126,7 +126,7 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
             {
               className: strictTrendTone,
               style: {
-                fontSize: "0.7rem",
+                fontSize: "var(--fs-xs)",
                 margin: "0.15rem 0",
                 color: strictTrendDirection === "up" ? toneColor("success") : strictTrendDirection === "down" ? toneColor("danger") : "var(--color-text-muted, #94a3b8)",
               },
@@ -150,7 +150,7 @@ export function SocParityGatesPanel({ parityGates, parityHistory }: SocParityGat
             {
               className: relaxedTrendTone,
               style: {
-                fontSize: "0.7rem",
+                fontSize: "var(--fs-xs)",
                 margin: "0.15rem 0",
                 color: relaxedTrendDirection === "up" ? toneColor("success") : relaxedTrendDirection === "down" ? toneColor("danger") : "var(--color-text-muted, #94a3b8)",
               },

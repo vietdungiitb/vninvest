@@ -9,6 +9,174 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - Build verification: npx tsc --noEmit sau mỗi sub-step, npm run build cuối mỗi step.
 
 ## Progress
+### Done (2026-09-24) — Enterprise UI Consistency Audit — 3-agent full scan (Entry 213)
+- **Scope**: Full `packages/web/src` — pages + components + layouts + SOC + admin + tenant + auth + workspace + dashboard. **Doc-only**, no code changed.
+- **Method**: 3 parallel subagent scans (shared/SOC/layout | workspace/dashboard | admin/tenant/auth) + theme SSOT review.
+- **Report**: `docs/DESIGN_TOKEN_AUDIT_20260924.md` (new) — 5 anti-pattern groups × ~122 findings; Executive Matrix ERR-01..ERR-65; 8 sample tickets w/ Current→Target diff + AC-1..AC-4; 5-Wave Rollout Plan.
+- **Top findings**: A Typography ~35 (34px/28px/21px/15px off scale, text-[10px] in admin); B Color ~40 (hardcoded hex in inline style); C Spacing ~20 (off 8pt-grid); D Components ~15 (12 raw `<button>`, 5 radii in ShellPageTemplate); E Dark mode ~12 (**`:root` dark palette breaks `data-theme="light"`**).
+- **Wave 1 priority**: `:root` dual-theme fix in `aiSettings.module.css` + `ShellPageTemplate.module.css` + `soc/tokens.css` — systemic, affects all downstream components.
+- **Supersedes**: `docs/UI_CONSISTENCY_AUDIT_20260924.md` (Entry 201, 86 files/20 ERR-IDs) — this scan is the comprehensive version.
+- **Evidence**: `docs/DESIGN_TOKEN_AUDIT_20260924.md`.
+- **Order tiếp**: F9 / F6b (blocked proxy) / manual E2E §3.3 / Wave 1 implementation. A–E+G+F(subset)+F3+F-C6+F7+F8+DONE (211); B2 backlog DONE (212).
+### Done (2026-09-24) — Audit 4-bước B2 complete + B4 handover (Entry 212)
+- **B2** `docs/BACKLOG_AUDIT_CONSOLIDATED_20260924.md`: finish cut BL-14 + **BL-15→BL-24 + BL-17b**
+  (JSON log, coverage, MFA/rotation, DR drill, warnings, tracing, headers, P3 conditional, product);
+  phân bố P0 11 / P1 6+1 / P2 3 / P3 4 = **24 ID**. Fix 3 phụ thuộc ngược vs DAG (BL-02/03/05).
+- **B4**: `docs/evidence/audit-bl/README.md` + tick tổng §8 plan (standing procedure 6 ô implementer
+  giữ unchecked); summary ledger row 198 + **Entry 212**. Phản biện: row198 "P1 7" ≠ 6+1 — đã ghi chú.
+- **Files**: backlog (211 dòng), plan 79→tick, evidence dir. Doc-only. Order tiếp: W1 BL-06/07/08/09/10
+  + khởi động BL-01/04 theo plan §2.
+### Done (2026-09-24) — AI CC Slice F8 shell form extract (Entry 211)
+- **Extract** `AICommandCenterForm.tsx` shared: 8-field checklist `AI_CC_FORM_FIELD_TESTIDS`
+  (provider/model/custom-model/endpoint/api-key/max-tokens/refresh/temperature) +
+  load/save/test/clear-key + prompt-config drawer. Props `t`/`localeTag` override,
+  transport injection, `showRefreshButton`/`showPromptConfigButton`.
+- **SaaS** `AICommandCenterPage` → form + `adapterTransport` (coreApiAdapter);
+  overview/policy/quota/system-prompt/history/audit/event-gate stay page-level;
+  page banners own display when `onError`/`onNotice` provided.
+- **Shell** `ShellAiCommandCenterPage` → drops local form; imports form + `shellT`
+  (`createTranslator("vi")`); `fetchImpl` transport `/core/v1/workspace/ai-command-center/`;
+  `showRefreshButton=false`, `showPromptConfigButton=false`.
+- **Test** `ai-cc-form-parity.component.test.ts` (F-AC8): checklist export + full render
+  + source-contract (both pages import form; shell no `handleSaveSettings`).
+  Red pre-fix: 3 fail (duplicate banner ×2 + wrong `__dirname`) → fixed
+  (form local banner gated `!onNotice`/`!onError`; parity root `../..`).
+- **Gates**: tsc 0, build PASS 32.88s, eslint 0 errors (19 shell `jsx-no-literals` warn),
+  vitest **3 files/17 PASS**, i18n:scan 0 (pollution 0), hardcode 0, check:shell 0.
+  Evidence `docs/evidence/ai-cc/F8/gates.md`.
+- **Order tiếp**: F9 / F6b (blocked proxy) / manual E2E §3.3. A–E+G+F(subset)+F3+F-C6+F7+F8 DONE (211).
+### Done (2026-09-24) — AI CC Slice F7 prompt config history + rollback (Entry 210)
+- **BE**: `UserAICredential.prompt_config_history` JSONField (migration **0009**) +
+  `_append_prompt_config_history` (cap **20**). PUT detects `ai_prompt_config` change →
+  append `{version, config, saved_at, source:save}`; GET/PUT response += `ai_prompt_config_history`
+  (full config = F-AC7 GET old). **POST** `…/prompt-config/rollback/` `{version}` → restore +
+  `source=rollback` + `AIAuditLog`.
+- **FE**: `rollbackAICommandCenterPromptConfig`; `AICommandCenterPage` ShellPanel history list
+  + Restore (`prompt-history-list` / `prompt-history-restore-N`); i18n `promptHistory*` ×8 VI+EN;
+  contract smoke += `ai_prompt_config_history`.
+- **Tests**: new `test_ai_cc_prompt_history.py` 7 (append/no-dup/GET old/rollback/cap/400/isolation);
+  regression isolation+mgmt → **45 OK**.
+- **Gates**: check 0, makemigrations clean, tsc 0, build PASS 20.11s, eslint 0,
+  vitest 2 files/14 PASS, i18n:scan 0, hardcode 0, check:shell 0.
+  Evidence `docs/evidence/ai-cc/F7/gates.md`.
+- **Order tiếp**: F8 / F9 / F6b (blocked proxy) / manual E2E §3.3. A–E+G+F(subset)+F3+F-C6+F7 DONE (210).
+### Done (2026-09-24) — AI CC Slice F3 budget soft/hard (Entry 209)
+- **BE**: `_resolve_advisory_token_budget` (user `max_tokens_per_day` → system `ADVISORY_TOKEN_BUDGET`) +
+  `_advisory_budget_state` (soft 80% / hard 100% / source / remaining / pct). `AdvisoryRefreshView`
+  hard → 429 `budget_hard_exceeded` + `budget_source`; soft → 201 `budget_soft_warning` + `budget{}`;
+  audit metadata += budget fields.
+- **FE**: refresh response `budget_soft_warning`+`budget` → `advisoryFallbackFlags` →
+  `AIAdvisoryWarningBanner` soft warning (amber/red); banner `localeTag` date (bỏ `vi-VN` hardcode).
+- **i18n**: `aiAdvisoryWarning.budgetSoftWarning` VI+EN (count=2).
+- **Tests**: new `test_advisory_budget.py` 8; regression budget+routes+mgmt **46 OK**.
+- **Gates**: check 0, makemigrations clean, tsc 0, build PASS 28.09s, eslint 0 err,
+  vitest 3 files/16 PASS, i18n:scan 0, hardcode 0. Evidence `docs/evidence/ai-cc/F3/gates.md`.
+- **Order tiếp**: F7 / F8 / F6b (blocked proxy) / manual E2E §3.3. A–E+G+F(subset)+F3+F-C6 DONE (209).
+### Done (2026-09-24) — AI CC F-C6 polish (Entry 208)
+- **F-C6 CLOSED**: bỏ 74× `t("aiCommandCenter.*") || "VI fallback"` (CC page 72 + Agents/Usage back-link 1+1).
+  i18next `t()` trả key truthy khi miss → `||` dead code, không catch missing key.
+- **Bonus**: `AICommandCenterPage` `toLocaleDateString("vi-VN")` → `localeTag` (E polish).
+- **Grep**: 0 `t("aiCommandCenter.*")||` trong 3 files; 0 hardcode `vi-VN` date trong CC page.
+- **Gates**: tsc 0, build PASS 49.73s, eslint 0, vitest **5 files/26 PASS**, i18n:scan 0, hardcode 0.
+  Evidence `docs/evidence/ai-cc/F-C6/gates.md`.
+- **Order tiếp**: manual E2E §3.3 / F6b (blocked `GEMINI_API_KEY`) / F3–F9 backlog. A–E+G+F+F-C6 DONE (208).
+### Done (2026-09-24) — AI CC Slice F competitive upgrade F1/F2/F4/F5/F6 subset (Entry 207)
+- **F1**: `AIUsageDashboard` recharts BarChart từ `getAIUsageSummary` (real API, `buildChartData` aggregate `total_tokens_in` theo date); empty state `chartEmpty`; `.chartWrap` CSS.
+- **F2**: filter model/status FE (`usage-filters`/`filter-model`/`filter-status`) + BE `ai_analytics/views.py` `?model=&status=`; export CSV truyền filter; tests BE 3 + FE filter-params.
+- **F4**: BE `ai_api_key_masked` (`••••••••last4`, decrypt fallback) GET/PUT; `ai_api_key` vẫn `''`; FE mask row + `clear-api-key` (guard local/openclaw giữ pre-existing test); F-AC4 no full key in DOM.
+- **F5**: BE `system_prompt_template` GET/PUT; FE read-only panel `system-prompt-template` / empty.
+- **F6**: `providerModels.ts` += gpt-4.1/4.1-mini/o3/o3-mini, gemini-2.5-pro/flash, claude-opus-4/sonnet-4 (F6a gemini-3.8-flash đã ship 204). Accent-color E-defer verified present `aiSettings.module.css:467,474,891`.
+- **i18n**: +7 `aiCommandCenter.*` + +6 `aiUsageAnalytics.*` vi/en; parity + contract smoke (`ai_api_key_masked`, `system_prompt_template`) re-run PASS.
+- **Defer/block**: F3/F7/F8/F9 backlog; **F6b blocked** proxy C2; F-C6 polish open; manual §3.3 screenshots PENDING.
+- **Gates**: tsc 0, build PASS 18.80s, eslint 0, vitest **5 files/26 PASS**, i18n:scan 0, hardcode 0, placeholder 0, BE check 0, makemigrations clean, BE **42 tests OK**.
+  Evidence `docs/evidence/ai-cc/F/gates.md`.
+- **Order tiếp**: F6b (nếu có proxy) / manual E2E §3.3. A–E+G+F(subset) DONE (207).
+### Done (2026-09-24) — AI CC Slice G hardening/CI (Entry 206)
+- **G.1** `ai-cc-i18n-parity.component.test.ts` — vi/en key-set equal cho 3 ns
+  `aiCommandCenter|aiAgentFederation|aiUsageAnalytics` (G-AC1).
+- **G.2** `ai-cc-contract-smoke.component.test.ts` — fixture FE↔BE (CC GET/PUT/test,
+  usage record/aggregate, agent fields) 6 assertions (G-AC2).
+- **G.3** `check:shell` += `i18n:scan` (`package.json:12`).
+- **Gates**: tsc 0, build PASS 30.34s, eslint 0, vitest **5 files/19 PASS** (G 2/10),
+  i18n:scan 0, `check:shell` exit 0, hardcode 0, placeholder 0.
+  Evidence `docs/evidence/ai-cc/G/gates.md`.
+- **Order tiếp**: **F** (F6b blocked proxy C2) / manual E2E §3.3. E DONE (205), G DONE (206).
+### Done (2026-09-24) — AI CC Slice E i18n hardcode (Entry 205)
+- **E**: i18n 4 component AI CC (`AIUsageDashboard`/`AIAgentFederationPanel`/`AIAuditLogsPanel`/
+  `AIAdvisoryPromptConfigDrawer`) → `t()` + `localeTag`; **bugfix** `thead` missing `null` props
+  (headers never rendered children); test `AISliceE.i18n.component.test.js` EN locale 3/3
+  (mock `ConfirmModal.js`); hardcode scan `TOTAL_HITS=0` via `scripts/slice-e-hardcode-scan.mjs`.
+- **i18n**: +9 `aiCommandCenter.*` + `aiAgentFederation.yes|no` + `aiUsageAnalytics.prev|next|pageOf|perPage`
+  (vi+en +32/file intentional). Defer accent-color/API-key mask → F; `ShellAiCommandCenterPage` out of scope.
+- **Gates**: tsc 0, build PASS 19.30s, eslint 0 (touched+scan), vitest **3 files/9 PASS**, i18n:scan 0,
+  hardcode 0, placeholder 0. Evidence `docs/evidence/ai-cc/E/gates.md`.
+- **Order tiếp**: **G** → F. F6b blocked proxy C2. Manual VI/EN screenshots PENDING (user).
+### Done (2026-09-24) — AI CC Slice B rest + F6a (Entry 204)
+- **B rest**: hub nav 5 tabs (`#overview/#runtime/#audit` + route agents/usage), section anchors,
+  back-link từ Agents/Usage → `/settings/ai`; +6 i18n keys `tab*`/`backToHub`; CSS `hubNav*`.
+  Test wrap `MemoryRouter` (page dùng `useLocation`).
+- **F6a**: FE `providerModels.ts` + `gemini-3.8-flash`; BE `ModelChoices.GEMINI_38_FLASH` +
+  migration `0008` SystemAISettings only (C1); `requirements.txt` comment marker, **chưa** add
+  `google-genai` (C5). **F6b** vẫn blocked proxy test C2.
+- **Gates**: tsc 0, build PASS 52s, eslint 0, vitest 2 files/9 PASS, i18n:scan exit 0
+  (0 placeholder `.js`; scanner ghi `.json` gitignored), BE check 0, makemigrations clean.
+  Evidence `docs/evidence/ai-cc/B/gates.md`.
+- **Order tiếp**: **E** (i18n hardcode + polish U-01…U-08) → G → F.
+### Done (2026-09-24) — AI CC Plan Rev.3 F6a/F6b split (Entry 203)
+- **F6 audit** `docs/AUDIT_F6_GEMINI_38_FLASH_20260924.md`: 5/5 conclusions CORRECT;
+  **F6a APPROVED** (~0.5d, LOW risk); **F6b CONDITIONAL** trên proxy test C2
+  (`v1beta/openai/chat/completions` model `gemini-3.8-flash` → 200 = F6b deferred).
+- **C1**: `UserAICredential.ai_model` no choices → migration **chỉ** `SystemAISettings`
+  AlterField (0008 dự kiến). **C5**: `google-genai` KHÔNG thêm ở F6a (comment marker OK).
+  **C4**: param mapping explicit nếu F6b. **C3**: centralized `get_ai_client(provider)` factory.
+- **Plan Rev.3**: `docs/IMPLEMENTATION_PLAN_AI_COMMAND_CENTER_SSAOT_20260924.md` §F6a/F6b
+  + risk/milestone/file-inventory updates. Chưa implement code (doc-only).
+- **Order tiếp**: B rest (nav hub/link) → E → G → F (F6a ship sớm OK song song; F6b blocked proxy).
+- **G澄清 F-01**: isolation test path = `packages/core/backend/tests/test_ai_cc_config_isolation.py`
+  (KHÔNG phải `advisory/tests/`). F-03: 69 BE tests Entry 202, chưa re-run đợt F6.
+### Done (2026-09-24) — AI CC Slice C multi-tenant config plane (Entry 202)
+- **C.1** `UserAICredential` +5 field (migration `0007`): `temperature`/
+  `max_tokens_per_day`/`refresh_interval_hours`/`max_auto_refreshes_per_day`
+  (nullable=system default, lazy no-backfill) + `prompt_config` JSON.
+- **GET** prefer user field → fallback system metadata/config.
+- **PUT chỉ** ghi `UserAICredential`; **bỏ** write `SystemAISettings.temperature`/
+  `max_tokens`/`metadata`/`ai_model` từ payload (multi-tenant leak đã đóng).
+- **Sanitize fix**: `'token' in key` mask nhầm `advisory_max_tokens_per_day` →
+  precise pattern + exclude `max_token*`/`tokens_per*`.
+- **Gates**: check 0, makemigrations clean, isolation **8/8**, regression
+  management+audit **53/53**, advisory **8/8** = 69 OK. C-AC1…7 PASS.
+  Evidence `docs/evidence/ai-cc/C/gates.md`.
+- **Order tiếp**: B rest (nav hub/link) → E → G → F.
+### Done (2026-09-24) — AI CC Slice B.4 i18n namespace (Entry 201)
+- **B.4**: migrate call sites `usage.*`→`aiUsageAnalytics.*` (Dashboard+test) +
+  `agentFederation.*`→`aiAgentFederation.*` (Panel; mapping loadError/confirmDelete/
+  type/active/empty/edit/delete→errorLoad/deleteConfirm/agentType/isActive/noAgents/
+  editAgent/deleteAgent); +6 keys target ns (vi+en); old blocks giữ + DEPRECATED
+  comment (F-C7 defer 1 sprint). Grep `t("usage.`/`t("agentFederation.`/`agentFederation.`
+  in `packages/web/src` = **0**.
+- **Gates**: tsc 0, vitest AIUsageDashboard **3/3**, i18n:scan exit 0.
+  Evidence `docs/evidence/ai-cc/B4/gates.md` (B-AC4/B-AC5 PASS).
+- **Order tiếp**: ~~B.4~~ DONE (201) → ~~C~~ DONE (202) → **B rest** (nav hub/link) → E → G → F.
+### Done (2026-09-24) — AI CC Slice D security (Entry 200)
+- **D1** `ai_analytics` bỏ `IsCoreOperator` → self-scope `filter(user=request.user)`
+  (staff all + `user_id`); Summary/Aggregate cũng scoped (cả 2 model có `user` FK).
+- **D2** `ai_agents` list scoped `created_by`; detail other→404; PATCH/DELETE other→403;
+  model `UniqueConstraint(name, created_by)` + migration `0002_agent_name_per_creator`.
+- **Latent bug**: `db_router._CORE_APPS` thiếu `ai_agents`/`ai_analytics` → mọi write
+  RuntimeError (POST agent 500 prod). Đã thêm 2 app labels.
+- **Gates**: `manage.py check` 0; `makemigrations --check` clean; BE tests
+  **22/22 OK** (`ai_analytics.tests` 10 + `ai_agents.tests` 12); D-AC1…8 PASS.
+  Evidence `docs/evidence/ai-cc/D/gates.md`.
+- **Order tiếp**: ~~B.4 namespace~~ DONE (Entry 201) → **C** → B rest → E → G → F.
+### Done (2026-09-24) — AI CC SSOT plan Rev.2 + Slice A (Entries 197–199)
+- **Plan** `docs/IMPLEMENTATION_PLAN_AI_COMMAND_CENTER_SSAOT_20260924.md` Rev.2
+  (approve; audit F-C1–F-C5 map). Slice A DONE (Entry 198): i18n 3 keys
+  `aiCommandCenter.eyebrow|overview|fallbackReset`, policy sync sau save, quota `?? 0`,
+  test TRANSLATIONS 6/6. Evidence `docs/evidence/ai-cc/A/gates.md`.
+- **OPEN security (không ship)**: F-C2 namespace `usage.*`/`agentFederation.*` còn call sites;
+  F-C3 `IsCoreOperator` `ai_analytics:14,64,86`; F-C4 agent ownership PATCH/DELETE;
+  F-C5 `UserAICredential` thiếu 5 field (Slice C). **Order: D → B.4 → C → …**
+- Audit: `docs/AUDIT_AI_COMMAND_CENTER_SSOT_20260924.md`.
 ### Done (2026-09-24) — Darkflow value fix 840x Option A (Entry 194)
 - **Root cause**: `tasks.py` dark branch `volume = sum(buy_count)` (số đếm tick) vào
   `volume_at_signal` (ngữ nghĩa cổ phiếu) → materializer `price × volume` = 2.1M

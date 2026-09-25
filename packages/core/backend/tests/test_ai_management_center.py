@@ -154,6 +154,16 @@ class PortfolioAICommandCenterViewGetTests(TestCase):
         self.assertEqual(data['ai_provider'], 'gemini')
         self.assertEqual(data['ai_api_key_configured'], True)
         self.assertEqual(data['ai_api_key'], '')  # never return raw key
+        # F4: mask shows last4 only — never full key
+        self.assertEqual(data.get('ai_api_key_masked'), '••••••••test')
+        self.assertNotIn('sk-test', str(data.get('ai_api_key_masked', '')))
+
+    def test_get_exposes_system_prompt_template(self):
+        """F5 — SystemAISettings.prompt_template readable on GET."""
+        response = self.client.get('/core/v1/workspace/ai-command-center/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('system_prompt_template', response.data)
+        self.assertIsInstance(response.data['system_prompt_template'], str)
 
     def test_get_local_provider_no_key_needed(self):
         UserAICredential.objects.create(
@@ -233,6 +243,22 @@ class PortfolioAICommandCenterViewPutTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         cred = UserAICredential.objects.get(user=self.user)
         self.assertEqual(cred.custom_endpoint, 'http://10.0.0.1:8080/v1')
+
+    def test_put_clear_api_key_for_openai_provider(self):
+        """F4 — Xóa key: empty ai_api_key clears BYOK provider key."""
+        cred = UserAICredential.objects.create(
+            user=self.user,
+            ai_provider='openai',
+            encrypted_api_key=encrypt_user_api_key('sk-should-clear'),
+        )
+        response = self.client.put('/core/v1/workspace/ai-command-center/', {
+            'ai_api_key': '',
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        cred.refresh_from_db()
+        self.assertEqual(cred.encrypted_api_key, '')
+        self.assertFalse(response.data.get('ai_api_key_configured'))
+        self.assertEqual(response.data.get('ai_api_key_masked'), '')
 
     def test_put_response_includes_fallback_quota(self):
         response = self.client.put('/core/v1/workspace/ai-command-center/', {

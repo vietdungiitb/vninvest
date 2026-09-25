@@ -11,7 +11,7 @@ class AgentRegistry(models.Model):
         NEWS = 'news', 'News Aggregator'
         CUSTOM = 'custom', 'Custom Agent'
 
-    name = models.CharField(max_length=64, unique=True, verbose_name='Tên agent')
+    name = models.CharField(max_length=64, verbose_name='Tên agent')
     agent_type = models.CharField(
         max_length=32,
         choices=AgentTypes.choices,
@@ -31,6 +31,12 @@ class AgentRegistry(models.Model):
         verbose_name = 'Agent AI'
         verbose_name_plural = 'Agent AI'
         ordering = ['name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name', 'created_by'],
+                name='unique_agent_name_per_creator',
+            ),
+        ]
 
     def __str__(self) -> str:
         return f'{self.name} ({self.get_agent_type_display()})'

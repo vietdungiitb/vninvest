@@ -26,8 +26,9 @@ const allowHex = new Set([
 ]);
 
 function stripRootBlocks(txt) {
-  // Remove :root { ... } blocks (token declarations) — hex there is definition, not hard-coded usage
-  return txt.replace(/:root\s*\{[^}]*\}/gs, (m) => " ".repeat(m.length));
+  // Remove :root { ... } blocks (token declarations) — hex there is definition, not hard-coded usage.
+  // BL-W1: also strip :root[data-theme="light"] definition blocks (same nature).
+  return txt.replace(/:root(?:\[[^\]]*\])?\s*\{[^}]*\}/gs, (m) => " ".repeat(m.length));
 }
 
 function collectFiles(dir) {

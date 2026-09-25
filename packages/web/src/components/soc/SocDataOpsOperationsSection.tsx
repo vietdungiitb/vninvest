@@ -1,4 +1,5 @@
 import { createElement, useCallback, useEffect, useState } from "react";
+import { Button } from "../ui/button.js";
 import { createPortal } from "react-dom";
 import { useI18n } from "../../context/LangContext.js";
 import { useConfirm } from "../../components/ConfirmModal.js";
@@ -358,7 +359,7 @@ export function SocDataOpsOperationsSection() {
               type: "button",
               className: `${styles.filterBtn} ${selectedGroup === g.key ? styles.filterBtnActive : styles.filterBtnInactive}`,
               onClick: () => setSelectedGroup(g.key),
-              style: g.type === "custom" ? { border: "1px solid rgba(45, 212, 191, 0.3)" } : undefined,
+              style: g.type === "custom" ? { border: "1px solid rgba(var(--soc-rgb-2dd4bf) / 0.3)" } : undefined,
             },
             g.type === "custom" && g.key !== CUSTOM_GROUP_KEY ? "\u2605 " : "",
             g.label,
@@ -516,7 +517,7 @@ export function SocDataOpsOperationsSection() {
       createElement(
         "div",
         { className: styles.progressBar },
-        createElement("div", { className: styles.progressBarFill, style: { width: `${Math.min(progress, 100)}%`, background: "linear-gradient(90deg, #34d399, #22d3ee)" } }),
+        createElement("div", { className: styles.progressBarFill, style: { width: `${Math.min(progress, 100)}%`, background: "linear-gradient(90deg, var(--soc-c-34d399), var(--soc-c-22d3ee))" } }),
       ),
       createElement(
         "div",
@@ -584,18 +585,22 @@ export function SocDataOpsOperationsSection() {
             ? createElement(
                 "div",
                 { },
-                createElement("button", {
-                  className: styles.actionBtn,
-                  onClick: () => setPage(Math.max(0, page - 1)),
-                  disabled: page === 0,
+                createElement(Button, {
+                    className: styles.actionBtn,
+                    variant: "ghost",
+                    size: "sm",
+                    onClick: () => setPage(Math.max(0, page - 1)),
+                    disabled: page === 0,
                   
                 }, "\u25C0"),
                 createElement("span", { },
                   `${page + 1}/${totalPages}`),
-                createElement("button", {
-                  className: styles.actionBtn,
-                  onClick: () => setPage(Math.min(totalPages - 1, page + 1)),
-                  disabled: page >= totalPages - 1,
+                createElement(Button, {
+                    className: styles.actionBtn,
+                    variant: "ghost",
+                    size: "sm",
+                    onClick: () => setPage(Math.min(totalPages - 1, page + 1)),
+                    disabled: page >= totalPages - 1,
                   
                 }, "\u25B6"),
               )
@@ -648,7 +653,7 @@ export function SocDataOpsOperationsSection() {
       createElement(
         "div",
         { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" } },
-        createElement("div", { className: styles.sectionCardTitle, style: { margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" } }, createElement(LucideIcon, { name: "Clock", className: "h-4 w-4" }), t("soc.dataops.run_logs"), createElement("span", { style: { fontSize: "0.68rem", fontWeight: 400, color: "var(--text-muted)" } }, `· ${runLogs.length} runs`)),
+        createElement("div", { className: styles.sectionCardTitle, style: { margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" } }, createElement(LucideIcon, { name: "Clock", className: "h-4 w-4" }), t("soc.dataops.run_logs"), createElement("span", { style: { fontSize: "var(--fs-xs)", fontWeight: 400, color: "var(--text-muted)" } }, `· ${runLogs.length} runs`)),
         createElement(
           "div",
           { },
@@ -708,21 +713,21 @@ export function SocDataOpsOperationsSection() {
                   createElement(
                     "div",
                     { className: styles.opsRunLogRow },
-                    createElement("span", { style: { fontWeight: 700, fontFamily: "Menlo, monospace", fontSize: "0.78rem" } }, log.run_id || `run-${i}`),
+                    createElement("span", { style: { fontWeight: 700, fontFamily: "Menlo, monospace", fontSize: "var(--fs-sm)" } }, log.run_id || `run-${i}`),
                     createElement(SocStatusBadge, {
                       status: log.status,
                       label: log.status ? t(`soc.dataops.run_status_${log.status}`) || log.status : t("soc.dataops.run_status_unknown"),
                       dot: true,
                     }),
-                    createElement("span", { style: { fontSize: "0.68rem", color: "var(--text-muted)", marginLeft: "0.35rem" } }, log.mode ? t(`soc.dataops.backfill_mode_${log.mode}`) || log.mode : ""),
-                    log.execution_mode ? createElement("span", { style: { fontSize: "0.65rem", padding: "0.1rem 0.35rem", borderRadius: "4px", background: "rgba(148,163,184,0.12)", color: "var(--soc-c-94a3b8)" } }, log.execution_mode) : null,
+                    createElement("span", { style: { fontSize: "var(--fs-xs)", color: "var(--text-muted)", marginLeft: "0.35rem" } }, log.mode ? t(`soc.dataops.backfill_mode_${log.mode}`) || log.mode : ""),
+                    log.execution_mode ? createElement("span", { style: { fontSize: "var(--fs-xs)", padding: "0.1rem 0.35rem", borderRadius: "4px", background: "rgba(var(--soc-rgb-94a3b8) / 0.12)", color: "var(--soc-c-94a3b8)" } }, log.execution_mode) : null,
                   ),
                   createElement(
                     "div",
                     { className: styles.opsRunLogMeta, style: { display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "center" } },
-                    createElement("span", { title: (timeInfo as { title: string }).title, style: { fontSize: "0.7rem" } }, (timeInfo as { display: string }).display),
-                    duration ? createElement("span", { style: { fontSize: "0.68rem", color: "var(--text-muted)" } }, `· ${duration}`) : null,
-                    log.reason ? createElement("span", { style: { fontSize: "0.68rem", color: "var(--soc-c-94a3b8)", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, title: String(log.reason) }, String(log.reason)) : null,
+                    createElement("span", { title: (timeInfo as { title: string }).title, style: { fontSize: "var(--fs-xs)" } }, (timeInfo as { display: string }).display),
+                    duration ? createElement("span", { style: { fontSize: "var(--fs-xs)", color: "var(--text-muted)" } }, `· ${duration}`) : null,
+                    log.reason ? createElement("span", { style: { fontSize: "var(--fs-xs)", color: "var(--soc-c-94a3b8)", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, title: String(log.reason) }, String(log.reason)) : null,
                   ),
                   hasStats
                     ? createElement(
@@ -780,7 +785,7 @@ export function SocDataOpsOperationsSection() {
       createElement(
         "div",
         { className: styles.sectionCard },
-        createElement("div", { className: styles.sectionCardTitle, style: { display: "flex", alignItems: "center", gap: "0.5rem" } }, createElement(LucideIcon, { name: "Rocket", className: "h-4 w-4" }), t("soc.dataops.backfill_form_title"), createElement("span", { style: { fontSize: "0.68rem", fontWeight: 400, color: "var(--text-muted)", marginLeft: "0.5rem" } }, t("soc.dataops.backfill_context_purpose", { defaultValue: "Bổ sung dữ liệu thiếu" })) ),
+        createElement("div", { className: styles.sectionCardTitle, style: { display: "flex", alignItems: "center", gap: "0.5rem" } }, createElement(LucideIcon, { name: "Rocket", className: "h-4 w-4" }), t("soc.dataops.backfill_form_title"), createElement("span", { style: { fontSize: "var(--fs-xs)", fontWeight: 400, color: "var(--text-muted)", marginLeft: "0.5rem" } }, t("soc.dataops.backfill_context_purpose", { defaultValue: "Bổ sung dữ liệu thiếu" })) ),
         createElement(
           "div",
           { className: styles.opsFormGrid },

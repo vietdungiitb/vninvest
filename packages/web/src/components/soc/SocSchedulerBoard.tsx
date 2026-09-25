@@ -1,4 +1,5 @@
 import { createElement, useCallback, useEffect, useState } from "react";
+import { Button } from "../ui/button.js";
 import { createPortal } from "react-dom";
 import { useI18n } from "../../context/LangContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
@@ -93,7 +94,7 @@ const getFreshnessColor = (freshness?: string) => {
     case "fresh": return toneColor("success");
     case "warm": return toneColor("info");
     case "stale": return toneColor("warning");
-    case "missing": return "#64748b";
+      case "missing": return "var(--soc-c-64748b)";
     default: return "var(--color-text-muted, #94a3b8)";
   }
 };
@@ -359,7 +360,7 @@ function JobHistoryDrawer({
           createElement("p", { className: styles.schedulerDrawerTitle }, t("soc.scheduler.history_drawer_title")),
           createElement("p", { className: styles.schedulerDrawerSub }, jobKey)
         ),
-        createElement("button", { type: "button", onClick: onClose, className: styles.schedulerDrawerClose }, "\u2715")
+        createElement(Button, { type: "button", variant: "ghost", size: "icon", onClick: onClose, className: styles.schedulerDrawerClose, "aria-label": "Close" }, "\u2715")
       ),
       loading && createElement("p", { className: styles.schedulerDrawerCount }, t("common.loading")),
       error && createElement("p", { className: styles.schedulerDrawerCount, style: { color: toneColor("danger") } }, error),
@@ -403,9 +404,9 @@ function JobHistoryDrawer({
                          run.status
                        )
                      ),
-                     createElement("td", { style: { fontSize: "0.7rem" } }, run.started_at || "\u2014"),
-                     createElement("td", { style: { fontSize: "0.7rem", fontVariantNumeric: "tabular-nums" } }, run.duration_seconds != null ? `${run.duration_seconds}s` : "\u2014"),
-                     createElement("td", { style: { fontSize: "0.65rem", fontFamily: "monospace", wordBreak: "break-all", maxWidth: "200px" } }, run.celery_task_id || "\u2014")
+                     createElement("td", { style: { fontSize: "var(--fs-xs)" } }, run.started_at || "\u2014"),
+                     createElement("td", { style: { fontSize: "var(--fs-xs)", fontVariantNumeric: "tabular-nums" } }, run.duration_seconds != null ? `${run.duration_seconds}s` : "\u2014"),
+                     createElement("td", { style: { fontSize: "var(--fs-xs)", fontFamily: "monospace", wordBreak: "break-all", maxWidth: "200px" } }, run.celery_task_id || "\u2014")
                    );
                 })
               )
@@ -558,7 +559,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
         className: `${styles.schedulerActionBanner} ${actionBanner.type === "success" ? styles.schedulerActionBannerSuccess : styles.schedulerActionBannerError}`,
       },
       createElement("span", null, actionBanner.msg),
-      actionBanner.requestId && createElement("span", { style: { opacity: 0.6, fontSize: "0.65rem", fontFamily: "monospace" } }, actionBanner.requestId)
+      actionBanner.requestId && createElement("span", { style: { opacity: 0.6, fontSize: "var(--fs-xs)", fontFamily: "monospace" } }, actionBanner.requestId)
     ),
 
     // Header row
@@ -576,7 +577,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
         ),
         plan && createElement(
           "p",
-          { className: styles.schedulerTimestamp, style: { fontSize: "0.7rem", opacity: 0.85 } },
+          { className: styles.schedulerTimestamp, style: { fontSize: "var(--fs-xs)", opacity: 0.85 } },
           embedded
             ? `${t("soc.scheduler.filter_count", { filtered: filteredJobs.length, total: totalJobs })} — ${showAllDomains ? t("soc.scheduler.filter_all_domains") : domainProp}`
             : `${t("soc.scheduler.health_total")}: ${totalJobs}`
@@ -587,7 +588,7 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
             type: "button",
             onClick: () => setShowAllDomains((v) => !v),
             className: styles.pageBtnSmall,
-            style: { marginTop: "0.25rem", fontSize: "0.7rem" },
+            style: { marginTop: "0.25rem", fontSize: "var(--fs-xs)" },
           },
           showAllDomains ? `${t("soc.scheduler.filter_show_dataops_only")} (${filteredJobs.length})` : `${t("soc.scheduler.filter_show_all")} (${totalJobs})`
         )
@@ -744,10 +745,10 @@ export function SocSchedulerBoard({ domain: domainProp, onAction, hideHeaderTitl
                       job.freshness_state ? t(`soc.scheduler.freshness_${job.freshness_state}`, { defaultValue: job.freshness_state }) : "\u2014"
                     )
                   ),
-                  createElement("td", { style: { fontSize: "0.7rem", fontVariantNumeric: "tabular-nums" }, title: !job.next_run_at && job.trigger_type === "cron" ? t("soc.scheduler.cron_tooltip", { label: job.display_name || job.job_key }) : undefined }, !job.next_run_at && job.trigger_type === "cron" ? t("soc.scheduler.not_scheduled") : formatNextRun(job.next_run_at, job.trigger_type)),
+                  createElement("td", { style: { fontSize: "var(--fs-xs)", fontVariantNumeric: "tabular-nums" }, title: !job.next_run_at && job.trigger_type === "cron" ? t("soc.scheduler.cron_tooltip", { label: job.display_name || job.job_key }) : undefined }, !job.next_run_at && job.trigger_type === "cron" ? t("soc.scheduler.not_scheduled") : formatNextRun(job.next_run_at, job.trigger_type)),
                   createElement("td", {
                     style: {
-                      fontSize: "0.7rem",
+                      fontSize: "var(--fs-xs)",
                       fontVariantNumeric: "tabular-nums",
                       color: slaCritical ? toneColor("danger") : slaWarning ? toneColor("warning") : undefined,
                       fontWeight: slaCritical ? 700 : undefined,

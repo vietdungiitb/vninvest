@@ -66,7 +66,7 @@ export default function UpgradePage() {
           e("div", { className: "flex items-center justify-between gap-3" },
             e("h2", { className: "text-lg font-semibold text-slate-100 capitalize" }, plan.key),
             userPlan === plan.key
-              ? e("span", { className: "rounded-full border border-emerald-700/70 bg-emerald-950/30 px-2.5 py-1 text-[11px] font-semibold text-emerald-300" }, t("upgrade.currentBadge", { defaultValue: "Gói hiện tại" }))
+              ? e("span", { className: "rounded-full border border-emerald-700/70 bg-emerald-950/30 px-2.5 py-1 text-[var(--fs-2xs)] font-semibold text-emerald-300" }, t("upgrade.currentBadge", { defaultValue: "Gói hiện tại" }))
               : null
           ),
           e("div", { className: "mt-4 space-y-2 text-sm text-slate-300" },

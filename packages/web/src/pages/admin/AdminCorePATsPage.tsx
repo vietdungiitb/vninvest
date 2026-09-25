@@ -135,7 +135,7 @@ export function AdminCorePATsPage() {
       <section className="overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-6 py-6 text-white shadow-2xl shadow-slate-950/30">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{t('adminCoreTenants.heroEyebrow')}</p>
+            <p className="text-[var(--fs-2xs)] uppercase tracking-[0.24em] text-slate-400">{t('adminCoreTenants.heroEyebrow')}</p>
             <div>
               <h1 className="text-3xl font-semibold tracking-tight">
                 {t('adminCoreTenants.patTitle')}
@@ -440,19 +440,19 @@ export function AdminCorePATsPage() {
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.patStatus')}</p>
+                  <p className="text-[var(--fs-2xs)] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.patStatus')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{selectedToken.status}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.patAnomaly')}</p>
+                  <p className="text-[var(--fs-2xs)] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.patAnomaly')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{selectedToken.anomaly_state}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.patExpiry')}</p>
+                  <p className="text-[var(--fs-2xs)] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.patExpiry')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{selectedToken.expires_at || '—'}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.patGracePeriod')}</p>
+                  <p className="text-[var(--fs-2xs)] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('adminCoreTenants.patGracePeriod')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{selectedToken.grace_period_active ? t('adminCoreTenants.patActive') : t('adminCoreTenants.patInactive')}</p>
                 </div>
               </div>

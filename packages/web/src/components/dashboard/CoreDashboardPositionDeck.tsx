@@ -235,9 +235,9 @@ export function CoreDashboardPositionDeck({
   return (
     <div className={`dashboard-full-width-deck flex flex-col ${className}`}>
       {selectedSession ? (
-        <div className="flex items-center justify-between bg-emerald-950/40 border-b border-emerald-800/30 px-4 py-2 text-[11px] text-emerald-300">
+        <div className="flex items-center justify-between bg-emerald-950/40 border-b border-emerald-800/30 px-4 py-2 text-[var(--fs-2xs)] text-emerald-300">
           <span>Phiên đang chọn: <strong>{typeof selectedSession === 'object' ? JSON.stringify(selectedSession) : String(selectedSession as string)}</strong></span>
-          <button onClick={() => onSelectSession?.(null)} className="text-[10px] text-slate-500 hover:text-slate-300 font-bold uppercase">Hủy</button>
+          <button onClick={() => onSelectSession?.(null)} className="text-[var(--fs-2xs)] text-slate-500 hover:text-slate-300 font-bold uppercase">Hủy</button>
         </div>
       ) : null}
 
@@ -263,7 +263,7 @@ export function CoreDashboardPositionDeck({
 
       <div className="flex flex-wrap items-center gap-3 border-b border-slate-800 bg-slate-950/60 px-3 py-2">
         <div className="flex items-center gap-2">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Phạm vi mã</label>
+          <label className="text-[var(--fs-2xs)] font-bold uppercase tracking-widest text-slate-500">Phạm vi mã</label>
           <select
             value={symbolScope}
             onChange={(event) => setSymbolScope(event.target.value)}
@@ -278,7 +278,7 @@ export function CoreDashboardPositionDeck({
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Mã</label>
+          <label className="text-[var(--fs-2xs)] font-bold uppercase tracking-widest text-slate-500">Mã</label>
           <select
             value={selectedSymbol}
             onChange={(event) => {
@@ -297,7 +297,7 @@ export function CoreDashboardPositionDeck({
           </select>
         </div>
 
-        <div className="ml-auto rounded-full border border-slate-800 bg-slate-900/80 px-3 py-1 text-[11px] text-slate-400">
+        <div className="ml-auto rounded-full border border-slate-800 bg-slate-900/80 px-3 py-1 text-[var(--fs-2xs)] text-slate-400">
           {symbolOptions.length} mã trong phạm vi hiện tại
         </div>
       </div>
@@ -317,7 +317,7 @@ export function CoreDashboardPositionDeck({
               ) : (
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-800/80 text-[10px] text-slate-500 uppercase tracking-wider">
+                    <tr className="border-b border-slate-800/80 text-[var(--fs-2xs)] text-slate-500 uppercase tracking-wider">
                       <th className="px-3 py-2">Mã</th>
                       <th className="px-3 py-2">Nguồn</th>
                       <th className="px-3 py-2 text-right">Giá hiện tại</th>
@@ -340,7 +340,7 @@ export function CoreDashboardPositionDeck({
                       }}>
                         <td className="px-3 py-2">
                           <div className="font-bold text-slate-200">{row.symbol}</div>
-                          <div className="text-[11px] text-slate-500">{row.company_name || '--'}</div>
+                          <div className="text-[var(--fs-2xs)] text-slate-500">{row.company_name || '--'}</div>
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex flex-wrap gap-1">
@@ -348,7 +348,7 @@ export function CoreDashboardPositionDeck({
                               ? row.source_tags.map((tag: string) => (
                                   <span
                                     key={`${row.symbol}-${tag}`}
-                                    className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${sourceBadgeClass[tag] || 'border-slate-700 text-slate-300'}`}
+                                    className={`rounded-full border px-2 py-0.5 text-[var(--fs-2xs)] font-bold ${sourceBadgeClass[tag] || 'border-slate-700 text-slate-300'}`}
                                   >
                                     {sourceBadgeLabel[tag] || tag}
                                   </span>
@@ -397,7 +397,7 @@ export function CoreDashboardPositionDeck({
             <div className="flex-1 overflow-y-auto panel-scrollbar">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-800/80 text-[10px] text-slate-500 uppercase tracking-wider">
+                  <tr className="border-b border-slate-800/80 text-[var(--fs-2xs)] text-slate-500 uppercase tracking-wider">
                     <th className="px-3 py-2">Mã</th>
                     <th className="px-3 py-2 text-right">RSI (14)</th>
                     <th className="px-3 py-2 text-right">SMA20</th>

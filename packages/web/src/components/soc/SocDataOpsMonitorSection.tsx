@@ -1,4 +1,5 @@
 import { createElement, useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "../ui/button.js";
 import { useI18n } from "../../context/LangContext.js";
 import { useDataOps } from "./DataOpsContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
@@ -150,7 +151,7 @@ function renderPagination(page: number, hasMore: boolean, onPrev: () => void, on
         onClick: onPrev,
         disabled: page <= 1,
         className: styles.actionBtn,
-        style: { fontSize: "0.7rem", background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted, #94a3b8)", cursor: page <= 1 ? "not-allowed" : "pointer" },
+        style: { fontSize: "var(--fs-xs)", background: "rgba(var(--soc-rgb-64748b) / 0.15)", color: "var(--text-muted, #94a3b8)", cursor: page <= 1 ? "not-allowed" : "pointer" },
       },
       "\u25C0 " + t("soc.actions.prev")
     ),
@@ -161,7 +162,7 @@ function renderPagination(page: number, hasMore: boolean, onPrev: () => void, on
         onClick: onNext,
         disabled: !hasMore,
         className: styles.actionBtn,
-        style: { fontSize: "0.7rem", background: "rgba(100, 116, 139, 0.15)", color: "var(--text-muted, #94a3b8)", cursor: hasMore ? "pointer" : "not-allowed" },
+        style: { fontSize: "var(--fs-xs)", background: "rgba(var(--soc-rgb-64748b) / 0.15)", color: "var(--text-muted, #94a3b8)", cursor: hasMore ? "pointer" : "not-allowed" },
       },
       t("soc.actions.next") + " \u25B6"
     )
@@ -447,16 +448,16 @@ export function SocDataOpsMonitorSection() {
     { },
     queueTiersError ? createElement("div", { className: styles.inlineError, style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem" } },
       createElement("span", null, queueTiersError),
-      createElement("button", { className: styles.actionBtn, onClick: retryQueueTiers, style: { fontSize: "0.7rem" } }, t("soc.overview.retry"))
+      createElement(Button, { className: styles.actionBtn, variant: "ghost", size: "sm", onClick: retryQueueTiers, style: { fontSize: "var(--fs-xs)" } }, t("soc.overview.retry"))
     ) : null,
     observabilityError ? createElement("div", { className: styles.inlineError, style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem", marginTop: queueTiersError ? "0.5rem" : undefined } },
       createElement("span", null, observabilityError),
-      createElement("button", { className: styles.actionBtn, onClick: retryObservability, style: { fontSize: "0.7rem" } }, t("soc.overview.retry"))
+      createElement(Button, { className: styles.actionBtn, variant: "ghost", size: "sm", onClick: retryObservability, style: { fontSize: "var(--fs-xs)" } }, t("soc.overview.retry"))
     ) : null,
     renderActiveRunBanner(),
 
     // Stream status indicator (Live/Polling) — realtime <5s vs poll 30s
-    streamStatusLabel ? createElement("div", { style: { display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.68rem", color: "var(--text-muted)", marginBottom: "0.5rem" } },
+    streamStatusLabel ? createElement("div", { style: { display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "var(--fs-xs)", color: "var(--text-muted)", marginBottom: "0.5rem" } },
       createElement("span", { style: { width: "6px", height: "6px", borderRadius: "999px", background: streamStatusLabel === "Live" ? "var(--soc-c-34d399)" : streamStatusLabel === "Connecting" ? "var(--soc-c-fbbf24)" : "var(--soc-c-94a3b8)", display: "inline-block" } }),
       createElement("span", null, streamStatusLabel === "Live" ? `${t("soc.dataops.stream_live") || "Live"} · ${t("soc.dataops.stream_realtime") || "Realtime 5s"}` : streamStatusLabel)
     ) : null,
@@ -623,13 +624,13 @@ export function SocDataOpsMonitorSection() {
                       ? "var(--text-muted)"
                       : isStarved ? toneColor("danger") : toneColor("success");
                     const badgeBg = neverRun
-                      ? "rgba(148, 163, 184, 0.15)"
-                      : isStarved ? "rgba(239, 68, 68, 0.15)" : "rgba(16, 185, 129, 0.15)";
+    ? "rgba(var(--soc-rgb-94a3b8) / 0.15)"
+    : isStarved ? "rgba(var(--soc-rgb-ef4444) / 0.15)" : "rgba(var(--soc-rgb-10b981) / 0.15)";
                     return createElement(
                       "div",
                       {
                         key: item.tier,
-                        style: { display: "flex", flexDirection: "column", gap: "0.35rem", padding: "0.6rem", border: "1px solid var(--border-default, rgba(80,120,168,0.12))", borderRadius: "8px", background: "rgba(15,23,42,0.2)" },
+                        style: { display: "flex", flexDirection: "column", gap: "0.35rem", padding: "0.6rem", border: "1px solid var(--border-default, rgba(80,120,168,0.12))", borderRadius: "8px", background: "rgba(var(--soc-rgb-0f172a) / 0.2)" },
                         },
                       createElement(
                         "div",
@@ -637,10 +638,10 @@ export function SocDataOpsMonitorSection() {
                         createElement(
                           "div",
                           null,
-                          createElement("div", { style: { fontWeight: 600, fontSize: "0.78rem" } }, t(TIER_LABEL_KEYS[item.tier] || "soc.dataops.unknown_tier")),
+                          createElement("div", { style: { fontWeight: 600, fontSize: "var(--fs-sm)" } }, t(TIER_LABEL_KEYS[item.tier] || "soc.dataops.unknown_tier")),
                           createElement(
                             "div",
-                            { style: { fontSize: "0.68rem", color: "var(--text-muted)" } },
+                            { style: { fontSize: "var(--fs-xs)", color: "var(--text-muted)" } },
                             t("soc.dataops.starvation_last_progress_seconds", {
                               seconds: item.seconds_since_last_progress != null ? String(item.seconds_since_last_progress) : "-",
                               threshold: item.threshold_seconds,
@@ -654,14 +655,14 @@ export function SocDataOpsMonitorSection() {
                             style: {
                               background: badgeBg,
                               color: badgeColor,
-                              fontSize: "0.6rem",
+                              fontSize: "var(--fs-xs)",
                               fontWeight: 600,
                             },
                           },
                           badgeLabel
                         )
                       ),
-                      createElement("div", { style: { height: "4px", borderRadius: "999px", background: "rgba(30,41,59,0.5)", overflow: "hidden" } },
+                      createElement("div", { style: { height: "4px", borderRadius: "999px", background: "rgba(var(--soc-rgb-1e293b) / 0.5)", overflow: "hidden" } },
                         createElement("div", { style: { height: "100%", width: `${pct}%`, background: neverRun ? "var(--soc-c-94a3b8, #94a3b8)" : isStarved ? "var(--soc-c-f87171)" : "var(--soc-c-34d399)", transition: "width 0.3s ease" } })
                       )
                     );
@@ -724,7 +725,7 @@ export function SocDataOpsMonitorSection() {
         : observabilityError
           ? createElement("div", { className: styles.inlineError, style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem" } },
               createElement("span", null, observabilityError),
-              createElement("button", { className: styles.actionBtn, onClick: retryObservability, style: { fontSize: "0.7rem" } }, t("soc.overview.retry"))
+              createElement(Button, { className: styles.actionBtn, variant: "ghost", size: "sm", onClick: retryObservability, style: { fontSize: "var(--fs-xs)" } }, t("soc.overview.retry"))
             )
           : createElement("p", { className: styles.emptyState }, t("soc.dataops.no_observability"))
     ),
@@ -823,7 +824,7 @@ export function SocDataOpsMonitorSection() {
       coverageContextError
         ? createElement("div", { className: styles.inlineError, style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" } },
             createElement("span", null, coverageContextError),
-            createElement("button", { className: styles.actionBtn, onClick: () => actions.refreshCoverage(), style: { fontSize: "0.7rem" } }, t("soc.overview.retry"))
+            createElement(Button, { className: styles.actionBtn, variant: "ghost", size: "sm", onClick: () => actions.refreshCoverage(), style: { fontSize: "var(--fs-xs)" } }, t("soc.overview.retry"))
           )
         : null,
 
@@ -880,14 +881,14 @@ export function SocDataOpsMonitorSection() {
                         bg = "transparent";
                         col = undefined;
                       } else if (isBadState) {
-                        bg = ratio > 0.3 ? "rgba(239,68,68,0.22)" : ratio > 0.05 ? "rgba(245,158,11,0.18)" : "rgba(239,68,68,0.08)";
+                        bg = ratio > 0.3 ? "rgba(var(--soc-rgb-ef4444) / 0.22)" : ratio > 0.05 ? "rgba(var(--soc-rgb-f59e0b) / 0.18)" : "rgba(var(--soc-rgb-ef4444) / 0.08)";
                         col = ratio > 0.2 ? "var(--soc-c-f87171)" : "var(--soc-c-fbbf24)";
                       } else if (isWarnState) {
-                        bg = ratio > 0.2 ? "rgba(245,158,11,0.18)" : "rgba(245,158,11,0.06)";
+                        bg = ratio > 0.2 ? "rgba(var(--soc-rgb-f59e0b) / 0.18)" : "rgba(var(--soc-rgb-f59e0b) / 0.06)";
                         col = "var(--soc-c-fbbf24)";
                       } else {
                         // fresh/warm — higher ratio is good (green), but low count muted
-                        bg = ratio > 0.5 ? "rgba(34,211,238,0.14)" : ratio > 0.15 ? "rgba(52,211,153,0.12)" : "rgba(34,211,238,0.06)";
+                        bg = ratio > 0.5 ? "rgba(var(--soc-rgb-22d3ee) / 0.14)" : ratio > 0.15 ? "rgba(var(--soc-rgb-34d399) / 0.12)" : "rgba(var(--soc-rgb-22d3ee) / 0.06)";
                         col = "var(--soc-c-34d399)";
                       }
                       return createElement(
@@ -924,7 +925,7 @@ export function SocDataOpsMonitorSection() {
               value: gapsDatasetFilter,
               onChange: (e: React.ChangeEvent<HTMLSelectElement>) => { setGapsDatasetFilter((e.target as HTMLSelectElement).value); setGapsPage(1); },
               className: styles.actionBtn,
-              style: { fontSize: "0.7rem", padding: "0.3rem 0.5rem" },
+              style: { fontSize: "var(--fs-xs)", padding: "0.3rem 0.5rem" },
             },
               createElement("option", { value: "all" }, t("soc.dataops.filter_all_datasets") || "All datasets"),
               ...Array.from(new Set(coverage.top_gaps.map((g) => g.dataset))).map((ds) =>
@@ -935,15 +936,15 @@ export function SocDataOpsMonitorSection() {
               value: gapsFreshnessFilter,
               onChange: (e: React.ChangeEvent<HTMLSelectElement>) => { setGapsFreshnessFilter((e.target as HTMLSelectElement).value); setGapsPage(1); },
               className: styles.actionBtn,
-              style: { fontSize: "0.7rem", padding: "0.3rem 0.5rem" },
+              style: { fontSize: "var(--fs-xs)", padding: "0.3rem 0.5rem" },
             },
               createElement("option", { value: "all" }, t("soc.dataops.filter_all_freshness") || "All states"),
               ...COVERAGE_STATE_ORDER.filter((s) => s !== "fresh" && s !== "warm").map((s) =>
                 createElement("option", { key: s, value: s }, t(FRESHNESS_LABEL_KEYS[s] || s))
               )
             ),
-            hasFilter ? createElement("button", { className: styles.actionBtn, onClick: () => { setGapsDatasetFilter("all"); setGapsFreshnessFilter("all"); setGapsPage(1); }, style: { fontSize: "0.65rem" } }, t("soc.actions.clear_filter") || "Clear") : null,
-            createElement("span", { style: { fontSize: "0.65rem", color: "var(--text-muted)", marginLeft: "auto" } }, `${filteredGaps.length} / ${coverage.top_gaps.length}`)
+            hasFilter ? createElement(Button, { className: styles.actionBtn, variant: "ghost", size: "sm", onClick: () => { setGapsDatasetFilter("all"); setGapsFreshnessFilter("all"); setGapsPage(1); }, style: { fontSize: "var(--fs-xs)" } }, t("soc.actions.clear_filter") || "Clear") : null,
+            createElement("span", { style: { fontSize: "var(--fs-xs)", color: "var(--text-muted)", marginLeft: "auto" } }, `${filteredGaps.length} / ${coverage.top_gaps.length}`)
           ),
           createElement(
             "div",
@@ -967,7 +968,7 @@ export function SocDataOpsMonitorSection() {
                 "tbody",
                 null,
                 filteredGaps.length === 0
-                  ? createElement("tr", null, createElement("td", { colSpan: 4, style: { textAlign: "center" as const, color: "var(--text-muted)", fontSize: "0.72rem", padding: "0.8rem" } }, t("soc.dataops.no_coverage_data")))
+                  ? createElement("tr", null, createElement("td", { colSpan: 4, style: { textAlign: "center" as const, color: "var(--text-muted)", fontSize: "var(--fs-sm)", padding: "0.8rem" } }, t("soc.dataops.no_coverage_data")))
                   : filteredGaps.slice((gapsPage - 1) * 20, gapsPage * 20).map((gap, i) =>
                   createElement(
                     "tr",
@@ -982,9 +983,9 @@ export function SocDataOpsMonitorSection() {
                         {
                           className: styles.statusBadge,
                           style: {
-                            background: gap.freshness_state === "error" ? "rgba(239, 68, 68, 0.15)" : gap.freshness_state === "missing" ? "rgba(239, 68, 68, 0.1)" : "rgba(245, 158, 11, 0.1)",
+                            background: gap.freshness_state === "error" ? "rgba(var(--soc-rgb-ef4444) / 0.15)" : gap.freshness_state === "missing" ? "rgba(var(--soc-rgb-ef4444) / 0.1)" : "rgba(var(--soc-rgb-f59e0b) / 0.1)",
                             color: gap.freshness_state === "error" ? "var(--color-danger-500, #ef4444)" : gap.freshness_state === "missing" ? toneColor("danger") : toneColor("warning"),
-                            fontSize: "0.6rem",
+                            fontSize: "var(--fs-xs)",
                           },
                         },
                         t(FRESHNESS_LABEL_KEYS[gap.freshness_state] || "soc.dataops.freshness_unknown")

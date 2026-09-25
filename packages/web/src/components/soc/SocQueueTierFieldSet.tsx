@@ -110,13 +110,13 @@ export function SocQueueTierFieldSet(props: SocQueueTierFieldSetProps) {
     },
   ];
 
-  const tierIconMap: Record<string, { name: string; color: string }> = {
-    hot_user_demand: { name: "Zap", color: "#f59e0b" },
-    warm_liquid_market: { name: "Waves", color: "#22d3ee" },
-    cold_full_market: { name: "Snowflake", color: "#94a3b8" },
-    recovery_backlog: { name: "RefreshCw", color: "#a855f7" },
-  };
-  const iconInfo = tierIconMap[tierKey] || { name: "Layers", color: "#94a3b8" };
+    const tierIconMap: Record<string, { name: string; color: string }> = {
+      hot_user_demand: { name: "Zap", color: "var(--soc-c-f59e0b)" },
+      warm_liquid_market: { name: "Waves", color: "var(--soc-c-22d3ee)" },
+      cold_full_market: { name: "Snowflake", color: "var(--soc-c-94a3b8)" },
+      recovery_backlog: { name: "RefreshCw", color: "var(--accent-purple)" },
+    };
+    const iconInfo = tierIconMap[tierKey] || { name: "Layers", color: "var(--soc-c-94a3b8)" };
   const subtitle = `${config?.poll_interval_seconds ?? "-"}s \u00B7 batch ${config?.max_batch_size ?? "-"}`;
 
   return createElement(

@@ -73,10 +73,10 @@ function RuleEditor({ initial, onSave, onCancel }: RuleEditorProps) {
   return (
     <div style={{
       background: 'var(--bg-panel, #0f172a)', border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))',
-      borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px',
+      borderRadius: 'var(--r-lg)', padding: 'var(--sp-5)', display: 'flex', flexDirection: 'column', gap: '16px',
     }}>
       <div>
-        <label htmlFor="screener-rule-name" style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)', marginBottom: '4px', display: 'block' }}>
+        <label htmlFor="screener-rule-name" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted, #94a3b8)', marginBottom: '4px', display: 'block' }}>
           {t('screener.ruleName')}
         </label>
         <input
@@ -86,9 +86,9 @@ function RuleEditor({ initial, onSave, onCancel }: RuleEditorProps) {
           onChange={(e) => setName(e.target.value)}
           placeholder={t('screener.ruleNamePlaceholder')}
           style={{
-            width: '100%', background: 'rgba(15,23,42,0.6)', border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))',
-            color: 'var(--text-primary, #f1f5f9)', fontSize: '14px', borderRadius: '4px',
-            padding: '8px 12px', outline: 'none',
+            width: '100%', background: 'color-mix(in srgb, var(--bg-panel) 60%, transparent)', border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))',
+            color: 'var(--text-primary, #f1f5f9)', fontSize: 'var(--fs-md)', borderRadius: '4px',
+            padding: '0.5rem 0.75rem', outline: 'none',
           }}
         />
       </div>
@@ -97,13 +97,13 @@ function RuleEditor({ initial, onSave, onCancel }: RuleEditorProps) {
         onChange={setConds}
         maxConditions={20}
       />
-      {err && <p style={{ color: 'var(--accent-red)', fontSize: '12px' }}>{err}</p>}
+      {err && <p style={{ color: 'var(--accent-red)', fontSize: 'var(--fs-xs)' }}>{err}</p>}
       <div style={{ display: 'flex', gap: '8px' }}>
         <button
           onClick={handleSave}
           style={{
-            padding: '6px 16px', background: 'var(--accent-cyan, #06b6d4)', color: '#fff', fontSize: '14px',
-            borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 600,
+            padding: '0.5rem 1rem', background: 'var(--accent-cyan, #06b6d4)', color: 'var(--text-on-accent)', fontSize: 'var(--fs-md)',
+            borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', fontWeight: 600,
           }}
         >
           {t('screener.saveRule')}
@@ -111,8 +111,8 @@ function RuleEditor({ initial, onSave, onCancel }: RuleEditorProps) {
         <button
           onClick={onCancel}
           style={{
-            padding: '6px 16px', background: 'rgba(15,23,42,0.8)', color: 'var(--text-secondary, #94a3b8)', fontSize: '14px',
-            borderRadius: '8px', border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))', cursor: 'pointer',
+            padding: '0.5rem 1rem', background: 'color-mix(in srgb, var(--bg-panel) 80%, transparent)', color: 'var(--text-secondary, #94a3b8)', fontSize: 'var(--fs-md)',
+            borderRadius: 'var(--r-md)', border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))', cursor: 'pointer',
           }}
         >
           {t('common.cancel')}
@@ -537,7 +537,7 @@ export function ScreenerPage() {
   }, [activeRule, scanParams, results]);
 
   const pageStyle: React.CSSProperties = {
-    padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px',
+    padding: '24px', display: 'flex', flexDirection: 'column', gap: 'var(--sp-6)',
     maxWidth: '1200px', margin: '0 auto',
   };
 
@@ -545,8 +545,8 @@ export function ScreenerPage() {
     <div style={pageStyle}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-primary, #f1f5f9)' }}>{t('screener.title')}</h1>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)', marginTop: '2px' }}>
+          <h1 style={{ fontSize: 'var(--fs-2xl)', fontWeight: 'bold', color: 'var(--text-primary, #f1f5f9)' }}>{t('screener.title')}</h1>
+          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted, #94a3b8)', marginTop: '2px' }}>
             {t('screener.subtitle')}
           </p>
         </div>
@@ -554,8 +554,8 @@ export function ScreenerPage() {
           <button
             onClick={() => setEditing('new')}
             style={{
-              padding: '8px 16px', background: 'var(--accent-cyan, #06b6d4)', color: '#fff',
-              fontSize: '14px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 600,
+              padding: '0.5rem 1rem', background: 'var(--accent-cyan, #06b6d4)', color: 'var(--text-on-accent)',
+              fontSize: 'var(--fs-md)', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', fontWeight: 600,
             }}
           >
             {t('screener.createRule')}
@@ -564,25 +564,25 @@ export function ScreenerPage() {
       </div>
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap',
-        background: 'rgba(0,180,216,0.08)', border: '1px solid rgba(0,180,216,0.18)',
-        color: '#00b4d8', padding: '10px 14px', borderRadius: '8px', fontSize: '12px',
+        background: 'color-mix(in srgb, var(--accent-cyan) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--accent-cyan) 18%, transparent)',
+        color: 'var(--accent-shell)', padding: '0.5rem 1rem', borderRadius: 'var(--r-md)', fontSize: 'var(--fs-xs)',
       }}>
         <span>{t('screener.opsHint')}</span>
-        <a href="/operations-center?tab=screener" style={{ color: '#06b6d4', fontWeight: 600, textDecoration: 'underline', whiteSpace: 'nowrap' }}>
+        <a href="/operations-center?tab=screener" style={{ color: 'var(--accent-cyan)', fontWeight: 600, textDecoration: 'underline', whiteSpace: 'nowrap' }}>
           {t('screener.opsLink')}
         </a>
       </div>
 
       {error && (
         <div style={{
-          background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.5)',
-          color: '#fca5a5', fontSize: '14px', padding: '12px 16px', borderRadius: '8px',
+          background: 'color-mix(in srgb, var(--accent-rose) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--accent-rose) 50%, transparent)',
+          color: 'var(--accent-rose)', fontSize: 'var(--fs-md)', padding: '0.75rem 1rem', borderRadius: 'var(--r-md)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <span>{error}</span>
           <button
             onClick={() => setError('')}
-            style={{ color: '#fca5a5', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}
+            style={{ color: 'var(--accent-rose)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--fs-xs)' }}
           >
             {DISMISS_LABEL}
           </button>
@@ -591,14 +591,14 @@ export function ScreenerPage() {
 
       {notice && (
         <div style={{
-          background: 'rgba(74,222,128,0.12)', border: '1px solid rgba(74,222,128,0.4)',
-          color: '#86efac', fontSize: '14px', padding: '12px 16px', borderRadius: '8px',
+          background: 'color-mix(in srgb, var(--accent-emerald) 12%, transparent)', border: '1px solid rgba(74,222,128,0.4)',
+          color: 'var(--accent-emerald)', fontSize: 'var(--fs-md)', padding: '0.75rem 1rem', borderRadius: 'var(--r-md)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <span>{notice}</span>
           <button
             onClick={() => setNotice('')}
-            style={{ color: '#86efac', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}
+            style={{ color: 'var(--accent-emerald)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--fs-xs)' }}
           >
             {DISMISS_LABEL}
           </button>
@@ -617,7 +617,7 @@ export function ScreenerPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {[1, 2].map((i) => (
             <div key={i} style={{
-              height: '64px', background: 'rgba(15,23,42,0.4)', borderRadius: '12px',
+              height: '64px', background: 'color-mix(in srgb, var(--bg-panel) 40%, transparent)', borderRadius: 'var(--r-lg)',
               animation: 'pulse 2s infinite',
             }} />
           ))}
@@ -625,8 +625,8 @@ export function ScreenerPage() {
       ) : rules.length === 0 ? (
         <div style={{
           background: 'var(--bg-panel, #0f172a)', border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))',
-          borderRadius: '12px', padding: '40px', textAlign: 'center',
-          color: 'var(--text-muted, #94a3b8)', fontSize: '14px',
+          borderRadius: 'var(--r-lg)', padding: '40px', textAlign: 'center',
+          color: 'var(--text-muted, #94a3b8)', fontSize: 'var(--fs-md)',
         }}>
           {t('screener.noRules')}
         </div>
@@ -635,12 +635,12 @@ export function ScreenerPage() {
           {rules.map((rule) => (
             <div key={rule.id} style={{
               background: 'var(--bg-panel, #0f172a)', border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))',
-              borderRadius: '12px', padding: '16px',
+              borderRadius: 'var(--r-lg)', padding: '16px',
             }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
                 <div style={{ flex: '1', minWidth: '0' }}>
-                  <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary, #f1f5f9)' }}>{rule.name}</p>
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)', marginTop: '2px' }}>
+                  <p style={{ fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary, #f1f5f9)' }}>{rule.name}</p>
+                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted, #94a3b8)', marginTop: '2px' }}>
                     {Array.isArray(rule.rules_json) ? formatNumber(rule.rules_json.length) : '?'} {t('screener.conditionsCount')}
                     {DOT_SEPARATOR}
                     {Array.isArray(rule.rules_json) ? rule.rules_json.map((c) => {
@@ -654,18 +654,18 @@ export function ScreenerPage() {
                     onClick={() => handleRun(rule)}
                     disabled={running === rule.id}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
-                      background: running === rule.id ? 'rgba(74,222,128,0.3)' : 'rgba(74,222,128,0.2)',
-                      border: '1px solid rgba(74,222,128,0.3)', color: '#4ade80', fontSize: '12px',
-                      borderRadius: '8px', cursor: running === rule.id ? 'not-allowed' : 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '6px', padding: '0.5rem 0.75rem',
+                      background: running === rule.id ? 'color-mix(in srgb, var(--accent-emerald) 30%, transparent)' : 'color-mix(in srgb, var(--accent-emerald) 20%, transparent)',
+                      border: '1px solid color-mix(in srgb, var(--accent-emerald) 30%, transparent)', color: 'var(--accent-emerald)', fontSize: 'var(--fs-xs)',
+                      borderRadius: 'var(--r-md)', cursor: running === rule.id ? 'not-allowed' : 'pointer',
                       fontWeight: 500, opacity: running === rule.id ? 0.6 : 1,
                     }}
                   >
                     {running === rule.id ? (
                       <>
                         <span style={{
-                          width: '12px', height: '12px', border: '2px solid rgba(74,222,128,0.3)',
-                          borderTopColor: '#4ade80', borderRadius: '50%', display: 'inline-block',
+                          width: '12px', height: '12px', border: '2px solid color-mix(in srgb, var(--accent-emerald) 30%, transparent)',
+                          borderTopColor: 'var(--accent-emerald)', borderRadius: '50%', display: 'inline-block',
                           animation: 'spin 1s linear infinite',
                         }} />
                         {t('screener.running')}
@@ -675,9 +675,9 @@ export function ScreenerPage() {
                   <button
                     onClick={() => setEditing(rule)}
                     style={{
-                      padding: '6px 12px', background: 'rgba(15,23,42,0.6)',
+                      padding: '0.5rem 0.75rem', background: 'color-mix(in srgb, var(--bg-panel) 60%, transparent)',
                       border: '1px solid var(--border-default, rgba(80, 120, 168, 0.28))', color: 'var(--text-secondary, #94a3b8)',
-                      fontSize: '12px', borderRadius: '8px', cursor: 'pointer',
+                      fontSize: 'var(--fs-xs)', borderRadius: 'var(--r-md)', cursor: 'pointer',
                     }}
                   >
                     {t('common.edit')}
@@ -686,11 +686,11 @@ export function ScreenerPage() {
                     onClick={() => handleShare(rule)}
                     title={t('screener.community.shareHint', { defaultValue: 'Chia sẻ bộ lọc này với mọi thành viên trong tenant' })}
                     style={{
-                      padding: '6px 12px',
-                      background: rule.is_public ? 'rgba(34,211,238,0.2)' : 'rgba(15,23,42,0.6)',
-                      border: rule.is_public ? '1px solid rgba(34,211,238,0.4)' : '1px solid var(--border-default, rgba(80, 120, 168, 0.28))',
-                      color: rule.is_public ? '#22d3ee' : 'var(--text-secondary, #94a3b8)',
-                      fontSize: '12px', borderRadius: '8px', cursor: 'pointer',
+                      padding: '0.5rem 0.75rem',
+                      background: rule.is_public ? 'color-mix(in srgb, var(--accent-cyan) 20%, transparent)' : 'color-mix(in srgb, var(--bg-panel) 60%, transparent)',
+                      border: rule.is_public ? '1px solid color-mix(in srgb, var(--accent-cyan) 40%, transparent)' : '1px solid var(--border-default, rgba(80, 120, 168, 0.28))',
+                      color: rule.is_public ? 'var(--accent-cyan)' : 'var(--text-secondary, #94a3b8)',
+                      fontSize: 'var(--fs-xs)', borderRadius: 'var(--r-md)', cursor: 'pointer',
                     }}
                   >
                     {rule.is_public
@@ -700,9 +700,9 @@ export function ScreenerPage() {
                   <button
                     onClick={() => handleDelete(rule.id!)}
                     style={{
-                      padding: '6px 12px', background: 'rgba(239,68,68,0.15)',
-                      border: '1px solid rgba(239,68,68,0.3)', color: '#f87171',
-                      fontSize: '12px', borderRadius: '8px', cursor: 'pointer',
+                      padding: '0.5rem 0.75rem', background: 'color-mix(in srgb, var(--accent-rose) 15%, transparent)',
+                       border: '1px solid color-mix(in srgb, var(--accent-rose) 30%, transparent)', color: 'var(--accent-rose)',
+                      fontSize: 'var(--fs-xs)', borderRadius: 'var(--r-md)', cursor: 'pointer',
                     }}
                   >
                     {t('common.delete')}
@@ -716,8 +716,8 @@ export function ScreenerPage() {
 
       {results && previewInfo && (
         <div style={{
-          background: 'rgba(34,211,238,0.10)', border: '1px solid rgba(34,211,238,0.35)',
-          color: '#67e8f9', fontSize: '13px', padding: '10px 16px', borderRadius: '8px',
+          background: 'color-mix(in srgb, var(--accent-cyan) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--accent-cyan) 35%, transparent)',
+          color: 'var(--accent-cyan)', fontSize: 'var(--fs-sm)', padding: '0.5rem 1rem', borderRadius: 'var(--r-md)',
         }}>
           {t('screener.previewBanner', { defaultValue: 'Kết quả chạy thử — chưa lưu thành rule' })}
           {DOT_SEPARATOR}
@@ -726,8 +726,8 @@ export function ScreenerPage() {
       )}
       {jobInfo && jobStatus && (
         <div style={{
-          background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.35)',
-          color: '#93c5fd', fontSize: '13px', padding: '12px 16px', borderRadius: '8px',
+          background: 'color-mix(in srgb, var(--accent-blue) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--accent-blue) 35%, transparent)',
+          color: 'var(--accent-blue)', fontSize: 'var(--fs-sm)', padding: '0.75rem 1rem', borderRadius: 'var(--r-md)',
           display: 'flex', flexDirection: 'column', gap: '8px',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
@@ -739,21 +739,21 @@ export function ScreenerPage() {
             <button
               onClick={handleCancelPoll}
               style={{
-                padding: '4px 10px', background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(59,130,246,0.35)',
-                color: '#93c5fd', fontSize: '12px', borderRadius: '6px', cursor: 'pointer',
+                padding: '0.25rem 0.5rem', background: 'color-mix(in srgb, var(--bg-panel) 60%, transparent)', border: '1px solid color-mix(in srgb, var(--accent-blue) 35%, transparent)',
+                color: 'var(--accent-blue)', fontSize: 'var(--fs-xs)', borderRadius: 'var(--r-sm, 6px)', cursor: 'pointer',
               }}
             >
               {t('common.cancel' as any)}
             </button>
           </div>
-          <div style={{ width: '100%', height: '6px', background: 'rgba(59,130,246,0.2)', borderRadius: '3px', overflow: 'hidden' }}>
+          <div style={{ width: '100%', height: '6px', background: 'color-mix(in srgb, var(--accent-blue) 20%, transparent)', borderRadius: '3px', overflow: 'hidden' }}>
             <div style={{
               width: jobStatus.total ? `${Math.min(100, ((jobStatus.scanned ?? 0) / jobStatus.total) * 100)}%` : '30%',
-              height: '100%', background: '#3b82f6', transition: 'width 0.5s',
+              height: '100%', background: 'var(--accent-blue)', transition: 'width 0.5s',
               animation: jobStatus.status === 'queued' ? 'pulse 1.5s infinite' : undefined,
             }} />
           </div>
-          <span style={{ fontSize: '11px', color: 'rgba(147,197,253,0.8)' }}>
+          <span style={{ fontSize: 'var(--fs-2xs)', color: 'color-mix(in srgb, var(--accent-blue) 80%, transparent)' }}>
             {t('screener.jobCancelNote')}
           </span>
         </div>
@@ -788,7 +788,7 @@ export function ScreenerPage() {
       <ScreenerHistory runs={history} />
       <ScreenerSchedulePanel rules={rules} />
       <ScreenerCommunity onForkRun={handleForkRun} onFork={handleFork} />
-      <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted, #94a3b8)', lineHeight: 1.5 }}>
+      <p style={{ margin: 0, fontSize: 'var(--fs-2xs)', color: 'var(--text-muted, #94a3b8)', lineHeight: 1.5 }}>
         {t('screener.methodologyNote')}
       </p>
     </div>

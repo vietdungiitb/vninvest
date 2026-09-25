@@ -1,6 +1,7 @@
 // @deprecated — Orphan (F17). Not imported anywhere (grep 0 hit).
 // Kept for reference until P2 cleanup removes it. Use SocDataOpsOperationsSection as canonical.
-import { createElement, useCallback, useState } from "react";
+  import { createElement, useCallback, useState } from "react";
+  import { Button } from "../ui/button.js";
 import { useI18n } from "../../context/LangContext.js";
 import { useDataOps } from "./DataOpsContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
@@ -15,7 +16,7 @@ const PLANNER_DATASETS = [
 ];
 
 const LABEL_STYLE: React.CSSProperties = {
-  fontSize: "0.7rem",
+  fontSize: "var(--fs-xs)",
   fontWeight: 600,
   color: "var(--text-muted, #94a3b8)",
   marginBottom: "0.25rem",
@@ -136,7 +137,7 @@ export function SocDataOpsPlannerConsole() {
                 alignItems: "flex-start",
                 gap: "0.35rem",
                 minWidth: "150px",
-                ...(selectedDatasets.includes(key) ? { borderColor: "rgba(34, 211, 238, 0.4)" } : {}),
+                ...(selectedDatasets.includes(key) ? { borderColor: "rgba(var(--soc-rgb-22d3ee) / 0.4)" } : {}),
               },
             },
             createElement("input", {
@@ -292,18 +293,22 @@ export function SocDataOpsPlannerConsole() {
             ? createElement(
                 "div",
                 { },
-                createElement("button", {
-                  className: styles.actionBtn,
-                  onClick: () => setPage(Math.max(0, page - 1)),
-                  disabled: page === 0,
+                createElement(Button, {
+                    className: styles.actionBtn,
+                    variant: "ghost",
+                    size: "sm",
+                    onClick: () => setPage(Math.max(0, page - 1)),
+                    disabled: page === 0,
                   
                 }, "\u25C0"),
                 createElement("span", { },
                   `${t("soc.dataops.planner_page")} ${page + 1}/${totalPages}`),
-                createElement("button", {
-                  className: styles.actionBtn,
-                  onClick: () => setPage(Math.min(totalPages - 1, page + 1)),
-                  disabled: page >= totalPages - 1,
+                createElement(Button, {
+                    className: styles.actionBtn,
+                    variant: "ghost",
+                    size: "sm",
+                    onClick: () => setPage(Math.min(totalPages - 1, page + 1)),
+                    disabled: page >= totalPages - 1,
                   
                 }, "\u25B6"),
               )

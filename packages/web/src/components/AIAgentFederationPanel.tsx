@@ -67,7 +67,7 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
     setError("");
     agentClient.getAIAgents()
       .then((res) => { setAgents(res.results || []); })
-      .catch(() => { setError(t("agentFederation.loadError")); })
+      .catch(() => { setError(t("aiAgentFederation.errorLoad")); })
       .finally(() => { setLoading(false); });
   }, [agentClient, t]);
 
@@ -88,29 +88,29 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
       : agentClient.createAIAgent(payload);
     promise
       .then(() => {
-        setNotice(editingId ? t("agentFederation.updated") : t("agentFederation.created"));
+        setNotice(editingId ? t("aiAgentFederation.updated") : t("aiAgentFederation.created"));
         setShowForm(false);
         setEditingId(null);
         setFormData({ name: "", agent_type: "advisory", provider: "openai", model: "gpt-4o-mini", capabilities: [], system_prompt: "", is_active: true });
         loadAgents();
       })
-      .catch(() => { setError(t("agentFederation.saveError")); })
+      .catch(() => { setError(t("aiAgentFederation.errorSave")); })
       .finally(() => { setSaving(false); });
   };
 
   const handleDelete = async (id: number) => {
     const ok = await confirm({
       title: t("common.delete"),
-      message: t("agentFederation.confirmDelete"),
+      message: t("aiAgentFederation.deleteConfirm"),
       variant: "destructive",
     });
     if (!ok) return;
     agentClient.deleteAIAgent(id)
       .then(() => {
-        setNotice(t("agentFederation.deleted"));
+        setNotice(t("aiAgentFederation.deleted"));
         loadAgents();
       })
-      .catch(() => { setError(t("agentFederation.deleteError")); });
+      .catch(() => { setError(t("aiAgentFederation.errorDelete")); });
   };
 
   const openEdit = (agent: AgentRecord) => {
@@ -160,14 +160,14 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
 
     e("div", { className: styles.panelHeader },
       e("div", null,
-        e("h2", { className: styles.panelTitle }, t("agentFederation.title")),
-        e("p", { className: styles.panelSubtitle }, t("agentFederation.description")),
+        e("h2", { className: styles.panelTitle }, t("aiAgentFederation.title")),
+        e("p", { className: styles.panelSubtitle }, t("aiAgentFederation.description")),
       ),
       e("button", {
         className: btnPrimary,
         onClick: openCreate,
         disabled: showForm,
-      }, t("agentFederation.addAgent")),
+      }, t("aiAgentFederation.addAgent")),
     ),
 
     error && e("div", { className: `${styles.alert} ${styles.alertError}`, role: "alert" }, error),
@@ -177,17 +177,17 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
       onSubmit: handleSubmit,
     },
       e("div", { className: styles.field },
-        e("label", { className: styles.label }, t("agentFederation.name")),
+        e("label", { className: styles.label }, t("aiAgentFederation.name")),
         e("input", {
           className: styles.input,
           value: formData.name,
           onChange: handleFieldChange("name"),
-          placeholder: "VD: Phân tích ngành",
+          placeholder: t("aiAgentFederation.placeholderName"),
           required: true,
         }),
       ),
       e("div", { className: styles.field },
-        e("label", { className: styles.label }, t("agentFederation.type")),
+        e("label", { className: styles.label }, t("aiAgentFederation.agentType")),
         e("select", {
           className: styles.input,
           value: formData.agent_type,
@@ -197,7 +197,7 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
         )),
       ),
       e("div", { className: styles.field },
-        e("label", { className: styles.label }, t("agentFederation.provider")),
+        e("label", { className: styles.label }, t("aiAgentFederation.provider")),
         e("select", {
           className: styles.input,
           value: formData.provider,
@@ -207,7 +207,7 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
         )),
       ),
       e("div", { className: styles.field },
-        e("label", { className: styles.label }, t("agentFederation.model")),
+        e("label", { className: styles.label }, t("aiAgentFederation.model")),
         e("select", {
           className: styles.input,
           value: formData.model,
@@ -217,16 +217,16 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
         )),
       ),
       e("div", { className: styles.field, style: { gridColumn: "1 / -1" } },
-        e("label", { className: styles.label }, t("agentFederation.capabilities")),
+        e("label", { className: styles.label }, t("aiAgentFederation.capabilities")),
         e("input", {
           className: styles.input,
           value: Array.isArray(formData.capabilities) ? formData.capabilities.join(", ") : formData.capabilities,
           onChange: handleFieldChange("capabilities"),
-          placeholder: "phân_tích_ngành, báo_cáo",
+          placeholder: t("aiAgentFederation.placeholderCapabilities"),
         }),
       ),
       e("div", { className: styles.field, style: { gridColumn: "1 / -1" } },
-        e("label", { className: styles.label }, t("agentFederation.systemPrompt")),
+        e("label", { className: styles.label }, t("aiAgentFederation.systemPrompt")),
         e("textarea", {
           className: styles.textarea,
           value: formData.system_prompt,
@@ -242,7 +242,7 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
             checked: formData.is_active,
             onChange: handleFieldChange("is_active"),
           }),
-          " " + t("agentFederation.active"),
+          " " + t("aiAgentFederation.isActive"),
         ),
       ),
       e("div", { className: styles.toolbar, style: { gridColumn: "1 / -1" } },
@@ -250,31 +250,31 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
           type: "submit",
           className: btnPrimary,
           disabled: saving,
-        }, saving ? t("agentFederation.loading") : t("agentFederation.save")),
+        }, saving ? t("aiAgentFederation.loading") : t("aiAgentFederation.save")),
         e("button", {
           type: "button",
           className: btnGhost,
           onClick: () => { setShowForm(false); setEditingId(null); },
           disabled: saving,
-        }, t("agentFederation.cancel")),
+        }, t("aiAgentFederation.cancel")),
       ),
     ),
 
-    loading && e("p", { className: styles.loading }, t("agentFederation.loading")),
+    loading && e("p", { className: styles.loading }, t("aiAgentFederation.loading")),
 
-    !loading && agents.length === 0 && e("p", { className: styles.empty }, t("agentFederation.empty")),
+    !loading && agents.length === 0 && e("p", { className: styles.empty }, t("aiAgentFederation.noAgents")),
 
     !loading && agents.length > 0 && e("div", { className: styles.tableWrap },
       e("table", { className: styles.table },
         e("thead", null,
           e("tr", null,
-            e("th", { className: styles.th }, t("agentFederation.name")),
-            e("th", { className: styles.th }, t("agentFederation.type")),
-            e("th", { className: styles.th }, t("agentFederation.provider")),
-            e("th", { className: styles.th }, t("agentFederation.model")),
-            e("th", { className: styles.th }, t("agentFederation.capabilities")),
-            e("th", { className: styles.th }, t("agentFederation.active")),
-            e("th", { className: styles.th }, t("agentFederation.actions")),
+            e("th", { className: styles.th }, t("aiAgentFederation.name")),
+            e("th", { className: styles.th }, t("aiAgentFederation.agentType")),
+            e("th", { className: styles.th }, t("aiAgentFederation.provider")),
+            e("th", { className: styles.th }, t("aiAgentFederation.model")),
+            e("th", { className: styles.th }, t("aiAgentFederation.capabilities")),
+            e("th", { className: styles.th }, t("aiAgentFederation.isActive")),
+            e("th", { className: styles.th }, t("aiAgentFederation.actions")),
           ),
         ),
         e("tbody", null, ...agents.map((agent) =>
@@ -284,17 +284,17 @@ export function AIAgentFederationPanel({ className = "" }: AIAgentFederationPane
             e("td", { className: styles.td }, agent.provider),
             e("td", { className: styles.td }, agent.model),
             e("td", { className: styles.td }, (agent.capabilities || []).join(", ")),
-            e("td", { className: styles.td }, agent.is_active ? "Có" : "Không"),
+            e("td", { className: styles.td }, agent.is_active ? t("aiAgentFederation.yes") : t("aiAgentFederation.no")),
             e("td", { className: styles.td },
               e("button", {
                 className: btnGhostSm,
                 onClick: () => openEdit(agent),
                 style: { marginRight: 8 },
-              }, t("agentFederation.edit")),
+              }, t("aiAgentFederation.editAgent")),
               e("button", {
                 className: btnDangerSm,
                 onClick: () => handleDelete(agent.id!),
-              }, t("agentFederation.delete")),
+              }, t("aiAgentFederation.deleteAgent")),
             ),
           ),
         )),

@@ -30,8 +30,7 @@ from rest_framework.test import APIClient
 
 from market_data.models import DailyPrice, IntradayTick, StockProfile
 from market_serving.models import SessionFacts, SessionFactsBucket, SymbolSnapshot
-from market_serving.native_views import RealtimeDepthChartView, RealtimeIntradayView
-from market_serving.legacy_views import RealtimeWhaleFeedAggregateView
+from market_serving.native_views import RealtimeDepthChartView, RealtimeIntradayView, RealtimeWhaleFeedAggregateView
 from market_data.stock_mgmt_native_views import StockManagementOverviewView
 from signal_intelligence.models import WhaleAlertCanonical, UnifiedAlert
 

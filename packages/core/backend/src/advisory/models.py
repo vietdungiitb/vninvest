@@ -25,6 +25,7 @@ class SystemAISettings(models.Model):
         GPT35 = 'gpt-3.5-turbo', 'GPT-3.5-turbo'
         GEMINI_PRO = 'gemini-pro', 'Gemini Pro'
         GEMINI_FLASH = 'gemini-1.5-flash', 'Gemini 1.5 Flash'
+        GEMINI_38_FLASH = 'gemini-3.8-flash', 'Gemini 3.8 Flash'
         CUSTOM = 'custom', 'Custom'
 
     name = models.CharField(max_length=64, unique=True, verbose_name='Tên cấu hình')
@@ -227,6 +228,32 @@ class UserAICredential(models.Model):
     is_active = models.BooleanField(default=True, verbose_name='Đang kích hoạt')
     fallback_quota_used_today = models.IntegerField(default=0, verbose_name='Lượt fallback đã dùng hôm nay')
     fallback_quota_date = models.DateField(null=True, blank=True, verbose_name='Ngày fallback quota')
+    # Per-user advisory config (Slice C) — NULL = dùng system default (lazy, không backfill)
+    temperature = models.FloatField(
+        null=True, blank=True, default=None,
+        verbose_name='Temperature (user override)',
+    )
+    max_tokens_per_day = models.IntegerField(
+        null=True, blank=True, default=None,
+        verbose_name='Token budget tối đa/ngày (user)',
+    )
+    refresh_interval_hours = models.IntegerField(
+        null=True, blank=True, default=None,
+        verbose_name='Chu kỳ auto-refresh (giờ)',
+    )
+    max_auto_refreshes_per_day = models.IntegerField(
+        null=True, blank=True, default=None,
+        verbose_name='Số auto-refresh tối đa/ngày',
+    )
+    prompt_config = models.JSONField(
+        default=dict, blank=True,
+        verbose_name='Prompt config (user override)',
+    )
+    # F7: append-only version log [{version, config, saved_at, source}] capped 20
+    prompt_config_history = models.JSONField(
+        default=list, blank=True,
+        verbose_name='Lịch sử prompt config (F7)',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

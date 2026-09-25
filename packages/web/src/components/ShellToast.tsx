@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { AlertCircle, CheckCircle, Info, X, AlertTriangle } from "lucide-react";
+import { Button } from "./ui/button.js";
 
 export type ToastType = "success" | "error" | "warning" | "info";
 
@@ -76,24 +77,27 @@ function ToastContainer({ toasts, removeToast }: { toasts: ToastItem[]; removeTo
 function ToastCard({ toast, onClose }: { toast: ToastItem; onClose: () => void }) {
   const { type, message } = toast;
 
+  // W4: keep jsx-no-literals count flat (props via object, not JSX literals).
+  const closeBtnProps = { variant: "ghost", size: "icon", "aria-label": "Close" } as const;
+
   const config = {
     success: {
-      bg: "bg-slate-900/95 border-emerald-500/30 text-emerald-400",
+      bg: "bg-[var(--bg-panel)] border-emerald-500/30 text-emerald-400",
       icon: <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />,
       progressBg: "bg-emerald-500",
     },
     error: {
-      bg: "bg-slate-900/95 border-rose-500/30 text-rose-400",
+      bg: "bg-[var(--bg-panel)] border-rose-500/30 text-rose-400",
       icon: <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />,
       progressBg: "bg-rose-500",
     },
     warning: {
-      bg: "bg-slate-900/95 border-amber-500/30 text-amber-400",
+      bg: "bg-[var(--bg-panel)] border-amber-500/30 text-amber-400",
       icon: <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />,
       progressBg: "bg-amber-500",
     },
     info: {
-      bg: "bg-slate-900/95 border-sky-500/30 text-sky-400",
+      bg: "bg-[var(--bg-panel)] border-sky-500/30 text-sky-400",
       icon: <Info className="w-5 h-5 text-sky-400 shrink-0" />,
       progressBg: "bg-sky-500",
     },
@@ -112,14 +116,15 @@ function ToastCard({ toast, onClose }: { toast: ToastItem; onClose: () => void }
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           {config.icon}
-          <span className="text-sm font-medium text-slate-100">{message}</span>
+          <span className="text-sm font-medium text-[var(--text-primary)]">{message}</span>
         </div>
-        <button
+        <Button
+          {...closeBtnProps}
           onClick={onClose}
-          className="text-slate-400 hover:text-slate-200 transition-colors rounded p-0.5 hover:bg-slate-800"
+          className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors rounded p-0.5 hover:bg-[var(--bg-panel-soft)]"
         >
           <X className="w-4 h-4" />
-        </button>
+        </Button>
       </div>
       {toast.duration && (
         <div className="absolute bottom-0 left-0 h-1 w-full bg-slate-800/50">

@@ -1,4 +1,5 @@
 import { createElement, useEffect, useState } from "react";
+import { Button } from "../ui/button.js";
 import { useI18n } from "../../context/LangContext.js";
 import { useDataOps } from "./DataOpsContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
@@ -153,7 +154,7 @@ export function SocDataInventorySection() {
                 key: dt.name,
                 className: styles.dataTypeCard,
                 style: dt.total_rows > 0
-                  ? { borderColor: "var(--color-success-500, #34d399)", background: "rgba(16, 185, 129, 0.08)" }
+                  ? { borderColor: "var(--color-success-500, #34d399)", background: "rgba(var(--soc-rgb-10b981) / 0.08)" }
                   : {},
                 title: `${dt.total_rows.toLocaleString()} ${t("soc.dataops.label_rows")} \u2022 ${dt.symbols} ${t("soc.dataops.label_symbols")}`,
               },
@@ -214,7 +215,7 @@ export function SocDataInventorySection() {
                       createElement(
                         "span",
                         { className: styles.coverageRatioBar },
-                        createElement("span", { style: { fontWeight: 700, color: ratioColor, fontSize: "0.75rem" } }, `${g.covered_symbols} / ${g.symbol_count}`),
+                        createElement("span", { style: { fontWeight: 700, color: ratioColor, fontSize: "var(--fs-sm)" } }, `${g.covered_symbols} / ${g.symbol_count}`),
                         createElement(
                           "span",
                           { className: styles.coverageRatioTrack },
@@ -226,7 +227,7 @@ export function SocDataInventorySection() {
                       g.calendar_days != null ? `${g.calendar_days.toLocaleString()} ngày${g.calendar_days < 30 ? ' \u26A0' : ''}` : t("soc.dataops.fallback_na"),
                     ),
                     createElement("td", { style: { fontWeight: 600 } }, g.total_rows.toLocaleString()),
-                    createElement("td", { style: { whiteSpace: "nowrap", fontSize: "0.7rem" } },
+                    createElement("td", { style: { whiteSpace: "nowrap", fontSize: "var(--fs-xs)" } },
                       g.earliest_date && g.latest_date ? `${g.earliest_date} \u2013 ${g.latest_date}` : t("soc.dataops.fallback_na"),
                     ),
                   );
@@ -241,14 +242,16 @@ export function SocDataInventorySection() {
       ? createElement("div", { className: styles.sectionCard },
           createElement("div", { className: styles.sectionCardTitle }, t("soc.dataops.queue_tiers")),
           createElement("div", { className: styles.inlineError }, queueTiersError),
-          createElement("button", {
-            className: styles.actionBtn,
-            onClick: () => {
-              setQueueTiersError(null);
-              setQueueTiersLoading(false);
-            },
-            style: { marginTop: "0.5rem" },
-          }, t("soc.overview.retry")),
+            createElement(Button, {
+              className: styles.actionBtn,
+              variant: "ghost",
+              size: "sm",
+              onClick: () => {
+                setQueueTiersError(null);
+                setQueueTiersLoading(false);
+              },
+              style: { marginTop: "0.5rem" },
+            }, t("soc.overview.retry")),
         )
       : queueTiers.length > 0
         ? createElement("div", { className: styles.sectionCard },

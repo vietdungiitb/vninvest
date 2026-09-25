@@ -657,6 +657,11 @@ export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, c
       return corePut("/workspace/ai-command-center/", data);
     },
 
+    /** F7: rollback prompt config to a history version → { ai_prompt_config, ai_prompt_config_history, rolled_back_to } */
+    rollbackAICommandCenterPromptConfig(version) {
+      return corePost("/workspace/ai-command-center/prompt-config/rollback/", { version });
+    },
+
     testAICommandCenterConnection(data) {
       return corePost("/workspace/ai-command-center/test-connection/", data);
     },

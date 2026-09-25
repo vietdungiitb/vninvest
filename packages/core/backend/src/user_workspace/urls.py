@@ -17,6 +17,7 @@ from .portfolio_analytics_views import (
     PortfolioAIAdvisoryAutoRefreshInfoView,
     PortfolioAIAdvisoryRefreshView,
     PortfolioAICommandCenterView,
+    PortfolioAICommandCenterPromptConfigRollbackView,
     PortfolioAICommandCenterTestView,
     PortfolioAICommandCenterAuditLogView,
     PortfolioUserConfigLegacyView,
@@ -62,6 +63,7 @@ urlpatterns = [
     path('workspace/whale-analytics/<str:symbol>/', PortfolioWhaleAnalyticsView.as_view(), name='workspace-whale-analytics'),
     path('workspace/ai-command-center/', PortfolioAICommandCenterView.as_view(), name='workspace-ai-cc-direct'),
     path('workspace/ai-command-center/test-connection/', PortfolioAICommandCenterTestView.as_view(), name='workspace-ai-cc-test'),
+    path('workspace/ai-command-center/prompt-config/rollback/', PortfolioAICommandCenterPromptConfigRollbackView.as_view(), name='workspace-ai-cc-prompt-rollback'),
     path('workspace/ai-command-center/audit-logs/', PortfolioAICommandCenterAuditLogView.as_view(), name='workspace-ai-cc-audit-logs'),
     path('workspace/userconfig/', PortfolioUserConfigLegacyView.as_view(), name='workspace-userconfig'),
 

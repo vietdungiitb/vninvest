@@ -72,6 +72,52 @@ def validate_production_settings(debug: bool):
         raise ImproperlyConfigured(f"Production validation failed: {e}") from e
 
 
+def _env_bool(mapping, key: str, default: bool) -> bool:
+    return str(mapping.get(key, str(default))).strip().lower() in ('1', 'true', 'yes')
+
+
+def prod_cookie_security_settings(env=None) -> dict:
+    """BL-02: session/cookie/transport security — secure-by-default in prod.
+
+    Missing vars fall back to secure defaults (no silent insecure boot);
+    explicitly insecure values raise ImproperlyConfigured (fail-closed).
+
+    Args:
+        env: mapping to read (defaults to os.environ). Dict accepted for tests.
+
+    Returns:
+        Dict of Django settings to apply.
+    """
+    e = env if env is not None else os.environ
+    flags = {
+        'SESSION_COOKIE_SECURE': _env_bool(e, 'DJANGO_SESSION_COOKIE_SECURE', True),
+        'CSRF_COOKIE_SECURE': _env_bool(e, 'DJANGO_CSRF_COOKIE_SECURE', True),
+        'SECURE_SSL_REDIRECT': _env_bool(e, 'DJANGO_SECURE_SSL_REDIRECT', True),
+    }
+    for name, val in flags.items():
+        if not val:
+            raise ImproperlyConfigured(
+                f"{name} must be true in production (explicit insecure override rejected)."
+            )
+    try:
+        age = int(str(e.get('DJANGO_SESSION_COOKIE_AGE', '28800') or '28800'))
+        hsts = int(str(e.get('DJANGO_SECURE_HSTS_SECONDS', '31536000') or '31536000'))
+    except (TypeError, ValueError) as exc:
+        raise ImproperlyConfigured(f"Invalid numeric security setting: {exc}") from exc
+    samesite = str(e.get('DJANGO_SESSION_COOKIE_SAMESITE', 'Lax') or 'Lax')
+    if samesite not in ('Lax', 'Strict', 'None'):
+        raise ImproperlyConfigured("DJANGO_SESSION_COOKIE_SAMESITE must be Lax/Strict/None.")
+    return {
+        **flags,
+        'SESSION_COOKIE_AGE': age,
+        'SESSION_COOKIE_HTTPONLY': True,
+        'SESSION_COOKIE_SAMESITE': samesite,
+        'SECURE_HSTS_SECONDS': hsts,
+        'SECURE_HSTS_INCLUDE_SUBDOMAINS': True,
+        'SECURE_HSTS_PRELOAD': False,  # opt-in only (hard to undo once preloaded)
+    }
+
+
 def get_frontend_url(debug: bool) -> str:
     """
     Get validated FRONTEND_URL.

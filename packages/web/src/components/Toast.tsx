@@ -47,11 +47,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 function ToastItemComponent({ message, variant }: { message: string; variant: ToastVariant }) {
   const variantStyles: Record<ToastVariant, string> = {
-    default: "bg-slate-900 border-slate-700 text-slate-100",
-    success: "bg-emerald-900/50 border-emerald-700 text-emerald-100",
-    error: "bg-rose-900/50 border-rose-700 text-rose-100",
-    warning: "bg-amber-900/50 border-amber-700 text-amber-100",
-    info: "bg-cyan-900/50 border-cyan-700 text-cyan-100",
+    default: "bg-[var(--bg-panel)] border-[var(--border-default)] text-[var(--text-primary)]",
+    success: "bg-[var(--bg-panel)] border-emerald-700 text-[var(--text-primary)]",
+    error: "bg-[var(--bg-panel)] border-rose-700 text-[var(--text-primary)]",
+    warning: "bg-[var(--bg-panel)] border-amber-700 text-[var(--text-primary)]",
+    info: "bg-[var(--bg-panel)] border-cyan-700 text-[var(--text-primary)]",
   };
 
   return (

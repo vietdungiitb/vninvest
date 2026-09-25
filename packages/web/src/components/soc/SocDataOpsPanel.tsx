@@ -19,18 +19,18 @@ const DATAOPS_SUB_TABS = [
 ];
 
 const HERO_METRIC_DEFS = [
-  { key: "totalRows", icon: "Database", colorVar: "--soc-c-22d3ee", bgVar: "rgba(34,211,238,0.12)" },
-  { key: "queuePending", icon: "Clock", colorVar: "--soc-c-fbbf24", bgVar: "rgba(251,191,36,0.12)" },
-  { key: "running", icon: "Play", colorVar: "--soc-c-34d399", bgVar: "rgba(52,211,153,0.12)" },
-  { key: "failed", icon: "AlertTriangle", colorVar: "--soc-c-f87171", bgVar: "rgba(248,113,113,0.12)" },
+    { key: "totalRows", icon: "Database", colorVar: "--soc-c-22d3ee", bgVar: "rgba(var(--soc-rgb-22d3ee) / 0.12)" },
+    { key: "queuePending", icon: "Clock", colorVar: "--soc-c-fbbf24", bgVar: "rgba(var(--soc-rgb-fbbf24) / 0.12)" },
+    { key: "running", icon: "Play", colorVar: "--soc-c-34d399", bgVar: "rgba(var(--soc-rgb-34d399) / 0.12)" },
+    { key: "failed", icon: "AlertTriangle", colorVar: "--soc-c-f87171", bgVar: "color-mix(in srgb, var(--soc-c-f87171) 12%, transparent)" },
 ] as const;
 
-const HERO_METRIC_COLORS: Record<string, string> = {
-  totalRows: "#22d3ee",
-  queuePending: "#fbbf24",
-  running: "#34d399",
-  failed: "#f87171",
-};
+  const HERO_METRIC_COLORS: Record<string, string> = {
+    totalRows: "var(--soc-c-22d3ee)",
+    queuePending: "var(--soc-c-fbbf24)",
+    running: "var(--soc-c-34d399)",
+    failed: "var(--soc-c-f87171)",
+  };
 
 function DataOpsContent() {
   const { t } = useI18n();

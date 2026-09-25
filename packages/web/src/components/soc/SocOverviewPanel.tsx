@@ -1,4 +1,5 @@
 import { createElement, useEffect, useState, useMemo, useRef } from "react";
+import { Button } from "../ui/button.js";
 import { useI18n } from "../../context/LangContext.js";
 import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 import { getStatusBadgeStyle } from "./socStatusColors.js";
@@ -85,35 +86,35 @@ const METRIC_LABEL_KEYS: Record<string, string> = {
   disabled: "soc.overview.disabled_count",
 };
 
-const METRIC_COLORS: Record<string, string> = {
-  total: "#f1f5f9",
-  healthy: "#34d399",
-  degraded: "#fbbf24",
-  critical: "#f87171",
-  maintenance: "var(--soc-c-22d3ee)",
-  unknown: "#94a3b8",
-  disabled: "#64748b",
-};
+  const METRIC_COLORS: Record<string, string> = {
+    total: "var(--soc-c-f1f5f9)",
+    healthy: "var(--soc-c-34d399)",
+    degraded: "var(--soc-c-fbbf24)",
+    critical: "var(--soc-c-f87171)",
+    maintenance: "var(--soc-c-22d3ee)",
+    unknown: "var(--soc-c-94a3b8)",
+    disabled: "var(--soc-c-64748b)",
+  };
 
-const METRIC_BORDER_COLORS: Record<string, string> = {
-  total: "rgba(241,245,249,0.4)",
-  healthy: "rgba(52,211,153,0.6)",
-  degraded: "rgba(251,191,36,0.6)",
-  critical: "rgba(248,113,113,0.6)",
-  maintenance: "color-mix(in srgb, var(--soc-c-22d3ee) 60%, transparent)",
-  unknown: "rgba(148,163,184,0.4)",
-  disabled: "rgba(100,116,139,0.4)",
-};
+  const METRIC_BORDER_COLORS: Record<string, string> = {
+    total: "color-mix(in srgb, var(--soc-c-f1f5f9) 40%, transparent)",
+    healthy: "color-mix(in srgb, var(--soc-c-34d399) 60%, transparent)",
+    degraded: "color-mix(in srgb, var(--soc-c-fbbf24) 60%, transparent)",
+    critical: "color-mix(in srgb, var(--soc-c-f87171) 60%, transparent)",
+    maintenance: "color-mix(in srgb, var(--soc-c-22d3ee) 60%, transparent)",
+    unknown: "color-mix(in srgb, var(--soc-c-94a3b8) 40%, transparent)",
+    disabled: "color-mix(in srgb, var(--soc-c-64748b) 40%, transparent)",
+  };
 
-const METRIC_ICON_BG: Record<string, string> = {
-  total: "rgba(241,245,249,0.08)",
-  healthy: "rgba(52,211,153,0.12)",
-  degraded: "rgba(251,191,36,0.12)",
-  critical: "rgba(248,113,113,0.12)",
-  maintenance: "color-mix(in srgb, var(--soc-c-22d3ee) 12%, transparent)",
-  unknown: "rgba(148,163,184,0.08)",
-  disabled: "rgba(100,116,139,0.08)",
-};
+  const METRIC_ICON_BG: Record<string, string> = {
+    total: "color-mix(in srgb, var(--soc-c-f1f5f9) 8%, transparent)",
+    healthy: "rgba(var(--soc-rgb-34d399) / 0.12)",
+    degraded: "rgba(var(--soc-rgb-fbbf24) / 0.12)",
+    critical: "color-mix(in srgb, var(--soc-c-f87171) 12%, transparent)",
+    maintenance: "color-mix(in srgb, var(--soc-c-22d3ee) 12%, transparent)",
+    unknown: "rgba(var(--soc-rgb-94a3b8) / 0.08)",
+    disabled: "rgba(var(--soc-rgb-64748b) / 0.08)",
+  };
 
 function highlightMatch(text: string, query: string) {
   if (!query) return text;
@@ -464,9 +465,11 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
   if (error && !data) {
     return createElement("div", { className: styles.glassPanel },
       createElement("div", { className: styles.inlineError }, error),
-      createElement("button", {
-        className: styles.actionBtn,
-        "aria-label": t("soc.overview.retry", { defaultValue: "Retry" }),
+        createElement(Button, {
+          className: styles.actionBtn,
+          variant: "ghost",
+          size: "sm",
+          "aria-label": t("soc.overview.retry", { defaultValue: "Retry" }),
         style: { marginTop: "0.75rem" },
         onClick: () => fetchData(false),
       }, t("soc.overview.retry", { defaultValue: "Thử lại" })),
@@ -498,7 +501,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
       createElement("h2", { className: styles.overviewTitle }, t("soc.overview.overview_title")),
       // Overview P3 (F-OV-14/15): SSE status dot — Live / Connecting / Reconnecting / Polling
       (() => {
-        const dotColor = streamStatus === "open" ? "#10b981" : streamStatus === "connecting" ? "#f59e0b" : streamStatus === "error" ? "#ef4444" : "#94a3b8";
+        const dotColor = streamStatus === "open" ? "var(--soc-c-10b981)" : streamStatus === "connecting" ? "var(--soc-c-f59e0b)" : streamStatus === "error" ? "var(--soc-c-ef4444)" : "var(--soc-c-94a3b8)";
         const label = streamStatus === "open"
           ? t("soc.signals_overview.stream_live", { defaultValue: "Trực tiếp" })
           : streamStatus === "connecting"
@@ -733,7 +736,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
         createElement(
           "div",
           { style: { display: "flex", alignItems: "center", gap: "0.5rem" } },
-          createElement("label", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } }, t("soc.overview.sort_label")),
+          createElement("label", { style: { fontSize: "var(--fs-xs)", color: "var(--text-muted)" } }, t("soc.overview.sort_label")),
           createElement(
             "select",
             {
@@ -776,7 +779,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
           "div",
           { className: styles.inlineError, style: { marginBottom: "0.75rem", display: "flex", alignItems: "center", justifyContent: "space-between" } },
           createElement("span", null, error),
-          createElement("button", { className: styles.actionBtn, onClick: () => fetchData(false) }, t("soc.overview.retry")),
+          createElement(Button, { className: styles.actionBtn, variant: "ghost", size: "sm", onClick: () => fetchData(false) }, t("soc.overview.retry")),
         )
       : null,
 
@@ -786,7 +789,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
           "div",
           { className: styles.inlineError, style: { marginBottom: "0.75rem", display: "flex", alignItems: "center", justifyContent: "space-between" } },
           createElement("span", null, sloError),
-          createElement("button", { className: styles.actionBtn, onClick: () => fetchSlo() }, t("soc.overview.retry_slo")),
+          createElement(Button, { className: styles.actionBtn, variant: "ghost", size: "sm", onClick: () => fetchSlo() }, t("soc.overview.retry_slo")),
         )
       : null,
 
@@ -956,7 +959,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
       createElement(
         "div",
         { style: { display: "flex", alignItems: "center", gap: "0.5rem", justifyContent: "center", flexWrap: "wrap" } },
-        createElement("label", { style: { fontSize: "0.7rem", color: "var(--text-muted)" } }, t("soc.overview.page_size_label")),
+        createElement("label", { style: { fontSize: "var(--fs-xs)", color: "var(--text-muted)" } }, t("soc.overview.page_size_label")),
         createElement(
           "select",
           {
@@ -972,7 +975,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
         ),
         createElement(
           "span",
-          { style: { fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "0.5rem" } },
+          { style: { fontSize: "var(--fs-sm)", color: "var(--text-muted)", marginLeft: "0.5rem" } },
           t("soc.overview.showing_range", {
             from: String(filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1),
             to: String(Math.min(safePage * pageSize, filtered.length)),

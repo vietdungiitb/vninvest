@@ -385,6 +385,8 @@ export function useStockDetailPageModel({ env = DEFAULT_ENV, initialSymbol } = {
             personal_key_error: refreshResponse.personal_key_error,
             using_system_fallback: refreshResponse.using_system_fallback,
             fallback_quota_remaining: refreshResponse.fallback_quota_remaining,
+            budget_soft_warning: refreshResponse.budget_soft_warning,
+            budget: refreshResponse.budget,
           },
         }));
       }

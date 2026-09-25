@@ -8,7 +8,7 @@ const BILLING_CUSTOM_STYLES = `
 .billing-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  gap: 24px;
+  gap: var(--sp-6);
   margin-top: 12px;
 }
 
@@ -21,7 +21,7 @@ const BILLING_CUSTOM_STYLES = `
 .plan-card-container {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  gap: var(--sp-4);
   margin-bottom: 24px;
 }
 
@@ -33,9 +33,9 @@ const BILLING_CUSTOM_STYLES = `
 
 .plan-card {
   border: 1.5px solid var(--border-shell);
-  background: rgba(15, 23, 42, 0.45);
-  border-radius: 20px;
-  padding: 22px 18px;
+  background: rgba(var(--sh-rgb-0f172a) / 0.45);
+  border-radius: var(--r-lg, 12px);
+  padding: var(--sp-6) var(--sp-4);
   cursor: pointer;
   transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -43,20 +43,20 @@ const BILLING_CUSTOM_STYLES = `
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(var(--sh-rgb-000000) / 0.2);
 }
 
 .plan-card:hover {
   transform: translateY(-3px);
   border-color: var(--accent-shell);
-  background: rgba(15, 23, 42, 0.7);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+  background: rgba(var(--sh-rgb-0f172a) / 0.7);
+  box-shadow: 0 12px 28px rgba(var(--sh-rgb-000000) / 0.4);
 }
 
 .plan-card.active {
   border-color: var(--accent-shell);
-  background: linear-gradient(145deg, rgba(0, 180, 216, 0.15) 0%, rgba(15, 23, 42, 0.8) 100%);
-  box-shadow: 0 16px 32px rgba(0, 180, 216, 0.15);
+  background: linear-gradient(145deg, rgba(var(--sh-rgb-00b4d8) / 0.15) 0%, rgba(var(--sh-rgb-0f172a) / / 0.8) 100%);
+  box-shadow: 0 16px 32px rgba(var(--sh-rgb-00b4d8) / 0.15);
 }
 
 .plan-card.active::before {
@@ -66,35 +66,35 @@ const BILLING_CUSTOM_STYLES = `
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #00b4d8, #0077b6);
+  background: linear-gradient(90deg, var(--accent-shell), var(--sh-c-0077b6));
 }
 
 .plan-card__badge {
   position: absolute;
   top: 12px;
   right: 12px;
-  background: linear-gradient(135deg, #ff7f50 0%, #ffb347 100%);
+  background: linear-gradient(135deg, var(--accent-signal) 0%, var(--sh-c-ffb347) 100%);
   color: white;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 800;
-  padding: 4px 8px;
-  border-radius: 99px;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-pill);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  box-shadow: 0 4px 10px rgba(255, 127, 80, 0.2);
+  box-shadow: 0 4px 10px rgba(var(--sh-rgb-ff7f50) / 0.2);
 }
 
 .plan-card__title {
-  font-size: 15px;
+  font-size: var(--fs-md);
   font-weight: 800;
   color: var(--text-primary);
-  margin: 0 0 6px 0;
+  margin: 0 0 var(--sp-2) 0;
 }
 
 .plan-card__desc {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
-  margin: 0 0 16px 0;
+  margin: 0 0 var(--sp-4) 0;
   line-height: 1.4;
 }
 
@@ -103,21 +103,21 @@ const BILLING_CUSTOM_STYLES = `
 }
 
 .plan-card__price {
-  font-size: 24px;
+  font-size: var(--fs-2xl);
   font-weight: 900;
   color: var(--accent-shell);
   line-height: 1;
 }
 
 .plan-card__period {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--text-secondary);
   font-weight: 600;
   margin-left: 2px;
 }
 
 .plan-card__savings {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--accent-signal);
   font-weight: 700;
   margin-top: 6px;
@@ -126,21 +126,21 @@ const BILLING_CUSTOM_STYLES = `
 
 .quota-bar-container {
   display: grid;
-  gap: 18px;
+  gap: var(--sp-4);
 }
 
 .quota-item {
-  background: rgba(15, 23, 42, 0.35);
+  background: rgba(var(--sh-rgb-0f172a) / 0.35);
   border: 1px solid var(--border-shell);
-  border-radius: 16px;
-  padding: 14px 16px;
+  border-radius: var(--r-lg, 12px);
+  padding: var(--sp-3) var(--sp-4);
 }
 
 .quota-item__info {
   display: flex;
   justify-content: space-between;
   margin-bottom: 8px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -155,43 +155,43 @@ const BILLING_CUSTOM_STYLES = `
 
 .quota-item__bar-bg {
   height: 8px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 99px;
+  background: rgba(var(--sh-rgb-ffffff) / 0.08);
+  border-radius: var(--r-pill);
   overflow: hidden;
   position: relative;
 }
 
 .quota-item__bar-fill {
   height: 100%;
-  border-radius: 99px;
+  border-radius: var(--r-pill);
   transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .current-plan-banner {
-  background: linear-gradient(135deg, rgba(0, 180, 216, 0.12) 0%, rgba(10, 147, 150, 0.06) 100%);
+  background: linear-gradient(135deg, rgba(var(--sh-rgb-00b4d8) / 0.12) 0%, rgba(var(--sh-rgb-00b4d8) / 0.06) 100%);
   border: 1.5px dashed var(--accent-shell);
-  border-radius: 20px;
-  padding: 20px;
+  border-radius: var(--r-lg, 12px);
+  padding: var(--sp-5);
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: var(--sp-4);
 }
 
 .current-plan-banner__info {
   display: grid;
-  gap: 6px;
+  gap: var(--sp-2);
 }
 
 .current-plan-banner__plan {
-  font-size: 18px;
+  font-size: var(--fs-xl);
   font-weight: 800;
   color: var(--accent-shell);
 }
 
 .current-plan-banner__status {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 
@@ -203,8 +203,8 @@ const BILLING_CUSTOM_STYLES = `
 }
 
 .invoice-table th {
-  padding: 12px 16px;
-  font-size: 12px;
+  padding: var(--sp-3) var(--sp-4);
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-secondary);
@@ -213,8 +213,8 @@ const BILLING_CUSTOM_STYLES = `
 }
 
 .invoice-table td {
-  padding: 14px 16px;
-  font-size: 13.5px;
+  padding: var(--sp-3) var(--sp-4);
+  font-size: var(--fs-sm);
   border-bottom: 1px solid var(--border-shell);
   color: var(--text-primary);
 }
@@ -226,40 +226,40 @@ const BILLING_CUSTOM_STYLES = `
 .invoice-status-pill {
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
-  border-radius: 99px;
-  font-size: 11px;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-2xs);
   font-weight: 700;
   text-transform: uppercase;
 }
 
-.invoice-status-pill--completed {
-  background: rgba(34, 197, 94, 0.15);
-  color: #4ade80;
-}
+  .invoice-status-pill--completed {
+  background: color-mix(in srgb, var(--accent-emerald) 15%, transparent);
+  color: var(--accent-emerald);
+  }
 
-.invoice-status-pill--pending {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
-}
+  .invoice-status-pill--pending {
+  background: color-mix(in srgb, var(--accent-amber) 15%, transparent);
+  color: var(--accent-amber);
+  }
 
-.invoice-status-pill--failed {
-  background: rgba(239, 68, 68, 0.15);
-  color: #fb7185;
-}
+  .invoice-status-pill--failed {
+  background: color-mix(in srgb, var(--accent-rose) 15%, transparent);
+  color: var(--accent-rose);
+  }
 
 .billing-submit-btn {
   margin-top: 14px;
   width: 100%;
-  padding: 14px;
-  border-radius: 16px;
-  font-size: 15px;
+  padding: var(--sp-3);
+  border-radius: var(--r-lg, 12px);
+  font-size: var(--fs-md);
   font-weight: 800;
   color: white;
   border: none;
   cursor: pointer;
-  background: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
-  box-shadow: 0 8px 24px rgba(0, 180, 216, 0.25);
+  background: linear-gradient(135deg, var(--accent-shell) 0%, var(--sh-c-0077b6) 100%);
+  box-shadow: 0 8px 24px rgba(var(--sh-rgb-00b4d8) / 0.25);
   transition: all 0.3s ease;
   display: flex;
   justify-content: center;
@@ -268,7 +268,7 @@ const BILLING_CUSTOM_STYLES = `
 
 .billing-submit-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(0, 180, 216, 0.35);
+  box-shadow: 0 12px 28px rgba(var(--sh-rgb-00b4d8) / 0.35);
 }
 
 .billing-submit-btn:disabled {
@@ -365,7 +365,7 @@ export function BillingCenterPage() {
         title={t('commercial.billingCenter.titleShort')}
         description={t('commercial.billingCenter.loading')}
       >
-        <div style={{ padding: "40px", textAlign: "center", color: "#486581" }}>
+        <div style={{ padding: "40px", textAlign: "center", color: "var(--text-secondary)" }}>
           {t('commercial.billingCenter.loading')}
         </div>
       </ShellPageChrome>
@@ -454,7 +454,7 @@ export function BillingCenterPage() {
             ) : (
               <div className="current-plan-banner">
                 <div className="current-plan-banner__info">
-                  <span className="current-plan-banner__plan" style={{ color: "#486581" }}>{t('commercial.billingCenter.planDefault')}</span>
+                  <span className="current-plan-banner__plan" style={{ color: "var(--text-secondary)" }}>{t('commercial.billingCenter.planDefault')}</span>
                   <span className="current-plan-banner__status">{t('commercial.billingCenter.noPlan')}</span>
                 </div>
               </div>
@@ -473,11 +473,11 @@ export function BillingCenterPage() {
                   const isUnlimited = limit <= 0;
                   const percent = isUnlimited ? 0 : Math.min((used / limit) * 100, 100);
 
-                  let barColor = "linear-gradient(90deg, #22c55e, #4ade80)";
+                  let barColor = "linear-gradient(90deg, var(--accent-emerald), color-mix(in srgb, var(--accent-emerald) 55%, white))";
                   if (percent >= 90) {
-                    barColor = "linear-gradient(90deg, #ef4444, #f87171)";
+                    barColor = "linear-gradient(90deg, var(--accent-rose), color-mix(in srgb, var(--accent-rose) 55%, white))";
                   } else if (percent >= 70) {
-                    barColor = "linear-gradient(90deg, #f59e0b, #fbbf24)";
+                    barColor = "linear-gradient(90deg, var(--accent-amber), color-mix(in srgb, var(--accent-amber) 55%, white))";
                   }
 
                   return (

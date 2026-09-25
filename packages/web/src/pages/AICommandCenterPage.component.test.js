@@ -1,8 +1,12 @@
 import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
 import { createElement } from "react";
+import { MemoryRouter } from "react-router-dom";
 import { AICommandCenterPage } from "./AICommandCenterPage";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
 import * as LangContext from "../context/LangContext.js";
+
+const renderPage = () =>
+  render(createElement(MemoryRouter, null, createElement(AICommandCenterPage, {})));
 
 vi.mock("../components/AIAuditLogsPanel.js", () => ({
   AIAuditLogsPanel: () => null,
@@ -23,12 +27,80 @@ const baseSettings = {
   advisory_refresh_interval_hours: 6,
   advisory_max_tokens_per_day: 1000,
   temperature: 0.3,
+  ai_api_key_configured: true,
+  ai_api_key_masked: "••••••••test",
+  system_prompt_template: "System for {symbol}",
+};
+
+const TRANSLATIONS = {
+  "aiCommandCenter.eyebrow": "Cài đặt",
+  "aiCommandCenter.overview": "Tổng quan",
+  "aiCommandCenter.title": "Trung tâm điều hành AI",
+  "aiCommandCenter.description":
+    "Cấu hình nhà cung cấp AI, lựa chọn mô hình và API key phục vụ AI Advisor.",
+  "aiCommandCenter.effectiveProvider": "Nhà cung cấp hiệu lực",
+  "aiCommandCenter.effectiveProviderDesc": "Nguồn đọc từ AI Command Center.",
+  "aiCommandCenter.effectiveModel": "Mô hình hiệu lực",
+  "aiCommandCenter.effectiveModelDesc": "Mô hình đang dùng cho advisory runtime.",
+  "aiCommandCenter.effectiveSource": "Nguồn hiệu lực",
+  "aiCommandCenter.effectiveSourceDesc": "command_center hoặc system fallback.",
+  "aiCommandCenter.runtimeStatus": "Trạng thái runtime",
+  "aiCommandCenter.ready": "Sẵn sàng",
+  "aiCommandCenter.readyDesc": "Runtime có thể sinh advisory.",
+  "aiCommandCenter.needsConfig": "Cần cấu hình",
+  "aiCommandCenter.needsConfigDesc": "Thiếu key, model hoặc source hợp lệ.",
+  "aiCommandCenter.operationPolicy": "Chính sách vận hành",
+  "aiCommandCenter.eventGate": "Gate sự kiện",
+  "aiCommandCenter.gateEnabled": "Bật",
+  "aiCommandCenter.gateDisabled": "Tắt",
+  "aiCommandCenter.gateUnknown": "Chưa đọc",
+  "aiCommandCenter.refreshInterval": "Khoảng làm mới",
+  "aiCommandCenter.autoRefreshPerDay": "Auto refresh/ngày",
+  "aiCommandCenter.tokensPerDay": "Token/ngày",
+  "aiCommandCenter.fallbackTitle": "Sao lưu hệ thống AI (Fallback)",
+  "aiCommandCenter.fallbackReset": "Đặt lại",
+  "aiCommandCenter.quotaUsed": "lượt",
+  "aiCommandCenter.auditLogsTitle": "Nhật ký audit Command Center",
+  "aiCommandCenter.auditLogsDesc": "Mỗi trang hiển thị 10 bản ghi.",
+  "aiCommandCenter.loadingConfig": "Đang tải cấu hình AI...",
+  "aiCommandCenter.errorLoadConfig": "Lỗi khi tải cấu hình AI.",
+  "aiCommandCenter.retryButton": "Thử lại",
+  "aiCommandCenter.unknownError": "Lỗi không xác định.",
+  "aiCommandCenter.errorBoundaryTitle": "Lỗi Trung tâm điều hành AI",
+  "aiCommandCenter.runtimeConfig": "CẤU HÌNH AI RUNTIME",
+  "aiCommandCenter.providerLabel": "Nhà cung cấp AI",
+  "aiCommandCenter.modelLabel": "Mô hình AI",
+  "aiCommandCenter.apiKeyLabel": "API Key",
+  "aiCommandCenter.apiKeyPlaceholderNew": "Nhập API Key của nhà cung cấp...",
+  "aiCommandCenter.apiKeyPlaceholderConfigured": "Đã có API Key, nhập key mới để thay đổi...",
+  "aiCommandCenter.maxTokensLabel": "Định mức Token / ngày",
+  "aiCommandCenter.refreshIntervalLabel": "Khoảng làm mới tự động (giờ)",
+  "aiCommandCenter.temperatureLabel": "Temperature (0.0 - 1.0)",
+  "aiCommandCenter.temperatureHelp": "0 = deterministic, 1 = creative. Mặc định 0.3.",
+  "aiCommandCenter.saveBtn": "Lưu cấu hình",
+  "aiCommandCenter.savingBtn": "Đang lưu cấu hình...",
+  "aiCommandCenter.testBtn": "Kiểm tra kết nối",
+  "aiCommandCenter.testingBtn": "Đang kết nối...",
+  "aiCommandCenter.refreshFormBtn": "Làm mới form",
+  "aiCommandCenter.promptConfig": "Tinh chỉnh nguồn dữ liệu",
+  "aiCommandCenter.noticeSaved": "Lưu cấu hình AI thành công.",
+  "aiCommandCenter.errorSaveConfig": "Lỗi khi lưu cấu hình.",
+  "aiCommandCenter.errorEmptyModel": "Mô hình AI không được để trống.",
+  "aiCommandCenter.errorTokensPositive": "Định mức token/ngày phải lớn hơn 0.",
+  "aiCommandCenter.errorRefreshPositive": "Khoảng làm mới (giờ) phải lớn hơn 0.",
+  "aiCommandCenter.apiKeyMaskedLabel": "API Key hiện tại",
+  "aiCommandCenter.clearApiKey": "Xóa key",
+  "aiCommandCenter.apiKeyCleared": "Đã xóa API Key.",
+  "aiCommandCenter.apiKeyClearFailed": "Không thể xóa API Key.",
+  "aiCommandCenter.systemPromptTitle": "System prompt template",
+  "aiCommandCenter.systemPromptDesc": "Template system prompt cấp hệ thống (chỉ đọc).",
+  "aiCommandCenter.systemPromptEmpty": "Chưa có system prompt template.",
 };
 
 const i18nValue = {
   locale: "vi",
   localeTag: "vi-VN",
-  t: (key) => key,
+  t: (key) => TRANSLATIONS[key] ?? key,
   formatNumber: (n) => n,
   formatCurrency: (n) => n,
   formatPriceVND: (n) => n,
@@ -55,20 +127,87 @@ afterEach(() => {
 describe("AICommandCenterPage", () => {
   it("loads and renders AI Command Center settings (Slice 2 restore)", async () => {
     await act(async () => {
-      render(createElement(AICommandCenterPage, {}));
+      renderPage();
     });
     await waitFor(() => {
-      expect(screen.getByText("aiCommandCenter.effectiveProvider")).toBeTruthy();
+      expect(screen.getByText("Nhà cung cấp hiệu lực")).toBeTruthy();
     });
     expect(coreApiAdapter.getUserConfig).toHaveBeenCalledTimes(1);
   });
 
-  it("toggles the event gate and persists via updateUserConfig (Slice 2)", async () => {
+  it("renders translated eyebrow and overview without raw i18n keys (Slice A)", async () => {
     await act(async () => {
-      render(createElement(AICommandCenterPage, {}));
+      renderPage();
     });
     await waitFor(() => {
-      expect(screen.getByText("aiCommandCenter.effectiveProvider")).toBeTruthy();
+      expect(screen.getByText("Cài đặt")).toBeTruthy();
+    });
+    expect(screen.getByText("Tổng quan")).toBeTruthy();
+    expect(screen.queryByText("aiCommandCenter.eyebrow")).toBeNull();
+    expect(screen.queryByText("aiCommandCenter.overview")).toBeNull();
+  });
+
+  it("does not crash when fallback_quota_remaining is missing (Slice A R-02)", async () => {
+    const settingsWithQuotaMax = {
+      ...baseSettings,
+      fallback_quota_max: 5,
+      fallback_quota_remaining: undefined,
+      fallback_quota_reset: undefined,
+      ai_provider: "openai",
+    };
+    coreApiAdapter.getAICommandCenterConfig.mockResolvedValue(settingsWithQuotaMax);
+    await act(async () => {
+      renderPage();
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Nhà cung cấp hiệu lực")).toBeTruthy();
+    });
+    expect(screen.getByText(/0\s*lượt\s*\/\s*5\s*lượt/)).toBeTruthy();
+  });
+
+  it("updates policy display after save without reload (Slice A G-10)", async () => {
+    await act(async () => {
+      renderPage();
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Nhà cung cấp hiệu lực")).toBeTruthy();
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/giờ\/ lần|giờ\/lần/)).toBeTruthy();
+    });
+
+    const nextData = {
+      ...baseSettings,
+      advisory_refresh_interval_hours: 12,
+      advisory_max_auto_refreshes_per_day: 8,
+    };
+    coreApiAdapter.updateAICommandCenterConfig.mockResolvedValue(nextData);
+
+    const intervalInput = screen
+      .getAllByRole("spinbutton")
+      .find((el) => el.placeholder === "24" || el.value === "6");
+    expect(intervalInput).toBeTruthy();
+    fireEvent.change(intervalInput, { target: { value: "12" } });
+
+    const saveBtn = screen.getByRole("button", { name: /lưu cấu hình/i });
+    await act(async () => {
+      fireEvent.click(saveBtn);
+    });
+
+    await waitFor(() => {
+      expect(coreApiAdapter.updateAICommandCenterConfig).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(screen.getByText("12 giờ/lần")).toBeTruthy();
+    });
+  });
+
+  it("toggles the event gate and persists via updateUserConfig (Slice 2)", async () => {
+    await act(async () => {
+      renderPage();
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Nhà cung cấp hiệu lực")).toBeTruthy();
     });
 
     const checkboxes = screen.getAllByRole("checkbox");
@@ -89,10 +228,49 @@ describe("AICommandCenterPage", () => {
   it("shows an error message when config load fails (Slice 2 resilience)", async () => {
     coreApiAdapter.getAICommandCenterConfig.mockRejectedValue(new Error("network down"));
     await act(async () => {
-      render(createElement(AICommandCenterPage, {}));
+      renderPage();
     });
     await waitFor(() => {
       expect(screen.getByText("network down")).toBeTruthy();
     });
+  });
+
+  it("shows masked key and clears via PUT empty payload (F4)", async () => {
+    await act(async () => {
+      renderPage();
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("api-key-mask")).toBeTruthy();
+    });
+    // Mask never contains full key material beyond last4 bullets
+    expect(screen.getByTestId("api-key-mask").textContent).toContain("••••••••test");
+    expect(screen.queryByDisplayValue("sk-test-full-key")).toBeNull();
+
+    coreApiAdapter.updateAICommandCenterConfig.mockResolvedValue({
+      ...baseSettings,
+      ai_api_key_configured: false,
+      ai_api_key_masked: "",
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("clear-api-key"));
+    });
+
+    await waitFor(() => {
+      expect(coreApiAdapter.updateAICommandCenterConfig).toHaveBeenCalledWith({ ai_api_key: "" });
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Đã xóa API Key.")).toBeTruthy();
+    });
+  });
+
+  it("renders system prompt template read-only (F5)", async () => {
+    await act(async () => {
+      renderPage();
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("system-prompt-template")).toBeTruthy();
+    });
+    expect(screen.getByTestId("system-prompt-template").textContent).toBe("System for {symbol}");
   });
 });

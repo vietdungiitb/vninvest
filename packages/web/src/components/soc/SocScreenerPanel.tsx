@@ -1,4 +1,5 @@
 import { createElement, useEffect, useState, useRef } from "react";
+import { Button } from "../ui/button.js";
 import { useI18n } from "../../context/LangContext.js";
 import { ShellPanel } from "../../components/ShellPageTemplate.js";
 import { SocConfigPreviewModal } from "./SocConfigPreviewModal.js";
@@ -366,9 +367,9 @@ export function SocScreenerPanel() {
                         createElement("span", {
                           className: styles.statusBadge,
                           style: {
-                            background: rule.enabled ? "rgba(16,185,129,0.12)" : "rgba(100,116,139,0.12)",
+                              background: rule.enabled ? "rgba(var(--soc-rgb-10b981) / 0.12)" : "rgba(var(--soc-rgb-64748b) / 0.12)",
                             color: rule.enabled ? "var(--soc-c-34d399)" : "var(--soc-c-94a3b8)",
-                            fontSize: "0.68rem",
+                            fontSize: "var(--fs-xs)",
                           },
                         }, rule.enabled ? t("soc.screener.rule_active") : t("soc.screener.rule_inactive")),
                       ),
@@ -406,9 +407,9 @@ export function SocScreenerPanel() {
               rules.length > pageSize ? createElement(
                 "div",
                 { className: styles.pagination, style: { marginTop: "0.75rem" } },
-                createElement("button", { className: styles.pageBtn, disabled: rulesPage <= 1, onClick: () => setRulesPage((p) => Math.max(1, p - 1)) }, t("soc.actions.prev")),
-                createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted)" } }, t("soc.actions.page", { page: rulesPage })),
-                createElement("button", { className: styles.pageBtn, disabled: rulesPage * pageSize >= rules.length, onClick: () => setRulesPage((p) => p + 1) }, t("soc.actions.next")),
+                createElement(Button, { className: styles.pageBtn, variant: "ghost", size: "sm", disabled: rulesPage <= 1, onClick: () => setRulesPage((p) => Math.max(1, p - 1)) }, t("soc.actions.prev")),
+                createElement("span", { style: { fontSize: "var(--fs-sm)", color: "var(--text-muted)" } }, t("soc.actions.page", { page: rulesPage })),
+                createElement(Button, { className: styles.pageBtn, variant: "ghost", size: "sm", disabled: rulesPage * pageSize >= rules.length, onClick: () => setRulesPage((p) => p + 1) }, t("soc.actions.next")),
               ) : null,
             ),
             createElement("div", { className: styles.sectionCard,  },
@@ -470,9 +471,9 @@ export function SocScreenerPanel() {
                       results.length > pageSize ? createElement(
                         "div",
                         { className: styles.pagination, style: { marginTop: "0.5rem" } },
-                        createElement("button", { className: styles.pageBtn, disabled: resultsPage <= 1, onClick: () => setResultsPage((p) => Math.max(1, p - 1)) }, t("soc.actions.prev")),
-                        createElement("span", { style: { fontSize: "0.75rem", color: "var(--text-muted)" } }, t("soc.actions.page", { page: resultsPage })),
-                        createElement("button", { className: styles.pageBtn, disabled: resultsPage * pageSize >= results.length, onClick: () => setResultsPage((p) => p + 1) }, t("soc.actions.next")),
+                        createElement(Button, { className: styles.pageBtn, variant: "ghost", size: "sm", disabled: resultsPage <= 1, onClick: () => setResultsPage((p) => Math.max(1, p - 1)) }, t("soc.actions.prev")),
+                        createElement("span", { style: { fontSize: "var(--fs-sm)", color: "var(--text-muted)" } }, t("soc.actions.page", { page: resultsPage })),
+                        createElement(Button, { className: styles.pageBtn, variant: "ghost", size: "sm", disabled: resultsPage * pageSize >= results.length, onClick: () => setResultsPage((p) => p + 1) }, t("soc.actions.next")),
                       ) : null,
                     ),
               ),
@@ -538,9 +539,9 @@ export function SocScreenerPanel() {
               zIndex: 200,
               padding: "0.75rem 1rem",
               borderRadius: "8px",
-              background: toast.type === "success" ? "rgba(16, 185, 129, 0.9)" : "rgba(239, 68, 68, 0.9)",
-              color: "#fff",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                background: toast.type === "success" ? "rgba(var(--soc-rgb-10b981) / 0.9)" : "rgba(var(--soc-rgb-ef4444) / 0.9)",
+                color: "var(--soc-c-ffffff)",
+                boxShadow: "0 4px 12px rgba(var(--soc-rgb-000000) / 0.3)",
               animation: "slideIn 0.3s ease-out",
             },
           },

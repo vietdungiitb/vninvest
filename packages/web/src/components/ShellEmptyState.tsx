@@ -1,5 +1,6 @@
 import styles from "./ShellPageTemplate.module.css";
 import { createElement } from "react";
+import { Button } from "./ui/button.js";
 export function ShellEmptyState(p: {
   icon?: React.ReactNode | null;
   title?: string;
@@ -21,17 +22,18 @@ export function ShellEmptyState(p: {
       createElement("path", { d: "M16 20h16M16 26h12M16 32h8", stroke: "var(--text-secondary)", strokeWidth: 2, strokeLinecap: "round" }),
     ),
     p.title ? createElement("p", { style: { fontWeight: 700, marginBottom: 6, color: "var(--text-primary)" } }, p.title) : null,
-    p.description ? createElement("p", { style: { fontSize: 13, color: "var(--text-secondary)", marginBottom: p.ctaLabel ? 16 : 0 } }, p.description) : null,
+      p.description ? createElement("p", { style: { fontSize: "var(--fs-sm)", color: "var(--text-secondary)", marginBottom: p.ctaLabel ? 16 : 0 } }, p.description) : null,
     p.ctaLabel
-      ? createElement(
-        "button",
-        {
-          className: `${styles.button}`,
-          onClick: p.ctaOnClick,
-          style: { padding: "8px 20px", fontSize: 13, fontWeight: 600 },
-        },
-        p.ctaLabel,
-      )
+        ? createElement(
+          Button,
+          {
+            className: `${styles.button}`,
+            variant: "ghost",
+            onClick: p.ctaOnClick,
+            style: { padding: "8px 20px", fontSize: "var(--fs-sm)", fontWeight: 600 },
+          },
+          p.ctaLabel,
+        )
       : null,
     p.children,
   );

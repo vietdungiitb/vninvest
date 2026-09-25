@@ -12,7 +12,8 @@ declare module "./adapters/coreApiAdapter" {
     // AI Command Center
     getAICommandCenterConfig: () => Promise<any>;
     updateAICommandCenterConfig: (data: any) => Promise<any>;
-    testAICommandCenterConnection: () => Promise<any>;
+    testAICommandCenterConnection: (data?: any) => Promise<any>;
+    rollbackAICommandCenterPromptConfig: (version: number) => Promise<any>;
 
     // Alert Center
     getAlertCenterFeed: (params: any) => Promise<any>;

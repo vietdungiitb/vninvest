@@ -348,7 +348,7 @@ export function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfig
       e(
         "div",
         { className: styles.drawerFooter },
-        e("span", { className: styles.drawerFooterText }, "Cấu hình được đồng bộ tự động và áp dụng cho lượt Làm mới tiếp theo."),
+        e("span", { className: styles.drawerFooterText }, t("aiCommandCenter.promptDrawerFooter")),
         e(
           "button",
           { className: `${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`, onClick: onClose, type: "button" },
