@@ -1,3 +1,97 @@
+## Entry 232: Portfolio Commercial — verify audit + PA-1..PA-5 (2026-09-26)
+
+- **Date**: 2026-09-26
+- **Scope**: `docs/AUDIT_PORTFOLIO_COMMERCIAL_REDESIGN_20260925.md` (Rev.1, baseline `8b479d24`) → 4 agent file-disjoint + 1 coordinator slice. 7 PR, tất cả đã merge vào `dev`.
+- **Kế hoạch**: `docs/IMPLEMENTATION_PLAN_PORTFOLIO_COMMERCIAL_HARDENING_20260925.md` Rev.2 (52 slice / 9 wave). Phần này thực thi Wave 0 (SAFE-01/02) + Wave 1 (TEN-01 phần BE, LED-02/03) + đóng 2 P0 mới.
+- **Bằng chứng**: `docs/evidence/portfolio-commercial/AUDIT_VERIFICATION_20260926.md`, `SEC-01-REPORT.md`, `pa-1..pa-5-gates.md`.
+
+### Giai đoạn 1 — Verify audit (4 sub-agent read-only, 0 dòng code)
+
+Audit 7/7 P0 **vẫn đúng** ở HEAD, nhưng tài liệu sai ở chi tiết:
+
+| Loại | Kết quả |
+|---|---|
+| `file:line` sai | **20** — plan Rev.2 §7 trích nguyên văn, đọc lần nữa là sai |
+| sub-claim **refute** | **3** — `challenge endpoint` **không tồn tại**; OTP/token **có** parse `dry_run`; `place_order` **đã** hết leak `str(exc)` |
+| audit **đánh giá THẤP** | **4** — P0-SEC-01 4 dòng → 21 dòng/4 token/20 file; C-07 101 → 125 literal/4 file |
+| audit **đánh giá CAO** | **2** — P0-DATA-01 (`signals.py:68-87` cứu 2/3 call site); C-11 (đã thành split-brain một chiều) |
+| **P0 mới** | **2** |
+
+**3 kết luận làm plan tốn công vô ích nếu không biết:** (1) P0-ISO-01 chỉ có **4** analytics endpoint reachable, 4 view còn lại là **code chết**; `request.tenant` **đã có sẵn** từ `TenantResolutionMiddleware` ⇒ **không** cần tạo resolver mới như audit đề xuất. (2) `BrokerSession` **không tồn tại** trong repo. (3) namespace `brokerConnections` **không tồn tại** ở cả 2 locale.
+
+### Giai đoạn 2 — 2 P0 mới (PA-1)
+
+- **X.1** — `views_dnse.py:72` đọc **chỉ** `payload['volume']`, cả 2 caller FE gửi `'quantity'` ⇒ **mọi lệnh DNSE từ UI trả 400**. Regression từ `275fcd78` (thêm `_validate_order_payload`). Lọt vì **0 test BE nào chạm order path**.
+- **X.2** — audit order **không bao giờ ghi được**: `action='broker.place_order'` 18 ký tự > `AuditEvent.action` `max_length=16` ⇒ `DataError` bị `except Exception` nuốt. Đi vòng bằng `action='create'` + `metadata['operation']` (nới `max_length` cần migration ⇒ `*/migrations/*` của `tenantreg-c`).
+
+### Giai đoạn 3 — PA-1..PA-5
+
+| PR | Nội dung | Finding đóng | Test |
+|---|---|---|---:|
+| #12 | broker egress allowlist + adapter lifecycle | P1-SEC-01, P1-AUTH-01, C-04 | 60 |
+| #13 | analytics tenant scope + ledger | P0-ISO-01, P0-DATA-03 | 30 |
+| #14 | order fail-closed + X.1–X.6 | P0-SAFETY-01, **X.1**, **X.2**, P1-CONTRACT-00 | 46 |
+| #15 | repair migration `0008` + tenant FK + validators | P0-MIG-01, P0-ISO-03, P0-DATA-01/02 | 58 |
+| #16 | FE gửi `mode` + `Idempotency-Key` | đóng nợ "đặt lệnh đang TẮT" | 16 + 545 |
+| #17 | addendum verify + báo cáo SEC-01 | doc-only | — |
+
+**Phân bổ file:** 4 nhóm `PA-1..PA-4` **file-disjoint, 0 conflict, 0 vi phạm deny list §2**; chỉ `docs/CLAIMS.md` trùng (`merge=union`). **Migration duy nhất** `0019_pf4_tenant_and_financial_guards` — số do `makemigrations` tự đặt, head đọc từ `origin/dev` = `0018_broker_config_unverified`, 1 leaf. **CHƯA đụng** `permissions.py`/`middleware.py` (tenantreg-b), `transport.js`/`PortfolioContext.js` (tenantreg-e), `i18n vi|en`/`coreApiAdapter.d.ts` (tenantreg-d), `settings.py` (tenantreg-s).
+
+**PA-4 bác 3 giả định của đề bài — và đúng:** `SubAccount` **đã có** signal, nhưng bản cũ `CoreTenant.objects.create()` trong `save()` ⇒ user đa tenant nhận tenant **ngẫu nhiên**. Lỗ hổng thật tệ hơn mô tả ban đầu.
+
+### Bug thật do coordinator tìm khi merge lại
+
+Cả 4 agent báo gate PASS. Coordinator merge cả 4 rồi chạy lại: **198 test, `errors=1`** →
+`0019:264-272` `print()` chuỗi tiệng Việt có dấu ⇒ `UnicodeEncodeError` trên stdout cp1252
+⇒ **làm `migrate` thất bại giữa chừng**, không chỉ test đỏ. Sửa ở `934a19c0`.
+→ Bằng chứng cho quy tắc §10.4: *"gate chạy lại sau rebase mới đáng tin"*, và gate của agent
+trên máy agent **không** đại diện cho máy khác.
+
+### Kiểm chứng "pre-existing" thay vì tin lời khai
+
+3 agent báo test đỏ là pre-existing. Coordinator tạo worktree baseline từ `origin/dev` sạch
+(`51776e83`) và chạy: **đúng 4 lỗi, cùng tên** — 3 × `test_broker_retail`
+(`ModuleNotFoundError: vnbroker`) + 1 × `test_portfolio_analytics_native_routes`
+(`httpx.UnsupportedProtocol`). Cả 2 lời khai đều đúng.
+
+### PA-5 — 2 sự cố tự thừa nhận
+
+1. **Sai lệch trong lúc viết test:** 4 test đỏ vì dùng `rejects.toThrow()` trong khi adapter
+   **throw đồng bộ** (fail-fast trước network). Sửa **test**, không sửa code — sửa code theo
+   test sai sẽ thành network call thừa. (PA-3 cũng tự phát hiện 2/2 kỳ vọng test sai.)
+2. **Đề bài của coordinator sai:** chỉ nêu 2 call site, nhưng PA-1 làm fail-closed **cả 3
+   endpoint** (`send-email-otp`, `create-trading-token` cũng cần `mode`). Nếu chỉ vá 2 chỗ thì
+   OTP + trading token vẫn chết.
+
+### Gate
+
+- BE: `manage.py check` 0 issue · `makemigrations --check` exit 0 · **198/198** test mới ·
+  310 test `user_workspace` chỉ còn 4 error pre-existing · regression advisory 151/151.
+- FE: `tsc` 0 · jest 255/255 · `test:components` 545/545 (lần 1) · eslint 0 · build 45.67s ·
+  `check:i18n-hardcoded` 0 · `check:shell` exit 0.
+- `check-multi-agent` 0 lỗi, 0 trùng số migration.
+
+**`CHƯA ĐẠT` — D-19:** `test:components` yêu cầu 3 lần liên tiếp xanh, thực tế **1 xanh 2 đỏ**
+vì `useAlertCenterSnapshot.pagination.component.test.ts` flaky (đỏ y hệt trên `dev` sạch, 3/3
+xanh khi chạy riêng). Cần ticket riêng — thêm delay để làm xanh là che triệu chứng.
+
+**`CHƯA CHẠY`:** `manage.py test tests` full suite (534 test) — agent báo 10F+4E pre-existing,
+**cần chạy lại trên base mới** để xác nhận lặp lại. E2E/sandbox broker thật: không có credential,
+`vnbroker` không cài. Kiểm chứng runtime của `vnbroker` (`post_order` đọc `volume` hay `quantity`):
+**không xác minh được** — editable install trỏ `C:\Mujoco Projects\vnbrokder` (thư mục không tồn tại).
+
+### Còn nợ — chuyển ticket riêng
+
+- **P0-SEC-01 `CHƯA XỬ LÝ`** — chờ owner. `SEC-01-REPORT.md`: `compose.dev.env` **tracked** +
+  **không ignored**, chứa `DNSE_CREDENTIAL_FERNET_KEY` 44 ký tự (đúng dạng Fernet) ⇒ mọi
+  `UserDNSECredential` trong DB giải mã được. 4 token thật / 20 file, 11 file trong `scratch/*.py`
+  là code chạy được. Thứ tự 5 bước **không đảo**: revoke → rotate → gỡ khỏi HEAD → purge history
+  → chặn tái diễn. **Không purge history khi 6 agent còn chạy.**
+- **P0-LEGAL-01** — license `vnbroker` chưa ký ⇒ **R3 live trading không tồn tại**.
+- ~6 chỗ fail-open `if tenant: … else: <lọc user-only>` còn trong `views.py` — cùng họ P0-ISO-02.
+- `ops_audit.action` `max_length=16`; `UserBrokerConfig.tenant` contract phase (hiện `null=True`);
+  `Idempotency-Key` trên cache ⇒ nên thành `OrderJob` + unique `(user,scope,key)`;
+  `order_type` chưa validate (thêm lúc này là **bịa contract**); flaky test chặn D-19.
 # Code Change Audit Ledger
 
 > **Source of truth** for every code change in VNInvest SaaS migration.
