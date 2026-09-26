@@ -25,6 +25,9 @@ const vi = {
     loadingSub: 'Route {route} đang được nạp động.',
     pageNotFound: 'Không tìm thấy trang {route}',
     verifyingAccount: 'Đang xác thực tài khoản...',
+    sessionExpired: 'Phiên đăng nhạp đã hết hạn. Vui lòng đăng nhập lại.',
+    bootstrapFailed: 'Không tải được thông tin tài khoản. Vui lòng thử lại.',
+    bootstrapRetry: 'Thử lại',
   },
   plans: {
     free: 'Miễn phí',
@@ -39,6 +42,7 @@ const vi = {
   },
   layout: {
     brandSubtitle: 'Portfolio Tracker',
+    home: 'Về trang tổng quan',
     watchlistRadar: 'Danh sách theo dõi',
     openLiveBoard: 'Bảng giá trực tiếp',
     expandMenu: 'Phóng to menu',

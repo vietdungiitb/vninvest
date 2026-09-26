@@ -9,13 +9,16 @@ Run:
         python manage.py test identity_access.tests.test_tenantreg_a
 """
 import hashlib
+import re
 import secrets
 import threading
-from datetime import timedelta
+from datetime import datetime, timedelta
+from datetime import timezone as dt_timezone
 from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.db import IntegrityError, transaction
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework import status
@@ -534,9 +537,21 @@ class TenantRegAPasswordPolicyTests(TestCase):
         path. The rows below are created directly to reproduce that state, which
         the application-level `.exists()` check can still let happen.
         """
+        # The root cause is now closed: identity_access migration 9000 adds a partial
+        # UNIQUE index on lower(auth_user.email). This test used to build two rows
+        # sharing an address to prove the defensive lookup tolerated them; the
+        # database now refuses to create that state at all. So the assertion is
+        # inverted -- the constraint is the thing that must hold -- and the
+        # single surviving row is what the rest of the test then exercises.
+        # Wrapped in atomic() so the expected IntegrityError rolls back to a
+        # savepoint instead of poisoning the enclosing TestCase transaction. Both
+        # rows go inside, so the savepoint rolls back the FIRST insert too.
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                User.objects.create_user(username='dup_low', email='dup@vninvest.vn', password='DupPassword123!', is_active=True)
+                User.objects.create_user(username='dup_high', email='dup@vninvest.vn', password='DupPassword123!', is_active=True)
+        self.assertEqual(User.objects.filter(email__iexact='dup@vninvest.vn').count(), 0)
         User.objects.create_user(username='dup_low', email='dup@vninvest.vn', password='DupPassword123!', is_active=True)
-        User.objects.create_user(username='dup_high', email='dup@vninvest.vn', password='DupPassword123!', is_active=True)
-        self.assertEqual(User.objects.filter(email__iexact='dup@vninvest.vn').count(), 2)
         # The deterministically-resolved account needs the rest of its graph for
         # the login to complete.
         resolved = get_user_by_email('dup@vninvest.vn')
@@ -568,8 +583,12 @@ class TenantRegAPasswordPolicyTests(TestCase):
 
     def test_a10_duplicate_email_rows_do_not_500_on_reset_confirm(self):
         """A10: same 500, different endpoint."""
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                User.objects.create_user(username='dup2_low', email='dup2@vninvest.vn', password='Dup2Password123!', is_active=True)
+                User.objects.create_user(username='dup2_high', email='dup2@vninvest.vn', password='Dup2Password123!', is_active=True)
+        self.assertEqual(User.objects.filter(email__iexact='dup2@vninvest.vn').count(), 0)
         User.objects.create_user(username='dup2_low', email='dup2@vninvest.vn', password='Dup2Password123!', is_active=True)
-        User.objects.create_user(username='dup2_high', email='dup2@vninvest.vn', password='Dup2Password123!', is_active=True)
         _obj, raw_token = PasswordResetToken.generate_and_save(email='dup2@vninvest.vn', hours=1)
 
         response = self.client.post(
@@ -809,7 +828,16 @@ class TenantRegATenantWriteTests(TestCase):
         serializer.save()
         self.tenant.refresh_from_db()
         self.assertEqual(self.tenant.features, [])
-        self.assertIsNone(self.tenant.activated_at)
+        # The point of the assertion is that the CLIENT's 2030 value must not land.
+        # It is no longer `assertIsNone`, because slice C's C8 added a lifecycle
+        # post_save that legitimately stamps `activated_at` when the tenant is
+        # ACTIVE. So the correct invariant is "not the value the client sent" --
+        # checking against the sent value is what actually pins the read-only rule.
+        self.assertNotEqual(
+            self.tenant.activated_at,
+            datetime(2030, 1, 1, tzinfo=dt_timezone.utc),
+            "client-supplied activated_at must not be written",
+        )
         self.assertIsNone(self.tenant.suspended_at)
         self.assertIsNone(self.tenant.billing_period_start)
         self.assertIsNone(self.tenant.billing_period_end)
@@ -875,11 +903,20 @@ class TenantRegAOnboardingTests(TestCase):
         self.assertEqual(CoreTenant.objects.filter(owner_user=self.user).count(), 1)
 
     def test_a8_tenant_code_entropy_is_not_32_bits(self):
-        """A8: `secrets.token_hex(4)` is 8 hex chars = 32 bits on a UNIQUE column."""
+        """A8: `secrets.token_hex(4)` is 8 hex chars = 32 bits on a UNIQUE column.
+
+        The suffix is `secrets.token_urlsafe(12)`, i.e. 16 base64url characters.
+        It is extracted with an explicit `tenant-<id>-` prefix match rather than
+        `rsplit('-', 1)`: base64url's alphabet CONTAINS '-', so splitting on the
+        last dash is a coin flip on the random suffix and this test was itself
+        flaky.
+        """
         self.client.post('/core/v1/onboarding/register/', {'display_name': 'Entropy'}, format='json')
         tenant = CoreTenant.objects.get(owner_user=self.user)
-        suffix = tenant.tenant_code.rsplit('-', 1)[-1]
-        self.assertGreaterEqual(len(suffix), 16)
+        match = re.fullmatch(r'tenant-\d+-([A-Za-z0-9_-]+)', tenant.tenant_code)
+        self.assertIsNotNone(match, f'unexpected tenant_code shape: {tenant.tenant_code!r}')
+        suffix = match.group(1)
+        self.assertGreaterEqual(len(suffix), 16, 'tenant_code suffix must carry >= 96 bits')
 
     def test_a8_invalid_display_name_creates_nothing(self):
         """A8: validation runs before the database is touched."""

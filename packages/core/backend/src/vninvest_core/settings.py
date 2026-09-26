@@ -511,6 +511,15 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 300.0,  # every 5 minutes
         'options': {'queue': SCHEDULER_QUEUE_MAP['check-usage-thresholds']},
     },
+    # Slice C7: this was the ONLY code path that downgrades a tenant off a paid
+    # plan, and it was never in CELERY_BEAT_SCHEDULE -- so a cancelled starter
+    # subscription kept its paid entitlements forever. It now re-prices the current
+    # period's QuotaRecord on downgrade and writes a TenantLifecycleEvent.
+    'manage-subscriptions-lifecycle-hourly': {
+        'task': 'commercial.tasks.manage_subscriptions_lifecycle',
+        'schedule': 3600.0,  # hourly
+        'options': {'queue': SCHEDULER_QUEUE_MAP['manage-subscriptions-lifecycle-hourly']},
+    },
     'auto-deprovision-stale': {
         'task': 'tenant_lifecycle.tasks.auto_deprovision_stale',
         'schedule': crontab(day_of_week='0', hour='2', minute='0'),

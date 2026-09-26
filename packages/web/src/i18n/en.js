@@ -25,6 +25,9 @@ const en = {
     loadingSub: 'Route {route} is loading dynamically.',
     pageNotFound: 'Page {route} not found',
     verifyingAccount: 'Verifying your account...',
+    sessionExpired: 'Your session has expired. Please sign in again.',
+    bootstrapFailed: 'Could not load your account information. Please try again.',
+    bootstrapRetry: 'Try again',
   },
   plans: {
     free: 'Free',
@@ -39,6 +42,7 @@ const en = {
   },
   layout: {
     brandSubtitle: 'Portfolio Tracker',
+    home: 'Go to dashboard',
     watchlistRadar: 'Watchlist radar',
     openLiveBoard: 'Open live board',
     expandMenu: 'Expand menu',

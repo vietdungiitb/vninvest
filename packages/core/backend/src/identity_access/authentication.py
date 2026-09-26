@@ -2,6 +2,7 @@
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
+import hmac
 import ipaddress
 
 from .models import CorePATCredential
@@ -24,7 +25,7 @@ class CorePATAuthentication(BaseAuthentication):
         if not raw_secret:
             return None
 
-        credential = CorePATCredential.resolve_from_raw_secret(raw_secret)
+        credential = self._resolve_credential(request, raw_secret)
         if credential is None:
             raise AuthenticationFailed('Invalid or revoked PAT.')
 
@@ -77,6 +78,30 @@ class CorePATAuthentication(BaseAuthentication):
 
     def authenticate_header(self, request):
         return self.keyword
+
+    def _resolve_credential(self, request, raw_secret):
+        """Return the PAT for `raw_secret`, reusing the middleware's lookup.
+
+        `TenantResolutionMiddleware` runs before DRF and already resolves the PAT
+        to answer "which tenant is this request for?". Re-running that resolution
+        here meant a second HMAC plus a second indexed query on every single
+        authenticated request, and the two lookups could in principle disagree.
+
+        The cached credential is only trusted after re-deriving the hash of the
+        secret actually presented and comparing it in constant time, so a stale or
+        foreign `request._pat_credential` can never authorise a different token.
+        Anything that does not match falls through to the database.
+        """
+        cached = getattr(request, '_pat_credential', None)
+        if cached is not None:
+            from .models import _hash_pat_secret
+            try:
+                matches = hmac.compare_digest(cached.token_secret_hash, _hash_pat_secret(raw_secret))
+            except (AttributeError, TypeError):
+                matches = False
+            if matches:
+                return cached
+        return CorePATCredential.resolve_from_raw_secret(raw_secret)
 
 
 class CorePATAuthenticationScheme(OpenApiAuthenticationExtension):

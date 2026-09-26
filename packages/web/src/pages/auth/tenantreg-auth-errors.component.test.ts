@@ -271,18 +271,30 @@ describe("tenantreg — auth adapter wire contract", () => {
     expect(body).not.toHaveProperty("password_confirm");
   });
 
-  test("KNOWN BACKEND GAP: password_reset.py still reads the legacy key, so reset 400s", () => {
+  test("REGRESSION: the backend still accepts the key this adapter sends", () => {
+    // Was originally a gap report asserting the defect was PRESENT: the reset
+    // confirm view read only `password` while this adapter sent `new_password`, so
+    // every reset from the real UI 400'd. Slice A's fix landed, which is what made
+    // that test fail by design -- it told us to delete it. Deleting it outright
+    // would have thrown away the only guard against the backend silently dropping
+    // the canonical key again, so it is inverted instead: assert the fix STAYS.
     const backend = readFileSync(
       // HERE = <repo>/packages/web/src/pages/auth -> up 4 = <repo>/packages
       join(HERE, "../../../../core/backend/src/identity_access/views/password_reset.py"),
       "utf8",
     );
-    const readKey = /request\.data\.get\('(new_password|password)'/.exec(backend)?.[1];
-    expect(readKey, "could not determine which password key the backend reads").toBeTruthy();
+    const readKey = /CANONICAL_PASSWORD_KEY\s*=\s*'([a-z_]+)'/.exec(backend)?.[1];
+    const legacyKey = /LEGACY_PASSWORD_KEY\s*=\s*'([a-z_]+)'/.exec(backend)?.[1];
+    expect(readKey, "could not determine which password key is canonical").toBeTruthy();
     expect(
       readKey,
-      "password_reset_confirm_view no longer reads the legacy `password` key — slice A's fix has landed, " +
-        "so this gap report and the note in adapters/core/auth.js can be deleted",
+      "the canonical password key is no longer `new_password` -- the reset flow is broken " +
+        "end to end for every user, because the frontend sends `new_password`.",
+    ).toBe("new_password");
+    expect(
+      legacyKey,
+      "the legacy `password` key must stay accepted for one release so older clients " +
+        "are not locked out of password reset.",
     ).toBe("password");
   });
 

@@ -557,8 +557,17 @@ def resend_email_verification_view(request):
                 "email": user.email,
             }
 
+            # Resend is NOT a registration. It gets its own event type so the two
+            # flows stay distinguishable in the outbox table (and in any audit that
+            # counts "registrations" from it). Both types route to the same email
+            # consumer -- see data_ingest/tasks.py _OUTBOX_CONSUMERS -- so this is a
+            # semantics fix, not a routing fix. Imported inside the branch because
+            # data_ingest.tasks pulls in celery; a module-level import would make
+            # this view module pay for celery on every import.
+            from data_ingest.tasks import EMAIL_VERIFICATION_REQUESTED_EVENT
+
             outbox_event = OutboxEvent.objects.create(
-                event_type='UserRegisteredEvent',
+                event_type=EMAIL_VERIFICATION_REQUESTED_EVENT,
                 payload=event_payload,
                 status=OutboxEvent.STATUS_PENDING
             )

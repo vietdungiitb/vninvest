@@ -107,7 +107,7 @@ export function UserSettingsPage({ className = "" }: UserSettingsPageProps) {
         avatar_url: String(profile.avatar_url ?? ""),
         language: String(profile.language ?? "vi"),
         theme: String(profile.theme ?? "light"),
-        whale_alert_threshold: String(profile.whale_alert_threshold ?? "500000000"),
+        whale_alert_threshold: String(profile.whale_alert_threshold ?? "500"),
       };
       setForm(nextForm);
       applyUserTheme(nextForm.theme);
@@ -210,7 +210,7 @@ export function UserSettingsPage({ className = "" }: UserSettingsPageProps) {
         )
       ),
       e("label", null, t("userSettings.whaleThreshold", { defaultValue: "Ngưỡng cảnh báo cá mập (VND):" }),
-        e("input", { name: "whale_alert_threshold", type: "number", min: "0", step: "1000000", value: form.whale_alert_threshold, onChange: handleChange })
+        e("input", { name: "whale_alert_threshold", type: "number", min: "0", step: "10", value: form.whale_alert_threshold, onChange: handleChange })
       ),
       e("button", { type: "submit", disabled: saving },
         saving
@@ -229,16 +229,16 @@ export function UserSettingsPage({ className = "" }: UserSettingsPageProps) {
             onChange: handlePwChange, autoComplete: "current-password",
           })
         ),
-        e("label", null, t("userSettings.newPassword", { defaultValue: "Mật khẩu mới (≥8 ký tự):" }),
+        e("label", null, t("userSettings.newPassword", { defaultValue: "Mật khẩu mới (≥10 ký tự):" }),
           e("input", {
             name: "new_password", type: "password", value: pwForm.new_password,
-            onChange: handlePwChange, minLength: 8, autoComplete: "new-password",
+            onChange: handlePwChange, minLength: 10, autoComplete: "new-password",
           })
         ),
         e("label", null, t("userSettings.newPasswordConfirm", { defaultValue: "Nhập lại mật khẩu mới:" }),
           e("input", {
             name: "new_password_confirm", type: "password", value: pwForm.new_password_confirm,
-            onChange: handlePwChange, minLength: 8, autoComplete: "new-password",
+            onChange: handlePwChange, minLength: 10, autoComplete: "new-password",
           })
         ),
         e("button", { type: "submit", disabled: pwSaving },

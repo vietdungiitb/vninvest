@@ -122,8 +122,20 @@ def login_view(request):
     # 4. Resolve the candidate account.
     user_check = get_user_by_username(auth_username)
 
-    # 5. Authenticate credentials
-    user = authenticate(request, username=auth_username, password=password)
+    # 5. Authenticate credentials.
+    # Authenticate with the RESOLVED row's username, not the raw client input.
+    # `get_user_by_username` matches case-insensitively (`username__iexact`), but
+    # Django's ModelBackend does an EXACT `get(username=...)` -- so a user who typed
+    # "VietDung" against a stored "vietdung" resolved the row on line 123 and then
+    # failed authentication anyway, with a misleading "wrong credentials". The
+    # registration serializer lowercases on the way in, so accounts created through
+    # this API are already lowercase; this line makes accounts created by any other
+    # route (admin, seed, import) reachable instead of silently locked out.
+    user = authenticate(
+        request,
+        username=user_check.username if user_check is not None else auth_username,
+        password=password,
+    )
     if user is None:
         # A7: `user_inactive` used to be returned BEFORE the password was ever
         # checked, so an unauthenticated caller could confirm that any username

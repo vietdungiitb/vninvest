@@ -41,6 +41,12 @@ class TenantResolutionMiddleware:
         '/core/v1/schema/',
         '/core/v1/schema/swagger-ui/',
         '/core/v1/schema/redoc/',
+        # Self-service tenant registration. Without this the middleware resolves a
+        # tenant and returns 403 'tenant_not_found' BEFORE the view runs -- for
+        # exactly the only kind of user this endpoint serves (someone who has no
+        # tenant yet). The view is already gated by IsAuthenticated and, since the
+        # slice-A fix, by IsTenantActive, so exempting it here opens no hole.
+        '/core/v1/onboarding/',
     )
 
     def __init__(self, get_response):
