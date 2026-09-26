@@ -1,0 +1,203 @@
+{
+  "_comment": "PA-2 / P0-DATA-03 golden fixtures cho user_workspace.ledger.holdings.compute_ledger. Mọi case chạy thuần, không cần DB. Số tiền kỳ vọng đã quantize 2 chữ số ROUND_HALF_UP, tolerance 0.01 VND (plan:638).",
+  "calculation_version": "holdings-wa-v1",
+  "cost_method": "weighted_average",
+  "cases": [
+    {
+      "name": "buy",
+      "description": "Mua thuần: cost basis = price*qty, tiền mặt âm.",
+      "transactions": [
+        {"id": 1, "symbol": "VCB", "transaction_type": "BUY", "date": "2026-09-01", "price": "10.00", "quantity": 100, "fee": "0.00", "tax": "0.00", "external_id": ""}
+      ],
+      "expect": {
+        "holdings": {"VCB": {"quantity": 100, "avg_cost": "10.00", "total_cost": "1000.00"}},
+        "cash": "-1000.00",
+        "realized_pnl": "0.00",
+        "dividend_income": "0.00",
+        "fees_paid": "0.00",
+        "taxes_paid": "0.00",
+        "warning_codes": [],
+        "reconciliation_required": false
+      }
+    },
+    {
+      "name": "sell",
+      "description": "Bán một phần: realized P&L trừ cả phí lẫn thuế của lệnh bán.",
+      "transactions": [
+        {"id": 1, "symbol": "VCB", "transaction_type": "BUY", "date": "2026-09-01", "price": "10.00", "quantity": 100, "fee": "0.00", "tax": "0.00", "external_id": ""},
+        {"id": 2, "symbol": "VCB", "transaction_type": "SELL", "date": "2026-09-05", "price": "12.00", "quantity": 40, "fee": "5.00", "tax": "1.00", "external_id": ""}
+      ],
+      "expect": {
+        "holdings": {"VCB": {"quantity": 60, "avg_cost": "10.00", "total_cost": "600.00"}},
+        "cash": "-526.00",
+        "realized_pnl": "74.00",
+        "realized_by_symbol": {"VCB": "74.00"},
+        "dividend_income": "0.00",
+        "fees_paid": "5.00",
+        "taxes_paid": "1.00",
+        "warning_codes": [],
+        "reconciliation_required": false
+      }
+    },
+    {
+      "name": "buy_sell_sell_flat",
+      "description": "Hết hàng: cost basis về 0 nhưng realized P&L được giữ lại (lỗi cũ xoá cứng).",
+      "transactions": [
+        {"id": 1, "symbol": "VCB", "transaction_type": "BUY", "date": "2026-09-01", "price": "10.00", "quantity": 100, "fee": "0.00", "tax": "0.00", "external_id": ""},
+        {"id": 2, "symbol": "VCB", "transaction_type": "SELL", "date": "2026-09-03", "price": "11.00", "quantity": 60, "fee": "0.00", "tax": "0.00", "external_id": ""},
+        {"id": 3, "symbol": "VCB", "transaction_type": "SELL", "date": "2026-09-05", "price": "12.00", "quantity": 40, "fee": "0.00", "tax": "0.00", "external_id": ""}
+      ],
+      "expect": {
+        "holdings": {},
+        "cash": "140.00",
+        "realized_pnl": "140.00",
+        "realized_by_symbol": {"VCB": "140.00"},
+        "dividend_income": "0.00",
+        "fees_paid": "0.00",
+        "taxes_paid": "0.00",
+        "warning_codes": [],
+        "reconciliation_required": false
+      }
+    },
+    {
+      "name": "dividend",
+      "description": "D-06: cổ tức là cash flow — tăng tiền mặt, KHÔNG giảm avg_cost, KHÔNG tăng quantity.",
+      "transactions": [
+        {"id": 1, "symbol": "VCB", "transaction_type": "BUY", "date": "2026-09-01", "price": "10.00", "quantity": 100, "fee": "0.00", "tax": "0.00", "external_id": ""},
+        {"id": 2, "symbol": "VCB", "transaction_type": "DIVIDEND", "date": "2026-09-10", "price": "1.50", "quantity": 100, "fee": "0.00", "tax": "0.00", "external_id": "brk-div-1"}
+      ],
+      "expect": {
+        "holdings": {"VCB": {"quantity": 100, "avg_cost": "10.00", "total_cost": "1000.00"}},
+        "cash": "-850.00",
+        "realized_pnl": "0.00",
+        "dividend_income": "150.00",
+        "fees_paid": "0.00",
+        "taxes_paid": "0.00",
+        "warning_codes": [],
+        "reconciliation_required": false
+      }
+    },
+    {
+      "name": "fee_tax",
+      "description": "AC-5: BUY 100 giá 10 fee 1 tax 0.5 ⇒ cost basis 1001.50. SELL 50 giá 12 fee 2 tax 1 ⇒ realized = (12 - 10.015)*50 - 2 - 1 = 96.25.",
+      "transactions": [
+        {"id": 1, "symbol": "VCB", "transaction_type": "BUY", "date": "2026-09-01", "price": "10.00", "quantity": 100, "fee": "1.00", "tax": "0.50", "external_id": ""},
+        {"id": 2, "symbol": "VCB", "transaction_type": "SELL", "date": "2026-09-05", "price": "12.00", "quantity": 50, "fee": "2.00", "tax": "1.00", "external_id": ""}
+      ],
+      "expect": {
+        "holdings": {"VCB": {"quantity": 50, "avg_cost": "10.02", "total_cost": "500.75"}},
+        "cash": "-404.50",
+        "realized_pnl": "96.25",
+        "realized_by_symbol": {"VCB": "96.25"},
+        "dividend_income": "0.00",
+        "fees_paid": "3.00",
+        "taxes_paid": "1.50",
+        "warning_codes": [],
+        "reconciliation_required": false
+      }
+    },
+    {
+      "name": "oversell",
+      "description": "AC-7: bán vượt số lượng đang giữ phải BÁO, không clamp im lặng. Phần vượt không vào P&L.",
+      "transactions": [
+        {"id": 1, "symbol": "VCB", "transaction_type": "BUY", "date": "2026-09-01", "price": "10.00", "quantity": 100, "fee": "0.00", "tax": "0.00", "external_id": ""},
+        {"id": 2, "symbol": "VCB", "transaction_type": "SELL", "date": "2026-09-05", "price": "12.00", "quantity": 150, "fee": "0.00", "tax": "0.00", "external_id": ""}
+      ],
+      "expect": {
+        "holdings": {},
+        "cash": "200.00",
+        "realized_pnl": "200.00",
+        "realized_by_symbol": {"VCB": "200.00"},
+        "dividend_income": "0.00",
+        "fees_paid": "0.00",
+        "taxes_paid": "0.00",
+        "warning_codes": ["oversell"],
+        "warning_detail": {
+          "transaction_id": 2,
+          "symbol": "VCB",
+          "requested_quantity": "150",
+          "sellable_quantity": "100",
+          "position_quantity_before": "100",
+          "excess_quantity": "50"
+        },
+        "reconciliation_required": true
+      }
+    },
+    {
+      "name": "buy_again_after_flat",
+      "description": "Mua lại sau khi hết hàng: cost basis mới, KHÔNG trộn với position đã đóng; realized P&L cũ vẫn còn.",
+      "transactions": [
+        {"id": 1, "symbol": "VCB", "transaction_type": "BUY", "date": "2026-09-01", "price": "10.00", "quantity": 100, "fee": "0.00", "tax": "0.00", "external_id": ""},
+        {"id": 2, "symbol": "VCB", "transaction_type": "SELL", "date": "2026-09-05", "price": "12.00", "quantity": 100, "fee": "0.00", "tax": "0.00", "external_id": ""},
+        {"id": 3, "symbol": "VCB", "transaction_type": "BUY", "date": "2026-09-10", "price": "20.00", "quantity": 50, "fee": "0.00", "tax": "0.00", "external_id": ""}
+      ],
+      "expect": {
+        "holdings": {"VCB": {"quantity": 50, "avg_cost": "20.00", "total_cost": "1000.00"}},
+        "cash": "-800.00",
+        "realized_pnl": "200.00",
+        "realized_by_symbol": {"VCB": "200.00"},
+        "dividend_income": "0.00",
+        "fees_paid": "0.00",
+        "taxes_paid": "0.00",
+        "warning_codes": [],
+        "reconciliation_required": false
+      }
+    },
+    {
+      "name": "non_positive_quantity",
+      "description": "AC-8: quantity <= 0 bị từ chối + cảnh báo, cost basis không bị hỏng.",
+      "transactions": [
+        {"id": 1, "symbol": "VCB", "transaction_type": "BUY", "date": "2026-09-01", "price": "10.00", "quantity": 100, "fee": "0.00", "tax": "0.00", "external_id": ""},
+        {"id": 2, "symbol": "VCB", "transaction_type": "BUY", "date": "2026-09-02", "price": "11.00", "quantity": 0, "fee": "0.00", "tax": "0.00", "external_id": ""},
+        {"id": 3, "symbol": "VCB", "transaction_type": "SELL", "date": "2026-09-03", "price": "12.00", "quantity": -5, "fee": "0.00", "tax": "0.00", "external_id": ""}
+      ],
+      "expect": {
+        "holdings": {"VCB": {"quantity": 100, "avg_cost": "10.00", "total_cost": "1000.00"}},
+        "cash": "-1000.00",
+        "realized_pnl": "0.00",
+        "dividend_income": "0.00",
+        "fees_paid": "0.00",
+        "taxes_paid": "0.00",
+        "warning_codes": ["non_positive_quantity", "non_positive_quantity"],
+        "reconciliation_required": true
+      }
+    },
+    {
+      "name": "sell_without_position",
+      "description": "Bán khi chưa có position: ghi nhận dòng tiền, KHÔNG tính P&L vì không có cost basis để trừ, và phải cảnh báo.",
+      "transactions": [
+        {"id": 1, "symbol": "ACB", "transaction_type": "SELL", "date": "2026-09-01", "price": "5.00", "quantity": 10, "fee": "0.00", "tax": "0.00", "external_id": ""}
+      ],
+      "expect": {
+        "holdings": {},
+        "cash": "50.00",
+        "realized_pnl": "0.00",
+        "dividend_income": "0.00",
+        "fees_paid": "0.00",
+        "taxes_paid": "0.00",
+        "warning_codes": ["sell_without_position"],
+        "reconciliation_required": true
+      }
+    },
+    {
+      "name": "empty",
+      "description": "Không có giao dịch: mọi số phải là 0 có căn cứ, as_of = null kèm lý do, stale = true.",
+      "transactions": [],
+      "expect": {
+        "holdings": {},
+        "cash": "0.00",
+        "realized_pnl": "0.00",
+        "dividend_income": "0.00",
+        "fees_paid": "0.00",
+        "taxes_paid": "0.00",
+        "warning_codes": [],
+        "reconciliation_required": false,
+        "as_of": null,
+        "as_of_reason": "no_transactions",
+        "source": "unknown",
+        "stale": true,
+        "stale_reason": "no_transactions"
+      }
+    }
+  ]
+}
