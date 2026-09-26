@@ -6,6 +6,29 @@
  */
 
 export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, coreDelete }) {
+  /**
+   * Sinh `Idempotency-Key` mới cho mỗi lần bấm đặt lệnh.
+   *
+   * BE so sánh fingerprint của payload với key đã claim: cùng key + cùng payload ⇒
+   * replay trả kết quả cũ; cùng key + khác payload ⇒ `idempotency_key_conflict`.
+   * Vì vậy KHÔNG cache key theo symbol hay theo form — phải mới mỗi lần submit.
+   */
+  function newOrderIdempotencyKey() {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+    return `dnse-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+  }
+
+  /** `mode` bắt buộc cho cả 3 endpoint DNSE (SAFE-01 fail-closed). */
+  function resolveDnseMode(data) {
+    const mode = (data && data.mode) || "paper";
+    if (mode !== "paper" && mode !== "live") {
+      throw new Error(`mode "${mode}" không hợp lệ. Chỉ nhận "paper" hoặc "live".`);
+    }
+    return mode;
+  }
+
   return {
     /**
      * List portfolios for the authenticated user.
@@ -339,35 +362,60 @@ export function createWorkspaceClient({ coreGet, corePost, corePut, corePatch, c
 
     /**
      * Gửi OTP email cho phiên giao dịch DNSE.
-     * @param {{ dry_run?: boolean }} [params]
+     *
+     * BE (`views_dnse.py:dnse_send_email_otp_api`) cũng gọi `_resolve_order_mode` nên
+     * thiếu `mode` ⇒ 400 `order_mode_required`. `dry_run` boolean đã bị BE từ chối.
+     *
+     * @param {{ mode?: 'paper'|'live' }} [params]
      */
     sendDNSEEmailOtp(params = {}) {
-      return corePost("/broker/dnse/send-email-otp/", params);
+      return corePost("/broker/dnse/send-email-otp/", { ...params, mode: resolveDnseMode(params) });
     },
 
     /**
      * Tạo trading token DNSE từ OTP/passcode.
-     * @param {{ otp_type?: string, passcode: string, dry_run?: boolean }} data
+     *
+     * BE (`views_dnse.py:dnse_create_trading_token_api`) cũng cần `mode`.
+     *
+     * @param {{ otp_type?: string, passcode: string, mode?: 'paper'|'live' }} data
      */
     createDNSETradingToken(data) {
       if (!data || !data.passcode) {
         throw new Error("passcode là bắt buộc để tạo trading token DNSE.");
       }
-      return corePost("/broker/dnse/create-trading-token/", data);
+      return corePost("/broker/dnse/create-trading-token/", { ...data, mode: resolveDnseMode(data) });
     },
 
     /**
      * Đặt lệnh DNSE với trading token hợp lệ.
-     * @param {{ market_type?: string, order_category?: string, trading_token: string, payload: object, dry_run?: boolean }} data
+     *
+     * BE (`views_dnse.py`) fail-closed từ SAFE-01: `mode` bắt buộc trong body và
+     * `Idempotency-Key` bắt buộc là **header**. Thiếu một trong hai ⇒ 400
+     * (`order_mode_required` / `idempotency_key_required`). FE chỉ gửi
+     * `mode: 'paper'`; `live` bị từ chối với `live_ordering_disabled` cho tới khi
+     * có policy + OTP + risk limit + commercial license.
+     *
+     * `idempotencyKey` phải MỚI cho mỗi lần bấm đặt lệnh. Dùng lại key cũ với
+     * payload khác ⇒ `idempotency_key_conflict`; dùng lại key cũ với payload
+     * giống ⇒ trả lại kết quả cũ (replay) thay vì đặt lệnh hai lần.
+     *
+     * @param {{ market_type?: string, order_category?: string, trading_token: string, payload: object, mode?: 'paper'|'live' }} data
+     * @param {{ idempotencyKey?: string }} [options]
      */
-    placeDNSEOrder(data) {
+    placeDNSEOrder(data, options = {}) {
       if (!data || !data.trading_token) {
         throw new Error("trading_token là bắt buộc để đặt lệnh DNSE.");
       }
       if (!data.payload || typeof data.payload !== "object") {
         throw new Error("payload đặt lệnh DNSE không hợp lệ.");
       }
-      return corePost("/broker/dnse/place-order/", data);
+      const mode = resolveDnseMode(data);
+      const idempotencyKey = (options.idempotencyKey || newOrderIdempotencyKey()).trim();
+      return corePost(
+        "/broker/dnse/place-order/",
+        { market_type: "STOCK", order_category: "NORMAL", ...data, mode },
+        { headers: { "Idempotency-Key": idempotencyKey } },
+      );
     },
 
     /**

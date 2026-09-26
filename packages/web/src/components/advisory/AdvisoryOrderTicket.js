@@ -40,7 +40,12 @@ export function AdvisoryOrderTicket({ advisory, symbol, onClose, placeOrder = nu
     setError('');
     try {
       const post = placeOrder || ((data) => coreApiAdapter.placeDNSEOrder(data));
+      // PA-5: BE fail-closed (SAFE-01) — `mode` bắt buộc trong body, `Idempotency-Key`
+      // bắt buộc là header (adapter tự sinh key mới mỗi lần submit). Chỉ gửi
+      // `paper`; `live` bị từ chối (`live_ordering_disabled`) cho tới khi có policy
+      // + OTP + risk limit + commercial license vnbroker.
       const res = await post({
+        mode: 'paper',
         market_type: 'STOCK',
         order_category: 'NORMAL',
         trading_token: token.trim(),
