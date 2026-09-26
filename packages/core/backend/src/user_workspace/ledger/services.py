@@ -143,6 +143,17 @@ def _deserialize(payload):
             symbol: {k: d(v) for k, v in position.items()}
             for symbol, position in payload['holdings'].items()
         },
+        # `_serialize` luu `as_of` thanh chuoi ISO de JSON-safe. Phai khoi phuc
+        # ve `date` o day, nguoc lai voi moi field `Decimal` ben tren — neu
+        # khong, `build_meta` go `.isoformat()` tren `str` => AttributeError =>
+        # HTTP 500 tren moi duong CACHE-HIT (chi request tinh tay moi duoc).
+        'meta': {
+            **payload['meta'],
+            'as_of': (
+                date_cls.fromisoformat(payload['meta']['as_of'])
+                if payload['meta'].get('as_of') else None
+            ),
+        },
     }
 
 
@@ -220,11 +231,20 @@ def build_meta(ledger):
     """`meta` provenance theo audit §H3, JSON-safe."""
     meta = dict(ledger['meta'])
     as_of = meta.get('as_of')
+    # `as_of` la `date` khi moi tinh va tren duong cache-hit (xem
+    # `_deserialize`). Nhan `str` de an toan khi gap cache entry do ban
+    # `_serialize` cu hon ghi vao — serializer nay khong bao gio duoc nem 500.
+    if isinstance(as_of, date_cls):
+        as_of_iso = as_of.isoformat()
+    elif isinstance(as_of, str):
+        as_of_iso = as_of
+    else:
+        as_of_iso = None
     return {
         'tenant_id': meta.get('tenant_id'),
         'portfolio_id': meta.get('portfolio_id'),
-        'as_of': as_of.isoformat() if as_of is not None else None,
-        'as_of_precision': 'date' if as_of is not None else None,
+        'as_of': as_of_iso,
+        'as_of_precision': 'date' if as_of_iso is not None else None,
         'as_of_reason': meta.get('as_of_reason'),
         'source': meta.get('source'),
         'stale': meta.get('stale'),

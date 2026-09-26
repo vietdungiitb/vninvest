@@ -31,7 +31,6 @@ _EXTRA_FORWARD_HEADERS = frozenset(
 FORWARD_HEADERS = _DEFAULT_FORWARD_HEADERS | _EXTRA_FORWARD_HEADERS
 
 # BL-03: only these response headers pass back (never Set-Cookie from legacy).
-# BL-03: only these response headers pass back (never Set-Cookie from legacy).
 RESPONSE_PASS_HEADERS = frozenset({'content-type', 'x-request-id'})
 
 # BL-14: deprecation advertisement. Removal only after traffic measurement
@@ -55,7 +54,21 @@ def _tls_verify():
 
 @csrf_exempt
 def legacy_proxy_view(request, remaining):
-    target_url = f"{settings.LEGACY_BACKEND_URL.rstrip('/')}/api/{remaining}"
+    backend_url = (settings.LEGACY_BACKEND_URL or '').strip()
+    if not backend_url:
+        # `/api/*` la catch-all cuoi cung urlpatterns. Config thieu thi moi
+        # request lai day deu tra loi — 503 + code ro hon la 502 "upstream chet",
+        # va biet ngay la config chu khong phai legacy backend.
+        logger.error(
+            "[PROXY] %s /api/%s -> 503 (LEGACY_BACKEND_URL chua duoc dat)",
+            request.method, remaining,
+        )
+        return _deprecated_response(JsonResponse(
+            {'detail': 'Legacy backend is not configured.', 'code': 'LEGACY_BACKEND_NOT_CONFIGURED'},
+            status=503,
+        ))
+
+    target_url = f"{backend_url.rstrip('/')}/api/{remaining}"
     query = request.META.get('QUERY_STRING', '')
     if query:
         target_url = f"{target_url}?{query}"
@@ -81,7 +94,11 @@ def legacy_proxy_view(request, remaining):
                 content=request.body,
                 follow_redirects=False,
             )
-    except (httpx.ConnectError, httpx.TimeoutException) as e:
+    except httpx.TransportError as e:
+        # `TransportError` la lop cha cua moi loi cap giao thuc: `ConnectError`,
+        # `TimeoutException`, `ProtocolError` va `UnsupportedProtocol`. Bat tung
+        # lop con roi la `UnsupportedProtocol` lo ra Django => HTTP 500 thay vi
+        # 502 (URL thieu scheme khi LEGACY_BACKEND_URL rong).
         logger.debug("[PROXY] %s %s -> 502 (legacy backend unreachable: %s)", request.method, target_url, e)
         return _deprecated_response(JsonResponse(
             {'detail': 'Legacy backend unavailable.', 'code': 'LEGACY_BACKEND_DOWN'},
