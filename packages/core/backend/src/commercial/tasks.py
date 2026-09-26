@@ -12,6 +12,12 @@ from django.core.cache import cache
 from django.utils import timezone
 
 from commercial.models import Invoice, QuotaRecord, Subscription, QuotaHistory
+from commercial.plan_catalog import (
+    PLAN_ENTITLEMENTS,
+    get_api_calls_limit,
+    get_meter_entitlement,
+    is_plan_derived_api_calls_limit,
+)
 from identity_access.models import CoreTenant
 
 
@@ -28,25 +34,24 @@ ALERT_COOLDOWN_HOURS = 6
 ALERT_COOLDOWN_SECONDS = ALERT_COOLDOWN_HOURS * 3600
 
 # Plan-based entitlement for meters not yet backed by a dedicated QuotaRecord field.
+#
+# C2: this used to be a hand-written table that had drifted from every other plan
+# table in the repo. It is now DERIVED from commercial.plan_catalog.PLAN_ENTITLEMENTS
+# so there is exactly one place to change a plan's entitlement.
 # -1 means unlimited; 0 means the plan does not include this meter.
 # free/starter do NOT have ai_regenerate/exports; pro/enterprise have full (unlimited).
+#
+# Shape is intentionally UNCHANGED (meter -> plan -> value) because two live
+# consumers index it that way: snapshot_quota_history (below) and
+# check_usage_thresholds (meter_code -> plan -> value).
+METER_NAMES: tuple[str, ...] = ('ai_regenerate', 'exports')
+
 METER_ENTITLEMENT_BY_PLAN: dict[str, dict[str, int]] = {
-    'ai_regenerate': {
-        'free': 0,
-        'starter': 0,
-        'pro': -1,
-        'enterprise': -1,
-        'custom': -1,
-        'internal': -1,
-    },
-    'exports': {
-        'free': 0,
-        'starter': 0,
-        'pro': -1,
-        'enterprise': -1,
-        'custom': -1,
-        'internal': -1,
-    },
+    meter: {
+        plan_code: get_meter_entitlement(plan_code, meter)
+        for plan_code in PLAN_ENTITLEMENTS
+    }
+    for meter in METER_NAMES
 }
 
 
@@ -137,11 +142,20 @@ def flush_quota_counters(self, target_date: str | None = None):
                 continue
 
             used_calls = _cache_get_int(raw_key)
+            # C2 FIX: the record used to be created with api_calls_limit left at the
+            # model default of -1 (= unlimited) and NOTHING ever wrote a positive
+            # value, so quota was never enforced for any tenant: the middleware guard
+            # skips negative limits, X-Quota-Warning never appeared, and
+            # auto_suspend_quota_overflow (which filters api_calls_limit__gt=-1)
+            # could never match. Seed the canonical plan entitlement at period open.
             quota_record, _ = QuotaRecord.objects.get_or_create(
                 tenant=tenant,
                 period_start=period_start,
                 period_end=period_end,
-                defaults={'api_calls_used': 0},
+                defaults={
+                    'api_calls_used': 0,
+                    'api_calls_limit': get_api_calls_limit(tenant.plan),
+                },
             )
             if quota_record.api_calls_used != used_calls:
                 quota_record.api_calls_used = used_calls
@@ -591,5 +605,104 @@ def _log_tenant_lifecycle_event(tenant: CoreTenant, meter_code: str, level: str)
         )
     except Exception as exc:
         logging.getLogger(__name__).error('Failed to create TenantLifecycleEvent: %s', exc)
-    except Exception as exc:
-        logging.getLogger(__name__).error('Failed to create TenantLifecycleEvent: %s', exc)
+
+
+# ---------------------------------------------------------------------------
+# C2 — quota entitlement backfill
+# ---------------------------------------------------------------------------
+# Run manually after deploy:
+#   python manage.py shell -c "from commercial.tasks import backfill_quota_entitlements as b; print(b(dry_run=True))"
+#   python manage.py shell -c "from commercial.tasks import backfill_quota_entitlements as b; print(b())"
+#
+# Deliberately a TASK, not a migration: writing an entitlement onto a live quota
+# table changes what customers are allowed to do (see the report — free goes
+# 10000 -> 1000), so it must be reviewable and reversible per tenant. A migration
+# would apply that silently on every deploy.
+#
+# SAFETY: a limit that is NOT one of the canonical plan values is treated as a
+# hand-negotiated override (e.g. an enterprise deal at 2,000,000) and is left alone.
+# Only rows whose limit is plan-derived, or that were never seeded (-1 default),
+# are repaired. Idempotent: a second run reports zero changes.
+@shared_task(name='commercial.tasks.backfill_quota_entitlements', bind=True, max_retries=1, default_retry_delay=300)
+def backfill_quota_entitlements(self, dry_run: bool = False, include_deprovisioned: bool = False):
+    """Seed/repair QuotaRecord.api_calls_limit from the canonical plan entitlement.
+
+    Also makes sure every live tenant has a QuotaRecord for the CURRENT period, so
+    identity_access/middleware.py:_get_tenant_quota_limit (which only ever reads
+    QuotaRecord and falls back to -1 = unlimited) finds a real limit without needing
+    a middleware change.
+    """
+    today = timezone.now().date()
+    period_start, period_end = _current_billing_period(today)
+
+    tenants = CoreTenant.objects.all()
+    if not include_deprovisioned:
+        tenants = tenants.exclude(status=CoreTenant.StatusChoices.DEPROVISIONED)
+
+    stats = {
+        'dry_run': bool(dry_run),
+        'tenants_scanned': 0,
+        'records_created': 0,
+        'limits_repaired': 0,
+        'overrides_preserved': 0,
+        'tenant_limits_repaired': 0,
+        'changes': [],
+    }
+
+    for tenant in tenants.iterator():
+        stats['tenants_scanned'] += 1
+        expected_limit = get_api_calls_limit(tenant.plan)
+
+        # 1. The tenant-level fallback the middleware *can* use.
+        if (
+            tenant.api_calls_limit != expected_limit
+            and is_plan_derived_api_calls_limit(tenant.api_calls_limit)
+        ):
+            stats['tenant_limits_repaired'] += 1
+            stats['changes'].append(
+                f'tenant {tenant.public_id} plan={tenant.plan} '
+                f'api_calls_limit {tenant.api_calls_limit} -> {expected_limit}'
+            )
+            if not dry_run:
+                CoreTenant.objects.filter(pk=tenant.pk).update(api_calls_limit=expected_limit)
+        elif tenant.api_calls_limit != expected_limit:
+            stats['overrides_preserved'] += 1
+
+        # 2. The period record the middleware actually reads first.
+        record = QuotaRecord.objects.filter(
+            tenant=tenant,
+            period_start=period_start,
+            period_end=period_end,
+        ).first()
+        if record is None:
+            stats['records_created'] += 1
+            stats['changes'].append(
+                f'quota_record {tenant.public_id} {period_start}->{period_end} '
+                f'created with limit {expected_limit}'
+            )
+            if not dry_run:
+                QuotaRecord.objects.create(
+                    tenant=tenant,
+                    period_start=period_start,
+                    period_end=period_end,
+                    api_calls_used=max(0, int(tenant.api_calls_used or 0)),
+                    api_calls_limit=expected_limit,
+                )
+            continue
+
+        if record.api_calls_limit != expected_limit:
+            if is_plan_derived_api_calls_limit(record.api_calls_limit):
+                stats['limits_repaired'] += 1
+                stats['changes'].append(
+                    f'quota_record {tenant.public_id} {period_start}->{period_end} '
+                    f'limit {record.api_calls_limit} -> {expected_limit}'
+                )
+                if not dry_run:
+                    QuotaRecord.objects.filter(pk=record.pk).update(
+                        api_calls_limit=expected_limit
+                    )
+            else:
+                stats['overrides_preserved'] += 1
+
+    logger.info('backfill_quota_entitlements: %s', {k: v for k, v in stats.items() if k != 'changes'})
+    return stats
