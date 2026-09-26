@@ -152,3 +152,12 @@ nhánh (`merge=union`). Migration duy nhất `0019_pf4_tenant_and_financial_guar
   (portfolio/watchlist/subaccount/screener list) — cùng họ P0-ISO-02, cần ticket riêng.
 - **P0-SEC-01 `CHƯA XỬ LÝ`** — chờ owner revoke/rotate. Xem `docs/evidence/portfolio-commercial/SEC-01-REPORT.md`.
 - **P0-LEGAL-01** — license `vnbroker` chưa ký ⇒ **R3 live trading không tồn tại**.
+
+## legacy_proxy 502 guard (2026-09-26)
+
+Worktree = `C:\Mujoco Projects\lp-guard`, branch `feat/lp-guard`, DB `ag_lp_guard`.
+Đóng B5 trong `docs/evidence/portfolio-commercial/AUDIT_VERIFICATION_20260926.md` §14 / rà soát backlog 2026-09-26.
+
+| agent | branch | scope | files | status | since | note |
+|---|---|---|---|---|---|---|
+| `lp-guard` | `feat/lp-guard` | `legacy_proxy` bat `httpx.TransportError` (thay vi `ConnectError`+`TimeoutException`) + guard `LEGACY_BACKEND_URL` rong + regression test | `packages/core/backend/src/vninvest_core/legacy_proxy.py`, `packages/core/backend/src/vninvest_core/tests/test_legacy_proxy_transport_error.py` (new) | in-progress | 2026-09-26 | Bug: `httpx.UnsupportedProtocol` là con của `TransportError` nhưng **không** phải `ConnectError`/`TimeoutException` ⇒ `legacy_proxy.py:84` không bắt ⇒ **HTTP 500 thay vì 502**. Route `/api/*` là catch-all cuối urlpatterns nên lỗi này phát ra mọi request chưa match native. **KHÔNG đụng `settings.py`** (đang claim bởi `tenantreg-s`) nên thay vì sửa default setting, thêm guard tại view trả `503 legacy_backend_not_configured`. KHÔNG tạo migration. Convention: `vninvest_core` dùng `tests/` package (`vninvest_core.tests.test_x`). |
