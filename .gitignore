@@ -43,6 +43,11 @@ frontend/.env.*.local
 .env.production
 .env.backend.production
 .env.saas-prod
+# Secret thật trong file env compose (chua P0-SEC-01: file nay tung duoc track
+# va chua DNSE_CREDENTIAL_FERNET_KEY hop le + 8 secret khac). File `.example`
+# van duoc track de CI/doc dung.
+compose*.env
+!compose*.env.example
 
 # ── Node / React ─────────────────────────────────────────────────────────────
 node_modules/
