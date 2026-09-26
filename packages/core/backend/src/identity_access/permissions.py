@@ -118,18 +118,43 @@ class IsTenantActive(BasePermission):
         if user.is_superuser:
             return True
 
-        tenant = getattr(user, 'core_tenant', None)
+        # B6: was `user.core_tenant` first. core_tenant is the REVERSE side of
+        # the CoreTenant.owner_user OneToOne, so it is the tenant the user
+        # *owns* - not necessarily the tenant the request is operating on. For a
+        # user who owns a SUSPENDED tenant A and is an active viewer in B, the
+        # middleware correctly resolved B and let the request through, and this
+        # permission then inspected A and denied. Authorization and quota were
+        # decided against a tenant the request was not even about.
+        # request.tenant is the tenant the rest of the stack is using, so it
+        # wins. core_tenant / owner / profile stay as fallbacks for contexts
+        # where the middleware did not run (exempt paths, direct DRF calls).
+        tenant = getattr(request, 'tenant', None)
+        if tenant is None:
+            tenant = getattr(user, 'core_tenant', None)
         if tenant is None:
             # Try to fetch from database (for force_authenticate in tests)
             try:
                 tenant = CoreTenant.objects.get(owner_user=user)
             except CoreTenant.DoesNotExist:
                 pass
-        
+
         if tenant is None:
-            profile = getattr(user, 'core_profile', None)
-            tenant = getattr(profile, 'tenant', None)
+            tenant = getattr(getattr(user, 'core_profile', None), 'tenant', None)
+
         if tenant is None:
+            # Fail-OPEN, deliberately and explicitly (unchanged from the
+            # previous behaviour at the equivalent line, so this introduces no
+            # new hole).
+            #
+            # Rationale: this class is a *status* gate, not an *authorization*
+            # gate. "No tenant resolved" means there is no tenant whose status
+            # could be blocked, and denying here would break every
+            # non-tenant-scoped endpoint (auth, billing, public, admin-ops) that
+            # legitimately has no tenant. The authorization gate is separate and
+            # untouched: TenantResolutionMiddleware answers 403
+            # `tenant_not_found` for an authenticated tenant-less user on any
+            # non-exempt path, IsCoreOperator guards operator endpoints, and
+            # _assert_pat_tenant_match fails closed for machine PATs.
             return True
 
         return tenant.status not in self.BLOCKED_STATUSES
