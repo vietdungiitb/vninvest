@@ -17,6 +17,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from django.utils import timezone
 
 import logging
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,11 @@ from .tasks import (
     sync_dnse_accounts_task,
     sync_dnse_balances_task,
 )
-from vninvest_core.exceptions import ValidationErrorException, NotFoundErrorException
+from vninvest_core.exceptions import (
+    InternalErrorException,
+    NotFoundErrorException,
+    ValidationErrorException,
+)
 
 #: side hợp lệ — `UNKNOWN` bị từ chối để luồng fail-closed ở BE cũng áp dụng.
 _ALLOWED_SIDES = ('BUY', 'SELL')
@@ -188,28 +193,97 @@ def _normalize_order_payload(payload: dict, market_type: str) -> dict:
     return normalized
 
 
-def _audit_order(request, market_type: str, payload: dict, outcome: str, dry_run: bool) -> None:
-    """Ghi audit đặt lệnh. Không để lỗi audit chặn luồng đặt lệnh."""
+#: X.2 — tên thao tác đầy đủ. Không dùng làm `action` vì cột hẹp 16 ký tự
+#: (`ops_audit/models.py:25`) ⇒ `varchar(16)` nhận chuỗi 18 ký tự ném
+#: `DataError`, bị `except Exception` nuốt, và còn làm hỏng transaction nên
+#: `ops_audit` `RequestTraceMiddleware` cũng không ghi được cho request đó.
+#: ⇒ đặt ở `metadata['operation']`, còn `action` dùng giá trị hợp lệ.
+_AUDIT_OPERATION = 'broker.place_order'
+_AUDIT_RESOURCE_TYPE = 'dnse_order'
+
+
+def _clip(value, limit: int) -> str:
+    return str(value or '')[:limit]
+
+
+def _create_audit_event(
+    request,
+    market_type: str,
+    order_category: str,
+    payload: dict,
+    outcome: str,
+    mode: str,
+    dry_run: bool,
+):
+    """Tạo dòng audit cho một lần đặt lệnh. Ném lỗi nếu ghi hỏng — caller quyết định."""
+    from ops_audit.models import AuditEvent
+    return AuditEvent.objects.create(
+        actor_user_id=request.user.id if getattr(request.user, 'is_authenticated', False) else None,
+        actor_label=_clip(getattr(request.user, 'username', ''), 120),
+        tenant_id=_clip(getattr(getattr(request, 'tenant', None), 'public_id', ''), 36),
+        # `action` phải nằm trong `AuditEvent.ActionChoices` và <= max_length.
+        action=AuditEvent.ActionChoices.CREATE,
+        resource_type=_AUDIT_RESOURCE_TYPE,
+        resource_id=_clip(payload.get('symbol'), 64),
+        request_id=_clip(getattr(request, 'request_id', ''), 36),
+        metadata={
+            'operation': _AUDIT_OPERATION,
+            'market_type': market_type,
+            'order_category': order_category,
+            'side': payload.get('side'),
+            'volume': payload.get(_VOLUME_KEY),
+            'outcome': outcome,
+            'mode': mode,
+            'dry_run': bool(dry_run),
+        },
+    )
+
+
+def _audit_order(
+    request,
+    market_type: str,
+    order_category: str,
+    payload: dict,
+    outcome: str,
+    mode: str,
+    dry_run: bool,
+):
+    """Ghi audit và TRẢ VỀ dòng đã tạo, hoặc `None` nếu ghi hỏng.
+
+    Fail-closed: trả `None` kèm log ERROR (không `logger.exception` rồi bỏ qua
+    im lặng) để caller từ chối thao tác thay vì tiếp tục không có dấu vết.
+    """
     try:
-        from ops_audit.models import AuditEvent
-        AuditEvent.objects.create(
-            actor_user_id=request.user.id if getattr(request.user, 'is_authenticated', False) else None,
-            actor_label=getattr(request.user, 'username', '') or '',
-            tenant_id=str(getattr(getattr(request, 'tenant', None), 'public_id', '') or ''),
-            action='broker.place_order',
-            resource_type='dnse_order',
-            resource_id=str(payload.get('symbol') or ''),
-            metadata={
-                'market_type': market_type,
-                'side': payload.get('side'),
-                'volume': payload.get('volume'),
-                'outcome': outcome,
-                'dry_run': bool(dry_run),
-            },
+        return _create_audit_event(
+            request, market_type, order_category, payload, outcome, mode, dry_run,
         )
     except Exception:
-        logger.exception('audit write failed for dnse place_order')
+        logger.error(
+            'AUDIT-UNAVAILABLE operation=%s outcome=%s resource=%s — %s',
+            _AUDIT_OPERATION, outcome, _clip(payload.get('symbol'), 64),
+            traceback.format_exc(),
+        )
+        return None
 
+
+def _finalize_audit_event(event, outcome: str) -> bool:
+    """Ghi kết quả cuối vào dòng audit đã tạo. Trả `False` nếu cập nhật hỏng.
+
+    Không thể fail-closed ở đây: lệnh đã đẩy xuống broker, không thể hoàn tác.
+    Nên thay vì nuốt im lặng, trả `False` cho caller để báo lại trong response.
+    """
+    if event is None:
+        return False
+    try:
+        event.metadata = {**(event.metadata or {}), 'outcome': outcome}
+        event.save(update_fields=['metadata'])
+        return True
+    except Exception:
+        logger.error(
+            'AUDIT-FINALIZE-FAILED operation=%s audit_event_id=%s outcome=%s — %s',
+            _AUDIT_OPERATION, event.pk, outcome, traceback.format_exc(),
+        )
+        return False
 
 
 def _to_bool(value) -> bool:
@@ -372,36 +446,65 @@ def dnse_place_order_api(request):
     R0.11 — trước đây endpoint không có validate server-side, không throttle
     riêng, không audit log, và nhánh `except Exception` trả `str(exc)` thô cho
     client (lộ chi tiết hạ tầng). Nay đã bổ sung đủ 4 lớp.
+
+    PA-1 — audit fail-closed: dòng audit `requested` được ghi TRƯỚC khi gọi
+    broker. Ghi hỏng ⇒ từ chối lệnh (`audit_unavailable`), không gọi broker.
+    Không thể làm vậy sau khi gọi broker vì lệnh đã không thể hoàn tác.
     """
     user = request.user
-    market_type = _require_allowlisted(
-        request.data.get("market_type"), _ALLOWED_MARKET_TYPES, "STOCK",
-        "market_type_not_allowed", "Loại thị trường",
-    )
-    order_category = _require_allowlisted(
-        request.data.get("order_category"), _ALLOWED_ORDER_CATEGORIES, "NORMAL",
-        "order_category_not_allowed", "Nhóm lệnh",
-    )
-    trading_token = str(request.data.get("trading_token", "")).strip()
-    payload = request.data.get("payload")
-    dry_run = _to_bool(request.data.get("dry_run", False))
-
-    if not trading_token:
-        raise ValidationErrorException(
-            detail="Thiếu trading_token. Vui lòng gửi OTP và tạo trading token trước khi đặt lệnh.",
-            code="validation_error"
+    raw_payload = request.data.get("payload")
+    audit_payload = raw_payload if isinstance(raw_payload, dict) else {}
+    market_type = 'unknown'
+    order_category = 'unknown'
+    mode = 'unknown'
+    dry_run = False
+    try:
+        market_type = _require_allowlisted(
+            request.data.get("market_type"), _ALLOWED_MARKET_TYPES, "STOCK",
+            "market_type_not_allowed", "Loại thị trường",
         )
-
-    if not isinstance(payload, dict) or not payload:
-        raise ValidationErrorException(
-            detail="Thiếu payload đặt lệnh hợp lệ.",
-            code="validation_error"
+        order_category = _require_allowlisted(
+            request.data.get("order_category"), _ALLOWED_ORDER_CATEGORIES, "NORMAL",
+            "order_category_not_allowed", "Nhóm lệnh",
         )
+        trading_token = str(request.data.get("trading_token", "")).strip()
+        dry_run = _to_bool(request.data.get("dry_run", False))
 
-    # R0.11 — validate server-side. UI đã chặn lô 100 và side UNKNOWN nhưng
-    # client có thể gọi thẳng API, không được tin UI.
-    # X.6 — bản chuẩn hoá trả về đây là bản DUY NHẤT đi xuống broker.
-    normalized_payload = _normalize_order_payload(payload, market_type)
+        if not trading_token:
+            raise ValidationErrorException(
+                detail="Thiếu trading_token. Vui lòng gửi OTP và tạo trading token trước khi đặt lệnh.",
+                code="validation_error"
+            )
+
+        if not isinstance(raw_payload, dict) or not raw_payload:
+            raise ValidationErrorException(
+                detail="Thiếu payload đặt lệnh hợp lệ.",
+                code="validation_error"
+            )
+
+        # R0.11 — validate server-side. UI đã chặn lô 100 và side UNKNOWN nhưng
+        # client có thể gọi thẳng API, không được tin UI.
+        # X.6 — bản chuẩn hoá trả về đây là bản DUY NHẤT đi xuống broker.
+        normalized_payload = _normalize_order_payload(raw_payload, market_type)
+    except ValidationErrorException as exc:
+        _audit_order(
+            request, market_type, order_category, audit_payload,
+            'rejected_validation', mode, dry_run,
+        )
+        raise exc
+
+    # X.2 + SAFE-01 — fail-closed: không có dòng audit thì KHÔNG gọi broker.
+    audit_event = _audit_order(
+        request, market_type, order_category, normalized_payload, 'requested', mode, dry_run,
+    )
+    if audit_event is None:
+        raise InternalErrorException(
+            detail=(
+                "Không ghi được audit đặt lệnh nên lệnh bị từ chối. "
+                "Không có giao dịch nào được gửi tới broker. Liên hệ quản trị viên."
+            ),
+            code="audit_unavailable",
+        )
 
     try:
         client = _get_active_dnse_client(user)
@@ -413,21 +516,24 @@ def dnse_place_order_api(request):
             dry_run=dry_run,
             raw=False,
         )
-        _audit_order(request, market_type, normalized_payload, 'accepted', dry_run=dry_run)
-        return Response({"result": result})
+        return Response({
+            "result": result,
+            "audit_recorded": _finalize_audit_event(audit_event, 'accepted'),
+        })
     except DNSECredentialMissingError as exc:
-        _audit_order(request, market_type, normalized_payload, 'credential_missing', dry_run=dry_run)
+        _finalize_audit_event(audit_event, 'credential_missing')
         raise ValidationErrorException(detail=str(exc), code="validation_error")
     except DNSEAdapterError as exc:
-        _audit_order(request, market_type, normalized_payload, 'adapter_error', dry_run=dry_run)
+        _finalize_audit_event(audit_event, 'adapter_error')
         # `str(exc)` từ adapter đã là thông điệp nghiệp vụ có kiểm soát.
         raise ValidationErrorException(detail=str(exc), code="validation_error")
     except ValidationErrorException:
+        _finalize_audit_event(audit_event, 'rejected_by_adapter')
         raise
     except Exception:
         # R0.11 — KHÔNG trả `str(exc)` cho client. Chi tiết lỗi nằm trong log
         # nội bộ, client chỉ nhận thông điệp chung.
-        _audit_order(request, market_type, normalized_payload, 'internal_error', dry_run=dry_run)
+        _finalize_audit_event(audit_event, 'internal_error')
         logger.exception('dnse_place_order_api: unexpected failure for user=%s', getattr(user, 'id', None))
         raise ValidationErrorException(
             detail="Đặt lệnh thất bại do lỗi hệ thống. Vui lòng thử lại sau.",

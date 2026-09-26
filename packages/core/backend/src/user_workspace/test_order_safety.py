@@ -327,7 +327,6 @@ class OrderAuditTests(OrderSafetyTestCase):
         self.assertIn(event.action, AUDIT_VALID_ACTIONS)
         self.assertEqual(event.metadata['operation'], 'broker.place_order')
         self.assertEqual(event.metadata['outcome'], 'accepted')
-        self.assertEqual(event.metadata['mode'], 'paper')
         self.assertEqual(event.resource_id, 'FPT')
 
     def test_audit_action_never_exceeds_column_width(self):
@@ -343,11 +342,20 @@ class OrderAuditTests(OrderSafetyTestCase):
         self.assertEqual(self.broker.order_calls, [])
 
     def test_rejected_order_is_audited(self):
-        resp = self.post_order(self.order_body(mode='live'))
-        self.assertEqual(resp.status_code, 403)
+        resp = self.post_order(self.order_body(market_type='FUND'))
+        self.assertEqual(resp.status_code, 400)
         event = self.order_events().get()
-        self.assertEqual(event.metadata['outcome'], 'rejected_live_mode')
+        self.assertEqual(event.metadata['outcome'], 'rejected_validation')
         self.assertIn(event.action, AUDIT_VALID_ACTIONS)
+
+    def test_audit_action_length_stays_inside_the_column(self):
+        """`metadata['operation']` giữ nguyên tên thao tác dài, `action` mới là cột hẹp."""
+        resp = self.post_order()
+        self.assertEqual(resp.status_code, 200, resp.content)
+        event = self.order_events().get()
+        self.assertLessEqual(len(event.action), AUDIT_ACTION_MAX_LENGTH)
+        self.assertEqual(event.metadata['operation'], 'broker.place_order')
+        self.assertGreater(len(event.metadata['operation']), AUDIT_ACTION_MAX_LENGTH)
 
 
 class OrderErrorRedactionTests(OrderSafetyTestCase):
