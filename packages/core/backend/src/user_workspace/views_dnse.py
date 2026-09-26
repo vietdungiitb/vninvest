@@ -16,6 +16,8 @@ from rest_framework import status
 from rest_framework.throttling import ScopedRateThrottle
 from django.utils import timezone
 
+import hashlib
+import json
 import logging
 import traceback
 
@@ -28,14 +30,17 @@ from .dnse_adapter import (
 )
 from .models import DNSECredential, SubAccount, get_user_broker_config, set_user_broker_secrets
 from .serializers import SubAccountSerializer
+from .services import idempotency
 from .tasks import (
     reconcile_dnse_transactions_task,
     sync_dnse_accounts_task,
     sync_dnse_balances_task,
 )
 from vninvest_core.exceptions import (
+    ConflictErrorException,
     InternalErrorException,
     NotFoundErrorException,
+    PermissionErrorException,
     ValidationErrorException,
 )
 
@@ -286,10 +291,141 @@ def _finalize_audit_event(event, outcome: str) -> bool:
         return False
 
 
-def _to_bool(value) -> bool:
+#: SAFE-01 — mode là enum rõ ràng, không phải boolean suy diễn.
+#: `_to_bool` cũ đã bị XOÁ: nó hiểu `{"1","true","yes","y","on"}` và trả `False`
+#: cho MỌI thứ còn lại, nên `dry_run="paper"` hay `"live"` đều ra LIVE.
+#: Thay bằng `_parse_bool_strict` trả True/False/None.
+MODE_PAPER = 'paper'
+MODE_LIVE = 'live'
+_ALLOWED_MODES = (MODE_PAPER, MODE_LIVE)
+_TRUE_TOKENS = frozenset({'1', 'true', 'yes', 'y', 'on'})
+_FALSE_TOKENS = frozenset({'0', 'false', 'no', 'n', 'off'})
+#: Header bắt buộc cho mọi lệnh — chống double-click và retry.
+IDEMPOTENCY_HEADER = 'HTTP_IDEMPOTENCY_KEY'
+#: Ngữ cảnh dùng chung cho các endpoint DNSE khác (OTP / trading token).
+_BROKER_SCOPE = 'dnse_broker_write'
+_ORDER_SCOPE = 'dnse_order'
+#: X.5 — gate còn thiếu nên live mode bị từ chối. Nêu tên từng gate để client
+#: không phải đoán, thay vì trả 403 chung chung.
+_LIVE_ORDERING_MISSING_GATES = (
+    'chưa có order policy gate',
+    'chưa có bước xác nhận (confirm token) bắt buộc',
+    'chưa có giới hạn rủi ro theo lệnh',
+)
+
+
+def _parse_bool_strict(value):
+    """True / False / `None` khi không parse được. KHÔNG default thành False.
+
+    `_to_bool` cũ trả `False` cho mọi thứ không nằm trong tập true, nên
+    `dry_run="paper"` và `dry_run="live"` đều ra LIVE.
+    """
     if isinstance(value, bool):
         return value
-    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+    token = str(value).strip().lower()
+    if token in _TRUE_TOKENS:
+        return True
+    if token in _FALSE_TOKENS:
+        return False
+    return None
+
+
+def _resolve_order_mode(data) -> tuple:
+    """Trả `(mode, dry_run)`. Server là nguồn sự thật của mode.
+
+    Thứ tự ưu tiên xác định:
+    1. có `mode` → phải thuộc `paper|live`, và không mâu thuẫn `dry_run`
+    2. không có `mode` nhưng có `dry_run` → parse nghiêm ngặc
+    3. không có gì → `order_mode_required` (fail-closed, KHÔNG mặc định live)
+    """
+    raw_mode = data.get('mode')
+    has_dry_run = 'dry_run' in data
+    raw_dry_run = data.get('dry_run')
+    dry_run_flag = _parse_bool_strict(raw_dry_run) if has_dry_run else None
+
+    if has_dry_run and dry_run_flag is None:
+        raise ValidationErrorException(
+            detail=(
+                f"Không đọc được `dry_run`: {str(raw_dry_run)!r}. "
+                f"Dùng `mode` = {' hoặc '.join(_ALLOWED_MODES)} thay vì boolean."
+            ),
+            code="order_mode_invalid",
+        )
+
+    if raw_mode is None or not str(raw_mode).strip():
+        if not has_dry_run:
+            raise ValidationErrorException(
+                detail=(
+                    "Thiếu `mode`. Server không tự đoán: gửi "
+                    f"`mode` = {MODE_PAPER!r} để chạy thử, "
+                    f"{MODE_LIVE!r} để đặt lệnh thật. Thiếu mode sẽ bị từ chối."
+                ),
+                code="order_mode_required",
+            )
+        mode = MODE_PAPER if dry_run_flag else MODE_LIVE
+    else:
+        mode = str(raw_mode).strip().lower()
+        if mode not in _ALLOWED_MODES:
+            raise ValidationErrorException(
+                detail=(
+                    f"Mode không hợp lệ: '{mode}'. "
+                    f"Chỉ chấp nhận: {', '.join(_ALLOWED_MODES)}."
+                ),
+                code="order_mode_invalid",
+            )
+        if has_dry_run and dry_run_flag is not (mode == MODE_PAPER):
+            raise ValidationErrorException(
+                detail=(
+                    f"`mode={mode}` mâu thuẫn `dry_run={bool(dry_run_flag)}`. "
+                    "Chỉ cần gửi `mode`."
+                ),
+                code="order_mode_conflict",
+            )
+
+    if mode == MODE_LIVE:
+        raise PermissionErrorException(
+            detail=(
+                "Đặt lệnh thật (mode=live) đang bị từ chối: "
+                + "; ".join(_LIVE_ORDERING_MISSING_GATES)
+                + f". Dùng `mode={MODE_PAPER!r}` trong lúc chờ các gate đó."
+            ),
+            code="live_ordering_disabled",
+            field_errors={'mode': list(_LIVE_ORDERING_MISSING_GATES)},
+        )
+
+    # `paper` ⇒ `dry_run=True` xuống broker do SERVER quyết, không phải client.
+    return mode, True
+
+
+#: Mã lỗi do `_resolve_order_mode` sinh ra — dùng để gắn nhãn audit đúng nguyên nhân.
+_MODE_ERROR_CODES = frozenset({
+    'order_mode_required', 'order_mode_invalid', 'order_mode_conflict',
+    'live_ordering_disabled',
+})
+
+
+def _mode_rejection_outcome(exc) -> str:
+    """Nhãn audit cho lỗi chặn ở tầng mode, `None` nếu lỗi đến từ tầng khác."""
+    if getattr(exc, 'code', None) == 'live_ordering_disabled':
+        return 'rejected_live_mode'
+    if getattr(exc, 'code', None) in _MODE_ERROR_CODES:
+        return 'rejected_mode'
+    return None
+
+
+def _order_fingerprint(market_type: str, order_category: str, payload: dict) -> str:
+    """Fingerprint của *nội dung lệnh* — dùng phát hiện tái sử dụng key sai cách."""
+    canonical = {
+        'market_type': market_type,
+        'order_category': order_category,
+        'symbol': payload.get('symbol'),
+        'side': payload.get('side'),
+        'volume': payload.get(_VOLUME_KEY),
+        'price': payload.get('price'),
+        'account_no': payload.get('account_no'),
+    }
+    blob = json.dumps(canonical, sort_keys=True, default=str, ensure_ascii=False)
+    return hashlib.sha256(blob.encode('utf-8')).hexdigest()
 
 
 def _extract_trading_token(result):
@@ -456,7 +592,10 @@ def dnse_place_order_api(request):
     audit_payload = raw_payload if isinstance(raw_payload, dict) else {}
     market_type = 'unknown'
     order_category = 'unknown'
-    mode = 'unknown'
+    # Mode client KHAI trước khi resolve — nếu resolve lỗi thì đây chính là
+    # thứ cần ghi vào audit. `_resolve_order_mode` sẽ ghi đè bằng giá trị server
+    # quyết khi thành công.
+    mode = str(request.data.get('mode') or '').strip().lower() or 'unknown'
     dry_run = False
     try:
         market_type = _require_allowlisted(
@@ -467,8 +606,10 @@ def dnse_place_order_api(request):
             request.data.get("order_category"), _ALLOWED_ORDER_CATEGORIES, "NORMAL",
             "order_category_not_allowed", "Nhóm lệnh",
         )
+        # SAFE-01 — resolve mode TRƯỚC mọi thứ khác.
+        mode, dry_run = _resolve_order_mode(request.data)
+
         trading_token = str(request.data.get("trading_token", "")).strip()
-        dry_run = _to_bool(request.data.get("dry_run", False))
 
         if not trading_token:
             raise ValidationErrorException(
@@ -486,18 +627,58 @@ def dnse_place_order_api(request):
         # client có thể gọi thẳng API, không được tin UI.
         # X.6 — bản chuẩn hoá trả về đây là bản DUY NHẤT đi xuống broker.
         normalized_payload = _normalize_order_payload(raw_payload, market_type)
-    except ValidationErrorException as exc:
+    except (ValidationErrorException, PermissionErrorException) as exc:
+        # `PermissionErrorException` chỉ sinh ra từ `_resolve_order_mode` trong view này.
         _audit_order(
             request, market_type, order_category, audit_payload,
-            'rejected_validation', mode, dry_run,
+            _mode_rejection_outcome(exc) or 'rejected_validation', mode, dry_run,
         )
         raise exc
+
+    idempotency_key = str(request.META.get(IDEMPOTENCY_HEADER, '') or '').strip()
+    if not idempotency_key:
+        _audit_order(
+            request, market_type, order_category, normalized_payload,
+            'rejected_no_idempotency_key', mode, dry_run,
+        )
+        raise ValidationErrorException(
+            detail=(
+                "Thiếu header `Idempotency-Key`. Mọi lệnh phải có key để chống gửi trùng. "
+                "Sinh một UUID ngẫu nhiên cho mỗi lần bấm đặt lệnh."
+            ),
+            code="idempotency_key_required",
+        )
+
+    fingerprint = _order_fingerprint(market_type, order_category, normalized_payload)
+    claim = idempotency.claim(
+        user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key, fingerprint=fingerprint,
+    )
+    if claim.conflict:
+        raise ConflictErrorException(
+            detail=(
+                "`Idempotency-Key` đã dùng cho một lệnh KHÁC. "
+                "Dùng key mới cho mỗi lệnh khác nhau."
+            ),
+            code="idempotency_key_conflict",
+        )
+    if claim.in_progress:
+        raise ConflictErrorException(
+            detail="Lệnh cùng `Idempotency-Key` đang được xử lý. Thử lại sau.",
+            code="idempotency_in_progress",
+        )
+    if claim.replay:
+        return Response({
+            "result": claim.result,
+            "idempotent_replay": True,
+            "audit_recorded": True,
+        })
 
     # X.2 + SAFE-01 — fail-closed: không có dòng audit thì KHÔNG gọi broker.
     audit_event = _audit_order(
         request, market_type, order_category, normalized_payload, 'requested', mode, dry_run,
     )
     if audit_event is None:
+        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key)
         raise InternalErrorException(
             detail=(
                 "Không ghi được audit đặt lệnh nên lệnh bị từ chối. "
@@ -516,24 +697,34 @@ def dnse_place_order_api(request):
             dry_run=dry_run,
             raw=False,
         )
+        audit_recorded = _finalize_audit_event(audit_event, 'accepted')
+        idempotency.store_result(
+            user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key,
+            fingerprint=fingerprint, result=result,
+        )
         return Response({
             "result": result,
-            "audit_recorded": _finalize_audit_event(audit_event, 'accepted'),
+            "idempotent_replay": False,
+            "audit_recorded": audit_recorded,
         })
     except DNSECredentialMissingError as exc:
         _finalize_audit_event(audit_event, 'credential_missing')
+        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key)
         raise ValidationErrorException(detail=str(exc), code="validation_error")
     except DNSEAdapterError as exc:
         _finalize_audit_event(audit_event, 'adapter_error')
+        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key)
         # `str(exc)` từ adapter đã là thông điệp nghiệp vụ có kiểm soát.
         raise ValidationErrorException(detail=str(exc), code="validation_error")
     except ValidationErrorException:
         _finalize_audit_event(audit_event, 'rejected_by_adapter')
+        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key)
         raise
     except Exception:
         # R0.11 — KHÔNG trả `str(exc)` cho client. Chi tiết lỗi nằm trong log
         # nội bộ, client chỉ nhận thông điệp chung.
         _finalize_audit_event(audit_event, 'internal_error')
+        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key)
         logger.exception('dnse_place_order_api: unexpected failure for user=%s', getattr(user, 'id', None))
         raise ValidationErrorException(
             detail="Đặt lệnh thất bại do lỗi hệ thống. Vui lòng thử lại sau.",
@@ -551,9 +742,13 @@ dnse_place_order_api.throttle_scope = 'broker_order'
 def dnse_send_email_otp_api(request):
     """
     Gửi OTP email cho flow giao dịch DNSE.
+
+    PA-1/SAFE-01 — trước đây `dry_run` mặc định `False` ⇒ gọi LIVE khi client
+    quên field. Nay mode phải nói rõ, và thiếu mode thì từ chối.
+    PA-1/X.5 — nhánh `except Exception` trả `str(exc)` thô; nay chỉ trả mã lỗi.
     """
     user = request.user
-    dry_run = _to_bool(request.data.get("dry_run", False))
+    _mode, dry_run = _resolve_order_mode(request.data)
 
     try:
         client = _get_active_dnse_client(user)
@@ -563,8 +758,14 @@ def dnse_send_email_otp_api(request):
         raise ValidationErrorException(detail=str(exc), code="validation_error")
     except DNSEAdapterError as exc:
         raise ValidationErrorException(detail=str(exc), code="validation_error")
-    except Exception as exc:
-        raise ValidationErrorException(detail=f"Gửi OTP DNSE thất bại: {exc}", code="validation_error")
+    except Exception:
+        # X.5 — KHÔNG trả `str(exc)`: lộ token/URL hạ tầng cho client.
+        logger.exception('dnse_send_email_otp_api: unexpected failure for user=%s',
+                         getattr(user, 'id', None))
+        raise ValidationErrorException(
+            detail="Gửi OTP DNSE thất bại do lỗi hệ thống. Vui lòng thử lại sau.",
+            code="internal_error",
+        )
 
 
 @api_view(['POST'])
@@ -572,11 +773,13 @@ def dnse_send_email_otp_api(request):
 def dnse_create_trading_token_api(request):
     """
     Tạo trading token bằng OTP/passcode để đặt/sửa/hủy lệnh DNSE.
+
+    PA-1/SAFE-01 + PA-1/X.5 — cùng xử lý mode và redaction như `place_order`.
     """
     user = request.user
     otp_type = str(request.data.get("otp_type", "EMAIL")).strip().upper() or "EMAIL"
     passcode = str(request.data.get("passcode", "")).strip()
-    dry_run = _to_bool(request.data.get("dry_run", False))
+    _mode, dry_run = _resolve_order_mode(request.data)
 
     if not passcode:
         raise ValidationErrorException(
@@ -600,11 +803,17 @@ def dnse_create_trading_token_api(request):
             "result": result,
         })
     except DNSECredentialMissingError as exc:
-        return Response({"ok": False, "error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        raise ValidationErrorException(detail=str(exc), code="validation_error")
     except DNSEAdapterError as exc:
         raise ValidationErrorException(detail=str(exc), code="validation_error")
-    except Exception as exc:
-        raise ValidationErrorException(detail=f"Tạo trading token DNSE thất bại: {exc}", code="validation_error")
+    except Exception:
+        # X.5 — KHÔNG trả `str(exc)`.
+        logger.exception('dnse_create_trading_token_api: unexpected failure for user=%s',
+                         getattr(user, 'id', None))
+        raise ValidationErrorException(
+            detail="Tạo trading token DNSE thất bại do lỗi hệ thống. Vui lòng thử lại sau.",
+            code="internal_error",
+        )
 
 
 @api_view(['GET'])

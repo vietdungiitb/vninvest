@@ -357,6 +357,27 @@ class OrderAuditTests(OrderSafetyTestCase):
         self.assertEqual(event.metadata['operation'], 'broker.place_order')
         self.assertGreater(len(event.metadata['operation']), AUDIT_ACTION_MAX_LENGTH)
 
+    def test_audit_records_the_server_resolved_mode(self):
+        """Server là nguồn sự thật của mode ⇒ audit phải ghi `paper`, không phải giá trị client."""
+        resp = self.post_order(self.order_body(mode='paper', dry_run=True))
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(self.order_events().get().metadata['mode'], 'paper')
+
+    def test_live_mode_rejection_is_audited(self):
+        resp = self.post_order(self.order_body(mode='live'))
+        self.assertEqual(resp.status_code, 403)
+        event = self.order_events().get()
+        self.assertEqual(event.metadata['outcome'], 'rejected_live_mode')
+        self.assertEqual(event.metadata['mode'], 'live')
+        self.assertIn(event.action, AUDIT_VALID_ACTIONS)
+
+    def test_missing_mode_rejection_is_audited(self):
+        body = self.order_body()
+        body.pop('mode')
+        resp = self.post_order(body)
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(self.order_events().get().metadata['outcome'], 'rejected_mode')
+
 
 class OrderErrorRedactionTests(OrderSafetyTestCase):
     """X.5 — response không được chứa `str(exc)` thô."""
@@ -441,20 +462,29 @@ class IdempotencyUnitTests(SimpleTestCase):
         from user_workspace.services import idempotency
         first = idempotency.claim(user_id=7, scope='dnse_order', key='K', fingerprint='fp1')
         self.assertTrue(first.acquired)
+        # Request thứ hai tới khi request đầu còn đang chạy => in_progress, KHÔNG replay.
         second = idempotency.claim(user_id=7, scope='dnse_order', key='K', fingerprint='fp1')
         self.assertFalse(second.acquired)
-        self.assertIs(second.replay, True)
+        self.assertTrue(second.in_progress)
+        self.assertFalse(second.replay)
+        # Cùng key nhưng payload khác => conflict, kể cả khi đang in_progress.
         third = idempotency.claim(user_id=7, scope='dnse_order', key='K', fingerprint='fp2')
         self.assertFalse(third.acquired)
         self.assertTrue(third.conflict)
         idempotency.release(user_id=7, scope='dnse_order', key='K')
         fourth = idempotency.claim(user_id=7, scope='dnse_order', key='K', fingerprint='fp1')
         self.assertTrue(fourth.acquired)
-        idempotency.store_result(
-            user_id=7, scope='dnse_order', key='K', fingerprint='fp1', result={'r': 1})
+        self.assertTrue(idempotency.store_result(
+            user_id=7, scope='dnse_order', key='K', fingerprint='fp1', result={'r': 1}))
         replay = idempotency.claim(user_id=7, scope='dnse_order', key='K', fingerprint='fp1')
         self.assertTrue(replay.replay)
         self.assertEqual(replay.result, {'r': 1})
+
+    def test_store_result_refuses_a_mismatched_fingerprint(self):
+        from user_workspace.services import idempotency
+        idempotency.claim(user_id=9, scope='dnse_order', key='K', fingerprint='fp1')
+        self.assertFalse(idempotency.store_result(
+            user_id=9, scope='dnse_order', key='K', fingerprint='other', result={'r': 1}))
 
     def test_key_is_scoped_by_user_and_scope(self):
         from user_workspace.services import idempotency
