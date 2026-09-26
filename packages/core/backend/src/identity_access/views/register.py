@@ -1,16 +1,28 @@
+import hashlib
 import logging
 import secrets
-import hashlib
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.conf import settings as django_settings
-from django.utils import timezone
 from django.core.cache import cache
+from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.exceptions import APIException
 
 from ..models import CoreTenant, UserProfile, CoreServiceAccount, OutboxEvent, EmailVerificationToken
+from ..security_utils import (
+    atomic_bump,
+    client_ip_bucket,
+    client_subnet_bucket,
+    enforce_rate_limit,
+    get_client_ip,
+    get_user_by_email,
+    get_user_by_username,
+    peek_rate_limit,
+    value_bucket,
+)
 from vninvest_core.exceptions import (
     ValidationErrorException,
     ConflictErrorException,
@@ -21,6 +33,80 @@ from .helpers import success_response
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
+
+
+# --------------------------------------------------------------------------
+# A6 - malformed-traffic ceiling.
+#
+# The register budget used to be consumed before the payload was even looked at
+# (`cache.set(ip_key, ip_count + 1, 60)` ran before `serializer.is_valid()`), so
+# three typos locked a user out for 60 seconds and an attacker sharing a victim's
+# NAT could burn the victim's /24 bucket for them.
+#
+# The budget is now spent only on a real attempt. That alone would re-open the
+# bot hole, because a bot spraying malformed JSON would get unlimited free tries
+# at whatever the Turnstile endpoint costs. So malformed traffic gets its own,
+# looser IP ceiling: enough to stop a flood, loose enough that a human's typos do
+# not consume the real registration budget.
+#
+# TODO(coordinator): promote to settings as REGISTER_MALFORMED_IP_LIMIT so it is
+# operator-tunable like every other threshold. settings.py is not this slice's.
+MALFORMED_ATTEMPT_IP_MULTIPLIER = 3
+
+#: A7 - one message and one code for every registration failure that is not
+#: caused by the payload itself. Previously three distinguishable outcomes
+#: (`username_already_exists`, `email_already_exists`, 201) let an unauthenticated
+#: caller confirm any username or email in the system.
+REGISTRATION_UNAVAILABLE_DETAIL = (
+    'Không thể tạo tài khoản với thông tin đã cung cấp. '
+    'Nếu bạn đã có tài khoản, hãy đăng nhập hoặc dùng chức năng quên mật khẩu.'
+)
+REGISTRATION_UNAVAILABLE_CODE = 'registration_unavailable'
+
+#: A7 - the single response shape of the resend endpoint, for all three of its
+#: internal outcomes (address unknown / already activated / token sent).
+RESEND_NEUTRAL_MESSAGE = (
+    'Nếu email tồn tại trong hệ thống và chưa được xác minh, '
+    'một liên kết xác minh mới đã được gửi.'
+)
+
+
+def _malformed_ip_limit() -> int:
+    return max(1, settings.REGISTER_IP_LIMIT_THRESHOLD) * MALFORMED_ATTEMPT_IP_MULTIPLIER
+
+
+def _dispatch_verification_email(user_id: int, event_id, email: str, raw_token: str) -> None:
+    """Push the verification email onto the broker. Never raises.
+
+    A3: this runs from a ``transaction.on_commit`` hook, i.e. *after* the user,
+    tenant, profile and service-account rows are already committed. The old
+    lambda called ``.delay()`` bare, so a broker outage propagated out of the
+    callback, through the blanket ``except Exception`` in the view, and turned a
+    fully successful registration into a 500 ``server_error``. The client then
+    retried and got a 409 on the second attempt, having no way to tell the two
+    apart. A queue being down must never change the HTTP status of a write that
+    already happened.
+
+    On failure the OutboxEvent row is deliberately left PENDING so the beat
+    poller can pick it up, and the log carries the user id for reconciliation.
+    """
+    try:
+        from data_ingest.tasks import trigger_email_verification_flow
+
+        trigger_email_verification_flow.delay(
+            user_id,
+            event_id,
+            email=email,
+            token=raw_token,
+            frontend_url=settings.FRONTEND_URL,
+        )
+    except Exception:
+        logger.exception(
+            'verification email enqueue failed for user_id=%s event_id=%s; '
+            'leaving the outbox row PENDING for the beat poller',
+            user_id,
+            event_id,
+        )
 
 
 @api_view(['POST'])
@@ -34,75 +120,83 @@ def register_view(request):
     from django.db import transaction
     from ..serializers import SaaSRegisterSerializer
 
-    # Rate limit per IP, Email normalized, and Subnet (R3 Multi-dimension Anti-abuse)
-    client_ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', '127.0.0.1')
-    
-    # 1. IP Rate Limiting (3/min)
-    ip_key = f'ratelimit:register:ip:{client_ip}'
-    ip_count = cache.get(ip_key, 0)
-    if ip_count >= getattr(django_settings, 'REGISTER_IP_LIMIT_THRESHOLD', 3):
-        raise RateLimitErrorException(
-            detail='Thử lại quá nhanh từ IP này. Vui lòng đợi 1 phút.',
-            code='register_rate_limit_exceeded',
-        )
-    
-    # 2. Subnet Rate Limiting (10/min per /24 subnet)
-    def get_subnet(ip):
-        if ':' in ip:  # IPv6
-            return ':'.join(ip.split(':')[:4])
-        else:  # IPv4
-            return '.'.join(ip.split('.')[:3])
-    subnet = get_subnet(client_ip)
-    subnet_key = f'ratelimit:register:subnet:{subnet}'
-    subnet_count = cache.get(subnet_key, 0)
-    if subnet_count >= getattr(django_settings, 'REGISTER_SUBNET_LIMIT_THRESHOLD', 10):
-        raise RateLimitErrorException(
-            detail='Thử lại quá nhanh từ mạng của bạn. Vui lòng đợi 1 phút.',
-            code='register_rate_limit_exceeded',
-        )
-        
-    # 3. Email Rate Limiting (2/min per normalized email)
-    email_raw = str(request.data.get('email', '') or '').strip()
-    normalized_email = email_raw.lower()
-    if normalized_email:
-        email_key = f'ratelimit:register:email:{normalized_email}'
-        email_count = cache.get(email_key, 0)
-        if email_count >= getattr(django_settings, 'REGISTER_EMAIL_LIMIT_THRESHOLD', 2):
-            raise RateLimitErrorException(
-                detail='Thử lại quá nhanh với email này. Vui lòng đợi 1 phút.',
-                code='register_rate_limit_exceeded',
-            )
-            
-    # Tăng và đặt các cache key
-    cache.set(ip_key, ip_count + 1, 60)
-    cache.set(subnet_key, subnet_count + 1, 60)
-    if normalized_email:
-        cache.set(email_key, email_count + 1, 60)
-    
-    # Check duplicate username and email to raise standard 409 Conflict error codes
-    username = request.data.get('username')
-    email = request.data.get('email')
-    
-    if username and User.objects.filter(username__iexact=username.strip()).exists():
-        raise ConflictErrorException(
-            detail="Tên đăng nhập này đã tồn tại.",
-            code="username_already_exists"
-        )
-        
-    if email and User.objects.filter(email__iexact=email.strip()).exists():
-        raise ConflictErrorException(
-            detail="Địa chỉ email này đã được đăng ký.",
-            code="email_already_exists"
-        )
+    # A5: was `request.META['HTTP_X_FORWARDED_FOR'].split(',')[0]`, i.e. the
+    # left-most XFF entry, which is the one a client injects. Every rate limit
+    # in this file was therefore trivially bypassable with
+    # `X-Forwarded-For: 1.2.3.4`. get_client_ip() honours the header only when
+    # the socket peer is a trusted proxy, and falls back to UNKNOWN_IP - which
+    # deliberately puts every unidentifiable caller in one shared bucket, the
+    # fail-closed direction.
+    client_ip = get_client_ip(request)
+
+    # Peek only: the attempt budget is NOT consumed yet (A6).
+    attempt_buckets = [
+        client_ip_bucket(
+            'register',
+            request,
+            settings.REGISTER_IP_LIMIT_THRESHOLD,
+            'Thử lại quá nhanh từ IP này. Vui lòng đợi 1 phút.',
+        ),
+        client_subnet_bucket(
+            'register',
+            request,
+            settings.REGISTER_SUBNET_LIMIT_THRESHOLD,
+            'Thử lại quá nhanh từ mạng của bạn. Vui lòng đợi 1 phút.',
+        ),
+    ]
+    enforce_rate_limit(attempt_buckets, code='register_rate_limit_exceeded', consume=False)
 
     serializer = SaaSRegisterSerializer(data=request.data, context={'client_ip': client_ip})
     if not serializer.is_valid():
+        # A6: malformed/invalid payloads get their own, looser IP ceiling so a
+        # flood is still bounded while a few typos cannot lock a real user out
+        # of a real attempt.
+        enforce_rate_limit(
+            [client_ip_bucket(
+                'register-malformed',
+                request,
+                _malformed_ip_limit(),
+                'Thử lại quá nhanh từ IP này. Vui lòng đợi 1 phút.',
+            )],
+            code='register_rate_limit_exceeded',
+        )
         raise ValidationErrorException(
             detail=serializer.errors,
             code='validation_error'
         )
 
     data = serializer.validated_data
+    normalized_email = str(data['email']).lower()
+
+    # A real attempt: now the budget is spent. The email dimension is keyed on
+    # the serializer's normalised email, i.e. an address that came out of a
+    # syntactically valid request, not on whatever the client typed. An
+    # attacker can still burn one victim's email bucket, but only by spending
+    # their own IP budget (3/min) and their own subnet budget (10/min) to do it,
+    # so the vector is bounded instead of free.
+    enforce_rate_limit(
+        attempt_buckets + [
+            value_bucket(
+                'register',
+                'email',
+                normalized_email,
+                settings.REGISTER_EMAIL_LIMIT_THRESHOLD,
+                'Thử lại quá nhanh với email này. Vui lòng đợi 1 phút.',
+            ),
+        ],
+        code='register_rate_limit_exceeded',
+    )
+
+    # A7 + A10: duplicate detection happens once, after validation, and both
+    # collisions produce the SAME opaque error. Previously the username collision
+    # and the email collision had distinct codes, so an unauthenticated caller
+    # could tell which of the two was taken - and a 409 vs a 201 told them
+    # whether the pair was free at all.
+    if get_user_by_username(data['username']) is not None or get_user_by_email(normalized_email) is not None:
+        raise ConflictErrorException(
+            detail=REGISTRATION_UNAVAILABLE_DETAIL,
+            code=REGISTRATION_UNAVAILABLE_CODE,
+        )
 
     try:
         with transaction.atomic():
@@ -151,7 +245,7 @@ def register_view(request):
                 "tenant_id": str(tenant.id),
                 "service_account_id": str(service_account.id)
             }
-            
+
             outbox_event = OutboxEvent.objects.create(
                 event_type='UserRegisteredEvent',
                 payload=event_payload,
@@ -159,44 +253,60 @@ def register_view(request):
             )
 
             # 6. Sinh token xác minh và gửi email
+            # 256 bits of entropy from a CSPRNG, stored only as a SHA-256 hash.
             raw_token = secrets.token_urlsafe(32)
             token_hash = hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
-            
-            # Hủy kích hoạt tất cả các token xác minh cũ của user
+
+            # Hủy kích hoạt tất cả các token xác minh cũ của user.
+            # A12e: the rows are marked used but never deleted, so this table
+            # grows without bound; `email_tasks.prune_email_verification_tokens`
+            # (added in this slice) deletes them, but it still needs a
+            # CELERY_BEAT_SCHEDULE entry - see the report to the coordinator.
             EmailVerificationToken.objects.filter(user=user, is_used=False).update(is_used=True)
-            
+
             # Tạo token mới trong DB với TTL 30 phút
-            token_ttl_min = getattr(django_settings, 'EMAIL_VERIFICATION_TOKEN_TTL_MINUTES', 30)
-            expires_at = timezone.now() + timedelta(minutes=token_ttl_min)
+            expires_at = timezone.now() + timedelta(minutes=settings.EMAIL_VERIFICATION_TOKEN_TTL_MINUTES)
             EmailVerificationToken.objects.create(
                 user=user,
                 token_hash=token_hash,
                 expires_at=expires_at
             )
 
-            # Lập lịch gửi Email bất đồng bộ an toàn qua on_commit
-            from django.conf import settings
-            from data_ingest.tasks import trigger_email_verification_flow
+            # 7. Lập lịch gửi Email bất đồng bộ an toàn qua on_commit
             transaction.on_commit(
-                lambda: trigger_email_verification_flow.delay(user.id, outbox_event.event_id, email=user.email, token=raw_token, frontend_url=settings.FRONTEND_URL)
+                lambda: _dispatch_verification_email(
+                    user.id,
+                    outbox_event.event_id,
+                    user.email,
+                    raw_token,
+                ),
+                robust=True,
             )
 
-        # Trả về Success Envelope chuẩn OpenAPI
-        return success_response({
-            "username": user.username,
-            "email": user.email,
-            "plan": tenant.plan,
-            "tenant_id": str(tenant.id),
-            "verification_required": True,
-            "message": "Đăng ký thành công. Vui lòng kiểm tra email để xác minh tài khoản."
-        }, status.HTTP_201_CREATED, request=request)
-
-    except Exception as e:
+    except APIException:
+        # A3: a typed DRF/CoreAPIException raised inside the block (e.g. from a
+        # post_save signal or a future row-level guard) keeps its own status and
+        # code. The blanket handler used to relabel every one of them as
+        # 500 server_error, destroying the only signal the caller had.
+        raise
+    except Exception:
         logger.exception("Error occurred during user registration provisioning transaction.")
         raise InternalErrorException(
             detail="Không thể xử lý yêu cầu đăng ký do lỗi hệ thống.",
             code="server_error"
         )
+
+    # A3: outside the try on purpose. success_response() cannot fail, and having
+    # it inside meant a post-commit `.delay()` failure could re-label a
+    # successful registration as a 500.
+    return success_response({
+        "username": user.username,
+        "email": user.email,
+        "plan": tenant.plan,
+        "tenant_id": str(tenant.id),
+        "verification_required": True,
+        "message": "Đăng ký thành công. Vui lòng kiểm tra email để xác minh tài khoản."
+    }, status.HTTP_201_CREATED, request=request)
 
 
 @api_view(['POST'])
@@ -209,6 +319,7 @@ def verify_email_view(request):
     Activates the user account and elevates scopes.
     """
     from django.db import transaction
+
     token = str(request.data.get('token', '') or '').strip()
     if not token:
         raise ValidationErrorException(
@@ -217,50 +328,71 @@ def verify_email_view(request):
         )
 
     token_hash = hashlib.sha256(token.encode('utf-8')).hexdigest()
-    token_obj = EmailVerificationToken.objects.filter(token_hash=token_hash).first()
-    
-    if not token_obj:
-        raise ValidationErrorException(
-            detail='Token không hợp lệ hoặc đã hết hạn.',
-            code='invalid_token'
-        )
+    max_attempts = settings.EMAIL_VERIFICATION_MAX_ATTEMPTS
 
-    # Đảm bảo email chưa bị khóa xác minh (Rate Limiting/Lockout)
-    email_key = token_obj.user.email.strip().lower()
-    lockout_key = f'ratelimit:verify:attempts:{email_key}'
-    attempts = cache.get(lockout_key, 0)
-    max_attempts = getattr(django_settings, 'EMAIL_VERIFICATION_MAX_ATTEMPTS', 5)
-    if attempts >= max_attempts:
-        raise RateLimitErrorException(
-            detail='Tài khoản này đã bị khóa xác minh do thử quá nhiều lần. Vui lòng yêu cầu gửi lại email.',
-            code='verification_locked_out'
-        )
+    # A11: the endpoint had NO rate limit at all, so the 256-bit token was the
+    # only defence and a token found in a log or a shared inbox could be
+    # ground-tested at will. Two dimensions: per client IP, and per token hash
+    # so one bad actor cannot rotate IPs to keep grinding a single guess.
+    # The per-IP limit is per-attempt (a wrong guess is a real attempt), while
+    # the per-token limit is generous because the legitimate client retries.
+    enforce_rate_limit(
+        [
+            client_ip_bucket(
+                'verify-email',
+                request,
+                settings.EMAIL_VERIFICATION_MAX_ATTEMPTS * 4,
+                'Thử quá nhiều lần. Vui lòng đợi một chút rồi thử lại.',
+            ),
+            value_bucket(
+                'verify-email',
+                'token',
+                token_hash,
+                max_attempts * 2,
+                'Mã xác minh đã bị thử quá nhiều lần. Vui lòng yêu cầu gửi lại email.',
+            ),
+        ],
+        code='verification_rate_limited',
+    )
 
-    if token_obj.is_used or token_obj.expires_at < timezone.now() or token_obj.attempts >= max_attempts:
-        # Tăng số lần thử sai trên token và trong cache
-        if not token_obj.is_used:
-            token_obj.attempts += 1
-            if token_obj.attempts >= max_attempts:
-                token_obj.is_used = True
-            token_obj.save(update_fields=['attempts', 'is_used'])
-        
-        cache.set(lockout_key, attempts + 1, 900) # Khóa 15 phút (900s)
-        raise ValidationErrorException(
-            detail='Token không hợp lệ hoặc đã hết hạn.',
-            code='invalid_token'
-        )
+    failure_detail = 'Token không hợp lệ hoặc đã hết hạn.'
+    lockout_detail = 'Tài khoản này đã bị khóa xác minh do thử quá nhiều lần. Vui lòng yêu cầu gửi lại email.'
 
-    try:
-        user = token_obj.user
-        with transaction.atomic():
+    # A11: the token is now read under `SELECT ... FOR UPDATE` and `is_used` is
+    # re-checked inside the lock. Before this the read was a bare
+    # `.filter().first()` and the `is_used` test sat OUTSIDE the atomic block
+    # that started later, so two concurrent POSTs with the same valid token both
+    # passed and both activated - the second one re-running the scope elevation.
+    with transaction.atomic():
+        token_obj = (
+            EmailVerificationToken.objects
+            .select_for_update()
+            .filter(token_hash=token_hash)
+            .first()
+        )
+        lockout_key = None
+        failure = None
+
+        if token_obj is None:
+            # A11: a wrong token used to increment NOTHING, so the per-email
+            # `attempts` counter only ever counted replays of the CORRECT token
+            # and was useless as a brute-force control.
+            failure = 'unknown'
+        elif token_obj.is_used:
+            failure = 'used'
+        elif token_obj.expires_at < timezone.now():
+            failure = 'expired'
+        elif token_obj.attempts >= max_attempts:
+            failure = 'attempts'
+        else:
+            user = token_obj.user
             user.is_active = True
             user.save(update_fields=['is_active'])
 
-            # Đánh dấu token đã được sử dụng
             token_obj.is_used = True
             token_obj.save(update_fields=['is_used'])
 
-            # Reset cache attempts
+            lockout_key = f'ratelimit:verify:attempts:{(user.email or "").strip().lower()}'
             cache.delete(lockout_key)
 
             # Nâng scopes Service Account (Progressive Elevation)
@@ -273,7 +405,7 @@ def verify_email_view(request):
                     'status': CoreTenant.StatusChoices.ACTIVE
                 }
             )
-            
+
             # Tạo default UserProfile nếu thiếu
             UserProfile.objects.get_or_create(
                 user=user,
@@ -293,21 +425,63 @@ def verify_email_view(request):
                     'scopes': ['market:read', 'signals:read']
                 }
             )
-            # Nâng quyền (Progressive Elevation)
-            extended_scopes = list(set(service_account.scopes or []) | {'ai:invoke', 'manage_pats'})
-            service_account.scopes = extended_scopes
+            # A12d: was `list(set(service_account.scopes or []) | {...})`. Set
+            # iteration order is not defined, so two servers that provisioned
+            # the same account could store the same scopes in a different order,
+            # which shows up as a spurious diff in every audit and makes
+            # `CoreServiceAccountSerializer` output unstable for tests and
+            # clients that compare arrays.
+            service_account.scopes = sorted(set(service_account.scopes or []) | {'ai:invoke', 'manage_pats'})
             service_account.save(update_fields=['scopes', 'updated_at'])
 
-        return success_response({
-            'message': 'Email đã được xác minh. Bạn có thể đăng nhập.'
-        }, status.HTTP_200_OK, request=request)
-        
-    except Exception as e:
-        logger.exception("Failed to activate user and elevate service account scopes.")
-        raise InternalErrorException(
-            detail='Quá trình kích hoạt thất bại do lỗi hệ thống.',
-            code='activation_failed'
+        if failure is not None:
+            if token_obj is not None and not token_obj.is_used:
+                # A11: every failure path now counts, not just replays.
+                token_obj.attempts += 1
+                if token_obj.attempts >= max_attempts:
+                    token_obj.is_used = True
+                token_obj.save(update_fields=['attempts', 'is_used'])
+                lockout_key = f'ratelimit:verify:attempts:{token_obj.user.email.strip().lower()}'
+
+    # Bookkeeping for the failure path happens AFTER the atomic block so a raise
+    # below cannot roll the attempt counter back.
+    if failure is not None:
+        locked = False
+        if lockout_key:
+            locked = _bump_verify_lockout(lockout_key, max_attempts)
+        if failure == 'attempts' or locked:
+            raise RateLimitErrorException(
+                detail=lockout_detail,
+                code='verification_locked_out'
+            )
+        raise ValidationErrorException(
+            detail=failure_detail,
+            code='invalid_token'
         )
+
+    return success_response({
+        'message': 'Email đã được xác minh. Bạn có thể đăng nhập.'
+    }, status.HTTP_200_OK, request=request)
+
+
+def _bump_verify_lockout(lockout_key: str, max_attempts: int) -> bool:
+    """Count a failed verification against the per-email lockout.
+
+    Uses the shared atomic primitive and the operator-tunable
+    ``EMAIL_VERIFICATION_LOCKOUT_TIMEOUT``, replacing a hard-coded 900s that no
+    one could change without a deploy (the setting existed but was never read).
+
+    Returns:
+        bool: True once the address is locked out. The caller turns that into a
+        429, which is what makes the lockout observable to the client instead
+        of it silently only logging.
+    """
+    attempts = atomic_bump(lockout_key, settings.EMAIL_VERIFICATION_LOCKOUT_TIMEOUT)
+    logger.info('verify_email: attempt counter for one address is now %s/%s', attempts, max_attempts)
+    if attempts >= max_attempts:
+        logger.warning('verify_email: address locked out after %s failed attempts', attempts)
+        return True
+    return False
 
 
 @api_view(['POST'])
@@ -320,7 +494,7 @@ def resend_email_verification_view(request):
     Resends the email verification token with anti-abuse multi-dimensional rate limiting.
     """
     from django.db import transaction
-    
+
     email = str(request.data.get('email', '') or '').strip()
     if not email:
         raise ValidationErrorException(
@@ -328,71 +502,61 @@ def resend_email_verification_view(request):
             code='validation_error'
         )
 
-    # Chuẩn hóa email
     normalized_email = email.lower()
 
-    # Rate Limit 1: IP Rate Limit (3 requests per minute per IP)
-    client_ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', '127.0.0.1')
-    ip_limit_key = f'ratelimit:resend:ip:{client_ip}'
-    ip_count = cache.get(ip_limit_key, 0)
-    if ip_count >= getattr(django_settings, 'RESEND_IP_LIMIT_THRESHOLD', 3):
-        raise RateLimitErrorException(
-            detail='Thử lại quá nhanh từ IP này. Vui lòng đợi 1 phút.',
-            code='rate_limit_exceeded'
-        )
-    cache.set(ip_limit_key, ip_count + 1, 60)
+    # A5: atomic now, and checked all-then-consumed. Previously the IP bucket
+    # was incremented before the subnet bucket was even looked at, so a request
+    # rejected on the subnet dimension still burned the caller's IP budget.
+    enforce_rate_limit(
+        [
+            client_ip_bucket(
+                'resend',
+                request,
+                settings.RESEND_IP_LIMIT_THRESHOLD,
+                'Thử lại quá nhanh từ IP này. Vui lòng đợi 1 phút.',
+            ),
+            client_subnet_bucket(
+                'resend',
+                request,
+                settings.RESEND_SUBNET_LIMIT_THRESHOLD,
+                'Thử lại quá nhanh từ mạng của bạn. Vui lòng đợi 1 phút.',
+            ),
+        ],
+        code='rate_limit_exceeded',
+    )
 
-    # Rate Limit 2: Subnet Rate Limit (10 requests per minute per subnet)
-    def get_subnet(ip):
-        if ':' in ip:  # IPv6
-            return ':'.join(ip.split(':')[:4])
-        else:  # IPv4
-            return '.'.join(ip.split('.')[:3])
-            
-    subnet = get_subnet(client_ip)
-    subnet_limit_key = f'ratelimit:resend:subnet:{subnet}'
-    subnet_count = cache.get(subnet_limit_key, 0)
-    if subnet_count >= getattr(django_settings, 'RESEND_SUBNET_LIMIT_THRESHOLD', 10):
-        raise RateLimitErrorException(
-            detail='Thử lại quá nhanh từ mạng của bạn. Vui lòng đợi 1 phút.',
-            code='rate_limit_exceeded'
-        )
-    cache.set(subnet_limit_key, subnet_count + 1, 60)
-
-    # Rate Limit 3: Cooldown 60s per Email
+    # Cooldown per email, on the operator-tunable setting that existed but was
+    # never read (the value was hard-coded to 60s).
     cooldown_key = f'cooldown:resend:email:{normalized_email}'
-    if cache.get(cooldown_key):
+    if peek_rate_limit(cooldown_key):
         raise RateLimitErrorException(
-            detail='Vui lòng đợi 60 giây trước khi yêu cầu gửi lại email xác minh.',
+            detail='Vui lòng đợi một chút trước khi yêu cầu gửi lại email xác minh.',
             code='resend_cooldown_active'
         )
-    cache.set(cooldown_key, True, 60)
+    cache.set(cooldown_key, 1, settings.EMAIL_VERIFICATION_RESEND_COOLDOWN)
 
-    # Để tránh username enumeration, trả về thành công giả lập nếu email không tồn tại
-    try:
-        user = User.objects.get(email__iexact=normalized_email)
-    except User.DoesNotExist:
-        return success_response({
-            'message': 'Nếu email tồn tại trong hệ thống, một liên kết xác minh mới đã được gửi.'
-        }, status.HTTP_200_OK, request=request)
-
-    if user.is_active:
-        return success_response({
-            'message': 'Tài khoản đã được xác minh trước đó.'
-        }, status.HTTP_200_OK, request=request)
+    # A7: this comment promised enumeration-safe responses and then returned
+    # three different messages - "a new link was sent" / "already verified" /
+    # nothing at all - so it disclosed both whether the address exists AND
+    # whether the account was already activated. One shape for all outcomes.
+    user = get_user_by_email(normalized_email)
+    if user is None or user.is_active:
+        return success_response({'message': RESEND_NEUTRAL_MESSAGE}, status.HTTP_200_OK, request=request)
 
     try:
         with transaction.atomic():
-            # Hủy kích hoạt tất cả các token xác minh cũ của user
+            # A12e: rows are marked used, never deleted - pruned by
+            # `email_tasks.prune_email_verification_tokens` once the coordinator
+            # adds it to CELERY_BEAT_SCHEDULE.
             EmailVerificationToken.objects.filter(user=user, is_used=False).update(is_used=True)
-            
+
             # Ghi nhận Transactional Outbox Event
             event_payload = {
                 "user_id": user.id,
                 "username": user.username,
                 "email": user.email,
             }
-            
+
             outbox_event = OutboxEvent.objects.create(
                 event_type='UserRegisteredEvent',
                 payload=event_payload,
@@ -402,35 +566,33 @@ def resend_email_verification_view(request):
             # Sinh token xác minh và lưu DB
             raw_token = secrets.token_urlsafe(32)
             token_hash = hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
-            
-            token_ttl_min = getattr(django_settings, 'EMAIL_VERIFICATION_TOKEN_TTL_MINUTES', 30)
-            expires_at = timezone.now() + timedelta(minutes=token_ttl_min)
+
+            expires_at = timezone.now() + timedelta(minutes=settings.EMAIL_VERIFICATION_TOKEN_TTL_MINUTES)
             EmailVerificationToken.objects.create(
                 user=user,
                 token_hash=token_hash,
                 expires_at=expires_at
             )
 
-            # Lập lịch gửi Email bất đồng bộ an toàn qua on_commit
-            from django.conf import settings
-            from data_ingest.tasks import trigger_email_verification_flow
+            # Same defensive dispatch as register_view: a broker outage must not
+            # turn a completed write into a 500.
             transaction.on_commit(
-                lambda: trigger_email_verification_flow.delay(
-                    user.id, 
-                    outbox_event.event_id, 
-                    email=user.email, 
-                    token=raw_token, 
-                    frontend_url=settings.FRONTEND_URL
-                )
+                lambda: _dispatch_verification_email(
+                    user.id,
+                    outbox_event.event_id,
+                    user.email,
+                    raw_token,
+                ),
+                robust=True,
             )
 
-        return success_response({
-            'message': 'Liên kết xác minh mới đã được gửi thành công.'
-        }, status.HTTP_200_OK, request=request)
-
-    except Exception as e:
+    except APIException:
+        raise
+    except Exception:
         logger.exception("Failed to resend verification email.")
         raise InternalErrorException(
             detail='Không thể xử lý yêu cầu gửi lại email xác minh do lỗi hệ thống.',
             code='resend_failed'
         )
+
+    return success_response({'message': RESEND_NEUTRAL_MESSAGE}, status.HTTP_200_OK, request=request)

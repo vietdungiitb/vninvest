@@ -1,11 +1,14 @@
-"""Celery tasks for sending onboarding emails (welcome + invite)."""
+"""Celery tasks for sending onboarding emails (welcome + invite) and for
+pruning the tables those flows fill up."""
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 
 from celery import shared_task
 from django.conf import settings
 from django.template.loader import render_to_string
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -56,17 +59,39 @@ def send_welcome_email(self, user_id: int, tenant_public_id: str, lang: str = 'v
 
     *user_id* is the **auth.User** primary key (as passed by onboarding_views).
     """
+    from django.contrib.auth import get_user_model
+
     from identity_access.models import CoreTenant, UserProfile
     from identity_access.mail_service import send_system_email
 
     try:
-        user_profile = UserProfile.objects.select_related('user').get(user__id=user_id)
         tenant = CoreTenant.objects.get(public_id=tenant_public_id)
-    except (UserProfile.DoesNotExist, CoreTenant.DoesNotExist) as exc:
-        logger.error('send_welcome_email: user=%s or tenant=%s not found', user_id, tenant_public_id)
+    except CoreTenant.DoesNotExist as exc:
+        logger.error('send_welcome_email: tenant=%s not found', tenant_public_id)
         return {'status': 'skipped', 'reason': str(exc)}
 
-    user = user_profile.user
+    # The recipient is resolved through UserProfile, but a missing profile must
+    # not silently swallow a welcome email: the task used to return
+    # {'status': 'skipped'} whenever `UserProfile.objects.get(user__id=...)` came
+    # up empty, and `onboarding_views.register_tenant_view` did not create a
+    # profile - so every self-service signup quietly skipped its own welcome
+    # email. The view now creates the profile; this fallback means any future
+    # path that forgets one degrades to "sent" instead of "silently never sent".
+    user = None
+    display_name = ''
+    try:
+        user_profile = UserProfile.objects.select_related('user').get(user__id=user_id)
+        user = user_profile.user
+        display_name = user_profile.display_name or ''
+    except UserProfile.DoesNotExist:
+        user = get_user_model().objects.filter(pk=user_id).first()
+        if user is None:
+            logger.error('send_welcome_email: user=%s or tenant=%s not found', user_id, tenant_public_id)
+            return {'status': 'skipped', 'reason': 'user not found'}
+        logger.warning(
+            'send_welcome_email: user=%s has no UserProfile; sending anyway', user_id,
+        )
+
     frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
     dashboard_url = f"{frontend_url}/tenant-admin"
 
@@ -80,7 +105,7 @@ def send_welcome_email(self, user_id: int, tenant_public_id: str, lang: str = 'v
 
     lang_key = lang if lang in WELCOME_SUBJECTS else 'vi'
     subject = WELCOME_SUBJECTS[lang_key].format(display_name=tenant.display_name)
-    user_name = user_profile.display_name or user.email
+    user_name = display_name or user.get_full_name() or user.username or user.email
     plain_message = WELCOME_PLAIN[lang_key].format(
         user_name=user_name,
         display_name=tenant.display_name,
@@ -160,3 +185,51 @@ def send_invite_email(self, invite_id: int, lang: str = 'vi'):
     except Exception as exc:
         logger.error('send_invite_email: failed for %s: %s', invite.invited_email, exc)
         raise self.retry(exc=exc)
+
+
+# ---------------------------------------------------------------------------
+# Retention (A12e)
+# ---------------------------------------------------------------------------
+# `register_view` and `resend_email_verification_view` both invalidate an
+# account's previous tokens with
+# `EmailVerificationToken.objects.filter(user=user, is_used=False).update(is_used=True)`.
+# Nothing ever deleted them, and there is no pruning task, so this table grows
+# by one row per verification attempt forever - for a token that is already
+# spent and carries no value.
+#
+# .. warning::
+#    NOT SCHEDULED YET. `CELERY_BEAT_SCHEDULE` lives in settings.py, which is
+#    not this slice's to edit. The coordinator needs to add:
+#
+#        'prune-email-verification-tokens-hourly': {
+#            'task': 'identity_access.email_tasks.prune_email_verification_tokens',
+#            'schedule': crontab(minute=17),
+#        },
+#
+#    The task is idempotent and safe to run by hand before that lands.
+@shared_task
+def prune_email_verification_tokens(older_than_hours: int = 24) -> dict:
+    """Delete spent or expired email-verification tokens.
+
+    Only rows that can no longer authenticate anything are removed:
+    ``is_used=True``, or ``expires_at`` in the past. Live tokens for accounts
+    that have not yet clicked their link are left alone, so running this
+    frequently is harmless.
+
+    Args:
+        older_than_hours: Extra grace period applied on top of expiry, so a
+            token that expired a second ago is not deleted while its email is
+            still sitting in an inbox.
+
+    Returns:
+        dict: ``{'deleted': int, 'cutoff': iso8601}``.
+    """
+    from identity_access.models import EmailVerificationToken
+
+    cutoff = timezone.now() - timedelta(hours=max(1, int(older_than_hours)))
+    deleted, _ = EmailVerificationToken.objects.filter(
+        expires_at__lt=cutoff,
+    ).delete()
+    logger.info('prune_email_verification_tokens: deleted %s row(s) older than %s', deleted, cutoff)
+    return {'deleted': deleted, 'cutoff': cutoff.isoformat()}
+

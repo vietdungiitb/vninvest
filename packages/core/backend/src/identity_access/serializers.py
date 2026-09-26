@@ -74,7 +74,28 @@ class CoreTenantSerializer(serializers.ModelSerializer):
             'billing_period_start', 'billing_period_end', 'created_at', 'updated_at',
             'api_calls_limit', 'api_calls_used',
         ]
-        read_only_fields = ['tenant_id', 'created_at', 'updated_at', 'api_calls_limit', 'api_calls_used']
+        # A12: `plan`, `status`, `features` and the billing/trial timestamps are
+        # SERVER-owned lifecycle state, not tenant-editable profile data. Before
+        # this they were writable, and the only write path is
+        # `views_tenant.TenantDetailView` (RetrieveUpdateAPIView), reachable by
+        # any tenant `admin` holding `tenant:write` - so a tenant admin could
+        # PATCH {"plan": "enterprise"} and grant themselves every paid-plan
+        # entitlement (see helpers._build_abilities, which keys navigation and
+        # abilities off tenant.plan), or PATCH {"status": "active"} to un-suspend
+        # themselves after a commercial suspension.
+        #
+        # Every legitimate transition already assigns the model field directly
+        # (commercial/views.py:292, commercial/stripe_webhooks.py:131,170,204,
+        # commercial/tasks.py:218,277,278, tenant_lifecycle/tasks.py:45,83,131,
+        # identity_access/tasks.py:398, views_webhooks.py:233), never through
+        # this serializer, so making them read-only closes the self-service hole
+        # without touching a real flow.
+        read_only_fields = [
+            'tenant_id', 'created_at', 'updated_at', 'api_calls_limit', 'api_calls_used',
+            'plan', 'status', 'features',
+            'trial_ends_at', 'activated_at', 'suspended_at',
+            'billing_period_start', 'billing_period_end',
+        ]
 
 
 class CoreServiceAccountSerializer(serializers.ModelSerializer):
@@ -361,10 +382,8 @@ import re
 import requests
 import logging
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 
-User = get_user_model()
 logger = logging.getLogger(__name__)
 
 class SaaSRegisterSerializer(serializers.Serializer):
@@ -383,15 +402,18 @@ class SaaSRegisterSerializer(serializers.Serializer):
         val_clean = str(value or '').strip()
         if not re.match(r'^[a-zA-Z0-9_]{3,30}$', val_clean):
             raise serializers.ValidationError("Tên đăng nhập chỉ chứa ký tự chữ, số và dấu gạch dưới (3-30 ký tự).")
-        if User.objects.filter(username__iexact=val_clean).exists():
-            raise serializers.ValidationError("Tên đăng nhập này đã tồn tại.")
+        # A7: existence is deliberately NOT checked here. This used to raise
+        # "Tên đăng nhập này đã tồn tại." and the sibling field raised
+        # "Địa chỉ email này đã được đăng ký." on an unauthenticated endpoint, so
+        # the *field name* in the 400 body told an attacker which of the two was
+        # already taken. The check moved to `register_view`, which answers with a
+        # single opaque `registration_unavailable` for either collision.
+        # This serializer is only used by that view, so nothing loses the check.
         return val_clean.lower()
 
     def validate_email(self, value):
         email_clean = str(value or '').lower().strip()
-        if User.objects.filter(email__iexact=email_clean).exists():
-            raise serializers.ValidationError("Địa chỉ email này đã được đăng ký.")
-        
+
         # Tầng 2: Disposable Domain Block (O(1) Hash Set Lookup)
         domain = email_clean.split('@')[-1]
         disposable_set = getattr(settings, 'BLOCKED_DISPOSABLE_DOMAINS', set())
@@ -424,8 +446,15 @@ class SaaSRegisterSerializer(serializers.Serializer):
     def _verify_turnstile(self, token, client_ip):
         secret_key = getattr(settings, 'TURNSTILE_SECRET_KEY', '').strip()
         strict = getattr(settings, 'STRICT_TURNSTILE_ENFORCEMENT', False)
-        import sys
-        is_testing = 'test' in sys.argv or any('test' in arg for arg in sys.argv)
+        # A4: was `'test' in sys.argv or any('test' in arg for arg in sys.argv)`.
+        # The second clause is a substring match over EVERY argv entry, so any
+        # argument merely CONTAINING "test" disabled bot protection - e.g.
+        # `gunicorn --config /etc/gunicorn/testing_gunicorn_conf.py`, or a
+        # logfile argument `logs/testing.log`. Re-deriving the flag here also
+        # meant this check could silently disagree with the `if TESTING:` block
+        # in settings.py (which swaps CACHES and empties DEFAULT_THROTTLE_CLASSES).
+        # settings.TESTING is the single definition; read it, do not re-derive.
+        is_testing = settings.TESTING
 
         if not secret_key:
             if not strict or settings.DEBUG or is_testing:
