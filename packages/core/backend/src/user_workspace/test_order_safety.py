@@ -179,6 +179,17 @@ class OrderFailClosedTests(OrderSafetyTestCase):
         self.assertEqual(resp.json()['code'], 'idempotency_key_required')
         self.assertEqual(self.broker.order_calls, [])
 
+    def test_paper_mode_reaches_the_broker_as_dry_run_true(self):
+        """Server là nguồn sự thật của mode: `mode=paper` ⇒ `dry_run=True` xuống broker."""
+        resp = self.post_order(self.order_body(mode='paper'))
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertIs(self.broker.order_calls[0]['dry_run'], True)
+
+    def test_legacy_dry_run_true_still_reaches_the_broker_as_paper(self):
+        resp = self.post_order(self.order_body(mode=None, dry_run=True))
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertIs(self.broker.order_calls[0]['dry_run'], True)
+
 
 class OrderPayloadContractTests(OrderSafetyTestCase):
     """X.1 / X.3 / X.4 / X.6 — payload phải khớp giá trị đã validate."""
@@ -241,12 +252,20 @@ class OrderPayloadContractTests(OrderSafetyTestCase):
         call = self.broker.order_calls[0]
         self.assertEqual(call['market_type'], 'STOCK')
         self.assertEqual(call['order_category'], 'NORMAL')
-        self.assertIs(call['dry_run'], True)
         payload = call['payload']
         self.assertEqual(payload['symbol'], 'FPT')
         self.assertEqual(payload['side'], 'BUY')
         self.assertEqual(payload['volume'], 100)
         self.assertEqual(payload['quantity'], 100)
+
+    def test_validated_values_are_not_left_behind_in_the_raw_payload(self):
+        """X.6 — `normalized_payload` phải là copy, không mutate dict của request."""
+        body = self.order_body()
+        raw = body['payload']
+        self.post_order(body)
+        self.assertEqual(raw['symbol'], 'fpt')
+        self.assertEqual(raw['side'], 'buy')
+        self.assertNotIn('volume', raw)
 
 
 class OrderIdempotencyTests(OrderSafetyTestCase):

@@ -38,17 +38,102 @@ from vninvest_core.exceptions import ValidationErrorException, NotFoundErrorExce
 _ALLOWED_SIDES = ('BUY', 'SELL')
 #: lô tối thiểu cho cổ phiếu Việt Nam
 _MIN_LOT = 100
+#: X.3 — `market_type` chỉ nhận giá trị sản phẩm thật sự dùng. Trước đây không
+#: allowlist nên `FUND` đi thẳng xuống broker VÀ né được guard lô 100 (guard chỉ
+#: chạy khi `market_type == 'STOCK'`). Thêm loại mới ⇒ thêm ở đây + validate riêng.
+_ALLOWED_MARKET_TYPES = ('STOCK',)
+#: X.4 — `order_category` trước đây nhận và truyền thẳng xuống broker, không validate.
+_ALLOWED_ORDER_CATEGORIES = ('NORMAL',)
+#: X.1 — hai caller FE (`DNSEConnectionPanel.js:216`, `AdvisoryOrderTicket.js:51`)
+#: đều gửi `quantity`; validator cũ chỉ đọc `volume` nên `int(None)` → TypeError →
+#: "Khối lượng phải là số nguyên." ⇒ mọi lệnh từ UI trả 400.
+#: `volume` là key chuẩn của BE; `quantity` là alias được chấp nhận.
+_VOLUME_KEY = 'volume'
+_VOLUME_ALIASES = ('quantity',)
 
 
-def _validate_order_payload(payload: dict, market_type: str) -> None:
-    """Validate đơn đặt lệnh ở server, không tin UI.
+def _require_allowlisted(raw, allowed, default, code: str, label: str) -> str:
+    """Chuẩn hoá + kiểm allowlist. Sai ⇒ 400 với `code` riêng, không phải 400 chung chung."""
+    if raw is None:
+        return default
+    value = str(raw).strip().upper()
+    if not value:
+        return default
+    if value not in allowed:
+        raise ValidationErrorException(
+            detail=(
+                f"{label} không hợp lệ: '{value}'. "
+                f"Chỉ chấp nhận: {', '.join(allowed)}."
+            ),
+            code=code,
+        )
+    return value
 
-    Trước R0.11 client có thể gửi bất kỳ payload nào. Nay chặn:
-    - thiếu `symbol` hoặc symbol không phải mã cổ phiếu hợp lệ
+
+def _read_volume(payload: dict) -> int:
+    """Đọc khối lượng từ `volume` HOẶC alias `quantity`, rồi trả về số nguyên đã kiểm.
+
+    Nếu client gửi cả hai mà lệch nhau ⇒ từ chối, vì lúc đó không biết broker sẽ
+    đọc giá trị nào — đó chính là lớp TOCTOU mà X.6 nói.
+    """
+    present = {
+        key: payload.get(key)
+        for key in (_VOLUME_KEY, *_VOLUME_ALIASES)
+        if payload.get(key) is not None and str(payload.get(key)).strip() != ''
+    }
+    if not present:
+        raise ValidationErrorException(
+            detail=(
+                "Thiếu khối lượng đặt lệnh. "
+                f"Gửi '{_VOLUME_KEY}'"
+                + (f" hoặc '{_VOLUME_ALIASES[0]}'." if _VOLUME_ALIASES else ".")
+            ),
+            code="order_volume_missing",
+        )
+    if len(present) > 1:
+        coerced = {}
+        for key, raw in present.items():
+            try:
+                coerced[key] = int(raw)
+            except (TypeError, ValueError):
+                raise ValidationErrorException(
+                    detail="Khối lượng phải là số nguyên.", code="validation_error",
+                )
+        if len(set(coerced.values())) > 1:
+            raise ValidationErrorException(
+                detail=(
+                    f"Khối lượng mâu thuẫn: "
+                    + ", ".join(f"{k}={v}" for k, v in sorted(coerced.items()))
+                    + ". Gửi một giá trị duy nhất."
+                ),
+                code="order_volume_conflict",
+            )
+        return next(iter(coerced.values()))
+    raw = next(iter(present.values()))
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        raise ValidationErrorException(
+            detail="Khối lượng phải là số nguyên.", code="validation_error",
+        )
+
+
+def _normalize_order_payload(payload: dict, market_type: str) -> dict:
+    """Validate đơn đặt lệnh ở server, không tin UI, rồi TRẢ VỀ bản đã chuẩn hoá.
+
+    X.6 — bản trả về chính là bản được truyền xuống broker. Trước đây validator
+    đọc bản `symbol` đã `.upper()` còn `dnse_place_order_api` vẫn execute
+    `payload` gốc ⇒ giá trị kiểm ≠ giá trị thực thi.
+
+    Chặn:
+    - thiếu `symbol`, hoặc symbol không phải mã cổ phiếu hợp lệ
     - thiếu `side`, hoặc side ngoài BUY/SELL
-    - `volume` không phải số nguyên dương, hoặc (với STOCK) không tròn 100
+    - thiếu khối lượng, khối lượng không phải số nguyên dương, mâu thuẫn giữa
+      `volume`/`quantity`, hoặc (với STOCK) không tròn 100
     - `price` âm
     """
+    normalized = dict(payload)
+
     symbol = str(payload.get('symbol') or '').strip().upper()
     if not symbol:
         raise ValidationErrorException(
@@ -58,6 +143,7 @@ def _validate_order_payload(payload: dict, market_type: str) -> None:
         raise ValidationErrorException(
             detail=f"Mã chứng khoán không hợp lệ: {symbol}.", code="validation_error",
         )
+    normalized['symbol'] = symbol
 
     side = str(payload.get('side') or '').strip().upper()
     if side not in _ALLOWED_SIDES:
@@ -68,14 +154,9 @@ def _validate_order_payload(payload: dict, market_type: str) -> None:
             ),
             code="validation_error",
         )
+    normalized['side'] = side
 
-    raw_volume = payload.get('volume')
-    try:
-        volume = int(raw_volume)
-    except (TypeError, ValueError):
-        raise ValidationErrorException(
-            detail="Khối lượng phải là số nguyên.", code="validation_error",
-        )
+    volume = _read_volume(payload)
     if volume <= 0:
         raise ValidationErrorException(
             detail="Khối lượng phải lớn hơn 0.", code="validation_error",
@@ -84,6 +165,12 @@ def _validate_order_payload(payload: dict, market_type: str) -> None:
         raise ValidationErrorException(
             detail=f"Khối lượng cổ phiếu phải là bội số của {_MIN_LOT}.", code="validation_error",
         )
+    # Ghi giá trị ĐÃ kiểm vào MỌI key khối lượng client gửi, và luôn có key chuẩn
+    # `volume` để broker không đọc nhầm giá trị thô.
+    for key in (_VOLUME_KEY, *_VOLUME_ALIASES):
+        if key in normalized:
+            normalized[key] = volume
+    normalized.setdefault(_VOLUME_KEY, volume)
 
     raw_price = payload.get('price')
     if raw_price not in (None, ''):
@@ -97,6 +184,8 @@ def _validate_order_payload(payload: dict, market_type: str) -> None:
             raise ValidationErrorException(
                 detail="Giá không được âm.", code="validation_error",
             )
+
+    return normalized
 
 
 def _audit_order(request, market_type: str, payload: dict, outcome: str, dry_run: bool) -> None:
@@ -285,8 +374,14 @@ def dnse_place_order_api(request):
     client (lộ chi tiết hạ tầng). Nay đã bổ sung đủ 4 lớp.
     """
     user = request.user
-    market_type = str(request.data.get("market_type", "STOCK")).strip().upper() or "STOCK"
-    order_category = str(request.data.get("order_category", "NORMAL")).strip().upper() or "NORMAL"
+    market_type = _require_allowlisted(
+        request.data.get("market_type"), _ALLOWED_MARKET_TYPES, "STOCK",
+        "market_type_not_allowed", "Loại thị trường",
+    )
+    order_category = _require_allowlisted(
+        request.data.get("order_category"), _ALLOWED_ORDER_CATEGORIES, "NORMAL",
+        "order_category_not_allowed", "Nhóm lệnh",
+    )
     trading_token = str(request.data.get("trading_token", "")).strip()
     payload = request.data.get("payload")
     dry_run = _to_bool(request.data.get("dry_run", False))
@@ -305,25 +400,26 @@ def dnse_place_order_api(request):
 
     # R0.11 — validate server-side. UI đã chặn lô 100 và side UNKNOWN nhưng
     # client có thể gọi thẳng API, không được tin UI.
-    _validate_order_payload(payload, market_type)
+    # X.6 — bản chuẩn hoá trả về đây là bản DUY NHẤT đi xuống broker.
+    normalized_payload = _normalize_order_payload(payload, market_type)
 
     try:
         client = _get_active_dnse_client(user)
         result = client.post_order(
             market_type=market_type,
-            payload=payload,
+            payload=normalized_payload,
             trading_token=trading_token,
             order_category=order_category,
             dry_run=dry_run,
             raw=False,
         )
-        _audit_order(request, market_type, payload, 'accepted', dry_run=dry_run)
+        _audit_order(request, market_type, normalized_payload, 'accepted', dry_run=dry_run)
         return Response({"result": result})
     except DNSECredentialMissingError as exc:
-        _audit_order(request, market_type, payload, 'credential_missing', dry_run=dry_run)
+        _audit_order(request, market_type, normalized_payload, 'credential_missing', dry_run=dry_run)
         raise ValidationErrorException(detail=str(exc), code="validation_error")
     except DNSEAdapterError as exc:
-        _audit_order(request, market_type, payload, 'adapter_error', dry_run=dry_run)
+        _audit_order(request, market_type, normalized_payload, 'adapter_error', dry_run=dry_run)
         # `str(exc)` từ adapter đã là thông điệp nghiệp vụ có kiểm soát.
         raise ValidationErrorException(detail=str(exc), code="validation_error")
     except ValidationErrorException:
@@ -331,7 +427,7 @@ def dnse_place_order_api(request):
     except Exception:
         # R0.11 — KHÔNG trả `str(exc)` cho client. Chi tiết lỗi nằm trong log
         # nội bộ, client chỉ nhận thông điệp chung.
-        _audit_order(request, market_type, payload, 'internal_error', dry_run=dry_run)
+        _audit_order(request, market_type, normalized_payload, 'internal_error', dry_run=dry_run)
         logger.exception('dnse_place_order_api: unexpected failure for user=%s', getattr(user, 'id', None))
         raise ValidationErrorException(
             detail="Đặt lệnh thất bại do lỗi hệ thống. Vui lòng thử lại sau.",
