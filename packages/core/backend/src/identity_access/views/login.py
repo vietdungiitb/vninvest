@@ -1,18 +1,25 @@
 import logging
 from django.contrib.auth import authenticate, get_user_model
 from django.conf import settings as django_settings
-from django.core.cache import cache
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.response import Response
 
 from ..authentication import CorePATAuthentication
 from ..models import CorePATCredential, CoreServiceAccount, CoreTenant, TenantMember
-from ..security_utils import LoginRecorder
+from ..security_utils import (
+    LoginRecorder,
+    client_ip_bucket,
+    client_subnet_bucket,
+    enforce_rate_limit,
+    get_user_by_email,
+    get_user_by_username,
+    value_bucket,
+)
 from vninvest_core.exceptions import (
     ValidationErrorException,
     AuthenticationErrorException,
     PermissionErrorException,
-    RateLimitErrorException,
 )
 from .helpers import (
     _human_session_pat_expires_at,
@@ -37,17 +44,6 @@ def login_view(request):
     Upgraded SaaS Native Login with 3-Layer Brute-Force Rate Limiting (IP, Subnet, User).
     Fully compliant with StandardErrorEnvelope & success_response envelope.
     """
-    # 1. IP & Subnet Extraction
-    client_ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', '127.0.0.1')
-    
-    def get_subnet(ip):
-        if ':' in ip:  # IPv6
-            return ':'.join(ip.split(':')[:4])
-        else:  # IPv4
-            return '.'.join(ip.split('.')[:3])
-            
-    subnet = get_subnet(client_ip)
-    
     # 2. Extract and Normalize Input Identifier
     username_input = str(request.data.get('username', '') or '').strip()
     password = request.data.get('password', '')
@@ -58,71 +54,95 @@ def login_view(request):
             code='validation_error',
         )
 
-    # Resolve actual username from email if provided
+    # Resolve actual username from email if provided.
+    # A10: was `User.objects.get(email__iexact=...)` inside
+    # `except User.DoesNotExist`. auth_user.email has no unique index, so once
+    # two rows shared an address this raised MultipleObjectsReturned - uncaught,
+    # so a 500. get_user_by_email() resolves deterministically instead.
     auth_username = username_input
     if '@' in username_input:
-        try:
-            resolved_user = User.objects.get(email__iexact=username_input)
+        resolved_user = get_user_by_email(username_input)
+        if resolved_user is not None:
             auth_username = resolved_user.username
-        except User.DoesNotExist:
-            pass
 
     normalized_user = auth_username.lower()
 
     # 3. 3-Layer Multi-Dimensional Brute-Force Rate Limiting
-    # Layer 1: IP Rate Limit
-    ip_key = f'ratelimit:login:ip:{client_ip}'
-    ip_count = cache.get(ip_key, 0)
-    ip_limit = getattr(django_settings, 'LOGIN_IP_LIMIT_THRESHOLD', 5)
-    if ip_count >= ip_limit:
-        LoginRecorder.record_login(request, user=None, tenant=None, success=False, failure_reason='rate_limit_ip')
-        raise RateLimitErrorException(
-            detail='Quá nhiều yêu cầu đăng nhập từ địa chỉ IP này. Vui lòng thử lại sau 1 phút.',
-            code='login_rate_limit_exceeded',
+    # A5: the client address used to be the left-most `X-Forwarded-For` entry -
+    # the value a *client* injects - so all three dimensions below were
+    # bypassable with one header. `client_ip_bucket` / `client_subnet_bucket`
+    # go through get_client_ip(), which honours the header only when the socket
+    # peer is a trusted proxy. The counters were also a non-atomic
+    # read-modify-write, so N simultaneous guesses counted as 1.
+    # All three dimensions are checked before any is consumed, so a request
+    # rejected on one layer does not also burn the others. `on_reject` records
+    # which layer tripped, preserving the existing audit vocabulary.
+    rate_limit_reasons = {
+        'ip': 'rate_limit_ip',
+        'subnet': 'rate_limit_subnet',
+        'user': 'rate_limit_user',
+    }
+
+    def _record_rate_limit_rejection(bucket):
+        layer = bucket.key.split(':')[2] if bucket.key.count(':') >= 2 else 'unknown'
+        LoginRecorder.record_login(
+            request,
+            user=None,
+            tenant=None,
+            success=False,
+            failure_reason=rate_limit_reasons.get(layer, 'rate_limit'),
         )
 
-    # Layer 2: Subnet Rate Limit
-    subnet_key = f'ratelimit:login:subnet:{subnet}'
-    subnet_count = cache.get(subnet_key, 0)
-    subnet_limit = getattr(django_settings, 'LOGIN_SUBNET_LIMIT_THRESHOLD', 15)
-    if subnet_count >= subnet_limit:
-        LoginRecorder.record_login(request, user=None, tenant=None, success=False, failure_reason='rate_limit_subnet')
-        raise RateLimitErrorException(
-            detail='Quá nhiều yêu cầu đăng nhập từ mạng này. Vui lòng thử lại sau 1 phút.',
-            code='login_rate_limit_exceeded',
-        )
+    enforce_rate_limit(
+        [
+            client_ip_bucket(
+                'login',
+                request,
+                django_settings.LOGIN_IP_LIMIT_THRESHOLD,
+                'Quá nhiều yêu cầu đăng nhập từ địa chỉ IP này. Vui lòng thử lại sau 1 phút.',
+            ),
+            client_subnet_bucket(
+                'login',
+                request,
+                django_settings.LOGIN_SUBNET_LIMIT_THRESHOLD,
+                'Quá nhiều yêu cầu đăng nhập từ mạng này. Vui lòng thử lại sau 1 phút.',
+            ),
+            value_bucket(
+                'login',
+                'user',
+                normalized_user,
+                django_settings.LOGIN_USER_LIMIT_THRESHOLD,
+                'Quá nhiều yêu cầu đăng nhập cho tài khoản này. Vui lòng thử lại sau 1 phút.',
+            ),
+        ],
+        code='login_rate_limit_exceeded',
+        on_reject=_record_rate_limit_rejection,
+    )
 
-    # Layer 3: Username/Email Rate Limit
-    user_key = f'ratelimit:login:user:{normalized_user}'
-    user_count = cache.get(user_key, 0)
-    user_limit = getattr(django_settings, 'LOGIN_USER_LIMIT_THRESHOLD', 3)
-    if user_count >= user_limit:
-        LoginRecorder.record_login(request, user=None, tenant=None, success=False, failure_reason='rate_limit_user')
-        raise RateLimitErrorException(
-            detail='Quá nhiều yêu cầu đăng nhập cho tài khoản này. Vui lòng thử lại sau 1 phút.',
-            code='login_rate_limit_exceeded',
-        )
-
-    # Increment rate limit counters
-    cache.set(ip_key, ip_count + 1, 60)
-    cache.set(subnet_key, subnet_count + 1, 60)
-    cache.set(user_key, user_count + 1, 60)
-
-    # 4. Check if User Exists & Is Active (Email Verified Check)
-    try:
-        user_check = User.objects.get(username__iexact=auth_username)
-        if not user_check.is_active:
-            raise AuthenticationErrorException(
-                detail='Tài khoản chưa được kích hoạt. Vui lòng xác minh email trước khi đăng nhập.',
-                code='user_inactive',
-            )
-    except User.DoesNotExist:
-        # Username check failed, credentials check below will handle authentication failure natively.
-        pass
+    # 4. Resolve the candidate account.
+    user_check = get_user_by_username(auth_username)
 
     # 5. Authenticate credentials
     user = authenticate(request, username=auth_username, password=password)
     if user is None:
+        # A7: `user_inactive` used to be returned BEFORE the password was ever
+        # checked, so an unauthenticated caller could confirm that any username
+        # existed and was merely unverified - with no secret required. The
+        # distinct code is now revealed only once the password is proven, so the
+        # endpoint stops being an account-existence oracle while the account
+        # owner still gets the "check your inbox" guidance they need.
+        # `authenticate()` returns None for inactive accounts (ModelBackend
+        # checks is_active), so both cases land here.
+        if (
+            user_check is not None
+            and not user_check.is_active
+            and user_check.check_password(password)
+        ):
+            LoginRecorder.record_login(request, user=None, tenant=None, success=False, failure_reason='inactive')
+            raise AuthenticationErrorException(
+                detail='Tài khoản chưa được kích hoạt. Vui lòng xác minh email trước khi đăng nhập.',
+                code='user_inactive',
+            )
         LoginRecorder.record_login(request, user=None, tenant=None, success=False, failure_reason='invalid_credentials')
         raise AuthenticationErrorException(
             detail='Tên đăng nhập hoặc mật khẩu không chính xác.',

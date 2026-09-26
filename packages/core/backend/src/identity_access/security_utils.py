@@ -102,6 +102,7 @@ def enforce_rate_limit(
     exception_class=None,
     code: str = 'rate_limit_exceeded',
     consume: bool = True,
+    on_reject=None,
 ) -> None:
     """Check every bucket, then consume every bucket — all or nothing.
 
@@ -115,6 +116,9 @@ def enforce_rate_limit(
         consume: When False the call is a read-only peek (used to check a budget
             before a request payload has been validated, so that a malformed
             request does not burn the budget — see ``register_view``).
+        on_reject: Optional callable receiving the offending bucket, invoked
+            before the exception is raised. ``login_view`` uses it to write an
+            audit row naming the exact layer that tripped.
 
     A rejected request consumes nothing: a 429 must not itself extend the
     window, and a typo must not lock the user out.
@@ -129,6 +133,8 @@ def enforce_rate_limit(
         if bucket.limit is None or bucket.limit < 0:
             continue
         if peek_rate_limit(bucket.key) >= bucket.limit:
+            if on_reject is not None:
+                on_reject(bucket)
             raise exception_class(detail=bucket.detail, code=code)
 
     if consume:
