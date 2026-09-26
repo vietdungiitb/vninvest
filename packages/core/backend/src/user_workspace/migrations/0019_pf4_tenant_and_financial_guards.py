@@ -261,15 +261,19 @@ def repair_subaccount_tenant_reverse(apps, schema_editor):
     Vì vậy reverse ở đây là no-op có log. Muốn hoàn tác backfill thì operator
     dùng `manage.py audit_orphans` / `QuarantinedRecord` để đối soát thủ công.
     """
+    # ASCII-only: stdout cua runner Windows/CI co the la cp1252, print chuoi co dau
+    # tieng Viet se nem UnicodeEncodeError va lam migration that bai.
     print(
-        'repair_subaccount_tenant_reverse: no-op có chủ đích — không xoá tenant '
-        'của row ngoài phạm vi migration này (xem 0008:92-99 là anti-pattern).'
+        'repair_subaccount_tenant_reverse: intentional no-op - does not clear tenant '
+        'on rows outside this migration (see 0008:92-99 anti-pattern).'
     )
 
 
 def repair_transaction_tenant_reverse(apps, schema_editor):
     """No-op — lý do giống `repair_subaccount_tenant_reverse`."""
-    print('repair_transaction_tenant_reverse: no-op có chủ đích (xem 0008:92-99).')
+    print(
+        'repair_transaction_tenant_reverse: intentional no-op (see 0008:92-99).'
+    )
 
 
 class Migration(migrations.Migration):
