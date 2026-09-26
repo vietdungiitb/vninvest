@@ -13,6 +13,7 @@ from datetime import date
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.utils import timezone
+from vninvest_core.client_ip import UNKNOWN_IP, get_client_ip
 
 from identity_access.utils.resolve_tenant import (
     first_eligible_tenant_for_user,
@@ -393,12 +394,20 @@ class TenantQuotaMiddleware:
         this never performs a DB write in the request hot path.
         """
         try:
-            client_ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() \
-                or request.META.get('REMOTE_ADDR', '')
+            # Was: left-most X-Forwarded-For or REMOTE_ADDR - client-forgeable.
+            # get_client_ip() honours the header only for a TRUSTED_PROXY_IPS
+            # peer. UNKNOWN_IP is mapped back to '' so that
+            # tasks.flush_pat_audit_log's `entry.get('ip_address') or None`
+            # keeps writing NULL into the GenericIPAddressField; passing the
+            # literal "unknown" through would fail bulk_create and re-queue the
+            # whole batch forever (poison message).
+            client_ip = get_client_ip(request)
+            if client_ip == UNKNOWN_IP:
+                client_ip = ''
             entry = {
                 'pat_pk': credential.pk,
                 'tenant_pk': getattr(credential.service_account, 'tenant_id', None),
-                'ip_address': client_ip or '',
+                'ip_address': client_ip,
                 'endpoint': str(getattr(request, 'path', '') or '')[:256],
                 'method': str(getattr(request, 'method', '') or '')[:8],
                 'status_code': int(status_code),

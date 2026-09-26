@@ -5,6 +5,7 @@ from rest_framework.exceptions import AuthenticationFailed
 import ipaddress
 
 from .models import CorePATCredential
+from vninvest_core.client_ip import get_client_ip
 
 
 class CorePATAuthentication(BaseAuthentication):
@@ -36,9 +37,21 @@ class CorePATAuthentication(BaseAuthentication):
         if credential.service_account.status != credential.service_account.StatusChoices.ACTIVE:
             raise AuthenticationFailed('Service account is disabled.')
 
-        # Check CIDR whitelist if configured
+        # Check CIDR whitelist if configured.
+        #
+        # Was: request.META.get('HTTP_X_FORWARDED_FOR','').split(',')[0].strip()
+        #      or request.META.get('REMOTE_ADDR', '127.0.0.1')
+        # That read the LEFT-MOST X-Forwarded-For entry, which is the
+        # client-supplied one: anybody could send "X-Forwarded-For: 10.0.0.7"
+        # and make a CIDR-restricted PAT usable from anywhere. get_client_ip()
+        # honours the header only when REMOTE_ADDR is a TRUSTED_PROXY_IPS
+        # entry, and with the default empty list ignores it entirely.
+        #
+        # Fail-closed: when the peer cannot be determined get_client_ip returns
+        # UNKNOWN_IP ("unknown"), which ipaddress.ip_address() rejects with
+        # ValueError, so ip_allowed stays False and the PAT is rejected.
         if credential.allowed_cidr_blocks:
-            client_ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', '127.0.0.1')
+            client_ip = get_client_ip(request)
             ip_allowed = False
             try:
                 ip_obj = ipaddress.ip_address(client_ip)
