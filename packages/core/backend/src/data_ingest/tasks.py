@@ -2358,8 +2358,20 @@ def trigger_email_verification_flow(self, user_id: int, outbox_event_id: str, em
         try:
             raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
         except Exception as retry_exc:
-            logger.error('[MAIL_ROUTER] Retries exhausted for OutboxEvent %s: %s', outbox_event_id, retry_exc)
-            return {'status': 'failed', 'email': email, 'error': str(retry_exc)}
+            # C4: this used to `return {'status': 'failed'}` — a success-shaped dict
+            # that made the failure invisible to the worker, Flower and every alert
+            # rule, while the row sat in FAILED that nothing ever scanned again.
+            # Re-raise so the failure is a real task failure, and point at the one
+            # thing that can still fix it: the beat poller's dead-letter window.
+            logger.error(
+                '[MAIL_ROUTER] Retries exhausted for OutboxEvent %s (email=%s): %s. '
+                'Row is FAILED; process_outbox_events will re-drive it after '
+                'OUTBOX_FAILED_REDRIVE_AFTER_SECONDS.',
+                outbox_event_id,
+                email,
+                retry_exc,
+            )
+            raise
 
 
 
@@ -3040,21 +3052,72 @@ def process_outbox_events() -> dict:
     R2: Periodic outbox processor task.
     Queries pending OutboxEvents and dispatches them to their consumers.
     Guarantees reliability and processed idempotency via ProcessedEvent.
+
+    C3: this poller and ``trigger_email_verification_flow`` were BOTH consumers of
+    the same ``UserRegisteredEvent`` row, and both wrote ``STATUS_PROCESSED``. The
+    poller only ever ran the provisioning consumer, which never sends mail — so if
+    the Celery message was lost (worker restart, non-persistent Redis, worker down)
+    the beat poller picked the row up within 30s, marked it PROCESSED, and because
+    the query only ever looked at PENDING it never retried. The account stayed
+    ``is_active=False`` with a dead outbox row and no email ever sent.
+
+    Now each event_type has exactly ONE consumer (``_OUTBOX_CONSUMERS``) and the
+    poller can drive the email send itself, so the flow survives a lost broker
+    message. The raw token is NOT recoverable (EmailVerificationToken stores only
+    ``token_hash`` = SHA-256), so recovery mints a fresh token and invalidates the
+    old one rather than trying to replay the original link.
     """
     from django.utils import timezone
-    from django.db import transaction
+    from django.db import models, transaction
     from identity_access.models import OutboxEvent, ProcessedEvent
-    
-    pending_events = OutboxEvent.objects.filter(status=OutboxEvent.STATUS_PENDING).order_by('created_at')[:50]
+
+    now = timezone.now()
+    # PENDING: the normal path, plus stranded rows whose Celery message was lost.
+    # FAILED: the dead-letter re-drive window (C4). A row that exhausted its Celery
+    # retries used to be invisible forever, because the query only ever looked at
+    # PENDING and the mail task returned a success-shaped dict while logging the
+    # exhaustion at ERROR. Bounded by OUTBOX_MAX_REDRIVES so a permanently broken
+    # row ends up parked in FAILED for a human instead of spinning forever.
+    failed_cutoff = now - timedelta(seconds=OUTBOX_FAILED_REDRIVE_AFTER_SECONDS)
+    pollable = (
+        OutboxEvent.objects.filter(
+            status__in=(OutboxEvent.STATUS_PENDING, OutboxEvent.STATUS_FAILED)
+        )
+        .filter(
+            models.Q(status=OutboxEvent.STATUS_PENDING)
+            | models.Q(
+                status=OutboxEvent.STATUS_FAILED,
+                created_at__lte=failed_cutoff,
+                retry_count__lt=OUTBOX_MAX_REDRIVES,
+            )
+        )
+        .order_by('created_at')[:50]
+    )
+    pending_events = list(pollable)
     processed_count = 0
     failed_count = 0
-    
+    recovered_count = 0
+    skipped_retry_count = 0
+    redriven_count = 0
+
     for base_event in pending_events:
+        was_failed = base_event.status == OutboxEvent.STATUS_FAILED
         try:
+            if _outbox_recovery_is_deferred(base_event):
+                # Someone else may still be handling this row (the normal path is a
+                # Celery task that usually finishes in seconds). Back off so the beat
+                # poller and the worker cannot both send the same email.
+                skipped_retry_count += 1
+                continue
+
             with transaction.atomic():
                 # Lock row để bảo đảm an toàn trên môi trường đa worker (Fix 2)
-                event = OutboxEvent.objects.select_for_update(skip_locked=True).filter(pk=base_event.pk, status=OutboxEvent.STATUS_PENDING).first()
-                if not event:
+                event = (
+                    OutboxEvent.objects.select_for_update(skip_locked=True)
+                    .filter(pk=base_event.pk)
+                    .first()
+                )
+                if not event or not _is_pollable(event, failed_cutoff):
                     continue
 
                 # Step 1: Idempotency Check (R2)
@@ -3065,23 +3128,45 @@ def process_outbox_events() -> dict:
                     event.save(update_fields=['status', 'processed_at'])
                     processed_count += 1
                     continue
-                    
-                # Step 2: Route and execute based on event type
-                if event.event_type == 'UserRegisteredEvent':
-                    # Dynamically execute provisioning consumer with idempotency
-                    status_res, msg = execute_provisioning_consumer(event.event_id, event.payload)
-                    if status_res == 'failed':
-                        raise ValueError(msg)
-                
+
+                # Step 2: Route to the ONE consumer registered for this event type.
+                consumer = _OUTBOX_CONSUMERS.get(event.event_type)
+                if consumer is None:
+                    # Unknown type: do NOT mark processed, and do NOT retry forever.
+                    raise _UnknownOutboxEventType(event.event_type)
+
+                consumer(event)
+
                 # Step 3: Mark as processed
                 if not ProcessedEvent.objects.filter(event_id=event.event_id).exists():
                     ProcessedEvent.objects.create(event_id=event.event_id)
                 event.status = OutboxEvent.STATUS_PROCESSED
                 event.processed_at = timezone.now()
-                event.save(update_fields=['status', 'processed_at'])
-                
+                event.retry_count = 0
+                event.last_error = ''
+                event.save(
+                    update_fields=['status', 'processed_at', 'retry_count', 'last_error']
+                )
+
             processed_count += 1
-            
+            if _is_email_verification_event(base_event.event_type):
+                recovered_count += 1
+            if was_failed:
+                redriven_count += 1
+
+        except _UnknownOutboxEventType as e:
+            # Fail fast and permanently instead of spinning 5 times on a typo.
+            logger.error('Outbox event %s has an unrouted event_type: %s', base_event.event_id, e)
+            try:
+                with transaction.atomic():
+                    OutboxEvent.objects.filter(pk=base_event.pk).update(
+                        status=OutboxEvent.STATUS_FAILED,
+                        last_error=str(e),
+                    )
+            except Exception:
+                logger.exception('Failed to mark outbox event %s as failed', base_event.event_id)
+            failed_count += 1
+
         except Exception as e:
             logger.exception(f"Outbox processing failed for event {base_event.event_id}: {e}")
             try:
@@ -3090,21 +3175,187 @@ def process_outbox_events() -> dict:
                     event_err = OutboxEvent.objects.get(pk=base_event.pk)
                     event_err.retry_count += 1
                     event_err.last_error = str(e)
-                    
+
                     if event_err.retry_count >= 5:
                         event_err.status = OutboxEvent.STATUS_FAILED
                     else:
                         event_err.status = OutboxEvent.STATUS_PENDING
-                        
+
                     event_err.save(update_fields=['status', 'retry_count', 'last_error'])
             except Exception:
                 pass
             failed_count += 1
-            
+
     return {
         'processed': processed_count,
-        'failed': failed_count
+        'failed': failed_count,
+        'recovered_verification_emails': recovered_count,
+        'deferred_to_active_worker': skipped_retry_count,
+        'failed_rows_redriven': redriven_count,
     }
+
+
+def _is_pollable(event, failed_cutoff) -> bool:
+    """Re-check eligibility under the row lock (C4 dead-letter window included)."""
+    from identity_access.models import OutboxEvent
+
+    if event.status == OutboxEvent.STATUS_PENDING:
+        return True
+    if event.status == OutboxEvent.STATUS_FAILED:
+        return event.created_at <= failed_cutoff and event.retry_count < OUTBOX_MAX_REDRIVES
+    return False
+
+
+class _UnknownOutboxEventType(Exception):
+    """Raised when an OutboxEvent carries an event_type with no registered consumer."""
+
+
+#: Canonical outbox event types. One consumer each — that is the whole point of C3.
+USER_REGISTERED_EVENT = 'UserRegisteredEvent'
+#: Slice A should switch the resend flow (identity_access/views/register.py:397) to
+#: this type. Until it does, the poller treats UserRegisteredEvent as an email event
+#: too, because the raw token is unrecoverable and the account is stuck inactive.
+EMAIL_VERIFICATION_REQUESTED_EVENT = 'EmailVerificationRequestedEvent'
+#: Routing key for the (already synchronous) tenant provisioning done in
+#: identity_access/views/register.py:113-144. Nothing needs to emit this today.
+TENANT_PROVISIONING_EVENT = 'TenantProvisioningEvent'
+
+
+def _is_email_verification_event(event_type: str) -> bool:
+    return event_type in (USER_REGISTERED_EVENT, EMAIL_VERIFICATION_REQUESTED_EVENT)
+
+
+#: A PENDING row younger than this is assumed to still be owned by the Celery task
+#: that was dispatched for it. The beat poller runs every 30s; the recovery branch
+#: only acts once the row is demonstrably stranded.
+OUTBOX_RECOVERY_GRACE_SECONDS = 120
+
+#: C4 — a row whose mail task exhausted its Celery retries is re-driven by this same
+#: 30s poller once it has been FAILED for this long. Chosen over a dedicated retry
+#: task because settings.py is not this slice's to edit: a new beat entry would need
+#: the coordinator, whereas the poller that owns outbox recovery already runs.
+OUTBOX_FAILED_REDRIVE_AFTER_SECONDS = 900
+
+#: Hard ceiling on re-drives. A permanently broken row parks in FAILED for a human
+#: instead of being retried forever.
+OUTBOX_MAX_REDRIVES = 10
+
+
+def _outbox_recovery_is_deferred(event) -> bool:
+    from django.utils import timezone
+
+    if not _is_email_verification_event(event.event_type):
+        return False
+    age_seconds = (timezone.now() - event.created_at).total_seconds()
+    return age_seconds < OUTBOX_RECOVERY_GRACE_SECONDS
+
+
+def _mint_verification_token(user):
+    """Create a fresh verification token and invalidate the previous unused ones.
+
+    Mirrors identity_access/views/register.py:161-175 (token_urlsafe(32) + SHA-256,
+    TTL from settings.EMAIL_VERIFICATION_TOKEN_TTL_MINUTES) so a token minted by the
+    recovery path is indistinguishable from one minted by the view.
+    """
+    import hashlib
+    import secrets
+    from datetime import timedelta as _timedelta
+
+    from django.utils import timezone
+    from identity_access.models import EmailVerificationToken
+
+    raw_token = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
+
+    EmailVerificationToken.objects.filter(user=user, is_used=False).update(is_used=True)
+
+    ttl_minutes = getattr(django_settings, 'EMAIL_VERIFICATION_TOKEN_TTL_MINUTES', 30)
+    EmailVerificationToken.objects.create(
+        user=user,
+        token_hash=token_hash,
+        expires_at=timezone.now() + _timedelta(minutes=ttl_minutes),
+    )
+    return raw_token
+
+
+def consume_email_verification_event(event) -> None:
+    """The single consumer for a verification-email outbox event.
+
+    Runs INSIDE the poller's transaction and calls the mail task synchronously, so
+    a send failure is counted by the poller's retry accounting instead of vanishing
+    into a lost Celery message.
+    """
+    from django.contrib.auth import get_user_model
+    from django.utils import timezone
+    from identity_access.models import OutboxEvent
+
+    User = get_user_model()
+    payload = event.payload or {}
+    user_id = payload.get('user_id')
+    if not user_id:
+        raise ValueError(
+            f'OutboxEvent {event.event_id} ({event.event_type}) has no user_id in payload; '
+            'cannot send a verification email.'
+        )
+
+    try:
+        user = User.objects.get(pk=user_id)
+    except User.DoesNotExist:
+        raise ValueError(f'User {user_id} from OutboxEvent {event.event_id} does not exist.')
+
+    if user.is_active:
+        # Already verified — the mail would be noise. Close the row out.
+        logger.info(
+            'Outbox %s: user %s already active, no verification email needed.',
+            event.event_id,
+            user_id,
+        )
+        return
+
+    if not user.email:
+        raise ValueError(f'User {user_id} has no email address; cannot send verification.')
+
+    # The original raw token is unrecoverable (only its SHA-256 is stored), so a
+    # recovered event gets a NEW token. The old unused ones are invalidated.
+    raw_token = _mint_verification_token(user)
+    frontend_url = getattr(django_settings, 'FRONTEND_URL', None)
+
+    result = trigger_email_verification_flow(
+        user.id,
+        event.event_id,
+        email=user.email,
+        token=raw_token,
+        frontend_url=frontend_url,
+    )
+    if not result or result.get('status') != 'sent':
+        # The mail task swallowed a failure and returned a success-shaped dict.
+        # Force the poller to retry rather than marking the row PROCESSED.
+        raise RuntimeError(
+            f'Verification email for outbox {event.event_id} not sent: {result}'
+        )
+
+    logger.info(
+        'Outbox %s: verification email re-driven by the beat poller for user %s.',
+        event.event_id,
+        user_id,
+    )
+
+
+def consume_tenant_provisioning_event(event) -> None:
+    """The single consumer for the tenant-provisioning event type."""
+    status_res, msg = execute_provisioning_consumer(event.event_id, event.payload)
+    if status_res == 'failed':
+        raise ValueError(msg)
+    if status_res == 'dropped':
+        raise ValueError(f'Provisioning event {event.event_id} was already processed: {msg}')
+
+
+#: event_type -> the ONE consumer allowed to handle it.
+_OUTBOX_CONSUMERS = {
+    USER_REGISTERED_EVENT: consume_email_verification_event,
+    EMAIL_VERIFICATION_REQUESTED_EVENT: consume_email_verification_event,
+    TENANT_PROVISIONING_EVENT: consume_tenant_provisioning_event,
+}
 
 
 def execute_provisioning_consumer(event_id, payload) -> tuple[str, str]:

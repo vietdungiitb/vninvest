@@ -7,6 +7,7 @@ interface UserIdentity {
   isStaff: boolean;
   isSuperuser: boolean;
   avatar_url?: string;
+  display_name?: string;
 }
 
 interface UserConfig {
@@ -34,16 +35,29 @@ interface Ability {
   cannot: (action: string, subject: any) => boolean;
 }
 
+interface AuthStateError {
+  message: string;
+  /** false = retrying cannot help (e.g. a persistent 403), so no retry button. */
+  retryable?: boolean;
+  i18nKey?: string;
+  defaultMessage?: string;
+}
+
 interface PortfolioContextValue {
   portfolios: Portfolio[];
   activePortfolioId: string | null;
   setActivePortfolioId: (id: string | null) => void;
   isAuthenticated: boolean;
   authStateReady: boolean;
+  /**
+   * Set when the session is still valid but the identity bootstrap failed. The
+   * shell renders this instead of an empty, errorless app. `null` when healthy.
+   */
+  authStateError: AuthStateError | null;
+  retryAuthBootstrap: () => void;
   login: (username: string, password: string) => Promise<any>;
-  register: (data: { username: string; email: string; password: string; passwordConfirm: string }) => Promise<any>;
   resendVerification: (identifier: string) => Promise<any>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshAccessToken: () => Promise<boolean>;
   userConfig: UserConfig | null;
   updateUserConfig: (data: Partial<UserConfig>) => Promise<any>;
