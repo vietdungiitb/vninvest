@@ -214,6 +214,20 @@ class TenantResolutionMiddleware:
             # (e.g. TenantQuotaMiddleware) can attribute the request to a PAT without
             # re-resolving it. DRF re-sets request.auth later with the same credential.
             request.auth = credential
+            # B9: also expose the resolved *user*. DRF authentication happens
+            # inside the view, so at quota-middleware time request.user is still
+            # Django's lazy session user (AnonymousUser for a PAT request) and
+            # TenantQuotaMiddleware used to skip PAT traffic entirely - no
+            # counter, no 429, no _enqueue_pat_audit. Stashing the already
+            # resolved user here means the quota middleware never has to
+            # re-parse the secret or re-query the DB.
+            #
+            # Set on `request`, deliberately NOT on `request.user`: assigning to
+            # request.user would force evaluation of the SimpleLazyObject and
+            # could interfere with session auth. This is a plain attribute
+            # write on a per-request object, so it is request-scoped and
+            # idempotent (written once per request).
+            request._pat_user = user
             return user
         except Exception:
             return None
@@ -317,6 +331,19 @@ class TenantQuotaMiddleware:
             return self.get_response(request)
 
         user = getattr(request, 'user', None)
+        if not user or not getattr(user, 'is_authenticated', False):
+            # B9: PAT-authenticated requests reach this middleware with no
+            # usable request.user -- DRF authenticates later, inside the view,
+            # so request.user is still Django's lazy session user
+            # (AnonymousUser) here. The old code returned immediately, which
+            # made the daily counter, the 429 enforcement AND the
+            # `if is_pat:` audit branch unreachable for essentially all
+            # programmatic traffic. TenantResolutionMiddleware (one layer up)
+            # already resolved and stashed that user on request._pat_user, so
+            # reuse it. No secret re-parse, no extra query, no mutation of
+            # request.user, and the getattr default keeps behaviour identical
+            # when the attribute is absent (non-PAT, or an invalid PAT).
+            user = getattr(request, '_pat_user', None)
         if not user or not getattr(user, 'is_authenticated', False):
             return self.get_response(request)
 
