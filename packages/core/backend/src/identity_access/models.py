@@ -215,6 +215,22 @@ class CoreServiceAccount(models.Model):
         indexes = [
             models.Index(fields=['tenant', 'status']),
         ]
+        # C5: get_or_create(tenant=..., name='default') is used in
+        # views/register.py:139,288, views/sso.py:300, views_personal.py:50,
+        # views/register.py helpers and data_ingest/tasks.py:3155. Without a
+        # unique constraint Django's get_or_create is a SELECT-then-INSERT and is
+        # NOT race-safe, so two concurrent requests mint two "default" accounts.
+        # views/login.py:146 then picks .first() under ordering ['-created_at','-pk']
+        # (i.e. the NEWEST) and attaches whichever scopes that row happens to carry
+        # to the user's login PAT — the elevated set (ai:invoke, manage_pats) is
+        # written by views/register.py:297-299. Migration 0028 merges existing
+        # duplicates (re-pointing their PATs) before this constraint applies.
+        constraints = [
+            models.UniqueConstraint(
+                fields=['tenant', 'name'],
+                name='uniq_core_service_account_tenant_name',
+            ),
+        ]
 
     def __str__(self):
         return f'{self.name} ({self.status})'
