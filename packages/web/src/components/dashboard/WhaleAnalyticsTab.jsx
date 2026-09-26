@@ -1,17 +1,23 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../../context/LangContext.js';
 import useWhaleAnalyticsData from '../../hooks/useWhaleAnalyticsData.js';
-import FactsFirstWhaleBubbleChart from '../FactsFirstWhaleBubbleChart.jsx';
 import WhaleAnalyticsAdvisoryModal from './WhaleAnalyticsAdvisoryModal.jsx';
 import { RotateCw, TrendingUp, TrendingDown, Activity, AlertTriangle } from 'lucide-react';
 
+// R1.1 — bubble chart là thành phần DUY NHẤT thuộc dashboard (`grep` toàn repo:
+// chỉ `WhaleAnalyticsTab` import). Import tĩnh khiến Vite gom nó vào chunk
+// dùng chung với component của trang `/ai-advisory`, buộc trang advisory tải
+// thêm 774 KB chỉ để vẽ chart. Lazy-load để tách thành chunk riêng, chỉ
+// dashboard tải.
+const FactsFirstWhaleBubbleChart = lazy(() => import('../FactsFirstWhaleBubbleChart.jsx'));
+
 const TIMEFRAME_OPTIONS = [
-  { value: '15m', label: '15 phút' },
-  { value: '30m', label: '30 phút' },
-  { value: '1h', label: '1 giờ' },
-  { value: 'morning', label: 'Phiên sáng' },
-  { value: 'afternoon', label: 'Phiên chiều' },
-  { value: 'session', label: 'Cả phiên' },
+  { value: '15m', labelKey: 'whaleChart.timeframe15m', defaultLabel: '15 phút' },
+  { value: '30m', labelKey: 'whaleChart.timeframe30m', defaultLabel: '30 phút' },
+  { value: '1h', labelKey: 'whaleChart.timeframe1h', defaultLabel: '1 giờ' },
+  { value: 'morning', labelKey: 'whaleChart.timeframeMorning', defaultLabel: 'Phiên sáng' },
+  { value: 'afternoon', labelKey: 'whaleChart.timeframeAfternoon', defaultLabel: 'Phiên chiều' },
+  { value: 'session', labelKey: 'whaleChart.timeframeSession', defaultLabel: 'Cả phiên' },
 ];
 
 export default function WhaleAnalyticsTab({
@@ -87,7 +93,7 @@ export default function WhaleAnalyticsTab({
               className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-bold text-emerald-400 outline-none focus:border-emerald-500 transition-all"
             >
               {TIMEFRAME_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
+                <option key={option.value} value={option.value}>{t(option.labelKey, { defaultValue: option.defaultLabel })}</option>
               ))}
             </select>
           </div>
@@ -126,20 +132,31 @@ export default function WhaleAnalyticsTab({
         <div className="relative group flex-1 min-h-[300px]">
           <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 rounded-xl blur opacity-30 group-hover:opacity-50 transition duration-1000" />
           <div className="relative bg-slate-900/40 rounded-xl border border-slate-800/60 shadow-2xl overflow-hidden h-full">
-            <FactsFirstWhaleBubbleChart
-              symbol={symbol}
-              timeframe={timeframe}
-              onTimeframeChange={setTimeframe}
-              onSymbolChange={setSymbol}
-              holdings={holdings}
-              quotesBySymbol={quotesBySymbol}
-              symbolOptions={availableSymbols}
-              isEmbedded={true}
-              selectedSymbol={symbol}
-              analyticsData={data}
-              analyticsLoading={loading}
-              analyticsError={error}
-            />
+            <Suspense
+              fallback={(
+                <div
+                  className="flex h-full items-center justify-center text-[9px] font-black uppercase tracking-widest text-slate-600"
+                  data-testid="whale-bubble-loading"
+                >
+                  {t('whaleChart.loading', { defaultValue: 'Đang tải biểu đồ…' })}
+                </div>
+              )}
+            >
+              <FactsFirstWhaleBubbleChart
+                symbol={symbol}
+                timeframe={timeframe}
+                onTimeframeChange={setTimeframe}
+                onSymbolChange={setSymbol}
+                holdings={holdings}
+                quotesBySymbol={quotesBySymbol}
+                symbolOptions={availableSymbols}
+                isEmbedded={true}
+                selectedSymbol={symbol}
+                analyticsData={data}
+                analyticsLoading={loading}
+                analyticsError={error}
+              />
+            </Suspense>
           </div>
         </div>
       </div>

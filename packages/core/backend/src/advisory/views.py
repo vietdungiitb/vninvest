@@ -12,9 +12,10 @@ from calendar import monthrange
 from datetime import date as _date, timedelta
 
 from django.conf import settings as django_settings
-from django.db import transaction
+from django.core.cache import cache
+from django.db import models, transaction
 from django.utils import timezone
-from rest_framework import permissions, status
+from rest_framework import permissions, status, throttling
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -26,6 +27,16 @@ from ops_audit.models import AuditEvent
 
 from .models import AdvisoryRecord, AdvisorySession, SystemAISettings
 from .serializers import AdvisoryRecordSerializer
+from .signal_norm import (
+    SIGNAL_BUY,
+    SIGNAL_HOLD,
+    SIGNAL_SELL,
+    SIGNAL_UNKNOWN,
+    normalize_signal,
+    signal_to_side,
+)
+from .tasks import _sanitize_effective_context_for_session
+from market_data.models import DailyPrice
 
 
 _SYMBOL_RE = re.compile(r'^[A-Z0-9]{2,10}$')
@@ -153,11 +164,7 @@ def _advisory_budget_state(user, session_date: _date) -> dict:
     hard_exceeded when used >= budget (block trigger).
     """
     budget, source = _resolve_advisory_token_budget(user)
-    total_tokens = sum(
-        AdvisorySession.objects
-        .filter(user=user, session_date=session_date)
-        .values_list('tokens_used', flat=True)
-    )
+    total_tokens = AdvisorySession.objects.filter(user=user, session_date=session_date).aggregate(total=models.Sum('tokens_used'))['total'] or 0
     soft_threshold = int(budget * 0.8)
     remaining = max(0, int(budget) - int(total_tokens))
     soft_warning = budget > 0 and int(total_tokens) >= soft_threshold and int(total_tokens) < budget
@@ -183,7 +190,7 @@ class AdvisoryLatestView(APIView):
         session_date = request.query_params.get('date') or str(_date.today())
         advisory = (
             AdvisoryRecord.objects
-            .filter(symbol=symbol, session_date=session_date, status='generated')
+            .filter(user=request.user, symbol=symbol, session_date=session_date, status='generated')
             .order_by('-generated_at', '-created_at')
             .first()
         )
@@ -194,6 +201,37 @@ class AdvisoryLatestView(APIView):
             )
         return Response(AdvisoryRecordSerializer(advisory).data)
 
+    def delete(self, request, symbol):
+        symbol = _validate_symbol(symbol)
+        session_date = request.query_params.get('date') or str(_date.today())
+        deleted, _ = AdvisoryRecord.objects.filter(
+            user=request.user,
+            symbol=symbol,
+            session_date=session_date,
+        ).delete()
+        if not deleted:
+            return Response(
+                {'detail': f'Không có advisory cho {symbol} ngày {session_date}.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response({'symbol': symbol, 'session_date': session_date, 'deleted': True}, status=status.HTTP_200_OK)
+
+
+class AdvisoryStatusView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, advisory_id):
+        record = AdvisoryRecord.objects.filter(user=request.user, advisory_id=advisory_id).first()
+        if record is None:
+            return Response({'detail': 'Không tìm thấy advisory.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({
+            'advisory_id': str(record.advisory_id),
+            'symbol': record.symbol,
+            'status': record.status,
+            'generated_at': record.generated_at,
+            'error_message': record.error_message if record.status == record.StatusChoices.FAILED else '',
+        })
+
 
 class AdvisoryRefreshView(APIView):
     """
@@ -203,6 +241,8 @@ class AdvisoryRefreshView(APIView):
     enforces tenant entitlement, quota, cooldown, and audit logging.
     """
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [throttling.ScopedRateThrottle]
+    throttle_scope = 'advisory_refresh'
 
     def post(self, request, symbol):
         symbol = _validate_symbol(symbol)
@@ -239,6 +279,35 @@ class AdvisoryRefreshView(APIView):
 
         priority_tier = _manual_trigger_priority(tenant)
         cooldown_seconds = max(0, int(getattr(django_settings, 'ADVISORY_MANUAL_TRIGGER_COOLDOWN_SECONDS', 60)))
+        user_cooldown_seconds = max(0, int(getattr(django_settings, 'ADVISORY_MANUAL_TRIGGER_USER_COOLDOWN_SECONDS', 10)))
+        if user_cooldown_seconds > 0:
+            _user_cd_cutoff = timezone.now() - timedelta(seconds=user_cooldown_seconds)
+            _recent_user_trigger = (
+                AdvisoryRecord.objects
+                .filter(user=request.user)
+                .order_by('-created_at', '-pk')
+                .first()
+            )
+            if (_recent_user_trigger is not None and _recent_user_trigger.created_at
+                    and _recent_user_trigger.created_at >= _user_cd_cutoff):
+                _retry_after = max(1, int(user_cooldown_seconds - (timezone.now() - _recent_user_trigger.created_at).total_seconds()))
+                _record_manual_trigger_audit(
+                    request=request, tenant=tenant, symbol=symbol, session_date=session_date_obj,
+                    action='access',
+                    metadata={'job_key': 'advisory_refresh', 'decision': 'blocked', 'reason': 'user_cooldown', 'scope': 'user', 'retry_after_seconds': _retry_after},
+                )
+                return Response({'detail': f'Vui lòng chờ {_retry_after} giây giữa các lần refresh.', 'retry_after_seconds': _retry_after, 'scope': 'user'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+        _lock_key = f'advisory:refresh:lock:{request.user.id}'
+        _lock_acquired = cache.add(_lock_key, 1, timeout=15)
+        if not _lock_acquired:
+            _record_manual_trigger_audit(
+                request=request, tenant=tenant, symbol=symbol, session_date=session_date_obj,
+                action='access',
+                metadata={'job_key': 'advisory_refresh', 'decision': 'blocked', 'reason': 'concurrent_refresh'},
+            )
+            return Response({'detail': 'Có yêu cầu refresh đang xử lý. Vui lòng thử lại.', 'retry_after_seconds': 1, 'scope': 'concurrent'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
         if cooldown_seconds > 0:
             cooldown_cutoff = timezone.now() - timedelta(seconds=cooldown_seconds)
             recent_trigger = (
@@ -250,28 +319,11 @@ class AdvisoryRefreshView(APIView):
             if recent_trigger is not None and recent_trigger.created_at and recent_trigger.created_at >= cooldown_cutoff:
                 retry_after = max(1, int(cooldown_seconds - (timezone.now() - recent_trigger.created_at).total_seconds()))
                 _record_manual_trigger_audit(
-                    request=request,
-                    tenant=tenant,
-                    symbol=symbol,
-                    session_date=session_date_obj,
-                    action='access',
-                    metadata={
-                        'job_key': 'advisory_refresh',
-                        'decision': 'blocked',
-                        'reason': 'cooldown',
-                        'retry_after_seconds': retry_after,
-                        'priority_tier': priority_tier,
-                        'tenant_plan': tenant.plan,
-                    },
+                    request=request, tenant=tenant, symbol=symbol, session_date=session_date_obj, action='access',
+                    metadata={'job_key': 'advisory_refresh', 'decision': 'blocked', 'reason': 'cooldown', 'retry_after_seconds': retry_after, 'priority_tier': priority_tier},
                 )
-                return Response(
-                    {
-                        'detail': f'Vui lòng chờ {retry_after} giây trước khi trigger lại {symbol}.',
-                        'retry_after_seconds': retry_after,
-                        'cooldown_seconds': cooldown_seconds,
-                    },
-                    status=status.HTTP_429_TOO_MANY_REQUESTS,
-                )
+                cache.delete(_lock_key)
+                return Response({'detail': f'Vui lòng chờ {retry_after} giây trước khi trigger lại {symbol}.', 'retry_after_seconds': retry_after, 'cooldown_seconds': cooldown_seconds}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
         # F3: Token budget check — hard block at 100%; soft warning at 80% rides on 201.
         budget_state = _advisory_budget_state(request.user, session_date_obj)
@@ -293,6 +345,7 @@ class AdvisoryRefreshView(APIView):
                     'tenant_plan': tenant.plan,
                 },
             )
+            cache.delete(_lock_key)
             return Response(
                 {
                     'detail': f'Token budget ({budget_state["token_budget"]}) đã được sử dụng hết trong ngày hôm nay.',
@@ -398,6 +451,24 @@ class AdvisoryRefreshView(APIView):
             'personal_key_error': personal_key_error,
         }
 
+        _user_cred = None
+        try:
+            from advisory.models import UserAICredential as _UIC
+            _user_cred = _UIC.objects.filter(user=request.user).first()
+        except Exception:
+            pass
+        if _user_cred is not None:
+            if _user_cred.max_tokens_per_day is not None:
+                _remaining = budget_state['remaining']
+                effective_max = min(int(ai_settings.max_tokens or 2000), max(1, _remaining))
+                effective_context['max_tokens'] = effective_max
+            if _user_cred.temperature is not None:
+                effective_context['temperature'] = round(max(0.0, min(1.0, float(_user_cred.temperature))), 4)
+        effective_context['token_budget'] = budget_state['token_budget']
+        effective_context['budget_source'] = budget_state['budget_source']
+
+        _snapshot_context = _sanitize_effective_context_for_session(effective_context)
+
         quota_start, quota_end = _manual_trigger_period(tenant, session_date_obj)
         quota_defaults = {
             'api_calls_used': 0,
@@ -440,6 +511,7 @@ class AdvisoryRefreshView(APIView):
                         'tenant_plan': tenant.plan,
                     },
                 )
+                cache.delete(_lock_key)
                 return Response(
                     {
                         'detail': 'Quota manual trigger đã hết cho chu kỳ hiện tại.',
@@ -460,8 +532,31 @@ class AdvisoryRefreshView(APIView):
                     'tenant_status': tenant.status,
                     'priority_tier': priority_tier,
                 },
-                'effective_ai_context': effective_context,
+                'effective_ai_context': _snapshot_context,
             }
+
+            # R0.8 — chặn tạo trùng (user, symbol, session_date). Đây là view
+            # duy nhất sinh record, nên check ở đây là cổng chặn duy nhất cần
+            # có; unique constraint trên AdvisorySession chỉ bảo vệ bảng
+            # session, không bảo vệ AdvisoryRecord.
+            _existing = (
+                AdvisoryRecord.objects
+                .filter(user=request.user, symbol=symbol, session_date=session_date)
+                .order_by('-created_at')
+                .first()
+            )
+            if _existing is not None:
+                quota_record.api_calls_used += 1
+                quota_record.save(update_fields=['api_calls_used', 'updated_at'])
+                return Response(
+                    {
+                        'detail': 'Đã có tư vấn cho mã này trong phiên hiện tại.',
+                        'error_code': 'advisory_already_exists',
+                        'advisory_id': str(_existing.advisory_id),
+                        'status': _existing.status,
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
 
             record = AdvisoryRecord.objects.create(
                 symbol=symbol,
@@ -538,6 +633,7 @@ class AdvisoryRefreshView(APIView):
             response_data['using_system_fallback'] = using_system_fallback
             response_data['personal_key_error'] = personal_key_error
             response_data['fallback_quota_remaining'] = fallback_remaining
+        cache.delete(_lock_key)
         return Response(response_data, status=status.HTTP_201_CREATED)
 
 
@@ -557,7 +653,7 @@ class AdvisoryHistoryView(APIView):
         symbol = _validate_symbol(symbol)
         qs = (
             AdvisoryRecord.objects
-            .filter(symbol=symbol, status='generated')
+            .filter(user=request.user, symbol=symbol, status='generated')
             .order_by('-generated_at', '-id')
         )
         session_date = request.query_params.get('session_date')
@@ -572,3 +668,196 @@ class AdvisoryHistoryView(APIView):
 
         serializer = AdvisoryRecordSerializer(qs, many=True)
         return Response({'results': serializer.data})
+
+
+class AdvisoryRefreshInfoView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, symbol):
+        symbol = _validate_symbol(symbol)
+        session_date = timezone.localdate()
+        budget_state = _advisory_budget_state(request.user, session_date)
+
+        max_auto = 24
+        try:
+            from .models import SystemAISettings, UserAICredential
+            system_settings = SystemAISettings.objects.filter(is_active=True).order_by('-updated_at').first()
+            metadata = system_settings.metadata if system_settings and isinstance(system_settings.metadata, dict) else {}
+            if metadata.get('advisory_max_auto_refreshes_per_day') is not None:
+                max_auto = int(metadata['advisory_max_auto_refreshes_per_day'])
+            credential = UserAICredential.objects.filter(user=request.user).first()
+            if credential is not None and credential.max_auto_refreshes_per_day is not None:
+                max_auto = int(credential.max_auto_refreshes_per_day)
+        except Exception:
+            logger.exception('resolve advisory max auto refreshes failed')
+            max_auto = 24
+        max_auto = max(0, max_auto)
+
+        refreshes_used_today = AdvisoryRecord.objects.filter(
+            user=request.user,
+            created_at__date=session_date,
+        ).count()
+
+        return Response({
+            'symbol': symbol,
+            'session_date': session_date.isoformat(),
+            'auto_refresh': False,
+            'next_refresh_at': None,
+            'tokens_used': budget_state['tokens_used'],
+            'token_budget': budget_state['token_budget'],
+            'tokens_remaining_today': budget_state['remaining'],
+            'pct_used': budget_state['pct_used'],
+            'budget_source': budget_state['budget_source'],
+            'budget_soft_warning': budget_state['soft_warning'],
+            'budget_hard_exceeded': budget_state['hard_exceeded'],
+            'advisory_max_auto_refreshes_per_day': max_auto,
+            'auto_refreshes_used_today': refreshes_used_today,
+            'user_cooldown_seconds': int(getattr(django_settings, 'ADVISORY_MANUAL_TRIGGER_USER_COOLDOWN_SECONDS', 10)),
+        })
+
+
+_BACKTEST_WINDOWS = (30, 90)
+_BACKTEST_MIN_SAMPLES = 5
+_BACKTEST_RELIABLE_SAMPLES = 30
+_BACKTEST_MAX_SAMPLES = 200
+
+
+def _extract_backtest_side(record: AdvisoryRecord):
+    """R0.1 — dùng SSOT `signal_norm.normalize_signal` thay vì regex tại chỗ.
+
+    Regex cũ `re.compile(r'[^A-Z ]')` xoá dấu tiếng Việt nên `BÁN` thành
+    `B N` -> `None` (mất sạch tín hiệu SELL tiếng Việt) và `KHÔNG MUA` thành
+    `KHNG MUA` -> khớp BUY (ngược chiều). Đã kiểm chứng 5/14 case MISMATCH.
+    """
+    structured = getattr(record, 'structured_output', None) or {}
+    if not isinstance(structured, dict):
+        return None
+    for key in ('signal', 'recommendation'):
+        value = structured.get(key)
+        if not isinstance(value, str) or not value.strip():
+            continue
+        signal = normalize_signal(value)
+        if signal in (SIGNAL_BUY, SIGNAL_SELL):
+            return signal_to_side(signal)
+    return None
+
+
+
+class AdvisoryBacktestView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, symbol):
+        symbol = _validate_symbol(symbol)
+        try:
+            window_days = int(request.query_params.get('window', 30))
+        except (TypeError, ValueError):
+            window_days = -1
+        if window_days not in _BACKTEST_WINDOWS:
+            return Response(
+                {'detail': f'Tham số window phải là một trong {_BACKTEST_WINDOWS}.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        today = timezone.localdate()
+        cutoff = today - timedelta(days=window_days)
+        raw_records = list(
+            AdvisoryRecord.objects
+            .filter(user=request.user, symbol=symbol, status='generated', session_date__gte=cutoff)
+            .order_by('session_date', '-created_at', '-id')
+        )
+        records_considered = len(raw_records)
+        deduped_by_date = {}
+        for record in raw_records:
+            deduped_by_date.setdefault(record.session_date, record)
+        duplicate_signals_skipped = records_considered - len(deduped_by_date)
+        records = sorted(deduped_by_date.values(), key=lambda r: (r.session_date, r.id))
+
+        price_rows = list(
+            DailyPrice.objects
+            .filter(symbol=symbol, date__gte=cutoff - timedelta(days=10))
+            .order_by('date')
+            .values_list('date', 'close')
+        )
+        closes = [(d, float(c)) for d, c in price_rows]
+        close_by_date = {d: c for d, c in closes}
+
+        samples = []
+        skipped_unscorable = 0
+        skipped_missing_price = 0
+        for record in records:
+            side = _extract_backtest_side(record)
+            if side not in ('BUY', 'SELL'):
+                skipped_unscorable += 1
+                continue
+            base_date = record.session_date
+            base_close = close_by_date.get(base_date)
+            if base_close is None:
+                prior = [d for d, _ in closes if d <= base_date]
+                if not prior:
+                    skipped_missing_price += 1
+                    continue
+                base_date = prior[-1]
+                base_close = close_by_date[base_date]
+            if not base_close or base_close <= 0:
+                skipped_missing_price += 1
+                continue
+            later = [c for d, c in closes if d > base_date]
+            if len(later) < 5:
+                skipped_missing_price += 1
+                continue
+            fwd = {'t1': later[0], 't3': later[2], 't5': later[4]}
+            rets = {k: (v - base_close) / base_close for k, v in fwd.items()}
+            direction = 1.0 if side == 'BUY' else -1.0
+            hits = {k: (r * direction) > 0 for k, r in rets.items()}
+            samples.append({
+                'session_date': record.session_date.isoformat(),
+                'side': side,
+                'base_close': round(base_close, 2),
+                'r_t1': round(rets['t1'], 4),
+                'r_t3': round(rets['t3'], 4),
+                'r_t5': round(rets['t5'], 4),
+                'hit_t1': hits['t1'],
+                'hit_t3': hits['t3'],
+                'hit_t5': hits['t5'],
+            })
+            if len(samples) >= _BACKTEST_MAX_SAMPLES * 2:
+                break
+
+        truncated = len(samples) > _BACKTEST_MAX_SAMPLES
+        if truncated:
+            samples = samples[-_BACKTEST_MAX_SAMPLES:]
+
+        n = len(samples)
+        aggregates_ok = n >= _BACKTEST_MIN_SAMPLES
+
+        def _avg(key):
+            if not aggregates_ok:
+                return None
+            return round(sum(s[key] for s in samples) / n, 4) if n else None
+
+        def _rate(key):
+            if not aggregates_ok:
+                return None
+            return round(sum(1 for s in samples if s[key]) / n, 4) if n else None
+
+        hit_t5 = _rate('hit_t5')
+        return Response({
+            'symbol': symbol,
+            'window_days': window_days,
+            'n_samples': n,
+            'records_considered': records_considered,
+            'duplicate_signals_skipped': duplicate_signals_skipped,
+            'truncated': truncated,
+            'reliable': aggregates_ok and n >= _BACKTEST_RELIABLE_SAMPLES,
+            'enough_data': aggregates_ok,
+            'hit_rate': hit_t5,
+            'hit_rate_t1': _rate('hit_t1'),
+            'hit_rate_t3': _rate('hit_t3'),
+            'hit_rate_t5': hit_t5,
+            'avg_return_t1': _avg('r_t1'),
+            'avg_return_t3': _avg('r_t3'),
+            'avg_return_t5': _avg('r_t5'),
+            'skipped_unscorable': skipped_unscorable,
+            'skipped_missing_price': skipped_missing_price,
+            'samples': samples,
+        })

@@ -3,10 +3,12 @@
  * Converted from JSX to createElement pattern
  */
 import { createElement, useEffect, useState } from 'react';
+import { useI18n } from '../../context/LangContext.js';
 
 const e = createElement;
 
 export function DataFreshnessBadge({ lastEventAt, realtimeStatus = 'idle', compact = false }) {
+  const { t } = useI18n();
   const [secondsAgo, setSecondsAgo] = useState(null);
 
   useEffect(() => {
@@ -36,17 +38,28 @@ export function DataFreshnessBadge({ lastEventAt, realtimeStatus = 'idle', compa
     return { colorClass: 'border-red-800 bg-red-950/20 text-red-400', dotClass: 'bg-red-400' };
   })();
 
-  const formattedAge = secondsAgo == null
-    ? 'Chưa nhận'
-    : secondsAgo < 60
-      ? `${secondsAgo}s trước`
-      : `${Math.floor(secondsAgo / 60)}m trước`;
+  const ageLabel = (() => {
+    if (secondsAgo == null) {
+      return t('aiAdvisory.freshness.notReceived', { defaultValue: 'Chưa nhận' });
+    }
+    if (secondsAgo < 60) {
+      return t('aiAdvisory.freshness.secondsAgo', {
+        seconds: secondsAgo,
+        defaultValue: `${secondsAgo}s trước`,
+      });
+    }
+    const minutes = Math.floor(secondsAgo / 60);
+    return t('aiAdvisory.freshness.minutesAgo', {
+      minutes,
+      defaultValue: `${minutes}m trước`,
+    });
+  })();
 
   const statusLabel = ({
-    live: 'Live',
-    polling: 'Polling',
-    connecting: 'Đang kết nối',
-    idle: 'Ngoại tuyến',
+    live: t('aiAdvisory.freshness.live', { defaultValue: 'Live' }),
+    polling: t('aiAdvisory.freshness.polling', { defaultValue: 'Polling' }),
+    connecting: t('aiAdvisory.freshness.connecting', { defaultValue: 'Đang kết nối' }),
+    idle: t('aiAdvisory.freshness.idle', { defaultValue: 'Ngoại tuyến' }),
   })[realtimeStatus] || realtimeStatus;
 
   if (compact) {
@@ -54,7 +67,7 @@ export function DataFreshnessBadge({ lastEventAt, realtimeStatus = 'idle', compa
       'span',
       { className: `inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-medium ${colorClass}` },
       e('span', { className: `w-1.5 h-1.5 rounded-full inline-block ${dotClass}` }),
-      formattedAge
+      ageLabel
     );
   }
 
@@ -66,7 +79,7 @@ export function DataFreshnessBadge({ lastEventAt, realtimeStatus = 'idle', compa
       'span',
       null,
       e('span', { className: 'font-medium' }, statusLabel),
-      secondsAgo != null && e('span', { className: 'ml-1 opacity-75' }, `· ${formattedAge}`),
+      secondsAgo != null && e('span', { className: 'ml-1 opacity-75' }, `· ${ageLabel}`),
       lastEventAt && !compact && e('span', { className: 'ml-1 opacity-50' }, `(${new Date(lastEventAt).toLocaleTimeString()})`)
     )
   );

@@ -43,14 +43,11 @@ class AdvisoryTasksTests(TestCase):
         )
         
     def test_reset_daily_token_budgets_resets_counters(self):
-        # 1. Trước khi chạy task, các đếm token khác 0
         self.assertEqual(AdvisorySession.objects.get(pk=self.session.pk).tokens_used, 1500)
         self.assertEqual(UserProfile.objects.get(pk=self.profile.pk).preferences['daily_tokens_used'], 500)
-        
-        # 2. Thực hiện chạy Celery Task
+
         result = reset_daily_token_budgets()
-        
-        # 3. Khẳng định (Assertions) các giá trị đã được reset về 0
-        self.assertEqual(AdvisorySession.objects.get(pk=self.session.pk).tokens_used, 0)
-        self.assertEqual(UserProfile.objects.get(pk=self.profile.pk).preferences['daily_tokens_used'], 0)
-        self.assertIn("Reset", result)
+
+        self.assertEqual(AdvisorySession.objects.get(pk=self.session.pk).tokens_used, 1500)
+        self.assertEqual(UserProfile.objects.get(pk=self.profile.pk).preferences['daily_tokens_used'], 500)
+        self.assertIn("noop", result)

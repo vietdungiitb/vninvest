@@ -39,11 +39,14 @@ function OffsetPaginationBar({ total, page, size, onPageChange, onSizeChange }) 
   const to = Math.min(page * size, total);
 
   return (
-    <div className="flex items-center justify-between gap-2 border-t border-slate-800/90 px-3 py-2.5 text-xs">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/90 px-3 py-2.5 text-xs">
       <div className="flex items-center gap-2 text-slate-500">
-        <span>{from}–{to} / {total}</span>
-        <span>•</span>
-        <span>Kích thước trang</span>
+        {/* B4: `whitespace-nowrap` + `shrink-0` — trong sidebar hẹp (~320px),
+            chuỗi "0–0 / 0" bị bóp và dấu gạch nối xuống dòng, đọc ra thành
+            "0—/0—/0". Không sửa gì khác để không ảnh hưởng layout rộng. */}
+        <span className="whitespace-nowrap shrink-0">{from}–{to} / {total}</span>
+        <span aria-hidden="true">•</span>
+        <span className="whitespace-nowrap shrink-0">Kích thước trang</span>
         <select
           value={size}
           onChange={(e) => onSizeChange(Number(e.target.value))}
@@ -61,7 +64,7 @@ function OffsetPaginationBar({ total, page, size, onPageChange, onSizeChange }) 
           title="Trước" className={NAV_BTN_DEFAULT}>
           <IconPrev />
         </button>
-        <span className="min-w-[52px] text-center text-slate-400 tabular-nums">
+        <span className="min-w-[52px] whitespace-nowrap text-center text-slate-400 tabular-nums">
           Trang {page} / {totalPages}
         </span>
         <button type="button" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}
@@ -91,11 +94,11 @@ function CursorPaginationBar({
   onSizeChange,
 }) {
   return (
-    <div className="flex items-center justify-between gap-2 border-t border-slate-800/90 px-3 py-2.5 text-xs">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/90 px-3 py-2.5 text-xs">
       <div className="flex items-center gap-2 text-slate-500">
-        <span>Trang {currentPage || 1}</span>
-        <span>•</span>
-        <span>Kích thước trang</span>
+        <span className="whitespace-nowrap shrink-0">Trang {currentPage || 1}</span>
+        <span aria-hidden="true">•</span>
+        <span className="whitespace-nowrap shrink-0">Kích thước trang</span>
         <select
           value={pageSize}
           onChange={(e) => onSizeChange(Number(e.target.value))}

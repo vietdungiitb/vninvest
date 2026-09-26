@@ -123,6 +123,16 @@ class AIAuditLogModelTests(TestCase):
 
 
 class AuditLogAPIGetTests(TestCase):
+    """Read endpoint for a NON-STAFF user.
+
+    The endpoint scopes by ``actor=request.user.username`` for anyone who is not
+    staff/superuser, so every fixture in this class is created with
+    ``actor=self.user.username``. The previous version seeded ``user0..user4``
+    and asserted ``total == 5`` for a plain user — that is the cross-tenant
+    leak, and the test was asserting the vulnerability rather than the fix.
+    Isolation itself is asserted in ``test_non_staff_cannot_read_other_actor``.
+    """
+
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(
@@ -135,7 +145,7 @@ class AuditLogAPIGetTests(TestCase):
         for i in range(5):
             AIAuditLog.objects.create(
                 action=AIAuditLog.ActionChoices.UPDATE_SETTINGS,
-                actor=f'user{i}',
+                actor=self.user.username,
                 reason=f'Update {i}',
                 before_json={'ai_provider': 'openai'},
                 after_json={'ai_provider': 'gemini' if i % 2 == 0 else 'claude'},
@@ -154,7 +164,7 @@ class AuditLogAPIGetTests(TestCase):
     def test_filter_by_action(self):
         AIAuditLog.objects.create(
             action=AIAuditLog.ActionChoices.TEST_CONNECTION_SUCCESS,
-            actor='tester',
+            actor=self.user.username,
         )
         response = self.client.get(
             '/core/v1/workspace/ai-command-center/audit-logs/',
@@ -166,10 +176,35 @@ class AuditLogAPIGetTests(TestCase):
     def test_filter_by_actor(self):
         response = self.client.get(
             '/core/v1/workspace/ai-command-center/audit-logs/',
-            {'actor': 'user1'},
+            {'actor': self.user.username},
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['total'], 1)
+        self.assertEqual(response.data['total'], 5)
+
+    def test_non_staff_cannot_read_other_actor(self):
+        """Security assertion: another actor's log must not be readable."""
+        AIAuditLog.objects.create(
+            action=AIAuditLog.ActionChoices.UPDATE_SETTINGS,
+            actor='somebody-else',
+            reason='secret change',
+        )
+        response = self.client.get('/core/v1/workspace/ai-command-center/audit-logs/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['total'], 5)
+        actors = {row['actor'] for row in response.data['results']}
+        self.assertNotIn('somebody-else', actors)
+
+    def test_non_staff_cannot_filter_by_other_actor(self):
+        AIAuditLog.objects.create(
+            action=AIAuditLog.ActionChoices.UPDATE_SETTINGS,
+            actor='somebody-else',
+        )
+        response = self.client.get(
+            '/core/v1/workspace/ai-command-center/audit-logs/',
+            {'actor': 'somebody-else'},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['total'], 0)
 
     def test_pagination_limit(self):
         response = self.client.get(

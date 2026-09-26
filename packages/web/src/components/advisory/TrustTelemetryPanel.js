@@ -3,6 +3,7 @@
  * Converted from JSX to createElement pattern
  */
 import { createElement, useCallback, useEffect, useState } from 'react';
+import { useI18n } from '../../context/LangContext.js';
 
 const e = createElement;
 
@@ -18,15 +19,18 @@ const EVENT_KEYS = [
   'recommendation_history_opened',
 ];
 
-function getEventLabel(eventKey) {
-  return ({
-    recommendation_explainability_opened: 'Mở giải thích',
-    recommendation_explainability_insufficient: 'Thiếu giải thích',
-    recommendation_risk_mode_changed: 'Đổi khẩu vị rủi ro',
-    recommendation_action_checklist_completed: 'Checklist hoàn tất',
-    recommendation_action_attempt_blocked: 'Hành động bị chặn',
-    recommendation_history_opened: 'Mở lịch sử',
-  })[eventKey] || eventKey;
+const EVENT_LABEL_KEYS = {
+  recommendation_explainability_opened: 'aiAdvisory.telemetry.explainabilityOpened',
+  recommendation_explainability_insufficient: 'aiAdvisory.telemetry.explainabilityInsufficient',
+  recommendation_risk_mode_changed: 'aiAdvisory.telemetry.riskChanged',
+  recommendation_action_checklist_completed: 'aiAdvisory.telemetry.checklistCompleted',
+  recommendation_action_attempt_blocked: 'aiAdvisory.telemetry.actionBlocked',
+  recommendation_history_opened: 'aiAdvisory.telemetry.historyOpened',
+};
+
+function getEventLabel(eventKey, t) {
+  const key = EVENT_LABEL_KEYS[eventKey];
+  return key ? t(key, { defaultValue: eventKey }) : eventKey;
 }
 
 function safeParse(raw, fallback) {
@@ -38,6 +42,7 @@ function safeParse(raw, fallback) {
 }
 
 export function TrustTelemetryPanel() {
+  const { t, localeTag } = useI18n();
   const [counters, setCounters] = useState({});
   const [recentEvents, setRecentEvents] = useState([]);
 
@@ -60,7 +65,7 @@ export function TrustTelemetryPanel() {
   function fmtDateTime(ts) {
     if (!ts) return '—';
     try {
-      return new Date(ts).toLocaleString();
+      return new Date(ts).toLocaleString(localeTag);
     } catch {
       return '—';
     }
@@ -72,12 +77,12 @@ export function TrustTelemetryPanel() {
     e(
       'div',
       { className: 'flex items-center justify-between gap-3' },
-      e('p', { className: 'text-xs font-semibold uppercase tracking-wider text-slate-400' }, 'Trust Telemetry'),
+      e('p', { className: 'text-xs font-semibold uppercase tracking-wider text-slate-400' }, t('aiAdvisory.telemetry.title', { defaultValue: 'Trust Telemetry' })),
       e('button', {
         type: 'button',
         onClick: reload,
         className: 'text-[11px] px-2 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800'
-      }, 'Làm mới')
+      }, t('aiAdvisory.telemetry.refresh', { defaultValue: 'Làm mới' }))
     ),
     e(
       'div',
@@ -85,27 +90,27 @@ export function TrustTelemetryPanel() {
       e(
         'div',
         { className: 'rounded border border-slate-800 bg-slate-950/40 px-3 py-2' },
-        e('p', { className: 'text-[11px] text-slate-500' }, 'Tổng events'),
+        e('p', { className: 'text-[11px] text-slate-500' }, t('aiAdvisory.telemetry.total', { defaultValue: 'Tổng events' })),
         e('p', { className: 'text-sm font-semibold text-slate-100' }, totalEvents)
       ),
       EVENT_KEYS.map((key) => e(
         'div',
         { key: key, className: 'rounded border border-slate-800 bg-slate-950/40 px-3 py-2' },
-        e('p', { className: 'text-[11px] text-slate-500 truncate', title: getEventLabel(key) }, getEventLabel(key)),
+        e('p', { className: 'text-[11px] text-slate-500 truncate', title: getEventLabel(key, t) }, getEventLabel(key, t)),
         e('p', { className: 'text-sm font-semibold text-slate-100' }, Number(counters[key] || 0))
       ))
     ),
     e(
       'div',
       { className: 'rounded border border-slate-800 bg-slate-950/40 p-3' },
-      e('p', { className: 'text-[11px] text-slate-500 mb-2' }, 'Sự kiện gần nhất'),
-      recentEvents.length === 0 ? e('p', { className: 'text-xs text-slate-600' }, 'Chưa có telemetry event.') : e(
+      e('p', { className: 'text-[11px] text-slate-500 mb-2' }, t('aiAdvisory.telemetry.recent', { defaultValue: 'Sự kiện gần nhất' })),
+      recentEvents.length === 0 ? e('p', { className: 'text-xs text-slate-600' }, t('aiAdvisory.telemetry.empty', { defaultValue: 'Chưa có telemetry event.' })) : e(
         'ul',
         { className: 'space-y-1.5 max-h-40 overflow-y-auto' },
         recentEvents.map((item, idx) => e(
           'li',
           { key: `${item?.ts || idx}`, className: 'text-[11px] text-slate-300 flex items-start justify-between gap-3' },
-          e('span', { className: 'truncate' }, getEventLabel(item?.event)),
+          e('span', { className: 'truncate' }, getEventLabel(item?.event, t)),
           e('span', { className: 'text-slate-500 shrink-0' }, fmtDateTime(item?.ts))
         ))
       )
@@ -114,3 +119,5 @@ export function TrustTelemetryPanel() {
 }
 
 export default TrustTelemetryPanel;
+
+

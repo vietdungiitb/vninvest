@@ -280,8 +280,17 @@ REST_FRAMEWORK = {
         'auth_bootstrap': '999999/day' if TESTING else '60/min',
         'notification': '999999/day' if TESTING else '3/second',
         'tenant_invite': '999999/day' if TESTING else '10/hour',
+        'advisory_refresh': '999999/day' if TESTING else '10/hour',
+        # R0.11 — bucket riêng cho đặt lệnh chứng khoán. Không dùng chung
+        # bucket 'user' để một vòng poll nặng của client khác không chặn nhầm
+        # việc đặt lệnh, và ngược lại spam đặt lệnh không làm cạn quota khác.
+        'broker_order': '999999/day' if TESTING else '30/min',
     },
 }
+
+ADVISORY_MANUAL_TRIGGER_COOLDOWN_SECONDS = 60
+ADVISORY_MANUAL_TRIGGER_USER_COOLDOWN_SECONDS = 10
+ADVISORY_TOKEN_BUDGET = 2000
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'VNInvest Core API',

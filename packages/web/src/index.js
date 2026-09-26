@@ -16,7 +16,6 @@ export {
 export { getPageComponent, getPageLoader, getPageRegistryRouteIds, pageRegistry } from "./pages/pageRegistry.js";
 export { ShellOperationsCenterPage } from "./pages/admin/ShellOperationsCenterPage.tsx";
 export { ShellMailConfigPage } from "./pages/admin/ShellMailConfigPage.tsx";
-export { ShellAiAdvisoryPage } from "./pages/signals/ShellAiAdvisoryPage.tsx";
 
 export { ShellAiCommandCenterPage } from "./pages/system/ShellAiCommandCenterPage.tsx";
 export { AICommandCenterPage } from "./pages/AICommandCenterPage.tsx";
