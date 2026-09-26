@@ -95,14 +95,6 @@ urlpatterns = [
     path('broker/dnse/place-order/', views_dnse.dnse_place_order_api, name='dnse-broker-place-order'),
     path('broker/dnse/token-status/', views_dnse.dnse_token_status_api, name='dnse-broker-token-status'),
 
-    # Broker config đa-nhà (B1.2) — DNSE đầy đủ, ssi/tcbs khung not_supported_yet
-    path('broker/providers/', views_broker.broker_providers_api, name='broker-providers'),
-    path('broker/config-schema/<str:provider>/', views_broker.broker_config_schema_api, name='broker-config-schema'),
-    path('broker/<str:provider>/config/', views_broker.broker_config_api, name='broker-config'),
-    path('broker/<str:provider>/test-connection/', views_broker.broker_test_connection_api, name='broker-test-connection'),
-    path('broker/<str:provider>/status/', views_broker.broker_config_api, name='broker-status'),
-    path('broker/jobs/<str:job_id>/', views_broker.broker_job_status_api, name='broker-job-status'),
-
     # Retail reference D1 (v34 upgrade) — vàng SJC/BTMC + tỷ giá VCB, không credential
     path('broker/retail/gold/', views_retail.retail_gold_api, name='broker-retail-gold'),
     path('broker/retail/exchange-rate/', views_retail.retail_exchange_rate_api, name='broker-retail-fx'),
