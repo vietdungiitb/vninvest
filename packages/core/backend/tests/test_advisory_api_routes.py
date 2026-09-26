@@ -134,3 +134,56 @@ class AdvisoryManualTriggerApiTests(TestCase):
         self.assertIn('Tenant hiện tại chưa đủ điều kiện', response.data['detail'])
         self.assertEqual(AdvisoryRecord.objects.count(), 0)
         self.assertEqual(AuditEvent.objects.get(resource_type='manual_trigger').metadata['reason'], 'tenant_status')
+
+
+class AdvisoryLatestHistoryUserScopingTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user_a = User.objects.create_user(
+            username='advisory-a', email='a@example.com', password='testpass123'
+        )
+        self.user_b = User.objects.create_user(
+            username='advisory-b', email='b@example.com', password='testpass123'
+        )
+        self.tenant_a = CoreTenant.objects.create(
+            owner_user=self.user_a, tenant_code='tenant-a', display_name='Tenant A',
+            plan=CoreTenant.PlanChoices.PRO, status=CoreTenant.StatusChoices.ACTIVE,
+        )
+        self.tenant_b = CoreTenant.objects.create(
+            owner_user=self.user_b, tenant_code='tenant-b', display_name='Tenant B',
+            plan=CoreTenant.PlanChoices.PRO, status=CoreTenant.StatusChoices.ACTIVE,
+        )
+        self.client.force_authenticate(user=self.user_a)
+
+    def _create_record(self, user, symbol='FPT', status='generated'):
+        return AdvisoryRecord.objects.create(
+            symbol=symbol, session_date=str(timezone.localdate()), user=user,
+            status=status, ai_model='gpt-4o-mini', advisory_text='test', tokens_used=100,
+        )
+
+    def test_latest_does_not_leak_other_users_record(self):
+        self._create_record(self.user_a, 'FPT', 'generated')
+        self.client.force_authenticate(user=self.user_b)
+        response = self.client.get('/core/v1/advisory/latest/FPT/')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_history_does_not_leak_other_users_record(self):
+        self._create_record(self.user_a, 'FPT', 'generated')
+        self.client.force_authenticate(user=self.user_b)
+        response = self.client.get('/core/v1/advisory/history/FPT/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data.get('results', [])), 0)
+
+    def test_latest_returns_own_record(self):
+        self._create_record(self.user_a, 'FPT', 'generated')
+        self.client.force_authenticate(user=self.user_a)
+        response = self.client.get('/core/v1/advisory/latest/FPT/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('advisory_id', response.data)
+
+    def test_history_returns_own_record(self):
+        self._create_record(self.user_a, 'FPT', 'generated')
+        self.client.force_authenticate(user=self.user_a)
+        response = self.client.get('/core/v1/advisory/history/FPT/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data.get('results', [])), 1)
