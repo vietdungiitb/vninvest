@@ -341,88 +341,24 @@ def cleanup_webhook_deliveries():
 # ---------------------------------------------------------------------------
 # Phase 4 — Trial Lifecycle
 # ---------------------------------------------------------------------------
-
-@shared_task
-def check_trial_expirations():
-    """Daily check — send trial reminder emails at 7, 3, and 1 day remaining."""
-    from identity_access.models import CoreTenant
-    from identity_access.mail_service import send_report_email
-
-    today = timezone.now().date()
-    tiers = CoreTenant.objects.filter(
-        status='trial',
-        trial_ends_at__gte=today,
-    )
-    sent_count = 0
-    for tenant in tiers:
-        remaining = (tenant.trial_ends_at.date() - today).days if tenant.trial_ends_at else 0
-        if remaining in [7, 3, 1]:
-            subject = f'[{tenant.display_name}] Cảnh báo: Gói dùng thử còn {remaining} ngày'
-            template_map = {
-                7: 'trial_7d_remaining',
-                3: 'trial_3d_remaining',
-                1: 'trial_1d_remaining',
-            }
-            html_content = render_to_string('reports/trial_reminder.html', {
-                'tenant': tenant,
-                'remaining_days': remaining,
-                'template_key': template_map.get(remaining, 'trial_1d_remaining'),
-            })
-            try:
-                send_report_email(
-                    recipient=tenant.owner_user.email,
-                    subject=subject,
-                    html_content=html_content,
-                )
-                sent_count += 1
-            except Exception as e:
-                logger.error('Failed to send trial reminder to %s: %s', tenant.owner_user.email, e)
-    if sent_count:
-        logger.info('Sent %d trial reminder emails', sent_count)
-    return sent_count
+# C6: both trial handlers that used to live here were removed.
+#
+#   auto_disable_expired_trials set DEPROVISIONED for trial_ends_at <= today-3d,
+#   directly contradicting tenant_lifecycle.tasks.auto_expire_trials which set
+#   SUSPENDED for trial_ends_at < now. It was never in CELERY_BEAT_SCHEDULE, so it
+#   never ran — but a manual `.delay()` would have deprovisioned a customer and
+#   skipped both the 30-day grace and deprovision_tenant_async cleanup.
+#
+#   check_trial_expirations duplicated the 7/3/1-day reminder logic of the
+#   scheduled tenant_lifecycle.tasks.send_trial_expiry_warning, was also never
+#   scheduled, and its emails went through a different code path.
+#
+# The single policy now lives in tenant_lifecycle/tasks.py: an expired trial
+# SUSPENDS, and the scheduled auto_deprovision_stale is the only path to
+# DEPROVISIONED (after 30 days).
 
 
-@shared_task
-def auto_disable_expired_trials():
-    """Daily — disable tenants that are past trial end + 3 day grace period."""
-    from identity_access.models import CoreTenant
-    from identity_access.mail_service import send_report_email
-
-    cutoff = timezone.now().date() - timedelta(days=3)
-    expired = CoreTenant.objects.filter(
-        status='trial',
-        trial_ends_at__date__lte=cutoff,
-    )
-    disabled_count = 0
-    for tenant in expired:
-        tenant.status = CoreTenant.StatusChoices.DEPROVISIONED
-        tenant.save(update_fields=['status'])
-        disabled_count += 1
-
-        try:
-            html_content = render_to_string('reports/trial_expired.html', {
-                'tenant': tenant,
-            })
-            send_report_email(
-                recipient=tenant.owner_user.email,
-                subject=f'[{tenant.display_name}] Gói dùng thử đã hết hạn',
-                html_content=html_content,
-            )
-        except Exception as e:
-            logger.error('Failed to send trial expired email to %s: %s', tenant.owner_user.email, e)
-
-    if disabled_count:
-        logger.info('Disabled %d expired trial tenants', disabled_count)
-    return disabled_count
-
-
-@shared_task(
-    bind=True,
-    max_retries=2,
-    default_retry_delay=60,
-    autoretry_for=(Exception,),
-    retry_backoff=True,
-)
+@shared_task(bind=True, max_retries=2, default_retry_delay=60, autoretry_for=(Exception,), retry_backoff=True)
 def deprovision_tenant_async(self, tenant_public_id: str):
     """Async cleanup after tenant deprovisioning: cascade-delete offboarded resources.
 
