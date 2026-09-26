@@ -7,11 +7,14 @@ This module contains:
 from __future__ import annotations
 
 import json
+import logging
 from datetime import date
 
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 
 class TenantResolutionMiddleware:
@@ -340,6 +343,12 @@ class TenantQuotaMiddleware:
 
         if api_calls_limit >= 0 and used_calls > api_calls_limit:
             # Enterprise soft limit: log warning + header, don't block
+            # Local import: identity_access.models is deliberately not imported at
+            # module scope in this file (every resolver below imports it lazily),
+            # so referencing CoreTenant here without it raised NameError and turned
+            # the whole quota-exceeded branch into a 500.
+            from identity_access.models import CoreTenant
+
             is_enterprise = getattr(tenant, 'plan', '') == CoreTenant.PlanChoices.ENTERPRISE
             if is_enterprise:
                 response = self.get_response(request)
