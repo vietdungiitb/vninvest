@@ -33,11 +33,15 @@ describe("useAlertCenterData tiers (C2)", () => {
     await waitFor(() => expect(adapter.getAlertCenterSymbolStats).toHaveBeenCalledTimes(1));
     const cached = client.getQueryCache().findAll();
     const keys = cached.map((q) => q.queryKey);
-    expect(keys).toContainEqual(["core-user", "alert-center-feed", "main", "", "", "", "", "", "0"]);
-    expect(keys).toContainEqual(["core-user", "alert-center-summary", "main", "", "", "", "", "", "0"]);
-    expect(keys).toContainEqual(["core-user", "alert-center-stats", "main", "", "", "", "", "", "0"]);
+    // CHANGED ASSERTION (tenantreg-e, E9 P2): keys are now tenant-scoped
+    // ['core-user', <tenantId>, ...]. No workspace is selected in this test, so
+    // the tenant slot is the 'none' bucket, and the query name moved from
+    // index 1 to index 2.
+    expect(keys).toContainEqual(["core-user", "none", "alert-center-feed", "main", "", "", "", "", "", "0"]);
+    expect(keys).toContainEqual(["core-user", "none", "alert-center-summary", "main", "", "", "", "", "", "0"]);
+    expect(keys).toContainEqual(["core-user", "none", "alert-center-stats", "main", "", "", "", "", "", "0"]);
     const intervals = Object.fromEntries(
-      cached.map((q) => [String((q.queryKey as string[])[1]), (q.options as any).refetchInterval])
+      cached.map((q) => [String((q.queryKey as string[])[2]), (q.options as any).refetchInterval])
     );
     expect(intervals["alert-center-feed"]).toBe(5000);
     expect(intervals["alert-center-summary"]).toBe(30000);
