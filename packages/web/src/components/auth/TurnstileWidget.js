@@ -64,6 +64,18 @@ export function resolveTurnstileSiteKey(env = readTurnstileEnv()) {
   return { siteKey: "", source: "missing", isTestKey: false, isMissing: true };
 }
 
+/**
+ * @typedef {Object} TurnstileWidgetProps
+ * @property {(token: string) => void} [onVerify]
+ * @property {() => void} [onError]
+ * @property {() => void} [onExpire]
+ * @property {string} [errorMessage]  inline error copy shown under a live challenge
+ * @property {string} [unavailableMessage]  shown when no site key is configured
+ */
+
+/**
+ * @param {TurnstileWidgetProps} props
+ */
 export function TurnstileWidget({ onVerify, onError, onExpire, errorMessage, unavailableMessage }) {
   const resolved = useMemo(() => resolveTurnstileSiteKey(), []);
   const { siteKey, isMissing, isTestKey } = resolved;
