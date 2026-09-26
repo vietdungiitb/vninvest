@@ -33,7 +33,7 @@ import { useCallback } from 'react';
 import { normalizeWhaleAnalyticsSnapshot } from '../utils/whaleAnalyticsSnapshotAdapter.js';
 import { createWhaleTooltipFormatter } from '../utils/whaleTooltipFormatter.js';
 import { Link } from 'react-router-dom';
-import { Fish, AlertTriangle, Inbox, RotateCw } from 'lucide-react';
+import { Fish, AlertTriangle, Inbox, RotateCw, Download } from 'lucide-react';
 
 echarts.use([
   LineChart,
@@ -47,13 +47,15 @@ echarts.use([
   CanvasRenderer,
 ]);
 
+// B2 — nhãn khung thời gian đi qua `t()` thay vì hardcode tiếng Việt.
+// Dùng `labelKey` + `defaultLabel` đúng pattern như `RiskModeSelector`.
 const TIMEFRAME_OPTIONS = [
-  { value: '15m', label: '15 phút' },
-  { value: '30m', label: '30 phút' },
-  { value: '1h', label: '1 giờ' },
-  { value: 'morning', label: 'Phiên sáng' },
-  { value: 'afternoon', label: 'Phiên chiều' },
-  { value: 'session', label: 'Cả phiên' },
+  { value: '15m', labelKey: 'whaleChart.timeframe15m', defaultLabel: '15 phút' },
+  { value: '30m', labelKey: 'whaleChart.timeframe30m', defaultLabel: '30 phút' },
+  { value: '1h', labelKey: 'whaleChart.timeframe1h', defaultLabel: '1 giờ' },
+  { value: 'morning', labelKey: 'whaleChart.timeframeMorning', defaultLabel: 'Phiên sáng' },
+  { value: 'afternoon', labelKey: 'whaleChart.timeframeAfternoon', defaultLabel: 'Phiên chiều' },
+  { value: 'session', labelKey: 'whaleChart.timeframeSession', defaultLabel: 'Cả phiên' },
 ];
 
 const BUBBLE_FILTER_PRESETS = [
@@ -132,13 +134,23 @@ function formatSignalTime(dateStr) {
   }
 }
 
-function getSignalTypeLabelAndClass(type) {
-  const t = String(type || '').toUpperCase();
-  if (t === 'WHALE') return { label: 'WHALE', badgeClass: 'text-cyan-400 font-bold' };
-  if (t === 'DARK_FLOW') return { label: 'DARK FLOW', badgeClass: 'text-violet-400 font-bold' };
-  if (t === 'PRICE_SHOCK') return { label: 'BIẾN ĐỘNG GIÁ', badgeClass: 'text-amber-400 font-bold' };
-  if (t === 'STALE_QUOTE') return { label: 'BẢNG GIÁ CHẬM', badgeClass: 'text-rose-400 font-bold' };
-  return { label: t, badgeClass: 'text-slate-400 font-bold' };
+function getSignalTypeLabelAndClass(type, t) {
+  const t2 = String(type || '').toUpperCase();
+  if (t2 === 'WHALE') return { label: 'WHALE', badgeClass: 'text-cyan-400 font-bold' };
+  if (t2 === 'DARK_FLOW') return { label: 'DARK FLOW', badgeClass: 'text-violet-400 font-bold' };
+  if (t2 === 'PRICE_SHOCK') {
+    return {
+      label: t('whaleChart.signalPriceShock', { defaultValue: 'BIẾN ĐỘNG GIÁ' }),
+      badgeClass: 'text-amber-400 font-bold',
+    };
+  }
+  if (t2 === 'STALE_QUOTE') {
+    return {
+      label: t('whaleChart.signalStaleQuote', { defaultValue: 'BẢNG GIÁ CHẬM' }),
+      badgeClass: 'text-rose-400 font-bold',
+    };
+  }
+  return { label: t2, badgeClass: 'text-slate-400 font-bold' };
 }
 
 function formatCompactSignedValue(value) {
@@ -192,15 +204,25 @@ function formatPanelTimestamp(epochMs, fallbackLabel) {
   return fallbackLabel || '--';
 }
 
-function formatPanelSeriesValue(seriesName, value) {
+function formatPanelSeriesValue(seriesName, value, localeTag) {
   const numericValue = Number(value ?? 0);
   if (!Number.isFinite(numericValue)) return '--';
 
-  if (String(seriesName || '').includes('Giá') || String(seriesName || '').includes('price')) {
-    return `${numericValue.toLocaleString('vi-VN')} đ`;
+  // B2 — `seriesName` lấy từ cấu hình echarts, tức đã qua `t()`. Nên phải so
+  // khớp được cả bản có dấu lẫn bản đã bỏ dấu (tiếng Anh). Trước đây so
+  // khớp chuỗi `'Giá'` có dấu — chạy locale EN là mất dấu nên rơi vào nhánh
+  // định dạng sai.
+  const raw = String(seriesName || '');
+  const folded = raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  if (folded.includes('gia') || folded.includes('price')) {
+    return `${numericValue.toLocaleString(localeTag || 'vi-VN')} đ`;
   }
 
-  if (String(seriesName || '').includes('Strength') || String(seriesName || '').includes('Sức mạnh')) {
+  if (folded.includes('strength') || folded.includes('suc manh')) {
     return numericValue.toFixed(1);
   }
 
@@ -528,7 +550,7 @@ function buildHoverPanelData(params, {
     title: params?.seriesName || 'Whale Analytics',
     accentColor: params?.color || '#cbd5e1',
     timestampLabel: formatPanelTimestamp(timestampMs, null),
-    lineValue: formatPanelSeriesValue(params?.seriesName, pointValue),
+    lineValue: formatPanelSeriesValue(params?.seriesName, pointValue, localeTag),
     priceAtBucket,
     buyStrength: buyStrengthAtBucket,
     institutionalStrength: institutionalStrengthAtBucket,
@@ -556,7 +578,7 @@ export default function WhaleBubbleChart({
   syncTimestamp,
   onSyncHover,
 }) {
-  const { t } = useI18n();
+  const { t, localeTag } = useI18n();
   const adapter = useMemo(() => {
     return createCoreApiAdapter({ env: env || {}, getToken: env?.getToken });
   }, [env]);
@@ -819,7 +841,9 @@ export default function WhaleBubbleChart({
     }
 
     const isValue = showUnit === 'value';
-    const yAxisLabel = isValue ? 'Giá trị khớp (Tỷ đồng)' : 'Khối lượng (CP)';
+    const yAxisLabel = isValue
+      ? t('whaleChart.axisMatchedValue', { defaultValue: 'Giá trị khớp (Tỷ đồng)' })
+      : t('whaleChart.axisVolume', { defaultValue: 'Khối lượng (CP)' });
     const yDataKey = isValue ? 'yValue' : 'volume';
 
     // Calculate Volume Moving Average (MA20)
@@ -948,7 +972,7 @@ export default function WhaleBubbleChart({
         animationDurationUpdate: 80,
       },
       {
-        name: `Xu hướng dòng tiền (MA${windowSize})`,
+        name: t('whaleChart.seriesFlowTrend', { window: windowSize, defaultValue: `Xu hướng dòng tiền (MA${windowSize})` }),
         type: 'line',
         data: maData.map(d => [d[0] * 1000, d[1]]),
         smooth: true,
@@ -975,7 +999,7 @@ export default function WhaleBubbleChart({
         yAxisIndex: 0,
       },
       {
-        name: `Xu hướng dòng tiền (MA${windowSize})`,
+        name: t('whaleChart.seriesFlowTrend', { window: windowSize, defaultValue: `Xu hướng dòng tiền (MA${windowSize})` }),
         type: 'line',
         data: maData.map((d) => [d[0] * 1000, d[1]]),
         smooth: true,
@@ -986,7 +1010,7 @@ export default function WhaleBubbleChart({
         yAxisIndex: 0,
       },
       {
-        name: 'Đường giá intraday',
+        name: t('whaleChart.seriesIntradayPrice', { defaultValue: 'Đường giá intraday' }),
         type: 'line',
         data: priceLineSeries,
         xAxisIndex: 0,
@@ -1002,7 +1026,7 @@ export default function WhaleBubbleChart({
     const flowSeries = [
       // CVD positive area (above zero = aggressive buying)
       {
-        name: 'Dòng tiền mua tích cực',
+        name: t('whaleChart.seriesCvdBuy', { defaultValue: 'Dòng tiền mua tích cực' }),
         type: 'line',
         data: flowCvdPosSeries,
         xAxisIndex: 1,
@@ -1022,7 +1046,7 @@ export default function WhaleBubbleChart({
       },
       // CVD negative area (below zero = aggressive selling)
       {
-        name: 'Dòng tiền bán tích cực',
+        name: t('whaleChart.seriesCvdSell', { defaultValue: 'Dòng tiền bán tích cực' }),
         type: 'line',
         data: flowCvdNegSeries,
         xAxisIndex: 1,
@@ -1048,7 +1072,7 @@ export default function WhaleBubbleChart({
       },
       // Buy Strength line (when CVD is positive)
       {
-        name: 'Sức mạnh mua',
+        name: t('whaleChart.seriesBuyStrength', { defaultValue: 'Sức mạnh mua' }),
         type: 'line',
         data: flowBuyStrengthSeries,
         xAxisIndex: 1,
@@ -1060,7 +1084,7 @@ export default function WhaleBubbleChart({
       },
       // Institutional Strength line
       {
-        name: 'Sức mạnh tổ chức',
+        name: t('whaleChart.seriesInstitutionalStrength', { defaultValue: 'Sức mạnh tổ chức' }),
         type: 'line',
         data: flowStrengthSeries,
         xAxisIndex: 1,
@@ -1183,7 +1207,7 @@ export default function WhaleBubbleChart({
         {
           type: 'value',
           gridIndex: 0,
-          name: 'Giá',
+          name: t('whaleChart.axisPrice', { defaultValue: 'Giá' }),
           nameLocation: 'middle',
           nameGap: 42,
           position: 'right',
@@ -1363,7 +1387,7 @@ export default function WhaleBubbleChart({
                 onChange={(e) => setSymbol(e.target.value)}
                 className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs font-bold text-emerald-400 focus:outline-none focus:border-emerald-500"
               >
-                <option value="">-- Chọn mã --</option>
+                <option value="">{t('whaleChart.chooseSymbolOption', { defaultValue: '-- Chọn mã --' })}</option>
                 {availableSymbols.map((s) => (
                   <option key={s} value={s}>
                     {s}
@@ -1383,7 +1407,7 @@ export default function WhaleBubbleChart({
             >
               {TIMEFRAME_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
-                  {opt.label}
+                  {t(opt.labelKey, { defaultValue: opt.defaultLabel })}
                 </option>
               ))}
             </select>
@@ -1401,7 +1425,7 @@ export default function WhaleBubbleChart({
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                VNĐ
+                {t('whaleChart.currencyVnd', { defaultValue: 'VNĐ' })}
               </button>
               <button
                 onClick={() => setShowUnit('volume')}
@@ -1417,9 +1441,10 @@ export default function WhaleBubbleChart({
             <button 
               onClick={handleExportCSV}
               className="ml-2 p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition-colors"
-              title="Xuất CSV"
+              title={t('whaleChart.export', { defaultValue: 'Xuất CSV' })}
+              aria-label={t('whaleChart.export', { defaultValue: 'Xuất CSV' })}
             >
-              📥
+              <Download size={14} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -1582,7 +1607,7 @@ export default function WhaleBubbleChart({
                             : 'text-slate-400 hover:text-slate-200'
                         }`}
                       >
-                        Tín hiệu
+                        {t('whaleChart.signalsTab', { defaultValue: 'Tín hiệu' })}
                       </button>
                     </div>
                   )}
@@ -1606,8 +1631,8 @@ export default function WhaleBubbleChart({
                         <div className="flex items-center justify-between"><span className="text-slate-500">Giá tham chiếu</span><span className="font-semibold text-slate-100">{hoveredPanel.referencePrice != null ? `${Number(hoveredPanel.referencePrice).toLocaleString('vi-VN')} đ` : '--'}</span></div>
                         <div className="flex items-center justify-between"><span className="text-slate-500">{t('whaleAnalytics.deltaLabel', { defaultValue: 'Delta' })}</span><span className={`font-semibold ${Number(hoveredPanel.deltaValue || 0) >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>{formatTooltipPriceDelta(hoveredPanel.deltaValue)} ({Number(hoveredPanel.deltaPct || 0).toFixed(2)}%)</span></div>
                         <div className="flex items-center justify-between"><span className="text-slate-500">{t('whaleAnalytics.whaleExtreme', { defaultValue: 'Whale / Extreme' })}</span><span className="font-semibold text-slate-100">{hoveredPanel.isLarge ? 'Có' : 'Không'} / {hoveredPanel.isExtreme ? 'Có' : 'Không'}</span></div>
-                        <div className="flex items-center justify-between"><span className="text-slate-500">Sức mạnh mua cùng bucket</span><span className="font-semibold text-slate-100">{hoveredPanel.buyStrength != null ? Number(hoveredPanel.buyStrength).toFixed(1) : '--'}</span></div>
-                        <div className="flex items-center justify-between"><span className="text-slate-500">Sức mạnh tổ chức</span><span className="font-semibold text-slate-100">{hoveredPanel.institutionalStrength != null ? Number(hoveredPanel.institutionalStrength).toFixed(1) : '--'}</span></div>
+                        <div className="flex items-center justify-between"><span className="text-slate-500">{t('whaleChart.buyStrengthSameBucket', { defaultValue: 'Sức mạnh mua cùng bucket' })}</span><span className="font-semibold text-slate-100">{hoveredPanel.buyStrength != null ? Number(hoveredPanel.buyStrength).toFixed(1) : '--'}</span></div>
+                        <div className="flex items-center justify-between"><span className="text-slate-500">{t('whaleChart.institutionalStrength', { defaultValue: 'Sức mạnh tổ chức' })}</span><span className="font-semibold text-slate-100">{hoveredPanel.institutionalStrength != null ? Number(hoveredPanel.institutionalStrength).toFixed(1) : '--'}</span></div>
                         <div className="flex items-center justify-between"><span className="text-slate-500">{t('whaleAnalytics.speedLabel', { defaultValue: 'Tốc độ sự kiện' })}</span><span className="font-semibold text-slate-100">{formatSpeedValue(hoveredPanel.speed)}</span></div>
                         {hoveredPanel.eventScore != null && (
                           <div className="flex items-center justify-between"><span className="text-slate-500">Event score</span><span className="font-semibold text-slate-100">{Number(hoveredPanel.eventScore).toFixed(2)}</span></div>
@@ -1645,8 +1670,8 @@ export default function WhaleBubbleChart({
                       <div className="space-y-2">
                         <div className="flex items-center justify-between"><span className="text-slate-500">{t('whaleAnalytics.lineValue', { defaultValue: 'Giá trị line' })}</span><span className="font-semibold text-slate-100">{hoveredPanel.lineValue}</span></div>
                         <div className="flex items-center justify-between"><span className="text-slate-500">{t('whaleAnalytics.bucketPrice', { defaultValue: 'Giá tại bucket' })}</span><span className="font-semibold text-slate-100">{hoveredPanel.priceAtBucket != null ? `${Number(hoveredPanel.priceAtBucket).toLocaleString('vi-VN')} đ` : '--'}</span></div>
-                        <div className="flex items-center justify-between"><span className="text-slate-500">Sức mạnh mua cùng bucket</span><span className="font-semibold text-slate-100">{hoveredPanel.buyStrength != null ? Number(hoveredPanel.buyStrength).toFixed(1) : '--'}</span></div>
-                        <div className="flex items-center justify-between"><span className="text-slate-500">Sức mạnh tổ chức</span><span className="font-semibold text-slate-100">{hoveredPanel.institutionalStrength != null ? Number(hoveredPanel.institutionalStrength).toFixed(1) : '--'}</span></div>
+                        <div className="flex items-center justify-between"><span className="text-slate-500">{t('whaleChart.buyStrengthSameBucket', { defaultValue: 'Sức mạnh mua cùng bucket' })}</span><span className="font-semibold text-slate-100">{hoveredPanel.buyStrength != null ? Number(hoveredPanel.buyStrength).toFixed(1) : '--'}</span></div>
+                        <div className="flex items-center justify-between"><span className="text-slate-500">{t('whaleChart.institutionalStrength', { defaultValue: 'Sức mạnh tổ chức' })}</span><span className="font-semibold text-slate-100">{hoveredPanel.institutionalStrength != null ? Number(hoveredPanel.institutionalStrength).toFixed(1) : '--'}</span></div>
                         <div className="flex items-center justify-between"><span className="text-slate-500">{t('whaleAnalytics.speedLabel', { defaultValue: 'Tốc độ sự kiện' })}</span><span className="font-semibold text-slate-100">{formatSpeedValue(hoveredPanel.speed)}</span></div>
                         <div className="space-y-2 rounded border border-slate-800 bg-slate-900/70 px-3 py-3">
                           {infoPanelLineItems.map((item) => (
@@ -1707,15 +1732,15 @@ export default function WhaleBubbleChart({
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                         </svg>
-                        <span>Đang tải tín hiệu...</span>
+                        <span>{t('whaleChart.loadingSignals', { defaultValue: 'Đang tải tín hiệu...' })}</span>
                       </div>
                     ) : orderFlowSignals.length === 0 ? (
                       <div className="text-center py-10 text-slate-500">
-                        Không có tín hiệu cảnh báo nào trong phiên
+                        {t('whaleChart.noSignals', { defaultValue: 'Không có tín hiệu cảnh báo nào trong phiên' })}
                       </div>
                     ) : (
                       orderFlowSignals.map((item) => {
-                        const { label, badgeClass } = getSignalTypeLabelAndClass(item.signal_type);
+                        const { label, badgeClass } = getSignalTypeLabelAndClass(item.signal_type, t);
                         return (
                           <div
                             key={item.id || `${item.symbol}-${item.created_at}`}
@@ -1731,7 +1756,7 @@ export default function WhaleBubbleChart({
                             </div>
                             
                             <div className="flex items-center justify-between text-slate-300 font-medium pt-1">
-                              <span>Sức mạnh:</span>
+                              <span>{t('whaleChart.strengthLabel', { defaultValue: 'Sức mạnh:' })}</span>
                               <span className="text-slate-100 font-semibold">
                                 {Number(item.strength || 0).toFixed(1)} • {Number(item.confidence || 0).toFixed(2)}
                               </span>
@@ -1740,7 +1765,7 @@ export default function WhaleBubbleChart({
                             <div className="flex items-center justify-between text-slate-400 text-[11px]">
                               <span>Tick rate:</span>
                               <span>
-                                {Number(item.tick_rate || 0).toFixed(1)} • Lệnh nhỏ: {formatPercentDelta(Number(item.small_order_ratio || 0) * 100)}
+                                {Number(item.tick_rate || 0).toFixed(1)} • {t('whaleChart.smallOrders', { defaultValue: 'Lệnh nhỏ:' })} {formatPercentDelta(Number(item.small_order_ratio || 0) * 100)}
                               </span>
                             </div>
 

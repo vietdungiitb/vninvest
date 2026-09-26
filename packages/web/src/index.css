@@ -270,9 +270,143 @@
     border: 1px solid var(--color-border-secondary);
   }
 
+  /* Neon glass panel (S09 — advisory whale page) */
+  .neon-glass-panel {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(51, 65, 85, 0.6);
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(16px);
+    transition: all 0.3s ease;
+    box-shadow:
+      0 4px 24px -1px rgba(0, 0, 0, 0.2),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+
+  .neon-glass-panel:hover {
+    border-color: rgba(71, 85, 105, 0.8);
+    background: rgba(15, 23, 42, 0.5);
+    box-shadow:
+      0 12px 40px -4px rgba(0, 0, 0, 0.3),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
+
+  .agentic-glow-cyan {
+    box-shadow: 0 0 20px rgba(61, 217, 235, 0.08);
+  }
+
+  .agentic-glow-cyan::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    background: radial-gradient(
+      600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+      rgba(61, 217, 235, 0.1),
+      transparent 40%
+    );
+    pointer-events: none;
+  }
+
+  .agentic-glow-cyan:hover::after {
+    opacity: 1;
+  }
+
+  [data-theme="light"] .neon-glass-panel {
+    background: rgba(241, 245, 249, 0.85);
+    border-color: rgba(203, 213, 225, 0.6);
+    box-shadow:
+      0 4px 24px -1px rgba(0, 0, 0, 0.06),
+      inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  }
+
+  [data-theme="light"] .neon-glass-panel:hover {
+    background: rgba(241, 245, 249, 0.95);
+    border-color: rgba(148, 163, 184, 0.8);
+    box-shadow:
+      0 12px 40px -4px rgba(0, 0, 0, 0.1),
+      inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  }
+
+  [data-theme="light"] .agentic-glow-cyan {
+    box-shadow: 0 0 20px rgba(61, 217, 235, 0.12);
+  }
+
+  .advisory-page {
+    background: rgba(2, 6, 23, 0.2);
+    color: #e2e8f0;
+  }
+
+  .advisory-surface {
+    background: rgba(15, 23, 42, 0.45);
+  }
+
+  /* R3.4 — light mode phải phủ HẾT các nền tối dùng trong trang advisory.
+       Trước đây chỉ override `.advisory-surface` + 4 lớp text + 2 lớp border,
+       còn ~25 chỗ `bg-slate-900/*` và `bg-slate-950/*` giữ nguyên nền tối trên
+       nền sáng nên light mode vỡ. Ở đây override theo nhóm utility thay vì liệt
+       kê từng class, để class mới thêm sau này cũng được phủ. */
+  [data-theme="light"] .advisory-page {
+    background: #f8fafc;
+    color: #0f172a;
+  }
+
+  [data-theme="light"] .advisory-page .advisory-surface,
+  [data-theme="light"] .advisory-page .neon-glass-panel {
+    background: rgba(255, 255, 255, 0.94);
+    border-color: #cbd5e1;
+    color: #0f172a;
+  }
+
+  [data-theme="light"] .advisory-page .bg-slate-900,
+  [data-theme="light"] .advisory-page .bg-slate-900\/30,
+  [data-theme="light"] .advisory-page .bg-slate-900\/40,
+  [data-theme="light"] .advisory-page .bg-slate-900\/50,
+  [data-theme="light"] .advisory-page .bg-slate-900\/60,
+  [data-theme="light"] .advisory-page .bg-slate-900\/70,
+  [data-theme="light"] .advisory-page .bg-slate-950,
+  [data-theme="light"] .advisory-page .bg-slate-950\/10,
+  [data-theme="light"] .advisory-page .bg-slate-950\/20,
+  [data-theme="light"] .advisory-page .bg-slate-950\/30,
+  [data-theme="light"] .advisory-page .bg-slate-950\/40,
+  [data-theme="light"] .advisory-page .bg-slate-950\/50,
+  [data-theme="light"] .advisory-page .bg-slate-950\/60,
+  [data-theme="light"] .advisory-page .bg-slate-800\/30,
+  [data-theme="light"] .advisory-page .bg-slate-800\/40,
+  [data-theme="light"] .advisory-page .bg-slate-800\/50,
+  [data-theme="light"] .advisory-page .bg-slate-800\/60,
+  [data-theme="light"] .advisory-page .bg-slate-800 {
+    background-color: rgba(241, 245, 249, 0.92);
+  }
+
+  [data-theme="light"] .advisory-page .text-slate-100,
+  [data-theme="light"] .advisory-page .text-slate-200,
+  [data-theme="light"] .advisory-page .text-slate-300,
+  [data-theme="light"] .advisory-page .text-slate-400,
+  [data-theme="light"] .advisory-page .text-slate-500,
+  [data-theme="light"] .advisory-page .text-slate-600 {
+    color: #334155;
+  }
+
+  [data-theme="light"] .advisory-page .text-white {
+    color: #0f172a;
+  }
+
+  [data-theme="light"] .advisory-page .border-slate-800,
+  [data-theme="light"] .advisory-page .border-slate-800\/60,
+  [data-theme="light"] .advisory-page .border-slate-800\/40,
+  [data-theme="light"] .advisory-page .border-slate-800\/30,
+  [data-theme="light"] .advisory-page .border-slate-700,
+  [data-theme="light"] .advisory-page .border-slate-700\/60 {
+    border-color: #cbd5e1;
+  }
+
   /* ==========================================================================
-     BENTO BOX LAYOUT - Commercial Grade Dashboard Styles
-     ========================================================================== */
+      BENTO BOX LAYOUT - Commercial Grade Dashboard Styles
+      ========================================================================== */
 
   /* S4.1+S4.2 — Triad lane single card layer, clamp height, responsive grid */
   .dashboard-triad-lane {

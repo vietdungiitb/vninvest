@@ -3,19 +3,21 @@
  * Converted from JSX to createElement pattern
  */
 import { createElement, useState, useEffect, useRef } from 'react';
+import { useI18n } from '../../context/LangContext.js';
 
 const e = createElement;
 
 export function AgenticThoughtStream({ content, typingSpeedMs = 15 }) {
+  const { t } = useI18n();
   const [displayedContent, setDisplayedContent] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [thinkingPhase, setThinkingPhase] = useState(0);
   const prevContentRef = useRef('');
 
   const phases = [
-    'Analyzing institution order flow...',
-    'Correlating intraday dark pool momentum...',
-    'Finalizing executive summary...',
+    ['aiAdvisory.thought.phase1', 'Analyzing institution order flow…'],
+    ['aiAdvisory.thought.phase2', 'Correlating intraday dark pool momentum…'],
+    ['aiAdvisory.thought.phase3', 'Finalizing executive summary…'],
   ];
 
   useEffect(() => {
@@ -56,15 +58,15 @@ export function AgenticThoughtStream({ content, typingSpeedMs = 15 }) {
 
   return e(
     'div',
-    { className: 'min-h-[100px] flex flex-col justify-start' },
+    { className: 'min-h-[100px] flex flex-col justify-start', 'aria-live': 'polite', 'aria-busy': thinkingPhase < 4 },
     thinkingPhase > 0 && thinkingPhase < 4 && e(
       'div',
       { className: 'flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-300' },
-      phases.slice(0, thinkingPhase).map((p, idx) => e(
+      phases.slice(0, thinkingPhase).map(([phaseKey, defaultValue], idx) => e(
         'div',
         { key: idx, className: 'flex items-center gap-3' },
         e('div', { className: `w-1.5 h-1.5 rounded-full ${idx === thinkingPhase - 1 ? 'bg-cyan-400 animate-pulse' : 'bg-slate-700'}` }),
-        e('span', { className: `text-[10px] font-black uppercase tracking-widest ${idx === thinkingPhase - 1 ? 'text-slate-200' : 'text-slate-600'}` }, p)
+        e('span', { className: `text-[10px] font-black uppercase tracking-widest ${idx === thinkingPhase - 1 ? 'text-slate-200' : 'text-slate-600'}` }, t(phaseKey, { defaultValue }))
       ))
     ),
     thinkingPhase === 4 && e(

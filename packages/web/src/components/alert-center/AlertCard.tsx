@@ -322,6 +322,15 @@ export const AlertCard = memo(function AlertCard(props: AlertCardProps) {
         >
           {busyAlertId === alert.alert_id ? t("alertCenter.btnDetailLoading") : t("alertCenter.btnDetail")}
         </button>
+        {alert.symbol && (
+          <a
+            href={`/ai-advisory?symbol=${encodeURIComponent(String(alert.symbol).toUpperCase())}&from=alert`}
+            className={`${soc.filterBtn} ${soc.filterBtnInactive}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {t("alertCenter.viewAdvisory")}
+          </a>
+        )}
         {/* S3: ack khả dụng cả 2 lane (BE hỗ trợ ?lane=main|ai) */}
         <button
           type="button"

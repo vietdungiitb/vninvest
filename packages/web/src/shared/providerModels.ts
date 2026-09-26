@@ -15,12 +15,20 @@ export const PROVIDER_MODELS: Record<string, ProviderModelOption[]> = {
     { key: "custom", label: "Mô hình tùy chỉnh..." }
   ],
   gemini: [
+    // Bằng chứng 2026-09-26: probe thật với key Gemini qua endpoint
+    // OpenAI-compat `generativelanguage.googleapis.com`. 4/6 model cũ trả 404
+    // nên người dùng chọn là chắc chắn hỏng:
+    //   gemini-2.5-pro   404 "no longer available to new users"
+    //   gemini-2.0-flash 404 "no longer available"
+    //   gemini-1.5-flash 404 "not found for API version v1main"
+    //   gemini-1.5-pro   404 "not found for API version v1main"
+    //   gemini-pro       404 "not found for API version v1main"
+    // Chỉ giữ model trả 200. Model OpenAI/Claude/local không sửa vì không có
+    // key để verify trong dev — `custom` vẫn cho nhập tự do.
     { key: "gemini-3.8-flash", label: "gemini-3.8-flash" },
-    { key: "gemini-2.5-pro", label: "gemini-2.5-pro" },
     { key: "gemini-2.5-flash", label: "gemini-2.5-flash" },
-    { key: "gemini-1.5-flash", label: "gemini-1.5-flash" },
-    { key: "gemini-1.5-pro", label: "gemini-1.5-pro" },
-    { key: "gemini-pro", label: "gemini-pro" },
+    { key: "gemini-2.5-flash-lite", label: "gemini-2.5-flash-lite" },
+    { key: "gemini-flash-latest", label: "gemini-flash-latest" },
     { key: "custom", label: "Mô hình tùy chỉnh..." }
   ],
   claude: [
