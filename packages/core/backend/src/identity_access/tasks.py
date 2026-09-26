@@ -416,9 +416,24 @@ def auto_disable_expired_trials():
     return disabled_count
 
 
-@shared_task(bind=True, max_retries=2, default_retry_delay=60)
+@shared_task(
+    bind=True,
+    max_retries=2,
+    default_retry_delay=60,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+)
 def deprovision_tenant_async(self, tenant_public_id: str):
-    """Async cleanup after tenant deprovisioning: cascade-delete offboarded resources."""
+    """Async cleanup after tenant deprovisioning: cascade-delete offboarded resources.
+
+    C1: ``CorePATCredential`` has NO ``tenant`` field — the only tenant path is
+    ``service_account__tenant``. The old ``filter(tenant=tenant)`` raised FieldError
+    *after* members were already deleted and *before* webhooks were cleaned, leaving
+    every deprovisioned tenant permanently half-cleaned with zero retries.
+    The whole body now runs in one transaction so a mid-way failure rolls back,
+    and autoretry_for makes a transient DB error recoverable instead of terminal.
+    """
+    from django.db import transaction
     from identity_access.models import CoreTenant, TenantMember, TenantWebhookConfig, CorePATCredential
 
     try:
@@ -432,20 +447,26 @@ def deprovision_tenant_async(self, tenant_public_id: str):
         return
 
     removed = {}
-    member_ids = list(TenantMember.objects.filter(tenant=tenant).values_list('id', flat=True))
-    if member_ids:
-        _, member_stats = TenantMember.objects.filter(id__in=member_ids).delete()
-        removed['members'] = member_stats
+    with transaction.atomic():
+        member_ids = list(TenantMember.objects.filter(tenant=tenant).values_list('id', flat=True))
+        if member_ids:
+            _, member_stats = TenantMember.objects.filter(id__in=member_ids).delete()
+            removed['members'] = member_stats
 
-    pat_ids = list(CorePATCredential.objects.filter(tenant=tenant).values_list('id', flat=True))
-    if pat_ids:
-        _, pat_stats = CorePATCredential.objects.filter(id__in=pat_ids).delete()
-        removed['pats'] = pat_stats
+        # C1 FIX: CorePATCredential has no direct tenant FK; it hangs off
+        # CoreServiceAccount. Filtering through service_account__tenant is the
+        # only correct tenant path.
+        pat_ids = list(
+            CorePATCredential.objects.filter(service_account__tenant=tenant).values_list('id', flat=True)
+        )
+        if pat_ids:
+            _, pat_stats = CorePATCredential.objects.filter(id__in=pat_ids).delete()
+            removed['pats'] = pat_stats
 
-    webhook_ids = list(TenantWebhookConfig.objects.filter(tenant=tenant).values_list('id', flat=True))
-    if webhook_ids:
-        _, webhook_stats = TenantWebhookConfig.objects.filter(id__in=webhook_ids).delete()
-        removed['webhooks'] = webhook_stats
+        webhook_ids = list(TenantWebhookConfig.objects.filter(tenant=tenant).values_list('id', flat=True))
+        if webhook_ids:
+            _, webhook_stats = TenantWebhookConfig.objects.filter(id__in=webhook_ids).delete()
+            removed['webhooks'] = webhook_stats
 
     logger.info('Deprovision cleanup for %s: %s', tenant_public_id, removed)
     return removed
