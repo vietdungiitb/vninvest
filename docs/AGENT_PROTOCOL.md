@@ -242,3 +242,119 @@ Gate đã có **test âm tính** (tiêm lỗi → exit 1), tương tự `check-a
 - [ ] Không chạy `npm install`/`pip install` khi chưa hỏi
 - [ ] Claim của tôi đã đổi `in-progress` → `done`
 - [ ] Báo coordinator: commit hash + danh sách file + gate đã chạy + cái **chưa** verify
+
+---
+
+## 10. SOP: từ lúc nhận việc đến lúc code lên `dev`
+
+### 10.0 Ai ở đâu
+
+| Worktree | Branch | Chủ sở hữu | Quy tắc |
+|---|---|---|---|
+| `C:\Mujoco Projects\vninvest` | `dev` | **core-team** | Là **main tree**. Làm việc tại đây, KHÔNG commit thẳng vào `dev` — hãy tạo branch. |
+| `C:\Mujoco Projects\agent-ai-cc` | `feat/ai-cc-r0` | **ai-cc-agent** | Branch riêng, commit thoải mái. |
+
+> **Hiện trạng đang lệch chuẩn:** `core-team` đang commit thẳng vào `dev`.
+> Đó là gốc rễ của cả 4 xung đột — không có điểm merge thì không ai kịp đồng bộ,
+> nên mới sinh ra migration trùng số lúc 06:55.
+>
+> **Khuyến nghị cấu trúc:** để `dev` làm branch **tích hợp — không ai commit trực tiếp**.
+> `core-team` cũng nên có worktree riêng (`../core-team` + `feat/...`).
+> Chỉ khi đó PR/review mới có ý nghĩa.
+
+### 10.1 Mở phiên (bắt buộc, theo thứ tự)
+
+```powershell
+# 1. Hook riêng cho worktree này (1 lần đầu mỗi worktree)
+sh scripts/agent-install-hooks.sh
+
+# 2. Đồng bộ dev mới + kiểm tra migration + chạy gate
+pwsh -File scripts/agent-sync.ps1
+
+# 3. Đọc CLAIMS.md, và git status CỦA MAIN TREE để biết agent khác đang
+#    sửa file nào CHƯA commit (CLAIMS.md có thể chưa kịp ghi)
+git -C "C:\Mujoco Projects\vninvest" status --short
+```
+
+| Bước | Vì sao phải làm |
+|---|---|
+| Cài hook | Không có hook thì quy tắc chỉ là lời khuyên, agent quên là mất |
+| `agent-sync.ps1` | Worktree tạo từ HEAD nên **không thấy** việc chưa commit của agent khác. Sync trước khi viết code |
+| `git status` main tree | Agent khác có thể đang sửa file mà **chưa kịp khai claim** → đây mới là nguồn đáng tin, không phải CLAIMS.md |
+
+### 10.2 Khai claim (trước khi sửa dòng nào)
+
+1. `git status` main tree — file nào đang bị sửa dở?
+2. `grep` `docs/CLAIMS.md` — đã ai giữ chưa?
+3. **Rồi mới** append dòng claim của mình vào cuối `CLAIMS.md`, commit riêng.
+
+Không làm đúng thứ tự này thì chính tôi đã mắc lỗi một lần: claim 5 file, trong đó
+2 file đã bị agent khác giữ → claim sai, che mất thông tin quan trọng nhất.
+
+### 10.3 Làm việc
+
+- Commit nhỏ, một việc một commit.
+- **Trước mỗi lần tạo migration:** đọc head thật (§4). Để `makemigrations` sinh tên.
+- Sau mỗi sub-step: `npx tsc --noEmit` + gate liên quan.
+- Hook `pre-commit` tự chặn vi phạm — **đừng `--no-verify` để lách**.
+  Nếu thật sự cần, ghi lý do vào commit body.
+
+### 10.4 Kết thúc phiên
+
+```powershell
+pwsh -File scripts/agent-sync.ps1      # rebase + check migration + chạy gate lại
+```
+
+**Gate chạy lại sau rebase mới đáng tin** — gate trước rebase không nói được gì
+về code sau rebase.
+
+Rồi:
+1. Sửa `docs/CLAIMS.md`: `in-progress` → `done` (commit riêng)
+2. `git push -u origin <branch>`
+3. `pwsh -File scripts/agent-pr.ps1 -Title "..."` → tạo PR kèm checklist
+4. Báo coordinator: commit hash · file đã đổi · **gate nào PASS** · **gate nào CHƯA chạy**
+
+### 10.5 Review & merge
+
+Checklist bắt buộc của người review (đã in sẵn trong PR body):
+
+1. PR có kéo theo file deny list §2 không? → `agent-pr.ps1` tự chặn, nhưng
+   người review vẫn phải soi nếu dùng `--no-verify`
+2. Mọi file sửa đều có trong `CLAIMS.md` của branch?
+3. Số migration có trùng với branch khác không? **Đây là lỗi chặn deploy.**
+4. Các mục "CHƯA CHẠY" trong PR body đã được đọc và chấp nhận chưa?
+5. Có test mới cho hành vi mới không?
+
+Merge:
+```powershell
+gh pr merge <n> --merge --delete-branch
+```
+Dùng `--merge` (không squash) để giữ dấu vết từng slice — repo này lịch sử linear,
+đừng tạo thêm 20 merge commit chồng lên nhau.
+
+### 10.6 Dọn dẹp sau merge
+
+```powershell
+pwsh -File scripts/agent-cleanup.ps1 -Branch feat/ai-cc-r0
+```
+
+Script tự **từ chối** xoá nếu: commit chưa push · worktree chưa sạch · PR chưa merge ·
+`CLAIMS.md` còn claim `in-progress`. Không có `--force` thì không mất việc.
+
+Coordinator làm nốt: góp file deny list → `CLAIMS.md` → `released` → push `dev`.
+
+### 10.7 Khi có nhiều hơn 2 agent
+
+Thêm worktree theo đúng khuôn, **tên worktree = tên agent**:
+
+```powershell
+git worktree add ..\core-team -b feat/core-w1 dev
+cmd /c mklink /J ..\core-team\packages\web\node_modules packages\web\node_modules
+```
+
+| Việc | Ai làm |
+|---|---|
+| Tạo worktree + branch + cài hook | Mỗi agent tự làm 1 lần đầu |
+| DB riêng | `docker exec vninvest-dev-core-db createdb -U vninvest -O vninvest <ten>` |
+| Claim | Mỗi agent tự khai |
+| Merge + góp deny list | **Coordinator** — một người, một thời điểm |
