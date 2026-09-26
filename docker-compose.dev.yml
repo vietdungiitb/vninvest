@@ -82,7 +82,14 @@ services:
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:-bhVAxIWMEP0forZ4OatG_UemXTulVgWdcRveIXDe2Io=}
       DNSE_API_KEY: ${DNSE_API_KEY:-}
       DNSE_API_SECRET: ${DNSE_API_SECRET:-}
+      # Turnstile secret (private, chi trong .env — KHONG commit). De trong o dev:
+      # `STRICT_TURNSTILE_ENFORCEMENT` default `not DEBUG` (`settings.py:246`) nen
+      # `apps.py:38-45` khong hard-fail. Production (`DEBUG=false`) se
+      # `ImproperlyConfigured` neu thieu — dung chu khong phai im lang bo qua spam.
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
+      STRICT_TURNSTILE_ENFORCEMENT: ${STRICT_TURNSTILE_ENFORCEMENT:-}
       LEGACY_BACKEND_URL: http://backend:8000
+
       FRONTEND_URL: http://localhost:8080
       EMAIL_BACKEND: django.core.mail.backends.smtp.EmailBackend
       EMAIL_HOST: mailpit
@@ -516,6 +523,8 @@ services:
         VITE_API_URL: /api
         STOCKCHART_REF: ${STOCKCHART_REF:-dev}
         GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN}
+        # Turnstile public site key (public, an toan de commit). Build-time only.
+        VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:-}
     depends_on: !override
       # SFI-B1.6: frontend depends only on core-api (single entry point); backend is internal.
       core-api:

@@ -243,9 +243,16 @@ TURNSTILE_SITE_KEY = os.environ.get('TURNSTILE_SITE_KEY', '').strip()
 # correct fail-closed default computed here was silently thrown away and
 # Turnstile verification was skipped on every registration in production.
 # That duplicate has been removed; this is now the only definition.
-STRICT_TURNSTILE_ENFORCEMENT = os.environ.get(
-    'STRICT_TURNSTILE_ENFORCEMENT', str(not DEBUG)
-).strip().lower() in ('true', '1', 'yes')
+STRICT_TURNSTILE_ENFORCEMENT = (
+    # `.strip().lower()` TRUOC khi `or` — neu chi `os.environ.get(...) or default`
+    # thi chuoi toan khoang trang la truthy, `.strip().lower()` ra `''`, roi
+    # `'' in ('true',...)` = False => TAT strict o production, vo hieu hoa
+    # `apps.py:38-45`. `docker-compose ${VAR:-}` tao ra chuoi rong nen truong
+    # hop nay la that, khong phai phong do.
+    # Rong (sau strip) = "chua dat" => default `not DEBUG`.
+    (os.environ.get('STRICT_TURNSTILE_ENFORCEMENT') or '').strip().lower()
+    or str(not DEBUG).strip().lower()
+) in ('true', '1', 'yes')
 
 
 # SFI-B5: AI Advisory configuration — all credentials from env; never hardcoded.
