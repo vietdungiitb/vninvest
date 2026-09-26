@@ -7,11 +7,20 @@ This module contains:
 from __future__ import annotations
 
 import json
+import logging
 from datetime import date
 
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.utils import timezone
+from vninvest_core.client_ip import UNKNOWN_IP, get_client_ip
+
+from identity_access.utils.resolve_tenant import (
+    first_eligible_tenant_for_user,
+    owner_tenant_for_user,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class TenantResolutionMiddleware:
@@ -205,59 +214,72 @@ class TenantResolutionMiddleware:
             # (e.g. TenantQuotaMiddleware) can attribute the request to a PAT without
             # re-resolving it. DRF re-sets request.auth later with the same credential.
             request.auth = credential
+            # B9: also expose the resolved *user*. DRF authentication happens
+            # inside the view, so at quota-middleware time request.user is still
+            # Django's lazy session user (AnonymousUser for a PAT request) and
+            # TenantQuotaMiddleware used to skip PAT traffic entirely - no
+            # counter, no 429, no _enqueue_pat_audit. Stashing the already
+            # resolved user here means the quota middleware never has to
+            # re-parse the secret or re-query the DB.
+            #
+            # Set on `request`, deliberately NOT on `request.user`: assigning to
+            # request.user would force evaluation of the SimpleLazyObject and
+            # could interfere with session auth. This is a plain attribute
+            # write on a per-request object, so it is request-scoped and
+            # idempotent (written once per request).
+            request._pat_user = user
             return user
         except Exception:
             return None
 
     def _resolve_tenant(self, request, user) -> tuple:
         """Resolve tenant from X-Tenant-ID header or fallback to owner/member."""
-        from identity_access.models import CoreTenant, TenantMember
+        from identity_access.models import TenantMember
 
         # 1. Try X-Tenant-ID header
         header_tenant_id = request.META.get('HTTP_X_TENANT_ID', '').strip()
         if header_tenant_id:
+            # Delegates to the shared owner-or-member membership check so this
+            # file and utils/resolve_tenant.py cannot drift apart again.
             tenant, role = self._resolve_by_header(header_tenant_id, user)
             if tenant:
                 return tenant, role
             # Header provided but invalid - return 403
             return None, None
 
-        # 2. Fallback: User is tenant owner
-        try:
-            tenant = CoreTenant.objects.select_related('owner_user').get(owner_user=user)
+        # 2. Fallback: User is tenant owner (OneToOne -> unambiguous)
+        tenant = owner_tenant_for_user(user)
+        if tenant is not None:
             return tenant, TenantMember.RoleChoices.OWNER
-        except CoreTenant.DoesNotExist:
-            pass
 
-        # 3. Fallback: First tenant where user is a member
-        member = TenantMember.objects.select_related('tenant').filter(user=user).first()
-        if member:
-            return member.tenant, member.role
-
-        return None, None
+        # 3. Fallback: first *eligible* tenant where user is a member.
+        # Was: TenantMember.objects.select_related('tenant').filter(user=user)
+        # .first()  -- no ordering, no status filter, so a user in 2+ tenants
+        # got a nondeterministic tenant that could be suspended.
+        return first_eligible_tenant_for_user(user)
 
     def _resolve_by_header(self, tenant_id: str, user) -> tuple:
-        """Validate X-Tenant-ID header against user's membership."""
-        from identity_access.models import CoreTenant, TenantMember
+        """Validate X-Tenant-ID header against user's membership.
 
-        try:
-            tenant = CoreTenant.objects.get(public_id=tenant_id)
-        except CoreTenant.DoesNotExist:
-            return None, None
+        Thin wrapper over the single shared membership check so that there is
+        exactly one owner-or-member rule in the codebase.
+        """
+        from identity_access.utils.resolve_tenant import resolve_tenant_for_user
 
-        # Check if user is owner
-        if tenant.owner_user_id == user.id:
-            return tenant, TenantMember.RoleChoices.OWNER
-
-        # Check if user is member
-        member = TenantMember.objects.filter(tenant=tenant, user=user).first()
-        if member:
-            return tenant, member.role
-
-        return None, None
+        return resolve_tenant_for_user(user, tenant_id)
 
     def _resolve_superuser_tenant(self, request, user):
-        """Best-effort tenant resolution for superusers."""
+        """Best-effort tenant context for superusers.
+
+        NOTE (audit tenantreg-b, not changed): this performs **no** status
+        check and assigns ``RoleChoices.OWNER`` unconditionally, for any
+        ``public_id`` supplied via the header. That is consistent with the
+        documented intent that superusers are not blocked by tenant status
+        ("Superusers bypass tenant resolution"), and ``IsTenantActive``
+        separately lets superusers through. Left as-is on purpose: narrowing it
+        would change operator behaviour, which is out of this slice's scope.
+        Reported for the owner to decide.
+        """
         from identity_access.models import CoreTenant, TenantMember
 
         header_tenant_id = request.META.get('HTTP_X_TENANT_ID', '').strip()
@@ -271,16 +293,17 @@ class TenantResolutionMiddleware:
                 pass
 
         # Fallback to first owned tenant
-        tenant = CoreTenant.objects.filter(owner_user=user).first()
-        if tenant:
+        tenant = owner_tenant_for_user(user)
+        if tenant is not None:
             request.tenant = tenant
             request.tenant_role = TenantMember.RoleChoices.OWNER
         else:
-            # Fallback to first member tenant
-            member = TenantMember.objects.select_related('tenant').filter(user=user).first()
-            if member:
-                request.tenant = member.tenant
-                request.tenant_role = member.role
+            # Fallback to first *eligible* member tenant (was: unordered,
+            # unfiltered `.first()`).
+            tenant, role = first_eligible_tenant_for_user(user)
+            if tenant is not None:
+                request.tenant = tenant
+                request.tenant_role = role
 
 
 class TenantQuotaMiddleware:
@@ -308,6 +331,19 @@ class TenantQuotaMiddleware:
             return self.get_response(request)
 
         user = getattr(request, 'user', None)
+        if not user or not getattr(user, 'is_authenticated', False):
+            # B9: PAT-authenticated requests reach this middleware with no
+            # usable request.user -- DRF authenticates later, inside the view,
+            # so request.user is still Django's lazy session user
+            # (AnonymousUser) here. The old code returned immediately, which
+            # made the daily counter, the 429 enforcement AND the
+            # `if is_pat:` audit branch unreachable for essentially all
+            # programmatic traffic. TenantResolutionMiddleware (one layer up)
+            # already resolved and stashed that user on request._pat_user, so
+            # reuse it. No secret re-parse, no extra query, no mutation of
+            # request.user, and the getattr default keeps behaviour identical
+            # when the attribute is absent (non-PAT, or an invalid PAT).
+            user = getattr(request, '_pat_user', None)
         if not user or not getattr(user, 'is_authenticated', False):
             return self.get_response(request)
 
@@ -340,6 +376,12 @@ class TenantQuotaMiddleware:
 
         if api_calls_limit >= 0 and used_calls > api_calls_limit:
             # Enterprise soft limit: log warning + header, don't block
+            # Local import: identity_access.models is deliberately not imported at
+            # module scope in this file (every resolver below imports it lazily),
+            # so referencing CoreTenant here without it raised NameError and turned
+            # the whole quota-exceeded branch into a 500.
+            from identity_access.models import CoreTenant
+
             is_enterprise = getattr(tenant, 'plan', '') == CoreTenant.PlanChoices.ENTERPRISE
             if is_enterprise:
                 response = self.get_response(request)
@@ -379,12 +421,20 @@ class TenantQuotaMiddleware:
         this never performs a DB write in the request hot path.
         """
         try:
-            client_ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() \
-                or request.META.get('REMOTE_ADDR', '')
+            # Was: left-most X-Forwarded-For or REMOTE_ADDR - client-forgeable.
+            # get_client_ip() honours the header only for a TRUSTED_PROXY_IPS
+            # peer. UNKNOWN_IP is mapped back to '' so that
+            # tasks.flush_pat_audit_log's `entry.get('ip_address') or None`
+            # keeps writing NULL into the GenericIPAddressField; passing the
+            # literal "unknown" through would fail bulk_create and re-queue the
+            # whole batch forever (poison message).
+            client_ip = get_client_ip(request)
+            if client_ip == UNKNOWN_IP:
+                client_ip = ''
             entry = {
                 'pat_pk': credential.pk,
                 'tenant_pk': getattr(credential.service_account, 'tenant_id', None),
-                'ip_address': client_ip or '',
+                'ip_address': client_ip,
                 'endpoint': str(getattr(request, 'path', '') or '')[:256],
                 'method': str(getattr(request, 'method', '') or '')[:8],
                 'status_code': int(status_code),
