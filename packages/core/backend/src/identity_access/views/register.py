@@ -446,9 +446,10 @@ def verify_email_view(request):
     # Bookkeeping for the failure path happens AFTER the atomic block so a raise
     # below cannot roll the attempt counter back.
     if failure is not None:
+        locked = False
         if lockout_key:
-            _bump_verify_lockout(lockout_key, max_attempts)
-        if failure == 'attempts':
+            locked = _bump_verify_lockout(lockout_key, max_attempts)
+        if failure == 'attempts' or locked:
             raise RateLimitErrorException(
                 detail=lockout_detail,
                 code='verification_locked_out'
@@ -463,17 +464,24 @@ def verify_email_view(request):
     }, status.HTTP_200_OK, request=request)
 
 
-def _bump_verify_lockout(lockout_key: str, max_attempts: int) -> None:
+def _bump_verify_lockout(lockout_key: str, max_attempts: int) -> bool:
     """Count a failed verification against the per-email lockout.
 
     Uses the shared atomic primitive and the operator-tunable
     ``EMAIL_VERIFICATION_LOCKOUT_TIMEOUT``, replacing a hard-coded 900s that no
     one could change without a deploy (the setting existed but was never read).
+
+    Returns:
+        bool: True once the address is locked out. The caller turns that into a
+        429, which is what makes the lockout observable to the client instead
+        of it silently only logging.
     """
     attempts = atomic_bump(lockout_key, settings.EMAIL_VERIFICATION_LOCKOUT_TIMEOUT)
     logger.info('verify_email: attempt counter for one address is now %s/%s', attempts, max_attempts)
     if attempts >= max_attempts:
         logger.warning('verify_email: address locked out after %s failed attempts', attempts)
+        return True
+    return False
 
 
 @api_view(['POST'])
