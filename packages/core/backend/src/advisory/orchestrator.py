@@ -368,6 +368,17 @@ class AdvisoryOrchestrator:
         max_tokens = effective_context.get('max_tokens') or 1000
         language = effective_context.get('language') or 'vi'
 
+        # These four are produced by run() and handed over inside db_data
+        # (see run(), just above the run_async call). They used to be read here
+        # as bare names, which are locals of run() and not visible in this
+        # function, so every call raised NameError: name 'metrics' is not
+        # defined. Fixed 2026-09-26; the previous E2E claim of
+        # status=generated could not have come through this path.
+        metrics = db_data.get('metrics') or {}
+        input_snapshot = db_data.get('input_snapshot') or {}
+        feature_attribution = db_data.get('feature_attribution') or {}
+        is_stale = bool(db_data.get('is_stale'))
+
         # Extract values from pre-fetched db_data
         price = db_data["price"]
         price_change_pct = db_data["price_change_pct"]
