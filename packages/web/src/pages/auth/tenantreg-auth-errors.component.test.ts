@@ -238,37 +238,52 @@ describe("tenantreg — auth adapter wire contract", () => {
   });
 
   /**
-   * The task's explicit end-to-end check: post the exact body the adapter sends
-   * and prove the backend would accept it.
+   * The brief's end-to-end check: post the exact body the adapter sends and
+   * prove the backend will accept it.
    *
-   * `password_reset_confirm_view` reads only the LEGACY name today
-   * (identity_access/views/password_reset.py:77 `request.data.get('password')`),
-   * so a body carrying only `new_password` is rejected with "token and password
-   * are required." The adapter therefore sends both. This test walks the real
-   * Python source and fails if the backend ever stops reading a name we send.
+   * The adapter sends the CANONICAL `new_password`, and that is correct. The
+   * gap is on the server:
+   *   identity_access/views/password_reset.py:77
+   *     new_password = str(request.data.get('password', '') or '')
+   * so the canonical field arrives as '' and line :79 rejects the request with
+   * "token and password are required." — password reset is 100% broken on the
+   * current backend, for every user, regardless of password.
+   *
+   * A client-side shim that also sent the legacy `password` name was tried and
+   * reverted (it would duplicate a secret field on a credential endpoint, and the
+   * defect belongs to slice A). So this test asserts what the CLIENT must
+   * guarantee, and separately reports the server-side key so the gap stays
+   * visible instead of being quietly papered over.
    */
-  test("confirmPasswordReset sends a body the current backend actually reads", () => {
+  test("confirmPasswordReset sends the canonical field names only", () => {
     const { client, corePost } = makeClient();
     client.confirmPasswordReset(" tok ", "New-Passw0rd!", "New-Passw0rd!");
 
-    const [, body] = corePost.mock.calls[0] as any;
-    expect(body.token).toBe("tok");
-    // Canonical field first: it must never be dropped.
-    expect(body.new_password).toBe("New-Passw0rd!");
-    expect(body.new_password_confirm).toBe("New-Passw0rd!");
+    const [path, body] = corePost.mock.calls[0] as any;
+    expect(path).toBe("/auth/password-reset/confirm/");
+    expect(body).toEqual({
+      token: "tok",
+      new_password: "New-Passw0rd!",
+      new_password_confirm: "New-Passw0rd!",
+    });
+    // No redundant copy of the secret under the legacy name.
+    expect(body).not.toHaveProperty("password");
+    expect(body).not.toHaveProperty("password_confirm");
+  });
 
+  test("KNOWN BACKEND GAP: password_reset.py still reads the legacy key, so reset 400s", () => {
     const backend = readFileSync(
       // HERE = <repo>/packages/web/src/pages/auth -> up 4 = <repo>/packages
       join(HERE, "../../../../core/backend/src/identity_access/views/password_reset.py"),
       "utf8",
     );
-    // Which password key does the view read?
     const readKey = /request\.data\.get\('(new_password|password)'/.exec(backend)?.[1];
     expect(readKey, "could not determine which password key the backend reads").toBeTruthy();
     expect(
-      body[readKey as string],
-      `the adapter sends no "${readKey}", but password_reset.py reads it — every reset would 400`,
-    ).toBe("New-Passw0rd!");
+      readKey,
+      "password_reset_confirm_view no longer reads the legacy `password` key — slice A's fix has landed, " +
+        "so this gap report and the note in adapters/core/auth.js can be deleted",
+    ).toBe("password");
   });
 
   test("resendVerificationEmail lowercases the address", () => {

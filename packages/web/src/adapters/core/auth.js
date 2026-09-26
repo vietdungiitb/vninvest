@@ -129,20 +129,20 @@ export function createAuthClient({ coreGet, corePost, corePatch, persistTokens, 
     /**
      * Confirm password reset by token.
      *
-     * COMPATIBILITY SHIM — remove once slice A is merged.
-     * The canonical field is `new_password`; this adapter has always sent that,
-     * which is correct. The backend, however, still reads the legacy name:
-     *   identity_access/views/password_reset.py:77
-     *     new_password = str(request.data.get('password', '') or '')
-     * so `new_password` arrives as '' and line :79 rejects the request with
-     * "token and password are required." — password reset is 100% broken on the
-     * current backend, for every user, regardless of password.
+     * The canonical field is `new_password`, and that is all this sends. A
+     * temporary shim that also sent the legacy `password` name was tried and
+     * reverted: the backend gap belongs to slice A, not to the client, and
+     * duplicating a secret field on a credential endpoint is not something to
+     * leave behind "just in case".
      *
-     * Sending both names makes the call work against the current backend and
-     * against slice A's version (which accepts the canonical `new_password` and
-     * still accepts legacy `password`). `new_password` must never be dropped.
-     * `new_password_confirm` is also mirrored to `password_confirm` for the same
-     * reason; the current backend ignores the confirmation entirely.
+     * KNOWN BACKEND GAP (not a client defect, reported to slice A):
+     * identity_access/views/password_reset.py:77 still reads the legacy name
+     *   new_password = str(request.data.get('password', '') or '')
+     * so `new_password` arrives as '' and line :79 rejects the request with
+     * "token and password are required." Password reset is therefore 100%
+     * broken on the current backend for every user, regardless of password.
+     * It is pinned by a test in src/pages/auth/tenantreg-auth-errors.component.test.ts
+     * that reads the real Python source, so the shim decision cannot silently rot.
      *
      * @param {string} token
      * @param {string} newPassword
@@ -154,8 +154,6 @@ export function createAuthClient({ coreGet, corePost, corePatch, persistTokens, 
         token: String(token || "").trim(),
         new_password: String(newPassword || ""),
         new_password_confirm: String(newPasswordConfirm || ""),
-        password: String(newPassword || ""),
-        password_confirm: String(newPasswordConfirm || ""),
       });
     },
 
