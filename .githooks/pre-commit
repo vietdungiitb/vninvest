@@ -57,8 +57,15 @@ fi
 
 # 2. Multi-agent invariants: duplicate migration numbers, multiple leaf nodes,
 #    claims that break the registry rules.
+#
+#    KHONG duoc viet dang `node ... | sed`: exit status cua pipeline lay tu lenh
+#    CUOI (sed luon thanh cong) nen gate se in loi nhung van cho commit lot.
+#    That tai day 2026-09-26 — can chay lai test sau khi sua.
 if [ -f packages/web/scripts/check-multi-agent.mjs ]; then
-  if ! node packages/web/scripts/check-multi-agent.mjs 2>&1 | sed 's/^/  /'; then
+  gate_out=$(node packages/web/scripts/check-multi-agent.mjs 2>&1)
+  gate_st=$?
+  echo "$gate_out" | sed 's/^/  /'
+  if [ "$gate_st" -ne 0 ]; then
     cat >&2 <<'MSG'
 
 BLOCKED: check:multi-agent that bai.
