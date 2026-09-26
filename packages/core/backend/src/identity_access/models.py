@@ -15,6 +15,8 @@ from datetime import timedelta
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.utils import timezone
 
 
@@ -214,6 +216,22 @@ class CoreServiceAccount(models.Model):
         ordering = ['-created_at', '-pk']
         indexes = [
             models.Index(fields=['tenant', 'status']),
+        ]
+        # C5: get_or_create(tenant=..., name='default') is used in
+        # views/register.py:139,288, views/sso.py:300, views_personal.py:50,
+        # views/register.py helpers and data_ingest/tasks.py:3155. Without a
+        # unique constraint Django's get_or_create is a SELECT-then-INSERT and is
+        # NOT race-safe, so two concurrent requests mint two "default" accounts.
+        # views/login.py:146 then picks .first() under ordering ['-created_at','-pk']
+        # (i.e. the NEWEST) and attaches whichever scopes that row happens to carry
+        # to the user's login PAT — the elevated set (ai:invoke, manage_pats) is
+        # written by views/register.py:297-299. Migration 0028 merges existing
+        # duplicates (re-pointing their PATs) before this constraint applies.
+        constraints = [
+            models.UniqueConstraint(
+                fields=['tenant', 'name'],
+                name='uniq_core_service_account_tenant_name',
+            ),
         ]
 
     def __str__(self):
@@ -1490,4 +1508,78 @@ class WebhookDelivery(models.Model):
 
     def __str__(self):
         return f'{self.event_type} — {self.status} ({self.config.name})'
+
+
+# ---------------------------------------------------------------------------
+# CoreTenant lifecycle invariants (slice C)
+# ---------------------------------------------------------------------------
+# Kept here rather than in a signals.py because this module is the one the
+# CoreTenant lifecycle is allowed to depend on, and tenant_lifecycle/signals.py
+# already owns the status-CHANGE audit log. These receivers only derive one field
+# from another; they never change `status`, so the two never fight.
+#
+# Both use QuerySet.update(), which bypasses save() and therefore (a) cannot recurse
+# and (b) is not defeated by a caller passing update_fields=[...] — a save that
+# says update_fields=['plan'] would otherwise silently drop the derived value.
+@receiver(post_save, sender=CoreTenant)
+def sync_core_tenant_plan_entitlement(sender, instance, raw=False, **kwargs):
+    """C2: keep CoreTenant.api_calls_limit equal to the canonical plan entitlement.
+
+    The column defaulted to 10000 for EVERY plan, so a free tenant carried a
+    starter-sized limit and the enforcement in TenantQuotaMiddleware had nothing
+    sane to fall back on (it returns -1 = unlimited when no QuotaRecord exists).
+
+    A limit that is not one of the canonical plan values is a hand-negotiated
+    override (e.g. an enterprise deal at 2,000,000) and is preserved verbatim.
+    """
+    if raw:
+        return
+    from commercial.plan_catalog import get_api_calls_limit, is_plan_derived_api_calls_limit
+
+    expected = get_api_calls_limit(instance.plan)
+    if instance.api_calls_limit == expected:
+        return
+    if not is_plan_derived_api_calls_limit(instance.api_calls_limit):
+        return
+    CoreTenant.objects.filter(pk=instance.pk).update(api_calls_limit=expected)
+    instance.api_calls_limit = expected
+
+
+@receiver(post_save, sender=CoreTenant)
+def sync_core_tenant_lifecycle_timestamps(sender, instance, raw=False, **kwargs):
+    """C8: activated_at / suspended_at must describe the CURRENT state.
+
+    A tenant suspended at T and later reactivated kept a stale suspended_at, so
+    every consumer that reads the timestamp instead of `status` (e.g.
+    tenant_lifecycle.tasks.auto_deprovision_stale filters suspended_at__lt=cutoff)
+    would eventually deprovision a healthy, paying tenant.
+    """
+    if raw:
+        return
+
+    updates = {}
+    if instance.status == CoreTenant.StatusChoices.ACTIVE:
+        if instance.suspended_at is not None:
+            updates['suspended_at'] = None
+        if instance.activated_at is None:
+            updates['activated_at'] = timezone.now()
+    elif instance.status == CoreTenant.StatusChoices.SUSPENDED:
+        if instance.suspended_at is None:
+            updates['suspended_at'] = timezone.now()
+    elif instance.status in (
+        CoreTenant.StatusChoices.DEPROVISIONED,
+        CoreTenant.StatusChoices.TRIAL,
+    ):
+        # Trial never suspended it; deprovisioned is terminal, so a stale
+        # suspended_at from an earlier life would be actively misleading.
+        if instance.suspended_at is not None:
+            updates['suspended_at'] = None
+        if instance.activated_at is not None:
+            updates['activated_at'] = None
+
+    if not updates:
+        return
+    CoreTenant.objects.filter(pk=instance.pk).update(**updates)
+    for field, value in updates.items():
+        setattr(instance, field, value)
 
