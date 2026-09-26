@@ -51,6 +51,22 @@ File: `docs/CLAIMS.md` (đã có `merge=union` trong `.gitattributes` ⇒ **hai 
 3. Xong ⇒ đổi trạng thái thành `done`. Merge ⇒ `released`.
 4. **Chỉ append ở CUỐI file.** Không sửa/xoá dòng cũ (trừ dòng của chính mình).
 
+> ⚠ **Sai lầm đã mắc phải lúc đầu — đừng lặp lại.**
+> Lần đầu tôi khai claim cho 5 file **mà không kiểm tra `git status` trước**. Hai trong số đó
+> (`portfolio_analytics_views.py`, `providerModels.ts`) đã bị agent khác đang sửa.
+> Claim sai đó che mất đúng thông tin cần nhất.
+>
+> **Thứ tự đúng, không được đảo:**
+> 1. `git status --short` — xem file nào đang bị sửa dở **ngoài commit**
+> 2. `grep` CLAIMS.md — xem đã ai giữ chưa
+> 3. *rồi mới* viết claim
+>
+> Lưu ý thêm: agent khác có thể đang sửa file mà **chưa kịp khai claim**. Nên
+> `git status` mới là nguồn đáng tin, CLAIMS.md chỉ là bổ trợ — không phải thay thế.
+>
+> Claim cũ bị thu hẹp thì **đừng xoá**: chuyển sang mục "Claims đã đóng" với status
+> `superseded` và ghi lý do. Mất dấu vết là mất bài học.
+
 Gate kiểm tra: `node packages/web/scripts/check-multi-agent.mjs`
 
 ---
