@@ -287,7 +287,7 @@ export function PortfolioProvider({ children }) {
           publishAuthError({
             reason: 'session-expired',
             retryable: false,
-            i18nKey: 'auth.sessionExpired',
+            i18nKey: 'shellFallback.sessionExpired',
             defaultMessage: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
           });
           await logout();
@@ -296,7 +296,7 @@ export function PortfolioProvider({ children }) {
         publishAuthError({
           reason: 'bootstrap-failed',
           retryable: true,
-          i18nKey: 'auth.bootstrapFailed',
+          i18nKey: 'shellFallback.bootstrapFailed',
           defaultMessage: 'Không tải được thông tin tài khoản.',
         });
         return false;
@@ -365,7 +365,7 @@ export function PortfolioProvider({ children }) {
         publishAuthError({
           reason: 'session-expired',
           retryable: false,
-          i18nKey: 'auth.sessionExpired',
+          i18nKey: 'shellFallback.sessionExpired',
           defaultMessage: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
         });
         await logout();
@@ -375,7 +375,7 @@ export function PortfolioProvider({ children }) {
       publishAuthError({
         reason: 'bootstrap-failed',
         retryable: true,
-        i18nKey: 'auth.bootstrapFailed',
+        i18nKey: 'shellFallback.bootstrapFailed',
         defaultMessage: 'Không tải được thông tin tài khoản.',
       });
       return false;
@@ -568,7 +568,7 @@ export function PortfolioProvider({ children }) {
         publishAuthError({
           reason: 'bootstrap-failed',
           retryable: true,
-          i18nKey: 'auth.bootstrapFailed',
+          i18nKey: 'shellFallback.bootstrapFailed',
           defaultMessage: 'Không tải được thông tin tài khoản.',
         });
       } finally {

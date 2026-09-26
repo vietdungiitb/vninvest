@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { usePortfolio } from '@/context/PortfolioContext.js';
 import { useI18n } from '@/context/LangContext.js';
 import { sidebarItems, isActivePath } from './sidebaritems';
@@ -25,14 +25,27 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed = false, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
-  const { userTenants = [] as Tenant[], activeTenantId, switchTenant, userIdentity } = usePortfolio() as any;
+  const { userTenants = [] as Tenant[], activeTenantId, switchTenant, userIdentity, logout } = usePortfolio() as any;
   const { t } = useI18n();
   const location = useLocation();
+  const navigate = useNavigate();
   const newLayout = isNewLayoutEnabled();
   const isStaff = Boolean((userIdentity as any)?.isStaff || (userIdentity as any)?.isSuperuser);
 
   const handleTenantChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     switchTenant(e.target.value);
+  };
+
+  /**
+   * E3 (P0) — this used to be `onClick: () => {}`, a no-op. `logout()` now
+   * revokes the PAT server-side (POST /auth/logout/) before clearing local
+   * state, and never rejects, so it is safe to fire without awaiting; the
+   * navigation happens immediately rather than after the revoke round-trip.
+   */
+  const handleLogout = () => {
+    navigate('/login');
+    void logout();
+    onMobileClose();
   };
 
   const getIcon = (iconName: string) => {
@@ -55,7 +68,7 @@ export function Sidebar({ collapsed = false, onToggle, mobileOpen, onMobileClose
             )
       ),
       role: 'navigation',
-      'aria-label': t('layout.nav.group.dashboard') || 'Main navigation'
+      'aria-label': t('layout.nav.group.dashboard', { defaultValue: 'Main navigation' })
     },
     // Logo & Workspace Selector
     e(
@@ -79,7 +92,7 @@ export function Sidebar({ collapsed = false, onToggle, mobileOpen, onMobileClose
           {
             className: 'p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 focus:outline-none',
             onClick: onToggle,
-            'aria-label': t('layout.expandMenu') || 'Open menu'
+            'aria-label': t('layout.expandMenu', { defaultValue: 'Mở menu' })
           },
           e('span', { className: 'h-5 w-5' }, '☰')
         )
@@ -93,7 +106,7 @@ export function Sidebar({ collapsed = false, onToggle, mobileOpen, onMobileClose
             className: 'block text-xs text-slate-500 mb-1',
             htmlFor: 'workspace-select'
           },
-          t('layout.workspace') || 'Workspace'
+          t('layout.workspace', { defaultValue: 'Không gian làm việc' })
         ),
         e(
           'select',
@@ -102,7 +115,7 @@ export function Sidebar({ collapsed = false, onToggle, mobileOpen, onMobileClose
             value: activeTenantId || '',
             onChange: handleTenantChange,
             className: 'w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg p-2.5 focus:border-cyan-400 focus:outline-none cursor-pointer',
-            'aria-label': t('layout.workspace') || 'Select workspace'
+            'aria-label': t('layout.workspace', { defaultValue: 'Chọn không gian làm việc' })
           },
           userTenants.map((tenant: any) => e(
             'option',
@@ -136,7 +149,7 @@ export function Sidebar({ collapsed = false, onToggle, mobileOpen, onMobileClose
         (newLayout || !collapsed || mobileOpen) && e(
           'h3',
           { className: 'px-3 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider' },
-          t(group.group) || group.group
+          t(group.group, { defaultValue: group.group })
         ),
         e(
           'div',
@@ -162,10 +175,10 @@ export function Sidebar({ collapsed = false, onToggle, mobileOpen, onMobileClose
                 onClick: () => {
                   onMobileClose();
                 },
-                title: (!newLayout && collapsed && !mobileOpen) ? t(item.labelKey) || item.labelKey : undefined
+                title: (!newLayout && collapsed && !mobileOpen) ? t(item.labelKey, { defaultValue: item.labelKey }) : undefined
               },
               e('span', { className: 'flex-shrink-0' }, getIcon(item.icon)),
-              (newLayout || !collapsed || mobileOpen) && e('span', { className: 'truncate' }, t(item.labelKey) || item.labelKey)
+              (newLayout || !collapsed || mobileOpen) && e('span', { className: 'truncate' }, t(item.labelKey, { defaultValue: item.labelKey }))
             );
           })
         )
@@ -173,19 +186,36 @@ export function Sidebar({ collapsed = false, onToggle, mobileOpen, onMobileClose
       })
     ),
     // Profile Block (bottom)
+    //
+    // E3 (P0) — this block was kept and fixed rather than deleted. It is
+    // visible only in the mobile drawer (`newLayout` translates the sidebar
+    // off-screen until `mobileOpen`, and legacy mode defaults `collapsed` to
+    // true — FullLayout.tsx:13), where the Header (z-30) sits behind the
+    // sidebar overlay (z-50). Deleting it would remove the only logout
+    // affordance there. What it rendered was the problem: a no-op button and
+    // the hardcoded strings 'User' / 'user@example.com' while destructuring
+    // `userIdentity` and never using it.
     (newLayout || !collapsed || mobileOpen) && e(
       'div',
       { className: 'p-4 border-t border-slate-800 bg-slate-950/50' },
-      e('div', { className: 'font-medium text-slate-100 truncate' }, 'User'),
-      e('div', { className: 'text-xs text-slate-500 truncate mt-1' }, 'user@example.com'),
+      e(
+        'div',
+        { className: 'font-medium text-slate-100 truncate' },
+        userIdentity?.display_name || userIdentity?.username || t('common.user', { defaultValue: 'Người dùng' })
+      ),
+      e(
+        'div',
+        { className: 'text-xs text-slate-500 truncate mt-1' },
+        userIdentity?.email || ''
+      ),
       e(
         'button',
         {
-          onClick: () => {},
+          onClick: handleLogout,
           className: 'w-full mt-3 py-2 rounded-lg font-medium transition-colors bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20',
           type: 'button'
         },
-        t('layout.logout') || 'Đăng xuất'
+        t('layout.logout', { defaultValue: 'Đăng xuất' })
       )
     )
   );
