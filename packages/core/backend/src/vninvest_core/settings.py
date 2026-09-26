@@ -7,7 +7,25 @@ Default DATABASE_URL uses SQLite for local testing convenience.
 import os
 import sys
 
-TESTING = 'test' in sys.argv or any('test' in arg for arg in sys.argv)
+# TESTING must be an EXACT argv-token match, never a substring match.
+# The previous implementation was:
+#     TESTING = 'test' in sys.argv or any('test' in arg for arg in sys.argv)
+# The second clause is a substring match over EVERY argv entry, so ANY argument
+# merely CONTAINING "test" flipped TESTING on - e.g. `gunicorn --config
+# /etc/gunicorn/testing_gunicorn_conf.py` or a logfile argument `logs/testing.log`.
+# Consequence: CACHES was silently swapped to a per-process LocMemCache
+# (see the `if TESTING:` block below), which makes every rate-limit counter
+# local to one worker process - so a multi-worker deployment got N x the
+# intended quota - and DEFAULT_THROTTLE_CLASSES was emptied, disabling every
+# throttle in the system in production.
+# Escape hatch: set DJANGO_TESTING=true/false explicitly.
+_testing_env = os.environ.get("DJANGO_TESTING", "").strip().lower()
+if _testing_env:
+    TESTING = _testing_env in ("1", "true", "yes")
+else:
+    # Exact membership of the token "test" (covers `manage.py test` and its
+    # subcommand/label arguments), not "test" appearing inside another token.
+    TESTING = "test" in sys.argv[1:]
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
@@ -129,6 +147,18 @@ WSGI_APPLICATION = 'vninvest_core.wsgi.application'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 
+# Reverse proxies whose forwarded headers we are willing to believe.
+# Consumed by vninvest_core.client_ip.get_client_ip(), which is the single source
+# of truth for the client IP. Entries may be a plain address ("10.0.4.7") or a
+# CIDR network ("10.0.0.0/8" for a whole Docker bridge); both are supported.
+# DEFAULT IS EMPTY = TRUST NOTHING. With an empty list, X-Forwarded-For is
+# ignored entirely and only REMOTE_ADDR (the unforgeable socket peer) is used.
+# That is the safe default: a wrong entry is a spoofable client IP for every rate
+# limiter, every audit row and the PAT CIDR allow-list, whereas an empty list
+# merely loses proxy-aware precision for direct connections.
+# Example: TRUSTED_PROXY_IPS=127.0.0.1,::1,10.0.0.0/8
+TRUSTED_PROXY_IPS = [ip.strip() for ip in os.environ.get('TRUSTED_PROXY_IPS', '').split(',') if ip.strip()]
+
 DATABASES = {
     'default': {
         **dj_database_url.config(
@@ -179,7 +209,22 @@ BLOCKED_DISPOSABLE_DOMAINS = {
     'getairmail.com', '10minutemail.co', 'tempmail.net'
 }
 TURNSTILE_SECRET_KEY = os.environ.get('TURNSTILE_SECRET_KEY', '').strip()
-STRICT_TURNSTILE_ENFORCEMENT = os.environ.get('STRICT_TURNSTILE_ENFORCEMENT', str(not DEBUG)).strip().lower() in ('true', '1', 'yes')
+# Public site key rendered into the FE widget. Agent D (FE) reads it from VITE_*;
+# this is the backend's copy of the same value, kept for parity/validation.
+TURNSTILE_SITE_KEY = os.environ.get('TURNSTILE_SITE_KEY', '').strip()
+# Fail-closed in production: enforced unless explicitly disabled.
+# Historical bug: this value was assigned a SECOND time near the bottom of the
+# file (old line 792) as
+#     STRICT_TURNSTILE_ENFORCEMENT = os.environ.get(
+#         'STRICT_TURNSTILE_ENFORCEMENT', 'false').lower() == 'true'
+# The second assignment won (later wins), and its default was 'false', so with
+# DEBUG=False and the env var UNSET the effective value was False - i.e. the
+# correct fail-closed default computed here was silently thrown away and
+# Turnstile verification was skipped on every registration in production.
+# That duplicate has been removed; this is now the only definition.
+STRICT_TURNSTILE_ENFORCEMENT = os.environ.get(
+    'STRICT_TURNSTILE_ENFORCEMENT', str(not DEBUG)
+).strip().lower() in ('true', '1', 'yes')
 
 
 # SFI-B5: AI Advisory configuration — all credentials from env; never hardcoded.
@@ -788,8 +833,18 @@ EMAIL_VERIFICATION_MAX_ATTEMPTS = int(os.environ.get('EMAIL_VERIFICATION_MAX_ATT
 EMAIL_VERIFICATION_LOCKOUT_TIMEOUT = int(os.environ.get('EMAIL_VERIFICATION_LOCKOUT_TIMEOUT', 1800)) # 30 minutes in seconds
 EMAIL_VERIFICATION_RESEND_COOLDOWN = int(os.environ.get('EMAIL_VERIFICATION_RESEND_COOLDOWN', 60)) # seconds
 
-# Strict Cloudflare Turnstile enforcement settings
-STRICT_TURNSTILE_ENFORCEMENT = os.environ.get('STRICT_TURNSTILE_ENFORCEMENT', 'false').lower() == 'true'
+# Verification-email RESEND rate limit thresholds (per minute).
+# These two were read via `getattr(django_settings, 'RESEND_IP_LIMIT_THRESHOLD', 3)`
+# in identity_access/views/register.py but were defined NOWHERE - not in this
+# file, not in any docker-compose file. Operators had no way to tune them: the
+# getattr default was always in force. Defined here so the env vars are real.
+RESEND_IP_LIMIT_THRESHOLD = int(os.environ.get('RESEND_IP_LIMIT_THRESHOLD', 3))
+RESEND_SUBNET_LIMIT_THRESHOLD = int(os.environ.get('RESEND_SUBNET_LIMIT_THRESHOLD', 10))
+
+# STRICT_TURNSTILE_ENFORCEMENT is intentionally NOT redefined here. It used to be
+# assigned again in this block with a 'false' default, which silently overrode the
+# fail-closed definition near the top of this file and disabled bot protection in
+# production. Single definition only - see the comment at its definition.
 
 # =========================================================================
 # SAAS NATIVE USER LOGIN ANTI-ABUSE CONFIGURATIONS
