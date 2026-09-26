@@ -18,9 +18,13 @@ param(
   [string]$Worktree = "",
   [string]$Branch = "",
   [string]$Base = "dev",
+  [switch]$Execute,
   [switch]$Force
 )
 
+# Mac dinh KHONG xoa. Script huuy dien phai do -Execute moi chay that.
+# That tai 2026-09-26: khong co -Execute, lenh da xoa worktree ma report
+# "Permission denied" — git van xoa registration va .git, chi la thu muc con lai.
 $ErrorActionPreference = 'Stop'
 function Die($m) { Write-Host "X  $m" -ForegroundColor Red; exit 1 }
 function Ok($m)  { Write-Host "OK  $m" -ForegroundColor Green }
@@ -39,33 +43,41 @@ if (-not $path) {
 }
 if (-not $path) { Die "Khong tim thay worktree cho branch '$Branch'." }
 if (-not (Test-Path $path)) { Die "Thu muc khong ton tai: $path" }
-
-Write-Host "[1/5] Worktree: $path" -ForegroundColor Cyan
-
-# 1. sach?
-$dirty = git -C $path status --porcelain | Where-Object { $_ -notmatch 'node_modules|\.venv' }
-if ($dirty -and -not $Force) {
-  Write-Host $dirty -ForegroundColor DarkGray
-  Die "Worktree chua sach. Dung -Force neu thuc su muon xoa."
+if (-not (Test-Path (Join-Path $path ".git"))) {
+  Die "'$path' khong con .git — worktree da bi khuyet. Khong xoa them, tao lai bang 'git worktree add'."
 }
 
-# 2. commit chua push?
-$unpushed = git -C $path log --oneline "origin/$Branch..HEAD" 2>$null
-$hasLocal = @(git -C $path log --oneline "$Base..HEAD" 2>$null).Count
-if ($hasLocal -gt 0 -and -not $unpushed) {
+# GUARD 1: dang dung chinh trong thu muc can xoa
+$cwdFull = (Get-Location).ProviderPath
+$pathFull = [System.IO.Path]::GetFullPath($path).TrimEnd('\')
+if ($cwdFull.TrimEnd('\').StartsWith($pathFull, [System.StringComparison]::OrdinalIgnoreCase)) {
+  Die "Ban dang DUNG TRONG worktree can xoa. Chuyen ra ngoai truoc: cd C:\Mujoco Projects\vninvest"
+}
+
+Write-Host "[1/6] Worktree: $path" -ForegroundColor Cyan
+
+# GUARD 2: commit chua push
+$unpushed = @(git -C $path log --oneline "origin/$Branch..HEAD" 2>$null)
+$own = @(git -C $path log --oneline "$Base..HEAD" 2>$null)
+Write-Host "    commit rieng cua branch : $($own.Count)"
+Write-Host "    chua push len origin     : $($unpushed.Count)"
+if ($unpushed.Count -gt 0 -and -not $Force) {
   Write-Host "  Commit chua push:" -ForegroundColor Yellow
-  git -C $path log --oneline "$Base..HEAD" | ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow }
+  $unpushed | ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow }
   Die "Co commit chua push. Push truoc, hoac -Force neu co chu dich."
 }
-
-# 3. da merge chua?
-$merged = @(git -C $path log --oneline "$Base..HEAD" 2>$null).Count
-if ($merged -gt 0) {
-  Write-Host "  Branch con $merged commit chua merge vao $Base." -ForegroundColor Yellow
-  if (-not $Force) { Die "PR chua merge. Xoa worktree chi sau khi PR merge." }
+if ($own.Count -eq 0) {
+  Write-Host "    ! Branch khong co commit rieng nao (da ff bang $Base)." -ForegroundColor Yellow
 }
 
-# 4. claim con in-progress?
+# GUARD 3: worktree chua sach
+$dirty = @(git -C $path status --porcelain | Where-Object { $_ -notmatch 'node_modules|\.venv' })
+if ($dirty.Count -gt 0 -and -not $Force) {
+  Write-Host $dirty -ForegroundColor DarkGray
+  Die "Worktree chua sach. -Force neu thuc su muon xoa."
+}
+
+# GUARD 4: claim con in-progress?
 $claim = Join-Path $path "docs\CLAIMS.md"
 if (Test-Path $claim) {
   $open = Select-String -Path $claim -Pattern "\|\s*in-progress\s*\|" |
@@ -77,15 +89,40 @@ if (Test-Path $claim) {
   }
 }
 
-# 5. xoa
-Write-Host "[2/5] Xoa worktree" -ForegroundColor Cyan
+# GUARD 5: junction / symlink ben trong — git worktree remove co the lam hong
+# chung vi no xoa recursive
+$junctions = Get-ChildItem $path -Recurse -Directory -Force -ErrorAction SilentlyContinue |
+             Where-Object { $_.LinkType } | Select-Object -First 5
+if ($junctions) {
+  Write-Host "  Worktree chua junction/symlink tro vao thu muc khac:" -ForegroundColor Yellow
+  $junctions | ForEach-Object { Write-Host "    $($_.FullName)  -> $($_.Target)" -ForegroundColor Yellow }
+  Write-Host "  git worktree remove --force co the lam hong CHUNG." -ForegroundColor Yellow
+  if (-not $Force) { Die "Xoa junction truoc, hoac -Force neu ban chap nhan rui ro." }
+}
+
+# GUARD 6: PR da merge chua
+if ($own.Count -gt 0 -and -not $Force) {
+  Die "Branch con $($own.Count) commit chua merge vao $Base. Xoa worktree CHI sau khi PR merge."
+}
+
+# ── chưa chạy lệnh xoá nếu chưa có -Execute ──────────────────────────────────
+if (-not $Execute) {
+  Write-Host "`n[DRY RUN] Moi co bao loi truyen tren. Chua xoa gi ca." -ForegroundColor Yellow
+  Write-Host "  -Worktree : $path" -ForegroundColor DarkGray
+  Write-Host "  -Branch   : $Branch" -ForegroundColor DarkGray
+  Write-Host "`nDe xoa THAT:" -ForegroundColor Yellow
+  Write-Host "  pwsh -File scripts/agent-cleanup.ps1 -Branch $Branch -Execute"
+  exit 0
+}
+
+# ── chạy thật ────────────────────────────────────────────────────────────────
+Write-Host "[2/6] Xoa worktree" -ForegroundColor Cyan
 git worktree remove --force $path
 if ($LASTEXITCODE -ne 0) { Die "git worktree remove that bai" }
 Ok "da xoa $path"
 
 if (git branch --list $Branch) {
-  git branch -d $Branch 2>$null
-  if ($LASTEXITCODE -ne 0) { git branch -D $Branch | Out-Null }
+  git branch -D $Branch | Out-Null
   Ok "da xoa branch $Branch"
 }
 
