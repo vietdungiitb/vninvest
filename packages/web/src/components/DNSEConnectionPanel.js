@@ -157,7 +157,7 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
     setSendingOtp(true);
     setOtpResult(null);
     try {
-      const res = await coreApiAdapter.sendDNSEEmailOtp();
+      const res = await coreApiAdapter.sendDNSEEmailOtp({ mode: "paper" });
       setOtpResult({ ok: true, message: res?.message || "Đã gửi OTP qua email DNSE." });
     } catch (err) {
       setOtpResult({ ok: false, error: err?.message || "Gửi OTP DNSE thất bại." });
@@ -174,7 +174,7 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
     setCreatingToken(true);
     setTokenResult(null);
     try {
-      const res = await coreApiAdapter.createDNSETradingToken({ otp_type: "EMAIL", passcode: passcode.trim() });
+      const res = await coreApiAdapter.createDNSETradingToken({ otp_type: "EMAIL", passcode: passcode.trim(), mode: "paper" });
       const token = res?.trading_token || res?.token || res?.result?.trading_token || res?.result?.token || "";
       if (token) {
         setTradingToken(String(token));
@@ -204,7 +204,13 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
     setPlacingOrder(true);
     setOrderResult(null);
     try {
+      // PA-5: BE fail-closed (SAFE-01) — `mode` bắt buộc trong body và
+      // `Idempotency-Key` bắt buộc là header. Thiếu `mode` ⇒ 400
+      // `order_mode_required`; thiếu key ⇒ 400 `idempotency_key_required`.
+      // Chỉ gửi `paper`: `live` bị từ chối (`live_ordering_disabled`) cho tới khi
+      // có policy + OTP + risk limit + commercial license vnbroker.
       const res = await coreApiAdapter.placeDNSEOrder({
+        mode: "paper",
         market_type: "STOCK",
         order_category: "NORMAL",
         trading_token: tradingToken.trim(),

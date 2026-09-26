@@ -52,6 +52,10 @@ describe("AdvisoryOrderTicket (S14 G5)", () => {
     fireEvent.click(screen.getByText("Xác nhận đặt lệnh"));
     expect(await screen.findByText("Đã gửi lệnh.")).toBeTruthy();
     expect(placeOrder).toHaveBeenCalledWith({
+      // PA-5: BE fail-closed (SAFE-01) — `mode` bắt buộc trong body, thiếu thì 400
+      // `order_mode_required`. Chỉ gửi `paper`; `live` bị từ chối tới khi có
+      // policy + OTP + risk limit + commercial license vnbroker.
+      mode: "paper",
       market_type: "STOCK",
       order_category: "NORMAL",
       trading_token: "tok-123",
