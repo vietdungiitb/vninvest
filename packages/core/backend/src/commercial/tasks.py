@@ -564,7 +564,19 @@ def check_usage_thresholds(self):
             entitled = getattr(tenant, 'api_calls_limit', -1)
         elif meter_code == 'whale_symbols':
             from commercial.models import QuotaRecord
-            qr = QuotaRecord.objects.filter(tenant=tenant).order_by('-period_start').first()
+            # C9/C2: this used to read the newest record regardless of period, so the
+            # threshold could be computed against a last period's limit. Prefer the
+            # period that contains today, and only then fall back to the newest.
+            today = timezone.now().date()
+            qr = (
+                QuotaRecord.objects.filter(
+                    tenant=tenant,
+                    period_start__lte=today,
+                    period_end__gte=today,
+                )
+                .order_by('-period_start')
+                .first()
+            ) or QuotaRecord.objects.filter(tenant=tenant).order_by('-period_start').first()
             entitled = getattr(qr, 'symbols_limit', -1) if qr else -1
         else:
             # ai_regenerate / exports - plan-based
