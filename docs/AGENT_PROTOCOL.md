@@ -91,14 +91,51 @@ python manage.py showmigrations <app> | tail -3     # xác nhận chỉ 1 leaf
 **Cấm tuyệt đối:** sửa file migration đã được apply (vi phạm BR-07 của repo). Cần sửa thì tạo file repair mới.
 
 ### Database riêng cho từng agent
-Postgres dùng chung ⇒ 2 branch chạy `migrate` sẽ lệch schema. Mỗi agent một DB:
 
-```bash
-createdb aicc_r0        # agent AI CC
-# DATABASE_URL=postgres://.../aicc_r0  (qua env, KHÔNG sửa file cấu hình)
-```
+Postgres dùng chung ⇒ 2 branch chạy `migrate` sẽ lệch schema.
+
+> **Đã dựng và kiểm chứng (2026-09-26).** Postgres của `docker-compose.dev.yml` chạy ở
+> container `vninvest-dev-core-db`, publish `127.0.0.1:5433 → 5432`,
+> user `vninvest`, owner `vninvest_core`.
+>
+> DB riêng cho agent AI CC đã tạo và **đã chạy `migrate` thành công**: `aicc_r0`
+> (118 bảng, 145 migration). DB `vninvest_core` của agent khác **không bị đụng**.
+>
+> ```powershell
+> # tạo DB (idempotent)
+> docker exec vninvest-dev-core-db createdb -U vninvest -O vninvest aicc_r0
+> ```
+>
+> **Agent phải trỏ DB qua env, KHÔNG sửa file cấu hình:**
+> ```powershell
+> $env:CORE_DATABASE_URL = "postgresql://vninvest:devpassword@127.0.0.1:5433/aicc_r0"
+> $env:DJANGO_DEBUG = "1"          # BẮT BUỘC — xem bên dưới
+> cd packages/core/backend
+> python manage.py check             # -> "System check identified no issues"
+> ```
+>
+> ⚠ **`DJANGO_DEBUG=1` là bắt buộc khi chạy trên host.**
+> `settings.py:21` đặt `DEBUG=False` mặc định, và `settings.py:27-34` **raise
+> `ImproperlyConfigured`** nếu `DEBUG=False` mà thiếu `DJANGO_ALLOWED_HOSTS` hoặc
+> `DJANGO_SECRET_KEY`. Đây chính là nguyên nhân gốc của "71 errors" được ghi ở
+> Entry 228 — **không phải** vì thiếu Postgres. Thiếu Postgres chỉ là một phần.
+> Có thể bỏ `DJANGO_DEBUG=1` nếu bạn set cả hai biến kia thay vì dùng wildcard.
+>
+> **Host port là 5433, không phải 5432.** Container dùng 5432 nội bộ.
+> Trong `docker-compose.dev.yml`, app container dùng hostname `core-db`.
+> Agent chạy trên host nên dùng `127.0.0.1:5433`.
 
 Các app `advisory` / `ai_analytics` / `ai_agents` độc lập nhau nên migration chạy song song vẫn an toàn.
+
+**Bằng chứng blocker hạ tầng đã được xử lý:** với env trên,
+`python manage.py test tests.test_advisory_budget tests.test_advisory_ssot tests.test_advisory_api_routes`
+→ **Ran 19 tests … OK**. Full suite `python manage.py test tests` → **Ran 388 tests,
+failures=10, errors=4** (từ 71 errors xuống 14 vấn đề).
+14 test đỏ nằm ngoài domain AI CC (`test_admin_route`, `test_scheduler_management_commands`,
+`test_tenant_quota_middleware`, `test_audit_logs_api`, `test_session_facts_api`,
+`test_stock_management_api_routes`) — **chưa xác minh là pre-existing hay do môi trường**,
+vì working tree chính đang bị agent khác sửa nên không lấy được baseline sạch để so sánh.
+Cần một ticket riêng, không chặn R0 của AI CC.
 
 ---
 
