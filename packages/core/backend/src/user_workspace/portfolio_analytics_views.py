@@ -23,8 +23,25 @@ from .models import Portfolio, Transaction
 
 
 def _get_user_portfolio(request, portfolio_id):
-    """Raise 404 if portfolio not owned by request.user."""
-    return get_object_or_404(Portfolio, pk=portfolio_id, user=request.user)
+    """
+    Lấy portfolio thuộc đúng `(user, tenant)` của request, nếu không thì 404.
+
+    P0-ISO-01: trước đây chỉ lọc `pk` + `user`, nên user đa tenant đọc được
+    holdings/NAV của portfolio thuộc tenant khác chỉ cần biết id.
+
+    - `request.tenant` do `TenantResolutionMiddleware` gán sẵn
+      (`identity_access/middleware.py:112`). Không tạo resolver mới ở đây —
+      `tenantreg-b` đang hợp nhất 4 resolver, thêm cái thứ 5 sẽ phá việc đó.
+    - `request.tenant is None` ⇒ fail-closed 404, KHÔNG fallback về lọc
+      `user` (fallback đó chính là lỗ hổng).
+    - Trả 404 chứ không 403 để không tạo oracle "id này tồn tại ở tenant khác".
+    - Row legacy `tenant IS NULL` không khớp tenant nào ⇒ 404. Xem
+      `user_workspace/migrations/0012_enforce_tenant_not_null_real.py`.
+    """
+    tenant = getattr(request, 'tenant', None)
+    if tenant is None:
+        raise NotFound('Portfolio not found.')
+    return get_object_or_404(Portfolio, pk=portfolio_id, user=request.user, tenant=tenant)
 
 
 def _compute_holdings(portfolio_id):
