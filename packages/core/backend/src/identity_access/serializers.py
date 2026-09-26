@@ -382,10 +382,8 @@ import re
 import requests
 import logging
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 
-User = get_user_model()
 logger = logging.getLogger(__name__)
 
 class SaaSRegisterSerializer(serializers.Serializer):
@@ -404,15 +402,18 @@ class SaaSRegisterSerializer(serializers.Serializer):
         val_clean = str(value or '').strip()
         if not re.match(r'^[a-zA-Z0-9_]{3,30}$', val_clean):
             raise serializers.ValidationError("Tên đăng nhập chỉ chứa ký tự chữ, số và dấu gạch dưới (3-30 ký tự).")
-        if User.objects.filter(username__iexact=val_clean).exists():
-            raise serializers.ValidationError("Tên đăng nhập này đã tồn tại.")
+        # A7: existence is deliberately NOT checked here. This used to raise
+        # "Tên đăng nhập này đã tồn tại." and the sibling field raised
+        # "Địa chỉ email này đã được đăng ký." on an unauthenticated endpoint, so
+        # the *field name* in the 400 body told an attacker which of the two was
+        # already taken. The check moved to `register_view`, which answers with a
+        # single opaque `registration_unavailable` for either collision.
+        # This serializer is only used by that view, so nothing loses the check.
         return val_clean.lower()
 
     def validate_email(self, value):
         email_clean = str(value or '').lower().strip()
-        if User.objects.filter(email__iexact=email_clean).exists():
-            raise serializers.ValidationError("Địa chỉ email này đã được đăng ký.")
-        
+
         # Tầng 2: Disposable Domain Block (O(1) Hash Set Lookup)
         domain = email_clean.split('@')[-1]
         disposable_set = getattr(settings, 'BLOCKED_DISPOSABLE_DOMAINS', set())
