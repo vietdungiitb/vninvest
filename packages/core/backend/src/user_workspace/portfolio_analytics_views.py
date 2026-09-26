@@ -15,7 +15,7 @@ from django.utils import timezone
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, extend_schema
 from rest_framework import permissions
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -621,6 +621,19 @@ class PortfolioAICommandCenterView(APIView):
         if 'ai_model' in payload:
             user_cred.ai_model = str(payload.get('ai_model') or '').strip()
 
+        # R0.5 — validate provider/model SAU khi cả hai đã được gán, để bắt
+        # được cả hai chiều: đổi provider (giữ model cũ) và đổi model
+        # (giữ provider cũ). Không có check này thì cấu hình
+        # provider=gemini + model=gpt-4o-mini lọt vào DB và mọi lần
+        # advisory đều fail 404 từ provider.
+        if 'ai_provider' in payload or 'ai_model' in payload:
+            from advisory.model_choices import validate_model_for_provider
+            _provider = str(user_cred.ai_provider or '').strip().lower()
+            _model = str(user_cred.ai_model or '').strip()
+            _is_valid, _model_error = validate_model_for_provider(_provider, _model)
+            if not _is_valid:
+                raise ValidationError({'ai_model': _model_error})
+
         if 'custom_endpoint' in payload:
             user_cred.custom_endpoint = str(payload.get('custom_endpoint') or '').strip()
 
@@ -637,21 +650,30 @@ class PortfolioAICommandCenterView(APIView):
 
         if 'advisory_refresh_interval_hours' in payload:
             try:
-                user_cred.refresh_interval_hours = int(payload.get('advisory_refresh_interval_hours'))
+                _val = int(payload.get('advisory_refresh_interval_hours'))
             except (TypeError, ValueError):
-                pass
+                raise ValidationError({'advisory_refresh_interval_hours': 'Must be an integer.'})
+            if not (1 <= _val <= 168):
+                raise ValidationError({'advisory_refresh_interval_hours': 'Must be 1..168.'})
+            user_cred.refresh_interval_hours = _val
 
         if 'advisory_max_auto_refreshes_per_day' in payload:
             try:
-                user_cred.max_auto_refreshes_per_day = int(payload.get('advisory_max_auto_refreshes_per_day'))
+                _val = int(payload.get('advisory_max_auto_refreshes_per_day'))
             except (TypeError, ValueError):
-                pass
+                raise ValidationError({'advisory_max_auto_refreshes_per_day': 'Must be an integer.'})
+            if not (0 <= _val <= 24):
+                raise ValidationError({'advisory_max_auto_refreshes_per_day': 'Must be 0..24.'})
+            user_cred.max_auto_refreshes_per_day = _val
 
         if 'advisory_max_tokens_per_day' in payload:
             try:
-                user_cred.max_tokens_per_day = int(payload.get('advisory_max_tokens_per_day'))
+                _val = int(payload.get('advisory_max_tokens_per_day'))
             except (TypeError, ValueError):
-                pass
+                raise ValidationError({'advisory_max_tokens_per_day': 'Must be an integer.'})
+            if not (1 <= _val <= 100000):
+                raise ValidationError({'advisory_max_tokens_per_day': 'Must be 1..100000.'})
+            user_cred.max_tokens_per_day = _val
 
         if 'temperature' in payload:
             try:
@@ -988,6 +1010,13 @@ class PortfolioAICommandCenterAuditLogView(APIView):
     """GET /workspace/ai-command-center/audit-logs/
 
     Trả về audit logs với pagination, filter theo action/actor/date range.
+
+    R0.11 — `AIAuditLog` không có FK user/tenant, chỉ có `actor` (CharField,
+    ghi bằng `request.user.username`). Trước đây `queryset = AIAuditLog.objects.all()`
+    với `IsAuthenticated` nghĩa là BẤT KỲ user đăng nhập nào cũng đọc được log
+    cấu hình AI của user khác (bao gồm `before_json`/`after_json` đã mask
+    nhưng vẫn lộ metadata cấu hình). Nay scope theo actor, chỉ staff mới
+    xem được toàn bộ.
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -997,13 +1026,26 @@ class PortfolioAICommandCenterAuditLogView(APIView):
 
         queryset = AIAuditLog.objects.all()
 
+        # R0.11 — chỉ superuser/staff được xem log toàn hệ thống.
+        is_operator = bool(
+            getattr(request.user, 'is_superuser', False)
+            or getattr(request.user, 'is_staff', False)
+        )
+        if not is_operator:
+            queryset = queryset.filter(actor=request.user.username)
+
         action = request.query_params.get('action', '').strip()
         if action:
             queryset = queryset.filter(action=action)
 
         actor = request.query_params.get('actor', '').strip()
         if actor:
-            queryset = queryset.filter(actor__icontains=actor)
+            # User không phải operator không được lọc sang actor khác để dò
+            # ra log ngoài phạm vi của mình.
+            if is_operator or actor == request.user.username:
+                queryset = queryset.filter(actor__icontains=actor)
+            else:
+                queryset = queryset.none()
 
         date_from = request.query_params.get('date_from', '').strip()
         if date_from:
@@ -1523,21 +1565,118 @@ class PortfolioScreenerRuleDetailView(APIView):
 
 
 class PortfolioAIAdvisoryListView(APIView):
-    """GET /portfolio/ai-advisory/ — batch advisory listing (legacy compat stub).
-    Returns empty items so frontend falls through to per-symbol canonical advisory queries."""
+    """GET /portfolio/ai-advisory/ — batch advisory listing hôm nay của user.
+
+    R0.12 — trước đây trả `{'items': []}` cố định, buộc FE phải fallback sang
+    20 request per-symbol (`useWhaleAdvisoryData.js:7,16`). Implement thật để
+    bỏ được N+1 request và cho sidebar một nguồn dữ liệu duy nhất.
+
+    Scope: `user=request.user` + `session_date=hôm nay` (giờ Asia/Ho_Chi_Minh).
+    """
     permission_classes = [permissions.IsAuthenticated]
 
+    #: trần số record trả về để không kéo nặng response
+    MAX_ITEMS = 200
+
     def get(self, request):
-        return Response({'items': []})
+        from advisory.models import AdvisoryRecord
+        from advisory.serializers import AdvisoryRecordSerializer
+        from django.utils import timezone
+
+        symbol = str(request.query_params.get('symbol') or '').strip().upper()
+        session_date = timezone.localdate()
+
+        queryset = (
+            AdvisoryRecord.objects
+            .filter(user=request.user, session_date=session_date)
+            .order_by('-created_at')
+        )
+        if symbol:
+            queryset = queryset.filter(symbol=symbol)
+
+        records = list(queryset[: self.MAX_ITEMS])
+        return Response({
+            'items': AdvisoryRecordSerializer(records, many=True).data,
+            'session_date': session_date.isoformat(),
+            'count': len(records),
+            'truncated': len(records) >= self.MAX_ITEMS,
+        })
 
 
 class PortfolioAIAdvisorySymbolStatsView(APIView):
-    """GET /portfolio/ai-advisory-symbol-stats/ — advisory symbol stats (legacy compat stub).
-    Returns empty stats so frontend falls through to symbol universe fallback."""
+    """GET /portfolio/ai-advisory-symbol-stats/ — stats theo mã cho sidebar.
+
+    R0.6 — trước đây trả `{'stats': []}` cố định, khiến
+    `WhaleSymbolSidebar.js:125,128,136` render "0%" / "▲ 0" cho MỌI mã:
+    `buildFallbackSymbolStats` không có advisory nên mọi field về 0. Ba cột
+    đó là số liệu bịa, không phải thiếu dữ liệu.
+
+    Nay trả đúng những gì có nguồn thật. Cố ý KHÔNG trả `whale_intensity` /
+    `buy_count` / `sell_count` vì không có trường nào trong DB làm nguồn cho
+    chúng — thiếu dữ liệu thì vắng mặt, không phải điền 0.
+    """
     permission_classes = [permissions.IsAuthenticated]
 
+    MAX_SYMBOLS = 200
+
     def get(self, request):
-        return Response({'stats': []})
+        from advisory.models import AdvisoryRecord
+        from advisory.signal_norm import normalize_confidence, normalize_signal, signal_to_side
+        from django.utils import timezone
+
+        session_date = timezone.localdate()
+
+        raw_symbols = request.query_params.get('symbols') or ''
+        requested = [
+            token.strip().upper()
+            for token in str(raw_symbols).split(',')
+            if token.strip()
+        ][: self.MAX_SYMBOLS]
+
+        queryset = AdvisoryRecord.objects.filter(
+            user=request.user,
+            session_date=session_date,
+        )
+        if requested:
+            queryset = queryset.filter(symbol__in=requested)
+
+        # Chỉ tính record đã sinh thành công — record pending/failed không
+        # có khuyến nghị để hiển thị.
+        generated = [row for row in queryset.order_by('-created_at') if row.status == 'generated']
+
+        latest_by_symbol = {}
+        for row in generated:
+            if row.symbol in latest_by_symbol:
+                continue
+            structured = row.structured_output if isinstance(row.structured_output, dict) else {}
+            latest_by_symbol[row.symbol] = {
+                'symbol': row.symbol,
+                'side': signal_to_side(normalize_signal(structured.get('signal'))),
+                'signal': normalize_signal(structured.get('signal')),
+                'confidence_score': normalize_confidence(structured.get('confidence_score')),
+                'is_discovery': bool(structured.get('is_discovery') or False),
+                'updated_at': (
+                    row.generated_at or row.updated_at
+                ).isoformat() if (row.generated_at or row.updated_at) else None,
+            }
+
+        stats = sorted(
+            latest_by_symbol.values(),
+            key=lambda item: (
+                -(item['confidence_score'] or 0),
+                item['symbol'],
+            ),
+        )
+        if requested:
+            order = {symbol: index for index, symbol in enumerate(requested)}
+            stats.sort(key=lambda item: order.get(item['symbol'], len(order)))
+
+        return Response({
+            'stats': stats,
+            'session_date': session_date.isoformat(),
+            'count': len(stats),
+        })
+
 
 
 # P0.1: allowlisted flow fields with NO SessionFacts source (see market_serving

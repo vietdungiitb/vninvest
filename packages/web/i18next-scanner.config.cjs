@@ -10,6 +10,12 @@ module.exports = {
     '!src/**/__tests__/**',
     '!src/**/__mocks__/**',
     '!src/components/vninvestcharts/**',
+    // R5.2 — file locale là output của scanner, KHÔNG phải source để quét.
+    // Trước đây chúng nằm trong `input` nên scanner cố `JSON.parse` chúng và
+    // báo `SyntaxError: "const vi =" is not valid JSON`, rồi vẫn exit 0 — cổng
+    // gate trở nên vô nghĩa. Việc phát hiện chuỗi hardcode do
+    // `scripts/check-i18n-hardcoded.mjs` đảm nhiệm, cổng đó fail thật.
+    '!src/i18n/**',
     '!node_modules/**',
     '!dist/**',
   ],
@@ -28,8 +34,14 @@ module.exports = {
     defaultNs: 'translation',
     defaultValue: '__STRING_NOT_TRANSLATED__',
     resource: {
-      loadPath: 'src/i18n/{{lng}}.js',
-      savePath: 'src/i18n/{{lng}}.json',
+      // R5.2 — locale file là ESM JavaScript (`const vi = {...}`), không phải
+      // JSON. Trỏ `loadPath` vào cache sẽ khiến scanner `JSON.parse` chúng và
+      // báo `SyntaxError: "const vi =" is not valid JSON`, rồi vẫn exit 0 —
+      // cổng gate vô dụng. Trỏ sang thư mục cache (đã nằm trong .gitignore) để
+      // scanner chỉ sinh báo cáo, không đụng file locale thật.
+      // Cổng phát hiện chuỗi hardcode thật sự là `check:i18n-hardcoded`.
+      loadPath: 'node_modules/.cache/i18next-scanner/{{lng}}.json',
+      savePath: 'node_modules/.cache/i18next-scanner/{{lng}}.json',
       jsonIndent: 2,
     },
     nsSeparator: ':',

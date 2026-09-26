@@ -4,9 +4,90 @@ from celery import shared_task
 from django.utils import timezone
 
 from advisory.models import AdvisoryComponent, AdvisorySession
+from advisory.orchestrator import (
+    SIGNAL_UNPARSEABLE_CODE,
+    SIGNAL_UNPARSEABLE_MESSAGE,
+    AdvisorySynthesisError,
+    _coerce_float,
+)
+from advisory.signal_norm import (
+    SCHEMA_VERSION,
+    SIGNAL_UNKNOWN,
+    normalize_confidence,
+    normalize_risk_level,
+    normalize_signal,
+)
 from identity_access.models import UserProfile
 
 logger = logging.getLogger(__name__)
+
+#: key bắt buộc có mặt trong `structured_output` (schema v2)
+REQUIRED_STRUCTURED_KEYS = (
+    'signal',
+    'confidence_score',
+    'summary',
+    'rationale',
+    'recommendation',
+    'risk_level',
+    'target_price',
+    'schema_version',
+)
+
+
+def _build_structured_output(orch_res: dict, advisory_text: str = '') -> dict:
+    """Dựng `structured_output` từ kết quả orchestrator + fallback JSON parse.
+
+    - Ưu tiên giá trị orchestrator đã chuẩn hoá (`signal`, `confidence_score`).
+    - Nếu orchestrator chưa có `signal` (model cũ chỉ trả `recommendation`),
+      fallback sang `recommendation` rồi mới về `advisory_text` nếu nó thực sự
+      là JSON object.
+    - Không tự bịa `confidence_score`: thiếu thì để `None`.
+    """
+    result = dict(orch_res or {})
+    parsed_extra = {}
+
+    # advisory_text chỉ parse được khi bản thân nó là JSON object (mô hình cũ
+    # hay trả nguyên JSON). Trước đây mọi lần parse đều raise rồi bị nuốt.
+    if not result.get('signal') and advisory_text:
+        try:
+            maybe_json = json.loads(advisory_text)
+            if isinstance(maybe_json, dict):
+                parsed_extra = maybe_json
+        except (ValueError, TypeError):
+            parsed_extra = {}
+
+    def pick(key, default=None):
+        value = result.get(key)
+        if value in (None, ''):
+            value = parsed_extra.get(key, default)
+        return value
+
+    raw_signal = result.get('signal') or parsed_extra.get('signal') or ''
+    signal = normalize_signal(raw_signal) if raw_signal not in (None, '') else SIGNAL_UNKNOWN
+    if signal == SIGNAL_UNKNOWN:
+        signal = normalize_signal(pick('recommendation') or '')
+    if signal == SIGNAL_UNKNOWN:
+        signal = normalize_signal(pick('signal_raw') or '')
+
+    return {
+        'signal': signal,
+        'signal_raw': str(pick('signal_raw', '') or ''),
+        'confidence_score': normalize_confidence(
+            result.get('confidence_score', parsed_extra.get('confidence_score'))
+        ),
+        'summary': str(pick('summary', '') or ''),
+        'rationale': str(pick('rationale', '') or ''),
+        'recommendation': str(pick('recommendation', '') or ''),
+        'risk_level': normalize_risk_level(pick('risk_level')),
+        'target_price': _coerce_float(pick('target_price')),
+        'feature_attribution': pick('feature_attribution', {}) or {},
+        'input_snapshot': pick('input_snapshot', {}) or {},
+        'components': pick('components', []) or [],
+        'advisory_text': str(advisory_text or ''),
+        'schema_version': SCHEMA_VERSION,
+        'normalized_by': 'signal_norm.normalize_signal',
+    }
+
 
 
 def _sanitize_effective_context_for_session(effective_context: dict) -> dict:
@@ -18,31 +99,8 @@ def _sanitize_effective_context_for_session(effective_context: dict) -> dict:
 
 @shared_task(name="advisory.reset_daily_token_budgets")
 def reset_daily_token_budgets():
-    """Tác vụ tự động reset lượng token tiêu hao hàng ngày về 0.
-    
-    Tác vụ quét qua toàn bộ các phiên hoạt động và đặt lại bộ đếm giới hạn để 
-    ngăn ngừa tình trạng khóa nhầm định ngạch.
-    """
-    now = timezone.now()
-    logger.info(f"Khởi động tác vụ đặt lại định mức tiêu hao token AI: {now}")
-    
-    # 1. Đặt lượng token_used của tất cả các AdvisorySession trong ngày về 0
-    updated_sessions = AdvisorySession.objects.all().update(tokens_used=0)
-    
-    # 2. Reset các trường ghi nhận lượng tiêu hao token trong ngày của UserProfile (nếu có)
-    # Ví dụ: reset trường preferences.daily_tokens_used nếu được lưu trực tiếp tại Profile
-    profiles_to_reset = UserProfile.objects.filter(preferences__has_key='daily_tokens_used')
-    updated_profiles = 0
-    for profile in profiles_to_reset:
-        profile.preferences['daily_tokens_used'] = 0
-        profile.save(update_fields=['preferences'])
-        updated_profiles += 1
-    
-    logger.info(
-        f"Đặt lại định mức thành công cho {updated_sessions} phiên tư vấn "
-        f"và {updated_profiles} tài khoản người dùng hoạt động."
-    )
-    return f"Reset {updated_sessions} sessions and {updated_profiles} profiles."
+    logger.info("reset_daily_token_budgets: no-op (enforcement date-scoped in views.py)")
+    return "noop: enforcement date-scoped in views.py"
 
 
 @shared_task(name="advisory.generate_advisory_task")
@@ -57,29 +115,41 @@ def generate_advisory_task(record_id: str, effective_context: dict, symbol: str)
         record = AdvisoryRecord.objects.get(advisory_id=record_id)
         orch_res = AdvisoryOrchestrator.run(effective_context, symbol)
         record.advisory_text = orch_res.get('advisory_text', '')
-        record.status = 'generated'
         record.tokens_used = orch_res.get('tokens_used', 0)
         record.generated_at = timezone.now()
-        # T1.1: lưu structured_output — nếu orchestrator trả JSON thì dùng, không thì {}
-        structured = {}
-        if isinstance(orch_res.get('structured_output'), dict):
-            structured = orch_res['structured_output']
-        else:
-            for _k in ('signal', 'confidence_score', 'summary', 'rationale', 'components'):
-                if _k in orch_res:
-                    structured[_k] = orch_res[_k]
-            # Thử parse advisory_text nếu là JSON (orchestrator có thể trả raw JSON)
-            if not structured and record.advisory_text:
-                try:
-                    _parsed = json.loads(record.advisory_text)
-                    if isinstance(_parsed, dict):
-                        for _k in ('signal', 'confidence_score', 'summary', 'rationale', 'components'):
-                            if _k in _parsed:
-                                structured[_k] = _parsed[_k]
-                except (ValueError, TypeError, json.JSONDecodeError):
-                    pass
-        record.structured_output = structured if isinstance(structured, dict) else {}
+
+        # R0.3 — dựng structured_output có kiểm soát. Trước đây copy key "nếu có"
+        # nên `signal`/`confidence_score` biến mất âm thầm vì orchestrator cũ
+        # không trả 2 key đó -> serializer trả None vĩnh viễn -> FE suy ra
+        # side=UNKNOWN cho mọi tín hiệu.
+        structured = _build_structured_output(orch_res, record.advisory_text)
+
+        # R0.2/R0.10 — signal không đọc được thì fail-closed: KHÔNG ghi record
+        # là `generated` vì như vậy UI sẽ hiển thị một khuyến nghị không có
+        # chiều, và order ticket sẽ bị chặn ở trạng thái giả.
+        if structured.get('signal') == SIGNAL_UNKNOWN:
+            record.status = 'failed'
+            record.error_message = SIGNAL_UNPARSEABLE_MESSAGE
+            record.structured_output = {
+                **structured,
+                'error': {
+                    'error_code': SIGNAL_UNPARSEABLE_CODE,
+                    'user_message': SIGNAL_UNPARSEABLE_MESSAGE,
+                    'signal_raw': orch_res.get('signal_raw') or '',
+                },
+            }
+            record.save()
+            logger.warning(
+                "advisory.generate_advisory_task: signal unparseable for %s (%s); "
+                "record marked failed instead of emitting a directionless signal",
+                symbol, structured.get('signal_raw') or orch_res.get('signal_raw') or '',
+            )
+            return
+
+        record.status = 'generated'
+        record.structured_output = structured
         record.save()
+
 
         if record.user_id is None:
             logger.warning("Skipping advisory session materialization for %s because record.user is null", record_id)
@@ -94,7 +164,7 @@ def generate_advisory_task(record_id: str, effective_context: dict, symbol: str)
                 'status': AdvisorySession.StatusChoices.COMPLETED,
                 'ai_model': orch_res.get('ai_model') or record.ai_model or effective_context.get('ai_model') or 'gpt-4o-mini',
                 'tokens_used': record.tokens_used,
-                'token_budget': int(effective_context.get('max_tokens') or 2000),
+                'token_budget': int(effective_context.get('token_budget') or effective_context.get('max_tokens') or 2000),
                 'context_snapshot': {
                     **(record.context_snapshot or {}),
                     'advisory_record_id': str(record.advisory_id),
@@ -159,10 +229,39 @@ def generate_advisory_task(record_id: str, effective_context: dict, symbol: str)
     except Exception as e:
         logger.error(f"Advisory generation failed for record {record_id}: {e}")
         try:
+            failed_record = AdvisoryRecord.objects.get(advisory_id=record_id)
+            if failed_record.user_id is not None:
+                from commercial.models import QuotaRecord
+                from identity_access.models import CoreTenant
+                from django.utils import timezone as _tz
+                from calendar import monthrange as _mr
+                _tenant = CoreTenant.objects.filter(owner_user=failed_record.user).first()
+                if _tenant:
+                    _today = _tz.localdate()
+                    _qs = _today.replace(day=1)
+                    _qe = _today.replace(day=_mr(_today.year, _today.month)[1])
+                    _qrec, _ = QuotaRecord.objects.get_or_create(
+                        tenant=_tenant, period_start=_qs, period_end=_qe,
+                        defaults={'api_calls_used': 0, 'api_calls_limit': -1},
+                    )
+                    if _qrec.api_calls_used > 0:
+                        _qrec.api_calls_used -= 1
+                        _qrec.save(update_fields=['api_calls_used', 'updated_at'])
+        except Exception:
+            logger.exception('Advisory quota refund failed (non-blocking)')
+        try:
             record = AdvisoryRecord.objects.get(advisory_id=record_id)
             record.status = 'failed'
-            record.error_message = str(e)
-            record.save()
+            # R0.10 — lỗi provider phải mang mã + thông điệp hành động để FE
+            # hiển thị được (DoD A6). Trước đây chỉ lưu `str(e)` nên UI không có
+            # gì để phân biệt "sai cấu hình" với "dịch vụ tạm thời lỗi".
+            if isinstance(e, AdvisorySynthesisError):
+                record.error_message = e.user_message
+                structured = record.structured_output if isinstance(record.structured_output, dict) else {}
+                record.structured_output = {**structured, 'error': e.public_payload()}
+            else:
+                record.error_message = str(e)
+            record.save(update_fields=['status', 'error_message', 'structured_output', 'updated_at'])
         except Exception:
-            pass
+            logger.exception('Advisory failure record update failed for %s', record_id)
 

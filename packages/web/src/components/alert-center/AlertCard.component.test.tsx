@@ -91,4 +91,13 @@ describe("AlertCard (Slice 1.2 + 3.1)", () => {
     expect(link).toBeTruthy();
     expect(link?.textContent).toContain("VBB");
   });
+
+  it("S14: card co link Xem tu van ve /ai-advisory?symbol=&from=alert", () => {
+    const { container } = render(<AlertCard {...baseProps()} />);
+    const link = Array.from(container.querySelectorAll("a")).find((a) =>
+      (a.getAttribute("href") || "").startsWith("/ai-advisory?symbol=VBB")
+    );
+    expect(link).toBeTruthy();
+    expect(link?.getAttribute("href")).toContain("from=alert");
+  });
 });

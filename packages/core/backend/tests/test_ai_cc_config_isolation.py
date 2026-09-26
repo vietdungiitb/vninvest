@@ -209,3 +209,16 @@ class AICommandCenterIsolationTests(TestCase):
         self.assertAlmostEqual(log.after_json['temperature'], 0.55, places=5)
         self.assertEqual(log.after_json['advisory_max_tokens_per_day'], 777)
         self.assertIn('temperature', log.diff_summary)
+
+    def test_advisory_config_validation_rejects_invalid_values(self):
+        cases = [
+            {'advisory_refresh_interval_hours': 'invalid'},
+            {'advisory_refresh_interval_hours': 0},
+            {'advisory_max_auto_refreshes_per_day': 25},
+            {'advisory_max_tokens_per_day': 0},
+            {'advisory_max_tokens_per_day': 100001},
+        ]
+        for payload in cases:
+            with self.subTest(payload=payload):
+                response = self.client_a.put(CC_URL, payload, format='json')
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

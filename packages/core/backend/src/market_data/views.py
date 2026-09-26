@@ -37,6 +37,26 @@ class StockProfileListView(APIView):
                 Q(symbol__icontains=search) |
                 Q(company_name__icontains=search)
             )
+            # N3 — xếp hạng kết quả tìm kiếm.
+            #
+            # Bằng chứng (2026-09-26, `StockProfile` 1399 mã active): trước khi
+            # sửa, gõ `VIC` trả về `ABS, ACS, AST` — vì `icontains` khớp cả
+            # chuỗi con trong TÊN CÔNG TY ("Se**rvic**e", "Tase**co** A**vi**on**s",
+            # "**Arc**hitec**ts**") và `order_by('symbol')` đẩy mã đúng xuống
+            # cuối. Gõ `SSI` cũng vậy. Người dùng gõ mã cổ phiếu mà không thấy
+            # mã đó ở đầu, dễ kết luận chức năng tìm kiếm hỏng.
+            #
+            # Thứ tự ưu tiên: khớp CHÍNH XÁC mã > mã bắt đầu bằng chuỗi > tên
+            # công ty. `symbol` giữ làm khoá phụ để thứ tự vẫn tất định — bắt buộc
+            # với cursor pagination (thiếu khoá phụ thì vị trí trang không ổn định).
+            from django.db.models import Case, IntegerField, Value, When
+            qs = qs.annotate(
+                _n3_rank=Case(
+                    When(symbol__iexact=search, then=Value(0, output_field=IntegerField())),
+                    When(symbol__istartswith=search, then=Value(1, output_field=IntegerField())),
+                    default=Value(2, output_field=IntegerField()),
+                )
+            ).order_by('_n3_rank', 'symbol')
         exchange = request.query_params.get('exchange')
         if exchange:
             qs = qs.filter(exchange=exchange.upper())
@@ -45,6 +65,12 @@ class StockProfileListView(APIView):
             qs = qs.filter(industry__icontains=industry)
 
         paginator = self.pagination_class()
+        # N3 — `CursorPagination` ghi đè `order_by` của queryset bằng
+        # `paginator.ordering`, nên annotation `_n3_rank` phải được khai báo
+        # ở paginator mới có tác dụng. Chỉ đổi khi có `q` để giữ nguyên hành vi
+        # cũ của lệnh list thuần (lọc exchange/industry, không tìm kiếm).
+        if search:
+            paginator.ordering = ('_n3_rank', 'symbol')
         page = paginator.paginate_queryset(qs, request)
         if page is not None:
             serializer = StockProfileSerializer(page, many=True)

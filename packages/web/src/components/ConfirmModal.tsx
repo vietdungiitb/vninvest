@@ -69,7 +69,6 @@ function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  const overlayRef = useRef<HTMLDivElement>(null);
   const confirmBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -89,9 +88,9 @@ function ConfirmDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop overlay */}
       <div
-        ref={overlayRef}
         onClick={onCancel}
         className="fixed inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+        aria-hidden="true"
       />
       {/* Dialog content */}
       <div

@@ -113,7 +113,7 @@ class AdvisorySsotContextMergeTests(TestCase):
             # Verify that context_snapshot['effective_ai_context'] is stored
             record = AdvisoryRecord.objects.get(advisory_id=response.data['advisory_id'])
             self.assertIn('effective_ai_context', record.context_snapshot)
-            self.assertEqual(record.context_snapshot['effective_ai_context']['api_key'], 'my-byok-plaintext-key')
+            self.assertEqual(record.context_snapshot['effective_ai_context']['api_key'], '[redacted]')
 
     @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
     def test_advisory_refresh_falls_back_to_system_api_key(self):
@@ -154,10 +154,18 @@ class AdvisorySsotContextMergeTests(TestCase):
         self._create_quota_record(used=0, limit=5)
 
         with patch('advisory.orchestrator.AdvisoryOrchestrator.run') as mock_run:
+            # R0.2: orchestrator nay luôn trả `signal` + `confidence_score`.
             mock_run.return_value = {
                 'advisory_text': 'Multi-turn advisory summary',
                 'ai_model': 'gpt-4o-mini',
                 'tokens_used': 120,
+                'signal': 'BUY',
+                'signal_raw': 'MUA',
+                'confidence_score': 0.78,
+                'summary': 'Multi-turn advisory summary',
+                'rationale': 'Dòng tiền tích cực.',
+                'recommendation': 'MUA LÚC',
+                'risk_level': 'medium',
             }
 
             response = self.client.post('/core/v1/advisory/refresh/FPT/', {}, format='json')
@@ -172,8 +180,48 @@ class AdvisorySsotContextMergeTests(TestCase):
         self.assertEqual(session.context_snapshot['effective_ai_context']['api_key'], '[redacted]')
 
         components = AdvisoryComponent.objects.filter(session=session).order_by('order')
-        self.assertEqual(components.count(), 2)
+        # R0.2: contract mới có `recommendation` nên materialize thêm component
+        # RECOMMENDATION (RAW_CONTEXT, SUMMARY, RECOMMENDATION).
+        self.assertEqual(components.count(), 3)
         self.assertEqual(components[0].component_type, AdvisoryComponent.ComponentType.RAW_CONTEXT)
         self.assertIn('[redacted]', components[0].content)
         self.assertEqual(components[1].component_type, AdvisoryComponent.ComponentType.SUMMARY)
         self.assertIn('Multi-turn advisory summary', components[1].content)
+        self.assertEqual(components[2].component_type, AdvisoryComponent.ComponentType.RECOMMENDATION)
+        self.assertIn('MUA LÚC', components[2].content)
+
+        # R0.3: structured_output phải đủ key và signal phải dùng được.
+        self.assertEqual(record.status, AdvisoryRecord.StatusChoices.GENERATED)
+        self.assertEqual(record.structured_output['signal'], 'BUY')
+        self.assertEqual(record.structured_output['confidence_score'], 0.78)
+        self.assertEqual(record.structured_output['schema_version'], 2)
+
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
+    def test_unparseable_signal_marks_failed_instead_of_fake_direction(self):
+        """R0.2 fail-closed: không đọc được signal thì KHÔNG ghi 'generated'."""
+        self._create_quota_record(used=0, limit=5)
+
+        with patch('advisory.orchestrator.AdvisoryOrchestrator.run') as mock_run:
+            mock_run.return_value = {
+                'advisory_text': 'Mô hình trả về một đoạn văn không có khuyến nghị rõ ràng.',
+                'ai_model': 'gpt-4o-mini',
+                'tokens_used': 50,
+                'signal': 'UNKNOWN',
+                'signal_raw': 'không rõ',
+                'recommendation': '',
+                'summary': 'Không kết luận được.',
+            }
+
+            response = self.client.post('/core/v1/advisory/refresh/VIC/', {}, format='json')
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        record = AdvisoryRecord.objects.get(advisory_id=response.data['advisory_id'])
+        self.assertEqual(record.status, AdvisoryRecord.StatusChoices.FAILED)
+        self.assertEqual(
+            record.structured_output['error']['error_code'],
+            'advisory_signal_unparseable',
+        )
+        self.assertFalse(
+            AdvisorySession.objects.filter(symbol='VIC', user=self.user).exists()
+        )
+

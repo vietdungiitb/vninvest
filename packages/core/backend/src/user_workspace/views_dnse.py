@@ -5,11 +5,20 @@ Auth flow chuẩn:
   POST /v2/authentication/token với client_id + client_secret (LightSpeed API)
   KHÔNG dùng username/password tài khoản cá nhân.
 """
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import (
+    api_view,
+    permission_classes,
+    throttle_classes,
+)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.throttling import ScopedRateThrottle
 from django.utils import timezone
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 from .dnse_adapter import (
     DNSEAdapterError,
@@ -24,6 +33,94 @@ from .tasks import (
     sync_dnse_balances_task,
 )
 from vninvest_core.exceptions import ValidationErrorException, NotFoundErrorException
+
+#: side hợp lệ — `UNKNOWN` bị từ chối để luồng fail-closed ở BE cũng áp dụng.
+_ALLOWED_SIDES = ('BUY', 'SELL')
+#: lô tối thiểu cho cổ phiếu Việt Nam
+_MIN_LOT = 100
+
+
+def _validate_order_payload(payload: dict, market_type: str) -> None:
+    """Validate đơn đặt lệnh ở server, không tin UI.
+
+    Trước R0.11 client có thể gửi bất kỳ payload nào. Nay chặn:
+    - thiếu `symbol` hoặc symbol không phải mã cổ phiếu hợp lệ
+    - thiếu `side`, hoặc side ngoài BUY/SELL
+    - `volume` không phải số nguyên dương, hoặc (với STOCK) không tròn 100
+    - `price` âm
+    """
+    symbol = str(payload.get('symbol') or '').strip().upper()
+    if not symbol:
+        raise ValidationErrorException(
+            detail="Thiếu mã chứng khoán trong payload đặt lệnh.", code="validation_error",
+        )
+    if not symbol.isalnum() or not (2 <= len(symbol) <= 10):
+        raise ValidationErrorException(
+            detail=f"Mã chứng khoán không hợp lệ: {symbol}.", code="validation_error",
+        )
+
+    side = str(payload.get('side') or '').strip().upper()
+    if side not in _ALLOWED_SIDES:
+        raise ValidationErrorException(
+            detail=(
+                f"Chiều lệnh không hợp lệ: '{side or 'trống'}'. "
+                "Chỉ chấp nhận BUY hoặc SELL."
+            ),
+            code="validation_error",
+        )
+
+    raw_volume = payload.get('volume')
+    try:
+        volume = int(raw_volume)
+    except (TypeError, ValueError):
+        raise ValidationErrorException(
+            detail="Khối lượng phải là số nguyên.", code="validation_error",
+        )
+    if volume <= 0:
+        raise ValidationErrorException(
+            detail="Khối lượng phải lớn hơn 0.", code="validation_error",
+        )
+    if market_type == 'STOCK' and volume % _MIN_LOT != 0:
+        raise ValidationErrorException(
+            detail=f"Khối lượng cổ phiếu phải là bội số của {_MIN_LOT}.", code="validation_error",
+        )
+
+    raw_price = payload.get('price')
+    if raw_price not in (None, ''):
+        try:
+            price = float(raw_price)
+        except (TypeError, ValueError):
+            raise ValidationErrorException(
+                detail="Giá phải là số.", code="validation_error",
+            )
+        if price < 0:
+            raise ValidationErrorException(
+                detail="Giá không được âm.", code="validation_error",
+            )
+
+
+def _audit_order(request, market_type: str, payload: dict, outcome: str, dry_run: bool) -> None:
+    """Ghi audit đặt lệnh. Không để lỗi audit chặn luồng đặt lệnh."""
+    try:
+        from ops_audit.models import AuditEvent
+        AuditEvent.objects.create(
+            actor_user_id=request.user.id if getattr(request.user, 'is_authenticated', False) else None,
+            actor_label=getattr(request.user, 'username', '') or '',
+            tenant_id=str(getattr(getattr(request, 'tenant', None), 'public_id', '') or ''),
+            action='broker.place_order',
+            resource_type='dnse_order',
+            resource_id=str(payload.get('symbol') or ''),
+            metadata={
+                'market_type': market_type,
+                'side': payload.get('side'),
+                'volume': payload.get('volume'),
+                'outcome': outcome,
+                'dry_run': bool(dry_run),
+            },
+        )
+    except Exception:
+        logger.exception('audit write failed for dnse place_order')
+
 
 
 def _to_bool(value) -> bool:
@@ -178,9 +275,14 @@ def dnse_reconcile_transactions_api(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@throttle_classes([ScopedRateThrottle])
 def dnse_place_order_api(request):
     """
     Đặt lệnh giao dịch qua DNSE LightSpeed API bằng trading token đã xác thực OTP.
+
+    R0.11 — trước đây endpoint không có validate server-side, không throttle
+    riêng, không audit log, và nhánh `except Exception` trả `str(exc)` thô cho
+    client (lộ chi tiết hạ tầng). Nay đã bổ sung đủ 4 lớp.
     """
     user = request.user
     market_type = str(request.data.get("market_type", "STOCK")).strip().upper() or "STOCK"
@@ -201,6 +303,10 @@ def dnse_place_order_api(request):
             code="validation_error"
         )
 
+    # R0.11 — validate server-side. UI đã chặn lô 100 và side UNKNOWN nhưng
+    # client có thể gọi thẳng API, không được tin UI.
+    _validate_order_payload(payload, market_type)
+
     try:
         client = _get_active_dnse_client(user)
         result = client.post_order(
@@ -211,13 +317,31 @@ def dnse_place_order_api(request):
             dry_run=dry_run,
             raw=False,
         )
+        _audit_order(request, market_type, payload, 'accepted', dry_run=dry_run)
         return Response({"result": result})
     except DNSECredentialMissingError as exc:
+        _audit_order(request, market_type, payload, 'credential_missing', dry_run=dry_run)
         raise ValidationErrorException(detail=str(exc), code="validation_error")
     except DNSEAdapterError as exc:
+        _audit_order(request, market_type, payload, 'adapter_error', dry_run=dry_run)
+        # `str(exc)` từ adapter đã là thông điệp nghiệp vụ có kiểm soát.
         raise ValidationErrorException(detail=str(exc), code="validation_error")
-    except Exception as exc:
-        raise ValidationErrorException(detail=f"Đặt lệnh DNSE thất bại: {exc}", code="validation_error")
+    except ValidationErrorException:
+        raise
+    except Exception:
+        # R0.11 — KHÔNG trả `str(exc)` cho client. Chi tiết lỗi nằm trong log
+        # nội bộ, client chỉ nhận thông điệp chung.
+        _audit_order(request, market_type, payload, 'internal_error', dry_run=dry_run)
+        logger.exception('dnse_place_order_api: unexpected failure for user=%s', getattr(user, 'id', None))
+        raise ValidationErrorException(
+            detail="Đặt lệnh thất bại do lỗi hệ thống. Vui lòng thử lại sau.",
+            code="internal_error",
+        )
+
+
+# R0.11 — `ScopedRateThrottle` đọc scope từ attribute của view, nên phải gán
+# SAU khi định nghĩa hàm (không phải biến cục bộ trong thân hàm).
+dnse_place_order_api.throttle_scope = 'broker_order'
 
 
 @api_view(['POST'])

@@ -4,7 +4,9 @@
  */
 import { createElement, useEffect, useState } from 'react';
 import { coreApiAdapter } from '../../adapters/coreApiAdapter.js';
+import { useI18n } from '../../context/LangContext.js';
 import { useTrustTelemetry } from '../../hooks/useTrustTelemetry.js';
+import { downloadAdvisoryCsv } from './advisoryExport.js';
 
 const e = createElement;
 
@@ -20,6 +22,7 @@ function OutcomeBadge({ value }) {
 export function RecommendationHistoryMini({ symbol, limit = 5 }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
+  const { t, localeTag } = useI18n();
   const { trackHistoryOpened } = useTrustTelemetry();
 
   useEffect(() => {
@@ -49,10 +52,19 @@ export function RecommendationHistoryMini({ symbol, limit = 5 }) {
     { className: 'rounded-xl border border-slate-800 bg-slate-900/60 overflow-hidden text-sm' },
     e(
       'div',
-      { className: 'px-4 py-3 border-b border-slate-800 bg-slate-950/40' },
-      e('p', { className: 'text-xs font-semibold uppercase tracking-wider text-slate-400' }, `Lịch sử khuyến nghị · ${symbol}`)
+      { className: 'px-4 py-3 border-b border-slate-800 bg-slate-950/40 flex items-center justify-between gap-2' },
+      e('p', { className: 'text-xs font-semibold uppercase tracking-wider text-slate-400' }, `Lịch sử khuyến nghị · ${symbol}`),
+      history.length > 0 && e(
+        'button',
+        {
+          type: 'button',
+          onClick: () => downloadAdvisoryCsv(history, `advisory-history-${symbol}.csv`),
+          className: 'text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors',
+        },
+        t('aiAdvisory.export.history', { defaultValue: 'Xuất lịch sử CSV' })
+      )
     ),
-    loading ? e('div', { className: 'px-4 py-6 text-xs text-slate-500 text-center' }, 'Đang tải…') : history.length === 0 ? e('div', { className: 'px-4 py-6 text-xs text-slate-500 text-center' }, 'Chưa có lịch sử khuyến nghị cho mã này.') : e(
+    loading ? e('div', { className: 'px-4 py-6 text-xs text-slate-500 text-center' }, t('aiAdvisory.historyLoading', { defaultValue: 'Đang tải…' })) : history.length === 0 ? e('div', { className: 'px-4 py-6 text-xs text-slate-500 text-center' }, t('aiAdvisory.historyEmpty', { defaultValue: 'Chưa có lịch sử khuyến nghị cho mã này.' })) : e(
       'div',
       { className: 'overflow-x-auto' },
       e(
@@ -77,7 +89,7 @@ export function RecommendationHistoryMini({ symbol, limit = 5 }) {
           history.map((item, idx) => e(
             'tr',
             { key: item.id ?? idx, className: 'hover:bg-slate-800/30 transition-colors' },
-            e('td', { className: 'px-4 py-2 text-slate-500 whitespace-nowrap' }, item.created_at ? new Date(item.created_at).toLocaleString() : '—'),
+            e('td', { className: 'px-4 py-2 text-slate-500 whitespace-nowrap' }, item.created_at ? new Date(item.created_at).toLocaleString(localeTag) : '—'),
             e('td', { className: 'px-4 py-2 text-slate-300 max-w-[220px] truncate' }, item.ai_summary ? item.ai_summary.slice(0, 80) + (item.ai_summary.length > 80 ? '…' : '') : '—'),
             e('td', { className: 'px-3 py-2 text-center' }, e(OutcomeBadge, { value: item.outcome_t1 })),
             e('td', { className: 'px-3 py-2 text-center' }, e(OutcomeBadge, { value: item.outcome_t3 })),
@@ -89,7 +101,9 @@ export function RecommendationHistoryMini({ symbol, limit = 5 }) {
     e(
       'div',
       { className: 'px-4 py-2 border-t border-slate-800 bg-slate-950/20 text-[11px] text-slate-600' },
-      'T+1/T+3/T+5: % thay đổi giá so với ngày khuyến nghị. Null = chưa đến thời điểm đánh giá.'
+      t('aiAdvisory.history.outcomeNote', {
+        defaultValue: 'T+1/T+3/T+5: % thay đổi giá so với ngày khuyến nghị. Rỗng = chưa đến thời điểm đánh giá.',
+      })
     )
   );
 }

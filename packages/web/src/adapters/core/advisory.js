@@ -104,17 +104,27 @@ export function createAdvisoryClient({ coreGet, corePost, coreDelete }) {
 
     refreshWhaleAdvisory(symbol) {
       if (!symbol) throw new Error("symbol is required for refreshWhaleAdvisory");
-      return corePost(`/portfolio/ai-advisory/${encodeURIComponent(symbol.toUpperCase())}/refresh/`);
+      return corePost(`/advisory/refresh/${encodeURIComponent(symbol.toUpperCase())}/`);
     },
 
     deleteCurrentWhaleAdvisory(symbol) {
       if (!symbol) throw new Error("symbol is required for deleteCurrentWhaleAdvisory");
-      return coreDelete(`/portfolio/ai-advisory/${encodeURIComponent(symbol.toUpperCase())}/current/`);
+      return coreDelete(`/advisory/latest/${encodeURIComponent(symbol.toUpperCase())}/`);
     },
 
     getAdvisoryAutoRefreshInfo(symbol) {
       if (!symbol) throw new Error("symbol is required for getAdvisoryAutoRefreshInfo");
-      return coreGet(`/portfolio/ai-advisory/${encodeURIComponent(symbol.toUpperCase())}/auto-refresh-info/`);
+      return coreGet(`/advisory/refresh-info/${encodeURIComponent(symbol.toUpperCase())}/`);
+    },
+
+    getAdvisoryStatus(advisoryId) {
+      if (!advisoryId) throw new Error("advisoryId is required for getAdvisoryStatus");
+      return coreGet(`/advisory/status/${encodeURIComponent(advisoryId)}/`);
+    },
+
+    getAdvisoryBacktest(symbol, window = 30) {
+      if (!symbol) throw new Error("symbol is required for getAdvisoryBacktest");
+      return coreGet(`/advisory/backtest/${encodeURIComponent(symbol.toUpperCase())}/?window=${window}`);
     },
 
     getWhaleAdvisorySymbolStats(params = {}) {
