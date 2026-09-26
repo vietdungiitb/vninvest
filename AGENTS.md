@@ -8,6 +8,39 @@ Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã
 - Vietnamese labels full dấu, theo bảng thuật ngữ thống nhất.
 - Build verification: npx tsc --noEmit sau mỗi sub-step, npm run build cuối mỗi step.
 
+## Multi-agent (bắt buộc khi ≥ 2 agent cùng làm việc)
+
+**Đọc `docs/AGENT_PROTOCOL.md` trước khi sửa gì.** Quy trình đầy đủ ở §10.
+Registry claim: `docs/CLAIMS.md`. Gate: `node packages/web/scripts/check-multi-agent.mjs`.
+
+### Không được
+- **Không commit thẳng vào `dev`** — tạo `feat/<slice>-<agent>` rồi PR. Không có điểm merge thì không ai kịp đồng bộ, và đã sinh migration trùng số (2026-09-26).
+- **Không commit 11 file shared** (§2 protocol): `AGENTS.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `packages/web/package.json`, `pyproject.toml`, `requirements.txt`, `package-lock.json`, `docker-compose*.yml`, `.env*`. Ghi vào claim + báo coordinator. **Hook sẽ chặn.**
+- **Không sửa file agent khác đang claim `in-progress`.**
+- **Không tự đặt số migration** — đọc head thật hoặc để `makemigrations` sinh.
+- **Không chạy `npm install`/`pip install` khi chưa hỏi** (junction `node_modules` dùng chung).
+- **Không báo "PASS" cho thứ chưa chạy** — ghi `CHƯA CHẠY`.
+- **Không `--no-verify` để lách hook** trừ khi ghi lý do vào commit body.
+
+### Bắt buộc
+1. **Mở phiên:** `sh scripts/agent-install-hooks.sh` → `pwsh -File scripts/agent-sync.ps1` → `git -C <main tree> status --short`
+2. **Khai claim** vào cuối `docs/CLAIMS.md`, commit riêng, **trước khi sửa dòng đầu tiên**
+3. **Đóng phiên:** `pwsh -File scripts/agent-sync.ps1` (rebase → check migration → gate) → claim `done` → push → `pwsh -File scripts/agent-pr.ps1`
+4. **Sau khi PR merge:** `pwsh -File scripts/agent-cleanup.ps1 -Branch <b> -Execute`
+
+### Cạm bẫy đã gặp thật 2026-09-26
+| Sai lầm | Hậu quả |
+|---|---|
+| Commit file shared | 1 hunk gộp 2 agent, tách không được |
+| Tự đặt số migration | `Conflicting migrations; multiple leaf nodes` — chặn deploy |
+| Khai claim khi chưa `git status` | Che mất file đang bị giữ |
+| Chạy gate **trước** khi rebase | Báo xanh nhưng code sau rebase khác |
+| Tin số migration đọc trong worktree | Worktree không thấy việc chưa commit của agent khác (`aicc_r0` 145 vs `vninvest_core` 147) |
+| Hook chưa commit khi tạo worktree mới | Hook im lặng, mọi thứ lọt |
+
+### Không có môi trường ⇒ không có kết luận
+BE test cần `CORE_DATABASE_URL` + `DJANGO_DEBUG=1` (settings.py:27-34 raise `ImproperlyConfigured` nếu thiếu). DB riêng mỗi agent: `aicc_r0`. Nếu chưa chạy được, **ghi "CHƯA CHẠY"** — đừng suy ra "chắc là được".
+
 ## Progress
 ### Done (2026-09-24) — Enterprise UI Consistency Audit — 3-agent full scan (Entry 213)
 - **Scope**: Full `packages/web/src` — pages + components + layouts + SOC + admin + tenant + auth + workspace + dashboard. **Doc-only**, no code changed.
