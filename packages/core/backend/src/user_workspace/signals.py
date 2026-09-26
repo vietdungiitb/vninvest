@@ -1,3 +1,5 @@
+import logging
+
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
@@ -8,7 +10,19 @@ from market_data.global_symbol_registry import (
     sync_watchlist_item_demand,
 )
 
-from .models import PriceAlert, TrackedSymbol, Transaction, WatchlistItem
+from .models import (
+    Portfolio,
+    PriceAlert,
+    ScreenerRule,
+    SubAccount,
+    TrackedSymbol,
+    Transaction,
+    Watchlist,
+    WatchlistItem,
+    resolve_tenant_for_user_workspace_instance,
+)
+
+logger = logging.getLogger(__name__)
 
 
 @receiver(post_save, sender=WatchlistItem)
@@ -63,8 +77,6 @@ def sync_transaction_registry_on_delete(sender, instance, **kwargs):
     sync_holding_demand_for_portfolio_symbol(instance.portfolio, instance.symbol)
 
 
-from .models import Portfolio, Watchlist, ScreenerRule
-
 @receiver(pre_save, sender=Portfolio)
 @receiver(pre_save, sender=Watchlist)
 @receiver(pre_save, sender=TrackedSymbol)
@@ -85,3 +97,20 @@ def auto_populate_tenant_from_user(sender, instance, **kwargs):
 def auto_populate_transaction_tenant(sender, instance, **kwargs):
     if not getattr(instance, 'tenant_id', None) and getattr(instance, 'portfolio', None):
         instance.tenant = instance.portfolio.tenant
+
+
+@receiver(pre_save, sender=SubAccount)
+def auto_populate_subaccount_tenant(sender, instance, **kwargs):
+    """P0-DATA-01 — `SubAccount` dùng chung SSOT với các model khác.
+
+    CONTRADICTION với giả định của đề bài: `models.py` (trước đây `:901`) **đã**
+    đăng ký `SubAccount` cho `resolve_tenant_for_user_workspace_models`. Nhưng bản
+    cũ của receiver đó dùng "first tenant" fallback + **tự tạo `CoreTenant`** ⇒
+    `SubAccount` của user đa tenant bị gán tenant NGẪU NHIÊN, chứ không phải
+    "thiếu signal".
+
+    Nay `SubAccount` được tháo khỏi danh sách sender ở `models.py` và do receiver
+    riêng ở đây sở hữu, gọi chung `resolve_tenant_for_user_workspace_instance()`
+    (chuỗi `portfolio.tenant` → tenant duy nhất của user, không đoán).
+    """
+    resolve_tenant_for_user_workspace_instance(instance)
