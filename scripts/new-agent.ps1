@@ -59,7 +59,8 @@ $wtPath = Join-Path $parent $Agent
 # ── 1. điều kiện tiên quyết ─────────────────────────────────────────────────
 Step "1/7 Kiem tra dieu kien tien quyet"
 
-$hookInHead = (git cat-file -e "HEAD:.githooks/pre-commit" 2>$null; $LASTEXITCODE -eq 0)
+git cat-file -e "HEAD:.githooks/pre-commit" 2>$null
+$hookInHead = ($LASTEXITCODE -eq 0)
 if (-not $hookInHead) {
   Die ".githooks/pre-commit chua co trong HEAD. Hook phai commit TRUOC, worktree moi thay duoc (AGENT_PROTOCOL.md §3)."
 }
@@ -67,7 +68,8 @@ Ok "hook da co trong HEAD"
 
 $originBase = "origin/$Base"
 git fetch origin $Base 2>&1 | Out-Null
-Ok "da fetch origin/$Base ($((git rev-list --count "HEAD..$originBase") | Out-String | Select-Object -First 1).Trim() commit chua co local)"
+$behind = [int](git rev-list --count "HEAD..$originBase")
+Ok "da fetch origin/$Base ($behind commit chua co local)"
 
 # ── 2. DB riêng ─────────────────────────────────────────────────────────────
 Step "2/7 Tao database rieng"
@@ -148,17 +150,15 @@ Write-Host "  database : $dbName"
 Write-Host "  hook     : .githooks (pre-commit + pre-push)"
 Write-Host ""
 Write-Host "Buoc tiep theo cua agent:" -ForegroundColor Cyan
-@"
-  1. cd "$wtPath"
-  2. `$env:CORE_DATABASE_URL = "postgresql://vninvest:devpassword@127.0.0.1:5433/$dbName"
-     `$env:DJANGO_DEBUG = "1"
-  3. pwsh -File scripts/agent-sync.ps1          # rebase + check migration + gate
-  4. git -C "$root" status --short              # xem agent khac dang sua gi
-  5. Khai file cu the trong docs/CLAIMS.md, COMMIT RIENG truoc khi sua
-  6. ... lam viec ...
-  7. pwsh -File scripts/agent-sync.ps1          # khep phi lam viec
-  8. chuyen claim sang 'done', push, tao PR:
-     pwsh -File scripts/agent-pr.ps1 -Title "feat($Agent): $Slice"
-"@ -replace '\\\$','$'
+Write-Host "  1. cd `"$wtPath`""
+Write-Host "  2. `$env:CORE_DATABASE_URL = `"postgresql://vninvest:devpassword@127.0.0.1:5433/$dbName`""
+Write-Host "     `$env:DJANGO_DEBUG = `"1`""
+Write-Host "  3. pwsh -File scripts/agent-sync.ps1          # rebase + check migration + gate"
+Write-Host "  4. git -C `"$root`" status --short              # xem agent khac dang sua gi"
+Write-Host "  5. Khai file cu the trong docs/CLAIMS.md, COMMIT RIENG truoc khi sua"
+Write-Host "  6. ... lam viec ..."
+Write-Host "  7. pwsh -File scripts/agent-sync.ps1          # khep phi lam viec"
+Write-Host "  8. chuyen claim sang 'done', push, tao PR:"
+Write-Host "     pwsh -File scripts/agent-pr.ps1 -Title `"feat($Agent): $Slice`""
 Write-Host "`nDanh sach tat ca agent:" -ForegroundColor Cyan
 Write-Host "  pwsh -File scripts/new-agent.ps1 -List"
