@@ -235,3 +235,36 @@ status=generated` nào trong DB để hiển thị. Ảnh `advisory-{light,dark}
 vì thập thể cũng là empty state — và điều đó được nói thẳng trong docstring của
 spec thay vì để tên file gợi ý sai. Khi hạn mức còn, đặt biến môi trường
 `ADVISORY_DATA_SYMBOL` sang mã đã có tư vấn là spec tự chụp được ảnh có dữ liệu.
+
+## 9. ĐÍNH CHÍNH: claim "đã verify end-to-end" cho phần metric N2 là SAI
+
+Mục này ghi lại một sai lệch của chính tôi ở mục §7.4(a), vì nếu không ghi thì
+tài liệu này sẽ tiếp tục khẳng định một điều chưa từng đúng.
+
+§7.4(a) nói phần metric deterministic "đã sửa" và ngụ ý là đã kiểm chứng. Thực tế
+**chưa từng chạy qua đường thật**:
+
+- `AdvisoryOrchestrator.run()` gửi 4 giá trị qua `db_data` cho `run_async`, nhưng
+  trong `run_async` chúng bị đọc như **tên trần** — tức local của `run()`, không có
+  trong scope. Mọi lời gọi advisory thật đều ném
+  `NameError: name 'metrics' is not defined`.
+- **Vì sao mọi tầng đều bỏ lọt:** test N2 patch hẳn `run_async` bằng
+  `patch.object(...)` nên vòng code hỏng không bao giờ chạy; còn E2E container
+  synthesis fail (hết hạn mức) **trước** khi tới câu return nên cũng không đi qua.
+  Test xanh ở đây chỉ chứng minh được phần được mock.
+- Đã sửa ở commit `498a0bf1` (thêm `db_data.get(...)` cho cả 4), kèm 12 test mới.
+
+**Bài học áp dụng cho các phiên sau:** với code đường thật (không mock), "test xanh
++ E2E xanh" vẫn chưa đủ nếu cả hai đều đi qua cùng một điểm bị chặn. Phải tự
+hỏi: *tầng nào thực sự chạm vào dòng lệnh này?* Ở đây là **không tầng nào**.
+
+Cùng lần review đó, phát hiện thêm 2 lỗi thật nữa (chi tiết trong commit):
+
+- `"DON'T BUY"` → **BUY**. `_NON_ASCII_RE` thay mọi ký tự ngoài `[A-Z ]` bằng
+  space nên `DON'T` thành `DON T`, khiến entry `'DONT'` không bao giờ khớp — biến
+  thể tiếng Anh của đúng bug `KHÔNG MUA → BUY` mà W0 đã sửa.
+- `TRUNG LẬP` → **UNKNOWN**. Mock branch của orchestrator tự phát chuỗi này cho
+  nhánh trung lập nhưng `FLAT_TOKENS` không có nó ⇒ fail-closed ⇒ record `FAILED`.
+  Nhánh tiếng Anh dùng `"NEUTRAL"` (đã có sẵn) nên chạy đúng — bất đối xứng đó
+  chứng minh đây là sót sót, không phải chủ ý.
+
