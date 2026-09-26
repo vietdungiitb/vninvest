@@ -284,7 +284,7 @@ Entry 227 Blocker 1/2/3 đã ghi đúng 3 sai lầm này; Entry 228 tái hiện 
 
 **Yêu cầu.** (1) Default BE dùng `_get_default_prompt_config()`. (2) PUT từ chối shape không có `sources` với `400` + `error_code='prompt_config_invalid_shape'`. (3) Migration `0011` chuyển row phẳng → `{version:2, sources:{…}}`, giữ nguyên `lookback`/`enabled`/`indicators`. (4) Sửa **18 assertion** đang bảo vệ shape phẳng.
 
-**File.** `portfolio_analytics_views.py:422-439, 630-636` · `advisory_helpers.py` (thêm `is_valid_prompt_config(raw)`) · **mới** `advisory/migrations/0011_canonicalize_prompt_config.py` · sửa test `test_ai_cc_config_isolation.py:60,104-122,136,151,184` + `test_ai_cc_prompt_history.py:56,74,106,109,111,125,141,147-148` · **mới** `tests/test_ai_prompt_config_shape.py`
+**File.** `portfolio_analytics_views.py:422-439, 630-636` · `advisory_helpers.py` (thêm `is_valid_prompt_config(raw)`) · **mới** `advisory/migrations/0012_canonicalize_prompt_config.py` (xem quy tắc số hiệu ở §7.1) · sửa test `test_ai_cc_config_isolation.py:60,104-122,136,151,184` + `test_ai_cc_prompt_history.py:56,74,106,109,111,125,141,147-148` · **mới** `tests/test_ai_prompt_config_shape.py`
 
 **AC**
 
@@ -414,7 +414,7 @@ Entry 227 Blocker 1/2/3 đã ghi đúng 3 sai lầm này; Entry 228 tái hiện 
 
 **Yêu cầu.** (1) `AIAuditLog` + `user` FK + `tenant` FK. (2) Scope mọi truy vấn. (3) `actor__icontains` → `user_id` chính xác. (4) Instrument `generate_advisory_task` + `call_agent_async`. (5) Gỡ `POST /ai/usage/`. (6) Task nightly upsert `AIUsageSummary`.
 
-**File.** `advisory/models.py:303-338` · **mới** `advisory/migrations/0012_aiauditlog_user_tenant.py` · `portfolio_analytics_views.py:1003-1043` (scope) + `:713-720, 811-818, 857-864, 892-904, 978-992` (truyền user/tenant khi create) · `advisory/tasks.py:26-80` · `orchestrator.py:80-115` (bắt `usage` từ response) · `ai_analytics/views.py:68-73, 76-97, 100-123` · **mới** `advisory/migrations/0013_aiusagerecord_indexes.py` (app `ai_analytics` → `0002`) · **mới** `tests/test_ai_audit_tenant_isolation.py`, `tests/test_ai_usage_instrumentation.py`
+**File.** `advisory/models.py:303-338` · **mới** `advisory/migrations/0013_aiauditlog_user_tenant.py` · `portfolio_analytics_views.py:1003-1043` (scope) + `:713-720, 811-818, 857-864, 892-904, 978-992` (truyền user/tenant khi create) · `advisory/tasks.py:26-80` · `orchestrator.py:80-115` (bắt `usage` từ response) · `ai_analytics/views.py:68-73, 76-97, 100-123` · **mới** `ai_analytics/migrations/0002_aiusagerecord_indexes.py` · **mới** `tests/test_ai_audit_tenant_isolation.py`, `tests/test_ai_usage_instrumentation.py`
 
 **AC**
 
@@ -1596,24 +1596,44 @@ Lưu vào `packages/web/scripts/ai-cc/` để tái dùng:
 
 ## §7. MIGRATION, ROLI BACK, CANARY
 
-### 7.1 Danh mục migration (thứ tự áp dụng, **chỉ thêm file mới**)
+### 7.1 Danh mục migration (**đã đánh số lại 2026-09-26** — xem hộp cảnh báo bên dưới)
+
+> ### ⚠ QUY TẮC CHỐNG VA CHẠM SỐ HIỆU MIGRATION — ĐỌC TRƯỚC KHI TẠO FILE
+>
+> **Head hiện tại (snapshot 2026-09-26 07:30, kiểm bằng `ls packages/core/backend/src/*/migrations`):**
+>
+> | App | Head hiện tại | Migration kế tiếp của plan |
+> |---|---|---|
+> | `advisory` | `0011_align_model_choices_with_live_providers` *(đội khác tạo 06:55)* | bắt đầu từ **`0012`** |
+> | `ai_analytics` | `0001_initial` | **`0002`** |
+> | `ai_agents` | `0002_agent_name_per_creator` | `0003` (plan không thêm ở app này) |
+>
+> **Sự cố đã xảy ra 1 lần:** bản Rev.1 của plan đặt M1 = `advisory/0011_canonicalize_prompt_config.py`, **trùng số** với `0011_align_model_choices_with_live_providers.py` mà đội khác tạo cùng ngày. Hai migration cùng số ⇒ `makemigrations`/`migrate` lỗi `Conflicting migrations detected; multiple leaf nodes`. Không phát hiện được nếu không so head thật.
+>
+> **Quy tắc bắt buộc (áp dụng mọi lần tạo migration trong plan này):**
+> 1. **Trước khi viết file migration, chạy** `ls packages/core/backend/src/<app>/migrations | tail -3` và lấy số lớn nhất làm `N`. File mới = `N+1`.
+> 2. **Không tin số ghi trong bảng dưới** — bảng này là snapshot, có thể lỗi thời nếu đội khác thêm migration trong lúc plan còn đang chạy.
+> 3. Nếu số đã bị chiếm, **đổi số của mình**, không đổi file của người khác.
+> 4. Sau khi tạo: `python manage.py makemigrations --check --dry-run` phải sạch (chống BR-07).
 
 | # | File | App | Mục đích | Slice | Reversible |
 |---|---|---|---|---|---|
-| M1 | `advisory/migrations/0011_canonicalize_prompt_config.py` | advisory | Row phẳng → `{version, sources}` | R0.2 | **Có** (ghi shape cũ vào cột tạm, xem 7.3) |
-| M2 | `advisory/migrations/0012_aiauditlog_user_tenant.py` | advisory | + `user`, `tenant`, `legacy_unattributed` | R0.7 | Không (dữ liệu audit chỉ tăng) |
+| M1 | `advisory/migrations/0012_canonicalize_prompt_config.py` | advisory | Row phẳng → `{version, sources}` | R0.2 | **Có** (ghi shape cũ vào cột tạm, xem 7.3) |
+| M2 | `advisory/migrations/0013_aiauditlog_user_tenant.py` | advisory | + `user`, `tenant`, `legacy_unattributed` | R0.7 | Không (dữ liệu audit chỉ tăng) |
 | M3 | `ai_analytics/migrations/0002_aiusagerecord_indexes.py` | ai_analytics | Index cho truy vấn SLO | R0.7 | Có (drop index) |
-| M4 | `advisory/migrations/0013_aideployment.py` | advisory | `AIDeployment` | R2.1 | Có (drop table, dữ liệu test) |
-| M5 | `advisory/migrations/0014_aifallbackchain.py` | advisory | `AIFallbackChain` | R2.1 | Có |
-| M6 | `advisory/migrations/0015_aicostrate.py` | advisory | `AICostRate` | R2.4 | Có |
-| M7 | `advisory/migrations/0016_aibudget.py` | advisory | `AIBudget` | R2.5 | Có |
-| M8 | `advisory/migrations/0017_aitrace.py` | advisory | `AITrace` | R3.1 | Có |
-| M9 | `advisory/migrations/0018_aifeedback.py` | advisory | `AIFeedback` | R3.4 | Có |
-| M10 | `advisory/migrations/0019_aihealthcheck.py` | advisory | `AIHealthCheck` | R2.3 | Có |
-| M11 | `advisory/migrations/0020_credential_key_version.py` | advisory | `key_version`, `key_rotated_at`, `grace_until`, `scope` | R4.2 | Có |
-| M12 | `advisory/migrations/0021_ai_tenant_policy.py` | advisory | `AITenantPolicy` | R4.1 | Có |
+| M4 | `advisory/migrations/0014_aideployment.py` | advisory | `AIDeployment` | R2.1 | Có (drop table, dữ liệu test) |
+| M5 | `advisory/migrations/0015_aifallbackchain.py` | advisory | `AIFallbackChain` | R2.1 | Có |
+| M6 | `advisory/migrations/0016_aicostrate.py` | advisory | `AICostRate` | R2.7 | Có |
+| M7 | `advisory/migrations/0017_aibudget.py` | advisory | `AIBudget` | R2.8 | Có |
+| M8 | `advisory/migrations/0018_aitrace.py` | advisory | `AITrace` | R3.1 | Có |
+| M9 | `advisory/migrations/0019_aifeedback.py` | advisory | `AIFeedback` | R3.4 | Có |
+| M10 | `advisory/migrations/0020_aihealthcheck.py` | advisory | `AIHealthCheck` | R2.6 | Có |
+| M11 | `advisory/migrations/0021_credential_key_version.py` | advisory | `key_version`, `key_rotated_at`, `grace_until`, `scope` | R4.2 | Có |
+| M12 | `advisory/migrations/0022_ai_tenant_policy.py` | advisory | `AITenantPolicy` | R4.1 | Có |
 
-**Quy tắc:** mỗi migration có `RunPython` **reversible** trừ M2 (ghi chú lý do trong file). `makemigrations --check --dry-run` phải sạch sau mỗi migration.
+> **Lưu ý phụ thuộc chéo:** nếu đội khác (đang chạy plan AI Advisory) **thêm migration mới vào `advisory` trước khi bạn tạo M1**, phải dồn toàn bộ số của M2–M12 lên tương ứng. Đây là lý do quy tắc ở hộp cảnh báo nói **không tin bảng này**.
+
+**Quy tắc khác:** mỗi migration có `RunPython` **reversible** trừ M2 (ghi chú lý do trong file). `makemigrations --check --dry-run` phải sạch sau mỗi migration.
 
 ### 7.2 Rủi ro migration
 
@@ -1672,9 +1692,10 @@ Vì M1 **sửa JSON đang được đọc bởi runtime**, cần:
 | RSK-06 | Sửa hook dùng chung phá consumer khác | Trung bình | Trung bình | AC5 bắt buộc chạy test từng consumer; tách hook mới nếu cần | R1.7 |
 | RSK-07 | Gate mới (`check:ai-cc`) false-positive chặn nhầm PR khác | Trung bình | Thấp | Danh sách file khai báo tường minh; có cờ `--warn` khi nghi ngờ; mở rộng phạm vi = ticket riêng | R0.8 |
 | RSK-08 | Gộp 3 finding P0 trong 1 slice làm PR quá lớn, review miss bug | Trung bình | Trung bình | Tách 3 commit trong PR nhưng **không** tách deploy; checklist review theo 3 nhóm finding | R0.7 |
-| RSK-09 | `gemini-3.8-flash` không tồn tại ⇒ phải sửa migration `0008` đã chạy (vi phạm BR-07) | Trung bình | Trung bình | **STOP condition §3.4-3**; nếu cần sửa `ModelChoices` thì dùng `choices` cập nhật được + `ALTER` không cần migration (Django không enforce choices ở DB) | R2.7 |
-| RSK-10 | Auto-evict chạy nhầm lúc provider deploy ⇒ mất dịch vụ | Trung bình | Cao | 3 lần liên tiếp + cooldown + `AI_ROUTING_DISABLED`; AC2/AC3/AC7 | R2.3 |
-| RSK-11 | Retry × 3 sub-agent = 9 request với 1 key ⇒ rate limit | Trung bình | Trung bình | Retry ở tầng client, AC7 chặn | R2.6 |
+| RSK-09 | Sửa danh mục model ⇒ phải sửa migration `choices` đã chạy (vi phạm BR-07) | **Thấp** | Thấp | **Đã giải quyết xong 2026-09-26**: đội khác đã tạo `advisory/0011_align_model_choices_with_live_providers.py` + probe thật endpoint Google → `gemini-3.8-flash` **trả 200**, 4 model cũ bị loại. Câu hỏi "model này có tồn tại" **đã có câu trả lời thật**. R2.10-AC8 chuyển thành tái-verify định kỳ, không phải điều tra mới | R2.10 |
+| RSK-17 | **Số hiệu migration trùng với đội khác** | Cao (đã xảy ra 1 lần) | Cao (lỗi migrate, chặn deploy) | Đã đánh số lại §7.1 (M1 → `0012`); thêm quy tắc bắt buộc "đọc head thật trước khi tạo file" trong hộp cảnh báo §7.1 | §7.1 |
+| RSK-10 | Auto-evict chạy nhầm lúc provider deploy ⇒ mất dịch vụ | Trung bình | Cao | 3 lần liên tiếp + cooldown + `AI_ROUTING_DISABLED`; AC2/AC3/AC7 | R2.6 |
+| RSK-11 | Retry × 3 sub-agent = 9 request với 1 key ⇒ rate limit | Trung bình | Trung bình | Retry ở tầng client, AC7 chặn | R2.9 |
 | RSK-12 | PII redaction che nhầm số (giá cổ phiếu) ⇒ hỏng advisory | Cao | Cao | **AC2 bắt buộc**: 20 fixture số hợp lệ không bị che; chỉ che số có ngữ cảnh; AC4 đo tỉ lệ ≤ 1% | R3.6 |
 | RSK-13 | `allow_byok=false` chặn khách hàng trả phí | Thấp | Trung bình | AC7 bảo đảm vẫn dùng khoá hệ thống trong hạn mức | R4.1 |
 | RSK-14 | Xoá tab Agents mất tài sản đã xây | Thấp | Thấp | Khôi phục được từ git history + migration cũ; ghi rõ trong PR | R5.1 |
