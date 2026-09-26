@@ -10,7 +10,9 @@ from rest_framework.permissions import BasePermission
 
 from identity_access.utils.resolve_tenant import (
     RESOLVABLE_TENANT_STATUSES,
+    first_eligible_tenant_for_user,
     is_plausible_tenant_public_id,
+    owner_tenant_for_user,
     resolve_tenant_for_user,
 )
 
@@ -96,65 +98,71 @@ class TenantScopePermission(BasePermission):
 
 
 def _resolve_tenant(user, tenant_code_hint: Optional[str] = None) -> Optional['CoreTenant']:
-    """
-    Resolve primary tenant for user.
-    
-    Strategy:
-      1. Check user.core_profile.tenant (via UserProfile)
-      2. Fall back to user's first active TenantMember (where tenant status is active/trial)
-      3. Return None if no tenant (backward compat with single-tenant mode)
-    
-    Args:
-        user: Django User instance (must be authenticated)
-    
-    Returns:
-        CoreTenant instance or None
+    """Resolve a tenant for ``user`` by DELEGATING to the shared SSOT.
+
+    This used to be a fourth independent resolver: its own priority order
+    (profile -> member -> owner), its own inline ``['active','trial']`` status
+    literals, and its own hint vocabulary. That is not a style problem - the two
+    implementations could pick DIFFERENT tenants for the same request. For a user
+    who owns a SUSPENDED tenant A and is an active viewer in B, this function
+    skipped A on status and returned B, while ``owner_tenant_for_user`` returned
+    A, so identity_access views operated on A while user_workspace views operated
+    on B from one request, and ``get_tenant_role`` then reported A's ``owner``.
+
+    Delegating removes the possibility rather than documenting it. The order is the
+    SSOT's: owner (status-filtered) -> first eligible membership. The profile-tenant
+    preference is gone on purpose: it was the other half of the disagreement.
+    ``RESOLVABLE_TENANT_STATUSES`` is imported rather than re-listed so the two
+    cannot drift.
     """
     normalized_hint = (tenant_code_hint or '').strip().lower()
 
-    # Try UserProfile first (only when no explicit tenant hint is provided)
-    profile = getattr(user, 'core_profile', None)
-    if not normalized_hint and profile and profile.tenant_id:
-        tenant = profile.tenant
-        if tenant and tenant.status in ['active', 'trial']:
-            return tenant
-    
-    # Fall back to TenantMember
-    try:
-        from identity_access.models import TenantMember
-        member_qs = TenantMember.objects.filter(
-            user=user,
-            tenant__status__in=['active', 'trial']
-        ).select_related('tenant')
+    # An explicit tenant_code hint is a different key from public_id, and the SSOT
+    # resolves by public_id. Look it up here, but still subject it to the shared
+    # owner-or-member membership check so a hint cannot reach another tenant.
+    if normalized_hint:
+        try:
+            from django.db.models import Q
 
-        if normalized_hint:
-            member_qs = member_qs.filter(tenant__tenant_code__iexact=normalized_hint)
-
-        member = member_qs.order_by('tenant_id').first()
-        
-        if member:
-            return member.tenant
-
-        # Tenant owner is not required to have TenantMember row.
-        from identity_access.models import CoreTenant
-        owner_qs = CoreTenant.objects.filter(
-            owner_user=user,
-            status__in=['active', 'trial'],
-        )
-        if normalized_hint:
-            owner_qs = owner_qs.filter(tenant_code__iexact=normalized_hint)
-
-        owner_tenant = owner_qs.order_by('id').first()
-        if owner_tenant:
-            return owner_tenant
-
-        # Explicit tenant hint requested but not accessible by this user.
-        if normalized_hint:
+            from identity_access.models import CoreTenant, TenantMember
+        except ImportError:  # identity_access not installed in this environment
             return None
-    except ImportError:
-        # identity_access not installed in this environment
-        pass
-    except Exception as e:
-        logger.warning('_resolve_tenant failed for user=%s: %s', getattr(user, 'id', None), e)
-    
-    return None
+        try:
+            # A tenant_code hint still has to satisfy owner-or-member, exactly as
+            # resolve_tenant_for_user does for a public_id hint.
+            member_tenant_ids = TenantMember.objects.filter(user=user).values_list(
+                'tenant_id', flat=True
+            )
+            candidate = (
+                CoreTenant.objects.filter(tenant_code__iexact=normalized_hint)
+                .filter(
+                    Q(owner_user=user) | Q(pk__in=member_tenant_ids),
+                    status__in=RESOLVABLE_TENANT_STATUSES,
+                )
+                .order_by('pk')
+                .first()
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning(
+                '_resolve_tenant hint lookup failed for user=%s: %s',
+                getattr(user, 'id', None),
+                exc,
+            )
+            return None
+        return candidate
+
+    # NOTE: first_eligible_tenant_for_user returns a (tenant, role) TUPLE, while
+    # owner_tenant_for_user returns a bare tenant. Mixing them up assigns the tuple
+    # to request.tenant, and every downstream `filter(tenant=request.tenant)` then
+    # raises "Field 'id' expected a number but got <CoreTenant>".
+    #
+    # The status check is HERE rather than inside owner_tenant_for_user on purpose.
+    # That shared helper is unfiltered so the middleware can report the precise
+    # `tenant_suspended` instead of a misleading `tenant_not_found`, which its
+    # tests pin. Applying the same eligibility rule at both call sites is what
+    # makes the two resolvers agree, without destroying the error detail.
+    owner = owner_tenant_for_user(user)
+    if owner is not None and owner.status in RESOLVABLE_TENANT_STATUSES:
+        return owner
+    tenant, _role = first_eligible_tenant_for_user(user)
+    return tenant

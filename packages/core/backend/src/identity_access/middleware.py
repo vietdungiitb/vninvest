@@ -220,6 +220,14 @@ class TenantResolutionMiddleware:
             # (e.g. TenantQuotaMiddleware) can attribute the request to a PAT without
             # re-resolving it. DRF re-sets request.auth later with the same credential.
             request.auth = credential
+            # Also stash it under the name CorePATAuthentication._resolve_credential
+            # looks for. Without this the DRF fast path never fires in production:
+            # every authenticated request paid a second HMAC plus a second indexed
+            # query while the covering test passed by assigning the attribute by
+            # hand. Authentication re-derives the hash of the presented secret and
+            # compares it in constant time before trusting this, so a stale value
+            # here cannot authorise a different token.
+            request._pat_credential = credential
             # B9: also expose the resolved *user*. DRF authentication happens
             # inside the view, so at quota-middleware time request.user is still
             # Django's lazy session user (AnonymousUser for a PAT request) and

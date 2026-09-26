@@ -10,6 +10,8 @@ import json
 import time
 
 from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
+from vninvest_core.client_ip import get_client_ip
+
 from rest_framework.response import Response
 
 from identity_access.models import CoreTenant
@@ -40,8 +42,7 @@ def verify_staff_switch(token: str):
 
 
 def _client_ip(request) -> str:
-    return (request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
-            or request.META.get('REMOTE_ADDR'))
+    return get_client_ip(request)
 
 
 class StaffSwitchView(SOCBaseView):

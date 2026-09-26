@@ -171,6 +171,12 @@ def owner_tenant_for_user(user):
 
     ``CoreTenant.owner_user`` is a OneToOneField (models.py:65-70) so ``.get()``
     is unambiguous - at most one row - and no ordering is required.
+
+    Deliberately NOT status-filtered. The caller needs the row in order to report
+    WHY access is refused: filtering suspended/deprovisioned out here turned the
+    middleware's precise ``tenant_suspended`` 403 into a misleading
+    ``tenant_not_found``, which the existing middleware tests pin. Status gating
+    belongs at the call site, where the distinction is still available.
     """
     if user is None or not getattr(user, 'is_authenticated', False):
         return None

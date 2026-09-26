@@ -2,6 +2,8 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db import transaction
+from vninvest_core.client_ip import get_client_ip
+
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 import uuid
@@ -151,7 +153,7 @@ class CreateVNPayPaymentView(APIView):
 
             # Generate unique payment txn_ref
             txn_ref = f"TXN-{uuid.uuid4().hex[:16].upper()}"
-            client_ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', '127.0.0.1')
+            client_ip = get_client_ip(request)
 
             # Generate Signed URL
             pay_url = VNPayService.generate_payment_url(

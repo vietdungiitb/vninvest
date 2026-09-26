@@ -68,6 +68,33 @@ UNKNOWN_IP = "unknown"
 #: Header consulted only when the immediate peer is a trusted proxy.
 X_FORWARDED_FOR = "HTTP_X_FORWARDED_FOR"
 
+#: Header set by nginx's realip module. Preferred over X-Forwarded-For when the
+#: peer is trusted, because `real_ip_recursive on` has already walked the whole
+#: chain and nginx OVERWRITES this header -- so it cannot carry a client-supplied
+#: value the way X-Forwarded-For can. Falls back to X-Forwarded-For when absent,
+#: which is what a proxy without the realip module looks like.
+X_REAL_IP = "HTTP_X_REAL_IP"
+
+#: Peer networks trusted when ``TRUSTED_PROXY_IPS`` is not configured at all.
+#:
+#: This is the correct peer set for a containerised deployment: the app port is
+#: published to 127.0.0.1 only (see docker-compose.dev.yml) or not at all, so the
+#: only things that can open a socket to it are the proxy/worker containers on a
+#: private bridge plus loopback. Trusting nothing instead is NOT the safe choice
+#: here -- it makes every request in the deployment share one client address, so
+#: every rate limiter collapses into a single global bucket and the Nth login on
+#: the whole platform per minute is refused. Both failure modes are bad; this one
+#: matches the topology, and an attacker cannot reach the app directly to exploit
+#: it. Set the env var explicitly to tighten or widen this.
+DEFAULT_TRUSTED_PROXY_NETWORKS = (
+    "127.0.0.0/8",
+    "::1/128",
+    "10.0.0.0/8",
+    "172.16.0.0/12",
+    "192.168.0.0/16",
+    "fc00::/7",
+)
+
 
 def _trusted_proxy_ips():
     """Return the configured trusted-proxy entries as a set of strings.
@@ -157,9 +184,10 @@ def get_client_ip(request):
         none can be determined. Never empty, never ``None``, never raises.
 
         Resolution order:
-          1. ``REMOTE_ADDR`` if the peer is a trusted proxy and the
-             ``X-Forwarded-For`` header yields a valid last entry.
-          2. ``REMOTE_ADDR`` (peer is not trusted -> header ignored entirely).
+          1. ``REMOTE_ADDR`` if the peer is a trusted proxy, preferring
+             ``X-Real-IP`` (set authoritatively by nginx's realip module) and
+             falling back to the last valid ``X-Forwarded-For`` entry.
+          2. ``REMOTE_ADDR`` (peer is not trusted -> headers ignored entirely).
           3. ``UNKNOWN_IP`` when ``REMOTE_ADDR`` is missing/empty/malformed.
     """
     try:
@@ -168,6 +196,9 @@ def get_client_ip(request):
         peer = (meta.get("REMOTE_ADDR") or "").strip()
 
         if _peer_is_trusted(peer):
+            real_ip = _last_valid_forwarded_ip(meta.get(X_REAL_IP))
+            if real_ip:
+                return real_ip
             forwarded = _last_valid_forwarded_ip(meta.get(X_FORWARDED_FOR))
             if forwarded:
                 return forwarded

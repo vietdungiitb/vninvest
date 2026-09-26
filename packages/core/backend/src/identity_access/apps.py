@@ -16,6 +16,14 @@ class IdentityAccessConfig(AppConfig):
     verbose_name = 'Identity & Access'
 
     def ready(self):
+        # Registers the production misconfiguration checks from vninvest_core.checks
+        # (empty trusted-proxy list -> every request shares one rate-limit bucket,
+        # missing Turnstile secret, unreachable onboarding path, unscheduled token
+        # pruning). vninvest_core is not an INSTALLED_APPS entry, so its own ready()
+        # never runs and cannot host the @register side effect. Imported here for
+        # that side effect only; it touches no models.
+        from vninvest_core import checks  # noqa: F401
+
         import sys
         from django.conf import settings
         from django.core.exceptions import ImproperlyConfigured

@@ -181,27 +181,48 @@ export function PortfolioProvider({ children }) {
    * server-side for `CORE_HUMAN_SESSION_PAT_HOURS` (default 12,
    * views/helpers.py:36,45), and it never cleared `tenant_id` / `staff_switch`.
    *
-   * The revoke is attempted BEFORE the local clear (so the request is built
-   * while the token is still in storage) but bounded, and the local clear runs
-   * in `finally` — a dead network must not strand the user. Never rejects, so
-   * fire-and-forget callers are safe.
+   * Order matters, and the first version got it wrong. It awaited the revoke
+   * BEFORE clearing, which left two real holes:
+   *   1. `AuthLoginPage` initialises from `authTokenStorage.hasTokens()`, still
+   *      true, and fires `GET /tenant/lifecycle/`. If that won the race the
+   *      browser was hard-navigated back to the dashboard while still
+   *      authenticated — so the user "could not log out".
+   *   2. The PAT revoke is the entire point of E2, and closing the tab inside
+   *      that window killed the fire-and-forget call, so the 12h token survived
+   *      and the fix defeated its own purpose.
+   *
+   * So: clear locally and synchronously FIRST, then revoke using a token
+   * captured before the clear. Local state is never observable as
+   * half-authenticated, and the revoke survives the navigation that follows it.
+   * `keepalive` on the request means the browser finishes it even if the page
+   * goes away. Still bounded, still never rejects.
    */
   const logout = useCallback(async () => {
+    const hadTokens = authTokenStorage.hasTokens();
+    // Captured before the clear: requestWithAuth builds its Authorization header
+    // from storage, and `init.headers` is spread LAST (transport.js), so an
+    // explicit Authorization here wins over the now-empty store.
+    const accessForRevoke = authTokenStorage.getAccessToken();
+
+    clearLocalSession();
+
+    if (!hadTokens || !accessForRevoke) return;
     try {
-      if (authTokenStorage.hasTokens()) {
-        await withTimeout(
-          coreApiAdapter.corePost('/auth/logout/'),
-          LOGOUT_REVOKE_TIMEOUT_MS,
-          'logout revoke',
-        );
-      }
+      await withTimeout(
+        coreApiAdapter.corePost('/auth/logout/', undefined, {
+          // `keepalive` lets the browser finish the revoke even if the user closes
+          // the tab or navigates away, which is how the previous ordering lost it.
+          keepalive: true,
+          headers: { Authorization: `Bearer ${accessForRevoke}` },
+        }),
+        LOGOUT_REVOKE_TIMEOUT_MS,
+        'logout revoke',
+      );
     } catch (error) {
       console.warn(
-        '[auth] server-side session revoke failed; clearing the local session anyway:',
+        '[auth] server-side session revoke failed; local session was already cleared:',
         error?.message || error,
       );
-    } finally {
-      clearLocalSession();
     }
   }, [clearLocalSession]);
 

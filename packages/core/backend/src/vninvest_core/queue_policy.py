@@ -35,6 +35,7 @@ QUEUE_DOMAIN_MATRIX = {
             'commercial.tasks.manage_subscriptions_lifecycle',
             'identity_access.tasks.flush_pat_audit_log',
             'identity_access.tasks.cross_ref_pat_audit_events',
+            'identity_access.email_tasks.prune_email_verification_tokens',
             'ops_audit.tasks.aggregate_api_call_rollup',
         ),
         'periodic_tasks': (
@@ -44,6 +45,7 @@ QUEUE_DOMAIN_MATRIX = {
             'snapshot-quota-history',
             'check-usage-thresholds',
             'manage-subscriptions-lifecycle-hourly',
+            'prune-email-verification-tokens-hourly',
             'flush-pat-audit-log',
             'cross-ref-pat-audit-events',
             'aggregate-api-call-rollup',

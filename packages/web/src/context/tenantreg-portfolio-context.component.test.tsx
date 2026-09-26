@@ -208,16 +208,33 @@ describe("tenantreg-e E1 — one source of truth for the workspace id", () => {
 });
 
 describe("tenantreg-e E2 — logout revokes the PAT and clears every trace", () => {
-  it("POSTs /auth/logout/ before clearing, and clears tenant + staff-switch", async () => {
+  it("clears locally first, then revokes with the captured token", async () => {
+    // ORDER CHANGED, and the previous order was wrong.
+    //
+    // It used to await the revoke BEFORE clearing, which left two real holes:
+    //  1. AuthLoginPage initialises from authTokenStorage.hasTokens() and fires
+    //     GET /tenant/lifecycle/. While the revoke was in flight that call saw a
+    //     still-authenticated session and hard-navigated the user BACK to the
+    //     dashboard — "I cannot log out".
+    //  2. The PAT revoke is the whole point of E2, and closing the tab during
+    //     that window killed the fire-and-forget call, so the 12h token survived
+    //     and the fix defeated its own purpose.
+    //
+    // Now the local session is cleared synchronously first and the revoke carries
+    // a token captured beforehand, plus keepalive so the browser finishes it.
     await bootstrap();
     localStorage.setItem("tenant_id", "tenant-b");
     sessionStorage.setItem("staff_switch", JSON.stringify({ token: "switch-abc" }));
 
-    let tokensAtRevokeTime: string | null = null;
-    h.adapter.corePost.mockImplementation(async (path: string) => {
-      if (path === "/auth/logout/") {
-        tokensAtRevokeTime = localStorage.getItem("access_token");
-      }
+    let authAtRevokeTime: string | undefined;
+    let storageAtRevokeTime: string | null = null;
+    h.adapter.corePost.mockImplementation(async (
+      _path: string,
+      _body?: unknown,
+      options?: { headers?: Record<string, string>; keepalive?: boolean },
+    ) => {
+      authAtRevokeTime = options?.headers?.Authorization;
+      storageAtRevokeTime = localStorage.getItem("access_token");
       return { detail: "ok" };
     });
 
@@ -225,9 +242,18 @@ describe("tenantreg-e E2 — logout revokes the PAT and clears every trace", () 
       await latest.logout();
     });
 
-    // The revoke must be built while the PAT is still in storage.
-    expect(h.adapter.corePost).toHaveBeenCalledWith("/auth/logout/");
-    expect(tokensAtRevokeTime).toBe("pat-token");
+    expect(h.adapter.corePost).toHaveBeenCalledWith(
+      "/auth/logout/",
+      undefined,
+      expect.objectContaining({
+        keepalive: true,
+        headers: { Authorization: "Bearer pat-token" },
+      }),
+    );
+    // The captured credential is what authorises the revoke, not the (now empty)
+    // store -- otherwise the request would go out unauthenticated.
+    expect(authAtRevokeTime).toBe("Bearer pat-token");
+    expect(storageAtRevokeTime).toBeNull();
     expect(localStorage.getItem("access_token")).toBeNull();
     expect(tenantIdStorage.getTenantId()).toBeNull();
     expect(sessionStorage.getItem("staff_switch")).toBeNull();

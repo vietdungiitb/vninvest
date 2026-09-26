@@ -147,17 +147,38 @@ WSGI_APPLICATION = 'vninvest_core.wsgi.application'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 
+# client_ip holds the private-range default consumed by TRUSTED_PROXY_IPS below.
+# Imported here rather than duplicating the networks as a literal so there is
+# exactly one definition of "which peers do we trust by default".
+from vninvest_core import client_ip  # noqa: E402
+
 # Reverse proxies whose forwarded headers we are willing to believe.
 # Consumed by vninvest_core.client_ip.get_client_ip(), which is the single source
 # of truth for the client IP. Entries may be a plain address ("10.0.4.7") or a
 # CIDR network ("10.0.0.0/8" for a whole Docker bridge); both are supported.
-# DEFAULT IS EMPTY = TRUST NOTHING. With an empty list, X-Forwarded-For is
-# ignored entirely and only REMOTE_ADDR (the unforgeable socket peer) is used.
-# That is the safe default: a wrong entry is a spoofable client IP for every rate
-# limiter, every audit row and the PAT CIDR allow-list, whereas an empty list
-# merely loses proxy-aware precision for direct connections.
+#
+# THE PREVIOUS "empty means trust nothing" DEFAULT WAS A PLATFORM-WIDE DoS.
+# In this deployment the app container is reached only through the nginx
+# container on a private Docker network, so REMOTE_ADDR is the *nginx container
+# address*, not a client address. With the list empty, get_client_ip() therefore
+# returned that one address for EVERY request in the deployment, and every rate
+# limiter collapsed into a single global bucket: the 4th registration and the 6th
+# login on the whole platform per minute were refused regardless of who sent
+# them. That is the exact inverse of the spoofing hole it was meant to close --
+# not "the attacker picks the IP" but "everyone shares one".
+#
+# So: UNSET now means "trust the private ranges", which is the correct peer set
+# for a containerised deployment where the app port is bound to 127.0.0.1 and is
+# not reachable from an untrusted network. An EMPTY value is still honoured
+# literally (trust nothing), and vninvest_core.checks turns that into a hard
+# production error so it can never ship silently again.
+#
 # Example: TRUSTED_PROXY_IPS=127.0.0.1,::1,10.0.0.0/8
-TRUSTED_PROXY_IPS = [ip.strip() for ip in os.environ.get('TRUSTED_PROXY_IPS', '').split(',') if ip.strip()]
+_trusted_proxy_ips_env = os.environ.get('TRUSTED_PROXY_IPS')
+if _trusted_proxy_ips_env is None:
+    TRUSTED_PROXY_IPS = list(client_ip.DEFAULT_TRUSTED_PROXY_NETWORKS)
+else:
+    TRUSTED_PROXY_IPS = [ip.strip() for ip in _trusted_proxy_ips_env.split(',') if ip.strip()]
 
 DATABASES = {
     'default': {
@@ -519,6 +540,16 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'commercial.tasks.manage_subscriptions_lifecycle',
         'schedule': 3600.0,  # hourly
         'options': {'queue': SCHEDULER_QUEUE_MAP['manage-subscriptions-lifecycle-hourly']},
+    },
+    # EmailVerificationToken gains a row per registration AND per resend, and
+    # nothing else ever deletes one. The prune task existed but was not scheduled,
+    # so the table grew without bound while its unit tests kept passing (they call
+    # the task directly). Off the hour so it does not pile onto the other beat
+    # entries at :00.
+    'prune-email-verification-tokens-hourly': {
+        'task': 'identity_access.email_tasks.prune_email_verification_tokens',
+        'schedule': crontab(minute='17'),
+        'options': {'queue': SCHEDULER_QUEUE_MAP['prune-email-verification-tokens-hourly']},
     },
     'auto-deprovision-stale': {
         'task': 'tenant_lifecycle.tasks.auto_deprovision_stale',
