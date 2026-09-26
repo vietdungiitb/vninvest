@@ -262,11 +262,85 @@ def send_quota_warning(self, tenant_id: str, percent: int):
     }
 
 
+def _reseed_free_plan_entitlement(tenant: CoreTenant, *, today: date) -> dict:
+    """C7: a downgrade must re-price, not just relabel.
+
+    manage_subscriptions_lifecycle used to set tenant.plan = FREE and stop, leaving
+    QuotaRecord.api_calls_limit at the old paid plan's value, so the downgraded
+    tenant kept paid headroom (and, with C2 live, kept the paid-plan suspension
+    threshold). The tenant-level api_calls_limit is already re-synced by the
+    post_save receiver in identity_access/models.py; this fixes the QuotaRecord the
+    middleware actually reads, and reports what changed.
+    """
+    free_limit = get_api_calls_limit(CoreTenant.PlanChoices.FREE)
+    result = {
+        'quota_limit_before': None,
+        'quota_limit_after': None,
+        'tenant_limit_after': None,
+        'changed': False,
+        'override_preserved': False,
+    }
+
+    records = QuotaRecord.objects.filter(
+        tenant=tenant,
+        period_start__lte=today,
+        period_end__gte=today,
+    )
+    for record in records:
+        result['quota_limit_before'] = int(record.api_calls_limit)
+        if record.api_calls_limit == free_limit:
+            result['quota_limit_after'] = free_limit
+            continue
+        if not is_plan_derived_api_calls_limit(record.api_calls_limit):
+            # hand-negotiated allowance: a downgrade must not silently clobber it,
+            # but it has to be visible, so report it
+            result['override_preserved'] = True
+            result['quota_limit_after'] = int(record.api_calls_limit)
+            continue
+        QuotaRecord.objects.filter(pk=record.pk).update(api_calls_limit=free_limit)
+        result['quota_limit_after'] = free_limit
+        result['changed'] = True
+
+    result['tenant_limit_after'] = int(tenant.api_calls_limit)
+    return result
+
+
+def _log_plan_change(tenant: CoreTenant, *, previous_plan: str, reseeded: dict) -> None:
+    """Record the downgrade so support/billing can see why a limit moved."""
+    from tenant_lifecycle.models import TenantLifecycleEvent
+
+    try:
+        TenantLifecycleEvent.objects.create(
+            tenant=tenant,
+            event_type=TenantLifecycleEvent.EventType.PLAN_CHANGED,
+            actor_type='system',
+            old_value={'plan': previous_plan, 'api_calls_limit': reseeded.get('quota_limit_before')},
+            new_value={
+                'plan': CoreTenant.PlanChoices.FREE,
+                'api_calls_limit': reseeded.get('quota_limit_after'),
+            },
+            metadata={
+                'source': 'commercial.tasks.manage_subscriptions_lifecycle',
+                'quota_limit_changed': reseeded.get('changed', False),
+                'negotiated_override_preserved': reseeded.get('override_preserved', False),
+            },
+        )
+    except Exception as exc:
+        logger.error('Failed to log plan change for tenant %s: %s', tenant.public_id, exc)
+
+
 @shared_task(name='commercial.tasks.manage_subscriptions_lifecycle', bind=True, max_retries=2, default_retry_delay=300)
 def manage_subscriptions_lifecycle(self, today_iso: str | None = None):
     """
     Manages automatic subscription lifecycle: dunning, renewals, and plan downgrades.
     Runs hourly in production.
+
+    C7: this is the ONLY downgrade path and it was absent from CELERY_BEAT_SCHEDULE,
+    so plan downgrades never ran at all. Even when invoked it set tenant.plan = FREE
+    but left QuotaRecord.api_calls_limit at the old paid plan's value and
+    CoreTenant.max_active_pats untouched, so the tenant kept paid headroom after
+    paying nothing. The downgrade now re-seeds the free entitlement and writes a
+    plan_changed lifecycle event.
     """
     today = date.fromisoformat(today_iso) if today_iso else timezone.now().date()
     downgraded = 0
@@ -281,6 +355,7 @@ def manage_subscriptions_lifecycle(self, today_iso: str | None = None):
     for sub in expired_cancelled_subs:
         tenant = sub.tenant
         # Downgrade plan in tenant and subscription
+        previous_plan = tenant.plan
         sub.plan = CoreTenant.PlanChoices.FREE
         sub.cancel_at_period_end = False
         sub.current_period_start = today
@@ -291,7 +366,10 @@ def manage_subscriptions_lifecycle(self, today_iso: str | None = None):
         tenant.plan = CoreTenant.PlanChoices.FREE
         tenant.status = CoreTenant.StatusChoices.ACTIVE
         tenant.save(update_fields=['plan', 'status', 'updated_at'])
+        reseeded = _reseed_free_plan_entitlement(tenant, today=today)
         downgraded += 1
+
+        _log_plan_change(tenant, previous_plan=previous_plan, reseeded=reseeded)
 
     # 2. Process Auto-renewal / Dunning invoices creation for expired subscriptions without cancel_at_period_end
     expired_active_subs = Subscription.objects.select_related('tenant').filter(
