@@ -255,6 +255,46 @@ Cách lấy bằng chứng: `git worktree add <tmp> 51776e83` rồi chạy
 `python manage.py test user_workspace.test_broker_retail user_workspace.test_portfolio_analytics_native_routes`
 → `Ran 8 tests` / `FAILED (errors=4)`. Worktree tạm đã `git worktree remove` sau đó.
 
+### 3.2 Regression `manage.py test tests` — `agent-sync.ps1` bước 5c ĐỎ, không phải do PA-1
+
+`scripts/agent-sync.ps1` (bước 5c) chạy `python manage.py test tests` và dừng ở đây:
+
+```
+[5c] manage.py check + test BE
+System check identified no issues (0 silenced).
+    X   test BE that bai. Log: agent-be-test.txt
+  Ran 534 tests in 801.319s
+  FAILED (failures=10, errors=4)
+```
+
+**Đây là trạng thái sẵn có của repo, không phải hồi quy của PA-1.** Bằng chứng: worktree
+sạch tại base `51776e83` chạy đúng lệnh đó cho **cùng số test và cùng danh sách test đỏ**:
+
+```
+# base 51776e83 sach
+Ran 534 tests in 866.684s
+FAILED (failures=10, errors=4)
+```
+
+14 test đỏ giống **hệt**, không khác tên nào, và **không test nào trong số đó chạm
+`user_workspace.views_dnse` / `urls.py` / `services/idempotency.py`**:
+
+| File test | Số | Nội dung |
+|---|---|---|
+| `tests.test_admin_route` | 1 E | admin login page |
+| `tests.test_scheduler_management_commands` | 3 E + 4 F | drift / sync scheduler |
+| `tests.test_tenant_quota_middleware` | 1 E | quota 429 |
+| `tests.test_audit_logs_api` | 1 F | cross-tenant 403 |
+| `tests.test_session_facts_api` | 4 F | CVD 404 + throttle 60/min |
+| `tests.test_stock_management_api_routes` | 1 F | native stock routes |
+
+Khớp với ghi chú đã có ở `AGENTS.md` (Entry 228): *"14 test đỏ nằm ngoài domain AI CC
+(`test_admin_route`, `test_scheduler_management_commands`, `test_tenant_quota_middleware`,
+`test_audit_logs_api`, `test_session_facts_api`, `test_stock_management_api_routes`)"*.
+
+Ngoài phạm vi PA-1 nên **không tự sửa**. Cần một ticket riêng (mỗi test một nguyên nhân,
+không gộp). Worktree tạm đã `git worktree remove` sau khi lấy bằng chứng.
+
 ---
 
 ## 4. AC — đối chiếu từng test
@@ -304,6 +344,10 @@ Cách lấy bằng chứng: `git worktree add <tmp> 51776e83` rồi chạy
 7. **Chưa có `evidence` chạy E2E với sandbox DNSE thật** — không có credential.
 8. `docs/evidence/portfolio-commercial/AUDIT_VERIFICATION_20260926.md` không tồn tại
    (xem đầu file) nên không đối chiếu được với nó.
+9. **`agent-sync.ps1` bước 5c đỏ** vì 14 test pre-existing ngoài phạm vi (xem §3.2).
+   Đó là gate của *script sync*, không phải gate của PA-1. `pre-push` chỉ chạy
+   `check:multi-agent` + `manage.py check` nên **không** chặn push.
+   **Không dùng `--no-verify` ở bất kỳ commit nào** — cả 6 commit đều qua hook.
 
 ## 6. Việc phát hiện NHƯNG ngoài phạm vi — KHÔNG tự sửa
 
