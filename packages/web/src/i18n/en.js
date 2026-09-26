@@ -5948,6 +5948,22 @@ const en = {
     resetConfirmMismatch: 'Password confirmation does not match.',
     resetConfirmFailed: 'Unable to reset password.',
     resetBackToLogin: 'Back to sign in',
+    // -- generic per-field fallback copy ---------------------------------
+    // Shown instead of the backend's raw prose when the UI locale is not the
+    // backend's language, so an EN user never reads Vietnamese.
+    fieldInvalidUsername: 'This username is not valid.',
+    fieldInvalidEmail: 'This email address is not valid.',
+    fieldInvalidPassword: 'This password is not valid.',
+    fieldInvalidPasswordConfirm: 'The password confirmation is not valid.',
+    fieldInvalidTurnstile: 'The bot check was not valid.',
+    fieldInvalidToken: 'This link is invalid or has expired.',
+    fieldInvalidGeneric: 'The information you entered is not valid.',
+    // -- password strength meter ------------------------------------------
+    registerPasswordStrength: 'Strength: {level}',
+    passwordStrengthWeak: 'Weak',
+    passwordStrengthFair: 'Fair',
+    passwordStrengthGood: 'Good',
+    passwordStrengthStrong: 'Strong',
     // -- rate limiting + server error codes ------------------------------
     rateLimited: 'You are going too fast. Please try again in {seconds} seconds.',
     errorCodeUnknown: 'The request could not be completed (error code: {code}).',

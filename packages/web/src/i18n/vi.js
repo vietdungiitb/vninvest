@@ -5967,6 +5967,22 @@ const vi = {
     resetConfirmMismatch: 'Mật khẩu xác nhận không khớp.',
     resetConfirmFailed: 'Không thể đặt lại mật khẩu.',
     resetBackToLogin: 'Quay lại đăng nhập',
+    // -- generic per-field fallback copy ---------------------------------
+    // Shown instead of the backend's raw prose when the UI locale is not the
+    // backend's language, so an EN user never reads Vietnamese.
+    fieldInvalidUsername: 'Tên đăng nhập không hợp lệ.',
+    fieldInvalidEmail: 'Địa chỉ email không hợp lệ.',
+    fieldInvalidPassword: 'Mật khẩu không hợp lệ.',
+    fieldInvalidPasswordConfirm: 'Xác nhận mật khẩu không hợp lệ.',
+    fieldInvalidTurnstile: 'Kiểm tra chống bot chưa hợp lệ.',
+    fieldInvalidToken: 'Liên kết không hợp lệ hoặc đã hết hạn.',
+    fieldInvalidGeneric: 'Thông tin nhập không hợp lệ.',
+    // -- password strength meter ------------------------------------------
+    registerPasswordStrength: 'Độ mạnh: {level}',
+    passwordStrengthWeak: 'Yếu',
+    passwordStrengthFair: 'Khá',
+    passwordStrengthGood: 'Tốt',
+    passwordStrengthStrong: 'Rất tốt',
     // -- rate limiting + server error codes ------------------------------
     rateLimited: 'Bạn thao tác quá nhanh. Vui lòng thử lại sau {seconds} giây.',
     errorCodeUnknown: 'Không thực hiện được yêu cầu (mã lỗi: {code}).',
