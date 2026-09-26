@@ -7,6 +7,35 @@ jest.unstable_mockModule("@marsidev/react-turnstile", () => ({
   Turnstile: () => null,
 }));
 
+/**
+ * tenantreg-d (slice D) — D9 follow-up.
+ *
+ * These pages used to inline `{ defaultValue: "<Vietnamese>" }` on every `t()`
+ * call, and this suite rendered them WITHOUT a LangProvider. `useI18n()` then
+ * returns a stub whose `t()` honours `defaultValue` (LangContext.js:92-103), so
+ * the assertions passed on the inline copies rather than on the dictionaries.
+ *
+ * The inline defaults have been removed (a missing key must fail loudly, not
+ * quietly render Vietnamese into the EN UI), so the stub would now render raw
+ * key paths. Mocking with the REAL translator keeps these assertions honest:
+ * they check the shipped copy, and a key deleted from vi.js now fails here.
+ *
+ * NOTE the specifier: `unstable_mockModule` in this setup resolves relative to
+ * `test/setupTests.js` (which does `global.jest = jest`), not to this file, so
+ * the path is `../src/...` rather than `../../src/...`. The `import()` INSIDE the
+ * factory is resolved normally, from this file.
+ */
+jest.unstable_mockModule("../src/context/LangContext.js", async () => {
+  const { createTranslator, DEFAULT_LOCALE } = await import("../../i18n/index.js");
+  return {
+    useI18n: () => ({
+      locale: DEFAULT_LOCALE,
+      localeTag: "vi-VN",
+      t: createTranslator(DEFAULT_LOCALE),
+    }),
+  };
+});
+
 const { MemoryRouter, Route, Routes } = await import("react-router-dom");
 const { AuthLoginPage } = await import("./AuthLoginPage.tsx");
 const { AuthRegisterPage } = await import("./AuthRegisterPage.tsx");
@@ -174,3 +203,5 @@ describe("packages/web auth pages", () => {
     expect(screen.getByText(/đổi mật khẩu thành công/i)).toBeTruthy();
   });
 });
+
+
