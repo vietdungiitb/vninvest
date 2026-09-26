@@ -12,8 +12,11 @@ Module này là SSOT cho quan hệ provider -> model hợp lệ.
 OPENAI_PREFIXES = ('gpt-', 'gpt3', 'gpt4', 'o1', 'o3', 'o4', 'chatgpt-')
 GEMINI_PREFIXES = ('gemini',)
 CLAUDE_PREFIXES = ('claude',)
-# openclaw/copilot/local: model do hạ tầng quyết định -> không ràng buộc.
-FREEFORM_PROVIDERS = ('local', 'openclaw', 'copilot')
+# local/openclaw: model do hạ tầng quyết định -> không ràng buộc.
+# `copilot` đã gỡ 2026-09-26 (bằng chứng probe + giải thích ở
+# `UserAICredential.ProviderChoices`): PAT classic trả 404 ở
+# `copilot_internal/v2/token`, và không có endpoint chính thức cho bên thứ ba.
+FREEFORM_PROVIDERS = ('local', 'openclaw')
 
 PROVIDER_MODEL_PREFIXES = {
     'openai': OPENAI_PREFIXES,
@@ -40,7 +43,6 @@ PROVIDER_LABELS = {
     'claude': 'Anthropic Claude',
     'local': 'Local',
     'openclaw': 'OpenClaw',
-    'copilot': 'GitHub Copilot',
 }
 
 

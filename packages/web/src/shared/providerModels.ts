@@ -50,9 +50,16 @@ export const PROVIDER_MODELS: Record<string, ProviderModelOption[]> = {
     { key: "qwen2.5", label: "qwen2.5" },
     { key: "custom", label: "Mô hình tùy chỉnh..." }
   ],
-  copilot: [
-    { key: "custom", label: "Mô hình tùy chỉnh..." }
-  ]
+  // `copilot` đã gỡ 2026-09-26. Bằng chứng probe thật: key là GitHub PAT
+  // classic, `GET /user` → 200 và scope `copilot` CÓ, nhưng
+  // `copilot_internal/v2/token` → 404 "Not Found" với cả `token` lẫn `Bearer`
+  // (endpoint nội bộ không nhận PAT). Ngoài ra orchestrator chỉ có 3 nhánh
+  // endpoint (`local`/`gemini`/`else→api.openai.com`) nên `copilot` rơi vào
+  // `else` ⇒ gửi model tới OpenAI kèm GitHub token ⇒ 401. Chi tiết ở
+  // `advisory/models.py` `UserAICredential.ProviderChoices`.
+  //
+  // Cố ý KHÔNG thay bằng provider khác: Copilot không phải API LLM dùng chung,
+  // không có endpoint chính thức cho ứng dụng bên thứ ba.
 };
 
 export const PROVIDER_OPTIONS: ProviderModelOption[] = [
@@ -60,6 +67,5 @@ export const PROVIDER_OPTIONS: ProviderModelOption[] = [
   { key: "openai", label: "OpenAI (ChatGPT)" },
   { key: "gemini", label: "Google Gemini" },
   { key: "claude", label: "Anthropic (Claude)" },
-  { key: "local", label: "Local Model (Ollama/vLLM)" },
-  { key: "copilot", label: "GitHub Copilot" }
+  { key: "local", label: "Local Model (Ollama/vLLM)" }
 ];

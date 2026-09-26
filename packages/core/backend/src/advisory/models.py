@@ -247,7 +247,29 @@ class UserAICredential(models.Model):
         CLAUDE = 'claude', 'Anthropic (Claude)'
         LOCAL = 'local', 'Local Model (Ollama/vLLM)'
         OPENCLAW = 'openclaw', 'OpenClaw (System Default)'
-        COPILOT = 'copilot', 'GitHub Copilot'
+        # ĐÃ GỠ `COPILOT = 'copilot', 'GitHub Copilot'` (2026-09-26).
+        #
+        # Lý do gỡ — bằng chứng probe thật, không phải suy đoán:
+        # key trong `UserAICredential` là GitHub PAT classic. Đổi nó sang
+        # session token qua `GET https://api.github.com/copilot_internal/v2/token`
+        # trả **404 "Not Found"** với CẢ HAI kiểu `Authorization: token` và
+        # `Bearer`.
+        #
+        # 404 KHÔNG phải vì key sai: `GET https://api.github.com/user` trả 200
+        # (tài khoản hợp lệ) và header `X-OAuth-Scopes` **có** scope
+        # `copilot`. Endpoint `copilot_internal` là endpoint NỘI BỘ của
+        # Copilot, không nhận PAT — GitHub trả 404 thay vì 403 nên rất dễ
+        # chẩn đoán nhầm thành "key hỏng".
+        #
+        # Hệ quả: giữ provider này chỉ tạo ra request gửi nhầm chỗ. Cụ thể
+        # `advisory/orchestrator.py` chỉ có 3 nhánh endpoint — `local` (Ollama),
+        # `gemini` (Google), và `else` → `api.openai.com`; `copilot` rơi vào
+        # `else` nên sẽ gửi tên model tới OpenAI kèm GitHub token ⇒ 401.
+        #
+        # Lưu ý: Copilot **không phải API LLM dùng chung** — nó là tính năng
+        # subscription cho client của GitHub (VS Code, github.com), không có
+        # endpoint chính thức cho ứng dụng bên thứ ba. Không có URL thay thế
+        # nào hợp lệ, và không đoán.
 
     user = models.OneToOneField(
         User,
