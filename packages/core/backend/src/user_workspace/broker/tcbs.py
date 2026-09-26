@@ -4,12 +4,15 @@ Signatures verified tại vnbroker tag v3.4.0 (commit 1ff04e60):
 - TCBSBrokerClient.__init__(api_key, base_url, custody_code) → keyword args.
 - authenticate(otp: str) — BẮT BUỘC OTP nên test-connection KHÔNG gọi authenticate;
   chỉ check format + is_token_valid==False → status 'unverified' + hướng dẫn OTP ở pha trade.
+P1-SEC-01: `base_url` không còn tự do — validate qua egress allowlist (broker/egress.py).
 Import lazy + chịu ImportError (image cũ chưa có lane TCBS).
 """
 from __future__ import annotations
 
 import logging
 import re
+
+from .egress import EgressPolicyError, validate_base_url
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +51,9 @@ def get_schema() -> dict:
                 'type': 'text',
                 'required': False,
                 'secret': False,
+                # P1-SEC-01: endpoint KHÔNG tự do — chỉ host trong allowlist
+                # server-side (broker/egress.py) mới được nhận.
+                'egress_restricted': True,
                 'label_i18n': 'broker.tcbs.base_url',
                 'placeholder': 'Để trống = mặc định iFlash',
                 'help_i18n': 'broker.tcbs.base_url_help',
@@ -57,11 +63,19 @@ def get_schema() -> dict:
 
 
 def validate_secrets(secrets: dict) -> dict[str, str]:
-    """Trả về {field: message} — rỗng = hợp lệ. custody sai format chỉ cảnh báo ở FE."""
+    """Trả về {field: message} — rỗng = hợp lệ. custody sai format chỉ cảnh báo ở FE.
+
+    P1-SEC-01: `base_url` phải qua egress allowlist. Message là CODE cố định, không
+    echo giá trị người dùng nhập (giá trị đó có thể chứa host nội bộ/khoá đã rot).
+    """
     errors: dict[str, str] = {}
     secrets = secrets or {}
     if not str(secrets.get('api_key', '') or '').strip():
         errors['api_key'] = 'required'
+    try:
+        validate_base_url(PROVIDER_ID, secrets.get('base_url'))
+    except EgressPolicyError as exc:
+        errors['base_url'] = exc.code
     return errors
 
 
@@ -70,9 +84,13 @@ def test_connection(secrets: dict) -> dict:
 
     Trả về {'ok': False, 'unverified': True} khi config hợp lệ nhưng thiếu OTP;
     task sẽ map sang status 'unverified' (KHÔNG phải error).
+    P1-SEC-01: base_url sai ⇒ fail-closed với code, KHÔNG im lặng rơi về default.
     """
     secrets = secrets or {}
-    if validate_secrets(secrets):
+    errors = validate_secrets(secrets)
+    if errors.get('base_url'):
+        return {'ok': False, 'error': errors['base_url']}
+    if errors:
         return {'ok': False, 'error': 'missing_credentials'}
     try:
         from vnbroker.broker.tcbs.client import TCBSBrokerClient  # noqa: F401

@@ -4,15 +4,24 @@ Signatures verified tại vnbroker tag v3.3.0 (SHA 541d7f22):
 - SSIBrokerClient.__init__(client_id, api_key, api_secret, private_key, api_url, stream_url)
   → BẮT BUỘC keyword args (C2).
 - authenticate(otp=None, transaction_id=None): không OTP = market-data-only.
+P1-SEC-01: `SSIBrokerClient.__init__` nhận `api_url`/`stream_url`; secrets là JSON
+tự do (models.py `set_secrets` không lọc theo schema) nên endpoint vẫn phải qua
+egress allowlist — không chỉ tin form đã lọc.
 Import lazy + chịu ImportError (image cũ chưa có lane SSI).
 """
 from __future__ import annotations
 
 import logging
 
+from .egress import EgressPolicyError, validate_base_url
+
 logger = logging.getLogger(__name__)
 
 PROVIDER_ID = 'ssi'
+
+# Field endpoint client chấp nhận. Không nằm trong schema (form không render) nhưng vẫn
+# phải validate: dữ liệu có thể tới từ row cũ hoặc ghi DB trực tiếp.
+ENDPOINT_FIELDS = ('api_url', 'stream_url', 'base_url')
 
 
 def get_schema() -> dict:
@@ -62,7 +71,10 @@ def get_schema() -> dict:
 
 
 def validate_secrets(secrets: dict) -> dict[str, str]:
-    """Trả về {field: message} — rỗng = hợp lệ. Không log secret."""
+    """Trả về {field: message} — rỗng = hợp lệ. Không log secret.
+
+    P1-SEC-01: field endpoint phải qua egress allowlist SSI (fail-closed, code cố định).
+    """
     errors: dict[str, str] = {}
     secrets = secrets or {}
     for field in get_schema()['fields']:
@@ -71,12 +83,21 @@ def validate_secrets(secrets: dict) -> dict[str, str]:
         value = str(secrets.get(field['key'], '') or '').strip()
         if not value:
             errors[field['key']] = 'required'
+    for field in ENDPOINT_FIELDS:
+        try:
+            validate_base_url(PROVIDER_ID, secrets.get(field))
+        except EgressPolicyError as exc:
+            errors[field] = exc.code
     return errors
 
 
 def test_connection(secrets: dict) -> dict:
     """Market-only authenticate (không OTP). True + account_count, hoặc False + error."""
     secrets = secrets or {}
+    errors = validate_secrets(secrets)
+    for field in ENDPOINT_FIELDS:
+        if errors.get(field):
+            return {'ok': False, 'error': errors[field]}
     api_key = str(secrets.get('api_key', '') or '').strip()
     api_secret = str(secrets.get('api_secret', '') or '').strip()
     if not api_key or not api_secret:
