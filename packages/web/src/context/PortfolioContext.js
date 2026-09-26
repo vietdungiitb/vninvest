@@ -279,9 +279,47 @@ export function PortfolioProvider({ children }) {
       if (profileResult.status === 'fulfilled') profile = profileResult.value;
       else if (!firstError) firstError = profileResult.reason;
 
+      /**
+       * E1 + slice B, second-order effect: `IsTenantActive` reads
+       * `request.tenant`, and the resolver answers **403** for a `X-Tenant-ID`
+       * it cannot resolve. So a workspace id left behind by a previous session
+       * (or by another user of a shared browser) makes BOTH identity calls 403
+       * on a plain page reload. That is not an auth failure — logging out here
+       * would strand a signed-in user who merely has a stale id.
+       *
+       * Drop the id and retry once, unauthenticated-by-tenant. Only a 401 is
+       * treated as a dead session.
+       */
+      if (
+        !session
+        && !profile
+        && errorStatus(firstError) === 403
+        && tenantIdStorage.getTenantId()
+      ) {
+        console.warn(
+          '[auth] identity call rejected with 403; dropping the stored workspace id and retrying',
+        );
+        tenantIdStorage.clearTenantId();
+        setActiveTenantIdState(null);
+        const retry = await Promise.allSettled([
+          coreApiAdapter.coreGet('/auth/me/'),
+          coreApiAdapter.getUserProfile(),
+        ]);
+        if (isStale()) return false;
+        session = retry[0].status === 'fulfilled' ? retry[0].value : null;
+        profile = retry[1].status === 'fulfilled' ? retry[1].value : null;
+        firstError = session
+          ? null
+          : retry[0].status === 'rejected'
+            ? retry[0].reason
+            : retry[1].status === 'rejected'
+              ? retry[1].reason
+              : firstError;
+      }
+
       if (!session && !profile) {
         const status = errorStatus(firstError);
-        if (status === 401 || status === 403) {
+        if (status === 401) {
           // Publish BEFORE logout: `logout` bumps the session epoch, so an
           // `isStale()` check after it would always be true and swallow this.
           publishAuthError({
@@ -294,7 +332,9 @@ export function PortfolioProvider({ children }) {
           return false;
         }
         publishAuthError({
-          reason: 'bootstrap-failed',
+          // 403 after the retry means the account genuinely has no usable
+          // workspace — visible and retryable, but never a silent logout.
+          reason: status === 403 ? 'tenant-forbidden' : 'bootstrap-failed',
           retryable: true,
           i18nKey: 'shellFallback.bootstrapFailed',
           defaultMessage: 'Không tải được thông tin tài khoản.',

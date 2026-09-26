@@ -374,6 +374,50 @@ describe("tenantreg-e E7 — a failed bootstrap is visible, and late writes are 
     expect(latest.isAuthenticated).toBe(false);
   });
 
+  it("a 403 from a stale workspace id does NOT log the user out — it self-heals", async () => {
+    // slice B: the tenant resolver answers 403 for an unresolvable
+    // X-Tenant-ID, and IsTenantActive reads request.tenant — so a stale id makes
+    // BOTH identity calls 403 on a plain reload. Logging out there would strand
+    // a signed-in user.
+    localStorage.setItem("tenant_id", "tenant-from-another-account");
+    const forbidden = Object.assign(new Error("403"), { status: 403 });
+    const sessionSeen: (string | null)[] = [];
+    h.adapter.coreGet.mockImplementation(async (path: string) => {
+      if (path !== "/auth/me/") throw new Error(`unexpected coreGet: ${path}`);
+      sessionSeen.push(localStorage.getItem("tenant_id"));
+      if (localStorage.getItem("tenant_id")) throw forbidden;
+      return SESSION_PAYLOAD;
+    });
+    h.adapter.getUserProfile.mockImplementation(async () => {
+      if (localStorage.getItem("tenant_id")) throw forbidden;
+      return PROFILE_PAYLOAD;
+    });
+
+    renderProvider();
+    await waitFor(() => expect(latest?.authStateReady).toBe(true));
+
+    // first attempt carried the stale id, the retry did not
+    expect(sessionSeen).toEqual(["tenant-from-another-account", null]);
+    expect(latest.isAuthenticated).toBe(true);
+    expect(latest.userIdentity.username).toBe("nam");
+    expect(latest.activeTenantId).toBe("tenant-a");
+    expect(latest.authStateError).toBeNull();
+    // and the PAT was never revoked
+    expect(h.adapter.corePost).not.toHaveBeenCalled();
+  });
+
+  it("a 403 that survives the retry is surfaced, never a silent logout", async () => {
+    const forbidden = Object.assign(new Error("403"), { status: 403 });
+    h.adapter.coreGet.mockRejectedValue(forbidden);
+    h.adapter.getUserProfile.mockRejectedValue(forbidden);
+
+    renderProvider();
+    await waitFor(() => expect(latest?.authStateReady).toBe(true));
+
+    expect(latest.authStateError).toMatchObject({ reason: "tenant-forbidden", retryable: true });
+    expect(latest.isAuthenticated).toBe(true);
+  });
+
   it("a slow syncAuthState landing AFTER logout cannot repopulate the session", async () => {
     let releaseProfile: (v: unknown) => void = () => {};
     h.adapter.getUserProfile.mockImplementation(
