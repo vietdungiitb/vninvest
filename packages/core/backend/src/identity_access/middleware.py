@@ -14,6 +14,11 @@ from django.core.cache import cache
 from django.http import JsonResponse
 from django.utils import timezone
 
+from identity_access.utils.resolve_tenant import (
+    first_eligible_tenant_for_user,
+    owner_tenant_for_user,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -214,53 +219,52 @@ class TenantResolutionMiddleware:
 
     def _resolve_tenant(self, request, user) -> tuple:
         """Resolve tenant from X-Tenant-ID header or fallback to owner/member."""
-        from identity_access.models import CoreTenant, TenantMember
+        from identity_access.models import TenantMember
 
         # 1. Try X-Tenant-ID header
         header_tenant_id = request.META.get('HTTP_X_TENANT_ID', '').strip()
         if header_tenant_id:
+            # Delegates to the shared owner-or-member membership check so this
+            # file and utils/resolve_tenant.py cannot drift apart again.
             tenant, role = self._resolve_by_header(header_tenant_id, user)
             if tenant:
                 return tenant, role
             # Header provided but invalid - return 403
             return None, None
 
-        # 2. Fallback: User is tenant owner
-        try:
-            tenant = CoreTenant.objects.select_related('owner_user').get(owner_user=user)
+        # 2. Fallback: User is tenant owner (OneToOne -> unambiguous)
+        tenant = owner_tenant_for_user(user)
+        if tenant is not None:
             return tenant, TenantMember.RoleChoices.OWNER
-        except CoreTenant.DoesNotExist:
-            pass
 
-        # 3. Fallback: First tenant where user is a member
-        member = TenantMember.objects.select_related('tenant').filter(user=user).first()
-        if member:
-            return member.tenant, member.role
-
-        return None, None
+        # 3. Fallback: first *eligible* tenant where user is a member.
+        # Was: TenantMember.objects.select_related('tenant').filter(user=user)
+        # .first()  -- no ordering, no status filter, so a user in 2+ tenants
+        # got a nondeterministic tenant that could be suspended.
+        return first_eligible_tenant_for_user(user)
 
     def _resolve_by_header(self, tenant_id: str, user) -> tuple:
-        """Validate X-Tenant-ID header against user's membership."""
-        from identity_access.models import CoreTenant, TenantMember
+        """Validate X-Tenant-ID header against user's membership.
 
-        try:
-            tenant = CoreTenant.objects.get(public_id=tenant_id)
-        except CoreTenant.DoesNotExist:
-            return None, None
+        Thin wrapper over the single shared membership check so that there is
+        exactly one owner-or-member rule in the codebase.
+        """
+        from identity_access.utils.resolve_tenant import resolve_tenant_for_user
 
-        # Check if user is owner
-        if tenant.owner_user_id == user.id:
-            return tenant, TenantMember.RoleChoices.OWNER
-
-        # Check if user is member
-        member = TenantMember.objects.filter(tenant=tenant, user=user).first()
-        if member:
-            return tenant, member.role
-
-        return None, None
+        return resolve_tenant_for_user(user, tenant_id)
 
     def _resolve_superuser_tenant(self, request, user):
-        """Best-effort tenant resolution for superusers."""
+        """Best-effort tenant context for superusers.
+
+        NOTE (audit tenantreg-b, not changed): this performs **no** status
+        check and assigns ``RoleChoices.OWNER`` unconditionally, for any
+        ``public_id`` supplied via the header. That is consistent with the
+        documented intent that superusers are not blocked by tenant status
+        ("Superusers bypass tenant resolution"), and ``IsTenantActive``
+        separately lets superusers through. Left as-is on purpose: narrowing it
+        would change operator behaviour, which is out of this slice's scope.
+        Reported for the owner to decide.
+        """
         from identity_access.models import CoreTenant, TenantMember
 
         header_tenant_id = request.META.get('HTTP_X_TENANT_ID', '').strip()
@@ -274,16 +278,17 @@ class TenantResolutionMiddleware:
                 pass
 
         # Fallback to first owned tenant
-        tenant = CoreTenant.objects.filter(owner_user=user).first()
-        if tenant:
+        tenant = owner_tenant_for_user(user)
+        if tenant is not None:
             request.tenant = tenant
             request.tenant_role = TenantMember.RoleChoices.OWNER
         else:
-            # Fallback to first member tenant
-            member = TenantMember.objects.select_related('tenant').filter(user=user).first()
-            if member:
-                request.tenant = member.tenant
-                request.tenant_role = member.role
+            # Fallback to first *eligible* member tenant (was: unordered,
+            # unfiltered `.first()`).
+            tenant, role = first_eligible_tenant_for_user(user)
+            if tenant is not None:
+                request.tenant = tenant
+                request.tenant_role = role
 
 
 class TenantQuotaMiddleware:
