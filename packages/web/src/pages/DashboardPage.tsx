@@ -159,16 +159,17 @@ export function DashboardPage({
   // --- Historical Alert Snapshot ---
   // F3: scope cùng phiên mới nhất như Alert Center (trước đây không timeframe
   // nên whale đa phiên lấn hết 20 slot, đẩy cảnh báo mới nhất ra ngoài).
+  //
+  // Pagination is deliberately NOT wired into the alert lane any more: the lane
+  // curates to the top 5 by priority and links out to Alert Center, which owns
+  // the paged list. The page size is raised to 40 so curation has something to
+  // choose from — at 20 it could show at most half the feed.
   const {
     alerts: snapshotAlerts,
     loading: snapshotLoading,
     error: snapshotError,
-    hasNextPage,
-    hasPrevPage,
-    goToNextPage,
-    goToPrevPage,
     loadInitial,
-  } = useAlertCenterSnapshot({ page_size: 20, timeframe: "session" });
+  } = useAlertCenterSnapshot({ page_size: 40, timeframe: "session" });
 
   useEffect(() => {
     if (resolvedPortfolioId && enabled) {
@@ -255,24 +256,14 @@ export function DashboardPage({
     return dedupAndSortAlerts(allAlerts) as AlertItem[];
   }, [alerts, realtimeFeed?.alerts, realtimeFeed?.darkFlowAlerts, globalRealtimeAlerts, snapshotAlerts]);
 
-  // Alert pagination state for UnifiedAlertCenter
-  const [severityFilter, setSeverityFilter] = useState<string>("all");
-
-  // Filter alerts by severity/source for the alert center component
-  const filteredUnifiedAlerts = React.useMemo(() => {
-    let result = mergedAlerts;
-    if (severityFilter !== "all") {
-      result = result.filter((a) => a?.severity === severityFilter);
-    }
-    return result;
-  }, [mergedAlerts, severityFilter]);
-
-  const alertSummary = React.useMemo(() => {
-    const critical = mergedAlerts.filter((a) => a?.severity === "critical" || a?.severity === "high").length;
-    const warning = mergedAlerts.filter((a) => a?.severity === "medium" || a?.severity === "warning").length;
-    const info = mergedAlerts.filter((a) => a?.severity === "low" || a?.severity === "info").length;
-    return { critical, warning, info, total: mergedAlerts.length };
-  }, [mergedAlerts]);
+  // Severity filter state for UnifiedAlertCenter.
+  //
+  // The component applies this filter itself and computes its per-severity pill
+  // counts from the UNFILTERED list. Filtering here as well meant the component
+  // received an already-filtered array, so clicking "Cao" collapsed `Tất cả`
+  // to (1) and every other pill to (0) — the counts a user relies on to decide
+  // what to click. Pass the merged list and let the component filter once.
+  const [severityFilter, setSeverityFilter] = React.useState<string>("all");
 
   // ----------------------------------
 
@@ -352,22 +343,17 @@ export function DashboardPage({
           <PageErrorBoundary>
             {showSkeleton
               ? <LoadingSkeleton rows={3} />
-              : <UnifiedAlertCenter {...{
-                  alerts: filteredUnifiedAlerts as any,
-                  alertSummary: alertSummary ?? null,
-                  loading: loading || snapshotLoading,
-                  error: snapshotError,
-                  selectedSession,
-                  onSelectSession: setSelectedSession,
-                  selectedSymbol,
-                  onSelectSymbol: setSelectedSymbol,
-                  severityFilter,
-                  onSeverityFilterChange: setSeverityFilter,
-                  backendUnifiedHasMore: hasNextPage,
-                  hasPreviousUnifiedPage: hasPrevPage,
-                  goToNextUnifiedPage: goToNextPage,
-                  goToPreviousUnifiedPage: goToPrevPage,
-                } as any} />
+                : <UnifiedAlertCenter {...{
+                    alerts: mergedAlerts as any,
+                    loading: loading || snapshotLoading,
+                    error: snapshotError,
+                    selectedSession,
+                    onSelectSession: setSelectedSession,
+                    selectedSymbol,
+                    onSelectSymbol: setSelectedSymbol,
+                    severityFilter,
+                    onSeverityFilterChange: setSeverityFilter,
+                  } as any} />
             }
           </PageErrorBoundary>
         </div>

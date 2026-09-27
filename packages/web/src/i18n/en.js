@@ -2399,13 +2399,6 @@ const en = {
     title: 'Alerts',
     empty: 'No alerts.',
     unread: 'unread',
-    source: {
-      whale: 'Whale',
-      dark_flow: 'Dark Flow',
-      price_shock: 'Price Shock',
-      stale_quote: 'Stale Quote',
-      system: 'System',
-    },
     severity: {
       critical: 'Critical',
       high: 'High',
@@ -2419,6 +2412,7 @@ const en = {
     nextPage: 'Next page',
     viewAll: 'View all',
     totalTooltip: '{count} alerts in the list',
+    seeMore: 'See {count} more alerts →',
     dirBuy: 'Buy',
     dirSell: 'Sell',
     valLabel: 'Value',

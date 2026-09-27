@@ -97,7 +97,11 @@ test.describe('Dashboard alert-lane probe (mocked 20 alerts)', () => {
     });
     console.log('PROBE:', JSON.stringify(probe, null, 1));
     await page.locator('.core-dashboard-slot--alert-lane').screenshot({ path: 'tests/visual/dashboard-alert-probe-lane.png' });
-    expect(probe.cardCount).toBe(20);
+    // CONTRACT CHANGE (Wave 2): the lane curates to the top 5 by priority and
+    // links out to Alert Center. It previously asserted exactly 20 cards, which
+    // locked in the "dump 20 rows into a summary widget" behaviour being removed.
+    expect(probe.cardCount).toBeLessThanOrEqual(5);
+    expect(probe.cardCount).toBeGreaterThan(0);
     expect(probe.listScroll!.clientH).toBeGreaterThan(0);
   });
 
@@ -130,9 +134,14 @@ test.describe('Dashboard alert-lane probe (mocked 20 alerts)', () => {
       };
     });
     console.log('PROBE-2COL:', JSON.stringify(probe));
-    expect(probe.cardCount).toBe(20);
+    // See the contract-change note above: curated to <= 5, not all 20.
+    expect(probe.cardCount).toBeLessThanOrEqual(5);
+    expect(probe.cardCount).toBeGreaterThan(0);
     expect(probe.listW).toBeGreaterThan(200);
-    expect(probe.firstCardH).toBeLessThan(160);
+    // The card is now ~93px (was ~130px): four bordered chips collapsed into
+    // one plain metadata line. 110 leaves headroom; 40 guards against a
+    // collapsed/zero-height render.
+    expect(probe.firstCardH).toBeLessThan(110);
     expect(probe.firstCardH).toBeGreaterThan(40);
     expect(probe.laneH).toBeGreaterThanOrEqual(470);
     expect(probe.overlapY).toBe(0);
