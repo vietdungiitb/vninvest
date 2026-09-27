@@ -62,7 +62,11 @@ def partner_dashboard_summary(request):
     members_total = tenant.members.count()
     members_active_today = _count_active_members_today(tenant)
 
-    api_calls_today = 0
+    # `QuotaRecord.api_calls_used` la tong TICH LUY TRONG THANG (xem
+    # `commercial/quota_period.py`), khong phai so goi trong ngay. Bien ten cu
+    # la trung thuc; khoa JSON `api_calls_today` giu nguyen de khong pha FE
+    # contract (`TenantAdminHomePage.tsx:399`).
+    api_calls_used_period = 0
     api_calls_limit = -1
     try:
         from commercial.models import QuotaRecord
@@ -72,14 +76,16 @@ def partner_dashboard_summary(request):
             period_end__gte=today,
         ).first()
         if qr:
-            api_calls_today = qr.api_calls_used or 0
+            api_calls_used_period = qr.api_calls_used or 0
             api_calls_limit = qr.api_calls_limit if qr.api_calls_limit and qr.api_calls_limit > 0 else -1
     except Exception:
         logger.warning("dashboard summary: QuotaRecord fallback", exc_info=True)
 
     quota_headroom_pct = 100
     if api_calls_limit > 0:
-        quota_headroom_pct = max(0, 100 - int((api_calls_today / max(api_calls_limit, 1)) * 100))
+        # Cung don vi: used(thang) / limit(thang). Truoc day `api_calls_used`
+        # chi luu gia tri cua MOT ngay nen headroom luon ~100%.
+        quota_headroom_pct = max(0, 100 - int((api_calls_used_period / max(api_calls_limit, 1)) * 100))
 
     member_activity_pct = int((members_active_today / max(members_total, 1)) * 100) if members_total > 0 else 100
     base_score = 30
@@ -148,7 +154,7 @@ def partner_dashboard_summary(request):
         'health_breakdown': health_breakdown,
         'members_active_today': members_active_today,
         'members_total': members_total,
-        'api_calls_today': api_calls_today,
+        'api_calls_today': api_calls_used_period,
         'api_calls_limit': api_calls_limit,
         'quota_headroom_pct': quota_headroom_pct,
         'api_calls_yesterday': api_calls_yesterday,

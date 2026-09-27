@@ -1450,7 +1450,8 @@ const en = {
     metricApiCalls: 'API Calls',
     healthLabel: 'Tenant Health',
     activeMembersLabel: 'Active Members',
-    apiCallsLabel: 'API Calls',
+    // Monthly running total (BE `QuotaRecord.api_calls_used`), not today's calls.
+    apiCallsLabel: 'API Calls / month',
     quotaHeadroomLabel: 'Quota Headroom',
     todayLabel: 'today',
     limitLabel: 'Limit',

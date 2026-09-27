@@ -42,6 +42,8 @@ Registry claim: `docs/CLAIMS.md`. Gate: `node packages/web/scripts/check-multi-a
 BE test cần `CORE_DATABASE_URL` + `DJANGO_DEBUG=1` (settings.py:27-34 raise `ImproperlyConfigured` nếu thiếu). DB riêng mỗi agent: `aicc_r0`. Nếu chưa chạy được, **ghi "CHƯA CHẠY"** — đừng suy ra "chắc là được".
 
 ## Progress
+### DOC MỐC 2026-09-27 — đọc `docs/OPEN_WORK_20260927.md` ĐẦU TIÊN khi nhận session mới
+Chứa: 6 việc còn tồn đọng (OW-01..OW-06, đủ `file:line` + nguyên nhân) · việc owner phải làm trước deploy · **baseline test đã biết** (BE `602 test — failures=10, errors=3`; 1 flake FE) để khỏi điều tra lại · bẫy quy trình đã gặp · quy tắc chạy test BE. 150+ `docs/*_HANDOFF_*.md` khác là **archive lịch sử**, không phải trạng thái hiện tại.
 ### OPEN P0 (2026-09-26) — Portfolio Commercial: **P0-SEC-01 CHỜ OWNER**, còn lại đã có code (Entry 232, 7 PR)
 - **7 PR đã merge vào `dev`**: #12 broker egress · #13 analytics tenant scope + ledger · #14 order fail-closed + **2 P0 mới** · #15 repair migration `0008` + tenant FK · #16 FE `mode` + `Idempotency-Key` · #17 addendum verify + báo cáo SEC-01.
 - **Audit 7/7 P0 vẫn đúng** ở HEAD — nhưng tài liệu sai 20 `file:line`, 3 sub-claim bị refute, 4 finding bị đánh giá THẤP, 2 bị đánh giá CAO. Chi tiết: `docs/evidence/portfolio-commercial/AUDIT_VERIFICATION_20260926.md`.

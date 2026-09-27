@@ -334,6 +334,8 @@ class TenantQuotaMiddleware:
         '/core/v1/schema/swagger-ui/',
         '/core/v1/schema/redoc/',
     )
+    # TTL cua bo dem NGAY. Chi 48h nen KHONG the cong don 30 ngay de ra han
+    # muc thang — phai dung bo dem thang rieng (`_increment_monthly_counter`).
     REDIS_KEY_TTL_SECONDS = 86400 * 2
 
     def __init__(self, get_response):
@@ -375,7 +377,10 @@ class TenantQuotaMiddleware:
             tenant_id = str(tenant.public_id)
             api_calls_limit = self._get_tenant_quota_limit(tenant)
 
-        used_calls = self._increment_daily_counter(tenant_id)
+        # Hai bo dem: ngay (analytics) va thang (enforce). Chi bo dem THANG
+        # duoc so voi `api_calls_limit` — do la han muc thang.
+        self._increment_daily_counter(tenant_id)
+        used_calls = self._increment_monthly_counter(tenant_id)
         # Update PAT last_used_at when the request was authenticated via a PAT.
         # request.auth is set to the CorePATCredential instance by
         # TenantResolutionMiddleware for PAT-authenticated requests.
@@ -407,13 +412,17 @@ class TenantQuotaMiddleware:
                 if is_pat:
                     self._enqueue_pat_audit(request, auth, 200)
                 return response
-            
+
+            # `used_calls` la tong tich luy TRONG THANG, nen thong diep phai
+            # noi "thang" chu khong phai "ngay" (truoc day tua nham, trai voi
+            # `verbose_name` cua field).
             response = JsonResponse(
                 {
                     'error': 'quota_exceeded',
-                    'detail': 'Vượt quá giới hạn API trong ngày. Nâng cấp plan để tiếp tục.',
+                    'detail': 'Vượt quá giới hạn API trong tháng. Nâng cấp plan để tiếp tục.',
                     'limit': api_calls_limit,
                     'used': used_calls,
+                    'period': 'monthly',
                 },
                 status=429,
             )
@@ -539,6 +548,32 @@ class TenantQuotaMiddleware:
     @staticmethod
     def _build_counter_key(tenant_id: str, day: date) -> str:
         return f'quota:api_calls:{tenant_id}:{day.isoformat()}'
+
+    def _increment_monthly_counter(self, tenant_id: str) -> int:
+        """Bo dem TICH LUY THANG — nguon su that duy nhat cho `api_calls_limit`.
+
+        `api_calls_limit` la **han muc thang** (`CoreTenant.api_calls_limit`
+        `verbose_name='API calls monthly limit'`), nen phai so voi tong tich luy
+        trong thang. Truoc day middleware so bo dem **ngay** voi han muc thang
+        => effective ~30x len.
+
+        Bo dem ngay (`_increment_daily_counter`) giu nguyen cho analytics, khong
+        dung cho enforce.
+        """
+        from commercial.quota_period import month_counter_key, month_counter_ttl
+
+        today = timezone.now().date()
+        key = month_counter_key(tenant_id, today)
+        if cache.add(key, 1, timeout=month_counter_ttl(today)):
+            return 1
+
+        try:
+            return cache.incr(key)
+        except ValueError:
+            # Khoa bi xoa giua chung (Redis flush / het TTL) => khoi tao lai.
+            if cache.add(key, 1, timeout=month_counter_ttl(today)):
+                return 1
+            return cache.incr(key)
 
 
 class RateLimitHeadersMiddleware:
