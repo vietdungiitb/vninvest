@@ -198,8 +198,11 @@ if ($LASTEXITCODE -ne 0) {
   Warn "check_large_files FAIL tren dev (no ton do, KHONG phai do branch nay)."
   Warn "Khong chan. Xem .github/workflows-disabled/README.md §Sau."
   Warn "Chi bao loi o file branch nay:"
-  $lf | Where-Object { $_ -match "packages/|scripts/" } |
-    Select-Object -First 5 | ForEach-Object { Warn "  $($_.ToString().Trim())" }
+  # Path Windows dung dau `\` nen phai khop `packages[\\/]` chu khong phai `packages/`.
+  $lf | ForEach-Object { $_.ToString() } |
+    Where-Object { $_ -match '(WARN|FAIL)\s+\d+' -and $_ -match 'packages[\\/]|scripts[\\/]' } |
+    Select-Object -First 5 |
+    ForEach-Object { Warn ("  " + ($_ -replace "`e\[[0-9;]*m", "").Trim()) }
 } else {
   Ok "check_large_files PASS"
 }
