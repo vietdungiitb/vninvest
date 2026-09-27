@@ -84,6 +84,18 @@ describe("useAlertCenterSnapshot pagination (F06 verification)", () => {
       result.current.loadInitial();
     });
     await waitFor(() => expect(mockFeed.getAlertCenterFeed).toHaveBeenCalledTimes(1));
+    // PHẢI chờ `nextCursor` đã vào state trước khi gọi `goToNextPage`.
+    //
+    // `toHaveBeenCalledTimes(1)` hài lòng ngay khi mock được *gọi* — tức trước
+    // khi `await` trong `fetchFeed` resolve và `setNextCursor` chạy. `goToNextPage`
+    // chặn bằng `if (nextCursor)` (useAlertCenterSnapshot.ts:107), nên gọi nó lúc
+    // đó là no-op ⇒ không có call thứ 2 ⇒ `waitFor` hết 1000ms và fail.
+    //
+    // Đây là race của TEST, không phải của hook: test 1 (dòng 43) đã chờ
+    // `hasNextPage` nên ổn định; test 2 thiếu bước đó nên fail ~50% số lần chạy
+    // (2/3 khi chạy riêng, nhưng lại pass khi chạy trong full suite — tức đây
+    // chính là nguồn nhiễu gate đã được ghi nhận ở nhiều wave trước).
+    await waitFor(() => expect(result.current.hasNextPage).toBe(true));
 
     act(() => {
       result.current.goToNextPage();
