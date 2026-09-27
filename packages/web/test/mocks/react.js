@@ -1,3 +1,19 @@
+/**
+ * Fake React hooks — CHỈ dùng cho `dashboard_lifecycle.test.js`.
+ *
+ * KHÔNG được đặt lại vào `<rootDir>/__mocks__/react.js`.
+ * Jest tự áp manual mock của **node module** cho MỌI test suite, không cần
+ * `jest.mock("react")`. Đặt ở `__mocks__/` đã làm hỏng 11/18 suite
+ * (`react.forwardRef is not a function`, `Cannot read properties of undefined
+ * (reading 'S')`) — 250 test không chạy được — để sửa 1 suite 5 test.
+ * Xem Entry 234 trong `docs/CODE_CHANGE_AUDIT_LEDGER.md`.
+ *
+ * Consumer phải trỏ tường minh:
+ *   jest.mock("react", () => require("<path>/test/mocks/react.js"));
+ *
+ * Fix bền vững hơn (CHƯA LÀM): viết lại `dashboard_lifecycle.test.js` bằng
+ * `renderHook` thật của @testing-library/react, xoá hẳn harness giả này.
+ */
 let mockStateVal = {};
 let mockStateSetters = {};
 let mockEffects = [];
