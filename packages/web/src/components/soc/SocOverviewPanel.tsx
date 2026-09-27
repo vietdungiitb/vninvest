@@ -347,6 +347,25 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
     );
   }, [services]);
 
+  // Gate `i18n:scan` (packages/web/i18next-scanner.config.cjs) đưa default value của
+  // lời gọi dịch cho esprima — parser JS thuần, KHÔNG hiểu cú pháp TypeScript. Trước
+  // đây IIFE chứa `data.generated_at as string` nằm ngay trong lời gọi dịch khiến
+  // scanner in "Unable to parse" rồi **vẫn exit 0** ⇒ gate im lặng. Tính sẵn ở ngoài để
+  // vừa hết lỗi parse vừa dễ đọc hơn.
+  const heroUpdatedAt = useMemo(() => {
+    const iso = data?.generated_at;
+    if (!iso) return "";
+    try {
+      return new Intl.DateTimeFormat(localeTag, {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }).format(new Date(iso));
+    } catch {
+      return String(iso);
+    }
+  }, [data?.generated_at, localeTag]);
+
   const handleToggle = (service: ServiceItem) => {
     setConfirmToggle(service);
     setToggleReason("");
@@ -531,19 +550,7 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
           ? createElement(
               "span",
               { style: { color: "var(--text-muted)", fontWeight: 400 } },
-              `· ${t("soc.overview.hero_updated_at", {
-                time: (() => {
-                  try {
-                    return new Intl.DateTimeFormat(localeTag, {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      second: "2-digit",
-                    }).format(new Date(data.generated_at as string));
-                  } catch {
-                    return String(data.generated_at);
-                  }
-                })(),
-              })}`,
+              `· ${t("soc.overview.hero_updated_at", { time: heroUpdatedAt })}`,
             )
           : null,
       ),
@@ -1069,7 +1076,13 @@ export function SocOverviewPanel({ onChangeTab }: SocOverviewPanelProps) {
                   disabled: !toggleReason.trim() || !!actionLoading[`toggle-${confirmToggle.service_key}`],
                   className: styles.schedulerModalProceed,
                 },
-                actionLoading[`toggle-${confirmToggle.service_key}`] ? t("soc.overview.loading_text") : t("common.confirm", { defaultValue: "Xác nhận" }),
+                // Giữ `t()` ở nhánh riêng, KHÔNG để làm đuôi của ternary: i18next-scanner
+                // cắt object option bằng `matchBalancedParentheses` và nuốt luôn dấu phẩy
+                // đuôi, rồi đưa cho esprima một biểu thức không hợp lệ. Scanner chỉ in
+                // "Unable to parse" rồi vẫn exit 0 ⇒ gate i18n:scan báo xanh giả.
+                actionLoading[`toggle-${confirmToggle.service_key}`]
+                  ? t("soc.overview.loading_text")
+                  : t("common.confirm", { defaultValue: "Xác nhận" }),
               ),
             ),
           ),

@@ -26,6 +26,7 @@ import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
 
 const i18nValue = {
   locale: "vi",
+  localeTag: "vi-VN",
   t: (key: string) => key,
   formatNumber: (n: unknown) => n,
   formatCurrency: (n: unknown) => n,
@@ -127,8 +128,8 @@ describe("TenantKeysPage", () => {
   it("revokes key after confirm", async () => {
     (defaultCoreApiAdapter.coreGet as ReturnType<typeof vi.fn>).mockImplementation(
       async (url: string) => {
-        if (String(url).includes("usage-summary")) return { total_keys: 1, keys: [] };
-        return { results: [{ id: "k1", label: "personal:mykey", token_prefix: "vni_pro_abcd" }] };
+        if (String(url).includes("usage-summary")) return { total_keys: 1, active_keys: 1, keys: [] };
+        return { results: [{ id: "k1", label: "personal:mykey", token_prefix: "vni_pro_abcd", status: "active" }] };
       });
     renderPage();
     await waitFor(() => {
@@ -141,5 +142,69 @@ describe("TenantKeysPage", () => {
       expect(defaultCoreApiAdapter.corePost).toHaveBeenCalledWith(
         "/partner/me/keys/k1/revoke/", expect.anything());
     });
+  });
+
+  it("renders a status pill per key so active vs revoked is distinguishable", async () => {
+    (defaultCoreApiAdapter.coreGet as ReturnType<typeof vi.fn>).mockImplementation(
+      async (url: string) => {
+        if (String(url).includes("usage-summary")) return { total_keys: 2, active_keys: 1, keys: [] };
+        return {
+          results: [
+            { pat_id: "k1", label: "personal:live", token_prefix: "vni_a", status: "active" },
+            { pat_id: "k2", label: "personal:dead", token_prefix: "vni_b", status: "revoked", revoked: true, revoked_at: "2026-09-20T10:00:00+07:00" },
+            { pat_id: "k3", label: "personal:old", token_prefix: "vni_c", status: "expired" },
+          ],
+        };
+      });
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId("key-status-k1")).toBeTruthy();
+    });
+    expect(screen.getByTestId("key-status-k1").textContent).toContain("tenantKeys.status.active");
+    expect(screen.getByTestId("key-status-k2").textContent).toContain("tenantKeys.status.revoked");
+    expect(screen.getByTestId("key-status-k3").textContent).toContain("tenantKeys.status.expired");
+    // the status column header exists
+    expect(document.body.textContent).toContain("tenantKeys.colStatus");
+  });
+
+  it("hides rotate/revoke on non-active keys and shows the active/total summary", async () => {
+    (defaultCoreApiAdapter.coreGet as ReturnType<typeof vi.fn>).mockImplementation(
+      async (url: string) => {
+        if (String(url).includes("usage-summary")) return { total_keys: 2, active_keys: 1, keys: [] };
+        return {
+          results: [
+            { pat_id: "k1", label: "personal:live", token_prefix: "vni_a", status: "active" },
+            { pat_id: "k2", label: "personal:dead", token_prefix: "vni_b", status: "revoked", revoked: true },
+          ],
+        };
+      });
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId("key-status-summary")).toBeTruthy();
+    });
+    // exactly one actionable row (the active one)
+    expect(screen.getAllByText("tenantKeys.revokeAction")).toHaveLength(1);
+    expect(screen.getAllByText("tenantKeys.noActions")).toHaveLength(1);
+  });
+
+  it("never renders a raw ISO timestamp for expires/last-used", async () => {
+    (defaultCoreApiAdapter.coreGet as ReturnType<typeof vi.fn>).mockImplementation(
+      async (url: string) => {
+        if (String(url).includes("usage-summary")) return { total_keys: 1, active_keys: 1, keys: [] };
+        return {
+          results: [{
+            pat_id: "k1", label: "personal:live", token_prefix: "vni_a", status: "active",
+            expires_at: "2026-09-27T21:55:59.060485+07:00",
+            last_used_at: "2026-09-26T08:00:00+07:00",
+          }],
+        };
+      });
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId("key-status-k1")).toBeTruthy();
+    });
+    const body = document.body.textContent || "";
+    expect(body).not.toContain("2026-09-27T21:55:59.060485+07:00");
+    expect(body).not.toContain("2026-09-26T08:00:00+07:00");
   });
 });
