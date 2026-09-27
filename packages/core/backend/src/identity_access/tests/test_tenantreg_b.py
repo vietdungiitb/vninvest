@@ -252,6 +252,7 @@ class B2MiddlewareLoggerTests(TenantFixtureMixin, TestCase):
         request.tenant = ent
 
         with patch.object(quota, '_increment_daily_counter', return_value=50), \
+             patch.object(quota, '_increment_monthly_counter', return_value=50), \
              patch.object(quota, '_get_tenant_quota_limit', return_value=10), \
              self.assertLogs('identity_access.middleware', level='WARNING') as logs:
             response = quota(request)
@@ -269,12 +270,16 @@ class B2MiddlewareLoggerTests(TenantFixtureMixin, TestCase):
         request.tenant = self.tenant_a
 
         with patch.object(quota, '_increment_daily_counter', return_value=99), \
+             patch.object(quota, '_increment_monthly_counter', return_value=99), \
              patch.object(quota, '_get_tenant_quota_limit', return_value=10):
             response = quota(request)
 
         self.assertEqual(response.status_code, 429, 'over-quota must be 429, never 500')
         body = json.loads(response.content.decode())
         self.assertEqual(body['error'], 'quota_exceeded')
+        # `api_calls_limit` la han muc THANG nen thong diep 429 phai noi thang.
+        self.assertEqual(body['period'], 'monthly')
+        self.assertIn('trong tháng', body['detail'])
 
     def test_enqueue_pat_audit_failure_logs_and_does_not_raise(self):
         """Branch 3 (pre-fix :407): the outer except of _enqueue_pat_audit.
@@ -791,6 +796,7 @@ class B9PatQuotaMeteringTests(TenantFixtureMixin, TestCase):
         request, _raw = self._pat_request()
         self.resolver(request)
         with patch.object(self.quota, '_increment_daily_counter', return_value=100), \
+             patch.object(self.quota, '_increment_monthly_counter', return_value=100), \
              patch.object(self.quota, '_get_tenant_quota_limit', return_value=10):
             response = self.quota(request)
         self.assertEqual(response.status_code, 429)

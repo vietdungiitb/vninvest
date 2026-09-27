@@ -21,6 +21,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from commercial.models import QuotaRecord
+from commercial.quota_period import month_counter_key
 from commercial.plan_catalog import (
     ALL_PLAN_CODES,
     PAID_PLAN_CODES,
@@ -160,11 +161,17 @@ class QuotaRecordSeedingTests(TestCase):
 
         today = timezone.now().date()
         period_start, period_end = _current_billing_period(today)
-        # The test cache is LocMem, which has no scan_iter, so _iter_quota_counter_keys
+        # The test cache is LocMem, which has no scan_iter, so the counter source
         # yields nothing. Patch the counter source instead of the cache backend so the
         # real get_or_create path is exercised.
-        raw_key = f'quota:api_calls:{self.tenant.public_id}:{today.isoformat()}'
-        with patch('commercial.tasks._iter_quota_counter_keys', return_value=iter([raw_key])), \
+        #
+        # Khoa phai la bo dem TICH LUY THANG (`quota:api_calls:month:...`), khong
+        # phai bo dem ngay: `REDIS_KEY_TTL_SECONDS = 86400 * 2` nen bo dem ngay
+        # khong cong don duoc 30 ngay, va ghi no vao ban ghi thang se chi lay
+        # gia tri cua mot ngay (han muc thang ~30x len).
+        raw_key = month_counter_key(self.tenant.public_id, today)
+        self.assertIn(':month:', raw_key)
+        with patch('commercial.tasks._iter_month_counter_keys', return_value=iter([raw_key])), \
              patch('commercial.tasks._cache_get_int', return_value=7):
             result = flush_quota_counters(str(today))
 

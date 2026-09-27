@@ -12,6 +12,13 @@ from django.core.cache import cache
 from django.utils import timezone
 
 from commercial.models import Invoice, QuotaRecord, Subscription, QuotaHistory
+from commercial.quota_period import (
+    current_billing_period,
+    month_counter_scan_pattern,
+    month_counter_scan_pattern_for,
+    month_counter_ttl,
+    period_slug,
+)
 from commercial.plan_catalog import (
     PLAN_ENTITLEMENTS,
     get_api_calls_limit,
@@ -63,6 +70,22 @@ def _iter_quota_counter_keys(day: date):
     return client.scan_iter(match=pattern)
 
 
+def _iter_month_counter_keys(tenant_public_id: str | None = None, today: date | None = None):
+    """Suan cac khoa bo dem TICH LUY THANG trong Redis.
+
+    Bo dem thang la nguon su that cho `QuotaRecord.api_calls_used` va cho
+    `middleware` khi enforce — ca hai deu theo don vi THANG.
+    """
+    client = getattr(cache, '_cache', None)
+    if client is None or not hasattr(client, 'scan_iter'):
+        return []
+    if tenant_public_id:
+        pattern = month_counter_scan_pattern_for(tenant_public_id, today or timezone.now().date())
+    else:
+        pattern = month_counter_scan_pattern(today or timezone.now().date())
+    return client.scan_iter(match=pattern)
+
+
 def _normalize_cache_key(raw_key) -> str:
     if isinstance(raw_key, bytes):
         return raw_key.decode('utf-8')
@@ -70,6 +93,15 @@ def _normalize_cache_key(raw_key) -> str:
 
 
 def _extract_tenant_id_from_key(raw_key: str) -> str | None:
+    """Tenant tu khoa bo dem, ca hai dang:
+    - ngay  : `quota:api_calls:{tenant}:{YYYY-MM-DD}`            (4 phan)
+    - thang : `quota:api_calls:month:{tenant}:{YYYY-MM}`         (5 phan)
+
+    `parts[-2]` ra dung `tenant` cho ca hai: khoa 4 phan thi `-2` = index 2,
+    khoa 5 phan thi `-2` = index 3. **Da verify** bang test
+    `tests/test_quota_period_accumulation.py::QuotaTenantIdExtractionTests`,
+    nen khong tach ham rieng cho khoa thang.
+    """
     parts = str(raw_key).split(':')
     if len(parts) < 4:
         return None
@@ -85,10 +117,8 @@ def _cache_get_int(raw_key) -> int:
 
 
 def _current_billing_period(today: date) -> tuple[date, date]:
-    period_start = today.replace(day=1)
-    next_month_anchor = (period_start + timedelta(days=32)).replace(day=1)
-    period_end = next_month_anchor - timedelta(days=1)
-    return period_start, period_end
+    """SSOT o `commercial/quota_period.py` — giu wrapper de khong doi het call site."""
+    return current_billing_period(today)
 
 
 def _invoice_number_for(tenant: CoreTenant, period_start: date) -> str:
@@ -130,8 +160,14 @@ def flush_quota_counters(self, target_date: str | None = None):
     period_start, period_end = _current_billing_period(today)
     processed = 0
     try:
-        for raw_key in _iter_quota_counter_keys(today):
-            tenant_public_id = _extract_tenant_id_from_key(_normalize_cache_key(raw_key))
+        # Doc khoa bo dem THANG. Bo dem ngay khong dung o day: TTL chi 48h
+        # (`middleware.REDIS_KEY_TTL_SECONDS`) nen khong cong don duoc, va
+        # ghi no vao `QuotaRecord` thang chi lay gia tri cua MOT ngay — day la
+        # ly do `api_calls_used` truoc day **khong bao gio tang dan** (bi ghi
+        # de moi lan flush) va han muc thang thuc te ~30x len.
+        for raw_key in _iter_month_counter_keys(today=today):
+            normalized = _normalize_cache_key(raw_key)
+            tenant_public_id = _extract_tenant_id_from_key(normalized)
             if not tenant_public_id:
                 continue
 
@@ -157,6 +193,8 @@ def flush_quota_counters(self, target_date: str | None = None):
                     'api_calls_limit': get_api_calls_limit(tenant.plan),
                 },
             )
+            # Bo dem thang LA tong tich luy nen gan truc tiep, khong cong them
+            # (cong them se lam double-count moi lan flush).
             if quota_record.api_calls_used != used_calls:
                 quota_record.api_calls_used = used_calls
                 quota_record.save(update_fields=['api_calls_used', 'updated_at'])
@@ -168,6 +206,8 @@ def flush_quota_counters(self, target_date: str | None = None):
         return {
             'status': 'ok',
             'date': today.isoformat(),
+            'period': f'{period_start.isoformat()}/{period_end.isoformat()}',
+            'unit': 'monthly',
             'processed': processed,
         }
     finally:
