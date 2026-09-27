@@ -339,6 +339,7 @@ export function DashboardPage({
                 loading={loading}
                 realtimeBreadth={resolvedBreadth}
                 updatedAt={(summary as any)?.updated_at ?? null}
+              asOf={(summary as any)?.as_of ?? null}
                 onRefresh={refresh}
               />
           }

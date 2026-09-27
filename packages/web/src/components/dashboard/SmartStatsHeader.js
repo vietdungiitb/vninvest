@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import { createElement, useMemo } from "react";
 import { RotateCw } from "lucide-react";
 import { useI18n } from "../../context/LangContext.js";
 import { signOf, formatUpdateTime, formatTimeAgo } from "../../utils/formatMarket.js";
@@ -16,17 +16,23 @@ export function SmartStatsHeader({
   loading,
   realtimeBreadth,
   onRefresh,
-  // Giờ đồng bộ giá gần nhất (summary.updated_at). Nếu BE chưa có field này,
-  // DashboardPage truyền null và component dùng giờ render — xem comment ở updatedLabel.
+  // Giờ đồng bộ giá gần nhất. API KHÔNG có `updated_at`; chỉ có `as_of`
+  // (ngày) — xem khối tính updatedTs bên dưới. Không có giá trị nào thì hiện
+  // "—" thay vì giờ render.
   updatedAt = null,
+  asOf = null,
   className = "",
 }) {
   const { t } = useI18n();
   const analyticsData = analytics;
 
-  const marketValue = summary?.total_market_value || 0;
-  const dayPL = summary?.total_unrealized_pl || 0;
-  const dayPLPct = summary?.total_unrealized_pl_pct || 0;
+  // `total_market_value` / `total_unrealized_pl` arrive from the API as
+  // formatted strings (e.g. "0.00"), not numbers. Using them directly made
+  // `!"0.00"` false, so the empty-portfolio CTA could never appear, and
+  // `"0.00" > 0` false, so the currency suffix was dropped for a zero value.
+  const marketValue = Number(summary?.total_market_value) || 0;
+  const dayPL = Number(summary?.total_unrealized_pl) || 0;
+  const dayPLPct = Number(summary?.total_unrealized_pl_pct) || 0;
   const plSign = signOf(dayPL);
 
   const hasAnalytics = analyticsData && [
@@ -35,15 +41,34 @@ export function SmartStatsHeader({
     analyticsData.sharpe_ratio,
     analyticsData.max_drawdown_pct,
   ].some((v) => v !== null && v !== undefined);
-  const isEmptyPortfolio = !loading && !marketValue && !hasAnalytics;
+  const isEmptyPortfolio = !loading && marketValue === 0 && !hasAnalytics;
 
-  const updatedTs = updatedAt ? new Date(updatedAt).getTime() : Date.now();
-  const isStale = Boolean(updatedAt) && Number.isFinite(updatedTs) && (Date.now() - updatedTs > STALE_AFTER_MS);
-  // S5.1 — relative time "cập nhật Xs trước" dùng shared formatTimeAgo (chuyển từ UnifiedAlertCenter timeAgo)
-  // absolute vẫn giữ trong title để tooltip giờ chính xác; khi updatedAt null dùng giờ render, không gắn stale.
-  const absoluteTime = formatUpdateTime(Number.isFinite(updatedTs) ? updatedTs : Date.now());
-  const relativeTime = formatTimeAgo(Number.isFinite(updatedTs) ? updatedTs : Date.now());
-  const updatedLabel = `${t("smartStats.updatedAt")} ${relativeTime}`;
+  // Honesty rule: the API exposes no `updated_at`; the only real freshness
+  // signal is `as_of`, and that is a DATE, not an instant. Rendering a date as
+  // "20 hours ago" would be its own lie (today's date parses to local
+  // midnight), so the two are kept apart:
+  //   - updatedAt (a real timestamp) -> relative "Xs ago"
+  //   - asOf      (a YYYY-MM-DD date) -> the date itself
+  //   - neither                     -> an em dash, never the render time
+  const updatedTs = useMemo(() => {
+    if (!updatedAt) return null;
+    const ts = new Date(updatedAt).getTime();
+    return Number.isFinite(ts) ? ts : null;
+  }, [updatedAt]);
+  const asOfDate = useMemo(() => {
+    if (updatedTs !== null) return null;
+    if (!asOf) return null;
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(asOf));
+    if (!m) return null;
+    return `${m[3]}/${m[2]}/${m[1]}`;
+  }, [asOf, updatedTs]);
+  const isStale = updatedTs !== null && Date.now() - updatedTs > STALE_AFTER_MS;
+  const absoluteTime = updatedTs !== null ? formatUpdateTime(updatedTs) : asOfDate || "";
+  const updatedLabel = updatedTs !== null
+    ? `${t("smartStats.updatedAt")} ${formatTimeAgo(updatedTs)}`
+    : asOfDate
+      ? `${t("smartStats.asOf")} ${asOfDate}`
+      : t("smartStats.updatedAtUnknown", { defaultValue: "Chưa có giờ cập nhật" });
 
   const breadthTotal = (realtimeBreadth?.up || 0) + (realtimeBreadth?.down || 0) + (realtimeBreadth?.flat || 0);
 
@@ -70,8 +95,8 @@ export function SmartStatsHeader({
           e(
             "span",
             { className: "text-sm font-black text-slate-100 leading-none" },
-            loading || !marketValue ? "--" : Number(marketValue).toLocaleString("vi-VN"),
-            marketValue > 0 && e("span", { className: "text-[10px] font-normal text-slate-600 ml-1" }, "đ")
+            loading ? "--" : marketValue.toLocaleString("vi-VN"),
+            !loading && e("span", { className: "text-[10px] font-normal text-slate-600 ml-1" }, "đ")
           )
         ),
         e(
