@@ -126,12 +126,30 @@ export function clearBrowserSessionStorage(key) {
 
 let storageUnsubscribe = null;
 
+/**
+ * Emitted (cross-tab) when another tab removed `access_token` from
+ * localStorage. Listeners clear their local session; nothing reloads.
+ * See initTokenStorageSync for why the old `location.reload()` was removed.
+ */
+export const CORE_TOKENS_CLEARED_EVENT = "core-tokens-cleared";
+
 export function initTokenStorageSync() {
   if (storageUnsubscribe) return;
   storageUnsubscribe = listenTokenStorage((e) => {
     if (e.key === "access_token" && !e.newValue) {
-      // Another tab cleared tokens → trigger logout
-      window?.location?.reload();
+      // Another tab removed the token (user logged out there, or a refresh
+      // failed there). `storage` events fire ONLY in the other documents, and
+      // this handler writes nothing back, so relaying an event cannot loop.
+      //
+      // The old behaviour was `window.location.reload()`, which hard-reloaded
+      // every other open tab — including background ones — discarding their
+      // in-memory state and re-downloading the whole bundle to arrive at the
+      // exact same conclusion ("no token → /login"). Relaying an event lets
+      // PortfolioContext clear its session so ProtectedRoute redirects the same
+      // way, without the reload.
+      if (typeof window === "undefined" || typeof window.dispatchEvent !== "function") return;
+      if (typeof CustomEvent !== "function") return;
+      window.dispatchEvent(new CustomEvent(CORE_TOKENS_CLEARED_EVENT));
     }
   });
 }
@@ -166,17 +184,51 @@ export const authTokenStorage = Object.freeze({
   },
 });
 
+/**
+ * Single source of truth for the active workspace id.
+ *
+ * E1 (P0): this used to read/write **sessionStorage** while
+ * `PortfolioContext.switchTenant` and ~12 other call sites read/wrote
+ * **localStorage**. `tenantIdStorage.setTenantId` had zero real callers, so no
+ * request ever carried `X-Tenant-ID` and the backend resolved the tenant from
+ * the PAT owner — a member of workspace B saw workspace A's data under B's
+ * label. localStorage wins because it is what the rest of the app already reads
+ * (`ScreenerPage.tsx`, `WatchlistContext.tsx`, `useTenantAdminQuery.ts`,
+ * `useTenantSelfQuery.ts`, `ScreenerCommunity.tsx`, `ScreenerHistory.tsx`,
+ * `ScreenerSchedulePanel.tsx`).
+ */
+export const TENANT_ID_STORAGE_KEY = "tenant_id";
+
 export const tenantIdStorage = Object.freeze({
   getTenantId() {
-    return getBrowserSessionStorage("tenant_id");
+    const stored = getBrowserStorageToken(TENANT_ID_STORAGE_KEY);
+    if (stored) return stored;
+    // One-time migration: builds before this fix stored the id in
+    // sessionStorage. Adopt it so an in-flight user is not dropped out of their
+    // workspace by the fix itself.
+    const legacy = getBrowserSessionStorage(TENANT_ID_STORAGE_KEY);
+    if (legacy) setBrowserStorageToken(TENANT_ID_STORAGE_KEY, legacy);
+    return legacy;
   },
   setTenantId(value) {
-    setBrowserSessionStorage("tenant_id", value);
+    setBrowserStorageToken(TENANT_ID_STORAGE_KEY, value);
   },
   clearTenantId() {
-    clearBrowserSessionStorage("tenant_id");
+    clearBrowserStorageToken(TENANT_ID_STORAGE_KEY);
+    // Drop the legacy mirror too, otherwise getTenantId() would resurrect it.
+    clearBrowserSessionStorage(TENANT_ID_STORAGE_KEY);
   },
 });
+
+/**
+ * R5 staff-switch token lives in sessionStorage (`X-Staff-Switch` header,
+ * read in requestWithAuth). Logout must drop it: leaving a 30-minute
+ * view-as-tenant token behind would silently re-apply it to the next user of
+ * the same browser profile.
+ */
+export function clearStaffSwitchSession() {
+  clearBrowserSessionStorage("staff_switch");
+}
 
 export function getAuthorizationHeader(getToken) {
   const token = typeof getToken === "function" ? getToken() : null;
@@ -332,6 +384,7 @@ export function createCoreTransport(env = {}, options = {}) {
       ...(init.headers || {}),
     };
 
+    // E1: read the single source of truth so a workspace switch reaches the API.
     const storedTenantId = tenantIdStorage.getTenantId();
     if (storedTenantId) {
       headers["X-Tenant-ID"] = storedTenantId;

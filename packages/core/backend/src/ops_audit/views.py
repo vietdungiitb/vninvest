@@ -14,11 +14,37 @@ class AuditLogListView(generics.ListAPIView):
     pagination_class = AuditCursorPagination
 
     def get_queryset(self):
+        """Fail closed on tenant scoping.
+
+        Was:
+            qs = AuditEvent.objects.all().order_by('-occurred_at')
+            tenant_id = getattr(getattr(self.request.user, 'core_tenant', None),
+                                'public_id', None)
+            if tenant_id:
+                qs = qs.filter(tenant_id=tenant_id)
+
+        `user.core_tenant` is the reverse side of the CoreTenant.owner_user
+        OneToOne, so it is absent for any member-only account. A superuser or
+        staff user with no OWNED tenant got tenant_id=None and therefore an
+        UNFILTERED, cross-tenant list of every tenant's request log, IPs, actor
+        usernames and request ids. The view also ignored `request.tenant`
+        entirely, so a staff-switch session was scoped to the wrong tenant.
+
+        Now: prefer the request-scoped tenant resolved by
+        TenantResolutionMiddleware, fall back to the owned tenant, and return
+        nothing at all when neither resolves.
+        """
         qs = AuditEvent.objects.all().order_by('-occurred_at')
-        tenant_id = getattr(getattr(self.request.user, 'core_tenant', None), 'public_id', None)
-        if tenant_id:
-            qs = qs.filter(tenant_id=tenant_id)
-        return qs
+
+        tenant = getattr(self.request, 'tenant', None)
+        if tenant is None:
+            tenant = getattr(getattr(self.request, 'user', None), 'core_tenant', None)
+
+        tenant_public_id = getattr(tenant, 'public_id', None)
+        if not tenant_public_id:
+            return qs.none()
+
+        return qs.filter(tenant_id=str(tenant_public_id))
 
     def get_serializer_class(self):
         return AuditEventSerializer

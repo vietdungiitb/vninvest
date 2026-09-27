@@ -2,7 +2,8 @@ import { test, expect } from '@playwright/test';
 
 // Probe chẩn đoán với data mock y hệt user: portfolio có holdings,
 // snapshot 20 alerts (15 high / 4 medium / 1 low), AI feed rỗng.
-test.describe('Dashboard alert-lane probe (mocked 20 alerts)', () => {
+// Lane curation ra 5 (Wave 2) — 20 vẫn là input để chứng minh phần bị ẩn còn truy cập được.
+test.describe('Dashboard alert-lane probe (20 alerts in → top 5 curated)', () => {
   test.beforeEach(async ({ page }) => {
     const alerts = Array.from({ length: 20 }, (_, i) => ({
       alert_id: `snap-${i}`,
@@ -56,7 +57,7 @@ test.describe('Dashboard alert-lane probe (mocked 20 alerts)', () => {
     await page.waitForURL('**/dashboard', { timeout: 15000 });
   });
 
-  test('20 alerts → 20 card hiện, counter khớp, lane full-height, AI không chồng deck', async ({ page }) => {
+  test('20 alerts vào → 5 card theo ưu tiên, counter khớp, lane full-height, AI không chồng deck', async ({ page }) => {
     page.on('pageerror', (err) => console.log('PAGE ERROR:', err.message));
     const lane = page.locator('.core-dashboard-slot--alert-lane');
     await expect(lane).toBeVisible({ timeout: 20000 });
@@ -97,7 +98,16 @@ test.describe('Dashboard alert-lane probe (mocked 20 alerts)', () => {
     });
     console.log('PROBE:', JSON.stringify(probe, null, 1));
     await page.locator('.core-dashboard-slot--alert-lane').screenshot({ path: 'tests/visual/dashboard-alert-probe-lane.png' });
-    expect(probe.cardCount).toBe(20);
+    // CONTRACT CHANGE (Wave 2): the lane curates to the top 5 by priority and
+    // links out to Alert Center. It previously asserted exactly 20 cards, which
+    // locked in the "dump 20 rows into a summary widget" behaviour being removed.
+    //
+    // Số đo THẬT (Playwright, 2026-09-27, 1-col 343px):
+    //   Wave 1 -> cardHeights [125,125,...], laneH 720, cardCount 20
+    //   Wave 2 -> cardHeights [98,98,...],   laneH 701, cardCount 5
+    // Ngân sách 110px bám sát 98px thật; trước đây dùng 160px vì chỉ ước lượng.
+    expect(probe.cardCount).toBe(5);
+    expect(probe.cardHeights!.every((h: number) => h <= 110)).toBe(true);
     expect(probe.listScroll!.clientH).toBeGreaterThan(0);
   });
 
@@ -130,9 +140,15 @@ test.describe('Dashboard alert-lane probe (mocked 20 alerts)', () => {
       };
     });
     console.log('PROBE-2COL:', JSON.stringify(probe));
-    expect(probe.cardCount).toBe(20);
+    // See the contract-change note above: curated to 5, not all 20.
+    expect(probe.cardCount).toBe(5);
     expect(probe.listW).toBeGreaterThan(200);
-    expect(probe.firstCardH).toBeLessThan(160);
+    // Số đo THẬT (Playwright, 2026-09-27, 2-col 484px):
+    //   Wave 1 -> firstCardH 100, laneH 720
+    //   Wave 2 -> firstCardH  98, laneH 701
+    // Ở layout 2-col cải thiện chỉ ~2px (chip vốn đã vừa 1 hàng); giảm rõ 27px
+    // ở 1-col 343px. Comment cũ ghi "~130px -> ~93px" là UỚC LƯỢNG, đã bị đo lại.
+    expect(probe.firstCardH).toBeLessThanOrEqual(100);
     expect(probe.firstCardH).toBeGreaterThan(40);
     expect(probe.laneH).toBeGreaterThanOrEqual(470);
     expect(probe.overlapY).toBe(0);

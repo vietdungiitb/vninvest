@@ -258,6 +258,13 @@
   }
 
   /* Glass morphism */
+  /* `.glass` — RESTORED 2026-09-27. Wave 0 (PR #25) xoá rule này o tin rang
+     "dead CSS", nhung grep chi danh dashboard. Tai day co 26 ref tren 9 file:
+     StockDetailTabs.js (10), StockContextDeck.js, StockInsightDeck.js,
+     PortfolioHeatmap.js, adminUi.tsx, WhaleAdvisoryPage.tsx va 3 advisory
+     component. Xoá no lam `/stock-detail`, `/admin`, `/ai-advisory`, `/dashboard`
+     mat nen -> 78/121 test Playwright fail `toBeVisible()`. XOA CSS PHAI GREP
+     TOAN REPO (nhac trong AGENTS.md), khong phai chi lane dang sua. */
   .glass {
     background: rgba(15, 23, 42, 0.8);
     backdrop-filter: blur(12px);
@@ -290,29 +297,6 @@
     box-shadow:
       0 12px 40px -4px rgba(0, 0, 0, 0.3),
       inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-  }
-
-  .agentic-glow-cyan {
-    box-shadow: 0 0 20px rgba(61, 217, 235, 0.08);
-  }
-
-  .agentic-glow-cyan::after {
-    content: "";
-    position: absolute;
-    inset: -1px;
-    border-radius: inherit;
-    opacity: 0;
-    transition: opacity 0.5s ease;
-    background: radial-gradient(
-      600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-      rgba(61, 217, 235, 0.1),
-      transparent 40%
-    );
-    pointer-events: none;
-  }
-
-  .agentic-glow-cyan:hover::after {
-    opacity: 1;
   }
 
   [data-theme="light"] .neon-glass-panel {
@@ -408,15 +392,22 @@
       BENTO BOX LAYOUT - Commercial Grade Dashboard Styles
       ========================================================================== */
 
-  /* S4.1+S4.2 — Triad lane single card layer, clamp height, responsive grid */
+  /* S4.1+S4.2 — Triad lane single card layer, content-sized height, responsive grid */
   .dashboard-triad-lane {
     background: var(--bg-panel-soft, rgba(30, 41, 59, 0.4));
     border: 1px solid var(--border-default, rgba(51, 65, 85, 0.6));
     border-radius: var(--r-lg, 0.75rem); /* 12px = rounded-xl */
     padding: 1rem; /* 16px within 16-20 allowed */
     box-shadow: var(--shadow-panel, 0 10px 15px -3px rgba(0, 0, 0, 0.3));
-    height: clamp(480px, calc(100dvh - var(--dash-chrome, 320px)), 720px);
-    min-height: 0;
+    /* Content-sized, NOT a fixed clamp. The old
+       `height: clamp(480px, calc(100dvh - var(--dash-chrome, 320px)), 720px)`
+       locked all 3 lanes to 480-720px regardless of dataset, and
+       `--dash-chrome` was never defined anywhere so the fallback was
+       permanently in effect. Lane now grows with content and only scrolls
+       past max-height. */
+    height: auto;
+    min-height: 360px;
+    max-height: 720px;
     min-width: 0;
     overflow: hidden;
     display: flex;
@@ -432,7 +423,9 @@
     box-shadow:
       0 10px 15px -3px rgba(0, 0, 0, 0.3),
       0 4px 6px -4px rgba(0, 0, 0, 0.1);
-    min-height: 400px;
+    /* No min-height: the inner content already floors this (see
+       CoreDashboardPositionDeck `min-h-[280px]`), and a second 400px floor
+       stacked on top produced a ~545px block for a single-row table. */
     min-width: 0;
     overflow: auto;
   }
@@ -443,6 +436,10 @@
     grid-template-columns: 1fr 1.5fr 1fr;
     gap: 1rem; /* 16px */
     min-width: 0;
+    /* Let each lane keep its own content height. Default `stretch` forced the
+       short lanes (heatmap, AI) to match the tallest one, which re-created the
+       empty space the content-sized height was meant to remove. */
+    align-items: start;
   }
 
   /* Keep min-width:0 every lane (S4.1) */
@@ -599,12 +596,10 @@
     margin-bottom: 1rem; /* mb-4 */
   }
 
-  /* Deck slot */
-  .core-dashboard-slot--deck {
-    /* Full width deck */
-  }
-
-  /* Heatmap slot — tighter padding (top stays 1.25rem for header alignment) */
+  /* Heatmap slot — tighter padding on purpose so the treemap gets the width.
+     NOTE: this is 1.25rem top vs 1rem on the side lanes, i.e. the three lanes
+     are NOT top-aligned. The previous comment claimed "header alignment";
+     it did not hold. */
   div.core-dashboard-slot--heatmap {
     padding: 1.25rem 0.5rem 0.5rem 0.5rem;
   }
@@ -672,27 +667,6 @@
 
   .panel-scrollbar::-webkit-scrollbar-thumb:hover {
     background-color: #364760;
-  }
-
-  /* Card hover effects */
-  .bento-card-hover {
-    transition: all 0.2s ease-out;
-  }
-
-  .bento-card-hover:hover {
-    border-color: rgba(6, 182, 212, 0.4); /* border-cyan-400/40 */
-    box-shadow:
-      0 20px 25px -5px rgba(0, 0, 0, 0.4),
-      0 8px 10px -6px rgba(0, 0, 0, 0.1); /* shadow-xl */
-  }
-
-  /* Focus visible for interactive elements */
-  .focus-visible-ring:focus-visible {
-    outline: none;
-    ring: 2px;
-    ring-color: var(--color-accent-primary);
-    ring-offset: 2px;
-    ring-offset-color: var(--color-bg-primary);
   }
 
   /* Dashboard audit S3 — Heatmap legend gradient 5 stops trầm (L6: #eab308 chỉ viền, không fill) */

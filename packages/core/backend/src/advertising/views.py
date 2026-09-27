@@ -7,6 +7,8 @@ from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework.views import APIView
+from vninvest_core.client_ip import get_client_ip
+
 from rest_framework.response import Response
 from rest_framework import status, permissions, viewsets
 from rest_framework.authentication import SessionAuthentication
@@ -136,7 +138,7 @@ class ContentDisplayView(APIView):
 
         # Generate HMAC security signature
         expires_at = int(time.time()) + 300  # 5 minutes expiry window
-        client_ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '')).split(',')[0].strip()
+        client_ip = get_client_ip(request)
         campaign_id_str = str(selected_campaign.id)
         tenant_id_str = str(tenant.public_id) if tenant else ""
 
@@ -174,9 +176,11 @@ def _sign_ad_tracking_urls(request, campaign_id_str, tenant_id_str, symbol):
     Shared by ContentDisplayView (legacy single-ad) and WidgetAdView (array).
     """
     expires_at = int(time.time()) + 300  # 5 minutes expiry window
-    client_ip = request.META.get(
-        'HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '')
-    ).split(',')[0].strip()
+    # Was a hand-rolled left-most X-Forwarded-For read. That entry is the one the
+    # CLIENT supplied, so the ad-signing HMAC was computed over an address the
+    # caller chose. Delegates to the shared SSOT, which honours the header only
+    # when the immediate peer is a trusted proxy.
+    client_ip = get_client_ip(request)
     ad_signing_secret = getattr(
         settings, 'CORE_AD_SIGNING_SECRET', 'dev-ad-signing-secret-replace-in-production'
     )
@@ -350,7 +354,7 @@ class BaseMetricsLogView(APIView):
             raise ValidationErrorException("Invalid expiration time.")
 
         # 2. Check client IP match
-        client_ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '')).split(',')[0].strip()
+        client_ip = get_client_ip(request)
 
         # 3. Verify HMAC signature integrity
         ad_signing_secret = getattr(settings, 'CORE_AD_SIGNING_SECRET', 'dev-ad-signing-secret-replace-in-production')

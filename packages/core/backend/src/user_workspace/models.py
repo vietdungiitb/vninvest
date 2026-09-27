@@ -6,12 +6,17 @@ Portfolio, Transaction, Watchlist/WatchlistItem replacing legacy counterparts.
 ISOLATION RULE: No imports from backend.portfolio or backend.* allowed.
 TENANT ISOLATION: All user-scoped models now have explicit tenant FK to identity_access.CoreTenant.
 """
+import logging
 from decimal import Decimal
 
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 
 class Portfolio(models.Model):
@@ -56,6 +61,16 @@ class Portfolio(models.Model):
 class Transaction(models.Model):
     """
     Giao dịch trong danh mục đầu tư core SaaS.
+
+    P0-DATA-02: enforce giá/khối lượng/phí/thuế ở tầng model.
+    - `MinValueValidator` trên field ⇒ chặn âm ở **mọi** loại lệnh, và DRF
+      `ModelSerializer` tự kế thừa (nên API chặn luôn, không cần sửa
+      `serializers.py`).
+    - `clean()` bổ sung luật theo loại: BUY/SELL bắt buộc `quantity > 0` và
+      `price > 0`. `DIVIDEND` là cash flow (plan D-06 — cổ tức KHÔNG giảm cost
+      basis) nên không ép giá > 0.
+    - Oversell **không** kiểm ở đây: model không đủ ngữ cảnh portfolio/ledger
+      (plan `IMPLEMENTATION_PLAN_PORTFOLIO_COMMERCIAL_HARDENING_20260925.md:277`).
     """
 
     class TransactionType(models.TextChoices):
@@ -86,10 +101,30 @@ class Transaction(models.Model):
         verbose_name='Loại lệnh',
     )
     date = models.DateField(db_index=True, verbose_name='Ngày giao dịch')
-    price = models.DecimalField(max_digits=18, decimal_places=2, verbose_name='Giá khớp (VNĐ)')
-    quantity = models.BigIntegerField(verbose_name='Số lượng cổ phiếu')
-    fee = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name='Phí giao dịch')
-    tax = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name='Thuế')
+    price = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0'))],
+        verbose_name='Giá khớp (VNĐ)',
+    )
+    quantity = models.BigIntegerField(
+        validators=[MinValueValidator(0)],
+        verbose_name='Số lượng cổ phiếu',
+    )
+    fee = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(Decimal('0'))],
+        verbose_name='Phí giao dịch',
+    )
+    tax = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(Decimal('0'))],
+        verbose_name='Thuế',
+    )
     external_id = models.CharField(max_length=100, blank=True, default='', db_index=True, verbose_name='Mã tham chiếu broker')
     note = models.TextField(blank=True, default='', verbose_name='Ghi chú')
     # Migration tracking
@@ -104,6 +139,24 @@ class Transaction(models.Model):
         indexes = [
             models.Index(fields=['portfolio', 'symbol', 'date']),
         ]
+
+    def clean(self):
+        """Luật theo loại lệnh — chỉ chạy khi gọi `full_clean()`.
+
+        Ghi chú: `full_clean()` KHÔNG được gọi tự động khi `.save()`, nên đường
+        API phải dựa vào `validators` ở field (DRF `ModelSerializer` có gọi).
+        Ràng buộc theo loại ở tầng API cần thêm `validate()` trong
+        `serializers.py` — file ngoài phạm vi slice này, đã báo coordinator.
+        """
+        super().clean()
+        if self.transaction_type not in (self.TransactionType.BUY, self.TransactionType.SELL):
+            return
+        if self.quantity is not None and self.quantity <= 0:
+            raise ValidationError(
+                {'quantity': 'Số lượng phải > 0 với giao dịch MUA/BÁN.'})
+        if self.price is not None and self.price <= Decimal('0'):
+            raise ValidationError(
+                {'price': 'Giá phải > 0 với giao dịch MUA/BÁN.'})
 
     def __str__(self) -> str:
         return f'{self.transaction_type} {self.quantity} {self.symbol} @ {self.price}'
@@ -480,6 +533,20 @@ class UserBrokerConfig(models.Model):
         verbose_name='Người dùng',
         db_index=True,
     )
+    # P0-ISO-03: broker credential phải tenant-scoped. Giai đoạn expand nên
+    # `null=True` (plan TEN-04 "cột nullable trước, backfill sau, contract sau
+    # canary"); row ambiguous/backfill chưa resolve được sẽ giữ NULL + nằm trong
+    # `QuarantinedRecord`. KHÔNG đoán bừa tenant.
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant',
+        on_delete=models.CASCADE,
+        related_name='broker_configs',
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name='Người dùng SaaS (Tenant)',
+        help_text='Tenant sở hữu credential. NULL = chưa resolve được, xem QuarantinedRecord.',
+    )
     provider = models.CharField(
         max_length=16,
         choices=ProviderChoices.choices,
@@ -508,7 +575,21 @@ class UserBrokerConfig(models.Model):
     class Meta:
         verbose_name = 'Cấu hình Broker người dùng'
         verbose_name_plural = 'Cấu hình Broker người dùng'
-        unique_together = [('user', 'provider', 'label')]
+        constraints = [
+            # Credential là duy nhất theo (tenant, user, provider, label).
+            models.UniqueConstraint(
+                fields=['tenant', 'user', 'provider', 'label'],
+                name='uniq_broker_config_tenant_user_provider_label',
+            ),
+            # Giai đoạn expand: row chưa có tenant vẫn phải giữ unique cũ
+            # (user, provider, label) — Postgres coi NULL là khác nhau nên
+            # constraint thứ nhất không bảo vệ được nhóm này.
+            models.UniqueConstraint(
+                fields=['user', 'provider', 'label'],
+                condition=Q(tenant__isnull=True),
+                name='uniq_broker_config_legacy_no_tenant',
+            ),
+        ]
 
     def __str__(self):
         return f"UserBrokerConfig({self.user.username}/{self.provider}/{self.label})"
@@ -540,17 +621,52 @@ class UserBrokerConfig(models.Model):
         return mask_secrets_preview(self.provider, self.get_secrets())
 
 
-def get_user_broker_config(user, provider: str, label: str = 'Mặc định'):
-    """Lấy config broker của user (None nếu chưa có). Dùng chung cho mọi view."""
-    return UserBrokerConfig.objects.filter(user=user, provider=provider, label=label).first()
+def _warn_tenant_blind(helper: str, user) -> None:
+    """Gọi helper không truyền `tenant` ⇒ hành vi tenant-blind (giai đoạn expand).
 
-
-def set_user_broker_secrets(user, provider: str, secrets: dict, label: str = 'Mặc định'):
-    """Tạo/cập nhật secrets (Fernet) cho config broker của user. Không log secret."""
-    config, _ = UserBrokerConfig.objects.get_or_create(
-        user=user, provider=provider, label=label,
-        defaults={'status': UserBrokerConfig.StatusChoices.NEVER_CONNECTED},
+    KHÔNG raise: `views_broker.py:97,122,133,147,162` và `views_dnse.py:150,415`
+    nằm ngoài phạm vi slice này và vẫn gọi 2/3 tham số. Raise sẽ làm hỏng
+    các route đang chạy; thay vào đó ghi cảnh báo để lộ call site cần migrate.
+    """
+    logger.warning(
+        '%s() được gọi KHÔNG có tenant ⇒ lookup tenant-blind cho user=%s. '
+        'Call site phải truyền tenant= để cô lập credential theo tenant.',
+        helper, getattr(user, 'pk', user),
     )
+
+
+def get_user_broker_config(user, provider: str, label: str = 'Mặc định', tenant=None):
+    """Lấy config broker của user (None nếu chưa có).
+
+    `tenant=None` ⇒ hành vi cũ (tenant-blind) + log cảnh báo, giữ tương thích
+    ngược cho call site chưa migrate. Truyền `tenant` ⇒ chỉ trả config của
+    tenant đó, không bao giờ rò config tenant khác.
+    """
+    if tenant is None:
+        _warn_tenant_blind('get_user_broker_config', user)
+        return UserBrokerConfig.objects.filter(
+            user=user, provider=provider, label=label).first()
+    return UserBrokerConfig.objects.filter(
+        user=user, provider=provider, label=label, tenant=tenant).first()
+
+
+def set_user_broker_secrets(user, provider: str, secrets: dict, label: str = 'Mặc định',
+                            tenant=None):
+    """Tạo/cập nhật secrets (Fernet) cho config broker của user. Không log secret.
+
+    `tenant=None` ⇒ hành vi cũ + log cảnh báo (tương thích ngược).
+    """
+    if tenant is None:
+        _warn_tenant_blind('set_user_broker_secrets', user)
+        config, _ = UserBrokerConfig.objects.get_or_create(
+            user=user, provider=provider, label=label,
+            defaults={'status': UserBrokerConfig.StatusChoices.NEVER_CONNECTED},
+        )
+    else:
+        config, _ = UserBrokerConfig.objects.get_or_create(
+            user=user, provider=provider, label=label, tenant=tenant,
+            defaults={'status': UserBrokerConfig.StatusChoices.NEVER_CONNECTED},
+        )
     config.set_secrets(secrets)
     config.save(update_fields=['secrets_cipher', 'updated_at'])
     return config
@@ -777,71 +893,115 @@ class ScreenerSchedule(models.Model):
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 
+
+def resolve_tenant_for_user_workspace_instance(instance):
+    """SSOT resolve `instance.tenant` cho mọi model user_workspace. Trả tenant hoặc None.
+
+    P0-DATA-01: bản cũ (trước đây nằm trực tiếp trong receiver) chọn tenant bằng
+    `.first()`:
+    - `CoreTenant.objects.filter(owner_user=user).first()`
+    - `TenantMember.objects.filter(user=user).first()`
+
+    ⇒ user thuộc N tenant bị gán **một tenant tùy ý** ⇒ dữ liệu tài chính rơi
+    sai scope. Vi phạm nguyên tắc bất di bất dịch của plan
+    `IMPLEMENTATION_PLAN_PORTFOLIO_COMMERCIAL_HARDENING_20260925.md:54`
+    ("không có `first tenant`/`first portfolio` fallback").
+
+    Nay:
+    - Chuỗi `portfolio`/`watchlist` → dùng tenant của parent.
+    - User thuộc **đúng 1** tenant → dùng tenant đó.
+    - User thuộc **≥2** tenant → KHÔNG đoán ⇒ để NULL ⇒ NOT NULL nổ
+      `IntegrityError` ⇒ từ chối.
+    - User thuộc **0** tenant → giữ hành vi cũ: tự tạo tenant (xem
+      `_autoprovision_tenant_for`).
+    """
+    if getattr(instance, 'tenant_id', None):
+        return instance.tenant
+
+    for attr in ('portfolio', 'watchlist'):
+        parent = getattr(instance, attr, None)
+        if parent is None:
+            continue
+        parent_tenant_id = getattr(parent, 'tenant_id', None)
+        if parent_tenant_id:
+            instance.tenant_id = parent_tenant_id
+            return parent.tenant
+        user = getattr(parent, 'user', None)
+        if user is not None:
+            break
+    else:
+        user = getattr(instance, 'user', None)
+
+    if user is None:
+        return None
+
+    from identity_access.models import CoreTenant, TenantMember, UserProfile
+
+    candidate_ids = set(
+        CoreTenant.objects.filter(owner_user=user).values_list('id', flat=True))
+    candidate_ids.update(
+        UserProfile.objects.filter(user=user)
+        .exclude(tenant__isnull=True)
+        .values_list('tenant_id', flat=True))
+    candidate_ids.update(
+        TenantMember.objects.filter(user=user).values_list('tenant_id', flat=True))
+
+    if len(candidate_ids) == 1:
+        instance.tenant_id = candidate_ids.pop()
+        return instance.tenant
+
+    if not candidate_ids:
+        return _autoprovision_tenant_for(user, CoreTenant, UserProfile, instance)
+
+    logger.warning(
+        '%s user=%s: user thuộc %d tenant %s — KHÔNG tự chọn. Dữ liệu sẽ bị từ '
+        'chối bởi NOT NULL (đúng hơn là ghi vào tenant sai).',
+        type(instance).__name__, getattr(user, 'pk', user),
+        len(candidate_ids), sorted(candidate_ids),
+    )
+    return None
+
+
+def _autoprovision_tenant_for(user, CoreTenant, UserProfile, instance):
+    """User chưa thuộc tenant nào ⇒ tự tạo 1 tenant riêng (quyết định sản phẩm).
+
+    GIỮ NGUYÊN hành vi của code cũ (`models.py:952-960` trước đây) vì
+    `user_workspace/tests.py:331-348` dựa vào nó — nằm ngoài phạm vi slice này.
+
+    RỦI RO CÒN LẠI (đã ghi backlog, không tự sửa vì ngoài phạm vi):
+    đây là **ghi dữ liệu như side effect của `save()`**. Đúng hơn là tenant phải
+    được tạo ở luồng đăng ký (`identity_access/views/register.py`) — cần ticket
+    riêng cho coordinator.
+
+    Khác với bản cũ: dùng `get_or_create` theo `tenant_code` để không đụng
+    unique constraint khi hai save chạy đồng thời.
+    """
+    tenant, _created = CoreTenant.objects.get_or_create(
+        tenant_code=f'auto-{user.username}',
+        defaults={
+            'display_name': f'Auto Tenant for {user.username}',
+            'owner_user': user,
+        },
+    )
+    UserProfile.objects.get_or_create(user=user, defaults={'tenant': tenant})
+    instance.tenant = tenant
+    logger.info(
+        'Auto-provision tenant %s cho user %s khi tạo %s (user chưa thuộc tenant nào).',
+        tenant.tenant_code, getattr(user, 'pk', user), type(instance).__name__,
+    )
+    return tenant
+
+
 @receiver(pre_save, sender=Portfolio)
 @receiver(pre_save, sender=Transaction)
 @receiver(pre_save, sender=Watchlist)
 @receiver(pre_save, sender=TrackedSymbol)
 @receiver(pre_save, sender=PriceAlert)
-@receiver(pre_save, sender=SubAccount)
 @receiver(pre_save, sender=ScreenerRule)
 @receiver(pre_save, sender=ScreenerRunHistory)
 @receiver(pre_save, sender=ScreenerSchedule)
 def resolve_tenant_for_user_workspace_models(sender, instance, **kwargs):
-    if getattr(instance, 'tenant_id', None):
-        return
-
-    # Try resolving from owner/associated user
-    user = getattr(instance, 'user', None)
-    if not user:
-        portfolio = getattr(instance, 'portfolio', None)
-        if portfolio:
-            if getattr(portfolio, 'tenant_id', None):
-                instance.tenant_id = portfolio.tenant_id
-                return
-            user = getattr(portfolio, 'user', None)
-            
-        watchlist = getattr(instance, 'watchlist', None)
-        if watchlist:
-            if getattr(watchlist, 'tenant_id', None):
-                instance.tenant_id = watchlist.tenant_id
-                return
-            user = getattr(watchlist, 'user', None)
-
-    if user:
-        # Try core_profile first
-        profile = getattr(user, 'core_profile', None)
-        if profile and getattr(profile, 'tenant_id', None):
-            instance.tenant = profile.tenant
-            return
-        # Look up UserProfile directly
-        from identity_access.models import UserProfile, CoreTenant
-        profile = UserProfile.objects.filter(user=user).first()
-        if profile and getattr(profile, 'tenant_id', None):
-            instance.tenant = profile.tenant
-            return
-        
-        # Find any tenant owned by user
-        tenant = CoreTenant.objects.filter(owner_user=user).first()
-        if tenant:
-            instance.tenant = tenant
-            return
-            
-        # Find any active tenant the user belongs to
-        from identity_access.models import TenantMember
-        member = TenantMember.objects.filter(user=user).first()
-        if member and getattr(member, 'tenant_id', None):
-            instance.tenant_id = member.tenant_id
-            return
-
-        # Fallback: create a tenant for the user
-        tenant = CoreTenant.objects.create(
-            tenant_code=f"auto-{user.username}",
-            display_name=f"Auto Tenant for {user.username}",
-            owner_user=user
-        )
-        instance.tenant = tenant
-        # Create UserProfile if not exists
-        UserProfile.objects.get_or_create(user=user, defaults={'tenant': tenant})
+    resolve_tenant_for_user_workspace_instance(instance)
 
 
 

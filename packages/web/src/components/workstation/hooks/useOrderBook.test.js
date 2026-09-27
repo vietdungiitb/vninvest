@@ -10,11 +10,22 @@ const mockAdapter = {
   getRealtimeDepthChart: jest.fn(),
 };
 
-jest.unstable_mockModule('../../../adapters/coreApiAdapter.js', () => ({
+// `jest.mock` chứ KHÔNG `jest.unstable_mockModule`: babel ép hook về CommonJS,
+// còn `unstable_mockModule` chỉ chặn ESM `import()` ⇒ mock im lặng không ăn,
+// adapter thật được gọi và mọi `expect(mockAdapter...)` thành 0 lần.
+jest.mock('../../../adapters/coreApiAdapter.js', () => ({
   createCoreApiAdapter: jest.fn(() => mockAdapter),
 }));
 
-const { useOrderBook } = await import('./useOrderBook.js');
+// Top-level `await` không transform được trong CJS của Jest
+// ("await is only valid in async functions and the top level bodies of
+// modules") ⇒ suite này chết và không bao giờ chạy. Gộp vào `beforeAll`
+// để vẫn giữ đúng thứ tự "đăng ký mock → import module".
+let useOrderBook;
+
+beforeAll(async () => {
+  ({ useOrderBook } = await import('./useOrderBook.js'));
+});
 
 describe('useOrderBook', () => {
   beforeEach(() => {

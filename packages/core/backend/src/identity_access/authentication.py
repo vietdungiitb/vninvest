@@ -2,9 +2,11 @@
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
+import hmac
 import ipaddress
 
 from .models import CorePATCredential
+from vninvest_core.client_ip import get_client_ip
 
 
 class CorePATAuthentication(BaseAuthentication):
@@ -23,7 +25,7 @@ class CorePATAuthentication(BaseAuthentication):
         if not raw_secret:
             return None
 
-        credential = CorePATCredential.resolve_from_raw_secret(raw_secret)
+        credential = self._resolve_credential(request, raw_secret)
         if credential is None:
             raise AuthenticationFailed('Invalid or revoked PAT.')
 
@@ -36,9 +38,21 @@ class CorePATAuthentication(BaseAuthentication):
         if credential.service_account.status != credential.service_account.StatusChoices.ACTIVE:
             raise AuthenticationFailed('Service account is disabled.')
 
-        # Check CIDR whitelist if configured
+        # Check CIDR whitelist if configured.
+        #
+        # Was: request.META.get('HTTP_X_FORWARDED_FOR','').split(',')[0].strip()
+        #      or request.META.get('REMOTE_ADDR', '127.0.0.1')
+        # That read the LEFT-MOST X-Forwarded-For entry, which is the
+        # client-supplied one: anybody could send "X-Forwarded-For: 10.0.0.7"
+        # and make a CIDR-restricted PAT usable from anywhere. get_client_ip()
+        # honours the header only when REMOTE_ADDR is a TRUSTED_PROXY_IPS
+        # entry, and with the default empty list ignores it entirely.
+        #
+        # Fail-closed: when the peer cannot be determined get_client_ip returns
+        # UNKNOWN_IP ("unknown"), which ipaddress.ip_address() rejects with
+        # ValueError, so ip_allowed stays False and the PAT is rejected.
         if credential.allowed_cidr_blocks:
-            client_ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', '127.0.0.1')
+            client_ip = get_client_ip(request)
             ip_allowed = False
             try:
                 ip_obj = ipaddress.ip_address(client_ip)
@@ -64,6 +78,30 @@ class CorePATAuthentication(BaseAuthentication):
 
     def authenticate_header(self, request):
         return self.keyword
+
+    def _resolve_credential(self, request, raw_secret):
+        """Return the PAT for `raw_secret`, reusing the middleware's lookup.
+
+        `TenantResolutionMiddleware` runs before DRF and already resolves the PAT
+        to answer "which tenant is this request for?". Re-running that resolution
+        here meant a second HMAC plus a second indexed query on every single
+        authenticated request, and the two lookups could in principle disagree.
+
+        The cached credential is only trusted after re-deriving the hash of the
+        secret actually presented and comparing it in constant time, so a stale or
+        foreign `request._pat_credential` can never authorise a different token.
+        Anything that does not match falls through to the database.
+        """
+        cached = getattr(request, '_pat_credential', None)
+        if cached is not None:
+            from .models import _hash_pat_secret
+            try:
+                matches = hmac.compare_digest(cached.token_secret_hash, _hash_pat_secret(raw_secret))
+            except (AttributeError, TypeError):
+                matches = False
+            if matches:
+                return cached
+        return CorePATCredential.resolve_from_raw_secret(raw_secret)
 
 
 class CorePATAuthenticationScheme(OpenApiAuthenticationExtension):

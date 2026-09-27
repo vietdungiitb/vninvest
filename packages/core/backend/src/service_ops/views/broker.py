@@ -19,6 +19,8 @@ import uuid
 
 from django.utils import timezone
 from rest_framework import status
+from vninvest_core.client_ip import get_client_ip
+
 from rest_framework.response import Response
 
 from ..domain_configs.broker import (
@@ -80,8 +82,7 @@ def _write_audit(request, action: str, before: dict | None, after: dict | None,
             service=service,
             action=action,
             actor=getattr(request.user, 'username', 'staff'),
-            actor_ip=(request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
-                      or request.META.get('REMOTE_ADDR')),
+            actor_ip=get_client_ip(request),
             before_snapshot=before,
             after_snapshot=after,
             change_summary=summary[:2000],

@@ -32,8 +32,10 @@ QUEUE_DOMAIN_MATRIX = {
             'commercial.tasks.send_quota_warning',
             'commercial.tasks.snapshot_quota_history',
             'commercial.tasks.check_usage_thresholds',
+            'commercial.tasks.manage_subscriptions_lifecycle',
             'identity_access.tasks.flush_pat_audit_log',
             'identity_access.tasks.cross_ref_pat_audit_events',
+            'identity_access.email_tasks.prune_email_verification_tokens',
             'ops_audit.tasks.aggregate_api_call_rollup',
         ),
         'periodic_tasks': (
@@ -42,6 +44,8 @@ QUEUE_DOMAIN_MATRIX = {
             'check-overdue-invoices',
             'snapshot-quota-history',
             'check-usage-thresholds',
+            'manage-subscriptions-lifecycle-hourly',
+            'prune-email-verification-tokens-hourly',
             'flush-pat-audit-log',
             'cross-ref-pat-audit-events',
             'aggregate-api-call-rollup',
@@ -54,6 +58,7 @@ QUEUE_DOMAIN_MATRIX = {
             'tenant_lifecycle.tasks.auto_suspend_quota_overflow',
             'tenant_lifecycle.tasks.send_trial_expiry_warning',
             'tenant_lifecycle.tasks.auto_deprovision_stale',
+            'tenant_lifecycle.tasks.send_trial_expiry_warning_email',
             'data_ingest.tasks.process_outbox_events',
         ),
         'periodic_tasks': (

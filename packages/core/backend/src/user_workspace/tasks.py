@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 
 from celery import shared_task
+from django.contrib.auth.models import User
 from django.db import transaction
 from django.utils import timezone
 
@@ -30,6 +31,53 @@ from .vnbroker_dnse_compat import (
 
 logger = logging.getLogger(__name__)
 
+# Mã lỗi fail-closed khi không resolve được tenant (P0-DATA-01).
+ERR_TENANT_REQUIRED = 'tenant_required'
+ERR_TENANT_NOT_ALLOWED = 'tenant_not_allowed'
+ERR_TENANT_NOT_FOUND = 'tenant_not_found'
+
+
+def _resolve_tenant_for_user(user, tenant_id=None):
+    """Trả `(tenant, error_code)`. `error_code` là None khi resolve thành công.
+
+    Quy tắc (plan `IMPLEMENTATION_PLAN…:54` — "không có first tenant/first
+    portfolio fallback"):
+    1. `tenant_id` được truyền vào ⇒ phải thuộc user, nếu không thì từ chối.
+    2. Không truyền ⇒ chỉ chấp nhận khi user thuộc **đúng 1** tenant.
+    3. User thuộc ≥2 tenant mà không truyền `tenant_id` ⇒ từ chối, KHÔNG đoán.
+    """
+    from django.apps import apps as global_apps
+
+    CoreTenant = global_apps.get_model('identity_access', 'CoreTenant')
+    TenantMember = global_apps.get_model('identity_access', 'TenantMember')
+    UserProfile = global_apps.get_model('identity_access', 'UserProfile')
+
+    if tenant_id is not None:
+        allowed = _user_tenant_ids(user, CoreTenant, TenantMember, UserProfile)
+        if int(tenant_id) not in allowed:
+            return None, ERR_TENANT_NOT_ALLOWED
+        return CoreTenant.objects.filter(id=tenant_id).first(), None
+
+    allowed = _user_tenant_ids(user, CoreTenant, TenantMember, UserProfile)
+    if not allowed:
+        return None, ERR_TENANT_NOT_FOUND
+    if len(allowed) > 1:
+        return None, ERR_TENANT_REQUIRED
+    return CoreTenant.objects.filter(id=next(iter(allowed))).first(), None
+
+
+def _user_tenant_ids(user, CoreTenant, TenantMember, UserProfile):
+    """Tập tenant id mà user thực sự thuộc (owner + profile + membership)."""
+    ids = set(
+        CoreTenant.objects.filter(owner_user=user).values_list('id', flat=True))
+    ids.update(
+        UserProfile.objects.filter(user=user)
+        .exclude(tenant__isnull=True)
+        .values_list('tenant_id', flat=True))
+    ids.update(
+        TenantMember.objects.filter(user=user).values_list('tenant_id', flat=True))
+    return ids
+
 
 @shared_task(name="user_workspace.reconcile_all_dnse_transactions_task")
 def reconcile_all_dnse_transactions_task():
@@ -38,6 +86,9 @@ def reconcile_all_dnse_transactions_task():
         return {"ok": True, "triggered_count": 0, "skipped": "quiet_hours"}
     user_ids = list(DNSECredential.objects.filter(is_active=True).values_list("user_id", flat=True))
     for user_id in user_ids:
+        # P0-DATA-01: không truyền `tenant_id` ở fan-out ⇒ user đa tenant bị
+        # từ chối ở task con (fail-closed). Cần scheduler truyền tenant theo
+        # membership; báo coordinator (ngoài phạm vi slice này).
         reconcile_dnse_transactions_task.delay(user_id)
     return {"ok": True, "triggered_count": len(user_ids)}
 
@@ -54,7 +105,26 @@ def sync_all_dnse_balances_task():
 
 
 @shared_task(name="user_workspace.sync_dnse_accounts_task", bind=True, max_retries=3, default_retry_delay=60)
-def sync_dnse_accounts_task(self, user_id: int):
+def sync_dnse_accounts_task(self, user_id: int, tenant_id: int | None = None):
+    """Đồng bộ tiểu khoản DNSE.
+
+    `tenant_id` là keyword có default None để call site cũ (`views_dnse.py` —
+    ngoài phạm vi slice này) không vỡ. Khi None: user thuộc đúng 1 tenant thì
+    dùng tenant đó; user đa tenant thì **từ chối** (`tenant_required`) — KHÔNG
+    tự chọn "first portfolio" như bản cũ `tasks.py:78`.
+    """
+    user = User.objects.filter(pk=user_id).first()
+    if user is None:
+        return {"ok": False, "error": "User not found"}
+
+    tenant, tenant_error = _resolve_tenant_for_user(user, tenant_id)
+    if tenant_error:
+        logger.warning(
+            "sync_dnse_accounts_task: từ chối vì không resolve được tenant cho user %s — %s",
+            user_id, tenant_error,
+        )
+        return {"ok": False, "error": tenant_error}
+
     try:
         credential = DNSECredential.objects.select_related("user").get(user_id=user_id, is_active=True)
     except DNSECredential.DoesNotExist:
@@ -75,10 +145,12 @@ def sync_dnse_accounts_task(self, user_id: int):
         logger.error("sync_dnse_accounts_task: fetch_sub_accounts thất bại cho user %s — %s", user_id, exc)
         return {"ok": False, "error": f"Lấy danh sách tiểu khoản từ DNSE thất bại: {exc}"}
 
-    portfolio = Portfolio.objects.filter(user_id=user_id).first()
+    # P0-DATA-01: scope theo tenant, KHÔNG dùng `filter(user_id=…).first()`.
+    portfolio = Portfolio.objects.filter(user_id=user_id, tenant=tenant).first()
     if not portfolio:
         portfolio = Portfolio.objects.create(
             user_id=user_id,
+            tenant=tenant,
             name="Danh mục chính",
             description="Tự động khởi tạo từ DNSE sync",
         )
@@ -102,6 +174,7 @@ def sync_dnse_accounts_task(self, user_id: int):
 
             sub_acc, created = SubAccount.objects.update_or_create(
                 user_id=user_id,
+                tenant=tenant,
                 external_id=str(ext_id),
                 broker_source="DNSE",
                 defaults={
@@ -267,10 +340,14 @@ from .screener_tasks import (  # noqa: E402,F401
 
 
 @shared_task(name="user_workspace.test_broker_connection_task", bind=True, max_retries=0)
-def test_broker_connection_task(self, config_id: int):
+def test_broker_connection_task(self, config_id: int, tenant_id: int | None = None):
     """B1.2: test-connection broker read-only trong worker (không I/O trong request).
 
     Nhận config_id (không nhận secret — đọc từ DB). Cập nhật status/last_verified_at/last_error.
+
+    P0-ISO-03: `tenant_id` là keyword default None (tương thích ngược). Khi được
+    truyền, config phải thuộc tenant đó — sai thì fail-closed TRƯỚC khi gọi
+    broker, nên 2 tenant của cùng user không thể sync credential của nhau.
     """
     from .broker import dnse as dnse_schema
     from .models import UserBrokerConfig
@@ -279,6 +356,13 @@ def test_broker_connection_task(self, config_id: int):
         config = UserBrokerConfig.objects.select_related('user').get(id=config_id)
     except UserBrokerConfig.DoesNotExist:
         return {'ok': False, 'error': 'config_not_found'}
+
+    if tenant_id is not None and config.tenant_id != int(tenant_id):
+        logger.warning(
+            'test_broker_connection_task: config %s thuộc tenant %s, yêu cầu tenant %s — từ chối',
+            config_id, config.tenant_id, tenant_id,
+        )
+        return {'ok': False, 'error': 'tenant_mismatch'}
 
     secrets = config.get_secrets()
     if config.provider == 'dnse':

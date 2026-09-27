@@ -8,6 +8,7 @@ import styles from "./AlertCenterPage.module.css";
 import { ShellPageChrome, ShellPanel, ShellMetric } from "../components/ShellPageTemplate.js";
 import soc from "../components/soc/soc.module.css";
 import { formatAgo, formatDateTimeICT, formatVnd } from "../utils/alertCenterFormat.js";
+import { extractFeedCursor } from "../utils/feedCursor";
 import { useAlertCenterData } from "../hooks/useAlertCenterData.js";
 import { useAlertCenterStream, type AlertCenterStreamItem } from "../hooks/useAlertCenterStream.js";
 import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
@@ -237,16 +238,6 @@ export function AlertCenterPage({ env = DEFAULT_ENV, className = "" }: AlertCent
     && Number(((symbolStats as unknown as SymbolStatsPayload)?.pagination?.total_symbols) ?? 0) === 0;
   const feedEmptyKey = hasActiveFilters ? "alertCenter.emptyNoMatch"
     : scopeTotalsZero ? "alertCenter.emptyNoScope" : "alertCenter.empty";
-
-  function extractFeedCursor(next: unknown): string | null {
-    if (typeof next !== "string" || !next) return null;
-    if (next.indexOf("cursor=") < 0) return next;
-    try {
-      return new URL(next, window.location.origin).searchParams.get("cursor");
-    } catch {
-      return null;
-    }
-  }
 
   useEffect(() => {
     setExtraAlerts([]);

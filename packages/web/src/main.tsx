@@ -60,7 +60,7 @@ function WhaleAlertsRedirect() {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, authStateReady } = usePortfolio();
+  const { isAuthenticated, authStateReady, authStateError, retryAuthBootstrap } = usePortfolio();
   const { t } = useI18n();
   const location = useLocation();
 
@@ -77,6 +77,37 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const hasStoredTokens = authTokenStorage.hasTokens();
   if (!isAuthenticated || !hasStoredTokens) {
     return createElement(Navigate, { to: '/login', replace: true, state: { from: location.pathname } });
+  }
+
+  // A failed bootstrap used to release this gate in `finally` and log the failure
+  // to the console only, so the user got the full shell with an empty identity, no
+  // portfolios and no way to tell anything was wrong. Show it, with a retry.
+  // Only reached when the session itself is still valid -- a 401 is handled above
+  // by redirecting to /login.
+  if (authStateError) {
+    const retryable = authStateError.retryable !== false;
+    return createElement(
+      'div',
+      {
+        className:
+          'min-h-screen flex items-center justify-center bg-slate-950 text-slate-100 font-sans px-4',
+      },
+      createElement(
+        'div',
+        { className: 'max-w-md text-center', role: 'alert' },
+        createElement('p', { className: 'text-base mb-4' }, authStateError.message || t('shellFallback.bootstrapFailed')),
+        retryable &&
+          createElement(
+            'button',
+            {
+              type: 'button',
+              onClick: () => retryAuthBootstrap(),
+              className: 'px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium',
+            },
+            t('shellFallback.bootstrapRetry')
+          )
+      )
+    );
   }
 
   return children;

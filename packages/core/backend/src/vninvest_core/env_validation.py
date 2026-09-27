@@ -68,6 +68,12 @@ def validate_production_settings(debug: bool):
         get_required_env('FRONTEND_URL', 'Frontend base URL for password reset and email links')
         get_required_env('CORE_PAT_PEPPER', 'Pepper for secure PAT (Personal Access Token) hashing')
         get_required_env('DJANGO_ALLOWED_HOSTS', 'Comma-separated list of allowed hosts')
+        # Bot protection for the public registration endpoint. Without it,
+        # STRICT_TURNSTILE_ENFORCEMENT is True in production (fail-closed) but
+        # there is no secret to verify against, so registration is either
+        # unusable or the check is silently skipped. Fail at boot instead of
+        # shipping an unprotected public signup form.
+        get_required_env('TURNSTILE_SECRET_KEY', 'Cloudflare Turnstile secret for registration bot protection')
     except ImproperlyConfigured as e:
         raise ImproperlyConfigured(f"Production validation failed: {e}") from e
 

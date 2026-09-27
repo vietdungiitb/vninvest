@@ -267,6 +267,18 @@ function normalizeDarkFlowAlert(payload) {
     event_id: readEventField(payload, 'event_id'),
     contract_version: readEventField(payload, 'contract_version') ?? payload.contract_version,
     symbol: readEventField(payload, 'symbol') ?? payload.symbol,
+    // The envelope carries these for EVERY alert type, not just whale
+    // (signal_intelligence/broadcasting.py:78-85). Omitting them meant a
+    // dark-flow alert arrived with `severity: undefined`, so it matched no
+    // filter pill, fell through to the default card border, rendered no
+    // description line, and displayed the wrong source label.
+    severity: readEventField(payload, 'severity'),
+    direction: readEventField(payload, 'direction'),
+    title: readEventField(payload, 'title'),
+    body: readEventField(payload, 'body'),
+    triggered_at: readEventField(payload, 'triggered_at') ?? null,
+    value: readEventField(payload, 'matched_value') ?? null,
+    confidence_level: readEventField(payload, 'confidence_level'),
     signal_type: readEventField(payload, 'signal_type'),
     strength: readEventField(payload, 'strength'),
     confidence: readEventField(payload, 'confidence'),

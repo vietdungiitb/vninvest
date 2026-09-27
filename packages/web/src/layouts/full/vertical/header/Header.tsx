@@ -19,6 +19,7 @@ interface UserIdentity {
   isStaff: boolean;
   isSuperuser: boolean;
   avatar_url?: string;
+  display_name?: string;
 }
 
 const e = createElement;
@@ -81,10 +82,23 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
     }
   };
 
+  /**
+   * E2 (P0) — `logout()` now revokes the PAT (POST /auth/logout/) before
+   * clearing local state and never rejects, so it is safe to fire without
+   * awaiting. Navigate first: the revoke is bounded at 5s internally and the
+   * user should not stare at the app while it runs.
+   */
   const handleLogout = () => {
-    logout();
     navigate('/login');
+    void logout();
   };
+
+  // E5 (P1): display_name and avatar_url are only returned by
+  // GET /identity/profile/; PortfolioContext now surfaces them. The cast is
+  // needed because context/PortfolioContext.d.ts's UserIdentity does not declare
+  // display_name yet (that file is outside this slice) — listed for the
+  // coordinator.
+  const displayName = (userIdentity as UserIdentity).display_name || userIdentity.username || '';
 
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setLanguage(e.target.value);
@@ -164,7 +178,7 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
             type: 'button',
             onClick: () => navigate('/dashboard'),
             className: 'hover:text-slate-200 transition-colors cursor-pointer bg-transparent border-0 p-0 font-inherit',
-            'aria-label': t('layout.home') || 'Về trang tổng quan'
+            'aria-label': t('layout.home', { defaultValue: 'Về trang tổng quan' })
           },
           'VNInvest'
         ),
@@ -181,9 +195,9 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
         Input,
         {
           type: 'text',
-          placeholder: t('layout.searchPlaceholder') || 'Tìm mã cổ phiếu...',
+          placeholder: t('layout.searchPlaceholder', { defaultValue: 'Tìm mã cổ phiếu...' }),
           className: 'w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-800 text-slate-200 text-sm rounded-lg focus:border-cyan-400 focus:outline-none placeholder:text-slate-500',
-          'aria-label': t('layout.searchPlaceholder') || 'Search symbol',
+          'aria-label': t('layout.searchPlaceholder', { defaultValue: 'Search symbol' }),
           value: searchVal,
           onChange: (e: React.ChangeEvent<HTMLInputElement>) => setSearchVal(e.target.value),
           onKeyDown: handleSearchKeyDown
@@ -211,7 +225,7 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
           value: locale,
           onChange: handleLanguageChange,
           className: 'bg-slate-800 border border-slate-800 text-slate-200 text-sm rounded-lg px-3 py-1.5 focus:border-cyan-400 focus:outline-none cursor-pointer',
-          'aria-label': t('common.language') || 'Language'
+          'aria-label': t('common.language', { defaultValue: 'Language' })
         },
         e('option', { value: 'vi' }, '🇻🇳 VI'),
         e('option', { value: 'en' }, '🇺🇸 EN')
@@ -229,7 +243,7 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
               variant: 'ghost',
               size: 'icon',
               className: 'relative',
-              'aria-label': t('layout.notifications') || 'Notifications',
+              'aria-label': t('layout.notifications', { defaultValue: 'Notifications' }),
               onClick: () => navigate('/alert-center')
             },
             e(Bell, { className: 'h-5 w-5' }),
@@ -243,7 +257,7 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
         e(
           DropdownMenuContent,
           { align: 'end', className: 'w-80' },
-          e(DropdownMenuLabel, null, t('layout.notifications') || 'Notifications'),
+          e(DropdownMenuLabel, null, t('layout.notifications', { defaultValue: 'Notifications' })),
           e(DropdownMenuSeparator, null),
           e(DropdownMenuItem, { className: 'py-2 text-slate-400 text-center' }, 'No new notifications'),
           e(DropdownMenuSeparator, null),
@@ -265,8 +279,8 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
             e(
               Avatar,
               { className: 'h-9 w-9' },
-              e(AvatarImage, { src: userIdentity.avatar_url, alt: userIdentity.username || 'User' }),
-              e(AvatarFallback, { className: 'bg-cyan-500/20 text-cyan-400 font-bold' }, getInitials(userIdentity.username || 'U'))
+              e(AvatarImage, { src: userIdentity.avatar_url, alt: displayName || 'User' }),
+              e(AvatarFallback, { className: 'bg-cyan-500/20 text-cyan-400 font-bold' }, getInitials(displayName || 'U'))
             )
           )
         ),
@@ -279,34 +293,34 @@ export function Header({ onMenuClick, sidebarCollapsed = false, mobileSidebarOpe
             e(
               Avatar,
               { className: 'h-10 w-10' },
-              e(AvatarImage, { src: userIdentity.avatar_url, alt: userIdentity.username || 'User' }),
-              e(AvatarFallback, { className: 'bg-cyan-500/20 text-cyan-400 font-bold' }, getInitials(userIdentity.username || 'U'))
+              e(AvatarImage, { src: userIdentity.avatar_url, alt: displayName || 'User' }),
+              e(AvatarFallback, { className: 'bg-cyan-500/20 text-cyan-400 font-bold' }, getInitials(displayName || 'U'))
             ),
             e(
               'div',
               { className: 'flex-1 min-w-0' },
-              e('p', { className: 'text-sm font-medium text-slate-100 truncate' }, userIdentity.username || 'User'),
+              e('p', { className: 'text-sm font-medium text-slate-100 truncate' }, displayName || 'User'),
               e('p', { className: 'text-xs text-slate-500 truncate' }, userIdentity.email || '')
             )
           ),
           e(DropdownMenuSeparator, null),
-          e(DropdownMenuLabel, null, t('layout.account') || 'Account'),
+          e(DropdownMenuLabel, null, t('layout.account', { defaultValue: 'Account' })),
           e(
             DropdownMenuItem,
             { asChild: true },
-            e(Button, { variant: 'ghost', className: 'w-full justify-start gap-2', onClick: () => navigate('/settings') }, e(User, { className: 'h-4 w-4' }), t('layout.profile') || 'Profile')
+            e(Button, { variant: 'ghost', className: 'w-full justify-start gap-2', onClick: () => navigate('/settings') }, e(User, { className: 'h-4 w-4' }), t('layout.profile', { defaultValue: 'Profile' }))
           ),
           e(
             DropdownMenuItem,
             { asChild: true },
-            e(Button, { variant: 'ghost', className: 'w-full justify-start gap-2', onClick: () => navigate('/settings') }, e(Settings, { className: 'h-4 w-4' }), t('layout.settings') || 'Settings')
+            e(Button, { variant: 'ghost', className: 'w-full justify-start gap-2', onClick: () => navigate('/settings') }, e(Settings, { className: 'h-4 w-4' }), t('layout.settings', { defaultValue: 'Settings' }))
           ),
           e(DropdownMenuSeparator, null),
           e(
             DropdownMenuItem,
             { onClick: handleLogout, className: 'text-rose-400 focus:text-rose-300' },
             e(LogOut, { className: 'h-4 w-4 mr-2' }),
-            t('layout.logout') || 'Đăng xuất'
+            t('layout.logout', { defaultValue: 'Đăng xuất' })
           )
         )
       )

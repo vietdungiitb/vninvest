@@ -33,8 +33,28 @@ export interface CoreApiAdapter {
 
   // Auth
   loginUser: (credentials: { username: string; password: string }) => Promise<any>;
-  registerUser: (data: { username: string; email: string; password: string; password_confirm: string }) => Promise<any>;
-  resendVerificationEmail: (identifier: string) => Promise<any>;
+  /**
+   * tenantreg-d (slice D): `website` (honeypot) and `turnstile_token` were
+   * missing from this declaration even though the adapter forwards both
+   * (adapters/core/auth.js:60-69) and the backend requires them
+   * (identity_access/serializers.py:378-420). Because the type did not describe
+   * the real payload, AuthRegisterPage had to cast the call site with `as any`,
+   * which is what let the missing fields go unnoticed. Now declared.
+   */
+  registerUser: (data: {
+    username: string;
+    email: string;
+    password: string;
+    password_confirm: string;
+    website?: string;
+    turnstile_token?: string;
+    first_name?: string;
+    last_name?: string;
+  }) => Promise<any>;
+  resendVerificationEmail: (email: string) => Promise<any>;
+  verifyEmailToken: (token: string) => Promise<any>;
+  requestPasswordReset: (email: string) => Promise<any>;
+  confirmPasswordReset: (token: string, newPassword: string, newPasswordConfirm: string) => Promise<any>;
   refreshAuthToken: (refreshToken: string) => Promise<any>;
   getUserProfile: () => Promise<any>;
   updateUserProfile: (data: any) => Promise<any>;

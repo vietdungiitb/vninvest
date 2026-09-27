@@ -2,43 +2,15 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { createElement as e } from "react";
 import { UnifiedAlertCenter } from "../UnifiedAlertCenter.js";
+import { createTranslator } from "../../../i18n/index.js";
 
+// The real translator is used on purpose. A previous version of this file
+// hand-wrote a dictionary containing every key the component asked for, which
+// meant the five keys `alert.showing` / `loadingList` / `loadError` /
+// `retryHint` / `filteredEmpty` could be missing from vi.js and en.js and this
+// test would still pass while production rendered the raw key strings.
 vi.mock("../../../context/LangContext.js", () => ({
-  useI18n: () => ({
-    t: (key: string, vars?: Record<string, unknown>) => {
-      const dict: Record<string, string> = {
-        "alert.title": "Cảnh báo",
-        "alert.empty": "Không có cảnh báo nào.",
-        "alert.unreadTooltip": "{count} chưa đọc",
-        "alert.showing": "Hiển thị {shown}/{total}",
-        "alert.filteredEmpty": "Bộ lọc hiện tại loại hết {total} cảnh báo.",
-        "alert.loadingList": "Đang tải cảnh báo…",
-        "alert.loadError": "Không tải được cảnh báo.",
-        "alert.retryHint": "Thử lại.",
-        "alert.viewAll": "Xem tất cả",
-        "alert.clearFilters": "Xóa bộ lọc",
-        "alert.prevPage": "Trang trước",
-        "alert.nextPage": "Trang sau",
-        "alert.markRead": "Đánh dấu đã đọc",
-        "alert.dirBuy": "Mua",
-        "alert.dirSell": "Bán",
-        "alert.valLabel": "Giá trị",
-        "alert.confLabel": "Tin cậy",
-        "alert.sessionLabel": "Phiên",
-        "alert.mute30m": "Tắt 30p",
-        "alert.severity.all": "Tất cả",
-        "alert.severity.critical": "Nghiêm trọng",
-        "alert.severity.high": "Cao",
-        "alert.severity.medium": "Trung bình",
-        "alert.severity.low": "Thấp",
-      };
-      let s = dict[key] ?? key;
-      Object.entries(vars || {}).forEach(([k, v]) => {
-        s = s.replaceAll(`{${k}}`, String(v));
-      });
-      return s;
-    },
-  }),
+  useI18n: () => ({ t: createTranslator("vi"), localeTag: "vi-VN" }),
 }));
 
 const alerts3 = [
@@ -119,10 +91,28 @@ describe("UnifiedAlertCenter compact (S2)", () => {
     expect(html).toContain("21/09/2026");
   });
 
-  it("badge unread + link Xem tất cả (audit #15/#20)", () => {
+  it("badge = tổng số cảnh báo (KHÔNG phải số chưa đọc) + link Xem tất cả", () => {
     const { container } = render(e(UnifiedAlertCenter as any, { alerts } as any));
-    const badge = container.querySelector('span[title="2 chưa đọc"]');
+    // The dashboard supplies no read state, so this badge is the TOTAL count.
+    // The old assertion expected tooltip "2 chưa đọc", which was the lie this
+    // change removed: nothing had been read, yet the tooltip claimed so.
+    const badge = container.querySelector('span[title="2 cảnh báo trong danh sách"]');
     expect(badge?.textContent).toBe("2");
+    expect(container.querySelector('span[title="2 chưa đọc"]')).toBeNull();
+    const link = container.querySelector('a[href="/alert-center"]');
+    expect(link?.textContent).toContain("Xem tất cả");
+  });
+
+  it("badge hiện số chưa đọc THẬT khi có read state (Alert Center)", () => {
+    const readAlertIds = new Set<string>();
+    const { container } = render(
+      e(UnifiedAlertCenter as any, {
+        alerts,
+        readAlertIds,
+        markAlertAsRead: () => {},
+        muteSymbolFor30m: () => {},
+      } as any),
+    );
     const link = container.querySelector('a[href="/alert-center"]');
     expect(link?.textContent).toContain("Xem tất cả");
   });

@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { coreApiAdapter } from '../adapters/coreApiAdapter.js';
+import { extractFeedCursor } from '../utils/feedCursor';
 
 export interface AlertFeedParams {
   symbol?: string;
@@ -30,28 +31,33 @@ interface AlertFeedResponse {
 
 const POLL_INTERVAL = 15000;
 
-/**
- * BE trả `next` là URL đầy đủ (?cursor=...), nhưng query feed chỉ nhận token
- * cursor trần — gửi nguyên URL gây 404 "Invalid cursor" khi bấm Trang sau.
- * (AlertCenterPage.extractFeedCursor làm việc tương tự.)
- */
-export function extractFeedCursor(next: unknown): string | null {
-  if (typeof next !== "string" || !next) return null;
-  if (next.indexOf("cursor=") < 0) return next;
-  try {
-    const base = typeof window !== "undefined" ? window.location.origin : "http://localhost";
-    return new URL(next, base).searchParams.get("cursor");
-  } catch {
-    return next;
-  }
-}
+export { extractFeedCursor };
 
+/**
+ * Snapshot cảnh báo cho lane tóm tắt trên dashboard.
+ *
+ * ## Không phân trang (thay đổi Wave 2, 2026-09-27)
+ *
+ * Trước đây hook này giữ state `nextCursor` + `cursorHistory` và trả
+ * `goToNextPage`/`goToPrevPage`/`hasNextPage`/`hasPrevPage`. **Không còn ai
+ * dùng** — `DashboardPage.tsx` là consumer duy nhất và sau Wave 2 chỉ lấy
+ * `alerts`/`loading`/`error`/`loadInitial`; lane curation cắt còn 5 thẻ rồi
+ * link sang `/alert-center`, và Alert Center có cursor handling riêng.
+ *
+ * Giữ lại sẽ là ~30 dòng code chết **kèm một test giữ nó sống giả** (test đó
+ * fail ~50% vì race — đã sửa ở PR #34 nhưng khi đó chưa có lý do để tồn tại).
+ * Muốn lấy lại thì `git show 2f3ac0b9:packages/web/src/hooks/useAlertCenterSnapshot.ts`.
+ *
+ * Hệ quả có lợi: poll 15s không còn phụ thuộc `cursorHistory`, nên luôn đọc
+ * trang đầu của scope hiện tại thay vì trang user đang đứng.
+ *
+ * `AlertFeedParams.cursor` vẫn giữ trong type: `extractFeedCursor` dùng nó
+ * khi từ token trần, và `AlertCenterPage` dùng chung hàm này.
+ */
 export function useAlertCenterSnapshot(initialParams: AlertFeedParams = {}) {
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [cursorHistory, setCursorHistory] = useState<string[]>([]);
   const mountedRef = useRef(true);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -63,10 +69,7 @@ export function useAlertCenterSnapshot(initialParams: AlertFeedParams = {}) {
     setError(null);
     try {
       const data = await (coreApiAdapter as any).getAlertCenterFeed(params) as AlertFeedResponse;
-      if (mountedRef.current) {
-        setAlerts(data.results || []);
-        setNextCursor(extractFeedCursor(data.next));
-      }
+      if (mountedRef.current) setAlerts(data.results || []);
       return data;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Không thể tải dữ liệu cảnh báo.';
@@ -81,7 +84,6 @@ export function useAlertCenterSnapshot(initialParams: AlertFeedParams = {}) {
   }, []);
 
   const loadInitial = useCallback(() => {
-    setCursorHistory([]);
     fetchFeed({ symbol, severity, alert_family, session_date, timeframe, page_size });
   }, [fetchFeed, symbol, severity, alert_family, session_date, timeframe, page_size]);
 
@@ -94,39 +96,11 @@ export function useAlertCenterSnapshot(initialParams: AlertFeedParams = {}) {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(() => {
       if (mountedRef.current) {
-        // Poll đúng trang user đang xem — trước đây luôn fetch trang 1 nên vừa
-        // ghi đè nội dung trang 2+ vừa làm cursor history lệch.
-        const currentCursor = cursorHistory.length > 0 ? cursorHistory[cursorHistory.length - 1] : undefined;
-        fetchFeed({ symbol, severity, alert_family, session_date, timeframe, page_size, cursor: currentCursor }, true);
+        fetchFeed({ symbol, severity, alert_family, session_date, timeframe, page_size }, true);
       }
     }, POLL_INTERVAL);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [fetchFeed, symbol, severity, alert_family, session_date, timeframe, page_size, cursorHistory]);
+  }, [fetchFeed, symbol, severity, alert_family, session_date, timeframe, page_size]);
 
-  const goToNextPage = useCallback(() => {
-    if (nextCursor) {
-      setCursorHistory(prev => [...prev, nextCursor]);
-      fetchFeed({ symbol, severity, alert_family, session_date, timeframe, page_size, cursor: nextCursor });
-    }
-  }, [nextCursor, fetchFeed, symbol, severity, alert_family, session_date, timeframe, page_size]);
-
-  const goToPrevPage = useCallback(() => {
-    if (cursorHistory.length === 0) return;
-    const prevCursors = [...cursorHistory];
-    prevCursors.pop();
-    setCursorHistory(prevCursors);
-    const prevCursor = prevCursors.length > 0 ? prevCursors[prevCursors.length - 1] : undefined;
-    fetchFeed({ symbol, severity, alert_family, session_date, timeframe, page_size, cursor: prevCursor });
-  }, [cursorHistory, fetchFeed, symbol, severity, alert_family, session_date, timeframe, page_size]);
-
-  return {
-    alerts,
-    loading,
-    error,
-    hasNextPage: !!nextCursor,
-    hasPrevPage: cursorHistory.length > 0,
-    goToNextPage,
-    goToPrevPage,
-    loadInitial,
-  };
+  return { alerts, loading, error, loadInitial };
 }

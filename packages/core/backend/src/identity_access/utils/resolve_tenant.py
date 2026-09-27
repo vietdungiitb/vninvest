@@ -6,8 +6,10 @@ require_tenant_permission(), require_tenant_role().
 Previously duplicated across 9+ view files — consolidated 2026-07-18.
 """
 import logging
+import re
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from rest_framework.exceptions import PermissionDenied
 
 from identity_access.models import CoreTenant, CoreServiceAccount, TenantMember
@@ -76,6 +78,141 @@ KNOWN_PERMISSION_TOKENS: set[str] = {
 # Helper functions
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Tenant resolution primitives (SSOT for the owner-or-member membership check)
+# ---------------------------------------------------------------------------
+
+#: Tenant statuses eligible for *implicit* resolution (no ``X-Tenant-ID`` header).
+#:
+#: ``PENDING_ACTIVATION`` is deliberately excluded: it is a registration
+#: intermediate state and nothing in the resolution chain gates it, so including
+#: it would let a not-yet-activated tenant be auto-selected as a user's tenant.
+#: The *explicit* header path intentionally does not filter on status, because
+#: ``TenantResolutionMiddleware`` already emits a precise ``tenant_suspended``
+#: 403 for SUSPENDED/DEPROVISIONED and that signal must survive.
+RESOLVABLE_TENANT_STATUSES = frozenset({'active', 'trial'})
+
+#: ``CoreTenant.public_id`` column width (identity_access/models.py:59).
+#: Bounded so a garbage header can never produce an unbounded DB query.
+_TENANT_PUBLIC_ID_MAX_LEN = 36
+
+#: Characters a ``public_id`` may contain. Keeps obviously hostile input
+#: (quotes, spaces, control chars, SQL metacharacters) out of the query layer
+#: without requiring a strict UUID: the column is a free-form CharField that
+#: only *auto-fills* with ``str(uuid.uuid4())`` (models.py:128-132), and the
+#: existing test-suite legitimately uses non-UUID values such as ``'rbac_tenant'``.
+_TENANT_PUBLIC_ID_RE = re.compile(r'^[A-Za-z0-9._~-]{1,%d}$' % _TENANT_PUBLIC_ID_MAX_LEN)
+
+
+def is_plausible_tenant_public_id(value) -> bool:
+    """Cheap, DB-free shape check for a tenant hint.
+
+    Guards against unbounded / hostile header values reaching the ORM. This is
+    a sanity filter, NOT an authorization decision: a well-formed value that the
+    user is not a member of still has to be rejected by
+    :func:`resolve_tenant_for_user`.
+    """
+    if not value or not isinstance(value, str):
+        return False
+    candidate = value.strip()
+    if not candidate:
+        return False
+    return bool(_TENANT_PUBLIC_ID_RE.match(candidate))
+
+
+def resolve_tenant_for_user(user, tenant_public_id: str):
+    """THE owner-or-member membership check. Single source of truth.
+
+    Every tenant resolver in the codebase must route its ``X-Tenant-ID`` /
+    ``?tenant=`` handling through this function so there is exactly one
+    membership check and one privilege-escalation surface.
+
+    Semantics:
+      1. Look the tenant up by ``public_id``.
+      2. Owner (reverse OneToOne) -> ``RoleChoices.OWNER``.
+      3. Otherwise a ``TenantMember`` row -> that member's role.
+      4. Otherwise ``(None, None)`` - the caller decides, do not guess.
+
+    No status filter is applied: SUSPENDED/DEPROVISIONED must still resolve
+    here so the caller can answer with a precise ``tenant_suspended`` error
+    instead of a misleading ``tenant_not_found``.
+
+    Returns:
+        tuple: ``(CoreTenant | None, role | None)``.
+    """
+    if user is None or not getattr(user, 'is_authenticated', False):
+        return None, None
+    if not tenant_public_id:
+        return None, None
+
+    try:
+        tenant = CoreTenant.objects.get(public_id=str(tenant_public_id).strip())
+    except CoreTenant.DoesNotExist:
+        return None, None
+    except (ValueError, TypeError, ValidationError):
+        # Malformed hint must not surface as a 500.
+        return None, None
+
+    # 1. Owner.
+    if tenant.owner_user_id == user.id:
+        return tenant, TenantMember.RoleChoices.OWNER
+
+    # 2. Member.
+    member = TenantMember.objects.filter(tenant=tenant, user=user).first()
+    if member is not None:
+        return tenant, member.role
+
+    # 3. No relationship.
+    return None, None
+
+
+def owner_tenant_for_user(user):
+    """Return the tenant *owned* by ``user``, or ``None``.
+
+    ``CoreTenant.owner_user`` is a OneToOneField (models.py:65-70) so ``.get()``
+    is unambiguous - at most one row - and no ordering is required.
+
+    Deliberately NOT status-filtered. The caller needs the row in order to report
+    WHY access is refused: filtering suspended/deprovisioned out here turned the
+    middleware's precise ``tenant_suspended`` 403 into a misleading
+    ``tenant_not_found``, which the existing middleware tests pin. Status gating
+    belongs at the call site, where the distinction is still available.
+    """
+    if user is None or not getattr(user, 'is_authenticated', False):
+        return None
+    try:
+        return CoreTenant.objects.get(owner_user=user)
+    except (CoreTenant.DoesNotExist, ValueError, TypeError, ValidationError):
+        return None
+
+
+def first_eligible_tenant_for_user(user):
+    """Deterministic, status-filtered membership fallback.
+
+    Fixes the former ``TenantMember.objects...filter(user=user).first()`` which
+    had neither an ``order_by`` nor a status filter: for a user in 2+ tenants
+    Postgres returned an arbitrary row, which could be a suspended tenant.
+    Ordering by ``tenant_id`` makes the pick stable, and
+    :data:`RESOLVABLE_TENANT_STATUSES` keeps an unusable tenant from being
+    auto-selected.
+
+    Returns:
+        tuple: ``(tenant, role)`` or ``(None, None)``.
+    """
+    if user is None or not getattr(user, 'is_authenticated', False):
+        return None, None
+    member = (
+        TenantMember.objects
+        .select_related('tenant')
+        .filter(user=user, tenant__status__in=RESOLVABLE_TENANT_STATUSES)
+        .order_by('tenant_id')
+        .first()
+    )
+    if member is None:
+        return None, None
+    return member.tenant, member.role
+
+
 def apply_pat_user_privileges(user, credential):
     """Strip staff/superuser flags for machine PATs (shared by auth layers).
 
@@ -96,11 +233,14 @@ def resolve_tenant(request) -> CoreTenant:
     Resolution order:
     1. request.tenant (already resolved by middleware)
     2. Staff cross-tenant via service_account_id in request.data
-    3. X-Tenant-ID header
+    3. X-Tenant-ID header, via the shared owner-or-member check
+       (resolve_tenant_for_user) — denied outright if the user has no
+       relationship with the named tenant
     4. Owner fallback (user owns a tenant)
-    5. Member fallback (user is member of a tenant)
+    5. First *eligible* member fallback (deterministic + status-filtered)
 
-    Raises PermissionDenied if no tenant found.
+    Raises PermissionDenied if no tenant found, or if an explicit X-Tenant-ID
+    names a tenant the user is not owner/member of.
     """
     tenant = getattr(request, 'tenant', None)
     if tenant is not None:
@@ -124,29 +264,41 @@ def resolve_tenant(request) -> CoreTenant:
                 except CoreServiceAccount.DoesNotExist:
                     pass
 
-        # Try X-Tenant-ID header
-        tenant_id = request.META.get('HTTP_X_TENANT_ID')
+        # X-Tenant-ID header — resolved through the ONE shared owner-or-member
+        # check. This used to be a bare CoreTenant.objects.get(public_id=...)
+        # with no owner and no TenantMember verification, which made an
+        # attacker-controlled header a full cross-tenant read/write primitive on
+        # every path where the middleware had not already set request.tenant
+        # (i.e. every EXEMPT_PATH_PREFIXES entry whose handler calls this).
+        # Now a header the user has no relationship with is a hard denial
+        # instead of a silent hand-out of someone else's tenant.
+        tenant_id = request.META.get('HTTP_X_TENANT_ID', '').strip()
         if tenant_id:
-            try:
-                tenant = CoreTenant.objects.get(public_id=tenant_id)
+            tenant, _role = resolve_tenant_for_user(user, tenant_id)
+            if tenant is not None:
                 request.tenant = tenant
                 return tenant
-            except CoreTenant.DoesNotExist:
-                pass
+            logger.warning(
+                'tenant_header_denied: user=%s is neither owner nor member of '
+                'the tenant named by X-Tenant-ID. Denying (fail-closed).',
+                getattr(user, 'username', '?'),
+            )
+            raise PermissionDenied(
+                'Header X-Tenant-ID không thuộc tenant của bạn hoặc không tồn tại.'
+            )
 
-        # Fallback: tenant where user is owner
-        try:
-            tenant = CoreTenant.objects.get(owner_user=user)
+        # Fallback: tenant where user is owner (OneToOne, unambiguous).
+        tenant = owner_tenant_for_user(user)
+        if tenant is not None:
             request.tenant = tenant
             return tenant
-        except CoreTenant.DoesNotExist:
-            pass
 
-        # Fallback: first tenant where user is member
-        member = TenantMember.objects.filter(user=user).select_related('tenant').first()
-        if member:
-            request.tenant = member.tenant
-            return member.tenant
+        # Fallback: first *eligible* tenant where user is a member
+        # (deterministic order + status filter).
+        tenant, _role = first_eligible_tenant_for_user(user)
+        if tenant is not None:
+            request.tenant = tenant
+            return tenant
 
     raise PermissionDenied('Không tìm thấy tenant trong request. Middleware chưa chạy hoặc tenant không hợp lệ.')
 

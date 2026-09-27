@@ -4,8 +4,9 @@ C4 — Native portfolio analytics views for user_workspace domain.
 Replaces PortfolioAnalyticsStubView and PortfolioListAnalyticsStubView
 with real computed data from Transaction + SymbolSnapshot + DailyPrice.
 
-All views require IsAuthenticated and scoped to request.user portfolios.
-Performance note: small portfolios only — no pagination/caching at this stage.
+All views require IsAuthenticated and are scoped to (request.user, request.tenant).
+Holdings come from `user_workspace.ledger` (weighted average, D-06) and are
+cached per tenant+portfolio+transaction fingerprint.
 """
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
@@ -21,6 +22,12 @@ from rest_framework.throttling import BaseThrottle
 from rest_framework.views import APIView
 
 from .endpoint_safety import UnsafeEndpointError, assert_safe_outbound_url
+from .ledger import (
+    build_meta,
+    get_cached_ledger,
+    holdings_from_ledger,
+    money,
+)
 from .models import Portfolio, Transaction
 
 
@@ -75,42 +82,44 @@ def _monotonic() -> float:
 
 
 def _get_user_portfolio(request, portfolio_id):
-    """Raise 404 if portfolio not owned by request.user."""
-    return get_object_or_404(Portfolio, pk=portfolio_id, user=request.user)
-
-
-def _compute_holdings(portfolio_id):
     """
-    Aggregate buy/sell transactions into current holdings dict.
-    Returns {symbol: {'quantity': int, 'avg_cost': Decimal, 'total_cost': Decimal}}
+    Lấy portfolio thuộc đúng `(user, tenant)` của request, nếu không thì 404.
+
+    P0-ISO-01: trước đây chỉ lọc `pk` + `user`, nên user đa tenant đọc được
+    holdings/NAV của portfolio thuộc tenant khác chỉ cần biết id.
+
+    - `request.tenant` do `TenantResolutionMiddleware` gán sẵn
+      (`identity_access/middleware.py:112`). Không tạo resolver mới ở đây —
+      `tenantreg-b` đang hợp nhất 4 resolver, thêm cái thứ 5 sẽ phá việc đó.
+    - `request.tenant is None` ⇒ fail-closed 404, KHÔNG fallback về lọc
+      `user` (fallback đó chính là lỗ hổng).
+    - Trả 404 chứ không 403 để không tạo oracle "id này tồn tại ở tenant khác".
+    - Row legacy `tenant IS NULL` không khớp tenant nào ⇒ 404. Xem
+      `user_workspace/migrations/0012_enforce_tenant_not_null_real.py`.
     """
-    txns = (
-        Transaction.objects
-        .filter(portfolio_id=portfolio_id)
-        .exclude(transaction_type=Transaction.TransactionType.DIVIDEND)
-        .order_by('date', 'pk')
+    tenant = getattr(request, 'tenant', None)
+    if tenant is None:
+        raise NotFound('Portfolio not found.')
+    return get_object_or_404(
+        Portfolio.objects.select_related('tenant'),
+        pk=portfolio_id, user=request.user, tenant=tenant,
     )
-    holdings = {}
-    for t in txns:
-        sym = t.symbol
-        if sym not in holdings:
-            holdings[sym] = {'quantity': 0, 'total_cost': Decimal('0'), 'avg_cost': Decimal('0')}
-        entry = holdings[sym]
-        if t.transaction_type == Transaction.TransactionType.BUY:
-            new_qty = entry['quantity'] + t.quantity
-            if new_qty > 0:
-                entry['total_cost'] += t.price * t.quantity + t.fee
-                entry['avg_cost'] = entry['total_cost'] / new_qty
-            entry['quantity'] = new_qty
-        elif t.transaction_type == Transaction.TransactionType.SELL:
-            sell_qty = min(t.quantity, entry['quantity'])
-            if entry['quantity'] > 0:
-                entry['total_cost'] -= entry['avg_cost'] * sell_qty
-            entry['quantity'] = max(0, entry['quantity'] - sell_qty)
-            if entry['quantity'] == 0:
-                entry['total_cost'] = Decimal('0')
-    # Remove zero-quantity holdings
-    return {sym: v for sym, v in holdings.items() if v['quantity'] > 0}
+
+
+def _compute_holdings(portfolio_id, tenant=None):
+    """
+    Wrapper tương thích shape cũ — thuật toán thật nằm ở `user_workspace.ledger`.
+
+    P0-DATA-03: bản cũ nằm ngay trong file này và sai 6 chỗ đã xác minh
+    (loại cổ tức khỏi queryset, không cộng `tax` BUY, không trừ `fee`/`tax`
+    SELL, clamp oversell im lặng, xoá cứng cost basis khi hết hàng, không
+    theo dõi tiền mặt). Xem `ledger/holdings.py` cho bảng đối chiếu và
+    golden fixture ở `test_golden/holdings.json`.
+
+    Giữ nguyên tên + shape `{symbol: {'quantity', 'avg_cost', 'total_cost'}}`
+    để 8 view analytics cũ không phải sửa call site.
+    """
+    return holdings_from_ledger(get_cached_ledger(portfolio_id, tenant))
 
 
 class PortfolioHoldingsView(APIView):
@@ -119,8 +128,8 @@ class PortfolioHoldingsView(APIView):
 
     def get(self, request, portfolio_id):
         from market_serving.models import SymbolSnapshot
-        _get_user_portfolio(request, portfolio_id)
-        holdings = _compute_holdings(portfolio_id)
+        portfolio = _get_user_portfolio(request, portfolio_id)
+        holdings = _compute_holdings(portfolio_id, portfolio.tenant)
         if not holdings:
             return Response([])
         symbols = list(holdings.keys())
@@ -155,7 +164,8 @@ class PortfolioSummaryView(APIView):
     def get(self, request, portfolio_id):
         from market_serving.models import SymbolSnapshot
         portfolio = _get_user_portfolio(request, portfolio_id)
-        holdings = _compute_holdings(portfolio_id)
+        ledger = get_cached_ledger(portfolio_id, portfolio.tenant)
+        holdings = holdings_from_ledger(ledger)
         today = date.today()
         total_market_value = Decimal('0')
         total_cost = Decimal('0')
@@ -179,6 +189,20 @@ class PortfolioSummaryView(APIView):
             'total_unrealized_pnl_pct': round(pnl_pct, 2),
             'num_holdings': len(holdings),
             'as_of': today.isoformat(),
+            # --- PA-2: sổ cái + provenance (P0-DATA-03 / P1-DATA-03) ---------
+            # Toàn bộ là key MỚI, không đổi key cũ ⇒ FE đọc theo tên vẫn chạy.
+            'cash': str(money(ledger['cash'])),
+            'cash_complete': ledger['cash_complete'],
+            'cash_note': ledger['cash_note'],
+            'realized_pnl': str(money(ledger['realized_pnl'])),
+            'dividend_income': str(money(ledger['dividend_income'])),
+            # `nav` = null + lý do, KHÔNG phải 0: cần số dư mở đầu từ broker
+            # (model `Portfolio` không có trường đó ⇒ cần migration, ngoài PA-2).
+            'nav': None,
+            'nav_reason': ledger['nav_reason'],
+            'ledger_warnings': ledger['warnings'],
+            'reconciliation_required': ledger['reconciliation_required'],
+            'meta': build_meta(ledger),
         })
 
 
@@ -198,8 +222,8 @@ class PortfolioEquityCurveView(APIView):
 
     def get(self, request, portfolio_id):
         from market_data.models import DailyPrice
-        _get_user_portfolio(request, portfolio_id)
-        holdings = _compute_holdings(portfolio_id)
+        portfolio = _get_user_portfolio(request, portfolio_id)
+        holdings = _compute_holdings(portfolio_id, portfolio.tenant)
         if not holdings:
             return Response({'portfolio_id': portfolio_id, 'curve': []})
         symbols = list(holdings.keys())
@@ -233,8 +257,8 @@ class PortfolioAllocationView(APIView):
 
     def get(self, request, portfolio_id):
         from market_serving.models import SymbolSnapshot
-        _get_user_portfolio(request, portfolio_id)
-        holdings = _compute_holdings(portfolio_id)
+        portfolio = _get_user_portfolio(request, portfolio_id)
+        holdings = _compute_holdings(portfolio_id, portfolio.tenant)
         if not holdings:
             return Response({'portfolio_id': portfolio_id, 'allocation': []})
         symbols = list(holdings.keys())
@@ -287,8 +311,8 @@ class PortfolioTechnicalsView(APIView):
 
     def get(self, request, portfolio_id):
         from market_serving.models import SymbolSnapshot
-        _get_user_portfolio(request, portfolio_id)
-        holdings = _compute_holdings(portfolio_id)
+        portfolio = _get_user_portfolio(request, portfolio_id)
+        holdings = _compute_holdings(portfolio_id, portfolio.tenant)
         if not holdings:
             return Response([])
         symbols = list(holdings.keys())

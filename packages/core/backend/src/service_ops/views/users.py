@@ -8,6 +8,8 @@ Mọi write ghi ops_audit.AuditEvent. Không migration, không đụng B+A/abili
 from django.contrib.auth.models import User
 from django.db.models import Q
 from rest_framework import status
+from vninvest_core.client_ip import get_client_ip
+
 from rest_framework.response import Response
 
 from identity_access.models import CoreTenant
@@ -21,8 +23,7 @@ VALID_STATUSES = {'active', 'suspended', 'deprovisioned'}
 
 
 def _client_ip(request) -> str:
-    return (request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
-            or request.META.get('REMOTE_ADDR'))
+    return get_client_ip(request)
 
 
 def _write_user_audit(request, action: str, resource_type: str,

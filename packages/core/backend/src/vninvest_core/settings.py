@@ -7,7 +7,25 @@ Default DATABASE_URL uses SQLite for local testing convenience.
 import os
 import sys
 
-TESTING = 'test' in sys.argv or any('test' in arg for arg in sys.argv)
+# TESTING must be an EXACT argv-token match, never a substring match.
+# The previous implementation was:
+#     TESTING = 'test' in sys.argv or any('test' in arg for arg in sys.argv)
+# The second clause is a substring match over EVERY argv entry, so ANY argument
+# merely CONTAINING "test" flipped TESTING on - e.g. `gunicorn --config
+# /etc/gunicorn/testing_gunicorn_conf.py` or a logfile argument `logs/testing.log`.
+# Consequence: CACHES was silently swapped to a per-process LocMemCache
+# (see the `if TESTING:` block below), which makes every rate-limit counter
+# local to one worker process - so a multi-worker deployment got N x the
+# intended quota - and DEFAULT_THROTTLE_CLASSES was emptied, disabling every
+# throttle in the system in production.
+# Escape hatch: set DJANGO_TESTING=true/false explicitly.
+_testing_env = os.environ.get("DJANGO_TESTING", "").strip().lower()
+if _testing_env:
+    TESTING = _testing_env in ("1", "true", "yes")
+else:
+    # Exact membership of the token "test" (covers `manage.py test` and its
+    # subcommand/label arguments), not "test" appearing inside another token.
+    TESTING = "test" in sys.argv[1:]
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
@@ -129,6 +147,39 @@ WSGI_APPLICATION = 'vninvest_core.wsgi.application'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 
+# client_ip holds the private-range default consumed by TRUSTED_PROXY_IPS below.
+# Imported here rather than duplicating the networks as a literal so there is
+# exactly one definition of "which peers do we trust by default".
+from vninvest_core import client_ip  # noqa: E402
+
+# Reverse proxies whose forwarded headers we are willing to believe.
+# Consumed by vninvest_core.client_ip.get_client_ip(), which is the single source
+# of truth for the client IP. Entries may be a plain address ("10.0.4.7") or a
+# CIDR network ("10.0.0.0/8" for a whole Docker bridge); both are supported.
+#
+# THE PREVIOUS "empty means trust nothing" DEFAULT WAS A PLATFORM-WIDE DoS.
+# In this deployment the app container is reached only through the nginx
+# container on a private Docker network, so REMOTE_ADDR is the *nginx container
+# address*, not a client address. With the list empty, get_client_ip() therefore
+# returned that one address for EVERY request in the deployment, and every rate
+# limiter collapsed into a single global bucket: the 4th registration and the 6th
+# login on the whole platform per minute were refused regardless of who sent
+# them. That is the exact inverse of the spoofing hole it was meant to close --
+# not "the attacker picks the IP" but "everyone shares one".
+#
+# So: UNSET now means "trust the private ranges", which is the correct peer set
+# for a containerised deployment where the app port is bound to 127.0.0.1 and is
+# not reachable from an untrusted network. An EMPTY value is still honoured
+# literally (trust nothing), and vninvest_core.checks turns that into a hard
+# production error so it can never ship silently again.
+#
+# Example: TRUSTED_PROXY_IPS=127.0.0.1,::1,10.0.0.0/8
+_trusted_proxy_ips_env = os.environ.get('TRUSTED_PROXY_IPS')
+if _trusted_proxy_ips_env is None:
+    TRUSTED_PROXY_IPS = list(client_ip.DEFAULT_TRUSTED_PROXY_NETWORKS)
+else:
+    TRUSTED_PROXY_IPS = [ip.strip() for ip in _trusted_proxy_ips_env.split(',') if ip.strip()]
+
 DATABASES = {
     'default': {
         **dj_database_url.config(
@@ -179,7 +230,29 @@ BLOCKED_DISPOSABLE_DOMAINS = {
     'getairmail.com', '10minutemail.co', 'tempmail.net'
 }
 TURNSTILE_SECRET_KEY = os.environ.get('TURNSTILE_SECRET_KEY', '').strip()
-STRICT_TURNSTILE_ENFORCEMENT = os.environ.get('STRICT_TURNSTILE_ENFORCEMENT', str(not DEBUG)).strip().lower() in ('true', '1', 'yes')
+# Public site key rendered into the FE widget. Agent D (FE) reads it from VITE_*;
+# this is the backend's copy of the same value, kept for parity/validation.
+TURNSTILE_SITE_KEY = os.environ.get('TURNSTILE_SITE_KEY', '').strip()
+# Fail-closed in production: enforced unless explicitly disabled.
+# Historical bug: this value was assigned a SECOND time near the bottom of the
+# file (old line 792) as
+#     STRICT_TURNSTILE_ENFORCEMENT = os.environ.get(
+#         'STRICT_TURNSTILE_ENFORCEMENT', 'false').lower() == 'true'
+# The second assignment won (later wins), and its default was 'false', so with
+# DEBUG=False and the env var UNSET the effective value was False - i.e. the
+# correct fail-closed default computed here was silently thrown away and
+# Turnstile verification was skipped on every registration in production.
+# That duplicate has been removed; this is now the only definition.
+STRICT_TURNSTILE_ENFORCEMENT = (
+    # `.strip().lower()` TRUOC khi `or` — neu chi `os.environ.get(...) or default`
+    # thi chuoi toan khoang trang la truthy, `.strip().lower()` ra `''`, roi
+    # `'' in ('true',...)` = False => TAT strict o production, vo hieu hoa
+    # `apps.py:38-45`. `docker-compose ${VAR:-}` tao ra chuoi rong nen truong
+    # hop nay la that, khong phai phong do.
+    # Rong (sau strip) = "chua dat" => default `not DEBUG`.
+    (os.environ.get('STRICT_TURNSTILE_ENFORCEMENT') or '').strip().lower()
+    or str(not DEBUG).strip().lower()
+) in ('true', '1', 'yes')
 
 
 # SFI-B5: AI Advisory configuration — all credentials from env; never hardcoded.
@@ -465,6 +538,25 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'commercial.tasks.check_usage_thresholds',
         'schedule': 300.0,  # every 5 minutes
         'options': {'queue': SCHEDULER_QUEUE_MAP['check-usage-thresholds']},
+    },
+    # Slice C7: this was the ONLY code path that downgrades a tenant off a paid
+    # plan, and it was never in CELERY_BEAT_SCHEDULE -- so a cancelled starter
+    # subscription kept its paid entitlements forever. It now re-prices the current
+    # period's QuotaRecord on downgrade and writes a TenantLifecycleEvent.
+    'manage-subscriptions-lifecycle-hourly': {
+        'task': 'commercial.tasks.manage_subscriptions_lifecycle',
+        'schedule': 3600.0,  # hourly
+        'options': {'queue': SCHEDULER_QUEUE_MAP['manage-subscriptions-lifecycle-hourly']},
+    },
+    # EmailVerificationToken gains a row per registration AND per resend, and
+    # nothing else ever deletes one. The prune task existed but was not scheduled,
+    # so the table grew without bound while its unit tests kept passing (they call
+    # the task directly). Off the hour so it does not pile onto the other beat
+    # entries at :00.
+    'prune-email-verification-tokens-hourly': {
+        'task': 'identity_access.email_tasks.prune_email_verification_tokens',
+        'schedule': crontab(minute='17'),
+        'options': {'queue': SCHEDULER_QUEUE_MAP['prune-email-verification-tokens-hourly']},
     },
     'auto-deprovision-stale': {
         'task': 'tenant_lifecycle.tasks.auto_deprovision_stale',
@@ -788,8 +880,18 @@ EMAIL_VERIFICATION_MAX_ATTEMPTS = int(os.environ.get('EMAIL_VERIFICATION_MAX_ATT
 EMAIL_VERIFICATION_LOCKOUT_TIMEOUT = int(os.environ.get('EMAIL_VERIFICATION_LOCKOUT_TIMEOUT', 1800)) # 30 minutes in seconds
 EMAIL_VERIFICATION_RESEND_COOLDOWN = int(os.environ.get('EMAIL_VERIFICATION_RESEND_COOLDOWN', 60)) # seconds
 
-# Strict Cloudflare Turnstile enforcement settings
-STRICT_TURNSTILE_ENFORCEMENT = os.environ.get('STRICT_TURNSTILE_ENFORCEMENT', 'false').lower() == 'true'
+# Verification-email RESEND rate limit thresholds (per minute).
+# These two were read via `getattr(django_settings, 'RESEND_IP_LIMIT_THRESHOLD', 3)`
+# in identity_access/views/register.py but were defined NOWHERE - not in this
+# file, not in any docker-compose file. Operators had no way to tune them: the
+# getattr default was always in force. Defined here so the env vars are real.
+RESEND_IP_LIMIT_THRESHOLD = int(os.environ.get('RESEND_IP_LIMIT_THRESHOLD', 3))
+RESEND_SUBNET_LIMIT_THRESHOLD = int(os.environ.get('RESEND_SUBNET_LIMIT_THRESHOLD', 10))
+
+# STRICT_TURNSTILE_ENFORCEMENT is intentionally NOT redefined here. It used to be
+# assigned again in this block with a 'false' default, which silently overrode the
+# fail-closed definition near the top of this file and disabled bot protection in
+# production. Single definition only - see the comment at its definition.
 
 # =========================================================================
 # SAAS NATIVE USER LOGIN ANTI-ABUSE CONFIGURATIONS

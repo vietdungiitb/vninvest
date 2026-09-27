@@ -444,12 +444,17 @@ class SchedulerJobActionView(SOCBaseView):
 
 
 def _get_client_ip(request) -> 'str | None':
-    """Lấy IP của operator từ request (proxy-aware)."""
-    x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR', '')
-    if x_forwarded:
-        ip = x_forwarded.split(',')[0].strip()
-        return ip or None
-    return request.META.get('REMOTE_ADDR') or None
+    """Lấy IP của operator từ request (proxy-aware).
+
+    Was a hand-rolled left-most ``X-Forwarded-For`` read, which is the
+    client-supplied entry -- so an operator could attribute an action to any
+    address by setting one header. Delegates to the shared SSOT, which only
+    honours the header when the immediate peer is a trusted proxy.
+    """
+    from vninvest_core.client_ip import UNKNOWN_IP, get_client_ip
+
+    resolved = get_client_ip(request)
+    return None if resolved == UNKNOWN_IP else resolved
 
 
 def _execute_scheduler_action(

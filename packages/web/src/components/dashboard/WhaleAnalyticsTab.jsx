@@ -64,7 +64,7 @@ export default function WhaleAnalyticsTab({
     : t('whaleAnalytics.degradedMode', { defaultValue: 'Thiếu dữ liệu tham chiếu' });
 
   return (
-    <div className="dashboard-full-width-deck flex flex-col">
+    <div className="flex min-h-0 flex-col">
       {/* Header with controls */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-slate-900/60 border-b border-slate-800/50">
         <div className="flex flex-wrap items-center gap-4">
@@ -177,12 +177,21 @@ export default function WhaleAnalyticsTab({
               {degradedBadgeLabel}
             </span>
           )}
-          <span className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[9px] text-slate-400 font-bold uppercase">
-            {t('whaleAnalytics.ssotVerified', { defaultValue: 'Xác thực SSOT' })}
-          </span>
-          <span className="px-2 py-1 rounded bg-emerald-950/30 border border-emerald-800/50 text-[9px] text-emerald-400 font-bold uppercase">
-            {t('whaleAnalytics.realtimeFeed', { defaultValue: 'Dữ liệu Realtime' })}
-          </span>
+          {!isStale && !isDegraded && (
+            <>
+              <span className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[9px] text-slate-400 font-bold uppercase">
+                {t('whaleAnalytics.ssotVerified', { defaultValue: 'Xác thực SSOT' })}
+              </span>
+              <span className="px-2 py-1 rounded bg-emerald-950/30 border border-emerald-800/50 text-[9px] text-emerald-400 font-bold uppercase">
+                {t('whaleAnalytics.realtimeFeed', { defaultValue: 'Dữ liệu Realtime' })}
+              </span>
+            </>
+          )}
+          {(isStale || isDegraded) && (
+            <span className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[9px] text-slate-400 font-bold uppercase">
+              {t('whaleAnalytics.notRealtime', { defaultValue: 'Không realtime' })}
+            </span>
+          )}
           <button
             type="button"
             onClick={() => setIsAdvisoryModalOpen(true)}

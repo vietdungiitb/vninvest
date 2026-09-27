@@ -357,7 +357,20 @@ class PasswordResetViewTests(APITestCase):
         self.assertIn('been used', response.data.get('detail', '').lower())
 
     def test_password_reset_confirm_short_password(self):
-        """Test: password_reset_confirm rejects short password."""
+        """Test: password_reset_confirm enforces AUTH_PASSWORD_VALIDATORS.
+
+        CHANGED ASSERTION (slice A / A2). This test used to assert the literal
+        Vietnamese string '8 ký tự', which came from a hard-coded
+        `len(new_password) < 8` guard in password_reset_confirm_view. That guard
+        was the defect: it was the ONLY password policy on this endpoint, and it
+        was weaker than the one registration enforces. The endpoint now calls
+        django.contrib.auth.password_validation.validate_password(), so the
+        assertion targets the code + per-field error shape instead of a message
+        that was never a real requirement.
+
+        The endpoint behaviour is now: min 10 characters (MinimumLengthValidator
+        from AUTH_PASSWORD_VALIDATORS), plus common/numeric/similarity checks.
+        """
         token_obj, raw_token = PasswordResetToken.generate_and_save(
             email=self.user_email,
             hours=1,
@@ -367,13 +380,19 @@ class PasswordResetViewTests(APITestCase):
             '/core/v1/auth/password-reset/confirm/',
             {
                 'token': raw_token,
-                'password': 'Short1!',  # < 8 chars
+                'password': 'Short1!',  # 7 chars - below the enforced minimum
             },
             format='json',
         )
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn('8 ký tự', response.data.get('detail', ''))
+        body = response.data
+        self.assertEqual(body.get('code'), 'weak_password')
+        field_errors = body.get('field_errors') or {}
+        # Reported under both the canonical and the legacy body key so a client
+        # can map the error onto whichever input it sent.
+        self.assertTrue(field_errors.get('new_password'))
+        self.assertTrue(field_errors.get('password'))
 
     def test_password_reset_flow_end_to_end(self):
         """Test: Complete password reset flow (request → confirm)."""

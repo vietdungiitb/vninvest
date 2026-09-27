@@ -12,6 +12,19 @@ from django.core.cache import cache
 from django.utils import timezone
 
 from commercial.models import Invoice, QuotaRecord, Subscription, QuotaHistory
+from commercial.quota_period import (
+    current_billing_period,
+    month_counter_scan_pattern,
+    month_counter_scan_pattern_for,
+    month_counter_ttl,
+    period_slug,
+)
+from commercial.plan_catalog import (
+    PLAN_ENTITLEMENTS,
+    get_api_calls_limit,
+    get_meter_entitlement,
+    is_plan_derived_api_calls_limit,
+)
 from identity_access.models import CoreTenant
 
 
@@ -28,25 +41,24 @@ ALERT_COOLDOWN_HOURS = 6
 ALERT_COOLDOWN_SECONDS = ALERT_COOLDOWN_HOURS * 3600
 
 # Plan-based entitlement for meters not yet backed by a dedicated QuotaRecord field.
+#
+# C2: this used to be a hand-written table that had drifted from every other plan
+# table in the repo. It is now DERIVED from commercial.plan_catalog.PLAN_ENTITLEMENTS
+# so there is exactly one place to change a plan's entitlement.
 # -1 means unlimited; 0 means the plan does not include this meter.
 # free/starter do NOT have ai_regenerate/exports; pro/enterprise have full (unlimited).
+#
+# Shape is intentionally UNCHANGED (meter -> plan -> value) because two live
+# consumers index it that way: snapshot_quota_history (below) and
+# check_usage_thresholds (meter_code -> plan -> value).
+METER_NAMES: tuple[str, ...] = ('ai_regenerate', 'exports')
+
 METER_ENTITLEMENT_BY_PLAN: dict[str, dict[str, int]] = {
-    'ai_regenerate': {
-        'free': 0,
-        'starter': 0,
-        'pro': -1,
-        'enterprise': -1,
-        'custom': -1,
-        'internal': -1,
-    },
-    'exports': {
-        'free': 0,
-        'starter': 0,
-        'pro': -1,
-        'enterprise': -1,
-        'custom': -1,
-        'internal': -1,
-    },
+    meter: {
+        plan_code: get_meter_entitlement(plan_code, meter)
+        for plan_code in PLAN_ENTITLEMENTS
+    }
+    for meter in METER_NAMES
 }
 
 
@@ -58,6 +70,22 @@ def _iter_quota_counter_keys(day: date):
     return client.scan_iter(match=pattern)
 
 
+def _iter_month_counter_keys(tenant_public_id: str | None = None, today: date | None = None):
+    """Suan cac khoa bo dem TICH LUY THANG trong Redis.
+
+    Bo dem thang la nguon su that cho `QuotaRecord.api_calls_used` va cho
+    `middleware` khi enforce — ca hai deu theo don vi THANG.
+    """
+    client = getattr(cache, '_cache', None)
+    if client is None or not hasattr(client, 'scan_iter'):
+        return []
+    if tenant_public_id:
+        pattern = month_counter_scan_pattern_for(tenant_public_id, today or timezone.now().date())
+    else:
+        pattern = month_counter_scan_pattern(today or timezone.now().date())
+    return client.scan_iter(match=pattern)
+
+
 def _normalize_cache_key(raw_key) -> str:
     if isinstance(raw_key, bytes):
         return raw_key.decode('utf-8')
@@ -65,6 +93,15 @@ def _normalize_cache_key(raw_key) -> str:
 
 
 def _extract_tenant_id_from_key(raw_key: str) -> str | None:
+    """Tenant tu khoa bo dem, ca hai dang:
+    - ngay  : `quota:api_calls:{tenant}:{YYYY-MM-DD}`            (4 phan)
+    - thang : `quota:api_calls:month:{tenant}:{YYYY-MM}`         (5 phan)
+
+    `parts[-2]` ra dung `tenant` cho ca hai: khoa 4 phan thi `-2` = index 2,
+    khoa 5 phan thi `-2` = index 3. **Da verify** bang test
+    `tests/test_quota_period_accumulation.py::QuotaTenantIdExtractionTests`,
+    nen khong tach ham rieng cho khoa thang.
+    """
     parts = str(raw_key).split(':')
     if len(parts) < 4:
         return None
@@ -80,10 +117,8 @@ def _cache_get_int(raw_key) -> int:
 
 
 def _current_billing_period(today: date) -> tuple[date, date]:
-    period_start = today.replace(day=1)
-    next_month_anchor = (period_start + timedelta(days=32)).replace(day=1)
-    period_end = next_month_anchor - timedelta(days=1)
-    return period_start, period_end
+    """SSOT o `commercial/quota_period.py` — giu wrapper de khong doi het call site."""
+    return current_billing_period(today)
 
 
 def _invoice_number_for(tenant: CoreTenant, period_start: date) -> str:
@@ -125,8 +160,14 @@ def flush_quota_counters(self, target_date: str | None = None):
     period_start, period_end = _current_billing_period(today)
     processed = 0
     try:
-        for raw_key in _iter_quota_counter_keys(today):
-            tenant_public_id = _extract_tenant_id_from_key(_normalize_cache_key(raw_key))
+        # Doc khoa bo dem THANG. Bo dem ngay khong dung o day: TTL chi 48h
+        # (`middleware.REDIS_KEY_TTL_SECONDS`) nen khong cong don duoc, va
+        # ghi no vao `QuotaRecord` thang chi lay gia tri cua MOT ngay — day la
+        # ly do `api_calls_used` truoc day **khong bao gio tang dan** (bi ghi
+        # de moi lan flush) va han muc thang thuc te ~30x len.
+        for raw_key in _iter_month_counter_keys(today=today):
+            normalized = _normalize_cache_key(raw_key)
+            tenant_public_id = _extract_tenant_id_from_key(normalized)
             if not tenant_public_id:
                 continue
 
@@ -137,12 +178,23 @@ def flush_quota_counters(self, target_date: str | None = None):
                 continue
 
             used_calls = _cache_get_int(raw_key)
+            # C2 FIX: the record used to be created with api_calls_limit left at the
+            # model default of -1 (= unlimited) and NOTHING ever wrote a positive
+            # value, so quota was never enforced for any tenant: the middleware guard
+            # skips negative limits, X-Quota-Warning never appeared, and
+            # auto_suspend_quota_overflow (which filters api_calls_limit__gt=-1)
+            # could never match. Seed the canonical plan entitlement at period open.
             quota_record, _ = QuotaRecord.objects.get_or_create(
                 tenant=tenant,
                 period_start=period_start,
                 period_end=period_end,
-                defaults={'api_calls_used': 0},
+                defaults={
+                    'api_calls_used': 0,
+                    'api_calls_limit': get_api_calls_limit(tenant.plan),
+                },
             )
+            # Bo dem thang LA tong tich luy nen gan truc tiep, khong cong them
+            # (cong them se lam double-count moi lan flush).
             if quota_record.api_calls_used != used_calls:
                 quota_record.api_calls_used = used_calls
                 quota_record.save(update_fields=['api_calls_used', 'updated_at'])
@@ -154,6 +206,8 @@ def flush_quota_counters(self, target_date: str | None = None):
         return {
             'status': 'ok',
             'date': today.isoformat(),
+            'period': f'{period_start.isoformat()}/{period_end.isoformat()}',
+            'unit': 'monthly',
             'processed': processed,
         }
     finally:
@@ -248,11 +302,85 @@ def send_quota_warning(self, tenant_id: str, percent: int):
     }
 
 
+def _reseed_free_plan_entitlement(tenant: CoreTenant, *, today: date) -> dict:
+    """C7: a downgrade must re-price, not just relabel.
+
+    manage_subscriptions_lifecycle used to set tenant.plan = FREE and stop, leaving
+    QuotaRecord.api_calls_limit at the old paid plan's value, so the downgraded
+    tenant kept paid headroom (and, with C2 live, kept the paid-plan suspension
+    threshold). The tenant-level api_calls_limit is already re-synced by the
+    post_save receiver in identity_access/models.py; this fixes the QuotaRecord the
+    middleware actually reads, and reports what changed.
+    """
+    free_limit = get_api_calls_limit(CoreTenant.PlanChoices.FREE)
+    result = {
+        'quota_limit_before': None,
+        'quota_limit_after': None,
+        'tenant_limit_after': None,
+        'changed': False,
+        'override_preserved': False,
+    }
+
+    records = QuotaRecord.objects.filter(
+        tenant=tenant,
+        period_start__lte=today,
+        period_end__gte=today,
+    )
+    for record in records:
+        result['quota_limit_before'] = int(record.api_calls_limit)
+        if record.api_calls_limit == free_limit:
+            result['quota_limit_after'] = free_limit
+            continue
+        if not is_plan_derived_api_calls_limit(record.api_calls_limit):
+            # hand-negotiated allowance: a downgrade must not silently clobber it,
+            # but it has to be visible, so report it
+            result['override_preserved'] = True
+            result['quota_limit_after'] = int(record.api_calls_limit)
+            continue
+        QuotaRecord.objects.filter(pk=record.pk).update(api_calls_limit=free_limit)
+        result['quota_limit_after'] = free_limit
+        result['changed'] = True
+
+    result['tenant_limit_after'] = int(tenant.api_calls_limit)
+    return result
+
+
+def _log_plan_change(tenant: CoreTenant, *, previous_plan: str, reseeded: dict) -> None:
+    """Record the downgrade so support/billing can see why a limit moved."""
+    from tenant_lifecycle.models import TenantLifecycleEvent
+
+    try:
+        TenantLifecycleEvent.objects.create(
+            tenant=tenant,
+            event_type=TenantLifecycleEvent.EventType.PLAN_CHANGED,
+            actor_type='system',
+            old_value={'plan': previous_plan, 'api_calls_limit': reseeded.get('quota_limit_before')},
+            new_value={
+                'plan': CoreTenant.PlanChoices.FREE,
+                'api_calls_limit': reseeded.get('quota_limit_after'),
+            },
+            metadata={
+                'source': 'commercial.tasks.manage_subscriptions_lifecycle',
+                'quota_limit_changed': reseeded.get('changed', False),
+                'negotiated_override_preserved': reseeded.get('override_preserved', False),
+            },
+        )
+    except Exception as exc:
+        logger.error('Failed to log plan change for tenant %s: %s', tenant.public_id, exc)
+
+
 @shared_task(name='commercial.tasks.manage_subscriptions_lifecycle', bind=True, max_retries=2, default_retry_delay=300)
 def manage_subscriptions_lifecycle(self, today_iso: str | None = None):
     """
     Manages automatic subscription lifecycle: dunning, renewals, and plan downgrades.
     Runs hourly in production.
+
+    C7: this is the ONLY downgrade path and it was absent from CELERY_BEAT_SCHEDULE,
+    so plan downgrades never ran at all. Even when invoked it set tenant.plan = FREE
+    but left QuotaRecord.api_calls_limit at the old paid plan's value and
+    CoreTenant.max_active_pats untouched, so the tenant kept paid headroom after
+    paying nothing. The downgrade now re-seeds the free entitlement and writes a
+    plan_changed lifecycle event.
     """
     today = date.fromisoformat(today_iso) if today_iso else timezone.now().date()
     downgraded = 0
@@ -267,6 +395,7 @@ def manage_subscriptions_lifecycle(self, today_iso: str | None = None):
     for sub in expired_cancelled_subs:
         tenant = sub.tenant
         # Downgrade plan in tenant and subscription
+        previous_plan = tenant.plan
         sub.plan = CoreTenant.PlanChoices.FREE
         sub.cancel_at_period_end = False
         sub.current_period_start = today
@@ -277,7 +406,10 @@ def manage_subscriptions_lifecycle(self, today_iso: str | None = None):
         tenant.plan = CoreTenant.PlanChoices.FREE
         tenant.status = CoreTenant.StatusChoices.ACTIVE
         tenant.save(update_fields=['plan', 'status', 'updated_at'])
+        reseeded = _reseed_free_plan_entitlement(tenant, today=today)
         downgraded += 1
+
+        _log_plan_change(tenant, previous_plan=previous_plan, reseeded=reseeded)
 
     # 2. Process Auto-renewal / Dunning invoices creation for expired subscriptions without cancel_at_period_end
     expired_active_subs = Subscription.objects.select_related('tenant').filter(
@@ -472,7 +604,19 @@ def check_usage_thresholds(self):
             entitled = getattr(tenant, 'api_calls_limit', -1)
         elif meter_code == 'whale_symbols':
             from commercial.models import QuotaRecord
-            qr = QuotaRecord.objects.filter(tenant=tenant).order_by('-period_start').first()
+            # C9/C2: this used to read the newest record regardless of period, so the
+            # threshold could be computed against a last period's limit. Prefer the
+            # period that contains today, and only then fall back to the newest.
+            today = timezone.now().date()
+            qr = (
+                QuotaRecord.objects.filter(
+                    tenant=tenant,
+                    period_start__lte=today,
+                    period_end__gte=today,
+                )
+                .order_by('-period_start')
+                .first()
+            ) or QuotaRecord.objects.filter(tenant=tenant).order_by('-period_start').first()
             entitled = getattr(qr, 'symbols_limit', -1) if qr else -1
         else:
             # ai_regenerate / exports - plan-based
@@ -591,5 +735,104 @@ def _log_tenant_lifecycle_event(tenant: CoreTenant, meter_code: str, level: str)
         )
     except Exception as exc:
         logging.getLogger(__name__).error('Failed to create TenantLifecycleEvent: %s', exc)
-    except Exception as exc:
-        logging.getLogger(__name__).error('Failed to create TenantLifecycleEvent: %s', exc)
+
+
+# ---------------------------------------------------------------------------
+# C2 — quota entitlement backfill
+# ---------------------------------------------------------------------------
+# Run manually after deploy:
+#   python manage.py shell -c "from commercial.tasks import backfill_quota_entitlements as b; print(b(dry_run=True))"
+#   python manage.py shell -c "from commercial.tasks import backfill_quota_entitlements as b; print(b())"
+#
+# Deliberately a TASK, not a migration: writing an entitlement onto a live quota
+# table changes what customers are allowed to do (see the report — free goes
+# 10000 -> 1000), so it must be reviewable and reversible per tenant. A migration
+# would apply that silently on every deploy.
+#
+# SAFETY: a limit that is NOT one of the canonical plan values is treated as a
+# hand-negotiated override (e.g. an enterprise deal at 2,000,000) and is left alone.
+# Only rows whose limit is plan-derived, or that were never seeded (-1 default),
+# are repaired. Idempotent: a second run reports zero changes.
+@shared_task(name='commercial.tasks.backfill_quota_entitlements', bind=True, max_retries=1, default_retry_delay=300)
+def backfill_quota_entitlements(self, dry_run: bool = False, include_deprovisioned: bool = False):
+    """Seed/repair QuotaRecord.api_calls_limit from the canonical plan entitlement.
+
+    Also makes sure every live tenant has a QuotaRecord for the CURRENT period, so
+    identity_access/middleware.py:_get_tenant_quota_limit (which only ever reads
+    QuotaRecord and falls back to -1 = unlimited) finds a real limit without needing
+    a middleware change.
+    """
+    today = timezone.now().date()
+    period_start, period_end = _current_billing_period(today)
+
+    tenants = CoreTenant.objects.all()
+    if not include_deprovisioned:
+        tenants = tenants.exclude(status=CoreTenant.StatusChoices.DEPROVISIONED)
+
+    stats = {
+        'dry_run': bool(dry_run),
+        'tenants_scanned': 0,
+        'records_created': 0,
+        'limits_repaired': 0,
+        'overrides_preserved': 0,
+        'tenant_limits_repaired': 0,
+        'changes': [],
+    }
+
+    for tenant in tenants.iterator():
+        stats['tenants_scanned'] += 1
+        expected_limit = get_api_calls_limit(tenant.plan)
+
+        # 1. The tenant-level fallback the middleware *can* use.
+        if (
+            tenant.api_calls_limit != expected_limit
+            and is_plan_derived_api_calls_limit(tenant.api_calls_limit)
+        ):
+            stats['tenant_limits_repaired'] += 1
+            stats['changes'].append(
+                f'tenant {tenant.public_id} plan={tenant.plan} '
+                f'api_calls_limit {tenant.api_calls_limit} -> {expected_limit}'
+            )
+            if not dry_run:
+                CoreTenant.objects.filter(pk=tenant.pk).update(api_calls_limit=expected_limit)
+        elif tenant.api_calls_limit != expected_limit:
+            stats['overrides_preserved'] += 1
+
+        # 2. The period record the middleware actually reads first.
+        record = QuotaRecord.objects.filter(
+            tenant=tenant,
+            period_start=period_start,
+            period_end=period_end,
+        ).first()
+        if record is None:
+            stats['records_created'] += 1
+            stats['changes'].append(
+                f'quota_record {tenant.public_id} {period_start}->{period_end} '
+                f'created with limit {expected_limit}'
+            )
+            if not dry_run:
+                QuotaRecord.objects.create(
+                    tenant=tenant,
+                    period_start=period_start,
+                    period_end=period_end,
+                    api_calls_used=max(0, int(tenant.api_calls_used or 0)),
+                    api_calls_limit=expected_limit,
+                )
+            continue
+
+        if record.api_calls_limit != expected_limit:
+            if is_plan_derived_api_calls_limit(record.api_calls_limit):
+                stats['limits_repaired'] += 1
+                stats['changes'].append(
+                    f'quota_record {tenant.public_id} {period_start}->{period_end} '
+                    f'limit {record.api_calls_limit} -> {expected_limit}'
+                )
+                if not dry_run:
+                    QuotaRecord.objects.filter(pk=record.pk).update(
+                        api_calls_limit=expected_limit
+                    )
+            else:
+                stats['overrides_preserved'] += 1
+
+    logger.info('backfill_quota_entitlements: %s', {k: v for k, v in stats.items() if k != 'changes'})
+    return stats
