@@ -286,6 +286,9 @@ SOC_SLO_TARGET = float(os.environ.get('SOC_SLO_TARGET', '0.999') or '0.999')
 # Stripe Billing Integration
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
+
+# Broker secret key (versioned, independent of SECRET_KEY per D-15)
+BROKER_SECRET_KEY = os.environ.get('BROKER_SECRET_KEY', '')
 STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
 
 # Stripe Price IDs mapping (plan_code -> Stripe Price ID)
