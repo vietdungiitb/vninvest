@@ -1,10 +1,9 @@
 import { jest, describe, test, expect, beforeEach, afterEach } from "@jest/globals";
 
-// Manual mock: Jest auto-loads __mocks__/react.js for jest.mock("react").
-// jest.unstable_mockModule does NOT intercept CJS require() — the real
-// node_modules/react/cjs/react.development.js was loaded, leaving its
-// internal dispatcher null ⇒ "Cannot read properties of null (reading 'useState')".
-jest.mock("react");
+// Scoped manual mock: the fake React harness lives in test/mocks/, NOT in
+// <rootDir>/__mocks__/ — Jest auto-applies a node-module manual mock to every
+// suite, which broke 11/18 suites. See test/mocks/react.js + ledger Entry 234.
+jest.mock("react", () => require("../../../../test/mocks/react.js"));
 
 let useCoreDashboardData;
 let collectUniqueSortedSymbols;
