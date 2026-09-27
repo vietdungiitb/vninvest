@@ -18,15 +18,67 @@ from drf_spectacular.utils import OpenApiExample, extend_schema
 from rest_framework import permissions
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
+from rest_framework.throttling import BaseThrottle
 from rest_framework.views import APIView
 
+from .endpoint_safety import UnsafeEndpointError, assert_safe_outbound_url
 from .ledger import (
     build_meta,
     get_cached_ledger,
     holdings_from_ledger,
     money,
 )
-from .models import Portfolio
+from .models import Portfolio, Transaction
+
+
+class AIEndpointProbeThrottle(BaseThrottle):
+    """    Dedicated bucket for the AI test-connection probe.
+
+    The global UserRateThrottle allows 1000/hour (settings.py:263), which is not
+    a mitigation for a view that makes an outbound HTTP request to a
+    user-supplied address — it is an amplification budget. This caps probes
+    per user per minute instead, so the SSRF guard is not the only thing
+    standing between an authenticated account and the internal network.
+
+    This throttle DOES run under the test suite. `DEFAULT_THROTTLE_CLASSES` is
+    emptied when TESTING is true (settings.py:258-261), but a view that names
+    `throttle_classes` explicitly keeps its own class regardless.
+    """
+
+    scope = 'ai_endpoint_probe'
+    rate = 10          # requests
+    window = 60        # seconds
+
+    def get_cache_key(self, request, view):
+        user = getattr(request, 'user', None)
+        ident = getattr(user, 'pk', None) or getattr(user, 'username', None) or 'anon'
+        return f'throttle_ai_endpoint_probe:{ident}'
+
+    def allow_request(self, request, view):
+        from django.core.cache import cache
+
+        now = _monotonic()
+        key = self.get_cache_key(request, view)
+        self.history = [ts for ts in cache.get(key, []) if ts > now - self.window]
+        if len(self.history) >= self.rate:
+            return self.throttled()
+        self.history.append(now)
+        cache.set(key, self.history, self.window + 5)
+        # BaseThrottle.allow_request raises NotImplementedError; a concrete
+        # throttle must return True here rather than delegating upwards.
+        return True
+
+    def throttled(self):
+        from rest_framework.exceptions import Throttled
+
+        oldest = min(self.history) if self.history else _monotonic()
+        return Throttled(wait=max(1, int(self.window - (_monotonic() - oldest))))
+
+
+def _monotonic() -> float:
+    import time as _time
+
+    return _time.monotonic()
 
 
 def _get_user_portfolio(request, portfolio_id):
@@ -872,6 +924,7 @@ class PortfolioAICommandCenterTestView(APIView):
     - openai/gemini/claude: gửi 1 tin nhắn test tối thiểu
     """
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [AIEndpointProbeThrottle]
 
     def post(self, request):
         from vninvest_core.exceptions import ValidationErrorException
@@ -911,6 +964,24 @@ class PortfolioAICommandCenterTestView(APIView):
         # local: active probe đến endpoint Ollama/vLLM
         if provider == 'local':
             endpoint = custom_endpoint.rstrip('/') if custom_endpoint else 'http://localhost:11434/v1'
+            # P0-3 (audit Entry 228): custom_endpoint is user-controlled and was
+            # passed straight to httpx, so any authenticated user could make this
+            # server GET internal-only addresses. Validate before the outbound
+            # call, not after. `local` is the only provider allowed to reach
+            # loopback — a co-located Ollama/vLLM is the point of that provider —
+            # but 169.254.169.254 (instance metadata), RFC1918, and non-HTTP
+            # schemes stay blocked even here.
+            try:
+                assert_safe_outbound_url(endpoint, allow_loopback=True)
+            except UnsafeEndpointError as exc:
+                _log_test(
+                    AIAuditLog.ActionChoices.TEST_CONNECTION_FAILED,
+                    f'Local Model endpoint bị chặn: {exc}',
+                )
+                raise ValidationErrorException(
+                    detail=f'Endpoint bị chặn: {exc}',
+                    code='validation_error',
+                )
             models_url = f'{endpoint}/models'
             try:
                 with httpx.Client(timeout=5.0) as client:
