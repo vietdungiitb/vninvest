@@ -63,7 +63,7 @@
 | D-16 | Capability matrix là **dữ liệu versioned**, không phải hằng | — |
 | D-17 | Retention: ledger/order/audit ≥ 7 năm; cache/snapshot 90 ngày; job log 30 ngày | — |
 | D-18 | SLO: read API p95 ≤ 500ms (warm); sync freshness p95 ≤ 30 phút trong giờ giao dịch; order duplicate = 0; audit completeness = 100%; isolation violations = 0 | Đo được |
-| D-19 | Test gate deterministic: `npm run test:components` chạy **3 lần liên tiếp** cùng commit, cả 3 xanh mới ký release | Chống rerun xanh giả |
+| D-19 | Test gate deterministic: `npm run test:components` chạy **3 lần liên tiếp** cùng commit, cả 3 xanh mới ký release. **⚠️ CHƯA KHẢ DỤNG — baseline đo flake 50% (2/4 lần đỏ), xác suất đạt chỉ 12,5%. Xem §0.5.1: phải sửa flake, hoặc tạm dùng quy tắc 5 lần / ≥4 xanh / test đỏ nằm trong allowlist `soc-overview-stream`** | Chống rerun xanh giả |
 | D-20 | Chuẩn bắt buộc: OWASP ASVS 5.0 L2 (R1/R2) → L3 (R3); OWASP API Top 10 2023; RFC 9457; OpenAPI 3.1; WCAG 2.2 AA; CycloneDX SBOM ≥1.6; ISO/IEC 25010:2023 + 25012:2008; ISO/IEC 27001:2022 | §0.4 |
 | D-21 | `vnbroker` là **sở hữu của chủ repo** ⇒ **KHÔNG còn là blocker pháp lý**. R3 live trading được phép triển khai | Đã chốt 2026-09-27 |
 | D-22 | Monetization: FREE = manual/CSV + paper; PRO = broker read-only; ENTERPRISE = +API/PAT; **live trade = approval riêng** | — |
@@ -109,18 +109,78 @@ Không slice nào merge được nếu thiếu **một** dòng trong bảng này
 | GT1 | Type check | `npx tsc --noEmit` (web) | exit 0, 0 error | Tất cả FE slice |
 | GT2 | Build | `npm run build` | exit 0 | Tất cả FE slice |
 | GT3 | Lint | `npm run lint` | 0 error (warning chấp nhận) | Tất cả FE slice |
-| GT4 | FE test | `npm run test:components` | 3 lần liên tiếp đều PASS (D-19) | Tất cả FE slice |
+| GT4 | FE test | `npm run test:components` | ⚠️ **FLAKY 50%** — xem §0.5.1. Yêu cầu: test đỏ (nếu có) **phải là** `soc-overview-stream.component.test.tsx` | Tất cả FE slice |
 | GT5 | FE i18n | `npm run i18n:scan` + `npm run hardcode:scan` | 0 missing, 0 hardcode | FE-*, cross-cutting |
-| GT6 | Django check | `python src/manage.py check` | 0 issue | Tất cả BE slice |
-| GT7 | Migration drift | `python src/manage.py makemigrations --check --dry-run` | "No changes detected" | Slice đụng model |
-| GT8 | Migration apply | `python src/manage.py migrate` trên **Postgres** | exit 0 | Slice có migration |
-| GT9 | BE test | `python src/manage.py test <app>` | 0 failure, 0 error | Tất cả BE slice |
+| GT6 | Django check | `cd packages/core/backend && python manage.py check` | 0 issue | Tất cả BE slice |
+| GT7 | Migration drift | `cd packages/core/backend && python manage.py makemigrations --check --dry-run` | "No changes detected" | Slice đụng model |
+| GT8 | Migration apply | `cd packages/core/backend && python manage.py migrate` trên **Postgres** | exit 0 | Slice có migration |
+| GT9 | BE test | `cd packages/core/backend && python manage.py test <app>` | 0 failure, 0 error | Tất cả BE slice |
 | GT10 | Secret scan | `git grep -InE 'github_pat_|ghp_|DNSE_CREDENTIAL_FERNET_KEY=[A-Za-z0-9]' -- . ':!*.example'` | 0 hit | Tất cả slice |
 | GT11 | Multi-agent gate | `node packages/web/scripts/check-multi-agent.mjs` | exit 0 | Khi ≥2 agent |
 | GT12 | A11y | `axe` scan trên 5 trang portfolio | 0 critical, 0 serious | FE-02..FE-06 |
 | GT13 | A11y thủ công | checklist WCAG 2.2 AA §0.4 | 5/5 tiêu chí pass | FE-02..FE-06 |
 | GT14 | BE test env | `CORE_DATABASE_URL` trỏ **Postgres** + `DJANGO_DEBUG=1` | Không dùng SQLite | Tất cả BE slice |
 | GT15 | Evidence pack | `docs/evidence/<slice>/` đủ EV1..EVn | Không thiếu | Mọi slice |
+
+### 0.5.1 BASELINE ĐÃ ĐO — `dev` @ `378bf74d` (2026-09-27 23:0x)
+
+Đo **trên cây sạch**, cùng commit, không sửa file nào. Lưu lại để agent sau biết chuyện gì đã xanh sẵn và chuyện gì **đang đỏ**.
+
+| Gate | Kết quả | Số liệu |
+|------|---------|---------|
+| GT1 `tsc --noEmit` | **PASS** | exit 0, 0 error |
+| GT2 `npm run build` | **PASS** | built in 23.59s, 3.668 modules |
+| GT3 `npm run lint` | **PASS** | 0 error, **3.566 warning** (pre-existing) |
+| GT4 `test:components` | ⚠️ **FLAKY** | xem bên dưới |
+| GT6 `manage.py check` | **PASS** | `System check identified no issues (0 silenced)` |
+| GT7 `makemigrations --check` | **PASS** | `No changes detected` |
+| GT8 Postgres | **PASS** | `PostgreSQL 16.13`, **152 migration** đã áp dụng |
+| GT10 secret scan | **PASS** | 0 hit `github_pat_`/`ghp_` trên HEAD; 0 hit Fernet key trong compose |
+| GT11 `check-multi-agent` | **PASS** | 0 lỗi, 0 trùng số migration, 11 cảnh báo pre-existing |
+
+**Mốc bundle để so sánh** (cho PAP-05 giới hạn +150 kB gzip):
+
+| Chunk | Raw | Gzip |
+|-------|-----|------|
+| `widget-*.js` (vninvestcharts) | 2.217,05 kB | **557,29 kB** |
+| `echarts-*.js` | 637,31 kB | 217,15 kB |
+| `i18n-*.js` | 470,85 kB | 152,94 kB |
+| `xlsx-*.js` | 429,03 kB | 143,08 kB |
+
+**Credentials BE để chạy test** (đã xác minh kết nối được, không phải suy đoán):
+
+```
+cd packages/core/backend
+$env:DJANGO_DEBUG="1"
+$env:CORE_DATABASE_URL="postgresql://vninvest:devpassword@127.0.0.1:5433/vninvest_core"
+```
+
+> **`manage.py` nằm ở `packages/core/backend/manage.py`, KHÔNG phải `backend/src/manage.py`.**
+> Bản nháp đầu của tài liệu này ghi sai đường dẫn — đã sửa ở GT6..GT9.
+
+#### ⚠️ SỰ CỐ ĐỜ ĐẨU ĐÃ ĐO: flake rate 50% ở GT4
+
+Chạy `npm run test:components` **4 lần trên cùng commit, cây sạch**:
+
+| Lần | Test Files | Tests | Exit |
+|-----|-----------|-------|------|
+| 1 | 1 failed \| 101 passed (102) | 1 failed \| 685 passed (686) | **1** |
+| 2 | 102 passed (102) | 686 passed (686) | 0 |
+| 3 | 102 passed (102) | 686 passed (686) | 0 |
+| 4 | 1 failed \| 101 passed (102) | 1 failed \| 685 passed (686) | **1** |
+
+**Flake rate = 2/4 = 50%.** Test đỏ: `src/components/__tests__/soc-overview-stream.component.test.tsx:107`
+→ `expect(es).toBeTruthy()` nhận `undefined` ⇒ mock `EventSource` chưa khởi tạo kịp (race).
+
+**Hệ quả với D-19 — phải xử lý trước khi dùng làm release gate:**
+
+D-19 yêu cầu 3 lần xanh liên tiếp. Với flake 50%, xác suất đạt = 0,5³ = **12,5%**.
+⇒ **D-19 hiện không dùng được làm gate ký release.** Phải làm một trong hai:
+
+1. **Sửa flake** (khuyến nghị) — thêm `waitFor` thay vì assert đồng bộ trong test, hoặc `vi.useFakeTimers()`. Tốn ~0,5 ed.
+2. **Tạm chấp nhận:** chạy 5 lần, yêu cầu ≥4 xanh **và** xác nhận test đỏ luôn là `soc-overview-stream` (danh sách allowlist trắng). Phải ghi rõ trong evidence.
+
+**Không được** ghi `GT4 = Pass` khi 1/4 lần chạy đỏ mà không ghi rõ lý do. Đây đúng là loại "PASS giả" mà §0.9 cấm.
 
 **Bẫy đã gặp thật và cách tránh:**
 
