@@ -2418,6 +2418,11 @@ const vi = {
     confLabel: 'Tin cậy',
     sessionLabel: 'Phiên',
     mute30m: 'Tắt 30p',
+    showing: 'Hiển thị {shown}/{total}',
+    loadingList: 'Đang tải danh sách cảnh báo…',
+    loadError: 'Không tải được danh sách cảnh báo.',
+    retryHint: 'Thử lại sau ít phút.',
+    filteredEmpty: 'Bộ lọc hiện tại loại hết {total} cảnh báo.',
   },
   aiAdvisor: {
     panel: {

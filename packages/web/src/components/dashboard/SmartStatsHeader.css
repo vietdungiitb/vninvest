@@ -77,21 +77,6 @@
   border-color: rgba(var(--dsh-slate-800-rgb) / 0.8);
 }
 
-.smart-stats-header .bg-current\/10 {
-  background-color: currentColor;
-  opacity: 0.1;
-}
-
 .smart-stats-header .bg-slate-800 {
   background-color: var(--color-bg-tertiary);
-}
-
-.smart-stats-header .ring-emerald-400\/80 {
-  box-shadow: 0 0 0 2px rgba(var(--dsh-success-400-rgb) / 0.8);
-}
-
-.smart-stats-header .ring-offset-slate-950 {
-  box-shadow:
-    0 0 0 2px var(--color-bg-primary),
-    0 0 0 4px rgba(var(--dsh-success-400-rgb) / 0.8);
 }

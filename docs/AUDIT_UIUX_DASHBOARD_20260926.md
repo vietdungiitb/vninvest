@@ -188,7 +188,7 @@ và `main` là scroll container + `.panel-body` cũng scroll  ⇒ cuộn lồng 
 | ID | Mức | Vị trí | Thực tế | Fix |
 |---|---|---|---|---|
 | **KH-1** | **P0** | `portfolio_analytics_views.py:238-244` | BE trả `{summary, note}`; thiếu cả 4 field. grep toàn backend = 0 hit ⇒ **4 ô KPI chết vĩnh viễn** | Tính từ `PortfolioEquityCurveView` (`:167-199`, đã có `curve`): `sharpe = mean(r)/std(r)×√252` · `beta = cov(port,VNINDEX)/var(VNINDEX)` · `maxDD = min((nav/peak − 1)×100)` · `alpha = (rp−rf) − β(rm−rf)`. Trả `null` (không phải `0`) khi `<30` điểm. **Không cần migration** (view không đụng model) |
-| **KH-2** | **P0** | `SmartStatsHeader.css:93-97` | `.ring-offset-slate-950` specificity **0-2-0**, **không điều kiện**, ghi đè `box-shadow` ⇒ **focus ring nút refresh luôn hiện, không đổi khi focus** (WCAG 2.4.7 fail) | Xoá rule. Tailwind đã có `--color-slate-950` trong `@theme` |
+| ~~KH-2~~ | ~~**P0**~~ → **P3 dead CSS** | `SmartStatsHeader.css:93-97` | ~~`.ring-offset-slate-950` specificity **0-2-0**, không điều kiện, ghi đè `box-shadow` ⇒ focus ring luôn hiện, WCAG 2.4.7 fail~~ **⛔ SAI — đã kiểm chứng lại khi implement.** Selector là `.smart-stats-header .ring-offset-slate-950`, còn token trong DOM là `focus-visible:ring-offset-slate-950` (có tiền tố variant) ⇒ **selector không bao giờ match** ⇒ **không có gì phá focus ring**. Token trần `ring-offset-slate-950` chỉ nằm ở `ui/tabs.tsx:44`, mà `tabs.tsx` không có class `smart-stats-header`. Đã đo bằng script exact-token: bare count = **0** | Đã xoá vì là **CSS chết** (`.bg-current/10` bare=0, `.ring-emerald-400/80` bare=0), không phải vì hỏng. Bài học: phải hỏi "selector có match không" **trước** khi lập luận về specificity |
 | KH-3 | P1 | `SmartStatsHeader.js:127` vs `:69,80,140` | **2 hệ label**: metric 12px/500/sentence-case vs KPI 10px/400/uppercase ⇒ **hệ thống phân cấp bị đảo** | 7 label → 1 class `.kpiLabel` |
 | KH-4 | P1 | `SmartStatsHeader.js:27,38,74` | `total_market_value` là **string** `"0.00"` ⇒ `!marketValue`=false, `"0.00">0`=false ⇒ mất `đ` + CTA chết | `const mvNum = Number(marketValue) \|\| 0`; `đ` render luôn khi có data |
 | KH-5 | P1 | `SmartStatsHeader.js:72,84` | 2 con số **primary** **không** có `tabular-nums`, trong khi 4 metric `--` (`:128`) và metadata (`:155,160`) **có** ⇒ đảo ngược ưu tiên | Thêm `tabular-nums` vào `:72,84` |
@@ -312,7 +312,7 @@ Pagination (53px) **xoá hẳn** — đã có "Xem tất cả". Curation `TOP_N=
 | AC-3 | P0 | `OptimizationModal.jsx:24` | **0** `role`/`aria-*`/`onKeyDown`/Escape/focus trap/focus restore. Keyboard user **không thoát được** nếu không Tab tới nút | `role="dialog" aria-modal="true"`, focus vào nút đóng, Escape → `onClose`, trap focus |
 | AC-4 | P1 | `WhaleAnalyticsTab.jsx:72-79, 87-94` | 2 `<label>` không `htmlFor`, `<select>` không `id` ⇒ **"combo box, unlabelled"** | `id` + `htmlFor` |
 | AC-5 | P1 | `PortfolioHeatmap.js:473-529` | 4 toggle không `role="group"`, không `aria-pressed` — trạng thái **chỉ bằng màu** (1.4.1) | **Mẫu đúng đã có sẵn cùng dashboard**: `UnifiedAlertCenter.js:215` `role:"group"` + `:230` `aria-pressed`. Sao y hệt |
-| AC-6 | P1 | `SmartStatsHeader.css:93-97` | Focus ring vô hiệu (xem KH-2) | Xoá rule |
+| AC-6 | ~~P1~~ → **P3** | `SmartStatsHeader.css:93-97` | ~~Focus ring vô hiệu~~ **SAI** — xem KH-2, đây là dead CSS chứ không phải WCAG bug | Đã xoá cùng Wave 0.5 |
 | AC-7 | P2 | `AIAdvisorAlertPanel.js:186-194` | Nút `disabled:true` vĩnh viễn + `title:"Sắp có"` | `aria-disabled="true"` + text giải thích, hoặc bỏ |
 | AC-8 | P2 | `AIAdvisorDeckPanel.jsx:132` | Trạng thái "AI" chỉ bằng chấm xanh `animate-pulse` | `<span className="sr-only">` hoặc `aria-label` |
 | AC-9 | P2 | Toàn dashboard | `animate-pulse` ×4 + `animate-fade-in` + `transition duration-1000` mà **0** `@media (prefers-reduced-motion)` trong `index.css` (chỉ có trong SOC/StockDetail/Watchlist) | Thêm block ở `index.css` |
@@ -506,19 +506,21 @@ Nguyên tắc: **mỗi wave phải để lại app xanh hơn, không để lại
 
 | # | Việc | File | Gate |
 |---|---|---|---|
-| 0.1 | Gỡ trần 1280px → 1600px + `padding-inline: clamp()` | `index.css:109`, `FullLayout.tsx:95` | `tsc`, build, `measure-route-graph` |
-| 0.2 | `height: auto; min-height:360px; max-height:720px` + `align-items:start` | `index.css:418` | visual QA 3 viewport |
-| 0.3 | Bỏ chuỗi `min-height` 3 tầng ở deck | `index.css:435`, `Deck.tsx:305` | |
-| 0.4 | Gỡ class `dashboard-full-width-deck` ở 2 chỗ lồng | `Deck.tsx:236`, `WhaleAnalyticsTab.jsx:67` | |
-| 0.5 | Bỏ `.ring-offset-slate-950` (fix focus ring) | `SmartStatsHeader.css:93-97` | axe/keyboard QA |
-| 0.6 | Thêm 5 i18n key `alert.*` + bỏ mock `LangContext` trong test | `vi.js`, `en.js`, `alert-card-compact.component.test.tsx:6-42` | `vitest` |
-| 0.7a | Xoá **2 file chết thật** (427 dòng) | `PortfolioHeatmap (1).js` (255), `SmartStatsHeader (1).js` (172) | `tsc`, grep importer = 0 |
-| 0.8 | Xoá 1 menu catalog chết | `app/navigationCatalog.js` hoặc `sidebaritems.ts` | — |
-| 0.9 | Xoá rule/token/class CSS chết (LY-9,11,12,17, DV-14,15, C22, C23) | `index.css` | `check:shell` |
+| 0.1 | ⏸ **CHỜ OWNER** — gỡ trần 1280px | `index.css:109`, `FullLayout.tsx:95` | `--layout-content-max-width` dùng bởi wrapper **toàn app**, không riêng dashboard. Blast radius mọi màn hình + cần owner trả lời §8-Q2. Xem `gates-wave0.md` §2 |
+| ~~0.2~~ | ✅ **DONE** (PR #25) — `height: auto; min-height:360px; max-height:720px` + `align-items:start` | `index.css` `.dashboard-triad-lane`, `.dashboard-triad-grid` | `align-items:start` **bắt buộc**: mặc định `stretch` kéo lane ngắn bằng chiều cao lane cao nhất, tái tạo đúng khoảng trống cần xoá |
+| ~~0.3~~ | ✅ **DONE** (PR #25) — bỏ sàn `min-height` lồng | `index.css` `.dashboard-full-width-deck`, `Deck.tsx:305` | `min-h-[400px]`→`min-h-[280px]` |
+| ~~0.4~~ | ✅ **DONE** (PR #25) — gỡ `dashboard-full-width-deck` ở 2 chỗ lồng | `Deck.tsx:236`, `WhaleAnalyticsTab.jsx:67` | Giữ class ở `DashboardPage.tsx:415` |
+| ~~0.5~~ | ✅ **DONE** (PR #25) — xoá 3 rule CSS chết | `SmartStatsHeader.css` | ⚠ **KH-2 trong report SAI** (P0 WCAG → P3 dead CSS). Xem `gates-wave0.md` §5 |
+| ~~0.6~~ | ✅ **DONE** (PR #25) — 5 i18n key + bỏ mock che lỗi | `vi.js`, `en.js`, `alert-card-compact.component.test.tsx` | Có **negative test**: xoá key ⇒ test đỏ |
+| ~~0.7a~~ | ✅ **DONE** (PR #24) — xoá 2 file chết thật (427 dòng) | `PortfolioHeatmap (1).js`, `SmartStatsHeader (1).js` | |
+| ~~0.8~~ | ❌ **BỎ — đề xuất sai** | ~~`app/navigationCatalog.js`~~ | File **KHÔNG chết**: là public subpath trong `package.json`, và `check-shell.mjs:26,70` dùng nó để assert route id. Xoá ⇒ vỡ `check:shell`. Bug thật phát hiện: **gate validate catalog A, UI render catalog B** (shape khác nhau) ⇒ menu user bấm không được gate nào bảo vệ. `gates-wave0.md` §2 |
+| ~~0.9~~ | ✅ **DONE** (PR #25) — xoá dead CSS | `index.css` | `.glass` · `.agentic-glow-cyan` · `.bento-card-hover` · `.focus-visible-ring` · rule rỗng `.core-dashboard-slot--deck` + sửa 1 comment sai |
 
 > 🔴 **KHÔNG xoá `FactsFirstModularPositionDeck.jsx` ở Wave 0.** File này **có importer**: `FactsFirstModularPositionDeck.js:5` + re-export `components/dashboard/index.js:2`. Xoá mà không gỡ bridge ⇒ `tsc` vỡ. Chuyển sang **Wave 4.x**: gỡ 2 export trước, xoá file sau. (`DashboardPage.tsx:419` đang dùng `CoreDashboardPositionDeck.tsx` chứ không dùng bản `.jsx` ⇒ xoá được sau khi gỡ export.)
 
-**Sau Wave 0**: ước lượng thu hồi **~304px ngang + ~300px dọc** trên viewport 1920×1080.
+**Trạng thái Wave 0**: 0.2–0.7a + 0.9 **xong**; 0.1 **chờ owner**; 0.8 **bỏ vì sai**.
+**Sau Wave 0**: ước lượng thu hồi **~304px ngang** (chỉ khi 0.1 được duyệt) + **~300px dọc** trên viewport 1920×1080.
+**⏳ Visual QA 3 viewport CHƯA CHẠY** — 0.2/0.2b/0.3/0.4 đều là thay đổi layout bằng mắt. Phải chụp 1920×1080 / 1440×900 / 1280×800 trước khi coi là xong.
 
 ### Wave 1 — Sửa nói dối dữ liệu (P0 nghiêm trọng nhất về niềm tin) · ~2 ngày
 

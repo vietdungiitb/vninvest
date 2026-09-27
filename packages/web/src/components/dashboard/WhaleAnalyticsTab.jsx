@@ -64,7 +64,7 @@ export default function WhaleAnalyticsTab({
     : t('whaleAnalytics.degradedMode', { defaultValue: 'Thiếu dữ liệu tham chiếu' });
 
   return (
-    <div className="dashboard-full-width-deck flex flex-col">
+    <div className="flex min-h-0 flex-col">
       {/* Header with controls */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-slate-900/60 border-b border-slate-800/50">
         <div className="flex flex-wrap items-center gap-4">
