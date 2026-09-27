@@ -1,3 +1,93 @@
+## Entry 237: `/tenant/keys` mất trạng thái key + 3 gate im lặng + Entry 214/215 trùng số (2026-09-27)
+
+- **Date**: 2026-09-27
+- **Branch**: `fix/apikeys-status-and-gates` → PR #40
+- **Scope**: 1 fix UI `/tenant/keys` + 3 sửa gate/tài liệu. Không đụng BE, không tạo migration, không `npm install`.
+
+### 1. `/tenant/keys`: không phân biệt được key active / đã thu hồi
+
+**BE đã trả đủ dữ liệu — FE bỏ rơi.** Không phải thiếu API.
+
+| Nguồn | Có gì |
+|---|---|
+| `CorePATCredentialSerializer.Meta.fields` | `status`, `revoked`, `revoked_at` |
+| `identity_access/models.py` `CorePATCredential.StatusChoices` | `active` / `rotating` / `revoked` / `expired` |
+| `serializers.py` `get_status()` | trả `obj.effective_status` |
+| `views_personal.py:239-241` | `active_keys` trong usage-summary |
+
+FE: `TenantKeysPage.tsx:19` **khai** `status?: string` rồi **không render ở đâu cả** (`grep status`
+đúng 1 hit). Bảng 7 cột, **không có cột trạng thái** ⇒ 3 dòng trong ảnh nhìn y hệt nhau.
+`UsageSummary` cũng khai `total_keys` nhưng bỏ `active_keys`.
+
+**Fix** (`TenantKeysPage.tsx`):
+- Cột **TRẠNG THÁI** dùng pill `adminToneClasses` — tái dùng SSOT sẵn có (đã phủ `active`→emerald,
+  `rotating`→amber, `revoked`→rose, `expired`→slate fallback), tránh viết lại map như Entry 188 đã dọn.
+- `revoked_at` hiện dưới pill.
+- Key không usable ⇒ **ẩn Xoay vòng + Thu hồi**, thay bằng "Không dùng được"; dòng làm mờ.
+- `fmtWhen()` theo `localeTag` thay ISO raw (ảnh đang in `2026-09-27T21:55:59.060485+07:00`).
+- Dòng tóm tắt `{{active}} key đang hoạt động / {{total}} key`.
+- 2 chuỗi hardcode còn lại (`subtitle`, `toast.error("copy failed")`) → `t()`.
+- +9 i18n key VI/EN, parity kiểm bằng script ⇒ **OK**.
+
+**Test**: `TenantKeysPage.component.test.tsx` 4 → **7**. Fixture cũ thiếu `status` nên test
+"revokes key after confirm" phải thêm `status: "active"` để giữ đúng ý test. 3 test mới: pill
+phân biệt active/revoked/expired · ẩn hành động + summary · không render ISO raw.
+
+### 2. `i18n:scan` exit 0 dù parse FAIL — 3 nguyên nhân, tất cả đều im lặng
+
+Scanner đưa **default value của lời gọi dịch** cho `esprima-next` (parser JS thuần). Lỗi → in
+`Unable to parse` rồi **vẫn exit 0**.
+
+| # | Nguyên nhân | Vị trí |
+|---|---|---|
+| a | IIFE chứa `data.generated_at as string` **bên trong** default value — esprima không hiểu TS | `SocOverviewPanel.tsx` (đã tách ra `useMemo` `heroUpdatedAt`) |
+| b | `t()` là **đuôi biểu thức ternary** ⇒ `matchBalancedParentheses` nuốt dấu phẩy, esprima nhận `({…},)` | `SocOverviewPanel.tsx` (tách 3 nhánh) |
+| c | **Comment chứa `t("…", {…})`** bị scanner quét nhầm | chính comment tôi viết khi sửa (a) |
+
+**Chứng minh**: script quét **từng file 1/360**, đọc **cả stdout + stderr** ⇒ **0 file lỗi**.
+*(Tự thừa nhận: script đầu chỉ đọc stdout trong khi scanner ghi lỗi qua `console.error` nên báo
+"0 lỗi" giả; đã sửa và chạy lại. Suýt kết luận sai.)*
+
+### 3. Entry 214 / 215 trùng số
+
+Mỗi số có 2 entry khác ngày. Đếm tham chiếu bên ngoài trước khi quyết:
+
+- **2 entry BL (2026-09-24)** — **0 tham chiếu** → đánh lại `214 → 236`, `215 → 235`
+- **2 entry AI Advisory (2026-09-25)** — **9 tham chiếu** trong 4 file
+  (`IMPLEMENTATION_PLAN_AI_ADVISORY_UI_COMMERCIAL_REFACTOR_20260925.md`,
+  `IMPLEMENTATION_PLAN_AI_ADVISORY_COMMERCIAL_20250925.md`, `AUDIT_AI_COMMAND_CENTER_20260925.md`,
+  `CLAIMS.md`) → **giữ nguyên** 214/215
+
+Tiền lệ trong repo: Entry 149, 155→157.
+
+### 4. `CLAIMS.md:248` trỏ file đã bị đổi
+
+Claim `dashboard_lifecycle-jest-fix` còn ghi `__mocks__/react.js (new)` trong khi PR #39 đã `git mv`
+sang `test/mocks/react.js`. `AGENT_PROTOCOL.md` §3 cấm agent sửa dòng claim của agent khác — **owner
+đã duyệt ("làm hết đi")**, sửa đúng 1 dòng, ghi ngoại lệ này vào claim `apikeys-status`.
+
+### Gate (chạy thật)
+
+| Gate | Kết quả |
+|---|---|
+| `npx tsc --noEmit` | **0** |
+| `npx vitest run` | **102/102 file, 686/686 test** (+3) |
+| `npx jest` | **18/18 suite, 255/255** |
+| `npm run build` | **PASS 1m8s** |
+| `npm run check:shell` | **exit 0, không còn "Unable to parse"** |
+| `check-multi-agent.mjs` | **exit 0** |
+
+### Chưa làm (nói rõ)
+
+- `adminToneClasses` nằm ở `pages/admin/` mà dùng ở `pages/tenant/` — cross-concern. Nên tách
+  `src/shared/tone.ts` (ticket riêng, 10 file đang import).
+- `check:i18n-hardcoded` vẫn là **allowlist 5 path** (AGENTS.md Entry 215) ⇒ `PortfoliosPage.tsx`
+  12 chuỗi VI vẫn ngoài gate.
+- Scanner vẫn in warning *"different default value"* — advisory, không phải lỗi, có sẵn ở HEAD.
+- `docs/CLAIMS.md` + `AGENTS.md` là deny list §2: đã sửa theo §36, **cần coordinator merge**.
+
+---
+
 ## Entry 234: Fix `__mocks__/react.js` làm hỏng 11/18 jest suite + backfill index ledger 208–233 (2026-09-27)
 
 - **Date**: 2026-09-27
@@ -58,8 +148,13 @@ Claim `code-health` (`CLAIMS.md`) ghi: `include: ["src/**/*.component.test.{js,t
 Bảng index cuối file dừng ở **207** — 25 entry liên tiếp không có dòng. Đã thêm 27 dòng
 (208–234, gồm 2 entry trùng số). Không bịa cột files/gates: dẫn về block `Entry NNN` gốc.
 
-**Entry 214 và 215 TRÙNG SỐ** (mỗi số có 2 entry khác ngày/nội dung) — pre-existing, đánh dấu
-`214a/214b`, `215a/215b` trong index. **Chưa sửa** vì đổi số Entry là viết lại lịch sử, cần quyết định owner.
+**Entry 214 và 215 TRÙNG SỐ — ĐÃ SỬA 2026-09-27 (Entry 237).** Mỗi số có 2 entry khác ngày/nội dung.
+Đã đánh lại số cho **2 entry BL (2026-09-24)** — vì chúng **không có tham chiếu bên ngoài nào**:
+`214 → 236` (W1 BL-01/04) · `215 → 235` (W1 BL-02/03/05/11).
+Giữ nguyên `214`/`215` cho **2 entry AI Advisory (2026-09-25)** vì có **9 tham chiếu** trong 4 file
+(`IMPLEMENTATION_PLAN_AI_ADVISORY_UI_COMMERCIAL_REFACTOR_20260925.md`,
+`IMPLEMENTATION_PLAN_AI_ADVISORY_COMMERCIAL_20250925.md`, `AUDIT_AI_COMMAND_CENTER_20260925.md`,
+`CLAIMS.md`). Tiền lệ trong repo: Entry 149, 155→157.
 
 ### Gate (chạy thật)
 
@@ -703,7 +798,9 @@ xanh khi chạy riêng). Cần ticket riêng — thêm delay để làm xanh là
 
 ---
 
-## Entry 215: W1 P0 còn lại — BL-02/03/05/11 DONE (2026-09-24)
+## Entry 235: W1 P0 còn lại — BL-02/03/05/11 DONE (2026-09-24)
+
+*(Đánh lại số **215 → 235** ngày 2026-09-27 vì trùng với "Entry 215: Plan thực hiện AI Advisory 15 slices" cùng ngày 2026-09-25. Số 215 giữ nguyên cho entry AI Advisory vì có **9 tham chiếu bên ngoài** trong 4 file (`IMPLEMENTATION_PLAN_AI_ADVISORY_UI_COMMERCIAL_REFACTOR_20260925.md`, `IMPLEMENTATION_PLAN_AI_ADVISORY_COMMERCIAL_20250925.md`, `AUDIT_AI_COMMAND_CENTER_20260925.md`, `CLAIMS.md`). Tiền lệ: Entry 149, 155→157. Nội dung giữ nguyên.)*
 
 - **BL-02**: `AUTH_PASSWORD_VALIDATORS` (min 10 + common + numeric + similarity, always on) + prod cookie/transport secure-by-default (`env_validation.prod_cookie_security_settings`, explicit insecure → raise; deviation ghi rõ thay vì required-env để khỏi sập prod). New `test_auth_security.py` 9 tests. Gates: **46 tests OK** (register/password không regression), prod boot check 0, insecure override exit 1 đúng message.
 - **BL-03**: proxy whitelist headers (`FORWARD_HEADERS` + `LEGACY_PROXY_EXTRA_HEADERS`), bỏ forward content-length, `verify=True` (+CA bundle env), response pass-list (no Set-Cookie). New `test_legacy_proxy_scope.py` 5 tests OK.
@@ -713,7 +810,9 @@ xanh khi chạy riêng). Cần ticket riêng — thêm delay để làm xanh là
 
 ---
 
-## Entry 214: W1 BL-01 partial + BL-04 partial (2026-09-24)
+## Entry 236: W1 BL-01 partial + BL-04 partial (2026-09-24)
+
+*(Đánh lại số **214 → 236** ngày 2026-09-27 vì trùng với "Entry 214: Audit AI Advisory BE+FE" cùng ngày 2026-09-25. Số 214 giữ nguyên cho entry AI Advisory vì có tham chiếu bên ngoài trong `IMPLEMENTATION_PLAN_AI_ADVISORY_COMMERCIAL_20250925.md:4`. Tiền lệ: Entry 149, 155→157. Nội dung giữ nguyên.)*
 
 - **BL-01 (fail-closed, chưa real crypto)**: `saml_service.py` default strict ở prod (noop chỉ DEBUG/test/explicit), unknown → strict, strict đòi Signature + cert (unsigned → `SAMLSignatureError`); +`python3-saml` requirements + `libxmlsec1-dev/pkg-config` builder + `xmlsec1` runtime Dockerfile; new `test_saml_signature_mode.py` 7 tests. Gates: **48 tests OK** (7 mới + 41 cũ), check 0, tsc 0. Còn BL-01b: real OneLogin verify + image build (blocked token secret).
 - **BL-04 (data-plane, chưa prod drill)**: new `infra/backup/pg-backup.sh` (Fc/Z6/sha256/retention 30/alert) + `README.md`; drill dev thật: dump 151MB/232s + restore 142s, migrations 142=nguồn, users 4 rows, đã cleanup; RTO dev ~6.2 phút, RPO policy ≤24h. Còn: cron prod + app-plane drill + lặp hàng tháng.
@@ -5601,10 +5700,10 @@ nội dung giữ nguyên. Tiền lệ Entry 149.)*
 | 211 | 2026-09-24 | ai | AI CC Slice F8 tách `AICommandCenterForm.tsx` dùng chung (SaaS + Shell), 8-field checklist `AI_CC_FORM_FIELD_TESTIDS`; test parity nguồn 2 trang. Gates: tsc 0, build 32.88s, vitest 3 files/17 | xem Entry 211 | xem Entry 211 | v0 | Active |
 | 212 | 2026-09-24 | audit | B2 backlog complete + B4 handover tick: đóng BL-14..BL-24 + BL-17b (24 ID: P0×11 P1×7 P2×3 P3×4); tick tổng §8 plan. Doc-only | xem Entry 212 | xem Entry 212 | v0 | Active |
 | 213 | 2026-09-24 | audit | Enterprise UI Consistency Audit: 3 subagent scan toàn `packages/web` (shared/SOC/layout · workspace/dashboard · admin/tenant/auth), 5 nhóm anti-pattern, ~122 finding; tạo `DESIGN_TOKEN_AUDIT_20260924.md`. Doc-only | xem Entry 213 | xem Entry 213 | v0 | Active |
-| 214a | 2026-09-24 | audit | W1 BL-01 partial + BL-04 partial: SAML fail-closed (strict default prod, unsigned reject, deps+Dockerfile, 7 test mới, 48 test OK); proxy whitelist | xem Entry 214 | xem Entry 214 | v0 | Active |
-| 214b | 2026-09-25 | advisory | AUDIT AI Advisory BE↔FE + phương án nâng cấp thương mại. **SỐ 214 TRÙNG với 214a — pre-existing** | xem Entry 214 | xem Entry 214 | v0 | Active |
-| 215a | 2026-09-24 | audit | W1 P0 code-side DONE (BL-02/03/05/11): password validators + cookie fail-closed (46 test OK, prod boot/reject verify); proxy whitelist | xem Entry 215 | xem Entry 215 | v0 | Active |
-| 215b | 2026-09-25 | advisory | Plan thực hiện AI Advisory 15 slices bàn giao đi code. **SỐ 215 TRÙNG với 215a — pre-existing** | xem Entry 215 | xem Entry 215 | v0 | Active |
+| 236 | 2026-09-24 | audit | SO CU 214 (danh lai 2026-09-27 vi trung entry AI Advisory giu so 214):  W1 BL-01 partial + BL-04 partial: SAML fail-closed (strict default prod, unsigned reject, deps+Dockerfile, 7 test mới, 48 test OK); proxy whitelist | xem Entry 236 | xem Entry 236 | v0 | Active |
+| 214b | 2026-09-25 | advisory | AUDIT AI Advisory BE↔FE + phương án nâng cấp thương mại. **Số 214 giữ nguyên cho entry này; entry BL cũ của 214 đã đánh lại sang 236 (2026-09-27)** | xem Entry 214 | xem Entry 214 | v0 | Active |
+| 235 | 2026-09-24 | audit | SO CU 215 (danh lai 2026-09-27 vi trung entry AI Advisory giu so 215):  W1 P0 code-side DONE (BL-02/03/05/11): password validators + cookie fail-closed (46 test OK, prod boot/reject verify); proxy whitelist | xem Entry 235 | xem Entry 235 | v0 | Active |
+| 215b | 2026-09-25 | advisory | Plan thực hiện AI Advisory 15 slices bàn giao đi code. **Số 215 giữ nguyên cho entry này; entry BL cũ của 215 đã đánh lại sang 235 (2026-09-27)** | xem Entry 215 | xem Entry 215 | v0 | Active |
 | 216 | 2026-09-24 | audit | P1 DONE + P2 DONE + P3/BL-24 proposal: E2E CI job + spec 6/6; JSON logging 5 test + live probe; smoke fallback p95<=70ms (k6 blocked) | xem Entry 216 | xem Entry 216 | v0 | Active |
 | 217 | 2026-09-24 | audit | W1 implement BL-06/07/08/09 + BL-10 partial: sửa stale import + CI grep-gate; xoá `whale_engine.py`; gộp `LEGACY_BACKEND_URL` 1 hit | xem Entry 217 | xem Entry 217 | v0 | Active |
 | 218 | 2026-09-24 | ui | Phản biện Design Token Audit + khóa hoạch Waves chi tiết. Xác nhận số liệu (34px:72, 28px:91, `text-[10px]`×12, `:root` vỡ 501). Doc-only | xem Entry 218 | xem Entry 218 | v0 | Active |
@@ -5624,3 +5723,4 @@ nội dung giữ nguyên. Tiền lệ Entry 149.)*
 | 232 | 2026-09-26 | portfolio | Portfolio Commercial — verify audit + PA-1..PA-5 (7 PR). Verify: audit 7/7 P0 đúng nhưng **sai 20 `file:line`**, 3 sub-claim refute, 4 finding đánh giá THẤP, 2 đánh giá CAO; 2 P0 mới (FE gửi `quantity` còn BE đọc `volume`; audit order `DataError` do `action` 18 ký tự > `max_length=16`) | xem Entry 232 | xem Entry 232 | v0 | Active |
 | 233 | 2026-09-27 | tenant | VERIFY 6 slice `tenantreg-*`: code **đã có đủ**, 13/13 P0 đã sửa. Gate thật: **BE 198/198 OK** (Postgres) + **FE 84/84 OK**. Sửa 1 câu stale trong `AGENTS.md` ("còn bị giữ file" → đã released). 2 bẫy môi trường mới ghi lại | xem Entry 233 | xem Entry 233 | v0 | Active |
 | 234 | 2026-09-27 | test | Fix `__mocks__/react.js` hỏng **11/18 jest suite** (~250 test không chạy). Chuyển fake React ra `test/mocks/react.js` + trỏ tường minh từ `dashboard_lifecycle.test.js`. Gate: **jest 18/18 suite, 255/255 test** (trước đó 7/18; trước `da6d0123` 17/18) | `packages/web/test/mocks/react.js` (git mv từ `__mocks__/react.js`), `packages/web/src/features/dashboard/__tests__/dashboard_lifecycle.test.js` | jest 255/255 + vitest 683/683 chạy thật | v0 | Active |
+| 237 | 2026-09-27 | tenant | (1) `/tenant/keys` mat trang thai key: BE da tra `status`/`revoked`/`revoked_at`/`active_keys` nhung FE khai `status` roi bo roi => 3 dong nhin y het nhau. Them cot TRANG THAI (pill `adminToneClasses`), an hanh dong tren key khong active, format ngay locale thay ISO raw, dong active/total, +9 i18n key VI/EN. (2) `i18n:scan` 3 nguyen gan parse FAIL (TS trong default value, t() duoi ternary, comment gay) => 0/360 file loi. (3) Entry 214/215 trung so -> 235/236. (4) CLAIMS.md:248 tro file da doi | TenantKeysPage.tsx + test, SocOverviewPanel.tsx, i18n/vi.js+en.js | vitest 686/686, jest 255/255, tsc 0, build PASS, check:shell 0, check-multi-agent 0 | xem Entry 237 | xem Entry 237 | v0 | Active |
