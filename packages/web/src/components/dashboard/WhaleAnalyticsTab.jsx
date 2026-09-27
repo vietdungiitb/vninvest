@@ -177,12 +177,21 @@ export default function WhaleAnalyticsTab({
               {degradedBadgeLabel}
             </span>
           )}
-          <span className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[9px] text-slate-400 font-bold uppercase">
-            {t('whaleAnalytics.ssotVerified', { defaultValue: 'Xác thực SSOT' })}
-          </span>
-          <span className="px-2 py-1 rounded bg-emerald-950/30 border border-emerald-800/50 text-[9px] text-emerald-400 font-bold uppercase">
-            {t('whaleAnalytics.realtimeFeed', { defaultValue: 'Dữ liệu Realtime' })}
-          </span>
+          {!isStale && !isDegraded && (
+            <>
+              <span className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[9px] text-slate-400 font-bold uppercase">
+                {t('whaleAnalytics.ssotVerified', { defaultValue: 'Xác thực SSOT' })}
+              </span>
+              <span className="px-2 py-1 rounded bg-emerald-950/30 border border-emerald-800/50 text-[9px] text-emerald-400 font-bold uppercase">
+                {t('whaleAnalytics.realtimeFeed', { defaultValue: 'Dữ liệu Realtime' })}
+              </span>
+            </>
+          )}
+          {(isStale || isDegraded) && (
+            <span className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[9px] text-slate-400 font-bold uppercase">
+              {t('whaleAnalytics.notRealtime', { defaultValue: 'Không realtime' })}
+            </span>
+          )}
           <button
             type="button"
             onClick={() => setIsAdvisoryModalOpen(true)}

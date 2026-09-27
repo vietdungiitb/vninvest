@@ -73,14 +73,16 @@ export function AIAdvisorAlertPanel({ className = "", holdings: _holdings, techn
       } else {
         setAlerts([]);
       }
-      // S5.2 — lastScanAt từ getAIAlertsFeed response nếu BE trả (last_scan_at / meta.last_scan_at),
-      // không bịa API: nếu không có field thì dùng Date.now() (giờ fetch), null → "Chưa có lượt quét"
+      // Honesty rule: if the API does not return a real scan timestamp, report
+      // "no scan yet" instead of stamping the fetch time. Previously this fell
+      // back to Date.now(), which made the UI claim a scan had happened at the
+      // moment of the request, and left `aiAdvisor.panel.noScan` unreachable.
       const apiLastScan = res?.last_scan_at ?? res?.meta?.last_scan_at ?? res?.latest_scan_at ?? null;
       if (apiLastScan) {
         const ts = new Date(apiLastScan).getTime();
-        setLastScanAt(Number.isFinite(ts) ? ts : Date.now());
+        setLastScanAt(Number.isFinite(ts) ? ts : null);
       } else {
-        setLastScanAt(Date.now());
+        setLastScanAt(null);
       }
     } catch (err) {
       setError(err?.message || t("aiAdvisor.panel.loadError"));
@@ -178,7 +180,7 @@ export function AIAdvisorAlertPanel({ className = "", holdings: _holdings, techn
       { className: "flex flex-col items-center justify-center flex-1 text-center px-4 py-6 max-h-[240px]" },
       e(Activity, { className: "h-8 w-8 text-slate-700/50 mb-2", "aria-hidden": true }),
       e("p", { className: "text-sm font-semibold text-slate-300" }, t("aiAdvisor.panel.emptyTitle")),
-      e("p", { className: "mt-1 text-xs text-slate-500 tabular-nums" }, lastScanAt ? t("aiAdvisor.panel.lastScan", { time: new Date(lastScanAt).toLocaleTimeString(language === "en" ? "en-US" : "vi-VN", { hour: "2-digit", minute: "2-digit" }) }) : t("aiAdvisor.panel.noScan")),
+      e("p", { className: "mt-1 text-xs text-slate-500 tabular-nums" }, lastScanAt ? t("aiAdvisor.panel.lastScan", { time: new Date(lastScanAt).toLocaleTimeString(language === "en" ? "en-US" : "vi-VN", { hour: "2-digit", minute: "2-digit" }), count: alerts.length }) : t("aiAdvisor.panel.noScan")),
       e(
         "div",
         { className: "mt-3 flex items-center gap-2" },
@@ -198,7 +200,10 @@ export function AIAdvisorAlertPanel({ className = "", holdings: _holdings, techn
             onClick: fetchFeed,
             className: "btn-nowrap rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-bold text-cyan-300 transition-all hover:bg-cyan-500/20",
           },
-          t("aiAdvisor.panel.runAnalysis")
+          // Was labelled "Chạy phân tích" / "Run analysis" but this handler is
+          // the same fetchFeed as the header refresh button — no analysis is
+          // triggered. Relabelled to state the real action.
+          t("aiAdvisor.panel.rescan")
         )
       )
     ),

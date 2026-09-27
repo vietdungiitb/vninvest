@@ -98,7 +98,18 @@ export function UnifiedAlertCenter({
   const [activeTab, setActiveTab] = useState("alerts");
 
   const safeAlerts = useMemo(() => (Array.isArray(alerts) ? alerts : []), [alerts]);
-  const unreadAlertCount = unreadCount ?? safeAlerts.filter((item) => !readAlertIds.has(item.alert_id || item.id)).length;
+  // Real unread count requires `unreadCount` or a populated `readAlertIds`.
+  // The dashboard supplies neither, in which case this would silently degrade
+  // to "everything is unread" — which is what the badge used to display while
+  // its tooltip claimed "chưa đọc". The badge now shows the total, so compute
+  // both and let each consumer state the truth about itself.
+  const hasReadState = typeof unreadCount === "number" || readAlertIds.size > 0;
+  const alertCount = safeAlerts.length;
+  const unreadAlertCount = typeof unreadCount === "number"
+    ? unreadCount
+    : readAlertIds.size > 0
+      ? safeAlerts.filter((item) => !readAlertIds.has(item.alert_id || item.id)).length
+      : 0;
 
   const filteredAlerts = useMemo(() => {
     let result = safeAlerts;
@@ -186,8 +197,14 @@ export function UnifiedAlertCenter({
             e(Bell, { className: "h-5 w-5 text-cyan-400" }),
             t("alert.title")
           ),
-          unreadAlertCount > 0 &&
-            e("span", { className: "inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30", title: t("alert.unreadTooltip", { count: unreadAlertCount }) }, unreadAlertCount)
+          // The dashboard does not supply read state (no `readAlertIds`, no
+          // `unreadCount`), so this badge is the TOTAL alert count, not the
+          // unread count. The number itself is honest; only the tooltip was
+          // lying ("20 chưa đọc" when nothing had been read). A red badge
+          // next to the title also read as an alarm, which is wrong for a
+          // plain total — hence the neutral tone.
+          alertCount > 0 &&
+            e("span", { className: "inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-slate-800/80 text-slate-300 border border-slate-700/60", title: t("alert.totalTooltip", { count: alertCount }) }, alertCount)
         ),
         e(
           "div",
@@ -288,7 +305,11 @@ export function UnifiedAlertCenter({
               )
         : filteredAlerts.map((alert) => {
             const alertId = alert.alert_id || alert.id;
-            const isUnread = !readAlertIds.has(alertId);
+            // Without read state every card was implicitly "unread", which
+            // happened to give the full-opacity severity border — the right
+            // look, but for the wrong reason. Make it explicit so the styling
+            // does not depend on an empty Set.
+            const isUnread = hasReadState && !readAlertIds.has(alertId);
 
             // Construct metadata chips
             const metadataChips = [];

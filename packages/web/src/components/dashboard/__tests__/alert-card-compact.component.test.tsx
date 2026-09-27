@@ -91,10 +91,28 @@ describe("UnifiedAlertCenter compact (S2)", () => {
     expect(html).toContain("21/09/2026");
   });
 
-  it("badge unread + link Xem tất cả (audit #15/#20)", () => {
+  it("badge = tổng số cảnh báo (KHÔNG phải số chưa đọc) + link Xem tất cả", () => {
     const { container } = render(e(UnifiedAlertCenter as any, { alerts } as any));
-    const badge = container.querySelector('span[title="2 chưa đọc"]');
+    // The dashboard supplies no read state, so this badge is the TOTAL count.
+    // The old assertion expected tooltip "2 chưa đọc", which was the lie this
+    // change removed: nothing had been read, yet the tooltip claimed so.
+    const badge = container.querySelector('span[title="2 cảnh báo trong danh sách"]');
     expect(badge?.textContent).toBe("2");
+    expect(container.querySelector('span[title="2 chưa đọc"]')).toBeNull();
+    const link = container.querySelector('a[href="/alert-center"]');
+    expect(link?.textContent).toContain("Xem tất cả");
+  });
+
+  it("badge hiện số chưa đọc THẬT khi có read state (Alert Center)", () => {
+    const readAlertIds = new Set<string>();
+    const { container } = render(
+      e(UnifiedAlertCenter as any, {
+        alerts,
+        readAlertIds,
+        markAlertAsRead: () => {},
+        muteSymbolFor30m: () => {},
+      } as any),
+    );
     const link = container.querySelector('a[href="/alert-center"]');
     expect(link?.textContent).toContain("Xem tất cả");
   });
