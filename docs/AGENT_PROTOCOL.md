@@ -229,7 +229,9 @@ Kiểm 5 điều, exit 1 nếu vi phạm:
 
 Gate đã có **test âm tính** (tiêm lỗi → exit 1), tương tự `check-ai-cc-dag`.
 
-**Cố tình KHÔNG nối vào `check:shell`** — vì `check:shell` là shared, thêm vào sẽ làm agent khác fail giả. Agent tự chạy, hoặc coordinator wire vào CI sau khi cả 2 agent về.
+**Cố tình KHÔNG nối vào `check:shell`** — vì `check:shell` là shared, thêm vào sẽ làm agent khác fail giả. Agent tự chạy, hoặc coordinator wire vào `agent-sync.ps1` sau khi cả 2 agent về.
+
+> **Cập nhật 2026-09-27:** GitHub Actions đã **tắt** (200/200 run gần nhất thất bại do billing, `steps=0`). Không còn "wire vào CI" được nữa — mọi gate phải chạy qua `agent-sync.ps1` hoặc thủ công. Xem `.github/workflows-disabled/README.md`.
 
 ---
 
