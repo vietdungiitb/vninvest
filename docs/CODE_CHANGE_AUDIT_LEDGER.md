@@ -1,3 +1,57 @@
+## Entry 233: VERIFY 6 slice `tenantreg-*` — code đã có đủ, 13/13 P0 đã sửa, 198 BE + 84 FE test OK (2026-09-27)
+
+- **Date**: 2026-09-27
+- **Scope**: doc-only + verify (không sửa runtime). Đối chiếu claim 6 slice `tenantreg-a..f` (2026-09-26) với code thật ở HEAD `8fdbdd59`. Baseline `dev` sạch, 1 worktree, **0 agent `in-progress`** ⇒ chạy được gate thật.
+- **Vì sao làm**: một phiên trước đọc câu "6 agent `tenantreg-*` còn bị giữ file `permissions.py`/`middleware.py`/`transport.js`/`i18n`" trong `AGENTS.md` rồi báo "không có code" — **sai**. Câu đó stale; `CLAIMS.md:57-62` cả 6 dòng `released` + `OPEN_WORK_20260927.md:8` ghi "đã merge". Đã sửa `AGENTS.md`.
+
+### 5 file mới claim khai — đều tồn tại
+
+`identity_access/utils/resolve_tenant.py` 16 638 B · `vninvest_core/client_ip.py` 10 290 B · `vninvest_core/env_validation.py` 5 453 B · `pages/auth/authErrors.js` 11 290 B · `pages/auth/authPolicy.js` 3 251 B.
+
+### 13/13 P0 — đã đọc code thật, đều đã sửa
+
+| Slice | P0 | Bằng chứng |
+|---|---|---|
+| `s` | `STRICT_TURNSTILE_ENFORCEMENT` gán 2 lần | `settings.py:246` gán 1 lần; bản cũ `:239-240` đã comment; `:891` giải thích chủ đích |
+| `s` | thiếu `RESEND_*_THRESHOLD` | `settings.py:888-889` |
+| `s` | `get_client_ip()` SSOT | `client_ip.py` (10 KB) + import `middleware.py:16`, `authentication.py:9` |
+| `a` | reset/change phải revoke PAT | `password_reset.py:229`; `password_change.py:99-105` |
+| `a` | onboarding không tới được | `identity_access/urls.py:26-28` |
+| `b` | `resolve_tenant` tin `X-Tenant-ID` | `resolve_tenant.py:123-161` SSOT owner-or-member; `:275-287` fail-closed |
+| `b` | `logger` NameError ×3 | `middleware.py:23` `logger = logging.getLogger(__name__)`, 3 call site |
+| `b` | `AuditLogListView` → `objects.all()` | `ops_audit/views.py:39-47` ưu tiên `request.tenant`, thiếu tenant ⇒ `qs.none()` |
+| `b` | PAT CIDR bypass qua XFF | `authentication.py:45-55` bỏ left-most XFF, dùng `get_client_ip()` |
+| `c` | `api_calls_limit` default `-1`, quota không enforce | `models.py:107` default=**10000** + writer plan-derived `:1526-1545` |
+| `c` | `CoreServiceAccount` thiếu unique | migration `0028_coreserviceaccount_uniq_core_service_account_tenant_name.py` |
+| `d` | Turnstile đọc `process.env.REACT_APP_*` | `TurnstileWidget.js:26` `viteEnv.VITE_TURNSTILE_SITE_KEY` + 2 contract test |
+| `d` | duplicate top-level `auth:` i18n | `vi.js`/`en.js` mỗi file **đúng 1** |
+| `d` | client rule 8 vs BE 10 | `authPolicy.js:36` `PASSWORD_MIN_LENGTH = 10` mirror `settings.py:64` |
+| `e` | `switchTenant` localStorage ≠ sessionStorage | `PortfolioContext.js:663` ghi qua `tenantIdStorage` SSOT |
+| `e` | logout không revoke PAT / không clear `tenant_id` | `:159` clear cục bộ **trước**, rồi revoke async (`:180-196` giải thích thứ tự) |
+
+### Gate chạy thật
+
+Postgres container `vninvest-dev-core-db` (`127.0.0.1:5433`), DB riêng `tenantreg_verify`, đã `DROP` sau khi chạy; `git status` sạch.
+
+| Nhóm | Kết quả |
+|---|---|
+| `identity_access.tests.test_tenantreg_b` | **64 OK** (318 s) |
+| `test_tenantreg_a` + `c1` + `c5` | **66 OK** (148 s) |
+| `tests.test_tenantreg_c2/c3c4/c6/c7/c8` | **68 OK** (65 s) |
+| **BE tổng** | **198/198 OK** |
+| FE `src/pages/auth` + `components/auth` + `adapters/core` | **84/84 OK** (5 files) |
+
+### 2 bẫy môi trường mới (đã mất thời gian, ghi lại để khỏi lặp)
+
+1. **BE test KHÔNG chạy được trên SQLite.** Migration `identity_access/9000_auth_user_email_ci_unique.py:60` dùng `array_agg` của Postgres ⇒ `OperationalError: no such function: array_agg` ngay lúc migrate. Phải dựng Postgres riêng cho mỗi phiên test.
+2. **Test của `tenantreg-c` nằm ở 2 thư mục khác nhau.** `a`/`b`/`c1`/`c5` ở `backend/src/identity_access/tests/`; `c2`/`c3c4`/`c6`/`c7`/`c8` ở `backend/tests/`. Gọi sai đường dẫn cho **5 `ModuleNotFoundError`** — trông như code hỏng nhưng chỉ là sai path (đúng như `CLAIMS.md:60` đã khai).
+
+### Chưa verify (nói rõ, không suy ra "chắc là được")
+
+`validate_password` bypass · enumeration register · 500-after-commit · non-atomic rate limit · 429/field-error handling FE · a11y labels — mới chỉ đọc code + chạy test, **chưa** trace end-to-end. `docs/evidence/tenant-self-service-20260923/gates.md` mới chỉ ghi B+A (2026-09-23), **không** phải 6 slice ngày 26 ⇒ cần file evidence riêng khi đóng ticket.
+
+---
+
 ## Entry 232: Portfolio Commercial — verify audit + PA-1..PA-5 (2026-09-26)
 
 - **Date**: 2026-09-26
