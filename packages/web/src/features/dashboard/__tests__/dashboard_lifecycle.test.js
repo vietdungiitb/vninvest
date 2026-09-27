@@ -1,58 +1,11 @@
 import { jest, describe, test, expect, beforeEach, afterEach } from "@jest/globals";
 
-// Mock react BEFORE importing modules that use it
-let mockStateVal = {};
-let mockStateSetters = {};
-let mockEffects = [];
-let mockRefCurrent = {};
+// Manual mock: Jest auto-loads __mocks__/react.js for jest.mock("react").
+// jest.unstable_mockModule does NOT intercept CJS require() — the real
+// node_modules/react/cjs/react.development.js was loaded, leaving its
+// internal dispatcher null ⇒ "Cannot read properties of null (reading 'useState')".
+jest.mock("react");
 
-jest.unstable_mockModule("react", () => {
-  return {
-    useState: (initial) => {
-      const stateKey = typeof initial === "function" ? "computed" : JSON.stringify(initial);
-      if (!(stateKey in mockStateVal)) {
-        mockStateVal[stateKey] = typeof initial === "function" ? initial() : initial;
-      }
-      const setter = (val) => {
-        if (typeof val === "function") {
-          mockStateVal[stateKey] = val(mockStateVal[stateKey]);
-        } else {
-          mockStateVal[stateKey] = val;
-        }
-        if (mockStateSetters[stateKey]) {
-          mockStateSetters[stateKey](mockStateVal[stateKey]);
-        }
-      };
-      return [mockStateVal[stateKey], setter];
-    },
-    useEffect: (effect, deps) => {
-      mockEffects.push({ effect, deps });
-    },
-    useRef: (initial) => {
-      const refKey = JSON.stringify(initial);
-      if (!(refKey in mockRefCurrent)) {
-        mockRefCurrent[refKey] = { current: initial };
-      }
-      return mockRefCurrent[refKey];
-    },
-    useCallback: (fn) => fn,
-    useMemo: (fn) => fn(),
-    createContext: (initialVal) => {
-      return {
-        Provider: ({ value, children }) => children,
-        Consumer: ({ children }) => children(initialVal),
-        _currentValue: initialVal,
-      };
-    },
-    useContext: (context) => {
-      return context?._currentValue;
-    },
-    createElement: () => ({}),
-  };
-});
-
-// Top-level `await` không transform được trong CJS của Jest ⇒ suite chết.
-// Gộp vào `beforeAll` để giữ thứ tự "đăng ký mock → import module".
 let useCoreDashboardData;
 let collectUniqueSortedSymbols;
 let coreApiAdapter;
@@ -65,11 +18,9 @@ beforeAll(async () => {
 
 describe("SaaS Native Dashboard Lifecycle Tests", () => {
   beforeEach(() => {
-    mockStateVal = {};
-    mockStateSetters = {};
-    mockEffects = [];
-    mockRefCurrent = {};
     jest.restoreAllMocks();
+    const m = require("react");
+    m._resetMockState();
   });
 
   // ---------------------------------------------------------------------------
@@ -125,24 +76,22 @@ describe("SaaS Native Dashboard Lifecycle Tests", () => {
         new Error("Bulk technicals timed out")
       );
 
-      // Simulate hook execution
       const hookResult = useCoreDashboardData({ portfolioId: 1, enabled: true });
 
-      // We call the React useEffect logic manually
-      const effectObj = mockEffects.find(e => e.deps && e.deps.some(d => d === 0)); // refreshToken is 0
+      const m = require("react");
+      const effectObj = m._getMockEffects().find(e => e.deps && e.deps.some(d => d === 0));
       expect(effectObj).toBeDefined();
 
       // Run the load function inside useEffect
       const cleanup = effectObj.effect();
 
       // Wait for async load() to execute and resolve all promises
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise(resolve => setTimeout(resolve, 200));
 
-      // Retrieve state values updated
-      const stateKeys = Object.keys(mockStateVal);
+      // Retrieve state values updated (state lives inside __mocks__/react.js)
+      const stateKeys = Object.keys(m._getMockState());
       const stateKey = stateKeys.find(k => k.startsWith('{"loading":'));
-      
-      const stateUpdate = mockStateVal[stateKey];
+      const stateUpdate = m._getMockState()[stateKey];
       expect(stateUpdate.holdings).toEqual([{ symbol: "VCB", quantity: 100 }]);
       expect(stateUpdate.technicals).toEqual([]);
       expect(stateUpdate.technicalsStatus).toEqual({
@@ -163,17 +112,18 @@ describe("SaaS Native Dashboard Lifecycle Tests", () => {
 
       const hookResult = useCoreDashboardData({ portfolioId: 1, enabled: true });
 
-      const effectObj = mockEffects.find(e => e.deps && e.deps.some(d => d === 0));
+      const m = require("react");
+      const effectObj = m._getMockEffects().find(e => e.deps && e.deps.some(d => d === 0));
       expect(effectObj).toBeDefined();
 
       // Run effect
       effectObj.effect();
 
       // Wait for async load() to execute and resolve all promises
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise(resolve => setTimeout(resolve, 200));
 
-      // After load, hasHydrated is set to true
-      expect(mockStateVal["false"]).toBe(true);
+      // After load, hasHydrated is set to true  → useState(false) key is "false"
+      expect(m._getMockState()["false"]).toBe(true);
     });
   });
 });

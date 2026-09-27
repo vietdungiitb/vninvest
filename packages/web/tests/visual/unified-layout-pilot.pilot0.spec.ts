@@ -28,11 +28,15 @@ for (const route of PILOT0_ROUTES) {
       await page.setViewportSize({ width: vp.width, height: vp.height });
       await page.goto(route.path, { waitUntil: 'load' });
       // wait for shell to hydrate — FullLayout main + Shell region
-      await page.waitForTimeout(1500);
+      await page.waitForFunction(
+        () => document.querySelectorAll('main').length >= 1,
+        { timeout: 5000 }
+      );
+      await page.waitForTimeout(500);
       await page.addStyleTag({
         content: `*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important}`,
       });
-      // DOM contract assertion (runtime) — 1 main, no nested
+      // DOM contract assertion (runtime) — exactly 1 main, no nested
       const mainCount = await page.evaluate(() => document.querySelectorAll('main').length);
       expect(mainCount).toBe(1);
       const nested = await page.evaluate(() => document.querySelector('main main'));
