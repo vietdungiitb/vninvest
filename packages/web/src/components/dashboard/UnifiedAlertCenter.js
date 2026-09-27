@@ -4,24 +4,42 @@
  * Uses createElement (no JSX) per packages/web convention.
  * Updated with Bento Card styling and commercial-grade spacing.
  */
-import { createElement, useMemo, useState } from "react";
-import { Bell, Filter, X, ChevronLeft, ChevronRight, Flame, Waves } from "lucide-react";
+import { createElement, useMemo } from "react";
+import { Bell, Filter, X, Flame, Waves } from "lucide-react";
 import { useI18n } from "../../context/LangContext.js";
 import { formatVNDCompact, formatFullVND, formatSessionDate, formatTimeAgo } from "../../utils/formatMarket.js";
+import { isDuplicateSummary } from "../../utils/alertCenterFormat.js";
+import { sortAlertsByPriority } from "../../utils/alertDedup.js";
 
 const e = createElement;
 
+/**
+ * All eight families the backend can emit
+ * (signal_intelligence.serializers.get_alert_family). The previous 5-entry map
+ * meant `signal`, `ai_alert` and `ai_suggest` fell through to the raw string, so
+ * the badge literally read "signal" in the UI.
+ */
+const FAMILY_LABEL_KEY = {
+  whale: "famWhale",
+  dark_flow: "famDarkFlow",
+  price_shock: "famPriceShock",
+  signal: "famSignal",
+  system: "famSystem",
+  ai_alert: "famAiAlert",
+  ai_suggest: "famAiSuggest",
+  stale_quote: "famStaleQuote",
+};
 
+function familyLabel(alert, t) {
+  const raw = alert?.alert_family || alert?.alert_type || alert?.source;
+  const key = FAMILY_LABEL_KEY[String(raw || "").trim().toLowerCase()];
+  return t(key ? `alertCenter.${key}` : "alertCenter.famSystem");
+}
 
-function sourceLabel(source, t) {
-  const map = {
-    whale: "alert.source.whale",
-    dark_flow: "alert.source.dark_flow",
-    price_shock: "alert.source.price_shock",
-    stale_quote: "alert.source.stale_quote",
-    system: "alert.source.system",
-  };
-  return t(map[source] || source || "alert.source.system");
+function freshnessLabel(state, t) {
+  if (state === "fresh") return t("alertCenter.freshFresh", { defaultValue: "Mới" });
+  if (state === "stale") return t("alertCenter.freshStale", { defaultValue: "Cũ" });
+  return null;
 }
 
 function severityCardStyles(severity, isRead) {
@@ -61,41 +79,21 @@ function formatExecutionTime(isoString) {
 
 export function UnifiedAlertCenter({
   alerts = [],
-  alertSummary,
   readAlertIds = new Set(),
   markAlertAsRead,
   muteSymbolFor30m,
   severityFilter = "all",
-  setSeverityFilter,
   onSeverityFilterChange,
-  currentUnifiedPage = 1,
-  hasPreviousUnifiedPage = false,
-  backendUnifiedHasMore = false,
-  loadingMoreUnified = false,
-  goToFirstUnifiedPage,
-  goToPreviousUnifiedPage,
-  goToNextUnifiedPage,
-  goToLastUnifiedPage,
-  hasLastUnifiedPage = false,
-  pageSize = 10,
-  setPageSize,
   sourceFilter = "all",
   setSourceFilter,
-  audienceFilter = "all",
-  setAudienceFilter,
   unreadCount,
-  showSummaryChips = false,
-  minHeightClass = "min-h-[580px]",
   className = "",
-  selectedSession,
-  onSelectSession,
   selectedSymbol,
   onSelectSymbol,
   loading = false,
   error = null,
 }) {
   const { t } = useI18n();
-  const [activeTab, setActiveTab] = useState("alerts");
 
   const safeAlerts = useMemo(() => (Array.isArray(alerts) ? alerts : []), [alerts]);
   // Real unread count requires `unreadCount` or a populated `readAlertIds`.
@@ -121,6 +119,18 @@ export function UnifiedAlertCenter({
     }
     return result;
   }, [safeAlerts, severityFilter, sourceFilter]);
+
+  // Curation: this is a summary lane, not the alert inbox. Ranking by severity,
+  // then value, then recency means the five rows shown are the five that matter
+  // instead of the five most recent — which is how a 20-hour-old low-value
+  // alert could sit above a 1-minute-old critical one. The full list stays one
+  // click away in Alert Center.
+  const TOP_N = 5;
+  const visibleAlerts = useMemo(
+    () => sortAlertsByPriority(filteredAlerts).slice(0, TOP_N),
+    [filteredAlerts],
+  );
+  const hiddenCount = Math.max(0, filteredAlerts.length - visibleAlerts.length);
 
   const severityCounts = useMemo(() => {
     const counts = { all: safeAlerts.length, critical: 0, high: 0, medium: 0, low: 0 };
@@ -213,11 +223,10 @@ export function UnifiedAlertCenter({
           hasActiveFilters && e(
           "button",
           {
-            onClick: () => {
-              setSeverityFilter?.("all");
-              onSeverityFilterChange?.("all");
-              setSourceFilter?.("all");
-            },
+              onClick: () => {
+                onSeverityFilterChange?.("all");
+                setSourceFilter?.("all");
+              },
             className: "flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-slate-800/50 transition-all",
             "aria-label": t("alert.clearFilters"),
           },
@@ -238,7 +247,6 @@ export function UnifiedAlertCenter({
             {
               key: f.value,
               onClick: () => {
-                setSeverityFilter?.(f.value);
                 onSeverityFilterChange?.(f.value);
               },
               className: `flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap ${
@@ -257,7 +265,7 @@ export function UnifiedAlertCenter({
     e(
       "div",
       { className: "px-1 pb-1 text-[11px] text-slate-500 tabular-nums" },
-      t("alert.showing", { shown: filteredAlerts.length, total: safeAlerts.length })
+      t("alert.showing", { shown: visibleAlerts.length, total: safeAlerts.length })
     ),
     // Alert list — không bao giờ trắng trơn: loading / lỗi / bị lọc hết / rỗng thật
     e(
@@ -288,7 +296,6 @@ export function UnifiedAlertCenter({
                   "button",
                   {
                     onClick: () => {
-                      setSeverityFilter?.("all");
                       onSeverityFilterChange?.("all");
                       setSourceFilter?.("all");
                     },
@@ -303,7 +310,7 @@ export function UnifiedAlertCenter({
                 e(Bell, { className: "h-12 w-12 text-slate-700/50 mb-3" }),
                 e("p", { className: "text-slate-500 text-sm" }, t("alert.empty"))
               )
-        : filteredAlerts.map((alert) => {
+        : visibleAlerts.map((alert) => {
             const alertId = alert.alert_id || alert.id;
             // Without read state every card was implicitly "unread", which
             // happened to give the full-opacity severity border — the right
@@ -311,69 +318,35 @@ export function UnifiedAlertCenter({
             // does not depend on an empty Set.
             const isUnread = hasReadState && !readAlertIds.has(alertId);
 
-            // Construct metadata chips
-            const metadataChips = [];
-            if (alert.direction) {
-              const isUp = ["buy", "long", "up"].includes(alert.direction.toLowerCase());
-              metadataChips.push(
-                e(
-                  "span",
-                  {
-                    key: "dir",
-                    className: `inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                      isUp
-                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                        : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
-                    }`,
-                  },
-                  isUp ? `↑ ${t("alert.dirBuy")}` : `↓ ${t("alert.dirSell")}`
-                )
-              );
-            }
+            // The card used to render FOUR bordered chips below the body
+            // (direction, value, confidence, session). Two repeated data already
+            // on screen — `Giá trị: 1,3 tỷ` duplicated the bold `1,3 tỷ` in the
+            // header row, and the direction chip restated the "bán" inside the
+            // body text — and the fourth forced a second wrapped row, which is
+            // what made one card ~130px tall. Direction stays a badge (it is the
+            // primary reading); value moves to the right column; confidence and
+            // session become a single plain metadata line.
+            const isUp = ["buy", "long", "up"].includes(String(alert.direction || "").toLowerCase());
+            const confPct = alert.confidence != null
+              ? Math.round(Number(alert.confidence) <= 1 ? Number(alert.confidence) * 100 : Number(alert.confidence))
+              : null;
+            const freshness = freshnessLabel(alert.freshness_state, t);
+            const metaParts = [
+              alert.session_date ? formatSessionDate(alert.session_date) : null,
+              confPct != null ? `${t("alert.confLabel")} ${confPct}%` : null,
+              freshness,
+            ].filter(Boolean);
 
-            if (alert.value != null && Number(alert.value) > 0) {
-              const val = Number(alert.value);
-              metadataChips.push(
-                e(
-                  "span",
-                  {
-                    key: "val",
-                    className: "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700/50",
-                    title: formatFullVND(val),
-                  },
-                  `${t("alert.valLabel")}: ${formatVNDCompact(val)}`
-                )
-              );
-            }
-
-            if (alert.confidence != null) {
-              const confVal = Number(alert.confidence);
-              const confPct = confVal <= 1 ? Math.round(confVal * 100) : Math.round(confVal);
-              metadataChips.push(
-                e(
-                  "span",
-                  {
-                    key: "conf",
-                    className: "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-cyan-950/20 text-cyan-400 border border-cyan-500/10",
-                  },
-                  `${t("alert.confLabel")}: ${confPct}%`
-                )
-              );
-            }
-
-            if (alert.session_date) {
-              metadataChips.push(
-                e(
-                  "span",
-                  {
-                    key: "session",
-                    className: "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-400 border border-slate-700/30",
-                    title: String(alert.session_date),
-                  },
-                  `${t("alert.sessionLabel")}: ${formatSessionDate(alert.session_date)}`
-                )
-              );
-            }
+            // The backend sets `summary = body`, so rendering both repeats the
+            // same sentence. `title` was in the payload all along and never
+            // rendered at all.
+            const summaryText = String(alert.summary || alert.body || alert.message || "").trim();
+            const titleText = String(alert.title || "").trim();
+            const bodyText = titleText
+              ? (summaryText && !isDuplicateSummary(titleText, summaryText)
+                  ? `${titleText} — ${summaryText}`
+                  : titleText)
+              : summaryText;
 
             // Construct action buttons
             const actionButtons = [];
@@ -427,74 +400,64 @@ export function UnifiedAlertCenter({
               },
               e(
                 "div",
-                { className: "alert-head flex items-start justify-between gap-3 mb-1.5" },
+                { className: "alert-head flex items-start justify-between gap-3 mb-1" },
                 e(
                   "div",
-                  { className: "alert-head flex-1 items-center gap-2" },
+                  { className: "alert-head min-w-0 flex-1 items-center gap-1.5 flex-wrap" },
                   e("span", { className: "alert-sym font-semibold text-slate-100 text-sm", style: { flex: "none" } }, alert.symbol || "—"),
-                  e("span", { className: "inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded border bg-slate-800 text-slate-300 border-slate-700/50 whitespace-nowrap flex-shrink-0" }, e(Waves, { className: "h-3 w-3 text-slate-400", "aria-hidden": true }), sourceLabel(alert.alert_family || alert.alert_type || alert.source, t)),
-                  alert.value != null && Number(alert.value) > 0 && e(
-                    "span",
-                    { className: "desc text-[11px] font-bold text-slate-200", title: formatFullVND(alert.value) },
-                    `· ${formatVNDCompact(alert.value)}`
-                  )
+                  e("span", { className: "inline-flex items-center gap-1 text-[10px] px-1.5 py-px rounded border bg-slate-800 text-slate-300 border-slate-700/50 whitespace-nowrap flex-shrink-0" }, e(Waves, { className: "h-3 w-3 text-slate-400", "aria-hidden": true }), familyLabel(alert, t)),
+                  alert.direction &&
+                    e(
+                      "span",
+                      {
+                        className: `inline-flex items-center gap-0.5 px-1.5 py-px rounded text-[10px] font-bold whitespace-nowrap flex-shrink-0 ${
+                          isUp
+                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                            : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                        }`,
+                      },
+                      isUp ? `↑ ${t("alert.dirBuy")}` : `↓ ${t("alert.dirSell")}`
+                    )
                 ),
-                e("span", { className: "time text-xs text-slate-500 whitespace-nowrap flex-shrink-0" },
-                  alert.executed_at
-                    ? formatExecutionTime(alert.executed_at) + " • " + timeAgo(alert.triggered_at || alert.ts || alert.timestamp)
-                    : timeAgo(alert.triggered_at || alert.ts || alert.timestamp)
+                e(
+                  "div",
+                  { className: "flex flex-col items-end gap-0.5 flex-shrink-0" },
+                  alert.value != null && Number(alert.value) > 0 &&
+                    e(
+                      "span",
+                      { className: "desc text-[11px] font-bold text-slate-200 tabular-nums", title: formatFullVND(alert.value) },
+                      formatVNDCompact(alert.value)
+                    ),
+                  e("span", { className: "time text-[10px] text-slate-500 tabular-nums whitespace-nowrap" },
+                    alert.executed_at
+                      ? formatExecutionTime(alert.executed_at) + " • " + timeAgo(alert.triggered_at || alert.ts || alert.timestamp)
+                      : timeAgo(alert.triggered_at || alert.ts || alert.timestamp)
+                  )
                 )
               ),
-              (alert.body || alert.message || alert.summary) && e("p", { className: "desc text-xs text-slate-300 leading-relaxed mb-1.5" }, alert.body || alert.message || alert.summary),
-              // Metadata chips strip
-              metadataChips.length > 0 && e("div", { className: "flex flex-wrap gap-1 mt-1.5" }, metadataChips),
+              bodyText && e("p", { className: "desc text-[11px] text-slate-300 leading-snug truncate mb-1", title: bodyText }, bodyText),
+              metaParts.length > 0 && e("div", { className: "text-[10px] text-slate-500 tabular-nums truncate" }, metaParts.join(" · ")),
               // Actions strip
               actionsRow
             );
           })
     ),
-    // Pagination controls
-    e(
-      "div",
-      { className: "flex items-center justify-between pt-3 mt-2 border-t border-slate-800/50" },
+    // "See the rest" — replaces two pagination buttons (~53px of chrome that was
+    // always visible) with one line that appears only when something is actually
+    // hidden. A summary lane should not paginate; Alert Center is one click away
+    // and already handles the full list.
+    hiddenCount > 0 &&
       e(
         "div",
-        { className: "flex items-center gap-1" },
+        { className: "pt-2 mt-1 border-t border-slate-800/50 text-center" },
         e(
-          "button",
+          "a",
           {
-            onClick: () => goToPreviousUnifiedPage?.(),
-            disabled: !hasPreviousUnifiedPage,
-            className: `flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              hasPreviousUnifiedPage
-                ? "text-slate-300 hover:text-cyan-400 hover:bg-slate-800/50 border border-slate-700/50"
-                : "text-slate-600 cursor-not-allowed border border-slate-800/30"
-            }`,
-            "aria-label": t("alert.prevPage"),
+            href: "/alert-center",
+            className: "text-[11px] font-bold text-cyan-400 hover:text-cyan-300",
           },
-          e(ChevronLeft, { className: "h-3.5 w-3.5" }),
-          t("alert.prevPage")
-        )
-      ),
-      e(
-        "div",
-        { className: "flex items-center gap-1" },
-        e(
-          "button",
-          {
-            onClick: () => goToNextUnifiedPage?.(),
-            disabled: !backendUnifiedHasMore,
-            className: `flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              backendUnifiedHasMore
-                ? "text-slate-300 hover:text-cyan-400 hover:bg-slate-800/50 border border-slate-700/50"
-                : "text-slate-600 cursor-not-allowed border border-slate-800/30"
-            }`,
-            "aria-label": t("alert.nextPage"),
-          },
-          t("alert.nextPage"),
-          e(ChevronRight, { className: "h-3.5 w-3.5" })
+          t("alert.seeMore", { count: hiddenCount })
         )
       )
-    )
   );
 }

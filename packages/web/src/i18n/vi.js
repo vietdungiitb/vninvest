@@ -2394,13 +2394,6 @@ const vi = {
     title: 'Cảnh báo',
     empty: 'Không có cảnh báo nào.',
     unread: 'chưa đọc',
-    source: {
-      whale: 'Cá mập',
-      dark_flow: 'Dòng tối',
-      price_shock: 'Sốc giá',
-      stale_quote: 'Báo giá cũ',
-      system: 'Hệ thống',
-    },
     severity: {
       critical: 'Nghiêm trọng',
       high: 'Cao',
@@ -2414,6 +2407,7 @@ const vi = {
     nextPage: 'Trang sau',
     viewAll: 'Xem tất cả',
     totalTooltip: '{count} cảnh báo trong danh sách',
+    seeMore: 'Xem thêm {count} cảnh báo →',
     dirBuy: 'Mua',
     dirSell: 'Bán',
     valLabel: 'Giá trị',
