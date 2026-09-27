@@ -1450,7 +1450,9 @@ const vi = {
     metricApiCalls: 'Lượt gọi API',
     healthLabel: 'Sức khỏe tenant',
     activeMembersLabel: 'Thành viên hoạt động',
-    apiCallsLabel: 'Lượt gọi API',
+    // So nay la tong tich luy TRONG THANG (BE `QuotaRecord.api_calls_used`),
+    // khong phai goi trong ngay — nen nhan rõ don vi de khong gay hieu nham.
+    apiCallsLabel: 'Lượt gọi API / tháng',
     quotaHeadroomLabel: 'Dư lượng quota',
     todayLabel: 'hôm nay',
     limitLabel: 'Giới hạn',

@@ -19,6 +19,7 @@ from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 
 from commercial.models import Invoice, QuotaRecord, Subscription
+from commercial.quota_period import current_billing_period, month_counter_key
 from commercial.tasks import (
     check_overdue_invoices,
     flush_quota_counters,
@@ -103,7 +104,14 @@ class CommercialTasksTests(TestCase):
             api_calls_limit=100,
         )
 
-        cache_stub = _QuotaCacheStub({f'quota:api_calls:{self.tenant_one.public_id}:{today.isoformat()}': 50})
+        # Bo dem TICH LUY THANG la nguon su that cho `api_calls_used`. Khoa bo
+        # dem ngay (`quota:api_calls:{tenant}:{YYYY-MM-DD}`) chi 48h nen khong
+        # cong don duoc, va doc no vao ban ghi thang chi lay gia tri cua MOT
+        # ngay — chinh la ly do truoc day han muc thang ~30x len.
+        month_key = month_counter_key(self.tenant_one.public_id, today)
+        self.assertRegex(month_key, r'^quota:api_calls:month:[^:]+:\d{4}-\d{2}$')
+
+        cache_stub = _QuotaCacheStub({month_key: 50})
         with patch('commercial.tasks.cache', cache_stub):
             first = flush_quota_counters.run(target_date=today.isoformat())
             cache_stub.delete('commercial:flush_quota_counters:throttle')
@@ -112,7 +120,29 @@ class CommercialTasksTests(TestCase):
         quota = QuotaRecord.objects.get(tenant=self.tenant_one, period_start=period_start, period_end=period_end)
         self.assertEqual(first['processed'], 1)
         self.assertEqual(second['processed'], 1)
+        self.assertEqual(first['unit'], 'monthly')
         self.assertEqual(quota.api_calls_used, 50)
+
+    def test_month_counter_scan_pattern_excludes_daily_keys(self):
+        """Khoa bo dem NGAY khong duoc quet vao ban ghi thang — se lam ~30x.
+
+        Khong assert qua `_QuotaCacheStub` vi stub bo qua `match` (scan_iter cua
+        no tra ve moi khoa). Kiem tra truc tiep glob ma Redis thuc su dung.
+        """
+        from fnmatch import fnmatch
+
+        from commercial.quota_period import month_counter_scan_pattern
+
+        today = timezone.now().date()
+        pattern = month_counter_scan_pattern(today)
+
+        self.assertIn(':month:', pattern)
+        self.assertIn(today.strftime('%Y-%m'), pattern)
+        # Khoa thang khop; khoa ngay khong khop.
+        self.assertTrue(fnmatch(f'quota:api_calls:month:tnt_abc:{today:%Y-%m}', pattern))
+        self.assertFalse(fnmatch(f'quota:api_calls:tnt_abc:{today.isoformat()}', pattern))
+        # Ky truoc khong lan sang ky nay.
+        self.assertFalse(fnmatch('quota:api_calls:month:tnt_abc:2020-01', pattern))
 
     def test_generate_monthly_invoices_creates_rows_for_active_subscriptions(self):
         today = date(2026, 5, 12)
