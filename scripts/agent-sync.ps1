@@ -168,6 +168,45 @@ if ($touchedBE) {
   }
 }
 
+# ---------------------------------------------------------------------------
+# Gate do bo GitHub Actions (2026-09-27) chuyen sang chay local.
+#
+# Ly do: 200/200 run gan nhat that bai, khong mot run xanh nao. Nguyen nhan goc
+# la billing ("recent account payments have failed"), job fail sau 2-3 giay voi
+# `steps=0` — runner chua chay buoc nao. Ca run cua `dev` cung fail nen CI
+# khong bao gio co tin hieu. Xem `.github/workflows-disabled/README.md`.
+#
+# Logic gate nam trong script PowerShell local, KHONG nam trong YAML, nen tat
+# Actions khong mat logic — chi mat lop thuc thi tu dong.
+# ---------------------------------------------------------------------------
+
+Step 5c "OpenCore doc sync gate"
+& pwsh -File scripts/quality/check_opencore_doc_sync.ps1 `
+  -EventName "push" -BaseRef "dev" -BeforeSha "" -HeadSha "HEAD" | Out-Null
+if ($LASTEXITCODE -ne 0) { Die "OpenCore doc sync gate that bai" }
+Ok "OpenCore doc sync PASS"
+
+# CHI CANH BAO, khong chan. Script dang FAIL tren `dev` (exit 1) vi no den
+# 77 file — trong do nhiều file thuocc cay legacy `frontend/` da bi thay bang
+# `packages/web/`. Gate nay CHUA BAO GIO chay xanh tren CI nen chua ai thay
+# vie pham; bat chan ngay bay se chan moi agent vi no ton do, gate se bi bo qua
+# — te hon khong co gate. Nang len chan khi no duoc xu ly xong.
+Step 5d "Large file guard (CANH BAO, khong chan)"
+$lf = & pwsh -File scripts/quality/check_large_files.ps1 `
+  -WarnLines 700 -FailLines 1000 -AllowListPath scripts/quality/large_file_allowlist.txt 2>&1
+if ($LASTEXITCODE -ne 0) {
+  Warn "check_large_files FAIL tren dev (no ton do, KHONG phai do branch nay)."
+  Warn "Khong chan. Xem .github/workflows-disabled/README.md §Sau."
+  Warn "Chi bao loi o file branch nay:"
+  # Path Windows dung dau `\` nen phai khop `packages[\\/]` chu khong phai `packages/`.
+  $lf | ForEach-Object { $_.ToString() } |
+    Where-Object { $_ -match '(WARN|FAIL)\s+\d+' -and $_ -match 'packages[\\/]|scripts[\\/]' } |
+    Select-Object -First 5 |
+    ForEach-Object { Warn ("  " + ($_ -replace "`e\[[0-9;]*m", "").Trim()) }
+} else {
+  Ok "check_large_files PASS"
+}
+
 Step 0 "Sync xong"
 Ok "branch $branch da dong bo vao origin/dev"
 Write-Host "`nBuoc tiep theo:" -ForegroundColor Cyan
