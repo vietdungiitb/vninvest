@@ -231,4 +231,4 @@ Worktree = `C:\Mujoco Projects\claimfix`, branch `feat/claimfix`.
 
 | agent | branch | scope | files | status | since | note |
 |---|---|---|---|---|---|---|
-| `claimfix` | `feat/claimfix` | Dong claim `tw-wire` trung con `in-progress` | `docs/CLAIMS.md` | in-progress | 2026-09-27 | Gate `check-multi-agent` quet `in-progress` nen row trung lam bao task dang mo. Row trung do bi **dinh vao dong truoc** vi `CLAIMS.md` thieu newline cuoi file (loi da gap o PR #20 va #23). Noi dung that nam o row ngay tren; dong nay danh dau la trung + tro ve row dung, khong xoa vi `CLAIMS.md` append-only (§2). Dong dep branch khong can file code. |
+| `claimfix` | `feat/claimfix` | Dong claim `tw-wire` trung con `in-progress` | `docs/CLAIMS.md` | released | 2026-09-27 | **RELEASED qua PR #32 (040eab7).**  Gate `check-multi-agent` quet `in-progress` nen row trung lam bao task dang mo. Row trung do bi **dinh vao dong truoc** vi `CLAIMS.md` thieu newline cuoi file (loi da gap o PR #20 va #23). Noi dung that nam o row ngay tren; dong nay danh dau la trung + tro ve row dung, khong xoa vi `CLAIMS.md` append-only (§2). Dong dep branch khong can file code. |
