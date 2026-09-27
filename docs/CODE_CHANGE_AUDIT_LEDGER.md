@@ -1,7 +1,7 @@
 ## Entry 237: `/tenant/keys` mất trạng thái key + 3 gate im lặng + Entry 214/215 trùng số (2026-09-27)
 
 - **Date**: 2026-09-27
-- **Branch**: `fix/apikeys-status-and-gates` → PR #40
+- **Branch**: `fix/apikeys-status-and-gates` → PR #41
 - **Scope**: 1 fix UI `/tenant/keys` + 3 sửa gate/tài liệu. Không đụng BE, không tạo migration, không `npm install`.
 
 ### 1. `/tenant/keys`: không phân biệt được key active / đã thu hồi
