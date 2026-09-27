@@ -8,7 +8,7 @@ import { createElement, useMemo } from "react";
 import { Bell, Filter, X, Flame, Waves } from "lucide-react";
 import { useI18n } from "../../context/LangContext.js";
 import { formatVNDCompact, formatFullVND, formatSessionDate, formatTimeAgo } from "../../utils/formatMarket.js";
-import { isDuplicateSummary } from "../../utils/alertCenterFormat.js";
+import { isDuplicateSummary } from "../../utils/alertCenterFormat";
 import { sortAlertsByPriority } from "../../utils/alertDedup.js";
 
 const e = createElement;
