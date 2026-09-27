@@ -233,7 +233,7 @@ export function CoreDashboardPositionDeck({
   };
 
   return (
-    <div className={`dashboard-full-width-deck flex flex-col ${className}`}>
+    <div className={`flex min-h-0 flex-col ${className}`}>
       {selectedSession ? (
         <div className="flex items-center justify-between bg-emerald-950/40 border-b border-emerald-800/30 px-4 py-2 text-[var(--fs-2xs)] text-emerald-300">
           <span>Phiên đang chọn: <strong>{typeof selectedSession === 'object' ? JSON.stringify(selectedSession) : String(selectedSession as string)}</strong></span>
@@ -302,7 +302,7 @@ export function CoreDashboardPositionDeck({
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden p-2 min-h-[400px]">
+      <div className="flex-1 overflow-hidden p-2 min-h-[280px]">
         {isOverviewTab && (
           <div className="h-full flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto panel-scrollbar">

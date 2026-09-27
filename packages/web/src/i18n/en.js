@@ -2423,6 +2423,11 @@ const en = {
     confLabel: 'Confidence',
     sessionLabel: 'Session',
     mute30m: 'Mute 30m',
+    showing: 'Showing {shown}/{total}',
+    loadingList: 'Loading alerts…',
+    loadError: 'Could not load the alert list.',
+    retryHint: 'Try again in a few minutes.',
+    filteredEmpty: 'The current filter excludes all {total} alerts.',
   },
   aiAdvisor: {
     panel: {
