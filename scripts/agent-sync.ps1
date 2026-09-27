@@ -125,11 +125,25 @@ $touchedBE = git diff --name-only origin/dev...HEAD | Where-Object { $_ -like 'p
 $touchedFE = git diff --name-only origin/dev...HEAD | Where-Object { $_ -like 'packages/web/*' -or $_ -like 'packages/web/*' }
 
 if ($touchedFE) {
-  Step 5b "tsc + eslint (web bi cham)"
+  Step 5b "tsc + build (web bi cham)"
   Push-Location packages/web
   npx tsc --noEmit; if ($LASTEXITCODE -ne 0) { Pop-Location; Die "tsc that bai" }
-  Pop-Location
   Ok "tsc 0 loi"
+
+  # BUILD LA BAT BUOC, khong phai "cho co".
+  #
+  # 2026-09-27: Wave 2 (PR #27) import `alertCenterFormat.js` nhung file that la
+  # `.ts`. `tsc` PASS (tu map `.js`->`.ts` theo allowJs) va `vitest` PASS 52/52
+  # (resolver dev/test lenient hon Rollup) — CHI `vite build` bat. `dev` khong
+  # bundle duoc, hotfix bang PR #28. Ba wave lien tiep deu bo qua vi tsc+vitest
+  # deu xanh tren code lam hong build.
+  #
+  # Rollup resolve that hon cac gate kia, nen day moi la gate chung ta can.
+  Step 5b2 "npm run build (bat Rollup resolve)"
+  npm run build --silent
+  if ($LASTEXITCODE -ne 0) { Pop-Location; Die "npm run build that bai — code se khong bundle duoc tren dev" }
+  Pop-Location
+  Ok "build thanh cong"
 }
 
 if ($touchedBE) {

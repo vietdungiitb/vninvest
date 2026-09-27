@@ -176,7 +176,17 @@ if (!fs.existsSync(claimsPath)) {
       }
       // Non-literal patterns cannot be existence-checked.
       if (/[*{]/.test(rel)) continue;
-      if (!fs.existsSync(path.join(REPO, rel))) {
+      // CLAIMS.md quy ước ghi kèm trạng thái: `path/to/file.js (new)`,
+      // `path/to/file.js (delete)`. Bỏ hậu tố trước khi check tồn tại, nếu
+      // không mọi claim đều bị báo warning giả — 17/21 cảnh báo trước khi sửa
+      // là loại này, làm gate mất tác dụng cảnh báo thật.
+      const raw = rel.trim();
+      const isDelete = /\s+\(delete\)\s*$/.test(raw);
+      const target = raw.replace(/\s+\((?:new|delete)\)\s*$/, "").trim();
+      // `(delete)` = agent xoá file ⇒ KHÔNG tồn tại mới là đúng. Check tồn tại
+      // ở đây là ngược ý nghĩa và báo động giả.
+      if (isDelete) continue;
+      if (!fs.existsSync(path.join(REPO, target))) {
         warn.push(
           `CLAIMS.md dòng ${i + 1}: file "${rel}" không tồn tại trong worktree này ` +
             `(có thể agent khác đã xoá/đổi tên, hoặc claim ghi sai)`,

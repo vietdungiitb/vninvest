@@ -51,10 +51,17 @@ jest.unstable_mockModule("react", () => {
   };
 });
 
-// Import modules
-const { useCoreDashboardData } = await import("../useCoreDashboardData.js");
-const { collectUniqueSortedSymbols } = await import("../../../utils/dashboardSymbols.js");
-const { coreApiAdapter } = await import("../../../adapters/coreApiAdapter.js");
+// Top-level `await` không transform được trong CJS của Jest ⇒ suite chết.
+// Gộp vào `beforeAll` để giữ thứ tự "đăng ký mock → import module".
+let useCoreDashboardData;
+let collectUniqueSortedSymbols;
+let coreApiAdapter;
+
+beforeAll(async () => {
+  ({ useCoreDashboardData } = await import("../useCoreDashboardData.js"));
+  ({ collectUniqueSortedSymbols } = await import("../../../utils/dashboardSymbols.js"));
+  ({ coreApiAdapter } = await import("../../../adapters/coreApiAdapter.js"));
+});
 
 describe("SaaS Native Dashboard Lifecycle Tests", () => {
   beforeEach(() => {
