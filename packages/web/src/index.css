@@ -258,6 +258,19 @@
   }
 
   /* Glass morphism */
+  /* `.glass` — RESTORED 2026-09-27. Wave 0 (PR #25) xoá rule này o tin rang
+     "dead CSS", nhung grep chi danh dashboard. Tai day co 26 ref tren 9 file:
+     StockDetailTabs.js (10), StockContextDeck.js, StockInsightDeck.js,
+     PortfolioHeatmap.js, adminUi.tsx, WhaleAdvisoryPage.tsx va 3 advisory
+     component. Xoá no lam `/stock-detail`, `/admin`, `/ai-advisory`, `/dashboard`
+     mat nen -> 78/121 test Playwright fail `toBeVisible()`. XOA CSS PHAI GREP
+     TOAN REPO (nhac trong AGENTS.md), khong phai chi lane dang sua. */
+  .glass {
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--color-border-primary);
+  }
+
   .glass-strong {
     background: rgba(15, 23, 42, 0.95);
     backdrop-filter: blur(20px);
