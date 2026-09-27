@@ -1,14 +1,37 @@
-import { jest, describe, expect, test, beforeEach } from "@jest/globals";
+import { jest, describe, expect, test, beforeAll, beforeEach } from "@jest/globals";
+import { renderHook } from "@testing-library/react";
 
-// Mock React useMemo to evaluate immediately for pure logic testing
-jest.unstable_mockModule("react", () => {
-  return {
-    useMemo: (fn) => fn(),
-  };
+// KHÔNG mock `react`.
+// Bản cũ dùng `jest.unstable_mockModule("react", () => ({ useMemo: fn => fn() }))`
+// với lý do "pure logic testing". Điều đó sai theo 2 cách:
+//  1. `unstable_mockModule` chỉ chặn ESM `import()`, không chặn CJS `require` —
+//     nên mock không ăn đúng như mong muốn.
+//  2. Thay cả module `react` bằng `{ useMemo }` làm hỏng `renderHook` của
+//     Testing Library, vốn cần `useState`/`useEffect`/`act` thật. Lỗi thật là
+//     `TypeError: Cannot read properties of null (reading 'useMemo')`.
+// `useMemo` của React thật chạy đúng trong `renderHook`, không cần ép.
+
+// Top-level `await` không transform được trong CJS của Jest ("await is only
+// valid in async functions and the top level bodies of modules") ⇒ suite chết.
+// Gộp vào `beforeAll` để giữ thứ tự "đăng ký mock → import module".
+let useViewportWhaleMarkers;
+
+beforeAll(async () => {
+  ({ useViewportWhaleMarkers } = await import("../hooks/useViewportWhaleMarkers.js"));
 });
 
-// Import hook after mock
-const { useViewportWhaleMarkers } = await import("../hooks/useViewportWhaleMarkers.js");
+/**
+ * Bọc hook trong `renderHook` rồi trả `result.current`.
+ *
+ * Bản cũ gọi `useViewportWhaleMarkers(...)` **trực tiếp** ngoài render context
+ * của React ⇒ `resolveDispatcher()` trả null ⇒
+ * `TypeError: Cannot read properties of null (reading 'useMemo')`.
+ * Tác giả thêm mock React (`useMemo: fn => fn()`) để lách, nhưng
+ * `jest.unstable_mockModule` không chặn được CJS `require` nên mock im lặng
+ * không ăn. Gọi hook đúng cách là `renderHook` — không cần mock framework.
+ */
+const callHook = (candles, startIndex, endIndex) =>
+  renderHook(() => useViewportWhaleMarkers(candles, startIndex, endIndex)).result.current;
 
 describe("useViewportWhaleMarkers Hook", () => {
   const sampleCandles = [
@@ -25,21 +48,21 @@ describe("useViewportWhaleMarkers Hook", () => {
   ];
 
   test("handles empty candles or out-of-bound ranges gracefully", () => {
-    const resultEmpty = useViewportWhaleMarkers([], 0, 10);
+    const resultEmpty = callHook([], 0, 10);
     expect(resultEmpty).toBeInstanceOf(Set);
     expect(resultEmpty.size).toBe(0);
 
-    const resultNull = useViewportWhaleMarkers(null, 0, 5);
+    const resultNull = callHook(null, 0, 5);
     expect(resultNull.size).toBe(0);
 
     // Should auto-clamp safe range
-    const resultClamp = useViewportWhaleMarkers(sampleCandles, -5, 100);
+    const resultClamp = callHook(sampleCandles, -5, 100);
     expect(resultClamp.size).toBe(1); // 10% of 10 is 1
   });
 
   test("assigns exactly 1 whale marker when viewport has 10 candles (10% threshold)", () => {
     // 10 visible candles -> 10% is 1 candle
-    const markers = useViewportWhaleMarkers(sampleCandles, 0, 9);
+    const markers = callHook(sampleCandles, 0, 9);
     expect(markers.size).toBe(1);
     // Top whaleVolume is 2026-05-05 (900)
     expect(markers.has("2026-05-05")).toBe(true);
@@ -52,7 +75,7 @@ describe("useViewportWhaleMarkers Hook", () => {
       { time: "2026-05-11", volume: 12000, whaleVolume: 1200 }, // Max
       ...sampleCandles.slice(1),
     ]; // 20 candles
-    const markers = useViewportWhaleMarkers(doubleCandles, 0, 19);
+    const markers = callHook(doubleCandles, 0, 19);
     expect(markers.size).toBe(2);
     // Top 2 should be 2026-05-11 (1200) and 2026-05-05 (900)
     expect(markers.has("2026-05-11")).toBe(true);
@@ -64,14 +87,14 @@ describe("useViewportWhaleMarkers Hook", () => {
     // 10% of 4 is 0 -> Math.max(1, 0) = 1 marker
     // Candles inside slice: 05-01 (100), 05-02 (200), 05-03 (300), 05-04 (50)
     // Top volume is 2026-05-03
-    const zoomMarkers = useViewportWhaleMarkers(sampleCandles, 0, 3);
+    const zoomMarkers = callHook(sampleCandles, 0, 3);
     expect(zoomMarkers.size).toBe(1);
     expect(zoomMarkers.has("2026-05-03")).toBe(true);
 
     // Pan viewport: shift range to index 3 to 7 (5 candles)
     // Candles: 05-04 (50), 05-05 (900), 05-06 (120), 05-07 (450), 05-08 (80)
     // Top is 2026-05-05
-    const panMarkers = useViewportWhaleMarkers(sampleCandles, 3, 7);
+    const panMarkers = callHook(sampleCandles, 3, 7);
     expect(panMarkers.size).toBe(1);
     expect(panMarkers.has("2026-05-05")).toBe(true);
     expect(panMarkers.has("2026-05-03")).toBe(false);
@@ -83,7 +106,7 @@ describe("useViewportWhaleMarkers Hook", () => {
       { time: "C2", volume: 500 }, // Max
       { time: "C3", volume: 300 },
     ];
-    const markers = useViewportWhaleMarkers(regularCandles, 0, 2);
+    const markers = callHook(regularCandles, 0, 2);
     expect(markers.size).toBe(1);
     expect(markers.has("C2")).toBe(true);
   });

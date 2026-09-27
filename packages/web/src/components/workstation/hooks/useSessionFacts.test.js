@@ -11,11 +11,19 @@ const mockAdapter = {
 };
 
 // Mock the coreApiAdapter module
-jest.unstable_mockModule('../../../adapters/coreApiAdapter.js', () => ({
+// `jest.mock` chứ KHÔNG `jest.unstable_mockModule`: babel ép hook về CommonJS,
+// còn `unstable_mockModule` chỉ chặn ESM `import()` ⇒ mock im lặng không ăn.
+jest.mock('../../../adapters/coreApiAdapter.js', () => ({
   createCoreApiAdapter: jest.fn(() => mockAdapter),
 }));
 
-const { useSessionFacts } = await import('./useSessionFacts.js');
+// Top-level `await` không transform được trong CJS của Jest ⇒ suite chết.
+// Gộp vào `beforeAll` để giữ thứ tự "đăng ký mock → import module".
+let useSessionFacts;
+
+beforeAll(async () => {
+  ({ useSessionFacts } = await import('./useSessionFacts.js'));
+});
 
 describe('useSessionFacts', () => {
   beforeEach(() => {
