@@ -68,12 +68,16 @@ class SecretStore:
     """
 
     def __init__(self, cache_legacy: bool = True) -> None:
-        # v1 is derived from settings, which is stable for the process, so it is
-        # safe to cache. Every other version is read from the environment on each
-        # call so that a key rotation picked up by a fresh process (or by a test
-        # using override_settings) takes effect immediately.
+        # v1 is derived from Django's SECRET_KEY, which is stable in a normal
+        # process, so caching it avoids a SHA-256 per decrypt. The cache MUST be
+        # keyed by the SECRET_KEY it was derived from: SECRET_KEY comes from
+        # mutable settings, and a cache that ignores that silently keeps serving a
+        # stale key. That is not hypothetical - it broke this slice's own tests,
+        # where an earlier test file changed SECRET_KEY via override_settings and
+        # the module-level singleton then wrote v1 ciphertext no fresh store could
+        # read back.
         self._cache_legacy = cache_legacy
-        self._legacy_cache: Dict[int, Fernet] = {}
+        self._legacy_cache: Dict[Tuple[int, str], Fernet] = {}
 
     # ── key resolution ──────────────────────────────────────────────────
     def _resolve_key_material(self, version: int) -> str:
@@ -105,12 +109,14 @@ class SecretStore:
         )
 
     def get_key(self, version: int) -> Fernet:
+        cache_key = None
         if version == LEGACY_VERSION and self._cache_legacy:
-            if version in self._legacy_cache:
-                return self._legacy_cache[version]
+            cache_key = (version, _legacy_key_material())
+            if cache_key in self._legacy_cache:
+                return self._legacy_cache[cache_key]
         fernet = _derive(self._resolve_key_material(version))
-        if version == LEGACY_VERSION and self._cache_legacy:
-            self._legacy_cache[version] = fernet
+        if cache_key is not None:
+            self._legacy_cache[cache_key] = fernet
         return fernet
 
     @staticmethod
