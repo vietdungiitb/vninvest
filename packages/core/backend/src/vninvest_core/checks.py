@@ -28,6 +28,12 @@ TRUSTED_PROXY_EMPTY_ID = "vninvest_core.E001"
 #: ``manage.py test`` (Django forces DEBUG=False there, so the check could never
 #: tell a test run from a real boot).
 TURNSTILE_SECRET_MISSING_ID = "vninvest_core.W002"
+#: Emitted when BROKER_SECRET_KEY is absent, which pins every new broker secret to
+#: the legacy key derived from SECRET_KEY. See SEC-02 PB1.
+BROKER_SECRET_KEY_MISSING_ID = "vninvest_core.W003"
+#: Emitted when BROKER_SECRET_KEY is set but no retained older key is configured,
+#: i.e. rotating it would strand existing ciphertext.
+BROKER_SECRET_KEY_NO_RETAINED_ID = "vninvest_core.W004"
 
 
 def _running_tests():
@@ -89,6 +95,85 @@ def check_turnstile_secret(app_configs, **kwargs):
                 "disable the form."
             ),
             id=TURNSTILE_SECRET_MISSING_ID,
+        )
+    ]
+
+
+@register()
+def check_broker_secret_key_rotation(app_configs, **kwargs):
+    """SEC-02 PB1: make key misconfiguration visible without breaking boot.
+
+    PB1 asks whether a missing ``BROKER_SECRET_KEY`` should raise at import or only
+    fail at decrypt. Answer: neither import nor a hard ``Error``.
+
+    * Raising at import would take down every endpoint, health check and migration
+      in a deployment that simply has no broker credentials configured yet - the
+      blast radius is the whole application for a feature that is optional.
+    * Failing only at decrypt is what SEC-02 flagged as insufficient, because the
+      failure would otherwise surface as the first broker request and nothing else.
+      So ``SecretStore`` raises :class:`SecretKeyMissingError` (never an empty
+      plaintext), and this check makes the misconfiguration visible up front.
+
+    ``Warning`` rather than ``Error``, matching ``check_turnstile_secret``: an
+    ``Error`` would also make ``manage.py check`` non-zero in every environment
+    without the variable, which contradicts SEC-02 AC4.
+    """
+    import os
+    import re
+
+    from django.conf import settings
+
+    from vninvest_core.utils.encryption import SecretKeyMissingError, SecretStore
+
+    if getattr(settings, "DEBUG", False) or _running_tests():
+        return []
+
+    broker_key = os.environ.get("BROKER_SECRET_KEY", "").strip()
+    if not broker_key:
+        return [
+            Warning(
+                "BROKER_SECRET_KEY is not set, so new broker secrets fall back to the "
+                "legacy key derived from SECRET_KEY.",
+                hint=(
+                    "Until this is set, UserBrokerConfig rows are written at secret "
+                    "version 1 and rotating DJANGO_SECRET_KEY will make every stored "
+                    "broker credential undecryptable - the coupling SEC-02 exists to "
+                    "remove. Set BROKER_SECRET_KEY to a value of your choosing to decouple "
+                    "them; existing rows keep working and can be re-encrypted later."
+                ),
+                id=BROKER_SECRET_KEY_MISSING_ID,
+            )
+        ]
+
+    # A retained slot for the CURRENT version protects nothing: the live key is
+    # what that version resolves to, so counting it would report a safe rotation
+    # path that does not exist.
+    try:
+        current = SecretStore.current_version()
+    except SecretKeyMissingError:
+        current = None
+
+    retained = [
+        name
+        for name in os.environ
+        if re.fullmatch(r"BROKER_SECRET_KEY_V\d+", name)
+        and os.environ[name].strip()
+        and name != f"BROKER_SECRET_KEY_V{current}"
+    ]
+    if retained:
+        return []
+
+    return [
+        Warning(
+            "BROKER_SECRET_KEY is set but no BROKER_SECRET_KEY_V<n> key is retained.",
+            hint=(
+                "Rotating BROKER_SECRET_KEY right now would strand every row already "
+                "written under the current key: SecretStore would raise "
+                "SecretKeyMissingError on read. To rotate, first start the new key under "
+                "BROKER_SECRET_KEY_V<old version>, re-encrypt the affected rows with "
+                "SecretStore.reencrypt(), and only then promote it to BROKER_SECRET_KEY."
+            ),
+            id=BROKER_SECRET_KEY_NO_RETAINED_ID,
         )
     ]
 

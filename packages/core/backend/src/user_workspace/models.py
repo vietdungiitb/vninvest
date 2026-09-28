@@ -559,6 +559,16 @@ class UserBrokerConfig(models.Model):
         verbose_name='Tên gợi nhớ',
     )
     secrets_cipher = models.TextField(blank=True, default='', verbose_name='Secrets (Fernet-encrypted JSON)')
+    # SEC-02 R3: which key version protected `secrets_cipher`. The envelope in
+    # `secrets_cipher` already records this, so the column is a denormalised index:
+    # it lets an operator list "everything still on the old key" and re-encrypt it
+    # without parsing every row, and it makes the key dependency queryable.
+    secret_version = models.PositiveSmallIntegerField(
+        default=1,
+        db_index=True,
+        verbose_name='Phiên bản khoá mã hoá',
+        help_text='Key version used for secrets_cipher. 1 = legacy (derived from SECRET_KEY).',
+    )
     prefs = models.JSONField(default=dict, blank=True, verbose_name='Tùy chọn (tài khoản mặc định, sync, notify)')
     status = models.CharField(
         max_length=20,
@@ -597,20 +607,45 @@ class UserBrokerConfig(models.Model):
     # ── Secrets helpers (Fernet JSON dict) ──────────────────────────────
     def set_secrets(self, secrets: dict) -> None:
         import json
-        from vninvest_core.utils.encryption import encrypt_string
-        self.secrets_cipher = encrypt_string(json.dumps(secrets or {}))
+
+        from vninvest_core.utils.encryption import store
+
+        if not secrets:
+            # Clearing is a legitimate operation; it must not leave a ciphertext
+            # behind that claims a key version while holding nothing.
+            self.secrets_cipher = ''
+            self.secret_version = 1
+            return
+        self.secrets_cipher = store.encrypt(json.dumps(secrets))
+        # Record the version actually used, not an assumed one: whether this row
+        # went out on BROKER_SECRET_KEY or fell back to legacy v1 depends on
+        # deployment configuration, and rotation planning needs the truth.
+        self.secret_version = store.version_of(self.secrets_cipher)
 
     def get_secrets(self) -> dict:
         import json
-        from vninvest_core.utils.encryption import decrypt_string
+
+        from vninvest_core.utils.encryption import SecretKeyMissingError, decrypt_string
+
+        if not self.secrets_cipher:
+            return {}
+        # A non-empty ciphertext that will not decrypt means the key it was written
+        # with is gone or wrong. The old code caught ValueError/TypeError and
+        # returned {}, which turned a key-rotation outage into "user has no broker
+        # configured" - a silent, misleading state. A genuinely absent value is
+        # handled above; malformed JSON inside a valid ciphertext is tolerated
+        # because that is pre-existing data shape, not a key fault.
         raw = decrypt_string(self.secrets_cipher)
         if not raw:
-            return {}
+            raise SecretKeyMissingError(
+                f"Broker secrets for {self.user_id}/{self.provider} decrypted to an "
+                f"empty value (key version {self.secret_version})"
+            )
         try:
             data = json.loads(raw)
-            return data if isinstance(data, dict) else {}
         except (ValueError, TypeError):
             return {}
+        return data if isinstance(data, dict) else {}
 
     def has_secrets(self) -> bool:
         return bool(self.get_secrets())
