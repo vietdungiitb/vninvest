@@ -10,6 +10,15 @@
  *
  * Dùng:  node scripts/pre-push-gate.mjs
  * Kill:  SKIP_PRE_PUSH_GATE=1
+ *
+ * ── HÀNH VI KHI CHẠY Ở REPO KHÔNG PHẢI vninvest ────────────────────────────
+ * Mọi gate đều có existsSync-guard, nên ở repo lạ chúng SKIP (không phải PASS)
+ * và thoát 0. Đã đo: repo git trắng chỉ chứa gate này → 2 PASS / 7 SKIP / exit 0.
+ * Nghĩa là gate PORTABLE (không phụ thuộc vninvest) nhưng ở repo khác gần như
+ * không kiểm gì. Đó là hệ quả tất yếu của nguyên tắc SKIP ≠ PASS: thiếu
+ * config phải báo "chưa có" chứ không báo "xanh". Muốn có tầng thật ở repo
+ * khác thì copy `tools/opencode-global/` + `.husky/pre-push` sang, không phải
+ * chỉ copy file gate này.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -103,15 +112,27 @@ const ENC_EXT = /\.(mjs|js|md|json|ts|tsx|css|yml|yaml)$/;
 // `git diff` KHONG thay file untracked — va untracked chinh la file moi vua
 // viet, lech loai de sinh U+FFFD nhat. Phai lay them bang `ls-files --others`.
 // Bo phan nay thi gate im lang bo qua dung file can bao ve.
+//
+// KHONG hardcode `origin/dev`: repo khac dung base branch khac (main/master/
+// trunk…) se bo sot moi thay da commit. Audit vòng 2 da chi ra caveat nay.
+//
+// CHON MOT BASE, KHONG UNION: truoc day quet ca 4 base branch, `origin/main`
+// o day lech 1014 file voi `dev` (release line khac) => quet 1018 file thay vi
+// vai, cham hon va lan theo no se bao loi cua nguoi khac. Thu `HEAD` truoc,
+// roi dung base dau tien that su ton tai, roi moi den phan chua commit.
 const changed = run(process.execPath, [
   "-e",
   `const {execSync}=require("child_process");
    const out=[];
-   const push=(s)=>{ try { out.push(execSync(s,{encoding:"utf8"})); } catch {} };
-   push("git diff --name-only origin/dev...HEAD");
-   push("git diff --name-only");
-   push("git diff --name-only --cached");
-   push("git ls-files --others --exclude-standard");
+   const sh=(c)=>{ try { return execSync(c,{encoding:"utf8",stdio:["ignore","pipe","ignore"]}); } catch { return null; } };
+   sh("git diff --name-only HEAD...@{upstream}");
+   for (const b of ["origin/dev","origin/main","origin/master","origin/trunk"]) {
+     const r = sh("git diff --name-only "+b+"...HEAD");
+     if (r !== null) { out.push(r); break; }   // CHI base dau tien ton tai
+   }
+   out.push(sh("git diff --name-only") || "");
+   out.push(sh("git diff --name-only --cached") || "");
+   out.push(sh("git ls-files --others --exclude-standard") || "");
    process.stdout.write(out.join("\\n"));`,
 ]);
 const changedSet = [
@@ -123,7 +144,24 @@ const changedSet = [
   ),
 ];
 const encBad = [];
+const encAllowed = [];
 let encCount = 0;
+
+// File CÓ U+FFFD mot cach CO Y (tai lieu trich dan mojibake lam bang chung).
+// Van duoc in ra hang ALLOW — khong bao gio im lang bo qua. Danh sach kem LY DO;
+// bo mot file khoi danh sach trong khi file do con U+FFFD thi gate FAIL, tuc
+// danh sach khong the dung de giu mot loi that.
+const ALLOW_FILE = join(REPO, "tools/opencode-global/encoding-allowlist.txt");
+const allow = new Set();
+if (existsSync(ALLOW_FILE)) {
+  for (const raw of readFileSync(ALLOW_FILE, "utf8").split("\n")) {
+    const line = raw.split("#")[0].trim();
+    if (!line) continue;
+    const p = line.split("|")[0].trim();
+    if (p) allow.add(p.split("\\").join("/"));
+  }
+}
+
 for (const rel of changedSet) {
   if (!ENC_EXT.test(rel)) continue;
   const f = join(REPO, rel);
@@ -132,10 +170,13 @@ for (const rel of changedSet) {
   encCount += 1;
   const t = readFileSync(f, "utf8");
   const n = (t.match(/\uFFFD/g) || []).length;
-  if (n > 0) encBad.push(`${rel}: ${n} ky tu U+FFFD`);
+  if (n === 0) continue;
+  if (allow.has(rel)) encAllowed.push(`${rel}: ${n} U+FFFD (CO Y — xem encoding-allowlist.txt)`);
+  else encBad.push(`${rel}: ${n} ky tu U+FFFD`);
 }
 if (encBad.length) bad("encoding", encBad.join("\n"));
-else ok("encoding", `${encCount}/${changedSet.length} file da doi, 0 U+FFFD`);
+for (const a of encAllowed) console.log(`  ALLOW encoding — ${a}`);
+if (!encBad.length) ok("encoding", `${encCount}/${changedSet.length} file da doi, 0 U+FFFD ngoai allowlist`);
 
 // --------------------------------------------------------- i18n fail-closed
 // Scanner in loi roi van exit 0. Wrapper bat scanner va phai fail-closed.
@@ -182,6 +223,23 @@ if (existsSync(shimCheck)) {
   if (r.code !== 0) bad("shim-delegate", r.out);
   else ok("shim-delegate", "scripts/agent-preflight.mjs chay canonical that");
 } else skip("shim-delegate", "khong co tools/opencode-global/verify-shim.mjs");
+
+// ------------------------------------------------------- preflight probes
+// Hai probe sau KHONG phai gate cua repo nay — chung la bang chung cho
+// preflight co that su chay dung hay khong. Chay o repo nao co canonical.
+for (const [id, f, note] of [
+  ["preflight-trailer", "verify-trailer-bypass.mjs", "bypass noi chuoi Claim-Deny-List"],
+  ["preflight-deny-extract", "verify-deny-extract.mjs", "trich duoc het muc §2 tu docs"],
+  ["hook-mode", "verify-hook-mode.mjs", "block/warn/trailer tren may nay"],
+  ["i18n-strict-selftest", "verify-i18n-strict.mjs", "bat loi parse cua scanner that"],
+]) {
+  const p = join(REPO, "tools/opencode-global", f);
+  if (existsSync(p)) {
+    const r = run(process.execPath, [p]);
+    if (r.code !== 0) bad(id, r.out);
+    else ok(id, note);
+  } else skip(id, `khong co tools/opencode-global/${f}`);
+}
 
 // ------------------------------------------------------------- type-check
 // tsc --noEmit re (~giay) nen dua vao pre-push. Full test suite (jest/vitest)

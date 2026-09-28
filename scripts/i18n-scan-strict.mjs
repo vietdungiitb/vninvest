@@ -1,19 +1,31 @@
 /**
  * i18n-scan-strict.mjs — đóng lỗ hổng "gate báo lỗi rồi exit 0".
  *
- * VÌ SAO: `i18next-scanner` gặp cú pháp không parse được thì in
- *   i18next-scanner: Unable to parse code "..."
- *   i18next-scanner: Error: Line N: ...
- * rồi **vẫn exit 0**. Người đọc log thấy lỗi nhưng CI xanh ⇒ cảm giác an toàn giả.
- * Đây là loại hỏng tệ hơn không có gate (docs/evidence/gate-audit/baseline.md §2).
+ * ── CƠ CHẾ (đọc từ i18next-scanner/lib/parser.js, đo trước khi viết) ────────
+ * `parseFuncFromString` (parser.js:449) trích key `t('...')` bằng REGEX, không
+ * dùng parser cho phần key. Chỉ khi lời gọi kết thúc bằng dấu phẩy thì phần
+ * options mới được `esprimaNext.parse('(' + code + ')')` (parser.js:508) trong
+ * try/catch, và lỗi đi qua `this.error(...)` ⇒ in ra stderr với tiền tố
+ * `i18next-scanner:` — RỒI VẪN exit 0.
  *
- * Bọc scanner và chuyển "đã in lỗi" thành exit khác 0.
+ * Nên lỗi thật, có thể tái hiện, là cú pháp TypeScript trong options:
+ *     t('saving', { defaultValue: 'Đang lưu...' as string })
+ *                         ^^^^^^^^^^^^^^^^^^^^^ esprima không hiểu `as`
  *
- *   node scripts/i18n-scan-strict.mjs            # fail nếu scanner báo lỗi
+ * ── PHẠM VI: gate này KHÔNG bắt được gì ngoài case trên ────────────────────
+ * (1) File .js/.jsx/.ts/.tsx KHÔNG parse được: scanner dùng regex nên không bao
+ *     giờ parse cả file — nó chỉ không khớp regex và bỏ qua, in KHÔNG một dòng
+ *     nào. Đã đo: tiêm `export const broken = ;` vào src/components/ui/index.js
+ *     ⇒ scanner im lặng, exit 0, không có thông điệp nào để grep.
+ *     Muốn bắt case này phải parse bằng chính parser của scanner — hiện chưa làm.
+ * (2) `parseTransFromString` cũng có nhánh báo lỗi, nhưng config đặt
+ *     `trans: false` (i18next-scanner.config.cjs) nên nhánh đó không chạy.
+ *
+ * Không được mô tả gate này là "bắt lỗi cú pháp nói chung" — nó bắt đúng một
+ * loại. Xem tools/opencode-global/verify-i18n-strict.mjs để có negative test.
+ *
+ *   node scripts/i18n-scan-strict.mjs            # fail nếu scanner báo lỗi parse
  *   node scripts/i18n-scan-strict.mjs --warn     # chỉ in, luôn exit 0 (quan sát)
- *
- * Ghi chú: KHÔNG nối vào check:shell từ đây — `packages/web/package.json` thuộc
- * deny list §2, cần coordinator thêm `check:i18n-strict` vào chuỗi đó.
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -51,8 +63,8 @@ if (!PARSE_ERR.test(all)) {
 const n = (all.match(/i18next-scanner:\s*Unable to parse/g) || []).length;
 console.error(
   `\n[i18n-strict] scanner BÁO LỖI PARSE (${n} chỗ) nhưng vẫn exit 0.\n` +
-    '[i18n-strict] Nguyên nhân thường gặp: cú pháp TypeScript trong default value\n' +
-    '[i18n-strict] của lời gọi dịch — esprima là parser JS thuần, không hiểu `as`/type.\n' +
+    '[i18n-strict] Nguyên nhân thường gặp: cú pháp TypeScript trong options\n' +
+    "[i18n-strict] của lời gọi dịch — esprima là parser JS thuần, không hiểu `as`/type.\n" +
     '[i18n-strict] Tính giá trị ra NGOÀI lời gọi dịch. Xem AGENTS.md mục Progress.',
 );
 

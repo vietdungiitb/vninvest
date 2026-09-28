@@ -1,17 +1,20 @@
 #!/usr/bin/env node
 /**
- * PreToolUse Hook: agent-preflight (WARN-ONLY) — Phase 4 của
- * docs/IMPLEMENTATION_PLAN_MANDATORY_AGENT_WORKFLOW_20260927.md
+ * PreToolUse Hook: agent-preflight — MẶC ĐỊNH CHẶN
+ * (đọc tài liệu ở tools/opencode-global/MANDATORY-WORKFLOW.md)
  *
  * Gọi `scripts/agent-preflight.mjs --staged` khi sắp chạy `git commit`.
  *
- * ⚠ CỐ Ý CHƯA CHẶN. Giai đoạn đầu chỉ in cảnh báo để quan sát trước khi siết.
- *   - Tắt hoàn toàn:   AGENT_PREFLIGHT=0
- *   - Bật chặn thật:  AGENT_PREFLIGHT_MODE=block
+ * BẬT CHẶN từ 2026-09-27, SAU KHI sửa xong lỗ bypass trailer: trước đó
+ * `includes("Claim-Deny-List:")` cho qua một commit chỉ nhắc chuỗi đó.
+ * Bật chặn trước khi sửa sẽ tạo cảm giác an toàn giả rồi bị lách.
+ *   - Tắt hoàn toàn:    AGENT_PREFLIGHT=0
+ *   - Hạ xuống cảnh báo: AGENT_PREFLIGHT_MODE=warn
+ *   - Bật lại (mặc định): bỏ biến, hoặc AGENT_PREFLIGHT_MODE=block
  *
  * Exit codes (qua dispatcher):
  *   0 - cho qua (kể cả khi có cảnh báo)
- *   2 - chặn (CHỈ khi AGENT_PREFLIGHT_MODE=block và preflight trả 1)
+ *   2 - chặn (mặc định, khi preflight trả 1)
  */
 'use strict';
 
@@ -112,12 +115,17 @@ function run(rawInput) {
   const outMsg = String(res.stderr || res.stdout || '').trim();
   if (!outMsg) return PASS;
 
-  if (process.env.AGENT_PREFLIGHT_MODE === 'block') {
+  // MẶC ĐỊNH = chặn. Bật từ 2026-09-27 sau khi sửa xong lỗ bypass trailer:
+  // trước đó `includes("Claim-Deny-List:")` cho qua một commit chỉ NHẮC chuỗi
+  // đó — bật chặn trước khi sửa sẽ tạo cảm giác an toàn giả rồi bị bypass.
+  // Xem tools/opencode-global/verify-trailer-bypass.mjs (3/3).
+  const mode = process.env.AGENT_PREFLIGHT_MODE || 'block';
+  if (mode === 'block') {
     return { output: '', stderr: `[agent-preflight] CHẶN commit\n${outMsg}\n`, exitCode: 2 };
   }
   return {
     output: '',
-    stderr: `[agent-preflight] CẢNH BÁO (chưa chặn — đặt AGENT_PREFLIGHT_MODE=block để chặn)\n${outMsg}\n`,
+    stderr: `[agent-preflight] CẢNH BÁO (đang ở mode=warn — đặt AGENT_PREFLIGHT_MODE=block hoặc bỏ biến để chặn)\n${outMsg}\n`,
     exitCode: 0,
   };
 }

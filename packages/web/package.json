@@ -9,7 +9,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "build-community": "node ./scripts/build-community.mjs",
-    "check:shell": "npm run check:dom-landmarks && npm run check:tokens && npm run check:stock-detail-shell && npm run check:admin-spa-routes && npm run check:contrast && npm run i18n:scan && npm run check:i18n-hardcoded",
+    "check:shell": "npm run check:dom-landmarks && npm run check:tokens && npm run check:stock-detail-shell && npm run check:admin-spa-routes && npm run check:contrast && npm run i18n:scan:strict && npm run check:i18n-hardcoded",
     "check:admin-spa-routes": "node ./scripts/check-admin-spa-routes.mjs",
     "check:contrast": "node ./scripts/check-contrast.mjs",
     "check:shell:legacy": "node ./scripts/check-shell.mjs",
@@ -29,6 +29,7 @@
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "i18n:scan": "npx i18next-scanner --config i18next-scanner.config.cjs",
+    "i18n:scan:strict": "node ../../scripts/i18n-scan-strict.mjs",
     "check:i18n-hardcoded": "node scripts/check-i18n-hardcoded.mjs src/components/advisory src/components/WhaleBubbleChart.jsx src/components/FactsFirstWhaleBubbleChart.jsx src/components/dashboard/WhaleAnalyticsTab.jsx src/pages/signals/WhaleAdvisoryPage.tsx",
     "prepare": "husky"
   },

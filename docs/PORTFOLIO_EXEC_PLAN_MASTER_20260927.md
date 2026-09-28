@@ -354,7 +354,7 @@ W4  BRK-01..06 ─────────────────────�
 
 ### 0.13 Việc owner phải làm (không ai trong đội code làm được)
 
-| # | Việc | Chặn wave | Ghi ch�� |
+| # | Việc | Chặn wave | Ghi chú |
 |---|------|-----------|---------|
 | 1 | **Revoke + rotate 7 secret** ngay hôm nay | −1 | `CORE_DJANGO_SECRET_KEY`, `CORE_PAT_PEPPER`, `CORE_AD_SIGNING_SECRET`, `DNSE_CREDENTIAL_FERNET_KEY`, `DNSE_API_KEY`, `DNSE_API_SECRET`, `GITHUB_CLIENT_SECRET`. Đổi **cùng lúc** (D-29) |
 | 2 | Thông báo user trước khi rotate (session/PAT cũ sẽ vô hiệu) | −1 | D-29 |

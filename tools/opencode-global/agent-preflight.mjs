@@ -62,31 +62,13 @@ const DEFAULT_DENY_LIST = [
 
 const DENY_DOC_RE = /^(AGENT_PROTOCOL|AGENTS|CLAUDE)\.md$/i;
 
-function loadDenyList() {
-  // registry append-only: được commit bình thường, chỉ kiểm DÒNG của người khác (check 2)
-  const appendOnly = new Set(["docs/CLAIMS.md", "CLAIMS.md"]);
-  const set = new Set();
-  for (const f of DEFAULT_DENY_LIST) if (!appendOnly.has(f)) set.add(f);
+// Quy tac trich danh sach deny list nam o deny-extract.mjs — dung chung cho
+// preflight va verify-deny-extract.mjs de hai noi khong lech nhau.
+const { loadDenyList: loadDenyListFromDocs } = await import(
+  new URL("./deny-extract.mjs", import.meta.url).href
+);
 
-  for (const name of ["docs/AGENT_PROTOCOL.md", "AGENT_PROTOCOL.md", "AGENTS.md", "CLAUDE.md"]) {
-    const p = join(REPO, name);
-    if (!existsSync(p)) continue;
-    const text = readFileSync(p, "utf8");
-    // bảng deny list thường là khối dòng bắt đầu bằng `| \`path\` |`
-    const rows = text.matchAll(/^\|\s*`?([A-Za-z0-9_./-]+\.(?:md|json|yml|yaml|txt|lock)|\.env(?:\.\*)?)`?\s*\|/gm);
-    let found = 0;
-    for (const m of rows) {
-      const path = m[1];
-      if (appendOnly.has(path)) continue;
-      set.add(path);
-      found += 1;
-    }
-    if (found) break; // file đầu tiên có bảng là nguồn chính
-  }
-  return [...set];
-}
-
-const DENY_LIST = loadDenyList();
+const DENY_LIST = loadDenyListFromDocs(REPO, DEFAULT_DENY_LIST, ["docs/CLAIMS.md", "CLAIMS.md"]);
 const APPEND_ONLY = new Set(["docs/CLAIMS.md", "CLAIMS.md"]);
 
 const TRAILER = "Claim-Deny-List:";
@@ -147,10 +129,24 @@ function myClaimKeys() {
 
 const violations = [];
 
+/**
+ * Trailer phải nằm ở ĐẦU DÒNG và có nội dung sau nó.
+ *
+ * KHÔNG dùng `msg.includes(TRAILER)`: một commit body chỉ NHẮC chuỗi
+ * "Claim-Deny-List:" (ví dụ bullet "xem lại quy tắc Claim-Deny-List: ...")
+ * sẽ bypass trọn vẹn check deny-list. Đã dựng lại được, xem
+ * tools/opencode-global/verify-trailer-bypass.mjs — trước khi sửa 2/3 probe
+ * trả về exit 0.
+ *
+ * `m` = nhiều dòng. `^` = đầu dòng. `.+` = phải có ít nhất 1 ký tự lý do,
+ * nên `Claim-Deny-List:` trần (không có lý do) vẫn bị chặn.
+ */
+const TRAILER_RE = /^Claim-Deny-List:\s*\S.*/m;
+
 function check1DenyList(files, msg) {
   const hit = files.filter((f) => DENY_LIST.includes(f) && !APPEND_ONLY.has(f));
   if (!hit.length) return;
-  if (msg.includes(TRAILER)) return; // đã khai lý do -> cho qua
+  if (TRAILER_RE.test(msg)) return; // đã khai lý do -> cho qua
   violations.push({
     id: "deny-list",
     file: hit.join(", "),
