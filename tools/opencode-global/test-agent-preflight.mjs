@@ -198,12 +198,18 @@ try {
   }
 
   // 8d. HOP DONG MOI — khong xac dinh duoc dong nao la cua minh
-  //     Chi co dong cua agent KHAC, khong co dong nao khop branch `feat/probe`.
+  //     Chi co dong cua agent KHAC, khong co dong nao khop branch `feat/probe`,
+  //     va staged file cham mot trong cac file no giu `in-progress`.
   //     Truoc day: keys rong => fail-open => 0. Nay: CHECK 4 chan va noi ro
   //     nguyen nhan. Thay doi hanh vi CO CHU DICH, khong phai regression.
+  //     Luu y: staged phai la file thuoc claim, KHONG phai `docs/CLAIMS.md` —
+  //     registry duoc mien trong check3 (POS8) va check4 bo qua no.
   {
-    setClaims("\n| `zz-foreign-agent` | `feat/other` | t | `docs/x.md` | in-progress | 2026-09-27 | t |\n");
-    git(["add", CLAIMS_REL], FIX);
+    setClaims(
+      "\n| `zz-foreign-agent` | `feat/other` | t | `docs/mine.md` | in-progress | 2026-09-27 | t |\n",
+    );
+    writeFileSync(join(FIX, MINE_REL), "noi dung doi\n", "utf8");
+    git(["add", "-A"], FIX);
     const r = preflight(["--staged"]);
     check("NEG4 khong xac dinh duoc danh tinh claim -> 1 (thay fail-open)", 1, r.code, r.out);
     check("NEG4b bao ro CHINH check nao", true, /\[claim-identity\]/.test(r.out), r.out);
@@ -289,6 +295,34 @@ try {
     check("POS9 sua noi dung dong cua MINH -> 0", 0, r.code, r.out);
     resetIndex();
     git(["checkout", "--", CLAIMS_REL], FIX);
+  }
+
+  // 8k. REGRESSION — branch KHONG co dong claim nen phai im lang
+  //     Do that: khi chay pre-push gate tren branch moi (chi docs, khong co dong
+  //     claim nao khop branch) ma repo co dang claim `in-progress` cua agent khac,
+  //     check 4 bao `claim-identity` va CHAN — chan ca commit hop le.
+  //     Gate lo ra bang test `hook-mode` trong verify-hook-mode.mjs (FAIL 1/13).
+  //     Doan sai chi huong khi file staged thuc su cham claim in-progress.
+  {
+    setClaims(
+      "\n| `zz-holder` | `feat/other` | t | `docs/NEVER_STAGED.md` | in-progress | 2026-09-27 | t |\n",
+    );
+    git(["add", CLAIMS_REL], FIX);
+    const r = preflight(["--for", "README.md"]);
+    check("POS10 branch khong co claim, staged file khong bi giu gi -> 0", 0, r.code, r.out);
+    resetIndex();
+  }
+
+  // 8l. NHUNG van phai chan khi co that — bien canh cua POS10
+  {
+    setClaims(
+      "\n| `zz-holder` | `feat/other` | t | `docs/held.md` | in-progress | 2026-09-27 | t |\n",
+    );
+    const r = preflight(["--for", "docs/held.md"]);
+    // keys rong (branch `feat/probe` khong co dong nao) + file cham claim giữ
+    // => phai bao `claim-identity`, khong duoc im lang.
+    check("NEG7 branch khong co claim NHUNG staged file bi giu -> 1", 1, r.code, r.out);
+    check("NEG7b bao dung claim-identity", true, /\[claim-identity\]/.test(r.out), r.out);
   }
 
   // 9. CHECK 2 phai chay (mode bat buoc)
