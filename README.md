@@ -26,7 +26,7 @@ cd backend
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py seed_user              # testuser / Test@123456
+python manage.py seed_user              # creates a dev test user; password comes from the environment
 python manage.py seed_demo_data --reset # holdings, snapshots, watchlist demo
 python manage.py sync_stockprofile --mode all  # 3249 stock profiles
 daphne -b 0.0.0.0 -p 8000 config.asgi:application

@@ -1,12 +1,17 @@
 #!/usr/bin/env python
 """Smoke test for intraday API endpoints"""
+import os
 import requests
 import json
+
+# Admin credentials come from the environment; they were hardcoded here.
+ADMIN_USERNAME = os.environ.get('VNINVEST_ADMIN_USERNAME', 'admin')
+ADMIN_PASSWORD = os.environ.get('VNINVEST_ADMIN_PASSWORD', '')
 
 # Get token
 token_resp = requests.post(
     'http://localhost:8001/api/auth/token/',
-    json={'username': 'admin', 'password': 'test@123456'}
+    json={'username': ADMIN_USERNAME, 'password': ADMIN_PASSWORD}
 )
 token = token_resp.json().get('access')
 headers = {'Authorization': f'Bearer {token}'}
