@@ -209,7 +209,7 @@ if (existsSync(preTest)) {
 if (existsSync(join(REPO, "scripts/verify-global-config.mjs"))) {
   const r = run(process.execPath, ["scripts/verify-global-config.mjs"]);
   if (r.code !== 0) bad("global-config-drift", r.out);
-  else ok("global-config-drift", (r.out.match(/(\d+)\/\d+ khop het/) || ["?"])[0]);
+  else ok("global-config-drift", (r.out.match(/(\d+) OK \/ (\d+) caph doi byte/) || [,"?"])[0] + " + smoke test");
 } else skip("global-config-drift", "khong co scripts/verify-global-config.mjs");
 
 // ------------------------------------------------------------- shim delegate

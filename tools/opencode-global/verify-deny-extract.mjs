@@ -51,7 +51,7 @@ const gotSet = new Set(got);
 const missing = KNOWN.filter((f) => !gotSet.has(f));
 
 console.log(`verify-deny-extract — ${doc.replace(REPO, ".")}\n`);
-console.log(`  trich duoc ${got.length}/${KNOWN.length} muc §2:`);
+console.log(`  trich duoc ${KNOWN.filter((f) => gotSet.has(f)).length}/${KNOWN.length} muc §2 (tong ${got.length} path trich ra):`);
 for (const f of KNOWN) {
   console.log(`    ${gotSet.has(f) ? "OK  " : "ROT "} ${f}`);
 }

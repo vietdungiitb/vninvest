@@ -16,6 +16,12 @@ const HOME = join(homedir(), ".opencode");
 
 const PAIRS = [
   ["agent-preflight.mjs", join("scripts", "agent-preflight.mjs")],
+  // deny-extract.mjs LA DEPENDENCY CUA agent-preflight.mjs (await import()).
+  // Thieu no thi canonical deployed no CRASH bang ERR_MODULE_NOT_FOUND → hook
+  // block mac dinh → CHAN MOI git commit o MOI repo khac vninvest, ke ca
+  // commit khong lien quan. Da gap that 2026-09-27 (audit vong 3): 5019e3e0
+  // them file nay vao canonical nhung PAIRS van chi co 5 muc cu.
+  ["deny-extract.mjs", join("scripts", "deny-extract.mjs")],
   ["test-agent-preflight.mjs", join("scripts", "test-agent-preflight.mjs")],
   ["MANDATORY-WORKFLOW.md", join("instructions", "MANDATORY-WORKFLOW.md")],
   ["pre-bash-agent-preflight.js", join("scripts", "hooks", "pre-bash-agent-preflight.js")],
