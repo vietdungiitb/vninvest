@@ -37,6 +37,8 @@ const MARKER_RE = /verified\s*:|@ ?[0-9a-f]{7,40}\b|\(20\d\d-\d\d-\d\d\)|Entry \
 const RULE_RE = /^\s*[-*]\s*\*\*(Không|Bắt buộc|Phải|Quy tắc|Nguyên tắc|Cách|Hoàn nguyên|Cấm)\b/;
 
 const SKIP_RE = /^\s*(#|>|\||```|---)/;
+/** Header `###` đã có marker thì marker đó phủ cả thân mục — không báo lại từng dòng. */
+const HEADER_RE = /^###\s/;
 
 function auditFile(rel) {
   const f = resolve(REPO, rel);
@@ -44,10 +46,18 @@ function auditFile(rel) {
   const lines = readFileSync(f, "utf8").split("\n");
   const rows = [];
   let inScope = false;
+  let sectionVerified = false;
   lines.forEach((line, i) => {
     if (SKIP_SECTION.test(line)) inScope = false;
     if (SCOPE_SECTION.test(line)) inScope = true;
     if (!inScope) return;
+    // header moi => reset. Marker o header la du; marker o dong ke tiep cung duoc chap nhan
+    // (day la cach quy uoc viet hien tai trong AGENTS.md).
+    if (HEADER_RE.test(line)) {
+      const nextLine = lines[i + 1] || "";
+      sectionVerified = MARKER_RE.test(line) || MARKER_RE.test(nextLine);
+    }
+    if (sectionVerified) return;
     if (SKIP_RE.test(line)) return;
     if (RULE_RE.test(line)) return;
     if (line.length < 25) return;
