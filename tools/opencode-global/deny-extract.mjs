@@ -82,23 +82,56 @@ export function extractFromTable(text) {
   return [...out];
 }
 
-/** Nạp deny list: mặc định + bảng trong docs (file đầu tiên có bảng là chính). */
-export function loadDenyList(REPO, defaultList, appendOnlyList) {
+/** Cac tai lieu theo thu tu uu tien; file dau tien CO bang va trich duoc path moi la nguon chinh. */
+export const DENY_DOCS = ["docs/AGENT_PROTOCOL.md", "AGENT_PROTOCOL.md", "AGENTS.md", "CLAUDE.md"];
+
+/** Co bang markdown pipe hay khong — phan biet "khong co bang" voi "co bang nhung doc sai". */
+const TABLE_RE = /^\|.*\|/m;
+
+function hasPipeTable(text) {
+  return TABLE_RE.test(text);
+}
+
+/**
+ * Nap deny list kem BAO CAO nguon su.
+ *
+ * `notes` la noi ghi nhung tai lieu co bang nhung trich ra 0 path. Truoc day
+ * truong hop nay bi bo qua im lang roi sang tai lieu ke tiep theo `if (added) break`
+ * — tuc la deny list cua repo bi thay bang deny list cua MOT TAI LIEU KHAC, khong
+ * bao gi. Do la fail-open im lang, dung loai gate ma §4 cua guide canh bao.
+ *
+ * Da do (2026-09-28): bang co cot dau la `| STT | File | ... |` se trich 0 path
+ * vi ROW_RE lay cell dau. He qua: repo khai `secret-a.txt` trong §2 cua chinh no
+ * thi khong duoc bao ve, con path cua `AGENTS.md` thi duoc.
+ */
+export function loadDenyListWithReport(REPO, defaultList, appendOnlyList) {
   const appendOnly = new Set(appendOnlyList);
   const set = new Set();
   for (const f of defaultList) if (!appendOnly.has(f)) set.add(f);
 
-  for (const name of ["docs/AGENT_PROTOCOL.md", "AGENT_PROTOCOL.md", "AGENTS.md", "CLAUDE.md"]) {
+  const notes = [];
+  for (const name of DENY_DOCS) {
     const p = join(REPO, name);
     if (!existsSync(p)) continue;
-    const found = extractFromTable(readFileSync(p, "utf8"));
-    let added = 0;
-    for (const path of found) {
-      if (appendOnly.has(path)) continue;
-      set.add(path);
-      added += 1;
+    const text = readFileSync(p, "utf8");
+    if (!hasPipeTable(text)) continue; // khong co bang -> khong phai ung vien
+    const found = extractFromTable(text).filter((x) => !appendOnly.has(x));
+    if (found.length) {
+      for (const path of found) set.add(path);
+      return { list: [...set], source: name, notes };
     }
-    if (added) break; // file đầu tiên có bảng là nguồn chính
+    // CO bang nhung trich 0 path -> DUNG, khong doan sang tai lieu thap hon.
+    notes.push(
+      `${name}: CO bang nhung trich ra 0 path — cot dau tien phai la cot \`File\` ` +
+      `(khong phai \`STT\`/sothu tu). Da DUNG tai day va chi dung 16 mac dinh: ` +
+      `khong doan sang tai lieu uu tien thap hon, vi doan sai se bao ve nham.`,
+    );
+    return { list: [...set], source: null, notes };
   }
-  return [...set];
+  return { list: [...set], source: null, notes };
+}
+
+/** Giu nguyen chu ky cu: tra ve danh sach path. */
+export function loadDenyList(REPO, defaultList, appendOnlyList) {
+  return loadDenyListWithReport(REPO, defaultList, appendOnlyList).list;
 }
