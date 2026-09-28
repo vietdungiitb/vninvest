@@ -377,9 +377,11 @@ function runSelfTest() {
   // Stride 13 over a 62-char alphabet: no repeated run, no sequential run, so
   // this survives the placeholder heuristics exactly like real entropy would.
   const b64 = Array.from({ length: 64 }, (_, i) => alphabet[(i * 13) % alphabet.length]).join('');
+  // 44-char mixed-case material, the shape of a Fernet key / admin password.
+  const fern44 = Array.from({ length: 44 }, (_, i) => alphabet[(i * 11 + 7) % alphabet.length]).join('');
 
   const inUrl = 'const integrity = "sha512-3Y2k7m9pQwRtYuIoP1aSdF4gH6jKlZ8xCvBnM0qWeRtYuIoP1aSdF4gH6jKlZ8xCvBnM0=";';
-  const genericEnv = 'password = "correct-horse-battery-s7aple-Nq2vRt"';
+  const genericEnv = `password = "${b64.slice(0, 12)}horse${b64.slice(12, 24)}"`;
 
   check('runtime fake GitHub PAT is detected',
     scanContent('t.js', `const t = "${fake}";`).length, 1);
@@ -457,9 +459,12 @@ function runSelfTest() {
     scanContent('AUDIT.md', 'DJANGO_SECRET_KEY=local-audit-secret-key-2026').length, 0);
 
   // The one genuine finding from that scan must stay visible: a 44-char
-  // mixed-case secret hardcoded in tracked scratch/ code.
+  // mixed-case secret hardcoded in tracked scratch/ code. The value is built at
+  // runtime: a literal here would be a real secret-shaped string committed into
+  // git, which is the exact defect this scanner exists to prevent — and the
+  // scanner would (correctly) flag its own source.
   check('hardcoded 44-char Fernet-shaped secret IS still flagged',
-    scanContent('scratch/portainer_setup.py', `CORE_SECRET = "xK8mP3nQ7wR2vT5yJ6dF9hL4bN0cE1aZ8sU6pW3iY7oX"`)
+    scanContent('scratch/portainer_setup.py', `CORE_SECRET = "${fern44}"`)
       .some((f) => f.type === 'Secret assignment'), true);
 
   // A GitHub PAT is caught by its own high-confidence rule regardless of the
