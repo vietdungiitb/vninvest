@@ -348,6 +348,8 @@ trên đều bị phát hiện chỉ vì tôi in `git rev-parse` ra xem, thay v�
 | Append vào file không có LF cuối | dòng mới dính vào dòng cũ ⇒ check2 mù, mất dòng của agent khác |
 | **Tin `exit 0` của preflight mà không biết nó có chạy không** | preflight chỉ chạy qua hook OpenCode, **không** nối vào `.husky/pre-commit` (file đó chỉ chạy `lint-staged`). Commit bằng IDE, bằng người, hoặc ngoài OpenCode ⇒ **0 check nào chạy**. Ngoài ra `catch { return PASS }` trong hook ⇒ preflight crash là commit qua. |
 | Đo `core.hooksPath` của máy mình | cấu hình này **cục bộ theo clone** — máy khác, container khác đều rỗng |
+| **Cứ tưởng mình đang đo lệnh mình chạy** | Agent khác commit vào **cùng repo** giữa lúc bạn verify. Thật 2026-09-28 20:57: `vninvestcharts-engine` tự bump `engine-core 1.2.0→1.2.1` ngay lúc tôi chạy `npm run build` ⇒ tôi kết luận **"build tự sửa `package.json`"**. Sai: đó là bản sửa dở trong working tree của agent khác, commit `7995234` mới là thủ phạm. Tái hiện bằng `build:core`/`build:drawing`/`build:react` lẻ: **không cái nào bump**. |
+| Tin kết quả verify là ảnh chụp thời điểm | Vì working tree có thể đổi giữa chừng, kết quả chỉ đúng cho **commit cụ thể**. Ghi lại `git log -1` cùng lúc đọc kết quả, và luôn nói rõ chạy trên commit nào. |
 
 ### 5.1 Hai false positive của chính preflight — đã sửa 2026-09-28
 
@@ -363,6 +365,22 @@ fixture. Ghi lại vì chúng cho thấy **test fixture có thể sạch hơn d�
 false positive xảy ra trên dữ liệu thật. Luôn chạy gate trên chính thay đổi của
 mình ít nhất một lần, và coi "gate chặn tôi" là câu hỏi cần trả lời, không phải
 bằng chứng gate đúng.
+
+### 5.2 Khi hai agent cùng đụng một repo
+
+Có agent khác chạy song song thì **mọi số liệu verify của bạn là ảnh chụp một
+thời điểm**, và câu hỏi "cái này do ai làm?" phải được trả lời bằng `git log`
+trước khi quy kết. Trình tự:
+
+```bash
+git log -1 --format="%h %ad %an %s" --date=iso   # ai vua commit, luc nao
+git status --short                              # con gi la cong viec nguoi khac chua commit
+```
+
+Nếu `git status` sạch nhưng bạn vừa thấy file đổi mà không phải do mình, gần
+như chắc chắn đó là commit của agent khác vừa xảy ra — đừng quy cho lệnh của
+bạn. Quy trình `Tầng 0` (`git status` trước khi sửa dòng đầu tiên) chính là để
+bắt loại này; bỏ qua nó thì hậu quả là kết luận sai kéo dài nhiều giờ.
 
 ### Đánh đổi đã biết — đọc trước khi đổi quy tắc
 

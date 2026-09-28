@@ -14,6 +14,11 @@
  *      -> check 1-3 đều phải "đoán" dòng nào thuộc về mình. Đoán sai thì hoặc
  *         TỰ KHÓA commit của chính mình, hoặc im lặng cho phép sửa file của
  *         agent khác. Đo bằng negative test trên 8 temp git repo.
+ *      -> CHỈ báo lỗi khi file staged thật sự chạm vào một claim
+ *         `in-progress` của agent khác. Bản đầu báo lỗi chỉ vì `keys` rỗng và
+ *         thấy claim `in-progress` nào đó ⇒ chặn cả commit hợp lệ trên branch
+ *         không có claim (branch docs, commit coordinator, claim đã released).
+ *         Bắt được khi chạy gate trên branch mới — xem test `NEG7`.
  *
  * NGUYÊN TẮC BẤT BIẾN: chỉ chạy khi được yêu cầu tường minh (`--staged` hoặc
  * `--for <file>`). KHÔNG quét repo mặc định — một gate fail vì trạng thái có sẵn
@@ -309,7 +314,7 @@ function check3ClaimedInProgress(files) {
  * `keys` rong chi bi coi la LOI khi co it nhat 1 dong `in-progress`: repo
  * khong co claim nao thi dung im lang, dung §6 cua guide.
  */
-function check4ClaimIdentity() {
+function check4ClaimIdentity(files) {
   const cf = claimFile();
   if (!cf) return;
   const { keys, mismatched, branch, short } = myClaimKeys();
@@ -324,24 +329,35 @@ function check4ClaimIdentity() {
   }
   if (keys.size) return;
 
-  let inProgress = 0;
+  // KHONG bat loi chi vi `keys` rong. Doan sai chi huong khi co file dang bi giu
+  // that su nam trong thay doi dang commit. Commit tren branch nao khong co dong
+  // claim (branch docs, commit cua coordinator, claim da released) la hop le —
+  // neu bat o day, preflight chan ca nhung commit do. Do do phai kiem tra CHONG
+  // CHAY file cua cac dong `in-progress` co cham vao thay doi khong.
+  const held = new Set();
   for (const line of readFileSync(cf, "utf8").split("\n")) {
     if (!line.trim().startsWith("|")) continue;
     const c = line.split("|").map((x) => x.trim());
     if (!isClaimRow(c)) continue;
-    if ((c[5] || "").toLowerCase() === "in-progress") inProgress += 1;
+    if ((c[5] || "").toLowerCase() !== "in-progress") continue;
+    for (const p of (c[4] || "").replace(/`/g, "").split(/[,;]/)) {
+      const t = norm(p).split(/\s*\(/)[0].trim();
+      if (t) held.add(t);
+    }
   }
-  if (!inProgress) return;
+  const overlap = files.filter((f2) => held.has(f2) && !APPEND_ONLY.has(f2));
+  if (!overlap.length) return;
 
   const unborn = !branch || branch === "HEAD";
   violations.push({
     id: "claim-identity",
-    file: unborn ? "HEAD chua resolve" : `branch \`${branch}\``,
+    file: unborn ? "HEAD chua resolve" : `branch \`${branch}\` — ${overlap.join(", ")}`,
     fix: unborn
       ? "Chua co commit nao tren branch nay => `git rev-parse --abbrev-ref HEAD` tra `HEAD`.\n" +
         "  Preflight khong xac dinh duoc ban la ai. Commit mot lan de tao HEAD, roi chay lai."
-      : `Khong co dong claim nao khop branch \`${branch}\` (ten agent se la \`${short}\`).\n` +
-        `  Va co ${inProgress} dong claim \`in-progress\` cua agent khac.\n` +
+      : `Khong co dong claim nao khop branch \`${branch}\` (ten agent se la \`${short}\`),\n` +
+        `  nhung thay doi nay cham file dang bi agent khac giu \`in-progress\`:\n` +
+        `      ${overlap.join("\n      ")}\n` +
         "  Preflight KHONG tu doan dong nao la cua ban — doan sai thi hoac tu khoa\n" +
         "  commit cua chinh minh, hoac im lang cho phep sua file cua nguoi khac.\n" +
         `  Sua cot \`branch\` cua dong claim cua ban thanh \`${branch}\` (tot nhat doi ca ten agent\n` +
@@ -385,7 +401,7 @@ function main() {
   check1DenyList(files, commitMessage(cmsg));
   check2ForeignClaimLines(files);
   check3ClaimedInProgress(files);
-  check4ClaimIdentity();
+  check4ClaimIdentity(files);
 
   if (!violations.length) {
     // CANH BAO (khong chan): deny list doc tu tai lieu dang bi bo qua.
