@@ -14,7 +14,7 @@
  * `--for <file>`). KHÔNG quét repo mặc định — một gate fail vì trạng thái có sẵn
  * sẽ bị bỏ qua (tiền lệ `off-github-actions`).
  *
- *   node scripts/agent-preflight.mjs --staged
+ *   node scripts/agent-preflight.mjs --staged [--commit-msg "<msg>"]
  *   node scripts/agent-preflight.mjs --for AGENTS.md
  *   AGENT_PREFLIGHT=0 node scripts/agent-preflight.mjs --staged   # kill-switch
  *
@@ -64,7 +64,18 @@ function stagedFiles() {
   return r.out.split("\n").map(norm).filter(Boolean);
 }
 
-function commitMessage() {
+/**
+ * Commit message đang soạn.
+ *
+ * KHÔNG đọc `.git/COMMIT_EDITMSG` làm nguồn chính: file đó chứa message của commit
+ * TRƯỚC, không phải commit đang soạn. Lần kiểm thử đầu đã bị che vì message
+ * commit trước có nhắc "Claim-Deny-List:" ⇒ check bị bỏ qua ⇒ false negative.
+ *
+ * Thứ tự ưu tiên: --commit-msg (do hook truyền, lấy từ -m của lệnh git) →
+ * COMMIT_EDITMSG (fallback khi chạy tay).
+ */
+function commitMessage(arg) {
+  if (typeof arg === "string" && arg.trim()) return arg;
   const f = join(REPO, ".git", "COMMIT_EDITMSG");
   if (!existsSync(f)) return "";
   try {
@@ -94,8 +105,7 @@ function myClaimKeys() {
 
 const violations = [];
 
-function check1DenyList(files) {
-  const msg = commitMessage();
+function check1DenyList(files, msg) {
   const hit = files.filter((f) => DENY_LIST.includes(f) && !APPEND_ONLY.has(f));
   if (!hit.length) return;
   if (msg.includes(TRAILER)) return; // đã khai lý do -> cho qua
@@ -175,12 +185,15 @@ function main() {
   }
 
   let files = [];
+  let cmsg = null;
   if (mode === "--staged") {
     files = stagedFiles();
     if (!files.length) {
       console.log("agent-preflight: khong co gi staged -> OK");
       return 0;
     }
+    const i = args.indexOf("--commit-msg");
+    if (i >= 0) cmsg = args[i + 1] || "";
   } else {
     const i = args.indexOf("--for");
     const f = norm(args[i + 1] || "");
@@ -191,7 +204,7 @@ function main() {
     files = [f];
   }
 
-  check1DenyList(files);
+  check1DenyList(files, commitMessage(cmsg));
   check2ForeignClaimLines(files);
   check3ClaimedInProgress(files);
 
