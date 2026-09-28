@@ -64,7 +64,7 @@ cd backend
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py seed_user              # Mặc định: testuser / Test@123456
+python manage.py seed_user              # Tạo tài khoản test; mật khẩu lấy từ biến môi trường
 python manage.py seed_demo_data --reset # Nạp dữ liệu mẫu
 python manage.py sync_stockprofile --mode all
 python -m daphne -b 0.0.0.0 -p 8000 config.asgi:application

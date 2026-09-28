@@ -2,7 +2,7 @@
 import urllib.request, json, ssl
 
 ctx = ssl.create_default_context()
-GH_PAT = "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"
+GH_PAT = "<YOUR_GH_PAT_HERE>"
 
 # Check workflow files
 req = urllib.request.Request(

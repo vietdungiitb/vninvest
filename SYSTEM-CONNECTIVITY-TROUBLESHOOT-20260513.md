@@ -19,12 +19,12 @@ VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency
    - Go to: https://github.com/settings/tokens
    - Click "Generate new token (classic)"
    - Select scope: `read:packages`
-   - Copy token (example: `ghp_xxxxxxxxxxxxxxxxxxxxx`)
+   - Copy token (example: `<YOUR_GH_PAT_HERE>`)
 
 2. **Add to compose.dev.env**:
    ```bash
    # Add this line to compose.dev.env
-   VNBROKER_GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxx
+   VNBROKER_GITHUB_TOKEN=<YOUR_GH_PAT_HERE>
    ```
 
 3. **Run Docker Compose with env file**:
@@ -36,7 +36,7 @@ VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency
 
 ```powershell
 # PowerShell
-$env:VNBROKER_GITHUB_TOKEN = "ghp_xxxxxxxxxxxxxxxxxxxxx"
+$env:VNBROKER_GITHUB_TOKEN = "<YOUR_GH_PAT_HERE>"
 
 # Then run
 docker compose -f docker-compose.dev.yml up -d --build
@@ -45,7 +45,7 @@ docker compose -f docker-compose.dev.yml up -d --build
 ### Option 3: Inline in Docker Command
 
 ```bash
-VNBROKER_GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxx docker compose -f docker-compose.dev.yml up -d --build
+VNBROKER_GITHUB_TOKEN=<YOUR_GH_PAT_HERE> docker compose -f docker-compose.dev.yml up -d --build
 ```
 
 ---
