@@ -9,17 +9,18 @@
  *   node tools/opencode-global/verify-deny-extract.mjs
  * Exit 0 = trich het cac muc trong bang. Exit 1 = con muc rơi.
  */
-import { readFileSync, existsSync } from "node:fs";
-import { homedir } from "node:os";
+import { readFileSync, existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, resolve, dirname } from "node:path";
-import { pathToFileURL } from "node:url";
-import { fileURLToPath } from "node:url";
+import { pathToFileURL, fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, "..", "..");
 // Tu absolute Windows path phai qua file:// — ESM loader tu cho loi
 // ERR_UNSUPPORTED_ESM_URL_SCHEME neu dua thang "C:\..." vao import().
-const { extractFromTable } = await import(pathToFileURL(join(HERE, "deny-extract.mjs")).href);
+const { extractFromTable, loadDenyListWithReport } = await import(
+  pathToFileURL(join(HERE, "deny-extract.mjs")).href
+);
 
 // Muc §2 trong AGENT_PROTOCOL.md: cac file doc trong code nhay cam.
 // Ghi nguyen van ban protocol, KHONG sua — neu protocol doi hinh thuc thi
@@ -66,4 +67,61 @@ if (missing.length) {
   process.exit(1);
 }
 console.log(`  trich het ${KNOWN.length}/${KNOWN.length}`);
+
+// ── NEGATIVE TEST CUA CHINH PROBE (bat bien §7) ───────────────────────────
+// Probe o tren chi chay tren repo THAT nen luon xanh. Neu khong co negative
+// test, khong co ai biet `loadDenyList` co im lang bo qua tai lieu hoac troi sang
+// tai lieu khac khi trich duoc 0 path.
+console.log("\n  negative test (temp fixture):");
+const selfTests = [];
+function selfCheck(name, want, got, extra = "") {
+  const pass = want === got;
+  selfTests.push({ name, pass, extra });
+  console.log(`    ${pass ? "PASS" : "FAIL"}  ${name}${pass ? "" : `  (can ${want}, nhan ${got})`}`);
+}
+
+const FIX = mkdtempSync(join(tmpdir(), "deny-extract-fix-"));
+try {
+  mkdirSync(join(FIX, "docs"), { recursive: true });
+  // Bang co cot STT o tai lieu UU TIEN CAO HON: trich 0 path.
+  writeFileSync(
+    join(FIX, "docs", "AGENT_PROTOCOL.md"),
+    "| STT | File | Vi sao |\n|---|---|---|\n| 1 | `secret-a.txt` | x |\n",
+  );
+  // Bang DUNG o tai lieu thap hon: phai duoc bo qua vi tai lieu tren da co bang.
+  writeFileSync(
+    join(FIX, "AGENTS.md"),
+    "| File | Vi sao |\n|---|---|\n| `secret-b.txt` | y |\n",
+  );
+
+  const r = loadDenyListWithReport(FIX, ["DEFAULT1.txt"], []);
+
+  selfCheck("bang cot STT -> trich 0 path", 0, extractFromTable(readFileSync(join(FIX, "docs", "AGENT_PROTOCOL.md"), "utf8")).length);
+  selfCheck("bao cao 1 note (tai lieu bi bo qua)", 1, r.notes.length, r.notes.join(" | "));
+  selfCheck("mac dinh van duoc giu", true, r.list.includes("DEFAULT1.txt"));
+  selfCheck("KHONG dung secret-a.txt (tai lieu uu tien)", false, r.list.includes("secret-a.txt"));
+  selfCheck("KHONG roi sang secret-b.txt (tai lieu thap hon)", false, r.list.includes("secret-b.txt"), `source=${r.source}`);
+  selfCheck("note nen noi ro cot dau tien la cot File", true, /cot `File`/.test(r.notes[0] || ""), r.notes[0] || "");
+
+  // Bang DUNG o tai lien UU TIEN CAO: phai duoc dung lam nguon chinh.
+  const FIX2 = mkdtempSync(join(tmpdir(), "deny-extract-fix2-"));
+  try {
+    writeFileSync(join(FIX2, "AGENTS.md"), "| File | Vi sao |\n|---|---|\n| `secret-b.txt` | y |\n");
+    const r2 = loadDenyListWithReport(FIX2, ["DEFAULT1.txt"], []);
+    selfCheck("bang dung -> 0 note", 0, r2.notes.length, r2.notes.join(" | "));
+    selfCheck("bang dung -> dung path do", true, r2.list.includes("secret-b.txt"));
+    selfCheck("bang dung -> source = AGENTS.md", "AGENTS.md", r2.source);
+  } finally {
+    rmSync(FIX2, { recursive: true, force: true });
+  }
+} finally {
+  rmSync(FIX, { recursive: true, force: true });
+}
+
+const selfFailed = selfTests.filter((t) => !t.pass);
+if (selfFailed.length) {
+  console.log(`\n  ${selfFailed.length}/${selfTests.length} negative test FAIL`);
+  process.exit(1);
+}
+console.log(`\n  ${selfTests.length}/${selfTests.length} negative test dat`);
 process.exit(0);

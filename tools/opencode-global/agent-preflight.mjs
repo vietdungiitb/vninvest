@@ -10,6 +10,11 @@
  *   3. File sắp sửa có claim `in-progress` của agent khác
  *      -> Hazard 1.
  *
+ *   4. (2026-09-28) Không xác định được dòng claim nào là của tôi
+ *      -> check 1-3 đều phải "đoán" dòng nào thuộc về mình. Đoán sai thì hoặc
+ *         TỰ KHÓA commit của chính mình, hoặc im lặng cho phép sửa file của
+ *         agent khác. Đo bằng negative test trên 8 temp git repo.
+ *
  * NGUYÊN TẮC BẤT BIẾN: chỉ chạy khi được yêu cầu tường minh (`--staged` hoặc
  * `--for <file>`). KHÔNG quét repo mặc định — một gate fail vì trạng thái có sẵn
  * sẽ bị bỏ qua (tiền lệ `off-github-actions`).
@@ -62,13 +67,24 @@ const DEFAULT_DENY_LIST = [
 
 const DENY_DOC_RE = /^(AGENT_PROTOCOL|AGENTS|CLAUDE)\.md$/i;
 
+/** Tien to branch -> phan ten con lai. Dung chung de quy tac "ten agent == ten branch". */
+const BRANCH_PREFIX_RE = /^(feat|fix|docs|chore|cleanup)\//;
+
+/**
+ * O dau la "dau tieu cot" cua bang claim. CLAIMS.md con chua cac bang phu
+ * (bang chu giai trang thai `| Trạng thái | Ý nghĩa |`) — neu khong loai, chung
+ * bi parser doc thanh dong claim va sinh canh bao `foreign-claim` gia.
+ */
+const CLAIM_HEADER_CELLS = new Set(["agent", "slug", "ten-agent", "tên agent"]);
+
 // Quy tac trich danh sach deny list nam o deny-extract.mjs — dung chung cho
 // preflight va verify-deny-extract.mjs de hai noi khong lech nhau.
-const { loadDenyList: loadDenyListFromDocs } = await import(
+const { loadDenyListWithReport } = await import(
   new URL("./deny-extract.mjs", import.meta.url).href
 );
 
-const DENY_LIST = loadDenyListFromDocs(REPO, DEFAULT_DENY_LIST, ["docs/CLAIMS.md", "CLAIMS.md"]);
+const denyReport = loadDenyListWithReport(REPO, DEFAULT_DENY_LIST, ["docs/CLAIMS.md", "CLAIMS.md"]);
+const DENY_LIST = denyReport.list;
 const APPEND_ONLY = new Set(["docs/CLAIMS.md", "CLAIMS.md"]);
 
 const TRAILER = "Claim-Deny-List:";
@@ -109,22 +125,62 @@ function commitMessage(arg) {
   }
 }
 
-/** Claim của chính tôi: tìm tên branch hiện tại trong CLAIMS.md. */
+/**
+ * Dong claim THAT trong bang 7 cot cua CLAIMS.md.
+ *
+ * Loai 3 loai dong hay gap nham:
+ *   - dong tieu (`| agent | branch | ...`)  — CLAIM_HEADER_CELLS
+ *   - dong phan cach (`|---|---|`)          — /^-{2,}$/
+ *   - dong cua bang phu (bang chu giai trang thai chi 2-4 cot)
+ * Ma khong loai, mot dong `| in-progress | Đang sửa |` se bi coi la claim cua
+ * agent ten `in-progress` va bien file noi dung thanh file dang bi giu.
+ */
+function isClaimRow(cells) {
+  if (cells.length < 8) return false;
+  const a = (cells[1] || "").replace(/`/g, "");
+  if (!a) return false;
+  if (/^-{2,}$/.test(a)) return false;
+  if (CLAIM_HEADER_CELLS.has(a.toLowerCase())) return false;
+  return true;
+}
+
+/**
+ * Claim cua CHINH minh — dinh danh bang 2 dieu kien, KHONG doan.
+ *
+ *   (a) ten agent === ten branch bo tie ten      — quy tac chuan
+ *   (b) cot `branch` cua dong === branch hien tai — dung khi ten agent viet
+ *                                                   kieu khac (vd `core-team`)
+ *
+ * KHONG dung `branch.includes(agent)`: do la nguon cua 2 false-negative im
+ * lang — agent ten `slice` tren branch `feat/ten-slice` bi tinh la "cua toi"
+ * nen check3 BO QUA canh bao file ho dang giu. Do la loi nguy hiem hon
+ * self-block vi no im lang cho phep sua file cua nguoi khac.
+ *
+ * (b) la thu chay duoc vi no doc cot branch, khong doan tu ten. Do la ly do
+ * KHONG duoc dung (b) mot minh: dong stale cua agent da chet tren cung branch
+ * se bi tinh la cua minh (da do trong negative test R1).
+ */
 function myClaimKeys() {
   const cf = claimFile();
-  if (!cf) return { keys: new Set(), text: "" };
+  if (!cf) return { keys: new Set(), mismatched: [], branch: "", short: "" };
   const text = readFileSync(cf, "utf8");
   const branch = git(["rev-parse", "--abbrev-ref", "HEAD"]).out;
-  const short = branch.replace(/^(feat|fix|docs|chore|cleanup)\//, "");
+  const short = branch.replace(BRANCH_PREFIX_RE, "");
   const keys = new Set();
+  const mismatched = [];
   for (const line of text.split("\n")) {
     if (!line.trim().startsWith("|")) continue;
     const cells = line.split("|").map((c) => c.trim());
+    if (!isClaimRow(cells)) continue;
     const agent = (cells[1] || "").replace(/`/g, "");
-    if (!agent) continue;
-    if (agent === short || branch.includes(agent)) keys.add(agent);
+    const claimBranch = (cells[2] || "").replace(/`/g, "");
+    if (agent === short) { keys.add(agent); continue; }
+    if (claimBranch && claimBranch === branch) {
+      keys.add(agent);
+      if (agent !== short) mismatched.push({ agent, claimBranch });
+    }
   }
-  return { keys, text };
+  return { keys, mismatched, branch, short };
 }
 
 const violations = [];
@@ -173,12 +229,26 @@ function check2ForeignClaimLines(files) {
   const diff = git(["diff", "--cached", "--unified=0", "--", rel]);
   if (diff.code !== 0 || !diff.out) return;
   const { keys } = myClaimKeys();
+  // Noi dung bi XOA o tren. Mot dong chi doi newline cuoi file se bi git ghi
+  // thanh 1 dong xoa + 1 dong them voi noi dung giong het nhau. Do KHONG phai
+  // sua claim cua nguoi khac — va no xay ra CHINH xac o truong hop CLAIMS.md
+  // khong ket thuc bang LF (gap o PR #20/#23/#31), khi buoc sua dung nhat la
+  // chen LF truoc dong moi. Neu khong bo qua, preflight chan chinh thao tac
+  // sua ma guide bat buoc.
+  const removed = new Set();
+  for (const line of diff.out.split("\n")) {
+    if (!line.startsWith("-") || line.startsWith("---")) continue;
+    removed.add(line.slice(1).trim());
+  }
   const foreign = [];
   for (const line of diff.out.split("\n")) {
     if (!line.startsWith("+") || line.startsWith("+++")) continue;
     const added = line.slice(1);
     if (!added.trim().startsWith("|")) continue;
-    const agent = (added.split("|")[1] || "").trim().replace(/`/g, "");
+    if (removed.has(added.trim())) continue; // chi doi newline cuoi file
+    const cells = added.split("|").map((c) => c.trim());
+    if (!isClaimRow(cells)) continue;
+    const agent = (cells[1] || "").replace(/`/g, "");
     if (!agent) continue;
     if (keys.size && !keys.has(agent)) foreign.push(agent);
   }
@@ -200,6 +270,7 @@ function check3ClaimedInProgress(files) {
   for (const line of readFileSync(cf, "utf8").split("\n")) {
     if (!line.trim().startsWith("|")) continue;
     const c = line.split("|").map((x) => x.trim());
+    if (!isClaimRow(c)) continue;
     const agent = (c[1] || "").replace(/`/g, "");
     const status = (c[5] || "").toLowerCase();
     if (status !== "in-progress") continue;
@@ -210,13 +281,71 @@ function check3ClaimedInProgress(files) {
       if (t) held.add(t);
     }
   }
-  const hit = files.filter((f2) => held.has(f2));
+  // Registry CLAIMS.md duoc miễn: MỌI agent deu phai append dong cua minh vao day,
+  // nen neu no cung bi "giu" boi agent khac thi khong agent nao khai claim duoc.
+  // Ke bao ve cho file nay la check2 (khong commit dong cua nguoi khac), va
+  // check1 da bo qua no qua APPEND_ONLY.
+  const hit = files.filter((f2) => held.has(f2) && !APPEND_ONLY.has(f2));
   if (!hit.length) return;
   violations.push({
     id: "claimed-in-progress",
     file: hit.join(", "),
     fix: "Agent khác đang claim file này với trạng thái in-progress.\n" +
          "  AGENT_PROTOCOL.md §3: DỪNG, không sửa. Hỏi coordinator.",
+  });
+}
+
+/**
+ * CHECK 4 — danh tinh claim (thay the cho viec "doan xem dong nao la cua minh").
+ *
+ * VANDU: ban o `feat/ten-slice`, dong claim cua ban ghi ten agent `ten-agent`.
+ * Khong co quy tac nao khop => preflight co 2 lua chon deu sai:
+ *   - coi dong cua ban la cua nguoi khac  => TU KHOA commit cua chinh minh
+ *   - bo qua hanh dong                  => bao ve 0, im lang cho phep sua
+ *                                           file cua agent khac
+ * nen truoc day no im lang chon truong hop 2. Check nay chan, noi ro nguyen
+ * nhan, va bat agent sua ten cho dung — thay vi tu quyet.
+ *
+ * `keys` rong chi bi coi la LOI khi co it nhat 1 dong `in-progress`: repo
+ * khong co claim nao thi dung im lang, dung §6 cua guide.
+ */
+function check4ClaimIdentity() {
+  const cf = claimFile();
+  if (!cf) return;
+  const { keys, mismatched, branch, short } = myClaimKeys();
+
+  for (const m of mismatched) {
+    // Nhan ASCII de grep/so sanh khong phu thuoc Unicode normalization (NFC/NFD).
+    console.error(
+      `[claim-name] dong \`${m.agent}\` khai o branch \`${m.claimBranch}\` nhung ten agent khac ten branch \`${short}\`.\n` +
+      `  Preflight van nhan la dong cua ban qua COT BRANCH, nhung nen doi ten agent thanh \`${short}\`\n` +
+      `  de lan sau khop theo quy tac (a) — va de agent khac doc khong nham.`,
+    );
+  }
+  if (keys.size) return;
+
+  let inProgress = 0;
+  for (const line of readFileSync(cf, "utf8").split("\n")) {
+    if (!line.trim().startsWith("|")) continue;
+    const c = line.split("|").map((x) => x.trim());
+    if (!isClaimRow(c)) continue;
+    if ((c[5] || "").toLowerCase() === "in-progress") inProgress += 1;
+  }
+  if (!inProgress) return;
+
+  const unborn = !branch || branch === "HEAD";
+  violations.push({
+    id: "claim-identity",
+    file: unborn ? "HEAD chua resolve" : `branch \`${branch}\``,
+    fix: unborn
+      ? "Chua co commit nao tren branch nay => `git rev-parse --abbrev-ref HEAD` tra `HEAD`.\n" +
+        "  Preflight khong xac dinh duoc ban la ai. Commit mot lan de tao HEAD, roi chay lai."
+      : `Khong co dong claim nao khop branch \`${branch}\` (ten agent se la \`${short}\`).\n` +
+        `  Va co ${inProgress} dong claim \`in-progress\` cua agent khac.\n` +
+        "  Preflight KHONG tu doan dong nao la cua ban — doan sai thi hoac tu khoa\n" +
+        "  commit cua chinh minh, hoac im lang cho phep sua file cua nguoi khac.\n" +
+        `  Sua cot \`branch\` cua dong claim cua ban thanh \`${branch}\` (tot nhat doi ca ten agent\n` +
+        `  thanh \`${short}\` cho khop quy tac).`,
   });
 }
 
@@ -256,8 +385,16 @@ function main() {
   check1DenyList(files, commitMessage(cmsg));
   check2ForeignClaimLines(files);
   check3ClaimedInProgress(files);
+  check4ClaimIdentity();
 
   if (!violations.length) {
+    // CANH BAO (khong chan): deny list doc tu tai lieu dang bi bo qua.
+    // Khong chan vi se no doi kich ban dong khi mot repo co bang phu 2-3 cot
+    // o AGENTS.md — gate hoang loi se bi bo qua, te hon khong co gate.
+    for (const n of denyReport.notes) console.error(`agent-preflight: [deny-list] ${n}`);
+    if (denyReport.notes.length) {
+      console.error(`  Deny list hien tai = ${DENY_LIST.length} path (mac dinh + tai lieu doc duoc).`);
+    }
     console.log(`agent-preflight: OK (${files.length} file)`);
     return 0;
   }
