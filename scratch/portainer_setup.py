@@ -7,15 +7,30 @@ Setup VNInvest on Portainer via API:
 import urllib.request
 import urllib.error
 import json
+import os
 import ssl
 import sys
 
-PORTAINER = "https://localhost:9443"
-USER = "admin"
-PASS = "ThanhLam@2010"
-GH_PAT = "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"
-CORE_DB_PASS = "core_db_464393"
-CORE_SECRET = "xK8mP3nQ7wR2vT5yJ6dF9hL4bN0cE1aZ8sU6pW3iY7oX"
+
+def require_env(name):
+    """Credentials come from the environment only.
+
+    This file previously hardcoded the Portainer admin password, the core DB
+    password and CORE_SECRET. Deleting them from the working tree is not enough:
+    they remain in git history and must be rotated by the owner.
+    """
+    value = os.environ.get(name, "").strip()
+    if not value:
+        sys.exit(f"Missing required environment variable: {name}")
+    return value
+
+
+PORTAINER = os.environ.get("PORTAINER_URL", "https://localhost:9443")
+USER = os.environ.get("PORTAINER_USER", "admin")
+PASS = require_env("PORTAINER_PASS")
+GH_PAT = require_env("GH_PAT")
+CORE_DB_PASS = require_env("CORE_DB_PASS")
+CORE_SECRET = require_env("CORE_SECRET")
 
 ctx = ssl.create_default_context()
 ctx.check_hostname = False

@@ -169,7 +169,7 @@ Làm repo không còn chứa secret thật, và có chặn tự động để kh
 Negative test cho gate — đây là quy tắc cứng:
 ```
 # Tạo file giả rồi xác nhận script FAIL
-"github_pat_11ABCDEFG0abcdefghijkl_1234567890abcdefghij" > /tmp/fake.txt
+"<YOUR_GITHUB_PAT_HERE>" > /tmp/fake.txt
 node scripts/scan-secrets.mjs → phải exit 1
 ```
 Không có negative test thì gate chưa được kiểm chứng.

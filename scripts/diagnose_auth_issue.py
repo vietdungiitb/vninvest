@@ -7,6 +7,7 @@ Usage:
     python ../scripts/diagnose_auth_issue.py
 """
 import os
+import secrets
 import sys
 import django
 
@@ -22,39 +23,47 @@ print("=" * 60)
 print("AUTH DIAGNOSTIC SCRIPT")
 print("=" * 60)
 
+# Password and username for the admin account, resolved once.
+# This script previously hardcoded 'test@123456', which meant a committed
+# superuser credential AND that running it silently reset an existing admin
+# account's password to a publicly known value. The password is now supplied by
+# the operator, or generated once and printed.
+admin_username = os.environ.get('VNINVEST_ADMIN_USERNAME', 'admin')
+admin_password = os.environ.get('VNINVEST_ADMIN_PASSWORD')
+generated_password = admin_password is None
+if generated_password:
+    admin_password = secrets.token_urlsafe(24)
+
 # 1. Check admin user exists
 print("\n[1] Checking admin user...")
 try:
-    admin = User.objects.get(username='admin')
+    admin = User.objects.get(username=admin_username)
     print(f"  ✓ Admin user found (id={admin.pk})")
     print(f"    - is_active: {admin.is_active}")
     print(f"    - email: {admin.email}")
 except User.DoesNotExist:
-    print("  ✗ Admin user NOT found - creating...")
+    print(f"  ✗ Admin user '{admin_username}' NOT found - creating...")
     admin = User.objects.create_user(
-        username='admin',
+        username=admin_username,
         email='admin@localhost',
-        password='test@123456',
+        password=admin_password,
         is_staff=True,
         is_superuser=True
     )
     print(f"  ✓ Admin user created (id={admin.pk})")
+    if generated_password:
+        print(f"  ! generated admin password (store it now): {admin_password}")
 
 # 2. Test authentication
 print("\n[2] Testing authentication...")
-authed = authenticate(username='admin', password='test@123456')
+authed = authenticate(username=admin_username, password=admin_password)
 if authed:
-    print("  ✓ Auth successful with admin/test@123456")
+    print(f"  ✓ Auth successful for {admin_username}")
 else:
-    print("  ✗ Auth failed - checking password hash...")
-    admin.set_password('test@123456')
-    admin.save()
-    print("  ✓ Password reset to test@123456")
-    authed = authenticate(username='admin', password='test@123456')
-    if authed:
-        print("  ✓ Auth now successful")
-    else:
-        print("  ✗ Still failing - this is a backend issue")
+    print("  ✗ Auth failed.")
+    print("    If the account already existed, its password is not the one this")
+    print("    script generated. Set VNINVEST_ADMIN_PASSWORD to the real value and")
+    print("    re-run, or reset the password deliberately via manage.py.")
 
 # 3. Check tenant assignment (SaaS requirement)
 print("\n[3] Checking tenant assignment (SaaS)...")
@@ -116,8 +125,8 @@ except Exception as e:
 print("\n" + "=" * 60)
 print("DIAGNOSIS COMPLETE")
 print("=" * 60)
-print("\nTest login with:")
+print("\nTest login with (substitute the real password):")
 print("  curl -X POST http://localhost:8000/api/auth/token/ \\")
 print("    -H 'Content-Type: application/json' \\")
-print("    -d '{\"username\": \"admin\", \"password\": \"test@123456\"}'")
+print(f"    -d '{{\"username\": \"{admin_username}\", \"password\": \"<your password>\"}}'")
 print()

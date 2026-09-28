@@ -11,7 +11,7 @@ Docker needs GitHub PAT to clone private vnbroker dependency during image build.
 cd "c:\Mujoco Projects\vninvest"
 .\start_dev.ps1                 # canonical: --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml
 # Hoặc thủ công (tương đương):
-# $env:VNBROKER_GITHUB_TOKEN = "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"
+# $env:VNBROKER_GITHUB_TOKEN = "<YOUR_GITHUB_PAT_HERE>"
 # docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ```
 
@@ -102,8 +102,8 @@ docker exec vninvest-dev-core-api python src/manage.py shell -c "from identity_a
 curl http://127.0.0.1:8001/core/v1/health
 curl http://127.0.0.1/api/health
 
-# Get auth token (saas-native)
-curl -X POST http://127.0.0.1:8001/core/v1/auth/login/ -H "Content-Type: application/json" -d '{"username":"admin","password":"test@123456"}'
+# Get auth token (saas-native) — supply your own admin credentials
+curl -X POST http://127.0.0.1:8001/core/v1/auth/login/ -H "Content-Type: application/json" -d '{"username":"<admin-user>","password":"<admin-password>"}'
 ```
 
 ## Troubleshooting
@@ -113,7 +113,7 @@ curl -X POST http://127.0.0.1:8001/core/v1/auth/login/ -H "Content-Type: applica
 **Solution**: Export the token in your PowerShell session BEFORE running docker compose (prefer `.\start_dev.ps1` which auto-uses `gh auth token`):
 
 ```powershell
-$env:VNBROKER_GITHUB_TOKEN = "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"
+$env:VNBROKER_GITHUB_TOKEN = "<YOUR_GITHUB_PAT_HERE>"
 docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ```
 

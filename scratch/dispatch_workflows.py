@@ -3,7 +3,7 @@
 import urllib.request, json, ssl, time
 
 ctx = ssl.create_default_context()
-GH_PAT = "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"
+GH_PAT = "<YOUR_GH_PAT_HERE>"
 REPO = "vietdungiitb/vninvest"
 
 def gh_post(path, data):
