@@ -163,6 +163,18 @@ class InternalErrorException(CoreAPIException):
     default_status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
 
 
+class ServiceUnavailableException(CoreAPIException):
+    """503 — dịch vụ tạm không phục vụ được.
+
+    SAFE-03 dùng cho kill-switch: operator đang chủ động tắt ghi, hoặc hệ
+    thống không đọc được trạng thái kill-switch (fail-closed). Cả hai đều là
+    "đừng ghi lúc này, thử lại sau" chứ không phải lỗi của client, nên 503
+    chứ không phải 400/403 — 503 cũng khiến client retry được an toàn.
+    """
+    default_code = 'service_unavailable'
+    default_status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+
 def core_api_exception_handler(exc: Exception, context: dict) -> Optional[Response]:
     """
     Custom DRF exception handler for standardized error envelopes.

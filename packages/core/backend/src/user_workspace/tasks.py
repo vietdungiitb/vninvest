@@ -108,6 +108,18 @@ def sync_all_dnse_balances_task():
 def sync_dnse_accounts_task(self, user_id: int, tenant_id: int | None = None):
     """Đồng bộ tiểu khoản DNSE.
 
+    # SAFE-03 lớp worker: task đã vào queue cũng phải bị chặn khi kill-switch
+    # bật. Đặt ở ĐẦU thân hàm để task thoát trước khi chạm broker.
+    try:
+        from service_ops.broker_runtime import BrokerWriteDisabled, check_kill_switch
+        check_kill_switch('global')
+    except BrokerWriteDisabled as exc:
+        logger.warning(
+            'kill-switch chặn task %s (user=%s): %s',
+            'sync_dnse_accounts_task', user_id, exc,
+        )
+        return {'ok': False, 'error': 'broker_writes_disabled'}
+
     `tenant_id` là keyword có default None để call site cũ (`views_dnse.py` —
     ngoài phạm vi slice này) không vỡ. Khi None: user thuộc đúng 1 tenant thì
     dùng tenant đó; user đa tenant thì **từ chối** (`tenant_required`) — KHÔNG
@@ -200,6 +212,18 @@ def sync_dnse_accounts_task(self, user_id: int, tenant_id: int | None = None):
 
 @shared_task(name="user_workspace.sync_dnse_balances_task", bind=True, max_retries=3, default_retry_delay=120)
 def sync_dnse_balances_task(self, user_id: int):
+    # SAFE-03 lớp worker: task đã vào queue cũng phải bị chặn khi kill-switch
+    # bật. Đặt ở ĐẦU thân hàm để task thoát trước khi chạm broker.
+    try:
+        from service_ops.broker_runtime import BrokerWriteDisabled, check_kill_switch
+        check_kill_switch('global')
+    except BrokerWriteDisabled as exc:
+        logger.warning(
+            'kill-switch chặn task %s (user=%s): %s',
+            'sync_dnse_balances_task', user_id, exc,
+        )
+        return {'ok': False, 'error': 'broker_writes_disabled'}
+
     try:
         credential = DNSECredential.objects.get(user_id=user_id, is_active=True)
     except DNSECredential.DoesNotExist:
@@ -258,6 +282,18 @@ def sync_dnse_balances_task(self, user_id: int):
 
 @shared_task(name="user_workspace.reconcile_dnse_transactions_task", bind=True, max_retries=3)
 def reconcile_dnse_transactions_task(self, user_id: int, days_back: int = 7):
+    # SAFE-03 lớp worker: task đã vào queue cũng phải bị chặn khi kill-switch
+    # bật. Đặt ở ĐẦU thân hàm để task thoát trước khi chạm broker.
+    try:
+        from service_ops.broker_runtime import BrokerWriteDisabled, check_kill_switch
+        check_kill_switch('global')
+    except BrokerWriteDisabled as exc:
+        logger.warning(
+            'kill-switch chặn task %s (user=%s): %s',
+            'reconcile_dnse_transactions_task', user_id, exc,
+        )
+        return {'ok': False, 'error': 'broker_writes_disabled'}
+
     try:
         credential = DNSECredential.objects.get(user_id=user_id, is_active=True)
     except DNSECredential.DoesNotExist:
@@ -342,6 +378,18 @@ from .screener_tasks import (  # noqa: E402,F401
 @shared_task(name="user_workspace.test_broker_connection_task", bind=True, max_retries=0)
 def test_broker_connection_task(self, config_id: int, tenant_id: int | None = None):
     """B1.2: test-connection broker read-only trong worker (không I/O trong request).
+
+    # SAFE-03 lớp worker: task đã vào queue cũng phải bị chặn khi kill-switch
+    # bật. Đặt ở ĐẦU thân hàm để task thoát trước khi chạm broker.
+    try:
+        from service_ops.broker_runtime import BrokerWriteDisabled, check_kill_switch
+        check_kill_switch('global')
+    except BrokerWriteDisabled as exc:
+        logger.warning(
+            'kill-switch chặn task %s (user=%s): %s',
+            'sync_dnse_balances_task', user_id, exc,
+        )
+        return {'ok': False, 'error': 'broker_writes_disabled'}
 
     Nhận config_id (không nhận secret — đọc từ DB). Cập nhật status/last_verified_at/last_error.
 

@@ -41,6 +41,7 @@ from vninvest_core.exceptions import (
     InternalErrorException,
     NotFoundErrorException,
     PermissionErrorException,
+    ServiceUnavailableException,
     ValidationErrorException,
 )
 
@@ -572,6 +573,38 @@ def dnse_reconcile_transactions_api(request):
     )
 
 
+def _assert_broker_writes_allowed(request, provider, *, action: str) -> None:
+    """SAFE-03 lớp view: chặn ghi broker khi kill-switch bật hoặc không đọc được.
+
+    Chạy global + tenant + provider: chỉ cần một scope nào đó bật là chặn.
+    `KillSwitchIndeterminate` (lỗi hạ tầng) trả 503 vì đó là sự cố tạm thời,
+    còn `BrokerWriteDisabled` (operator chủ động tắt) trả 503 luôn — hai nguyên
+    nhân khác nhau nhưng đều nghĩa là "đừng ghi lúc này".
+    """
+    from service_ops.broker_runtime import (
+        BrokerWriteDisabled,
+        check_kill_switch,
+    )
+
+    tenant = getattr(request, 'tenant', None)
+    for scope in ('global', 'tenant', 'provider'):
+        try:
+            check_kill_switch(scope, tenant=tenant, provider=provider)
+        except BrokerWriteDisabled as exc:
+            logger.warning(
+                'dnse: write blocked by kill-switch scope=%s provider=%s '
+                'action=%s user=%s: %s',
+                scope, provider, action, getattr(request.user, 'id', None), exc,
+            )
+            raise ServiceUnavailableException(
+                detail=(
+                    'Hệ thống đang tạm ngừng giao dịch. Vui lòng thử lại sau. '
+                    'Lệnh của bạn chưa được gửi tới broker.'
+                ),
+                code='broker_writes_disabled',
+            ) from exc
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @throttle_classes([ScopedRateThrottle])
@@ -587,6 +620,11 @@ def dnse_place_order_api(request):
     broker. Ghi hỏng ⇒ từ chối lệnh (`audit_unavailable`), không gọi broker.
     Không thể làm vậy sau khi gọi broker vì lệnh đã không thể hoàn tác.
     """
+    # SAFE-03 — kill-switch chặn TRƯỚC mọi thao tác khác, kể cả trước khi
+    # validate payload: một request bị chặn không nên tạo audit row, cũng
+    # không nên chạm broker. `check_kill_switch` fail-closed — lỗi đọc
+    # trạng thái cũng chặn, không cho qua.
+    _assert_broker_writes_allowed(request, 'dnse', action='place_order')
     user = request.user
     raw_payload = request.data.get("payload")
     audit_payload = raw_payload if isinstance(raw_payload, dict) else {}
@@ -751,6 +789,7 @@ def dnse_send_email_otp_api(request):
     quên field. Nay mode phải nói rõ, và thiếu mode thì từ chối.
     PA-1/X.5 — nhánh `except Exception` trả `str(exc)` thô; nay chỉ trả mã lỗi.
     """
+    _assert_broker_writes_allowed(request, 'dnse', action='send_email_otp')
     user = request.user
     _mode, dry_run = _resolve_order_mode(request.data)
 
@@ -780,6 +819,7 @@ def dnse_create_trading_token_api(request):
 
     PA-1/SAFE-01 + PA-1/X.5 — cùng xử lý mode và redaction như `place_order`.
     """
+    _assert_broker_writes_allowed(request, 'dnse', action='create_trading_token')
     user = request.user
     otp_type = str(request.data.get("otp_type", "EMAIL")).strip().upper() or "EMAIL"
     passcode = str(request.data.get("passcode", "")).strip()
