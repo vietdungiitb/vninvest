@@ -1,19 +1,29 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useRef, useCallback, ReactNode } from "react";
 import { coreApiAdapter } from "../../../adapters/coreApiAdapter.js";
+import { tenantIdStorage } from "../../../adapters/core/transport.js";
 import { useRealtimeFeedFromManager } from "../../../context/RealtimeContext.js";
 import { useI18n } from "../../../context/LangContext.js";
 import { SYSTEM_GROUP_IDS } from "../../../constants/marketGroups.js";
-import { 
-  Watchlist, LegacyGroup, Holding, TrackedSymbol, PriceAlert, 
-  TechnicalData, WatchlistItem, RealtimeFeedData 
+import {
+  Watchlist, LegacyGroup, Holding, TrackedSymbol, PriceAlert,
+  TechnicalData, WatchlistItem, RealtimeFeedData
 } from "../WatchlistTypes";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 
 const api: any = coreApiAdapter;
 
+/**
+ * TEN-02 R1 — đọc tenant qua `tenantIdStorage` (SSOT), không tự đọc
+ * `localStorage`. Đọc thẳng ở đây bỏ qua bước migrate sessionStorage ->
+ * localStorage của SSOT, nên user còn phiên bản cũ sẽ thấy `null` ở watchlist
+ * trong khi các màn khác thấy tenant — lệch query key trong cùng 1 lần render.
+ *
+ * `try/catch` giữ nguyên: private mode / storage bị chặn thì coi như chưa chọn
+ * tenant, không làm sập cả provider.
+ */
 function readTenantId(): string | null {
-  try { return localStorage.getItem("tenant_id"); } catch { return null; }
+  try { return tenantIdStorage.getTenantId(); } catch { return null; }
 }
 
 // W7 (DoR-2 DONE): merge holdings across ALL portfolios instead of portfolios[0].

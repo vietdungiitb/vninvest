@@ -7,26 +7,73 @@ Fails fast if required vars are missing, preventing silent failures in productio
 C4 Fix: Remove hardcoded fallbacks and enforce environment validation.
 """
 import os
+import re
 from django.core.exceptions import ImproperlyConfigured
+
+#: Gia tri placeholder - "co" nhung KHONG phai secret.
+#:
+#: `compose.dev.env.example` ship `FOO=<REQUIRED>` va buoc onboarding chuan la
+#: `cp compose.dev.env.example compose.dev.env`. Neu chi kiem tra "rong hay
+#: khong", chuoi `<REQUIRED>` di qua **moi** tang validation, roi duoc dung
+#: lam key ma hoa that cho broker credential. Tho chon phat hien placeholder
+#: la lo hong: code tu tin rang no da tach khoa khi thuc te van dung mot
+#: hang constant cong khai.
+_PLACEHOLDER_RE = re.compile(
+    r"""^(?:
+          <[^>]*>                       # <REQUIRED>, <REQUIRED_IN_PRODUCTION>
+        | \$\{[^}]*\}                    # ${NOT_SET}
+        | \{\{[^}]*\}\}                  # {{ your-key }}
+        | (?:change|replace|insert|set|fill)[-_]?(?:me|this|it)?   # CHANGE_ME
+        | changeme | replaceme | todopass | your[_-]?\w+
+        | x{4,}
+        )$""",
+    re.IGNORECASE | re.VERBOSE,
+)
+
+
+def is_placeholder_value(value: str) -> bool:
+    """True nếu `value` là placeholder, KHÔNG phải giá trị thật.
+
+    Dùng bởi cả `get_required_env` (fail-fast lúc boot) lẫn `SecretStore`
+    (fail-closed lúc ma hoa) — vì riêng boot-time check bỏ lọt trường hợp
+    `DEBUG=1` (đúng môi trường onboarding) và trường hợp key được set sau
+    khi app đã chạy.
+    """
+    text = (value or '').strip()
+    if not text:
+        return False
+    return bool(_PLACEHOLDER_RE.match(text))
 
 
 def get_required_env(key: str, description: str = None) -> str:
     """
     Get required environment variable.
-    
+
     Args:
         key: Environment variable name
         description: User-friendly description of what this var is for
-    
+
     Returns:
         Environment variable value (stripped)
-    
+
     Raises:
-        ImproperlyConfigured: If env var is missing or empty
+        ImproperlyConfigured: If env var is missing, empty, or still the
+            placeholder shipped in the ``.example`` file
     """
     value = os.environ.get(key, '').strip()
     if not value:
         msg = f"Required environment variable '{key}' is not set"
+        if description:
+            msg += f" ({description})"
+        raise ImproperlyConfigured(msg)
+    if is_placeholder_value(value):
+        # Không echo lại giá trị: nếu sau này ai đó dán secret thật vào ô
+        # placeholder, thông báo lỗi sẽ làm rò nó vào log.
+        msg = (
+            f"Required environment variable '{key}' still holds the placeholder "
+            f"value from the .example file. Generate a real value instead of "
+            f"copying the template."
+        )
         if description:
             msg += f" ({description})"
         raise ImproperlyConfigured(msg)

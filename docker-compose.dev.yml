@@ -80,6 +80,9 @@ services:
       REDIS_URL: redis://core-redis:6379/3
       CELERY_BROKER_URL: redis://core-redis:6379/3
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY is required (xem compose.dev.env)}
+      # D-15 / SEC-02: secret broker phai rieng `SECRET_KEY`. Thieu bien nay thi
+      # `SecretStore` rot ve key v1 = derive tu `SECRET_KEY`, tuc muc tieu D-15 vo hieu.
+      BROKER_SECRET_KEY: ${BROKER_SECRET_KEY:?BROKER_SECRET_KEY is required (xem compose.dev.env)}
       DNSE_API_KEY: ${DNSE_API_KEY:-}
       DNSE_API_SECRET: ${DNSE_API_SECRET:-}
       # Turnstile secret (private, chi trong .env — KHONG commit). De trong o dev:
@@ -130,8 +133,11 @@ services:
       CELERY_POOL: solo
       CELERY_CONCURRENCY: "1"
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
-      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY is required (xem compose.dev.env)}
+      # D-15 / SEC-02: secret broker phai rieng `SECRET_KEY`. Thieu bien nay thi
+      # `SecretStore` rot ve key v1 = derive tu `SECRET_KEY`, tuc muc tieu D-15 vo hieu.
+      BROKER_SECRET_KEY: ${BROKER_SECRET_KEY:?BROKER_SECRET_KEY is required (xem compose.dev.env)}
       DNSE_API_KEY: ${DNSE_API_KEY:-}
       DNSE_API_SECRET: ${DNSE_API_SECRET:-}
       FRONTEND_URL: http://localhost:8080
@@ -217,7 +223,9 @@ services:
       # Topology/pacing env nằm ở scheduler worker (task chạy ở đó) — không đặt ở đây gây nhầm.
       # Xem khối core-worker-realtime-scheduler (TICKER_PREFETCH_*).
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
-      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
+      # D-15 / SEC-02: worker/beat can giai ma secret broker, can key giong core-api
+      BROKER_SECRET_KEY: ${BROKER_SECRET_KEY:?BROKER_SECRET_KEY is required (xem compose.dev.env)}
       DNSE_API_KEY: ${DNSE_API_KEY:-}
       DNSE_API_SECRET: ${DNSE_API_SECRET:-}
       FRONTEND_URL: http://localhost:8080
@@ -265,7 +273,7 @@ services:
       # (timeout 8s) — chu kỳ 5 phút cũ khiến hot-hydrate một mình đã vượt capacity.
       REALTIME_HOT_HYDRATE_INTERVAL_SECONDS: "600"
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
-      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
       FRONTEND_URL: http://localhost:8080
     command: ["worker"]
     restart: unless-stopped
@@ -294,7 +302,9 @@ services:
       CELERY_CONCURRENCY: "1"
       CELERY_POOL: solo
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
-      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
+      # D-15 / SEC-02: worker/beat can giai ma secret broker, can key giong core-api
+      BROKER_SECRET_KEY: ${BROKER_SECRET_KEY:?BROKER_SECRET_KEY is required (xem compose.dev.env)}
       FRONTEND_URL: http://localhost:8080
     command: ["worker"]
     restart: unless-stopped
@@ -323,7 +333,7 @@ services:
       CELERY_CONCURRENCY: "1"
       CELERY_POOL: solo
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
-      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
       FRONTEND_URL: http://localhost:8080
     command: ["worker"]
     restart: unless-stopped
@@ -355,7 +365,9 @@ services:
       # xử bằng mem 1g + tách EOD worker, không phải flag này).
       CELERY_MAX_TASKS_PER_CHILD: "4"
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
-      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
+      # D-15 / SEC-02: worker/beat can giai ma secret broker, can key giong core-api
+      BROKER_SECRET_KEY: ${BROKER_SECRET_KEY:?BROKER_SECRET_KEY is required (xem compose.dev.env)}
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:-}
       DNSE_API_KEY: ${DNSE_API_KEY:-}
       DNSE_API_SECRET: ${DNSE_API_SECRET:-}
@@ -393,7 +405,7 @@ services:
       CELERY_POOL: prefork
       CELERY_MAX_TASKS_PER_CHILD: "1"
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
-      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
       FRONTEND_URL: http://localhost:8080
     command: ["worker"]
     restart: unless-stopped
@@ -424,8 +436,11 @@ services:
       CELERY_CONCURRENCY: "1"
       CELERY_POOL: solo
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
-      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY is required (xem compose.dev.env)}
+      # D-15 / SEC-02: secret broker phai rieng `SECRET_KEY`. Thieu bien nay thi
+      # `SecretStore` rot ve key v1 = derive tu `SECRET_KEY`, tuc muc tieu D-15 vo hieu.
+      BROKER_SECRET_KEY: ${BROKER_SECRET_KEY:?BROKER_SECRET_KEY is required (xem compose.dev.env)}
       FRONTEND_URL: http://localhost:8080
       EMAIL_BACKEND: django.core.mail.backends.smtp.EmailBackend
       EMAIL_HOST: mailpit
@@ -461,8 +476,11 @@ services:
       CELERY_CONCURRENCY: "1"
       CELERY_POOL: solo
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
-      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY is required (xem compose.dev.env)}
+      # D-15 / SEC-02: secret broker phai rieng `SECRET_KEY`. Thieu bien nay thi
+      # `SecretStore` rot ve key v1 = derive tu `SECRET_KEY`, tuc muc tieu D-15 vo hieu.
+      BROKER_SECRET_KEY: ${BROKER_SECRET_KEY:?BROKER_SECRET_KEY is required (xem compose.dev.env)}
       FRONTEND_URL: http://localhost:8080
       EMAIL_BACKEND: django.core.mail.backends.smtp.EmailBackend
       EMAIL_HOST: mailpit
@@ -491,7 +509,9 @@ services:
       REDIS_URL: redis://core-redis:6379/3
       CELERY_BROKER_URL: redis://core-redis:6379/3
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
-      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:-dev-pat-pepper-replace-in-production}
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
+      # D-15 / SEC-02: worker/beat can giai ma secret broker, can key giong core-api
+      BROKER_SECRET_KEY: ${BROKER_SECRET_KEY:?BROKER_SECRET_KEY is required (xem compose.dev.env)}
       FRONTEND_URL: http://localhost:8080
       # Corrective v4: beat warm 5→10 phút (hydrate-leg đã cover hot/10 phút; trùng lặp).
       # Meta-audit fix: api container cũng cần env này — repair_beat_schedule chạy ở api (default

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTenantAdminQuery, TENANT_ADMIN_QUERY_SCOPE } from './tenant-admin/useTenantAdminQuery.js';
 import { coreApiAdapter } from '../adapters/coreApiAdapter.js';
+import { tenantIdStorage } from '../adapters/core/transport.js';
 import { useI18n } from '../context/LangContext.js';
 import { useConfirm } from '../components/ConfirmModal.js';
 import { ScreenerFilterBuilder } from '../components/screener/ScreenerFilterBuilder.js';
@@ -200,7 +201,7 @@ export function ScreenerPage() {
         await coreApiAdapter.updateScreenerRule(String((editing as Rule).id), formData);
       }
       setEditing(null);
-      const tenantId = typeof window !== 'undefined' ? window.localStorage.getItem('tenant_id') : null;
+      const tenantId = typeof window !== 'undefined' ? tenantIdStorage.getTenantId() : null;
       queryClient.invalidateQueries({ queryKey: [TENANT_ADMIN_QUERY_SCOPE, tenantId ?? 'none', 'screener', 'rules'] });
     } catch (err: unknown) {
       const errResp = err as { response?: { data?: { detail?: string } } };
@@ -213,7 +214,7 @@ export function ScreenerPage() {
     if (rule.id == null) return;
     try {
       await coreApiAdapter.updateScreenerRule(String(rule.id), { is_public: !rule.is_public });
-      const tenantId = typeof window !== 'undefined' ? window.localStorage.getItem('tenant_id') : null;
+      const tenantId = typeof window !== 'undefined' ? tenantIdStorage.getTenantId() : null;
       queryClient.invalidateQueries({ queryKey: [TENANT_ADMIN_QUERY_SCOPE, tenantId ?? 'none', 'screener', 'rules'] });
       queryClient.invalidateQueries({ queryKey: [TENANT_ADMIN_QUERY_SCOPE, tenantId ?? 'none', 'screener', 'public'] });
       setNotice(
@@ -234,7 +235,7 @@ export function ScreenerPage() {
     if (!confirmed) return;
     try {
       await coreApiAdapter.deleteScreenerRule(String(id));
-      const tenantId = typeof window !== 'undefined' ? window.localStorage.getItem('tenant_id') : null;
+      const tenantId = typeof window !== 'undefined' ? tenantIdStorage.getTenantId() : null;
       queryClient.invalidateQueries({ queryKey: [TENANT_ADMIN_QUERY_SCOPE, tenantId ?? 'none', 'screener', 'rules'] });
       if (results?.rule_id === id) setResults(null);
     } catch {
@@ -258,7 +259,7 @@ export function ScreenerPage() {
     setHistory(saveScreenerRun(entry));
     // P2.3: BE auto-creates ScreenerRunHistory on run — invalidate server list
     try {
-      const tenantId = typeof window !== 'undefined' ? window.localStorage.getItem('tenant_id') : null;
+      const tenantId = typeof window !== 'undefined' ? tenantIdStorage.getTenantId() : null;
       queryClient.invalidateQueries({ queryKey: [TENANT_ADMIN_QUERY_SCOPE, tenantId ?? 'none', 'screener', 'history'] });
     } catch {
       /* ignore */
@@ -337,7 +338,7 @@ export function ScreenerPage() {
       }
       const name = uniqueRuleName(t(tmpl.name_key), rules);
       await coreApiAdapter.createScreenerRule({ name, rules_json: candidate, is_active: true });
-      const tenantId2 = typeof window !== 'undefined' ? window.localStorage.getItem('tenant_id') : null;
+      const tenantId2 = typeof window !== 'undefined' ? tenantIdStorage.getTenantId() : null;
       queryClient.invalidateQueries({ queryKey: [TENANT_ADMIN_QUERY_SCOPE, tenantId2 ?? 'none', 'screener', 'rules'] });
       setNotice(t('screener.saveRuleSuccess', { name, defaultValue: `Đã lưu rule '${name}'.` }));
     } catch (err: unknown) {

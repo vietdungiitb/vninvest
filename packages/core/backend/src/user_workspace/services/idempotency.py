@@ -19,6 +19,10 @@ Ranh giới trách nhiệm:
 - `store_result()` chỉ ghi đè khi fingerprint khớp, nên một request thất bại
   không thể ghi kết quả của request khác vào cùng key.
 - `release()` nhả key khi thao tác thất bại, để client retry được.
+- TEN-06: `claim` / `store_result` / `release` nhận `tenant_id` và ghép nó vào
+  cache key. Không có nó thì user thuộc 2 tenant dùng chung một namespace, và
+  cùng một `Idempotency-Key` ở tenant B se bi khop hoac bi 409 nham khi tenant A
+  da ghi record -- tuc la ro ket qua don hang cua tenant khac.
 """
 from __future__ import annotations
 
@@ -49,8 +53,21 @@ class Claim:
     result: Any = None
 
 
-def _cache_key(user_id, scope: str, key: str) -> str:
-    return f'idemp:{scope}:{user_id}:{key}'
+def _cache_key(user_id, scope: str, key: str, tenant_id=None) -> str:
+    """Build the cache key, scoped by tenant.
+
+    TEN-06: `tenant_id` is part of the key on purpose. Without it, a user who
+    belongs to two tenants shares one namespace: the same `Idempotency-Key`
+    sent under tenant B would be deduped against -- or rejected as a conflict
+    by -- the record written under tenant A. That is a cross-tenant leak of
+    another tenant's order result, and a false 409 on a legitimate order.
+
+    `tenant_id` is keyword-only and defaults to `None`, which serialises to the
+    literal `no-tenant` so a pre-existing caller cannot silently collide with
+    a real tenant's namespace. New call sites must pass it.
+    """
+    tenant_part = 'no-tenant' if tenant_id in (None, '') else str(tenant_id)
+    return f'idemp:{tenant_part}:{scope}:{user_id}:{key}'
 
 
 def _normalize_key(key) -> str:
@@ -62,14 +79,14 @@ def _normalize_key(key) -> str:
     return normalized
 
 
-def claim(*, user_id, scope: str, key, fingerprint: str) -> Claim:
+def claim(*, user_id, scope: str, key, fingerprint: str, tenant_id=None) -> Claim:
     """Giữ key cho user + scope này, hoặc báo trạng thái của request đang giữ nó.
 
     `cache.add` chỉ trả True cho đúng một lần gọi ⇒ chỉ một request được quyền
     thực thi. Lần gọi sau thấy `in_progress` hoặc `completed`.
     """
     normalized = _normalize_key(key)
-    ck = _cache_key(user_id, scope, normalized)
+    ck = _cache_key(user_id, scope, normalized, tenant_id)
     ttl = IDEMPOTENCY_TTL_SECONDS
 
     if cache.add(ck, {'state': _STATE_IN_PROGRESS, 'fingerprint': fingerprint}, ttl):
@@ -92,10 +109,10 @@ def claim(*, user_id, scope: str, key, fingerprint: str) -> Claim:
     return Claim(acquired=False, in_progress=True)
 
 
-def store_result(*, user_id, scope: str, key, fingerprint: str, result: Any) -> bool:
+def store_result(*, user_id, scope: str, key, fingerprint: str, result: Any, tenant_id=None) -> bool:
     """Ghi kết quả để các lần gọi sau trả lại y hệt. Trả `False` nếu key đã lệch."""
     normalized = _normalize_key(key)
-    ck = _cache_key(user_id, scope, normalized)
+    ck = _cache_key(user_id, scope, normalized, tenant_id)
     record = cache.get(ck) or {}
     if record.get('fingerprint') != fingerprint or record.get('state') != _STATE_IN_PROGRESS:
         return False
@@ -107,10 +124,10 @@ def store_result(*, user_id, scope: str, key, fingerprint: str, result: Any) -> 
     return True
 
 
-def release(*, user_id, scope: str, key) -> None:
+def release(*, user_id, scope: str, key, tenant_id=None) -> None:
     """Nhả key khi thao tác thất bại, để client retry được với cùng key."""
     try:
         normalized = _normalize_key(key)
     except IdempotencyKeyError:
         return
-    cache.delete(_cache_key(user_id, scope, normalized))
+    cache.delete(_cache_key(user_id, scope, normalized, tenant_id))

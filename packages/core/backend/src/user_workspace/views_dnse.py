@@ -41,8 +41,11 @@ from vninvest_core.exceptions import (
     InternalErrorException,
     NotFoundErrorException,
     PermissionErrorException,
+    ServiceUnavailableException,
     ValidationErrorException,
 )
+
+from .permissions import (attach_required_permissions, WorkspacePermission, required_workspace_permission,)
 
 #: side hợp lệ — `UNKNOWN` bị từ chối để luồng fail-closed ở BE cũng áp dụng.
 _ALLOWED_SIDES = ('BUY', 'SELL')
@@ -491,8 +494,9 @@ def _get_active_dnse_client(user):
 # Giữ lại sync/OTP/order views (đọc secrets qua _get_dnse_secrets → store mới trước).
 
 
+@required_workspace_permission('portfolio_write')
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, WorkspacePermission])
 def dnse_sync_accounts_api(request):
     """
     Kích hoạt tác vụ đồng bộ tiểu khoản từ DNSE LightSpeed API.
@@ -520,8 +524,9 @@ def dnse_sync_accounts_api(request):
     }, status=status.HTTP_502_BAD_GATEWAY)
 
 
+@required_workspace_permission('portfolio_write')
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, WorkspacePermission])
 def dnse_sync_balances_api(request):
     """
     Kích hoạt tác vụ đồng bộ số dư/NAV từ DNSE cho các tiểu khoản đã liên kết.
@@ -543,8 +548,9 @@ def dnse_sync_balances_api(request):
     )
 
 
+@required_workspace_permission('portfolio_write')
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, WorkspacePermission])
 def dnse_reconcile_transactions_api(request):
     """
     Kích hoạt đối soát giao dịch DNSE cho các tiểu khoản đã liên kết.
@@ -572,8 +578,41 @@ def dnse_reconcile_transactions_api(request):
     )
 
 
+def _assert_broker_writes_allowed(request, provider, *, action: str) -> None:
+    """SAFE-03 lớp view: chặn ghi broker khi kill-switch bật hoặc không đọc được.
+
+    Chạy global + tenant + provider: chỉ cần một scope nào đó bật là chặn.
+    `KillSwitchIndeterminate` (lỗi hạ tầng) trả 503 vì đó là sự cố tạm thời,
+    còn `BrokerWriteDisabled` (operator chủ động tắt) trả 503 luôn — hai nguyên
+    nhân khác nhau nhưng đều nghĩa là "đừng ghi lúc này".
+    """
+    from service_ops.broker_runtime import (
+        BrokerWriteDisabled,
+        check_kill_switch,
+    )
+
+    tenant = getattr(request, 'tenant', None)
+    for scope in ('global', 'tenant', 'provider'):
+        try:
+            check_kill_switch(scope, tenant=tenant, provider=provider)
+        except BrokerWriteDisabled as exc:
+            logger.warning(
+                'dnse: write blocked by kill-switch scope=%s provider=%s '
+                'action=%s user=%s: %s',
+                scope, provider, action, getattr(request.user, 'id', None), exc,
+            )
+            raise ServiceUnavailableException(
+                detail=(
+                    'Hệ thống đang tạm ngừng giao dịch. Vui lòng thử lại sau. '
+                    'Lệnh của bạn chưa được gửi tới broker.'
+                ),
+                code='broker_writes_disabled',
+            ) from exc
+
+
+@required_workspace_permission('order_write')
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, WorkspacePermission])
 @throttle_classes([ScopedRateThrottle])
 def dnse_place_order_api(request):
     """
@@ -587,6 +626,11 @@ def dnse_place_order_api(request):
     broker. Ghi hỏng ⇒ từ chối lệnh (`audit_unavailable`), không gọi broker.
     Không thể làm vậy sau khi gọi broker vì lệnh đã không thể hoàn tác.
     """
+    # SAFE-03 — kill-switch chặn TRƯỚC mọi thao tác khác, kể cả trước khi
+    # validate payload: một request bị chặn không nên tạo audit row, cũng
+    # không nên chạm broker. `check_kill_switch` fail-closed — lỗi đọc
+    # trạng thái cũng chặn, không cho qua.
+    _assert_broker_writes_allowed(request, 'dnse', action='place_order')
     user = request.user
     raw_payload = request.data.get("payload")
     audit_payload = raw_payload if isinstance(raw_payload, dict) else {}
@@ -650,8 +694,12 @@ def dnse_place_order_api(request):
         )
 
     fingerprint = _order_fingerprint(market_type, order_category, normalized_payload)
+    # TEN-06: scope the idempotency namespace by tenant, so the same key under
+    # tenant B cannot be deduped against / conflict with a record from tenant A.
+    order_tenant_id = getattr(getattr(request, 'tenant', None), 'public_id', None)
     claim = idempotency.claim(
-        user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key, fingerprint=fingerprint,
+        user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key,
+        fingerprint=fingerprint, tenant_id=order_tenant_id,
     )
     if claim.conflict:
         raise ConflictErrorException(
@@ -671,6 +719,10 @@ def dnse_place_order_api(request):
             "result": claim.result,
             "idempotent_replay": True,
             "audit_recorded": True,
+            # SAFE-01 R3: client cần biết lệnh này chạy ở mode nào để render
+            # badge. Không có nó thì FE chỉ còn cách đoán từ payload.
+            "mode": mode,
+            "dry_run": dry_run,
         })
 
     # X.2 + SAFE-01 — fail-closed: không có dòng audit thì KHÔNG gọi broker.
@@ -678,7 +730,7 @@ def dnse_place_order_api(request):
         request, market_type, order_category, normalized_payload, 'requested', mode, dry_run,
     )
     if audit_event is None:
-        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key)
+        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key, tenant_id=order_tenant_id)
         raise InternalErrorException(
             detail=(
                 "Không ghi được audit đặt lệnh nên lệnh bị từ chối. "
@@ -700,31 +752,34 @@ def dnse_place_order_api(request):
         audit_recorded = _finalize_audit_event(audit_event, 'accepted')
         idempotency.store_result(
             user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key,
-            fingerprint=fingerprint, result=result,
+            fingerprint=fingerprint, result=result, tenant_id=order_tenant_id,
         )
         return Response({
             "result": result,
             "idempotent_replay": False,
             "audit_recorded": audit_recorded,
+            # SAFE-01 R3 — `mode` là quyết định của SERVER, không phải client.
+            "mode": mode,
+            "dry_run": dry_run,
         })
     except DNSECredentialMissingError as exc:
         _finalize_audit_event(audit_event, 'credential_missing')
-        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key)
+        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key, tenant_id=order_tenant_id)
         raise ValidationErrorException(detail=str(exc), code="validation_error")
     except DNSEAdapterError as exc:
         _finalize_audit_event(audit_event, 'adapter_error')
-        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key)
+        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key, tenant_id=order_tenant_id)
         # `str(exc)` từ adapter đã là thông điệp nghiệp vụ có kiểm soát.
         raise ValidationErrorException(detail=str(exc), code="validation_error")
     except ValidationErrorException:
         _finalize_audit_event(audit_event, 'rejected_by_adapter')
-        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key)
+        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key, tenant_id=order_tenant_id)
         raise
     except Exception:
         # R0.11 — KHÔNG trả `str(exc)` cho client. Chi tiết lỗi nằm trong log
         # nội bộ, client chỉ nhận thông điệp chung.
         _finalize_audit_event(audit_event, 'internal_error')
-        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key)
+        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key, tenant_id=order_tenant_id)
         logger.exception('dnse_place_order_api: unexpected failure for user=%s', getattr(user, 'id', None))
         raise ValidationErrorException(
             detail="Đặt lệnh thất bại do lỗi hệ thống. Vui lòng thử lại sau.",
@@ -737,8 +792,9 @@ def dnse_place_order_api(request):
 dnse_place_order_api.throttle_scope = 'broker_order'
 
 
+@required_workspace_permission('order_write')
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, WorkspacePermission])
 def dnse_send_email_otp_api(request):
     """
     Gửi OTP email cho flow giao dịch DNSE.
@@ -747,13 +803,14 @@ def dnse_send_email_otp_api(request):
     quên field. Nay mode phải nói rõ, và thiếu mode thì từ chối.
     PA-1/X.5 — nhánh `except Exception` trả `str(exc)` thô; nay chỉ trả mã lỗi.
     """
+    _assert_broker_writes_allowed(request, 'dnse', action='send_email_otp')
     user = request.user
-    _mode, dry_run = _resolve_order_mode(request.data)
+    mode, dry_run = _resolve_order_mode(request.data)
 
     try:
         client = _get_active_dnse_client(user)
         result = client.send_email_otp(dry_run=dry_run, raw=False)
-        return Response({"result": result})
+        return Response({"result": result, "mode": mode, "dry_run": dry_run})
     except DNSECredentialMissingError as exc:
         raise ValidationErrorException(detail=str(exc), code="validation_error")
     except DNSEAdapterError as exc:
@@ -768,18 +825,20 @@ def dnse_send_email_otp_api(request):
         )
 
 
+@required_workspace_permission('order_write')
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, WorkspacePermission])
 def dnse_create_trading_token_api(request):
     """
     Tạo trading token bằng OTP/passcode để đặt/sửa/hủy lệnh DNSE.
 
     PA-1/SAFE-01 + PA-1/X.5 — cùng xử lý mode và redaction như `place_order`.
     """
+    _assert_broker_writes_allowed(request, 'dnse', action='create_trading_token')
     user = request.user
     otp_type = str(request.data.get("otp_type", "EMAIL")).strip().upper() or "EMAIL"
     passcode = str(request.data.get("passcode", "")).strip()
-    _mode, dry_run = _resolve_order_mode(request.data)
+    mode, dry_run = _resolve_order_mode(request.data)
 
     if not passcode:
         raise ValidationErrorException(
@@ -801,6 +860,10 @@ def dnse_create_trading_token_api(request):
             "otp_type": otp_type,
             "trading_token": trading_token,
             "result": result,
+            # SAFE-01 R3 — client cần `mode` để biết token này được cấp cho
+            # luồng paper hay live.
+            "mode": mode,
+            "dry_run": dry_run,
         })
     except DNSECredentialMissingError as exc:
         raise ValidationErrorException(detail=str(exc), code="validation_error")
@@ -840,3 +903,14 @@ def dnse_token_status_api(request):
         "broker": "DNSE",
         "auth_method": "LightSpeed_OAuth2",
     })
+
+# SAFE-04: @api_view khong chep attribute tuy chon sang class, nen phai
+# chuyen khai bao sang .cls sau khi moi view da duoc boc.
+attach_required_permissions(
+    dnse_sync_accounts_api,
+    dnse_sync_balances_api,
+    dnse_place_order_api,
+    dnse_send_email_otp_api,
+    dnse_create_trading_token_api,
+    dnse_reconcile_transactions_api,
+)

@@ -34,6 +34,13 @@ BROKER_SECRET_KEY_MISSING_ID = "vninvest_core.W003"
 #: Emitted when BROKER_SECRET_KEY is set but no retained older key is configured,
 #: i.e. rotating it would strand existing ciphertext.
 BROKER_SECRET_KEY_NO_RETAINED_ID = "vninvest_core.W004"
+#: Emitted when BROKER_SECRET_KEY (or a retained BROKER_SECRET_KEY_V<n>) still
+#: holds the literal placeholder shipped in ``compose.dev.env.example``. This is an
+#: ``Error`` and is NOT suppressed by DEBUG, because ``cp *.example *.env`` is the
+#: documented onboarding step: a dev stack would otherwise encrypt every broker
+#: credential under a value published in the repository while the code reports that
+#: the key is properly decoupled from SECRET_KEY.
+BROKER_SECRET_KEY_PLACEHOLDER_ID = "vninvest_core.E002"
 
 
 def _running_tests():
@@ -123,12 +130,39 @@ def check_broker_secret_key_rotation(app_configs, **kwargs):
 
     from django.conf import settings
 
+    from vninvest_core.env_validation import is_placeholder_value
     from vninvest_core.utils.encryption import SecretKeyMissingError, SecretStore
 
-    if getattr(settings, "DEBUG", False) or _running_tests():
+    if _running_tests():
         return []
 
     broker_key = os.environ.get("BROKER_SECRET_KEY", "").strip()
+    placeholder_vars = [
+        name
+        for name in os.environ
+        if re.fullmatch(r"BROKER_SECRET_KEY(_V\d+)?", name)
+        and is_placeholder_value(os.environ[name])
+    ]
+    if is_placeholder_value(broker_key) or placeholder_vars:
+        return [
+            Error(
+                "Broker secret key(s) still hold the placeholder value from "
+                f"compose.dev.env.example: {sorted(placeholder_vars) or ['BROKER_SECRET_KEY']}.",
+                hint=(
+                    "cp compose.dev.env.example compose.dev.env leaves <REQUIRED> in place. "
+                    "That literal is a public constant, so every broker credential would be "
+                    "encrypted under a known value while the code reports the key as "
+                    "decoupled from DJANGO_SECRET_KEY. Generate a real Fernet key: "
+                    'python -c "from cryptography.fernet import Fernet; '
+                    "print(Fernet.generate_key().decode())\""
+                ),
+                id=BROKER_SECRET_KEY_PLACEHOLDER_ID,
+            )
+        ]
+
+    if getattr(settings, "DEBUG", False):
+        return []
+
     if not broker_key:
         return [
             Warning(

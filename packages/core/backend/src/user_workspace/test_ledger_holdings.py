@@ -255,6 +255,11 @@ class LedgerCacheAndProvenanceTest(TestCase):
             username='pa2-cache-user', email='pa2-cache@test.local', password='x',
         )
         self.portfolio = Portfolio.objects.create(user=self.user, name='PA2 cache')
+        # TEN-06: get_cached_ledger fail-closed khi thieu tenant, nen cac
+        # test duoi day goi bang self.portfolio.tenant (co san tu signal) chu
+        # khong phai None — trung y het voi production, noi moi request
+        # luon co tenant tu middleware.
+        self.tenant = self.portfolio.tenant
         Transaction.objects.create(
             portfolio=self.portfolio,
             symbol='VCB',
@@ -296,8 +301,8 @@ class LedgerCacheAndProvenanceTest(TestCase):
         self.assertEqual(meta['source'], 'manual')
 
     def test_cache_hit_then_invalidated_by_new_transaction(self):
-        first = get_cached_ledger(self.portfolio.id)
-        second = get_cached_ledger(self.portfolio.id)
+        first = get_cached_ledger(self.portfolio.id, self.tenant)
+        second = get_cached_ledger(self.portfolio.id, self.tenant)
         self.assertFalse(first['meta']['from_cache'])
         self.assertTrue(second['meta']['from_cache'])
         self.assertEqual(first['cash'], second['cash'])
@@ -306,13 +311,13 @@ class LedgerCacheAndProvenanceTest(TestCase):
             portfolio=self.portfolio, symbol='VCB', transaction_type=BUY,
             date=date(2026, 9, 23), price=Decimal('51000'), quantity=10,
         )
-        third = get_cached_ledger(self.portfolio.id)
+        third = get_cached_ledger(self.portfolio.id, self.tenant)
         self.assertNotEqual(third['cash'], second['cash'], msg='giao dịch mới phải thấy ngay')
 
     def test_editing_old_transaction_invalidates_cache(self):
         """Lý do phải có fingerprint, không chỉ `as_of` (xem CACHE_KEY_NOTE)."""
-        first = get_cached_ledger(self.portfolio.id)
-        self.assertTrue(get_cached_ledger(self.portfolio.id)['meta']['from_cache'])
+        first = get_cached_ledger(self.portfolio.id, self.tenant)
+        self.assertTrue(get_cached_ledger(self.portfolio.id, self.tenant)['meta']['from_cache'])
 
         old = Transaction.objects.filter(
             portfolio=self.portfolio, transaction_type=BUY,
@@ -320,7 +325,7 @@ class LedgerCacheAndProvenanceTest(TestCase):
         old.quantity = 999
         old.save(update_fields=['quantity', 'updated_at'])
 
-        after = get_cached_ledger(self.portfolio.id)
+        after = get_cached_ledger(self.portfolio.id, self.tenant)
         self.assertNotEqual(
             after['holdings']['VCB']['quantity'],
             first['holdings']['VCB']['quantity'],
@@ -328,10 +333,10 @@ class LedgerCacheAndProvenanceTest(TestCase):
         )
 
     def test_invalidate_ledger_cache_forces_recompute(self):
-        get_cached_ledger(self.portfolio.id)
-        self.assertTrue(get_cached_ledger(self.portfolio.id)['meta']['from_cache'])
+        get_cached_ledger(self.portfolio.id, self.tenant)
+        self.assertTrue(get_cached_ledger(self.portfolio.id, self.tenant)['meta']['from_cache'])
         invalidate_ledger_cache(self.portfolio.id)
-        self.assertFalse(get_cached_ledger(self.portfolio.id)['meta']['from_cache'])
+        self.assertFalse(get_cached_ledger(self.portfolio.id, self.tenant)['meta']['from_cache'])
 
     def test_cache_ttl_is_bounded(self):
         self.assertGreater(LEDGER_CACHE_TTL_SECONDS, 0)

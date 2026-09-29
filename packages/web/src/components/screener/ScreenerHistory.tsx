@@ -1,5 +1,6 @@
 import { createElement, useState, useMemo, type CSSProperties } from "react";
 import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { tenantIdStorage } from "../../adapters/core/transport.js";
 import { useI18n } from "../../context/LangContext.js";
 import { useTenantAdminQuery, TENANT_ADMIN_QUERY_SCOPE } from "../../pages/tenant-admin/useTenantAdminQuery.js";
 import { useQueryClient } from "@tanstack/react-query";
@@ -136,7 +137,7 @@ export function ScreenerHistory({ runs: fallbackRuns }: ScreenerHistoryProps) {
     if (entry.serverId == null) return;
     try {
       await (coreApiAdapter as any).deleteScreenerHistory(entry.serverId);
-      const tenantId = typeof window !== 'undefined' ? window.localStorage.getItem('tenant_id') : null;
+      const tenantId = typeof window !== 'undefined' ? tenantIdStorage.getTenantId() : null;
       queryClient.invalidateQueries({ queryKey: [TENANT_ADMIN_QUERY_SCOPE, tenantId ?? 'none', 'screener', 'history'] });
     } catch {
       /* ignore */

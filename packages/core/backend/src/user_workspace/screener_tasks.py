@@ -98,7 +98,16 @@ def run_screener_scan_task(
 
         try:
             from user_workspace.screener_helpers import build_scan_cache_value
-            scan_key = _scan_cache_key(user_id, rule_stub, session_date, bool(include_ai))
+            # TEN-06: the task must build the SAME tenant-scoped key as the
+            # request path, or the cached write lands in a namespace nothing
+            # ever reads. The tenant comes from the rule, matching
+            # `request.tenant` on the synchronous path.
+            _key_rule = ScreenerRule.objects.filter(pk=rule_id).only("tenant_id").first()
+            _key_tenant = getattr(_key_rule, "tenant", None) if _key_rule else None
+            _key_tenant_id = getattr(_key_tenant, "public_id", None)
+            scan_key = _scan_cache_key(
+                user_id, rule_stub, session_date, bool(include_ai), tenant_id=_key_tenant_id
+            )
             dj_cache.set(
                 scan_key,
                 build_scan_cache_value(matched, total_scanned, missing_counts),
@@ -152,7 +161,10 @@ def run_screener_scan_task(
                     params={'sort': 'ai_score', 'order': 'desc', 'include_ai': int(bool(include_ai)), 'via': 'task'},
                 )
                 if new_symbols:
-                    _alerts_key = f"screener:sched_alerts:{user_id}"
+                    # TEN-06: must match the read key in
+                    # ScreenerScheduleAlertsView, which is tenant-scoped.
+                    _alerts_tenant = getattr(_tenant, "public_id", None) or "no-tenant"
+                    _alerts_key = f"screener:sched_alerts:{_alerts_tenant}:{user_id}"
                     try:
                         _alerts = dj_cache.get(_alerts_key) or []
                         if not isinstance(_alerts, list):
