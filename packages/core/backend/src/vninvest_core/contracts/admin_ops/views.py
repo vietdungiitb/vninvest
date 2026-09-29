@@ -2177,7 +2177,7 @@ class AdminOpsVnbrokerBenchmarkLatestView(APIView):
             started_at = parse_datetime(started_at_raw) if started_at_raw else None
             if started_at is not None:
                 if timezone.is_naive(started_at):
-                    started_at = timezone.make_aware(started_at, timezone=timezone.utc)
+                    started_at = timezone.make_aware(started_at, timezone=timezone.UTC)
                 running_seconds = max((timezone.now() - started_at).total_seconds(), 0)
                 report['running_seconds'] = int(running_seconds)
                 if running_seconds > _BENCHMARK_RUNNING_MAX_SECONDS:

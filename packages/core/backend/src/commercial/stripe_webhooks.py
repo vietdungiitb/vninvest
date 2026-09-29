@@ -125,7 +125,7 @@ class StripeWebhookView(APIView):
             tenant.stripe_subscription_id = subscription.id
             tenant.stripe_price_id = price_id
             tenant.stripe_current_period_end = timezone.datetime.fromtimestamp(
-                subscription.current_period_end, tz=timezone.utc
+                subscription.current_period_end, tz=timezone.UTC
             )
             tenant.stripe_cancel_at_period_end = subscription.cancel_at_period_end
             tenant.plan = plan
@@ -141,10 +141,10 @@ class StripeWebhookView(APIView):
                     'plan': plan,
                     'status': self._map_stripe_status(subscription.status),
                     'current_period_start': timezone.datetime.fromtimestamp(
-                        subscription.current_period_start, tz=timezone.utc
+                        subscription.current_period_start, tz=timezone.UTC
                     ).date(),
                     'current_period_end': timezone.datetime.fromtimestamp(
-                        subscription.current_period_end, tz=timezone.utc
+                        subscription.current_period_end, tz=timezone.UTC
                     ).date(),
                     'cancel_at_period_end': subscription.cancel_at_period_end,
                 }
@@ -164,7 +164,7 @@ class StripeWebhookView(APIView):
             tenant.stripe_subscription_id = subscription.id
             tenant.stripe_price_id = price_id
             tenant.stripe_current_period_end = timezone.datetime.fromtimestamp(
-                subscription.current_period_end, tz=timezone.utc
+                subscription.current_period_end, tz=timezone.UTC
             )
             tenant.stripe_cancel_at_period_end = subscription.cancel_at_period_end
             tenant.plan = plan
@@ -180,10 +180,10 @@ class StripeWebhookView(APIView):
                     'plan': plan,
                     'status': self._map_stripe_status(subscription.status),
                     'current_period_start': timezone.datetime.fromtimestamp(
-                        subscription.current_period_start, tz=timezone.utc
+                        subscription.current_period_start, tz=timezone.UTC
                     ).date(),
                     'current_period_end': timezone.datetime.fromtimestamp(
-                        subscription.current_period_end, tz=timezone.utc
+                        subscription.current_period_end, tz=timezone.UTC
                     ).date(),
                     'cancel_at_period_end': subscription.cancel_at_period_end,
                 }
@@ -230,16 +230,16 @@ class StripeWebhookView(APIView):
                         'amount_due': invoice.amount_paid / 100,  # Convert from cents
                         'currency': invoice.currency.upper(),
                         'period_start': timezone.datetime.fromtimestamp(
-                            invoice.period_start, tz=timezone.utc
+                            invoice.period_start, tz=timezone.UTC
                         ).date() if invoice.period_start else timezone.now().date(),
                         'period_end': timezone.datetime.fromtimestamp(
-                            invoice.period_end, tz=timezone.utc
+                            invoice.period_end, tz=timezone.UTC
                         ).date() if invoice.period_end else timezone.now().date(),
                         'due_date': timezone.datetime.fromtimestamp(
-                            invoice.due_date, tz=timezone.utc
+                            invoice.due_date, tz=timezone.UTC
                         ).date() if invoice.due_date else None,
                         'paid_at': timezone.datetime.fromtimestamp(
-                            invoice.status_transitions.paid_at, tz=timezone.utc
+                            invoice.status_transitions.paid_at, tz=timezone.UTC
                         ) if invoice.status_transitions and invoice.status_transitions.paid_at else timezone.now(),
                     }
                 )
@@ -259,13 +259,13 @@ class StripeWebhookView(APIView):
                     'amount_due': invoice.amount_due / 100,
                     'currency': invoice.currency.upper(),
                     'period_start': timezone.datetime.fromtimestamp(
-                        invoice.period_start, tz=timezone.utc
+                        invoice.period_start, tz=timezone.UTC
                     ).date() if invoice.period_start else timezone.now().date(),
                     'period_end': timezone.datetime.fromtimestamp(
-                        invoice.period_end, tz=timezone.utc
+                        invoice.period_end, tz=timezone.UTC
                     ).date() if invoice.period_end else timezone.now().date(),
                     'due_date': timezone.datetime.fromtimestamp(
-                        invoice.due_date, tz=timezone.utc
+                        invoice.due_date, tz=timezone.UTC
                     ).date() if invoice.due_date else None,
                 }
             )

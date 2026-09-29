@@ -776,7 +776,7 @@ class RealtimeUnifiedAlertsView(APIView):
 
     def _safe_parse_ts(self, ts_raw):
         if not ts_raw:
-            return timezone.datetime.min.replace(tzinfo=timezone.utc)
+            return timezone.datetime.min.replace(tzinfo=timezone.UTC)
         try:
             parsed = timezone.datetime.fromisoformat(str(ts_raw).replace('Z', '+00:00'))
             if timezone.is_naive(parsed):
@@ -784,7 +784,7 @@ class RealtimeUnifiedAlertsView(APIView):
             return parsed
         except (ValueError, TypeError) as e:
             logger.debug('_safe_parse_ts failed to parse %r: %s', ts_raw, e)
-            return timezone.datetime.min.replace(tzinfo=timezone.utc)
+            return timezone.datetime.min.replace(tzinfo=timezone.UTC)
 
 
 
