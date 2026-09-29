@@ -27,12 +27,17 @@ Tôi đã kiểm chứng Q5 bằng dữ liệu thay vì tin lời nói: `docs/CL
 Trong lúc lập danh sách xoá, tôi thấy `update_admin_password.sql` ở thư mục gốc:
 
 ```sql
+-- GIA TRI DA BÔI ĐEN. Bản này chỉ giữ HÌNH DẠNG, không giữ hash thật.
 UPDATE auth_user
-SET password='pbkdf2_sha256$600000$5h4qBLIDF27uTxNDJXuChZ4Smrnn2VofPPfDEOMQql4=$YNoWNEhtIsGnPcUwB/VhB+5Fdvy5SR5aGkHJzSFxOM0='
+SET password='pbkdf2_sha256$600000$<salt>$<hash>'
 WHERE username='admin';
 
 SELECT id, username, email, is_staff, is_superuser, password FROM auth_user WHERE username='admin';
 ```
+
+> **Lưu ý (2026-09-28, bước 5):** bản đầu của tài liệu này dán **nguyên hash thật** vào khối `sql` trên.
+> Rule `Password hash (Django/bcrypt/argon2)` mới thêm trong `scan-secrets.mjs` đã bắt được chính lỗi đó.
+> Giá trị đã được bôi đen ở đây; **việc rotate vẫn thuộc về owner** (xem `SEC-01-REPORT.md`).
 
 Đây là **hash mật khẩu admin với salt cố định**, cộng thêm một câu `SELECT` in ra email
 của admin. File đang được git track.
