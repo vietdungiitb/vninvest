@@ -1944,12 +1944,20 @@ def _remove_pending_job(cache_obj, user_id: int, job_id: str):
 
 
 
-def _scan_cache_key(user_id, rule, session_date, include_ai):
+def _scan_cache_key(user_id, rule, session_date, include_ai, tenant_id=None):
     """Cache key WITHOUT sort/order (Option B, Entry 76): one entry serves all
-    sorts/pages; updated_at auto-invalidates on rule edit, session_date on new session."""
+    sorts/pages; updated_at auto-invalidates on rule edit, session_date on new session.
+
+    TEN-06: `tenant_id` is part of the key. Without it, a user who belongs to
+    two tenants can read a scan result cached for the other tenant whenever the
+    rule id and session date line up. The caller passes the tenant explicitly;
+    when it is absent the literal `no-tenant` keeps the namespace separate
+    rather than silently colliding with a real tenant.
+    """
     updated_ts = int(rule.updated_at.timestamp()) if getattr(rule, "updated_at", None) else 0
+    tenant_part = "no-tenant" if tenant_id in (None, "") else str(tenant_id)
     return (
-        f"screener:scan:{user_id}:{rule.id}:{updated_ts}:"
+        f"screener:scan:{tenant_part}:{user_id}:{rule.id}:{updated_ts}:"
         f"{session_date.isoformat()}:{int(bool(include_ai))}"
     )
 
@@ -2187,7 +2195,12 @@ class PortfolioScreenerRuleRunView(APIView):
         from django.conf import settings as _scan_settings
         from user_workspace.screener_helpers import _required_lookback_days, _lookback_calendar_days
         _scan_ttl = getattr(_scan_settings, "SCREENER_SCAN_CACHE_TTL", _SCAN_CACHE_TTL)
-        scan_cache_key = _scan_cache_key(request.user.id, rule, session_date, include_ai)
+        # TEN-06: bind the scan cache to the active tenant so a user in two
+        # tenants cannot read the other tenant's cached scan result.
+        _scan_tenant_id = getattr(getattr(request, "tenant", None), "public_id", None)
+        scan_cache_key = _scan_cache_key(
+            request.user.id, rule, session_date, include_ai, tenant_id=_scan_tenant_id
+        )
         cached_scan = _scan_cache.get(scan_cache_key)
         _cache_hit = isinstance(cached_scan, dict) and "matched" in cached_scan
         if _cache_hit and cached_scan.get("truncated") and has_scan_params:
@@ -2664,7 +2677,10 @@ class ScreenerScheduleAlertsView(APIView):
     def get(self, request):
         from django.core.cache import cache as _cache
 
-        alerts = _cache.get(f"screener:sched_alerts:{request.user.id}") or []
+        # TEN-06: scope by tenant — a user in two tenants must not see the
+        # other tenant's scheduled-alert payload.
+        _alerts_tenant = getattr(getattr(request, "tenant", None), "public_id", None) or "no-tenant"
+        alerts = _cache.get(f"screener:sched_alerts:{_alerts_tenant}:{request.user.id}") or []
         if not isinstance(alerts, list):
             alerts = []
         return Response({'count': len(alerts), 'results': alerts[:50]})

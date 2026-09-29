@@ -650,8 +650,12 @@ def dnse_place_order_api(request):
         )
 
     fingerprint = _order_fingerprint(market_type, order_category, normalized_payload)
+    # TEN-06: scope the idempotency namespace by tenant, so the same key under
+    # tenant B cannot be deduped against / conflict with a record from tenant A.
+    order_tenant_id = getattr(getattr(request, 'tenant', None), 'public_id', None)
     claim = idempotency.claim(
-        user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key, fingerprint=fingerprint,
+        user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key,
+        fingerprint=fingerprint, tenant_id=order_tenant_id,
     )
     if claim.conflict:
         raise ConflictErrorException(
@@ -678,7 +682,7 @@ def dnse_place_order_api(request):
         request, market_type, order_category, normalized_payload, 'requested', mode, dry_run,
     )
     if audit_event is None:
-        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key)
+        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key, tenant_id=order_tenant_id)
         raise InternalErrorException(
             detail=(
                 "Không ghi được audit đặt lệnh nên lệnh bị từ chối. "
@@ -700,7 +704,7 @@ def dnse_place_order_api(request):
         audit_recorded = _finalize_audit_event(audit_event, 'accepted')
         idempotency.store_result(
             user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key,
-            fingerprint=fingerprint, result=result,
+            fingerprint=fingerprint, result=result, tenant_id=order_tenant_id,
         )
         return Response({
             "result": result,
@@ -709,22 +713,22 @@ def dnse_place_order_api(request):
         })
     except DNSECredentialMissingError as exc:
         _finalize_audit_event(audit_event, 'credential_missing')
-        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key)
+        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key, tenant_id=order_tenant_id)
         raise ValidationErrorException(detail=str(exc), code="validation_error")
     except DNSEAdapterError as exc:
         _finalize_audit_event(audit_event, 'adapter_error')
-        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key)
+        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key, tenant_id=order_tenant_id)
         # `str(exc)` từ adapter đã là thông điệp nghiệp vụ có kiểm soát.
         raise ValidationErrorException(detail=str(exc), code="validation_error")
     except ValidationErrorException:
         _finalize_audit_event(audit_event, 'rejected_by_adapter')
-        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key)
+        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key, tenant_id=order_tenant_id)
         raise
     except Exception:
         # R0.11 — KHÔNG trả `str(exc)` cho client. Chi tiết lỗi nằm trong log
         # nội bộ, client chỉ nhận thông điệp chung.
         _finalize_audit_event(audit_event, 'internal_error')
-        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key)
+        idempotency.release(user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key, tenant_id=order_tenant_id)
         logger.exception('dnse_place_order_api: unexpected failure for user=%s', getattr(user, 'id', None))
         raise ValidationErrorException(
             detail="Đặt lệnh thất bại do lỗi hệ thống. Vui lòng thử lại sau.",

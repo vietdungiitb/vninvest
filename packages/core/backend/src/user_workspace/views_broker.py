@@ -166,7 +166,10 @@ def broker_test_connection_api(request, provider):
             code='validation_error',
         )
 
-    cache_key = f'broker:testconn:{user.id}:{normalized}'
+    # TEN-06: include the tenant so the rate-limit bucket is not shared across
+    # tenants (one tenant's bursts cannot exhaust another's quota).
+    _conn_tenant = getattr(getattr(request, "tenant", None), "public_id", None) or "no-tenant"
+    cache_key = f'broker:testconn:{_conn_tenant}:{user.id}:{normalized}'
     count = cache.get(cache_key, 0)
     if count >= TEST_CONN_LIMIT:
         raise RateLimitErrorException(
