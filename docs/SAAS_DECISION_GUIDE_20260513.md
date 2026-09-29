@@ -126,5 +126,5 @@ Việc làm ngay không cần họp:
 
 | Tài liệu | Mục đích |
 |---|---|
-| [SAAS_STATE_ASSESSMENT_20260513.md](SAAS_STATE_ASSESSMENT_20260513.md) | Trạng thái chi tiết từng domain |
-| [SAAS_REMAINING_WORK_20260513.md](SAAS_REMAINING_WORK_20260513.md) | Danh sách việc cần làm với effort estimate |
+| [SAAS_STATE_ASSESSMENT_20260513.md](archive/docs-flat/saas_state_assessment/SAAS_STATE_ASSESSMENT_20260513.md) | Trạng thái chi tiết từng domain |
+| [SAAS_REMAINING_WORK_20260513.md](archive/docs-flat/saas_remaining_work/SAAS_REMAINING_WORK_20260513.md) | Danh sách việc cần làm với effort estimate |
