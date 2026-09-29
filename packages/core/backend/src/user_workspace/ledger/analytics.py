@@ -294,10 +294,18 @@ def risk_metrics(daily_returns, market_values=None, symbols=None,
     1%), không phải giá trị danh mục.
     """
     returns = [float(x) for x in daily_returns]
+    # Mọi key phải CÓ MẶT kể cả khi không đủ dữ liệu. Lý do: nếu nhánh
+    # "không đủ phiên" trả về dict thiếu `var_95_daily` còn nhánh đủ phiên thì
+    # có, thì mọi consumer phải dùng `.get()` — và ngày nào đó ai đó sẽ viết
+    # `result['var_95_daily']` rồi chết vì KeyError chỉ ở một số ngày.
+    #
+    # `var_95_daily` đặt tên đầy đủ chứ không phải `var_95` vì VaR 5% theo ngày
+    # khác hẳn VaR theo kỳ (ANA-03 PB3). Trả cả hai tên là hai nguồn sự thật
+    # cho cùng một câu hỏi nên chỉ giữ một.
     out = {
         'calculation_version': 'ana03-v1',
         'volatility': None,
-        'var_95': None,
+        'var_95_daily': None,
         'max_drawdown': None,
         'concentration': None,
     }

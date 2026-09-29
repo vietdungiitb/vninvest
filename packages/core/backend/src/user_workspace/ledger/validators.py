@@ -140,6 +140,13 @@ def validate_entry(*, entry_type, symbol, quantity, price, fee=None, tax=None,
     if qty is None:
         errors.append(_error('quantity', 'quantity_not_a_number',
                              'Số lượng không phải là số.'))
+    elif qty != qty.to_integral_value():
+        # `LedgerEntry.quantity` là BigIntegerField. Số lượng phân số sẽ bị DB
+        # từ chối hoặc bị làm tròn tùy backend — hai hành vi khác nhau cho cùng
+        # một payload, và cả hai đều là lỗi. Bắt ở đây để lỗi có `field` và
+        # trả 422 thay vì 500 từ tầng DB.
+        errors.append(_error('quantity', 'quantity_not_integer',
+                             'Số lượng phải là số nguyên.', value=str(qty)))
     elif qty < 0:
         errors.append(_error('quantity', 'quantity_negative',
                              'Số lượng không được âm.', value=str(qty)))
