@@ -224,6 +224,8 @@ services:
       # Xem khối core-worker-realtime-scheduler (TICKER_PREFETCH_*).
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
+      # D-15 / SEC-02: worker/beat can giai ma secret broker, can key giong core-api
+      BROKER_SECRET_KEY: ${BROKER_SECRET_KEY:?BROKER_SECRET_KEY is required (xem compose.dev.env)}
       DNSE_API_KEY: ${DNSE_API_KEY:-}
       DNSE_API_SECRET: ${DNSE_API_SECRET:-}
       FRONTEND_URL: http://localhost:8080
@@ -301,6 +303,8 @@ services:
       CELERY_POOL: solo
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
+      # D-15 / SEC-02: worker/beat can giai ma secret broker, can key giong core-api
+      BROKER_SECRET_KEY: ${BROKER_SECRET_KEY:?BROKER_SECRET_KEY is required (xem compose.dev.env)}
       FRONTEND_URL: http://localhost:8080
     command: ["worker"]
     restart: unless-stopped
@@ -362,6 +366,8 @@ services:
       CELERY_MAX_TASKS_PER_CHILD: "4"
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
+      # D-15 / SEC-02: worker/beat can giai ma secret broker, can key giong core-api
+      BROKER_SECRET_KEY: ${BROKER_SECRET_KEY:?BROKER_SECRET_KEY is required (xem compose.dev.env)}
       DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:-}
       DNSE_API_KEY: ${DNSE_API_KEY:-}
       DNSE_API_SECRET: ${DNSE_API_SECRET:-}
@@ -504,6 +510,8 @@ services:
       CELERY_BROKER_URL: redis://core-redis:6379/3
       CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
       CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
+      # D-15 / SEC-02: worker/beat can giai ma secret broker, can key giong core-api
+      BROKER_SECRET_KEY: ${BROKER_SECRET_KEY:?BROKER_SECRET_KEY is required (xem compose.dev.env)}
       FRONTEND_URL: http://localhost:8080
       # Corrective v4: beat warm 5→10 phút (hydrate-leg đã cover hot/10 phút; trùng lặp).
       # Meta-audit fix: api container cũng cần env này — repair_beat_schedule chạy ở api (default
