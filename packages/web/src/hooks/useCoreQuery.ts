@@ -1,11 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
+import { tenantIdStorage } from "@/adapters/coreApiAdapter.js";
 
 export const CORE_USER_QUERY_SCOPE = "core-user";
-const TENANT_ID_STORAGE_KEY = "tenant_id";
 
+/**
+ * TEN-02 R1 — đọc tenant qua `tenantIdStorage`, không tự đọc `localStorage`.
+ *
+ * Đọc thẳng ở đây trước đây BỎ QUA bước migrate sessionStorage -> localStorage
+ * mà `tenantIdStorage.getTenantId()` thực hiện, nên user còn phiên bản cũ thấy
+ * `null` ở đây trong khi phần còn lại của app thấy tenant. Sai lệch đó làm
+ * React Query key lệch nhau giữa các màn hình trong cùng một lần render.
+ */
 function readActiveTenantId(): string | null {
   if (typeof window === "undefined" || !window.localStorage) return null;
-  return window.localStorage.getItem(TENANT_ID_STORAGE_KEY);
+  return tenantIdStorage.getTenantId();
 }
 
 /**

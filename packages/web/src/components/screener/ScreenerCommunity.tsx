@@ -1,5 +1,5 @@
 import { createElement, useState } from "react";
-import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { coreApiAdapter, tenantIdStorage } from "../../adapters/coreApiAdapter.js";
 import { useI18n } from "../../context/LangContext.js";
 import { useTenantAdminQuery, TENANT_ADMIN_QUERY_SCOPE } from "../../pages/tenant-admin/useTenantAdminQuery.js";
 import { useQueryClient } from "@tanstack/react-query";
@@ -25,7 +25,7 @@ export function ScreenerCommunity({ onForkRun, onFork }: ScreenerCommunityProps)
   const [mode, setMode] = useState<"run" | "fork" | null>(null);
 
   const invalidate = () => {
-    const tenantId = typeof window !== 'undefined' ? window.localStorage.getItem('tenant_id') : null;
+    const tenantId = typeof window !== 'undefined' ? tenantIdStorage.getTenantId() : null;
     queryClient.invalidateQueries({ queryKey: [TENANT_ADMIN_QUERY_SCOPE, tenantId ?? 'none', 'screener', 'rules'] });
     queryClient.invalidateQueries({ queryKey: [TENANT_ADMIN_QUERY_SCOPE, tenantId ?? 'none', 'screener', 'public'] });
   };

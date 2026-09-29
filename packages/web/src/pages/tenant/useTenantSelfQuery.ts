@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { defaultCoreApiAdapter, tenantIdStorage } from "../../adapters/coreApiAdapter.js";
 
 type HttpMethod = "get" | "post" | "patch" | "delete" | "put";
 
@@ -22,11 +22,15 @@ function coreFetch(method: HttpMethod, url: string, body?: unknown, headers?: Re
   }
 }
 
-const TENANT_STORAGE_KEY = "tenant_id";
-
+/**
+ * TEN-02 R1 — đọc tenant qua `tenantIdStorage` (SSOT). Hằng `TENANT_STORAGE_KEY`
+ * và đọc `localStorage` trực tiếp ở đây là bản sao của SSOT; nó bỏ qua bước
+ * migrate sessionStorage -> localStorage nên user còn phiên bản cũ thấy `null`
+ * ở màn tenant-self trong khi phần còn lại của app thấy tenant.
+ */
 function readActiveTenantId(): string | null {
   if (typeof window === "undefined" || !window.localStorage) return null;
-  return window.localStorage.getItem(TENANT_STORAGE_KEY);
+  return tenantIdStorage.getTenantId();
 }
 
 export const TENANT_SELF_QUERY_SCOPE = "tenant-self";
