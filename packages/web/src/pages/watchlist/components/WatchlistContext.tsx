@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useRef, useCallback, ReactNode } from "react";
-import { coreApiAdapter, tenantIdStorage } from "../../../adapters/coreApiAdapter.js";
+import { coreApiAdapter } from "../../../adapters/coreApiAdapter.js";
+import { tenantIdStorage } from "../../../adapters/core/transport.js";
 import { useRealtimeFeedFromManager } from "../../../context/RealtimeContext.js";
 import { useI18n } from "../../../context/LangContext.js";
 import { SYSTEM_GROUP_IDS } from "../../../constants/marketGroups.js";

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { defaultCoreApiAdapter, tenantIdStorage } from "../../adapters/coreApiAdapter.js";
+import { defaultCoreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { tenantIdStorage } from "../../adapters/core/transport.js";
 
 type HttpMethod = "get" | "post" | "patch" | "delete" | "put";
 

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { tenantIdStorage } from "@/adapters/coreApiAdapter.js";
+import { tenantIdStorage } from "@/adapters/core/transport.js";
 
 export const CORE_USER_QUERY_SCOPE = "core-user";
 

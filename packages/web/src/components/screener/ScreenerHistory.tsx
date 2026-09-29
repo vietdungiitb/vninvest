@@ -1,5 +1,6 @@
 import { createElement, useState, useMemo, type CSSProperties } from "react";
-import { coreApiAdapter, tenantIdStorage } from "../../adapters/coreApiAdapter.js";
+import { coreApiAdapter } from "../../adapters/coreApiAdapter.js";
+import { tenantIdStorage } from "../../adapters/core/transport.js";
 import { useI18n } from "../../context/LangContext.js";
 import { useTenantAdminQuery, TENANT_ADMIN_QUERY_SCOPE } from "../../pages/tenant-admin/useTenantAdminQuery.js";
 import { useQueryClient } from "@tanstack/react-query";
