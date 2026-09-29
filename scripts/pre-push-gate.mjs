@@ -178,6 +178,22 @@ if (encBad.length) bad("encoding", encBad.join("\n"));
 for (const a of encAllowed) console.log(`  ALLOW encoding — ${a}`);
 if (!encBad.length) ok("encoding", `${encCount}/${changedSet.length} file da doi, 0 U+FFFD ngoai allowlist`);
 
+// --------------------------------------------------------- secret scan
+// SEC-03 R6/AC5 yeu cau gate chan secret quay lai repo. CI dang TAT (billing,
+// xem .github/workflows-disabled/README.md) nen `.github/workflows/secret-scan.yml`
+// chua chay lan nao. Gate o day la thu thuc chay THAT cho den khi CI bat lai.
+if (existsSync(join(REPO, "packages/web/scripts/scan-secrets.mjs"))) {
+  // Capture exit code, KHONG pipe. Pipe lam exit code lay cua lenh cuoi nen
+  // gate khong bao gio fail — dung thu "cmd | sed" da lam gate vo hieu.
+  const selfTest = run(process.execPath, ["packages/web/scripts/scan-secrets.mjs", "--self-test"]);
+  if (selfTest.code !== 0) bad("secret-scan-selftest", selfTest.out);
+  else ok("secret-scan-selftest", (selfTest.out.match(/(\d+)\/\d+/) || ["?"])[0] + " check");
+
+  const r = run(process.execPath, ["packages/web/scripts/scan-secrets.mjs"]);
+  if (r.code !== 0) bad("secret-scan", r.out);
+  else ok("secret-scan", (r.out.match(/scan-secrets:.*/) || ["OK"])[0]);
+} else skip("secret-scan", "khong co packages/web/scripts/scan-secrets.mjs");
+
 // --------------------------------------------------------- i18n fail-closed
 // Scanner in loi roi van exit 0. Wrapper bat scanner va phai fail-closed.
 if (existsSync(join(REPO, "scripts/i18n-scan-strict.mjs"))) {
