@@ -138,8 +138,41 @@ class PortfolioDetailView(APIView):
         return Response(serializer.data)
 
     def delete(self, request, portfolio_id):
+        """Xoá danh mục — nhưng KHÔNG được xoá lịch sử tài chính.
+
+        Từ migration `0023`, `LedgerEntry` / `PositionSnapshot` /
+        `ValuationSnapshot` có trigger chặn `DELETE`. `Portfolio` sở hữu chúng
+        bằng `on_delete=CASCADE`, nên xoá danh mục sẽ phát `DELETE` xuống các
+        bảng con và bị trigger chặn ⇒ lỗi 500 cho một thao tác hoàn toàn hợp lệ
+        về mặt giao diện.
+
+        Đây là hậu quả **có chủ đích**: D-17 yêu cầu giữ ledger ≥ 7 năm, và
+        `LedgerEntry` là append-only. Xoá cứng danh mục là xoá lịch sử giao
+        dịch. Nên hành vi đúng là **409 kèm lý do**, không phải im lặng cho
+        xoá và cũng không phải 500.
+
+        Danh mục không có bản ghi sổ cái nào thì xoá bình thường (204).
+        """
         tenant = getattr(request, 'tenant', None)
         portfolio = _get_portfolio_or_404(request.user, portfolio_id, tenant)
+
+        if portfolio.ledger_entries.exists() \
+                or portfolio.position_snapshots.exists() \
+                or portfolio.valuation_snapshots.exists():
+            return Response(
+                {
+                    'detail': (
+                        'Danh mục đã có lịch sử giao dịch nên không thể xoá cứng. '
+                        'Sổ cái là dữ liệu append-only và phải lưu ≥ 7 năm '
+                        '(D-17). Hãy ẩn danh mục thay vì xoá, hoặc liên hệ quản '
+                        'trị viên để xử lý theo quy trình lưu trữ.'
+                    ),
+                    'code': 'portfolio_has_financial_history',
+                    'portfolio_id': portfolio_id,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
         portfolio.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 

@@ -44,6 +44,20 @@ class Portfolio(models.Model):
     name = models.CharField(max_length=100, verbose_name='Tên danh mục')
     description = models.TextField(blank=True, default='', verbose_name='Mô tả')
     is_default = models.BooleanField(default=False, verbose_name='Danh mục mặc định')
+    # LED-03 R6: NAV = stock_value + cash − debt, mà `cash` bắt đầu từ số dư
+    # mở đầu. Không có trường này thì `cash` chỉ là tổng dòng tiền kể từ lúc
+    # hệ thống bắt đầu ghi, và NAV luôn sai theo một hằng số không ai biết —
+    # đó chính là lý do `nav` từng là `null` vĩnh viễn.
+    # NULL = chưa xác định ⇒ NAV phải là NULL kèm lý do, KHÔNG phải 0.
+    opening_balance = models.DecimalField(
+        max_digits=20, decimal_places=2, null=True, blank=True,
+        verbose_name='Số dư tiền mặt mở đầu (VNĐ)',
+        help_text='Số dư tiền mặt trước thời điểm hệ thống bắt đầu ghi sổ. '
+                  'Để trống nghĩa là chưa xác định — NAV sẽ là null kèm lý do.')
+    opening_balance_source = models.CharField(
+        max_length=32, blank=True, default='',
+        verbose_name='Nguồn số dư mở đầu',
+        help_text='Ví dụ: sub_account_snapshot, manual, import.')
     # Migration tracking
     legacy_portfolio_id = models.IntegerField(null=True, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
@@ -929,6 +943,494 @@ from django.db.models.signals import pre_save
 from django.dispatch import receiver
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# WAVE 2 — LED-01..03 · LED-06
+# Nguồn spec: docs/archive/docs-flat/portfolio_exec_slices/
+#             PORTFOLIO_EXEC_SLICES_LEDGER_FE_20260927.md
+# Lưu ý: master §0.12 vẫn trỏ `docs/PORTFOLIO_EXEC_SLICES_LEDGER_FE_20260927.md`
+# — file đã bị archive (PR #65/#66). Đường dẫn archive mới là nguồn thật.
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class LedgerEntryImmutable(RuntimeError):
+    """Sửa/xoá một dòng sổ cái đã commit.
+
+    LED-01 R2: ledger là append-only. Sai số không được sửa tại chỗ — nó được
+    bù bằng một entry `ADJUSTMENT` trỏ `reversal_of` tới dòng gốc (D-08), để
+    lịch sử vẫn truy vết được ai đã đổi con số nào vào lúc nào.
+    """
+
+
+class AppendOnlyMixin:
+    """Chặn sửa/xoá dòng đã commit — ở tầng Python VÀ ở tầng DB.
+
+    **Vì sao cần cả hai, và vì sao lần đầu chỉ có tầng Python là không đủ.**
+
+    Bản đầu chỉ chặn trong `save()`. Điều đó bị bỏ qua bởi:
+
+    - `LedgerEntry(pk=<đã tồn tại>)` — truyền PK vào constructor thì Django
+      đặt `_state.adding = True`, nên `save()` chạy `UPDATE` và **ghi đè dòng
+      đã commit**. Đây là đường lách thật, không phải giả định.
+    - `queryset.update()` / `queryset.delete()` — không đi qua `Model.save()`.
+    - `bulk_update()`, raw SQL, `admin`, và cascade từ cha.
+    - `bulk_create` cũng bỏ qua `clean()`, nên dữ liệu hỏng lọt qua được.
+
+    Vì vậy `0023` tạo **trigger** Postgres chặn `UPDATE`/`DELETE` trên các bảng
+    này. Trigger là lớp duy nhất sống sót qua `update()` và raw SQL. Tầng Python
+    vẫn giữ lại vì nó cho thông báo lỗi dễ hiểu và chặn sớm hơn.
+
+    Lưu ý khi test: dựng fixture bằng `Model(pk=1).save()` là idiom quen
+    thuộc và **bị chặn** ở đây. Dùng `Model.objects.create(...)` — cùng kết quả
+    mà không đụng luật.
+    """
+
+    def _already_committed(self):
+        if self._state.adding:
+            # `adding` không đủ: constructor có PK ⇒ adding=True nhưng dòng
+            # có thể đã tồn tại. Hỏi DB mới là câu trả lời chắc chắn.
+            if self.pk is None:
+                return False
+            return type(self)._default_manager.filter(pk=self.pk).exists()
+        return True
+
+    def save(self, *args, **kwargs):
+        if self._already_committed():
+            raise LedgerEntryImmutable(
+                f'{type(self).__name__} pk={self.pk} đã commit, không sửa tại '
+                f'chỗ được. Tạo bản ghi mới thay vì sửa bản ghi cũ.'
+            )
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise LedgerEntryImmutable(
+            f'{type(self).__name__} pk={self.pk} không xoá được. '
+            f'Bản ghi đã commit là lịch sử, không phải dữ liệu tạm.'
+        )
+
+
+class TenantScopedByParentMixin:
+    """Bắt buộc `self.tenant_id == self.portfolio.tenant_id`.
+
+    **Vì sao cần, khi mô hình đã có cả `tenant` lẫn `portfolio`:**
+
+    Signal `pre_save` tự điền `tenant` khi nó còn trống. Nhưng nếu caller đã
+    truyền `tenant` thì hàm **return ngay** và không bao giờ so với tenant của
+    `portfolio`. Kết quả: một dòng sổ cái của tenant A trỏ tới danh mục của
+    tenant B, và mọi `filter(portfolio=...)` sau đó đọc ra nó. Django không thể
+    chặn việc này bằng `ForeignKey` vì nó là ràng buộc **qua hai bảng**.
+
+    Đây là bất biến tầng ứng dụng; `0023` bổ sung trigger DB là lớp thứ hai.
+    """
+
+    def clean(self):
+        super().clean()
+        portfolio = getattr(self, 'portfolio', None)
+        if portfolio is None or self.tenant_id is None:
+            return
+        portfolio_tenant_id = getattr(portfolio, 'tenant_id', None)
+        if portfolio_tenant_id is not None and portfolio_tenant_id != self.tenant_id:
+            raise ValidationError({
+                'tenant': (
+                    f'tenant {self.tenant_id} không khớp tenant '
+                    f'{portfolio_tenant_id} của danh mục {portfolio.pk}.'
+                ),
+            })
+
+
+class LedgerEntry(AppendOnlyMixin, TenantScopedByParentMixin, models.Model):
+    """LED-01 — dòng sổ cái bất biến.
+
+    `Transaction` (trên) là bảng giao dịch phẳng đã có; `LedgerEntry` là lớp
+    trên đó cho phép mở rộng loại dòng tiền (cổ tức, phí, thuế, corporate
+    action) mà không phải nhét tất cả vào `transaction_type`.
+
+    Ranh giới với `Transaction` — sửa cái này làm hỏng cái kia:
+    - `Transaction` là **nguồn** (broker đồng bộ vào, có thể sửa khi broker
+      báo sai). `LedgerEntry` là **sổ** (chỉ append).
+    - LED-05 backfill `Transaction` → `LedgerEntry` một chiều. Sau khi
+      backfill, `Transaction` vẫn còn và vẫn được đọc cho tới khi contract
+      phase chạy — vì vậy hai bảng phải giữ cùng bộ luật validator.
+    """
+
+    class EntryType(models.TextChoices):
+        BUY = 'BUY', 'Mua'
+        SELL = 'SELL', 'Bán'
+        DIVIDEND = 'DIVIDEND', 'Cổ tức tiền mặt'
+        SPLIT = 'SPLIT', 'Chia tách'
+        BONUS = 'BONUS', 'Cổ phiếu thưởng'
+        FEE = 'FEE', 'Phí'
+        TAX = 'TAX', 'Thuế'
+        ADJUSTMENT = 'ADJUSTMENT', 'Điều chỉnh'
+
+    class Source(models.TextChoices):
+        MANUAL = 'manual', 'Nhập tay'
+        BROKER = 'broker', 'Đồng bộ từ broker'
+        ADJUSTMENT = 'adjustment', 'Bù sai số'
+        BACKFILL = 'backfill', 'Backfill từ Transaction'
+
+    class Market(models.TextChoices):
+        """Thị trường — quyết định luật lô (LED-04 R3).
+
+        D-35: không chặn crypto ở đây mà ở tầng giao diện; nhưng nếu crypto
+        lọt vào với `VN_SPOT` thì nó nhận `lot=100` + T+2 của cổ phiếu Việt,
+        sai hoàn toàn. Nên thị trường phải là dữ liệu, không phải suy luận từ
+        tên mã.
+        """
+
+        VN_SPOT = 'VN_SPOT', 'Cổ phiếu niêm yết'
+        VN_FLOOR = 'VN_FLOOR', 'Cổ phiếu UPCoM'
+        FOREIGN = 'FOREIGN', 'Thị trường nước ngoài'
+        CRYPTO = 'CRYPTO', 'Tiền mã hoá'
+        UNKNOWN = 'UNKNOWN', 'Chưa xác định'
+
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant',
+        on_delete=models.CASCADE,
+        related_name='ledger_entries',
+        verbose_name='Tenant',
+        help_text='D-03: bắt buộc NOT NULL — không có entry nào tenant-less.',
+    )
+    portfolio = models.ForeignKey(
+        Portfolio,
+        on_delete=models.CASCADE,
+        related_name='ledger_entries',
+        verbose_name='Danh mục',
+    )
+    entry_type = models.CharField(
+        max_length=12, choices=EntryType.choices, db_index=True, verbose_name='Loại dòng')
+    symbol = models.CharField(max_length=32, db_index=True, verbose_name='Mã cổ phiếu')
+    trade_date = models.DateField(db_index=True, verbose_name='Ngày giao dịch')
+    quantity = models.BigIntegerField(
+        validators=[MinValueValidator(0)],
+        verbose_name='Số lượng',
+        help_text='Số cổ phiếu. Với DIVIDEND đây là số cổ phiếu được trả cổ tức '
+                  'và `price` là cổ tức mỗi cổ phiếu — xem docstring `clean()`.',
+    )
+    price = models.DecimalField(
+        max_digits=18, decimal_places=2,
+        validators=[MinValueValidator(Decimal('0'))],
+        verbose_name='Giá (VNĐ)',
+    )
+    fee = models.DecimalField(
+        max_digits=18, decimal_places=2, default=0,
+        validators=[MinValueValidator(Decimal('0'))], verbose_name='Phí')
+    tax = models.DecimalField(
+        max_digits=18, decimal_places=2, default=0,
+        validators=[MinValueValidator(Decimal('0'))], verbose_name='Thuế')
+    market = models.CharField(
+        max_length=10, choices=Market.choices, default=Market.UNKNOWN,
+        db_index=True, verbose_name='Thị trường')
+    source = models.CharField(
+        max_length=12, choices=Source.choices, default=Source.MANUAL,
+        db_index=True, verbose_name='Nguồn')
+    external_id = models.CharField(
+        max_length=100, blank=True, default='', db_index=True,
+        verbose_name='Mã tham chiếu broker')
+    reversal_of = models.ForeignKey(
+        'self', on_delete=models.PROTECT, related_name='reversals',
+        null=True, blank=True, verbose_name='Đảo của dòng')
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='core_ledger_entries', verbose_name='Người tạo')
+    # LED-05 R3: mỗi row do backfill ghi đều mang marker, để reverse chỉ revert
+    # đúng những row do chính migration đó tạo (D-24).
+    backfilled_by = models.CharField(
+        max_length=64, blank=True, default='', db_index=True,
+        verbose_name='Migration đã backfill dòng này')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Dòng sổ cái'
+        verbose_name_plural = 'Dòng sổ cái'
+        ordering = ['trade_date', 'pk']
+        constraints = [
+            # LED-01 R4: idempotency khi đồng bộ broker. `external_id=''` là
+            # giá trị rỗng chứ không phải NULL (khớp `Transaction.external_id`
+            # đang có) nên điều kiện partial loại đúng nhóm manual.
+            models.UniqueConstraint(
+                fields=['tenant', 'external_id'],
+                condition=~Q(external_id=''),
+                name='uniq_ledger_entry_tenant_external_id',
+            ),
+            # Một dòng chỉ được đảo đúng một lần — tránh "sửa sai số hai lần"
+            # bằng hai entry ADJUSTMENT trỏ cùng một dòng gốc.
+            models.UniqueConstraint(
+                fields=['reversal_of'],
+                condition=Q(reversal_of__isnull=False),
+                name='uniq_ledger_entry_single_reversal',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['portfolio', 'symbol', 'trade_date']),
+            models.Index(fields=['tenant', 'portfolio', 'trade_date']),
+        ]
+
+    def clean(self):
+        """Luật theo loại dòng (LED-04 R1/R2).
+
+        **MỘT ĐIỂM SỬA SO VỚI TÀI LIỆU — ghi lại vì đây là chỗ dễ sai nhất.**
+        Slice doc LED-04 R2 viết: "`quantity > 0` cho BUY/SELL; = 0 cho DIVIDEND".
+        Điều đó mâu thuẫn với D-06 và với hành vi đã chạy thật trong
+        `ledger/holdings.py:266-275`, nơi `DIVIDEND` tính `gross = price * qty`
+        — tức `quantity` là **số cổ phiếu được trả cổ tức** và `price` là cổ
+        tức mỗi cổ phiếu. Nếu đặt `quantity = 0` cho DIVIDEND thì mọi dòng cổ
+        tức từ broker (vốn luôn gửi kèm số cổ phiếu) sẽ bị từ chối.
+
+        Vì vậy ở đây: DIVIDEND cần `quantity > 0` và `price >= 0`. Cổ tức bằng 0
+        là dữ liệu vô nghĩa chứ không phải dữ liệu hợp lệ.
+        """
+        super().clean()
+        if self.entry_type == self.EntryType.DIVIDEND:
+            if self.quantity is not None and self.quantity <= 0:
+                raise ValidationError(
+                    {'quantity': 'Dòng cổ tức cần số cổ phiếu được trả cổ tức (> 0).'})
+            return
+        if self.entry_type not in (self.EntryType.BUY, self.EntryType.SELL):
+            return
+        if self.quantity is not None and self.quantity <= 0:
+            raise ValidationError(
+                {'quantity': 'Số lượng phải > 0 với dòng MUA/BÁN.'})
+        if self.price is not None and self.price <= Decimal('0'):
+            raise ValidationError(
+                {'price': 'Giá phải > 0 với dòng MUA/BÁN.'})
+
+    def save(self, *args, **kwargs):
+        """Append-only (LED-01 R2). Logic nằm trong `AppendOnlyMixin`.
+
+        Ghi đè này chỉ để giữ chỗ cho mô tả; hành vi thật ở mixin vì nó cần
+        hỏi DB (xem `AppendOnlyMixin._already_committed` — bản đầu chỉ dựa
+        vào `_state.adding` và bị lách bằng `LedgerEntry(pk=<đã tồn tại>)`).
+        """
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return (f'{self.entry_type} {self.quantity} {self.symbol} @ {self.price} '
+                f'({self.trade_date})')
+
+
+class CashFlow(models.Model):
+    """LED-01 R3 — dòng tiền tách khỏi số lượng/giá.
+
+    **Vì sao có bảng này:** một dòng `LedgerEntry` BUY vừa có số lượng vừa có
+    giá vừa có phí — nếu ta cộng từng trường để ra tiền mặt thì mỗi consumer
+    phải tự biết quy tắc D-06 và rất dễ sai lệch (đó chính là lỗi cũ mà
+    `ledger/holdings.py` docstring liệt kê). Ở đây mỗi entry sinh đúng một
+    hoặc nhiều dòng `CashFlow` với `amount` đã ký, nên NAV chỉ cần một phép
+    cộng.
+
+    **`amount` có dấu:** dương = tiền vào tài khoản, âm = tiền ra. Giữ dấu ở
+    đây thay vì suy ra từ `flow_type` để không có hai nguồn sự thật cho cùng
+    một câu hỏi ("dòng này vào hay ra?").
+
+    `flow_type` chỉ đặt tên **lý do**. Ba giá trị `BUY`/`SELL` nằm ngoài danh
+    sách trong tài liệu (`dividend/fee/tax/deposit/withdrawal/interest`) nhưng
+    không có chúng thì tiền mua/bán không bao giờ vào bảng này và NAV sai ngay
+    từ giao dịch đầu tiên. Ghi ra đây thay vì âm thầm bỏ sót.
+    """
+
+    class FlowType(models.TextChoices):
+        BUY = 'BUY', 'Mua cổ phiếu (tiền ra)'
+        SELL = 'SELL', 'Bán cổ phiếu (tiền vào)'
+        DIVIDEND = 'DIVIDEND', 'Cổ tức'
+        FEE = 'FEE', 'Phí'
+        TAX = 'TAX', 'Thuế'
+        DEPOSIT = 'DEPOSIT', 'Nạp tiền'
+        WITHDRAWAL = 'WITHDRAWAL', 'Rút tiền'
+        INTEREST = 'INTEREST', 'Lãi tiền gửi'
+
+    entry = models.ForeignKey(
+        LedgerEntry, on_delete=models.CASCADE, related_name='cash_flows',
+        verbose_name='Dòng sổ cái')
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant', on_delete=models.CASCADE,
+        related_name='cash_flows', verbose_name='Tenant')
+    flow_type = models.CharField(
+        max_length=12, choices=FlowType.choices, db_index=True, verbose_name='Loại dòng tiền')
+    amount = models.DecimalField(
+        max_digits=20, decimal_places=2, verbose_name='Số tiền (có dấu)')
+    currency = models.CharField(
+        max_length=3, default='VND', verbose_name='Tiền tệ',
+        help_text='D-05: chỉ VND ở R1. Multi-currency defer.')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Dòng tiền'
+        verbose_name_plural = 'Dòng tiền'
+        ordering = ['pk']
+        indexes = [
+            models.Index(fields=['tenant', 'flow_type']),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.flow_type} {self.amount} {self.currency}'
+
+
+class PositionSnapshot(AppendOnlyMixin, TenantScopedByParentMixin, models.Model):
+    """LED-02 — ảnh chụp vị thế tại một ngày.
+
+    Vì sao cần: `compute_ledger()` chạy lại toàn bộ lịch sử mỗi lần đọc. Với
+    danh mục vài nghìn giao dịch thì tốn, và quan trọng hơn — **con số hôm nay
+    sẽ khác hôm qua nếu thêm một giao dịch cũ**. Không có bảng này thì không
+    trả lời được "hôm đó tôi đang giữ bao nhiêu", tức không vẽ được đường NAV
+    lịch sử.
+
+    **`weight` được tính lúc ghi snapshot**, chia cho tổng `market_value` của
+    **cùng ngày đó** trong **cùng portfolio**. Nó là snapshot của một thời điểm,
+    không phải hàm của trạng thái hiện tại — đọc lại 3 tháng sau mà tính lại
+    `weight` từ giá hôm nay sẽ ra con số sai.
+    """
+
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant', on_delete=models.CASCADE,
+        related_name='position_snapshots', verbose_name='Tenant')
+    portfolio = models.ForeignKey(
+        Portfolio, on_delete=models.CASCADE, related_name='position_snapshots',
+        verbose_name='Danh mục')
+    symbol = models.CharField(max_length=32, db_index=True, verbose_name='Mã')
+    as_of_date = models.DateField(db_index=True, verbose_name='Ngày chụp')
+    quantity = models.DecimalField(max_digits=20, decimal_places=4, default=0)
+    avg_cost = models.DecimalField(max_digits=20, decimal_places=2, default=0)
+    current_price = models.DecimalField(
+        max_digits=20, decimal_places=2, null=True, blank=True,
+        verbose_name='Giá hiện tại',
+        help_text='NULL khi chưa có giá — không dùng 0 để tránh số giả.')
+    market_value = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    unrealized_pnl = models.DecimalField(
+        max_digits=20, decimal_places=2, null=True, blank=True)
+    realized_pnl_cum = models.DecimalField(max_digits=20, decimal_places=2, default=0)
+    weight = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True,
+        verbose_name='Tỷ trọng (0..1)')
+    calculation_version = models.CharField(
+        max_length=32, verbose_name='Phiên bản thuật toán')
+    source = models.CharField(max_length=16, default='computed', verbose_name='Nguồn')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Ảnh chụp vị thế'
+        verbose_name_plural = 'Ảnh chụp vị thế'
+        ordering = ['-as_of_date', 'symbol']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['portfolio', 'symbol', 'as_of_date'],
+                name='uniq_position_snapshot_portfolio_symbol_date',
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.symbol} @ {self.as_of_date}'
+
+
+class ValuationSnapshot(AppendOnlyMixin, TenantScopedByParentMixin, models.Model):
+    """LED-03 — NAV chụp theo ngày.
+
+    Công thức (LED-03 R2): ``nav = stock_value + cash - debt``
+
+    Trong đó ``cash = opening_balance + Σ CashFlow.amount`` cho tới ngày chụp.
+    `opening_balance` là **nguồn gốc** của tiền mặt (LED-03 R3): số dư mở đầu
+    là một sự kiện đã xảy ra trước khi hệ thống bắt đầu ghi, nên không thể suy
+    ra nó từ lịch sử giao dịch. Không có nó thì `nav = NULL` kèm `nav_reason`,
+    tuyệt đối không trả 0 (LED-03 R5 / AC4).
+    """
+
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant', on_delete=models.CASCADE,
+        related_name='valuation_snapshots', verbose_name='Tenant')
+    portfolio = models.ForeignKey(
+        Portfolio, on_delete=models.CASCADE, related_name='valuation_snapshots',
+        verbose_name='Danh mục')
+    as_of_date = models.DateField(db_index=True, verbose_name='Ngày chụp')
+    # `stock_value` / `cash` / `debt` NULLABLE — cố ý.
+    #
+    # Bản đầu để chúng `NOT NULL DEFAULT 0`. Đó là một cái bẫy cấu trúc: `nav`
+    # nullable đúng, nhưng tới ngày không định giá được, schema **chỉ còn một
+    # đáp án hợp lệ** và nó là con số 0 bịa. Không có ràng buộc DB nào thay thế
+    # được cho việc cho phép biểu diễn "chưa biết".
+    stock_value = models.DecimalField(
+        max_digits=20, decimal_places=2, null=True, blank=True,
+        verbose_name='Giá trị cổ phiếu')
+    cash = models.DecimalField(
+        max_digits=20, decimal_places=2, null=True, blank=True, verbose_name='Tiền mặt')
+    debt = models.DecimalField(
+        max_digits=20, decimal_places=2, null=True, blank=True, default=0,
+        verbose_name='Nợ',
+        help_text='Cash account = 0. Margin defer sang LIV-03 (LED-03 PB3).')
+    nav = models.DecimalField(
+        max_digits=20, decimal_places=2, null=True, blank=True,
+        verbose_name='NAV')
+    nav_reason = models.CharField(
+        max_length=64, blank=True, default='',
+        verbose_name='Lý do chưa có NAV')
+    opening_balance = models.DecimalField(
+        max_digits=20, decimal_places=2, null=True, blank=True,
+        verbose_name='Số dư mở đầu')
+    currency = models.CharField(max_length=3, default='VND')
+    calculation_version = models.CharField(max_length=32, verbose_name='Phiên bản thuật toán')
+    source = models.CharField(max_length=16, default='computed', verbose_name='Nguồn')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Ảnh chụp định giá'
+        verbose_name_plural = 'Ảnh chụp định giá'
+        ordering = ['-as_of_date']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['portfolio', 'as_of_date'],
+                name='uniq_valuation_snapshot_portfolio_date',
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f'NAV {self.nav} @ {self.as_of_date}'
+
+
+class IdempotencyRecord(models.Model):
+    """LED-06 — bản ghi idempotency có ràng buộc UNIQUE ở tầng DB.
+
+    Thay cho cache-based idempotency của `services/idempotency.py`. Cache
+    không giải quyết được race thật: `cache.add` chỉ atomic **trong một
+    process**, còn production chạy nhiều worker ⇒ hai request song song có thể
+    cùng thắng một key và tạo hai lệnh. UNIQUE constraint thì không thể thắng
+    được ở bất kỳ số process nào.
+
+    `request_hash` là điều kiện để phân biệt retry hợp lệ với client tái sử
+    dụng nhầm key: cùng key + cùng hash ⇒ trả lại response cũ; cùng key +
+    khác hash ⇒ `409` (SAFE-02 R7).
+    """
+
+    tenant = models.ForeignKey(
+        'identity_access.CoreTenant', on_delete=models.CASCADE,
+        related_name='idempotency_records', verbose_name='Tenant')
+    actor = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='idempotency_records',
+        verbose_name='Tác nhân')
+    scope = models.CharField(max_length=64, verbose_name='Phạm vi thao tác')
+    key = models.CharField(max_length=255, verbose_name='Idempotency-Key')
+    request_hash = models.CharField(max_length=64, verbose_name='Hash payload')
+    response_code = models.PositiveSmallIntegerField(
+        null=True, blank=True, verbose_name='Mã trả về')
+    response_body = models.JSONField(
+        null=True, blank=True, verbose_name='Body đã trả')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    # D-12: TTL 7 ngày cho order. Hết hạn thì key được tái dùng được — nên
+    # việc dọn là xoá theo `expires_at`, KHÔNG phải "giữ mãi".
+    expires_at = models.DateTimeField(db_index=True, verbose_name='Hết hạn lúc')
+
+    class Meta:
+        verbose_name = 'Bản ghi idempotency'
+        verbose_name_plural = 'Bản ghi idempotency'
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['tenant', 'actor', 'scope', 'key'],
+                name='uniq_idempotency_tenant_actor_scope_key',
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.scope}:{self.key} ({self.actor_id})'
+
+
 def resolve_tenant_for_user_workspace_instance(instance):
     """SSOT resolve `instance.tenant` cho mọi model user_workspace. Trả tenant hoặc None.
 
@@ -1029,6 +1531,11 @@ def _autoprovision_tenant_for(user, CoreTenant, UserProfile, instance):
 
 @receiver(pre_save, sender=Portfolio)
 @receiver(pre_save, sender=Transaction)
+@receiver(pre_save, sender=LedgerEntry)
+@receiver(pre_save, sender=CashFlow)
+@receiver(pre_save, sender=PositionSnapshot)
+@receiver(pre_save, sender=ValuationSnapshot)
+@receiver(pre_save, sender=IdempotencyRecord)
 @receiver(pre_save, sender=Watchlist)
 @receiver(pre_save, sender=TrackedSymbol)
 @receiver(pre_save, sender=PriceAlert)

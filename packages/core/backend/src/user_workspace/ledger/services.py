@@ -20,7 +20,7 @@ from django.db.models import Count, Max
 
 from user_workspace.models import Transaction
 
-from .holdings import CALCULATION_VERSION, compute_ledger
+from .holdings import CALCULATION_VERSION, compute_ledger, money
 
 LEDGER_CACHE_PREFIX = f'ledger:{CALCULATION_VERSION}'
 LEDGER_CACHE_TTL_SECONDS = 60
@@ -206,7 +206,11 @@ def get_cached_ledger(portfolio_id, tenant=None, *, use_cache=True, today=None):
         cached = cache.get(key)
         if cached is not None:
             ledger = _deserialize(cached)
+            # LED-07 R5: `meta` phải ĐỦ, kể cả khi cache hit — nếu không,
+            # consumer phải viết `if 'meta' in ledger` và một lần refactor nào
+            # đó sẽ làm mất `cache_hit`, tức mất khả năng đối chiếu.
             ledger['meta']['from_cache'] = True
+            ledger['meta']['cache_hit'] = True
             ledger['meta']['cache_key_note'] = CACHE_KEY_NOTE
             return ledger
 
@@ -223,8 +227,183 @@ def get_cached_ledger(portfolio_id, tenant=None, *, use_cache=True, today=None):
             # Cache hỏng không được làm hỏng response — số liệu vẫn đúng.
             pass
     ledger['meta']['from_cache'] = False
+    ledger['meta']['cache_hit'] = False
     ledger['meta']['cache_key_note'] = CACHE_KEY_NOTE
     return ledger
+
+
+# ══════════════════════════════════════════════════════════════════
+# LED-07 — `meta` provenance + NAV (LED-03) gắn vào sổ cái
+# ══════════════════════════════════════════════════════════════════
+
+
+class _FlowView:
+    """Bọc `CashFlow.amount` đúng kiểu mà `sum_cash_flows` cần."""
+
+    __slots__ = ('amount',)
+
+    def __init__(self, amount):
+        self.amount = amount
+
+
+#: Lý do NAV chưa có, ngoài `no_opening_balance` của `valuation.py`.
+#:
+#: Cả ba đều là trạng thái **dữ liệu**, không phải lỗi code: ledger engine đã
+#: sẵn sàng nhưng bảng `CashFlow` còn rỗng cho tới khi LED-05 backfill
+#: `Transaction` → `LedgerEntry` + `CashFlow`. Trả 0 trong lúc đó sẽ ra một NAV
+#: nhìn rất thuyết phục và hoàn toàn sai.
+NAV_BLOCKER_CASH_FLOWS_EMPTY = 'cash_flows_not_backfilled'
+NAV_BLOCKER_NO_PRICES = 'no_market_prices'
+NAV_BLOCKER_PARTIAL_PRICES = 'partial_market_prices'
+
+
+def portfolio_valuation(portfolio, *, ledger=None, price_by_symbol=None):
+    """NAV của một portfolio theo LED-03. Trả dict, không raise, không query giá.
+
+    **Hai nguồn tiền mặt — và vì sao phải đối chiếu chứ không chọn bừa.**
+
+    1. `Σ CashFlow` — tiền **thực** đã đi qua tài khoản. Mỗi dòng ledger sinh
+       đúng một dòng tiền theo D-06.
+    2. `compute_ledger()['cash']` — tổng dòng tiền kể từ giao dịch đầu tiên
+       **có trong hệ thống**.
+
+    Hai con số này **không luôn bằng nhau**, và chỗ khác nhau là thông tin quan
+    trọng, không phải nhiễu. Ví dụ: bán vượt 2 000 khi chỉ giữ 1 000 — broker
+    thực sự chuyển tiền cho 2 000 (`CashFlow` ghi đủ) còn `compute_ledger`
+    chỉ ghi phần có cost basis (1 000). Chênh lệch ở đây chính là tiền đang
+    chờ đối soát.
+
+    Vì vậy: nếu hai nguồn lệch, NAV vẫn tính (theo `CashFlow` — nguồn đúng về
+    mặt dòng tiền thực) nhưng **phải kèm cảnh báo**. Trả một con số im lặng
+    trong trường hợp này là đúng kiểu lỗi mà cả wave này sinh ra để diệt.
+
+    Tham số:
+    - `portfolio`: model `Portfolio` (dùng `opening_balance`).
+    - `ledger`: kết quả `get_cached_ledger()`. Nếu không truyền thì gọi
+      `compute_ledger` không cache — dành cho caller đã có sẵn.
+    - `price_by_symbol`: `{symbol: price}`. Thiếu mã nào thì mã đó **không**
+      được đưa vào `stock_value`; nếu thiếu bất kỳ mã nào thì NAV = null +
+      lý do, vì "giá trị 0" không phải câu trả lời.
+    """
+    from .valuation import compute_nav, sum_cash_flows
+
+    if ledger is None:
+        ledger = compute_ledger(
+            _queryset(portfolio.pk),
+            tenant_public_id=getattr(portfolio.tenant, 'public_id', None),
+            portfolio_id=portfolio.pk,
+        )
+
+    prices = price_by_symbol or {}
+    priced = []
+    unpriced = []
+    for symbol, position in sorted(ledger['holdings'].items()):
+        price = prices.get(symbol)
+        if price is None:
+            unpriced.append(symbol)
+            continue
+        priced.append((symbol, position, price))
+
+    def _blocked(reason, text, **extra):
+        return {
+            'nav': None,
+            'nav_reason': reason,
+            'nav_reason_text': text,
+            'cash': None,
+            'cash_complete': False,
+            'stock_value': None,
+            'unpriced_symbols': sorted(unpriced),
+            'opening_balance': portfolio.opening_balance,
+            'calculation_version': ledger.get('calculation_version'),
+            **extra,
+        }
+
+    if unpriced:
+        # Cả "không có giá nào" lẫn "chỉ có giá một phần" đều chặn NAV. Bản đầu
+        # chỉ chặn khi KHÔNG mã nào có giá, nên 1/5 mã có giá thì 4 mã còn lại
+        # biến mất khỏi `stock_value` và NAV vẫn ra một con số — đúng về mặt
+        # công thức, sai về mặt dữ liệu.
+        if not priced:
+            return _blocked(
+                NAV_BLOCKER_NO_PRICES,
+                f'Chưa có giá market cho bất kỳ mã nào đang giữ '
+                f'({len(ledger["holdings"])} mã) nên chưa định giá được.',
+            )
+        return _blocked(
+            NAV_BLOCKER_PARTIAL_PRICES,
+            f'Chỉ có giá cho {len(priced)}/{len(ledger["holdings"])} mã. '
+            f'Tính NAV với thiếu giá sẽ ra con số sai âm thầm.',
+        )
+
+    stock_value = sum(
+        (position['quantity'] * price for _s, position, price in priced),
+        Decimal('0'),
+    )
+
+    from user_workspace.models import CashFlow
+
+    # Kiểm "backfill chưa chạy" bằng **số dòng**, không bằng TỔNG tiền.
+    # Bản đầu dùng `cash_flow_total == 0`, nên một danh mục mua rồi bán hết
+    # (tiền về 0) bị báo nhầm là "chưa backfill".
+    flow_rows = CashFlow.objects.filter(entry__portfolio=portfolio)
+    has_flow_rows = flow_rows.exists()
+    cash_flow_total = sum_cash_flows(
+        _FlowView(amount) for amount in flow_rows.values_list('amount', flat=True)
+    )
+
+    # "Chưa backfill" phải hỏi bảng SỔ CÁI, không hỏi `ledger['transaction_count']`.
+    # Bản đầu dùng `transaction_count` (đếm dòng `Transaction`) — sai ngay khi
+    # dữ liệu đã nằm trong `LedgerEntry` mà `Transaction` đã rỗng, tức đúng trạng
+    # thái sau backfill. Lúc đó guard im lặng và NAV ra từ `opening_balance` cộng
+    # 0, tức bằng số dư mở đầu dù đã mua bán.
+    from user_workspace.models import LedgerEntry as _LedgerEntry
+
+    has_entries = _LedgerEntry.objects.filter(portfolio=portfolio).exists()
+    if has_entries and not has_flow_rows:
+        # Có giao dịch nhưng không có dòng tiền nào ⇒ backfill LED-05 chưa chạy.
+        # `cash` từ sổ cái là tổng dòng tiền kể từ khi hệ thống bắt đầu ghi,
+        # khác số dư tài khoản thật; cộng nó vào NAV sẽ ra con số bịa.
+        return _blocked(
+            NAV_BLOCKER_CASH_FLOWS_EMPTY,
+            'Bảng CashFlow còn rỗng cho danh mục này (migration LED-05 chưa '
+            'backfill). Chưa thể suy ra số dư tiền mặt thật từ sổ cái.',
+        )
+
+    result = compute_nav(
+        stock_value=stock_value,
+        cash_flow_total=cash_flow_total,
+        opening_balance=portfolio.opening_balance,
+    )
+    result['unpriced_symbols'] = sorted(unpriced)
+
+    # Đối chiếu hai nguồn tiền mặt — xem docstring hàm.
+    #
+    # PHẢI so trên CÙNG GỐC. `compute_ledger` cộng dồn từ giao dịch đầu tiên
+    # nên không chứa số dư mở đầu, còn NAV cộng thêm `opening_balance`. Trừ
+    # thẳng hai con số khác gốc thì `difference` **luôn bằng `-opening_balance`** —
+    # tức cảnh báo bật trên 100% danh mục bình thường và mang thông tin bằng 0.
+    # Bản đầu đúng là lỗi này, và test che nó bằng cách đặt
+    # `opening_balance = 0` — giá trị duy nhất che được lỗi.
+    ledger_cash = ledger.get('cash')
+    opening = result.get('opening_balance')
+    if ledger_cash is not None and result.get('cash') is not None and opening is not None:
+        comparable_cash_flow = Decimal(str(result['cash'])) - Decimal(str(opening))
+        delta = Decimal(str(ledger_cash)) - comparable_cash_flow
+        if delta != Decimal('0'):
+            result['cash_cross_check'] = {
+                'cash_from_cash_flow': str(comparable_cash_flow),
+                'cash_from_ledger': str(ledger_cash),
+                'difference': str(delta),
+                'reconciliation_required': True,
+                # Dương = sổ cái ghi nhiều hơn dòng tiền, âm = ngược lại.
+                'sign_convention': 'cash_from_ledger - cash_from_cash_flow',
+                'opening_balance_excluded': str(opening),
+                'note': (
+                    'Hai nguồn tiền mặt lệch nhau — thường do bán vượt số lượng '
+                    'đang giữ. Cần đối soát với broker trước khi tin NAV.'
+                ),
+            }
+    return result
 
 
 def holdings_from_ledger(ledger):
@@ -278,5 +457,9 @@ def build_meta(ledger):
         'cost_method': meta.get('cost_method'),
         'transaction_count': meta.get('transaction_count'),
         'from_cache': meta.get('from_cache'),
+        # LED-07 R1 đòi tên `cache_hit`; `from_cache` là tên cũ. Giữ cả hai
+        # trong một release để không phá consumer cũ, ghi chú ở đây để người
+        # đọc biết chỉ có một cái là thật.
+        'cache_hit': meta.get('cache_hit'),
         'cache_key_note': CACHE_KEY_NOTE,
     }

@@ -139,19 +139,34 @@ class PortfolioHoldingsView(APIView):
         results = []
         for sym, h in holdings.items():
             snap = price_map.get(sym)
-            current_price = Decimal(str(snap.price)) if snap else h['avg_cost']
-            market_value = current_price * h['quantity']
-            cost_value = h['avg_cost'] * h['quantity']
-            unrealized_pnl = market_value - cost_value
-            pnl_pct = float(unrealized_pnl / cost_value * 100) if cost_value else 0
+            # LED-03 AC4: KHÔNG thay giá thiếu bằng giá vốn.
+            # Bản cũ: `current_price = snap.price if snap else h['avg_cost']` — khi
+            # không có giá, giá vốn được dùng làm giá hiện tại nên
+            # `unrealized_pnl = 0` **tình cờ** đúng, tức hệ thống báo "không lãi
+            # không lỗ" cho một mã mà nó thực ra chưa biết giá. Người dùng đọc
+            # đó là "giá ngang giá vốn". Giá trị thiếu phải là `null` + lý do.
+            current_price = Decimal(str(snap.price)) if snap and snap.price is not None else None
+            quantity = h['quantity']
+            cost_value = h['avg_cost'] * quantity
+            if current_price is None:
+                market_value = None
+                unrealized_pnl = None
+                pnl_pct = None
+            else:
+                market_value = current_price * quantity
+                unrealized_pnl = market_value - cost_value
+                pnl_pct = (float(unrealized_pnl / cost_value * 100)
+                           if cost_value else None)
             results.append({
                 'symbol': sym,
-                'quantity': h['quantity'],
+                'quantity': quantity,
                 'avg_cost': str(round(h['avg_cost'], 2)),
-                'current_price': str(current_price),
-                'market_value': str(round(market_value, 2)),
-                'unrealized_pnl': str(round(unrealized_pnl, 2)),
-                'unrealized_pnl_pct': round(pnl_pct, 2),
+                'current_price': None if current_price is None else str(current_price),
+                'market_value': None if market_value is None else str(round(market_value, 2)),
+                'unrealized_pnl': (None if unrealized_pnl is None
+                                   else str(round(unrealized_pnl, 2))),
+                'unrealized_pnl_pct': None if pnl_pct is None else round(pnl_pct, 2),
+                'price_missing_reason': None if current_price is not None else 'no_quote_for_today',
                 'stale': snap.stale if snap else True,
             })
         return Response(sorted(results, key=lambda x: x['symbol']))
@@ -169,24 +184,49 @@ class PortfolioSummaryView(APIView):
         today = date.today()
         total_market_value = Decimal('0')
         total_cost = Decimal('0')
+        unpriced_symbols = []
         if holdings:
             symbols = list(holdings.keys())
             snaps = SymbolSnapshot.objects.filter(symbol__in=symbols, session_date=today)
             price_map = {s.symbol: s for s in snaps}
             for sym, h in holdings.items():
                 snap = price_map.get(sym)
-                current_price = Decimal(str(snap.price)) if snap else h['avg_cost']
+                # Cùng lý do với `PortfolioHoldingsView`: không có giá thì
+                # `total_market_value` KHÔNG được coi là bằng tổng giá vốn. Cộng
+                # `avg_cost × quantity` vào "giá trị thị trường" làm số tổng
+                # luôn khớp `total_cost` nên `total_unrealized_pnl = 0` — tức báo
+                # "không lãi không lỗ" cho cả danh mục khi chưa có bất kỳ giá
+                # nào. Thay vào đó: giá trị thị trường `null` + danh sách mã
+                # chưa có giá.
+                if not snap or snap.price is None:
+                    unpriced_symbols.append(sym)
+                    continue
+                current_price = Decimal(str(snap.price))
                 total_market_value += current_price * h['quantity']
                 total_cost += h['avg_cost'] * h['quantity']
-        total_pnl = total_market_value - total_cost
-        pnl_pct = float(total_pnl / total_cost * 100) if total_cost else 0
+        if unpriced_symbols:
+            market_value_out = None
+            pnl_out = None
+            pnl_pct_out = None
+        else:
+            market_value_out = str(round(total_market_value, 2))
+            pnl_out = str(round(total_market_value - total_cost, 2))
+            pnl_pct_out = (
+                None if not total_cost
+                else round(float((total_market_value - total_cost) / total_cost * 100), 2)
+            )
         return Response({
             'portfolio_id': portfolio_id,
             'portfolio_name': portfolio.name,
-            'total_market_value': str(round(total_market_value, 2)),
+            'total_market_value': market_value_out,
             'total_cost': str(round(total_cost, 2)),
-            'total_unrealized_pnl': str(round(total_pnl, 2)),
-            'total_unrealized_pnl_pct': round(pnl_pct, 2),
+            'total_unrealized_pnl': pnl_out,
+            'total_unrealized_pnl_pct': pnl_pct_out,
+            'unpriced_symbols': sorted(unpriced_symbols),
+            'market_value_reason': (
+                None if not unpriced_symbols
+                else f'{len(unpriced_symbols)} mã chưa có giá phiên {today.isoformat()}'
+            ),
             'num_holdings': len(holdings),
             'as_of': today.isoformat(),
             # --- PA-2: sổ cái + provenance (P0-DATA-03 / P1-DATA-03) ---------
@@ -243,11 +283,22 @@ class PortfolioEquityCurveView(APIView):
         curve = []
         for day in sorted(date_price_map.keys()):
             day_prices = date_price_map[day]
+            # LED-03 AC4: mã không có giá trong ngày ⇒ bỏ qua và **báo**,
+            # không lấy `avg_cost` làm giá. Lấy giá vốn tạo ra một đường cong
+            # trông rất thuyết phục nhưng hoàn toàn bịa — và vì `PortfolioSummaryView`
+            # đã trả `null` cho cùng tình huống, hai màn hình sẽ mâu thuẫn nhau.
+            missing = sorted(
+                sym for sym in holdings if sym not in day_prices)
             nav = sum(
-                day_prices.get(sym, h['avg_cost']) * h['quantity']
-                for sym, h in holdings.items()
+                day_prices[sym] * h['quantity']
+                for sym, h in holdings.items() if sym in day_prices
             )
-            curve.append({'date': day.isoformat(), 'nav': str(round(nav, 2))})
+            curve.append({
+                'date': day.isoformat(),
+                'nav': str(round(nav, 2)) if not missing else None,
+                'nav_reason': None if not missing else 'missing_price_for_some_symbols',
+                'missing_symbols': missing,
+            })
         return Response({'portfolio_id': portfolio_id, 'curve': curve})
 
 
@@ -266,21 +317,43 @@ class PortfolioAllocationView(APIView):
         snaps = SymbolSnapshot.objects.filter(symbol__in=symbols, session_date=today)
         price_map = {s.symbol: s for s in snaps}
         values = {}
+        unpriced = []
         total = Decimal('0')
         for sym, h in holdings.items():
             snap = price_map.get(sym)
-            price = Decimal(str(snap.price)) if snap else h['avg_cost']
+            # Cùng lý do với `PortfolioSummaryView`: mã không có giá thì giá trị
+            # và tỷ trọng phải là `null`, không phải con số tính từ giá vốn.
+            # Ở đây còn tệ hơn vì con số bịa đó nằm ngay trong `weight_pct` —
+            # người dùng sẽ thấy một biểu đồ phân bổ đầy đủ tin cậy giả.
+            if not snap or snap.price is None:
+                unpriced.append(sym)
+                continue
+            price = Decimal(str(snap.price))
             val = price * h['quantity']
             values[sym] = val
             total += val
-        if total == 0:
-            total = Decimal('1')
+        if not values:
+            return Response({
+                'portfolio_id': portfolio_id,
+                'total_value': None,
+                'allocation': [],
+                'unpriced_symbols': sorted(unpriced),
+                'reason': 'no_market_prices',
+            })
         allocation = sorted(
             [{'symbol': sym, 'value': str(round(v, 2)), 'weight_pct': round(float(v / total * 100), 2)}
              for sym, v in values.items()],
             key=lambda x: -x['weight_pct'],
         )
-        return Response({'portfolio_id': portfolio_id, 'total_value': str(round(total, 2)), 'allocation': allocation})
+        return Response({
+            'portfolio_id': portfolio_id,
+            'total_value': str(round(total, 2)),
+            'allocation': allocation,
+            'unpriced_symbols': sorted(unpriced),
+            # Tổng weight chỉ còn 100% khi mọi mã đều có giá. Nói rõ để không ai
+            # đọc `weight_pct` như phân bổ của cả danh mục.
+            'weight_covers_all_holdings': not unpriced,
+        })
 
 
 class PortfolioAnalyticsView(APIView):
