@@ -222,7 +222,17 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
           quantity,
         },
       });
-      setOrderResult({ ok: true, result: res?.result || res || null });
+      // SAFE-01 R4 — hiển thị `mode` mà SERVER quyết định, không phải giá trị
+      // client vừa gửi. Client gửi `paper` không có nghĩa server đã chạy paper:
+      // server có thể từ chối live và hạ về paper (hoặc ngược lại). Đọc
+      // `res.mode` nên nếu server chưa trả field này thì lùi về giá trị đã
+      // gửi, thay vì hiển thị sai một badge "Live".
+      setOrderResult({
+        ok: true,
+        result: res?.result || res || null,
+        mode: res?.mode || "paper",
+        dryRun: res?.dry_run ?? true,
+      });
     } catch (err) {
       setOrderResult({ ok: false, error: err?.message || "Đặt lệnh DNSE thất bại." });
     } finally {
@@ -505,7 +515,16 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
                 className: "dnse-panel__btn dnse-panel__btn--primary",
               }, placingOrder ? "Đang đặt lệnh..." : "Đặt lệnh thử nghiệm")
             ),
-            orderResult?.ok === true ? e("p", { className: "dnse-panel__success" }, "Đặt lệnh DNSE thành công.") : null,
+            orderResult?.ok === true
+              ? e("p", { className: "dnse-panel__success" },
+                // SAFE-01 R4 — badge nói rõ lệnh này chạy thật hay thử nghiệm.
+                // Không có nó thì người dùng dễ tưởng mình vừa đặt lệnh thật.
+                e("span", {
+                  className: `dnse-panel__badge dnse-panel__badge--${orderResult.mode === "live" ? "live" : "paper"}`,
+                  "data-testid": "dnse-order-mode-badge",
+                }, orderResult.mode === "live" ? "LIVE" : "PAPER"),
+                " Đặt lệnh DNSE thành công.")
+              : null,
             orderResult?.ok === false ? e("p", { className: "dnse-panel__error" }, orderResult.error) : null
           )
         )

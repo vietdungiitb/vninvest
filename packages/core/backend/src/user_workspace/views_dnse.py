@@ -713,6 +713,10 @@ def dnse_place_order_api(request):
             "result": claim.result,
             "idempotent_replay": True,
             "audit_recorded": True,
+            # SAFE-01 R3: client cần biết lệnh này chạy ở mode nào để render
+            # badge. Không có nó thì FE chỉ còn cách đoán từ payload.
+            "mode": mode,
+            "dry_run": dry_run,
         })
 
     # X.2 + SAFE-01 — fail-closed: không có dòng audit thì KHÔNG gọi broker.
@@ -748,6 +752,9 @@ def dnse_place_order_api(request):
             "result": result,
             "idempotent_replay": False,
             "audit_recorded": audit_recorded,
+            # SAFE-01 R3 — `mode` là quyết định của SERVER, không phải client.
+            "mode": mode,
+            "dry_run": dry_run,
         })
     except DNSECredentialMissingError as exc:
         _finalize_audit_event(audit_event, 'credential_missing')
@@ -791,12 +798,12 @@ def dnse_send_email_otp_api(request):
     """
     _assert_broker_writes_allowed(request, 'dnse', action='send_email_otp')
     user = request.user
-    _mode, dry_run = _resolve_order_mode(request.data)
+    mode, dry_run = _resolve_order_mode(request.data)
 
     try:
         client = _get_active_dnse_client(user)
         result = client.send_email_otp(dry_run=dry_run, raw=False)
-        return Response({"result": result})
+        return Response({"result": result, "mode": mode, "dry_run": dry_run})
     except DNSECredentialMissingError as exc:
         raise ValidationErrorException(detail=str(exc), code="validation_error")
     except DNSEAdapterError as exc:
@@ -823,7 +830,7 @@ def dnse_create_trading_token_api(request):
     user = request.user
     otp_type = str(request.data.get("otp_type", "EMAIL")).strip().upper() or "EMAIL"
     passcode = str(request.data.get("passcode", "")).strip()
-    _mode, dry_run = _resolve_order_mode(request.data)
+    mode, dry_run = _resolve_order_mode(request.data)
 
     if not passcode:
         raise ValidationErrorException(
@@ -845,6 +852,10 @@ def dnse_create_trading_token_api(request):
             "otp_type": otp_type,
             "trading_token": trading_token,
             "result": result,
+            # SAFE-01 R3 — client cần `mode` để biết token này được cấp cho
+            # luồng paper hay live.
+            "mode": mode,
+            "dry_run": dry_run,
         })
     except DNSECredentialMissingError as exc:
         raise ValidationErrorException(detail=str(exc), code="validation_error")
