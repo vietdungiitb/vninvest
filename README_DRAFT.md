@@ -1,7 +1,7 @@
 # VNInvest — Professional Stock Tracking & Intelligent Robo-Advisor
 
 [![Sprint Status](https://img.shields.io/badge/Sprint-17_Complete-success.svg)](docs/ROADMAP_STATUS.md)
-[![License](https://img.shields.io/badge/Model-Open_Core-blue.svg)](docs/OPEN_CORE_STRATEGY_MASTER_FINAL.md)
+[![License](https://img.shields.io/badge/Model-Open_Core-blue.svg)](docs/archive/docs-flat/core_strategy_master/OPEN_CORE_STRATEGY_MASTER_FINAL.md)
 [![Tech Stack](https://img.shields.io/badge/Stack-Django_6.0.3_+_React-green.svg)](#tech-stack)
 
 **VNInvest** là nền tảng theo dõi danh mục đầu tư và cố vấn tài chính thông minh dành riêng cho thị trường chứng khoán Việt Nam (HOSE, HNX, UPCOM). Hệ thống kết hợp khả năng xử lý dữ liệu thời gian thực (Real-time), phân tích định lượng chuyên sâu và trí tuệ nhân tạo để hỗ trợ nhà đầu tư ra quyết định chính xác.
@@ -16,7 +16,7 @@ Dự án đang chuyển mình sang mô hình **Open Core**, phân tách rõ ràn
 *   **Pro/Enterprise Lane**: Tập trung vào các giá trị "Intelligence" như AI Advisory nâng cao, Whale & Dark-flow intelligence, và hạ tầng throughput cao cho người dùng chuyên nghiệp.
 
 > [!NOTE]
-> Để biết thêm chi tiết về lộ trình chuyển đổi, vui lòng tham khảo [Chiến lược Open Core (OC-14)](docs/OPEN_CORE_STRATEGY_MASTER_FINAL.md).
+> Để biết thêm chi tiết về lộ trình chuyển đổi, vui lòng tham khảo [Chiến lược Open Core (OC-14)](docs/archive/docs-flat/core_strategy_master/OPEN_CORE_STRATEGY_MASTER_FINAL.md).
 
 ---
 
@@ -114,7 +114,7 @@ vnbroker API → Celery Worker (5s) → Compute Engine (VWAP/Whale) → Redis Pu
 | Tài liệu | Nội dung |
 | :--- | :--- |
 | [ROADMAP_STATUS.md](docs/ROADMAP_STATUS.md) | Trạng thái dự án, kiến trúc tổng quát và API Contract. |
-| [DATA_PIPELINE_PLAN.md](docs/DATA_PIPELINE_PANDAS_SQL_OPTIMIZATION_PLAN_20260418.md) | Kế hoạch tối ưu hóa hiệu năng xử lý dữ liệu. |
+| [DATA_PIPELINE_PLAN.md](docs/archive/docs-flat/data_pipeline_pandas/DATA_PIPELINE_PANDAS_SQL_OPTIMIZATION_PLAN_20260418.md) | Kế hoạch tối ưu hóa hiệu năng xử lý dữ liệu. |
 | [WEBSOCKET_CONTRACT.md](docs/WEBSOCKET_EVENT_CONTRACT.md) | Quy chuẩn giao tiếp qua WebSocket. |
 | [WHALE_ALERTS_ROADMAP.md](docs/WHALE_ALERTS_DASHBOARD_ROADMAP.md) | Hiện trạng và định hướng tính năng phát hiện lệnh lớn. |
 

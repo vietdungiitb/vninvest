@@ -312,5 +312,5 @@ Once P2 is verified:
 ## 📚 Related Documentation
 
 - [ADVISORY_OBSERVABILITY_ARCHITECTURE.md](ADVISORY_OBSERVABILITY_ARCHITECTURE.md) — Full technical design
-- [P3_1_PROVIDER_FAILOVER_DESIGN.md](P3_1_PROVIDER_FAILOVER_DESIGN.md) — Next phase design docs
+- [P3_1_PROVIDER_FAILOVER_DESIGN.md](archive/docs-flat/p3_1_provider/P3_1_PROVIDER_FAILOVER_DESIGN.md) — Next phase design docs
 - Backend code: `backend/portfolio/tasks.py`, `backend/portfolio/views.py`
