@@ -18,6 +18,8 @@ from vninvest_core.exceptions import (
     ValidationErrorException,
 )
 
+from .permissions import (attach_required_permissions, WorkspacePermission, required_workspace_permission,)
+
 from .broker import SCHEMAS
 from .broker.base import mask_secrets_preview
 from .models import (
@@ -111,8 +113,9 @@ def broker_config_schema_api(request, provider):
     return Response(SCHEMAS[normalized].get_schema())
 
 
+@required_workspace_permission('broker_manage')
 @api_view(['GET', 'POST', 'DELETE'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, WorkspacePermission])
 def broker_config_api(request, provider):
     """CRUD config broker của user. POST validate theo field, lưu Fernet, chỉ trả preview."""
     normalized = _require_provider(provider)
@@ -153,8 +156,9 @@ def broker_config_api(request, provider):
     return Response({'ok': True, **_serialize_config(config)}, status=status.HTTP_200_OK)
 
 
+@required_workspace_permission('broker_manage')
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, WorkspacePermission])
 def broker_test_connection_api(request, provider):
     """Enqueue test-connection (trả job_id ngay, <500ms). Poll qua broker_job_status_api."""
     normalized = _require_provider(provider)
@@ -201,3 +205,9 @@ def broker_job_status_api(request, job_id):
     except Exception:  # noqa: BLE001
         error = 'failed'
     return Response({'job_id': str(job_id), 'state': 'failed', 'error': error})
+
+# SAFE-04: xem iews_dnse.py — @api_view khong chep attribute sang class.
+attach_required_permissions(
+    broker_config_api,
+    broker_test_connection_api,
+)

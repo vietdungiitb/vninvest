@@ -32,6 +32,7 @@ from django.test import SimpleTestCase, TestCase
 from rest_framework.test import APIClient
 
 from ops_audit.models import AuditEvent
+from identity_access.models import CoreTenant
 
 ORDER_URL = '/core/v1/broker/dnse/place-order/'
 OTP_URL = '/core/v1/broker/dnse/send-email-otp/'
@@ -81,8 +82,28 @@ class OrderSafetyTestCase(TestCase):
     def setUp(self):
         cache.clear()
         self.user = User.objects.create_user(username='pf1-order', password='x')
+        # SAFE-04: dùng `force_login` + header `X-Tenant-ID` thay vì
+        # `force_authenticate`. `force_authenticate` chỉ gắn user lên DRF
+        # Request, nên `TenantResolutionMiddleware` (tầng Django) không chạy
+        # và `request.tenant` không bao giờ được gán — đúng bằng chứng rằng
+        # "đã đăng nhập" KHÔNG đồng nghĩa "đã resolve được tenant".
+        #
+        # Trước SAFE-04, `IsAuthenticated` trần chấp nhận cả case không tenant
+        # nên fixture cũ vẫn xanh. Nay endpoint tài chính kiểm tra quyền
+        # theo tenant (deny-by-default), nên fixture phải mô tả một request
+        # CÓ THẬT — cùng cách `test_analytics_tenant_matrix.py` làm.
+        #
+        # Đây là sửa FIXTURE, không phải nới lỏng kiểm tra: nếu ta cho qua khi
+        # không có tenant thì lại quay về lỗ hổng mà SAFE-04 sinh ra để đóng.
+        self.tenant = CoreTenant.objects.create(
+            tenant_code='pf1-order-tenant',
+            display_name='PF1 order tenant',
+            owner_user=self.user,
+            status=CoreTenant.StatusChoices.ACTIVE,
+        )
         self.client = APIClient()
-        self.client.force_authenticate(user=self.user)
+        self.client.force_login(self.user)
+        self.client.defaults['HTTP_X_TENANT_ID'] = self.tenant.public_id
         self.broker = _FakeBroker()
         patcher = patch(
             'user_workspace.views_dnse._get_active_dnse_client',

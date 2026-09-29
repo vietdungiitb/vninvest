@@ -45,6 +45,8 @@ from vninvest_core.exceptions import (
     ValidationErrorException,
 )
 
+from .permissions import (attach_required_permissions, WorkspacePermission, required_workspace_permission,)
+
 #: side hợp lệ — `UNKNOWN` bị từ chối để luồng fail-closed ở BE cũng áp dụng.
 _ALLOWED_SIDES = ('BUY', 'SELL')
 #: lô tối thiểu cho cổ phiếu Việt Nam
@@ -492,8 +494,9 @@ def _get_active_dnse_client(user):
 # Giữ lại sync/OTP/order views (đọc secrets qua _get_dnse_secrets → store mới trước).
 
 
+@required_workspace_permission('portfolio_write')
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, WorkspacePermission])
 def dnse_sync_accounts_api(request):
     """
     Kích hoạt tác vụ đồng bộ tiểu khoản từ DNSE LightSpeed API.
@@ -521,8 +524,9 @@ def dnse_sync_accounts_api(request):
     }, status=status.HTTP_502_BAD_GATEWAY)
 
 
+@required_workspace_permission('portfolio_write')
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, WorkspacePermission])
 def dnse_sync_balances_api(request):
     """
     Kích hoạt tác vụ đồng bộ số dư/NAV từ DNSE cho các tiểu khoản đã liên kết.
@@ -605,8 +609,9 @@ def _assert_broker_writes_allowed(request, provider, *, action: str) -> None:
             ) from exc
 
 
+@required_workspace_permission('order_write')
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, WorkspacePermission])
 @throttle_classes([ScopedRateThrottle])
 def dnse_place_order_api(request):
     """
@@ -786,8 +791,9 @@ def dnse_place_order_api(request):
 dnse_place_order_api.throttle_scope = 'broker_order'
 
 
+@required_workspace_permission('order_write')
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, WorkspacePermission])
 def dnse_send_email_otp_api(request):
     """
     Gửi OTP email cho flow giao dịch DNSE.
@@ -818,8 +824,9 @@ def dnse_send_email_otp_api(request):
         )
 
 
+@required_workspace_permission('order_write')
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, WorkspacePermission])
 def dnse_create_trading_token_api(request):
     """
     Tạo trading token bằng OTP/passcode để đặt/sửa/hủy lệnh DNSE.
@@ -895,3 +902,13 @@ def dnse_token_status_api(request):
         "broker": "DNSE",
         "auth_method": "LightSpeed_OAuth2",
     })
+
+# SAFE-04: @api_view khong chep attribute tuy chon sang class, nen phai
+# chuyen khai bao sang .cls sau khi moi view da duoc boc.
+attach_required_permissions(
+    dnse_sync_accounts_api,
+    dnse_sync_balances_api,
+    dnse_place_order_api,
+    dnse_send_email_otp_api,
+    dnse_create_trading_token_api,
+)
