@@ -285,7 +285,7 @@ Trang thai tam dung hien tai:
 - [ ] Verify no linting errors: `npm run lint` (if configured)
 
 **Task 6.3: Prepare handoff docs**
-- [ ] Create [REALTIME_LAYER_HANDOFF.md](../REALTIME_LAYER_HANDOFF.md)
+- [ ] Create REALTIME_LAYER_HANDOFF.md _(khong ton tai)_
   - Hook API documentation
   - Integration examples
   - Known limitations

@@ -774,11 +774,11 @@ Then:
 
 - [VNBROKER_RUNTIME_CONFIG_ROADMAP_20260412.md](../vnbroker_runtime_config/VNBROKER_RUNTIME_CONFIG_ROADMAP_20260412.md) - Detailed implementation guide
 - [PREFETCH_POLICY_VS_VNBROKER_CONFIG_ANALYSIS_20260412.md](../prefetch_policy_vs/PREFETCH_POLICY_VS_VNBROKER_CONFIG_ANALYSIS_20260412.md) - Architecture analysis
-- [SPRINT32_CODE_TEMPLATES.md](SPRINT32_CODE_TEMPLATES.md) - Code templates (auto-generated)
-- [SPRINT32_APIdoc.md](SPRINT32_APIdoc.md) - API documentation (auto-generated)
-- [SPRINT32_TESTING_GUIDE.md](SPRINT32_TESTING_GUIDE.md) - Testing guide (auto-generated)
-- [SPRINT32_DEPLOYMENT_RUNBOOK.md](SPRINT32_DEPLOYMENT_RUNBOOK.md) - Deployment steps (auto-generated)
-- [SPRINT32_TROUBLESHOOTING.md](SPRINT32_TROUBLESHOOTING.md) - Troubleshooting (auto-generated)
+- SPRINT32_CODE_TEMPLATES.md _(khong ton tai)_ - Code templates (auto-generated)
+- SPRINT32_APIdoc.md _(khong ton tai)_ - API documentation (auto-generated)
+- SPRINT32_TESTING_GUIDE.md _(khong ton tai)_ - Testing guide (auto-generated)
+- SPRINT32_DEPLOYMENT_RUNBOOK.md _(khong ton tai)_ - Deployment steps (auto-generated)
+- SPRINT32_TROUBLESHOOTING.md _(khong ton tai)_ - Troubleshooting (auto-generated)
 
 ---
 

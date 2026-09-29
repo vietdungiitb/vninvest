@@ -321,8 +321,8 @@ Users of OpenCore must comply with all included licenses.
   
   Please review our Terms of Service and Privacy Policy before use.
   
-  - [Terms of Service](docs/TERMS_OF_SERVICE.md)
-  - [Privacy Policy](docs/PRIVACY_POLICY.md)
+  - Terms of Service _(khong ton tai)_
+  - Privacy Policy _(khong ton tai)_
   - [Disclaimer](../disclaimer/DISCLAIMER.md)
   ```
 
