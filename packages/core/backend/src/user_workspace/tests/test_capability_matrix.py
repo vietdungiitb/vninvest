@@ -193,37 +193,92 @@ class NoBarePermissionOnFinancialWritesTests(TestCase):
     """AC3: không endpoint ghi nào còn dùng `IsAuthenticated` trần."""
 
     def test_no_financial_write_uses_bare_isauthenticated(self):
+        """AC3: không endpoint ghi nào còn dùng `IsAuthenticated` trần.
+
+        Bản đầu dùng `any(isinstance(a, ast.Constant) ... for a in d.args)` —
+        nhưng `d.args` là list tham số của `Call`, phần tử duy nhất là
+        `ast.List` (danh sách method), KHÔNG phải `ast.Constant`. Điều kiện
+        luôn False ⇒ `not any(...)` luôn True ⇒ `continue` cho MỌI hàm ⇒
+        `offenders` luôn rỗng và test luôn xanh dù code hỏng. Audit chạy lại
+        đúng logic đó: 0 hàm được xét.
+
+        Nay duyệt `d.args[0].elts` (từng method trong list) và so `e.value`.
+        """
         offenders = []
+        write_methods = {'POST', 'PUT', 'PATCH', 'DELETE'}
+
+        def _decorator_call(node, name):
+            for dec in getattr(node, 'decorator_list', []):
+                if not isinstance(dec, ast.Call):
+                    continue
+                if isinstance(dec.func, ast.Name) and dec.func.id == name:
+                    return dec
+            return None
+
         for rel in ('user_workspace/views_dnse.py', 'user_workspace/views_broker.py'):
             path = _BACKEND_SRC / rel
             tree = ast.parse(path.read_text(encoding='utf-8'))
             for node in ast.walk(tree):
-                if not isinstance(node, (ast.FunctionDef,)):
+                if not isinstance(node, ast.FunctionDef):
                     continue
-                if not any(
-                    isinstance(d, ast.Call) and getattr(d.func, 'id', '') == 'api_view'
-                    and any(
-                        isinstance(a, ast.Constant) and a.value in {'POST', 'PUT', 'PATCH', 'DELETE'}
-                        for a in getattr(d, 'args', [ast.List(elts=[])])
-                        for e in getattr(getattr(d.args[0], 'elts', []), 'elts', [])
-                    )
-                    for d in node.decorator_list
-                ):
+                api_view = _decorator_call(node, 'api_view')
+                if api_view is None:
                     continue
-                for dec in node.decorator_list:
-                    if not isinstance(dec, ast.Call):
-                        continue
-                    if getattr(dec.func, 'id', '') != 'permission_classes':
-                        continue
-                    elts = getattr(dec.args[0], 'elts', [])
-                    names = [
-                        getattr(e, 'attr', getattr(e, 'id', ''))
-                        for e in elts
-                    ]
-                    if names == ['IsAuthenticated']:
-                        offenders.append(f'{rel}:{node.lineno} {node.name}')
+                methods = set()
+                for arg in api_view.args:
+                    for elt in getattr(arg, 'elts', []):
+                        if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                            methods.add(elt.value)
+                if not (methods & write_methods):
+                    continue
+
+                perms = _decorator_call(node, 'permission_classes')
+                names = []
+                if perms is not None:
+                    for arg in perms.args:
+                        for elt in getattr(arg, 'elts', []):
+                            if isinstance(elt, ast.Name):
+                                names.append(elt.id)
+                            elif isinstance(elt, ast.Attribute):
+                                names.append(elt.attr)
+                if names == ['IsAuthenticated']:
+                    offenders.append(f'{rel}:{node.lineno} {node.name} {sorted(methods)}')
+
         self.assertEqual(
             offenders,
             [],
             'endpoint ghi khong duoc dung IsAuthenticated tran:\n' + '\n'.join(offenders),
+        )
+
+    def test_ast_filter_actually_examines_functions(self):
+        """Bảo vệ chính bộ lọc AST ở trên.
+
+        Nếu bộ lọc hỏng (0 hàm được xét) thì AC3 rỗng và im lặng xanh. Test
+        này chạy lại logic với dữ liệu thật của repo và khẳng định nó tìm
+        thấy ÍT NHẤT vài endpoint ghi — tức nó đang quét thật.
+        """
+        import ast as _ast
+
+        write_methods = {'POST', 'PUT', 'PATCH', 'DELETE'}
+        found = 0
+        for rel in ('user_workspace/views_dnse.py', 'user_workspace/views_broker.py'):
+            tree = _ast.parse((_BACKEND_SRC / rel).read_text(encoding='utf-8'))
+            for node in _ast.walk(tree):
+                if not isinstance(node, _ast.FunctionDef):
+                    continue
+                for dec in node.decorator_list:
+                    if not isinstance(dec, _ast.Call):
+                        continue
+                    if not (isinstance(dec.func, _ast.Name) and dec.func.id == 'api_view'):
+                        continue
+                    for arg in dec.args:
+                        for elt in getattr(arg, 'elts', []):
+                            if (
+                                isinstance(elt, _ast.Constant)
+                                and elt.value in write_methods
+                            ):
+                                found += 1
+        self.assertGreaterEqual(
+            found, 7,
+            f'bo loc AST chi tim thay {found} endpoint ghi — bo loc co the da hong',
         )

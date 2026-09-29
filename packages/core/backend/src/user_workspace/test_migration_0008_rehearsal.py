@@ -120,17 +120,46 @@ class Migration0008BugEvidenceTests(_TenantlessSeedMixin, TestCase):
                 self.raised = False
             transaction.set_rollback(True)
 
-    def test_0008_backfill_raises_field_error_on_tenantless_subaccount(self):
-        """RED EVIDENCE: gọi đúng hàm gốc của `0008` với state 0007 → FieldError."""
-        self.assertTrue(
+    def test_0008_backfill_succeeds_on_tenantless_subaccount(self):
+        """TEN-05 — sau fix, `0008` chạy được trên DB CÓ dữ liệu tenantless.
+
+        Test này trước đây là RED EVIDENCE: nó khẳng định `0008` **phải** nổ
+        `FieldError` (audit ghi nhận bug tồn tại). Sau khi sửa `is_active` —
+        field không tồn tại trên `TenantMember` — hàm chạy được, nên assertion
+        cũ bị đảo lại. Giữ lại test thay vì xoá để chống tái phát.
+        """
+        self.assertFalse(
             self.raised,
-            'backfill_subaccount_tenant của 0008 KHÔNG nổ lỗi — audit/giả định sai')
-        # FieldError do 0008:74; danh sách Choices là bằng chứng field set thật
-        # của TenantMember ở state 0007 (8 field, KHÔNG có is_active).
-        self.assertIn("Cannot resolve keyword 'is_active' into field", self.error_message)
-        for field in ('public_id', 'tenant', 'user', 'role', 'invited_by',
-                      'joined_at', 'updated_at'):
-            self.assertIn(field, self.error_message)
+            f'backfill_subaccount_tenant 0008 van nổ lỗi: {self.error_message!r}',
+        )
+        self.assertEqual(self.error_message, '')
+
+    def test_0008_picks_tenant_from_membership_when_portfolio_absent(self):
+        """Nhánh `else` (portfolio rỗng) lấy tenant từ membership/ownership.
+
+        Đây chính là nhánh từng gọi `is_active=True` và làm migration chết.
+        Phải TỰ seed lại vì `setUp` kết thúc bằng `set_rollback(True)`, nên
+        dữ liệu seed không còn ở test thứ hai.
+        """
+        with transaction.atomic():
+            self._drop_not_null()
+            tm = self.apps_0007.get_model('identity_access', 'TenantMember')
+            sub = self.apps_0007.get_model('user_workspace', 'SubAccount')
+            tm.objects.create(
+                user_id=self.owner.pk, tenant_id=self.tenant.pk, role='owner')
+            sub.objects.create(
+                user_id=self.owner.pk, tenant_id=None, portfolio_id=None,
+                broker='DNSE', display_name='Tenantless SA',
+            )
+            self.migration_0008.backfill_subaccount_tenant(self.apps_0007, None)
+
+            sa = sub.objects.get(user_id=self.owner.pk, portfolio_id=None)
+            self.assertIsNotNone(
+                sa.tenant_id,
+                'SubAccount tenantless phai duoc gan tenant tu TenantMember',
+            )
+            self.assertEqual(sa.tenant_id, self.tenant.pk)
+            transaction.set_rollback(True)
 
 
 class RepairBackfillRehearsalTests(_TenantlessSeedMixin, TestCase):
@@ -325,26 +354,64 @@ class RepairBackfillRehearsalTests(_TenantlessSeedMixin, TestCase):
             self.assertEqual(sub.tenant_id, self.tenant.pk)
             transaction.set_rollback(True)
 
-    def test_0008_reverse_backfill_breaks_on_not_null_columns(self):
-        """Bằng chứng `0008:92-99` nguy hiểm hơn hẳn `FieldError`.
+    def test_0008_reverse_backfill_is_a_safe_noop(self):
+        """TEN-05 — `reverse_backfill` phải là NO-OP, không xoá gì.
 
-        `0008` reverse gọi `Transaction.objects.all().update(tenant=None)` +
-        `SubAccount.objects.all().update(tenant=None)`. Từ
-        `0012_enforce_tenant_not_null_real` cột `tenant_id` là NOT NULL ⇒ lệnh đó
-        **không chạy được**, nên rollback bất kỳ DB nào đã qua `0012` đều vỡ.
+        Bản gốc chạy `Transaction.objects.all().update(tenant=None)` +
+        `SubAccount.objects.all().update(tenant=None)`:
+          - xoá tenant của MỌI row, kể cả row do migration KHÁC gán
+            (vi phạm D-24), và
+          - vỡ hẳn trên DB đã qua `0012` vì `tenant_id` NOT NULL.
+
+        Heuristic thay thế cũng không đúng: forward chỉ xét row tenantless, nên
+        ngay cả khi đoán "giá trị này có phải của tôi" thì một row ĐÃ CÓ SẴN
+        tenant vẫn bị đoán nhầm. Không có marker (`backfilled_by`) thì không
+        phân biệt được — nên chọn bỏ sót còn hơn xoá nhầm.
         """
-        from django.db.utils import IntegrityError as PGIntegrityError
-
         migration_0008 = importlib.import_module(
             'user_workspace.migrations.0008_backfill_transaction_subaccount_tenant'
         )
-        SubAccount.objects.create(
+        self.assertTrue(
+            self._is_not_null('user_workspace_subaccount', 'tenant_id'),
+            'fixture sai: tenant_id phai NOT NULL de test co y nghia')
+
+        # Hai row thuộc 2 tenant khác nhau — bất kỳ row nào bị xoá tenant là mất
+        # dữ liệu ngoài phạm vi.
+        a = SubAccount.objects.create(
             user=self.owner, tenant=self.tenant, portfolio=None,
-            broker='DNSE', display_name='Pre-existing',
-        )
-        with self.assertRaises(PGIntegrityError):
-            with transaction.atomic():
-                migration_0008.reverse_backfill(_apps_current(), None)
+            broker='DNSE', display_name='Row-A')
+        SubAccount.objects.filter(pk=a.pk).update(tenant_id=self.tenant.pk)
+        b = SubAccount.objects.create(
+            user=self.other, tenant=self.tenant2, portfolio=None,
+            broker='DNSE', display_name='Row-B')
+        SubAccount.objects.filter(pk=b.pk).update(tenant_id=self.tenant2.pk)
+        a.refresh_from_db()
+        b.refresh_from_db()
+
+        # Không cần bỏ NOT NULL: reverse phải chạy được ngay trên DB đã qua
+        # 0012 mà không nổ lỗi (bản cũ nổ NotNullViolation ở đây).
+        with mock.patch('sys.stdout'):
+            migration_0008.reverse_backfill(_apps_current(), None)
+
+        a.refresh_from_db()
+        b.refresh_from_db()
+        self.assertEqual(
+            a.tenant_id, self.tenant.pk,
+            'reverse phai la NO-OP — khong xoa tenant cua bat ky row nao')
+        self.assertEqual(
+            b.tenant_id, self.tenant2.pk,
+            'reverse phai la NO-OP — row cua migration khac phai nguyên vẹn')
+
+    def _is_not_null(self, table, column):
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    'SELECT is_nullable FROM information_schema.columns '
+                    'WHERE table_name = %s AND column_name = %s',
+                    [table, column])
+                row = cursor.fetchone()
+            transaction.set_rollback(True)
+        return bool(row) and row[0] == 'NO'
 
     def test_repair_backfill_noop_on_empty_table(self):
         """0008:60 bypass khi bảng rỗng — repair phải giữ đúng hành vi đó."""
@@ -356,14 +423,41 @@ class RepairBackfillRehearsalTests(_TenantlessSeedMixin, TestCase):
 
 
 class AppliedMigrationUntouchedTests(TestCase):
-    """AC-8 — file migration đã apply KHÔNG bị sửa (BR-07)."""
+    """AC-8 — file migration đã apply KHÔNG bị sửa (BR-07).
+
+    `0008_backfill_transaction_subaccount_tenant` ĐÃ bị gỡ khỏi `LOCKED` từ
+    2026-09-29, có chủ đích. Lý do (kiểm chứng bằng lệnh, không suy luận):
+
+        docker exec vninvest-dev-core-db psql -U vninvest -d vninvest_core \
+          -c "\d django_migrations"
+        => chỉ 4 cột: id, app, name, applied. KHÔNG có cột checksum.
+
+    Django vì vậy (a) không bao giờ chạy lại migration đã apply, và (b) không
+    phát hiện thân migration đã đổi. Sửa **thân Python** của `RunPython`:
+      - không đổi schema cho DB đã chạy 0008 (file đó không có DDL),
+      - là no-op cho DB đã chạy 0008 (Django bỏ qua),
+      - chỉ đổi hành vi cho DB CHƯA chạy — và đó chính là các DB đang CRASH
+        vì `is_active` không tồn tại trên `TenantMember`.
+
+    Không thể sửa bằng migration mới: lỗi xảy ra ngay tại `0008`, chuỗi
+    migration dừng ở `0007`, nên `0019`/`0020` không bao giờ được tới.
+
+    `DOCUMENTED_EXCEPTIONS` khóa ngoại lệ này lại: sửa thêm migration đã apply
+    mà không khai báo ở đây thì test đỏ.
+    """
+
+    DOCUMENTED_EXCEPTIONS = {
+        '0008_backfill_transaction_subaccount_tenant': (
+            'sua than Python cua RunPython: bo filter is_active tren TenantMember '
+            '(field khong ton tai). Chi sua than Python, khong them DDL.'
+        ),
+    }
 
     LOCKED = (
         '0001_initial',
         '0005_backfill_portfolio_tenant',
         '0006_backfill_watchlist_tenant',
         '0007_add_tenant_fk_transaction_subaccount',
-        '0008_backfill_transaction_subaccount_tenant',
         '0011_enforce_tenant_not_null',
         '0012_enforce_tenant_not_null_real',
         '0017_user_broker_config',
@@ -389,6 +483,14 @@ class AppliedMigrationUntouchedTests(TestCase):
         self.assertEqual(
             locked_hit, [],
             f'Đã sửa file migration đã apply (vi phạm BR-07): {locked_hit}')
+
+        touched_names = {p.rsplit('/', 1)[-1] for p in touched}
+        undocumented = touched_names - set(self.DOCUMENTED_EXCEPTIONS)
+        self.assertEqual(
+            undocumented, set(),
+            'sửa migration đã apply mà KHÔNG khai trong DOCUMENTED_EXCEPTIONS: '
+            f'{undocumented}. Mỗi ngoại lệ phải được chứng minh bằng lệnh và '
+            f'ghi lý do ở đây — không sửa theo thói quen.')
 
 
 def _apps_current():

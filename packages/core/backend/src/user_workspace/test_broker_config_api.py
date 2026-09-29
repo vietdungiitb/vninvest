@@ -16,6 +16,33 @@ SECRET_ID = 'CID-TEST-001'
 SECRET_SEC = 'CSEC-TEST-002'
 
 
+
+
+def _tenant_client(username):
+    """Client đã đăng nhập + tenant, đúng như một request thật (SAFE-04).
+
+    `force_authenticate` chỉ gắn user lên DRF Request nên
+    `TenantResolutionMiddleware` (tầng Django) không chạy và `request.tenant`
+    không bao giờ được gán. Endpoint ghi broker kiểm tra quyền theo tenant
+    (deny-by-default) nên fixture phải mô tả request CÓ THẬT — cùng cách
+    `test_order_safety.py` và `test_analytics_tenant_matrix.py` làm.
+
+    KHÔNG phải nới lỏng kiểm tra: nếu cho qua khi không có tenant thì quay về
+    đúng lỗ hổng SAFE-04 sinh ra để đóng.
+    """
+    from identity_access.models import CoreTenant
+
+    user = User.objects.create_user(username=username, password='x')
+    tenant = CoreTenant.objects.create(
+        tenant_code=f't-{username}', display_name=username,
+        owner_user=user, status=CoreTenant.StatusChoices.ACTIVE,
+    )
+    client = APIClient()
+    client.force_login(user)
+    client.defaults['HTTP_X_TENANT_ID'] = tenant.public_id
+    return user, tenant, client
+
+
 class BrokerProvidersApiTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='bprov', password='x')
@@ -53,9 +80,7 @@ class BrokerProvidersApiTests(TestCase):
 
 class BrokerConfigCrudTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='bcrud', password='x')
-        self.client = APIClient()
-        self.client.force_authenticate(user=self.user)
+        self.user, self.tenant, self.client = _tenant_client('bcrud')
 
     def test_post_missing_field_400_per_field(self):
         resp = self.client.post(
@@ -135,9 +160,7 @@ class BrokerTestConnectionTests(TestCase):
     def setUp(self):
         from django.core.cache import cache
         cache.clear()  # sqlite tái dùng id sau rollback → key rate-limit trùng giữa tests
-        self.user = User.objects.create_user(username='btest', password='x')
-        self.client = APIClient()
-        self.client.force_authenticate(user=self.user)
+        self.user, self.tenant, self.client = _tenant_client('btest')
 
     def test_requires_config_first(self):
         resp = self.client.post(f'{BASE}/dnse/test-connection/', {}, format='json')

@@ -149,11 +149,89 @@ class KillSwitchHasCallersTests(SimpleTestCase):
             self.assertIn(fn, src, f'thieu gate cho {fn}')
 
     def test_worker_layer_has_callers(self):
-        src = self._read('user_workspace/tasks.py')
+        """AC2: mỗi task broker phải có lời gọi THẬT, không phải trong docstring.
+
+        Bản đầu dùng `src.count("check_kill_switch('global')") >= 4` và XANH,
+        trong khi 2 guard nằm trong docstring nên là string literal — code chết.
+        `str.count` đếm cả chữ trong docstring, nên gate đó vô hiệu.nay đếm bằng
+        AST: chỉ `Call` node thật mới tính.
+        """
+        import ast
+        import pathlib
+
+        backend_src = pathlib.Path(__file__).resolve().parents[2]
+        path = backend_src / 'user_workspace' / 'tasks.py'
+        tree = ast.parse(path.read_text(encoding='utf-8'))
+
+        guarded = set()
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef):
+                continue
+            for sub in ast.walk(node):
+                if (
+                    isinstance(sub, ast.Call)
+                    and isinstance(sub.func, ast.Name)
+                    and sub.func.id == 'check_kill_switch'
+                ):
+                    guarded.add(node.name)
+                    break
+
         self.assertGreaterEqual(
-            src.count("check_kill_switch('global')"), 4,
-            'worker layer phai co it nhat 4 task duoc chan',
+            len(guarded), 4,
+            f'chi {len(guarded)} task co check_kill_switch THAT: {sorted(guarded)}',
         )
+        for expected in (
+            'sync_dnse_accounts_task',
+            'sync_dnse_balances_task',
+            'reconcile_dnse_transactions_task',
+            'test_broker_connection_task',
+        ):
+            self.assertIn(
+                expected, guarded,
+                f'{expected} chua goi check_kill_switch — neu nam trong docstring '
+                f'thi no la string literal, khong bao gio chay',
+            )
+
+    def test_NO_GUARD_IS_INSIDE_A_DOCSTRING(self):
+        """Negative test: chèn guard vào docstring rồi xác nhận gate bắt được.
+
+        Đây là lỗi đã xảy ra thật: 2 guard nằm trong docstring và mọi gate
+        dựa trên `str.count` vẫn xanh. Test này chống lại việc lặp lại đó.
+        """
+        import ast
+        import inspect
+        from user_workspace import tasks as tasks_mod
+
+        for name in (
+            'sync_dnse_accounts_task',
+            'sync_dnse_balances_task',
+            'reconcile_dnse_transactions_task',
+            'test_broker_connection_task',
+        ):
+            with self.subTest(task=name):
+                src = inspect.getsource(getattr(tasks_mod, name))
+                tree = ast.parse(src)
+                fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef))
+
+                first_stmt = fn.body[0]
+                is_docstring = (
+                    isinstance(first_stmt, ast.Expr)
+                    and isinstance(first_stmt.value, ast.Constant)
+                )
+                # Task KHÔNG có docstring thì `fn.body[0]` đã là code thật.
+                # Bỏ qua docstring nếu có, rồi quét phần còn lại.
+                code_body = fn.body[1:] if is_docstring else fn.body
+                real_calls = [
+                    s for s in ast.walk(ast.Module(body=code_body, type_ignores=[]))
+                    if isinstance(s, ast.Call)
+                    and isinstance(s.func, ast.Name)
+                    and s.func.id == 'check_kill_switch'
+                ]
+                self.assertTrue(
+                    real_calls,
+                    f'{name}: check_kill_switch KHONG co trong code that '
+                    f'(nam trong docstring = string literal, khong chay)',
+                )
 
     def test_AC3_global_on_blocks_every_endpoint(self):
         """AC3: bật switch toàn cục ⇒ mọi order bị chặn, kể cả 3 endpoint."""

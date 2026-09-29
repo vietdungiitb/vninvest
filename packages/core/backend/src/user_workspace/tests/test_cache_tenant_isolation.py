@@ -140,13 +140,73 @@ class ScreenerScanCacheTenantTests(SimpleTestCase):
         self.assertIn('TEN-B', key_b)
 
     def test_tenant_b_cannot_read_tenant_a_cached_scan(self):
-        """AC2: cache day cua A thi B van phai tinh lai, khong doc trong A."""
+        """AC2: cache đầy của A thì B vẫn phải tính lại, không đọc trong A."""
         rule = _Rule(rule_id=42, updated_at=dt.datetime(2026, 9, 29, tzinfo=dt.timezone.utc))
         day = dt.date(2026, 9, 29)
         key_a = _scan_cache_key(7, rule, day, False, tenant_id='TEN-A')
         cache.set(key_a, ['symbol-A'], 60)
         key_b = _scan_cache_key(7, rule, day, False, tenant_id='TEN-B')
         self.assertIsNone(cache.get(key_b), 'tenant B doc duoc ket qua scan cua tenant A')
+
+    def test_view_and_task_build_the_identical_key(self):
+        """D-14: đường ĐỌC (view) và đường GHI (task) phải tạo CÙNG một key.
+
+        Đây là lỗi im lặng nguy hiểm: nếu hai bên lệch key, task vẫn "ghi cache
+        thành công" nhưng không ai đọc được ⇒ mỗi lần scan đều chạy lại từ
+        đầu, và test `test_screener_async_run` đỏ `202 != 200`.
+
+        Bug này ĐÃ xảy ra: view lấy `request.tenant` còn task lấy `rule.tenant`.
+        Test này khẳng định cả hai phải lấy tenant từ `rule.tenant`.
+        """
+        import ast
+        import pathlib
+
+        backend_src = pathlib.Path(__file__).resolve().parents[2]
+        views_src = (backend_src / 'user_workspace/portfolio_analytics_views.py').read_text(
+            encoding='utf-8'
+        )
+        tasks_src = (backend_src / 'user_workspace/screener_tasks.py').read_text(
+            encoding='utf-8'
+        )
+
+        # Cả hai file phải gọi `_scan_cache_key` với `tenant_id=` — không được
+        # để mặc định None ở một bên.
+        self.assertIn('tenant_id=_scan_tenant_id', views_src,
+                      'view phai truyen tenant_id cho _scan_cache_key')
+        self.assertIn('tenant_id=_key_tenant_id', tasks_src,
+                      'task phai truyen tenant_id cho _scan_cache_key')
+
+        # Cả hai phải lấy tenant từ RULE, KHÔNG từ `request.tenant`.
+        # Code thật viết `getattr(<biến rule>, "tenant", None)` — "tenant" là
+        # CHUỖI, không phải `ast.Attribute.attr`, nên phải dò `getattr` chứ không
+        # dò attribute node (dò attribute sẽ luôn ra 0 và gate im lặng xanh).
+        import re as _re
+
+        rule_tenant_re = _re.compile(
+            r'getattr\(\s*\w*rule\w*\s*,\s*[\'"]tenant[\'"]', _re.IGNORECASE)
+        request_tenant_re = _re.compile(
+            r'getattr\(\s*request\s*,\s*[\'"]tenant[\'"]', _re.IGNORECASE)
+
+        for name, src, scan_marker in (
+            ('view', views_src, 'scan_cache_key = _scan_cache_key('),
+            ('task', tasks_src, 'scan_key = _scan_cache_key('),
+        ):
+            with self.subTest(side=name):
+                # Chỉ xét VÙNG quanh lời GỌI `_scan_cache_key` (không phải
+                # định nghĩa hàm) — file khác có thể đọc `request.tenant` chỗ
+                # khác, và với `sched_alerts` đó là hành vi ĐÚNG.
+                self.assertIn(
+                    scan_marker, src,
+                    f'{name}: khong tim thay loi goi _scan_cache_key de kiem tra')
+                idx = src.index(scan_marker)
+                window = src[max(0, idx - 500): idx + 300]
+                self.assertRegex(
+                    window, rule_tenant_re,
+                    f'{name}: scan cache key phai lay tenant tu bien ...rule...')
+                self.assertNotRegex(
+                    window, request_tenant_re,
+                    f'{name}: scan cache key KHONG duoc lay tenant tu request.tenant — '
+                    f'task chi co rule_id nen hai ben se lech key')
 
 
 class LedgerCacheFailsClosedTests(TestCase):

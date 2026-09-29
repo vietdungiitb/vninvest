@@ -548,8 +548,9 @@ def dnse_sync_balances_api(request):
     )
 
 
+@required_workspace_permission('portfolio_write')
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, WorkspacePermission])
 def dnse_reconcile_transactions_api(request):
     """
     Kích hoạt đối soát giao dịch DNSE cho các tiểu khoản đã liên kết.
@@ -911,4 +912,5 @@ attach_required_permissions(
     dnse_place_order_api,
     dnse_send_email_otp_api,
     dnse_create_trading_token_api,
+    dnse_reconcile_transactions_api,
 )

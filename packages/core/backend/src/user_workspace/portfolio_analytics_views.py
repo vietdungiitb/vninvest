@@ -2195,9 +2195,19 @@ class PortfolioScreenerRuleRunView(APIView):
         from django.conf import settings as _scan_settings
         from user_workspace.screener_helpers import _required_lookback_days, _lookback_calendar_days
         _scan_ttl = getattr(_scan_settings, "SCREENER_SCAN_CACHE_TTL", _SCAN_CACHE_TTL)
-        # TEN-06: bind the scan cache to the active tenant so a user in two
-        # tenants cannot read the other tenant's cached scan result.
-        _scan_tenant_id = getattr(getattr(request, "tenant", None), "public_id", None)
+        # TEN-06: bind the scan cache to a tenant so a user in two tenants
+        # cannot read the other tenant's cached scan result.
+        #
+        # Nguon SU THAT la `rule.tenant` — KHONG phai `request.tenant`. Ly do:
+        # duong GHI cache la Celery task (`screener_tasks.py`) chi co `rule_id`,
+        # nen no lay tenant tu rule. Neu doc duong lay `request.tenant` thi
+        # khi hai gia tri lech nhau (request chua resolve tenant, hoac rule thuoc
+        # tenant khac) se tao hai key khac nhau: task ghi vao mot namespace ma
+        # view doc o namespace khac => cache mat, va test
+        # `test_screener_async_run` fail 202 != 200. Dung `rule.tenant` o ca hai
+        # dau thi key luon trung nhau.
+        _scan_tenant = getattr(rule, "tenant", None)
+        _scan_tenant_id = getattr(_scan_tenant, "public_id", None)
         scan_cache_key = _scan_cache_key(
             request.user.id, rule, session_date, include_ai, tenant_id=_scan_tenant_id
         )

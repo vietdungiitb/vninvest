@@ -34,15 +34,20 @@ from django.db import migrations
 _TENANT_MEMBER_ROLE_RANK = ['owner', 'admin', 'editor', 'viewer']
 
 
-def _pick_primary_tenant_id(TenantMember, user_id):
-    """Return the tenant id to use for a user, or None if the user has no membership.
+def _pick_primary_tenant_id(TenantMember, CoreTenant, user_id):
+    """Return the tenant id to use for a user, or None if the user has no tenant.
 
-    Uses only fields that exist on the historical TenantMember model.
+    Uses only fields that exist on the historical models.
+
+    `CoreTenant.owner_user` phải được xét: một user sở hữu tenant thường KHÔNG
+    có dòng `TenantMember` (membership dành cho người được mời). Bỏ qua nhánh
+    này thì `reverse_backfill` không hoàn tác được row của chính nó, vì nó
+    tính lại bằng cùng hàm này mà không membership thì ra `None` ⇒ bỏ sót.
     """
-    members = TenantMember.objects.filter(user_id=user_id).order_by('id')
     best_id = None
     best_rank = len(_TENANT_MEMBER_ROLE_RANK)
-    for member in members:
+
+    for member in TenantMember.objects.filter(user_id=user_id).order_by('id'):
         try:
             rank = _TENANT_MEMBER_ROLE_RANK.index(member.role)
         except ValueError:
@@ -50,7 +55,16 @@ def _pick_primary_tenant_id(TenantMember, user_id):
         if rank < best_rank:
             best_rank = rank
             best_id = member.tenant_id
-    return best_id
+
+    if best_id is not None:
+        return best_id
+
+    # Không có membership nào ⇒ thử tenant do user sở hữu.
+    try:
+        owned = CoreTenant.objects.filter(owner_user_id=user_id).only('id').first()
+    except Exception:  # noqa: BLE001 — bảng CoreTenant có thể chưa có cột này
+        return None
+    return owned.id if owned is not None else None
 
 
 def backfill_transaction_tenant(apps, schema_editor):
@@ -98,6 +112,7 @@ def backfill_subaccount_tenant(apps, schema_editor):
     """
     SubAccount = apps.get_model('user_workspace', 'SubAccount')
     TenantMember = apps.get_model('identity_access', 'TenantMember')
+    CoreTenant = apps.get_model('identity_access', 'CoreTenant')
     
     # Find all sub-accounts with NULL tenant
     subaccounts_to_update = list(
@@ -121,7 +136,7 @@ def backfill_subaccount_tenant(apps, schema_editor):
             # Strategy 2: Use user's primary TenantMember.
             # The original code filtered on `is_active=True`, a field that does
             # not exist on TenantMember -- see REPAIR NOTE above.
-            tenant_id = _pick_primary_tenant_id(TenantMember, user_id)
+            tenant_id = _pick_primary_tenant_id(TenantMember, CoreTenant, user_id)
         
         if tenant_id is not None:
             sa = SubAccount(id=sa_id, tenant_id=tenant_id)
@@ -137,56 +152,40 @@ def backfill_subaccount_tenant(apps, schema_editor):
 
 
 def reverse_backfill(apps, schema_editor):
-    """Reverse: set tenant to NULL for rows this migration actually touched.
+    """Reverse = NO-OP có log. Cố tình KHÔNG xoá gì.
 
-    The previous implementation ran
-    `Transaction.objects.all().update(tenant=None)` and the same for
-    SubAccount. That cleared the tenant of EVERY row in both tables, including
-    rows whose tenant had been assigned by a different migration, so a rollback
-    silently destroyed data it did not create.
+    Bản gốc chạy:
+        Transaction.objects.all().update(tenant=None)
+        SubAccount.objects.all().update(tenant=None)
+    ⇒ xoá tenant của MỌI row ở cả hai bảng, kể cả row mà migration KHÁC đã
+    gán. Đó là mất dữ liệu ngoài phạm vi (vi phạm D-24), và trên DB đã qua
+    `0012_enforce_tenant_not_null_real` còn **vỡ hẳn** vì `tenant_id` NOT
+    NULL ⇒ rollback bất kỳ DB nào đã qua `0012`.
 
-    D-24 requires a reverse to only revert rows that the same migration
-    backfilled. Since 0008 cannot add a marker column without changing schema
-    for databases that already applied it, the narrowest correct criterion
-    available here is "the row was tenantless at forward time and the strategy
-    would have assigned it a tenant" -- i.e. exactly the set this function
-    writes. Everything else is left untouched.
+    Vì sao KHÔNG dùng heuristic thay thế:
+    Forward chỉ xét row `tenant IS NULL`; nếu reverse xét mọi row có tenant
+    rồi đoán "giá trị này có phải do tôi gán không", thì một row ĐÃ CÓ SẴN
+    tenant từ trước forward vẫn bị đoán là của migration và bị xoá. Đoán sai
+    một lần là mất dữ liệu người dùng — tệ hơn nhiều so với rollback không
+    hoàn tác hết.
+
+    Cách đúng là cột marker kiểu `backfilled_by`, để reverse lọc
+    `WHERE backfilled_by = '0008_...'`. Nhưng thêm cột vào một migration ĐÃ
+    APPLY là thay đổi schema (vi phạm BR-07), và không thể sửa bằng migration
+    mới vì lỗi nằm ngay tại 0008 (chuỗi migration dừng ở 0007).
+
+    Vì vậy: bỏ sót còn hơn xoá nhầm. Rollback thật sự phải là
+    `manage.py migrate user_workspace <target> --fake` cho 0008, hoặc restore
+    từ backup. Ghi rõ ở `docs/OPEN_WORK_20260929.md` (OW-05).
     """
-    Transaction = apps.get_model('user_workspace', 'Transaction')
-    SubAccount = apps.get_model('user_workspace', 'SubAccount')
-    TenantMember = apps.get_model('identity_access', 'TenantMember')
-
-    cleared = {'transaction': 0, 'subaccount': 0}
-
-    for tx_id, portfolio_tenant_id in list(
-        Transaction.objects.filter(tenant__isnull=False)
-        .values_list('id', 'portfolio__tenant_id')
-    ):
-        # A transaction whose tenant matches the portfolio chain was set by this
-        # migration's Strategy 1. Anything else is somebody else's write.
-        if portfolio_tenant_id is not None:
-            Transaction.objects.filter(
-                id=tx_id, tenant_id=portfolio_tenant_id
-            ).update(tenant=None)
-            cleared['transaction'] += 1
-
-    for sa_id, portfolio_tenant_id, user_id in list(
-        SubAccount.objects.filter(tenant__isnull=False)
-        .select_related('portfolio', 'user')
-        .values_list('id', 'portfolio__tenant_id', 'user_id')
-    ):
-        expected = portfolio_tenant_id
-        if expected is None:
-            expected = _pick_primary_tenant_id(TenantMember, user_id)
-        if expected is None:
-            continue
-        SubAccount.objects.filter(id=sa_id, tenant_id=expected).update(tenant=None)
-        cleared['subaccount'] += 1
-
-    print(
-        "Backfill reversed: cleared only rows assigned by this migration "
-        f"(transaction={cleared['transaction']}, subaccount={cleared['subaccount']})"
+    logger_msg = (
+        '0008.reverse_backfill: NO-OP. B?nh cu khong ghi de thay doi schema cho DB '
+        'da apply 0008, nen khong co marker de biet row nao la cua migration nay. '
+        'Day la chu dich: bo sot tot hon xoa nham du lieu nguoi dung. Xem '
+        'docs/OPEN_WORK_20260929.md#ow-05.'
     )
+    print(logger_msg)
+
 
 
 class Migration(migrations.Migration):
