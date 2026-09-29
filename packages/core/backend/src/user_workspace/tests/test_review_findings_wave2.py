@@ -31,6 +31,7 @@ from identity_access.models import CoreTenant
 from user_workspace.ledger import analytics as ana
 from user_workspace.ledger.services import (
     NAV_BLOCKER_CASH_FLOWS_EMPTY,
+    NAV_BLOCKER_NO_PRICES,
     NAV_BLOCKER_PARTIAL_PRICES,
     portfolio_valuation,
 )
@@ -530,18 +531,23 @@ class MutationGuardFlagTests(TestCase):
         self.tenant = _tenant('mg')
         self.portfolio = _portfolio(self.tenant)
         self.entry = _entry(self.tenant, self.portfolio)
+        # Đặt cờ OFF một cách tường minh. Không làm vậy thì test này khẳng định
+        # trạng thái môi trường — mà `SET` (không phải `SET LOCAL`) sống sót qua
+        # `ROLLBACK`, nên một test trước đó bị lỗi có thể để lại cờ `'on'` và làm
+        # test này đỏ vì lý do hoàn toàn khác.
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT set_config('app.allow_ledger_mutation', 'off', false)")
 
     def test_update_actually_applies_when_flag_is_on(self):
         with transaction.atomic():
             with connection.cursor() as cursor:
-                cursor.execute("SET app.allow_ledger_mutation = 'on'")
-                try:
-                    cursor.execute(
-                        'UPDATE user_workspace_ledgerentry SET price = %s WHERE id = %s',
-                        [Decimal('1.00'), self.entry.pk],
-                    )
-                finally:
-                    cursor.execute("SET app.allow_ledger_mutation = 'off'")
+                # `SET LOCAL`, không phải `SET`: `SET` sống sót qua ROLLBACK và
+                # biến một transaction hỏng thành cờ guard bị kẹt mở.
+                cursor.execute("SET LOCAL app.allow_ledger_mutation = 'on'")
+                cursor.execute(
+                    'UPDATE user_workspace_ledgerentry SET price = %s WHERE id = %s',
+                    [Decimal('1.00'), self.entry.pk],
+                )
         self.entry.refresh_from_db()
         self.assertEqual(
             self.entry.price, Decimal('1.00'),
@@ -551,17 +557,36 @@ class MutationGuardFlagTests(TestCase):
     def test_delete_actually_deletes_when_flag_is_on(self):
         with transaction.atomic():
             with connection.cursor() as cursor:
-                cursor.execute("SET app.allow_ledger_mutation = 'on'")
-                try:
-                    cursor.execute(
-                        'DELETE FROM user_workspace_ledgerentry WHERE id = %s',
-                        [self.entry.pk],
-                    )
-                    deleted = cursor.rowcount
-                finally:
-                    cursor.execute("SET app.allow_ledger_mutation = 'off'")
+                cursor.execute("SET LOCAL app.allow_ledger_mutation = 'on'")
+                cursor.execute(
+                    'DELETE FROM user_workspace_ledgerentry WHERE id = %s',
+                    [self.entry.pk],
+                )
+                deleted = cursor.rowcount
         self.assertEqual(deleted, 1, 'DELETE khi cờ bật phải xoá thật')
         self.assertFalse(LedgerEntry.objects.filter(pk=self.entry.pk).exists())
+
+    def test_flag_does_not_survive_a_rollback(self):
+        """HIGH của review vòng 3: `SET` KHÔNG bị rollback.
+
+        Chứng minh bằng hành vi, không bằng đọc tài liệu Postgres: bật cờ trong
+        một transaction bị ROLLBACK rồi kiểm tra cờ ở transaction sau.
+        """
+        class _AbortedTransaction(Exception):
+            pass
+
+        with self.assertRaises(_AbortedTransaction):
+            with transaction.atomic():
+                with connection.cursor() as cursor:
+                    cursor.execute("SET LOCAL app.allow_ledger_mutation = 'on'")
+                raise _AbortedTransaction
+
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT current_setting('app.allow_ledger_mutation', true)")
+            self.assertNotEqual(
+                cursor.fetchone()[0], 'on',
+                'cờ guard sống sót qua ROLLBACK ⇒ append-only có thể bị tắt âm thầm',
+            )
 
     def test_flag_off_still_blocks(self):
         with self.assertRaises(DatabaseError):
@@ -634,10 +659,18 @@ class CashCrossCheckFalsePositiveTests(TestCase):
     `opening_balance = 0` — đúng giá trị duy nhất che được lỗi.
     """
 
-    def _run(self, opening_balance, oversell=False):
+    def _run(self, opening_balance, oversell=False, close_position=True, prices=None):
+        """Dữ liệu mở vị thế thật.
+
+        `close_position=False` giữ lại cổ phiếu đang nắm. Nhánh đó là trường hợp
+        thật và là nơi lỗi "không báo giá thiếu" của bản trước sẽ lộ ra; test
+        bản đầu chỉ dùng vị thế đã đóng nên `ledger['holdings']` rỗng và nhánh
+        kiểm giá bị bỏ qua một cách âm thầm.
+        """
         from user_workspace.ledger.services import get_cached_ledger
 
-        tenant = _tenant(f'cc-{opening_balance}-{oversell}')
+        tag = f'{opening_balance}-{oversell}-{close_position}'
+        tenant = _tenant(f'cc-{tag}')
         portfolio = _portfolio(tenant, 'P')
         portfolio.opening_balance = opening_balance
         portfolio.save()
@@ -645,23 +678,26 @@ class CashCrossCheckFalsePositiveTests(TestCase):
         e1 = _entry(tenant, portfolio, external_id='X-1')
         CashFlow.objects.create(entry=e1, tenant=tenant, flow_type='BUY',
                                 amount=Decimal('-70000000'))
-        qty = 2000 if oversell else 1000
-        e2 = _entry(tenant, portfolio, entry_type='SELL',
-                    trade_date=date(2026, 2, 10), quantity=qty,
-                    price=Decimal('80000'), external_id='X-2')
-        CashFlow.objects.create(entry=e2, tenant=tenant, flow_type='SELL',
-                                amount=Decimal('80000') * qty)
         Transaction.objects.create(
             portfolio=portfolio, tenant=tenant, symbol='VNM',
             transaction_type='BUY', date=date(2026, 1, 5), price=Decimal('70000'),
             quantity=1000)
-        Transaction.objects.create(
-            portfolio=portfolio, tenant=tenant, symbol='VNM',
-            transaction_type='SELL', date=date(2026, 2, 10),
-            price=Decimal('80000'), quantity=qty)
+        if close_position:
+            # Bán. `oversell=True` bán NHIỀU hơn số đang giữ.
+            qty = 2000 if oversell else 1000
+            e2 = _entry(tenant, portfolio, entry_type='SELL',
+                        trade_date=date(2026, 2, 10), quantity=qty,
+                        price=Decimal('80000'), external_id='X-2')
+            CashFlow.objects.create(entry=e2, tenant=tenant, flow_type='SELL',
+                                    amount=Decimal('80000') * qty)
+            Transaction.objects.create(
+                portfolio=portfolio, tenant=tenant, symbol='VNM',
+                transaction_type='SELL', date=date(2026, 2, 10),
+                price=Decimal('80000'), quantity=qty)
 
         ledger = get_cached_ledger(portfolio.pk, tenant, use_cache=False)
-        return portfolio_valuation(portfolio, ledger=ledger)
+        return portfolio_valuation(
+            portfolio, ledger=ledger, price_by_symbol=prices)
 
     def test_consistent_data_with_nonzero_opening_balance_raises_no_alarm(self):
         result = self._run(Decimal('1000000'))
@@ -680,6 +716,21 @@ class CashCrossCheckFalsePositiveTests(TestCase):
 
     def test_zero_opening_balance_consistent_data_raises_no_alarm(self):
         result = self._run(Decimal('0'))
+        self.assertNotIn('cash_cross_check', result)
+
+    def test_open_position_with_prices_raises_no_alarm(self):
+        """Trường hợp thật nhất: còn giữ cổ phiếu, CÓ đủ giá, số dư mở đầu ≠ 0."""
+        result = self._run(Decimal('5000000'), close_position=False,
+                           prices={'VNM': Decimal('75000')})
+        self.assertIsNotNone(result['nav'])
+        self.assertNotIn('cash_cross_check', result)
+
+    def test_open_position_missing_price_blocks_nav_instead_of_alarming(self):
+        """Thiếu giá thì chặn NAV, KHÔNG phải đi vào nhánh cảnh báo lệch tiền —
+        hai lý do khác nhau và người đọc cần biết cái nào."""
+        result = self._run(Decimal('5000000'), close_position=False, prices={})
+        self.assertIsNone(result['nav'])
+        self.assertEqual(result['nav_reason'], NAV_BLOCKER_NO_PRICES)
         self.assertNotIn('cash_cross_check', result)
 
 

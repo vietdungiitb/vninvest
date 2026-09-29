@@ -210,7 +210,7 @@ class BackfillMigrationTests(TransactionTestCase):
         self.assertEqual(original.quantity, 1000)
 
     def test_rerunning_backfill_creates_no_duplicates(self):
-        """`external_id` được giữ nên UNIQUE (tenant, external_id) làm backfill
+        """`external_id` ổn định nên UNIQUE (tenant, external_id) làm backfill
         idempotent. Chạy lại không nhân bản dữ liệu tài chính."""
         _tx(self.portfolio, self.tenant, external_id='B-1')
         self._run_backfill()
@@ -222,6 +222,39 @@ class BackfillMigrationTests(TransactionTestCase):
         self._run_backfill()
 
         self.assertEqual(LedgerEntry.objects.count(), first)
+
+    def test_manual_transactions_get_a_stable_reference(self):
+        """Giao dịch nhập tay có `external_id=''`.
+
+        Rỗng thì UNIQUE constraint cố ý bỏ qua ⇒ chạy lại migration sẽ nhân bản
+        mỗi giao dịch tay. Test bản đầu dùng `external_id='B-1'` (không rỗng)
+        nên nhánh sinh `manual:tx:<pk>` **chưa bao giờ chạy**.
+
+        Cũng kiểm tiền tố có namespace: `tx-<pk>` trần có thể đụng `order_id` của
+        broker (chuỗi tùy ý bên thứ ba), biến sự cố chất lượng dữ liệu thành
+        `IntegrityError` mù.
+        """
+        import importlib
+
+        module = importlib.import_module(
+            'user_workspace.migrations.0022_backfill_transaction_to_ledger')
+        prefix = module.MANUAL_REF_PREFIX
+
+        tx = _tx(self.portfolio, self.tenant, external_id='')
+        self._run_backfill()
+
+        entry = LedgerEntry.objects.get()
+        self.assertEqual(entry.external_id, f'{prefix}{tx.pk}')
+        self.assertNotEqual(
+            prefix, 'tx-', 'tiền tố phải có namespace để không đụng mã broker')
+
+        # Chạy lại: không được nhân bản.
+        self.executor = MigrationExecutor(connection)
+        self.executor.migrate([(APP, BEFORE)])
+        self._run_backfill()
+        self.assertEqual(LedgerEntry.objects.count(), 1)
+
+
 
     # ── rollback: chỉ xoá row của chính migration này ──────────────────
 

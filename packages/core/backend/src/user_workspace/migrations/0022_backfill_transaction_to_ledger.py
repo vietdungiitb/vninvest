@@ -34,6 +34,18 @@ logger = logging.getLogger('user_workspace.migrations')
 #: đúng chuỗi này.
 BACKFILL_MARKER = '0022_backfill_transaction_to_ledger'
 
+#: Tiền tố cho `external_id` tự sinh của giao dịch **nhập tay** (nguồn không có
+#: mã tham chiếu).
+#:
+#: Vì sao phải có tiền tố riêng, không dùng trần `tx-<pk>`: broker gửi
+#: `order_id`/`orderId`/`deal_id` là chuỗi tùy ý bên thứ ba
+#: (`tasks.py:332`). Nếu ta dùng `tx-123` thì một mã broker tình cờ trùng
+#: sẽ đụng UNIQUE `(tenant, external_id)` và làm migration abort bằng
+#: `IntegrityError` mù — tứ biến một sự cố chất lượng dữ liệu thành lỗi không
+#: truy vết được. Với namespace riêng, va chạm gần như không thể; mà nếu vẫn
+#: xảy ra thì thông báo lỗi của `backwards`/`forwards` có tên.
+MANUAL_REF_PREFIX = 'manual:tx:'
+
 
 def _money(value):
     return Decimal(str(value if value is not None else 0)).quantize(Decimal('0.01'))
@@ -82,14 +94,15 @@ def forwards(apps, schema_editor):
         #
         # Giao dịch tay (`external_id=''`) trước đây được để rỗng — mà rỗng
         # thì UNIQUE constraint cố ý bỏ qua ⇒ mỗi lần chạy lại là một bản ghi
-        # trùng. Sửa: dùng `tx-<pk>` khi nguồn không có mã tham chiếu. `pk` là
-        # ổn định, và `external_id` chỉ cần khác nhau trong phạm vi tenant.
+        # trùng. Sửa: dùng `MANUAL_REF_PREFIX + pk` khi nguồn không có mã tham
+        # chiếu. `pk` là ổn định và `external_id` chỉ cần khác nhau trong phạm
+        # vi tenant.
         #
         # KHÔNG uppercase `external_id`. Mã tham chiếu broker là chuỗi do hệ
         # thống bên thứ ba sinh ra; `abc-1` và `ABC-1` là hai giao dịch khác nhau
         # và việc gộp chúng sẽ âm thầm nuốt một dòng sổ cái. Chuẩn hoá case
         # chỉ áp cho `symbol`.
-        source_ref = str(tx.external_id or '').strip() or f'tx-{tx.pk}'
+        source_ref = str(tx.external_id or '').strip() or f'{MANUAL_REF_PREFIX}{tx.pk}'
 
         entry = LedgerEntry(
             tenant_id=tx.tenant_id,
@@ -196,15 +209,32 @@ def backwards(apps, schema_editor):
     entry_count = marked.count()
     flow_count = CashFlow.objects.filter(entry__backfilled_by=BACKFILL_MARKER).count()
     # `CashFlow` cascade theo `entry`, nhưng xoá tường minh để con số log khớp.
-    # Cờ `allow_ledger_mutation` để trigger của `0023` cho phép.
+    # `SET LOCAL` KHÔNG PHẢI `SET`.
+    #
+    # `SET` đặt cờ cho cả **session**; Postgres KHÔNG hoàn tác nó khi
+    # `ROLLBACK`. Nên nếu `marked.delete()` ném lỗi, `finally` chạy trên một
+    # transaction đã hỏng, lệnh `SET ... = 'off'` bị từ chối
+    # (`InFailedSqlTransaction`), và cờ **kẹt ở `'on'`**. Với
+    # `CONN_MAX_AGE=60` (settings.py) connection đó được tái dùng cho các
+    # request sau — tức trigger append-only và trigger tenant-match tắt
+    # trong một phút, không ai biết.
+    #
+    # `SET LOCAL` gắn cờ vào transaction nên `COMMIT` hay `ROLLBACK` đều trả
+    # về mặc định. Đã kiểm chứng trên Postgres: `BEGIN; SET ...; ROLLBACK;`
+    # vẫn để lại `'on'`, còn `SET LOCAL` + `ROLLBACK` thì không.
     with schema_editor.connection.cursor() as cursor:
-        cursor.execute("SET app.allow_ledger_mutation = 'on'")
+        cursor.execute("SET LOCAL app.allow_ledger_mutation = 'on'")
     try:
         CashFlow.objects.filter(entry__backfilled_by=BACKFILL_MARKER).delete()
         marked.delete()
     finally:
+        # `SET LOCAL` nằm trong transaction, nên cả nhánh lỗi lẫn nhánh thành
+        # công đều tự trả cờ về mặc định. Vẫn set lại cho rõ ý định, và dùng
+        # `set_config(..., is_local=true)` vì `SET LOCAL` sẽ lỗi nếu
+        # transaction đã hỏng.
         with schema_editor.connection.cursor() as cursor:
-            cursor.execute("SET app.allow_ledger_mutation = 'off'")
+            cursor.execute(
+                "SELECT set_config('app.allow_ledger_mutation', 'off', true)")
     logger.info(
         'LED-05 backfill: rollback, da xoa %s LedgerEntry va %s CashFlow '
         '(chi dong co marker %s)', entry_count, flow_count, BACKFILL_MARKER,
