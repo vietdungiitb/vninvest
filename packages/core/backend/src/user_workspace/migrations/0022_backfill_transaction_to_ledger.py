@@ -34,11 +34,6 @@ logger = logging.getLogger('user_workspace.migrations')
 #: đúng chuỗi này.
 BACKFILL_MARKER = '0022_backfill_transaction_to_ledger'
 
-#: Ngưỡng "quá nhiều dòng hỏng" ⇒ coi như backfill lỗi và raise, thay vì để
-#: migration "thành công" với dữ liệu thiếu. Một danh mục có vài chục dòng
-#: không map được là chuyện bình thường; hàng nghìn là chuyện khác.
-UNMAPPABLE_RATIO_LIMIT = 0.05
-
 
 def _money(value):
     return Decimal(str(value if value is not None else 0)).quantize(Decimal('0.01'))
@@ -128,18 +123,25 @@ def forwards(apps, schema_editor):
     CashFlow.objects.bulk_create(created_flows, batch_size=500)
 
     if unmapped:
-        ratio = len(unmapped) / total if total else 0
-        logger.warning(
-            'LED-05 backfill: %s/%s dong khong map duoc (%.2f%%). Ly do: %s',
-            len(unmapped), total, ratio * 100,
-            sorted({reason for _pk, reason in unmapped}),
+        # **DỪNG, không bỏ qua.** Bản đầu cho phép bỏ sót tới 5% và vẫn báo
+        # "thành công" — nghĩa là 4 giao dịch trong 100 sẽ không có dòng tiền,
+        # NAV bị thiếu hụt một cách âm thầm, và không ai biết. Ngưỡng phần
+        # trăm là một ước lượng không có căn cứ; quy tắc của cả wave này là
+        # "thiếu dữ liệu ⇒ null + lý do", áp dụng cả cho việc thiếu dữ liệu do
+        # chính mình tạo ra.
+        #
+        # Cách thoát: sửa dữ liệu nguồn, rồi chạy lại migration (idempotent vì
+        # `external_id` được giữ nguyên).
+        reasons = sorted({reason for _pk, reason in unmapped})
+        raise RuntimeError(
+            f'LED-05 backfill: {len(unmapped)}/{total} dong khong map duoc '
+            f'({reasons[:8]}). Migration dung lai thay vi ghi du lieu thieu. '
+            f'Truy viet bang: SELECT pk, symbol, transaction_type, quantity '
+            f'FROM user_workspace_transaction '
+            f'WHERE TRIM(symbol) = "" OR quantity <= 0 '
+            f'OR transaction_type NOT IN ('
+            f'"BUY","SELL","DIVIDEND");'
         )
-        if total and ratio > UNMAPPABLE_RATIO_LIMIT:
-            raise RuntimeError(
-                f'LED-05 backfill: {len(unmapped)}/{total} dong khong map duoc '
-                f'(> {UNMAPPABLE_RATIO_LIMIT:.0%}). Dung migration thay vi lam '
-                f'du lieu mat. Chi tiet trong log migration.'
-            )
 
     # ── verify: đếm lại, không tin số đếm ở trên ──────────────────────
     entry_count = LedgerEntry.objects.filter(backfilled_by=BACKFILL_MARKER).count()
@@ -157,16 +159,48 @@ def forwards(apps, schema_editor):
 
 
 def backwards(apps, schema_editor):
-    """Chỉ xoá row do chính migration này tạo (D-24)."""
+    """Chỉ xoá row do chính migration này tạo (D-24).
+
+    **Và dừng lại nếu có row hậu-migration phụ thuộc vào chúng.** Bản đầu xoá
+    theo marker một cách mù quáng, gây ra 2 lỗi:
+
+    1. Một entry `ADJUSTMENT`/`REVERSAL` viết **sau** migration không mang marker
+       nên nó sống sót, còn `CashFlow` của nó bị xoá theo cascade ⇒ còn entry
+       không có dòng tiền nào.
+    2. `reversal_of` là `PROTECT`, nên một `ADJUSTMENT` trỏ tới dòng backfill
+       làm `delete()` ném `ProtectedError` ⇒ **rollback không hoàn tất**, DB ở
+       trạng thái nửa vời.
+
+    Dừng sớm với thông báo rõ ràng tốt hơn một rollback chết giữa chừng.
+    """
     LedgerEntry = apps.get_model('user_workspace', 'LedgerEntry')
     CashFlow = apps.get_model('user_workspace', 'CashFlow')
+
+    dependents = LedgerEntry.objects.filter(
+        reversal_of__backfilled_by=BACKFILL_MARKER,
+    ).exclude(backfilled_by=BACKFILL_MARKER)
+    dependent_ids = list(dependents.values_list('pk', flat=True))
+    if dependent_ids:
+        raise RuntimeError(
+            f'LED-05 rollback: {len(dependent_ids)} entry viet SAU migration '
+            f'(ADJUSTMENT/REVERSAL) dang tro toi dong backfill. Xoá hoac chuyen '
+            f'sang entry ADJUSTMENT rieng truoc khi rollback. pk: '
+            f'{dependent_ids[:10]}'
+        )
 
     marked = LedgerEntry.objects.filter(backfilled_by=BACKFILL_MARKER)
     entry_count = marked.count()
     flow_count = CashFlow.objects.filter(entry__backfilled_by=BACKFILL_MARKER).count()
     # `CashFlow` cascade theo `entry`, nhưng xoá tường minh để con số log khớp.
-    CashFlow.objects.filter(entry__backfilled_by=BACKFILL_MARKER).delete()
-    marked.delete()
+    # Cờ `allow_ledger_mutation` để trigger của `0023` cho phép.
+    with schema_editor.connection.cursor() as cursor:
+        cursor.execute("SET app.allow_ledger_mutation = 'on'")
+    try:
+        CashFlow.objects.filter(entry__backfilled_by=BACKFILL_MARKER).delete()
+        marked.delete()
+    finally:
+        with schema_editor.connection.cursor() as cursor:
+            cursor.execute("SET app.allow_ledger_mutation = 'off'")
     logger.info(
         'LED-05 backfill: rollback, da xoa %s LedgerEntry va %s CashFlow '
         '(chi dong co marker %s)', entry_count, flow_count, BACKFILL_MARKER,

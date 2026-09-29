@@ -62,6 +62,14 @@ REASON_TEXT = {
     'frequency_mismatch': 'Chuỗi portfolio và benchmark lệch tần suất.',
     'no_sign_change': 'XIRR không hội tụ: dòng tiền không đổi dấu.',
     'zero_variance_benchmark': 'Benchmark đứng yên nên beta không xác định.',
+    'not_converged': (
+        'XIRR không hội tụ trong số bước lặp cho phép — coi như chưa có kết quả '
+        'thay vì trả một con số gần đúng.'
+    ),
+    'unknown_provider': (
+        'Chưa định nghĩa ngưỡng độ tươi cho nhà môi giới này nên không kết luận '
+        'được stale hay không.'
+    ),
 }
 
 
@@ -183,19 +191,30 @@ def xirr(cash_flows, *, guess_lo=-0.9999, guess_hi=10.0, iterations=200,
                 **_reason('no_sign_change')}
 
     mid = lo
+    converged = False
     for _ in range(iterations):
         mid = (lo + hi) / 2.0
         f_mid = xnpv(mid, flows)
         if f_mid is None:
             break
         if abs(f_mid) < float(tolerance):
-            return {'value': _r2(mid), 'method': 'XIRR',
-                    'calculation_version': 'ana01-v1'}
+            converged = True
+            break
         if f_lo * f_mid < 0:
             hi, f_hi = mid, f_mid
         else:
             lo, f_lo = mid, f_mid
-    return {'value': _r2(mid), 'method': 'XIRR', 'calculation_version': 'ana01-v1'}
+
+    if not converged:
+        # PB3 hỏi "XIRR không hội tụ thì xử lý thế nào" — trả về con số trông
+        # như hợp lệ là câu trả lời tệ nhất. Không hội tụ trong `iterations`
+        # bước bisection là chuyện khác với "không có nghiệm", nên cần lý do
+        # riêng thay vì giả vờ thành công.
+        return {'value': None, 'method': 'XIRR', 'calculation_version': 'ana01-v1',
+                **_reason('not_converged')}
+
+    return {'value': _r2(mid), 'method': 'XIRR', 'calculation_version': 'ana01-v1',
+            'converged': True}
 
 
 def mwr(cash_flows):
@@ -228,12 +247,22 @@ def performance(period_returns, cash_flows):
 
 
 def benchmark_metrics(portfolio_returns, benchmark_returns, *,
-                      benchmark=DEFAULT_BENCHMARK, periods_per_year=TRADING_DAYS_PER_YEAR):
+                      benchmark=DEFAULT_BENCHMARK,
+                      periods_per_year=TRADING_DAYS_PER_YEAR,
+                      portfolio_dates=None, benchmark_dates=None):
     """Alpha/beta/tracking error/information ratio.
 
-    ANA-02 R6: hai chuỗi phải cùng tần suất. Khác độ dài ⇒ `null` + lý do, **không**
-    cắt bớt cho khớp — cắt bớt là tự chọn ra một khoảng thời gian thuận lợi
-    rồi gọi đó là kết quả.
+    **Information ratio theo đúng ANA-02 R5: `alpha / tracking_error`.**
+    Bản đầu tính `mean(excess) / TE`, tức là information ratio *kiểu Sharpe*.
+    Hai cái đó lệch nhau mọi khi `beta ≠ 1` và — đã kiểm bằng số — **đổi dấu**,
+    nên đây không phải khác biệt quy ước mà là chỉ số báo sai. Theo tài liệu thì
+    `alpha` là phần hơn/đuột trên benchmark, và chia nó cho tracking error mới
+    là "hiệu quả trên mức rủi ro của việc lệch khỏi benchmark".
+
+    ANA-02 R6: hai chuỗi phải cùng tần suất. Nếu có `*_dates` thì kiểm tra cả
+    **ngày** chứ không chỉ độ dài — hai chuỗi 60 điểm, một theo ngày một theo
+    tháng, cùng độ dài và hoàn toàn không so sánh được. Không cắt bớt cho khớp:
+    cắt bớt là tự chọn một khoảng thời gian thuận lợi rồi gọi đó là kết quả.
     """
     base = {
         'benchmark': benchmark,
@@ -242,25 +271,30 @@ def benchmark_metrics(portfolio_returns, benchmark_returns, *,
     p = [float(x) for x in portfolio_returns]
     b = [float(x) for x in benchmark_returns]
 
+    def _blocked(reason, **extra):
+        return {**base, 'alpha': None, 'beta': None, 'tracking_error': None,
+                'information_ratio': None, 'reason': reason,
+                'reason_text': REASON_TEXT.get(reason, reason), **extra}
+
     if not p or not b:
-        return {**base, 'alpha': None, 'beta': None, 'tracking_error': None,
-                'information_ratio': None, **_reason('no_benchmark_data')}
+        return _blocked('no_benchmark_data')
     if len(p) != len(b):
-        return {**base, 'alpha': None, 'beta': None, 'tracking_error': None,
-                'information_ratio': None,
-                **_reason('frequency_mismatch'),
-                'portfolio_observations': len(p), 'benchmark_observations': len(b)}
+        return _blocked('frequency_mismatch', portfolio_observations=len(p),
+                        benchmark_observations=len(b))
+    if portfolio_dates and benchmark_dates:
+        if list(portfolio_dates) != list(benchmark_dates):
+            return _blocked('frequency_mismatch',
+                            portfolio_observations=len(p),
+                            benchmark_observations=len(b))
     if len(p) < MIN_OBSERVATIONS_FOR_REGRESSION:
-        return {**base, 'alpha': None, 'beta': None, 'tracking_error': None,
-                'information_ratio': None, **_reason('insufficient_observations')}
+        return _blocked('insufficient_observations')
 
     mean_p, mean_b = _mean(p), _mean(b)
     var_b = _sample_stdev(b)
     if var_b is None or var_b == 0:
         # Beta = cov/var; var = 0 thì phép chia không xác định. Trả 0 sẽ nói
         # rằng danh mục không nhạy cảm với thị trường, điều không đúng.
-        return {**base, 'alpha': None, 'beta': None, 'tracking_error': None,
-                'information_ratio': None, **_reason('zero_variance_benchmark')}
+        return _blocked('zero_variance_benchmark')
 
     cov = math.fsum((pi - mean_p) * (bi - mean_b) for pi, bi in zip(p, b)) / (len(p) - 1)
     beta = cov / (var_b ** 2)
@@ -268,15 +302,20 @@ def benchmark_metrics(portfolio_returns, benchmark_returns, *,
 
     excess = [pi - bi for pi, bi in zip(p, b)]
     te_period = _sample_stdev(excess)
-    ir = None if (te_period in (None, 0)) else (_mean(excess) / te_period)
+    te_annual = None if te_period is None else te_period * math.sqrt(periods_per_year)
+    alpha_annual = alpha * periods_per_year
+    # ANA-02 R5: alpha / tracking_error. Dùng cả hai ở thang năm để tỉ lệ bất
+    # biến theo thang — chia hai số tháng trên hai số năm sẽ ra con số vô nghĩa.
+    ir = None if te_annual in (None, 0) else alpha_annual / te_annual
 
     return {
         **base,
         'alpha': _r2(alpha),
-        'alpha_annualized': _r2(alpha * periods_per_year),
+        'alpha_annualized': _r2(alpha_annual),
         'beta': _r2(beta),
-        'tracking_error': None if te_period is None else _r2(te_period * math.sqrt(periods_per_year)),
-        'information_ratio': None if ir is None else _r2(ir * math.sqrt(periods_per_year)),
+        'tracking_error': None if te_annual is None else _r2(te_annual),
+        'information_ratio': None if ir is None else _r2(ir),
+        'information_ratio_formula': 'alpha_annualized / tracking_error',
         'observation_count': len(p),
     }
 
@@ -313,15 +352,17 @@ def risk_metrics(daily_returns, market_values=None, symbols=None,
     if len(returns) < MIN_SESSIONS_FOR_VOLATILITY:
         out.update(_reason('insufficient_sessions'))
         out['observation_count'] = len(returns)
-        return out
+    else:
+        sd = _sample_stdev(returns)
+        out['volatility'] = None if sd is None else _r2(sd * math.sqrt(periods_per_year))
+        # Historical simulation trên **ngày**: lỗ 5% trong một ngày. Field tên
+        # `var_95_daily` để không ai đọc nhầm là VaR cả kỳ (ANA-03 PB3).
+        out['var_95_daily'] = _r2(_percentile(returns, 0.05))
+        out['observation_count'] = len(returns)
 
-    sd = _sample_stdev(returns)
-    out['volatility'] = None if sd is None else _r2(sd * math.sqrt(periods_per_year))
-    # Historical simulation trên **ngày**: lỗ 5% trong một ngày. Field tên
-    # `var_95_daily` để không ai đọc nhầm là VaR cả kỳ (ANA-03 PB3).
-    out['var_95_daily'] = _r2(_percentile(returns, 0.05))
-    out['observation_count'] = len(returns)
-
+    # Max drawdown và concentration KHÔNG cần 20 phiên — chỉ cần vài điểm giá.
+    # Bản đầu trả về sớm khi thiếu phiên nên hai chỉ số này bị `None` dù dữ liệu
+    # có đủ: hệ thống báo "không có dữ liệu" khi dữ liệu đang nằm đó.
     if market_values:
         peak = None
         trough = 0.0
@@ -440,6 +481,14 @@ def freshness(*, as_of, now, provider='dnse', session=None):
         'age_minutes': None,
     }
     if as_of is None or now is None:
+        return out
+    if threshold is None:
+        # Provider lạ KHÔNG được âm thầm thừa hưởng ngưỡng 24 giờ của ngoài phiên
+        # — đó là hành vi lỏng tay biến "ta chưa biết" thành "24 giờ là chấp
+        # nhận được". Trả `stale=True` + lý do để người đọc không tin nhầm.
+        out['stale_reason'] = 'unknown_provider'
+        out['reason'] = 'unknown_provider'
+        out['reason_text'] = REASON_TEXT['unknown_provider']
         return out
 
     age_minutes = (now - as_of).total_seconds() / 60.0

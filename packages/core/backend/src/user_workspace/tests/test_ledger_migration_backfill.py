@@ -149,20 +149,21 @@ class BackfillMigrationTests(TransactionTestCase):
 
     # ── PB2: dòng không map được phải được đếm, không bỏ qua ──────────
 
-    def test_unmappable_rows_are_skipped_and_counted(self):
-        """PB2: dòng không map được bị bỏ qua **có đếm**, không bị xoá âm thầm.
+    def test_unmappable_rows_stop_the_backfill(self):
+        """PB2 viết lại sau review: dòng không map được phải **dừng migration**,
+        không phải "bỏ qua có đếm".
 
-        Ghi rõ 2 điều về cách dựng dữ liệu hỏng:
-        - `symbol=''` phải tạo bằng `bulk_create` vì signal `pre_save` của
-          `Transaction` chặn (`ValueError: Thiếu chứng khoản.`). Dữ liệu legacy
-          trong DB thật là trạng thái trước khi signal đó có, nên `bulk_create`
-          mô phỏng đúng bối cảnh đó.
-        - Tỉ lệ dòng hỏng phải **dưới** `UNMAPPABLE_RATIO_LIMIT`, nếu không
-          migration cố ý ném lỗi (xem test kế tiếp).
+        Bản đầu cho phép bỏ sót tới 5% và vẫn báo "thành công" — 4 giao dịch
+        trong 100 không có dòng tiền, NAV thiếu hụt một cách âm thầm. Ngưỡng
+        phần trăm là ước lượng không có căn cứ; nguyên tắc của cả wave này là
+        "thiếu dữ liệu ⇒ null + lý do", kể cả khi chính mình tạo ra phần thiếu.
+
+        Ghi rõ về cách dựng dữ liệu hỏng: `symbol=''` phải tạo bằng
+        `bulk_create` vì signal `pre_save` của `Transaction` chặn
+        (`ValueError: Thiếu chứng khoản.`). Dữ liệu legacy trong DB thật là
+        trạng thái trước khi signal đó có.
         """
-        for i in range(40):
-            _tx(self.portfolio, self.tenant, external_id=f'G-{i}')
-        good = _tx(self.portfolio, self.tenant, external_id='B-good')
+        _tx(self.portfolio, self.tenant, external_id='B-good')
         Transaction.objects.bulk_create([
             Transaction(portfolio=self.portfolio, tenant=self.tenant, symbol='',
                         transaction_type='BUY', date=date(2026, 1, 5),
@@ -172,24 +173,27 @@ class BackfillMigrationTests(TransactionTestCase):
                         price=Decimal('1'), quantity=100, external_id='B-badtype'),
         ])
 
-        self._run_backfill()
+        with self.assertRaises(RuntimeError) as ctx:
+            self._run_backfill()
 
-        # 40 dòng tốt + 1 dòng tốt nữa = 41 entry; 2 dòng hỏng bị bỏ qua
-        # (2/43 ≈ 4,6% < ngưỡng 5%).
-        self.assertEqual(LedgerEntry.objects.count(), 41)
-        self.assertEqual(
-            LedgerEntry.objects.filter(external_id=good.external_id).count(), 1)
-        self.assertFalse(LedgerEntry.objects.filter(external_id='B-blank').exists())
-        self.assertFalse(LedgerEntry.objects.filter(external_id='B-badtype').exists())
+        message = str(ctx.exception)
+        self.assertIn('2/3', message)
+        self.assertIn('missing_symbol', message)
+        self.assertIn('unknown_type:BONUS', message)
+        # Lỗi phải kèm câu SQL để operator truy vết được, không phải chỉ con số.
+        self.assertIn('SELECT pk, symbol', message)
+
+    def test_clean_dataset_migrates_completely(self):
+        """Đối chiếu: dữ liệu sạch thì 100% vào ledger, không bỏ sót gì."""
+        for i in range(3):
+            _tx(self.portfolio, self.tenant, external_id=f'G-{i}')
+        self._run_backfill()
+        self.assertEqual(LedgerEntry.objects.count(), 3)
+        self.assertEqual(CashFlow.objects.count(), 3)
 
     def test_backfill_refuses_when_too_many_rows_are_unmappable(self):
-        """Quá nhiều dòng hỏng ⇒ migration **ném lỗi** thay vì "thành công" với
-        dữ liệu thiếu.
-
-        Đây là ranh giới giữa một backfill bỏ sót vài dòng (chấp nhận được) và
-        một backfill hỏng một nửa danh mục (phải dừng lại). Nếu migration im
-        lặng bỏ qua, số liệu tài chính sai mà không ai biết.
-        """
+        """Giữ lại tên cũ của bài test trước: giờ áp dụng cho **mọi** dòng hỏng,
+        không chỉ khi vượt tỉ lệ."""
         _tx(self.portfolio, self.tenant, external_id='B-good')
         _tx(self.portfolio, self.tenant, transaction_type='BONUS', external_id='B-bad')
 

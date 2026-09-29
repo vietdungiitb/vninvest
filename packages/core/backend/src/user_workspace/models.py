@@ -953,7 +953,7 @@ from django.dispatch import receiver
 
 
 class LedgerEntryImmutable(RuntimeError):
-    """Sửa/xoá một `LedgerEntry` đã commit.
+    """Sửa/xoá một dòng sổ cái đã commit.
 
     LED-01 R2: ledger là append-only. Sai số không được sửa tại chỗ — nó được
     bù bằng một entry `ADJUSTMENT` trỏ `reversal_of` tới dòng gốc (D-08), để
@@ -961,7 +961,83 @@ class LedgerEntryImmutable(RuntimeError):
     """
 
 
-class LedgerEntry(models.Model):
+class AppendOnlyMixin:
+    """Chặn sửa/xoá dòng đã commit — ở tầng Python VÀ ở tầng DB.
+
+    **Vì sao cần cả hai, và vì sao lần đầu chỉ có tầng Python là không đủ.**
+
+    Bản đầu chỉ chặn trong `save()`. Điều đó bị bỏ qua bởi:
+
+    - `LedgerEntry(pk=<đã tồn tại>)` — truyền PK vào constructor thì Django
+      đặt `_state.adding = True`, nên `save()` chạy `UPDATE` và **ghi đè dòng
+      đã commit**. Đây là đường lách thật, không phải giả định.
+    - `queryset.update()` / `queryset.delete()` — không đi qua `Model.save()`.
+    - `bulk_update()`, raw SQL, `admin`, và cascade từ cha.
+    - `bulk_create` cũng bỏ qua `clean()`, nên dữ liệu hỏng lọt qua được.
+
+    Vì vậy `0023` tạo **trigger** Postgres chặn `UPDATE`/`DELETE` trên các bảng
+    này. Trigger là lớp duy nhất sống sót qua `update()` và raw SQL. Tầng Python
+    vẫn giữ lại vì nó cho thông báo lỗi dễ hiểu và chặn sớm hơn.
+
+    Lưu ý khi test: dựng fixture bằng `Model(pk=1).save()` là idiom quen
+    thuộc và **bị chặn** ở đây. Dùng `Model.objects.create(...)` — cùng kết quả
+    mà không đụng luật.
+    """
+
+    def _already_committed(self):
+        if self._state.adding:
+            # `adding` không đủ: constructor có PK ⇒ adding=True nhưng dòng
+            # có thể đã tồn tại. Hỏi DB mới là câu trả lời chắc chắn.
+            if self.pk is None:
+                return False
+            return type(self)._default_manager.filter(pk=self.pk).exists()
+        return True
+
+    def save(self, *args, **kwargs):
+        if self._already_committed():
+            raise LedgerEntryImmutable(
+                f'{type(self).__name__} pk={self.pk} đã commit, không sửa tại '
+                f'chỗ được. Tạo bản ghi mới thay vì sửa bản ghi cũ.'
+            )
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise LedgerEntryImmutable(
+            f'{type(self).__name__} pk={self.pk} không xoá được. '
+            f'Bản ghi đã commit là lịch sử, không phải dữ liệu tạm.'
+        )
+
+
+class TenantScopedByParentMixin:
+    """Bắt buộc `self.tenant_id == self.portfolio.tenant_id`.
+
+    **Vì sao cần, khi mô hình đã có cả `tenant` lẫn `portfolio`:**
+
+    Signal `pre_save` tự điền `tenant` khi nó còn trống. Nhưng nếu caller đã
+    truyền `tenant` thì hàm **return ngay** và không bao giờ so với tenant của
+    `portfolio`. Kết quả: một dòng sổ cái của tenant A trỏ tới danh mục của
+    tenant B, và mọi `filter(portfolio=...)` sau đó đọc ra nó. Django không thể
+    chặn việc này bằng `ForeignKey` vì nó là ràng buộc **qua hai bảng**.
+
+    Đây là bất biến tầng ứng dụng; `0023` bổ sung trigger DB là lớp thứ hai.
+    """
+
+    def clean(self):
+        super().clean()
+        portfolio = getattr(self, 'portfolio', None)
+        if portfolio is None or self.tenant_id is None:
+            return
+        portfolio_tenant_id = getattr(portfolio, 'tenant_id', None)
+        if portfolio_tenant_id is not None and portfolio_tenant_id != self.tenant_id:
+            raise ValidationError({
+                'tenant': (
+                    f'tenant {self.tenant_id} không khớp tenant '
+                    f'{portfolio_tenant_id} của danh mục {portfolio.pk}.'
+                ),
+            })
+
+
+class LedgerEntry(AppendOnlyMixin, TenantScopedByParentMixin, models.Model):
     """LED-01 — dòng sổ cái bất biến.
 
     `Transaction` (trên) là bảng giao dịch phẳng đã có; `LedgerEntry` là lớp
@@ -1119,25 +1195,13 @@ class LedgerEntry(models.Model):
                 {'price': 'Giá phải > 0 với dòng MUA/BÁN.'})
 
     def save(self, *args, **kwargs):
-        """Append-only (LED-01 R2).
+        """Append-only (LED-01 R2). Logic nằm trong `AppendOnlyMixin`.
 
-        Chặn ở tầng Python chứ không chỉ bằng quy ước, vì `queryset.update()` và
-        `bulk_create` đều đi vòng qua `save()` — nên đây là lớp phòng thủ đầu,
-        không phải lớp duy nhất. Migration backfill dùng `bulk_create` nên vẫn
-        chạy được; muốn sửa dữ liệu phải qua entry ADJUSTMENT.
+        Ghi đè này chỉ để giữ chỗ cho mô tả; hành vi thật ở mixin vì nó cần
+        hỏi DB (xem `AppendOnlyMixin._already_committed` — bản đầu chỉ dựa
+        vào `_state.adding` và bị lách bằng `LedgerEntry(pk=<đã tồn tại>)`).
         """
-        if not self._state.adding:
-            raise LedgerEntryImmutable(
-                f'LedgerEntry pk={self.pk} đã commit, không sửa tại chỗ được. '
-                f'Tạo entry ADJUSTMENT trỏ reversal_of={self.pk}.'
-            )
         super().save(*args, **kwargs)
-
-    def delete(self, *args, **kwargs):
-        raise LedgerEntryImmutable(
-            f'LedgerEntry pk={self.pk} không xoá được. '
-            f'Tạo entry ADJUSTMENT trỏ reversal_of={self.pk} thay vì xoá.'
-        )
 
     def __str__(self) -> str:
         return (f'{self.entry_type} {self.quantity} {self.symbol} @ {self.price} '
@@ -1201,7 +1265,7 @@ class CashFlow(models.Model):
         return f'{self.flow_type} {self.amount} {self.currency}'
 
 
-class PositionSnapshot(models.Model):
+class PositionSnapshot(AppendOnlyMixin, TenantScopedByParentMixin, models.Model):
     """LED-02 — ảnh chụp vị thế tại một ngày.
 
     Vì sao cần: `compute_ledger()` chạy lại toàn bộ lịch sử mỗi lần đọc. Với
@@ -1257,7 +1321,7 @@ class PositionSnapshot(models.Model):
         return f'{self.symbol} @ {self.as_of_date}'
 
 
-class ValuationSnapshot(models.Model):
+class ValuationSnapshot(AppendOnlyMixin, TenantScopedByParentMixin, models.Model):
     """LED-03 — NAV chụp theo ngày.
 
     Công thức (LED-03 R2): ``nav = stock_value + cash - debt``
@@ -1276,10 +1340,19 @@ class ValuationSnapshot(models.Model):
         Portfolio, on_delete=models.CASCADE, related_name='valuation_snapshots',
         verbose_name='Danh mục')
     as_of_date = models.DateField(db_index=True, verbose_name='Ngày chụp')
-    stock_value = models.DecimalField(max_digits=20, decimal_places=2, default=0)
-    cash = models.DecimalField(max_digits=20, decimal_places=2, default=0)
+    # `stock_value` / `cash` / `debt` NULLABLE — cố ý.
+    #
+    # Bản đầu để chúng `NOT NULL DEFAULT 0`. Đó là một cái bẫy cấu trúc: `nav`
+    # nullable đúng, nhưng tới ngày không định giá được, schema **chỉ còn một
+    # đáp án hợp lệ** và nó là con số 0 bịa. Không có ràng buộc DB nào thay thế
+    # được cho việc cho phép biểu diễn "chưa biết".
+    stock_value = models.DecimalField(
+        max_digits=20, decimal_places=2, null=True, blank=True,
+        verbose_name='Giá trị cổ phiếu')
+    cash = models.DecimalField(
+        max_digits=20, decimal_places=2, null=True, blank=True, verbose_name='Tiền mặt')
     debt = models.DecimalField(
-        max_digits=20, decimal_places=2, default=0,
+        max_digits=20, decimal_places=2, null=True, blank=True, default=0,
         verbose_name='Nợ',
         help_text='Cash account = 0. Margin defer sang LIV-03 (LED-03 PB3).')
     nav = models.DecimalField(
