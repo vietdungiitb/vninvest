@@ -31,9 +31,21 @@ WORKSPACE_PERMISSIONS = {
     # Đọc portfolio / holdings / NAV / ledger.
     'portfolio_read': 'dashboard:read',
     # Ghi danh sách chứng khoán, transaction, sub-account.
-    'portfolio_write': 'dashboard:read',
-    # Đặt lệnh (kể cả paper) — hành động tạo ra rủi ro tài chính.
-    'order_write': 'alert:write',
+    #
+    # PHẢI là permission `write`. Bản đầu trỏ nhầm `dashboard:read` — cùng
+    # chuỗi với `portfolio_read` — nên `viewer` (vốn chỉ có `dashboard:read`)
+    # đi qua được toàn bộ 8 endpoint ghi tài chính. Đây là leo thang đặc
+    # quyền, không phải lỗi cấu hình. `sa:write` có trong `admin`/`editor`,
+    # không có trong `viewer` — khớp đúng R5 "endpoint tài chính phải khác
+    # endpoint đọc".
+    'portfolio_write': 'sa:write',
+    # Đặt lệnh (kể cả paper) - hành động tạo ra rủi ro tài chính.
+    # Trước đây trỏ `alert:write` (permission cảnh báo giá) - vẫn là `write`
+    # nên không mở lỗ hổng, nhưng tên sai khiến người đọc tưởng cấp quyền
+    # cảnh báo là cấp quyền đặt lệnh. Đổi sang `sa:write` cho khớp nghĩa;
+    # hệ quả là custom_role chỉ có `alert:write` mất quyền đặt lệnh (thất bại
+    # theo hướng an toàn).
+    'order_write': 'sa:write',
     # Cấu hình / xoá credential broker.
     'broker_manage': 'settings:write',
 }

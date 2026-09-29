@@ -73,13 +73,24 @@ def _cache_key(tenant_public_id, portfolio_id, fingerprint):
     ])
 
 
-def invalidate_ledger_cache(portfolio_id):
-    """Xoá cache của một portfolio.
+def invalidate_ledger_cache(portfolio_id, tenant_public_id=None):
+    """Bump bộ đếm của một portfolio.
 
-    Django không có API "xoá theo mẫu", nên ta bump một counter theo portfolio
-    và nhét nó vào key. Rẻ hơn việc duyệt keyspace và không cần thêm bảng.
+    GHI RÕ ĐIỀU MÀ DOCSTRING CŨ GHI SAI: bộ đếm này **không** nằm trong
+    `_cache_key`. Cache tự đúng nhờ fingerprint `(count, max updated_at, max
+    pk)` nên sửa bất kỳ giao dịch nào cũng làm key cũ không còn trúng — hàm
+    này không phải cơ chế đúng của việc vô hiệu hoá cache.
+
+    Giữ lại vì `ledger/__init__.py` export nó như API công khai. Sửa docstring
+    thay vì xoá để không phá import; nếu sau này thêm counter vào key thì phải
+    đổi `LEDGER_CACHE_PREFIX` để cache cũ không bị đọc lại.
     """
-    bump_key = f'{LEDGER_CACHE_PREFIX}:bump:{portfolio_id}'
+    bump_key = ':'.join([
+        LEDGER_CACHE_PREFIX,
+        'bump',
+        str(tenant_public_id or 'no-tenant'),
+        str(portfolio_id),
+    ])
     try:
         return cache.incr(bump_key)
     except ValueError:

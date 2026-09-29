@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, createElement, useRef } from 'react';
 import { authTokenStorage, coreApiAdapter, tenantIdStorage } from '../adapters/coreApiAdapter.js';
-import { clearStaffSwitchSession, CORE_TOKENS_CLEARED_EVENT } from '../adapters/core/transport.js';
+import { clearStaffSwitchSession, CORE_TOKENS_CLEARED_EVENT, TENANT_ID_STORAGE_KEY } from '../adapters/core/transport.js';
 import { AbilityContext, createAbilityFromRules } from './AbilityContext.js';
 
 const PortfolioContext = createContext(null);
@@ -242,7 +242,7 @@ export function PortfolioProvider({ children }) {
   useEffect(() => {
     if (typeof window === 'undefined' || !window.localStorage) return;
     const handleStorage = (e) => {
-      if (e.key !== 'tenant_id') return;
+      if (e.key !== TENANT_ID_STORAGE_KEY) return;
       const next = e.newValue || null;
       setActiveTenantIdState(next);
       emitWindowEvent('tenant-changed', { tenantId: next, crossTab: true });

@@ -12,6 +12,8 @@ from typing import Dict, Optional, Tuple
 from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
 
+from vninvest_core.env_validation import is_placeholder_value
+
 logger = logging.getLogger(__name__)
 
 # Legacy version: broker secrets written before SEC-02 are encrypted with a key
@@ -93,10 +95,25 @@ class SecretStore:
         if version == self.current_version():
             broker_key = os.environ.get("BROKER_SECRET_KEY")
             if broker_key:
+                if is_placeholder_value(broker_key):
+                    # Fail-closed (R4): `<REQUIRED>` từ file .example là hằng
+                    # số công khai. Encrypt bằng nó tệ hơn cả không mã hóa,
+                    # vì code sẽ tin là đã tách khóa khỏi SECRET_KEY.
+                    raise SecretKeyMissingError(
+                        f"BROKER_SECRET_KEY still holds the placeholder value from "
+                        f"the .example file. Generate a real Fernet key "
+                        f"(`python -c \"from cryptography.fernet import Fernet; "
+                        f"print(Fernet.generate_key().decode())\"`)."
+                    )
                 return broker_key + ":broker-workspace-key"
 
         retained = os.environ.get(f"BROKER_SECRET_KEY_V{version}")
         if retained:
+            if is_placeholder_value(retained):
+                raise SecretKeyMissingError(
+                    f"BROKER_SECRET_KEY_V{version} still holds the placeholder "
+                    f"value from the .example file."
+                )
             return retained + ":broker-workspace-key"
 
         if version == LEGACY_VERSION:
@@ -144,6 +161,12 @@ class SecretStore:
         exists: it records which key actually protected each row.
         """
         if os.environ.get("BROKER_SECRET_KEY"):
+            if is_placeholder_value(os.environ["BROKER_SECRET_KEY"]):
+                # Không báo "đang dùng version mới" khi key thật sự chưa có.
+                raise SecretKeyMissingError(
+                    "BROKER_SECRET_KEY is set to the placeholder value, so new "
+                    "broker secrets cannot be written safely."
+                )
             return SecretStore.current_version()
         return LEGACY_VERSION
 

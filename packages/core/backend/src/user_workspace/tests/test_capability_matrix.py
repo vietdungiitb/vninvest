@@ -72,13 +72,14 @@ class WorkspacePermissionMappingTests(TestCase):
                 )
 
     def test_every_financial_write_endpoint_declares_a_permission(self):
-        """AC1: 7 endpoint ghi tài chính phải khai báo, không endpoint nào bỏ trống."""
+        """AC1: 8 endpoint ghi tài chính phải khai báo, không endpoint nào bỏ trống."""
         guarded = [
             ('place_order', views_dnse.dnse_place_order_api, 'order_write'),
             ('send_otp', views_dnse.dnse_send_email_otp_api, 'order_write'),
             ('create_token', views_dnse.dnse_create_trading_token_api, 'order_write'),
             ('sync_accounts', views_dnse.dnse_sync_accounts_api, 'portfolio_write'),
             ('sync_balances', views_dnse.dnse_sync_balances_api, 'portfolio_write'),
+            ('reconcile', views_dnse.dnse_reconcile_transactions_api, 'portfolio_write'),
             ('broker_config', views_broker.broker_config_api, 'broker_manage'),
             ('test_connection', views_broker.broker_test_connection_api, 'broker_manage'),
         ]
@@ -90,6 +91,63 @@ class WorkspacePermissionMappingTests(TestCase):
                     [expected],
                     f'{name} phai khai bao [{expected!r}]',
                 )
+
+    def test_no_write_key_maps_to_a_read_permission(self):
+        """P0 regression: key `*_write` / `*_manage` KHÔNG được trỏ tới quyền đọc.
+
+        `portfolio_write` từng trỏ `dashboard:read` — cùng chuỗi với
+        `portfolio_read` — nên `viewer` (chỉ có `dashboard:read`) đi qua
+        được cả 8 endpoint ghi tài chính. Đây là leo thang đặc quyền, nên
+        phải chặn bằng test chứ không chỉ bằng đọc code.
+        """
+        from identity_access.utils.resolve_tenant import SYSTEM_ROLE_PERMISSIONS
+
+        for key, permission in WORKSPACE_PERMISSIONS.items():
+            if not (key.endswith('_write') or key.endswith('_manage')):
+                continue
+            with self.subTest(key=key):
+                self.assertFalse(
+                    permission.endswith((':read', ':list')),
+                    f'{key} -> {permission!r} la quyen DOC, khong the bao ve endpoint ghi',
+                )
+
+    def test_viewer_permissions_do_not_cover_any_write_key(self):
+        """`viewer` phải bị chặn ở MỌI key ghi, không riêng endpoint đặt lệnh."""
+        from identity_access.utils.resolve_tenant import SYSTEM_ROLE_PERMISSIONS
+
+        viewer = set(SYSTEM_ROLE_PERMISSIONS['viewer'])
+        for key, permission in WORKSPACE_PERMISSIONS.items():
+            if not (key.endswith('_write') or key.endswith('_manage')):
+                continue
+            with self.subTest(key=key):
+                self.assertNotIn(
+                    permission, viewer,
+                    f'viewer co {permission!r} nen {key} khong con chan viewer',
+                )
+
+    def test_editor_keeps_portfolio_and_order_write(self):
+        """Đổi mapping không được khóa cứng nhầm `editor` ra khỏi ghi danh sách.
+
+        Chỉ kiểm tra 2 key mà `editor` PHẢI có. `broker_manage` cố ý là
+        admin/owner-only (`settings:write` không nằm trong `editor`) — đó là
+        thiết kế có sẵn, không phải hệ quả của thay đổi này.
+        """
+        from identity_access.utils.resolve_tenant import SYSTEM_ROLE_PERMISSIONS
+
+        editor = set(SYSTEM_ROLE_PERMISSIONS['editor'])
+        for key in ('portfolio_write', 'order_write'):
+            with self.subTest(key=key):
+                self.assertIn(WORKSPACE_PERMISSIONS[key], editor)
+
+    def test_admin_keeps_every_write_key(self):
+        from identity_access.utils.resolve_tenant import SYSTEM_ROLE_PERMISSIONS
+
+        admin = set(SYSTEM_ROLE_PERMISSIONS['admin'])
+        for key, permission in WORKSPACE_PERMISSIONS.items():
+            if not (key.endswith('_write') or key.endswith('_manage')):
+                continue
+            with self.subTest(key=key):
+                self.assertIn(permission, admin)
 
 
 class WorkspacePermissionDenyByDefaultTests(TestCase):

@@ -224,9 +224,11 @@ export function DNSEConnectionPanel({ onConnected, className = "" }) {
       });
       // SAFE-01 R4 — hiển thị `mode` mà SERVER quyết định, không phải giá trị
       // client vừa gửi. Client gửi `paper` không có nghĩa server đã chạy paper:
-      // server có thể từ chối live và hạ về paper (hoặc ngược lại). Đọc
-      // `res.mode` nên nếu server chưa trả field này thì lùi về giá trị đã
-      // gửi, thay vì hiển thị sai một badge "Live".
+      // server có thể từ chối live và hạ về paper (hoặc ngược lại).
+      // `res?.mode || "paper"` — mặc định là `paper`, KHÔNG phải giá trị đã
+      // gửi: nếu server không trả `mode` (bản cũ, response bị cắt qua proxy)
+      // thì hiển thị "Live" là nói dối người dùng về việc tiền có ra khỏi tài
+      // khoản thật không. Lùi về phía an toàn.
       setOrderResult({
         ok: true,
         result: res?.result || res || null,

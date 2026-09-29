@@ -28,8 +28,22 @@ class KillSwitchIndeterminate(BrokerWriteDisabled):
     """
 
 
-def get_active_broker_config():
-    """Trả về BrokerSystemConfig đang hiệu lực (current version hoặc defaults)."""
+def get_active_broker_config(*, strict: bool = False):
+    """Trả về BrokerSystemConfig đang hiệu lực (current version hoặc defaults).
+
+    `strict=False` (mặc định) giữ hành vi cũ cho **đường đọc**: config lỗi
+    thì dùng default chỉ để routing không chết cùng DB. Đó đúng cho
+    `provider_for_purpose`.
+
+    `strict=True` là bắt buộc cho **đường ghi**. Trước đây `except Exception`
+    nuốt mọi lỗi rồi trả default có `kill_switch_write=False` — tức là
+    Postgres chết đúng lúc đặt lệnh thì kill-switch trả về "cho phép ghi".
+    Đó là fail-open ở đúng kịch bản mà kill-switch sinh ra để chặn, và nó
+    làm `KillSwitchIndeterminate` không bao giờ chạy với lỗi DB thật.
+
+    Với `strict=True`, mọi lỗi đọc được ném lại cho `check_kill_switch` chuyển
+    thành `KillSwitchIndeterminate` (503) thay vì im lặng cho qua.
+    """
     from .domain_configs.broker import BrokerSystemConfig, get_default_broker_system_config
     from .models import ServiceConfig, ServiceDefinition
     from .domain_configs.broker import BROKER_CONFIG_SERVICE_KEY
@@ -46,7 +60,9 @@ def get_active_broker_config():
                     return cfg
                 logger.warning('broker_runtime: stored config invalid, using defaults: %s',
                                cfg.validate())
-    except Exception:  # noqa: BLE001 — DB chưa migrate vẫn chạy defaults
+    except Exception as exc:  # noqa: BLE001 - strict=True re-raises; xem docstring
+        if strict:
+            raise
         logger.warning('broker_runtime: cannot read stored config, using defaults')
     return get_default_broker_system_config()
 
@@ -86,7 +102,9 @@ def check_kill_switch(scope: str = 'global', tenant=None, provider: str | None =
         )
 
     try:
-        cfg = get_active_broker_config()
+        # `strict=True` là mấu chốt của D-14: nếu đọc trạng thái lỗi thì phải
+        # ném lên, không được rơi về default `kill_switch_write=False`.
+        cfg = get_active_broker_config(strict=True)
         enabled = bool(cfg.kill_switch_write)
     except Exception as exc:  # noqa: BLE001 — bất kỳ lỗi nào cũng phải chặn
         logger.error(

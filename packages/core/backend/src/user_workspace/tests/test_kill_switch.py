@@ -51,16 +51,56 @@ class KillSwitchGlobalTests(SimpleTestCase):
             with self.assertRaises(BrokerWriteDisabled):
                 check_kill_switch('global')
 
-    def test_AC1_db_failure_denies(self):
-        """AC1: lỗi đọc trạng thái ⇒ CHẶN, không phải cho qua.
+    def test_AC1_exception_from_config_reader_denies(self):
+        """`check_kill_switch` tự bắt lỗi và chặn ghi.
 
-        Đây là hành vi fail-open cũ: `except Exception` rơi về default `False`.
+        Test này CHỈ chứng minh `except` trong `check_kill_switch` hoạt động.
+        Nó KHÔNG chứng minh AC1, vì nó mock đúng hàm đang được kiểm tra nên
+        không chạm vào `except Exception` bên trong `get_active_broker_config`
+        - chính chỗ nuốt lỗi và trả về `kill_switch_write=False`.
+        Xem `test_AC1_db_failure_denies_at_the_database_layer`.
         """
         with mock.patch.object(
             broker_runtime, 'get_active_broker_config', side_effect=OSError('db down')
         ):
             with self.assertRaises(KillSwitchIndeterminate):
                 check_kill_switch('global')
+
+    def test_AC1_db_failure_denies_at_the_database_layer(self):
+        """AC1: lỗi ĐỌC TRẠNG THÁI => chặn, không cho qua (D-14).
+
+        Lỗi bị tiêm ở tầng truy vấn, KHÔNG mock `get_active_broker_config`.
+        Đây là khác biệt làm P0 lọt lần trước: hàm đọc config có
+        `except Exception` trả về config mặc định, mặc định có
+        `kill_switch_write=False`, nên DB chết đúng lúc đặt lệnh lại ra
+        lệnh "cho phép ghi". Test cũ mock hàm nên không bao giờ chạm vào
+        nhánh code đó và báo xanh.
+        """
+        from django.db.utils import OperationalError
+
+        from service_ops.models import ServiceDefinition
+
+        with mock.patch.object(
+            ServiceDefinition.objects,
+            'filter',
+            side_effect=OperationalError('connection refused'),
+        ):
+            with self.assertRaises(KillSwitchIndeterminate):
+                check_kill_switch('global')
+
+    def test_AC1_db_failure_on_tenant_scope_denies(self):
+        """Cùng lỗi DB nhưng ở scope `tenant` cũng phải chặn."""
+        from django.db.utils import OperationalError
+
+        from service_ops.models import ServiceDefinition
+
+        with mock.patch.object(
+            ServiceDefinition.objects,
+            'filter',
+            side_effect=OperationalError('connection refused'),
+        ):
+            with self.assertRaises(KillSwitchIndeterminate):
+                check_kill_switch('tenant', tenant=_Tenant('t-1'))
 
     def test_AC1_indeterminate_is_a_write_disabled(self):
         """Client xử lý như nhau; operator thì phân biệt được."""
