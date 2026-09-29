@@ -620,7 +620,7 @@ def _track_vnbroker_call(channel: str):
 ## X. REFERENCES
 
 - **Current Latest Changes:**
-  - [backend/CHANGELOG.md](backend/CHANGELOG.md) - Vnbroker fork migration (04/04/2026)
+  - backend/CHANGELOG.md _(khong ton tai)_ - Vnbroker fork migration (04/04/2026)
   - [backend/requirements.txt](backend/requirements.txt) - Fork URL with internal/core branch
 
 - **Key Files:**
