@@ -327,7 +327,12 @@ class SynthesizeBarsFromTicksTests(TestCase):
 
 
 class RateLimitDetectionTests(TestCase):
-    """T-C8 / T-C9: DnseRateLimitError detection và retry logic."""
+    """T-C8: _RateLimitWatcher phat hien warning chua 'rate limit'.
+
+    Hai test T-C9 đã bị gỡ ở bước 2/9 của đợt dọn dẹp: chúng
+    ``patch('vnbroker.explorer.dnse.quote.DNSEQuote')`` mà package ``vnbroker``
+    không tồn tại trong repo. Xem ``docs/CLAIMS.md`` claim ``cleanup-step2-vnbroker``.
+    """
 
     def test_c8_rate_limit_watcher_triggers_on_warning(self):
         """T-C8: _RateLimitWatcher bắt warning chứa 'rate limit'."""
@@ -365,35 +370,3 @@ class RateLimitDetectionTests(TestCase):
         )
         watcher.emit(record)
         self.assertFalse(watcher.triggered)
-
-    def test_c9_fetch_raises_dnse_rate_limit_error(self):
-        """T-C9: fetch_intraday_tape_history raise DnseRateLimitError khi vnbroker log rate limit."""
-        import logging
-        from market_data.vnbroker_adapter import fetch_intraday_tape_history, DnseRateLimitError
-
-        def fake_intraday(date, get_all, page_size):
-            # Simulate vnbroker logging rate limit warning internally
-            logging.getLogger('vnbroker').warning('DNSE get_trades lỗi: Rate Limit Exceeded')
-            import pandas as pd
-            return pd.DataFrame()  # returns empty like real vnbroker does
-
-        with patch('vnbroker.explorer.dnse.quote.DNSEQuote') as mock_cls:
-            mock_instance = MagicMock()
-            mock_instance.intraday.side_effect = fake_intraday
-            mock_cls.return_value = mock_instance
-
-            with self.assertRaises(DnseRateLimitError):
-                fetch_intraday_tape_history('HPG', '2026-04-07', api_key='k', api_secret='s')
-
-    def test_c9_fetch_no_rate_limit_returns_empty_list(self):
-        """T-C9b: không có rate limit warning → trả về [] khi API empty."""
-        import pandas as pd
-        from market_data.vnbroker_adapter import fetch_intraday_tape_history, DnseRateLimitError
-
-        with patch('vnbroker.explorer.dnse.quote.DNSEQuote') as mock_cls:
-            mock_instance = MagicMock()
-            mock_instance.intraday.return_value = pd.DataFrame()
-            mock_cls.return_value = mock_instance
-
-            result = fetch_intraday_tape_history('HPG', '2026-04-07', api_key='k', api_secret='s')
-        self.assertEqual(result, [])

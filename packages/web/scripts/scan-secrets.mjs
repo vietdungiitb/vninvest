@@ -104,6 +104,21 @@ const PATTERNS = [
   { name: 'OpenAI key', re: /\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{20,}\b/ },
   { name: 'Stripe live key', re: /\b(?:sk|rk)_live_[A-Za-z0-9]{20,}\b/ },
   { name: 'SendGrid key', re: /\bSG\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}\b/ },
+  // A stored password hash is a credential and must be reported even when it is
+  // not high-entropy: real hashes legitimately contain runs (`pbkdf2_sha256$600000$`)
+  // that the placeholder heuristics read as filler. Recognised by format, so
+  // this is a high-confidence rule like the vendor ones above; `verbatim` skips
+  // the placeholder heuristics that otherwise drop it. Requires the full shape,
+  // not just the prefix, so a truncated match still cannot hide a hash.
+  //
+  // The guard is a negative lookbehind, not `\b`: bcrypt and argon2 hashes
+  // START with `$`, a non-word character, so `\b` never holds at that position
+  // and a hash dumped on its own line was missed.
+  {
+    name: 'Password hash (Django/bcrypt/argon2)',
+    re: /(?<![A-Za-z0-9])(?:pbkdf2_sha256\$\d{6,7}\$[A-Za-z0-9/+=]{16,}\$[A-Za-z0-9/+=]{20,}|\$2[abxy]\$\d{2}\$[./A-Za-z0-9]{53}|\$argon2(?:id|i|d)\$v=\d{1,2}\$[^$\s]{1,64}\$[A-Za-z0-9/+=]{10,})/g,
+    verbatim: true,
+  },
   { name: 'Secret assignment', re: KEY_VALUE_RE, keyGroup: 1, quoteGroup: 2, valueGroup: 3, generic: true },
 ];
 
@@ -223,8 +238,17 @@ function looksLikePlaceholder(value) {
   if (hasPlaceholderToken(v)) return true;
   // pure word-ish descriptors: your_github_pat_here, changeme, replace_me
   if (/^[A-Za-z_.\-]+$/.test(v) && PLACEHOLDER_WORD.test(v)) return true;
-  // env-var interpolations: ${GITHUB_PAT}, $GITHUB_PAT
-  if (/\$\{?[A-Za-z_]/.test(v)) return true;
+  // Env-var interpolations: ${GITHUB_PAT}, $GITHUB_PAT.
+  //
+  // The bare `$NAME` form is anchored to the start of the value. It used to be
+  // unanchored, which meant ANY `$` followed by a letter anywhere in the value
+  // silently dropped the finding. Real credential formats use `$` as an
+  // internal separator -- Django `pbkdf2_sha256$600000$<salt>$<hash>`, bcrypt
+  // `$2b$12$...`, argon2 `$argon2id$...` -- so every one of them was invisible.
+  // That is how a tracked `update_admin_password.sql` holding a live admin
+  // password hash survived a 0-finding scan. `${...}` stays unanchored because
+  // that spelling is unambiguous wherever it appears.
+  if (/^\$\{?[A-Za-z_]/.test(v) || /\$\{/.test(v)) return true;
   // path-ish values, e.g. ./certs/xxx or a file reference
   if (/^[./~]/.test(v) && !/[0-9]/.test(v)) return true;
   return false;
@@ -311,7 +335,9 @@ function scanContent(relPath, content) {
       if (pattern.quoteGroup && !m[pattern.quoteGroup] && !UNQUOTED_LITERAL_RE.test(value)) continue;
       if (pattern.block) {
         if (isTruncatedKeyBlock(value)) continue;
-      } else {
+      } else if (!pattern.verbatim) {
+        // `verbatim` marks a format-identified credential (a password hash), which
+        // must not be discarded by the entropy/placeholder heuristics.
         if (looksLikePlaceholder(value)) continue;
       }
       if (pattern.generic) {
@@ -494,6 +520,48 @@ function runSelfTest() {
   check('real Fernet-shaped key on a secret key name IS flagged',
     scanContent('.env', `DNSE_CREDENTIAL_FERNET_KEY=${b64}`)
       .some((f) => f.type === 'Secret assignment' || f.type === 'Fernet key'), true);
+
+  // --- Password hashes, and the `$` blindness they exposed (2026-09-28) ---
+  //
+  // Built at runtime: the salt/hash below are the shape of a Django
+  // pbkdf2_sha256 field, and no real hash may live in this file. The salt
+  // deliberately ends in `=` (base64 padding) because the first attempt used a
+  // too-narrow character class and silently failed to match every real hash.
+  const hashSalt = `${b64.slice(0, 21)}=`;
+  const hashDigest = `${b64.slice(0, 40)}==`;
+  const djangoHash = `pbkdf2_sha256$600000$${hashSalt}$${hashDigest}`;
+  const hashInSql = `UPDATE auth_user\n  SET password='${djangoHash}'\n  WHERE username='admin';`;
+
+  check('Django pbkdf2 hash in SQL IS flagged',
+    scanContent('t.sql', hashInSql)
+      .some((f) => f.type === 'Password hash (Django/bcrypt/argon2)'), true);
+  check('bcrypt hash IS flagged',
+    scanContent('t.txt', `$2b$12$${b64.slice(0, 22)}${b64.slice(0, 31)}`)
+      .some((f) => f.type === 'Password hash (Django/bcrypt/argon2)'), true);
+  check('argon2 hash IS flagged',
+    scanContent('t.txt', `$argon2id$v=19$m=65536,t=3,p=4$${b64.slice(0, 22)}$${b64.slice(0, 32)}`)
+      .some((f) => f.type === 'Password hash (Django/bcrypt/argon2)'), true);
+
+  // A hash is a credential even though it trips the repeated-run heuristic
+  // (`$600000$`), which is exactly why the pattern is marked `verbatim`.
+  check('hash with a repeated run is still flagged',
+    scanContent('t.sql', `SET password='pbkdf2_sha256$600000$${hashSalt}$${hashDigest}'`)
+      .some((f) => f.type === 'Password hash (Django/bcrypt/argon2)'), true);
+  // Only the prefix: not a leak, must not fire.
+  check('bare "pbkdf2_sha256$" prefix alone is NOT flagged',
+    scanContent('t.py', 'ALGO = "pbkdf2_sha256"').length, 0);
+  check('truncated hash (no digest) is NOT flagged',
+    scanContent('t.txt', 'pbkdf2_sha256$600000$').length, 0);
+
+  // The `$` anchoring fix. These two are env-var references, not literals, and
+  // must stay silent; their non-`$` twin is the same length and must fire.
+  check('a "$" inside a literal no longer hides it',
+    scanContent('t.txt', `password = "${b64}$${b64.slice(0, 12)}"`)
+      .some((f) => f.type === 'Secret assignment'), true);
+  check('bare $VAR reference is still treated as a placeholder',
+    scanContent('t.py', 'password = $GITHUB_PAT_VALUE_NOISE_XYZZY').length, 0);
+  check('${VAR} reference is still treated as a placeholder',
+    scanContent('t.py', 'password = "${GITHUB_PAT_VALUE_NOISE_XYZZY}"').length, 0);
 
   let failed = 0;
   for (const c of checks) {
