@@ -26,13 +26,32 @@ export function SmartStatsHeader({
   const { t } = useI18n();
   const analyticsData = analytics;
 
-  // `total_market_value` / `total_unrealized_pl` arrive from the API as
+  // `total_market_value` / `total_unrealized_pnl` arrive from the API as
   // formatted strings (e.g. "0.00"), not numbers. Using them directly made
   // `!"0.00"` false, so the empty-portfolio CTA could never appear, and
   // `"0.00" > 0` false, so the currency suffix was dropped for a zero value.
-  const marketValue = Number(summary?.total_market_value) || 0;
-  const dayPL = Number(summary?.total_unrealized_pl) || 0;
-  const dayPLPct = Number(summary?.total_unrealized_pl_pct) || 0;
+  //
+  // `Number(null) === 0` nên KHÔNG được dùng `|| 0` ở đây. Backend trả `null`
+  // khi chưa đủ dữ liệu (ví dụ mã chưa có giá phiên hôm nay — xem
+  // `PortfolioSummaryView.unpriced_symbols`). Biến `null` thành `0` sẽ khiến
+  // một danh mục có vị thế thật bị hiển thị thành danh mục TRỐNG, tức đúng
+  // cái lỗi "0 giả" mà backend vừa sửa xong. Phân biệt ba trạng thái:
+  //   - `null`  → chưa biết: dùng `marketValueKnown = false`
+  //   - số      → biết
+  //   - rỗng    → chưa có số liệu
+  const rawMarketValue = summary?.total_market_value;
+  const marketValueKnown = rawMarketValue !== null && rawMarketValue !== undefined
+    && rawMarketValue !== "";
+  const marketValue = marketValueKnown ? Number(rawMarketValue) : 0;
+  // BE phát `total_unrealized_pnl`; bản cũ đọc `total_unrealized_pl` nên ô
+  // lãi/lỗ hôm nay luôn hiện 0 — một "0 giả" khác, do đọc sai tên field.
+  const rawDayPL = summary?.total_unrealized_pnl;
+  const dayPLKnown = rawDayPL !== null && rawDayPL !== undefined && rawDayPL !== "";
+  const dayPL = dayPLKnown ? Number(rawDayPL) : 0;
+  const dayPLPctKnown = summary?.total_unrealized_pnl_pct !== null
+    && summary?.total_unrealized_pnl_pct !== undefined
+    && summary?.total_unrealized_pnl_pct !== "";
+  const dayPLPct = dayPLPctKnown ? Number(summary.total_unrealized_pnl_pct) : 0;
   const plSign = signOf(dayPL);
 
   const hasAnalytics = analyticsData && [
@@ -41,7 +60,9 @@ export function SmartStatsHeader({
     analyticsData.sharpe_ratio,
     analyticsData.max_drawdown_pct,
   ].some((v) => v !== null && v !== undefined);
-  const isEmptyPortfolio = !loading && marketValue === 0 && !hasAnalytics;
+  // Chỉ coi là TRỐNG khi backend thực sự trả 0. `null` là "chưa biết", không
+  // phải "không có gì".
+  const isEmptyPortfolio = !loading && marketValueKnown && marketValue === 0 && !hasAnalytics;
 
   // Honesty rule: the API exposes no `updated_at`; the only real freshness
   // signal is `as_of`, and that is a DATE, not an instant. Rendering a date as
@@ -95,8 +116,11 @@ export function SmartStatsHeader({
           e(
             "span",
             { className: "text-sm font-black text-slate-100 leading-none" },
-            loading ? "--" : marketValue.toLocaleString("vi-VN"),
-            !loading && e("span", { className: "text-[10px] font-normal text-slate-600 ml-1" }, "đ")
+            // Chưa biết thì hiện "—" chứ không phải "0 đ". Xem `marketValueKnown`.
+            loading ? "--" : (marketValueKnown ? marketValue.toLocaleString("vi-VN") : "—"),
+            !loading && marketValueKnown
+              ? e("span", { className: "text-[10px] font-normal text-slate-600 ml-1" }, "đ")
+              : null
           )
         ),
         e(
@@ -106,14 +130,14 @@ export function SmartStatsHeader({
           e(
             "div",
             { className: `flex items-center gap-1.5 leading-none ${plSign > 0 ? "text-emerald-400" : plSign < 0 ? "text-rose-400" : "text-slate-400"}` },
-            e("span", { className: "text-sm font-black" }, loading ? "..." : (plSign > 0 ? "+" : "") + Number(dayPL).toLocaleString("vi-VN")),
+            e("span", { className: "text-sm font-black" }, loading ? "..." : (dayPLKnown ? (plSign > 0 ? "+" : "") + Number(dayPL).toLocaleString("vi-VN") : "—")),
             e(
               "span",
               {
                 className: "pill text-[10px] font-bold px-2 py-0.5 rounded-full",
                 "data-sign": String(plSign),
               },
-              Number(dayPLPct).toFixed(2) + "%"
+              dayPLPctKnown ? Number(dayPLPct).toFixed(2) + "%" : "—"
             )
           )
         ),

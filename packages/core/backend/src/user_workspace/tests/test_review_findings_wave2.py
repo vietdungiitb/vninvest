@@ -25,7 +25,7 @@ from decimal import Decimal
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import DatabaseError, IntegrityError, connection, transaction
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 
 from identity_access.models import CoreTenant
 from user_workspace.ledger import analytics as ana
@@ -518,14 +518,265 @@ class InformationRatioTests(TestCase):
 
 
 class MutationGuardFlagTests(TestCase):
-    def test_flag_allows_migration_operations(self):
-        """Reverse của `0022` cần cờ này, không có nó thì rollback chết vì
-        chính trigger nó tạo ra chặn."""
+    """Cờ `app.allow_ledger_mutation` phải **thực sự cho phép** thao tác, không
+    phải báo thành công rồi âm thầm bỏ qua.
+
+    Bản đầu của file test này chỉ chạy `SELECT 1` nên không chứng minh được
+    gì — đúng loại test rỗng mà review vòng 1 chỉ ra. Nay nó đụng bảng có
+    trigger và kiểm giá trị thực sự thay đổi.
+    """
+
+    def setUp(self):
+        self.tenant = _tenant('mg')
+        self.portfolio = _portfolio(self.tenant)
+        self.entry = _entry(self.tenant, self.portfolio)
+
+    def test_update_actually_applies_when_flag_is_on(self):
         with transaction.atomic():
             with connection.cursor() as cursor:
                 cursor.execute("SET app.allow_ledger_mutation = 'on'")
                 try:
-                    self.assertIsNone(
-                        cursor.execute('SELECT 1').fetchone() and None)
+                    cursor.execute(
+                        'UPDATE user_workspace_ledgerentry SET price = %s WHERE id = %s',
+                        [Decimal('1.00'), self.entry.pk],
+                    )
                 finally:
                     cursor.execute("SET app.allow_ledger_mutation = 'off'")
+        self.entry.refresh_from_db()
+        self.assertEqual(
+            self.entry.price, Decimal('1.00'),
+            'UPDATE khi cờ bật phải THAY ĐỔI dữ liệu, không chạy nhưng no-op',
+        )
+
+    def test_delete_actually_deletes_when_flag_is_on(self):
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute("SET app.allow_ledger_mutation = 'on'")
+                try:
+                    cursor.execute(
+                        'DELETE FROM user_workspace_ledgerentry WHERE id = %s',
+                        [self.entry.pk],
+                    )
+                    deleted = cursor.rowcount
+                finally:
+                    cursor.execute("SET app.allow_ledger_mutation = 'off'")
+        self.assertEqual(deleted, 1, 'DELETE khi cờ bật phải xoá thật')
+        self.assertFalse(LedgerEntry.objects.filter(pk=self.entry.pk).exists())
+
+    def test_flag_off_still_blocks(self):
+        with self.assertRaises(DatabaseError):
+            with transaction.atomic():
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        'DELETE FROM user_workspace_ledgerentry WHERE id = %s',
+                        [self.entry.pk])
+
+
+# ══════════════════════════════════════════════════════════════════
+# Review vòng 2 — 3 P0 mới
+# ══════════════════════════════════════════════════════════════════
+
+
+class PortfolioDeleteRegressionTests(TestCase):
+    """P0: trigger của `0023` làm hỏng `portfolio.delete()`.
+
+    `Portfolio` sở hữu `LedgerEntry` bằng `on_delete=CASCADE`, nên xoá danh
+    mục phát `DELETE` xuống bảng con và bị trigger chặn ⇒ 500 cho một thao tác
+    hợp lệ. Review vòng 2 đã reproduce được bằng chính endpoint thật.
+    """
+
+    def setUp(self):
+        self.tenant = _tenant('pd')
+        self.user = self.tenant.owner_user
+
+    def _delete(self, portfolio):
+        from rest_framework.test import APIRequestFactory
+
+        from user_workspace.views import PortfolioDetailView
+
+        request = APIRequestFactory().delete(
+            f'/api/portfolio/portfolios/{portfolio.pk}/')
+        request.user = self.user
+        request.tenant = self.tenant
+        return PortfolioDetailView.as_view()(request, portfolio_id=portfolio.pk)
+
+    def test_delete_without_history_is_204(self):
+        portfolio = _portfolio(self.tenant, 'empty')
+        response = self._delete(portfolio)
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(Portfolio.objects.filter(pk=portfolio.pk).exists())
+
+    def test_delete_with_history_returns_409_not_500(self):
+        portfolio = _portfolio(self.tenant, 'has-history')
+        _entry(self.tenant, portfolio)
+        response = self._delete(portfolio)
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.data['code'], 'portfolio_has_financial_history')
+        self.assertTrue(Portfolio.objects.filter(pk=portfolio.pk).exists())
+        self.assertEqual(LedgerEntry.objects.count(), 1, 'không được mất dữ liệu')
+
+    def test_pure_orm_delete_of_a_portfolio_with_history_fails_loudly(self):
+        """Xác nhận hành vi tầng ORM: trigger chặn, không âm thầm xoá."""
+        portfolio = _portfolio(self.tenant, 'orm')
+        _entry(self.tenant, portfolio)
+        with self.assertRaises(DatabaseError):
+            with transaction.atomic():
+                portfolio.delete()
+        self.assertEqual(LedgerEntry.objects.count(), 1)
+
+
+class CashCrossCheckFalsePositiveTests(TestCase):
+    """P0: `cash_cross_check` bật trên 100% danh mục bình thường.
+
+    `compute_ledger` cộng dồn từ giao dịch đầu tiên (không có số dư mở đầu)
+    còn NAV cộng thêm `opening_balance`. Trừ thẳng hai con số khác gốc thì
+    `difference` **luôn bằng `-opening_balance`**. Test bản đầu đặt
+    `opening_balance = 0` — đúng giá trị duy nhất che được lỗi.
+    """
+
+    def _run(self, opening_balance, oversell=False):
+        from user_workspace.ledger.services import get_cached_ledger
+
+        tenant = _tenant(f'cc-{opening_balance}-{oversell}')
+        portfolio = _portfolio(tenant, 'P')
+        portfolio.opening_balance = opening_balance
+        portfolio.save()
+
+        e1 = _entry(tenant, portfolio, external_id='X-1')
+        CashFlow.objects.create(entry=e1, tenant=tenant, flow_type='BUY',
+                                amount=Decimal('-70000000'))
+        qty = 2000 if oversell else 1000
+        e2 = _entry(tenant, portfolio, entry_type='SELL',
+                    trade_date=date(2026, 2, 10), quantity=qty,
+                    price=Decimal('80000'), external_id='X-2')
+        CashFlow.objects.create(entry=e2, tenant=tenant, flow_type='SELL',
+                                amount=Decimal('80000') * qty)
+        Transaction.objects.create(
+            portfolio=portfolio, tenant=tenant, symbol='VNM',
+            transaction_type='BUY', date=date(2026, 1, 5), price=Decimal('70000'),
+            quantity=1000)
+        Transaction.objects.create(
+            portfolio=portfolio, tenant=tenant, symbol='VNM',
+            transaction_type='SELL', date=date(2026, 2, 10),
+            price=Decimal('80000'), quantity=qty)
+
+        ledger = get_cached_ledger(portfolio.pk, tenant, use_cache=False)
+        return portfolio_valuation(portfolio, ledger=ledger)
+
+    def test_consistent_data_with_nonzero_opening_balance_raises_no_alarm(self):
+        result = self._run(Decimal('1000000'))
+        self.assertNotIn(
+            'cash_cross_check', result,
+            'dữ liệu nhất quán mà vẫn cảnh báo ⇒ cảnh báo mang 0 thông tin')
+
+    def test_oversell_still_raises_the_alarm(self):
+        result = self._run(Decimal('1000000'), oversell=True)
+        self.assertIn('cash_cross_check', result)
+        check = result['cash_cross_check']
+        self.assertTrue(check['reconciliation_required'])
+        self.assertEqual(check['sign_convention'],
+                         'cash_from_ledger - cash_from_cash_flow')
+        self.assertEqual(check['opening_balance_excluded'], '1000000.00')
+
+    def test_zero_opening_balance_consistent_data_raises_no_alarm(self):
+        result = self._run(Decimal('0'))
+        self.assertNotIn('cash_cross_check', result)
+
+
+class AllocationAndCurveNoFakeZeroTests(TestCase):
+    """P1: 2 view còn lại vẫn dùng giá vốn làm giá hiện tại."""
+
+    def setUp(self):
+        self.tenant = _tenant('al')
+        self.portfolio = _portfolio(self.tenant)
+
+    def test_allocation_reports_unpriced_instead_of_fake_weights(self):
+        from rest_framework.test import APIRequestFactory
+
+        from user_workspace.portfolio_analytics_views import PortfolioAllocationView
+
+        for symbol in ('VNM', 'HNG'):
+            Transaction.objects.create(
+                portfolio=self.portfolio, tenant=self.tenant, symbol=symbol,
+                transaction_type='BUY', date=date(2026, 1, 5),
+                price=Decimal('70000'), quantity=1000)
+
+        request = APIRequestFactory().get(
+            f'/api/portfolio/portfolios/{self.portfolio.pk}/allocation/')
+        request.user = self.tenant.owner_user
+        request.tenant = self.tenant
+        response = PortfolioAllocationView.as_view()(
+            request, portfolio_id=self.portfolio.pk)
+        data = response.data
+        self.assertIsNone(data['total_value'])
+        self.assertEqual(data['unpriced_symbols'], ['HNG', 'VNM'])
+        self.assertEqual(data['reason'], 'no_market_prices')
+        self.assertEqual(data['allocation'], [])
+
+    def test_equity_curve_marks_days_with_missing_prices(self):
+        from rest_framework.test import APIRequestFactory
+
+        from user_workspace.portfolio_analytics_views import PortfolioEquityCurveView
+
+        Transaction.objects.create(
+            portfolio=self.portfolio, tenant=self.tenant, symbol='VNM',
+            transaction_type='BUY', date=date(2026, 1, 5), price=Decimal('70000'),
+            quantity=1000)
+
+        request = APIRequestFactory().get(
+            f'/api/portfolio/portfolios/{self.portfolio.pk}/equity-curve/')
+        request.user = self.tenant.owner_user
+        request.tenant = self.tenant
+        response = PortfolioEquityCurveView.as_view()(
+            request, portfolio_id=self.portfolio.pk)
+        # Không có `DailyPrice` nào ⇒ curve rỗng, không phải curve toàn 0.
+        self.assertEqual(response.data['curve'], [])
+
+
+class BackfillAbortBeforeWriteTests(TransactionTestCase):
+    """P1: `0022` phải dừng TRƯỚC khi ghi bất kỳ dòng nào.
+
+    Bản đầu `bulk_create` xong mới raise; an toàn chỉ vì Django bọc `RunPython`
+    trong transaction — tức tính đúng đắn nằm ở framework chứ không ở code.
+    Dùng `TransactionTestCase` (không bọc savepoint) nên nếu code ghi rồi raise,
+    dữ liệu vẫn còn và test này **đỏ** — đúng thứ ta muốn chứng minh.
+    """
+
+    reset_sequences = True
+
+    def setUp(self):
+        self.tenant = _tenant('ba')
+        self.portfolio = _portfolio(self.tenant)
+
+    def _forwards(self):
+        import importlib
+
+        from django.apps import apps as django_apps
+
+        module = importlib.import_module(
+            'user_workspace.migrations.0022_backfill_transaction_to_ledger')
+
+        class _SchemaEditor:
+            connection = connection
+
+        module.forwards(django_apps, _SchemaEditor())
+
+    def test_abort_leaves_no_ledger_rows(self):
+        Transaction.objects.create(
+            portfolio=self.portfolio, tenant=self.tenant, symbol='VNM',
+            transaction_type='BUY', date=date(2026, 1, 5), price=Decimal('70000'),
+            quantity=1000, external_id='OK-1')
+        Transaction.objects.bulk_create([Transaction(
+            portfolio=self.portfolio, tenant=self.tenant, symbol='',
+            transaction_type='BUY', date=date(2026, 1, 6), price=Decimal('70000'),
+            quantity=100, external_id='BAD-1')])
+
+        with self.assertRaises(RuntimeError):
+            self._forwards()
+
+        self.assertEqual(
+            LedgerEntry.objects.count(), 0,
+            'migration đã ghi dòng rồi mới raise ⇒ dừng SAI chỗ',
+        )
+        self.assertEqual(CashFlow.objects.count(), 0)
+

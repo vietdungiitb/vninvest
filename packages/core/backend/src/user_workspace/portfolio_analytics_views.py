@@ -283,11 +283,22 @@ class PortfolioEquityCurveView(APIView):
         curve = []
         for day in sorted(date_price_map.keys()):
             day_prices = date_price_map[day]
+            # LED-03 AC4: mã không có giá trong ngày ⇒ bỏ qua và **báo**,
+            # không lấy `avg_cost` làm giá. Lấy giá vốn tạo ra một đường cong
+            # trông rất thuyết phục nhưng hoàn toàn bịa — và vì `PortfolioSummaryView`
+            # đã trả `null` cho cùng tình huống, hai màn hình sẽ mâu thuẫn nhau.
+            missing = sorted(
+                sym for sym in holdings if sym not in day_prices)
             nav = sum(
-                day_prices.get(sym, h['avg_cost']) * h['quantity']
-                for sym, h in holdings.items()
+                day_prices[sym] * h['quantity']
+                for sym, h in holdings.items() if sym in day_prices
             )
-            curve.append({'date': day.isoformat(), 'nav': str(round(nav, 2))})
+            curve.append({
+                'date': day.isoformat(),
+                'nav': str(round(nav, 2)) if not missing else None,
+                'nav_reason': None if not missing else 'missing_price_for_some_symbols',
+                'missing_symbols': missing,
+            })
         return Response({'portfolio_id': portfolio_id, 'curve': curve})
 
 
@@ -306,21 +317,43 @@ class PortfolioAllocationView(APIView):
         snaps = SymbolSnapshot.objects.filter(symbol__in=symbols, session_date=today)
         price_map = {s.symbol: s for s in snaps}
         values = {}
+        unpriced = []
         total = Decimal('0')
         for sym, h in holdings.items():
             snap = price_map.get(sym)
-            price = Decimal(str(snap.price)) if snap else h['avg_cost']
+            # Cùng lý do với `PortfolioSummaryView`: mã không có giá thì giá trị
+            # và tỷ trọng phải là `null`, không phải con số tính từ giá vốn.
+            # Ở đây còn tệ hơn vì con số bịa đó nằm ngay trong `weight_pct` —
+            # người dùng sẽ thấy một biểu đồ phân bổ đầy đủ tin cậy giả.
+            if not snap or snap.price is None:
+                unpriced.append(sym)
+                continue
+            price = Decimal(str(snap.price))
             val = price * h['quantity']
             values[sym] = val
             total += val
-        if total == 0:
-            total = Decimal('1')
+        if not values:
+            return Response({
+                'portfolio_id': portfolio_id,
+                'total_value': None,
+                'allocation': [],
+                'unpriced_symbols': sorted(unpriced),
+                'reason': 'no_market_prices',
+            })
         allocation = sorted(
             [{'symbol': sym, 'value': str(round(v, 2)), 'weight_pct': round(float(v / total * 100), 2)}
              for sym, v in values.items()],
             key=lambda x: -x['weight_pct'],
         )
-        return Response({'portfolio_id': portfolio_id, 'total_value': str(round(total, 2)), 'allocation': allocation})
+        return Response({
+            'portfolio_id': portfolio_id,
+            'total_value': str(round(total, 2)),
+            'allocation': allocation,
+            'unpriced_symbols': sorted(unpriced),
+            # Tổng weight chỉ còn 100% khi mọi mã đều có giá. Nói rõ để không ai
+            # đọc `weight_pct` như phân bổ của cả danh mục.
+            'weight_covers_all_holdings': not unpriced,
+        })
 
 
 class PortfolioAnalyticsView(APIView):

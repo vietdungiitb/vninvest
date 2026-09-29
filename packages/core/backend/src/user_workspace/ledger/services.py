@@ -377,15 +377,27 @@ def portfolio_valuation(portfolio, *, ledger=None, price_by_symbol=None):
     result['unpriced_symbols'] = sorted(unpriced)
 
     # Đối chiếu hai nguồn tiền mặt — xem docstring hàm.
+    #
+    # PHẢI so trên CÙNG GỐC. `compute_ledger` cộng dồn từ giao dịch đầu tiên
+    # nên không chứa số dư mở đầu, còn NAV cộng thêm `opening_balance`. Trừ
+    # thẳng hai con số khác gốc thì `difference` **luôn bằng `-opening_balance`** —
+    # tức cảnh báo bật trên 100% danh mục bình thường và mang thông tin bằng 0.
+    # Bản đầu đúng là lỗi này, và test che nó bằng cách đặt
+    # `opening_balance = 0` — giá trị duy nhất che được lỗi.
     ledger_cash = ledger.get('cash')
-    if result.get('cash') is not None and ledger_cash is not None:
-        delta = Decimal(str(ledger_cash)) - Decimal(str(result['cash']))
+    opening = result.get('opening_balance')
+    if ledger_cash is not None and result.get('cash') is not None and opening is not None:
+        comparable_cash_flow = Decimal(str(result['cash'])) - Decimal(str(opening))
+        delta = Decimal(str(ledger_cash)) - comparable_cash_flow
         if delta != Decimal('0'):
             result['cash_cross_check'] = {
-                'cash_from_cash_flow': str(result['cash']),
+                'cash_from_cash_flow': str(comparable_cash_flow),
                 'cash_from_ledger': str(ledger_cash),
                 'difference': str(delta),
                 'reconciliation_required': True,
+                # Dương = sổ cái ghi nhiều hơn dòng tiền, âm = ngược lại.
+                'sign_convention': 'cash_from_ledger - cash_from_cash_flow',
+                'opening_balance_excluded': str(opening),
                 'note': (
                     'Hai nguồn tiền mặt lệch nhau — thường do bán vượt số lượng '
                     'đang giữ. Cần đối soát với broker trước khi tin NAV.'

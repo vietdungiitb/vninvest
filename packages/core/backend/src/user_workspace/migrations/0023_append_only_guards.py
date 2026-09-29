@@ -79,7 +79,17 @@ CREATE OR REPLACE FUNCTION user_workspace_block_{name}_mutation()
 RETURNS trigger AS $$
 BEGIN
     IF current_setting('{GUARD_SETTING}', true) = 'on' THEN
-        RETURN OLD;
+        -- Trả về ĐÚNG để thao tác đi tiếp.
+        --
+        -- Với BEFORE UPDATE, `RETURN OLD` nghĩa là "áp dụng giá trị CŨ" ⇒
+        -- lệnh UPDATE trở thành no-op. Với BEFORE DELETE, `RETURN OLD` mới là
+        -- "xoá dòng này". Bản đầu viết `RETURN OLD` cho cả hai nên lệnh
+        -- UPDATE khi cờ bật chạy nhưng không đổi gì — tức rollback báo thành
+        -- công trong khi dữ liệu vẫn còn nguyên. Phải rẽ nhánh theo `TG_OP`.
+        IF TG_OP = 'DELETE' THEN
+            RETURN OLD;
+        END IF;
+        RETURN NEW;
     END IF;
     RAISE EXCEPTION
         'user_workspace: {table} la bang append-only, UPDATE/DELETE bi chan (LED-01 R2).'

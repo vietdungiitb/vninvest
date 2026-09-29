@@ -77,6 +77,20 @@ def forwards(apps, schema_editor):
             unmapped.append((tx.pk, f'non_positive_quantity:{quantity}'))
             continue
 
+        # `external_id` phải **ổn định và duy nhất theo nguồn**, nếu không
+        # chạy lại migration sẽ nhân bản dữ liệu tài chính.
+        #
+        # Giao dịch tay (`external_id=''`) trước đây được để rỗng — mà rỗng
+        # thì UNIQUE constraint cố ý bỏ qua ⇒ mỗi lần chạy lại là một bản ghi
+        # trùng. Sửa: dùng `tx-<pk>` khi nguồn không có mã tham chiếu. `pk` là
+        # ổn định, và `external_id` chỉ cần khác nhau trong phạm vi tenant.
+        #
+        # KHÔNG uppercase `external_id`. Mã tham chiếu broker là chuỗi do hệ
+        # thống bên thứ ba sinh ra; `abc-1` và `ABC-1` là hai giao dịch khác nhau
+        # và việc gộp chúng sẽ âm thầm nuốt một dòng sổ cái. Chuẩn hoá case
+        # chỉ áp cho `symbol`.
+        source_ref = str(tx.external_id or '').strip() or f'tx-{tx.pk}'
+
         entry = LedgerEntry(
             tenant_id=tx.tenant_id,
             portfolio_id=tx.portfolio_id,
@@ -91,15 +105,7 @@ def forwards(apps, schema_editor):
             # `market_unknown` thay vì ép lô 100 cho dữ liệu không đủ căn cứ.
             market='UNKNOWN',
             source='backfill',
-            # `external_id` giữ nguyên (chỉ `strip`) ⇒ UNIQUE
-            # (tenant, external_id) làm backfill idempotent: chạy lại migration
-            # không nhân bản.
-            #
-            # KHÔNG uppercase `external_id`. Mã tham chiếu broker là chuỗi do
-            # hệ thống bên thứ ba sinh ra; `abc-1` và `ABC-1` là hai giao dịch
-            # khác nhau và việc gộp chúng sẽ âm thầm nuốt một dòng sổ cái.
-            # Chuẩn hoá case chỉ áp cho `symbol`.
-            external_id=str(tx.external_id or '').strip(),
+            external_id=source_ref,
             backfilled_by=BACKFILL_MARKER,
         )
         entries.append(entry)
@@ -115,33 +121,31 @@ def forwards(apps, schema_editor):
         else:  # DIVIDEND
             flows.append((entry, 'DIVIDEND', price * quantity - fee - tax))
 
-    created_entries = LedgerEntry.objects.bulk_create(entries, batch_size=500)
-    created_flows = [
-        CashFlow(entry=entry, tenant_id=entry.tenant_id, flow_type=kind, amount=amount)
-        for entry, kind, amount in flows
-    ]
-    CashFlow.objects.bulk_create(created_flows, batch_size=500)
-
+    # ── DỪNG TRƯỚC KHI GHI ────────────────────────────────────────────
+    #
+    # Bản đầu `bulk_create` xong MỚI kiểm rồi mới raise. An toàn chỉ vì Django
+    # bọc `RunPython` trong transaction, tức tính đúng đắn nằm ở framework chứ
+    # không nằm trong code này. Đưa kiểm lên trước để điều đó không phụ thuộc
+    # vào một chi tiết của Django — và để log không bao giờ ghi "đã ghi N dòng"
+    # cho một lần chạy thất bại.
     if unmapped:
-        # **DỪNG, không bỏ qua.** Bản đầu cho phép bỏ sót tới 5% và vẫn báo
-        # "thành công" — nghĩa là 4 giao dịch trong 100 sẽ không có dòng tiền,
-        # NAV bị thiếu hụt một cách âm thầm, và không ai biết. Ngưỡng phần
-        # trăm là một ước lượng không có căn cứ; quy tắc của cả wave này là
-        # "thiếu dữ liệu ⇒ null + lý do", áp dụng cả cho việc thiếu dữ liệu do
-        # chính mình tạo ra.
-        #
-        # Cách thoát: sửa dữ liệu nguồn, rồi chạy lại migration (idempotent vì
-        # `external_id` được giữ nguyên).
         reasons = sorted({reason for _pk, reason in unmapped})
         raise RuntimeError(
             f'LED-05 backfill: {len(unmapped)}/{total} dong khong map duoc '
-            f'({reasons[:8]}). Migration dung lai thay vi ghi du lieu thieu. '
+            f'({reasons[:8]}). Migration dung lai, CHUA ghi gi vao ledger. '
             f'Truy viet bang: SELECT pk, symbol, transaction_type, quantity '
             f'FROM user_workspace_transaction '
             f'WHERE TRIM(symbol) = "" OR quantity <= 0 '
             f'OR transaction_type NOT IN ('
             f'"BUY","SELL","DIVIDEND");'
         )
+
+    created_entries = LedgerEntry.objects.bulk_create(entries, batch_size=500)
+    created_flows = [
+        CashFlow(entry=entry, tenant_id=entry.tenant_id, flow_type=kind, amount=amount)
+        for entry, kind, amount in flows
+    ]
+    CashFlow.objects.bulk_create(created_flows, batch_size=500)
 
     # ── verify: đếm lại, không tin số đếm ở trên ──────────────────────
     entry_count = LedgerEntry.objects.filter(backfilled_by=BACKFILL_MARKER).count()
