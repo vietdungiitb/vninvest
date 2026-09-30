@@ -469,55 +469,92 @@ class ChallengeEndpointModeTests(OrderSafetyTestCase):
         self.assertIs(self.broker.token_calls[0]['dry_run'], True)
 
 
-class IdempotencyUnitTests(SimpleTestCase):
-    """Unit test cho `services/idempotency.py` — không cần DB."""
+class IdempotencyConstantTests(SimpleTestCase):
+    """Phần **không cần DB** của `services/idempotency.py`.
 
-    def setUp(self):
-        cache.clear()
+    ⚠ Tên class và `setUp` đã đổi, có chủ đích.
+
+    Bản trước là `IdempotencyUnitTests(SimpleTestCase)` với
+    `setUp: cache.clear()` — tức các test này chạy **không có database** và gọi
+    `claim()` **không truyền `tenant_id`**. Chúng chỉ chạy được vì bản cache cũ
+    có namespace `no-tenant` cho trường hợp không tenant.
+
+    LED-06 đã bỏ namespace đó: `IdempotencyRecord.tenant` là `NOT NULL` (D-03) và
+    một key dùng chung giữa các tenant là đường rò response đơn hàng của tenant
+    khác. Nay không resolve được tenant thì **từ chối lệnh**.
+
+    Hệ quả: các test hành vi đã chuyển sang
+    `tests/test_idempotency_db.py` (cần DB, vì UNIQUE constraint chỉ tồn tại ở
+    đó). Ở đây chỉ giữ lại phần hằng số và kiểm tra thuần.
+    """
 
     def test_ttl_is_seven_days(self):
         from user_workspace.services import idempotency
         self.assertEqual(idempotency.IDEMPOTENCY_TTL_SECONDS, 7 * 24 * 3600)
 
-    def test_claim_then_replay_then_release(self):
+    def test_blank_key_is_rejected(self):
         from user_workspace.services import idempotency
-        first = idempotency.claim(user_id=7, scope='dnse_order', key='K', fingerprint='fp1')
-        self.assertTrue(first.acquired)
-        # Request thứ hai tới khi request đầu còn đang chạy => in_progress, KHÔNG replay.
-        second = idempotency.claim(user_id=7, scope='dnse_order', key='K', fingerprint='fp1')
-        self.assertFalse(second.acquired)
-        self.assertTrue(second.in_progress)
-        self.assertFalse(second.replay)
-        # Cùng key nhưng payload khác => conflict, kể cả khi đang in_progress.
-        third = idempotency.claim(user_id=7, scope='dnse_order', key='K', fingerprint='fp2')
-        self.assertFalse(third.acquired)
-        self.assertTrue(third.conflict)
-        idempotency.release(user_id=7, scope='dnse_order', key='K')
-        fourth = idempotency.claim(user_id=7, scope='dnse_order', key='K', fingerprint='fp1')
-        self.assertTrue(fourth.acquired)
-        self.assertTrue(idempotency.store_result(
-            user_id=7, scope='dnse_order', key='K', fingerprint='fp1', result={'r': 1}))
-        replay = idempotency.claim(user_id=7, scope='dnse_order', key='K', fingerprint='fp1')
-        self.assertTrue(replay.replay)
-        self.assertEqual(replay.result, {'r': 1})
+        for blank in ('', '   ', None):
+            with self.subTest(key=blank):
+                with self.assertRaises(idempotency.IdempotencyKeyError):
+                    idempotency._normalize_key(blank)
+
+    def test_overlong_key_is_rejected(self):
+        from user_workspace.services import idempotency
+        with self.assertRaises(idempotency.IdempotencyKeyError):
+            idempotency._normalize_key('x' * 256)
+
+    def test_fingerprint_is_hashed_not_stored_raw(self):
+        from user_workspace.services import idempotency
+        digest = idempotency._hash_fingerprint('account=SECRET-TOKEN&symbol=VNM')
+        self.assertEqual(len(digest), 64)
+        int(digest, 16)  # hex hợp lệ
+        self.assertNotIn('SECRET', digest)
+        self.assertNotIn('VNM', digest)
+
+    def test_hash_is_stable_and_discriminating(self):
+        from user_workspace.services import idempotency
+        self.assertEqual(
+            idempotency._hash_fingerprint('x'), idempotency._hash_fingerprint('x'))
+        self.assertNotEqual(
+            idempotency._hash_fingerprint('x'), idempotency._hash_fingerprint('y'))
+
+    def test_unresolved_tenant_is_a_distinct_error_type(self):
+        """Phân biệt lớp lỗi riêng để view trả 403 chứ không phải 400."""
+        from user_workspace.services import idempotency
+        self.assertTrue(
+            issubclass(idempotency.IdempotencyTenantUnresolved,
+                       idempotency.IdempotencyKeyError))
+
+    def test_claim_then_replay_then_release(self):
+        """Bản cache của test này đã được gỡ.
+
+        Nó chạy trong `SimpleTestCase` (không DB) và gọi `claim()` không truyền
+        `tenant_id` — chỉ chạy được nhờ namespace `no-tenant` mà LED-06 đã bỏ vì
+        đó là đường rò response đơn hàng giữa các tenant.
+
+        Phiên bản DB của cùng kịch bản này (replay → conflict → release →
+        store_result → replay) nằm ở `tests/test_idempotency_db.py`
+        (`InProgressAndReleaseTests`).
+        """
+        self.skipTest(
+            'chuyen sang DB-backed idempotency; xem tests/test_idempotency_db.py')
 
     def test_store_result_refuses_a_mismatched_fingerprint(self):
-        from user_workspace.services import idempotency
-        idempotency.claim(user_id=9, scope='dnse_order', key='K', fingerprint='fp1')
-        self.assertFalse(idempotency.store_result(
-            user_id=9, scope='dnse_order', key='K', fingerprint='other', result={'r': 1}))
+        """Xem `tests/test_idempotency_db.py::FingerprintHashingTests`."""
+        self.skipTest(
+            'chuyen sang DB-backed idempotency; xem tests/test_idempotency_db.py')
 
     def test_key_is_scoped_by_user_and_scope(self):
-        from user_workspace.services import idempotency
-        self.assertTrue(
-            idempotency.claim(user_id=1, scope='dnse_order', key='K', fingerprint='f').acquired)
-        self.assertTrue(
-            idempotency.claim(user_id=2, scope='dnse_order', key='K', fingerprint='f').acquired)
-        self.assertTrue(
-            idempotency.claim(user_id=1, scope='dnse_otp', key='K', fingerprint='f').acquired)
+        """Xem `tests/test_idempotency_db.py::Safe02RequiredCases`
+        (`test_different_scopes_are_independent` và
+        `test_same_tenant_different_actors_are_independent`)."""
+        self.skipTest(
+            'chuyen sang DB-backed idempotency; xem tests/test_idempotency_db.py')
 
     def test_blank_key_is_rejected(self):
         from user_workspace.services import idempotency
         for blank in ('', '   ', None):
-            with self.assertRaises(idempotency.IdempotencyKeyError):
-                idempotency.claim(user_id=1, scope='dnse_order', key=blank, fingerprint='f')
+            with self.subTest(key=blank):
+                with self.assertRaises(idempotency.IdempotencyKeyError):
+                    idempotency._normalize_key(blank)
