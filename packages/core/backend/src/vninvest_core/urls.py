@@ -11,6 +11,15 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from . import views_health
 from .legacy_proxy import legacy_proxy_view
 
+# API-01 R1: 4 handler lỗi cấp Django. Xem giải thích dài ở cuối file.
+# `exceptions.py` không import `urls`, nên đặt ở đầu file không gây vòng import.
+from .exceptions import (
+    problem_400 as _problem_400,
+    problem_403 as _problem_403,
+    problem_404 as _problem_404,
+    problem_500 as _problem_500,
+)
+
 
 @api_view(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])
 def admin_ops_gone(request, *args, **kwargs):
@@ -63,3 +72,26 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+# API-01 R1 / PB1: lỗi ở tầng Django trả `application/problem+json`, không HTML.
+#
+# `core_api_exception_handler` của DRF chỉ chạy cho exception ném ra **trong
+# view DRF**. URL không khớp, method không khớp, hay exception trong middleware
+# đều dừng trước đó và mặc định trả HTML — đây là nguồn của OW-01.
+#
+# Gán ở đây (URLconf gốc) chứ không ở app con: Django chỉ dùng handler ở
+# ROOT_URLCONF. Đặt trong app con sẽ không có tác dụng gì.
+#
+# **Phải là callable, không phải chuỗi.** Django đọc `handler404` như thuộc tính
+# module rồi gọi nó. Gán chuỗi `'vninvest_core.exceptions.problem_404'` khiến
+# Django lỗi `'str' object is not callable` và **rơi về handler mặc định** —
+# tức `/khong-ton-tai-xyz` vẫn trả HTML 404 dù code trông như đã cấu hình.
+# Chuỗi chỉ hợp lệ cho biến `handler404` trong *settings*, không phải URLconf.
+#
+# Loại lỗi này **không bị test file `test_problem_json.py` bắt** vì cả 3 class
+# đầu của nó `@override_settings(ROOT_URLCONF=__name__)` — tức chạy URLconf riêng
+# của test. `RealRootUrlconfProblemTests` mới kiểm tra trên URLconf thật.
+handler400 = _problem_400
+handler403 = _problem_403
+handler404 = _problem_404
+handler500 = _problem_500
