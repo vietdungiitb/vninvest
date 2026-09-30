@@ -426,3 +426,209 @@ class LedgerSummaryResponseTest(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['summary']['meta']['calculation_version'], CALCULATION_VERSION)
+
+
+# ══════════════════════════════════════════════════════════════════
+# LED-05 cutover — `summary` gọi `portfolio_valuation` thật
+# ══════════════════════════════════════════════════════════════════
+#
+# Trước cutover, `PortfolioSummaryView` **hardcode** `'nav': None` với comment
+# "cần số dư mở đầu từ broker (model `Portfolio` không có trường đó ⇒ cần
+# migration, ngoài PA-2)". Wave 2 đã thêm đúng trường đó (`opening_balance`,
+# migration `0021`) và viết `portfolio_valuation()` — nhưng không ai gọi nó.
+# Nghĩa là toàn bộ NAV engine đã merge chưa từng chạy ngoài test.
+#
+# Nhóm test dưới khóa hành vi ở tầng HTTP, vì đó là nơi dead code trở thành
+# lỗi người dùng nhìn thấy.
+
+
+class PortfolioSummaryNavWiringTest(TestCase):
+    """`summary` phải lấy NAV từ engine, không còn trả `null` vĩnh viễn."""
+
+    def setUp(self):
+        cache.clear()
+        from identity_access.models import CoreTenant
+        from user_workspace.models import CashFlow, LedgerEntry
+
+        self.user = User.objects.create_user(
+            username='navwire-user', email='navwire@test.local', password='x',
+        )
+        self.tenant = CoreTenant.objects.create(
+            tenant_code='r-navwire', display_name='navwire',
+            owner_user=self.user, status=CoreTenant.StatusChoices.ACTIVE,
+        )
+        self.portfolio = Portfolio.objects.create(
+            user=self.user, tenant=self.tenant, name='NAV wire',
+            opening_balance=Decimal('10000000'),
+        )
+        # Fixture **sau backfill**: `Transaction` (app vẫn ghi) + `LedgerEntry`
+        # (migration LED-05) + `CashFlow` (migration 0022). Thiếu `CashFlow` thì
+        # `portfolio_valuation` chặn NAV đúng theo thiết kế — đó là một test
+        # riêng ở `test_review_findings_wave2.py`, không phải trạng thái mà
+        # endpoint này phải phục vụ.
+        Transaction.objects.create(
+            portfolio=self.portfolio, tenant=self.tenant, symbol='VCB',
+            transaction_type=BUY, date=date(2026, 9, 20),
+            price=Decimal('50000'), quantity=100,
+            fee=Decimal('1000'), tax=Decimal('500'), external_id='navwire-1',
+        )
+        buy = LedgerEntry.objects.create(
+            tenant=self.tenant, portfolio=self.portfolio, entry_type='BUY',
+            symbol='VCB', trade_date=date(2026, 9, 20), quantity=100,
+            price=Decimal('50000'), fee=Decimal('1000'), tax=Decimal('500'),
+            market='VN_SPOT', source='manual', external_id='navwire-1',
+        )
+        CashFlow.objects.create(
+            entry=buy, tenant=self.tenant, flow_type='BUY',
+            # 100 × 50.000 + phí 1.000 + thuế 500 = 5.001.500. Phải **khớp**
+            # `compute_ledger` nếu không `cash_cross_check` sẽ bật cảnh báo
+            # đối soát giả cho một danh mục hoàn toàn bình thường.
+            amount=Decimal('-5001500'),
+        )
+        self.client = APIClient()
+        self.client.force_login(self.user)
+
+    def _summary(self):
+        response = self.client.get(
+            f'/core/v1/workspace/portfolios/{self.portfolio.id}/summary/',
+        )
+        self.assertEqual(response.status_code, 200)
+        return response.json()
+
+    def _set_prices(self, **by_symbol):
+        from datetime import date as _date
+        from market_serving.models import SymbolSnapshot
+
+        for symbol, price in by_symbol.items():
+            SymbolSnapshot.objects.create(
+                symbol=symbol, session_date=_date.today(), price=Decimal(price),
+            )
+
+    def _clear_opening_balance(self):
+        Portfolio.objects.filter(pk=self.portfolio.pk).update(opening_balance=None)
+
+    def test_nav_is_still_null_with_a_machine_readable_reason(self):
+        """Không có `opening_balance` ⇒ `nav = null` **kèm mã lý do**.
+
+        Không phải `0` — `0` ở đây là lời nói dối người dùng (LED-03 R5).
+        """
+        self._clear_opening_balance()
+        self._set_prices(VCB='55000')
+        payload = self._summary()
+        self.assertIsNone(payload['nav'])
+        self.assertEqual(payload['nav_reason'], 'no_opening_balance')
+        self.assertTrue(payload['nav_reason_text'])
+
+    def test_nav_is_computed_once_opening_balance_is_known(self):
+        """Đây là test chứng minh cutover **có tác dụng**."""
+        self._set_prices(VCB='55000')
+        payload = self._summary()
+        # 100 cp × 55.000            =  5.500.000
+        # cash = 10.000.000 − 5.001.500 =  4.998.500
+        # nav  = 5.500.000 + 4.998.500 = 10.498.500
+        self.assertEqual(payload['nav'], '10498500.00')
+        self.assertEqual(payload['nav_reason'], '')
+        self.assertEqual(payload['opening_balance'], '10000000.00')
+        self.assertEqual(payload['stock_value'], '5500000.00')
+        self.assertEqual(payload['debt'], '0.00')
+        self.assertEqual(payload['currency'], 'VND')
+
+    def test_partial_prices_block_nav_instead_of_undercounting(self):
+        """2 mã, chỉ 1 mã có giá ⇒ NAV = null, **không** tính trên 1 mã.
+
+        Nếu cộng `avg_cost × quantity` cho mã thiếu giá thì số tổng vẫn khớp
+        `total_cost` và `unrealized_pnl = 0` — tức báo "không lãi không lỗ" cho
+        cả danh mục. Đó là loại 0 giả mà cả wave này sinh ra để diệt.
+        """
+        from user_workspace.models import CashFlow, LedgerEntry
+
+        Transaction.objects.create(
+            portfolio=self.portfolio, tenant=self.tenant, symbol='ACB',
+            transaction_type=BUY, date=date(2026, 9, 20),
+            price=Decimal('30000'), quantity=10, external_id='navwire-2',
+        )
+        acb = LedgerEntry.objects.create(
+            tenant=self.tenant, portfolio=self.portfolio, entry_type='BUY',
+            symbol='ACB', trade_date=date(2026, 9, 20), quantity=10,
+            price=Decimal('30000'), market='VN_SPOT', source='manual',
+            external_id='navwire-2',
+        )
+        CashFlow.objects.create(
+            entry=acb, tenant=self.tenant, flow_type='BUY', amount=Decimal('-300000'),
+        )
+        self._set_prices(VCB='55000')  # ACB cố tình không có giá
+
+        payload = self._summary()
+        self.assertIsNone(payload['nav'])
+        self.assertEqual(payload['nav_reason'], 'partial_market_prices')
+        self.assertIn('ACB', payload['nav_unpriced_symbols'])
+        # `total_market_value` cũng phải null — cùng lý do, cùng dữ liệu.
+        self.assertIsNone(payload['total_market_value'])
+
+    def test_cash_cross_check_appears_when_the_two_cash_sources_disagree(self):
+        """Bán vượt số lượng đang giữ ⇒ hai nguồn tiền lệch ⇒ phải **cảnh báo**.
+
+        `CashFlow` ghi tiền bán **đủ 150 cp** (broker thật sự chuyển), còn
+        `compute_ledger` chỉ ghi phần có cost basis ⇒ lệch 2 750 000.
+        """
+        from user_workspace.models import CashFlow, LedgerEntry
+
+        Transaction.objects.create(
+            portfolio=self.portfolio, tenant=self.tenant, symbol='VCB',
+            transaction_type=SELL, date=date(2026, 9, 21),
+            price=Decimal('55000'), quantity=150, external_id='navwire-3',
+        )
+        sell = LedgerEntry.objects.create(
+            tenant=self.tenant, portfolio=self.portfolio, entry_type='SELL',
+            symbol='VCB', trade_date=date(2026, 9, 21), quantity=150,
+            price=Decimal('55000'), market='VN_SPOT', source='manual',
+            external_id='navwire-3',
+        )
+        CashFlow.objects.create(
+            entry=sell, tenant=self.tenant, flow_type='SELL',
+            amount=Decimal('8250000'),
+        )
+        self._set_prices(VCB='55000')
+
+        payload = self._summary()
+        cross = payload['cash_cross_check']
+        self.assertTrue(cross['reconciliation_required'])
+        self.assertNotEqual(cross['difference'], '0')
+        self.assertTrue(payload['reconciliation_required'])
+
+    def test_no_cash_cross_check_key_when_sources_agree(self):
+        """Không lệch thì **không** phải key rỗng — client không phải dò."""
+        self._set_prices(VCB='55000')
+        payload = self._summary()
+        self.assertNotIn('cash_cross_check', payload)
+        self.assertFalse(payload['reconciliation_required'])
+
+    def test_unbackfilled_cash_flow_blocks_nav_at_http_layer(self):
+        """Guard `cash_flows_not_backfilled` phải chạy cả ở tầng HTTP.
+
+        Đây là lỗi tiền thật tìm ra khi nối engine: chỉ hỏi `LedgerEntry` thì
+        danh mục có `Transaction` mà chưa backfill lọt qua, `nav` ra lệch đúng
+        bằng tổng chi phí. Xem hồi quy ở `test_review_findings_wave2.py`.
+        """
+        from user_workspace.models import CashFlow
+
+        CashFlow.objects.all().delete()
+        self._set_prices(VCB='55000')
+
+        payload = self._summary()
+        self.assertIsNone(payload['nav'])
+        self.assertEqual(payload['nav_reason'], 'cash_flows_not_backfilled')
+        self.assertNotIn('cash_cross_check', payload)
+
+    def test_nav_reason_code_matches_the_engine_blockers(self):
+        """`nav_reason` phải là **mã máy** đọc được, không phải câu văn.
+
+        Cùng nguyên tắc với `price_missing_reason: 'no_quote_for_today'` ngay
+        trong view này — FE cần nhánh theo mã, không theo chuỗi tiếng Việt.
+        """
+        from market_serving.models import SymbolSnapshot
+
+        SymbolSnapshot.objects.all().delete()  # bỏ giá ⇒ chặn vì thiếu giá
+        payload = self._summary()
+        self.assertEqual(payload['nav_reason'], 'no_market_prices')
+        self.assertIsNone(payload['nav'])

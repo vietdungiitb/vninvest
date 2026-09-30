@@ -27,6 +27,7 @@ from .ledger import (
     get_cached_ledger,
     holdings_from_ledger,
     money,
+    portfolio_valuation,
 )
 from .models import Portfolio, Transaction
 
@@ -185,6 +186,11 @@ class PortfolioSummaryView(APIView):
         total_market_value = Decimal('0')
         total_cost = Decimal('0')
         unpriced_symbols = []
+        # Dùng chung một lần truy vấn giá cho cả hai mục đích: tổng PnL dưới
+        # đây, và `portfolio_valuation` bên dưới. Trước đây chỉ có mục đích
+        # đầu — nối NAV vào mà không tái sử dụng thì mỗi lần gọi summary sẽ
+        # query `SymbolSnapshot` **hai lần** cho cùng một tập mã.
+        price_by_symbol = {}
         if holdings:
             symbols = list(holdings.keys())
             snaps = SymbolSnapshot.objects.filter(symbol__in=symbols, session_date=today)
@@ -202,6 +208,7 @@ class PortfolioSummaryView(APIView):
                     unpriced_symbols.append(sym)
                     continue
                 current_price = Decimal(str(snap.price))
+                price_by_symbol[sym] = current_price
                 total_market_value += current_price * h['quantity']
                 total_cost += h['avg_cost'] * h['quantity']
         if unpriced_symbols:
@@ -215,7 +222,25 @@ class PortfolioSummaryView(APIView):
                 None if not total_cost
                 else round(float((total_market_value - total_cost) / total_cost * 100), 2)
             )
-        return Response({
+        # --- LED-05 cutover: NAV tính thật, không còn hardcode `None` --------
+        # Trước đây dòng này là `'nav': None` kèm comment "cần số dư mở đầu từ
+        # broker (model `Portfolio` không có trường đó ⇒ cần migration, ngoài
+        # PA-2)". Migration `0021` đã thêm đúng trường đó (`opening_balance`)
+        # và `portfolio_valuation()` đã được viết + test — nhưng **không ai gọi
+        # nó**, nên toàn bộ NAV engine đã merge chưa từng chạy ngoài test.
+        #
+        # `portfolio_valuation` không raise: thiếu `opening_balance` thì
+        # `no_opening_balance`; thiếu giá thì `no_market_prices` /
+        # `partial_market_prices`; chưa backfill `CashFlow` thì
+        # `cash_flows_not_backfilled`. Tất cả đều là `nav = null` + mã lý do —
+        # fail-closed theo LED-03 R5, không bao giờ 0 giả.
+        valuation = portfolio_valuation(
+            portfolio, ledger=ledger, price_by_symbol=price_by_symbol,
+        )
+        # `Decimal` → `str` để JSON mang đúng 2 chữ số thập phân, khớp quy ước
+        # của `cash`/`realized_pnl` ngay phía trên (và của `total_cost`).
+        nav_out = valuation['nav']
+        payload = {
             'portfolio_id': portfolio_id,
             'portfolio_name': portfolio.name,
             'total_market_value': market_value_out,
@@ -236,14 +261,38 @@ class PortfolioSummaryView(APIView):
             'cash_note': ledger['cash_note'],
             'realized_pnl': str(money(ledger['realized_pnl'])),
             'dividend_income': str(money(ledger['dividend_income'])),
-            # `nav` = null + lý do, KHÔNG phải 0: cần số dư mở đầu từ broker
-            # (model `Portfolio` không có trường đó ⇒ cần migration, ngoài PA-2).
-            'nav': None,
-            'nav_reason': ledger['nav_reason'],
+            # --- LED-03/05: NAV thật -----------------------------------------
+            'nav': None if nav_out is None else str(nav_out),
+            # Mã máy, không phải câu văn — cùng nguyên tắc với
+            # `price_missing_reason: 'no_quote_for_today'` ở view trên. Rỗng khi
+            # NAV đã tính được; có mã khi bị chặn.
+            'nav_reason': valuation.get('nav_reason') or '',
+            'nav_reason_text': valuation.get('nav_reason_text') or '',
+            'nav_unpriced_symbols': valuation.get('unpriced_symbols', []),
+            'opening_balance': (
+                None if valuation.get('opening_balance') is None
+                else str(valuation['opening_balance'])
+            ),
+            'stock_value': (
+                None if valuation.get('stock_value') is None
+                else str(valuation['stock_value'])
+            ),
+            'debt': None if valuation.get('debt') is None else str(valuation['debt']),
+            'currency': valuation.get('currency'),
             'ledger_warnings': ledger['warnings'],
             'reconciliation_required': ledger['reconciliation_required'],
             'meta': build_meta(ledger),
-        })
+        }
+        # `cash_cross_check` chỉ có **khi** hai nguồn tiền thật sự lệch
+        # (thường do bán vượt số lượng đang giữ — tiền đã chuyển nhưng chưa có
+        # cost basis). Không đặt sẵn key rỗng: client không nên phải dò xem
+        # rồi tự hiểu là "không có gì".
+        if 'cash_cross_check' in valuation:
+            payload['cash_cross_check'] = valuation['cash_cross_check']
+            # Hệ thống đã cảnh báo cả hai lệch, nên `reconciliation_required` ở
+            # trên phải phản ánh cả trường hợp này, không chỉ cảnh báo sổ cái.
+            payload['reconciliation_required'] = True
+        return Response(payload)
 
 
 class PortfolioChartView(APIView):

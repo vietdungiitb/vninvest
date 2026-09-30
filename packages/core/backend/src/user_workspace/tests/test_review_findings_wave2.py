@@ -358,6 +358,40 @@ class NoFabricatedNavTests(TestCase):
         self.assertIsNone(result['nav'])
         self.assertEqual(result['nav_reason'], NAV_BLOCKER_CASH_FLOWS_EMPTY)
 
+    def test_legacy_transaction_only_with_empty_cash_flow_also_blocks_nav(self):
+        """Regression (phát hiện khi nối engine vào `summary`, 2026-09-30).
+
+        Guard `cash_flows_not_backfilled` chỉ hỏi bảng `LedgerEntry`. Nhưng
+        LED-05 đã quyết định **giữ `Transaction` song song** (bỏ contract phase),
+        nên trạng thái thật có thể là: có giao dịch trong `Transaction`, `LedgerEntry`
+        chưa có, `CashFlow` chưa backfill.
+
+        Lúc đó guard im lặng, `cash_flow_total = 0`, nên:
+        - `nav` = `opening_balance` + giá trị cổ phiếu ⇒ **thiếu hẳn số tiền đã
+          mua** (ở fixture dưới: lệch đúng 70 000 000 = tổng chi phí).
+        - `cash_cross_check` so `0` với `ledger['cash']` nên bật cảnh báo đối soát
+          cho **mọi** danh mục bình thường — cảnh báo sai, mà sai thì cảnh báo
+          đúng cũng mất độ tin cậy.
+
+        Hai lỗi tài chính cùng lúc, từ một dòng guard quá hẹp.
+        """
+        Transaction.objects.create(
+            portfolio=self.portfolio, tenant=self.tenant, symbol='VNM',
+            transaction_type='BUY', date=date(2026, 1, 5),
+            price=Decimal('70000'), quantity=1000)
+
+        from user_workspace.ledger.services import get_cached_ledger
+
+        ledger = get_cached_ledger(self.portfolio.pk, self.tenant, use_cache=False)
+        result = portfolio_valuation(
+            self.portfolio, ledger=ledger, price_by_symbol={'VNM': Decimal('75000')})
+
+        self.assertIsNone(result['nav'], 'NAV phải bị chặn, không được bịa số')
+        self.assertEqual(result['nav_reason'], NAV_BLOCKER_CASH_FLOWS_EMPTY)
+        self.assertIsNone(result['cash'])
+        # Cảnh báo đối soát giả là hậu quả thứ hai — phải im khi chưa backfill.
+        self.assertNotIn('cash_cross_check', result)
+
     def test_zero_cash_flow_sum_is_not_mistaken_for_not_backfilled(self):
         """Bản đầu kiểm "chưa backfill" bằng `TỔNG tiền == 0`. Mua rồi bán hết
         giá bằng nhau thì tổng đúng bằng 0 ⇒ báo nhầm chưa backfill."""
