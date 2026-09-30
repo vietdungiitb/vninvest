@@ -3,9 +3,9 @@ from django.contrib.auth import authenticate, get_user_model
 from django.conf import settings as django_settings
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
-from rest_framework.response import Response
 
 from ..authentication import CorePATAuthentication
+from ..envelope import envelope
 from ..models import CorePATCredential, CoreServiceAccount, CoreTenant, TenantMember
 from ..security_utils import (
     LoginRecorder,
@@ -269,5 +269,5 @@ def logout_view(request):
     credential = getattr(request, 'auth', None)
     if credential and isinstance(credential, CorePATCredential):
         credential.revoke_pat()
-        return Response({'detail': 'Logged out and PAT revoked.'}, status=status.HTTP_200_OK)
-    return Response({'detail': 'No active PAT to revoke.'}, status=status.HTTP_200_OK)
+        return envelope({'detail': 'Logged out and PAT revoked.'}, status=status.HTTP_200_OK)
+    return envelope({'detail': 'No active PAT to revoke.'}, status=status.HTTP_200_OK)

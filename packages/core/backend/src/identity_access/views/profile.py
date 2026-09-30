@@ -4,6 +4,7 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.response import Response
 
 from ..authentication import CorePATAuthentication
+from ..envelope import envelope
 from ..models import CorePATCredential, CoreTenant
 from django.utils import timezone
 from ..permissions import require_human_session
@@ -61,7 +62,7 @@ def profile_view(request):
         expires_at__gt=timezone.now(),
     ).count()
 
-    return Response(
+    return envelope(
         {
             **_user_payload(user),
             'plan': tenant.plan,
@@ -89,7 +90,7 @@ def capabilities_view(request):
     if not user or not user.is_authenticated:
         # Return minimal empty capabilities — frontend handles gracefully.
         # Must NOT return 401 here: syncAuthState treats 401 as auth failure → logout.
-        return Response({
+        return envelope({
             'principal': {'identity': {}, 'is_authenticated': False},
             'abilities': [],
             'build': {'plan': 'free', 'target': 'core'},
@@ -106,7 +107,7 @@ def capabilities_view(request):
         )
 
     service_account = _resolve_request_service_account(request, tenant)
-    return Response(_build_capabilities_payload(user, tenant, service_account), status=status.HTTP_200_OK)
+    return envelope(_build_capabilities_payload(user, tenant, service_account), status=status.HTTP_200_OK)
 
 
 @api_view(['GET', 'PUT'])
@@ -125,7 +126,7 @@ def user_config_view(request):
 
     key = str(tenant.public_id)
     if request.method == 'GET':
-        return Response(_current_user_config(tenant), status=status.HTTP_200_OK)
+        return envelope(_current_user_config(tenant), status=status.HTTP_200_OK)
 
     if not isinstance(request.data, dict):
         return Response(
@@ -136,4 +137,4 @@ def user_config_view(request):
     current = _current_user_config(tenant)
     current.update(_normalize_user_config_payload(request.data))
     _USER_CONFIG_STORE[key] = current
-    return Response(current, status=status.HTTP_200_OK)
+    return envelope(current, status=status.HTTP_200_OK)

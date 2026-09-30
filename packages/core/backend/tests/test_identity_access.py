@@ -24,6 +24,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from identity_access.tests.envelope import unwrapped
 from identity_access.models import (
     CorePATCredential,
     CoreServiceAccount,
@@ -275,8 +276,8 @@ class CorePartnerPATApiTests(TestCase):
         profile_response = auth_client.get('/core/v1/auth/me/')
 
         self.assertEqual(profile_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(profile_response.data['username'], self.user.username)
-        self.assertEqual(profile_response.data['tenant']['tenant_id'], self.tenant.public_id)
+        self.assertEqual(unwrapped(profile_response)['username'], self.user.username)
+        self.assertEqual(unwrapped(profile_response)['tenant']['tenant_id'], self.tenant.public_id)
 
     def test_rotate_pat_returns_nested_new_token_and_keeps_old_token_in_grace_window(self):
         credential, old_secret = CorePATCredential.issue_for_service_account(

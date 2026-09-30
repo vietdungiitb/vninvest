@@ -23,6 +23,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from identity_access.models import CorePATCredential, CoreServiceAccount, CoreTenant
+from identity_access.tests.envelope import unwrapped
 from identity_access.views_tenant import (
     PATListView,
     ServiceAccountListView,
@@ -82,18 +83,18 @@ class IdentityAccessApiRouteTests(TestCase):
 
         me_response = self.client.get('/core/v1/auth/me/')
         self.assertEqual(me_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(me_response.data['username'], self.user.username)
-        self.assertIn('abilities', me_response.data)
-        self.assertIn('entitlements', me_response.data)
+        self.assertEqual(unwrapped(me_response)['username'], self.user.username)
+        self.assertIn('abilities', unwrapped(me_response))
+        self.assertIn('entitlements', unwrapped(me_response))
 
         resolver_capabilities = resolve('/core/v1/access/capabilities/')
         self.assertIs(resolver_capabilities.func, capabilities_view)
 
         capabilities_response = self.client.get('/core/v1/access/capabilities/')
         self.assertEqual(capabilities_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(capabilities_response.data['principal']['identity']['username'], self.user.username)
-        self.assertEqual(capabilities_response.data['build']['target'], 'saas')
-        self.assertIn('abilities', capabilities_response.data)
+        self.assertEqual(unwrapped(capabilities_response)['principal']['identity']['username'], self.user.username)
+        self.assertEqual(unwrapped(capabilities_response)['build']['target'], 'saas')
+        self.assertIn('abilities', unwrapped(capabilities_response))
 
         resolver_profile = resolve('/core/v1/identity/profile/')
         from identity_access.views_tenant import UserProfileView
@@ -101,7 +102,7 @@ class IdentityAccessApiRouteTests(TestCase):
 
         userconfig_response = self.client.get('/core/v1/identity/profile/')
         self.assertEqual(userconfig_response.status_code, status.HTTP_200_OK)
-        self.assertIn('whale_alert_threshold', userconfig_response.data)
+        self.assertIn('whale_alert_threshold', unwrapped(userconfig_response))
 
     def test_partner_service_accounts_route_is_native(self):
         resolver_service_accounts = resolve('/core/v1/partner/service-accounts/')
