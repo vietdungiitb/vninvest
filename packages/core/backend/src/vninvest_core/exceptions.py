@@ -151,7 +151,17 @@ class ProblemDetail:
             self.field_errors)
         # Không để múi giờ sinh lệch giữa lúc dựng object và lúc render: tất cả
         # response của cùng một problem phải mang cùng một `timestamp`.
-        self.timestamp = datetime.now(dt_timezone.utc).isoformat()
+        #
+        # Phải kết thúc bằng `Z`, KHÔNG phải `+00:00`. Cả hai đều là ISO 8601
+        # hợp lệ, nhưng `StandardErrorEnvelope` ngay dưới (`:420`) và
+        # `tests/test_status_codes_and_errors.py:215` đang kỳ vọng `Z`.
+        # `isoformat()` mặc định trả `+00:00` ⇒ đổi format là **phá hợp đồng**
+        # với client đang parse, mà RFC 9457 không yêu cầu điều đó.
+        # Đây là regression do commit `59b459dd` gây ra, phát hiện khi audit
+        # độc lập — bản đầu ghi sai "không regression" vì chỉ so 642 test của
+        # `backend/tests/`, chưa từng chạy 2104 test trong `src/`.
+        self.timestamp = datetime.now(dt_timezone.utc).isoformat().replace(
+            '+00:00', 'Z')
 
     def to_dict(self) -> dict:
         payload: Dict[str, Any] = {
