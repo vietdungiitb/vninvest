@@ -10,8 +10,16 @@
  *   - F5: `{data, +siblings}`                  —  3 call site
  *   - F1: mảng trần                           — 20 call site
  * Chúng đều có `data` **hoặc** không có `meta`, nên phải đi qua nguyên vẹn.
+ *
+ * Runner là **jest**, không phải vitest: `jest.config.js` chỉ ignore
+ * `*.component.test.*` (những cái đó mới thuộc vitest — `vitest.config.ts`
+ * include `src` + `*.component.test.*`). Test trong `src/adapters/` đi qua
+ * `npm test` ⇒ jest. Import từ `"vitest"` sẽ làm jest không load được file này.
+ *
+ * Lưu ý khi sửa comment: **không** viết glob dạng `star-star-slash-star` trong
+ * khối comment này — cặp `slash-star` đó kết thúc comment ngay giữa dòng và
+ * làm jest báo `Unexpected token` ở một dòng trông vô hại.
  */
-import { describe, it, expect } from "vitest";
 import { isEnvelope, unwrapEnvelope } from "./envelope.js";
 
 describe("isEnvelope", () => {
