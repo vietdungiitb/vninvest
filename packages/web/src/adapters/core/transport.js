@@ -9,6 +9,12 @@
  * - Multi-tab session sync via storage event
  */
 
+// B3: mo payload `{data, meta}` ngay tai bien HTTP. Chi goi o 4 diem thoat
+// payload ben duoi — `.data` cua react-query / echarts / axios di qua cho nhung
+// noi khac nen khong the bi dung. Dieu kien `data` + `meta` kien hoat vi
+// `{data, meta}` hien co 0 call site (do o 4717fc1e).
+import { unwrapEnvelope } from "./envelope.js";
+
 export function decodeJwtPayload(token) {
   if (!token || typeof token !== "string") return null;
   try {
@@ -456,7 +462,7 @@ export function createCoreTransport(env = {}, options = {}) {
           try { payload = JSON.parse(text); } catch { payload = null; }
           throw toCoreApiRequestError(path, response, payload, text);
         }
-        return response.json();
+        return response.json().then((body) => unwrapEnvelope(body));
       });
 
     if (method === "GET") {
@@ -487,7 +493,7 @@ export function createCoreTransport(env = {}, options = {}) {
     }
 
     if (response.status === 204) return null;
-    return response.json();
+    return response.json().then((body) => unwrapEnvelope(body));
   }
 
   async function corePut(path, body = undefined, options = {}) {
@@ -509,7 +515,7 @@ export function createCoreTransport(env = {}, options = {}) {
       throw toCoreApiRequestError(path, response, payload, text);
     }
 
-    return response.json();
+    return response.json().then((body) => unwrapEnvelope(body));
   }
 
 
@@ -532,7 +538,7 @@ export function createCoreTransport(env = {}, options = {}) {
       throw toCoreApiRequestError(path, response, payload, text);
     }
 
-    return response.json();
+    return response.json().then((body) => unwrapEnvelope(body));
   }
 
   async function coreDelete(path, options = {}) {

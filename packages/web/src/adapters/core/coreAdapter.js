@@ -1,3 +1,8 @@
+// B3: cung bien HTTP nhu `transport.js` — `.data` cua react-query/echarts/axios
+// di qua cho noi khac nen khong the bi dung. Dieu kien `data` + `meta` kien hoat
+// vi `{data, meta}` hien co 0 call site (do o 4717fc1e).
+import { unwrapEnvelope } from "./envelope.js";
+
 import { getBuildTarget } from "../../config/buildTarget.js";
 
 function resolveCoreBaseUrl(env = {}) {
@@ -66,7 +71,7 @@ async function requestJson(fetchImpl, url, init = {}) {
     );
   }
 
-  return response.json();
+  return response.json().then((body) => unwrapEnvelope(body));
 }
 
 function appendQuery(url, query = {}) {
