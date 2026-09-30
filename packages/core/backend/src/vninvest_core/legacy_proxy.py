@@ -52,6 +52,29 @@ def _tls_verify():
     return bundle or True
 
 
+def _legacy_problem(*, code, status_code, detail):
+    """Trả lỗi của proxy dạng RFC 9457 `application/problem+json` (API-01 R1).
+
+    **Tương thích ngược có chủ đích.** Body vẫn giữ nguyên `code` và `detail`
+    mà 5 file test của repo đang assert (`test_admin_ops_contract_api.py:327`,
+    `test_legacy_proxy_transport_error.py`, …), chỉ **bổ sung** các member của
+    RFC 9457. Nếu chỉ thay bằng `ProblemDetail` thuần thì `code` đó là
+    `service_unavailable`, khác hẳn `LEGACY_BACKEND_NOT_CONFIGURED` — 16
+    assertion sẽ đỏ, và mã lỗi mà client đang log cũng đổi.
+
+    Cần thiết vì R1 nói **mọi** lỗi API, và catch-all `api/<path:remaining>`
+    là nơi mọi URL `/api/*` lạ đều dừng lại.
+    """
+    from vninvest_core.exceptions import PROBLEM_CONTENT_TYPE, ProblemDetail
+
+    payload = ProblemDetail(
+        code=code, status_code=status_code, detail=detail,
+    ).to_dict()
+    response = JsonResponse(payload, status=status_code)
+    response['Content-Type'] = PROBLEM_CONTENT_TYPE
+    return response
+
+
 @csrf_exempt
 def legacy_proxy_view(request, remaining):
     backend_url = (settings.LEGACY_BACKEND_URL or '').strip()
@@ -63,9 +86,9 @@ def legacy_proxy_view(request, remaining):
             "[PROXY] %s /api/%s -> 503 (LEGACY_BACKEND_URL chua duoc dat)",
             request.method, remaining,
         )
-        return _deprecated_response(JsonResponse(
-            {'detail': 'Legacy backend is not configured.', 'code': 'LEGACY_BACKEND_NOT_CONFIGURED'},
-            status=503,
+        return _deprecated_response(_legacy_problem(
+            code='LEGACY_BACKEND_NOT_CONFIGURED', status_code=503,
+            detail='Legacy backend is not configured.',
         ))
 
     target_url = f"{backend_url.rstrip('/')}/api/{remaining}"
@@ -100,9 +123,9 @@ def legacy_proxy_view(request, remaining):
         # lop con roi la `UnsupportedProtocol` lo ra Django => HTTP 500 thay vi
         # 502 (URL thieu scheme khi LEGACY_BACKEND_URL rong).
         logger.debug("[PROXY] %s %s -> 502 (legacy backend unreachable: %s)", request.method, target_url, e)
-        return _deprecated_response(JsonResponse(
-            {'detail': 'Legacy backend unavailable.', 'code': 'LEGACY_BACKEND_DOWN'},
-            status=502,
+        return _deprecated_response(_legacy_problem(
+            code='LEGACY_BACKEND_DOWN', status_code=502,
+            detail='Legacy backend unavailable.',
         ))
 
     logger.debug(

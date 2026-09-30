@@ -351,15 +351,27 @@ def portfolio_valuation(portfolio, *, ledger=None, price_by_symbol=None):
         _FlowView(amount) for amount in flow_rows.values_list('amount', flat=True)
     )
 
-    # "Chưa backfill" phải hỏi bảng SỔ CÁI, không hỏi `ledger['transaction_count']`.
+    # "Chưa backfill" phải hỏi bảng gốc, không hỏi `ledger['transaction_count']`.
     # Bản đầu dùng `transaction_count` (đếm dòng `Transaction`) — sai ngay khi
     # dữ liệu đã nằm trong `LedgerEntry` mà `Transaction` đã rỗng, tức đúng trạng
-    # thái sau backfill. Lúc đó guard im lặng và NAV ra từ `opening_balance` cộng
-    # 0, tức bằng số dư mở đầu dù đã mua bán.
+    # thái sau backfill.
+    #
+    # Bản sau đổi sang **chỉ** hỏi `LedgerEntry` — và cũng sai, theo chiều ngược
+    # lại: LED-05 giữ `Transaction` song song (đã quyết định bỏ contract phase),
+    # nên một danh mục có giao dịch trong `Transaction` mà chưa backfill sẽ lọt
+    # qua guard. Hậu quả đo được: `cash_flow_total = 0` ⇒ NAV = `opening_balance`
+    # + giá trị cổ phiếu, **thiếu hẳn số tiền đã mua**. Với danh mục mà chưa backfill,
+    # `nav` ra lệch đúng bằng tổng chi phí, rồi `cash_cross_check` bắt đầu bật cảnh
+    # báo cho **mọi** danh mục bình thường — hai lỗi tài chính cùng lúc.
+    #
+    # Vì vậy phải hỏi **cả hai** bảng: có giao dịch ở bất kỳ bảng nào mà
+    # `CashFlow` vẫn rỗng ⇒ backfill chưa chạy ⇒ chặn NAV.
     from user_workspace.models import LedgerEntry as _LedgerEntry
+    from user_workspace.models import Transaction as _Transaction
 
     has_entries = _LedgerEntry.objects.filter(portfolio=portfolio).exists()
-    if has_entries and not has_flow_rows:
+    has_legacy_transactions = _Transaction.objects.filter(portfolio=portfolio).exists()
+    if (has_entries or has_legacy_transactions) and not has_flow_rows:
         # Có giao dịch nhưng không có dòng tiền nào ⇒ backfill LED-05 chưa chạy.
         # `cash` từ sổ cái là tổng dòng tiền kể từ khi hệ thống bắt đầu ghi,
         # khác số dư tài khoản thật; cộng nó vào NAV sẽ ra con số bịa.

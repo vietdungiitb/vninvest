@@ -66,6 +66,11 @@ def capture_previous_transaction_symbol(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Transaction)
 def sync_transaction_registry_on_save(sender, instance, **kwargs):
+    # Cùng lý do như `sync_transaction_registry_on_delete`: dòng mã rỗng không
+    # đưa vào được registry, và không được để `normalize_symbol` làm hỏng
+    # chính lúc lưu bản ghi.
+    if not str(instance.symbol or '').strip():
+        return
     sync_holding_demand_for_portfolio_symbol(instance.portfolio, instance.symbol)
     previous_symbol = getattr(instance, '_registry_previous_symbol', None)
     if previous_symbol and str(previous_symbol).upper().strip() != str(instance.symbol).upper().strip():
@@ -74,6 +79,17 @@ def sync_transaction_registry_on_save(sender, instance, **kwargs):
 
 @receiver(post_delete, sender=Transaction)
 def sync_transaction_registry_on_delete(sender, instance, **kwargs):
+    # BỎ QUA dòng không có mã.
+    #
+    # `sync_holding_demand_for_portfolio_symbol` gọi `normalize_symbol()`, hàm
+    # raise `ValueError` với chuỗi rỗng. Mà dữ liệu legacy CÓ dòng mã rỗng —
+    # `0022` chính vì thế mới dừng lại để báo `missing_symbol`.
+    #
+    # Hậu quả nếu không có guard này: người vận hành làm đúng như thông báo lỗi
+    # gợi ý (sửa/xoá dòng hỏng rồi chạy lại migration) sẽ **gặp crash ngay ở
+    # bước xoá**. Đường cứu chữa bị chặn bởi chính lỗi mà nó đi sửa.
+    if not str(instance.symbol or '').strip():
+        return
     sync_holding_demand_for_portfolio_symbol(instance.portfolio, instance.symbol)
 
 
