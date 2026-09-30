@@ -2314,6 +2314,61 @@ def _float_value(value, default=0.0):
         return default
 
 
+def _advisory_field(response, name):
+    """Đọc một field từ `Response` của `AdvisoryRefreshView`.
+
+    Chịu được **cả hai** hình dạng: payload phẳng, và payload bọc
+    `{data: {...}}`. Lý do: hai call site bên dưới từng đọc thẳng
+    `refresh_response.data.get(...)`. Khi envelope đổi hình dạng, chúng ra
+    `None` — mà `None` lại **kích hoạt fallback âm thầm** sang record AI của
+    phiên khác, không có exception, không có log. Người dùng thấy khuyến nghị
+    cũ mà không có dấu hiệu nào là sai.
+
+    Với từ khoá thiếu trả `None` — **không** trả `{}`. Trả `{}` sẽ làm
+    `field.get(...)` của caller đổi nghĩa ngầm.
+    """
+    data = getattr(response, 'data', None)
+    if not isinstance(data, dict):
+        return None
+    if name in data:
+        return data[name]
+    inner = data.get('data')
+    if isinstance(inner, dict):
+        return inner.get(name)
+    return None
+
+
+def _resolve_refreshed_advisory(response, *, user, symbol):
+    """Trả `(record, advisory_id)` cho advisory mà refresh vừa tạo.
+
+    **Không bao giờ** trả record khác khi `advisory_id` không resolve được.
+    Nếu refresh đã chỉ định một phiên mà ta không tìm thấy, đó là **mâu thuẫn**
+    — caller phải biết để báo lỗi, không phải âm thầm đưa nhầm phiên.
+
+    Vì sao nguy hiểm: `_latest_ai_record` (`:2317`) lọc `session_date__lte` rồi
+    `order_by('-created_at').first()`, **không dùng `advisory_id`**. Thay thế ở
+    đây là trả khuyến nghị mua/bán của phiên khác — đúng loại P0 mà
+    `AGENTS.md` Entry 231 ghi đã phải sửa một lần vì lý do gần giống vậy.
+    """
+    advisory_id = _advisory_field(response, 'advisory_id')
+    if not advisory_id:
+        return None, None
+    record = AdvisoryRecord.objects.filter(
+        advisory_id=advisory_id, user=user, symbol=symbol).first()
+    if record is None:
+        # Nêu tên để tra log được. Không log thì sự cố lặp lại sẽ vô hình.
+        # File này không có logger ở module level — cả 3 chỗ còn lại đều tạo
+        # local trong hàm, nên làm y vậy.
+        import logging
+
+        logging.getLogger(__name__).warning(
+            'AdvisoryRefreshView tra advisory_id=%s nhung khong tim thay '
+            'AdvisoryRecord cho user/symbol — tra loi o nguon, KHONG thay bang '
+            'record khac.', advisory_id,
+        )
+    return record, advisory_id
+
+
 def _latest_ai_record(user, symbol, selected_trade_date=None):
     queryset = AdvisoryRecord.objects.filter(user=user, symbol=symbol)
     if selected_trade_date is not None:
@@ -2765,17 +2820,36 @@ class StockManagementAIAdvisorySessionView(APIView):
         if refresh_response.status_code not in {status.HTTP_200_OK, status.HTTP_201_CREATED}:
             return refresh_response
 
-        advisory_id = refresh_response.data.get('advisory_id') if isinstance(refresh_response.data, dict) else None
-        record = AdvisoryRecord.objects.filter(advisory_id=advisory_id, user=request.user, symbol=normalized_symbol).first() if advisory_id else None
+        advisory_id = _advisory_field(refresh_response, 'advisory_id')
+        record = _resolve_refreshed_advisory(
+            refresh_response, user=request.user, symbol=normalized_symbol)[0]
         if record is None:
+            if advisory_id:
+                # Refresh đã chỉ định một phiên mà ta không tìm thấy. Báo lỗi
+                # thay vì rơi xuống `_latest_ai_record` — rơi xuống đó là trả
+                # khuyến nghị của phiên KHÁC, im lặng, và `status_code` không
+                # đổi nên không có dấu hiệu lỗi cho người dùng.
+                raise NotFoundErrorException(
+                    detail=(
+                        'Advisory vừa tạo không tìm thấy trong hệ thống. '
+                        'Không phục vụ phiên khác để tránh trả khuyến nghị sai.'
+                    ),
+                    code='advisory_refresh_unresolvable',
+                )
+            # Refresh không trả `advisory_id` (ví dụ đã queue) — lúc đó *không
+            # biết* phiên nào là đúng, nên tra phiên mới nhất là hành vi có chủ
+            # đích, không phải thay thế âm thầm.
             record = _latest_ai_record(request.user, normalized_symbol)
         if record is None:
             return refresh_response
 
         payload = _build_ai_session_payload(record, contract_version='v1')
-        payload['task_id'] = refresh_response.data.get('task_id')
-        payload['manual_trigger'] = refresh_response.data.get('manual_trigger')
-        payload['message'] = refresh_response.data.get('message') or payload.get('message') or 'Đã tạo advisory AI.'
+        payload['task_id'] = _advisory_field(refresh_response, 'task_id')
+        payload['manual_trigger'] = _advisory_field(refresh_response, 'manual_trigger')
+        payload['message'] = (
+            _advisory_field(refresh_response, 'message')
+            or payload.get('message') or 'Đã tạo advisory AI.'
+        )
         payload['queued'] = payload.get('queued', False)
         return Response(payload, status=refresh_response.status_code)
 
@@ -2913,9 +2987,22 @@ class StockManagementAIAdvisoryComponentsGenerateView(APIView):
             refresh_response = AdvisoryRefreshView.as_view()(django_request, symbol=normalized_symbol)
             if refresh_response.status_code not in {status.HTTP_200_OK, status.HTTP_201_CREATED}:
                 return refresh_response
-            advisory_id = refresh_response.data.get('advisory_id') if isinstance(refresh_response.data, dict) else None
-            record = AdvisoryRecord.objects.filter(advisory_id=advisory_id, user=request.user, symbol=normalized_symbol).first() if advisory_id else None
+            advisory_id = _advisory_field(refresh_response, 'advisory_id')
+            record = _resolve_refreshed_advisory(
+                refresh_response, user=request.user, symbol=normalized_symbol)[0]
             if record is None:
+                if advisory_id:
+                    # Chặn chỗ này còn **nặng hơn** chỗ kia: `_upsert_ai_components`
+                    # ở dưới GHI vào record. Thay nhầm record ở đây là ghi
+                    # component của phiên này vào phiên khác — hỏng dữ liệu, không
+                    # chỉ hiển thị sai.
+                    raise NotFoundErrorException(
+                        detail=(
+                            'Advisory vừa tạo không tìm thấy trong hệ thống. '
+                            'Từ chối tạo components trên phiên khác.'
+                        ),
+                        code='advisory_refresh_unresolvable',
+                    )
                 record = _latest_ai_record(request.user, normalized_symbol)
 
         if record is None:
