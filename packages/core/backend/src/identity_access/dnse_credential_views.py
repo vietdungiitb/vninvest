@@ -26,6 +26,7 @@ from vninvest_core.exceptions import (
     InternalErrorException,
 )
 
+from .envelope import envelope
 from .models import UserDNSECredential, _encrypt_credential
 from .permissions import require_human_session
 
@@ -46,7 +47,7 @@ class DNSECredentialView(APIView):
             cred = UserDNSECredential.objects.get(user=request.user)
         except UserDNSECredential.DoesNotExist:
             raise NotFoundErrorException('Chưa cấu hình DNSE credential.')
-        return Response(_safe_serialize(cred))
+        return envelope(_safe_serialize(cred))
 
     def post(self, request):
         require_human_session(request)
@@ -77,7 +78,7 @@ class DNSECredentialView(APIView):
             logger.error('DNSECredentialView POST: Fernet key error: %s', exc)
             raise InternalErrorException('Lỗi cấu hình mã hoá phía server. Liên hệ admin.')
 
-        return Response(
+        return envelope(
             _safe_serialize(cred),
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )

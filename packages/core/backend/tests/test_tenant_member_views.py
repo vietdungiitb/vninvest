@@ -11,6 +11,7 @@ from rest_framework import status
 
 from tenant_lifecycle.models import TenantLifecycleEvent
 from identity_access.models import CoreTenant, TenantMember, TenantInvite
+from identity_access.tests.envelope import unwrapped
 
 User = get_user_model()
 
@@ -53,10 +54,10 @@ class TenantMemberInviteTest(TestCase):
         response = self.client.post('/core/v1/tenant-members/invites/', payload, format='json')
         
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn('token', response.data)
-        self.assertEqual(len(response.data['token']), 64)
-        self.assertEqual(response.data['invited_email'], 'newmember@example.com')
-        self.assertEqual(response.data['role'], 'editor')
+        self.assertIn('token', unwrapped(response))
+        self.assertEqual(len(unwrapped(response)['token']), 64)
+        self.assertEqual(unwrapped(response)['invited_email'], 'newmember@example.com')
+        self.assertEqual(unwrapped(response)['role'], 'editor')
         
         # Verify TenantInvite created
         invite = TenantInvite.objects.filter(invited_email='newmember@example.com').first()
@@ -83,7 +84,7 @@ class TenantMemberInviteTest(TestCase):
         )
         
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['role'], 'editor')
+        self.assertEqual(unwrapped(response)['role'], 'editor')
         
         # Verify TenantMember created
         member = TenantMember.objects.filter(tenant=self.tenant, user=self.invitee).first()
@@ -270,9 +271,9 @@ class TenantMemberInviteTest(TestCase):
         response = self.client.get('/core/v1/tenant-members/', format='json')
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('members', response.data)
-        self.assertEqual(len(response.data['members']), 1)
-        self.assertEqual(response.data['members'][0]['username'], self.invitee.username)
+        self.assertIn('members', unwrapped(response))
+        self.assertEqual(len(unwrapped(response)['members']), 1)
+        self.assertEqual(unwrapped(response)['members'][0]['username'], self.invitee.username)
 
     def test_list_invites(self):
         """Test: List pending invites for tenant."""
@@ -289,9 +290,9 @@ class TenantMemberInviteTest(TestCase):
         response = self.client.get('/core/v1/tenant-members/invites/', format='json')
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('invites', response.data)
-        self.assertEqual(len(response.data['invites']), 1)
-        self.assertEqual(response.data['invites'][0]['invited_email'], 'newmember@example.com')
+        self.assertIn('invites', unwrapped(response))
+        self.assertEqual(len(unwrapped(response)['invites']), 1)
+        self.assertEqual(unwrapped(response)['invites'][0]['invited_email'], 'newmember@example.com')
 
     def test_invite_creates_lifecycle_event(self):
         """Test: Invite creation logs TenantLifecycleEvent(MEMBER_INVITED)."""
