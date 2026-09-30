@@ -60,7 +60,14 @@ class OutboundNotificationService:
 
             # If in production, trigger actual Firebase endpoint
             headers = {
-                "Authorization": fcode"key={fcm_api_key}",
+                # Endpoint `fcm.googleapis.com/fcm/send` là API **legacy** của
+                # FCM, nó xác thực bằng server key dạng `Authorization: key=...`.
+                # Trước đây dòng này là `fcode"key={fcm_api_key}"` — `fcode` là
+                # tên chưa định nghĩa dính vào chuỗi, khiến **cả module** không
+                # import được (Python parse toàn bộ file), làm chết luôn
+                # `send_email` vốn chạy tốt. Sai lệch từ 2026-05-28 (`edda0182`)
+                # và sống sót vì không module nào import file này.
+                "Authorization": f"key={fcm_api_key}",
                 "Content-Type": "application/json"
             }
             response = httpx.post(
