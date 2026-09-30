@@ -1,0 +1,468 @@
+fe_file,line,adapter_fn,endpoint_path,field_read,read_style,nullable_guard,notes
+components/AIAgentFederationPanel.tsx,68,getAIAgents,/ai/agents/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/AIAgentFederationPanel.tsx,69,getAIAgents,/ai/agents/{p},results,flat,Y,.then((res) => { setAgents(res.results || []); })
+components/AIAgentFederationPanel.tsx,87,updateAIAgent,/ai/agents/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/AIAgentFederationPanel.tsx,88,createAIAgent,/ai/agents/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/AIAgentFederationPanel.tsx,108,deleteAIAgent,/ai/agents/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/AIAuditLogsPanel.tsx,54,getAIAuditLogs,/workspace/ai-command-center/audit-logs/{p},results,flat,Y,var=data SAME_SCOPE call@53 | setLogs(data.results || []);
+components/AIAuditLogsPanel.tsx,55,getAIAuditLogs,/workspace/ai-command-center/audit-logs/{p},total,coerced,Y,var=data SAME_SCOPE call@53 | setTotal(data.total || 0);
+components/AIUsageDashboard.tsx,129,getAIUsageAggregate,/ai/usage/aggregate/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/AIUsageDashboard.tsx,130,getAIUsageRecords,/ai/usage/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/AIUsageDashboard.tsx,131,getAIUsageSummary,/ai/usage/summary/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/AIUsageDashboard.tsx,181,getAIUsageRecords,/ai/usage/{p},results,flat,Y,var=res SAME_SCOPE call@176 | const results = res.results || [];
+components/BrokerSettingsSection.tsx,95,getBrokerProviders,/broker/providers/,providers,flat,Y,var=res SAME_SCOPE call@93 | setProviders(res.providers || []);
+components/BrokerSettingsSection.tsx,107,getBrokerSchema,/broker/config-schema/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/BrokerSettingsSection.tsx,108,getBrokerConfig,/broker/{p}/config/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/BrokerSettingsSection.tsx,158,saveBrokerConfig,/broker/{p}/config/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/BrokerSettingsSection.tsx,187,deleteBrokerConfig,/broker/{p}/test-connection/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/BrokerSettingsSection.tsx,209,testBrokerConnection,/broker/{p}/test-connection/,job_id,flat,N,var=started SAME_SCOPE call@208 | const jobId = started.job_id;
+components/BrokerSettingsSection.tsx,217,getBrokerJob,/broker/jobs/{p}/,state,flat,N,"var=job SAME_SCOPE call@215 | if (job.state === ""succeeded"") {"
+components/BrokerSettingsSection.tsx,220,getBrokerJob,/broker/jobs/{p}/,result,flat,Y,"var=job FALLBACK_SCOPE call@215 | const count = job.result && typeof job.result.account_count === ""number"""
+components/BrokerSettingsSection.tsx,221,getBrokerJob,/broker/jobs/{p}/,result,flat,Y,"var=job FALLBACK_SCOPE call@215 | ? ` (${job.result.account_count})` : """";"
+components/BrokerSettingsSection.tsx,225,getBrokerJob,/broker/jobs/{p}/,state,flat,Y,"var=job FALLBACK_SCOPE call@215 | } else if (job.state === ""failed"" || tries >= POLL_MAX_TRIES) {"
+components/BrokerSettingsSection.tsx,228,getBrokerJob,/broker/jobs/{p}/,error,flat,Y,"var=job FALLBACK_SCOPE call@215 | setError(job.error || t(""broker.poll_timeout""));"
+components/DNSEConnectionPanel.js,96,updateDNSEConfig,/broker/dnse/config/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/DNSEConnectionPanel.js,117,syncDNSEAccounts,/broker/dnse/sync-accounts/,synced_count,coerced,Y,"var=res SAME_SCOPE call@116 | setSyncResult({ ok: true, count: res?.synced_count ?? 0 });"
+components/DNSEConnectionPanel.js,118,syncDNSEAccounts,/broker/dnse/sync-accounts/,accounts,optional,Y,var=res SAME_SCOPE call@116 | setSyncedAccounts(Array.isArray(res?.accounts) ? res.accounts : []);
+components/DNSEConnectionPanel.js,120,syncDNSEAccounts,/broker/dnse/sync-accounts/,accounts,optional,Y,var=res FALLBACK_SCOPE call@116 | onConnected(res?.accounts ?? []);
+components/DNSEConnectionPanel.js,135,syncDNSEBalances,/broker/dnse/sync-balances/,synced_count,coerced,Y,"var=res SAME_SCOPE call@134 | setBalanceResult({ ok: true, count: res?.synced_count ?? 0, date: res?.date || null });"
+components/DNSEConnectionPanel.js,135,syncDNSEBalances,/broker/dnse/sync-balances/,date,coerced,Y,"var=res SAME_SCOPE call@134 | setBalanceResult({ ok: true, count: res?.synced_count ?? 0, date: res?.date || null });"
+components/DNSEConnectionPanel.js,148,reconcileDNSETransactions,/broker/dnse/reconcile-transactions/,synced_count,coerced,Y,"var=res SAME_SCOPE call@147 | setTxResult({ ok: true, count: res?.synced_count ?? 0 });"
+components/DNSEConnectionPanel.js,161,sendDNSEEmailOtp,/broker/dnse/send-email-otp/,message,optional,Y,"var=res SAME_SCOPE call@160 | setOtpResult({ ok: true, message: res?.message || ""Đã gửi OTP qua email DNSE."" });"
+components/DNSEConnectionPanel.js,178,createDNSETradingToken,/broker/dnse/create-trading-token/,trading_token,optional,Y,"var=res SAME_SCOPE call@177 | const token = res?.trading_token || res?.token || res?.result?.trading_token || res?.result?.token || """";"
+components/DNSEConnectionPanel.js,178,createDNSETradingToken,/broker/dnse/create-trading-token/,token,optional,Y,"var=res SAME_SCOPE call@177 | const token = res?.trading_token || res?.token || res?.result?.trading_token || res?.result?.token || """";"
+components/DNSEConnectionPanel.js,178,createDNSETradingToken,/broker/dnse/create-trading-token/,result,optional,Y,"var=res SAME_SCOPE call@177 | const token = res?.trading_token || res?.token || res?.result?.trading_token || res?.result?.token || """";"
+components/DNSEConnectionPanel.js,228,placeDNSEOrder,/broker/dnse/place-order/,mode,optional,Y,"var=res SAME_SCOPE call@212 | // `res?.mode || ""paper""` — mặc định là `paper`, KHÔNG phải giá trị đã"
+components/DNSEConnectionPanel.js,234,placeDNSEOrder,/broker/dnse/place-order/,result,optional,Y,"var=res FALLBACK_SCOPE call@212 | result: res?.result || res || null,"
+components/DNSEConnectionPanel.js,235,placeDNSEOrder,/broker/dnse/place-order/,mode,optional,Y,"var=res FALLBACK_SCOPE call@212 | mode: res?.mode || ""paper"","
+components/DNSEConnectionPanel.js,236,placeDNSEOrder,/broker/dnse/place-order/,dry_run,optional,Y,"var=res FALLBACK_SCOPE call@212 | dryRun: res?.dry_run ?? true,"
+components/DNSECredentialsSection.tsx,51,getDNSEConfig,/broker/dnse/config/,is_configured,flat,N,var=res SAME_SCOPE call@48 | if (res.is_configured) {
+components/DNSECredentialsSection.tsx,79,updateDNSEConfig,/broker/dnse/config/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/DNSECredentialsSection.tsx,101,deleteDNSEConfig,/broker/dnse/config/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/WhaleBubbleChart.jsx,617,getStockOrderFlow,/stock-management/stocks/{p}/order-flow/{p},data,optional,Y,var=response SAME_SCOPE call@616 | setOrderFlowSignals(response?.data?.signals || response?.signals || []);
+components/WhaleBubbleChart.jsx,617,getStockOrderFlow,/stock-management/stocks/{p}/order-flow/{p},signals,optional,Y,var=response SAME_SCOPE call@616 | setOrderFlowSignals(response?.data?.signals || response?.signals || []);
+components/WhaleBubbleChart.jsx,669,getWhaleAnalyticsSnapshot,/workspace/whale-analytics/{p}/{p},data,optional,Y,var=response SAME_SCOPE call@664 | const snapshot = response?.data || response || {};
+components/WhaleBubbleChart.jsx,675,getWhaleAnalyticsSnapshot,/workspace/whale-analytics/{p}/{p},data,optional,Y,var=response SAME_SCOPE call@664 | const message = err?.response?.data?.error || err?.message || 'Unknown error';
+components/advisory/AdvisoryAlertDialog.js,34,createPriceAlert,/stock-management/price-alerts/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/advisory/AdvisoryBacktestPanel.js,25,getAdvisoryBacktest,/advisory/backtest/{p}/?window={p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/advisory/AdvisoryOrderTicket.js,42,placeDNSEOrder,/broker/dnse/place-order/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/advisory/RecommendationHistoryMini.js,34,getWhaleAdvisories,/portfolio/ai-advisory/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/advisory/RecommendationHistoryMini.js,36,getWhaleAdvisories,/portfolio/ai-advisory/{p},results,optional,Y,if (!cancelled) setHistory(res?.results || res?.data?.results || res?.data || []);
+components/advisory/RecommendationHistoryMini.js,36,getWhaleAdvisories,/portfolio/ai-advisory/{p},data,optional,Y,if (!cancelled) setHistory(res?.results || res?.data?.results || res?.data || []);
+components/auth/ResendVerificationForm.js,105,resendVerificationEmail,/auth/resend-verification/,detail,optional,N,var=payload FALLBACK_SCOPE call@77 | const detail = error?.payload?.detail;
+components/dashboard/PortfolioHeatmap.js,378,getStockChartHistory,/stock-management/stocks/{p}/chart/{p},data,optional,Y,var=result SAME_SCOPE call@374 | const data = result?.data || result?.results || [];
+components/dashboard/PortfolioHeatmap.js,378,getStockChartHistory,/stock-management/stocks/{p}/chart/{p},results,optional,Y,var=result SAME_SCOPE call@374 | const data = result?.data || result?.results || [];
+components/dashboard/WhaleAnalyticsAdvisoryModal.jsx,37,getStockAIAdvisorySession,/stock-management/stocks/{p}/ai-advisory-session/{p},data,optional,Y,"var=response SAME_SCOPE call@29 | setError(err?.response?.data?.message || t('whaleAnalytics.aiAdvisoryLoadFailed', { defaultValue: 'Không thể tải tư vấn AI cho mã "
+components/dashboard/WhaleAnalyticsAdvisoryModal.jsx,62,refreshStockAIAdvisorySession,/stock-management/stocks/{p}/ai-advisory-session/,data,optional,Y,"var=response SAME_SCOPE call@56 | setError(err?.response?.data?.message || t('whaleAnalytics.aiAdvisoryRefreshFailed', { defaultValue: 'Không thể làm mới tư vấn AI "
+components/screener/ScreenerCommunity.tsx,22,getScreenerPublicRules,/screener/rules/public/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/screener/ScreenerCommunity.tsx,22,getScreenerPublicRules,/screener/rules/public/,results,flat,Y,"{ queryFn: () => (coreApiAdapter as any).getScreenerPublicRules().then((d: any) => (Array.isArray(d) ? d : d.results || [])) },"
+components/screener/ScreenerHistory.tsx,78,getScreenerHistory,/screener/history/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/screener/ScreenerHistory.tsx,111,getDailyPrices,/market-data/daily-prices/{p}/{p},results,optional,Y,var=res SAME_SCOPE call@108 | const results = res?.results || [];
+components/screener/ScreenerHistory.tsx,130,getScreenerHistoryBacktest,/screener/history/{p}/backtest/?horizon={p},winRate,coerced,Y,"var=res SAME_SCOPE call@129 | setServerBacktest((prev) => ({ ...prev, [entry.serverId as number]: { winRate: res.winRate ?? 0, wins: res.wins ?? 0, losses: res."
+components/screener/ScreenerHistory.tsx,130,getScreenerHistoryBacktest,/screener/history/{p}/backtest/?horizon={p},wins,coerced,Y,"var=res SAME_SCOPE call@129 | setServerBacktest((prev) => ({ ...prev, [entry.serverId as number]: { winRate: res.winRate ?? 0, wins: res.wins ?? 0, losses: res."
+components/screener/ScreenerHistory.tsx,130,getScreenerHistoryBacktest,/screener/history/{p}/backtest/?horizon={p},losses,coerced,Y,"var=res SAME_SCOPE call@129 | setServerBacktest((prev) => ({ ...prev, [entry.serverId as number]: { winRate: res.winRate ?? 0, wins: res.wins ?? 0, losses: res."
+components/screener/ScreenerHistory.tsx,130,getScreenerHistoryBacktest,/screener/history/{p}/backtest/?horizon={p},evaluated,coerced,Y,"var=res SAME_SCOPE call@129 | setServerBacktest((prev) => ({ ...prev, [entry.serverId as number]: { winRate: res.winRate ?? 0, wins: res.wins ?? 0, losses: res."
+components/screener/ScreenerHistory.tsx,139,deleteScreenerHistory,/screener/history/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/screener/ScreenerResultsTable.tsx,170,getWatchlists,/workspace/watchlists/,results,optional,Y,var=wl SAME_SCOPE call@169 | const list = Array.isArray(wl) ? wl : wl?.results || [];
+components/screener/ScreenerResultsTable.tsx,175,addWatchlistItem,/workspace/watchlists/{p}/items/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/screener/ScreenerResultsTable.tsx,191,createPriceAlert,/stock-management/price-alerts/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/screener/ScreenerSchedulePanel.tsx,54,getScreenerSchedules,/screener/schedules/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/screener/ScreenerSchedulePanel.tsx,54,getScreenerSchedules,/screener/schedules/,results,flat,Y,"{ queryFn: () => (coreApiAdapter as any).getScreenerSchedules().then((d: any) => (Array.isArray(d) ? d : d.results || [])) },"
+components/screener/ScreenerSchedulePanel.tsx,59,getScreenerScheduleAlerts,/screener/schedules/alerts/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/screener/ScreenerSchedulePanel.tsx,92,createScreenerSchedule,/screener/schedules/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/screener/ScreenerSchedulePanel.tsx,105,updateScreenerSchedule,/screener/schedules/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/screener/ScreenerSchedulePanel.tsx,112,deleteScreenerSchedule,/screener/schedules/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/screener/ScreenerSchedulePanel.tsx,119,runScreenerScheduleNow,/screener/schedules/{p}/run-now/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/DataOpsContext.tsx,121,getSocDataOpsRunLogs,/operator/scraping/dataops/run-logs/?page={p}&page_size={p},results,flat,Y,var=data SAME_SCOPE call@120 | setRuns(data.results || []);
+components/soc/DataOpsContext.tsx,163,runSocDataOpsPlanner,/operator/scraping/dataops/planner/run/,run_id,flat,Y,"var=result SAME_SCOPE call@161 | return result.run_id || """";"
+components/soc/DataOpsContext.tsx,167,abortSocDataOpsPlannerRun,/operator/scraping/dataops/planner/run/{p}/abort/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocBackfillProgressPanel.tsx,37,getSocBackfillRuns,/operator/soc/dataops/backfill/runs/{p},runs,flat,Y,var=data SAME_SCOPE call@36 | setRuns(data.runs || []);
+components/soc/SocBackfillProgressPanel.tsx,81,abortSocDataOpsPlannerRun,/operator/scraping/dataops/planner/run/{p}/abort/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocBrokerPanel.tsx,98,getSocBrokerConfig,/operator/soc/broker/config/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocBrokerPanel.tsx,99,getSocBrokerHealth,/operator/soc/broker/health/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocBrokerPanel.tsx,100,getSocBrokerCredentials,/operator/soc/broker/credentials/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocBrokerPanel.tsx,101,getSocBrokerAudit,/operator/soc/broker/audit/?limit={p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocBrokerPanel.tsx,133,previewSocBrokerConfig,/operator/soc/broker/config/preview/,before,flat,Y,"var=res FALLBACK_SCOPE call@131 | before: res.before || null,"
+components/soc/SocBrokerPanel.tsx,134,previewSocBrokerConfig,/operator/soc/broker/config/preview/,after,flat,Y,"var=res FALLBACK_SCOPE call@131 | after: res.after || null,"
+components/soc/SocBrokerPanel.tsx,135,previewSocBrokerConfig,/operator/soc/broker/config/preview/,change_summary,flat,Y,"var=res FALLBACK_SCOPE call@131 | changeSummary: res.change_summary || [],"
+components/soc/SocBrokerPanel.tsx,136,previewSocBrokerConfig,/operator/soc/broker/config/preview/,validation_errors,flat,Y,"var=res FALLBACK_SCOPE call@131 | validationErrors: res.validation_errors || [],"
+components/soc/SocBrokerPanel.tsx,168,saveSocBrokerCredential,/operator/soc/broker/credentials/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocBrokerPanel.tsx,185,deleteSocBrokerCredential,/operator/soc/broker/credentials/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocBrokerPanel.tsx,196,testSocBrokerConnection,/operator/soc/broker/test-connection/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocCustomGroupManager.tsx,54,getSocSymbolGroups,/operator/soc/symbol-groups/,filter,flat,N,"var=data FALLBACK_SCOPE call@51 | custom = data.filter((g) => g.type === ""custom"");"
+components/soc/SocCustomGroupManager.tsx,86,createSocSymbolGroup,/operator/soc/symbol-groups/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocCustomGroupManager.tsx,111,deleteSocSymbolGroup,/operator/soc/symbol-groups/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocCustomGroupManager.tsx,144,updateSocSymbolGroup,/operator/soc/symbol-groups/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocDataInventorySection.tsx,68,getSocDataOpsQueueTiers,/operator/scraping/dataops/queue-tiers/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocDataInventorySection.tsx,69,getSocDataOpsQueueTiers,/operator/scraping/dataops/queue-tiers/,tiers,flat,Y,setQueueTiers(res.tiers || []);
+components/soc/SocDataOpsConfigSection.tsx,211,getSocDataOpsRuntimeConfigSchema,/operator/scraping/dataops/runtime-config/schema/,fields,optional,Y,var=data SAME_SCOPE call@209 | (data?.fields || []).forEach((f) => {
+components/soc/SocDataOpsConfigSection.tsx,236,getSocDataOpsRuntimeConfig,/operator/scraping/dataops/runtime-config/,config,flat,N,var=envelopeData FALLBACK_SCOPE call@233 | const loaded = readForm(envelopeData.config);
+components/soc/SocDataOpsConfigSection.tsx,256,getSocDataOpsRuntimeConfigAudit,/operator/soc/dataops/runtime-config/audit/?page={p},results,flat,Y,var=auditData SAME_SCOPE call@255 | setAuditTrail(auditData.results || []);
+components/soc/SocDataOpsConfigSection.tsx,257,getSocDataOpsRuntimeConfigAudit,/operator/soc/dataops/runtime-config/audit/?page={p},next,flat,N,var=auditData SAME_SCOPE call@255 | setAuditHasMore(!!auditData.next);
+components/soc/SocDataOpsConfigSection.tsx,258,getSocDataOpsRuntimeConfigAudit,/operator/soc/dataops/runtime-config/audit/?page={p},count,flat,Y,"var=auditData SAME_SCOPE call@255 | setAuditTotal(typeof auditData.count === ""number"" ? auditData.count : (auditData.results || []).length);"
+components/soc/SocDataOpsConfigSection.tsx,258,getSocDataOpsRuntimeConfigAudit,/operator/soc/dataops/runtime-config/audit/?page={p},results,flat,Y,"var=auditData SAME_SCOPE call@255 | setAuditTotal(typeof auditData.count === ""number"" ? auditData.count : (auditData.results || []).length);"
+components/soc/SocDataOpsConfigSection.tsx,417,previewSocDataOpsRuntimeConfig,/operator/soc/dataops/runtime-config/preview/,validation_errors,flat,N,var=previewResult SAME_SCOPE call@416 | if (previewResult && Array.isArray(previewResult.validation_errors)) {
+components/soc/SocDataOpsConfigSection.tsx,418,previewSocDataOpsRuntimeConfig,/operator/soc/dataops/runtime-config/preview/,validation_errors,flat,N,var=previewResult FALLBACK_SCOPE call@416 | validationErrors = previewResult.validation_errors;
+components/soc/SocDataOpsConfigSection.tsx,445,applySocDataOpsRuntimeConfig,/operator/scraping/dataops/runtime-config/,config,flat,N,var=result SAME_SCOPE call@439 | setForm(readForm(result.config));
+components/soc/SocDataOpsConfigSection.tsx,474,getSocDataOpsRuntimeConfig,/operator/scraping/dataops/runtime-config/,config,flat,N,var=fresh FALLBACK_SCOPE call@471 | const loaded = readForm(fresh.config);
+components/soc/SocDataOpsConfigSection.tsx,478,getSocDataOpsRuntimeConfig,/operator/scraping/dataops/runtime-config/,config,flat,N,var=fresh SAME_SCOPE call@471 | const before = fresh.config;
+components/soc/SocDataOpsConfigSection.tsx,513,applySocDataOpsRuntimeConfig,/operator/scraping/dataops/runtime-config/,config,flat,N,var=result SAME_SCOPE call@506 | setForm(readForm(result.config));
+components/soc/SocDataOpsMonitorSection.tsx,273,getSocDataOpsQueueTiers,/operator/scraping/dataops/queue-tiers/,tiers,flat,Y,var=tiers SAME_SCOPE call@272 | setQueueTiers(tiers.tiers || []);
+components/soc/SocDataOpsOperationsSection.tsx,126,getSocDataOpsRunLogs,/operator/scraping/dataops/run-logs/?page={p}&page_size={p},results,flat,Y,var=data SAME_SCOPE call@125 | setRunLogs(data.results || []);
+components/soc/SocDataOpsOperationsSection.tsx,127,getSocDataOpsRunLogs,/operator/scraping/dataops/run-logs/?page={p}&page_size={p},next,flat,N,var=data SAME_SCOPE call@125 | setRunLogsHasMore(!!data.next);
+components/soc/SocDataOpsOperationsSection.tsx,252,purgeSocDataOpsRunLogs,/operator/scraping/dataops/run-logs/purge/?keep={p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocDnseBackfillPanel.tsx,96,triggerDnseBackfill,/data-ingest/backfill/system/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocMatrixScrapeMonitor.tsx,55,getSocMatrixMonitor,/operator/soc/matrix/monitor/{q},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocMatrixScrapeMonitor.tsx,56,getSocMatrixProviders,/operator/soc/matrix/providers/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocMatrixScrapeMonitor.tsx,107,abortSocMatrixCycle,/operator/soc/matrix/cycles/{p}/abort/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocMatrixScrapeMonitor.tsx,117,startSocMatrixCycle,/operator/soc/matrix/cycles/start/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocOverviewPanel.tsx,170,getSocSloOverview,/operator/soc/overview/slo-overview/,services,flat,Y,var=sloResult SAME_SCOPE call@167 | for (const row of sloResult.services ?? []) {
+components/soc/SocOverviewPanel.tsx,381,updateSocService,/operator/soc/services/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocOverviewPanel.tsx,399,triggerSocServiceHealthCheck,/operator/soc/services/{p}/health-check/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocPrefetchPanel.tsx,74,getSocPrefetchConfig,/operator/soc/prefetch/config/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocPrefetchPanel.tsx,75,getSocPrefetchCacheStatus,/operator/soc/prefetch/cache-status/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocPrefetchPanel.tsx,76,getSocPrefetchUniverseGroups,/operator/soc/prefetch/universe-groups/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocPrefetchPanel.tsx,126,previewSocPrefetchConfig,/operator/soc/prefetch/config/preview/,errors,optional,N,var=preview SAME_SCOPE call@122 | const validationErrors = Array.isArray(preview?.errors)
+components/soc/SocPrefetchPanel.tsx,127,previewSocPrefetchConfig,/operator/soc/prefetch/config/preview/,errors,flat,N,var=preview SAME_SCOPE call@122 | ? (preview.errors as unknown[]).map((e) => String(e))
+components/soc/SocPrefetchPanel.tsx,129,previewSocPrefetchConfig,/operator/soc/prefetch/config/preview/,change_summary,optional,N,var=preview SAME_SCOPE call@122 | const changeSummary = Array.isArray(preview?.change_summary)
+components/soc/SocPrefetchPanel.tsx,130,previewSocPrefetchConfig,/operator/soc/prefetch/config/preview/,change_summary,flat,N,var=preview SAME_SCOPE call@122 | ? (preview.change_summary as unknown[]).map((c) => String(c))
+components/soc/SocPrefetchPanel.tsx,147,applySocPrefetchConfig,/operator/soc/prefetch/config/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocPrefetchPanel.tsx,162,warmSocPrefetchNow,/operator/soc/prefetch/warm-now/?mode={p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocPrefetchPanel.tsx,179,purgeSocPrefetchCache,/operator/soc/prefetch/purge-cache/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocRuntimeKpiPanel.tsx,54,getSocSloOverview,/operator/soc/overview/slo-overview/,services,flat,Y,var=result SAME_SCOPE call@52 | setServices(result.services ?? []);
+components/soc/SocSchedulerBoard.tsx,475,getSocSchedulerPlan,/operator/scraping/dataops/scheduler/plan/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocSchedulerBoard.tsx,476,getSocSchedulerHealth,/operator/scraping/dataops/scheduler/health/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocSchedulerBoard.tsx,516,postSocSchedulerJobAction,/operator/scraping/dataops/scheduler/jobs/{p}/actions/,message,flat,Y,"var=result FALLBACK_SCOPE call@513 | msg: result.message || t(""soc.scheduler.action_success""),"
+components/soc/SocSchedulerBoard.tsx,517,postSocSchedulerJobAction,/operator/scraping/dataops/scheduler/jobs/{p}/actions/,request_id,flat,N,"var=result FALLBACK_SCOPE call@513 | requestId: result.request_id,"
+components/soc/SocScreenerPanel.tsx,124,getSocScreenerConfig,/operator/soc/screener/config/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocScreenerPanel.tsx,125,getSocScreenerRules,/operator/soc/screener/rules/?page={p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocScreenerPanel.tsx,126,getSocScreenerResults,/operator/soc/screener/results/?page={p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocScreenerPanel.tsx,127,getSocScreenerAlerts,/operator/soc/screener/alert-history/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocScreenerPanel.tsx,128,getSocScreenerMetrics,/operator/soc/screener/results/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocScreenerPanel.tsx,129,getSocScreenerOwnership,/operator/soc/screener/ownership/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocScreenerPanel.tsx,175,applySocScreenerConfig,/operator/soc/screener/config/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocScreenerPanel.tsx,207,manualSocScreenerScan,/operator/soc/screener/manual-scan/,status,flat,N,"var=data SAME_SCOPE call@204 | if (data && data.status === ""completed"") {"
+components/soc/SocScreenerPanel.tsx,208,manualSocScreenerScan,/operator/soc/screener/manual-scan/,matched,flat,Y,var=data FALLBACK_SCOPE call@204 | const matched = Array.isArray(data.matched) ? data.matched.length : 0;
+components/soc/SocScreenerPanel.tsx,212,manualSocScreenerScan,/operator/soc/screener/manual-scan/,symbols_scanned,flat,Y,"var=data FALLBACK_SCOPE call@204 | scanned: data.symbols_scanned ?? symbols.length,"
+components/soc/SocScreenerPanel.tsx,213,manualSocScreenerScan,/operator/soc/screener/manual-scan/,rules_evaluated,coerced,Y,"var=data FALLBACK_SCOPE call@204 | rules: data.rules_evaluated ?? 0,"
+components/soc/SocScreenerPanel.tsx,245,createSocScreenerRule,/operator/soc/screener/rules/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocScreenerPanel.tsx,253,updateSocScreenerRule,/operator/soc/screener/rules/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocScreenerPanel.tsx,282,deleteSocScreenerRule,/operator/soc/screener/rules/{p}/delete/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocSignalsPanel.tsx,515,getSocSignalMetrics,/operator/soc/signals/summary/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocSignalsPanel.tsx,516,getSocWhaleRecent,/operator/soc/signals/whale/recent/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocSignalsPanel.tsx,517,getSocDarkPoolRecent,/operator/soc/signals/dark-pool/recent/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocSignalsPanel.tsx,518,getSocScreenerRecent,/operator/soc/signals/screener/recent/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocSignalsPanel.tsx,584,getSocSignalRules,/operator/soc/signals/rules/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocSignalsPanel.tsx,585,getSocSignalRulesPerformance,/operator/soc/signals/rules/performance/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocSignalsPanel.tsx,770,getSocSignalConfig,/operator/soc/signals/config/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocSignalsPanel.tsx,770,getSocSignalOwnership,/operator/soc/signals/ownership/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocSignalsPanel.tsx,788,getSocWhaleDetection,/operator/soc/signals/whale/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocSignalsPanel.tsx,788,getSocDarkPoolDetection,/operator/soc/signals/dark-pool/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocSignalsPanel.tsx,788,getSocScreenerDetection,/operator/soc/signals/screener/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocSignalsPanel.tsx,800,getSocSignalRetention,/operator/soc/signals/retention-policy/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocSignalsPanel.tsx,897,muteSocSignalDeliveries,/operator/soc/signals/deliveries/mute/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocSignalsPanel.tsx,1051,runSocSignalJob,/operator/soc/signals/jobs/run/,run_log_id,flat,Y,var=result SAME_SCOPE call@1050 | const runId = result.run_log_id ?? null;
+components/soc/SocSignalsPanel.tsx,1054,runSocSignalJob,/operator/soc/signals/jobs/run/,status,flat,Y,"var=result FALLBACK_SCOPE call@1050 | setJobStatus(result.status || result.message || t(""soc.signals_overview.job_queued""));"
+components/soc/SocSignalsPanel.tsx,1054,runSocSignalJob,/operator/soc/signals/jobs/run/,message,flat,Y,"var=result FALLBACK_SCOPE call@1050 | setJobStatus(result.status || result.message || t(""soc.signals_overview.job_queued""));"
+components/soc/SocSignalsPanel.tsx,1070,getSocSignalJobStatus,/operator/soc/signals/jobs/status/?run_log_id={p},status,flat,Y,"var=st SAME_SCOPE call@1068 | const s = (st.status || """").toLowerCase();"
+components/soc/SocSignalsPanel.tsx,1072,getSocSignalJobStatus,/operator/soc/signals/jobs/status/?run_log_id={p},error_detail,flat,Y,"var=st FALLBACK_SCOPE call@1068 | setJobStatus(s === ""failed"" ? (st.error_detail || `Job ${s}`) : `Job ${s} (run #${runId})`);"
+components/soc/SocSignalsPanel.tsx,1075,getSocSignalJobStatus,/operator/soc/signals/jobs/status/?run_log_id={p},status,flat,Y,"var=st SAME_SCOPE call@1068 | setJobStatus(t(""soc.signals_overview.job_polling"", { defaultValue: ""Đang theo dõi job..."" }) + ` (${st.status || ""queued""})`);"
+components/soc/SocSignalsPanel.tsx,1116,getSocSignalJobStatus,/operator/soc/signals/jobs/status/?run_log_id={p},status,flat,Y,"var=st SAME_SCOPE call@1114 | const s = (st.status || """").toLowerCase();"
+components/soc/SocSignalsPanel.tsx,1117,getSocSignalJobStatus,/operator/soc/signals/jobs/status/?run_log_id={p},error_detail,flat,Y,"var=st SAME_SCOPE call@1114 | setJobStatus(s === ""failed"" ? (st.error_detail || `Job ${s}`) : `Job ${s || ""unknown""} (run #${runId})`);"
+components/soc/SocSignalsPanel.tsx,1157,exportSocSignalFeed,/operator/soc/signals/feed/export/{p},columns,flat,Y,"var=payload SAME_SCOPE call@1151 | const csv = buildSignalsCsv(payload.columns ?? [], payload.rows ?? []);"
+components/soc/SocSignalsPanel.tsx,1157,exportSocSignalFeed,/operator/soc/signals/feed/export/{p},rows,flat,Y,"var=payload SAME_SCOPE call@1151 | const csv = buildSignalsCsv(payload.columns ?? [], payload.rows ?? []);"
+components/soc/SocSignalsPanel.tsx,2435,getSocSignalJobStatus,/operator/soc/signals/jobs/status/?run_log_id={p},key,flat,N,var=st FALLBACK_SCOPE call@1114 | const cnt = countMap[st.key];
+components/soc/SocSignalsPanel.tsx,2438,getSocSignalJobStatus,/operator/soc/signals/jobs/status/?run_log_id={p},key,flat,N,"var=st FALLBACK_SCOPE call@1114 | key: st.key,"
+components/soc/SocSignalsPanel.tsx,2440,getSocSignalJobStatus,/operator/soc/signals/jobs/status/?run_log_id={p},key,flat,N,"var=st FALLBACK_SCOPE call@1114 | ""aria-selected"": subTab === st.key,"
+components/soc/SocSignalsPanel.tsx,2441,getSocSignalJobStatus,/operator/soc/signals/jobs/status/?run_log_id={p},key,flat,Y,"var=st FALLBACK_SCOPE call@1114 | className: `${styles.subTabBtn} ${subTab === st.key ? styles.subTabBtnActive : """"}`,"
+components/soc/SocSignalsPanel.tsx,2442,getSocSignalJobStatus,/operator/soc/signals/jobs/status/?run_log_id={p},key,flat,N,"var=st FALLBACK_SCOPE call@1114 | onClick: () => setSubTab(st.key),"
+components/soc/SocSignalsPanel.tsx,2443,getSocSignalJobStatus,/operator/soc/signals/jobs/status/?run_log_id={p},key,flat,Y,"var=st FALLBACK_SCOPE call@1114 | }, createElement(LucideIcon, { name: iconMap[st.key] as never, className: ""h-3.5 w-3.5"" }), st.label, showBadge ? createElement(""s"
+components/soc/SocSignalsPanel.tsx,2443,getSocSignalJobStatus,/operator/soc/signals/jobs/status/?run_log_id={p},label,flat,Y,"var=st FALLBACK_SCOPE call@1114 | }, createElement(LucideIcon, { name: iconMap[st.key] as never, className: ""h-3.5 w-3.5"" }), st.label, showBadge ? createElement(""s"
+components/soc/SocUsersPanel.tsx,78,getSocUsers,/operator/soc/users/{p},results,flat,Y,var=res SAME_SCOPE call@74 | setRows(res.results || []);
+components/soc/SocUsersPanel.tsx,79,getSocUsers,/operator/soc/users/{p},count,coerced,Y,var=res SAME_SCOPE call@74 | setTotal(res.count || 0);
+components/soc/SocUsersPanel.tsx,102,setSocUserActive,/operator/soc/users/{p}/set-active/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocUsersPanel.tsx,123,setSocUserPlan,/operator/soc/users/{p}/set-plan/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocVnbrokerPanel.tsx,102,getSocVnbrokerConfig,/operator/soc/vnbroker/config/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocVnbrokerPanel.tsx,103,getSocVnbrokerHealth,/operator/soc/vnbroker/health/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocVnbrokerPanel.tsx,104,getSocVnbrokerProviders,/operator/soc/vnbroker/providers/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocVnbrokerPanel.tsx,105,getSocVnbrokerBenchmarkLatest,/operator/soc/vnbroker/benchmark/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocVnbrokerPanel.tsx,106,getSocVnbrokerCircuitBreaker,/operator/soc/vnbroker/circuit-breaker-status/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocVnbrokerPanel.tsx,134,previewSocVnbrokerConfig,/operator/soc/vnbroker/config/preview/,change_summary,flat,Y,"var=result FALLBACK_SCOPE call@132 | changeSummary: result.change_summary || [],"
+components/soc/SocVnbrokerPanel.tsx,135,previewSocVnbrokerConfig,/operator/soc/vnbroker/config/preview/,impact_warnings,flat,Y,"var=result FALLBACK_SCOPE call@132 | impactWarnings: result.impact_warnings || [],"
+components/soc/SocVnbrokerPanel.tsx,136,previewSocVnbrokerConfig,/operator/soc/vnbroker/config/preview/,validation_errors,flat,Y,"var=result FALLBACK_SCOPE call@132 | validationErrors: result.validation_errors || [],"
+components/soc/SocVnbrokerPanel.tsx,150,applySocVnbrokerConfig,/operator/soc/vnbroker/config/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocVnbrokerPanel.tsx,166,runSocVnbrokerBenchmark,/operator/soc/vnbroker/benchmark/,results,flat,Y,var=result SAME_SCOPE call@165 | setBenchmarkResults(result.results || []);
+components/soc/SocVnbrokerPanel.tsx,182,applySocVnbrokerConfig,/operator/soc/vnbroker/config/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/soc/SocVnbrokerPanel.tsx,192,testSocVnbrokerConnection,/operator/soc/vnbroker/test-connection/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+components/workstation/hooks/useOrderBook.js,29,getRealtimeDepthChart,/realtime/depth-chart/{p}/,data,flat,Y,var=response SAME_SCOPE call@28 | return response.data ?? response;
+components/workstation/hooks/useSessionFacts.js,28,getStockOverview,/stock-management/stocks/{p}/overview/,data,flat,Y,var=response SAME_SCOPE call@27 | return response.data ?? response;
+components/workstation/hooks/useTradeLog.js,32,getRealtimeIntraday,/realtime/intraday/{p}/{p},data,flat,Y,var=response SAME_SCOPE call@31 | return response.data ?? response;
+context/PortfolioContext.js,295,getUserProfile,/identity/profile/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+context/PortfolioContext.js,327,getUserProfile,/identity/profile/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+context/PortfolioContext.js,378,getTenantLifecycle,/tenant/lifecycle/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+context/PortfolioContext.js,448,loginUser,/auth/token/,data,optional,Y,var=payload SAME_SCOPE call@447 | const tokenPayload = payload?.data?.access ? payload.data : payload;
+context/PortfolioContext.js,470,registerUser,/auth/register/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+context/PortfolioContext.js,479,resendVerificationEmail,/auth/resend-verification/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+context/PortfolioContext.js,490,refreshAuthToken,/auth/token/refresh/,data,optional,Y,var=payload SAME_SCOPE call@489 | const tokenPayload = payload?.data?.access ? payload.data : payload;
+context/PortfolioContext.js,511,updateUserProfile,/identity/profile/,language,optional,Y,"var=response FALLBACK_SCOPE call@509 | language: response?.language || 'vi',"
+context/PortfolioContext.js,512,updateUserProfile,/identity/profile/,theme,optional,Y,"var=response FALLBACK_SCOPE call@509 | theme: response?.theme || 'dark',"
+context/PortfolioContext.js,513,updateUserProfile,/identity/profile/,whale_alert_threshold,optional,N,var=response FALLBACK_SCOPE call@509 | whale_alert_threshold: response?.whale_alert_threshold
+context/PortfolioContext.js,527,getPortfolios,/workspace/portfolios/,results,optional,N,var=res SAME_SCOPE call@523 | : Array.isArray(res?.results)
+context/PortfolioContext.js,528,getPortfolios,/workspace/portfolios/,results,flat,N,var=res SAME_SCOPE call@523 | ? res.results
+context/PortfolioContext.js,529,getPortfolios,/workspace/portfolios/,data,optional,N,var=res SAME_SCOPE call@523 | : Array.isArray(res?.data)
+context/PortfolioContext.js,530,getPortfolios,/workspace/portfolios/,data,flat,N,var=res SAME_SCOPE call@523 | ? res.data
+context/PortfolioContext.js,562,deletePortfolio,/workspace/portfolios/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+context/PortfolioContext.js,584,deleteSubAccount,/portfolio/subaccounts/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/advertising/api/advertisingClient.js,18,getAdvertisingCampaigns,/operator/ads/campaigns/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/advertising/api/advertisingClient.js,26,getAdvertisingCampaign,/operator/ads/campaigns/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/advertising/api/advertisingClient.js,34,getCampaignAnalytics,/operator/ads/analytics/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/advertising/api/advertisingClient.js,42,getTrademarkConfig,/widget/config,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/advertising/api/advertisingClient.js,49,updateTrademarkConfig,/widget/config,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/advertising/api/advertisingClient.js,59,createAdvertisingCampaign,/operator/ads/campaigns/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/advertising/api/advertisingClient.js,69,updateAdvertisingCampaign,/operator/ads/campaigns/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/advertising/api/advertisingClient.js,79,deleteAdvertisingCampaign,/operator/ads/campaigns/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/dashboard/AIAdvisorAlertPanel.js,69,getAIAlertsFeed,/signals/ai-alerts/feed{p},results,flat,N,var=res SAME_SCOPE call@68 | if (res && Array.isArray(res.results)) {
+features/dashboard/AIAdvisorAlertPanel.js,70,getAIAlertsFeed,/signals/ai-alerts/feed{p},results,flat,N,var=res FALLBACK_SCOPE call@68 | setAlerts(res.results);
+features/dashboard/AIAdvisorAlertPanel.js,80,getAIAlertsFeed,/signals/ai-alerts/feed{p},last_scan_at,optional,Y,var=res SAME_SCOPE call@68 | const apiLastScan = res?.last_scan_at ?? res?.meta?.last_scan_at ?? res?.latest_scan_at ?? null;
+features/dashboard/AIAdvisorAlertPanel.js,80,getAIAlertsFeed,/signals/ai-alerts/feed{p},meta,optional,Y,var=res SAME_SCOPE call@68 | const apiLastScan = res?.last_scan_at ?? res?.meta?.last_scan_at ?? res?.latest_scan_at ?? null;
+features/dashboard/AIAdvisorAlertPanel.js,80,getAIAlertsFeed,/signals/ai-alerts/feed{p},latest_scan_at,optional,Y,var=res SAME_SCOPE call@68 | const apiLastScan = res?.last_scan_at ?? res?.meta?.last_scan_at ?? res?.latest_scan_at ?? null;
+features/dashboard/useCoreDashboardData.js,133,getPortfolioHoldings,/workspace/portfolios/{p}/holdings/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/dashboard/useCoreDashboardData.js,134,getPortfolioSummary,/workspace/portfolios/{p}/summary/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/dashboard/useCoreDashboardData.js,135,getPortfolioAnalytics,/workspace/portfolios/{p}/analytics/?days={p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/dashboard/useCoreDashboardData.js,136,getWatchlists,/workspace/watchlists/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/dashboard/useCoreDashboardData.js,137,getTrackedSymbols,/stock-management/tracked-symbols/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/dashboard/useCoreDashboardData.js,138,getLegacyWatchlistGroups,/stock-management/groups/?include_prices=0,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/stock-detail/hooks/useStockDetailPageModel.js,123,getStockOverview,/stock-management/stocks/{p}/overview/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/stock-detail/hooks/useStockDetailPageModel.js,124,getStockOrderFlow,/stock-management/stocks/{p}/order-flow/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/stock-detail/hooks/useStockDetailPageModel.js,125,getSessionFactsCvd,/session-facts/{p}/cvd{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/stock-detail/hooks/useStockDetailPageModel.js,126,getWhaleAnalyticsSnapshot,/workspace/whale-analytics/{p}/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/stock-detail/hooks/useStockDetailPageModel.js,189,getWhaleFeedAggregate,/realtime/whale-feed-aggregate/{p}/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/stock-detail/hooks/useStockDetailPageModel.js,190,getAdvisoryLatest,/advisory/latest/{p}/{q},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/stock-detail/hooks/useStockDetailPageModel.js,231,getWhaleFeedAggregate,/realtime/whale-feed-aggregate/{p}/{p},results,optional,Y,var=res SAME_SCOPE call@229 | const rawResults = res?.results ?? [];
+features/stock-detail/hooks/useStockDetailPageModel.js,237,getWhaleFeedAggregate,/realtime/whale-feed-aggregate/{p}/{p},next_cursor,optional,Y,"var=res FALLBACK_SCOPE call@229 | next_cursor: res?.next_cursor ?? null,"
+features/stock-detail/hooks/useStockDetailPageModel.js,238,getWhaleFeedAggregate,/realtime/whale-feed-aggregate/{p}/{p},has_more,optional,N,"var=res FALLBACK_SCOPE call@229 | has_more: Boolean(res?.has_more),"
+features/stock-detail/hooks/useStockDetailPageModel.js,269,getStockProfile,/stock-management/stocks/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/stock-detail/hooks/useStockDetailPageModel.js,285,getStockNews,/stock-management/stocks/{p}/news/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/stock-detail/hooks/useStockDetailPageModel.js,288,getStockNews,/stock-management/stocks/{p}/news/{p},news,optional,Y,setNews(data?.news ?? data?.results ?? data ?? []);
+features/stock-detail/hooks/useStockDetailPageModel.js,288,getStockNews,/stock-management/stocks/{p}/news/{p},results,optional,Y,setNews(data?.news ?? data?.results ?? data ?? []);
+features/stock-detail/hooks/useStockDetailPageModel.js,305,getStockFinancials,/stock-management/stocks/{p}/financials/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+features/stock-detail/hooks/useStockDetailPageModel.js,308,getStockFinancials,/stock-management/stocks/{p}/financials/,financials,optional,Y,setFinancials(data?.financials ?? data ?? null);
+features/stock-detail/hooks/useStockDetailPageModel.js,384,refreshAdvisory,/advisory/refresh/{p}/,personal_key_failed,flat,N,"var=refreshResponse FALLBACK_SCOPE call@379 | personal_key_failed: refreshResponse.personal_key_failed,"
+features/stock-detail/hooks/useStockDetailPageModel.js,385,refreshAdvisory,/advisory/refresh/{p}/,personal_key_error,flat,N,"var=refreshResponse FALLBACK_SCOPE call@379 | personal_key_error: refreshResponse.personal_key_error,"
+features/stock-detail/hooks/useStockDetailPageModel.js,386,refreshAdvisory,/advisory/refresh/{p}/,using_system_fallback,flat,N,"var=refreshResponse FALLBACK_SCOPE call@379 | using_system_fallback: refreshResponse.using_system_fallback,"
+features/stock-detail/hooks/useStockDetailPageModel.js,387,refreshAdvisory,/advisory/refresh/{p}/,fallback_quota_remaining,flat,N,"var=refreshResponse FALLBACK_SCOPE call@379 | fallback_quota_remaining: refreshResponse.fallback_quota_remaining,"
+features/stock-detail/hooks/useStockDetailPageModel.js,388,refreshAdvisory,/advisory/refresh/{p}/,budget_soft_warning,flat,N,"var=refreshResponse FALLBACK_SCOPE call@379 | budget_soft_warning: refreshResponse.budget_soft_warning,"
+features/stock-detail/hooks/useStockDetailPageModel.js,389,refreshAdvisory,/advisory/refresh/{p}/,budget,flat,N,"var=refreshResponse FALLBACK_SCOPE call@379 | budget: refreshResponse.budget,"
+features/stock-detail/hooks/useStockDetailPageModel.js,402,getAdvisoryLatest,/advisory/latest/{p}/{q},generated_at,flat,N,var=latest SAME_SCOPE call@401 | if (latest && latest.generated_at) {
+features/stock-detail/hooks/useStockDetailPageModel.js,403,getAdvisoryLatest,/advisory/latest/{p}/{q},generated_at,flat,N,var=latest FALLBACK_SCOPE call@401 | const genTime = new Date(latest.generated_at).getTime();
+hooks/useAIAdvisor.js,58,getAICommandCenterConfig,/workspace/ai-command-center/,ai_prompt_config,optional,Y,var=response SAME_SCOPE call@56 | const promptConfig = response?.ai_prompt_config || response?.prompt_config || {};
+hooks/useAIAdvisor.js,58,getAICommandCenterConfig,/workspace/ai-command-center/,prompt_config,optional,Y,var=response SAME_SCOPE call@56 | const promptConfig = response?.ai_prompt_config || response?.prompt_config || {};
+hooks/useAlertCenterActions.ts,32,getAlertCenterEventDetail,/signals/alert-center/events/{p}{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+hooks/useAlertCenterActions.ts,33,getAlertCenterSymbolContext,/signals/alert-center/symbols/{p}/context{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+hooks/useAlertCenterActions.ts,57,acknowledgeAlertCenterEvent,/signals/alert-center/events/{p}/ack{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+hooks/useAlertCenterActions.ts,77,muteAlertCenterPreference,/signals/alert-center/preferences/mute,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+hooks/useAlertCenterActions.ts,105,muteAlertCenterPreference,/signals/alert-center/preferences/mute,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+hooks/useAlertCenterData.js,47,getAIAlertsFeed,/signals/ai-alerts/feed{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+hooks/useAlertCenterData.js,48,getAlertCenterFeed,/signals/alert-center/feed{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+hooks/useAlertCenterData.js,59,getAIAlertsSummary,/signals/ai-alerts/summary{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+hooks/useAlertCenterData.js,60,getAlertCenterSummary,/signals/alert-center/summary{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+hooks/useAlertCenterData.js,73,getAIAlertsSymbolStats,/signals/ai-alerts/symbol-stats{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+hooks/useAlertCenterData.js,74,getAlertCenterSymbolStats,/signals/alert-center/symbol-stats{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+hooks/useAlertCenterSnapshot.ts,72,getAlertCenterFeed,/signals/alert-center/feed{p},results,flat,Y,var=data SAME_SCOPE call@71 | if (mountedRef.current) setAlerts(data.results || []);
+hooks/useRealtimeFeedCore.js,6,getRealtimeTickers,/realtime/tickers/?symbols={p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+hooks/useRealtimeFeedCore.js,7,getRealtimeTicker,/realtime/tickers/?symbols={p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+hooks/useRealtimeFeedCore.js,36,refreshAuthToken,/auth/token/refresh/,access,optional,Y,var=res SAME_SCOPE call@35 | return res?.access || res?.data?.access || null;
+hooks/useRealtimeFeedCore.js,36,refreshAuthToken,/auth/token/refresh/,data,optional,Y,var=res SAME_SCOPE call@35 | return res?.access || res?.data?.access || null;
+hooks/useSymbolGroups.ts,46,getSocSymbolGroups,/operator/soc/symbol-groups/,predefined,flat,Y,var=data SAME_SCOPE call@45 | setPredefined(data.predefined || []);
+hooks/useSymbolGroups.ts,47,getSocSymbolGroups,/operator/soc/symbol-groups/,custom,flat,Y,var=data SAME_SCOPE call@45 | setCustom(data.custom || []);
+hooks/useSymbolGroups.ts,62,syncSocSymbolGroups,/operator/soc/symbol-groups/sync/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+hooks/useWhaleAdvisoryData.js,29,getAdvisoryHistory,/advisory/history/{p}/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+hooks/useWhaleAdvisoryData.js,223,getPortfolioHoldings,/workspace/portfolios/{p}/holdings/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+hooks/useWhaleAdvisoryData.js,224,getTrackedSymbols,/stock-management/tracked-symbols/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+hooks/useWhaleAdvisoryData.js,247,getWhaleAdvisorySymbolStats,/portfolio/ai-advisory-symbol-stats/{p},stats,optional,Y,var=resp SAME_SCOPE call@246 | const stats = Array.isArray(resp?.stats) ? resp.stats : Array.isArray(resp) ? resp : [];
+hooks/useWhaleAdvisoryData.js,267,getMarketDiscoveryHub,/portfolio/market-discovery-hub/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+hooks/useWhaleAdvisoryData.js,270,getWhaleAdvisories,/portfolio/ai-advisory/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+hooks/useWhaleAdvisoryData.js,369,refreshAdvisory,/advisory/refresh/{p}/,advisory_id,optional,Y,var=accepted SAME_SCOPE call@368 | const advisoryId = accepted?.advisory_id || accepted?.task_id;
+hooks/useWhaleAdvisoryData.js,369,refreshAdvisory,/advisory/refresh/{p}/,task_id,optional,Y,var=accepted SAME_SCOPE call@368 | const advisoryId = accepted?.advisory_id || accepted?.task_id;
+hooks/useWhaleAdvisoryData.js,401,deleteCurrentWhaleAdvisory,/advisory/latest/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+hooks/useWhaleAdvisoryData.js,440,getSymbolList,/market-data/symbols/{p},results,optional,Y,var=resp SAME_SCOPE call@439 | const results = Array.isArray(resp?.results) ? resp.results : Array.isArray(resp) ? resp : [];
+hooks/useWhaleAnalyticsData.js,71,getWhaleAnalyticsSnapshot,/workspace/whale-analytics/{p}/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+layouts/full/vertical/header/Header.tsx,39,getAlertCenterSummary,/signals/alert-center/summary{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/AICommandCenterPage.tsx,30,getAICommandCenterConfig,/workspace/ai-command-center/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/AICommandCenterPage.tsx,31,updateAICommandCenterConfig,/workspace/ai-command-center/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/AICommandCenterPage.tsx,32,testAICommandCenterConnection,/workspace/ai-command-center/test-connection/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/AICommandCenterPage.tsx,83,getUserConfig,/workspace/userconfig/,preferences,optional,Y,var=userConfig SAME_SCOPE call@81 | const prefs = userConfig?.preferences || {};
+pages/AICommandCenterPage.tsx,128,updateUserConfig,/workspace/userconfig/,advisory_whale_signal_enabled,optional,Y,var=res SAME_SCOPE call@127 | setEventGateEnabled(res?.advisory_whale_signal_enabled ?? next);
+pages/AICommandCenterPage.tsx,145,rollbackAICommandCenterPromptConfig,/workspace/ai-command-center/prompt-config/rollback/,ai_prompt_config,optional,N,var=res SAME_SCOPE call@144 | if (res?.ai_prompt_config) setPromptConfig(res.ai_prompt_config);
+pages/AICommandCenterPage.tsx,146,rollbackAICommandCenterPromptConfig,/workspace/ai-command-center/prompt-config/rollback/,ai_prompt_config_history,optional,N,var=res SAME_SCOPE call@144 | if (Array.isArray(res?.ai_prompt_config_history)) setPromptHistory(res.ai_prompt_config_history);
+pages/AdminCrawlControlPage.tsx,70,getAdminCrawlJobs,/v1/admin/crawl/jobs/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/AdminCrawlControlPage.tsx,71,getAdminCrawlRuns,/v1/admin/crawl/runs/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/AdminCrawlControlPage.tsx,94,runAdminCrawlJob,/v1/admin/crawl/jobs/{p}/run/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/AdminCrawlControlPage.tsx,110,stopAdminCrawlJob,/v1/admin/crawl/jobs/{p}/stop/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/AlertCenterPage.tsx,260,getAIAlertsFeed,/signals/ai-alerts/feed{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/AlertCenterPage.tsx,261,getAlertCenterFeed,/signals/alert-center/feed{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/AlertCenterPage.tsx,333,acknowledgeAlertCenterEvent,/signals/alert-center/events/{p}/ack{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/DashboardPage.tsx,148,getPortfolioNewsDigest,/stock-management/portfolio/news-digest/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/PortfoliosPage.tsx,42,getPortfolios,/workspace/portfolios/,results,optional,Y,var=res SAME_SCOPE call@40 | setPortfolios((res?.results ?? []) as Portfolio[]);
+pages/PortfoliosPage.tsx,76,createPortfolio,/workspace/portfolios/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/PortfoliosPage.tsx,94,deletePortfolio,/workspace/portfolios/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/ScreenerPage.tsx,134,getScreenerRules,/screener/rules/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/ScreenerPage.tsx,134,getScreenerRules,/screener/rules/,results,flat,Y,"queryFn: () => coreApiAdapter.getScreenerRules().then((d: any) => (Array.isArray(d) ? d : d.results || [])),"
+pages/ScreenerPage.tsx,178,getScreenerTemplates,/screener/templates/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/ScreenerPage.tsx,179,getScreenerTemplates,/screener/templates/,templates,flat,Y,.then((d: any) => setTemplates(Array.isArray(d) ? d : (d.templates || [])))
+pages/ScreenerPage.tsx,199,createScreenerRule,/screener/rules/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/ScreenerPage.tsx,201,updateScreenerRule,/screener/rules/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/ScreenerPage.tsx,216,updateScreenerRule,/screener/rules/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/ScreenerPage.tsx,237,deleteScreenerRule,/screener/rules/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/ScreenerPage.tsx,295,deleteScreenerRule,/screener/rules/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/ScreenerPage.tsx,302,createScreenerRule,/screener/rules/,id,flat,Y,var=created SAME_SCOPE call@297 | ruleId = created.id ?? null;
+pages/ScreenerPage.tsx,303,createScreenerRule,/screener/rules/,name,flat,Y,var=created SAME_SCOPE call@297 | ruleName = created.name || t(tmpl.name_key);
+pages/ScreenerPage.tsx,312,runScreenerRule,/screener/rules/{p}/run/{p},detail,optional,Y,var=data SAME_SCOPE call@306 | setError(errResp?.response?.data?.detail || t('screener.errors.runRuleFailed'));
+pages/ScreenerPage.tsx,340,createScreenerRule,/screener/rules/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/ScreenerPage.tsx,346,runScreenerRule,/screener/rules/{p}/run/{p},detail,optional,Y,var=data SAME_SCOPE call@306 | setError(errResp?.response?.data?.detail || t('screener.errors.saveRuleFailed'));
+pages/ScreenerPage.tsx,367,runScreenerRule,/screener/rules/{p}/run/{p},status,flat,N,var=data SAME_SCOPE call@365 | if (data && data.status === 'queued' && data.job_id) {
+pages/ScreenerPage.tsx,367,runScreenerRule,/screener/rules/{p}/run/{p},job_id,flat,N,var=data SAME_SCOPE call@365 | if (data && data.status === 'queued' && data.job_id) {
+pages/ScreenerPage.tsx,369,runScreenerRule,/screener/rules/{p}/run/{p},job_id,flat,N,var=data SAME_SCOPE call@306 | const job_id: string = data.job_id;
+pages/ScreenerPage.tsx,371,runScreenerRule,/screener/rules/{p}/run/{p},total,coerced,Y,"var=data SAME_SCOPE call@306 | setJobStatus({ status: 'queued', scanned: 0, total: data.total ?? 0 });"
+pages/ScreenerPage.tsx,380,getScreenerRunStatus,/screener/rules/{p}/run/status/?job_id={p},status,flat,N,var=st SAME_SCOPE call@377 | if (st.status === 'completed') {
+pages/ScreenerPage.tsx,398,getScreenerRunStatus,/screener/rules/{p}/run/status/?job_id={p},status,flat,N,var=st FALLBACK_SCOPE call@377 | } else if (st.status === 'failed') {
+pages/ScreenerPage.tsx,401,getScreenerRunStatus,/screener/rules/{p}/run/status/?job_id={p},error,flat,Y,var=st FALLBACK_SCOPE call@377 | setError(st.error || t('screener.errors.runRuleFailed'));
+pages/ScreenerPage.tsx,405,getScreenerRunStatus,/screener/rules/{p}/run/status/?job_id={p},status,flat,N,var=st FALLBACK_SCOPE call@377 | } else if (st.status === 'unknown') {
+pages/ScreenerPage.tsx,427,runScreenerRule,/screener/rules/{p}/run/{p},detail,optional,N,var=data FALLBACK_SCOPE call@365 | if (errResp?.response?.data?.detail) setError(errResp.response.data.detail);
+pages/ScreenerPage.tsx,454,runScreenerRule,/screener/rules/{p}/run/{p},retry_after,optional,Y,var=data SAME_SCOPE call@306 | const retry = errResp?.response?.data?.retry_after ?? 60;
+pages/ScreenerPage.tsx,455,runScreenerRule,/screener/rules/{p}/run/{p},detail,optional,Y,var=data SAME_SCOPE call@306 | setError(errResp?.response?.data?.detail || `Quá nhiều yêu cầu. Thử lại sau ${retry}s.`);
+pages/ScreenerPage.tsx,457,runScreenerRule,/screener/rules/{p}/run/{p},detail,optional,N,var=data SAME_SCOPE call@306 | const detail = (errResp as any)?.response?.data?.detail;
+pages/ScreenerPage.tsx,469,createScreenerRule,/screener/rules/,name,optional,Y,"var=created FALLBACK_SCOPE call@297 | setNotice(t('screener.community.forked', { name: created?.name ?? '', defaultValue: `Đã lưu bản sao '${created?.name ?? ''}'.` }))"
+pages/ScreenerPage.tsx,537,runScreenerRule,/screener/rules/{p}/run/{p},matched,flat,Y,"var=data SAME_SCOPE call@532 | return (data.matched ?? []) as Array<Record<string, unknown>>;"
+pages/StockDetailPage.tsx,145,getWatchlists,/workspace/watchlists/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/StockDetailPage.tsx,148,getWatchlists,/workspace/watchlists/,results,optional,Y,const lists = res?.results ?? res ?? [];
+pages/StockDetailPage.tsx,156,getWatchlistItems,/workspace/watchlists/{p}/items/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/StockDetailPage.tsx,158,getWatchlistItems,/workspace/watchlists/{p}/items/,results,optional,Y,const itemList = items?.results ?? items ?? [];
+pages/StockDetailPage.tsx,186,addWatchlistItem,/workspace/watchlists/{p}/items/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/StockDetailPage.tsx,187,removeWatchlistItem,/workspace/watchlists/{p}/items/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/SupportPage.tsx,81,listStaffSupportTickets,/support/staff/tickets/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/SupportPage.tsx,88,listSupportTickets,/support/tickets/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/SupportPage.tsx,122,getSupportTicketDetail,/support/tickets/{p}/,ticket,optional,Y,var=response SAME_SCOPE call@121 | const ticket = response?.ticket || response?.data?.ticket || response;
+pages/SupportPage.tsx,122,getSupportTicketDetail,/support/tickets/{p}/,data,optional,Y,var=response SAME_SCOPE call@121 | const ticket = response?.ticket || response?.data?.ticket || response;
+pages/SupportPage.tsx,123,getSupportTicketDetail,/support/tickets/{p}/,messages,optional,Y,var=response SAME_SCOPE call@121 | const messages = response?.messages?.results || response?.data?.messages?.results || response?.messages || [];
+pages/SupportPage.tsx,123,getSupportTicketDetail,/support/tickets/{p}/,data,optional,Y,var=response SAME_SCOPE call@121 | const messages = response?.messages?.results || response?.data?.messages?.results || response?.messages || [];
+pages/SupportPage.tsx,140,getStaffSupportDashboard,/support/staff/dashboard/,data,optional,Y,var=response SAME_SCOPE call@139 | setOpsData(response || response?.data || null);
+pages/SupportPage.tsx,179,createSupportTicket,/support/tickets/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/SupportPage.tsx,197,replyStaffSupportTicket,/support/staff/tickets/{p}/reply/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/SupportPage.tsx,199,replySupportTicket,/support/tickets/{p}/reply/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/SupportPage.tsx,217,patchStaffSupportTicket,/support/staff/tickets/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/SupportPage.tsx,234,reopenSupportTicket,/support/tickets/{p}/reopen/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/TransactionsPage.tsx,52,getTransactions,/workspace/portfolios/{p}/transactions/{p},results,optional,Y,var=res SAME_SCOPE call@50 | setTransactions((res?.results ?? []) as Transaction[]);
+pages/TransactionsPage.tsx,90,createTransaction,/workspace/portfolios/{p}/transactions/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/UserSettingsPage.tsx,131,updateUserProfile,/identity/profile/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/UserSettingsPage.tsx,158,changeUserPassword,/auth/password-change/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/AdminAnalyticsPage.tsx,31,getSocAnalyticsGrowth,/operator/soc/analytics/growth/?days={p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/AdminAnalyticsPage.tsx,32,getSocAnalyticsCohorts,/operator/soc/analytics/cohorts/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/AdminAnalyticsPage.tsx,33,getSocAnalyticsAlerts,/operator/soc/analytics/alerts/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/AdminAuditPage.tsx,44,getSocAuditEvents,/operator/soc/audit-events/{p},results,optional,Y,var=res SAME_SCOPE call@39 | setRows(res?.results || []);
+pages/admin/AdminAuditPage.tsx,45,getSocAuditEvents,/operator/soc/audit-events/{p},count,coerced,Y,var=res SAME_SCOPE call@39 | setCount(Number(res?.count || 0));
+pages/admin/AdminAuditPage.tsx,46,getSocAuditEvents,/operator/soc/audit-events/{p},next,optional,N,var=res SAME_SCOPE call@39 | setHasNext(Boolean(res?.next));
+pages/admin/AdminAuditPage.tsx,47,getSocAuditEvents,/operator/soc/audit-events/{p},previous,optional,N,var=res SAME_SCOPE call@39 | setHasPrev(Boolean(res?.previous));
+pages/admin/AdminBillingFleetPage.tsx,51,getSocBillingOverview,/operator/soc/billing/overview/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/AdminBillingFleetPage.tsx,52,getSocBillingInvoices,/operator/soc/billing/invoices/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/AdminCoreAuditTracePage.tsx,106,getCoreOperatorAuditRequests,/operator/audit/requests/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/AdminCoreAuditTracePage.tsx,145,getCoreOperatorAuditRequestDetail,/operator/audit/requests/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/AdminCoreBillingPage.tsx,43,getCoreOperatorTenantDetail,/operator/tenants/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/AdminCoreJobsPage.tsx,84,getCoreOperatorJobs,/operator/jobs/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/AdminCoreOverviewPage.tsx,40,getCoreOperatorOverview,/operator/overview/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/AdminCoreOverviewPage.tsx,41,getCoreOperatorHealth,/operator/health/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/AdminCorePATsPage.tsx,50,getCoreOperatorTenantDetail,/operator/tenants/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/AdminCorePATsPage.tsx,51,getCoreOperatorTenantServiceAccounts,/operator/tenants/{p}/service-accounts/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/AdminCorePATsPage.tsx,52,getCoreOperatorTenantPATs,/operator/tenants/{p}/pats/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/AdminCoreServiceAccountsPage.tsx,48,getCoreOperatorTenantDetail,/operator/tenants/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/AdminCoreServiceAccountsPage.tsx,49,getCoreOperatorTenantServiceAccounts,/operator/tenants/{p}/service-accounts/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/AdminCoreTenantsPage.tsx,42,getCoreOperatorTenants,/operator/tenants/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/AdminCoreTenantsPage.tsx,70,getCoreOperatorTenantDetail,/operator/tenants/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/AdminCoreTenantsPage.tsx,131,staffSwitch,/operator/soc/staff/switch/,token,optional,Y,"var=res FALLBACK_SCOPE call@128 | token: res?.token || null,"
+pages/admin/AdminCoreTenantsPage.tsx,132,staffSwitch,/operator/soc/staff/switch/,tenant,optional,Y,"var=res FALLBACK_SCOPE call@128 | tenant: res?.tenant || { id: switchTarget.id },"
+pages/admin/AdminCoreTenantsPage.tsx,133,staffSwitch,/operator/soc/staff/switch/,expires_at,optional,Y,"var=res FALLBACK_SCOPE call@128 | expires_at: res?.expires_at || null,"
+pages/admin/AdminCoreUsagePage.tsx,60,getCoreOperatorTenantDetail,/operator/tenants/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/AdminUsageFleetPage.tsx,29,getSocUsageOverview,/operator/soc/usage/overview/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/ShellMailConfigPage.tsx,99,getOperatorMailConfigs,/operator/mail-configs/{p},results,flat,Y,var=res SAME_SCOPE call@98 | setConfigs(res.results || []);
+pages/admin/ShellMailConfigPage.tsx,109,activateOperatorMailConfig,/operator/mail-configs/{p}/activate/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/ShellMailConfigPage.tsx,124,deleteOperatorMailConfig,/operator/mail-configs/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/ShellMailConfigPage.tsx,139,testOperatorMailConfig,/operator/mail-configs/test/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/ShellMailConfigPage.tsx,220,updateOperatorMailConfig,/operator/mail-configs/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/admin/ShellMailConfigPage.tsx,222,createOperatorMailConfig,/operator/mail-configs/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/auth/AuthLoginPage.tsx,55,getTenantLifecycle,/tenant/lifecycle/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/auth/AuthResetPasswordPage.tsx,88,requestPasswordReset,/auth/password-reset/,detail,optional,Y,"var=payload SAME_SCOPE call@87 | const serverMessage = String(payload?.detail ?? payload?.message ?? """");"
+pages/auth/AuthResetPasswordPage.tsx,88,requestPasswordReset,/auth/password-reset/,message,optional,Y,"var=payload SAME_SCOPE call@87 | const serverMessage = String(payload?.detail ?? payload?.message ?? """");"
+pages/auth/AuthResetPasswordPage.tsx,133,confirmPasswordReset,/auth/password-reset/confirm/,detail,optional,Y,"var=payload SAME_SCOPE call@128 | const serverMessage = String(payload?.detail ?? payload?.message ?? """");"
+pages/auth/AuthResetPasswordPage.tsx,133,confirmPasswordReset,/auth/password-reset/confirm/,message,optional,Y,"var=payload SAME_SCOPE call@128 | const serverMessage = String(payload?.detail ?? payload?.message ?? """");"
+pages/auth/AuthVerifyEmailPage.tsx,46,verifyEmailToken,/auth/verify-email/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/commercial/BillingCenterPage.tsx,336,getBillingSubscription,/billing/subscription,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/commercial/BillingCenterPage.tsx,337,getBillingQuota,/billing/quota,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/commercial/BillingCenterPage.tsx,338,getBillingInvoices,/billing/invoices?,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/commercial/BillingCenterPage.tsx,538,createPayment,/payments/create/,pay_url,flat,N,var=response SAME_SCOPE call@536 | if (response && response.pay_url) {
+pages/commercial/BillingCenterPage.tsx,539,createPayment,/payments/create/,pay_url,flat,N,var=response FALLBACK_SCOPE call@536 | window.location.href = response.pay_url;
+pages/commercial/PaymentReturnPage.tsx,170,getPaymentStatus,/payments/status/{p}/,status,flat,N,var=response SAME_SCOPE call@168 | if (response && response.status) {
+pages/tenant-admin/TenantAdminBillingPage.tsx,140,getCostTrend,/partner/billing/cost-trend/?months={p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/tenant-admin/TenantAdminBillingPage.tsx,320,createStripePortalSession,/partner/billing/stripe/portal/,url,flat,N,var=res SAME_SCOPE call@319 | if (res.url) {
+pages/tenant-admin/TenantAdminBillingPage.tsx,321,createStripePortalSession,/partner/billing/stripe/portal/,url,flat,N,var=res FALLBACK_SCOPE call@319 | window.location.href = res.url;
+pages/tenant-admin/TenantAdminBillingPage.tsx,539,createStripeCheckoutSession,/partner/billing/stripe/session/,url,flat,N,var=res SAME_SCOPE call@534 | if (res.url) {
+pages/tenant-admin/TenantAdminBillingPage.tsx,540,createStripeCheckoutSession,/partner/billing/stripe/session/,url,flat,N,var=res FALLBACK_SCOPE call@534 | window.location.href = res.url;
+pages/tenant-admin/TenantAdminHomePage.tsx,171,getDashboardSummary,/partner/dashboard/summary/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/tenant-admin/TenantAdminReportsPage.tsx,108,createScheduledReport,/partner/reports/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/tenant-admin/TenantAdminReportsPage.tsx,120,updateScheduledReport,/partner/reports/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/tenant-admin/TenantAdminReportsPage.tsx,130,deleteScheduledReport,/partner/reports/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/tenant-admin/TenantAdminReportsPage.tsx,139,testScheduledReport,/partner/reports/{p}/test/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/tenant-admin/TenantAdminUsagePage.tsx,190,getAllUsageTrends,/partner/usage/trend/?days={p},meters,flat,Y,var=data SAME_SCOPE call@189 | return { meters: data.meters || {} };
+pages/tenant-admin/TenantAdminUsagePage.tsx,203,getUsageForecast,/partner/usage/forecast/?{p},forecasts,flat,Y,var=data SAME_SCOPE call@202 | return { forecasts: data.forecasts || [] };
+pages/tenant-admin/TenantAdminUsagePage.tsx,203,getUsageForecast,/partner/usage/forecast/,forecasts,flat,Y,var=data SAME_SCOPE call@202 | return { forecasts: data.forecasts || [] };
+pages/tenant-admin/TenantAdminUsagePage.tsx,215,getApiUsageAnalytics,/partner/usage/api-calls/?group_by={p}&days={p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/tenant-admin/TenantAdminUsagePage.tsx,229,getAlertConfigs,/partner/usage/alert-config/,configs,flat,Y,var=data SAME_SCOPE call@228 | return { configs: data.configs || [] };
+pages/tenant-admin/TenantAdminUsagePage.tsx,633,getAlertConfigs,/partner/usage/alert-config/,length,flat,N,var=data FALLBACK_SCOPE call@228 | ) : analyticsData?.data && analyticsData.data.length > 0 ? (
+pages/tenant-admin/TenantAdminUsagePage.tsx,637,getAlertConfigs,/partner/usage/alert-config/,map,flat,N,"var=data FALLBACK_SCOPE call@228 | {analyticsData.data.map((item, idx) => ("
+pages/tenant-admin/TenantAdminUsagePage.tsx,658,getAlertConfigs,/partner/usage/alert-config/,length,flat,N,"var=data FALLBACK_SCOPE call@228 | {analyticsGroupBy === ""hour"" && analyticsData?.data.length > 0 ? ("
+pages/tenant-admin/TenantAdminUsagePage.tsx,661,getAlertConfigs,/partner/usage/alert-config/,map,flat,N,"var=data FALLBACK_SCOPE call@228 | <BarChart data={analyticsData.data.map(d => ({ hour: d.key, count: d.count }))} margin={{ top: 4, right: 4, bottom: 4, left: -16 }"
+pages/tenant-admin/TenantAdminUsagePage.tsx,676,getAlertConfigs,/partner/usage/alert-config/,map,flat,N,"var=data FALLBACK_SCOPE call@228 | {analyticsData?.data.map((item, idx) => ("
+pages/tenant-admin/TenantAdminUsagePage.tsx,680,getAlertConfigs,/partner/usage/alert-config/,map,flat,Y,"var=data FALLBACK_SCOPE call@228 | <div className={ta.usage_75} style={{ width: `${Math.max(1, (item.count / Math.max(1, ...analyticsData?.data.map(d => d.count) ?? "
+pages/watchlist/components/WatchlistContext.tsx,87,getPortfolioSummary,/workspace/portfolios/{p}/summary/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistContext.tsx,225,getWatchlists,/workspace/watchlists/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistContext.tsx,225,getWatchlists,/workspace/watchlists/,message,flat,N,"api.getWatchlists().catch((err: any) => { console.warn(""Lỗi tải watchlists:"", err.message); return []; }),"
+pages/watchlist/components/WatchlistContext.tsx,226,getLegacyWatchlistGroups,/stock-management/groups/?include_prices=0,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistContext.tsx,226,getLegacyWatchlistGroups,/stock-management/groups/?include_prices=0,message,flat,N,"api.getLegacyWatchlistGroups().catch((err: any) => { console.warn(""Lỗi tải groups:"", err.message); return []; }),"
+pages/watchlist/components/WatchlistContext.tsx,227,getPortfolios,/workspace/portfolios/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistContext.tsx,227,getPortfolios,/workspace/portfolios/,message,flat,N,"api.getPortfolios().catch((err: any) => { console.warn(""Lỗi tải portfolios:"", err.message); return []; }),"
+pages/watchlist/components/WatchlistContext.tsx,228,getTrackedSymbols,/stock-management/tracked-symbols/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistContext.tsx,228,getTrackedSymbols,/stock-management/tracked-symbols/,message,flat,N,"api.getTrackedSymbols().catch((err: any) => { console.warn(""Lỗi tải tracked symbols:"", err.message); return []; }),"
+pages/watchlist/components/WatchlistContext.tsx,253,getPortfolioHoldings,/workspace/portfolios/{p}/holdings/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistContext.tsx,322,getWatchlists,/workspace/watchlists/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistContext.tsx,322,getWatchlists,/workspace/watchlists/,message,flat,N,"api.getWatchlists().catch((err: any) => { console.warn(""Lỗi tải watchlists:"", err.message); return []; }),"
+pages/watchlist/components/WatchlistContext.tsx,323,getLegacyWatchlistGroups,/stock-management/groups/?include_prices=0,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistContext.tsx,323,getLegacyWatchlistGroups,/stock-management/groups/?include_prices=0,message,flat,N,"api.getLegacyWatchlistGroups().catch((err: any) => { console.warn(""Lỗi tải groups:"", err.message); return []; }),"
+pages/watchlist/components/WatchlistContext.tsx,324,getPortfolios,/workspace/portfolios/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistContext.tsx,324,getPortfolios,/workspace/portfolios/,message,flat,N,"api.getPortfolios().catch((err: any) => { console.warn(""Lỗi tải portfolios:"", err.message); return []; }),"
+pages/watchlist/components/WatchlistContext.tsx,325,getTrackedSymbols,/stock-management/tracked-symbols/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistContext.tsx,325,getTrackedSymbols,/stock-management/tracked-symbols/,message,flat,N,"api.getTrackedSymbols().catch((err: any) => { console.warn(""Lỗi tải tracked symbols:"", err.message); return []; }),"
+pages/watchlist/components/WatchlistContext.tsx,356,getPortfolioHoldings,/workspace/portfolios/{p}/holdings/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistContext.tsx,414,getWatchlistItems,/workspace/watchlists/{p}/items/,results,optional,Y,var=res SAME_SCOPE call@413 | const list = Array.isArray(res) ? res : (res?.results ?? []);
+pages/watchlist/components/WatchlistContext.tsx,425,getPriceAlerts,/stock-management/price-alerts/{p},results,optional,Y,var=res SAME_SCOPE call@424 | const list = Array.isArray(res) ? res : (res?.results ?? []);
+pages/watchlist/components/WatchlistContext.tsx,436,removeWatchlistItem,/workspace/watchlists/{p}/items/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistContext.tsx,451,getBulkTechnicalsBySymbols,/market-data/technicals/bulk/?symbols={p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistDetailPanel.tsx,67,getWhaleFeedAggregate,/realtime/whale-feed-aggregate/{p}/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistDetailPanel.tsx,67,getWhaleFeed,/realtime/whale-feed/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistDetailPanel.tsx,68,getStockNews,/stock-management/stocks/{p}/news/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistDetailPanel.tsx,69,getAdvisoryLatest,/advisory/latest/{p}/{q},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistDetailPanel.tsx,70,getWhaleAnalyticsSnapshot,/workspace/whale-analytics/{p}/{p},<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistMainWorkspace.tsx,169,addWatchlistItem,/workspace/watchlists/{p}/items/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistSidebar.tsx,39,createWatchlist,/workspace/watchlists/,id,flat,N,var=wl SAME_SCOPE call@31 | setSelectedId(wl.id);
+pages/watchlist/components/WatchlistSidebar.tsx,58,updateWatchlist,/workspace/watchlists/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistSidebar.tsx,78,deleteWatchlist,/workspace/watchlists/{p}/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER
+pages/watchlist/components/WatchlistSidebar.tsx,198,createWatchlist,/workspace/watchlists/,id,flat,N,var=wl FALLBACK_SCOPE call@31 | const isEditing = editingWlId === wl.id;
+pages/watchlist/components/WatchlistSidebar.tsx,199,createWatchlist,/workspace/watchlists/,id,flat,N,"var=wl FALLBACK_SCOPE call@31 | const isActive = selectedType === ""watchlist"" && selectedId === wl.id;"
+pages/watchlist/components/WatchlistSidebar.tsx,204,createWatchlist,/workspace/watchlists/,id,flat,N,"var=wl FALLBACK_SCOPE call@31 | key: wl.id,"
+pages/watchlist/components/WatchlistSidebar.tsx,220,createWatchlist,/workspace/watchlists/,id,flat,N,var=wl FALLBACK_SCOPE call@31 | setSelectedId(wl.id);
+pages/watchlist/components/WatchlistSidebar.tsx,241,createWatchlist,/workspace/watchlists/,id,flat,N,"var=wl FALLBACK_SCOPE call@31 | if (ev.key === ""Enter"") handleRenameWatchlist(wl.id);"
+pages/watchlist/components/WatchlistSidebar.tsx,246,createWatchlist,/workspace/watchlists/,id,flat,N,var=wl FALLBACK_SCOPE call@31 | onBlur: () => handleRenameWatchlist(wl.id)
+pages/watchlist/components/WatchlistSidebar.tsx,261,createWatchlist,/workspace/watchlists/,name,flat,N,"var=wl FALLBACK_SCOPE call@31 | `📁 ${wl.name}`,"
+pages/watchlist/components/WatchlistSidebar.tsx,296,createWatchlist,/workspace/watchlists/,id,flat,N,var=wl FALLBACK_SCOPE call@31 | setEditingWlId(wl.id);
+pages/watchlist/components/WatchlistSidebar.tsx,297,createWatchlist,/workspace/watchlists/,name,flat,N,var=wl FALLBACK_SCOPE call@31 | setEditingWlName(wl.name);
+pages/watchlist/components/WatchlistSidebar.tsx,308,createWatchlist,/workspace/watchlists/,id,flat,N,"var=wl FALLBACK_SCOPE call@31 | onClick: () => handleDeleteWatchlist(wl.id, wl.name)"
+pages/watchlist/components/WatchlistSidebar.tsx,308,createWatchlist,/workspace/watchlists/,name,flat,N,"var=wl FALLBACK_SCOPE call@31 | onClick: () => handleDeleteWatchlist(wl.id, wl.name)"
+pages/watchlist/components/WatchlistTable.tsx,72,createPriceAlert,/stock-management/price-alerts/,<no local read>,none,?,payload not bound to a local var at this site; fields read by the CALLER

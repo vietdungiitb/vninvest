@@ -42,84 +42,160 @@ class _Rule:
         self.updated_at = updated_at
 
 
-class IdempotencyTenantScopingTests(SimpleTestCase):
-    """SAFE-02 R3 / TEN-06: namespace idempotency theo tenant."""
+class IdempotencyTenantScopingTests(TestCase):
+    """Tenant phải là **một phần của ràng buộc DB**, và thiếu tenant thì từ chối.
+
+    Vì sao phải viết lại (sửa hồi quy của `aade0a02`, không phải tuỳ chọn):
+
+    - Lớp là `SimpleTestCase` ⇒ **cấm truy vấn DB**. Nhưng LED-06 chuyển
+      idempotency từ cache sang bảng `IdempotencyRecord` có UNIQUE, nên lớp này
+      **không hề chạm bảng** mà vẫn được coi là xanh.
+    - Test gọi `idempotency._cache_key(...)` — hàm **đã bị xoá** ⇒
+      `AttributeError`, chứ không phải kiểm tra cái gì.
+    - Test truyền `tenant_id='TEN-A'` — chuỗi tùy ý. API mới **fail-closed**:
+      `_resolve_tenant` (`idempotency.py:99-104`) tra `CoreTenant` theo
+      `public_id` và **ném** nếu không có. Chuỗi bịa đặt không còn hợp lệ.
+
+    Vì sao lớp này đỏ mà không ai thấy: `manage.py test` không label **không dò
+    tới `src/`**. Đã sửa bằng `run_tests.py` (2 760 test thay vì 642).
+    """
 
     def setUp(self):
         cache.clear()
+        from django.contrib.auth import get_user_model
+
+        from identity_access.models import CoreTenant
+
+        User = get_user_model()
+        # `CoreTenant` có UNIQUE trên `owner_user`
+        # (`identity_access_coretenant_owner_user_id_key`) nên mỗi tenant cần
+        # một owner riêng — dùng chung owner sẽ vi phạm ràng buộc DB.
+        self.owner_a = User.objects.create_user(
+            username='idem-owner-a', password='x')
+        self.owner_b = User.objects.create_user(
+            username='idem-owner-b', password='x')
+        self.tenant_a = CoreTenant.objects.create(
+            tenant_code='idem-a', display_name='tenant A',
+            owner_user=self.owner_a, status=CoreTenant.StatusChoices.ACTIVE)
+        self.tenant_b = CoreTenant.objects.create(
+            tenant_code='idem-b', display_name='tenant B',
+            owner_user=self.owner_b, status=CoreTenant.StatusChoices.ACTIVE)
+        self.a = str(self.tenant_a.public_id)
+        self.b = str(self.tenant_b.public_id)
+        # Actor dùng chung ở cả 2 tenant: đó mới là tình huống nguy hiểm —
+        # cùng một user thuộc nhiều tenant, cùng `Idempotency-Key`.
+        self.shared_actor = User.objects.create_user(
+            username='idem-shared-actor', password='x')
+        self.uid = self.shared_actor.pk
 
     def test_same_key_two_tenants_are_independent(self):
-        """AC2: cung key o 2 tenant phai doc lap, khong replay cheo nhau."""
+        """AC2: cùng key ở 2 tenant phải độc lập, không replay chéo nhau."""
         a = idempotency.claim(
-            user_id=7, scope='dnse_order', key='K', fingerprint='fp', tenant_id='TEN-A'
+            user_id=self.uid, scope='dnse_order', key='K',
+            fingerprint='fp', tenant_id=self.a,
         )
         self.assertTrue(a.acquired)
         self.assertTrue(
             idempotency.store_result(
-                user_id=7, scope='dnse_order', key='K', fingerprint='fp',
-                result={'order': 'A-1'}, tenant_id='TEN-A',
+                user_id=self.uid, scope='dnse_order', key='K', fingerprint='fp',
+                result={'order': 'A-1'}, tenant_id=self.a,
             )
         )
 
         b = idempotency.claim(
-            user_id=7, scope='dnse_order', key='K', fingerprint='fp', tenant_id='TEN-B'
+            user_id=self.uid, scope='dnse_order', key='K',
+            fingerprint='fp', tenant_id=self.b,
         )
-        # Khong phai replay, khong phai conflict: day la lenh rieng cua tenant B.
-        self.assertFalse(b.replay, 'tenant B doc replay cua tenant A')
-        self.assertFalse(b.conflict, 'tenant B bi 409 nham do ban ghi cua tenant A')
+        self.assertFalse(b.replay, 'tenant B đọc replay của tenant A')
+        self.assertFalse(b.conflict, 'tenant B bị 409 nhầm do bản ghi của A')
         self.assertTrue(b.acquired)
 
     def test_different_payload_same_key_same_tenant_conflicts(self):
-        """AC2 (SAFE-02): cung tenant, cung key, payload khac => conflict."""
+        """AC2 (SAFE-02): cùng tenant, cùng key, payload khác ⇒ conflict."""
         idempotency.claim(
-            user_id=7, scope='dnse_order', key='K', fingerprint='fp1', tenant_id='TEN-A'
+            user_id=self.uid, scope='dnse_order', key='K',
+            fingerprint='fp1', tenant_id=self.a,
         )
         other = idempotency.claim(
-            user_id=7, scope='dnse_order', key='K', fingerprint='fp2', tenant_id='TEN-A'
+            user_id=self.uid, scope='dnse_order', key='K',
+            fingerprint='fp2', tenant_id=self.a,
         )
         self.assertTrue(other.conflict)
 
     def test_replay_within_same_tenant_still_works(self):
         """Bảo vệ hành vi cũ: replay trong CÙNG tenant vẫn trả kết quả cũ."""
         idempotency.claim(
-            user_id=7, scope='dnse_order', key='K', fingerprint='fp', tenant_id='TEN-A'
+            user_id=self.uid, scope='dnse_order', key='K',
+            fingerprint='fp', tenant_id=self.a,
         )
         idempotency.store_result(
-            user_id=7, scope='dnse_order', key='K', fingerprint='fp',
-            result={'order': 'A-1'}, tenant_id='TEN-A',
+            user_id=self.uid, scope='dnse_order', key='K', fingerprint='fp',
+            result={'order': 'A-1'}, tenant_id=self.a,
         )
         replay = idempotency.claim(
-            user_id=7, scope='dnse_order', key='K', fingerprint='fp', tenant_id='TEN-A'
+            user_id=self.uid, scope='dnse_order', key='K',
+            fingerprint='fp', tenant_id=self.a,
         )
         self.assertTrue(replay.replay)
         self.assertEqual(replay.result, {'order': 'A-1'})
 
-    def test_missing_tenant_uses_separate_namespace(self):
-        """Khong truyền tenant => namespace riêng, không đụng tenant thật."""
-        real = idempotency.claim(
-            user_id=7, scope='dnse_order', key='K', fingerprint='fp', tenant_id='TEN-A'
-        )
-        self.assertTrue(real.acquired)
-        none_tenant = idempotency.claim(
-            user_id=7, scope='dnse_order', key='K', fingerprint='fp'
-        )
-        self.assertTrue(
-            none_tenant.acquired,
-            'tenant=None phai la namespace rieng, khong va cham key cua TEN-A',
-        )
+    def test_missing_tenant_is_refused_not_given_its_own_namespace(self):
+        """Đổi hành vi so với bản cũ, và đây là **cố ý**.
 
-    def test_NEGATIVE_TEST_key_really_contains_tenant(self):
-        """Negative test: key THUOC phai chua tenant.gia tri.
+        Bản cũ khẳng định: thiếu tenant thì được namespace riêng và vẫn chạy
+        được. Đó là **fail-open** — đơn hàng tài chính ghi vào namespace không
+        xác định thì không thể truy vết tenant.
 
-        Hay chay lai bang key CUA BUG CU va xem assert nay co that su that bai
-        khong — neu regex khong khop thi test doi ra fail chu khong im lang xanh.
+        LED-06 đổi sang fail-closed (`idempotency.py:92-96`): thiếu tenant thì
+        **từ chối lệnh**. Test viết lại theo hành vi mới, vì hành vi cũ là hành
+        vi không an toàn.
         """
-        buggy_key = idempotency._cache_key(7, 'dnse_order', 'K', None)
-        buggy_key = buggy_key.replace('no-tenant', '7', 1)  # key doi trong bug goc
-        self.assertIn('TEN-A', idempotency._cache_key(7, 'dnse_order', 'K', 'TEN-A'))
-        self.assertNotIn(
-            'TEN-A', buggy_key,
-            'key cu khong chua tenant — test nay co the dang pass nham',
+        with self.assertRaises(idempotency.IdempotencyTenantUnresolved):
+            idempotency.claim(
+                user_id=self.uid, scope='dnse_order', key='K',
+                fingerprint='fp', tenant_id=None,
+            )
+
+    def test_unknown_tenant_id_is_refused(self):
+        """Tenant không tồn tại cũng phải từ chối, không tự tạo namespace."""
+        with self.assertRaises(idempotency.IdempotencyTenantUnresolved):
+            idempotency.claim(
+                user_id=self.uid, scope='dnse_order', key='K',
+                fingerprint='fp', tenant_id='TEN-KHONG-TON-TAI',
+            )
+
+    def test_NEGATIVE_TEST_tenant_isolation_is_enforced_not_implied(self):
+        """Negative test: cách ly tenant phải do **DB cưỡng chế**.
+
+        Bản cũ kiểm chuỗi khoá có chứa `'TEN-A'` hay không — chuỗi đó chỉ
+        *gợi ý* cách ly, không *cưỡng chế* nó. Bản này kiểm **hành vi**: nếu
+        ràng buộc DB bị nới, hai tenant sẽ tranh cùng một dòng và test đỏ.
+        """
+        from user_workspace.models import IdempotencyRecord
+
+        a = idempotency.claim(
+            user_id=self.uid, scope='dnse_order', key='K',
+            fingerprint='fp', tenant_id=self.a,
+        )
+        b = idempotency.claim(
+            user_id=self.uid, scope='dnse_order', key='K',
+            fingerprint='fp', tenant_id=self.b,
+        )
+        self.assertTrue(a.acquired)
+        self.assertTrue(
+            b.acquired,
+            'tenant B phải có hàng riêng — nếu bị tranh hàng với A thì khoá '
+            'KHÔNG còn tách tenant',
+        )
+
+        # `tenant_id` là FK nên `values_list` trả về **int**, không phải str.
+        rows = set(IdempotencyRecord.objects.filter(
+            actor_id=self.uid, scope='dnse_order', key='K',
+        ).values_list('tenant_id', flat=True))
+        self.assertEqual(
+            rows, {self.tenant_a.pk, self.tenant_b.pk},
+            'phải có 2 dòng tách biệt — đây mới là cách ly thật, không phải '
+            '"hai lần claim đều acquired"',
         )
 
 
