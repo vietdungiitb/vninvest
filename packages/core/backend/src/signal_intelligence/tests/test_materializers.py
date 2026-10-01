@@ -14,6 +14,7 @@ from signal_intelligence.materializers import (
 )
 from signal_intelligence.models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical, UserAlertDelivery
 from signal_intelligence.models import AdvisorySignalEvent, MarketAnomalyEvent
+from signal_intelligence.tests.envelope import unwrapped_json
 from signal_intelligence.views import AIAlertsFeedView, AlertCenterFeedView
 from market_serving.models import SymbolSnapshot
 from identity_access.models import UserProfile
@@ -427,7 +428,7 @@ class UnifiedAlertMaterializerTests(TestCase):
 
         ack_response = client.post(f'/core/v1/signals/alert-center/events/{alert.alert_id}/ack')
         self.assertEqual(ack_response.status_code, 200)
-        self.assertEqual(ack_response.json()['delivery_state'], 'acknowledged')
+        self.assertEqual(unwrapped_json(ack_response)['delivery_state'], 'acknowledged')
         self.assertTrue(UserAlertDelivery.objects.filter(user=user, alert=alert, delivery_state='acknowledged').exists())
 
         mute_response = client.post(

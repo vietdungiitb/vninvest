@@ -8,6 +8,7 @@ from rest_framework.test import APIClient
 
 from identity_access.models import UserProfile
 from signal_intelligence.models import UnifiedAlert
+from signal_intelligence.tests.envelope import unwrapped_json
 from user_workspace.models import Watchlist, WatchlistItem
 
 
@@ -52,12 +53,12 @@ class AlertCenterAPITests(TestCase):
 
         detail = self.client.get(f'/core/v1/signals/alert-center/events/{alert.alert_id}')
         self.assertEqual(detail.status_code, 200)
-        self.assertEqual(detail.json()['alert_id'], str(alert.alert_id))
+        self.assertEqual(unwrapped_json(detail)['alert_id'], str(alert.alert_id))
 
         context = self.client.get('/core/v1/signals/alert-center/symbols/VCI/context')
         self.assertEqual(context.status_code, 200)
-        self.assertEqual(context.json()['symbol'], 'VCI')
-        self.assertEqual(context.json()['total'], 1)
+        self.assertEqual(unwrapped_json(context)['symbol'], 'VCI')
+        self.assertEqual(unwrapped_json(context)['total'], 1)
 
     def test_ai_feed_and_ai_summary_lane(self):
         self._create_alert(

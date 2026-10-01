@@ -7,6 +7,7 @@ from rest_framework.test import APIClient
 
 from identity_access.models import UserProfile
 from signal_intelligence.models import UnifiedAlert, UserAlertDelivery
+from signal_intelligence.tests.envelope import unwrapped_json
 from user_workspace.models import Watchlist, WatchlistItem
 
 
@@ -51,7 +52,7 @@ class UserAlertDeliveryAPITests(TestCase):
 
         ack_response = client_a.post(f'/core/v1/signals/alert-center/events/{self.alert_vci.alert_id}/ack')
         self.assertEqual(ack_response.status_code, 200)
-        self.assertEqual(ack_response.json()['delivery_state'], 'acknowledged')
+        self.assertEqual(unwrapped_json(ack_response)['delivery_state'], 'acknowledged')
         self.assertTrue(UserAlertDelivery.objects.filter(user=self.user_a, alert=self.alert_vci, delivery_state='acknowledged').exists())
 
         mute_response = client_a.post(

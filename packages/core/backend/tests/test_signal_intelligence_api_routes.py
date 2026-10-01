@@ -25,6 +25,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from signal_intelligence.models import OrderFlowEvent, UnifiedAlert, WhaleAlertCanonical
+from signal_intelligence.tests.envelope import unwrapped
 from signal_intelligence.views import OrderFlowEventListView, AlertCenterFeedView, WhaleFeedAggregateView
 from identity_access.models import CoreTenant, UserProfile
 from user_workspace.models import Watchlist, WatchlistItem
@@ -109,8 +110,8 @@ class SignalIntelligenceApiRouteTests(TestCase):
         response = self.client.get('/core/v1/whale-feed?symbol=HPG')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIsInstance(response.data, dict)
-        self.assertEqual(response.data['symbol'], 'HPG')
+        self.assertIsInstance(unwrapped(response), dict)
+        self.assertEqual(unwrapped(response)['symbol'], 'HPG')
 
     def test_order_flow_route_is_native_and_returns_list(self):
         alert = UnifiedAlert.objects.create(

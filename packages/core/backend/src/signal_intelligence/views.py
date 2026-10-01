@@ -14,6 +14,13 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
+# Đặt TRƯỚC `logger = ...` để không cộng thêm E402 (các import dưới đây đã nằm
+# sau `logger` từ trước B5 và ruff đã báo E402 cho chúng — không nhân thêm lỗi
+# của chính dòng mình thêm vào).
+from vninvest_core.api_envelope import envelope_response
+
+from .envelope import envelope
+
 logger = logging.getLogger(__name__)
 
 
@@ -598,7 +605,7 @@ class AIAlertsSymbolStatsView(_BaseAlertSymbolStatsView):
         'Endpoint chuẩn hóa `/core/v1/signals/alert-center/events/{alert_id}`. '
         'Chỉ trả về alert thuộc lane main và nằm trong delivery scope của người dùng hiện tại.'
     ),
-    responses={200: UnifiedAlertSerializer, 401: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT, 429: OpenApiTypes.OBJECT},
+    responses={200: envelope_response(UnifiedAlertSerializer), 401: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT, 429: OpenApiTypes.OBJECT},
 )
 class AlertCenterEventDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -614,7 +621,7 @@ class AlertCenterEventDetailView(APIView):
         alert = qs.filter(alert_id=alert_id).first()
         if alert is None:
             raise NotFoundErrorException(detail='Không tìm thấy alert trong scope người dùng hiện tại.', code='alert_not_found')
-        return Response(UnifiedAlertSerializer(alert).data)
+        return envelope(UnifiedAlertSerializer(alert).data)
 
 
 @extend_schema(
@@ -626,7 +633,7 @@ class AlertCenterEventDetailView(APIView):
     parameters=[
         OpenApiParameter(name='session_date', type=OpenApiTypes.DATE, location=OpenApiParameter.QUERY, required=False),
     ],
-    responses={200: AlertCenterSymbolContextSerializer, 401: OpenApiTypes.OBJECT, 429: OpenApiTypes.OBJECT},
+    responses={200: envelope_response(AlertCenterSymbolContextSerializer), 401: OpenApiTypes.OBJECT, 429: OpenApiTypes.OBJECT},
 )
 class AlertCenterSymbolContextView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -651,7 +658,7 @@ class AlertCenterSymbolContextView(APIView):
             'in_delivery_scope': summary['total'] > 0,
             'recent_events': UnifiedAlertSerializer(recent_alerts, many=True).data,
         }
-        return Response(payload)
+        return envelope(payload)
 
 
 @extend_schema(
@@ -660,7 +667,7 @@ class AlertCenterSymbolContextView(APIView):
         'Endpoint chuẩn hóa `/core/v1/signals/alert-center/events/{alert_id}/ack`. '
         'Thao tác trên delivery projection của user hiện tại và áp dụng state transition guard từ service layer.'
     ),
-    responses={200: UserAlertDeliveryStateSerializer, 401: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT, 429: OpenApiTypes.OBJECT},
+    responses={200: envelope_response(UserAlertDeliveryStateSerializer), 401: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT, 429: OpenApiTypes.OBJECT},
 )
 class AlertCenterAcknowledgeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -677,7 +684,7 @@ class AlertCenterAcknowledgeView(APIView):
         if alert is None:
             raise NotFoundErrorException(detail='Không tìm thấy alert trong scope người dùng hiện tại.', code='alert_not_found')
         delivery_row = delivery_service.acknowledge_delivery(user=request.user, alert=alert)
-        return Response(UserAlertDeliveryStateSerializer(delivery_row).data)
+        return envelope(UserAlertDeliveryStateSerializer(delivery_row).data)
 
 
 @extend_schema(
@@ -688,7 +695,8 @@ class AlertCenterAcknowledgeView(APIView):
         'Rate limit policy: default authenticated API policy của core; response lỗi theo error envelope chuẩn.'
     ),
     request=AlertCenterMutePreferenceRequestSerializer,
-    responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT, 401: OpenApiTypes.OBJECT, 429: OpenApiTypes.OBJECT},
+    # `data` free-form: payload dựng tay ở `post`, không có serializer payload.
+    responses={200: envelope_response(), 400: OpenApiTypes.OBJECT, 401: OpenApiTypes.OBJECT, 429: OpenApiTypes.OBJECT},
 )
 class AlertCenterMutePreferenceView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -712,7 +720,7 @@ class AlertCenterMutePreferenceView(APIView):
             cooldown_seconds=int(payload.get('cooldown_seconds') or 0),
             metadata=payload.get('metadata') or {},
         )
-        return Response(
+        return envelope(
             {
                 'symbol': preference.symbol,
                 'alert_family': preference.alert_family,
@@ -925,7 +933,7 @@ class WhaleFeedAggregateView(APIView):
             OpenApiParameter(name='symbol', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
             OpenApiParameter(name='session_date', type=OpenApiTypes.DATE, location=OpenApiParameter.QUERY, required=False),
         ],
-        responses={200: WhaleFeedAggregateResponseSerializer, 401: OpenApiTypes.OBJECT},
+        responses={200: envelope_response(WhaleFeedAggregateResponseSerializer), 401: OpenApiTypes.OBJECT},
     )
     def get(self, request):
         symbol = request.query_params.get('symbol', '').upper()
@@ -953,7 +961,7 @@ class WhaleFeedAggregateView(APIView):
         buy_value = sum(o['matched_value'] for o in whale_orders if o['side'] == 'BUY')
         sell_value = sum(o['matched_value'] for o in whale_orders if o['side'] == 'SELL')
 
-        return Response({
+        return envelope({
             'symbol': symbol,
             'whale_orders': whale_orders,
             'summary': {
