@@ -48,7 +48,24 @@ guard đó, và cũng không được biến `null` thành `0`.
 from rest_framework import status as http_status
 from rest_framework.response import Response
 
-__all__ = ['envelope', 'paginated_envelope', 'adopt_envelope']
+__all__ = ['envelope', 'paginated_envelope', 'adopt_envelope', 'inner_payload', 'is_envelope']
+
+
+def is_envelope(body) -> bool:
+    """Đúng quy tắc FE (`adapters/core/envelope.js`): có **cả** `data` và `meta`
+    mới là envelope.
+
+    Định nghĩa **một lần** ở đây vì cả view lẫn test đều cần đúng một quy tắc:
+    `PortfolioAnalyticsView` phải mở envelope của `PortfolioSummaryView` trước
+    khi lồng vào `summary`, còn `tests/envelope.py` dùng lại hàm này. Hai bản
+    sao ở hai module là hai nguồn sự thật — và `service_ops` đã từng có **hai**
+    shape phân trang cùng lúc vì đúng lý do đó.
+    """
+    return (
+        isinstance(body, dict)
+        and 'data' in body
+        and 'meta' in body
+    )
 
 
 def envelope(data, meta=None, *, status=None, headers=None) -> Response:
@@ -96,6 +113,17 @@ def adopt_envelope(response):
     `PortfolioAIAdvisoryListView` đã bọc.
     """
     data = getattr(response, 'data', None)
-    if isinstance(data, dict) and 'data' in data and 'meta' in data:
+    if is_envelope(data):
         return response
     return envelope(data, status=getattr(response, 'status_code', None))
+
+
+def inner_payload(body):
+    """Mở envelope nếu có, giữ nguyên nếu không.
+
+    Dùng ở chỗ view của app này **lồng** response của chính nó vào payload khác
+    (`PortfolioAnalyticsView` đặt `PortfolioSummaryView` vào key `summary`).
+    Không mở thì `summary` chứa envelope lồng envelope — client phải đào 2 tầng
+    ở một endpoint mà mọi endpoint khác chỉ đào 1.
+    """
+    return body['data'] if is_envelope(body) else body

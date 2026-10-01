@@ -44,6 +44,7 @@ from user_workspace.models import (
     Transaction,
     ValuationSnapshot,
 )
+from user_workspace.tests.envelope import unwrapped
 
 VOL = 'holdings-wa-v1'
 
@@ -466,7 +467,7 @@ class NoFabricatedZeroInViewTests(TestCase):
 
     def test_missing_quote_yields_null_not_zero_pnl(self):
         response = self._holdings_response(with_quote=False)
-        row = response.data[0]
+        row = unwrapped(response)[0]
         self.assertIsNone(row['current_price'])
         self.assertIsNone(row['unrealized_pnl'])
         self.assertIsNone(row['unrealized_pnl_pct'])
@@ -476,7 +477,7 @@ class NoFabricatedZeroInViewTests(TestCase):
     def test_present_quote_still_produces_real_numbers(self):
         """Chặn "luôn trả null" là cách chữa bệnh bằng cách giết bệnh."""
         response = self._holdings_response(with_quote=True)
-        row = response.data[0]
+        row = unwrapped(response)[0]
         self.assertEqual(row['current_price'], '80000.00')
         self.assertEqual(row['unrealized_pnl'], '10000000.00')
         self.assertEqual(row['unrealized_pnl_pct'], 14.29)
@@ -792,7 +793,7 @@ class AllocationAndCurveNoFakeZeroTests(TestCase):
         request.tenant = self.tenant
         response = PortfolioAllocationView.as_view()(
             request, portfolio_id=self.portfolio.pk)
-        data = response.data
+        data = unwrapped(response)
         self.assertIsNone(data['total_value'])
         self.assertEqual(data['unpriced_symbols'], ['HNG', 'VNM'])
         self.assertEqual(data['reason'], 'no_market_prices')
@@ -815,7 +816,7 @@ class AllocationAndCurveNoFakeZeroTests(TestCase):
         response = PortfolioEquityCurveView.as_view()(
             request, portfolio_id=self.portfolio.pk)
         # Không có `DailyPrice` nào ⇒ curve rỗng, không phải curve toàn 0.
-        self.assertEqual(response.data['curve'], [])
+        self.assertEqual(unwrapped(response)['curve'], [])
 
 
 class BackfillAbortBeforeWriteTests(TransactionTestCase):

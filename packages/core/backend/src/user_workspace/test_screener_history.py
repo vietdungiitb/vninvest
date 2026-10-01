@@ -10,6 +10,7 @@ from rest_framework.test import APIClient
 from identity_access.models import CoreTenant
 from market_data.models import DailyPrice
 from market_serving.models import SymbolSnapshot
+from user_workspace.tests.envelope import unwrapped_json
 from user_workspace.models import ScreenerRule, ScreenerRunHistory
 
 User = get_user_model()
@@ -54,8 +55,8 @@ class ScreenerHistoryTestCase(TestCase):
         # List
         lst = self.client.get(HISTORY_URL)
         self.assertEqual(lst.status_code, 200)
-        self.assertEqual(lst.json()["count"], 1)
-        self.assertEqual(len(lst.json()["results"]), 1)
+        self.assertEqual(unwrapped_json(lst)["count"], 1)
+        self.assertEqual(len(unwrapped_json(lst)["results"]), 1)
 
     def test_quota_100(self):
         # D10: 100 per user, oldest deleted
@@ -82,7 +83,7 @@ class ScreenerHistoryTestCase(TestCase):
         other_client = APIClient()
         other_client.force_authenticate(user=other)
         lst = other_client.get(HISTORY_URL)
-        self.assertEqual(lst.json()["count"], 0)
+        self.assertEqual(unwrapped_json(lst)["count"], 0)
 
     def test_backtest(self):
         self._run()
@@ -97,7 +98,7 @@ class ScreenerHistoryTestCase(TestCase):
         # Just verify endpoint returns structure
         resp = self.client.get(BACKTEST_URL.format(pk=h.pk) + "?horizon=5")
         self.assertEqual(resp.status_code, 200)
-        data = resp.json()
+        data = unwrapped_json(resp)
         self.assertIn("winRate", data)
         self.assertIn("wins", data)
         self.assertIn("trades", data)
@@ -114,5 +115,5 @@ class ScreenerHistoryTestCase(TestCase):
         self.assertEqual(ScreenerRunHistory.objects.count(), 2)
         resp = self.client.delete(HISTORY_URL)
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json()["deleted"], 2)
+        self.assertEqual(unwrapped_json(resp)["deleted"], 2)
         self.assertEqual(ScreenerRunHistory.objects.count(), 0)

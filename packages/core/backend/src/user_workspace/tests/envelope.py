@@ -31,16 +31,9 @@ tên `payload` (dict payload của request) và sẽ che mất hàm import.
 """
 from rest_framework.response import Response
 
+from user_workspace.envelope import is_envelope
+
 __all__ = ['unwrapped', 'unwrapped_json', 'is_envelope']
-
-
-def is_envelope(body) -> bool:
-    """Đúng quy tắc FE: có **cả** `data` và `meta` mới là envelope."""
-    return (
-        isinstance(body, dict)
-        and 'data' in body
-        and 'meta' in body
-    )
 
 
 def _open(body):

@@ -10,6 +10,7 @@ from rest_framework.test import APIClient
 from market_data.models import DailyPrice
 from market_serving.models import SessionFacts, SessionFactsBucket, SymbolSnapshot
 from signal_intelligence.models import UnifiedAlert, WhaleAlertCanonical
+from user_workspace.tests.envelope import unwrapped_json
 
 
 User = get_user_model()
@@ -139,7 +140,7 @@ class PortfolioWhaleAnalyticsCompatApiTestCase(TestCase):
         response = self.client.get('/core/v1/workspace/whale-analytics/TPB/?timeframe=session&compact=0')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['symbol'], 'TPB')
         self.assertEqual(payload['timeframe'], 'session')
         self.assertEqual(payload['trade_date'], trade_date.isoformat())
@@ -157,4 +158,5 @@ class PortfolioWhaleAnalyticsCompatApiTestCase(TestCase):
         self.assertTrue(payload['quality_flags']['has_flow_data'])
         self.assertEqual(payload['quality_flags']['contract_version'], 'core-whale-compat-v1')
         self.assertEqual(payload['materialization']['read_path'], 'facts_first')
-        self.assertFalse(payload['meta']['degraded_mode'])
+        # B5: provenance whale nằm ở `meta` top-level của envelope.
+        self.assertFalse(response.json()['meta']['degraded_mode'])

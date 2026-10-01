@@ -30,7 +30,7 @@ from .ledger import (
     portfolio_valuation,
 )
 from .models import Portfolio, Transaction
-from .envelope import adopt_envelope, envelope, paginated_envelope
+from .envelope import adopt_envelope, envelope, inner_payload, paginated_envelope
 
 
 class AIEndpointProbeThrottle(BaseThrottle):
@@ -420,10 +420,18 @@ class PortfolioAnalyticsView(APIView):
     def get(self, request, portfolio_id):
         _get_user_portfolio(request, portfolio_id)
         summary_resp = PortfolioSummaryView().get(request, portfolio_id=portfolio_id)
+        # `PortfolioSummaryView` đã trả envelope `{data, meta}` ⇒ phải mở ra
+        # trước khi lồng vào `summary`, nếu không `summary` sẽ là envelope
+        # **lồng envelope** và client phải đào 2 tầng ở riêng endpoint này.
+        #
+        # Provenance của summary (`build_meta(ledger)`) được đưa lên `meta` của
+        # chính endpoint này: mỗi response chỉ có **một** chỗ mang `meta`, và
+        # nội dung giữ nguyên.
+        summary_body = summary_resp.data
         return envelope({
-            'summary': summary_resp.data,
+            'summary': inner_payload(summary_body),
             'note': 'full_analytics_available_via_sub_endpoints',
-        })
+        }, meta=summary_body.get('meta') if isinstance(summary_body, dict) else None)
 
 
 class PortfolioSyncView(APIView):

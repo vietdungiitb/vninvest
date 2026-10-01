@@ -33,6 +33,7 @@ from rest_framework.test import APIClient
 
 from ops_audit.models import AuditEvent
 from identity_access.models import CoreTenant
+from user_workspace.tests.envelope import unwrapped_json
 
 ORDER_URL = '/core/v1/broker/dnse/place-order/'
 OTP_URL = '/core/v1/broker/dnse/send-email-otp/'
@@ -303,9 +304,9 @@ class OrderIdempotencyTests(OrderSafetyTestCase):
         self.assertEqual(first.status_code, 200)
         second = self.post_order(idempotency_key='REPLAY-1')
         self.assertEqual(second.status_code, 200)
-        self.assertEqual(second.json()['result'], first.json()['result'])
-        self.assertIs(second.json()['idempotent_replay'], True)
-        self.assertIs(first.json()['idempotent_replay'], False)
+        self.assertEqual(unwrapped_json(second)['result'], unwrapped_json(first)['result'])
+        self.assertIs(unwrapped_json(second)['idempotent_replay'], True)
+        self.assertIs(unwrapped_json(first)['idempotent_replay'], False)
 
     def test_key_reuse_with_different_payload_rejected(self):
         self.assertEqual(self.post_order(idempotency_key='REUSE-1').status_code, 200)

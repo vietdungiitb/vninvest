@@ -26,6 +26,7 @@ from rest_framework.test import APIClient
 from identity_access.models import CoreTenant
 from market_serving.models import SymbolSnapshot
 from user_workspace.models import Portfolio, Transaction
+from user_workspace.tests.envelope import unwrapped_json
 
 
 User = get_user_model()
@@ -107,28 +108,28 @@ class PortfolioAnalyticsNativeRoutesApiTestCase(TestCase):
     def test_core_v1_workspace_portfolio_analytics_native_routes_return_data(self):
         """Native route tra data that — truoc day test nay luon do 500 o `/api/*`
         nen assert native 200 o `_assert_native_matches_legacy` chua bao gio chay."""
-        holdings_payload = self.client.get(
+        holdings_payload = unwrapped_json(self.client.get(
             f'/core/v1/workspace/portfolios/{self.portfolio.id}/holdings/'
-        ).json()
+        ))
         self.assertEqual(holdings_payload[0]['symbol'], 'VCB')
         self.assertEqual(holdings_payload[0]['quantity'], 120)
 
-        summary_payload = self.client.get(
+        summary_payload = unwrapped_json(self.client.get(
             f'/core/v1/workspace/portfolios/{self.portfolio.id}/summary/'
-        ).json()
+        ))
         self.assertEqual(summary_payload['portfolio_id'], self.portfolio.id)
         self.assertEqual(summary_payload['portfolio_name'], 'Danh mục chính')
         self.assertEqual(summary_payload['num_holdings'], 1)
 
-        analytics_payload = self.client.get(
+        analytics_payload = unwrapped_json(self.client.get(
             f'/core/v1/workspace/portfolios/{self.portfolio.id}/analytics/?days=30'
-        ).json()
+        ))
         self.assertEqual(analytics_payload['summary']['portfolio_id'], self.portfolio.id)
         self.assertEqual(analytics_payload['note'], 'full_analytics_available_via_sub_endpoints')
 
-        technicals_payload = self.client.get(
+        technicals_payload = unwrapped_json(self.client.get(
             f'/core/v1/workspace/portfolios/{self.portfolio.id}/technicals/'
-        ).json()
+        ))
         self.assertEqual(technicals_payload[0]['symbol'], 'VCB')
         self.assertEqual(technicals_payload[0]['price_change_pct'], '2.9700')
 

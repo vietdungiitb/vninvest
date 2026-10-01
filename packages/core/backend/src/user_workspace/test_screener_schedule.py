@@ -7,6 +7,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from identity_access.models import CoreTenant
+from user_workspace.tests.envelope import unwrapped_json
 from user_workspace.models import ScreenerRule, ScreenerSchedule
 
 User = get_user_model()
@@ -39,21 +40,23 @@ class ScreenerScheduleTestCase(TestCase):
         # Create
         resp = self.client.post(SCHED_URL, self._payload(), format="json")
         self.assertEqual(resp.status_code, 201, resp.content[:500])
-        sid = resp.json()["id"]
-        self.assertIsNotNone(resp.json()["next_run_at"])
+        sid = unwrapped_json(resp)["id"]
+        self.assertIsNotNone(unwrapped_json(resp)["next_run_at"])
         # List
         lst = self.client.get(SCHED_URL)
         self.assertEqual(lst.status_code, 200)
-        items = lst.json() if isinstance(lst.json(), list) else lst.json().get("results", [])
+        items = unwrapped_json(lst)
+        if not isinstance(items, list):
+            items = items["results"]
         self.assertEqual(items[0]["id"], sid)
         # Detail
         det = self.client.get(SCHED_DETAIL_URL.format(pk=sid))
         self.assertEqual(det.status_code, 200)
-        self.assertEqual(det.json()["name"], "Evening")
+        self.assertEqual(unwrapped_json(det)["name"], "Evening")
         # Update (toggle off)
         upd = self.client.put(SCHED_DETAIL_URL.format(pk=sid), {"is_active": False}, format="json")
         self.assertEqual(upd.status_code, 200)
-        self.assertFalse(upd.json()["is_active"])
+        self.assertFalse(unwrapped_json(upd)["is_active"])
         # Delete
         dele = self.client.delete(SCHED_DETAIL_URL.format(pk=sid))
         self.assertEqual(dele.status_code, 204)
@@ -72,12 +75,12 @@ class ScreenerScheduleTestCase(TestCase):
 
     def test_run_now_enqueues(self):
         resp = self.client.post(SCHED_URL, self._payload(), format="json")
-        sid = resp.json()["id"]
+        sid = unwrapped_json(resp)["id"]
         with mock.patch("market_data.vnbroker_adapter.get_company_financials_response", return_value={"financials": {}}):
             run = self.client.post(RUN_NOW_URL.format(pk=sid), {}, format="json")
         self.assertEqual(run.status_code, 200, run.content[:500])
-        self.assertEqual(len(run.json()["jobs"]), 1)
-        self.assertEqual(run.json()["jobs"][0]["rule_id"], self.rule.id)
+        self.assertEqual(len(unwrapped_json(run)["jobs"]), 1)
+        self.assertEqual(unwrapped_json(run)["jobs"][0]["rule_id"], self.rule.id)
 
     def test_email_channel_sends_on_new_symbols(self):
         from datetime import date, timedelta
@@ -142,4 +145,4 @@ class ScreenerScheduleTestCase(TestCase):
         # Alerts endpoint reachable (may be empty on first run — no previous history)
         resp = self.client.get(ALERTS_URL)
         self.assertEqual(resp.status_code, 200)
-        self.assertIn("results", resp.json())
+        self.assertIn("results", unwrapped_json(resp))
