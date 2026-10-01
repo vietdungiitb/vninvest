@@ -18,6 +18,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from advisory.models import AdvisoryRecord
+from advisory.tests.envelope import unwrapped
 
 
 class AdvisoryStatusApiTests(TestCase):
@@ -85,15 +86,16 @@ class AdvisoryRefreshInfoApiTests(TestCase):
         )
         response = self.client.get('/core/v1/advisory/refresh-info/FPT/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['symbol'], 'FPT')
-        self.assertEqual(response.data['tokens_used'], 1800)
-        self.assertEqual(response.data['token_budget'], 2000)
-        self.assertEqual(response.data['tokens_remaining_today'], 200)
-        self.assertTrue(response.data['budget_soft_warning'])
-        self.assertFalse(response.data['budget_hard_exceeded'])
-        self.assertEqual(response.data['auto_refreshes_used_today'], 1)
-        self.assertIsNone(response.data['next_refresh_at'])
-        self.assertFalse(response.data['auto_refresh'])
+        body = unwrapped(response)
+        self.assertEqual(body['symbol'], 'FPT')
+        self.assertEqual(body['tokens_used'], 1800)
+        self.assertEqual(body['token_budget'], 2000)
+        self.assertEqual(body['tokens_remaining_today'], 200)
+        self.assertTrue(body['budget_soft_warning'])
+        self.assertFalse(body['budget_hard_exceeded'])
+        self.assertEqual(body['auto_refreshes_used_today'], 1)
+        self.assertIsNone(body['next_refresh_at'])
+        self.assertFalse(body['auto_refresh'])
 
     def test_requires_authentication(self):
         self.client.force_authenticate(user=None)

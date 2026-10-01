@@ -26,6 +26,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from advisory.models import AdvisorySession, UserAICredential
+from advisory.tests.envelope import unwrapped
 from advisory.views import _advisory_budget_state, _resolve_advisory_token_budget
 from commercial.models import QuotaRecord
 from identity_access.models import CoreTenant
@@ -221,8 +222,9 @@ class AdvisoryBudgetHardBlockApiTests(TestCase):
         )
         response = self.client.post('/core/v1/advisory/refresh/FPT/', {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(response.data.get('budget_soft_warning'))
-        budget = response.data.get('budget') or {}
+        body = unwrapped(response)
+        self.assertTrue(body.get('budget_soft_warning'))
+        budget = body.get('budget') or {}
         self.assertEqual(budget.get('token_budget'), 100)
         self.assertEqual(budget.get('tokens_used'), 80)
         self.assertEqual(budget.get('budget_source'), 'user')
@@ -236,8 +238,9 @@ class AdvisoryBudgetHardBlockApiTests(TestCase):
     def test_no_soft_warning_when_below_threshold(self, mock_delay):
         response = self.client.post('/core/v1/advisory/refresh/FPT/', {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertFalse(response.data.get('budget_soft_warning'))
-        budget = response.data.get('budget') or {}
+        body = unwrapped(response)
+        self.assertFalse(body.get('budget_soft_warning'))
+        budget = body.get('budget') or {}
         self.assertEqual(budget.get('tokens_used'), 0)
         self.assertTrue(mock_delay.called)
 
@@ -305,6 +308,6 @@ class AdvisoryBudgetSystemFallbackApiTests(TestCase):
         )
         response = self.client.post('/core/v1/advisory/refresh/FPT/', {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(response.data.get('budget_soft_warning'))
-        self.assertEqual(response.data['budget']['budget_source'], 'system')
+        self.assertTrue(unwrapped(response).get('budget_soft_warning'))
+        self.assertEqual(unwrapped(response)['budget']['budget_source'], 'system')
         self.assertTrue(mock_delay.called)

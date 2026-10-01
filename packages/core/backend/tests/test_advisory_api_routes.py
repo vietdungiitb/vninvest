@@ -25,6 +25,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from advisory.models import AdvisoryRecord
+from advisory.tests.envelope import unwrapped
 from advisory.views import AdvisoryRefreshView
 from commercial.models import QuotaRecord
 from identity_access.models import CoreTenant
@@ -80,12 +81,16 @@ class AdvisoryManualTriggerApiTests(TestCase):
         response = self.client.post('/core/v1/advisory/refresh/FPT/', {}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['status'], 'pending')
-        self.assertEqual(response.data['symbol'], 'FPT')
-        self.assertEqual(response.data['manual_trigger']['job_key'], 'advisory_refresh')
-        self.assertEqual(response.data['manual_trigger']['priority_tier'], 'pro')
-        self.assertEqual(response.data['manual_trigger']['quota']['used'], 1)
-        self.assertEqual(response.data['task_id'], response.data['advisory_id'])
+        # `advisory` da boc `{data, meta}` — `unwrapped` mo envelope neu co,
+        # giu nguyen neu khong. Cac response loi (402/429/403) o duoi **khong**
+        # boc theo RFC 9457 nen dung doc `response.data` cho may.
+        body = unwrapped(response)
+        self.assertEqual(body['status'], 'pending')
+        self.assertEqual(body['symbol'], 'FPT')
+        self.assertEqual(body['manual_trigger']['job_key'], 'advisory_refresh')
+        self.assertEqual(body['manual_trigger']['priority_tier'], 'pro')
+        self.assertEqual(body['manual_trigger']['quota']['used'], 1)
+        self.assertEqual(body['task_id'], body['advisory_id'])
         self.assertEqual(AdvisoryRecord.objects.filter(user=self.user, symbol='FPT', status='pending').count(), 1)
         quota_record = QuotaRecord.objects.get(tenant=self.tenant)
         self.assertEqual(quota_record.api_calls_used, 1)
@@ -172,18 +177,18 @@ class AdvisoryLatestHistoryUserScopingTests(TestCase):
         self.client.force_authenticate(user=self.user_b)
         response = self.client.get('/core/v1/advisory/history/FPT/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data.get('results', [])), 0)
+        self.assertEqual(len(unwrapped(response).get('results', [])), 0)
 
     def test_latest_returns_own_record(self):
         self._create_record(self.user_a, 'FPT', 'generated')
         self.client.force_authenticate(user=self.user_a)
         response = self.client.get('/core/v1/advisory/latest/FPT/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('advisory_id', response.data)
+        self.assertIn('advisory_id', unwrapped(response))
 
     def test_history_returns_own_record(self):
         self._create_record(self.user_a, 'FPT', 'generated')
         self.client.force_authenticate(user=self.user_a)
         response = self.client.get('/core/v1/advisory/history/FPT/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertGreaterEqual(len(response.data.get('results', [])), 1)
+        self.assertGreaterEqual(len(unwrapped(response).get('results', [])), 1)
