@@ -26,6 +26,7 @@ from ..provider_catalog import (
 from ..serializers import ScrapeMatrixCellSerializer, ScrapeMatrixSerializer
 from ..tasks import run_scrape_cycle
 from ..views.base import SOCBaseView
+from vninvest_core.api_envelope import envelope_response
 
 
 PAGINATION_PARAMETERS = [
@@ -163,7 +164,7 @@ def _serialize_cycle_detail(matrix: ScrapeMatrix) -> dict:
     description='Trả về danh sách các matrix cycle theo phân trang chuẩn của SOC.',
     parameters=PAGINATION_PARAMETERS,
     responses={
-        200: MatrixCycleListResponseSerializer,
+        200: envelope_response(MatrixCycleListResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -186,7 +187,7 @@ class MatrixCycleListView(SOCBaseView):
     summary='Lấy chi tiết matrix cycle',
     description='Trả về chi tiết một matrix cycle bao gồm cells và cells summary.',
     responses={
-        200: MatrixCycleDetailResponseSerializer,
+        200: envelope_response(MatrixCycleDetailResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
         404: OpenApiTypes.OBJECT,
@@ -213,8 +214,8 @@ class MatrixCycleDetailView(SOCBaseView):
     description='Tạo matrix cycle mới hoặc reuse cycle đang active nếu đã tồn tại.',
     request=MatrixCycleStartRequestSerializer,
     responses={
-        200: MatrixCycleDetailResponseSerializer,
-        201: MatrixCycleDetailResponseSerializer,
+        200: envelope_response(MatrixCycleDetailResponseSerializer),
+        201: envelope_response(MatrixCycleDetailResponseSerializer),
         400: OpenApiTypes.OBJECT,
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
@@ -275,7 +276,7 @@ class MatrixCycleStartView(SOCBaseView):
     description='Trả về danh sách cells của một matrix cycle theo phân trang chuẩn.',
     parameters=PAGINATION_PARAMETERS,
     responses={
-        200: MatrixCellListResponseSerializer,
+        200: envelope_response(MatrixCellListResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
         404: OpenApiTypes.OBJECT,
@@ -309,7 +310,7 @@ class MatrixCellListView(SOCBaseView):
     description='Abort một matrix cycle hiện có và mark các cells chưa xong thành skipped.',
     request=None,
     responses={
-        200: MatrixCycleDetailResponseSerializer,
+        200: envelope_response(MatrixCycleDetailResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
         404: OpenApiTypes.OBJECT,
@@ -336,7 +337,7 @@ class MatrixCycleAbortView(SOCBaseView):
     summary='Lấy matrix providers',
     description='Trả về provider catalog cho matrix, bao gồm active providers của cycle hiện tại và readiness metadata.',
     responses={
-        200: MatrixProvidersResponseSerializer,
+        200: envelope_response(MatrixProvidersResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -377,7 +378,7 @@ class MatrixProvidersView(SOCBaseView):
         )
     ],
     responses={
-        200: MatrixMonitorResponseSerializer,
+        200: envelope_response(MatrixMonitorResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },

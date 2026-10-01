@@ -30,6 +30,7 @@ from ..serializers import (
     ServiceRunLogSerializer,
 )
 from .base import SOCBaseView
+from vninvest_core.api_envelope import envelope_response
 
 
 STANDARD_PAGINATION_PARAMETERS = [
@@ -331,7 +332,7 @@ class OverviewSummaryView(SOCBaseView):
     description='Trả về danh sách paginated tất cả service đang được quản lý trong SOC (bao gồm cả inactive).',
     parameters=STANDARD_PAGINATION_PARAMETERS,
     responses={
-        200: PaginatedServiceDefinitionResponseSerializer,
+        200: envelope_response(PaginatedServiceDefinitionResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -872,7 +873,7 @@ class ServiceOwnershipView(SOCBaseView):
     summary='Lấy health status tổng hợp của SOC',
     description='Trả về số lượng service theo trạng thái sức khỏe cùng danh sách health records hiện có.',
     responses={
-        200: HealthStatusResponseSerializer,
+        200: envelope_response(HealthStatusResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -921,7 +922,7 @@ class HealthStatusView(SOCBaseView):
         ),
     ],
     responses={
-        200: PaginatedServiceRunLogResponseSerializer,
+        200: envelope_response(PaginatedServiceRunLogResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -966,7 +967,7 @@ class RunLogListView(SOCBaseView):
         ),
     ],
     responses={
-        200: PaginatedConfigChangeAuditResponseSerializer,
+        200: envelope_response(PaginatedConfigChangeAuditResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -1115,6 +1116,34 @@ class SloOverviewView(SOCBaseView):
 class SocExportConfigAuditsView(SOCBaseView):
     """GET last N ConfigChangeAudit rows for CSV export."""
 
+    @extend_schema(
+        summary='Export config audit rows (CSV)',
+        description=(
+            'Trả về tối đa `limit` dòng ConfigChangeAudit mới nhất, phục vụ export CSV. '
+            '`data` là **mảng** — endpoint này không phân trang.'
+        ),
+        parameters=[
+            OpenApiParameter(
+                name='limit',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description='Số dòng tối đa (mặc định 500, tối đa 5000).',
+                required=False,
+            ),
+            OpenApiParameter(
+                name='service_key',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Lọc theo service key.',
+                required=False,
+            ),
+        ],
+        responses={
+            200: envelope_response(many=True),
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+    )
     def get(self, request):
         limit = min(int(request.query_params.get('limit', 500) or 500), 5000)
         service_key = str(request.query_params.get('service_key', '') or '').strip()
@@ -1165,6 +1194,34 @@ class SocExportConfigAuditsView(SOCBaseView):
 class SocExportRunLogsView(SOCBaseView):
     """GET last N ServiceRunLog rows for CSV export."""
 
+    @extend_schema(
+        summary='Export service run log rows (CSV)',
+        description=(
+            'Trả về tối đa `limit` dòng ServiceRunLog mới nhất, phục vụ export CSV. '
+            '`data` là **mảng** — endpoint này không phân trang.'
+        ),
+        parameters=[
+            OpenApiParameter(
+                name='limit',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description='Số dòng tối đa (mặc định 500, tối đa 5000).',
+                required=False,
+            ),
+            OpenApiParameter(
+                name='service_key',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Lọc theo service key.',
+                required=False,
+            ),
+        ],
+        responses={
+            200: envelope_response(many=True),
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+    )
     def get(self, request):
         limit = min(int(request.query_params.get('limit', 500) or 500), 5000)
         service_key = str(request.query_params.get('service_key', '') or '').strip()

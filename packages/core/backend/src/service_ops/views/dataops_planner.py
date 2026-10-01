@@ -12,6 +12,7 @@ from .dataops_base import (
 )
 
 from ..envelope import envelope, paginated_envelope
+from vninvest_core.api_envelope import envelope_response
 
 class DataOpsPlannerPreviewRequestSerializer(serializers.Serializer):
     symbols = serializers.ListField(child=serializers.CharField(), required=False)
@@ -68,7 +69,7 @@ class DataOpsPlannerAbortResponseSerializer(serializers.Serializer):
         ),
     ],
     responses={
-        200: DataOpsRunLogsResponseSerializer,
+        200: envelope_response(DataOpsRunLogsResponseSerializer),
         401: OpenApiTypes.OBJECT,
     },
     examples=[
@@ -124,7 +125,7 @@ class DataOpsRunLogsView(SOCBaseView):
     ),
     request=None,
     responses={
-        200: OpenApiTypes.OBJECT,
+        200: envelope_response(),
         401: OpenApiTypes.OBJECT,
     },
     parameters=[
@@ -179,7 +180,7 @@ class DataOpsRunLogsPurgeView(SOCBaseView):
     ),
     request=DataOpsPlannerPreviewRequestSerializer,
     responses={
-        200: DataOpsPlannerPreviewResponseSerializer,
+        200: envelope_response(DataOpsPlannerPreviewResponseSerializer),
         400: OpenApiTypes.OBJECT,
         401: OpenApiTypes.OBJECT,
     },

@@ -31,6 +31,7 @@ from .ledger import (
 )
 from .models import Portfolio, Transaction
 from .envelope import adopt_envelope, envelope, inner_payload, paginated_envelope
+from vninvest_core.api_envelope import envelope_response
 
 
 class AIEndpointProbeThrottle(BaseThrottle):
@@ -1403,7 +1404,7 @@ class PortfolioWhaleAnalyticsView(APIView):
             ),
         ],
         responses={
-            200: OpenApiTypes.OBJECT,
+            200: envelope_response(),
             401: OpenApiTypes.OBJECT,
         },
         examples=[

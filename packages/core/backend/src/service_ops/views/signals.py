@@ -32,6 +32,7 @@ from ..ownership import build_ownership_matrix_from_db
 from ..registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
 from ..tasks import create_signal_job_run_log, run_signals_detection_workflow
 from .base import SOCBaseView
+from vninvest_core.api_envelope import envelope_response
 
 
 class SignalsOwnershipSerializer(serializers.Serializer):
@@ -492,7 +493,7 @@ def _build_materialization_execution_plan(domain: str = 'all', symbol: str | Non
     summary='Lấy runtime config Signals',
     description='Trả về config tín hiệu hiệu lực ở chế độ đọc-only cùng ownership bridge-write của domain signals.',
     responses={
-        200: SignalsConfigResponseSerializer,
+        200: envelope_response(SignalsConfigResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -520,7 +521,7 @@ class SignalsConfigView(SOCBaseView):
     description='Validate payload config của domain signals, nhưng vẫn giữ can_apply=false vì đây là bridge-write domain.',
     request=SignalsConfigPreviewRequestSerializer,
     responses={
-        200: SignalsConfigPreviewResponseSerializer,
+        200: envelope_response(SignalsConfigPreviewResponseSerializer),
         400: OpenApiTypes.OBJECT,
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
@@ -566,7 +567,7 @@ class SignalsConfigApplyView(SOCBaseView):
     summary='Lấy ownership Signals',
     description='Trả về ownership matrix cho domain signals, bao gồm write_block_reason và các field bị khóa.',
     responses={
-        200: SignalsOwnershipSerializer,
+        200: envelope_response(SignalsOwnershipSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -591,7 +592,7 @@ FEED_EXPORT_TYPE_MAP = {
     summary='Xuất feed Signals',
     description='Trả về rows JSON của session hiện tại (tối đa 5000) để FE dựng CSV client-side.',
     responses={
-        200: SignalsFeedExportResponseSerializer,
+        200: envelope_response(SignalsFeedExportResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -635,7 +636,7 @@ class SignalsFeedExportView(SOCBaseView):
     summary='Lấy summary Signals',
     description='Trả về snapshot tổng hợp alert/event của session tín hiệu gần nhất.',
     responses={
-        200: SignalsSummaryResponseSerializer,
+        200: envelope_response(SignalsSummaryResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -699,7 +700,7 @@ class SignalsSummaryView(SOCBaseView):
     summary='Lấy config whale Signals',
     description='Trả về cấu hình whale detection và monitor count của session gần nhất.',
     responses={
-        200: SignalsWhaleResponseSerializer,
+        200: envelope_response(SignalsWhaleResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -728,7 +729,7 @@ class SignalsWhaleView(SOCBaseView):
     summary='Lấy recent whale alerts Signals',
     description='Trả về danh sách whale alerts gần nhất trong session hiện tại.',
     responses={
-        200: SignalsWhaleRecentResponseSerializer,
+        200: envelope_response(SignalsWhaleRecentResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -754,7 +755,7 @@ class SignalsWhaleRecentView(SOCBaseView):
     description='Chạy test nhẹ cho whale detection với symbol được chỉ định.',
     request=SignalsWhaleTestRequestSerializer,
     responses={
-        200: SignalsWhaleTestResponseSerializer,
+        200: envelope_response(SignalsWhaleTestResponseSerializer),
         400: OpenApiTypes.OBJECT,
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
@@ -779,7 +780,7 @@ class SignalsWhaleTestView(SOCBaseView):
     summary='Lấy config dark-pool Signals',
     description='Trả về cấu hình dark-pool detection của domain signals.',
     responses={
-        200: SignalsDarkPoolResponseSerializer,
+        200: envelope_response(SignalsDarkPoolResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -803,7 +804,7 @@ class SignalsDarkPoolView(SOCBaseView):
     summary='Lấy recent dark-pool alerts Signals',
     description='Trả về các dark-pool alerts gần nhất trong session hiện tại.',
     responses={
-        200: SignalsDarkPoolRecentResponseSerializer,
+        200: envelope_response(SignalsDarkPoolRecentResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -828,7 +829,7 @@ class SignalsDarkPoolRecentView(SOCBaseView):
     summary='Lấy config screener Signals',
     description='Trả về trạng thái signal screener và số rule đang active trong session gần nhất.',
     responses={
-        200: SignalsScreenerResponseSerializer,
+        200: envelope_response(SignalsScreenerResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -864,7 +865,7 @@ class SignalsScreenerView(SOCBaseView):
     summary='Lấy recent screener alerts Signals',
     description='Trả về recent screener alerts của session hiện tại.',
     responses={
-        200: SignalsRecentResponseSerializer,
+        200: envelope_response(SignalsRecentResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -887,7 +888,7 @@ class SignalsScreenerRecentView(SOCBaseView):
     summary='Lấy retention policy Signals',
     description='Trả về retention policy hiện tại cho intraday tick, canonical events, bucket facts và forensic windows.',
     responses={
-        200: SignalsRetentionPolicyResponseSerializer,
+        200: envelope_response(SignalsRetentionPolicyResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -913,7 +914,7 @@ class SignalsRetentionPolicyView(SOCBaseView):
     description='Validate preview cho retention policy của domain signals mà không thực hiện apply.',
     request=SignalsConfigPreviewRequestSerializer,
     responses={
-        200: SignalsRetentionPreviewResponseSerializer,
+        200: envelope_response(SignalsRetentionPreviewResponseSerializer),
         400: OpenApiTypes.OBJECT,
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
@@ -948,7 +949,7 @@ class SignalsRetentionPreviewView(SOCBaseView):
     summary='Lấy materialization status Signals',
     description='Trả về trạng thái materializer services, execution plan và mức sẵn sàng dữ liệu tín hiệu hiện tại.',
     responses={
-        200: SignalsMaterializationResponseSerializer,
+        200: envelope_response(SignalsMaterializationResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -976,7 +977,7 @@ class SignalsMaterializationView(SOCBaseView):
     description='Preview execution plan cho materialization theo domain hoặc symbol yêu cầu.',
     request=SignalsMaterializationPreviewRequestSerializer,
     responses={
-        200: SignalsMaterializationPreviewResponseSerializer,
+        200: envelope_response(SignalsMaterializationPreviewResponseSerializer),
         400: OpenApiTypes.OBJECT,
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
@@ -1005,7 +1006,7 @@ class SignalsMaterializationPreviewView(SOCBaseView):
     summary='Lấy universe Signals',
     description='Trả về universe groups và ownership block reason cho domain signals.',
     responses={
-        200: SignalsUniverseResponseSerializer,
+        200: envelope_response(SignalsUniverseResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -1044,7 +1045,7 @@ class SignalsUniverseUpdateView(SOCBaseView):
     description='Queue một detection workflow cho domain hoặc symbol được yêu cầu và trả run-log snapshot.',
     request=SignalsJobRunRequestSerializer,
     responses={
-        202: SignalsJobRunResponseSerializer,
+        202: envelope_response(SignalsJobRunResponseSerializer),
         400: OpenApiTypes.OBJECT,
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
@@ -1108,7 +1109,7 @@ class SignalsJobRunView(SOCBaseView):
     summary='Lấy job status Signals',
     description='Trả về trạng thái detection job gần nhất của domain signals.',
     responses={
-        200: SignalsJobStatusResponseSerializer,
+        200: envelope_response(SignalsJobStatusResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -1144,7 +1145,7 @@ class SignalsJobStatusView(SOCBaseView):
     summary='Lấy performance metrics Signals',
     description='Trả về detection performance metrics của session tín hiệu hiện tại.',
     responses={
-        200: SignalsPerformanceMetricsResponseSerializer,
+        200: envelope_response(SignalsPerformanceMetricsResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },

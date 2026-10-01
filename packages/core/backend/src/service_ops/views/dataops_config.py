@@ -2,6 +2,7 @@ from .dataops_base import *
 from .dataops_base import _build_market_data_ownership_payload
 
 from ..envelope import envelope, paginated_envelope
+from vninvest_core.api_envelope import envelope_response
 
 class DataOpsRuntimeConfigApplyRequestSerializer(serializers.Serializer):
     config_payload = serializers.JSONField()
@@ -19,7 +20,7 @@ class DataOpsRuntimeConfigResponseSerializer(serializers.Serializer):
             'Đây là canonical read path cho frontend runtime config/admin panel.'
         ),
         responses={
-            200: DataOpsRuntimeConfigResponseSerializer,
+            200: envelope_response(DataOpsRuntimeConfigResponseSerializer),
             401: OpenApiTypes.OBJECT,
         },
         examples=[
@@ -118,7 +119,7 @@ class DataOpsRuntimeConfigPreviewResponseSerializer(serializers.Serializer):
     ),
     request=DataOpsRuntimeConfigPreviewRequestSerializer,
     responses={
-        200: DataOpsRuntimeConfigPreviewResponseSerializer,
+        200: envelope_response(DataOpsRuntimeConfigPreviewResponseSerializer),
         400: OpenApiTypes.OBJECT,
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
@@ -176,7 +177,7 @@ class DataOpsRuntimeConfigSchemaResponseSerializer(serializers.Serializer):
         'frontend render form động theo schema này, fallback hard-code khi 404.'
     ),
     responses={
-        200: DataOpsRuntimeConfigSchemaResponseSerializer,
+        200: envelope_response(DataOpsRuntimeConfigSchemaResponseSerializer),
         401: OpenApiTypes.OBJECT,
     },
 )
@@ -211,7 +212,7 @@ class DataOpsRuntimeConfigAuditResponseSerializer(serializers.Serializer):
         'sắp xếp theo thứ tự mới nhất.'
     ),
     responses={
-        200: DataOpsRuntimeConfigAuditResponseSerializer,
+        200: envelope_response(DataOpsRuntimeConfigAuditResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },

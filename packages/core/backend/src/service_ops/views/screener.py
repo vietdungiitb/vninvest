@@ -30,6 +30,7 @@ from ..registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
 from ..serializers import ServiceConfigSerializer
 from .base import SOCBaseView
 from .mixins import ConfigApplyMixin
+from vninvest_core.api_envelope import envelope_response
 
 
 class ScreenerConfigPayloadSerializer(serializers.Serializer):
@@ -293,7 +294,7 @@ def _build_default_screener_config_response() -> dict:
         summary='Lấy runtime config Screener',
         description='Trả về config hiệu lực của domain Screener cùng metadata áp dụng hiện tại.',
         responses={
-            200: ScreenerConfigResponseSerializer,
+            200: envelope_response(ScreenerConfigResponseSerializer),
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
         },
@@ -351,7 +352,7 @@ class ScreenerConfigView(SOCBaseView, ConfigApplyMixin):
         summary='Lấy rules Screener',
         description='Trả về danh sách rule đang active trong config Screener hiện tại.',
         responses={
-            200: ScreenerRulesResponseSerializer,
+            200: envelope_response(ScreenerRulesResponseSerializer),
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
         },
@@ -552,7 +553,7 @@ class ScreenerRuleDeleteView(SOCBaseView):
         'không còn mượn signal feed.'
     ),
     responses={
-        200: ScreenerResultsResponseSerializer,
+        200: envelope_response(ScreenerResultsResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -615,7 +616,7 @@ class ScreenerResultsView(SOCBaseView):
     description='Trả về lịch sử signal alerts có pagination của surface Screener.',
     parameters=PAGINATION_PARAMETERS,
     responses={
-        200: ScreenerAlertHistoryResponseSerializer,
+        200: envelope_response(ScreenerAlertHistoryResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -642,7 +643,7 @@ class ScreenerAlertHistoryView(SOCBaseView):
     ),
     request=ScreenerManualScanRequestSerializer,
     responses={
-        200: ScreenerManualScanResponseSerializer,
+        200: envelope_response(ScreenerManualScanResponseSerializer),
         400: OpenApiTypes.OBJECT,
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
@@ -739,7 +740,7 @@ class ScreenerRulesRunView(ScreenerManualScanView):
     summary='Lấy ownership Screener',
     description='Trả về ownership matrix cho domain Screener để xác định khả năng apply config từ SOC.',
     responses={
-        200: ScreenerOwnershipResponseSerializer,
+        200: envelope_response(ScreenerOwnershipResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },

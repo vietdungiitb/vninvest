@@ -35,6 +35,7 @@ from market_data.vnbroker_benchmark import (
     get_latest_price_board_benchmark_report,
     run_price_board_provider_benchmark,
 )
+from vninvest_core.api_envelope import envelope_response
 
 
 DEFAULT_VNBROKER_PRIMARY_PROVIDER = 'vci'
@@ -250,7 +251,7 @@ def _build_vnbroker_ownership_payload() -> dict:
         summary='Lấy runtime config VNBroker',
         description='Trả về config hiệu lực của VNBroker cùng catalog provider đang áp dụng trong runtime hiện tại.',
         responses={
-            200: VnbrokerConfigResponseSerializer,
+            200: envelope_response(VnbrokerConfigResponseSerializer),
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
         },
@@ -392,7 +393,7 @@ class VnbrokerConfigView(SOCBaseView, ConfigApplyMixin):
     description='Validate và preview config VNBroker trước khi apply, bao gồm provider catalog và impact summary.',
     request=VnbrokerConfigRequestSerializer,
     responses={
-        200: VnbrokerPreviewResponseSerializer,
+        200: envelope_response(VnbrokerPreviewResponseSerializer),
         400: OpenApiTypes.OBJECT,
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
@@ -429,7 +430,7 @@ class VnbrokerConfigPreviewView(SOCBaseView):
     summary='Lấy health snapshot VNBroker',
     description='Trả về health snapshot của service VNBroker; nếu chưa có health record thì trả trạng thái `unknown` theo contract ổn định.',
     responses={
-        200: VnbrokerHealthResponseSerializer,
+        200: envelope_response(VnbrokerHealthResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -461,7 +462,7 @@ class VnbrokerHealthView(SOCBaseView):
     description='Thực hiện test kết nối nhẹ cho provider VNBroker được chọn và trả latency snapshot. Endpoint này validate provider trước khi thử kết nối.',
     request=VnbrokerTestConnectionRequestSerializer,
     responses={
-        200: VnbrokerTestConnectionResponseSerializer,
+        200: envelope_response(VnbrokerTestConnectionResponseSerializer),
         400: OpenApiTypes.OBJECT,
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
@@ -509,7 +510,7 @@ class VnbrokerTestConnectionView(SOCBaseView):
     summary='Lấy provider catalog VNBroker',
     description='Trả về provider chính, fallback providers, cờ enabled và provider catalog với readiness/runtime metadata.',
     responses={
-        200: VnbrokerProvidersResponseSerializer,
+        200: envelope_response(VnbrokerProvidersResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -553,7 +554,7 @@ class VnbrokerProvidersView(SOCBaseView):
     summary='Lấy trạng thái circuit breaker VNBroker',
     description='Trả về trạng thái circuit breaker tổng và theo từng provider của domain VNBroker.',
     responses={
-        200: VnbrokerCircuitBreakerResponseSerializer,
+        200: envelope_response(VnbrokerCircuitBreakerResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -582,7 +583,7 @@ class VnbrokerCircuitBreakerView(SOCBaseView):
     summary='Lấy ownership VNBroker',
     description='Trả về ownership payload của domain VNBroker để operator biết quyền apply và write surface hiện hành.',
     responses={
-        200: VnbrokerOwnershipResponseSerializer,
+        200: envelope_response(VnbrokerOwnershipResponseSerializer),
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,
     },
@@ -599,7 +600,7 @@ class VnbrokerOwnershipView(SOCBaseView):
     description='Chạy benchmark price-board cho provider VNBroker (KBS/VCI/DNSE) và trả kết quả + runtime recommendation.',
     request=VnbrokerBenchmarkRequestSerializer,
     responses={
-        200: VnbrokerBenchmarkResponseSerializer,
+        200: envelope_response(VnbrokerBenchmarkResponseSerializer),
         400: OpenApiTypes.OBJECT,
         401: OpenApiTypes.OBJECT,
         403: OpenApiTypes.OBJECT,

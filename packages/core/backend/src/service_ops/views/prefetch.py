@@ -24,6 +24,7 @@ from ..models import ServiceConfig, ServiceDefinition, ServiceRunLog
 from ..ownership import build_ownership_matrix_from_db
 from ..registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
 from ..serializers import ServiceConfigSerializer
+from vninvest_core.api_envelope import envelope_response
 from .base import SOCBaseView
 from .mixins import ConfigApplyMixin
 
@@ -181,7 +182,7 @@ def _build_default_prefetch_config_response() -> dict:
         summary='Lấy runtime config Prefetch',
         description='Trả về config hiệu lực của prefetch scheduler cùng metadata áp dụng hiện tại.',
         responses={
-            200: PrefetchConfigResponseSerializer,
+            200: envelope_response(PrefetchConfigResponseSerializer),
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
         },
@@ -189,27 +190,30 @@ def _build_default_prefetch_config_response() -> dict:
             OpenApiExample(
                 'Prefetch runtime config',
                 value={
-                    'service_key': 'prefetch_time_policy',
-                    'config_schema_version': '1.0',
-                    'config_payload': {
-                        'active_profile': 'market_open',
-                        'pre_open_interval_seconds': 120,
-                        'market_open_interval_seconds': 30,
-                        'lunch_break_interval_seconds': 300,
-                        'pre_close_interval_seconds': 30,
-                        'post_close_interval_seconds': 600,
-                        'offhours_interval_seconds': 3600,
-                        'batch_size': 50,
-                        'max_concurrent_workers': 4,
-                        'universe_group_ids': ['vn30', 'banking'],
-                        'cache_ttl_seconds': 25,
-                        'enabled': True,
-                        'skip_non_trading_days': True,
+                    'data': {
+                        'service_key': 'prefetch_time_policy',
+                        'config_schema_version': '1.0',
+                        'config_payload': {
+                            'active_profile': 'market_open',
+                            'pre_open_interval_seconds': 120,
+                            'market_open_interval_seconds': 30,
+                            'lunch_break_interval_seconds': 300,
+                            'pre_close_interval_seconds': 30,
+                            'post_close_interval_seconds': 600,
+                            'offhours_interval_seconds': 3600,
+                            'batch_size': 50,
+                            'max_concurrent_workers': 4,
+                            'universe_group_ids': ['vn30', 'banking'],
+                            'cache_ttl_seconds': 25,
+                            'enabled': True,
+                            'skip_non_trading_days': True,
+                        },
+                        'applied_by': 'system',
+                        'applied_at': None,
+                        'change_reason': '',
+                        'is_current': True,
                     },
-                    'applied_by': 'system',
-                    'applied_at': None,
-                    'change_reason': '',
-                    'is_current': True,
+                    'meta': {},
                 },
             )
         ],
@@ -219,7 +223,7 @@ def _build_default_prefetch_config_response() -> dict:
         description='Áp dụng config scheduler và cache mới cho domain Prefetch.',
         request=PrefetchConfigRequestSerializer,
         responses={
-            201: PrefetchConfigResponseSerializer,
+            201: envelope_response(PrefetchConfigResponseSerializer),
             400: OpenApiTypes.OBJECT,
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
@@ -278,7 +282,7 @@ class PrefetchConfigPreviewView(SOCBaseView):
         description='Validate và preview config Prefetch trước khi apply, bao gồm change summary và impact.',
         request=PrefetchConfigRequestSerializer,
         responses={
-            200: PrefetchConfigPreviewResponseSerializer,
+            200: envelope_response(PrefetchConfigPreviewResponseSerializer),
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
         },
@@ -333,7 +337,7 @@ class PrefetchProfilesView(SOCBaseView):
         summary='Lấy profile thời gian Prefetch',
         description='Trả về 6 profile thời gian đang được scheduler prefetch hỗ trợ.',
         responses={
-            200: PrefetchProfilesResponseSerializer,
+            200: envelope_response(PrefetchProfilesResponseSerializer),
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
         },
@@ -360,7 +364,7 @@ class PrefetchCacheStatusView(SOCBaseView):
         summary='Lấy cache status Prefetch',
         description='Trả về snapshot cache hit ratio và trạng thái Redis phục vụ prefetch.',
         responses={
-            200: PrefetchCacheStatusResponseSerializer,
+            200: envelope_response(PrefetchCacheStatusResponseSerializer),
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
         },
@@ -396,7 +400,7 @@ class PrefetchPurgeCacheView(SOCBaseView):
         description='Purge cache theo `group_id` để buộc prefetch làm mới dữ liệu cho universe group tương ứng.',
         request=PrefetchPurgeCacheRequestSerializer,
         responses={
-            200: PrefetchPurgeCacheResponseSerializer,
+            200: envelope_response(PrefetchPurgeCacheResponseSerializer),
             400: OpenApiTypes.OBJECT,
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
@@ -421,7 +425,7 @@ class PrefetchWarmNowView(SOCBaseView):
         description='Xếp một run log warm-now để prefetch scheduler khởi chạy ngoài chu kỳ định kỳ.',
         request=None,
         responses={
-            202: PrefetchWarmNowResponseSerializer,
+            202: envelope_response(PrefetchWarmNowResponseSerializer),
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
         },
@@ -463,7 +467,7 @@ class PrefetchUniverseGroupsView(SOCBaseView):
         summary='Lấy universe groups Prefetch',
         description='Trả về snapshot registry-first của global symbol matrix; `universe_group_ids` chỉ còn giữ vai trò hint metadata.',
         responses={
-            200: PrefetchUniverseGroupsResponseSerializer,
+            200: envelope_response(PrefetchUniverseGroupsResponseSerializer),
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
         },
@@ -571,7 +575,7 @@ class PrefetchTaskScheduleView(SOCBaseView):
         summary='Lấy task schedule Prefetch',
         description='Trả về schedule runtime của các task prefetch theo từng profile thời gian.',
         responses={
-            200: PrefetchTaskScheduleResponseSerializer,
+            200: envelope_response(PrefetchTaskScheduleResponseSerializer),
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
         },
@@ -601,7 +605,7 @@ class PrefetchOwnershipView(SOCBaseView):
         summary='Lấy ownership Prefetch',
         description='Trả về ownership matrix cho domain Prefetch để xác định khả năng apply config từ SOC.',
         responses={
-            200: PrefetchOwnershipResponseSerializer,
+            200: envelope_response(PrefetchOwnershipResponseSerializer),
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
         },

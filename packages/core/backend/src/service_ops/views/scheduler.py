@@ -21,6 +21,7 @@ from ..ownership import build_ownership_matrix_from_db
 from ..models import ConfigChangeAudit, ServiceRunLog
 from .base import SOCBaseView
 from rest_framework.pagination import PageNumberPagination
+from vninvest_core.api_envelope import envelope_response
 
 class SchedulerJobHistoryPagination(PageNumberPagination):
     page_size = 20
@@ -216,7 +217,7 @@ class SchedulerHealthView(SOCBaseView):
             ),
         ],
         responses={
-            200: SchedulerJobHistoryResponseSerializer,
+            200: envelope_response(SchedulerJobHistoryResponseSerializer),
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
             404: OpenApiTypes.OBJECT,
@@ -352,7 +353,7 @@ class SchedulerJobActionResponseSerializer(serializers.Serializer):
         ),
         request=SchedulerJobActionRequestSerializer,
         responses={
-            202: SchedulerJobActionResponseSerializer,
+            202: envelope_response(SchedulerJobActionResponseSerializer),
             400: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
             404: OpenApiTypes.OBJECT,

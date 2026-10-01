@@ -1,6 +1,7 @@
 from .dataops_base import *
 
 from ..envelope import envelope
+from vninvest_core.api_envelope import envelope_response
 
 class DataOpsInventoryView(SOCBaseView):
     """GET /api/soc/dataops/inventory/ — data warehouse inventory stats."""
@@ -8,7 +9,7 @@ class DataOpsInventoryView(SOCBaseView):
     @extend_schema(
         summary='Thống kê kho dữ liệu thị trường',
         description='Trả về inventory toàn bộ dữ liệu thị trường trong DB: tổng quan, phân bổ theo năm, và coverage theo nhóm.',
-        responses={200: OpenApiTypes.OBJECT, 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT},
+        responses={200: envelope_response(), 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT},
     )
     def get(self, request):
         from datetime import timedelta
