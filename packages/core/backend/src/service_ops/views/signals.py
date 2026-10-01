@@ -26,6 +26,7 @@ from rest_framework.response import Response
 from signal_intelligence.models import OrderFlowEvent, UnifiedAlert
 
 from ..domain_configs import SignalServicesDomainConfig
+from ..envelope import envelope, paginated_envelope
 from ..models import ServiceConfig, ServiceDefinition, ServiceRunLog
 from ..ownership import build_ownership_matrix_from_db
 from ..registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
@@ -503,7 +504,7 @@ class SignalsConfigView(SOCBaseView):
         """Get current signal config (read-only)."""
         config = _get_signals_domain_config()
         ownership = _build_signals_ownership_payload()
-        return Response({
+        return envelope({
             'config': config.to_dict(),
             'config_payload': config.to_dict(),
             'is_current': True,
@@ -537,7 +538,7 @@ class SignalsConfigPreviewView(SOCBaseView):
         except Exception as exc:
             errors = [str(exc)]
 
-        return Response({
+        return envelope({
             'valid': len(errors) == 0,
             'errors': errors,
             'can_apply': False,
@@ -575,7 +576,7 @@ class SignalsOwnershipView(SOCBaseView):
 
     def get(self, request):
         """Ownership + write constraints."""
-        return Response(_build_signals_ownership_payload())
+        return envelope(_build_signals_ownership_payload())
 
 
 FEED_EXPORT_LIMIT = 5000
@@ -621,7 +622,7 @@ class SignalsFeedExportView(SOCBaseView):
             ]
             for alert in queryset.order_by('-triggered_at', '-pk')[:FEED_EXPORT_LIMIT]
         ]
-        return Response({
+        return envelope({
             'session_date': session_date.isoformat() if session_date else None,
             'columns': columns,
             'rows': rows,
@@ -645,7 +646,7 @@ class SignalsSummaryView(SOCBaseView):
     def get(self, request):
         session_date = _latest_signal_session_date()
         if session_date is None:
-            return Response({
+            return envelope({
                 'session_date': None,
                 'active_alerts': 0,
                 'whale_alerts': 0,
@@ -677,7 +678,7 @@ class SignalsSummaryView(SOCBaseView):
         last_event = events.order_by('-triggered_at').values_list('triggered_at', flat=True).first()
         last_triggered_at = max(filter(None, [last_alert, last_event]), default=None)
 
-        return Response({
+        return envelope({
             'session_date': session_date.isoformat(),
             'active_alerts': active_alerts,
             'whale_alerts': whale_alerts,
@@ -710,7 +711,7 @@ class SignalsWhaleView(SOCBaseView):
         """Whale detection settings."""
         config = _get_signals_domain_config()
         scan_at = _latest_signal_scan_at()
-        return Response({
+        return envelope({
             'enabled': config.whale_enabled,
             'threshold_vnd': config.whale_threshold_vnd,
             'top_pct': config.whale_top_pct,
@@ -743,7 +744,7 @@ class SignalsWhaleRecentView(SOCBaseView):
             session_date=session_date,
         ) if session_date else UnifiedAlert.objects.none()
         params = _parse_recent_params(request)
-        return Response(_build_recent_response(
+        return paginated_envelope(_build_recent_response(
             queryset, params, lambda alert: {'order_value_vnd': alert.value},
         ))
 
@@ -765,7 +766,7 @@ class SignalsWhaleTestView(SOCBaseView):
     def post(self, request):
         """Test whale detection."""
         symbol = request.data.get('symbol', 'VNM')
-        return Response({
+        return envelope({
             'symbol': symbol,
             'test_result': 'success',
             'detection_possible': True,
@@ -790,7 +791,7 @@ class SignalsDarkPoolView(SOCBaseView):
         """Dark pool detection settings."""
         config = _get_signals_domain_config()
         scan_at = _latest_signal_scan_at()
-        return Response({
+        return envelope({
             'enabled': config.dark_pool_enabled,
             'threshold_vnd': config.dark_pool_threshold_vnd,
             'block_ratio_min': config.dark_pool_block_ratio_min,
@@ -818,7 +819,7 @@ class SignalsDarkPoolRecentView(SOCBaseView):
             session_date=session_date,
         ) if session_date else UnifiedAlert.objects.none()
         params = _parse_recent_params(request)
-        return Response(_build_recent_response(
+        return paginated_envelope(_build_recent_response(
             queryset, params, lambda alert: {'matched_value_vnd': alert.value},
         ))
 
@@ -851,7 +852,7 @@ class SignalsScreenerView(SOCBaseView):
             alert.metadata.get('rule_name') or alert.metadata.get('rule') or alert.title
             for alert in recent_signal_alerts[:50]
         })
-        return Response({
+        return envelope({
             'enabled': config.screener_signal_enabled,
             'scan_interval_seconds': config.detection_task_interval_seconds,
             'rules_seen_session': rules_seen_session,
@@ -879,7 +880,7 @@ class SignalsScreenerRecentView(SOCBaseView):
             session_date=session_date,
         ) if session_date else UnifiedAlert.objects.none()
         params = _parse_recent_params(request)
-        return Response(_build_recent_response(queryset, params))
+        return paginated_envelope(_build_recent_response(queryset, params))
 
 
 @extend_schema(
@@ -897,7 +898,7 @@ class SignalsRetentionPolicyView(SOCBaseView):
     def get(self, request):
         """Data retention settings."""
         config = _get_signals_domain_config()
-        return Response({
+        return envelope({
             'intraday_tick_days': config.intraday_tick_retention_days,
             'canonical_event_days': config.canonical_event_retention_days,
             'bucket_fact_days': config.bucket_fact_retention_days,
@@ -926,7 +927,7 @@ class SignalsRetentionPreviewView(SOCBaseView):
         errors = config.validate()
         alerts_count = UnifiedAlert.objects.count()
         events_count = OrderFlowEvent.objects.count()
-        return Response({
+        return envelope({
             'valid': len(errors) == 0,
             'errors': errors,
             'retention_days': {
@@ -957,7 +958,7 @@ class SignalsMaterializationView(SOCBaseView):
 
     def get(self, request):
         latest_detection_job = _get_latest_signal_job_run()
-        return Response({
+        return envelope({
             'services': [
                 _materializer_status('signal_unified_alert_materializer'),
                 _materializer_status('signal_session_facts_materializer'),
@@ -990,7 +991,7 @@ class SignalsMaterializationPreviewView(SOCBaseView):
         if isinstance(symbol, str):
             symbol = symbol.strip().upper() or None
         session_dates = list(UnifiedAlert.objects.values_list('session_date', flat=True).distinct())
-        return Response({
+        return envelope({
             'domain': domain,
             'symbol': symbol,
             'session_dates_available': len(session_dates),
@@ -1015,7 +1016,7 @@ class SignalsUniverseView(SOCBaseView):
     def get(self, request):
         config = _get_signals_domain_config()
         ownership = _build_signals_ownership_payload()
-        return Response({
+        return envelope({
             'universe_group_ids': config.universe_group_ids,
             'ownership': ownership,
             'write_block_reason': ownership.get('write_block_reason'),
@@ -1092,7 +1093,7 @@ class SignalsJobRunView(SOCBaseView):
         run_log.celery_task_id = async_result.id
         run_log.save(update_fields=['celery_task_id'])
 
-        return Response({
+        return envelope({
             'service_key': run_log.service.service_key,
             'status': 'queued',
             'run_log_id': run_log.id,
@@ -1126,7 +1127,7 @@ class SignalsJobStatusView(SOCBaseView):
                 run_log = None
         if run_log is None:
             run_log = _get_latest_signal_job_run()
-        return Response({
+        return envelope({
             'service_key': SOC_DOMAIN_PRIMARY_SERVICE_KEYS['signals'],
             'status': run_log.status if run_log is not None else 'idle',
             'run_log_id': run_log.id if run_log is not None else None,
@@ -1160,7 +1161,7 @@ class SignalsPerformanceMetricsView(SOCBaseView):
         active_alerts = alerts.count()
         detection_rate = round((active_alerts / total_signals_processed) * 100.0, 2) if total_signals_processed else 0.0
         avg_latency_ms = _compute_avg_signal_latency_ms(events)
-        return Response({
+        return envelope({
             'whale_detection_accuracy': None,
             'dark_pool_detection_accuracy': None,
             'avg_detection_latency_ms': avg_latency_ms,

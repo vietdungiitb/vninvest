@@ -16,6 +16,7 @@ from identity_access.models import CoreTenant
 from ops_audit.models import AuditEvent
 from vninvest_core.pagination import StandardPageNumberPagination
 
+from ..envelope import envelope, paginated_envelope
 from .base import SOCBaseView
 
 VALID_PLANS = {c for c, _ in CoreTenant.PlanChoices.choices}
@@ -119,7 +120,9 @@ class SocUsersView(SOCBaseView):
             # gán memberships đã prefetch để serializer không query thêm
             user._prefetched_memberships = list(user.tenant_memberships.all())
             rows.append(_serialize_user(user))
-        return paginator.get_paginated_response(rows)
+        paged = paginator.get_paginated_response(rows)
+        # Bọc cả khối phân trang (count/next/previous/results) trong `data`.
+        return paginated_envelope(dict(paged.data))
 
 
 class SocUserSetActiveView(SOCBaseView):
@@ -153,7 +156,7 @@ class SocUserSetActiveView(SOCBaseView):
             'reason': reason, 'from': before, 'to': new_state,
             'username': target.username,
         })
-        return Response({'id': target.id, 'is_active': target.is_active})
+        return envelope({'id': target.id, 'is_active': target.is_active})
 
 
 class SocUserSetPlanView(SOCBaseView):
@@ -183,4 +186,4 @@ class SocUserSetPlanView(SOCBaseView):
             'reason': reason, 'from_plan': before, 'to_plan': plan,
             'username': target.username,
         })
-        return Response({'tenant_code': tenant.tenant_code, 'plan': tenant.plan})
+        return envelope({'tenant_code': tenant.tenant_code, 'plan': tenant.plan})

@@ -11,12 +11,12 @@ from datetime import date, timedelta
 
 from django.db.models import Sum
 from django.http import StreamingHttpResponse
-from rest_framework.response import Response
 
 from commercial.models import QuotaRecord
 from identity_access.models import CoreTenant
 from ops_audit.models import ApiCallRollup
 
+from ..envelope import envelope
 from .base import SOCBaseView
 
 NEAR_LIMIT_PCT = 80
@@ -81,7 +81,7 @@ def _compute_usage_overview(days: int = 30) -> dict:
 class UsageOverviewView(SOCBaseView):
     def get(self, request):
         data = _compute_usage_overview(days=30)
-        return Response({
+        return envelope({
             'calls_today': data['calls_today'],
             'calls_30d': data['calls_total'],
             'error_rate_30d': data['error_rate'],

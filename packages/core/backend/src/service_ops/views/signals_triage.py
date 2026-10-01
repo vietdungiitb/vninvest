@@ -20,6 +20,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import serializers, status
 from rest_framework.response import Response
 
+from ..envelope import envelope, paginated_envelope
 from signal_intelligence import delivery_service
 from signal_intelligence.models import UserAlertDelivery
 from signal_intelligence.views import (
@@ -88,8 +89,10 @@ class SignalsDeliveriesView(SOCBaseView):
         page = self.paginate_queryset(qs, request)
         if page is not None:
             data = [_serialize_delivery_with_context(row) for row in page]
-            return self.get_paginated_response(data)
-        return Response([_serialize_delivery_with_context(row) for row in qs])
+            paged = self.get_paginated_response(data)
+            # Bọc cả khối phân trang (count/next/previous/results) trong `data`.
+            return paginated_envelope(dict(paged.data))
+        return envelope([_serialize_delivery_with_context(row) for row in qs])
 
 
 def _get_operator_delivery(request, delivery_id):
@@ -118,7 +121,7 @@ class SignalsDeliverySeenView(SOCBaseView):
         row = delivery_service.mark_delivery_seen(user=request.user, alert=row.alert)
         payload = _serialize_delivery_with_context(row)
         payload['transitioned'] = before != row.delivery_state
-        return Response(payload)
+        return envelope(payload)
 
 
 @extend_schema(
@@ -141,12 +144,12 @@ class SignalsDeliveryAckView(SOCBaseView):
             # Idempotent: đã ack rồi thì no-op, không gọi service (tránh refresh acknowledged_at).
             payload = _serialize_delivery_with_context(row)
             payload['transitioned'] = False
-            return Response(payload)
+            return envelope(payload)
         before_ack_at = row.acknowledged_at
         row = delivery_service.acknowledge_delivery(user=request.user, alert=row.alert)
         payload = _serialize_delivery_with_context(row)
         payload['transitioned'] = before != row.delivery_state or before_ack_at != row.acknowledged_at
-        return Response(payload)
+        return envelope(payload)
 
 
 @extend_schema(
@@ -180,7 +183,7 @@ class SignalsDeliveryMuteView(SOCBaseView):
             cooldown_seconds=int(payload.get('cooldown_seconds') or 0),
             metadata={'reason': reason, 'actor': getattr(request.user, 'username', 'api')} if reason else {'actor': getattr(request.user, 'username', 'api')},
         )
-        return Response({
+        return envelope({
             'symbol': preference.symbol,
             'alert_family': preference.alert_family,
             'mute_until': preference.mute_until.isoformat() if preference.mute_until else None,

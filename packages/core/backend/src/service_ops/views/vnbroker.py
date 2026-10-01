@@ -15,6 +15,7 @@ from django.utils import timezone
 from rest_framework import serializers, status
 from rest_framework.response import Response
 
+from ..envelope import envelope
 from ..models import ServiceDefinition, ServiceConfig, ServiceHealth
 from ..ownership import build_ownership_matrix_from_db
 from ..serializers import ServiceConfigSerializer, ServiceHealthSerializer
@@ -340,12 +341,12 @@ class VnbrokerConfigView(SOCBaseView, ConfigApplyMixin):
                     'vnbroker',
                     active_provider_ids=_get_active_vnbroker_provider_ids(sanitized_payload),
                 )
-                return Response(data)
+                return envelope(data)
         except ServiceDefinition.DoesNotExist:
             pass
         # Return default
         default_config = _sanitize_vnbroker_config_payload(VnbrokerDomainConfig().to_dict())
-        return Response({
+        return envelope({
             'service_key': SOC_DOMAIN_PRIMARY_SERVICE_KEYS['vnbroker'],
             'config_schema_version': '1.0',
             'config_payload': default_config,
@@ -371,6 +372,7 @@ class VnbrokerConfigView(SOCBaseView, ConfigApplyMixin):
             config_class=VnbrokerDomainConfig,
         )
         if isinstance(result, Response):
+            # `apply_config` chỉ trả Response khi lỗi (RFC 9457) — không bọc.
             return result
         service, svc_config = result
         serializer = ServiceConfigSerializer(svc_config)
@@ -382,7 +384,7 @@ class VnbrokerConfigView(SOCBaseView, ConfigApplyMixin):
             'vnbroker',
             active_provider_ids=_get_active_vnbroker_provider_ids(sanitized_payload),
         )
-        return Response(data, status=status.HTTP_201_CREATED)
+        return envelope(data, status=status.HTTP_201_CREATED)
 
 
 @extend_schema(
@@ -404,7 +406,7 @@ class VnbrokerConfigPreviewView(SOCBaseView):
         config_payload = request.data.get('config_payload', {})
         config_obj = VnbrokerDomainConfig.from_dict(config_payload)
         errors = config_obj.validate()
-        return Response({
+        return envelope({
             'valid': len(errors) == 0,
             'errors': errors,
             'config_payload': config_obj.to_dict(),
@@ -440,10 +442,10 @@ class VnbrokerHealthView(SOCBaseView):
             service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['vnbroker'])
             health = ServiceHealth.objects.get(service=service)
             serializer = ServiceHealthSerializer(health)
-            return Response(serializer.data)
+            return envelope(serializer.data)
         except (ServiceDefinition.DoesNotExist, ServiceHealth.DoesNotExist):
             service_key = SOC_DOMAIN_PRIMARY_SERVICE_KEYS['vnbroker']
-            return Response({
+            return envelope({
                 'service_key': service_key,
                 'status': 'unknown',
                 'last_check_at': None,
@@ -495,7 +497,7 @@ class VnbrokerTestConnectionView(SOCBaseView):
             )
 
         # Placeholder — in real implementation, call vnbroker_adapter
-        return Response({
+        return envelope({
             'provider': provider,
             'status': 'ok',
             'latency_ms': 45,
@@ -524,7 +526,7 @@ class VnbrokerProvidersView(SOCBaseView):
             ).first()
             if current_config:
                 payload = _sanitize_vnbroker_config_payload(current_config.config_payload)
-                return Response({
+                return envelope({
                     'primary': payload.get('preferred_provider', DEFAULT_VNBROKER_PRIMARY_PROVIDER),
                     'fallback': payload.get('fallback_providers', []),
                     'enabled': payload.get('enabled', True),
@@ -536,7 +538,7 @@ class VnbrokerProvidersView(SOCBaseView):
         except (ServiceDefinition.DoesNotExist, ServiceConfig.DoesNotExist):
             pass
         default_config = _sanitize_vnbroker_config_payload(VnbrokerDomainConfig().to_dict())
-        return Response({
+        return envelope({
             'primary': default_config['preferred_provider'],
             'fallback': default_config['fallback_providers'],
             'enabled': True,
@@ -561,7 +563,7 @@ class VnbrokerCircuitBreakerView(SOCBaseView):
 
     def get(self, request):
         """Circuit breaker state."""
-        return Response({
+        return envelope({
             'circuit_breaker': {
                 'status': 'closed',  # closed=ok, open=failing
                 'failures': 0,
@@ -589,7 +591,7 @@ class VnbrokerOwnershipView(SOCBaseView):
     """GET VNBroker ownership payload."""
 
     def get(self, request):
-        return Response(_build_vnbroker_ownership_payload())
+        return envelope(_build_vnbroker_ownership_payload())
 
 
 @extend_schema(
@@ -609,8 +611,8 @@ class VnbrokerBenchmarkView(SOCBaseView):
     def get(self, request):
         report = get_latest_price_board_benchmark_report()
         if not isinstance(report, dict):
-            return Response({'has_report': False, 'report': None})
-        return Response({'has_report': True, 'report': report})
+            return envelope({'has_report': False, 'report': None})
+        return envelope({'has_report': True, 'report': report})
 
     def post(self, request):
         payload = request.data if isinstance(request.data, dict) else {}
@@ -657,4 +659,4 @@ class VnbrokerBenchmarkView(SOCBaseView):
                 http_status=status.HTTP_400_BAD_REQUEST,
             )
 
-        return Response({'has_report': True, 'report': report})
+        return envelope({'has_report': True, 'report': report})

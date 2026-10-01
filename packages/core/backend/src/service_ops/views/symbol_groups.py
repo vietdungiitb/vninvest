@@ -8,6 +8,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.response import Response
 
+from ..envelope import envelope
 from ..models import CachedSymbolGroup, CustomSymbolGroup
 from ..views.base import SOCBaseView
 
@@ -91,7 +92,7 @@ class SymbolGroupListView(SOCBaseView):
         ]
         custom_qs = CustomSymbolGroup.objects.all().order_by('name')
         custom = [_serialize_custom_group(g) for g in custom_qs]
-        return Response({'predefined': predefined, 'custom': custom})
+        return envelope({'predefined': predefined, 'custom': custom})
 
     @extend_schema(
         summary='Tạo nhóm mã tuỳ chỉnh',
@@ -148,7 +149,7 @@ class SymbolGroupListView(SOCBaseView):
             is_active=True,
             created_by=actor,
         )
-        return Response(_serialize_custom_group(group), status=status.HTTP_201_CREATED)
+        return envelope(_serialize_custom_group(group), status=status.HTTP_201_CREATED)
 
 
 class SymbolGroupDetailView(SOCBaseView):
@@ -172,7 +173,7 @@ class SymbolGroupDetailView(SOCBaseView):
         group = self._get_group_or_404(slug)
         if not group:
             return Response({'detail': 'Nhóm mã không tồn tại.'}, status=status.HTTP_404_NOT_FOUND)
-        return Response(_serialize_custom_group(group))
+        return envelope(_serialize_custom_group(group))
 
     @extend_schema(
         summary='Cập nhật nhóm mã tuỳ chỉnh',
@@ -209,7 +210,7 @@ class SymbolGroupDetailView(SOCBaseView):
             group.is_active = bool(request.data['is_active'])
 
         group.save()
-        return Response(_serialize_custom_group(group))
+        return envelope(_serialize_custom_group(group))
 
     @extend_schema(
         summary='Xoá nhóm mã tuỳ chỉnh',
@@ -254,7 +255,7 @@ class SymbolGroupSyncView(SOCBaseView):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        return Response({
+        return envelope({
             'synced': result['synced'],
             'deactivated': result['deactivated'],
             'source': result['source'],

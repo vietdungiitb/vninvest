@@ -23,6 +23,7 @@ from rest_framework.response import Response
 from signal_intelligence.models import UnifiedAlert
 
 from ..domain_configs import ScreenerDomainConfig
+from ..envelope import envelope, paginated_envelope
 from ..models import ServiceConfig, ServiceDefinition, ServiceRunLog
 from ..ownership import build_ownership_matrix_from_db
 from ..registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
@@ -320,10 +321,10 @@ class ScreenerConfigView(SOCBaseView, ConfigApplyMixin):
                 service=service, is_current=True
             ).first()
             if current_config:
-                return Response(ServiceConfigSerializer(current_config).data)
+                return envelope(ServiceConfigSerializer(current_config).data)
         except (ServiceDefinition.DoesNotExist, ServiceConfig.DoesNotExist):
             pass
-        return Response(_build_default_screener_config_response())
+        return envelope(_build_default_screener_config_response())
 
     def post(self, request):
         """POST apply screener config."""
@@ -336,9 +337,10 @@ class ScreenerConfigView(SOCBaseView, ConfigApplyMixin):
             config_class=ScreenerDomainConfig,
         )
         if isinstance(result, Response):
+            # `apply_config` chỉ trả Response khi lỗi (RFC 9457) — không bọc.
             return result
         service, svc_config = result
-        return Response(
+        return envelope(
             ServiceConfigSerializer(svc_config).data,
             status=status.HTTP_201_CREATED,
         )
@@ -383,7 +385,7 @@ class ScreenerRulesView(SOCBaseView):
             }
             for index, rule in enumerate(config.rules)
         ]
-        return Response({
+        return envelope({
             'rules': rules,
             'total_rules': len(rules),
         })
@@ -422,7 +424,7 @@ class ScreenerRulesView(SOCBaseView):
         _audit_screener_rule_change(
             request, self.get_request_id(request), 'rule_create', before_rules, updated_rules)
 
-        return Response({
+        return envelope({
             'rule_id': rule_id,
             'name': new_rule['name'],
             'type': new_rule['type'],
@@ -495,7 +497,7 @@ class ScreenerRuleUpdateView(SOCBaseView):
         _audit_screener_rule_change(
             request, self.get_request_id(request), 'rule_update', before_rules, list(rules))
 
-        return Response({
+        return envelope({
             'rule_id': rule_id,
             'name': existing.get('name'),
             'type': existing.get('type'),
@@ -570,7 +572,7 @@ class ScreenerResultsView(SOCBaseView):
                 service=dispatcher_service, status='success'
             ).order_by('-started_at').first()
         if log is None:
-            return Response({
+            return envelope({
                 'scan_id': None,
                 'timestamp': None,
                 'symbols_scanned': 0,
@@ -598,7 +600,7 @@ class ScreenerResultsView(SOCBaseView):
         ]
         duration_ms = int((log.duration_seconds or 0.0) * 1000)
         finished = log.finished_at or log.started_at
-        return Response({
+        return envelope({
             'scan_id': f'scan_{log.id}',
             'timestamp': finished.isoformat() if finished else None,
             'symbols_scanned': int(out.get('symbols_scanned') or 0),
@@ -627,7 +629,8 @@ class ScreenerAlertHistoryView(SOCBaseView):
         page = self.paginate_queryset(queryset, request)
         alerts = [_serialize_signal_alert(alert) for alert in page]
         paginated_response = self.get_paginated_response(alerts)
-        return paginated_response
+        # Bọc cả khối phân trang (count/next/previous/results) trong `data`.
+        return paginated_envelope(dict(paginated_response.data))
 
 
 @extend_schema(
@@ -700,7 +703,7 @@ class ScreenerManualScanView(SOCBaseView):
                 (run_log.finished_at - run_log.started_at).total_seconds(), 0.0
             )
         run_log.save(update_fields=['status', 'output_summary', 'finished_at', 'duration_seconds'])
-        return Response({
+        return envelope({
             'scan_id': f'scan_{run_log.id}',
             'symbols_count': len(result['symbols_requested']),
             'status': 'completed',
@@ -745,4 +748,4 @@ class ScreenerOwnershipView(SOCBaseView):
     """GET /api/soc/screener/ownership/"""
 
     def get(self, request):
-        return Response(_build_screener_ownership_payload())
+        return envelope(_build_screener_ownership_payload())

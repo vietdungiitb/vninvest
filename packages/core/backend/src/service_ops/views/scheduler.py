@@ -15,6 +15,7 @@ from drf_spectacular.openapi import OpenApiTypes
 from rest_framework import serializers, status
 from rest_framework.response import Response
 
+from ..envelope import envelope, paginated_envelope
 from ..scheduler_catalog import build_scheduler_catalog, build_scheduler_health_summary
 from ..ownership import build_ownership_matrix_from_db
 from ..models import ConfigChangeAudit, ServiceRunLog
@@ -27,7 +28,10 @@ class SchedulerJobHistoryPagination(PageNumberPagination):
     max_page_size = 100
 
     def get_paginated_response(self, data):
-        return Response({
+        # Bọc ngay ở lớp phân trang: đây là nơi **duy nhất** dựng shape trang
+        # cho endpoint này, nên bọc ở đây thay vì ở từng view — cùng nguyên tắc
+        # với `envelope()` là điểm vào duy nhất.
+        return paginated_envelope({
             'count': self.page.paginator.count,
             'page': self.page.number,
             'page_size': self.get_page_size(self.request),
@@ -265,9 +269,13 @@ class SchedulerJobHistoryView(SOCBaseView):
                     'output_summary': log.output_summary,
                     'error_detail': log.error_detail or None,
                 })
-            response = paginator.get_paginated_response(results)
-            response.data['job_key'] = job_key
-            return response
+            # `SchedulerJobHistoryPagination.get_paginated_response` đã trả
+            # envelope sẵn (`{data, meta}`) — lấy khối trang ra rồi thêm
+            # `job_key` **bên trong** `data` để sibling không bị rơi.
+            paged = paginator.get_paginated_response(results)
+            page_body = dict(paged.data['data'])
+            page_body['job_key'] = job_key
+            return paginated_envelope(page_body)
 
         results = []
         for log in qs:
@@ -282,7 +290,10 @@ class SchedulerJobHistoryView(SOCBaseView):
                 'output_summary': log.output_summary,
                 'error_detail': log.error_detail or None,
             })
-        return Response({
+        # Nhánh không phân trang: vẫn trả **cùng hình dạng envelope** như nhánh
+        # trên, để endpoint này không có 2 shape song song (đúng lỗi mà
+        # `service_ops` từng mắc và không test nào bắt được).
+        return paginated_envelope({
             'job_key': job_key,
             'results': results,
         })
@@ -440,7 +451,7 @@ class SchedulerJobActionView(SOCBaseView):
             reason=reason,
             request_id=getattr(request, 'request_id', ''),
         )
-        return Response(result, status=status.HTTP_202_ACCEPTED)
+        return envelope(result, status=status.HTTP_202_ACCEPTED)
 
 
 def _get_client_ip(request) -> 'str | None':
