@@ -69,6 +69,41 @@ from drf_spectacular.utils import OpenApiResponse
 
 __all__ = ['envelope_response', 'EnvelopeMetaField']
 
+#: Cache lớp envelope theo (tên, serializer, many).
+#:
+#: **Bắt buộc**, không phải tối ưu: `@extend_schema` chạy lúc **import**, và
+#: cùng một serializer hay được dùng cho nhiều method (GET + POST chẳng hạn).
+#: Không cache thì mỗi lần gọi tạo một class **khác nhau** cùng tên, và
+#: drf-spectacular báo:
+#: `Encountered 2 components with identical names "XEnvelope" and different
+#: identities ... This will very likely result in an incorrect schema.`
+#: Nó không phải lỗi chặn, nên schema vẫn sinh được — tức lỗi này có thể lọt
+#: qua mọi gate và chỉ biểu hiện ở tài liệu.
+_ENVELOPE_CACHE: dict = {}
+
+
+def _cache_key(name, inner, many):
+    try:
+        hash(inner)
+    except TypeError:
+        inner = id(inner)
+    return (name, inner, many)
+
+
+def _envelope_class(name, inner, many):
+    key = _cache_key(name, inner, many)
+    cached = _ENVELOPE_CACHE.get(key)
+    if cached is not None:
+        return cached
+    attrs = {
+        'data': _as_field(inner, many),
+        'meta': EnvelopeMetaField(),
+        'Meta': type('Meta', (), {'ref_name': name}),
+    }
+    envelope_cls = type(name, (serializers.Serializer,), attrs)
+    _ENVELOPE_CACHE[key] = envelope_cls
+    return envelope_cls
+
 
 def EnvelopeMetaField(**kwargs):
     """`meta` — provenance tự do.
@@ -117,20 +152,29 @@ def _as_field(inner, many: bool):
     return inner
 
 
-def _component_name(inner) -> str:
-    """Tên component tất định — không dùng `id()` (đổi mỗi lần chạy)."""
+def _component_name(inner, many: bool = False) -> str:
+    """Tên component tất định — không dùng `id()` (đổi mỗi lần chạy).
+
+    `many` **phải** nằm trong tên: `envelope_response()` và
+    `envelope_response(many=True)` đều tên `DataMetaEnvelope` nếu bỏ qua nó,
+    nhưng một cái là object còn cái kia là array. drf-spectacular cảnh báo
+    `Encountered 2 components with identical names ... will very likely result
+    in an incorrect schema` — và cảnh báo đó **không** làm lệnh `spectacular`
+    fail, nên không gate nào bắt được nếu không có test riêng.
+    """
     if inner is None:
-        return 'DataMetaEnvelope'
-    name = getattr(inner, '__name__', None)
-    if not name:
-        # `XSerializer(many=True)` là instance, không có `__name__`.
-        child = getattr(inner, 'child', None)
-        name = getattr(child, '__name__', None) or 'Data'
-    # `XResponseSerializer` -> `XResponseEnvelope`: bỏ hậu tố `Serializer` cho
-    # component dễ đọc trong docs, nhưng vẫn tất định.
-    if name.endswith('Serializer') and len(name) > len('Serializer'):
-        name = name[: -len('Serializer')]
-    return f'{name}Envelope'
+        base = 'DataMeta'
+    else:
+        name = getattr(inner, '__name__', None)
+        if not name:
+            # `XSerializer(many=True)` là instance, không có `__name__`.
+            child = getattr(inner, 'child', None)
+            name = getattr(child, '__name__', None) or 'Data'
+        # `XResponseSerializer` -> `XResponse`: bỏ hậu tố cho dễ đọc trong docs.
+        if name.endswith('Serializer') and len(name) > len('Serializer'):
+            name = name[: -len('Serializer')]
+        base = name
+    return f'{base}ListEnvelope' if many else f'{base}Envelope'
 
 
 def envelope_response(inner=None, *, many: bool = False,
@@ -152,19 +196,14 @@ def envelope_response(inner=None, *, many: bool = False,
             time còn hơn schema âm thầm đổi thành `object` free-form rồi
             docs sai mà không ai biết.
     """
-    if not _is_serializer(inner):
+    if inner is not None and not _is_serializer(inner):
         raise TypeError(
             'envelope_response() nhan serializer class/instance, nhan '
             f'{type(inner).__name__}. Neu payload la free-form, bo tham so.'
         )
 
-    name = _component_name(inner)
-    attrs = {
-        'data': _as_field(inner, many),
-        'meta': EnvelopeMetaField(),
-        'Meta': type('Meta', (), {'ref_name': name}),
-    }
-    envelope_cls = type(name, (serializers.Serializer,), attrs)
+    name = _component_name(inner, many)
+    envelope_cls = _envelope_class(name, inner, many)
     return OpenApiResponse(
         response=envelope_cls(),
         description=description,
