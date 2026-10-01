@@ -54,30 +54,99 @@ def _is_dict_with(payload, key: str) -> bool:
     return False
 
 
+#: Tên hằng trong `django.http` / DRF `status`. Cần vì code viết
+#: `status=status.HTTP_404_NOT_FOUND` — đó là `ast.Attribute`, không phải
+#: literal số, nên bản đầu gate đọc `status=` bằng `ast.Constant` là **bỏ sót
+#: toàn bộ** các response lỗi viết theo convention của Django. Đó là lý do 45
+#: điểm bị báo sai.
+_HTTP_STATUS_NAMES = {
+    'HTTP_100_CONTINUE': 100, 'HTTP_200_OK': 200, 'HTTP_201_CREATED': 201,
+    'HTTP_202_ACCEPTED': 202, 'HTTP_204_NO_CONTENT': 204,
+    'HTTP_206_PARTIAL_CONTENT': 206, 'HTTP_301_MOVED_PERMANENTLY': 301,
+    'HTTP_302_FOUND': 302, 'HTTP_304_NOT_MODIFIED': 304,
+    'HTTP_400_BAD_REQUEST': 400, 'HTTP_401_UNAUTHORIZED': 401,
+    'HTTP_402_PAYMENT_REQUIRED': 402, 'HTTP_403_FORBIDDEN': 403,
+    'HTTP_404_NOT_FOUND': 404, 'HTTP_405_METHOD_NOT_ALLOWED': 405,
+    'HTTP_409_CONFLICT': 409, 'HTTP_410_GONE': 410,
+    'HTTP_418_IM_A_TEAPOT': 418, 'HTTP_422_UNPROCESSABLE_ENTITY': 422,
+    'HTTP_429_TOO_MANY_REQUESTS': 429, 'HTTP_500_INTERNAL_SERVER_ERROR': 500,
+    'HTTP_501_NOT_IMPLEMENTED': 501, 'HTTP_502_BAD_GATEWAY': 502,
+    'HTTP_503_SERVICE_UNAVAILABLE': 503, 'HTTP_504_GATEWAY_TIMEOUT': 504,
+}
+
+
+def _status_kwarg(call: ast.Call):
+    """Lấy `status=` — nhận cả literal số lẫn `status.HTTP_404_NOT_FOUND`."""
+    for kw in call.keywords:
+        if kw.arg != 'status':
+            continue
+        if isinstance(kw.value, ast.Constant):
+            return kw.value.value
+        if isinstance(kw.value, ast.Attribute):
+            return _HTTP_STATUS_NAMES.get(kw.value.attr)
+    return None
+
+
 def _returns_envelope(node: ast.expr) -> str:
-    """Phân loại giá trị trả về."""
-    # `Response(envelope(x))` → đã bọc
+    """Phân loại giá trị trả về.
+
+    Bản đầu đếm **response lỗi** là "chưa bọc" ⇒ gate không bao giờ xanh, và
+    nếu ai đó cố làm nó xanh thì sẽ bọc lỗi ⇒ phá RFC 9457. Vì vậy: `Response`
+    có `status >= 400` thì **bỏ qua** — error envelope không thuộc phạm vi
+    API-02.
+
+    Tương tự, `return {...}` trình thuần (không bọc trong `Response(...)`) là
+    giá trị của một **helper**, không phải HTTP response. Không đọc được thì
+    ghi `UNVERIFIED` chứ không đoán — đoán thành `UNWRAPPED` thì gate báo động
+    giả và mất tác dụng.
+    """
     if isinstance(node, ast.Call):
         name = getattr(node.func, 'id', '') or getattr(node.func, 'attr', '')
         if any(name == w or name.endswith(f'_{w}') for w in WRAPPER_NAMES):
             return 'WRAPPED'
+
         if name in RETURNERS:
-            args = node.args
-            if not args:
+            status = _status_kwarg(node)
+            # `status >= 400` ⇒ response lỗi ⇒ thuộc RFC 9457, KHÔNG bọc.
+            if isinstance(status, int) and status >= 400:
+                return 'SKIP_ERROR'
+            # 204/205/304 không có body ⇒ không có gì để bọc.
+            if isinstance(status, int) and status in (204, 205, 304):
+                return 'SKIP_NOBODY'
+            if not node.args:
                 return 'UNVERIFIED'
-            first = args[0]
-            if _is_dict_with(first, 'data') and _is_dict_with(first, 'meta'):
-                return 'WRAPPED'
-            if _is_dict_with(first, 'data'):
-                # Có `data` nhưng thiếu `meta` ⇒ không phải envelope F2.
-                return 'UNWRAPPED'
+            first = node.args[0]
             if isinstance(first, ast.Dict):
+                if _is_dict_with(first, 'data') and _is_dict_with(first, 'meta'):
+                    return 'WRAPPED'
+                # F3 `{status, timestamp, request_id, data}` — đã đúng sẵn.
+                if _is_dict_with(first, 'status') and _is_dict_with(first, 'timestamp'):
+                    return 'SKIP_F3'
+                # F4 `{object, generated_at, summary_cards, data}` — hợp đồng
+                # riêng, nằm ngoài phạm vi API-02 đợt này.
+                if _is_dict_with(first, 'object'):
+                    return 'SKIP_F4'
+                # F5 `{data, +siblings}` — bọc sẽ **làm rơi sibling**.
+                # `identity_access/views_usage.py:140,205` là ví dụ thật:
+                # `{group_by, data, days, start_date, end_date}`.
+                if _is_dict_with(first, 'data') and len(first.keys) > 1:
+                    return 'SKIP_F5_SIBLINGS'
+                # Body lỗi **không** kèm `status=` (vd `{'error': 'Bad Request'}`)
+                if _is_dict_with(first, 'error'):
+                    return 'SKIP_ERROR'
+                if _is_dict_with(first, 'message') and len(first.keys) == 1:
+                    return 'SKIP_ACK_MESSAGE'
                 return 'UNWRAPPED'
             return 'UNVERIFIED'
+
+        # `return <tên hàm khác>(...)` — không chắc là response.
+        return 'UNVERIFIED'
+
     if isinstance(node, ast.Dict):
         if _is_dict_with(node, 'data') and _is_dict_with(node, 'meta'):
             return 'WRAPPED'
-        return 'UNWRAPPED'
+        return 'UNVERIFIED'
+
     return 'UNVERIFIED'
 
 
@@ -88,6 +157,7 @@ def scan(app: str):
         return 1
 
     rows = {'WRAPPED': [], 'UNWRAPPED': [], 'UNVERIFIED': []}
+    skipped = {'SKIP_ERROR': [], 'SKIP_NOBODY': [], 'SKIP_F3': [], 'SKIP_ACK_MESSAGE': []}
     for path in sorted(app_dir.rglob('*.py')):
         rel = path.relative_to(SRC)
         if 'migrations' in rel.parts or 'tests' in rel.parts:
@@ -106,11 +176,17 @@ def scan(app: str):
             verdict = _returns_envelope(node.value)
             if verdict == 'UNVERIFIED':
                 continue
+            if verdict.startswith('SKIP_'):
+                skipped.setdefault(verdict, []).append(
+                    f'{rel.as_posix()}:{node.lineno}')
+                continue
             rows[verdict].append(f'{rel.as_posix()}:{node.lineno}')
 
     for verdict in ('WRAPPED', 'UNWRAPPED'):
         print(f'{verdict}: {len(rows[verdict])}')
     print(f'UNVERIFIED (may, can doc tay): {len(rows["UNVERIFIED"])}')
+    for key in sorted(skipped):
+        print(f'{key} (co y dinh KHONG boc): {len(skipped[key])}')
 
     if rows['UNWRAPPED']:
         print('\nCHUA BOC — app nay co hai shape khac nhau cung luc:')
