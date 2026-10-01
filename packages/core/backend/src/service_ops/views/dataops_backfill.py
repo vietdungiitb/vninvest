@@ -1,5 +1,7 @@
 from .dataops_base import *
 
+from ..envelope import envelope
+
 # ---------------------------------------------------------------------------
 # B03 — Backfill Progress API
 # ---------------------------------------------------------------------------
@@ -36,7 +38,8 @@ class BackfillRunListView(SOCBaseView):
         except (ValueError, TypeError):
             limit = 20
         runs = list(qs[:limit])
-        return Response({
+        # F6 — bọc **cả khối** {count, results}; không nhét `results` ra ngoài.
+        return envelope({
             'count': len(runs),
             'results': [BackfillService.serialize_run(r) for r in runs],
         })
@@ -60,7 +63,7 @@ class BackfillRunDetailView(SOCBaseView):
         batches = list(BackfillExecutionBatch.objects.filter(run=run).order_by('batch_index'))
         data = BackfillService.serialize_run(run)
         data['batches'] = [BackfillService.serialize_batch(b) for b in batches]
-        return Response(data)
+        return envelope(data)
 
 
 # B07 — Operator manual trigger with explicit mode
@@ -127,4 +130,4 @@ class BackfillRunNowView(SOCBaseView):
         except Exception as exc:
             return self.error_response(request, 'enqueue_failed', str(exc), http_status=500)
 
-        return Response(result, status=202)
+        return envelope(result, status=202)

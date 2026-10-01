@@ -1,6 +1,8 @@
 from .dataops_base import *
 from .dataops_base import _build_market_data_ownership_payload
 
+from ..envelope import envelope, paginated_envelope
+
 class DataOpsRuntimeConfigApplyRequestSerializer(serializers.Serializer):
     config_payload = serializers.JSONField()
 
@@ -71,7 +73,7 @@ class DataOpsRuntimeConfigResponseSerializer(serializers.Serializer):
 class DataOpsRuntimeConfigView(SOCBaseView, ConfigApplyMixin):
     def get(self, request):
         config, updated_at = get_market_data_runtime_config()
-        return Response({
+        return envelope({
             'config': config.to_dict(),
             'ownership': _build_market_data_ownership_payload(),
             'updated_at': updated_at.isoformat() if updated_at else None,
@@ -87,9 +89,11 @@ class DataOpsRuntimeConfigView(SOCBaseView, ConfigApplyMixin):
             audit_action=request.data.get('audit_action', 'apply'),
         )
         if isinstance(result, Response):
+            # `ConfigApplyMixin.apply_config` chỉ trả Response khi **lỗi**
+            # (404/403/409/400/500) — thuộc RFC 9457, KHÔNG bọc.
             return result
         _, svc_config = result
-        return Response({
+        return envelope({
             'config': svc_config.config_payload,
             'ownership': _build_market_data_ownership_payload(),
             'updated_at': svc_config.applied_at.isoformat(),
@@ -147,7 +151,7 @@ class DataOpsRuntimeConfigPreviewView(SOCBaseView):
                 'ownership': _build_market_data_ownership_payload(),
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response({
+        return envelope({
             'projected_config': projected_dict,
             'validation_errors': [],
             'is_valid': True,
@@ -180,7 +184,7 @@ class DataOpsRuntimeConfigSchemaView(SOCBaseView):
     """GET /api/soc/dataops/runtime-config/schema/ — form schema (C6 — CFG-09)."""
 
     def get(self, request):
-        return Response({'fields': MarketDataRuntimeConfig.get_schema()})
+        return envelope({'fields': MarketDataRuntimeConfig.get_schema()})
 
 class DataOpsRuntimeConfigAuditSerializer(serializers.Serializer):
     id = serializers.IntegerField()
@@ -236,4 +240,6 @@ class DataOpsRuntimeConfigAuditView(SOCBaseView):
             }
             for audit in page
         ]
-        return self.get_paginated_response(data)
+        paged = self.get_paginated_response(data)
+        # Bọc cả khối phân trang (count/next/previous/results) trong `data`.
+        return paginated_envelope(dict(paged.data))
