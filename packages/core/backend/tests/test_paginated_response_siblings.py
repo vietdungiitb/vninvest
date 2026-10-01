@@ -99,18 +99,43 @@ class PaginatedResponseSiblingsTests(TestCase):
         self.assertEqual(data['symbol'], 'VNM')
 
     def test_scheduler_still_writes_job_key_beside_results(self):
-        """Chỉ ghim **quy tắc**, không cần dựng dữ liệu scheduler.
+        """Ghim **quy tắc**: `job_key` phải nằm **bên trong** `data`.
 
-        Cố ý không gọi view: phần cần ghim là **vị trí ghi key**, và điều đó thể
-        hiện ngay trong mã. Gọi view sẽ thêm phụ thuộc Celery/Redis vào một test
-        vốn chỉ nói về hình dạng envelope.
+        **Cập nhật ở B5 — bản gốc ghim một chuỗi mã nguồn đã chết.** Bản gốc
+        assert `response.data['job_key'] = job_key`. Sau khi `service_ops` bọc F6
+        (`588e46051`), `scheduler.py` không còn viết vào `response.data` nữa mà
+        làm:
+
+            paged = paginator.get_paginated_response(results)
+            page_body = dict(paged.data['data'])   # mở vỏ envelope
+            page_body['job_key'] = job_key         # ghi BÊN TRONG data
+
+        Khẳng định cũ **đúng với hợp đồng cũ, sai với hợp đồng mới** — đã đỏ
+        sẵn trên `dev` từ trước khi B5 thứ 4 merge.
+
+        Nên nay ghim **invariant** (job_key vào trong `data`), không ghim literal —
+        vì ghim literal thì đổi tên biến lần nữa lại đỏ y hệt, đúng như đã xảy ra.
+
+        Hai chiều đều phải bắt được:
+          1. `paged.data['data']` phải được mở vỏ (ghi key vào `paged.data` sẽ
+             sinh `job_key` nằm NGANG HÀNG `data`/`meta` ⇒ hỏng hợp đồng).
+          2. `job_key` phải thực sự được ghi vào `data`.
         """
         source = (
             Path(__file__).resolve().parents[1] / 'src'
             / 'service_ops' / 'views' / 'scheduler.py'
         ).read_text(encoding='utf-8')
 
+        # (1) phải mở vỏ envelope trước khi ghi key.
         self.assertIn(
-            "response.data['job_key'] = job_key", source,
-            'scheduler.py không còn ghi `job_key` cạnh `results` — nếu vừa đổi '
-            'thì phải xem lại vị trí ghi so với hình dạng envelope F6')
+            "dict(paged.data['data'])", source,
+            'scheduler.py phải mở vỏ `paged.data["data"]` trước khi thêm key — '
+            'ghi vào thẳng `paged.data` sẽ đặt `job_key` ngang hàng `data`/`meta`')
+        self.assertNotIn(
+            "paged.data['job_key']", source,
+            'scheduler.py ghi `job_key` ra NGOÀI `data` ⇒ sai hợp đồng F6')
+
+        # (2) `job_key` phải được ghi vào dict đã mở vỏ.
+        self.assertRegex(
+            source, r"page_body\['job_key'\]\s*=",
+            'scheduler.py không còn ghi `job_key` vào `data` cạnh `results`')
