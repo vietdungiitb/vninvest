@@ -25,7 +25,7 @@ from rest_framework.test import APIClient
 
 from lxml import etree
 
-from identity_access.tests.envelope import unwrapped, unwrapped_json
+from identity_access.tests.envelope import unwrapped
 from identity_access.models import (
     CoreTenant,
     CoreServiceAccount,

@@ -9,7 +9,7 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from identity_access.tests.envelope import unwrapped, unwrapped_json
+from identity_access.tests.envelope import unwrapped_json
 from identity_access.models import (
     CorePATCredential,
     CoreServiceAccount,
