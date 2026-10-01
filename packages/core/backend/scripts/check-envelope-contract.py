@@ -124,7 +124,11 @@ def _returns_envelope(node: ast.expr) -> str:
                     return 'SKIP_F3'
                 # F4 `{object, generated_at, summary_cards, data}` — hợp đồng
                 # riêng, nằm ngoài phạm vi API-02 đợt này.
-                if _is_dict_with(first, 'object'):
+                # F4 co HAI bien the: {object, ...} (identity_access) va
+                # {..., generated_at} (service_ops). Chi kiem 'object' thi
+                # bien thu hai rot xuong UNWRAPPED — va neu ai do boc no de lam
+                # gate xanh thi tao shape khac voi identity_access.
+                if _is_dict_with(first, 'object') or _is_dict_with(first, 'generated_at'):
                     return 'SKIP_F4'
                 # F5 `{data, +siblings}` — bọc sẽ **làm rơi sibling**.
                 # `identity_access/views_usage.py:140,205` là ví dụ thật:
@@ -175,6 +179,12 @@ def scan(app: str):
                 continue
             verdict = _returns_envelope(node.value)
             if verdict == 'UNVERIFIED':
+                # Phải **ghi lại** rồi mới `continue`. Bản trước `continue`
+                # luôn ⇒ cột UNVERIFIED **luôn in 0**, tức gate im lặng ở đúng
+                # chỗ cần minh bạch nhất: những call site nó không đọc được.
+                # Đó là lỗ hổng khiến lần bọc trước bỏ sót 3 file mà không
+                # ai thấy.
+                rows['UNVERIFIED'].append(f'{rel.as_posix()}:{node.lineno}')
                 continue
             if verdict.startswith('SKIP_'):
                 skipped.setdefault(verdict, []).append(
