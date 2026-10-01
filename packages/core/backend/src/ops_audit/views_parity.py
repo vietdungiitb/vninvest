@@ -21,6 +21,7 @@ from ops_audit.models import (
     ParityReport,
     ParityPhaseCheckpoint,
 )
+from ops_audit.envelope import envelope
 from ops_audit.serializers import (
     ParityLogSerializer,
     ParityReportSerializer,
@@ -52,7 +53,7 @@ class ParityStatusView(generics.RetrieveAPIView):
                 phase_name='Phase 3'
             ).latest('created_at')
         except ParityPhaseCheckpoint.DoesNotExist:
-            return Response({
+            return envelope({
                 'phase_status': 'not_started',
                 'message': 'Phase 3 shadow run not started yet',
             }, status=status.HTTP_200_OK)
@@ -100,7 +101,7 @@ class ParityStatusView(generics.RetrieveAPIView):
         # Get monitored endpoints
         all_endpoints = ParityLog.objects.values_list('endpoint', flat=True).distinct()
         
-        return Response({
+        return envelope({
             'phase_status': checkpoint.phase_status,
             'day1': day1_result,
             'day2': day2_result,
@@ -269,7 +270,7 @@ class ParityPhaseCheckpointSignOffView(generics.UpdateAPIView):
             checkpoint.summary = notes
             checkpoint.save()
             
-            return Response({
+            return envelope({
                 'status': 'approved',
                 'phase_status': checkpoint.phase_status,
                 'final_decision': checkpoint.final_decision,
@@ -284,7 +285,7 @@ class ParityPhaseCheckpointSignOffView(generics.UpdateAPIView):
             checkpoint.summary = notes
             checkpoint.save()
             
-            return Response({
+            return envelope({
                 'status': 'rejected',
                 'phase_status': checkpoint.phase_status,
                 'message': 'Phase 3 rejected. Investigation required before retry.',
