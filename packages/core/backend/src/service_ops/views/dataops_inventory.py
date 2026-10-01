@@ -1,5 +1,7 @@
 from .dataops_base import *
 
+from ..envelope import envelope
+
 class DataOpsInventoryView(SOCBaseView):
     """GET /api/soc/dataops/inventory/ — data warehouse inventory stats."""
 
@@ -111,7 +113,7 @@ class DataOpsInventoryView(SOCBaseView):
             },
         ]
 
-        return Response({
+        return envelope({
             'summary': {
                 'total_rows': dp_agg['total_rows'] or 0,
                 'total_symbols': dp_agg['total_symbols'] or 0,

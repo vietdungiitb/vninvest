@@ -10,6 +10,7 @@ from django.utils import timezone
 from rest_framework import serializers, status
 from rest_framework.response import Response
 
+from ..envelope import envelope, paginated_envelope
 from ..models import (
     ConfigChangeAudit,
     OwnershipRecord,
@@ -342,8 +343,9 @@ class ServiceListView(SOCBaseView):
         queryset = ServiceDefinition.objects.all().order_by('domain', 'service_key')
         page = self.paginate_queryset(queryset, request)
         if page is not None:
-            return self.get_paginated_response(ServiceDefinitionSerializer(page, many=True).data)
-        return Response(ServiceDefinitionSerializer(queryset, many=True).data)
+            paged = self.get_paginated_response(ServiceDefinitionSerializer(page, many=True).data)
+            return paginated_envelope(dict(paged.data))
+        return envelope(ServiceDefinitionSerializer(queryset, many=True).data)
 
 
 @extend_schema(
@@ -403,7 +405,7 @@ class ServiceDetailView(SOCBaseView):
         service, error = _get_service_or_error(self, request, service_key)
         if error is not None:
             return error
-        return Response(_serialize_service_detail(service))
+        return envelope(_serialize_service_detail(service))
 
     def patch(self, request, service_key: str):
         service, error = _get_service_or_error(self, request, service_key)
@@ -449,7 +451,7 @@ class ServiceDetailView(SOCBaseView):
         except Exception:
             pass
 
-        return Response(_serialize_service_detail(service))
+        return envelope(_serialize_service_detail(service))
 
 
 @extend_schema(
@@ -492,7 +494,7 @@ class ServiceHealthCheckTriggerView(SOCBaseView):
             },
             output_summary={},
         )
-        return Response({
+        return envelope({
             'service_key': service.service_key,
             'status': 'queued',
             'run_log_id': run_log.id,
@@ -612,9 +614,9 @@ class ServiceCurrentConfigView(SOCBaseView):
 
         current_config = _get_current_config(service)
         if current_config is not None:
-            return Response(ServiceConfigSerializer(current_config).data)
+            return envelope(ServiceConfigSerializer(current_config).data)
 
-        return Response({
+        return envelope({
             'service_key': service.service_key,
             'service': service.id,
             'config_schema_version': '1.0',
@@ -722,7 +724,7 @@ class ServiceCurrentConfigView(SOCBaseView):
                 http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        return Response(ServiceConfigSerializer(svc_config).data, status=status.HTTP_201_CREATED)
+        return envelope(ServiceConfigSerializer(svc_config).data, status=status.HTTP_201_CREATED)
 
     def _get_config_class_for_domain(self, domain: str):
         """Map domain to its config class."""
@@ -762,7 +764,7 @@ class ServiceHealthView(SOCBaseView):
         service, error = _get_service_or_error(self, request, service_key)
         if error is not None:
             return error
-        return Response(_serialize_health(service))
+        return envelope(_serialize_health(service))
 
 
 @extend_schema(
@@ -787,8 +789,9 @@ class ServiceAuditView(SOCBaseView):
         audits = ConfigChangeAudit.objects.filter(service=service).order_by('-timestamp')
         page = self.paginate_queryset(audits, request)
         if page is not None:
-            return self.get_paginated_response(ConfigChangeAuditSerializer(page, many=True).data)
-        return Response(ConfigChangeAuditSerializer(audits, many=True).data)
+            paged = self.get_paginated_response(ConfigChangeAuditSerializer(page, many=True).data)
+            return paginated_envelope(dict(paged.data))
+        return envelope(ConfigChangeAuditSerializer(audits, many=True).data)
 
 
 @extend_schema(
@@ -813,8 +816,9 @@ class ServiceConfigHistoryView(SOCBaseView):
         configs = ServiceConfig.objects.filter(service=service).order_by('-applied_at')
         page = self.paginate_queryset(configs, request)
         if page is not None:
-            return self.get_paginated_response(ServiceConfigSerializer(page, many=True).data)
-        return Response(ServiceConfigSerializer(configs, many=True).data)
+            paged = self.get_paginated_response(ServiceConfigSerializer(page, many=True).data)
+            return paginated_envelope(dict(paged.data))
+        return envelope(ServiceConfigSerializer(configs, many=True).data)
 
 
 @extend_schema(
@@ -839,8 +843,9 @@ class ServiceRunLogsView(SOCBaseView):
         logs = ServiceRunLog.objects.filter(service=service).order_by('-started_at')
         page = self.paginate_queryset(logs, request)
         if page is not None:
-            return self.get_paginated_response(ServiceRunLogSerializer(page, many=True).data)
-        return Response(ServiceRunLogSerializer(logs, many=True).data)
+            paged = self.get_paginated_response(ServiceRunLogSerializer(page, many=True).data)
+            return paginated_envelope(dict(paged.data))
+        return envelope(ServiceRunLogSerializer(logs, many=True).data)
 
 
 @extend_schema(
@@ -860,7 +865,7 @@ class ServiceOwnershipView(SOCBaseView):
         service, error = _get_service_or_error(self, request, service_key)
         if error is not None:
             return error
-        return Response(_get_ownership_payload(service))
+        return envelope(_get_ownership_payload(service))
 
 
 @extend_schema(
@@ -887,7 +892,7 @@ class HealthStatusView(SOCBaseView):
         for record in health_records:
             status_counts[record.status] = status_counts.get(record.status, 0) + 1
 
-        return Response({
+        return envelope({
             'total_services': ServiceDefinition.objects.count(),
             'active_services': ServiceDefinition.objects.filter(is_active=True).count(),
             'health_status_counts': status_counts,
@@ -935,8 +940,9 @@ class RunLogListView(SOCBaseView):
 
         page = self.paginate_queryset(queryset, request)
         if page is not None:
-            return self.get_paginated_response(ServiceRunLogSerializer(page, many=True).data)
-        return Response(ServiceRunLogSerializer(queryset, many=True).data)
+            paged = self.get_paginated_response(ServiceRunLogSerializer(page, many=True).data)
+            return paginated_envelope(dict(paged.data))
+        return envelope(ServiceRunLogSerializer(queryset, many=True).data)
 
 
 @extend_schema(
@@ -979,8 +985,9 @@ class ChangeAuditListView(SOCBaseView):
 
         page = self.paginate_queryset(queryset, request)
         if page is not None:
-            return self.get_paginated_response(ConfigChangeAuditSerializer(page, many=True).data)
-        return Response(ConfigChangeAuditSerializer(queryset, many=True).data)
+            paged = self.get_paginated_response(ConfigChangeAuditSerializer(page, many=True).data)
+            return paginated_envelope(dict(paged.data))
+        return envelope(ConfigChangeAuditSerializer(queryset, many=True).data)
 
 
 class SloRowSerializer(serializers.Serializer):
@@ -1127,7 +1134,7 @@ class SocExportConfigAuditsView(SOCBaseView):
             }
             for row in rows
         ]
-        return Response(payload)
+        return envelope(payload)
 
 
 @extend_schema(
@@ -1178,4 +1185,4 @@ class SocExportRunLogsView(SOCBaseView):
             }
             for row in rows
         ]
-        return Response(payload)
+        return envelope(payload)

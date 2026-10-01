@@ -12,6 +12,8 @@ from rest_framework.test import APIClient
 from commercial.models import Invoice, Subscription
 from identity_access.models import CoreTenant
 
+from service_ops.tests.envelope import unwrapped_json
+
 OVERVIEW = '/api/soc/billing/overview/'
 INVOICES = '/api/soc/billing/invoices/'
 
@@ -55,7 +57,7 @@ class SocBillingFleetTests(TestCase):
         self.assertEqual(self.plain_client.get(INVOICES).status_code, 403)
 
     def test_overview_numbers(self):
-        body = self.staff_client.get(OVERVIEW).json()
+        body = unwrapped_json(self.staff_client.get(OVERVIEW))
         self.assertEqual(body['mrr'], 600000)
         self.assertEqual(body['arr'], 7200000)
         self.assertEqual(body['currency'], 'VND')
@@ -69,14 +71,14 @@ class SocBillingFleetTests(TestCase):
         self.assertEqual(months[cur_month]['total'], '200001')
 
     def test_invoices_list_filter_paginate(self):
-        body = self.staff_client.get(INVOICES).json()
+        body = unwrapped_json(self.staff_client.get(INVOICES))
         self.assertEqual(body['count'], 3)
-        body = self.staff_client.get(f'{INVOICES}?status=paid').json()
+        body = unwrapped_json(self.staff_client.get(f'{INVOICES}?status=paid'))
         self.assertEqual(body['count'], 2)
         self.assertTrue(all(r['status'] == 'paid' for r in body['results']))
-        body = self.staff_client.get(f'{INVOICES}?search=bill_t_0').json()
+        body = unwrapped_json(self.staff_client.get(f'{INVOICES}?search=bill_t_0'))
         self.assertTrue(all(r['tenant_code'] == 'bill_t_0' for r in body['results']))
-        body = self.staff_client.get(f'{INVOICES}?page=2&page_size=2').json()
+        body = unwrapped_json(self.staff_client.get(f'{INVOICES}?page=2&page_size=2'))
         self.assertEqual(len(body['results']), 1)
         resp = self.staff_client.get(f'{INVOICES}?status=nope')
         self.assertEqual(resp.status_code, 400)

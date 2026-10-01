@@ -12,6 +12,8 @@ from commercial.models import QuotaRecord
 from identity_access.models import CoreTenant
 from ops_audit.models import ApiCallRollup
 
+from service_ops.tests.envelope import unwrapped_json
+
 OVERVIEW = '/api/soc/usage/overview/'
 
 
@@ -47,7 +49,7 @@ class SocUsageFleetTests(TestCase):
         self.assertEqual(self.plain_client.get(OVERVIEW).status_code, 403)
 
     def test_overview_numbers(self):
-        body = self.staff_client.get(OVERVIEW).json()
+        body = unwrapped_json(self.staff_client.get(OVERVIEW))
         self.assertEqual(body['calls_30d'], 600)
         self.assertEqual(body['calls_today'], 600)
         self.assertAlmostEqual(body['error_rate_30d'], 30 / 600)
@@ -58,7 +60,7 @@ class SocUsageFleetTests(TestCase):
         self.assertEqual(top[0]['errors'], 20)
 
     def test_quotas_near_limit(self):
-        body = self.staff_client.get(OVERVIEW).json()
+        body = unwrapped_json(self.staff_client.get(OVERVIEW))
         near = body['quotas_near_limit']
         self.assertEqual(len(near), 1)
         self.assertEqual(near[0]['tenant_code'], 'use_t_0')

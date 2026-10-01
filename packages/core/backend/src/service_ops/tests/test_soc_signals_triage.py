@@ -15,6 +15,8 @@ from rest_framework.test import APIClient
 from signal_intelligence.models import UnifiedAlert, UserAlertDelivery, UserAlertPreference
 from service_ops.registry import ensure_service_registry
 
+from service_ops.tests.envelope import unwrapped
+
 User = get_user_model()
 
 
@@ -71,7 +73,7 @@ class SocSignalsTriageApiTests(TestCase):
         delivery.refresh_from_db()
         self.assertEqual(delivery.delivery_state, UserAlertDelivery.DeliveryStateChoices.ACKNOWLEDGED)
         self.assertIsNotNone(delivery.acknowledged_at)
-        self.assertTrue(response.data['transitioned'])
+        self.assertTrue(unwrapped(response)['transitioned'])
 
     def test_ack_seen_delivery_transitions_to_acknowledged(self):
         """Guard 2: seen → ack (operator đã expand xem rồi mới ack)."""
@@ -82,7 +84,7 @@ class SocSignalsTriageApiTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         delivery.refresh_from_db()
         self.assertEqual(delivery.delivery_state, UserAlertDelivery.DeliveryStateChoices.ACKNOWLEDGED)
-        self.assertTrue(response.data['transitioned'])
+        self.assertTrue(unwrapped(response)['transitioned'])
 
     def test_ack_already_acknowledged_is_idempotent(self):
         """Guard 3: ack lại delivery đã ack → giữ nguyên, không đổi acknowledged_at."""
@@ -97,7 +99,7 @@ class SocSignalsTriageApiTests(TestCase):
         delivery.refresh_from_db()
         self.assertEqual(delivery.delivery_state, UserAlertDelivery.DeliveryStateChoices.ACKNOWLEDGED)
         self.assertEqual(delivery.acknowledged_at, ack_at_before)
-        self.assertFalse(response.data['transitioned'])
+        self.assertFalse(unwrapped(response)['transitioned'])
 
     def test_mute_upserts_preference_with_reason(self):
         """Guard 4: POST mute → upsert UserAlertPreference (mute_until tương lai + lý do audit)."""
@@ -114,4 +116,4 @@ class SocSignalsTriageApiTests(TestCase):
         self.assertIsNotNone(preference.mute_until)
         self.assertGreater(preference.mute_until, timezone.now())
         self.assertEqual(preference.metadata.get('reason'), 'Nhiễu trong phiên ATC')
-        self.assertEqual(response.data['symbol'], 'VCI')
+        self.assertEqual(unwrapped(response)['symbol'], 'VCI')

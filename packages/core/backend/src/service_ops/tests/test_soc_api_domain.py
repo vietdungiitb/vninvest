@@ -28,6 +28,7 @@ from service_ops.registry import (
     ensure_service_registry,
     get_registered_service,
 )
+from service_ops.tests.envelope import unwrapped_json
 
 User = get_user_model()
 
@@ -79,7 +80,7 @@ class VnbrokerDomainApiTestCase(SOCAdminApiTestCase):
         response = self.client.get('/api/soc/vnbroker/config/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertIn('config_payload', data)
         self.assertTrue(data['is_current'])
         self.assertEqual(data['service_key'], SOC_DOMAIN_PRIMARY_SERVICE_KEYS['vnbroker'])
@@ -113,7 +114,7 @@ class VnbrokerDomainApiTestCase(SOCAdminApiTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertEqual(data['config_payload']['preferred_provider'], 'kbs')
         self.assertEqual(data['config_payload']['timeout']['connect'], 7.0)
         self.assertTrue(
@@ -199,7 +200,7 @@ class VnbrokerDomainApiTestCase(SOCAdminApiTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertFalse(data['valid'])
         self.assertGreaterEqual(len(data['errors']), 1)
 
@@ -232,8 +233,8 @@ class VnbrokerDomainApiTestCase(SOCAdminApiTestCase):
 
         self.assertEqual(apply_response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(ownership_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(ownership_response.json()['domain'], 'vnbroker')
-        self.assertTrue(ownership_response.json()['can_apply'])
+        self.assertEqual(unwrapped_json(ownership_response)['domain'], 'vnbroker')
+        self.assertTrue(unwrapped_json(ownership_response)['can_apply'])
 
     def test_vnbroker_health_endpoint_returns_unknown_snapshot_when_missing(self):
         service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['vnbroker'])
@@ -242,7 +243,7 @@ class VnbrokerDomainApiTestCase(SOCAdminApiTestCase):
         response = self.client.get('/api/soc/vnbroker/health/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['service_key'], SOC_DOMAIN_PRIMARY_SERVICE_KEYS['vnbroker'])
         self.assertEqual(payload['status'], 'unknown')
         self.assertEqual(payload['detail']['message'], 'Health record not found')
@@ -277,7 +278,7 @@ class PrefetchDomainApiTestCase(SOCAdminApiTestCase):
         response = self.client.get('/api/soc/prefetch/config/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['service_key'], SOC_DOMAIN_PRIMARY_SERVICE_KEYS['prefetch'])
         self.assertEqual(payload['config_schema_version'], '1.0')
         self.assertEqual(payload['applied_by'], 'system')
@@ -314,20 +315,20 @@ class PrefetchDomainApiTestCase(SOCAdminApiTestCase):
 
         self.assertEqual(groups_response.status_code, status.HTTP_200_OK)
         self.assertEqual(schedule_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(groups_response.json().get('universe_mode'), 'registry_first')
-        self.assertEqual(groups_response.json().get('hint_group_ids'), ['vn30', 'banking'])
+        self.assertEqual(unwrapped_json(groups_response).get('universe_mode'), 'registry_first')
+        self.assertEqual(unwrapped_json(groups_response).get('hint_group_ids'), ['vn30', 'banking'])
         selected_group_ids = [
             group['id']
-            for group in groups_response.json()['groups']
+            for group in unwrapped_json(groups_response)['groups']
             if group.get('selected')
         ]
         self.assertIn('vn30', selected_group_ids)
         self.assertIn('banking', selected_group_ids)
-        self.assertEqual(schedule_response.json()['active_profile'], 'pre_open')
-        self.assertEqual(len(schedule_response.json()['schedule']), 6)
+        self.assertEqual(unwrapped_json(schedule_response)['active_profile'], 'pre_open')
+        self.assertEqual(len(unwrapped_json(schedule_response)['schedule']), 6)
         market_open_task = next(
             item
-            for item in schedule_response.json()['schedule']
+            for item in unwrapped_json(schedule_response)['schedule']
             if item['task'] == 'prefetch_market_open'
         )
         self.assertEqual(market_open_task['interval_seconds'], 45)
@@ -344,9 +345,9 @@ class PrefetchDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(profiles_response.status_code, status.HTTP_200_OK)
         self.assertEqual(cache_response.status_code, status.HTTP_200_OK)
         self.assertEqual(purge_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(profiles_response.json()['profiles']), 6)
-        self.assertEqual(purge_response.json()['group_id'], 'vn30')
-        self.assertEqual(purge_response.json()['status'], 'success')
+        self.assertEqual(len(unwrapped_json(profiles_response)['profiles']), 6)
+        self.assertEqual(unwrapped_json(purge_response)['group_id'], 'vn30')
+        self.assertEqual(unwrapped_json(purge_response)['status'], 'success')
 
     def test_prefetch_apply_alias_and_ownership_endpoint_match_contract(self):
         apply_response = self.client.post(
@@ -374,14 +375,14 @@ class PrefetchDomainApiTestCase(SOCAdminApiTestCase):
 
         self.assertEqual(apply_response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(ownership_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(ownership_response.json()['domain'], 'prefetch')
-        self.assertTrue(ownership_response.json()['can_apply'])
+        self.assertEqual(unwrapped_json(ownership_response)['domain'], 'prefetch')
+        self.assertTrue(unwrapped_json(ownership_response)['can_apply'])
 
     def test_prefetch_warm_now_queues_run_log(self):
         response = self.client.post('/api/soc/prefetch/warm-now/', {}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
-        self.assertEqual(response.json()['status'], 'queued')
+        self.assertEqual(unwrapped_json(response)['status'], 'queued')
         self.assertTrue(
             ServiceRunLog.objects.filter(
                 service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['prefetch'],
@@ -399,7 +400,7 @@ class PrefetchDomainApiTestCase(SOCAdminApiTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertTrue(payload['valid'])
         self.assertEqual(payload['errors'], [])
         self.assertEqual(payload['config_payload']['batch_size'], 40)
@@ -416,7 +417,7 @@ class PrefetchDomainApiTestCase(SOCAdminApiTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertFalse(payload['valid'])
         self.assertTrue(len(payload['errors']) > 0)
 
@@ -429,7 +430,7 @@ class PrefetchDomainApiTestCase(SOCAdminApiTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
-        self.assertEqual(response.json()['groups'], ['hot_user_demand'])
+        self.assertEqual(unwrapped_json(response)['groups'], ['hot_user_demand'])
         self.assertTrue(
             ServiceRunLog.objects.filter(
                 service__service_key=SOC_DOMAIN_PRIMARY_SERVICE_KEYS['prefetch'],
@@ -444,7 +445,7 @@ class PrefetchDomainApiTestCase(SOCAdminApiTestCase):
         response = self.client.get('/api/soc/prefetch/cache-status/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['cache_ttl_seconds'], 25)
         self.assertEqual(payload['ttl_seconds'], 25)
         self.assertAlmostEqual(payload['ttl_minutes'], round(25 / 60, 1))
@@ -508,7 +509,7 @@ class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
         response = self.client.get('/api/soc/screener/config/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['service_key'], SOC_DOMAIN_PRIMARY_SERVICE_KEYS['screener'])
         self.assertEqual(payload['config_schema_version'], '1.0')
         self.assertEqual(payload['applied_by'], 'system')
@@ -545,7 +546,7 @@ class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
         rules_response = self.client.get('/api/soc/screener/rules/')
 
         self.assertEqual(rules_response.status_code, status.HTTP_200_OK)
-        rules = rules_response.json()['rules']
+        rules = unwrapped_json(rules_response)['rules']
         self.assertEqual(len(rules), 1)
         self.assertEqual(rules[0]['id'], 'rule-price-change')
         self.assertEqual(rules[0]['threshold'], 5)
@@ -556,7 +557,7 @@ class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
         response = self.client.get('/api/soc/screener/results/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertIsNone(data['scan_id'])
         self.assertEqual(data['symbols_scanned'], 0)
         self.assertEqual(data['alerts_triggered'], 0)
@@ -596,8 +597,8 @@ class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
 
         response = self.client.get('/api/soc/screener/results/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.json()
-        self.assertEqual(data['scan_id'], scan_resp.json()['scan_id'])
+        data = unwrapped_json(response)
+        self.assertEqual(data['scan_id'], unwrapped_json(scan_resp)['scan_id'])
         self.assertEqual(data['symbols_scanned'], 1)
         self.assertEqual(data['alerts_triggered'], 1)
         self.assertGreaterEqual(data['scan_duration_ms'], 0)
@@ -609,8 +610,8 @@ class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
         history_response = self.client.get('/api/soc/screener/alert-history/')
 
         self.assertEqual(history_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(history_response.json()['count'], 1)
-        self.assertEqual(history_response.json()['results'][0]['symbol'], 'VCI')
+        self.assertEqual(unwrapped_json(history_response)['count'], 1)
+        self.assertEqual(unwrapped_json(history_response)['results'][0]['symbol'], 'VCI')
 
     def test_manual_scan_evaluates_global_rules(self):
         # SC-03 bridge: manual scan really evaluates enabled global rules
@@ -656,7 +657,7 @@ class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
             )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertEqual(data['status'], 'completed')
         self.assertEqual(data['symbols_count'], 2)
         self.assertEqual(data['rules_evaluated'], 1)
@@ -674,7 +675,7 @@ class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertEqual(data['status'], 'completed')
         self.assertEqual(data['matched'], [])
         self.assertIsNone(data['session_date'])
@@ -695,7 +696,7 @@ class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertEqual(data['status'], 'completed')
         self.assertEqual(data['rules_evaluated'], 0)
         self.assertEqual(len(data['rules_skipped']), 1)
@@ -705,8 +706,8 @@ class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
         response = self.client.get('/api/soc/screener/ownership/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json()['domain'], 'screener')
-        self.assertTrue(response.json()['can_apply'])
+        self.assertEqual(unwrapped_json(response)['domain'], 'screener')
+        self.assertTrue(unwrapped_json(response)['can_apply'])
 
     def test_rules_run_alias_evaluates_like_manual_scan(self):
         response = self.client.post(
@@ -716,7 +717,7 @@ class ScreenerDomainApiTestCase(SOCAdminApiTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json()['status'], 'completed')
+        self.assertEqual(unwrapped_json(response)['status'], 'completed')
 
     def test_screener_routes_appear_in_openapi_schema(self):
         response = self.client.get('/core/v1/schema/')
@@ -760,8 +761,8 @@ class MatrixDomainApiTestCase(SOCAdminApiTestCase):
         )
 
         self.assertEqual(start_response.status_code, status.HTTP_201_CREATED)
-        cycle_id = start_response.json()['cycle_id']
-        self.assertFalse(start_response.json()['reused_existing_cycle'])
+        cycle_id = unwrapped_json(start_response)['cycle_id']
+        self.assertFalse(unwrapped_json(start_response)['reused_existing_cycle'])
         self.assertTrue(ScrapeMatrix.objects.filter(cycle_id=cycle_id).exists())
 
         monitor_response = self.client.get('/api/soc/matrix/monitor/')
@@ -771,10 +772,10 @@ class MatrixDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(monitor_response.status_code, status.HTTP_200_OK)
         self.assertEqual(cells_response.status_code, status.HTTP_200_OK)
         self.assertEqual(abort_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(monitor_response.json()['cycle_id'], cycle_id)
-        self.assertEqual(len(monitor_response.json()['cells']), 4)
-        self.assertEqual(cells_response.json()['count'], 4)
-        self.assertEqual(abort_response.json()['status'], 'aborted')
+        self.assertEqual(unwrapped_json(monitor_response)['cycle_id'], cycle_id)
+        self.assertEqual(len(unwrapped_json(monitor_response)['cells']), 4)
+        self.assertEqual(unwrapped_json(cells_response)['count'], 4)
+        self.assertEqual(unwrapped_json(abort_response)['status'], 'aborted')
 
     def test_matrix_providers_reflect_active_cycle(self):
         self.client.post(
@@ -789,7 +790,7 @@ class MatrixDomainApiTestCase(SOCAdminApiTestCase):
         response = self.client.get('/api/soc/matrix/providers/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        providers = {item['provider']: item for item in response.json()['providers']}
+        providers = {item['provider']: item for item in unwrapped_json(response)['providers']}
         self.assertTrue(providers['vci']['in_active_cycle'])
         self.assertFalse(providers['kbs']['in_active_cycle'])
 
@@ -838,7 +839,7 @@ class OverviewDomainApiTestCase(SOCAdminApiTestCase):
         response = self.client.get('/api/soc/overview/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertIn('generated_at', payload)
         self.assertGreater(payload['summary']['total'], 0)
         services_by_key = {item['service_key']: item for item in payload['services']}
@@ -851,7 +852,7 @@ class OverviewDomainApiTestCase(SOCAdminApiTestCase):
         response = self.client.post(f'/api/soc/services/{service_key}/health-check/', {}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['service_key'], service_key)
         self.assertEqual(payload['status'], 'queued')
         self.assertTrue(
@@ -960,7 +961,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         response = self.client.get('/api/soc/dataops/registry/summary/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['totals']['total_symbols'], 2)
         self.assertEqual(payload['totals']['active_symbols'], 2)
         self.assertEqual(payload['totals']['decaying_symbols'], 1)
@@ -987,7 +988,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         canonical_response = self.client.get('/core/v1/operator/scraping/dataops/registry/summary/')
 
         self.assertEqual(canonical_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(canonical_response.json(), soc_response.json())
+        self.assertEqual(unwrapped_json(canonical_response), unwrapped_json(soc_response))
 
     def test_registry_detail_endpoint_returns_demand_sources_coverage_and_queue_tier(self):
         trade_date = timezone.localdate()
@@ -1032,7 +1033,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         response = self.client.get('/api/soc/dataops/registry/FPT/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['symbol'], 'FPT')
         self.assertEqual(payload['queue_tier'], 'hot_user_demand')
         self.assertFalse(payload['needs_reconcile'])
@@ -1077,7 +1078,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['summary']['evaluated_symbols'], 1)
         self.assertEqual(payload['summary']['out_of_sync'], 1)
         self.assertEqual(payload['ownership']['domain'], 'dataops_market_data')
@@ -1106,7 +1107,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         response = self.client.get('/api/soc/dataops/runtime-config/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['config']['decay_days'], 11)
         self.assertEqual(payload['config']['parity_snapshot_retention_days'], 21)
         self.assertEqual(payload['config']['hot_user_demand']['poll_interval_seconds'], 20)
@@ -1133,7 +1134,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         canonical_response = self.client.get('/core/v1/operator/scraping/dataops/runtime-config/')
 
         self.assertEqual(canonical_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(canonical_response.json(), soc_response.json())
+        self.assertEqual(unwrapped_json(canonical_response), unwrapped_json(soc_response))
 
     def test_queue_tiers_endpoint_returns_default_cadence_and_symbol_distribution(self):
         GlobalSymbolRegistry.objects.bulk_create([
@@ -1170,7 +1171,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         response = self.client.get('/api/soc/dataops/queue-tiers/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        tiers = {item['tier']: item for item in response.json()['tiers']}
+        tiers = {item['tier']: item for item in unwrapped_json(response)['tiers']}
         self.assertEqual(tiers['hot_user_demand']['symbol_count'], 1)
         self.assertEqual(tiers['hot_user_demand']['poll_interval_seconds'], 30)
         self.assertEqual(tiers['hot_user_demand']['examples'], ['FPT'])
@@ -1179,7 +1180,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         self.assertEqual(tiers['cold_full_market']['examples'], ['VNM'])
         self.assertEqual(tiers['recovery_backlog']['symbol_count'], 1)
         self.assertEqual(tiers['recovery_backlog']['examples'], ['AAA'])
-        self.assertIn('updated_at', response.json())
+        self.assertIn('updated_at', unwrapped_json(response))
 
     def test_coverage_endpoint_returns_dataset_state_counts_and_top_gaps(self):
         registry_gap = GlobalSymbolRegistry.objects.create(
@@ -1223,7 +1224,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         response = self.client.get('/api/soc/dataops/coverage/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         datasets = {item['dataset']: item for item in payload['datasets']}
         self.assertEqual(datasets['daily_prices']['missing'], 1)
         self.assertEqual(datasets['daily_prices']['fresh'], 1)
@@ -1319,7 +1320,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         response = self.client.get('/api/soc/dataops/observability/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertIn('backlog', payload)
         self.assertIn('fail_rates', payload)
         self.assertIn('parity_gates', payload)
@@ -1361,8 +1362,8 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         response_canonical = self.client.get('/core/v1/operator/scraping/dataops/observability/')
 
         self.assertEqual(response_canonical.status_code, status.HTTP_200_OK)
-        alias_payload = response_alias.json()
-        canonical_payload = response_canonical.json()
+        alias_payload = unwrapped_json(response_alias)
+        canonical_payload = unwrapped_json(response_canonical)
 
         self.assertEqual(canonical_payload['backlog'], alias_payload['backlog'])
         self.assertEqual(canonical_payload['fail_rates'], alias_payload['fail_rates'])
@@ -1400,7 +1401,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         response = self.client.get('/api/soc/dataops/observability/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertIn('window_24h', payload['parity_history'])
         self.assertGreaterEqual(len(payload['parity_history']['window_24h']), 1)
         first_point = payload['parity_history']['window_24h'][0]
@@ -1459,7 +1460,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         response = self.client.get('/api/soc/dataops/run-logs/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['count'], 2)
         results_by_run_id = {item['run_id']: item for item in payload['results']}
         self.assertEqual(results_by_run_id[f'md-run-{queued_log.id}']['summary']['planned_items'], 2)
@@ -1505,7 +1506,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['summary']['planned_items'], 1)
         self.assertEqual(payload['summary']['skipped_items'], 1)
         self.assertEqual(payload['items'][0]['symbol'], 'FPT')
@@ -1556,7 +1557,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         )
 
         self.assertEqual(canonical_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(canonical_response.json(), soc_response.json())
+        self.assertEqual(unwrapped_json(canonical_response), unwrapped_json(soc_response))
 
     @patch('data_ingest.tasks.run_global_market_data_planner.apply_async', return_value=Mock(id='soc-dataops-planner-task'))
     def test_planner_run_endpoint_creates_audited_manual_on_demand_run(self, planner_task_mock):
@@ -1588,7 +1589,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertTrue(payload['queued'])
         self.assertEqual(payload['status'], 'queued')
         self.assertEqual(payload['ownership']['domain'], 'dataops_market_data')
@@ -1625,7 +1626,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertTrue(payload['cancelled'])
         self.assertEqual(payload['status'], 'skipped')
         self.assertEqual(payload['run_id'], f'md-run-{run_log.id}')
@@ -1664,7 +1665,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         response = self.client.get('/api/soc/dataops/queue-tiers/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        tiers = {item['tier']: item for item in response.json()['tiers']}
+        tiers = {item['tier']: item for item in unwrapped_json(response)['tiers']}
         self.assertEqual(tiers['hot_user_demand']['poll_interval_seconds'], 15)
         self.assertEqual(tiers['hot_user_demand']['max_batch_size'], 25)
         self.assertEqual(tiers['recovery_backlog']['poll_interval_seconds'], 300)
@@ -1690,7 +1691,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['config']['decay_days'], 9)
         self.assertEqual(payload['config']['hot_user_demand']['poll_interval_seconds'], 20)
         self.assertEqual(payload['config']['warm_liquid_market']['max_batch_size'], 110)
@@ -1730,7 +1731,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['config']['decay_days'], 8)
         self.assertEqual(payload['ownership']['domain'], 'dataops_market_data')
         self.assertTrue(
@@ -1754,7 +1755,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertTrue(payload['is_valid'])
         self.assertEqual(payload['projected_config']['decay_days'], 14)
         self.assertEqual(payload['projected_config']['hot_user_demand']['poll_interval_seconds'], 10)
@@ -1779,7 +1780,7 @@ class DataOpsDomainApiTestCase(SOCAdminApiTestCase):
         response = self.client.get('/api/soc/dataops/runtime-config/audit/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertIn('count', payload)
         self.assertIn('results', payload)
         self.assertGreaterEqual(payload['count'], 1)

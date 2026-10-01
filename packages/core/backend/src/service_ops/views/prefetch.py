@@ -19,6 +19,7 @@ from rest_framework import serializers, status
 from rest_framework.response import Response
 
 from ..domain_configs import PrefetchTimePolicyConfig, VALID_PROFILES
+from ..envelope import envelope
 from ..models import ServiceConfig, ServiceDefinition, ServiceRunLog
 from ..ownership import build_ownership_matrix_from_db
 from ..registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
@@ -236,10 +237,10 @@ class PrefetchConfigView(SOCBaseView, ConfigApplyMixin):
                 service=service, is_current=True
             ).first()
             if current_config:
-                return Response(ServiceConfigSerializer(current_config).data)
+                return envelope(ServiceConfigSerializer(current_config).data)
         except (ServiceDefinition.DoesNotExist, ServiceConfig.DoesNotExist):
             pass
-        return Response(_build_default_prefetch_config_response())
+        return envelope(_build_default_prefetch_config_response())
 
     def post(self, request):
         """POST apply prefetch config."""
@@ -252,9 +253,10 @@ class PrefetchConfigView(SOCBaseView, ConfigApplyMixin):
             config_class=PrefetchTimePolicyConfig,
         )
         if isinstance(result, Response):
+            # `apply_config` chỉ trả Response khi lỗi (RFC 9457) — không bọc.
             return result
         service, svc_config = result
-        return Response(
+        return envelope(
             ServiceConfigSerializer(svc_config).data,
             status=status.HTTP_201_CREATED,
         )
@@ -285,7 +287,7 @@ class PrefetchConfigPreviewView(SOCBaseView):
         """Preview config before apply (F-1: mirror VnbrokerConfigPreviewView)."""
         config_payload = request.data.get('config_payload', {})
         if not isinstance(config_payload, dict):
-            return Response({
+            return envelope({
                 'valid': False,
                 'errors': ['config_payload phải là object.'],
                 'change_summary': [],
@@ -296,7 +298,7 @@ class PrefetchConfigPreviewView(SOCBaseView):
         try:
             projected = PrefetchTimePolicyConfig.from_dict({**current_dict, **config_payload})
         except Exception as exc:
-            return Response({
+            return envelope({
                 'valid': False,
                 'errors': [str(exc)],
                 'change_summary': [],
@@ -308,7 +310,7 @@ class PrefetchConfigPreviewView(SOCBaseView):
             key for key in projected_dict
             if current_dict.get(key) != projected_dict.get(key)
         ]
-        return Response({
+        return envelope({
             'valid': len(errors) == 0,
             'errors': errors,
             'config_payload': projected_dict,
@@ -338,7 +340,7 @@ class PrefetchProfilesView(SOCBaseView):
     )
     def get(self, request):
         """List 6 trading time profiles."""
-        return Response({
+        return envelope({
             'profiles': sorted(VALID_PROFILES),
             'descriptions': {
                 'pre_open': 'Before market open (08:00-09:00)',
@@ -370,7 +372,7 @@ class PrefetchCacheStatusView(SOCBaseView):
         # (follow-up: wire Redis thật — xem F-4).
         config = _get_prefetch_config()
         ttl_seconds = int(config.cache_ttl_seconds or 0)
-        return Response({
+        return envelope({
             'redis': {
                 'connected': True,
                 'memory_usage_mb': 125,
@@ -403,7 +405,7 @@ class PrefetchPurgeCacheView(SOCBaseView):
     def post(self, request):
         """Force purge cache for symbol group."""
         group_id = request.data.get('group_id')
-        return Response({
+        return envelope({
             'group_id': group_id,
             'purged_keys': 456,
             'status': 'success',
@@ -445,7 +447,7 @@ class PrefetchWarmNowView(SOCBaseView):
             },
             output_summary={},
         )
-        return Response({
+        return envelope({
             'status': 'queued',
             'run_log_id': run_log.id,
             'active_profile': config.active_profile,
@@ -554,7 +556,7 @@ class PrefetchUniverseGroupsView(SOCBaseView):
                 'latest_date': None,
             })
 
-        return Response({
+        return envelope({
             'groups': groups,
             'active_profile': config.active_profile,
             'universe_mode': 'registry_first',
@@ -586,7 +588,7 @@ class PrefetchTaskScheduleView(SOCBaseView):
             }
             for profile in sorted(VALID_PROFILES)
         ]
-        return Response({
+        return envelope({
             'active_profile': config.active_profile,
             'schedule': schedule,
         })
@@ -605,4 +607,4 @@ class PrefetchOwnershipView(SOCBaseView):
         },
     )
     def get(self, request):
-        return Response(_build_prefetch_ownership_payload())
+        return envelope(_build_prefetch_ownership_payload())

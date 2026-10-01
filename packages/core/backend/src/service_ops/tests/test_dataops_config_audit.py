@@ -8,6 +8,8 @@ from rest_framework.test import APIClient
 from service_ops.models import ConfigChangeAudit
 from service_ops.registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, ensure_service_registry, get_registered_service
 
+from service_ops.tests.envelope import unwrapped_json
+
 User = get_user_model()
 
 
@@ -48,7 +50,7 @@ class DataOpsConfigAuditApiTestCase(TestCase):
         response = self.client.get('/api/soc/dataops/runtime-config/audit/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['count'], 1)
         entry = payload['results'][0]
         self.assertEqual(entry['action'], 'apply')
@@ -66,7 +68,7 @@ class DataOpsConfigAuditApiTestCase(TestCase):
 
         response = self.client.get('/api/soc/dataops/runtime-config/audit/')
 
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['count'], 3)
         summaries = [entry['change_summary'] for entry in payload['results']]
         self.assertEqual(summaries[0], 'third')
@@ -79,6 +81,6 @@ class DataOpsConfigAuditApiTestCase(TestCase):
 
         response = self.client.get('/api/soc/dataops/runtime-config/audit/')
 
-        payload = response.json()
+        payload = unwrapped_json(response)
         summaries = [entry['change_summary'] for entry in payload['results']]
         self.assertEqual(summaries, ['matrix-change'])

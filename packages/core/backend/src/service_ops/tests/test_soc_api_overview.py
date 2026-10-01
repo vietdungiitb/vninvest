@@ -18,6 +18,8 @@ from service_ops.models import (
 )
 from service_ops.registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, ensure_service_registry, get_registered_service
 
+from service_ops.tests.envelope import unwrapped_json
+
 User = get_user_model()
 
 
@@ -45,7 +47,7 @@ class OverviewContractTestCase(OverviewApiBaseTestCase):
         response = self.client.get('/api/soc/overview/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertIn('generated_at', payload)
         self.assertIn('summary', payload)
         self.assertIn('by_domain', payload)
@@ -57,7 +59,7 @@ class OverviewContractTestCase(OverviewApiBaseTestCase):
         response = self.client.get('/api/soc/services/?page_size=100')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertIn('count', payload)
         self.assertIn('results', payload)
         self.assertTrue(any(item['service_key'] == self.vnbroker_service.service_key for item in payload['results']))
@@ -71,7 +73,7 @@ class OverviewContractTestCase(OverviewApiBaseTestCase):
         response = self.client.get(f'/api/soc/services/{self.vnbroker_service.service_key}/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['service_key'], self.vnbroker_service.service_key)
         self.assertIsNotNone(payload['current_config'])
         self.assertEqual(payload['health']['status'], 'degraded')
@@ -81,7 +83,7 @@ class OverviewContractTestCase(OverviewApiBaseTestCase):
         response = self.client.get(f'/api/soc/services/{self.vnbroker_service.service_key}/config/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['service_key'], self.vnbroker_service.service_key)
         self.assertIn('config_payload', payload)
 
@@ -95,7 +97,7 @@ class OverviewContractTestCase(OverviewApiBaseTestCase):
         response = self.client.get(f'/api/soc/services/{service.service_key}/health/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['status'], 'unknown')
         self.assertEqual(payload['service_key'], service.service_key)
 
@@ -121,10 +123,10 @@ class OverviewContractTestCase(OverviewApiBaseTestCase):
 
         self.assertEqual(audit_response.status_code, status.HTTP_200_OK)
         self.assertEqual(history_response.status_code, status.HTTP_200_OK)
-        self.assertIn('results', audit_response.json())
-        self.assertIn('results', history_response.json())
-        self.assertGreaterEqual(audit_response.json()['count'], 1)
-        self.assertGreaterEqual(history_response.json()['count'], 1)
+        self.assertIn('results', unwrapped_json(audit_response))
+        self.assertIn('results', unwrapped_json(history_response))
+        self.assertGreaterEqual(unwrapped_json(audit_response)['count'], 1)
+        self.assertGreaterEqual(unwrapped_json(history_response)['count'], 1)
 
     def test_global_run_logs_and_change_audit_endpoints_are_paginated(self):
         ServiceRunLog.objects.create(
@@ -148,14 +150,14 @@ class OverviewContractTestCase(OverviewApiBaseTestCase):
 
         self.assertEqual(run_logs_response.status_code, status.HTTP_200_OK)
         self.assertEqual(change_audit_response.status_code, status.HTTP_200_OK)
-        self.assertIn('results', run_logs_response.json())
-        self.assertIn('results', change_audit_response.json())
+        self.assertIn('results', unwrapped_json(run_logs_response))
+        self.assertIn('results', unwrapped_json(change_audit_response))
 
     def test_service_health_check_trigger_creates_queued_run_log(self):
         response = self.client.post(f'/api/soc/services/{self.vnbroker_service.service_key}/health-check/', {}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['service_key'], self.vnbroker_service.service_key)
         self.assertEqual(payload['status'], 'queued')
         self.assertTrue(
@@ -170,7 +172,7 @@ class OverviewContractTestCase(OverviewApiBaseTestCase):
         response = self.client.get('/api/soc/overview/health-status/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertIn('total_services', payload)
         self.assertIn('health_status_counts', payload)
 
@@ -178,7 +180,7 @@ class OverviewContractTestCase(OverviewApiBaseTestCase):
         response = self.client.get('/api/soc/services/nonexistent-service/config/')
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['code'], 'SERVICE_NOT_FOUND')
         self.assertIn('detail', payload)
         self.assertIn('timestamp', payload)
@@ -192,7 +194,7 @@ class OverviewAuthContractTestCase(TestCase):
         response = client.get('/api/soc/overview/')
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertIn('detail', payload)
         self.assertIn('code', payload)
         self.assertIn('timestamp', payload)
@@ -210,7 +212,7 @@ class OverviewAuthContractTestCase(TestCase):
         response = client.get('/api/soc/overview/')
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertIn('detail', payload)
         self.assertIn('code', payload)
         self.assertIn('timestamp', payload)
@@ -232,7 +234,7 @@ class OverviewAdminActionTestCase(OverviewApiBaseTestCase):
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertFalse(payload['is_active'])
 
         # Verify in database
@@ -246,7 +248,7 @@ class OverviewAdminActionTestCase(OverviewApiBaseTestCase):
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertTrue(payload['is_active'])
 
         # Verify in database
@@ -256,7 +258,7 @@ class OverviewAdminActionTestCase(OverviewApiBaseTestCase):
         # Verify list view includes inactive services (no is_active filter)
         response = self.client.get('/api/soc/services/?page_size=100')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         service_keys = [item['service_key'] for item in payload['results']]
         self.assertIn(self.vnbroker_service.service_key, service_keys)
 
@@ -269,7 +271,7 @@ class OverviewAdminActionTestCase(OverviewApiBaseTestCase):
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['code'], 'INVALID_PAYLOAD')
 
         # Invalid type for is_active
@@ -279,7 +281,7 @@ class OverviewAdminActionTestCase(OverviewApiBaseTestCase):
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['code'], 'INVALID_PAYLOAD')
 
     def test_reset_service_config_to_baseline(self):
@@ -296,7 +298,7 @@ class OverviewAdminActionTestCase(OverviewApiBaseTestCase):
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        custom_payload = response.json()['config_payload']
+        custom_payload = unwrapped_json(response)['config_payload']
         self.assertEqual(custom_payload['timeout']['connect'], 15.0)
 
         # Now reset to baseline
@@ -306,7 +308,7 @@ class OverviewAdminActionTestCase(OverviewApiBaseTestCase):
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['change_reason'], 'Khôi phục cấu hình mặc định hệ thống')
 
         # Verify config matches default
@@ -337,7 +339,7 @@ class OverviewAdminActionTestCase(OverviewApiBaseTestCase):
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['code'], 'CONFIG_VALIDATION_FAILED')
         self.assertIn('field_errors', payload)
         self.assertIn('payload', payload['field_errors'])
@@ -383,7 +385,7 @@ class OverviewAdminActionTestCase(OverviewApiBaseTestCase):
         """Test that config apply creates proper audit trail with before/after snapshots."""
         # Get initial config
         initial_response = self.client.get(f'/api/soc/services/{self.vnbroker_service.service_key}/config/')
-        initial_payload = initial_response.json()['config_payload']
+        initial_payload = unwrapped_json(initial_response)['config_payload']
 
         # Apply new config
         new_config = {
@@ -422,7 +424,7 @@ class OverviewAdminActionTestCase(OverviewApiBaseTestCase):
 
         response = self.client.get('/api/soc/overview/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
 
         # Should include the inactive service
         service_keys = [s['service_key'] for s in payload['services']]
@@ -487,7 +489,7 @@ class OverviewAdminActionTestCase(OverviewApiBaseTestCase):
         )
         response = self.client.get('/api/soc/overview/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertGreaterEqual(payload['summary']['maintenance'], 1)
         self.assertIn('platform', payload['by_domain'])
         self.assertGreaterEqual(payload['by_domain']['platform']['maintenance'], 1)
@@ -512,7 +514,7 @@ class OverviewSloTestCase(OverviewApiBaseTestCase):
         response = self.client.get('/api/soc/overview/slo-overview/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         row = next(r for r in payload['services'] if r['service_key'] == self.vnbroker_service.service_key)
         self.assertIn('recent_checks_24h', row)
         self.assertGreaterEqual(len(row['recent_checks_24h']), 1)
@@ -530,7 +532,7 @@ class OverviewSloTestCase(OverviewApiBaseTestCase):
 
         response = self.client.get('/api/soc/overview/slo-overview/')
 
-        payload = response.json()
+        payload = unwrapped_json(response)
         row = next(r for r in payload['services'] if r['service_key'] == self.vnbroker_service.service_key)
         self.assertGreaterEqual(len(row['recent_checks_24h']), 1)
         self.assertEqual(
@@ -541,7 +543,7 @@ class OverviewSloTestCase(OverviewApiBaseTestCase):
     def test_slo_overview_empty_recent_checks_when_no_logs(self):
         response = self.client.get('/api/soc/overview/slo-overview/')
 
-        payload = response.json()
+        payload = unwrapped_json(response)
         row = next(r for r in payload['services'] if r['service_key'] == self.vnbroker_service.service_key)
         self.assertEqual(row['recent_checks_24h'], [])
 
@@ -571,7 +573,7 @@ class OverviewExportTestCase(OverviewApiBaseTestCase):
         response = self.client.get('/api/soc/overview/export/audits/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertIsInstance(payload, list)
         self.assertGreaterEqual(len(payload), 3)
         serialized = payload[0]
@@ -605,7 +607,7 @@ class OverviewExportTestCase(OverviewApiBaseTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(len(payload), 1)
         self.assertEqual(payload[0]['service_key'], other.service_key)
 
@@ -613,7 +615,7 @@ class OverviewExportTestCase(OverviewApiBaseTestCase):
         response = self.client.get('/api/soc/overview/export/run-logs/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertIsInstance(payload, list)
         self.assertGreaterEqual(len(payload), 3)
         serialized = payload[0]
@@ -627,6 +629,6 @@ class OverviewExportTestCase(OverviewApiBaseTestCase):
         response = self.client.get('/api/soc/overview/export/run-logs/?limit=2')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertIsInstance(payload, list)
         self.assertEqual(len(payload), 2)

@@ -15,6 +15,8 @@ from signal_intelligence.models import OrderFlowEvent, UnifiedAlert
 from service_ops.models import OwnershipRecord
 from service_ops.registry import ensure_service_registry
 
+from service_ops.tests.envelope import unwrapped_json
+
 User = get_user_model()
 
 
@@ -127,7 +129,7 @@ class SignalsApiContractTestCase(SignalsApiBaseTestCase):
         response = self.client.get('/api/soc/signals/config/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertEqual(data['write_mode'], 'bridge-write')
         self.assertFalse(data['can_apply'])
         self.assertEqual(data['ownership']['mode'], 'bridge-write')
@@ -147,7 +149,7 @@ class SignalsApiContractTestCase(SignalsApiBaseTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertTrue(data['valid'])
         self.assertFalse(data['can_apply'])
 
@@ -189,7 +191,7 @@ class SignalsApiContractTestCase(SignalsApiBaseTestCase):
         response = self.client.get('/api/soc/signals/summary/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertEqual(data['active_alerts'], 3)
         self.assertEqual(data['whale_alerts'], 1)
         self.assertEqual(data['dark_flow_alerts'], 1)
@@ -219,7 +221,7 @@ class SignalsApiContractTestCase(SignalsApiBaseTestCase):
             triggered_at=now,
             source_ref='signals-s6-ai',
         )
-        data = self.client.get('/api/soc/signals/summary/').json()
+        data = unwrapped_json(self.client.get('/api/soc/signals/summary/'))
         self.assertEqual(data['system_alerts'], 1)
         self.assertEqual(data['ai_alerts'], 1)
         self.assertEqual(
@@ -249,13 +251,13 @@ class SignalsApiContractTestCase(SignalsApiBaseTestCase):
         self.assertEqual(performance_response.status_code, status.HTTP_200_OK)
         self.assertEqual(ownership_response.status_code, status.HTTP_200_OK)
 
-        self.assertEqual(whale_response.json()['active_monitors'], 1)
-        self.assertEqual(whale_recent_response.json()['total_today'], 1)
-        self.assertEqual(dark_recent_response.json()['total_today'], 1)
-        self.assertEqual(screener_response.json()['rules_seen_session'], 1)
-        self.assertEqual(screener_recent_response.json()['total_today'], 1)
-        self.assertEqual(performance_response.json()['total_signals_processed'], 3)
-        self.assertEqual(ownership_response.json()['mode'], 'bridge-write')
+        self.assertEqual(unwrapped_json(whale_response)['active_monitors'], 1)
+        self.assertEqual(unwrapped_json(whale_recent_response)['total_today'], 1)
+        self.assertEqual(unwrapped_json(dark_recent_response)['total_today'], 1)
+        self.assertEqual(unwrapped_json(screener_response)['rules_seen_session'], 1)
+        self.assertEqual(unwrapped_json(screener_recent_response)['total_today'], 1)
+        self.assertEqual(unwrapped_json(performance_response)['total_signals_processed'], 3)
+        self.assertEqual(unwrapped_json(ownership_response)['mode'], 'bridge-write')
 
     def test_direct_apply_methods_on_config_route_are_blocked(self):
         post_response = self.client.post('/api/soc/signals/config/', {}, format='json')
@@ -286,11 +288,11 @@ class SignalsApiContractTestCase(SignalsApiBaseTestCase):
         ownership_response = self.client.get('/api/soc/signals/ownership/')
 
         self.assertEqual(apply_response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(apply_response.json()['code'], 'OWNERSHIP_WRITE_DENIED')
-        self.assertIn('write_block_reason', apply_response.json())
-        self.assertFalse(apply_response.json()['ownership']['can_apply'])
+        self.assertEqual(unwrapped_json(apply_response)['code'], 'OWNERSHIP_WRITE_DENIED')
+        self.assertIn('write_block_reason', unwrapped_json(apply_response))
+        self.assertFalse(unwrapped_json(apply_response)['ownership']['can_apply'])
         self.assertEqual(ownership_response.status_code, status.HTTP_200_OK)
-        self.assertFalse(ownership_response.json()['can_apply'])
+        self.assertFalse(unwrapped_json(ownership_response)['can_apply'])
 
     @patch('service_ops.views.signals.run_signals_detection_workflow.delay')
     def test_retention_materialization_universe_and_job_routes_return_contract(self, workflow_delay):
@@ -317,18 +319,18 @@ class SignalsApiContractTestCase(SignalsApiBaseTestCase):
         job_status = self.client.get('/api/soc/signals/jobs/status/')
 
         self.assertEqual(retention_preview.status_code, status.HTTP_200_OK)
-        self.assertTrue(retention_preview.json()['valid'])
+        self.assertTrue(unwrapped_json(retention_preview)['valid'])
         self.assertEqual(materialization.status_code, status.HTTP_200_OK)
-        self.assertIn('services', materialization.json())
-        self.assertIn('execution_plan', materialization.json())
+        self.assertIn('services', unwrapped_json(materialization))
+        self.assertIn('execution_plan', unwrapped_json(materialization))
         self.assertEqual(materialization_preview.status_code, status.HTTP_200_OK)
-        self.assertEqual(materialization_preview.json()['symbol'], 'VCI')
+        self.assertEqual(unwrapped_json(materialization_preview)['symbol'], 'VCI')
 
         materialization_plan = {
-            item['service_key']: item for item in materialization.json()['execution_plan']
+            item['service_key']: item for item in unwrapped_json(materialization)['execution_plan']
         }
         preview_plan = {
-            item['service_key']: item for item in materialization_preview.json()['execution_plan']
+            item['service_key']: item for item in unwrapped_json(materialization_preview)['execution_plan']
         }
         self.assertTrue(materialization_plan['signal_session_facts_materializer']['execution_supported'])
         self.assertTrue(materialization_plan['signal_session_facts_materializer']['will_run'])
@@ -339,10 +341,10 @@ class SignalsApiContractTestCase(SignalsApiBaseTestCase):
         self.assertEqual(universe.status_code, status.HTTP_200_OK)
         self.assertEqual(universe_update.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(job_run.status_code, status.HTTP_202_ACCEPTED)
-        self.assertEqual(job_run.json()['celery_task_id'], 'signals-task-123')
+        self.assertEqual(unwrapped_json(job_run)['celery_task_id'], 'signals-task-123')
         self.assertEqual(job_status.status_code, status.HTTP_200_OK)
-        self.assertIn(job_status.json()['status'], {'idle', 'queued', 'running', 'success', 'partial', 'failed', 'skipped'})
-        self.assertEqual(job_status.json()['celery_task_id'], 'signals-task-123')
+        self.assertIn(unwrapped_json(job_status)['status'], {'idle', 'queued', 'running', 'success', 'partial', 'failed', 'skipped'})
+        self.assertEqual(unwrapped_json(job_status)['celery_task_id'], 'signals-task-123')
         workflow_delay.assert_called_once()
 
 
@@ -357,7 +359,7 @@ class SignalsP0ContractTestCase(SignalsApiBaseTestCase):
         ):
             response = self.client.get(path)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
-            data = response.json()
+            data = unwrapped_json(response)
             self.assertIn('recent', data)
             self.assertIn('total_today', data)
             self.assertGreaterEqual(len(data['recent']), 1)
@@ -370,12 +372,12 @@ class SignalsP0ContractTestCase(SignalsApiBaseTestCase):
         performance = self.client.get('/api/soc/signals/performance-metrics/')
         self.assertEqual(summary.status_code, status.HTTP_200_OK)
         self.assertEqual(performance.status_code, status.HTTP_200_OK)
-        for payload in (summary.json(), performance.json()):
+        for payload in (unwrapped_json(summary), unwrapped_json(performance)):
             self.assertIn('sentiment', payload)
             sentiment = payload['sentiment']
             self.assertEqual(set(sentiment.keys()), {'bullish', 'bearish', 'neutral'})
         # Fixture: VCI buy + VNM buy = 2 bullish, SSI sell = 1 bearish
-        self.assertEqual(summary.json()['sentiment'], {'bullish': 2, 'bearish': 1, 'neutral': 0})
+        self.assertEqual(unwrapped_json(summary)['sentiment'], {'bullish': 2, 'bearish': 1, 'neutral': 0})
 
     @patch('service_ops.views.signals.run_signals_detection_workflow.delay')
     def test_job_status_respects_run_log_id(self, workflow_delay):
@@ -384,10 +386,10 @@ class SignalsP0ContractTestCase(SignalsApiBaseTestCase):
             '/api/soc/signals/jobs/run/', {'domain': 'whale', 'symbol': 'VCI'}, format='json'
         )
         self.assertEqual(run_res.status_code, status.HTTP_202_ACCEPTED)
-        run_log_id = run_res.json()['run_log_id']
+        run_log_id = unwrapped_json(run_res)['run_log_id']
         status_res = self.client.get(f'/api/soc/signals/jobs/status/?run_log_id={run_log_id}')
         self.assertEqual(status_res.status_code, status.HTTP_200_OK)
-        self.assertEqual(status_res.json()['run_log_id'], run_log_id)
+        self.assertEqual(unwrapped_json(status_res)['run_log_id'], run_log_id)
         # run_log_id không hợp lệ → fallback latest, không 500
         fallback_res = self.client.get('/api/soc/signals/jobs/status/?run_log_id=999999')
         self.assertEqual(fallback_res.status_code, status.HTTP_200_OK)
@@ -397,7 +399,7 @@ class SignalsP0ContractTestCase(SignalsApiBaseTestCase):
             '/api/soc/signals/jobs/run/', {'domain': 'intruder', 'symbol': 'VCI'}, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.json()['code'], 'INVALID_SIGNAL_DOMAIN')
+        self.assertEqual(unwrapped_json(response)['code'], 'INVALID_SIGNAL_DOMAIN')
 
     @patch('service_ops.views.signals.run_signals_detection_workflow.delay')
     def test_job_run_normalizes_dark_pool_to_dark_flow(self, workflow_delay):
@@ -406,7 +408,7 @@ class SignalsP0ContractTestCase(SignalsApiBaseTestCase):
             '/api/soc/signals/jobs/run/', {'domain': 'dark_pool', 'symbol': 'SSI'}, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
-        self.assertEqual(response.json()['domain'], 'dark_flow')
+        self.assertEqual(unwrapped_json(response)['domain'], 'dark_flow')
         _, kwargs = workflow_delay.call_args
         self.assertEqual(kwargs['domain'], 'dark_flow')
 
@@ -415,7 +417,7 @@ class SignalsP0ContractTestCase(SignalsApiBaseTestCase):
             '/api/soc/signals/jobs/run/', {'domain': 'screener', 'symbol': 'VNM'}, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.json()['code'], 'SCREENER_USE_MANUAL_SCAN')
+        self.assertEqual(unwrapped_json(response)['code'], 'SCREENER_USE_MANUAL_SCAN')
 
     def test_materialization_preview_dark_pool_runs_unified_branch(self):
         response = self.client.post(
@@ -424,7 +426,7 @@ class SignalsP0ContractTestCase(SignalsApiBaseTestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        plan = {item['service_key']: item for item in response.json()['execution_plan']}
+        plan = {item['service_key']: item for item in unwrapped_json(response)['execution_plan']}
         self.assertTrue(plan['signal_unified_alert_materializer']['will_run'])
 
 
@@ -458,7 +460,7 @@ class SignalsP1PagingTestCase(SignalsApiBaseTestCase):
             )
 
     def test_default_paging_backward_compat(self):
-        data = self.client.get('/api/soc/signals/whale/recent/').json()
+        data = unwrapped_json(self.client.get('/api/soc/signals/whale/recent/'))
         self.assertEqual(data['page'], 1)
         self.assertEqual(data['page_size'], 20)
         self.assertEqual(data['total_today'], 5)
@@ -466,33 +468,33 @@ class SignalsP1PagingTestCase(SignalsApiBaseTestCase):
         self.assertEqual(len(data['recent']), 5)
 
     def test_page_two_returns_remaining(self):
-        data = self.client.get('/api/soc/signals/whale/recent/?page=2&page_size=2').json()
+        data = unwrapped_json(self.client.get('/api/soc/signals/whale/recent/?page=2&page_size=2'))
         self.assertEqual(data['page'], 2)
         self.assertEqual(len(data['recent']), 2)
         self.assertEqual(data['total_filtered'], 5)
         self.assertEqual(data['total_today'], 5)
 
     def test_page_size_clamped_to_max(self):
-        data = self.client.get('/api/soc/signals/whale/recent/?page_size=500').json()
+        data = unwrapped_json(self.client.get('/api/soc/signals/whale/recent/?page_size=500'))
         self.assertEqual(data['page_size'], 100)
 
     def test_symbol_filter(self):
-        data = self.client.get('/api/soc/signals/whale/recent/?symbol=fpt').json()
+        data = unwrapped_json(self.client.get('/api/soc/signals/whale/recent/?symbol=fpt'))
         self.assertEqual(data['total_filtered'], 1)
         self.assertEqual(data['total_today'], 5)
         self.assertEqual(data['recent'][0]['symbol'], 'FPT')
 
     def test_severity_and_direction_filters(self):
-        high = self.client.get('/api/soc/signals/whale/recent/?severity=high').json()
+        high = unwrapped_json(self.client.get('/api/soc/signals/whale/recent/?severity=high'))
         self.assertEqual(high['total_filtered'], 3)
-        sell = self.client.get('/api/soc/signals/whale/recent/?direction=sell').json()
+        sell = unwrapped_json(self.client.get('/api/soc/signals/whale/recent/?direction=sell'))
         self.assertEqual(sell['total_filtered'], 2)
-        combo = self.client.get('/api/soc/signals/whale/recent/?severity=high&direction=sell').json()
+        combo = unwrapped_json(self.client.get('/api/soc/signals/whale/recent/?severity=high&direction=sell'))
         self.assertEqual(combo['total_filtered'], 1)
         self.assertEqual(combo['recent'][0]['symbol'], 'HPG')
 
     def test_invalid_filter_values_ignored(self):
-        data = self.client.get('/api/soc/signals/whale/recent/?severity=bogus&direction=bogus').json()
+        data = unwrapped_json(self.client.get('/api/soc/signals/whale/recent/?severity=bogus&direction=bogus'))
         self.assertEqual(data['total_filtered'], 5)
 
 
@@ -500,44 +502,44 @@ class SignalsP2AHonestMetricsTestCase(SignalsApiBaseTestCase):
     """P2a W2.4: số liệu trung thực — null thay vì số giả, last_scan từ run log."""
 
     def test_accuracy_and_fpr_are_null_until_ack_data_exists(self):
-        performance = self.client.get('/api/soc/signals/performance-metrics/').json()
+        performance = unwrapped_json(self.client.get('/api/soc/signals/performance-metrics/'))
         self.assertIsNone(performance['whale_detection_accuracy'])
         self.assertIsNone(performance['dark_pool_detection_accuracy'])
         self.assertIsNone(performance['false_positive_rate'])
-        summary = self.client.get('/api/soc/signals/summary/').json()
+        summary = unwrapped_json(self.client.get('/api/soc/signals/summary/'))
         self.assertIsNone(summary['false_positive_rate'])
         # số liệu thật vẫn còn
         self.assertEqual(performance['total_signals_processed'], 3)
         self.assertEqual(summary['detection_rate'], 100.0)
 
     def test_last_scan_at_none_without_run_log(self):
-        self.assertIsNone(self.client.get('/api/soc/signals/whale/').json()['last_scan_at'])
-        self.assertIsNone(self.client.get('/api/soc/signals/dark-pool/').json()['last_scan_at'])
+        self.assertIsNone(unwrapped_json(self.client.get('/api/soc/signals/whale/'))['last_scan_at'])
+        self.assertIsNone(unwrapped_json(self.client.get('/api/soc/signals/dark-pool/'))['last_scan_at'])
 
     @patch('service_ops.views.signals.run_signals_detection_workflow.delay')
     def test_last_scan_at_follows_latest_run_log(self, workflow_delay):
         workflow_delay.return_value = Mock(id='signals-honest-task')
         self.client.post('/api/soc/signals/jobs/run/', {'domain': 'whale', 'symbol': 'VCI'}, format='json')
-        self.assertIsNotNone(self.client.get('/api/soc/signals/whale/').json()['last_scan_at'])
-        self.assertIsNotNone(self.client.get('/api/soc/signals/dark-pool/').json()['last_scan_at'])
+        self.assertIsNotNone(unwrapped_json(self.client.get('/api/soc/signals/whale/'))['last_scan_at'])
+        self.assertIsNotNone(unwrapped_json(self.client.get('/api/soc/signals/dark-pool/'))['last_scan_at'])
 
     def test_dark_pool_drops_fake_min_signal_count(self):
-        payload = self.client.get('/api/soc/signals/dark-pool/').json()
+        payload = unwrapped_json(self.client.get('/api/soc/signals/dark-pool/'))
         self.assertNotIn('min_signal_count', payload)
         self.assertIn('threshold_vnd', payload)
 
     def test_screener_reports_rules_seen_session(self):
-        payload = self.client.get('/api/soc/signals/screener/').json()
+        payload = unwrapped_json(self.client.get('/api/soc/signals/screener/'))
         self.assertEqual(payload['rules_seen_session'], 1)
         self.assertNotIn('active_rules', payload)
 
     def test_whale_test_endpoint_labels_smoke(self):
-        payload = self.client.post('/api/soc/signals/whale/test/', {'symbol': 'VNM'}, format='json').json()
+        payload = unwrapped_json(self.client.post('/api/soc/signals/whale/test/', {'symbol': 'VNM'}, format='json'))
         self.assertTrue(payload['smoke'])
         self.assertIn('note', payload)
 
     def test_feed_export_returns_columns_rows_and_count(self):
-        payload = self.client.get('/api/soc/signals/feed/export/').json()
+        payload = unwrapped_json(self.client.get('/api/soc/signals/feed/export/'))
         self.assertEqual(
             payload['columns'],
             ['id', 'symbol', 'type', 'severity', 'direction', 'session_date', 'triggered_at', 'value', 'title'],
@@ -549,10 +551,10 @@ class SignalsP2AHonestMetricsTestCase(SignalsApiBaseTestCase):
         self.assertEqual(symbols, {'VCI', 'SSI', 'VNM'})
 
     def test_feed_export_filters_by_type_and_symbol(self):
-        whale = self.client.get('/api/soc/signals/feed/export/?type=whale').json()
+        whale = unwrapped_json(self.client.get('/api/soc/signals/feed/export/?type=whale'))
         self.assertEqual(whale['count'], 1)
         self.assertEqual(whale['rows'][0][1], 'VCI')
-        symbol = self.client.get('/api/soc/signals/feed/export/?symbol=ssi').json()
+        symbol = unwrapped_json(self.client.get('/api/soc/signals/feed/export/?symbol=ssi'))
         self.assertEqual(symbol['count'], 1)
         self.assertEqual(symbol['rows'][0][1], 'SSI')
 

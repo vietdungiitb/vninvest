@@ -16,6 +16,8 @@ from rest_framework.test import APIClient
 from service_ops.models import ConfigChangeAudit, OwnershipRecord
 from service_ops.registry import ensure_service_registry
 
+from service_ops.tests.envelope import unwrapped_json
+
 User = get_user_model()
 
 
@@ -52,7 +54,7 @@ class ScreenerRuleCRUDTestCase(TestCase):
         response = self.client.post('/api/soc/screener/rules/', payload, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertIn('rule_id', data)
         self.assertEqual(data['name'], 'Test Whale Rule')
         self.assertEqual(data['type'], 'whale_count')
@@ -67,12 +69,12 @@ class ScreenerRuleCRUDTestCase(TestCase):
         }
         create_resp = self.client.post('/api/soc/screener/rules/', payload, format='json')
         self.assertEqual(create_resp.status_code, status.HTTP_201_CREATED)
-        rule_id = create_resp.json()['rule_id']
+        rule_id = unwrapped_json(create_resp)['rule_id']
 
         # Verify appears in GET list
         list_resp = self.client.get('/api/soc/screener/rules/')
         self.assertEqual(list_resp.status_code, status.HTTP_200_OK)
-        rules = list_resp.json().get('rules', [])
+        rules = unwrapped_json(list_resp).get('rules', [])
         rule_ids = [r['id'] for r in rules]
         self.assertIn(rule_id, rule_ids)
 
@@ -87,7 +89,7 @@ class ScreenerRuleCRUDTestCase(TestCase):
             'value': [{'field': 'value', 'op': 'gte', 'value': 1}],
         }, format='json')
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
-        return resp.json()['rule_id']
+        return unwrapped_json(resp)['rule_id']
 
     def test_update_rule_returns_200(self):
         rule_id = self._create_rule('Update Me')
@@ -100,7 +102,7 @@ class ScreenerRuleCRUDTestCase(TestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertEqual(data['rule_id'], rule_id)
         self.assertEqual(data['name'], 'Updated Name')
         self.assertFalse(data['enabled'])
@@ -113,7 +115,7 @@ class ScreenerRuleCRUDTestCase(TestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertEqual(data['code'], 'RULE_NOT_FOUND')
 
     # ---------------------------------------------------------------
@@ -133,14 +135,14 @@ class ScreenerRuleCRUDTestCase(TestCase):
         self.client.delete(f'/api/soc/screener/rules/{rule_id}/delete/')
 
         list_resp = self.client.get('/api/soc/screener/rules/')
-        rules = list_resp.json().get('rules', [])
+        rules = unwrapped_json(list_resp).get('rules', [])
         self.assertNotIn(rule_id, [r['id'] for r in rules])
 
     def test_delete_rule_not_found_returns_404(self):
         response = self.client.delete('/api/soc/screener/rules/nonexistent_rule_id/delete/')
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertEqual(data['code'], 'RULE_NOT_FOUND')
 
     # ---------------------------------------------------------------
@@ -153,7 +155,7 @@ class ScreenerRuleCRUDTestCase(TestCase):
         }, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.json()['code'], 'INVALID_RULE_TYPE')
+        self.assertEqual(unwrapped_json(response)['code'], 'INVALID_RULE_TYPE')
 
     def test_update_rule_rejects_invalid_type(self):
         rule_id = self._create_rule('Type Guard')
@@ -161,7 +163,7 @@ class ScreenerRuleCRUDTestCase(TestCase):
             f'/api/soc/screener/rules/{rule_id}/', {'type': 'nope'}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.json()['code'], 'INVALID_RULE_TYPE')
+        self.assertEqual(unwrapped_json(response)['code'], 'INVALID_RULE_TYPE')
 
     # ---------------------------------------------------------------
     # SC-11: audit trail for rule mutations
@@ -205,7 +207,7 @@ class ScreenerRuleCRUDTestCase(TestCase):
             'name': 'Nope', 'type': 'custom', 'value': [],
         }, format='json')
         self.assertEqual(create_resp.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(create_resp.json()['code'], 'OWNERSHIP_WRITE_DENIED')
+        self.assertEqual(unwrapped_json(create_resp)['code'], 'OWNERSHIP_WRITE_DENIED')
 
         # Seed a rule while writable, then block update/delete.
         OwnershipRecord.objects.filter(domain='screener').delete()
@@ -215,8 +217,8 @@ class ScreenerRuleCRUDTestCase(TestCase):
         put_resp = self.client.put(
             f'/api/soc/screener/rules/{rule_id}/', {'name': 'X'}, format='json')
         self.assertEqual(put_resp.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(put_resp.json()['code'], 'OWNERSHIP_WRITE_DENIED')
+        self.assertEqual(unwrapped_json(put_resp)['code'], 'OWNERSHIP_WRITE_DENIED')
 
         del_resp = self.client.delete(f'/api/soc/screener/rules/{rule_id}/delete/')
         self.assertEqual(del_resp.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(del_resp.json()['code'], 'OWNERSHIP_WRITE_DENIED')
+        self.assertEqual(unwrapped_json(del_resp)['code'], 'OWNERSHIP_WRITE_DENIED')

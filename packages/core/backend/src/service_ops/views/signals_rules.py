@@ -17,6 +17,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import serializers, status
 from rest_framework.response import Response
 
+from ..envelope import envelope
 from signal_intelligence import delivery_service
 from signal_intelligence.models import UnifiedAlert, UserAlertDelivery
 
@@ -210,7 +211,7 @@ class SignalsRuleRequestView(SOCBaseView):
             change_summary=change_reason or f'Rule change request: {rule_key}',
             request_id=self.get_request_id(request),
         )
-        return Response({
+        return envelope({
             'request_id': str(audit.pk),
             'pending': True,
             'rule_key': rule_key,
@@ -266,7 +267,7 @@ class SignalsRuleFeedbackView(SOCBaseView):
         payload = _serialize_delivery_with_context(row)
         payload['signal'] = signal
         payload['feedback_reason'] = reason.strip()
-        return Response(payload)
+        return envelope(payload)
 
 
 @extend_schema(

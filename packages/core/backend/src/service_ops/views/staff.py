@@ -17,6 +17,7 @@ from rest_framework.response import Response
 from identity_access.models import CoreTenant
 from ops_audit.models import AuditEvent
 
+from ..envelope import envelope
 from .base import SOCBaseView
 
 SIGN_SALT = 'staff-switch-v1'
@@ -76,7 +77,7 @@ class StaffSwitchView(SOCBaseView):
             ip_address=_client_ip(request) or None,
             metadata={'reason': reason},
         )
-        return Response({
+        return envelope({
             'token': token,
             'tenant': {'id': tenant.public_id, 'tenant_code': tenant.tenant_code,
                        'display_name': tenant.display_name},

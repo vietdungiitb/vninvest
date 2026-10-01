@@ -1,5 +1,7 @@
 from .dataops_base import *
 
+from ..envelope import envelope
+
 class DataOpsQueueTiersResponseSerializer(serializers.Serializer):
     tiers = serializers.ListField(child=serializers.JSONField())
     updated_at = serializers.DateTimeField()
@@ -52,7 +54,7 @@ class DataOpsQueueTiersView(SOCBaseView):
 
     def get(self, request):
         tiers, updated_at = build_market_data_queue_tier_snapshot(example_limit=5)
-        return Response({
+        return envelope({
             'tiers': tiers,
             'updated_at': updated_at.isoformat(),
         })
@@ -73,7 +75,7 @@ class DataOpsObservabilityView(SOCBaseView):
     """GET canonical DataOps observability summary."""
 
     def get(self, request):
-        return Response(build_market_data_observability_summary())
+        return envelope(build_market_data_observability_summary())
 
 
 @extend_schema(
@@ -131,4 +133,4 @@ class DataOpsCoverageView(SOCBaseView):
             top_gap_limit = max(int(request.query_params.get('top_gap_limit', 10)), 0)
         except (TypeError, ValueError):
             top_gap_limit = 10
-        return Response(build_global_coverage_summary(top_gap_limit=top_gap_limit))
+        return envelope(build_global_coverage_summary(top_gap_limit=top_gap_limit))

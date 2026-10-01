@@ -6,8 +6,8 @@ from django.db.models import Count
 from drf_spectacular.openapi import OpenApiParameter, OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import serializers, status
-from rest_framework.response import Response
 
+from ..envelope import envelope, paginated_envelope
 from ..matrix_coordinator import (
     DEFAULT_MATRIX_PROVIDERS,
     DEFAULT_SYMBOL_GROUPS,
@@ -176,8 +176,10 @@ class MatrixCycleListView(SOCBaseView):
         page = self.paginate_queryset(queryset, request)
         if page is not None:
             serializer = ScrapeMatrixSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        return Response(ScrapeMatrixSerializer(queryset, many=True).data)
+            paged = self.get_paginated_response(serializer.data)
+            # Bọc cả khối phân trang (count/next/previous/results) trong `data`.
+            return paginated_envelope(dict(paged.data))
+        return envelope(ScrapeMatrixSerializer(queryset, many=True).data)
 
 
 @extend_schema(
@@ -203,7 +205,7 @@ class MatrixCycleDetailView(SOCBaseView):
                 detail=f"Matrix cycle '{cycle_id}' không tồn tại.",
                 http_status=status.HTTP_404_NOT_FOUND,
             )
-        return Response(_serialize_cycle_detail(matrix))
+        return envelope(_serialize_cycle_detail(matrix))
 
 
 @extend_schema(
@@ -252,7 +254,7 @@ class MatrixCycleStartView(SOCBaseView):
         if existing_cycle is not None and existing_cycle.status in {'active', 'completing'}:
             payload = _serialize_cycle_detail(existing_cycle)
             payload['reused_existing_cycle'] = True
-            return Response(payload, status=status.HTTP_200_OK)
+            return envelope(payload, status=status.HTTP_200_OK)
 
         symbol_group_ids = normalize_symbol_group_ids(request.data.get('symbol_group_ids'))
         coordinator = MatrixCoordinator(generate_cycle_id(), providers=providers)
@@ -265,7 +267,7 @@ class MatrixCycleStartView(SOCBaseView):
         payload = _serialize_cycle_detail(matrix)
         payload['reused_existing_cycle'] = False
         payload['dispatch_task_id'] = getattr(dispatch_result, 'id', '')
-        return Response(payload, status=status.HTTP_201_CREATED)
+        return envelope(payload, status=status.HTTP_201_CREATED)
 
 
 @extend_schema(
@@ -297,8 +299,9 @@ class MatrixCellListView(SOCBaseView):
         page = self.paginate_queryset(queryset, request)
         if page is not None:
             serializer = ScrapeMatrixCellSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        return Response(ScrapeMatrixCellSerializer(queryset, many=True).data)
+            paged = self.get_paginated_response(serializer.data)
+            return paginated_envelope(dict(paged.data))
+        return envelope(ScrapeMatrixCellSerializer(queryset, many=True).data)
 
 
 @extend_schema(
@@ -326,7 +329,7 @@ class MatrixCycleAbortView(SOCBaseView):
                 detail=f"Matrix cycle '{cycle_id}' không tồn tại.",
                 http_status=status.HTTP_404_NOT_FOUND,
             )
-        return Response(_serialize_cycle_detail(matrix))
+        return envelope(_serialize_cycle_detail(matrix))
 
 
 @extend_schema(
@@ -345,7 +348,7 @@ class MatrixProvidersView(SOCBaseView):
         current_cycle = get_latest_monitor_cycle()
         active_provider_ids = current_cycle.providers if current_cycle else []
         providers = list_provider_statuses('matrix', active_provider_ids=active_provider_ids)
-        return Response({
+        return envelope({
             'providers': providers,
             'default_providers': list(DEFAULT_MATRIX_PROVIDERS),
             'ready_providers': [
@@ -390,7 +393,7 @@ class MatrixMonitorView(SOCBaseView):
             matrix = get_latest_monitor_cycle()
 
         if matrix is None:
-            return Response({
+            return envelope({
                 'cycle_id': None,
                 'status': 'idle',
                 'progress_pct': 0.0,
@@ -411,7 +414,7 @@ class MatrixMonitorView(SOCBaseView):
             })
 
         cells = ScrapeMatrixCellSerializer(matrix.cells.order_by('symbol_group_id', 'provider'), many=True).data
-        return Response({
+        return envelope({
             'cycle_id': matrix.cycle_id,
             'status': matrix.status,
             'progress_pct': round(matrix.progress_pct, 2),

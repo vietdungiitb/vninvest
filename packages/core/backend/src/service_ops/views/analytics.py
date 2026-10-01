@@ -10,12 +10,12 @@ from datetime import date, timedelta
 
 from django.contrib.auth.models import User
 from django.db.models import Count
-from rest_framework.response import Response
 
 from commercial.models import Invoice, QuotaRecord, Subscription
 from identity_access.models import CoreTenant
 from ops_audit.models import AuditEvent
 
+from ..envelope import envelope
 from .base import SOCBaseView
 
 DEFAULT_DAYS = 30
@@ -46,7 +46,7 @@ class AnalyticsGrowthView(SOCBaseView):
         days = _parse_days(request)
         today = date.today()
         start = today - timedelta(days=days - 1)
-        return Response({
+        return envelope({
             'days': days,
             'start_date': start.isoformat(),
             'end_date': today.isoformat(),
@@ -107,7 +107,7 @@ class AnalyticsCohortsView(SOCBaseView):
                 else:
                     downgrades += 1
 
-        return Response({
+        return envelope({
             'trial_active': trial_active,
             'trial_expired': trial_expired,
             'ever_trial': ever_trial,
@@ -182,7 +182,7 @@ class AnalyticsAlertsView(SOCBaseView):
             status=CoreTenant.StatusChoices.SUSPENDED,
             suspended_at__date__gte=week_ago,
         ).count()
-        return Response({
+        return envelope({
             'alerts': alerts,
             'suspended_spike_7d': suspended_recent,
         })

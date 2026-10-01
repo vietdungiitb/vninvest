@@ -6,6 +6,8 @@ from rest_framework.test import APIClient
 
 from service_ops.domain_configs import MarketDataRuntimeConfig, QueueTierRuntimeConfig
 
+from service_ops.tests.envelope import unwrapped_json
+
 User = get_user_model()
 
 
@@ -85,7 +87,7 @@ class DataOpsConfigSchemaApiTestCase(TestCase):
         response = self.client.get('/api/soc/dataops/runtime-config/schema/')
 
         self.assertEqual(response.status_code, 200)
-        fields = response.json()['fields']
+        fields = unwrapped_json(response)['fields']
         keys = [field['key'] for field in fields]
         self.assertIn('decay_days', keys)
         self.assertIn('parity_snapshot_retention_days', keys)
@@ -105,5 +107,5 @@ class DataOpsConfigSchemaApiTestCase(TestCase):
         response = self.client.get('/core/v1/operator/scraping/dataops/runtime-config/schema/')
 
         self.assertEqual(response.status_code, 200)
-        keys = [field['key'] for field in response.json()['fields']]
+        keys = [field['key'] for field in unwrapped_json(response)['fields']]
         self.assertIn('decay_days', keys)

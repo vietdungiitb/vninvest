@@ -9,6 +9,8 @@ from rest_framework.test import APIClient
 from identity_access.models import CoreTenant, TenantMember
 from ops_audit.models import AuditEvent
 
+from service_ops.tests.envelope import unwrapped_json
+
 BASE = '/api/soc/users'
 
 
@@ -38,7 +40,7 @@ class SocUsersTests(TestCase):
     def test_staff_list_envelope(self):
         resp = self.staff_client.get(f'{BASE}/')
         self.assertEqual(resp.status_code, 200)
-        body = resp.json()
+        body = unwrapped_json(resp)
         self.assertIn('count', body)
         self.assertIn('results', body)
         usernames = [r['username'] for r in body['results']]
@@ -46,21 +48,21 @@ class SocUsersTests(TestCase):
 
     def test_search_and_filters(self):
         resp = self.staff_client.get(f'{BASE}/?search=soc_pro')
-        self.assertEqual(len(resp.json()['results']), 1)
+        self.assertEqual(len(unwrapped_json(resp)['results']), 1)
         resp = self.staff_client.get(f'{BASE}/?plan=pro')
         self.assertTrue(all(r['tenant'] and r['tenant']['plan'] == 'pro'
-                            for r in resp.json()['results']))
+                            for r in unwrapped_json(resp)['results']))
         resp = self.staff_client.get(f'{BASE}/?status=none')
-        self.assertTrue(all(r['tenant'] is None for r in resp.json()['results']))
+        self.assertTrue(all(r['tenant'] is None for r in unwrapped_json(resp)['results']))
         resp = self.staff_client.get(f'{BASE}/?is_staff=true')
-        self.assertTrue(all(r['is_staff'] for r in resp.json()['results']))
+        self.assertTrue(all(r['is_staff'] for r in unwrapped_json(resp)['results']))
 
     def test_set_active_lock_unlock_with_audit(self):
         resp = self.staff_client.post(
             f'{BASE}/{self.pro_user.id}/set-active/',
             {'is_active': False, 'reason': 'vi phạm chính sách'}, format='json')
         self.assertEqual(resp.status_code, 200)
-        self.assertFalse(resp.json()['is_active'])
+        self.assertFalse(unwrapped_json(resp)['is_active'])
         self.pro_user.refresh_from_db()
         self.assertFalse(self.pro_user.is_active)
         audit = AuditEvent.objects.filter(
@@ -96,7 +98,7 @@ class SocUsersTests(TestCase):
             f'{BASE}/{self.pro_user.id}/set-plan/',
             {'plan': 'enterprise', 'reason': 'nâng gói'}, format='json')
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json()['plan'], 'enterprise')
+        self.assertEqual(unwrapped_json(resp)['plan'], 'enterprise')
         self.pro_tenant.refresh_from_db()
         self.assertEqual(self.pro_tenant.plan, 'enterprise')
         self.assertTrue(AuditEvent.objects.filter(

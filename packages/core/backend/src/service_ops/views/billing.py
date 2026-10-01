@@ -18,6 +18,7 @@ from commercial.plan_catalog import PLAN_PRICES_VND
 from identity_access.models import CoreTenant
 from vninvest_core.pagination import StandardPageNumberPagination
 
+from ..envelope import envelope, paginated_envelope
 from .base import SOCBaseView
 
 VALID_INVOICE_STATUSES = {c for c, _ in Invoice.StatusChoices.choices}
@@ -71,7 +72,7 @@ class BillingOverviewView(SOCBaseView):
                      .aggregate(total=Sum('amount_due'))['total'] or 0)
             revenue_6m.append({'month': _month_key(m_start), 'total': str(total)})
 
-        return Response({
+        return envelope({
             'mrr': mrr,
             'arr': mrr * 12,
             'currency': 'VND',
@@ -117,7 +118,8 @@ class BillingInvoiceListView(SOCBaseView):
         paginator = StandardPageNumberPagination()
         page = paginator.paginate_queryset(qs, request)
         rows = [self._serialize(inv) for inv in page]
-        return paginator.get_paginated_response(rows)
+        paged = paginator.get_paginated_response(rows)
+        return paginated_envelope(dict(paged.data))
 
     @staticmethod
     def _serialize(inv) -> dict:

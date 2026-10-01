@@ -11,6 +11,8 @@ from .dataops_base import (
     _serialize_market_data_run_log,
 )
 
+from ..envelope import envelope, paginated_envelope
+
 class DataOpsPlannerPreviewRequestSerializer(serializers.Serializer):
     symbols = serializers.ListField(child=serializers.CharField(), required=False)
     datasets = serializers.ListField(child=serializers.CharField(), required=False)
@@ -101,11 +103,13 @@ class DataOpsRunLogsView(SOCBaseView):
         ).order_by('-started_at', '-pk')
         page = self.paginate_queryset(queryset, request)
         if page is not None:
-            return self.get_paginated_response([
+            paged = self.get_paginated_response([
                 _serialize_market_data_run_log(run_log)
                 for run_log in page
             ])
-        return Response([
+            # Bọc cả khối phân trang — `next`/`previous` nằm trong `data`.
+            return paginated_envelope(dict(paged.data))
+        return envelope([
             _serialize_market_data_run_log(run_log)
             for run_log in queryset
         ])
@@ -156,7 +160,7 @@ class DataOpsRunLogsPurgeView(SOCBaseView):
         total = base_qs.count()
 
         if total <= keep:
-            return Response({'deleted': 0, 'kept': total})
+            return envelope({'deleted': 0, 'kept': total})
 
         # Lấy PK của N bản mới nhất cần giữ lại
         keep_ids = list(
@@ -164,7 +168,7 @@ class DataOpsRunLogsPurgeView(SOCBaseView):
         )
         deleted_count, _ = base_qs.exclude(pk__in=keep_ids).delete()
 
-        return Response({'deleted': deleted_count, 'kept': keep})
+        return envelope({'deleted': deleted_count, 'kept': keep})
 
 
 @extend_schema(
@@ -228,7 +232,7 @@ class DataOpsPlannerPreviewView(SOCBaseView):
                 http_status=status.HTTP_400_BAD_REQUEST,
             )
 
-        return Response({
+        return envelope({
             **preview,
             'ownership': _build_market_data_ownership_payload(),
         })
@@ -297,7 +301,7 @@ class DataOpsPlannerRunView(SOCBaseView):
                 http_status=status.HTTP_400_BAD_REQUEST,
             )
 
-        return Response({
+        return envelope({
             **result,
             'ownership': ownership,
         }, status=status.HTTP_201_CREATED)
@@ -402,7 +406,7 @@ class DataOpsPlannerRunAbortView(SOCBaseView):
         run_log.error_detail = 'Cancelled by operator via SOC DataOps.'
         run_log.save(update_fields=['status', 'finished_at', 'duration_seconds', 'output_summary', 'error_detail'])
 
-        return Response({
+        return envelope({
             'cancelled': True,
             'status': run_log.status,
             'run_id': _format_market_data_run_id(run_log.id),

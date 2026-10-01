@@ -1,6 +1,8 @@
 from .dataops_base import *
 from .dataops_base import _get_request_symbols, _build_market_data_ownership_payload
 
+from ..envelope import envelope
+
 class DataOpsRegistrySummaryResponseSerializer(serializers.Serializer):
     totals = serializers.JSONField()
     priority_tiers = serializers.ListField(child=serializers.JSONField())
@@ -44,7 +46,7 @@ class DataOpsRegistrySummaryView(SOCBaseView):
     """GET canonical global symbol matrix summary for operator surfaces."""
 
     def get(self, request):
-        return Response(build_global_symbol_registry_summary())
+        return envelope(build_global_symbol_registry_summary())
 
 
 @extend_schema(
@@ -84,7 +86,7 @@ class DataOpsRegistryDetailView(SOCBaseView):
 
         payload = build_global_symbol_registry_detail(registry)
         payload['queue_tier'] = resolve_market_data_queue_tier(registry)
-        return Response(payload)
+        return envelope(payload)
 
 
 @extend_schema(
@@ -117,7 +119,7 @@ class DataOpsRegistryReconcilePreviewView(SOCBaseView):
                 http_status=status.HTTP_400_BAD_REQUEST,
             )
 
-        return Response({
+        return envelope({
             **preview,
             'ownership': _build_market_data_ownership_payload(),
         })

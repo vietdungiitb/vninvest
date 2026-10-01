@@ -15,6 +15,7 @@ from rest_framework.response import Response
 from ops_audit.models import AuditEvent
 from vninvest_core.pagination import StandardPageNumberPagination
 
+from ..envelope import paginated_envelope
 from .base import SOCBaseView
 
 VALID_ACTIONS = {c for c, _ in AuditEvent.ActionChoices.choices}
@@ -90,7 +91,10 @@ class AuditEventsView(SOCBaseView):
             return self._csv_response(qs)
         paginator = StandardPageNumberPagination()
         page = paginator.paginate_queryset(qs, request)
-        return paginator.get_paginated_response([_serialize_event(e) for e in page])
+        paged = paginator.get_paginated_response([_serialize_event(e) for e in page])
+        # Bọc **cả khối** phân trang — `next`/`previous` phải nằm trong `data`
+        # để client vẫn trang kế tiếp được.
+        return paginated_envelope(dict(paged.data))
 
     def _csv_response(self, qs):
         class _Echo:

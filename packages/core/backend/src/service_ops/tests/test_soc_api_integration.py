@@ -8,6 +8,8 @@ from rest_framework.test import APIClient
 from service_ops.models import ConfigChangeAudit, ServiceConfig, ServiceDefinition
 from service_ops.registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, ensure_service_registry, get_registered_service
 
+from service_ops.tests.envelope import unwrapped_json
+
 
 User = get_user_model()
 
@@ -68,10 +70,10 @@ class ConfigApplyEndToEndTestCase(SOCIntegrationBaseTestCase):
         self.assertEqual(config_response.status_code, status.HTTP_200_OK)
         self.assertEqual(history_response.status_code, status.HTTP_200_OK)
         self.assertEqual(audit_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(config_response.json()['config_payload']['preferred_provider'], 'kbs')
-        self.assertEqual(config_response.json()['config_payload']['timeout']['connect'], 7.5)
-        self.assertGreaterEqual(history_response.json()['count'], 1)
-        self.assertGreaterEqual(audit_response.json()['count'], 1)
+        self.assertEqual(unwrapped_json(config_response)['config_payload']['preferred_provider'], 'kbs')
+        self.assertEqual(unwrapped_json(config_response)['config_payload']['timeout']['connect'], 7.5)
+        self.assertGreaterEqual(unwrapped_json(history_response)['count'], 1)
+        self.assertGreaterEqual(unwrapped_json(audit_response)['count'], 1)
 
     def test_apply_vnbroker_config_keeps_single_current_version(self):
         service = get_registered_service(SOC_DOMAIN_PRIMARY_SERVICE_KEYS['vnbroker'])
@@ -190,20 +192,20 @@ class MultiDomainWorkflowTestCase(SOCIntegrationBaseTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json()['code'], 'OWNERSHIP_WRITE_DENIED')
+        self.assertEqual(unwrapped_json(response)['code'], 'OWNERSHIP_WRITE_DENIED')
 
     def test_services_list_and_detail_routes_use_primary_service_keys(self):
         list_response = self.client.get('/api/soc/services/?page=1')
 
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
-        self.assertGreaterEqual(list_response.json()['count'], 1)
+        self.assertGreaterEqual(unwrapped_json(list_response)['count'], 1)
 
         for domain in ['vnbroker', 'prefetch', 'signals']:
             service_key = SOC_DOMAIN_PRIMARY_SERVICE_KEYS[domain]
             response = self.client.get(f'/api/soc/services/{service_key}/')
 
             self.assertEqual(response.status_code, status.HTTP_200_OK)
-            self.assertEqual(response.json()['service_key'], service_key)
+            self.assertEqual(unwrapped_json(response)['service_key'], service_key)
 
 
 class PaginationIntegrationTestCase(SOCIntegrationBaseTestCase):
@@ -238,7 +240,7 @@ class PaginationIntegrationTestCase(SOCIntegrationBaseTestCase):
         response = self.client.get('/api/soc/services/?page=1')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertIn('count', data)
         self.assertIn('results', data)
         self.assertLessEqual(len(data['results']), data['count'])
@@ -249,10 +251,10 @@ class PaginationIntegrationTestCase(SOCIntegrationBaseTestCase):
 
         self.assertEqual(history_response.status_code, status.HTTP_200_OK)
         self.assertEqual(audit_response.status_code, status.HTTP_200_OK)
-        self.assertIn('count', history_response.json())
-        self.assertIn('results', history_response.json())
-        self.assertIn('count', audit_response.json())
-        self.assertIn('results', audit_response.json())
+        self.assertIn('count', unwrapped_json(history_response))
+        self.assertIn('results', unwrapped_json(history_response))
+        self.assertIn('count', unwrapped_json(audit_response))
+        self.assertIn('results', unwrapped_json(audit_response))
 
 
 class ErrorHandlingIntegrationTestCase(SOCIntegrationBaseTestCase):
@@ -260,7 +262,7 @@ class ErrorHandlingIntegrationTestCase(SOCIntegrationBaseTestCase):
         response = self.client.get('/api/soc/services/nonexistent-service/')
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertIn('detail', data)
         self.assertIn('code', data)
         self.assertIn('timestamp', data)
@@ -274,7 +276,7 @@ class ErrorHandlingIntegrationTestCase(SOCIntegrationBaseTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('detail', response.json())
+        self.assertIn('detail', unwrapped_json(response))
 
     def test_validation_error_uses_standard_error_envelope(self):
         response = self.client.post(
@@ -284,5 +286,5 @@ class ErrorHandlingIntegrationTestCase(SOCIntegrationBaseTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.json()['code'], 'VNBROKER_PROVIDER_UNSUPPORTED')
-        self.assertIn('field_errors', response.json())
+        self.assertEqual(unwrapped_json(response)['code'], 'VNBROKER_PROVIDER_UNSUPPORTED')
+        self.assertIn('field_errors', unwrapped_json(response))
