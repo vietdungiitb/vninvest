@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAdminUser
 from rest_framework.pagination import CursorPagination
+from identity_access.envelope import paginated_envelope
 from identity_access.models import SystemMailConfig, MailConfigAuditLog
 from vninvest_core.utils.crypto import encrypt_secret
 from django.core.mail import get_connection, send_mail
@@ -64,7 +65,9 @@ class OperatorMailConfigListView(APIView):
                 "updated_at": config.updated_at.isoformat(),
             })
 
-        return paginator.get_paginated_response(results)
+        paged = paginator.get_paginated_response(results)
+        # Giữ nguyên next/previous/results — chỉ đổi lớp ngoài thành envelope.
+        return paginated_envelope(dict(paged.data))
 
     def post(self, request):
         data = request.data

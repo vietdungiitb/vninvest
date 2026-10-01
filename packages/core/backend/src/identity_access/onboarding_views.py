@@ -40,6 +40,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
 from tenant_lifecycle.models import TenantLifecycleEvent
+from .envelope import envelope
 from .models import CoreTenant, UserProfile
 from .permissions import IsTenantActive
 from .serializers import CoreTenantSerializer
@@ -216,4 +217,4 @@ def register_tenant_view(request):
 
     # Return created tenant
     result_serializer = CoreTenantSerializer(tenant)
-    return Response(result_serializer.data, status=status.HTTP_201_CREATED)
+    return envelope(result_serializer.data, status=status.HTTP_201_CREATED)

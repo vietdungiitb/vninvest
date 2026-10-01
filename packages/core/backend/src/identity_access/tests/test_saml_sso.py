@@ -25,6 +25,7 @@ from rest_framework.test import APIClient
 
 from lxml import etree
 
+from identity_access.tests.envelope import unwrapped, unwrapped_json
 from identity_access.models import (
     CoreTenant,
     CoreServiceAccount,
@@ -439,15 +440,15 @@ class SSOLoginInitiateViewTests(SSOViewTestBase):
         request = self.factory.get('/auth/sso/login/?domain=test.com')
         response = SSOLoginInitiateView.as_view()(request)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('redirect_url', response.data)
-        self.assertIn('SAMLRequest', response.data['redirect_url'])
+        self.assertIn('redirect_url', unwrapped(response))
+        self.assertIn('SAMLRequest', unwrapped(response)['redirect_url'])
 
     def test_valid_email_domain_returns_redirect_url(self):
         from identity_access.views.sso import SSOLoginInitiateView
         request = self.factory.get('/auth/sso/login/?email=user@test.com')
         response = SSOLoginInitiateView.as_view()(request)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('redirect_url', response.data)
+        self.assertIn('redirect_url', unwrapped(response))
 
     def test_disabled_sso_returns_404(self):
         self.sso_config.is_enabled = False
@@ -496,10 +497,10 @@ class SSOCallbackViewTests(SSOViewTestBase):
         )
         response = SSOCallbackView.as_view()(request)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('token', response.data)
-        self.assertEqual(response.data['user']['email'], 'sso_user@test.com')
-        self.assertEqual(response.data['tenant']['tenant_code'], 'sso_tenant')
-        self.assertEqual(response.data['member']['role'], 'viewer')
+        self.assertIn('token', unwrapped(response))
+        self.assertEqual(unwrapped(response)['user']['email'], 'sso_user@test.com')
+        self.assertEqual(unwrapped(response)['tenant']['tenant_code'], 'sso_tenant')
+        self.assertEqual(unwrapped(response)['member']['role'], 'viewer')
 
         # Verify user was created
         user = User.objects.get(email='sso_user@test.com')
@@ -521,7 +522,7 @@ class SSOCallbackViewTests(SSOViewTestBase):
         )
         response = SSOCallbackView.as_view()(request)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['user']['email'], 'get_user@test.com')
+        self.assertEqual(unwrapped(response)['user']['email'], 'get_user@test.com')
 
     def test_callback_existing_user_reuses_account(self):
         from identity_access.views.sso import SSOCallbackView
@@ -584,7 +585,7 @@ class PartnerSSOTestConnectionViewTests(SSOViewTestBase):
         request.tenant_member = self.member
         response = PartnerSSOTestConnectionView.as_view()(request)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(response.data['success'])
+        self.assertTrue(unwrapped(response)['success'])
 
     def test_no_config_returns_error(self):
         TenantSSOConfig.objects.filter(tenant=self.tenant).delete()
@@ -599,7 +600,7 @@ class PartnerSSOTestConnectionViewTests(SSOViewTestBase):
         request.tenant_member = self.member
         response = PartnerSSOTestConnectionView.as_view()(request)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertFalse(response.data['success'])
+        self.assertFalse(unwrapped(response)['success'])
 
 
 class PartnerSSOTestLoginViewTests(SSOViewTestBase):
@@ -617,8 +618,8 @@ class PartnerSSOTestLoginViewTests(SSOViewTestBase):
         request.tenant_member = self.member
         response = PartnerSSOTestLoginView.as_view()(request)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('redirect_url', response.data)
-        self.assertIn('SAMLRequest', response.data['redirect_url'])
+        self.assertIn('redirect_url', unwrapped(response))
+        self.assertIn('SAMLRequest', unwrapped(response)['redirect_url'])
 
     def test_disabled_sso_returns_400(self):
         self.sso_config.is_enabled = False

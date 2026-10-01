@@ -28,6 +28,7 @@ from ..saml_service import (
     SAMLSignatureError,
 )
 from ..serializers import TenantSSOConfigSerializer
+from ..envelope import envelope
 from ..permissions import IsTenantActive, require_pat_scopes_or_human_session
 from ..utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
 
@@ -79,7 +80,7 @@ class PartnerSSOConfigView(APIView):
         _require_tenant_permission(request, 'sso:read')
         tenant = _get_request_tenant(request)
         sso_config, _ = TenantSSOConfig.objects.get_or_create(tenant=tenant)
-        return Response(TenantSSOConfigSerializer(sso_config).data)
+        return envelope(TenantSSOConfigSerializer(sso_config).data)
 
     def post(self, request):
         require_pat_scopes_or_human_session(request, PARTNER_SCOPE_MANAGE_TENANT)
@@ -101,7 +102,7 @@ class PartnerSSOConfigView(APIView):
         serializer = TenantSSOConfigSerializer(sso_config, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data)
+        return envelope(serializer.data)
 
 
 # ─── SAML Login Initiate ──────────────────────────────────────────────
@@ -155,7 +156,7 @@ class SSOLoginInitiateView(APIView):
             return HttpResponseRedirect(redirect_url)
 
         # SPA client — return URL for client-side redirect
-        return Response({
+        return envelope({
             'redirect_url': redirect_url,
             'sso_url': saml_svc.idp_sso_url,
             'tenant_id': sso_config.tenant.public_id,
@@ -319,7 +320,7 @@ class SSOCallbackView(APIView):
 
         logger.info('SSO login: user=%s tenant=%s session=%s', email, tenant.tenant_code, credential.public_id)
 
-        return Response({
+        return envelope({
             'access': raw_token,
             'token': raw_token,
             'user': {
@@ -394,7 +395,7 @@ class PartnerSSOTestConnectionView(APIView):
 
         sso_config = TenantSSOConfig.objects.filter(tenant=tenant).first()
         if sso_config is None or not sso_config.idp_sso_url:
-            return Response({
+            return envelope({
                 'success': False,
                 'checks': [],
                 'errors': ['SSO chưa được cấu hình.'],
@@ -402,7 +403,7 @@ class PartnerSSOTestConnectionView(APIView):
 
         saml_svc = SAMLService.from_config(sso_config)
         result = saml_svc.test_connection()
-        return Response(result)
+        return envelope(result)
 
 
 # ─── Partner: test SSO login initiation (JSON only) ────────────────────
@@ -440,7 +441,7 @@ class PartnerSSOTestLoginView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        return Response({
+        return envelope({
             'redirect_url': redirect_url,
             'sso_url': saml_svc.idp_sso_url,
         })
