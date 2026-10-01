@@ -21,6 +21,10 @@ import json
 import logging
 import traceback
 
+# Đặt cùng khối import đầu file để không sinh thêm E402 (`logger = ...` ở
+# dưới đã khiến các import sau nó đều bị báo).
+from .envelope import envelope
+
 logger = logging.getLogger(__name__)
 
 from .dnse_adapter import (
@@ -513,7 +517,7 @@ def dnse_sync_accounts_api(request):
     if result.get("ok"):
         sub_accounts = SubAccount.objects.filter(user=user, broker_source='DNSE')
         serializer = SubAccountSerializer(sub_accounts, many=True)
-        return Response({
+        return envelope({
             "ok": True,
             "synced_count": result.get("synced_count", 0),
             "accounts": serializer.data,
@@ -540,7 +544,7 @@ def dnse_sync_balances_api(request):
 
     result = sync_dnse_balances_task(user.id)
     if result.get("ok"):
-        return Response(result)
+        return envelope(result)
 
     raise ValidationErrorException(
         detail=result.get("error", "Đồng bộ số dư thất bại."),
@@ -570,7 +574,7 @@ def dnse_reconcile_transactions_api(request):
 
     result = reconcile_dnse_transactions_task(user.id, days_back=days_back)
     if result.get("ok"):
-        return Response(result)
+        return envelope(result)
 
     raise ValidationErrorException(
         detail=result.get("error", "Đối soát giao dịch thất bại."),
@@ -742,7 +746,7 @@ def dnse_place_order_api(request):
             code="idempotency_in_progress",
         )
     if claim.replay:
-        return Response({
+        return envelope({
             "result": claim.result,
             "idempotent_replay": True,
             "audit_recorded": True,
@@ -781,7 +785,7 @@ def dnse_place_order_api(request):
             user_id=user.id, scope=_ORDER_SCOPE, key=idempotency_key,
             fingerprint=fingerprint, result=result, tenant_id=order_tenant,
         )
-        return Response({
+        return envelope({
             "result": result,
             "idempotent_replay": False,
             "audit_recorded": audit_recorded,
@@ -837,7 +841,7 @@ def dnse_send_email_otp_api(request):
     try:
         client = _get_active_dnse_client(user)
         result = client.send_email_otp(dry_run=dry_run, raw=False)
-        return Response({"result": result, "mode": mode, "dry_run": dry_run})
+        return envelope({"result": result, "mode": mode, "dry_run": dry_run})
     except DNSECredentialMissingError as exc:
         raise ValidationErrorException(detail=str(exc), code="validation_error")
     except DNSEAdapterError as exc:
@@ -882,7 +886,7 @@ def dnse_create_trading_token_api(request):
             raw=False,
         )
         trading_token = _extract_trading_token(result)
-        return Response({
+        return envelope({
             "ok": True,
             "otp_type": otp_type,
             "trading_token": trading_token,
@@ -919,11 +923,11 @@ def dnse_token_status_api(request):
         credential = DNSECredential.objects.filter(user=user, is_active=True).first()
         secrets_ok = bool(credential and credential.has_credentials())
     if not secrets_ok:
-        return Response({
+        return envelope({
             "is_configured": False,
             "message": "DNSE LightSpeed credential chưa được cấu hình.",
         })
-    return Response({
+    return envelope({
         "is_configured": True,
         "is_active": True,
         "last_sync_at": config.last_verified_at if config else None,
