@@ -19,6 +19,7 @@ from django.contrib.auth.models import User
 
 from market_data.models import StockProfile, IntradayBar, IntradayTick
 from market_data import vnbroker_adapter
+from market_data.tests.envelope import unwrapped_json
 
 
 class IntradayNativeViewTests(APITestCase):
@@ -95,7 +96,7 @@ class IntradayNativeViewTests(APITestCase):
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, 200)
-        data = response.json()
+        data = unwrapped_json(response)
         
         # Verify response schema
         self.assertIn('symbol', data)
@@ -113,7 +114,7 @@ class IntradayNativeViewTests(APITestCase):
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, 200)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertEqual(data['timeframe'], '1H')
 
     def test_intraday_prices_with_days_param(self):
@@ -122,7 +123,7 @@ class IntradayNativeViewTests(APITestCase):
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, 200)
-        data = response.json()
+        data = unwrapped_json(response)
         # Response 'days' is the count of bars returned, not the parameter value
         self.assertGreater(data['days'], 0)
 
@@ -147,7 +148,7 @@ class IntradayNativeViewTests(APITestCase):
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, 200)
-        data = response.json()
+        data = unwrapped_json(response)
         
         # Verify response schema
         self.assertIn('symbol', data)
@@ -167,7 +168,7 @@ class IntradayNativeViewTests(APITestCase):
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, 200)
-        data = response.json()
+        data = unwrapped_json(response)
         
         # Should return at most page_size trades
         self.assertLessEqual(len(data['trades']), 5)
@@ -246,7 +247,7 @@ class IntradayNativeViewTests(APITestCase):
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, 200)
-        data = response.json()
+        data = unwrapped_json(response)
         
         # Required fields
         required_fields = ['symbol', 'days', 'timeframe', 'interval', 'points', 'source']
@@ -262,7 +263,7 @@ class IntradayNativeViewTests(APITestCase):
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, 200)
-        data = response.json()
+        data = unwrapped_json(response)
         
         # Required fields
         required_fields = ['symbol', 'trades', 'total', 'source', 'stale', 'fetched_at']
