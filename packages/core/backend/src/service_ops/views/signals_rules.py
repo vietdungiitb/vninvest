@@ -27,6 +27,7 @@ from ..registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
 from .base import SOCBaseView
 from .signals import _build_signals_ownership_payload, _get_signals_domain_config
 from .signals_triage import _serialize_delivery_with_context
+from vninvest_core.api_envelope import envelope_response
 
 FAMILY_ENABLED_FLAG = {
     'whale': 'whale_enabled',
@@ -157,7 +158,7 @@ class SignalsRuleListView(SOCBaseView):
     summary='Tạo rule change request',
     description='Bridge-write: ghi ConfigChangeAudit(action=request), KHÔNG apply trực tiếp. Owner duyệt sau.',
     request=SignalsRuleRequestSerializer,
-    responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT, 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT},
+    responses={200: envelope_response(), 400: OpenApiTypes.OBJECT, 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT},
 )
 class SignalsRuleRequestView(SOCBaseView):
     """POST /api/soc/signals/rules/request/"""
@@ -226,7 +227,7 @@ class SignalsRuleRequestView(SOCBaseView):
     summary='Feedback rule (thumbs up/down)',
     description='up → acknowledged; down → suppressed + suppression_reason. Muted/suppressed giữ registry (bỏ phiếu không hủy).',
     request=SignalsRuleFeedbackSerializer,
-    responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT, 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+    responses={200: envelope_response(), 400: OpenApiTypes.OBJECT, 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
 )
 class SignalsRuleFeedbackView(SOCBaseView):
     """POST /api/soc/signals/rules/feedback/"""

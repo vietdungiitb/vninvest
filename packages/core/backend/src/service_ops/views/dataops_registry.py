@@ -2,6 +2,7 @@ from .dataops_base import *
 from .dataops_base import _get_request_symbols, _build_market_data_ownership_payload
 
 from ..envelope import envelope
+from vninvest_core.api_envelope import envelope_response
 
 class DataOpsRegistrySummaryResponseSerializer(serializers.Serializer):
     totals = serializers.JSONField()
@@ -38,7 +39,7 @@ class DataOpsRegistryReconcilePreviewResponseSerializer(serializers.Serializer):
         'Đây là operator read path cho F01/F02 foundation truth.'
     ),
     responses={
-        200: DataOpsRegistrySummaryResponseSerializer,
+        200: envelope_response(DataOpsRegistrySummaryResponseSerializer),
         401: OpenApiTypes.OBJECT,
     },
 )
@@ -65,7 +66,7 @@ class DataOpsRegistrySummaryView(SOCBaseView):
         ),
     ],
     responses={
-        200: DataOpsRegistryDetailResponseSerializer,
+        200: envelope_response(DataOpsRegistryDetailResponseSerializer),
         401: OpenApiTypes.OBJECT,
         404: OpenApiTypes.OBJECT,
     },
@@ -97,7 +98,7 @@ class DataOpsRegistryDetailView(SOCBaseView):
     ),
     request=DataOpsRegistryReconcilePreviewRequestSerializer,
     responses={
-        200: DataOpsRegistryReconcilePreviewResponseSerializer,
+        200: envelope_response(DataOpsRegistryReconcilePreviewResponseSerializer),
         400: OpenApiTypes.OBJECT,
         401: OpenApiTypes.OBJECT,
     },

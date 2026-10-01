@@ -1,6 +1,7 @@
 from .dataops_base import *
 
 from ..envelope import envelope
+from vninvest_core.api_envelope import envelope_response
 
 # ---------------------------------------------------------------------------
 # B03 — Backfill Progress API
@@ -21,7 +22,7 @@ class BackfillRunListView(SOCBaseView):
             OpenApiParameter('job_key', OpenApiTypes.STR, description='Lọc theo job_key'),
             OpenApiParameter('limit', OpenApiTypes.INT, description='Số bản ghi tối đa (mặc định 20)'),
         ],
-        responses={200: OpenApiTypes.OBJECT, 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT},
+        responses={200: envelope_response(), 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT},
     )
     def get(self, request):
         from ..models import BackfillExecutionRun
@@ -51,7 +52,7 @@ class BackfillRunDetailView(SOCBaseView):
     @extend_schema(
         summary='Chi tiết một lần chạy backfill',
         description='Trả về BackfillExecutionRun và tất cả BackfillExecutionBatch của run đó.',
-        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT, 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT},
+        responses={200: envelope_response(), 404: OpenApiTypes.OBJECT, 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT},
     )
     def get(self, request, run_id):
         from ..models import BackfillExecutionBatch, BackfillExecutionRun

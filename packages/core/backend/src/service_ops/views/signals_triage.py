@@ -29,6 +29,7 @@ from signal_intelligence.views import (
 )
 
 from .base import SOCBaseView
+from vninvest_core.api_envelope import envelope_response
 
 
 class SignalsDeliveryMuteRequestSerializer(AlertCenterMutePreferenceRequestSerializer):
@@ -62,6 +63,22 @@ def _serialize_delivery_with_context(row: UserAlertDelivery) -> dict:
 class SignalsDeliveriesView(SOCBaseView):
     """GET /api/soc/signals/deliveries/"""
 
+    @extend_schema(
+        summary='Danh sách delivery của user',
+        description=(
+            'Khi có phân trang, `data` là khối phân trang '
+            '`{count, next, previous, results}`; nếu paginator không trả trang '
+            'thì `data` là **mảng** thẳng. Hai hình dạng này khác nhau nên `data` '
+            'để free-form — bỏ free-form sẽ khiến docs khẳng định một hình dạng '
+            'mà endpoint không giữ.'
+        ),
+        responses={
+            200: envelope_response(),
+            400: OpenApiTypes.OBJECT,
+            401: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+    )
     def get(self, request):
         qs = UserAlertDelivery.objects.filter(user=request.user).select_related('alert').order_by('-delivered_at', '-pk')
 
@@ -105,7 +122,7 @@ def _get_operator_delivery(request, delivery_id):
 @extend_schema(
     summary='Đánh dấu seen cho delivery',
     description='FE gọi khi operator expand row. Tái dùng transition guard (new→seen).',
-    responses={200: UserAlertDeliveryStateSerializer, 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+    responses={200: envelope_response(UserAlertDeliveryStateSerializer), 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
 )
 class SignalsDeliverySeenView(SOCBaseView):
     """POST /api/soc/signals/deliveries/<uuid:delivery_id>/seen/"""
@@ -127,7 +144,7 @@ class SignalsDeliverySeenView(SOCBaseView):
 @extend_schema(
     summary='Acknowledge delivery',
     description='Tái dùng delivery_service.acknowledge_delivery — guard new→ack, seen→ack; ack/muted/suppressed giữ nguyên.',
-    responses={200: UserAlertDeliveryStateSerializer, 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+    responses={200: envelope_response(UserAlertDeliveryStateSerializer), 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
 )
 class SignalsDeliveryAckView(SOCBaseView):
     """POST /api/soc/signals/deliveries/<uuid:delivery_id>/ack/"""
@@ -156,7 +173,7 @@ class SignalsDeliveryAckView(SOCBaseView):
     summary='Mute deliveries theo symbol/alert_family',
     description='Tái dùng upsert_user_alert_preference — lý do ghi vào preference metadata (audit actor = username).',
     request=SignalsDeliveryMuteRequestSerializer,
-    responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT, 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT},
+    responses={200: envelope_response(), 400: OpenApiTypes.OBJECT, 401: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT},
 )
 class SignalsDeliveryMuteView(SOCBaseView):
     """POST /api/soc/signals/deliveries/mute/"""

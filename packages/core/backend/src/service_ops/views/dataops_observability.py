@@ -1,6 +1,7 @@
 from .dataops_base import *
 
 from ..envelope import envelope
+from vninvest_core.api_envelope import envelope_response
 
 class DataOpsQueueTiersResponseSerializer(serializers.Serializer):
     tiers = serializers.ListField(child=serializers.JSONField())
@@ -28,7 +29,7 @@ class DataOpsObservabilityResponseSerializer(serializers.Serializer):
         'Đây là canonical operator read path cho runtime queue monitoring.'
     ),
     responses={
-        200: DataOpsQueueTiersResponseSerializer,
+        200: envelope_response(DataOpsQueueTiersResponseSerializer),
         401: OpenApiTypes.OBJECT,
     },
     examples=[
@@ -67,7 +68,7 @@ class DataOpsQueueTiersView(SOCBaseView):
         'Dùng cho operator monitor dashboard trong SOC Config UI.'
     ),
     responses={
-        200: DataOpsObservabilityResponseSerializer,
+        200: envelope_response(DataOpsObservabilityResponseSerializer),
         401: OpenApiTypes.OBJECT,
     },
 )
@@ -94,7 +95,7 @@ class DataOpsObservabilityView(SOCBaseView):
         ),
     ],
     responses={
-        200: DataOpsCoverageResponseSerializer,
+        200: envelope_response(DataOpsCoverageResponseSerializer),
         401: OpenApiTypes.OBJECT,
     },
     examples=[
