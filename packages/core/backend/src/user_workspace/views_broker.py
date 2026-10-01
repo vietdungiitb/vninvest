@@ -9,7 +9,6 @@ from celery.result import AsyncResult
 from django.core.cache import cache
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from rest_framework import status
 
 from vninvest_core.exceptions import (
@@ -22,6 +21,7 @@ from .permissions import (attach_required_permissions, WorkspacePermission, requ
 
 from .broker import SCHEMAS
 from .broker.base import mask_secrets_preview
+from .envelope import envelope
 from .models import (
     DNSECredential,
     UserBrokerConfig,
@@ -102,7 +102,7 @@ def broker_providers_api(request):
             'status': (config.status if config else UserBrokerConfig.StatusChoices.NEVER_CONNECTED),
             'is_configured': bool(config and config.has_secrets()),
         })
-    return Response({'providers': items})
+    return envelope({'providers': items})
 
 
 @api_view(['GET'])
@@ -110,7 +110,7 @@ def broker_providers_api(request):
 def broker_config_schema_api(request, provider):
     """Schema form động cho từng broker."""
     normalized = _require_provider(provider)
-    return Response(SCHEMAS[normalized].get_schema())
+    return envelope(SCHEMAS[normalized].get_schema())
 
 
 @required_workspace_permission('broker_manage')
@@ -130,10 +130,10 @@ def broker_config_api(request, provider):
             config.save(update_fields=['secrets_cipher', 'status', 'last_error', 'updated_at'])
         if normalized == 'dnse':
             _mirror_to_legacy_dnse(user, {}, False)
-        return Response({'ok': True, 'message': 'Đã xoá cấu hình broker.'})
+        return envelope({'ok': True, 'message': 'Đã xoá cấu hình broker.'})
 
     if request.method == 'GET':
-        return Response(_serialize_config(get_user_broker_config(user, normalized)))
+        return envelope(_serialize_config(get_user_broker_config(user, normalized)))
 
     # POST — validate theo schema từng provider, chỉ lưu field trong schema
     data = request.data if isinstance(request.data, dict) else {}
@@ -153,7 +153,7 @@ def broker_config_api(request, provider):
     config.save(update_fields=['status', 'last_error', 'updated_at'])
     if normalized == 'dnse':
         _mirror_to_legacy_dnse(user, secrets, True)
-    return Response({'ok': True, **_serialize_config(config)}, status=status.HTTP_200_OK)
+    return envelope({'ok': True, **_serialize_config(config)}, status=status.HTTP_200_OK)
 
 
 @required_workspace_permission('broker_manage')
@@ -183,7 +183,8 @@ def broker_test_connection_api(request, provider):
     cache.set(cache_key, count + 1, TEST_CONN_WINDOW_SECONDS)
 
     job = test_broker_connection_task.delay(config.id)
-    return Response({'job_id': job.id, 'state': 'pending'}, status=status.HTTP_202_ACCEPTED)
+    return envelope(
+        {'job_id': job.id, 'state': 'pending'}, status=status.HTTP_202_ACCEPTED)
 
 
 @api_view(['GET'])
@@ -194,17 +195,17 @@ def broker_job_status_api(request, job_id):
         result = AsyncResult(str(job_id))
         state = result.state
     except Exception:  # noqa: BLE001 — backend lỗi/không có coi như pending
-        return Response({'job_id': str(job_id), 'state': 'pending'})
+        return envelope({'job_id': str(job_id), 'state': 'pending'})
     if state in ('PENDING', 'STARTED', 'RETRY'):
-        return Response({'job_id': str(job_id), 'state': 'pending'})
+        return envelope({'job_id': str(job_id), 'state': 'pending'})
     if state == 'SUCCESS':
         payload = result.result if isinstance(result.result, dict) else {}
-        return Response({'job_id': str(job_id), 'state': 'succeeded', 'result': payload})
+        return envelope({'job_id': str(job_id), 'state': 'succeeded', 'result': payload})
     try:
         error = str(result.result)[:500] if result.result else 'failed'
     except Exception:  # noqa: BLE001
         error = 'failed'
-    return Response({'job_id': str(job_id), 'state': 'failed', 'error': error})
+    return envelope({'job_id': str(job_id), 'state': 'failed', 'error': error})
 
 # SAFE-04: xem iews_dnse.py — @api_view khong chep attribute sang class.
 attach_required_permissions(
