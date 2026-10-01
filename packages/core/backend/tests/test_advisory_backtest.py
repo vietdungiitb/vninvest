@@ -19,6 +19,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from advisory.models import AdvisoryRecord
+from advisory.tests.envelope import unwrapped
 from market_data.models import DailyPrice
 
 
@@ -64,7 +65,7 @@ class AdvisoryBacktestApiTests(TestCase):
         response = self.client.get('/core/v1/advisory/backtest/FPT/?window=30')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.data
+        data = unwrapped(response)
         self.assertEqual(data['symbol'], 'FPT')
         self.assertEqual(data['window_days'], 30)
         self.assertEqual(data['n_samples'], 5)
@@ -83,10 +84,11 @@ class AdvisoryBacktestApiTests(TestCase):
         response = self.client.get('/core/v1/advisory/backtest/FPT/?window=30')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['n_samples'], 2)
-        self.assertFalse(response.data['enough_data'])
-        self.assertIsNone(response.data['hit_rate'])
-        self.assertIsNone(response.data['avg_return_t1'])
+        data = unwrapped(response)
+        self.assertEqual(data['n_samples'], 2)
+        self.assertFalse(data['enough_data'])
+        self.assertIsNone(data['hit_rate'])
+        self.assertIsNone(data['avg_return_t1'])
 
     def test_backtest_window_filters_old_records_and_rejects_bad_window(self):
         _make_prices('FPT', self.today - timedelta(days=70), 71)
@@ -96,8 +98,8 @@ class AdvisoryBacktestApiTests(TestCase):
         res90 = self.client.get('/core/v1/advisory/backtest/FPT/?window=90')
         res_bad = self.client.get('/core/v1/advisory/backtest/FPT/?window=7')
 
-        self.assertEqual(res30.data['n_samples'], 0)
-        self.assertEqual(res90.data['n_samples'], 1)
+        self.assertEqual(unwrapped(res30)['n_samples'], 0)
+        self.assertEqual(unwrapped(res90)['n_samples'], 1)
         self.assertEqual(res_bad.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_backtest_excludes_other_users_records(self):
@@ -108,8 +110,8 @@ class AdvisoryBacktestApiTests(TestCase):
 
         response = self.client.get('/core/v1/advisory/backtest/FPT/?window=30')
 
-        self.assertEqual(response.data['n_samples'], 0)
-        self.assertFalse(response.data['enough_data'])
+        self.assertEqual(unwrapped(response)['n_samples'], 0)
+        self.assertFalse(unwrapped(response)['enough_data'])
 
     def test_ambiguous_or_negated_signals_are_unscorable(self):
         from advisory.views import _extract_backtest_side
@@ -142,9 +144,9 @@ class AdvisoryBacktestApiTests(TestCase):
 
         response = self.client.get('/core/v1/advisory/backtest/FPT/?window=30')
 
-        self.assertEqual(response.data['records_considered'], 7)
-        self.assertEqual(response.data['duplicate_signals_skipped'], 2)
-        self.assertEqual(response.data['n_samples'], 5)
+        self.assertEqual(unwrapped(response)['records_considered'], 7)
+        self.assertEqual(unwrapped(response)['duplicate_signals_skipped'], 2)
+        self.assertEqual(unwrapped(response)['n_samples'], 5)
 
     def test_reliable_flag_requires_30_samples(self):
         _make_prices('FPT', self.today - timedelta(days=30), 31)
@@ -153,5 +155,5 @@ class AdvisoryBacktestApiTests(TestCase):
 
         response = self.client.get('/core/v1/advisory/backtest/FPT/?window=30')
 
-        self.assertTrue(response.data['enough_data'])
-        self.assertFalse(response.data['reliable'])
+        self.assertTrue(unwrapped(response)['enough_data'])
+        self.assertFalse(unwrapped(response)['reliable'])

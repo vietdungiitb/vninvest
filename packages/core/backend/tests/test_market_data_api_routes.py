@@ -25,6 +25,7 @@ from rest_framework.test import APIClient
 
 from unittest.mock import MagicMock, patch
 
+from market_data.tests.envelope import unwrapped, unwrapped_json
 from market_data.models import DailyPrice, StockProfile, IntradayBar, IntradayTick
 from market_data.views import (
     DailyPriceListView,
@@ -55,16 +56,16 @@ class MarketDataApiRouteTests(TestCase):
 
         list_response = self.client.get('/core/v1/market-data/symbols/?exchange=HOSE')
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(list_response.data['results'][0]['symbol'], 'VCB')
-        self.assertIn('next', list_response.data)
+        self.assertEqual(unwrapped(list_response)['results'][0]['symbol'], 'VCB')
+        self.assertIn('next', unwrapped(list_response))
 
         resolver_detail = resolve('/core/v1/market-data/symbols/VCB/')
         self.assertIs(resolver_detail.func.view_class, StockProfileDetailView)
 
         detail_response = self.client.get('/core/v1/market-data/symbols/VCB/')
         self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(detail_response.data['symbol'], 'VCB')
-        self.assertEqual(detail_response.data['exchange'], 'HOSE')
+        self.assertEqual(unwrapped(detail_response)['symbol'], 'VCB')
+        self.assertEqual(unwrapped(detail_response)['exchange'], 'HOSE')
 
     def test_daily_price_route_is_native(self):
         DailyPrice.objects.create(
@@ -86,9 +87,9 @@ class MarketDataApiRouteTests(TestCase):
 
         response = self.client.get('/core/v1/market-data/daily-prices/VCB/?date_from=2026-05-01')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['symbol'], 'VCB')
-        self.assertEqual(response.data['results'][0]['symbol'], 'VCB')
-        self.assertEqual(response.data['results'][0]['date'], '2026-05-08')
+        self.assertEqual(unwrapped(response)['symbol'], 'VCB')
+        self.assertEqual(unwrapped(response)['results'][0]['symbol'], 'VCB')
+        self.assertEqual(unwrapped(response)['results'][0]['date'], '2026-05-08')
 
 
 class IntradayApiRouteTests(TestCase):
@@ -138,7 +139,7 @@ class IntradayApiRouteTests(TestCase):
         )
         resp = self.client.get('/core/v1/market-data/intraday-prices/VCB/?timeframe=1H&days=30')
         self.assertEqual(resp.status_code, 200)
-        data = resp.json()
+        data = unwrapped_json(resp)
         self.assertEqual(data['symbol'], 'VCB')
         self.assertEqual(data['source'], 'intraday_bar_db')
         self.assertEqual(len(data['points']), 1)
@@ -156,7 +157,7 @@ class IntradayApiRouteTests(TestCase):
         )
         resp = self.client.get('/core/v1/market-data/intraday-tape/VCB/')
         self.assertEqual(resp.status_code, 200)
-        data = resp.json()
+        data = unwrapped_json(resp)
         self.assertEqual(data['symbol'], 'VCB')
         self.assertEqual(data['source'], 'intraday_tick_db')
         self.assertEqual(len(data['trades']), 1)
@@ -165,8 +166,8 @@ class IntradayApiRouteTests(TestCase):
     # --- Symbol normalization ---
     def test_symbol_is_uppercased_prices(self):
         resp = self.client.get('/core/v1/market-data/intraday-prices/vcb/')
-        self.assertEqual(resp.json()['symbol'], 'VCB')
+        self.assertEqual(unwrapped_json(resp)['symbol'], 'VCB')
 
     def test_symbol_is_uppercased_tape(self):
         resp = self.client.get('/core/v1/market-data/intraday-tape/vcb/')
-        self.assertEqual(resp.json()['symbol'], 'VCB')
+        self.assertEqual(unwrapped_json(resp)['symbol'], 'VCB')

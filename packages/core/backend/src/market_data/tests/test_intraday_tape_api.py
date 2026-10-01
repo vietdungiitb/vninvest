@@ -7,6 +7,8 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from market_data.tests.envelope import unwrapped_json
+
 from market_data.models import IntradayTick
 
 User = get_user_model()
@@ -49,7 +51,7 @@ class IntradayTapeApiTestCase(TestCase):
         response = self.client.get('/core/v1/market-data/intraday-tape/FPT/?page_size=20')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['symbol'], 'FPT')
         self.assertEqual(payload['source'], 'intraday_tick_db')
         self.assertFalse(payload['stale'])
@@ -69,7 +71,7 @@ class IntradayTapeApiTestCase(TestCase):
         response = self.client.get('/core/v1/market-data/intraday-tape/FPT/?page_size=20')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['symbol'], 'FPT')
         self.assertEqual(payload['source'], 'intraday_tick_db_missing')
         self.assertTrue(payload['stale'])

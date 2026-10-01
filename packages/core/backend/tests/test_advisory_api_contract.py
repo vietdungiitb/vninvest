@@ -26,6 +26,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from advisory.models import AdvisoryComponent, AdvisoryRecord, AdvisorySession
+from advisory.tests.envelope import unwrapped
 
 FULL_STRUCTURED = {
     'signal': 'SELL',
@@ -60,7 +61,9 @@ class AdvisoryRecordContractTests(TestCase):
     def _payload(self):
         response = self.client.get(f'/core/v1/advisory/latest/{self.record.symbol}/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        return response.data
+        # `advisory` da boc `{data, meta}` — `unwrapped` mo envelope neu co,
+        # giu nguyen neu khong, nen test pass o ca hai trang thai.
+        return unwrapped(response)
 
     def test_signal_read_from_structured_output(self):
         self.assertEqual(self._payload()['signal'], 'SELL')

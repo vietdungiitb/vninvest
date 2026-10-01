@@ -5,11 +5,11 @@ These views provide admin-level access to signal configuration and runtime KPIs.
 Protected by IsCoreOperator permission (is_staff or is_superuser required).
 """
 from rest_framework import permissions, status
-from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from identity_access.permissions import IsCoreOperator
 
+from .envelope import envelope
 from .models import UnifiedAlert
 
 
@@ -32,7 +32,7 @@ class SignalAdminStatsView(APIView):
             alert_type__icontains='whale',
         ).count()
 
-        return Response({
+        return envelope({
             'period': '24h',
             'total_alerts': total_alerts,
             'whale_alerts': whale_alerts,
@@ -58,4 +58,4 @@ class SignalAdminFlushView(APIView):
                 # delete_pattern not available on all cache backends (e.g. LocMemCache)
                 pass
 
-        return Response({'detail': 'Signal cache flush triggered.'}, status=status.HTTP_200_OK)
+        return envelope({'detail': 'Signal cache flush triggered.'}, status=status.HTTP_200_OK)

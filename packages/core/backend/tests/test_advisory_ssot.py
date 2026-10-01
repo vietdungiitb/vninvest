@@ -17,6 +17,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from advisory.models import SystemAISettings, AdvisoryRecord
+from advisory.tests.envelope import unwrapped
 from advisory.models import AdvisoryComponent, AdvisorySession
 from identity_access.models import CoreTenant, UserProfile
 from identity_access.security import encrypt_user_api_key
@@ -111,7 +112,8 @@ class AdvisorySsotContextMergeTests(TestCase):
             self.assertEqual(effective_context['api_key'], 'my-byok-plaintext-key')
 
             # Verify that context_snapshot['effective_ai_context'] is stored
-            record = AdvisoryRecord.objects.get(advisory_id=response.data['advisory_id'])
+            record = AdvisoryRecord.objects.get(
+                advisory_id=unwrapped(response)['advisory_id'])
             self.assertIn('effective_ai_context', record.context_snapshot)
             self.assertEqual(record.context_snapshot['effective_ai_context']['api_key'], '[redacted]')
 
@@ -172,7 +174,8 @@ class AdvisorySsotContextMergeTests(TestCase):
 
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-        record = AdvisoryRecord.objects.get(advisory_id=response.data['advisory_id'])
+        record = AdvisoryRecord.objects.get(
+                advisory_id=unwrapped(response)['advisory_id'])
         session = AdvisorySession.objects.get(user=self.user, symbol='FPT', session_date=record.session_date)
         self.assertEqual(session.status, AdvisorySession.StatusChoices.COMPLETED)
         self.assertEqual(session.tokens_used, 120)
@@ -215,7 +218,8 @@ class AdvisorySsotContextMergeTests(TestCase):
             response = self.client.post('/core/v1/advisory/refresh/VIC/', {}, format='json')
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-        record = AdvisoryRecord.objects.get(advisory_id=response.data['advisory_id'])
+        record = AdvisoryRecord.objects.get(
+                advisory_id=unwrapped(response)['advisory_id'])
         self.assertEqual(record.status, AdvisoryRecord.StatusChoices.FAILED)
         self.assertEqual(
             record.structured_output['error']['error_code'],

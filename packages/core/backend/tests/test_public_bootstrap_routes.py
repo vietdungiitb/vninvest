@@ -22,6 +22,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from commercial.views import PublicLegalPagesView
+from market_data.tests.envelope import unwrapped
 from market_data.stock_mgmt_native_views import StockManagementTrackedSymbolsView
 
 
@@ -49,7 +50,7 @@ class NativePublicBootstrapRouteTests(TestCase):
         response = self.client.get('/core/v1/stock-management/tracked-symbols/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data, [])
+        self.assertEqual(unwrapped(response), [])
 
     @override_settings(LEGACY_BACKEND_URL='http://legacy.internal')
     def test_tracked_symbols_route_remains_native_when_legacy_url_configured(self):
@@ -57,4 +58,4 @@ class NativePublicBootstrapRouteTests(TestCase):
 
         get_response = self.client.get('/core/v1/stock-management/tracked-symbols/?page=1')
         self.assertEqual(get_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(get_response.data, [])
+        self.assertEqual(unwrapped(get_response), [])

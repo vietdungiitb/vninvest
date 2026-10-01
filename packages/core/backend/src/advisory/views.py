@@ -19,6 +19,12 @@ from rest_framework import permissions, status, throttling
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+# Đặt TRƯỚC `logger = ...` để không cộng thêm một E402: các import còn lại dưới
+# đây (commercial / identity_access / ops_audit / .models) đã nằm sau `logger` từ
+# trước B5 nên ruff đã báo E402 cho chúng — không cần nhân thêm lỗi của chính
+# dòng mình thêm vào.
+from .envelope import envelope, paginated_envelope
+
 logger = logging.getLogger(__name__)
 
 from commercial.models import QuotaRecord
@@ -199,7 +205,7 @@ class AdvisoryLatestView(APIView):
                 {'detail': f'Chưa có advisory cho {symbol} ngày {session_date}.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        return Response(AdvisoryRecordSerializer(advisory).data)
+        return envelope(AdvisoryRecordSerializer(advisory).data)
 
     def delete(self, request, symbol):
         symbol = _validate_symbol(symbol)
@@ -214,7 +220,7 @@ class AdvisoryLatestView(APIView):
                 {'detail': f'Không có advisory cho {symbol} ngày {session_date}.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        return Response({'symbol': symbol, 'session_date': session_date, 'deleted': True}, status=status.HTTP_200_OK)
+        return envelope({'symbol': symbol, 'session_date': session_date, 'deleted': True}, status=status.HTTP_200_OK)
 
 
 class AdvisoryStatusView(APIView):
@@ -634,7 +640,7 @@ class AdvisoryRefreshView(APIView):
             response_data['personal_key_error'] = personal_key_error
             response_data['fallback_quota_remaining'] = fallback_remaining
         cache.delete(_lock_key)
-        return Response(response_data, status=status.HTTP_201_CREATED)
+        return envelope(response_data, status=status.HTTP_201_CREATED)
 
 
 from vninvest_core.pagination import CoreCursorPagination
@@ -664,10 +670,18 @@ class AdvisoryHistoryView(APIView):
         page = paginator.paginate_queryset(qs, request)
         if page is not None:
             serializer = AdvisoryRecordSerializer(page, many=True)
-            return paginator.get_paginated_response(serializer.data)
+            paged = paginator.get_paginated_response(serializer.data)
+            # Bọc cả khối phân trang (next/previous/results của cursor) trong
+            # `data`. `dict(paged.data)` vì paginator trả `Response`, không trả dict.
+            # `AdvisoryRecordCursorPagination` kế thừa `CoreCursorPagination` nên
+            # **không** có `count` — giữ nguyên, không tự thêm.
+            return paginated_envelope(dict(paged.data))
 
+        # Nhánh fallback: `paginate_queryset` trả `None` (pagination tắt). Phải
+        # bọc **giống hệt** nhánh trên, nếu không endpoint này có HAI shape
+        # cùng lúc — đúng lỗi `service_ops` từng mắc và không test nào bắt được.
         serializer = AdvisoryRecordSerializer(qs, many=True)
-        return Response({'results': serializer.data})
+        return paginated_envelope({'results': serializer.data})
 
 
 class AdvisoryRefreshInfoView(APIView):
@@ -698,7 +712,7 @@ class AdvisoryRefreshInfoView(APIView):
             created_at__date=session_date,
         ).count()
 
-        return Response({
+        return envelope({
             'symbol': symbol,
             'session_date': session_date.isoformat(),
             'auto_refresh': False,
@@ -841,7 +855,7 @@ class AdvisoryBacktestView(APIView):
             return round(sum(1 for s in samples if s[key]) / n, 4) if n else None
 
         hit_t5 = _rate('hit_t5')
-        return Response({
+        return envelope({
             'symbol': symbol,
             'window_days': window_days,
             'n_samples': n,

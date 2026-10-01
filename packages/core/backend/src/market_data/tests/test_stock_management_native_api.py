@@ -11,6 +11,7 @@ from rest_framework.test import APIClient
 
 from advisory.models import AdvisoryRecord
 from identity_access.models import CoreTenant, UserProfile
+from market_data.tests.envelope import unwrapped, unwrapped_json
 from market_data.models import DailyPrice, GlobalSymbolDemandSource, GlobalSymbolRegistry, IntradayBar, IntradayTick, StockProfile
 from signal_intelligence.models import UnifiedAlert
 from service_ops.models import CachedSymbolGroup, CachedSymbolGroupMember
@@ -64,7 +65,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.get('/core/v1/stock-management/stocks/?search=TPB')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertIn('results', payload)
         self.assertEqual(len(payload['results']), 1)
         self.assertEqual(payload['results'][0]['symbol'], 'TPB')
@@ -74,7 +75,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.get('/core/v1/stock-management/stocks/FPT/overview/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['symbol'], 'FPT')
         self.assertIn('current_price', payload)
         self.assertIn('market_group_refs', payload)
@@ -97,7 +98,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.get('/core/v1/stock-management/stocks/ZZZ/overview/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['symbol'], 'ZZZ')
         self.assertEqual(payload['company_name'], 'ZZZ')
         self.assertEqual(payload['current_price'], 10.2)
@@ -130,7 +131,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.get('/core/v1/stock-management/stocks/TPB/overview/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertTrue(payload['is_tracked'])
         self.assertEqual(payload['tracked_symbol_id'], item.pk)
         self.assertEqual(payload['market_group_refs'][0]['id'], watchlist.pk)
@@ -170,7 +171,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.get('/core/v1/stock-management/stocks/TPB/overview/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertTrue(payload['is_tracked'])
         self.assertEqual(payload['tracked_symbol_id'], tracked_symbol.pk)
         self.assertEqual(payload['source_group_name'], group.name)
@@ -180,7 +181,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.get('/core/v1/stock-management/stocks/FPT/chart/?timeframe=1H&days=30')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['symbol'], 'FPT')
         self.assertEqual(payload['timeframe'], '1H')
         self.assertEqual(payload['points'], [])
@@ -214,7 +215,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.get('/core/v1/stock-management/stocks/TPB/chart/?timeframe=1H&days=5')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['interval'], '1H')
         self.assertEqual(len(payload['points']), 2)
         self.assertEqual(payload['points'][-1]['close'], 18.4)
@@ -236,7 +237,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.get('/core/v1/stock-management/stocks/TPB/chart/?timeframe=30m&days=2')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['timeframe'], '30m')
         self.assertEqual(payload['interval'], '30m')
         self.assertEqual(len(payload['points']), 1)
@@ -273,7 +274,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.get('/core/v1/stock-management/stocks/TPB/dark-money-history/?interval=1h&period=1M')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertTrue(payload['ok'])
         self.assertEqual(payload['symbol'], 'TPB')
         self.assertEqual(payload['interval'], '1h')
@@ -311,7 +312,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.get('/core/v1/stock-management/stocks/TPB/chart/?timeframe=D&days=30')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['timeframe'], 'D')
         self.assertEqual(len(payload['points']), 2)
         self.assertEqual(payload['points'][-1]['close'], 18.3)
@@ -333,7 +334,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.get('/core/v1/stock-management/stocks/VGC/chart/?timeframe=D&days=30')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['symbol'], 'VGC')
         self.assertEqual(len(payload['points']), 1)
         self.assertEqual(payload['points'][0]['close'], 43.9)
@@ -349,8 +350,9 @@ class StockManagementNativeApiTestCase(TestCase):
 
         self.assertEqual(native_response.status_code, status.HTTP_200_OK)
         self.assertEqual(public_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(native_response.json(), public_response.json())
-        self.assertEqual(native_response.json()['symbol'], 'TPB')
+        self.assertEqual(unwrapped_json(native_response),
+            unwrapped_json(public_response))
+        self.assertEqual(unwrapped_json(native_response)['symbol'], 'TPB')
 
     def test_core_v1_stock_overview_route_matches_public_contract(self):
         DailyPrice.objects.create(
@@ -379,8 +381,9 @@ class StockManagementNativeApiTestCase(TestCase):
 
         self.assertEqual(native_response.status_code, status.HTTP_200_OK)
         self.assertEqual(public_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(native_response.json(), public_response.json())
-        self.assertEqual(native_response.json()['symbol'], 'TPB')
+        self.assertEqual(unwrapped_json(native_response),
+            unwrapped_json(public_response))
+        self.assertEqual(unwrapped_json(native_response)['symbol'], 'TPB')
 
     def test_core_v1_stock_chart_route_matches_public_contract(self):
         today = timezone.localdate()
@@ -410,8 +413,9 @@ class StockManagementNativeApiTestCase(TestCase):
 
         self.assertEqual(native_response.status_code, status.HTTP_200_OK)
         self.assertEqual(public_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(native_response.json(), public_response.json())
-        self.assertEqual(native_response.json()['timeframe'], 'D')
+        self.assertEqual(unwrapped_json(native_response),
+            unwrapped_json(public_response))
+        self.assertEqual(unwrapped_json(native_response)['timeframe'], 'D')
 
     def test_core_v1_stock_dark_money_history_route_matches_public_contract(self):
         now = timezone.now().replace(second=0, microsecond=0)
@@ -447,7 +451,8 @@ class StockManagementNativeApiTestCase(TestCase):
 
         self.assertEqual(native_response.status_code, status.HTTP_200_OK)
         self.assertEqual(public_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(native_response.json(), public_response.json())
+        self.assertEqual(unwrapped_json(native_response),
+            unwrapped_json(public_response))
 
     def test_core_v1_stock_order_flow_route_matches_public_contract(self):
         now = timezone.now()
@@ -480,8 +485,9 @@ class StockManagementNativeApiTestCase(TestCase):
 
         self.assertEqual(native_response.status_code, status.HTTP_200_OK)
         self.assertEqual(public_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(native_response.json(), public_response.json())
-        self.assertEqual(native_response.json()['symbol'], 'TPB')
+        self.assertEqual(unwrapped_json(native_response),
+            unwrapped_json(public_response))
+        self.assertEqual(unwrapped_json(native_response)['symbol'], 'TPB')
 
     def test_core_v1_stock_news_route_matches_public_contract(self):
         native_response = self.client.get('/core/v1/stock-management/stocks/TPB/news/')
@@ -489,8 +495,10 @@ class StockManagementNativeApiTestCase(TestCase):
 
         self.assertEqual(native_response.status_code, status.HTTP_200_OK)
         self.assertEqual(public_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(native_response.json(), public_response.json())
-        self.assertEqual(native_response.json()['note'], 'news_loaded_successfully')
+        self.assertEqual(unwrapped_json(native_response),
+            unwrapped_json(public_response))
+        self.assertEqual(unwrapped_json(native_response)['note'],
+            'news_loaded_successfully')
 
     def test_core_v1_stock_news_ai_summary_route_matches_public_contract(self):
         native_response = self.client.post('/core/v1/stock-management/stocks/TPB/news/ai-summary/', {}, format='json')
@@ -498,8 +506,10 @@ class StockManagementNativeApiTestCase(TestCase):
 
         self.assertEqual(native_response.status_code, status.HTTP_200_OK)
         self.assertEqual(public_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(native_response.json(), public_response.json())
-        self.assertEqual(native_response.json()['note'], 'ai_summary_not_available_in_native')
+        self.assertEqual(unwrapped_json(native_response),
+            unwrapped_json(public_response))
+        self.assertEqual(unwrapped_json(native_response)['note'],
+            'ai_summary_not_available_in_native')
 
     def test_core_v1_stock_financials_route_matches_public_contract(self):
         native_response = self.client.get('/core/v1/stock-management/stocks/TPB/financials/')
@@ -507,8 +517,10 @@ class StockManagementNativeApiTestCase(TestCase):
 
         self.assertEqual(native_response.status_code, status.HTTP_200_OK)
         self.assertEqual(public_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(native_response.json(), public_response.json())
-        self.assertEqual(native_response.json()['note'], 'financials_loaded_successfully')
+        self.assertEqual(unwrapped_json(native_response),
+            unwrapped_json(public_response))
+        self.assertEqual(unwrapped_json(native_response)['note'],
+            'financials_loaded_successfully')
 
     def test_stock_management_technicals_bulk_returns_compatible_technical_payload(self):
         start_date = timezone.localdate() - timedelta(days=70)
@@ -529,7 +541,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.get('/core/v1/stock-management/technicals/bulk/?symbols=TPB,FPT')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertIn('technicals', payload)
         self.assertIn('results', payload)
         self.assertEqual(payload['requested_count'], 2)
@@ -571,7 +583,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.get('/core/v1/market-data/technicals/bulk/?symbols=TPB')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['requested_count'], 1)
         self.assertEqual(payload['resolved_count'], 1)
         self.assertEqual(len(payload['technicals']), 1)
@@ -642,7 +654,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.get('/core/v1/stock-management/stocks/TPB/order-flow/?window=30m&limit=10')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['symbol'], 'TPB')
         self.assertEqual(payload['window'], '30m')
         self.assertIn('dark_flow', payload)
@@ -659,7 +671,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.get('/core/v1/stock-management/stocks/FPT/order-flow/?window=15m')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['symbol'], 'FPT')
         self.assertEqual(payload['window'], '15m')
         self.assertEqual(payload['signals'], [])
@@ -693,7 +705,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.get('/core/v1/stock-management/stocks/TPB/ai-advisory-session/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['symbol'], 'TPB')
         self.assertEqual(payload['status'], AdvisoryRecord.StatusChoices.GENERATED)
         self.assertEqual(payload['advisory_text'], 'Native advisory payload')
@@ -727,7 +739,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.get('/core/v1/stock-management/stocks/TPB/ai-advisory-session/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['symbol'], 'TPB')
         self.assertEqual(payload['status'], AdvisoryRecord.StatusChoices.GENERATED)
         self.assertEqual(payload['advisory_text'], 'Native advisory payload')
@@ -764,7 +776,7 @@ class StockManagementNativeApiTestCase(TestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['symbol'], 'TPB')
         self.assertEqual(payload['status'], AdvisoryRecord.StatusChoices.PENDING)
         self.assertIn('manual_trigger', payload)
@@ -801,7 +813,7 @@ class StockManagementNativeApiTestCase(TestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['symbol'], 'TPB')
         self.assertEqual(payload['status'], AdvisoryRecord.StatusChoices.PENDING)
         self.assertIn('manual_trigger', payload)
@@ -842,7 +854,7 @@ class StockManagementNativeApiTestCase(TestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['symbol'], 'TPB')
         self.assertEqual(payload['status'], AdvisoryRecord.StatusChoices.PENDING)
         self.assertIn('manual_trigger', payload)
@@ -958,22 +970,24 @@ class StockManagementNativeApiTestCase(TestCase):
         summary_delete_response = self.client.delete(f'/core/v1/stock-management/stocks/TPB/ai-advisory-summary/1/?advisory_id={advisory_id}')
 
         self.assertEqual(observability_get_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(observability_get_response.json()['symbol'], 'TPB')
+        self.assertEqual(unwrapped_json(observability_get_response)['symbol'], 'TPB')
         self.assertEqual(observability_post_response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(observability_post_response.json()['received'])
+        self.assertTrue(unwrapped_json(observability_post_response)['received'])
         self.assertEqual(deleted_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(deleted_response.json()['deleted']), 1)
-        self.assertEqual(deleted_response.json()['deleted'][0]['id'], 2)
+        self.assertEqual(len(unwrapped_json(deleted_response)['deleted']), 1)
+        self.assertEqual(unwrapped_json(deleted_response)['deleted'][0]['id'], 2)
         self.assertEqual(summary_regenerate_response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(summary_regenerate_response.json()['executive_summary']['deleted_components_count'], 1)
+        summary = unwrapped_json(summary_regenerate_response)
+        self.assertEqual(summary['executive_summary']['deleted_components_count'], 1)
         self.assertEqual(toggle_response.status_code, status.HTTP_200_OK)
-        self.assertFalse(toggle_response.json()['component']['include_in_summary'])
+        toggle = unwrapped_json(toggle_response)
+        self.assertFalse(toggle['component']['include_in_summary'])
         self.assertEqual(refresh_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(refresh_response.json()['component']['id'], 1)
+        self.assertEqual(unwrapped_json(refresh_response)['component']['id'], 1)
         self.assertEqual(restore_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(restore_response.json()['component']['id'], 2)
+        self.assertEqual(unwrapped_json(restore_response)['component']['id'], 2)
         self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(detail_response.json()['component']['id'], 1)
+        self.assertEqual(unwrapped_json(detail_response)['component']['id'], 1)
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(summary_delete_response.status_code, status.HTTP_204_NO_CONTENT)
 
@@ -1090,7 +1104,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.post('/core/v1/stock-management/ai-advisory-components/7/toggle-include/?advisory_id=not-a-uuid', {}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('advisory_id', response.json().get('message', ''))
+        self.assertIn('advisory_id', unwrapped_json(response).get('message', ''))
 
     def test_core_v1_ai_advisory_session_does_not_leak_other_users_record(self):
         other_user = User.objects.create_user(
@@ -1112,7 +1126,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.get('/core/v1/stock-management/stocks/TPB/ai-advisory-session/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['reason'], 'no_advisory_data')
         self.assertIsNone(payload['advisory'])
 
@@ -1124,7 +1138,7 @@ class StockManagementNativeApiTestCase(TestCase):
         seed_response = self.client.post('/core/v1/stock-management/seed/', {}, format='json')
 
         self.assertEqual(seed_response.status_code, status.HTTP_200_OK)
-        self.assertIn('message', seed_response.json())
+        self.assertIn('message', unwrapped_json(seed_response))
         self.assertEqual(fetch_symbol_group_members_mock.call_count, 3)
         self.assertEqual({call.args[0] for call in fetch_symbol_group_members_mock.call_args_list}, {'vn30', 'vn100', 'hnx30'})
 
@@ -1156,7 +1170,7 @@ class StockManagementNativeApiTestCase(TestCase):
 
         list_response = self.client.get('/core/v1/stock-management/groups/')
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
-        groups = list_response.json()
+        groups = unwrapped_json(list_response)
         self.assertGreater(len(groups), 0)
         first_group = groups[0]
         self.assertIn('group_type', first_group)
@@ -1165,12 +1179,12 @@ class StockManagementNativeApiTestCase(TestCase):
 
         detail_response = self.client.get(f"/core/v1/stock-management/groups/{first_group['id']}/")
         self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(detail_response.json()['id'], first_group['id'])
+        self.assertEqual(unwrapped_json(detail_response)['id'], first_group['id'])
 
         items_response = self.client.get(f"/core/v1/stock-management/groups/{first_group['id']}/items/")
         self.assertEqual(items_response.status_code, status.HTTP_200_OK)
-        self.assertIsInstance(items_response.json(), list)
-        self.assertGreater(len(items_response.json()), 0)
+        self.assertIsInstance(unwrapped_json(items_response), list)
+        self.assertGreater(len(unwrapped_json(items_response)), 0)
 
     def test_tracked_symbol_endpoints_are_native(self):
         group = Watchlist.objects.create(user=self.user, name='Ngân hàng', description='Nhóm ngân hàng')
@@ -1206,7 +1220,7 @@ class StockManagementNativeApiTestCase(TestCase):
         )
 
         self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
-        tracked_row = create_response.json()
+        tracked_row = unwrapped_json(create_response)
         self.assertEqual(tracked_row['source_group_id'], group.pk)
         self.assertEqual(tracked_row['whale_alert_threshold_million'], 850.0)
         self.assertEqual(tracked_row['current_price'], 18.25)
@@ -1222,7 +1236,7 @@ class StockManagementNativeApiTestCase(TestCase):
 
         list_response = self.client.get('/core/v1/stock-management/tracked-symbols/')
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
-        tracked_rows = list_response.json()
+        tracked_rows = unwrapped_json(list_response)
         self.assertEqual(len(tracked_rows), 1)
         self.assertEqual(tracked_rows[0]['symbol'], 'TPB')
 
@@ -1232,7 +1246,8 @@ class StockManagementNativeApiTestCase(TestCase):
             format='json',
         )
         self.assertEqual(patch_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(patch_response.json()['whale_alert_threshold_million'], 920.0)
+        patched = unwrapped_json(patch_response)
+        self.assertEqual(patched['whale_alert_threshold_million'], 920.0)
 
         bulk_response = self.client.post(
             '/core/v1/stock-management/tracked-symbols/bulk-threshold/',
@@ -1243,8 +1258,9 @@ class StockManagementNativeApiTestCase(TestCase):
             format='json',
         )
         self.assertEqual(bulk_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(bulk_response.json()['updated_count'], 1)
-        self.assertIsNone(bulk_response.json()['rows'][0]['whale_alert_threshold_million'])
+        self.assertEqual(unwrapped_json(bulk_response)['updated_count'], 1)
+        bulk = unwrapped_json(bulk_response)
+        self.assertIsNone(bulk['rows'][0]['whale_alert_threshold_million'])
 
         delete_response = self.client.delete(f"/core/v1/stock-management/tracked-symbols/{tracked_row['id']}/")
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
@@ -1288,9 +1304,11 @@ class StockManagementNativeApiTestCase(TestCase):
 
         self.assertEqual(native_response.status_code, status.HTTP_200_OK)
         self.assertEqual(public_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(native_response.json(), public_response.json())
-        self.assertEqual(native_response.json()[0]['symbol'], 'TPB')
-        self.assertEqual(native_response.json()[0]['source_group_id'], group.pk)
+        self.assertEqual(unwrapped_json(native_response),
+            unwrapped_json(public_response))
+        self.assertEqual(unwrapped_json(native_response)[0]['symbol'], 'TPB')
+        self.assertEqual(unwrapped_json(native_response)[0]['source_group_id'],
+            group.pk)
 
     def test_core_v1_tracked_symbols_list_route_requires_authentication(self):
         anonymous_client = APIClient()
@@ -1426,9 +1444,11 @@ class StockManagementNativeApiTestCase(TestCase):
 
         self.assertEqual(native_response.status_code, status.HTTP_200_OK)
         self.assertEqual(public_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(native_response.json(), public_response.json())
-        self.assertEqual(native_response.json()[0]['name'], 'Ngân hàng')
-        self.assertEqual(native_response.json()[0]['items'][0]['symbol'], 'TPB')
+        self.assertEqual(unwrapped_json(native_response),
+            unwrapped_json(public_response))
+        self.assertEqual(unwrapped_json(native_response)[0]['name'], 'Ngân hàng')
+        self.assertEqual(unwrapped_json(native_response)[0]['items'][0]['symbol'],
+            'TPB')
 
     @patch(
         'market_data.stock_mgmt_native_views.fetch_symbol_group_members',
@@ -1438,23 +1458,23 @@ class StockManagementNativeApiTestCase(TestCase):
         seed_response = self.client.post('/core/v1/stock-management/seed/', {}, format='json')
 
         self.assertEqual(seed_response.status_code, status.HTTP_200_OK)
-        self.assertIn('message', seed_response.json())
+        self.assertIn('message', unwrapped_json(seed_response))
         self.assertEqual(fetch_symbol_group_members_mock.call_count, 3)
 
         list_response = self.client.get('/core/v1/stock-management/groups/')
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
-        groups = list_response.json()
+        groups = unwrapped_json(list_response)
         self.assertGreater(len(groups), 0)
         first_group = groups[0]
 
         detail_response = self.client.get(f"/core/v1/stock-management/groups/{first_group['id']}/")
         self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(detail_response.json()['id'], first_group['id'])
+        self.assertEqual(unwrapped_json(detail_response)['id'], first_group['id'])
 
         items_response = self.client.get(f"/core/v1/stock-management/groups/{first_group['id']}/items/")
         self.assertEqual(items_response.status_code, status.HTTP_200_OK)
-        self.assertIsInstance(items_response.json(), list)
-        self.assertGreater(len(items_response.json()), 0)
+        self.assertIsInstance(unwrapped_json(items_response), list)
+        self.assertGreater(len(unwrapped_json(items_response)), 0)
 
     def test_core_v1_portfolio_news_digest_route_matches_public_contract(self):
         native_response = self.client.get('/core/v1/stock-management/portfolio/news-digest/')
@@ -1462,9 +1482,11 @@ class StockManagementNativeApiTestCase(TestCase):
 
         self.assertEqual(native_response.status_code, status.HTTP_200_OK)
         self.assertEqual(public_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(native_response.json(), public_response.json())
-        self.assertEqual(native_response.json()['news'], [])
-        self.assertEqual(native_response.json()['note'], 'news_digest_not_available_in_native')
+        self.assertEqual(unwrapped_json(native_response),
+            unwrapped_json(public_response))
+        self.assertEqual(unwrapped_json(native_response)['news'], [])
+        self.assertEqual(unwrapped_json(native_response)['note'],
+            'news_digest_not_available_in_native')
 
     def test_core_v1_tracked_symbol_mutation_routes_are_native(self):
         group = Watchlist.objects.create(user=self.user, name='Ngân hàng', description='Nhóm ngân hàng')
@@ -1500,7 +1522,7 @@ class StockManagementNativeApiTestCase(TestCase):
         )
 
         self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
-        tracked_row = create_response.json()
+        tracked_row = unwrapped_json(create_response)
         self.assertEqual(tracked_row['symbol'], 'TPB')
         self.assertEqual(tracked_row['source_group_id'], group.pk)
         self.assertEqual(tracked_row['whale_alert_threshold_million'], 850.0)
@@ -1511,7 +1533,8 @@ class StockManagementNativeApiTestCase(TestCase):
             format='json',
         )
         self.assertEqual(patch_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(patch_response.json()['whale_alert_threshold_million'], 920.0)
+        patched = unwrapped_json(patch_response)
+        self.assertEqual(patched['whale_alert_threshold_million'], 920.0)
 
         bulk_response = self.client.post(
             '/core/v1/stock-management/tracked-symbols/bulk-threshold/',
@@ -1522,8 +1545,9 @@ class StockManagementNativeApiTestCase(TestCase):
             format='json',
         )
         self.assertEqual(bulk_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(bulk_response.json()['updated_count'], 1)
-        self.assertIsNone(bulk_response.json()['rows'][0]['whale_alert_threshold_million'])
+        self.assertEqual(unwrapped_json(bulk_response)['updated_count'], 1)
+        bulk = unwrapped_json(bulk_response)
+        self.assertIsNone(bulk['rows'][0]['whale_alert_threshold_million'])
 
         delete_response = self.client.delete(f"/core/v1/stock-management/tracked-symbols/{tracked_row['id']}/")
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
@@ -1551,7 +1575,7 @@ class StockManagementNativeApiTestCase(TestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['symbol'], 'VGC')
         self.assertEqual(payload['company_name'], 'VGC')
         self.assertEqual(payload['current_price'], 43.9)
@@ -1591,7 +1615,7 @@ class StockManagementNativeApiTestCase(TestCase):
         )
 
         self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
-        alert_row = create_response.json()
+        alert_row = unwrapped_json(create_response)
         self.assertEqual(alert_row['condition'], 'ABOVE')
         self.assertEqual(alert_row['cooldown_seconds'], 120)
         self.assertTrue(alert_row['is_triggered'])
@@ -1606,7 +1630,7 @@ class StockManagementNativeApiTestCase(TestCase):
 
         list_response = self.client.get('/core/v1/stock-management/price-alerts/')
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
-        alert_rows = list_response.json()
+        alert_rows = unwrapped_json(list_response)
         self.assertEqual(len(alert_rows), 1)
         self.assertEqual(alert_rows[0]['symbol'], 'FPT')
 
@@ -1616,7 +1640,7 @@ class StockManagementNativeApiTestCase(TestCase):
             format='json',
         )
         self.assertEqual(patch_response.status_code, status.HTTP_200_OK)
-        self.assertFalse(patch_response.json()['is_active'])
+        self.assertFalse(unwrapped_json(patch_response)['is_active'])
         registry.refresh_from_db()
         demand_edge.refresh_from_db()
         self.assertFalse(demand_edge.is_active)
@@ -1628,7 +1652,7 @@ class StockManagementNativeApiTestCase(TestCase):
             format='json',
         )
         self.assertEqual(trigger_response.status_code, status.HTTP_200_OK)
-        self.assertIsNotNone(trigger_response.json()['last_triggered_at'])
+        self.assertIsNotNone(unwrapped_json(trigger_response)['last_triggered_at'])
 
         delete_response = self.client.delete(f"/core/v1/stock-management/price-alerts/{alert_row['id']}/")
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
@@ -1669,12 +1693,12 @@ class StockManagementNativeApiTestCase(TestCase):
         )
 
         self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
-        alert_row = create_response.json()
+        alert_row = unwrapped_json(create_response)
         self.assertEqual(alert_row['symbol'], 'FPT')
 
         list_response = self.client.get('/core/v1/stock-management/price-alerts/')
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(list_response.json()[0]['id'], alert_row['id'])
+        self.assertEqual(unwrapped_json(list_response)[0]['id'], alert_row['id'])
 
         patch_response = self.client.patch(
             f"/core/v1/stock-management/price-alerts/{alert_row['id']}/",
@@ -1682,7 +1706,7 @@ class StockManagementNativeApiTestCase(TestCase):
             format='json',
         )
         self.assertEqual(patch_response.status_code, status.HTTP_200_OK)
-        self.assertFalse(patch_response.json()['is_active'])
+        self.assertFalse(unwrapped_json(patch_response)['is_active'])
 
         trigger_response = self.client.post(
             f"/core/v1/stock-management/price-alerts/{alert_row['id']}/mark-triggered/",
@@ -1690,7 +1714,7 @@ class StockManagementNativeApiTestCase(TestCase):
             format='json',
         )
         self.assertEqual(trigger_response.status_code, status.HTTP_200_OK)
-        self.assertIsNotNone(trigger_response.json()['last_triggered_at'])
+        self.assertIsNotNone(unwrapped_json(trigger_response)['last_triggered_at'])
 
         delete_response = self.client.delete(f"/core/v1/stock-management/price-alerts/{alert_row['id']}/")
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
@@ -1715,7 +1739,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.post('/core/v1/stock-management/sync/', {'days': 5}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['synced'], ['TPB'])
         self.assertEqual(payload['total_symbols'], 1)
         self.assertEqual(payload['requested_symbols'], 1)
@@ -1761,7 +1785,7 @@ class StockManagementNativeApiTestCase(TestCase):
         response = self.client.post('/core/v1/stock-management/sync/', {'days': 5}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['synced'], ['TPB'])
         self.assertEqual(payload['scope'], 'global_ssot')
         self.assertEqual(payload['source'], 'global_planner')

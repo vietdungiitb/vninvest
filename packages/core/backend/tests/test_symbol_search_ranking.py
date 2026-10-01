@@ -29,6 +29,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from market_data.tests.envelope import unwrapped_json
 from market_data.models import StockProfile
 
 
@@ -63,7 +64,7 @@ class SymbolSearchRankingTests(TestCase):
     def _search(self, query, page_size=10):
         resp = self.client.get(f'/core/v1/market-data/symbols/?q={query}&page_size={page_size}')
         self.assertEqual(resp.status_code, 200)
-        return [row['symbol'] for row in resp.json()['results']]
+        return [row['symbol'] for row in unwrapped_json(resp)['results']]
 
     def test_exact_symbol_match_is_first(self):
         symbols = self._search('VIC')
@@ -93,19 +94,19 @@ class SymbolSearchRankingTests(TestCase):
     def test_list_without_query_stays_ordered_by_symbol(self):
         resp = self.client.get('/core/v1/market-data/symbols/?page_size=10')
         self.assertEqual(resp.status_code, 200)
-        symbols = [row['symbol'] for row in resp.json()['results']]
+        symbols = [row['symbol'] for row in unwrapped_json(resp)['results']]
         self.assertEqual(symbols, sorted(symbols), 'Khong co q thi phai giu thu tu symbol')
 
     def test_cursor_pagination_has_no_duplicates_and_keeps_ranking(self):
         page1 = self.client.get('/core/v1/market-data/symbols/?q=VIC&page_size=2')
         self.assertEqual(page1.status_code, 200)
-        body1 = page1.json()
+        body1 = unwrapped_json(page1)
         self.assertEqual([r['symbol'] for r in body1['results']], ['VIC', 'VICB'])
         self.assertIsNotNone(body1.get('next'))
 
         page2 = self.client.get(body1['next'])
         self.assertEqual(page2.status_code, 200)
-        body2 = page2.json()
+        body2 = unwrapped_json(page2)
         self.assertEqual([r['symbol'] for r in body2['results']], ['VICR', 'ABS'])
 
         seen = [r['symbol'] for r in body1['results']] + [r['symbol'] for r in body2['results']]
