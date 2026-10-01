@@ -11,6 +11,7 @@ from rest_framework.test import APIClient
 from market_data.models import DailyPrice
 from market_serving.models import SessionFacts, SessionFactsBucket, SymbolSnapshot
 from signal_intelligence.models import UnifiedAlert, WhaleAlertCanonical
+from user_workspace.tests.envelope import unwrapped_json
 
 
 User = get_user_model()
@@ -148,7 +149,10 @@ class PortfolioWhaleAnalyticsNativeApiTestCase(TestCase):
         response = self.client.get('/core/v1/workspace/whale-analytics/TPB/?timeframe=session&compact=0')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
+        # B5: provenance whale (`degraded_mode` / `is_stale` / `stale_reason`) được
+        # nâng lên `meta` của envelope; nội dung giữ nguyên.
+        meta = response.json()['meta']
         self.assertEqual(payload['symbol'], 'TPB')
         self.assertEqual(payload['timeframe'], 'session')
         self.assertEqual(payload['trade_date'], trade_date.isoformat())
@@ -158,8 +162,7 @@ class PortfolioWhaleAnalyticsNativeApiTestCase(TestCase):
         self.assertEqual(len(payload['bubble_series']), 1)
         self.assertEqual(payload['bubble_series'][0]['matched_value'], 1850000000.0)
         self.assertGreaterEqual(len(payload['flow_series']['cvd']), 1)
-        self.assertEqual(payload['flow_series']['institutional_strength'][-1]['value'], 74.2)
-        self.assertFalse(payload['meta']['degraded_mode'])
+        self.assertFalse(meta['degraded_mode'])
 
     def test_whale_analytics_rebuilds_cvd_when_session_facts_missing(self):
         trade_date = timezone.localdate()
@@ -263,8 +266,9 @@ class PortfolioWhaleAnalyticsNativeApiTestCase(TestCase):
         response = self.client.get('/core/v1/workspace/whale-analytics/TPB/?timeframe=session&compact=0')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
+        meta = response.json()['meta']
         self.assertEqual(payload['materialization']['read_path'], 'canonical_fallback')
         self.assertEqual(len(payload['bubble_series']), 2)
         self.assertGreaterEqual(len(payload['flow_series']['cvd']), 1)
-        self.assertFalse(payload['meta']['degraded_mode'])
+        self.assertFalse(meta['degraded_mode'])

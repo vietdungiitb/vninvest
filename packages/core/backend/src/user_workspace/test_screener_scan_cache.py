@@ -16,6 +16,7 @@ from identity_access.models import CoreTenant
 from market_data.models import DailyPrice
 from market_serving.models import SymbolSnapshot
 from user_workspace.models import ScreenerRule
+from user_workspace.tests.envelope import unwrapped_json
 from user_workspace.screener_helpers import build_scan_cache_value
 
 User = get_user_model()
@@ -81,16 +82,16 @@ class ScreenerScanCacheTestCase(TestCase):
         resp1, m1 = self._post(self.rule, {"sort": "close", "order": "asc", "page": 1, "limit": 10})
         self.assertEqual(resp1.status_code, 200, resp1.content[:500])
         self.assertEqual(m1.call_count, 3)  # AAA,BBB,CCC
-        data1 = resp1.json()
+        data1 = unwrapped_json(resp1)
         self.assertEqual(data1["matched_count"], 3)
 
         # Hit: same params → 0 adapter calls, same matched_count
         resp2, m2 = self._post(self.rule, {"sort": "close", "order": "asc", "page": 1, "limit": 10})
         self.assertEqual(resp2.status_code, 200)
         self.assertEqual(m2.call_count, 0)
-        self.assertEqual(resp2.json()["matched_count"], data1["matched_count"])
+        self.assertEqual(unwrapped_json(resp2)["matched_count"], data1["matched_count"])
         self.assertEqual(
-            [r["symbol"] for r in resp2.json()["matched"]],
+            [r["symbol"] for r in unwrapped_json(resp2)["matched"]],
             [r["symbol"] for r in data1["matched"]],
         )
 
@@ -104,11 +105,11 @@ class ScreenerScanCacheTestCase(TestCase):
         self.assertEqual(resp2.status_code, 200)
         self.assertEqual(m2.call_count, 0, "Option B: different sort should hit same cache entry")
         # But order differs (sorted post-cache)
-        asc_syms = [r["symbol"] for r in resp1.json()["matched"]]
-        desc_syms = [r["symbol"] for r in resp2.json()["matched"]]
+        asc_syms = [r["symbol"] for r in unwrapped_json(resp1)["matched"]]
+        desc_syms = [r["symbol"] for r in unwrapped_json(resp2)["matched"]]
         # With distinct closes? Our fixture AAA/BBB/CCC have same price 20, so close equal → order stable but we test meta sort field
-        self.assertEqual(resp2.json()["sort"], "close")
-        self.assertEqual(resp2.json()["order"], "desc")
+        self.assertEqual(unwrapped_json(resp2)["sort"], "close")
+        self.assertEqual(unwrapped_json(resp2)["order"], "desc")
         # If prices equal, asc==desc is ok; verify at least cache was used (0 calls)
 
     def test_include_ai_separates_cache(self):
@@ -119,7 +120,7 @@ class ScreenerScanCacheTestCase(TestCase):
         resp2, m2 = self._post(self.rule, {"sort": "close", "order": "asc", "include_ai": 0, "page": 1, "limit": 10})
         self.assertEqual(resp2.status_code, 200)
         self.assertEqual(m2.call_count, 3)
-        self.assertTrue(all(r["ai_advisory"] is None for r in resp2.json()["matched"]))
+        self.assertTrue(all(r["ai_advisory"] is None for r in unwrapped_json(resp2)["matched"]))
         # include_ai=0 again → hit
         resp3, m3 = self._post(self.rule, {"sort": "close", "order": "asc", "include_ai": 0, "page": 1, "limit": 10})
         self.assertEqual(m3.call_count, 0)
@@ -140,13 +141,13 @@ class ScreenerScanCacheTestCase(TestCase):
         self.assertEqual(resp2.status_code, 200)
         self.assertEqual(m2.call_count, 3, "rule edit should miss cache")
         # New rule filters out all → matched_count 0, proving not stale cache
-        self.assertEqual(resp2.json()["matched_count"], 0)
+        self.assertEqual(unwrapped_json(resp2)["matched_count"], 0)
 
     def test_new_session_recomputes(self):
         dj_cache.clear()
         resp1, m1 = self._post(self.rule, {"sort": "close", "order": "asc", "page": 1, "limit": 10})
         self.assertEqual(m1.call_count, 3)
-        self.assertEqual(resp1.json()["matched_count"], 3)
+        self.assertEqual(unwrapped_json(resp1)["matched_count"], 3)
         # New session_date → cache key includes session_date → miss
         new_date = self.session_date + timedelta(days=1)
         for sym in ("AAA", "BBB", "CCC"):
@@ -156,7 +157,7 @@ class ScreenerScanCacheTestCase(TestCase):
         resp2, m2 = self._post(self.rule, {"sort": "close", "order": "asc", "page": 1, "limit": 10})
         self.assertEqual(resp2.status_code, 200)
         self.assertEqual(m2.call_count, 3)
-        self.assertEqual(resp2.json()["session_date"], new_date.isoformat())
+        self.assertEqual(unwrapped_json(resp2)["session_date"], new_date.isoformat())
 
 
 class ScanCacheGuardTestCase(TestCase):

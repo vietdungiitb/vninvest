@@ -30,6 +30,7 @@ from user_workspace.ledger import (
     invalidate_ledger_cache,
     money,
 )
+from user_workspace.tests.envelope import unwrapped_json
 from user_workspace.models import Portfolio, Transaction
 
 User = get_user_model()
@@ -378,7 +379,8 @@ class LedgerSummaryResponseTest(TestCase):
             f'/core/v1/workspace/portfolios/{self.portfolio.id}/summary/',
         )
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
+        body = response.json()
+        payload = unwrapped_json(response)
 
         # key cũ còn nguyên
         for legacy_key in (
@@ -387,7 +389,9 @@ class LedgerSummaryResponseTest(TestCase):
         ):
             self.assertIn(legacy_key, payload, legacy_key)
 
-        meta = payload['meta']
+        # B5: `meta` provenance da bi chuyen len top-level cua envelope
+        # (trung noi dung cu, khong phai gia tri moi).
+        meta = body['meta']
         self.assertEqual(meta['as_of'], '2026-09-21')
         self.assertEqual(meta['source'], 'broker_sync')
         self.assertEqual(meta['calculation_version'], CALCULATION_VERSION)
@@ -416,7 +420,7 @@ class LedgerSummaryResponseTest(TestCase):
         response = self.client.get(
             f'/core/v1/workspace/portfolios/{self.portfolio.id}/summary/',
         )
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertTrue(payload['reconciliation_required'])
         self.assertIn('oversell', [w['code'] for w in payload['ledger_warnings']])
 
@@ -425,7 +429,12 @@ class LedgerSummaryResponseTest(TestCase):
             f'/core/v1/workspace/portfolios/{self.portfolio.id}/analytics/',
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()['summary']['meta']['calculation_version'], CALCULATION_VERSION)
+        # B5: `summary` được mở envelope (không lồng envelope), còn provenance
+        # của summary nằm ở `meta` top-level của chính endpoint này — đúng ý
+        # "kế thừa meta của summary", chỉ đổi chỗ để có **một** `meta` duy nhất.
+        self.assertIn('summary', unwrapped_json(response))
+        self.assertEqual(
+            response.json()['meta']['calculation_version'], CALCULATION_VERSION)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -493,7 +502,7 @@ class PortfolioSummaryNavWiringTest(TestCase):
             f'/core/v1/workspace/portfolios/{self.portfolio.id}/summary/',
         )
         self.assertEqual(response.status_code, 200)
-        return response.json()
+        return unwrapped_json(response)
 
     def _set_prices(self, **by_symbol):
         from datetime import date as _date

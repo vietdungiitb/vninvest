@@ -25,6 +25,7 @@ from rest_framework.test import APIClient
 
 from identity_access.models import CoreTenant, TenantMember
 from market_serving.models import SymbolSnapshot
+from user_workspace.tests.envelope import unwrapped_json
 from user_workspace.models import Portfolio, Transaction
 
 User = get_user_model()
@@ -174,7 +175,7 @@ class AnalyticsTenantMatrixApiTestCase(TestCase):
             f'/core/v1/workspace/portfolios/{self.portfolio_a.id}/holdings/',
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json()[0]['symbol'], 'VCB')
+        self.assertEqual(unwrapped_json(response)[0]['symbol'], 'VCB')
 
     def test_ac2_other_tenant_own_portfolio_still_readable(self):
         """Đối chiếu — tenant B đọc được portfolio B của chính mình."""
@@ -192,7 +193,7 @@ class AnalyticsTenantMatrixApiTestCase(TestCase):
             f'/core/v1/workspace/portfolios/{self.portfolio_b.id}/holdings/',
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json()[0]['symbol'], 'ACB')
+        self.assertEqual(unwrapped_json(response)[0]['symbol'], 'ACB')
 
     def test_ac3_missing_tenant_context_fails_closed(self):
         """AC3 — `request.tenant is None` thì không trả dữ liệu của tenant nào.
@@ -307,4 +308,4 @@ class NoTenantContextMeansNoDataApiTestCase(TestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json()[0]['symbol'], 'CTG')
+        self.assertEqual(unwrapped_json(response)[0]['symbol'], 'CTG')

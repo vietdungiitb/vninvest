@@ -24,6 +24,7 @@ from user_workspace.services.idempotency import (
     IdempotencyKeyError,
     IdempotencyTenantUnresolved,
 )
+from user_workspace.tests.envelope import unwrapped_json
 
 SCOPE = 'place-order'
 
@@ -257,8 +258,8 @@ class EndToEndHttpIdempotencyTests(TestCase):
                          'cùng Idempotency-Key phải chỉ gọi broker MỘT lần')
         self.assertEqual(first.status_code, 200, first.content)
         self.assertEqual(second.status_code, 200, second.content)
-        self.assertTrue(second.json()['idempotent_replay'])
-        self.assertFalse(first.json()['idempotent_replay'])
+        self.assertTrue(unwrapped_json(second)['idempotent_replay'])
+        self.assertFalse(unwrapped_json(first)['idempotent_replay'])
         self.assertEqual(IdempotencyRecord.objects.count(), 1)
 
     def test_same_key_different_payload_is_409(self):
@@ -311,7 +312,7 @@ class EndToEndHttpIdempotencyTests(TestCase):
 
             self.assertEqual(second.status_code, 200, second.content)
             self.assertFalse(
-                second.json()['idempotent_replay'],
+                unwrapped_json(second)['idempotent_replay'],
                 'cùng key ở tenant KHÁC phải là lệnh mới, không được replay',
             )
         self.assertEqual(IdempotencyRecord.objects.count(), 2)

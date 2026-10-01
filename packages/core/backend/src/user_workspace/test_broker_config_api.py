@@ -9,6 +9,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from user_workspace.tests.envelope import unwrapped_json
 from user_workspace.models import DNSECredential, UserBrokerConfig
 
 BASE = '/core/v1/broker'
@@ -52,7 +53,7 @@ class BrokerProvidersApiTests(TestCase):
     def test_providers_lists_all_three_supported(self):
         resp = self.client.get(f'{BASE}/providers/')
         self.assertEqual(resp.status_code, 200)
-        by_id = {p['id']: p for p in resp.json()['providers']}
+        by_id = {p['id']: p for p in unwrapped_json(resp)['providers']}
         self.assertEqual(set(by_id), {'dnse', 'ssi', 'tcbs'})
         self.assertEqual(by_id['ssi']['status'], 'never_connected')
         self.assertEqual(by_id['tcbs']['status'], 'never_connected')
@@ -61,7 +62,7 @@ class BrokerProvidersApiTests(TestCase):
     def test_schema_dnse_shape(self):
         resp = self.client.get(f'{BASE}/config-schema/dnse/')
         self.assertEqual(resp.status_code, 200)
-        fields = {f['key']: f for f in resp.json()['fields']}
+        fields = {f['key']: f for f in unwrapped_json(resp)['fields']}
         self.assertTrue(fields['client_id']['required'] and fields['client_id']['secret'])
         self.assertTrue(fields['client_secret']['required'] and fields['client_secret']['secret'])
 
@@ -69,7 +70,7 @@ class BrokerProvidersApiTests(TestCase):
         for provider, required_key in (('ssi', 'api_key'), ('tcbs', 'api_key')):
             resp = self.client.get(f'{BASE}/config-schema/{provider}/')
             self.assertEqual(resp.status_code, 200, provider)
-            fields = {f['key']: f for f in resp.json()['fields']}
+            fields = {f['key']: f for f in unwrapped_json(resp)['fields']}
             self.assertTrue(fields[required_key]['required'])
             self.assertTrue(fields[required_key]['secret'])
 
@@ -93,7 +94,7 @@ class BrokerConfigCrudTests(TestCase):
             f'{BASE}/dnse/config/',
             {'client_id': SECRET_ID, 'client_secret': SECRET_SEC}, format='json')
         self.assertEqual(resp.status_code, 200)
-        body = json.dumps(resp.json())
+        body = json.dumps(unwrapped_json(resp))
         self.assertNotIn(SECRET_ID, body)
         self.assertNotIn(SECRET_SEC, body)
         self.assertIn('****', body)
@@ -109,7 +110,7 @@ class BrokerConfigCrudTests(TestCase):
             f'{BASE}/ssi/config/',
             {'api_key': 'AK1', 'api_secret': 'AS1', 'client_id': 'C1'}, format='json')
         self.assertEqual(resp.status_code, 200)
-        body = json.dumps(resp.json())
+        body = json.dumps(unwrapped_json(resp))
         self.assertNotIn('AK1', body)
         self.assertNotIn('AS1', body)
         cfg = UserBrokerConfig.objects.get(user=self.user, provider='ssi')
@@ -134,12 +135,12 @@ class BrokerConfigCrudTests(TestCase):
             f'{BASE}/dnse/config/',
             {'client_id': SECRET_ID, 'client_secret': SECRET_SEC}, format='json')
         resp = self.client.get(f'{BASE}/dnse/config/')
-        self.assertTrue(resp.json()['is_configured'])
-        self.assertEqual(resp.json()['status'], 'never_connected')
+        self.assertTrue(unwrapped_json(resp)['is_configured'])
+        self.assertEqual(unwrapped_json(resp)['status'], 'never_connected')
         resp = self.client.delete(f'{BASE}/dnse/config/')
         self.assertEqual(resp.status_code, 200)
         resp = self.client.get(f'{BASE}/dnse/config/')
-        self.assertFalse(resp.json()['is_configured'])
+        self.assertFalse(unwrapped_json(resp)['is_configured'])
 
     def test_legacy_route_compat_shape(self):
         """Path cũ broker/dnse/config/ nay do view mới phục vụ (store UserBrokerConfig)."""
@@ -147,11 +148,11 @@ class BrokerConfigCrudTests(TestCase):
             '/core/v1/broker/dnse/config/',
             {'client_id': 'LEGID', 'client_secret': 'LEGSEC'}, format='json')
         self.assertEqual(resp.status_code, 200)
-        self.assertTrue(resp.json()['ok'])
-        self.assertIn('****', json.dumps(resp.json()))
+        self.assertTrue(unwrapped_json(resp)['ok'])
+        self.assertIn('****', json.dumps(unwrapped_json(resp)))
         resp = self.client.get('/core/v1/broker/dnse/config/')
-        self.assertTrue(resp.json()['is_configured'])
-        self.assertIn('****', resp.json()['preview']['client_id'])
+        self.assertTrue(unwrapped_json(resp)['is_configured'])
+        self.assertIn('****', unwrapped_json(resp)['preview']['client_id'])
         self.assertTrue(UserBrokerConfig.objects.filter(
             user=self.user, provider='dnse').exists())
 
@@ -179,7 +180,7 @@ class BrokerTestConnectionTests(TestCase):
             mock_task.delay.return_value = FakeJob()
             resp = self.client.post(f'{BASE}/dnse/test-connection/', {}, format='json')
         self.assertEqual(resp.status_code, 202)
-        self.assertEqual(resp.json()['job_id'], 'job-123')
+        self.assertEqual(unwrapped_json(resp)['job_id'], 'job-123')
 
     def test_rate_limit_sixth_rejected(self):
         self.client.post(
@@ -202,7 +203,7 @@ class BrokerTestConnectionTests(TestCase):
     def test_job_poll_unknown_pending(self):
         resp = self.client.get(f'{BASE}/jobs/00000000-0000-0000-0000-000000000000/')
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json()['state'], 'pending')
+        self.assertEqual(unwrapped_json(resp)['state'], 'pending')
 
 
 class BrokerConnectionTaskTests(TestCase):

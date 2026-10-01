@@ -14,6 +14,7 @@ from rest_framework.test import APIClient
 from identity_access.models import CoreTenant
 from market_data.models import DailyPrice
 from market_serving.models import SymbolSnapshot
+from user_workspace.tests.envelope import unwrapped_json
 from user_workspace.models import ScreenerRule
 
 User = get_user_model()
@@ -77,7 +78,7 @@ class ScreenerAsyncRunTestCase(TestCase):
         with self._mock_fin():
             resp = self.client.post(RUN_URL.format(pk=self.rule.pk), {}, format="json")
         self.assertEqual(resp.status_code, 202, resp.content[:800])
-        data = resp.json()
+        data = unwrapped_json(resp)
         self.assertEqual(data["status"], "queued")
         job_id = data["job_id"]
         self.assertTrue(job_id)
@@ -86,7 +87,7 @@ class ScreenerAsyncRunTestCase(TestCase):
         with self._mock_fin():
             status = self.client.get(STATUS_URL.format(pk=self.rule.pk) + f"?job_id={job_id}")
         self.assertEqual(status.status_code, 200)
-        sj = status.json()
+        sj = unwrapped_json(status)
         self.assertEqual(sj["status"], "completed")
         self.assertEqual(sj["result_meta"]["matched_count"], 3)
         self.assertEqual(sj["result_meta"]["total_scanned"], 3)
@@ -105,10 +106,10 @@ class ScreenerAsyncRunTestCase(TestCase):
         with self._mock_fin():
             resp = self.client.post(RUN_URL.format(pk=self.rule.pk) + "?async=1", {}, format="json")
         self.assertEqual(resp.status_code, 202, resp.content[:500])
-        job_id = resp.json()["job_id"]
+        job_id = unwrapped_json(resp)["job_id"]
         with self._mock_fin():
             status = self.client.get(STATUS_URL.format(pk=self.rule.pk) + f"?job_id={job_id}")
-        self.assertEqual(status.json()["status"], "completed")
+        self.assertEqual(unwrapped_json(status)["status"], "completed")
 
     def test_pending_cap_returns_429(self):
         # R4.3: 3 pending → 4th → 429
@@ -126,7 +127,7 @@ class ScreenerAsyncRunTestCase(TestCase):
         with self._mock_fin():
             resp = self.client.post(RUN_URL.format(pk=self.rule.pk) + "?async=1", {}, format="json")
         self.assertEqual(resp.status_code, 202)
-        job_id = resp.json()["job_id"]
+        job_id = unwrapped_json(resp)["job_id"]
         # Edit rule immediately after queue (in eager mode task already ran with snapshot, but we simulate drift check)
         # Force updated_at far future
         future = timezone.now() + timedelta(seconds=10)
@@ -138,20 +139,20 @@ class ScreenerAsyncRunTestCase(TestCase):
         with self._mock_fin():
             status = self.client.get(STATUS_URL.format(pk=self.rule.pk) + f"?job_id={job_id}")
         self.assertEqual(status.status_code, 200)
-        sj = status.json()
+        sj = unwrapped_json(status)
         self.assertEqual(sj["status"], "completed")
         self.assertEqual(sj["result_meta"]["matched_count"], 3)
         # New sync run with edited rule should miss cache (new updated_at) and return 0
         with self._mock_fin():
             resp2 = self.client.post(RUN_URL.format(pk=self.rule.pk), {}, format="json")
         self.assertEqual(resp2.status_code, 200)
-        self.assertEqual(resp2.json()["matched_count"], 0)
+        self.assertEqual(unwrapped_json(resp2)["matched_count"], 0)
 
     def test_status_unknown_for_missing_job(self):
         # F-SEC-11: job_id is now validated as 32-char hex; use a hex that was never queued
         resp = self.client.get(STATUS_URL.format(pk=self.rule.pk) + "?job_id=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json()["status"], "unknown")
+        self.assertEqual(unwrapped_json(resp)["status"], "unknown")
 
     def test_status_invalid_job_id_format(self):
         resp = self.client.get(STATUS_URL.format(pk=self.rule.pk) + "?job_id=not-hex!!!")

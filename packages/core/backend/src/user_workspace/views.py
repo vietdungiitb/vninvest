@@ -20,6 +20,8 @@ from rest_framework.views import APIView
 
 from vninvest_core.pagination import CoreCursorPagination
 
+from .envelope import envelope, paginated_envelope
+
 class TransactionCursorPagination(CoreCursorPagination):
     ordering = ('-date', '-id')
 
@@ -107,10 +109,13 @@ class PortfolioListCreateView(APIView):
         page = paginator.paginate_queryset(portfolios, request)
         if page is not None:
             serializer = PortfolioSerializer(page, many=True)
-            return paginator.get_paginated_response(serializer.data)
+            paged = paginator.get_paginated_response(serializer.data)
+            # Bọc cả khối phân trang (next/previous/results của cursor) trong
+            # `data`. `dict(paged.data)` vì paginator trả `Response`, không trả dict.
+            return paginated_envelope(dict(paged.data))
         
         serializer = PortfolioSerializer(portfolios, many=True)
-        return Response({'count': len(portfolios), 'results': serializer.data})
+        return paginated_envelope({'count': len(portfolios), 'results': serializer.data})
 
     def post(self, request):
         serializer = PortfolioSerializer(data=request.data)
@@ -118,7 +123,7 @@ class PortfolioListCreateView(APIView):
         
         tenant = getattr(request, 'tenant', None)
         portfolio = serializer.save(user=request.user, tenant=tenant)
-        return Response(PortfolioSerializer(portfolio).data, status=status.HTTP_201_CREATED)
+        return envelope(PortfolioSerializer(portfolio).data, status=status.HTTP_201_CREATED)
 
 
 class PortfolioDetailView(APIView):
@@ -127,7 +132,7 @@ class PortfolioDetailView(APIView):
     def get(self, request, portfolio_id):
         tenant = getattr(request, 'tenant', None)
         portfolio = _get_portfolio_or_404(request.user, portfolio_id, tenant)
-        return Response(PortfolioSerializer(portfolio).data)
+        return envelope(PortfolioSerializer(portfolio).data)
 
     def patch(self, request, portfolio_id):
         tenant = getattr(request, 'tenant', None)
@@ -135,7 +140,7 @@ class PortfolioDetailView(APIView):
         serializer = PortfolioSerializer(portfolio, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data)
+        return envelope(serializer.data)
 
     def delete(self, request, portfolio_id):
         """Xoá danh mục — nhưng KHÔNG được xoá lịch sử tài chính.
@@ -196,10 +201,11 @@ class TransactionListCreateView(APIView):
         page = paginator.paginate_queryset(qs, request)
         if page is not None:
             serializer = TransactionSerializer(page, many=True)
-            return paginator.get_paginated_response(serializer.data)
+            paged = paginator.get_paginated_response(serializer.data)
+            return paginated_envelope(dict(paged.data))
         
         serializer = TransactionSerializer(qs, many=True)
-        return Response({'count': qs.count(), 'results': serializer.data})
+        return paginated_envelope({'count': qs.count(), 'results': serializer.data})
 
     def post(self, request, portfolio_id):
         tenant = getattr(request, 'tenant', None)
@@ -209,7 +215,7 @@ class TransactionListCreateView(APIView):
         
         # Auto-set tenant from portfolio
         txn = serializer.save(portfolio=portfolio, tenant=portfolio.tenant)
-        return Response(TransactionSerializer(txn).data, status=status.HTTP_201_CREATED)
+        return envelope(TransactionSerializer(txn).data, status=status.HTTP_201_CREATED)
 
 
 class TransactionDetailView(APIView):
@@ -221,7 +227,7 @@ class TransactionDetailView(APIView):
         serializer = TransactionSerializer(transaction, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data)
+        return envelope(serializer.data)
 
     def delete(self, request, transaction_id):
         tenant = getattr(request, 'tenant', None)
@@ -246,10 +252,11 @@ class WatchlistListCreateView(APIView):
         page = paginator.paginate_queryset(watchlists, request)
         if page is not None:
             serializer = WatchlistSerializer(page, many=True)
-            return paginator.get_paginated_response(serializer.data)
+            paged = paginator.get_paginated_response(serializer.data)
+            return paginated_envelope(dict(paged.data))
         
         serializer = WatchlistSerializer(watchlists, many=True)
-        return Response({'count': watchlists.count(), 'results': serializer.data})
+        return paginated_envelope({'count': watchlists.count(), 'results': serializer.data})
 
     def post(self, request):
         serializer = WatchlistSerializer(data=request.data)
@@ -257,7 +264,7 @@ class WatchlistListCreateView(APIView):
         
         tenant = getattr(request, 'tenant', None)
         watchlist = serializer.save(user=request.user, tenant=tenant)
-        return Response(WatchlistSerializer(watchlist).data, status=status.HTTP_201_CREATED)
+        return envelope(WatchlistSerializer(watchlist).data, status=status.HTTP_201_CREATED)
 
 
 class WatchlistDetailView(APIView):
@@ -277,7 +284,7 @@ class WatchlistDetailView(APIView):
         watchlist = self._get_watchlist(request, watchlist_id)
         if watchlist is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-        return Response(WatchlistSerializer(watchlist).data)
+        return envelope(WatchlistSerializer(watchlist).data)
 
     def patch(self, request, watchlist_id):
         watchlist = self._get_watchlist(request, watchlist_id)
@@ -286,7 +293,7 @@ class WatchlistDetailView(APIView):
         serializer = WatchlistSerializer(watchlist, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data)
+        return envelope(serializer.data)
 
     def delete(self, request, watchlist_id):
         watchlist = self._get_watchlist(request, watchlist_id)
@@ -310,10 +317,11 @@ class WatchlistItemListCreateView(APIView):
         page = paginator.paginate_queryset(items, request)
         if page is not None:
             serializer = WatchlistItemSerializer(page, many=True)
-            return paginator.get_paginated_response(serializer.data)
+            paged = paginator.get_paginated_response(serializer.data)
+            return paginated_envelope(dict(paged.data))
         
         serializer = WatchlistItemSerializer(items, many=True)
-        return Response({'count': items.count(), 'results': serializer.data})
+        return paginated_envelope({'count': items.count(), 'results': serializer.data})
 
     def post(self, request, watchlist_id):
         tenant = getattr(request, 'tenant', None)
@@ -348,7 +356,7 @@ class WatchlistItemListCreateView(APIView):
             symbol=symbol,
         )
         code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
-        return Response(WatchlistItemSerializer(item).data, status=code)
+        return envelope(WatchlistItemSerializer(item).data, status=code)
 
 
 class WatchlistItemDeleteView(APIView):
@@ -376,7 +384,7 @@ class SubAccountListCreateAPIView(APIView):
         else:
             qs = SubAccount.objects.filter(user=request.user).order_by('-created_at')
         serializer = SubAccountSerializer(qs, many=True)
-        return Response(serializer.data)
+        return envelope(serializer.data)
 
     def post(self, request):
         tenant = getattr(request, 'tenant', None)
@@ -407,7 +415,7 @@ class SubAccountListCreateAPIView(APIView):
                 )
 
         sub_account = serializer.save(user=request.user, tenant=tenant, portfolio=portfolio)
-        return Response(SubAccountSerializer(sub_account).data, status=status.HTTP_201_CREATED)
+        return envelope(SubAccountSerializer(sub_account).data, status=status.HTTP_201_CREATED)
 
 
 class SubAccountDetailAPIView(APIView):
@@ -425,7 +433,7 @@ class SubAccountDetailAPIView(APIView):
     def get(self, request, pk):
         tenant = getattr(request, 'tenant', None)
         sub_account = self.get_object(pk, request.user, tenant)
-        return Response(SubAccountSerializer(sub_account).data)
+        return envelope(SubAccountSerializer(sub_account).data)
 
     def patch(self, request, pk):
         tenant = getattr(request, 'tenant', None)
@@ -433,7 +441,7 @@ class SubAccountDetailAPIView(APIView):
         serializer = SubAccountSerializer(sub_account, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data)
+        return envelope(serializer.data)
 
     def delete(self, request, pk):
         tenant = getattr(request, 'tenant', None)
@@ -460,7 +468,7 @@ class SubAccountTransactionsAPIView(APIView):
         sub_account = self.get_sub_account(pk, request.user, tenant)
         portfolio = sub_account.portfolio
         if not portfolio:
-            return Response({'count': 0, 'results': []})
+            return paginated_envelope({'count': 0, 'results': []})
 
         qs = Transaction.objects.filter(portfolio=portfolio, tenant=portfolio.tenant).order_by('-date', '-pk')
 
@@ -472,10 +480,11 @@ class SubAccountTransactionsAPIView(APIView):
         page = paginator.paginate_queryset(qs, request)
         if page is not None:
             serializer = TransactionSerializer(page, many=True)
-            return paginator.get_paginated_response(serializer.data)
+            paged = paginator.get_paginated_response(serializer.data)
+            return paginated_envelope(dict(paged.data))
 
         serializer = TransactionSerializer(qs, many=True)
-        return Response({'count': qs.count(), 'results': serializer.data})
+        return paginated_envelope({'count': qs.count(), 'results': serializer.data})
 
     def post(self, request, pk):
         tenant = getattr(request, 'tenant', None)
@@ -488,7 +497,7 @@ class SubAccountTransactionsAPIView(APIView):
         serializer.is_valid(raise_exception=True)
 
         txn = serializer.save(portfolio=portfolio, tenant=portfolio.tenant)
-        return Response(TransactionSerializer(txn).data, status=status.HTTP_201_CREATED)
+        return envelope(TransactionSerializer(txn).data, status=status.HTTP_201_CREATED)
 
 
 class ScreenerRuleListCreateAPIView(APIView):
@@ -501,7 +510,7 @@ class ScreenerRuleListCreateAPIView(APIView):
             rules = ScreenerRule.objects.filter(user=request.user, tenant=tenant, is_active=True)
         else:
             rules = ScreenerRule.objects.filter(user=request.user, is_active=True)
-        return Response(ScreenerRuleSerializer(rules, many=True).data)
+        return envelope(ScreenerRuleSerializer(rules, many=True).data)
 
     def post(self, request):
         tenant = getattr(request, 'tenant', None)
@@ -515,7 +524,7 @@ class ScreenerRuleListCreateAPIView(APIView):
             return Response({'detail': err}, status=status.HTTP_400_BAD_REQUEST)
 
         rule = serializer.save(user=request.user, tenant=tenant)
-        return Response(ScreenerRuleSerializer(rule).data, status=status.HTTP_201_CREATED)
+        return envelope(ScreenerRuleSerializer(rule).data, status=status.HTTP_201_CREATED)
 
 
 class ScreenerPublicRuleListAPIView(APIView):
@@ -537,7 +546,7 @@ class ScreenerPublicRuleListAPIView(APIView):
             rules = ScreenerRule.objects.filter(
                 user=request.user, is_public=True, is_active=True
             ).select_related('user').order_by('-updated_at')[:100]
-        return Response(ScreenerRuleSerializer(rules, many=True).data)
+        return envelope(ScreenerRuleSerializer(rules, many=True).data)
 
 
 class ScreenerRuleForkAPIView(APIView):
@@ -575,5 +584,5 @@ class ScreenerRuleForkAPIView(APIView):
             is_active=True,
             is_public=False,
         )
-        return Response(ScreenerRuleSerializer(copy).data, status=status.HTTP_201_CREATED)
+        return envelope(ScreenerRuleSerializer(copy).data, status=status.HTTP_201_CREATED)
 

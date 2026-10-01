@@ -14,6 +14,7 @@ from identity_access.models import CoreTenant
 from market_data.models import DailyPrice
 from market_serving.models import SymbolSnapshot
 from user_workspace.models import ScreenerRule
+from user_workspace.tests.envelope import unwrapped_json
 from user_workspace.screener_helpers import _lookback_calendar_days, _required_lookback_days
 
 User = get_user_model()
@@ -103,7 +104,7 @@ class LookbackRunTestCase(TestCase):
         )
         resp = self._run(rule)
         self.assertEqual(resp.status_code, 200, resp.content[:500])
-        data = resp.json()
+        data = unwrapped_json(resp)
         # 20 trading days -> 35 calendar days (D7 clamp floor)
         self.assertEqual(data["window_days"], 35)
         self.assertEqual(data["matched_count"], 2)
@@ -112,7 +113,7 @@ class LookbackRunTestCase(TestCase):
         # deterministic across runs (R3.2 arithmetic stability)
         resp2 = self._run(rule)
         self.assertEqual(
-            [(r["symbol"], r["rsi_14"]) for r in resp2.json()["matched"]],
+            [(r["symbol"], r["rsi_14"]) for r in unwrapped_json(resp2)["matched"]],
             [(r["symbol"], r["rsi_14"]) for r in data["matched"]],
         )
 
@@ -156,8 +157,8 @@ class LookbackRunTestCase(TestCase):
             self.assertEqual(warm.status_code, 200)
             self.assertEqual(m2.call_count, 0)  # all 4 served from the batch
             self.assertEqual(
-                [r["symbol"] for r in warm.json()["matched"]],
-                [r["symbol"] for r in cold.json()["matched"]],
+                [r["symbol"] for r in unwrapped_json(warm)["matched"]],
+                [r["symbol"] for r in unwrapped_json(cold)["matched"]],
             )
         dj_cache.delete_many([f"stock_financials:{s}" for s in ("AAA", "BBB", "CCC", "DDD")])
 
@@ -171,4 +172,4 @@ class LookbackRunTestCase(TestCase):
         resp = self._run(rule)
         self.assertEqual(resp.status_code, 200, resp.content[:500])
         # 55 trading days -> 88 calendar days
-        self.assertEqual(resp.json()["window_days"], 88)
+        self.assertEqual(unwrapped_json(resp)["window_days"], 88)

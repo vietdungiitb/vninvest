@@ -13,6 +13,7 @@ from rest_framework.test import APIClient
 from identity_access.models import CoreTenant
 from market_data.models import DailyPrice
 from market_serving.models import SymbolSnapshot
+from user_workspace.tests.envelope import unwrapped_json
 from user_workspace.models import ScreenerRule
 
 User = get_user_model()
@@ -73,7 +74,7 @@ class ScreenerScanParamsTestCase(TestCase):
     def test_sort_close_asc_with_meta(self):
         resp = self._run(sort="close", order="asc", page=1, limit=10)
         self.assertEqual(resp.status_code, 200, resp.content[:500])
-        data = resp.json()
+        data = unwrapped_json(resp)
         self.assertEqual(data["matched_count"], 12)
         self.assertEqual(data["page"], 1)
         self.assertEqual(data["limit"], 10)
@@ -88,7 +89,7 @@ class ScreenerScanParamsTestCase(TestCase):
     def test_page_two_and_momentum_desc(self):
         resp = self._run(sort="momentum_20d_pct", order="desc", page=2, limit=10)
         self.assertEqual(resp.status_code, 200, resp.content[:500])
-        data = resp.json()
+        data = unwrapped_json(resp)
         self.assertEqual(len(data["matched"]), 2)  # 12 total, page 2 of 10
         vals = [r["momentum_20d_pct"] for r in data["matched"]]
         self.assertTrue(all(v is not None for v in vals))
@@ -110,7 +111,7 @@ class ScreenerScanParamsTestCase(TestCase):
     def test_include_ai_zero_skips_advisory(self):
         resp = self._run(sort="close", order="asc", include_ai=0)
         self.assertEqual(resp.status_code, 200, resp.content[:500])
-        data = resp.json()
+        data = unwrapped_json(resp)
         self.assertEqual(data["matched_count"], 12)
         self.assertTrue(all(r["ai_advisory"] is None for r in data["matched"]))
 
@@ -118,7 +119,7 @@ class ScreenerScanParamsTestCase(TestCase):
         # R1.3: no params -> exact P0 shape (close desc, full list, no P1 meta).
         resp = self._run()
         self.assertEqual(resp.status_code, 200, resp.content[:500])
-        data = resp.json()
+        data = unwrapped_json(resp)
         for k in ("page", "limit", "pages", "sort", "order"):
             self.assertNotIn(k, data)
         closes = [r["close"] for r in data["matched"]]

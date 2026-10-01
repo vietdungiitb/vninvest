@@ -14,6 +14,7 @@ from rest_framework.test import APIClient
 from identity_access.models import CoreTenant
 from market_data.models import DailyPrice
 from market_serving.models import SessionFacts, SymbolSnapshot
+from user_workspace.tests.envelope import unwrapped_json
 from user_workspace.models import ScreenerRule
 
 User = get_user_model()
@@ -92,7 +93,7 @@ class ScreenerRuleRunTestCase(TestCase):
         rule = self._make_rule()
         resp = self._post_run(rule)
         self.assertEqual(resp.status_code, 200, resp.content[:500])
-        data = resp.json()
+        data = unwrapped_json(resp)
         # R1.4: legacy keys intact
         self.assertEqual(data["rule_id"], rule.pk)
         self.assertEqual(data["total_scanned"], 2)
@@ -111,7 +112,7 @@ class ScreenerRuleRunTestCase(TestCase):
         )
         resp = self._post_run(rule)
         self.assertEqual(resp.status_code, 200, resp.content[:500])
-        data = resp.json()
+        data = unwrapped_json(resp)
         # never populated anywhere -> no match, but reported (R1.2)
         self.assertEqual(data["matched_count"], 0)
         self.assertEqual(data["missing_fields"], ["whale_trade_count"])
@@ -124,7 +125,7 @@ class ScreenerRuleRunTestCase(TestCase):
         )
         resp = self._post_run(rule)
         self.assertEqual(resp.status_code, 200, resp.content[:500])
-        self.assertEqual(resp.json()["matched_count"], 2)
+        self.assertEqual(unwrapped_json(resp)["matched_count"], 2)
 
     def test_run_stale_session_flagged(self):
         old = self.session_date - timedelta(days=5)
@@ -136,7 +137,7 @@ class ScreenerRuleRunTestCase(TestCase):
         rule = self._make_rule()
         resp = self._post_run(rule)
         self.assertEqual(resp.status_code, 200, resp.content[:500])
-        data = resp.json()
+        data = unwrapped_json(resp)
         self.assertTrue(data["is_stale"])
         self.assertEqual(data["days_old"], 5)
         self.assertEqual(data["session_date"], old.isoformat())
@@ -144,7 +145,7 @@ class ScreenerRuleRunTestCase(TestCase):
     def test_list_hides_inactive_but_run_and_delete_allow_it(self):
         active = self._make_rule(name="Active")
         inactive = self._make_rule(name="Preview", is_active=False)
-        listed = self.client.get(LIST_URL).json()
+        listed = unwrapped_json(self.client.get(LIST_URL))
         names = [r["name"] for r in (listed if isinstance(listed, list) else listed.get("results", []))]
         self.assertIn("Active", names)
         self.assertNotIn("Preview", names)

@@ -10,6 +10,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from identity_access.models import CoreTenant, TenantMember
+from user_workspace.tests.envelope import unwrapped_json
 from user_workspace.models import ScreenerRule
 
 User = get_user_model()
@@ -48,8 +49,8 @@ class ScreenerCommunityTestCase(TestCase):
     def test_share_toggle_via_put(self):
         resp = self.owner_c.put(DETAIL_URL.format(pk=self.rule.pk), {"is_public": True}, format="json")
         self.assertEqual(resp.status_code, 200)
-        self.assertTrue(resp.json()["is_public"])
-        self.assertEqual(resp.json()["owner_username"], "comm-owner")
+        self.assertTrue(unwrapped_json(resp)["is_public"])
+        self.assertEqual(unwrapped_json(resp)["owner_username"], "comm-owner")
         self.rule.refresh_from_db()
         self.assertTrue(self.rule.is_public)
 
@@ -58,24 +59,24 @@ class ScreenerCommunityTestCase(TestCase):
         self.rule.save()
         resp = self.member_c.get(PUBLIC_URL)
         self.assertEqual(resp.status_code, 200)
-        ids = [r["id"] for r in resp.json()]
+        ids = [r["id"] for r in unwrapped_json(resp)]
         self.assertIn(self.rule.id, ids)
 
     def test_public_catalog_hides_private_and_other_tenant(self):
         # Private by default
-        self.assertEqual(self.member_c.get(PUBLIC_URL).json(), [])
-        self.assertEqual(self.stranger_c.get(PUBLIC_URL).json(), [])
+        self.assertEqual(unwrapped_json(self.member_c.get(PUBLIC_URL)), [])
+        self.assertEqual(unwrapped_json(self.stranger_c.get(PUBLIC_URL)), [])
         # Even after sharing, other tenant cannot see
         self.rule.is_public = True
         self.rule.save()
-        self.assertEqual(self.stranger_c.get(PUBLIC_URL).json(), [])
+        self.assertEqual(unwrapped_json(self.stranger_c.get(PUBLIC_URL)), [])
 
     def test_fork_copies_rule_for_member(self):
         self.rule.is_public = True
         self.rule.save()
         resp = self.member_c.post(FORK_URL.format(pk=self.rule.pk), {}, format="json")
         self.assertEqual(resp.status_code, 201)
-        data = resp.json()
+        data = unwrapped_json(resp)
         self.assertEqual(data["rules_json"], RULES)
         self.assertFalse(data["is_public"])
         self.assertIn("bản sao", data["name"])

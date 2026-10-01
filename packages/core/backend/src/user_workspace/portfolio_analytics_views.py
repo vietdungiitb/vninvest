@@ -30,6 +30,7 @@ from .ledger import (
     portfolio_valuation,
 )
 from .models import Portfolio, Transaction
+from .envelope import adopt_envelope, envelope, inner_payload, paginated_envelope
 
 
 class AIEndpointProbeThrottle(BaseThrottle):
@@ -132,7 +133,7 @@ class PortfolioHoldingsView(APIView):
         portfolio = _get_user_portfolio(request, portfolio_id)
         holdings = _compute_holdings(portfolio_id, portfolio.tenant)
         if not holdings:
-            return Response([])
+            return envelope([])
         symbols = list(holdings.keys())
         today = date.today()
         snaps = SymbolSnapshot.objects.filter(symbol__in=symbols, session_date=today)
@@ -170,7 +171,7 @@ class PortfolioHoldingsView(APIView):
                 'price_missing_reason': None if current_price is not None else 'no_quote_for_today',
                 'stale': snap.stale if snap else True,
             })
-        return Response(sorted(results, key=lambda x: x['symbol']))
+        return envelope(sorted(results, key=lambda x: x['symbol']))
 
 
 class PortfolioSummaryView(APIView):
@@ -281,7 +282,6 @@ class PortfolioSummaryView(APIView):
             'currency': valuation.get('currency'),
             'ledger_warnings': ledger['warnings'],
             'reconciliation_required': ledger['reconciliation_required'],
-            'meta': build_meta(ledger),
         }
         # `cash_cross_check` chỉ có **khi** hai nguồn tiền thật sự lệch
         # (thường do bán vượt số lượng đang giữ — tiền đã chuyển nhưng chưa có
@@ -292,7 +292,15 @@ class PortfolioSummaryView(APIView):
             # Hệ thống đã cảnh báo cả hai lệch, nên `reconciliation_required` ở
             # trên phải phản ánh cả trường hợp này, không chỉ cảnh báo sổ cái.
             payload['reconciliation_required'] = True
-        return Response(payload)
+        # B5: provenance đi vào `meta` của envelope, không nằm lại trong `data`.
+        # `build_meta(ledger)` **đã có sẵn** từ trước B5 (PA-2 / P1-DATA-03) nên
+        # đây là di chuyển, không phải bịa giá trị mới. Client đọc `meta.as_of`
+        # ở top-level vẫn thấy đúng nội dung cũ.
+        #
+        # KHÔNG đụng `nav` / `nav_reason` / `unpriced_symbols` ở trên: đó là
+        # fail-closed LED-03 R5 (thiếu `opening_balance` / giá / `CashFlow`
+        # backfill ⇒ `null` + mã lý do, không bao giờ 0 giả).
+        return envelope(payload, meta=build_meta(ledger))
 
 
 class PortfolioChartView(APIView):
@@ -314,7 +322,7 @@ class PortfolioEquityCurveView(APIView):
         portfolio = _get_user_portfolio(request, portfolio_id)
         holdings = _compute_holdings(portfolio_id, portfolio.tenant)
         if not holdings:
-            return Response({'portfolio_id': portfolio_id, 'curve': []})
+            return envelope({'portfolio_id': portfolio_id, 'curve': []})
         symbols = list(holdings.keys())
         today = date.today()
         date_from = today - timedelta(days=365)
@@ -348,7 +356,7 @@ class PortfolioEquityCurveView(APIView):
                 'nav_reason': None if not missing else 'missing_price_for_some_symbols',
                 'missing_symbols': missing,
             })
-        return Response({'portfolio_id': portfolio_id, 'curve': curve})
+        return envelope({'portfolio_id': portfolio_id, 'curve': curve})
 
 
 class PortfolioAllocationView(APIView):
@@ -360,7 +368,7 @@ class PortfolioAllocationView(APIView):
         portfolio = _get_user_portfolio(request, portfolio_id)
         holdings = _compute_holdings(portfolio_id, portfolio.tenant)
         if not holdings:
-            return Response({'portfolio_id': portfolio_id, 'allocation': []})
+            return envelope({'portfolio_id': portfolio_id, 'allocation': []})
         symbols = list(holdings.keys())
         today = date.today()
         snaps = SymbolSnapshot.objects.filter(symbol__in=symbols, session_date=today)
@@ -382,7 +390,7 @@ class PortfolioAllocationView(APIView):
             values[sym] = val
             total += val
         if not values:
-            return Response({
+            return envelope({
                 'portfolio_id': portfolio_id,
                 'total_value': None,
                 'allocation': [],
@@ -394,7 +402,7 @@ class PortfolioAllocationView(APIView):
              for sym, v in values.items()],
             key=lambda x: -x['weight_pct'],
         )
-        return Response({
+        return envelope({
             'portfolio_id': portfolio_id,
             'total_value': str(round(total, 2)),
             'allocation': allocation,
@@ -412,10 +420,18 @@ class PortfolioAnalyticsView(APIView):
     def get(self, request, portfolio_id):
         _get_user_portfolio(request, portfolio_id)
         summary_resp = PortfolioSummaryView().get(request, portfolio_id=portfolio_id)
-        return Response({
-            'summary': summary_resp.data,
+        # `PortfolioSummaryView` đã trả envelope `{data, meta}` ⇒ phải mở ra
+        # trước khi lồng vào `summary`, nếu không `summary` sẽ là envelope
+        # **lồng envelope** và client phải đào 2 tầng ở riêng endpoint này.
+        #
+        # Provenance của summary (`build_meta(ledger)`) được đưa lên `meta` của
+        # chính endpoint này: mỗi response chỉ có **một** chỗ mang `meta`, và
+        # nội dung giữ nguyên.
+        summary_body = summary_resp.data
+        return envelope({
+            'summary': inner_payload(summary_body),
             'note': 'full_analytics_available_via_sub_endpoints',
-        })
+        }, meta=summary_body.get('meta') if isinstance(summary_body, dict) else None)
 
 
 class PortfolioSyncView(APIView):
@@ -424,7 +440,7 @@ class PortfolioSyncView(APIView):
 
     def post(self, request, portfolio_id):
         _get_user_portfolio(request, portfolio_id)
-        return Response({'portfolio_id': portfolio_id, 'status': 'sync_queued'})
+        return envelope({'portfolio_id': portfolio_id, 'status': 'sync_queued'})
 
 
 class PortfolioTechnicalsView(APIView):
@@ -436,11 +452,11 @@ class PortfolioTechnicalsView(APIView):
         portfolio = _get_user_portfolio(request, portfolio_id)
         holdings = _compute_holdings(portfolio_id, portfolio.tenant)
         if not holdings:
-            return Response([])
+            return envelope([])
         symbols = list(holdings.keys())
         today = date.today()
         snaps = SymbolSnapshot.objects.filter(symbol__in=symbols, session_date=today)
-        return Response([{
+        return envelope([{
             'symbol': s.symbol,
             'price': str(s.price),
             'price_change': str(s.price_change),
@@ -555,7 +571,9 @@ class PortfolioAIAdvisoryCanonicalView(APIView):
 
     def get(self, request, symbol):
         from advisory.views import AdvisoryLatestView
-        return AdvisoryLatestView.as_view()(_unwrap_django_request(request), symbol=symbol.upper())
+        return adopt_envelope(
+            AdvisoryLatestView.as_view()(_unwrap_django_request(request), symbol=symbol.upper())
+        )
 
 
 class PortfolioAIAdvisoryCurrentView(APIView):
@@ -564,7 +582,9 @@ class PortfolioAIAdvisoryCurrentView(APIView):
 
     def get(self, request, symbol):
         from advisory.views import AdvisoryLatestView
-        return AdvisoryLatestView.as_view()(_unwrap_django_request(request), symbol=symbol.upper())
+        return adopt_envelope(
+            AdvisoryLatestView.as_view()(_unwrap_django_request(request), symbol=symbol.upper())
+        )
 
 
 class PortfolioAIAdvisoryAutoRefreshInfoView(APIView):
@@ -572,7 +592,7 @@ class PortfolioAIAdvisoryAutoRefreshInfoView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, symbol):
-        return Response({'symbol': symbol.upper(), 'auto_refresh': False, 'note': 'auto_refresh_not_available'})
+        return envelope({'symbol': symbol.upper(), 'auto_refresh': False, 'note': 'auto_refresh_not_available'})
 
 
 class PortfolioAIAdvisoryRefreshView(APIView):
@@ -581,7 +601,9 @@ class PortfolioAIAdvisoryRefreshView(APIView):
 
     def post(self, request, symbol):
         from advisory.views import AdvisoryRefreshView
-        return AdvisoryRefreshView.as_view()(_unwrap_django_request(request), symbol=symbol.upper())
+        return adopt_envelope(
+            AdvisoryRefreshView.as_view()(_unwrap_django_request(request), symbol=symbol.upper())
+        )
 
 
 class PortfolioAICommandCenterView(APIView):
@@ -743,7 +765,7 @@ class PortfolioAICommandCenterView(APIView):
             'fallback_quota_max': fallback_quota_max,
             'fallback_quota_reset': fallback_date,
         }
-        return Response(response_data)
+        return envelope(response_data)
 
     def put(self, request):
         from advisory.models import SystemAISettings, UserAICredential
@@ -979,7 +1001,7 @@ class PortfolioAICommandCenterView(APIView):
             'fallback_quota_max': fallback_quota_max,
             'fallback_quota_reset': user_cred.fallback_quota_date,
         }
-        return Response(response_data)
+        return envelope(response_data)
 
 
 class PortfolioAICommandCenterPromptConfigRollbackView(APIView):
@@ -1030,7 +1052,7 @@ class PortfolioAICommandCenterPromptConfigRollbackView(APIView):
 
         config = SystemAISettings.objects.filter(is_active=True).order_by('-updated_at').first()
         metadata = dict(config.metadata) if config else {}
-        return Response({
+        return envelope({
             'ai_prompt_config': user_cred.prompt_config or metadata.get('ai_prompt_config'),
             'ai_prompt_config_history': list(user_cred.prompt_config_history or []),
             'rolled_back_to': version,
@@ -1078,7 +1100,7 @@ class PortfolioAICommandCenterTestView(APIView):
         # openclaw: system default, luôn ready
         if provider == 'openclaw':
             _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_SUCCESS, 'OpenClaw mặc định luôn sẵn sàng.')
-            return Response({
+            return envelope({
                 'message': f'Kết nối đến OpenClaw (Default) với mô hình {model} thành công. Phản hồi mượt mà.',
                 'latency_ms': 0,
             })
@@ -1112,7 +1134,7 @@ class PortfolioAICommandCenterTestView(APIView):
                     data = resp.json()
                     models_list = [m.get('name', m.get('id', '')) for m in (data.get('data') or data.get('models') or [])]
                     _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_SUCCESS, f'Local Model {endpoint} kết nối thành công.')
-                    return Response({
+                    return envelope({
                         'message': f'Kết nối đến Local Model ({endpoint}) thành công. Mô hình khả dụng: {", ".join(models_list[:5]) or "N/A"}.',
                         'endpoint': endpoint,
                         'models_available': models_list,
@@ -1192,7 +1214,7 @@ class PortfolioAICommandCenterTestView(APIView):
                 resp.raise_for_status()
                 latency_ms = int((__import__('time').time() - start) * 1000)
                 _log_test(AIAuditLog.ActionChoices.TEST_CONNECTION_SUCCESS, f'{provider}/{model} kết nối thành công ({latency_ms}ms).')
-                return Response({
+                return envelope({
                     'message': f'Kiểm tra kết nối thành công: Đã xác thực API Key với {provider} / {model}. Phản hồi trong {latency_ms}ms.',
                     'latency_ms': latency_ms,
                 })
@@ -1285,7 +1307,7 @@ class PortfolioAICommandCenterAuditLogView(APIView):
         logs = queryset[offset:offset + limit]
         serializer = AIAuditLogSerializer(logs, many=True)
 
-        return Response({
+        return paginated_envelope({
             'results': serializer.data,
             'total': total,
             'limit': limit,
@@ -1304,7 +1326,7 @@ class PortfolioUserConfigLegacyView(APIView):
         from identity_access.models import UserProfile
         profile, _ = UserProfile.objects.get_or_create(user=request.user)
         prefs = profile.preferences or {}
-        return Response({
+        return envelope({
             'id': profile.pk,
             'language': profile.language,
             'theme': profile.theme,
@@ -1323,7 +1345,7 @@ class PortfolioUserConfigLegacyView(APIView):
         profile.preferences = prefs
         profile.save(update_fields=['preferences'])
 
-        return Response({
+        return envelope({
             'ok': True,
             'preferences': prefs,
             'advisory_whale_signal_enabled': prefs.get('advisory_whale_signal_enabled', True),
@@ -1335,7 +1357,7 @@ class PortfolioMarketDiscoveryHubView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        return Response({'hub': [], 'note': 'market_discovery_not_available_in_native'})
+        return envelope({'hub': [], 'note': 'market_discovery_not_available_in_native'})
 
 
 class PortfolioWhaleAnalyticsView(APIView):
@@ -1663,7 +1685,7 @@ class PortfolioWhaleAnalyticsView(APIView):
         elif reference_price in (None, 0):
             stale_reason = 'missing_reference_price'
 
-        return Response({
+        return envelope({
             'symbol': symbol,
             'trade_date': resolved_trade_date.isoformat(),
             'timeframe': timeframe,
@@ -1716,13 +1738,15 @@ class PortfolioWhaleAnalyticsView(APIView):
                 'selected_trade_date': resolved_trade_date.isoformat(),
                 'session_summary_state': 'complete' if facts is not None else 'empty',
             },
-            'meta': {
-                'data_state': 'snapshot',
-                'degraded_mode': not has_flow_data,
-                'is_stale': bool((facts is not None and facts.stale) or (snapshot_row is not None and snapshot_row.stale)),
-                'stale_reason': stale_reason,
-            },
             'whale_analytics': whale_analytics,
+        }, meta={
+            # B5: provenance đã có sẵn từ trước B5, chuyển lên `meta` của
+            # envelope thay vì để lại trong `data`. Nội dung **không đổi**, nên
+            # client đọc `meta.is_stale` ở top-level vẫn thấy đúng giá trị cũ.
+            'data_state': 'snapshot',
+            'degraded_mode': not has_flow_data,
+            'is_stale': bool((facts is not None and facts.stale) or (snapshot_row is not None and snapshot_row.stale)),
+            'stale_reason': stale_reason,
         })
 
 
@@ -1731,7 +1755,7 @@ class PortfolioWhaleBacktestStatsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        return Response({'stats': [], 'note': 'backtest_stats_not_available_in_native'})
+        return envelope({'stats': [], 'note': 'backtest_stats_not_available_in_native'})
 
 
 class PortfolioScreenerRuleDetailView(APIView):
@@ -1756,7 +1780,7 @@ class PortfolioScreenerRuleDetailView(APIView):
         if not rule.is_active:
             raise NotFound('Bộ lọc không tồn tại.')
         from user_workspace.serializers import ScreenerRuleSerializer
-        return Response(ScreenerRuleSerializer(rule).data)
+        return envelope(ScreenerRuleSerializer(rule).data)
 
     def put(self, request, pk):
         rule = self._get_rule(request, pk)
@@ -1772,7 +1796,7 @@ class PortfolioScreenerRuleDetailView(APIView):
                 return Response({'detail': err}, status=status.HTTP_400_BAD_REQUEST)
         
         rule = serializer.save()
-        return Response(ScreenerRuleSerializer(rule).data)
+        return envelope(ScreenerRuleSerializer(rule).data)
 
     def delete(self, request, pk):
         rule = self._get_rule(request, pk)
@@ -1812,7 +1836,7 @@ class PortfolioAIAdvisoryListView(APIView):
             queryset = queryset.filter(symbol=symbol)
 
         records = list(queryset[: self.MAX_ITEMS])
-        return Response({
+        return paginated_envelope({
             'items': AdvisoryRecordSerializer(records, many=True).data,
             'session_date': session_date.isoformat(),
             'count': len(records),
@@ -1888,7 +1912,7 @@ class PortfolioAIAdvisorySymbolStatsView(APIView):
             order = {symbol: index for index, symbol in enumerate(requested)}
             stats.sort(key=lambda item: order.get(item['symbol'], len(order)))
 
-        return Response({
+        return paginated_envelope({
             'stats': stats,
             'session_date': session_date.isoformat(),
             'count': len(stats),
@@ -2301,7 +2325,7 @@ class PortfolioScreenerRuleRunView(APIView):
             }
             if has_scan_params:
                 payload.update({'page': page, 'limit': limit, 'pages': 1, 'sort': sort, 'order': order})
-            return Response(payload)
+            return envelope(payload)
         
         session_date = latest_snap.session_date
 
@@ -2419,9 +2443,9 @@ class PortfolioScreenerRuleRunView(APIView):
                     from rest_framework.response import Response as _R500
                     return _R500({"detail": f"Không thể tạo tác vụ quét: {exc}"}, status=500)
                 poll_url = f"/core/v1/screener/rules/{rule.id}/run/status/?job_id={_job_id}"
-                from rest_framework.response import Response as _R202
 
-                return _R202({"status": "queued", "job_id": _job_id, "poll_url": poll_url}, status=202)
+                return envelope({"status": "queued", "job_id": _job_id, "poll_url": poll_url},
+                                status=202)
             # Sync path (small universe or not forced)
             matched, total_scanned, missing_counts, window_days = _compute_scan(
                 conditions, session_date, include_ai)
@@ -2528,7 +2552,7 @@ class PortfolioScreenerRuleRunView(APIView):
             import logging
 
             logging.getLogger(__name__).exception("Failed to create screener history")
-        return Response(payload)
+        return envelope(payload)
 
 
 
@@ -2567,14 +2591,14 @@ class PortfolioScreenerRuleRunStatusView(APIView):
         if payload is None:
             # Unknown / expired — FE fallback to sync per plan §5f
             from rest_framework.response import Response
-            return Response({"status": "unknown", "job_id": job_id}, status=200)
+            return envelope({"status": "unknown", "job_id": job_id}, status=200)
         # Optional ownership check: job should belong to this user (stored rule_id check)
         # If payload has rule_id, ensure it matches requested pk
         if isinstance(payload, dict) and "rule_id" in payload and int(payload["rule_id"]) != int(pk):
             from rest_framework.response import Response
             return Response({"detail": "Tác vụ không thuộc bộ lọc này."}, status=404)
         from rest_framework.response import Response
-        return Response(payload)
+        return envelope(payload)
 
 
 def _validate_schedule_payload(data):
@@ -2633,7 +2657,7 @@ class ScreenerScheduleListCreateView(APIView):
         qs = ScreenerSchedule.objects.filter(user=request.user)
         if tenant:
             qs = qs.filter(tenant=tenant)
-        return Response([_schedule_to_dict(s) for s in qs.order_by('-created_at')])
+        return envelope([_schedule_to_dict(s) for s in qs.order_by('-created_at')])
 
     def post(self, request):
         from user_workspace.models import ScreenerRule, ScreenerSchedule
@@ -2669,7 +2693,7 @@ class ScreenerScheduleListCreateView(APIView):
             weekdays=cleaned['weekdays'],
             notify_channels=cleaned['notify_channels'],
         )
-        return Response(_schedule_to_dict(s), status=201)
+        return envelope(_schedule_to_dict(s), status=201)
 
 
 class ScreenerScheduleDetailView(APIView):
@@ -2689,7 +2713,7 @@ class ScreenerScheduleDetailView(APIView):
             raise NotFound('Lịch không tồn tại.')
 
     def get(self, request, pk):
-        return Response(_schedule_to_dict(self._get(request, pk)))
+        return envelope(_schedule_to_dict(self._get(request, pk)))
 
     def put(self, request, pk):
         s = self._get(request, pk)
@@ -2727,7 +2751,7 @@ class ScreenerScheduleDetailView(APIView):
         if 'is_active' in data:
             s.is_active = bool(data['is_active'])
         s.save()
-        return Response(_schedule_to_dict(s))
+        return envelope(_schedule_to_dict(s))
 
     def delete(self, request, pk):
         self._get(request, pk).delete()
@@ -2798,7 +2822,7 @@ class ScreenerScheduleRunNowView(APIView):
             sched.save(update_fields=['last_run_at'])
         except Exception:
             pass
-        return Response({'scheduled': sched.id, 'jobs': job_ids})
+        return envelope({'scheduled': sched.id, 'jobs': job_ids})
 
 
 class ScreenerScheduleAlertsView(APIView):
@@ -2815,7 +2839,7 @@ class ScreenerScheduleAlertsView(APIView):
         alerts = _cache.get(f"screener:sched_alerts:{_alerts_tenant}:{request.user.id}") or []
         if not isinstance(alerts, list):
             alerts = []
-        return Response({'count': len(alerts), 'results': alerts[:50]})
+        return paginated_envelope({'count': len(alerts), 'results': alerts[:50]})
 
 
 class ScreenerTemplatesView(APIView):
@@ -2824,7 +2848,7 @@ class ScreenerTemplatesView(APIView):
     def get(self, request):
         from .screener_templates import SCREENER_TEMPLATES
 
-        return Response({'templates': SCREENER_TEMPLATES})
+        return envelope({'templates': SCREENER_TEMPLATES})
 
 
 class ScreenerHistoryListView(APIView):
@@ -2872,7 +2896,7 @@ class ScreenerHistoryListView(APIView):
             }
             for h in items
         ]
-        return Response({'count': total, 'page': page, 'limit': limit, 'pages': pages, 'results': data})
+        return paginated_envelope({'count': total, 'page': page, 'limit': limit, 'pages': pages, 'results': data})
 
     def delete(self, request):
         from user_workspace.models import ScreenerRunHistory
@@ -2882,7 +2906,7 @@ class ScreenerHistoryListView(APIView):
         if tenant:
             qs = qs.filter(tenant=tenant)
         deleted, _ = qs.delete()
-        return Response({'deleted': deleted})
+        return envelope({'deleted': deleted})
 
 
 class ScreenerHistoryDetailView(APIView):
@@ -2901,7 +2925,7 @@ class ScreenerHistoryDetailView(APIView):
                 h = ScreenerRunHistory.objects.get(pk=pk, user=request.user)
         except ScreenerRunHistory.DoesNotExist:
             raise NotFound('Lịch sử không tồn tại.')
-        return Response(
+        return envelope(
             {
                 'id': h.id,
                 'rule_id': h.rule_id,
@@ -2960,7 +2984,7 @@ class ScreenerHistoryBacktestView(APIView):
         # Only BUY/SELL with close
         candidates = [r for r in matched if r.get('action') in ('BUY', 'SELL') and r.get('close') is not None and r.get('symbol')]
         if not candidates:
-            return Response({'winRate': 0, 'wins': 0, 'losses': 0, 'evaluated': 0, 'trades': [], 'horizon': horizon})
+            return envelope({'winRate': 0, 'wins': 0, 'losses': 0, 'evaluated': 0, 'trades': [], 'horizon': horizon})
         # For each candidate, find exit price after horizon trading days from run_at date
         # Use DailyPrice: for symbol, date > run_at.date, order by date, take horizon-th
         run_date = h.run_at.date() if h.run_at else None
@@ -2986,7 +3010,7 @@ class ScreenerHistoryBacktestView(APIView):
         evaluated = len(trades)
         losses = evaluated - wins
         win_rate = (wins / evaluated * 100) if evaluated else 0
-        return Response(
+        return envelope(
             {
                 'winRate': round(win_rate, 2),
                 'wins': wins,
