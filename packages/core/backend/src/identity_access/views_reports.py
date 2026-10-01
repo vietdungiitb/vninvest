@@ -6,6 +6,7 @@ import logging
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 
+from identity_access.envelope import envelope
 from identity_access.models import CoreTenant, ScheduledReport, ReportDeliveryLog
 from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
 from identity_access.serializers import ScheduledReportSerializer, ReportDeliveryLogSerializer
@@ -32,7 +33,7 @@ class ScheduledReportListCreateView(generics.GenericAPIView):
         _require_tenant_permission(request, 'report:read')
         tenant = _get_tenant(request.user)
         qs = ScheduledReport.objects.filter(tenant=tenant).order_by('-created_at')
-        return Response(ScheduledReportSerializer(qs, many=True).data)
+        return envelope(ScheduledReportSerializer(qs, many=True).data)
 
     def post(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
@@ -42,7 +43,7 @@ class ScheduledReportListCreateView(generics.GenericAPIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save(tenant=tenant)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return envelope(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class ScheduledReportDetailView(generics.GenericAPIView):
@@ -69,7 +70,7 @@ class ScheduledReportDetailView(generics.GenericAPIView):
         data = ScheduledReportSerializer(report).data
         logs = ReportDeliveryLog.objects.filter(report=report)[:50]
         data['delivery_logs'] = ReportDeliveryLogSerializer(logs, many=True).data
-        return Response(data)
+        return envelope(data)
 
     def patch(self, request, report_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
@@ -81,7 +82,7 @@ class ScheduledReportDetailView(generics.GenericAPIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
-        return Response(serializer.data)
+        return envelope(serializer.data)
 
     def delete(self, request, report_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
@@ -110,7 +111,7 @@ class ScheduledReportTestView(generics.GenericAPIView):
 
         from identity_access.tasks import generate_and_deliver_report
         generate_and_deliver_report.delay(report.id, is_test=True)
-        return Response({'status': 'queued', 'report_id': report_id})
+        return envelope({'status': 'queued', 'report_id': report_id})
 
 
 class ReportDeliveryLogView(generics.GenericAPIView):
@@ -126,4 +127,4 @@ class ReportDeliveryLogView(generics.GenericAPIView):
         logs = ReportDeliveryLog.objects.filter(
             report__tenant=tenant
         ).select_related('report')[:50]
-        return Response(ReportDeliveryLogSerializer(logs, many=True).data)
+        return envelope(ReportDeliveryLogSerializer(logs, many=True).data)

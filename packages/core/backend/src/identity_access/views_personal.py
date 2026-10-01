@@ -11,6 +11,7 @@ from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
+from .envelope import envelope, paginated_envelope
 from .models import (
     CorePATCredential,
     CoreServiceAccount,
@@ -96,7 +97,7 @@ def personal_keys_list_create(request):
     """GET list / POST issue key cá nhân (chung path, khác method)."""
     if request.method == 'GET':
         serializer = CorePATCredentialSerializer(_personal_key_qs(request), many=True)
-        return Response({'results': serializer.data})
+        return paginated_envelope({'results': serializer.data})
     return _do_issue(request)
 
 
@@ -105,7 +106,7 @@ def personal_keys_list_create(request):
 def personal_keys_list(request):
     """GET /partner/me/keys/ — key cá nhân của chính mình (không secret)."""
     serializer = CorePATCredentialSerializer(_personal_key_qs(request), many=True)
-    return Response({'results': serializer.data})
+    return paginated_envelope({'results': serializer.data})
 
 
 @api_view(['POST'])
@@ -154,7 +155,7 @@ def _do_issue(request):
     except DjangoValidationError as exc:
         # Quota max_active_pats (model raise Django ValidationError → DRF không convert → 500)
         raise DRFValidationError({'non_field_errors': exc.messages})
-    return Response(_serialize_partner_pat(credential, secret=raw_token),
+    return envelope(_serialize_partner_pat(credential, secret=raw_token),
                     status=status.HTTP_201_CREATED)
 
 
@@ -234,7 +235,7 @@ def personal_keys_usage_summary(request):
     pat_ids = [p.id for p in pats]
     total_calls = (PATAuditLog.objects.filter(pat_id__in=pat_ids, occurred_at__gte=since).count()
                    if pat_ids else 0)
-    return Response({
+    return envelope({
         'total_keys': len(pats),
         'active_keys': sum(1 for p in pats
                            if p.status == CorePATCredential.StatusChoices.ACTIVE),
@@ -276,7 +277,7 @@ def personal_summary(request):
     pat_ids = [p.id for p in pats]
     calls = (PATAuditLog.objects.filter(pat_id__in=pat_ids, occurred_at__gte=since).count()
              if pat_ids else 0)
-    return Response({
+    return envelope({
         'tenant': {
             'plan': tenant.plan,
             'status': tenant.status,

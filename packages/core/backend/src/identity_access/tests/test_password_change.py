@@ -13,6 +13,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from ..models import UserProfile
+from ..tests.envelope import unwrapped_json
 
 User = get_user_model()
 URL = '/core/v1/auth/password-change/'
@@ -97,7 +98,7 @@ class UserProfileAvatarTests(TestCase):
             PROFILE_URL, {'avatar_url': 'https://example.com/a.png'}, format='json',
         )
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.json()['avatar_url'], 'https://example.com/a.png')
+        self.assertEqual(unwrapped_json(res)['avatar_url'], 'https://example.com/a.png')
         res2 = self.client.get(PROFILE_URL)
         self.assertEqual(res2.status_code, 200)
-        self.assertEqual(res2.json()['avatar_url'], 'https://example.com/a.png')
+        self.assertEqual(unwrapped_json(res2)['avatar_url'], 'https://example.com/a.png')

@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
+from .envelope import envelope
 from .models import CoreTenant, UsageAlertConfig
 from .permissions import IsTenantActive, require_human_session
 from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
@@ -48,7 +49,7 @@ def partner_usage_alert_config_list(request):
     _get_default_configs(tenant)
 
     configs = UsageAlertConfig.objects.filter(tenant=tenant).order_by('meter_code')
-    return Response({
+    return envelope({
         'configs': [
             {
                 'meter_code': c.meter_code,
@@ -78,7 +79,7 @@ def partner_usage_alert_config_detail(request, meter_code):
         raise NotFound('Alert configuration not found.')
 
     if request.method == 'GET':
-        return Response({
+        return envelope({
             'meter_code': config.meter_code,
             'warning_pct': config.warning_pct,
             'critical_pct': config.critical_pct,
@@ -124,7 +125,7 @@ def partner_usage_alert_config_detail(request, meter_code):
 
     config.save(update_fields=['warning_pct', 'critical_pct', 'enabled', 'notify_email', 'updated_at'])
 
-    return Response({
+    return envelope({
         'meter_code': config.meter_code,
         'warning_pct': config.warning_pct,
         'critical_pct': config.critical_pct,

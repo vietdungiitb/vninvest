@@ -11,6 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 
+from .envelope import envelope
 from .models import CoreTenant
 from .permissions import IsTenantActive, require_human_session
 from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
@@ -73,7 +74,7 @@ def partner_usage_trend(request):
             'consumed': consumed_by_date.get(d_str, 0)
         })
 
-    return Response({
+    return envelope({
         'meter_code': meter_code,
         'daily': daily,
         'days': days,
@@ -131,7 +132,7 @@ def partner_usage_trend_all(request):
             })
         result[meter_code] = daily
 
-    return Response({
+    return envelope({
         'meters': result,
         'days': days,
         'start_date': start.isoformat(),

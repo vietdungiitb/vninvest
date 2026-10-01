@@ -14,6 +14,7 @@ from identity_access.models import (
     CoreTenant, CoreServiceAccount, CorePATCredential, TenantMember, TenantCustomRole,
     TenantInvite,
 )
+from identity_access.tests.envelope import unwrapped
 from identity_access.utils.resolve_tenant import (
     SYSTEM_ROLE_PERMISSIONS, KNOWN_PERMISSION_TOKENS,
     get_tenant_role, get_tenant_permissions, require_tenant_permission,
@@ -413,16 +414,16 @@ class PartnerRoleCRUDAPITests(TestCase):
         client = self._client(self.owner)
         response = client.get('/core/v1/partner/roles/')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['roles'], [])
+        self.assertEqual(unwrapped(response)['roles'], [])
 
     def test_create_custom_role(self):
         client = self._client(self.owner)
         data = {'name': 'Analyst', 'permissions': ['usage:read', 'forecast:read']}
         response = client.post('/core/v1/partner/roles/', data, format='json')
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data['name'], 'Analyst')
-        self.assertEqual(response.data['permissions'], ['usage:read', 'forecast:read'])
-        self.assertFalse(response.data['is_system'])
+        self.assertEqual(unwrapped(response)['name'], 'Analyst')
+        self.assertEqual(unwrapped(response)['permissions'], ['usage:read', 'forecast:read'])
+        self.assertFalse(unwrapped(response)['is_system'])
 
     def test_create_duplicate_name_rejected(self):
         TenantCustomRole.objects.create(
@@ -459,7 +460,7 @@ class PartnerRoleCRUDAPITests(TestCase):
         client = self._client(self.owner)
         response = client.get(f'/core/v1/partner/roles/{role.public_id}/')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['name'], 'Analyst')
+        self.assertEqual(unwrapped(response)['name'], 'Analyst')
 
     def test_update_role(self):
         role = TenantCustomRole.objects.create(
@@ -469,7 +470,7 @@ class PartnerRoleCRUDAPITests(TestCase):
         data = {'permissions': ['usage:read', 'forecast:read']}
         response = client.patch(f'/core/v1/partner/roles/{role.public_id}/', data, format='json')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['permissions'], ['usage:read', 'forecast:read'])
+        self.assertEqual(unwrapped(response)['permissions'], ['usage:read', 'forecast:read'])
 
     def test_delete_role_reassigns_members(self):
         role = TenantCustomRole.objects.create(
@@ -545,8 +546,8 @@ class InviteCustomRoleTests(TestCase):
         }
         response = self.client_owner.post('/core/v1/tenant-members/invites/', data, format='json')
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data['custom_role_id'], self.custom_role.public_id)
-        self.assertEqual(response.data['custom_role_name'], 'Analyst')
+        self.assertEqual(unwrapped(response)['custom_role_id'], self.custom_role.public_id)
+        self.assertEqual(unwrapped(response)['custom_role_name'], 'Analyst')
 
     def test_invite_with_invalid_custom_role_404(self):
         data = {
@@ -564,7 +565,7 @@ class InviteCustomRoleTests(TestCase):
         }
         response = self.client_owner.post('/core/v1/tenant-members/invites/', data, format='json')
         self.assertEqual(response.status_code, 201)
-        self.assertIsNone(response.data.get('custom_role_id'))
+        self.assertIsNone(unwrapped(response).get('custom_role_id'))
 
     def test_accept_invite_propagates_custom_role(self):
         from datetime import timedelta

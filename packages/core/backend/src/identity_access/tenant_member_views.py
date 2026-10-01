@@ -17,6 +17,7 @@ from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
 from tenant_lifecycle.models import TenantLifecycleEvent
+from .envelope import envelope
 from .models import CoreTenant, TenantMember, TenantInvite
 from .serializers import TenantMemberSerializer, TenantInviteSerializer, TenantInviteCreateSerializer
 from .permissions import IsTenantActive, require_human_session, require_pat_scopes_or_human_session
@@ -48,7 +49,7 @@ class TenantMemberListView(APIView):
         # List members
         members = TenantMember.objects.filter(tenant=tenant).select_related('user', 'invited_by')
         serializer = TenantMemberSerializer(members, many=True)
-        return Response({'members': serializer.data})
+        return envelope({'members': serializer.data})
 
 
 class TenantInvitesCombinedView(APIView):
@@ -150,7 +151,7 @@ class TenantInvitesCombinedView(APIView):
             )
 
         result = TenantInviteSerializer(invite)
-        return Response(result.data, status=status.HTTP_201_CREATED)
+        return envelope(result.data, status=status.HTTP_201_CREATED)
 
     def get(self, request):
         """List pending invites for tenant."""
@@ -164,7 +165,7 @@ class TenantInvitesCombinedView(APIView):
             status=TenantInvite.StatusChoices.PENDING,
         ).select_related('inviter')
         serializer = TenantInviteSerializer(invites, many=True)
-        return Response({'invites': serializer.data})
+        return envelope({'invites': serializer.data})
 
 
 class TenantInviteAcceptView(APIView):
@@ -252,7 +253,7 @@ class TenantInviteAcceptView(APIView):
         )
 
         result = TenantMemberSerializer(member)
-        return Response(result.data, status=status.HTTP_201_CREATED)
+        return envelope(result.data, status=status.HTTP_201_CREATED)
 
 
 class TenantMemberRemoveView(APIView):

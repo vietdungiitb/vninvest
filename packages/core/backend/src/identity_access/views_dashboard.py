@@ -13,8 +13,8 @@ from django.utils import timezone
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 
+from .envelope import envelope
 from .models import CorePATCredential, CoreServiceAccount, CoreTenant
 from .permissions import IsTenantActive, require_human_session
 from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
@@ -149,7 +149,7 @@ def partner_dashboard_summary(request):
         else:
             trial_remaining_days = (trial_end - today).days
 
-    return Response({
+    return envelope({
         'health_score': health_score,
         'health_breakdown': health_breakdown,
         'members_active_today': members_active_today,
@@ -229,4 +229,4 @@ def partner_dashboard_usage_trend(request):
             'active_members': active_by_date.get(d_str, 0),
         })
 
-    return Response({'daily': daily, 'days': days})
+    return envelope({'daily': daily, 'days': days})

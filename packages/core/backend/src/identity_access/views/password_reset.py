@@ -10,6 +10,7 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework import permissions
 from rest_framework.response import Response
 
+from ..envelope import envelope
 from ..models import PasswordResetToken
 from ..security_utils import (
     enforce_rate_limit,
@@ -96,7 +97,7 @@ def password_reset_request_view(request):
             # on its own; the user can simply request again.
             logger.exception('password_reset_request: reset-email enqueue failed.')
 
-    return Response(
+    return envelope(
         {'detail': 'Nếu email tồn tại trong hệ thống, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.'},
         status=status.HTTP_200_OK,
     )
@@ -229,4 +230,4 @@ def password_reset_confirm_view(request):
     revoked = revoke_user_human_sessions(user, reason='Revoked on password reset')
     logger.info('password_reset_confirm: user=%s revoked %s human session(s)', user.pk, revoked)
 
-    return Response({'detail': 'Mật khẩu đã được đặt lại thành công.'}, status=status.HTTP_200_OK)
+    return envelope({'detail': 'Mật khẩu đã được đặt lại thành công.'}, status=status.HTTP_200_OK)

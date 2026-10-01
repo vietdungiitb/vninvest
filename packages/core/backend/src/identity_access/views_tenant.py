@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 
 from vninvest_core.pagination import CoreCursorPagination
 
+from .envelope import envelope
 from .models import CorePATCredential, CoreServiceAccount, CoreTenant, PATAuditLog, TenantSettings, UserProfile, TenantCustomRole
 from .permissions import IsTenantActive, require_human_session, require_pat_scopes_or_human_session
 from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
@@ -254,7 +255,7 @@ def issue_pat(request, service_account_id):
         label=label,
         audit_reason=audit_reason,
     )
-    return Response(_serialize_partner_pat(credential, secret=raw_token), status=status.HTTP_201_CREATED)
+    return envelope(_serialize_partner_pat(credential, secret=raw_token), status=status.HTTP_201_CREATED)
 
 
 class UserProfileView(APIView):
@@ -278,7 +279,7 @@ class UserProfileView(APIView):
         user_tenants = CoreTenant.objects.filter(Q(owner_user=user) | Q(members__user=user)).distinct()
         tenant = user_tenants.first()
         abilities = _build_abilities(user, tenant) if tenant else []
-        return Response({
+        return envelope({
             'username': user.username,
             'email': user.email,
             'is_staff': bool(user.is_staff),
@@ -310,7 +311,7 @@ class UserProfileView(APIView):
         if update_fields:
             update_fields.append('updated_at')
             profile.save(update_fields=update_fields)
-        return Response({
+        return envelope({
             'username': request.user.username,
             'email': request.user.email,
             'is_staff': bool(request.user.is_staff),
@@ -358,7 +359,7 @@ def partner_issue_pat(request):
         audit_reason=audit_reason,
         allowed_cidr_blocks=allowed_cidr_blocks,
     )
-    return Response(_serialize_partner_pat(credential, secret=raw_token), status=status.HTTP_201_CREATED)
+    return envelope(_serialize_partner_pat(credential, secret=raw_token), status=status.HTTP_201_CREATED)
 
 
 @api_view(['POST'])
@@ -458,7 +459,7 @@ class TenantLifecycleView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        return Response({
+        return envelope({
             'plan': tenant.plan,
             'status': tenant.status,
             'tenant_id': tenant.public_id,
@@ -472,7 +473,7 @@ class PartnerUsageMetersView(generics.ListAPIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
     def list(self, request, *args, **kwargs):
-        return Response([])
+        return envelope([])
 
 
 # ---------------------------------------------------------------------------
@@ -529,7 +530,7 @@ def partner_pat_usage(request, pat_id):
         .values('date').annotate(count=Count('id')).order_by('date')
     ]
 
-    return Response({
+    return envelope({
         'pat_id': pat.public_id,
         'label': pat.label,
         'total_calls': total_calls,
@@ -570,7 +571,7 @@ def partner_pat_usage_summary(request):
         }
         for pat in pats
     ]
-    return Response({
+    return envelope({
         'total_pats': pats.count(),
         'active_pats': pats.filter(status=CorePATCredential.StatusChoices.ACTIVE).count(),
         'total_calls_30d': total_calls,
@@ -605,7 +606,7 @@ def partner_service_account_usage(request, sa_id):
             'calls_30d': calls,
             'last_used_at': pat.last_used_at.isoformat() if pat.last_used_at else None,
         })
-    return Response({
+    return envelope({
         'sa_id': sa.public_id,
         'name': sa.name,
         'total_pats': len(pats),
@@ -625,7 +626,7 @@ class PartnerTenantSettingsView(APIView):
 
         settings_obj, _created = TenantSettings.objects.get_or_create(tenant=tenant)
         serializer = TenantSettingsSerializer(settings_obj)
-        return Response(serializer.data)
+        return envelope(serializer.data)
 
     def put(self, request):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
@@ -636,7 +637,7 @@ class PartnerTenantSettingsView(APIView):
         serializer = TenantSettingsSerializer(settings_obj, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data)
+        return envelope(serializer.data)
 
 
 class PartnerRoleListCreateView(APIView):
@@ -648,7 +649,7 @@ class PartnerRoleListCreateView(APIView):
         _require_tenant_permission(request, 'settings:write')
         tenant = _get_request_tenant(request)
         roles = TenantCustomRole.objects.filter(tenant=tenant).order_by('-is_system', 'name')
-        return Response({
+        return envelope({
             'roles': TenantCustomRoleSerializer(roles, many=True).data,
         })
 
@@ -660,7 +661,7 @@ class PartnerRoleListCreateView(APIView):
         serializer = TenantCustomRoleSerializer(data=request.data, tenant=tenant)
         serializer.is_valid(raise_exception=True)
         serializer.save(tenant=tenant)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return envelope(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class PartnerRoleDetailView(APIView):
@@ -679,7 +680,7 @@ class PartnerRoleDetailView(APIView):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'settings:write')
         role = self._get_role(request, role_id)
-        return Response(TenantCustomRoleSerializer(role, tenant=role.tenant).data)
+        return envelope(TenantCustomRoleSerializer(role, tenant=role.tenant).data)
 
     def patch(self, request, role_id):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
@@ -691,7 +692,7 @@ class PartnerRoleDetailView(APIView):
         serializer = TenantCustomRoleSerializer(role, data=request.data, partial=True, tenant=role.tenant)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data)
+        return envelope(serializer.data)
 
     def delete(self, request, role_id):
         require_pat_scopes_or_human_session(request, 'manage_tenant')

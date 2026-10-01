@@ -15,6 +15,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from identity_access.models import CoreTenant, CoreServiceAccount, CorePATCredential, TenantMember
+from identity_access.tests.envelope import unwrapped_json
 
 User = get_user_model()
 
@@ -84,7 +85,7 @@ class PartnerTenantSettingsViewTests(TestCase):
         raw = self._human_pat(['manage_tenant'])
         resp = self.client.get('/core/v1/partner/settings/', **self._headers(raw))
         self.assertEqual(resp.status_code, 200)
-        data = _parse_json_response(resp)
+        data = unwrapped_json(resp)
         self.assertEqual(data['timezone'], 'Asia/Ho_Chi_Minh')
         self.assertEqual(data['locale'], 'vi')
         self.assertEqual(data['theme'], 'dark')
@@ -104,7 +105,7 @@ class PartnerTenantSettingsViewTests(TestCase):
             **self._headers(raw),
         )
         self.assertEqual(resp.status_code, 200)
-        data = _parse_json_response(resp)
+        data = unwrapped_json(resp)
         self.assertEqual(data['timezone'], 'America/New_York')
         self.assertEqual(data['locale'], 'en')
         self.assertEqual(data['theme'], 'light')
@@ -112,7 +113,7 @@ class PartnerTenantSettingsViewTests(TestCase):
 
         # Confirm persisted
         resp2 = self.client.get('/core/v1/partner/settings/', **self._headers(raw))
-        data2 = _parse_json_response(resp2)
+        data2 = unwrapped_json(resp2)
         self.assertEqual(data2['timezone'], 'America/New_York')
         self.assertEqual(data2['custom_domain'], 'app.example.com')
 

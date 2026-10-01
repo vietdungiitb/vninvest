@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from identity_access.tests.envelope import unwrapped_json
 from identity_access.models import (
     CoreServiceAccount,
     CoreTenant,
@@ -59,7 +60,7 @@ class WebhookDetailPermissionTests(TestCase):
     def test_owner_get_ok(self):
         resp = self.owner_client.get(self.url)
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json()['name'], 'WH1')
+        self.assertEqual(unwrapped_json(resp)['name'], 'WH1')
 
     def test_owner_patch_ok(self):
         resp = self.owner_client.patch(self.url, {'name': 'WH2'}, format='json')

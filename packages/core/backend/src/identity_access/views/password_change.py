@@ -4,8 +4,8 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.response import Response
 
+from ..envelope import envelope
 from ..models import CorePATCredential
 from ..security_utils import (
     enforce_rate_limit,
@@ -103,4 +103,4 @@ def password_change_view(request):
         reason='Revoked on password change',
     )
     logger.info('password_change: user=%s revoked %s other session(s)', user.pk, revoked)
-    return Response({'detail': 'Đã đổi mật khẩu thành công.'}, status=status.HTTP_200_OK)
+    return envelope({'detail': 'Đã đổi mật khẩu thành công.'}, status=status.HTTP_200_OK)

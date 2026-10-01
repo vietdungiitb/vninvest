@@ -10,6 +10,7 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from identity_access.envelope import adopt_envelope, envelope, paginated_envelope
 from identity_access.models import CoreTenant
 from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
 from identity_access.utils.resolve_tenant import require_tenant_permission as _require_tenant_permission
@@ -39,12 +40,14 @@ class PartnerCostTrendView(APIView):
         try:
             from commercial.views_analytics import PartnerCostTrendView as InnerView
             view = InnerView.as_view()
-            return view(request._request)
+            # `commercial` chưa chắc đã bọc → adopt_envelope để endpoint này
+            # không có hai shape cùng lúc.
+            return adopt_envelope(view(request._request))
         except ImportError:
-            return Response({'monthly': [], 'note': 'commercial app not available'})
+            return envelope({'monthly': [], 'note': 'commercial app not available'})
         except Exception as e:
             logger.error('PartnerCostTrendView failed for user=%s: %s', request.user.id, e, exc_info=True)
-            return Response({'monthly': [], 'note': str(e)})
+            return envelope({'monthly': [], 'note': str(e)})
 
 
 class PartnerUsageMetersView(generics.GenericAPIView):
@@ -67,10 +70,10 @@ class PartnerUsageMetersView(generics.GenericAPIView):
                 tenant=tenant, id=Subquery(latest_ids)
             ).order_by('meter_code')
 
-            return Response({'results': PartnerUsageMeterSerializer(rows, many=True).data})
+            return paginated_envelope({'results': PartnerUsageMeterSerializer(rows, many=True).data})
         except ImportError:
             # commercial app not available — return empty list
-            return Response({'results': []})
+            return paginated_envelope({'results': []})
 
 
 class PartnerUsageQuotasView(generics.GenericAPIView):
@@ -93,10 +96,10 @@ class PartnerUsageQuotasView(generics.GenericAPIView):
                 tenant=tenant, id=Subquery(latest_ids)
             ).order_by('meter_code')
 
-            return Response({'results': PartnerUsageMeterSerializer(rows, many=True).data})
+            return paginated_envelope({'results': PartnerUsageMeterSerializer(rows, many=True).data})
         except ImportError:
             # commercial app not available — return empty list
-            return Response({'results': []})
+            return paginated_envelope({'results': []})
 
 
 class PartnerBillingSubscriptionView(generics.GenericAPIView):
@@ -113,17 +116,17 @@ class PartnerBillingSubscriptionView(generics.GenericAPIView):
             sub = Subscription.objects.filter(tenant=tenant).first()
             if sub is None:
                 # Return graceful empty state instead of 404
-                return Response({
+                return envelope({
                     'status': 'none',
                     'plan': tenant.plan,
                     'billing_period_start': tenant.billing_period_start,
                     'billing_period_end': tenant.billing_period_end,
                     'trial_ends_at': tenant.trial_ends_at,
                 })
-            return Response(SubscriptionSerializer(sub).data)
+            return envelope(SubscriptionSerializer(sub).data)
         except ImportError:
             # commercial app not yet migrated
-            return Response({
+            return envelope({
                 'status': 'none',
                 'plan': None,
                 'billing_period_start': None,
@@ -132,7 +135,7 @@ class PartnerBillingSubscriptionView(generics.GenericAPIView):
             })
         except Exception as e:
             logger.error('PartnerBillingSubscriptionView failed for user=%s: %s', request.user.id, e, exc_info=True)
-            return Response({
+            return envelope({
                 'status': 'none',
                 'plan': None,
                 'billing_period_start': None,
@@ -153,13 +156,13 @@ class PartnerBillingInvoicesView(generics.GenericAPIView):
             from commercial.serializers import InvoiceSerializer
             tenant = _get_tenant(request.user)
             qs = Invoice.objects.filter(tenant=tenant).order_by('-created_at')
-            return Response(InvoiceSerializer(qs, many=True).data)
+            return envelope(InvoiceSerializer(qs, many=True).data)
         except ImportError:
             # commercial app not yet migrated
-            return Response([])
+            return envelope([])
         except Exception as e:
             logger.error('PartnerBillingInvoicesView failed for user=%s: %s', request.user.id, e, exc_info=True)
-            return Response([])
+            return envelope([])
 
 
 # ─── STRIPE BILLING PARTNER VIEWS ──────────────────────────────────────────
@@ -259,10 +262,10 @@ class PartnerUsageHistoryView(generics.GenericAPIView):
             
             qs = qs.order_by('date', 'meter_code')
 
-            return Response({'results': QuotaHistorySerializer(qs, many=True).data})
+            return paginated_envelope({'results': QuotaHistorySerializer(qs, many=True).data})
         except ImportError:
             # commercial app or QuotaHistory not yet migrated
-            return Response({'results': []})
+            return paginated_envelope({'results': []})
         except Exception as e:
             logger.error('PartnerUsageHistoryView failed for user=%s: %s', request.user.id, e, exc_info=True)
             return Response({'error': str(e)}, status=500)
