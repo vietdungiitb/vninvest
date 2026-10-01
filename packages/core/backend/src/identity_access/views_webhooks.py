@@ -20,6 +20,7 @@ from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 
+from identity_access.envelope import envelope
 from identity_access.models import CoreTenant, TenantWebhookConfig, WebhookDelivery
 from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
 from identity_access.utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
@@ -40,7 +41,7 @@ class WebhookConfigListCreateView(generics.GenericAPIView):
         _require_tenant_permission(request, 'webhook:read')
         tenant = _get_request_tenant(request)
         qs = TenantWebhookConfig.objects.filter(tenant=tenant).order_by('-created_at')
-        return Response(TenantWebhookConfigSerializer(qs, many=True).data)
+        return envelope(TenantWebhookConfigSerializer(qs, many=True).data)
 
     def post(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
@@ -52,7 +53,7 @@ class WebhookConfigListCreateView(generics.GenericAPIView):
         config = serializer.save(tenant=tenant)
         data = TenantWebhookConfigSerializer(config).data
         data['raw_secret'] = config.secret
-        return Response(data, status=status.HTTP_201_CREATED)
+        return envelope(data, status=status.HTTP_201_CREATED)
 
 
 class WebhookConfigDetailView(generics.GenericAPIView):
@@ -71,7 +72,7 @@ class WebhookConfigDetailView(generics.GenericAPIView):
         config = self._get_config(request, config_id)
         if config is None:
             return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
-        return Response(TenantWebhookConfigSerializer(config).data)
+        return envelope(TenantWebhookConfigSerializer(config).data)
 
     def patch(self, request, config_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
@@ -83,7 +84,7 @@ class WebhookConfigDetailView(generics.GenericAPIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
-        return Response(TenantWebhookConfigSerializer(config).data)
+        return envelope(TenantWebhookConfigSerializer(config).data)
 
     def delete(self, request, config_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
@@ -108,7 +109,7 @@ class WebhookRegenerateSecretView(generics.GenericAPIView):
             return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
         config.secret = secrets.token_hex(32)
         config.save(update_fields=['secret'])
-        return Response({'raw_secret': config.secret})
+        return envelope({'raw_secret': config.secret})
 
 
 class WebhookDeliveryLogView(generics.GenericAPIView):
@@ -123,7 +124,7 @@ class WebhookDeliveryLogView(generics.GenericAPIView):
         except TenantWebhookConfig.DoesNotExist:
             return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
         qs = WebhookDelivery.objects.filter(config=config).order_by('-created_at')[:100]
-        return Response(WebhookDeliverySerializer(qs, many=True).data)
+        return envelope(WebhookDeliverySerializer(qs, many=True).data)
 
 
 class WebhookTestView(generics.GenericAPIView):
@@ -142,7 +143,7 @@ class WebhookTestView(generics.GenericAPIView):
             'event': 'webhook.test',
             'message': 'This is a test event from VNInvest webhook system.',
         })
-        return Response({'detail': 'Test webhook dispatched'})
+        return envelope({'detail': 'Test webhook dispatched'})
 
 
 class WebhookManualRetryView(generics.GenericAPIView):
@@ -162,7 +163,7 @@ class WebhookManualRetryView(generics.GenericAPIView):
             return Response({'detail': 'Delivery not found'}, status=status.HTTP_404_NOT_FOUND)
         from .tasks import deliver_webhook
         deliver_webhook.delay(delivery.id)
-        return Response({'detail': 'Retry dispatched'})
+        return envelope({'detail': 'Retry dispatched'})
 
 
 class BillingStatusView(generics.GenericAPIView):
@@ -179,7 +180,7 @@ class BillingStatusView(generics.GenericAPIView):
             'trial_ends_at': tenant.trial_ends_at.isoformat() if tenant.trial_ends_at else None,
             'stripe_current_period_end': tenant.stripe_current_period_end.isoformat() if tenant.stripe_current_period_end else None,
         }
-        return Response(data)
+        return envelope(data)
 
 
 class PreviewPlanChangeView(generics.GenericAPIView):
@@ -209,7 +210,7 @@ class PreviewPlanChangeView(generics.GenericAPIView):
                 changes[key] = {'from': current.get(key), 'to': target.get(key)}
 
         from datetime import date
-        return Response({
+        return envelope({
             'current_plan': tenant.plan,
             'target_plan': target_plan,
             'prorated_amount': 0,
@@ -243,4 +244,4 @@ class DeprovisionView(generics.GenericAPIView):
             'occurred_at': timezone.now().isoformat(),
         })
 
-        return Response({'detail': 'Tenant deprovisioned successfully.'}, status=status.HTTP_200_OK)
+        return envelope({'detail': 'Tenant deprovisioned successfully.'}, status=status.HTTP_200_OK)

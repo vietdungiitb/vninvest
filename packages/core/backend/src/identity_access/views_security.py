@@ -9,9 +9,9 @@ from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from rest_framework import status
 
+from .envelope import envelope, paginated_envelope
 from .models import CoreTenant, LoginAttempt
 from .permissions import IsTenantActive, require_human_session
 from .security_utils import LoginRecorder
@@ -84,7 +84,7 @@ def partner_login_activity(request):
         for r in recent_failures_raw
     ]
 
-    return Response({
+    return envelope({
         'daily': daily,
         'summary': {
             'total_logins': total_logins,
@@ -123,7 +123,7 @@ def partner_active_sessions(request):
             'is_current': cred.id == current_id,
         })
 
-    return Response({
+    return paginated_envelope({
         'sessions': sessions,
         'total_active': len(sessions),
     })
@@ -143,11 +143,11 @@ def partner_revoke_session(request):
 
     if revoke_all:
         LoginRecorder.revoke_all_sessions_except(tenant, exclude_session_id=current_id)
-        return Response({'detail': 'Đã thu hồi tất cả phiên ngoại trừ phiên hiện tại.'}, status=status.HTTP_200_OK)
+        return envelope({'detail': 'Đã thu hồi tất cả phiên ngoại trừ phiên hiện tại.'}, status=status.HTTP_200_OK)
 
     if not session_id:
         from rest_framework.exceptions import ValidationError
         raise ValidationError({'detail': 'session_id là bắt buộc.'})
 
     LoginRecorder.revoke_session(session_id, tenant)
-    return Response({'detail': 'Phiên đã được thu hồi.'}, status=status.HTTP_200_OK)
+    return envelope({'detail': 'Phiên đã được thu hồi.'}, status=status.HTTP_200_OK)

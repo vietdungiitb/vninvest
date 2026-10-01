@@ -9,9 +9,9 @@ from django.utils import timezone
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 
+from .envelope import envelope
 from .models import CoreTenant
 from .permissions import IsTenantActive, require_human_session
 from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
@@ -111,7 +111,7 @@ def partner_usage_forecast(request):
         forecast = _forecast_meter(tenant, meter_code, lookback_days)
         if forecast is None:
             raise NotFound(f'Meter {meter_code} not found for this tenant.')
-        return Response(forecast)
+        return envelope(forecast)
 
     # All meters forecast
     meters = ['api_calls', 'ai_regenerate', 'whale_symbols', 'exports']
@@ -122,7 +122,7 @@ def partner_usage_forecast(request):
         if f:
             forecasts.append(f)
 
-    return Response({
+    return envelope({
         'forecasts': forecasts,
         'lookback_days': lookback_days,
     })
@@ -163,4 +163,4 @@ def partner_usage_forecast_detail(request, meter_code):
         for r in daily_records
     ]
 
-    return Response(forecast)
+    return envelope(forecast)
