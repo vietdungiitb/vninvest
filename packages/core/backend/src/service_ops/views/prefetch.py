@@ -24,6 +24,7 @@ from ..models import ServiceConfig, ServiceDefinition, ServiceRunLog
 from ..ownership import build_ownership_matrix_from_db
 from ..registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, get_registered_service
 from ..serializers import ServiceConfigSerializer
+from vninvest_core.api_envelope import envelope_response
 from .base import SOCBaseView
 from .mixins import ConfigApplyMixin
 
@@ -181,7 +182,7 @@ def _build_default_prefetch_config_response() -> dict:
         summary='Lấy runtime config Prefetch',
         description='Trả về config hiệu lực của prefetch scheduler cùng metadata áp dụng hiện tại.',
         responses={
-            200: PrefetchConfigResponseSerializer,
+            200: envelope_response(PrefetchConfigResponseSerializer),
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
         },
@@ -189,27 +190,30 @@ def _build_default_prefetch_config_response() -> dict:
             OpenApiExample(
                 'Prefetch runtime config',
                 value={
-                    'service_key': 'prefetch_time_policy',
-                    'config_schema_version': '1.0',
-                    'config_payload': {
-                        'active_profile': 'market_open',
-                        'pre_open_interval_seconds': 120,
-                        'market_open_interval_seconds': 30,
-                        'lunch_break_interval_seconds': 300,
-                        'pre_close_interval_seconds': 30,
-                        'post_close_interval_seconds': 600,
-                        'offhours_interval_seconds': 3600,
-                        'batch_size': 50,
-                        'max_concurrent_workers': 4,
-                        'universe_group_ids': ['vn30', 'banking'],
-                        'cache_ttl_seconds': 25,
-                        'enabled': True,
-                        'skip_non_trading_days': True,
+                    'data': {
+                        'service_key': 'prefetch_time_policy',
+                        'config_schema_version': '1.0',
+                        'config_payload': {
+                            'active_profile': 'market_open',
+                            'pre_open_interval_seconds': 120,
+                            'market_open_interval_seconds': 30,
+                            'lunch_break_interval_seconds': 300,
+                            'pre_close_interval_seconds': 30,
+                            'post_close_interval_seconds': 600,
+                            'offhours_interval_seconds': 3600,
+                            'batch_size': 50,
+                            'max_concurrent_workers': 4,
+                            'universe_group_ids': ['vn30', 'banking'],
+                            'cache_ttl_seconds': 25,
+                            'enabled': True,
+                            'skip_non_trading_days': True,
+                        },
+                        'applied_by': 'system',
+                        'applied_at': None,
+                        'change_reason': '',
+                        'is_current': True,
                     },
-                    'applied_by': 'system',
-                    'applied_at': None,
-                    'change_reason': '',
-                    'is_current': True,
+                    'meta': {},
                 },
             )
         ],
@@ -219,7 +223,7 @@ def _build_default_prefetch_config_response() -> dict:
         description='Áp dụng config scheduler và cache mới cho domain Prefetch.',
         request=PrefetchConfigRequestSerializer,
         responses={
-            201: PrefetchConfigResponseSerializer,
+            201: envelope_response(PrefetchConfigResponseSerializer),
             400: OpenApiTypes.OBJECT,
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
