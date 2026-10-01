@@ -8,9 +8,10 @@ Cache 1h. Không secret, không write.
 from django.core.cache import cache
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 
 from vninvest_core.exceptions import ValidationErrorException
+
+from .envelope import envelope
 
 GOLD_SOURCES = ('sjc', 'btmc')
 CACHE_TTL_SECONDS = 3600
@@ -51,8 +52,9 @@ def retail_gold_api(request):
     cache_key = f'broker:retail:gold:{source}:{date or "today"}'
     cached = cache.get(cache_key)
     if cached is not None:
-        return Response({'ok': True, 'source': source, 'date': date, 'rows': cached,
-                         'cached': True})
+        return envelope(
+            {'ok': True, 'source': source, 'date': date, 'rows': cached,
+             'cached': True})
     try:
         frame = _get_retail().gold(source=source, date=date)
     except ValueError as exc:
@@ -63,7 +65,7 @@ def retail_gold_api(request):
             code='upstream_error') from exc
     rows = _frame_to_records(frame)
     cache.set(cache_key, rows, CACHE_TTL_SECONDS)
-    return Response({'ok': True, 'source': source, 'date': date, 'rows': rows,
+    return envelope({'ok': True, 'source': source, 'date': date, 'rows': rows,
                      'cached': False})
 
 
@@ -75,8 +77,9 @@ def retail_exchange_rate_api(request):
     cache_key = f'broker:retail:fx:{date or "today"}'
     cached = cache.get(cache_key)
     if cached is not None:
-        return Response({'ok': True, 'source': 'vcb', 'date': date, 'rows': cached,
-                         'cached': True})
+        return envelope(
+            {'ok': True, 'source': 'vcb', 'date': date, 'rows': cached,
+             'cached': True})
     try:
         frame = _get_retail().exchange_rate(date=date)
     except ValueError as exc:
@@ -87,5 +90,5 @@ def retail_exchange_rate_api(request):
             code='upstream_error') from exc
     rows = _frame_to_records(frame)
     cache.set(cache_key, rows, CACHE_TTL_SECONDS)
-    return Response({'ok': True, 'source': 'vcb', 'date': date, 'rows': rows,
+    return envelope({'ok': True, 'source': 'vcb', 'date': date, 'rows': rows,
                      'cached': False})
