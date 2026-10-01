@@ -14,6 +14,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
 
+from .envelope import envelope, paginated_envelope
 from .models import DailyPrice, IntradayBar, IntradayTick, StockProfile
 from .serializers import DailyPriceSerializer, StockProfileSerializer
 
@@ -74,10 +75,15 @@ class StockProfileListView(APIView):
         page = paginator.paginate_queryset(qs, request)
         if page is not None:
             serializer = StockProfileSerializer(page, many=True)
-            return paginator.get_paginated_response(serializer.data)
+            paged = paginator.get_paginated_response(serializer.data)
+            # Bọc cả khối phân trang trong `data`. `dict(paged.data)` vì paginator
+            # trả `Response`, không trả dict. Cursor ⇒ không có `count`.
+            return paginated_envelope(dict(paged.data))
 
+        # Nhánh fallback: phải bọc **giống hệt** nhánh trên, nếu không endpoint
+        # này có HAI shape cùng lúc.
         serializer = StockProfileSerializer(qs, many=True)
-        return Response({'results': serializer.data})
+        return paginated_envelope({'results': serializer.data})
 
 
 class StockProfileDetailView(APIView):
@@ -89,7 +95,7 @@ class StockProfileDetailView(APIView):
             profile = StockProfile.objects.get(symbol=symbol)
         except StockProfile.DoesNotExist:
             raise NotFound(f'Stock profile not found for {symbol}')
-        return Response(StockProfileSerializer(profile).data)
+        return envelope(StockProfileSerializer(profile).data)
 
 
 class DailyPriceCursorPagination(CoreCursorPagination):
@@ -114,12 +120,18 @@ class DailyPriceListView(APIView):
         page = paginator.paginate_queryset(qs, request)
         if page is not None:
             serializer = DailyPriceSerializer(page, many=True)
-            response = paginator.get_paginated_response(serializer.data)
-            response.data['symbol'] = symbol
-            return response
+            paged = paginator.get_paginated_response(serializer.data)
+            # `symbol` phải nằm BÊN TRONG `data`, **không** phải ngang hàng
+            # `data`/`meta`. Bản gốc ghi `response.data['symbol']`; bọc phẳng rồi
+            # ghi tiếp sẽ ra `{symbol, data, meta}` — vừa hỏng envelope vừa hỏng
+            # client. Nên copy khối phân trang ra dict, thêm `symbol`, rồi bọc.
+            page_body = dict(paged.data)
+            page_body['symbol'] = symbol
+            return paginated_envelope(page_body)
 
+        # Nhánh fallback: bọc giống hệt nhánh trên.
         serializer = DailyPriceSerializer(qs, many=True)
-        return Response({
+        return paginated_envelope({
             'symbol': symbol,
             'results': serializer.data,
         })
@@ -152,7 +164,7 @@ class StockChartView(APIView):
         # For intraday frames, return empty (not yet available in core_db)
         intraday_frames = ('1M', '5M', '15M', '1H', '2H', '4H')
         if timeframe in intraday_frames:
-            return Response({
+            return envelope({
                 'symbol': symbol,
                 'days': days,
                 'timeframe': timeframe,
@@ -212,7 +224,7 @@ class StockChartView(APIView):
                     ((last_close - first_close) / first_close) * 100, 2
                 )
         
-        return Response({
+        return envelope({
             'symbol': symbol,
             'days': days,
             'timeframe': timeframe,
@@ -249,7 +261,7 @@ class TrackedSymbolsView(APIView):
                     'note': item.note or '',
                 }
             )
-        return Response(payload)
+        return envelope(payload)
 
     def post(self, request):
         from user_workspace.models import Watchlist, WatchlistItem
@@ -280,7 +292,7 @@ class TrackedSymbolsView(APIView):
             symbol=symbol,
             defaults={'note': str(request.data.get('note') or '')[:255]},
         )
-        return Response(
+        return envelope(
             {
                 'id': item.pk,
                 'symbol': item.symbol,
@@ -316,7 +328,7 @@ class IntradayPricesView(APIView):
             .order_by('datetime')
         )
 
-        return Response({
+        return envelope({
             'symbol': symbol,
             'days': len(bars),
             'timeframe': timeframe,
@@ -363,7 +375,7 @@ class IntradayTapeView(APIView):
             .first()
         )
         if latest_tick is None:
-            return Response({
+            return envelope({
                 'symbol': symbol,
                 'trades': [],
                 'total': 0,
@@ -382,7 +394,7 @@ class IntradayTapeView(APIView):
         )
         age_seconds = max(int((served_at - latest_tick.timestamp).total_seconds()), 0)
 
-        return Response({
+        return envelope({
             'symbol': symbol,
             'trades': [
                 {

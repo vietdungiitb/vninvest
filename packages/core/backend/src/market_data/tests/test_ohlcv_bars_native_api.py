@@ -11,6 +11,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from identity_access.models import CoreTenant, UserProfile
+from market_data.tests.envelope import unwrapped_json
 from market_data.models import DailyPrice, IntradayBar, StockProfile
 
 User = get_user_model()
@@ -158,7 +159,7 @@ class OHLCVBarsDefaultModeTestCase(TestCase):
     def test_default_returns_200_with_bar_shape(self):
         resp = self.client.get(_URL.format(symbol='HPG'), {'timeframe': 'D'})
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        data = resp.json()
+        data = unwrapped_json(resp)
         self.assertEqual(data['symbol'], 'HPG')
         self.assertEqual(data['timeframe'], 'D')
         self.assertIsInstance(data['bars'], list)
@@ -170,7 +171,7 @@ class OHLCVBarsDefaultModeTestCase(TestCase):
 
     def test_bars_have_required_fields(self):
         resp = self.client.get(_URL.format(symbol='HPG'), {'timeframe': 'D'})
-        bars = resp.json()['bars']
+        bars = unwrapped_json(resp)['bars']
         self.assertTrue(len(bars) > 0)
         bar = bars[0]
         for field in ('timestamp', 'open', 'high', 'low', 'close', 'volume'):
@@ -179,11 +180,11 @@ class OHLCVBarsDefaultModeTestCase(TestCase):
 
     def test_snapshot_id_echoed_back(self):
         resp = self.client.get(_URL.format(symbol='HPG'), {'timeframe': 'D', 'snapshot_id': 'snap-42'})
-        self.assertEqual(resp.json()['snapshot_id'], 'snap-42')
+        self.assertEqual(unwrapped_json(resp)['snapshot_id'], 'snap-42')
 
     def test_bars_are_ascending_by_timestamp(self):
         resp = self.client.get(_URL.format(symbol='HPG'), {'timeframe': 'D'})
-        bars = resp.json()['bars']
+        bars = unwrapped_json(resp)['bars']
         if len(bars) >= 2:
             timestamps = [b['timestamp'] for b in bars]
             self.assertEqual(timestamps, sorted(timestamps))
@@ -224,7 +225,7 @@ class OHLCVBarsCursorBeforeTestCase(TestCase):
             'timeframe': 'D', 'before': str(cutoff), 'limit': '3',
         })
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        data = resp.json()
+        data = unwrapped_json(resp)
         bars = data['bars']
         self.assertLessEqual(len(bars), 3)
         for bar in bars:
@@ -235,14 +236,14 @@ class OHLCVBarsCursorBeforeTestCase(TestCase):
         resp = self.client.get(_URL.format(symbol='VCB'), {
             'timeframe': 'D', 'before': str(cutoff), 'limit': '3',
         })
-        self.assertLessEqual(len(resp.json()['bars']), 3)
+        self.assertLessEqual(len(unwrapped_json(resp)['bars']), 3)
 
     def test_has_more_before_true_when_more_data_exists(self):
         cutoff = self._ts_for_date(date(2025, 1, 1))
         resp = self.client.get(_URL.format(symbol='VCB'), {
             'timeframe': 'D', 'before': str(cutoff), 'limit': '3',
         })
-        data = resp.json()
+        data = unwrapped_json(resp)
         # 10 rows exist, limit=3 → has_more_before should be True
         self.assertTrue(data['has_more_before'])
 
@@ -252,7 +253,7 @@ class OHLCVBarsCursorBeforeTestCase(TestCase):
         resp = self.client.get(_URL.format(symbol='VCB'), {
             'timeframe': 'D', 'before': str(cutoff), 'limit': '100',
         })
-        self.assertFalse(resp.json()['has_more_after'])
+        self.assertFalse(unwrapped_json(resp)['has_more_after'])
 
     def test_iso8601_before_accepted(self):
         resp = self.client.get(_URL.format(symbol='VCB'), {
@@ -296,7 +297,7 @@ class OHLCVBarsCursorAfterTestCase(TestCase):
             'timeframe': 'D', 'after': str(cutoff), 'limit': '3',
         })
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        bars = resp.json()['bars']
+        bars = unwrapped_json(resp)['bars']
         for bar in bars:
             self.assertGreater(bar['timestamp'], cutoff)
 
@@ -306,7 +307,7 @@ class OHLCVBarsCursorAfterTestCase(TestCase):
             'timeframe': 'D', 'after': str(cutoff), 'limit': '100',
         })
         # Data exists before May 3
-        self.assertTrue(resp.json()['has_more_before'])
+        self.assertTrue(unwrapped_json(resp)['has_more_before'])
 
 
 class OHLCVBarsWindowModeTestCase(TestCase):
@@ -345,7 +346,7 @@ class OHLCVBarsWindowModeTestCase(TestCase):
             'timeframe': 'D', 'from': str(from_ts), 'to': str(to_ts),
         })
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        bars = resp.json()['bars']
+        bars = unwrapped_json(resp)['bars']
         for bar in bars:
             self.assertGreaterEqual(bar['timestamp'], from_ts)
             self.assertLessEqual(bar['timestamp'], to_ts)
@@ -356,7 +357,7 @@ class OHLCVBarsWindowModeTestCase(TestCase):
         resp = self.client.get(_URL.format(symbol='FPT'), {
             'timeframe': 'D', 'from': str(from_ts), 'to': str(to_ts),
         })
-        data = resp.json()
+        data = unwrapped_json(resp)
         # data exists before Jan 5 and after Jan 10
         self.assertTrue(data['has_more_before'])
         self.assertTrue(data['has_more_after'])
@@ -390,13 +391,13 @@ class OHLCVBarsIntradayTestCase(TestCase):
     def test_intraday_bars_returned_for_1h_timeframe(self):
         resp = self.client.get(_URL.format(symbol='ACB'), {'timeframe': '1H', 'limit': '5'})
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        data = resp.json()
+        data = unwrapped_json(resp)
         self.assertEqual(data['timeframe'], '1H')
         self.assertIsInstance(data['bars'], list)
 
     def test_bars_timestamp_is_unix_ms(self):
         resp = self.client.get(_URL.format(symbol='ACB'), {'timeframe': '1H'})
-        bars = resp.json()['bars']
+        bars = unwrapped_json(resp)['bars']
         if bars:
             ts = bars[0]['timestamp']
             self.assertIsInstance(ts, int)
@@ -435,7 +436,7 @@ class OHLCVBarsWeeklyTestCase(TestCase):
             'timeframe': 'W', 'before': '1800000000000',
         })
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        bars = resp.json()['bars']
+        bars = unwrapped_json(resp)['bars']
         # 28 daily rows → ~4 weekly bars
         self.assertGreater(len(bars), 0)
         # Each weekly bar covers a full week's OHLCV

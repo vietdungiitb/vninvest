@@ -34,7 +34,9 @@ from vninvest_core.exceptions import (
 from advisory.models import AdvisoryRecord
 from advisory.serializers import AdvisoryRecordSerializer
 
+from vninvest_core.api_envelope import envelope_response
 from identity_access.permissions import IsTenantActive
+from .envelope import adopt_envelope, envelope, envelope_schema, paginated_envelope
 from .global_symbol_planner import create_global_planner_run
 from .global_symbol_registry import sync_admin_group_symbol_set, sync_system_default_symbol_group
 from .models import DailyPrice, IntradayBar, IntradayTick, StockProfile
@@ -1345,7 +1347,9 @@ class StockManagementStockListView(APIView):
                 }
                 for profile in page
             ]
-            return paginator.get_paginated_response(results)
+            # Bọc cả khối phân trang. `dict(paged.data)` vì paginator trả
+            # `Response`, không trả dict. Phải bọc GIỐNG nhánh fallback dưới.
+            return paginated_envelope(dict(paginator.get_paginated_response(results).data))
 
         results = [
             {
@@ -1361,7 +1365,7 @@ class StockManagementStockListView(APIView):
             }
             for profile in qs
         ]
-        return Response({'results': results})
+        return paginated_envelope({'results': results})
 
 
 class StockManagementTechnicalsView(APIView):
@@ -1397,7 +1401,7 @@ class StockManagementTechnicalsView(APIView):
 
     def _build_response(self, symbols):
         if not symbols:
-            return Response({
+            return envelope({
                 'technicals': [],
                 'results': [],
                 'requested_count': 0,
@@ -1496,7 +1500,7 @@ class StockManagementTechnicalsView(APIView):
                 'range_position_pct': technical_payload.get('range_position_pct'),
                 'latest_close': technical_payload.get('latest_close') if technical_payload.get('latest_close') is not None else _round_or_none(latest_close),
             })
-        return Response({
+        return envelope({
             'technicals': results,
             'results': results,
             'requested_count': len(symbols),
@@ -1520,7 +1524,7 @@ class StockManagementTechnicalsView(APIView):
             ),
         ],
         responses={
-            200: OpenApiTypes.OBJECT,
+            200: envelope_response(),
             401: OpenApiTypes.OBJECT,
         },
         examples=[
@@ -1574,7 +1578,7 @@ class StockManagementDetailView(APIView):
         summary='Lấy hồ sơ mã cổ phiếu native',
         description='Endpoint native `/core/v1/stock-management/stocks/{symbol}/` trả về hồ sơ cơ bản của mã chứng khoán.',
         responses={
-            200: OpenApiTypes.OBJECT,
+            200: envelope_response(),
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
             404: OpenApiTypes.OBJECT,
@@ -1628,7 +1632,7 @@ class StockManagementDetailView(APIView):
             profile.metadata = metadata
             profile.save(update_fields=['metadata'])
 
-        return Response({
+        return envelope({
             'symbol': profile.symbol,
             'company_name': profile.company_name or metadata.get('overview', {}).get('company_name', ''),
             'exchange': profile.exchange,
@@ -1652,7 +1656,7 @@ class StockManagementOverviewView(APIView):
         summary='Lấy stock workspace overview native',
         description='Endpoint native `/core/v1/stock-management/stocks/{symbol}/overview/` cho Stock Detail và Whale Alerts.',
         responses={
-            200: OpenApiTypes.OBJECT,
+            200: envelope_response(),
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
             404: OpenApiTypes.OBJECT,
@@ -1752,7 +1756,7 @@ class StockManagementOverviewView(APIView):
             'session_facts_date': session_facts.session_date.isoformat() if session_facts else None,
             'session_facts_source': getattr(session_facts, 'source', None),
         }
-        return Response(payload)
+        return envelope(payload)
 
 
 class StockManagementChartView(APIView):
@@ -1779,7 +1783,7 @@ class StockManagementChartView(APIView):
             ),
         ],
         responses={
-            200: OpenApiTypes.OBJECT,
+            200: envelope_response(),
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
             404: OpenApiTypes.OBJECT,
@@ -1831,7 +1835,7 @@ class StockManagementChartView(APIView):
             'points': points,
             'technical': _compute_chart_technical_payload(points),
         }
-        return Response(payload)
+        return envelope(payload)
 
 
 class StockManagementDarkMoneyHistoryView(APIView):
@@ -1858,7 +1862,7 @@ class StockManagementDarkMoneyHistoryView(APIView):
             ),
         ],
         responses={
-            200: _STOCK_DARK_MONEY_HISTORY_SCHEMA,
+            200: envelope_schema(_STOCK_DARK_MONEY_HISTORY_SCHEMA),
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
             404: OpenApiTypes.OBJECT,
@@ -2024,7 +2028,7 @@ class StockManagementDarkMoneyHistoryView(APIView):
         latest_signal_type = dark_flow_series[-1]['signal_type'] if dark_flow_series else 'none'
         latest_strength = dark_flow_series[-1]['strength'] if dark_flow_series else 0.0
 
-        return Response(
+        return envelope(
             {
                 'ok': True,
                 'symbol': symbol,
@@ -2064,7 +2068,7 @@ class StockManagementOrderFlowView(APIView):
             ),
         ],
         responses={
-            200: OpenApiTypes.OBJECT,
+            200: envelope_response(),
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
         },
@@ -2128,7 +2132,7 @@ class StockManagementOrderFlowView(APIView):
         if alerts and alerts[0].session_date is not None:
             session_date = alerts[0].session_date.isoformat()
 
-        return Response({
+        return envelope({
             'symbol': symbol,
             'window': window,
             'session_date': session_date,
@@ -2237,7 +2241,7 @@ class StockManagementNewsView(APIView):
         }
         
         cache.set(cache_key, response_data, timeout=7200)  # 2 hours — news changes infrequently
-        return Response(response_data)
+        return envelope(response_data)
 
 
 class StockManagementNewsAISummaryView(APIView):
@@ -2248,14 +2252,14 @@ class StockManagementNewsAISummaryView(APIView):
         summary='Lấy hoặc yêu cầu AI news summary native stub',
         description='Endpoint native `/core/v1/stock-management/stocks/{symbol}/news/ai-summary/` hiện trả về stub thống nhất cho client.',
         responses={
-            200: _STOCK_NEWS_AI_SUMMARY_SCHEMA,
+            200: envelope_schema(_STOCK_NEWS_AI_SUMMARY_SCHEMA),
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
         },
     )
 
     def get(self, request, symbol):
-        return Response({
+        return envelope({
             'symbol': symbol.upper(),
             'summary': None,
             'note': 'ai_summary_not_available_in_native',
@@ -2272,12 +2276,13 @@ class StockManagementNewsAISummaryView(APIView):
                 },
             },
         },
-        responses={
-            200: _STOCK_NEWS_AI_SUMMARY_SCHEMA,
+responses={
+            200: envelope_schema(_STOCK_NEWS_AI_SUMMARY_SCHEMA),
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
         },
     )
+
     def post(self, request, symbol):
         return self.get(request, symbol)
 
@@ -2775,7 +2780,7 @@ class StockManagementAIAdvisorySessionView(APIView):
         record = _latest_ai_record(request.user, normalized_symbol, selected_trade_date=selected_trade_date)
         if record is None:
             # Return 200 with empty payload (legacy compat) - not an error
-            return Response(
+            return envelope(
                 {
                     'queued': False,
                     'symbol': normalized_symbol,
@@ -2806,7 +2811,7 @@ class StockManagementAIAdvisorySessionView(APIView):
         )
         if payload.get('aggregate') and include_benchmarks:
             payload['aggregate']['benchmarks'] = {'enabled': True, 'rows': []}
-        return Response(payload, status=status.HTTP_200_OK)
+        return envelope(payload, status=status.HTTP_200_OK)
 
     def post(self, request, symbol):
         from advisory.views import AdvisoryRefreshView
@@ -2841,7 +2846,12 @@ class StockManagementAIAdvisorySessionView(APIView):
             # đích, không phải thay thế âm thầm.
             record = _latest_ai_record(request.user, normalized_symbol)
         if record is None:
-            return refresh_response
+            # `adopt_envelope`: `AdvisoryRefreshView` (app khác) đã bọc, nên hôm
+            # nay đây là no-op. Nhưng nếu trả thẳng và app kia chưa bọc, endpoint
+            # này có HAI shape cùng lúc — đúng lỗi `service_ops` từng mắc và không
+            # test nào bắt được. Nhánh `Response(payload)` phía trên luôn bọc, nên
+            # phải bọc cả nhánh này. Không đụng nhánh lỗi ở trên.
+            return adopt_envelope(refresh_response)
 
         payload = _build_ai_session_payload(record, contract_version='v1')
         payload['task_id'] = _advisory_field(refresh_response, 'task_id')
@@ -2851,7 +2861,7 @@ class StockManagementAIAdvisorySessionView(APIView):
             or payload.get('message') or 'Đã tạo advisory AI.'
         )
         payload['queued'] = payload.get('queued', False)
-        return Response(payload, status=refresh_response.status_code)
+        return envelope(payload, status=refresh_response.status_code)
 
 
 class StockManagementAIAdvisoryObservabilityView(APIView):
@@ -2889,7 +2899,7 @@ class StockManagementAIAdvisoryObservabilityView(APIView):
 
         record = _latest_ai_record(request.user, normalized_symbol)
         if record is None:
-            return Response(
+            return envelope(
                 {
                     'ok': True,
                     'symbol': normalized_symbol,
@@ -2924,7 +2934,7 @@ class StockManagementAIAdvisoryObservabilityView(APIView):
         )
         payload['symbol'] = normalized_symbol
         payload['governance_bucket'] = governance_bucket
-        return Response(payload, status=status.HTTP_200_OK)
+        return envelope(payload, status=status.HTTP_200_OK)
 
     def post(self, request, symbol):
         normalized_symbol = _normalize_ai_symbol(symbol)
@@ -2933,7 +2943,7 @@ class StockManagementAIAdvisoryObservabilityView(APIView):
 
         record = _latest_ai_record(request.user, normalized_symbol)
         if record is None:
-            return Response({'ok': True, 'symbol': normalized_symbol, 'received': True}, status=status.HTTP_201_CREATED)
+            return envelope({'ok': True, 'symbol': normalized_symbol, 'received': True}, status=status.HTTP_201_CREATED)
 
         context = _ai_context_snapshot(record)
         events = _dict_list(context.get('observability_events'))
@@ -2962,7 +2972,7 @@ class StockManagementAIAdvisoryObservabilityView(APIView):
         context['observability_events'] = events[-20:]
         context['observability_telemetry'] = telemetry_payload
         _save_advisory_context(record, context)
-        return Response({'ok': True, 'symbol': normalized_symbol, 'received': True}, status=status.HTTP_201_CREATED)
+        return envelope({'ok': True, 'symbol': normalized_symbol, 'received': True}, status=status.HTTP_201_CREATED)
 
 
 class StockManagementAIAdvisoryComponentsGenerateView(APIView):
@@ -3026,7 +3036,7 @@ class StockManagementAIAdvisoryComponentsGenerateView(APIView):
             'source': 'native_components_generate',
         }
 
-        return Response(
+        return envelope(
             {
                 'symbol': normalized_symbol,
                 'status': record.status,
@@ -3056,12 +3066,12 @@ class StockManagementAIAdvisoryComponentsDeletedView(APIView):
         record, error_response = _find_symbol_advisory_record(request.user, normalized_symbol, advisory_id=advisory_id)
         if error_response is not None:
             if error_response.status_code == status.HTTP_404_NOT_FOUND:
-                return Response({'symbol': normalized_symbol, 'deleted': []}, status=status.HTTP_200_OK)
+                return envelope({'symbol': normalized_symbol, 'deleted': []}, status=status.HTTP_200_OK)
             return error_response
 
         context = _ai_context_snapshot(record)
         deleted_components = _normalize_component_collection(context.get('deleted_components'))[0]
-        return Response({'symbol': normalized_symbol, 'deleted': deleted_components}, status=status.HTTP_200_OK)
+        return envelope({'symbol': normalized_symbol, 'deleted': deleted_components}, status=status.HTTP_200_OK)
 
     def delete(self, request, symbol):
         normalized_symbol = _normalize_ai_symbol(symbol)
@@ -3072,7 +3082,7 @@ class StockManagementAIAdvisoryComponentsDeletedView(APIView):
         record, error_response = _find_symbol_advisory_record(request.user, normalized_symbol, advisory_id=advisory_id)
         if error_response is not None:
             if error_response.status_code == status.HTTP_404_NOT_FOUND:
-                return Response({'symbol': normalized_symbol, 'deleted_count': 0, 'message': 'Đã xóa toàn bộ deleted tabs.'}, status=status.HTTP_200_OK)
+                return envelope({'symbol': normalized_symbol, 'deleted_count': 0, 'message': 'Đã xóa toàn bộ deleted tabs.'}, status=status.HTTP_200_OK)
             return error_response
 
         context = _ai_context_snapshot(record)
@@ -3080,7 +3090,7 @@ class StockManagementAIAdvisoryComponentsDeletedView(APIView):
         deleted_count = len(deleted_components)
         context['deleted_components'] = []
         _save_advisory_context(record, context)
-        return Response({'symbol': normalized_symbol, 'deleted_count': deleted_count, 'message': 'Đã xóa toàn bộ deleted tabs.'}, status=status.HTTP_200_OK)
+        return envelope({'symbol': normalized_symbol, 'deleted_count': deleted_count, 'message': 'Đã xóa toàn bộ deleted tabs.'}, status=status.HTTP_200_OK)
 
 
 class StockManagementAIAdvisorySummaryRegenerateView(APIView):
@@ -3156,7 +3166,7 @@ class StockManagementAIAdvisorySummaryRegenerateView(APIView):
         context['aggregate'] = aggregate
         _save_advisory_context(record, context)
 
-        return Response(
+        return envelope(
             {
                 'ok': True,
                 'symbol': normalized_symbol,
@@ -3254,7 +3264,7 @@ class StockManagementAdvisoryCompToggleView(APIView):
             deleted_components[component_index]['updated_at'] = timezone.now().isoformat()
         _update_component_lists(record, components, deleted_components)
         updated_component = components[component_index] if component_bucket == 'components' else deleted_components[component_index]
-        return Response({'component': updated_component}, status=status.HTTP_200_OK)
+        return envelope({'component': updated_component}, status=status.HTTP_200_OK)
 
 
 class StockManagementAdvisoryCompRefreshView(APIView):
@@ -3279,7 +3289,7 @@ class StockManagementAdvisoryCompRefreshView(APIView):
         else:
             deleted_components[component_index] = refreshed_component
         _update_component_lists(record, components, deleted_components)
-        return Response({'generated_by_ai': False, 'component': refreshed_component, 'message': 'Đã làm mới tab AI đang chọn.'}, status=status.HTTP_200_OK)
+        return envelope({'generated_by_ai': False, 'component': refreshed_component, 'message': 'Đã làm mới tab AI đang chọn.'}, status=status.HTTP_200_OK)
 
 
 class StockManagementAdvisoryCompRestoreView(APIView):
@@ -3305,7 +3315,7 @@ class StockManagementAdvisoryCompRestoreView(APIView):
         components.append(restored_component)
         components.sort(key=lambda item: _int_value(item.get('id'), 0))
         _update_component_lists(record, components, deleted_components)
-        return Response({'component': restored_component}, status=status.HTTP_200_OK)
+        return envelope({'component': restored_component}, status=status.HTTP_200_OK)
 
 
 class StockManagementAdvisoryCompDetailView(APIView):
@@ -3319,7 +3329,7 @@ class StockManagementAdvisoryCompDetailView(APIView):
             return error_response
         if record is None or component is None:
             raise NotFoundErrorException(detail='Component không tồn tại.', code='not_found')
-        return Response({'id': component['id'], 'component': component, 'deleted_components': deleted_components}, status=status.HTTP_200_OK)
+        return envelope({'id': component['id'], 'component': component, 'deleted_components': deleted_components}, status=status.HTTP_200_OK)
 
     def delete(self, request, pk):
         advisory_id = str(request.query_params.get('advisory_id') or '').strip() or None
@@ -3353,7 +3363,7 @@ class StockManagementPortfolioNewsDigestView(APIView):
             'Hiện trả về stub facts-first để frontend render lane digest mà không phụ thuộc compat `/api`.'
         ),
         responses={
-            200: _PORTFOLIO_NEWS_DIGEST_SCHEMA,
+            200: envelope_schema(_PORTFOLIO_NEWS_DIGEST_SCHEMA),
             401: OpenApiTypes.OBJECT,
         },
         examples=[
@@ -3367,7 +3377,7 @@ class StockManagementPortfolioNewsDigestView(APIView):
         ],
     )
     def get(self, request):
-        return Response({'news': [], 'note': 'news_digest_not_available_in_native'})
+        return envelope({'news': [], 'note': 'news_digest_not_available_in_native'})
 
 
 # ---------------------------------------------------------------------------
@@ -3394,7 +3404,7 @@ class StockManagementGroupsView(APIView):
             ),
         ],
         responses={
-            200: _STOCK_MANAGEMENT_GROUP_LIST_SCHEMA,
+            200: envelope_schema(_STOCK_MANAGEMENT_GROUP_LIST_SCHEMA),
             401: OpenApiTypes.OBJECT,
         },
         examples=[
@@ -3432,7 +3442,7 @@ class StockManagementGroupsView(APIView):
         groups.sort(key=lambda g: _group_sort_key_cached(g, group_meta_map))
         symbols = [m.symbol for g in groups for m in g.members.all()]
         price_map = _build_price_change_map(symbols) if include_prices else {}
-        return Response([
+        return envelope([
             _serialize_cached_group(g, index, price_map, group_meta_map)
             for index, g in enumerate(groups)
         ])
@@ -3643,7 +3653,7 @@ class StockManagementSeedView(APIView):
         if not message_parts:
             message_parts.append('không có thay đổi')
 
-        return Response({
+        return envelope({
             'created': result['created'],
             'updated': result['updated'],
             'added_symbols': result['added_symbols'],
@@ -3674,7 +3684,7 @@ class StockManagementSyncView(APIView):
         )
         symbols = sorted({*(str(symbol).upper().strip() for symbol in watchlist_symbols), *(str(symbol).upper().strip() for symbol in tracked_symbols), *(str(symbol).upper().strip() for symbol in alert_symbols)} - {''})
         if not symbols:
-            return Response({
+            return envelope({
                 'synced': [],
                 'total_symbols': 0,
                 'requested_symbols': 0,
@@ -3696,7 +3706,7 @@ class StockManagementSyncView(APIView):
                 'requested_symbols': len(symbols),
             },
         )
-        return Response({
+        return envelope({
             'synced': symbols,
             'total_symbols': len(symbols),
             'requested_symbols': len(symbols),
@@ -3965,7 +3975,7 @@ class StockManagementOHLCVBarsView(APIView):
                              description='Client snapshot correlation ID, echo lại trong response'),
         ],
         responses={
-            200: OpenApiTypes.OBJECT,
+            200: envelope_response(),
             400: OpenApiTypes.OBJECT,
             401: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
@@ -4087,7 +4097,7 @@ class StockManagementOHLCVBarsView(APIView):
             next_before = bars[0]['timestamp'] if bars else None
             next_after = bars[-1]['timestamp'] if bars else None
 
-        return Response({
+        return envelope({
             'symbol': symbol,
             'timeframe': timeframe,
             'bars': bars,
@@ -4110,8 +4120,8 @@ class StockManagementTrackedSymbolsView(APIView):
             'Danh sách đã enrich với price snapshot và profile summary để frontend render shortlist trực tiếp.'
         ),
         responses={
-            200: _TRACKED_SYMBOL_LIST_SCHEMA,
-            401: OpenApiTypes.OBJECT,
+200: envelope_schema(_TRACKED_SYMBOL_LIST_SCHEMA),
+               401: OpenApiTypes.OBJECT,
         },
         examples=[
             OpenApiExample(
@@ -4143,7 +4153,7 @@ class StockManagementTrackedSymbolsView(APIView):
         symbols = [row.symbol for row in tracked_symbols]
         price_map = _build_price_change_map(symbols)
         profile_map = _build_profile_map(symbols, price_map)
-        return Response([
+        return envelope([
             _serialize_tracked_symbol_row(row, price_map, profile_map)
             for row in tracked_symbols
         ])
@@ -4156,7 +4166,7 @@ class StockManagementTrackedSymbolsView(APIView):
         ),
         request=_TRACKED_SYMBOL_CREATE_REQUEST_SCHEMA,
         responses={
-            201: _TRACKED_SYMBOL_SCHEMA,
+            201: envelope_schema(_TRACKED_SYMBOL_SCHEMA),
             400: OpenApiTypes.OBJECT,
             401: OpenApiTypes.OBJECT,
             409: OpenApiTypes.OBJECT,
@@ -4222,7 +4232,7 @@ class StockManagementTrackedSymbolsView(APIView):
 
         price_map = _build_price_change_map([symbol])
         profile_map = _build_profile_map([symbol], price_map)
-        return Response(
+        return envelope(
             _serialize_tracked_symbol_row(tracked_symbol, price_map, profile_map),
             status=status.HTTP_201_CREATED,
         )
@@ -4237,7 +4247,7 @@ class StockManagementTrackedSymbolDetailView(APIView):
         description='Endpoint native `/core/v1/stock-management/tracked-symbols/{id}/` cho cập nhật threshold hoặc source group.',
         request=_TRACKED_SYMBOL_PATCH_REQUEST_SCHEMA,
         responses={
-            200: _TRACKED_SYMBOL_SCHEMA,
+            200: envelope_schema(_TRACKED_SYMBOL_SCHEMA),
             400: OpenApiTypes.OBJECT,
             401: OpenApiTypes.OBJECT,
             404: OpenApiTypes.OBJECT,
@@ -4283,7 +4293,7 @@ class StockManagementTrackedSymbolDetailView(APIView):
 
         price_map = _build_price_change_map([tracked_symbol.symbol])
         profile_map = _build_profile_map([tracked_symbol.symbol], price_map)
-        return Response(_serialize_tracked_symbol_row(tracked_symbol, price_map, profile_map))
+        return envelope(_serialize_tracked_symbol_row(tracked_symbol, price_map, profile_map))
 
     @extend_schema(
         summary='Xóa tracked symbol native',
@@ -4312,7 +4322,7 @@ class StockManagementTrackedSymbolBulkThresholdView(APIView):
         ),
         request=_TRACKED_SYMBOL_BULK_THRESHOLD_REQUEST_SCHEMA,
         responses={
-            200: _TRACKED_SYMBOL_BULK_THRESHOLD_RESPONSE_SCHEMA,
+            200: envelope_schema(_TRACKED_SYMBOL_BULK_THRESHOLD_RESPONSE_SCHEMA),
             400: OpenApiTypes.OBJECT,
             401: OpenApiTypes.OBJECT,
         },
@@ -4386,7 +4396,7 @@ class StockManagementTrackedSymbolBulkThresholdView(APIView):
         symbols = [row.symbol for row in updated_rows]
         price_map = _build_price_change_map(symbols)
         profile_map = _build_profile_map(symbols, price_map)
-        return Response({
+        return envelope({
             'updated_count': updated_count,
             'whale_alert_threshold_million': _to_float(threshold_million),
             'applied_ids': sorted(found_ids),
@@ -4401,7 +4411,7 @@ class StockManagementPriceAlertsView(APIView):
     def get(self, request):
         alerts = list(_price_alerts_queryset_for_user(request.user).order_by('-created_at', '-pk'))
         price_map = _build_price_change_map([alert.symbol for alert in alerts])
-        return Response([_serialize_price_alert_row(alert, price_map) for alert in alerts])
+        return envelope([_serialize_price_alert_row(alert, price_map) for alert in alerts])
 
     def post(self, request):
         try:
@@ -4429,7 +4439,7 @@ class StockManagementPriceAlertsView(APIView):
             return Response({'detail': 'Cảnh báo giá này đã tồn tại.'}, status=status.HTTP_400_BAD_REQUEST)
 
         price_map = _build_price_change_map([symbol])
-        return Response(_serialize_price_alert_row(alert, price_map), status=status.HTTP_201_CREATED)
+        return envelope(_serialize_price_alert_row(alert, price_map), status=status.HTTP_201_CREATED)
 
 
 class StockManagementPriceAlertDetailView(APIView):
@@ -4483,7 +4493,7 @@ class StockManagementPriceAlertDetailView(APIView):
             alert.save(update_fields=update_fields)
 
         price_map = _build_price_change_map([alert.symbol])
-        return Response(_serialize_price_alert_row(alert, price_map))
+        return envelope(_serialize_price_alert_row(alert, price_map))
 
     def delete(self, request, pk):
         alert = _get_price_alert_or_404_for_user(request.user, pk)
@@ -4500,7 +4510,7 @@ class StockManagementPriceAlertTriggerView(APIView):
         alert.last_triggered_at = timezone.now()
         alert.save(update_fields=['last_triggered_at', 'updated_at'])
         price_map = _build_price_change_map([alert.symbol])
-        return Response(_serialize_price_alert_row(alert, price_map))
+        return envelope(_serialize_price_alert_row(alert, price_map))
 
 
 class StockManagementGroupDetailView(APIView):
@@ -4514,7 +4524,7 @@ class StockManagementGroupDetailView(APIView):
         groups = list(CachedSymbolGroup.objects.filter(is_active=True).only('id', 'group_name'))
         groups.sort(key=_group_sort_key_cached)
         index_map = {g.pk: index for index, g in enumerate(groups)}
-        return Response(_serialize_cached_group(group, index_map.get(group.pk, 0), price_map))
+        return envelope(_serialize_cached_group(group, index_map.get(group.pk, 0), price_map))
 
     def patch(self, request, group_id):
         return Response(
@@ -4537,7 +4547,7 @@ class StockManagementGroupItemsView(APIView):
         group = _get_cached_group_or_404(group_id)
         symbols = [m.symbol for m in group.members.all()]
         price_map = _build_price_change_map(symbols)
-        return Response([_serialize_stock_management_item(m, price_map) for m in group.members.all()])
+        return envelope([_serialize_stock_management_item(m, price_map) for m in group.members.all()])
 
 
 class StockManagementItemDetailView(APIView):
@@ -4547,7 +4557,7 @@ class StockManagementItemDetailView(APIView):
     def get(self, request, item_id):
         item = _get_watchlist_item_or_404_for_user(request.user, item_id)
         price_map = _build_price_change_map([item.symbol])
-        return Response(_serialize_stock_management_item(item, price_map))
+        return envelope(_serialize_stock_management_item(item, price_map))
 
     def delete(self, request, item_id):
         return Response(

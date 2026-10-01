@@ -23,6 +23,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from identity_access.models import CoreTenant
+from market_data.tests.envelope import unwrapped
 from market_data.models import StockProfile
 from market_data.stock_mgmt_native_views import (
     StockManagementGroupsView,
@@ -66,13 +67,13 @@ class StockManagementCompatApiRouteTests(TestCase):
 
         seed_response = self.client.post('/core/v1/stock-management/seed/', {}, format='json')
         self.assertEqual(seed_response.status_code, status.HTTP_200_OK)
-        self.assertIn('nhóm', seed_response.data['message'].lower())
+        self.assertIn('nhóm', unwrapped(seed_response)['message'].lower())
 
         groups_response = self.client.get('/core/v1/stock-management/groups/')
         self.assertEqual(groups_response.status_code, status.HTTP_200_OK)
-        self.assertGreater(len(groups_response.data), 0)
+        self.assertGreater(len(unwrapped(groups_response)), 0)
 
-        first_group = groups_response.data[0]
+        first_group = unwrapped(groups_response)[0]
         self.assertIn('group_type', first_group)
         self.assertIn('color', first_group)
         self.assertIn('order', first_group)
@@ -93,7 +94,7 @@ class StockManagementCompatApiRouteTests(TestCase):
 
         groups_response = self.client.get('/core/v1/stock-management/groups/?page=1', HTTP_AUTHORIZATION=auth_header)
         self.assertEqual(groups_response.status_code, status.HTTP_200_OK)
-        self.assertIsInstance(groups_response.data, list)
+        self.assertIsInstance(unwrapped(groups_response), list)
 
         seed_response = self.client.post('/core/v1/stock-management/seed/', {}, format='json', HTTP_AUTHORIZATION=auth_header)
         self.assertEqual(seed_response.status_code, status.HTTP_200_OK)
@@ -104,11 +105,11 @@ class StockManagementCompatApiRouteTests(TestCase):
 
         tracked_list_response = self.client.get('/core/v1/stock-management/tracked-symbols/', HTTP_AUTHORIZATION=auth_header)
         self.assertEqual(tracked_list_response.status_code, status.HTTP_200_OK)
-        self.assertIsInstance(tracked_list_response.data, list)
+        self.assertIsInstance(unwrapped(tracked_list_response), list)
 
         price_alert_list_response = self.client.get('/core/v1/stock-management/price-alerts/?page=1', HTTP_AUTHORIZATION=auth_header)
         self.assertEqual(price_alert_list_response.status_code, status.HTTP_200_OK)
-        self.assertIsInstance(price_alert_list_response.data, list)
+        self.assertIsInstance(unwrapped(price_alert_list_response), list)
 
         technicals_response = self.client.post('/core/v1/stock-management/technicals/bulk/', {'symbols': ['FPT']}, format='json', HTTP_AUTHORIZATION=auth_header)
         self.assertEqual(technicals_response.status_code, status.HTTP_200_OK)

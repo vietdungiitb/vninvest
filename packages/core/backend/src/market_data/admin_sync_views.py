@@ -15,6 +15,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from user_workspace.permissions import TenantScopePermission
+from .envelope import envelope
 from .global_symbol_planner import create_global_planner_run
 from .global_symbol_registry import sync_admin_group_symbol_set, sync_system_default_symbol_group
 from .vnbroker_adapter import fetch_symbol_group_members
@@ -38,7 +39,7 @@ class AdminOpsMarketGroupsSyncView(APIView):
             
         task_result = sync_market_groups.delay(user_id=request.user.id, mode=mode)
         
-        return Response({
+        return envelope({
             "ok": True,
             "status": "accepted",
             "task_id": task_result.id,
@@ -74,7 +75,7 @@ class AdminOpsMarketGroupsPreviewView(APIView):
             except Exception as e:
                 preview[group] = {"count": 0, "error": str(e)}
         
-        return Response({
+        return envelope({
             "estimated_total_symbols": total_estimated,
             "groups": preview,
         })
@@ -107,7 +108,7 @@ class AdminOpsSystemDefaultsSeedView(APIView):
                 errors.append(error_msg)
                 results[group_id] = {"seeded": 0, "error": str(e)}
         
-        return Response({
+        return envelope({
             "ok": len(errors) == 0,
             "results": results,
             "errors": errors,

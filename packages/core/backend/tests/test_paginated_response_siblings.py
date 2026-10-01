@@ -21,6 +21,17 @@ dùng thấy `undefined` nên nhiều khi thành `0`.
 
 Test ở đây **ghim** vị trí hiện tại. Khi ai đó đổi hình dạng F6 mà quên sửa 2
 chỗ này, test đỏ ngay thay vì để lỗi xuất hiện trên UI.
+
+**Trạng thái sau B5 (2026-10-01)**
+-------------------------------
+- `market_data/views.py` (`DailyPriceListView`): **đã bọc** F6 ⇒ `symbol` nằm
+  **bên trong** `data`. Test `test_market_data_paginated_response_puts_symbol_beside_results`
+  đã cập nhật theo hợp đồng mới — đúng như kịch bản docstring này cảnh báo.
+- `service_ops/views/scheduler.py`: **đã bọc** F6 ở commit `588e46051` (nằm trong
+  lịch sử trước HEAD `58edfb66b`) nhưng test
+  `test_scheduler_still_writes_job_key_beside_results` **chưa** được cập nhật
+  ⇒ đỏ sẵn ở HEAD, **không** do B5-`market_data`. Không sửa ở đây: file đó thuộc
+  app `service_ops`, ngoài phạm vi.
 """
 
 from decimal import Decimal
@@ -37,7 +48,25 @@ class PaginatedResponseSiblingsTests(TestCase):
     """`symbol` và `job_key` phải nằm cùng cấp với `results` — như hôm nay."""
 
     def test_market_data_paginated_response_puts_symbol_beside_results(self):
+        """`symbol` phải nằm **bên trong** `data`, cùng cấp với `results`.
+
+        **Cập nhật ở B5** — hợp đồng F6 đã đổi, và docstring gốc của file này đã
+        cảnh báo đúng việc đó:
+
+            "nếu sau này phân trang được bọc `{data: {results, next, previous},
+            meta}` (đúng như kế hoạch API-02 đang cân nhắc cho họ F6), thì
+            `response.data['symbol']` sẽ ghi ra **ngoài** `data`"
+
+        Kịch bản mà docstring đó cảnh báo **đã xảy ra** và **đã được sửa**:
+        `market_data/views.py` nay copy khối phân trang ra dict, thêm `symbol`
+        vào dict đó, rồi mới bọc — nên `symbol` nằm trong `data`, không nằm
+        ngang hàng `data`/`meta`.
+
+        Bản gốc khẳng định `assertNotIn('data', data)`; khẳng định đó **đúng với
+        hợp đồng cũ** và **sai** với hợp đồng mới, nên phải đổi theo.
+        """
         from market_data.models import DailyPrice
+        from market_data.tests.envelope import unwrapped
         from market_data.views import DailyPriceListView
 
         user = User.objects.create_user(username='f6a', password='x')
@@ -55,16 +84,18 @@ class PaginatedResponseSiblingsTests(TestCase):
         # `market_data/urls.py:9`: `daily-prices/<str:symbol>/`.
         out = DailyPriceListView.as_view()(request, symbol='VNM')
         self.assertEqual(out.status_code, 200)
-        data = out.data
 
-        # Hình dạng hôm nay — key ngang hàng với `results`.
+        # Hình dạng mới: `{data: {next, previous, results, symbol}, meta}`.
+        self.assertIn('data', out.data)
+        self.assertIn('meta', out.data)
+        self.assertNotIn(
+            'symbol', out.data,
+            '`symbol` phải nằm trong `data`, không được chui lên tầng ngoài — '
+            'client đọc `data.symbol` sẽ là undefined mà không có lỗi nào')
+
+        data = unwrapped(out)
         self.assertIn('results', data)
         self.assertIn('symbol', data)
-        self.assertNotIn(
-            'data', data,
-            'nếu `symbol` đã chui xuống `data.symbol` thì client đọc '
-            '`data.symbol` đang là undefined — F6 đã bị bọc mà chỗ này '
-            'chưa được sửa')
         self.assertEqual(data['symbol'], 'VNM')
 
     def test_scheduler_still_writes_job_key_beside_results(self):

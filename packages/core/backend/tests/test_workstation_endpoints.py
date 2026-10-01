@@ -32,6 +32,7 @@ from market_data.models import DailyPrice, IntradayTick, StockProfile
 from market_serving.models import SessionFacts, SessionFactsBucket, SymbolSnapshot
 from market_serving.native_views import RealtimeDepthChartView, RealtimeIntradayView, RealtimeWhaleFeedAggregateView
 from market_data.stock_mgmt_native_views import StockManagementOverviewView
+from market_data.tests.envelope import unwrapped
 from signal_intelligence.models import WhaleAlertCanonical, UnifiedAlert
 
 
@@ -224,7 +225,7 @@ class WorkstationEndpointTests(TestCase):
         response = self.client.get('/core/v1/stock-management/stocks/FPT/overview/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        data = response.data
+        data = unwrapped(response)
         self.assertEqual(data['symbol'], 'FPT')
 
         # Verify SessionFacts fields are present
@@ -257,7 +258,7 @@ class WorkstationEndpointTests(TestCase):
         response = self.client.get('/core/v1/stock-management/stocks/FPT/overview/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        data = response.data
+        data = unwrapped(response)
         self.assertEqual(data['symbol'], 'FPT')
 
         # SessionFacts fields should be None/0 when not available
