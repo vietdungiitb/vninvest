@@ -17,6 +17,8 @@ from signal_intelligence.models import UnifiedAlert, UserAlertDelivery
 from service_ops.models import ConfigChangeAudit
 from service_ops.registry import ensure_service_registry
 
+from service_ops.tests.envelope import unwrapped
+
 User = get_user_model()
 
 
@@ -65,7 +67,7 @@ class SocSignalsRulesApiTests(TestCase):
         response = self.client.get('/api/soc/signals/rules/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        rules = response.data['rules']
+        rules = unwrapped(response)['rules']
         self.assertEqual(len(rules), 8)
         first = {rule['rule_key'] for rule in rules}
         self.assertIn('whale_threshold_vnd', first)
@@ -88,11 +90,11 @@ class SocSignalsRulesApiTests(TestCase):
         }, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(response.data['pending'])
-        self.assertIsNotNone(response.data['request_id'])
-        self.assertEqual(response.data['rule_key'], 'whale_threshold_vnd')
-        self.assertEqual(response.data['after']['whale_threshold_vnd'], 200_000_000)
-        self.assertEqual(response.data['before']['whale_threshold_vnd'], 500_000_000)
+        self.assertTrue(unwrapped(response)['pending'])
+        self.assertIsNotNone(unwrapped(response)['request_id'])
+        self.assertEqual(unwrapped(response)['rule_key'], 'whale_threshold_vnd')
+        self.assertEqual(unwrapped(response)['after']['whale_threshold_vnd'], 200_000_000)
+        self.assertEqual(unwrapped(response)['before']['whale_threshold_vnd'], 500_000_000)
 
         audits = ConfigChangeAudit.objects.filter(action='request')
         self.assertEqual(audits.count(), before_count + 1)
@@ -108,7 +110,7 @@ class SocSignalsRulesApiTests(TestCase):
         }, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data['code'], 'INVALID_RULE_KEY')
+        self.assertEqual(unwrapped(response)['code'], 'INVALID_RULE_KEY')
 
     def test_rule_request_rejected_on_invalid_value_400(self):
         """threshold dưới floor 1.000.000 VNĐ → validate config chặn, không tạo audit."""
@@ -118,7 +120,7 @@ class SocSignalsRulesApiTests(TestCase):
         }, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data['code'], 'RULE_CHANGE_REJECTED')
+        self.assertEqual(unwrapped(response)['code'], 'RULE_CHANGE_REJECTED')
         self.assertEqual(ConfigChangeAudit.objects.filter(action='request').count(), 0)
 
     def test_rule_feedback_down_suppresses_delivery(self):
@@ -138,7 +140,7 @@ class SocSignalsRulesApiTests(TestCase):
         self.assertEqual(delivery.delivery_state, UserAlertDelivery.DeliveryStateChoices.SUPPRESSED)
         self.assertEqual(delivery.suppression_reason, 'False positive phiên ATC')
         self.assertEqual(delivery.metadata.get('feedback_signal'), 'down')
-        self.assertEqual(response.data['signal'], 'down')
+        self.assertEqual(unwrapped(response)['signal'], 'down')
 
     def test_rule_feedback_up_acknowledges_new_delivery(self):
         """thumbs up → new→acknowledged."""
@@ -162,7 +164,7 @@ class SocSignalsRulesApiTests(TestCase):
         }, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(response.data['code'], 'ALERT_NOT_FOUND')
+        self.assertEqual(unwrapped(response)['code'], 'ALERT_NOT_FOUND')
 
     def test_performance_proxy_and_top_noisy(self):
         """3 ack + 1 suppressed belong whale → precision 0.75, hit 1.0, top_noisy whale đầu bảng."""
@@ -204,17 +206,17 @@ class SocSignalsRulesApiTests(TestCase):
         response = self.client.get('/api/soc/signals/rules/performance/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        overall = response.data['overall']
+        overall = unwrapped(response)['overall']
         self.assertEqual(overall['alert_count'], 4)
         self.assertEqual(overall['acked'], 3)
         self.assertEqual(overall['suppressed'], 1)
         self.assertEqual(overall['precision_proxy'], 0.75)
         self.assertEqual(overall['hit_rate'], 1.0)
 
-        whale = next(f for f in response.data['by_family'] if f['alert_family'] == 'whale')
+        whale = next(f for f in unwrapped(response)['by_family'] if f['alert_family'] == 'whale')
         self.assertEqual(whale['alert_count'], 4)
         self.assertEqual(whale['precision_proxy'], 0.75)
 
-        self.assertTrue(response.data['top_noisy'])
-        self.assertEqual(response.data['top_noisy'][0]['alert_count'], 4)
-        self.assertEqual(response.data['top_noisy'][0]['alert_family'], 'whale')
+        self.assertTrue(unwrapped(response)['top_noisy'])
+        self.assertEqual(unwrapped(response)['top_noisy'][0]['alert_count'], 4)
+        self.assertEqual(unwrapped(response)['top_noisy'][0]['alert_family'], 'whale')

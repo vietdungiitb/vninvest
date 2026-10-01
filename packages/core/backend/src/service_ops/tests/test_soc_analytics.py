@@ -12,6 +12,8 @@ from rest_framework.test import APIClient
 from commercial.models import Invoice, QuotaRecord, Subscription
 from identity_access.models import CoreTenant
 
+from service_ops.tests.envelope import unwrapped_json
+
 BASE = '/api/soc/analytics/growth/'
 COHORTS = '/api/soc/analytics/cohorts/'
 ALERTS = '/api/soc/analytics/alerts/'
@@ -45,7 +47,7 @@ class SocAnalyticsGrowthTests(TestCase):
         self.assertEqual(self.plain_client.get(BASE).status_code, 403)
 
     def test_series_shape_and_counts(self):
-        body = self.staff_client.get(f'{BASE}?days=7').json()
+        body = unwrapped_json(self.staff_client.get(f'{BASE}?days=7'))
         self.assertEqual(body['days'], 7)
         for key in ('signups', 'trials', 'paid_new', 'churned'):
             self.assertEqual(len(body[key]), 7)
@@ -56,7 +58,7 @@ class SocAnalyticsGrowthTests(TestCase):
         self.assertGreaterEqual(trials.get(target, 0), 1)
 
     def test_days_clamped(self):
-        body = self.staff_client.get(f'{BASE}?days=500').json()
+        body = unwrapped_json(self.staff_client.get(f'{BASE}?days=500'))
         self.assertEqual(body['days'], 90)
         self.assertEqual(len(body['signups']), 90)
 
@@ -110,7 +112,7 @@ class SocAnalyticsCohortsTests(TestCase):
         self.assertEqual(self.plain_client.get(COHORTS).status_code, 403)
 
     def test_cohort_numbers_distinct_and_invoice_based(self):
-        body = self.staff_client.get(COHORTS).json()
+        body = unwrapped_json(self.staff_client.get(COHORTS))
         self.assertEqual(body['trial_active'], 2)
         self.assertEqual(body['converted_paid'], 2)
         # ever = 2 trial + 2 converted − 1 overlap = 3 → rate 2/3.
@@ -154,7 +156,7 @@ class SocAnalyticsAlertsTests(TestCase):
         self.assertEqual(self.plain_client.get(ALERTS).status_code, 403)
 
     def test_each_alert_kind_present(self):
-        body = self.staff_client.get(ALERTS).json()
+        body = unwrapped_json(self.staff_client.get(ALERTS))
         kinds = {(a['kind'], a['tenant_code']) for a in body['alerts']}
         self.assertIn(('trial_expiring', 'al_trial'), kinds)
         self.assertIn(('quota_critical', 'al_hot'), kinds)

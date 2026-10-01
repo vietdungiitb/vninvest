@@ -9,6 +9,8 @@ from rest_framework.test import APIClient
 from identity_access.models import CoreTenant
 from ops_audit.models import AuditEvent
 
+from service_ops.tests.envelope import unwrapped_json
+
 BASE = '/api/soc/audit-events/'
 
 
@@ -49,25 +51,25 @@ class SocAuditEventsTests(TestCase):
         self.assertEqual(self.plain_client.get(BASE).status_code, 403)
 
     def test_staff_sees_multi_tenant(self):
-        body = self.staff_client.get(BASE).json()
+        body = unwrapped_json(self.staff_client.get(BASE))
         self.assertEqual(body['count'], 3)
         tenant_ids = {r['tenant_id'] for r in body['results']}
         self.assertIn(self.staff_tenant.public_id, tenant_ids)
         self.assertIn(self.other_tenant.public_id, tenant_ids)
 
     def test_filters(self):
-        body = self.staff_client.get(
-            f'{BASE}?tenant_id={self.other_tenant.public_id}').json()
+        body = unwrapped_json(self.staff_client.get(
+            f'{BASE}?tenant_id={self.other_tenant.public_id}'))
         self.assertEqual(body['count'], 2)
-        body = self.staff_client.get(f'{BASE}?action=update').json()
+        body = unwrapped_json(self.staff_client.get(f'{BASE}?action=update'))
         self.assertEqual(body['count'], 2)
-        body = self.staff_client.get(f'{BASE}?resource_type=tenant').json()
+        body = unwrapped_json(self.staff_client.get(f'{BASE}?resource_type=tenant'))
         self.assertEqual(body['count'], 1)
         resp = self.staff_client.get(f'{BASE}?action=nope')
         self.assertEqual(resp.status_code, 400)
 
     def test_pagination(self):
-        body = self.staff_client.get(f'{BASE}?page=2&page_size=2').json()
+        body = unwrapped_json(self.staff_client.get(f'{BASE}?page=2&page_size=2'))
         self.assertEqual(body['count'], 3)
         self.assertEqual(len(body['results']), 1)
 

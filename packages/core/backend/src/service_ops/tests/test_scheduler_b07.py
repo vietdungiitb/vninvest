@@ -15,6 +15,8 @@ from django.test import TestCase, RequestFactory
 from service_ops.models import BackfillExecutionRun
 from service_ops.registry import ensure_service_registry
 
+from service_ops.tests.envelope import unwrapped_json
+
 
 # ---------------------------------------------------------------------------
 # Unit: backfill_daily_prices — mode/trigger params via DB verification
@@ -84,14 +86,14 @@ class BackfillRunNowViewTest(TestCase):
     def test_missing_mode_returns_400(self):
         resp = self._post({'days': 30})
         self.assertEqual(resp.status_code, 400)
-        data = resp.json()
+        data = unwrapped_json(resp)
         self.assertIn('code', data)
         self.assertIn('mode_required', data['code'])
 
     def test_invalid_mode_returns_400(self):
         resp = self._post({'mode': 'invalid_mode_xyz'})
         self.assertEqual(resp.status_code, 400)
-        data = resp.json()
+        data = unwrapped_json(resp)
         self.assertIn('invalid_mode', data['code'])
 
     def test_valid_mode_enqueues(self):
@@ -104,7 +106,7 @@ class BackfillRunNowViewTest(TestCase):
             resp = self._post({'mode': 'repair_missing', 'days': 30, 'symbols': ['VCB']})
 
         self.assertEqual(resp.status_code, 202)
-        data = resp.json()
+        data = unwrapped_json(resp)
         self.assertEqual(data['status'], 'queued')
         self.assertEqual(data['mode'], 'repair_missing')
         self.assertIn('task_id', data)
@@ -117,7 +119,7 @@ class BackfillRunNowViewTest(TestCase):
             resp = self._post({'mode': 'deep_bootstrap', 'days': 365})
 
         self.assertEqual(resp.status_code, 202)
-        self.assertEqual(resp.json()['mode'], 'deep_bootstrap')
+        self.assertEqual(unwrapped_json(resp)['mode'], 'deep_bootstrap')
 
     def test_symbols_normalized_to_uppercase(self):
         mock_task = MagicMock()
@@ -137,4 +139,4 @@ class BackfillRunNowViewTest(TestCase):
             kwargs_payload = call_kwargs.args[0].get('kwargs')
         passed_symbols = (kwargs_payload or {}).get('symbols')
         self.assertEqual(passed_symbols, ['VCB', 'FPT'])
-        self.assertIn('task_id', resp.json())
+        self.assertIn('task_id', unwrapped_json(resp))

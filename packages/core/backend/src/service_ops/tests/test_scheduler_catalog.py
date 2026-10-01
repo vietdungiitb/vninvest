@@ -22,6 +22,7 @@ from service_ops.scheduler_catalog import (
     build_scheduler_catalog,
     build_scheduler_health_summary,
 )
+from service_ops.tests.envelope import unwrapped_json
 
 User = get_user_model()
 
@@ -410,7 +411,7 @@ class SchedulerPlanApiTests(TestCase):
 
     def test_plan_has_required_envelope_fields(self):
         response = self.client.get('/core/v1/operator/scraping/dataops/scheduler/plan/')
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertIn('generated_at', data)
         self.assertIn('jobs_total', data)
         self.assertIn('jobs', data)
@@ -418,18 +419,18 @@ class SchedulerPlanApiTests(TestCase):
 
     def test_plan_jobs_is_list(self):
         response = self.client.get('/core/v1/operator/scraping/dataops/scheduler/plan/')
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertIsInstance(data['jobs'], list)
 
     def test_plan_jobs_total_matches_jobs_length(self):
         response = self.client.get('/core/v1/operator/scraping/dataops/scheduler/plan/')
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertEqual(data['jobs_total'], len(data['jobs']))
 
     def test_plan_domain_filter_query_param(self):
         response = self.client.get('/core/v1/operator/scraping/dataops/scheduler/plan/?domain=platform')
         self.assertEqual(response.status_code, 200)
-        data = response.json()
+        data = unwrapped_json(response)
         for job in data['jobs']:
             self.assertEqual(job['domain'], 'platform')
 
@@ -475,13 +476,13 @@ class SchedulerHealthApiTests(TestCase):
 
     def test_health_has_required_fields(self):
         response = self.client.get('/core/v1/operator/scraping/dataops/scheduler/health/')
-        data = response.json()
+        data = unwrapped_json(response)
         for field in ('generated_at', 'overall_health', 'jobs_total', 'by_status', 'by_domain', 'by_freshness'):
             self.assertIn(field, data)
 
     def test_health_jobs_total_is_int(self):
         response = self.client.get('/core/v1/operator/scraping/dataops/scheduler/health/')
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertIsInstance(data['jobs_total'], int)
 
     def test_health_requires_auth(self):
@@ -519,7 +520,7 @@ class SchedulerJobHistoryApiTests(TestCase):
         response = self.client.get(
             '/core/v1/operator/scraping/dataops/scheduler/jobs/market-data-queue-tier-scheduler-30s/history/'
         )
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertIn('job_key', data)
         self.assertIn('count', data)
         self.assertIn('results', data)
@@ -530,6 +531,6 @@ class SchedulerJobHistoryApiTests(TestCase):
             '/core/v1/operator/scraping/dataops/scheduler/jobs/non-existent-job-xyz/history/'
         )
         self.assertEqual(response.status_code, 404)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertIn('detail', data)
         self.assertEqual(data['code'], 'SCHEDULER_JOB_NOT_FOUND')

@@ -9,6 +9,8 @@ from rest_framework.test import APIClient
 
 from service_ops.registry import ensure_service_registry
 
+from service_ops.tests.envelope import unwrapped_json
+
 User = get_user_model()
 
 _ACTION_URL = '/core/v1/operator/scraping/dataops/scheduler/jobs/{job_key}/actions/'
@@ -41,7 +43,7 @@ class SchedulerJobActionOwnershipTests(TestCase):
     def test_action_response_has_required_fields(self):
         url = _ACTION_URL.format(job_key='market-data-queue-tier-scheduler-30s')
         response = self.client.post(url, {'action': 'enable'}, format='json')
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertIn('job_key', data)
         self.assertIn('action', data)
         self.assertIn('accepted', data)
@@ -52,7 +54,7 @@ class SchedulerJobActionOwnershipTests(TestCase):
     def test_action_accepted_reflects_action_name(self):
         url = _ACTION_URL.format(job_key='market-data-queue-tier-scheduler-30s')
         response = self.client.post(url, {'action': 'disable'}, format='json')
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertEqual(data['action'], 'disable')
         self.assertEqual(data['job_key'], 'market-data-queue-tier-scheduler-30s')
 
@@ -69,14 +71,14 @@ class SchedulerJobActionOwnershipTests(TestCase):
         url = _ACTION_URL.format(job_key='non-existent-scheduler-job-xyz')
         response = self.client.post(url, {'action': 'enable'}, format='json')
         self.assertEqual(response.status_code, 404)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertEqual(data['code'], 'SCHEDULER_JOB_NOT_FOUND')
 
     def test_action_invalid_action_value_returns_400(self):
         url = _ACTION_URL.format(job_key='market-data-queue-tier-scheduler-30s')
         response = self.client.post(url, {'action': 'delete_everything'}, format='json')
         self.assertEqual(response.status_code, 400)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertEqual(data['code'], 'SCHEDULER_ACTION_INVALID_REQUEST')
 
     def test_action_missing_action_field_returns_400(self):
@@ -89,7 +91,7 @@ class SchedulerJobActionOwnershipTests(TestCase):
         url = _ACTION_URL.format(job_key='auto-deprovision-stale')
         response = self.client.post(url, {'action': 'enable'}, format='json')
         self.assertEqual(response.status_code, 403)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertEqual(data['code'], 'SCHEDULER_ACTION_OWNERSHIP_DENIED')
 
     def test_platform_managed_control_mode_has_no_allowed_actions(self):
@@ -199,7 +201,7 @@ class SchedulerJobActionS03ExecutionTests(TestCase):
             mock_send.return_value = mock_result
             response = self.client.post(url, {'action': 'run_now'}, format='json')
         self.assertEqual(response.status_code, 202)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertTrue(data['accepted'])
 
     def test_abort_returns_202_with_revoke_message(self):
@@ -208,7 +210,7 @@ class SchedulerJobActionS03ExecutionTests(TestCase):
         with patch('celery.app.control.Control.revoke'):
             response = self.client.post(url, {'action': 'abort'}, format='json')
         self.assertEqual(response.status_code, 202)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertTrue(data['accepted'])
         self.assertIn('revoke', data['message'])
 

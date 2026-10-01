@@ -12,6 +12,8 @@ from rest_framework.test import APIClient
 from service_ops.domain_configs.broker import get_default_broker_system_config
 from service_ops.models import ConfigChangeAudit, ServiceConfig, ServiceDefinition
 
+from service_ops.tests.envelope import unwrapped_json
+
 BASE = '/api/soc/broker'
 
 
@@ -27,9 +29,9 @@ class SocBrokerConfigTests(TestCase):
     def test_get_defaults(self):
         resp = self.client.get(f'{BASE}/config/')
         self.assertEqual(resp.status_code, 200)
-        entries = resp.json()['config']['entries']
+        entries = unwrapped_json(resp)['config']['entries']
         self.assertEqual(set(entries), {'dnse', 'ssi', 'tcbs'})
-        self.assertFalse(resp.json()['config']['kill_switch_write'])
+        self.assertFalse(unwrapped_json(resp)['config']['kill_switch_write'])
 
     def test_non_staff_forbidden(self):
         self.client.force_authenticate(user=self.plain)
@@ -47,7 +49,7 @@ class SocBrokerConfigTests(TestCase):
             format='json')
         self.assertEqual(resp.status_code, 200)
         self.assertTrue(any('requests_per_minute' in s
-                            for s in resp.json()['change_summary']))
+                            for s in unwrapped_json(resp)['change_summary']))
         service = ServiceDefinition.objects.get(service_key='broker_config')
         current = ServiceConfig.objects.get(service=service, is_current=True)
         self.assertEqual(current.config_payload['entries']['dnse']['requests_per_minute'], 120)
@@ -62,7 +64,7 @@ class SocBrokerConfigTests(TestCase):
         resp = self.client.post(
             f'{BASE}/config/apply/', {'config_payload': cfg}, format='json')
         self.assertEqual(resp.status_code, 400)
-        self.assertTrue(resp.json()['validation_errors'])
+        self.assertTrue(unwrapped_json(resp)['validation_errors'])
         self.assertEqual(ServiceConfig.objects.count(), before_count)
 
     def test_preview_no_write(self):
@@ -72,9 +74,9 @@ class SocBrokerConfigTests(TestCase):
         resp = self.client.post(
             f'{BASE}/config/preview/', {'config_payload': cfg}, format='json')
         self.assertEqual(resp.status_code, 200)
-        self.assertIn('before', resp.json())
+        self.assertIn('before', unwrapped_json(resp))
         self.assertTrue(any('kill_switch_write' in s
-                            for s in resp.json()['change_summary']))
+                            for s in unwrapped_json(resp)['change_summary']))
         self.assertEqual(ServiceConfig.objects.count(), before_count)
 
     def test_audit_list_and_limit(self):
@@ -82,17 +84,17 @@ class SocBrokerConfigTests(TestCase):
         self.client.post(f'{BASE}/config/apply/', {'config_payload': cfg}, format='json')
         resp = self.client.get(f'{BASE}/audit/?limit=5')
         self.assertEqual(resp.status_code, 200)
-        self.assertTrue(len(resp.json()['audits']) >= 1)
+        self.assertTrue(len(unwrapped_json(resp)['audits']) >= 1)
         resp = self.client.get(f'{BASE}/audit/?limit=999')
-        self.assertLessEqual(len(resp.json()['audits']), 200)
+        self.assertLessEqual(len(unwrapped_json(resp)['audits']), 200)
 
     def test_health_shape_no_secrets(self):
         resp = self.client.get(f'{BASE}/health/')
         self.assertEqual(resp.status_code, 200)
-        body = json.dumps(resp.json())
+        body = json.dumps(unwrapped_json(resp))
         self.assertIn('kill_switch_write', body)
         self.assertIn('credential_present', body)
-        providers = {p['provider']: p for p in resp.json()['providers']}
+        providers = {p['provider']: p for p in unwrapped_json(resp)['providers']}
         self.assertFalse(providers['dnse']['credential_present'])
 
     def test_credentials_crud_masked_and_audited(self):
@@ -103,12 +105,12 @@ class SocBrokerConfigTests(TestCase):
              'allowed_purposes': ['backfill']},
             format='json')
         self.assertEqual(resp.status_code, 200)
-        body = json.dumps(resp.json())
+        body = json.dumps(unwrapped_json(resp))
         self.assertNotIn('SYSSEC9', body)
         self.assertNotIn('SYSID9', body)
         self.assertIn('****', body)
         resp = self.client.get(f'{BASE}/credentials/')
-        self.assertEqual(len(resp.json()['credentials']), 1)
+        self.assertEqual(len(unwrapped_json(resp)['credentials']), 1)
         service = ServiceDefinition.objects.get(service_key='broker_config')
         self.assertTrue(ConfigChangeAudit.objects.filter(
             service=service, action='apply',
@@ -116,7 +118,7 @@ class SocBrokerConfigTests(TestCase):
         resp = self.client.delete(f'{BASE}/credentials/dnse/')
         self.assertEqual(resp.status_code, 200)
         resp = self.client.get(f'{BASE}/credentials/')
-        self.assertEqual(resp.json()['credentials'], [])
+        self.assertEqual(unwrapped_json(resp)['credentials'], [])
 
     def test_credentials_reject_bad_purpose_and_empty(self):
         resp = self.client.post(
@@ -143,7 +145,7 @@ class SocBrokerConfigTests(TestCase):
             resp = self.client.post(
                 f'{BASE}/test-connection/', {'provider': 'dnse'}, format='json')
         self.assertEqual(resp.status_code, 202)
-        self.assertEqual(resp.json()['job_id'], 'sys-job-1')
+        self.assertEqual(unwrapped_json(resp)['job_id'], 'sys-job-1')
 
         resp = self.client.post(
             f'{BASE}/test-connection/', {'provider': 'xx'}, format='json')

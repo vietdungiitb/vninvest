@@ -8,6 +8,8 @@ from rest_framework.test import APIClient
 from service_ops.models import ConfigChangeAudit, ServiceConfig
 from service_ops.registry import SOC_DOMAIN_PRIMARY_SERVICE_KEYS, ensure_service_registry, get_registered_service
 
+from service_ops.tests.envelope import unwrapped_json
+
 User = get_user_model()
 
 VALID_PAYLOAD = {
@@ -63,7 +65,7 @@ class DataOpsConfigConflictApiTestCase(TestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['code'], 'CONFIG_CONFLICT')
         self.assertIn('Cấu hình đã được cập nhật', payload['detail'])
         self.assertEqual(payload['field_errors']['updated_at'], seeded.applied_at.isoformat())
@@ -85,7 +87,7 @@ class DataOpsConfigConflictApiTestCase(TestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['config']['decay_days'], 9)
         latest = ServiceConfig.objects.filter(service=self.matrix_service, is_current=True).first()
         self.assertEqual(latest.config_payload['decay_days'], 9)

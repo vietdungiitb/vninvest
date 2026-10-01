@@ -12,6 +12,8 @@ from rest_framework.test import APIClient
 
 from service_ops.registry import ensure_service_registry
 
+from service_ops.tests.envelope import unwrapped_json
+
 User = get_user_model()
 
 _HISTORY_URL = '/core/v1/operator/scraping/dataops/scheduler/jobs/{job_key}/history/'
@@ -40,7 +42,7 @@ class SchedulerJobHistoryS04Tests(TestCase):
         url = _HISTORY_URL.format(job_key='market-data-queue-tier-scheduler-30s')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertIn('count', data)
         self.assertIn('page', data)
         self.assertIn('page_size', data)
@@ -50,13 +52,13 @@ class SchedulerJobHistoryS04Tests(TestCase):
     def test_history_count_is_int(self):
         url = _HISTORY_URL.format(job_key='market-data-queue-tier-scheduler-30s')
         response = self.client.get(url)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertIsInstance(data['count'], int)
 
     def test_history_results_is_list(self):
         url = _HISTORY_URL.format(job_key='market-data-queue-tier-scheduler-30s')
         response = self.client.get(url)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertIsInstance(data['results'], list)
 
     def test_history_shows_run_log_when_service_key_mapped(self):
@@ -73,7 +75,7 @@ class SchedulerJobHistoryS04Tests(TestCase):
         )
         url = _HISTORY_URL.format(job_key='market-data-queue-tier-scheduler-30s')
         response = self.client.get(url)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertGreater(data['count'], 0)
         ids = [r['id'] for r in data['results']]
         self.assertIn(run_log.pk, ids)
@@ -92,7 +94,7 @@ class SchedulerJobHistoryS04Tests(TestCase):
         )
         url = _HISTORY_URL.format(job_key='market-data-queue-tier-scheduler-30s')
         response = self.client.get(url)
-        data = response.json()
+        data = unwrapped_json(response)
         if data['results']:
             item = data['results'][0]
             for field in ('id', 'celery_task_id', 'status', 'started_at'):
@@ -107,7 +109,7 @@ class SchedulerJobHistoryS04Tests(TestCase):
     def test_history_page_size_param_respected(self):
         url = _HISTORY_URL.format(job_key='market-data-queue-tier-scheduler-30s')
         response = self.client.get(url + '?page_size=5')
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertLessEqual(len(data['results']), 5)
         self.assertEqual(data['page_size'], 5)
 
@@ -364,7 +366,7 @@ class B01HistoryEndpointBackfillTests(TestCase):
         url = _HISTORY_URL.format(job_key='daily-backfill-prices-1700')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertGreater(data['count'], 0)
         ids = [r['id'] for r in data['results']]
         self.assertIn(self.daily_log.pk, ids)
@@ -375,7 +377,7 @@ class B01HistoryEndpointBackfillTests(TestCase):
         url = _HISTORY_URL.format(job_key='deep-history-bootstrap-weekly')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        data = response.json()
+        data = unwrapped_json(response)
         self.assertGreater(data['count'], 0)
         ids = [r['id'] for r in data['results']]
         self.assertIn(self.deep_log.pk, ids)
@@ -385,7 +387,7 @@ class B01HistoryEndpointBackfillTests(TestCase):
             self.skipTest('backfill_daily_prices ServiceDefinition not found')
         url = _HISTORY_URL.format(job_key='daily-backfill-prices-1700')
         response = self.client.get(url)
-        data = response.json()
+        data = unwrapped_json(response)
         if data['results']:
             item = data['results'][0]
             self.assertIn('input_summary', item)

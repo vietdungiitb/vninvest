@@ -9,6 +9,8 @@ from rest_framework.test import APIClient
 from identity_access.models import CoreTenant, TenantWebhookConfig
 from ops_audit.models import AuditEvent
 
+from service_ops.tests.envelope import unwrapped_json
+
 SWITCH = '/api/soc/staff/switch/'
 
 
@@ -43,7 +45,7 @@ class SocStaffSwitchTests(TestCase):
     def test_issue_ok_and_audit(self):
         resp = self._issue()
         self.assertEqual(resp.status_code, 200)
-        body = resp.json()
+        body = unwrapped_json(resp)
         self.assertIn('token', body)
         self.assertEqual(body['role'], 'viewer')
         self.assertEqual(body['tenant']['id'], self.target.public_id)
@@ -66,7 +68,7 @@ class SocStaffSwitchTests(TestCase):
         self.assertEqual(self._issue(tenant_id=own.public_id).status_code, 400)
 
     def test_switch_header_reads_target_and_blocks_write(self):
-        token = self._issue().json()['token']
+        token = unwrapped_json(self._issue())['token']
         client = APIClient()
         # Đăng nhập session thật để middleware thấy Django request.user
         # (force_authenticate chỉ set DRF user, middleware sẽ bỏ qua).
@@ -98,7 +100,7 @@ class SocStaffSwitchTests(TestCase):
             SWITCH, {'tenant_id': self.target.public_id, 'reason': 'ho tro'},
             format='json')
         self.assertEqual(resp.status_code, 200)
-        token = resp.json()['token']
+        token = unwrapped_json(resp)['token']
         client = APIClient()
         self.assertTrue(client.login(username='sw_su', password='x'))
         resp = client.get('/api/soc/users/', HTTP_X_STAFF_SWITCH=token)
@@ -108,7 +110,7 @@ class SocStaffSwitchTests(TestCase):
 
     def test_switched_session_cannot_reach_staff_endpoints(self):
         # H0.1: phiên xem hộ bị strip staff → SOC/operator 403 dù có header switch.
-        token = self._issue().json()['token']
+        token = unwrapped_json(self._issue())['token']
         client = APIClient()
         self.assertTrue(client.login(username='sw_staff', password='x'))
         resp = client.get('/api/soc/users/', HTTP_X_STAFF_SWITCH=token)

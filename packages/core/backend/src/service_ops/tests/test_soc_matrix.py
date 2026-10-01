@@ -13,6 +13,8 @@ from service_ops.matrix_coordinator import MatrixCoordinator, generate_cycle_id
 from service_ops.models import ScrapeMatrixCell
 from service_ops.registry import ensure_service_registry
 
+from service_ops.tests.envelope import unwrapped_json
+
 User = get_user_model()
 
 
@@ -39,7 +41,7 @@ class MatrixProviderCatalogApiTestCase(MatrixApiBaseTestCase):
         response = self.client.get('/api/soc/matrix/providers/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
+        payload = unwrapped_json(response)
         provider_ids = [provider['provider'] for provider in payload['providers']]
         self.assertEqual(provider_ids, ['vci', 'kbs', 'dnse'])
         self.assertEqual(payload['default_providers'], ['vci', 'kbs', 'dnse'])
@@ -59,7 +61,7 @@ class MatrixProviderCatalogApiTestCase(MatrixApiBaseTestCase):
         canonical_response = self.client.get('/core/v1/operator/scraping/matrix/providers/')
 
         self.assertEqual(canonical_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(canonical_response.json(), soc_response.json())
+        self.assertEqual(unwrapped_json(canonical_response), unwrapped_json(soc_response))
 
     @patch('service_ops.views.matrix.run_scrape_cycle.delay')
     def test_start_cycle_rejects_removed_or_unready_providers(self, run_scrape_cycle_delay):
@@ -75,9 +77,9 @@ class MatrixProviderCatalogApiTestCase(MatrixApiBaseTestCase):
         )
 
         self.assertEqual(removed_provider_response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(removed_provider_response.json()['code'], 'MATRIX_PROVIDER_UNSUPPORTED')
+        self.assertEqual(unwrapped_json(removed_provider_response)['code'], 'MATRIX_PROVIDER_UNSUPPORTED')
         self.assertEqual(unready_provider_response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(unready_provider_response.json()['code'], 'MATRIX_PROVIDER_NOT_READY')
+        self.assertEqual(unwrapped_json(unready_provider_response)['code'], 'MATRIX_PROVIDER_NOT_READY')
         run_scrape_cycle_delay.assert_not_called()
 
     @patch('service_ops.views.matrix.run_scrape_cycle.delay', return_value=Mock(id='dispatch-active'))
@@ -95,7 +97,7 @@ class MatrixProviderCatalogApiTestCase(MatrixApiBaseTestCase):
 
         self.assertEqual(first_response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(blocked_response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(blocked_response.json()['code'], 'MATRIX_PROVIDER_NOT_READY')
+        self.assertEqual(unwrapped_json(blocked_response)['code'], 'MATRIX_PROVIDER_NOT_READY')
 
     @patch('service_ops.views.matrix.run_scrape_cycle.delay', return_value=Mock(id='dispatch-cycle-1'))
     def test_start_cycle_allows_vci_and_kbs(self, _run_scrape_cycle_delay):
@@ -106,14 +108,14 @@ class MatrixProviderCatalogApiTestCase(MatrixApiBaseTestCase):
         )
 
         self.assertEqual(start_response.status_code, status.HTTP_201_CREATED)
-        payload = start_response.json()
+        payload = unwrapped_json(start_response)
         self.assertEqual(payload['providers'], ['vci', 'kbs'])
         self.assertEqual(len(payload['cells']), 4)
         self.assertEqual(payload['dispatch_task_id'], 'dispatch-cycle-1')
 
         monitor_response = self.client.get('/api/soc/matrix/monitor/')
         self.assertEqual(monitor_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(monitor_response.json()['providers'], ['vci', 'kbs'])
+        self.assertEqual(unwrapped_json(monitor_response)['providers'], ['vci', 'kbs'])
 
     @patch('service_ops.views.matrix.run_scrape_cycle.delay', return_value=Mock(id='dispatch-operator-cycle'))
     def test_operator_canonical_start_cycle_dispatches_same_matrix_workflow(self, run_scrape_cycle_delay):
@@ -124,7 +126,7 @@ class MatrixProviderCatalogApiTestCase(MatrixApiBaseTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        payload = response.json()
+        payload = unwrapped_json(response)
         self.assertEqual(payload['providers'], ['vci', 'kbs'])
         self.assertEqual(payload['dispatch_task_id'], 'dispatch-operator-cycle')
         run_scrape_cycle_delay.assert_called_once_with(
@@ -142,7 +144,7 @@ class MatrixProviderCatalogApiTestCase(MatrixApiBaseTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        payload = response.json()
+        payload = unwrapped_json(response)
         run_scrape_cycle_delay.assert_called_once_with(
             cycle_id=payload['cycle_id'],
             symbol_group_ids=['vn30'],
@@ -157,9 +159,9 @@ class MatrixProviderCatalogApiTestCase(MatrixApiBaseTestCase):
         response = self.client.get('/api/soc/matrix/monitor/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json()['status'], 'idle')
-        self.assertIsNone(response.json()['cycle_id'])
-        self.assertEqual(response.json()['providers'], ['vci', 'kbs', 'dnse'])
+        self.assertEqual(unwrapped_json(response)['status'], 'idle')
+        self.assertIsNone(unwrapped_json(response)['cycle_id'])
+        self.assertEqual(unwrapped_json(response)['providers'], ['vci', 'kbs', 'dnse'])
 
 
 class MatrixCoordinatorTestCase(TestCase):
