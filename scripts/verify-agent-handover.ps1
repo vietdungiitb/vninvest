@@ -36,7 +36,14 @@ param(
     [string] $Database = 'w3seed',
 
     # Bỏ qua bước kiểm Postgres (khi DB chủ động không chạy).
-    [switch] $SkipDatabase
+    [switch] $SkipDatabase,
+
+    # Đường dẫn `packages/core/backend` cần kiểm.
+    #
+    # Mặc định lấy từ vị trí script — nhưng điều đó **sai** khi gọi từ cây
+    # chính để kiểm worktree của agent: nó sẽ đọc `dev` và báo xanh cho những
+    # thứ chưa merge. Đã xảy ra đúng một lần. Worktree phải truyền tường minh.
+    [string] $Backend = (Join-Path $PSScriptRoot '..\packages\core\backend')
 )
 
 $ErrorActionPreference = 'Continue'
@@ -108,8 +115,7 @@ Write-Host '=== 3. GATE ENVELOPE ===' -ForegroundColor Cyan
 if ($AppList.Count -eq 0) {
     Write-Host '  BO QUA (khong truyen -Apps)' -ForegroundColor Yellow
 } else {
-    $backend = Join-Path $PSScriptRoot '..\packages\core\backend'
-    Push-Location $backend
+    Push-Location $Backend
     try {
         foreach ($app in $AppList) {
             $out = python scripts/check-envelope-contract.py $app 2>&1
