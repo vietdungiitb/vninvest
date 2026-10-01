@@ -31,6 +31,7 @@ from ..domain_configs.broker import (
     get_default_broker_system_config,
 )
 from ..models import ConfigChangeAudit, ServiceConfig, ServiceDefinition
+from ..envelope import envelope
 from .base import SOCBaseView
 from .mixins import ConfigApplyMixin
 
@@ -112,7 +113,7 @@ class BrokerConfigView(SOCBaseView, ConfigApplyMixin):
     """GET current / POST apply registry config."""
 
     def get(self, request):
-        return Response({
+        return envelope({
             'config': _current_payload(),
             'service_key': BROKER_CONFIG_SERVICE_KEY,
         })
@@ -142,7 +143,7 @@ class BrokerConfigView(SOCBaseView, ConfigApplyMixin):
         if change_reason:
             summary = f'[{change_reason[:120]}] ' + summary
         _write_audit(request, 'apply', before, after, summary)
-        return Response({'ok': True, 'config': after,
+        return envelope({'ok': True, 'config': after,
                          'change_summary': summary_lines})
 
 
@@ -156,7 +157,7 @@ class BrokerConfigPreviewView(SOCBaseView):
         errors = cfg.validate()
         before = _current_payload()
         after = cfg.to_dict()
-        return Response({
+        return envelope({
             'before': before,
             'after': after,
             'change_summary': _diff_summary(before, after),
@@ -174,7 +175,7 @@ class BrokerAuditView(SOCBaseView):
             limit = 50
         service = _get_or_create_service()
         rows = ConfigChangeAudit.objects.filter(service=service).order_by('-timestamp')[:limit]
-        return Response({'audits': [
+        return envelope({'audits': [
             {'action': r.action, 'actor': r.actor, 'actor_ip': str(r.actor_ip or ''),
              'change_summary': r.change_summary, 'timestamp': r.timestamp,
              'request_id': r.request_id}
@@ -201,7 +202,7 @@ class BrokerHealthView(SOCBaseView):
                 'is_verified': bool(cred.get('is_verified')),
                 'last_check': cred.get('last_check') or {},
             })
-        return Response({
+        return envelope({
             'status': 'ok',
             'kill_switch_write': cfg.kill_switch_write,
             'quiet_hours': {'start': cfg.quiet_hours_start, 'end': cfg.quiet_hours_end},
@@ -213,7 +214,7 @@ class BrokerCredentialsView(SOCBaseView):
     """GET list / POST upsert system credential (staff-only, có audit, không trả secret)."""
 
     def get(self, request):
-        return Response({'credentials': _masked_system_credentials()})
+        return envelope({'credentials': _masked_system_credentials()})
 
     def post(self, request):
         from identity_access.models import SystemBrokerCredential
@@ -247,7 +248,7 @@ class BrokerCredentialsView(SOCBaseView):
             request, 'apply', before, after,
             f"system credential {provider} {'created' if created else 'rotated'} "
             f"(purposes: {','.join(purposes) or 'none'})")
-        return Response({'ok': True, 'credential': {
+        return envelope({'ok': True, 'credential': {
             'provider': provider, 'allowed_purposes': purposes,
             'is_verified': False, 'preview': cred.masked_preview()}})
 
@@ -267,7 +268,7 @@ class BrokerCredentialDeleteView(SOCBaseView):
         cred.delete()
         _write_audit(request, 'apply', before, None,
                      f'system credential {provider} deleted')
-        return Response({'ok': True})
+        return envelope({'ok': True})
 
 
 class BrokerTestConnectionView(SOCBaseView):
@@ -282,5 +283,5 @@ class BrokerTestConnectionView(SOCBaseView):
             return Response({'ok': False, 'error': 'provider phải là dnse/ssi/tcbs'},
                             status=status.HTTP_400_BAD_REQUEST)
         job = test_system_broker_connection_task.delay(provider)
-        return Response({'job_id': job.id, 'state': 'pending'},
+        return envelope({'job_id': job.id, 'state': 'pending'},
                         status=status.HTTP_202_ACCEPTED)
