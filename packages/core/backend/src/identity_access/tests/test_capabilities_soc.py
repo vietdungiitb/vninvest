@@ -4,6 +4,7 @@ import json
 
 from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase
+from identity_access.tests.envelope import unwrapped
 from rest_framework.test import APIClient
 
 from ..models import CoreTenant
@@ -129,8 +130,8 @@ class UserProfileStaffFlagsTests(TestCase):
         client.force_authenticate(user=staff)
         response = client.get('/core/v1/identity/profile/')
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.data['is_staff'])
-        self.assertTrue(response.data['is_superuser'])
+        self.assertTrue(unwrapped(response)['is_staff'])
+        self.assertTrue(unwrapped(response)['is_superuser'])
 
     def test_non_staff_profile_flags_are_false(self):
         user = User.objects.create_user(
@@ -142,5 +143,5 @@ class UserProfileStaffFlagsTests(TestCase):
         client.force_authenticate(user=user)
         response = client.get('/core/v1/identity/profile/')
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(response.data['is_staff'])
-        self.assertFalse(response.data['is_superuser'])
+        self.assertFalse(unwrapped(response)['is_staff'])
+        self.assertFalse(unwrapped(response)['is_superuser'])

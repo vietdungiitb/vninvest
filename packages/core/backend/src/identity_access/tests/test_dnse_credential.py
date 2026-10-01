@@ -16,6 +16,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
+from identity_access.tests.envelope import unwrapped_json
 from identity_access.models import (
     UserDNSECredential,
     get_system_provider_credentials,
@@ -89,7 +90,7 @@ class DNSECredentialViewTests(TestCase):
             'api_key': 'k123', 'api_secret': 's456',
         }, format='json')
         self.assertEqual(resp.status_code, 201)
-        data = resp.json()
+        data = unwrapped_json(resp)
         self.assertNotIn('api_key', data)
         self.assertNotIn('api_secret', data)
         self.assertEqual(data['user_id'], self.user.id)
@@ -111,7 +112,7 @@ class DNSECredentialViewTests(TestCase):
             'api_key': 'sys_k', 'api_secret': 'sys_s', 'is_system_provider': True,
         }, format='json')
         self.assertEqual(resp.status_code, 201)
-        self.assertTrue(resp.json()['is_system_provider'])
+        self.assertTrue(unwrapped_json(resp)['is_system_provider'])
 
     @patch.dict(os.environ, {'DNSE_CREDENTIAL_FERNET_KEY': TEST_FERNET_KEY})
     def test_get_returns_metadata_only(self):
@@ -122,7 +123,7 @@ class DNSECredentialViewTests(TestCase):
         }, format='json')
         resp = self.client.get('/core/v1/dnse-credential/')
         self.assertEqual(resp.status_code, 200)
-        data = resp.json()
+        data = unwrapped_json(resp)
         self.assertNotIn('api_key', data)
         self.assertNotIn('api_secret', data)
         self.assertIn('is_verified', data)
