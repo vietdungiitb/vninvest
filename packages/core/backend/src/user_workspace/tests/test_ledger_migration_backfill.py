@@ -19,6 +19,7 @@ from decimal import Decimal
 from django.contrib.auth.models import User
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
+from django.db.migrations.recorder import MigrationRecorder
 from django.test import TransactionTestCase
 
 from identity_access.models import CoreTenant
@@ -30,6 +31,47 @@ BEFORE = '0021_portfolio_opening_balance_and_more'
 TARGET = '0022_backfill_transaction_to_ledger'
 
 logger = logging.getLogger(__name__)
+
+
+def _discard_test_transactions():
+    """Xoá sạch `Transaction` mà test vừa tạo, TRƯỚC khi đi tiếp migration.
+
+    Vì sao cần: `0022.forwards()` **cố ý** raise khi gặp dòng không map được
+    (`symbol=''`, `transaction_type='BONUS'`) — và hai test
+    `test_unmappable_rows_stop_the_backfill` /
+    `test_backfill_refuses_when_too_many_rows_are_unmappable` để lại đúng
+    những dòng đó. `TransactionTestCase` flush ở `_fixture_teardown`, tức **sau**
+    `tearDown`, nên lúc khôi phục migration thì dữ liệu hỏng vẫn còn trong DB.
+
+    Hệ quả nếu không dọn: `tearDown` nuốt lỗi ở `except` ⇒ `user_workspace` kẹt
+    ở `0021` ⇒ `0023` không bao giờ apply ⇒ `ValuationSnapshot.stock_value` còn
+    NOT NULL và trigger append-only (LED-01) biến mất. Mọi test chạy sau trong
+    cùng process đó sẽ chạy trên schema khác với lúc chạy riêng — đúng loại
+    lỗi "chại riêng thì xanh".
+    """
+    Transaction.objects.all().delete()
+
+
+def _assert_schema_restored():
+    """Nổ lên nếu migration không khôi phục về leaf.
+
+    `tearDown` bắt buộc phải nuốt lỗi: một test cố ý làm migration FAIL sẽ khiến
+    `tearDown` thử lại chính migration đó và nổ lần nữa. Nhưng nuốt lỗi cũng
+    chính là lý do DB bị bỏ hoang ở `0021` mà **không ai biết**. Vì vậy phần
+    kiểm tra nằm ngoài `try/except`: khôi phục hỏng là lỗi của chính test này và
+    phải hiện ra, không được âm thầm làm hỏng các test khác.
+    """
+    executor = MigrationExecutor(connection)
+    executor.loader.build_graph()
+    applied = set(MigrationRecorder(connection).applied_migrations())
+    stuck = [node for node in executor.loader.graph.leaf_nodes() if node not in applied]
+    if stuck:
+        raise AssertionError(
+            'test_ledger_migration_backfill de lai schema o trang thai migration '
+            f'khong day du: thieu {stuck}. Bat buoc khoi phuc ve leaf truoc khi '
+            'ket thuc, neu khong moi test chay sau trong cung process se chay tren '
+            'schema khac.'
+        )
 
 
 def _tx(portfolio, tenant, **overrides):
@@ -70,12 +112,14 @@ class BackfillMigrationTests(TransactionTestCase):
         self.executor.loader.build_graph()
         try:
             self.executor.migrate([(APP, BEFORE)])
+            _discard_test_transactions()
             self.executor = MigrationExecutor(connection)
             self.executor.loader.build_graph()
             self.executor.migrate(self.executor.loader.graph.leaf_nodes())
         except Exception as exc:  # noqa: BLE001
             # Test DB bị huỷ ngay sau đó; chỉ cần không che mất lỗi của test.
             logger.info('tearDown: bo qua loi khoi phuc migration: %s', exc)
+        _assert_schema_restored()
 
     def _seed(self):
         self.tenant = CoreTenant.objects.create(
