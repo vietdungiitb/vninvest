@@ -6,13 +6,18 @@ the commercial app self-contained. They're registered under /core/v1/partner/*.
 """
 import logging
 
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from vninvest_core.api_envelope import envelope_response
+
 from identity_access.envelope import adopt_envelope, envelope, paginated_envelope
 from identity_access.models import CoreTenant
 from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
+from identity_access.schema import PaginatedResultsSerializer
 from identity_access.utils.resolve_tenant import require_tenant_permission as _require_tenant_permission
 
 logger = logging.getLogger(__name__)
@@ -34,6 +39,12 @@ class PartnerCostTrendView(APIView):
     """
     permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        # `adopt_envelope(...)` hoặc `envelope({'monthly': …, 'note': …})` —
+        # hai hình dạng khác nhau tuỳ app `commercial` còn hay không, nên
+        # không ghim serializer nào.
+        responses={200: envelope_response()},
+    )
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'billing:read')
@@ -54,6 +65,9 @@ class PartnerUsageMetersView(generics.GenericAPIView):
     """Usage meters — latest QuotaHistory snapshot per meter_code (C4)."""
     permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        responses={200: envelope_response(PaginatedResultsSerializer)},
+    )
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'billing:read')
@@ -80,6 +94,9 @@ class PartnerUsageQuotasView(generics.GenericAPIView):
     """Usage quotas — latest QuotaHistory snapshot per meter_code (C4)."""
     permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        responses={200: envelope_response(PaginatedResultsSerializer)},
+    )
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'billing:read')
@@ -106,6 +123,13 @@ class PartnerBillingSubscriptionView(generics.GenericAPIView):
     """Subscription detail — delegates to commercial Subscription if exists."""
     permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        # Ba nhánh trả **ba hình dạng khác nhau**: dict rỗng khi chưa có
+        # subscription (:119), `SubscriptionSerializer(sub).data` khi có
+        # (:126), và dict toàn None ở nhánh ImportError/Exception (:129, :138).
+        # Ghim một serializer sẽ mô tả sai 2/3 nhánh ⇒ để free-form.
+        responses={200: envelope_response()},
+    )
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'billing:read')
@@ -148,6 +172,11 @@ class PartnerBillingInvoicesView(generics.GenericAPIView):
     """Invoices list — delegates to commercial Invoice if exists."""
     permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        # Cả hai nhánh đều là **mảng** (`InvoiceSerializer(many=True)` ở :159,
+        # `[]` ở :162/:165) ⇒ `many=True`.
+        responses={200: envelope_response(many=True)},
+    )
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'billing:read')
@@ -176,6 +205,13 @@ class PartnerStripeCheckoutSessionView(APIView):
     """
     permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        # Nhánh 2xx là `return view(request._request)` — uy quyen cho view của
+        # app `commercial`, hình dạng **chưa xác minh được** từ đây (bộ phân
+        # loại trả `UNVERIFIED`). Không đoán envelope: khai free-form
+        # `object` ⇒ "có body" mà không hứa sai `{data, meta}`.
+        responses={200: OpenApiTypes.OBJECT},
+    )
     def post(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'billing:write')
@@ -199,6 +235,10 @@ class PartnerStripePortalSessionView(APIView):
     """
     permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        # Như `PartnerStripeCheckoutSessionView` — uy quyen, chưa xác minh.
+        responses={200: OpenApiTypes.OBJECT},
+    )
     def post(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'billing:write')
@@ -227,6 +267,9 @@ class PartnerUsageHistoryView(generics.GenericAPIView):
     """
     permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        responses={200: envelope_response(PaginatedResultsSerializer)},
+    )
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'billing:read')

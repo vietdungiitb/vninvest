@@ -14,10 +14,13 @@ Hard rules (AGENTS.md §14):
 import logging
 
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from vninvest_core.api_envelope import envelope_response
 
 from vninvest_core.exceptions import (
     ValidationErrorException,
@@ -28,6 +31,7 @@ from vninvest_core.exceptions import (
 
 from .envelope import envelope
 from .models import UserDNSECredential, _encrypt_credential
+from .schema import DNSECredentialMetadataSerializer
 from .permissions import require_human_session
 
 logger = logging.getLogger(__name__)
@@ -41,6 +45,9 @@ class DNSECredentialView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={200: envelope_response(DNSECredentialMetadataSerializer)},
+    )
     def get(self, request):
         require_human_session(request)
         try:
@@ -49,6 +56,14 @@ class DNSECredentialView(APIView):
             raise NotFoundErrorException('Chưa cấu hình DNSE credential.')
         return envelope(_safe_serialize(cred))
 
+    @extend_schema(
+        # Cùng shape với GET; 201 khi tạo mới, 200 khi cập nhật
+        # (:83 dùng `created` để chọn) ⇒ khai cả hai mã.
+        responses={
+            200: envelope_response(DNSECredentialMetadataSerializer),
+            201: envelope_response(DNSECredentialMetadataSerializer),
+        },
+    )
     def post(self, request):
         require_human_session(request)
         api_key = str(request.data.get('api_key') or '').strip()
@@ -83,6 +98,12 @@ class DNSECredentialView(APIView):
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
 
+    @extend_schema(
+        # View trả `Response({'detail': …}, status=204)` — tức là **có body**
+        # trong 204, trái HTTP. Khai `204: None` để schema nói đúng sự thật
+        # (204 không mang body); KHÔNG đụng logic response.
+        responses={204: None},
+    )
     def delete(self, request):
         require_human_session(request)
         deleted, _ = UserDNSECredential.objects.filter(user=request.user).delete()

@@ -3,12 +3,19 @@ Scheduled Reports CRUD views for partner namespace.
 """
 import logging
 
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
+
+from vninvest_core.api_envelope import envelope_response
 
 from identity_access.envelope import envelope
 from identity_access.models import CoreTenant, ScheduledReport, ReportDeliveryLog
 from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
+from identity_access.schema import (
+    ReportTestQueuedSerializer,
+    ScheduledReportDetailSerializer,
+)
 from identity_access.serializers import ScheduledReportSerializer, ReportDeliveryLogSerializer
 from identity_access.utils.resolve_tenant import require_tenant_permission as _require_tenant_permission
 
@@ -28,6 +35,9 @@ class ScheduledReportListCreateView(generics.GenericAPIView):
     """
     permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        responses={200: envelope_response(ScheduledReportSerializer, many=True)},
+    )
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'report:read')
@@ -35,6 +45,9 @@ class ScheduledReportListCreateView(generics.GenericAPIView):
         qs = ScheduledReport.objects.filter(tenant=tenant).order_by('-created_at')
         return envelope(ScheduledReportSerializer(qs, many=True).data)
 
+    @extend_schema(
+        responses={201: envelope_response(ScheduledReportSerializer)},
+    )
     def post(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'report:write')
@@ -61,6 +74,9 @@ class ScheduledReportDetailView(generics.GenericAPIView):
         except ScheduledReport.DoesNotExist:
             return None
 
+    @extend_schema(
+        responses={200: envelope_response(ScheduledReportDetailSerializer)},
+    )
     def get(self, request, report_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'report:read')
@@ -72,6 +88,9 @@ class ScheduledReportDetailView(generics.GenericAPIView):
         data['delivery_logs'] = ReportDeliveryLogSerializer(logs, many=True).data
         return envelope(data)
 
+    @extend_schema(
+        responses={200: envelope_response(ScheduledReportSerializer)},
+    )
     def patch(self, request, report_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'report:write')
@@ -84,6 +103,9 @@ class ScheduledReportDetailView(generics.GenericAPIView):
         serializer.save()
         return envelope(serializer.data)
 
+    @extend_schema(
+        responses={204: None},
+    )
     def delete(self, request, report_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'report:write')
@@ -100,6 +122,9 @@ class ScheduledReportTestView(generics.GenericAPIView):
     """
     permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        responses={200: envelope_response(ReportTestQueuedSerializer)},
+    )
     def post(self, request, report_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'report:write')
@@ -120,6 +145,9 @@ class ReportDeliveryLogView(generics.GenericAPIView):
     """
     permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        responses={200: envelope_response(ReportDeliveryLogSerializer, many=True)},
+    )
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'report:read')

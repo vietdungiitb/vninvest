@@ -11,14 +11,18 @@ Endpoints:
 from datetime import timedelta
 
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
+from vninvest_core.api_envelope import envelope_response
+
 from tenant_lifecycle.models import TenantLifecycleEvent
 from .envelope import envelope
 from .models import CoreTenant, TenantMember, TenantInvite
+from .schema import TenantInviteListSerializer, TenantMemberListSerializer
 from .serializers import TenantMemberSerializer, TenantInviteSerializer, TenantInviteCreateSerializer
 from .permissions import IsTenantActive, require_human_session, require_pat_scopes_or_human_session
 from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
@@ -41,6 +45,10 @@ class TenantMemberListView(APIView):
     """List members of current tenant."""
     permission_classes = [permissions.IsAuthenticated, IsTenantActive]
 
+    @extend_schema(
+        # `envelope({'members': [...]})` — data la OBJECT, khong phai mang.
+        responses={200: envelope_response(TenantMemberListSerializer)},
+    )
     def get(self, request):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'member:read')
@@ -61,6 +69,9 @@ class TenantInvitesCombinedView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsTenantActive]
     throttle_classes = [InviteThrottle]
 
+    @extend_schema(
+        responses={201: envelope_response(TenantInviteSerializer)},
+    )
     def post(self, request):
         """Create invite for new member."""
         require_pat_scopes_or_human_session(request, 'manage_tenant')
@@ -153,6 +164,10 @@ class TenantInvitesCombinedView(APIView):
         result = TenantInviteSerializer(invite)
         return envelope(result.data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(
+        # `envelope({'invites': [...]})` — lai la object, khong phai mang.
+        responses={200: envelope_response(TenantInviteListSerializer)},
+    )
     def get(self, request):
         """List pending invites for tenant."""
         require_pat_scopes_or_human_session(request, 'manage_tenant')
@@ -172,6 +187,9 @@ class TenantInviteAcceptView(APIView):
     """Accept invitation via token."""
     permission_classes = [permissions.IsAuthenticated, IsTenantActive]
 
+    @extend_schema(
+        responses={201: envelope_response(TenantMemberSerializer)},
+    )
     def post(self, request, token):
         require_human_session(request)
         user = request.user
@@ -260,6 +278,9 @@ class TenantMemberRemoveView(APIView):
     """Remove member from tenant."""
     permission_classes = [permissions.IsAuthenticated, IsTenantActive]
 
+    @extend_schema(
+        responses={204: None},
+    )
     def delete(self, request, member_id):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'member:write')
@@ -299,6 +320,9 @@ class TenantInviteCancelView(APIView):
     """Cancel tenant invitation."""
     permission_classes = [permissions.IsAuthenticated, IsTenantActive]
 
+    @extend_schema(
+        responses={204: None},
+    )
     def post(self, request, invite_id):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'member:write')
