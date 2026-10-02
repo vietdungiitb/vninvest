@@ -11,9 +11,13 @@ import logging
 from django.contrib.auth import get_user_model
 from django.http import HttpResponse, HttpResponseRedirect
 from django.utils import timezone
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from vninvest_core.api_envelope import envelope_response
 
 from ..models import (
     CorePATCredential,
@@ -26,6 +30,11 @@ from ..saml_service import (
     SAMLRequestError,
     SAMLService,
     SAMLSignatureError,
+)
+from ..schema import (
+    SSOCallbackSerializer,
+    SSOLoginInitiateSerializer,
+    SSOTestLoginSerializer,
 )
 from ..serializers import TenantSSOConfigSerializer
 from ..envelope import envelope
@@ -75,6 +84,9 @@ class PartnerSSOConfigView(APIView):
     """
     permission_classes = [permissions.IsAuthenticated, IsTenantActive]
 
+    @extend_schema(
+        responses={200: envelope_response(TenantSSOConfigSerializer)},
+    )
     def get(self, request):
         require_pat_scopes_or_human_session(request, PARTNER_SCOPE_MANAGE_TENANT)
         _require_tenant_permission(request, 'sso:read')
@@ -82,6 +94,9 @@ class PartnerSSOConfigView(APIView):
         sso_config, _ = TenantSSOConfig.objects.get_or_create(tenant=tenant)
         return envelope(TenantSSOConfigSerializer(sso_config).data)
 
+    @extend_schema(
+        responses={200: envelope_response(TenantSSOConfigSerializer)},
+    )
     def post(self, request):
         require_pat_scopes_or_human_session(request, PARTNER_SCOPE_MANAGE_TENANT)
         _require_tenant_permission(request, 'sso:write')
@@ -120,6 +135,11 @@ class SSOLoginInitiateView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
 
+    @extend_schema(
+        # Nhánh còn lại là `HttpResponseRedirect` (302, `sso.py:156`) — không
+        # thuộc 200, nên khai 200 ở đây là đúng cho nhánh SPA.
+        responses={200: envelope_response(SSOLoginInitiateSerializer)},
+    )
     def get(self, request):
         domain = request.query_params.get('domain', '').strip()
         email = request.query_params.get('email', '').strip()
@@ -182,6 +202,9 @@ class SSOCallbackView(APIView):
 
     # ── POST (HTTP-POST binding) ──
 
+    @extend_schema(
+        responses={200: envelope_response(SSOCallbackSerializer)},
+    )
     def post(self, request):
         saml_response_b64 = request.data.get('SAMLResponse', '')
         relay_state = request.data.get('RelayState', '')
@@ -196,6 +219,9 @@ class SSOCallbackView(APIView):
 
     # ── GET (HTTP-Redirect binding) ──
 
+    @extend_schema(
+        responses={200: envelope_response(SSOCallbackSerializer)},
+    )
     def get(self, request):
         saml_response_b64 = request.query_params.get('SAMLResponse', '')
         relay_state = request.query_params.get('RelayState', '')
@@ -353,6 +379,12 @@ class SSOMetadataView(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
 
+    @extend_schema(
+        # KHONG phai JSON: tra **XML** SAML metadata
+        # (`HttpResponse(metadata_xml, content_type='application/xml')`,
+        # `sso.py:374`). Khai envelope se sai hoàn toàn.
+        responses={200: OpenApiTypes.STR},
+    )
     def get(self, request, tenant_code: str = ''):
         from ..models import CoreTenant
         tenant = CoreTenant.objects.filter(tenant_code=tenant_code).first()
@@ -388,9 +420,15 @@ class PartnerSSOTestConnectionView(APIView):
     """
     permission_classes = [permissions.IsAuthenticated, IsTenantActive]
 
+    @extend_schema(
+        # Hai nhanh tra hai hinh dang khac nhau: `{success, checks, errors}`
+        # (:398) va `SAMLService.test_connection()` (:406) — shape cua latter
+        # thuoc app con, khong xac minh duoc tu day -> free-form.
+        responses={200: envelope_response()},
+    )
     def post(self, request):
         require_pat_scopes_or_human_session(request, PARTNER_SCOPE_MANAGE_TENANT)
-        _require_tenant_permission(request, 'sso:read')
+        _require_tenant_permission(request, 'sso:write')
         tenant = _get_request_tenant(request)
 
         sso_config = TenantSSOConfig.objects.filter(tenant=tenant).first()
@@ -418,6 +456,9 @@ class PartnerSSOTestLoginView(APIView):
     """
     permission_classes = [permissions.IsAuthenticated, IsTenantActive]
 
+    @extend_schema(
+        responses={200: envelope_response(SSOTestLoginSerializer)},
+    )
     def post(self, request):
         require_pat_scopes_or_human_session(request, PARTNER_SCOPE_MANAGE_TENANT)
         _require_tenant_permission(request, 'sso:read')

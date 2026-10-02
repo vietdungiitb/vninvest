@@ -50,6 +50,9 @@ __all__ = [
     'PlanChangePreviewSerializer',
     'ReportTestQueuedSerializer',
     'ScheduledReportDetailSerializer',
+    'SSOCallbackSerializer',
+    'SSOLoginInitiateSerializer',
+    'SSOTestLoginSerializer',
     'TenantCustomRoleWithCountSerializer',
     'TenantLifecycleSerializer',
     'TenantSummarySerializer',
@@ -240,6 +243,60 @@ class PartnerRoleListSerializer(serializers.Serializer):
     """
 
     roles = TenantCustomRoleWithCountSerializer(many=True, read_only=True)
+
+
+# ---------------------------------------------------------------------------
+# SSO
+# ---------------------------------------------------------------------------
+
+class SSOLoginInitiateSerializer(serializers.Serializer):
+    """Nhánh SPA của `GET /core/v1/auth/sso/login/`.
+
+    View còn có nhánh `HttpResponseRedirect` cho trình duyệt đi thẳng
+    (`sso.py:156`) — nhánh đó là **302**, không thuộc 200.
+    """
+
+    redirect_url = serializers.CharField()
+    sso_url = serializers.CharField()
+    tenant_id = serializers.CharField()
+    tenant_name = serializers.CharField(allow_null=True)
+
+
+class SSOTestLoginSerializer(serializers.Serializer):
+    """Kết quả `POST /core/v1/partner/sso/test-login/`."""
+
+    redirect_url = serializers.CharField()
+    sso_url = serializers.CharField()
+
+
+class SSOCallbackUserSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    username = serializers.CharField()
+    email = serializers.CharField(allow_blank=True)
+
+
+class SSOCallbackTenantSerializer(serializers.Serializer):
+    tenant_id = serializers.CharField()
+    tenant_code = serializers.CharField()
+    display_name = serializers.CharField(allow_null=True)
+    plan = serializers.CharField()
+
+
+class SSOCallbackMemberSerializer(serializers.Serializer):
+    role = serializers.CharField()
+
+
+class SSOCallbackSerializer(serializers.Serializer):
+    """Kết quả `POST|GET /core/v1/auth/sso/callback/`.
+
+    `access`/`token` là **token thật** (JWT) trả về một lần — không phải PAT.
+    """
+
+    access = serializers.CharField()
+    token = serializers.CharField()
+    user = SSOCallbackUserSerializer(read_only=True)
+    tenant = SSOCallbackTenantSerializer(read_only=True)
+    member = SSOCallbackMemberSerializer(read_only=True)
 
 
 class PaginatedResultsSerializer(serializers.Serializer):
