@@ -17,13 +17,23 @@ import logging
 import secrets
 
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
+
+from vninvest_core.api_envelope import envelope_response
 
 from identity_access.envelope import envelope
 from identity_access.models import CoreTenant, TenantWebhookConfig, WebhookDelivery
 from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
 from identity_access.utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
+from identity_access.schema import (
+    DetailResponseSerializer,
+    PartnerBillingStatusSerializer,
+    PlanChangePreviewSerializer,
+    WebhookConfigWithSecretSerializer,
+    WebhookSecretResponseSerializer,
+)
 from identity_access.serializers import TenantWebhookConfigSerializer, WebhookDeliverySerializer
 from identity_access.tasks import deprovision_tenant_async
 from identity_access.webhook_dispatcher import WebhookDispatcher
@@ -36,6 +46,9 @@ TENANT_PERMISSION_CLASSES = [permissions.IsAuthenticated, IsTenantActive]
 class WebhookConfigListCreateView(generics.GenericAPIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        responses={200: envelope_response(TenantWebhookConfigSerializer, many=True)},
+    )
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'webhook:read')
@@ -43,6 +56,9 @@ class WebhookConfigListCreateView(generics.GenericAPIView):
         qs = TenantWebhookConfig.objects.filter(tenant=tenant).order_by('-created_at')
         return envelope(TenantWebhookConfigSerializer(qs, many=True).data)
 
+    @extend_schema(
+        responses={201: envelope_response(WebhookConfigWithSecretSerializer)},
+    )
     def post(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'webhook:write')
@@ -66,6 +82,9 @@ class WebhookConfigDetailView(generics.GenericAPIView):
         except TenantWebhookConfig.DoesNotExist:
             return None
 
+    @extend_schema(
+        responses={200: envelope_response(TenantWebhookConfigSerializer)},
+    )
     def get(self, request, config_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'webhook:read')
@@ -74,6 +93,9 @@ class WebhookConfigDetailView(generics.GenericAPIView):
             return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
         return envelope(TenantWebhookConfigSerializer(config).data)
 
+    @extend_schema(
+        responses={200: envelope_response(TenantWebhookConfigSerializer)},
+    )
     def patch(self, request, config_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'webhook:write')
@@ -86,6 +108,9 @@ class WebhookConfigDetailView(generics.GenericAPIView):
         serializer.save()
         return envelope(TenantWebhookConfigSerializer(config).data)
 
+    @extend_schema(
+        responses={204: None},
+    )
     def delete(self, request, config_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'webhook:write')
@@ -99,6 +124,9 @@ class WebhookConfigDetailView(generics.GenericAPIView):
 class WebhookRegenerateSecretView(generics.GenericAPIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        responses={200: envelope_response(WebhookSecretResponseSerializer)},
+    )
     def post(self, request, config_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'webhook:write')
@@ -115,6 +143,9 @@ class WebhookRegenerateSecretView(generics.GenericAPIView):
 class WebhookDeliveryLogView(generics.GenericAPIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        responses={200: envelope_response(WebhookDeliverySerializer, many=True)},
+    )
     def get(self, request, config_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'webhook:read')
@@ -130,6 +161,9 @@ class WebhookDeliveryLogView(generics.GenericAPIView):
 class WebhookTestView(generics.GenericAPIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        responses={200: envelope_response(DetailResponseSerializer)},
+    )
     def post(self, request, config_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'webhook:write')
@@ -149,6 +183,9 @@ class WebhookTestView(generics.GenericAPIView):
 class WebhookManualRetryView(generics.GenericAPIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        responses={200: envelope_response(DetailResponseSerializer)},
+    )
     def post(self, request, config_id, delivery_id, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'webhook:write')
@@ -169,6 +206,9 @@ class WebhookManualRetryView(generics.GenericAPIView):
 class BillingStatusView(generics.GenericAPIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        responses={200: envelope_response(PartnerBillingStatusSerializer)},
+    )
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'billing:read')
@@ -186,6 +226,9 @@ class BillingStatusView(generics.GenericAPIView):
 class PreviewPlanChangeView(generics.GenericAPIView):
     permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        responses={200: envelope_response(PlanChangePreviewSerializer)},
+    )
     def post(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'billing:write')
@@ -224,6 +267,9 @@ class PreviewPlanChangeView(generics.GenericAPIView):
 class DeprovisionView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated, IsTenantActive]
 
+    @extend_schema(
+        responses={200: envelope_response(DetailResponseSerializer)},
+    )
     def post(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'tenant:write')
