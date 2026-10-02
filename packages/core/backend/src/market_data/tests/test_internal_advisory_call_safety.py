@@ -25,13 +25,17 @@ Kịch bản B0 chặn: `advisory_id` **không** phải lý do để đổi reco
 Test ở đây viết cho hành vi **đúng**, không viết cho hành vi hiện tại.
 """
 
+import ast
+import importlib
 import uuid
 from datetime import date
+from pathlib import Path
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from rest_framework.test import APIRequestFactory, force_authenticate
 
+import market_data
 from advisory.models import AdvisoryRecord
 from market_data.stock_mgmt_native_views import (
     StockManagementAIAdvisorySessionView,
@@ -40,6 +44,25 @@ from market_data.stock_mgmt_native_views import (
 )
 
 User = get_user_model()
+
+
+class _DirectRefreshDataRead(ast.NodeVisitor):
+    """Thu thập mọi chỗ đọc **thật** `refresh_response.data`.
+
+    `ast` chứ không regex: docstring của chính `_advisory_field` nhắc lại
+    `refresh_response.data.get(...)` để giải thích anti-pattern, và regex sẽ
+    báo động giả ở đó. Docstring không sinh node `Attribute` nên không khớp.
+    """
+
+    def __init__(self):
+        self.hits = []
+
+    def visit_Attribute(self, node):
+        if (node.attr == 'data'
+                and isinstance(node.value, ast.Name)
+                and node.value.id == 'refresh_response'):
+            self.hits.append(node.lineno)
+        self.generic_visit(node)
 
 
 class _FakeRefreshResponse:
@@ -217,3 +240,64 @@ class SessionViewMustNotSubstituteTests(TestCase):
         self.assertIn('t9', body, 'task_id phải đọc được qua mọi hình dạng envelope')
         self.assertNotIn(newer.advisory_text, body,
                          'phải phục vụ đúng phiên refresh chỉ định, không phải phiên mới hơn')
+
+
+class RefreshResponseIsNeverReadDirectlyTests(SimpleTestCase):
+    """`refresh_response` **không được** đọc thẳng — phải qua `_advisory_field`.
+
+    ## Vì sao dùng `ast` chứ không dùng regex
+
+    Bản regex đầu tiên **báo động giả**: `_advisory_field` có docstring giải
+    thích chính anti-pattern này (`refresh_response.data.get(...)` nằm trong
+    docstring ở `:2327`) nên nó khớp. `ast` không sinh node cho docstring và
+    comment, nên chỉ khớp khi code **thật sự** đọc thuộc tính `data` của biến
+    `refresh_response`.
+
+    ## Vì sao test này là **static** chứ không phải hành vi
+
+    `_ensure_advisory_record_for_symbol` (đã xoá 2026-10-02) là bản thứ 3 của
+    logic "refresh rồi đọc `advisory_id`", và nó **không có caller nào**. Test
+    hành vi không thể chạm tới hàm không ai gọi — nên chốt chặn phải là chốt
+    chặn *mã nguồn*: quét `src/market_data/` và fail nếu còn đọc thẳng
+    `refresh_response.data`. Đây cũng là lý do lựa chọn **xoá** thay vì
+    **sửa**: một bản sai không ai gọi thì không có test hành vi nào bảo vệ được,
+    còn đọc thẳng `.data` thì bắt được bằng quét.
+
+    Bám đúng cái viết, không bám đường dẫn: `refresh_response` là tên biến cục
+    bộ của cả hai call site live, nên đổi tên biến cũng phải sửa test — đúng
+    như bản chất của chốt chặn này.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        root = Path(market_data.__file__).parent
+        cls.violations = []
+        for path in sorted(root.rglob('*.py')):
+            tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+            visitor = _DirectRefreshDataRead()
+            visitor.visit(tree)
+            for lineno in visitor.hits:
+                cls.violations.append(f'{path.relative_to(root)}:{lineno}')
+
+    def test_no_direct_read_of_refresh_response_data(self):
+        self.assertEqual(
+            [], self.violations,
+            'Đọc thẳng `refresh_response.data` là kích hoạt fallback im lặng sang '
+            'record của phiên khác khi app `advisory` đã bọc envelope. Phải đọc '
+            'qua `_advisory_field` (đọc được cả hai hình dạng) rồi '
+            '`_resolve_refreshed_advisory`.\n' + '\n'.join(self.violations))
+
+    def test_dead_helper_is_not_reintroduced(self):
+        """`_ensure_advisory_record_for_symbol` là bản thứ 3 của logic đó.
+
+        Cố ý viết thành hai lớp: nếu ai đó dán lại đúng hàm cũ thì regex ở trên
+        bắt được; nếu ai đó viết lại bằng tên khác thì lớp này bắt được. Xoá code
+        chết chỉ bền vững khi có **hai** lớp chốt chặn.
+        """
+        module = importlib.import_module('market_data.stock_mgmt_native_views')
+        self.assertFalse(
+            hasattr(module, '_ensure_advisory_record_for_symbol'),
+            'hàm này đã bị xoá (0 caller + bug fallback im lặng); nếu cần thì dùng '
+            '`_advisory_field` + `_resolve_refreshed_advisory` như hai call site '
+            'live đang làm, đừng dán lại bản cũ')
