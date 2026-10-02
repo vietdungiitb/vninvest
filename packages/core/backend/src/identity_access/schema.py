@@ -46,6 +46,7 @@ __all__ = [
     'PATRotationResponseSerializer',
     'PartnerBillingStatusSerializer',
     'PartnerRoleListSerializer',
+    'PaginatedResultsSerializer',
     'PlanChangePreviewSerializer',
     'ReportTestQueuedSerializer',
     'ScheduledReportDetailSerializer',
@@ -239,6 +240,22 @@ class PartnerRoleListSerializer(serializers.Serializer):
     """
 
     roles = TenantCustomRoleWithCountSerializer(many=True, read_only=True)
+
+
+class PaginatedResultsSerializer(serializers.Serializer):
+    """`{results: [...]}` — dùng khi view bọc trong `paginated_envelope()`.
+
+    Cần cho các view của `commercial_partner_views.py` gọi serializer **lazy
+    import** (`from commercial.serializers import PartnerUsageMeterSerializer`
+    *bên trong* method). Không thể đưa serializer đó vào `@extend_schema` vì
+    decorator chạy lúc **import**, còn import kiểu đó cố ý để chịu được
+    trường hợp app `commercial` chưa migrate.
+
+    Vì vậy ở đây chỉ khẳng định điều chắc chắn — **`data` là object có mảng
+    `results`** — chứ không liệt kê field của app kia.
+    """
+
+    results = serializers.ListField(child=serializers.JSONField())
 
 
 class DetailResponseSerializer(serializers.Serializer):
