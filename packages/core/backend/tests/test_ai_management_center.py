@@ -34,6 +34,7 @@ import httpx
 from advisory.models import UserAICredential, SystemAISettings
 from identity_access.security import encrypt_user_api_key
 from identity_access.models import UserProfile
+from identity_access.tests.envelope import unwrapped
 
 
 class UserAICredentialModelTests(TestCase):
@@ -134,7 +135,7 @@ class PortfolioAICommandCenterViewGetTests(TestCase):
     def test_get_returns_default_config_when_no_credential_exists(self):
         response = self.client.get('/core/v1/workspace/ai-command-center/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.data
+        data = unwrapped(response)
         self.assertEqual(data['ai_provider'], 'openclaw')
         self.assertEqual(data['ai_api_key_configured'], False)
         self.assertEqual(data['custom_endpoint'], '')
@@ -150,7 +151,7 @@ class PortfolioAICommandCenterViewGetTests(TestCase):
         )
         response = self.client.get('/core/v1/workspace/ai-command-center/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.data
+        data = unwrapped(response)
         self.assertEqual(data['ai_provider'], 'gemini')
         self.assertEqual(data['ai_api_key_configured'], True)
         self.assertEqual(data['ai_api_key'], '')  # never return raw key
@@ -162,8 +163,8 @@ class PortfolioAICommandCenterViewGetTests(TestCase):
         """F5 — SystemAISettings.prompt_template readable on GET."""
         response = self.client.get('/core/v1/workspace/ai-command-center/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('system_prompt_template', response.data)
-        self.assertIsInstance(response.data['system_prompt_template'], str)
+        self.assertIn('system_prompt_template', unwrapped(response))
+        self.assertIsInstance(unwrapped(response)['system_prompt_template'], str)
 
     def test_get_local_provider_no_key_needed(self):
         UserAICredential.objects.create(
@@ -174,7 +175,7 @@ class PortfolioAICommandCenterViewGetTests(TestCase):
         )
         response = self.client.get('/core/v1/workspace/ai-command-center/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.data
+        data = unwrapped(response)
         self.assertEqual(data['ai_provider'], 'local')
         self.assertEqual(data['custom_endpoint'], 'http://localhost:11434/v1')
         self.assertTrue(data['ai_ready'])
@@ -186,7 +187,7 @@ class PortfolioAICommandCenterViewGetTests(TestCase):
         )
         response = self.client.get('/core/v1/workspace/ai-command-center/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.data
+        data = unwrapped(response)
         self.assertEqual(data['ai_provider'], 'claude')
         self.assertTrue(data['ai_api_key_configured'])
 
@@ -257,15 +258,15 @@ class PortfolioAICommandCenterViewPutTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         cred.refresh_from_db()
         self.assertEqual(cred.encrypted_api_key, '')
-        self.assertFalse(response.data.get('ai_api_key_configured'))
-        self.assertEqual(response.data.get('ai_api_key_masked'), '')
+        self.assertFalse(unwrapped(response).get('ai_api_key_configured'))
+        self.assertEqual(unwrapped(response).get('ai_api_key_masked'), '')
 
     def test_put_response_includes_fallback_quota(self):
         response = self.client.put('/core/v1/workspace/ai-command-center/', {
             'ai_provider': 'openai',
         }, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.data
+        data = unwrapped(response)
         self.assertIn('fallback_quota_remaining', data)
         self.assertIn('fallback_quota_max', data)
 
@@ -287,8 +288,8 @@ class PortfolioAICommandCenterTestViewTests(TestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('message', response.data)
-        self.assertIn('latency_ms', response.data)
+        self.assertIn('message', unwrapped(response))
+        self.assertIn('latency_ms', unwrapped(response))
 
     def test_missing_provider_returns_validation_error(self):
         response = self.client.post(
@@ -322,8 +323,8 @@ class PortfolioAICommandCenterTestViewTests(TestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('models_available', response.data)
-        self.assertIn('llama3.2', response.data['models_available'])
+        self.assertIn('models_available', unwrapped(response))
+        self.assertIn('llama3.2', unwrapped(response)['models_available'])
 
     @patch('httpx.Client.post')
     def test_openai_with_valid_key(self, mock_post):
@@ -337,8 +338,8 @@ class PortfolioAICommandCenterTestViewTests(TestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('latency_ms', response.data)
-        self.assertGreaterEqual(response.data['latency_ms'], 0)
+        self.assertIn('latency_ms', unwrapped(response))
+        self.assertGreaterEqual(unwrapped(response)['latency_ms'], 0)
 
     @patch('httpx.Client.post')
     def test_probe_returns_401_for_invalid_key(self, mock_post):
@@ -428,9 +429,9 @@ class AdvisoryRefreshViewFallbackTests(TestCase):
         )
         response = self.client.post('/core/v1/advisory/refresh/FPT/', {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(response.data.get('personal_key_failed'))
-        self.assertTrue(response.data.get('using_system_fallback'))
-        self.assertIn('fallback_quota_remaining', response.data)
+        self.assertTrue(unwrapped(response).get('personal_key_failed'))
+        self.assertTrue(unwrapped(response).get('using_system_fallback'))
+        self.assertIn('fallback_quota_remaining', unwrapped(response))
 
     @override_settings(AI_FALLBACK_DAILY_QUOTA=1)
     @patch('advisory.tasks.generate_advisory_task.delay')
@@ -492,4 +493,4 @@ class AdvisoryRefreshViewFallbackTests(TestCase):
         )
         response = self.client.post('/core/v1/advisory/refresh/FPT/', {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertNotIn('personal_key_failed', response.data)
+        self.assertNotIn('personal_key_failed', unwrapped(response))
