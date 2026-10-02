@@ -296,8 +296,8 @@ Worktree = `C:\Mujoco Projects\claimfix`, branch `feat/claimfix`.
 | `b5-user-workspace` | `wip/b3` | boc {data,meta} user_workspace (53/53) | src/user_workspace/** | done |
 | `b5-service-ops` | `wip/b1` | boc {data,meta} service_ops (151) | src/service_ops/** | done |
 | `b5-identity` | `wip/b2` | boc {data,meta} identity_access (92) | src/identity_access/** | done |
-| `b5-rest` | `wip/b4` | boc 79 diem: market_data 61 / signal_intel 7 / advisory 7 / ops_audit 4 | 4 app | done |
-| `b5-openapi` | `wip/api` | schema OpenAPI mo ta {data,meta}: 183 operation sai -> 0 | src/vninvest_core/api_envelope.py + 16 view | done |
+| `b5-rest` | `wip/b4` | boc 79 diem cho market_data / signal_intelligence / advisory / ops_audit | src/{4 app}/** | done |
+| `b5-openapi` | `wip/api` | schema OpenAPI mo ta {data,meta}: 183 operation sai -> 0 | src/vninvest_core/api_envelope.py | done |
 | `b5-sweep` | `sweep/b5-sweep` | quet backend/tests/: 55 regression that | backend/tests/** (10 file) | done |
 
 **Full suite cuoi**: 2775 test · 79F + 8E = 87 do (baseline truoc B5 = 88).
