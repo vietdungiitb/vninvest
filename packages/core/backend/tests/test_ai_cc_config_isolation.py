@@ -28,6 +28,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from advisory.models import SystemAISettings, UserAICredential
+from advisory.tests.envelope import unwrapped
 
 CC_URL = '/core/v1/workspace/ai-command-center/'
 
@@ -65,16 +66,16 @@ class AICommandCenterIsolationTests(TestCase):
         """C-AC1: UserA temperature ≠ UserB after each PUT."""
         r_a = self.client_a.put(CC_URL, {'temperature': 0.9}, format='json')
         self.assertEqual(r_a.status_code, status.HTTP_200_OK)
-        self.assertAlmostEqual(r_a.data['temperature'], 0.9, places=5)
+        self.assertAlmostEqual(unwrapped(r_a)['temperature'], 0.9, places=5)
 
         r_b = self.client_b.put(CC_URL, {'temperature': 0.1}, format='json')
         self.assertEqual(r_b.status_code, status.HTTP_200_OK)
-        self.assertAlmostEqual(r_b.data['temperature'], 0.1, places=5)
+        self.assertAlmostEqual(unwrapped(r_b)['temperature'], 0.1, places=5)
 
         g_a = self.client_a.get(CC_URL)
         g_b = self.client_b.get(CC_URL)
-        self.assertAlmostEqual(g_a.data['temperature'], 0.9, places=5)
-        self.assertAlmostEqual(g_b.data['temperature'], 0.1, places=5)
+        self.assertAlmostEqual(unwrapped(g_a)['temperature'], 0.9, places=5)
+        self.assertAlmostEqual(unwrapped(g_b)['temperature'], 0.1, places=5)
 
         cred_a = UserAICredential.objects.get(user=self.user_a)
         cred_b = UserAICredential.objects.get(user=self.user_b)
@@ -85,16 +86,16 @@ class AICommandCenterIsolationTests(TestCase):
         """C-AC2: UserA max_tokens_per_day ≠ UserB."""
         r_a = self.client_a.put(CC_URL, {'advisory_max_tokens_per_day': 1111}, format='json')
         self.assertEqual(r_a.status_code, status.HTTP_200_OK)
-        self.assertEqual(r_a.data['advisory_max_tokens_per_day'], 1111)
+        self.assertEqual(unwrapped(r_a)['advisory_max_tokens_per_day'], 1111)
 
         r_b = self.client_b.put(CC_URL, {'advisory_max_tokens_per_day': 9999}, format='json')
         self.assertEqual(r_b.status_code, status.HTTP_200_OK)
-        self.assertEqual(r_b.data['advisory_max_tokens_per_day'], 9999)
+        self.assertEqual(unwrapped(r_b)['advisory_max_tokens_per_day'], 9999)
 
         g_a = self.client_a.get(CC_URL)
         g_b = self.client_b.get(CC_URL)
-        self.assertEqual(g_a.data['advisory_max_tokens_per_day'], 1111)
-        self.assertEqual(g_b.data['advisory_max_tokens_per_day'], 9999)
+        self.assertEqual(unwrapped(g_a)['advisory_max_tokens_per_day'], 1111)
+        self.assertEqual(unwrapped(g_b)['advisory_max_tokens_per_day'], 9999)
 
         cred_a = UserAICredential.objects.get(user=self.user_a)
         cred_b = UserAICredential.objects.get(user=self.user_b)
@@ -113,8 +114,8 @@ class AICommandCenterIsolationTests(TestCase):
 
         g_a = self.client_a.get(CC_URL)
         g_b = self.client_b.get(CC_URL)
-        self.assertEqual(g_a.data['ai_prompt_config']['whale']['lookback'], 30)
-        self.assertEqual(g_b.data['ai_prompt_config']['whale']['lookback'], 7)
+        self.assertEqual(unwrapped(g_a)['ai_prompt_config']['whale']['lookback'], 30)
+        self.assertEqual(unwrapped(g_b)['ai_prompt_config']['whale']['lookback'], 7)
 
         cred_a = UserAICredential.objects.get(user=self.user_a)
         cred_b = UserAICredential.objects.get(user=self.user_b)
@@ -145,10 +146,10 @@ class AICommandCenterIsolationTests(TestCase):
         self.assertEqual(self.system.metadata, before_meta)
 
         # Response still reflects user values (not system)
-        self.assertAlmostEqual(r.data['temperature'], 0.77, places=5)
-        self.assertEqual(r.data['advisory_max_tokens_per_day'], 123)
-        self.assertEqual(r.data['advisory_refresh_interval_hours'], 6)
-        self.assertEqual(r.data['ai_prompt_config'], {'news': {'enabled': False}})
+        self.assertAlmostEqual(unwrapped(r)['temperature'], 0.77, places=5)
+        self.assertEqual(unwrapped(r)['advisory_max_tokens_per_day'], 123)
+        self.assertEqual(unwrapped(r)['advisory_refresh_interval_hours'], 6)
+        self.assertEqual(unwrapped(r)['ai_prompt_config'], {'news': {'enabled': False}})
 
     def test_c_ac5_response_shape_keys_stable(self):
         """C-AC5: GET returns same FE contract keys."""
@@ -163,7 +164,7 @@ class AICommandCenterIsolationTests(TestCase):
         }
         g = self.client_a.get(CC_URL)
         self.assertEqual(g.status_code, status.HTTP_200_OK)
-        missing = required - set(g.data.keys())
+        missing = required - set(unwrapped(g).keys())
         self.assertEqual(missing, set(), f'missing keys: {missing}')
 
     def test_lazy_default_null_fields_fall_back_to_system(self):
@@ -171,10 +172,10 @@ class AICommandCenterIsolationTests(TestCase):
         UserAICredential.objects.create(user=self.user_a, ai_provider='openai')
         g = self.client_a.get(CC_URL)
         self.assertEqual(g.status_code, status.HTTP_200_OK)
-        self.assertEqual(g.data['advisory_max_tokens_per_day'], self.system.max_tokens)
-        self.assertAlmostEqual(g.data['temperature'], self.system.temperature, places=5)
-        self.assertEqual(g.data['advisory_refresh_interval_hours'], 24)
-        self.assertEqual(g.data['advisory_max_auto_refreshes_per_day'], 12)
+        self.assertEqual(unwrapped(g)['advisory_max_tokens_per_day'], self.system.max_tokens)
+        self.assertAlmostEqual(unwrapped(g)['temperature'], self.system.temperature, places=5)
+        self.assertEqual(unwrapped(g)['advisory_refresh_interval_hours'], 24)
+        self.assertEqual(unwrapped(g)['advisory_max_auto_refreshes_per_day'], 12)
 
         cred = UserAICredential.objects.get(user=self.user_a)
         self.assertIsNone(cred.temperature)
@@ -191,8 +192,8 @@ class AICommandCenterIsolationTests(TestCase):
         }, format='json')
 
         g_a = self.client_a.get(CC_URL)
-        self.assertAlmostEqual(g_a.data['temperature'], self.system.temperature, places=5)
-        self.assertEqual(g_a.data['advisory_max_tokens_per_day'], self.system.max_tokens)
+        self.assertAlmostEqual(unwrapped(g_a)['temperature'], self.system.temperature, places=5)
+        self.assertEqual(unwrapped(g_a)['advisory_max_tokens_per_day'], self.system.max_tokens)
 
     def test_audit_after_snapshot_reflects_user_rows(self):
         """C.1.6: AIAuditLog after_json uses user policy values."""
