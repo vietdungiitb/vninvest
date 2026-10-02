@@ -34,6 +34,7 @@ from user_workspace.portfolio_analytics_views import (
     PortfolioAIAdvisoryRefreshView,
 )
 from user_workspace.models import Portfolio, Transaction, Watchlist, WatchlistItem
+from user_workspace.tests.envelope import unwrapped
 from user_workspace.views import (
     PortfolioDetailView,
     PortfolioListCreateView,
@@ -72,22 +73,22 @@ class UserWorkspaceApiRouteTests(TestCase):
 
         list_response = self.client.get('/core/v1/workspace/portfolios/')
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(list_response.data['results'][0]['name'], 'Danh mục Core')
+        self.assertEqual(unwrapped(list_response)['results'][0]['name'], 'Danh mục Core')
 
         resolver_detail = resolve(f'/core/v1/workspace/portfolios/{portfolio.id}/')
         self.assertIs(resolver_detail.func.view_class, PortfolioDetailView)
 
         detail_response = self.client.get(f'/core/v1/workspace/portfolios/{portfolio.id}/')
         self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(detail_response.data['id'], portfolio.id)
-        self.assertEqual(detail_response.data['name'], 'Danh mục Core')
+        self.assertEqual(unwrapped(detail_response)['id'], portfolio.id)
+        self.assertEqual(unwrapped(detail_response)['name'], 'Danh mục Core')
 
         resolver_transactions = resolve(f'/core/v1/workspace/portfolios/{portfolio.id}/transactions/')
         self.assertIs(resolver_transactions.func.view_class, TransactionListCreateView)
 
         transactions_response = self.client.get(f'/core/v1/workspace/portfolios/{portfolio.id}/transactions/?symbol=VCB')
         self.assertEqual(transactions_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(transactions_response.data['results'][0]['symbol'], 'VCB')
+        self.assertEqual(unwrapped(transactions_response)['results'][0]['symbol'], 'VCB')
 
     def test_watchlist_routes_are_native_and_item_delete_works(self):
         watchlist = Watchlist.objects.create(
@@ -107,14 +108,14 @@ class UserWorkspaceApiRouteTests(TestCase):
 
         list_response = self.client.get('/core/v1/workspace/watchlists/')
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(list_response.data['results'][0]['name'], 'Theo dõi chiến lược')
+        self.assertEqual(unwrapped(list_response)['results'][0]['name'], 'Theo dõi chiến lược')
 
         resolver_items = resolve(f'/core/v1/workspace/watchlists/{watchlist.id}/items/')
         self.assertIs(resolver_items.func.view_class, WatchlistItemListCreateView)
 
         items_response = self.client.get(f'/core/v1/workspace/watchlists/{watchlist.id}/items/')
         self.assertEqual(items_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(items_response.data['results'][0]['symbol'], 'FPT')
+        self.assertEqual(unwrapped(items_response)['results'][0]['symbol'], 'FPT')
 
         resolver_delete = resolve(f'/core/v1/workspace/watchlists/{watchlist.id}/items/FPT/')
         self.assertIs(resolver_delete.func.view_class, WatchlistItemDeleteView)

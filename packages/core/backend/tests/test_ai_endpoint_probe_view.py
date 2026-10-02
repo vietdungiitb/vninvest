@@ -30,6 +30,8 @@ from django.test import TestCase  # noqa: E402
 from rest_framework import status  # noqa: E402
 from rest_framework.test import APIClient  # noqa: E402
 
+from advisory.tests.envelope import unwrapped
+
 TEST_URL = '/core/v1/workspace/ai-command-center/test-connection/'
 
 # Endpoints that must never be contacted. All are literal IPs, so the test does
@@ -103,4 +105,4 @@ class SSRFProbeBlockedTests(TestCase):
             resp = self._post('http://127.0.0.1:11434/v1')
 
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
-        self.assertIn('models_available', resp.data)
+        self.assertIn('models_available', unwrapped(resp))
