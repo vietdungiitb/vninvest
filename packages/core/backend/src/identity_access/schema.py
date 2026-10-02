@@ -35,13 +35,19 @@ from identity_access.serializers import (
     ReportDeliveryLogSerializer,
     ScheduledReportSerializer,
     TenantCustomRoleSerializer,
+    TenantInviteSerializer,
+    TenantMemberSerializer,
     TenantWebhookConfigSerializer,
 )
 
 __all__ = [
     'AbilitySerializer',
     'DetailResponseSerializer',
+    'DNSECredentialMetadataSerializer',
     'IssuedCorePATSerializer',
+    'OperatorMailConfigCursorPageSerializer',
+    'OperatorMailConfigRowSerializer',
+    'OperatorSuccessResponseSerializer',
     'PATRevocationResponseSerializer',
     'PATRotationResponseSerializer',
     'PartnerBillingStatusSerializer',
@@ -54,7 +60,9 @@ __all__ = [
     'SSOLoginInitiateSerializer',
     'SSOTestLoginSerializer',
     'TenantCustomRoleWithCountSerializer',
+    'TenantInviteListSerializer',
     'TenantLifecycleSerializer',
+    'TenantMemberListSerializer',
     'TenantSummarySerializer',
     'UserProfilePayloadSerializer',
     'UserProfileWithTenantsSerializer',
@@ -313,6 +321,99 @@ class PaginatedResultsSerializer(serializers.Serializer):
     """
 
     results = serializers.ListField(child=serializers.JSONField())
+
+
+# ---------------------------------------------------------------------------
+# F3 — `success_response()` của views_operator
+# ---------------------------------------------------------------------------
+
+class OperatorSuccessResponseSerializer(serializers.Serializer):
+    """F3 `{status, timestamp, request_id, data}` — hợp đồng **phẳng**.
+
+    `views_operator.success_response()` (`views_operator.py:21`) trả đúng
+    shape này ở **6** call site. Bộ phân loại của
+    `scripts/check-envelope-contract.py` xếp nó là `SKIP_F3`.
+
+    Ranh giới quan trọng: `data` nằm **trong** F3, không phải `data` của
+    envelope `{data, meta}`. Trông giống nhau nên rất dễ bọc nhầm — mà bọc
+    nhầm thì `meta` biến mất và client mất `request_id` để tra log.
+    """
+
+    status = serializers.CharField()
+    timestamp = serializers.CharField()
+    request_id = serializers.CharField()
+    data = serializers.JSONField()
+
+
+class OperatorMailConfigRowSerializer(serializers.Serializer):
+    """Một dòng của `GET /core/v1/operator/mail-config/`.
+
+    Hợp đồng đã **ẩn** secret: `smtp_password_configured` /
+    `google_service_account_json_configured` là bool, không phải bản mật.
+    """
+
+    id = serializers.IntegerField()
+    provider = serializers.CharField()
+    is_active = serializers.BooleanField()
+    from_email = serializers.CharField(allow_null=True)
+    smtp_host = serializers.CharField(allow_null=True)
+    smtp_port = serializers.IntegerField(allow_null=True)
+    smtp_username = serializers.CharField(allow_null=True)
+    smtp_password_configured = serializers.BooleanField()
+    smtp_use_tls = serializers.BooleanField()
+    smtp_use_ssl = serializers.BooleanField()
+    google_service_account_json_configured = serializers.BooleanField()
+    google_delegated_user_email = serializers.CharField(allow_null=True)
+    created_at = serializers.CharField()
+    updated_at = serializers.CharField()
+
+
+class OperatorMailConfigCursorPageSerializer(serializers.Serializer):
+    """`data` của `GET /core/v1/operator/mail-config/`.
+
+    View dựng `results` tay rồi bọc cả khối cursor pagination
+    (`views_operator.py:70`) nên `data` là **object** `{next, previous,
+    results}` — không phải mảng thẳng.
+    """
+
+    next = serializers.CharField(allow_null=True)
+    previous = serializers.CharField(allow_null=True)
+    results = OperatorMailConfigRowSerializer(many=True, read_only=True)
+
+
+# ---------------------------------------------------------------------------
+# DNSE credential
+# ---------------------------------------------------------------------------
+
+class DNSECredentialMetadataSerializer(serializers.Serializer):
+    """Metadata của `_safe_serialize()` — cố ý **không** có api_key/secret.
+
+    `GET` và `POST` dùng chung shape này (`dnse_credential_views.py:50, :81`).
+    """
+
+    user_id = serializers.IntegerField()
+    username = serializers.CharField()
+    is_system_provider = serializers.BooleanField()
+    is_verified = serializers.BooleanField()
+    last_verified_at = serializers.CharField(allow_null=True)
+    created_at = serializers.CharField()
+    updated_at = serializers.CharField()
+
+
+# ---------------------------------------------------------------------------
+# Tenant member / invite
+# ---------------------------------------------------------------------------
+
+class TenantMemberListSerializer(serializers.Serializer):
+    """`GET /core/v1/tenant-members/` — `{members: [...]}`, không phải mảng."""
+
+    members = TenantMemberSerializer(many=True, read_only=True)
+
+
+class TenantInviteListSerializer(serializers.Serializer):
+    """`GET /core/v1/tenant-members/invites/` — `{invites: [...]}`."""
+
+    invites = TenantInviteSerializer(many=True, read_only=True)
 
 
 class DetailResponseSerializer(serializers.Serializer):

@@ -4,13 +4,21 @@ import uuid
 from django.utils import timezone
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAdminUser
 from rest_framework.pagination import CursorPagination
+
+from vninvest_core.api_envelope import envelope_response
+
 from identity_access.envelope import paginated_envelope
 from identity_access.models import SystemMailConfig, MailConfigAuditLog
+from identity_access.schema import (
+    OperatorMailConfigCursorPageSerializer,
+    OperatorSuccessResponseSerializer,
+)
 from vninvest_core.utils.crypto import encrypt_secret
 from django.core.mail import get_connection, send_mail
 from django.conf import settings
@@ -41,6 +49,11 @@ class MailConfigCursorPagination(CursorPagination):
 class OperatorMailConfigListView(APIView):
     permission_classes = [IsAdminUser]
 
+    @extend_schema(
+        # Nhanh 2xx cua listview la `paginated_envelope(dict(paged.data))`
+        # (:70) => data la OBJECT {next, previous, results}.
+        responses={200: envelope_response(OperatorMailConfigCursorPageSerializer)},
+    )
     def get(self, request):
         queryset = SystemMailConfig.objects.all().order_by('-created_at')
         paginator = MailConfigCursorPagination()
@@ -69,6 +82,11 @@ class OperatorMailConfigListView(APIView):
         # Giữ nguyên next/previous/results — chỉ đổi lớp ngoài thành envelope.
         return paginated_envelope(dict(paged.data))
 
+    @extend_schema(
+        # F3 `{status, timestamp, request_id, data}` qua `success_response()`.
+        # PHANG, khong phai envelope — bo boc se lam mat `request_id`.
+        responses={201: OperatorSuccessResponseSerializer},
+    )
     def post(self, request):
         data = request.data
         provider = data.get('provider')
@@ -134,6 +152,9 @@ class OperatorMailConfigDetailView(APIView):
         except SystemMailConfig.DoesNotExist:
             return None
 
+    @extend_schema(
+        responses={200: OperatorSuccessResponseSerializer},
+    )
     def get(self, request, pk):
         config = self._get_config(pk)
         if not config:
@@ -156,6 +177,9 @@ class OperatorMailConfigDetailView(APIView):
             "updated_at": config.updated_at.isoformat(),
         }, status.HTTP_200_OK, request=request)
 
+    @extend_schema(
+        responses={200: OperatorSuccessResponseSerializer},
+    )
     def patch(self, request, pk):
         config = self._get_config(pk)
         if not config:
@@ -211,6 +235,9 @@ class OperatorMailConfigDetailView(APIView):
                 "code": "server_error"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @extend_schema(
+        responses={200: OperatorSuccessResponseSerializer},
+    )
     def delete(self, request, pk):
         config = self._get_config(pk)
         if not config:
@@ -249,6 +276,9 @@ class OperatorMailConfigDetailView(APIView):
 class OperatorMailConfigActivateView(APIView):
     permission_classes = [IsAdminUser]
 
+    @extend_schema(
+        responses={200: OperatorSuccessResponseSerializer},
+    )
     def post(self, request, pk):
         try:
             with transaction.atomic():
@@ -289,6 +319,9 @@ class OperatorMailConfigActivateView(APIView):
 class OperatorMailConfigTestView(APIView):
     permission_classes = [IsAdminUser]
 
+    @extend_schema(
+        responses={200: OperatorSuccessResponseSerializer},
+    )
     def post(self, request):
         data = request.data
         test_email = data.get('test_email')
