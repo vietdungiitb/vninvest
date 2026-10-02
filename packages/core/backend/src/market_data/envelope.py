@@ -12,23 +12,25 @@ chéo app khác: mỗi app giữ một helper riêng và cùng tuân theo một 
 
 ### ① View của app khác gọi view của app này và ngược lại
 
-`stock_mgmt_native_views.py` có **3** chỗ gọi `AdvisoryRefreshView.as_view()()`
+`stock_mgmt_native_views.py` có **2** chỗ gọi `AdvisoryRefreshView.as_view()()`
 (thuộc app `advisory`):
 
-    :2690  _ensure_advisory_record_for_symbol            — **0 caller (code chết)**
-    :2819  StockManagementAIAdvisorySessionView.post     — **live**
-    :2987  StockManagementAIAdvisoryComponentsGenerateView.post — **live**
+    StockManagementAIAdvisorySessionView.post          — **live**
+    StockManagementAIAdvisoryComponentsGenerateView.post — **live**
 
-Hai chỗ live đọc response qua `_advisory_field` (`:2317`), hàm cố ý đọc được cả
+Cả hai đều đọc response qua `_advisory_field` (`:2322`), hàm cố ý đọc được cả
 hai hình dạng. Nhưng `advisory` được bọc ở đợt B5 này **cùng lúc**, và:
-`market_data` có chỗ trả thẳng `refresh_response` (`:2844`) — response đó **đã
-bọc** ⇒ hai nhánh của cùng endpoint cùng shape. Đúng mức an toàn mà
-`adopt_envelope` sinh ra.
+`market_data` có chỗ trả thẳng `refresh_response` — response đó **đã bọc** ⇒
+hai nhánh của cùng endpoint cùng shape. Đúng mức an toàn mà `adopt_envelope`
+sinh ra.
 
-Chỗ thu 3 (`:2690`) **vẫn còn bug gốc**: đọc thẳng
+Chỗ thứ 3 trước đây (`_ensure_advisory_record_for_symbol`) đọc thẳng
 `refresh_response.data.get('advisory_id')` rồi rơi âm thầm về `_latest_ai_record`.
 Bọc `advisory` làm `.get('advisory_id')` ra `None` ⇒ kích hoạt fallback im lặng.
-Nó **an toàn hôm nay chỉ vì 0 caller** — xem mục "Nợ còn lại".
+**Đã xoá** 2026-10-02: 0 caller, và logic đúng của nó đã có sẵn ở hai call site
+live qua `_advisory_field` + `_resolve_refreshed_advisory`. Giữ lại chỉ là giữ
+một bản sai của logic đã có bản đúng. Chốt chặn:
+`tests/test_internal_advisory_call_safety.py::RefreshResponseIsNeverReadDirectlyTests`.
 
 ### ② Endpoint phân trang có hai nhánh, và một nhánh **ghi vào `response.data`**
 
@@ -82,8 +84,11 @@ tracked-symbol / price-alert, `{ok,message}` 400/404/409 ở
 
 ## Nợ còn lại (có chủ đích, ghi ra ticket)
 
-1. `_ensure_advisory_record_for_symbol` (`:2670-2700`) — 0 caller nhưng còn bug
-   im lặng; bọc `advisory` làm nó **nguy hiểm hơn** nếu sau này ai đó gọi.
+1. ~~`_ensure_advisory_record_for_symbol` (`:2670-2700`) — 0 caller nhưng còn bug
+   im lặng~~ **đã đóng 2026-10-02: xoá hàm.** Lựa chọn là *xoá* chứ không phải
+   *sửa*, vì hai call site live đã có bản đúng của cùng logic đó
+   (`_advisory_field` + `_resolve_refreshed_advisory`), và hàm chết thì không
+   test nào bắt được — sửa nó chỉ tạo ra một bản song song không ai gọi.
 2. `views.py:469`/`:548` của `signal_intelligence` (`UNKNOWN`) — không liên quan
    app này nhưng cùng kiểu nợ.
 3. Các `ListAPIView` — app này không có, nhưng `market_data` có nhiều view phân

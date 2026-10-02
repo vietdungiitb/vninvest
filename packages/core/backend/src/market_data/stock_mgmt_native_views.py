@@ -2672,39 +2672,6 @@ def _find_symbol_advisory_record(user, symbol, advisory_id=None, *, require_uniq
     return records[0], None
 
 
-def _ensure_advisory_record_for_symbol(request, symbol):
-    normalized_symbol = _normalize_ai_symbol(symbol)
-    if not normalized_symbol:
-        return None, Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    trade_date_raw = str(request.query_params.get('trade_date') or request.query_params.get('date') or '').strip()
-    selected_trade_date = None
-    if trade_date_raw:
-        try:
-            selected_trade_date = datetime.fromisoformat(f'{trade_date_raw[:10]}T00:00:00').date()
-        except ValueError:
-            selected_trade_date = None
-
-    record = _latest_ai_record(request.user, normalized_symbol, selected_trade_date=selected_trade_date)
-    if record is not None:
-        return record, None
-
-    from advisory.views import AdvisoryRefreshView
-
-    django_request = getattr(request, '_request', request)
-    refresh_response = AdvisoryRefreshView.as_view()(django_request, symbol=normalized_symbol)
-    if refresh_response.status_code not in {status.HTTP_200_OK, status.HTTP_201_CREATED}:
-        return None, refresh_response
-
-    advisory_id = refresh_response.data.get('advisory_id') if isinstance(refresh_response.data, dict) else None
-    if advisory_id:
-        record = AdvisoryRecord.objects.filter(advisory_id=advisory_id, user=request.user, symbol=normalized_symbol).first()
-        if record is not None:
-            return record, None
-
-    return _latest_ai_record(request.user, normalized_symbol, selected_trade_date=selected_trade_date), None
-
-
 def _upsert_ai_components(record, *, timeframe='30m', chart_context=None):
     context = _ai_context_snapshot(record)
     components, next_component_id = _normalize_component_collection(context.get('components'))

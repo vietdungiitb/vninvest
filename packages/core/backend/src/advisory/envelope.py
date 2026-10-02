@@ -10,12 +10,15 @@ nên mỗi app giữ một helper riêng và cùng tuân theo một hợp đồn
 
 **① View của app này được app khác gọi trực tiếp.**
 
-`market_data/stock_mgmt_native_views.py` có **3** chỗ gọi
+`market_data/stock_mgmt_native_views.py` có **2** chỗ gọi
 `AdvisoryRefreshView.as_view()(...)`:
 
-    :2690  _ensure_advisory_record_for_symbol   (code chết — 0 caller)
-    :2819  StockManagementAIAdvisorySessionView.post
-    :2987  StockManagementAIAdvisoryComponentsGenerateView.post
+    StockManagementAIAdvisorySessionView.post
+    StockManagementAIAdvisoryComponentsGenerateView.post
+
+Chỗ thứ 3 trước đây (`_ensure_advisory_record_for_symbol`, 0 caller) đọc thẳng
+`.data.get('advisory_id')` nên **đã bị xoá** 2026-10-02 — bọc ở đây làm nó im
+lặng rơi về record của phiên khác.
 
 Cả hai chỗ **live** đọc `refresh_response.data` qua
 `market_data.stock_mgmt_native_views._advisory_field`, hàm **cố ý đọc được cả
