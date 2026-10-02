@@ -18,7 +18,10 @@ from .envelope import envelope
 from .models import CorePATCredential, CoreServiceAccount, CoreTenant, PATAuditLog, TenantSettings, UserProfile, TenantCustomRole
 from .permissions import IsTenantActive, require_human_session, require_pat_scopes_or_human_session
 from .schema import (
+    IssuedCorePATSerializer,
     PartnerRoleListSerializer,
+    PATRevocationResponseSerializer,
+    PATRotationResponseSerializer,
     TenantCustomRoleWithCountSerializer,
     TenantLifecycleSerializer,
     UserProfilePayloadSerializer,
@@ -344,6 +347,9 @@ class UserProfileView(APIView):
 # Partner namespace views — tenant self-admin operations at /core/v1/partner/*
 # ---------------------------------------------------------------------------
 
+@extend_schema(
+    responses={201: envelope_response(IssuedCorePATSerializer)},
+)
 @api_view(['POST'])
 @permission_classes(TENANT_PERMISSION_CLASSES)
 def partner_issue_pat(request):
@@ -377,6 +383,9 @@ def partner_issue_pat(request):
     return envelope(_serialize_partner_pat(credential, secret=raw_token), status=status.HTTP_201_CREATED)
 
 
+@extend_schema(
+    responses={200: PATRotationResponseSerializer},
+)
 @api_view(['POST'])
 @permission_classes(TENANT_PERMISSION_CLASSES)
 def partner_rotate_pat(request, pat_id):
@@ -429,6 +438,9 @@ def partner_rotate_pat(request, pat_id):
     return Response(payload, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    responses={200: PATRevocationResponseSerializer},
+)
 @api_view(['POST'])
 @permission_classes(TENANT_PERMISSION_CLASSES)
 def partner_revoke_pat(request, pat_id):

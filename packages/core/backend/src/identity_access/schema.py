@@ -31,6 +31,7 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from identity_access.serializers import (
+    CorePATCredentialSerializer,
     ReportDeliveryLogSerializer,
     ScheduledReportSerializer,
     TenantCustomRoleSerializer,
@@ -40,6 +41,9 @@ from identity_access.serializers import (
 __all__ = [
     'AbilitySerializer',
     'DetailResponseSerializer',
+    'IssuedCorePATSerializer',
+    'PATRevocationResponseSerializer',
+    'PATRotationResponseSerializer',
     'PartnerBillingStatusSerializer',
     'PartnerRoleListSerializer',
     'PlanChangePreviewSerializer',
@@ -105,6 +109,66 @@ class AbilitySerializer(serializers.Serializer):
 
     action = serializers.CharField()
     subject = serializers.CharField()
+
+
+# ---------------------------------------------------------------------------
+# PAT — `_serialize_partner_pat()`
+# ---------------------------------------------------------------------------
+
+class IssuedCorePATSerializer(CorePATCredentialSerializer):
+    """PAT vừa cấp — `CorePATCredentialSerializer` **cộng** token thật.
+
+    `_serialize_partner_pat()` (`views_tenant.py:124`) lấy
+    `CorePATCredentialSerializer(credential).data` rồi gán thêm
+    `secret`/`token`/`access` (ba alias của cùng một chuỗi) — chỉ trả **một
+    lần duy nhất**. Dùng `CorePATCredentialSerializer` là thiếu 3 field đó,
+    và client sẽ không lấy được token.
+
+    `CorePATIssueResponseSerializer` có sẵn cũng **không** dùng được: nó chỉ
+    khai 13 field, còn payload thật có 22.
+    """
+
+    secret = serializers.CharField(read_only=True)
+    token = serializers.CharField(read_only=True)
+    access = serializers.CharField(read_only=True)
+
+    class Meta(CorePATCredentialSerializer.Meta):
+        fields = [
+            *CorePATCredentialSerializer.Meta.fields,
+            'secret', 'token', 'access',
+        ]
+        read_only_fields = [
+            *CorePATCredentialSerializer.Meta.read_only_fields,
+            'secret', 'token', 'access',
+        ]
+
+
+class PATRotationResponseSerializer(serializers.Serializer):
+    """`POST /partner/pats/{pat_id}/rotate/` — **phẳng**, không phải envelope.
+
+    Cố ý giữ nguyên hợp đồng F4 `{object, …}` mà `views_tenant.py:408` đang
+    trả. Endpoint này **không** đồng nhất với `partner_issue_pat` (cái đó đã
+    bọc `envelope()`), nên bọc nó vào `{data, meta}` là phá hợp đồng — và sẽ
+    làm `test_flat_views_are_not_documented_as_envelope` đỏ.
+    """
+
+    object = serializers.CharField()
+    old_token_id = serializers.CharField()
+    old_token_grace_until = serializers.CharField(allow_null=True)
+    new_token = IssuedCorePATSerializer(read_only=True)
+
+
+class PATRevocationResponseSerializer(serializers.Serializer):
+    """`POST /partner/pats/{pat_id}/revoke/` — **phẳng**, F4 `{object, …}`.
+
+    Cùng lý do với `PATRotationResponseSerializer`: `views_tenant.py:435` trả
+    thẳng dict có khoá `object`, không bọc envelope.
+    """
+
+    object = serializers.CharField()
+    token_id = serializers.CharField()
+    status = serializers.CharField()
+    revoked_at = serializers.CharField(allow_null=True)
 
 
 class UserProfilePayloadSerializer(serializers.Serializer):
