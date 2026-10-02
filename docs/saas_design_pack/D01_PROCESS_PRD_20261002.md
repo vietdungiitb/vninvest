@@ -100,6 +100,16 @@
 
 Xây dựng nền tảng SaaS đa khách thuê, cho phép khách hàng doanh nghiệp tự mua, tự quản lý và tự kiểm soát quyền sử dụng các phần mềm của nhà cung cấp. Nền tảng **không** thực hiện giao dịch tài chính, **không** nắm giữ tài sản, **không** thực thi lệnh thay khách hàng.
 
+> **Phạm vi v1.0 đã chốt ngày 2026-10-02 (Q-20).** Chỉ bán hai sản phẩm không gắn brokerage:
+>
+> | Sản phẩm | Trạng thái v1.0 |
+> |---|---|
+> | `vninvestcharts` | ✅ Bán được ngay — MPL-2.0, không cần xin phép |
+> | `vnbroker-data` | ⬜ Chờ Q-01 — cần license thương mại |
+> | `vnbroker-brokerage` | ⬜ Chuyển sang v2.0 — cần license + tư vấn pháp lý |
+>
+> Hệ quả: **v1.0 không cần luật sư chuyên ngành chứng khoán**, không cần quy trình KYC, không cần cơ chế phê duyệt pháp lý. Nhưng vẫn phải cài sẵn các ranh giới đó trong mô hình dữ liệu để khi mở brokerage không phải thiết kế lại.
+
 ## B.2 Bối cảnh vấn đề
 
 | Vấn đề | Hậu quả |
@@ -158,6 +168,35 @@ Xây dựng nền tảng SaaS đa khách thuê, cho phép khách hàng doanh ngh
 **Quyết định Q-18 của Owner:** chấp nhận tỷ lệ rời bỏ cao ở nhóm cá nhân là hiển nhiên.
 **Quyết định Q-19 của Owner:** mỗi email chỉ 1 tài khoản cá nhân.
 **Q-17:** chưa ấn định giá · thanh toán theo tháng.
+
+### B.4.2 Đăng ký doanh nghiệp — duyệt thủ công (Q-03 đã chốt)
+
+Owner chọn phương án B: doanh nghiệp phải được Ops duyệt, cá nhân tự đăng ký.
+
+**Chi phí vận hành ước tính**
+
+| Số doanh nghiệp | Công công trực | Ghi chú |
+|---:|---|---|
+| 20 | ~5 giờ/tháng | 1 người trực là đủ |
+| 100 | ~25 giờ/tháng | Vẫn khả năng |
+| 300 | ~75 giờ/tháng | Cần 2 người hoặc chuyển sang phương án C |
+
+Ước lượng: 10–20 phút mỗi hồ sơ (đọc hợp đồng, tra MST, quyết định, ghi nhật ký).
+
+> **Ngưỡng cân nhắc chuyển sang phương án C:** khi vượt 150 hồ sơ chờ, hoặc thời gian chờ trung bình vượt 2 ngày làm việc. Lúc đó duyệt tự động cho hồ sơ dưới ngưỡng rủi ro thấp.
+
+### B.4.3 Quy tắc chặn hạn mức theo loại khách (NQ-01 đã chốt)
+
+Owner chọn phương án B: doanh nghiệp cảnh báo mềm, cá nhân chặn cứng.
+
+| Loại | Vượt hạn mức | Hành vi |
+|---|---|---|
+| Doanh nghiệp | Vẫn gọi được | Trả header cảnh báo + ghi nhật ký + gửi cảnh báo |
+| Cá nhân | Chặn | Trả 429 `quota_exceeded` |
+
+**Khớp với hành vi hiện có** tại `identity_access/middleware.py:404-409` — enterprise được đi tiếp kèm header `X-Quota-Warning`.
+
+**Việc phải sửa:** hiện mã kiểm tra `tenant.plan == ENTERPRISE` (`:404`). Phải đổi sang kiểm tra `tenant_type`. Nếu không, khách cá nhân được cấu hình `plan` kiểu enterprise sẽ vô tình thoát chặn — đây là lỗ hổng logic.
 
 ## B.5 Phạm vi sản phẩm
 

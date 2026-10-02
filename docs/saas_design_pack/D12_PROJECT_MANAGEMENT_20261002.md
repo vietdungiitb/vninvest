@@ -30,13 +30,31 @@
 | # | Việc | Loại | Chặn |
 |---|---|---|---|
 | T1 | Xử lý bí mật trong kho mã | Bảo mật | **Mọi việc khác** |
-| T2 | License thương mại `vnbroker` | Pháp lý | Bán tier C |
-| T3 | Xác nhận Q-16 (tier C cho cá nhân) | Quyết định | BR-12 |
+| T2 | License thương mại `vnbroker` | Pháp lý | **Bán `vnbroker-data`** |
+| ~~T3~~ | ~~Xác nhận Q-16~~ | Quyết định | ✅ Đã chốt 2026-10-02 — phương án B |
 | T4 | Chốt giá gói | Kinh doanh | Thanh toán |
-| T5 | Tư vấn pháp lý | Pháp lý | Bán tier C |
-| T6 | Đóng `write_gate` cho `brokerage/` | Kỹ thuật | Bán tier C |
+| ~~T5~~ | ~~Tư vấn pháp lý~~ | Pháp lý | ~~Chuyển v2.0 theo Q-20~~ |
+| T6 | Đóng `write_gate` cho `brokerage/` | Kỹ thuật | ~~Chuyển v2.0~~ |
 | T7 | Ấn định ngân sách hạ tầng | Vận hành | — |
-| T8 | 19 câu hỏi Q-01..Q-19 còn mở | Quyết định | Nhiều phần |
+| T8 | ~~19~~ **14** câu hỏi Q còn mở | Quyết định | Nhiều phần |
+
+---
+
+## 1.4 Quyết định đã chốt ngày 2026-10-02
+
+| Mã | Quyết định | Hệ quả |
+|---|---|---|
+| **Q-20** | v1.0 chỉ bán `vninvestcharts` + `vnbroker-data` | Tầng brokerage chuyển v2.0 |
+| **Q-16** | Cá nhân mua hết, trừ sản phẩm `requires_kyc = true` | BR-12 thành quy tắc thật |
+| **Q-01** | Chưa ký license `vnbroker` — không bán trong v1.0 | **`vnbroker-data` cũng phải chờ** |
+| **Q-03** | Doanh nghiệp duyệt thủ công, cá nhân tự đăng ký | BR-18 |
+| **NQ-01** | Doanh nghiệp cảnh báo mềm, cá nhân chặn cứng | BR-17 |
+
+**Phát hiện phát sinh từ quyết định này:** vì Q-01 chưa ký license, phạm vi v1.0 **thực tế chỉ còn một sản phẩm bán được ngay** là `vninvestcharts` (MPL-2.0). `vnbroker-data` cần license thương mại.
+
+⇒ **Câu hỏi cần Owner xem lại:** có chấp nhận v1.0 chỉ có một sản phẩm không, hay muốn ký license trước khi phát hành? Nếu không ký, phạm vi v1.0 giảm còn widget + khung SaaS trống.
+
+**Việc bắt buộc thêm do Q-20:** xác định rõ lane nào của `vnbroker-data` không cần broker. Theo D05 §2.6 I-02, lane SSI **bắt buộc cần** tài khoản môi giới — phải nói rõ trên trang bán hàng.
 
 ---
 
@@ -183,7 +201,10 @@
 | 10.3 | Tải thật trên dữ liệu thật | 10.1 | 1 ngày |
 | 10.4 | Sửa lỗi phát hiện | 10.2 | 3 ngày |
 
-### 2.12 Pha 11 — Tier C (sau khi có pháp lý)
+### 2.12 Pha 11 — Tier C (chuyển sang v2.0)
+
+> **Đã chuyển sang v2.0 ngày 2026-10-02 theo Q-20.** Không thuộc phạm vi v1.0.
+> Lý do: chưa có license thương mại `vnbroker` (Q-01) và chưa có tư vấn pháp lý (T5).
 
 | # | Công việc | Phụ thuộc | Ước lượng |
 |:---:|---|---|---:|
@@ -194,6 +215,8 @@
 | 11.5 | Hợp đồng có điều khoản định vị pháp nhân | T5 | Chờ Owner |
 
 **Cổng G-10:** Có tư vấn pháp lý + license đã ký
+
+> **11.1 nên làm sớm dù không bán.** `brokerage/base.py:278-288` có `place_order` mà không có `dry_run` mặc định. Đây là lỗ hổng trong thư viện bạn sở hữu — dù đang dùng hay không.
 
 ### 2.13 Tổng ước lượng
 

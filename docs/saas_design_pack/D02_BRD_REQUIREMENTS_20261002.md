@@ -303,7 +303,11 @@ AC-<số>   Điều kiện  ⇒  Kết quả mong đợi
 | AC-025.2 | Sản phẩm yêu cầu xác minh pháp nhân | **Không hiển thị** trong danh mục cá nhân |
 | AC-025.3 | Cố gọi API cho sản phẩm không được phép | Trả 403 `product_requires_organization` |
 
-> **Quyết định Q-16 hiện là "cá nhân mua được mọi sản phẩm", nên AC-025.2 và AC-025.3 chưa có hiệu lực.** Chúng được viết sẵn để sẵn sàng khi Owner xác nhận đề xuất loại trừ sản phẩm `requires_kyc` trong ADR-007. Nếu Q-16 giữ nguyên, chỉ cần bỏ cờ `requires_kyc` khỏi mọi sản phẩm.
+> **ĐÃ CHỐT 2026-10-02 — AC-025.2 và AC-025.3 có hiệu lực.**
+> Owner chọn phương án B cho Q-16: cá nhân mua được mọi sản phẩm, **trừ** sản phẩm `requires_kyc = true`.
+> Vì Q-20 quyết định trì hoãn brokerage sang v2.0, hiện chưa sản phẩm nào có `requires_kyc = true`. Nhưng hai AC này phải được viết và kiểm thử **ngay** — để khi bật cờ cho brokerage ở v2.0, không phát hiện ra thiếu.
+>
+> Thêm vào nhóm kiểm thử `TC-IND-11` (đã có trong D10 §3.3).
 
 ---
 
@@ -381,8 +385,18 @@ AC-<số>   Điều kiện  ⇒  Kết quả mong đợi
 | **BR-14** | **Mỗi email tối đa 1 tài khoản cá nhân** |
 | **BR-15** | **Cá nhân không có trạng thái `past_due` — chỉ `expired`** |
 | **BR-16** | **Chỉ `organization` phải tải lên hợp đồng khi đăng ký** |
+| **BR-17** | **Cá nhân vượt hạn mức thì chặn cứng; doanh nghiệp vượt hạn thì cảnh báo mềm** |
+| **BR-18** | **Doanh nghiệp phải qua duyệt thủ công trước khi kích hoạt** |
+| **BR-19** | **V1.0 không bán sản phẩm `requires_kyc = true`** |
 
-> **BR-12 là ranh giới pháp lý.** Theo phản biện trong ADR-007, nếu cá nhân mua được `brokerage.place_order` thì quy trình `US-014` không có phê duyệt hợp lệ nào — vì cá nhân không có người đại diện theo pháp luật. BR-12 đang chờ Owner xác nhận; nếu Q-16 giữ nguyên thì đặt `requires_kyc = false` cho mọi sản phẩm.
+> **BR-12 đã chốt 2026-10-02 (Q-16 = phương án B).** Cá nhân mua được mọi sản phẩm, trừ sản phẩm có `requires_kyc = true`.
+> Vì Q-20 quyết định trì hoãn brokerage sang v2.0, BR-12 **chưa có tác dụng ngay** — nhưng vẫn phải cài trong mô hình dữ liệu để khi mở brokerage không phải sửa lại thiết kế.
+>
+> **BR-17 đã chốt 2026-10-02 (NQ-01 = phương án B).** Xem D01 §B.4.3.
+>
+> **BR-18 đã chốt 2026-10-02 (Q-03 = phương án B).** Xem D01 §B.4.2.
+>
+> **BR-19 đã chốt 2026-10-02 (Q-20 = phương án B).** V1.0 chỉ bán sản phẩm không yêu cầu xác minh pháp nhân. `vnbroker-data` còn phải chờ Q-01 (license thương mại).
 >
 > **BR-15 là hệ quả của ADR-008:** không có hạn mức tín dụng nên không có khả năng "quá hạn nhưng chưa trả".
 

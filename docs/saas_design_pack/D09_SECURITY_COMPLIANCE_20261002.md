@@ -243,7 +243,7 @@
 
 | Rủi ro | Mức | Giảm thiểu |
 |---|---|---|
-| Cá nhân không có tư cách pháp nhân | Cao | Ràng buộc BR-12 — chờ Owner xác nhận |
+| Cá nhân không có tư cách pháp nhân | Cao | Ràng buộc BR-12 — **đã chốt 2026-10-02 (Q-16 phương án B)** |
 | Nhiều tài khoản trống phí | Trung bình | Giới hạn 1 tài khoản/email |
 | Bán cho người không đủ tuổi | Trung bình | Xác minh email · điều khoản |
 | Khóa API bị bán lại | Cao | Giới hạn slot · chữ ký phía máy khách |
