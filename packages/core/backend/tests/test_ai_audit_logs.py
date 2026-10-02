@@ -26,6 +26,7 @@ from advisory.models import AIAuditLog, UserAICredential
 from advisory.serializers import sanitize_sensitive_fields, AIAuditLogSerializer
 from identity_access.security import encrypt_user_api_key
 from identity_access.models import UserProfile
+from identity_access.tests.envelope import unwrapped
 
 
 class SanitizeHelpersTests(TestCase):
@@ -155,7 +156,7 @@ class AuditLogAPIGetTests(TestCase):
     def test_list_audit_logs(self):
         response = self.client.get('/core/v1/workspace/ai-command-center/audit-logs/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.data
+        data = unwrapped(response)
         self.assertIn('results', data)
         self.assertIn('total', data)
         self.assertEqual(data['total'], 5)
@@ -171,7 +172,7 @@ class AuditLogAPIGetTests(TestCase):
             {'action': 'test_connection_success'},
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['total'], 1)
+        self.assertEqual(unwrapped(response)['total'], 1)
 
     def test_filter_by_actor(self):
         response = self.client.get(
@@ -179,7 +180,7 @@ class AuditLogAPIGetTests(TestCase):
             {'actor': self.user.username},
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['total'], 5)
+        self.assertEqual(unwrapped(response)['total'], 5)
 
     def test_non_staff_cannot_read_other_actor(self):
         """Security assertion: another actor's log must not be readable."""
@@ -190,8 +191,8 @@ class AuditLogAPIGetTests(TestCase):
         )
         response = self.client.get('/core/v1/workspace/ai-command-center/audit-logs/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['total'], 5)
-        actors = {row['actor'] for row in response.data['results']}
+        self.assertEqual(unwrapped(response)['total'], 5)
+        actors = {row['actor'] for row in unwrapped(response)['results']}
         self.assertNotIn('somebody-else', actors)
 
     def test_non_staff_cannot_filter_by_other_actor(self):
@@ -204,7 +205,7 @@ class AuditLogAPIGetTests(TestCase):
             {'actor': 'somebody-else'},
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['total'], 0)
+        self.assertEqual(unwrapped(response)['total'], 0)
 
     def test_pagination_limit(self):
         response = self.client.get(
@@ -212,8 +213,8 @@ class AuditLogAPIGetTests(TestCase):
             {'limit': 2},
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 2)
-        self.assertEqual(response.data['limit'], 2)
+        self.assertEqual(len(unwrapped(response)['results']), 2)
+        self.assertEqual(unwrapped(response)['limit'], 2)
 
     def test_pagination_offset(self):
         response = self.client.get(
@@ -221,8 +222,8 @@ class AuditLogAPIGetTests(TestCase):
             {'limit': 2, 'offset': 2},
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 2)
-        self.assertEqual(response.data['offset'], 2)
+        self.assertEqual(len(unwrapped(response)['results']), 2)
+        self.assertEqual(unwrapped(response)['offset'], 2)
 
 
 class AuditLogCreationViaPUTTests(TestCase):
@@ -323,11 +324,11 @@ class UserConfigEndpointTests(TestCase):
 
         response = self.client.get('/core/v1/workspace/userconfig/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.data
+        data = unwrapped(response)
         self.assertIn('advisory_whale_signal_enabled', data)
         self.assertFalse(data['advisory_whale_signal_enabled'])
 
     def test_get_userconfig_defaults_true(self):
         response = self.client.get('/core/v1/workspace/userconfig/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(response.data['advisory_whale_signal_enabled'])
+        self.assertTrue(unwrapped(response)['advisory_whale_signal_enabled'])

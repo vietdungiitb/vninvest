@@ -177,10 +177,10 @@ class CorePartnerServiceAccountApiTests(TestCase):
         list_response = self.client.get('/core/v1/partner/service-accounts/')
 
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
-        self.assertIn('results', list_response.data)
-        self.assertEqual(list_response.data['results'][0]['service_account_id'], existing.public_id)
-        self.assertEqual(list_response.data['results'][0]['environment'], 'prod')
-        self.assertEqual(list_response.data['results'][0]['policy_ids'], ['pol_market_read'])
+        self.assertIn('results', unwrapped(list_response))
+        self.assertEqual(unwrapped(list_response)['results'][0]['service_account_id'], existing.public_id)
+        self.assertEqual(unwrapped(list_response)['results'][0]['environment'], 'prod')
+        self.assertEqual(unwrapped(list_response)['results'][0]['policy_ids'], ['pol_market_read'])
 
         create_response = self.client.post(
             '/core/v1/partner/service-accounts/',
@@ -193,13 +193,13 @@ class CorePartnerServiceAccountApiTests(TestCase):
         )
 
         self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(create_response.data['name'], 'New Bot')
-        self.assertEqual(create_response.data['id'], create_response.data['service_account_id'])
-        self.assertEqual(create_response.data['tenant_id'], self.tenant.public_id)
-        self.assertEqual(create_response.data['environment'], 'staging')
-        self.assertEqual(create_response.data['policy_ids'], ['pol_market_read', 'pol_signals_read'])
+        self.assertEqual(unwrapped(create_response)['name'], 'New Bot')
+        self.assertEqual(unwrapped(create_response)['id'], unwrapped(create_response)['service_account_id'])
+        self.assertEqual(unwrapped(create_response)['tenant_id'], self.tenant.public_id)
+        self.assertEqual(unwrapped(create_response)['environment'], 'staging')
+        self.assertEqual(unwrapped(create_response)['policy_ids'], ['pol_market_read', 'pol_signals_read'])
 
-        created_service_account = CoreServiceAccount.objects.get(public_id=create_response.data['service_account_id'])
+        created_service_account = CoreServiceAccount.objects.get(public_id=unwrapped(create_response)['service_account_id'])
         self.assertEqual(created_service_account.scopes, ['market:read', 'signals:read'])
         self.assertEqual(created_service_account.metadata.get('environment'), 'staging')
         self.assertEqual(created_service_account.metadata.get('policy_ids'), ['pol_market_read', 'pol_signals_read'])
@@ -215,7 +215,7 @@ class CorePartnerServiceAccountApiTests(TestCase):
         )
 
         self.assertEqual(issue_response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(issue_response.data['scope_codes'], ['market:read'])
+        self.assertEqual(unwrapped(issue_response)['scope_codes'], ['market:read'])
 
 
 class CorePartnerPATApiTests(TestCase):
@@ -262,17 +262,17 @@ class CorePartnerPATApiTests(TestCase):
         )
 
         self.assertEqual(issue_response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(issue_response.data['object'], 'pat_credential')
-        self.assertEqual(issue_response.data['id'], issue_response.data['pat_id'])
-        self.assertEqual(issue_response.data['service_account_id'], self.service_account.public_id)
-        self.assertEqual(issue_response.data['tenant_id'], self.tenant.public_id)
-        self.assertEqual(issue_response.data['display_name'], 'Tenant UI PAT')
-        self.assertEqual(issue_response.data['scope_codes'], ['market:read', 'signals:read'])
-        self.assertEqual(issue_response.data['status'], CorePATCredential.StatusChoices.ACTIVE)
-        self.assertTrue(issue_response.data['secret'].startswith('vni_'))
+        self.assertEqual(unwrapped(issue_response)['object'], 'pat_credential')
+        self.assertEqual(unwrapped(issue_response)['id'], unwrapped(issue_response)['pat_id'])
+        self.assertEqual(unwrapped(issue_response)['service_account_id'], self.service_account.public_id)
+        self.assertEqual(unwrapped(issue_response)['tenant_id'], self.tenant.public_id)
+        self.assertEqual(unwrapped(issue_response)['display_name'], 'Tenant UI PAT')
+        self.assertEqual(unwrapped(issue_response)['scope_codes'], ['market:read', 'signals:read'])
+        self.assertEqual(unwrapped(issue_response)['status'], CorePATCredential.StatusChoices.ACTIVE)
+        self.assertTrue(unwrapped(issue_response)['secret'].startswith('vni_'))
 
         auth_client = APIClient()
-        auth_client.credentials(HTTP_AUTHORIZATION=f"Bearer {issue_response.data['secret']}")
+        auth_client.credentials(HTTP_AUTHORIZATION=f"Bearer {unwrapped(issue_response)['secret']}")
         profile_response = auth_client.get('/core/v1/auth/me/')
 
         self.assertEqual(profile_response.status_code, status.HTTP_200_OK)
@@ -297,13 +297,13 @@ class CorePartnerPATApiTests(TestCase):
         )
 
         self.assertEqual(rotate_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(rotate_response.data['object'], 'pat_rotation')
-        self.assertEqual(rotate_response.data['old_token_id'], credential.public_id)
-        self.assertEqual(rotate_response.data['new_token']['object'], 'pat_credential')
-        self.assertEqual(rotate_response.data['new_token']['status'], CorePATCredential.StatusChoices.ACTIVE)
-        self.assertEqual(rotate_response.data['new_token']['scope_codes'], ['market:read'])
-        self.assertTrue(rotate_response.data['new_token']['secret'].startswith('vni_'))
-        self.assertIsNotNone(rotate_response.data['old_token_grace_until'])
+        self.assertEqual(unwrapped(rotate_response)['object'], 'pat_rotation')
+        self.assertEqual(unwrapped(rotate_response)['old_token_id'], credential.public_id)
+        self.assertEqual(unwrapped(rotate_response)['new_token']['object'], 'pat_credential')
+        self.assertEqual(unwrapped(rotate_response)['new_token']['status'], CorePATCredential.StatusChoices.ACTIVE)
+        self.assertEqual(unwrapped(rotate_response)['new_token']['scope_codes'], ['market:read'])
+        self.assertTrue(unwrapped(rotate_response)['new_token']['secret'].startswith('vni_'))
+        self.assertIsNotNone(unwrapped(rotate_response)['old_token_grace_until'])
 
         credential.refresh_from_db()
         self.assertEqual(credential.status, 'rotating')
@@ -316,7 +316,7 @@ class CorePartnerPATApiTests(TestCase):
         self.assertEqual(old_profile_response.status_code, status.HTTP_200_OK)
 
         new_pat_client = APIClient()
-        new_pat_client.credentials(HTTP_AUTHORIZATION=f"Bearer {rotate_response.data['new_token']['secret']}")
+        new_pat_client.credentials(HTTP_AUTHORIZATION=f"Bearer {unwrapped(rotate_response)['new_token']['secret']}")
         new_profile_response = new_pat_client.get('/core/v1/auth/me/')
         self.assertEqual(new_profile_response.status_code, status.HTTP_200_OK)
 
@@ -338,7 +338,7 @@ class CorePartnerPATApiTests(TestCase):
         list_response = self.client.get('/core/v1/partner/pats/')
 
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
-        listed_pat_ids = {item['pat_id'] for item in list_response.data['results']}
+        listed_pat_ids = {item['pat_id'] for item in unwrapped(list_response)['results']}
         self.assertIn(machine_credential.public_id, listed_pat_ids)
         self.assertNotIn(human_credential.public_id, listed_pat_ids)
 
@@ -394,9 +394,9 @@ class CorePartnerPATApiTests(TestCase):
         )
 
         self.assertEqual(revoke_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(revoke_response.data['object'], 'pat_revocation')
-        self.assertEqual(revoke_response.data['token_id'], credential.public_id)
-        self.assertEqual(revoke_response.data['status'], CorePATCredential.StatusChoices.REVOKED)
+        self.assertEqual(unwrapped(revoke_response)['object'], 'pat_revocation')
+        self.assertEqual(unwrapped(revoke_response)['token_id'], credential.public_id)
+        self.assertEqual(unwrapped(revoke_response)['status'], CorePATCredential.StatusChoices.REVOKED)
 
         revoked_pat_client = APIClient()
         revoked_pat_client.credentials(HTTP_AUTHORIZATION=f'Bearer {raw_secret}')
@@ -469,9 +469,9 @@ class CorePartnerPATApiTests(TestCase):
         )
 
         self.assertEqual(issue_response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(issue_response.data['service_account_id'], self.service_account.public_id)
-        self.assertEqual(issue_response.data['scope_codes'], ['market:read'])
-        self.assertTrue(issue_response.data['secret'].startswith('vni_'))
+        self.assertEqual(unwrapped(issue_response)['service_account_id'], self.service_account.public_id)
+        self.assertEqual(unwrapped(issue_response)['scope_codes'], ['market:read'])
+        self.assertTrue(unwrapped(issue_response)['secret'].startswith('vni_'))
 
     def test_issue_pat_blocks_non_staff_without_tenant(self):
         no_tenant_user = User.objects.create_user(username='notenant', password='testpass123')

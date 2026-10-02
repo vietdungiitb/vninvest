@@ -144,13 +144,13 @@ class AdvisorySymbolStatsTests(TestCase):
     def test_empty_returns_empty_list(self):
         response = self.client.get('/core/v1/portfolio/ai-advisory-symbol-stats/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['stats'], [])
+        self.assertEqual(unwrapped(response)['stats'], [])
 
     def test_generated_record_appears_with_real_values(self):
         self._record(self.user, 'VNM', AdvisoryRecord.StatusChoices.GENERATED)
         response = self.client.get('/core/v1/portfolio/ai-advisory-symbol-stats/')
-        self.assertEqual(len(response.data['stats']), 1)
-        row = response.data['stats'][0]
+        self.assertEqual(len(unwrapped(response)['stats']), 1)
+        row = unwrapped(response)['stats'][0]
         self.assertEqual(row['symbol'], 'VNM')
         self.assertEqual(row['side'], 'SELL')
         self.assertEqual(row['confidence_score'], 0.82)
@@ -159,13 +159,13 @@ class AdvisorySymbolStatsTests(TestCase):
         self._record(self.user, 'AAA', AdvisoryRecord.StatusChoices.FAILED)
         self._record(self.user, 'BBB', AdvisoryRecord.StatusChoices.PENDING)
         response = self.client.get('/core/v1/portfolio/ai-advisory-symbol-stats/')
-        self.assertEqual(response.data['stats'], [])
+        self.assertEqual(unwrapped(response)['stats'], [])
 
     def test_no_fabricated_zero_columns(self):
         """Không được trả field số 0 giả — sidebar từng render '0%' cho 50 mã."""
         self._record(self.user, 'VNM', AdvisoryRecord.StatusChoices.GENERATED)
         response = self.client.get('/core/v1/portfolio/ai-advisory-symbol-stats/')
-        row = response.data['stats'][0]
+        row = unwrapped(response)['stats'][0]
         for fabricated in ('whale_intensity', 'buy_count', 'sell_count'):
             with self.subTest(field=fabricated):
                 self.assertNotIn(fabricated, row)
@@ -173,14 +173,14 @@ class AdvisorySymbolStatsTests(TestCase):
     def test_user_isolation(self):
         self._record(self.other, 'HAG', AdvisoryRecord.StatusChoices.GENERATED)
         response = self.client.get('/core/v1/portfolio/ai-advisory-symbol-stats/')
-        self.assertEqual(response.data['stats'], [])
+        self.assertEqual(unwrapped(response)['stats'], [])
 
     def test_symbol_filter_respects_request_order(self):
         self._record(self.user, 'VIC', AdvisoryRecord.StatusChoices.GENERATED)
         self._record(self.user, 'VNM', AdvisoryRecord.StatusChoices.GENERATED)
         response = self.client.get('/core/v1/portfolio/ai-advisory-symbol-stats/?symbols=VNM,VIC')
         self.assertEqual(
-            [row['symbol'] for row in response.data['stats']],
+            [row['symbol'] for row in unwrapped(response)['stats']],
             ['VNM', 'VIC'],
         )
 
@@ -209,30 +209,30 @@ class AdvisoryListViewTests(TestCase):
         self._record(self.user, 'VIC')
         response = self.client.get('/core/v1/portfolio/ai-advisory/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['count'], 2)
-        self.assertEqual(response.data['session_date'], self.today.isoformat())
+        self.assertEqual(unwrapped(response)['count'], 2)
+        self.assertEqual(unwrapped(response)['session_date'], self.today.isoformat())
 
     def test_empty_when_no_records(self):
         response = self.client.get('/core/v1/portfolio/ai-advisory/')
-        self.assertEqual(response.data['items'], [])
-        self.assertEqual(response.data['count'], 0)
+        self.assertEqual(unwrapped(response)['items'], [])
+        self.assertEqual(unwrapped(response)['count'], 0)
 
     def test_user_isolation(self):
         self._record(self.other, 'HAG')
         response = self.client.get('/core/v1/portfolio/ai-advisory/')
-        self.assertEqual(response.data['count'], 0)
+        self.assertEqual(unwrapped(response)['count'], 0)
 
     def test_symbol_filter(self):
         self._record(self.user, 'VNM')
         self._record(self.user, 'VIC')
         response = self.client.get('/core/v1/portfolio/ai-advisory/?symbol=VIC')
-        self.assertEqual(response.data['count'], 1)
-        self.assertEqual(response.data['items'][0]['symbol'], 'VIC')
+        self.assertEqual(unwrapped(response)['count'], 1)
+        self.assertEqual(unwrapped(response)['items'][0]['symbol'], 'VIC')
 
     def test_items_use_full_contract(self):
         self._record(self.user, 'VNM')
         response = self.client.get('/core/v1/portfolio/ai-advisory/')
-        item = response.data['items'][0]
+        item = unwrapped(response)['items'][0]
         self.assertEqual(item['signal'], 'SELL')
         self.assertEqual(item['side'], 'SELL')
         self.assertEqual(item['confidence_score'], 0.82)

@@ -29,6 +29,7 @@ from rest_framework.test import APIClient
 
 from advisory.advisory_helpers import PROMPT_CONFIG_HISTORY_LIMIT
 from advisory.models import SystemAISettings, UserAICredential
+from advisory.tests.envelope import unwrapped
 
 CC_URL = '/core/v1/workspace/ai-command-center/'
 ROLLBACK_URL = '/core/v1/workspace/ai-command-center/prompt-config/rollback/'
@@ -60,7 +61,7 @@ class PromptConfigHistoryTests(TestCase):
         cfg1 = {'whale': {'enabled': True, 'lookback': 30}}
         r = self._put_config(cfg1)
         self.assertEqual(r.status_code, status.HTTP_200_OK)
-        history = r.data.get('ai_prompt_config_history')
+        history = unwrapped(r).get('ai_prompt_config_history')
         self.assertIsInstance(history, list)
         self.assertEqual(len(history), 1)
         self.assertEqual(history[0]['version'], 1)
@@ -69,9 +70,9 @@ class PromptConfigHistoryTests(TestCase):
 
         cfg2 = {'whale': {'enabled': False, 'lookback': 7}}
         r2 = self._put_config(cfg2)
-        self.assertEqual(len(r2.data['ai_prompt_config_history']), 2)
-        self.assertEqual(r2.data['ai_prompt_config_history'][1]['version'], 2)
-        self.assertEqual(r2.data['ai_prompt_config_history'][1]['config'], cfg2)
+        self.assertEqual(len(unwrapped(r2)['ai_prompt_config_history']), 2)
+        self.assertEqual(unwrapped(r2)['ai_prompt_config_history'][1]['version'], 2)
+        self.assertEqual(unwrapped(r2)['ai_prompt_config_history'][1]['config'], cfg2)
 
     def test_f_ac7b_same_config_no_duplicate_append(self):
         """Identical prompt_config → history length unchanged."""
@@ -79,7 +80,7 @@ class PromptConfigHistoryTests(TestCase):
         self._put_config(cfg)
         r = self._put_config(dict(cfg))
         self.assertEqual(r.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(r.data['ai_prompt_config_history']), 1)
+        self.assertEqual(len(unwrapped(r)['ai_prompt_config_history']), 1)
 
     def test_f_ac7c_get_returns_history_for_rollback(self):
         """GET old: history includes full config so FE can inspect before rollback."""
@@ -87,7 +88,7 @@ class PromptConfigHistoryTests(TestCase):
         self._put_config(cfg1)
         g = self.client.get(CC_URL)
         self.assertEqual(g.status_code, status.HTTP_200_OK)
-        history = g.data.get('ai_prompt_config_history')
+        history = unwrapped(g).get('ai_prompt_config_history')
         self.assertIsInstance(history, list)
         self.assertEqual(len(history), 1)
         self.assertEqual(history[0]['config'], cfg1)
@@ -102,8 +103,8 @@ class PromptConfigHistoryTests(TestCase):
 
         r = self.client.post(ROLLBACK_URL, {'version': 1}, format='json')
         self.assertEqual(r.status_code, status.HTTP_200_OK)
-        self.assertEqual(r.data['rolled_back_to'], 1)
-        self.assertEqual(r.data['ai_prompt_config'], cfg1)
+        self.assertEqual(unwrapped(r)['rolled_back_to'], 1)
+        self.assertEqual(unwrapped(r)['ai_prompt_config'], cfg1)
 
         cred = UserAICredential.objects.get(user=self.user)
         self.assertEqual(cred.prompt_config, cfg1)
@@ -111,14 +112,14 @@ class PromptConfigHistoryTests(TestCase):
         self.assertEqual(cred.prompt_config_history[-1]['config'], cfg1)
 
         g = self.client.get(CC_URL)
-        self.assertEqual(g.data['ai_prompt_config'], cfg1)
+        self.assertEqual(unwrapped(g)['ai_prompt_config'], cfg1)
 
     def test_f_ac7e_history_capped_at_limit(self):
         """Appends past PROMPT_CONFIG_HISTORY_LIMIT drop oldest (F7 cap 20)."""
         for i in range(PROMPT_CONFIG_HISTORY_LIMIT + 5):
             r = self._put_config({'sector': {'enabled': True, 'lookback': i + 1}})
         self.assertEqual(r.status_code, status.HTTP_200_OK)
-        history = r.data['ai_prompt_config_history']
+        history = unwrapped(r)['ai_prompt_config_history']
         self.assertEqual(len(history), PROMPT_CONFIG_HISTORY_LIMIT)
         # newest last
         self.assertEqual(history[-1]['version'], PROMPT_CONFIG_HISTORY_LIMIT + 5)
@@ -142,10 +143,10 @@ class PromptConfigHistoryTests(TestCase):
 
         g_a = self.client.get(CC_URL)
         g_b = client_b.get(CC_URL)
-        self.assertEqual(len(g_a.data['ai_prompt_config_history']), 1)
-        self.assertEqual(len(g_b.data['ai_prompt_config_history']), 1)
-        self.assertEqual(g_a.data['ai_prompt_config_history'][0]['config']['whale']['lookback'], 30)
-        self.assertEqual(g_b.data['ai_prompt_config_history'][0]['config']['whale']['lookback'], 7)
+        self.assertEqual(len(unwrapped(g_a)['ai_prompt_config_history']), 1)
+        self.assertEqual(len(unwrapped(g_b)['ai_prompt_config_history']), 1)
+        self.assertEqual(unwrapped(g_a)['ai_prompt_config_history'][0]['config']['whale']['lookback'], 30)
+        self.assertEqual(unwrapped(g_b)['ai_prompt_config_history'][0]['config']['whale']['lookback'], 7)
 
         cred_a = UserAICredential.objects.get(user=self.user)
         cred_b = UserAICredential.objects.get(user=user_b)

@@ -9,6 +9,7 @@ from rest_framework import status
 
 from tenant_lifecycle.models import TenantLifecycleEvent
 from identity_access.models import CoreTenant
+from identity_access.tests.envelope import unwrapped
 
 User = get_user_model()
 
@@ -35,9 +36,9 @@ class OnboardingRegisterTenantTest(TestCase):
         response = self.client.post(self.url, payload, format='json')
         
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['status'], 'trial')
-        self.assertIsNotNone(response.data['trial_ends_at'])
-        self.assertEqual(response.data['display_name'], 'Test Company')
+        self.assertEqual(unwrapped(response)['status'], 'trial')
+        self.assertIsNotNone(unwrapped(response)['trial_ends_at'])
+        self.assertEqual(unwrapped(response)['display_name'], 'Test Company')
         
         # Verify tenant was created
         tenant = CoreTenant.objects.get(display_name='Test Company')
@@ -116,7 +117,7 @@ class OnboardingRegisterTenantTest(TestCase):
         response = self.client.post(self.url, payload, format='json')
         
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['display_name'], 'Whitespace Company')
+        self.assertEqual(unwrapped(response)['display_name'], 'Whitespace Company')
 
     def test_register_tenant_max_length_display_name(self):
         """Test: display_name at max length (120 chars) succeeds."""
@@ -127,7 +128,7 @@ class OnboardingRegisterTenantTest(TestCase):
         response = self.client.post(self.url, payload, format='json')
         
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['display_name'], long_name)
+        self.assertEqual(unwrapped(response)['display_name'], long_name)
 
     def test_register_tenant_over_max_length_display_name(self):
         """Test: display_name over 120 chars → 400."""
@@ -152,4 +153,4 @@ class OnboardingRegisterTenantTest(TestCase):
             'trial_ends_at', 'created_at', 'updated_at'
         ]
         for field in required_fields:
-            self.assertIn(field, response.data)
+            self.assertIn(field, unwrapped(response))

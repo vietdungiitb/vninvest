@@ -22,6 +22,7 @@ from rest_framework.test import APIClient
 
 from market_data.models import GlobalSymbolDemandSource, GlobalSymbolRegistry
 from user_workspace.models import Portfolio, Watchlist
+from user_workspace.tests.envelope import unwrapped
 
 
 class GlobalSymbolRegistryWorkspaceIntegrationTests(TestCase):
@@ -74,7 +75,7 @@ class GlobalSymbolRegistryWorkspaceIntegrationTests(TestCase):
             format='json',
         )
         self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
-        transaction_id = create_response.data['id']
+        transaction_id = unwrapped(create_response)['id']
 
         vcb_registry = GlobalSymbolRegistry.objects.get(symbol='VCB')
         vcb_edge = GlobalSymbolDemandSource.objects.get(
