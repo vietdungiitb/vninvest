@@ -11,12 +11,19 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 
+from drf_spectacular.utils import extend_schema
+from vninvest_core.api_envelope import envelope_response
+
 from .envelope import envelope
 from .models import CoreTenant
 from .permissions import IsTenantActive, require_human_session
+from .schema import PartnerUsageTrendAllSerializer, PartnerUsageTrendSerializer
 from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
 
 
+@extend_schema(
+    responses={200: envelope_response(PartnerUsageTrendSerializer)},
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsTenantActive])
 def partner_usage_trend(request):
@@ -83,6 +90,9 @@ def partner_usage_trend(request):
     })
 
 
+@extend_schema(
+    responses={200: envelope_response(PartnerUsageTrendAllSerializer)},
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsTenantActive])
 def partner_usage_trend_all(request):

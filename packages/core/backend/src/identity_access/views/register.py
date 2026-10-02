@@ -7,11 +7,13 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.exceptions import APIException
 
 from ..models import CoreTenant, UserProfile, CoreServiceAccount, OutboxEvent, EmailVerificationToken
+from ..schema import F3SuccessResponseSerializer
 from ..security_utils import (
     atomic_bump,
     client_ip_bucket,
@@ -109,6 +111,15 @@ def _dispatch_verification_email(user_id: int, event_id, email: str, raw_token: 
         )
 
 
+#: Cả ba view dưới đây trả F3 **phẳng** `{status, timestamp, request_id, data}`
+#: qua `success_response()` (`views/helpers.py:327`) — **không** phải envelope
+#: `{data, meta}`. `request_id` là thứ client dùng để tra log nên không được bọc
+#: vào `data`.
+#:
+#: `register_view` trả **201** (`status.HTTP_201_CREATED`), không phải 200.
+@extend_schema(
+    responses={201: F3SuccessResponseSerializer},
+)
 @api_view(['POST'])
 @authentication_classes([])
 @permission_classes([permissions.AllowAny])
@@ -309,6 +320,9 @@ def register_view(request):
     }, status.HTTP_201_CREATED, request=request)
 
 
+@extend_schema(
+    responses={200: F3SuccessResponseSerializer},
+)
 @api_view(['POST'])
 @authentication_classes([])
 @permission_classes([permissions.AllowAny])
@@ -484,6 +498,9 @@ def _bump_verify_lockout(lockout_key: str, max_attempts: int) -> bool:
     return False
 
 
+@extend_schema(
+    responses={200: F3SuccessResponseSerializer},
+)
 @api_view(['POST'])
 @authentication_classes([])
 @permission_classes([permissions.AllowAny])

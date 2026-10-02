@@ -7,15 +7,26 @@ endpoints khác giữ nguyên. Middleware chặn no-tenant bằng 403 trước k
 from datetime import timedelta
 
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
+
+from vninvest_core.api_envelope import envelope_response
 
 from .envelope import envelope, paginated_envelope
 from .models import (
     CorePATCredential,
     CoreServiceAccount,
     TenantMember,
+)
+from .schema import (
+    IssuedCorePATSerializer,
+    PaginatedResultsSerializer,
+    PersonalKeysUsageSummarySerializer,
+    PersonalPATRevocationSerializer,
+    PersonalPATRotationSerializer,
+    PersonalSummarySerializer,
 )
 from .serializers import (
     CorePATCredentialSerializer,
@@ -91,6 +102,20 @@ def _reject_personal_prefix(*, label: str, audit_reason: str) -> None:
         raise ValidationError(field_errors)
 
 
+#: Một path, hai method ⇒ **hai** khai báo. `extend_schema` gắn vào decorator
+#: của function nên phải tách theo `methods=`; gộp chung sẽ mô tả sai method
+#: còn lại.
+#:
+#: - `GET` → `paginated_envelope({'results': [...]})`
+#: - `POST` → `_do_issue()` → `envelope(...)` với **201**
+@extend_schema(
+    methods=['GET'],
+    responses={200: envelope_response(PaginatedResultsSerializer)},
+)
+@extend_schema(
+    methods=['POST'],
+    responses={201: envelope_response(IssuedCorePATSerializer)},
+)
 @api_view(['GET', 'POST'])
 @permission_classes(TENANT_PERMISSION_CLASSES)
 def personal_keys_list_create(request):
@@ -159,6 +184,12 @@ def _do_issue(request):
                     status=status.HTTP_201_CREATED)
 
 
+#: **Phẳng** (F4): `{object: 'personal_pat_rotation', ...}`. Cùng hợp đồng
+#: với `partner_rotate_pat` (`views_tenant.py:386`) — bọc vào `{data, meta}` sẽ
+#: phá hợp đồng, xem `api_envelope.py` §"Vì sao KHÔNG ép mọi 2xx vào envelope".
+@extend_schema(
+    responses={200: PersonalPATRotationSerializer},
+)
 @api_view(['POST'])
 @permission_classes(TENANT_PERMISSION_CLASSES)
 def personal_keys_rotate(request, key_id):
@@ -207,6 +238,11 @@ def personal_keys_rotate(request, key_id):
     }, status=status.HTTP_200_OK)
 
 
+#: **Phẳng** (F4): `{object: 'personal_pat_revocation', ...}` — cùng lý do
+#: `personal_keys_rotate` ở trên.
+@extend_schema(
+    responses={200: PersonalPATRevocationSerializer},
+)
 @api_view(['POST'])
 @permission_classes(TENANT_PERMISSION_CLASSES)
 def personal_keys_revoke(request, key_id):
@@ -223,6 +259,9 @@ def personal_keys_revoke(request, key_id):
     }, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    responses={200: envelope_response(PersonalKeysUsageSummarySerializer)},
+)
 @api_view(['GET'])
 @permission_classes(TENANT_PERMISSION_CLASSES)
 def personal_keys_usage_summary(request):
@@ -264,6 +303,9 @@ def _current_period_quotas(tenant):
             'period_end': record.period_end.isoformat()}
 
 
+@extend_schema(
+    responses={200: envelope_response(PersonalSummarySerializer)},
+)
 @api_view(['GET'])
 @permission_classes(TENANT_PERMISSION_CLASSES)
 def personal_summary(request):

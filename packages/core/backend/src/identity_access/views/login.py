@@ -1,12 +1,14 @@
 import logging
 from django.contrib.auth import authenticate, get_user_model
 from django.conf import settings as django_settings
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 
 from ..authentication import CorePATAuthentication
 from ..envelope import envelope
 from ..models import CorePATCredential, CoreServiceAccount, CoreTenant, TenantMember
+from ..schema import DetailPayloadSerializer, F3SuccessResponseSerializer
 from ..security_utils import (
     LoginRecorder,
     client_ip_bucket,
@@ -16,6 +18,7 @@ from ..security_utils import (
     get_user_by_username,
     value_bucket,
 )
+from vninvest_core.api_envelope import envelope_response
 from vninvest_core.exceptions import (
     ValidationErrorException,
     AuthenticationErrorException,
@@ -32,6 +35,14 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
+#: F3 **phẳng** `{status, timestamp, request_id, data}` — KHÔNG phải envelope
+#: `{data, meta}`. `success_response()` (`views/helpers.py:327`) không sinh
+#: `meta`; bọc nó vào envelope sẽ **làm mất `request_id`** mà client dùng để
+#: tra log. Bộ phân loại của `scripts/check-envelope-contract.py` xếp shape
+#: này là `SKIP_F3`.
+@extend_schema(
+    responses={200: F3SuccessResponseSerializer},
+)
 @api_view(['POST'])
 @authentication_classes([])
 @permission_classes([permissions.AllowAny])
@@ -206,6 +217,9 @@ def login_view(request):
     return success_response(auth_payload, status.HTTP_200_OK, request=request)
 
 
+@extend_schema(
+    responses={200: F3SuccessResponseSerializer},
+)
 @api_view(['POST'])
 @authentication_classes([])
 @permission_classes([permissions.AllowAny])
@@ -258,6 +272,9 @@ def refresh_token_view(request):
     return success_response(auth_payload, status.HTTP_200_OK, request=request)
 
 
+@extend_schema(
+    responses={200: envelope_response(DetailPayloadSerializer)},
+)
 @api_view(['POST'])
 @authentication_classes([CorePATAuthentication])
 @permission_classes(TENANT_PERMISSION_CLASSES)

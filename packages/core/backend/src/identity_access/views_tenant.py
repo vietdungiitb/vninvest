@@ -19,7 +19,10 @@ from .models import CorePATCredential, CoreServiceAccount, CoreTenant, PATAuditL
 from .permissions import IsTenantActive, require_human_session, require_pat_scopes_or_human_session
 from .schema import (
     IssuedCorePATSerializer,
+    PartnerPATUsageSerializer,
+    PartnerPATUsageSummarySerializer,
     PartnerRoleListSerializer,
+    PartnerServiceAccountUsageSerializer,
     PATRevocationResponseSerializer,
     PATRotationResponseSerializer,
     TenantCustomRoleWithCountSerializer,
@@ -532,6 +535,9 @@ def _status_breakdown(logs) -> dict:
     return breakdown
 
 
+@extend_schema(
+    responses={200: envelope_response(PartnerPATUsageSerializer)},
+)
 @api_view(['GET'])
 @permission_classes(TENANT_PERMISSION_CLASSES)
 def partner_pat_usage(request, pat_id):
@@ -573,6 +579,9 @@ def partner_pat_usage(request, pat_id):
     })
 
 
+@extend_schema(
+    responses={200: envelope_response(PartnerPATUsageSummarySerializer)},
+)
 @api_view(['GET'])
 @permission_classes(TENANT_PERMISSION_CLASSES)
 def partner_pat_usage_summary(request):
@@ -609,6 +618,9 @@ def partner_pat_usage_summary(request):
     })
 
 
+@extend_schema(
+    responses={200: envelope_response(PartnerServiceAccountUsageSerializer)},
+)
 @api_view(['GET'])
 @permission_classes(TENANT_PERMISSION_CLASSES)
 def partner_service_account_usage(request, sa_id):

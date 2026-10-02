@@ -11,9 +11,17 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 
+from drf_spectacular.utils import extend_schema
+from vninvest_core.api_envelope import envelope_response
+
 from .envelope import envelope, paginated_envelope
 from .models import CoreTenant, LoginAttempt
 from .permissions import IsTenantActive, require_human_session
+from .schema import (
+    DetailPayloadSerializer,
+    PartnerActiveSessionsSerializer,
+    PartnerLoginActivitySerializer,
+)
 from .security_utils import LoginRecorder
 from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
 
@@ -37,6 +45,9 @@ def _query_daily_login_activity(tenant_id: int, since):
         return [dict(zip(cols, row)) for row in cursor.fetchall()]
 
 
+@extend_schema(
+    responses={200: envelope_response(PartnerLoginActivitySerializer)},
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsTenantActive])
 def partner_login_activity(request):
@@ -98,6 +109,9 @@ def partner_login_activity(request):
     })
 
 
+@extend_schema(
+    responses={200: envelope_response(PartnerActiveSessionsSerializer)},
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsTenantActive])
 def partner_active_sessions(request):
@@ -129,6 +143,9 @@ def partner_active_sessions(request):
     })
 
 
+@extend_schema(
+    responses={200: envelope_response(DetailPayloadSerializer)},
+)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsTenantActive])
 def partner_revoke_session(request):

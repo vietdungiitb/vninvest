@@ -11,9 +11,13 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import NotFound
 
+from drf_spectacular.utils import extend_schema
+from vninvest_core.api_envelope import envelope_response
+
 from .envelope import envelope
 from .models import CoreTenant
 from .permissions import IsTenantActive, require_human_session
+from .schema import PartnerUsageForecastListSerializer, UsageForecastSerializer
 from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
 
 
@@ -92,6 +96,9 @@ def _forecast_meter(tenant, meter_code, lookback_days=30):
     }
 
 
+@extend_schema(
+    responses={200: envelope_response(PartnerUsageForecastListSerializer)},
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsTenantActive])
 def partner_usage_forecast(request):
@@ -128,6 +135,9 @@ def partner_usage_forecast(request):
     })
 
 
+@extend_schema(
+    responses={200: envelope_response(UsageForecastSerializer)},
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsTenantActive])
 def partner_usage_forecast_detail(request, meter_code):

@@ -14,9 +14,13 @@ from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 
+from drf_spectacular.utils import extend_schema
+from vninvest_core.api_envelope import envelope_response
+
 from .envelope import envelope
 from .models import CorePATCredential, CoreServiceAccount, CoreTenant
 from .permissions import IsTenantActive, require_human_session
+from .schema import PartnerDashboardUsageTrendSerializer
 from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
 
 logger = logging.getLogger(__name__)
@@ -51,6 +55,14 @@ def _count_active_members_today(tenant):
     ).count()
 
 
+#: `data` free-form: payload dựng tay ~15 key kèm khối lồng
+#: (`service_accounts`, `health_breakdown`, `pats_expiring_soon`,
+#: `recent_events`) — key **động** theo dữ liệu. Liệt kê cứng sẽ bắt client
+#: tin có field không tồn tại; xem bảng "Khi nào KHÔNG tạo serializer" ở
+#: `identity_access/schema.py`.
+@extend_schema(
+    responses={200: envelope_response()},
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsTenantActive])
 def partner_dashboard_summary(request):
@@ -171,6 +183,9 @@ def partner_dashboard_summary(request):
     })
 
 
+@extend_schema(
+    responses={200: envelope_response(PartnerDashboardUsageTrendSerializer)},
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsTenantActive])
 def partner_dashboard_usage_trend(request):

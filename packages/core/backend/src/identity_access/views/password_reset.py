@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework import permissions
@@ -12,12 +13,14 @@ from rest_framework.response import Response
 
 from ..envelope import envelope
 from ..models import PasswordResetToken
+from ..schema import DetailPayloadSerializer
 from ..security_utils import (
     enforce_rate_limit,
     get_user_by_email,
     revoke_user_human_sessions,
     value_bucket,
 )
+from vninvest_core.api_envelope import envelope_response
 from vninvest_core.exceptions import (
     ValidationErrorException,
     RateLimitErrorException,
@@ -43,6 +46,9 @@ CANONICAL_PASSWORD_KEY = 'new_password'
 PASSWORD_RESET_REQUEST_LIMIT = 3
 
 
+@extend_schema(
+    responses={200: envelope_response(DetailPayloadSerializer)},
+)
 @api_view(['POST'])
 @authentication_classes([])
 @permission_classes([permissions.AllowAny])
@@ -148,6 +154,9 @@ def _validate_new_password(password: str, user) -> None:
         )
 
 
+@extend_schema(
+    responses={200: envelope_response(DetailPayloadSerializer)},
+)
 @api_view(['POST'])
 @authentication_classes([])
 @permission_classes([permissions.AllowAny])
