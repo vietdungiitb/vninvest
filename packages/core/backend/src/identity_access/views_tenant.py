@@ -4,17 +4,26 @@ from datetime import timedelta
 from django.db.models import Count
 from django.db.models.functions import TruncDate
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from vninvest_core.api_envelope import envelope_response
 from vninvest_core.pagination import CoreCursorPagination
 
 from .envelope import envelope
 from .models import CorePATCredential, CoreServiceAccount, CoreTenant, PATAuditLog, TenantSettings, UserProfile, TenantCustomRole
 from .permissions import IsTenantActive, require_human_session, require_pat_scopes_or_human_session
+from .schema import (
+    PartnerRoleListSerializer,
+    TenantCustomRoleWithCountSerializer,
+    TenantLifecycleSerializer,
+    UserProfilePayloadSerializer,
+    UserProfileWithTenantsSerializer,
+)
 from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
 
 logger = logging.getLogger(__name__)
@@ -265,6 +274,9 @@ class UserProfileView(APIView):
     """
     permission_classes = TENANT_PERMISSION_CLASSES
 
+    @extend_schema(
+        responses={200: envelope_response(UserProfileWithTenantsSerializer)},
+    )
     def get(self, request):
         require_human_session(request)
         user = request.user
@@ -294,6 +306,9 @@ class UserProfileView(APIView):
             'abilities': abilities,
         })
 
+    @extend_schema(
+        responses={200: envelope_response(UserProfilePayloadSerializer)},
+    )
     def patch(self, request):
         require_human_session(request)
         profile, _ = UserProfile.objects.get_or_create(
@@ -450,6 +465,9 @@ class TenantLifecycleView(APIView):
     """
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(
+        responses={200: envelope_response(TenantLifecycleSerializer)},
+    )
     def get(self, request, *args, **kwargs):
         try:
             tenant = _get_request_tenant(request)
@@ -619,6 +637,9 @@ class PartnerTenantSettingsView(APIView):
     """GET/PUT tenant settings (owner/admin only)."""
     permission_classes = [permissions.IsAuthenticated, IsTenantActive]
 
+    @extend_schema(
+        responses={200: envelope_response(TenantSettingsSerializer)},
+    )
     def get(self, request):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'settings:write')
@@ -628,6 +649,9 @@ class PartnerTenantSettingsView(APIView):
         serializer = TenantSettingsSerializer(settings_obj)
         return envelope(serializer.data)
 
+    @extend_schema(
+        responses={200: envelope_response(TenantSettingsSerializer)},
+    )
     def put(self, request):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'settings:write')
@@ -644,6 +668,9 @@ class PartnerRoleListCreateView(APIView):
     """List and create custom roles for the tenant (owner/admin only)."""
     permission_classes = [permissions.IsAuthenticated, IsTenantActive]
 
+    @extend_schema(
+        responses={200: envelope_response(PartnerRoleListSerializer)},
+    )
     def get(self, request):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'settings:write')
@@ -653,6 +680,9 @@ class PartnerRoleListCreateView(APIView):
             'roles': TenantCustomRoleSerializer(roles, many=True).data,
         })
 
+    @extend_schema(
+        responses={201: envelope_response(TenantCustomRoleWithCountSerializer)},
+    )
     def post(self, request):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'settings:write')
@@ -676,12 +706,18 @@ class PartnerRoleDetailView(APIView):
             from rest_framework.exceptions import NotFound
             raise NotFound('Vai trò không tồn tại.')
 
+    @extend_schema(
+        responses={200: envelope_response(TenantCustomRoleWithCountSerializer)},
+    )
     def get(self, request, role_id):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'settings:write')
         role = self._get_role(request, role_id)
         return envelope(TenantCustomRoleSerializer(role, tenant=role.tenant).data)
 
+    @extend_schema(
+        responses={200: envelope_response(TenantCustomRoleWithCountSerializer)},
+    )
     def patch(self, request, role_id):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'settings:write')
@@ -694,6 +730,9 @@ class PartnerRoleDetailView(APIView):
         serializer.save()
         return envelope(serializer.data)
 
+    @extend_schema(
+        responses={204: None},
+    )
     def delete(self, request, role_id):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
         _require_tenant_permission(request, 'settings:write')

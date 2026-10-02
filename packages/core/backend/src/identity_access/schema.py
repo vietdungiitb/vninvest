@@ -27,17 +27,154 @@ những payload có hợp đồng **ổn định** — không phải để bịa
 chứa serializer **read-only, không nhập vào tầng nghiệp vụ**, nên tách riêng để
 hai bên không đụng nhau.
 """
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from identity_access.serializers import TenantWebhookConfigSerializer
+from identity_access.serializers import (
+    ReportDeliveryLogSerializer,
+    ScheduledReportSerializer,
+    TenantCustomRoleSerializer,
+    TenantWebhookConfigSerializer,
+)
 
 __all__ = [
+    'AbilitySerializer',
     'DetailResponseSerializer',
     'PartnerBillingStatusSerializer',
+    'PartnerRoleListSerializer',
     'PlanChangePreviewSerializer',
+    'ReportTestQueuedSerializer',
+    'ScheduledReportDetailSerializer',
+    'TenantCustomRoleWithCountSerializer',
+    'TenantLifecycleSerializer',
+    'TenantSummarySerializer',
+    'UserProfilePayloadSerializer',
+    'UserProfileWithTenantsSerializer',
     'WebhookConfigWithSecretSerializer',
     'WebhookSecretResponseSerializer',
 ]
+
+
+class ScheduledReportDetailSerializer(ScheduledReportSerializer):
+    """Kết quả `GET /partner/reports/{id}/` — lịch sử gửi **đính kèm**.
+
+    Khác `ScheduledReportSerializer` ở `delivery_logs`. Đây là kiểu lệch
+    "1:1 không còn đúng": view gọi `serializer.data` rồi **gán thêm** key
+    (`views_reports.py:72`). Mô tả bằng `ScheduledReportSerializer` là thiếu
+    field — cùng loại lỗi với F5 siblings.
+    """
+
+    delivery_logs = ReportDeliveryLogSerializer(many=True, read_only=True)
+
+    # `ModelSerializer` **không** tự nối `fields` của lớp cha — thiếu dòng này
+    # thì DRF ném `AssertionError: The field 'delivery_logs' was declared ... but
+    # has not been included in the 'fields' option` lúc **import**, làm hỏng cả
+    # app chứ không riêng endpoint này.
+    class Meta(ScheduledReportSerializer.Meta):
+        fields = [*ScheduledReportSerializer.Meta.fields, 'delivery_logs']
+        read_only_fields = [
+            *ScheduledReportSerializer.Meta.read_only_fields, 'delivery_logs',
+        ]
+
+
+class ReportTestQueuedSerializer(serializers.Serializer):
+    """Kết quả `POST /partner/reports/{id}/test/` — chỉ xác nhận đã xếp hàng."""
+
+    status = serializers.CharField()
+    report_id = serializers.CharField()
+
+
+class TenantSummarySerializer(serializers.Serializer):
+    """Hợp đồng `_tenant_payload()` (`views/helpers.py`) — 9 khoá cố định.
+
+    Tái dùng ở `GET /core/v1/identity/profile/`.
+    """
+
+    tenant_id = serializers.CharField()
+    public_id = serializers.CharField()
+    tenant_code = serializers.CharField()
+    display_name = serializers.CharField(allow_null=True)
+    plan = serializers.CharField()
+    max_active_pats = serializers.IntegerField()
+    status = serializers.CharField()
+    features = serializers.ListField(child=serializers.CharField())
+
+
+class AbilitySerializer(serializers.Serializer):
+    """Một phần tử của `_build_abilities()` — cặp hành động/chủ thể."""
+
+    action = serializers.CharField()
+    subject = serializers.CharField()
+
+
+class UserProfilePayloadSerializer(serializers.Serializer):
+    """Phần hồ đồng nhất của `GET`/`PATCH /core/v1/identity/profile/`.
+
+    Cố tình **không** đặt tên `UserProfileSerializer`: đã có model
+    `identity_access/models.py:479` tên `UserProfile`, và drf-spectacular đặt
+    tên component theo tên lớp ⇒ hai component trùng tên, khác kiểu. Cảnh báo
+    đó **không** làm `spectacular` fail nên không gate nào bắt được.
+    """
+
+    username = serializers.CharField()
+    email = serializers.CharField(allow_blank=True)
+    is_staff = serializers.BooleanField()
+    is_superuser = serializers.BooleanField()
+    display_name = serializers.CharField(allow_null=True)
+    avatar_url = serializers.CharField(allow_null=True)
+    language = serializers.CharField(allow_null=True)
+    theme = serializers.CharField(allow_null=True)
+    whale_alert_threshold = serializers.CharField()
+    # JSON tự do tuỳ biến giao diện — liệt kê khoá sẽ khiến client tin có
+    # khoá không tồn tại.
+    preferences = serializers.DictField()
+
+
+class UserProfileWithTenantsSerializer(UserProfilePayloadSerializer):
+    """`GET` trả **thêm** `tenants` + `abilities`; `PATCH` thì không."""
+
+    tenants = TenantSummarySerializer(many=True, read_only=True)
+    abilities = AbilitySerializer(many=True, read_only=True)
+
+
+class TenantLifecycleSerializer(serializers.Serializer):
+    """Kết quả `GET /core/v1/tenant/lifecycle/` — dùng để chặn feature."""
+
+    plan = serializers.CharField()
+    status = serializers.CharField()
+    tenant_id = serializers.CharField()
+    tenant_code = serializers.CharField()
+    display_name = serializers.CharField(allow_null=True)
+
+
+class TenantCustomRoleWithCountSerializer(TenantCustomRoleSerializer):
+    """`TenantCustomRoleSerializer` + khai báo kiểu cho `member_count`.
+
+    Không phải để "làm đẹp": `get_member_count()` (`serializers.py:552`) trả
+    `obj.members.count()` nhưng **không** có type hint, nên drf-spectacular cảnh
+    báo *"unable to resolve type hint ... Defaulting to string"* và mô tả
+    `member_count` thành **chuỗi** — sai kiểu so với thực tế.
+
+    Trước khi serializer này được schema tham chiếu thì cảnh báo đó **không
+    hiện** (không ai đọc tới). Việc mô tả endpoint làm nó lộ ra, nên ở lại đây
+    thay vì sửa `serializers.py` — file dùng chung, nhiều agent khác đang đụng.
+
+    Không thêm field nào ⇒ **không** cần khai lại `Meta`.
+    """
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_member_count(self, obj):
+        return super().get_member_count(obj)
+
+
+class PartnerRoleListSerializer(serializers.Serializer):
+    """`GET /partner/roles/` bọc trong `{roles: [...]}` — không phải mảng thẳng.
+
+    `envelope_response(TenantCustomRoleSerializer, many=True)` sẽ mô tả sai:
+    `data` phải là **object** chứa `roles`, không phải array.
+    """
+
+    roles = TenantCustomRoleWithCountSerializer(many=True, read_only=True)
 
 
 class DetailResponseSerializer(serializers.Serializer):
