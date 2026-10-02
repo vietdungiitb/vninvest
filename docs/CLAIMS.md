@@ -311,8 +311,112 @@ Xem `docs/OPEN_WORK_20260929.md` §B5 cho phan con lai.
 `@api_view` khong phai class DRF). File nay la input, doc lai tu dau khong can lich su.
 
 **Con no sau khi dong B5** (xem §CHUA LAM cua prompt ban giao):
-- 131 operation `@api_view` chua mo ta · 31 view ngoai tam bao ve cua test dung chung
+- ~~131 operation `@api_view` chua mo ta · 31 view ngoai tam bao ve cua test dung chung~~ →
+  **XONG** xem `b5-apiview` (PR #69) · **con no** 10 operation free-form + 25 operation ngoai scope
 - `docs/CODE_CHANGE_AUDIT_LEDGER.md` chua cap nhat — file nam danh sach cam commit (§2 protocol)
 - 1 commit da bypass hook (`-c core.hooksPath=`) — `check-multi-agent` chay tay: 0 loi, PASS
 - 3 branch giu lai: `backup-dev-stale` (chua push) · `feat/preflight-identity` (da push)
   · `docs/workflow-concurrency-traps` (`git branch -d` tu choi "not fully merged")
+
+### 2026-10-03 - B5 idoc `@api_view` (agent `b5-apiview`, PR #69 da merge) - RELEASED
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| `b5-apiview` | `feat/b5-apiview-schema` | mo ta 131 operation `@api_view` + sua blind spot cua bo phan loai AST | `src/identity_access/**` + `src/vninvest_core/tests/test_api_envelope_schema.py` | done |
+
+**Do lai con so ban giao — 2 trong 3 sai:**
+- `131` **dung**. Nhung 131 do KHONG phai 131 endpoint ma la **131 operation** cua
+  **36 handler** (`@api_view` la func-view, 1 handler nhieu path ⇒ nhieu operation).
+- `31 view ngoai tam bao ve` → **SAI, thuc te 139**. Toan bo 139 endpoint
+  func-view deu doc khong duoc handler.
+- Danh sach file **thieu `views_tenant.py`** (12 operation) — noi duy nhat
+  co tien le `@api_view` + `@extend_schema` san.
+
+**Goc cua blind spot (xac nhan bang doc code, khong doan):**
+`rest_framework.decorators.api_view` tao class bang `type()` roi gan
+`__name__`/`__module__` bang **ten ham goc** (`decorators.py:44-45`) ⇒ source
+**khong co** `ClassDef` trung ten, chi co `FunctionDef`. `_methods_of()` chi di
+tim `ClassDef` ⇒ `{}` ⇒ `_verdicts_for()` tra `None` ⇒ ca hai test
+`EnvelopeGlobalInvariantTest` `continue`. **`success_props()` tra `None` khi
+2xx khong co `content`** — do la dinh nghia "chua mo ta", khong phai empty set.
+
+**Ket qua do lai** (interpreter Django 6.0.6, DB rieng `b5apiview`):
+
+| | truoc | sau |
+|---|---|---|
+| 2xx 200 khong co `content` | 131 | **0** |
+| 2xx 204 khong body | 16 | 16 |
+| co `properties` | 203 | **330** |
+| classifier doc duoc handler | 221/360 | **360/360** |
+
+**Phan loai 36 handler — doc `return` that, KHONG boc bua.** Ba ranh giới
+da co tien le duoc giu nguyen:
+- **F3 phang** 6 handler: `login_view`, `refresh_token_view`, `register_view`
+  (**201**), `verify_email_view`, `resend_email_verification_view` dung
+  `success_response()` = `{status, timestamp, request_id, data}` — **khong co
+  `meta`** ⇒ phai phang. Dung alias `F3SuccessResponseSerializer`.
+- **F4 phang** 2 handler: `personal_keys_rotate` / `personal_keys_revoke`
+  (`{object: ...}`) — **khong** boc cung kieu voi `partner_rotate_pat` /
+  `partner_revoke_pat` da co san.
+- **F5 phang** 2 handler: `partner_api_usage`, `partner_api_timeline` — `data`
+  la **sibling** nen bo vao `{data, meta}` se lam roi sibling.
+- **khong phai JSON** 1 handler: `partner_api_export` tra
+  `StreamingHttpResponse` `text/csv` ⇒ khai `(200, 'text/csv')`, khong phai JSON.
+- 22 serializer read-only moi trong `schema.py`, theo chinh sach cua chinh file do.
+
+**NEGATIVE PROOF 5/5 hai chieu** (mutate → do → khoi phuc byte-exact → xanh):
+NP1 `_api_view_handler` → None (4 test do) · NP2 envelope → phang · NP3 F4 boc
+envelope · NP4/NP5 F5 boc envelope. **NP4/NP5 PASS o lan chay dau** ⇒ phat
+hien 1 lo hong that: `_classified()` **khong co nhanh `SKIP_F5_SIBLINGS`** ⇒ moi
+view F5 phang roi xuong `else: continue`, bo chung vao `{data, meta}` khong
+test nao bat. Da them `F5_FLAT`; NP4/NP5 moi do.
+
+**LOI CUA CHINH TOI — tool `edit` sua am tham 1 dong khong duoc yeu cau:**
+`capabilities_view` bi doi `@permission_classes([permissions.AllowAny])` →
+`TENANT_PERMISSION_CLASSES` (doi **logic phan quyen**, vi pham luat "chi mo
+ta"). Bat bang so A/B byte-exact voi `git cat-file`. Khong dung `git stash` /
+`checkout --`. Sau khi sua: toan bo diff **thuan additive** (779+/5−, 5 dong
+xoa la docstring + tuple `kind` trong test). **Bai hoc them: `ruff` KHONG
+duoc de bat loi nay** — chi so A/B byte-exact moi bat.**
+
+**BASELINE THAT — tu dung, khong so bang tri nho** (worktree rieng
+`wt-baseline` @ `c4ea2bc16` sach, DB rieng `b5baseline`, cung interpreter):
+`Ran 2798 test · 83F + 9E`. Cua toi: `Ran 2805 test · 83F + 8E`
+(+7 test = 5 + 2 test moi). Diff danh sach do: **0 regression**.
+**Con so "79F + 12E" trong prompt ban giao KHONG tai lap** — do 83F + 9E.
+Ly do chenh 1 error: `test_admin_login_page_is_servable` chi do o worktree vi
+`src/staticfiles/staticfiles.json` la **artifact khong duoc git track**, chi co
+o main tree ⇒ `Missing staticfiles manifest entry`. Day la artifact, KHONG phai
+loi repo va KHONG phai do thay doi cua toi.
+
+**GATE THAT** (DB rieng `b5apiview`): `manage.py check` 0 issue ·
+`spectacular` exit 0 · 1090 component · **khong** canh bao `identical names` ·
+`makemigrations --check` No changes detected · ruff A/B vs HEAD: **0**
+diagnostic moi (9 "moi" chi la diagnostic co san doi dong) ·
+`test_api_envelope_schema` **21/21 OK** · `identity_access` **424/424 OK** ·
+`check-envelope-contract.py identity_access` exit 0 `UNWRAPPED: 0` ·
+`run_tests.py` 0 regression · `verify-agent-handover.ps1 -Apps identity_access
+-Backend …` **SANCH exit 0**.
+
+**CI**: check `scan` FAILURE **la billing, khong phai gate fail** — job chay
+**2 giay** voi `steps: []` (khong step nao chay, khong co log); "Copilot Code
+Review` cung fail 6 giay. Ca 3 gate trong `secret-scan.yml` deu PASS chay tay
+exit 0: `scan-secrets --self-test` 52/52 · `scan-secrets` OK ·
+`check-multi-agent` 0 loi. `dev` **khong branch-protected**, ruleset
+`OpenCore Protection - dev` `enforcement: disabled` ⇒ merge khong bypass gate
+nao. PR #69 merged `0ee1b8b4b`.
+
+**CON NO (khong lam trong dot nay):**
+- **10 operation** van free-form `type: object` (`views.sso` metadata,
+  `commercial_partner_views` stripe session/portal = 5 endpoint × 2 path),
+  verdict `UNVERIFIED` ⇒ **khong** thuoc 131.
+- **25 operation ngoai scope** doc khong duoc handler, da ghi `KNOWN_UNREADABLE`
+  kem ly do: 15 **viewset action** (`get` vs `list`/`create` do
+  `ViewSetMixin.as_view`), 10 `user_workspace.views_broker` (`_module_tree()`
+  tra `None` — **nguyen nhan chua truy ra**).
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md` chua cap nhat — file cam commit (§2).
+- Branch `docs/saas-design-pack-20261002` ma prompt §8 nhac toi **khong con
+  ton tai**; noi dung da vao `dev` qua `b64647bdb`.
+- **Xung dot quy trinh can coordinator phan xu**: §6 prompt ban giao cam
+  sua `docs/CLAIMS.md` "cho toi khi merge xong", nhung `AGENTS.md` §2 yeu cau
+  khai claim **truoc** khi sua dong dau tien. Session nay theo §6 (de merge
+  xong roi moi chot claim dong nay).
