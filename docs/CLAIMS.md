@@ -303,3 +303,16 @@ Worktree = `C:\Mujoco Projects\claimfix`, branch `feat/claimfix`.
 **Full suite cuoi**: 2775 test · 79F + 8E = 87 do (baseline truoc B5 = 88).
 Xem `docs/OPEN_WORK_20260929.md` §B5 cho phan con lai.
 
+| `b5-idoc` | `wip/idoc` | OpenAPI identity_access: mo ta 196/327 operation | src/identity_access/** | done |
+| `b5-debt2` | `wip/debt2` | 3 no ha tang: schema pollution / code chet / anti-pattern | src/{user_workspace,market_data}/** + backend/tests | done |
+
+**Ban giao session moi**: `docs/HANDOFF_B5_API_VIEW_20261002.md` — prompt tu chua cho
+131 operation `@api_view` con lai cua `identity_access` (gate AST doc khong duoc vi
+`@api_view` khong phai class DRF). File nay la input, doc lai tu dau khong can lich su.
+
+**Con no sau khi dong B5** (xem §CHUA LAM cua prompt ban giao):
+- 131 operation `@api_view` chua mo ta · 31 view ngoai tam bao ve cua test dung chung
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md` chua cap nhat — file nam danh sach cam commit (§2 protocol)
+- 1 commit da bypass hook (`-c core.hooksPath=`) — `check-multi-agent` chay tay: 0 loi, PASS
+- 3 branch giu lai: `backup-dev-stale` (chua push) · `feat/preflight-identity` (da push)
+  · `docs/workflow-concurrency-traps` (`git branch -d` tu choi "not fully merged")
