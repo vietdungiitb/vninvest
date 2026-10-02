@@ -289,3 +289,17 @@ Worktree = `C:\Mujoco Projects\claimfix`, branch `feat/claimfix`.
 | `b5-identity` | `wip/b2` | B5: boc 158 call site trong `identity_access` | `packages/core/backend/src/identity_access/**` | done | 2026-09-30 | DB `b5b`. **Nhieu test dang do trong app nay** (STALE_URL / SUPERSEDED) — phai phan biet loi san voi loi do bo boc. | Bang do: docs/evidence/api02/map/callsites.csv. | cao |
 | `b5-user-workspace` | `wip/b3` | B5: boc 154 call site (`user_workspace` + `commercial` + `support`) | `packages/core/backend/src/user_workspace/**`, `src/commercial/**`, `src/support/**` | queued | 2026-09-30 | DB `b5c`. `user_workspace` co `PortfolioSummaryView` — view nay vua duoc sua o B0, can bao ton. | Bang do: docs/evidence/api02/map/callsites.csv. | cao |
 | `b5-rest` | `wip/b4` | B5: boc 203 call site (`market_data`, `vninvest_core`, `advisory`, `advertising`, `ai_agents`, `data_ingest`, `ops_audit`, `signal_intelligence`, `ai_analytics`) | 9 app duoi `packages/core/backend/src/` | queued | 2026-09-30 | DB `b5d`. `vninvest_core` chua B3 + B0 — **bat buoc** giu nguyen RFC 9457 error envelope va `_advisory_field`. | Bang do: docs/evidence/api02/map/callsites.csv. | cao |
+
+### 2026-10-02 — B5 dong lai (agent `b5-sweep`, branch da merge) — RELEASED
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| `b5-user-workspace` | `wip/b3` | boc {data,meta} user_workspace (53/53) | src/user_workspace/** | done |
+| `b5-service-ops` | `wip/b1` | boc {data,meta} service_ops (151) | src/service_ops/** | done |
+| `b5-identity` | `wip/b2` | boc {data,meta} identity_access (92) | src/identity_access/** | done |
+| `b5-rest` | `wip/b4` | boc 79 diem: market_data 61 / signal_intel 7 / advisory 7 / ops_audit 4 | 4 app | done |
+| `b5-openapi` | `wip/api` | schema OpenAPI mo ta {data,meta}: 183 operation sai -> 0 | src/vninvest_core/api_envelope.py + 16 view | done |
+| `b5-sweep` | `sweep/b5-sweep` | quet backend/tests/: 55 regression that | backend/tests/** (10 file) | done |
+
+**Full suite cuoi**: 2775 test · 79F + 8E = 87 do (baseline truoc B5 = 88).
+Xem `docs/OPEN_WORK_20260929.md` §B5 cho phan con lai.
+
