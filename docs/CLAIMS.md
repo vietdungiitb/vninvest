@@ -420,3 +420,39 @@ nao. PR #69 merged `0ee1b8b4b`.
   sua `docs/CLAIMS.md` "cho toi khi merge xong", nhung `AGENTS.md` §2 yeu cau
   khai claim **truoc** khi sua dong dau tien. Session nay theo §6 (de merge
   xong roi moi chot claim dong nay).
+
+### 2026-10-03 - Bộ tài liệu kiến trúc AS-IS (agent `arch-as-is`, Lượt 1) - in-progress
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| `arch-as-is` | `feat/arch-as-is-doc` | Deep audit codebase `vninvest` + xuất SAD/SDS AS-IS làm SSOT (Lượt 1: Bước 1 + mục 1, 2, 6) | `docs/architecture/**` + `docs/CLAIMS.md` | in-progress |
+
+**Doc-only.** Khong sua code production, khong tao migration, khong commit vao `dev`.
+Tach file: `docs/architecture/` (khong trung ten `docs/saas_design_pack/`).
+
+**QUAN TRONG - xung dot kien truc doc da phat hien ngay tu dau:**
+`docs/saas_design_pack/D01-D12` mo ta **TO-BE** (thiet ke moi de port), con bo
+tai lieu nay viet **AS-IS** (hien trang co that). Hai ben trai **nguoc huong** va
+khong ghi ro trong ten file. Neu khong phan tach, dev se trich nham bo sai →
+chinh ly do coordinator dua ra. De xu: `architecture/` (AS-IS) vs
+`saas_design_pack/` (TO-BE), va moi `D0x` se co tien to `AS-` hoac `TOBE-`.
+
+**Khung tai lieu lam mau**: `docs/saas_design_pack/` (13 file, ~6850 dong, D01-D12 +
+OPEN_QUESTIONS) - chuan hoa: `D0x`, PHAN A/B, `ADR-00N`, C4 muc C1-C3, ID quyet
+dinh `D-xx`/`NQ-xx`/`OW-xx`. **Thieu README/index** - bo nay co, de kho doc.
+
+**Quy tac repo bat buoc (AGENTS.md)**: moi khang dinh phai co `file:line`; quet
+TOAN repo ke ca `.css`/`.module.css`/`soc.module.css`/`vite.config.ts`/`i18n`;
+tieng Viet co dau; bao cao theo §4 A-G; **cap nhat `docs/CODE_CHANGE_AUDIT_LEDGER.md`**
+- nhung file nay nam danh sach CAM COMMIT (§2) ⇒ **XUNG DOT QUY TRINH, can coordinator
+phan xu** (ghi ro o muc 6 cua tai lieu, khong giu im).
+
+**Tai lieu nay CHUA chay gi (chi doc + phep tinh)**:
+- BE test: **CHUA CHAY** cho dot nay (khong sua code nen khong can, nguoi doc
+  tu chay lai bang `python run_tests.py`).
+- FE test/lint/tsc: **CHUA CHAY**.
+- Khong co thay doi code nen khong co regression nao de so sanh.
+
+**Pham vi phan 3 session** (theo huong dan van hanh cua coordinator):
+- **Lượt 1 (nay)**: Buoc 1 audit + muc 1, 2, 6.
+- Lượt 2: muc 3, 4 (ERD + sequence diagram) - can 107 model nen tach.
+- Lượt 3: muc 5, 7 (API/UI + SOP coder).
