@@ -1,4 +1,5 @@
 import logging
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.response import Response
@@ -8,6 +9,7 @@ from ..envelope import envelope
 from ..models import CorePATCredential, CoreTenant
 from django.utils import timezone
 from ..permissions import require_human_session
+from vninvest_core.api_envelope import envelope_response
 from .helpers import (
     TENANT_PERMISSION_CLASSES,
     AuthBootstrapThrottle,
@@ -23,6 +25,14 @@ from .helpers import (
 logger = logging.getLogger(__name__)
 
 
+#: `data` free-form: payload là `{**_user_payload(user), plan, abilities,
+#: entitlements, capabilities, user, tenant, …}` — có **splat** và khối lồng
+#: nhau dựng ở `views/helpers.py`, key không ổn định theo từng nhánh 404/200.
+#: Liệt kê cứng sẽ bắt client tin có field không tồn tại — xem bảng "Khi nào
+#: KHÔNG tạo serializer" ở `identity_access/schema.py`.
+@extend_schema(
+    responses={200: envelope_response()},
+)
 @api_view(['GET'])
 @authentication_classes([CorePATAuthentication])
 @permission_classes(TENANT_PERMISSION_CLASSES)
@@ -81,6 +91,13 @@ def profile_view(request):
     )
 
 
+#: `data` free-form — payload là `_build_capabilities_payload(...)`, dict dựng tay
+#: nhiều tầng (`principal` / `abilities` / `build` / `navigation` / `surfaces` /
+#: `entitlements`). Nhánh 200-anonymous cũng dùng **cùng** key set ⇒ mô tả
+#: free-form thay vì liệt kê 6 nhánh.
+@extend_schema(
+    responses={200: envelope_response()},
+)
 @api_view(['GET'])
 @authentication_classes([CorePATAuthentication])
 @permission_classes([permissions.AllowAny])

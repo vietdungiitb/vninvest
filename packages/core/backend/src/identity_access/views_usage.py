@@ -14,13 +14,23 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 
+from drf_spectacular.utils import OpenApiTypes, extend_schema
+
 from .models import CoreTenant
 from .permissions import IsTenantActive, require_pat_scopes_or_human_session
+from .schema import PartnerApiTimelineSerializer, PartnerApiUsageSerializer
 from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
 
 RAW_QUERY_MAX_DAYS = 1  # configurable threshold for raw AuditEvent fallback
 
 
+#: Hợp đồng **phẳng**, KHÔNG phải envelope. View trả
+#: `{summary, data, filters}` — `data` nằm **ngang hàng** sibling nên bọc vào
+#: `{data, meta}` sẽ **làm rơi** `summary`/`filters`. Bộ phân loại của
+#: `scripts/check-envelope-contract.py` xếp là `SKIP_F5_SIBLINGS`.
+@extend_schema(
+    responses={200: PartnerApiUsageSerializer},
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsTenantActive])
 def partner_api_usage(request):
@@ -146,6 +156,11 @@ def partner_api_usage(request):
     })
 
 
+#: Hợp đồng **phẳng** — `{interval, data, days, start_date, end_date}`.
+#: `SKIP_F5_SIBLINGS`, cùng lý do như `partner_api_usage` ở trên.
+@extend_schema(
+    responses={200: PartnerApiTimelineSerializer},
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsTenantActive])
 def partner_api_timeline(request):
@@ -211,6 +226,16 @@ def partner_api_timeline(request):
     })
 
 
+#: **Không phải JSON**: `StreamingHttpResponse` với `content_type='text/csv'`
+#: (`views_usage.py:251`). Không có envelope `{data, meta}` nào ở đây — mô tả
+#: sai thành JSON sẽ khiến client `response.json()` ném lỗi.
+#:
+#: Key tuple `(200, 'text/csv')` là cách drf-spectacular đổi media type cho một
+#: response (`AutoSchema._get_response_bodies` tách `code, media_types` khi code
+#: là tuple).
+@extend_schema(
+    responses={(200, 'text/csv'): OpenApiTypes.STR},
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsTenantActive])
 def partner_api_export(request):

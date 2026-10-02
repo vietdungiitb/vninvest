@@ -475,3 +475,347 @@ class PlanChangePreviewSerializer(serializers.Serializer):
     effective_date = serializers.CharField()
     trial_extension_days = serializers.IntegerField(allow_null=True)
     changes = serializers.DictField()
+
+
+# ---------------------------------------------------------------------------
+# View `@api_view` — phần `@extend_schema` còn thiếu (B5 idoc, 2026-10-02)
+# ---------------------------------------------------------------------------
+# 131 operation của 14 module dưới đây là view `@api_view` — không phải class
+# DRF — nên chúng **không có** `@extend_schema` nào và drf-spectacular sinh ra
+# `200: {description: "No response body"}`. Toàn bộ nhóm dưới đây bị bỏ qua
+# im lặng bởi `EnvelopeGlobalInvariantTest`, vì `_methods_of()` đi tìm
+# `ClassDef` trong source mà `@api_view` không có `ClassDef`.
+#
+# Danh sách key bên dưới đều đọc từ **dict literal trong view**, không suy
+# đoán. Payload có key **động** thì dùng `DictField`/`JSONField`, không liệt
+# kê cứng — xem bảng "Khi nào KHÔNG tạo serializer" ở đầu file.
+
+
+#: F3 `{status, timestamp, request_id, data}` — **alias** của
+#: `OperatorSuccessResponseSerializer`, dùng cho `views/helpers.success_response`
+#: (`views/helpers.py:327`) ở `login` / `register`.
+#:
+#: Cùng shape ⇒ cùng **một** class, không phải hai. Nếu định nghĩa class thứ
+#: hai, drf-spectacular sẽ sinh hai component trùng tên `OperatorSuccessResponse`
+#: với identity khác nhau và cảnh báo
+#: `Encountered 2 components with identical names ... will very likely result in
+#: an incorrect schema` — cảnh báo đó **không** làm lệnh `spectacular` fail.
+F3SuccessResponseSerializer = OperatorSuccessResponseSerializer
+
+
+class DetailPayloadSerializer(serializers.Serializer):
+    """`envelope({'detail': ...})` — nhánh trả về chỉ có một thông điệp.
+
+    `logout_view` (`views/login.py:272,273`) và `partner_revoke_session`
+    (`views_security.py:146,153`) đều rơi vào shape này.
+    """
+
+    detail = serializers.CharField()
+
+
+class PartnerAlertConfigSerializer(serializers.Serializer):
+    """Một dòng cấu hình ngưỡng cảnh báo — `views_alert_config.py:82,128`.
+
+    Trả về **giống nhau** ở cả `GET` và `PATCH` detail ⇒ dùng chung một
+    serializer, tránh trôi hợp đồng giữa hai method.
+    """
+
+    meter_code = serializers.CharField()
+    warning_pct = serializers.IntegerField()
+    critical_pct = serializers.IntegerField()
+    enabled = serializers.BooleanField()
+    notify_email = serializers.BooleanField()
+    created_at = serializers.CharField()
+    updated_at = serializers.CharField()
+
+
+class PartnerAlertConfigListSerializer(serializers.Serializer):
+    """`envelope({'configs': [...]})` — `views_alert_config.py:52`."""
+
+    configs = PartnerAlertConfigSerializer(many=True)
+
+
+class LoginActivityDailySerializer(serializers.Serializer):
+    """Một ngày trong `partner_login_activity` — `views_security.py`.
+
+    `daily` được dựng ở `_query_daily_login_activity`; các key số đếm là
+    `IntegerField`, còn `date` là ISO string.
+    """
+
+    date = serializers.CharField()
+    success = serializers.IntegerField()
+    failed = serializers.IntegerField()
+
+
+class LoginActivitySummarySerializer(serializers.Serializer):
+    """`summary` của `partner_login_activity` — `views_security.py:87`."""
+
+    total_logins = serializers.IntegerField()
+    total_failed = serializers.IntegerField()
+    success_rate_pct = serializers.FloatField(allow_null=True)
+    unique_ips = serializers.IntegerField()
+    unique_users = serializers.IntegerField()
+    most_active_day = serializers.CharField(allow_null=True)
+    recent_failures = serializers.ListField(child=serializers.JSONField())
+
+
+class PartnerLoginActivitySerializer(serializers.Serializer):
+    """`envelope({'daily': ..., 'summary': ...})` — `views_security.py:87`."""
+
+    daily = LoginActivityDailySerializer(many=True)
+    summary = LoginActivitySummarySerializer()
+
+
+class PartnerActiveSessionSerializer(serializers.Serializer):
+    """Một phiên đang hoạt động — `views_security.py:114`."""
+
+    session_id = serializers.CharField()
+    user_id = serializers.IntegerField()
+    username = serializers.CharField()
+    ip_address = serializers.CharField()
+    user_agent = serializers.CharField()
+    login_at = serializers.CharField()
+    last_active_at = serializers.CharField()
+    token_prefix = serializers.CharField()
+    is_current = serializers.BooleanField()
+
+
+class PartnerActiveSessionsSerializer(serializers.Serializer):
+    """`paginated_envelope({'sessions': ..., 'total_active': ...})`.
+
+    Đây là `data` của envelope, **không phải** `results`/`count`/`next` của
+    `CoreCursorPagination` — view tự gom vào key `sessions` rồi bọc.
+    """
+
+    sessions = PartnerActiveSessionSerializer(many=True)
+    total_active = serializers.IntegerField()
+
+
+class DashboardDailyPointSerializer(serializers.Serializer):
+    """Một ngày trong `partner_dashboard_usage_trend` — `views_dashboard.py:226`."""
+
+    date = serializers.CharField()
+    api_calls = serializers.IntegerField()
+    active_members = serializers.IntegerField()
+
+
+class PartnerDashboardUsageTrendSerializer(serializers.Serializer):
+    """`envelope({'daily': ..., 'days': ...})` — `views_dashboard.py:232`."""
+
+    daily = DashboardDailyPointSerializer(many=True)
+    days = serializers.IntegerField()
+
+
+class UsageForecastSerializer(serializers.Serializer):
+    """Dự báo của **một** meter — `_forecast_meter` (`views_forecast.py`).
+
+    `daily_rate` / `days_remaining` / `forecast_exhaust_date` là `None` khi
+    chưa đủ dữ liệu (`confidence == 'insufficient_data'`) ⇒ cho phép null.
+    """
+
+    meter_code = serializers.CharField()
+    daily_rate = serializers.FloatField(allow_null=True)
+    days_remaining = serializers.IntegerField(allow_null=True)
+    forecast_exhaust_date = serializers.CharField(allow_null=True)
+    confidence = serializers.CharField()
+    total_entitled = serializers.IntegerField()
+    total_consumed = serializers.IntegerField()
+    remaining = serializers.IntegerField()
+
+
+class PartnerUsageForecastListSerializer(serializers.Serializer):
+    """`envelope({'forecasts': [...], 'lookback_days': ...})` — `views_forecast.py:125`."""
+
+    forecasts = UsageForecastSerializer(many=True)
+    lookback_days = serializers.IntegerField()
+
+
+class UsageTrendDailySerializer(serializers.Serializer):
+    """Một ngày trong `partner_usage_trend` — `views_usage_trend.py:72`."""
+
+    date = serializers.CharField()
+    consumed = serializers.IntegerField()
+
+
+class PartnerUsageTrendSerializer(serializers.Serializer):
+    """`envelope({'meter_code', 'daily', 'days', 'start_date', 'end_date'})`.
+
+    Lưu ý ranh giới: đây là `data` của **envelope** `{data, meta}` — key
+    `daily` nằm trong `data`, không phải sibling. Hợp đồng khác hẳn với
+    `views_usage.partner_api_timeline` (`SKIP_F5_SIBLINGS`), nơi `data` nằm
+    **ngang hàng** `interval`/`days`/`start_date`/`end_date` và **không** được
+    ép về envelope.
+    """
+
+    meter_code = serializers.CharField()
+    daily = UsageTrendDailySerializer(many=True)
+    days = serializers.IntegerField()
+    start_date = serializers.CharField()
+    end_date = serializers.CharField()
+
+
+class PartnerUsageTrendAllSerializer(serializers.Serializer):
+    """`envelope({'meters', 'days', 'start_date', 'end_date'})`.
+
+    `meters` là dict **động** — key là tên meter (`api_calls`,
+    `ai_regenerate`, `whale_symbols`, `exports`) ⇒ `DictField`, không liệt kê
+    cứng.
+    """
+
+    meters = serializers.DictField()
+    days = serializers.IntegerField()
+    start_date = serializers.CharField()
+    end_date = serializers.CharField()
+
+
+class PartnerApiUsageSerializer(serializers.Serializer):
+    """`GET /partner/usage/api-calls/` — hợp đồng **phẳng**, không phải envelope.
+
+    `views_usage.partner_api_usage` (`views_usage.py:26`) trả
+    `{summary, data, filters}` — `data` nằm **ngang hàng** với sibling nên
+    bọc vào `{data, meta}` sẽ **làm rơi** `summary`/`filters`. Bộ phân loại
+    của `scripts/check-envelope-contract.py` xếp là `SKIP_F5_SIBLINGS`; ở
+    đây mô tả đúng shape thật.
+    """
+
+    summary = serializers.JSONField()
+    data = serializers.JSONField()
+    filters = serializers.JSONField()
+
+
+class PartnerApiTimelineSerializer(serializers.Serializer):
+    """`GET /partner/usage/api-calls/timeline/` — phẳng, cùng lý do trên.
+
+    `views_usage.py:205` trả `{interval, data, days, start_date, end_date}`.
+    """
+
+    interval = serializers.CharField()
+    data = serializers.ListField(child=serializers.JSONField())
+    days = serializers.IntegerField()
+    start_date = serializers.CharField()
+    end_date = serializers.CharField()
+
+
+class PersonalPATRotationSerializer(serializers.Serializer):
+    """`POST /partner/me/keys/{key_id}/rotate/` — **phẳng** (F4), không envelope.
+
+    Cùng hợp đồng với `PATRotationResponseSerializer` của `partner_rotate_pat`
+    (`views_tenant.py:386`) chỉ khác giá trị `object`. Bọc nó vào
+    `{data, meta}` sẽ phá hợp đồng — xem `api_envelope.py` §"Vì sao KHÔNG ép
+    mọi 2xx vào envelope".
+    """
+
+    object = serializers.CharField()
+    old_token_id = serializers.CharField()
+    old_token_grace_until = serializers.CharField(allow_null=True)
+    new_token = IssuedCorePATSerializer()
+
+
+class PersonalPATRevocationSerializer(serializers.Serializer):
+    """`POST /partner/me/keys/{key_id}/revoke/` — **phẳng** (F4)."""
+
+    object = serializers.CharField()
+    token_id = serializers.CharField()
+    status = serializers.CharField()
+    revoked_at = serializers.CharField(allow_null=True)
+
+
+class PATUsageRowSerializer(serializers.Serializer):
+    """Một dòng PAT trong bảng usage — `views_tenant.py:595,632`.
+
+    Dùng chung cho cả `pats_usage` (tenant-wide) và `pats` (per service
+    account) của `views_tenant.py`, lẫn `keys` của
+    `personal_keys_usage_summary` (`views_personal.py:243`) — ba chỗ đó là
+    **cùng một hợp đồng** `{pat_id, label, calls_30d, last_used_at}`, nên chỉ
+    định nghĩa một lần. Hai định nghĩa cùng shape sẽ trôi khỏi nhau khi một
+    bên sửa.
+    """
+
+    pat_id = serializers.CharField()
+    label = serializers.CharField()
+    calls_30d = serializers.IntegerField()
+    last_used_at = serializers.CharField(allow_null=True)
+
+
+class PersonalKeysUsageSummarySerializer(serializers.Serializer):
+    """`GET /partner/me/keys/usage-summary/` — `views_personal.py:238`."""
+
+    total_keys = serializers.IntegerField()
+    active_keys = serializers.IntegerField()
+    total_calls_30d = serializers.IntegerField()
+    keys = PATUsageRowSerializer(many=True)
+
+
+class PersonalSummaryTenantSerializer(serializers.Serializer):
+    """Khối `tenant` của `personal_summary` — `views_personal.py:281`."""
+
+    plan = serializers.CharField()
+    status = serializers.CharField()
+    display_name = serializers.CharField()
+    tenant_code = serializers.CharField()
+
+
+class PersonalSummaryQuotaSerializer(serializers.Serializer):
+    """Khối `quotas` — `views_personal.py:287` (xem `_current_period_quotas`).
+
+    `api_calls_limit = -1` nghĩa là không giới hạn, nên `IntegerField` chứ
+    không phải số dương.
+    """
+
+    api_calls_limit = serializers.IntegerField()
+    period_start = serializers.CharField(allow_null=True)
+    period_end = serializers.CharField(allow_null=True)
+
+
+class PersonalSummaryMySerializer(serializers.Serializer):
+    """Khối `my` — `views_personal.py:288`."""
+
+    total_keys = serializers.IntegerField()
+    active_keys = serializers.IntegerField()
+    calls_30d = serializers.IntegerField()
+
+
+class PersonalSummarySerializer(serializers.Serializer):
+    """`GET /partner/me/summary/` — `views_personal.py:280`."""
+
+    tenant = PersonalSummaryTenantSerializer()
+    quotas = PersonalSummaryQuotaSerializer()
+    my = PersonalSummaryMySerializer()
+
+
+class PartnerPATUsageSerializer(serializers.Serializer):
+    """`GET /partner/pats/{pat_id}/usage/` — `views_tenant.py:563`.
+
+    `top_endpoints` là list các `(endpoint, count)` dựng tay và `status_breakdown`
+    là dict `{'2xx','4xx','5xx'}` — cả hai để `JSONField`/`DictField` thay vì
+    liệt kê field không chắc ổn định.
+    """
+
+    pat_id = serializers.CharField()
+    label = serializers.CharField()
+    total_calls = serializers.IntegerField()
+    unique_ips = serializers.IntegerField()
+    top_endpoints = serializers.JSONField()
+    status_breakdown = serializers.DictField()
+    timeline = serializers.JSONField()
+    last_used_at = serializers.CharField(allow_null=True)
+    expires_at = serializers.CharField(allow_null=True)
+
+
+class PartnerPATUsageSummarySerializer(serializers.Serializer):
+    """`GET /partner/pats/usage-summary/` — `views_tenant.py:604`."""
+
+    total_pats = serializers.IntegerField()
+    active_pats = serializers.IntegerField()
+    total_calls_30d = serializers.IntegerField()
+    pats_usage = PATUsageRowSerializer(many=True)
+
+
+class PartnerServiceAccountUsageSerializer(serializers.Serializer):
+    """`GET /partner/service-accounts/{sa_id}/usage/` — `views_tenant.py:639`."""
+
+    sa_id = serializers.CharField()
+    name = serializers.CharField()
+    total_pats = serializers.IntegerField()
+    total_calls = serializers.IntegerField()
+    pats = PATUsageRowSerializer(many=True)

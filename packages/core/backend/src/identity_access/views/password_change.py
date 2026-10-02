@@ -2,16 +2,19 @@ import logging
 
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view, permission_classes
 
 from ..envelope import envelope
 from ..models import CorePATCredential
+from ..schema import DetailPayloadSerializer
 from ..security_utils import (
     enforce_rate_limit,
     revoke_user_human_sessions,
     value_bucket,
 )
+from vninvest_core.api_envelope import envelope_response
 from vninvest_core.exceptions import ValidationErrorException
 
 logger = logging.getLogger(__name__)
@@ -21,6 +24,9 @@ logger = logging.getLogger(__name__)
 PASSWORD_CHANGE_ATTEMPT_LIMIT = 5
 
 
+@extend_schema(
+    responses={200: envelope_response(DetailPayloadSerializer)},
+)
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
 def password_change_view(request):

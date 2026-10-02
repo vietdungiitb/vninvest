@@ -97,6 +97,35 @@ def _module_tree(module_name):
     return tree
 
 
+def _api_view_handler(cls):
+    """`FunctionDef` gốc của view `@api_view`, hoặc `None` nếu không phải.
+
+    `rest_framework.decorators.api_view` tạo class bằng `type()` rồi gán
+    `WrappedAPIView.__name__ = func.__name__` và
+    `WrappedAPIView.__module__ = func.__module__`
+    (`rest_framework/decorators.py:44-45`). Hệ quả: class đó **trùng tên với
+    hàm gốc**, còn source chỉ có `FunctionDef` — **không** có `ClassDef`.
+
+    Bản trước `_methods_of()` chỉ đi tìm `ClassDef` ⇒ tìm không thấy ⇒ trả
+    `{}` ⇒ `_verdicts_for()` trả `None` ⇒ `EnvelopeGlobalInvariantTest`
+    `continue` ⇒ **139 operation `@api_view` của `identity_access` được miễn
+    kiểm trong im lặng**, trong đó 131 operation còn chưa mô tả gì cho 2xx.
+
+    Tiêu chí nhận biết: tên **có** `ClassDef` trong source hay không. Có
+    `ClassDef` ⇒ class thật, để `_methods_of()` xử lý như cũ.
+    """
+    tree = _module_tree(getattr(cls, '__module__', '') or '')
+    if tree is None:
+        return None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and node.name == cls.__name__:
+            return None
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == cls.__name__:
+            return node
+    return None
+
+
 def _methods_of(cls) -> dict:
     """`{ten_method: FunctionDef}` cho class + các base class thuộc repo."""
     found: dict = {}
@@ -111,6 +140,14 @@ def _methods_of(cls) -> dict:
                 for child in node.body:
                     if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
                         found.setdefault(child.name, child)
+    # View `@api_view`: mọi method được trỏ cùng một hàm gốc, nên map theo
+    # `http_method_names` mà DRF tự sinh. `options` bỏ vì `APIView` đã có
+    # sẵn và nó không phải handler của view.
+    handler = _api_view_handler(cls)
+    if handler is not None:
+        for method in getattr(cls, 'http_method_names', ()) or ():
+            if method != 'options':
+                found.setdefault(method, handler)
     return found
 
 
@@ -200,6 +237,36 @@ def _verdicts_for(view, method):
     if method.lower() not in methods:
         return None
     return _collect_returns(methods[method.lower()], methods)
+
+
+def _first_endpoint(module_name, view_name):
+    """`(path, method, view)` đầu tiên khớp — sinh schema tự động nếu chưa có."""
+    generator = SchemaGenerator()
+    generator._initialise_endpoints()
+    for path, _regex, method, view in generator._get_paths_and_endpoints():
+        cls = type(view)
+        if cls.__name__ != view_name:
+            continue
+        if getattr(cls, '__module__', '') != module_name:
+            continue
+        return path, method, view
+    raise AssertionError(f'khong tim thay endpoint {module_name}.{view_name}')
+
+
+def _resolve_first(module_name, view_name):
+    """View thật (instance) của một endpoint, để test truy cập `type(view)`."""
+    return _first_endpoint(module_name, view_name)[2]
+
+
+def _identity_access_endpoints():
+    """Endpoint của riêng app `identity_access`."""
+    generator = SchemaGenerator()
+    generator._initialise_endpoints()
+    return [
+        (path, regex, method, view)
+        for path, regex, method, view in generator._get_paths_and_endpoints()
+        if (getattr(type(view), '__module__', '') or '').startswith('identity_access')
+    ]
 
 
 class EnvelopeSchemaFixture(unittest.TestCase):
@@ -418,6 +485,14 @@ class EnvelopeGlobalInvariantTest(EnvelopeSchemaFixture):
                 kind = 'FLAT'
             elif not wrapped and not unwrapped and 'SKIP_F4' in verdicts:
                 kind = 'F4_FLAT'
+            elif not wrapped and not unwrapped and 'SKIP_F5_SIBLINGS' in verdicts:
+                # F5 `{data, +siblings}` — hợp đồng phẳng riêng. Bản trước KHÔNG
+                # có nhánh này nên mọi view F5 rơi xuống `else: continue`:
+                # bọc chúng vào `{data, meta}` (làm rơi sibling) **không test
+                # nào bắt**. Thêm nhánh này thì
+                # `test_flat_views_are_not_documented_as_envelope` bắt được, và
+                # negative proof NP4/NP5 xanh.
+                kind = 'F5_FLAT'
             else:
                 continue
             yield path, method, props, kind
@@ -438,14 +513,153 @@ class EnvelopeGlobalInvariantTest(EnvelopeSchemaFixture):
     def test_flat_views_are_not_documented_as_envelope(self):
         """Chiều ngược lại: bọc bừa cũng sai, và sai kiểu đó khó phát hiện hơn.
 
-        Bao gồm `F4_FLAT`: hợp đồng F4 (`{generated_at, …}`) là **phẳng**, bọc
-        nó vào `{data, meta}` là phá hợp đồng — cũng là phá. Đây là ranh giới
-        dễ bị lấn nhất khi thêm `envelope_response()` hàng loạt.
+        Bao gồm `F4_FLAT` (`{generated_at, …}`) và `F5_FLAT` (`{data, +siblings}`):
+        đó là hai hợp đồng **phẳng riêng**, bọc vào `{data, meta}` là phá hợp
+        đồng — cũng là phá, và với F5 thì còn **làm rơi sibling** nên client mất
+        trường. Đây là ranh giới dễ bị lấn nhất khi thêm `envelope_response()`
+        hàng loạt (negative proof NP3/NP4/NP5).
         """
         offenders = []
         for path, method, props, kind in self._classified():
-            if kind not in ('FLAT', 'F4_FLAT') or props is None:
+            if kind not in ('FLAT', 'F4_FLAT', 'F5_FLAT') or props is None:
                 continue
             if {'data', 'meta'} <= props:
                 offenders.append(f'{kind} {method.upper()} {path}')
         self.assertEqual(offenders, [], f' bi boc nhung view tra ve phang: {offenders}')
+
+
+class ApiViewResolutionUnitTest(unittest.TestCase):
+    """`_api_view_handler()` — phần đã sửa của `_methods_of()`.
+
+    Không có lớp test này thì bản sửa ở trên có **giá trị bằng 0**: hỏng thì
+    không test nào đỏ, và các view `@api_view` lại rơi vào im lặng như cũ.
+    """
+
+    def test_resolves_a_function_view_from_its_source(self):
+        view = _resolve_first('identity_access.views_personal', 'personal_summary')
+        handler = _api_view_handler(type(view))
+        self.assertIsNotNone(
+            handler,
+            'view @api_view phai tim duoc FunctionDef cung ten trong source',
+        )
+        self.assertEqual(handler.name, 'personal_summary')
+
+    def test_maps_every_http_method_to_that_handler(self):
+        """Một path nhiều method ⇒ tất cả method trỏ **cùng** một hàm gốc."""
+        view = _resolve_first('identity_access.views_personal', 'personal_keys_list_create')
+        methods = _methods_of(type(view))
+        self.assertIn('get', methods)
+        self.assertIn('post', methods)
+        self.assertIs(methods['get'], methods['post'])
+
+    def test_ignores_options_which_is_an_apiview_default(self):
+        """`options` phải trỏ tới handler của `APIView`, **không** phải của view.
+
+        `http_method_names` của một view `@api_view` luôn có `'options'` (DRF
+        tự thêm vào allowed methods). Nếu map nó sang hàm của view thì phân
+        loại đọc nhầm handler của `APIView.options` — và đây chính xác là loại
+        sai mà test này chặn.
+
+        Lưu ý `options` **vẫn** xuất hiện trong dict: `_methods_of()` duyệt cả
+        MRO nên `APIView.options` ở `rest_framework/views.py` được gom vào.
+        Điều cần khẳng định là **danh tính** của nó, không phải sự vắng mặt.
+        """
+        view = _resolve_first('identity_access.views_personal', 'personal_summary')
+        methods = _methods_of(type(view))
+        handler = _api_view_handler(type(view))
+        self.assertIn('options', methods)
+        self.assertIsNot(
+            methods['options'], handler,
+            '`options` phai la handler cua APIView, khong phai ham cua view nay',
+        )
+        self.assertEqual(methods['get'], handler)
+
+    def test_returns_none_for_a_real_drf_class(self):
+        """Class thật vẫn đi qua đường `ClassDef` như cũ, không qua lối tắt."""
+        view = _resolve_first('identity_access.views_reports', 'ScheduledReportDetailView')
+        self.assertIsNone(_api_view_handler(type(view)))
+
+    def test_every_api_view_operation_is_now_judgeable(self):
+        """139 operation `@api_view` của `identity_access` trước đây trả `None`.
+
+        Chốt bằng **con số**, không bằng cảm giác: nhét `None` vào lại thì test
+        này đỏ.
+        """
+        unreadable = [
+            f'{method.upper()} {path}'
+            for path, _regex, method, view in _identity_access_endpoints()
+            if _verdicts_for(view, method.lower()) is None
+        ]
+        self.assertEqual(
+            unreadable, [],
+            f'{len(unreadable)} operation @api_view doc khong duoc handler: '
+            f'{unreadable[:5]}',
+        )
+
+
+class HandlerResolvabilityTest(EnvelopeSchemaFixture):
+    """Chốt: không operation nào của repo bị **bỏ qua im lặng**.
+
+    `_verdicts_for()` trả `None` ⇒ `EnvelopeGlobalInvariantTest` `continue` ⇒
+    view đó **không** được kiểm ở cả hai chiều. Đây là điều đã xảy ra với
+    toàn bộ view `@api_view` trước khi sửa `_methods_of()`.
+
+    `KNOWN_UNREADABLE` liệt kê nợ còn lại **kèm lý do** thay vì im lặng bỏ
+    qua — cùng nguyên tắc `EXEMPT_APPS` của `scripts/check-envelope-contract.py`.
+    """
+
+    #: 25 operation, ngoài phạm vi `identity_access`, đã biết trước nguyên nhân.
+    KNOWN_UNREADABLE = {
+        # ViewSet: endpoint gọi method HTTP (`get`) nhưng handler thật là action
+        # (`list`/`retrieve`/`create`) do `ViewSetMixin.as_view({...})` ánh xạ.
+        # `_methods_of()` tra theo tên method nên không khớp.
+        ('advertising.views', 'OperatorAdCampaignViewSet'): 'viewset action ten khac method',
+        ('advertising.views', 'OperatorAdDailySummaryViewSet'): 'viewset action ten khac method',
+        ('data_ingest.views', 'DataIngestAdminViewSet'): 'viewset action ten khac method',
+        ('data_ingest.views', 'IngestJobViewSet'): 'viewset action ten khac method',
+        ('data_ingest.views', 'IngestRunViewSet'): 'viewset action ten khac method',
+        # `_module_tree()` trả `None` ⇒ không đọc được source để tìm handler.
+        ('user_workspace.views_broker', 'broker_providers_api'): 'module source doc khong duoc',
+        ('user_workspace.views_broker', 'broker_config_schema_api'): 'module source doc khong duoc',
+        ('user_workspace.views_broker', 'broker_config_api'): 'module source doc khong duoc',
+        ('user_workspace.views_broker', 'broker_test_connection_api'): 'module source doc khong duoc',
+        ('user_workspace.views_broker', 'broker_job_status_api'): 'module source doc khong duoc',
+    }
+
+    def test_no_silent_skips_outside_the_known_list(self):
+        offenders = []
+        for path, _regex, method, view in self.endpoints:
+            cls = type(view)
+            module = getattr(cls, '__module__', '') or ''
+            root = module.split('.')[0]
+            if root in _FRAMEWORK_ROOTS or root in ('', 'builtins'):
+                continue
+            if _verdicts_for(view, method.lower()) is not None:
+                continue
+            key = (module, cls.__name__)
+            if key in self.KNOWN_UNREADABLE:
+                continue
+            offenders.append(f'{method.upper()} {path} -> {key}')
+        self.assertEqual(
+            offenders, [],
+            f'{len(offenders)} operation doc khong duoc handler va KHONG nam trong '
+            f'KNOWN_UNREADABLE. Xem 5 dau: {offenders[:5]}',
+        )
+
+    def test_known_unreadable_entries_are_still_needed(self):
+        """Danh sách phải **thu đúng** — entry thừa là nợ đã được sửa mà quên xoá.
+
+        Không có test này thì ai đó sửa xong 1 nhóm cũng quên dọn danh sách, và
+        danh sách bị phình vô hạn trong khi không còn ai kiểm.
+        """
+        still_unreadable = set()
+        for _path, _regex, method, view in self.endpoints:
+            cls = type(view)
+            key = (getattr(cls, '__module__', '') or '', cls.__name__)
+            if _verdicts_for(view, method.lower()) is None and key[0].split('.')[0] not in _FRAMEWORK_ROOTS:
+                still_unreadable.add(key)
+        stale = set(self.KNOWN_UNREADABLE) - still_unreadable
+        self.assertEqual(
+            stale, set(),
+            f'nhung muc nay da doc duoc handler nen xoa khoi KNOWN_UNREADABLE: {stale}',
+        )

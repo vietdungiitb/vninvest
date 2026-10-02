@@ -8,9 +8,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
+from drf_spectacular.utils import extend_schema
+from vninvest_core.api_envelope import envelope_response
+
 from .envelope import envelope
 from .models import CoreTenant, UsageAlertConfig
 from .permissions import IsTenantActive, require_human_session
+from .schema import PartnerAlertConfigListSerializer, PartnerAlertConfigSerializer
 from .utils.resolve_tenant import resolve_tenant as _get_request_tenant, require_tenant_permission as _require_tenant_permission
 
 
@@ -39,6 +43,9 @@ def _get_default_configs(tenant):
     return created
 
 
+@extend_schema(
+    responses={200: envelope_response(PartnerAlertConfigListSerializer)},
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsTenantActive])
 def partner_usage_alert_config_list(request):
@@ -65,6 +72,10 @@ def partner_usage_alert_config_list(request):
     })
 
 
+#: GET và PATCH trả **cùng shape** ⇒ dùng chung một serializer, không tách.
+@extend_schema(
+    responses={200: envelope_response(PartnerAlertConfigSerializer)},
+)
 @api_view(['GET', 'PATCH'])
 @permission_classes([IsAuthenticated, IsTenantActive])
 def partner_usage_alert_config_detail(request, meter_code):

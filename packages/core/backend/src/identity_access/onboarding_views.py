@@ -39,6 +39,9 @@ from rest_framework import permissions, serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
+from drf_spectacular.utils import extend_schema
+from vninvest_core.api_envelope import envelope_response
+
 from tenant_lifecycle.models import TenantLifecycleEvent
 from .envelope import envelope
 from .models import CoreTenant, UserProfile
@@ -72,6 +75,11 @@ def _enqueue_welcome_email(user, tenant):
     send_welcome_email.delay(user.id, tenant.public_id)
 
 
+#: Trả **201** (`status.HTTP_201_CREATED`), không phải 200 — `extend_schema`
+#: phải khai đúng mã lệnh, nếu không docs ghi 200 cho một endpoint chỉ trả 201.
+@extend_schema(
+    responses={201: envelope_response(CoreTenantSerializer)},
+)
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated, IsTenantActive])
 def register_tenant_view(request):
