@@ -279,14 +279,211 @@ vninvest_core    (10 520 LOC)  ← rà soát
 
 ### 2.5 Bốn tập tin phải sửa sau khi cắt
 
-| # | Vị trí | Việc | Vì sao |
+> **Đã xác minh 2026-10-02.** Danh sách dưới đây là kết quả đọc mã thật, không còn là suy luận.
+
+| # | Vị trí | Việc | Bằng chứng |
 |---|---|---|---|
-| 1 | `identity_access/models.py` | Gỡ import app đã cắt | Còn import 1 app ngoài |
-| 2 | `identity_access/middleware.py` | Generalize hạn mức theo meter | Đang gắn cứng theo cách tính cũ |
+| 1 | `identity_access/models.py` | Gỡ import app đã cắt | 1 import ra ngoài |
+| 2 | `identity_access/middleware.py` | **Generalize hạn mức theo meter** | `:488, :518` — chỉ đọc `QuotaRecord` |
 | 3 | `identity_access/register.py` | Gỡ phần phụ thuộc đã cắt | 2 import ra ngoài |
 | 4 | `vninvest_core/settings.py`, `urls.py` | Gỡ URL và app đã cắt | Import trực tiếp module miền |
 
-### 2.6 Những gì KHÔNG được cắt
+---
+
+## 2.6 Kết quả xác minh 5 mục còn treo
+
+> Bổ sung 2026-10-02. Trước đây các mục này là suy luận; giờ đã đọc mã thật.
+
+### I-01 — `TenantQuotaMiddleware` đọc gì
+
+**Vị trí:** `identity_access/middleware.py:323-534`
+
+| Nội dung | Vị trí |
+|---|---|
+| Lớp `TenantQuotaMiddleware` | `:323` |
+| Danh sách đường miễn phí | `:326-336` |
+| TTL bộ đếm Redis = 48 giờ | `:339` |
+| Bỏ qua superuser | `:366-367` |
+| Đếm ngày + đếm tháng | `:382-383` |
+| So với `api_calls_limit` | `:396` |
+| Nhánh enterprise cho qua + cảnh báo | `:404-409` |
+| Đọc hạn mức (fallback) | `:485-513` — `QuotaRecord:488,502,511` |
+| Đọc hạn mức (chính) | `:515-534` — `QuotaRecord:518,522,531` |
+
+**Kết luận quan trọng:** middleware **chỉ đọc `QuotaRecord`**, cụ thể là trường `api_calls_limit`. **Không đọc `QuotaHistory`.**
+
+⇒ Khi bỏ 8 cột cứng của `QuotaRecord` theo D06 §6, **middleware sẽ hỏng**. Đây là phụ thuộc bắt buộc phải sửa cùng lúc, không phải việc làm sau.
+
+**Ba vấn đề thiết kế phát hiện được:**
+
+| # | Vấn đề | Vị trí | Tác động |
+|---|---|---|---|
+| Q-1 | Chỉ có một hạn mức (`api_calls`), không nhiều meter | `:511, :531` | Không mở rộng được sang hạn mức theo loại sản phẩm |
+| Q-2 | `QuotaRecord` lấy theo `period_start__lte / period_end__gte` rồi `.first()` | `:504-508` | Nhiều bản ghi chồng nhau → lấy sai bản ghi |
+| Q-3 | Nhánh enterprise cho qua khi vượt hạn | `:404-409` | Trả 200 khi đã vượt — trái với AC-023.6 và FR-06 |
+
+> **Q-3 là mâu thuẫn với thiết kế mới.** D01 FR-06 yêu cầu chặn cứng khi vượt hạn. Nhưng mã hiện tại cho `enterprise` đi tiếp và chỉ gắn header cảnh báo. Cần chốt: giữ hành vi cảnh báo mềm, hay chuyển sang chặn cứng? Đây là quyết định chưa có trong bộ hồ sơ.
+
+### I-02 — `features_map` thật ở đâu
+
+**Phát hiện lỗi trích dẫn trong chính bộ hồ sơ này.**
+
+Bản nháp trước đây trích `features_map` tại `views_webhooks.py:196-201`, dựa trên comment ở `commercial/plan_catalog.py:52`. Đọc thật thì:
+
+| Nguồn | Nội dung |
+|---|---|
+| `commercial/plan_catalog.py:52` | Comment ghi `views_webhooks.py:196-201` — **sai** |
+| `commercial/plan_catalog.py:11` | Cũng ghi `:196` — **sai** |
+| `identity_access/views_webhooks.py:240-245` | **Nơi thật** |
+
+⇒ **Comment trong `plan_catalog.py` sai cả hai lần.** Vì sao: file `views_webhooks.py` đã bị thêm/bớt dòng nhiều lần, comment không cập nhật theo.
+
+**Nội dung thật tại `:240-245`:**
+
+```python
+features_map = {
+    'free':       {'api_calls': 1000,   'members': 3,  'sso': False, 'webhooks': False, 'audit_days': 7},
+    'starter':    {'api_calls': 10000,  'members': 5,  'sso': False, 'webhooks': False, 'audit_days': 7},
+    'pro':        {'api_calls': 50000,  'members': 25, 'sso': True,  'webhooks': True,  'audit_days': 30},
+    'enterprise': {'api_calls': None,    'members': None,'sso': True,  'webhooks': True,  'audit_days': 90},
+}
+```
+
+**Phân tích:**
+
+| # | Vấn đề | Tác động |
+|---|---|---|
+| F-1 | Chỉ có 4 plan, thiếu `custom` và `internal` | `:247-248` rơi về mặc định `free`/`pro` — **sai số** cho 2 plan đó |
+| F-2 | Cứng trong thân hàm xử lý | Muốn thêm sản phẩm/tier phải sửa mã |
+| F-3 | Nằm trong module `identity_access` | Vi phạm chính quy tắc ở D04 §8 — backend không nên biết tên sản phẩm |
+| F-4 | `prorated_amount: 0` cố định | `:259-260` — chưa tính tiền khi đổi gói giữa kỳ. Đây chính là Q-08 trong D02 |
+
+⇒ Xác nhận nợ kỹ thuật **D-03** là có thật, và mức độ nặng hơn đánh giá ban đầu: có **lỗi số liệu** chứ không chỉ khó mở rộng.
+
+### I-03 — `commercial/tasks.py` phụ thuộc gì
+
+**Vị trí:** `commercial/tasks.py` — 35 KB
+
+| Nhập vào | Số lần | Đã cắt? |
+|---|---:|---|
+| `commercial` (nội bộ) | 4 | Giữ |
+| `django` | 4 | — |
+| `identity_access` | 3 | Giữ |
+| `tenant_lifecycle` | 2 | Giữ |
+| `celery` | 1 | — |
+| `datetime`, `decimal`, `__future__` | 3 | — |
+
+⇒ **Không phụ thuộc app nào sẽ bị cắt.** Đây là kết quả tốt nhất trong 5 mục — `tasks.py` có thể giữ nguyên.
+
+**7 tác vụ nền đã có sẵn** — khớp với D11 §11:
+
+| Tác vụ | Dòng | Đáp ứng tác vụ nền nào trong D11 |
+|---|---:|---|
+| `flush_quota_counters` | `:143` | Ghi số liệu định lượng theo lô |
+| `generate_monthly_invoices` | `:218` | Đối soát / báo cáo doanh thu |
+| `check_overdue_invoices` | `:254` | Kiểm tra chứng từ |
+| `send_quota_warning` | `:291` | Gửi cảnh báo hạn mức |
+| `manage_subscriptions_lifecycle` | `:373` | Dọn entitlement hết hạn |
+| `snapshot_quota_history` | `:457` | Chốt số liệu định lượng |
+| `check_usage_thresholds` | `:570` | Cảnh báo ngưỡng 80/95 |
+| `backfill_quota_entitlements` | `:757` | Nhập dữ liệu quota lịch sử |
+
+⇒ **D11 §11 có thể rút từ 8 tác vụ xuống 3 tác vụ mới:** cảnh báo hết hạn (chưa có), dọn phiên hết hạn (chưa có), dọn kích hoạt cũ (chưa có).
+
+### I-04 — Adapter có hardcode endpoint không
+
+**Kết quả: KHÔNG. Đây là tin tốt.**
+
+| Vị trí | Nội dung |
+|---|---|
+| `packages/web/src/adapters/core/coreAdapter.js:8` | `resolveCoreBaseUrl(env)` — đọc từ biến môi trường |
+| `:12-13` | `resolvePortfolioApiBaseUrl` — đọc `REACT_APP_API_BASE_URL` / `VNINVEST_API_BASE_URL`, mặc định `/api` |
+| `:95` | Xuất hàm ra ngoài |
+| `:101` | `baseUrl: resolveCoreBaseUrl(env)` |
+| `:105` | `${baseUrl}/access/capabilities` |
+| `:108` | `${baseUrl}/auth/me` |
+| `:111` | `${baseUrl}/health` |
+| `:115, :126` | Dựng URL từ `coreBase` |
+| `packages/web/src/adapters/core/transport.js:54` | Ưu tiên `CORE_API_BASE_URL` |
+| `packages/web/src/adapters/core/dnse.js:4,8,12` | Đường dẫn tương đối `/api/core/v1/dnse-credential/` |
+
+⇒ **Không có URL tuyệt đối nào bị hardcode.** Tất cả đi qua biến môi trường, mặc định là đường dẫn tương đối. Chuyển sang SaaS mới **không cần sửa adapter**.
+
+**Ghi chú:** `coreAdapter.js:105` dùng `/access/capabilities` — cần kiểm tra xem khớp với cổng quyền mới trong D07 không. Hiện D07 thiết kế `/api/v1/entitlements/verify`. Nếu giữ tên `capabilities` thì giảm bớt công đổi tên, nhưng phải cập nhật D07.
+
+**Chưa xác minh:** nội dung hàm `resolveCoreBaseUrl` (đọc 8 dòng đầu chưa đủ). Ghi nhận là việc cần làm.
+
+### I-05 — 57 route thuộc miền nào
+
+**Vị trí:** `packages/web/src/app/routeCatalog.js` — 16 192 byte, `Object.freeze` tại `:5`, 57 route dùng `id`/`path`/`titleKey`.
+
+| Nhóm | Số route | Miền |
+|---|---:|---|
+| `tenant-*` | 18 | Quản trị tenant |
+| `admin-*` | 14 | Quản trị vận hành |
+| `auth-*` | 4 | Xác thực |
+| `commercial-*` | 2 | Thương mại |
+| `operations-*` | 2 | Vận hành |
+| `ai-*` | 4 | AI · **cắt** |
+| `core-*` | 1 | Lõi |
+| `upgrade-*` | 1 | Nâng cấp |
+| `support-*` | 1 | Hỗ trợ |
+| `vip-*` | 1 | · **cắt** |
+| `transactions-*` | 1 | Giao dịch · **cắt** |
+| `settings-*` | 1 | Cài đặt |
+| `portfolios-*` | 1 | Danh mục · **cắt** |
+| `watchlist-*` | 1 | Theo dõi · **cắt** |
+| `dashboard-*` | 1 | Bảng điều khiển |
+| `alert-*` | 1 | Cảnh báo |
+| `advertising-*` | 1 | Quảng cáo · **cắt** |
+| `screener-*` | 1 | Bộ lọc · **cắt** |
+| `whale-*` | 1 | Tín hiệu · **cắt** |
+
+**Kết luận:**
+
+| Loại | Số route |
+|---|---:|
+| **Giữ lại** | 48 |
+| **Cắt** | 9 |
+
+⇒ Phía giao diện **nhẹ hơn nhiều** so với phía máy chủ. Chỉ 9/57 route thuộc miền tài chính.
+
+**Ước lượng sửa:** bỏ 9 route + mục điều hướng · ≈ 1–2 ngày công, thấp hơn nhiều so với cắt 82 app Python.
+
+**Chưa xác minh:** nội dung cụ thể từng route `tenant-*` và `admin-*` — có route nào lẫn miền tài chính không. Ghi nhận là việc cần làm.
+
+### 2.7 Điều chỉnh kế hoạch sau xác minh
+
+| Hạng mục | Trước xác minh | Sau xác minh |
+|---|---|---|
+| Tập tin cần sửa phía máy chủ | 4 (ước lượng) | **4 (đã xác nhận)** |
+| Phụ thuộc cụt chặn | Không biết | **`QuotaRecord` là cụt chặn với middleware** |
+| `commercial/tasks.py` | Nghi ngờ phụ thuộc | **Sạch — giữ nguyên** |
+| Adapter giao diện | Nghi ngờ hardcode | **Sạch — không sửa** |
+| Route cần cắt | Không biết | **9 / 57** |
+| Trích dẫn `features_map` | `:196-201` | **`:240-245` — bản nháp sai** |
+
+**Ước lượng cắt sau xác minh**
+
+| Kịch bản | Trước | Sau |
+|---|---|---:|
+| Tối thiểu (máy chủ) | 6–10 ngày | **5–8 ngày** |
+| Cộng giao diện | chưa tính | **+1–2 ngày** |
+
+Không giảm nhiều, nhưng **rủi ro đã giảm mạnh** vì `tasks.py` và adapter đều sạch, và đã biết chính xác điểm cụt chặn.
+
+### 2.8 Câu hỏi mới phát sinh sau xác minh
+
+| # | Câu hỏi | Vì sao |
+|---|---|---|
+| NQ-01 | Doanh nghiệp vượt hạn thì chặn cứng hay chỉ cảnh báo? | `middleware.py:404-409` cho qua, FR-06 yêu cầu chặn |
+| NQ-02 | `custom` và `internal` có giá trị hạn mức không? | `:247-248` rơi về mặc định — đang sai |
+| NQ-03 | Giữ tên cổng `/access/capabilities` hay đổi theo D07? | `coreAdapter.js:105` |
+| NQ-04 | Q-08 (tính tiền khi đổi gói giữa kỳ) xử lý khi nào? | `:259-260` đang trả 0 |
+
+---
+
+## 2.9 Những gì KHÔNG được cắt
 
 | Giữ vì | Mục đích |
 |---|---|

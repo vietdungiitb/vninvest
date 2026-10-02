@@ -512,14 +512,18 @@ Nhiều người dùng chung IP: văn phòng, mạng di động, mạng doanh ng
 |---|---|---|---|---|
 | D-01 | `QuotaRecord` có cột cứng, xung đột với `QuotaHistory` | `commercial/models.py:43-50` | Cao | Bỏ cột cứng, dùng `QuotaHistory` |
 | D-02 | `Subscription.tenant` là `OneToOneField` — mỗi tenant chỉ 1 sản phẩm | `commercial/models.py:18` | Cao | Đổi thành `ForeignKey` + thêm chiều sản phẩm |
-| D-03 | Bản đồ tính năng hardcode trong module xác thực | `identity_access/views_webhooks.py:196-201` | Cao | Chuyển sang bảng `Capability` |
+| D-03 | Bản đồ tính năng hardcode trong module xác thực | `identity_access/views_webhooks.py:240-245` | Cao | Chuyển sang bảng `Capability` |
 | D-04 | Phủ kiểm thử `commercial` chỉ 8.6% | 222 / 2 593 | Cao | Bù kiểm thử khi tách |
 | D-05 | Secret trong kho mã | `compose.dev.env` | **Rất cao** | Thu hồi, xoay khoá, gỡ khỏi HEAD |
 | D-06 | `brokerage/` thiếu hàng rào `write_gate` | `vnbroker/brokerage/base.py:278-288` | Cao | Bổ sung hàng rào |
 | D-07 | `Invoice` không có trường MST/mã số thuế | `commercial/models.py:61-89` | Cao | Bổ sung cho hoá đơn VAT doanh nghiệp |
 | D-08 | `vnpay_service.py` không hỗ trợ hạn mức thanh toán | `commercial/vnpay_service.py:29,68` | Trung bình | Dùng `tran.Type == 'split'` thay gia hạn |
+| D-09 | `middleware.py` chỉ đọc `QuotaRecord`, không đọc `QuotaHistory` | `identity_access/middleware.py:488,518` | Cao | Sửa cùng lúc với D-01 |
+| D-10 | Tenant `enterprise` vượt hạn vẫn được đi tiếp | `identity_access/middleware.py:404-409` | Cao | Chốt chặn cứng hay cảnh báo mềm |
+| D-11 | `features_map` thiếu plan `custom` và `internal` → rơi về giá trị mặc định | `identity_access/views_webhooks.py:240-248` | Cao | Bổ sung 2 plan hoặc bỏ hẳn khỏi mã |
+| D-12 | `prorated_amount` cố định 0 khi đổi gói giữa kỳ | `identity_access/views_webhooks.py:259-260` | Trung bình | Cần công thức tính (Q-08) |
 
 ---
 
-**Cổng chất lượng:** QG-3 — 9 quyết định kiến trúc đã ghi nhận, 8 nợ kỹ thuật kế thừa đã định danh.
+**Cổng chất lượng:** QG-3 — 9 quyết định kiến trúc đã ghi nhận, **12 nợ kỹ thuật kế thừa đã định danh** (D-01..D-12; D-09..D-12 bổ sung sau khi xác minh mã ngày 2026-10-02).
 **Tài liệu sau:** D05 — Sơ đồ phân rã chức năng và bản đồ module

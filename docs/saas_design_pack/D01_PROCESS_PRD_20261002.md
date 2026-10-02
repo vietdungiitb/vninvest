@@ -298,7 +298,40 @@ Xây dựng nền tảng SaaS đa khách thuê, cho phép khách hàng doanh ngh
 | `ops_audit`, `tenant_lifecycle`, `service_ops` | ✅ | **Phải giữ** |
 | `user_workspace`, `data_ingest` | ✅ | Phải cắt phần phụ thuộc |
 
-⇒ **Không thể cắt `commercial` + `identity_access` một mình.** Phải giữ `ops_audit` + `tenant_lifecycle`, và phải tách phần phụ thuộc của `user_workspace` + `data_ingest`. Chi tiết ở D05.
+**Quan sát quan trọng:** tỉ lệ test so với code của `commercial` là **222 / 2 593 = 8.6%** — thấp nhất trong các app được cắt. Đây là khu vực phải bù test khi tách.
+
+### B.13.1 Điều chỉnh sau khi xác minh mã (2026-10-02)
+
+Bảng "Phụ thuộc ra ngoài" ở trên là đo theo toàn app. Đo chính xác theo **từng file** cho kết quả khác:
+
+| Phụ thuộc | Số file mã thật | Chi tiết |
+|---|---:|---|
+| `user_workspace`, `data_ingest` | **4 file** | `register.py` (2 import) · `middleware.py` (1) · `models.py` (1) · `password_reset.py` (1) |
+| Trong đó là file kiểm thử | 4 file | Không ảnh hưởng mã chạy thật |
+
+⇒ **Nới ràng buộc này.** Chỉ **4 file mã thật** chạm app sẽ bị cắt, không phải cả app. Chi tiết ở D05 §2.2.
+
+**Phát hiện mới, nghiêm trọng hơn kỳ vọng:**
+
+| # | Phát hiện | Vị trí | Hệ quả |
+|---|---|---|---|
+| 1 | `middleware.py` chỉ đọc `QuotaRecord`, **không** đọc `QuotaHistory` | `:488,518` | Bỏ 8 cột cứng sẽ **làm hỏng middleware** — phải sửa cùng lúc |
+| 2 | Doanh nghiệp `enterprise` vượt hạn vẫn được đi tiếp | `:404-409` | Trả 200 khi đã vượt — trái FR-06 |
+| 3 | `features_map` chỉ có 4 plan, thiếu `custom`/`internal` | `views_webhooks.py:240-248` | Hai plan đó rơi về giá trị mặc định — **đang trả số sai** |
+| 4 | `prorated_amount` cố định 0 | `:259-260` | Chưa tính tiền khi đổi gói giữa kỳ (liên quan Q-08) |
+
+⇒ Nợ kỹ thuật D-01 và D-03 nặng hơn đánh giá ban đầu: không chỉ khó mở rộng, mà **đang có lỗi số liệu**.
+
+### B.13.2 Điều chỉnh về phía giao diện
+
+| Hạng mục | Kết quả xác minh |
+|---|---|
+| Tổng route | **57** (`routeCatalog.js`, `Object.freeze` tại `:5`) |
+| Route cần cắt | **9** — `ai`, `vip`, `transactions`, `portfolios`, `watchlist`, `advertising`, `screener`, `whale` |
+| Route giữ lại | **48** |
+| Adapter có hardcode endpoint? | **KHÔNG** — `resolveCoreBaseUrl(env)` tại `coreAdapter.js:8,101` |
+
+⇒ Phía giao diện **nhẹ hơn nhiều** phía máy chủ: chỉ 9/57 route. Adapter không cần sửa.
 
 ---
 

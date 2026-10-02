@@ -353,6 +353,13 @@ CHECK (status != 'approved'  OR granted_by IS NOT NULL
 
 > **Vì sao tham chiếu `entitlement` chứ không tham chiếu `tenant` trực tiếp?** Vì phải trả lời được câu hỏi "khách dùng hết hạn mức của **gói nào**". Nếu chỉ lưu theo tenant, khi khách đổi gói sẽ không biết phần tiêu thụ thuộc gói cũ hay mới.
 
+> **Phát hiện từ xác minh I-01 (2026-10-02) — cần cột `meter_code`.**
+> Mã hiện tại đọc hạn mức bằng **tên cột**, không phải khoá ngoại: `middleware.py:511` trả `int(quota_record.api_calls_limit)`.
+> Nếu bảng mới chỉ có `meter_id`, mọi truy vấn hạn mức đều phải nối thêm một bảng — trên đường nóng, mỗi lần gọi.
+> ⇒ Bổ sung **`meter_code` varchar(64)** để đọc trực tiếp không cần nối. Đây cũng là nguyên tắc đã dùng cho `entitlement_decision_log` và `quota_history:163` — nhất quán với toàn hệ thống.
+>
+> Hệ quả: phải bảo đảm `meter_code` khớp với `catalog_meter.code`. Kiểm tra bằng kiểm thử, không khai báo bằng `CHECK` xuyên bảng.
+
 ### 5.6 `quota_history` — giữ nguyên
 
 Tái dùng `commercial/models.py:159-185`. Đã đúng chuẩn meter-driven.

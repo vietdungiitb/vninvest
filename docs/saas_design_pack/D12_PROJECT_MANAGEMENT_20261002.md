@@ -74,7 +74,7 @@
 | 2.1 | `Subscription.tenant` → `ForeignKey` | `commercial/models.py:18` | G-1 | 0.5 ngày |
 | 2.2 | Thêm chiều sản phẩm | `commercial/models.py` | 2.1 | 0.5 ngày |
 | 2.3 | Bỏ 8 cột cứng của `QuotaRecord` | `commercial/models.py:43-50` | G-1 | 0.5 ngày |
-| 2.4 | Chuyển bản đồ tính năng ra bảng | `identity_access/views_webhooks.py:196-201` | G-1 | 1 ngày |
+| 2.4 | Chuyển bản đồ tính năng ra bảng | `identity_access/views_webhooks.py:240-245` | G-1 | 1 ngày |
 | 2.5 | Kiểm thử migration lên/từ dữ liệu thật | | 2.1–2.4 | 1 ngày |
 
 **Cổng G-2:** Migration chạy được trên PostgreSQL có dữ liệu · có đường quay lại
@@ -287,7 +287,9 @@ Cắt mã ──► Nợ kỹ thuật ──► Mô hình dữ liệu ──► 
 |---|---|:---:|:---:|:---:|---|---|
 | RSK-01 | Bí mật lộ tiếp trong kho | Trung bình | Rất cao | **Cao** | Quét trước khi đẩy | Nhóm |
 | RSK-02 | Ước lượng thấp hơn thực tế | **Cao** | Trung bình | Cao | Đặt mốc lại sau mỗi pha | PM |
-| RSK-03 | Cắt mã làm hỏng chức năng ẩn | Trung bình | Cao | Cao | Rà soát phụ thuộc + kiểm thử hồi quy | Nhóm |
+| RSK-03 | Cắt mã làm hỏng chức năng ẩn | Thấp | Cao | Cao | Rà soát phụ thuộc + kiểm thử hồi quy | Nhóm |
+| RSK-03b | **Bỏ cột `QuotaRecord` làm hỏng middleware** | **Cao** | Cao | **Cao** | Đã xác minh: `middleware.py:488,518` chỉ đọc `QuotaRecord`. Sửa cùng lúc với D-01 | Nhóm |
+| RSK-03c | **Trả hạn mức sai cho plan `custom`/`internal`** | **Cao** | Trung bình | Cao | Đã xác minh: `views_webhooks.py:240-248` thiếu 2 plan, rơi về mặc định | Nhóm |
 | RSK-04 | Migration chạy trên dữ liệu thật nhưng lỗi | Trung bình | Cao | Cao | Kiểm thử migration trên dữ liệu thật | Nhóm |
 | RSK-05 | Cache quyền không vô hiệu hoá được | Trung bình | Rất cao | Cao | Bỏ cache nếu không làm được | Nhóm |
 | RSK-06 | Không đạt 50 ms khi lượng lớn | Trung bình | Trung bình | Trung bình | Tải thật trước phát hành | Nhóm |
@@ -387,15 +389,32 @@ Cắt mã ──► Nợ kỹ thuật ──► Mô hình dữ liệu ──► 
 
 > Ba câu này **không chặn việc cắt mã** (Pha 1–2). Nhưng chặn Pha 6. Nên có thể bắt đầu ngay với Pha 1–2 trong khi chờ.
 
-### 7.3 Câu hỏi cần điều tra kỹ thuật
+### 7.3 Câu hỏi điều tra kỹ thuật — đã đóng ngày 2026-10-02
+
+| # | Câu hỏi | Kết quả |
+|---|---|---|
+| I-01 | `TenantQuotaMiddleware` (`:323`) tính hạn mức thế nào? | **ĐÃ XÁC MINH** → chỉ đọc `QuotaRecord.api_calls_limit` (`:488,518`). Không đọc `QuotaHistory`. Cụt chặn với D-01 |
+| I-02 | `features_map` chứa những gì? | **ĐÃ XÁC MINH** → thật ở `:240-245` (không phải `:196-201`). Thiếu plan `custom`/`internal` → sai số. `prorated_amount` cố định 0 |
+| I-03 | `commercial/tasks.py` có phụ thuộc app sẽ cắt? | **ĐÃ XÁC MINH** → SẠCH. Chỉ phụ thuộc `commercial`, `identity_access`, `tenant_lifecycle`. Giữ nguyên |
+| I-04 | Adapter widget có hardcode endpoint? | **ĐÃ XÁC MINH** → KHÔNG. Tất cả qua `resolveCoreBaseUrl(env)`. Không cần sửa adapter |
+| I-05 | Bao nhiêu route thuộc miền tài chính? | **ĐÃ XÁC MINH** → 9/57 cần cắt, 48/57 giữ lại |
+
+### 7.4 Câu hỏi còn mở sau xác minh
 
 | # | Câu hỏi | Người phụ trách |
 |---|---|---|
-| I-01 | `TenantQuotaMiddleware` (`:323`) đang tính hạn mức thế nào? | Nhóm |
-| I-02 | `features_map` (`:196-201`) chứa những gì? | Nhóm |
-| I-03 | `tasks.py` (35 KB) của `commercial` có tác vụ nào phụ thuộc app đã cắt? | Nhóm |
-| I-04 | `vninvestcharts-widget` adapter có hardcode endpoint `vninvest` không? | Nhóm |
-| I-05 | Có bao nhiêu cổng trong `routeCatalog.js` (57 route) là miền tài chính? | Nhóm |
+| I-06 | 18 route `tenant-*` và 14 route `admin-*` có route nào lẫn miền tài chính không? | Nhóm |
+| I-07 | Nội dung hàm `resolveCoreBaseUrl` (`coreAdapter.js:8`) là gì? | Nhóm |
+| I-08 | Cổng `/access/capabilities` (`coreAdapter.js:105`) có khớp cổng quyền trong D07 không? | Nhóm |
+
+### 7.5 Câu hỏi mới phát sinh
+
+| # | Câu hỏi | Chặn |
+|---|---|---|
+| NQ-01 | Doanh nghiệp vượt hạn: chặn cứng hay cảnh báo mềm? | Pha 4 — mâu thuẫn FR-06 |
+| NQ-02 | `custom`/`internal` có giá trị hạn mức không? | Pha 4 — đang trả số sai |
+| NQ-03 | Giữ tên `/access/capabilities` hay đổi theo D07? | Pha 4 |
+| NQ-04 | Công thức tính tiền khi đổi gói giữa kỳ? | Pha 6 — liên quan Q-08 |
 
 ---
 
