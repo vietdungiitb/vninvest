@@ -208,12 +208,31 @@ def scan(app: str):
     return 0
 
 
+# App duoc MIEN TRU co chu dich — dung contract khac, khong phai con no.
+#
+# `market_serving` khong theo F2: no da co `contract_version: '2.0'` rieng cho
+# response pha trang co khoi `data` la **sibling**, khong phai mau mau ma F2 boc
+# (`CONTRACT_DECISION.md` §quyet dinh, va B5 da loai no khoi pham vi).
+#
+# Khong khai bao mien tru thi gate **bao do FAIL vinh vien** cho app nay — mot
+# tin hieu do sai ma nguoi doc se phai bo qua. Thay vi im lang bo qua, gate in
+# ro ly do de khong ai them tinh rang no la con no.
+EXEMPT_APPS = {
+    'market_serving': "contract_version '2.0' rieng — data la sibling, khong phai mau F2",
+}
+
+
 def main():
     if len(sys.argv) < 2:
         print(f'dung: {Path(sys.argv[0]).name} <app-name> [<app-name> ...]', file=sys.stderr)
         return 2
     rc = 0
     for app in sys.argv[1:]:
+        if app in EXEMPT_APPS:
+            print(f'\n{"=" * 60}\napp: {app} — MIENTRU\n{"=" * 60}')
+            print(f'  ly do: {EXEMPT_APPS[app]}')
+            print('  KHONG ap dung gate F2 cho app nay.')
+            continue
         print(f'\n{"=" * 60}\napp: {app}\n{"=" * 60}')
         rc |= scan(app)
     return rc
