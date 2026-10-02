@@ -396,7 +396,7 @@ AC-<số>   Điều kiện  ⇒  Kết quả mong đợi
 >
 > **BR-18 đã chốt 2026-10-02 (Q-03 = phương án B).** Xem D01 §B.4.2.
 >
-> **BR-19 đã chốt 2026-10-02 (Q-20 = phương án B).** V1.0 chỉ bán sản phẩm không yêu cầu xác minh pháp nhân. `vnbroker-data` còn phải chờ Q-01 (license thương mại).
+> **BR-19 đã chốt 2026-10-02 (Q-20 = phương án B).** V1.0 không bán sản phẩm `requires_kyc = true`. **KHÔNG còn phụ thuộc Q-01** — Mục 0 `LICENSE.md:9-16` giải phóng chủ sở hữu, không cần ký license thương mại.
 >
 > **BR-15 là hệ quả của ADR-008:** không có hạn mức tín dụng nên không có khả năng "quá hạn nhưng chưa trả".
 

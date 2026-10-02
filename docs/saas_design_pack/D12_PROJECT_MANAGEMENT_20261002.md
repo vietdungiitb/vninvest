@@ -30,7 +30,8 @@
 | # | Việc | Loại | Chặn |
 |---|---|---|---|
 | T1 | Xử lý bí mật trong kho mã | Bảo mật | **Mọi việc khác** |
-| T2 | License thương mại `vnbroker` | Pháp lý | **Bán `vnbroker-data`** |
+| T2 | ~~License thương mại `vnbroker`~~ | ~~Pháp lý~~ | ✅ Đã loại — Mục 0 |
+| **T2b** | **Văn bản cấp quyền thương mại cho khách** | **Pháp lý** | **Bán `vnbroker-*`** |
 | ~~T3~~ | ~~Xác nhận Q-16~~ | Quyết định | ✅ Đã chốt 2026-10-02 — phương án B |
 | T4 | Chốt giá gói | Kinh doanh | Thanh toán |
 | ~~T5~~ | ~~Tư vấn pháp lý~~ | Pháp lý | ~~Chuyển v2.0 theo Q-20~~ |
@@ -46,13 +47,16 @@
 |---|---|---|
 | **Q-20** | v1.0 chỉ bán `vninvestcharts` + `vnbroker-data` | Tầng brokerage chuyển v2.0 |
 | **Q-16** | Cá nhân mua hết, trừ sản phẩm `requires_kyc = true` | BR-12 thành quy tắc thật |
-| **Q-01** | Chưa ký license `vnbroker` — không bán trong v1.0 | **`vnbroker-data` cũng phải chờ** |
+| **Q-01** | ~~Chưa ký license `vnbroker`~~ — **ĐÃ GIẢI QUYẾT** | `LICENSE.md:9-16` Mục 0 giải phóng chủ sở hữu. Chỉ cần văn bản cấp quyền cho **khách** (T2b) |
 | **Q-03** | Doanh nghiệp duyệt thủ công, cá nhân tự đăng ký | BR-18 |
 | **NQ-01** | Doanh nghiệp cảnh báo mềm, cá nhân chặn cứng | BR-17 |
+| **MĐ-01** | **Mô hình triển khai: khách tự chạy `vnbroker`** | SaaS chỉ quản lý xác thực + tính phí |
 
-**Phát hiện phát sinh từ quyết định này:** vì Q-01 chưa ký license, phạm vi v1.0 **thực tế chỉ còn một sản phẩm bán được ngay** là `vninvestcharts` (MPL-2.0). `vnbroker-data` cần license thương mại.
+**Sửa lại kết luận sai trước đây.** Bản nháp trước đây cho rằng Q-01 chưa ký license ⇒ v1.0 chỉ còn một sản phẩm bán được. **Kết luận đó sai** vì nó bỏ qua Mục 0 của `LICENSE.md`.
 
-⇒ **Câu hỏi cần Owner xem lại:** có chấp nhận v1.0 chỉ có một sản phẩm không, hay muốn ký license trước khi phát hành? Nếu không ký, phạm vi v1.0 giảm còn widget + khung SaaS trống.
+⇒ **Phạm vi v1.0 đầy đủ: `vninvestcharts` + `vnbroker-data`.** Không bị thu hẹp.
+
+**Việc bắt buộc còn lại:** viết văn bản cấp giấy phép thương mại cho khách (T2b). Vì khách là licensee bên thứ ba nên họ chịu ràng buộc Mục 2. Chi tiết ở D06 §3.5.2.
 
 **Việc bắt buộc thêm do Q-20:** xác định rõ lane nào của `vnbroker-data` không cần broker. Theo D05 §2.6 I-02, lane SSI **bắt buộc cần** tài khoản môi giới — phải nói rõ trên trang bán hàng.
 
@@ -204,17 +208,17 @@
 ### 2.12 Pha 11 — Tier C (chuyển sang v2.0)
 
 > **Đã chuyển sang v2.0 ngày 2026-10-02 theo Q-20.** Không thuộc phạm vi v1.0.
-> Lý do: chưa có license thương mại `vnbroker` (Q-01) và chưa có tư vấn pháp lý (T5).
+> Lý do: cần tư vấn pháp lý (T5). License **không** phải lý do — Mục 0 `LICENSE.md:9-16` đã giải phóng chủ sở hữu.
 
 | # | Công việc | Phụ thuộc | Ước lượng |
 |:---:|---|---|---:|
 | 11.1 | Đóng `write_gate` cho `brokerage/` | T6 | 1 ngày |
-| 11.2 | Ký license thương mại `vnbroker` | T2 | Chờ Owner |
+| 11.2 | ~~Ký license thương mại `vnbroker`~~ | — | ✅ Không cần — Mục 0 |
 | 11.3 | Luồng xác minh pháp nhân | T5 | 3 ngày |
 | 11.4 | Cổng phê duyệt tier C | 7.4 | 2 ngày |
 | 11.5 | Hợp đồng có điều khoản định vị pháp nhân | T5 | Chờ Owner |
 
-**Cổng G-10:** Có tư vấn pháp lý + license đã ký
+**Cổng G-10:** Có tư vấn pháp lý
 
 > **11.1 nên làm sớm dù không bán.** `brokerage/base.py:278-288` có `place_order` mà không có `dry_run` mặc định. Đây là lỗ hổng trong thư viện bạn sở hữu — dù đang dùng hay không.
 
@@ -281,7 +285,7 @@ Cắt mã ──► Nợ kỹ thuật ──► Mô hình dữ liệu ──► 
 | **G-7** | Thêm sản phẩm mới không cần triển khai lại |
 | **G-8** | Đạt WCAG 2.2 AA |
 | **G-9** | Diễn tập khôi phục thành công · cảnh báo hoạt động |
-| **G-10** | Có tư vấn pháp lý + license đã ký |
+| **G-10** | Có tư vấn pháp lý |
 
 ### 4.2 Nghiệm thu phát hành
 
@@ -335,7 +339,7 @@ Cắt mã ──► Nợ kỹ thuật ──► Mô hình dữ liệu ──► 
 
 | Mã | Rủi ro | Mức | Giảm thiểu |
 |---|---|:---:|---|
-| RSK-16 | Bán `vnbroker` khi chưa có license thương mại | **Rất cao** | Ký trước khi bán |
+| ~~RSK-16~~ | ~~Bán khi chưa có license thương mại~~ | — | ✅ Đã loại — Mục 0 |
 | RSK-17 | Cá nhân mua được tier C | Cao | Chờ T3 |
 | RSK-18 | Khách dùng quyền sai mục đích | Cao | KYC · duyệt · nhật ký |
 | RSK-19 | Định vị thương hiệu bị hiểu là sàn giao dịch | Trung bình | Đổi tên · disclaimer |
@@ -345,7 +349,7 @@ Cắt mã ──► Nợ kỹ thuật ──► Mô hình dữ liệu ──► 
 | Mã | Rủi ro | Điều kiện dừng |
 |---|---|---|
 | **RSK-01** | Bí mật trong kho mã | **Không viết dòng mã nào cho tới khi xử lý xong** |
-| **RSK-16** | Bán không có license thương mại | **Không bán tier C** |
+| **RSK-16b** | Bán cho khách không có văn bản cấp quyền | **Chưa mở bán `vnbroker-*`** |
 | **RSK-07** | Rò rỉ dữ liệu tenant | **Không phát hành khi còn lỗi rò rỉ** |
 
 ---
@@ -382,7 +386,7 @@ Cắt mã ──► Nợ kỹ thuật ──► Mô hình dữ liệu ──► 
 
 | # | Câu hỏi | Chặn |
 |---|---|---|
-| Q-01 | Ký license thương mại `vnbroker` khi nào? | Bán tier C |
+| ~~Q-01~~ | ~~Ký license thương mại?~~ | ✅ Giải quyết — Mục 0 |
 | Q-02 | Giá mỗi sản phẩm / tier? | Thanh toán |
 | Q-03 | Cho phép tự đăng ký hay bắt buộc duyệt? | Luồng đăng ký |
 | Q-04 | Hạn mức mặc định mỗi gói? | Định lượng |
@@ -448,7 +452,7 @@ Cắt mã ──► Nợ kỹ thuật ──► Mô hình dữ liệu ──► 
 - [ ] Xử lý bí mật trong kho mã (T1) — **thu hồi → xoay → gỡ → lọc lịch sử → chặn tái diễn**
 - [ ] Tạo kho mới, sao chép mã sạch
 - [ ] Dựng PostgreSQL cho môi trường phát triển
-- [ ] Chốt Q-01..Q-05, Q-16..Q-19
+- [ ] Chốt Q-02..Q-05, Q-07..Q-19
 - [ ] Bổ sung cột `tenant_type` vào kế hoạch migration từ đầu
 
 ### 8.2 Trước khi phát hành lần đầu
@@ -487,7 +491,7 @@ Cắt mã ──► Nợ kỹ thuật ──► Mô hình dữ liệu ──► 
 
 | Việc | Chờ gì |
 |---|---|
-| Bán `vnbroker-data` | License thương mại (T2) |
+| Bán `vnbroker-data` | Văn bản cấp quyền cho khách (T2b) |
 | Bán `vnbroker-brokerage` | T2 + T5 + T6 |
 
 ---

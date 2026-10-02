@@ -105,10 +105,12 @@ Xây dựng nền tảng SaaS đa khách thuê, cho phép khách hàng doanh ngh
 > | Sản phẩm | Trạng thái v1.0 |
 > |---|---|
 > | `vninvestcharts` | ✅ Bán được ngay — MPL-2.0, không cần xin phép |
-> | `vnbroker-data` | ⬜ Chờ Q-01 — cần license thương mại |
-> | `vnbroker-brokerage` | ⬜ Chuyển sang v2.0 — cần license + tư vấn pháp lý |
+> | `vnbroker-data` | ✅ Bán được — chủ sở hữu được giải phóng bởi Mục 0, cần văn bản cấp quyền cho khách |
+> | `vnbroker-brokerage` | ⬜ Chuyển sang v2.0 — cần tư vấn pháp lý |
 >
 > Hệ quả: **v1.0 không cần luật sư chuyên ngành chứng khoán**, không cần quy trình KYC, không cần cơ chế phê duyệt pháp lý. Nhưng vẫn phải cài sẵn các ranh giới đó trong mô hình dữ liệu để khi mở brokerage không phải thiết kế lại.
+>
+> **Mô hình triển khai đã chốt:** `vnbroker` chạy trên hệ thống của khách. SaaS chỉ quản lý xác thực và tính phí theo tenant. Xem D06 §3.5.
 
 ## B.2 Bối cảnh vấn đề
 
@@ -266,7 +268,7 @@ Owner chọn phương án B: doanh nghiệp cảnh báo mềm, cá nhân chặn 
 
 | Mã | Ràng buộc | Nguồn |
 |---|---|---|
-| C-01 | `vnbroker` bị cấm dùng thương mại nếu không có văn bản cho phép | `vnbroker/LICENSE.md:28-36` |
+| C-01 | Mô hình triển khai: `vnbroker` chạy **trên hệ thống của khách**, SaaS chỉ quản lý xác thực + tính phí theo tenant | Owner chốt 2026-10-02 |
 | C-02 | `vninvestcharts-widget` MPL-2.0 — được sửa dụng thương mại nhưng **không được sửa file nguồn** | MPL-2.0 §3 |
 | C-03 | Phải có `CORE_DATABASE_URL` và `DJANGO_DEBUG` hợp lệ ở production | `settings.py` raise `ImproperlyConfigured` |
 | C-04 | Multi-tenant là yêu cầu bắt buộc, không phải tối ưu | Yêu cầu G2 |
@@ -275,7 +277,9 @@ Owner chọn phương án B: doanh nghiệp cảnh báo mềm, cá nhân chặn 
 
 | Mã | Rủi ro | Xác suất | Tác động | Giảm thiểu |
 |---|---|---|---|---|
-| PR-01 | Chưa có license thương mại `vnbroker` | Cao | **Chặn bán** | Ký văn bản cho phép trước khi mở bán |
+| ~~PR-01~~ | ~~Chưa có license thương mại `vnbroker`~~ | — | ~~Chặn bán~~ | **Đã loại** — `LICENSE.md:9-16` Mục 0 giải phóng chủ sở hữu. Xem PR-01b |
+| PR-01b | Khách (licensee bên thứ ba) chưa có văn bản cấp quyền thương mại | **Cao** | **Chặn bán `vnbroker-*`** | Viết văn bản cấp quyền tham chiếu Mục 0 và Mục 36 |
+| PR-06 | Khách không biết lane nào của `vnbroker-data` cần tài khoản broker | Cao | Khiếu nại | Nêu rõ trên trang bán — lane SSI bắt buộc cần broker |
 | PR-02 | Bị phân loại là bên trung gian tài chính | Thấp | Cao | Tách sản phẩm · hợp đồng định vị pháp nhân |
 | PR-03 | Khách dùng quyền sai mục đích | Trung bình | Cao | KYC · duyệt pháp lý · audit log |
 | PR-04 | Secret lộ trong kho mã | **Đã xảy ra** | Rất cao | Xoá lịch sử · xoay khoá · chặn tái diễn |
@@ -305,7 +309,7 @@ Owner chọn phương án B: doanh nghiệp cảnh báo mềm, cá nhân chặn 
 
 | # | Câu hỏi | Chặn cái gì |
 |---|---|---|
-| Q-01 | Ký license thương mại `vnbroker` khi nào? | FR-08, phát hành |
+| ~~Q-01~~ | ~~Ký license thương mại `vnbroker` khi nào?~~ | ✅ **Đã giải quyết** — Mục 0 giải phóng chủ sở hữu, không cần ký |
 | Q-02 | Giá mỗi sản phẩm / mỗi tier? | S12, S7 |
 | Q-03 | Có cho phép self-serve hay bắt buộc duyệt thủ công? | FR-01 v1.0 |
 | Q-04 | Hạn mức mặc định mỗi gói? | FR-05 |

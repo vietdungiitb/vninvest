@@ -15,7 +15,7 @@
 | Thêm phần mềm thứ 4 sau này có dễ không | **Có, nếu** làm đúng 9 bảng dữ liệu; **không** nếu hardcode tên sản phẩm |
 | `vnbroker` có làm SaaS trở thành "cửa vào chuỗi tài chính" không | **Không theo nghĩa trung gian tài chính** — tầng C không chuyển tiền, không cầm tài sản. Rủi ro còn lại là **use-based**, xử lý bằng hợp đồng |
 | Blocker kỹ thuật | 1 lỗ hổng P1 trong `brokerage/` (thiếu `write_gate`) |
-| Blocker pháp lý | `vnbroker` chưa có license commercial — cần văn bản cho phép |
+| Blocker pháp lý | ~~Không có~~ — `LICENSE.md` Mục 0 giải phóng chủ sở hữu. Chỉ cần văn bản cấp quyền cho khách là licensee |
 
 ---
 
@@ -289,14 +289,55 @@ Grep `vnbroker.brokerage|from .brokerage|from ..brokerage` trong toàn repo → 
 | 5 | KYC tầng C | Xác minh pháp nhân trước khi bật — dùng cột `Capability.requires_approval` |
 | 6 | Cửa sổ không tham gia | Khoảng thời gian khách chịu trách nhiệm hoàn toàn về thao tác giao dịch |
 
-### 6.4 License thương mại — blocker
+### 6.4 License — đã đọc lại, không phải blocker
 
-`vnbroker/LICENSE.md:28-36`: cấm bên thứ ba dùng thương mại nếu chưa có chấp thuận **bằng văn bản**.
-`vnbroker/pyproject.toml`: `license = { text = "Custom: Personal, research, non-commercial; contact..." }`
+**Bản nháp trước đây trích `LICENSE.md:28-36` và kết luận "phải có văn bản cho phép" — kết luận đó SAI.**
 
-⇒ Bán `vnbroker-data` hoặc `vnbroker-brokerage` cho khách B2B **bắt buộc** phải có văn bản cho phép riêng.
+`vnbroker/LICENSE.md:9-16` — Mục 0:
 
-`vninvestcharts-widget`: MPL-2.0 — cho phép thương mại, nhưng **không được sửa file để thêm license check/telemetry**. Phải dùng host wrapper riêng.
+> *"Giấy phép này chỉ ràng buộc **người nhận giấy phép** (bên thứ ba cài đặt hoặc sử dụng vnbroker). **Chủ sở hữu bản quyền không bị ràng buộc bởi chính giấy phép này** và giữ toàn quyền, bao gồm không giới hạn: sử dụng, sao chép, sửa đổi, và tích hợp vnbroker vào **bất kỳ sản phẩm, dịch vụ, hoặc hệ thống nội bộ nào của chủ sở hữu** — kể cả khi sản phẩm đó thu phí hoặc được phân phối thương mại."*
+
+`:15-16`: *"Các sản phẩm do chủ sở hữu phát triển (ví dụ: VNInvest) được phép dùng vnbroker mà **không cần xin phép thêm**."*
+
+⇒ **Chủ sở hữu không cần xin phép ai.** Vấn đề thật không phải "bán có cần giấy phép không" mà là "**khách hàng** (bên thứ ba) có được phép chạy thương mại không".
+
+#### Điểm then chốt: ai cài code
+
+| Ai cài `vnbroker` | Vai trò | Ràng buộc |
+|---|---|---|
+| Chủ sở hữu (bạn) trên máy chủ của mình | Chủ bản quyền | ✅ Mục 0 — không ràng buộc |
+| **Khách hàng trên máy của họ** | **Bên thứ ba** | ⚠️ Mục 1–2 — phi thương mại |
+
+#### Mô hình đã chốt: khách tự chạy
+
+Owner quyết định 2026-10-02: **`vnbroker` chạy trên hệ thống của khách. SaaS chỉ quản lý xác thực và tính phí theo tenant.**
+
+Đây là mô hình đúng, vì ba lý do:
+
+| Tiêu chí | Khách tự chạy ✅ | Chủ sở hữu chạy ❌ |
+|---|---|---|
+| Credential broker | Ở máy khách | **Ở máy chủ bạn** |
+| Chi phí vận hành cho bạn | Thấp | Cao |
+| Rủi ro rò rỉ dữ liệu | Thấp | Cao |
+| Phù hợp §3.1 | ✅ `credentials.py:48` chỉ đọc env khách | ❌ Đảo ngược |
+
+**Lợi ích pháp lý trực tiếp:** vì bạn không bao giờ chạm vào credential broker và không nắm tài sản, bạn không có đường để trở thành bên trung gian. Đây chính là lý do phân tích rủi ro ban đầu kết luận mức rủi ro thấp.
+
+#### Cách xử lý giấy phép cho khách
+
+Vì bạn là chủ bản quyền, có ba cách — **không cách nào cần xin phép ai**:
+
+| Cách | Việc phải làm |
+|---|---|
+| **B (khuyến nghị)** | Viết văn bản cấp giấy phép thương mại cho khách, tham chiếu Mục 0 và Mục 36 |
+| C | Sửa `LICENSE.md` Mục 1–2 để cho phép thương mại có điều kiện |
+| A | Chuyển sang chạy `vnbroker` trên máy chủ bạn — **không khuyến nghị**, đảo ngược mô hình |
+
+**Cách B** giữ nguyên `LICENSE.md` cho thư viện, chỉ thêm một văn bản cấp quyền.
+
+#### `vninvestcharts-widget`
+
+MPL-2.0 — cho phép thương mại, nhưng **không được sửa file để thêm license check/telemetry**. Phải dùng host wrapper riêng.
 
 ### 6.5 Giới hạn
 
@@ -554,8 +595,8 @@ Nên làm bất kể chọn phương án nào.
 | **P8** | Hợp đồng + tư vấn pháp lý | Owner |
 
 **Điều kiện tiên quyết của P8 (owner):**
-- Ký license commercial cho `vnbroker`
-- Có văn bản cho phép bằng văn bản (`LICENSE.md:28-36`)
+- ~~Ký license commercial cho `vnbroker`~~ — **không cần**, Mục 0 đã giải phóng chủ sở hữu
+- **Viết văn bản cấp giấy phép thương mại cho khách** (vì khách là licensee bên thứ ba)
 - Xác nhận phạm vi hoạt động pháp lý với luật sư
 
 ---
@@ -564,15 +605,16 @@ Nên làm bất kể chọn phương án nào.
 
 | # | Điều kiện | Trạng thái |
 |---|---|---|
-| 1 | License commercial `vnbroker` | ❌ **Blocker** — `LICENSE.md:28-36` |
+| 1 | ~~License commercial `vnbroker`~~ | ✅ **Không cần** — Mục 0 giải phóng chủ sở hữu |
+| 1b | Văn bản cấp giấy phép thương mại cho khách (licensee) | ⬜ Chưa làm — bước một trang |
 | 2 | P0-P5 hoàn thành | ⬜ Chưa làm |
-| 3 | Đóng P1 `brokerage/` write_gate | ⬜ Chưa làm |
+| 3 | Đóng P1 `brokerage/` write_gate | ⬜ Chưa làm — đã chuyển v2.0 |
 | 4 | Hợp đồng B2B có mục định vị pháp nhân | ⬜ Chưa làm |
-| 5 | Tư vấn luật (nếu bán tier C) | ⬜ Chưa làm |
+| 5 | Tư vấn luật (nếu bán tier C) | ⬜ Đã chuyển v2.0 theo Q-20 |
 | 6 | P0-SEC-01 (secret trong git) | ❌ **Blocker repo** — xem `AGENTS.md` |
-| 7 | Chỉ bán tier A + data | ✅ **Không cần blocker 1, 4, 5** |
+| 7 | Chỉ bán tier A + data | ✅ **Chỉ cần điều kiện 1b và 6** |
 
-⇒ **Lộ trình an toàn: ra mắt với `vninvestcharts` + `vnbroker-data` (chỉ lane VCI/KBS/RSS), trì hoãn tier C tới khi xong P6 + P8.**
+⇒ **Lộ trình an toàn: ra mắt `vninvestcharts` + `vnbroker-data` (chỉ lane VCI/KBS/RSS), trì hoãn tier C tới khi xong P6 + P8.**
 
 ---
 
@@ -592,7 +634,7 @@ Nên làm bất kể chọn phương án nào.
 | `brokerage/` bypass SaaS | `brokerage/base.py:1-9` |
 | `brokerage/` thiếu write_gate | grep 0 hit trên 2 file |
 | `brokerage/` mồ côi | grep chỉ ra `brokerage/tcbs/client.py:20` |
-| License non-commercial | `LICENSE.md:28-36`, `pyproject.toml` |
+| License non-commercial **cho bên thứ ba** | `LICENSE.md:9-16` Mục 0 giải phóng chủ sở hữu · `:28-36` Mục 2 hạn chế bên thứ ba |
 | `commercial` model shapes | `commercial/models.py:11-149`, `plan_catalog.py:52,56` |
 | `identity_access` model shapes | `identity_access/models.py:44,180,254,423,596` |
 

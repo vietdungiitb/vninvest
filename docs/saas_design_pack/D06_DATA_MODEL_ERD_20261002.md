@@ -122,18 +122,97 @@
 
 ### 3.5 `catalog_software_license`
 
+> **Mục đích bảng này thay đổi sau khi đọc lại `LICENSE.md` Mục 0.**
+> Trước đây bảng này được thiết kế để theo dõi "người mua đã mua license thương mại chưa" — tức là coi như SaaS là licensee.
+> Nhưng chủ sở hữu `vnbroker` **là bạn**. Theo `LICENSE.md:9-16`, bạn được tích hợp vào bất kỳ sản phẩm nào của bạn mà không cần xin phép.
+>
+> ⇒ Bảng này nay ghi nhận **giấy phép cấp cho khách hàng** (licensee bên thứ ba), không phải giấy phép mua của chúng ta.
+
 | Cột | Kiểu | Ràng buộc |
 |---|---|---|
 | `id` | bigint | PK |
 | `product_id` | bigint | FK → `catalog_product.id`, `ON DELETE CASCADE` |
-| `license_reference` | varchar(128) | NOT NULL — số văn bản cho phép |
+| `license_reference` | varchar(128) | NOT NULL — mã văn bản cấp quyền |
 | `licensed_to` | varchar(128) | Chủ sở hữu giấy phép |
+| `licensee_type` | varchar(16) | `template` / `customer` |
 | `valid_from` | date | |
 | `valid_until` | date | NULL = không xác định |
 | `scope_notes` | text | |
 | `is_cleared` | boolean | mặc định false |
 
-> **Ràng buộc nghiệp vụ gắn cứng:** `catalog_product.license_status = 'cleared'` khi có ít nhất một bản ghi `is_cleared = true` còn hiệu lực. Không có ngoại lệ. Đây là điều kiện để bán `vnbroker` (C-01 trong D01).
+> **Ràng buộc nghiệp vụ gắn cứng:** `catalog_product.license_status = 'cleared'` khi có ít nhất một bản ghi `is_cleared = true` còn hiệu lực.
+>
+> Với `vninvestcharts` (MPL-2.0) và `vnbroker` (chủ sở hữu tự cấp quyền), trạng thái này là `cleared` ngay từ đầu — không cần chờ văn bản nào.
+>
+> Với sản phẩm của bên thứ ba khác (nếu sau này nhập phân phối), bảng này ghi giấy phép mua lại.
+
+### 3.5.1 Mô hình triển khai đã chốt
+
+Owner quyết định 2026-10-02:
+
+```
+┌─────────────────────────────────────────────────┐
+│  Máy chủ của khách hàng                          │
+│                                                 │
+│  ┌───────────────────────────────────────────┐  │
+│  │  Ứng dụng khách                            │  │
+│  │    ├── SDK (gọi SaaS để xin quyền)        │  │
+│  │    └── vnbroker  ← chạy tại đây           │  │
+│  │         └── đọc credential từ env của      │  │
+│  │             CHÍNH KHÁCH (credentials.py:48)│  │
+│  └───────────────────────────────────────────┘  │
+│                                                 │
+│  ★ Toàn bộ dữ liệu ở đây                        │
+│  ★ Toàn bộ credential ở đây                     │
+└─────────────────────────────────────────────────┘
+                    │
+                    │ Chỉ gọi 1 chiều: xin quyền + báo mức dùng
+                    ▼
+┌─────────────────────────────────────────────────┐
+│  Máy chủ SaaS của bạn                            │
+│                                                 │
+│  Xác thực PAT · Quyết định quyền · Định lượng   │
+│  Thanh toán · Nhật ký kiểm toán                 │
+│                                                 │
+│  ★ KHÔNG chạy vnbroker                          │
+│  ★ KHÔNG nắm credential broker                 │
+│  ★ KHÔNG nắm dữ liệu khách                     │
+└─────────────────────────────────────────────────┘
+```
+
+**Lợi ích trực tiếp từ mô hình này:**
+
+| Điều | Hệ quả |
+|---|---|
+| Bạn không chạm credential broker | Không thể trở thành bên trung gian tài chính |
+| Bạn không nắm dữ liệu khách | Rủi ro rò rỉ dữ liệu gần như bằng 0 phía SaaS |
+| Bạn không gọi thị trường tài chính | Không có đường để bị coi là bên trung gian |
+| Chi phí vận hành thấp | Máy chủ bạn không xử lý dữ liệu khối lượng lớn |
+
+⇒ Đây là mô hình **ít rủi ro nhất** trong ba phương án đã xem xét.
+
+### 3.5.2 Việc cần làm: văn bản cấp quyền cho khách
+
+Vì khách là licensee bên thứ ba, họ chịu ràng buộc `LICENSE.md:28-36` (phi thương mại). Cần một văn bản mà bạn — với tư cách chủ bản quyền — cấp quyền thương mại cho khách.
+
+| Mục | Nội dung |
+|---|---|
+| Cơ sở cấp quyền | Tham chiếu `LICENSE.md` Mục 0 và Mục 36 |
+| Bên cấp | Chủ sở hữu bản quyền `vnbroker` |
+| Bên được cấp | Khách hàng (từng khách, hoặc mẫu áp dụng chung) |
+| Phạm vi | Sử dụng thương mại · không phân phối lại · không sửa đổi |
+| Điều kiện | Không tích hợp vào sản phẩm cạnh tranh |
+| Thời hạn | Theo hợp đồng dịch vụ |
+
+**Ba lựa chọn cách làm**
+
+| Cách | Mô tả | Nhận xét |
+|---|---|---|
+| **Mẫu chung** | Một văn bản áp dụng cho mọi khách | Nhanh nhất · khách nào cũng ký cùng bản |
+| **Từng khách** | Văn bản riêng cho từng khách | Chặt chẽ hơn · nhiều công sức |
+| **Cài vào gói** | Điều khoản giấy phép trong hợp đồng dịch vụ | Gọn nhất · phụ thuộc luật sư |
+
+**Khuyến nghị:** mẫu chung, kèm một câu trong hợp đồng dịch vụ tham chiếu tới nó.
 
 ---
 

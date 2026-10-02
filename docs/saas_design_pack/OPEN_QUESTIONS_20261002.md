@@ -13,7 +13,7 @@ Owner đã trả lời 5 câu quyết định. Từ các câu này, phạm vi v1
 |---|---|---|
 | **Q-20** | v1.0 bán sản phẩm nào? | **B** — `vninvestcharts` + `vnbroker-data`. Trì hoãn brokerage |
 | **Q-16** | Cá nhân mua được tầng brokerage? | **B** — mua mọi sản phẩm, trừ sản phẩm `requires_kyc = true` |
-| **Q-01** | License thương mại `vnbroker` | **Chưa ký** — không bán `vnbroker` trong v1.0 |
+| **Q-01** | License thương mại `vnbroker` | ✅ **Đã giải quyết** — Mục 0 `LICENSE.md:9-16` giải phóng chủ sở hữu |
 | **Q-03** | Đăng ký tự phục vụ hay duyệt tay? | **B** — doanh nghiệp duyệt thủ công, cá nhân tự đăng ký |
 | **NQ-01** | Vượt hạn mức: chặn hay cảnh báo? | **B** — doanh nghiệp cảnh báo mềm, cá nhân chặn cứng |
 
@@ -22,7 +22,7 @@ Owner đã trả lời 5 câu quyết định. Từ các câu này, phạm vi v1
 | Hệ quả | Chi tiết |
 |---|---|
 | **Phạm vi v1.0 thu hẹp** | Chỉ 2 sản phẩm: widget + dữ liệu chung. Không có brokerage |
-| **Không cần giấy phép thương mại** | `vnbroker` chưa ký license mà v1.0 **không bán** → rủi ro pháp lý giảm về mức thấp nhất |
+| **Không cần giấy phép thương mại** | Mục 0 `LICENSE.md:9-16` giải phóng chủ sở hữu |
 | **Chưa cần tư vấn luật** | Không bán tầng brokerage thì chưa cần luật sư chuyên ngành chứng khoán |
 | **Chưa cần `write_gate` cho `brokerage/`** | Để dành cho v2.0. Xem mục "Việc cần làm trước" bên dưới |
 | **BR-12 trở thành quy tắc thật** | Sản phẩm brokerage chưa bán, nhưng ràng buộc vẫn cài sẵn để sau này mở không cần sửa thiết kế |
@@ -32,7 +32,7 @@ Owner đã trả lời 5 câu quyết định. Từ các câu này, phạm vi v1
 
 | Việc | Vì sao hoãn |
 |---|---|
-| Ký license thương mại `vnbroker` | v1.0 không bán sản phẩm đó |
+| ~~Ký license thương mại `vnbroker`~~ | ✅ **Không cần** — Mục 0 giải phóng chủ sở hữu |
 | Tư vấn luật sư chứng khoán | Chưa bán tầng brokerage |
 | Xây luồng KYC / xác minh pháp nhân | Chưa bán tầng brokerage |
 | Đóng hàng rào `write_gate` trong `brokerage/` | Chưa bán tầng brokerage |
@@ -143,7 +143,7 @@ Vì sao quan trọng: nếu tên gọi bị hiểu là sàn giao dịch thì r�
 Q-06: Dùng lại "vninvest" / Đặt tên mới: ____________
 ```
 
-**Q-01 — Ký license thương mại `vnbroker` khi nào?**
+**Q-01 — Ký license thương mại `vnbroker`? → ĐÃ GIẢI QUYẾT (Mục 0).**
 
 Bối cảnh: `vnbroker/LICENSE.md:28-36` cấm dùng thương mại bên thứ ba nếu không có văn bản cho phép. Bạn là chủ sở hữu repo nên có thể tự ký.
 
@@ -153,7 +153,7 @@ Chặn: bán `vnbroker-data` và `vnbroker-brokerage`.
 Q-01: Đã có / Đang xin / Không bán vnbroker trong v1.0
 ```
 
-> **ĐÃ CHỐT: Không bán `vnbroker` trong v1.0.** Chưa ký license thương mại.
+> **ĐÃ CHỐT: Không cần ký license thương mại.** Mục 0 `LICENSE.md:9-16` giải phóng chủ sở hữu.
 > Hệ quả: v1.0 chỉ có `vninvestcharts` (MPL-2.0). `vnbroker-data` chỉ dùng được khi đã ký license. Cần xác nhận lại phạm vi này khi lập kế hoạch v2.0.
 
 ## A3. Sản phẩm nào bán trước
@@ -166,7 +166,7 @@ Q-01: Đã có / Đang xin / Không bán vnbroker trong v1.0
 |---|---|---|
 | **A · Chỉ `vninvestcharts`** | Widget MPL-2.0, không có gì phải xin phép | Rất thấp |
 | **B · Thêm `vnbroker-data`** | Chỉ lane VCI/KBS/RSS — 8 lane không cần broker | Thấp |
-| **C · Đủ cả 3** | Gồm cả brokerage | Cao — cần Q-01, Q-05, Q-16 |
+| **C · Đủ cả 3** | Gồm cả brokerage | Cao — cần Q-05, Q-16, tư vấn pháp lý |
 
 Khuyến nghị của tôi: **B**. Vừa có doanh thu sớm, vừa không cần chờ pháp lý.
 
@@ -444,7 +444,7 @@ Câu nào trả lời thì sửa được những gì.
 
 | Mã | Sửa được | Trạng thái |
 |---|---|---|
-| Q-01 | Bán sản phẩm `vnbroker` | ✅ Chốt — không bán trong v1.0 |
+| Q-01 | Bán sản phẩm `vnbroker` | ✅ Chốt — Mục 0, không cần ký license |
 | Q-02, Q-17 | Trang giá · hóa đơn · kiểm thử thanh toán | ⬜ Chặn Pha 6 |
 | Q-03 | Luồng đăng ký doanh nghiệp | ✅ Chốt — duyệt tay |
 | Q-04, Q-07 | Bảng `catalog_meter` · logic hạn mức | ⬜ Chặn Pha 3–4 |
@@ -515,15 +515,15 @@ Không phải câu hỏi, nhưng chặn mọi việc còn lại:
 | 1 | **Xử lý bí mật trong kho mã** | Nếu khoá vẫn nằm trong lịch sử, mọi tính năng thêm vào đều không bảo đảm được điều gì | **Bắt buộc** |
 | 2 | **Xác định lane nào của `vnbroker-data` không cần broker** | SSI bắt buộc cần tài khoản môi giới — phải nói rõ trước khi bán | **Bắt buộc** |
 
-Vì Q-01 chưa ký license, `vnbroker-data` **chưa bán được** trong v1.0. Nên phạm vi v1.0 thực tế là:
+Vì Mục 0 `LICENSE.md:9-16` giải phóng chủ sở hữu, phạm vi v1.0 là:
 
 | Sản phẩm | Trạng thái v1.0 | Ghi chú |
 |---|---|---|
 | `vninvestcharts` | ✅ Bán được ngay | MPL-2.0, không cần xin phép |
-| `vnbroker-data` | ⬜ **Chờ Q-01** | Cần license thương mại |
-| `vnbroker-brokerage` | ⬜ V2.0 | Cần license + tư vấn pháp lý |
+| `vnbroker-data` | ✅ **Bán được** | Cần văn bản cấp quyền cho khách (T2b) |
+| `vnbroker-brokerage` | ⬜ V2.0 | Cần tư vấn pháp lý |
 
-> **Nếu muốn v1.0 có hai sản phẩm như đã chốt, cần ký license `vnbroker` trước.** Đây là bước không thể làm bằng code.
+> **Không cần ký license.** Nhưng cần **văn bản cấp giấy phép thương mại cho khách hàng** — vì khách là licensee bên thứ ba, chịu ràng buộc Mục 2 của `LICENSE.md`. Chi tiết ở D06 §3.5.2.
 
 ### Về việc đóng `write_gate` cho `brokerage/`
 
