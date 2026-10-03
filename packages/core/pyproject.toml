@@ -9,7 +9,12 @@ description = "VNInvest core package-track foundation baseline"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-  "Django>=4.2,<5.0",
+  # Phai khop `packages/core/backend/requirements.txt` va container that.
+  # Docker dat cai tu requirements.txt nen day la rang buoc THAT su chay
+  # (do 2026-10-03: container `vninvest-dev-core-api` = Django 5.2.17).
+  # Truoc day khai `<5.0` trong khi requirements.txt va runtime deu la 5.2.x
+  # ⇒ `pip install vninvest-core` len sai major.
+  "Django>=5.2,<6.0",
   "djangorestframework>=3.15,<4.0",
   "celery>=5.4,<6.0",
   "redis>=5.0,<6.0",

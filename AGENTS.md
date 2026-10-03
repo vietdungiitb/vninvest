@@ -3,7 +3,9 @@
 Hoàn thiện SOC DataOps tab (Phase 1 parity với legacy) — Steps 1–3 đã xong. Maintenance và build verification cho codebase sau khi thay local vninvestcharts component bằng npm package `vninvestcharts-widget`.
 
 ## Constraints & Preferences
-- SOC glassmorphism patterns, soc.module.css tokens, i18n qua LangContext.
+- SOC glassmorphism patterns, `soc.tokens.css` (biến) + `soc.components.css` (class), i18n qua `LangContext`.
+  - ⚠ **KHÔNG dùng `soc.module.css`** — file đó chỉ là barrel 3 dòng re-export, **0 token, 0 class**
+    (`packages/web/src/components/soc/soc.module.css:1-3`). Thêm token/class vào đó là chỉ dẫn không thi hành được.
 - API calls dùng defaultCoreApiAdapter cast as unknown as { … }.
 - Vietnamese labels full dấu, theo bảng thuật ngữ thống nhất.
 - Build verification: npx tsc --noEmit sau mỗi sub-step, npm run build cuối mỗi step.
@@ -130,7 +132,7 @@ Mọi prompt audit, nghiên cứu, phân tích chi tiết dự án (bao gồm nh
 
 | Bài học | Nguyên tắc chống tái diễn |
 |---------|--------------------------|
-| Plan bảo CSS "chết" nhưng code vẫn dùng | **Nguyên tắc 1**: grep/scrape PHẢI quét TOÀN repo bao gồm `.css`, `.module.css`, `soc.module.css`, config (`vite.config.ts`, `tsconfig*.json`), demo, i18n (`src/i18n/vi.js`, `en.js`). Không dừng ở file `.ts`/`.tsx`. |
+| Plan bảo CSS "chết" nhưng code vẫn dùng | **Nguyên tắc 1**: grep/scrape PHẢI quét TOÀN repo bao gồm `.css`, `.module.css`, `soc.tokens.css`, `soc.components.css`, config (`vite.config.ts`, `tsconfig*.json`), demo, i18n (`src/i18n/vi.js`, `en.js`). Không dừng ở file `.ts`/`.tsx`. |
 | Plan bảo field X có trong state nhưng code không có | **Nguyên tắc 2**: Đối chiếu plan→code phải có mục CONTRADICTIONS riêng, mỗi dòng kèm `plan:file:line \| code:file:line \| impact`. |
 | Plan trỏ file không tồn tại | **Nguyên tắc 3**: MỌI reference file phải được `read` hoặc `grep` xác nhận tồn tại. File KHÔNG TỒN TẠI → báo `KHÔNG TỒN TẠI`, không suy diễn "có thể ở đâu đó". |
 | Quên external package coupling | **Nguyên tắc 4**: Web app tiêu thụ `vninvestcharts-widget` (npm `^1.2.5`) và `defaultCoreApiAdapter`. Mọi tracing qua ranh giới widget/adapter PHẢI kiểm tra (a) type declarations `src/types/vninvestcharts-widget.d.ts`, (b) adapter `src/adapters/core/market.js` + `transport.js`, (c) version thực tế trong `packages/web/package.json`. Không đoán shape của package ngoài. |
