@@ -11,16 +11,16 @@ from django.utils import timezone
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 
-from identity_access.models import CoreTenant, CoreServiceAccount
 from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
+from identity_access.utils.resolve_tenant import resolve_tenant
 
 logger = logging.getLogger(__name__)
 
 TENANT_PERMISSION_CLASSES = [permissions.IsAuthenticated, IsTenantActive]
 
 
-def _get_tenant(user):
-    return CoreTenant.objects.get(owner_user=user)
+def _get_tenant(request):
+    return resolve_tenant(request)
 
 
 class PartnerCostTrendView(generics.GenericAPIView):
@@ -41,7 +41,7 @@ class PartnerCostTrendView(generics.GenericAPIView):
         except ImportError:
             return Response({'monthly': [], 'note': 'commercial app not available'})
 
-        tenant = _get_tenant(request.user)
+        tenant = _get_tenant(request)
         months = int(request.query_params.get('months', 6))
         cutoff = timezone.now().date() - timedelta(days=months * 30)
 

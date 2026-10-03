@@ -11,6 +11,7 @@ import logging
 import stripe
 
 from identity_access.models import CoreTenant
+from identity_access.utils.resolve_tenant import resolve_tenant
 from vninvest_core.pagination import CoreCursorPagination
 from vninvest_core.exceptions import (
     ValidationErrorException,
@@ -41,7 +42,7 @@ class SubscriptionDetailView(generics.RetrieveAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
-        tenant = CoreTenant.objects.get(owner_user=self.request.user)
+        tenant = resolve_tenant(self.request)
         return generics.get_object_or_404(Subscription, tenant=tenant)
 
 
@@ -51,7 +52,7 @@ class QuotaListView(generics.ListAPIView):
     pagination_class = QuotaCursorPagination
 
     def get_queryset(self):
-        tenant = CoreTenant.objects.get(owner_user=self.request.user)
+        tenant = resolve_tenant(self.request)
         return QuotaRecord.objects.filter(tenant=tenant).order_by('-period_start')
 
 
@@ -61,7 +62,7 @@ class InvoiceListView(generics.ListAPIView):
     pagination_class = CoreCursorPagination
 
     def get_queryset(self):
-        tenant = CoreTenant.objects.get(owner_user=self.request.user)
+        tenant = resolve_tenant(self.request)
         return Invoice.objects.filter(tenant=tenant).order_by('-created_at')
 
 

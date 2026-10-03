@@ -684,3 +684,31 @@ pip/npm install, khong dung BE that.
 
 No sua `identity_access/commercial_partner_views.py` trong dot nay. Khong tao
 migration, khong pip/npm install, khong sua file deny list.
+
+## 2026-10-03 - Tra claim: dong OW-01/02/03/04/06 xong - done
+
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| openwork-fix | feat/openwork-ow02-03-04 | Tra claim sau khi commit + push. Ket qua: OW-02 4 call site da sua, OW-04 allowlist da sua, OW-01 dong (handler404 co san), OW-03 thanh errata (endpoint co san), OW-06 errata | packages/core/backend/src/commercial/views.py, packages/core/backend/src/commercial/views_analytics.py, packages/core/backend/src/vninvest_core/env_validation.py, packages/core/backend/src/vninvest_core/tests/test_commercial_tenant_scope.py, packages/core/backend/src/vninvest_core/tests/test_env_validation.py, docs/OPEN_WORK_20260927.md, docs/CODE_CHANGE_AUDIT_LEDGER.md, docs/CLAIMS.md | done |
+
+**Files trong claim cu KHONG con bi sua** (da revert dung, khong commit):
+`ops_audit/views.py`, `ops_audit/urls.py`, `commercial/tests/__init__.py`,
+`commercial/tests/test_billing_tenant_scope.py`, `ops_audit/tests/test_cross_tenant_audit_scope.py`.
+
+**Kiem chung:** 29 test OK tren Postgres 5433 (khong SQLite) - baseline
+`commercial` + `vninvest_core.tests` **51 fail truoc == 51 fail sau**, `Compare-Object`
+rong, khong fail moi. ruff 4 finding deu co san o HEAD. `check-multi-agent.mjs` PASS.
+
+**CHUA CHAY:** `run_tests.py` toan bo, CI, bat ky kiem tra frontend nao.
+
+**Con mo (khong phai trong claim nay):**
+1. 5 call site `_get_tenant(user)` trong `identity_access/commercial_partner_views.py`
+   - can kiem frontend truoc khi doi response 200-rong sang 403.
+2. `AGENTS.md:73` van ghi sai P0-LEGAL-01 - `AGENTS.md` thuoc deny-list, **can owner
+   tu sua** hoac mo claim rieng cho no.
+
+**Loi cua chinh agent, ghi lai de khong lap:** block claim dau tien viet bang
+PowerShell here-string `@"..."@` — backtick la **ky tu escape** trong chuoi nhay
+doi, nen `` `vninvest `` bi an thanh vertical tab (`v` -> char 0x0B) va
+`` `run_tests.py `` -> `un_tests.py`. Phai viet file bang editor/tool roi append
+bang .NET, khong truyen markdown qua shell.
