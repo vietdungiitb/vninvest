@@ -1,6 +1,13 @@
 # Kiến trúc `vninvest` — bộ tài liệu AS-IS (Single Source of Truth)
 
 > **Trạng thái: Lượt 3/3 — hoàn tất (§1, 2, 3, 4, 5, 6, 7).**
+>
+> | | |
+> |---|---|
+> | **Chủ sở hữu** | `core-team` (đổi tên này nếu giao cho người khác) |
+> | **Rà soát gần nhất** | 2026-10-03 — 3 script exit 0, 262/262 citation khop |
+> | **Rà soát kế tiếp** | khi có PR đụng `docs/architecture/**`, **hoặc** quá 30 ngày |
+> | **Cổng chặn** | đủ 3 script `exit 0` — xem §0.2.1 |
 
 ---
 
@@ -52,12 +59,15 @@ model không tồn tại. Ngược lại, đọc `architecture/D01` rồi code t
 
 | File | Phần trong đặc tả | Nội dung | Trạng thái |
 |---|---|---|---|
+| `README.md` | — | Trang vào: quy tắc chọn bộ tài liệu, chỉ mục, lịch sử đo | ✅ |
 | `D01_AS_IS_OVERVIEW_AND_AUDIT.md` | §1, §2, §6 | Bối cảnh hệ thống, C4 context, glossary, FBD, RBAC, audit + nợ kỹ thuật | ✅ |
 | `D02_DATA_AND_ARCHITECTURE.md` | §3, §4 | C4 container/component, DFD, **ERD + data dictionary 107 model (sinh tự động)**, cache/transaction/ACID | ✅ |
 | `D03_API_UI_AND_SOP.md` | §5, §7 | Quy ước API, error JSON, navigation/state/design tokens, check-list 7 bước, DoD, bẫy đã mắc | ✅ |
+| `TEMPLATE.md` | — | **Mẫu quy trình + 13 nguyên tắc** để tái lập bộ tài liệu này ở **repo khác**. Đọc khi cần audit repo mới | ✅ |
 | **`OPEN_QUESTIONS.md`** | — | **Việc cần Owner quyết** — 2 xung đột quy trình chặn việc, 2 chỉ dẫn sai trong `AGENTS.md`, 9 câu chưa xác minh | ✅ |
 | `tools/measure_repo.py` | — | Đo lại 8 chỉ số §0.4 · exit 1 nếu lệch | ✅ |
 | `tools/gen_data_doc.py` | — | Sinh §4.1–4.2 từ Django runtime · exit 1 nếu sót model | ✅ |
+| `tools/verify_arch_citations.py` | — | **Kiểm mọi `path:line` trong bộ docs này** · exit 1 nếu citation chết/mơ hồ/vượt dòng | ✅ |
 
 **Vì sao tách 3 file chứ không 1 file:** `vninvest` có 15 Django app / 107 model /
 1.029 route. Một file duy nhất sẽ vượt quá khả năng duy trì và mọi lần sửa đều
@@ -81,10 +91,20 @@ chỉ còn Q-02 (CI billing) là việc hạ tầng chưa xử lý được:
 | Thay đổi | Phải làm |
 |---|---|
 | Thêm/sửa/xoá model | Chạy `tools/gen_data_doc.py` (kiểm `CLUSTERS` có cần bổ sung không) |
+| Sửa code ở chỗ tài liệu trích dẫn | Chạy `tools/verify_arch_citations.py` — trích dẫn chết/mơ hồ là lỗi, không phải chi tiết |
 | Đổi kiến trúc, đổi finding | Sửa tay `D01`/`D02`/`D03` **kèm** `file:line` |
 | Đổi số liệu kiến trúc | Chạy `tools/measure_repo.py`; nếu lệch thì sửa **cả** §0.4 lẫn kỳ vọng trong script |
 | Đóng một finding | Ghi rõ **đã sửa ở đâu** + sửa finding, không xoá — xem `D01` F-11 làm mẫu |
 | Ghi thay đổi vào `CODE_CHANGE_AUDIT_LEDGER.md` | **Từ 2026-10-03 ledger đã gỡ khỏi deny-list** — append Entry của mình rồi commit bình thường, không cần `--no-verify`. Quy tắc append: `AGENT_PROTOCOL.md` §3 |
+
+**Ngưỡng cửa:** cả ba script phải **exit 0** trước khi coi bộ tài liệu là còn
+đúng. Chạy cả ba:
+
+```powershell
+python docs/architecture/tools/measure_repo.py
+python docs/architecture/tools/gen_data_doc.py
+python docs/architecture/tools/verify_arch_citations.py
+```
 
 ## 0.3 Cách dùng khi phát triển tính năng mới
 

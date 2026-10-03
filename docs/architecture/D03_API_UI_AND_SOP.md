@@ -157,7 +157,7 @@ Router: `react-router-dom` 6, khai báo khai báo dạng `<Routes>` —
 >
 > **S-1 (HIGH)** — `ShellAuthProvider` (`src/context/authReact.js:34`) **không
 > bao giờ được mount**. Chỉ xuất hiện ở 4 chỗ: định nghĩa `authReact.js:34`, hai
-> dòng throw, và export trong `src/index.js:55`. `main.tsx` **không** nhắc tới.
+> dòng throw, và export trong `packages/web/src/index.js:55`. `main.tsx` **không** nhắc tới.
 > ⇒ một hệ thống auth thứ hai được đóng gói và xuất ra, không ai dùng.
 >
 > **S-2 (HIGH)** — Có **3 HTTP client**, chỉ **1** chỗ gắn token:
@@ -216,7 +216,7 @@ Router: `react-router-dom` 6, khai báo khai báo dạng `<Routes>` —
 | Chuỗi tiếng Việt hardcode | **95** trong 33 file |
 
 > **I-1 (HIGH)** — Gate `check:i18n-hardcoded` chỉ quét **5 đường dẫn**
-> (`package.json:33`): `src/components/advisory` (15 file) + 4 file đơn lẻ.
+> (`packages/web/package.json:33`): `src/components/advisory` (15 file) + 4 file đơn lẻ.
 > Toàn bộ `src/pages/**` và phần lớn `src/components/**` **nằm ngoài phạm vi**
 > — nơi chứa phần lớn 95 chuỗi hardcode.
 >
@@ -232,11 +232,11 @@ Router: `react-router-dom` 6, khai báo khai báo dạng `<Routes>` —
 | **R-1** | HIGH | 7 component `Shell*` chết ≈4.500 dòng | 7 file tồn tại, `main.tsx:24-30` remap |
 | **D-1** | HIGH | 13 token trùng tên khác giá trị, thứ tự nạp quyết định | `theme/tokens.css` vs `soc.tokens.css` |
 | **R-2** | HIGH | 2 bảng route đồng bộ tay | `main.tsx:126` vs `routeCatalog.js:5` |
-| **I-1** | HIGH | Gate i18n phủ 5/489 file | `package.json:33` |
+| **I-1** | HIGH | Gate i18n phủ 5/489 file | `packages/web/package.json:33` |
 | **S-1** | HIGH | `ShellAuthProvider` không mount | `authReact.js:34`, không có trong `main.tsx` |
-| **S-3** | HIGH | 9 `exports` trỏ tới file `.ts` không tồn tại | `package.json:36-47` |
+| **S-3** | HIGH | 9 `exports` trỏ tới file `.ts` không tồn tại | `packages/web/package.json:36-47` |
 | R-4 | MED | Chuỗi `/core/v1` hardcode bỏ qua `resolveCoreApiBase()` | 9 dòng production trong 3 file page |
-| — | MED | 18 dependency không có import nào (`axios`, 11 `d3-*`, `klinecharts`…) | `package.json:49-54,74,77-87,90-92` |
+| — | MED | 18 dependency không có import nào (`axios`, 11 `d3-*`, `klinecharts`…) | `packages/web/package.json:49-54,74,77-87,90-92` |
 | — | MED | File quá 800 dòng | `SocSignalsPanel.tsx` **2.454** · `WhaleBubbleChart.jsx` **1.843** |
 
 ---
