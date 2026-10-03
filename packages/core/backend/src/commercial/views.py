@@ -245,12 +245,24 @@ class VNPayIPNWebhookView(APIView):
                     return Response({"RspCode": "02", "Message": "Order already confirmed"}, status=status.HTTP_200_OK)
 
                 # Validate amount (defense-in-depth): VNPay gửi vnp_Amount = amount*100
-                raw_amount = query_params.get('vnp_Amount', '0')
+                #
+                # An unparsable amount must REJECT, not skip the check. The previous
+                # code did `ipn_amount = -1` on failure and then guarded with
+                # `if ipn_amount >= 0 and ...`, so `vnp_Amount=notanumber` disabled
+                # amount verification entirely for that callback.
+                raw_amount = query_params.get('vnp_Amount')
                 try:
                     ipn_amount = int(raw_amount) // 100
                 except (ValueError, TypeError):
-                    ipn_amount = -1
-                if ipn_amount >= 0 and ipn_amount != txn.amount:
+                    ipn_log.error_message = (
+                        f"Unparsable vnp_Amount: {raw_amount!r}"
+                    )
+                    ipn_log.save(update_fields=['error_message'])
+                    return Response(
+                        {"RspCode": "99", "Message": "Amount invalid"},
+                        status=status.HTTP_200_OK,
+                    )
+                if ipn_amount < 0 or ipn_amount != txn.amount:
                     ipn_log.error_message = f"Amount mismatch: IPN={ipn_amount}, txn={txn.amount} (raw={raw_amount})"
                     ipn_log.save(update_fields=['error_message'])
                     return Response({"RspCode": "99", "Message": "Amount mismatch"}, status=status.HTTP_200_OK)
