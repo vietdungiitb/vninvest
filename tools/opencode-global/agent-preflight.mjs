@@ -55,7 +55,6 @@ const DEFAULT_DENY_LIST = [
   "AGENTS.md",
   "CLAUDE.md",
   "docs/CLAIMS.md",
-  "docs/CODE_CHANGE_AUDIT_LEDGER.md",
   "docs/CHANGELOG.md",
   "package.json",
   "pyproject.toml",

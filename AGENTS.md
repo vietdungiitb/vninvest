@@ -17,7 +17,7 @@ Registry claim: `docs/CLAIMS.md`. Gate: `node packages/web/scripts/check-multi-a
 
 ### Không được
 - **Không commit thẳng vào `dev`** — tạo `feat/<slice>-<agent>` rồi PR. Không có điểm merge thì không ai kịp đồng bộ, và đã sinh migration trùng số (2026-09-26).
-- **Không commit 11 file shared** (§2 protocol): `AGENTS.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `packages/web/package.json`, `pyproject.toml`, `requirements.txt`, `package-lock.json`, `docker-compose*.yml`, `.env*`. Ghi vào claim + báo coordinator. **Hook sẽ chặn.**
+- **Không commit 10 file shared** (§2 protocol): `AGENTS.md`, `packages/web/package.json`, `pyproject.toml`, `requirements.txt`, `package-lock.json`, `docker-compose*.yml`, `.env*`. Ghi vào claim + báo coordinator. **Hook sẽ chặn.** `docs/CODE_CHANGE_AUDIT_LEDGER.md` đã **KHÔNG** còn nằm trong danh sách này (Owner chốt 2026-10-03) — agent được append Entry của mình.
 - **Không sửa file agent khác đang claim `in-progress`.**
 - **Không tự đặt số migration** — đọc head thật hoặc để `makemigrations` sinh.
 - **Không chạy `npm install`/`pip install` khi chưa hỏi** (junction `node_modules` dùng chung).

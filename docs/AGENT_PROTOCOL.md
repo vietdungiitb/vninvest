@@ -22,18 +22,19 @@
 
 ## 2. Shared-file deny list — KHÔNG BAO GIỜ sửa khi chạy song song
 
-Agent **không** sửa 6 file dưới đây trong thời gian có ≥ 2 agent cùng hoạt động. Không commit, không stage.
+Agent **không** sửa 5 file dưới đây trong thời gian có ≥ 2 agent cùng hoạt động. Không commit, không stage.
 
 | File | Vì sao | Ai được sửa |
 |---|---|---|
 | `AGENTS.md` | Append-only, mọi agent đều phải ghi Progress | Coordinator, khi merge |
-| `docs/CODE_CHANGE_AUDIT_LEDGER.md` | Append-only, 1 hunk khổng lồ, không tách được | Coordinator, khi merge |
 | `packages/web/package.json` | Mọi agent đều cần thêm script vào `check:*` | Coordinator, khi merge |
 | `docs/CLAIMS.md` | Chỉ **append cuối file** (§3) | Mọi agent, theo đúng quy tắc |
 | `pyproject.toml`, `requirements.txt`, `package-lock.json` | Dependency lock — đổi một agent phá cả agent khác | Coordinator |
 | `docker-compose*.yml`, `.env*` | Hạ tầng dùng chung, cổng + volume | Coordinator |
 
 **Cách điều hành khi agent cần sửa file deny list:** viết vào **claim** của mình dưới cột `note` ("cần thêm script X vào package.json"), và **báo coordinator**. Không tự sửa.
+
+> **Ngoại lệ đã chốt (Owner, 2026-10-03):** `docs/CODE_CHANGE_AUDIT_LEDGER.md` **không còn** nằm trong deny list §2. Ledger là append-only một Entry, nhưng mỗi Entry là một khối riêng nên commit được mà không dính hunk của agent khác — khác với `AGENTS.md` vốn bị gộp hunk vì mọi agent đều ghi chung một mục Progress. Agent được phép commit Entry của mình vào ledger theo quy tắc append ở §3. **Đừng tự thêm lại ledger vào §2.** Lý do gốc: sự cố lịch sử ở bảng §1 dòng 2 vẫn còn nguyên giá trị làm bài học.
 
 ### Shared file **được** phép append tự do
 - Bất kỳ file mới nào agent tạo ra, nếu không ai claim.

@@ -28,7 +28,6 @@ const { extractFromTable, loadDenyListWithReport } = await import(
 const KNOWN = [
   "AGENTS.md",
   "docs/CLAIMS.md",
-  "docs/CODE_CHANGE_AUDIT_LEDGER.md",
   "pyproject.toml",
   "requirements.txt",
   "package-lock.json",

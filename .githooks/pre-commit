@@ -19,7 +19,6 @@ failed=0
 # 1. Shared-file deny list. Committing these while other agents are live is how
 #    entries from two agents end up welded into one hunk that cannot be split.
 DENY='AGENTS.md
-docs/CODE_CHANGE_AUDIT_LEDGER.md
 packages/web/package.json
 pyproject.toml
 requirements.txt

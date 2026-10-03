@@ -26,7 +26,6 @@ const VERBOSE = process.argv.includes("--verbose");
 /** docs/AGENT_PROTOCOL.md §2 — files no agent may edit during parallel work. */
 const DENY_LIST = [
   "AGENTS.md",
-  "docs/CODE_CHANGE_AUDIT_LEDGER.md",
   "packages/web/package.json",
   "pyproject.toml",
   "requirements.txt",

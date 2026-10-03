@@ -41,7 +41,7 @@ if ($LASTEXITCODE -ne 0) { Die "Gate that bai — khong tao PR. Xem loi o tren."
 $files = @(git diff --name-only "$Base...HEAD")
 if ($files.Count -eq 0) { Die "Branch khong co gi khac $Base — khong co gi de review." }
 
-$deny = @('AGENTS.md','docs/CODE_CHANGE_AUDIT_LEDGER.md','packages/web/package.json',
+$deny = @('AGENTS.md','packages/web/package.json',
           'pyproject.toml','requirements.txt','package-lock.json',
           'docker-compose.yml','docker-compose.dev.yml','docker-compose.prod.yml',
           '.env','.env.example')

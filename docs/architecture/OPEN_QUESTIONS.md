@@ -12,7 +12,7 @@
 
 ## A. XUNG ĐỘT QUY TRÌNH — chặn việc, ưu tiên cao nhất
 
-### Q-01 — Ledger bị cấm commit nhưng lại bắt phải cập nhật
+### Q-01 — Ledger bị cấm commit nhưng lại bắt phải cập nhật · **ĐÃ XỬ LÝ 2026-10-03**
 
 | | |
 |---|---|
@@ -20,8 +20,11 @@
 | **Bằng chứng** | `AGENTS.md` mục "Không được" liệt kê `docs/CODE_CHANGE_AUDIT_LEDGER.md`; `scripts/agent-pr.ps1:44` có nó trong `$deny` |
 | **Vì sao không tự quết** | Sửa `AGENTS.md` hoặc sửa `agent-pr.ps1` đều là **thay đổi quy tắc dùng chung** — không phải việc một agent tự ý quyết |
 | **Hệ quả hiện tại** | Ledger **mãi lệch** với code. Mọi "cập nhật ledger" trong AGENTS.md là chỉ dẫn không thi hành được — giống hệt `D-2` ở Q-06 |
-| **Đề xuị** | Chọn 1: (a) gỡ khỏi deny-list, hoặc (b) bỏ yêu cầu cập nhật khỏi AGENTS.md |
-| **Ưu tiên** | **P0** |
+| **Quyết định Owner** | **Chọn (a) — gỡ khỏi deny-list.** Owner phán 2026-10-03 |
+| **Lý do** | Ledger là append-only **một Entry = một khối riêng**, nên commit tách được, không dính hunk của agent khác. Vấn đề gốc ở `AGENT_PROTOCOL.md` §1 dòng 2 là do `AGENTS.md` bị **gộp hunk** vì mọi agent ghi chung một mục Progress — Ledger không có đặc tính đó |
+| **Đã sửa 7 nguồn** | `docs/AGENT_PROTOCOL.md:25-34` (§2, 6 dòng → 5) + ghi chú ngoại lệ · `AGENTS.md` (11 → 10 file) · `.githooks/pre-commit:21` (`DENY`) · `scripts/agent-pr.ps1:44` (`$deny`) · `packages/web/scripts/check-multi-agent.mjs:27` (`DENY_LIST`) · `tools/opencode-global/verify-deny-extract.mjs` (`KNOWN`, 9 → 8) · `tools/opencode-global/agent-preflight.mjs:54` (`DEFAULT_DENY_LIST`) |
+| **Cố tình KHÔNG sửa** | `scripts/quality/check_opencore_doc_sync.ps1:66` — đây **không phải** deny-list, mà là gate **bắt buộc** ledger phải được cập nhật khi có thay đổi OpenCore. Giữ nguyên |
+| **Gate** | `check-multi-agent` PASS (exit 0) · `verify-deny-extract` PASS 8/8 + 9/9 negative test · `scan-secrets` PASS 3591 file |
 
 ### Q-02 — CI tắt vì billing, mọi "gate" trên PR là ảo
 
@@ -160,7 +163,7 @@ Ghi lại để không bị hiểu nhầm là bỏ sót.
 | Thêm `ScopedManager` cho tenant | Thay đổi kiến trúc truy vấn — cần P2-5 nối tiếp `D01` §6.3 |
 | Sửa 14 chỗ `if tenant:` | Chờ Q-05 trả lời (vá tạm hay sửa gốn) |
 | Bật lại GitHub Actions | Q-02 |
-| Cập nhật `CODE_CHANGE_AUDIT_LEDGER.md` | Q-01 |
+| ~~Cập nhật `CODE_CHANGE_AUDIT_LEDGER.md`~~ | **Xong 2026-10-03** — Owner chọn phương án (a), ledger gỡ khỏi deny-list ở cả 7 nguồn |
 | Chạy BE/FE test cho phiên tài liệu | Doc-only, không sửa code. Lần chạy gần nhất: 2.805 test · 83F + 8E, 0 regression |
 
 ---

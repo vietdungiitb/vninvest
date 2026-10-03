@@ -66,11 +66,12 @@ phải đọc lại toàn bộ.
 ## 0.2.2 Việc còn mở
 
 Đọc `OPEN_QUESTIONS.md`. **4 mục P0** ở đó — hai là xung đột quy trình, hai là
-chỉ dẫn sai trong `AGENTS.md` khiến người mới tin nhầm ngay từ đầu:
+chỉ dẫn sai trong `AGENTS.md` khiến người mới tin nhầm ngay từ đầu. **3/4 đã sửa**,
+chỉ còn Q-02 (CI billing) là việc hạ tầng chưa xử lý được:
 
 | Mục | Vấn đề |
 |---|---|
-| Q-01 | Ledger bị **cấm commit** nhưng `AGENTS.md` bắt phải cập nhật |
+| Q-01 | Ledger bị **cấm commit** nhưng `AGENTS.md` bắt phải cập nhật ✅ **đã sửa** — Owner chọn gỡ khỏi deny-list (2026-10-03) |
 | Q-02 | CI tắt vì billing ⇒ mọi gate trên PR là **ảo** |
 | Q-06 | `AGENTS.md` trỏ `soc.module.css` — file đó **rỗng** ✅ **đã sửa** |
 | Q-07 | `pyproject.toml` khai `Django<5.0` ✅ **đã sửa**. Nhưng tìm ra: **baseline chạy 6.0.6 còn production 5.2.17** ⇒ cần Owner quyết có nâng lên 6.0 không |
@@ -83,6 +84,7 @@ chỉ dẫn sai trong `AGENTS.md` khiến người mới tin nhầm ngay từ đ
 | Đổi kiến trúc, đổi finding | Sửa tay `D01`/`D02`/`D03` **kèm** `file:line` |
 | Đổi số liệu kiến trúc | Chạy `tools/measure_repo.py`; nếu lệch thì sửa **cả** §0.4 lẫn kỳ vọng trong script |
 | Đóng một finding | Ghi rõ **đã sửa ở đâu** + sửa finding, không xoá — xem `D01` F-11 làm mẫu |
+| Ghi thay đổi vào `CODE_CHANGE_AUDIT_LEDGER.md` | **Từ 2026-10-03 ledger đã gỡ khỏi deny-list** — append Entry của mình rồi commit bình thường, không cần `--no-verify`. Quy tắc append: `AGENT_PROTOCOL.md` §3 |
 
 ## 0.3 Cách dùng khi phát triển tính năng mới
 
