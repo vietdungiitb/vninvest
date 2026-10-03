@@ -95,6 +95,7 @@ chỉ còn Q-02 (CI billing) là việc hạ tầng chưa xử lý được:
 | Đổi kiến trúc, đổi finding | Sửa tay `D01`/`D02`/`D03` **kèm** `file:line` |
 | Đổi số liệu kiến trúc | Chạy `tools/measure_repo.py`; nếu lệch thì sửa **cả** §0.4 lẫn kỳ vọng trong script |
 | Đóng một finding | Ghi rõ **đã sửa ở đâu** + sửa finding, không xoá — xem `D01` F-11 làm mẫu |
+| Ghi thay đổi vào `CODE_CHANGE_AUDIT_LEDGER.md` | **Từ 2026-10-03 ledger đã gỡ khỏi deny-list** — append Entry của mình rồi commit bình thường, không cần `--no-verify`. Quy tắc append: `AGENT_PROTOCOL.md` §3 |
 
 **Ngưỡng cửa:** cả ba script phải **exit 0** trước khi coi bộ tài liệu là còn
 đúng. Chạy cả ba:
@@ -104,7 +105,6 @@ python docs/architecture/tools/measure_repo.py
 python docs/architecture/tools/gen_data_doc.py
 python docs/architecture/tools/verify_arch_citations.py
 ```
-| Ghi thay đổi vào `CODE_CHANGE_AUDIT_LEDGER.md` | **Từ 2026-10-03 ledger đã gỡ khỏi deny-list** — append Entry của mình rồi commit bình thường, không cần `--no-verify`. Quy tắc append: `AGENT_PROTOCOL.md` §3 |
 
 ## 0.3 Cách dùng khi phát triển tính năng mới
 
