@@ -1,0 +1,3 @@
+﻿40 objects imported automatically (use -v 2 for details).
+
+{'ENABLE_NEW_MARKET_VIEWS': False, 'MARKET_VIEWS_CANARY_PERCENT': 100}

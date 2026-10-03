@@ -1,0 +1,17 @@
+{
+  "services": [
+    "vninvest-dev-backend-legacy\trunning",
+    "vninvest-dev-core-api\trunning",
+    "vninvest-dev-core-beat\trunning",
+    "vninvest-dev-core-worker\trunning",
+    "vninvest-dev-db\trunning",
+    "vninvest-dev-frontend\trunning",
+    "vninvest-dev-mailpit\trunning",
+    "vninvest-dev-opencore-site\trunning",
+    "vninvest-dev-redis\trunning"
+  ],
+  "timestamp": "2026-05-11 09:41:27",
+  "health_api": "200",
+  "health_core": "200",
+  "queue_depth": "0"
+}

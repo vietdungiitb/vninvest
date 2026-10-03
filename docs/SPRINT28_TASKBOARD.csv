@@ -1,0 +1,18 @@
+ID,Story,Task,Owner,EstimateDays,DependsOn,Status,DoD
+S28-01,Schema,Tao model LegalPage + fields can thiet,BE,0.25,,Todo,Model compile va makemigrations clean
+S28-02,Schema,Tao migration + constraint active uniqueness,BE,0.25,S28-01,Todo,Migrate pass local/staging
+S28-03,Admin,Dang ky LegalPage trong Django Admin,BE,0.25,S28-01,Todo,Admin list/filter/search hoat dong
+S28-04,Admin,Tao admin action kich hoat legal content,BE,0.25,S28-03,Todo,Chi 1 ban active cho moi slug+locale
+S28-05,API,Tao serializer + public list/detail endpoint,BE,0.25,S28-02,Todo,GET endpoint tra dung schema
+S28-06,API,Tao locale fallback logic,BE,0.25,S28-05,Todo,Fallback vi khi locale khong ton tai
+S28-07,API,Mount route /api/public/legal-pages,BE,0.25,S28-05,Todo,Route live va khong can auth
+S28-08,FE,Tao legal API client,FE,0.25,S28-07,Todo,Client call thanh cong
+S28-09,FE,Tich hop legal content vao LoginModal,FE,0.5,S28-08,Todo,Doc duoc truoc dang ky
+S28-10,FE,Them xu ly loading/error/retry tren login,FE,0.25,S28-09,Todo,Fail-soft khong block submit
+S28-11,FE,Them 2 muc legal vao menu nguoi dung,FE,0.25,S28-08,Todo,Menu hien dung
+S28-12,FE,Them legal route/page sau dang nhap,FE,0.25,S28-11,Todo,Route render duoc
+S28-13,FE,Cap nhat i18n vi/en cho legal UI,FE,0.25,S28-09,Todo,Text day du 2 ngon ngu
+S28-14,QA,Viet backend tests legal endpoint/fallback,BE+QA,0.5,S28-07,Todo,Test pass
+S28-15,QA,Smoke test frontend login/menu/mobile,QA,0.5,S28-12,Todo,Checklist smoke pass
+S28-16,Docs,Cap nhat board va roadmap status,PM,0.25,S28-15,Todo,Docs tracking dong bo
+S28-17,Release,Chot go-no-go + rollback note,PM+DevOps,0.25,S28-16,Todo,Bien ban release da ky

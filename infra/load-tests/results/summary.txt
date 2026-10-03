@@ -1,0 +1,13 @@
+=== VNInvest Load Test Summary ===
+Profile: core_saas
+Target HTTP VUs: 1
+Websocket clients: 1
+Queue pressure VUs: 1
+Probe VUs: 1
+HTTP p95: 4112.58 ms
+HTTP failed rate: 0
+Custom request error rate: 0
+Websocket connect p95: 33.10 ms
+Websocket ping p95: 3.90 ms
+Prefetch freshness p95: 0 s
+Realtime pending depth max: 0

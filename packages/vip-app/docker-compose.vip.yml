@@ -1,0 +1,19 @@
+name: vninvest-vip-package
+
+services:
+  vip-local-api:
+    image: python:3.13-slim
+    working_dir: /workspace
+    volumes:
+      - ./local-backend:/workspace
+    environment:
+      VIP_APP_ENV: foundation
+      VIP_APP_API_PORT: "8200"
+      VIP_APP_DATA_DIR: "/workspace/data"
+      VIP_APP_STUB_PASSWORD: "vip-demo-pass"
+    command: ["python", "api_stub.py"]
+    ports:
+      - "8200:8200"
+
+# Foundation runtime only.
+# Future slices will add the full VIP local backend and its supporting services.

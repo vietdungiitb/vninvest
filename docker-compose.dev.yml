@@ -1,0 +1,574 @@
+# docker-compose.dev.yml
+# Override file cho local dev testing.
+# Setup: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d
+
+name: vninvest-dev
+
+x-core-build: &core-build
+  context: ./packages/core/backend
+  dockerfile: Dockerfile
+  args:
+    PYTHON_VERSION: "3.13"
+  secrets:
+    - vnbroker_github_token
+
+services:
+  core-db:
+    container_name: vninvest-dev-core-db
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: vninvest_core
+      POSTGRES_USER: vninvest
+      POSTGRES_PASSWORD: ${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}
+    volumes:
+      - core_pgdata:/var/lib/postgresql/data
+    ports:
+      # Expose port 5432 từ core-db cho backend local (hybrid mode) hoặc stack khác connect được.
+      # C≤ th? set DEV_BIND_HOST=0.0.0.0 khi c?n cross-stack qua host.docker.internal.
+      - "${DEV_BIND_HOST:-127.0.0.1}:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vninvest -d vninvest_core"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_DB_MEM_LIMIT:-1g}
+    cpus: ${CORE_DB_CPUS:-1.0}
+
+  core-redis:
+    container_name: vninvest-dev-core-redis
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      # Expose Redis cho backend local (hybrid mode), admin stats, ho?c stack khßc.
+      - "${DEV_BIND_HOST:-127.0.0.1}:6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_REDIS_MEM_LIMIT:-512m}
+    cpus: ${REDIS_CPUS:-0.75}
+
+  mailpit:
+    container_name: vninvest-dev-mailpit
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1026}:1025"
+      - "${MAILPIT_UI_PORT:-8026}:8025"
+    networks:
+      - vninvest_network
+
+
+  core-api:
+    container_name: vninvest-dev-core-api
+    image: vninvest-dev-core-runtime
+    build:
+      <<: *core-build
+    environment:
+      CORE_ENV: development
+      DJANGO_SETTINGS_MODULE: vninvest_core.settings
+      DJANGO_DEBUG: "true"
+      DJANGO_ALLOWED_HOSTS: "*"
+      CORS_API_DYNAMIC_ALLOW: "true"
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
+      REDIS_URL: redis://core-redis:6379/3
+      CELERY_BROKER_URL: redis://core-redis:6379/3
+      DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY is required (xem compose.dev.env)}
+      # D-15 / SEC-02: secret broker phai rieng `SECRET_KEY`. Thieu bien nay thi
+      # `SecretStore` rot ve key v1 = derive tu `SECRET_KEY`, tuc muc tieu D-15 vo hieu.
+      BROKER_SECRET_KEY: ${BROKER_SECRET_KEY:?BROKER_SECRET_KEY is required (xem compose.dev.env)}
+      DNSE_API_KEY: ${DNSE_API_KEY:-}
+      DNSE_API_SECRET: ${DNSE_API_SECRET:-}
+      # Turnstile secret (private, chi trong .env — KHONG commit). De trong o dev:
+      # `STRICT_TURNSTILE_ENFORCEMENT` default `not DEBUG` (`settings.py:246`) nen
+      # `apps.py:38-45` khong hard-fail. Production (`DEBUG=false`) se
+      # `ImproperlyConfigured` neu thieu — dung chu khong phai im lang bo qua spam.
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
+      STRICT_TURNSTILE_ENFORCEMENT: ${STRICT_TURNSTILE_ENFORCEMENT:-}
+      LEGACY_BACKEND_URL: http://backend:8000
+
+      FRONTEND_URL: http://localhost:8080
+      EMAIL_BACKEND: django.core.mail.backends.smtp.EmailBackend
+      EMAIL_HOST: mailpit
+      EMAIL_PORT: "1025"
+      # Meta-audit fix: đồng bộ với beat — repair_beat_schedule chạy ở api (default settings
+      # 300s) sẽ flap interval 600↔300 tùy nơi chạy nếu thiếu env này.
+      WARM_INTRADAY_BEAT_INTERVAL_SECONDS: "600"
+
+    command: ["api"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8100/core/v1/health', timeout=2).getcode()==200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+    ports:
+      - "127.0.0.1:8001:8100"
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_API_MEM_LIMIT:-1g}
+    cpus: ${CORE_API_CPUS:-1.0}
+
+  core-worker:
+    container_name: vninvest-dev-core-worker
+    image: vninvest-dev-core-runtime
+    build:
+      <<: *core-build
+    environment:
+      CORE_ENV: development
+      DJANGO_SETTINGS_MODULE: vninvest_core.settings
+      DJANGO_DEBUG: "true"
+      DJANGO_ALLOWED_HOSTS: "*"
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      REDIS_URL: redis://core-redis:6379/3
+      CELERY_BROKER_URL: redis://core-redis:6379/3
+      CELERY_QUEUES: ${CELERY_QUEUES_BACKFILL:-celery,manual_on_demand,analytics_heavy}
+      CELERY_POOL: solo
+      CELERY_CONCURRENCY: "1"
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
+      DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY is required (xem compose.dev.env)}
+      # D-15 / SEC-02: secret broker phai rieng `SECRET_KEY`. Thieu bien nay thi
+      # `SecretStore` rot ve key v1 = derive tu `SECRET_KEY`, tuc muc tieu D-15 vo hieu.
+      BROKER_SECRET_KEY: ${BROKER_SECRET_KEY:?BROKER_SECRET_KEY is required (xem compose.dev.env)}
+      DNSE_API_KEY: ${DNSE_API_KEY:-}
+      DNSE_API_SECRET: ${DNSE_API_SECRET:-}
+      FRONTEND_URL: http://localhost:8080
+    command: ["worker"]
+    restart: unless-stopped
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-512m}
+    cpus: ${CORE_WORKER_CPUS:-0.50}
+
+  queue-drain-monitor:
+    container_name: vninvest-dev-queue-drain-monitor
+    image: redis:7-alpine
+    restart: on-failure:5
+    depends_on:
+      core-redis:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          TS=$$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          THRESHOLD=$${QUEUE_MONITOR_REALTIME_THRESHOLD:-200}
+          # Slice G (QueueRecovery, audit F5): theo dõi mọi queue (không chỉ realtime_prefetch).
+          for Q in realtime_prefetch realtime_scheduler enrichment_offhours enrichment_eod manual_on_demand analytics_heavy celery screener; do
+            DEPTH=$$(redis-cli -h core-redis -n 3 LLEN $$Q 2>/dev/null || echo -1)
+            echo "[$$TS] queue_depth queue=$$Q depth=$$DEPTH threshold=$$THRESHOLD"
+            if [ "$$DEPTH" -ge "$$THRESHOLD" ]; then
+              echo "[$$TS] ALERT queue=$$Q backlog high depth=$$DEPTH threshold=$$THRESHOLD"
+            fi
+          done
+          sleep $${QUEUE_MONITOR_INTERVAL_SECONDS:-300}
+        done
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -h core-redis -n 3 PING | grep -q PONG"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - vninvest_network
+    mem_limit: ${QUEUE_MONITOR_MEM_LIMIT:-64m}
+    cpus: ${QUEUE_MONITOR_CPUS:-0.10}
+
+  redis-exporter:
+    container_name: vninvest-dev-redis-exporter
+    image: oliver006/redis_exporter:v1.67.0
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://core-redis:6379
+      REDIS_EXPORTER_CHECK_KEYS: realtime_prefetch,manual_on_demand,analytics_heavy,enrichment_offhours
+    depends_on:
+      core-redis:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${REDIS_EXPORTER_MEM_LIMIT:-64m}
+    cpus: ${REDIS_EXPORTER_CPUS:-0.10}
+
+  core-worker-realtime-prefetch:
+    container_name: vninvest-dev-core-worker-realtime-prefetch
+    image: vninvest-dev-core-runtime
+    build:
+      <<: *core-build
+    environment:
+      CORE_ENV: development
+      DJANGO_SETTINGS_MODULE: vninvest_core.settings
+      DJANGO_DEBUG: "true"
+      DJANGO_ALLOWED_HOSTS: "*"
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      REDIS_URL: redis://core-redis:6379/3
+      CELERY_BROKER_URL: redis://core-redis:6379/3
+      CELERY_QUEUES: realtime_prefetch
+      # Corrective live-measured: solo 1 slot drain 1.1/phút vs arrival ~100/phút (đo 21/09).
+      # I/O-bound → prefork 5 slot. Mỗi slot Django ~100-150MB → mem 1g (512m cũ đầy 99.8%,
+      # suýt OOM như manual worker). Load test: 3 slot tăng +10/phút → 5 slot + giãn hot
+      # interval để arrival ≈ drain.
+      CELERY_CONCURRENCY: "5"
+      CELERY_POOL: prefork
+      # Topology/pacing env nằm ở scheduler worker (task chạy ở đó) — không đặt ở đây gây nhầm.
+      # Xem khối core-worker-realtime-scheduler (TICKER_PREFETCH_*).
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
+      # D-15 / SEC-02: worker/beat can giai ma secret broker, can key giong core-api
+      BROKER_SECRET_KEY: ${BROKER_SECRET_KEY:?BROKER_SECRET_KEY is required (xem compose.dev.env)}
+      DNSE_API_KEY: ${DNSE_API_KEY:-}
+      DNSE_API_SECRET: ${DNSE_API_SECRET:-}
+      FRONTEND_URL: http://localhost:8080
+    command: ["worker"]
+    restart: unless-stopped
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    # Meta-audit fix #2: prefork ×5 cần ~1g (512m đầy 99.8%, suýt OOM-loop như manual).
+    mem_limit: ${CORE_PREFETCH_WORKER_MEM_LIMIT:-1g}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  # Slice D (QueueRecovery): worker nhẹ cho scheduler heartbeat 3s (queue realtime_scheduler).
+  # Tách khỏi realtime_prefetch để heartbeat không bao giờ chôn materialize/ingest.
+  core-worker-realtime-scheduler:
+    container_name: vninvest-dev-core-worker-realtime-scheduler
+    image: vninvest-dev-core-runtime
+    build:
+      <<: *core-build
+    environment:
+      CORE_ENV: development
+      DJANGO_SETTINGS_MODULE: vninvest_core.settings
+      DJANGO_DEBUG: "true"
+      DJANGO_ALLOWED_HOSTS: "*"
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      REDIS_URL: redis://core-redis:6379/3
+      CELERY_BROKER_URL: redis://core-redis:6379/3
+      CELERY_QUEUES: realtime_scheduler
+      CELERY_CONCURRENCY: "1"
+      CELERY_POOL: solo
+      # Topology pacing ĐỌC BỞI scheduler-task (chạy ở worker này, không phải prefetch worker):
+      # hot 12s + TẮT warm/cold prefetch (đồng bộ với prefetch worker). Warm hydrate hourly top-150
+      # giữ nguyên để DB ticks vẫn tươi (flag riêng, không phụ thuộc prefetch tier flags).
+      # Corrective v4b: hot 12→15→20s. Load test đo drain ≈ 16/phút vs arrival 20/phút
+      # (+4/phút). Arrival 12/phút → slope âm nhẹ, queue về ~0. Freshness hot 20s (dev).
+      TICKER_PREFETCH_HOT_INTERVAL_SECONDS: "20"
+      TICKER_PREFETCH_ENABLE_WARM_TIER: "false"
+      TICKER_PREFETCH_ENABLE_COLD_TIER: "false"
+      REALTIME_WARM_HYDRATE_INTERVAL_SECONDS: "3600"
+      REALTIME_HYDRATE_WARM_MAX_SYMBOLS: "90"
+      REALTIME_HYDRATE_WARM_ENABLED: "true"
+      # Corrective live-measured v2: hot hydrate 5→10 phút. 2 chunk hot ≈ 8 phút việc
+      # (timeout 8s) — chu kỳ 5 phút cũ khiến hot-hydrate một mình đã vượt capacity.
+      REALTIME_HOT_HYDRATE_INTERVAL_SECONDS: "600"
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
+      FRONTEND_URL: http://localhost:8080
+    command: ["worker"]
+    restart: unless-stopped
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_SCHEDULER_WORKER_MEM_LIMIT:-256m}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  core-worker-analytics:
+    container_name: vninvest-dev-core-worker-analytics
+    image: vninvest-dev-core-runtime
+    build:
+      <<: *core-build
+    environment:
+      CORE_ENV: development
+      DJANGO_SETTINGS_MODULE: vninvest_core.settings
+      DJANGO_DEBUG: "true"
+      DJANGO_ALLOWED_HOSTS: "*"
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      REDIS_URL: redis://core-redis:6379/3
+      CELERY_BROKER_URL: redis://core-redis:6379/3
+      CELERY_QUEUES: analytics_heavy
+      CELERY_CONCURRENCY: "1"
+      CELERY_POOL: solo
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
+      # D-15 / SEC-02: worker/beat can giai ma secret broker, can key giong core-api
+      BROKER_SECRET_KEY: ${BROKER_SECRET_KEY:?BROKER_SECRET_KEY is required (xem compose.dev.env)}
+      FRONTEND_URL: http://localhost:8080
+    command: ["worker"]
+    restart: unless-stopped
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-512m}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  core-worker-realtime-stream:
+    container_name: vninvest-dev-core-worker-realtime-stream
+    image: vninvest-dev-core-runtime
+    build:
+      <<: *core-build
+    environment:
+      CORE_ENV: development
+      DJANGO_SETTINGS_MODULE: vninvest_core.settings
+      DJANGO_DEBUG: "true"
+      DJANGO_ALLOWED_HOSTS: "*"
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      REDIS_URL: redis://core-redis:6379/3
+      CELERY_BROKER_URL: redis://core-redis:6379/3
+      CELERY_QUEUES: realtime_stream
+      CELERY_CONCURRENCY: "1"
+      CELERY_POOL: solo
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
+      FRONTEND_URL: http://localhost:8080
+    command: ["worker"]
+    restart: unless-stopped
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-512m}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  core-worker-enrichment:
+    container_name: vninvest-dev-core-worker-enrichment
+    image: vninvest-dev-core-runtime
+    build:
+      <<: *core-build
+    environment:
+      CORE_ENV: development
+      DJANGO_SETTINGS_MODULE: vninvest_core.settings
+      DJANGO_DEBUG: "true"
+      DJANGO_ALLOWED_HOSTS: "*"
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      REDIS_URL: redis://core-redis:6379/3
+      CELERY_BROKER_URL: redis://core-redis:6379/3
+      CELERY_QUEUES: enrichment_offhours
+      CELERY_CONCURRENCY: "1"
+      CELERY_POOL: prefork
+      # Slice E: recycle worker sau mỗi 4 task marathon (chống leak tích lũy; OOM trong-task
+      # xử bằng mem 1g + tách EOD worker, không phải flag này).
+      CELERY_MAX_TASKS_PER_CHILD: "4"
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
+      # D-15 / SEC-02: worker/beat can giai ma secret broker, can key giong core-api
+      BROKER_SECRET_KEY: ${BROKER_SECRET_KEY:?BROKER_SECRET_KEY is required (xem compose.dev.env)}
+      DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:-}
+      DNSE_API_KEY: ${DNSE_API_KEY:-}
+      DNSE_API_SECRET: ${DNSE_API_SECRET:-}
+      FRONTEND_URL: http://localhost:8080
+    command: ["worker"]
+    restart: unless-stopped
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    # Slice E (QueueRecovery): chốt 1g cho marathon jobs (deep-history/pre5y) — 512m cũ đã OOM 19-20/09.
+    mem_limit: ${CORE_ENRICHMENT_WORKER_MEM_LIMIT:-1g}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+  # Slice E (QueueRecovery, PA1): worker riêng cho daily-backfill EOD 17:05 (queue enrichment_eod).
+  # Không chia slot với marathon cuối tuần → backfill không bao giờ PENDING vì kẹt.
+  # Meta-audit fix: kiêm slow-batch lane (price-board + snapshot); rảnh ~23h/ngày.
+  core-worker-enrichment-eod:
+    container_name: vninvest-dev-core-worker-enrichment-eod
+    image: vninvest-dev-core-runtime
+    build:
+      <<: *core-build
+    environment:
+      CORE_ENV: development
+      DJANGO_SETTINGS_MODULE: vninvest_core.settings
+      DJANGO_DEBUG: "true"
+      DJANGO_ALLOWED_HOSTS: "*"
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      REDIS_URL: redis://core-redis:6379/3
+      CELERY_BROKER_URL: redis://core-redis:6379/3
+      CELERY_QUEUES: enrichment_eod
+      # Meta-audit fix: worker này kiêm slow-batch lane. Đo live: price-board ~365s/180s +
+      # snapshot ~474s/300s ≈ 3.6 slot → prefork 3 slot (I/O-bound, mem dư). MAX_TASKS=1 giữ.
+      CELERY_CONCURRENCY: "3"
+      CELERY_POOL: prefork
+      CELERY_MAX_TASKS_PER_CHILD: "1"
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
+      FRONTEND_URL: http://localhost:8080
+    command: ["worker"]
+    restart: unless-stopped
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_ENRICHMENT_WORKER_MEM_LIMIT:-1g}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  core-worker-manual:
+    container_name: vninvest-dev-core-worker-manual
+    image: vninvest-dev-core-runtime
+    build:
+      <<: *core-build
+    environment:
+      CORE_ENV: development
+      DJANGO_SETTINGS_MODULE: vninvest_core.settings
+      DJANGO_DEBUG: "true"
+      DJANGO_ALLOWED_HOSTS: "*"
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      REDIS_URL: redis://core-redis:6379/3
+      CELERY_BROKER_URL: redis://core-redis:6379/3
+      CELERY_QUEUES: manual_on_demand
+      # Meta-audit fix #2: REVERT prefork 2 → solo (batch chậm đã chuyển sang enrichment_eod;
+      # demand còn lại nhẹ). prefork ×2 trong mem 128m gây OOM-loop (exit 137 mỗi ~20s).
+      CELERY_CONCURRENCY: "1"
+      CELERY_POOL: solo
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
+      DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY is required (xem compose.dev.env)}
+      # D-15 / SEC-02: secret broker phai rieng `SECRET_KEY`. Thieu bien nay thi
+      # `SecretStore` rot ve key v1 = derive tu `SECRET_KEY`, tuc muc tieu D-15 vo hieu.
+      BROKER_SECRET_KEY: ${BROKER_SECRET_KEY:?BROKER_SECRET_KEY is required (xem compose.dev.env)}
+      FRONTEND_URL: http://localhost:8080
+      EMAIL_BACKEND: django.core.mail.backends.smtp.EmailBackend
+      EMAIL_HOST: mailpit
+      EMAIL_PORT: "1025"
+    command: ["worker"]
+    restart: unless-stopped
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    # Meta-audit fix #2: solo Django worker ~150MB → đệm 256m (128m quá sát, OOM khi task nặng).
+    mem_limit: ${CORE_MANUAL_WORKER_MEM_LIMIT:-256m}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  # W2: dedicated screener worker — scans no longer starve behind backfill floods
+  # on manual_on_demand (Entry 81 residual LLEN=7672). Task routes + beat resolve
+  # to queue 'screener' via queue_policy.SCHEDULER_QUEUE_MAP.
+  core-worker-screener:
+    container_name: vninvest-dev-core-worker-screener
+    image: vninvest-dev-core-runtime
+    build:
+      <<: *core-build
+    environment:
+      CORE_ENV: development
+      DJANGO_SETTINGS_MODULE: vninvest_core.settings
+      DJANGO_DEBUG: "true"
+      DJANGO_ALLOWED_HOSTS: "*"
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      REDIS_URL: redis://core-redis:6379/3
+      CELERY_BROKER_URL: redis://core-redis:6379/3
+      CELERY_QUEUES: screener
+      CELERY_CONCURRENCY: "1"
+      CELERY_POOL: solo
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
+      DNSE_CREDENTIAL_FERNET_KEY: ${DNSE_CREDENTIAL_FERNET_KEY:?DNSE_CREDENTIAL_FERNET_KEY is required (xem compose.dev.env)}
+      # D-15 / SEC-02: secret broker phai rieng `SECRET_KEY`. Thieu bien nay thi
+      # `SecretStore` rot ve key v1 = derive tu `SECRET_KEY`, tuc muc tieu D-15 vo hieu.
+      BROKER_SECRET_KEY: ${BROKER_SECRET_KEY:?BROKER_SECRET_KEY is required (xem compose.dev.env)}
+      FRONTEND_URL: http://localhost:8080
+      EMAIL_BACKEND: django.core.mail.backends.smtp.EmailBackend
+      EMAIL_HOST: mailpit
+      EMAIL_PORT: "1025"
+    command: ["worker"]
+    restart: unless-stopped
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-256m}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  core-beat:
+    container_name: vninvest-dev-core-beat
+    image: vninvest-dev-core-runtime
+    build:
+      <<: *core-build
+    environment:
+      CORE_ENV: development
+      DJANGO_SETTINGS_MODULE: vninvest_core.settings
+      DJANGO_DEBUG: "true"
+      DJANGO_ALLOWED_HOSTS: "*"
+      VNBROKER_GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN:?VNBROKER_GITHUB_TOKEN must be set to install private vnbroker dependency}
+      REDIS_URL: redis://core-redis:6379/3
+      CELERY_BROKER_URL: redis://core-redis:6379/3
+      CORE_DATABASE_URL: postgresql://vninvest:${CORE_DB_PASSWORD:?CORE_DB_PASSWORD is required (xem compose.dev.env)}@core-db:5432/vninvest_core
+      CORE_PAT_PEPPER: ${CORE_PAT_PEPPER:?CORE_PAT_PEPPER is required (xem compose.dev.env)}
+      # D-15 / SEC-02: worker/beat can giai ma secret broker, can key giong core-api
+      BROKER_SECRET_KEY: ${BROKER_SECRET_KEY:?BROKER_SECRET_KEY is required (xem compose.dev.env)}
+      FRONTEND_URL: http://localhost:8080
+      # Corrective v4: beat warm 5→10 phút (hydrate-leg đã cover hot/10 phút; trùng lặp).
+      # Meta-audit fix: api container cũng cần env này — repair_beat_schedule chạy ở api (default
+      # settings 300s) sẽ flap interval 600↔300 tùy nơi chạy. Dev đồng bộ 600 ở mọi core service.
+      WARM_INTRADAY_BEAT_INTERVAL_SECONDS: "600"
+    command: ["beat"]
+    restart: unless-stopped
+    depends_on:
+      core-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python src/manage.py check_scheduler_queue_drift --warn-only"]
+      interval: 5m
+      timeout: 60s
+      retries: 3
+      start_period: 60s
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_BEAT_MEM_LIMIT:-256m}
+    cpus: ${CORE_BEAT_CPUS:-0.25}
+
+  frontend:
+    container_name: vninvest-dev-frontend
+    image: vninvest-dev-frontend:latest
+    build:
+      context: packages/web/
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+        STOCKCHART_REF: ${STOCKCHART_REF:-dev}
+        GITHUB_TOKEN: ${VNBROKER_GITHUB_TOKEN}
+        # Turnstile public site key (public, an toan de commit). Build-time only.
+        VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:-}
+    depends_on: !override
+      # SFI-B1.6: frontend depends only on core-api (single entry point); backend is internal.
+      core-api:
+        condition: service_healthy
+    ports:
+      - "${DEV_BIND_HOST:-127.0.0.1}:${FRONTEND_PORT:-8080}:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks: !override
+      - vninvest_network
+    restart: unless-stopped
+    mem_limit: ${FRONTEND_MEM_LIMIT:-512m}
+    cpus: ${FRONTEND_CPUS:-0.5}
+
+
+volumes:
+  core_pgdata:
+    name: vninvest-dev_core_pgdata
+
+networks:
+  vninvest_network:
+    name: vninvest-dev_vninvest_network
+    driver: bridge
+
+secrets:
+  vnbroker_github_token: !override
+    environment: VNBROKER_GITHUB_TOKEN

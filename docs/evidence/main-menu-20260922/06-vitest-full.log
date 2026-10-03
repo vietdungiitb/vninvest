@@ -1,0 +1,12 @@
+
+ RUN  v4.1.9 C:/Mujoco Projects/vninvest/packages/web
+
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+
+ Test Files  63 passed (63)
+      Tests  382 passed (382)
+   Start at  07:18:48
+   Duration  31.88s (transform 24.69s, setup 0ms, import 96.75s, tests 51.42s, environment 244.73s)
+

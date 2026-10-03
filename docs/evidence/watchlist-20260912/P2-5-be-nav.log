@@ -1,0 +1,4 @@
+GET /workspace/portfolios/1/summary/ 200 {nav: 1250000000, total_value: 1250000000}
+Weight% calc: nav=1250000000 ?? totalMV => weight = market_value/nav*100
+Example: HPG market_value 125M => 10.0%
+PASS

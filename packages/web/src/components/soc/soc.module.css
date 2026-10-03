@@ -1,0 +1,3 @@
+/* SOC Operations Center — CSS Module (re-exports tokens + components) */
+@import "./soc.tokens.css";
+@import "./soc.components.css";

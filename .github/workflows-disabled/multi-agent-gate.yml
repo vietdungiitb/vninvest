@@ -1,0 +1,47 @@
+name: Multi-Agent Safety Gate
+
+# Bảo vệ những agent KHÔNG dùng .githooks/ — tức là core-team, vẫn đang dùng
+# .husky/ của repo. Hook per-worktree không chạy với họ, nên CI là lớp bảo vệ
+# duy nhất cho phía đó.
+#
+# Chỉ chạy 1 check rẻ (~1s), không cài dependency. Nếu đưa vào đây cả test BE
+# thì CI sẽ chậm và nhiễu, và các job kia đã lo phần đó.
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - dev
+
+jobs:
+  multi-agent-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # gate cần đọc cả file migration của mọi app, không cần lịch sử
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Trùng số migration / nhiều leaf / claim vi phạm
+        run: node packages/web/scripts/check-multi-agent.mjs --verbose
+
+      - name: Không được commit file shared khi đang có agent khác
+        # Chỉ kiểm tra trên PR: file shared là hợp lệ ở commit hợp nhất của
+        # coordinator, chỉ sai khi agent tự commit trong lúc song song.
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "PR author: ${{ github.actor }}"
+          git diff --name-only origin/${{ github.base_ref }}...HEAD > /tmp/changed.txt
+          echo "--- file thay đổi trong PR ---"
+          cat /tmp/changed.txt
+          echo "--- shared file bị kéo vào (cần coordinator xác nhận) ---"
+          grep -E '^(AGENTS\.md|docs/CODE_CHANGE_AUDIT_LEDGER\.md|packages/web/package\.json|pyproject\.toml|requirements\.txt|package-lock\.json|docker-compose[^/]*\.yml|\.env.*)$' /tmp/changed.txt \
+            && echo "::warning::PR này sửa shared-file. Xem docs/AGENT_PROTOCOL.md §2 — phải do coordinator gộp, agent không tự commit."
+            && exit 0
+            && echo "OK: không có shared-file nào trong PR."

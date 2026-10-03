@@ -1,0 +1,18 @@
+ID,Title,Priority,Owner,Status,EstimateDays,Dependencies,Deliverable,AcceptanceRef
+S33-01,Finalize Sprint 33 product decisions,P0,PM,Done,0.5,None,Sprint decision memo,Section A-C
+S33-02,Map login backend errors to frontend UX states,P0,FE,Done,0.5,S33-01,Login error mapping spec,Section A
+S33-03,Implement login error messaging and resend CTA,P0,FE,Done,0.5,S33-02,Updated login UI flow,Section A
+S33-04,Define UserConfig page IA and route contract,P0,FE+BE,Done,0.5,S33-01,Route and section contract,Section B
+S33-05,Implement UserConfig page shell and navigation,P0,FE,Done,0.5,S33-04,New UserConfig route/page,Section B
+S33-06,Move AI and advisory settings from Whale Advisory to UserConfig,P0,FE,Done,0.5,S33-05,Consolidated settings UI,Section B/E
+S33-07,Expose event-based advisory toggle in UserConfig UI,P0,FE,Done,0.5,S33-06,Toggle UI with persistence,Section C
+S33-08,Implement early gate before whale and dark-flow accumulation,P0,BE,Done,0.75,S33-01,Early exit in event producer paths,Section C/D
+S33-09,Implement early gate before reversal advisory queue,P0,BE,Done,0.5,S33-01,Early exit in reversal path,Section C/D
+S33-10,Preserve defense-in-depth gate in advisory task,P0,BE,Done,0.25,S33-08,Task guard validation,Section D
+S33-11,Update advisory copy and i18n labels for source rules,P1,FE,Done,0.5,S33-07,Updated vi/en labels,Section E
+S33-12,Add backend tests for event toggle OFF and ON,P1,BE,Done,0.75,S33-08;S33-09,Regression test suite,Section F
+S33-13,Frontend smoke tests for login and settings persistence,P1,QA,Done,0.5,S33-03;S33-07,Smoke evidence report,Section F
+S33-14,Staging smoke run and release notes,P1,QA+Release,InProgress,0.5,S33-12;S33-13,Staging checklist and notes,Section G
+S33-15,Sprint closure and sign-off,P0,PM+Leads,Todo,0.25,S33-14,Sprint closure memo,Sign-off
+S33-16,Finalize detailed execution and implementation checklist,P0,PM+Leads,Done,0.25,S33-01,Execution docs code-ready pack,Section G
+S33-17,Prepare PR slicing and merge governance plan,P1,Tech Lead,Done,0.25,S33-16,PR sequencing and rollback boundaries,Section G

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="{{ lang|default:'vi' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  {% if lang == 'en' %}<title>Invitation to {{ tenant.display_name }}</title>{% else %}<title>Lời mời tham gia {{ tenant.display_name }}</title>{% endif %}
+</head>
+<body style="margin:0;padding:0;background:#0f172a;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;padding:32px 0;">
+    <tr>
+      <td align="center">
+        <table width="560" cellpadding="0" cellspacing="0" style="background:#1e293b;border-radius:12px;border:1px solid rgba(255,255,255,0.06);overflow:hidden;">
+          <!-- Header -->
+          <tr>
+            <td style="padding:32px 40px 24px;border-bottom:1px solid rgba(255,255,255,0.06);">
+              <h1 style="margin:0;font-size:22px;color:#f1f5f9;font-weight:600;">
+                {% if lang == 'en' %}You've been invited to a workspace{% else %}Bạn được mời tham gia workspace{% endif %}
+              </h1>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px 40px;">
+              <p style="margin:0 0 16px;font-size:15px;color:#cbd5e1;line-height:1.6;">
+                <strong style="color:#f1f5f9;">{{ inviter.display_name|default:inviter.email }}</strong>
+                {% if lang == 'en' %}has invited you to join workspace{% else %}đã mời bạn tham gia workspace{% endif %}
+                <strong style="color:#f1f5f9;">{{ tenant.display_name }}</strong>.
+              </p>
+              <p style="margin:0 0 8px;font-size:14px;color:#94a3b8;">
+                {% if lang == 'en' %}Role: <strong style="color:#f1f5f9;">{{ invite.get_role_display }}</strong>{% else %}Vai trò: <strong style="color:#f1f5f9;">{{ invite.get_role_display }}</strong>{% endif %}
+              </p>
+              <p style="margin:0 0 24px;font-size:14px;color:#94a3b8;">
+                {% if lang == 'en' %}Expires: <strong style="color:#f1f5f9;">{{ expires_at|date:"d/m/Y H:i" }}</strong>{% else %}Hết hạn: <strong style="color:#f1f5f9;">{{ expires_at|date:"d/m/Y H:i" }}</strong>{% endif %}
+              </p>
+              <!-- CTA -->
+              <table cellpadding="0" cellspacing="0" style="margin:0;">
+                <tr>
+                  <td style="background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:8px;">
+                    <a href="{{ accept_url }}" style="display:inline-block;padding:12px 28px;font-size:15px;font-weight:600;color:#fff;text-decoration:none;">
+                      {% if lang == 'en' %}Accept Invitation →{% else %}Chấp nhận lời mời →{% endif %}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 40px;border-top:1px solid rgba(255,255,255,0.06);">
+              <p style="margin:0;font-size:12px;color:#64748b;line-height:1.5;">
+                {% if lang == 'en' %}If you don't want to join, please ignore this email. The invitation will automatically expire on {{ expires_at|date:"d/m/Y H:i" }}.{% else %}Nếu bạn không muốn tham gia, hãy bỏ qua email này. Lời mời sẽ tự động hết hạn vào {{ expires_at|date:"d/m/Y H:i" }}.{% endif %}
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

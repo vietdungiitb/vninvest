@@ -1,0 +1,233 @@
+
+> @vninvest/web@0.1.0 test
+> node --experimental-vm-modules node_modules/jest/bin/jest.js --no-coverage
+
+(node:20728) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS src/features/stock-detail/__tests__/orderFlowFallback.test.js (12.81 s)
+(node:37136) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS src/features/stock-detail/__tests__/viewportWhaleMarkers.test.js (12.899 s)
+(node:27772) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS src/adapters/core/__tests__/advertising.test.js (13.003 s)
+(node:31052) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS src/adapters/core/__tests__/soc.test.js (13.072 s)
+(node:9404) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37124) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS src/components/workstation/hooks/useTradeLog.test.js (13.317 s)
+PASS src/features/dashboard/__tests__/dashboard_lifecycle.test.js (13.319 s)
+(node:19768) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:28656) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS src/adapters/coreApiAdapter.test.js (13.383 s)
+(node:27524) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16768) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS src/adapters/core/__tests__/commercial.test.js
+PASS src/components/workstation/hooks/useRealtimePolling.test.js (13.555 s)
+  ΓùÅ Console
+
+    console.error
+      You called act(async () => ...) without await. This could lead to unexpected testing behaviour, interleaving multiple act calls and mixing their scopes. You should - await act(async () => ...);
+
+      169 |     await act(async () => {
+      170 |       await Promise.resolve(); // Let first fetch fail
+    > 171 |       jest.advanceTimersByTime(1000); // First backoff: 1s
+          |            ^
+      172 |       await Promise.resolve(); // Let retry execute
+      173 |     });
+      174 |
+
+      at node_modules/react/cjs/react.development.js:835:21
+      at runJobs (node_modules/@jest/environment-jsdom-abstract/node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:1010:22)
+      at runInitialJobs (node_modules/@jest/environment-jsdom-abstract/node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:2172:13)
+      at doTick (node_modules/@jest/environment-jsdom-abstract/node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:2295:13)
+      at Object.tick (node_modules/@jest/environment-jsdom-abstract/node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:2342:20)
+      at FakeTimers.advanceTimersByTime (node_modules/@jest/environment-jsdom-abstract/node_modules/@jest/fake-timers/build/index.js:580:19)
+      at advanceTimersByTime (src/components/workstation/hooks/useRealtimePolling.test.js:171:12)
+
+(node:27940) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS src/components/workstation/WorkstationLayout.test.jsx (13.751 s)
+(node:1208) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS src/components/workstation/StockExecutionLogWidget.test.jsx (13.757 s)
+PASS src/components/workstation/hooks/useSessionFacts.test.js (13.83 s)
+PASS src/components/workstation/hooks/useOrderBook.test.js (13.878 s)
+  ΓùÅ Console
+
+    console.error
+      An update to TestComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      31 |
+      32 |   const handleData = useCallback((data) => {
+    > 33 |     setOrderBook(data);
+         |     ^
+      34 |     setLoading(false);
+      35 |     setError(null);
+      36 |   }, []);
+
+      at node_modules/react-dom/cjs/react-dom-client.development.js:18758:19
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom-client.development.js:18757:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom-client.development.js:16409:11)
+      at dispatchSetStateInternal (node_modules/react-dom/cjs/react-dom-client.development.js:9170:13)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom-client.development.js:9127:7)
+      at Object.setOrderBook [as current] (src/components/workstation/hooks/useOrderBook.js:33:5)
+      at src/components/workstation/hooks/useRealtimePolling.js:98:24
+
+    console.error
+      An update to TestComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      32 |   const handleData = useCallback((data) => {
+      33 |     setOrderBook(data);
+    > 34 |     setLoading(false);
+         |     ^
+      35 |     setError(null);
+      36 |   }, []);
+      37 |
+
+      at node_modules/react-dom/cjs/react-dom-client.development.js:18758:19
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom-client.development.js:18757:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom-client.development.js:16409:11)
+      at dispatchSetStateInternal (node_modules/react-dom/cjs/react-dom-client.development.js:9170:13)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom-client.development.js:9127:7)
+      at Object.setLoading [as current] (src/components/workstation/hooks/useOrderBook.js:34:5)
+      at src/components/workstation/hooks/useRealtimePolling.js:98:24
+
+    console.error
+      An update to TestComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      33 |     setOrderBook(data);
+      34 |     setLoading(false);
+    > 35 |     setError(null);
+         |     ^
+      36 |   }, []);
+      37 |
+      38 |   const handleError = useCallback((err) => {
+
+      at node_modules/react-dom/cjs/react-dom-client.development.js:18758:19
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom-client.development.js:18757:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom-client.development.js:16409:11)
+      at dispatchSetStateInternal (node_modules/react-dom/cjs/react-dom-client.development.js:9170:13)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom-client.development.js:9127:7)
+      at Object.setError [as current] (src/components/workstation/hooks/useOrderBook.js:35:5)
+      at src/components/workstation/hooks/useRealtimePolling.js:98:24
+
+(node:9392) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS src/features/dashboard/__tests__/AIAdvisorAlertPanel.i18n.test.js
+(node:8892) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS src/features/advertising/__tests__/TrademarkConfigPanel.test.js (15.361 s)
+(node:38780) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS src/components/workstation/StockOrderBookWidget.test.jsx (15.525 s)
+PASS src/pages/auth/AuthPages.test.js (16.74 s)
+  ΓùÅ Console
+
+    console.warn
+      ΓÜá∩╕Å React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+      17 | function renderAtRoute(path, element, entry) {
+      18 |   const initialEntry = entry || path;
+    > 19 |   return render(
+         |          ^
+      20 |     React.createElement(
+      21 |       MemoryRouter,
+      22 |       { initialEntries: [initialEntry] },
+
+      at warn (node_modules/react-router/lib/deprecations.ts:9:13)
+      at warnOnce (node_modules/react-router/lib/deprecations.ts:14:3)
+      at logDeprecation (node_modules/react-router/lib/deprecations.ts:26:5)
+      at logV6DeprecationWarnings (node_modules/react-router/lib/components.tsx:257:25)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25989:20)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at commitHookEffectListMount (node_modules/react-dom/cjs/react-dom-client.development.js:13249:29)
+      at commitHookPassiveMountEffects (node_modules/react-dom/cjs/react-dom-client.development.js:13336:11)
+      at commitPassiveMountOnFiber (node_modules/react-dom/cjs/react-dom-client.development.js:15484:13)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-dom/cjs/react-dom-client.development.js:15439:11)
+      at commitPassiveMountOnFiber (node_modules/react-dom/cjs/react-dom-client.development.js:15519:11)
+      at flushPassiveEffects (node_modules/react-dom/cjs/react-dom-client.development.js:18432:9)
+      at node_modules/react-dom/cjs/react-dom-client.development.js:17923:15
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at render (src/pages/auth/AuthPages.test.js:19:10)
+      at Object.renderAtRoute (src/pages/auth/AuthPages.test.js:48:5)
+
+    console.warn
+      ΓÜá∩╕Å React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+      17 | function renderAtRoute(path, element, entry) {
+      18 |   const initialEntry = entry || path;
+    > 19 |   return render(
+         |          ^
+      20 |     React.createElement(
+      21 |       MemoryRouter,
+      22 |       { initialEntries: [initialEntry] },
+
+      at warn (node_modules/react-router/lib/deprecations.ts:9:13)
+      at warnOnce (node_modules/react-router/lib/deprecations.ts:14:3)
+      at logDeprecation (node_modules/react-router/lib/deprecations.ts:37:5)
+      at logV6DeprecationWarnings (node_modules/react-router/lib/components.tsx:257:25)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25989:20)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at commitHookEffectListMount (node_modules/react-dom/cjs/react-dom-client.development.js:13249:29)
+      at commitHookPassiveMountEffects (node_modules/react-dom/cjs/react-dom-client.development.js:13336:11)
+      at commitPassiveMountOnFiber (node_modules/react-dom/cjs/react-dom-client.development.js:15484:13)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-dom/cjs/react-dom-client.development.js:15439:11)
+      at commitPassiveMountOnFiber (node_modules/react-dom/cjs/react-dom-client.development.js:15519:11)
+      at flushPassiveEffects (node_modules/react-dom/cjs/react-dom-client.development.js:18432:9)
+      at node_modules/react-dom/cjs/react-dom-client.development.js:17923:15
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at render (src/pages/auth/AuthPages.test.js:19:10)
+      at Object.renderAtRoute (src/pages/auth/AuthPages.test.js:48:5)
+
+
+Test Suites: 17 passed, 17 total
+Tests:       239 passed, 239 total
+Snapshots:   0 total
+Time:        33.483 s
+Ran all test suites.

@@ -1,0 +1,4 @@
+delete watchlist Dialog (not window.confirm)
+removeSymbol confirm
+PriceAlert inline dialog createPriceAlert target_price
+PASS

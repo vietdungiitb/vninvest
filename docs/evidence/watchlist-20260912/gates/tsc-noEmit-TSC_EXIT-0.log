@@ -1,0 +1,3 @@
+npx tsc --noEmit
+TSC_EXIT:0
+PASS 2026-09-13

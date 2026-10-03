@@ -1,0 +1,4 @@
+{
+  "_comment": "Gan CommonJS cho scripts/ vi ~/.opencode/package.json dat type:module, khien moi hook .js dung require() chet ngay. Kiem chung bang counter-factual 2026-09-27: tat file nay -> ReferenceError require is not defined. Dispatcher = 10 module / 11 hook entry (7 pre-bash + 4 post-bash).",
+  "type": "commonjs"
+}

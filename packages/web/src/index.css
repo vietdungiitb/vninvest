@@ -1,0 +1,694 @@
+@import "tailwindcss";
+@import "./theme/tokens.css";
+@import "tailwind-sidebar/styles.css";
+@import "simplebar/dist/simplebar.min.css";
+
+/* App theme binding (Slice 1 — F2): dark is the default, light opts in via
+   `<html data-theme="light">` (see main.tsx boot + UserSettingsPage).
+   Tailwind v4 `dark:` defaults to OS prefers-color-scheme, which desyncs page
+   cards from the fixed-dark shell/sidebar and ignores the app toggle.
+   This binds `dark:` to the app theme instead: dark styles apply unless the
+   user explicitly chose light. Behavior change: OS-light users now see the
+   dark theme by default (consistent with shell), until they pick light. */
+@custom-variant dark (&:where(:root:not([data-theme="light"]) *, :root:not([data-theme="light"])));
+
+@theme {
+  /* VNInvest Color Palette - Dark Mode Default */
+  --color-primary-50: #ecfeff;
+  --color-primary-100: #cffafe;
+  --color-primary-200: #a5f3fc;
+  --color-primary-300: #67e8f9;
+  --color-primary-400: #06b6d4;
+  --color-primary-500: #0891b2;
+  --color-primary-600: #0e7490;
+  --color-primary-700: #155e75;
+  --color-primary-800: #164e63;
+  --color-primary-900: #164e63;
+  --color-primary-950: #083344;
+
+  /* Slate for backgrounds */
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+  --color-slate-950: #020617;
+
+  /* Semantic colors */
+  --color-success-400: #34d399;
+  --color-success-500: #10b981;
+  --color-warning-400: #fbbf24;
+  --color-warning-500: #f59e0b;
+  --color-danger-400: #f87171;
+  --color-danger-500: #ef4444;
+  --color-info-400: #60a5fa;
+  --color-info-500: #3b82f6;
+
+  /* VNInvest specific semantic colors */
+  --color-bg-primary: #020617;
+  --color-bg-secondary: #0f172a;
+  --color-bg-tertiary: #1e293b;
+  --color-bg-panel: #0f172a;
+  --color-bg-panel-hover: #1e293b;
+  --color-bg-input: #0f172a;
+  --color-bg-input-hover: #1e293b;
+
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  --color-text-inverse: #020617;
+
+  --color-border-primary: #1e293b;
+  --color-border-secondary: #334155;
+  --color-border-focus: #06b6d4;
+  --color-border-error: #ef4444;
+
+  --color-accent-primary: #06b6d4;
+  --color-accent-secondary: #0891b2;
+  --color-accent-hover: #67e8f9;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl:
+    0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+
+  /* Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-full: 9999px;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Layout */
+  --layout-header-height: 4.5rem;
+  --layout-sidebar-width: 18rem;
+  --layout-sidebar-collapsed-width: 4rem;
+  --layout-sidebar-mobile-width: 18rem;
+  --layout-content-max-width: 80rem;
+  --layout-content-pad-y: var(--sp-6, 1.5rem);
+  --layout-content-pad-x: var(--sp-6, 1.5rem);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border-primary);
+  }
+
+  html {
+    font-family:
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      "Helvetica Neue",
+      Arial,
+      sans-serif;
+  }
+
+  body {
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Focus visible styles */
+  *:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+
+  /* Scrollbar styles */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-bg-secondary);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-secondary);
+    border-radius: var(--radius-full);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
+  }
+
+  /* Selection */
+  ::selection {
+    background-color: var(--color-accent-primary);
+    color: var(--color-text-inverse);
+  }
+}
+
+@layer utilities {
+  /* Text utilities */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Animation utilities */
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .animate-slide-in-right {
+    animation: slideInRight 0.3s ease-out;
+  }
+
+  .animate-slide-in-left {
+    animation: slideInLeft 0.3s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slideInLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Live dot pulse animation */
+  .live-dot-pulse {
+    animation: liveDotPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes liveDotPulse {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.5;
+      transform: scale(1.2);
+    }
+  }
+
+  /* Sidebar sticky header */
+  .sidebar-sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--color-bg-secondary);
+    backdrop-filter: blur(8px);
+  }
+
+  /* Glass morphism */
+  /* `.glass` — RESTORED 2026-09-27. Wave 0 (PR #25) xoá rule này o tin rang
+     "dead CSS", nhung grep chi danh dashboard. Tai day co 26 ref tren 9 file:
+     StockDetailTabs.js (10), StockContextDeck.js, StockInsightDeck.js,
+     PortfolioHeatmap.js, adminUi.tsx, WhaleAdvisoryPage.tsx va 3 advisory
+     component. Xoá no lam `/stock-detail`, `/admin`, `/ai-advisory`, `/dashboard`
+     mat nen -> 78/121 test Playwright fail `toBeVisible()`. XOA CSS PHAI GREP
+     TOAN REPO (nhac trong AGENTS.md), khong phai chi lane dang sua. */
+  .glass {
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--color-border-primary);
+  }
+
+  .glass-strong {
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--color-border-secondary);
+  }
+
+  /* Neon glass panel (S09 — advisory whale page) */
+  .neon-glass-panel {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(51, 65, 85, 0.6);
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(16px);
+    transition: all 0.3s ease;
+    box-shadow:
+      0 4px 24px -1px rgba(0, 0, 0, 0.2),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+
+  .neon-glass-panel:hover {
+    border-color: rgba(71, 85, 105, 0.8);
+    background: rgba(15, 23, 42, 0.5);
+    box-shadow:
+      0 12px 40px -4px rgba(0, 0, 0, 0.3),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
+
+  [data-theme="light"] .neon-glass-panel {
+    background: rgba(241, 245, 249, 0.85);
+    border-color: rgba(203, 213, 225, 0.6);
+    box-shadow:
+      0 4px 24px -1px rgba(0, 0, 0, 0.06),
+      inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  }
+
+  [data-theme="light"] .neon-glass-panel:hover {
+    background: rgba(241, 245, 249, 0.95);
+    border-color: rgba(148, 163, 184, 0.8);
+    box-shadow:
+      0 12px 40px -4px rgba(0, 0, 0, 0.1),
+      inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  }
+
+  [data-theme="light"] .agentic-glow-cyan {
+    box-shadow: 0 0 20px rgba(61, 217, 235, 0.12);
+  }
+
+  .advisory-page {
+    background: rgba(2, 6, 23, 0.2);
+    color: #e2e8f0;
+  }
+
+  .advisory-surface {
+    background: rgba(15, 23, 42, 0.45);
+  }
+
+  /* R3.4 — light mode phải phủ HẾT các nền tối dùng trong trang advisory.
+       Trước đây chỉ override `.advisory-surface` + 4 lớp text + 2 lớp border,
+       còn ~25 chỗ `bg-slate-900/*` và `bg-slate-950/*` giữ nguyên nền tối trên
+       nền sáng nên light mode vỡ. Ở đây override theo nhóm utility thay vì liệt
+       kê từng class, để class mới thêm sau này cũng được phủ. */
+  [data-theme="light"] .advisory-page {
+    background: #f8fafc;
+    color: #0f172a;
+  }
+
+  [data-theme="light"] .advisory-page .advisory-surface,
+  [data-theme="light"] .advisory-page .neon-glass-panel {
+    background: rgba(255, 255, 255, 0.94);
+    border-color: #cbd5e1;
+    color: #0f172a;
+  }
+
+  [data-theme="light"] .advisory-page .bg-slate-900,
+  [data-theme="light"] .advisory-page .bg-slate-900\/30,
+  [data-theme="light"] .advisory-page .bg-slate-900\/40,
+  [data-theme="light"] .advisory-page .bg-slate-900\/50,
+  [data-theme="light"] .advisory-page .bg-slate-900\/60,
+  [data-theme="light"] .advisory-page .bg-slate-900\/70,
+  [data-theme="light"] .advisory-page .bg-slate-950,
+  [data-theme="light"] .advisory-page .bg-slate-950\/10,
+  [data-theme="light"] .advisory-page .bg-slate-950\/20,
+  [data-theme="light"] .advisory-page .bg-slate-950\/30,
+  [data-theme="light"] .advisory-page .bg-slate-950\/40,
+  [data-theme="light"] .advisory-page .bg-slate-950\/50,
+  [data-theme="light"] .advisory-page .bg-slate-950\/60,
+  [data-theme="light"] .advisory-page .bg-slate-800\/30,
+  [data-theme="light"] .advisory-page .bg-slate-800\/40,
+  [data-theme="light"] .advisory-page .bg-slate-800\/50,
+  [data-theme="light"] .advisory-page .bg-slate-800\/60,
+  [data-theme="light"] .advisory-page .bg-slate-800 {
+    background-color: rgba(241, 245, 249, 0.92);
+  }
+
+  [data-theme="light"] .advisory-page .text-slate-100,
+  [data-theme="light"] .advisory-page .text-slate-200,
+  [data-theme="light"] .advisory-page .text-slate-300,
+  [data-theme="light"] .advisory-page .text-slate-400,
+  [data-theme="light"] .advisory-page .text-slate-500,
+  [data-theme="light"] .advisory-page .text-slate-600 {
+    color: #334155;
+  }
+
+  [data-theme="light"] .advisory-page .text-white {
+    color: #0f172a;
+  }
+
+  [data-theme="light"] .advisory-page .border-slate-800,
+  [data-theme="light"] .advisory-page .border-slate-800\/60,
+  [data-theme="light"] .advisory-page .border-slate-800\/40,
+  [data-theme="light"] .advisory-page .border-slate-800\/30,
+  [data-theme="light"] .advisory-page .border-slate-700,
+  [data-theme="light"] .advisory-page .border-slate-700\/60 {
+    border-color: #cbd5e1;
+  }
+
+  /* ==========================================================================
+      BENTO BOX LAYOUT - Commercial Grade Dashboard Styles
+      ========================================================================== */
+
+  /* S4.1+S4.2 — Triad lane single card layer, content-sized height, responsive grid */
+  .dashboard-triad-lane {
+    background: var(--bg-panel-soft, rgba(30, 41, 59, 0.4));
+    border: 1px solid var(--border-default, rgba(51, 65, 85, 0.6));
+    border-radius: var(--r-lg, 0.75rem); /* 12px = rounded-xl */
+    padding: 1rem; /* 16px within 16-20 allowed */
+    box-shadow: var(--shadow-panel, 0 10px 15px -3px rgba(0, 0, 0, 0.3));
+    /* Content-sized, NOT a fixed clamp. The old
+       `height: clamp(480px, calc(100dvh - var(--dash-chrome, 320px)), 720px)`
+       locked all 3 lanes to 480-720px regardless of dataset, and
+       `--dash-chrome` was never defined anywhere so the fallback was
+       permanently in effect. Lane now grows with content and only scrolls
+       past max-height. */
+    height: auto;
+    min-height: 360px;
+    max-height: 720px;
+    min-width: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Bento Card for full-width deck — S4.5 radius unified 12px */
+  .dashboard-full-width-deck {
+    background: var(--bg-panel-soft, rgba(30, 41, 59, 0.4));
+    border: 1px solid var(--border-default, rgba(51, 65, 85, 0.6));
+    border-radius: 0.75rem; /* S4.5: 12px rounded-xl unified */
+    padding: 1.25rem;
+    box-shadow:
+      0 10px 15px -3px rgba(0, 0, 0, 0.3),
+      0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    /* No min-height: the inner content already floors this (see
+       CoreDashboardPositionDeck `min-h-[280px]`), and a second 400px floor
+       stacked on top produced a ~545px block for a single-row table. */
+    min-width: 0;
+    overflow: auto;
+  }
+
+  /* S4.1 — Grid responsive: 1fr 1.5fr 1fr ≥1280px; 1279px→1fr 1fr (AI span 2); 1099px→1fr gap 16px */
+  .dashboard-triad-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 1fr;
+    gap: 1rem; /* 16px */
+    min-width: 0;
+    /* Let each lane keep its own content height. Default `stretch` forced the
+       short lanes (heatmap, AI) to match the tallest one, which re-created the
+       empty space the content-sized height was meant to remove. */
+    align-items: start;
+  }
+
+  /* Keep min-width:0 every lane (S4.1) */
+  .dashboard-triad-grid > .dashboard-triad-lane,
+  .dashboard-triad-grid > .core-dashboard-slot {
+    min-width: 0;
+  }
+
+  @media (max-width: 1279px) {
+    .dashboard-triad-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    .dashboard-triad-grid > .core-dashboard-slot--ai {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 1099px) {
+    .dashboard-triad-grid {
+      grid-template-columns: 1fr;
+    }
+    .dashboard-triad-grid > .core-dashboard-slot--ai {
+      grid-column: auto;
+    }
+  }
+
+  /* Dashboard audit fix — sign-aware pill (audit #10): 0 = trung tính */
+  .pill[data-sign="1"] {
+    background-color: rgb(16 185 129 / 0.2);
+    color: #34d399;
+    border: 1px solid rgb(16 185 129 / 0.3);
+  }
+  .pill[data-sign="-1"] {
+    background-color: rgb(244 63 94 / 0.2);
+    color: #fb7185;
+    border: 1px solid rgb(244 63 94 / 0.3);
+  }
+  .pill[data-sign="0"] {
+    background-color: rgb(138 148 166 / 0.12);
+    color: #8a94a6;
+    border: 1px solid rgb(138 148 166 / 0.25);
+  }
+
+  /* S4.5 — Type scale thống nhất: panel 16px/600 sentence-case, label 12px/500, body 14px */
+  .panel-title,
+  .panel-head h2 {
+    font-weight: 600;
+    font-size: 16px;
+    line-height: 1.3;
+    text-transform: none;
+    letter-spacing: normal;
+    margin: 0;
+    min-width: 0;
+  }
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+  .panel-label {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+  .panel-body-text {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* Dashboard audit fix — nút không xuống dòng (audit #30) */
+  .btn-nowrap {
+    white-space: nowrap;
+    flex: none;
+  }
+
+  /* Dashboard audit fix — mã CP không truncate (audit #13) */
+  .alert-sym {
+    flex: none;
+  }
+  .alert-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .alert-head .desc {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .alert-head .time {
+    margin-left: auto;
+    flex: none;
+  }
+
+  /* Dashboard audit fix — segmented 1 hàng cuộn ngang (audit #14) */
+  .seg {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 4px;
+    scrollbar-width: none;
+    max-width: 100%;
+  }
+  .seg::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* S4.2+S4.4 — Scroll delegation: lane overflow hidden, panel-body flex:1 scroll + mask fade */
+  .panel-body {
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    mask-image: linear-gradient(#000 calc(100% - 24px), transparent);
+  }
+  /* S4.4 — Scrollbar thin unified 8px #2a3550 */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #2a3550 transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2a3550;
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  /* Panel body scrollbar inherits unified palette */
+  .panel-body::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .panel-body::-webkit-scrollbar-thumb {
+    background: #2a3550;
+    border-radius: 8px;
+  }
+
+  /* Stats header slot */
+  .core-dashboard-slot--stats {
+    margin-bottom: 1rem; /* mb-4 */
+  }
+
+  /* Triad slot */
+  .core-dashboard-slot--triad {
+    margin-bottom: 1rem; /* mb-4 */
+  }
+
+  /* Heatmap slot — tighter padding on purpose so the treemap gets the width.
+     NOTE: this is 1.25rem top vs 1rem on the side lanes, i.e. the three lanes
+     are NOT top-aligned. The previous comment claimed "header alignment";
+     it did not hold. */
+  div.core-dashboard-slot--heatmap {
+    padding: 1.25rem 0.5rem 0.5rem 0.5rem;
+  }
+
+  /* ECharts Tooltip Dark Mode Override */
+  .echarts-tooltip-dark {
+    background-color: rgba(15, 23, 42, 0.95) !important; /* bg-slate-900/95 */
+    border: 1px solid rgba(51, 65, 85, 0.8) !important; /* border-slate-800/80 */
+    border-radius: 0.75rem !important; /* rounded-xl */
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4) !important; /* shadow-lg */
+    color: #f1f5f9 !important; /* text-slate-100 */
+    font-size: 0.75rem !important; /* text-xs */
+    padding: 0.75rem 1rem !important; /* p-3 px-4 */
+  }
+
+  .echarts-tooltip-dark .echarts-tooltip-title {
+    color: #06b6d4 !important; /* text-cyan-400 */
+    font-weight: 700 !important;
+    margin-bottom: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.5) !important;
+  }
+
+  .echarts-tooltip-dark .echarts-tooltip-content {
+    color: #e2e8f0 !important; /* text-slate-200 */
+    line-height: 1.6 !important;
+  }
+
+  .echarts-tooltip-dark .echarts-tooltip-content span {
+    color: #94a3b8 !important; /* text-slate-400 */
+  }
+
+  .echarts-tooltip-dark .echarts-tooltip-content strong {
+    color: #f1f5f9 !important; /* text-slate-100 */
+  }
+
+  /* Muted Treemap Colors - Professional Palette */
+  :root {
+    --heat-up-strong: #10b981; /* emerald-500 */
+    --heat-up-soft: #34d399; /* emerald-400 */
+    --heat-down-strong: #ef4444; /* red-500 */
+    --heat-down-soft: #f87171; /* red-400 */
+    --heat-neutral: #f59e0b; /* amber-500 */
+  }
+
+  /* S4.4 — Scrollbar for panels thin unified 8px #2a3550 */
+  .panel-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #2a3550 transparent;
+  }
+
+  .panel-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .panel-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .panel-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #2a3550;
+    border-radius: 8px;
+  }
+
+  .panel-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #364760;
+  }
+
+  /* Dashboard audit S3 — Heatmap legend gradient 5 stops trầm (L6: #eab308 chỉ viền, không fill) */
+  .heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 10px;
+    font-weight: 500;
+    color: #64748b;
+  }
+  .heatmap-legend-bar {
+    height: 6px;
+    flex: 1;
+    border-radius: 9999px;
+    background: linear-gradient(
+      to right,
+      #7f1d1d,
+      #5b2228,
+      #2f3747,
+      #14532d,
+      #166534
+    );
+  }
+}

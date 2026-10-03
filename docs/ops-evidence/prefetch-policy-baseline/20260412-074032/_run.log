@@ -1,0 +1,5 @@
+﻿[2026-04-12T07:40:32.2107380+07:00] No auth token provided. Admin stats and ticker probes will be skipped
+[2026-04-12T07:40:32.2576333+07:00] Collect sample 1/3
+[2026-04-12T07:40:37.5120504+07:00] Collect sample 2/3
+[2026-04-12T07:40:42.5801455+07:00] Collect sample 3/3
+[2026-04-12T07:40:46.8209817+07:00] Baseline capture completed. Artifacts: c:\Mujoco Projects\vninvest\docs\ops-evidence\prefetch-policy-baseline\20260412-074032

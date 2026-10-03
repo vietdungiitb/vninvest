@@ -1,0 +1,34 @@
+﻿{
+    "collected_at":  "2026-04-12T07:40:46.6611410+07:00",
+    "api_base":  "http://127.0.0.1:8000",
+    "samples":  3,
+    "interval_seconds":  1,
+    "symbol_probe":  "FPT",
+    "auth_enabled":  false,
+    "kpi":  {
+                "prefetch_healthy_ratio_pct":  0,
+                "prefetch_freshness":  {
+                                           "sample_count":  0,
+                                           "p50_seconds":  0,
+                                           "p95_seconds":  0,
+                                           "max_seconds":  null
+                                       },
+                "endpoint_latency_p95_ms":  {
+                                                "prefetch_health":  2035.92,
+                                                "market_observability":  2025.51,
+                                                "admin_ops_stats":  null,
+                                                "realtime_ticker_probe":  null
+                                            },
+                "ticker_probe_429_ratio_pct":  null,
+                "policy_counters":  {
+                                        "multiplier_total_first":  null,
+                                        "multiplier_total_last":  null,
+                                        "multiplier_total_delta":  null,
+                                        "skip_total_first":  null,
+                                        "skip_total_last":  null,
+                                        "skip_total_delta":  null
+                                    },
+                "market_observability_overall_last":  null,
+                "market_observability_endpoints_last":  null
+            }
+}

@@ -1,0 +1,32 @@
+#!/usr/bin/env sh
+# Agent pre-push hook — run the gates that matter before code leaves the machine.
+#
+# Installed per-worktree only; the main working tree keeps .husky/pre-push (git-lfs).
+#
+# The rule this enforces: never push claiming something you did not verify.
+# Everything here is a command the agent must be able to run and report.
+
+set -e
+
+# Only gate feature branches. Never gate a docs-only sync of dev.
+branch=$(git rev-parse --abbrev-ref HEAD)
+case "$branch" in
+  main|dev|master|enterprise) exit 0 ;;
+esac
+
+echo "check:multi-agent"
+node packages/web/scripts/check-multi-agent.mjs
+
+# Backend: only if this branch actually touches the backend, and only if a
+# Postgres URL is exported. Skipped loudly rather than silently.
+if git diff --name-only origin/dev...HEAD 2>/dev/null | grep -q '^packages/core/backend/'; then
+  if [ -z "$CORE_DATABASE_URL" ]; then
+    echo "WARNING: branch sua backend nhung CORE_DATABASE_URL chua set." >&2
+    echo "         Test BE se fail. Xem docs/AGENT_PROTOCOL.md §4." >&2
+  else
+    echo "backend: manage.py check"
+    (cd packages/core/backend && python manage.py check)
+  fi
+fi
+
+exit 0

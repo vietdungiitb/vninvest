@@ -1,0 +1,264 @@
+{
+    "admin_ops_stats":  {
+                            "ok":  true,
+                            "body":  {
+                                         "user_count":  9,
+                                         "portfolio_count":  9,
+                                         "tracked_symbol_count":  29,
+                                         "watchlist_item_count":  44,
+                                         "last_market_group_sync":  {
+                                                                        "started_at":  "2026-04-12T03:01:58.216367+00:00",
+                                                                        "finished_at":  "2026-04-12T03:01:58.525260+00:00",
+                                                                        "success":  true,
+                                                                        "mode":  "all",
+                                                                        "message":  "cap nhat 3 nhom."
+                                                                    },
+                                         "last_stock_profile_sync":  {
+                                                                         "started_at":  "2026-04-12T02:13:38.037705+00:00",
+                                                                         "finished_at":  "2026-04-12T02:13:38.181321+00:00",
+                                                                         "success":  true,
+                                                                         "mode":  "all",
+                                                                         "message":  "Da dong bo 59 ma chung khoan (tao moi: 1, cap nhat: 58). vnbroker lá»i: Failed to fetch data: 429 - Too Many Requests. DÃ¹ng danh sÃ¡ch máº·c Äá»nh. KhÃ´ng láº¥y ÄÆ°á»£c company_name/exchange tá»« vnbroker."
+                                                                     },
+                                         "channel_layer_type":  "redis",
+                                         "realtime_enabled":  true,
+                                         "redis_ok":  true,
+                                         "ticker_prefetch":  {
+                                                                 "cache_backend":  "django.core.cache.backends.redis.RedisCache",
+                                                                 "cache_location":  "redis://redis:6379/2",
+                                                                 "healthy":  false,
+                                                                 "meta_present":  true,
+                                                                 "freshness_seconds":  19,
+                                                                 "sample_cache_hits":  5,
+                                                                 "sample_cache_total":  10,
+                                                                 "prefetch":  {
+                                                                                  "status":  "backoff",
+                                                                                  "reason":  "price_board rate limit cooldown active",
+                                                                                  "policy":  {
+                                                                                                 "timezone":  "Asia/Ho_Chi_Minh",
+                                                                                                 "profile":  "offhours",
+                                                                                                 "reason":  "weekend_offhours_mode",
+                                                                                                 "query_enabled":  true,
+                                                                                                 "effective_interval_seconds":  600
+                                                                                             },
+                                                                                  "symbols":  10,
+                                                                                  "cached":  0,
+                                                                                  "source_counts":  {
+                                                                                                        "tracked_symbols":  21,
+                                                                                                        "watchlist_items":  17,
+                                                                                                        "price_alerts":  17,
+                                                                                                        "portfolio_transactions":  27,
+                                                                                                        "market_group_items":  640
+                                                                                                    },
+                                                                                  "generated_at":  "2026-04-12T03:01:57.823651+00:00",
+                                                                                  "batch_size":  5,
+                                                                                  "batches":  0,
+                                                                                  "sample_symbols":  [
+                                                                                                         "CTG",
+                                                                                                         "FPT",
+                                                                                                         "GAS",
+                                                                                                         "HPG",
+                                                                                                         "KBC",
+                                                                                                         "KDH",
+                                                                                                         "MBB",
+                                                                                                         "MBS",
+                                                                                                         "MSH",
+                                                                                                         "MWG"
+                                                                                                     ]
+                                                                              }
+                                                             },
+                                         "whale_config_propagation":  null,
+                                         "whale_config_anomaly":  null,
+                                         "whale_config_dashboard":  {
+                                                                        "generated_at":  "2026-04-12T03:02:17.429007+00:00",
+                                                                        "active_version":  null,
+                                                                        "active_rollout":  null,
+                                                                        "pending_rollout":  null,
+                                                                        "propagation":  null,
+                                                                        "anomaly":  null,
+                                                                        "alerts":  {
+                                                                                       "scope":  "global",
+                                                                                       "observed_at":  "2026-04-12T03:02:17.429022+00:00",
+                                                                                       "target_symbol_count":  0,
+                                                                                       "last_5m_count":  1,
+                                                                                       "last_10m_count":  3,
+                                                                                       "unique_symbols_last_5m":  1,
+                                                                                       "unique_symbols_last_10m":  2,
+                                                                                       "latest_advisory":  {
+                                                                                                               "symbol":  "MWG",
+                                                                                                               "side":  "BUY",
+                                                                                                               "matched_value":  1680000000.0,
+                                                                                                               "created_at":  "2026-04-12T02:57:53.944083+00:00"
+                                                                                                           }
+                                                                                   },
+                                                                        "worker_summary":  {
+                                                                                               "ok":  true,
+                                                                                               "source":  "celery_inspect",
+                                                                                               "detail":  "workers=1",
+                                                                                               "live_count":  1,
+                                                                                               "reporting_stats_count":  1,
+                                                                                               "ack_expected_count":  0,
+                                                                                               "acknowledged_count":  0,
+                                                                                               "pending_ack_count":  0,
+                                                                                               "stale_ack_count":  0,
+                                                                                               "pool_process_count":  16,
+                                                                                               "total_cpu_seconds":  8.26,
+                                                                                               "total_maxrss_mb":  182.73,
+                                                                                               "avg_maxrss_mb":  182.73,
+                                                                                               "workers":  [
+                                                                                                               {
+                                                                                                                   "worker_name":  "celery@0572b8607c7a",
+                                                                                                                   "live":  true,
+                                                                                                                   "ack_state":  "untracked",
+                                                                                                                   "acked":  false,
+                                                                                                                   "acked_at":  null,
+                                                                                                                   "worker_version":  "",
+                                                                                                                   "stats_available":  true,
+                                                                                                                   "cpu_user_seconds":  4.86,
+                                                                                                                   "cpu_system_seconds":  3.4,
+                                                                                                                   "maxrss_mb":  182.73,
+                                                                                                                   "pool_processes":  [
+                                                                                                                                          "23",
+                                                                                                                                          "24",
+                                                                                                                                          "25",
+                                                                                                                                          "26",
+                                                                                                                                          "27",
+                                                                                                                                          "28",
+                                                                                                                                          "29",
+                                                                                                                                          "39",
+                                                                                                                                          "40",
+                                                                                                                                          "41",
+                                                                                                                                          "42",
+                                                                                                                                          "43",
+                                                                                                                                          "44",
+                                                                                                                                          "45",
+                                                                                                                                          "46",
+                                                                                                                                          "47"
+                                                                                                                                      ],
+                                                                                                                   "pool_process_count":  16,
+                                                                                                                   "max_concurrency":  16,
+                                                                                                                   "details":  ""
+                                                                                                               }
+                                                                                                           ]
+                                                                                           }
+                                                                    }
+                                     },
+                            "status":  200
+                        },
+    "prefetch_health":  {
+                            "ok":  false,
+                            "body":  null,
+                            "status":  503
+                        },
+    "collected_at":  "2026-04-12T10:02:19.4615643+07:00",
+    "market_observability":  {
+                                 "ok":  true,
+                                 "body":  {
+                                              "enabled":  true,
+                                              "window":  {
+                                                             "latency_samples_per_endpoint":  300,
+                                                             "started_at_epoch":  1775962896
+                                                         },
+                                              "overall":  {
+                                                              "http_requests":  21,
+                                                              "http_5xx":  2,
+                                                              "http_5xx_ratio_pct":  9.52,
+                                                              "fallback_hits":  1,
+                                                              "external_timeouts":  0
+                                                          },
+                                              "ai_chart_context":  {
+                                                                       "present":  0,
+                                                                       "used":  0,
+                                                                       "usage_ratio_pct":  0.0,
+                                                                       "warnings_total":  0,
+                                                                       "ohlcv_points_total":  0,
+                                                                       "payload_bytes_total":  0,
+                                                                       "avg_ohlcv_points":  0.0,
+                                                                       "avg_payload_bytes":  0.0
+                                                                   },
+                                              "advisory_event_merge":  {
+                                                                           "scheduled":  0,
+                                                                           "merged":  0,
+                                                                           "flushed":  0,
+                                                                           "skipped":  0
+                                                                       },
+                                              "whale_pipeline":  {
+                                                                     "healthy":  true,
+                                                                     "freshness":  {
+                                                                                       "sample_size":  0,
+                                                                                       "median_seconds":  0.0,
+                                                                                       "p95_seconds":  0.0,
+                                                                                       "warn_threshold_seconds":  120
+                                                                                   },
+                                                                     "dedup":  {
+                                                                                   "total":  0,
+                                                                                   "hits":  0,
+                                                                                   "hit_ratio_pct":  0.0
+                                                                               },
+                                                                     "snapshot_recovery":  {
+                                                                                               "events_total":  0,
+                                                                                               "recovered_events":  0,
+                                                                                               "ratio_pct":  0.0
+                                                                                           },
+                                                                     "source_mix":  {
+                                                                                        "counts":  {
+
+                                                                                                   },
+                                                                                        "ratio_pct":  {
+
+                                                                                                      }
+                                                                                    }
+                                                                 },
+                                              "endpoints":  {
+                                                                "realtime-ticker":  {
+                                                                                        "requests":  17,
+                                                                                        "status_2xx":  17,
+                                                                                        "status_4xx":  0,
+                                                                                        "status_5xx":  0,
+                                                                                        "five_xx_ratio_pct":  0.0,
+                                                                                        "latency_ms":  {
+                                                                                                           "latest_window_size":  17,
+                                                                                                           "p50":  153.1,
+                                                                                                           "p95":  166.04,
+                                                                                                           "max":  233.49
+                                                                                                       }
+                                                                                    },
+                                                                "whale-feed-aggregate":  {
+                                                                                             "requests":  2,
+                                                                                             "status_2xx":  1,
+                                                                                             "status_4xx":  0,
+                                                                                             "status_5xx":  1,
+                                                                                             "five_xx_ratio_pct":  50.0,
+                                                                                             "latency_ms":  {
+                                                                                                                "latest_window_size":  2,
+                                                                                                                "p50":  86.1,
+                                                                                                                "p95":  86.1,
+                                                                                                                "max":  404.31
+                                                                                                            }
+                                                                                         },
+                                                                "unified-alerts":  {
+                                                                                       "requests":  2,
+                                                                                       "status_2xx":  1,
+                                                                                       "status_4xx":  0,
+                                                                                       "status_5xx":  1,
+                                                                                       "five_xx_ratio_pct":  50.0,
+                                                                                       "latency_ms":  {
+                                                                                                          "latest_window_size":  2,
+                                                                                                          "p50":  271.29,
+                                                                                                          "p95":  271.29,
+                                                                                                          "max":  285.17
+                                                                                                      }
+                                                                                   }
+                                                            },
+                                              "fallback_breakdown":  {
+                                                                         "whale-feed-aggregate":  {
+                                                                                                      "intraday_tick_db":  1
+                                                                                                  }
+                                                                     },
+                                              "external_timeout_breakdown":  {
+
+                                                                             }
+                                          },
+                                 "status":  200
+                             }
+}

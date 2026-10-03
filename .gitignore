@@ -1,0 +1,104 @@
+# ── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# ── Django ───────────────────────────────────────────────────────────────────
+backend/db.sqlite3
+backend/db.sqlite3-journal
+backend/celerybeat-schedule
+backend/celerybeat-schedule-shm
+backend/celerybeat-schedule-wal
+packages/core/backend/celerybeat-schedule
+packages/core/backend/celerybeat-schedule-shm
+packages/core/backend/celerybeat-schedule-wal
+backend/staticfiles/
+packages/core/backend/src/staticfiles/
+backend/mediafiles/
+backend/*.log
+
+# ── Environment / Secrets ────────────────────────────────────────────────────
+backend/.env
+backend/.env.dev
+backend/.env.local
+backend/.env.staging
+backend/.env.production
+frontend/.env.local
+frontend/.env.*.local
+.env
+.env.local
+.env.*.local
+.env.production
+.env.backend.production
+.env.saas-prod
+# Secret thật trong file env compose (chua P0-SEC-01: file nay tung duoc track
+# va chua DNSE_CREDENTIAL_FERNET_KEY hop le + 8 secret khac). File `.example`
+# van duoc track de CI/doc dung.
+compose*.env
+!compose*.env.example
+
+# ── Node / React ─────────────────────────────────────────────────────────────
+node_modules/
+/package.json
+/package-lock.json
+packages/vip-app/local-backend/data/
+frontend/build/
+frontend/.pnp
+frontend/.pnp.js
+frontend/coverage/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.eslintcache
+
+# ── Playwright / Test artifacts ─────────────────────────────────────────────
+packages/web/test-results/
+packages/web/playwright-report/
+
+# ── Junk backup copies (Windows Explorer duplicates, temp files) ────────────
+packages/web/src/components/dashboard/* (1).*
+packages/web/src/layouts/**/* (1).*
+packages/web/src/utils/dashboardSymbols.js
+packages/web/vite (1).config.ts
+packages/web/vite.config.ts.timestamp-*.mjs
+
+# ── OS / Editor ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/settings.json
+*.code-workspace
+*.swp
+*.swo
+*~
+opennews-main/
+
+# ── Test / Coverage ──────────────────────────────────────────────────────────
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+
+# ── Local developer scratch files ─────────────────────────────────────────────
+scratch/
+.agents/
+.blackbox/
+
+# ── Build Logs & Artifacts ───────────────────────────────────────────────────
+/*.log
+/build_log*.txt
+/*.tar
+/*.bundle
+

@@ -1,0 +1,146 @@
+openapi: 3.0.3
+info:
+  title: VNInvest Tenant Admin API - Core Schemas
+  version: 1.0.0
+  description: Shared schemas, error models, and pagination for all Tenant Admin endpoints.
+
+components:
+  schemas:
+    # ==========================================
+    # Standard Error Response (RFC 7807 style)
+    # ==========================================
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code (see constants)
+              example: TENANT_HEADER_MISSING
+            message:
+              type: string
+              description: Human-readable message
+              example: Header X-Tenant-ID is required
+            request_id:
+              type: string
+              format: uuid
+              description: Correlation ID for debugging
+              example: "550e8400-e29b-41d4-a716-446655440000"
+            details:
+              type: object
+              description: Optional structured details (validation errors, etc.)
+              example: { "field": "scopes", "issue": "invalid_policy_code" }
+
+    # ==========================================
+    # Cursor Pagination (CoreCursorPagination)
+    # ==========================================
+    CursorPage:
+      type: object
+      required: [results, next, previous]
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+        next:
+          type: string
+          format: uri
+          nullable: true
+          description: URL for next page (opaque cursor)
+        previous:
+          type: string
+          format: uri
+          nullable: true
+          description: URL for previous page
+
+    CursorPageMeta:
+      type: object
+      properties:
+        page_size:
+          type: integer
+          default: 20
+          maximum: 100
+        ordering:
+          type: string
+          default: "-created_at"
+          enum: ["-created_at", "created_at"]
+
+    # ==========================================
+    # Tenant Reference (Minimal)
+    # ==========================================
+    TenantRef:
+      type: object
+      required: [id, name, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED, DEPROVISIONED]
+
+    # ==========================================
+    # User Reference (Minimal)
+    # ==========================================
+    UserRef:
+      type: object
+      required: [id, username, email]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        full_name:
+          type: string
+          nullable: true
+
+    # ==========================================
+    # Policy Codes (Reference 05-CONSTANTS-ENUMS.md)
+    # ==========================================
+    PolicyCode:
+      type: string
+      enum:
+        - pol_market_read
+        - pol_signals_read
+        - pol_ai_invoke
+        - pol_manage_pats
+        - pol_manage_service_accounts
+        - pol_manage_tenant
+
+    # ==========================================
+    # Role & Status Enums
+    # ==========================================
+    TenantRole:
+      type: string
+      enum: [OWNER, ADMIN, MEMBER, VIEWER]
+
+    TenantMemberStatus:
+      type: string
+      enum: [ACTIVE, INVITED, SUSPENDED, REVOKED]
+
+    TenantStatus:
+      type: string
+      enum: [ACTIVE, SUSPENDED, DEPROVISIONED]
+
+    PlanTier:
+      type: string
+      enum: [STARTER, PRO, ENTERPRISE]
+
+    # ==========================================
+    # CIDR Block (for PAT IP Whitelist)
+    # ==========================================
+    CIDRBlock:
+      type: string
+      pattern: '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))?$'
+      description: IPv4 CIDR notation (e.g., 192.168.1.0/24, 1.2.3.4/32)
+      example: "203.0.113.0/24"

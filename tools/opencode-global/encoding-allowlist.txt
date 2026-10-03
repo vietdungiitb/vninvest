@@ -1,0 +1,14 @@
+# File CÓ U+FFFD mot cach CO Y — encoding gate se bo qua, nhung van IN RA
+# hang ALLOW de nhin thay (khong bao gio im lang bo qua).
+#
+# Tien do: 2 nguon — (1) tai lieu trich dan chuoi mojibake lam bang chung,
+# (2) file la mo ta cua chinh loi encoding nen phai giu nguyen ky tu goc.
+#
+# MOI file vo day deu phai kem LY DO. Xoa file khoi danh sach -> encoding gate
+# FAIL neu con U+FFFD, tuc danh sach khong the dung de giu mot loi that.
+#
+# Khong duoc them file vao day de "cho gate xanh".
+
+docs/AUDIT_UIUX_DASHBOARD_20260926.md   | 2 | trich dan U+FFFD trong ban thao de chung minh loai artifact doc-file (L131)
+docs/AUDIT_UIUX_VERIFY_20260926.md      | 2 | trich dan U+FFFD trong tai lieu de chung minh hau qua doc file qua tool (L100)
+docs/IMPLEMENTATION_PLAN_SCREENER_P0_20260913.md | 1 | trich dang mojibake that `M?u l?c c? s?n` lam bang chung P0.5 (L24)

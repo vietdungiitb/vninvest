@@ -1,0 +1,205 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: vninvest-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: vninvest-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vninvest-backend
+    restart: unless-stopped
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: ${DJANGO_DEBUG}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
+      DJANGO_SECURE_SSL_REDIRECT: "False"
+      DB_ENGINE: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
+      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      CACHE_REDIS_URL: redis://redis:6379/2
+      REALTIME_REDIS_URL: redis://redis:6379/0
+      REALTIME_CHANNEL_LAYER: redis
+      REALTIME_ENABLED: ${REALTIME_ENABLED}
+      WATCHLIST_SYNC_ENABLED: ${WATCHLIST_SYNC_ENABLED}
+      WATCHLIST_SYNC_MINUTES: ${WATCHLIST_SYNC_MINUTES}
+      WATCHLIST_SYNC_DAYS: ${WATCHLIST_SYNC_DAYS}
+      ENABLE_NEW_MARKET_VIEWS: ${ENABLE_NEW_MARKET_VIEWS}
+      ENABLE_NEW_TRADING_VIEWS: ${ENABLE_NEW_TRADING_VIEWS}
+      OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED: ${OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED}
+      OPEN_CORE_COMMUNITY_API_CALLS_PER_DAY: ${OPEN_CORE_COMMUNITY_API_CALLS_PER_DAY}
+      OPEN_CORE_COMMUNITY_AI_REGENERATE_PER_DAY: ${OPEN_CORE_COMMUNITY_AI_REGENERATE_PER_DAY}
+      OPEN_CORE_PRO_INDIVIDUAL_API_CALLS_PER_DAY: ${OPEN_CORE_PRO_INDIVIDUAL_API_CALLS_PER_DAY}
+      OPEN_CORE_PRO_INDIVIDUAL_AI_REGENERATE_PER_DAY: ${OPEN_CORE_PRO_INDIVIDUAL_AI_REGENERATE_PER_DAY}
+      OPEN_CORE_PRO_TEAM_API_CALLS_PER_DAY: ${OPEN_CORE_PRO_TEAM_API_CALLS_PER_DAY}
+      OPEN_CORE_PRO_TEAM_AI_REGENERATE_PER_DAY: ${OPEN_CORE_PRO_TEAM_AI_REGENERATE_PER_DAY}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["/bin/sh", "/app/entrypoint.sh"]
+    expose:
+      - "8000"
+
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vninvest-celery-worker
+    restart: unless-stopped
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: ${DJANGO_DEBUG}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
+      DJANGO_SECURE_SSL_REDIRECT: "False"
+      DB_ENGINE: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
+      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      CACHE_REDIS_URL: redis://redis:6379/2
+      REALTIME_REDIS_URL: redis://redis:6379/0
+      REALTIME_CHANNEL_LAYER: redis
+      REALTIME_ENABLED: ${REALTIME_ENABLED}
+      WATCHLIST_SYNC_ENABLED: ${WATCHLIST_SYNC_ENABLED}
+      WATCHLIST_SYNC_MINUTES: ${WATCHLIST_SYNC_MINUTES}
+      WATCHLIST_SYNC_DAYS: ${WATCHLIST_SYNC_DAYS}
+      ENABLE_NEW_MARKET_VIEWS: ${ENABLE_NEW_MARKET_VIEWS}
+      ENABLE_NEW_TRADING_VIEWS: ${ENABLE_NEW_TRADING_VIEWS}
+      OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED: ${OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED}
+      OPEN_CORE_COMMUNITY_API_CALLS_PER_DAY: ${OPEN_CORE_COMMUNITY_API_CALLS_PER_DAY}
+      OPEN_CORE_COMMUNITY_AI_REGENERATE_PER_DAY: ${OPEN_CORE_COMMUNITY_AI_REGENERATE_PER_DAY}
+      OPEN_CORE_PRO_INDIVIDUAL_API_CALLS_PER_DAY: ${OPEN_CORE_PRO_INDIVIDUAL_API_CALLS_PER_DAY}
+      OPEN_CORE_PRO_INDIVIDUAL_AI_REGENERATE_PER_DAY: ${OPEN_CORE_PRO_INDIVIDUAL_AI_REGENERATE_PER_DAY}
+      OPEN_CORE_PRO_TEAM_API_CALLS_PER_DAY: ${OPEN_CORE_PRO_TEAM_API_CALLS_PER_DAY}
+      OPEN_CORE_PRO_TEAM_AI_REGENERATE_PER_DAY: ${OPEN_CORE_PRO_TEAM_AI_REGENERATE_PER_DAY}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["celery", "-A", "config", "worker", "-l", "info"]
+
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vninvest-celery-beat
+    restart: unless-stopped
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: ${DJANGO_DEBUG}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
+      DJANGO_SECURE_SSL_REDIRECT: "False"
+      DB_ENGINE: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
+      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      CACHE_REDIS_URL: redis://redis:6379/2
+      REALTIME_REDIS_URL: redis://redis:6379/0
+      REALTIME_CHANNEL_LAYER: redis
+      REALTIME_ENABLED: ${REALTIME_ENABLED}
+      WATCHLIST_SYNC_ENABLED: ${WATCHLIST_SYNC_ENABLED}
+      WATCHLIST_SYNC_MINUTES: ${WATCHLIST_SYNC_MINUTES}
+      WATCHLIST_SYNC_DAYS: ${WATCHLIST_SYNC_DAYS}
+      ENABLE_NEW_MARKET_VIEWS: ${ENABLE_NEW_MARKET_VIEWS}
+      ENABLE_NEW_TRADING_VIEWS: ${ENABLE_NEW_TRADING_VIEWS}
+      OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED: ${OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED}
+      OPEN_CORE_COMMUNITY_API_CALLS_PER_DAY: ${OPEN_CORE_COMMUNITY_API_CALLS_PER_DAY}
+      OPEN_CORE_COMMUNITY_AI_REGENERATE_PER_DAY: ${OPEN_CORE_COMMUNITY_AI_REGENERATE_PER_DAY}
+      OPEN_CORE_PRO_INDIVIDUAL_API_CALLS_PER_DAY: ${OPEN_CORE_PRO_INDIVIDUAL_API_CALLS_PER_DAY}
+      OPEN_CORE_PRO_INDIVIDUAL_AI_REGENERATE_PER_DAY: ${OPEN_CORE_PRO_INDIVIDUAL_AI_REGENERATE_PER_DAY}
+      OPEN_CORE_PRO_TEAM_API_CALLS_PER_DAY: ${OPEN_CORE_PRO_TEAM_API_CALLS_PER_DAY}
+      OPEN_CORE_PRO_TEAM_AI_REGENERATE_PER_DAY: ${OPEN_CORE_PRO_TEAM_AI_REGENERATE_PER_DAY}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["celery", "-A", "config", "beat", "-l", "info"]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_BASE_URL: /api
+    container_name: vninvest-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    expose:
+      - "80"
+
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: vninvest-caddy
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:

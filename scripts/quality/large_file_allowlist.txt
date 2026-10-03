@@ -1,0 +1,18 @@
+# Baseline legacy files temporarily allowed over fail threshold.
+# Keep this list short and remove entries as files are refactored.
+backend/portfolio/views.py
+backend/portfolio/models.py
+backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py
+backend/portfolio/market_data_service.py
+backend/portfolio/tasks.py
+backend/portfolio/admin.py
+backend/portfolio/services.py
+frontend/src/pages/StockDetail.jsx
+frontend/src/pages/Watchlist.jsx
+frontend/src/pages/AdminOps.jsx
+frontend/src/pages/WhaleAlertsHub.jsx
+frontend/src/components/DashboardRealtimePanel.jsx
+frontend/src/i18n/vi.js
+frontend/src/i18n/en.js
+backend/portfolio/tasks_prefetch.py
+backend/portfolio/ai_advisory_helpers.py

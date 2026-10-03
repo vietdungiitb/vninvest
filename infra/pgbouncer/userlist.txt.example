@@ -1,0 +1,11 @@
+# PgBouncer userlist
+# Format: "username" "md5hash_or_password"
+# For production: replace with md5 hashes - echo -n "passwordusername" | md5sum
+# md5 prefix required: "md5" + md5("password"+"username")
+#
+# Example (DO NOT use plain passwords in production):
+# "vninvest" "md5<md5hash>"
+# "postgres" "md5<md5hash>"
+#
+# Generate:
+#   python3 -c "import hashlib; print('md5' + hashlib.md5(b'${CORE_DB_PASSWORD}vninvest').hexdigest())"

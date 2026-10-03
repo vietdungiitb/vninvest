@@ -1,0 +1,9 @@
+# packages/web/.dockerignore
+# Excludes large directories from Docker build context
+
+node_modules/
+dist/
+coverage/
+*.log
+.env
+.env.*

@@ -1,0 +1,18 @@
+Track,TaskID,TaskName,Owner,EstimateDays,Dependency,Priority,SprintDay,Status,Acceptance
+A,A1.1,Define deterministic event key spec,BE-Lead,1.0,,P0,Day2,Done,Spec approved by BE QA FE
+A,A1.2,Implement stable event_id mapping,BE-Lead,1.0,A1.1,P0,Day6,Done,Event id stable across repeated fetches
+A,A2.1,Define cursor v2 contract,BE-Lead,1.0,,P0,Day3,Done,Contract reviewed by QA FE
+A,A2.2,Implement cursor tie-breaker deterministic logic,BE-Lead,1.0,A2.1,P0,Day6,Done,5-page traversal no duplicate missing
+A,A2.3,Contract parity validation across sources,QA-Lead,0.5,A2.2,P0,Day8,Done,Matrix signed off
+B,B1.1,Create dark-flow severity rulebook v1,PM-Lead,1.0,,P0,Day4,Done,Rulebook approved PM QA BE
+B,B1.2,Implement severity mapper and metadata trace,BE-Lead,1.0,B1.1,P0,Day7,Done,Severity and rationale persisted correctly
+B,B1.3,Manual sample validation pack 30 events,QA-Lead,0.5,B1.2,P0,Day8,Done,Validation notes completed
+QA,QA1.1,Build cursor regression checklist,QA-Lead,0.5,A2.1,P0,Day5,Done,Checklist ready before implementation complete
+QA,QA1.2,Run contract and paging regression,QA-Lead,1.0,A2.3,P0,Day8,Done,Regression pass report published
+QA,QA1.3,Run severity regression and compare baseline,QA-Lead,0.5,B1.3,P0,Day9,Done,Before after delta documented
+OPS,OBS1.1,Capture baseline KPI on pilot symbols,DevOps-Lead,0.5,,P1,Day1,Done,Baseline metrics frozen
+OPS,OBS1.2,Capture post-change KPI and publish delta,DevOps-Lead,0.5,"A2.3;B1.3",P1,Day9,Done,KPI delta report published
+PM,PM1.1,Scope freeze and owner lock,PM-Lead,0.5,,P0,Day1,Done,Scope lock approved
+PM,PM1.2,Gate G1 review and decision log,PM-Lead,0.5,"A1.1;A2.1;B1.1",P0,Day5,Done,G1 log published
+PM,PM1.3,Gate G2 closeout and roadmap update,PM-Lead,0.5,"QA1.2;QA1.3;OBS1.2",P0,Day10,Done,G2 pass and roadmap synced
+FE,FE1.1,Validate FE parsing with cursor v2 contract,FE-Lead,0.5,A2.1,P1,Day7,Done,No FE contract break on staging

@@ -1,0 +1,46 @@
+﻿{
+    "generated_at":  "2026-04-12T07:45:41.1048442+07:00",
+    "baseline_summary_path":  "C:\\Mujoco Projects\\vninvest\\docs\\ops-evidence\\prefetch-policy-baseline\\20260412-074032\\baseline-summary.json",
+    "gate_b2_ready":  false,
+    "checks":  [
+                   {
+                       "key":  "auth_enabled",
+                       "title":  "Auth enabled during baseline capture",
+                       "expected":  "true",
+                       "actual":  false,
+                       "pass":  false
+                   },
+                   {
+                       "key":  "baseline_429_rate",
+                       "title":  "Baseline 429 rate captured",
+                       "expected":  "non-null",
+                       "actual":  null,
+                       "pass":  false
+                   },
+                   {
+                       "key":  "baseline_cooldown_events",
+                       "title":  "Baseline cooldown events captured",
+                       "expected":  "non-null",
+                       "actual":  null,
+                       "pass":  false
+                   },
+                   {
+                       "key":  "baseline_freshness",
+                       "title":  "Baseline freshness captured",
+                       "expected":  "non-null",
+                       "actual":  0,
+                       "pass":  true
+                   },
+                   {
+                       "key":  "baseline_latency_p95",
+                       "title":  "Baseline p95 latency endpoints captured",
+                       "expected":  "prefetch + market-observability + admin-ops-stats non-null",
+                       "actual":  {
+                                      "prefetch_health":  2035.92,
+                                      "market_observability":  2025.51,
+                                      "admin_ops_stats":  null
+                                  },
+                       "pass":  false
+                   }
+               ]
+}

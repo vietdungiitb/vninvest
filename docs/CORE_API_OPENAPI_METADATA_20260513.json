@@ -1,0 +1,603 @@
+# Core API Surface Reference (OpenAPI-Compatible Metadata)
+**Document**: CORE_API_OPENAPI_METADATA_20260513.json  
+**Format**: JSON (OpenAPI 3.0 subset)  
+**Purpose**: For SDK generation, IDE autocomplete, and integration discovery
+
+---
+
+```json
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "VNInvest Core API",
+    "version": "1.0.0",
+    "description": "Unified API for subscribed frontend applications integrating with core-api",
+    "contact": {
+      "name": "API Support",
+      "email": "api-support@vninvest.com"
+    },
+    "license": {
+      "name": "Proprietary",
+      "url": "https://vninvest.com/license"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://core-api.vninvest.com",
+      "description": "Production API",
+      "variables": {}
+    },
+    {
+      "url": "http://localhost:8000",
+      "description": "Development API",
+      "variables": {}
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "custom",
+        "description": "Bearer token format: Bearer vni_<random_base64_string>"
+      }
+    },
+    "schemas": {
+      "Ticker": {
+        "type": "object",
+        "required": ["symbol", "price"],
+        "properties": {
+          "symbol": { "type": "string", "example": "VRE" },
+          "price": { "type": "string", "example": "94.50" },
+          "current_price": { "type": "string" },
+          "price_change": { "type": "string" },
+          "price_change_pct": { "type": "string" },
+          "change_pct": { "type": "number", "example": 2.34 },
+          "volume": { "type": "integer", "example": 5000000 },
+          "market_status": { "type": "string", "enum": ["open", "closed"] },
+          "stale": { "type": "boolean" },
+          "source": { "type": "string" },
+          "fetched_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Portfolio": {
+        "type": "object",
+        "required": ["portfolio_id", "name"],
+        "properties": {
+          "portfolio_id": { "type": "integer" },
+          "name": { "type": "string" },
+          "status": { "type": "string", "enum": ["active", "archived"] },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Advisory": {
+        "type": "object",
+        "required": ["advisory_id", "symbol", "session_date"],
+        "properties": {
+          "advisory_id": { "type": "integer" },
+          "symbol": { "type": "string" },
+          "session_date": { "type": "string", "format": "date" },
+          "signals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": { "type": "string" },
+                "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+                "rationale": { "type": "string" }
+              }
+            }
+          },
+          "recommendation": { "type": "string", "enum": ["buy", "hold", "sell"] },
+          "generated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "UnifiedAlert": {
+        "type": "object",
+        "required": ["alert_id", "alert_type", "symbol"],
+        "properties": {
+          "alert_id": { "type": "string" },
+          "alert_type": { "type": "string", "enum": ["whale", "dark_flow", "macro"] },
+          "symbol": { "type": "string" },
+          "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+          "triggered_at": { "type": "string", "format": "date-time" },
+          "session_date": { "type": "string", "format": "date" }
+        }
+      },
+      "PaginatedResponse": {
+        "type": "object",
+        "properties": {
+          "results": { "type": "array" },
+          "cursor": { "type": "string" },
+          "page_size": { "type": "integer" },
+          "total": { "type": "integer" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": ["detail"],
+        "properties": {
+          "detail": { "type": "string" },
+          "code": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Invalid or missing authentication token",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "detail": "Invalid or revoked PAT", "code": "invalid_token" }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "User lacks permission for this resource",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "detail": "Feature requires Pro plan", "code": "plan_required" }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "detail": "No snapshot found for VRE", "code": "not_found" }
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "Request quota exceeded",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "detail": "Rate limit exceeded", "code": "rate_limit" }
+          }
+        },
+        "headers": {
+          "X-RateLimit-Limit": { "schema": { "type": "integer" } },
+          "X-RateLimit-Remaining": { "schema": { "type": "integer" } },
+          "X-RateLimit-Reset": { "schema": { "type": "integer" } }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/login/": {
+      "post": {
+        "summary": "Exchange credentials for PAT",
+        "operationId": "auth_login",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "password"],
+                "properties": {
+                  "username": { "type": "string" },
+                  "password": { "type": "string", "format": "password" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": { "type": "string", "description": "PAT secret (shown once)" },
+                    "token_prefix": { "type": "string" },
+                    "tenant": { "type": "object" },
+                    "user": { "type": "object" },
+                    "abilities": { "type": "array" },
+                    "entitlements": { "type": "object" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/auth/profile/": {
+      "get": {
+        "summary": "Get current user profile",
+        "operationId": "auth_profile",
+        "tags": ["Authentication"],
+        "security": [{ "bearerToken": [] }],
+        "responses": {
+          "200": {
+            "description": "User profile with tenant and capabilities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "integer" },
+                    "username": { "type": "string" },
+                    "email": { "type": "string", "format": "email" },
+                    "plan": { "type": "string" },
+                    "abilities": { "type": "array" },
+                    "entitlements": { "type": "object" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/realtime/ticker/{symbol}/": {
+      "get": {
+        "summary": "Get latest snapshot for a symbol",
+        "operationId": "realtime_ticker",
+        "tags": ["Market Serving"],
+        "security": [{ "bearerToken": [] }],
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "VRE"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Latest ticker snapshot",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Ticker" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/api/realtime/intraday/{symbol}/": {
+      "get": {
+        "summary": "Get intraday matched trades",
+        "operationId": "realtime_intraday",
+        "tags": ["Market Serving"],
+        "security": [{ "bearerToken": [] }],
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50, "maximum": 500 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Intraday trades",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "symbol": { "type": "string" },
+                    "trades": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "timestamp": { "type": "string", "format": "date-time" },
+                          "price": { "type": "string" },
+                          "volume": { "type": "integer" },
+                          "side": { "type": "string", "enum": ["buy", "sell"] },
+                          "match_type": { "type": "string" }
+                        }
+                      }
+                    },
+                    "total": { "type": "integer" },
+                    "source": { "type": "string" },
+                    "stale": { "type": "boolean" },
+                    "fetched_at": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/core/v1/advisory/latest/{symbol}/": {
+      "get": {
+        "summary": "Get latest AI advisory for symbol",
+        "operationId": "advisory_latest",
+        "tags": ["Advisory"],
+        "security": [{ "bearerToken": [] }],
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Latest advisory record",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Advisory" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/core/v1/advisory/refresh/{symbol}/": {
+      "post": {
+        "summary": "Trigger manual advisory generation",
+        "operationId": "advisory_refresh",
+        "tags": ["Advisory"],
+        "security": [{ "bearerToken": [] }],
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Task queued for generation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "task_id": { "type": "string" },
+                    "status": { "type": "string", "enum": ["pending", "running", "completed"] },
+                    "queued_at": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/core/v1/workspace/portfolios/": {
+      "get": {
+        "summary": "List user's portfolios",
+        "operationId": "portfolio_list",
+        "tags": ["Portfolio"],
+        "security": [{ "bearerToken": [] }],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of portfolios",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/PaginatedResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "results": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/Portfolio" }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "summary": "Create new portfolio",
+        "operationId": "portfolio_create",
+        "tags": ["Portfolio"],
+        "security": [{ "bearerToken": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "currency": { "type": "string", "default": "VND" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Portfolio created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Portfolio" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/core/v1/signals/unified-alert/": {
+      "get": {
+        "summary": "List unified alerts",
+        "operationId": "signals_unified_alerts",
+        "tags": ["Signal Intelligence"],
+        "security": [{ "bearerToken": [] }],
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "alert_type",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["whale", "dark_flow", "macro"] }
+          },
+          {
+            "name": "severity",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["low", "medium", "high", "critical"] }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of alerts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/PaginatedResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "results": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/UnifiedAlert" }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/core/v1/partner/usage/meters/": {
+      "get": {
+        "summary": "Get current usage metrics",
+        "operationId": "partner_usage_meters",
+        "tags": ["Partner"],
+        "security": [{ "bearerToken": [] }],
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["day", "month"], "default": "day" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Usage meters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "metric": { "type": "string" },
+                          "value": { "type": "integer" },
+                          "limit": { "type": "integer" },
+                          "percent_used": { "type": "number" }
+                        }
+                      }
+                    },
+                    "period": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    }
+  }
+}
+```
+
+---
+
+## Endpoint Summary Table (Machine-Readable Format)
+
+### CSV Export (For Spreadsheets)
+```csv
+Feature,Endpoint,Method,Auth,Rate_Limit_Plan,Parameters,Requires_Plan
+Authentication,/api/auth/login/,POST,None,None,username|password,free
+Authentication,/api/auth/profile/,GET,PAT,1000|10000|100000,none,free
+Market Serving,/api/realtime/ticker/{symbol}/,GET,PAT,1000|10000|100000,symbol,free
+Market Serving,/api/realtime/intraday/{symbol}/,GET,PAT,1000|10000|100000,symbol|page_size,free
+Advisory,/core/v1/advisory/latest/{symbol}/,GET,PAT,1000|10000|100000,symbol|date,starter
+Advisory,/core/v1/advisory/refresh/{symbol}/,POST,PAT,1000|10000|100000,symbol,starter
+Portfolio,/core/v1/workspace/portfolios/,GET,PAT,1000|10000|100000,cursor|page_size,free
+Portfolio,/core/v1/workspace/portfolios/,POST,PAT,1000|10000|100000,name|currency,free
+Signals,/core/v1/signals/unified-alert/,GET,PAT,1000|10000|100000,symbol|alert_type|severity|cursor,free
+Partner,/core/v1/partner/usage/meters/,GET,PAT,None,period,free
+```
+
+---
+
+**Document Status**: Ready for SDK Generation  
+**Last Updated**: 2026-05-13  
+**Format**: OpenAPI 3.0 Compatible (Subset)

@@ -1,0 +1,401 @@
+import { useState, useEffect, useCallback, lazy, Suspense, memo, createElement } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { coreApiAdapter } from "../adapters/coreApiAdapter.js";
+import { useI18n } from "../context/LangContext.js";
+import { AISettingsErrorBoundary } from "../components/AISettingsErrorBoundary.js";
+import { ShellPanel } from "../components/ShellPageTemplate.js";
+import styles from "../components/aiSettings.module.css";
+import {
+  AICommandCenterForm,
+  AISettings,
+  AICommandCenterTransport,
+  PromptConfigHistoryEntry,
+} from "../components/AICommandCenterForm.js";
+
+const e = createElement;
+
+const LazyAuditLogsPanel = lazy(() =>
+  import("../components/AIAuditLogsPanel.js").then((m) => ({ default: m.AIAuditLogsPanel }))
+);
+
+const SummaryCard = memo(function SummaryCard({ title, value, subtitle }: { title: string; value: string; subtitle: string }) {
+  return e("div", { className: styles.summaryCard }, [
+    e("p", { key: "title", className: styles.summaryLabel }, title),
+    e("p", { key: "value", className: styles.summaryValue }, value),
+    e("p", { key: "sub", className: styles.summarySub }, subtitle),
+  ]);
+});
+
+const adapterTransport: AICommandCenterTransport = {
+  getConfig: () => (coreApiAdapter as any).getAICommandCenterConfig(),
+  updateConfig: (payload) => (coreApiAdapter as any).updateAICommandCenterConfig(payload),
+  testConnection: (payload) => (coreApiAdapter as any).testAICommandCenterConnection(payload),
+};
+
+interface AICommandCenterPageProps {
+  className?: string;
+}
+
+export function AICommandCenterPage({ className = "" }: AICommandCenterPageProps) {
+  const { t, localeTag } = useI18n();
+  const location = useLocation();
+  const [settings, setSettings] = useState<AISettings | null>(null);
+  const [pageError, setPageError] = useState("");
+  const [pageNotice, setPageNotice] = useState("");
+
+  const [aiReady, setAiReady] = useState(false);
+  const [aiConfigMessage, setAiConfigMessage] = useState("");
+  const [refreshIntervalDisplay, setRefreshIntervalDisplay] = useState(24);
+  const [maxAutoRefreshes, setMaxAutoRefreshes] = useState(24);
+  const [maxTokensDisplay, setMaxTokensDisplay] = useState(5000);
+  const [eventGateEnabled, setEventGateEnabled] = useState<boolean | null>(null);
+  const [eventGateSaving, setEventGateSaving] = useState(false);
+
+  const [effectiveSource, setEffectiveSource] = useState("command_center");
+  const [effectiveProvider, setEffectiveProvider] = useState("");
+  const [effectiveModel, setEffectiveModel] = useState("");
+
+  const [promptHistory, setPromptHistory] = useState<PromptConfigHistoryEntry[]>([]);
+  const [promptConfig, setPromptConfig] = useState<Record<string, unknown> | null>(null);
+  const [rollbackBusy, setRollbackBusy] = useState(false);
+  const [refreshAuditKey, setRefreshAuditKey] = useState(0);
+
+  const applySettingsToOverview = useCallback((data: AISettings) => {
+    setSettings(data);
+    setEffectiveSource((data as any).effective_ai_source || "command_center");
+    setEffectiveProvider((data as any).effective_ai_provider || data.ai_provider || "openclaw");
+    setEffectiveModel((data as any).effective_ai_model || data.ai_model || "");
+    setAiReady((data as any).ai_ready ?? false);
+    setAiConfigMessage((data as any).ai_config_message || "");
+    setRefreshIntervalDisplay(Number((data as any).advisory_refresh_interval_hours) || 24);
+    setMaxAutoRefreshes(Number((data as any).advisory_max_auto_refreshes_per_day) || 24);
+    setMaxTokensDisplay(Number((data as any).advisory_max_tokens_per_day) || 5000);
+    const history = (data as any).ai_prompt_config_history;
+    setPromptHistory(Array.isArray(history) ? history : []);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const userConfig = await (coreApiAdapter as any).getUserConfig();
+        if (cancelled) return;
+        const prefs = userConfig?.preferences || {};
+        setEventGateEnabled(prefs.advisory_whale_signal_enabled !== false);
+      } catch {
+        /* silent — event gate optional */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleFormSettingsChange = useCallback(
+    (data: AISettings) => {
+      applySettingsToOverview(data);
+      if (data.ai_prompt_config) setPromptConfig(data.ai_prompt_config);
+    },
+    [applySettingsToOverview]
+  );
+
+  const handleFormSaved = useCallback(
+    (data: AISettings) => {
+      applySettingsToOverview(data);
+      setRefreshAuditKey((k) => k + 1);
+    },
+    [applySettingsToOverview]
+  );
+
+  const handleFormNotice = useCallback((message: string) => {
+    setPageNotice(message);
+    setPageError("");
+    setTimeout(() => setPageNotice(""), 3000);
+  }, []);
+
+  const handleFormError = useCallback((message: string) => {
+    setPageError(message);
+    setPageNotice("");
+  }, []);
+
+  const handleEventGateToggle = async () => {
+    if (eventGateEnabled === null || eventGateSaving) return;
+    setEventGateSaving(true);
+    setPageError("");
+    try {
+      const next = !(eventGateEnabled as boolean);
+      const res = await (coreApiAdapter as any).updateUserConfig({ advisory_whale_signal_enabled: next });
+      setEventGateEnabled(res?.advisory_whale_signal_enabled ?? next);
+    } catch (err: unknown) {
+      setPageError(
+        (err && typeof err === "object" && "message" in err ? (err as Error).message : "") ||
+          t("aiCommandCenter.errorEventGate")
+      );
+    } finally {
+      setEventGateSaving(false);
+    }
+  };
+
+  const handleRollbackPromptConfig = async (version: number) => {
+    if (rollbackBusy) return;
+    setRollbackBusy(true);
+    setPageError("");
+    try {
+      const res = await (coreApiAdapter as any).rollbackAICommandCenterPromptConfig(version);
+      if (res?.ai_prompt_config) setPromptConfig(res.ai_prompt_config);
+      if (Array.isArray(res?.ai_prompt_config_history)) setPromptHistory(res.ai_prompt_config_history);
+      setRefreshAuditKey((k) => k + 1);
+      setPageNotice(t("aiCommandCenter.promptHistoryRestored", { version }));
+      setTimeout(() => setPageNotice(""), 3000);
+    } catch (err: unknown) {
+      setPageError(
+        (err && typeof err === "object" && "message" in err ? (err as Error).message : "") ||
+          t("aiCommandCenter.promptHistoryRestoreError")
+      );
+    } finally {
+      setRollbackBusy(false);
+    }
+  };
+
+  const formTransport = adapterTransport;
+
+  return e(AISettingsErrorBoundary, {
+      fallbackTitle: t("aiCommandCenter.errorBoundaryTitle"),
+      errorMessage: t("aiCommandCenter.unknownError"),
+      retryLabel: t("aiCommandCenter.retryButton")
+    },
+    e("div", { className: "shellPage " + className, style: { display: "flex", flexDirection: "column", gap: "20px", maxWidth: 1200, margin: "0 auto" } }, [
+      e("header", { className: styles.pageHeader },
+        e("div", null, [
+          e("span", { key: "eyebrow", className: styles.pageEyebrow }, t("aiCommandCenter.eyebrow")),
+          e("h1", { key: "title", className: styles.pageTitle }, t("aiCommandCenter.title")),
+          e("p", { key: "desc", className: styles.pageDesc }, t("aiCommandCenter.description")),
+        ])
+      ),
+
+      // B rest: hub subnav — in-page anchors + Agents/Usage routes
+      e("nav", { key: "hub-nav", className: styles.hubNav, "aria-label": t("aiCommandCenter.title") }, [
+        e(Link, {
+          key: "nav-overview",
+          to: { pathname: location.pathname, hash: "#overview" },
+          className: styles.hubNavLink + (location.hash === "#overview" || (!location.hash && location.pathname === "/settings/ai") ? " " + styles.hubNavLinkActive : ""),
+        }, t("aiCommandCenter.tabOverview")),
+        e(Link, {
+          key: "nav-runtime",
+          to: { pathname: location.pathname, hash: "#runtime" },
+          className: styles.hubNavLink + (location.hash === "#runtime" ? " " + styles.hubNavLinkActive : ""),
+        }, t("aiCommandCenter.tabRuntime")),
+        e(Link, {
+          key: "nav-audit",
+          to: { pathname: location.pathname, hash: "#audit" },
+          className: styles.hubNavLink + (location.hash === "#audit" ? " " + styles.hubNavLinkActive : ""),
+        }, t("aiCommandCenter.tabAudit")),
+        e(Link, {
+          key: "nav-agents",
+          to: "/settings/ai/agents",
+          className: styles.hubNavLink + (location.pathname.startsWith("/settings/ai/agents") ? " " + styles.hubNavLinkActive : ""),
+        }, t("aiCommandCenter.tabAgents")),
+        e(Link, {
+          key: "nav-usage",
+          to: "/settings/ai/usage",
+          className: styles.hubNavLink + (location.pathname.startsWith("/settings/ai/usage") ? " " + styles.hubNavLinkActive : ""),
+        }, t("aiCommandCenter.tabUsage")),
+      ]),
+
+      // Summary Cards
+      e("div", { key: "overview-anchor", id: "overview" },
+        e(ShellPanel, { title: t("aiCommandCenter.overview") },
+          e("div", { className: styles.summaryGrid }, [
+            e(SummaryCard, { key: "card-provider", title: t("aiCommandCenter.effectiveProvider"), value: effectiveProvider || "—", subtitle: t("aiCommandCenter.effectiveProviderDesc") }),
+            e(SummaryCard, { key: "card-model", title: t("aiCommandCenter.effectiveModel"), value: effectiveModel || t("aiCommandCenter.needsConfig"), subtitle: t("aiCommandCenter.effectiveModelDesc") }),
+            e(SummaryCard, { key: "card-source", title: t("aiCommandCenter.effectiveSource"), value: effectiveSource, subtitle: t("aiCommandCenter.effectiveSourceDesc") }),
+            e(SummaryCard, { key: "card-status", title: t("aiCommandCenter.runtimeStatus"), value: aiReady ? t("aiCommandCenter.ready") : t("aiCommandCenter.needsConfig"), subtitle: aiReady ? t("aiCommandCenter.readyDesc") : t("aiCommandCenter.needsConfigDesc") }),
+          ])
+        )
+      ),
+
+      // Policy Section
+      e(ShellPanel, { key: "policy", title: t("aiCommandCenter.operationPolicy") },
+        e("div", { className: styles.metricGrid }, [
+          e("div", { key: "pol-gate", className: styles.metricCard }, [
+            e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.eventGate")),
+            e("label", { key: "v", className: styles.toggleRow },
+              e("input", {
+                type: "checkbox",
+                className: styles.checkbox,
+                checked: eventGateEnabled === true,
+                disabled: eventGateEnabled === null || eventGateSaving,
+                onChange: handleEventGateToggle,
+              }),
+              e("span", null,
+                eventGateEnabled === null ? t("aiCommandCenter.gateUnknown") : eventGateEnabled ? t("aiCommandCenter.gateEnabled") : t("aiCommandCenter.gateDisabled")
+              )
+            ),
+          ]),
+          e("div", { key: "pol-refresh", className: styles.metricCard }, [
+            e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.refreshInterval")),
+            e("p", { key: "v", className: styles.metricValue }, `${refreshIntervalDisplay} giờ/lần`),
+          ]),
+          e("div", { key: "pol-auto", className: styles.metricCard }, [
+            e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.autoRefreshPerDay")),
+            e("p", { key: "v", className: styles.metricValue }, `${maxAutoRefreshes}`),
+          ]),
+          e("div", { key: "pol-tokens", className: styles.metricCard }, [
+            e("p", { key: "l", className: styles.metricLabel }, t("aiCommandCenter.tokensPerDay")),
+            e("p", { key: "v", className: styles.metricValue }, `${maxTokensDisplay}`),
+          ]),
+        ]),
+        aiConfigMessage
+          ? e("div", { key: "pol-msg", className: styles.helpText },
+              `${t("aiCommandCenter.configMessagePrefix")} ${aiConfigMessage}`
+            )
+          : null
+      ),
+
+      pageNotice ? e("div", { key: "notice-banner", className: styles.alert + " " + styles.alertSuccess }, pageNotice) : null,
+      pageError ? e("div", { key: "error-banner", className: styles.alert + " " + styles.alertError }, pageError) : null,
+
+      // Runtime config form — shared F8 component
+      e("div", { key: "runtime-anchor", id: "runtime" },
+        e(ShellPanel, { title: t("aiCommandCenter.runtimeConfig") },
+          e(AICommandCenterForm, {
+            key: "ai-cc-form",
+            transport: formTransport,
+            onSettingsChange: handleFormSettingsChange,
+            onSettingsSaved: handleFormSaved,
+            onError: handleFormError,
+            onNotice: handleFormNotice,
+            onPromptConfigChange: setPromptConfig,
+            getExtraPayload: () =>
+              promptConfig ? { ai_prompt_config: promptConfig } : {},
+          })
+        )
+      ),
+
+      settings && settings.fallback_quota_max != null && settings.fallback_quota_max > 0 &&
+        ((settings as any).ai_provider !== "openclaw" && (settings as any).ai_provider !== "local")
+        ? (() => {
+            const quotaRemaining = settings.fallback_quota_remaining ?? 0;
+            const quotaMax = settings.fallback_quota_max || 1;
+            return e(ShellPanel, { key: "quota", title: t("aiCommandCenter.fallbackTitle") },
+            e("div", { className: styles.toolbar }, [
+              e("div", {
+                key: "quota-bar",
+                className: styles.quotaBar
+              }, [
+                e("div", {
+                  style: {
+                    width: `${quotaMax > 0
+                      ? (quotaRemaining / quotaMax) * 100
+                      : 0}%`
+                  } as React.CSSProperties,
+                  className: styles.quotaFill + " " + (quotaRemaining > 0 ? "" : styles.quotaFillEmpty)
+                })
+              ]),
+              e("span", { className: styles.metricLabel },
+                `${quotaRemaining} ${t("aiCommandCenter.quotaUsed")} / ${quotaMax} ${t("aiCommandCenter.quotaUsed")}`
+              )
+            ]),
+            settings.fallback_quota_reset
+              ? e("p", { className: styles.helpText },
+                  `${t("aiCommandCenter.fallbackReset")}: ${new Date(settings.fallback_quota_reset).toLocaleDateString(localeTag)}`)
+              : null,
+            quotaRemaining === 0
+              ? e("p", { className: styles.alert + " " + styles.alertError },
+                  t("aiCommandCenter.fallbackExhausted"))
+              : e("p", { className: styles.helpText },
+                  t("aiCommandCenter.fallbackInfo"))
+          );
+          })()
+        : null,
+
+      // System prompt template viewer (F5)
+      settings
+        ? e(ShellPanel, {
+            key: "system-prompt-panel",
+            title: t("aiCommandCenter.systemPromptTitle"),
+            subtitle: t("aiCommandCenter.systemPromptDesc"),
+          },
+            settings.system_prompt_template
+              ? e("pre", {
+                  key: "template",
+                  "data-testid": "system-prompt-template",
+                  className: styles.helpText,
+                  style: {
+                    whiteSpace: "pre-wrap",
+                    fontFamily: "monospace",
+                    fontSize: 12,
+                    maxHeight: 180,
+                    overflow: "auto",
+                    margin: 0,
+                    padding: 12,
+                    borderRadius: 10,
+                    border: "1px solid var(--ai-border)",
+                    background: "rgba(4, 11, 35, 0.45)",
+                  },
+                }, settings.system_prompt_template)
+              : e("p", { key: "empty", className: styles.empty, "data-testid": "system-prompt-empty" },
+                  t("aiCommandCenter.systemPromptEmpty"))
+          )
+        : null,
+
+      // F7: prompt config version history + rollback
+      e(ShellPanel, {
+        key: "prompt-history-panel",
+        title: t("aiCommandCenter.promptHistoryTitle"),
+        subtitle: t("aiCommandCenter.promptHistoryDesc"),
+      },
+        promptHistory.length === 0
+          ? e("p", { key: "empty", className: styles.empty, "data-testid": "prompt-history-empty" },
+              t("aiCommandCenter.promptHistoryEmpty"))
+          : e("div", { key: "list", className: styles.helpText, "data-testid": "prompt-history-list" },
+              [...promptHistory].reverse().map((entry) => {
+                const saved = entry.saved_at ? new Date(entry.saved_at) : null;
+                const savedLabel = saved && !Number.isNaN(saved.getTime())
+                  ? saved.toLocaleString(localeTag)
+                  : "";
+                return e("div", {
+                  key: String(entry.version),
+                  style: {
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    padding: "6px 0",
+                    borderBottom: "1px solid var(--ai-border)",
+                  },
+                }, [
+                  e("span", { key: "meta" },
+                    `${t("aiCommandCenter.promptHistoryVersion", { version: entry.version })}`
+                    + (entry.source ? ` · ${entry.source}` : "")
+                    + (savedLabel ? ` · ${savedLabel}` : "")
+                  ),
+                  e("button", {
+                    key: "restore",
+                    type: "button",
+                    className: styles.btn + " " + styles.btnGhost,
+                    disabled: rollbackBusy,
+                    "data-testid": `prompt-history-restore-${entry.version}`,
+                    onClick: () => handleRollbackPromptConfig(entry.version),
+                  }, rollbackBusy
+                    ? t("aiCommandCenter.promptHistoryRestoring")
+                    : t("aiCommandCenter.promptHistoryRestore"))
+                ]);
+              })
+            )
+      ),
+
+      // Audit Logs Section
+      e("div", { key: "audit-anchor", id: "audit" },
+        e(ShellPanel, {
+            title: t("aiCommandCenter.auditLogsTitle"),
+            subtitle: t("aiCommandCenter.auditLogsDesc"),
+          },
+          e(Suspense, { key: "audit-suspense", fallback: e("p", { className: styles.loading }, t("aiCommandCenter.auditLogsLoading")) },
+            e(LazyAuditLogsPanel, { key: `audit-panel-${refreshAuditKey}`, refreshKey: refreshAuditKey })
+          )
+        )
+      ),
+    ])
+  );
+}

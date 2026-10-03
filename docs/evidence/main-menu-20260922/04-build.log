@@ -1,0 +1,110 @@
+
+> @vninvest/web@0.1.0 build
+> tsc && vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32mΓ£ô[39m 3642 modules transformed.
+node_modules/vninvestcharts-widget/dist/index.js (3124:21): Use of eval in "node_modules/vninvestcharts-widget/dist/index.js" is strongly discouraged as it poses security risks and may cause issues with minification.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                                         [39m[1m[2m    1.01 kB[22m[1m[22m[2m Γöé gzip:   0.46 kB[22m
+[2mdist/[22m[35massets/AuthRegisterPage-wQZ72IAH.css               [39m[1m[2m    0.10 kB[22m[1m[22m[2m Γöé gzip:   0.11 kB[22m
+[2mdist/[22m[35massets/dashboard-DmFavXbM.css                      [39m[1m[2m    1.84 kB[22m[1m[22m[2m Γöé gzip:   0.47 kB[22m
+[2mdist/[22m[35massets/AlertCenterPage-CKumkUcS.css                [39m[1m[2m    2.96 kB[22m[1m[22m[2m Γöé gzip:   1.16 kB[22m
+[2mdist/[22m[35massets/UserSettingsPage-DVXZiJQh.css               [39m[1m[2m    4.14 kB[22m[1m[22m[2m Γöé gzip:   1.19 kB[22m
+[2mdist/[22m[35massets/PortfoliosPage-D1FT4n6O.css                 [39m[1m[2m    9.66 kB[22m[1m[22m[2m Γöé gzip:   1.87 kB[22m
+[2mdist/[22m[35massets/WatchlistPage-D4uw6S7f.css                  [39m[1m[2m   13.56 kB[22m[1m[22m[2m Γöé gzip:   2.79 kB[22m
+[2mdist/[22m[35massets/aiSettings-m5CeRVwt.css                     [39m[1m[2m   14.28 kB[22m[1m[22m[2m Γöé gzip:   3.31 kB[22m
+[2mdist/[22m[35massets/TenantAdmin-QyMmGT31.css                    [39m[1m[2m   30.21 kB[22m[1m[22m[2m Γöé gzip:   5.82 kB[22m
+[2mdist/[22m[35massets/ShellStockDetailPage-BksD3sRa.css           [39m[1m[2m   45.10 kB[22m[1m[22m[2m Γöé gzip:   7.86 kB[22m
+[2mdist/[22m[35massets/soc-DkFCBK-T.css                            [39m[1m[2m   69.74 kB[22m[1m[22m[2m Γöé gzip:  11.20 kB[22m
+[2mdist/[22m[35massets/index-BOWygdbO.css                          [39m[1m[2m  146.03 kB[22m[1m[22m[2m Γöé gzip:  23.38 kB[22m
+[2mdist/[22m[35massets/widget-D8O2kztv.css                         [39m[1m[2m  188.74 kB[22m[1m[22m[2m Γöé gzip:  29.15 kB[22m
+[2mdist/[22m[36massets/Can-CQ741uyj.js                             [39m[1m[2m    0.13 kB[22m[1m[22m[2m Γöé gzip:   0.14 kB[22m
+[2mdist/[22m[36massets/BarChart-Bil1_rdI.js                        [39m[1m[2m    0.32 kB[22m[1m[22m[2m Γöé gzip:   0.23 kB[22m
+[2mdist/[22m[36massets/PageErrorBoundary-BIGWBxvs.js               [39m[1m[2m    1.00 kB[22m[1m[22m[2m Γöé gzip:   0.62 kB[22m
+[2mdist/[22m[36massets/ShellEmptyState-enIII9iX.js                 [39m[1m[2m    1.01 kB[22m[1m[22m[2m Γöé gzip:   0.53 kB[22m
+[2mdist/[22m[36massets/providerModels-M_O14Nr6.js                  [39m[1m[2m    1.16 kB[22m[1m[22m[2m Γöé gzip:   0.41 kB[22m
+[2mdist/[22m[36massets/ShellPageTemplate-0Tz201i_.js               [39m[1m[2m    2.19 kB[22m[1m[22m[2m Γöé gzip:   0.90 kB[22m
+[2mdist/[22m[36massets/AuthVerifyEmailPage-BuUx1xOY.js             [39m[1m[2m    2.21 kB[22m[1m[22m[2m Γöé gzip:   1.12 kB[22m
+[2mdist/[22m[36massets/ShellSkeleton-iW4Gr52h.js                   [39m[1m[2m    2.72 kB[22m[1m[22m[2m Γöé gzip:   0.90 kB[22m
+[2mdist/[22m[36massets/UpgradePage-RdUXk_Z9.js                     [39m[1m[2m    2.80 kB[22m[1m[22m[2m Γöé gzip:   1.26 kB[22m
+[2mdist/[22m[36massets/aiSettings.module-C6c2C4aI.js               [39m[1m[2m    3.41 kB[22m[1m[22m[2m Γöé gzip:   1.32 kB[22m
+[2mdist/[22m[36massets/TransactionsPage-CfmoFAye.js                [39m[1m[2m    3.45 kB[22m[1m[22m[2m Γöé gzip:   1.44 kB[22m
+[2mdist/[22m[36massets/ShellSettingsPage-CeYNt4qR.js               [39m[1m[2m    3.55 kB[22m[1m[22m[2m Γöé gzip:   1.76 kB[22m
+[2mdist/[22m[36massets/useSignalStream-BQgNGvgF.js                 [39m[1m[2m    3.61 kB[22m[1m[22m[2m Γöé gzip:   1.38 kB[22m
+[2mdist/[22m[36massets/PolicyCheckboxes-DddahYS9.js                [39m[1m[2m    3.87 kB[22m[1m[22m[2m Γöé gzip:   1.67 kB[22m
+[2mdist/[22m[36massets/TenantAdminSettingsPage-Bc1Kjn26.js         [39m[1m[2m    3.94 kB[22m[1m[22m[2m Γöé gzip:   1.60 kB[22m
+[2mdist/[22m[36massets/AuthResetPasswordPage-Cd6mJUjQ.js           [39m[1m[2m    4.16 kB[22m[1m[22m[2m Γöé gzip:   1.55 kB[22m
+[2mdist/[22m[36massets/AuthLoginPage-D8OIgi_n.js                   [39m[1m[2m    4.53 kB[22m[1m[22m[2m Γöé gzip:   1.66 kB[22m
+[2mdist/[22m[36massets/ShellDashboardPage-8PN_xfwh.js              [39m[1m[2m    4.79 kB[22m[1m[22m[2m Γöé gzip:   2.01 kB[22m
+[2mdist/[22m[36massets/ShellPortfoliosPage-CE-XmgwD.js             [39m[1m[2m    4.83 kB[22m[1m[22m[2m Γöé gzip:   2.05 kB[22m
+[2mdist/[22m[36massets/ShellTransactionsPage-Bm3X8G_x.js           [39m[1m[2m    4.85 kB[22m[1m[22m[2m Γöé gzip:   2.02 kB[22m
+[2mdist/[22m[36massets/coreShellPageHelpers-C7v0mZIz.js            [39m[1m[2m    5.17 kB[22m[1m[22m[2m Γöé gzip:   1.81 kB[22m
+[2mdist/[22m[36massets/TenantAdminCapabilitiesPage-CGX1nozJ.js     [39m[1m[2m    5.30 kB[22m[1m[22m[2m Γöé gzip:   1.94 kB[22m
+[2mdist/[22m[36massets/ShellWatchlistPage-DnhD8ZVc.js              [39m[1m[2m    5.55 kB[22m[1m[22m[2m Γöé gzip:   2.22 kB[22m
+[2mdist/[22m[36massets/bootstrapClient-CmjIjAeh.js                 [39m[1m[2m    5.98 kB[22m[1m[22m[2m Γöé gzip:   1.92 kB[22m
+[2mdist/[22m[36massets/AIUsageAnalyticsPage-BoBRtcpv.js            [39m[1m[2m    6.04 kB[22m[1m[22m[2m Γöé gzip:   2.68 kB[22m
+[2mdist/[22m[36massets/AIAgentFederationPage-vm0vhNQy.js           [39m[1m[2m    6.25 kB[22m[1m[22m[2m Γöé gzip:   2.06 kB[22m
+[2mdist/[22m[36massets/AIAuditLogsPanel-ClpySuTi.js                [39m[1m[2m    6.38 kB[22m[1m[22m[2m Γöé gzip:   2.18 kB[22m
+[2mdist/[22m[36massets/TenantAdminSecurityPage-CG5S-8JF.js         [39m[1m[2m    6.77 kB[22m[1m[22m[2m Γöé gzip:   2.43 kB[22m
+[2mdist/[22m[36massets/AIAdvisoryPromptConfigDrawer-CCj7pjOJ.js    [39m[1m[2m    7.01 kB[22m[1m[22m[2m Γöé gzip:   2.27 kB[22m
+[2mdist/[22m[36massets/TenantAdminUsageHistoryPage-qPIA4ULX.js     [39m[1m[2m    7.34 kB[22m[1m[22m[2m Γöé gzip:   2.35 kB[22m
+[2mdist/[22m[36massets/TenantAdminReportsPage-DEk_Tt3F.js          [39m[1m[2m    7.67 kB[22m[1m[22m[2m Γöé gzip:   2.36 kB[22m
+[2mdist/[22m[36massets/PaymentReturnPage-BNollK9-.js               [39m[1m[2m    7.70 kB[22m[1m[22m[2m Γöé gzip:   2.52 kB[22m
+[2mdist/[22m[36massets/TenantAdminServiceAccountsPage-Buw-pQ_e.js  [39m[1m[2m    7.97 kB[22m[1m[22m[2m Γöé gzip:   2.40 kB[22m
+[2mdist/[22m[36massets/ShellAiCommandCenterPage-ggxKFD-w.js        [39m[1m[2m    8.69 kB[22m[1m[22m[2m Γöé gzip:   3.77 kB[22m
+[2mdist/[22m[36massets/TenantAdminRolesPage-DQBNTqcr.js            [39m[1m[2m    8.80 kB[22m[1m[22m[2m Γöé gzip:   2.96 kB[22m
+[2mdist/[22m[36massets/TenantAdminSSOPage-1hvWnVQs.js              [39m[1m[2m    8.93 kB[22m[1m[22m[2m Γöé gzip:   2.58 kB[22m
+[2mdist/[22m[36massets/ShellAiAdvisoryPage-yx74TOJ0.js             [39m[1m[2m    8.96 kB[22m[1m[22m[2m Γöé gzip:   3.59 kB[22m
+[2mdist/[22m[36massets/AdminCoreOverviewPage-C0Y83b4I.js           [39m[1m[2m    9.00 kB[22m[1m[22m[2m Γöé gzip:   2.84 kB[22m
+[2mdist/[22m[36massets/AdminCrawlControlPage-DaKMzJTG.js           [39m[1m[2m    9.06 kB[22m[1m[22m[2m Γöé gzip:   2.99 kB[22m
+[2mdist/[22m[36massets/AdminCoreBillingPage-BWiZ2M1n.js            [39m[1m[2m    9.44 kB[22m[1m[22m[2m Γöé gzip:   2.93 kB[22m
+[2mdist/[22m[36massets/UserSettingsPage-RW4XycBs.js                [39m[1m[2m    9.62 kB[22m[1m[22m[2m Γöé gzip:   3.20 kB[22m
+[2mdist/[22m[36massets/VipLocalControlPage-Ck2Pppfi.js             [39m[1m[2m   10.35 kB[22m[1m[22m[2m Γöé gzip:   3.69 kB[22m
+[2mdist/[22m[36massets/ShellMailConfigPage-D2PiIvq9.js             [39m[1m[2m   10.40 kB[22m[1m[22m[2m Γöé gzip:   3.53 kB[22m
+[2mdist/[22m[36massets/DashboardPage-VONOyvQw.js                   [39m[1m[2m   10.70 kB[22m[1m[22m[2m Γöé gzip:   3.62 kB[22m
+[2mdist/[22m[36massets/TenantAdminMembersPage-CyNIdl_H.js          [39m[1m[2m   10.82 kB[22m[1m[22m[2m Γöé gzip:   2.89 kB[22m
+[2mdist/[22m[36massets/AreaChart-BwV_jjWu.js                       [39m[1m[2m   11.02 kB[22m[1m[22m[2m Γöé gzip:   4.08 kB[22m
+[2mdist/[22m[36massets/BillingCenterPage-BZ1N7ooK.js               [39m[1m[2m   12.85 kB[22m[1m[22m[2m Γöé gzip:   3.94 kB[22m
+[2mdist/[22m[36massets/AdminCoreUsagePage-vjpU3n7Z.js              [39m[1m[2m   13.05 kB[22m[1m[22m[2m Γöé gzip:   3.59 kB[22m
+[2mdist/[22m[36massets/AuthRegisterPage-DtRxH7bX.js                [39m[1m[2m   13.11 kB[22m[1m[22m[2m Γöé gzip:   4.52 kB[22m
+[2mdist/[22m[36massets/TenantAdminWebhooksPage-aa4v_bW8.js         [39m[1m[2m   13.13 kB[22m[1m[22m[2m Γöé gzip:   3.89 kB[22m
+[2mdist/[22m[36massets/PortfoliosPage-B_DpAuGC.js                  [39m[1m[2m   13.20 kB[22m[1m[22m[2m Γöé gzip:   4.07 kB[22m
+[2mdist/[22m[36massets/AdminCoreTenantsPage-C7fgP5YR.js            [39m[1m[2m   13.75 kB[22m[1m[22m[2m Γöé gzip:   3.18 kB[22m
+[2mdist/[22m[36massets/TenantAdminBillingPage-A4F2kaEo.js          [39m[1m[2m   14.03 kB[22m[1m[22m[2m Γöé gzip:   3.93 kB[22m
+[2mdist/[22m[36massets/TenantAdmin.module-hI7LCoiF.js              [39m[1m[2m   14.21 kB[22m[1m[22m[2m Γöé gzip:   4.31 kB[22m
+[2mdist/[22m[36massets/AICommandCenterPage-Criwurx_.js             [39m[1m[2m   15.32 kB[22m[1m[22m[2m Γöé gzip:   5.31 kB[22m
+[2mdist/[22m[36massets/AdminCoreJobsPage-R0JsTplQ.js               [39m[1m[2m   16.62 kB[22m[1m[22m[2m Γöé gzip:   4.22 kB[22m
+[2mdist/[22m[36massets/TenantAdminUsagePage-OICq8h7n.js            [39m[1m[2m   16.80 kB[22m[1m[22m[2m Γöé gzip:   4.23 kB[22m
+[2mdist/[22m[36massets/soc.module-D9w8icGu.js                      [39m[1m[2m   17.35 kB[22m[1m[22m[2m Γöé gzip:   4.46 kB[22m
+[2mdist/[22m[36massets/AdminCoreServiceAccountsPage-BNbZOQiG.js    [39m[1m[2m   18.09 kB[22m[1m[22m[2m Γöé gzip:   3.63 kB[22m
+[2mdist/[22m[36massets/TenantAdminPATsPage-woSnPT4g.js             [39m[1m[2m   19.37 kB[22m[1m[22m[2m Γöé gzip:   5.16 kB[22m
+[2mdist/[22m[36massets/AdminCoreAuditTracePage-tj0gYVmP.js         [39m[1m[2m   19.72 kB[22m[1m[22m[2m Γöé gzip:   4.42 kB[22m
+[2mdist/[22m[36massets/AdminCorePATsPage-CluAjC_5.js               [39m[1m[2m   20.28 kB[22m[1m[22m[2m Γöé gzip:   4.05 kB[22m
+[2mdist/[22m[36massets/SupportPage-Dwr-2tie.js                     [39m[1m[2m   23.25 kB[22m[1m[22m[2m Γöé gzip:   6.35 kB[22m
+[2mdist/[22m[36massets/TenantAdminHomePage-BnV-kAZB.js             [39m[1m[2m   24.64 kB[22m[1m[22m[2m Γöé gzip:   7.92 kB[22m
+[2mdist/[22m[36massets/TenantAdminAuditLogsPage-CiWRQgTK.js        [39m[1m[2m   34.66 kB[22m[1m[22m[2m Γöé gzip:   9.77 kB[22m
+[2mdist/[22m[36massets/AdvertisingAdminPage-DokLf3K0.js            [39m[1m[2m   39.67 kB[22m[1m[22m[2m Γöé gzip:   8.97 kB[22m
+[2mdist/[22m[36massets/WhaleAdvisoryPage-D8X3Hwpa.js               [39m[1m[2m   41.05 kB[22m[1m[22m[2m Γöé gzip:  12.21 kB[22m
+[2mdist/[22m[36massets/AlertCenterPage-By6B0cTC.js                 [39m[1m[2m   53.07 kB[22m[1m[22m[2m Γöé gzip:  15.11 kB[22m
+[2mdist/[22m[36massets/ShellStockDetailPage-LR2RPANr.js            [39m[1m[2m   65.16 kB[22m[1m[22m[2m Γöé gzip:  19.44 kB[22m
+[2mdist/[22m[36massets/WatchlistPage-BORPIW_8.js                   [39m[1m[2m   67.77 kB[22m[1m[22m[2m Γöé gzip:  16.96 kB[22m
+[2mdist/[22m[36massets/ScreenerPage-BiuFdkjD.js                    [39m[1m[2m   68.47 kB[22m[1m[22m[2m Γöé gzip:  16.12 kB[22m
+[2mdist/[22m[36massets/schemas-DXK6l43G.js                         [39m[1m[2m   72.31 kB[22m[1m[22m[2m Γöé gzip:  19.29 kB[22m
+[2mdist/[22m[36massets/tanstack-BOrjZ_gX.js                        [39m[1m[2m   95.70 kB[22m[1m[22m[2m Γöé gzip:  26.51 kB[22m
+[2mdist/[22m[36massets/index-DSPvIZuY.js                           [39m[1m[2m  187.22 kB[22m[1m[22m[2m Γöé gzip:  59.65 kB[22m
+[2mdist/[22m[36massets/ShellOperationsCenterPage-dHK1MOLF.js       [39m[1m[2m  243.81 kB[22m[1m[22m[2m Γöé gzip:  59.45 kB[22m
+[2mdist/[22m[36massets/generateCategoricalChart-7hEN9coO.js        [39m[1m[2m  277.05 kB[22m[1m[22m[2m Γöé gzip:  73.54 kB[22m
+[2mdist/[22m[36massets/react-vendor-tqdxhMkh.js                    [39m[1m[2m  305.34 kB[22m[1m[22m[2m Γöé gzip:  97.42 kB[22m
+[2mdist/[22m[36massets/xlsx-D_0l8YDs.js                            [39m[1m[2m  429.03 kB[22m[1m[22m[2m Γöé gzip: 143.08 kB[22m
+[2mdist/[22m[36massets/echarts-D2lzqyeq.js                         [39m[1m[2m  637.31 kB[22m[1m[22m[2m Γöé gzip: 217.15 kB[22m
+[2mdist/[22m[36massets/dashboard-DYUbWYLK.js                       [39m[1m[2m  698.45 kB[22m[1m[22m[2m Γöé gzip: 205.10 kB[22m
+[2mdist/[22m[36massets/widget-BilZItNu.js                          [39m[1m[33m2,218.07 kB[39m[22m[2m Γöé gzip: 557.86 kB[22m
+
+(!) Some chunks are larger than 1000 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[32mΓ£ô built in 27.39s[39m

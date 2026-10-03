@@ -1,0 +1,275 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: vninvest-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app_net
+    mem_limit: ${DB_MEM_LIMIT:-2g}
+    cpus: ${DB_CPUS:-1.5}
+
+  redis:
+    image: redis:7-alpine
+    container_name: vninvest-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app_net
+    mem_limit: ${REDIS_MEM_LIMIT:-1g}
+    cpus: ${REDIS_CPUS:-1.0}
+
+  backend:
+    image: ${BACKEND_IMAGE:-vninvest-backend}:${APP_RELEASE:-prod}
+    pull_policy: always
+    container_name: vninvest-backend
+    restart: unless-stopped
+    environment:
+      APP_RELEASE: ${APP_RELEASE:-main-local}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY is required}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
+      DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-True}
+      DJANGO_SESSION_COOKIE_SECURE: ${DJANGO_SESSION_COOKIE_SECURE:-True}
+      DJANGO_CSRF_COOKIE_SECURE: ${DJANGO_CSRF_COOKIE_SECURE:-True}
+      DJANGO_SECURE_HSTS_SECONDS: ${DJANGO_SECURE_HSTS_SECONDS:-31536000}
+      DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS: ${DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS:-True}
+      DJANGO_SECURE_HSTS_PRELOAD: ${DJANGO_SECURE_HSTS_PRELOAD:-False}
+      USE_X_FORWARDED_HOST: "True"
+      USE_X_FORWARDED_PORT: "True"
+      SECURE_PROXY_SSL_HEADER_NAME: HTTP_X_FORWARDED_PROTO
+      SECURE_PROXY_SSL_HEADER_VALUE: https
+      DB_ENGINE: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://${DOMAIN}}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-https://${DOMAIN}}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-https://${DOMAIN}}
+      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      CACHE_REDIS_URL: redis://redis:6379/2
+      REALTIME_REDIS_URL: redis://redis:6379/0
+      REALTIME_CHANNEL_LAYER: redis
+      REALTIME_ENABLED: ${REALTIME_ENABLED}
+      WATCHLIST_SYNC_ENABLED: ${WATCHLIST_SYNC_ENABLED}
+      WATCHLIST_SYNC_MINUTES: ${WATCHLIST_SYNC_MINUTES}
+      WATCHLIST_SYNC_DAYS: ${WATCHLIST_SYNC_DAYS}
+      ENABLE_NEW_MARKET_VIEWS: ${ENABLE_NEW_MARKET_VIEWS}
+      ENABLE_NEW_TRADING_VIEWS: ${ENABLE_NEW_TRADING_VIEWS}
+      OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED: ${OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED:-False}
+      OPEN_CORE_COMMUNITY_API_CALLS_PER_DAY: ${OPEN_CORE_COMMUNITY_API_CALLS_PER_DAY:-300}
+      OPEN_CORE_COMMUNITY_AI_REGENERATE_PER_DAY: ${OPEN_CORE_COMMUNITY_AI_REGENERATE_PER_DAY:-0}
+      OPEN_CORE_PRO_INDIVIDUAL_API_CALLS_PER_DAY: ${OPEN_CORE_PRO_INDIVIDUAL_API_CALLS_PER_DAY:-3000}
+      OPEN_CORE_PRO_INDIVIDUAL_AI_REGENERATE_PER_DAY: ${OPEN_CORE_PRO_INDIVIDUAL_AI_REGENERATE_PER_DAY:-30}
+      OPEN_CORE_PRO_TEAM_API_CALLS_PER_DAY: ${OPEN_CORE_PRO_TEAM_API_CALLS_PER_DAY:-10000}
+      OPEN_CORE_PRO_TEAM_AI_REGENERATE_PER_DAY: ${OPEN_CORE_PRO_TEAM_AI_REGENERATE_PER_DAY:-120}
+    labels:
+      com.vninvest.release: ${APP_RELEASE:-main-local}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["/bin/sh", "/app/entrypoint.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://127.0.0.1:8000/api/health/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
+    expose:
+      - "8000"
+    networks:
+      - app_net
+    mem_limit: ${BACKEND_MEM_LIMIT:-1500m}
+    cpus: ${BACKEND_CPUS:-1.5}
+
+  celery_worker:
+    image: ${BACKEND_IMAGE:-vninvest-backend}:${APP_RELEASE:-prod}
+    pull_policy: always
+    container_name: vninvest-celery-worker
+    restart: unless-stopped
+    environment:
+      APP_RELEASE: ${APP_RELEASE:-main-local}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY is required}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
+      DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-True}
+      DJANGO_SESSION_COOKIE_SECURE: ${DJANGO_SESSION_COOKIE_SECURE:-True}
+      DJANGO_CSRF_COOKIE_SECURE: ${DJANGO_CSRF_COOKIE_SECURE:-True}
+      DJANGO_SECURE_HSTS_SECONDS: ${DJANGO_SECURE_HSTS_SECONDS:-31536000}
+      DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS: ${DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS:-True}
+      DJANGO_SECURE_HSTS_PRELOAD: ${DJANGO_SECURE_HSTS_PRELOAD:-False}
+      USE_X_FORWARDED_HOST: "True"
+      USE_X_FORWARDED_PORT: "True"
+      SECURE_PROXY_SSL_HEADER_NAME: HTTP_X_FORWARDED_PROTO
+      SECURE_PROXY_SSL_HEADER_VALUE: https
+      DB_ENGINE: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://${DOMAIN}}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-https://${DOMAIN}}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-https://${DOMAIN}}
+      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      CACHE_REDIS_URL: redis://redis:6379/2
+      REALTIME_REDIS_URL: redis://redis:6379/0
+      REALTIME_CHANNEL_LAYER: redis
+      REALTIME_ENABLED: ${REALTIME_ENABLED}
+      WATCHLIST_SYNC_ENABLED: ${WATCHLIST_SYNC_ENABLED}
+      WATCHLIST_SYNC_MINUTES: ${WATCHLIST_SYNC_MINUTES}
+      WATCHLIST_SYNC_DAYS: ${WATCHLIST_SYNC_DAYS}
+      ENABLE_NEW_MARKET_VIEWS: ${ENABLE_NEW_MARKET_VIEWS}
+      ENABLE_NEW_TRADING_VIEWS: ${ENABLE_NEW_TRADING_VIEWS}
+      OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED: ${OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED:-False}
+      OPEN_CORE_COMMUNITY_API_CALLS_PER_DAY: ${OPEN_CORE_COMMUNITY_API_CALLS_PER_DAY:-300}
+      OPEN_CORE_COMMUNITY_AI_REGENERATE_PER_DAY: ${OPEN_CORE_COMMUNITY_AI_REGENERATE_PER_DAY:-0}
+      OPEN_CORE_PRO_INDIVIDUAL_API_CALLS_PER_DAY: ${OPEN_CORE_PRO_INDIVIDUAL_API_CALLS_PER_DAY:-3000}
+      OPEN_CORE_PRO_INDIVIDUAL_AI_REGENERATE_PER_DAY: ${OPEN_CORE_PRO_INDIVIDUAL_AI_REGENERATE_PER_DAY:-30}
+      OPEN_CORE_PRO_TEAM_API_CALLS_PER_DAY: ${OPEN_CORE_PRO_TEAM_API_CALLS_PER_DAY:-10000}
+      OPEN_CORE_PRO_TEAM_AI_REGENERATE_PER_DAY: ${OPEN_CORE_PRO_TEAM_AI_REGENERATE_PER_DAY:-120}
+    labels:
+      com.vninvest.release: ${APP_RELEASE:-main-local}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["celery", "-A", "config", "worker", "-l", "info"]
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME | grep -q 'OK'"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
+    networks:
+      - app_net
+    mem_limit: ${CELERY_WORKER_MEM_LIMIT:-2g}
+    cpus: ${CELERY_WORKER_CPUS:-2.0}
+
+  celery_beat:
+    image: ${BACKEND_IMAGE:-vninvest-backend}:${APP_RELEASE:-prod}
+    pull_policy: always
+    container_name: vninvest-celery-beat
+    restart: unless-stopped
+    environment:
+      APP_RELEASE: ${APP_RELEASE:-main-local}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY is required}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
+      DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-True}
+      DJANGO_SESSION_COOKIE_SECURE: ${DJANGO_SESSION_COOKIE_SECURE:-True}
+      DJANGO_CSRF_COOKIE_SECURE: ${DJANGO_CSRF_COOKIE_SECURE:-True}
+      DJANGO_SECURE_HSTS_SECONDS: ${DJANGO_SECURE_HSTS_SECONDS:-31536000}
+      DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS: ${DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS:-True}
+      DJANGO_SECURE_HSTS_PRELOAD: ${DJANGO_SECURE_HSTS_PRELOAD:-False}
+      USE_X_FORWARDED_HOST: "True"
+      USE_X_FORWARDED_PORT: "True"
+      SECURE_PROXY_SSL_HEADER_NAME: HTTP_X_FORWARDED_PROTO
+      SECURE_PROXY_SSL_HEADER_VALUE: https
+      DB_ENGINE: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://${DOMAIN}}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-https://${DOMAIN}}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-https://${DOMAIN}}
+      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      CACHE_REDIS_URL: redis://redis:6379/2
+      REALTIME_REDIS_URL: redis://redis:6379/0
+      REALTIME_CHANNEL_LAYER: redis
+      REALTIME_ENABLED: ${REALTIME_ENABLED}
+      WATCHLIST_SYNC_ENABLED: ${WATCHLIST_SYNC_ENABLED}
+      WATCHLIST_SYNC_MINUTES: ${WATCHLIST_SYNC_MINUTES}
+      WATCHLIST_SYNC_DAYS: ${WATCHLIST_SYNC_DAYS}
+      ENABLE_NEW_MARKET_VIEWS: ${ENABLE_NEW_MARKET_VIEWS}
+      ENABLE_NEW_TRADING_VIEWS: ${ENABLE_NEW_TRADING_VIEWS}
+      OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED: ${OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED:-False}
+      OPEN_CORE_COMMUNITY_API_CALLS_PER_DAY: ${OPEN_CORE_COMMUNITY_API_CALLS_PER_DAY:-300}
+      OPEN_CORE_COMMUNITY_AI_REGENERATE_PER_DAY: ${OPEN_CORE_COMMUNITY_AI_REGENERATE_PER_DAY:-0}
+      OPEN_CORE_PRO_INDIVIDUAL_API_CALLS_PER_DAY: ${OPEN_CORE_PRO_INDIVIDUAL_API_CALLS_PER_DAY:-3000}
+      OPEN_CORE_PRO_INDIVIDUAL_AI_REGENERATE_PER_DAY: ${OPEN_CORE_PRO_INDIVIDUAL_AI_REGENERATE_PER_DAY:-30}
+      OPEN_CORE_PRO_TEAM_API_CALLS_PER_DAY: ${OPEN_CORE_PRO_TEAM_API_CALLS_PER_DAY:-10000}
+      OPEN_CORE_PRO_TEAM_AI_REGENERATE_PER_DAY: ${OPEN_CORE_PRO_TEAM_AI_REGENERATE_PER_DAY:-120}
+    labels:
+      com.vninvest.release: ${APP_RELEASE:-main-local}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["celery", "-A", "config", "beat", "-l", "info"]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import pathlib, sys; cmd = pathlib.Path('/proc/1/cmdline').read_text(); sys.exit(0 if 'celery' in cmd and 'beat' in cmd else 1)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app_net
+    mem_limit: ${CELERY_BEAT_MEM_LIMIT:-750m}
+    cpus: ${CELERY_BEAT_CPUS:-0.75}
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-vninvest-frontend}:${APP_RELEASE:-prod}
+    pull_policy: always
+    container_name: vninvest-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    expose:
+      - "80"
+    environment:
+      APP_RELEASE: ${APP_RELEASE:-main-local}
+      VIRTUAL_HOST: ${DOMAIN}
+      VIRTUAL_PORT: 80
+      LETSENCRYPT_HOST: ${DOMAIN}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+      HTTPS_METHOD: redirect
+    labels:
+      com.vninvest.release: ${APP_RELEASE:-main-local}
+    networks:
+      - app_net
+      - proxy_net
+    mem_limit: ${FRONTEND_MEM_LIMIT:-750m}
+    cpus: ${FRONTEND_CPUS:-0.75}
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  app_net:
+    name: vninvest_app_net
+  proxy_net:
+    external: true
+    name: nginx-proxy_default

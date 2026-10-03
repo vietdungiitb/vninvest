@@ -1,0 +1,17 @@
+# Gates tổng — main menu 2026-09-22 (S7.1)
+Ngày chạy: 2026-09-23. Working tree có thêm file ngoài phạm vi (dashboard-*, formatMarket, …) — không thuộc change này, không staged cùng.
+
+| # | Lệnh | Kết quả |
+|---|---|---|
+| 1 | `npx tsc --noEmit` (packages/web) | exit 0, 0 error (chạy sau mỗi slice S1/S2/S3/S5) |
+| 2 | `npm run lint` (packages/web) | exit 0 — 0 errors, 3624 warnings (pre-existing, toàn repo) — xem `04-lint.log` |
+| 3 | `npm run build` (packages/web) | exit 0 — `✓ built in 27.39s` (chunk-size warnings pre-existing) — xem `04-build.log` |
+| 4 | `npx vitest run` (full) | exit 0 — Test Files 63 passed (63), Tests 382 passed (382) — xem `06-vitest-full.log` |
+| 5 | `npm run test` (jest) | exit 0 — Test Suites 17 passed, Tests 239 passed — xem `06-jest.log` |
+| 6 | `npm run i18n:scan` | exit 0 — diff i18n chỉ 12 dòng S1 (không thêm key lạ) — xem `04-i18n-scan.log` |
+| 7 | `npm run check:shell` | exit 1 — FAIL PRE-EXISTING: `check:tokens` báo hard hex trong `src/pages/UserSettingsPage.css` (file không thuộc change, `git status` sạch) — xem `04-checkshell.log` |
+| 8 | BE `python manage.py check` (DJANGO_DEBUG=true) | 0 issues |
+| 9 | BE `python manage.py test identity_access.tests.test_capabilities_soc` | Ran 5 tests — OK (3 cũ + 2 mới menu_20260922) — xem `06-be-test.log` |
+
+Ghi chú lệch plan: file rác xóa 3 (thêm `Header (1).tsx` cùng pattern stale, không được import).
+Visual QA thủ công (sidebar staff/non-staff screenshots, redirect video TC-01/02) — PENDING, cần 1 pass QA với dev server + login (không làm headless được).

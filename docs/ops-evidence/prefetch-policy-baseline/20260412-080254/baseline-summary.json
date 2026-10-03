@@ -1,0 +1,54 @@
+﻿{
+    "collected_at":  "2026-04-12T08:07:37.2701788+07:00",
+    "api_base":  "http://127.0.0.1:8010",
+    "samples":  6,
+    "interval_seconds":  2,
+    "symbol_probe":  "FPT",
+    "auth_enabled":  true,
+    "kpi":  {
+                "prefetch_healthy_ratio_pct":  0,
+                "prefetch_freshness":  {
+                                           "sample_count":  0,
+                                           "p50_seconds":  0,
+                                           "p95_seconds":  0,
+                                           "max_seconds":  null
+                                       },
+                "endpoint_latency_p95_ms":  {
+                                                "prefetch_health":  20011.05,
+                                                "market_observability":  20012.78,
+                                                "admin_ops_stats":  19924.57,
+                                                "realtime_ticker_probe":  20012.81
+                                            },
+                "ticker_probe_429_ratio_pct":  0,
+                "policy_counters":  {
+                                        "multiplier_total_first":  null,
+                                        "multiplier_total_last":  null,
+                                        "multiplier_total_delta":  null,
+                                        "skip_total_first":  null,
+                                        "skip_total_last":  null,
+                                        "skip_total_delta":  null
+                                    },
+                "market_observability_overall_last":  {
+                                                          "http_requests":  4,
+                                                          "http_5xx":  4,
+                                                          "http_5xx_ratio_pct":  100.0,
+                                                          "fallback_hits":  0,
+                                                          "external_timeouts":  0
+                                                      },
+                "market_observability_endpoints_last":  {
+                                                            "realtime-ticker":  {
+                                                                                    "requests":  4,
+                                                                                    "status_2xx":  0,
+                                                                                    "status_4xx":  0,
+                                                                                    "status_5xx":  4,
+                                                                                    "five_xx_ratio_pct":  100.0,
+                                                                                    "latency_ms":  {
+                                                                                                       "latest_window_size":  4,
+                                                                                                       "p50":  107879.89,
+                                                                                                       "p95":  107951.83,
+                                                                                                       "max":  108198.01
+                                                                                                   }
+                                                                                }
+                                                        }
+            }
+}

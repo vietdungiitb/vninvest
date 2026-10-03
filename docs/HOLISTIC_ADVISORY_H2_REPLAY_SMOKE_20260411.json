@@ -1,0 +1,139 @@
+{
+  "generated_at": "2026-04-11T04:01:45.571461+00:00",
+  "trace": {
+    "user": "phamvietdung",
+    "symbol": "FPT",
+    "advisory_id": 7,
+    "snapshot_id": 1,
+    "replay_ready": true
+  },
+  "advisory": {
+    "id": 7,
+    "created_at": "2026-04-11T04:01:18.507950+00:00",
+    "source": "whale_signal",
+    "severity": "warning",
+    "threshold": 1000000000.0,
+    "aggregate_snapshot_id": 1
+  },
+  "snapshot": {
+    "id": 1,
+    "snapshot_seq": 1,
+    "created_at": "2026-04-11T04:01:18.501430+00:00",
+    "expires_at": "2026-05-11T04:01:18.499365+00:00",
+    "state_json": {
+      "whale": {
+        "signal_count": 1,
+        "max_value": 3100000000.0,
+        "max_threshold": 1000000000.0,
+        "side": "BUY"
+      },
+      "dark_flow": {
+        "detection_count": 0,
+        "max_strength": 0.0,
+        "max_confidence": "low"
+      },
+      "order_flow": {
+        "event_count": 1,
+        "latest_severity": "warning"
+      },
+      "market": {
+        "context": "legacy_h2_bootstrap",
+        "benchmark": {}
+      },
+      "history": [
+        {
+          "timestamp": "2026-04-11T04:01:18.501094+00:00",
+          "event": "advisory_generation",
+          "source": "whale_signal"
+        }
+      ],
+      "quality": {
+        "actionability": 0.0,
+        "noise_ratio": 0.0,
+        "consistency": 0.7
+      },
+      "updated_at": "2026-04-11T04:01:18.501106+00:00",
+      "source": "whale_signal",
+      "merged_sources": [],
+      "primary_source": "",
+      "severity": "warning",
+      "used_concise": false,
+      "seq": 1
+    }
+  },
+  "audit_logs": [
+    {
+      "id": 133,
+      "created_at": "2026-04-11T04:01:22.565902+00:00",
+      "reason": "new_whale_event",
+      "actor": "system",
+      "actor_id": "generate_whale_advisory_task",
+      "before_state_json": {
+        "advisory_id": 2,
+        "severity": "info",
+        "source": "whale_signal",
+        "threshold_source": "",
+        "created_at": "2026-04-11T03:20:35.343240+00:00"
+      },
+      "after_state_json": {
+        "advisory_id": 7,
+        "snapshot_id": 1,
+        "severity": "warning",
+        "source": "whale_signal",
+        "threshold_source": "user_default",
+        "primary_source": "",
+        "merged_sources": [],
+        "created_at": "2026-04-11T04:01:18.507950+00:00"
+      },
+      "metadata_json": {
+        "active": false,
+        "token_cost": 0,
+        "latency_ms": 4082.1051597595215,
+        "actionability_score": 0.75,
+        "components_used": [],
+        "confidence": 0.62,
+        "phase_timings": {
+          "provider_generation": 16.087055206298828,
+          "persist_advisory": 12.428045272827148,
+          "broadcast": 4045.206069946289
+        },
+        "error_recovery": {
+          "retry_count": 1,
+          "fallback_components": [],
+          "error_messages": [
+            {
+              "error_type": "ConnectionError",
+              "fallback_strategy": "broadcast_failed",
+              "success": false
+            }
+          ]
+        },
+        "session_start_time": 1775880078.4831629,
+        "token_breakdown": {
+          "summary_generation": 0,
+          "detail_generation": 0
+        },
+        "confidence_source": "whale_signal",
+        "actionability_factors": {
+          "severity_weight": 0.75,
+          "multi_source_bonus": 0.0,
+          "concise_penalty": 0.0
+        },
+        "advisory_id": 7,
+        "ai_provider": "openclaw",
+        "ai_model": "default",
+        "ai_source": "system",
+        "threshold_source": "user_default",
+        "source": "whale_signal",
+        "merged_sources": [],
+        "primary_source": "",
+        "used_concise": false,
+        "snapshot_id": 1
+      }
+    }
+  ],
+  "counts": {
+    "matched_audit_logs": 1,
+    "max_logs": 10
+  }
+}

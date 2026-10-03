@@ -1,0 +1,591 @@
+"""
+Scheduler Catalog — unified read model cho mọi periodic/service jobs.
+
+Merge sources:
+  1. CELERY_BEAT_SCHEDULE + django_celery_beat.PeriodicTask
+  2. ServiceRunLog latest/inflight per job
+  3. Runtime ServiceConfig enabled flags (prefetch, dataops)
+
+Output: list of SchedulerJob dicts với canonical fields.
+"""
+
+from __future__ import annotations
+
+import logging
+from datetime import timedelta
+from typing import Any
+from zoneinfo import ZoneInfo
+
+from django.conf import settings
+from django.utils import timezone
+
+logger = logging.getLogger(__name__)
+
+# ── Static metadata per job_key ────────────────────────────────────────────────
+# domain: which operator domain owns this job
+# data_types: list of data concerns
+# trigger_type: cron | interval | policy_driven
+# control_mode: beat_enabled | runtime_enabled | dispatch_quota
+# capabilities: which actions are valid for this job
+CATALOG_JOB_METADATA: dict[str, dict[str, Any]] = {
+    # === Market data SSOT queue-tier scheduler ===
+    'market-data-queue-tier-scheduler-30s': {
+        'domain': 'dataops',
+        'data_types': ['daily_prices', 'price_board', 'intraday_ticks', 'session_facts'],
+        'trigger_type': 'interval',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now', 'abort_active'],
+        'display_name': 'Market data queue-tier scheduler (30s)',
+        'service_key': 'vnbroker_price_board',
+    },
+    'market-data-parity-snapshot-retention-cleanup-hourly': {
+        'domain': 'dataops',
+        'data_types': ['parity_snapshot'],
+        'trigger_type': 'interval',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now'],
+        'display_name': 'Parity snapshot retention cleanup (hourly)',
+        'freshness_warm_seconds': 3600,
+    },
+    'market-data-parity-retention-health-monitor-2h': {
+        'domain': 'dataops',
+        'data_types': ['parity_snapshot'],
+        'trigger_type': 'interval',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now'],
+        'display_name': 'Parity retention health monitor (2h)',
+        'freshness_warm_seconds': 2 * 3600,
+    },
+    'reconcile-stale-running-service-run-logs-5m': {
+        'domain': 'dataops',
+        'data_types': ['service_run_logs'],
+        'trigger_type': 'interval',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now'],
+        'display_name': 'Reconcile stale running service run logs (5m)',
+        'freshness_warm_seconds': 5 * 60,
+    },
+    # === Native ingest ===
+    'ingest-price-board-60s': {
+        'domain': 'dataops',
+        'data_types': ['price_board'],
+        'trigger_type': 'interval',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now', 'abort_active'],
+        'display_name': 'Price board ingest (60s)',
+    },
+    'daily-backfill-prices-1700': {
+        'domain': 'dataops',
+        'data_types': ['daily_prices'],
+        'trigger_type': 'cron',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now', 'abort_active'],
+        'display_name': 'Daily price backfill (17:00 ICT)',
+        'service_key': 'backfill_daily_prices',
+        'max_expected_run_seconds': 10800,  # 3h — 1 năm × toàn bộ symbol
+        'freshness_warm_seconds': 24 * 3600,  # daily job — stale only when the prior daily window is missed
+    },
+    # === DNSE intraday tape 90-ngày (quarterly backfill orchestrator) ===
+    'dnse-quarterly-backfill-intraday': {
+        'domain': 'dataops',
+        'data_types': ['intraday_ticks'],
+        'trigger_type': 'cron',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now', 'abort_active'],
+        'display_name': 'DNSE intraday tape backfill 90 ngày (Chủ nhật 01:00)',
+        'service_key': 'dnse_intraday_quarterly_backfill',
+        'max_expected_run_seconds': 7200,  # 2h — VN100 × 90 ngày queue dispatch
+        'freshness_warm_seconds': 7 * 24 * 3600,  # weekly job — stale chỉ khi > 1 tuần
+    },
+    'ingest-daily-prices-1705': {
+        'domain': 'dataops',
+        'data_types': ['daily_prices'],
+        'trigger_type': 'cron',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now'],
+        'display_name': 'Daily price ingest shadow (17:05 ICT)',
+        'freshness_warm_seconds': 24 * 3600,
+    },
+    'deep-history-bootstrap-weekly': {
+        'domain': 'dataops',
+        'data_types': ['daily_prices'],
+        'trigger_type': 'cron',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now', 'abort_active'],
+        'display_name': 'Deep history bootstrap — 5 năm (Chủ nhật 03:00)',
+        'service_key': 'deep_history_bootstrap',
+        'max_expected_run_seconds': 28800,  # 8h — 5 năm × toàn bộ symbol
+        'freshness_warm_seconds': 7 * 24 * 3600,  # weekly job — stale chỉ khi > 1 tuần
+    },
+    'pre5y-history-backfill-weekly': {
+        'domain': 'dataops',
+        'data_types': ['daily_prices'],
+        'trigger_type': 'cron',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now', 'abort_active'],
+        'display_name': 'Backfill lịch sử trước 5 năm đến market inception (Chủ nhật 04:00)',
+        'service_key': 'pre5y_history_backfill',
+        'max_expected_run_seconds': 43200,  # 12h — long historical window
+        'freshness_warm_seconds': 7 * 24 * 3600,
+    },
+    # === Materializers ===
+    'materialize-symbol-snapshot-60s': {
+        'domain': 'materialization',
+        'data_types': ['symbol_snapshot'],
+        'trigger_type': 'interval',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now', 'abort_active'],
+        'display_name': 'Symbol snapshot materializer (60s)',
+    },
+    'materialize-pre-open-snapshots-20m': {
+        'domain': 'materialization',
+        'data_types': ['pre_open_snapshot'],
+        'trigger_type': 'cron',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now'],
+        'display_name': 'Pre-open snapshot materializer (08:40)',
+        'freshness_warm_seconds': 24 * 3600,
+    },
+    'materialize-session-facts-5m': {
+        'domain': 'materialization',
+        'data_types': ['session_facts'],
+        'trigger_type': 'interval',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now', 'abort_active'],
+        'display_name': 'Session facts materializer (5m)',
+    },
+    'materialize-unified-alerts-2m': {
+        'domain': 'materialization',
+        'data_types': ['unified_alerts'],
+        'trigger_type': 'interval',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now', 'abort_active'],
+        'display_name': 'Unified alerts materializer (2m)',
+    },
+    # === Realtime prefetch ===
+    'schedule-realtime-prefetch-shards': {
+        'domain': 'prefetch',
+        'data_types': ['price_board', 'realtime_cache'],
+        'trigger_type': 'interval',
+        'control_mode': 'runtime_enabled',
+        'capabilities': ['enable', 'disable'],
+        'display_name': 'Realtime prefetch shard scheduler (3s)',
+    },
+    # === Commercial / tenant lifecycle ===
+    'flush-quota-counters': {
+        'domain': 'platform',
+        'data_types': ['quota'],
+        'trigger_type': 'interval',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now'],
+        'display_name': 'Quota counter flush (60s)',
+    },
+    'generate-monthly-invoices': {
+        'domain': 'platform',
+        'data_types': ['invoice'],
+        'trigger_type': 'cron',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now'],
+        'display_name': 'Monthly invoice generator',
+        'freshness_warm_seconds': 31 * 24 * 3600,
+    },
+    'check-overdue-invoices': {
+        'domain': 'platform',
+        'data_types': ['invoice'],
+        'trigger_type': 'cron',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now'],
+        'display_name': 'Overdue invoice checker (daily 08:00)',
+        'freshness_warm_seconds': 24 * 3600,
+    },
+    'auto-expire-trials': {
+        'domain': 'platform',
+        'data_types': ['tenant_lifecycle'],
+        'trigger_type': 'cron',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now'],
+        'display_name': 'Trial auto-expiry (daily 01:00)',
+        'freshness_warm_seconds': 24 * 3600,
+    },
+    'auto-suspend-quota-overflow': {
+        'domain': 'platform',
+        'data_types': ['tenant_lifecycle'],
+        'trigger_type': 'interval',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now'],
+        'display_name': 'Quota overflow auto-suspend (1h)',
+        'freshness_warm_seconds': 3600,
+    },
+    'send-trial-expiry-warning': {
+        'domain': 'platform',
+        'data_types': ['tenant_lifecycle', 'notification'],
+        'trigger_type': 'cron',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now'],
+        'display_name': 'Trial expiry warning (daily 09:00)',
+        'freshness_warm_seconds': 24 * 3600,
+    },
+    'auto-deprovision-stale': {
+        'domain': 'platform',
+        'data_types': ['tenant_lifecycle'],
+        'trigger_type': 'cron',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now'],
+        'display_name': 'Stale tenant auto-deprovision (weekly)',
+        'freshness_warm_seconds': 7 * 24 * 3600,
+    },
+    # === Ops ===
+    'daily-db-backup-2am': {
+        'domain': 'platform',
+        'data_types': ['backup'],
+        'trigger_type': 'cron',
+        'control_mode': 'beat_enabled',
+        'capabilities': ['enable', 'disable', 'run_now'],
+        'display_name': 'Daily DB backup (02:00)',
+        'max_expected_run_seconds': 3600,  # 1h — DB dump full
+        'freshness_warm_seconds': 24 * 3600,
+    },
+}
+
+_FRESHNESS_FRESH_SECONDS = 120
+_FRESHNESS_WARM_SECONDS = 600
+
+
+def _freshness_state(lag_seconds: int | None, warm_seconds: int | None = None) -> str:
+    _warm = warm_seconds if warm_seconds is not None else _FRESHNESS_WARM_SECONDS
+    if lag_seconds is None:
+        return 'missing'
+    if lag_seconds <= _FRESHNESS_FRESH_SECONDS:
+        return 'fresh'
+    if lag_seconds <= _warm:
+        return 'warm'
+    return 'stale'
+
+
+def _schedule_label(schedule_def: dict) -> str:
+    """Trả label đọc được từ schedule definition."""
+    sched = schedule_def.get('schedule')
+    if sched is None:
+        return 'unknown'
+    if isinstance(sched, (int, float)):
+        return f'every {int(sched)}s'
+    # crontab or other object — use repr
+    return str(sched)
+
+
+def _derive_status(
+    enabled: bool,
+    is_inflight: bool,
+    freshness_state: str,
+    lag_seconds: int | None,
+    is_possibly_stuck: bool = False,
+    stale_threshold_seconds: int | None = None,
+) -> tuple[str, str | None]:
+    """
+    Trả (status, status_reason).
+
+    Trạng thái priority:
+      running > paused > disabled > degraded > idle > enabled
+
+    is_possibly_stuck=True: task đang chạy nhưng vượt max_expected_run_seconds —
+    có thể worker bị crash/OOM. Status = degraded với warning rõ ràng.
+    """
+    if is_inflight:
+        if is_possibly_stuck:
+            return 'degraded', 'Đang chạy vượt thời gian dự kiến — kiểm tra worker'
+        return 'running', None
+    if not enabled:
+        return 'disabled', None
+    if freshness_state == 'stale':
+        threshold_seconds = stale_threshold_seconds if stale_threshold_seconds is not None else _FRESHNESS_WARM_SECONDS
+        reason = f'lag={lag_seconds}s vượt ngưỡng stale ({threshold_seconds}s)'
+        return 'degraded', reason
+    if freshness_state == 'missing':
+        return 'idle', 'Chưa chạy lần nào'
+    return 'enabled', None
+
+
+def build_scheduler_catalog(
+    schedule_map: dict[str, Any] | None = None,
+    domain_filter: str | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Xây dựng danh sách SchedulerJob thống nhất từ CELERY_BEAT_SCHEDULE + PeriodicTask.
+
+    ServiceRunLog enrichment được bổ sung trong S04 (runtime status aggregator).
+
+    Args:
+        schedule_map: Override schedule map (dùng trong tests).  None = dùng settings.
+        domain_filter: Nếu set, chỉ trả jobs thuộc domain đó.
+
+    Returns:
+        list of SchedulerJob dicts với canonical fields.
+    """
+    from django_celery_beat.models import PeriodicTask
+    from .models import ServiceDefinition, ServiceRunLog
+
+    if schedule_map is None:
+        schedule_map = dict(getattr(settings, 'CELERY_BEAT_SCHEDULE', {}))
+    else:
+        schedule_map = dict(schedule_map)
+    now = timezone.now()
+
+    # Build PeriodicTask lookup — indexed by task name (= beat schedule key)
+    task_names = list(schedule_map.keys())
+    periodic_tasks_by_name: dict[str, Any] = {
+        pt.name: pt
+        for pt in PeriodicTask.objects.filter(name__in=task_names).only(
+            'name', 'task', 'enabled', 'last_run_at', 'total_run_count', 'queue'
+        )
+    }
+
+    # S04: Build inflight set từ ServiceRunLog — service_key → bool.
+    # Đồng thời lấy started_at của run đang chạy để phát hiện stuck runs.
+    from django.db.models import Min as _DjMin
+    _inflight_qs = (
+        ServiceRunLog.objects.filter(
+            status__in=['queued', 'running'],
+            service__service_key__isnull=False,
+        )
+        .values('service__service_key')
+        .annotate(earliest_started=_DjMin('started_at'))
+    )
+    # service_key → earliest started_at trong số các run đang chạy
+    inflight_run_started_at: dict[str, Any] = {
+        row['service__service_key']: row['earliest_started']
+        for row in _inflight_qs
+        if row['service__service_key']
+    }
+    inflight_service_keys: set[str] = set(inflight_run_started_at.keys())
+
+    # S04-ext: Build last_finished_at lookup — service_key → finished_at (datetime).
+    # Dùng finished_at của run vừa hoàn thành làm last_run_at thay vì start time,
+    # tránh false-positive degraded ngay sau khi task chạy dài vừa xong.
+    # Chỉ query cho service_keys thực sự tồn tại trong schedule_map hiện tại.
+    _relevant_service_keys: set[str] = {
+        CATALOG_JOB_METADATA.get(jk, {}).get('service_key', '')
+        for jk in schedule_map
+        if CATALOG_JOB_METADATA.get(jk, {}).get('service_key')
+    }
+    from django.db.models import Max
+    _finished_qs = (
+        ServiceRunLog.objects.filter(
+            finished_at__isnull=False,
+            status__in=['completed', 'success', 'failed', 'partial'],
+            service__service_key__in=_relevant_service_keys,
+        )
+        .values('service__service_key')
+        .annotate(latest_finished=Max('finished_at'))
+    ) if _relevant_service_keys else []
+    last_finished_by_key: dict[str, Any] = {
+        row['service__service_key']: row['latest_finished']
+        for row in _finished_qs
+        if row['service__service_key']
+    }
+
+    catalog: list[dict[str, Any]] = []
+
+    for job_key in sorted(schedule_map.keys()):
+        meta = CATALOG_JOB_METADATA.get(job_key, {})
+        domain = meta.get('domain', 'platform')
+
+        if domain_filter and domain != domain_filter:
+            continue
+
+        schedule_def = dict(schedule_map.get(job_key) or {})
+        periodic_task = periodic_tasks_by_name.get(job_key)
+        task_path = schedule_def.get('task', '')
+
+        # enabled: truth from PeriodicTask DB; fallback to schedule def 'enabled' key
+        if periodic_task is not None:
+            enabled = bool(periodic_task.enabled)
+        else:
+            sched_enabled = schedule_def.get('enabled')
+            enabled = sched_enabled if sched_enabled is not None else True
+
+        # last_run_at from PeriodicTask
+        last_run_at = None
+        if periodic_task is not None:
+            last_run_at = getattr(periodic_task, 'last_run_at', None)
+
+        # lag_seconds
+        lag_seconds: int | None = None
+        if last_run_at is not None:
+            try:
+                lag_seconds = max(int((now - last_run_at).total_seconds()), 0)
+            except Exception:
+                pass
+
+        _job_warm_seconds: int | None = meta.get('freshness_warm_seconds')
+        freshness = _freshness_state(lag_seconds, _job_warm_seconds)
+
+        # S04-ext: Override last_run_at / freshness từ manual run_now (operator trigger).
+        # PeriodicTask.last_run_at chỉ cập nhật khi beat scheduler tự kích hoạt,
+        # không cập nhật khi operator bấm "Chạy ngay". Dùng cache để bổ sung.
+        try:
+            from django.core.cache import cache as _cache
+            from django.utils.dateparse import parse_datetime as _parse_dt
+            _manual_iso = _cache.get(f'scheduler:manual_run:{job_key}')
+            if _manual_iso:
+                _manual_run_at = _parse_dt(_manual_iso)
+                if _manual_run_at and (last_run_at is None or _manual_run_at > last_run_at):
+                    last_run_at = _manual_run_at
+                    lag_seconds = max(int((now - last_run_at).total_seconds()), 0)
+                    freshness = _freshness_state(lag_seconds, _job_warm_seconds)
+        except Exception:
+            pass
+
+        # S04: is_inflight từ ServiceRunLog (jobs có ServiceDefinition)
+        service_key = meta.get('service_key', '')
+        is_inflight = service_key in inflight_service_keys if service_key else False
+
+        # S04-ext: Nếu không có ServiceDefinition (vd: backfill jobs), check cache marker
+        # được set bởi run_now. TTL = 7200s — tự hết hạn sau 2h hoặc bị xóa khi abort.
+        if not is_inflight:
+            try:
+                from django.core.cache import cache as _cache
+                is_inflight = bool(_cache.get(f'scheduler:inflight:{job_key}'))
+            except Exception:
+                pass
+
+        # S04-ext: Dùng ServiceRunLog.finished_at của run vừa hoàn thành làm last_run_at.
+        # Manual-run cache lưu START TIME, không phải completion time — gây false-positive
+        # "stale/degraded" ngay sau khi task chạy dài (deep-history, db-backup) vừa xong.
+        if not is_inflight and service_key and service_key in last_finished_by_key:
+            _finished_at = last_finished_by_key[service_key]
+            if _finished_at and (last_run_at is None or _finished_at > last_run_at):
+                last_run_at = _finished_at
+                lag_seconds = max(int((now - last_run_at).total_seconds()), 0)
+                freshness = _freshness_state(lag_seconds, _job_warm_seconds)
+
+        # S04-ext2: Stuck run detection.
+        # Nếu task đang chạy (is_inflight) nhưng vượt max_expected_run_seconds thì
+        # khả năng cao worker đã crash (OOM/SIGKILL) và ServiceRunLog không được cập nhật.
+        # Hiển thị 'degraded' với cảnh báo rõ để operator kiểm tra, tránh nhầm lẫm khi run_now.
+        is_possibly_stuck = False
+        inflight_elapsed_seconds: int | None = None
+        if is_inflight and service_key:
+            _max_secs = meta.get('max_expected_run_seconds')
+            _inflight_started = inflight_run_started_at.get(service_key)
+            if _inflight_started:
+                inflight_elapsed_seconds = max(int((now - _inflight_started).total_seconds()), 0)
+                if _max_secs and inflight_elapsed_seconds > _max_secs:
+                    is_possibly_stuck = True
+
+        job_status, status_reason = _derive_status(
+            enabled,
+            is_inflight,
+            freshness,
+            lag_seconds,
+            is_possibly_stuck,
+            _job_warm_seconds,
+        )
+
+        # next_run_at: for interval: last_run_at + interval; for cron: use CrontabSchedule remaining_estimate with ICT tz
+        next_run_at: str | None = None
+        if periodic_task is not None:
+            sched_val = schedule_def.get('schedule')
+            # Interval jobs: last_run + interval
+            if isinstance(sched_val, (int, float)) and sched_val > 0 and last_run_at is not None:
+                try:
+                    estimated_next = last_run_at + timedelta(seconds=float(sched_val))
+                    next_run_at = estimated_next.isoformat()
+                except Exception:
+                    pass
+            # Cron jobs: use DB crontab's schedule (has timezone Asia/Ho_Chi_Minh) — always from now, not last_run (F-CRIT-1: last_run+remaining gives past when last_run stale)
+            elif periodic_task.crontab is not None:
+                try:
+                    crontab_schedule = periodic_task.crontab.schedule
+                    _cron_tz = getattr(crontab_schedule, 'tz', None) or ZoneInfo('Asia/Ho_Chi_Minh')
+                    _now_local = timezone.now().astimezone(_cron_tz)
+                    remaining = crontab_schedule.remaining_estimate(_now_local)
+                    estimated_next = _now_local + remaining
+                    next_run_at = estimated_next.isoformat()
+                except Exception:
+                    logger.exception('scheduler_catalog: crontab remaining_estimate failed for %s', job_key)
+            # Fallback: if DB has no crontab but settings has crontab object
+            elif sched_val is not None and hasattr(sched_val, "remaining_estimate"):
+                try:
+                    remaining = sched_val.remaining_estimate(timezone.now())
+                    estimated_next = timezone.now() + remaining
+                    next_run_at = estimated_next.isoformat()
+                except Exception:
+                    pass
+
+        options = dict(schedule_def.get('options') or {})
+        default_queue = str(getattr(settings, 'CELERY_TASK_DEFAULT_QUEUE', 'celery'))
+        queue = options.get('queue') or (
+            str(periodic_task.queue) if periodic_task and periodic_task.queue else default_queue
+        )
+
+        catalog.append({
+            'job_key': job_key,
+            'display_name': meta.get('display_name', job_key),
+            'domain': domain,
+            'data_types': meta.get('data_types', []),
+            'trigger_type': meta.get('trigger_type', 'interval'),
+            'control_mode': meta.get('control_mode', 'beat_enabled'),
+            'schedule_label': _schedule_label(schedule_def),
+            'task_path': task_path,
+            'queue': queue,
+            'status': job_status,
+            'status_reason': status_reason,
+            'enabled': enabled,
+            'is_inflight': is_inflight,
+            'is_possibly_stuck': is_possibly_stuck,
+            'inflight_elapsed_seconds': inflight_elapsed_seconds,
+            'max_expected_run_seconds': meta.get('max_expected_run_seconds'),
+            'next_run_at': next_run_at,
+            'last_run_at': last_run_at.isoformat() if last_run_at else None,
+            'lag_seconds': lag_seconds,
+            'freshness_state': freshness,
+            'total_run_count': int(getattr(periodic_task, 'total_run_count', 0) or 0) if periodic_task else 0,
+            'beat_registered': periodic_task is not None,
+            'capabilities': list(meta.get('capabilities', [])),
+        })
+
+    return catalog
+
+
+def build_scheduler_health_summary(catalog: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """
+    Trả global health summary từ catalog.
+
+    Args:
+        catalog: Nếu None, tự gọi build_scheduler_catalog().
+    """
+    if catalog is None:
+        catalog = build_scheduler_catalog()
+
+    total = len(catalog)
+    by_status: dict[str, int] = {}
+    by_domain: dict[str, int] = {}
+    by_freshness: dict[str, int] = {}
+    queue_drift_count = 0
+    unregistered_count = 0
+
+    for job in catalog:
+        s = job['status']
+        by_status[s] = by_status.get(s, 0) + 1
+        d = job['domain']
+        by_domain[d] = by_domain.get(d, 0) + 1
+        f = job['freshness_state']
+        by_freshness[f] = by_freshness.get(f, 0) + 1
+        if not job['beat_registered']:
+            unregistered_count += 1
+
+    enabled_count = by_status.get('enabled', 0) + by_status.get('running', 0)
+    degraded_count = by_status.get('degraded', 0) + by_status.get('failed', 0)
+    overall_health = 'healthy' if degraded_count == 0 and unregistered_count == 0 else 'degraded'
+
+    return {
+        'generated_at': timezone.now().isoformat(),
+        'overall_health': overall_health,
+        'jobs_total': total,
+        'by_status': by_status,
+        'by_domain': by_domain,
+        'by_freshness': by_freshness,
+        'enabled_count': enabled_count,
+        'degraded_count': degraded_count,
+        'unregistered_count': unregistered_count,
+    }

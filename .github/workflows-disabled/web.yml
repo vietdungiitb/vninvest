@@ -1,0 +1,106 @@
+name: Frontend & packages/web — CI/CD
+
+on:
+  push:
+    branches: [main, dev, enterprise]
+    paths:
+      - "packages/web/**"
+  pull_request:
+    branches: [main, enterprise]
+    paths:
+      - "packages/web/**"
+  workflow_dispatch:
+    inputs:
+      push_image:
+        description: "Push Docker image (only applies to enterprise/main)"
+        required: false
+        default: "true"
+
+jobs:
+  lint-and-build:
+    name: Lint and build
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: ["20.x"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: packages/web/package-lock.json
+
+      - name: Install packages/web deps
+        working-directory: packages/web
+        run: npm ci
+
+      - name: Build packages/web
+        working-directory: packages/web
+        env:
+          CI: "true"
+          VITE_API_URL: /api
+        run: npm run build
+
+      - name: Upload build artifact
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/enterprise'
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build-${{ github.sha }}
+          path: packages/web/dist
+          retention-days: 7
+
+  build-docker:
+    name: Build & push Docker image
+    needs: lint-and-build
+    # Build on main, enterprise (latest/main tags) AND dev (dev-latest tag)
+    if: |
+      github.ref == 'refs/heads/main' ||
+      github.ref == 'refs/heads/enterprise' ||
+      github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/vninvest-frontend
+          tags: |
+            type=sha,prefix=,format=short
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/enterprise' }}
+            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=dev-latest,enable=${{ github.ref == 'refs/heads/dev' }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: packages/web/
+          file: packages/web/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VITE_API_URL=/api
+            APP_RELEASE=${{ github.sha }}

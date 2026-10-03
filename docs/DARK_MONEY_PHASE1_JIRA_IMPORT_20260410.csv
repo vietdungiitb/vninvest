@@ -1,0 +1,8 @@
+IssueType,Summary,Description,Priority,Labels,SprintHint,OwnerRole,Workstream,Dependency,AcceptanceCriteria
+Epic,Dark Money Phase 1 - Integrity & Usability,"Sprint phase 1 tap trung correctness: event identity, pagination contract, severity dark_flow.",Highest,"dark-money,phase1,roadmap",Sprint-DM-Phase1,PM-Lead,Phase1,,"A1 A2 B1 hoan tat va KPI correctness dat"
+Task,A1 Deterministic event identity,"Chuan hoa event_id on dinh cho redis_stream vnbroker va db fallback.",Highest,"A1,phase1",Sprint-DM-Phase1,BE-Lead,A,,"Event id on dinh qua nhieu lan fetch"
+Task,A2 Pagination contract v2,"Loai bo tie-break synthetic id va chot contract has_more next_cursor nhat quan.",Highest,"A2,phase1,cursor",Sprint-DM-Phase1,BE-Lead,A,A1,"Paging 5 trang khong duplicate/missing; contract pass"
+Task,B1 Dark flow severity remap,"Rule-based severity mapper rieng cho dark_flow theo strength confidence cvd persistence.",Highest,"B1,phase1,severity",Sprint-DM-Phase1,BE-Lead,B,,"Severity distribution dat baseline moi"
+Task,QA1 Contract and pagination regression,"Thiet ke va chay checklist contract matrix + pagination consistency cho scope phase 1.",High,"qa,phase1",Sprint-DM-Phase1,QA-Lead,QA,"A2","Regression pass cho 3 source"
+Task,PM1 Severity rulebook sign-off,"Chot severity rulebook dark_flow va sample review voi QA BE.",High,"pm,phase1",Sprint-DM-Phase1,PM-Lead,PM,B1,"Rulebook duoc PM+QA+BE sign-off"
+Task,OBS1 Baseline KPI capture,"Thu thap baseline duplicate rate pagination consistency alert ignore truoc sprint close.",High,"observability,phase1",Sprint-DM-Phase1,DevOps-Lead,Ops,"A1;A2;B1","Bao cao baseline va after-sprint KPI san sang"

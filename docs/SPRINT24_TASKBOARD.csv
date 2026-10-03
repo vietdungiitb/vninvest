@@ -1,0 +1,11 @@
+ID,Story,Owner,Estimate,Dependency,Status,Evidence
+S24-01,Single source quote state,FE-Lead-1,2d,None,In Progress,Dashboard hoisted realtime quotesBySymbol + shared selectors wired
+S24-02,Live overlay holdings and cards,FE-2,1d,S24-01,In Progress,HoldingsTable/StatCards now read live overlay fields with snapshot fallback
+S24-03,Realtime UX polish,FE-2,1d,S24-01|S24-02,In Progress,DashboardRealtimePanel has stale warning + compact mode + context-aware sync CTA
+S24-04,Runtime KPI instrumentation,Ops-FE-1,1d,S24-03,In Progress,RuntimeKPIPanel active + p95/stale/fallback badges + artifacts in docs/ops-evidence/sprint24 (build/smoke)
+S24-05,Mini canary and sign-off,PM-1,2d,S24-04,Todo,
+S24-06,Decision card explainability,FE-Lead-1,1d,S24-02,In Progress,WhaleAdvisory wired RecommendationCardExplainability with stale invalidation handling
+S24-07,Data freshness badge,FE-2,1d,S24-02|S24-04,In Progress,WhaleAdvisory wired DataFreshnessBadge (live/polling/idle inferred by freshness)
+S24-08,Action checklist pre-decision,FE-2,1d,S24-06,In Progress,WhaleAdvisory wired ActionChecklist and blocked proceed on stale data (telemetry emitted)
+S24-09,User risk mode control,FE-1,1d,S24-06,In Progress,RiskModeSelector wired with localStorage persistence and advisory filtering
+S24-10,Recommendation history mini,FE-1,1d,S24-06|S24-07,In Progress,RecommendationHistoryMini wired for active symbol with API query params support + TrustTelemetryPanel visibility

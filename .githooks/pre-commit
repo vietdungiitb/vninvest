@@ -1,0 +1,79 @@
+#!/usr/bin/env sh
+# Agent pre-commit hook — ENFORCEMENT, not advice.
+#
+# Installed per-worktree via `git config --worktree core.hooksPath .githooks`
+# (requires `git config extensions.worktreeConfig true`). The main working tree
+# keeps using .husky/ and is NOT affected — verified 2026-09-26.
+#
+# This hook only runs the cheap multi-agent check (~1s). Full gates belong in
+# pre-push / CI, otherwise every commit costs a full test run.
+#
+# Install:  bash scripts/agent-install-hooks.sh
+# Skip:     git commit --no-verify     (record why in the commit body)
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -z "$staged" ] && exit 0
+
+failed=0
+
+# 1. Shared-file deny list. Committing these while other agents are live is how
+#    entries from two agents end up welded into one hunk that cannot be split.
+DENY='AGENTS.md
+packages/web/package.json
+pyproject.toml
+requirements.txt
+package-lock.json
+docker-compose.yml
+docker-compose.dev.yml
+docker-compose.prod.yml
+.env
+.env.example'
+
+for f in $staged; do
+  for d in $DENY; do
+    if [ "$f" = "$d" ]; then
+      echo "  $f" >&2
+      failed=1
+    fi
+  done
+done
+if [ "$failed" = "1" ]; then
+  cat >&2 <<'MSG'
+
+BLOCKED: ban commit file shared-file trong docs/AGENT_PROTOCOL.md §2.
+
+Moi agent deu phai sua cac file nay, nen 1 commit se chua ca viec cua agent khac
+va khong tach duoc (da xay ra that 2026-09-26 voi AGENTS.md + ledger).
+
+Cach xu ly dung:
+  - Ghi vao CLAIMS.md cua ban (cot note) + bao coordinator.
+  - Coordinator se gop file nay khi merge.
+  - Truong hop dac biet: git commit --no-verify va GHI LY DO vao commit body.
+
+MSG
+  exit 1
+fi
+
+# 2. Multi-agent invariants: duplicate migration numbers, multiple leaf nodes,
+#    claims that break the registry rules.
+#
+#    KHONG duoc viet dang `node ... | sed`: exit status cua pipeline lay tu lenh
+#    CUOI (sed luon thanh cong) nen gate se in loi nhung van cho commit lot.
+#    That tai day 2026-09-26 — can chay lai test sau khi sua.
+if [ -f packages/web/scripts/check-multi-agent.mjs ]; then
+  gate_out=$(node packages/web/scripts/check-multi-agent.mjs 2>&1)
+  gate_st=$?
+  echo "$gate_out" | sed 's/^/  /'
+  if [ "$gate_st" -ne 0 ]; then
+    cat >&2 <<'MSG'
+
+BLOCKED: check:multi-agent that bai.
+Xem docs/AGENT_PROTOCOL.md §8. Neu day la false positive, sua gate chu KHONG
+bypass — va ghi ro ly do trong commit body.
+
+MSG
+    exit 1
+  fi
+fi
+
+exit 0

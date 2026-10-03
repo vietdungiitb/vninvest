@@ -1,0 +1,13 @@
+id,title,priority,owner,estimate_points,depends_on,definition_of_done,status
+S11-01,Freeze realtime payload contract,P0,BE Lead,2,,Contract reviewed and merged,Todo
+S11-02,Implement collector poll 5s,P0,BE-1,5,S11-01,Collector runs with symbol batches and logs latency,Todo
+S11-03,Add retry backoff circuit breaker,P0,BE-1,3,S11-02,Failure handling metrics available,Todo
+S11-04,Implement Pandas VWAP compute,P0,BE-1,3,S11-02,Unit tests pass for VWAP calculations,Todo
+S11-05,Implement whale detection thresholds,P0,BE-1,3,S11-04,Whale flags emitted with threshold info,Todo
+S11-06,Implement Redis pubsub publisher,P0,BE-2,3,S11-01,Messages published with ts and seq,Todo
+S11-07,Setup Django Channels ASGI,P0,BE-2,3,S11-01,WebSocket endpoint online with auth,Todo
+S11-08,Implement subscribe unsubscribe consumer,P0,BE-2,3,S11-07,Client can subscribe to symbol channels,Todo
+S11-09,Integration test event pipeline,P0,QA,5,S11-02|S11-06|S11-08,End to end events verified,Todo
+S11-10,Feature flag realtime on off,P1,BE-2,2,S11-07,Realtime can be toggled safely,Todo
+S11-11,Fallback ticker API for stale mode,P1,BE-2,3,S11-08,Polling fallback endpoint returns freshness metadata,Todo
+S11-12,Sprint 11 release note and handoff,P1,PM,1,S11-09,Documented handoff to Sprint 12,Todo
