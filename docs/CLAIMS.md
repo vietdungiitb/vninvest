@@ -635,3 +635,52 @@ Khong tao migration, khong dung BE that, khong npm/pip install, khong sua file d
 **Owner da chot trong session nay:** OW-05 (P0-SEC-01) xong. OW-03 + OW-04 giao cho
 agent quyet policy. Khong sua AGENTS.md (deny list). Khong tao migration, khong
 pip/npm install, khong dung BE that.
+---
+
+## 2026-10-03 -Sua claim cu (OW-02/03/04): file test that + OW-03 chuyen thanh errata - in-progress
+
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| openwork-fix | feat/openwork-ow02-03-04 | Bo sung file test cho OW-02 trong `vninvest_core/tests` (khong tao package `commercial/tests/`) · sua `test_env_validation.py` cho OW-04 · OW-03 KHONG sua code | packages/core/backend/src/vninvest_core/tests/test_commercial_tenant_scope.py (new), packages/core/backend/src/vninvest_core/tests/test_env_validation.py | in-progress |
+
+**Ly do sua claim (verify that, khong phai doan):**
+
+1. `packages/core/backend/src/commercial/tests.py` **da ton tai** (11171 byte, test
+   Stripe). Tao them thu muc `commercial/tests/` se trung ten module `tests` voi
+   file hien co => Django nem `Conflicting 'tests' modules`. Nen test OW-02 dat
+   vao `vninvest_core/tests/test_commercial_tenant_scope.py`, dung thu muc test
+   trung tam da co san.
+
+2. **OW-03 da co san, ticket sai.** `docs/OPEN_WORK_20260927.md` OW-03 noi SOC
+   khong con nhin thay event cross-tenant. That la sai:
+   - `service_ops/urls.py:83` → `path('audit-events/', audit.AuditEventsView...)`
+   - mount tai `vninvest_core/urls.py:66` → `/api/soc/audit-events/`
+   - `service_ops/views/audit.py:39` `AuditEventsView(SOCBaseView)`,
+     `:46` `AuditEvent.objects.all()` — doc cross-tenant that
+   - `service_ops/views/base.py:102` `permission_classes = [IsAuthenticated, IsAdminUser]`
+   - `service_ops/views/base.py:103` `throttle_classes = [SOCOperatorReadThrottle]`
+   - `service_ops/views/audit.py:5` docstring: *"KHONG bop theo core_tenant (khac /core/v1/audit-log)"*
+   - da co test: `service_ops/tests/test_soc_audit.py:53` `test_staff_sees_multi_tenant`
+
+   Endpoint SOC **da co sẵn va tot hon** ban dinh viet: co 7 filter + search +
+   CSV export gioi han 5000 dong (`audit.py:43,99-114`) va co throttle, nhung
+   `CrossTenantAuditLogView` agent viet thi khong. Da revert code OW-03
+   (`ops_audit/views.py`, `ops_audit/urls.py`) bang `git checkout --`.
+   **OW-03 → errata tai OPEN_WORK, khong them code.**
+
+3. **OW-02 con 5 call site chua xu ly, Owner da quyet dinh de lai.**
+   `identity_access/commercial_partner_views.py:29-30` `_get_tenant(user)` →
+   `CoreTenant.objects.get(owner_user=user)`, goi tai `:79 :108 :139 :186 :282`
+   — cung anti-pattern, tren namespace `/core/v1/partner/billing/*` va
+   `/core/v1/partner/usage/*` (frontend goi vao day).
+
+   Owner chon: **chi sua 4 call site trong ticket `commercial/`, ghi nhan phan
+   con lai.** Ly do khong sua 5 cho nay: ca 5 view deu boc trong
+   `except Exception` (`:94 :116 :160 :193 :312`). `resolve_tenant` raise
+   `PermissionDenied`; neu chi theo `_get_tenant` ma khong sua exception
+   handling, caller khong phai owner se nhan **200 + du lieu rong** thay vi 403 —
+   fail-closed te hon hien tai. Sua dung nghia la doi response cua 5 endpoint
+   dang chay production (200-rong → 403), can kiem tra frontend truoc.
+
+No sua `identity_access/commercial_partner_views.py` trong dot nay. Khong tao
+migration, khong pip/npm install, khong sua file deny list.
