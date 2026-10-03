@@ -72,8 +72,8 @@ chỉ dẫn sai trong `AGENTS.md` khiến người mới tin nhầm ngay từ đ
 |---|---|
 | Q-01 | Ledger bị **cấm commit** nhưng `AGENTS.md` bắt phải cập nhật |
 | Q-02 | CI tắt vì billing ⇒ mọi gate trên PR là **ảo** |
-| Q-06 | `AGENTS.md` trỏ `soc.module.css` — file đó **rỗng** |
-| Q-07 | `pyproject.toml` khai `Django<5.0` nhưng repo chạy **6.0.6** |
+| Q-06 | `AGENTS.md` trỏ `soc.module.css` — file đó **rỗng** ✅ **đã sửa** |
+| Q-07 | `pyproject.toml` khai `Django<5.0` ✅ **đã sửa**. Nhưng tìm ra: **baseline chạy 6.0.6 còn production 5.2.17** ⇒ cần Owner quyết có nâng lên 6.0 không |
 
 ## 0.2.1 Quy trình cập nhật khi code đổi
 

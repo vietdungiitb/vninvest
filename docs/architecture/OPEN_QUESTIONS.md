@@ -80,16 +80,39 @@
 | **Đề xuị** | Sửa `AGENTS.md`: đổi `soc.module.css` → `soc.tokens.css` (token) và `soc.components.css` (class) |
 | **Ưu tiên** | **P0** — nó làm người mới tin nhầm ngay từ dòng đầu |
 
-### Q-07 — `pyproject.toml` khai `Django>=4.2,<5.0` nhưng repo chạy 6.0.6
+### Q-07 — ~~`pyproject.toml` khai `Django<5.0`~~ **ĐÃ SỬA** — và tìm ra vấn đề lớn hơn
 
 | | |
 |---|---|
-| **Vấn đề** | Ràng buộc phiên bản sai ⇒ `pip install` theo file này sẽ lên bản sai, và mọi cài đặt mới sẽ hỏng |
-| **Bằng chứng** | `packages/core/pyproject.toml` vs `Django 6.0.6` đang chạy (interpreter WindowsApps) |
-| **Hệ quả thực tế** | Đã gây **9 lỗi giả** khi chạy nhầm interpreter `.venv` (Django 5.2.14, không có `django.utils.timezone.UTC`) |
-| **Vì sao không tự quết** | `pyproject.toml` nằm trong **deny-list §2**; đồng thời chốt version là quyết định dependency |
-| **Đề xuị** | Nới thành `Django>=5.2,<7.0` |
-| **Ưu tiên** | **P0** |
+| **Sửa** | `packages/core/pyproject.toml:12` `Django>=4.2,<5.0` → **`Django>=5.2,<6.0`** (commit xem `git log`) |
+| **Vì sao 5.2 chứ không phải 6.0** | Bản đầu tôi đề xuất `<7.0` dựa trên **giả định sai**. Đo lại trong container: `django 5.2.17`, `requirements.txt:1` = `Django>=5.2,<6.0` ⇒ **5.2 mới là sự thật**, `pyproject.toml` là kẻ lệch |
+
+#### ⚠ Phát hiện lớn hơn: baseline chạy **khác major** với production
+
+| Nơi | Django |
+|---|---|
+| Container `vninvest-dev-core-api` / `core-worker` (cái **thật sự chạy**) | **5.2.17** |
+| `vninvest\.venv` | 5.2.14 |
+| `…\WindowsApps\python.exe` | **6.0.6** |
+
+**Hệ quả:** baseline `run_tests.py` của đợt B5 (2.805 test · 83F + 8E) và toàn bộ
+phiên audit này đều chạy trên **6.0.6**, tức **khác major với production**. Test
+xanh trên 6.0.6 **không** bảo chứng xanh trên 5.2.17.
+
+> **Cần Owner quyết:** có chủ đích nâng lên Django 6.0 không?
+> - **Không** (giữ 5.2) ⇒ mọi gate phải chạy trên `>=5.2,<6.0`; 9 lỗi ở
+>   `test_ohlcv_bars_native_api` **là thật**, không phải lỗi giả.
+> - **Có** ⇒ nới `requirements.txt` (`<6.0` → `<7.0`) **kèm** `pyproject.toml`,
+>   và chạy lại toàn bộ suite trên 6.0 để lấy baseline mới.
+>
+> **Không tự quết** vì nó quyết định thứ tự nâng cấp dependency của cả hệ thống.
+
+#### Đã kiểm tra và **KHÔNG** phải bug
+
+`django.utils.timezone.utc` đã bị Django 5.0 **xoá**, nên tôi nghi ngờ 33 chỗ
+trong production còn sót. **AST kiểm từng file: 0 chỗ nào dùng `django.utils.timezone`.**
+Tất cả là `datetime.timezone.utc` của **stdlib** — hợp lệ. Cảnh báo của tôi **sai**,
+không có bug nào ở đây. Ghi lại để không ai đào lại.
 
 ---
 

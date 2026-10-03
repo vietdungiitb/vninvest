@@ -341,9 +341,21 @@ chứ không phải code.
 | **`git show HEAD:p \| Out-File`** | Hỏng chuỗi tiếng Việt (console cp1252) ⇒ fail giả | Copy bằng byte: `shutil.copy2` hoặc `subprocess` + `bytes` |
 | **Chạy `manage.py test` trần** | Bỏ sót ~2.100 test trong `src/` | Full suite phải `python run_tests.py` |
 
-Ngoài ra: **9 lỗi giả** do chạy sai interpreter — `vninvest\.venv` có Django 5.2.14
-(không có `django.utils.timezone.UTC`), còn interpreter WindowsApps có 6.0.6.
-Baseline phải sinh bằng **cùng** interpreter.
+Ngoài ra: **chọn sai interpreter là sinh lỗi giả.** Ba interpreter trên máy
+không giống nhau:
+
+| Interpreter | Django | Có khớp container (5.2.17)? |
+|---|---|---|
+| `vninvest\.venv` | 5.2.14 | ✅ gần nhất |
+| `…\WindowsApps\python.exe` | **6.0.6** | ❌ **khác major** |
+| Container `vninvest-dev-core-api` | **5.2.17** | chính là nó |
+
+⚠ **Rủi ro thật:** baseline chạy trên `WindowsApps` (6.0.6) là **khác major với
+production**. Test xanh trên 6.0.6 **không** bảo chứng xanh trên 5.2.17. Khi
+đối chiếu regression, dùng interpreter `>=5.2,<6.0`.
+
+Còn `django.utils.timezone.UTC` thì **chỉ có** ở Django 6.0 — test dùng nó sẽ đỏ
+trên 5.2. Dùng `datetime.UTC` (Python ≥ 3.11) thay cho cả hai phía.
 
 ## 7.5 Trước khi bắt đầu viết code — đọc gì
 

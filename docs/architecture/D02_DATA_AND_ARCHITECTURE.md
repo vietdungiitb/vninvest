@@ -24,7 +24,7 @@ C4Container
     System_Boundary(bnd, "vninvest") {
         Container(spa, "Web SPA", "React 19 + Vite", "Giao diện cho nhà đầu tư và quản trị. 516 file nguồn trong packages/web/src.")
         Container(nginx, "Reverse proxy", "nginx", "Đầu vào HTTP. /core/v1/ proxy sang API; /api/* viết lại sang /core/v1/*; phục vụ SPA.")
-        Container(api, "Core API", "Django 6.0 + DRF + daphne (ASGI)", "1 tiến trình, 15 Django app. Cổng nội bộ 8100.")
+        Container(api, "Core API", "Django 5.2 + DRF + daphne (ASGI)", "1 tiến trình, 15 Django app. Cổng nội bộ 8100. Container đo được 2026-10-03: Django 5.2.17 / Python 3.13.15.")
         Container(worker, "Celery worker", "Celery", "9 vai trò worker ở dev, 3 ở prod. 10 hàng đợi khai báo.")
         Container(beat, "Celery beat", "django-celery-beat", "42 lịch định kỳ. Lịch nằm trong DB, không nằm trong settings.py.")
         ContainerDb(db, "PostgreSQL 16", "PostgreSQL", "Nguồn sự thật. 115 migration, 107 model.")
