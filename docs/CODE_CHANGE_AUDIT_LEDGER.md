@@ -1,3 +1,51 @@
+## Entry 239: Chuẩn hoá quy trình tài liệu kiến trúc — `TEMPLATE.md` (13 nguyên tắc) + `verify_arch_citations.py`, sửa 33/33 citation (2026-10-03)
+
+- **Date**: 2026-10-03
+- **Branch**: `feat/arch-template-tools` → PR #70 (2 commit)
+- **Scope**: 1 file mới + 1 script mới + 5 file docs sửa citation + `CLAIMS.md`. Không đụng code runtime, không migration, không `npm/pip install`.
+- **Nguồn yêu cầu**: audit mẫu prompt kiến trúc mà Owner đưa — mẫu **đã chạy thật** trong repo này (`8e3dce914`, 3/3 phiên), nhưng còn 4 lỗ hổng mà 8 đề xuất bổ sung không đóng.
+
+### 1. Đo trước, không giả định
+
+261 citation trong 4 file `.md` (4.247 dòng): **117 (45%) là bare basename** không xác minh được (chỉ ghi `models.py:107` trong khi có 15 file tên đó) · **11** trỏ file không tồn tại · 1 line vượt EOF. Không script nào kiểm tra, vì `scripts/audit-status-claims.mjs:18` chỉ nhắm `AGENTS.md`. **Đúng bệnh `AGENTS.md` đang mắc** (sai 20 `file:line`, `docs/evidence/portfolio-commercial/AUDIT_VERIFICATION_20260926.md`).
+
+### 2. Sửa 33/33 — trong đó 1 lỗi **sai nội dung**, không chỉ sai đường dẫn
+
+`OPEN_QUESTIONS.md` ghi `api_calls_limit` ở `models.py:107`. File tồn tại, dòng tồn tại ⇒ **script báo "hợp lệ"**. Nhưng `commercial/models.py:107` là `error_code = CharField(...)`; `api_calls_limit` nằm ở **`commercial/models.py:44`**.
+
+Hệ quả về mặt quy trình: **không script nào thay được bước phản biện đọc file thật (R9)**. Ghi vào `TEMPLATE.md` §7 để lần sau không tin script hơn đọc.
+
+### 3. 13 nguyên tắc — mỗi mục có một lỗi đã xảy ra làm dấu hiệu
+
+Tám mục đã đề xuất (đo được, chống trôi, sinh tự động, mục CHƯA CHẠY, leo thang quyết định, runtime provenance, trạng thái gate, chạy lại script mỗi lượt) **+ 5 mục phát sinh khi viết**: phát hiện xung đột tài liệu trước khi viết · phản biện giữa các lượt · citation phải xác minh được · vòng đời finding · owner + ngày rà soát · SOP phải **bám lớp kiến trúc đang tồn tại** (checklist generic trong mẫu là lớp Java/Spring, bị thay toàn bộ khi chạy thật).
+
+### 4. Phát hiện ngoài phạm vi — `CLAIMS.md` hỏng byte
+
+Agent `arch-as-is` tự hỏng **chính dòng claim của mình**: `arch-as-is` lưu thành `BEL + "rch-as-is"`, `feat/...` thành `FF + "eat/..."`, `exports` thành `ESC + "xports"` (mã 7 / 12 / 27). Sửa 5 chỗ trong block đó. **Còn 4 control char** (mã 7/8/27) ở dòng 226/242/244/258 thuộc claim `released` của agent khác ⇒ **chỉ báo cáo, không sửa dòng người khác**.
+
+### 5. Sự cố quy trình: commit rơi vào `dev` do session khác đổi branch trong **cùng working tree**
+
+Reflog `07:59:16`: session `core-team` chạy `git checkout dev` + fast-forward trong **main tree** (`git worktree list` chỉ có 1 worktree) trong lúc tôi đang làm trên `feat/arch-template-tools`. Branch của tôi bị bỏ rơi ⇒ 2 commit rơi thẳng vào `dev`.
+
+Không có thiệt hại từ xa (`origin/dev` vẫn ở `972bc9072`). Khắc phục: `git branch -f` giữ commit trên feature branch → `git reset --keep` đưa `dev` về khớp `origin/dev` → push fast-forward (không cần force) → PR #70.
+
+**Đây là bằng chứng cụ thể cho `AGENT_PROTOCOL.md` §10.0**: quy tắc "main tree KHÔNG commit thẳng vào `dev`" **không tự cưỡng chế được** khi hai agent dùng chung một working tree. Chỉ 1 worktree ⇒ không có điểm giao trước khi commit.
+
+### 6. Gate chạy thật
+
+`verify_arch_citations` **264/264** exit 0 · `measure_repo` **8/8** exit 0 · `gen_data_doc` **107 model / 0 orphan** exit 0 (idempotent, không ghi đè bản sửa citation) · `ruff` pass · `check-multi-agent` PASS (74 claim hợp lệ) · `py_compile` OK.
+**Negative test**: tiêm 3 citation xấu (hết dòng / file không tồn tại / trùng tên) → bắt đủ 3 loại, exit 1; khôi phục → exit 0.
+
+**2 bug của chính script** (đã ghi trong `TEMPLATE.md` §7): so hậu tố có `/` làm hụt đường dẫn gốc repo ⇒ **7/11 `DEAD_PATH` là báo động giả**; `print()` tiếng Việt có dấu trên Windows với stdout `cp1252` ⇒ `UnicodeEncodeError` **giữa chừng**, mất toàn bộ danh sách lỗi (cùng bẫy đã gây `migrate` thất bại ở `identity_access/.../0019:264-272`).
+
+### 7. Còn tồn đọng (không tự quết)
+
+4 câu hỏi P0 trong `docs/architecture/OPEN_QUESTIONS.md` vẫn mở · 9 mục `CHƯA XÁC MINH` · CI 9/10 tắt · branch `feat/arch-as-is-doc` đã merge nhưng còn tồn tại local · **`dev` và các agent khác vẫn dùng chung một working tree** (mục §5).
+
+| # | Ngày | Agent | Nội dung | File | Gate | Bằng chứng | Mở | Trạng thái |
+|---|---|---|---|---|---|---|---|---|
+| 239 | 2026-10-03 | docs | Chuẩn hoá quy trình tài liệu kiến trúc thành mẫu SSOT (13 nguyên tắc) + script cưỡng chế R10; đo 261 citation → **45% không xác minh được**, sửa 33/33 (1 lỗi sai nội dung); phát hiện CLAIMS.md hỏng control char + sự cố commit rơi vào `dev` do chung worktree | `docs/architecture/TEMPLATE.md` (new), `docs/architecture/tools/verify_arch_citations.py` (new), `docs/architecture/{README,D01,D02,D03,OPEN_QUESTIONS}.md`, `docs/CLAIMS.md` | verify_arch_citations 264/264, measure_repo 8/8, gen_data_doc 107/0 orphan, ruff pass, check-multi-agent PASS, negative test 3/3 | xem Entry 239 | xem Entry 239 | v0 | Active |
+
 ## Entry 238: Gỡ `CODE_CHANGE_AUDIT_LEDGER.md` khỏi shared-file deny-list — Owner chốt phương án (a) (2026-10-03)
 
 - **Date**: 2026-10-03
