@@ -850,3 +850,27 @@ repo nua vua). Do baseline bang `git worktree` rieng.
 `/core/v1/auth/login/` + `/core/v1/auth/register/` va **PASS** ⇒ route that
 con san. `test_user_workspace_tenant_isolation` co `assertNotIn('Portfolio B2')`
 **PASS** ⇒ khong ro ri du lieu, chi danh sach rong do doc sai envelope shape.
+
+## 2026-10-04 - Audit + dong BLOCKER/HIGH (B1 SAML, B2 VNPay, H1-H4 quota/push) - in-progress
+
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| owner-audit-fix | feat/openwork-ow02-03-04 | Slice B (quota) truoc: `advisory/tasks.py:238` hoan tien sai tenant (filter `owner_user` thay vi tenant da tieu) · `advisory/views.py:490-501` race quota thieu `select_for_update` (dem 0 lan trong app) · them `security:write` cho `revoke_all_sessions_except` · `permissions.py:144-158` `IsTenantActive` tra True khi chua resolve tenant · `support/views.py` fail-closed · `settings.py:188` SQLite default | packages/core/backend/src/advisory/tasks.py, packages/core/backend/src/advisory/views.py, packages/core/backend/src/identity_access/views_security.py, packages/core/backend/src/identity_access/utils/resolve_tenant.py, packages/core/backend/src/identity_access/permissions.py, packages/core/backend/src/support/views.py, packages/core/backend/src/vninvest_core/settings.py, packages/core/backend/tests/test_advisory_quota_security.py (new), docs/CODE_CHANGE_AUDIT_LEDGER.md | in-progress |
+| owner-audit-fix | feat/openwork-ow02-03-04 | Slice A (fail-closed): `saml_service.py:52` heuristic substring tren `sys.argv` + `:363-367` strict raise vo dieu kien => SSO khong co xac thuc crypto · `views/sso.py:254-267` fallback resolve tenant tu assertion chua verify · `vnpay_service.py:18` secret fallback `SECRET_DEMO` + `:64` log `vnp_SecureHash` o INFO + `:94` so hash khong constant-time · `commercial/views.py:252` `ipn_amount=-1` bo qua check tien · `stripe_webhooks.py:113,292` fail-open | packages/core/backend/src/identity_access/saml_service.py, packages/core/backend/src/identity_access/views/sso.py, packages/core/backend/src/identity_access/tests/test_saml_sso.py, packages/core/backend/src/identity_access/tests/test_saml_signature_mode.py, packages/core/backend/src/commercial/vnpay_service.py, packages/core/backend/src/commercial/views.py, packages/core/backend/src/commercial/stripe_webhooks.py, packages/core/backend/tests/test_vnpay_ipn_security.py (new), packages/core/backend/tests/test_stripe_fail_closed.py (new), docs/CODE_CHANGE_AUDIT_LEDGER.md | in-progress |
+| owner-audit-fix | feat/openwork-ow02-03-04 | Slice C (duong push): `.githooks/pre-push:18,28,32` chi chay `check-multi-agent` + `manage.py check` roi `exit 0`, khong goi `pre-push-gate.mjs` · `pre-push-gate.mjs:30-32` bypass bang env `SKIP_PRE_PUSH_GATE=1` · `:298` tinh SKIP la cho phep push · `agent-sync.ps1:159` chay `manage.py test tests` chi doc `backend/tests/` bo qua `src/*/tests/` (2104 test) | .githooks/pre-push, scripts/pre-push-gate.mjs, scripts/agent-sync.ps1, docs/CODE_CHANGE_AUDIT_LEDGER.md | in-progress |
+
+**Tai lieu:** `docs/AUDIT_20261004.md` (audit) · `docs/PLAN_V2_VNINVEST_HARDENING_20261004.md` (ke hoach v2)
+**Plan v1 bi Stage 2 tra REJECT** - 5/10 tieu chi khong the pass; xem `docs/PLAN_AUDIT_V2_20261004.md`.
+
+**Thu tu B -> A -> C.** Slice C sua bo chan cua chinh agent nen lam sau.
+
+**Van de ky thuat doc bi ghi nham:** `docs/PLAN_AUDIT_V2_20261004.md` chua ton tai;
+audit plan duoc tra truc tiep trong chat, tom tat o `docs/AUDIT_20261004.md` muc8.
+
+**Ghi chu (quan trong):** 6 test trong `identity_access/tests/test_saml_sso.py` hien
+XANH chi vi heuristic `sys.argv` chon `noop` (cert gia `idp_x509_cert='MIIC...'`, khong
+co `<Signature>`). Bo heuristic se lam do 6 test do - phai sua kem, khong bo roi.
+
+**Khong nam trong claim nay (de coordinator/owner xu ly):**
+`compose*.yml` · `.env*` · `pyproject.toml` · `requirements.txt` · `docker-compose*.yml` ·
+`docs/CODE_CHANGE_AUDIT_LEDGER.md` chi append 1 hunk (append-only).
