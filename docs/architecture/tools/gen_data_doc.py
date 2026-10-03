@@ -185,10 +185,12 @@ def default_repr(f) -> str:
     if d is None or d is models.NOT_PROVIDED:
         return "—"
     if callable(d):
-        try:
-            d = d()
-        except Exception:  # noqa: BLE001
-            return "callable"
+        # KHÔNG gọi hàm để lấy giá trị. `default=timezone.now` sẽ trả thời
+        # điểm **chạy script**, nên mỗi lần sinh lại đều cho ra một timestamp
+        # khác ⇒ file tài liệu không tất định ⇒ review thấy diff giả ở mọi
+        # lần chạy, và "chạy lại không đổi gì" (tính chất của một SSOT) hỏng.
+        # Chỉ hiện **tên** hàm — đó mới là thông tin có ích.
+        return f"`{getattr(d, '__name__', type(d).__name__)}()`"
     if isinstance(d, (datetime.datetime, datetime.date, datetime.time)):
         return f"`{d.isoformat()}`"
     if isinstance(d, uuid.UUID):

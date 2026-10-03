@@ -1553,7 +1553,7 @@ erDiagram
 | `display_name` | `display_name` | `CharField(120)` | — | — | — |  |
 | `plan` | `plan` | `CharField(32)` | — | `free` | — | index; 6 choices |
 | `status` | `status` | `CharField(32)` | — | `active` | — | index; 5 choices |
-| `features` | `features` | `JSONField` | — | `[]` | — | **blank nhưng NOT NULL** |
+| `features` | `features` | `JSONField` | — | `list()` | — | **blank nhưng NOT NULL** |
 | `trial_ends_at` | `trial_ends_at` | `DateTimeField` | ✓ | — | — |  |
 | `activated_at` | `activated_at` | `DateTimeField` | ✓ | — | — |  |
 | `suspended_at` | `suspended_at` | `DateTimeField` | ✓ | — | — |  |
@@ -1603,7 +1603,7 @@ erDiagram
 | `language` | `language` | `CharField(8)` | — | `vi` | — | 2 choices |
 | `theme` | `theme` | `CharField(10)` | — | `dark` | — | 2 choices |
 | `whale_alert_threshold` | `whale_alert_threshold` | `DecimalField(12,0)` | — | `500` | — |  |
-| `preferences` | `preferences` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `preferences` | `preferences` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `legacy_user_id` | `legacy_user_id` | `IntegerField` | ✓ | — | — | index |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
 | `updated_at` | `updated_at` | `DateTimeField` | — | — | — |  |
@@ -1621,7 +1621,7 @@ erDiagram
 | `public_id` | `public_id` | `CharField(36)` | — | — | UK | index |
 | `tenant_id` | `tenant_id` | `ForeignKey` | — | — | FK | on_delete=CASCADE; → `identity_access.CoreTenant` |
 | `name` | `name` | `CharField(64)` | — | — | — |  |
-| `permissions` | `permissions` | `JSONField` | — | `[]` | — | **blank nhưng NOT NULL** |
+| `permissions` | `permissions` | `JSONField` | — | `list()` | — | **blank nhưng NOT NULL** |
 | `is_system` | `is_system` | `BooleanField` | — | `False` | — |  |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
 | `updated_at` | `updated_at` | `DateTimeField` | — | — | — |  |
@@ -1684,10 +1684,10 @@ erDiagram
 | `tenant_id` | `tenant_id` | `ForeignKey` | — | — | FK | on_delete=CASCADE; → `identity_access.CoreTenant` |
 | `name` | `name` | `CharField(120)` | — | — | — |  |
 | `status` | `status` | `CharField(24)` | — | `active` | — | index; 2 choices |
-| `scopes` | `scopes` | `JSONField` | — | `[]` | — | **blank nhưng NOT NULL** |
-| `metadata` | `metadata` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
-| `allowed_symbols` | `allowed_symbols` | `JSONField` | — | `[]` | — | **blank nhưng NOT NULL** |
-| `features` | `features` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `scopes` | `scopes` | `JSONField` | — | `list()` | — | **blank nhưng NOT NULL** |
+| `metadata` | `metadata` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
+| `allowed_symbols` | `allowed_symbols` | `JSONField` | — | `list()` | — | **blank nhưng NOT NULL** |
+| `features` | `features` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `last_rotated_at` | `last_rotated_at` | `DateTimeField` | ✓ | — | — |  |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
 | `updated_at` | `updated_at` | `DateTimeField` | — | — | — |  |
@@ -1707,7 +1707,7 @@ erDiagram
 | `label` | `label` | `CharField(120)` | — | `""` | — | **blank nhưng NOT NULL** |
 | `token_prefix` | `token_prefix` | `CharField(12)` | — | — | — | index |
 | `token_secret_hash` | `token_secret_hash` | `CharField(64)` | — | — | UK | index |
-| `scopes` | `scopes` | `JSONField` | — | `[]` | — | **blank nhưng NOT NULL** |
+| `scopes` | `scopes` | `JSONField` | — | `list()` | — | **blank nhưng NOT NULL** |
 | `status` | `status` | `CharField(24)` | — | `active` | — | index; 4 choices |
 | `is_human_session` | `is_human_session` | `BooleanField` | — | `False` | — | index |
 | `expires_at` | `expires_at` | `DateTimeField` | ✓ | — | — | index |
@@ -1716,7 +1716,7 @@ erDiagram
 | `revoked_reason` | `revoked_reason` | `TextField` | — | `""` | — | **blank nhưng NOT NULL** |
 | `grace_until` | `grace_until` | `DateTimeField` | ✓ | — | — |  |
 | `audit_reason` | `audit_reason` | `TextField` | — | `""` | — | **blank nhưng NOT NULL** |
-| `allowed_cidr_blocks` | `allowed_cidr_blocks` | `JSONField` | — | `[]` | — | **blank nhưng NOT NULL** |
+| `allowed_cidr_blocks` | `allowed_cidr_blocks` | `JSONField` | — | `list()` | — | **blank nhưng NOT NULL** |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
 | `updated_at` | `updated_at` | `DateTimeField` | — | — | — |  |
 
@@ -1784,10 +1784,10 @@ erDiagram
 | `id` | `id` | `BigAutoField` | — | — | PK |  |
 | `provider` | `provider` | `CharField(16)` | — | — | UK | index; 3 choices |
 | `secrets_cipher` | `secrets_cipher` | `BinaryField` | — | — | — |  |
-| `allowed_purposes` | `allowed_purposes` | `JSONField` | — | `[]` | — | **blank nhưng NOT NULL** |
+| `allowed_purposes` | `allowed_purposes` | `JSONField` | — | `list()` | — | **blank nhưng NOT NULL** |
 | `is_verified` | `is_verified` | `BooleanField` | — | `False` | — |  |
 | `last_verified_at` | `last_verified_at` | `DateTimeField` | ✓ | — | — |  |
-| `last_check` | `last_check` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `last_check` | `last_check` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `updated_by` | `updated_by` | `CharField(150)` | — | `""` | — | **blank nhưng NOT NULL** |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
 | `updated_at` | `updated_at` | `DateTimeField` | — | — | — |  |
@@ -1957,7 +1957,7 @@ erDiagram
 | `name` | `name` | `CharField(128)` | — | — | — |  |
 | `report_type` | `report_type` | `CharField(32)` | — | — | — | 4 choices |
 | `schedule` | `schedule` | `CharField(16)` | — | — | — | 5 choices |
-| `recipients` | `recipients` | `JSONField` | — | `[]` | — |  |
+| `recipients` | `recipients` | `JSONField` | — | `list()` | — |  |
 | `format` | `format` | `CharField(8)` | — | `html` | — | 2 choices |
 | `is_active` | `is_active` | `BooleanField` | — | `True` | — |  |
 | `last_sent_at` | `last_sent_at` | `DateTimeField` | ✓ | — | — |  |
@@ -1992,9 +1992,9 @@ erDiagram
 | `name` | `name` | `CharField(128)` | — | `Default` | — |  |
 | `url` | `url` | `CharField(512)` | — | — | — |  |
 | `secret` | `secret` | `CharField(64)` | — | `""` | — | **blank nhưng NOT NULL** |
-| `events` | `events` | `JSONField` | — | `[]` | — |  |
+| `events` | `events` | `JSONField` | — | `list()` | — |  |
 | `is_active` | `is_active` | `BooleanField` | — | `True` | — |  |
-| `headers` | `headers` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `headers` | `headers` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `retry_count` | `retry_count` | `IntegerField` | — | `3` | — |  |
 | `timeout_seconds` | `timeout_seconds` | `IntegerField` | — | `10` | — |  |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
@@ -2101,7 +2101,7 @@ erDiagram
 | `period_end` | `period_end` | `DateField` | — | — | — |  |
 | `due_date` | `due_date` | `DateField` | ✓ | — | — |  |
 | `paid_at` | `paid_at` | `DateTimeField` | ✓ | — | — |  |
-| `line_items` | `line_items` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `line_items` | `line_items` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
 | `updated_at` | `updated_at` | `DateTimeField` | — | — | — |  |
 
@@ -2156,7 +2156,7 @@ erDiagram
 | `old_value` | `old_value` | `JSONField` | ✓ | — | — |  |
 | `new_value` | `new_value` | `JSONField` | ✓ | — | — |  |
 | `ip_address` | `ip_address` | `GenericIPAddressField(39)` | ✓ | — | — |  |
-| `metadata` | `metadata` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `metadata` | `metadata` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — | index |
 
 ### C5 — Dữ liệu thị trường thô
@@ -2175,7 +2175,7 @@ erDiagram
 | `industry` | `industry` | `CharField(128)` | — | `""` | — | **blank nhưng NOT NULL** |
 | `status` | `status` | `CharField(16)` | — | `active` | — | index; 3 choices |
 | `outstanding_shares` | `outstanding_shares` | `BigIntegerField` | ✓ | — | — |  |
-| `metadata` | `metadata` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `metadata` | `metadata` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `legacy_symbol` | `legacy_symbol` | `CharField(32)` | — | `""` | — | index; **blank nhưng NOT NULL** |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
 | `updated_at` | `updated_at` | `DateTimeField` | — | — | — |  |
@@ -2262,7 +2262,7 @@ erDiagram
 | `freshness_state_summary` | `freshness_state_summary` | `CharField(16)` | — | `unknown` | — | index |
 | `coverage_state_summary` | `coverage_state_summary` | `CharField(16)` | — | `unknown` | — | index |
 | `decay_after_at` | `decay_after_at` | `DateTimeField` | ✓ | — | — | index |
-| `metadata` | `metadata` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `metadata` | `metadata` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
 | `updated_at` | `updated_at` | `DateTimeField` | — | — | — |  |
 
@@ -2282,10 +2282,10 @@ erDiagram
 | `tenant_id` | `tenant_id` | `ForeignKey` | ✓ | — | FK | on_delete=SET_NULL; → `identity_access.CoreTenant` |
 | `user_id` | `user_id` | `ForeignKey` | ✓ | — | FK | on_delete=SET_NULL; → `auth.User` |
 | `is_active` | `is_active` | `BooleanField` | — | `True` | — | index |
-| `activated_at` | `activated_at` | `DateTimeField` | — | `2026-10-02T23:57:42.583545+00:00` | — |  |
+| `activated_at` | `activated_at` | `DateTimeField` | — | `now()` | — |  |
 | `deactivated_at` | `deactivated_at` | `DateTimeField` | ✓ | — | — |  |
 | `weight` | `weight` | `FloatField` | — | `1.0` | — |  |
-| `metadata` | `metadata` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `metadata` | `metadata` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
 | `updated_at` | `updated_at` | `DateTimeField` | — | — | — |  |
 
@@ -2305,10 +2305,10 @@ erDiagram
 | `oldest_available_at` | `oldest_available_at` | `DateTimeField` | ✓ | — | — |  |
 | `latest_complete_trade_date` | `latest_complete_trade_date` | `DateField` | ✓ | — | — |  |
 | `freshness_state` | `freshness_state` | `CharField(16)` | — | `unknown` | — | index; 6 choices |
-| `missing_ranges` | `missing_ranges` | `JSONField` | — | `[]` | — | **blank nhưng NOT NULL** |
+| `missing_ranges` | `missing_ranges` | `JSONField` | — | `list()` | — | **blank nhưng NOT NULL** |
 | `last_verified_at` | `last_verified_at` | `DateTimeField` | ✓ | — | — |  |
 | `next_recommended_action` | `next_recommended_action` | `CharField(64)` | — | `""` | — | **blank nhưng NOT NULL** |
-| `detail` | `detail` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `detail` | `detail` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `gap_score` | `gap_score` | `FloatField` | — | `0.0` | — | index |
 | `priority_reason` | `priority_reason` | `CharField(200)` | — | `""` | — | **blank nhưng NOT NULL** |
 | `demand_source` | `demand_source` | `CharField(40)` | — | `""` | — | index; **blank nhưng NOT NULL** |
@@ -2331,7 +2331,7 @@ erDiagram
 | `request_delay_ms` | `request_delay_ms` | `IntegerField` | — | `200` | — |  |
 | `max_retries` | `max_retries` | `IntegerField` | — | `3` | — |  |
 | `batch_size` | `batch_size` | `IntegerField` | — | `50` | — |  |
-| `extra` | `extra` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `extra` | `extra` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
 | `updated_at` | `updated_at` | `DateTimeField` | — | — | — |  |
 
@@ -2347,7 +2347,7 @@ erDiagram
 | `source` | `source` | `CharField(32)` | — | — | — | 4 choices |
 | `status` | `status` | `CharField(16)` | — | `active` | — | 3 choices |
 | `schedule_seconds` | `schedule_seconds` | `PositiveIntegerField` | — | `60` | — |  |
-| `config` | `config` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `config` | `config` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
 | `updated_at` | `updated_at` | `DateTimeField` | — | — | — |  |
 
@@ -2365,9 +2365,9 @@ erDiagram
 | `rows_upserted` | `rows_upserted` | `PositiveIntegerField` | — | `0` | — |  |
 | `rows_skipped` | `rows_skipped` | `PositiveIntegerField` | — | `0` | — |  |
 | `error_message` | `error_message` | `TextField` | — | `""` | — | **blank nhưng NOT NULL** |
-| `started_at` | `started_at` | `DateTimeField` | — | `2026-10-02T23:57:42.584712+00:00` | — |  |
+| `started_at` | `started_at` | `DateTimeField` | — | `now()` | — |  |
 | `finished_at` | `finished_at` | `DateTimeField` | ✓ | — | — |  |
-| `meta` | `meta` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `meta` | `meta` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 
 ### C6 — Vật chất hoá thị trường (serving)
 
@@ -2468,8 +2468,8 @@ erDiagram
 | `session_date` | `session_date` | `DateField` | — | — | — | index |
 | `triggered_at` | `triggered_at` | `DateTimeField` | — | — | — | index |
 | `source_ref` | `source_ref` | `CharField(255)` | — | `""` | — | **blank nhưng NOT NULL** |
-| `metadata` | `metadata` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
-| `evidence` | `evidence` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `metadata` | `metadata` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
+| `evidence` | `evidence` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 
 #### `signal_intelligence_whalealertcanonical` — WhaleAlertCanonical
 
@@ -2511,7 +2511,7 @@ erDiagram
 | `volume_at_signal` | `volume_at_signal` | `BigIntegerField` | ✓ | — | — |  |
 | `source_ref` | `source_ref` | `CharField(255)` | — | `""` | — | index; **blank nhưng NOT NULL** |
 | `unified_alert_id` | `unified_alert_id` | `ForeignKey` | ✓ | — | FK | on_delete=SET_NULL; → `signal_intelligence.UnifiedAlert` |
-| `metadata` | `metadata` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `metadata` | `metadata` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `triggered_at` | `triggered_at` | `DateTimeField` | — | — | — | index |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
 
@@ -2534,8 +2534,8 @@ erDiagram
 | `direction` | `direction` | `CharField(8)` | — | `neutral` | — | index; 3 choices |
 | `value` | `value` | `DecimalField(24,2)` | ✓ | — | — |  |
 | `source_ref` | `source_ref` | `CharField(255)` | — | `""` | — | index; **blank nhưng NOT NULL** |
-| `evidence` | `evidence` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
-| `metadata` | `metadata` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `evidence` | `evidence` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
+| `metadata` | `metadata` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `triggered_at` | `triggered_at` | `DateTimeField` | — | — | — | index |
 | `unified_alert_id` | `unified_alert_id` | `ForeignKey` | ✓ | — | FK | on_delete=SET_NULL; → `signal_intelligence.UnifiedAlert` |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
@@ -2560,8 +2560,8 @@ erDiagram
 | `body` | `body` | `TextField` | — | `""` | — | **blank nhưng NOT NULL** |
 | `value` | `value` | `DecimalField(24,2)` | ✓ | — | — |  |
 | `source_ref` | `source_ref` | `CharField(255)` | — | `""` | — | index; **blank nhưng NOT NULL** |
-| `evidence` | `evidence` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
-| `metadata` | `metadata` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `evidence` | `evidence` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
+| `metadata` | `metadata` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `triggered_at` | `triggered_at` | `DateTimeField` | — | — | — | index |
 | `unified_alert_id` | `unified_alert_id` | `ForeignKey` | ✓ | — | FK | on_delete=SET_NULL; → `signal_intelligence.UnifiedAlert` |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
@@ -2584,7 +2584,7 @@ erDiagram
 | `seen_at` | `seen_at` | `DateTimeField` | ✓ | — | — |  |
 | `acknowledged_at` | `acknowledged_at` | `DateTimeField` | ✓ | — | — |  |
 | `suppression_reason` | `suppression_reason` | `CharField(255)` | — | `""` | — | **blank nhưng NOT NULL** |
-| `metadata` | `metadata` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `metadata` | `metadata` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `updated_at` | `updated_at` | `DateTimeField` | — | — | — |  |
 
 #### `signal_intelligence_useralertpreference` — UserAlertPreference
@@ -2602,8 +2602,8 @@ erDiagram
 | `alert_family` | `alert_family` | `CharField(32)` | — | — | — | index |
 | `mute_until` | `mute_until` | `DateTimeField` | ✓ | — | — |  |
 | `cooldown_seconds` | `cooldown_seconds` | `PositiveIntegerField` | — | `0` | — |  |
-| `channel_policy` | `channel_policy` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
-| `metadata` | `metadata` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `channel_policy` | `channel_policy` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
+| `metadata` | `metadata` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
 | `updated_at` | `updated_at` | `DateTimeField` | — | — | — |  |
 
@@ -2747,7 +2747,7 @@ erDiagram
 | `is_active` | `is_active` | `BooleanField` | — | `True` | — |  |
 | `external_id` | `external_id` | `CharField(100)` | — | `""` | — | index; **blank nhưng NOT NULL** |
 | `broker_source` | `broker_source` | `CharField(50)` | — | `""` | — | **blank nhưng NOT NULL** |
-| `sync_status` | `sync_status` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `sync_status` | `sync_status` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `legacy_sub_account_id` | `legacy_sub_account_id` | `IntegerField` | ✓ | — | — | index |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
 | `updated_at` | `updated_at` | `DateTimeField` | — | — | — |  |
@@ -2925,7 +2925,7 @@ erDiagram
 | `label` | `label` | `CharField(100)` | — | `Mặc định` | — |  |
 | `secrets_cipher` | `secrets_cipher` | `TextField` | — | `""` | — | **blank nhưng NOT NULL** |
 | `secret_version` | `secret_version` | `PositiveSmallIntegerField` | — | `1` | — | index |
-| `prefs` | `prefs` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `prefs` | `prefs` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `status` | `status` | `CharField(20)` | — | `never_connected` | — | index; 5 choices |
 | `last_verified_at` | `last_verified_at` | `DateTimeField` | ✓ | — | — |  |
 | `last_error` | `last_error` | `TextField` | — | `""` | — | **blank nhưng NOT NULL** |
@@ -2967,8 +2967,8 @@ erDiagram
 | `total_scanned` | `total_scanned` | `IntegerField` | — | — | — |  |
 | `window_days` | `window_days` | `IntegerField` | ✓ | — | — |  |
 | `session_date` | `session_date` | `DateField` | ✓ | — | — |  |
-| `matched` | `matched` | `JSONField` | — | `[]` | — |  |
-| `params` | `params` | `JSONField` | — | `{}` | — |  |
+| `matched` | `matched` | `JSONField` | — | `list()` | — |  |
+| `params` | `params` | `JSONField` | — | `dict()` | — |  |
 
 #### `user_workspace_screenerschedule` — ScreenerSchedule
 
@@ -2982,11 +2982,11 @@ erDiagram
 | `user_id` | `user_id` | `ForeignKey` | — | — | FK | on_delete=CASCADE; → `auth.User` |
 | `tenant_id` | `tenant_id` | `ForeignKey` | — | — | FK | on_delete=CASCADE; → `identity_access.CoreTenant`; **blank nhưng NOT NULL** |
 | `name` | `name` | `CharField(100)` | — | — | — |  |
-| `rule_ids` | `rule_ids` | `JSONField` | — | `[]` | — |  |
+| `rule_ids` | `rule_ids` | `JSONField` | — | `list()` | — |  |
 | `run_time` | `run_time` | `TimeField` | — | — | — |  |
-| `weekdays` | `weekdays` | `JSONField` | — | `[]` | — |  |
+| `weekdays` | `weekdays` | `JSONField` | — | `list()` | — |  |
 | `is_active` | `is_active` | `BooleanField` | — | `True` | — | index |
-| `notify_channels` | `notify_channels` | `JSONField` | — | `[]` | — |  |
+| `notify_channels` | `notify_channels` | `JSONField` | — | `list()` | — |  |
 | `last_run_at` | `last_run_at` | `DateTimeField` | ✓ | — | — |  |
 | `next_run_at` | `next_run_at` | `DateTimeField` | ✓ | — | — | index |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
@@ -3007,7 +3007,7 @@ erDiagram
 | `max_tokens` | `max_tokens` | `IntegerField` | — | `1000` | — |  |
 | `temperature` | `temperature` | `FloatField` | — | `0.3` | — |  |
 | `prompt_template` | `prompt_template` | `TextField` | — | `""` | — | **blank nhưng NOT NULL** |
-| `metadata` | `metadata` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `metadata` | `metadata` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
 | `updated_at` | `updated_at` | `DateTimeField` | — | — | — |  |
 
@@ -3027,8 +3027,8 @@ erDiagram
 | `status` | `status` | `CharField(16)` | — | `pending` | — | index; 4 choices |
 | `ai_model` | `ai_model` | `CharField(64)` | — | `""` | — | **blank nhưng NOT NULL** |
 | `advisory_text` | `advisory_text` | `TextField` | — | `""` | — | **blank nhưng NOT NULL** |
-| `structured_output` | `structured_output` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
-| `context_snapshot` | `context_snapshot` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `structured_output` | `structured_output` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
+| `context_snapshot` | `context_snapshot` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `tokens_used` | `tokens_used` | `IntegerField` | — | `0` | — |  |
 | `error_message` | `error_message` | `TextField` | — | `""` | — | **blank nhưng NOT NULL** |
 | `legacy_advisory_id` | `legacy_advisory_id` | `IntegerField` | ✓ | — | — | index |
@@ -3053,7 +3053,7 @@ erDiagram
 | `ai_model` | `ai_model` | `CharField(64)` | — | `gpt-4o-mini` | — |  |
 | `tokens_used` | `tokens_used` | `IntegerField` | — | `0` | — |  |
 | `token_budget` | `token_budget` | `IntegerField` | — | `2000` | — |  |
-| `context_snapshot` | `context_snapshot` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `context_snapshot` | `context_snapshot` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `error_message` | `error_message` | `TextField` | — | `""` | — | **blank nhưng NOT NULL** |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
 | `updated_at` | `updated_at` | `DateTimeField` | — | — | — |  |
@@ -3069,7 +3069,7 @@ erDiagram
 | `session_id` | `session_id` | `ForeignKey` | — | — | FK | on_delete=CASCADE; → `advisory.AdvisorySession` |
 | `component_type` | `component_type` | `CharField(20)` | — | — | — | 5 choices |
 | `content` | `content` | `TextField` | — | `""` | — | **blank nhưng NOT NULL** |
-| `metadata` | `metadata` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `metadata` | `metadata` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `order` | `order` | `SmallIntegerField` | — | `0` | — |  |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
 
@@ -3093,8 +3093,8 @@ erDiagram
 | `max_tokens_per_day` | `max_tokens_per_day` | `IntegerField` | ✓ | — | — |  |
 | `refresh_interval_hours` | `refresh_interval_hours` | `IntegerField` | ✓ | — | — |  |
 | `max_auto_refreshes_per_day` | `max_auto_refreshes_per_day` | `IntegerField` | ✓ | — | — |  |
-| `prompt_config` | `prompt_config` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
-| `prompt_config_history` | `prompt_config_history` | `JSONField` | — | `[]` | — | **blank nhưng NOT NULL** |
+| `prompt_config` | `prompt_config` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
+| `prompt_config_history` | `prompt_config_history` | `JSONField` | — | `list()` | — | **blank nhưng NOT NULL** |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
 | `updated_at` | `updated_at` | `DateTimeField` | — | — | — |  |
 
@@ -3109,8 +3109,8 @@ erDiagram
 | `action` | `action` | `CharField(32)` | — | — | — | index; 3 choices |
 | `actor` | `actor` | `CharField(128)` | — | `""` | — | **blank nhưng NOT NULL** |
 | `reason` | `reason` | `TextField` | — | `""` | — | **blank nhưng NOT NULL** |
-| `before_json` | `before_json` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
-| `after_json` | `after_json` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `before_json` | `before_json` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
+| `after_json` | `after_json` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `diff_summary` | `diff_summary` | `TextField` | — | `""` | — | **blank nhưng NOT NULL** |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — | index |
 
@@ -3127,7 +3127,7 @@ erDiagram
 | `agent_type` | `agent_type` | `CharField(32)` | — | `advisory` | — | 6 choices |
 | `provider` | `provider` | `CharField(32)` | — | `openai` | — |  |
 | `model` | `model` | `CharField(64)` | — | `gpt-4o-mini` | — |  |
-| `capabilities` | `capabilities` | `JSONField` | — | `[]` | — | **blank nhưng NOT NULL** |
+| `capabilities` | `capabilities` | `JSONField` | — | `list()` | — | **blank nhưng NOT NULL** |
 | `system_prompt` | `system_prompt` | `TextField` | — | `""` | — | **blank nhưng NOT NULL** |
 | `is_active` | `is_active` | `BooleanField` | — | `True` | — | index |
 | `created_by_id` | `created_by_id` | `ForeignKey` | ✓ | — | FK | on_delete=SET_NULL; → `auth.User` |
@@ -3188,7 +3188,7 @@ erDiagram
 | `domain` | `domain` | `CharField(40)` | — | — | — | 7 choices |
 | `description` | `description` | `TextField` | — | — | — | **blank nhưng NOT NULL** |
 | `owner_team` | `owner_team` | `CharField(80)` | — | `core` | — |  |
-| `tags` | `tags` | `JSONField` | — | `[]` | — |  |
+| `tags` | `tags` | `JSONField` | — | `list()` | — |  |
 | `is_active` | `is_active` | `BooleanField` | — | `True` | — |  |
 | `is_deprecated` | `is_deprecated` | `BooleanField` | — | `False` | — |  |
 | `deprecation_note` | `deprecation_note` | `TextField` | — | — | — | **blank nhưng NOT NULL** |
@@ -3231,7 +3231,7 @@ erDiagram
 | `uptime_30d` | `uptime_30d` | `FloatField` | ✓ | — | — |  |
 | `burn_rate_1h` | `burn_rate_1h` | `FloatField` | ✓ | — | — |  |
 | `error_budget_remaining` | `error_budget_remaining` | `FloatField` | ✓ | — | — |  |
-| `detail` | `detail` | `JSONField` | — | `{}` | — |  |
+| `detail` | `detail` | `JSONField` | — | `dict()` | — |  |
 
 #### `service_ops_servicehealthchecklog` — ServiceHealthCheckLog
 
@@ -3262,8 +3262,8 @@ erDiagram
 | `started_at` | `started_at` | `DateTimeField` | — | — | — |  |
 | `finished_at` | `finished_at` | `DateTimeField` | ✓ | — | — |  |
 | `duration_seconds` | `duration_seconds` | `FloatField` | ✓ | — | — |  |
-| `input_summary` | `input_summary` | `JSONField` | — | `{}` | — |  |
-| `output_summary` | `output_summary` | `JSONField` | — | `{}` | — |  |
+| `input_summary` | `input_summary` | `JSONField` | — | `dict()` | — |  |
+| `output_summary` | `output_summary` | `JSONField` | — | `dict()` | — |  |
 | `error_detail` | `error_detail` | `TextField` | — | — | — | **blank nhưng NOT NULL** |
 
 #### `service_ops_ownershiprecord` — OwnershipRecord
@@ -3278,8 +3278,8 @@ erDiagram
 | `owner_team` | `owner_team` | `CharField(80)` | — | — | — |  |
 | `write_mode` | `write_mode` | `CharField(40)` | — | — | — | 5 choices |
 | `write_surface` | `write_surface` | `CharField(200)` | — | — | — | **blank nhưng NOT NULL** |
-| `locked_fields` | `locked_fields` | `JSONField` | — | `[]` | — |  |
-| `compatibility_domains` | `compatibility_domains` | `JSONField` | — | `[]` | — |  |
+| `locked_fields` | `locked_fields` | `JSONField` | — | `list()` | — |  |
+| `compatibility_domains` | `compatibility_domains` | `JSONField` | — | `list()` | — |  |
 | `deprecation_notes` | `deprecation_notes` | `TextField` | — | — | — | **blank nhưng NOT NULL** |
 | `updated_at` | `updated_at` | `DateTimeField` | — | — | — |  |
 
@@ -3313,7 +3313,7 @@ erDiagram
 | `id` | `id` | `BigAutoField` | — | — | PK |  |
 | `cycle_id` | `cycle_id` | `CharField(64)` | — | — | UK |  |
 | `status` | `status` | `CharField(20)` | — | `active` | — | 4 choices |
-| `providers` | `providers` | `JSONField` | — | `[]` | — |  |
+| `providers` | `providers` | `JSONField` | — | `list()` | — |  |
 | `started_at` | `started_at` | `DateTimeField` | — | — | — |  |
 | `completed_at` | `completed_at` | `DateTimeField` | ✓ | — | — |  |
 | `total_rows` | `total_rows` | `IntegerField` | — | `0` | — |  |
@@ -3351,7 +3351,7 @@ erDiagram
 | `name` | `name` | `CharField(100)` | — | — | — |  |
 | `slug` | `slug` | `SlugField(60)` | — | — | UK | index |
 | `description` | `description` | `TextField` | — | — | — | **blank nhưng NOT NULL** |
-| `symbols` | `symbols` | `JSONField` | — | `[]` | — |  |
+| `symbols` | `symbols` | `JSONField` | — | `list()` | — |  |
 | `is_active` | `is_active` | `BooleanField` | — | `True` | — |  |
 | `created_by` | `created_by` | `CharField(120)` | — | — | — | **blank nhưng NOT NULL** |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
@@ -3412,10 +3412,10 @@ erDiagram
 | `inserted_rows` | `inserted_rows` | `IntegerField` | — | `0` | — |  |
 | `updated_rows` | `updated_rows` | `IntegerField` | — | `0` | — |  |
 | `skipped_existing_rows` | `skipped_existing_rows` | `IntegerField` | — | `0` | — |  |
-| `started_at` | `started_at` | `DateTimeField` | — | `2026-10-02T23:57:42.598539+00:00` | — | index |
+| `started_at` | `started_at` | `DateTimeField` | — | `now()` | — | index |
 | `finished_at` | `finished_at` | `DateTimeField` | ✓ | — | — |  |
 | `eta_seconds` | `eta_seconds` | `FloatField` | ✓ | — | — |  |
-| `summary` | `summary` | `JSONField` | — | `{}` | — |  |
+| `summary` | `summary` | `JSONField` | — | `dict()` | — |  |
 | `error_summary` | `error_summary` | `TextField` | — | — | — | **blank nhưng NOT NULL** |
 
 #### `service_ops_backfillexecutionbatch` — BackfillExecutionBatch
@@ -3438,7 +3438,7 @@ erDiagram
 | `inserted_rows` | `inserted_rows` | `IntegerField` | — | `0` | — |  |
 | `updated_rows` | `updated_rows` | `IntegerField` | — | `0` | — |  |
 | `skipped_existing_rows` | `skipped_existing_rows` | `IntegerField` | — | `0` | — |  |
-| `failed_symbols` | `failed_symbols` | `JSONField` | — | `[]` | — |  |
+| `failed_symbols` | `failed_symbols` | `JSONField` | — | `list()` | — |  |
 | `latency_p50_ms` | `latency_p50_ms` | `FloatField` | — | `0.0` | — |  |
 | `latency_p95_ms` | `latency_p95_ms` | `FloatField` | — | `0.0` | — |  |
 | `started_at` | `started_at` | `DateTimeField` | ✓ | — | — |  |
@@ -3466,7 +3466,7 @@ erDiagram
 | `fresh_or_warm_parity` | `fresh_or_warm_parity` | `FloatField` | — | `0.0` | — |  |
 | `strict_met` | `strict_met` | `BooleanField` | — | `False` | — |  |
 | `relaxed_met` | `relaxed_met` | `BooleanField` | — | `False` | — |  |
-| `captured_at` | `captured_at` | `DateTimeField` | — | `2026-10-02T23:57:42.599109+00:00` | — | index |
+| `captured_at` | `captured_at` | `DateTimeField` | — | `now()` | — | index |
 
 #### `ops_audit_auditevent` — AuditEvent
 
@@ -3487,7 +3487,7 @@ erDiagram
 | `request_id` | `request_id` | `CharField(36)` | — | `""` | — | index; **blank nhưng NOT NULL** |
 | `pat_id` | `pat_id` | `CharField(36)` | ✓ | — | — | index |
 | `ip_address` | `ip_address` | `GenericIPAddressField(39)` | ✓ | — | — |  |
-| `metadata` | `metadata` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `metadata` | `metadata` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `occurred_at` | `occurred_at` | `DateTimeField` | — | — | — | index |
 
 #### `ops_audit_requesttrace` — RequestTrace
@@ -3549,7 +3549,7 @@ erDiagram
 | `first_response_at` | `first_response_at` | `DateTimeField` | ✓ | — | — |  |
 | `resolved_at` | `resolved_at` | `DateTimeField` | ✓ | — | — |  |
 | `closed_at` | `closed_at` | `DateTimeField` | ✓ | — | — |  |
-| `last_message_at` | `last_message_at` | `DateTimeField` | — | `2026-10-02T23:57:42.599984+00:00` | — | index |
+| `last_message_at` | `last_message_at` | `DateTimeField` | — | `now()` | — | index |
 | `last_message_by_staff` | `last_message_by_staff` | `BooleanField` | — | `False` | — |  |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — | index |
 | `updated_at` | `updated_at` | `DateTimeField` | — | — | — |  |
@@ -3596,8 +3596,8 @@ erDiagram
 | `ticket_id` | `ticket_id` | `ForeignKey` | — | — | FK | on_delete=CASCADE; → `support.SupportTicket` |
 | `actor_id` | `actor_id` | `ForeignKey` | ✓ | — | FK | on_delete=SET_NULL; → `auth.User` |
 | `action` | `action` | `CharField(64)` | — | — | — |  |
-| `old_value` | `old_value` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
-| `new_value` | `new_value` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `old_value` | `old_value` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
+| `new_value` | `new_value` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
 
 #### `support_supportticketcounter` — SupportTicketCounter
@@ -3645,7 +3645,7 @@ erDiagram
 | `start_date` | `start_date` | `DateTimeField` | — | — | — | index |
 | `end_date` | `end_date` | `DateTimeField` | — | — | — | index |
 | `tenant_id` | `tenant_id` | `ForeignKey` | ✓ | — | FK | on_delete=CASCADE; → `identity_access.CoreTenant` |
-| `targeting_rules` | `targeting_rules` | `JSONField` | — | `{}` | — | **blank nhưng NOT NULL** |
+| `targeting_rules` | `targeting_rules` | `JSONField` | — | `dict()` | — | **blank nhưng NOT NULL** |
 | `created_at` | `created_at` | `DateTimeField` | — | — | — |  |
 | `updated_at` | `updated_at` | `DateTimeField` | — | — | — |  |
 
