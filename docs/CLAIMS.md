@@ -534,7 +534,7 @@ Khong sua file deny list §2. Khong commit file shared.
 ### 2026-10-03 - Vá TEMPLATE.md: R14 + R15 + R16 (phát hiện khi thử trên vnsaas + vninvestcharts-widget) - in-progress
 | agent | branch | scope | files | status |
 |---|---|---|---|---|
-| arch-template2 | feat/arch-template-r14-r16 | Vá 3 quy tắc mới phát hiện khi áp dụng mẫu lên repo khác | `docs/architecture/TEMPLATE.md`, `docs/architecture/verify-sad-audit.md`, `docs/CLAIMS.md` | done | **KET QUA:** R14/R15/R16 vao TEMPLATE.md; verify_arch_citations.py nay nhan FOREIGN-REF. Negative test 4/4 dung ky vong - ca (3) bat bug logic nhin XUONG nen citation chet pass tinh co. Gate chay tay exit 0: verify_arch_citations 264/264 + 1 FOREIGN · measure_repo 8/8 · gen_data_doc 107/0 orphan · ruff pass · check-multi-agent PASS 75 claim. CHUA CHAY: BE test, FE lint/tsc/vitest.
+| arch-template2 | feat/arch-template-r14-r16 | Vá 3 quy tắc mới phát hiện khi áp dụng mẫu lên repo khác | `docs/architecture/TEMPLATE.md`, `docs/architecture/verify-sad-audit.md`, `docs/CLAIMS.md` | released | **KET QUA:** R14/R15/R16 vao TEMPLATE.md; verify_arch_citations.py nay nhan FOREIGN-REF. Negative test 4/4 dung ky vong - ca (3) bat bug logic nhin XUONG nen citation chet pass tinh co. Gate chay tay exit 0: verify_arch_citations 264/264 + 1 FOREIGN · measure_repo 8/8 · gen_data_doc 107/0 orphan · ruff pass · check-multi-agent PASS 75 claim. CHUA CHAY: BE test, FE lint/tsc/vitest. **RELEASED**: merged - PR #71 (merge `16682819f`, 2026-10-03). Negative test 4/4 dung ky vong; ca (3) bat bug logic nhin XUONG cua chinh toi.
 
 **Vì sao vá.** Mẫu viết xong rồi mới thử trên repo thứ 2. Cả 2 lần đều lộ
 lo hổng mà lượt viết đầu không thấy. Không sửa code runtime, không migration.
