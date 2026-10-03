@@ -198,6 +198,49 @@ Kiem chung: 29 test OK tren PostgreSQL 5433 (khong SQLite) - baseline
 `identity_access/commercial_partner_views.py` (can kiem frontend truoc) va
 `AGENTS.md:73` van ghi sai P0-LEGAL-01 (`AGENTS.md` thuoc deny-list).
 
+## Billing Read Gate: viewer/editor khong doc hoa don (2026-10-03)
+
+Audit entry: **Entry 242** — `docs/CODE_CHANGE_AUDIT_LEDGER.md` · PR #73
+
+Owner chot: **VIEWER khong duoc thay hoa don cua thanh vien khac trong cung
+tenant.** OW-02 phan 1 chi sua 500 -> 200; `resolve_tenant` bao dam ranh gioi
+**tenant**, khong bao dam ranh gioi **vai tro**.
+
+`Invoice` chi co `tenant` FK, **khong co user FK** → "hoa don rieng cua tung
+thanh vien" khong ton tai trong schema → chi co the **tu choi viewer endpoint**,
+khong loc duoc theo dong.
+
+Dung lai SSOT `SYSTEM_ROLE_PERMISSIONS` (`resolve_tenant.py:27-56`) — bang nay
+**da encode san** `billing:read` cho owner/admin, khong cho editor/viewer, va
+`custom_role` da duoc ton trong. Khong viet bang role moi.
+
+| Endpoint | Token | viewer | editor |
+|---|---|---|---|
+| `/core/v1/billing/subscription` | `billing:read` | **403** | **403** |
+| `/core/v1/billing/invoices` | `billing:read` | **403** | **403** |
+| `/core/v1/partner/billing/cost-trend/` | `billing:read` | **403** | **403** |
+| `/core/v1/billing/quota` | `usage:read` | 200 | 200 |
+
+Quota van de viewer xem duoc (`usage:read` co san trong token viewer; quota la
+so lieu dung luong khong phai tien). Doi sang billing = doi **hai cho cung
+nhau**: `QuotaListView:59` **va** `test_viewer_can_read_quota`.
+
+Kiem chung: 17 test OK tren PostgreSQL 5433. **Negative control bo gate -> 9
+fail**, trong do test rò rỉ in ra payload that (`amount_due: 4200000.00`) →
+bang chung lo hong la that. Regression baseline 274/51 -> 283/51 fail, 51 ten
+IDENTICAL. ruff 3 loi cu trung het HEAD. `check-multi-agent` PASS,
+`scan-secrets` OK. **CI CHUA CHAY.**
+
+**Con mo (can claim rieng):** `commercial_partner_views.py:59-61` co
+`except Exception` nuot moi loi roi tra `200 + {note}` — fail-open. Hien khong lo
+vi `:50` chan truoc, gate moi la lop thu hai. Sua fail-open nay se doi response
+5 endpoint `/core/v1/partner/*` dang chay production.
+
+**Can Owner xac nhan:** (1) `editor` co bi khoa billing dung khong? D07:707 chi
+ghi "Owner, Admin". (2) Staff dung `X-Staff-Switch` se mat quyen doc billing
+(`middleware.py:174` ep role `viewer`) — neu co quy trinh support can xem hoa
+don tenant thi phai mo duong dan rieng.
+
 ## Open Risks
 
 | Risk | Impact | Mitigation |

@@ -19,6 +19,7 @@ from vninvest_core.exceptions import (
     PermissionErrorException,
 )
 
+from .permissions import RequiresTenantPermission
 from .models import Invoice, QuotaRecord, Subscription, PaymentTransaction, VNPayIPNLog
 from .serializers import InvoiceSerializer, QuotaRecordSerializer, SubscriptionSerializer
 from .vnpay_service import VNPayService
@@ -39,7 +40,10 @@ class QuotaCursorPagination(CoreCursorPagination):
 
 class SubscriptionDetailView(generics.RetrieveAPIView):
     serializer_class = SubscriptionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    # Plan + price + renewal dates are commitments, not usage metrics, so this
+    # rides the billing token rather than the usage token.
+    required_tenant_permissions = ('billing:read',)
+    permission_classes = [permissions.IsAuthenticated, RequiresTenantPermission]
 
     def get_object(self):
         tenant = resolve_tenant(self.request)
@@ -48,7 +52,12 @@ class SubscriptionDetailView(generics.RetrieveAPIView):
 
 class QuotaListView(generics.ListAPIView):
     serializer_class = QuotaRecordSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    # Usage metrics, not money. `viewer` already holds `usage:read` in
+    # SYSTEM_ROLE_PERMISSIONS, so quota stays viewer-readable by existing
+    # policy. Change the token to 'billing:read' if quota must become
+    # owner/admin-only as well.
+    required_tenant_permissions = ('usage:read',)
+    permission_classes = [permissions.IsAuthenticated, RequiresTenantPermission]
     pagination_class = QuotaCursorPagination
 
     def get_queryset(self):
@@ -58,7 +67,11 @@ class QuotaListView(generics.ListAPIView):
 
 class InvoiceListView(generics.ListAPIView):
     serializer_class = InvoiceSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    # `Invoice` has no user FK, so this endpoint is the only place the rule
+    # "a viewer must not see other members' invoices" can live. Token matches
+    # D07_API_SPECIFICATION_20261002.md:707 ("Owner, Admin").
+    required_tenant_permissions = ('billing:read',)
+    permission_classes = [permissions.IsAuthenticated, RequiresTenantPermission]
     pagination_class = CoreCursorPagination
 
     def get_queryset(self):
