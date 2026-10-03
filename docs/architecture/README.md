@@ -55,12 +55,25 @@ model không tồn tại. Ngược lại, đọc `architecture/D01` rồi code t
 | `D01_AS_IS_OVERVIEW_AND_AUDIT.md` | §1, §2, §6 | Bối cảnh hệ thống, C4 context, glossary, FBD, RBAC, audit + nợ kỹ thuật | ✅ |
 | `D02_DATA_AND_ARCHITECTURE.md` | §3, §4 | C4 container/component, DFD, **ERD + data dictionary 107 model (sinh tự động)**, cache/transaction/ACID | ✅ |
 | `D03_API_UI_AND_SOP.md` | §5, §7 | Quy ước API, error JSON, navigation/state/design tokens, check-list 7 bước, DoD, bẫy đã mắc | ✅ |
+| **`OPEN_QUESTIONS.md`** | — | **Việc cần Owner quyết** — 2 xung đột quy trình chặn việc, 2 chỉ dẫn sai trong `AGENTS.md`, 9 câu chưa xác minh | ✅ |
 | `tools/measure_repo.py` | — | Đo lại 8 chỉ số §0.4 · exit 1 nếu lệch | ✅ |
 | `tools/gen_data_doc.py` | — | Sinh §4.1–4.2 từ Django runtime · exit 1 nếu sót model | ✅ |
 
 **Vì sao tách 3 file chứ không 1 file:** `vninvest` có 15 Django app / 107 model /
 1.029 route. Một file duy nhất sẽ vượt quá khả năng duy trì và mọi lần sửa đều
 phải đọc lại toàn bộ.
+
+## 0.2.2 Việc còn mở
+
+Đọc `OPEN_QUESTIONS.md`. **4 mục P0** ở đó — hai là xung đột quy trình, hai là
+chỉ dẫn sai trong `AGENTS.md` khiến người mới tin nhầm ngay từ đầu:
+
+| Mục | Vấn đề |
+|---|---|
+| Q-01 | Ledger bị **cấm commit** nhưng `AGENTS.md` bắt phải cập nhật |
+| Q-02 | CI tắt vì billing ⇒ mọi gate trên PR là **ảo** |
+| Q-06 | `AGENTS.md` trỏ `soc.module.css` — file đó **rỗng** |
+| Q-07 | `pyproject.toml` khai `Django<5.0` nhưng repo chạy **6.0.6** |
 
 ## 0.2.1 Quy trình cập nhật khi code đổi
 
