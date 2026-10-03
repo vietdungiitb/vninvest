@@ -17,6 +17,7 @@ from rest_framework.test import APIClient
 
 from identity_access.models import CoreTenant, TenantMember
 from user_workspace.models import Portfolio, Transaction, Watchlist, WatchlistItem, SubAccount
+from user_workspace.tests.envelope import unwrapped
 
 
 class UserWorkspaceTenantIsolationTests(TestCase):
@@ -164,7 +165,7 @@ class UserWorkspaceTenantIsolationTests(TestCase):
 
         response = client.get('/core/v1/workspace/portfolios/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        results = response.data.get('results', [])
+        results = unwrapped(response).get('results', [])
         portfolio_names = [p['name'] for p in results]
         self.assertIn('Portfolio A1', portfolio_names)
         self.assertNotIn('Portfolio B2', portfolio_names)
@@ -176,7 +177,7 @@ class UserWorkspaceTenantIsolationTests(TestCase):
 
         response = client.get('/core/v1/workspace/portfolios/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        results = response.data.get('results', [])
+        results = unwrapped(response).get('results', [])
         portfolio_names = [p['name'] for p in results]
         self.assertIn('Portfolio B2', portfolio_names)
         self.assertNotIn('Portfolio A1', portfolio_names)
@@ -221,7 +222,7 @@ class UserWorkspaceTenantIsolationTests(TestCase):
 
         response = client.get('/core/v1/workspace/watchlists/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        results = response.data.get('results', [])
+        results = unwrapped(response).get('results', [])
         watchlist_names = [w['name'] for w in results]
         self.assertIn('Watchlist A1', watchlist_names)
         self.assertNotIn('Watchlist B2', watchlist_names)
@@ -284,11 +285,19 @@ class UserWorkspaceTenantIsolationTests(TestCase):
         response = client.get('/core/v1/workspace/portfolios/?page=1&page_size=10')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        # Check pagination structure
-        self.assertIn('count', response.data,
-                     msg='Response should have count')
-        self.assertIn('results', response.data,
+        # Shape sau B5: paginated trả `{next, previous, results}` — **khong**
+        # `count` trong `data` (xem `user_workspace/envelope.py:20`). `count`
+        # nam o `meta`/header cua paginator. Test cu o dinh nghia `count` nen
+        # hong sau khi doi hop dong.
+        payload = unwrapped(response)
+        self.assertIn('results', payload,
                      msg='Response should have results')
+        self.assertIn('next', payload,
+                     msg='paginated shape should expose next')
+        self.assertIn('previous', payload,
+                     msg='paginated shape should expose previous')
+        self.assertNotIn('count', payload,
+                         msg='B5 shape khong dua count vao data')
         # next and previous optional if < 1 page
 
     def test_T12_transaction_list_pagination_with_filter(self):
@@ -311,7 +320,7 @@ class UserWorkspaceTenantIsolationTests(TestCase):
         response = client.get(f'/core/v1/workspace/portfolios/{self.portfolio_a1.id}/transactions/?page=1&page_size=10')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        results = response.data.get('results', [])
+        results = unwrapped(response).get('results', [])
         self.assertEqual(len(results), 10,
                         msg='page_size=10 should return 10 results max')
 
@@ -517,7 +526,7 @@ class UserWorkspaceTenantIsolationTests(TestCase):
         response = client.get('/core/v1/workspace/portfolios/?tenant_code=tenant-b')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        results = response.data.get('results', [])
+        results = unwrapped(response).get('results', [])
         portfolio_names = [p['name'] for p in results]
         self.assertIn('Portfolio B3', portfolio_names)
         self.assertNotIn('Portfolio A3', portfolio_names)

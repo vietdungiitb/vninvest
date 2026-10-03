@@ -828,3 +828,25 @@ nen 403 phat ra truoc. Gate cua ta la **lop thu hai** - giu duoc minh khi
 wrapper doi. **Can claim rieng** de sua fail-open nay.
 
 **Chua chay:** CI, `run_tests.py` toan bo, OpenAPI constitution/checklist.
+## 2026-10-03 - Sua fail-open OW-02 con sot trong partner namespace - in-progress
+
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| openwork-fix | feat/openwork-ow02-03-04 | Owner chi "lam sach loi gap va don code truoc khi lam viec khac". Gap lon nhat con sot: 5 endpoint `/core/v1/partner/*` tra **200 + rong** cho admin/co `billing:read` vi `_get_tenant(user)` lookup theo `owner_user` nen non-owner nhan `CoreTenant.DoesNotExist`, bi `except Exception` nuot thanh fake-success. Sua bang `resolve_tenant(request)` — cung ham da dung o `commercial`, doc `request.tenant` tu middleware + fail-closed bang `PermissionDenied` | packages/core/backend/src/identity_access/commercial_partner_views.py, packages/core/backend/src/vninvest_core/tests/test_partner_billing_role_gate.py, docs/OPEN_WORK_20260927.md, docs/CODE_CHANGE_AUDIT_LEDGER.md, docs/CLAIMS.md | in-progress |
+
+**Khong sua:** 2 endpoint Stripe (`PartnerStripeCheckoutSessionView`,
+`PartnerStripePortalSessionView`) va `PartnerCostTrendView` — xem ledger.
+
+**Khong dung `git stash -u`** trong repo nay (fail `Permission denied`, de lai
+repo nua vua). Do baseline bang `git worktree` rieng.
+
+## 2026-10-03 - Don 51 test hong (URL drift + envelope shape) - in-progress
+
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| openwork-fix | feat/openwork-ow02-03-04 | Owner: "lam sach loi gap va don code truoc khi lam viec khac". 51 test hong che mat loi moi that. **Khong phai lo hong** — 2 nguyen nhan deu la test debt: (1) URL drift — test tro `/core/v1/login/`, `/core/v1/register/`, `/core/v1/password-reset/` nhung route that la `/core/v1/auth/...` (`identity_access/urls.py:13,51,54,55`) ⇒ 404; (2) envelope shape — doc `response.data.get('results')` trong khi view tra `{data:{results:[...]}}` | packages/core/backend/src/vninvest_core/tests/test_rate_limiting.py, packages/core/backend/src/vninvest_core/tests/test_exception_handling.py, packages/core/backend/src/vninvest_core/tests/test_exception_handling_a6.py, packages/core/backend/src/vninvest_core/tests/test_status_codes_and_errors.py, packages/core/backend/src/vninvest_core/tests/test_user_workspace_tenant_isolation.py, docs/OPEN_WORK_20260927.md, docs/CODE_CHANGE_AUDIT_LEDGER.md, docs/CLAIMS.md | in-progress |
+
+**Bang chung khong phai lo hong:** `test_client_ip.py` viet dung
+`/core/v1/auth/login/` + `/core/v1/auth/register/` va **PASS** ⇒ route that
+con san. `test_user_workspace_tenant_isolation` co `assertNotIn('Portfolio B2')`
+**PASS** ⇒ khong ro ri du lieu, chi danh sach rong do doc sai envelope shape.

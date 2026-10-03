@@ -6058,3 +6058,65 @@ Nếu chỉ chạy test có gate, "17 OK" không chứng minh gì — test có t
 ### 8. Chưa chạy
 
 CI · `run_tests.py` toàn bộ · OpenAPI constitution/checklist · kiểm chuyển frontend với 4 endpoint đã đổi 200 -> 403.
+
+---
+
+## Entry 243: OW-02 partner fail-open + don 27 test debt (51 -> 24) (2026-10-03)
+
+Owner: *"lam sach loi gap va don code truoc khi lam viec khac duoc"*.
+
+### 1. Fail-open `identity_access/commercial_partner_views.py` - DA SUA
+
+| muc | truoc | sau |
+|---|---|---|
+| 5 call site (`:79 :108 :139 :186 :282`) | `_get_tenant(request.user)` -> `CoreTenant.objects.get(owner_user=user)` | `resolve_tenant(request)` |
+| helper `_get_tenant` (`:29-30`) | ton tai | **xoá** |
+| import `CoreTenant` | dung o `_get_tenant` | **xoá** (khong con tham chieu) |
+
+**Viet sao phai tien ra khoi `try`:** `resolve_tenant` nem `PermissionDenied`
+khi user khong co quan he voi tenant. Nam trong `try` thi `except Exception`
+nuot no thanh `200 + status:none` - chinh la fail-open goc. Ap dung cho 3 view
+co `except Exception` rong: `PartnerBillingSubscriptionView`,
+`PartnerBillingInvoicesView`, `PartnerUsageHistoryView`. 2 view usage
+(`PartnerUsageMetersView`, `PartnerUsageQuotasView`) chi bat `ImportError` nen
+da fail-closed san - chi doi call site.
+
+Wrapper `PartnerCostTrendView` giu nguyen: `:50` goi
+`_require_tenant_permission` **ngoai** `try` nen 403 phat ra truoc.
+
+### 2. Don test debt - 51 -> 24 fail (khong phai lo hong)
+
+| nguyen nhan | bang chung la test cu | sua |
+|---|---|---|
+| URL drift, 38 cho / 4 file | tro `/core/v1/login|register|password-reset/`; route that `/core/v1/auth/...` (`identity_access/urls.py:13,51,54,55`) => 404. `test_client_ip.py` viet dung va **PASS** | them `auth/` |
+| Envelope shape, 5 cho | doc `response.data.get('results')`; `user_workspace/envelope.py:20` ghi ro shape B5 la `{next, previous, results}` - **khong** co `count` | `unwrapped()` (`user_workspace/tests/envelope.py:43`) |
+| `count` trong `data` | cung ly do; `count` khong con nam trong `data` theo thiet ke | assert `{next, previous, results}` |
+
+Khong ro ri: `assertNotIn('Portfolio B2')` **PASS** => danh sach rong do doc sai
+shape, khong phai lo hong tenant.
+
+### 3. Con 24 - CHUA SUA, can quyet dinh san pham
+
+10 rate limit · 8 error-envelope/`request_id` · 5 legacy proxy (`T19`-`T23`,
+goi `/api/portfolio/...` -> proxy can `LEGACY_BACKEND_URL`, test env khong co =>
+503) · 1 timezone.
+
+**Khong noi assertion de lam xanh.** Rate limit la rao chong brute-force;
+`request_id` va contract `400` vs `429` co the dang bat dung mot loi that.
+Lam xanh bang cach noi assertion la doi dau hieu thanh xanh.
+
+### 4. Kiem chung
+
+| lenh | ket qua |
+|---|---|
+| `test_partner_billing_role_gate` + `test_commercial_tenant_scope` | **23 test OK** (PostgreSQL 5433) |
+| `manage.py check` | System check identified no issues |
+| `commercial` + `vninvest_core.tests` | **289 test / 24 fail** (truoc 51) - **0 loi moi** |
+| `ruff` 7 file | 20 loi F401/F841; doi chieu `git show HEAD` => **20/20 da co san** |
+| `scan-secrets` | OK, 3454/3596 scanned |
+| `pre-push-gate.mjs` | **14 PASS / 1 FAIL** - FAIL = `global-config-drift` (`../tools/opencode-global/`), ngoai repo nay. **CHUA PUSH** |
+
+### 5. Chua chay
+
+CI - `run_tests.py` toan bo - OpenAPI constitution - kiem chuyen frontend voi
+response 200 -> 403 cua 5 endpoint partner.

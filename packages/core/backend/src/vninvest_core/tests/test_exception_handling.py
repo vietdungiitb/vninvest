@@ -47,7 +47,7 @@ class ExceptionEnvelopeFormatTests(APITestCase):
     def test_envelope_on_validation_error(self):
         """Verify ValidationErrorException returns proper envelope format."""
         response = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {'username': '', 'email': 'invalid'},
             format='json'
         )
@@ -69,14 +69,14 @@ class ExceptionEnvelopeFormatTests(APITestCase):
         # Make 5 requests (at limit), then 6th should be rate limited
         for i in range(5):
             response = self.client.post(
-                '/core/v1/login/',
+                '/core/v1/auth/login/',
                 {'username': 'test', 'password': 'test'},
                 format='json'
             )
         
         # 6th request hits rate limit
         response = self.client.post(
-            '/core/v1/login/',
+            '/core/v1/auth/login/',
             {'username': 'test', 'password': 'test'},
             format='json'
         )
@@ -93,7 +93,7 @@ class ExceptionEnvelopeFormatTests(APITestCase):
     def test_envelope_on_401_unauthorized(self):
         """Verify unauthorized errors return proper envelope."""
         response = self.client.post(
-            '/core/v1/login/',
+            '/core/v1/auth/login/',
             {'username': 'nonexistent', 'password': 'wrong'},
             format='json'
         )
@@ -120,7 +120,7 @@ class ExceptionLoggingTests(APITestCase):
     def test_validation_exception_returns_proper_response(self):
         """Verify ValidationErrorException returns 400 (not 500)."""
         response = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {'username': '', 'email': 'invalid'},
             format='json'
         )
@@ -136,7 +136,7 @@ class ExceptionLoggingTests(APITestCase):
         # Hit rate limit
         for i in range(6):
             response = self.client.post(
-                '/core/v1/login/',
+                '/core/v1/auth/login/',
                 {'username': 'test', 'password': 'test'},
                 format='json'
             )
@@ -172,7 +172,7 @@ class DatabaseExceptionHandlingTests(APITestCase):
         """Verify duplicate user registration doesn't crash."""
         # Try to register with existing username
         response = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {
                 'username': 'testuser_db_exc',
                 'email': 'newemail@example.com',
@@ -201,7 +201,7 @@ class ExceptionContextTests(APITestCase):
     def test_request_id_in_error_response(self):
         """Verify request_id (req_* prefix) in every error response."""
         response = self.client.post(
-            '/core/v1/login/',
+            '/core/v1/auth/login/',
             {'username': 'invalid', 'password': 'invalid'},
             format='json'
         )
@@ -215,12 +215,12 @@ class ExceptionContextTests(APITestCase):
     def test_request_id_unique_per_request(self):
         """Verify each request gets unique request_id."""
         response1 = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {'username': '', 'email': 'bad'},
             format='json'
         )
         response2 = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {'username': '', 'email': 'bad'},
             format='json'
         )
@@ -247,7 +247,7 @@ class SignalPropagationTests(APITestCase):
     def test_exception_handler_invoked_on_validation_error(self):
         """Verify exception handler processes validation errors."""
         response = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {'username': '', 'email': 'bad'},
             format='json'
         )
@@ -262,7 +262,7 @@ class SignalPropagationTests(APITestCase):
         """Verify exception handler processes auth errors."""
         cache.clear()
         response = self.client.post(
-            '/core/v1/login/',
+            '/core/v1/auth/login/',
             {'username': '', 'password': ''},
             format='json'
         )
@@ -286,7 +286,7 @@ class ExceptionEdgeCasesTests(APITestCase):
     def test_exception_with_none_values(self):
         """Verify exceptions with None values handled."""
         response = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {'username': None, 'email': None, 'password': None},
             format='json'
         )
@@ -297,7 +297,7 @@ class ExceptionEdgeCasesTests(APITestCase):
     def test_exception_with_special_characters(self):
         """Verify exceptions with special characters handled."""
         response = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {
                 'username': '!@#$%^&*()',
                 'email': 'invalid@email',
@@ -313,7 +313,7 @@ class ExceptionEdgeCasesTests(APITestCase):
         """Verify exceptions with very long inputs handled."""
         long_string = 'x' * 10000
         response = self.client.post(
-            '/core/v1/register/',
+            '/core/v1/auth/register/',
             {
                 'username': long_string,
                 'email': 'test@example.com',
@@ -340,9 +340,9 @@ class NoSilentFailureTests(APITestCase):
     def test_all_auth_endpoints_return_error_not_500(self):
         """Verify all auth endpoints handle exceptions (not 500)."""
         endpoints = [
-            ('/core/v1/login/', {'username': 'x', 'password': 'x'}),
-            ('/core/v1/register/', {'username': '', 'email': 'bad', 'password': '1'}),
-            ('/core/v1/password-reset/', {'email': 'not-an-email'}),
+            ('/core/v1/auth/login/', {'username': 'x', 'password': 'x'}),
+            ('/core/v1/auth/register/', {'username': '', 'email': 'bad', 'password': '1'}),
+            ('/core/v1/auth/password-reset/', {'email': 'not-an-email'}),
         ]
         
         for url, data in endpoints:
@@ -364,9 +364,9 @@ class NoSilentFailureTests(APITestCase):
     def test_invalid_requests_dont_return_500(self):
         """Verify invalid requests return 4xx, not 500."""
         invalid_requests = [
-            ('/core/v1/register/', {}),  # Missing required fields
-            ('/core/v1/login/', {}),  # Missing required fields
-            ('/core/v1/password-reset/', {}),  # Missing email
+            ('/core/v1/auth/register/', {}),  # Missing required fields
+            ('/core/v1/auth/login/', {}),  # Missing required fields
+            ('/core/v1/auth/password-reset/', {}),  # Missing email
         ]
         
         for url, data in invalid_requests:
