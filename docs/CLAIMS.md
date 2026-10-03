@@ -712,3 +712,45 @@ PowerShell here-string `@"..."@` — backtick la **ky tu escape** trong chuoi nh
 doi, nen `` `vninvest `` bi an thanh vertical tab (`v` -> char 0x0B) va
 `` `run_tests.py `` -> `un_tests.py`. Phai viet file bang editor/tool roi append
 bang .NET, khong truyen markdown qua shell.
+
+## 2026-10-03 - Mo claim moi: gate ROLE cho 4 endpoint billing (Owner chi "tinh nhiem vu" VIEWER thay doi) - in-progress
+
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| openwork-fix | feat/openwork-ow02-03-04 | Owner chot: VIEWER **khong duoc** xem hoa don cua thanh vien khac trong cung tenant. Gating o cap ROLE (owner/admin) vi `Invoice` khong co FK user (`commercial/models.py` — chi co `tenant`), nen khong the loc theo dong | packages/core/backend/src/commercial/permissions.py (new), packages/core/backend/src/commercial/views.py, packages/core/backend/src/commercial/views_analytics.py, packages/core/backend/src/vninvest_core/tests/test_commercial_tenant_scope.py, docs/OPEN_WORK_20260927.md, docs/CODE_CHANGE_AUDIT_LEDGER.md, docs/CLAIMS.md | in-progress |
+
+**Ly do mo claim moi (quyet dinh doi, khong phai sua nho):** claim truoc da
+`done` va ghi "de nguyen hanh vi `resolve_tenant`". Owner tra loi cau hoi
+"VIEWER co thay hoa don cua thanh vien khac khong?" — **"tanh nhiem vu la khong"**.
+⇒ Quyet dinh role gate, dung nguoc phia duyet cua `D07_API_SPECIFICATION:707`
+("Owner, Admin"). PR #73 phai sua truoc khi merge.
+
+**Viet tai day truoc khi sua dong code dau tien**, theo AGENTS.md §6.2.
+
+**Da kiem chung truoc khi viet (khong doan):**
+- `resolve_tenant_for_user` (`resolve_tenant.py:157-166`): owner hoac co row
+  `TenantMember`; khong quan he -> `None` -> caller tu choi.
+- `TenantResolutionMiddleware._resolve_tenant` (`middleware.py:249-273`): header
+  -> cung ham tren; fallback owner / first eligible member. Tenant None -> 403
+  (`:109-116`); SUSPENDED/DEPROVISIONED -> 403 (`:118-125`).
+- `get_tenant_role` (`resolve_tenant.py:306-345`): doc `request.tenant_role` do
+  middleware gan, nen **`has_permission` phai lay role da gan, KHONG tu chay
+  `is_staff`/staff-switch lai** — xem "Hanh vi can thay doi" ben duoi.
+- **Machine PAT khong vo:** `middleware.py:217` gan `user = tenant.owner_user`
+  khi PAT khong phat cho member -> role `owner` -> qua gate.
+- **Human PAT cua viewer bi chan** (`:215` gan `member.role`) — dung y owner.
+
+**Hanh vi can thay doi — phai review:**
+1. `viewer` **va** `editor` deu bi 403 tren 4 endpoint. D07:707 chi ghi
+   "Owner, Admin" nen theo D07, nhung `editor` **khong** duoc Owner/QA xac nhan.
+2. **Staff dung `X-Staff-Switch` se mat quyen doc billing.** `middleware.py:174`
+   ep `request.tenant_role = 'viewer'` va `:179-180` strip `is_staff`. Day la
+   fail-closed va dung thiet ke H0.1, **nhung** neu co quy trinh support can
+   staff xem hoa don cua tenant thi phai mo duong dan rieng. **Can owner xac nhan.**
+3. Khong sua 5 endpoint `/core/v1/partner/*` — `identity_access`, khong nam trong
+   claim nay. Hieu ung: 4 endpoint nay fail-closed 403 cho viewer, 5 endpoint do
+   tra **200 + rong**. Hai quy tac khac nhau, **da ghi trong OPEN_WORK**.
+
+**Ke hoach kiem chung:** 8 test hien co trong `test_commercial_tenant_scope.py`
+co 1 test dung role `VIEWER` va **se phai doi** — chay lai de thay dung phien ban
+moi thay vi giu ban cu.
