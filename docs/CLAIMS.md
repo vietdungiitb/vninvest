@@ -577,7 +577,7 @@ that **va** khac han Django - ung vien `vninvest-sdk` (355 file .py).
 ### 2026-10-03 - R13 da kiem chung tren 3 stack + phat hien CI that cua vninvest-sdk - in-progress
 | agent | branch | scope | files | status |
 |---|---|---|---|---|
-| arch-template3 | feat/arch-template-r13-verified | Cap nhat TEMPLATE.md §3.2: R13 da co bang chung o 3 stack | `docs/architecture/TEMPLATE.md`, `docs/CLAIMS.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md` | done | **KET QUA:** TEMPLATE.md §3.2 (R13 da kiem chung 3 stack) + §3.3 (R7: co gate != gate xanh). Gate exit 0: verify_arch_citations 264/264 + 6 FOREIGN · measure_repo 8/8 · ruff pass · check-multi-agent PASS 76 claim. Phat hien CI vninvest-sdk do vi pyproject.toml:59 khai sai packages - KHONG PHAI billing, log co 9 step that.
+| arch-template3 | feat/arch-template-r13-verified | Cap nhat TEMPLATE.md §3.2: R13 da co bang chung o 3 stack | `docs/architecture/TEMPLATE.md`, `docs/CLAIMS.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md` | released | **KET QUA:** TEMPLATE.md §3.2 (R13 da kiem chung 3 stack) + §3.3 (R7: co gate != gate xanh). Gate exit 0: verify_arch_citations 264/264 + 6 FOREIGN · measure_repo 8/8 · ruff pass · check-multi-agent PASS 76 claim. Phat hien CI vninvest-sdk do vi pyproject.toml:59 khai sai packages - KHONG PHAI billing, log co 9 step that. **RELEASED**: merged - PR #72 (merge `9557b4e7b`, 2026-10-03).
 
 **R13 kiem chung xong.** Do tren `vninvest-sdk` (FastAPI + Pydantic, khac han
 Django). Do bang grep tren 355 file `.py`: **0** `import django` · **0**
