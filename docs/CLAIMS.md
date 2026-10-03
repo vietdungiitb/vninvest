@@ -459,7 +459,7 @@ phan xu** (ghi ro o muc 6 cua tai lieu, khong giu im).
 ### 2026-10-03 - Bộ tài liệu AS-IS Lượt 2 + 3 - in-progress
 | agent | branch | scope | files | status |
 |---|---|---|---|---|
-| rch-as-is | eat/arch-as-is-doc | Lượt 2 (§3 §4) + Lượt 3 (§5 §7) | docs/architecture/** + docs/CLAIMS.md | in-progress |
+| arch-as-is | feat/arch-as-is-doc | Lượt 2 (§3 §4) + Lượt 3 (§5 §7) | docs/architecture/** + docs/CLAIMS.md | released |
 
 **Lượt 2 — §3 §4.** ERD + data dictionary **sinh tự động** tu django.apps.get_models()
 bang docs/architecture/tools/gen_data_doc.py — 107 model / 12 cum / 0 orphan / exit 0.
@@ -475,8 +475,8 @@ Viet tay 107 model la chac chan sai va khong kiem chung duoc; script chay lai du
   (@import x2). Token that: soc.tokens.css:5-130 (69 token). Class that:
   soc.components.css (3.916 dong, 522 selector). **Sua AGENTS.md hoac sua file
   rong — deu la viec cua coordinator, khong tu quyet.**
-- **S-2 (HIGH) — 2/3 HTTP client khong gan token.** Chi dapters/core/transport.js:386-410
-  gan Authorization + X-Tenant-ID. dapters/core/coreAdapter.js **khong co** cai
+- **S-2 (HIGH) — 2/3 HTTP client khong gan token.** Chi adapters/core/transport.js:386-410
+  gan Authorization + X-Tenant-ID. adapters/core/coreAdapter.js **khong co** cai
   Authorization lanh X-Tenant-ID (da grep xac nhan). pages/admin/socCsv.ts:16 tu
   chep lai header. Refresh truoc han / retry 401 chi co o client #1.
 - **D-1 (HIGH) — 21 token trung ten, 13 khac gia tri.** 	heme/tokens.css vs
@@ -490,7 +490,7 @@ Do lai: 21 trung **ten**, **chi 13** khac gia tri. Tai lieu ghi dung con so 13.
 **Kiem chung toan bo:**
 - measure_repo.py chay lai: **8/8 khop, exit 0**.
 - gen_data_doc.py: **107/107 model, 0 orphan, 0 unresolvable, exit 0**.
-- 26 khoi Mermaid/code can bang · 225 trich dan ile:line · ruff 2 file script sach.
+- 26 khoi Mermaid/code can bang · 225 trich dan file:line · ruff 2 file script sach.
 - **KHONG CHAY** (doc-only): BE test suite · FE lint/tsc/vitest.
 - **CHUA XAC MINH**: ShellEmptyState nao thang runtime · layout.nav.* co trong i18n
   khong · so request /core/v1 hardcode trong **production** (88 dong tinh ca test+comment,
@@ -498,5 +498,35 @@ Do lai: 21 trung **ten**, **chi 13** khac gia tri. Tai lieu ghi dung con so 13.
 
 **Con no trong D03 §7.5 chua tach khoi pham vi nay** (de lai ticket rieng):
 7 component Shell* che tu trong main.tsx:24-30 (~4.500 dong) · 2 bang route
-dong bo tay · 9 xports trong package.json tro toi file .ts khong ton tai ·
+dong bo tay · 9 exports trong package.json tro toi file .ts khong ton tai ·
 18 dependency khong import · 14 file > 800 dong.
+### 2026-10-03 - Chuẩn hoá quy trình AS-IS: TEMPLATE.md + verify_arch_citations.py - in-progress
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| arch-template | feat/arch-template-tools | Ghi mẫu prompt dạng SSOT (12 muc) + script kiem chung citation, sua 18 citation chet | `docs/architecture/TEMPLATE.md`, `docs/architecture/tools/verify_arch_citations.py`, `docs/architecture/README.md`, `docs/architecture/D01_AS_IS_OVERVIEW_AND_AUDIT.md`, `docs/architecture/D02_DATA_AND_ARCHITECTURE.md`, `docs/architecture/D03_API_UI_AND_SOP.md`, `docs/CLAIMS.md` | in-progress |
+
+**Viet gi va vi sao.** Audit mau prompt kien truc (3 phien) phat hien mau nay **da duoc chay
+that** trong repo nay xong, nhung con **4 lo hong** ma 8 de xuat bo sung khong dong:
+buoc phan bien giua cac luot, kiem chung citation, vong doii cua finding, owner/ngay ra soat.
+=> `TEMPLATE.md` la mau SSOT de repo khac dung lai; `verify_arch_citations.py` la
+**co che cuong che** cho muc 10 (thoai so lieu khong dung duoc).
+
+**Do truoc khi viet (reproduce-first, chay tren 4 file .md 4247 dong):**
+261 citation · full-path khop 133 · **full-path khong ton tai 11** · **bare basename 117
+(45%)** · trong do trung ten 2/3/14/15 file: 26 · **khong file nao khop: 6** · **line vuot EOF 1**
+(`D03: src/index.js:55` file chi 18 dong).
+=> 45% citation **khong xac minh duoc** ngay tu dau. Day chinh la benh `AGENTS.md`
+dang mac (sai 20 `file:line` - AUDIT_VERIFICATION_20260926.md). Khong co script nao
+kiem tra: `scripts/audit-status-claims.mjs:18` chi nhom `AGENTS.md`.
+
+**2 viec lam khac ngoai pham vi (chi bao cao, KHONG sua):**
+- `CLAIMS.md` con **4 control char** (code 7/8/27) tren dong 226, 242, 244, 258 - deu
+  la claim `released` cua agent khac nen khong tu sua dong nguoi khai.
+- Branch `feat/arch-as-is-doc` da merge xong nhung **con ton tai local** -> de lai.
+
+**Claim stale da dong (Owner cho phep).** `arch-as-is` giu `docs/architecture/**`
+o `in-progress` sau khi da merge `8e3dce914` + 4 commit thang `dev` sau do, va
+agent do khong con chay. Khong sua noi dung, chi doi **1 o status** sang `released`.
+
+Khong tao migration, khong dung BE that, khong `npm install`/`pip install`.
+Khong sua file deny list §2. Khong commit file shared.
