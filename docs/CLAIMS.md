@@ -623,3 +623,15 @@ root => **fail 100% moi workflow, moi lan chay**, khong phai het han billing.
 chi bao cao de Owner quyet dinh.
 
 Khong tao migration, khong dung BE that, khong npm/pip install, khong sua file deny list.
+
+---
+
+## 2026-10-03 - Dong 4 muc OPEN_WORK tu quyet duoc: OW-02 / OW-03 / OW-04 / OW-06 - in-progress
+
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| openwork-fix | eat/openwork-ow02-03-04 | OW-02 500 cho member o commercial (4 call site) · OW-03 tra tam nhin cross-tenant cho SOC · OW-04 reject gia tri Turnstile ngoai allowlist · OW-06 errata P0-LEGAL-01 | packages/core/backend/src/commercial/views.py, packages/core/backend/src/commercial/views_analytics.py, packages/core/backend/src/ops_audit/views.py, packages/core/backend/src/ops_audit/urls.py, packages/core/backend/src/vninvest_core/env_validation.py, packages/core/backend/src/commercial/tests/__init__.py (new), packages/core/backend/src/commercial/tests/test_billing_tenant_scope.py (new), packages/core/backend/src/ops_audit/tests/test_cross_tenant_audit_scope.py (new), docs/OPEN_WORK_20260927.md, docs/CODE_CHANGE_AUDIT_LEDGER.md, docs/CLAIMS.md | in-progress |
+
+**Owner da chot trong session nay:** OW-05 (P0-SEC-01) xong. OW-03 + OW-04 giao cho
+agent quyet policy. Khong sua AGENTS.md (deny list). Khong tao migration, khong
+pip/npm install, khong dung BE that.
