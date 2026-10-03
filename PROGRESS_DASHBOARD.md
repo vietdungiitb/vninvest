@@ -178,6 +178,26 @@
 | Proxy catch-all preserved | ✅ Verified | `/api/nonexistent-route` → 502 `LEGACY_BACKEND_DOWN` |
 | Audit ledger | ✅ Done | Entries 14-18 added to `CODE_CHANGE_AUDIT_LEDGER.md` |
 
+## Multi-tenant Hardening: OW-01/02/03/04/06 (2026-10-03)
+
+Audit entry: **Entry 241** — `docs/CODE_CHANGE_AUDIT_LEDGER.md`
+
+| Muc | Trang thai | Files |
+|------|-----------|-------|
+| OW-02 `commercial/views.py` 500 cho member | **Đã sửa — 4 call site** | `packages/core/backend/src/commercial/views.py`, `commercial/views_analytics.py`, `vninvest_core/tests/test_commercial_tenant_scope.py` |
+| OW-04 `STRICT_TURNSTILE_ENFORCEMENT` sai giá trị vẫn tắt check | **Đã sửa — allowlist + fail-closed production** | `packages/core/backend/src/vninvest_core/env_validation.py`, `vninvest_core/tests/test_env_validation.py` |
+| OW-01 giả định thiếu JSON 404 handler | **Đã đóng — tiền đề sai** | `docs/OPEN_WORK_20260927.md` |
+| OW-03 SOC mất tầm nhìn cross-tenant | **Không phải lỗi — endpoint đã có sẵn từ R4** | `docs/OPEN_WORK_20260927.md` |
+| OW-06 errata `P0-LEGAL-01` | **Errata đã ghi** | `docs/OPEN_WORK_20260927.md`, Entry 241 |
+
+Kiem chung: 29 test OK tren PostgreSQL 5433 (khong SQLite) - baseline
+`commercial` + `vninvest_core.tests` **51 fail truoc == 51 fail sau**, khong fail moi.
+`check-multi-agent` PASS, `scan-secrets` OK. **CI CHUA CHAY.**
+
+**Con mo:** 5 call site `_get_tenant(user)` trong
+`identity_access/commercial_partner_views.py` (can kiem frontend truoc) va
+`AGENTS.md:73` van ghi sai P0-LEGAL-01 (`AGENTS.md` thuoc deny-list).
+
 ## Open Risks
 
 | Risk | Impact | Mitigation |
