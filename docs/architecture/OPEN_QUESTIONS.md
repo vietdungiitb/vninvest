@@ -128,9 +128,9 @@ Mục này **không cần Owner quyết** — đã rõ là lỗi. Ghi ở đây 
 | Q-08 | 7 component `Shell*` **không tới được** sau khi `main.tsx` remap route id | `main.tsx:24-30`; 7 file tồn tại trong `pages/` | P1 |
 | Q-09 | `coreAdapter.js` gửi request **không có** `Authorization`/`X-Tenant-ID` | không chứa chuỗi `Authorization` | **P0** |
 | Q-10 | `features_map` thiếu `custom`/`internal` ⇒ tenant đã thương lượng bị tính như `free` | `views_webhooks.py:240-248` | **P0** |
-| Q-11 | `api_calls_limit` mặc định 10000 vs catalog `free` = 1.000 | `models.py:107` vs `plan_catalog.py:64` | P1 |
+| Q-11 | `api_calls_limit` mặc định 10000 vs catalog `free` = 1.000 | `commercial/models.py:44` vs `plan_catalog.py:64` | P1 |
 | Q-12 | 13 token trùng tên khác giá trị ở `:root`; thứ tự nạp quyết định thắng | `theme/tokens.css` vs `soc.tokens.css` | P1 |
-| Q-13 | 9 `exports` trong `package.json` trỏ tới file `.ts` **không tồn tại** | `package.json:36-47` | P1 |
+| Q-13 | 9 `exports` trong `package.json` trỏ tới file `.ts` **không tồn tại** | `packages/web/package.json:36-47` | P1 |
 | Q-14 | `gen_data_doc.py` trước đây sinh file **không tất định** | **ĐÃ SỬA** ở `4bd974540` | ✅ xong |
 
 ---

@@ -78,9 +78,9 @@ C4Context
 | **Tenant** | `identity_access_coretenant` | Đơn vị cô lập dữ liệu; chủ sở hữu tiền mặt và dữ liệu | `identity_access/models.py:44` |
 | **Service Account** | `identity_access_coreserviceaccount` | Máy/robot được tenant cấp `scopes` (JSON) | `identity_access/models.py:180` |
 | **PAT** | `identity_access_corepatcredential` | Token cá nhân, HMAC-SHA256 + pepper, có thời hạn | `identity_access/models.py:254` |
-| **Human session PAT** | cột `is_human_session` | PAT do đăng nhập web sinh; mặc định 12h | `models.py:292`; TTL `views/helpers.py:43-56` |
-| **Tenant Member** | `identity_access_tenantmember` | Người dùng trong tenant, role `owner/admin/editor/viewer` | `models.py:596` |
-| **Custom Role** | `identity_access_tenantcustomrole` | Bộ `permissions` (JSON) do tenant tự định nghĩa | `models.py:545` |
+| **Human session PAT** | cột `is_human_session` | PAT do đăng nhập web sinh; mặc định 12h | `identity_access/models.py:292`; TTL `views/helpers.py:43-56` |
+| **Tenant Member** | `identity_access_tenantmember` | Người dùng trong tenant, role `owner/admin/editor/viewer` | `identity_access/models.py:596` |
+| **Custom Role** | `identity_access_tenantcustomrole` | Bộ `permissions` (JSON) do tenant tự định nghĩa | `identity_access/models.py:545` |
 | **Capability** | *(không có bảng)* | Chuỗi `domain:action` kiểm quyền; **21 giá trị, 135 call site** | §2.3 |
 | **Quota** | `commercial_quotarecord`, `commercial_quotahistory` | Hạn mức theo kỳ; `-1` = không giới hạn | `commercial/models.py:38,133` |
 | **Plan** | *(không có bảng)* | Chuỗi `free`/`pro`…; entitlement nằm trong dict Python | `commercial/plan_catalog.py:62` |
@@ -281,7 +281,7 @@ flowchart TD
     A["Request"] --> L1
     L1["L1 · Định danh<br/>CorePATAuthentication / session<br/>Bearer token → HMAC verify<br/>authentication.py:19-77"]
     L1 --> L2
-    L2["L2 · Phân quyền DRF<br/>IsAuthenticated · IsCoreOperator<br/>IsTenantActive<br/>permissions.py:80, :97"]
+    L2["L2 · Phân quyền DRF<br/>IsAuthenticated · IsCoreOperator<br/>IsTenantActive<br/>identity_access/permissions.py:80, :97"]
     L2 --> L3
     L3["L3 · Capability<br/>require_tenant_permission(req, 'pat:read')<br/>135 call site / 21 capability"]
     L3 --> L4
@@ -330,10 +330,10 @@ phân quyền thật là capability gọi tay trong từng view. Role lấy từ
 
 | Persona | Cách định danh | Không gian | Bằng chứng |
 |---|---|---|---|
-| Chủ tenant | `owner_user` trên `CoreTenant` | `/core/v1/**` | `models.py:67-72` |
-| Thành viên | `TenantMember.role` | `/core/v1/**` | `models.py:596` |
-| Ứng dụng máy | `CoreServiceAccount` + PAT `is_human_session=False` | `/core/v1/partner/**` | `models.py:180,292` |
-| Nhân viên SOC | `IsCoreOperator` (staff) | `/core/v1/operator/**`, `/api/soc/**` | `permissions.py:80` |
+| Chủ tenant | `owner_user` trên `CoreTenant` | `/core/v1/**` | `identity_access/models.py:67-72` |
+| Thành viên | `TenantMember.role` | `/core/v1/**` | `identity_access/models.py:596` |
+| Ứng dụng máy | `CoreServiceAccount` + PAT `is_human_session=False` | `/core/v1/partner/**` | `identity_access/models.py:180,292` |
+| Nhân viên SOC | `IsCoreOperator` (staff) | `/core/v1/operator/**`, `/api/soc/**` | `identity_access/permissions.py:80` |
 | Web tĩnh (không đăng nhập) | `AllowAny` | `/api/auth/**` | `views/auth.py` |
 
 ---
@@ -393,13 +393,13 @@ nên mọi log INFO/DEBUG trong ứng dụng đang bị **vứt bỏ**.
 | ID | Mức | Phát hiện | Bằng chứng | Khuyến nghị |
 |---|---|---|---|---|
 | **F-01** | **P0** | `support/views.py` lọc tenant **chỉ khi có** `request.tenant` | `support/views.py:405` (`IsAuthenticated, IsStaffUser`), `:411-413` `SupportTicket.objects.all()` → `if tenant: …filter` | Khi `tenant is None` ⇒ **trả ticket của mọi tenant**. Phạm vi: **staff**. Sửa: nếu `tenant is None` trả `qs.none()` (như `ops_audit/views.py:37-47` đã làm đúng) |
-| **F-02** | **P0** | 14 chỗ `if tenant: … else: …` trong `user_workspace` | `views.py:62-65, 74-77, 87-88` (+11 chỗ) | Người dùng thuộc 2 tenant: `tenant is None` ⇒ đọc/ghi được **object của tenant khác** qua user scope. Sửa: bắt buộc tenant, hoặc `ScopedManager` |
+| **F-02** | **P0** | 14 chỗ `if tenant: … else: …` trong `user_workspace` | `user_workspace/views.py:62-65, 74-77, 87-88` (+11 chỗ) | Người dùng thuộc 2 tenant: `tenant is None` ⇒ đọc/ghi được **object của tenant khác** qua user scope. Sửa: bắt buộc tenant, hoặc `ScopedManager` |
 | **F-03** | P1 | `ops_audit.tenant_id` là `CharField`, không FK | `ops_audit/models.py:24,52,75` | Mất referential integrity, còn orphan sau khi xoá tenant |
 | **F-04** | P1 | `VNPayIPNLog` không FK tenant, `txn_ref` không unique | `commercial/models.py:118-124` | Không phát hiện replay IPN thanh toán |
 | **F-05** | P1 | `SupportTicket.tenant` khai `null=False, blank=True` | `support/models.py:48-54` | Mâu thuẫn: form cho phép, DB từ chối |
 | **F-06** | P1 | `Plan` không có bảng; entitlement trong dict | `commercial/plan_catalog.py:62` | Không có FK ⇒ không thể query "tenant nào đang ở plan X" bằng SQL |
 | **F-07** | P1 | Health check không probe phụ thuộc | `views_health.py:12-17`; compose dùng `condition: service_healthy` (`docker-compose.dev.yml:106-111`) | Orchestrator tưởng sống khi DB đã chết |
-| **F-08** | P1 | `api_stub` mặc định superuser | `api_stub.py:33-34` | Xoá console script khỏi `pyproject.toml:20-23` |
+| **F-08** | P1 | `api_stub` mặc định superuser | `vninvest_core/api_stub.py:33-34` | Xoá console script khỏi `pyproject.toml:20-23` |
 | **F-09** | P2 | `mark_rotating` khai **hai lần**, bản sau đè bản trước | `identity_access/models.py:385-391` và `:406-420` | Bản `:385` là code chết (tham số positional khác kiểu). Xoá bản `:385` |
 | **F-10** | P2 | `TrackedSymbol.unique_together` bỏ qua `tenant` | `user_workspace/models.py:302` | User thuộc 2 tenant không track được cùng 1 mã lần 2 |
 | **F-11** | P2 | `AuditEvent.action` `max_length=16` | `ops_audit/models.py:25` | **Đã có sự cố thật và đã vá** bằng cách chuyển sang `metadata['operation']` (`views_dnse.py:210-213`). Ràng buộc gốc **còn nguyên** ⇒ tái phát dễ. Sửa: nới `max_length` + thêm guard test |
@@ -433,8 +433,8 @@ nên mọi log INFO/DEBUG trong ứng dụng đang bị **vứt bỏ**.
 | **S-01** | **CI tắt** — 1/9 workflow bật; 8 bị chuyển sang `workflows-disabled/` vì billing | `.github/workflows/secret-scan.yml`; thư mục `workflows-disabled` có 8 file |
 | **S-02** | Check CI đỏ **không phải** do gate — job chạy 2 giây, `steps: []`, không log | Đo 2026-10-02: `scan` fail 2 s; "Copilot Code Review" fail 6 s; cả 3 gate trong workflow đều PASS chạy tay exit 0 |
 | **S-03** | Prod có **3** worker nhưng khai **10** queue | `docker-compose.prod.yml:132,216,255`; `queue_policy.py:6-22`. Queue `analytics_heavy`, `enrichment_*`, `screener` không có worker riêng ở prod |
-| **S-04** | Dev 9 worker · prod 3 · ghcr 2 · core.yml 6 · root 1 — **5 topology** cho một codebase | `docker-compose.dev.yml:119…462`; `prod.yml:132…`; `ghcr.yml:111,140`; `core.yml:50…186`; `docker-compose.yml:100` |
-| **S-05** | `core-redis` dùng 3 DB index khác nhau | `vninvest_core/settings.py:423` (`/1`), `:861` (`/0`), `core.yml:33-34` (`/3`) |
+| **S-04** | Dev 9 worker · prod 3 · ghcr 2 · core.yml 6 · root 1 — **5 topology** cho một codebase | `docker-compose.dev.yml:119…462`; `docker-compose.prod.yml:132…`; `docker-compose.ghcr.yml:111,140`; `packages/core/docker-compose.core.yml:50…186`; `docker-compose.yml:100` |
+| **S-05** | `core-redis` dùng 3 DB index khác nhau | `vninvest_core/settings.py:423` (`/1`), `:861` (`/0`), `packages/core/docker-compose.core.yml:33-34` (`/3`) |
 | **S-06** | Không có OpenTelemetry/APM; chỉ Sentry **opt-in** | `vninvest_core/settings.py:843-854`; không collector nào trong 8 compose file |
 
 ## 6.3 Đề xuất tái cấu trúc theo thứ tự ưu tiên
@@ -446,7 +446,7 @@ nên mọi log INFO/DEBUG trong ứng dụng đang bị **vứt bỏ**.
 | **P0-1** | Vá fail-open `if tenant:` — `tenant is None` ⇒ `qs.none()` | `user_workspace/views.py` (14 chỗ), `support/views.py:412` | S |
 | **P0-2** | Xác nhận & **purge secret khỏi git history**; rotate key | `compose.dev.env` (đã untrack ở `2db35ed85`, **history còn**) | S + downtime |
 | **P0-3** | Nới `AuditEvent.action` + thêm guard test chặn trường >16 | `ops_audit/models.py:25` | S |
-| **P0-4** | Xoá `api_stub` khỏi console script, hoặc đổi mặc định staff/superuser về `False` | `pyproject.toml:20-23`, `api_stub.py:33-34` | S |
+| **P0-4** | Xoá `api_stub` khỏi console script, hoặc đổi mặc định staff/superuser về `False` | `pyproject.toml:20-23`, `vninvest_core/api_stub.py:33-34` | S |
 | **P0-5** | `features_map` gọi `get_plan_entitlement()` (F-13) + đồng bộ `api_calls_limit` mặc định với catalog (F-14) | `views_webhooks.py:240-248`, `identity_access/models.py:107` | S |
 
 ### P1 — trong 1–2 sprint

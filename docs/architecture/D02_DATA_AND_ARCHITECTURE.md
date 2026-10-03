@@ -177,7 +177,7 @@ flowchart LR
 | **Thanh toán Stripe** | Checkout + portal session | `identity_access/models.py:100-104`; `commercial_partner_views.py` |
 | **LLM** | HTTPS, credential theo user | `advisory/models.py:233` `UserAICredential` |
 | **Email** | Gmail OAuth hoặc SMTP, key mã hoá | `identity_access/models.py:1066` `SystemMailConfig` |
-| **SSO / SAML** | SP-initiated | `identity_access/saml_service.py`, `TenantSSOConfig` (`models.py:1212`) |
+| **SSO / SAML** | SP-initiated | `identity_access/saml_service.py`, `TenantSSOConfig` (`identity_access/models.py:1212`) |
 
 **Webhook đi ra (tenant tự đặt URL):**
 
@@ -185,7 +185,7 @@ flowchart LR
 |---|---|---|
 | 1 | Tenant tạo config, sinh `secret` | `identity_access/models.py:1478-1481` |
 | 2 | Hệ thống gửi payload + chữ ký | `views_webhooks.py` |
-| 3 | Ghi lịch sử giao | `WebhookDelivery` (`models.py:1484`) |
+| 3 | Ghi lịch sử giao | `WebhookDelivery` (`identity_access/models.py:1484`) |
 | 4 | Consumer | `ops_audit.RequestTrace` / `AuditEvent` |
 
 > **[CHƯA XÁC MINH]** Thuật toán ký webhook và cơ chế retry không đọc tới dòng
@@ -199,12 +199,12 @@ flowchart LR
 |---|---|
 | Mang thông tin | **PAT** trong header `Authorization: Bearer <raw>` |
 | Dạng raw secret | `f"vni_{plan}_" + secrets.token_urlsafe(48)` — `identity_access/models.py:28-31` |
-| Lưu trữ | **KHÔNG** lưu raw. `token_prefix` = 12 ký tự đầu (để tra cứu) + `token_secret_hash` = `HMAC-SHA256(pepper, secret)` (`models.py:33-42`) |
-| Tra cứu | `resolve_from_raw_secret()` lọc theo `token_prefix`, băm lại rồi `hmac.compare_digest()` (`models.py:335-347`) |
+| Lưu trữ | **KHÔNG** lưu raw. `token_prefix` = 12 ký tự đầu (để tra cứu) + `token_secret_hash` = `HMAC-SHA256(pepper, secret)` (`identity_access/models.py:33-42`) |
+| Tra cứu | `resolve_from_raw_secret()` lọc theo `token_prefix`, băm lại rồi `hmac.compare_digest()` (`identity_access/models.py:335-347`) |
 | Pepper | `CORE_PAT_PEPPER`; production **bắt buộc**, thiếu là `ImproperlyConfigured` lúc import (`vninvest_core/settings.py:55-60`) |
 | TTL | Human session: `CORE_HUMAN_SESSION_PAT_HOURS`, mặc định **12 h** (`views/helpers.py:43-56`). Machine PAT: `expires_at` do người cấp quyết định |
-| Xoay vòng | `mark_rotating()` đặt `expires_at = grace_until`; `grace=0` ⇒ thu hồi ngay (`models.py:406-420`) |
-| Phân biệt người/máy | `is_human_session` (`models.py:292`); `require_human_session()` chặn PAT máy (`permissions.py:34-37`) |
+| Xoay vòng | `mark_rotating()` đặt `expires_at = grace_until`; `grace=0` ⇒ thu hồi ngay (`identity_access/models.py:406-420`) |
+| Phân biệt người/máy | `is_human_session` (`identity_access/models.py:292`); `require_human_session()` chặn PAT máy (`identity_access/permissions.py:34-37`) |
 
 ### 3.4.2 Luồng xác thực một request
 
@@ -245,7 +245,7 @@ sequenceDiagram
 **Ba điểm phải hiểu khi đọc code:**
 
 1. **Tầng phân quyền chỉ có 2 lớp DRF** (`IsCoreOperator`, `IsTenantActive` —
-   `permissions.py:80,97`). Phần còn lại là `require_tenant_permission(request, 'cap')`
+   `identity_access/permissions.py:80,97`). Phần còn lại là `require_tenant_permission(request, 'cap')`
    gọi tay trong từng view: 21 capability, 135 call site (bảng ở `D01` §2.3.3).
 
 2. **Resolver fail-closed, nhưng caller thì không.** `resolve_tenant_for_user()`
@@ -253,7 +253,7 @@ sequenceDiagram
    đúng. Nhưng 16 chỗ `if tenant:` ở caller lại **fail-open** (`D01` F-01/F-02).
 
 3. **Có chỗ kiểm tra trùng.** `CorePATAuthentication` xác thực (`authentication.py:19-77`)
-   rồi middleware *cũng* xác thực lại (`middleware.py:183-247`). Cơ chế cache chung
+   rồi middleware *cũng* xác thực lại (`identity_access/middleware.py:183-247`). Cơ chế cache chung
    qua `request._pat_credential` + `compare_digest` nên không tốn truy vấn thứ hai,
    nhưng đây là **hai nơi phải sửa khi đổi luật xác thực** — xem F-16.
 
@@ -3722,7 +3722,7 @@ erDiagram
 > **Rủi ro vận hành:** `packages/core/docker-compose.core.yml:17` đặt Redis
 > `--save "" --appendonly no` ⇒ mất **toàn bộ** hàng đợi Celery và khoá
 > chống trùng khi restart. Ba stack còn lại dùng `--appendonly yes`
-> (`docker-compose.yml:42`, `prod.yml:60`, `ghcr.yml:57`). Xem `D01` N-18.
+> (`docker-compose.yml:42`, `docker-compose.prod.yml:60`, `docker-compose.ghcr.yml:57`). Xem `D01` N-18.
 
 ## 4.3.2 Transaction
 

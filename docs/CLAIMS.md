@@ -503,7 +503,7 @@ dong bo tay · 9 exports trong package.json tro toi file .ts khong ton tai ·
 ### 2026-10-03 - Chuẩn hoá quy trình AS-IS: TEMPLATE.md + verify_arch_citations.py - in-progress
 | agent | branch | scope | files | status |
 |---|---|---|---|---|
-| arch-template | feat/arch-template-tools | Ghi mẫu prompt dạng SSOT (12 muc) + script kiem chung citation, sua 18 citation chet | `docs/architecture/TEMPLATE.md`, `docs/architecture/tools/verify_arch_citations.py`, `docs/architecture/README.md`, `docs/architecture/D01_AS_IS_OVERVIEW_AND_AUDIT.md`, `docs/architecture/D02_DATA_AND_ARCHITECTURE.md`, `docs/architecture/D03_API_UI_AND_SOP.md`, `docs/CLAIMS.md` | in-progress |
+| arch-template | feat/arch-template-tools | Ghi mâu quy trinh SSOT (13 nguyên tac) + script kiem chung citation, sua 33 citation | `docs/architecture/TEMPLATE.md`, `docs/architecture/tools/verify_arch_citations.py`, `docs/architecture/README.md`, `docs/architecture/D01_AS_IS_OVERVIEW_AND_AUDIT.md`, `docs/architecture/D02_DATA_AND_ARCHITECTURE.md`, `docs/architecture/D03_API_UI_AND_SOP.md`, `docs/CLAIMS.md` | done | **KET QUA:** gate chay thật exit 0 (`verify_arch_citations` 264/264 · `measure_repo` 8/8 · `gen_data_doc` 107 model 0 orphan · `ruff` pass · `check-multi-agent` PASS). Sua 33/33 citation. Negative test tiem 3 citation xau -> exit 1, khoi phuc -> exit 0.
 
 **Viet gi va vi sao.** Audit mau prompt kien truc (3 phien) phat hien mau nay **da duoc chay
 that** trong repo nay xong, nhung con **4 lo hong** ma 8 de xuat bo sung khong dong:
