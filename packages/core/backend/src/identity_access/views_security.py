@@ -150,7 +150,11 @@ def partner_active_sessions(request):
 @permission_classes([IsAuthenticated, IsTenantActive])
 def partner_revoke_session(request):
     require_human_session(request)
-    _require_tenant_permission(request, 'security:read')
+    # `security:write`, not `security:read`: with `revoke_all` this logs out every
+    # other human session in the tenant, including the owner's. `viewer` and
+    # `editor` both carry `security:read` (resolve_tenant.py SYSTEM_ROLE_PERMISSIONS),
+    # so a read-only role could previously terminate the whole tenant's sessions.
+    _require_tenant_permission(request, 'security:write')
     tenant = _get_request_tenant(request)
     current_cred = getattr(request, 'auth', None)
     current_id = current_cred.id if current_cred else None

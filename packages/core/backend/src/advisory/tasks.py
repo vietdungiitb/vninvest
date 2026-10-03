@@ -34,6 +34,59 @@ REQUIRED_STRUCTURED_KEYS = (
 )
 
 
+def _refund_advisory_quota(record) -> bool:
+    """Hoan 1 lan goi quota cho tenant da tieu.
+
+    Tach rieng khoi `generate_advisory_task` de test duoc truc tiep - truoc do
+    nam trong `except`, khong goi duoc tu test nao.
+
+    Tra True neu co ghi nho giam.
+    """
+    if record.user_id is None:
+        return False
+
+    from commercial.models import QuotaRecord
+    from identity_access.models import CoreTenant, TenantMember
+    from django.utils import timezone as _tz
+    from calendar import monthrange as _mr
+
+    # Resolve the tenant that ACTUALLY consumed the quota.
+    #
+    # Owner first: `CoreTenant.owner_user` is a OneToOneField and an owner is an
+    # implicit member (`TenantMember` docstring: "not required to have a
+    # TenantMember row").
+    #
+    # Then fall back to an explicit membership row. Without this fallback the old
+    # code `filter(owner_user=user).first()` returned None for any member, so a
+    # member who consumed quota was NEVER refunded - silently, because the caller
+    # swallows every exception.
+    _tenant = CoreTenant.objects.filter(owner_user=record.user).first()
+    if _tenant is None:
+        membership = (
+            TenantMember.objects.filter(user=record.user)
+            .select_related('tenant')
+            .first()
+        )
+        _tenant = membership.tenant if membership else None
+    if _tenant is None:
+        return False
+
+    _today = _tz.localdate()
+    _qs = _today.replace(day=1)
+    _qe = _today.replace(day=_mr(_today.year, _today.month)[1])
+    _qrec, _ = QuotaRecord.objects.get_or_create(
+        tenant=_tenant,
+        period_start=_qs,
+        period_end=_qe,
+        defaults={'api_calls_used': 0, 'api_calls_limit': -1},
+    )
+    if _qrec.api_calls_used > 0:
+        _qrec.api_calls_used -= 1
+        _qrec.save(update_fields=['api_calls_used', 'updated_at'])
+        return True
+    return False
+
+
 def _build_structured_output(orch_res: dict, advisory_text: str = '') -> dict:
     """Dựng `structured_output` từ kết quả orchestrator + fallback JSON parse.
 
@@ -230,23 +283,7 @@ def generate_advisory_task(record_id: str, effective_context: dict, symbol: str)
         logger.error(f"Advisory generation failed for record {record_id}: {e}")
         try:
             failed_record = AdvisoryRecord.objects.get(advisory_id=record_id)
-            if failed_record.user_id is not None:
-                from commercial.models import QuotaRecord
-                from identity_access.models import CoreTenant
-                from django.utils import timezone as _tz
-                from calendar import monthrange as _mr
-                _tenant = CoreTenant.objects.filter(owner_user=failed_record.user).first()
-                if _tenant:
-                    _today = _tz.localdate()
-                    _qs = _today.replace(day=1)
-                    _qe = _today.replace(day=_mr(_today.year, _today.month)[1])
-                    _qrec, _ = QuotaRecord.objects.get_or_create(
-                        tenant=_tenant, period_start=_qs, period_end=_qe,
-                        defaults={'api_calls_used': 0, 'api_calls_limit': -1},
-                    )
-                    if _qrec.api_calls_used > 0:
-                        _qrec.api_calls_used -= 1
-                        _qrec.save(update_fields=['api_calls_used', 'updated_at'])
+            _refund_advisory_quota(failed_record)
         except Exception:
             logger.exception('Advisory quota refund failed (non-blocking)')
         try:
