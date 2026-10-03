@@ -45,6 +45,14 @@ BE test cần `CORE_DATABASE_URL` + `DJANGO_DEBUG=1` (settings.py:27-34 raise `I
 
 ## Progress
 > Chỉ mục **còn sống** nằm ở đây. 54 mục `### Done` đã tách sang `docs/ARCHIVE_AGENTS_PROGRESS.md` ngày 2026-09-27 để file nạy mỗi session không bị loãng (579 → 517 dòng lịch sử). Nguồn sự thật về trạng thái: `docs/CLAIMS.md` + `git log`.
+### XONG 2026-10-03 — Q-01: ledger **ĐÃ gỡ khỏi deny-list** (7 nguồn), Owner chốt phương án (a)
+`verified: 2026-10-03 @ d47574133` · Bộ tài liệu AS-IS 3/3 cũng đã merge (`8e3dce914`, `60be173a7`, `895b4ebfe`, `1fc17b784`).
+`AGENTS.md` yêu cầu cập nhật ledger sau **mọi** thay đổi, nhưng §2 lại **cấm commit** chính file đó ⇒ yêu cầu không thi hành được, ledger lệch dần (237 Entry ghi tay trong 6 tuần). Gỡ được vì khác biệt **cấu trúc**, không phải nới quy tắc: `AGENTS.md` là 1 mục `Progress` chung nên hunk gộp không tách được, còn ledger là 1 `## Entry N` riêng nên tách được.
+- **⚠ Bài học chính: deny-list NHÂN BẢN ở 7 nơi, không có nguồn duy nhất.** Sửa `AGENTS.md` là fix **vô hiệu**. Đủ 7: `docs/AGENT_PROTOCOL.md:25` (§2, **nguồn sự thật**) · `AGENTS.md` · `.githooks/pre-commit:21` (`DENY`) · `scripts/agent-pr.ps1:44` (`$deny`) · `packages/web/scripts/check-multi-agent.mjs:27` (`DENY_LIST`, chặn **claim**) · `tools/opencode-global/verify-deny-extract.mjs` (`KNOWN` 9→8) · `tools/opencode-global/agent-preflight.mjs:54` (`DEFAULT_DENY_LIST`).
+- **Chỗ dễ bỏ sót nhất:** `loadDenyListWithReport()` (`tools/opencode-global/deny-extract.mjs`) **union `DEFAULT_DENY_LIST` làm sàn rồi mới cộng path từ doc** ⇒ xoá ledger khỏi doc **không đủ**, nó vẫn còn trong preflight. Phải sửa **cả** doc lẫn `DEFAULT_DENY_LIST`.
+- **Bẫy phải tránh:** `scripts/quality/check_opencore_doc_sync.ps1:66` grep thấy ledger nhưng **KHÔNG phải deny-list** — nó nằm trong `$mustAlways`, là gate **bắt buộc** ledger phải có trong `changedFiles` (ép cập nhật ledger, ngược hẳn deny-list). Xoá nó là **mở lại đúng bug Q-01**.
+- Gate chạy thật (CI billing không dùng được): `check-multi-agent` exit 0 · `verify-deny-extract` **8/8** + 9/9 negative · `scan-secrets` 3591 file · `verify-trailer-bypass` 3/3 · `verify-hook-mode` 4/4. Mô phỏng vòng lặp `DENY` của hook: ledger `ALLOWED`, `AGENTS.md` vẫn `BLOCKED`.
+- Tác dụng phụ có lợi: **claim ledger trong `docs/CLAIMS.md` giờ được phép** — vòng khai-báo-claim của ledger không còn bị chặn vô lý.
 ### DOC MỐC 2026-09-27 — đọc `docs/OPEN_WORK_20260927.md` ĐẦU TIÊN khi nhận session mới
 `verified: 2026-09-27 @ 0605189`
 Chứa: 6 việc còn tồn đọng (OW-01..OW-06, đủ `file:line` + nguyên nhân) · việc owner phải làm trước deploy · **baseline test đã biết** (BE `602 test — failures=10, errors=3`; 1 flake FE) để khỏi điều tra lại · bẫy quy trình đã gặp · quy tắc chạy test BE. 150+ `docs/*_HANDOFF_*.md` khác là **archive lịch sử**, không phải trạng thái hiện tại.
@@ -219,4 +227,6 @@ Không deviation khỏi cấu trúc đầu ra (mục 4). Thiếu section = kết
 
 ### Ghi chú ledger
 
-Sau mọi thay đổi mã nguồn hoặc kết luận audit quan trọng, PHẢI cập nhật `docs/CODE_CHANGE_AUDIT_LEDGER.md` (root) theo quy ước现存 của dự án.
+Sau mọi thay đổi mã nguồn hoặc kết luận audit quan trọng, PHẢI cập nhật `docs/CODE_CHANGE_AUDIT_LEDGER.md` (root) theo quy ước hiện hành của dự án: append **1 `## Entry N` riêng** ở đầu file + 1 dòng index ở bảng cuối file, đánh số kế tiếp (không sửa/xoá Entry cũ).
+
+**Từ 2026-10-03 yêu cầu này đã thi hành được** — ledger gỡ khỏi deny-list ở cả 7 nguồn (xem mục Progress Q-01). Agent append Entry của mình rồi commit bình thường, **không cần** `--no-verify` và không cần claim trước. Còn `AGENTS.md` thì vẫn nằm trong deny-list.
