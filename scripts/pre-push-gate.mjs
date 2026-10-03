@@ -28,13 +28,21 @@ import { fileURLToPath } from "node:url";
 const REPO = resolve(fileURLToPath(import.meta.url), "../..");
 
 if (process.env.SKIP_PRE_PUSH_GATE === "1") {
-  console.log("pre-push-gate: SKIP_PRE_PUSH_GATE=1 — BO QUA (khong phai PASS)");
+  // Escape hatch that is easy to set by accident (it leaks between shells, CI
+  // steps, and agent environments). It stays available for emergencies, but it
+  // announces itself on stderr so it can never be mistaken for a clean run.
+  console.error(
+    "pre-push-gate: SKIP_PRE_PUSH_GATE=1 — BO QUA TOAN BO GATE. " +
+      "Day KHONG phai PASS: khong co gate nao da chay cho commit nay.",
+  );
   process.exit(0);
 }
 
 let failed = 0;
 let passed = 0;
 let skipped = 0;
+/** Names of gates that did not run, so the summary can be falsifiable. */
+const skippedNames = [];
 
 const ok = (name, note = "") => {
   passed += 1;
@@ -49,6 +57,7 @@ const bad = (name, detail) => {
 };
 const skip = (name, why) => {
   skipped += 1;
+  skippedNames.push(name);
   console.log(`  SKIP  ${name} — ${why}`);
 };
 
@@ -295,5 +304,21 @@ if (failed > 0) {
   console.log(`pre-push-gate: ${failed} FAIL / ${passed} PASS / ${skipped} SKIP — CHAN PUSH`);
   process.exit(1);
 }
-console.log(`pre-push-gate: ${passed} PASS / ${skipped} SKIP / 0 FAIL — cho phep push`);
+
+if (skipped > 0) {
+  // A gate that never ran is not a gate that passed. Name them, so the reader
+  // never has to guess whether "0 FAIL" meant "everything is green" or
+  // "several checks did not execute".
+  console.error(
+    `pre-push-gate: CANH BAO — ${skipped} gate KHONG CHAY: ` +
+      `${skippedNames.join(", ")}`,
+  );
+  console.log(
+    `pre-push-gate: ${passed} PASS / ${skipped} SKIP / 0 FAIL — ` +
+      `cho phep push NHUNG khong phai xanh toan phan`,
+  );
+  process.exit(0);
+}
+
+console.log(`pre-push-gate: ${passed} PASS / 0 SKIP / 0 FAIL — cho phep push`);
 process.exit(0);
