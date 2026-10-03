@@ -209,13 +209,75 @@ Không suy diễn từ lý thuyết. Ba repo, ba kết quả đo:
 45%, `vninvestcharts-widget` bị 19%, và chỉ `vnsaas` — repo duy nhất có gate —
 là sạch. Không có ngoại lệ nào trong 3 lần này.
 
-### 3.2 Điều chưa kiểm chứng được
+### 3.2 R13 — đã kiểm chứng trên 3 stack khác nhau
 
-**R13 chưa được kiểm chứng trên bất kỳ repo nào.** Cả `vnsaas` lẫn `vninvest`
-đều là Django/DRF với `models.py`/`serializers.py`/`views.py`/`urls.py` — cùng lớp
-kiến trúc nên SOP sinh ra gần như trùng nhau; `vnsaas` còn có tầng API rỗng nên
-§7.2 không có gì để truy ngược. Cần một repo có tầng phân tần thật **và** khác
-hẳn Django (ứng viên: `vninvest-sdk`, 355 file `.py`).
+Trước khi vá R13/R14/R15/R16, mẫu mới có 1 quan sát. Bây giờ đã có **3**, ở 3 stack
+thực sự khác nhau — và 3 stack đều **không dùng** lớp kiến trúc mà checklist
+generic mô tả.
+
+| Repo | Stack | Có ORM/migration? | Phân rã thật |
+|---|---|---|---|
+| `vninvest` | Django + DRF | Có · 107 model · 115 migration | theo app nghiệp vụ, layer `models`/`serializers`/`views`/`urls` |
+| `vnsaas` | Django + DRF | Có · 12 model | như trên, **nhưng tầng API rỗng** ⇒ §7.2 không có gì để truy |
+| **`vninvest-sdk`** | **FastAPI + Pydantic** | **Không** · 0 Django · 0 SQLAlchemy · 0 `migrations/` | **theo domain** (`routes/{quote,company,finance,news,stream,admin}`) × **cross-cutting** (`middleware/{auth,quota,metering}`) |
+| `vninvestcharts-widget` | TypeScript component lib | Không | theo package/capability, không có nghiệp vụ để viết SOP |
+
+**Bằng chứng R13 ở `vninvest-sdk`** — 4 cặp `path:line` truy ngược thật.
+Tất cả trong `vninvest-sdk@e9b51fc` (branch `main`), **không** phải repo này:
+
+<!-- FOREIGN-REF: vninvest-sdk@e9b51fc -->
+1. `vninvest-sdk/vninvest_fastapi/main.py:135-171` — `lifespan` dựng singleton vào
+   `app.state`; `add_middleware` theo thứ tự **ngược** nên chạy `Auth → Quota → Metering`.
+
+<!-- FOREIGN-REF: vninvest-sdk@e9b51fc -->
+2. `middleware/auth.py:50` — `dispatch` **bỏ qua** `/health`, `/healthz`, `/ready`,
+   `/docs`, `/redoc`, `/openapi.json`; nhận `X-API-Key` hoặc
+   `Authorization: Bearer vni_…`.
+
+<!-- FOREIGN-REF: vninvest-sdk@e9b51fc -->
+3. `routes/quote.py:49` — `dependencies=[Depends(require_quote_read)]` ⇒ **phân
+   quyền nằm ở decorator**, không ở middleware.
+
+<!-- FOREIGN-REF: vninvest-sdk@e9b51fc -->
+4. `vninvest_sdk/client.py:5-6` — **dual-mode**: Gateway (SaaS) hoặc Direct
+   (bypass qua `vnbroker`).
+
+**Ba điểm khác `vninvest` — khác cấu trúc, không chỉ khác ngôn ngữ:**
+
+1. Phân rã **theo domain** × **cross-cutting**, không theo tầng MVC.
+2. Phân quyền **hai nơi**: middleware xác thực, `Depends()` kiểm scope. `vninvest`
+   gộp cả hai vào DRF permission.
+3. **Dual-mode client** — cùng một route chạy được cả SaaS lẫn tự-host.
+
+**Kết luận R13:** checklist *"Migration → Model → Repository/DAO → Service →
+Controller → DTO"* **sai ở cả 3 stack**, mỗi stack sai một cách khác nhau. Đó là
+lý do R13 bắt buộc truy ngược code thật thay vì điền từ lý thuyết. `vnsaas` không
+kiểm được R13 vì tầng API rỗng — **repo mà §7.2 rỗng thì R13 không kiểm được**,
+phải ghi `CHƯA XÁC MINH` chứ không đoán.
+
+### 3.3 R7 — "có gate" và "gate xanh" là hai chuyện khác nhau
+
+Đo ở 3 repo, cả 3 trạng thái đều xảy ra:
+
+| Repo | Gate | Run gần nhất | Vì sao đỏ |
+|---|---|---|---|
+| `vninvest` | 1/10 workflow bật | fail **2 giây**, `steps: []` | hết hạn billing — không có runner |
+| `vninvest-sdk` | **6 workflow, có thật** | 6 run **đều `failure`**, 9 giây, **9 step thật** | **lỗi packaging thật** |
+| `vnsaas` | 5 lớp `verify-design-pack` | PASS 99/99 | — |
+
+`vninvest-sdk` là ví dụ rõ nhất cho vì sao R7 phải kiểm **cả** "gate tồn tại" lẫn
+"gate xanh": nó **có** CI đầy đủ, **đang chạy**, và **đỏ thật**. Nguyên nhân:
+
+<!-- FOREIGN-REF: vninvest-sdk@e9b51fc -->
+`pyproject.toml:59` khai `packages = ["vnbroker", "vninvest_sdk"]` nhưng
+
+<!-- FOREIGN-REF: vninvest-sdk@e9b51fc -->
+`.github/workflows/performance.yml:31` chạy `pip install -e ".[test]"` tại repo
+root ⇒ `vninvest_sdk` không tồn tại ở root (nó nằm ở `vninvest-sdk/vninvest_sdk/`)
+⇒ fail 100% mọi workflow.
+
+**Bài học:** đừng suy nguyên nhân CI đỏ từ thói quen. Ở `vninvest` là billing; ở
+`vninvest-sdk` là lỗi code. **Đọc log** — 2 phút — thay vì đợi tháng.
 
 ---
 

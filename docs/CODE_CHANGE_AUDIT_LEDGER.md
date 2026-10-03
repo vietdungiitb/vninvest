@@ -1,3 +1,54 @@
+## Entry 240: R13 kiểm chứng trên 3 stack + phát hiện CI `vninvest-sdk` đỏ vì lỗi packaging, **không phải** billing (2026-10-03)
+
+- **Date**: 2026-10-03
+- **Branch**: `feat/arch-template-r13-verified` (PR #72 → merge `dev`)
+- **Scope**: `TEMPLATE.md` + ledger + claim. Doc-only, không đụng code runtime, không migration, không `npm/pip install`.
+- **Nguồn**: Owner yêu cầu kiểm chứng R13 (SOP phải bám lớp kiến trúc) trên `vninvest-sdk`.
+
+### 1. R13 — đã kiểm chứng, checklist generic sai ở cả 3 stack
+
+Đo `vninvest-sdk` bằng grep trên 355 file `.py`: **0** `import django` · **0** `sqlalchemy` · **0** `models.Model` · **0** thư mục `migrations/`. `vninvest_sdk/models.py:12` là **Pydantic**, không phải ORM.
+
+4 cặp `path:line` truy ngược thật (tất cả ở `vninvest-sdk@e9b51fc`):
+
+| Bước | Vị trí | Nội dung |
+|---|---|---|
+| 1 | `vninvest_fastapi/main.py:135-171` | `lifespan` dựng singleton vào `app.state`; `add_middleware` thứ tự **ngược** ⇒ chạy `Auth → Quota → Metering` |
+| 2 | `middleware/auth.py:50` | `dispatch` bỏ qua `/health`,`/healthz`,`/ready`,`/docs`,`/redoc`,`/openapi.json` |
+| 3 | `routes/quote.py:49` | `dependencies=[Depends(require_quote_read)]` ⇒ **phân quyền ở decorator** |
+| 4 | `vninvest_sdk/client.py:5-6` | **dual-mode**: Gateway (SaaS) hoặc Direct (bypass `vnbroker`) |
+
+Khác `vninvest` ở 3 điểm **cấu trúc**, không chỉ ngôn ngữ: phân rã **theo domain × cross-cutting** thay vì theo tầng MVC · phân quyền **hai nơi** (middleware xác thực + `Depends()` kiểm scope) thay vì gộp trong DRF permission · **dual-mode client**.
+
+**Kết luận:** checklist *"Migration → Model → Repository/DAO → Service → Controller → DTO"* sai ở **cả 3 stack**, mỗi stack sai một cách. `vnsaas` không kiểm được R13 vì tầng API rỗng ⇒ **repo mà §7.2 rỗng thì R13 không kiểm được**, phải ghi `CHƯA XÁC MINH` chứ không đoán.
+
+### 2. Phát hiện quan trọng: CI `vninvest-sdk` đỏ vì **lỗi packaging**, không phải billing
+
+Owner hiểu là hết hạn billing và đề xuất để tháng sau. **Kiểm chứng: không phải billing.**
+
+| | `vninvest` (billing thật) | `vninvest-sdk` (đây) |
+|---|---|---|
+| Số step | `steps: []` | **9 step thật** |
+| Thời lượng | 2 giây | 9 giây, dừng ở step 4 `Install dependencies` |
+
+Log: `error: package directory 'vninvest_sdk' does not exist` →
+`Failed to build 'file:///home/runner/work/vninvest-sdk/vninvest-sdk' when getting requirements to build editable`.
+
+**Gốc:** `pyproject.toml:59` khai `packages = ["vnbroker", "vninvest_sdk"]` — hardcode, không dùng `find:`. Ở repo root chỉ có `vnbroker/`; `vninvest_sdk` nằm ở `vninvest-sdk/vninvest_sdk/`. `.github/workflows/performance.yml:31` chạy `pip install -e ".[test]"` tại root ⇒ **fail 100% mọi workflow, mọi lần chạy**.
+
+**Không sửa** — ngoài phạm vi việc này và Owner đã nói để tháng sau. **Nếu tin nhầm là billing thì 6 CI đỏ nằm đó cả tháng trong khi 1 dòng config sai.**
+
+### 3. R16 tự bảo vệ trong lúc áp dụng
+
+6 citation xuyên repo trong `TEMPLATE.md` mới bị gate bắt (`DEAD_PATH` + 1 `OUT_OF_RANGE` vì `packages/core/pyproject.toml` chỉ 34 dòng). Gắn `<!-- FOREIGN-REF: vninvest-sdk@e9b51fc -->` ⇒ gate chấp nhận, vẫn **đếm** trong báo cáo. Đây là lần thứ 2 R16 chứng minh cần thiết trong chính repo này.
+
+**Gate chạy tay** (CI không chạy — billing): `verify_arch_citations` 264/264 + 6 FOREIGN exit 0 · `measure_repo` 8/8 exit 0 · `ruff` pass · `check-multi-agent` PASS 76 claim.
+**CHƯA CHẠY:** BE test, FE lint/tsc/vitest — doc-only.
+
+| # | Ngày | Agent | Nội dung | File | Gate | Bằng chứng | Mở | Trạng thái |
+|---|---|---|---|---|---|---|---|---|
+| 240 | 2026-10-03 | docs | R13 kiểm chứng trên 3 stack (Django/DRF · FastAPI+Pydantic · TS lib); phát hiện **CI `vninvest-sdk` đỏ vì `pyproject.toml` khai sai `packages`, không phải billing** | `docs/architecture/TEMPLATE.md` | verify_arch_citations 264/264 + 6 FOREIGN, measure_repo 8/8, ruff pass, check-multi-agent PASS 76 claim | xem Entry 240 | xem Entry 240 | v0 | Active |
+
 ## Entry 239: Chuẩn hoá quy trình tài liệu kiến trúc — `TEMPLATE.md` (13 nguyên tắc) + `verify_arch_citations.py`, sửa 33/33 citation (2026-10-03)
 
 - **Date**: 2026-10-03
