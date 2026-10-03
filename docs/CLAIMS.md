@@ -573,3 +573,53 @@ TS khong co he thong nghiep vu. Muon kiem R13 that can repo co tang phan tang
 that **va** khac han Django - ung vien `vninvest-sdk` (355 file .py).
 
 **Khong tao migration, khong dung BE that, khong npm/pip install, khong sua file deny list.**
+
+### 2026-10-03 - R13 da kiem chung tren 3 stack + phat hien CI that cua vninvest-sdk - in-progress
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| arch-template3 | feat/arch-template-r13-verified | Cap nhat TEMPLATE.md §3.2: R13 da co bang chung o 3 stack | `docs/architecture/TEMPLATE.md`, `docs/CLAIMS.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md` | done | **KET QUA:** TEMPLATE.md §3.2 (R13 da kiem chung 3 stack) + §3.3 (R7: co gate != gate xanh). Gate exit 0: verify_arch_citations 264/264 + 6 FOREIGN · measure_repo 8/8 · ruff pass · check-multi-agent PASS 76 claim. Phat hien CI vninvest-sdk do vi pyproject.toml:59 khai sai packages - KHONG PHAI billing, log co 9 step that.
+
+**R13 kiem chung xong.** Do tren `vninvest-sdk` (FastAPI + Pydantic, khac han
+Django). Do bang grep tren 355 file `.py`: **0** `import django` · **0**
+`sqlalchemy` · **0** `models.Model` · **0** thu muc `migrations/`.
+`vninvest_sdk/models.py:12` la **Pydantic** (`from pydantic import BaseModel,
+Field, field_validator`), khong phai ORM. Checklist generic *"Migration -> Model
+-> Repository/DAO -> Service -> Controller -> DTO"* **sai hoan toan** o repo nay.
+
+**3 cap path:line truy nguoc that (R13 doi 3 cap):**
+1. `vninvest-sdk/vninvest_fastapi/main.py:135-171` - `lifespan` dung
+   singleton vao `app.state`; `add_middleware` theo thu tu **nguoc** =>
+   chay `Auth -> Quota -> Metering`.
+2. `middleware/auth.py:50` - `dispatch` **bo qua** `/health`, `/healthz`,
+   `/ready`, `/docs`, `/redoc`, `/openapi.json`; lay `X-API-Key` hoac
+   `Authorization: Bearer vni_...`.
+3. `routes/quote.py:49` - `dependencies=[Depends(require_quote_read)]` -
+   **quyen gan o decorator**, khong phai o middleware.
+4. `vninvest_sdk/client.py:5-6` - **dual-mode**: Gateway (SaaS) hoac Direct
+   (bypass qua `vnbroker`).
+
+**Khac `vninvest` o 3 diem cau truc, khong chi khac ngon ngu:**
+(1) phan ra **theo domain** (`quote/company/finance/news/stream/admin`) x
+cross-cutting (`auth/quota/metering`), khong phai theo tang MVC;
+(2) phan quyen **hai noi** - middleware xac thuc, `Depends()` kiem scope;
+(3) **dual-mode client** - cung mot route chay duoc ca SaaS va tu-host.
+
+**R7 - CI co that VA DANG CHAY, nhung DO THAT.** 6 workflow, run 2026-10-01/02,
+6 run gan nhat **deu `failure`**. Khac ninvest (billing = `steps: []`,
+2 giay): job nay co **9 step that** va chay toi step 4.
+
+**PHAT HIEN RIENG - CI vninvest-sdk DO VI LỖI PACKAGING, KHONG PHẢI BILLING.**
+Owner hieu la billing va de xu `(b)` de thang sau. Kiem chung **KHONG phai
+billing**: 9 step that (billing = `steps: []` + 2 giay), va log ro:
+`error: package directory 'vninvest_sdk' does not exist` /
+`Failed to build 'file:///home/runner/work/vninvest-sdk/vninvest-sdk' when
+getting requirements to build editable`.
+**Goc:** `pyproject.toml:59` khai `packages = ["vnbroker", "vninvest_sdk"]`
+(hardcode, khong dung `find:`). O repo root chi co `vnbroker/`;
+`vninvest_sdk` nam sau `vninvest-sdk/vninvest_sdk/`.
+`.github/workflows/performance.yml:31` chay `pip install -e ".[test]"` tai
+root => **fail 100% moi workflow, moi lan chay**, khong phai het han billing.
+**KHONG sua** (ngoai pham vi viec nay, va Owner da noi `(b)` de thang sau) -
+chi bao cao de Owner quyet dinh.
+
+Khong tao migration, khong dung BE that, khong npm/pip install, khong sua file deny list.
