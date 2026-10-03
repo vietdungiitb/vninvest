@@ -1,6 +1,6 @@
 # Kiến trúc `vninvest` — bộ tài liệu AS-IS (Single Source of Truth)
 
-> **Trạng thái: Lượt 1/3 — hoàn tất mục 1, 2, 6.** Mục 3, 4, 5, 7 chưa viết.
+> **Trạng thái: Lượt 3/3 — hoàn tất (§1, 2, 3, 4, 5, 6, 7).**
 
 ---
 
@@ -52,14 +52,24 @@ model không tồn tại. Ngược lại, đọc `architecture/D01` rồi code t
 
 | File | Phần trong đặc tả | Nội dung | Trạng thái |
 |---|---|---|---|
-| `D01_AS_IS_OVERVIEW_AND_AUDIT.md` | **§1, §2, §6** | Bối cảnh hệ thống, C4 context, glossary, phân rã chức năng, RBAC, audit + nợ kỹ thuật | ✅ Lượt 1 |
-| `D02_DATA_AND_ARCHITECTURE.md` | §3, §4 | C4 container/component, DFD, ERD 107 model, data dictionary, transaction/cache | ⏳ Lượt 2 |
-| `D03_API_UI_AND_SOP.md` | §5, §7 | Quy ước API, error JSON, navigation/UI, checklist 7 bước, DoD | ⏳ Lượt 3 |
-| `OPEN_QUESTIONS.md` | — | Các câu hỏi cần Owner quyết (tương đương `saas_design_pack/OPEN_QUESTIONS`) | ⏳ Lượt 2 |
+| `D01_AS_IS_OVERVIEW_AND_AUDIT.md` | §1, §2, §6 | Bối cảnh hệ thống, C4 context, glossary, FBD, RBAC, audit + nợ kỹ thuật | ✅ |
+| `D02_DATA_AND_ARCHITECTURE.md` | §3, §4 | C4 container/component, DFD, **ERD + data dictionary 107 model (sinh tự động)**, cache/transaction/ACID | ✅ |
+| `D03_API_UI_AND_SOP.md` | §5, §7 | Quy ước API, error JSON, navigation/state/design tokens, check-list 7 bước, DoD, bẫy đã mắc | ✅ |
+| `tools/measure_repo.py` | — | Đo lại 8 chỉ số §0.4 · exit 1 nếu lệch | ✅ |
+| `tools/gen_data_doc.py` | — | Sinh §4.1–4.2 từ Django runtime · exit 1 nếu sót model | ✅ |
 
 **Vì sao tách 3 file chứ không 1 file:** `vninvest` có 15 Django app / 107 model /
 1.029 route. Một file duy nhất sẽ vượt quá khả năng duy trì và mọi lần sửa đều
 phải đọc lại toàn bộ.
+
+## 0.2.1 Quy trình cập nhật khi code đổi
+
+| Thay đổi | Phải làm |
+|---|---|
+| Thêm/sửa/xoá model | Chạy `tools/gen_data_doc.py` (kiểm `CLUSTERS` có cần bổ sung không) |
+| Đổi kiến trúc, đổi finding | Sửa tay `D01`/`D02`/`D03` **kèm** `file:line` |
+| Đổi số liệu kiến trúc | Chạy `tools/measure_repo.py`; nếu lệch thì sửa **cả** §0.4 lẫn kỳ vọng trong script |
+| Đóng một finding | Ghi rõ **đã sửa ở đâu** + sửa finding, không xoá — xem `D01` F-11 làm mẫu |
 
 ## 0.3 Cách dùng khi phát triển tính năng mới
 
