@@ -236,10 +236,25 @@ IDENTICAL. ruff 3 loi cu trung het HEAD. `check-multi-agent` PASS,
 vi `:50` chan truoc, gate moi la lop thu hai. Sua fail-open nay se doi response
 5 endpoint `/core/v1/partner/*` dang chay production.
 
-**Can Owner xac nhan:** (1) `editor` co bi khoa billing dung khong? D07:707 chi
-ghi "Owner, Admin". (2) Staff dung `X-Staff-Switch` se mat quyen doc billing
-(`middleware.py:174` ep role `viewer`) — neu co quy trinh support can xem hoa
-don tenant thi phai mo duong dan rieng.
+**DA CHOT (Owner, 2026-10-03):**
+
+1. **`editor` van bi khoa billing — giu nguyen.** SSOT cho `editor` co
+   `sa:write`/`pat:write`/`forecast:write` nhung co y **khong** co
+   `billing:read`; `D07:707` cung ghi "Owner, Admin". Hai nguon doc lap cung
+   ket luan. Nhu cau van hanh ("biet plan/han mung con bao nhieu") da duoc
+   `usage:read` cho editor. **Neu sau nay can editor xem hoa don: cap
+   `custom_role` co `billing:read`** — adapter `RequiresTenantPermission` da ton
+   trong `custom_role` san, **khong sua code**.
+2. **Staff doc billing qua SOC console, KHONG qua `X-Staff-Switch`.** Da co
+   san duong dan rieng: `/api/soc/billing/invoices/`
+   (`service_ops/urls.py:76`), guard `[IsAuthenticated, IsAdminUser]`
+   (`service_ops/views/base.py:102`) + throttle `SOCOperatorReadThrottle`,
+   cross-tenant co chu y. Test `test_non_staff_forbidden` (403) +
+   `test_invoices_list_filter_paginate` + `test_invoices_csv_export` — **PASS**.
+   **Khong mo staff-switch** vi `middleware.py:174-180` co y ep `viewer` + strip
+   `is_staff` (thiet ke H0.1); cap `billing:read` cho staff-switch se cho moi
+   staff co token chuyen ho doc tien cua moi tenant, **khong throttle, khong
+   audit theo luot doc**.
 
 ## Open Risks
 

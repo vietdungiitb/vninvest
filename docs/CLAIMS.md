@@ -740,13 +740,15 @@ bang .NET, khong truyen markdown qua shell.
   khi PAT khong phat cho member -> role `owner` -> qua gate.
 - **Human PAT cua viewer bi chan** (`:215` gan `member.role`) — dung y owner.
 
-**Hanh vi can thay doi — phai review:**
-1. `viewer` **va** `editor` deu bi 403 tren 4 endpoint. D07:707 chi ghi
-   "Owner, Admin" nen theo D07, nhung `editor` **khong** duoc Owner/QA xac nhan.
-2. **Staff dung `X-Staff-Switch` se mat quyen doc billing.** `middleware.py:174`
-   ep `request.tenant_role = 'viewer'` va `:179-180` strip `is_staff`. Day la
-   fail-closed va dung thiet ke H0.1, **nhung** neu co quy trinh support can
-   staff xem hoa don cua tenant thi phai mo duong dan rieng. **Can owner xac nhan.**
+**DA CHOT (Owner, 2026-10-03):**
+1. `viewer` **va** `editor` deu bi 403 tren 4 endpoint — **giu nguyen**. SSOT
+   cho `editor` co y khong co `billing:read`; `D07:707` cung ghi "Owner, Admin".
+   Cach sua neu can editor xem hoa don: cap `custom_role` co `billing:read`,
+   **khong sua code** (adapter da ton trong `custom_role` san).
+2. **Staff doc billing qua SOC console** `/api/soc/billing/invoices/`
+   (`service_ops/urls.py:76`, guard `IsAdminUser` tai `views/base.py:102`).
+   **Khong mo `X-Staff-Switch`** — `middleware.py:174-180` ep `viewer` + strip
+   `is_staff` la thiet ke H0.1 co y; mo rong se khong throttle/khong audit.
 3. Khong sua 5 endpoint `/core/v1/partner/*` — `identity_access`, khong nam trong
    claim nay. Hieu ung: 4 endpoint nay fail-closed 403 cho viewer, 5 endpoint do
    tra **200 + rong**. Hai quy tac khac nhau, **da ghi trong OPEN_WORK**.
