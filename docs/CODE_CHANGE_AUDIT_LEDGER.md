@@ -6120,3 +6120,50 @@ Lam xanh bang cach noi assertion la doi dau hieu thanh xanh.
 
 CI - `run_tests.py` toan bo - OpenAPI constitution - kiem chuyen frontend voi
 response 200 -> 403 cua 5 endpoint partner.
+
+---
+
+## Entry 244: Don tiep test debt 24 -> 7 (2026-10-03)
+
+Tiep Entry 243. Owner: "lam tiep cho sach repo".
+
+### 1. Da sua — 17 loi, KHONG phai loi sang pham
+
+| nguyen nhan | bang chung | sua |
+|---|---|---|
+| Thieu `password_confirm`, 7 payload | `SaaSRegisterSerializer` (`identity_access/serializers.py:392`) bat buoc truong nay ⇒ 400 truoc khi vao so dem rate limit (`400 != 429`) | them `password_confirm` vao 7 payload register; **khong** sua login/reset |
+| `request_id` prefix, 12 assertion | Error body chuyen sang **problem+json** (`ProblemDetail`): `request_id` la UUID thuan, khong con `req_` | bo `startswith('req_')`, giu kiem tra "co va khac nhau" |
+| Login 3 lop throttle | `settings.py:903-905` IP=5, subnet=15, **user=3**; loop 5 lan cung user ⇒ lan 4 cham ngan `user` ⇒ 429 **dung chu** | `@override_settings(LOGIN_USER_LIMIT_THRESHOLD=5)` |
+
+**Khong doi** `test_status_codes_and_errors.py:277` — `StandardErrorEnvelope(...)`
+tao truc tiep ⇒ `request_id` **van** phai co `req_` (`exceptions.py:146`).
+
+### 2. Con 7 — can Owner quyet dinh, KHONG sua
+
+5 legacy proxy `T19`-`T23` (503, can `LEGACY_BACKEND_URL`) ·
+1 mau thuan hop contract `password_reset.py:117` tra `200 {data:{detail}}`
+enumeration-safe nhung `request_id` khong o top level nhu A6.4 doi ·
+1 canary `EXPECTED_STDLIB_USES = 18` vs thuc te 19, **da do hong tu dau phien**
+(`git diff HEAD` rong), sua so la tu bo canary.
+
+### 3. Sai lam trong quy trinh — ghi lai de khong lap
+
+Thay chuoi hang loat bang `.Replace()` de sua `startswith('req_')` **phá indent**
+o 2 file (`test_exception_handling.py:231-234`, `test_exception_handling_a6.py:139-145`)
+⇒ `IndentationError`. Phat hien qua `ruff --select E9` **truoc khi** chay test.
+**Bai hoc:** doi chuoi co the cham vao dong nam trong vong lap ⇒ luon chay
+`ruff --select E9` (syntax) ngay sau khi sua hang loat.
+
+### 4. Kiem chung
+
+| lenh | ket qua |
+|---|---|
+| `commercial` + `vninvest_core.tests` | **289 test / 7 fail** (51 → 24 → 17 → 7), **0 loi moi** |
+| `ruff --select E9` 4 file test | All checks passed (syntax sau khi sua indent) |
+| `ruff F401` 4 file test | 15 — doi chieu `git show HEAD`: **15/15 da co san** |
+| `pre-push-gate.mjs` | **15 PASS / 0 FAIL — cho phep push** |
+
+### 5. Chua chay
+
+CI - `run_tests.py` toan bo - OpenAPI constitution - kiem chuyen frontend voi
+response 200 -> 403 cua 5 endpoint partner.
