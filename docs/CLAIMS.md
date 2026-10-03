@@ -754,3 +754,75 @@ bang .NET, khong truyen markdown qua shell.
 **Ke hoach kiem chung:** 8 test hien co trong `test_commercial_tenant_scope.py`
 co 1 test dung role `VIEWER` va **se phai doi** — chay lai de thay dung phien ban
 moi thay vi giu ban cu.
+
+---
+
+## 2026-10-03 - claim(role-gate) ket thuc: dung SSOT permission token, khong viet bang role moi - done
+
+| agent | branch | scope | files | status |
+|---|---|---|---|---|
+| openwork-fix | feat/openwork-ow02-03-04 | Hoan tat gate quyen doc billing. **Yeu cau cua claim da doi** sau khi doc code that | packages/core/backend/src/commercial/permissions.py (new), packages/core/backend/src/commercial/views.py, packages/core/backend/src/commercial/views_analytics.py, packages/core/backend/src/vninvest_core/tests/test_commercial_tenant_scope.py | done |
+
+**Claim tren noi "gating o cap ROLE (owner/admin)". Do la sai cach lam.**
+
+Da doc identity_access/utils/resolve_tenant.py:27-56 - bang
+`SYSTEM_ROLE_PERMISSIONS` **da co san** va **da encode san policy cua Owner**:
+
+| role | `billing:read` | `usage:read` |
+|---|---|---|
+| owner | `*` | `*` |
+| admin | co | co |
+| editor | **KHONG** | co |
+| viewer | **KHONG** | co |
+
+Va equire_tenant_permission() (:399) + get_tenant_permissions() (:361)
+da xu ly het custom_role. Vay viet them bang role `('owner','admin')` se:
+
+1. **Tao SSOT thu hai.** Bang role moi se tro custom_role khi custom role
+   cap illing:read cho mot iewer - hai bang bat dat khong.
+2. **Ton 30 dong** de viet lai thu tu phan quyen da ton tai.
+
+⇒ commercial/permissions.py bay gio chi la **adapter**: view khai bao
+`required_tenant_permissions = ('billing:read',)`, class doc SSOT vao. Khong
+co bang role nao trong file nay.
+
+**Phan biet token theo tung endpoint** (quyet dinh, can Owner xac nhan):
+
+| endpoint | token | viewer | editor |
+|---|---|---|---|
+| `/core/v1/billing/subscription` | `billing:read` | 403 | 403 |
+| `/core/v1/billing/invoices` | `billing:read` | 403 | 403 |
+| `/core/v1/partner/billing/cost-trend/` | `billing:read` | 403 | 403 |
+| `/core/v1/billing/quota` | `usage:read` | **200** | 200 |
+
+**Quota van de viewer xem duoc** - `usage:read` co san trong token cua viewer
+theo policy co san, va `QuotaRecord` la **so lieu dung luu luong, khong phai
+tien**. Neu Owner muon quota cung khoa theo billing: doi token o
+`QuotaListView:59` **va** doi `test_viewer_can_read_quota` thanh 403. Hai
+cho phai doi cung nhau - doi mot cho se tao trung thuc khong nhat quan.
+
+**Ket qua kiem chung (PostgreSQL, `DJANGO_DEBUG=1`):**
+
+- `test_commercial_tenant_scope.py`: **17 test OK**
+- Full `commercial` + `vninvest_core.tests`: baseline **274/51 fail** ->
+  worktree **283/51 fail**. `Compare-Object` 51 ten: **IDENTICAL**, 0 moi,
+  0 bi sua. (+9 test la test moi.)
+- **Negative control:** bo gate khoi 3 view + 1 analytics -> **9 fail**,
+  gom `test_denied_response_does_not_leak_invoice_amounts` in ra payload that
+  (`amount_due: 4200000.00`, `invoice_number: OW02-GATE-INV`). Bang chung
+  lo hong la that, khong phai gia dinh. Da khoi phuc file.
+- `ruff`: 3 loi cu (F401 x2, F841 x1) **trung het voi HEAD**, khong them loi
+  moi.
+- `check-multi-agent.mjs`: PASS. `scan-secrets.mjs`: OK.
+
+**Van de phat hien khi doc code, chua sua (ngoai pham vi claim):**
+
+identity_access/commercial_partner_views.py:59-61 co `except Exception`
+nuot moi loi va tra `200 + {note}`. Wrapper cost-trend goi
+`InnerView.as_view()` (:53) nen gate tren inner view co the bi nuot thanh
+200. Hien khong lo duoc vi `:50` da goi
+`_require_tenant_permission(request, 'billing:read')` **nam ngoai** `try`
+nen 403 phat ra truoc. Gate cua ta la **lop thu hai** - giu duoc minh khi
+wrapper doi. **Can claim rieng** de sua fail-open nay.
+
+**Chua chay:** CI, `run_tests.py` toan bo, OpenAPI constitution/checklist.

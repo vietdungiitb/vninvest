@@ -14,9 +14,15 @@ from rest_framework.response import Response
 from identity_access.permissions import IsTenantActive, require_pat_scopes_or_human_session
 from identity_access.utils.resolve_tenant import resolve_tenant
 
+from .permissions import RequiresTenantPermission
+
 logger = logging.getLogger(__name__)
 
-TENANT_PERMISSION_CLASSES = [permissions.IsAuthenticated, IsTenantActive]
+TENANT_PERMISSION_CLASSES = [
+    permissions.IsAuthenticated,
+    IsTenantActive,
+    RequiresTenantPermission,
+]
 
 
 def _get_tenant(request):
@@ -32,6 +38,9 @@ class PartnerCostTrendView(generics.GenericAPIView):
     Falls back gracefully if insufficient data.
     """
     permission_classes = TENANT_PERMISSION_CLASSES
+    # Cost in VND per month. Money, so the billing token -- `viewer` and
+    # `editor` do not hold it (SYSTEM_ROLE_PERMISSIONS, resolve_tenant.py:27).
+    required_tenant_permissions = ('billing:read',)
 
     def get(self, request, *args, **kwargs):
         require_pat_scopes_or_human_session(request, 'manage_tenant')
